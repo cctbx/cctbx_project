@@ -102,6 +102,9 @@ run_minimization_first = True
 run_minimization_last = True
   .type = bool
   .expert_level = 2
+use_hydrogens_in_minimization = False
+  .type = bool
+  .expert_level = 3
 reference_map_resolution = 5
   .type = float
   .expert_level = 2
@@ -450,6 +453,9 @@ class model_idealization():
     if self.model_h is not None:
       return
     if not self.model.has_hd():
+      # runs reduce internally
+      assert (libtbx.env.has_module(name="reduce"))
+      assert (libtbx.env.has_module(name="elbow"))
       self.model_h = ready_set_model_interface(
           model=self.model,
           params=["add_h_to_water=False",
@@ -478,6 +484,11 @@ class model_idealization():
     self.model_h.set_sites_cart(sc)
     self.model_h.idealize_h_riding()
 
+  def _update_model_from_model_h(self):
+    self.model.set_sites_cart(
+        sites_cart = self.model_h.get_hierarchy().select(~self.model_h.get_hd_selection()).atoms().extract_xyz(),
+        update_grm = True)
+    self.model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
   def idealize_rotamers(self):
     print >> self.log, "Fixing rotamers..."
@@ -486,9 +497,6 @@ class model_idealization():
       self.shift_and_write_result(
         model = self.model,
         fname_suffix="just_before_rota")
-    # run reduce
-    assert (libtbx.env.has_module(name="reduce"))
-    assert (libtbx.env.has_module(name="elbow"))
 
     self._update_model_h()
 
@@ -503,10 +511,8 @@ class model_idealization():
         backbone_sample   = False,
         mon_lib_srv       = self.model_h.get_mon_lib_srv(),
         log               = self.log)
-    self.model.set_sites_cart(
-        sites_cart = result.pdb_hierarchy.select(~self.model_h.get_hd_selection()).atoms().extract_xyz(),
-        update_grm = True)
-    self.model.set_sites_cart_from_hierarchy(multiply_ncs=True)
+    self.model_h.set_sites_cart_from_hierarchy()
+    self._update_model_from_model_h()
     if self.params.debug:
       self.shift_and_write_result(
           model = self.model,
@@ -733,12 +739,22 @@ class model_idealization():
     else:
       print >> self.log, "Using map as reference"
       self.log.flush()
-      mwwm = minimize_wrapper_with_map(
-          model=model,
-          target_map=reference_map,
-          number_of_cycles=self.params.number_of_refinement_cycles,
-          cycles_to_converge=self.params.cycles_to_converge,
-          log=self.log)
+      if self.params.use_hydrogens_in_minimization:
+        self._update_model_h()
+        mwwm = minimize_wrapper_with_map(
+            model=self.model_h,
+            target_map=reference_map,
+            number_of_cycles=self.params.number_of_refinement_cycles,
+            cycles_to_converge=self.params.cycles_to_converge,
+            log=self.log)
+        self._update_model_from_model_h()
+      else:
+        mwwm = minimize_wrapper_with_map(
+            model=model,
+            target_map=reference_map,
+            number_of_cycles=self.params.number_of_refinement_cycles,
+            cycles_to_converge=self.params.cycles_to_converge,
+            log=self.log)
 
   def shift_and_write_result(self, model, fname_suffix=""):
     pdb_str = model.model_as_pdb()
