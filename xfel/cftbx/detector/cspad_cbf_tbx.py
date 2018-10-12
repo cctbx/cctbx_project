@@ -285,7 +285,7 @@ def get_calib_file_path(env, address, run):
   try:
     # try to get it from the detector interface
     psana_det = Detector(address, run.env())
-    return psana_det.pyda.geoaccess(run).path
+    return psana_det.pyda.geoaccess(run.run()).path
   except Exception as e:
     pass
 
@@ -313,7 +313,7 @@ def env_dxtbx_from_slac_metrology(run, address):
     try:
       # try to load the geometry from the detector interface
       psana_det = Detector(address, run.env())
-      geometry = psana_det.pyda.geoaccess(run)
+      geometry = psana_det.pyda.geoaccess(run.run())
     except Exception as e:
       geometry = None
 

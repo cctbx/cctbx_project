@@ -101,7 +101,7 @@ class FormatXTCCspad(FormatXTC):
     self._env = self._ds.env()
     assert len(self.params.detector_address) == 1
     self._det = psana.Detector(self.params.detector_address[0],self._env)
-    geom=self._det.pyda.geoaccess(self._get_event(index))
+    geom=self._det.pyda.geoaccess(self._get_event(index).run())
     cob = read_slac_metrology(geometry=geom, include_asic_offset=True)
     d = Detector()
     pg0 = d.hierarchy()
