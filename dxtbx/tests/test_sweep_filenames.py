@@ -12,7 +12,8 @@ def test_template_regex():
       'foo_bar_001.img1000': 'foo_bar_###.img1000',
       'foo_bar_00001.img': 'foo_bar_#####.img',
       'foo_1_bar.img': 'foo_1_bar.img',
-      'foo_1_bar_1.img': 'foo_1_bar_1.img'
+      'foo_1_bar_1.img': 'foo_1_bar_#.img',
+      'foo_1_bar_10.img': 'foo_1_bar_##.img'
   }
 
   for filename in questions_answers:

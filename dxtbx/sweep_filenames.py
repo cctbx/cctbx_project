@@ -51,6 +51,9 @@ def template_regex(filename):
     break
 
 # print "File name template:\n    %s\n -> %s (%d)" % (filename, template, int(digits))
+  if template is None:
+    template = filename
+
   return template, int(digits)
 
 
