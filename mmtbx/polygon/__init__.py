@@ -192,3 +192,68 @@ def polygon(params = master_params.extract(), d_min = None,
       h = show_histogram(data = data, n_slots = n_slots)
       histograms.append([selected_key,h])
   return histograms
+
+def get_statistics_percentiles (d_min, stats) :
+  """
+  For a given set of statistics, determine their percentile ranking compared
+  to other crystal structures at similar resolution.
+  """
+  if (d_min is None) :
+    return dict([ (s, None) for s in stats.keys()  ])
+  try :
+    db = load_db()
+  except Exception, e :
+    return {}
+  d_min_mvd = flex.double([ float(x) for x in db['high_resolution'] ])
+  sel_perm = flex.sort_permutation(d_min_mvd)
+  d_min_mvd = d_min_mvd.select(sel_perm)
+  def find_value_in_list (values, value) :
+    i = 0
+    j = len(values) - 1
+    while (i != j) :
+      k = i + (j - i) // 2
+      if (value <= values[k]) :
+        j = k
+      else :
+        i = k + 1
+    return i
+  index = find_value_in_list(d_min_mvd, d_min)
+  sel_around = flex.bool(d_min_mvd.size(), False)
+  index_tmp = index
+  while (index_tmp > 0) :
+    d_min_other = d_min_mvd[index_tmp]
+    if (d_min_other < d_min - 0.1) :
+      break
+    sel_around[index_tmp] = True
+    index_tmp -= 1
+  index_tmp = index
+  while (index_tmp < d_min_mvd.size()) :
+    d_min_other = d_min_mvd[index_tmp]
+    if (d_min_other > d_min + 0.1) :
+      break
+    sel_around[index_tmp] = True
+    index_tmp += 1
+  #print "%d structures around %g" % (sel_around.count(True), d_min)
+  percentiles = {}
+  for stat_name in stats.keys() :
+    stat = stats[stat_name]
+    if (not stat_name in db) :
+      percentiles[stat_name] = None
+      continue
+    values = db[stat_name].select(sel_perm).select(sel_around)
+    fvalues = flex.double()
+    for value in values :
+      try :
+        fvalues.append(float(value))
+      except ValueError :
+        pass
+    assert fvalues.size() != 0
+    fvalues_sorted = fvalues.select(flex.sort_permutation(fvalues))
+    stat_index = find_value_in_list(fvalues_sorted, stat)
+    # FIXME I think for some of these statistics we need to reverse this -
+    # i.e. if higher statistics are better
+    stat_perc = 100 * (1 - (stat_index / fvalues.size()))
+    percentiles[stat_name] = stat_perc
+    #print stat_name, stat_index, fvalues.size(), stat_perc
+    #flex.histogram(fvalues, n_slots=10).show(prefix="  ")
+  return percentiles
