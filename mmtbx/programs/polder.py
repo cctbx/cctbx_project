@@ -6,7 +6,7 @@ except ImportError:
 import os
 import libtbx.phil
 from libtbx.utils import Sorry
-from libtbx import easy_pickle
+#from libtbx import easy_pickle
 import mmtbx.maps.polder_lib
 from iotbx import crystal_symmetry_from_any
 from cStringIO import StringIO
