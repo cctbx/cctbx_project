@@ -4,12 +4,11 @@ import time
 from libtbx.test_utils import approx_equal
 import iotbx.pdb
 from iotbx import reflection_file_reader
-#from cctbx import miller
+import mmtbx.model
 from cctbx import maptbx
 from scitbx.array_family import flex
 from mmtbx.maps.polder_lib import master_params_str
 import mmtbx.maps.polder_lib
-from iotbx import crystal_symmetry_from_any
 
 pdb_str = """\
 CRYST1   21.830   27.276   27.424  90.00  90.00  90.00 P 1
@@ -138,16 +137,13 @@ def exercise(prefix="tst_polder_ccs"):
   print cmd
   easy_run.call(cmd)
 
-  # get params.polder
   params_line = master_params_str
   params = iotbx.phil.parse(
       input_string=params_line, process_includes=True).extract()
 
-  pdb_input = iotbx.pdb.input(file_name = 'tst_polder_ccs.pdb')
-  pdb_hierarchy = pdb_input.construct_hierarchy()
-  crystal_symmetry = crystal_symmetry_from_any.extract_from('tst_polder_ccs.pdb')
-  xray_structure = pdb_hierarchy.extract_xray_structure(
-    crystal_symmetry = crystal_symmetry)
+  pdb_inp = iotbx.pdb.input(file_name = 'tst_polder_ccs.pdb')
+  model = mmtbx.model.manager(model_input = pdb_inp)
+  pdb_hierarchy = model.get_hierarchy()
   selection_bool = pdb_hierarchy.atom_selection_cache().selection(
     string = 'resseq 88')
   #f_obs = abs(xray_structure.structure_factors(d_min=2).f_calc())
@@ -165,8 +161,7 @@ def exercise(prefix="tst_polder_ccs"):
   polder_object = mmtbx.maps.polder_lib.compute_polder_map(
     f_obs             = fobs,
     r_free_flags      = None,
-    xray_structure    = xray_structure,
-    pdb_hierarchy     = pdb_hierarchy,
+    model             = model,
     params            = params.polder,
     selection_bool    = selection_bool)
   polder_object.validate()

@@ -3,12 +3,12 @@ from libtbx import easy_run
 import time
 from libtbx.test_utils import approx_equal
 import iotbx.pdb
+import mmtbx.model
 from iotbx import reflection_file_reader
 from cctbx import miller
 from scitbx.array_family import flex
 from mmtbx.maps.polder_lib import master_params_str
 import mmtbx.maps.polder_lib
-from iotbx import crystal_symmetry_from_any
 
 pdb_str = """\
 CRYST1   28.992   28.409   27.440  90.00  90.00  90.00 P 1
@@ -192,11 +192,10 @@ def exercise(prefix="tst_polder_3"):
   params = iotbx.phil.parse(
       input_string=params_line, process_includes=True).extract()
 
-  pdb_input = iotbx.pdb.input(file_name = 'tst_polder_3.pdb')
-  pdb_hierarchy = pdb_input.construct_hierarchy()
-  crystal_symmetry = crystal_symmetry_from_any.extract_from('tst_polder_3.pdb')
-  xray_structure = pdb_hierarchy.extract_xray_structure(
-    crystal_symmetry = crystal_symmetry)
+  pdb_inp = iotbx.pdb.input(file_name = 'tst_polder_3.pdb')
+  model = mmtbx.model.manager(model_input = pdb_inp)
+  pdb_hierarchy = model.get_hierarchy()
+
   selection_bool = pdb_hierarchy.atom_selection_cache().selection(
     string = 'chain A')
 
@@ -218,12 +217,11 @@ def exercise(prefix="tst_polder_3"):
   for radius in [3, 5, 7]:
     params.polder.sphere_radius = radius
     polder_object = mmtbx.maps.polder_lib.compute_polder_map(
-      f_obs             = fobs,
-      r_free_flags      = None,
-      xray_structure    = xray_structure,
-      pdb_hierarchy     = pdb_hierarchy,
-      params            = params.polder,
-      selection_bool    = selection_bool)
+      f_obs          = fobs,
+      r_free_flags   = None,
+      model          = model,
+      params         = params.polder,
+      selection_bool = selection_bool)
     polder_object.validate()
     polder_object.run()
     results = polder_object.get_results()
@@ -251,8 +249,7 @@ def exercise(prefix="tst_polder_3"):
     polder_object = mmtbx.maps.polder_lib.compute_polder_map(
       f_obs             = fobs,
       r_free_flags      = None,
-      xray_structure    = xray_structure,
-      pdb_hierarchy     = pdb_hierarchy,
+      model             = model,
       params            = params.polder,
       selection_bool    = selection_bool)
     polder_object.validate()

@@ -42,14 +42,13 @@ class compute_polder_map():
   def __init__(self,
                f_obs,
                r_free_flags,
-               xray_structure,
-               pdb_hierarchy,
+               model,
                params,
                selection_bool):
     self.f_obs = f_obs
     self.r_free_flags = r_free_flags
-    self.xray_structure = xray_structure
-    self.pdb_hierarchy = pdb_hierarchy
+    self.xray_structure = model.get_xray_structure()
+    self.pdb_hierarchy = model.get_hierarchy()
     self.params = params
     self.selection_bool = selection_bool
     #

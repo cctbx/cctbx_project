@@ -6,7 +6,6 @@ except ImportError:
 import os
 import libtbx.phil
 from libtbx.utils import Sorry
-#from libtbx import easy_pickle
 import mmtbx.maps.polder_lib
 from iotbx import crystal_symmetry_from_any
 from cStringIO import StringIO
@@ -472,14 +471,12 @@ Optional output:
       xray_structure   = xrs,
       d_min            = f_obs.d_min())
 
-    # TODO: use model instead of xrs and ph!
     polder_object = mmtbx.maps.polder_lib.compute_polder_map(
-      f_obs             = f_obs,
-      r_free_flags      = r_free_flags,
-      xray_structure    = xrs,
-      pdb_hierarchy     = ph,
-      params            = self.params.polder,
-      selection_bool    = selection_bool)
+      f_obs          = f_obs,
+      r_free_flags   = r_free_flags,
+      model          = model,
+      params         = self.params.polder,
+      selection_bool = selection_bool)
     polder_object.validate()
     polder_object.run()
     results = polder_object.get_results()
