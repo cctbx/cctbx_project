@@ -3651,6 +3651,15 @@ def get_rdl_database(apply_unrestrained_dihedrals=False, verbose=False):
           if verbose: print "RDL update",resname, rotamer, dihedral, restraint
           pdbs.append("%s_%s.pdb" % (resname.lower(), rotamer))
     #print 'tar cvf rdls.tar ' + ' '.join(pdbs)
+  # needed because rotalyze does not use atom names to get rotamer name so
+  # restraints have to have a periodicity of 2
+  for resname, rotamers in rdl_database.items():
+    if resname not in ['ASP', 'GLU', 'PHE', 'TYR']: continue
+    for rotamer_name, restraints in rotamers.items():
+      if rotamer_name=='default': continue
+      for key, values in restraints.items():
+        if len(key)!=4: continue
+        values[-1]=2
   return rdl_database
 
 def run(args):
