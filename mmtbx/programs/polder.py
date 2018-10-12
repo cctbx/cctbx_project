@@ -158,8 +158,10 @@ Optional output:
     self.data_manager.has_miller_arrays(raise_sorry=True)
     if (len(self.data_manager.get_miller_array_names()) > 2):
       raise Sorry('Dont input more than 2 reflection files.')
-    self.params.reflection_file_name = self.data_manager.get_default_miller_array_name()
-    self.params.model_file_name = self.data_manager.get_default_model_name()
+    if (self.params.reflection_file_name is None):
+      self.params.reflection_file_name = self.data_manager.get_default_miller_array_name()
+    if (self.params.model_file_name is None):
+      self.params.model_file_name = self.data_manager.get_default_model_name()
 
     if (self.params.solvent_exclusion_mask_selection is None):
       raise Sorry("Selection for atoms to be omitted is required.")
@@ -168,11 +170,7 @@ Optional output:
     if (self.params.polder.box_buffer is not None and
       (self.params.polder.box_buffer < 0 or self.params.polder.box_buffer > 5)):
       raise Sorry("Box buffer out of range: must be between 0 and 5")
-#    file_reader.any_file(
-#      file_name = params.model_file_name).check_file_type(expected_type = 'pdb')
-#    file_reader.any_file(
-#      file_name = params.reflection_file_name).check_file_type(
-#        expected_type = 'hkl')
+
 #    if (params.data_labels is None):
 #      raise Sorry("Data labels should be given")
     if (self.params.polder.resolution_factor < 0.0):
