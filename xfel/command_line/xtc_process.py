@@ -1013,7 +1013,10 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         distance = self.params.format.cbf.override_distance
 
       if self.params.format.cbf.override_energy is None:
-        wavelength = cspad_tbx.evt_wavelength(evt)
+        if PSANA2_VERSION:
+          wavelength = 12398.4187/self.psana_det.photonEnergy(evt)
+        else:
+          wavelength = cspad_tbx.evt_wavelength(evt)
         if wavelength is None:
           print "No wavelength, skipping shot"
           self.debug_write("no_wavelength", "skip")
