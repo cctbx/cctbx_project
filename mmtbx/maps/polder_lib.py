@@ -1,12 +1,9 @@
 from __future__ import division
-#import sys
 import mmtbx.f_model
 import mmtbx.utils
 import mmtbx.masks
-#import iotbx.pdb
 from mmtbx import map_tools
 from iotbx import phil
-#from iotbx import reflection_file_utils
 from cctbx import maptbx
 from cctbx import miller
 from cctbx.array_family import flex

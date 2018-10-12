@@ -1,4 +1,16 @@
 from __future__ import division
+
+#from __future__ import division, print_function
+
+from iotbx.cli_parser import run_program
+from mmtbx.programs import polder
+
+if __name__ == '__main__':
+  run_program(program_class=polder.Program)
+
+# =============================================================================
+# old code - maybe necessary until GUI is updated
+
 # LIBTBX_SET_DISPATCHER_NAME phenix.polder
 import time
 import os, sys
@@ -529,7 +541,7 @@ class launcher (runtime_utils.target_with_save_result) :
 # =============================================================================
 #if (__name__ == "__main__"):
 #  assert cmd_run(args=sys.argv[1:]) is None # assert here is intentional
-if __name__ == "__main__":
-  t0 = time.time()
-  run(args = sys.argv[1:])
-  print "Time:", round(time.time()-t0, 2)
+#if __name__ == "__main__":
+#  t0 = time.time()
+#  run(args = sys.argv[1:])
+#  print "Time:", round(time.time()-t0, 2)
