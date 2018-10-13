@@ -5,8 +5,6 @@ from libtbx.test_utils import approx_equal
 import iotbx.pdb
 from iotbx import reflection_file_reader
 import mmtbx.model
-from cctbx import maptbx
-from scitbx.array_family import flex
 from mmtbx.maps.polder_lib import master_params_str
 import mmtbx.maps.polder_lib
 
@@ -176,42 +174,11 @@ def exercise(prefix="tst_polder_ccs"):
   #mtz_object = mtz_dataset.mtz_object()
   #mtz_object.write(file_name = "bla.mtz")
 
-  box_1 = results.box_1
-  box_2 = results.box_2
-  box_3 = results.box_3
-  sites_cart_box = box_1.xray_structure_box.sites_cart()
-  sel = maptbx.grid_indices_around_sites(
-    unit_cell  = box_1.xray_structure_box.unit_cell(),
-    fft_n_real = box_1.map_box.focus(),
-    fft_m_real = box_1.map_box.all(),
-    sites_cart = sites_cart_box,
-    site_radii = flex.double(sites_cart_box.size(), 2.0))
-  b1 = box_1.map_box.select(sel).as_1d()
-  b2 = box_2.map_box.select(sel).as_1d()
-  b3 = box_3.map_box.select(sel).as_1d()
-  #print "Map 1: calculated Fobs with ligand",    "CC(1,2): %6.4f" % cc12
-  #print "Map 2: calculated Fobs without ligand", "CC(1,3): %6.4f" % cc13
-  #print "Map 3: real Fobs data",                 "CC(2,3): %6.4f" % cc23
-  cc12 = flex.linear_correlation(x=b1,y=b2).coefficient()
-  cc13 = flex.linear_correlation(x=b1,y=b3).coefficient()
-  cc23 = flex.linear_correlation(x=b2,y=b3).coefficient()
-  #print "CC(1,2): %6.4f" % cc12
-  #print "CC(1,3): %6.4f" % cc13
-  #print "CC(2,3): %6.4f" % cc23
-  #### D-function
-  b1 = maptbx.volume_scale_1d(map=b1, n_bins=10000).map_data()
-  b2 = maptbx.volume_scale_1d(map=b2, n_bins=10000).map_data()
-  b3 = maptbx.volume_scale_1d(map=b3, n_bins=10000).map_data()
-  #print "Peak CC:"
-  cc12p = flex.linear_correlation(x=b1,y=b2).coefficient()
-  cc13p = flex.linear_correlation(x=b1,y=b3).coefficient()
-  cc23p = flex.linear_correlation(x=b2,y=b3).coefficient()
-  #print "CC(1,2): %6.4f" % cc12p
-  #print "CC(1,3): %6.4f" % cc13p
-  #print "CC(2,3): %6.4f" % cc23p
 
-  assert approx_equal([cc12, cc13, cc23], [0.4153, 0.9980, 0.4213], eps = 0.1)
-  assert approx_equal([cc12p, cc13p, cc23p], [0.4310, 0.9966, 0.4379], eps = 0.1)
+  vr = results.validation_results
+
+  assert approx_equal([vr.cc12, vr.cc13, vr.cc23], [0.4153, 0.9980, 0.4213], eps = 0.1)
+  assert approx_equal([vr.cc12_peak, vr.cc13_peak, vr.cc23_peak], [0.4310, 0.9966, 0.4379], eps = 0.1)
 
 if (__name__ == "__main__"):
   t0 = time.time()

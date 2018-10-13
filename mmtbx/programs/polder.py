@@ -12,8 +12,6 @@ from cStringIO import StringIO
 import mmtbx.utils
 from iotbx import ccp4_map
 from libtbx import group_args
-
-from cctbx import maptbx
 from cctbx.array_family import flex
 
 program_citations = libtbx.phil.parse('''
@@ -344,66 +342,38 @@ Optional output:
     print('File %s was written.' % polder_file_name, file=self.logger)
 
   # ---------------------------------------------------------------------------
-# TODO: calculations have to be moved to the polder class!
-  def print_validation(self, results, pdb_hierarchy_selected):
-    box_1 = results.box_1
-    box_2 = results.box_2
-    box_3 = results.box_3
-    sites_cart_box = box_1.xray_structure_box.sites_cart()
-    sel = maptbx.grid_indices_around_sites(
-      unit_cell  = box_1.xray_structure_box.unit_cell(),
-      fft_n_real = box_1.map_box.focus(),
-      fft_m_real = box_1.map_box.all(),
-      sites_cart = sites_cart_box,
-      site_radii = flex.double(sites_cart_box.size(), 2.0))
-    b1 = box_1.map_box.select(sel).as_1d()
-    b2 = box_2.map_box.select(sel).as_1d()
-    b3 = box_3.map_box.select(sel).as_1d()
+  def print_validation(self, results):
+    vr = results.validation_results
     print('Map 1: calculated Fobs with ligand')
     print('Map 2: calculated Fobs without ligand')
     print('Map 3: real Fobs data')
-    cc12 = flex.linear_correlation(x=b1,y=b2).coefficient()
-    cc13 = flex.linear_correlation(x=b1,y=b3).coefficient()
-    cc23 = flex.linear_correlation(x=b2,y=b3).coefficient()
-    print('CC(1,2): %6.4f' % cc12)
-    print('CC(1,3): %6.4f' % cc13)
-    print('CC(2,3): %6.4f' % cc23)
-    #### D-function
-    b1 = maptbx.volume_scale_1d(map=b1, n_bins=10000).map_data()
-    b2 = maptbx.volume_scale_1d(map=b2, n_bins=10000).map_data()
-    b3 = maptbx.volume_scale_1d(map=b3, n_bins=10000).map_data()
+    print('CC(1,2): %6.4f' % vr.cc12)
+    print('CC(1,3): %6.4f' % vr.cc13)
+    print('CC(2,3): %6.4f' % vr.cc23)
     print('Peak CC:')
-    print('CC(1,2): %6.4f'%flex.linear_correlation(x=b1,y=b2).coefficient())
-    print('CC(1,3): %6.4f'%flex.linear_correlation(x=b1,y=b3).coefficient())
-    print('CC(2,3): %6.4f'%flex.linear_correlation(x=b2,y=b3).coefficient())
-    cutoffs = flex.double(
-      [i/10. for i in range(1,10)]+[i/100 for i in range(91,100)])
-    d12 = maptbx.discrepancy_function(map_1=b1, map_2=b2, cutoffs=cutoffs)
-    d13 = maptbx.discrepancy_function(map_1=b1, map_2=b3, cutoffs=cutoffs)
-    d23 = maptbx.discrepancy_function(map_1=b2, map_2=b3, cutoffs=cutoffs)
+    print('CC(1,2): %6.4f' % vr.cc12_peak)
+    print('CC(1,3): %6.4f' % vr.cc13_peak)
+    print('CC(2,3): %6.4f' % vr.cc23_peak)
     print('q    D(1,2) D(1,3) D(2,3)')
-    for c,d12_,d13_,d23_ in zip(cutoffs,d12,d13,d23):
+    for c,d12_,d13_,d23_ in zip(vr.cutoffs,vr.d12,vr.d13,vr.d23):
       print('%4.2f %6.4f %6.4f %6.4f'%(c,d12_,d13_,d23_))
     ###
     if(self.params.debug):
       #box_1.write_ccp4_map(file_name="box_1_polder.ccp4")
-      #box_2.write_ccp4_map(file_name="box_2_polder.ccp4")
-      #box_3.write_ccp4_map(file_name="box_3_polder.ccp4")
       self.write_map_box(
-        box      = box_1,
+        box      = vr.box_1,
         filename = "box_1_polder.ccp4")
       self.write_map_box(
-        box      = box_2,
+        box      = vr.box_2,
         filename = "box_2_polder.ccp4")
       self.write_map_box(
-        box      = box_3,
+        box      = vr.box_3,
         filename = "box_3_polder.ccp4")
-      pdb_hierarchy_selected.adopt_xray_structure(box_1.xray_structure_box)
-      pdb_hierarchy_selected.write_pdb_file(file_name="box_polder.pdb",
-        crystal_symmetry=box_1.box_crystal_symmetry)
+      vr.ph_selected.write_pdb_file(file_name="box_polder.pdb",
+        crystal_symmetry=vr.box_1.box_crystal_symmetry)
     #
     print ('*'*79, file=self.logger)
-    message = self.result_message(cc12 = cc12, cc13 = cc13, cc23 = cc23)
+    message = self.result_message(cc12 = vr.cc12, cc13 = vr.cc13, cc23 = vr.cc23)
     print(message, file=self.logger)
     return message
 
@@ -487,9 +457,7 @@ Optional output:
       f_obs   = f_obs)
     message = None
     if (not self.params.polder.compute_box):
-      message = self.print_validation(
-        pdb_hierarchy_selected = ph.select(selection_bool),
-        results = results)
+      message = self.print_validation(results = results)
 
     print ('*'*79, file=self.logger)
     print ('Finished', file=self.logger)
@@ -498,14 +466,14 @@ Optional output:
 
 # =============================================================================
 # GUI-specific class for running command
-from libtbx import runtime_utils
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
-    import os
-    from wxGUI2 import utils
-    utils.safe_makedirs(self.output_dir)
-    os.chdir(self.output_dir)
-    result = run(args=self.args, validated=True, out=sys.stdout)
-    return result
+#from libtbx import runtime_utils
+#class launcher (runtime_utils.target_with_save_result) :
+#  def run (self) :
+#    import os
+#    from wxGUI2 import utils
+#    utils.safe_makedirs(self.output_dir)
+#    os.chdir(self.output_dir)
+#    result = run(args=self.args, validated=True, out=sys.stdout)
+#    return result
 
 # =============================================================================
