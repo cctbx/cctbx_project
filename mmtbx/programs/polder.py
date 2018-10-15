@@ -4,7 +4,7 @@ try:
 except ImportError:
   from libtbx.program_template import ProgramTemplate
 import os
-from libtbx.utils import Sorry
+from libtbx.utils import null_out, Sorry
 import mmtbx.maps.polder
 from iotbx import crystal_symmetry_from_any
 from cStringIO import StringIO
@@ -199,7 +199,8 @@ Optional output:
 
     rfs = self.data_manager.get_reflection_file_server(
       filenames = self.data_manager.get_miller_array_names(),
-      crystal_symmetry = crystal_symmetry)
+      crystal_symmetry = crystal_symmetry,
+      logger=null_out())
 
     parameters = mmtbx.utils.data_and_flags_master_params().extract()
     if (self.params.data_labels is not None):
@@ -211,7 +212,7 @@ Optional output:
       parameters             = parameters,
       keep_going             = True,
       working_point_group = crystal_symmetry.space_group().build_derived_point_group(),
-      log                    = StringIO(),
+      log                    = null_out(),
       symmetry_safety_check  = True)
 
     f_obs = determined_data_and_flags.f_obs
@@ -389,7 +390,7 @@ Optional output:
   # ---------------------------------------------------------------------------
 
   def run(self):
-    print(dir(self.data_manager))
+
     print('Using model file:', self.params.model_file_name)
     print('Using reflection file(s):', self.data_manager.get_miller_array_names())
 
@@ -408,7 +409,7 @@ Optional output:
     else:
       print('  Free-R flags: not present or not found', file=self.logger)
     print('\nWorking crystal symmetry after inspecting all inputs:', file=self.logger)
-    print(cs.show_summary())
+    cs.show_summary(f=self.logger)
 
     f_obs, r_free_flags = self.prepare_fobs_rfree(
         f_obs        = f_obs,
@@ -437,25 +438,14 @@ Optional output:
     self.write_files(
       results = results,
       f_obs   = f_obs)
-    message = None
+    self.message = None
     if (not self.params.polder.compute_box):
-      message = self.print_validation(results = results)
+      self.message = self.print_validation(results = results)
 
     print ('*'*79, file=self.logger)
     print ('Finished', file=self.logger)
     # results object not returned because it contains maps
-    return group_args(message=message)
 
-# =============================================================================
-# GUI-specific class for running command
-#from libtbx import runtime_utils
-#class launcher (runtime_utils.target_with_save_result) :
-#  def run (self) :
-#    import os
-#    from wxGUI2 import utils
-#    utils.safe_makedirs(self.output_dir)
-#    os.chdir(self.output_dir)
-#    result = run(args=self.args, validated=True, out=sys.stdout)
-#    return result
 
-# =============================================================================
+  def get_results(self):
+    return group_args(message=self.message)
