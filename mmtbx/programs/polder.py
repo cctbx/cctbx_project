@@ -4,7 +4,6 @@ try:
 except ImportError:
   from libtbx.program_template import ProgramTemplate
 import os
-import libtbx.phil
 from libtbx.utils import Sorry
 import mmtbx.maps.polder_lib
 from iotbx import crystal_symmetry_from_any
@@ -126,7 +125,6 @@ Optional output:
 
   datatypes = ['model', 'phil', 'miller_array']
 
-#  citations = program_citations
   master_phil_str = master_phil_str
   known_article_ids = ['phenix.polder']
 
@@ -154,8 +152,6 @@ Optional output:
       (self.params.polder.box_buffer < 0 or self.params.polder.box_buffer > 5)):
       raise Sorry("Box buffer out of range: must be between 0 and 5")
 
-#    if (params.data_labels is None):
-#      raise Sorry("Data labels should be given")
     if (self.params.polder.resolution_factor < 0.0):
       raise Sorry('Use a positive value for the resolution gridding factor.')
 
