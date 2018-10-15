@@ -77,6 +77,11 @@ namespace fast_linalg {
     initialise_fast_linalg(lib_name);
   }
 
+  /// cleans up the library
+  void finalise() {
+    finalise_fast_linalg();
+  }
+
   /// @name Cholesky factorisation of A in-place (RFP)
   //@{
   lapack_int pftrf(int matrix_order, char transr, char uplo,
@@ -175,6 +180,10 @@ namespace fast_linalg {
   }
 
   void initialise(const std::string &lib_name) {
+    SCITBX_NOT_IMPLEMENTED();
+  }
+
+  void finalise() {
     SCITBX_NOT_IMPLEMENTED();
   }
 
