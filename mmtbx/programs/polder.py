@@ -7,7 +7,6 @@ import os
 from libtbx.utils import null_out, Sorry
 import mmtbx.maps.polder
 from iotbx import crystal_symmetry_from_any
-from cStringIO import StringIO
 import mmtbx.utils
 from iotbx import ccp4_map
 from libtbx import group_args
