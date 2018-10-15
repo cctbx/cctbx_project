@@ -5,7 +5,7 @@ except ImportError:
   from libtbx.program_template import ProgramTemplate
 import os
 from libtbx.utils import Sorry
-import mmtbx.maps.polder_lib
+import mmtbx.maps.polder
 from iotbx import crystal_symmetry_from_any
 from cStringIO import StringIO
 import mmtbx.utils
@@ -15,7 +15,7 @@ from cctbx.array_family import flex
 
 master_phil_str = '''
 include scope libtbx.phil.interface.tracking_params
-include scope mmtbx.maps.polder_lib.master_params
+include scope mmtbx.maps.polder.master_params
 model_file_name = None
   .type = path
   .short_caption = Model file
@@ -423,7 +423,7 @@ Optional output:
       xray_structure   = xrs,
       d_min            = f_obs.d_min())
 
-    polder_object = mmtbx.maps.polder_lib.compute_polder_map(
+    polder_object = mmtbx.maps.polder.compute_polder_map(
       f_obs          = f_obs,
       r_free_flags   = r_free_flags,
       model          = model,

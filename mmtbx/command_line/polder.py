@@ -30,7 +30,7 @@ from libtbx import group_args
 from libtbx.utils import Sorry
 from libtbx.utils import multi_out
 #-----
-import mmtbx.maps.polder_lib
+import mmtbx.maps.polder
 #-----
 
 legend = """\
@@ -137,7 +137,7 @@ gui
   .type = path
   .style = output_dir
 }
-include scope mmtbx.maps.polder_lib.master_params
+include scope mmtbx.maps.polder.master_params
 include scope libtbx.phil.interface.tracking_params
 """
 
@@ -492,7 +492,7 @@ def run(args, validated = False, out=sys.stdout):
   print >> log, "*"*79
   #
   # Calculate polder map
-  polder_object = mmtbx.maps.polder_lib.compute_polder_map(
+  polder_object = mmtbx.maps.polder.compute_polder_map(
     f_obs             = inputs.f_obs,
     r_free_flags      = inputs.r_free_flags,
     xray_structure    = inputs.xray_structure,

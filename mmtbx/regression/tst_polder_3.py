@@ -7,8 +7,8 @@ import mmtbx.model
 from iotbx import reflection_file_reader
 from cctbx import miller
 from scitbx.array_family import flex
-from mmtbx.maps.polder_lib import master_params_str
-import mmtbx.maps.polder_lib
+from mmtbx.maps.polder import master_params_str
+import mmtbx.maps.polder
 
 pdb_str = """\
 CRYST1   28.992   28.409   27.440  90.00  90.00  90.00 P 1
@@ -216,7 +216,7 @@ def exercise(prefix="tst_polder_3"):
 
   for radius in [3, 5, 7]:
     params.polder.sphere_radius = radius
-    polder_object = mmtbx.maps.polder_lib.compute_polder_map(
+    polder_object = mmtbx.maps.polder.compute_polder_map(
       f_obs          = fobs,
       r_free_flags   = None,
       model          = model,
@@ -246,7 +246,7 @@ def exercise(prefix="tst_polder_3"):
   for box_buffer in [3, 5, 7]:
     params.polder.box_buffer = box_buffer
     params.polder.compute_box = True
-    polder_object = mmtbx.maps.polder_lib.compute_polder_map(
+    polder_object = mmtbx.maps.polder.compute_polder_map(
       f_obs             = fobs,
       r_free_flags      = None,
       model             = model,

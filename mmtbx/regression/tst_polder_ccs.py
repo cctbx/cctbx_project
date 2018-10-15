@@ -5,8 +5,8 @@ from libtbx.test_utils import approx_equal
 import iotbx.pdb
 from iotbx import reflection_file_reader
 import mmtbx.model
-from mmtbx.maps.polder_lib import master_params_str
-import mmtbx.maps.polder_lib
+from mmtbx.maps.polder import master_params_str
+import mmtbx.maps.polder
 
 pdb_str = """\
 CRYST1   21.830   27.276   27.424  90.00  90.00  90.00 P 1
@@ -156,7 +156,7 @@ def exercise(prefix="tst_polder_ccs"):
       fobs = ma.deep_copy()
 
   # Calculate polder map and get results
-  polder_object = mmtbx.maps.polder_lib.compute_polder_map(
+  polder_object = mmtbx.maps.polder.compute_polder_map(
     f_obs             = fobs,
     r_free_flags      = None,
     model             = model,
