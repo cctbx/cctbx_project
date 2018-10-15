@@ -14,21 +14,6 @@ from iotbx import ccp4_map
 from libtbx import group_args
 from cctbx.array_family import flex
 
-program_citations = libtbx.phil.parse('''
-citation {
-  article_id = polder
-  authors = Liebschner D, Afonine PV, Moriarty NW, Poon BK, Sobolev OV, Terwilliger TC, Adams PD
-  title = Polder maps: Improving OMIT maps by excluding bulk-solvent.
-  journal = Acta Cryst. D
-  volume = 73
-  pages = 148-157
-  year = 2017
-  doi_id = "10.1107/S2059798316018210"
-  pmid = 28177311
-  external = True
-}
-''')
-
 master_phil_str = '''
 include scope libtbx.phil.interface.tracking_params
 include scope mmtbx.maps.polder_lib.master_params
@@ -141,8 +126,9 @@ Optional output:
 
   datatypes = ['model', 'phil', 'miller_array']
 
-  citations = program_citations
+#  citations = program_citations
   master_phil_str = master_phil_str
+  known_article_ids = ['phenix.polder']
 
   # ---------------------------------------------------------------------------
 
