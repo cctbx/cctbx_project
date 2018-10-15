@@ -1104,6 +1104,9 @@ namespace dxtbx {
           if (get_path(i) != other.get_path(i)) {
             return false;
           }
+          if (indices()[i] != other.indices()[i]) {
+            return false;
+          }
         }
         return true;
       }
