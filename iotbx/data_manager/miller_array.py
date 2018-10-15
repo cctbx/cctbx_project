@@ -126,7 +126,8 @@ class MillerArrayDataManager(DataManagerBase):
 
   def get_reflection_file_server(self, filenames=None, labels=None,
                                  array_type=None,
-                                 crystal_symmetry=None, force_symmetry=None):
+                                 crystal_symmetry=None, force_symmetry=None,
+                                 logger=None):
     '''
     Return the file server for a single miller_array file or mulitple files
 
@@ -135,6 +136,7 @@ class MillerArrayDataManager(DataManagerBase):
     :param array_type:        "x_ray", "neutron", "electron", or None
     :param crystal_symmetry:  cctbx.crystal.symmetry object or None
     :param force_symmetry:    bool or None
+    :param logger:            defaults to self.logger (multi_out)
 
     The order in filenames and labels should match, e.g. labels[0] should be the
     labels for filenames[0]. The lengths of filenames and labels should be equal
@@ -143,6 +145,10 @@ class MillerArrayDataManager(DataManagerBase):
 
     If array_type is None, files of any type are allowed.
     '''
+
+    # use default logger if no logger for reflection_file_server is provided
+    if (logger is None):
+      logger = self.logger
 
     # use default miller_array file if no filenames provided
     if (filenames is None):
@@ -197,7 +203,8 @@ class MillerArrayDataManager(DataManagerBase):
     file_server = reflection_file_server(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
-      miller_arrays=miller_arrays)
+      miller_arrays=miller_arrays,
+      err=logger)
     return file_server
 
   # -----------------------------------------------------------------------------
