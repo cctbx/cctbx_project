@@ -27,6 +27,7 @@ namespace {
       .add_property("build_config", &e::build_config)
       .add_static_property("initialised", &fast_linalg::is_initialised)
       .def("initialise", &fast_linalg::initialise, (arg("lib_name")))
+      .def("finalise", &fast_linalg::finalise)
       .staticmethod("initialise")
       ;
     scope().attr("env") = object(new environment());
