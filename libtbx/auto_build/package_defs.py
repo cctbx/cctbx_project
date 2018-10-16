@@ -85,8 +85,8 @@ TABULATE_VERSION = "0.8.2"
 TQDM_VERSION = "4.23.4"
 
 # HDF5
-BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.3/src/"
-HDF5_PKG = "hdf5-1.10.3.tar.bz2"
+BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/"
+HDF5_PKG = "hdf5-1.10.4.tar.bz2"
 
 # GUI dependencies
 LIBPNG_PKG = "libpng-1.5.26.tar.gz"
