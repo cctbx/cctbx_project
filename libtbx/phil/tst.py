@@ -5852,6 +5852,47 @@ a
     diff = parsed_phil.fetch_diff(parsed_phil).as_str()
     assert (diff == result)
 
+def exercise_change_default():
+  # master phil
+  master_phil_str = '''
+scope {
+  name = 'original'
+    .type = str
+  number = 1234
+    .type = int
+}
+'''
+  master_phil_extract = libtbx.phil.parse(master_phil_str).extract()
+  assert(master_phil_extract.scope.name == 'original')
+
+  # change to a new valid name
+  new_default_str = 'scope.name = "new"'
+  new_phil_str = libtbx.phil.change_default_phil_values(
+    master_phil_str, new_default_str)
+  new_phil_extract = libtbx.phil.parse(new_phil_str).extract()
+  assert(new_phil_extract.scope.name == 'new')
+
+  # invalid name
+  new_default_str = 'unknown.name = "what"'
+  try:
+    new_phil_str = libtbx.phil.change_default_phil_values(
+      master_phil_str, new_default_str)
+  except Sorry as e:
+    assert(e.message ==
+           'Unrecognized PHIL parameter(s)\nunknown.name (input line 1)')
+  else:
+    raise Exception_expected
+
+  # valid name, invalid value
+  new_default_str = 'scope.number = "what"'
+  try:
+    new_phil_str = libtbx.phil.change_default_phil_values(
+      master_phil_str, new_default_str)
+  except RuntimeError as e:
+    assert('Error interpreting scope.number="what"' in e.message)
+  else:
+    raise Exception_expected
+
 def exercise():
   exercise_alias()
   exercise_alias_bug()
@@ -5883,6 +5924,7 @@ def exercise():
   exercise_command_line()
   exercise_choice_multi_plus_support()
   exercise_deprecation()
+  exercise_change_default()
   print "OK"
 
 if (__name__ == "__main__"):

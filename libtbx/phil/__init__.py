@@ -1,4 +1,4 @@
-"Documentation: http://cctbx.sourceforge.net/libtbx_phil.html"
+"Documentation: https://cctbx.github.io/libtbx/libtbx.phil.html"
 
 from __future__ import absolute_import, division, print_function
 from libtbx.phil import tokenizer
@@ -2224,3 +2224,43 @@ def find_scope (current_phil, scope_name) :
     elif (scope_name.startswith(full_path + ".")) :
       return find_scope(current_phil.objects[i], scope_name)
     i += 1
+
+def change_default_phil_values(master_phil_str, new_default_phil_str,
+                               phil_parse=None, expert_level=4,
+                               attributes_level=4):
+  '''
+  Function for updating the default values in a PHIL scope
+
+  Parameters
+  ----------
+  master_phil_str: str
+  new_default_phil_str: str
+  phil_parse: function for parsing PHIL (optional, defaults to libtbx.parse)
+  expert_level: int (optional, defaults to 4)
+  attributes_level: int (optional, defaults to 4)
+
+  Returns
+  -------
+  str: the master_phil_str with the updated default values
+
+  Raises
+  ------
+  Sorry: if unrecognized PHIL parameters are encountered
+  RuntimeError: if new value cannot be interpreted (e.g str instead of float)
+  '''
+
+  if (phil_parse is None):
+    phil_parse = parse
+
+  master_phil = phil_parse(master_phil_str, process_includes=True)
+  new_phil, unused_phil = master_phil.fetch(
+    phil_parse(new_default_phil_str, process_includes=True),
+    track_unused_definitions=True)
+  if (len(unused_phil) > 0):
+    raise Sorry('Unrecognized PHIL parameter(s)\n%s' %
+                '\n'.join([p.__str__() for p in unused_phil]))
+  new_phil_extract = new_phil.extract()
+  modified_phil = master_phil.format(python_object=new_phil_extract)
+
+  return modified_phil.as_str(expert_level=expert_level,
+                              attributes_level=attributes_level)
