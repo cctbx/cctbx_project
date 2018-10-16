@@ -12,6 +12,7 @@
 #include <scitbx/matrix/symmetric_rank_1_update.h>
 #include <scitbx/sparse/matrix.h>
 #include <scitbx/sparse/triangular.h>
+#include <sstream>
 
 namespace scitbx { namespace lstbx { namespace normal_equations {
 
@@ -135,6 +136,11 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     void solve() {
       using scitbx::matrix::cholesky::u_transpose_u_decomposition_in_place;
       u_transpose_u_decomposition_in_place<scalar_t> cholesky(normal_matrix_);
+      if(cholesky.failure) {
+        std::ostringstream buffer;  
+        buffer << "SCITBX_ASSERT(!cholesky.failure) failure in index: " << cholesky.failure.index; 
+        throw SCITBX_ERROR(buffer.str());
+      }
       SCITBX_ASSERT(!cholesky.failure);
       cholesky.solve_in_place(right_hand_side_);
       solved_ = true;
