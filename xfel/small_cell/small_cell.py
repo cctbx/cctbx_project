@@ -1099,7 +1099,7 @@ def small_cell_index(path, horiz_phil):
       print spot.ID, spot.hkl.ohkl.elems
     if len(max_clique_spots) > 4:
       print "############################"
-      gfile = open(os.path.basename(path).rstrip(".pickle") + ".sif", 'w')
+      gfile = open(os.path.splitext(os.path.basename(path))[0] + ".sif", 'w')
       for line in graph_lines:
         gfile.write(line)
       gfile.close()
@@ -1261,7 +1261,10 @@ def small_cell_index(path, horiz_phil):
         bg_vals = []
         raw_bg_sum = 0
         for p in backgrounds[-1]:
-          i = raw_data[int(p[1]),int(p[0])]
+          try:
+            i = raw_data[int(p[1]),int(p[0])]
+          except IndexError:
+            continue
           if i is not None and i > 0:
             background.append(p)
             bg_vals.append(i)
@@ -1317,7 +1320,7 @@ def small_cell_index(path, horiz_phil):
           rmsd += measure_distance(col((spot.spot_dict['xyzobs.px.value'][0],spot.spot_dict['xyzobs.px.value'][1])),col(spot.pred))**2
 
       if len(results) >= horiz_phil.small_cell.min_spots_to_integrate:
-        f = open(path + ".int","w")
+        f = open(os.path.splitext(os.path.basename(path))[0] + ".int","w")
         for line in results:
           f.write(line)
         f.close()
@@ -1337,8 +1340,9 @@ def small_cell_index(path, horiz_phil):
           max_signal = [max_signal],
           current_orientation = [ori],
           current_cb_op_to_primitive = [sgtbx.change_of_basis_op()], #identity.  only support primitive lattices.
+          pixel_size = pixel_size,
         )
-        G = open(os.path.join(path.rstrip(os.path.basename(path)),"int-" + os.path.splitext(os.path.basename(path).strip())[0]+".pickle"),"wb")
+        G = open("int-" + os.path.splitext(os.path.basename(path))[0] +".pickle","wb")
         import pickle
         pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
 
