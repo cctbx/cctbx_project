@@ -4,6 +4,7 @@ try:
 except ImportError:
   from libtbx.program_template import ProgramTemplate
 import mmtbx.validation.ligands
+from mmtbx.validation import validate_ligands
 from libtbx.utils import null_out, Sorry
 from iotbx import crystal_symmetry_from_any
 from libtbx.str_utils import make_sub_header
@@ -113,6 +114,15 @@ electron density values/CC.
      xray_structure = xrs)
     fmodel.update_all_scales()
 
+    # This is the new class, currently a stub but will be developed
+    # winter 2018/spring 2019 by DL and NWM
+    validation_obj = validate_ligands.validate_ligands(model = model)
+    validation_obj.validate_inputs()
+    validation_obj.run()
+
+    # TODO
+    # DL: Eventually, delete "old" call below, but leave it for now to keep the
+    # funcitonality alive, just in case
     make_sub_header("Validating ligands", out=self.logger)
     for ligand_code in self.params.ligand_code :
       validations = mmtbx.validation.ligands.validate_ligands(
