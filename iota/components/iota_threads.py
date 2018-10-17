@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 10/16/2018
+Last Changed: 10/17/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -66,6 +66,24 @@ class AllDone(wx.PyCommandEvent):
     self.image_objects = img_objects
   def GetValue(self):
     return self.image_objects
+
+class ProcessingInfo(object):
+  """ Object with all the processing info UI needs to plot results """
+  def __init__(self):
+    """ constructor """
+
+    self.image_objects = []
+    self.nref_list = []
+    self.nref_xaxis = []
+    self.res_list = []
+    self.img_list = []
+    self.indices = []
+    self.b_factors = []
+    self.cluster_info = {}
+    self.prime_info = {}
+    self.status_summary = []
+    self.msg = None
+    self.test_attribute = 0
 
 class ProcessImage():
   """ Wrapper class to do full processing of an image """
@@ -154,6 +172,30 @@ class ProcThread(Thread):
   def callback(self, result):
     if self.UI_thread:
       wx.CallAfter(self.parent.onProcThreadOneDone, result)
+
+class JobSubmitThread(Thread):
+  """ Thread for easy_run submissions so that they don't block GUI """
+  def __init__(self, parent, command, job_id):
+    Thread.__init__(self)
+    self.parent = parent
+    self.command = command
+    self.job_id = job_id
+
+  def run(self):
+    if self.command is not None:
+      try:
+        print(self.command)
+        easy_run.fully_buffered(self.command,
+                                join_stdout_stderr=True).show_stdout()
+        if self.job_id is not None:
+          print('JOB NAME = ', self.job_id)
+        return
+      except IOTATermination as e:
+        print('IOTA: JOB TERMINATED', e)
+        return
+    else:
+      print('IOTA ERROR: COMMAND NOT ISSUED!')
+      return
 
 class ImageFinderThread(Thread):
   """ Worker thread generated to poll filesystem on timer. Will check to see
@@ -247,332 +289,6 @@ class ImageViewerThread(Thread):
   def run(self):
     command = '{} {}'.format(self.viewer, self.file_string)
     easy_run.fully_buffered(command)
-
-# -------------------------------- UI Thread --------------------------------- #
-
-# Set up events for finishing one timer cycle
-
-tp_EVT_PROCTIMER = wx.NewEventType()
-EVT_PROCTIMER = wx.PyEventBinder(tp_EVT_PROCTIMER, 1)
-
-tp_EVT_PROCDONE = wx.NewEventType()
-EVT_PROCDONE = wx.PyEventBinder(tp_EVT_PROCDONE, 1)
-
-class ProcTimerDone(wx.PyCommandEvent):
-  """ Send event at every ProcTimer ping  """
-  def __init__(self, etype, eid, info=None):
-    wx.PyCommandEvent.__init__(self, etype, eid)
-    self.info = info
-  def GetValue(self):
-    return self.info
-
-class ProcAllDone(wx.PyCommandEvent):
-  """ Send event at every ProcTimer ping  """
-  def __init__(self, etype, eid):
-    wx.PyCommandEvent.__init__(self, etype, eid)
-
-
-class ProcessingInfo(object):
-
-  def __init__(self):
-    """ constructor """
-
-    self.image_objects = []
-    self.nref_list = []
-    self.nref_xaxis = []
-    self.res_list = []
-    self.img_list = []
-    self.indices = []
-    self.b_factors = []
-    self.cluster_info = {}
-    self.prime_info = {}
-    self.status_summary = []
-    self.msg = None
-    self.test_attribute = 0
-
-
-# noinspection PyDunderSlots
-class IOTAUIThread(Thread):
-  """ Main thread for IOTA UI; will contain all times and call all the other
-  threads - processing, object finding, etc. - separately; will use
-  PostEvents to send data to the main UI thread, which will plot only. The
-  idea is to prevent UI blocking as much as possible """
-
-  def __init__(self,
-               parent,
-               init,
-               gparams,
-               target_phil,
-               tmp_abort_file=None,
-               tmp_aborted_file=None,
-               proc_info_file=None,
-               recover=False,
-               state='idle'):
-    Thread.__init__(self)
-    self.parent = parent
-    self.init = init
-    self.gparams = gparams
-    self.target_phil = target_phil
-    self.tmp_abort_file = tmp_abort_file
-    self.tmp_aborted_file = tmp_aborted_file
-    self.recover = recover
-
-    self.state = state
-    self.finished = False
-    self.wait_for_new_images = False
-    self.monitor_mode = self.gparams.advanced.monitor_mode
-    self.monitor_mode_timeout = \
-      self.gparams.advanced.monitor_mode_timeout_length
-    self.timeout_start = None
-
-    self.new_images = []
-    self.finished_objects = []
-
-    self.mxh = mx_handler()
-
-    # Instantiate info object
-    if proc_info_file is None:
-      self.info = ProcessingInfo()
-    else:
-      self.info = ep.load(proc_info_file)
-
-    # Timers
-    self.plt_timer = wx.Timer()
-    self.anl_timer = wx.Timer()
-
-    # Bindings
-    self.plt_timer.Bind(wx.EVT_TIMER, self.onPlotTimer)
-    self.anl_timer.Bind(wx.EVT_TIMER, self.onAnalysisTimer)
-
-  def run(self):
-    if self.recover:
-      self.recover_info()
-    else:
-      self.process_images()
-
-  # noinspection PyDunderSlots
-  def onPlotTimer(self, e):
-    """ One second timer for status check and plotting """
-
-    # Check for monitor mode; if yes, find more images
-    if self.monitor_mode:
-      self.new_images = self.find_images(mode='new')
-
-    # Check for processing status and submit new images if necessary
-    if self.wait_for_new_images:
-      if len(self.new_images) > 0:
-        self.info.msg = 'Found {} new images'.format(len(self.new_images))
-        self.timeout_start = None
-        self.state = 'new images'
-        self.process_images()
-      else:
-        if self.monitor_mode_timeout is not None:
-          if self.timeout_start is None:
-            self.timeout_start = time.time()
-          else:
-            interval = time.time() - self.timeout_start
-            if interval >= self.monitor_mode_timeout:
-              # noinspection PyDunderSlots
-              self.info.msg = 'Timed out. Finishing...'
-              self.info.finished = True
-            else:
-              # noinspection PyDunderSlots
-              self.info.msg = 'No images found! Timing out in {} seconds' \
-                          ''.format(int(self.monitor_mode_timeout - interval))
-        else:
-          self.find_new_images = self.monitor_mode
-          # noinspection PyDunderSlots
-          self.info.msg = 'No new images found! Waiting ...'
-    else:
-      self.info.msg = 'Wrapping up ...'
-      self.info.finished = True
-
-    # # Find image objects and get data
-    # self.info.image_objects = self.find_objects(find_old=True)
-    # for obj in self.info.image_objects:
-    #   self.populate_data_points(obj)
-
-    # Send info to UI
-    evt = ProcTimerDone(tp_EVT_PROCTIMER, -1, info=self.info)
-    wx.PostEvent(self.parent, evt)
-
-  def onAnalysisTimer(self, e):
-    pass
-
-  def recover_info(self):
-    """ Recover information from previous run (is here only for
-    backwards compatibility reasons; normally all info will come from file) """
-    pass
-
-  def run_clustering_thread(self):
-    # Run clustering
-    pass
-
-  def onFinishedCluster(self, e):
-    pass
-
-  def run_prime_thread(self):
-    # Run PRIME (basic merge only)
-    pass
-
-  def onFinishedPRIME(self, e):
-    pass
-
-  def get_prime_stats(self):
-    pass
-
-  def process_images(self):
-    """ One-fell-swoop importing / triaging / integration of images """
-    type = 'image'
-    if self.state == 'new images':
-      iterable = self.new_images
-      self.info.img_list.extend(iterable)
-      self.info.msg = 'Processing additional {} images ({} total)...' \
-                      ''.format(len(iterable), len(self.info.img_list))
-    elif self.state == 'resume':
-      iterable = self.find_images(mode='resume')
-      self.info.msg = 'Processing {} remaining images ({} total)...'\
-                      ''.format(len(iterable), len(self.info.img_list))
-    else:
-      iterable = self.find_images()
-      self.info.img_list = iterable
-      self.info.msg = 'Processing {} images...'.format(len(self.info.img_list))
-
-    zeros = [0] * len(iterable)
-    self.info.status_summary.extend(zeros)
-    self.info.nref_list.extend(zeros)
-    self.info.res_list.extend(zeros)
-    self.info.nref_xaxis.extend([i[0] for i in iterable])
-
-    iter_path = os.path.join(self.init.int_base, 'iter.cfg')
-    init_path = os.path.join(self.init.int_base, 'init.cfg')
-    ep.dump(iter_path, iterable)
-    ep.dump(init_path, self.init)
-
-    if self.gparams.mp_method == 'multiprocessing':
-      # print ('DEBUG: SUBMITTING!')
-      # command = 'iota.process {} --files {} --type {} --stopfile {}' \
-      #             ''.format(init_path, iter_path, type, self.tmp_abort_file)
-      # print (command)
-      # easy_run.fully_buffered(command, join_stdout_stderr=True).show_stdout()
-
-      self.img_process = ProcThread(self,
-                                    init=self.init,
-                                    iterable=iterable,
-                                    input_type=type,
-                                    term_file=self.tmp_abort_file,
-                                    UI_thread=True)
-      self.img_process.start()
-    else:
-      self.img_process = None
-      self.job_id = None
-      queue = self.gparams.mp_queue
-      nproc = self.init.params.n_processors
-
-      if self.init.params.mp_method == 'lsf':
-        logfile = os.path.join(self.init.int_base, 'bsub.log')
-        pid = os.getpid()
-        try:
-          user = os.getlogin()
-        except OSError:
-          user = 'iota'
-        self.job_id = 'J_{}{}'.format(user[0], pid)
-        command = 'bsub -o {} -q {} -n {} -J {} ' \
-                  'iota.process {} --files {} --type {} --stopfile {}' \
-                  ''.format(logfile, queue, nproc, self.job_id,
-                            init_path, iter_path, type, self.tmp_abort_file)
-      elif self.init.params.mp_method == 'torq':
-        params = '{} --files {} --type {} --stopfile {}' \
-                 ''.format(init_path, iter_path, type, self.tmp_abort_file)
-        command = 'qsub -e /dev/null -o /dev/null -d {} iota.process -F "{}"' \
-                  ''.format(self.init.params.output, params)
-      else:
-        command = None
-      if command is not None:
-        try:
-          print (command)
-          easy_run.fully_buffered(command, join_stdout_stderr=True).show_stdout()
-          print ('JOB NAME = ', self.job_id)
-        except IOTATermination as e:
-          print ('IOTA: JOB TERMINATED', e)
-      else:
-        print ('IOTA ERROR: COMMAND NOT ISSUED!')
-        return
-
-  def onProcThreadDone(self, img_objects):
-    # Receive 'ALLDONE' signal from Proc thread
-    self.done_images = img_objects
-    if self.monitor_mode:
-      self.wait_for_new_images = True
-
-  def onProcThreadOneDone(self, obj):
-    self.finished_objects.append(obj)
-    self.info.image_objects.append(obj)
-    self.populate_data_points(obj)
-
-  def analyze_results(self, analysis=None):
-    pass
-
-
-  def find_images(self, mode='start'):
-
-    if mode == 'new':
-      min_back = -1
-    else:
-      min_back = None
-
-    found_files = ginp.make_input_list(self.gparams.input,
-                                       filter=True,
-                                       filter_type='image',
-                                       min_back=min_back)
-
-    if mode == 'new':
-      old_file_list = self.info.img_list
-      new_file_list = list(set(found_files) - set(self.info.img_list))
-    elif mode == 'resume':
-      old_file_list = [obj.raw_img for obj in self.info.image_objects
-                            if obj.status == 'final']
-      new_file_list = [obj.raw_img for obj in self.info.image_objects
-                            if obj.status != 'final']
-      new_images = list(set(found_files) - set(self.info.img_list))
-      new_file_list.extend(new_images)
-    else:
-      old_file_list = []
-      new_file_list = found_files
-
-    total_img_count = len(old_file_list) + len(new_file_list)
-    return [[i, total_img_count + 1, j] for i, j in enumerate(
-      new_file_list, len(old_file_list) + 1)]
-
-  def find_objects(self, find_old=False):
-    # Find object files (should be usable only on recover / resume)
-    obj_finder = ObjectFinder()
-    return obj_finder.find_objects(obj_folder=self.init.obj_base,
-                                   find_old=find_old)
-
-
-  def populate_data_points(self, obj=None):
-    try:
-      self.info.nref_list[obj.img_index - 1] = obj.final['strong']
-      self.info.res_list[obj.img_index - 1] = obj.final['res']
-      if 'observations' in obj.final:
-        obs = obj.final['observations']
-        self.info.indices.extend([i[0] for i in obs])
-        try:
-          asu_contents = self.mxh.get_asu_contents(500)
-          observations_as_f = obs.as_amplitude_array()
-          observations_as_f.setup_binner(auto_binning=True)
-          wp = statistics.wilson_plot(observations_as_f, asu_contents,
-                                      e_statistics=True)
-          self.info.b_factors.append(wp.wilson_b)
-        except RuntimeError:
-          self.info.b_factors.append(0)
-    except Exception as e:
-      print ('OBJECT_ERROR:', e, "({})".format(obj.obj_file))
-      pass
-
-  def finish_process(self):
-    pass
 
 
 #------------------------------ IMAGE TRACKING ------------------------------ #

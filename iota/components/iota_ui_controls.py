@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 10/16/2018
+Last Changed: 10/17/2018
 Description : IOTA GUI controls
 '''
 

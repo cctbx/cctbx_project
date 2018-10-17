@@ -4,7 +4,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 10/16/2018
+Last Changed: 10/17/2018
 Description : IOTA command-line module.
 '''
 import os
@@ -14,7 +14,7 @@ from iota import iota_version
 from iota.components.iota_analysis import Analyzer
 from iota.components.iota_init import InitAll
 import iota.components.iota_image as img
-import iota.components.iota_cmd as cmd
+import dials.util.command_line as cmd
 import iota.components.iota_utils as util
 
 from libtbx.easy_mp import parallel_map
@@ -97,7 +97,7 @@ class XTermIOTA():
     """
     if self.prog_count < len(self.init.input_list):
       prog_step = 100 / len(self.init.input_list)
-      self.gs_prog.update(self.prog_count * prog_step, self.prog_count)
+      self.gs_prog.update(self.prog_count * prog_step) #, self.prog_count)
       self.prog_count += 1
     else:
       self.gs_prog.finished()

@@ -23,7 +23,7 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 import iota.components.iota_misc as misc
-import iota.components.iota_controls as ct
+import iota.components.iota_ui_controls as ct
 from iota.components.iota_utils import InputFinder
 
 import prime.postrefine.mod_gui_dialogs as dlg

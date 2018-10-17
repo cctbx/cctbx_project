@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 10/16/2018
+Last Changed: 10/17/2018
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -14,8 +14,9 @@ import sys
 import argparse
 import time
 
+import dials.util.command_line as cmd
+
 import iota.components.iota_input as inp
-import iota.components.iota_cmd as cmd
 import iota.components.iota_utils as util
 
 ginp = util.InputFinder()

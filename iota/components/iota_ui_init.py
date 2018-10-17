@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 10/16/2018
+Last Changed: 10/17/2018
 Description : IOTA GUI Initialization module
 '''
 
@@ -25,8 +25,8 @@ assert miller
 from iota import iota_version, gui_description, gui_license
 import iota.components.iota_input as inp
 import iota.components.iota_utils as util
-import iota.components.iota_frames as frm
-import iota.components.iota_dialogs as dlg
+import iota.components.iota_ui_frames as frm
+import iota.components.iota_ui_dialogs as dlg
 
 ginp = util.InputFinder()
 pid = os.getpid()

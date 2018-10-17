@@ -5,7 +5,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 10/16/2018
+Last Changed: 10/17/2018
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -516,20 +516,6 @@ class Analyzer(object):
         else:
           pickles = [i.final['final'] for i in self.final_objects]
 
-        # Cluster from iterable (this doesn't keep filenames - bad!)
-        # with Capturing() as suppressed_output:
-        #   uc_iterable = []
-        #   for obj in obj_list:
-        #     unit_cell = (float(obj.final['a']),
-        #                  float(obj.final['b']),
-        #                  float(obj.final['c']),
-        #                  float(obj.final['alpha']),
-        #                  float(obj.final['beta']),
-        #                  float(obj.final['gamma']),
-        #                  obj.final['sg'])
-        #     uc_iterable.append(unit_cell)
-        #   ucs = Cluster.from_iterable(iterable=uc_iterable)
-
         # Cluster from files (slow, but will keep for now)
         ucs = Cluster.from_files(pickle_list=pickles)
 
@@ -731,7 +717,7 @@ class Analyzer(object):
                      ''.format(len(self.not_spf_objects)))
       summary.append('failed indexing:                     {}'\
                      ''.format(len(self.not_idx_objects)))
-      summary.append('failed filter:'
+      summary.append('failed filter:                       {}'
                      ''.format(len(self.filter_fail_objects)))
       summary.append('failed integration:                  {}'\
                      ''.format(len(self.not_int_objects)))

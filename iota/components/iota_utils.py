@@ -4,14 +4,18 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 10/16/2018
+Last Changed: 10/17/2018
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
 import os
 import sys
-import wx
 from collections import Counter
+import wx
+
+from cctbx import miller
+assert miller
+from libtbx import easy_pickle as ep, easy_run
 
 # for Py3 compatibility
 from io import BytesIO
@@ -20,14 +24,33 @@ try:
 except ImportError:
     pass
 
-from cctbx import miller
-assert miller
-
-from libtbx import easy_pickle as ep
-from libtbx import easy_run
-
+# For testing
 import time
 assert time
+
+# Platform-specific stuff
+# TODO: Will need to test this on Windows at some point
+if wx.Platform == '__WXGTK__':
+  plot_font_size = 10
+  norm_font_size = 10
+  button_font_size = 12
+  LABEL_SIZE = 14
+  CAPTION_SIZE = 12
+  python = 'python'
+elif wx.Platform == '__WXMAC__':
+  plot_font_size = 9
+  norm_font_size = 12
+  button_font_size = 14
+  LABEL_SIZE = 14
+  CAPTION_SIZE = 12
+  python = "Python"
+elif (wx.Platform == '__WXMSW__'):
+  plot_font_size = 9
+  norm_font_size = 9
+  button_font_size = 11
+  LABEL_SIZE = 11
+  CAPTION_SIZE = 9
+  python = "Python"  # TODO: make sure it's right!
 
 # --------------------------- Miscellaneous Utils ---------------------------- #
 

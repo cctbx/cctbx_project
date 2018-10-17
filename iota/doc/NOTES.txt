@@ -1,10 +1,10 @@
-IOTA v1.2.004 - refactor core modules
+IOTA v1.2.005 - reduced UI blocking, assorted bugfixes
 
 Bugfixes:
-  - Fixed end-of-run clustering: now can actually select random subset
-  - A numpy runtime warning for empty slices is now captured
-  - Fixed a ton of code issues (too many to list)
+  - XTerm IOTA now reports number of images that failed filter (was blank)
 
 Changes:
-  - Merged iota_misc and iota_utils under iota_utils
-
+  - easy_run submit for local MP jobs (less UI blocking)
+  - moved base classes to iota_utils.py (base ctrl classes in iota_controls.py)
+  - removed iota_cmd.py; using dials/util/command_line.py instead
+  - renamed UI files for controls, dialogs, frames, and init
