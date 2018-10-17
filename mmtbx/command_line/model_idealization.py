@@ -328,6 +328,12 @@ class model_idealization():
             space_group=self.cs.space_group(),
             map_data=self.master_map,
             labels=flex.std_string([""]))
+        iotbx.ccp4_map.write_ccp4_map(
+            file_name="%s_reference.map" % self.params.output_prefix,
+            unit_cell=self.cs.unit_cell(),
+            space_group=self.cs.space_group(),
+            map_data=self.reference_map,
+            labels=flex.std_string([""]))
       self.master_map = map_data
 
   def prepare_init_reference_map(self):
@@ -464,6 +470,8 @@ class model_idealization():
     else:
       self.model_h = self.model.deep_copy()
     params_h = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    params_h.pdb_interpretation = self.model._pdb_interpretation_params.pdb_interpretation
+    # customization for model with H
     params_h.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     params_h.pdb_interpretation.max_reasonable_bond_distance = None
     params_h.pdb_interpretation.use_neutron_distances=True
@@ -474,6 +482,10 @@ class model_idealization():
     self.model_h.idealize_h_riding()
     self.model_h.setup_ncs_constraints_groups(filter_groups=True)
     self.model_h._update_master_sel()
+    if self.params.debug:
+      self.shift_and_write_result(
+        model = self.model_h,
+        fname_suffix="model_h")
 
   def _update_model_h(self):
     if self.model_h is None:
@@ -535,6 +547,13 @@ class model_idealization():
     #
     # Cablam idealization
     #
+    if self.params.debug:
+      self.shift_and_write_result(
+          model = self.model,
+          fname_suffix="start")
+      self.shift_and_write_result(
+          model = self.model_h,
+          fname_suffix="start_h")
     self.params.cablam_idealization.find_ss_after_fixes = False
     ci_results = cablam_idealization(
         model=self.model,
