@@ -1460,7 +1460,7 @@ _replace_sysconfig_paths(build_time_vars)
                                  " /usr/lib/i386-linux-gnu" +
                                  " /usr/lib/x86_64-linux-gnu", ))
 
-    if (self.flag_is_mac and get_os_version() in ("10.10", "10.11", "10.12", "10.13")) :
+    if self.flag_is_mac and get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 10:
       # Workaround wxwidgets 3.0.2 compilation error on Yosemite
       # This will be fixed in 3.0.3.
       # See:
@@ -1471,7 +1471,7 @@ _replace_sysconfig_paths(build_time_vars)
                      target=("#include <WebKit/WebKit.h>",),
                      replace_with=("#include <WebKit/WebKitLegacy.h>",))
 
-    if (self.flag_is_mac and get_os_version() in ("10.12", "10.13")) :
+    if self.flag_is_mac and get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 12:
       # Workaround wxwidgets 3.0.2 compilation error on Sierra
       # QuickTime Framework deprecated in OS X v10.9
       # See:
@@ -1512,7 +1512,7 @@ _replace_sysconfig_paths(build_time_vars)
         "--enable-monolithic",
         "--disable-mediactrl"
       ])
-      if (get_os_version() in ('10.12', '10.13')):
+      if get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 12:
         # See https://trac.wxwidgets.org/ticket/17929 fixed for wxWidgets 3.0.4
         # Does not affect 10.12, but using macro does not hurt
         # Also, -stdlib flag breaks things on Xcode 9, so leave it out.
@@ -1551,7 +1551,7 @@ _replace_sysconfig_paths(build_time_vars)
       wxpy_build_opts.extend(["BUILD_STC=1",
                               "WXPORT=osx_cocoa"])
       # Xcode 9 fails with -stdlib flag
-      if (get_os_version() in ('10.12', '10.13')):
+      if get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 12:
         os.environ['CPPFLAGS'] = self.min_macos_version_flag
         os.environ['LDFLAGS'] = self.min_macos_version_flag
     else :
