@@ -82,7 +82,7 @@ def exercise_01(fobs_1, flags_1, prefix):
     "sphere_radius=3",
     "output_file_name_prefix=%s" % prefix,
     'solvent_exclusion_mask_selection="%s"' % selection,
-    "> %s.log" % prefix
+    "&> %s.log" % prefix
   ])
   print(cmd)
   easy_run.call(cmd)
@@ -105,7 +105,7 @@ def exercise_02(fobs_1, prefix):
     "sphere_radius=3",
     "output_file_name_prefix=%s" % prefix,
     'solvent_exclusion_mask_selection="%s"' % selection,
-    "> %s.log" % prefix
+    "&> %s.log" % prefix
   ])
   print(cmd)
   easy_run.call(cmd)
@@ -128,7 +128,7 @@ def exercise_03(fobs_1, flags_1, prefix):
     "sphere_radius=3",
     "output_file_name_prefix=%s" % prefix,
     'solvent_exclusion_mask_selection="%s"' % selection,
-    "> %s.log" % prefix
+    "&> %s.log" % prefix
   ])
   print(cmd)
   easy_run.call(cmd)

@@ -180,7 +180,7 @@ def exercise_00(prefix="tst_polder"):
     "k_sol=0.4",
     "b_sol=50",
     "output.file_name=%s.mtz"%prefix,
-    "> %s.log"%prefix
+    "&> %s.log"%prefix
   ])
   print(cmd)
   easy_run.call(cmd)
@@ -192,7 +192,7 @@ def exercise_00(prefix="tst_polder"):
     "sphere_radius=3",
     'solvent_exclusion_mask_selection="chain A" ',
     'debug="True"',
-    "> %s.log" % prefix
+    "&> %s.log" % prefix
   ])
   print(cmd)
   assert not easy_run.call(cmd)
