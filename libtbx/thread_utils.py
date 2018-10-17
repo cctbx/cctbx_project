@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_pickle
 from libtbx.utils import Abort
 from libtbx import object_oriented_patterns as oop
@@ -318,7 +319,7 @@ else:
           self.join(0.1)
           self._killed = True
         except OSError, e :
-          print e
+          print(e)
         else :
           self._cb_abort()
 
@@ -331,7 +332,7 @@ else:
       try :
         os.kill(self._child_process.pid, signal_number)
       except OSError, e :
-        print e
+        print(e)
         if (not self._child_process.is_alive()) :
           self._cb_abort() # XXX not sure if this is ideal
         return False

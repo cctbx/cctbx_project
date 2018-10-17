@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import approx_equal
 
 def exercise_integer():
@@ -165,7 +166,7 @@ def exercise():
   exercise_prime_factors_of()
   exercise_normalize_angle()
   exercise_percentile_based_spread()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

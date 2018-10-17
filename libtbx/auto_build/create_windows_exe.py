@@ -10,6 +10,7 @@ where create_windows_installer.py supersedes it to invoke creating a NullSoft se
 
 from __future__ import division
 from __future__ import absolute_import
+from __future__ import print_function
 try :
   import libtbx.load_env
   libtbx_env = libtbx.env
@@ -23,7 +24,7 @@ import sys
 
 def run (args, out=sys.stdout) :
   if (sys.platform != "win32") :
-    print >> out, "This application will only run on Windows systems."
+    print("This application will only run on Windows systems.", file=out)
     return 1
   parser = optparse.OptionParser(
     description="Utility for creating an iconified Windows launcher for the specified command, which must be present in %LIBTBX_BUILD%\\bin.")
@@ -64,8 +65,8 @@ def run (args, out=sys.stdout) :
       elif (ext == ".exe") :
         program_cmd_file = file_name
   if (program_cmd_file is None) :
-    print >> out, "No program named '%s' found in %s." % (program_name,
-      bin_dir)
+    print("No program named '%s' found in %s." % (program_name,
+      bin_dir), file=out)
     return 1
   exe_name = program_name
   if (options.exe_name is not None) :
@@ -123,10 +124,10 @@ setup(
   exe_file = os.path.join(dist_path, "%s.exe" % exe_name)
   assert (os.path.isfile(exe_file))
   os.chdir(options.dest)
-  print >> out, ""
+  print("", file=out)
   for file_name in dist_files :
     if os.path.exists(file_name) :
-      print >> out, "WARNING: %s already exists" % file_name
+      print("WARNING: %s already exists" % file_name, file=out)
       continue
       # XXX Even for Windows, this is incredibly broken
       #full_path = os.path.join(options.dest, file_name)
@@ -134,7 +135,7 @@ setup(
       #subprocess.call("del /F /Q %s" % os.path.join(os.getcwd(), file_name))
       #os.chmod(full_path, stat.S_IWRITE)
       #os.unlink(full_path)
-    print >> out, "moving %s..." % file_name
+    print("moving %s..." % file_name, file=out)
     shutil.move(os.path.join(dist_path, file_name), os.getcwd())
     os.chmod(file_name, stat.S_IWRITE)
   return 0

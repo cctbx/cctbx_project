@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os, fnmatch
 from libtbx import python_code_parsing
 
@@ -20,13 +21,13 @@ def run(args):
         python_source_filename=filename)
     except Exception, e:
       import traceback
-      print filename
-      print traceback.format_exc()
+      print(filename)
+      print(traceback.format_exc())
       continue
     if old_style:
-      print 'In file %s:' % filename
-      print old_style
-      print
+      print('In file %s:' % filename)
+      print(old_style)
+      print()
 
 
 if __name__ == '__main__':

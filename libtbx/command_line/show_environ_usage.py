@@ -1,9 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 
 def run(args):
   assert len(args) == 0
-  print """
+  print("""
 LIBTBX_DISABLE_TRACEBACKLIMIT
   If set, Sorry and Usage exceptions are shown with the full traceback.
 
@@ -35,7 +36,7 @@ LIBTBX_CPP0X=False|True
   If False, disables -std=c++0x (if the boost tree is under revision
   control -std=c++0x is enabled automatically for some compilers).
   If True, enables -std=c++0x for some compilers.
-"""
+""")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

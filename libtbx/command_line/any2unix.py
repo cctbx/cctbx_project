@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys, os
 
 def run(args):
@@ -15,7 +16,7 @@ def run(args):
         if (not os.access(path, os.W_OK)):
           problem = "no write access"
     if (problem is not None):
-      print "%s: %s -> no action" % (path, problem)
+      print("%s: %s -> no action" % (path, problem))
     else:
       n_cr = file_content.count("\r")
       n_lf = file_content.count("\n")
@@ -32,16 +33,16 @@ def run(args):
         unix_content = file_content.replace("\r", "\n")
       elif (n_lf > 0 and n_cr == 0):
         action = "unix -> no action"
-      print "%s: %s" % (path, action)
+      print("%s: %s" % (path, action))
       if (unix_content is not None):
         if (unix_content[-1] != "\n"):
           unix_content += "\n"
         try:
           open(path, "wb").write(unix_content)
         except Exception:
-          print >> sys.stdout, "FATAL ERROR: Cannot write file:", path
+          print("FATAL ERROR: Cannot write file:", path, file=sys.stdout)
           path_copy = path + "_copy"
-          print >> sys.stdout, "Saving copy of old content as file:", path_copy
+          print("Saving copy of old content as file:", path_copy, file=sys.stdout)
           open(path_copy, "wb").write(file_content)
           sys.exit(1)
 

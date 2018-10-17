@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 
 def marked_for_commit():
@@ -19,4 +20,4 @@ def marked_for_commit():
 ### and/or its contents. ...."
 
 if (__name__ == "__main__"):
-  print "\n".join(marked_for_commit())
+  print("\n".join(marked_for_commit()))

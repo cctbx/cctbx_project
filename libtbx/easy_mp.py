@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor
 from libtbx import Auto
@@ -51,7 +52,7 @@ def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
       from libtbx.utils import Sorry
       raise Sorry("%s.  Please use nproc=1 or nproc=Auto." % str(problems))
   else :
-    print >> log, """
+    print("""
  ******************************************************************
  INFO: Some parts of this job will make use of multiple processors:
  ******************************************************************
@@ -60,7 +61,7 @@ def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
 
  Please ask your system administrator for advice about this, in particular if
  you run this job through a queuing system.
-""" % str(nproc)
+""" % str(nproc), file=log)
     return nproc
 
 # FIXME should be more flexible on Windows
@@ -153,7 +154,7 @@ class Pool(multiprocessing_Pool):
       chunksize=chunksize)
 
 def show_caught_exception(index, arg):
-  print "CAUGHT EXCEPTION: (argument #%d)" % index
+  print("CAUGHT EXCEPTION: (argument #%d)" % index)
   try:
     r = repr(arg)
   except: # intentional
@@ -161,7 +162,7 @@ def show_caught_exception(index, arg):
   else:
     if (len(r) > 256):
       r = r[:127] + "..." + r[-126:]
-    print "ARGUMENT LEADING TO EXCEPTION:", r
+    print("ARGUMENT LEADING TO EXCEPTION:", r)
   traceback.print_exc(file=sys.stdout)
 
 class func_wrapper_simple_impl(object):
@@ -376,7 +377,7 @@ def pool_map(
   if (index_args):
     iterable = enumerate(iterable)
   if (log is not None):
-    print >> log, "multiprocessing pool size:", processes
+    print("multiprocessing pool size:", processes, file=log)
     flush = getattr(log, "flush", None)
     if (flush is not None):
       flush()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os
 op = os.path
 
@@ -92,8 +93,8 @@ def show_unused_imports(file_name):
   unused_imports = inspect(
     py_lines=open(file_name).read().splitlines())
   if (len(unused_imports) != 0):
-    print "%s: %s" % (file_name, ", ".join(unused_imports))
-    print
+    print("%s: %s" % (file_name, ", ".join(unused_imports)))
+    print()
   return unused_imports
 
 def walk_func(counter, dirname, names):
@@ -116,13 +117,13 @@ def run(args):
       if (len(show_unused_imports(file_name=arg)) != 0):
         counter[0] += 1
   if (counter[0] != 0):
-    print """\
+    print("""\
 HINT:
   To suppress flagging of unused imports follow these examples:
     import scitbx.array_family.flex # import dependency
     import something.related # implicit import
     import wingdbstub # special import
-"""
+""")
     return (1)
   return (0)
 

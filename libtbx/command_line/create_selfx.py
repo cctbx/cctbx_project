@@ -1,10 +1,11 @@
 from __future__ import division
+from __future__ import print_function
 import sys, os
 
 buf_size = 1000000
 
 def perl_header(selfx, command):
-  print >> selfx, """\
+  print("""\
 #! /usr/bin/env perl
 #
 # This is a self-extracting tar.gz file.
@@ -50,12 +51,12 @@ binmode TAR_PIPE;
 while (read(SELF, $buf, %d) != 0) {
   syswrite(TAR_PIPE, $buf, length($buf));
 }
-close(TAR_PIPE);""" % buf_size
+close(TAR_PIPE);""" % buf_size, file=selfx)
   if (command != None):
-    print >> selfx, '$cmd = join(" ", ("%s", @ARGV));' % command
-    print >> selfx, 'print "Running command: $cmd\\n";'
-    print >> selfx, 'system("$cmd");'
-  print >> selfx, "__END__"
+    print('$cmd = join(" ", ("%s", @ARGV));' % command, file=selfx)
+    print('print "Running command: $cmd\\n";', file=selfx)
+    print('system("$cmd");', file=selfx)
+  print("__END__", file=selfx)
   selfx.write("@")
 
 def create(tar_file_name, command):
@@ -81,7 +82,7 @@ def create(tar_file_name, command):
 def run(args):
   "usage: libtbx.create_selfx tar_file_name [command]"
   if (not len(args) in (1,2) or "-h" in args or "--help" in args):
-    print run.__doc__
+    print(run.__doc__)
     return
   tar_file_name = args[0]
   command = None

@@ -1366,6 +1366,7 @@ class indentor(object):
       lines = block.splitlines()
       if (len(lines) == 1):
         if (self.incomplete_line):
+          self.file_object.write(' ')
           self.file_object.write(lines[-1])
         else:
           self.file_object.write(self.indent + lines[-1])

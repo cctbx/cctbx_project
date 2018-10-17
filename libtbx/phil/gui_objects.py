@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # various containers for gui directives and objects
 
@@ -165,13 +166,13 @@ class style (object) :
                     int_value = int(value)
                     setattr(self, kwd, int_value)
                   except ValueError :
-                    print "Ignoring incorrect .style keyword '%s'"%style_word
+                    print("Ignoring incorrect .style keyword '%s'"%style_word)
                 else :
                   setattr(self, kwd, value)
               else :
                 setattr(self, kwd, value_words)
           except Exception, e :
-            print e
+            print(e)
             pass
             #wxGUI2.DEBUG2("Unrecognized style keyword(s): %s" % style_string)
             #wxGUI2.DEBUG2(style_string)

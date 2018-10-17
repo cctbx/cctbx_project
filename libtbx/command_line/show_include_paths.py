@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Sorry
 from libtbx.str_utils import show_string
 import libtbx.load_env
@@ -23,7 +24,7 @@ def run(args):
   include_paths = read_include_paths()
   if (len(remaining_args) == 0):
     for key,path in include_paths:
-      print key
+      print(key)
   else:
     for target_key in remaining_args:
       n_hits = 0
@@ -32,7 +33,7 @@ def run(args):
           if (prohibit_white_space and len(path.split()) != 1):
             raise Sorry(
               "Include path contains white-space: %s" % show_string(path))
-          print path
+          print(path)
           n_hits += 1
       if (n_hits == 0):
         raise Sorry("No such include path: %s" % show_string(arg))

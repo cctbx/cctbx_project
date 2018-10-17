@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 ## Some functionality for formatted printing,
 ## indentation and simple tables
 ##
@@ -61,20 +62,20 @@ def format(rows,
     total_row_width=0
     line=None
     # Printing the table with values
-    if leading_and_terminal_separator: print >> output, row_separator
+    if leading_and_terminal_separator: print(row_separator, file=output)
     for physical_rows in logical_rows:
         for row in physical_rows:
             line =  prefix \
                 + delim.join([justify(str(item),width) for (item,width) in zip(row,max_widths)]) \
                 + postfix
-            print >> output, line
-        if separate_rows or has_header == 1: print >> output, row_separator
+            print(line, file=output)
+        if separate_rows or has_header == 1: print(row_separator, file=output)
         if has_header : has_header-=1
     if not separate_rows:
         if leading_and_terminal_separator:
-            print >> output, row_separator
+            print(row_separator, file=output)
     if comments is not None:
-        print >> output, wrap_onspace(comments,len(line))
+        print(wrap_onspace(comments,len(line)), file=output)
     return "\n".join(
       [line.rstrip() for line in output.getvalue().splitlines()])
 
@@ -187,36 +188,36 @@ class Spreadsheet:
           len(self.__dict__[column].format%self.__dict__[column][0])
         )
       master[column] = "%%%ds "%(padding[column])
-      print >>out, master[column]%column,
-    print >>out
+      print(master[column]%column, end=' ', file=out)
+    print(file=out)
     for i in xrange(self.S_table_rows):
       if not printed_rows[i]: continue
       for column in columns:
-        print >>out, master[column]%(
-          self.__dict__[column].format%self.__dict__[column][i] ,),
-      print >>out
+        print(master[column]%(
+          self.__dict__[column].format%self.__dict__[column][i] ,), end=' ', file=out)
+      print(file=out)
     #print summations at the bottom
     for column in columns:
       if column in self.summaries:
-        print >>out, " "+"-"*(padding[column]),
+        print(" "+"-"*(padding[column]), end=' ', file=out)
       else:
-        print >>out, " "*(1+padding[column]),
-    print >>out
+        print(" "*(1+padding[column]), end=' ', file=out)
+    print(file=out)
     for column in columns:
       if column in self.summaries:
-        print >>out, master[column]%(
-          self.__dict__[column].format%self.__dict__[column].sum(),),
+        print(master[column]%(
+          self.__dict__[column].format%self.__dict__[column].sum(),), end=' ', file=out)
       elif hasattr(self,"wtmean") and column in self.wtmean:
         normalizer = self.weights.sum()
         summation = 0
         for x in xrange(self.S_table_rows):
             summation += self.weights[x] * self.__dict__[column][x]
         mean = summation/normalizer
-        print >>out, (master[column]%(
-          self.__dict__[column].format%mean,) ),
+        print((master[column]%(
+          self.__dict__[column].format%mean,) ), end=' ', file=out)
       else:
-        print >>out, " "*(1+padding[column]),
-    print >>out
+        print(" "*(1+padding[column]), end=' ', file=out)
+    print(file=out)
 
   def rows(self):
     return self.S_table_rows
@@ -305,10 +306,10 @@ def excercise_spreadsheet():
       self.wtmean=['MeanI']         #display the weighted mean of MeanI column,
       self.weights=self.Population  #...weighted by the Population
       legend = """Detailed explanation of each column here"""
-      print >>out,message+":\n"
+      print(message+":\n", file=out)
       to_print = [True,True,True,True,True,True]
       self.printTable(columns_to_print,printed_rows=to_print,out=out)
-      print >>out,legend
+      print(legend, file=out)
 
   OC = cStringIO.StringIO()
   derived_1 = typical_use_case_1()
@@ -382,7 +383,7 @@ alpha | beta | gamma
 40    | 50   | 60
 --------------------
 comments here"""
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   excercise_spreadsheet()

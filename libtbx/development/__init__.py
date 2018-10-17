@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 def show_pickle_sizes (obj, indent="",
     display_if_size_greater_than=10000) :
@@ -19,7 +20,7 @@ def show_pickle_sizes (obj, indent="",
       pkl = dumps(child_obj)
       n_bytes = len(pkl)
       if (n_bytes > display_if_size_greater_than) :
-        print indent+attr, n_bytes
+        print(indent+attr, n_bytes)
         if isinstance(child_obj, object) and hasattr(child_obj, "__dict__") :
           show_pickle_sizes(child_obj, indent+"  ",
             display_if_size_greater_than=display_if_size_greater_than)
@@ -27,7 +28,7 @@ def show_pickle_sizes (obj, indent="",
           for item in child_obj :
             n_bytes_item = len(dumps(item))
             if (n_bytes_item > display_if_size_greater_than) :
-              print indent+"  "+type(item).__name__, n_bytes_item
+              print(indent+"  "+type(item).__name__, n_bytes_item)
               if isinstance(item, object) and hasattr(item, "__dict__") :
                 show_pickle_sizes(item, indent+"    ",
                   display_if_size_greater_than=display_if_size_greater_than)

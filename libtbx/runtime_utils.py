@@ -10,6 +10,7 @@
 # well tested except to the extent it is used daily in the Phenix GUI
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Sorry, Abort, multi_out, host_and_user
 from libtbx import easy_pickle
 from libtbx import adopt_init_args, group_args
@@ -180,7 +181,7 @@ class detached_process_server (detached_base) :
     except Abort : # FIXME why is this not working properly?
       self.callback_abort()
     except Exception, e :
-      print >> sys.stderr, type(e).__name__
+      print(type(e).__name__, file=sys.stderr)
       if (type(e).__name__ == "Abort") :
         self.callback_abort()
       else :
@@ -295,8 +296,8 @@ class detached_process_client (detached_base) :
         self._process_host = host
         self._process_pid = int(pid)
       except Exception, e :
-        print "Error acquiring runtime info:"
-        print e
+        print("Error acquiring runtime info:")
+        print(e)
       self.callback_start(data)
     if self.update_progress :
       self.check_stdout()
@@ -314,7 +315,7 @@ class detached_process_client (detached_base) :
       try :
         result = easy_pickle.load(self.result_file)
       except EOFError :
-        print "EOFError trying to load result file!"
+        print("EOFError trying to load result file!")
       else :
         time.sleep(1)
         self.check_stdout()
@@ -352,7 +353,7 @@ class detached_process_client (detached_base) :
         except EOFError :
           pass
         except Exception, e :
-          print e
+          print(e)
         else :
           n_cb = len(accumulated_status)
           n_cb_old = len(self._accumulated_callbacks)
@@ -371,7 +372,7 @@ class detached_process_client (detached_base) :
         except EOFError :
           pass
         except Exception, e :
-          print e
+          print(e)
         else :
           self.callback_other(current_status)
 
@@ -396,7 +397,7 @@ class detached_process_client (detached_base) :
     try :
       os.kill(self._process_pid, signal_number)
     except OSError, e :
-      print e
+      print(e)
       #self.callback_abort()
       return False
     else :
@@ -424,7 +425,7 @@ class detached_process_client (detached_base) :
         try :
           os.remove(file_name)
         except Exception, e :
-          print e
+          print(e)
 
 def touch_file (file_name) :
   f = open(file_name, "w").close()
@@ -467,7 +468,7 @@ def run (args) :
       try :
         arg_phil = libtbx.phil.parse(arg)
       except RuntimeError, e :
-        print e
+        print(e)
       else :
         user_phil.append(arg_phil)
   working_phil = process_master_phil.fetch(sources=user_phil)
@@ -526,11 +527,11 @@ class simple_run (object) :
         pu = pu + su
       pu_total += pu
       libtbx.call_back("current_total", pu, accumulate=False)
-      print "current is %f" % pu
+      print("current is %f" % pu)
     return pu_total
 
 class simple_func (object) :
   def __init__ (self, x) :
     self.x = x
   def __call__ (self) :
-    print self.x
+    print(self.x)

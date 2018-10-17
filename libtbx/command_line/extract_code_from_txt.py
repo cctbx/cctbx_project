@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from itertools import count
 import sys, os
 
@@ -41,13 +42,13 @@ def run(args, command_name="libtbx.extract_code_from_txt"):
     if (file_rst.endswith(".txt")):
       file_rst = file_rst[:-4]
     file_rst += ".rst"
-    print "Writing: %s (%d lines)" % (file_rst, len(rst))
-    print >> open(file_rst, "w"), "\n".join(rst)
+    print("Writing: %s (%d lines)" % (file_rst, len(rst)))
+    print("\n".join(rst), file=open(file_rst, "w"))
   for destination,lines in outputs.items():
     lines.insert(0, 'if (__name__ == "__main__"):')
     lines.insert(1, "")
-    print "Writing: %s (%d lines)" % (destination, len(lines))
-    print >> open(destination, "w"), "\n".join(lines)
+    print("Writing: %s (%d lines)" % (destination, len(lines)))
+    print("\n".join(lines), file=open(destination, "w"))
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

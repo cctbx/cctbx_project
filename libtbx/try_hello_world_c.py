@@ -7,13 +7,14 @@ Intended use:
   endif
 """
 from __future__ import division
+from __future__ import print_function
 
 import sys, os
 
 def run(args):
   assert len(args) == 0
   try:
-    print >> open("libtbx_hello_world.c", "w"), """\
+    print("""\
 #include <stdio.h>
 int
 main(
@@ -23,7 +24,7 @@ main(
   printf("Hello, world.\\n");
   return 0;
 }
-"""
+""", file=open("libtbx_hello_world.c", "w"))
   except Exception: return 1
   if (not os.path.exists("libtbx_hello_world.c")):
     return 2

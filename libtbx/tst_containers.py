@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def exercise_oset():
   from libtbx.containers import OrderedSet as oset
   o = oset()
@@ -41,7 +42,7 @@ def run(args):
   assert len(args) == 0
   exercise_oset()
   exercise_odict()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

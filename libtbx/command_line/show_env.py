@@ -10,6 +10,7 @@ path anyway).
 Usage:
   read_env.py <libtbx_env>
 """
+from __future__ import print_function
 
 import pickle
 from pprint import pprint

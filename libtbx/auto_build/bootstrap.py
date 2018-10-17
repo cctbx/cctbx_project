@@ -7,6 +7,7 @@
 # curl https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py > bootstrap.py
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 import ntpath
 import optparse
@@ -139,9 +140,9 @@ class ShellCommand(object):
     env = self.get_environment()
     if not self.kwargs.get("quiet", False):
       if description:
-        print "===== Running in %s:"%workdir, description
+        print("===== Running in %s:"%workdir, description)
       else:
-        print "===== Running in %s:"%workdir, " ".join(command)
+        print("===== Running in %s:"%workdir, " ".join(command))
     if workdir:
       try:
         os.makedirs(workdir)
@@ -157,16 +158,16 @@ class ShellCommand(object):
       # XXX use shutil rather than rm which is not platform independent
       for directory in command[2:]:
         if os.path.exists(directory):
-          print 'Deleting directory : %s' % directory
+          print('Deleting directory : %s' % directory)
           try: shutil.rmtree(directory)
           except OSError:
-            print "Strangely couldn't delete %s" % directory
+            print("Strangely couldn't delete %s" % directory)
       return 0
     if 0:
-      print 'command',command
-      print 'workdir',workdir
-      print 'env',env
-      print os.environ.get("PATH", None)
+      print('command',command)
+      print('workdir',workdir)
+      print('env',env)
+      print(os.environ.get("PATH", None))
     try:
       #if not os.path.isabs(command[0]):
         # executable path isn't located relative to workdir
@@ -189,19 +190,19 @@ class ShellCommand(object):
           executable = os.path.normpath(os.path.join(workdir, command[0]))
           raise RuntimeError("Could not run %s: File not found" % executable)
       if 'child_traceback' in dir(e):
-        print "Calling subprocess resulted in error; ", e.child_traceback
+        print("Calling subprocess resulted in error; ", e.child_traceback)
       raise e
 
     p.wait()
     if p.returncode != 0 and self.kwargs.get('haltOnFailure'):
-      print "Process failed with return code %s"%(p.returncode)
+      print("Process failed with return code %s"%(p.returncode))
       sys.exit(1)
     if 0:
       if description:
         outl = "%s - %s" % (workdir, description)
       else:
         outl = "%s - %s" % (workdir, " ".join(command))
-      print '===== Time to %s : %0.1f' % (outl, time.time()-t0)
+      print('===== Time to %s : %0.1f' % (outl, time.time()-t0))
     return p.returncode
 
 class Toolbox(object):
@@ -395,7 +396,7 @@ class Toolbox(object):
   def unzip(archive, directory, trim_directory=0, verbose=False):
     '''unzip a file into a directory. Requires Python 2.6.'''
     if verbose:
-      print "===== Installing %s into %s" % (archive, directory)
+      print("===== Installing %s into %s" % (archive, directory))
     if not zipfile.is_zipfile(archive):
       raise Exception("%s is not a valid .zip file" % archive)
     z = zipfile.ZipFile(archive, 'r')
@@ -455,7 +456,7 @@ class Toolbox(object):
     if branch and remote and not rebase:
       insertions.insert(0, (n + 1, branch))
     for n, branch in insertions:
-      print "  setting branch %s to rebase" % branch
+      print("  setting branch %s to rebase" % branch)
       cfg.insert(n, '\trebase = true\n')
     with open(config, 'w') as fh:
       fh.write("".join(cfg))
@@ -477,8 +478,8 @@ class Toolbox(object):
     if os.path.exists(destination):
       if git_available and os.path.exists(os.path.join(destination, '.git')):
         if not open(os.path.join(destination, '.git', 'HEAD'), 'r').read().startswith('ref:'):
-          print "WARNING: Can not update existing git repository! You are not on a branch."
-          print "This may be legitimate when run eg. via Jenkins, but be aware that you cannot commit any changes"
+          print("WARNING: Can not update existing git repository! You are not on a branch.")
+          print("This may be legitimate when run eg. via Jenkins, but be aware that you cannot commit any changes")
           return
 
         else:
@@ -490,9 +491,9 @@ class Toolbox(object):
           return ShellCommand(
             command=['git', 'pull', '--rebase'], workdir=destination, silent=False, haltOnFailure=True).run()
 
-      print "Existing non-git directory -- don't know what to do. skipping: %s" % module
+      print("Existing non-git directory -- don't know what to do. skipping: %s" % module)
       if ('cctbx_project.git' in parameters[0]):
-        print '\n' + '=' * 80 + '\nCCTBX moved to git on November 22, 2016.\n\nTo update cctbx_project to the last available subversion revision please run "svn update" while in the cctbx_project directory.\n' + '*'*80 + '\n'
+        print('\n' + '=' * 80 + '\nCCTBX moved to git on November 22, 2016.\n\nTo update cctbx_project to the last available subversion revision please run "svn update" while in the cctbx_project directory.\n' + '*'*80 + '\n')
       return
 
     if isinstance(parameters, basestring):
@@ -541,14 +542,14 @@ class Toolbox(object):
                             urlparse.urlparse(source_candidate)[2].split('/')[-1])
       filename = os.path.join(destpath, filename)
       if verbose:
-        print "===== Downloading %s: " % source_candidate,
+        print("===== Downloading %s: " % source_candidate, end=' ')
       Toolbox.download_to_file(source_candidate, filename)
       Toolbox.unzip(filename, destination, trim_directory=1, verbose=verbose)
       return
 
     error = "Cannot satisfy git dependency for module %s: None of the sources are available." % module
     if not git_available:
-      print error
+      print(error)
       error = "A git installation has not been found."
     raise Exception(error)
 
@@ -568,10 +569,10 @@ class cleanup_ext_class(object):
         os.chdir(self.workdir)
       else:
         return
-    print "\n  removing %s files in %s, walk? %s" % (self.filename_ext,
+    print("\n  removing %s files in %s, walk? %s" % (self.filename_ext,
                                                      os.getcwd(),
                                                      self.walk,
-      )
+      ))
     i=0
     if self.walk:
       for root, dirs, files in os.walk(".", topdown=False):
@@ -585,7 +586,7 @@ class cleanup_ext_class(object):
           os.remove(os.path.join(name))
           i+=1
     os.chdir(cwd)
-    print "  removed %d files" % i
+    print("  removed %d files" % i)
 
   def run(self):
     self.remove_ext_files()
@@ -617,11 +618,11 @@ class cleanup_dirs(object):
 
       # Don't notify the user if we aren't doing anything
       if any(os.path.exists(d) for d in self.dirs):
-        print "===== Removing directories in %s" % (os.getcwd())
+        print("===== Removing directories in %s" % (os.getcwd()))
 
         for d in self.dirs:
           if os.path.exists(d):
-            print "      removing %s" % (os.path.join(os.getcwd(),d))
+            print("      removing %s" % (os.path.join(os.getcwd(),d)))
             shutil.rmtree(d)
     finally:
       # Leave the directory untouched even if we failed
@@ -1213,12 +1214,12 @@ class Builder(object):
     """Add a step."""
     self.steps.append(step)
     if 0:
-      print "commands "*8
+      print("commands "*8)
       for step in self.steps:
-        print step
+        print(step)
         #try:    print " ".join(step.get_command())
         #except: print '????'
-      print "commands "*8
+      print("commands "*8)
 
   def add_module(self, module, workdir=None, module_directory=None):
     action = MODULES.get_module(module)().get_url(auth=self.get_auth())
@@ -1336,7 +1337,7 @@ class Builder(object):
   def _add_download(self, url, to_file):
     class _download(object):
       def run(self):
-        print "===== Downloading %s: " % url,
+        print("===== Downloading %s: " % url, end=' ')
         Toolbox().download_to_file(url, to_file)
     self.add_step(_download())
 
@@ -1355,7 +1356,7 @@ class Builder(object):
   def _add_unzip(self, archive, directory, trim_directory=0):
     class _indirection(object):
       def run(self):
-        print "===== Installing %s into %s" % (archive, directory)
+        print("===== Installing %s into %s" % (archive, directory))
         Toolbox().unzip(archive, directory, trim_directory)
     self.add_step(_indirection())
 
@@ -1381,7 +1382,7 @@ class Builder(object):
           quiet=True,
       ))
     elif os.path.exists(self.opjoin(*[thisworkdir, module])):
-      print "Existing non-svn directory -- don't know what to do. skipping: %s"%module
+      print("Existing non-svn directory -- don't know what to do. skipping: %s"%module)
     else:
       # print "fresh checkout..."
       self.add_step(self.shell(
@@ -1500,7 +1501,7 @@ class Builder(object):
       '--python-shared',
       '--%s'%self.BASE_PACKAGES
     ] + extra_opts
-    print "Installing base packages using:\n  " + " ".join(command)
+    print("Installing base packages using:\n  " + " ".join(command))
     self.add_step(self.shell(name='base', command=command, workdir=['.']))
 
   def add_dispatchers(self, product_name="phenix"):
@@ -2443,7 +2444,7 @@ def run(root=None):
   for arg in allowedargs:
     if arg in args:
       actions.append(arg)
-  print "Performing actions:", " ".join(actions)
+  print("Performing actions:", " ".join(actions))
 
   # Check builder
   if options.builder not in builders:
@@ -2483,7 +2484,7 @@ def run(root=None):
     python3=options.python3,
     wxpython4=options.wxpython4,
   ).run()
-  print "\nBootstrap success: %s" % ", ".join(actions)
+  print("\nBootstrap success: %s" % ", ".join(actions))
 
 if __name__ == "__main__":
   run()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import phil
 import libtbx.phil
 from libtbx.utils import Sorry
@@ -87,9 +88,9 @@ class recycle(object):
         print_width=print_width)
       out_out = out_out.getvalue()
       if (out_out != self.out):
-        print "self.out:"
+        print("self.out:")
         sys.stdout.write(self.out)
-        print "out_out:"
+        print("out_out:")
         sys.stdout.write(out_out)
         raise RuntimeError("out_out != self.out")
 
@@ -453,9 +454,9 @@ def test_exception(input_string, exception_string=None):
   except KeyboardInterrupt: raise
   except Exception, e:
     if (exception_string is None or str(e) != exception_string):
-      print str(e)
+      print(str(e))
       if (exception_string is not None):
-        print exception_string
+        print(exception_string)
     if (exception_string is not None):
       assert str(e) == exception_string
   else: raise Exception_expected
@@ -812,8 +813,8 @@ def check_resolve_variables(parameters, path, expected_out=None, n_matches=1):
   assert len(matches.objects) == n_matches
   result = matches.objects[0].resolve_variables().as_str()
   if (expected_out is None):
-    print '  check_resolve_variables(parameters, "%s", "%s")' % (
-      path, result.replace("\n", "\\n"))
+    print('  check_resolve_variables(parameters, "%s", "%s")' % (
+      path, result.replace("\n", "\\n")))
   elif (result != expected_out):
     raise AssertionError('"%s" != "%s"' % (result, expected_out))
 
@@ -1057,18 +1058,18 @@ a0 {
     assert params.get(path).objects[0].full_path() == path
 
 def exercise_include():
-  print >> open("tmp1.params", "w"), """\
+  print("""\
 !include none
 a=x
-"""
-  print >> open("tmp2.params", "w"), """\
+""", file=open("tmp1.params", "w"))
+  print("""\
 b=y
-"""
-  print >> open("tmp3.params", "w"), """\
+""", file=open("tmp2.params", "w"))
+  print("""\
 c=z
 include file tmp2.params
 d=$z
-"""
+""", file=open("tmp3.params", "w"))
   parameters = phil.parse(
     input_string="""\
 tmp2=tmp2.params
@@ -1110,15 +1111,15 @@ s = 1
   try: os.makedirs("tmp")
   except OSError: pass
   #
-  print >> open("tmp1.params", "w"), """\
+  print("""\
 include file tmp3.params
-"""
-  print >> open("tmp2.params", "w"), """\
+""", file=open("tmp1.params", "w"))
+  print("""\
 include file tmp1.params
-"""
-  print >> open("tmp3.params", "w"), """\
+""", file=open("tmp2.params", "w"))
+  print("""\
 include file tmp2.params
-"""
+""", file=open("tmp3.params", "w"))
   try: parameters = phil.parse(
     file_name="tmp1.params",
     process_includes=True)
@@ -1127,20 +1128,20 @@ include file tmp2.params
     assert len(str(e).split(",")) == 4
   else: raise Exception_expected
   #
-  print >> open("tmp1.params", "w"), """\
+  print("""\
 a=0
 include file tmp/tmp1.params
 x=1
-"""
-  print >> open("tmp/tmp1.params", "w"), """\
+""", file=open("tmp1.params", "w"))
+  print("""\
 b=1
 include file tmp2.params
 y=2
-"""
-  print >> open("tmp/tmp2.params", "w"), """\
+""", file=open("tmp/tmp1.params", "w"))
+  print("""\
 c=2
 z=3
-"""
+""", file=open("tmp/tmp2.params", "w"))
   parameters = phil.parse(
     file_name="tmp1.params",
     process_includes=True)
@@ -1154,7 +1155,7 @@ z = 3
 y = 2
 x = 1
 """)
-  print >> open("tmp4.params", "w"), """\
+  print("""\
 a=1
 include file tmp1.params
 s {
@@ -1168,7 +1169,7 @@ s {
   z=3
 }
 z=1
-"""
+""", file=open("tmp4.params", "w"))
   parameters = phil.parse(
     file_name="tmp4.params",
     process_includes=True)
@@ -5233,7 +5234,7 @@ Error interpreting command line argument as parameter definition:
     assert str(e) == 'Parameter definition has no effect: "bar {}"'
   else: raise Exception_expected
   #
-  print >> open("tmp0d5f6e10.phil", "w"), "foo.limit=-3"
+  print("foo.limit=-3", file=open("tmp0d5f6e10.phil", "w"))
   user_phils = itpr_bar.process(args=[
     "",
     "--flag",
@@ -5257,7 +5258,7 @@ Error interpreting command line argument as parameter definition:
       assert not show_diff(str(e),
         'Uninterpretable command line argument: "%s"' % arg)
     else: raise Exception_expected
-  print >> open("tmp0d5f6e10.phil", "w"), "foo$limit=0"
+  print("foo$limit=0", file=open("tmp0d5f6e10.phil", "w"))
   try: itpr_bar.process(args=["tmp0d5f6e10.phil"])
   except RuntimeError, e:
     assert not show_diff(str(e),
@@ -5925,7 +5926,7 @@ def exercise():
   exercise_choice_multi_plus_support()
   exercise_deprecation()
   exercise_change_default()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()
