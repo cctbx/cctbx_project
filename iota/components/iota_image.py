@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/29/2018
+Last Changed: 10/16/2018
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -30,7 +30,7 @@ import dxtbx
 from libtbx import easy_pickle as ep
 from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp
 
-import iota.components.iota_misc as misc
+import iota.components.iota_utils as util
 import iota.components.iota_vis_integration as viz
 
 class SingleImage(object):
@@ -94,15 +94,15 @@ class SingleImage(object):
     self.fin_base = init.fin_base
     self.log_base = init.log_base
     self.viz_base = init.viz_base
-    filename = misc.make_filename(self.conv_img)
+    filename = util.make_filename(self.conv_img)
 
-    self.obj_path = misc.make_image_path(self.conv_img, self.input_base, self.obj_base)
+    self.obj_path = util.make_image_path(self.conv_img, self.input_base, self.obj_base)
     self.obj_file = os.path.abspath(os.path.join(self.obj_path, filename + ".int"))
-    self.fin_path = misc.make_image_path(self.conv_img, self.input_base, self.fin_base)
+    self.fin_path = util.make_image_path(self.conv_img, self.input_base, self.fin_base)
     self.fin_file = os.path.abspath(os.path.join(self.fin_path, filename + "_int.pickle"))
-    self.viz_path = misc.make_image_path(self.conv_img, self.input_base, self.viz_base)
+    self.viz_path = util.make_image_path(self.conv_img, self.input_base, self.viz_base)
     self.viz_file = os.path.join(self.viz_path, filename + "_int.png")
-    self.log_path = misc.make_image_path(self.conv_img, self.input_base, self.log_base)
+    self.log_path = util.make_image_path(self.conv_img, self.input_base, self.log_base)
 
     self.final['final'] = self.fin_file
     self.final['img'] = self.conv_img
@@ -123,14 +123,14 @@ class SingleImage(object):
                           os.path.basename(self.conv_img).split('.')[0] + '.tmp')
 
     # Reset status to 'grid search' to pick up at selection (if no fail)
-    if self.fail == None:
+    if self.fail is None:
       self.status = 'bypass grid search'
 
     return self
 
   def determine_gs_result_file(self):
     """ For 'selection-only' cctbx.xfel runs, determine where the image objects are """
-    if self.params.cctbx.selection.select_only.grid_search_path != None:
+    if self.params.cctbx.selection.select_only.grid_search_path is not None:
       obj_path = os.path.abspath(self.params.cctbx.selection.select_only.grid_search_path)
     else:
       run_number = int(os.path.basename(self.int_base)) - 1
@@ -148,7 +148,7 @@ class SingleImage(object):
     # Load raw image or image pickle
 
     try:
-      with misc.Capturing() as junk_output:
+      with util.Capturing() as junk_output:
         loaded_img = dxtbx.load(img)
     except Exception as e:
       print ('IOTA IMPORT ERROR:', e)
@@ -203,7 +203,7 @@ class SingleImage(object):
     if self.params.advanced.estimate_gain:
       from dxtbx.datablock import DataBlockFactory
       from dials.command_line.estimate_gain import estimate_gain
-      with misc.Capturing() as junk_output:
+      with util.Capturing() as junk_output:
         try:
           datablock = DataBlockFactory.from_filenames([self.raw_img])[0]
           imageset = datablock.extract_imagesets()[0]
@@ -396,11 +396,11 @@ class SingleImage(object):
     #   number = fn_end
     #
     # if self.filename_correction:
-    #   self.corr_base = misc.set_base_dir('corrected_images',
+    #   self.corr_base = util.set_base_dir('corrected_images',
     #                                      out_dir=self.params.output)
-    #   img_path = misc.make_image_path(self.raw_img, self.input_base,
+    #   img_path = util.make_image_path(self.raw_img, self.input_base,
     #                                   self.corr_base)
-    #   img_filename = misc.make_filename(self.raw_img).replace(fn_end, number)
+    #   img_filename = util.make_filename(self.raw_img).replace(fn_end, number)
     #   img_extension = os.path.splitext(self.raw_img)[1]
     #   new_img = os.path.abspath(os.path.join(img_path,
     #             '{}{}'.format(img_filename, img_extension)))
@@ -420,19 +420,19 @@ class SingleImage(object):
     self.status = 'loaded'
 
     if img_data is None:
-      self.log_path = misc.make_image_path(self.raw_img, self.input_base,
+      self.log_path = util.make_image_path(self.raw_img, self.input_base,
                                            self.log_base)
       self.int_log = os.path.join(self.log_path,
-                                  misc.make_filename(self.raw_img) + '.tmp')
+                                  util.make_filename(self.raw_img) + '.tmp')
       self.log_info.append('\n{:-^100}\n'.format(self.raw_img))
       self.log_info.append('FAILED TO IMPORT')
       self.status = 'failed import'
       self.fail = 'failed import'
 
       if not self.params.image_conversion.convert_only:
-        self.obj_path = misc.make_image_path(self.conv_img, self.input_base,
+        self.obj_path = util.make_image_path(self.conv_img, self.input_base,
                                              self.obj_base)
-        rej_name = filter(None, misc.make_filename(self.conv_img)) + '_reject.int'
+        rej_name = filter(None, util.make_filename(self.conv_img)) + '_reject.int'
         self.obj_file = os.path.abspath(os.path.join(self.obj_path, rej_name))
 
         try:
@@ -497,9 +497,9 @@ class SingleImage(object):
       # Generate converted image pickle filename
       rename_choice = str(self.params.image_conversion.rename_pickle).lower()
       if rename_choice in ("keep_file_structure", "none"):
-        img_path = misc.make_image_path(self.raw_img, self.input_base,
+        img_path = util.make_image_path(self.raw_img, self.input_base,
                                         self.conv_base)
-        img_filename = misc.make_filename(self.raw_img) + ".pickle"
+        img_filename = util.make_filename(self.raw_img) + ".pickle"
         self.conv_img = os.path.abspath(os.path.join(img_path, img_filename))
         try:
           if not os.path.isdir(img_path):
@@ -595,7 +595,7 @@ class SingleImage(object):
                     'program':'dials'}
 
     # Generate names for output folders and files:
-    filename = misc.make_filename(self.conv_img)
+    filename = util.make_filename(self.conv_img)
     self.test_filename = filename
 
     if not self.params.image_conversion.convert_only:
@@ -604,17 +604,17 @@ class SingleImage(object):
       #   img = self.raw_img
       # else:
       #   img = self.conv_img
-      self.obj_path = misc.make_image_path(img, self.input_base, self.obj_base)
+      self.obj_path = util.make_image_path(img, self.input_base, self.obj_base)
       self.obj_file = os.path.abspath(os.path.join(self.obj_path,
                                     filename + ".int"))
-      self.fin_path = misc.make_image_path(img, self.input_base, self.fin_base)
-      self.log_path = misc.make_image_path(img, self.input_base, self.log_base)
+      self.fin_path = util.make_image_path(img, self.input_base, self.fin_base)
+      self.log_path = util.make_image_path(img, self.input_base, self.log_base)
       self.fin_file = os.path.abspath(os.path.join(self.fin_path,
                      "int_{}.pickle".format(filename)))
       self.final['final'] = self.fin_file
       self.final['img'] = img
       self.int_log = os.path.join(self.log_path, filename + '.tmp')
-      self.viz_path = misc.make_image_path(img, self.input_base, self.viz_base)
+      self.viz_path = util.make_image_path(img, self.input_base, self.viz_base)
       self.viz_file = os.path.join(self.viz_path, "int_{}.png".format(filename))
 
       # Create actual folders (if necessary)
@@ -638,7 +638,7 @@ class SingleImage(object):
     # If conversion only option is selected, write conversion info to log
     else:
       log_entry = "\n".join(self.log_info)
-      misc.main_log(self.main_log, log_entry)
+      util.main_log(self.main_log, log_entry)
 
     return self
 
@@ -649,7 +649,7 @@ class SingleImage(object):
     """ Runs integration using the Integrator class """
 
     # Check to see if the image is suitable for grid search / integration
-    if self.fail != None:
+    if self.fail is not None:
       self.grid = []
       self.final['final'] = None
     else:
@@ -745,7 +745,7 @@ class SingleImage(object):
       self.fail = 'aborted'
       return self
 
-    if self.fail == None:
+    if self.fail is None:
       from iota.components.iota_cctbx import Selector
       selector = Selector(self.grid,
                           self.final,
@@ -782,16 +782,16 @@ class SingleImage(object):
           return self
 
         # Run grid search if haven't already
-        if self.fail == None and 'grid search' not in self.status:
+        if self.fail is None and 'grid search' not in self.status:
           self.integrate_cctbx('grid search', single_image=single_image)
 
         # Run selection if haven't already
-        if self.fail == None and self.status != 'selection':
+        if self.fail is None and self.status != 'selection':
           self.select_cctbx()
 
         # If smart grid search is active run multiple rounds until convergence
         if self.params.cctbx.grid_search.type == 'smart':
-          if self.fail == None and self.final['epv'] < prev_epv:
+          if self.fail is None and self.final['epv'] < prev_epv:
             prev_epv = self.final['epv']
             prev_final = self.final
             prev_status = self.status
@@ -826,14 +826,14 @@ class SingleImage(object):
           terminate = True
 
       # Run final integration if haven't already
-      if self.fail == None and self.status != 'final':
+      if self.fail is None and self.status != 'final':
         self.integrate_cctbx('integrate', single_image=single_image)
 
       # If verbose output selected (default), write to main log
       if self.verbose:
          log_entry = "\n".join(self.log_info)
-         misc.main_log(self.main_log, log_entry)
-         misc.main_log(self.main_log, '\n\n')
+         util.main_log(self.main_log, log_entry)
+         util.main_log(self.main_log, '\n\n')
 
       # Make a temporary process log into a final process log
       if os.path.isfile(self.int_log):
@@ -869,12 +869,12 @@ class SingleImage(object):
 
         # Run DIALS
         self.fail, self.final, int_log = integrator.run()
-        if self.fail != None:
+        if self.fail is not None:
           self.status = 'final'
         self.log_info.append(int_log)
         log_entry = "\n".join(self.log_info)
-        misc.main_log(self.main_log, log_entry)
-        misc.main_log(self.main_log, '\n{:-^100}\n'.format(''))
+        util.main_log(self.main_log, log_entry)
+        util.main_log(self.main_log, '\n{:-^100}\n'.format(''))
 
         # Make a temporary process log into a final process log
         final_int_log = self.int_log.split('.')[0] + ".log"

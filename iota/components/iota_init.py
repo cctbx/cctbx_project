@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/05/2018
+Last Changed: 10/16/2018
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -16,10 +16,9 @@ import time
 
 import iota.components.iota_input as inp
 import iota.components.iota_cmd as cmd
-import iota.components.iota_misc as misc
-from iota.components.iota_utils import InputFinder
+import iota.components.iota_utils as util
 
-ginp = InputFinder()
+ginp = util.InputFinder()
 pid = os.getpid()
 
 try:
@@ -65,6 +64,8 @@ def parse_command_args(iver, help_message):
             help = 'Use for analysis only; specify run number or folder')
   return parser
 
+
+# noinspection PyArgumentEqualDefault,PyArgumentEqualDefault,PyArgumentEqualDefault,PyArgumentEqualDefault
 class InitAll(object):
   """ Class to initialize current IOTA run
 
@@ -73,9 +74,10 @@ class InitAll(object):
   """
 
   def __init__(self, help_message):
-    self.iver = misc.iota_version
+    from iota import iota_version, now
+    self.iver = iota_version
     self.user_id = user
-    self.now = misc.now
+    self.now = now
     self.logo = "\n\n"\
    "     IIIIII            OOOOOOO        TTTTTTTTTT          A                 \n"\
    "       II             O       O           TT             A A                \n"\
@@ -98,7 +100,7 @@ class InitAll(object):
 
     # Read input from provided folder(s) or file(s)
     cmd.Command.start("Reading input files")
-    input_entries = [i for i in self.params.input if i != None]
+    input_entries = [i for i in self.params.input if i is not None]
     input_list = ginp.make_input_list(input_entries, filter=True,
                                       filter_type='image')
     cmd.Command.end("Reading input files -- DONE")
@@ -150,8 +152,8 @@ class InitAll(object):
     """ Generates list of image objects from previous grid search """
     from libtbx import easy_pickle as ep
 
-    if self.params.cctbx.selection.select_only.grid_search_path == None:
-      int_dir = misc.set_base_dir('integration', True)
+    if self.params.cctbx.selection.select_only.grid_search_path is None:
+      int_dir = util.set_base_dir('integration', True)
     else:
       int_dir = self.params.cctbx.selection.select_only.grid_search_path
 
@@ -226,7 +228,7 @@ class InitAll(object):
         print ('\n{:-^70}\n'.format('IOTA Parameters'))
         print (help_out)
         inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
-      misc.iota_exit()
+      util.iota_exit()
     elif len(self.args.path) > 1:  # If multiple paths / wildcards
       file_list = ginp.make_input_list(self.args.path)
       list_file = os.path.join(os.path.abspath(os.path.curdir), 'input.lst')
@@ -275,7 +277,7 @@ class InitAll(object):
         msg = None
         print (self.logo)
         print ("ERROR: Invalid input! Need parameter filename or data folder.")
-        misc.iota_exit()
+        util.iota_exit()
 
     # Identify indexing / integration program
     if self.params.advanced.integrate_with == 'cctbx':
@@ -291,14 +293,14 @@ class InitAll(object):
     if msg != '':
       print (msg)
 
-    if self.args.analyze != None:
+    if self.args.analyze is not None:
       print ('ANALYSIS ONLY will be performed (analyzing run #{})'.format(
         self.args.analyze))
       self.analyze_prior_results('{:003d}'.format(int(self.args.analyze)))
-      misc.iota_exit()
+      util.iota_exit()
 
     if self.params.mp_method == 'mpi':
-      rank, size = misc.get_mpi_rank_and_size()
+      rank, size = util.get_mpi_rank_and_size()
       self.master_process = rank == 0
     else:
       self.master_process = True
@@ -330,7 +332,7 @@ class InitAll(object):
           print ("{}: {}".format(i, input_file))
           lf.write('{}\n'.format(input_file))
       print ('\nExiting...\n\n')
-      misc.iota_exit()
+      util.iota_exit()
 
     # If fewer images than requested processors are supplied, set the number of
     # processors to the number of images
@@ -338,8 +340,8 @@ class InitAll(object):
       self.params.n_processors = len(self.input_list)
 
     # Generate base folder paths
-    self.conv_base = misc.set_base_dir('converted_pickles', out_dir = self.params.output)
-    self.int_base = misc.set_base_dir('integration', out_dir = self.params.output)
+    self.conv_base = util.set_base_dir('converted_pickles', out_dir = self.params.output)
+    self.int_base = util.set_base_dir('integration', out_dir = self.params.output)
     self.obj_base = os.path.join(self.int_base, 'image_objects')
     self.fin_base = os.path.join(self.int_base, 'final')
     self.log_base = os.path.join(self.int_base, 'logs')
@@ -360,20 +362,20 @@ class InitAll(object):
     self.logfile = os.path.abspath(os.path.join(self.int_base, 'iota.log'))
 
     # Log starting info
-    misc.main_log(self.logfile, '{:=^80} \n'.format(' IOTA MAIN LOG '))
-    misc.main_log(self.logfile, '{:-^80} \n'.format(' SETTINGS FOR THIS RUN '))
-    misc.main_log(self.logfile, self.txt_out)
+    util.main_log(self.logfile, '{:*^80} \n'.format(' IOTA MAIN LOG '))
+    util.main_log(self.logfile, '{:-^80} \n'.format(' SETTINGS FOR THIS RUN '))
+    util.main_log(self.logfile, self.txt_out)
 
     if self.params.advanced.integrate_with == 'cctbx':
       target_file = self.params.cctbx.target
     elif self.params.advanced.integrate_with == 'dials':
       target_file = self.params.dials.target
-    misc.main_log(self.logfile, '{:-^80} \n\n'
+    util.main_log(self.logfile, '{:-^80} \n\n'
                                 ''.format(' TARGET FILE ({}) CONTENTS '
                                 ''.format(target_file)))
     with open(target_file, 'r') as phil_file:
       phil_file_contents = phil_file.read()
-    misc.main_log(self.logfile, phil_file_contents)
+    util.main_log(self.logfile, phil_file_contents)
 
     # Write target file and record its location in params
     local_target_file = os.path.join(self.int_base, 'target.phil')
@@ -387,5 +389,5 @@ if __name__ == "__main__":
   iota_version = '1.0.001G'
   help_message = ""
 
-  initialize = InitAll(iota_version, help_message)
+  initialize = InitAll(help_message)
   initialize.run()

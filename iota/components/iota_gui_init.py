@@ -1,10 +1,10 @@
-from __future__ import division #, print_function, absolute_import
+from __future__ import division, print_function, absolute_import
 from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 08/29/2018
+Last Changed: 10/16/2018
 Description : IOTA GUI Initialization module
 '''
 
@@ -24,12 +24,11 @@ assert miller
 
 from iota import iota_version, gui_description, gui_license
 import iota.components.iota_input as inp
-import iota.components.iota_misc as misc
+import iota.components.iota_utils as util
 import iota.components.iota_frames as frm
 import iota.components.iota_dialogs as dlg
-from iota.components.iota_utils import InputFinder
 
-ginp = InputFinder()
+ginp = util.InputFinder()
 pid = os.getpid()
 
 try:
@@ -70,7 +69,7 @@ def parse_command_args(help_message):
   parser.add_argument('path', type=str, nargs = '*', default = None,
             help = 'Path to data or file with IOTA parameters')
   parser.add_argument('--version', action = 'version',
-            version = 'IOTA {}'.format(misc.iota_version),
+            version = 'IOTA {}'.format(iota_version),
             help = 'Prints version info of IOTA')
   parser.add_argument('-w', type=int, nargs=1, default=0, dest='watch',
             help = 'Run IOTA in watch mode - check for new images')
@@ -86,12 +85,11 @@ def parse_command_args(help_message):
 # ------------------------------- Main Window -------------------------------- #
 
 class MainWindow(wx.Frame):
-  ''' Frame housing the entire app; all windows open from this one '''
+  """ Frame housing the entire app; all windows open from this one """
 
   def __init__(self, parent, id, title):
     wx.Frame.__init__(self, parent, id, title, size=(800, 500))
-
-    # TODO: Allow GUI to be loaded with command line args, parse into PHIL
+    self.parent = parent
     self.iota_phil = inp.master_phil
     self.prefs_phil = None
     self.target_phil = None
@@ -220,6 +218,21 @@ class MainWindow(wx.Frame):
     self.Bind(ulc.EVT_LIST_INSERT_ITEM, self.onItemInserted,
               self.input_window.input)
 
+
+  def place_and_size(self):
+    """ Place and size the frame"""
+
+    # Determine effective minimum size
+    self.SetMinSize(self.GetEffectiveMinSize())
+
+    # Find mouse position
+    mx, my = wx.GetMousePosition()
+
+    # Center on display
+    self.SetPosition((mx, my))
+    self.Center()
+
+
   def read_command_line_options(self):
 
     help_message = '''This command will run the IOTA GUI '''
@@ -278,10 +291,10 @@ class MainWindow(wx.Frame):
     self.reset_settings()
 
   def onPreferences(self, e):
-    ''' Opens dialog for IOTA preferences
+    """ Opens dialog for IOTA preferences
     :param e: event object for self.tb_btn_prefs
     :return: modifies self.iota_phil with updated parameters
-    '''
+    """
     prefs = dlg.IOTAPreferences(self, phil=self.iota_phil)
     prefs.set_choices()
 
@@ -293,10 +306,10 @@ class MainWindow(wx.Frame):
     self.input_window.gparams = self.iota_phil.extract()
 
   def onImportOptions(self, e):
-    ''' Opens dialog for image import options
+    """ Opens dialog for image import options
     :param e: event object for self.input_window.opt_btn_import
     :return: modifies self.iota_phil with updated parameters
-    '''
+    """
     imp_dialog = dlg.ImportWindow(self,
                                   phil=self.iota_phil,
                                   title='Import Options',
@@ -308,11 +321,11 @@ class MainWindow(wx.Frame):
     imp_dialog.Destroy()
 
   def onProcessOptions(self, e):
-    ''' Opens dialog for image processing options, either for cctbx or DIALS
+    """ Opens dialog for image processing options, either for cctbx or DIALS
     depending on user selection.
     :param e: event object for self.input_window.opt_btn_process
     :return: modifies self.iota_phil with updated parameters
-    '''
+    """
 
     # For cctbx.xfel options
     if self.input_window.int_box.ctr.GetCurrentSelection() == 0:
@@ -349,10 +362,10 @@ class MainWindow(wx.Frame):
       int_dialog.Destroy()
 
   def onAnalysisOptions(self, e):
-    ''' Opens dialog for integrated dataset analysis options
+    """ Opens dialog for integrated dataset analysis options
     :param e: event object for self.input_window.opt_btn_analysis
     :return: modifies self.iota_phil with updated parameters
-    '''
+    """
 
     an_dialog = dlg.AnalysisWindow(self,
                                    phil=self.iota_phil,
@@ -377,7 +390,7 @@ class MainWindow(wx.Frame):
     # Set all main window params (including inputs)
     self.gparams = self.iota_phil.extract()
     self.gparams.input = inputs
-    self.gparams.description = misc.noneset(
+    self.gparams.description = util.noneset(
       self.input_window.project_title.ctr.GetValue())
     self.gparams.output = self.input_window.project_folder.ctr.GetValue()
     self.gparams.n_processors = self.input_window.opt_spc_nprocs.ctr.GetValue()
@@ -389,7 +402,7 @@ class MainWindow(wx.Frame):
     self.iota_phil = self.iota_phil.format(python_object=self.gparams)
 
   def OnAboutBox(self, e):
-    ''' About dialog '''
+    """ About dialog """
     info = wx.AboutDialogInfo()
     info.SetName('IOTA')
     info.SetVersion(iota_version)
@@ -456,7 +469,7 @@ class MainWindow(wx.Frame):
           log_phil = ip.parse(''.join(lines))
         self.iota_phil = self.iota_phil.fetch(source=log_phil)
         rec_init.params = self.iota_phil.extract()
-        input_entries = [i for i in rec_init.params.input if i != None]
+        input_entries = [i for i in rec_init.params.input if i is not None]
         rec_init.input_list = ginp.make_input_list(input_entries)
 
       self.gparams = self.iota_phil.extract()
@@ -478,6 +491,7 @@ class MainWindow(wx.Frame):
                                  init=rec_init,
                                  status=selected[0],
                                  params=self.gparams)
+        self.proc_window.set_position()
         self.proc_window.Show(True)
 
   def onRun(self, e):
@@ -499,12 +513,14 @@ class MainWindow(wx.Frame):
     self.proc_window = frm.ProcWindow(self, -1, title=title,
                                       target_phil=self.target_phil,
                                       phil=self.iota_phil)
-    init = InitAll(iver=misc.iota_version, input_list=input_list)
+    init = InitAll(iver=iota_version, input_list=input_list)
 
     self.proc_window.run(init)
 
     if self.proc_window.good_to_go:
       self.term_file = self.proc_window.tmp_abort_file
+
+      self.proc_window.set_position()
       self.proc_window.Show(True)
 
   def onOutputScript(self, e):
@@ -540,7 +556,7 @@ class MainWindow(wx.Frame):
 
       test_params = final_phil.extract()
 
-      with misc.Capturing() as txt_output:
+      with util.Capturing() as txt_output:
         final_phil.show()
       txt_out = ''
       for one_output in txt_output:
@@ -555,11 +571,11 @@ class MainWindow(wx.Frame):
           phil_file.write(self.target_phil)
 
   def onLoadScript(self, e):
-    '''
+    """
     Widget event either for Load Script menu item or toolbar button
     :param e: event object
     :return:
-    '''
+    """
     load_dlg = wx.FileDialog(self,
                              message="Load script file",
                              defaultDir=os.curdir,
@@ -571,12 +587,13 @@ class MainWindow(wx.Frame):
       self.load_script(load_dlg.GetPaths()[0])
 
   def load_script(self, filepath, update_input_window=True):
-    '''
+    """
     Clears settings and loads new settings from IOTA param file
 
+    :param update_input_window:
     :param filepath: path to script file
     :return:
-    '''
+    """
 
     self.reset_settings()
     # Extract params from file
@@ -612,7 +629,7 @@ class MainWindow(wx.Frame):
 
 
   def reset_settings(self):
-    ''' Clear all controls in input window '''
+    """ Clear all controls in input window """
 
     # Reset inputs
     self.input_window.input.delete_all()
@@ -631,7 +648,7 @@ class MainWindow(wx.Frame):
     self.update_input_window()
 
   def update_input_window(self):
-    ''' Update input window with parameters in PHIL '''
+    """ Update input window with parameters in PHIL """
 
     # Choice of backend
     idx = self.input_window.int_box.ctr.FindString(
@@ -663,7 +680,7 @@ class MainWindow(wx.Frame):
     self.input_window.target_phil = self.target_phil
 
   def fix_old_phil(self, phil):
-    ''' Backwards compatibility: convert settings from old format to new '''
+    """ Backwards compatibility: convert settings from old format to new """
 
     temp_phil = inp.master_phil.fetch(source=phil)
     params = temp_phil.extract()
@@ -738,7 +755,7 @@ class InitAll(object):
     """ Reads input directory or directory tree and makes lists of input images.
         Optional selection of a random subset
     """
-    input_entries = [i for i in self.params.input if i != None]
+    input_entries = [i for i in self.params.input if i is not None]
     input_list = ginp.make_input_list(input_entries,
                                       filter=True,
                                       filter_type='image')
@@ -805,7 +822,7 @@ class InitAll(object):
   #   from libtbx import easy_pickle as ep
   #
   #   if self.params.cctbx.selection.select_only.grid_search_path == None:
-  #     int_dir = misc.set_base_dir('integration', True)
+  #     int_dir = util.set_base_dir('integration', True)
   #   else:
   #     int_dir = self.params.cctbx.selection.select_only.grid_search_path
   #
@@ -830,23 +847,22 @@ class InitAll(object):
 
 
   def sanity_check(self):
-    ''' Check for conditions necessary to starting the run
+    """ Check for conditions necessary to starting the run
     @return: True if passed, False if failed
-    '''
+    """
 
     # Check for existence of appropriate target files. If none are specified,
     # ask to generate defaults; if user says no, fail sanity check. If file is
     # specified but doesn't exist, show error message and fail sanity check
-    if self.target_phil == None:
+    if self.target_phil is None:
       if self.params.advanced.integrate_with == 'cctbx':
         write_def = wx.MessageDialog(None,
                                      'WARNING! No target file for CCTBX.XFEL. '
                                      'Generate defaults?','WARNING',
                                      wx.YES_NO | wx.NO_DEFAULT | wx.ICON_EXCLAMATION)
         if (write_def.ShowModal() == wx.ID_YES):
-          self.target_phil, _ = inp.write_defaults(current_path=self.params.output,
-                                                   write_param_file=False,
-                                                   method='cctbx')
+          self.target_phil, _ = inp.write_defaults(
+            current_path=self.params.output, write_param_file=False)
           return True
         else:
           return False
@@ -867,13 +883,13 @@ class InitAll(object):
       return True
 
   def run(self, gparams, target_phil=None, list_file=None):
-    ''' Run initialization for IOTA GUI
+    """ Run initialization for IOTA GUI
 
         gparams = IOTA parameters from the GUI elements in PHIL format
         gtxt = text version of gparams
         list_file = if "Write Input List" button pressed, specifies name
                     of list file
-    '''
+    """
 
     self.params = gparams
     self.target_phil = target_phil
@@ -897,7 +913,7 @@ class InitAll(object):
       return False
 
     # If list-only option selected, output list only
-    if list_file != None:
+    if list_file is not None:
       with open(list_file, "w") as lf:
         for i, input_file in enumerate(self.input_list, 1):
           lf.write('{}\n'.format(input_file))
@@ -914,9 +930,9 @@ class InitAll(object):
         self.params.n_processors = len(self.input_list)
 
     # Generate base folder paths
-    self.conv_base = misc.set_base_dir('converted_pickles',
+    self.conv_base = util.set_base_dir('converted_pickles',
                                        out_dir=self.params.output)
-    self.int_base = misc.set_base_dir('integration', out_dir=self.params.output)
+    self.int_base = util.set_base_dir('integration', out_dir=self.params.output)
     self.obj_base = os.path.join(self.int_base, 'image_objects')
     self.fin_base = os.path.join(self.int_base, 'final')
     self.log_base = os.path.join(self.int_base, 'logs')
@@ -963,21 +979,21 @@ class InitAll(object):
     final_phil = inp.master_phil.format(python_object=self.params)
 
     # Generate text of params
-    with misc.Capturing() as txt_output:
+    with util.Capturing() as txt_output:
       final_phil.show()
     self.txt_out = ''
     for one_output in txt_output:
       self.txt_out += one_output + '\n'
 
     # Log starting info
-    misc.main_log(self.logfile, '{:=^80} \n'.format(' IOTA MAIN LOG '))
-    misc.main_log(self.logfile, '{:-^80} \n'.format(' SETTINGS FOR THIS RUN '))
-    misc.main_log(self.logfile, self.txt_out)
+    util.main_log(self.logfile, '{:*^80} \n'.format(' IOTA MAIN LOG '))
+    util.main_log(self.logfile, '{:-^80} \n'.format(' SETTINGS FOR THIS RUN '))
+    util.main_log(self.logfile, self.txt_out)
 
     # Log cctbx.xfel / DIALS settings
-    misc.main_log(self.logfile, '{:-^80} \n\n'
+    util.main_log(self.logfile, '{:-^80} \n\n'
                                 ''.format(' TARGET FILE ({}) CONTENTS '
                                           ''.format(local_target_file)))
-    misc.main_log(self.logfile, self.target_phil)
+    util.main_log(self.logfile, self.target_phil)
 
     return True
