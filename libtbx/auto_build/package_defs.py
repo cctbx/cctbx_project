@@ -5,9 +5,9 @@ LABELIT, xia2, DIALS, and Phenix with GUI).  Not all of these can be downloaded
 via the web (yet).
 """
 
-from __future__ import absolute_import, division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
+import json
 import os
 import os.path as op
 import platform
@@ -28,9 +28,8 @@ def get_pypi_package_information(package, version=None, information_only=False):
   '''Retrieve information about a PyPi package.'''
   metadata = 'https://pypi.python.org/pypi/' + package + '/json'
   try:
-    import json
     pypidata = urllib2.urlopen(metadata).read()
-  except Exception: # Python <=2.5, TLS <1.2, ...
+  except Exception: # TLS <1.2, ...
     if information_only:
       return {'name': '', 'version': '', 'summary': ''}
     raise

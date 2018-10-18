@@ -13,8 +13,8 @@ import time
 # CCTBX itself requires Python 2.7, but this script is intended to bootstrap an
 # installation on older systems as well
 def check_python_version():
-  if sys.hexversion < 0x2050000:
-    sys.exit("Python version 2.5 or greater required to run this script")
+  if sys.hexversion < 0x2060000:
+    sys.exit("Python version 2.6 or greater required to run this script")
 
 def call(args, log=sys.stdout, shell=True, cwd=None, verbose=False, env=None):
   # shell=True requires string as args.
@@ -80,7 +80,6 @@ def untar(pkg_name, log=sys.stdout, verbose=False, change_ownership=False,
   else:
     # Note: This code breaks
     #   - extracting compressed files
-    #   - python <2.5 compatibility
     #   - logging
     #   - function parameters verbose and change_ownership
     #   - insufficient trapping of errors
