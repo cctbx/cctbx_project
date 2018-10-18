@@ -274,7 +274,7 @@ class installer (object) :
     if options.dials:
       options.build_gui = True
       options.build_all = True
-      packages += ['pillow', 'jinja2', 'orderedset', 'procrunner', 'scipy', 'scikit_learn']
+      packages += ['pillow', 'jinja2', 'orderedset', 'procrunner', 'scipy', 'scikit_learn', 'tqdm']
     if options.xia2:
       options.build_gui = True
       options.build_all = True
@@ -298,7 +298,7 @@ class installer (object) :
     packages += ['cython', 'hdf5', 'h5py', 'numpy', 'pythonextra', 'docutils']
     packages += ['libsvm', 'lz4_plugin']
     # Development and testing packages.
-    packages += ['pytest', 'junitxml']
+    packages += ['pytest']
     # GUI packages.
     if options.build_gui or options.build_all or options.download_only:
       packages += [
@@ -709,7 +709,6 @@ Installation of Python packages may fail.
       'libsvm',
       'pytest',
       'pythonextra',
-      'junitxml',
       'hdf5',
       'h5py',
       'biopython',
@@ -726,6 +725,7 @@ Installation of Python packages may fail.
       'jinja2',
       'orderedset',
       'procrunner',
+      'tqdm',
       'tabulate',
       # ...
       'freetype',
@@ -1024,10 +1024,6 @@ _replace_sysconfig_paths(build_time_vars)
       confirm_import_module="docutils",
     )
 
-  def build_junitxml(self):
-    self.build_python_module_pip(
-      'junit-xml', package_version=JUNIT_XML_VERSION)
-
   def build_pytest(self):
     self.build_python_module_pip(
       'mock', package_version=MOCK_VERSION)
@@ -1103,10 +1099,9 @@ _replace_sysconfig_paths(build_time_vars)
       confirm_import_module="mpi4py")
 
   def build_py2app(self):
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=PY2APP_PKG,
-      pkg_name_label="py2app",
+    self.build_python_module_pip(
+      package_name='py2app',
+      package_version=PY2APP_VERSION,
       confirm_import_module="py2app")
 
   def build_reportlab(self):
@@ -1162,6 +1157,9 @@ _replace_sysconfig_paths(build_time_vars)
     self.build_python_module_pip(
       'procrunner', package_version=PROCRUNNER_VERSION,
       confirm_import_module='procrunner')
+
+  def build_tqdm(self):
+    self.build_python_module_pip('tqdm', package_version=TQDM_VERSION)
 
   def build_tabulate(self):
     self.build_python_module_pip(
@@ -1230,7 +1228,7 @@ _replace_sysconfig_paths(build_time_vars)
 
   def build_freetype(self):
     self.build_compiled_package_simple(
-      pkg_url=BASE_CCI_PKG_URL,
+      pkg_url=DEPENDENCIES_BASE,
       pkg_name=FREETYPE_PKG,
       pkg_name_label="Freetype")
     if self.check_download_only(): return
@@ -1436,16 +1434,10 @@ _replace_sysconfig_paths(build_time_vars)
     os.chdir(self.tmp_dir)
 
   def build_wxpython(self):
-    if self.wxpython4:
-      print("Building wxPython4 is currently not supported and will most " \
-            "likely fail until wxPython 4.0.2 is released")
-      # 4.0.2 will contain the fix for https://github.com/wxWidgets/Phoenix/issues/780
+    if self.wxpython4 or self.python3:
       self.build_python_module_pip(
-        'wxPython', package_version="4.0.1",
+        'wxPython', package_version="4.0.3",
         confirm_import_module='wx')
-      return
-    if self.python3:
-      print("Skipping installation of wxPython3 - no point doing this on Python3")
       return
 
     pkg_log = self.start_building_package("wxPython")

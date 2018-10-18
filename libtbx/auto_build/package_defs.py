@@ -50,8 +50,8 @@ def get_pypi_package_information(package, version=None, information_only=False):
   return package
 
 DEPENDENCIES_BASE = "https://cdn.rawgit.com/dials/dependencies/master/"
-OPENSSL_PKG = "openssl-1.0.2n.tar.gz"    # OpenSSL
-PYTHON3_PKG = "Python-3.6.5.tgz"
+OPENSSL_PKG = "openssl-1.0.2p.tar.gz"    # OpenSSL
+PYTHON3_PKG = "Python-3.7.0.tgz"
 PYTHON_PKG = "Python-2.7.15.tgz"
 
 # from CCI
@@ -64,33 +64,34 @@ IPYTHON_PKG = "ipython-3.2.1.tar.gz"     # IPython
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
-CYTHON_VERSION="0.27.3"
-DOCUTILS_VERSION="0.12"
+CYTHON_VERSION = "0.28.5"
+DOCUTILS_VERSION = "0.14"
 FUTURE_VERSION="0.16"
 H5PY_VERSION="2.8.0"
-JUNIT_XML_VERSION="1.7"
+JINJA2_VERSION = "2.10"
 MOCK_VERSION="2.0.0"
+MPI4PY_VERSION = "3.0.0"
 NUMPY_VERSION="1.13.3"
+ORDEREDSET_VERSION = "2.0.1"
 PILLOW_VERSION = "4.2.1"
-PYTEST_VERSION="3.4.1"
-PYTEST_XDIST_VERSION="1.22.2"
-SIX_VERSION="1.11.0"
-SPHINX_VERSION="1.7.2" # for documentation
-MPI4PY_VERSION="3.0.0"
-JINJA2_VERSION = "2.9.6"
-ORDEREDSET_VERSION = "2.0"
-PROCRUNNER_VERSION = "0.6.1"
-TABULATE_VERSION = "0.8.2"
+PROCRUNNER_VERSION = "0.8.0"
+PY2APP_VERSION="0.7.3"
+PYTEST_VERSION = "3.6.4"
+PYTEST_XDIST_VERSION = "1.23.0"
 SCIPY_VERSION = "1.0.0"
 SCIKIT_LEARN_VERSION = "0.19.1"
+SIX_VERSION="1.11.0"
+SPHINX_VERSION = "1.7.7" # for documentation
+TABULATE_VERSION = "0.8.2"
+TQDM_VERSION = "4.23.4"
 
 # HDF5
-BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.3/src/"
-HDF5_PKG = "hdf5-1.10.3.tar.bz2"
+BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/"
+HDF5_PKG = "hdf5-1.10.4.tar.bz2"
 
 # GUI dependencies
 LIBPNG_PKG = "libpng-1.5.26.tar.gz"
-FREETYPE_PKG = "freetype-2.6.3.tar.gz"
+FREETYPE_PKG = "freetype-2.9.1.tar.gz"
 
 # Linux-only
 # libraries based on X11R7.7 (http://www.x.org/releases/X11R7.7/src/everything/)
@@ -124,8 +125,6 @@ if (sys.platform.startswith("linux")):
   distribution = platform.dist()
   if ( (distribution[0] == 'redhat') and (distribution[1].startswith('5')) ):
     MATPLOTLIB_PKG = "matplotlib-1.5.1.tar.gz"
-
-PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
 
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
 # https://pypi.python.org/pypi/Send2Trash
@@ -274,7 +273,7 @@ def fetch_all_dependencies (dest_dir,
         FONTCONFIG_PKG, RENDER_PKG, XRENDER_PKG, XFT_PKG, PIXMAN_PKG,
         CAIRO_PKG, HARFBUZZ_PKG, PANGO_PKG, ATK_PKG, TIFF_PKG, GTK_PKG,
         GTK_ENGINE_PKG, GTK_THEME_PKG, FONT_PKG, WXPYTHON_PKG,
-        MATPLOTLIB_PKG, PY2APP_PKG, SEND2TRASH_PKG,
+        MATPLOTLIB_PKG, SEND2TRASH_PKG,
       ] :
       fetch_package(pkg_name)
 
