@@ -37,7 +37,7 @@ def exercise_injector():
     class d(a): pass
     class d_extension(oop.injector, d):
       def get_square(self): return 0
-  except AssertionError, err:
+  except AssertionError as err:
     assert str(err) == "class d already has attribute 'get_square'"
 
 def exercise_memoize():
@@ -60,7 +60,7 @@ def exercise_memoize():
   assert diagnostic == ['+']*2
   try:
     mf(x=1)
-  except TypeError, e:
+  except TypeError as e:
     pass
   else:
     raise Exception_expected

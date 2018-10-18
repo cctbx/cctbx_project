@@ -189,7 +189,7 @@ def check_if_stacktrace_is_propagated_properly(method, nproc):
       method=method,
       processes=nproc,
       preserve_exception_message=True)
-  except ZeroDivisionError, e:
+  except ZeroDivisionError as e:
     exception_seen = True
     exc_type, exc_value, exc_traceback = sys.exc_info()
     assert "division by zero" in str(exc_value.message), "Exception value mismatch: '%s'" % exc_value
@@ -209,7 +209,7 @@ def check_if_stacktrace_is_propagated_properly(method, nproc):
       traceback.print_tb(exc_traceback)
       print("")
       assert stack_contains_fail_function, "Stacktrace lost"
-  except Exception, e:
+  except Exception as e:
     print("Exception type mismatch, expected ZeroDivisionError")
     raise
   assert exception_seen, "Expected exception not thrown"

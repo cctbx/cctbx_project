@@ -270,7 +270,7 @@ class Toolbox(object):
         socket = urllib2.urlopen(url_request, None, 7)
       else:
         socket = urllib2.urlopen(url_request)
-    except SSLError, e:
+    except SSLError as e:
       # This could be a timeout
       if localcopy:
         # Download failed for some reason, but a valid local copy of
@@ -291,7 +291,7 @@ class Toolbox(object):
         return -2
       # otherwise pass on the error message
       raise
-    except urllib2.URLError, e:
+    except urllib2.URLError as e:
       if localcopy:
         # Download failed for some reason, but a valid local copy of
         # the file exists, so use that one instead.

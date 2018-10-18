@@ -97,7 +97,7 @@ def run (args, out=sys.stdout) :
       stdout=sys.stdout,
       stderr=sys.stderr
     )
-  except Exception, e:
+  except Exception as e:
     raise e
   p.wait()
 

@@ -717,7 +717,7 @@ def multi_core_run( myfunction, argstuples, nproc ):
     errstr =  None
     try:
       result = res()
-    except Exception, e:
+    except Exception as e:
       tracestr = ""
       if stacktrace.exc_info()[1]:
         for inf in stacktrace.exc_info()[1]:

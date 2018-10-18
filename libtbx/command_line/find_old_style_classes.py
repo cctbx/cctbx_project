@@ -19,7 +19,7 @@ def run(args):
     try:
       old_style = python_code_parsing.find_old_style_classes(
         python_source_filename=filename)
-    except Exception, e:
+    except Exception as e:
       import traceback
       print(filename)
       print(traceback.format_exc())

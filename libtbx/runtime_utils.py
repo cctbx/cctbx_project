@@ -180,7 +180,7 @@ class detached_process_server (detached_base) :
       return_value = self.target()
     except Abort : # FIXME why is this not working properly?
       self.callback_abort()
-    except Exception, e :
+    except Exception as e :
       print(type(e).__name__, file=sys.stderr)
       if (type(e).__name__ == "Abort") :
         self.callback_abort()
@@ -295,7 +295,7 @@ class detached_process_client (detached_base) :
         host, pid = data.split()
         self._process_host = host
         self._process_pid = int(pid)
-      except Exception, e :
+      except Exception as e :
         print("Error acquiring runtime info:")
         print(e)
       self.callback_start(data)
@@ -352,7 +352,7 @@ class detached_process_client (detached_base) :
           raise
         except EOFError :
           pass
-        except Exception, e :
+        except Exception as e :
           print(e)
         else :
           n_cb = len(accumulated_status)
@@ -371,7 +371,7 @@ class detached_process_client (detached_base) :
           raise
         except EOFError :
           pass
-        except Exception, e :
+        except Exception as e :
           print(e)
         else :
           self.callback_other(current_status)
@@ -396,7 +396,7 @@ class detached_process_client (detached_base) :
     assert (self._process_pid is not None) and (sys.platform != "win32")
     try :
       os.kill(self._process_pid, signal_number)
-    except OSError, e :
+    except OSError as e :
       print(e)
       #self.callback_abort()
       return False
@@ -424,7 +424,7 @@ class detached_process_client (detached_base) :
       if os.path.exists(file_name) :
         try :
           os.remove(file_name)
-        except Exception, e :
+        except Exception as e :
           print(e)
 
 def touch_file (file_name) :
@@ -467,7 +467,7 @@ def run (args) :
     else :
       try :
         arg_phil = libtbx.phil.parse(arg)
-      except RuntimeError, e :
+      except RuntimeError as e :
         print(e)
       else :
         user_phil.append(arg_phil)

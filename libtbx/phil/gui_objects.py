@@ -171,7 +171,7 @@ class style (object) :
                   setattr(self, kwd, value)
               else :
                 setattr(self, kwd, value_words)
-          except Exception, e :
+          except Exception as e :
             print(e)
             pass
             #wxGUI2.DEBUG2("Unrecognized style keyword(s): %s" % style_string)

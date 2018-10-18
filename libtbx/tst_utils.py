@@ -35,7 +35,7 @@ def exercise_misc():
   nfs = utils.number_from_string
   for string in ["True", "False"]:
     try: nfs(string=string)
-    except ValueError, e:
+    except ValueError as e:
       assert str(e) == 'Error interpreting "%s" as a numeric expression.' % (
         string)
     else: raise Exception_expected
@@ -43,7 +43,7 @@ def exercise_misc():
   assert approx_equal(nfs(string="3.14"), 3.14)
   assert approx_equal(nfs(string="cos(0)"), 1)
   try: nfs(string="xxx(0)")
-  except ValueError, e:
+  except ValueError as e:
     assert str(e).startswith(
       'Error interpreting "xxx(0)" as a numeric expression: ')
   else: raise Exception_expected

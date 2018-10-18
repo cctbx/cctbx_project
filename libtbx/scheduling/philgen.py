@@ -901,7 +901,7 @@ class manager(object):
         params = getattr( scope, technology, None ),
         )
 
-    except ConfigurationError, e:
+    except ConfigurationError as e:
       from libtbx.utils import Sorry
       raise Sorry, "Error setting up '%s': %s" % ( technology, e )
 

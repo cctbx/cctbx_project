@@ -99,7 +99,7 @@ class SinglePoller(object):
         stderr = subprocess.PIPE
         )
 
-    except OSError, e:
+    except OSError as e:
       cmdline = " ".join( self.command + [ jobid ] )
       raise errors.ExecutableError, "'%s': %s" % ( cmdline, e )
 
@@ -164,7 +164,7 @@ class CentralPoller(object):
         stderr = subprocess.PIPE
         )
 
-    except OSError, e:
+    except OSError as e:
       raise errors.ExecutableError, "'%s': %s" % ( " ".join( self.command ), e )
 
     ( out, err ) = process.communicate()

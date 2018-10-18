@@ -142,7 +142,7 @@ class index (object) :
         sub_name="LIBTBX_BASE_DIR")
     try :
       f = smart_open.for_writing(file_name, "w")
-    except IOError, e :
+    except IOError as e :
       raise Sorry(str(e))
     else :
       if (replace_path is not None) :
@@ -211,7 +211,7 @@ class index (object) :
       new_phil = self.master_phil.fetch(source=phil_object)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
+    except Exception as e :
       return None
     else :
       return new_phil.extract()
@@ -486,14 +486,14 @@ class index (object) :
       phil_object = self.parse(file_name=file_name)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
+    except Exception as e :
       self.log(e)
       raise Sorry("This parameter file could not be parsed correctly.")
     try :
       new_phil = self.master_phil.fetch(source=phil_object)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
+    except Exception as e :
       self.log(e)
       self.log(open(file_name).read())
       raise Sorry("This file contains invalid parameters for this program. "+
@@ -508,7 +508,7 @@ class index (object) :
       new_phil = self.master_phil.fetch(source=phil_object)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
+    except Exception as e :
       print(str(e))
       print("bad string:")
       print(str(phil_string))

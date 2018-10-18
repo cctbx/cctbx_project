@@ -63,7 +63,7 @@ def job_cycle(outqueue, jobid, target, args, kwargs):
   try:
     value = target( *args, **kwargs )
 
-  except Exception, e:
+  except Exception as e:
     res = result.error( exception = e, traceback = result.get_traceback_info() )
 
   else:

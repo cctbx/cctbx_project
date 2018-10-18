@@ -29,7 +29,7 @@ class Server(object):
       try:
         response = command( server = self )
 
-      except Exception, e:
+      except Exception as e:
         pickle.dump( result.Error( exception = e ), self.outstream, 0 )
 
       else:

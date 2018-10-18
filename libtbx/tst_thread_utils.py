@@ -346,7 +346,7 @@ def exercise_process () :
     tst_abort_2()
     tst_warn_callback()
     tst_pause_resume_kill()
-  except ImportError, e:
+  except ImportError as e:
     print("Skipping thread_utils tests:", str(e))
   else :
     print("OK")

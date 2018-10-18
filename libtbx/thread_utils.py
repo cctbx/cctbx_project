@@ -128,7 +128,7 @@ class simple_task_thread (threading.Thread) :
   def run (self) :
     try :
       self.return_value = self.f()
-    except Exception, e :
+    except Exception as e :
       sys.stderr.write(str(e))
       self._exception = e
 
@@ -172,7 +172,7 @@ class stdout_pipe (object) :
         message = child_process_message(message_type="stdout", data=self._data)
         self._c.send(message)
         self._data = ""
-    except Exception, e :
+    except Exception as e :
       sys.__stderr__.write("Exception in stdout_pipe: %s\n" % str(e))
 
   def close (self) :
@@ -239,7 +239,7 @@ else:
                                             data=return_value)
         except Abort :
           message = child_process_message(message_type="abort", data=None)
-        except Exception, e :
+        except Exception as e :
           if e.__class__.__module__ == "Boost.Python" :
             e = RuntimeError("Boost.Python.%s: %s" % (e.__class__.__name__,
               str(e)))
@@ -318,7 +318,7 @@ else:
           self._child_process.terminate()
           self.join(0.1)
           self._killed = True
-        except OSError, e :
+        except OSError as e :
           print(e)
         else :
           self._cb_abort()
@@ -331,7 +331,7 @@ else:
       assert (self._child_process is not None)
       try :
         os.kill(self._child_process.pid, signal_number)
-      except OSError, e :
+      except OSError as e :
         print(e)
         if (not self._child_process.is_alive()) :
           self._cb_abort() # XXX not sure if this is ideal
@@ -374,7 +374,7 @@ else:
         os.environ["OMP_NUM_THREADS"] = "1"
         self._child_process = child_process
         child_process.start()
-      except Exception, e :
+      except Exception as e :
         sys.__stderr__.write("Error starting child process: %s\n" % str(e))
         child_process = None
       while child_process is not None :

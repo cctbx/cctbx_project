@@ -183,7 +183,7 @@ opt2 = *two_fofc fofc
 """)
   try :
     libtbx.phil.interface.validate_choice_captions(master_phil)
-  except AssertionError, e :
+  except AssertionError as e :
     assert (str(e) == "my_options.opt2")
   else :
     raise Exception_expected

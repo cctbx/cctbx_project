@@ -159,7 +159,7 @@ class ServerProxy (object) :
           result = response[0]
       except KeyboardInterrupt :
         raise
-      except Exception, e :
+      except Exception as e :
         msg = to_str(e)
         if (hasattr(e, "errno")) :
           if (e.errno in [32,54,61,104,111,10054,10061]) :
