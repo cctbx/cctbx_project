@@ -175,8 +175,6 @@ if [ -z "$PYTHON_EXE" ]; then
     PYTHON_EXE='/usr/bin/python2.7'
   elif [ -f "/usr/bin/python2.6" ]; then
     PYTHON_EXE='/usr/bin/python2.6'
-  elif [ -f "/usr/bin/python2.5" ]; then
-    PYTHON_EXE='/usr/bin/python2.5'
   elif [ -f "/usr/bin/python2" ]; then
     PYTHON_EXE='/usr/bin/python2'
   fi
