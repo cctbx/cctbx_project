@@ -1,19 +1,17 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/29/2018
+Last Changed: 10/16/2018
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
 
 
-import sys
 import os
-from cStringIO import StringIO
-
 import iotbx.phil as ip
+from iota.components.iota_utils import Capturing
 
 master_phil = ip.parse("""
 description = None
@@ -337,22 +335,6 @@ mp_queue = None
   .help = Multiprocessing queue
 """)
 
-class Capturing(list):
-  """ Class used to capture stdout from cctbx.xfel objects. Saves output in
-  appendable list for potential logging.
-  """
-  def __enter__(self):
-    self._stdout = sys.stdout
-    self._stderr = sys.stderr
-    sys.stdout = self._stringio_stdout = StringIO()
-    sys.stderr = self._stringio_stderr = StringIO()
-    return self
-  def __exit__(self, *args):
-    self.extend(self._stringio_stdout.getvalue().splitlines())
-    sys.stdout = self._stdout
-    self.extend(self._stringio_stderr.getvalue().splitlines())
-    sys.stderr = self._stderr
-
 def process_input(args,
                   phil_args,
                   input_file,
@@ -388,7 +370,7 @@ def process_input(args,
       command_line_params = argument_interpreter.process(arg=arg)
       final_phil = final_phil.fetch(sources=[command_line_params,])
       consume.append(arg)
-    except Sorry as e:
+    except Sorry,e:
       pass
   for item in consume:
     phil_args.remove(item)

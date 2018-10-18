@@ -2,6 +2,7 @@
 http://pypi.python.org/pypi/cluster/1.1.1b3
 """
 from __future__ import division
+from __future__ import print_function
 
 #
 # This is part of "python-cluster". A library to group similar items together.
@@ -135,7 +136,7 @@ def printmatrix(list):
    format =  " %%%is |" % maxlen
    format = "|" + format*colcount
    for row in list:
-      print format % tuple(row)
+      print(format % tuple(row))
 
 def magnitude(a):
    "calculates the magnitude of a vecor"
@@ -244,12 +245,12 @@ class Cluster:
       """
       Pretty-prints this cluster. Useful for debuging
       """
-      print depth*"   " + "[level %s]" % self.__level
+      print(depth*"   " + "[level %s]" % self.__level)
       for item in self.__items:
          if isinstance(item, Cluster):
             item.display(depth+1)
          else:
-            print depth*"   "+"%s" % item
+            print(depth*"   "+"%s" % item)
 
    def topology(self):
       """

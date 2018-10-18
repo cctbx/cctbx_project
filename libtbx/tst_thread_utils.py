@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.thread_utils import thread_with_callback_and_wait
 from libtbx.thread_utils import process_with_callbacks
 from libtbx.utils import Sorry, Abort
@@ -143,7 +144,7 @@ def tst_no_return_value () :
 #--- test 03 : callbacks for stdout, runtime, result
 def _target_function03 (args, kwds, connection) :
   for i in xrange(4) :
-    print i
+    print(i)
     connection.send(i)
   return 4
 
@@ -220,7 +221,7 @@ def tst_exceptions () :
 # be successful despite taking an extra 100 seconds to finish.
 def _target_function06 (args, kwds, connection) :
   for i in xrange(10) :
-    print i
+    print(i)
     time.sleep(1)
 
 def tst_abort_simple () :
@@ -272,7 +273,7 @@ def tst_warn_callback () :
 #--- pause, resume, and kill
 def _target_function09 (args, kwds, connection) :
   for i in range(10) :
-    print i
+    print(i)
     time.sleep(1)
 
 class _callback_handler_2 (object) :
@@ -297,7 +298,7 @@ class _callback_handler_2 (object) :
 
 def tst_pause_resume_kill () :
   if (sys.platform == "win32") :
-    print "Skipping pause/resume test (not available on Windows)"
+    print("Skipping pause/resume test (not available on Windows)")
   else :
     ch = _callback_handler_2()
     p = process_with_callbacks(
@@ -345,10 +346,10 @@ def exercise_process () :
     tst_abort_2()
     tst_warn_callback()
     tst_pause_resume_kill()
-  except ImportError, e:
-    print "Skipping thread_utils tests:", str(e)
+  except ImportError as e:
+    print("Skipping thread_utils tests:", str(e))
   else :
-    print "OK"
+    print("OK")
 
 if (__name__ == "__main__"):
   exercise_threading()

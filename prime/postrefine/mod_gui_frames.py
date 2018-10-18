@@ -23,7 +23,7 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 import iota.components.iota_misc as misc
-import iota.components.iota_controls as ct
+import iota.components.iota_ui_controls as ct
 from iota.components.iota_utils import InputFinder
 
 import prime.postrefine.mod_gui_dialogs as dlg
@@ -286,7 +286,7 @@ class RuntimeTab(wx.Panel):
 
     # Plot mean CC1/2
     meanCC = info['total_cc12']
-    cycles = list(range(len(meanCC)))
+    cycles = range(len(meanCC))
     self.cc_axes.clear()
     self.cc_axes.set_xlim(0, total_cycles)
     self.cc_axes.set_ylim(0, 100)
@@ -296,7 +296,7 @@ class RuntimeTab(wx.Panel):
     # Plot mean completeness and multiplicity
     mean_comp = info['total_completeness']
     mean_mult = info['total_n_obs']
-    cycles = list(range(len(mean_comp)))
+    cycles = range(len(mean_comp))
     self.comp_axes.clear()
     self.mult_axes.clear()
     self.comp_axes.set_xlim(0, total_cycles)
@@ -667,10 +667,13 @@ class PRIMERunWindow(wx.Frame):
     # If not done yet, write settings file for this run
     settings_file = os.path.join(self.pparams.run_no, 'settings.phil')
     if not os.path.isfile(settings_file):
-      with open(self.prime_file, 'r') as pf:
-        settings = pf.read()
-      with open(settings_file, 'w') as sf:
-        sf.write(settings)
+      try:
+        with open(self.prime_file, 'r') as pf:
+          settings = pf.read()
+        with open(settings_file, 'w') as sf:
+          sf.write(settings)
+      except Exception:
+        pass
 
     # Inspect output and update gauge
     self.gauge_prime.Show()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys, os
 
 def create_autorun(bundle_prefix, single_dir=False):
@@ -54,7 +55,7 @@ def run(args):
   for addl in addl_files:
     cmd += " " + addl
   cmd += " < autorun"
-  print cmd
+  print(cmd)
   from libtbx import easy_run
   easy_run.fully_buffered(command=cmd).raise_if_errors().show_stdout()
   if (not no_unzipsfx):

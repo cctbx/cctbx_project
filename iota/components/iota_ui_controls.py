@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
+from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 08/29/2018
+Last Changed: 10/17/2018
 Description : IOTA GUI controls
 '''
 
@@ -18,9 +19,12 @@ from wxtbx import metallicbutton as mb
 from wxtbx import bitmaps
 import wx.lib.buttons as btn
 
-import numpy as np
+try:  # for Py3 compatibility
+    import itertools.izip as zip
+except ImportError:
+    pass
 
-from iota.components.iota_misc import noneset
+from iota.components.iota_utils import noneset
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -52,7 +56,7 @@ def StandardBitmap(img_name, size=None):
   return bmp
 
 class GradButton(mb.MetallicButton):
-  ''' Customized MetallicButton '''
+  """ Customized MetallicButton """
 
   def __init__(self, parent, label='', bmp=None, size=wx.DefaultSize,
                style=mb.MB_STYLE_BOLD_LABEL,
@@ -85,7 +89,7 @@ class GradButton(mb.MetallicButton):
       self.bind_event(wx.EVT_BUTTON, handler_function)
 
 class MiniButtonBox(wx.Panel):
-  ''' A box with three mini buttons for IOTA panel '''
+  """ A box with three mini buttons for IOTA panel """
 
   def __init__(self, parent):
     wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
@@ -110,7 +114,7 @@ class MiniButtonBox(wx.Panel):
     self.Fit()
 
 class MiniButtonBoxInput(wx.Panel):
-  ''' A box with three mini buttons for Input file panel '''
+  """ A box with three mini buttons for Input file panel """
 
   def __init__(self, parent):
     wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
@@ -152,7 +156,7 @@ class DataTypeChoice(wx.Panel):
 # ---------------------------------- Inputs ---------------------------------- #
 
 class InputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin):
-  ''' Customized UltimateListCtrl with auto-width mixin'''
+  """ Customized UltimateListCtrl with auto-width mixin"""
 
   def __init__(self, parent, ID, n_cols=3, pos=wx.DefaultPosition,
                size=wx.DefaultSize, style=0):
@@ -164,7 +168,7 @@ class InputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin):
 
 class VirtualInputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin,
                            ColumnSorterMixin):
-  ''' Customized Virtual UltimateListCtrl with auto-width mixin'''
+  """ Customized Virtual UltimateListCtrl with auto-width mixin"""
 
   def __init__(self, parent, ID, n_cols=4, pos=wx.DefaultPosition,
                size=wx.DefaultSize, style=0):
@@ -184,7 +188,6 @@ class VirtualInputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin,
     return self
 
   def OnColClick(self, e):
-    print "column clicked"
     e.Skip()
 
   def OnGetItemToolTip(self, item, col):
@@ -213,7 +216,7 @@ class VirtualInputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin,
     return item.GetText()
 
 class InputListItem(object):
-  ''' Class that will contain all the elements of an input list entry '''
+  """ Class that will contain all the elements of an input list entry """
   def __init__(self, path, type, buttons):
     self.id = None
     self.path = path
@@ -265,25 +268,25 @@ class InputListItem(object):
     }
 
 class FileListItem(object):
-  ''' Class that will contain all the elements of a file list entry '''
+  """ Class that will contain all the elements of a file list entry """
   def __init__(self, path, items=None):
-    ''' A generic control to generate an entry in the file list control
+    """ A generic control to generate an entry in the file list control
     :param path: absolute path to file
     :param items: a dictionary of items that will be converted to attributes
-    '''
+    """
     self.id = None
     self.flag = None
     self.path = path
     self.warning = False
 
     if items is not None:
-      for key, value in items.iteritems():
+      for key, value in items.items():
         self.__setattr__(key, value)
 
 # --------------------------------- Controls --------------------------------- #
 
 class CtrlBase(wx.Panel):
-  ''' Control panel base class '''
+  """ Control panel base class """
   def __init__(self,
                parent,
                label_style='normal',
@@ -310,7 +313,7 @@ class CtrlBase(wx.Panel):
       self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.BOLD)
 
 class DialogButtonsCtrl(CtrlBase):
-  ''' Customizable "bottom of window" set of buttons for dialogs '''
+  """ Customizable "bottom of window" set of buttons for dialogs """
 
   def __init__(self, parent,
                preset = None,
@@ -361,7 +364,7 @@ class DialogButtonsCtrl(CtrlBase):
     self.SetSizer(main_sizer)
 
 class TextCtrlWithButtons(CtrlBase):
-  ''' Text control with multiple buttons '''
+  """ Text control with multiple buttons """
   def __init__(self, parent,
                buttons = None,
                button_size = wx.DefaultSize,
@@ -391,7 +394,7 @@ class TextCtrlWithButtons(CtrlBase):
     self.SetSizer(main_sizer)
 
 class InputCtrl(CtrlBase):
-  ''' Generic panel that will place a text control with a label '''
+  """ Generic panel that will place a text control with a label """
 
   def __init__(self, parent,
                label='', label_size=(100, -1),
@@ -428,12 +431,12 @@ class InputCtrl(CtrlBase):
     self.ctr.SetValue(self.value)
 
 class ChoiceCtrl(CtrlBase):
-  ''' Generic panel will place a choice control w/ label and a text control (
-  optional) which will activate when a 'custom' setting is selected '''
+  """ Generic panel will place a choice control w/ label and a text control (
+  optional) which will activate when a 'custom' setting is selected """
 
   def __init__(self, parent,
                choices,
-               custom_choices=[],
+               custom_choices=None,
                label='',
                label_size=(200, -1),
                label_style='normal',
@@ -447,7 +450,7 @@ class ChoiceCtrl(CtrlBase):
     self.custom_value = None
 
     # Extend the sizer if a custom choice(s) specified
-    if len(custom_choices) > 0:
+    if custom_choices:
       ctr_box = wx.FlexGridSizer(1, 4, 0, 10)
       ctr_box.AddGrowableCol(3)
     else:
@@ -471,7 +474,7 @@ class ChoiceCtrl(CtrlBase):
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_RIGHT)
 
     # Create binding for choice in case custom choice(s) specified
-    if len(custom_choices) > 0:
+    if custom_choices:
       self.custom = wx.TextCtrl(self, size=custom_ctrl_size)
       self.custom.Disable()
       ctr_box.Add(self.custom, flag=wx.RIGHT | wx.LEFT | wx.EXPAND, border=10)
@@ -494,7 +497,7 @@ class ChoiceCtrl(CtrlBase):
 
   def reset_default(self):
     self.ctr.SetSelection(0)
-    if self.custom_choices != []:
+    if self.custom_choices:
       self.custom.Disable()
       self.custom.SetValue('')
 
@@ -533,7 +536,7 @@ class CheckListCtrl(CtrlBase):
       self.ctr.Append(choice)
 
 class SpinCtrl(CtrlBase):
-  ''' Generic panel will place a spin control w/ label '''
+  """ Generic panel will place a spin control w/ label """
   def __init__(self, parent,
                label='',
                label_size=wx.DefaultSize,
@@ -599,9 +602,9 @@ class SpinCtrl(CtrlBase):
     self.ctr.SetValue(int(self.value))
 
 class OptionCtrl(CtrlBase):
-  ''' Generic panel will place a text control w/ label
+  """ Generic panel will place a text control w/ label
       - items: a list of tuples (can be one tuple) with 'key' and 'value'
-   '''
+   """
   def __init__(self, parent, items,
                label='',
                label_size=(100, -1),
@@ -726,8 +729,8 @@ class OptionCtrl(CtrlBase):
 
 
 class TwoButtonCtrl(CtrlBase):
-  ''' Generic panel that will place a text control, with a label and an
-      optional large button, and an optional bitmap button'''
+  """ Generic panel that will place a text control, with a label and an
+      optional large button, and an optional bitmap button"""
 
   def __init__(self, parent,
                label='', label_size=(100, -1),
@@ -764,7 +767,7 @@ class TwoButtonCtrl(CtrlBase):
     self.SetSizer(output_box)
 
 class KnobCtrl(CtrlBase):
-  ''' From AGW KnobCtrl class, with attendant spin controls '''
+  """ From AGW KnobCtrl class, with attendant spin controls """
 
   def __init__(self, parent,
                label='',
@@ -784,7 +787,7 @@ class KnobCtrl(CtrlBase):
 
     self.knob_ctr = kc.KnobCtrl(self, -1, size=knob_size)
     if tags:
-      self.knob_ctr.SetTags(list(range(tags_start, tags_end, tags_step)))
+      self.knob_ctr.SetTags(range(tags_start, tags_end, tags_step))
     self.knob_ctr.SetAngularRange(values_start, values_end)
     self.knob_ctr.SetValue(value)
     self.knob_ctr.SetBoundingColour(wx.BLACK)
@@ -812,7 +815,7 @@ class KnobCtrl(CtrlBase):
     self.Bind(fs.EVT_FLOATSPIN, self.onFS_Value_Change, self.value_ctr.ctr)
 
   def onKC_Angle_Change(self, e):
-    print self.knob_ctr.GetMaxValue()
+    print (self.knob_ctr.GetMaxValue())
     self.value_ctr.ctr.SetValue(self.knob_ctr.GetValue())
     e.Skip()
 
@@ -866,12 +869,11 @@ class VirtualImageListCtrl(CtrlBase):
     self.SetSizer(self.sizer)
 
     self.control_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.ctr = VirtualInputListCtrl(self, -1, size=size, n_cols=4,
-                                    style=ulc.ULC_REPORT |
-                                          ulc.ULC_VIRTUAL|
-                                          ulc.ULC_HRULES |
-                                          ulc.ULC_VRULES |
-                                          ulc.ULC_HAS_VARIABLE_ROW_HEIGHT)
+    self.ctr = VirtualInputListCtrl(self, -1, size=size, style=ulc.ULC_REPORT |
+                                                               ulc.ULC_VIRTUAL |
+                                                               ulc.ULC_HRULES |
+                                                               ulc.ULC_VRULES |
+                                                               ulc.ULC_HAS_VARIABLE_ROW_HEIGHT)
 
     self.control_sizer.Add(self.ctr, -1, flag=wx.EXPAND)
     self.sizer.Add(self.control_sizer, 1, flag=wx.EXPAND)
@@ -970,30 +972,35 @@ class PHILBox(CtrlBase):
     self.ctr.SetValue('')
 
 class TableCtrl(CtrlBase):
-  ''' Generic panel will place a table w/ x and y labels
-      Data must be a list of lists for multi-column tables '''
+  """ Generic panel will place a table w/ x and y labels
+      Data must be a list of lists for multi-column tables """
 
   def __init__(self, parent,
-               clabels=[],
+               clabels=None,
                clabel_size=wx.DefaultSize,
-               rlabels=[],
+               rlabels=None,
                rlabel_size=wx.DefaultSize,
-               contents=[],
+               contents=None,
                label_style='normal',
                content_style='normal'):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style,
                       content_style=content_style)
-    nrows = len(rlabels) + 1
-
-    if len(clabels) == 0:
-      ncols = 2
+    if contents is None:
+      contents = []
+    if rlabels:
+      nrows = len(rlabels) + 1
     else:
+      nrows = 1
+
+    if clabels:
       ncols = len(clabels) + 1
+    else:
+      ncols = 2
     self.sizer = wx.FlexGridSizer(nrows, ncols, 10, 10)
 
     # add column labels (xlabels)
-    if len(clabels) > 0:
+    if clabels:
       self.sizer.Add(wx.StaticText(self, label=''))
       for item in clabels:
         clabel = wx.StaticText(self, label=item, size=clabel_size)
@@ -1015,196 +1022,196 @@ class TableCtrl(CtrlBase):
 
     self.SetSizer(self.sizer)
 
-# ------------------------------ Generic Plotter ----------------------------- #
-
-class FastPlotter(CtrlBase):
-  '''Panel with one or multiple charts in it with these characteristics:
-        1. Chart is configurable (w/ axis sharing)
-        2. Chart is fast-updated (i.e. new data are added to existing chart)
-        3. Data are selectable (w/ up to three span selectors per chart)
-
-     n_plots: number of plots, can be either int, signifying number of plots, or
-              tuple, signifying how the plots are arranged
-     axes: list of axis object names, e.g. ['ax1', 'ax2', 'ax3']; must be same
-           length as number of plots
-     legends: list of tuples; each tuple contains labels for x- and y-axes
-     transparent: Boolean, set to True if want figure/plot to be transparent
-  '''
-
-  # NOTE: THIS DOES NOT YET WORK!
-
-  # Constructor
-  def __init__(self, parent,
-               n_plots=1,
-               axes=None,
-               labels=None,
-               chart_label='',
-               sharex=False,
-               sharey=False,
-               transparent=True,
-               slider=True):
-
-    from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-    from matplotlib import pyplot as plt
-    import numpy as np
-
-    CtrlBase.__init__(self, parent)
-
-    # Initialize the main sizer for the chart
-    self.main_box = wx.StaticBox(self, label=chart_label)
-    self.main_fig_sizer = wx.StaticBoxSizer(self.main_box, wx.VERTICAL)
-    self.SetSizer(self.main_fig_sizer)
-
-    # Create figure and axis array; flatten axis array to zip with other info
-    self.track_figure, axarr = plt.subplots(n_plots, sharex=sharex)
-    axarr_flat = [ax for sub_ax in axarr for ax in sub_ax]
-
-    # Make sure the number of axes matches number of axis names / legends
-    try:
-      assert len(axarr_flat) == len(axes) == len(labels)
-    except AssertionError:
-      print 'FastPlotter Error: Match number of plots to number of ' \
-            'axes and axis labels!'
-
-    # Generate generic Nonetype axis object names & labels if none are provided
-    if axes is None:
-      axes = [None] * len(axes)
-    if labels is None:
-      labels = [None] * len(axes)
-    axes_w_names = zip(axes, axarr_flat, labels)
-
-    # Attach axis objects to class attributes (handling various cases)
-    for axn in axes_w_names:
-      ax_name = axn[0]
-      if ax_name is None:
-        ax_name = 'ax' + str(axes_w_names.index(axn))
-      ax_obj = axn[1]
-      ax_legend = axn[2]
-      if transparent:
-        ax_obj.patch.set_visible(False)
-      if ax_legend is not None:
-        if isinstance(ax_legend, (list, tuple)):
-          ax_obj.set_xlabel(ax_legend[0])
-          ax_obj.set_ylabel(ax_legend[1])
-        else:
-          ax_obj.set_ylabel(ax_legend)
-      ax_obj.set_autoscaley_on(True)
-      setattr(self, ax_name, ax_obj)
-
-    # Data-handling attributes
-    self.xdata = []
-    self.ydata = []
-    self.x_min = 0
-    self.x_max = 1
-    self.y_max = 1
-
-    # Chart navigation attributes
-    self.bracket_set = False
-    self.button_hold = False
-    self.plot_zoom = False
-    self.chart_range = None
-    self.selector = None
-    self.max_lock = True
-    self.patch_x = 0
-    self.patch_x_last = 1
-    self.patch_width = 1
-    self.start_edge = 0
-    self.end_edge = 1
-
-    # Set general figure characteristics (default tight layout)
-    if transparent:
-      self.track_figure.patch.set_visible(False)
-    self.track_figure.set_tight_layout(True)
-    self.track_canvas = FigureCanvas(self, -1, self.track_figure)
-
-    # Slider bar for the plot
-    if slider:
-      self.plot_sb = wx.Slider(self, minValue=0, maxValue=1)
-      self.plot_sb.Hide()
-      self.Bind(wx.EVT_SCROLL, self.onScroll, self.plot_sb)
-
-    self.main_fig_sizer.Add(self.track_canvas, 1, wx.EXPAND)
-    self.main_fig_sizer.Add(self.plot_sb, flag=wx.EXPAND)
-
-    # Plot bindings
-    self.track_figure.canvas.mpl_connect('button_press_event', self.onPress)
-
-  def onScroll(self, e):
-    sb_center = self.plot_sb.GetValue()
-    half_span = (self.x_max - self.x_min) / 2
-    if sb_center - half_span == 0:
-      self.x_min = 0
-      self.x_max = half_span * 2
-    else:
-      self.x_min = sb_center - half_span
-      self.x_max = sb_center + half_span
-
-    if self.plot_sb.GetValue() == self.plot_sb.GetMax():
-      self.max_lock = True
-    else:
-      self.max_lock = False
-
-    self.draw_plot()
-
-
-  def draw_plot(self, new_x=None, new_y=None, new_data=False):
-
-    if new_x is None:
-      new_x = []
-    if new_y is None:
-      new_y = []
-
-    nref_x = np.append(self.xdata, np.array(new_x).astype(np.double))
-    nref_y = np.append(self.ydata, np.array(new_y).astype(np.double))
-    self.xdata = nref_x
-    self.ydata = nref_y
-    nref_xy = zip(nref_x, nref_y)
-    all_acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
-    all_rej = [i[0] for i in nref_xy if i[1] < min_bragg]
-
-    if nref_x != [] and nref_y != []:
-      if self.plot_zoom:
-        if self.max_lock:
-          self.x_max = np.max(nref_x)
-          self.x_min = self.x_max - self.chart_range
-      else:
-        self.x_min = -1
-        self.x_max = np.max(nref_x) + 1
-
-      if min_bragg > np.max(nref_y):
-        self.y_max = min_bragg + int(0.1 * min_bragg)
-      else:
-        self.y_max = np.max(nref_y) + int(0.1 * np.max(nref_y))
-
-      self.track_axes.set_xlim(self.x_min, self.x_max)
-      self.track_axes.set_ylim(0, self.y_max)
-
-    else:
-      self.x_min = -1
-      self.x_max = 1
-
-    acc = [i for i in all_acc if i > self.x_min and i < self.x_max]
-    rej = [i for i in all_rej if i > self.x_min and i < self.x_max]
-
-    self.acc_plot.set_xdata(nref_x)
-    self.rej_plot.set_xdata(nref_x)
-    self.acc_plot.set_ydata(nref_y)
-    self.rej_plot.set_ydata(nref_y)
-    self.acc_plot.set_markevery(acc)
-    self.rej_plot.set_markevery(rej)
-
-    self.Layout()
-
-    count = '{}'.format(len([i for i in nref_xy if i[1] >= min_bragg]))
-    self.main_window.tracker_panel.count_txt.SetLabel(count)
-    self.main_window.tracker_panel.status_sizer.Layout()
-
-    # Set up scroll bar
-    if len(self.xdata) > 0:
-      self.plot_sb.SetMax(np.max(nref_x))
-      if self.max_lock:
-        self.plot_sb.SetValue(self.plot_sb.GetMax())
-
-    # Draw extended plots
-    self.track_axes.draw_artist(self.acc_plot)
-    self.track_axes.draw_artist(self.rej_plot)
+# # ------------------------------ Generic Plotter ----------------------------- #
+#
+# class FastPlotter(CtrlBase):
+#   '''Panel with one or multiple charts in it with these characteristics:
+#         1. Chart is configurable (w/ axis sharing)
+#         2. Chart is fast-updated (i.e. new data are added to existing chart)
+#         3. Data are selectable (w/ up to three span selectors per chart)
+#
+#      n_plots: number of plots, can be either int, signifying number of plots, or
+#               tuple, signifying how the plots are arranged
+#      axes: list of axis object names, e.g. ['ax1', 'ax2', 'ax3']; must be same
+#            length as number of plots
+#      legends: list of tuples; each tuple contains labels for x- and y-axes
+#      transparent: Boolean, set to True if want figure/plot to be transparent
+#   '''
+#
+#   # NOTE: THIS DOES NOT YET WORK!
+#
+#   # Constructor
+#   def __init__(self, parent,
+#                n_plots=1,
+#                axes=None,
+#                labels=None,
+#                chart_label='',
+#                sharex=False,
+#                sharey=False,
+#                transparent=True,
+#                slider=True):
+#
+#     from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+#     from matplotlib import pyplot as plt
+#     import numpy as np
+#
+#     CtrlBase.__init__(self, parent)
+#
+#     # Initialize the main sizer for the chart
+#     self.main_box = wx.StaticBox(self, label=chart_label)
+#     self.main_fig_sizer = wx.StaticBoxSizer(self.main_box, wx.VERTICAL)
+#     self.SetSizer(self.main_fig_sizer)
+#
+#     # Create figure and axis array; flatten axis array to zip with other info
+#     self.track_figure, axarr = plt.subplots(n_plots, sharex=sharex)
+#     axarr_flat = [ax for sub_ax in axarr for ax in sub_ax]
+#
+#     # Make sure the number of axes matches number of axis names / legends
+#     try:
+#       assert len(axarr_flat) == len(axes) == len(labels)
+#     except AssertionError:
+#       print ('FastPlotter Error: Match number of plots to number of ' \
+#             'axes and axis labels!')
+#
+#     # Generate generic Nonetype axis object names & labels if none are provided
+#     if axes is None:
+#       axes = [None] * len(axes)
+#     if labels is None:
+#       labels = [None] * len(axes)
+#     axes_w_names = zip(axes, axarr_flat, labels)
+#
+#     # Attach axis objects to class attributes (handling various cases)
+#     for axn in axes_w_names:
+#       ax_name = axn[0]
+#       if ax_name is None:
+#         ax_name = 'ax' + str(axes_w_names.index(axn))
+#       ax_obj = axn[1]
+#       ax_legend = axn[2]
+#       if transparent:
+#         ax_obj.patch.set_visible(False)
+#       if ax_legend is not None:
+#         if isinstance(ax_legend, (list, tuple)):
+#           ax_obj.set_xlabel(ax_legend[0])
+#           ax_obj.set_ylabel(ax_legend[1])
+#         else:
+#           ax_obj.set_ylabel(ax_legend)
+#       ax_obj.set_autoscaley_on(True)
+#       setattr(self, ax_name, ax_obj)
+#
+#     # Data-handling attributes
+#     self.xdata = []
+#     self.ydata = []
+#     self.x_min = 0
+#     self.x_max = 1
+#     self.y_max = 1
+#
+#     # Chart navigation attributes
+#     self.bracket_set = False
+#     self.button_hold = False
+#     self.plot_zoom = False
+#     self.chart_range = None
+#     self.selector = None
+#     self.max_lock = True
+#     self.patch_x = 0
+#     self.patch_x_last = 1
+#     self.patch_width = 1
+#     self.start_edge = 0
+#     self.end_edge = 1
+#
+#     # Set general figure characteristics (default tight layout)
+#     if transparent:
+#       self.track_figure.patch.set_visible(False)
+#     self.track_figure.set_tight_layout(True)
+#     self.track_canvas = FigureCanvas(self, -1, self.track_figure)
+#
+#     # Slider bar for the plot
+#     if slider:
+#       self.plot_sb = wx.Slider(self, minValue=0, maxValue=1)
+#       self.plot_sb.Hide()
+#       self.Bind(wx.EVT_SCROLL, self.onScroll, self.plot_sb)
+#
+#     self.main_fig_sizer.Add(self.track_canvas, 1, wx.EXPAND)
+#     self.main_fig_sizer.Add(self.plot_sb, flag=wx.EXPAND)
+#
+#     # Plot bindings
+#     self.track_figure.canvas.mpl_connect('button_press_event', self.onPress)
+#
+#   def onScroll(self, e):
+#     sb_center = self.plot_sb.GetValue()
+#     half_span = (self.x_max - self.x_min) / 2
+#     if sb_center - half_span == 0:
+#       self.x_min = 0
+#       self.x_max = half_span * 2
+#     else:
+#       self.x_min = sb_center - half_span
+#       self.x_max = sb_center + half_span
+#
+#     if self.plot_sb.GetValue() == self.plot_sb.GetMax():
+#       self.max_lock = True
+#     else:
+#       self.max_lock = False
+#
+#     self.draw_plot()
+#
+#
+#   def draw_plot(self, new_x=None, new_y=None):
+#
+#     if new_x is None:
+#       new_x = []
+#     if new_y is None:
+#       new_y = []
+#
+#     nref_x = np.append(self.xdata, np.array(new_x).astype(np.double))
+#     nref_y = np.append(self.ydata, np.array(new_y).astype(np.double))
+#     self.xdata = nref_x
+#     self.ydata = nref_y
+#     nref_xy = zip(nref_x, nref_y)
+#     all_acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
+#     all_rej = [i[0] for i in nref_xy if i[1] < min_bragg]
+#
+#     if nref_x != [] and nref_y != []:
+#       if self.plot_zoom:
+#         if self.max_lock:
+#           self.x_max = np.max(nref_x)
+#           self.x_min = self.x_max - self.chart_range
+#       else:
+#         self.x_min = -1
+#         self.x_max = np.max(nref_x) + 1
+#
+#       if min_bragg > np.max(nref_y):
+#         self.y_max = min_bragg + int(0.1 * min_bragg)
+#       else:
+#         self.y_max = np.max(nref_y) + int(0.1 * np.max(nref_y))
+#
+#       self.track_axes.set_xlim(self.x_min, self.x_max)
+#       self.track_axes.set_ylim(0, self.y_max)
+#
+#     else:
+#       self.x_min = -1
+#       self.x_max = 1
+#
+#     acc = [i for i in all_acc if i > self.x_min and i < self.x_max]
+#     rej = [i for i in all_rej if i > self.x_min and i < self.x_max]
+#
+#     self.acc_plot.set_xdata(nref_x)
+#     self.rej_plot.set_xdata(nref_x)
+#     self.acc_plot.set_ydata(nref_y)
+#     self.rej_plot.set_ydata(nref_y)
+#     self.acc_plot.set_markevery(acc)
+#     self.rej_plot.set_markevery(rej)
+#
+#     self.Layout()
+#
+#     count = '{}'.format(len([i for i in nref_xy if i[1] >= min_bragg]))
+#     self.main_window.tracker_panel.count_txt.SetLabel(count)
+#     self.main_window.tracker_panel.status_sizer.Layout()
+#
+#     # Set up scroll bar
+#     if len(self.xdata) > 0:
+#       self.plot_sb.SetMax(np.max(nref_x))
+#       if self.max_lock:
+#         self.plot_sb.SetValue(self.plot_sb.GetMax())
+#
+#     # Draw extended plots
+#     self.track_axes.draw_artist(self.acc_plot)
+#     self.track_axes.draw_artist(self.rej_plot)

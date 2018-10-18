@@ -30,7 +30,7 @@ class exception_capturing_thread(threading.Thread):
     try:
       super( exception_capturing_thread, self ).run()
 
-    except Exception, e:
+    except Exception as e:
       self.exitcode = 1
       self.err = e
 

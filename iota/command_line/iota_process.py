@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 # LIBTBX_SET_DISPATCHER_NAME iota.process
 
 '''
@@ -58,10 +58,7 @@ class ProcessAll(Thread):
       parallel_map(iterable=self.iterable,
                    func = self.full_proc_wrapper,
                    processes=self.init.params.n_processors)
-      end_filename = os.path.join(self.init.tmp_base, 'finish.cfg')
-      with open(end_filename, 'w') as ef:
-        ef.write('')
-    except IOTATermination as e:
+    except IOTATermination, e:
       aborted_file = os.path.join(self.init.int_base, '.aborted.tmp')
       with open(aborted_file, 'w') as abtf:
         abtf.write('')
@@ -70,11 +67,11 @@ class ProcessAll(Thread):
   def full_proc_wrapper(self, input_entry):
     abort = os.path.isfile(self.abort_file)
     if abort:
-      print 'ABORTING ... NOW!!'
+      print ('ABORTING ... NOW!!')
       os.remove(self.abort_file)
       raise IOTATermination('IOTA: Run aborted by user')
     else:
-      print 'Processing --- {}'.format(input_entry[2])
+      print ('Processing --- {}'.format(input_entry[2]))
       proc_image_instance = ProcessImage(init=self.init,
                                          input_entry=input_entry,
                                          input_type=self.type)

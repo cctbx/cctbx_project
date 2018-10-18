@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def exercise_posix_relpath(f, enable_abspath_if_through_root):
   # based on .test_relpath() in Python-2.7.2/Lib/test/test_posixpath.py
   import os
@@ -166,10 +167,10 @@ def run(args):
   assert len(random_new_directory_name()) == len("tmp_dir_00000000")
   import os
   if (os.name == "nt") : # FIXME
-    print "skipping directory cleanup test on Windows"
+    print("skipping directory cleanup test on Windows")
   else :
     exercise_cleanup()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

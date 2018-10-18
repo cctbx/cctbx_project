@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import binary_search
 import random
 import sys
@@ -67,7 +68,7 @@ def run(args):
     assert info.number_of_iterations >= info.number_of_callbacks
     assert info.bad_gap_width >= 0
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

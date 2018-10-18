@@ -15,7 +15,7 @@ class Thread(threading.Thread):
     try:
       super( Thread, self ).run()
 
-    except Exception, e:
+    except Exception as e:
       #import traceback
       #print traceback.format_exc()
       self.exitcode = 1

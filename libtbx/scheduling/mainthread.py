@@ -99,7 +99,7 @@ class manager(object):
       try:
         value = target( *args, **kwargs )
 
-      except Exception, e:
+      except Exception as e:
         res = result.error( exception = e, traceback = result.get_traceback_info() )
 
       else:

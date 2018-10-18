@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 08/29/2018
+Last Changed: 10/17/2018
 Description : IOTA GUI Dialogs
 '''
 
@@ -15,10 +15,10 @@ from wxtbx import bitmaps
 
 from iotbx import phil as ip
 
-import iota.components.iota_controls as ct
+import iota.components.iota_ui_controls as ct
 from iota.components.iota_input import master_phil
-from iota.components.iota_misc import UnicodeCharacters, WxFlags, noneset
-
+from iota.components.iota_utils import UnicodeCharacters, WxFlags, noneset, \
+  norm_font_size
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -43,7 +43,7 @@ u = UnicodeCharacters()
 f = WxFlags()
 
 
-# ---------------------------------------------------------------------------- #
+# ------------------------------ Base Classes -------------------------------- #
 
 class BaseDialog(wx.Dialog):
   def __init__(self, parent, style=wx.DEFAULT_DIALOG_STYLE,
@@ -74,6 +74,7 @@ class BaseDialog(wx.Dialog):
       self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.NORMAL)
     elif content_style == 'italic_bold':
       self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.BOLD)
+
 
 class BaseBackendDialog(BaseDialog):
   def __init__(self, parent, phil,
@@ -174,19 +175,25 @@ class BaseBackendDialog(BaseDialog):
     else:
       method = 'cctbx'
     from iota.components.iota_input import write_defaults
-    default_phil, _ = write_defaults(current_path=None,
-                                     txt_out=None,
-                                     method=method,
-                                     write_target_file=False,
+    default_phil, _ = write_defaults(method=method, write_target_file=False,
                                      write_param_file=False)
     self.target_phil = '\n'.join(default_phil)
 
 
+class BasePanel(wx.Panel):
+  def __init__(self, parent):
+    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=(800, 500))
+
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(self.main_sizer)
+
+# ---------------------------------------------------------------------------- #
+
 class IOTAPreferences(BaseDialog):
-  ''' Class for dialog that houses IOTA interface preferences, e.g.:
+  """ Class for dialog that houses IOTA interface preferences, e.g.:
         - multiprocessing / queue settings
         - monitor mode settings
-        - miscellaneous interface-only settings '''
+        - miscellaneous interface-only settings """
 
   def __init__(self, parent, phil=None,
                label_style='bold',
@@ -238,12 +245,9 @@ class IOTAPreferences(BaseDialog):
     queue_sizer.Add(self.queues, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
                     border=10)
 
-    self.custom_queue = ct.OptionCtrl(self,
-                                      items=[('cqueue', '')],
+    self.custom_queue = ct.OptionCtrl(self, items=[('cqueue', '')],
                                       label='Custom Queue:',
-                                      label_size=(120, -1),
-                                      label_style='normal',
-                                      ctrl_size=(150, -1))
+                                      label_size=(120, -1), ctrl_size=(150, -1))
     queue_sizer.Add(self.custom_queue, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
                     border=10)
 
@@ -269,12 +273,9 @@ class IOTAPreferences(BaseDialog):
     self.chk_cont_mode.SetValue(False)
     self.chk_mm_timeout = wx.CheckBox(self, label='Monitor Mode Timeout')
     self.chk_mm_timeout.SetValue(False)
-    self.opt_timeout = ct.OptionCtrl(self,
-                                     items=[('timeout', '')],
+    self.opt_timeout = ct.OptionCtrl(self, items=[('timeout', '')],
                                      label='Timeout (sec):',
-                                     label_size=(120, -1),
-                                     label_style='normal',
-                                     ctrl_size=(150, -1))
+                                     label_size=(120, -1), ctrl_size=(150, -1))
     self.chk_mm_timeout.Disable()
     self.opt_timeout.Disable()
     adv_sizer.Add(self.chk_cont_mode, flag=f.stack, border=10)
@@ -282,23 +283,16 @@ class IOTAPreferences(BaseDialog):
     adv_sizer.Add(self.opt_timeout, flag=f.stack, border=10)
 
     # Sub-sample preferences
-    self.chk_image_range = ct.OptionCtrl(self,
-                                         items=[('range', '')],
+    self.chk_image_range = ct.OptionCtrl(self, items=[('range', '')],
                                          label_size=wx.DefaultSize,
                                          checkbox=True,
-                                         checkbox_state=False,
                                          checkbox_label='Image Range: ',
                                          ctrl_size=(200, -1))
     adv_sizer.Add(self.chk_image_range, flag=f.stack, border=10)
 
-    self.chk_random_sample = ct.SpinCtrl(self,
-                                         label_size=wx.DefaultSize,
-                                         checkbox=True,
-                                         checkbox_state=False,
+    self.chk_random_sample = ct.SpinCtrl(self, checkbox=True,
                                          checkbox_label='Random subset: ',
-                                         ctrl_value=100,
-                                         ctrl_size=(80, -1),
-                                         ctrl_min=0,
+                                         ctrl_value=100, ctrl_size=(80, -1),
                                          ctrl_max=5000)
     adv_sizer.Add(self.chk_random_sample, flag=f.stack, border=10)
 
@@ -382,7 +376,7 @@ class IOTAPreferences(BaseDialog):
 
     # Set subset values
     if self.random_subset:
-      self.chk_random_sample.toggle_boxes(flag_on=True)
+      self.chk_random_sample.toggle_boxes()
       self.chk_random_sample.ctr.SetValue(self.random_subset_number)
 
     if self.image_range:
@@ -692,7 +686,7 @@ class ImportWindow(BaseDialog):
         str(self.params.image_triage.grid_search.step_size))
 
   def read_phil(self):
-    ''' TODO: make PHIL reading more automated! '''
+    """ TODO: make PHIL reading more automated! """
 
     # Rename pickle prefix
     conv_prefix = str(self.params.image_conversion.rename_pickle).lower()
@@ -733,7 +727,7 @@ class ImportWindow(BaseDialog):
     self.triage_choice(self.params.image_triage.type)
 
   def onOK(self, e):
-    ''' Accept changes and populate the PHIL scope '''
+    """ Accept changes and populate the PHIL scope """
 
     if self.mod_mask.ctr.GetValue() == '':
       maskpath = None
@@ -834,15 +828,8 @@ class CCTBXOptions(BaseBackendDialog):
     self.splitter.SplitVertically(self.options, self.phil_panel)
 
     # Target file input
-    self.phil = ct.PHILBox(self.phil_panel,
-                           btn_import=True,
-                           btn_import_label='Import PHIL',
-                           btn_export=False,
-                           btn_default=True,
-                           btn_default_label='Default PHIL',
-                           btn_pos='bottom',
-                           ctr_size=(-1, 300),
-                           ctr_value='')
+    self.phil = ct.PHILBox(self.phil_panel, btn_pos='bottom',
+                           ctr_size=(-1, 300))
     self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=5)
 
     # Grid search options
@@ -1035,7 +1022,7 @@ class CCTBXOptions(BaseBackendDialog):
   def onAdvanced(self, e):
     mode = self.dlg_ctr.choice.GetSelection()
     if mode == 0:
-      self.show_hide_advanced(show=False)
+      self.show_hide_advanced()
     else:
       self.show_hide_advanced(show=True)
 
@@ -1131,7 +1118,7 @@ class CCTBXOptions(BaseBackendDialog):
       self.spot_area.range.SetValue('1')
 
   def read_param_phil(self):
-    ''' Reads parameters in the IOTA param PHIL and populates option controls '''
+    """ Reads parameters in the IOTA param PHIL and populates option controls """
 
     # LABELIT target file settings
     if self.target_phil is None:
@@ -1223,7 +1210,7 @@ class CCTBXOptions(BaseBackendDialog):
         self.filt_ref.ref.SetValue(str(rf))
 
   def onOK(self, e):
-    ''' Output PHIL settings & save target file '''
+    """ Output PHIL settings & save target file """
 
     # Read cctbx.xfel PHIL string
     if self.phil.ctr.GetValue() == '':
@@ -1380,15 +1367,8 @@ class DIALSOptions(BaseBackendDialog):
     self.splitter.SplitVertically(self.options, self.phil_panel)
 
     # Target file input
-    self.phil = ct.PHILBox(self.phil_panel,
-                           btn_import=True,
-                           btn_import_label='Import PHIL',
-                           btn_export=False,
-                           btn_default=True,
-                           btn_default_label='Default PHIL',
-                           btn_pos='bottom',
-                           ctr_size=(-1, 300),
-                           ctr_value='')
+    self.phil = ct.PHILBox(self.phil_panel, btn_pos='bottom',
+                           ctr_size=(-1, 300))
     self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=5)
 
     # Target parameters
@@ -1504,7 +1484,7 @@ class DIALSOptions(BaseBackendDialog):
     self.options_sizer.Add(self.filt_options, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.show_hide_script()
-    self.show_hide_advanced(show=False)
+    self.show_hide_advanced()
     self.Layout()
     self.options.SetupScrolling()
     self.read_param_phil()
@@ -1519,7 +1499,7 @@ class DIALSOptions(BaseBackendDialog):
   def onAdvanced(self, e):
     mode = self.dlg_ctr.choice.GetSelection()
     if mode == 0:
-      self.show_hide_advanced(show=False)
+      self.show_hide_advanced()
     else:
       self.show_hide_advanced(show=True)
 
@@ -1626,7 +1606,7 @@ class DIALSOptions(BaseBackendDialog):
 
 
   def onOK(self, e):
-    ''' Populate param PHIL file for DIALS options '''
+    """ Populate param PHIL file for DIALS options """
 
     if self.phil.ctr.GetValue() == '':
       trg_warning = wx.MessageDialog(None,
@@ -1795,10 +1775,10 @@ class AnalysisWindow(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def read_param_phil(self):
-    ''' Read in parameters from IOTA parameter PHIL'''
+    """ Read in parameters from IOTA parameter PHIL"""
 
     if self.params.analysis.run_clustering:
-      self.clustering.toggle_boxes(flag_on=True)
+      self.clustering.toggle_boxes()
       self.clustering.threshold.SetValue(
         str(self.params.analysis.cluster_threshold))
       self.clustering.limit.SetValue(
@@ -1815,7 +1795,7 @@ class AnalysisWindow(BaseDialog):
     self.summary_graphs.SetValue(self.params.analysis.summary_graphs)
 
   def onOK(self, e):
-    ''' Populate param PHIL and pass on to main '''
+    """ Populate param PHIL and pass on to main """
 
     viz = self.visualization.ctr.GetString(self.visualization.ctr.GetSelection())
 
@@ -1900,6 +1880,7 @@ class WatchModeTimeOut(wx.Dialog):
       self.timeout_length = int(self.opt_custom.GetValue())
     e.Skip()
 
+
 class DirView(BaseDialog):
   def __init__(self, parent,
                label_style='bold',
@@ -1922,6 +1903,7 @@ class DirView(BaseDialog):
     # Dialog control
     self.main_sizer.Add(self.CreateSeparatedButtonSizer(wx.OK),
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10)
+
 
 class TextFileView(BaseDialog):
   def __init__(self, parent,
@@ -1978,7 +1960,8 @@ class ViewerWarning(BaseDialog):
     self.rb2_img_view = wx.RadioButton(self, label='First 10 images')
     self.rb3_img_view = wx.RadioButton(self, label='First 50 images')
     self.rb4_img_view = wx.RadioButton(self, label='First 100 images')
-    self.rb5_img_view = wx.RadioButton(self, label='All images')
+    self.rb5_img_view = wx.RadioButton(self, label='All {} images'
+                                      ''.format(self.img_list_length))
     self.rb_custom = wx.RadioButton(self, label='Other: ')
     self.opt_custom = wx.TextCtrl(self, size=(100, -1))
     self.opt_custom.Disable()
@@ -2043,6 +2026,7 @@ class ViewerWarning(BaseDialog):
     elif self.rb_custom.GetValue():
       self.no_images = self.opt_custom.GetValue()
     self.EndModal(wx.ID_OK)
+
 
 class RecoveryDialog(BaseDialog):
 
@@ -2117,12 +2101,13 @@ class RecoveryDialog(BaseDialog):
 
   def onOK(self, e):
     for i in range(self.pathlist.GetItemCount()):
-      if self.pathlist.IsSelected(i):
+      if self.pathlist.IsSelected(idx=i):
 
         self.selected = [self.pathlist.GetItemText(i, col=2),
                          self.pathlist.GetItemText(i, col=3)]
         self.recovery_mode = self.dlg_ctr.choice.GetSelection()
     e.Skip()
+
 
 class DIALSSpfDialog(BaseDialog):
   def __init__(self, parent,
@@ -2256,7 +2241,7 @@ class DIALSSpfDialog(BaseDialog):
       self.mod_mask.ctr.SetValue('')
 
   def onOK(self, e):
-    ''' Populate param PHIL file for DIALS options '''
+    """ Populate param PHIL file for DIALS options """
 
     s_bkg = self.sigma_background.s_bkg.GetValue()
     s_str = self.sigma_strong.s_strong.GetValue()
@@ -2285,6 +2270,7 @@ class DIALSSpfDialog(BaseDialog):
     self.spf_phil = ip.parse(phil_string)
     e.Skip()
 
+
 class ClusterDialog(BaseDialog):
   def __init__(self, parent,
                label_style='bold',
@@ -2310,26 +2296,19 @@ class ClusterDialog(BaseDialog):
     cluster_box_sizer.Add(self.write_files, flag=f.stack, border=10)
 
     self.cluster_n_images = ct.SpinCtrl(self.cluster_options,
-                                        label_size=wx.DefaultSize,
-                                        checkbox_state=False,
                                         checkbox_label='No. images',
-                                        checkbox=True,
-                                        ctrl_size=(100, -1),
+                                        checkbox=True, ctrl_size=(100, -1),
                                         ctrl_value=1000)
     cluster_box_sizer.Add(self.cluster_n_images, flag=f.expand, border=10)
 
     self.cluster_threshold = ct.SpinCtrl(self.cluster_options,
                                          label='Threshold: ',
-                                         label_size=wx.DefaultSize,
-                                         ctrl_size=(100, -1),
-                                         ctrl_value=5000)
+                                         ctrl_size=(100, -1), ctrl_value=5000)
     cluster_box_sizer.Add(self.cluster_threshold, flag=f.expand, border=10)
 
     self.cluster_limit = ct.SpinCtrl(self.cluster_options,
-                                         label='Minimum cluster size: ',
-                                         label_size=wx.DefaultSize,
-                                         ctrl_size=(100, -1),
-                                         ctrl_value=10)
+                                     label='Minimum cluster size: ',
+                                     ctrl_size=(100, -1), ctrl_value=10)
     cluster_box_sizer.Add(self.cluster_limit, flag=wx.EXPAND | wx.ALL,
                           border=10)
 

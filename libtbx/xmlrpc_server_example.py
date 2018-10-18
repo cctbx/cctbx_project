@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # This is an example of how a 3rd-party program with Python embedded, such
 # as Coot or PyMOL, can be interfaced with CCTBX-based software.  Something
@@ -25,7 +26,7 @@ try :
       result = -1
       func = getattr(self.cctbx_interface, method, None)
       if not callable(func) :
-        print "%s is not a callable object!" % method
+        print("%s is not a callable object!" % method)
       else :
         result = func(*params)
         if result is None :
@@ -63,17 +64,17 @@ try :
         self.xmlrpc_server = external_xmlrpc_server(("127.0.0.1", self.port),
                                                     self)
         if self.verbose :
-          print "Listening on port %s" % port
+          print("Listening on port %s" % port)
       cctbx_port = os.environ.get("CCTBX_XMLRPC_PORT", None)
       if cctbx_port is not None :
         uri = "http://localhost:%s/RPC2" % cctbx_port
         self.cctbx_server = xmlrpclib.ServerProxy(uri=uri)
         if self.verbose :
-          print "Connecting to XML-RPC server on port %s" % cctbx_port
+          print("Connecting to XML-RPC server on port %s" % cctbx_port)
 
     def start_server (self) :
       if self.xmlrpc_server is not None :
-        print "XML-RPC server started on port %d" % self.port
+        print("XML-RPC server started on port %d" % self.port)
         self.xmlrpc_server.serve_forever()
 
     def start_server_in_separate_thread (self) :
@@ -97,7 +98,7 @@ try :
     # XXX: this should be replaced by the proper quit function for the program
     # being extended - e.g. cmd.quit() in PyMOL.
     def quit (self) :
-      print "quitting"
+      print("quitting")
       sys.stdout.flush()
       os.kill(os.getpid(), signal.SIGKILL)
 
@@ -119,7 +120,7 @@ except ImportError :
 def test_server () :
   class test_module (object) :
     def echo_test (self) :
-      print "hello, world!"
+      print("hello, world!")
       sys.stdout.flush()
       return True
 

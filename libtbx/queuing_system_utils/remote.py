@@ -210,7 +210,7 @@ class SchedulerClient(communication.Client):
       try:
         response()
 
-      except Exception, e:
+      except Exception as e:
         raise RuntimeError, "Submission failure: %s" % e
 
       self.waiting = []

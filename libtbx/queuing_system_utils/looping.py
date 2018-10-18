@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def isodd(n):
   return n & 1 and True or False
 
@@ -36,29 +37,29 @@ def generate_balanaced_list_from_list(l, only=None):
     yield l[i], l[j]
 
 if __name__=="__main__":
-  print 'test generate_balanaced_list'
+  print('test generate_balanaced_list')
   pairs = {}
   for i,j in generate_balanaced_list(7):
-    print i,j
+    print(i,j)
     pairs.setdefault(i, [])
     assert j not in pairs[i]
     pairs[i].append(j)
     pairs.setdefault(j, [])
     assert i not in pairs[j]
     pairs[j].append(i)
-  print pairs
+  print(pairs)
   for key in pairs:
     assert len(pairs[key])==6
     assert key not in pairs[key]
-  print "OK"
+  print("OK")
   for k, (i,j) in enumerate(generate_balanaced_list(7, only=0)):
-    print k,i,j
+    print(k,i,j)
   assert k==2
-  print 'test generate_balanaced_list_from_list'
+  print('test generate_balanaced_list_from_list')
   l=list("abcdef")
   for i,j in generate_balanaced_list_from_list(l):
-    print i,j
-  print '-'*10
+    print(i,j)
+  print('-'*10)
   for i,j in generate_balanaced_list_from_list(l, only=l[1]):
-    print i,j
-  print "OK"
+    print(i,j)
+  print("OK")

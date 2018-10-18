@@ -28,7 +28,7 @@ QUIET = 0
 DEFAULT_VERBOSITY = 1
 EXTRA_VERBOSE = 2 # for nightly builds
 
-def get_module_tests(module_name, valgrind=False):
+def get_module_tests(module_name, valgrind=False, slow_tests=False):
   dist_path = libtbx.env.dist_path(module_name)
   if dist_path is None:
     raise Sorry("'%s' is not a valid CCTBX module." % module_name)
@@ -42,6 +42,23 @@ def get_module_tests(module_name, valgrind=False):
     target_must_be="",
     where_str="").object
   assert (isinstance(tst_list, tuple) or isinstance(tst_list, list))
+  if slow_tests:
+    try:
+      tst_list_slow = import_python_object(
+        import_path="%s.run_tests.tst_list_slow" % module_name,
+        error_prefix="",
+        target_must_be="",
+        where_str="").object
+    except AttributeError:
+      pass
+    else:
+      assert (isinstance(tst_list_slow, tuple) or isinstance(tst_list_slow, list))
+      if isinstance(tst_list, tuple):
+        tst_list = list(tst_list)
+        tst.list.extend(tst_list_slow)
+        tst_list = tuple(tst_list)
+      else:
+        tst_list.extend(tst_list_slow)
   build_path = libtbx.env.under_build(module_name)
   assert (build_path is not None) and (dist_path is not None)
   commands = []

@@ -1,12 +1,9 @@
 from __future__ import division
-#import sys
 import mmtbx.f_model
 import mmtbx.utils
 import mmtbx.masks
-#import iotbx.pdb
 from mmtbx import map_tools
 from iotbx import phil
-#from iotbx import reflection_file_utils
 from cctbx import maptbx
 from cctbx import miller
 from cctbx.array_family import flex
@@ -41,30 +38,34 @@ polder {
 def master_params():
   return phil.parse(master_params_str, process_includes = False)
 
+# =============================================================================
+
 class compute_polder_map():
   def __init__(self,
                f_obs,
                r_free_flags,
-               xray_structure,
-               pdb_hierarchy,
+               model,
                params,
                selection_bool):
     self.f_obs = f_obs
     self.r_free_flags = r_free_flags
-    self.xray_structure = xray_structure
-    self.pdb_hierarchy = pdb_hierarchy
+    self.xray_structure = model.get_xray_structure()
+    self.pdb_hierarchy = model.get_hierarchy()
     self.params = params
     self.selection_bool = selection_bool
     #
     self.resolution_factor = self.params.resolution_factor
     self.sphere_radius = self.params.sphere_radius
-    self.box_1, self.box_2, self.box_3 = None, None, None
+    self.validation_results = None
     self.fmodel_biased, self.mc_biased = None, None
-    #
+
+  # ---------------------------------------------------------------------------
 
   def validate(self):
     assert not None in [self.f_obs, self.xray_structure, self.pdb_hierarchy,
       self.params, self.selection_bool]
+
+  # ---------------------------------------------------------------------------
 
   def run(self):
     # When extracting cartesian coordinates, xray_structure needs to be in P1:
@@ -124,6 +125,8 @@ class compute_polder_map():
     if not(self.params.compute_box):
       self.validate_polder_map()
 
+  # ---------------------------------------------------------------------------
+
   def modify_mask(self, mask_data, sites_cart):
     sel = maptbx.grid_indices_around_sites(
       unit_cell  = self.f_obs.crystal_symmetry().unit_cell(),
@@ -135,6 +138,8 @@ class compute_polder_map():
     mask.set_selected(sel, 0)
     mask.reshape(mask_data.accessor())
     return mask
+
+  # ---------------------------------------------------------------------------
 
   def modify_mask_box(self, mask_data, sites_frac):
     box_buffer = self.params.box_buffer
@@ -183,6 +188,8 @@ class compute_polder_map():
         end           = gridding_last)
     return mask_data
 
+  # ---------------------------------------------------------------------------
+
   def mask_from_xrs_unpadded(self, xray_structure, n_real):
     mask_params = mmtbx.masks.mask_master_params.extract()
     mask = mmtbx.masks.mask_from_xray_structure(
@@ -194,6 +201,8 @@ class compute_polder_map():
       n_real                   = n_real).mask_data
     maptbx.unpad_in_place(map = mask)
     return mask
+
+  # ---------------------------------------------------------------------------
 
   def get_fmodel_and_map_coefficients(self, xray_structure, mask_data):
     f_calc = self.f_obs.structure_factors_from_scatterers(
@@ -215,6 +224,8 @@ class compute_polder_map():
       isotropize   = True,
       fill_missing = False)
     return fmodel, mc_fofc
+
+  # ---------------------------------------------------------------------------
 
   def get_polder_diff_map(self, f_obs, r_free_flags, f_calc, f_mask, xrs_selected):
     fmodel = mmtbx.f_model.manager(
@@ -238,6 +249,8 @@ class compute_polder_map():
       map_data       = map_data,
       box_cushion    = 2.1)
 
+  # ---------------------------------------------------------------------------
+
   def get_results(self):
     return group_args(
       fmodel_input     = self.fmodel_input,
@@ -250,9 +263,9 @@ class compute_polder_map():
       mc_polder        = self.mc_polder,
       mc_biased        = self.mc_biased,
       mc_omit          = self.mc_omit,
-      box_1            = self.box_1,
-      box_2            = self.box_2,
-      box_3            = self.box_3)
+      validation_results = self.validation_results)
+
+  # ---------------------------------------------------------------------------
 
   def validate_polder_map(self):
   # Significance check
@@ -281,26 +294,73 @@ class compute_polder_map():
       use_scale      = True,
       anomalous_flag = False,
       use_sg         = False)
-    self.box_1 = self.get_polder_diff_map(
+    box_1 = self.get_polder_diff_map(
       f_obs = f_obs_1,
       r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
       xrs_selected = xrs_selected)
-    self.box_2 = self.get_polder_diff_map(
+    box_2 = self.get_polder_diff_map(
       f_obs = f_obs_2,
       r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
       xrs_selected = xrs_selected)
-    self.box_3 = self.get_polder_diff_map(
+    box_3 = self.get_polder_diff_map(
       f_obs = fmodel.f_obs(),
       r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
       xrs_selected = xrs_selected)
 
-#-----------------------------------------------
+    sites_cart_box = box_1.xray_structure_box.sites_cart()
+    sel = maptbx.grid_indices_around_sites(
+      unit_cell  = box_1.xray_structure_box.unit_cell(),
+      fft_n_real = box_1.map_box.focus(),
+      fft_m_real = box_1.map_box.all(),
+      sites_cart = sites_cart_box,
+      site_radii = flex.double(sites_cart_box.size(), 2.0))
+    b1 = box_1.map_box.select(sel).as_1d()
+    b2 = box_2.map_box.select(sel).as_1d()
+    b3 = box_3.map_box.select(sel).as_1d()
+    # Map 1: calculated Fobs with ligand
+    # Map 2: calculated Fobs without ligand
+    # Map 3: real Fobs data
+    cc12 = flex.linear_correlation(x=b1,y=b2).coefficient()
+    cc13 = flex.linear_correlation(x=b1,y=b3).coefficient()
+    cc23 = flex.linear_correlation(x=b2,y=b3).coefficient()
+    #### D-function
+    b1 = maptbx.volume_scale_1d(map=b1, n_bins=10000).map_data()
+    b2 = maptbx.volume_scale_1d(map=b2, n_bins=10000).map_data()
+    b3 = maptbx.volume_scale_1d(map=b3, n_bins=10000).map_data()
+    cc12_peak = flex.linear_correlation(x=b1,y=b2).coefficient()
+    cc13_peak = flex.linear_correlation(x=b1,y=b3).coefficient()
+    cc23_peak = flex.linear_correlation(x=b2,y=b3).coefficient()
+    #### Peak CC:
+    cutoffs = flex.double(
+      [i/10. for i in range(1,10)]+[i/100 for i in range(91,100)])
+    d12 = maptbx.discrepancy_function(map_1=b1, map_2=b2, cutoffs=cutoffs)
+    d13 = maptbx.discrepancy_function(map_1=b1, map_2=b3, cutoffs=cutoffs)
+    d23 = maptbx.discrepancy_function(map_1=b2, map_2=b3, cutoffs=cutoffs)
+    pdb_hierarchy_selected.adopt_xray_structure(box_1.xray_structure_box)
+    self.validation_results = group_args(
+      box_1 = box_1,
+      box_2 = box_2,
+      box_3 = box_3,
+      cc12  = cc12,
+      cc13  = cc13,
+      cc23  = cc23,
+      cc12_peak = cc12_peak,
+      cc13_peak = cc13_peak,
+      cc23_peak = cc23_peak,
+      d12 = d12,
+      d13 = d13,
+      d23 = d23,
+      cutoffs = cutoffs,
+      ph_selected = pdb_hierarchy_selected
+      )
+
+# =============================================================================
 
 #if (__name__ == "__main__"):
 #  run(args=sys.argv[1:])

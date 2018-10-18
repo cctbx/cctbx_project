@@ -7,6 +7,7 @@ module
 """
 from __future__ import division
 from __future__ import with_statement
+from __future__ import print_function
 
 import cPickle as pickle
 import os
@@ -212,7 +213,7 @@ class Job(object):
     self.status = outcome
 
     if self.status.stdout:
-      print self.status.stdout
+      print(self.status.stdout)
 
     if self.status.stderr and self.qinterface.display_stderr:
       import sys

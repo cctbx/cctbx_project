@@ -65,11 +65,11 @@ class Script(Script_Base):
     loader = file_loader(self.params)
     for experiments_filename, reflections_filename in loader.filepair_generator():
       experiments, reflections = loader.load_data(experiments_filename, reflections_filename)
-      for experiment_id, experiment in enumerate(experiments):
-        all_experiments.append(experiment)
-        refls = reflections.select(reflections['id'] == experiment_id)
-        refls['id'] = flex.int(len(refls), len(all_experiments)-1)
-        all_reflections.extend(refls)
+      sel = (reflections['id'] < 0) | (reflections['id'] >= len(experiments))
+      assert sel.count(True) == 0, "Unindexed or invalid reflections found"
+      reflections['id'] += len(all_experiments)
+      all_reflections.extend(reflections)
+      all_experiments.extend(experiments)
 
     return all_experiments, all_reflections
 

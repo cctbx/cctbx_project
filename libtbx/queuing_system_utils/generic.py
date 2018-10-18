@@ -205,7 +205,7 @@ EOF
           stderr = subprocess.STDOUT
           )
 
-    except OSError, e:
+    except OSError as e:
         raise RuntimeError, "Error while executing: '%s': %s" % (
             " ".join( cmd ),
             e,
@@ -313,7 +313,7 @@ class PBSJob(Job):
           stderr = subprocess.PIPE
           )
 
-    except OSError, e:
+    except OSError as e:
         raise RuntimeError, "Error while executing: '%s': %s" % (
             " ".join( cmd ),
             e,

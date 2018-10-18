@@ -5,6 +5,7 @@ symbol that precedes a basic unit of measure (or its symbol) to form a
 decimal multiple or submultiple.
 """
 from __future__ import division
+from __future__ import print_function
 
 yotta = 1e24
 zetta = 1e21
@@ -31,4 +32,4 @@ if (__name__ == "__main__"):
   p = yotta*zetta*exa*peta*tera*giga*mega*kilo*hecto*deca \
       *deci*centi*milli*micro*nano*pico*femto*atto*zepto*yocto
   assert abs(p-1) < 1.e-15
-  print "OK"
+  print("OK")

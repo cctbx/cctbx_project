@@ -16,7 +16,7 @@ except ImportError :
   pass
 else :
   svm_params = """
-use_svm = False
+use_svm = True
   .type = bool
   .short_caption = Use Support Vector Machine to classify candidate ions
   .expert_level = 1

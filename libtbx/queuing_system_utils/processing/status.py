@@ -345,7 +345,7 @@ class Asynchronous(JobStatus):
     try:
       process = subprocess.Popen( self.qdel + [ self.jobid ] )
 
-    except OSError, e:
+    except OSError as e:
       raise errors.ExecutableError, "'%s %s': %s" % ( self.qdel, self.jobid, e )
 
     process.communicate()
@@ -444,7 +444,7 @@ EOF
         stderr = subprocess.PIPE
         )
 
-    except OSError, e:
+    except OSError as e:
       raise errors.ExecutableError, "'qacct -j %s': %s" % ( self.jobid, e )
 
     ( out, err ) = process.communicate()

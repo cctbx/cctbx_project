@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def run(args):
   if (len(args) == 0): args = ["."]
   from libtbx.math_utils import iround
@@ -28,26 +29,26 @@ def run(args):
   ln_sum = 0
   ext_counts = libtbx.dict_with_default_0()
   for sz,ln,fn,ext in sz_ln_fn_ext:
-    print "%10d %6d %s" % (sz,ln,fn)
+    print("%10d %6d %s" % (sz,ln,fn))
     sz_sum += sz
     ln_sum += ln
     ext_counts[ext] += 1
-  print
-  print "Number of files by extension:"
+  print()
+  print("Number of files by extension:")
   libtbx.str_utils.show_sorted_by_counts(
     label_count_pairs=ext_counts.items(),
     prefix="  ")
-  print
+  print()
   n = len(sz_ln_fn_ext)
-  print "Number of files:", n
-  print "Number of lines:", ln_sum
+  print("Number of files:", n)
+  print("Number of lines:", ln_sum)
   if (n != 0):
-    print "Sum of sizes:", sz_sum, "(mean: %d, median: %d)" % (
-      iround(sz_sum/n), sz_ln_fn_ext[n//2][0])
+    print("Sum of sizes:", sz_sum, "(mean: %d, median: %d)" % (
+      iround(sz_sum/n), sz_ln_fn_ext[n//2][0]))
     import zlib
-    print "Size of all files together zlib.compress'ed:", \
-      len(zlib.compress("".join(contents)))
-  print
+    print("Size of all files together zlib.compress'ed:", \
+      len(zlib.compress("".join(contents))))
+  print()
 
 if (__name__ == "__main__"):
   import sys

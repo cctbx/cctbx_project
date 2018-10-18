@@ -635,16 +635,25 @@ def check_and_add_hydrogen(
     build = build.format(time_limit)
     trim = " -quiet -trim -"
     stdin_lines = r.as_pdb_string(cryst_sym)
-    clean_out = run_reduce_with_timeout(parameters=trim,stdin_lines=stdin_lines)
+    clean_out = run_reduce_with_timeout(
+        parameters=trim,
+        stdin_lines=stdin_lines)
+    stdin_fname = "reduce_fail.pdb"
     if (clean_out.return_code != 0) :
-      msg_str = "Reduce crashed with command '%s' - dumping stderr:\n%s"
-      raise Sorry(msg_str % (trim, "\n".join(clean_out.stderr_lines)))
+      with open(stdin_fname, 'w') as f:
+        f.write(stdin_lines)
+      msg_str = "Reduce crashed with command '%s'.\nDumping stdin to file '%s'.\n" +\
+          "Dumping stderr:\n%s"
+      raise Sorry(msg_str % (trim, stdin_fname, "\n".join(clean_out.stderr_lines)))
     build_out = run_reduce_with_timeout(
         parameters=build,
         stdin_lines=clean_out.stdout_lines)
     if (build_out.return_code != 0) :
-      msg_str = "Reduce crashed with command '%s' - dumping stderr:\n%s"
-      raise Sorry(msg_str % (build, "\n".join(build_out.stderr_lines)))
+      with open(stdin_fname, 'w') as f:
+        f.write(clean_out.stdout_lines)
+      msg_str = "Reduce crashed with command '%s'.\nDumping stdin to file '%s'.\n" +\
+          "Dumping stderr:\n%s"
+      raise Sorry(msg_str % (build, stdin_fname, "\n".join(build_out.stderr_lines)))
     reduce_str = '\n'.join(build_out.stdout_lines)
     return reduce_str,True
   else:

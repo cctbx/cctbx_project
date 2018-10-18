@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # see also xmlrpc_server_example.py
 
@@ -158,7 +159,7 @@ class ServerProxy (object) :
           result = response[0]
       except KeyboardInterrupt :
         raise
-      except Exception, e :
+      except Exception as e :
         msg = to_str(e)
         if (hasattr(e, "errno")) :
           if (e.errno in [32,54,61,104,111,10054,10061]) :
@@ -167,7 +168,7 @@ class ServerProxy (object) :
             self._errors.append("%s -- %s" % (t, msg))
             break
         if ("timed out" in msg) :
-          print "XMLRPC timeout, ignoring request"
+          print("XMLRPC timeout, ignoring request")
           self._timeouts += 1
         elif msg.startswith("<ProtocolError ") :
           self._pending = []
@@ -179,7 +180,7 @@ class ServerProxy (object) :
           msg = "XMLRPC error: %s\nMethod: %s\nParams: %s\n" % \
             (msg, to_str(methodname), ", ".join([ to_str(p) for p in params ]))
           if (not self.raise_errors) :
-            print >> sys.stderr, msg
+            print(msg, file=sys.stderr)
           else :
             raise RuntimeError(msg)
     t2 = time.time()

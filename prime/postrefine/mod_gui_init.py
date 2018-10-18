@@ -15,7 +15,7 @@ from libtbx import easy_run
 import iotbx.phil as ip
 
 import iota.components.iota_misc as misc
-import iota.components.iota_controls as ct
+import iota.components.iota_ui_controls as ct
 from prime.postrefine import mod_gui_frames as frm
 from prime.postrefine import mod_gui_dialogs as dlg
 from prime.postrefine.mod_input import master_phil

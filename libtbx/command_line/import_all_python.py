@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 from libtbx.utils import multi_out
 from optparse import OptionParser
@@ -65,7 +66,7 @@ def run (args) :
     try :
       module = __import__(module_name)
     except ImportError as e:
-      print >> sys.stderr, e
+      print(e, file=sys.stderr)
       continue
     assert len(module.__path__) == 1
     mod_path = module.__path__[0]
@@ -77,7 +78,7 @@ def run (args) :
           py_mod_name, ext = op.splitext(file_name)
           if (ext != '.py') or ("." in py_mod_name) :
             if (options.verbose) :
-              print >> sys.stderr, "skipping %s" % file_name
+              print("skipping %s" % file_name, file=sys.stderr)
             continue
           py_path = split_all(dirname)[n_leading_dirs:]
           import_name = ".".join(py_path)
@@ -92,7 +93,7 @@ def run (args) :
                 and options.skip_tests) :
             continue
           if (options.verbose) :
-            print import_name
+            print(import_name)
           try :
             sys.stdout = multi_out()
             sys.stdout.register("stdout", stdout_old)
@@ -102,21 +103,21 @@ def run (args) :
             if (out.getvalue() != '') :
               has_stdout.append(import_name)
               if (options.verbose) :
-                print >> sys.stderr, out.getvalue()
+                print(out.getvalue(), file=sys.stderr)
           except ImportError as e :
-            print >> sys.stderr, e
+            print(e, file=sys.stderr)
           finally :
             sys.stdout = stdout_old
-  print ""
-  print "*" * 80
-  print "ALL MODULES IMPORTED SUCCESSFULLY"
-  print "*" * 80
-  print ""
+  print("")
+  print("*" * 80)
+  print("ALL MODULES IMPORTED SUCCESSFULLY")
+  print("*" * 80)
+  print("")
   if (len(has_stdout) > 0) :
-    print >> sys.stderr, "Warning: %d modules print to stdout on import" % \
-      len(has_stdout)
+    print("Warning: %d modules print to stdout on import" % \
+      len(has_stdout), file=sys.stderr)
     for import_name in has_stdout :
-      print >> sys.stderr, import_name
+      print(import_name, file=sys.stderr)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

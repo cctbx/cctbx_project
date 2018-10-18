@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 07/11/2018
+Last Changed: 10/16/2018
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -23,11 +23,11 @@ from dials.command_line.refine_bravais_settings import phil_scope as sg_scope
 from dials.command_line.refine_bravais_settings import \
   bravais_lattice_to_space_group_table
 
-import iota.components.iota_misc as misc
+import iota.components.iota_utils as util
 
 class IOTADialsProcessor(Processor):
-  ''' Subclassing the Processor module from dials.stills_process to introduce
-  streamlined integration pickles output '''
+  """ Subclassing the Processor module from dials.stills_process to introduce
+  streamlined integration pickles output """
 
   def __init__(self, params, write_pickle=True):
     self.phil = params
@@ -46,10 +46,12 @@ class IOTADialsProcessor(Processor):
 
     # Generate Bravais settings
     try:
-      Lfat = refined_settings_factory_from_refined_triclinic(
-        sgparams, experiments, reflections,
-        lepage_max_delta=5, nproc=1, refiner_verbosity=10)
-    except Exception as e:
+      Lfat = refined_settings_factory_from_refined_triclinic(sgparams,
+                                                             experiments,
+                                                             reflections,
+                                                             lepage_max_delta=5,
+                                                             refiner_verbosity=10)
+    except Exception, e:
       # If refinement fails, reset to P1 (experiments remain modified by Lfat
       # if there's a refinement failure, which causes issues down the line)
       for expt in experiments:
@@ -75,7 +77,7 @@ class IOTADialsProcessor(Processor):
       'tP': 75, 'tI': 79, 'hP': 143, 'hR': 146, 'cP': 195, 'cF': 196, 'cI': 197
     }
     filtered_lattices = {}
-    for key, value in lattice_to_sg_number.iteritems():
+    for key, value in lattice_to_sg_number.items():
       if key in possible_bravais_settings:
         filtered_lattices[key] = value
 
@@ -90,17 +92,16 @@ class IOTADialsProcessor(Processor):
     return highest_sym_solution
 
   def reindex(self, reflections, experiments, solution):
-    ''' Reindex with newly-determined space group / unit cell '''
+    """ Reindex with newly-determined space group / unit cell """
 
     # Update space group / unit cell
     experiment = experiments[0]
-    print "Old crystal:"
-    print experiment.crystal
-    print
+    print ("Old crystal:")
+    print (experiment.crystal, '\n')
     experiment.crystal.update(solution.refined_crystal)
-    print "New crystal:"
-    print experiment.crystal
-    print
+    print ("New crystal:")
+    print (experiment.crystal, '\n')
+
 
     # Change basis
     cb_op = solution['cb_op_inp_best'].as_abc()
@@ -108,8 +109,8 @@ class IOTADialsProcessor(Processor):
     miller_indices = reflections['miller_index']
     non_integral_indices = change_of_basis_op.apply_results_in_non_integral_indices(miller_indices)
     if non_integral_indices.size() > 0:
-      print "Removing {}/{} reflections (change of basis results in non-integral indices)" \
-            "".format(non_integral_indices.size(), miller_indices.size())
+      print ("Removing {}/{} reflections (change of basis results in non-integral indices)" \
+            "".format(non_integral_indices.size(), miller_indices.size()))
     sel = flex.bool(miller_indices.size(), True)
     sel.set_selected(non_integral_indices, False)
     miller_indices_reindexed = change_of_basis_op.apply(
@@ -121,9 +122,9 @@ class IOTADialsProcessor(Processor):
 
 
   def write_integration_pickles(self, integrated, experiments, callback=None):
-    ''' This is streamlined vs. the code in stills_indexer, since the filename
+    """ This is streamlined vs. the code in stills_indexer, since the filename
         convention is set up upstream.
-    '''
+    """
     if self.write_pickle:
       from libtbx import easy_pickle
       from xfel.command_line.frame_extractor import ConstructFrame
@@ -146,7 +147,7 @@ class Triage(object):
 
     # Read settings from the DIALS target (.phil) file
     # If none is provided, use default settings (and may God have mercy)
-    if self.params.dials.target != None:
+    if self.params.dials.target is not None:
       with open(self.params.dials.target, 'r') as settings_file:
         settings_file_contents = settings_file.read()
       settings = parse(settings_file_contents)
@@ -178,7 +179,7 @@ class Triage(object):
       self.phil.spotfinder.threshold.dispersion.global_threshold = threshold
 
     # Convert raw image into single-image datablock
-    with misc.Capturing() as junk_output:
+    with util.Capturing() as junk_output:
       self.datablock = DataBlockFactory.from_filenames([img])[0]
 
   def triage_image(self):
@@ -194,7 +195,7 @@ class Triage(object):
       else:
         log_info = 'REJECTED! {} observed reflections.'.format(len(observed))
         status = 'failed triage'
-    except Exception as e:
+    except Exception, e:
       status = 'failed triage'
       return status, 'REJECTED! SPOT-FINDING ERROR!'
 
@@ -214,14 +215,14 @@ class Integrator(object):
                gain = 0.32,
                center_intensity = 0,
                params=None):
-    '''Initialise the script.'''
+    """Initialise the script."""
 
     self.params = params
     self.int_base = int_folder
 
     # Read settings from the DIALS target (.phil) file
     # If none is provided, use default settings (and may God have mercy)
-    if self.params.dials.target != None:
+    if self.params.dials.target is not None:
       with open(self.params.dials.target, 'r') as settings_file:
         settings_file_contents = settings_file.read()
       settings = parse(settings_file_contents)
@@ -231,7 +232,7 @@ class Integrator(object):
     self.phil = current_phil.extract()
 
    # Set general file-handling settings
-    file_basename = misc.make_filename(source_image)
+    file_basename = util.make_filename(source_image)
     self.phil.output.datablock_filename = "{}/{}.json".format(object_folder, file_basename)
     self.phil.output.indexed_filename = "{}/{}_indexed.pickle".format(object_folder, file_basename)
     self.phil.output.strong_filename = "{}/{}_strong.pickle".format(object_folder, file_basename)
@@ -273,7 +274,7 @@ class Integrator(object):
         self.phil.significance_filter.isigi_cutoff = sigma
 
     # # Write target file for this IOTA run
-    # with misc.Capturing() as output:
+    # with util.Capturing() as output:
     #   mod_phil = current_phil.format(python_object=self.phil)
     #   mod_phil.show()
     #   txt_out = ''
@@ -343,36 +344,36 @@ class Integrator(object):
     self.processor = IOTADialsProcessor(params=self.phil)
 
     log_entry = ['\n']
-    with misc.Capturing() as output:
+    with util.Capturing() as output:
       e = None
       try:
-        print "{:-^100}\n".format(" SPOTFINDING: ")
+        print ("{:-^100}\n".format(" SPOTFINDING: "))
         self.find_spots()
-        print "{:-^100}\n\n".format(" FOUND {} SPOTS: ".format(len(self.observed)))
+        print ("{:-^100}\n\n".format(" FOUND {} SPOTS: ".format(len(self.observed))))
       except Exception as e:
         if hasattr(e, "classname"):
-          print e.classname, "for %s:"%self.img[0],
+          print (e.classname, "for %s:"%self.img[0],)
           error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
         else:
-          print "Spotfinding error for %s:"%self.img[0],
+          print ("Spotfinding error for %s:"%self.img[0],)
           error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-        print error_message
+        print (error_message)
         self.fail = 'failed spotfinding'
 
-      if self.fail == None:
+      if self.fail is None:
         try:
-          print "{:-^100}\n".format(" INDEXING: ")
+          print ("{:-^100}\n".format(" INDEXING: "))
           self.index()
           if self.indexed is not None:
-           print "{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS: "
-                                       "".format(len(self.indexed)))
-        except Exception as e:
+           print ("{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS: "
+                                       "".format(len(self.indexed))))
+        except Exception, e:
           if hasattr(e, "classname"):
             error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
           else:
-            print "Indexing error for %s:"%self.img[0],
+            print ("Indexing error for %s:"%self.img[0],)
             error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-          print error_message
+          print (error_message)
           self.fail = 'failed indexing'
 
       if (                                        self.fail is None and
@@ -380,49 +381,49 @@ class Integrator(object):
                              self.params.dials.determine_sg_and_reindex
           ):
         try:
-          print "{:-^100}\n".format(" DETERMINING SPACE GROUP : ")
+          print ("{:-^100}\n".format(" DETERMINING SPACE GROUP : "))
           self.refine_bravais_settings_and_reindex()
           lat = self.experiments[0].crystal.get_space_group().info()
           sg = str(lat).replace(' ', '')
           if sg != 'P1':
-            print "{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg))
+            print ("{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg)))
           else:
-            print "{:-^100}\n".format(" RETAINED TRICLINIC (P1) SYMMETRY ")
+            print ("{:-^100}\n".format(" RETAINED TRICLINIC (P1) SYMMETRY "))
         except Exception as e:
-          print "Bravais / Reindexing Error: ", e
+          print ("Bravais / Reindexing Error: ", e)
 
-      if self.fail == None:
+      if self.fail is None:
         try:
           self.refine()
-          print "{:-^100}\n".format(" INTEGRATING: ")
+          print ("{:-^100}\n".format(" INTEGRATING: "))
           self.integrate()
-          print "{:-^100}\n\n".format(" FINAL {} INTEGRATED REFLECTIONS "
-                                      "".format(len(self.integrated)))
+          print ("{:-^100}\n\n".format(" FINAL {} INTEGRATED REFLECTIONS "
+                                      "".format(len(self.integrated))))
         except Exception as e:
           if hasattr(e, "classname"):
-            print e.classname, "for %s:"%self.img[0],
+            print (e.classname, "for %s:"%self.img[0],)
             error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
           else:
-            print "Integration error for %s:"%self.img[0],
+            print ("Integration error for %s:"%self.img[0],)
             error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-          print error_message
+          print (error_message)
           self.fail = 'failed integration'
 
-    if self.fail == None and self.params.dials.filter.flag_on:
+    if self.fail is None and self.params.dials.filter.flag_on:
       selector = Selector(frame=self.frame,
                           uc_tol=self.params.dials.filter.target_uc_tolerance,
                           pg=self.params.dials.filter.target_pointgroup,
                           uc=self.params.dials.filter.target_unit_cell,
                           min_ref=self.params.dials.filter.min_reflections,
                           min_res=self.params.dials.filter.min_resolution)
-      self.fail = selector.filter()
+      self.fail = selector.result_filter()
 
     with open(self.int_log, 'w') as tf:
       for i in output:
         if 'cxi_version' not in i:
           tf.write('\n{}'.format(i))
 
-    if self.fail == None:
+    if self.fail is None:
       # Collect information
       obs = self.frame['observations'][0]
       Bravais_lattice = self.frame['pointgroup']
@@ -508,12 +509,12 @@ class Selector(object):
     self.min_res = min_res
     self.fail = None
 
-  def filter(self):
+  def result_filter(self):
     """ Unit cell pre-filter. Applies hard space-group constraint and stringent
         unit cell parameter restraints to filter out integration results that
         deviate. Optional step. Unit cell tolerance user-defined. """
 
-    if self.uc != None:
+    if self.uc is not None:
       user_uc = [prm for prm in self.uc.parameters()]
       delta_a = abs(self.obs_uc[0] - user_uc[0])
       delta_b = abs(self.obs_uc[1] - user_uc[1])
@@ -531,9 +532,9 @@ class Selector(object):
       uc_check = True
 
     i_fail = self.obs_ref <= self.min_ref or \
-             (self.min_res != None and
+             (self.min_res is not None and
               self.obs_res >= self.min_res) or \
-             (self.pg != None and
+             (self.pg is not None and
               self.pg.replace(" ", "") != self.obs_pg.replace(" ", "")) or \
              not uc_check
 
@@ -548,10 +549,11 @@ class Selector(object):
 
 if __name__ == "__main__":
 
+  # noinspection PyArgumentList
   test = Integrator(sys.argv[1])
   test.find_spots()
 
-  print len(test.observed)
+  print (len(test.observed))
 
   test.index()
-  print len(test.indexed)
+  print (len(test.indexed))

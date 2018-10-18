@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import utils
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from cStringIO import StringIO
@@ -34,7 +35,7 @@ def exercise_misc():
   nfs = utils.number_from_string
   for string in ["True", "False"]:
     try: nfs(string=string)
-    except ValueError, e:
+    except ValueError as e:
       assert str(e) == 'Error interpreting "%s" as a numeric expression.' % (
         string)
     else: raise Exception_expected
@@ -42,7 +43,7 @@ def exercise_misc():
   assert approx_equal(nfs(string="3.14"), 3.14)
   assert approx_equal(nfs(string="cos(0)"), 1)
   try: nfs(string="xxx(0)")
-  except ValueError, e:
+  except ValueError as e:
     assert str(e).startswith(
       'Error interpreting "xxx(0)" as a numeric expression: ')
   else: raise Exception_expected
@@ -139,14 +140,14 @@ def exercise_misc():
   for n in xrange(4):
     assert len(utils.random_hex_code(number_of_digits=n)) == n
   #
-  print "multiprocessing problem:", utils.detect_multiprocessing_problem()
+  print("multiprocessing problem:", utils.detect_multiprocessing_problem())
   #
-  print "base36_timestamp():", utils.base36_timestamp(), "now"
-  print "base36_timestamp():", utils.base36_timestamp(
-    seconds_since_epoch=115855*365.2425*24*60*60), "year 115855 CE"
+  print("base36_timestamp():", utils.base36_timestamp(), "now")
+  print("base36_timestamp():", utils.base36_timestamp(
+    seconds_since_epoch=115855*365.2425*24*60*60), "year 115855 CE")
   #
-  print "get_svn_revision():", utils.get_svn_revision()
-  print "get_build_tag():", utils.get_build_tag()
+  print("get_svn_revision():", utils.get_svn_revision())
+  print("get_build_tag():", utils.get_build_tag())
   # concatenate_python_script
   # XXX the string concatenation here is required to trick libtbx.find_clutter,
   # which will warn about repetition of the future division import.
@@ -186,10 +187,10 @@ def exercise_user_plus_sys_time():
 def exercise_indented_display():
   out = StringIO()
   level0 = utils.buffered_indentor(file_object=out)
-  print >> level0, "level0"
+  print("level0", file=level0)
   level0.flush()
   level1 = level0.shift_right()
-  print >> level1, "level1"
+  print("level1", file=level1)
   level1.flush()
   assert out.getvalue() == ""
   level1.write_buffer()
@@ -197,20 +198,20 @@ def exercise_indented_display():
 level0
   level1
 """)
-  print >> level1, "abc",
+  print("abc", end='', file=level1)
   level1.write_buffer()
   assert not show_diff(out.getvalue(), """\
 level0
   level1
   abc""")
-  print >> level1
+  print(file=level1)
   level1.write_buffer()
   assert not show_diff(out.getvalue(), """\
 level0
   level1
   abc
 """)
-  print >> level1, "def",
+  print("def", end='', file=level1)
   level1.write_buffer()
   assert not show_diff(out.getvalue(), """\
 level0
@@ -218,7 +219,7 @@ level0
   abc
   def""")
   level1.write("")
-  print >> level1, "hij"
+  print("hij", file=level1)
   level1.write_buffer()
   assert not show_diff(out.getvalue(), """\
 level0
@@ -351,7 +352,7 @@ def exercise_group_args():
       e = 'e')
   assert b.d=='d'
   assert b.e=='e'
-  print >> out, a
+  print(a, file=out)
   v = out.getvalue()
   assert not show_diff(v, """group_args
   a                              : 1
@@ -380,7 +381,7 @@ def run(args):
   if '--exercise-retrieve-unless-exists' in args:
     exercise_retrieve_unless_exists()
   else:
-    print 'Skipping exercise_retrieve_unless_exists'
+    print('Skipping exercise_retrieve_unless_exists')
   exercise_misc()
   assert utils.sequence_index_dict(["a", "b"]) == {"a": 0, "b": 1}
   assert utils.flat_list(0) == [0]
@@ -406,7 +407,7 @@ def run(args):
   exercise_file_utils()
   exercise_dir_utils()
   exercise_group_args()
-  print utils.format_cpu_times()
+  print(utils.format_cpu_times())
 
 if (__name__ == "__main__"):
   import sys

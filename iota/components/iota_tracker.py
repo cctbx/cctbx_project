@@ -1,15 +1,21 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
+from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 08/29/2018
+Last Changed: 10/17/2018
 Description : IOTA image-tracking GUI module
 '''
 
 import os
 import wx
 import argparse
+
+try:  # for Py3 compatibility
+    import itertools.izip as zip
+except ImportError:
+    pass
 
 from wxtbx import bitmaps
 import wx.lib.agw.ultimatelistctrl as ulc
@@ -22,12 +28,13 @@ from matplotlib.widgets import SpanSelector
 
 from iotbx import phil as ip
 
-from iota.components.iota_dialogs import DIALSSpfDialog
+from iota import iota_version
+from iota.components.iota_ui_dialogs import DIALSSpfDialog
 from iota.components.iota_utils import InputFinder
 from iota.components.iota_dials import phil_scope
 import iota.components.iota_threads as thr
-import iota.components.iota_controls as ct
-import iota.components.iota_misc as misc
+import iota.components.iota_ui_controls as ct
+import iota.components.iota_utils as util
 
 import time
 assert time # going to keep time around for testing
@@ -135,7 +142,7 @@ def parse_command_args(help_message):
   parser.add_argument('path', type=str, nargs = '?', default = None,
             help = 'Path to data or file with IOTA parameters')
   parser.add_argument('--version', action = 'version',
-            version = 'IOTA {}'.format(misc.iota_version),
+            version = 'IOTA {}'.format(iota_version),
             help = 'Prints version info of IOTA')
   parser.add_argument('-s', '--start', action = 'store_true',
             help='Automatically start from first image')
@@ -193,9 +200,9 @@ class TrackChart(wx.Panel):
     self.reset_chart()
 
   def onSelect(self, xmin, xmax):
-    ''' Called when SpanSelector is used (i.e. click-drag-release); passes on
+    """ Called when SpanSelector is used (i.e. click-drag-release); passes on
         the boundaries of the span to tracker window for selection and
-        display of the selected images '''
+        display of the selected images """
     if self.selector == 'select':
       self.select_span.set_visible(True)
       self.patch_x = int(xmin)
@@ -253,10 +260,10 @@ class TrackChart(wx.Panel):
 
 
   def onPress(self, e):
-    ''' If left mouse button is pressed, activates the SpanSelector;
+    """ If left mouse button is pressed, activates the SpanSelector;
     otherwise, makes the span invisible and sets the toggle that clears the
     image list; if shift key is held, does this for the Selection Span,
-    otherwise does this for the Zoom Span '''
+    otherwise does this for the Zoom Span """
     if e.button != 1:
       self.zoom_span.set_visible(False)
       self.select_span.set_visible(False)
@@ -334,7 +341,7 @@ class TrackChart(wx.Panel):
     self.bragg_line.set_ydata(min_bragg)
     try:
       self.draw_plot()
-    except AttributeError as e:
+    except AttributeError:
       pass
 
   def draw_plot(self, new_x=None, new_y=None, new_i=None, new_p=None):
@@ -379,8 +386,8 @@ class TrackChart(wx.Panel):
       self.x_min = -1
       self.x_max = 1
 
-    acc = [int(i) for i in all_acc if i > self.x_min and i < self.x_max]
-    rej = [int(i) for i in all_rej if i > self.x_min and i < self.x_max]
+    acc = [int(i) for i in all_acc if self.x_min < i < self.x_max]
+    rej = [int(i) for i in all_rej if self.x_min < i < self.x_max]
 
     self.acc_plot.set_xdata(nref_x)
     self.rej_plot.set_xdata(nref_x)
@@ -463,7 +470,7 @@ class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
     return self.ctr
 
   def OnColClick(self, e):
-    print "column clicked"
+    print ("column clicked")
     e.Skip()
 
   def instantiate_sorting(self, data):
@@ -611,21 +618,12 @@ class TrackerPanel(wx.Panel):
     self.graph_sizer = wx.GridBagSizer(5, 5)
 
     self.chart = TrackChart(self.graph_panel, main_window=parent)
-    self.min_bragg = ct.SpinCtrl(self.graph_panel,
-                                 label='Min. Bragg spots',
-                                 label_size=wx.DefaultSize,
-                                 ctrl_size=(100, -1),
-                                 ctrl_value=10,
-                                 ctrl_min=0)
-    self.chart_window = ct.SpinCtrl(self.graph_panel,
-                                    label_size=wx.DefaultSize,
-                                    checkbox=True,
-                                    checkbox_state=False,
+    self.min_bragg = ct.SpinCtrl(self.graph_panel, label='Min. Bragg spots',
+                                 ctrl_size=(100, -1), ctrl_value=10)
+    self.chart_window = ct.SpinCtrl(self.graph_panel, checkbox=True,
                                     checkbox_label='Finite chart window',
-                                    ctrl_size=(100, -1),
-                                    ctrl_value=100,
-                                    ctrl_min=10,
-                                    ctrl_step=10)
+                                    ctrl_size=(100, -1), ctrl_value=100,
+                                    ctrl_min=10, ctrl_step=10)
 
     self.graph_sizer.Add(self.chart, flag=wx.EXPAND, pos=(0, 0), span=(1, 3))
     self.graph_sizer.Add(self.min_bragg, flag=wx.ALIGN_LEFT, pos=(1, 0))
@@ -778,6 +776,7 @@ class TrackerWindow(wx.Frame):
       self.toolbar.ToggleTool(self.tb_btn_zoom.GetId(), False)
 
   def initialize_spotfinder(self):
+    self.data_folder = None
     self.done_list = []
     self.data_list = []
     self.spotfinding_info = []
@@ -825,16 +824,18 @@ class TrackerWindow(wx.Frame):
       path = os.path.abspath(self.args.path)
       self.open_images_and_get_ready(path=path)
       if self.args.start:
-        print 'IMAGE_TRACKER: STARTING FROM FIRST RECORDED IMAGE'
+        print ('IMAGE_TRACKER: STARTING FROM FIRST RECORDED IMAGE')
       elif self.args.proceed:
-        print 'IMAGE_TRACKER: STARTING FROM IMAGE RECORDED 1 MIN AGO'
+        print ('IMAGE_TRACKER: STARTING FROM IMAGE RECORDED 1 MIN AGO')
         min_back = -1
       elif self.args.time > 0:
         min_back = -self.args.time[0]
-        print 'IMAGE_TRACKER: STARTING FROM IMAGE RECORDED {} MIN AGO' \
-              ''.format(min_back)
+        print ('IMAGE_TRACKER: STARTING FROM IMAGE RECORDED {} MIN AGO' \
+              ''.format(min_back))
       else:
         auto_start = False
+    else:
+      auto_start = False
 
     # Initialize processing thread
     if self.args.file is None:
@@ -925,7 +926,7 @@ class TrackerWindow(wx.Frame):
       pass
 
   def onGetImages(self, e):
-    ''' Select folder to watch for incoming images '''
+    """ Select folder to watch for incoming images """
     open_dlg = wx.DirDialog(self, "Choose the data folder:",
                             style=wx.DD_DEFAULT_STYLE)
     if open_dlg.ShowModal() == wx.ID_OK:
@@ -975,7 +976,7 @@ class TrackerWindow(wx.Frame):
     self.start_spotfinding()
 
   def start_spotfinding(self):
-    ''' Start timer and perform spotfinding on found images '''
+    """ Start timer and perform spotfinding on found images """
     self.terminated = False
     self.tracker_panel.chart.draw_bragg_line()
     self.tracker_panel.chart.select_span.set_active(True)
@@ -1009,8 +1010,8 @@ class TrackerWindow(wx.Frame):
 
 
   def onSpfOneDone(self, e):
-    ''' Occurs on every wx.PostEvent instance; updates lists of images with
-    spotfinding results '''
+    """ Occurs on every wx.PostEvent instance; updates lists of images with
+    spotfinding results """
     if not self.terminated:
       self.msg, self.spotfinding_info, self.cluster_info = e.GetValue()
       self.msg = self.proc_thread.msg
@@ -1018,7 +1019,7 @@ class TrackerWindow(wx.Frame):
       self.plot_results()
 
   def update_spinner(self):
-    ''' Update spotfinding chart '''
+    """ Update spotfinding chart """
     if self.spin_update == 4:
       self.spin_update = 0
     else:
@@ -1058,8 +1059,8 @@ class TrackerWindow(wx.Frame):
       listctrl.InitializeDataMap(self.data_dict)
 
   def plot_results(self):
-    ''' Plot processing results; if indexing was turned on, will also provide
-    unit cell clustering results '''
+    """ Plot processing results; if indexing was turned on, will also provide
+    unit cell clustering results """
 
     # Plot spotfinding / indexing results
     if self.spotfinding_info is not None and len(self.spotfinding_info) > 0:
@@ -1093,7 +1094,7 @@ class TrackerWindow(wx.Frame):
       clusters = sorted(self.cluster_info, key=lambda i: i['number'],
                         reverse=True)
       uc_dims = clusters[0]['uc'].rsplit()
-      u = misc.UnicodeCharacters()
+      u = util.UnicodeCharacters()
       uc_line = "{} = {}, {} = {}, {} = {}, {} = {}, {} = {}, {} =  {} " \
                 "".format('a', uc_dims[0], 'b', uc_dims[1], 'c', uc_dims[2],
                           u.alpha, uc_dims[3], u.beta, uc_dims[4], u.gamma,

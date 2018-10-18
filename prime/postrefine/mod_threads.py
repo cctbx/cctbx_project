@@ -12,7 +12,6 @@ import wx
 from threading import Thread
 
 from libtbx import easy_run
-import iota.components.iota_controls as ct
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -89,6 +88,7 @@ class PRIMEThread(Thread):
       cmd = self.command
 
     if self.verbose:
+      print cmd
       easy_run.fully_buffered(cmd, join_stdout_stderr=True).show_stdout()
     else:
       easy_run.fully_buffered(cmd, join_stdout_stderr=True)

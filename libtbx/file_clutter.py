@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.command_line import find_unused_imports_crude
 import sys, os
 import re
@@ -160,13 +161,13 @@ class file_clutter(object):
       if append:
         append(msg)
       else:
-        print msg
+        print(msg)
       if (verbose) and (self.has_unused_imports()) :
         msg2 = "  unused imports: %s" % ", ".join(self.unused_imports)
         if append:
           append(msg2)
         else :
-          print msg2
+          print(msg2)
 
 def is_text_file(file_name):
   name = file_name.lower()
@@ -183,7 +184,7 @@ def gather(paths, find_unused_imports=False, find_bad_indentation=False, flag_ab
       flag_print_function=flag_print_function))
   for path in paths:
     if (not os.path.exists(path)):
-      print >> sys.stderr, "No such file or directory:", path
+      print("No such file or directory:", path, file=sys.stderr)
     elif (os.path.isfile(path)):
       capp()
     else:

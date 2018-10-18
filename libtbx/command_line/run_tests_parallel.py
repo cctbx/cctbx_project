@@ -32,6 +32,9 @@ max_time = 180
   .type = float(value_min=0)
   .help = "Print warning and timing for all tests that take longer"
           "than max_time (in seconds) to run."
+slow_tests = False
+  .type = bool
+  .help = "If True, also run any tests marked as slow, if any"
 """)
 
 def run (args, return_list_of_tests=None) :
@@ -74,7 +77,7 @@ def run (args, return_list_of_tests=None) :
     dir_tests = libtbx.test_utils.parallel.find_tests(dir_name)
     all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests))
   for module_name in params.module :
-    module_tests = libtbx.test_utils.parallel.get_module_tests(module_name)
+    module_tests = libtbx.test_utils.parallel.get_module_tests(module_name, slow_tests = params.slow_tests)
     all_tests.extend(module_tests)
   if return_list_of_tests:
     return all_tests

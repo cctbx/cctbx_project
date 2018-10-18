@@ -6,6 +6,7 @@ via the web (yet).
 """
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 import os
 import os.path as op
@@ -206,12 +207,12 @@ class fetch_packages (object) :
     if (output_file is None) :
       output_file = pkg_name
     os.chdir(self.dest_dir)
-    print >> self.log, "  getting package %s..." % pkg_name
+    print("  getting package %s..." % pkg_name, file=self.log)
     if (self.pkg_dirs is not None) and (len(self.pkg_dirs) > 0) :
       for pkg_dir in self.pkg_dirs :
         static_file = op.join(pkg_dir, pkg_name)
         if (op.exists(static_file)) :
-          print >> self.log, "    using %s" % static_file
+          print("    using %s" % static_file, file=self.log)
           if self.copy_files :
             copy_file(static_file, op.join(self.dest_dir, output_file))
             if return_file_and_status:
@@ -223,7 +224,7 @@ class fetch_packages (object) :
             return static_file
     if (self.no_download) :
       if (op.exists(pkg_name)) :
-        print >> self.log, "    using ./%s" % pkg_name
+        print("    using ./%s" % pkg_name, file=self.log)
         if return_file_and_status:
           return op.join(self.dest_dir, output_file), 0
         return op.join(self.dest_dir, pkg_name)
@@ -236,7 +237,7 @@ class fetch_packages (object) :
 
     size = self.toolbox.download_to_file(full_url, output_file, log=self.log)
     if (size == -2):
-      print >> self.log, "    using ./%s (cached)" % pkg_name
+      print("    using ./%s (cached)" % pkg_name, file=self.log)
       if return_file_and_status:
         return op.join(self.dest_dir, output_file), size
       return op.join(self.dest_dir, output_file)

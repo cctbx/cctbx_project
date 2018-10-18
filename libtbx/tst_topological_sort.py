@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def exercise_specific():
   from libtbx.topological_sort import stable
   from libtbx.topological_sort import strongly_connected_components as scc
@@ -75,7 +76,7 @@ def run(args):
   random.seed(0)
   for i_trial in xrange(10):
     exercise_random(rng=random, n_nodes=10)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

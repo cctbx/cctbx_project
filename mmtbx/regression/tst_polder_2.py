@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from libtbx import easy_run
 import time
 from libtbx.test_utils import approx_equal
@@ -82,9 +82,9 @@ def exercise_01(fobs_1, flags_1, prefix):
     "sphere_radius=3",
     "output_file_name_prefix=%s" % prefix,
     'solvent_exclusion_mask_selection="%s"' % selection,
-    "> %s.log" % prefix
+    "&> %s.log" % prefix
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
   # exact values: 11.129  16.152  13.006
   check(
@@ -105,9 +105,9 @@ def exercise_02(fobs_1, prefix):
     "sphere_radius=3",
     "output_file_name_prefix=%s" % prefix,
     'solvent_exclusion_mask_selection="%s"' % selection,
-    "> %s.log" % prefix
+    "&> %s.log" % prefix
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
   check(
     tuple_calc = [12.7, 22.7, 17.7],
@@ -128,9 +128,9 @@ def exercise_03(fobs_1, flags_1, prefix):
     "sphere_radius=3",
     "output_file_name_prefix=%s" % prefix,
     'solvent_exclusion_mask_selection="%s"' % selection,
-    "> %s.log" % prefix
+    "&> %s.log" % prefix
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
   # exact values: 11.129  16.152  13.006
   check(
@@ -154,7 +154,7 @@ def exercise():
   # map values are not reproducible if not systematic Rfree!
   def generate_r_free_flags_systematic(miller_array):
     result = flex.bool()
-    for i in xrange(miller_array.indices().size()):
+    for i in range(miller_array.indices().size()):
       if(i%10==0): result.append(True)
       else: result.append(False)
     return miller_array.array(data = result)
@@ -164,26 +164,26 @@ def exercise():
   flags_anom = generate_r_free_flags_systematic(miller_array=f_anom)
   flags_obs = generate_r_free_flags_systematic(miller_array=f_obs)
   #
-  print '*'*79
-  print 'Test reading one mtz with F and Rfree as anomalous arrays'
+  print('*'*79)
+  print('Test reading one mtz with F and Rfree as anomalous arrays')
   exercise_01(
     fobs_1  = f_anom,
     flags_1 = flags_anom,
     prefix  = "tst_polder_2_1")
-  print "command success"
-  print '*'*79
-  print 'Test reading one mtz with F as anomalous array (no Rfree present)'
+  print("command success")
+  print('*'*79)
+  print('Test reading one mtz with F as anomalous array (no Rfree present)')
   exercise_02(
     fobs_1 = f_anom,
     prefix = "tst_polder_2_2")
-  print "command success"
-  print '*'*79
-  print 'Test reading mtz with F as anomalous array and Rfree is usual array'
+  print("command success")
+  print('*'*79)
+  print('Test reading mtz with F as anomalous array and Rfree is usual array')
   exercise_03(
     fobs_1  = f_anom,
     flags_1 = flags_obs,
     prefix  = "tst_polder_2_3")
-  print "command success"
+  print("command success")
 
 def check(tuple_calc, selection, prefix):
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
@@ -210,11 +210,11 @@ def check(tuple_calc, selection, prefix):
     sites_frac = sites_frac_lig)
   #
   mmm_mp = mp.min_max_mean().as_tuple()
-  print "Polder map : %7.3f %7.3f %7.3f" % mmm_mp
+  print("Polder map : %7.3f %7.3f %7.3f" % mmm_mp)
   assert approx_equal(mmm_mp, tuple_calc, eps=1.0), "\
    calculated is %s and expected is %s" % (mmm_mp, tuple_calc)
 
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

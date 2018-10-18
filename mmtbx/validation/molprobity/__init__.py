@@ -6,7 +6,9 @@ mmtbx.validation, which use the same APIs for storing and displaying results.
 
 # TODO combine with some parts of mmtbx.kinemage.validation
 
-from __future__ import division
+from __future__ import division, print_function
+from iotbx.cli_parser import CCTBXParser
+from libtbx.program_template import ProgramTemplate
 from mmtbx.rotamer import rotamer_eval
 from mmtbx.validation import validation, residue
 from mmtbx.validation import model_properties
@@ -23,11 +25,10 @@ from mmtbx.validation import sequence
 from libtbx.str_utils import make_header, make_sub_header, format_value
 from libtbx import slots_getstate_setstate, \
     slots_getstate_setstate_default_initializer
-from libtbx.utils import null_out, to_str, Sorry
+from libtbx.utils import multi_out, null_out, show_times, to_str, Sorry
 import iotbx.pdb
 import libtbx.load_env
 import libtbx.phil
-import libtbx.program_template
 import mmtbx.model
 import os.path
 import sys
@@ -449,8 +450,8 @@ class molprobity (slots_getstate_setstate) :
         ignore_hydrogens=True,
         report_whole_res=True,
         return_ca_pos=True)
-    except Exception, e :
-      print >> out, to_str(e)
+    except Exception as e :
+      print(to_str(e), file=out)
     else :
       for (res_info, missing_atoms, xyz) in missing_list :
         if len(missing_atoms) == 0 :
@@ -459,9 +460,9 @@ class molprobity (slots_getstate_setstate) :
         try :
           resseq = int(res_info[2:6])
         except ValueError : # FIXME use hybrid36?
-          print >> out, "  warning: indecipherable residue number '%s'" % \
-            res_info[2:6]
-          print res_info
+          print("  warning: indecipherable residue number '%s'" % \
+            res_info[2:6], file=out)
+          print(res_info)
           continue
         alt = res_info[-4]
         resname = res_info[-3:]
@@ -727,16 +728,26 @@ class summary (slots_getstate_setstate_default_initializer) :
     if (show_percentiles) :
       perc_attr = ["clashscore", "mpscore", "r_work", "r_free"]
       stats = dict([ (name, getattr(self, name)) for name in perc_attr ])
+      from mmtbx.polygon import get_statistics_percentiles
+      percentiles = get_statistics_percentiles(self.d_min, stats)
     for k, name in enumerate(self.__slots__) :
       format = "%%s%%-%ds = %%s" % maxlen
       if (k < 3) :
         format += " %%"
       percentile_info = ""
-      format += "%s"
+      if (show_percentiles) :
+        percentile = percentiles.get(name, None)
+        if (percentile is not None) :
+          format += " (percentile: %s)"
+          percentile_info = "%.1f" % percentile
+        else :
+          format += "%s"
+      else :
+        format += "%s"
       value = getattr(self, name)
       if (value is not None) :
-        print >> out, format % (prefix, self.labels[k], fs(self.formats[k],
-          value), percentile_info)
+        print(format % (prefix, self.labels[k], fs(self.formats[k],
+          value), percentile_info), file=out)
     return self
 
   def iter_molprobity_gui_fields (self) :
@@ -794,22 +805,22 @@ class pdb_header_info (slots_getstate_setstate) :
   def show (self, out=sys.stdout, prefix="", include_r_factors=True,
       include_rms_geom=True) :
     if (self.refinement_program is not None) :
-      print >> out, "%sRefinement program    = %s" % (prefix,
-        self.refinement_program)
+      print("%sRefinement program    = %s" % (prefix,
+        self.refinement_program), file=out)
     if (include_r_factors) :
       if (self.d_min is not None) :
-        print >> out, "%sHigh resolution       = %6.2f" % (prefix, self.d_min)
+        print("%sHigh resolution       = %6.2f" % (prefix, self.d_min), file=out)
       if (self.r_work is not None) :
-        print >> out, "%sR-work                = %8.4f" % (prefix, self.r_work)
+        print("%sR-work                = %8.4f" % (prefix, self.r_work), file=out)
       if (self.r_free is not None) :
-        print >> out, "%sR-free                = %8.4f" % (prefix, self.r_free)
+        print("%sR-free                = %8.4f" % (prefix, self.r_free), file=out)
     if (include_rms_geom) :
       if (self.rms_bonds is not None) :
-        print >> out, "%sRMS(bonds)            = %8.4f" % (prefix,
-          self.rms_bonds)
+        print("%sRMS(bonds)            = %8.4f" % (prefix,
+          self.rms_bonds), file=out)
       if (self.rms_angles is not None) :
-        print >> out, "%sRMS(angles)           = %6.2f" % (prefix,
-          self.rms_angles)
+        print("%sRMS(angles)           = %6.2f" % (prefix,
+          self.rms_angles), file=out)
 
 class residue_multi_criterion (residue) :
   """
@@ -949,7 +960,7 @@ class multi_criterion_view (slots_getstate_setstate) :
         if (id_str in self.residues) :
           self.residues[id_str].add_outlier(outlier)
         else :
-          print >> log, "missing residue group '%s'" % id_str
+          print("missing residue group '%s'" % id_str, file=log)
       else :
         have_ids = set([])
         for atom in outlier.atoms_info :
@@ -959,7 +970,7 @@ class multi_criterion_view (slots_getstate_setstate) :
             self.residues[id_str].add_outlier(outlier)
             have_ids.add(id_str)
           else :
-            print >> log, "missing residue group '%s'" % id_str
+            print("missing residue group '%s'" % id_str, file=log)
 
   def get_residue_group_data (self, residue_group) :
     residue_validation = self.residues.get(residue_group.id_str(), None)
@@ -1001,10 +1012,95 @@ class multi_criterion_view (slots_getstate_setstate) :
 
 # =============================================================================
 # MolProbity ProgramTemplate
-class ProgramTemplate(libtbx.program_template.ProgramTemplate):
-
-  def get_results_as_JSON(self):
-    return None
+class MolProbityTemplate(ProgramTemplate):
 
   def get_results_as_PDB_JSON(self):
     return None
+
+# MolProbity CLI Parser
+class MolProbityParser(CCTBXParser):
+
+  def add_default_options(self):
+    super(MolProbityParser, self).add_default_options()
+
+    # add extra CLI option for PDB JSON
+    self.add_argument(
+      '--write-pdb-json', '--write_pdb_json', action='store_true',
+      help='write output in JSON file for PDB'
+    )
+
+# MolProbity run_program function
+# Since the JSON output comes at the end, there is no easy way to modify the
+# default run_program function
+# But, this can be the basis for running other MolProbity validation tools
+# that can output a JSON file specific for the PDB.
+def run_molprobity_program(program_class=None, custom_process_arguments=None,
+                           args=None, logger=None):
+  '''
+  Function for running programs using CCTBXParser and the program template
+
+  :param program_class:  ProgramTemplate type (required)
+  :param custom_process_arguments:
+                         Custom function to parse unknown arguments (optional)
+  :param args:           list of command-line arguments (optional)
+  :param logger:         logger (e.g. multi_out) for output (optional)
+  :rtype:                whatever is returned from program_class.get_results()
+  '''
+
+  assert (program_class is not None)
+
+  if (args is None):
+    args = sys.argv[1:]
+
+  # create logger
+  if (logger is None):
+    logger = multi_out()
+    logger.register('stdout', sys.stdout)
+
+  # start timer
+  t = show_times(out=logger)
+
+  # create parser
+  parser = MolProbityParser(program_class=program_class,
+                            custom_process_arguments=custom_process_arguments,
+                            logger=logger)
+  namespace = parser.parse_args(args)
+
+  # start program
+  print('Starting job', file=logger)
+  print('='*79, file=logger)
+  task = program_class(parser.data_manager, parser.working_phil.extract(),
+                       master_phil=parser.master_phil,
+                       logger=logger)
+
+  # custom constructor (optional)
+  task.custom_init()
+
+  # validate inputs
+  task.validate()
+
+  # run program
+  task.run()
+
+  # clean up (optional)
+  task.clean_up()
+
+  # output JSON file for PDB
+  if (namespace.write_pdb_json):
+    filename, ext = os.path.splitext(
+      os.path.basename(parser.data_manager.get_default_model_name()))
+    filename += '_pdb.json'
+    json_text = task.get_results_as_PDB_JSON()
+    print('\nJSON output')
+    print('-'*79, file=logger)
+    print('  Writing results in JSON format to %s.' % filename, file=logger)
+    parser.data_manager._write_text(None, filename, json_text,
+                                    overwrite=namespace.overwrite)
+
+  # stop timer
+  print('', file=logger)
+  print('='*79, file=logger)
+  print('Job complete', file=logger)
+  t()
+
+  return task.get_results()

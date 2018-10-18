@@ -3,6 +3,7 @@
 # index of all current phil parameters, and an easy way to change them.
 
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_pickle, str_utils, smart_open
 from libtbx import adopt_init_args, Auto
 from libtbx.phil import gui_objects
@@ -141,7 +142,7 @@ class index (object) :
         sub_name="LIBTBX_BASE_DIR")
     try :
       f = smart_open.for_writing(file_name, "w")
-    except IOError, e :
+    except IOError as e :
       raise Sorry(str(e))
     else :
       if (replace_path is not None) :
@@ -210,7 +211,7 @@ class index (object) :
       new_phil = self.master_phil.fetch(source=phil_object)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
+    except Exception as e :
       return None
     else :
       return new_phil.extract()
@@ -485,14 +486,14 @@ class index (object) :
       phil_object = self.parse(file_name=file_name)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
+    except Exception as e :
       self.log(e)
       raise Sorry("This parameter file could not be parsed correctly.")
     try :
       new_phil = self.master_phil.fetch(source=phil_object)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
+    except Exception as e :
       self.log(e)
       self.log(open(file_name).read())
       raise Sorry("This file contains invalid parameters for this program. "+
@@ -507,10 +508,10 @@ class index (object) :
       new_phil = self.master_phil.fetch(source=phil_object)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
-      print str(e)
-      print "bad string:"
-      print str(phil_string)
+    except Exception as e :
+      print(str(e))
+      print("bad string:")
+      print(str(phil_string))
       if (raise_sorry) :
         raise Sorry("An unknown error occurred parsing internal parameters. "+
           "This is probably a bug; if the program was launched with "+
@@ -576,15 +577,15 @@ class index (object) :
       if object.style is not None and phil_scope.is_template != -1 :
         style = self.create_style(object.style)
         if (style.selection) and (object.type.phil_type == "str") :
-          print "WARNING: deprecated 'str' type with 'selection' style"
-          print "   name: %s" % full_object_path
+          print("WARNING: deprecated 'str' type with 'selection' style")
+          print("   name: %s" % full_object_path)
         self.style[full_object_path] = style
         if style.hidden :
           self._hidden.append(full_object_path)
         if (style.output_dir) :
           self._output_dir_path = full_object_path
         if style.OnUpdate is not None :
-          print "OnUpdate is deprecated (%s)" % full_object_path
+          print("OnUpdate is deprecated (%s)" % full_object_path)
           self._update_handlers[full_object_path] = style.OnUpdate
         elif style.process_hkl :
           self._event_handlers[full_object_path] = "auto_extract_hkl_params"

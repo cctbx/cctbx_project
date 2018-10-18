@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 import optparse
 import os
@@ -52,7 +53,7 @@ def WriteNSISpreamble(productname="Phenix",
 
 def run (args, out=sys.stdout) :
   if (sys.platform != "win32") :
-    print >> out, "This application will only run on Windows systems."
+    print("This application will only run on Windows systems.", file=out)
     return 1
   parser = optparse.OptionParser(
     description="Utility for creating a Windows installer for the specified command, which must be present in %LIBTBX_BUILD%\\bin.")
@@ -75,12 +76,12 @@ def run (args, out=sys.stdout) :
     help="main NSISscript to be prepended by the custom definitions", default="")
 
   options, args = parser.parse_args(args)
-  print "Creating windows installer in", options.outdir
+  print("Creating windows installer in", options.outdir)
   logfname = os.path.join(options.outdir, "MakeWindowsInstaller.log")
-  print "Writing log file to", logfname
+  print("Writing log file to", logfname)
   #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
   if options.productname.lower() != "phenix":
-    print >> out, "There is no NSIS installer script for " + options.productname.lower()
+    print("There is no NSIS installer script for " + options.productname.lower(), file=out)
     return 1 # currently we only have NSIS installer scripts for Phenix
 
   scriptname = WriteNSISpreamble(options.productname, options.version,
@@ -88,7 +89,7 @@ def run (args, out=sys.stdout) :
                     options.tmpdir, options.mainNSISscript)
 
   cmd = ["makensis", "/OMakeWindowsInstaller.log", "/NOCD", "/V4", scriptname]
-  print "args= ", str(cmd)
+  print("args= ", str(cmd))
   try:
     p = subprocess.Popen(
       cmd,
@@ -96,7 +97,7 @@ def run (args, out=sys.stdout) :
       stdout=sys.stdout,
       stderr=sys.stderr
     )
-  except Exception, e:
+  except Exception as e:
     raise e
   p.wait()
 
@@ -111,12 +112,12 @@ def run (args, out=sys.stdout) :
   lines = mfile.readlines()
   mfile.close()
   lastlines = lines[(len(lines) - 25): ]
-  print mstr + ''.join(lastlines)
+  print(mstr + ''.join(lastlines))
 
   if p.returncode != 0:
     raise RuntimeError, "create_windows_installer() failed with return code %s"%(p.returncode)
 
-  print "Windows installer stored in", options.outdir
+  print("Windows installer stored in", options.outdir)
 
 
 

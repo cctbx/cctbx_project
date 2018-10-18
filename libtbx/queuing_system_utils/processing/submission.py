@@ -339,7 +339,7 @@ def execute(args):
       stderr = subprocess.PIPE,
       )
 
-  except OSError, e:
+  except OSError as e:
     raise errors.ExecutableError, "'%s': %s" % ( " ".join( args ), e )
 
   return process

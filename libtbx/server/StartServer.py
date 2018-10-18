@@ -1,10 +1,11 @@
 from __future__ import division
+from __future__ import print_function
 from FileServer import StartServer, GetServerClient, WriteServerFile
 
 def run():
   client = GetServerClient()
   if not client:
-    print 'Failed to find running server'
+    print('Failed to find running server')
     thread, port = StartServer()
     WriteServerFile(port)
     thread.start()

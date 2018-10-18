@@ -1,24 +1,205 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
+from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 08/31/2018
+Last Changed: 10/17/2018
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
 import os
+import sys
+from collections import Counter
+import wx
+
 from cctbx import miller
 assert miller
+from libtbx import easy_pickle as ep, easy_run
 
-from libtbx import easy_pickle as ep
-from libtbx import easy_run
+# for Py3 compatibility
+from io import BytesIO
+try:
+    import itertools.izip as zip
+except ImportError:
+    pass
 
-from collections import Counter
-
+# For testing
 import time
 assert time
 
+# Platform-specific stuff
+# TODO: Will need to test this on Windows at some point
+if wx.Platform == '__WXGTK__':
+  plot_font_size = 10
+  norm_font_size = 10
+  button_font_size = 12
+  LABEL_SIZE = 14
+  CAPTION_SIZE = 12
+  python = 'python'
+elif wx.Platform == '__WXMAC__':
+  plot_font_size = 9
+  norm_font_size = 12
+  button_font_size = 14
+  LABEL_SIZE = 14
+  CAPTION_SIZE = 12
+  python = "Python"
+elif (wx.Platform == '__WXMSW__'):
+  plot_font_size = 9
+  norm_font_size = 9
+  button_font_size = 11
+  LABEL_SIZE = 11
+  CAPTION_SIZE = 9
+  python = "Python"  # TODO: make sure it's right!
+
+# --------------------------- Miscellaneous Utils ---------------------------- #
+
+def noneset(value):
+  if value == '':
+    return 'None'
+  elif 'none' in str(value).lower():
+    return "None"
+  elif value is None:
+    return "None"
+  else:
+    return value
+
+def makenone(value):
+  if 'none' in str(value).lower():
+    return None
+
+class UnicodeCharacters():
+  def __init__(self):
+    self.alpha = u'\N{GREEK SMALL LETTER ALPHA}'.encode('utf-8')
+    self.beta = u'\N{GREEK SMALL LETTER BETA}'.encode('utf-8')
+    self.gamma = u'\N{GREEK SMALL LETTER GAMMA}'.encode('utf-8')
+    self.sigma = u'\N{GREEK SMALL LETTER SIGMA}'.encode('utf-8')
+
+class WxFlags():
+  def __init__(self):
+    self.stack = wx.TOP | wx.RIGHT | wx.LEFT
+    self.expand = wx.TOP | wx.RIGHT | wx.LEFT | wx.EXPAND
+
+class Capturing(list):
+  """ Class used to capture stdout from cctbx.xfel objects. Saves output in
+  appendable list for potential logging.
+  """
+
+  def __enter__(self):
+    self._stdout = sys.stdout
+    self._stderr = sys.stderr
+    sys.stdout = self._stringio_stdout = BytesIO()
+    sys.stderr = self._stringio_stderr = BytesIO()
+    return self
+  def __exit__(self, *args):
+    self.extend(self._stringio_stdout.getvalue().splitlines())
+    sys.stdout = self._stdout
+    self.extend(self._stringio_stderr.getvalue().splitlines())
+    sys.stderr = self._stderr
+
+
+def get_mpi_rank_and_size():
+  from mpi4py import MPI
+  comm = MPI.COMM_WORLD
+  rank = comm.Get_rank() # each process in MPI has a unique id, 0-indexed
+  size = comm.Get_size() # size: number of processes running in this job
+  return rank, size
+
+def main_log(logfile, entry, print_tag=False):
+  """ Write main log (so that I don't have to repeat this every time). All this
+      is necessary so that I don't have to use the Python logger module, which
+      creates a lot of annoying crosstalk with other cctbx.xfel modules.
+  """
+  if logfile is not None:
+    with open(logfile, 'a') as lf:
+      lf.write('{}\n'.format(entry))
+
+  if print_tag:
+    print (entry)
+
+def set_base_dir(dirname=None, sel_flag=False, out_dir=None):
+  """ Generates a base folder for converted pickles and/or grid search and/or
+      integration results; creates subfolder numbered one more than existing
+  """
+  if out_dir is None and dirname is not None:
+    path = os.path.abspath(os.path.join(os.curdir, dirname))
+  elif out_dir is not None and dirname is None:
+    path = os.path.abspath(out_dir)
+  elif out_dir is None and dirname is None:
+    path = os.path.abspath(os.curdir)
+  else:
+    path = os.path.join(os.path.abspath(out_dir), dirname)
+
+  if os.path.isdir(path):
+    dirs = [d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]
+    dirnums = [int(d) for d in dirs if d.isdigit()]
+    if len(dirnums) > 0:
+      n_top = max(dirnums)
+      if sel_flag:
+        new_path = "{}/{:03d}".format(path, n_top)
+      else:
+        new_path = "{}/{:03d}".format(path, n_top + 1)
+    else:
+      new_path = "{}/{:03d}".format(path, 1)
+  else:
+    new_path = "{}/001".format(path)
+
+  return new_path
+
+def find_base_dir(dirname):
+  """ Function to determine the current folder name """
+  def check_dirname(path, subdirname):
+    if os.path.isdir(os.path.join(path, subdirname)):
+      try:
+        int(subdirname)
+        return True
+      except ValueError:
+        return False
+    else:
+      return False
+
+  path = os.path.abspath(os.path.join(os.curdir, dirname))
+  if os.path.isdir(path):
+    if len(os.listdir(path)) > 0:
+      dirs = [int(i) for i in os.listdir(path) if check_dirname(path, i)]
+      found_path = "{}/{:03d}".format(path, max(dirs))
+    else:
+      found_path = path
+  else:
+    found_path = os.curdir
+  return found_path
+
+
+def make_image_path(raw_img, input_base, base_path):
+  """ Makes path for output images """
+  path = os.path.dirname(raw_img)
+  relpath = os.path.relpath(path, input_base)
+  if relpath == '.':
+    dest_folder = base_path
+  else:
+    dest_folder = os.path.join(base_path, relpath)
+  return os.path.normpath(dest_folder)
+  # return dest_folder
+
+def make_filename(path):
+  bname = os.path.basename(path)
+  ext = bname.split(os.extsep)[-1]
+  if ext.isdigit():
+    filename = bname
+  else:
+    fn_list = bname.split('.')
+    filename = '.'.join(fn_list[0:-1])
+  return filename
+
+def iota_exit(silent=False):
+  if not silent:
+    from iota import iota_version, now
+    print ('\n\nIOTA version {0}'.format(iota_version))
+    print ('{}\n'.format(now))
+  sys.exit()
+
+
+# ------------------------------ Input Finder -------------------------------- #
 
 class InputFinder():
   def __init__(self):
@@ -35,12 +216,13 @@ class InputFinder():
                     ext_only=None,
                     last=None,
                     min_back=None):
-    ''' Runs the 'find' command to recursively get a list of filepaths. Has
+    """ Runs the 'find' command to recursively get a list of filepaths. Has
     a few advangages over os.walk():
       1. Faster (by quite a lot when lots of files involved)
       2. Automatically recursive
       3. Automatically returns absolute paths
       4. Can be further modified in command line (size of file, wildcards, etc.)
+    :param min_back:
     :param as_string: boolean, if true will return file list as a string, if false, as list
     :param ignore_ext:  will ignore extensions as supplied
     :param ext_only: will only find files with these extensions
@@ -48,7 +230,7 @@ class InputFinder():
     :param last: path to last file in a previously-generated input list (
     useful when using this to look for new files in the same folder)
     :return filepaths: list of absolute file paths
-    '''
+    """
     if last is not None:
       newer_than = '-newer {}'.format(last)
     else:
@@ -73,11 +255,11 @@ class InputFinder():
     return filepaths
 
   def read_files_with_oswalk(self, path):
-    '''os.walk() is typically slower than using 'find', but I am keeping it
+    """os.walk() is typically slower than using 'find', but I am keeping it
     here just in case (and for easy switching)
     :param path:
     :return filelist: a list of absolute paths of files
-    '''
+    """
     filelist = []
     for root, folder, files in os.walk(path):
       filepaths = [os.path.join(os.path.abspath(path), f) for f in files]
@@ -86,12 +268,12 @@ class InputFinder():
     return filelist
 
   def identify_file_type(self, filepath):
-    ''' This will attempt to identify the filetype using several consequtive
+    """ This will attempt to identify the filetype using several consequtive
     methods
 
     :param filepath: input filepath
     :return filetype: identified type of file
-    '''
+    """
     filetype = self.test_extension(filepath)
     if filetype == 'unidentified':
       filetype = self.test_file(filepath)
@@ -160,12 +342,12 @@ class InputFinder():
     return filetype
 
   def test_text(self, path):
-    ''' Test the contents of a text file for it being a
+    """ Test the contents of a text file for it being a
           1. List of paths (i.e. an input file)
           2. A PHIL type file
     :param path: path to file
     :return: filetype determined from testing a text file
-    '''
+    """
     with open(path, 'r') as tf:
       contents = tf.readlines()
 
@@ -201,7 +383,7 @@ class InputFinder():
         return 'pickle'
 
   def test_phil(self, filepath):
-    ''' Tests incoming PHIL file to try and determine what it's for '''
+    """ Tests incoming PHIL file to try and determine what it's for """
 
     import iotbx.phil as ip
     try:
@@ -246,11 +428,15 @@ class InputFinder():
 
   def get_input(self, path, filter=True, filter_type='image', last=None,
                 min_back=None):
-    ''' Obtain list of files (or single file) from any input; obtain file type in input
+    """ Obtain list of files (or single file) from any input; obtain file type in input
+    :param filter:
+    :param filter_type:
+    :param last:
+    :param min_back:
     :param path: path to input file(s) or folder(s)
     :return: input_list: list of input file(s) (could be just one file)
              input_type: type of input file(s)
-    '''
+    """
 
     input_list = None
     input_type = None
@@ -287,8 +473,8 @@ class InputFinder():
       else:
         return [], None
 
-    # sort input by filename
-    input_list = sorted(input_list, key=lambda i: i)
+    # sort input by filename and ensure type is str and not unicode
+    input_list = list(map(str, sorted(input_list, key=lambda i: i)))
 
     return input_list, input_type
 
@@ -321,10 +507,14 @@ class InputFinder():
                       filter_type=None,
                       last=None,
                       min_back=None):
-    ''' Makes input list from multiple entries
+    """ Makes input list from multiple entries
+    :param filter:
+    :param filter_type:
+    :param last:
+    :param min_back:
     :param input_entries: a list of input paths
     :return: input list: a list of input files
-    '''
+    """
 
     input_list = []
     for path in input_entries:
@@ -338,22 +528,24 @@ class InputFinder():
 
 
 class ObjectFinder(object):
-  ''' A class for finding pickled IOTA image objects and reading in their
+  """ A class for finding pickled IOTA image objects and reading in their
   contents; outputs a list of Python objects containing information about
-  individual images, including a list of integrated intensities '''
+  individual images, including a list of integrated intensities """
 
   def __init__(self):
-    ''' Constructor '''
+    """ Constructor """
     self.ginp = InputFinder()
 
-  def find_objects(self, obj_folder, read_object_files=None, find_old=False):
-    ''' Seek and import IOTA image objects
+  def find_objects(self, obj_folder, read_object_files=None,
+                   find_old=False, finished_only=False):
+    """ Seek and import IOTA image objects
 
+    :param finished_only:
     :param obj_folder: path to objects (which can be in subfolders)
     :param read_object_files: list of already-read-in objects
     :param find_old: find all objects in folder, regardless of other settings
     :return: list of image objects
-    '''
+    """
     if find_old:
       min_back = None
     else:
@@ -374,15 +566,18 @@ class ObjectFinder(object):
     new_finished_objects = [i for i in new_objects if
                             i is not None and i.status == 'final']
 
-    return new_finished_objects
+    if finished_only:
+      return new_finished_objects
+    else:
+      return new_objects
 
   def read_object_file(self, filepath):
-    ''' Load pickled image object; if necessary, extract observations from
+    """ Load pickled image object; if necessary, extract observations from
     the image pickle associated with object, and append to object
 
     :param filepath: path to image object file
     :return: read-in (and modified) image object
-    '''
+    """
     try:
       object = ep.load(filepath)
       if object.final['final'] is not None:
@@ -392,7 +587,7 @@ class ObjectFinder(object):
           object.final['observations'] = pickle['observations'][0]
       return object
     except Exception, e:
-      print 'OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e)
+      print ('OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e))
       return None
 
 
@@ -401,7 +596,7 @@ class ObjectFinder(object):
 class RadAverageCalculator(object):
   def __init__(self, image=None, datablock=None):
     if (image is None and datablock is None):
-      print 'ERROR: Need image or datablock for Radial Average Calculator'
+      print ('ERROR: Need image or datablock for Radial Average Calculator')
       return
     if datablock is None:
       from dxtbx.datablock import DataBlockFactory

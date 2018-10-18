@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/29/2018
+Last Changed: 10/16/2018
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
@@ -13,12 +13,19 @@ import os
 import uuid
 import numpy as np
 
+try:  # for Py3 compatibility
+    import itertools.izip as zip
+except ImportError:
+    pass
+
 from spotfinder.array_family import flex
 
-import iota.components.iota_misc as misc
+import iota.components.iota_utils as util
 from libtbx import easy_pickle, easy_run
 
-class Empty: pass
+class Empty:
+  def __init__(self):
+    pass
 
 class Triage(object):
   """ Currently only runs a single DISTL instance with default parameters and accepts or
@@ -40,7 +47,7 @@ class Triage(object):
     from spotfinder.applications import signal_strength
 
     # run DISTL spotfinder
-    with misc.Capturing() as distl_output:
+    with util.Capturing() as distl_output:
       Org = signal_strength.run_signal_strength(params)
 
     # Extract relevant spotfinding info
@@ -249,7 +256,7 @@ class Integrator(object):
 
     #Actually run integration using iota.bulletproof
     error_message = ''
-    with misc.Capturing() as index_log:
+    with util.Capturing() as index_log:
       arguments = ["distl.minimum_signal_height={}".format(str(self.s)),
                    "distl.minimum_spot_height={}".format(str(self.h)),
                    "distl.minimum_spot_area={}".format(str(self.a)),
@@ -264,8 +271,8 @@ class Integrator(object):
       try:
         easy_run.fully_buffered(command,join_stdout_stderr=True).show_stdout()
         if not os.path.exists(tmppath):
-          print tmppath
-          print command
+          print (tmppath)
+          print (command)
           raise Exception("Indexing failed for an unknown reason")
 
         # iota.bulletproof saves the needed results from indexing in a tmp file
@@ -276,26 +283,26 @@ class Integrator(object):
         else:
           int_final = result
 
-      except Exception as e:
+      except Exception, e:
         int_final = None
         if hasattr(e, "classname"):
-          print e.classname, "for %s:"%self.img,
+          print (e.classname, "for %s:"%self.img,)
           error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
         else:
-          print "Integration error for %s:"%self.img,
+          print ("Integration error for %s:"%self.img,)
           error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-        print e
+        print (e)
 
     # Output results of integration (from the "info" object returned by
     # run_one_index_core)
-    if int_final == None:
+    if int_final is None:
       if error_message != '':
         reason_for_failure = " - {}".format(error_message)
       else:
         reason_for_failure = ''
       int_status = 'not integrated' + reason_for_failure
       int_results = {'info': int_status}
-    elif int_final['observations'][0] == None:
+    elif int_final['observations'][0] is None:
       int_status = 'no data recorded'
       int_results = {'info': int_status}
     else:
@@ -333,25 +340,25 @@ class Integrator(object):
                        'mos':mosaicity, 'epv':ewald_proximal_volume,
                        'info':int_status,'ok':True}
       except ValueError:
-        print self.img
+        print (self.img)
 
 
     # write integration logfile
     if self.tag == 'integrate':
-      misc.main_log(self.int_log,
+      util.main_log(self.int_log,
                     "{:-^100}\n{:-^100}\n{:-^100}\n"\
                     "".format("", " FINAL INTEGRATION: ", ""\
                     "S = {:>2}, H ={:>2}, A ={:>2} "\
                     "".format(self.s, self.h, self.a)))
     else:
-      misc.main_log(self.int_log,
+      util.main_log(self.int_log,
                     "{:-^100}\n".format(" INTEGRATION: "\
                     "S = {:>2}, H ={:>2}, A ={:>2} "\
                     "".format(self.s, self.h, self.a)))
     for item in index_log:
-      misc.main_log(self.int_log, item)
+      util.main_log(self.int_log, item)
 
-    misc.main_log(self.int_log, "\n[ {:^100} ]\n\n".format(int_status))
+    util.main_log(self.int_log, "\n[ {:^100} ]\n\n".format(int_status))
 
     # In single-image mode, write a file with h, k, l, I, sigma
     if self.single_image == True and self.tag == 'integrate':
@@ -399,7 +406,7 @@ class Selector(object):
         deviate. Optional step. Unit cell tolerance user-defined. """
 
     for i in self.grid:
-      if self.uc != None:
+      if self.uc is not None:
         user_uc = [prm for prm in self.uc.parameters()]
         delta_a = abs(i['a'] - user_uc[0])
         delta_b = abs(i['b'] - user_uc[1])
@@ -416,9 +423,10 @@ class Selector(object):
       else:
         uc_check = True
 
-      i_fail = i['strong'] <= self.min_ref or (self.min_res != None and\
-               i['res'] >= self.min_res) or (self.pg != None and\
-               self.pg.replace(" ","") != i['sg'].replace(" ","")) or\
+      i_fail = i['strong'] <= self.min_ref or (self.min_res is not None and
+                                               i['res'] >= self.min_res) or (
+                         self.pg is not None and
+                         self.pg.replace(" ","") != i['sg'].replace(" ","")) or\
                not uc_check
 
       if i_fail:

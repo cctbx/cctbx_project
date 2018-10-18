@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import unpicklable
 from libtbx.test_utils import Exception_expected
 from libtbx import Auto
@@ -66,7 +67,7 @@ def exercise(exercise_fail):
   from libtbx import easy_mp
   mp_problem = easy_mp.detect_problem()
   if (mp_problem is not None):
-    print "Skipping tst_easy_mp.py: %s" % mp_problem
+    print("Skipping tst_easy_mp.py: %s" % mp_problem)
     return
   check_if_stacktrace_is_propagated_properly(method='threading', nproc=2)
   check_if_stacktrace_is_propagated_properly(method='multiprocessing', nproc=2)
@@ -99,7 +100,7 @@ def exercise(exercise_fail):
   import os
   op = os.path
   def fixed_func(arg):
-    print "hello world", arg
+    print("hello world", arg)
     return 10*arg
   def go():
     return easy_mp.pool_map(
@@ -188,7 +189,7 @@ def check_if_stacktrace_is_propagated_properly(method, nproc):
       method=method,
       processes=nproc,
       preserve_exception_message=True)
-  except ZeroDivisionError, e:
+  except ZeroDivisionError as e:
     exception_seen = True
     exc_type, exc_value, exc_traceback = sys.exc_info()
     assert "division by zero" in str(exc_value.message), "Exception value mismatch: '%s'" % exc_value
@@ -204,12 +205,12 @@ def check_if_stacktrace_is_propagated_properly(method, nproc):
     if ex is not None and _may_divide_by_zero.func_name in "".join( st ):
       stack_contains_fail_function = True
     if not stack_contains_fail_function:
-      print "Thrown exception: %s:" % str(e)
+      print("Thrown exception: %s:" % str(e))
       traceback.print_tb(exc_traceback)
-      print ""
+      print("")
       assert stack_contains_fail_function, "Stacktrace lost"
-  except Exception, e:
-    print "Exception type mismatch, expected ZeroDivisionError"
+  except Exception as e:
+    print("Exception type mismatch, expected ZeroDivisionError")
     raise
   assert exception_seen, "Expected exception not thrown"
 
@@ -217,7 +218,7 @@ def run(args):
   assert args in [[], ["--fail"]]
   exercise_fail = (len(args) != 0)
   exercise(exercise_fail)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

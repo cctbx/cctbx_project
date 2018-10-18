@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 try:
   import cPickle as pickle
 except ImportError:
@@ -195,7 +196,7 @@ if __name__=="__main__":
 
   client = FileServer.GetServerClient()
 
-  print client
+  print(client)
   if client:
-    print client.tester()
+    print(client.tester())
     #client.shutdown()

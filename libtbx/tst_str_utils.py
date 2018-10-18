@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def exercise():
   from libtbx.test_utils import show_diff, Exception_expected
   import cPickle
@@ -93,10 +94,10 @@ world""", suffix=" ", rstrip=False) == """\
   out1 = cStringIO.StringIO()
   out2 = StringIO()
   out3 = StringIO("Hello world!\n")
-  print >> out1, "Hello world!"
-  print >> out2, "Hello world!"
+  print("Hello world!", file=out1)
+  print("Hello world!", file=out2)
   try :
-      print >> out3, "Hello world!"
+      print("Hello world!", file=out3)
   except AttributeError :
     pass
   else :
@@ -176,7 +177,7 @@ to be reset.
   from libtbx.str_utils import framed_output
   out = StringIO()
   box = framed_output(out, frame='#')
-  print >> box, "Hello, world!"
+  print("Hello, world!", file=box)
   box.close()
   assert (out.getvalue() == """
 #################
@@ -198,13 +199,13 @@ to be reset.
   out = StringIO()
   box = framed_output(out, frame='-', width=72, prefix="    ",
     title="Validation summary")
-  print >> box, "Overall MolProbity score: 2.56"
+  print("Overall MolProbity score: 2.56", file=box)
   box.add_separator()
-  print >> box, """\
+  print("""\
 Ramachandran favored:  97.5 %
              outliers:  2.5 %
 Rotamer outliers:       5.9 %
-Clashscore:            10.9"""
+Clashscore:            10.9""", file=box)
   assert (out.getvalue() == "")
   del box
   assert (out.getvalue() == """
@@ -262,7 +263,7 @@ def run(args):
   assert len(args) == 0
   exercise()
   exercise_matching_nested_pairs()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

@@ -48,7 +48,7 @@ class pooled_run(object):
       try:
         value = target( *args, **kwargs )
 
-      except Exception, e:
+      except Exception as e:
         results.append( result.error( exception = e ) )
 
       else:

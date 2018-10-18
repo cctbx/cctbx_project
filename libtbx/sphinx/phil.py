@@ -59,7 +59,7 @@ class PhilDirective(Directive):
         if isinstance(master_params, ModuleType):
           continue
         break
-      except Exception, e:
+      except Exception as e:
         print(import_path)
         print(e)
 

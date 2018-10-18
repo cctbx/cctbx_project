@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from libtbx import easy_run
 import time
 from libtbx.test_utils import approx_equal
@@ -183,7 +183,7 @@ def exercise_01(fobs_1, fobs_2, flags_1, flags_2, prefix):
     "r_free_flags_labels=R-free-flags-1",
     "> %s_1.log" % prefix
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
   #
   check(
@@ -213,7 +213,7 @@ def exercise_02(fobs_1, flags_1, prefix):
     'solvent_exclusion_mask_selection="%s"' % selection,
     "> %s_2.log" % prefix
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
   check(
     tuple_calc=[10.7, 15.1, 13.4],
@@ -239,7 +239,7 @@ def exercise_03(fobs_2, flags_2, prefix):
     'solvent_exclusion_mask_selection="%s"' % selection,
     "> %s_3.log" % prefix
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
   check(
     tuple_calc=[13.7, 20.3, 18.4],
@@ -263,7 +263,7 @@ def exercise(prefix="tst_polder_1"):
   #
   def generate_r_free_flags_systematic(miller_array):
     result = flex.bool()
-    for i in xrange(miller_array.indices().size()):
+    for i in range(miller_array.indices().size()):
       if(i%10==0): result.append(True)
       else: result.append(False)
     return miller_array.array(data = result)
@@ -272,20 +272,20 @@ def exercise(prefix="tst_polder_1"):
   flags_1 = generate_r_free_flags_systematic(miller_array=fobs_1)
   flags_2 = generate_r_free_flags_systematic(miller_array=fobs_2)
   #
-  print '*'*79
-  print 'Test reading one mtz with different choices for F and Rfree'
+  print('*'*79)
+  print('Test reading one mtz with different choices for F and Rfree')
   exercise_01(fobs_1, fobs_2, flags_1, flags_2, prefix="tst_polder_1")
-  print "command success"
-  print '*'*79
-  print 'Test reading two cns files: one with Fobs, one with Rfree'
-  print 'Without specifying labels --> test automatic machinery'
+  print("command success")
+  print('*'*79)
+  print('Test reading two cns files: one with Fobs, one with Rfree')
+  print('Without specifying labels --> test automatic machinery')
   exercise_02(fobs_1, flags_1, prefix="tst_polder_1")
-  print "command success"
-  print '*'*79
-  print 'Test reading model as cif, Fobs from mtz and Rfree from cns file'
+  print("command success")
+  print('*'*79)
+  print('Test reading model as cif, Fobs from mtz and Rfree from cns file')
   exercise_03(fobs_2, flags_2, prefix="tst_polder_1")
-  print "command success"
-  print '*'*79
+  print("command success")
+  print('*'*79)
 
 def check(tuple_calc, selection, prefix):
   #print tuple_calc
@@ -311,11 +311,11 @@ def check(tuple_calc, selection, prefix):
   mp  = get_map_stats(map=map_polder,   sites_frac=sites_frac_lig)
   #
   mmm_mp = mp.min_max_mean().as_tuple()
-  print "Polder map : %7.3f %7.3f %7.3f" % mmm_mp
+  print("Polder map : %7.3f %7.3f %7.3f" % mmm_mp)
   assert approx_equal(mmm_mp, tuple_calc, eps=1.0), "\
    calculated is %s and expected is %s" % (mmm_mp, tuple_calc)
 
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

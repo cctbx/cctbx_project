@@ -1,15 +1,10 @@
-IOTA v1.2.002 - UI update
+IOTA v1.2.005 - reduced UI blocking, assorted bugfixes
 
 Bugfixes:
+  - XTerm IOTA now reports number of images that failed filter (was blank)
 
-
-Features:
-- Removed param requirement for the PRIME Plotter module
-- Removed user / icon definition in PRIME Threads module
-- Added stand-alone image object finder module in utils
-
-
-Known issues:
-- UI remains really slow when using XDisplay
-- Clustering reporting needs touch-up in IOTA log file
-
+Changes:
+  - easy_run submit for local MP jobs (less UI blocking)
+  - moved base classes to iota_utils.py (base ctrl classes in iota_controls.py)
+  - removed iota_cmd.py; using dials/util/command_line.py instead
+  - renamed UI files for controls, dialogs, frames, and init

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 from libtbx.file_clutter import gather
 
@@ -120,9 +121,9 @@ def run(args):
       message_lines.append("")
       message_lines.append("*** Please fix indentation in a text editor ***")
   if (len(message_lines) != 0):
-    print
-    print "\n".join(message_lines)
-    print
+    print()
+    print("\n".join(message_lines))
+    print()
     return (1)
   return (0)
 

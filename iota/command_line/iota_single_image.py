@@ -1,5 +1,6 @@
-from __future__ import division
-from six.moves import range
+from __future__ import division, print_function, absolute_import
+from past.builtins import xrange
+
 # LIBTBX_SET_DISPATCHER_NAME iota.single_image
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -7,7 +8,7 @@ from six.moves import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/31/2018
-Last Changed: 08/29/2018
+Last Changed: 10/16/2018
 Description : IOTA Single Image: can process single image using DIALS,
 with an array of options (i.e. anything from only spotfinding, to indexing,
 space group determination, refinement, integration)
@@ -26,10 +27,9 @@ from xfel.command_line.frame_extractor import ConstructFrame
 from threading import Thread
 
 from iota.components.iota_dials import IOTADialsProcessor
-# from iota.components.iota_dials import phil_scope
 from dials.command_line.stills_process import phil_scope
 from iota.components.iota_threads import IOTATermination
-from iota.components.iota_misc import Capturing
+from iota.components.iota_utils import Capturing
 from iota.components.iota_input import write_defaults
 
 
@@ -161,7 +161,7 @@ class DIALSSpfIdx(Thread):
           datablock = DataBlockFactory.from_filenames([self.img])[0]
           observed = self.processor.find_spots(datablock=datablock)
           status = 'spots found'
-        except Exception as e:
+        except Exception, e:
           fail = True
           observed = []
           err.append('SPOTFINDING ERROR: {}'.format(e))
@@ -174,7 +174,7 @@ class DIALSSpfIdx(Thread):
               experiments, indexed = self.processor.index(
                 datablock=datablock, reflections=observed)
               score = len(indexed)
-            except Exception as e:
+            except Exception, e:
               fail = True
               err.append('INDEXING ERROR: {}'.format(e))
               pass
@@ -194,7 +194,7 @@ class DIALSSpfIdx(Thread):
               lat = experiments[0].crystal.get_space_group().info()
               sg = str(lat).replace(' ', '')
               status = 'indexed'
-            except Exception as e:
+            except Exception, e:
               fail = True
               err.append('LATTICE ERROR: {}'.format(e))
               pass
@@ -210,20 +210,20 @@ class DIALSSpfIdx(Thread):
                 experiments, indexed = self.processor.refine(
                   experiments=experiments,
                   centroids=indexed)
-              except Exception as e:
+              except Exception, e:
                 fail = True
                 err.append('REFINEMENT ERROR: {}'.format(e))
                 pass
 
             if not fail:
               try:
-                print experiments
-                print indexed
+                print (experiments)
+                print (indexed)
                 integrated = self.processor.integrate(experiments=experiments,
                                                       indexed=indexed)
                 frame = ConstructFrame(integrated, experiments[0]).make_frame()
                 status = 'integrated'
-              except Exception as e:
+              except Exception, e:
                 err.append('INTEGRATION ERROR: {}'.format(e))
                 pass
 
@@ -234,7 +234,7 @@ class DIALSSpfIdx(Thread):
         beam = datablock.unique_beams()[0]
 
         s1 = flex.vec3_double()
-        for i in range(len(observed)):
+        for i in xrange(len(observed)):
           s1.append(detector[observed['panel'][i]].get_pixel_lab_coord(
             observed['xyzobs.px.value'][i][0:2]))
         two_theta = s1.angle(beam.get_s0())
@@ -275,19 +275,19 @@ class DIALSSpfIdx(Thread):
       idx, n_spots, img_path, sg, uc = info
 
       if self.verbose:
-        print 'IMAGE #{}: {}'.format(idx, img_path)
-        print 'SPOTS FOUND: {}'.format(n_spots)
-        print 'INDEXING: {} INDEXED SPOTS'.format(score)
+        print ('IMAGE #{}: {}'.format(idx, img_path))
+        print ('SPOTS FOUND: {}'.format(n_spots))
+        print ('INDEXING: {} INDEXED SPOTS'.format(score))
         if res[0] != 99:
-          print 'RESOLUTION: {:.2f} - {:.2f}'.format(res[0], res[1])
+          print ('RESOLUTION: {:.2f} - {:.2f}'.format(res[0], res[1]))
         if sg is not None and uc is not None:
-          print 'BRAVAIS LATTICE: {}'.format(sg)
-          print 'UNIT CELL: {}'.format(uc)
-        print 'TOTAL PROCESSING TIME: {:.2f} SEC'.format(elapsed)
+          print ('BRAVAIS LATTICE: {}'.format(sg))
+          print ('UNIT CELL: {}'.format(uc))
+        print ('TOTAL PROCESSING TIME: {:.2f} SEC'.format(elapsed))
 
-        if err != []:
+        if err:
           for e in err:
-            print e
+            print (e)
 
       if self.output is not None:
         with open(self.output, 'a') as outf:
@@ -295,21 +295,21 @@ class DIALSSpfIdx(Thread):
           outf.write('{}\n'.format(info_line))
 
     if self.verbose:
-      if errors == []:
+      if not errors:
         err = ''
         print_errors = False
       else:
         err = errors[0]
         print_errors = True
 
-      print '\n__RESULTS__'
-      print '{} {} {} {:.2f} {} {} {} {} {{{}}}' .format(n_spots, n_overloads,
-                                      score, res[1], n_rings, 0, avg_I, 0, err)
+      print ('\n__RESULTS__')
+      print ('{} {} {} {:.2f} {} {} {} {} {{{}}}' .format(n_spots, n_overloads,
+                                      score, res[1], n_rings, 0, avg_I, 0, err))
 
       if print_errors:
-        print "__ERRORS__"
+        print ("__ERRORS__")
         for e in errors:
-          print e
+          print (e)
 
 
 

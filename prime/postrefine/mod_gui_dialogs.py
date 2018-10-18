@@ -16,7 +16,7 @@ from wxtbx import bitmaps
 from iotbx import phil as ip
 
 import iota.components.iota_misc as misc
-import iota.components.iota_controls as ct
+import iota.components.iota_ui_controls as ct
 from iota.components.iota_misc import WxFlags
 
 # Platform-specific stuff

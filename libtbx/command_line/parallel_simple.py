@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import re
 import time
 import sys, os
@@ -6,9 +7,9 @@ op = os.path
 
 def show_traceback(file):
   import traceback
-  print >> file
+  print(file=file)
   traceback.print_exc(file=file)
-  print >> file
+  print(file=file)
 
 def fmt_time(t0):
   return "JOB wall clock time: %.2f s" % (time.time() - t0)
@@ -44,14 +45,14 @@ def run_one_cmd(cmd_info):
   t0 = time.time()
   from libtbx import easy_run
   if (cmd_info.index == 0):
-    print "command:", cmd_info.cmd
+    print("command:", cmd_info.cmd)
     sys.stdout.flush()
     try:
       easy_run.call(command=cmd_info.cmd)
     except: # intentional
       show_traceback(file=sys.stdout)
-    print fmt_time(t0)
-    print
+    print(fmt_time(t0))
+    print()
   else:
     sys.stdout.flush()
     sio = None
@@ -70,7 +71,7 @@ def run_one_cmd(cmd_info):
       f.write(buffers.stdout_buffer)
     if (sio is not None):
       f.write(sio.getvalue())
-    print >> f, fmt_time(t0)
+    print(fmt_time(t0), file=f)
     del f
   sys.stdout.flush()
 
@@ -98,7 +99,7 @@ def run_in_dir(cmd_info):
         universal_newlines=True).wait()
     except: # intentional
       show_traceback(file=log)
-    print >> log, fmt_time(t0)
+    print(fmt_time(t0), file=log)
     sys.stdout.flush()
   finally:
     if (op.isdir(cwd_on_entry)):
@@ -168,32 +169,32 @@ def run(args):
   n_proc = min(len(cmd_infos), libtbx.introspection.number_of_processors())
   if (co.jobs is not None):
     n_proc = max(1, min(co.jobs, n_proc))
-  print "Number of processors:", n_proc
-  print "Number of jobs:", len(cmd_infos)
-  print
+  print("Number of processors:", n_proc)
+  print("Number of jobs:", len(cmd_infos))
+  print()
   sys.stdout.flush()
   show_times = libtbx.utils.show_times(time_start="now")
   def show_log(cmd_info):
     need_log = (cmd_info.index != 0 or co.dirs is not None)
     if (cmd_info.log is None):
       if (need_log):
-        print "MISSING: output of command with index %03d:" % cmd_info.index
-        print "  %s" % cmd_info.cmd
+        print("MISSING: output of command with index %03d:" % cmd_info.index)
+        print("  %s" % cmd_info.cmd)
     elif (not op.isfile(cmd_info.log)):
       if (need_log):
-        print "MISSING:", cmd_info.log
+        print("MISSING:", cmd_info.log)
     else:
       lines = open(cmd_info.log).read().splitlines()
       if (len(lines) > 10):
-        print "@BEGIN"
+        print("@BEGIN")
       if (len(lines) != 0):
-        print "\n".join(lines)
+        print("\n".join(lines))
       if (len(lines) > 10):
-        print "@END"
+        print("@END")
   def show_logs():
     for cmd_info in cmd_infos:
       if (cmd_info.index == 0 and co.dirs is None): continue
-      print "command:", cmd_info.cmd
+      print("command:", cmd_info.cmd)
       show_log(cmd_info=cmd_info)
   if (co.dirs is None):
     for cmd_info in cmd_infos:
@@ -201,7 +202,7 @@ def run(args):
       libtbx.utils.remove_files(cmd_info.log)
     if (n_proc < 2):
       for cmd_info in cmd_infos:
-        print "command:", cmd_info.cmd
+        print("command:", cmd_info.cmd)
         run_one_cmd(cmd_info=cmd_info)
         show_log(cmd_info=cmd_info)
     else:
@@ -214,7 +215,7 @@ def run(args):
       d = "%s%03d" % (co.dirs, cmd_info.index)
       if (op.exists(d)):
         if (not co.force_clean_dirs):
-          print >> sys.stderr, "exists already: %s" % show_string(d)
+          print("exists already: %s" % show_string(d), file=sys.stderr)
         old_dirs.append(d)
       cmd_info.log = op.join(d, "log")
     if (len(old_dirs) != 0):
@@ -228,15 +229,14 @@ def run(args):
         paths=old_dirs)
       if (len(remaining) != 0):
         for d in remaining:
-          print >> sys.stderr, \
-            "unable to remove or rename: %s" % show_string(d)
+          print("unable to remove or rename: %s" % show_string(d), file=sys.stderr)
         raise Sorry("Failure removing existing directories.")
     easy_mp.pool_map(
       processes=n_proc, func=run_in_dir, args=cmd_infos, chunksize=1)
     show_logs()
-  print
+  print()
   show_times()
-  print
+  print()
   sys.stdout.flush()
 
 if (__name__ == "__main__"):

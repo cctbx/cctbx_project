@@ -1,5 +1,4 @@
 from __future__ import division
-from six.moves import range
 
 """read PRIME input"""
 #Define exceptions
@@ -506,7 +505,7 @@ def read_pickles(data):
   #take care of tar files
   for tar_filename in frame_files:
     tarf = tarfile.open(name=tar_filename, mode='r')
-    for myindex in range(len(tarf.getmembers())):
+    for myindex in xrange(len(tarf.getmembers())):
       tar_files.append(tar_filename+':ind'+str(myindex))
   return tar_files
 

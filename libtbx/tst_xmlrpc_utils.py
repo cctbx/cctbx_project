@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import os, time
 import libtbx.load_env
@@ -28,7 +29,7 @@ quitting
   server.restart()
   time.sleep(1)
   run_server_tests(server)
-  print "OK"
+  print("OK")
 
 def run_server_tests (server) :
   assert server.echo_test() == True

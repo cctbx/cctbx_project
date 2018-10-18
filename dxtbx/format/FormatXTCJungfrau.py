@@ -99,7 +99,7 @@ class FormatXTCJungfrau(FormatXTC):
     self._env = self._ds.env()
     assert len(self.params.detector_address) == 1
     self._det = psana.Detector(self.params.detector_address[0],self._env)
-    geom=self._det.pyda.geoaccess(self._get_event(index))
+    geom=self._det.pyda.geoaccess(self._get_event(index).run())
     pixel_size = self._det.pixel_size(self._get_event(index))/1000.0 # convert to mm
     d = Detector()
     pg0 = d.hierarchy()

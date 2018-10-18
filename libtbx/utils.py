@@ -1366,6 +1366,7 @@ class indentor(object):
       lines = block.splitlines()
       if (len(lines) == 1):
         if (self.incomplete_line):
+          self.file_object.write(' ')
           self.file_object.write(lines[-1])
         else:
           self.file_object.write(self.indent + lines[-1])
@@ -2393,7 +2394,7 @@ def guess_total_memory(meminfo_file='/proc/meminfo'):
   if (sys.platform == 'win32'):
     ps = subprocess.Popen(['wmic','OS','get','TotalVisibleMemorySize', '/Value'],
      stdout=subprocess.PIPE).communicate()[0]
-    mem = float(ps.split("=")[1].strip())
+    mem = float(ps.split("=")[1].strip()) * 1024
     return mem # trivially easy on Windows
 
   elif (sys.platform=='darwin'):

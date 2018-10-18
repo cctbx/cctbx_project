@@ -418,7 +418,7 @@ class WorkerJob(object):
       except Empty:
         return True
 
-      except Exception, e:
+      except Exception as e:
         self.result = result.error( exception = e )
         self.exitcode = 1
         self.err = e
@@ -507,10 +507,10 @@ class PostprocessingState(object):
     try:
       value = result.success( value = job.unit.finalize( job = self.job ) )
 
-    except ProcessingException, e:
+    except ProcessingException as e:
       raise
 
-    except Exception, e:
+    except Exception as e:
       value = result.error( exception = e )
 
     job.status = ValueState( value = value )
@@ -1014,7 +1014,7 @@ class MainthreadJob(object):
     try:
       self.target( *self.args, **self.kwargs )
 
-    except Exception, e:
+    except Exception as e:
       self.exitcode = 1
       self.err = e
 
@@ -1867,7 +1867,7 @@ class MainthreadPool(object):
       try:
         value = current.target( *current.args, **current.kwargs )
 
-      except Exception, e:
+      except Exception as e:
         res = result.error( exception = e )
 
       else:
@@ -1968,7 +1968,7 @@ class PooledRun(object):
       try:
         res = iden.target( *iden.args, **iden.kwargs )
 
-      except Exception, e:
+      except Exception as e:
         results.append( ( True, e ) )
 
       else:
@@ -1984,7 +1984,7 @@ class PooledRun(object):
     try:
       res = raw()
 
-    except Exception, e:
+    except Exception as e:
       results.extend(
         [
           Result(
