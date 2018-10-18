@@ -1,7 +1,5 @@
 from __future__ import division, print_function, absolute_import
 
-from iota.components import iota_ui_controls as ct
-
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
@@ -2330,5 +2328,3 @@ class ClusterDialog(BaseDialog):
 
   def onOK(self, e):
     e.Skip()
-
-

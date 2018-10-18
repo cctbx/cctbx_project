@@ -9,7 +9,6 @@ Description : IOTA GUI Threads and PostEvents
 
 import os
 import wx
-import time
 from threading import Thread
 
 from libtbx.easy_mp import parallel_map
@@ -22,14 +21,16 @@ import multiprocessing
 from xfel.clustering.cluster import Cluster
 from cctbx.uctbx import unit_cell
 from cctbx.sgtbx import lattice_symmetry
-from cctbx import crystal, statistics
+from cctbx import crystal
 
-from prime.postrefine.mod_mx import mx_handler
-
-from iota.components.iota_utils import InputFinder, ObjectFinder, Capturing
+from iota.components.iota_utils import InputFinder, Capturing
 import iota.components.iota_image as img
 
 ginp = InputFinder()
+
+# for testing
+import time
+assert time
 
 # -------------------------------- Threading --------------------------------- #
 
