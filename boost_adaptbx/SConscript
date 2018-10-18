@@ -88,23 +88,6 @@ if (not env_etc.no_boost_python):
       env_etc.boost_include,
       env_etc.python_include])
 
-  # Argument-dependent lookup fails on GCC 4.1.2 (CentOS 5) and Boost >= 1.60
-  # The "get" function fails to resolve in boost/math/tools/roots.hpp
-  # Explicitly use "boost::fusion::get"
-  if ( (env_etc.gcc_version == 40102) and (env_etc.boost_version >= 106000) ):
-    directory = libtbx.env.module_dist_paths.get('boost','')
-    filename = os.path.join(abs(directory), 'boost/math/tools/roots.hpp')
-    old_filename = filename + '.original'
-    if (os.path.exists(filename)):
-      os.rename(filename, old_filename)
-      with open(old_filename,'r') as f_old, open(filename, 'w') as f_new:
-        lines = f_old.readlines()
-        for line in lines:
-          line = line.replace('= get<', '= boost::fusion::get<')
-          f_new.write(line)
-      copystat(old_filename, filename)
-      os.remove(old_filename)
-
   conf = env_pure_boost_python_ext.Clone().Configure()
   if (not conf.TryCompile("#include <iostream>", extension=".cpp")):
     sys.exit("""

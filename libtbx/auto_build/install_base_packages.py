@@ -134,11 +134,6 @@ class installer (object) :
       self.cppflags_start += self.base_macos_flags
       self.ldflags_start += self.base_macos_flags
 
-    # Compilation flags for CentOS 5 (32-bit)
-    if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
-      old_cflags = os.environ.get('CFLAGS', '')
-      os.environ['CFLAGS'] = old_cflags + ' -march=i686'
-
     # Directory setup.
     self.tmp_dir = options.tmp_dir
     self.build_dir = options.build_dir
@@ -1256,11 +1251,6 @@ _replace_sysconfig_paths(build_time_vars)
     self.configure_and_build(config_args=gettext_conf_args, log=pkg_log)
 
   def build_glib(self):
-    # libffi dependency (for CentOS 5, especially)
-    self.build_compiled_package_simple(pkg_url=BASE_CCI_PKG_URL,
-                                       pkg_name=LIBFFI_PKG,
-                                       pkg_name_label='libffi')
-
     # glib
     pkg_log = self.start_building_package("glib")
     pkg = self.fetch_package(pkg_name=GLIB_PKG)
@@ -1352,12 +1342,6 @@ _replace_sysconfig_paths(build_time_vars)
       self.build_compiled_package_simple(pkg_name=pkg, pkg_name_label=name)
 
   def build_pixman(self):
-
-    # set CFLAGS for CentOS 5 (32-bit)
-    if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
-      old_cflags = os.environ.get('CFLAGS', '')
-      os.environ['CFLAGS'] = old_cflags + ' -g -O2'
-
     # pixman
     pkg_log = self.start_building_package("pixman")
     pkg = self.fetch_package(pkg_name=PIXMAN_PKG)
@@ -1367,18 +1351,8 @@ _replace_sysconfig_paths(build_time_vars)
       config_args=[self.prefix, "--disable-gtk", "--disable-static" ],
       log=pkg_log)
 
-    # reset CFLAGS for CentOS 5 32-bit
-    if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
-      os.environ['CFLAGS'] = old_cflags
-
   def build_cairo(self):
     #    self.include_dirs.append(op.join(self.base_dir, "include", "harfbuzz"))
-
-    # set CXXFLAGS for CentOS 5 (32-bit), needed for harfbuzz
-    if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
-      old_cflags = os.environ.get('CXXFLAGS', '')
-      os.environ['CXXFLAGS'] = old_cflags + ' -march=i686'
-
     for pkg, name in zip([CAIRO_PKG, HARFBUZZ_PKG],["cairo", "harfbuzz"]) :
       self.build_compiled_package_simple(pkg_name=pkg, pkg_name_label=name)
     self.build_compiled_package_simple(
@@ -1387,10 +1361,6 @@ _replace_sysconfig_paths(build_time_vars)
     self.build_compiled_package_simple(
       pkg_name=ATK_PKG, pkg_name_label="atk",
       extra_config_args=["--enable-introspection=no"])
-
-    # reset CXXFLAGS for CentOS 5 32-bit
-    if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
-      os.environ['CXXFLAGS'] = old_cflags
 
   def build_tiff(self):
     # tiff

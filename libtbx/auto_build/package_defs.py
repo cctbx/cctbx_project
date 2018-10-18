@@ -119,12 +119,6 @@ GTK_THEME_PKG = "gtk_themes.tar.gz"
 FONT_PKG = "fonts.tar.gz"
 
 MATPLOTLIB_PKG = "matplotlib-2.0.0.tar.gz"
-# CentOS 5 glibc too old to support matplotlib-2.0.0 dependency (subprocess32)
-# will be fixed in subprocess32 3.5+, https://github.com/google/python-subprocess32/blob/master/ChangeLog
-if (sys.platform.startswith("linux")):
-  distribution = platform.dist()
-  if ( (distribution[0] == 'redhat') and (distribution[1].startswith('5')) ):
-    MATPLOTLIB_PKG = "matplotlib-1.5.1.tar.gz"
 
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
 # https://pypi.python.org/pypi/Send2Trash
