@@ -69,7 +69,10 @@ class installer (object) :
       help="Use only local packages (no downloads)", default=False)
     parser.add_option("--download-only", dest="download_only", action="store_true",
       help="Only download missing packages, do not compile", default=False)
-    parser.add_option("--skip-base", dest="skip_base", action="store",default="")
+    parser.add_option("--skip-base", dest="skip_base", action="store",
+      help="Comma-separated list of packages to skip", default="")
+    parser.add_option("--continue-from", dest="continue_from", action="store",
+      help="Skip all packages preceeding this one", default="")
     parser.add_option("--python-shared", dest="python_shared",
       action="store_true", default=False,
       help="Compile Python as shared library (Linux only)")
@@ -750,6 +753,8 @@ Installation of Python packages may fail.
       if i in packages:
         if i in self.options.skip_base: continue
         packages_order.append(i)
+    if self.options.continue_from and self.options.continue_from in packages_order:
+      packages_order = packages_order[packages_order.index(self.options.continue_from):]
 
     if self.options.download_only:
       print("Downloading dependencies: %s"%(" ".join(packages_order)), file=self.log)
