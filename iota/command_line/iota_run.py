@@ -4,7 +4,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 10/17/2018
+Last Changed: 10/18/2018
 Description : IOTA command-line module.
 '''
 import os
@@ -12,7 +12,7 @@ from libtbx import easy_pickle as ep
 
 from iota import iota_version
 from iota.components.iota_analysis import Analyzer
-from iota.components.iota_init import InitAll
+from iota.components.iota_init import XInitAll
 import iota.components.iota_image as img
 import dials.util.command_line as cmd
 import iota.components.iota_utils as util
@@ -56,8 +56,11 @@ class XTermIOTA():
 
   def __init__(self):
     self.prog_count = 0
-    self.init = InitAll(help_message)
-    self.init.run()
+    self.init = XInitAll(help_message)
+    good_init = self.init.run() # Returns False if something goes wrong
+
+    if not good_init:
+      util.iota_exit()
 
     self.full = self.init.args.full
 
@@ -67,26 +70,27 @@ class XTermIOTA():
     @return: image object
     """
     try:
+      if type(input_entry[2]) is str:
+        img_object = img.SingleImage(input_entry, self.init)
+      else:
+        img_object = input_entry[2]
+    except Exception:
+      return None
+
+    try:
       if self.stage == 'import':
         if self.init.params.cctbx.selection.select_only.flag_on:
-          img_object = input_entry[2]
           img_object.import_int_file(self.init)
         else:
-          img_object = img.SingleImage(input_entry, self.init)
           img_object.import_image()
       elif self.stage == 'process':
-        img_object = input_entry[2]
         img_object.process()
       elif self.stage == 'all':
-        if self.init.params.cctbx.selection.select_only.flag_on:
-          img_object = input_entry[2]
-          img_object.import_int_file(self.init)
-        else:
-          img_object = img.SingleImage(input_entry, self.init)
-          img_object.import_image()
+        img_object.import_image()
         img_object.process()
-    except Exception, e:
-      pass
+    except Exception as e:
+      print ('\nDEBUG: PROCESSING ERROR!', e)
+      return None
 
     return img_object
 

@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 10/17/2018
+Last Changed: 10/18/2018
 Description : IOTA GUI Initialization module
 '''
 
@@ -457,7 +457,7 @@ class MainWindow(wx.Frame):
         tmp_phil = inp.master_phil.format(python_object=rec_init.params)
         self.iota_phil = self.iota_phil.fetch(source=tmp_phil)
       else:
-        rec_init = InitAll(iver=iota_version)
+        rec_init = UIInitAll()
         rec_init.int_base = int_path
         rec_init.obj_base = os.path.join(int_path, 'image_objects')
         rec_init.fin_base = os.path.join(int_path, 'final')
@@ -513,8 +513,9 @@ class MainWindow(wx.Frame):
     self.proc_window = frm.ProcWindow(self, -1, title=title,
                                       target_phil=self.target_phil,
                                       phil=self.iota_phil)
-    init = InitAll(iver=iota_version, input_list=input_list)
-
+    init = UIInitAll()
+    init.target_phil = self.target_phil
+    init.input_list = input_list
     self.proc_window.run(init)
 
     if self.proc_window.good_to_go:
@@ -730,121 +731,11 @@ class MainWindow(wx.Frame):
 
 # ------------------------------ Initialization  ----------------------------- #
 
+from iota.components.iota_init import InitAll
 
-class InitAll(object):
-  """ Class to initialize current IOTA run in GUI
-
-      iver = IOTA version (hard-coded)
-      help_message = description (hard-coded)
-
-  """
-
-  def __init__(self, iver, input_list=None):
-    from datetime import datetime
-    self.iver = iver
-    self.user_id = user
-    self.now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
-    self.input_base = None
-    self.conv_base = None
-    self.obj_base = None
-    self.int_base = None
-    self.input_list = input_list
-
-
-  def make_input_list(self):
-    """ Reads input directory or directory tree and makes lists of input images.
-        Optional selection of a random subset
-    """
-    input_entries = [i for i in self.params.input if i is not None]
-    input_list = ginp.make_input_list(input_entries,
-                                      filter=True,
-                                      filter_type='image')
-
-    # Pick a randomized subset of images
-    if self.params.advanced.random_sample.flag_on and \
-                    self.params.advanced.random_sample.number < len(input_list):
-      inp_list = self.select_random_subset(input_list)
-    else:
-      inp_list = input_list
-
-    return inp_list
-
-
-  def select_image_range(self, full_list):
-    img_range_string = str(self.params.advanced.image_range.range)
-    img_range_elements = img_range_string.split(',')
-    img_list = []
-    for n in img_range_elements:
-      if '-' in n:
-        img_limits = [int(i) for i in n.split('-')]
-        start = min(img_limits)
-        end = max(img_limits)
-        if start <= len(full_list) and end <= len(full_list):
-          img_list.extend(full_list[start:end])
-      else:
-        if int(n) <= len(full_list):
-         img_list.append(full_list[int(n)])
-
-    if len(img_list) > 0:
-      return img_list
-    else:
-      return full_list
-
-  def select_random_subset(self, input_list):
-    """ Selects random subset of input entries """
-    import random
-
-    random_inp_list = []
-    if self.params.advanced.random_sample.number == 0:
-      if len(input_list) <= 5:
-        random_sample_number = len(input_list)
-      elif len(input_list) <= 50:
-        random_sample_number = 5
-      else:
-        random_sample_number = int(len(input_list) * 0.1)
-    else:
-      random_sample_number = self.params.advanced.random_sample.number
-
-    for i in range(random_sample_number):
-      random_number = random.randrange(0, len(input_list))
-      if input_list[random_number] in random_inp_list:
-        while input_list[random_number] in random_inp_list:
-          random_number = random.randrange(0, len(input_list))
-        random_inp_list.append(input_list[random_number])
-      else:
-        random_inp_list.append(input_list[random_number])
-
-    return random_inp_list
-
-
-  # def make_int_object_list(self):
-  #   """ Generates list of image objects from previous grid search """
-  #   from libtbx import easy_pickle as ep
-  #
-  #   if self.params.cctbx.selection.select_only.grid_search_path == None:
-  #     int_dir = util.set_base_dir('integration', True)
-  #   else:
-  #     int_dir = self.params.cctbx.selection.select_only.grid_search_path
-  #
-  #   img_objects = []
-  #
-  #   # Inspect integration folder for image objects
-  #   for root, dirs, files in os.walk(int_dir):
-  #     for filename in files:
-  #       found_file = os.path.join(root, filename)
-  #       if found_file.endswith(('int')):
-  #         obj = ep.load(found_file)
-  #         img_objects.append(obj)
-  #
-  #   # Pick a randomized subset of images
-  #   if self.params.advanced.random_sample.flag_on and \
-  #                 self.params.advanced.random_sample.number < len(img_objects):
-  #     gs_img_objects = self.select_random_subset(img_objects)
-  #   else:
-  #     gs_img_objects = img_objects
-  #
-  #   return gs_img_objects
-
+class UIInitAll(InitAll):
+  def __init__(self):
+    InitAll.__init__(self)
 
   def sanity_check(self):
     """ Check for conditions necessary to starting the run
@@ -879,20 +770,21 @@ class InitAll(object):
             return True
           else:
             return False
-    else:
-      return True
 
-  def run(self, gparams, target_phil=None, list_file=None):
-    """ Run initialization for IOTA GUI
+    # Check for data not found
+    if len(self.input_list) == 0:
+      wx.MessageBox('ERROR: Data Not Found!', 'ERROR', wx.OK | wx.ICON_ERROR)
+      return False
 
-        gparams = IOTA parameters from the GUI elements in PHIL format
-        gtxt = text version of gparams
-        list_file = if "Write Input List" button pressed, specifies name
-                    of list file
+    return True
+
+  def initialize_interface(self):
+    """ Override with UI-specific init procedure
+
+    :param gparams: IOTA parameters from UI and script
+    :param input_list: list of input filepaths
+    :return: True = initialization OK; False = initialization Failed
     """
-
-    self.params = gparams
-    self.target_phil = target_phil
 
     # If input list for some reason isn't transmitted from main window, make it
     if self.input_list is None:
@@ -904,96 +796,8 @@ class InitAll(object):
 
     # Select a random subset of images if turned on
     if self.params.advanced.random_sample.flag_on and \
-      self.params.advanced.random_sample.number < len(self.input_list):
+            self.params.advanced.random_sample.number < len(self.input_list):
       self.input_list = self.select_random_subset(self.input_list)
 
-    # Check for data not found
-    if len(self.input_list) == 0:
-      wx.MessageBox('ERROR: Data Not Found!', 'ERROR', wx.OK | wx.ICON_ERROR)
-      return False
-
-    # If list-only option selected, output list only
-    if list_file is not None:
-      with open(list_file, "w") as lf:
-        for i, input_file in enumerate(self.input_list, 1):
-          lf.write('{}\n'.format(input_file))
-      return True
-
-    # Run the sanity check procedure
-    if not self.sanity_check():
-      return False
-
-    # If fewer images than requested processors are supplied, set the number of
-    # processors to the number of images
-    if self.params.mp_method == 'multiprocessing':
-      if self.params.n_processors > len(self.input_list):
-        self.params.n_processors = len(self.input_list)
-
-    # Generate base folder paths
-    self.conv_base = util.set_base_dir('converted_pickles',
-                                       out_dir=self.params.output)
-    self.int_base = util.set_base_dir('integration', out_dir=self.params.output)
-    self.obj_base = os.path.join(self.int_base, 'image_objects')
-    self.fin_base = os.path.join(self.int_base, 'final')
-    self.log_base = os.path.join(self.int_base, 'logs')
-    self.viz_base = os.path.join(self.int_base, 'visualization')
-    if str(self.params.advanced.temporary_output_folder).lower() in ('none',''):
-      self.tmp_base = os.path.join(self.int_base, 'tmp')
-    else:
-      self.tmp_base = os.path.join(self.params.advanced.temporary_output_folder)
-
-    # Generate base folders
-    os.makedirs(self.int_base)
-    os.makedirs(self.obj_base)
-    os.makedirs(self.fin_base)
-    os.makedirs(self.log_base)
-    try:
-      if not os.path.isdir(self.tmp_base):
-        os.makedirs(self.tmp_base)
-    except OSError:
-      pass
-
-    # Determine input base
-    common_pfx = os.path.abspath(os.path.dirname(os.path.commonprefix(self.input_list)))
-    if len(self.params.input) == 1:
-      self.input_base = os.path.commonprefix([self.params.input[0], common_pfx])
-    else:
-      self.input_base = common_pfx
-
-    # Initialize main log
-    self.logfile = os.path.abspath(os.path.join(self.int_base, 'iota.log'))
-
-    # Write target file and record its location in params
-    local_target_file = os.path.join(self.int_base, 'target.phil')
-    if type(self.target_phil) == list:
-      self.target_phil = '\n'.join(self.target_phil)
-    with open(local_target_file, 'w') as tf:
-      tf.write(self.target_phil)
-
-    if self.params.advanced.integrate_with == 'cctbx':
-      self.params.cctbx.target = local_target_file
-    elif self.params.advanced.integrate_with == 'dials':
-      self.params.dials.target = local_target_file
-
-    # Collect final params and convert to PHIL object
-    final_phil = inp.master_phil.format(python_object=self.params)
-
-    # Generate text of params
-    with util.Capturing() as txt_output:
-      final_phil.show()
-    self.txt_out = ''
-    for one_output in txt_output:
-      self.txt_out += one_output + '\n'
-
-    # Log starting info
-    util.main_log(self.logfile, '{:*^80} \n'.format(' IOTA MAIN LOG '))
-    util.main_log(self.logfile, '{:-^80} \n'.format(' SETTINGS FOR THIS RUN '))
-    util.main_log(self.logfile, self.txt_out)
-
-    # Log cctbx.xfel / DIALS settings
-    util.main_log(self.logfile, '{:-^80} \n\n'
-                                ''.format(' TARGET FILE ({}) CONTENTS '
-                                          ''.format(local_target_file)))
-    util.main_log(self.logfile, self.target_phil)
-
-    return True
+    # Run the sanity check procedure & return result
+    return self.sanity_check()

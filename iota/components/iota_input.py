@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/16/2018
+Last Changed: 10/18/2018
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -354,13 +354,8 @@ def process_input(args,
   if mode == 'file':
     user_phil = [ip.parse(open(inp).read()) for inp in [input_file]]
     working_phil = master_phil.fetch(sources=user_phil)
-    params = working_phil.extract()
-  elif mode == 'auto':
-    params = master_phil.extract()
-    params.description = 'IOTA parameters auto-generated on {}'.format(now)
-    params.input = [input_file]
-
-  final_phil = master_phil.format(python_object=params)
+  else:
+    working_phil = master_phil
 
   # Parse in-line params into phil
   argument_interpreter = argument_interpreter(master_phil=master_phil)
@@ -368,7 +363,7 @@ def process_input(args,
   for arg in phil_args:
     try:
       command_line_params = argument_interpreter.process(arg=arg)
-      final_phil = final_phil.fetch(sources=[command_line_params,])
+      working_phil = working_phil.fetch(sources=[command_line_params,])
       consume.append(arg)
     except Sorry,e:
       pass
@@ -378,7 +373,7 @@ def process_input(args,
     raise Sorry("Not all arguments processed, remaining: {}".format(phil_args))
 
   # Perform command line check and modify params accordingly
-  params = final_phil.extract()
+  params = working_phil.extract()
 
   if mode == 'auto':
     output_dir = os.path.abspath(os.curdir)
@@ -386,6 +381,9 @@ def process_input(args,
       params.dials.target = os.path.join(output_dir, 'dials.phil')
     elif params.advanced.integrate_with == 'cctbx':
       params.cctbx.target = os.path.join(output_dir, 'cctbx.phil')
+    params.description = 'IOTA parameters auto-generated on {}'.format(now)
+    params.input = [input_file]
+    params.output = output_dir
 
   # Check for -r option and set random subset parameter
   if args.random > 0:
@@ -437,7 +435,7 @@ def process_input(args,
       txt_out += one_output + '\n'
     write_defaults(os.path.abspath(os.curdir), txt_out, params.advanced.integrate_with)
 
-  return params, diff_out
+  return final_phil
 
 
 def write_defaults(current_path=None, txt_out=None, method='cctbx',

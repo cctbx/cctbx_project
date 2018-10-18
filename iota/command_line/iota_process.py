@@ -4,7 +4,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/26/2014
-Last Changed: 08/29/2018
+Last Changed: 10/18/2018
 Description : IOTA image processing submission module
 '''
 
@@ -67,11 +67,11 @@ class ProcessAll(Thread):
   def full_proc_wrapper(self, input_entry):
     abort = os.path.isfile(self.abort_file)
     if abort:
-      print ('ABORTING ... NOW!!')
+      # print ('ABORTING ... NOW!!')
       os.remove(self.abort_file)
       raise IOTATermination('IOTA: Run aborted by user')
     else:
-      print ('Processing --- {}'.format(input_entry[2]))
+      # print ('Processing --- {}'.format(input_entry[2]))
       proc_image_instance = ProcessImage(init=self.init,
                                          input_entry=input_entry,
                                          input_type=self.type)

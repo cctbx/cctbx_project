@@ -7,7 +7,7 @@ import iota.components.iota_ui_dialogs
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 10/17/2018
+Last Changed: 10/18/2018
 Description : IOTA GUI Windows / frames
 '''
 
@@ -2046,7 +2046,9 @@ class ProcWindow(wx.Frame):
     # Initialize IOTA parameters and log
 
     self.init = init
-    good_init = self.init.run(self.gparams, target_phil=self.target_phil)
+    self.init.params = self.gparams
+    self.init.target_phil = self.target_phil
+    good_init = self.init.run()
 
     # Start process
     if good_init:

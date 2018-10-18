@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 10/17/2018
+Last Changed: 10/18/2018
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -198,6 +198,254 @@ def iota_exit(silent=False):
     print ('{}\n'.format(now))
   sys.exit()
 
+# ------------------------------- Init Base ---------------------------------- #
+
+
+class InitAll(object):
+  """ Base class to initialize an IOTA run """
+
+  def __init__(self):
+    """ Constructor  """
+    from iota import iota_version, now
+    self.ginp = InputFinder()
+    self.pid = os.getpid()
+
+    try:
+      self.user_id = os.getlogin()
+    except OSError:
+      self.user_id = 'iota'
+
+    self.iver = iota_version
+    self.now = now
+
+    self.input_base = None
+    self.conv_base = None
+    self.obj_base = None
+    self.int_base = None
+
+    self.params = None
+    self.target_phil = None
+    self.input_list = None
+
+  def make_input_list(self):
+    """ Reads input directory or directory tree and makes lists of input images.
+        Optional selection of a random subset
+    """
+
+    # Read input from provided folder(s) or file(s)
+    input_entries = [i for i in self.params.input if i is not None]
+    input_list = self.ginp.make_input_list(input_entries, filter=True,
+                                           filter_type='image')
+
+    return input_list
+
+  def select_image_range(self, full_list):
+    """ Selects a range of images (can be complex) """
+    img_range_string = str(self.params.advanced.image_range.range)
+    img_range_elements = img_range_string.split(',')
+    img_list = []
+    for n in img_range_elements:
+      if '-' in n:
+        img_limits = [int(i) for i in n.split('-')]
+        start = min(img_limits)
+        end = max(img_limits)
+        if start <= len(full_list) and end <= len(full_list):
+          img_list.extend(full_list[start:end])
+      else:
+        if int(n) <= len(full_list):
+         img_list.append(full_list[int(n)])
+
+    if len(img_list) > 0:
+      return img_list
+    else:
+      return full_list
+
+  def select_random_subset(self, input_list):
+    """ Selects random subset of input entries """
+    import random
+
+    random_inp_list = []
+    if self.params.advanced.random_sample.number == 0:
+      if len(input_list) <= 5:
+        random_sample_number = len(input_list)
+      elif len(input_list) <= 50:
+        random_sample_number = 5
+      else:
+        random_sample_number = int(len(input_list) * 0.1)
+    else:
+      random_sample_number = self.params.advanced.random_sample.number
+
+    for i in range(random_sample_number):
+      random_number = random.randrange(0, len(input_list))
+      if input_list[random_number] in random_inp_list:
+        while input_list[random_number] in random_inp_list:
+          random_number = random.randrange(0, len(input_list))
+        random_inp_list.append(input_list[random_number])
+      else:
+        random_inp_list.append(input_list[random_number])
+
+    return random_inp_list
+
+  def make_int_object_list(self):
+    """ Generates list of image objects from previous grid search """
+    from libtbx import easy_pickle as ep
+
+    if self.params.cctbx.selection.select_only.grid_search_path is None:
+      int_dir = set_base_dir('integration', True)
+    else:
+      int_dir = self.params.cctbx.selection.select_only.grid_search_path
+
+    img_objects = []
+
+    for root, dirs, files in os.walk(int_dir):
+      for filename in files:
+        found_file = os.path.join(root, filename)
+        if found_file.endswith(('int')):
+          obj = ep.load(found_file)
+          img_objects.append(obj)
+
+    return img_objects
+
+  def initialize_interface(self):
+    """ Override with interface-specific particulars """
+    return True
+
+  def initialize_output(self):
+    try:
+      self.conv_base = set_base_dir('converted_pickles',
+                                         out_dir=self.params.output)
+      self.int_base = set_base_dir('integration', out_dir=self.params.output)
+      self.obj_base = os.path.join(self.int_base, 'image_objects')
+      self.fin_base = os.path.join(self.int_base, 'final')
+      self.log_base = os.path.join(self.int_base, 'logs')
+      self.viz_base = os.path.join(self.int_base, 'visualization')
+      if not self.params.advanced.temporary_output_folder:
+        self.tmp_base = os.path.join(self.int_base, 'tmp')
+      else:
+        self.tmp_base = os.path.join(self.params.advanced.temporary_output_folder)
+
+      # Determine input base
+      common_pfx = os.path.abspath(os.path.dirname(os.path.commonprefix(self.input_list)))
+      if len(self.params.input) == 1:
+        self.input_base = os.path.commonprefix([self.params.input[0], common_pfx])
+      else:
+        self.input_base = common_pfx
+
+      # Generate base folders
+      os.makedirs(self.int_base)
+      os.makedirs(self.obj_base)
+      os.makedirs(self.fin_base)
+      os.makedirs(self.log_base)
+      try:
+        if not os.path.isdir(self.tmp_base):
+          os.makedirs(self.tmp_base)
+      except OSError:
+        pass
+      return True
+    except Exception:
+      return False
+
+  def initialize_parameters(self):
+    """ Initialize IOTA and backend parameters, write to files
+    :return: True if successful, False if something failed
+    """
+
+    try:
+      # If fewer images than requested processors are supplied, set the number of
+      # processors to the number of images
+      if self.params.n_processors > len(self.input_list):
+        self.params.n_processors = len(self.input_list)
+
+      # Read in backend parameters
+      if self.target_phil is None:
+        if self.params.advanced.integrate_with == 'cctbx':
+          target_file = self.params.cctbx.target
+        elif self.params.advanced.integrate_with == 'dials':
+          target_file = self.params.dials.target
+        else:
+          target_file = None
+
+        if target_file is not None:
+          with open(target_file, 'r') as phil_file:
+            self.target_phil = phil_file.readlines()
+        else:
+          return False
+
+      # Create local target file so that backend parameters stay with the run
+      local_target_file = os.path.join(self.int_base, 'target.phil')
+      if type(self.target_phil) == list:
+        self.target_phil = '\n'.join(self.target_phil)
+      with open(local_target_file, 'w') as tf:
+        tf.write(self.target_phil)
+
+      # Point IOTA parameters at local target file
+      if self.params.advanced.integrate_with == 'cctbx':
+        self.params.cctbx.target = local_target_file
+      elif self.params.advanced.integrate_with == 'dials':
+        self.params.dials.target = local_target_file
+
+      # Collect final params and convert to PHIL object
+      from iota.components.iota_input import master_phil
+      self.iota_phil = master_phil.format(python_object=self.params)
+
+      return True
+
+    except Exception:
+      return False
+
+  def initialize_main_log(self):
+    """ Initialize main log (iota.log) and record starting parameters
+
+    :return: True if successful, False if fails
+    """
+    try:
+      # Generate text of params
+      with Capturing() as txt_output:
+        self.iota_phil.show()
+      self.iota_phil_string = ''
+      for one_output in txt_output:
+        self.iota_phil_string += one_output + '\n'
+
+      # Initialize main log
+      self.logfile = os.path.abspath(os.path.join(self.int_base, 'iota.log'))
+
+      # Log starting info
+      main_log(self.logfile, '{:*^80} \n'.format(' IOTA MAIN LOG '))
+      main_log(self.logfile, '{:-^80} \n'.format(' SETTINGS FOR THIS RUN '))
+      main_log(self.logfile, self.iota_phil_string)
+
+      # Log cctbx.xfel / DIALS settings
+      main_log(self.logfile, '{:-^80} \n'.format('BACKEND SETTINGS'))
+      main_log(self.logfile, self.target_phil)
+
+      return True
+    except Exception:
+      return False
+
+  def run(self):
+    """ Run initialization functions (overwrite for customization)
+
+    :return: True if successful, False if failed
+    """
+
+    # Interface-specific options - override in subclass
+    if not self.initialize_interface():
+      return False
+
+    # Create output file structure
+    if not self.initialize_output():
+      return False
+
+    # Initialize IOTA and backend parameters
+    if not self.initialize_parameters():
+      return False
+
+    # Initalize main log (iota.log)
+    if not self.initialize_main_log():
+      return False
+
+    # Return True for successful initialization
+    return True
 
 # ------------------------------ Input Finder -------------------------------- #
 

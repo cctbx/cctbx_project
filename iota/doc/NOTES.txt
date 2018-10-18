@@ -1,10 +1,4 @@
-IOTA v1.2.005 - reduced UI blocking, assorted bugfixes
+IOTA v1.2.006 - refactoring to remove redundant code
 
-Bugfixes:
-  - XTerm IOTA now reports number of images that failed filter (was blank)
-
-Changes:
-  - easy_run submit for local MP jobs (less UI blocking)
-  - moved base classes to iota_utils.py (base ctrl classes in iota_controls.py)
-  - removed iota_cmd.py; using dials/util/command_line.py instead
-  - renamed UI files for controls, dialogs, frames, and init
+  - general Init module, with overrides for Xterm and UI specifics
+  - tweak to Xterm process submission
