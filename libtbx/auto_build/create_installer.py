@@ -114,7 +114,7 @@ def archive(source, destination, tarfile=None):
             ultddst = "\\\\?\\" + dst
             shutil.copy(ultdsrc, ultddst)
     else:
-      raise Exception, err
+      raise Exception(err)
 
 
 

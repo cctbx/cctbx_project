@@ -115,7 +115,7 @@ def run (args, out=sys.stdout) :
   print(mstr + ''.join(lastlines))
 
   if p.returncode != 0:
-    raise RuntimeError, "create_windows_installer() failed with return code %s"%(p.returncode)
+    raise RuntimeError("create_windows_installer() failed with return code %s"%(p.returncode))
 
   print("Windows installer stored in", options.outdir)
 

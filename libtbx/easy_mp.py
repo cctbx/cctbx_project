@@ -576,7 +576,7 @@ def parallel_map (
         jfactory = technology.jfactory( platform = method, command = qsub_command )
 
       except SetupError as e:
-        raise Sorry, e
+        raise Sorry(e)
 
       from libtbx.scheduling import file_queue
       qfactory = file_queue.qfactory()
@@ -605,7 +605,7 @@ def parallel_map (
     sthandler = libtbx.scheduling.decorate
 
   else:
-    raise Sorry, "Unknown stacktrace handling method: %s" % stacktrace_handling
+    raise Sorry("Unknown stacktrace handling method: %s" % stacktrace_handling)
 
   from libtbx.scheduling import parallel_for
 
@@ -630,7 +630,7 @@ def parallel_map (
         callback( result )
 
     except SetupError as e:
-      raise Sorry, e
+      raise Sorry(e)
 
     manager.shutdown()
     manager.join()

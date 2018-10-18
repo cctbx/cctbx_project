@@ -653,7 +653,7 @@ class SourceModule(object):
   def get_module(self, module):
     if module in self._modules:
       return self._modules[module]
-    raise KeyError, "Unknown module: %s"%module
+    raise KeyError("Unknown module: %s"%module)
 
   def get_url(self, auth=None):
     repo = None

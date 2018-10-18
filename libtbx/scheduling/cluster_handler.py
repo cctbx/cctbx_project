@@ -16,7 +16,7 @@ class Job(processing.Job):
       return getattr( super( Job, self ), name )()
 
     except errors.BatchQueueError as e:
-      raise SetupError, "Queue error: %s" % e
+      raise SetupError("Queue error: %s" % e)
 
 
   @property
@@ -26,7 +26,7 @@ class Job(processing.Job):
       return super( Job, self ).exitcode
 
     except errors.BatchQueueError as e:
-      raise SetupError, "Queue error: %s" % e
+      raise SetupError("Queue error: %s" % e)
 
 
   def start(self):
@@ -84,7 +84,7 @@ class JobFactory(object):
         )
 
     except errors.BatchQueueError as e:
-      raise SetupError, "Queue error: %s" % e
+      raise SetupError("Queue error: %s" % e)
 
 
   def __call__(self, target, args = (), kwargs = {}):

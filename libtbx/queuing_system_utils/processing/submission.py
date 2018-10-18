@@ -141,7 +141,7 @@ class AsynchronousCmdLine(Submission):
         process.poll(),
         err,
         )
-      raise errors.AbnormalExitError, message
+      raise errors.AbnormalExitError(message)
 
     return self.handler(
       jobid = self.extract( output = out ),
@@ -301,7 +301,7 @@ Queue
         process.poll(),
         err,
         )
-      raise errors.AbnormalExitError, message
+      raise errors.AbnormalExitError(message)
 
     return self.handler(
       jobid = self.extract( output = out ),
@@ -340,7 +340,7 @@ def execute(args):
       )
 
   except OSError as e:
-    raise errors.ExecutableError, "'%s': %s" % ( " ".join( args ), e )
+    raise errors.ExecutableError("'%s': %s" % ( " ".join( args ), e ))
 
   return process
 
@@ -350,7 +350,7 @@ def lsf_jobid_extract(output):
   match = LSF_JOBID_EXTRACT_REGEX().search( output )
 
   if not match:
-    raise errors.ExtractionError, "Unexpected response from LSF: %r" % output
+    raise errors.ExtractionError("Unexpected response from LSF: %r" % output)
 
   return match.group(1)
 
@@ -365,7 +365,7 @@ def condor_jobid_extract(output):
   match = CONDOR_JOBID_EXTRACT_REGEX().search( output )
 
   if not match:
-    raise errors.ExtractionError, "Unexpected response from Condor: %r" % output
+    raise errors.ExtractionError("Unexpected response from Condor: %r" % output)
 
   return match.group(1)
 
@@ -375,7 +375,7 @@ def slurm_jobid_extract(output):
   match = SLURM_JOBID_EXTRACT_REGEX().search( output )
 
   if not match:
-    raise errors.ExtractionError, "Unexpected response from Slurm: %r" % output
+    raise errors.ExtractionError("Unexpected response from Slurm: %r" % output)
 
   return match.group(1)
 

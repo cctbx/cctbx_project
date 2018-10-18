@@ -211,7 +211,7 @@ class SchedulerClient(communication.Client):
         response()
 
       except Exception as e:
-        raise RuntimeError, "Submission failure: %s" % e
+        raise RuntimeError("Submission failure: %s" % e)
 
       self.waiting = []
 
@@ -247,7 +247,7 @@ class PreSubmissionStatus(object):
   @staticmethod
   def is_alive(job):
 
-    raise RuntimeError, "job has not been submitted yet"
+    raise RuntimeError("job has not been submitted yet")
 
 
 class RunningStatus(object):
@@ -258,7 +258,7 @@ class RunningStatus(object):
   @staticmethod
   def start(job):
 
-    raise RuntimeError, "start called second time"
+    raise RuntimeError("start called second time")
 
 
   @staticmethod
@@ -282,7 +282,7 @@ class FinishedStatus(object):
   @staticmethod
   def start(job):
 
-    raise RuntimeError, "start called second time"
+    raise RuntimeError("start called second time")
 
 
   @staticmethod

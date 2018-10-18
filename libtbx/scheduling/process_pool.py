@@ -51,7 +51,7 @@ class process_register(object):
   def record_process_startup(self, pid):
 
     if pid in self.running_on:
-      raise SchedulingError, "Existing worker with identical processID"
+      raise SchedulingError("Existing worker with identical processID")
 
     self.running_on[ pid ] = None
 
@@ -59,10 +59,10 @@ class process_register(object):
   def record_job_start(self, jobid, pid):
 
     if pid not in self.running_on:
-      raise SchedulingError, "Unknown processID"
+      raise SchedulingError("Unknown processID")
 
     if self.running_on[ pid ] is not None:
-      raise SchedulingError, "Attempt to start process on busy worker"
+      raise SchedulingError("Attempt to start process on busy worker")
 
     self.running_on[ pid ] = jobid
 
@@ -70,10 +70,10 @@ class process_register(object):
   def record_job_finish(self, jobid, pid, value):
 
     if pid not in self.running_on:
-      raise SchedulingError, "Unknown processID"
+      raise SchedulingError("Unknown processID")
 
     if self.running_on[ pid ] != jobid:
-      raise SchedulingError, "Inconsistent register information: jobid/pid mismatch"
+      raise SchedulingError("Inconsistent register information: jobid/pid mismatch")
 
     self.running_on[ pid ] = None
     self.results.append( ( jobid, value ) )
@@ -92,10 +92,10 @@ class process_register(object):
   def record_process_exit(self, pid, container):
 
     if pid not in self.running_on:
-      raise SchedulingError, "Unknown processID"
+      raise SchedulingError("Unknown processID")
 
     if self.running_on[ pid ] is not None:
-      raise SchedulingError, "Shutdown of busy worker"
+      raise SchedulingError("Shutdown of busy worker")
 
     container.append( pid )
     del self.running_on[ pid ]
@@ -104,7 +104,7 @@ class process_register(object):
   def record_process_crash(self, pid, exception, traceback):
 
     if pid not in self.running_on:
-      raise SchedulingError, "Unknown processID"
+      raise SchedulingError("Unknown processID")
 
     jobid = self.running_on[ pid ]
 

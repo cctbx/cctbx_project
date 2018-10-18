@@ -23,7 +23,7 @@ class InstantTimeout(object):
 
   def delay(self, waittime):
 
-    raise QueueEmptyException, "No data found in queue"
+    raise QueueEmptyException("No data found in queue")
 
 
 class TimedTimeout(object):
@@ -44,7 +44,7 @@ class TimedTimeout(object):
       time.sleep( waittime )
 
     else:
-      raise QueueEmptyException, "No data found in queue within timeout"
+      raise QueueEmptyException("No data found in queue within timeout")
 
 
 class NoTimeout(object):
@@ -177,7 +177,7 @@ class Job(object):
   def start(self):
 
     if self.status.is_submitted():
-      raise RuntimeError, "start called second time"
+      raise RuntimeError("start called second time")
 
     data = self.qinterface.input(
       name = self.name,
@@ -424,7 +424,7 @@ def PBS(
       )
 
   else:
-    raise RuntimeError, "PBS does not support synchronous submission"
+    raise RuntimeError("PBS does not support synchronous submission")
 
   if input is None:
     from libtbx.queuing_system_utils.processing import transfer
@@ -470,7 +470,7 @@ def PBSPro(
       )
 
   else:
-    raise RuntimeError, "Synchronous submission for PBSPro is not supported"
+    raise RuntimeError("Synchronous submission for PBSPro is not supported")
 
   if input is None:
     from libtbx.queuing_system_utils.processing import transfer
@@ -516,7 +516,7 @@ def Condor(
       )
 
   else:
-    raise RuntimeError, "Condor does not support synchronous submission"
+    raise RuntimeError("Condor does not support synchronous submission")
 
   if input is None:
     from libtbx.queuing_system_utils.processing import transfer
@@ -678,7 +678,7 @@ def qsub (
   assert hasattr(target, "__call__")
 
   if platform not in INTERFACE_FOR:
-    raise RuntimeError, "Unknown platform: %s" % platform
+    raise RuntimeError("Unknown platform: %s" % platform)
 
   ( factory, poller_factory ) = INTERFACE_FOR[ platform ]
 
