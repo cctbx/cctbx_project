@@ -241,7 +241,7 @@ class file_type_map (object) :
 
   def get_overall_max_count (self) :
     n = 0
-    for name, count in self._counts.iteritems() :
+    for name, count in self._counts.items() :
       if (count is None) :
         return None
       n += count
@@ -252,12 +252,12 @@ class file_type_map (object) :
 
   def get_default_label (self) :
     if (len(self._names) == 1) :
-      return self._names.keys()[0]
+      return list(self._names.keys())[0]
     return self.default_label
 
   def get_default_param (self) :
     if (len(self._labels) == 1) :
-      return self._labels.keys()[0]
+      return list(self._labels.keys())[0]
     if (self.default_label is not None) :
       return self._names[self.default_label]
     return None
@@ -267,7 +267,7 @@ class file_type_map (object) :
 
   def get_multiple_params (self) :
     names = []
-    for name, count in self._counts.iteritems() :
+    for name, count in self._counts.items() :
       if count is None :
         names.append(name)
     return names

@@ -46,7 +46,7 @@ def run():
     f.close()
 
     all_mods = []
-    for key, mods in config.iteritems():
+    for key, mods in config.items():
       if "optional" in key: continue
       elif key == "exclude_from_binary_bundle": continue
       else:

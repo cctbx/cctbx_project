@@ -33,10 +33,10 @@ def exercise_odict():
   d.setdefault('orange', 2)
   assert 'orange' in d
   assert d['orange'] == 2
-  assert d.keys() == ['banana', 'apple', 'pear', 'orange']
-  assert d.values() == [3, 4, 1, 2]
+  assert list(d.keys()) == ['banana', 'apple', 'pear', 'orange']
+  assert list(d.values()) == [3, 4, 1, 2]
   d = odict.fromkeys(('b','c','a'))
-  assert d.keys() == ['b', 'c', 'a']
+  assert list(d.keys()) == ['b', 'c', 'a']
 
 def run(args):
   assert len(args) == 0

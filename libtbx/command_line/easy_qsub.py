@@ -446,8 +446,7 @@ def run(phenix_source=None,
     #
     assert number_of_jobs==1, "Only one job can be run in parallel"
     details = get_queue_machine_details()
-    keys = details.keys()
-    keys.sort(_cmp_gap)
+    keys = sorted(details, cmp=_cmp_gap)
     for queue_name in keys:
       if parallel_nodes<=details[queue_name][1]-details[queue_name][0]:
         # submit

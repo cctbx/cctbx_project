@@ -61,7 +61,7 @@ class unused_imports(ast.NodeVisitor):
     self._used = set()
     self.visit(tree)
     self._unused = set()
-    for imported in self.imported_in_context.itervalues():
+    for imported in self.imported_in_context.values():
       self._unused.update(imported)
     self._unused -= self._used
 
@@ -104,7 +104,7 @@ class unused_imports(ast.NodeVisitor):
     self.consolidate_imports_info()
 
   def consolidate_imports_info(self):
-    for ctx, imported in self.imported_in_context.iteritems():
+    for ctx, imported in self.imported_in_context.items():
       discarded = set()
       for imp1 in self.imported_from_full_name_in_context.get(ctx, set()):
         for imp in imported:
@@ -113,7 +113,7 @@ class unused_imports(ast.NodeVisitor):
       imported -= discarded
 
   def _process_namespace(self, namespace, lineno):
-    for import_ctx, imported in self.imported_in_context.iteritems():
+    for import_ctx, imported in self.imported_in_context.items():
       if self.is_subpath_of(import_ctx, self.current_context):
         for imp in imported:
           if lineno < imp.lineno: continue

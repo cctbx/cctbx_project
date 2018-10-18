@@ -312,7 +312,7 @@ class number_converters_base(_check_value_base):
     # When unpickling ensure allow_none is set. Entire function is for
     # backwards-compatibility purposes only. 20180308
     self.allow_none = True
-    for key, value in state.iteritems():
+    for key, value in state.items():
       setattr(self, key, value)
 
   def __str__(self):

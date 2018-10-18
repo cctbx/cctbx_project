@@ -1581,7 +1581,7 @@ class ProcessPool(object):
   @property
   def known_jobs(self):
 
-    return self.identifier_for.values() + self.completed_jobs
+    return list(self.identifier_for.values()) + self.completed_jobs
 
 
   @property
@@ -2199,4 +2199,3 @@ class SubmissionOrder(Ordering):
     result = self.result_for[ first ]
     del self.result_for[ first ]
     return ( ( first.target, first.args, first.kwargs ), result )
-

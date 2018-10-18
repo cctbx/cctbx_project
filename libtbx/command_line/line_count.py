@@ -33,7 +33,7 @@ def run(modules):
   print("Lines of code in %s" % ', '.join(modules))
   print("%-15s%8s" % ('extension', '#lines'))
   output = []
-  for file_type, line_counts in line_counts_in_files_of_type.iteritems():
+  for file_type, line_counts in line_counts_in_files_of_type.items():
     cnt = sum(line_counts)
     output.append((cnt, "%-15s%8d" % (file_type, cnt)))
   output.sort(reverse=True)

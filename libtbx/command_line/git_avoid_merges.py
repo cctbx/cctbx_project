@@ -63,7 +63,7 @@ def set_git_defaults_to_rebase():
         del(expected[name])
   if expected:
     print("Updating global git settings:")
-    for attribute, value in expected.iteritems():
+    for attribute, value in expected.items():
       print("  %s = %s" % (attribute, value))
       libtbx.easy_run.fully_buffered("git config --global \"%s\" \"%s\"" % (attribute, value))
 

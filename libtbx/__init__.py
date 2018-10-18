@@ -217,7 +217,7 @@ def adopt_optional_init_args(obj, kwds):
   >>> a = foo(z=10)
   >>> assert a.z == 10
   """
-  for k,v in kwds.iteritems():
+  for k,v in kwds.items():
     if not hasattr(obj.__class__, k):
       raise RuntimeError("%s must be a class attribute of %s to "
                          "be adopted as optional init argument "

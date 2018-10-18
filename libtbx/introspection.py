@@ -360,7 +360,7 @@ a.foo(1) @ test.py(13) main
         _kwds = dict(kwds)
         str_args = ", ".join([ str(arg) for arg in _args ])
         str_kwds = ", ".join([ "%s=%s" % (kwd, str(val))
-                               for kwd, val in _kwds.iteritems() ])
+                               for kwd, val in _kwds.items() ])
         call_signature = []
         if str_args != "" : call_signature.append(str_args)
         if str_kwds != "" : call_signature.append(str_kwds)
@@ -412,8 +412,8 @@ class current_process_status(object):
     else:
       return
     self.field = dict(
-      [ (name, field[i_col]) for name, i_col in cols.iteritems() ])
-    for name, conv in self.conversions.iteritems():
+      [ (name, field[i_col]) for name, i_col in cols.items() ])
+    for name, conv in self.conversions.items():
       self.field[name] = conv(self.field[name])
 
   def __getitem__(self, field_name):

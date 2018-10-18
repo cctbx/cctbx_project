@@ -182,4 +182,3 @@ class lazy_initialization(object):
   def __call__(self):
 
     return self.state( holder = self )
-

@@ -395,11 +395,10 @@ def edge_label(source, target):
     if isinstance(target, dict) and target is getattr(source, '__dict__', None):
         return ' [label="__dict__",weight=10]'
     elif isinstance(source, dict):
-        for k, v in source.iteritems():
+        for k, v in source.items():
             if v is target:
                 if isinstance(k, basestring) and k:
                     return ' [label="%s",weight=2]' % quote(k)
                 else:
                     return ' [label="%s"]' % quote(safe_repr(k))
     return ''
-

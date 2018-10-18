@@ -18,6 +18,6 @@ def log(stop=False, **kwds):
   Remark:
     Passing stop=True makes it a real breakpoint
   """
-  for k,v in kwds.iteritems():
+  for k,v in kwds.items():
     print("%s = %s" % (k,v))
   return stop

@@ -18,7 +18,7 @@ class easy_profile(object):
     for i in xrange(self.runs):
       self.prof.runcall(self.func, *args, **kwds)
     self.prof.create_stats()
-    for (file_name, line, func), data in self.prof.stats.iteritems():
+    for (file_name, line, func), data in self.prof.stats.items():
       if self.file_name is not None:
         if not file_name.endswith(self.file_name): continue
       if self.func_name is not None:
