@@ -243,8 +243,11 @@ class Toolbox(object):
       url_request = urllib2.Request(url)
       if etag:
         url_request.add_header("If-None-Match", etag)
-      # Shorten timeout to 7 seconds if a copy of the file is already present
-      socket = urllib2.urlopen(url_request, None, 7)
+      if localcopy:
+        # Shorten timeout to 7 seconds if a copy of the file is already present
+        socket = urllib2.urlopen(url_request, None, 7)
+      else:
+        socket = urllib2.urlopen(url_request)
     except SSLError as e:
       # This could be a timeout
       if localcopy:
