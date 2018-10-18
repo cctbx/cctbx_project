@@ -72,7 +72,7 @@ def create(tar_file_name, command):
   selfx_file_name += ".selfx"
   selfx = open(selfx_file_name, "wb")
   perl_header(selfx, command)
-  while 1:
+  while True:
     buf = tar_file.read(buf_size)
     if (buf == ""): break
     selfx.write(buf)

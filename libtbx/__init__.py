@@ -55,7 +55,7 @@ class AutoType(object):
 
   def __str__(self): return "Auto"
   def __eq__(self, other):
-    return type(other) is self.__class__
+    return isinstance(other, self.__class__)
   def __ne__(self, other):
     return not self.__eq__(other)
   def __hash__(self):

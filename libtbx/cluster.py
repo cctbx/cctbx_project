@@ -32,7 +32,7 @@ def flatten(L):
    Example:
    flatten([a,b,[c,d,[e,f]]]) = [a,b,c,d,e,f]
    """
-   if type(L) != type([]): return [L]
+   if not isinstance(L, type([])): return [L]
    if L == []: return L
    return flatten(L[0]) + flatten(L[1:])
 
@@ -42,8 +42,7 @@ def median(numbers):
    found at: http://mail.python.org/pipermail/python-list/2004-December/253517.html"""
    # Sort the list and take the middle element.
    n = len(numbers)
-   copy = numbers[:] # So that "numbers" keeps its original order
-   copy.sort()
+   copy = sorted(numbers[:]) # So that "numbers" keeps its original order
    if n & 1:         # There is an odd number of elements
       return copy[n // 2]
    else:

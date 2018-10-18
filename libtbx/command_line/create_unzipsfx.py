@@ -6,7 +6,7 @@ import sys
 buf_size = 1000000
 
 def copy(src, dest):
-  while 1:
+  while True:
     buf = src.read(buf_size)
     if (buf == ""): break
     dest.write(buf)

@@ -349,7 +349,7 @@ class Toolbox(object):
       tmpfile = file + '.tmp'
 
       f = open(tmpfile, 'wb')
-      while 1:
+      while True:
         block = socket.read(block_size)
         received += len(block)
         f.write(block)

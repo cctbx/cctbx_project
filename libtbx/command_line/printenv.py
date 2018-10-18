@@ -3,8 +3,7 @@ from __future__ import print_function
 import sys, os
 
 def show(out):
-  var_names = os.environ.keys()
-  var_names.sort()
+  var_names = sorted(os.environ.keys())
   for var_name in var_names:
     print("%s=%s" % (var_name, os.environ[var_name]), file=out)
 

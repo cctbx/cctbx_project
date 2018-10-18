@@ -366,7 +366,7 @@ def run(phenix_source=None,
   if not os.path.exists(phenix_source):
     raise Sorry('source file for PHENIX environment not found "%s"' % phenix_source)
   print('    where',where)
-  if type(commands)==type([]):
+  if isinstance(commands, type([])):
     if code is None: code = "easy_qsub"
     print('    commands',len(commands), end=' ')
     if len(commands)>1:
@@ -392,7 +392,7 @@ def run(phenix_source=None,
 
   assert phenix_source
 
-  if type(commands)==type([]):
+  if isinstance(commands, type([])):
     lines = commands
   elif commands is not None and os.path.exists(commands):
     f=file(commands, "rb")

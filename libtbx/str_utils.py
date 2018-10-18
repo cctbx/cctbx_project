@@ -306,7 +306,7 @@ class line_feeder(object):
     return ""
 
   def next_non_empty(self):
-    while 1:
+    while True:
       result = next(self)
       if (self.eof or len(result.strip()) != 0):
         return result

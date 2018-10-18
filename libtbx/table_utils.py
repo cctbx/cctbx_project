@@ -234,18 +234,18 @@ class SpreadsheetColumn:
 
   def __setitem__(self,index,value):
     #general case, normal integer index
-    if type(index)==type(0):
+    if isinstance(index, type(0)):
       self.C_data[index]=value
 
     #special case, consult parent to get pointer to index[0], then +=index[1]
     #this will be used to refer to the correct image frame for sublattice calc
-    if type(index)==type((0,1)):
+    if isinstance(index, type((0,1))):
       pointer = self.parent.pointer(index[0])
       self.C_data[pointer + index[1]]=value
 
   def __getitem__(self,index):
     #general case, normal integer index with specializations for Formulae
-   if type(index)==type(0):
+   if isinstance(index, type(0)):
     V = self.C_data[index]
     if isinstance(V,Formula):
       if V.expression=='self.Population[%row] / self.Fract[%row]':
@@ -256,7 +256,7 @@ class SpreadsheetColumn:
         return self.parent.eval(E)
     else:
       return V
-   if type(index)==type((0,1)):
+   if isinstance(index, type((0,1))):
       pointer = self.parent.pointer(index[0])
       return self.C_data[pointer + index[1]]
 

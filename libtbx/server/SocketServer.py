@@ -194,7 +194,7 @@ class TCPServer:
 
     def serve_forever(self):
         """Handle one request at a time until doomsday."""
-        while 1:
+        while True:
             self.handle_request()
 
     # The distinction between handling, getting, processing and

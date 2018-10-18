@@ -104,7 +104,7 @@ def archive(source, destination, tarfile=None):
         )
   except Exception as err:
     # workaround for possible very long path problem on Windows
-    if sys.platform == "win32" and type(err)==shutil.Error:
+    if sys.platform == "win32" and isinstance(err, shutil.Error):
       for e in err[0]:
         if len(e)==3: # if not then it's some other error
           (src, dst, errstr) = e
