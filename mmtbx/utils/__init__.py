@@ -2818,6 +2818,8 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
 
   def write_ccp4_map(self, file_name="box.ccp4",shift_back=False,
       output_unit_cell_grid=None,
+      output_sd=None,
+      output_mean=None,
       output_crystal_symmetry=None):
 
     # If output_unit_cell_grid is specified, then write this out
@@ -2829,6 +2831,14 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       map_data=self.shift_map_back(self.map_box)
     else:
       map_data = self.map_box
+
+    if output_mean is not None or output_sd is not None:
+      mean_value=map_data.as_1d().min_max_mean().mean
+      sd_value=max(1.e-10,map_data.as_1d().standard_deviation_of_the_sample())
+      if output_mean is None: output_mean=mean_value
+      if output_sd is None: output_sd=sd_value
+      map_data = output_mean + (map_data.deep_copy()-mean_value)*\
+          (output_sd/sd_value)
 
     # Adjust the crystal_symmetry to match the output grid as well
     if output_crystal_symmetry is None:

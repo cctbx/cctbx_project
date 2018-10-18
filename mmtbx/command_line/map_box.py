@@ -257,6 +257,17 @@ master_phil = libtbx.phil.parse("""
     .help = Ignore unit cell from model if it conflicts with the map.
     .short_caption = Ignore symmetry conflicts
 
+  output_ccp4_map_mean = None
+    .type = float
+    .help = Choose mean and SD of output CCP4 map
+    .short_caption = Mean of output CCP4 map
+
+  output_ccp4_map_sd = None
+    .type = float
+    .help = Choose mean and SD of output CCP4 map
+    .short_caption = SD of output CCP4 map
+
+
   gui
     .help = "GUI-specific parameter required for output directory"
   {
@@ -779,7 +790,7 @@ Parameters:"""%h
        tuple(output_crystal_symmetry.unit_cell().parameters()))
 
   else:
-    output_unit_cell_grid = map_data=output_box.map_box.all()
+    output_unit_cell_grid = output_box.map_box.all()
     output_crystal_symmetry=output_box.xray_structure_box.crystal_symmetry()
   # ==========  Done check/set output unit cell grid and cell parameters =====
 
@@ -813,6 +824,8 @@ Parameters:"""%h
      else: file_name = "%s.ccp4"%params.output_file_name_prefix
      output_box.write_ccp4_map(file_name=file_name,
        output_crystal_symmetry=output_crystal_symmetry,
+       output_mean=params.output_ccp4_map_mean,
+       output_sd=params.output_ccp4_map_sd,
        output_unit_cell_grid=output_unit_cell_grid,
        shift_back=shift_back)
      print >> log, "Writing boxed map "+\
