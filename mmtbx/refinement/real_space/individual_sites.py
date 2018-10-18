@@ -422,6 +422,7 @@ class minimize_wrapper_with_map():
     params = rsr_master_params().extract()
     params.pdb_interpretation = model._pdb_interpretation_params.pdb_interpretation
     params.refinement.run = "minimization_global+local_grid_search"
+    params.refine_ncs_operators=False
     params.output.write_all_states = True
     rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
         rotamers = "favored")
