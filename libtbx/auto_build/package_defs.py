@@ -91,7 +91,7 @@ HDF5_PKG = "hdf5-1.10.4.tar.bz2"
 
 # GUI dependencies
 LIBPNG_PKG = "libpng-1.5.26.tar.gz"
-FREETYPE_PKG = "freetype-2.9.1.tar.gz"
+FREETYPE_PKG = "freetype-2.6.3.tar.gz"
 
 # Linux-only
 # libraries based on X11R7.7 (http://www.x.org/releases/X11R7.7/src/everything/)
