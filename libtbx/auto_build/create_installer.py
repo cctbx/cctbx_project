@@ -269,6 +269,9 @@ class SetupInstaller(object):
     """Generate shell scripts in the top-level installation directory."""
     if sys.platform == "win32":
       return
+    if self.install_script:
+      print("Not generating environment setup scripts as installer is provided")
+      return
     print("Generating %s environment setup scripts..."%self.installer.product_name)
     fmt = {'env_prefix':self.installer.product_name.upper(), 'version':self.version}
     # bash
