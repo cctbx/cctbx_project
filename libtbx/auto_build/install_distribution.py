@@ -186,6 +186,7 @@ class installer(object):
     check_python_version()
     self.parse_options()
     self.basic_setup()
+    self.product_specific_preinstallation_hook()
     self.check_directories()
     if sys.platform != "win32":
       self.print_banner()
@@ -621,6 +622,13 @@ class installer(object):
     Modify files, etc. before the installer package is created.
 
     :param directory: base directory of the installer package
+    """
+    pass
+
+  def product_specific_preinstallation_hook(self):
+    """
+    Perform additional checks on parsed command line options or the
+    destination machine before any installation action takes place.
     """
     pass
 
