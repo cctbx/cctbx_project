@@ -45,8 +45,8 @@ electron density values/CC.
       raise_sorry = True,
       expected_n  = 1,
       exact_count = True)
-    if (self.params.ligand_code is None or self.params.ligand_code[0] is None):
-      raise Sorry("Ligand code required!")
+#    if (self.params.ligand_code is None or self.params.ligand_code[0] is None):
+#      raise Sorry("Ligand code required!")
 
   # ---------------------------------------------------------------------------
 
@@ -88,6 +88,15 @@ electron density values/CC.
 
   # ---------------------------------------------------------------------------
 
+  def print_results(self, results, ph):
+    print('\nThe following ligands were found in the input model:')
+    for ligand_isel in results.ligand_isels:
+      for rg in ph.select(ligand_isel).residue_groups():
+        rn = ",".join(rg.unique_resnames())
+        print(rn, rg.id_str())
+
+  # ---------------------------------------------------------------------------
+
   def run(self):
 
     print('Using model file:', self.data_manager.get_default_model_name())
@@ -119,20 +128,24 @@ electron density values/CC.
     validation_obj = validate_ligands.validate_ligands(model = model)
     validation_obj.validate_inputs()
     validation_obj.run()
+    results = validation_obj.get_results()
+
+    self.print_results(results = results, ph = ph)
 
     # TODO
     # DL: Eventually, delete "old" call below, but leave it for now to keep the
     # funcitonality alive, just in case
-    make_sub_header("Validating ligands", out=self.logger)
-    for ligand_code in self.params.ligand_code :
-      validations = mmtbx.validation.ligands.validate_ligands(
-        pdb_hierarchy       = ph,
-        fmodel              = fmodel,
-        ligand_code         = ligand_code,
-        reference_structure = self.params.reference_structure,
-        only_segid          = self.params.only_segid)
-      if (validations is None) :
-        raise Sorry("No ligands named '%s' found." % ligand_code)
-      mmtbx.validation.ligands.show_validation_results(validations=validations,
-        out     = self.logger,
-        verbose = self.params.verbose)
+    if (not(self.params.ligand_code is None or self.params.ligand_code[0] is None)):
+      make_sub_header("Validating ligands", out=self.logger)
+      for ligand_code in self.params.ligand_code :
+        validations = mmtbx.validation.ligands.validate_ligands(
+          pdb_hierarchy       = ph,
+          fmodel              = fmodel,
+          ligand_code         = ligand_code,
+          reference_structure = self.params.reference_structure,
+          only_segid          = self.params.only_segid)
+        if (validations is None) :
+          raise Sorry("No ligands named '%s' found." % ligand_code)
+        mmtbx.validation.ligands.show_validation_results(validations=validations,
+          out     = self.logger,
+          verbose = self.params.verbose)

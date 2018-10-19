@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 
 import iotbx.pdb
+from libtbx import group_args
 
 # =============================================================================
 
@@ -8,6 +9,8 @@ class validate_ligands(object):
 
   def __init__(self, model):
     self.model = model
+
+    self.ligand_isels = None
 
   # ---------------------------------------------------------------------------
 
@@ -32,7 +35,7 @@ class validate_ligands(object):
           if (not get_class(name=resname) in exclude):
             iselection = rg.atoms().extract_i_seq()
             ligand_isels.append(iselection)
-    return ligand_isels
+    self.ligand_isels = ligand_isels
 
   # ---------------------------------------------------------------------------
 
@@ -40,14 +43,10 @@ class validate_ligands(object):
     ph = self.model.get_hierarchy()
 
     # Get ligands
-    ligand_isels = self.get_ligands(ph = ph)
-    print('\nThe following ligands were found in the input model:')
-    for ligand_isel in ligand_isels:
-      for rg in ph.select(ligand_isel).residue_groups():
-        rn = ",".join(rg.unique_resnames())
-        print(rn, rg.id_str())
+    self.get_ligands(ph = ph)
 
   # ---------------------------------------------------------------------------
 
   def get_results(self):
-    print('Returning results...')
+    return group_args(
+      ligand_isels = self.ligand_isels)
