@@ -115,13 +115,12 @@ def find_ligands():
   pdb_inp = iotbx.pdb.input(lines=pdb_str_1.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
 
-  val_obj = validate_ligands.validate_ligands(model = model)
-  val_obj.validate_inputs()
-  val_obj.run()
-  r = val_obj.get_results()
+  results = validate_ligands.manager(model = model)
 
-  assert (len(r.ligand_isels) == 1)
-  assert (list(r.ligand_isels[0]) == [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95])
+  lr = results[0]
+
+  assert (len(results.keys()) == 1)
+  assert (list(lr.isel) == [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95])
 
 # ---------------------------------------------------------------------------
 

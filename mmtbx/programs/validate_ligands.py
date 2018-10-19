@@ -90,10 +90,17 @@ electron density values/CC.
 
   def print_results(self, results, ph):
     print('\nThe following ligands were found in the input model:')
-    for ligand_isel in results.ligand_isels:
-      for rg in ph.select(ligand_isel).residue_groups():
-        rn = ",".join(rg.unique_resnames())
-        print(rn, rg.id_str())
+    for i, ligand_result in results.items():
+      print(ligand_result.resname, ligand_result.id_str)
+      #isel = ligand_result.isel
+      #for rg in ph.select(isel).residue_groups():
+      #  rn = ",".join(rg.unique_resnames())
+      #  print(rn, rg.id_str())
+
+    print('\nOccupancies')
+    for i, ligand_result in results.items():
+      occ = ligand_result.get_occupancies()
+      print('mean:', occ.mean)
 
   # ---------------------------------------------------------------------------
 
@@ -121,16 +128,19 @@ electron density values/CC.
      f_obs          = f_obs,
      r_free_flags   = r_free_flags,
      xray_structure = xrs)
-    fmodel.update_all_scales()
+    #fmodel.update_all_scales()
 
     # This is the new class, currently a stub but will be developed
     # winter 2018/spring 2019 by DL and NWM
-    validation_obj = validate_ligands.validate_ligands(model = model)
-    validation_obj.validate_inputs()
-    validation_obj.run()
-    results = validation_obj.get_results()
+    results = validate_ligands.manager(model = model)
 
-    self.print_results(results = results, ph = ph)
+#    validation_obj = validate_ligands.validate_ligands(model = model)
+#    validation_obj.validate_inputs()
+#    validation_obj.run()
+
+    self.print_results(
+      results = results,
+      ph      = ph)
 
     # TODO
     # DL: Eventually, delete "old" call below, but leave it for now to keep the

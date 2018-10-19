@@ -1,28 +1,30 @@
 from __future__ import division, print_function
 
 import iotbx.pdb
-from libtbx import group_args
+#from libtbx import group_args
 
 # =============================================================================
+# Manager class for ALL ligands
 
-class validate_ligands(object):
+class manager(dict):
 
   def __init__(self, model):
     self.model = model
 
-    self.ligand_isels = None
+    ph = self.model.get_hierarchy()
+    ligand_isels = self.get_ligands(ph = ph)
+
+    for i, isel in zip(range(len(ligand_isels)), ligand_isels):
+      self[i] = ligand_result(
+        model = self.model,
+        isel  = isel)
 
   # ---------------------------------------------------------------------------
 
-  def validate_inputs(self):
-    if self.model is None:
-      raise Sorry("No input model.")
-      #return 0
-
-  # ---------------------------------------------------------------------------
-
-  def get_ligands(self, ph):
-    # Store ligands as list of iselections --> better way?
+  @staticmethod
+  def get_ligands(ph):
+    # Store ligands as list of iselections --> better way? Careful if H will be
+    # added at some point!
     ligand_isels = []
     get_class = iotbx.pdb.common_residue_names_get_class
     exclude = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
@@ -35,18 +37,35 @@ class validate_ligands(object):
           if (not get_class(name=resname) in exclude):
             iselection = rg.atoms().extract_i_seq()
             ligand_isels.append(iselection)
-    self.ligand_isels = ligand_isels
+    return ligand_isels
+
+# =============================================================================
+# Class storing info per ligand
+
+class ligand_result(object):
+
+  def __init__(self, model, isel):
+    self.model = model
+    self.isel = isel
+    # results
+    self._occupancies = None
+
+
+    self.ph = self.model.get_hierarchy()
+
+    rg_ligand = self.ph.select(self.isel).only_residue_group()
+    self.resname = ",".join(rg_ligand.unique_resnames())
+    self.id_str = rg_ligand.id_str()
+
+#    for rg in ph.select(self.isel).residue_groups():
+#      rn = ",".join(rg.unique_resnames())
+#      self.resname = rn
+#      print(rn, rg.id_str())
 
   # ---------------------------------------------------------------------------
 
-  def run(self):
-    ph = self.model.get_hierarchy()
+  def get_occupancies(self):
+    if self._occupancies is None:
+      self._occupancies = self.ph.select(self.isel).occupancy_counts()
+    return self._occupancies
 
-    # Get ligands
-    self.get_ligands(ph = ph)
-
-  # ---------------------------------------------------------------------------
-
-  def get_results(self):
-    return group_args(
-      ligand_isels = self.ligand_isels)
