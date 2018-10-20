@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 import math
 
 def iround(x):
@@ -31,14 +32,14 @@ class nested_loop(object):
       assert len(begin) == len(end)
     if (not open_range):
       end = list(end)
-      for i in xrange(len(end)):
+      for i in range(len(end)):
         end[i] += 1
-    for i in xrange(len(end)):
+    for i in range(len(end)):
       assert end[i] >= begin[i]
     O.begin = begin
     O.end = end
     O.current = list(begin)
-    for i in xrange(len(end)):
+    for i in range(len(end)):
       if (end[i] > begin[i]):
         O.current[-1] -= 1
         break
@@ -89,7 +90,7 @@ def next_permutation(seq):
 def random_permutation_in_place(list):
   import random
   n = len(list)
-  for i in xrange(n):
+  for i in range(n):
     j = random.randrange(n)
     list[i], list[j] = list[j], list[i]
 

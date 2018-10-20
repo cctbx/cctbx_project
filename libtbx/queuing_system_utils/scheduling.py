@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import range
 from libtbx.scheduling import result
 
 import time
@@ -2030,7 +2031,7 @@ class Pooler(object):
     identifiers = [
       Identifier( target = target, args = args, kwargs = kwargs )
       for ( index, ( target, args, kwargs ) )
-      in zip( range( self.size ), calcsiter )
+      in zip( range(self.size), calcsiter )
       ]
 
     if not identifiers:

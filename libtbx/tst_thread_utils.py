@@ -1,6 +1,7 @@
 
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 from libtbx.thread_utils import thread_with_callback_and_wait
 from libtbx.thread_utils import process_with_callbacks
 from libtbx.utils import Sorry, Abort
@@ -36,7 +37,7 @@ def exercise_threading() :
   for callback1,expected in [
         (None, [1,10]),
         (first_callback, [1,-10])]:
-    for n_resume in xrange(7):
+    for n_resume in range(7):
       collected = []
       t = thread_with_callback_and_wait(
         run=run,
@@ -46,7 +47,7 @@ def exercise_threading() :
         t.start()
       else:
         t.start_and_wait_for_first_callback()
-      for i in xrange(n_resume):
+      for i in range(n_resume):
         t.resume()
       t.resume(last_iteration=True).join()
       assert collected == expected
@@ -143,7 +144,7 @@ def tst_no_return_value () :
 
 #--- test 03 : callbacks for stdout, runtime, result
 def _target_function03 (args, kwds, connection) :
-  for i in xrange(4) :
+  for i in range(4) :
     print(i)
     connection.send(i)
   return 4
@@ -172,7 +173,7 @@ def tst_callbacks () :
 def _tst_print (out=None) :
   if out is None :
     out = sys.stdout
-  for i in xrange(1000) :
+  for i in range(1000) :
     out.write("%s\n" % i)
   return None
 
@@ -220,7 +221,7 @@ def tst_exceptions () :
 # Process.terminate() does not work on RedHat 8, but this test will still
 # be successful despite taking an extra 100 seconds to finish.
 def _target_function06 (args, kwds, connection) :
-  for i in xrange(10) :
+  for i in range(10) :
     print(i)
     time.sleep(1)
 

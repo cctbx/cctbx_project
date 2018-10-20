@@ -1,10 +1,11 @@
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 def exercise(n, use_dumps=False):
   from libtbx import easy_pickle
   import time
   obj = []
-  for i in xrange(n):
+  for i in range(n):
     obj.append([i,i])
   for dgz in ["", ".gz"]:
     t0 = time.time()

@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 from libtbx import easy_mp
 import os
 import random
@@ -16,7 +17,7 @@ class state_object():
   def generate_state(self):
     with self._lock:
       oldstate = self._state
-      self._state = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+      self._state = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in list(range(6)))
       print("(%s-%5s) changing state from %s to %s" % (format(id(self), "#x"), os.getpid(), oldstate, self._state))
       return self._state
 

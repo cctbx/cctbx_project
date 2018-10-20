@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 import re
 import time
 import sys, os
@@ -37,7 +38,7 @@ def process_dollar_multi(line):
       l = int(m.group(3))
       s = [1,-1][int(f > l)]
       if (o == "-"): l += s
-      for a in xrange(f,l,s):
+      for a in range(f,l,s):
         rapp(a)
   return result
 

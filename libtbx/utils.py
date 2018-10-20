@@ -1,5 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
+# from builtins import range
+# causes python module import issue with phenix/heavy_search/pc_multi.py
+# in conjunction with libtbx/queuing_system_utils/sge_utils.py
 import atexit
 import glob
 import hashlib
@@ -58,7 +61,7 @@ def xfrange(start, stop=None, step=None, tolerance=None):
   if (    tolerance is not None
       and abs(start + count * step - stop) < abs(step * tolerance)):
     count += 1
-  for i in xrange(count):
+  for i in range(count):
     yield start + i * step
 
 def safe_div(a,b):
@@ -1801,7 +1804,7 @@ def random_hex_code(number_of_digits):
   """
   import random
   digits = []
-  for i_digit in xrange(number_of_digits):
+  for i_digit in range(number_of_digits):
     i = random.randrange(16)
     digits.append("0123456789abcdef"[i])
   return "".join(digits)

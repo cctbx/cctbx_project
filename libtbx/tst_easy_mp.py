@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 from libtbx import unpicklable
 from libtbx.test_utils import Exception_expected
 from libtbx import Auto
@@ -26,7 +27,7 @@ def exercise_func_wrapper_sub_directories():
 class potentially_large(unpicklable):
 
   def __init__(self, size):
-    self.array = range(3, size+3)
+    self.array = list(range(3, size+3))
 
   def __call__(self, i):
     return self.array[i]
@@ -39,7 +40,7 @@ def eval_parallel(
       exercise_out_of_range=False,
       exercise_fail=False):
   size = len(data.array)
-  args = range(size)
+  args = list(range(size))
   if (exercise_out_of_range):
     args.append(size)
   from libtbx import easy_mp
@@ -55,7 +56,7 @@ def eval_parallel(
       index_args=index_args,
       log=log)
   if (not exercise_out_of_range):
-    assert mp_results == range(3, size+3)
+    assert mp_results == list(range(3, size+3))
   else:
     assert mp_results[:size] == zip([""]*size, range(3, size+3))
     assert mp_results[size][0].startswith("CAUGHT EXCEPTION:")
@@ -91,7 +92,7 @@ def exercise(exercise_fail):
   if (exercise_fail):
     eval_parallel(data, exercise_fail=True)
     raise Exception_expected
-  results = easy_mp.pool_map(fixed_func=data, args=range(1000), processes=Auto)
+  results = easy_mp.pool_map(fixed_func=data, args=list(range(1000)), processes=Auto)
   del data
   assert len(easy_mp.fixed_func_registry) == 0
   #

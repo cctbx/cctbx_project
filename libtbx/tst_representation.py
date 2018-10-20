@@ -1,8 +1,9 @@
 from __future__ import division
 from __future__ import print_function
 
+from builtins import range
 if (__name__ == "__main__") :
-  for x in xrange(30):
+  for x in range(30):
     J = 7205759403792790 + x
     print(J * 10**30 // 2**56)
 

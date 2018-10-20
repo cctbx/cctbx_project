@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 def exercise_posix_relpath(f, enable_abspath_if_through_root):
   # based on .test_relpath() in Python-2.7.2/Lib/test/test_posixpath.py
   import os
@@ -103,7 +104,7 @@ def exercise_move_old_create_new_directory():
   import os
   mocnd("tmp_mocnd")
   assert len(os.listdir("tmp_mocnd")) == 0
-  for i in xrange(3):
+  for i in range(3):
     mocnd("tmp_mocnd/a")
   assert sorted(os.listdir("tmp_mocnd")) == ["a", "a_001", "a_002"]
   open("tmp_mocnd/a_23", "w")

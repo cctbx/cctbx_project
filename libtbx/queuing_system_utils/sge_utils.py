@@ -1,6 +1,9 @@
 "Sun Grid Engine utilities"
 from __future__ import absolute_import, division, print_function
 
+# from builtins import range
+# causes python module import issue with phenix/heavy_search/pc_multi.py
+# in conjunction with libtbx/utils.py
 import sys
 import os
 
@@ -101,7 +104,7 @@ class qstat_items(object):
     f = int(ja_task_id[:m])
     l = int(ja_task_id[m+1:c])
     s = int(ja_task_id[c+1:])
-    return len(xrange(f,l+1,s))
+    return len(range(f,l+1,s))
 
   def oe_name(self, oe):
     ja_task_id = self.ja_task_id

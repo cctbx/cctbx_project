@@ -21,6 +21,7 @@ from __future__ import print_function
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #
 
+from builtins import range
 from types import TupleType
 
 class ClusteringError(Exception):
@@ -734,7 +735,7 @@ available. You supplied %d items, and asked for %d clusters.""" %
       """
       # initialise the clusters with empty lists
       self.__clusters = []
-      for x in xrange(clustercount): self.__clusters.append([])
+      for x in range(clustercount): self.__clusters.append([])
 
       # distribute the items into the clusters
       count = 0

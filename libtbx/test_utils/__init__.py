@@ -1,5 +1,6 @@
 from __future__ import division, absolute_import
 from __future__ import print_function
+from builtins import range
 from libtbx.option_parser import option_parser
 from libtbx.utils import Sorry
 from libtbx.str_utils import show_string
@@ -122,7 +123,7 @@ def run_tests(build_dir, dist_dir, tst_list, display_times=False):
     threads_pool = []
     log_queue = queue.Queue()
     interrupted = threading.Event()
-    for i in xrange(co.threads):
+    for i in range(co.threads):
       working_dir = os.tempnam()
       os.mkdir(working_dir)
       t = threading.Thread(
@@ -237,7 +238,7 @@ def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
       raise AssertionError(
         "approx_equal ERROR: len(a1) != len(a2): %d != %d" % (
           len(a1), len(a2)))
-    for i in xrange(len(a1)):
+    for i in range(len(a1)):
       if not approx_equal_core(
                 a1[i], a2[i], eps, multiplier, out, prefix+"  "):
         return False
@@ -303,7 +304,7 @@ def not_approx_equal(a1, a2, eps=1.e-6, multiplier=1.e10):
 def eps_eq_core(a1, a2, eps, out, prefix):
   if (hasattr(a1, "__len__")): # traverse list
     assert len(a1) == len(a2)
-    for i in xrange(len(a1)):
+    for i in range(len(a1)):
       if (not eps_eq_core(a1[i], a2[i], eps, out, prefix+"  ")):
         return False
     return True

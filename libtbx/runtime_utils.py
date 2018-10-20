@@ -11,6 +11,7 @@
 
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 from libtbx.utils import Sorry, Abort, multi_out, host_and_user
 from libtbx import easy_pickle
 from libtbx import adopt_init_args, group_args
@@ -515,7 +516,7 @@ class simple_run (object) :
       mu = 10.0
       pu = 0.0
       pol =[0] * 100
-      r = range(0,100)
+      r = list(range(0,100))
       libtbx.call_back("run %d" % run, None, accumulate=True)
       time.sleep(1)
       for i in range(0,n):

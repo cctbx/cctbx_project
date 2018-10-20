@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import range
 class MultiQueue(object):
 
   def __init__(self):
@@ -140,7 +141,7 @@ class Manager(object):
     manager = QManager(
       address = ( socket.getfqdn(), port ),
       authkey = "".join(
-        random.choice( string.ascii_letters ) for i in range( keylength )
+        random.choice( string.ascii_letters ) for i in list(range( keylength))
         ),
       )
     manager.start()

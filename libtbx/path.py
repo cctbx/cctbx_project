@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from builtins import range
 import locale
 import shutil
 import os
@@ -200,7 +201,7 @@ def walk_source_tree(top, arg=None):
 
 def random_new_directory_name(prefix="tmp_dir_", number_of_hex_code_digits=8):
   from libtbx.utils import random_hex_code
-  for i_trial in xrange(10**6):
+  for i_trial in range(10**6):
     name = prefix + random_hex_code(number_of_digits=number_of_hex_code_digits)
     if (not op.exists(name)):
       return name
@@ -225,7 +226,7 @@ def makedirs_race(
   if (path is None):
     path = random_new_directory_name()
   import time
-  for i_trial in xrange(max_trials):
+  for i_trial in range(max_trials):
     if (op.exists(path)):
       if (delay_if_exists is not None):
         # in case the OS needs time to finalize makedirs from another process

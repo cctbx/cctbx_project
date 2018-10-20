@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 def exercise():
   from libtbx.test_utils import show_diff, Exception_expected
   import cPickle
@@ -167,7 +168,7 @@ to be reset.
 """)
   #
   from libtbx.str_utils import string_representation
-  iset = range(130) + range(250,256)
+  iset = list(range(130)) + list(range(250,256))
   for i in iset:
     s = chr(i)
     for j in iset:

@@ -7,6 +7,7 @@ from __future__ import print_function
 ##   http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/267662
 ## slightly modifed functionality.
 ##
+from builtins import range
 import libtbx.forward_compatibility # for sum
 import cStringIO,operator
 
@@ -84,7 +85,7 @@ def manage_columns (table_data, include_columns) :
     assert len(row) == len(include_columns)
   new_table = []
   for row in table_data:
-    new_row = [row[idx] for idx in xrange(len(row)) if include_columns[idx]]
+    new_row = [row[idx] for idx in range(len(row)) if include_columns[idx]]
     new_table.append(new_row)
   return new_table
 
@@ -152,7 +153,7 @@ def wrap_always(text, width):
     """A simple word-wrap function that wraps text on exactly width characters.
        It doesn't split the text in words."""
     return '\n'.join([ text[width*i:width*(i+1)] \
-                       for i in xrange(int(math.ceil(1.*len(text)/width))) ])
+                       for i in range(int(math.ceil(1.*len(text)/width))) ])
 
 ## Additional functionality; go beyond formatted printing; emulate spreadsheet
 ## Typical use case to include:
@@ -190,7 +191,7 @@ class Spreadsheet:
       master[column] = "%%%ds "%(padding[column])
       print(master[column]%column, end=' ', file=out)
     print(file=out)
-    for i in xrange(self.S_table_rows):
+    for i in range(self.S_table_rows):
       if not printed_rows[i]: continue
       for column in columns:
         print(master[column]%(
@@ -210,7 +211,7 @@ class Spreadsheet:
       elif hasattr(self,"wtmean") and column in self.wtmean:
         normalizer = self.weights.sum()
         summation = 0
-        for x in xrange(self.S_table_rows):
+        for x in range(self.S_table_rows):
             summation += self.weights[x] * self.__dict__[column][x]
         mean = summation/normalizer
         print((master[column]%(
@@ -271,7 +272,7 @@ class SpreadsheetColumn:
 
   def sum(self):
     def typesum(x,y): return(x+y)
-    return reduce(typesum,[self[i] for i in xrange(len(self))])
+    return reduce(typesum,[self[i] for i in range(len(self))])
 
 class Formula:
   def __init__(self,expression):
@@ -289,12 +290,12 @@ def excercise_spreadsheet():
       self.addColumn('MeanI')
       self.addColumn('Population',0) # 0 is the default value
 
-      for xrow in xrange(0,self.S_table_rows):
+      for xrow in range(0,self.S_table_rows):
         self.Limit[xrow] = [12.543,9.959,8.700,7.90,7.34,6.90][xrow]
         self.MeanI[xrow] = [4348,461,313,378,376,0][xrow]
 
       population_data = [926,121,8,2,6]
-      for c in xrange(len(population_data)): #reconcile inconsistent bin counts
+      for c in range(len(population_data)): #reconcile inconsistent bin counts
           self.Population[c]=population_data[c]
 
       self.Limit.format = "%.2f"
@@ -339,7 +340,7 @@ Detailed explanation of each column here
       self.addColumn('adjustPop',
                      Formula('self.Population[%row] / self.Fract[%row]'))
 
-      for xrow in xrange(Total_rows):
+      for xrow in range(Total_rows):
         self.Limit[xrow] = [39.34,31.22,27.28,24.78][xrow]
         self.Fract[xrow] = [1.0,2.0,3.0,4.0][xrow]
         self.Population[xrow]=[53,102,107,86][xrow]

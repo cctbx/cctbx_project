@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 from libtbx import phil
 import libtbx.phil
 from libtbx.utils import Sorry
@@ -47,7 +48,7 @@ def exercise_string_quote_and_tokenize():
   assert len(words) == 1
   assert words[0].value == "\t\n\rz\x8f"
   assert str(words[0]) == '"\t\n\rz\x8f"'
-  value = "".join([chr(_) for _ in xrange(256)])
+  value = "".join([chr(_) for _ in range(256)])
   words = tvl(input_string=phil.tokenizer.quote_python_str(
     quote_token='"', string=value))
   assert len(words) == 1
@@ -3600,7 +3601,7 @@ eq="1\\""'2\\"\\''
   .type=qstr
 """)
   work = master
-  for i_cycle in xrange(2):
+  for i_cycle in range(2):
     ex = work.extract()
     assert ex.a is None
     assert ex.b is Auto
@@ -4694,7 +4695,7 @@ astrings=%(na)s
 awords=%(na)s
   .type=words
 """ % vars())
-    for i in xrange(3):
+    for i in range(3):
       params = master.extract()
       assert params.abool is nao
       assert params.aint is nao

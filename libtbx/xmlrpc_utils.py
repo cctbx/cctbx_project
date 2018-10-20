@@ -55,6 +55,7 @@ from __future__ import print_function
 # OF THIS SOFTWARE.
 # --------------------------------------------------------------------
 
+from builtins import range
 from libtbx import adopt_init_args
 from libtbx.utils import to_str
 import xmlrpclib
@@ -133,7 +134,7 @@ class ServerProxy (object) :
         params = to_str(params)
       elif (isinstance(params, list) or isinstance(params, tuple)):
         new_params = list(params)
-        for i in xrange(len(params)):
+        for i in range(len(params)):
           if (isinstance(params[i], unicode)):
             new_params[i] = to_str(params[i])
           else:

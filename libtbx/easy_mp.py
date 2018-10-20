@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor
 from libtbx import Auto
@@ -767,20 +768,20 @@ def run_parallel(
   if nproc==1 or n<=1: # just run it for each case in list, no multiprocessing
     results=[]
     ra=run_anything(kw_list=kw_list,target_function=target_function)
-    for i in xrange(n):
+    for i in range(n):
       results.append(ra(i))
   elif 0:  #(method == "multiprocessing") and (sys.platform != "win32") :
     # XXX Can crash 2015-10-13 TT so don't use it
     from libtbx.easy_mp import  pool_map
     results = pool_map(
       func=run_anything(target_function=target_function,kw_list=kw_list),
-      iterable=xrange(n),
+      iterable=range(n),
       processes=nproc)
   else :
     from libtbx.easy_mp import parallel_map
     results=parallel_map(
       func=run_anything(target_function=target_function,kw_list=kw_list),
-      iterable=xrange(n),
+      iterable=range(n),
       method=method,
       processes=nproc,
       callback=None,

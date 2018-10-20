@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 from libtbx.test_utils import approx_equal
 
 def exercise_integer():
@@ -19,7 +20,7 @@ def exercise_integer():
   assert ifloor(-1.1) == -2
   assert ifloor(1.9) == 1
   assert ifloor(-1.9) == -2
-  for i in xrange(-3,3+1):
+  for i in range(-3,3+1):
     assert nearest_integer(i+0.3) == i
     assert nearest_integer(i+0.7) == i+1
 
@@ -83,35 +84,35 @@ def exercise_next_permutation():
     (2, 1, 0)]
   assert seq == [0,1,2]
   expected_n = 1
-  for m in xrange(1,7):
+  for m in range(1,7):
     expected_n *= m
-    seq = range(m)
+    seq = list(range(m))
     n = 0
     while True:
       n += 1
       if (not next_permutation(seq)):
         break
-    assert seq == range(m)
+    assert seq == list(range(m))
     assert n == expected_n
 
 def exercise_random_permutation_in_place():
   from libtbx.math_utils import random_permutation_in_place
   import random
   random.seed(0)
-  l = range(8)
-  for i_trial in xrange(10):
+  l = list(range(8))
+  for i_trial in range(10):
     random_permutation_in_place(list=l)
-    if (l != range(8)):
+    if (l != list(range(8))):
       break
   else:
     raise AssertionError
-  assert sorted(l) == range(8)
+  assert sorted(l) == list(range(8))
 
 def exercise_prime_factors_of():
   from libtbx.math_utils import prime_factors_of
   assert prime_factors_of(n=1) == []
   prime_set = set()
-  for n in xrange(2, 100):
+  for n in range(2, 100):
     primes = prime_factors_of(n)
     pp = 1
     for p in primes:

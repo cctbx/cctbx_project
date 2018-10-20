@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 from libtbx import utils
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from cStringIO import StringIO
@@ -13,7 +14,7 @@ import tempfile
 def exercise_misc():
   utils.host_and_user().show(prefix="### ")
   time_in_seconds = 1.1
-  for i_trial in xrange(55):
+  for i_trial in range(55):
     time_in_seconds = time_in_seconds**1.1
     time_units, time_unit = utils.human_readable_time(
       time_in_seconds=time_in_seconds)
@@ -82,20 +83,20 @@ def exercise_misc():
       == ["geese"]
   #
   nd1d = utils.n_dim_index_from_one_dim
-  for size in xrange(1,5):
-    for i1d in xrange(size):
+  for size in range(1,5):
+    for i1d in range(size):
       assert nd1d(i1d=i1d, sizes=(size,)) == [i1d]
   for sizes in [(1,1), (1,3), (3,1), (2,3)]:
     ni, nj = sizes
-    for i in xrange(ni):
-      for j in xrange(nj):
+    for i in range(ni):
+      for j in range(nj):
         i1d = i*nj+j
         assert nd1d(i1d=i1d, sizes=sizes) == [i,j]
   for sizes in [(1,1,1), (1,3,1), (3,2,1), (4,3,2)]:
     ni, nj, nk = sizes
-    for i in xrange(ni):
-      for j in xrange(nj):
-        for k in xrange(nk):
+    for i in range(ni):
+      for j in range(nj):
+        for k in range(nk):
           i1d = (i*nj+j)*nk+k
           assert nd1d(i1d=i1d, sizes=sizes) == [i,j,k]
   #
@@ -119,12 +120,12 @@ def exercise_misc():
   assert approx_equal([i/4. for i in range(4,8+1)], samples(1, 2, 0.25))
   assert approx_equal([0.2+i/3. for i in range(4)], frange(0.2, 1.3, 1./3))
   assert approx_equal([0.2+i/3. for i in range(4)], samples(0.2, 1.3, 1./3))
-  assert approx_equal(range(5) , frange(5))
-  assert approx_equal(range(5+1) , samples(5))
-  assert approx_equal(range(-5), frange(-5))
-  assert approx_equal(range(-5-1), samples(-5))
-  assert approx_equal(range(1,3), frange(1, 3))
-  assert approx_equal(range(1,3+1), samples(1, 3))
+  assert approx_equal(list(range(5)) , frange(5))
+  assert approx_equal(list(range(5+1)) , samples(5))
+  assert approx_equal(list(range(-5)), frange(-5))
+  assert approx_equal(list(range(-5-1)), samples(-5))
+  assert approx_equal(list(range(1,3)), frange(1, 3))
+  assert approx_equal(list(range(1,3+1)), samples(1, 3))
   assert approx_equal([i/10. for i in range(20,9,-2)], frange(2.0,0.9,-0.2))
   assert approx_equal([i/10. for i in range(20,9,-2)], samples(2.0,0.9,-0.2))
   #
@@ -137,7 +138,7 @@ def exercise_misc():
   assert ff(1.234, 0.196) == "1.2(2)"
   assert ff(1.234, 0.193) == "1.23(19)"
   #
-  for n in xrange(4):
+  for n in range(4):
     assert len(utils.random_hex_code(number_of_digits=n)) == n
   #
   print("multiprocessing problem:", utils.detect_multiprocessing_problem())

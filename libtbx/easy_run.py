@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+from builtins import range
 import os
 import subprocess
 import sys
@@ -345,7 +346,7 @@ def exercise(args=None):
   else:
     n_lines_e = 10000
   result = fb(
-    command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)]) \
+    command=command, stdin_lines=[str(i) for i in range(n_lines_o)]) \
     .raise_if_errors()
   if verbose: print(result.stdout_lines)
   assert result.stdout_lines == [str(n_lines_o)]
@@ -374,22 +375,22 @@ def exercise(args=None):
 >:bye
 """
   result = fb(
-    command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)]) \
+    command=command, stdin_lines=[str(i) for i in range(n_lines_o)]) \
     .raise_if_errors()
   if verbose: print(result.stdout_lines[:5], result.stdout_lines[-5:])
   assert len(result.stdout_lines) == n_lines_o
   assert result.stdout_lines[:5] == ["0","1","2","3","4"]
   assert result.stdout_lines[-5:] == [str(s)
-    for s in xrange(n_lines_o-5, n_lines_o)]
+    for s in range(n_lines_o-5, n_lines_o)]
   command = pyexe \
     + ' -c "import sys; sys.stderr.write(sys.stdin.read())"'
   result = fb(
-    command=command, stdin_lines=[str(i) for i in xrange(n_lines_e,0,-1)])
+    command=command, stdin_lines=[str(i) for i in range(n_lines_e,0,-1)])
   assert len(result.stdout_lines) == 0
   if verbose: print(result.stderr_lines[:5], result.stderr_lines[-5:])
   assert len(result.stderr_lines) == n_lines_e
   assert result.stderr_lines[:5] == [str(s)
-    for s in xrange(n_lines_e, n_lines_e-5, -1)]
+    for s in range(n_lines_e, n_lines_e-5, -1)]
   assert result.stderr_lines[-5:] == ["5","4","3","2","1"]
   command = pyexe + "; ".join((''' -c "\
 import sys, os
@@ -402,19 +403,19 @@ nl = chr(%d)
 sys.stderr.write(nl.join(lines)+nl)
 sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
   result = fb(
-    command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)])
+    command=command, stdin_lines=[str(i) for i in range(n_lines_o)])
   if verbose: print(result.stdout_lines[:5], result.stdout_lines[-5:])
   if verbose: print(result.stderr_lines[:5], result.stderr_lines[-5:])
   assert len(result.stdout_lines) == n_lines_o
   assert result.stdout_lines[:5] == ["0","1","2","3","4"]
   assert result.stdout_lines[-5:] == [str(s)
-    for s in xrange(n_lines_o-5, n_lines_o)]
+    for s in range(n_lines_o-5, n_lines_o)]
   assert len(result.stderr_lines) == n_lines_e
   assert result.stderr_lines[:5] == [str(s)
-    for s in xrange(n_lines_e-1, n_lines_e-6, -1)]
+    for s in range(n_lines_e-1, n_lines_e-6, -1)]
   assert result.stderr_lines[-5:] == ["4","3","2","1","0"]
   result = go(
-    command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)])
+    command=command, stdin_lines=[str(i) for i in range(n_lines_o)])
   if verbose: print(result.stdout_lines[:5], result.stdout_lines[-5:])
   assert len(result.stdout_lines) == n_lines_o + n_lines_e
   assert result.stdout_lines[:5] == ["0","1","2","3","4"]
@@ -434,7 +435,7 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
       try:
         fb(
           command=cat_command,
-          stdin_lines=[str(i) for i in xrange(n)],
+          stdin_lines=[str(i) for i in range(n)],
           stdout_splitlines=stdout_splitlines).raise_if_output()
       except RuntimeError as e:
         if verbose: print(e)
