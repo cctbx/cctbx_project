@@ -100,7 +100,7 @@ electron density values/CC.
     print('\nOccupancies')
     for i, ligand_result in results.items():
       occ = ligand_result.get_occupancies()
-      print('mean:', occ.mean)
+      print('Ligand: %s mean: %s' %(ligand_result.resname, occ.mean))
 
   # ---------------------------------------------------------------------------
 
@@ -133,7 +133,7 @@ electron density values/CC.
     # This is the new class, currently a stub but will be developed
     # winter 2018/spring 2019 by DL and NWM
     results = validate_ligands.manager(model = model)
-
+    results.run()
 #    validation_obj = validate_ligands.validate_ligands(model = model)
 #    validation_obj.validate_inputs()
 #    validation_obj.run()

@@ -11,13 +11,17 @@ class manager(dict):
   def __init__(self, model):
     self.model = model
 
+  # ---------------------------------------------------------------------------
+
+  def run(self):
     ph = self.model.get_hierarchy()
     ligand_isels = self.get_ligands(ph = ph)
-
     for i, isel in zip(range(len(ligand_isels)), ligand_isels):
-      self[i] = ligand_result(
+      lr = ligand_result(
         model = self.model,
         isel  = isel)
+      lr.get_occupancies()
+      self[i] = lr
 
   # ---------------------------------------------------------------------------
 
@@ -57,15 +61,9 @@ class ligand_result(object):
     self.resname = ",".join(rg_ligand.unique_resnames())
     self.id_str = rg_ligand.id_str()
 
-#    for rg in ph.select(self.isel).residue_groups():
-#      rn = ",".join(rg.unique_resnames())
-#      self.resname = rn
-#      print(rn, rg.id_str())
-
   # ---------------------------------------------------------------------------
 
   def get_occupancies(self):
     if self._occupancies is None:
       self._occupancies = self.ph.select(self.isel).occupancy_counts()
     return self._occupancies
-

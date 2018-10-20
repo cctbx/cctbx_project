@@ -116,6 +116,7 @@ def find_ligands():
   model = mmtbx.model.manager(model_input = pdb_inp)
 
   results = validate_ligands.manager(model = model)
+  results.run()
 
   lr = results[0]
 
