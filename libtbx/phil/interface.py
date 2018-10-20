@@ -395,7 +395,7 @@ class index (object) :
     return files
 
   def get_job_title (self) :
-    for def_name in list(self._full_path_index.keys()) :
+    for def_name in self._full_path_index.keys():
       if ((def_name in ["title", "job_title"]) or
           (def_name.endswith(".title") or def_name.endswith(".job_title"))) :
         phil_def = self._full_path_index[def_name]

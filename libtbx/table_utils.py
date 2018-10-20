@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import division, print_function
 ## Some functionality for formatted printing,
 ## indentation and simple tables
 ##
@@ -8,8 +7,12 @@ from __future__ import print_function
 ## slightly modifed functionality.
 ##
 from builtins import range
+import math
+import operator
+import re
+
 import libtbx.forward_compatibility # for sum
-import cStringIO,operator
+import cStringIO
 
 def format(rows,
            comments=None,
@@ -80,14 +83,14 @@ def format(rows,
     return "\n".join(
       [line.rstrip() for line in output.getvalue().splitlines()])
 
-def manage_columns (table_data, include_columns) :
+def manage_columns(table_data, include_columns):
   for row in table_data:
     assert len(row) == len(include_columns)
-  new_table = []
-  for row in table_data:
-    new_row = [row[idx] for idx in range(len(row)) if include_columns[idx]]
-    new_table.append(new_row)
-  return new_table
+
+  return [
+    [cell for idx, cell in enumerate(row) if include_columns[idx]]
+    for row in table_data
+  ]
 
 class simple_table (object) :
   """
@@ -141,14 +144,12 @@ def wrap_onspace(text, width):
                   text.split(' ')
                  )
 
-import re
 def wrap_onspace_strict(text, width):
     """Similar to wrap_onspace, but enforces the width constraint:
        words longer than width are split."""
     wordRegex = re.compile(r'\S{'+str(width)+r',}')
     return wrap_onspace(wordRegex.sub(lambda m: wrap_always(m.group(),width),text),width)
 
-import math
 def wrap_always(text, width):
     """A simple word-wrap function that wraps text on exactly width characters.
        It doesn't split the text in words."""
@@ -271,8 +272,7 @@ class SpreadsheetColumn:
     self.format = format
 
   def sum(self):
-    def typesum(x,y): return(x+y)
-    return reduce(typesum,[self[i] for i in range(len(self))])
+    return reduce(operator.add, (self[i] for i in range(len(self))))
 
 class Formula:
   def __init__(self,expression):
@@ -281,7 +281,7 @@ class Formula:
 #---
 #--- tests
 #---
-def excercise_spreadsheet():
+def exercise_spreadsheet():
   class typical_use_case_1(Spreadsheet): #Case 1 is required for spotfinder spot statistics
     def __init__(self):
 
@@ -295,8 +295,8 @@ def excercise_spreadsheet():
         self.MeanI[xrow] = [4348,461,313,378,376,0][xrow]
 
       population_data = [926,121,8,2,6]
-      for c in range(len(population_data)): #reconcile inconsistent bin counts
-          self.Population[c]=population_data[c]
+      for c, poprow in enumerate(population_data): #reconcile inconsistent bin counts
+          self.Population[c] = poprow
 
       self.Limit.format = "%.2f"
       self.MeanI.format = "%.0f"
@@ -387,5 +387,5 @@ comments here"""
   print("OK")
 
 if (__name__ == "__main__"):
-  excercise_spreadsheet()
+  exercise_spreadsheet()
   exercise_flat_table()

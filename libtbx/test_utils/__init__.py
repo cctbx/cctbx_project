@@ -1,6 +1,5 @@
-from __future__ import division, absolute_import
-from __future__ import print_function
-from builtins import range
+from __future__ import division, absolute_import, print_function
+from builtins import range, zip
 from libtbx.option_parser import option_parser
 from libtbx.utils import Sorry
 from libtbx.str_utils import show_string
@@ -238,9 +237,9 @@ def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
       raise AssertionError(
         "approx_equal ERROR: len(a1) != len(a2): %d != %d" % (
           len(a1), len(a2)))
-    for i in range(len(a1)):
+    for a1e, a2e in zip(a1, a2):
       if not approx_equal_core(
-                a1[i], a2[i], eps, multiplier, out, prefix+"  "):
+                a1e, a2e, eps, multiplier, out, prefix+"  "):
         return False
     return True
   is_complex_1 = isinstance(a1, complex)
@@ -304,8 +303,8 @@ def not_approx_equal(a1, a2, eps=1.e-6, multiplier=1.e10):
 def eps_eq_core(a1, a2, eps, out, prefix):
   if (hasattr(a1, "__len__")): # traverse list
     assert len(a1) == len(a2)
-    for i in range(len(a1)):
-      if (not eps_eq_core(a1[i], a2[i], eps, out, prefix+"  ")):
+    for a1e, a2e in zip(a1, a2):
+      if not eps_eq_core(a1e, a2e, eps, out, prefix+"  "):
         return False
     return True
   if (isinstance(a1, complex)): # complex numbers

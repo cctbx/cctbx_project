@@ -130,16 +130,11 @@ class ServerProxy (object) :
       (methodname, params) = self._pending.pop(0)
 
       # remove any unicode types in params
-      if (isinstance(params, unicode)):
+      if isinstance(params, unicode):
         params = to_str(params)
-      elif (isinstance(params, list) or isinstance(params, tuple)):
-        new_params = list(params)
-        for i in range(len(params)):
-          if (isinstance(params[i], unicode)):
-            new_params[i] = to_str(params[i])
-          else:
-            new_params[i] = params[i]
-        if (isinstance(params, tuple)):
+      elif isinstance(params, (list, tuple)):
+        new_params = [ to_str(p) if isinstance(p, unicode) else p for p in params ]
+        if isinstance(params, tuple):
           new_params = tuple(new_params)
         params = new_params
 

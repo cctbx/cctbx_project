@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from builtins import map
 from libtbx import Auto
 from libtbx import group_args
 import os
@@ -355,15 +356,13 @@ a.foo(1) @ test.py(13) main
 
   def __call__ (self, f) :
     def log_wrapper (O, *args, **kwds) :
-      if self.debug :
-        _args = list(args)
-        _kwds = dict(kwds)
-        str_args = ", ".join([ str(arg) for arg in _args ])
-        str_kwds = ", ".join([ "%s=%s" % (kwd, str(val))
-                               for kwd, val in _kwds.items() ])
+      if self.debug:
+        str_args = ", ".join(map(str, args))
+        str_kwds = ", ".join("%s=%s" % (kwd, str(val))
+                             for kwd, val in kwds.items())
         call_signature = []
-        if str_args != "" : call_signature.append(str_args)
-        if str_kwds != "" : call_signature.append(str_kwds)
+        if str_args: call_signature.append(str_args)
+        if str_kwds: call_signature.append(str_kwds)
         caller = sys._getframe(1)
         print("%s.%s(%s) @ %s(%d) %s" % (O.__class__.__name__, f.__name__,
           ", ".join(call_signature), caller.f_code.co_filename,
@@ -411,8 +410,9 @@ class current_process_status(object):
       if field[i_pid] == self.id: break
     else:
       return
-    self.field = dict(
-      [ (name, field[i_col]) for name, i_col in cols.items() ])
+    self.field = {
+      name: field[i_col] for name, i_col in cols.items()
+    }
     for name, conv in self.conversions.items():
       self.field[name] = conv(self.field[name])
 

@@ -32,11 +32,11 @@ class PubMedDirective(docutils.parsers.rst.Directive):
     raw_directives = []
     text = []
 
-    for i in range(len(XML)):
+    for tag in XML:
       # Title/doi link:
-      possible_doi = [ idx for idx in XML[i]["PubmedData"]["ArticleIdList"]
+      possible_doi = [ idx for idx in tag["PubmedData"]["ArticleIdList"]
                        if idx.attributes["IdType"]=="doi" ]
-      article = XML[i]["MedlineCitation"]["Article"]
+      article = tag["MedlineCitation"]["Article"]
       # Remove trailing dot and all control characters, including newline chars, from title.
       get_title = ''.join(c for c in article['ArticleTitle'].rstrip('.') if ord(c) >= 32)
 
@@ -65,7 +65,7 @@ class PubMedDirective(docutils.parsers.rst.Directive):
       else:
         journal_text += " (%s)"%(date["Year"])
       journal_text += " [PMID:%s]"%PMID
-      possible_pmc = [ idx for idx in XML[i]["PubmedData"]["ArticleIdList"]
+      possible_pmc = [ idx for idx in tag["PubmedData"]["ArticleIdList"]
                        if idx.attributes["IdType"]=="pmc" ]
       if len(possible_pmc) > 0:
         journal_text += " [PMC reprint: |%s|]" %possible_pmc[0]
