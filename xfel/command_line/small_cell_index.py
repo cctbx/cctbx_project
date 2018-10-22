@@ -50,6 +50,9 @@ small_cell {
     .type=float
     .help= "Use to override the detector distance (in mm) found in the image file"
 }
+"""
+
+dials_phil_str = """
 include scope dials.algorithms.spot_finding.factory.phil_scope
 """
 
@@ -58,7 +61,7 @@ def run(argv=None):
     argv = sys.argv
 
   from iotbx.phil import parse
-  small_cell_phil = parse(small_cell_phil_str,process_includes=True)
+  small_cell_phil = parse(small_cell_phil_str+dials_phil_str,process_includes=True)
 
   welcome_message = """
   %s [-s] -t PATH <directory or image paths>

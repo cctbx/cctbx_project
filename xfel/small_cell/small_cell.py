@@ -608,7 +608,8 @@ def small_cell_index(path, horiz_phil):
   reflections_dump(reflections, "spotfinder.pickle")
   print "saved %d"%len(reflections)
 
-  return small_cell_index_detail(datablock, reflections, horiz_phil)
+  max_clique_len, experiments, refls = small_cell_index_detail(datablock, reflections, horiz_phil)
+  return max_clique_len
 
 def small_cell_index_detail(datablock, reflections, horiz_phil):
   """ Index an image with a few spots and a known, small unit cell,
@@ -637,9 +638,8 @@ def small_cell_index_detail(datablock, reflections, horiz_phil):
     distance=panel.get_distance()
 
   if horiz_phil.small_cell.override_wavelength is not None:
-    wavelength = horiz_phil.small_cell.override_wavelength
-  else:
-    wavelength = beam.get_wavelength()
+    beam.set_wavelength(horiz_phil.small_cell.override_wavelength)
+  wavelength = beam.get_wavelength()
 
   beam_center = col((beam_x, beam_y))
   pixel_size = panel.get_pixel_size()[0] # XXX
@@ -1245,7 +1245,11 @@ def small_cell_index_detail(datablock, reflections, horiz_phil):
       mapped_predictions = flex.vec2_double()
       max_signal = flex.double()
       xyzobs = flex.vec3_double()
+      xyzvar = flex.vec3_double()
       shoeboxes = flex.shoebox()
+      s1 = flex.vec3_double()
+      s0 = col(beam.get_s0())
+      bbox = flex.int6()
 
       rmsd = 0
       rmsd_n = 0
@@ -1322,12 +1326,15 @@ def small_cell_index_detail(datablock, reflections, horiz_phil):
         else:
           mapped_predictions.append((spot.pred[0],spot.pred[1]))
         xyzobs.append(spot.spot_dict['xyzobs.px.value'])
+        xyzvar.append(spot.spot_dict['xyzobs.px.variance'])
         shoeboxes.append(spot.spot_dict['shoebox'])
 
         indexed_hkls.append(spot.hkl.ohkl.elems)
         indexed_intensities.append(intensity)
         indexed_sigmas.append(sigma)
         max_signal.append(max_sig)
+        s1.append(s0+spot.xyz)
+        bbox.append(spot.spot_dict['bbox'])
 
         if spot.pred is not None:#and spot.ID != 5: #and spot.ID != 0 and spot.ID != 15:
           rmsd_n += 1
@@ -1378,10 +1385,17 @@ def small_cell_index_detail(datablock, reflections, horiz_phil):
         refls['integration.sum.value'] = indexed_intensities
         refls['integration.sum.variance'] = indexed_sigmas**2
         refls['xyzobs.px.value'] = xyzobs
+        refls['xyzobs.px.variance'] = xyzvar
         refls['miller_index'] = indexed_hkls
         refls['xyzcal.px'] = flex.vec3_double(mapped_predictions.parts()[0], mapped_predictions.parts()[1], flex.double(len(mapped_predictions), 0))
         refls['shoebox'] = shoeboxes
         refls['entering'] = flex.bool(len(refls), False)
+        refls['s1'] = s1
+        refls['bbox'] = bbox
+
+        from dials.algorithms.indexing.indexer import indexer_base
+        refls = indexer_base.map_spots_pixel_to_mm_rad(refls, detector, None)
+
         refls.set_flags(flex.bool(len(refls), True), refls.flags.indexed)
         refls.as_pickle(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated.pickle")
 
@@ -1389,6 +1403,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil):
         integrated_count = len(results)
       else:
         print "cctbx.small_cell: not enough spots to integrate (%d)."%len(results),
+        experiments = refls = None
 
       if rmsd_n > 0:
         print " RMSD: %f"%math.sqrt((1/rmsd_n)*rmsd)
@@ -1446,7 +1461,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil):
         app.MainLoop()
 
     print "IMAGE STATS %s: spots %5d, max clique: %5d, integrated %5d spots"%(path,len(all_spots),max_clique_len,integrated_count)
-    return max_clique_len
+    return max_clique_len, experiments, refls
 
 def spots_rmsd(spots):
   """ Calculate the rmsd for a series of small_cell_spot objects
