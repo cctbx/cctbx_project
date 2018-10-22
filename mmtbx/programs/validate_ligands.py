@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+import time
 try:
   from phenix.program_template import ProgramTemplate
 except ImportError:
@@ -55,8 +56,9 @@ electron density values/CC.
 
   def get_crystal_symmetry(self):
     crystal_symmetries = []
-    files = [self.data_manager.get_default_model_name(),
-      self.data_manager.get_default_miller_array_name() ]
+    files = [self.data_manager.get_default_model_name()]
+    if self.data_manager.get_default_miller_array_name() is not None:
+      files.append(self.data_manager.get_default_miller_array_name())
     for f in files:
       cs = crystal_symmetry_from_any.extract_from(f)
       if (cs is not None):
@@ -100,36 +102,41 @@ electron density values/CC.
     model = self.data_manager.get_model()
     ph = model.get_hierarchy()
     xrs = model.get_xray_structure()
-    f_obs, r_free_flags = self.get_fobs_rfree(crystal_symmetry = cs)
 
-    print('\nInput data...', file=self.logger)
-    print('  Reflection data:', f_obs.info().labels, file=self.logger)
-    if (r_free_flags is not None):
-      print('  Free-R flags:', r_free_flags.info().labels, file=self.logger)
-    else:
-      print('  Free-R flags: not present or not found', file=self.logger)
+    if self.data_manager.get_default_miller_array_name():
+      f_obs, r_free_flags = self.get_fobs_rfree(crystal_symmetry = cs)
+      print('\nInput data...', file=self.logger)
+      print('  Reflection data:', f_obs.info().labels, file=self.logger)
+      if (r_free_flags is not None):
+        print('  Free-R flags:', r_free_flags.info().labels, file=self.logger)
+      else:
+        print('  Free-R flags: not present or not found', file=self.logger)
+      fmodel = mmtbx.f_model.manager(
+       f_obs          = f_obs,
+       r_free_flags   = r_free_flags,
+       xray_structure = xrs)
+      # TODO: delete this keyword for production
+      if self.params.update_scales:
+        fmodel.update_all_scales()
+
     print('\nWorking crystal symmetry after inspecting all inputs:', file=self.logger)
     cs.show_summary(f=self.logger)
 
-    fmodel = mmtbx.f_model.manager(
-     f_obs          = f_obs,
-     r_free_flags   = r_free_flags,
-     xray_structure = xrs)
-    # TODO: delete this keyword for production
-    if self.params.update_scales:
-      fmodel.update_all_scales()
-
     # This is the new class, currently a stub but will be developed
     # winter 2018/spring 2019 by DL and NWM
-    ligand_manager = validate_ligands.manager(model = model)
+    #t0 = time.time()
+    ligand_manager = validate_ligands.manager(
+      model = model,
+      log   = self.logger)
     ligand_manager.run()
-
     ligand_manager.print_ligand_counts()
+    ligand_manager.print_ligand_occupancies()
+    #print('time running manager: ', time.time()-t0)
 
     # TODO
     # DL: Eventually, delete "old" call below, but leave it for now to keep the
     # funcitonality alive, just in case
-    if self.params.ligand_code:
+    if self.params.ligand_code and self.data_manager.get_default_miller_array_name() is not None:
       if (not(self.params.ligand_code is None or self.params.ligand_code[0] is None)):
         make_sub_header("Validating ligands", out=self.logger)
         for ligand_code in self.params.ligand_code :

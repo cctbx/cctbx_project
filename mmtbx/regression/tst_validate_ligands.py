@@ -3,6 +3,7 @@ import time
 from mmtbx.validation import validate_ligands
 import mmtbx.model
 import iotbx.pdb
+from libtbx.utils import null_out
 
 pdb_str_1 = """
 CRYST1   26.971   23.398   30.626  90.00  90.00  90.00 P 1
@@ -115,7 +116,7 @@ def find_ligands():
   pdb_inp = iotbx.pdb.input(lines=pdb_str_1.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
 
-  vl_manager = validate_ligands.manager(model = model)
+  vl_manager = validate_ligands.manager(model = model, log=null_out)
   vl_manager.run()
 
   assert len(vl_manager) == 1
