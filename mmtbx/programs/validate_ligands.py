@@ -20,7 +20,10 @@ only_segid = None
   .type = str
 verbose = False
   .type = bool
+update_scales = True
+  .type = bool
 '''
+# TODO update_scales if for development only, delete for production!
 
 # =============================================================================
 
@@ -88,22 +91,6 @@ electron density values/CC.
 
   # ---------------------------------------------------------------------------
 
-  def print_results(self, results, ph):
-    print('\nThe following ligands were found in the input model:')
-    for i, ligand_result in results.items():
-      print(ligand_result.resname, ligand_result.id_str)
-      #isel = ligand_result.isel
-      #for rg in ph.select(isel).residue_groups():
-      #  rn = ",".join(rg.unique_resnames())
-      #  print(rn, rg.id_str())
-
-    print('\nOccupancies')
-    for i, ligand_result in results.items():
-      occ = ligand_result.get_occupancies()
-      print('Ligand: %s mean: %s' %(ligand_result.resname, occ.mean))
-
-  # ---------------------------------------------------------------------------
-
   def run(self):
 
     print('Using model file:', self.data_manager.get_default_model_name())
@@ -128,34 +115,32 @@ electron density values/CC.
      f_obs          = f_obs,
      r_free_flags   = r_free_flags,
      xray_structure = xrs)
-    #fmodel.update_all_scales()
+    # TODO: delete this keyword for production
+    if self.params.update_scales:
+      fmodel.update_all_scales()
 
     # This is the new class, currently a stub but will be developed
     # winter 2018/spring 2019 by DL and NWM
-    results = validate_ligands.manager(model = model)
-    results.run()
-#    validation_obj = validate_ligands.validate_ligands(model = model)
-#    validation_obj.validate_inputs()
-#    validation_obj.run()
+    ligand_manager = validate_ligands.manager(model = model)
+    ligand_manager.run()
 
-    self.print_results(
-      results = results,
-      ph      = ph)
+    ligand_manager.print_ligand_counts()
 
     # TODO
     # DL: Eventually, delete "old" call below, but leave it for now to keep the
     # funcitonality alive, just in case
-    if (not(self.params.ligand_code is None or self.params.ligand_code[0] is None)):
-      make_sub_header("Validating ligands", out=self.logger)
-      for ligand_code in self.params.ligand_code :
-        validations = mmtbx.validation.ligands.validate_ligands(
-          pdb_hierarchy       = ph,
-          fmodel              = fmodel,
-          ligand_code         = ligand_code,
-          reference_structure = self.params.reference_structure,
-          only_segid          = self.params.only_segid)
-        if (validations is None) :
-          raise Sorry("No ligands named '%s' found." % ligand_code)
-        mmtbx.validation.ligands.show_validation_results(validations=validations,
-          out     = self.logger,
-          verbose = self.params.verbose)
+    if self.params.ligand_code:
+      if (not(self.params.ligand_code is None or self.params.ligand_code[0] is None)):
+        make_sub_header("Validating ligands", out=self.logger)
+        for ligand_code in self.params.ligand_code :
+          validations = mmtbx.validation.ligands.validate_ligands(
+            pdb_hierarchy       = ph,
+            fmodel              = fmodel,
+            ligand_code         = ligand_code,
+            reference_structure = self.params.reference_structure,
+            only_segid          = self.params.only_segid)
+          if (validations is None) :
+            raise Sorry("No ligands named '%s' found." % ligand_code)
+          mmtbx.validation.ligands.show_validation_results(validations=validations,
+            out     = self.logger,
+            verbose = self.params.verbose)

@@ -15,13 +15,19 @@ class manager(dict):
 
   def run(self):
     ph = self.model.get_hierarchy()
-    ligand_isels = self.get_ligands(ph = ph)
-    for i, isel in zip(range(len(ligand_isels)), ligand_isels):
-      lr = ligand_result(
-        model = self.model,
-        isel  = isel)
-      lr.get_occupancies()
-      self[i] = lr
+    ligand_isel_dict = self.get_ligands(ph = ph)
+    for id_tuple, isel in ligand_isel_dict.items():
+      for rg in ph.select(isel).residue_groups():
+        ligand_dict = {}
+        for conformer in rg.conformers():
+          altloc = conformer.altloc
+          conformer_isel = conformer.atoms().extract_i_seq()
+          lr = ligand_result(
+            model = self.model,
+            isel = conformer_isel)
+          lr.get_occupancies()
+          ligand_dict[altloc] = lr
+      self[id_tuple] = ligand_dict
 
   # ---------------------------------------------------------------------------
 
@@ -29,19 +35,29 @@ class manager(dict):
   def get_ligands(ph):
     # Store ligands as list of iselections --> better way? Careful if H will be
     # added at some point!
-    ligand_isels = []
+    ligand_isel_dict = {}
     get_class = iotbx.pdb.common_residue_names_get_class
     exclude = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
                "modified_rna_dna", "ccp4_mon_lib_rna_dna", "common_water",
                 "common_element"]
-    # loop through models?
-    for chain in ph.chains():
-      for rg in chain.residue_groups():
-        for resname in rg.unique_resnames():
-          if (not get_class(name=resname) in exclude):
-            iselection = rg.atoms().extract_i_seq()
-            ligand_isels.append(iselection)
-    return ligand_isels
+    for model in ph.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          for resname in rg.unique_resnames():
+            if (not get_class(name=resname) in exclude):
+              iselection = rg.atoms().extract_i_seq()
+              id_tuple = (model.id, chain.id, rg.resseq)
+              ligand_isel_dict[id_tuple] = iselection
+    return ligand_isel_dict
+
+  # ---------------------------------------------------------------------------
+
+  def print_ligand_counts(self):
+    print('\nThe following ligands were found in the input model:')
+    for id_tuple, ligand_dict in self.items():
+      for altloc, lr in ligand_dict.items():
+        print(lr.resname, lr.id_str, altloc)
+
 
 # =============================================================================
 # Class storing info per ligand
@@ -53,7 +69,6 @@ class ligand_result(object):
     self.isel = isel
     # results
     self._occupancies = None
-
 
     self.ph = self.model.get_hierarchy()
 

@@ -115,13 +115,14 @@ def find_ligands():
   pdb_inp = iotbx.pdb.input(lines=pdb_str_1.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
 
-  results = validate_ligands.manager(model = model)
-  results.run()
+  vl_manager = validate_ligands.manager(model = model)
+  vl_manager.run()
 
-  lr = results[0]
-
-  assert (len(results.keys()) == 1)
-  assert (list(lr.isel) == [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95])
+  assert len(vl_manager) == 1
+  for id_tuple, ligand_dict in vl_manager.items():
+    assert (id_tuple == ('', 'A', ' 201'))
+    lr = ligand_dict['']
+    assert (list(lr.isel) == [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95])
 
 # ---------------------------------------------------------------------------
 
