@@ -173,7 +173,6 @@ def filter_indicies(ori,beam,resolution,phil):
       ops.append(tmpop)
 
   asu_indices = sym.build_miller_set(anomalous_flag=False, d_min = resolution)
-  #original_indicies = sym.build_miller_set(anomalous_flag=True, d_min = resolution)
   asu_indices_with_dups = []
   original_indicies = []
   for idx in asu_indices.indices():
@@ -182,14 +181,12 @@ def filter_indicies(ori,beam,resolution,phil):
       if orig_idx not in original_indicies:
         original_indicies.append(orig_idx)
         asu_indices_with_dups.append(idx)
-#  asu_indices = original_indicies.map_to_asu().indices()
 
   A = sqr(ori.reciprocal_matrix())
   s0 = col(beam.get_s0())
 
   ret_orig = []
   ret_asu = []
-#  for index_o, index_a in zip(original_indicies.indices(),asu_indices):
   for index_o, index_a in zip(original_indicies,asu_indices_with_dups):
     s = A * col(index_o)
     q = s + s0
@@ -259,38 +256,6 @@ def write_cell (ori,beam,max_clique,phil):
   f.write("""load "arrows.p"\n""")
   f.close()
 
-"""
-Not used
-def hkl_to_xy_new (ori,wavelength,hkl,distance,bc,pixel_size):
-  rv = ori.unit_cell().reciprocal_space_vector(hkl)
-  rvre = sqr(ori.crystal_rotation_matrix()) * rv
-  rvre = (rv[0],rv[1],rv[2] - (1/wavelength)) # direct beam anti-parallel (0,0,1)
-
-  #dpx = 1765
-  #dpy = 1765
-
-  #dsx = dpx * pixel_size
-  #dsy = dpy * pixel_size
-
-  d = -distance / rvre[2]
-  dx = rvre[0] * d
-  dy = rvre[1] * d
-
-  pxf = dx/pixel_size + 0.5 + bc[0]/pixel_size
-  pyf = dy/pixel_size + 0.5 + bc[1]/pixel_size
-
-
-
-  #pxf = (dx/dsx + 0.5) * dpx
-  #pyf = (dy/dsy + 0.5) * dpy
-
-  #pxf = pxf - (dpx/2 - bc[0]/pixel_size)
-  #pyf = pyf - (dpy/2 - bc[1]/pixel_size)
-
-  return(pxf,pyf)
-  #return(dx,dy)
-"""
-
 def hkl_to_xy (ori,wavelength,hkl,distance,bc,pixel_size,panel,beam):
   """ Given an hkl, crystal orientation, and sufficient experimental parameters, compute
   the refelction's predicted xy position on a given image
@@ -328,13 +293,6 @@ def hkl_to_xy (ori,wavelength,hkl,distance,bc,pixel_size,panel,beam):
   b = math.sqrt(s.length_sq() - (a*a))#  Calculate half-length of the chord of intersection
 
   intersection = (-a * s0_unit) - (b * chord_direction)
-
-  #acos_argument = intersection.dot(s) / s_rad_sq
-  #iangle_1 = math.acos ( min(1.0,acos_argument) ) #avoid math domain error
-  #assert approx_equal((intersection+s0).length()-s0_length,0. )
-
-  #if (iangle_1 < effective_half_mosaicity_rad) { assume that it is
-
   q = intersection + s0
   q_unit = q.normalize()
 
@@ -726,20 +684,14 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
 
     graph_lines = []
 
-    #reported = []
-
     for j in range(len(mapping)):
       conn_count = 0
       spotA = sub_clique[mapping[j][0]]
       hklA = spotA.hkls[mapping[j][1]]
       line = "%d(%d,%d,%d) typeA "%(spotA.ID,hklA.ohkl[0],hklA.ohkl[1],hklA.ohkl[2])
       print "Spot %d %s is connected to "%(spotA.ID,hklA.ohkl.elems),
-      #for i in range(j, len(mapping)):
-      for i in range(j+1): #range(len(mapping)):
+      for i in range(j+1):
         if graph[j][i]:
-          #a2b = (spotA.ID,hklA.ohkl.elems,spotB.ID,spotB.ohkl.elems)
-          #b2a = (spotA.ID,hklA.ohkl.elems,spotB.ID,spotB.ohkl.elems)
-
           conn_count = conn_count + 1
           spotB = sub_clique[mapping[i][0]]
           hklB = spotB.hkls[mapping[i][1]]
@@ -838,7 +790,6 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
       assert spot.hkl is None
       spot.hkl = spot.hkls[entry[1]]
       max_clique_spots.append(spot)
-      #print spot.ID, spot.hkl.ohkl.elems
 
 
     # resolve the ambiguity where two spots can have the same index, by looking at the distances observed and calculated and finding the best spot
@@ -881,10 +832,6 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
       for spot in matched[key]:
         if spot is not best_spot:
           max_clique_spots.remove(spot)
-
-    #for spot in max_clique_spots:
-      #if spot.ID == 11 and spot.hkl.ohkl.elems == (0,1,-1):
-        #print "BREAK"
 
     if len(max_clique_spots) > 4:
       print "############################"
@@ -1088,9 +1035,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
 
         print "ID: %3d, ohkl: %s, ahkl: %s, I: %9.1f, sigI: %9.1f, RDiff: %9.6f"%( \
           spot.ID, spot.hkl.get_ohkl_str(), spot.hkl.get_ahkl_str(), intensity, sigma,
-          (sqr(ori.reciprocal_matrix())*spot.hkl.ohkl - spot.xyz).length()) #list(sqr(ori.reciprocal_matrix()).inverse() * col(spot.rs_spot))
-        #print list(sqr(ori.reciprocal_matrix())*spot.hkl.ohkl)
-        #print list(spot.xyz), "Diff", list(sqr(ori.reciprocal_matrix())*spot.hkl.ohkl - spot.xyz)
+          (sqr(ori.reciprocal_matrix())*spot.hkl.ohkl - spot.xyz).length())
 
         max_sig = raw_data[int(spot.spot_dict['xyzobs.px.value'][1]),int(spot.spot_dict['xyzobs.px.value'][0])]
 
@@ -1101,7 +1046,6 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
         results.append(s)
 
         if spot.pred is None:
-          #mapped_predictions.append((spot.spot_dict['xyzobs.px.value'][1] + 0.5, spot.spot_dict['xyzobs.px.value'][0] + 0.5))
           mapped_predictions.append((spot.spot_dict['xyzobs.px.value'][0], spot.spot_dict['xyzobs.px.value'][1]))
         else:
           mapped_predictions.append((spot.pred[0],spot.pred[1]))
@@ -1116,7 +1060,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
         s1.append(s0+spot.xyz)
         bbox.append(spot.spot_dict['bbox'])
 
-        if spot.pred is not None:#and spot.ID != 5: #and spot.ID != 0 and spot.ID != 15:
+        if spot.pred is not None:
           rmsd_n += 1
           rmsd += measure_distance(col((spot.spot_dict['xyzobs.px.value'][0],spot.spot_dict['xyzobs.px.value'][1])),col(spot.pred))**2
 
@@ -1132,8 +1076,6 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
             ybeam = refined_bcy,
             distance = distance,
             wavelength = wavelength,
-            #residual = local["r_residual"],
-            #mosaicity = local["r_mosaicity"],
             pointgroup = horiz_phil.small_cell.spacegroup,
             observations = [cctbx.miller.set(sym,indexed_hkls).array(indexed_intensities,indexed_sigmas)],
             mapped_predictions = [mapped_predictions],
@@ -1274,86 +1216,14 @@ def get_crystal_orientation(spots, sym, beam_x, beam_y, distance, use_minimizer=
   if not use_minimizer:
     return (ori_start, beam_x, beam_y, distance)
 
-  #try:
-    #o = optimise_basis(spots,ori_start) # call to old minimizer not used anymore
-  #except Exception, e:
-    #print e.message
-    #return None
-
-  from scitbx.math import r3_rotation_unit_quaternion_as_matrix,r3_rotation_axis_and_angle_from_matrix,euler_angles_as_matrix
-  #r3 = sqr(r3_rotation_unit_quaternion_as_matrix(col(o.x[0:4])))
-  #aa = r3_rotation_axis_and_angle_from_matrix(r3)
-  #ori_rot = ori_start.rotate_thru(col(aa.axis),aa.angle())
+  from scitbx.math import euler_angles_as_matrix
   ori_rot = ori_start
 
   """
-  Several minimizers are listed here as possible canidates for minimizing the orientation matrix. Only one is actually
-  used (see the below call to minimize)
   FIXME: remove scipy dependency
   """
 
   # minimize using scipy: http://docs.scipy.org/doc/scipy/reference/tutorial/optimize.html
-  #params_start = sym.unit_cell().parameters() #these three lines commented out because not optimizing unit cell anymore
-  #constraints = list(params_start[0:3])
-  #constraints.append(params_start[4])
-
-  #constraints.append(beam_x)
-  #constraints.append(beam_y)
-  #constraints.append(img.wavelength)
-  #constraints.append(img.distance)
-
-  def simplex_uc(x):
-    for i in range(4):
-      if x[i] < constraints[i] * 0.95:
-        x[i] = constraints[i] * 0.95
-      elif x[i] > constraints[i] * 1.05:
-        x[i] = constraints[i] * 1.05
-
-    ##x[6] = img.wavelength
-    #if x[6] < constraints[6] * 0.99:
-      #x[6] = constraints[6] * 0.99
-    #elif x[6] > constraints[6] * 1.01:
-      #x[6] = constraints[6] * 1.01
-
-    a = x[0]
-    b = x[1]
-    c = x[2]
-    alpha = 90
-    beta  = x[3]
-    gamma = 90
-    #bcx = x[4]
-    #bcy = x[5]
-    #wavelength = float(x[6])
-    #distance = x[7]
-    e1 = x[4]
-    e2 = x[5]
-    e3 = x[6]
-
-    rotation = euler_angles_as_matrix((e1,e2,e3),deg=True)
-
-    sym_working = symmetry(unit_cell="%f, %f, %f, %f, %f, %f"%(a,b,c,alpha,beta,gamma),
-                           space_group_symbol=SPACE_GROUP)
-    F_working = sqr(sym_working.unit_cell().fractionalization_matrix()).transpose()
-    Amat_working = sqr(ori_rot.crystal_rotation_matrix()) * rotation * F_working
-
-    ori_working = crystal_orientation.crystal_orientation(Amat_working, crystal_orientation.basis_type.reciprocal)
-
-    M = sqr(ori_working.reciprocal_matrix())
-
-    f = 0
-    for spot in spots:
-      #spot_obs = col((spot.sf_spot.ctr_mass_y(),spot.sf_spot.ctr_mass_x()))
-      #spot_calc = col(hkl_to_xy(ori_working,wavelength,spot.hkl.ohkl,distance,(bcx,bcy),img.pixel_size))
-
-      #print "%.1f"%(spot_obs - spot_calc).length(),
-      #f += ((spot_obs - spot_calc).length())**2
-      diff = spot.xyz - (M * spot.hkl.ohkl)
-      f += diff.dot(diff)
-
-    #print "f: %f, unit_cell = %f, %f, %f, %f, %f, %f, bc: (%f,%f), wavelength: %f, dist: %f, euler: %f, %f, %f"%\
-              #(f,a,b,c,alpha,beta,gamma,bcx,bcy,wavelength,distance,e1,e2,e3)
-
-    return f
 
   def simplex_uc_ori_only(x, sym):
 
@@ -1376,70 +1246,17 @@ def get_crystal_orientation(spots, sym, beam_x, beam_y, distance, use_minimizer=
       diff = spot.xyz - (M * spot.hkl.ohkl)
       f += diff.dot(diff)
 
-    #print "f: %f, unit_cell = %f, %f, %f, %f, %f, %f, bc: (%f,%f), wavelength: %f, dist: %f, euler: %f, %f, %f"%\
-              #(f,a,b,c,alpha,beta,gamma,bcx,bcy,wavelength,distance,e1,e2,e3)
-
-    #print "f: %f, euler: %f, %f, %f"%(f,e1,e2,e3)
-
     return f
-
-  #p = sym.unit_cell().parameters() # DON'T REFINE UNIT CELL ANYMORE
-  #x0 = np.array([p[0],p[1],p[2],p[4],beam_x,beam_y,img.wavelength,img.distance,0,0,0]) # DON'T REFINE UNIT CELL ANYMORE
-  #res = minimize(simplex_uc, x0, method='nelder-mead',    # DON'T REFINE UNIT CELL ANYMORE
-  #               options={'xtol': 1e-8, 'disp': True})    # DON'T REFINE UNIT CELL ANYMORE
-  #res = minimize(simplex_uc, x0, method='BFGS', jac=None,
-                   #options={'disp': True})
-
-
-  def simplex_uc_rotz_only(x):
-
-      rotz = x[0]
-
-      #rotation = euler_angles_as_matrix((e1,e2,e3),deg=True)
-
-      #sym_working = symmetry(unit_cell=SYM_STR, space_group_symbol=SPACE_GROUP)
-      #F_working = sqr(sym_working.unit_cell().fractionalization_matrix()).transpose()
-      #Amat_working = rotation * sqr(ori_rot.crystal_rotation_matrix()) * F_working
-
-      #ori_working = crystal_orientation.crystal_orientation(Amat_working, crystal_orientation.basis_type.reciprocal)
-
-      #M = sqr(ori_working.reciprocal_matrix())
-      M = sqr(ori_rot.reciprocal_matrix())
-
-      Z = sqr([math.cos(rotz),-math.sin(rotz),0,
-               math.sin(rotz), math.cos(rotz),0,
-               0,0,1])
-
-      f = 0
-      for spot in spots:
-        diff = spot.xyz - (Z * M * spot.hkl.ohkl)
-        f += diff.dot(diff)
-
-      #print "f: %f, unit_cell = %f, %f, %f, %f, %f, %f, bc: (%f,%f), wavelength: %f, dist: %f, euler: %f, %f, %f"%\
-                #(f,a,b,c,alpha,beta,gamma,bcx,bcy,wavelength,distance,e1,e2,e3)
-
-      #print "f: %f, euler: %f, %f, %f"%(f,e1,e2,e3)
-
-      return f
 
   x0 = np.array([0,0,0])
   res = minimize(simplex_uc_ori_only, x0, args=(sym,), method='nelder-mead',
                  options={'xtol': 1e-8, 'disp': True})
 
-  #rotation_final = euler_angles_as_matrix((res.x[4],res.x[5],res.x[6]),deg=True) # DON'T REFINE UNIT CELL ANYMORE
   rotation_final = euler_angles_as_matrix((res.x[0],res.x[1],res.x[2]),deg=True)
-  #print "Refined beam x: %f, beam y: %f, wavelength: %f, distance: %f"%(res.x[4],res.x[5],res.x[6],res.x[7])
 
-  #sym_final = symmetry(unit_cell="%f, %f, %f, %f, %f, %f"%(res.x[0],res.x[1],res.x[2],90,res.x[3],90),# DON'T REFINE UNIT CELL ANYMORE
-                       #space_group_symbol=SPACE_GROUP)# DON'T REFINE UNIT CELL ANYMORE
   sym_final = sym
   F_final = sqr(sym_final.unit_cell().fractionalization_matrix()).transpose()
-  #Z = sqr([math.cos(res.x[0]),-math.sin(res.x[0]),0,
-           #math.sin(res.x[0]), math.cos(res.x[0]),0,
-           #0,0,1])
-  #Amat_final = Z * sqr(ori_rot.crystal_rotation_matrix()) * F_final
   Amat_final = rotation_final * sqr(ori_rot.crystal_rotation_matrix()) * F_final
-  #Amat_final = rotation_final * F_final
 
   ori_final = crystal_orientation.crystal_orientation(Amat_final, crystal_orientation.basis_type.reciprocal)
 
@@ -1450,134 +1267,7 @@ def get_crystal_orientation(spots, sym, beam_x, beam_y, distance, use_minimizer=
   m = m.as_list_of_lists()
   print "Final euler angles: ", math.atan2(m[2][0],m[2][1])*180/math.pi,math.acos(m[2][2])*180/math.pi,math.atan2(m[0][2],m[1][2])*180/math.pi
 
-  #return (ori_final, float(res.x[4]),float(res.x[5]),float(res.x[6]),float(res.x[7]))
   return (ori_final, beam_x, beam_y, distance)
-
-
-from scitbx import lbfgs, matrix
-class optimise_basis(object):
-  """Given a set of points in three-space and a unit cell's initial position,
-  find the best orientation of the unit cell to match the spots"""
-  # this minimizer no longer used
-
-  def __init__(self, spots, ori_start):
-    """
-    @param spots
-    @param ori_start
-    """
-
-    #self.x = flex.double((.5,.5,.5,.5,1))
-    #self.x = flex.double((1,0,0,0,1))
-    self.x = flex.double((1,0,0,0))
-    #p = .95 # very close to identity rotation
-    #a =  math.sqrt(p)
-    #bcd = math.sqrt((1-p)/3)
-    #self.x = flex.double((a,bcd,bcd,bcd,1))
-
-    self.spots = spots
-    for spot in spots:
-      spot.start_xyz = sqr(ori_start.reciprocal_matrix()) * spot.hkl.ohkl
-
-    print "------"
-    self.minimizer = lbfgs.run(target_evaluator=self)
-
-
-  def compute_functional_and_gradients(self):
-    print "Pre-norm:     constraint: %6.3f, "%(self.x[0]**2+self.x[1]**2+self.x[2]**2+self.x[3]**2),  \
-      "x: % 8.8f % 8.8f % 8.8f % 8.8f"%tuple(self.x)
-
-    norm = col((self.x[0],self.x[1],self.x[2],self.x[3]))
-    norm = norm.normalize()
-    self.x[0] = norm[0]
-    self.x[1] = norm[1]
-    self.x[2] = norm[2]
-    self.x[3] = norm[3]
-
-    a = self.x[0]
-    b = self.x[1]
-    c = self.x[2]
-    d = self.x[3]
-    w = col((self.x[1],self.x[2],self.x[3]))
-    #lagrange = self.x[4]
-
-    f = 0
-    dfda = 0
-    dfdb = 0
-    dfdc = 0
-    dfdd = 0
-
-    # finite differences used to verify gradients
-    fd_delta = 1e-7
-    fda  = a+fd_delta
-    fdwb = col((b+fd_delta,c,d))
-    fdwc = col((b,c+fd_delta,d))
-    fdwd = col((b,c,d+fd_delta))
-    #fdl  = lagrange+fd_delta
-
-    fdga = fdgb = fdgc = fdgd = 0#fdgl = 0
-
-    for spot in self.spots:
-      f += optimise_basis.f(spot.start_xyz,a,w,spot.xyz)
-
-      fdga += optimise_basis.f(spot.start_xyz,fda,w ,spot.xyz)
-      fdgb += optimise_basis.f(spot.start_xyz,a,fdwb,spot.xyz)
-      fdgc += optimise_basis.f(spot.start_xyz,a,fdwc,spot.xyz)
-      fdgd += optimise_basis.f(spot.start_xyz,a,fdwd,spot.xyz)
-
-      x = spot.start_xyz[0]
-      y = spot.start_xyz[1]
-      z = spot.start_xyz[2]
-
-      #o: observed
-      xo = spot.xyz[0]
-      yo = spot.xyz[1]
-      zo = spot.xyz[2]
-
-      p = xo-x-2*a*z*c+2*a*y*d-2*c*y*b+2*x*c**2+2*x*d**2-2*z*b*d
-      q = yo-y-2*a*x*d+2*a*z*b-2*d*z*c+2*y*d**2+2*y*b**2-2*b*x*c
-      r = zo-z-2*a*y*b+2*a*x*c-2*b*x*d+2*z*b**2+2*z*c**2-2*c*y*d
-
-      dfda += 2*p*(-2*z*c+2*y*d)+2*q*(-2*x*d+2*z*b)+2*r*(-2*y*b+2*x*c)
-      dfdb += 2*p*(-2*c*y-2*z*d)+2*q*(2*a*z+4*y*b-2*x*c)+2*r*(-2*a*y-2*x*d+4*z*b)
-      dfdc += 2*p*(-2*a*z-2*y*b +4*x*c)+2*q*(-2*d*z-2*b*x)+2*r*(2*a*x+4*z*c-2*y*d)
-      dfdd += 2*p*(2*a*y+4*x*d-2*z*b)+2*q*(-2*a*x-2*z*c+4*y*d)+2*r*(-2*b*x-2*c*y)
-
-    #l_step = lagrange * (a**2 + b**2 + c**2 + d**2 - 1)
-    #f += l_step
-    #dfda += 2*lagrange*a
-    #dfdb += 2*lagrange*b
-    #dfdc += 2*lagrange*c
-    #dfdb += 2*lagrange*d
-
-    #dfdl = a**2+b**2+c**2+d**2-1
-
-    #fdga += l_step
-    #fdgb += l_step
-    #fdgc += l_step
-    #fdgd += l_step
-
-    fdga = (fdga - f)/fd_delta
-    fdgb = (fdgb - f)/fd_delta
-    fdgc = (fdgc - f)/fd_delta
-    fdgd = (fdgd - f)/fd_delta
-
-    #fdgl = ((f-l_step+(fdl * (a**2 + b**2 + c**2 + d**2 - 1))) - f)/fd_delta
-
-
-    g  = flex.double((dfda,dfdb,dfdc,dfdd))#,dfdl))
-    fd = flex.double((fdga,fdgb,fdgc,fdgd))#,fdgl))
-
-    print "F: %8.7f, constraint: %6.3f, "%(f,a**2+b**2+c**2+d**2), "x: % 8.8f % 8.8f % 8.8f % 8.8f"%tuple(self.x)
-    print "Gradients (analytically derived)    : % 8.8f % 8.8f % 8.8f % 8.8f"%tuple(g)
-    print "Gradients (frac. diffs. estimates)  : % 8.8f % 8.8f % 8.8f % 8.8f"%tuple(fd)
-    print "------"
-    return (f, g)
-
-  @staticmethod
-  def f(start_xyz,a,w,obs_xyz):
-    delta = (2*a*w.cross(start_xyz)) + (2*w.cross(w.cross(start_xyz)))
-    diff = obs_xyz - (start_xyz + delta)
-    return diff.dot(diff)
 
 def grow_by(pixels, amt):
   """
