@@ -874,7 +874,7 @@ class model_info: # mostly just a holder
     # set the chain type if not already set
     if self.info and self.info.get('chain_type'): return
     if not self.info: self.info={}
-    if has_atom(self.hierarchy,name="N"):
+    if has_atom(self.hierarchy,name="N") or has_atom(self.hierarchy,name="CA"):
       self.info['chain_type']="PROTEIN"
     else:
       if has_atom(self.hierarchy,name="O2'") or  \
