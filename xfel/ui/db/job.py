@@ -369,6 +369,8 @@ def submit_job(app, job):
                                                                                             job.rungroup.beamy * pixel_size,
                                                                                            -job.rungroup.detz_parameter))
           locator.write("rayonix.bin_size=%s\n"%job.rungroup.binning)
+        elif mode == 'cspad':
+          locator.write("cspad.detz_offset=%s\n"%job.rungroup.detz_parameter)
       locator.close()
       d['locator'] = locator_path
 
