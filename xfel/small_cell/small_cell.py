@@ -1367,14 +1367,15 @@ def small_cell_index_detail(datablock, reflections, horiz_phil):
         import pickle
         pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
 
-        from dxtbx.model import MosaicCrystalKabsch2010
+        from dxtbx.model import MosaicCrystalSauter2014
         from dxtbx.model.experiment_list import ExperimentListFactory, ExperimentListDumper
         direct_matrix = ori.direct_matrix()
         real_a = direct_matrix[0:3]
         real_b = direct_matrix[3:6]
         real_c = direct_matrix[6:9]
-        crystal = MosaicCrystalKabsch2010(real_a, real_b, real_c, horiz_phil.small_cell.spacegroup)
-        crystal.set_mosaicity(horiz_phil.small_cell.faked_mosaicity)
+        crystal = MosaicCrystalSauter2014(real_a, real_b, real_c, horiz_phil.small_cell.spacegroup)
+        crystal.set_domain_size_ang(100) # hardcoded here, but could be refiend using nave_parameters
+        crystal.set_half_mosaicity_deg(0.05) # hardcoded here, but could be refiend using nave_parameters
         experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, crystal)
         dump = ExperimentListDumper(experiments)
         dump.as_json(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated_experiments.json")
