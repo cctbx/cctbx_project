@@ -640,15 +640,19 @@ def draw_ramachandran_plot (points,
                             show_labels=True,
                             point_style='bo') :
   p = ramachandran_plot()
-  # XXX where do these numbers come from?
-  # They are probably wrong/inconsistent.
-  # They don't match what we have right here in evaluateScore function
-  # - at the very least I don't see separate values for cis-proline
-  # while it is present in evaluateScore.
+  # data for plotting is being "scaled" in
+  # mmtbx/validation/utils.py: export_ramachandran_distribution():
+  #   return npz ** scale_factor, # scale_factor = 0.25
+  # Therefore to calculate contours we need to look at
+  # mmtbx/validation/ramalyze.py: evalScore() for the logic and
+  # put the cutoff numbers to the power of 0.25
+
   if position_type == RAMA_GENERAL :
-    contours = [0.1495, 0.376]
-  else :
-    contours = [0.2115, 0.376]
+    contours = [0.1495, 0.376] # [0.0005**0.25, 0.02**0.25]
+  elif position_type == RAMA_CISPRO :
+    contours = [0.21147, 0.376] # [0.002**0.25, 0.02**0.25]
+  else:
+    contours = [0.1778, 0.376] # [0.001**0.25, 0.02**0.25]
   p.draw_plot(
     stats=rotarama_data,
     title=title,
