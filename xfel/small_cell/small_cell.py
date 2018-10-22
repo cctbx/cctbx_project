@@ -20,6 +20,9 @@ from cctbx.uctbx import unit_cell
 from cctbx import sgtbx
 import operator
 
+from dials.algorithms.shoebox import MaskCode
+mask_peak = MaskCode.Valid|MaskCode.Foreground
+
 import wx
 app = wx.App(0)
 wx.SystemOptions.SetOptionInt("osx.openfiledialog.always-show-types", 1)
@@ -366,18 +369,16 @@ class small_cell_callbacks:
             renderer = frame.pyslip.LightweightDrawPointLayer,
             show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
 
-def filter_indicies(ori,wavelength,resolution,phil,img):
+def filter_indicies(ori,beam,resolution,phil):
   """ Given a unit cell, determine reflections in the diffracting condition, assuming the mosiaicity
   passed in the target phil file. Include their locations in reciprocal space given a crystal
   orientaiton.
   @param ori crystal orientation
-  @param wavelength incident beam wavelength (angstroms)
+  @param dxtbx beam object
   @param resolution limiting resolution to determine miller indices
   @param phil parsed small cell phil parameters
-  @param img dxtbx format object
   @return list of original indices, list of asymmetric indices
   """
-  beam = img.get_beam()
   sym = symmetry(unit_cell=ori.unit_cell(),space_group=phil.small_cell.spacegroup)
   ops = []
   for op in sym.space_group().expand_inv(sgtbx.tr_vec((0,0,0))).all_ops(): # this gets the spots related by inversion, aka Bijvoet mates
@@ -418,21 +419,22 @@ def filter_indicies(ori,wavelength,resolution,phil,img):
       ret_asu.append(index_a)
   return (ret_orig, ret_asu)
 
-def write_cell (ori,wavelength,max_clique,phil,img):
+def write_cell (ori,beam,max_clique,phil):
   """ Dump a series of useful debugging files viewable by gnuplot
   @param ori crystal orientation
-  @param wavelength incident beam wavelength (angstroms)
+  @param beam dxtbx beam object
   @param max_clique final maximum clique (list of small_cell_spot objects)
   @param phil parsed small cell phil parameters
   @param img dxtbx format object
    """
+  wavelength = beam.get_wavelength()
   A = sqr(ori.reciprocal_matrix())
   abasis = A * col((1,0,0))
   bbasis = A * col((0,1,0))
   cbasis = A * col((0,0,1))
 
   f = open("spots.dat",'w')
-  for index in filter_indicies(ori,wavelength,phil.small_cell.high_res_limit,phil,img)[0]:
+  for index in filter_indicies(ori,beam,phil.small_cell.high_res_limit,phil)[0]:
     v = A * col(index)
     f.write(" % 6.3f % 6.3f % 6.3f\n"%(v[0],v[1],v[2]))
   f.close()
@@ -509,7 +511,7 @@ def hkl_to_xy_new (ori,wavelength,hkl,distance,bc,pixel_size):
   #return(dx,dy)
 """
 
-def hkl_to_xy (ori,wavelength,hkl,distance,bc,pixel_size,img):
+def hkl_to_xy (ori,wavelength,hkl,distance,bc,pixel_size,panel,beam):
   """ Given an hkl, crystal orientation, and sufficient experimental parameters, compute
   the refelction's predicted xy position on a given image
   @param ori crystal orientation
@@ -518,14 +520,13 @@ def hkl_to_xy (ori,wavelength,hkl,distance,bc,pixel_size,img):
   @param distance detector distance (mm)
   @param bc beam center (tuple, mm)
   @param pixel_size pixel size in mm
-  @param img dxtbx format object
+  @param panel dxtbx panel object
+  @param beam dxtbx beam object
   """
-  detector = img.get_detector()[0]
-  beam = img.get_beam()
 
-  detector_normal = col(detector.get_normal())
-  detector_fast   = col(detector.get_fast_axis())
-  detector_slow   = col(detector.get_slow_axis())
+  detector_normal = col(panel.get_normal())
+  detector_fast   = col(panel.get_fast_axis())
+  detector_slow   = col(panel.get_slow_axis())
   detector_origin = col([bc[0], bc[1], 0.])
   pixel_size      = col([pixel_size,pixel_size,0])
 
@@ -561,13 +562,11 @@ def hkl_to_xy (ori,wavelength,hkl,distance,bc,pixel_size,img):
   q_dot_n = q_unit.dot(detector_normal)
   assert q_dot_n != 0.
 
-  return detector.get_ray_intersection_px(q)
+  return panel.get_ray_intersection_px(q)
 
 def small_cell_index(path, horiz_phil):
   """ Index an image with a few spots and a known, small unit cell,
   with unknown basis vectors """
-
-  import os,math
 
   # Load the dials and small cell parameters
   from dxtbx.datablock import DataBlockFactory
@@ -580,42 +579,17 @@ def small_cell_index(path, horiz_phil):
   from dxtbx.format.Registry import Registry
   format_class = Registry.find(path)
   img = format_class(path)
-  detector = img.get_detector()[0]
-  beam = img.get_beam()
-
-  beam_x, beam_y = detector.get_beam_centre(beam.get_s0())
-  if horiz_phil.small_cell.override_beam_x is not None:
-    beam_x = horiz_phil.small_cell.override_beam_x
-
-  if horiz_phil.small_cell.override_beam_y is not None:
-    beam_y = horiz_phil.small_cell.override_beam_y
-
-  if horiz_phil.small_cell.override_distance is not None:
-    distance = horiz_phil.small_cell.override_distance
-  else:
-    distance=detector.get_distance()
-
-  if horiz_phil.small_cell.override_wavelength is not None:
-    wavelength = horiz_phil.small_cell.override_wavelength
-  else:
-    wavelength = beam.get_wavelength()
-
-  beam_center = col((beam_x, beam_y))
-  pixel_size = detector.get_pixel_size()[0] # XXX
+  imageset = img.get_imageset([path])
   raw_data = img.get_raw_data()
-
-  print "Using beam center %s, %s, distance %s, and wavelength %s"%(beam_x, beam_y, distance, wavelength)
 
   # create the spot finder
   find_spots = SpotFinderFactory.from_parameters(horiz_phil)
 
   # spotfind
-  datablock = DataBlockFactory.from_filenames([path])[0]
+  datablock = DataBlockFactory.from_imageset(imageset)[0]
   reflections = find_spots(datablock)
 
   # filter the reflections for those near asic boundries
-  from dials.algorithms.shoebox import MaskCode
-  mask_peak = MaskCode.Valid|MaskCode.Foreground
   print "Filtering %s reflections by proximity to asic boundries..."%len(reflections),
 
   sel = flex.bool()
@@ -634,13 +608,53 @@ def small_cell_index(path, horiz_phil):
   reflections_dump(reflections, "spotfinder.pickle")
   print "saved %d"%len(reflections)
 
+  return small_cell_index_detail(datablock, reflections, horiz_phil)
+
+def small_cell_index_detail(datablock, reflections, horiz_phil):
+  """ Index an image with a few spots and a known, small unit cell,
+  with unknown basis vectors """
+  import os,math
+
+  imagesets = datablock.extract_imagesets()
+  assert len(imagesets) == 1
+  imageset = imagesets[0]
+  path = imageset.paths()[0]
+
+  detector = imageset.get_detector()
+  assert len(detector) == 1 # multipanel support coming soon
+  panel = detector[0]
+  beam = imageset.get_beam()
+  beam_x, beam_y = panel.get_beam_centre(beam.get_s0())
+  if horiz_phil.small_cell.override_beam_x is not None:
+    beam_x = horiz_phil.small_cell.override_beam_x
+
+  if horiz_phil.small_cell.override_beam_y is not None:
+    beam_y = horiz_phil.small_cell.override_beam_y
+
+  if horiz_phil.small_cell.override_distance is not None:
+    distance = horiz_phil.small_cell.override_distance
+  else:
+    distance=panel.get_distance()
+
+  if horiz_phil.small_cell.override_wavelength is not None:
+    wavelength = horiz_phil.small_cell.override_wavelength
+  else:
+    wavelength = beam.get_wavelength()
+
+  beam_center = col((beam_x, beam_y))
+  pixel_size = panel.get_pixel_size()[0] # XXX
+  raw_data = imageset[0]
+  if isinstance(raw_data, tuple): raw_data = raw_data[0] # again, multipanel support coming soon
+
+  print "Using beam center %s, %s, distance %s, and wavelength %s"%(beam_x, beam_y, distance, wavelength)
+
   recip_coords = flex.vec3_double()
   radial_sizes = flex.double()
   azimuthal_sizes = flex.double()
   for ref in reflections:
     # calculate reciprical space coordinates
     x, y, z = ref['xyzobs.px.value']
-    xyz = col(detector.get_pixel_lab_coord((x,y)))
+    xyz = col(panel.get_pixel_lab_coord((x,y)))
     xyz /= wavelength * xyz.length()
     xyz -= col(beam.get_s0()) # translate to origin of reciprocal space
     recip_coords.append(xyz)
@@ -1117,14 +1131,14 @@ def small_cell_index(path, horiz_phil):
 
       #calculate the basis vectors
       loop_count = loop_count + 1
-      result = get_crystal_orientation(working_set, sym, img, beam_x, beam_y, distance, True, loop_count)
+      result = get_crystal_orientation(working_set, sym, beam_x, beam_y, distance, True, loop_count)
       if result is None:
         print "Couldn't get basis vectors for max clique"
         break
       ok_to_integrate = True
 
       # here I should test the angles too
-      ori, refined_bcx, refined_bcy, refined_wavelength, refined_distance = result
+      ori, refined_bcx, refined_bcy, refined_distance = result
 
       if approx_equal(ori.unit_cell().reciprocal().parameters()[0], a, out=None, eps=1.e-2) and \
          approx_equal(ori.unit_cell().reciprocal().parameters()[1], b, out=None, eps=1.e-2) and \
@@ -1138,14 +1152,14 @@ def small_cell_index(path, horiz_phil):
       ori.unit_cell().show_parameters()
 
       # get the indicies that satisfy the difraction condition
-      indicies_orig, indicies_asu = filter_indicies(ori,refined_wavelength,horiz_phil.small_cell.high_res_limit,horiz_phil,img)
+      indicies_orig, indicies_asu = filter_indicies(ori,beam,horiz_phil.small_cell.high_res_limit,horiz_phil)
 
       # caluculate predicted detector locations for these indicies
       f = open("preds.txt", "w")
       predicted = []
       for index in indicies_orig:
-        xy = hkl_to_xy(ori,refined_wavelength,col(index),refined_distance,(refined_bcx,refined_bcy),pixel_size,img)
-        if xy[0] > 0 and xy[0] <= detector.get_image_size()[0] and xy[1] > 0 and xy[1] <= detector.get_image_size()[0]:
+        xy = hkl_to_xy(ori,wavelength,col(index),refined_distance,(refined_bcx,refined_bcy),pixel_size,panel,beam)
+        if xy[0] > 0 and xy[0] <= panel.get_image_size()[0] and xy[1] > 0 and xy[1] <= panel.get_image_size()[0]:
           f.write("%d %d %d %f %f\n"%(index[0],index[1],index[2],xy[0],xy[1]))
         predicted.append(xy)
       f.close()
@@ -1154,7 +1168,7 @@ def small_cell_index(path, horiz_phil):
       possibles = []
       for spot in working_set:
         possibles.append(spot)
-        spot.pred = hkl_to_xy(ori,refined_wavelength,col(spot.hkl.ohkl.elems),refined_distance,(refined_bcx,refined_bcy),pixel_size,img)
+        spot.pred = hkl_to_xy(ori,wavelength,col(spot.hkl.ohkl.elems),refined_distance,(refined_bcx,refined_bcy),pixel_size,panel,beam)
 
       for spot in all_spots:
         found_it = False
@@ -1215,7 +1229,7 @@ def small_cell_index(path, horiz_phil):
       # end finding preds and crystal orientation matrix refinement loop
 
     if result is not None:
-      write_cell(ori,refined_wavelength,indexed,horiz_phil,img)
+      write_cell(ori,beam,indexed,horiz_phil)
 
     indexed_hkls = flex.vec2_double()
     indexed_intensities = flex.double()
@@ -1354,7 +1368,7 @@ def small_cell_index(path, horiz_phil):
         real_c = direct_matrix[6:9]
         crystal = MosaicCrystalKabsch2010(real_a, real_b, real_c, horiz_phil.small_cell.spacegroup)
         crystal.set_mosaicity(horiz_phil.small_cell.faked_mosaicity)
-        experiments = ExperimentListFactory.from_imageset_and_crystal(img.get_imageset([path]), crystal)
+        experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, crystal)
         dump = ExperimentListDumper(experiments)
         dump.as_json(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated_experiments.json")
 
@@ -1454,18 +1468,17 @@ def hkl_to_xyz(hkl,abasis,bbasis,cbasis):
   """
   return (hkl[0]*abasis) + (hkl[1]*bbasis) + (hkl[2]*cbasis)
 
-def get_crystal_orientation(spots, sym, img, beam_x, beam_y, distance, use_minimizer=True, loop_count = 0):
+def get_crystal_orientation(spots, sym, beam_x, beam_y, distance, use_minimizer=True, loop_count = 0):
   """ given a set of refelctions and input geometry, determine a crystal orientation using a set
   of linear equations, then refine it.
   @param spots list of small cell spot objects
   @param sym cctbx symmetry object
-  @param img dxtbx format object
   @param beam_x beam center x position (mm)
   @param beam_y beam center y position (mm)
   @param distance detector distance (mm)
   @param use_minimizer if true, refine final orientation using a miminizer
   @param loop_count output during printout (debug use only)
-  @return a tuple containing the orientation and refined beam x, beam y, wavelength, and distance
+  @return a tuple containing the orientation and refined beam x, beam y, and distance
   """
 
   # determine initial orientation matrix from the set of reflections
@@ -1510,7 +1523,7 @@ def get_crystal_orientation(spots, sym, img, beam_x, beam_y, distance, use_minim
     return None
 
   if not use_minimizer:
-    return (ori_start, beam_x, beam_y, img.get_beam().get_wavelength(), distance)
+    return (ori_start, beam_x, beam_y, distance)
 
   #try:
     #o = optimise_basis(spots,ori_start) # call to old minimizer not used anymore
@@ -1689,7 +1702,7 @@ def get_crystal_orientation(spots, sym, img, beam_x, beam_y, distance, use_minim
   print "Final euler angles: ", math.atan2(m[2][0],m[2][1])*180/math.pi,math.acos(m[2][2])*180/math.pi,math.atan2(m[0][2],m[1][2])*180/math.pi
 
   #return (ori_final, float(res.x[4]),float(res.x[5]),float(res.x[6]),float(res.x[7]))
-  return (ori_final, beam_x, beam_y, img.get_beam().get_wavelength(), distance)
+  return (ori_final, beam_x, beam_y, distance)
 
 
 from scitbx import lbfgs, matrix
