@@ -12,6 +12,12 @@ omp_set_num_threads(int num_threads)
 {
 }
 
+// Intel ICC 2018 links to this symbol instead of omp_set_num_threads
+void
+ompc_set_num_threads(int num_threads)
+{
+}
+
 int
 omp_get_num_threads(void)
 {
