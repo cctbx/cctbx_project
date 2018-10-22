@@ -9,7 +9,7 @@ from __future__ import division
 from __future__ import with_statement
 from __future__ import print_function
 
-import cPickle as pickle
+from six.moves import cPickle as pickle
 import os
 import time
 import itertools
@@ -248,7 +248,7 @@ class QueueHandler(object):
   """
   SCRIPT = \
 """\
-import cPickle as pickle
+from six.moves import cPickle as pickle
 %s
 target( *args, **kwargs )
 """

@@ -9,7 +9,7 @@ def show_pickle_sizes (obj, indent="",
   misleading since child objects may appear to be larger than their parents,
   probably for some reason involving duplicated references.
   """
-  from cPickle import dumps
+  from six.moves.cPickle import dumps
   if hasattr(obj, "__slots__") :
     attr_names = obj.__slots__
   else :

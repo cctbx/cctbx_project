@@ -1,9 +1,6 @@
 from __future__ import division
 from __future__ import print_function
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import cPickle as pickle
 import socket
 import sys
 import os

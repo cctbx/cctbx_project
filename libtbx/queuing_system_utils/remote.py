@@ -1,11 +1,7 @@
 from __future__ import division
 
 from libtbx.queuing_system_utils import communication
-
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import cPickle as pickle
 import threading
 import Queue
 import time
@@ -393,4 +389,3 @@ def server_process_command_line(
       "--folder=%s" % folder,
       ),
     )
-

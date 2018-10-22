@@ -12,7 +12,7 @@ Usage:
 """
 from __future__ import print_function
 
-import pickle
+from six.moves import cPickle as pickle
 from pprint import pprint
 import sys
 from types import ModuleType

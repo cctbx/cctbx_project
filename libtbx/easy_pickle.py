@@ -10,7 +10,7 @@ import os
 
 from libtbx.str_utils import show_string
 from libtbx import smart_open
-from six.moves import cPickle
+from six.moves import cPickle as pickle
 
 def _open(file_name, mode):
   """
@@ -33,7 +33,7 @@ def _open(file_name, mode):
 
 def dump(file_name, obj):
   """
-  Wraps cPickle.dump.
+  Wraps pickle.dump.
 
   Parameters
   ----------
@@ -47,11 +47,11 @@ def dump(file_name, obj):
   >>> print load("output.pkl.gz")
   [1, 2, 3]
   """
-  return cPickle.dump(obj, _open(file_name, "wb"), cPickle.HIGHEST_PROTOCOL)
+  return pickle.dump(obj, _open(file_name, "wb"), pickle.HIGHEST_PROTOCOL)
 
 def dumps(obj):
   """
-  Wraps cPickle.dumps.
+  Wraps pickle.dumps.
 
   Parameters
   ----------
@@ -61,11 +61,11 @@ def dumps(obj):
   -------
   str
   """
-  return cPickle.dumps(obj, cPickle.HIGHEST_PROTOCOL)
+  return pickle.dumps(obj, pickle.HIGHEST_PROTOCOL)
 
 def load(file_name, faster_but_using_more_memory=True):
   """
-  Wraps cPickle.load.
+  Wraps pickle.load.
 
   Parameters
   ----------
@@ -79,12 +79,12 @@ def load(file_name, faster_but_using_more_memory=True):
   object
   """
   if (faster_but_using_more_memory):
-    return cPickle.loads(_open(file_name, "rb").read())
-  return cPickle.load(_open(file_name, "rb"))
+    return pickle.loads(_open(file_name, "rb").read())
+  return pickle.load(_open(file_name, "rb"))
 
 def loads(string) :
   """
-  Wraps cPickle.loads.
+  Wraps pickle.loads.
 
   Parameters
   ----------
@@ -100,7 +100,7 @@ def loads(string) :
   >>> print loads(dumps([1, 2, 3])
   [1, 2, 3]
   """
-  return cPickle.loads(string)
+  return pickle.loads(string)
 
 def dump_args(*args, **keyword_args):
   """

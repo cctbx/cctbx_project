@@ -2,7 +2,7 @@ from __future__ import division
 from __future__ import print_function
 def exercise():
   from libtbx.test_utils import show_diff, Exception_expected
-  import cPickle
+  from six.moves import cPickle as pickle
   #
   from libtbx.str_utils import split_keeping_spaces
   assert split_keeping_spaces(s="") == []
@@ -59,8 +59,8 @@ world""", suffix=" ", rstrip=False) == """\
 ^world """ % " "
   #
   from libtbx.str_utils import show_sorted_by_counts
-  from six.moves import cStringIO
-  out = cStringIO()
+  import cStringIO
+  out = cStringIO.StringIO()
   assert show_sorted_by_counts(
     label_count_pairs=[("b", 3), ("a", 3), ("c", -2)],
     out=out, prefix="%")
@@ -69,7 +69,7 @@ world""", suffix=" ", rstrip=False) == """\
 %"b"  3
 %"c" -2
 """)
-  out = cStringIO()
+  out = cStringIO.StringIO()
   assert show_sorted_by_counts(
     label_count_pairs=[("b", -3), ("a", -3), ("c", 2)], reverse=False,
      out=out, prefix="%", annotations=[None, "", "x"])
@@ -91,7 +91,7 @@ world""", suffix=" ", rstrip=False) == """\
     assert [block for block in line_breaker(string, width=7)]==expected_result
   #
   from libtbx.str_utils import StringIO
-  out1 = cStringIO()
+  out1 = cStringIO.StringIO()
   out2 = StringIO()
   out3 = StringIO("Hello world!\n")
   print("Hello world!", file=out1)
@@ -102,8 +102,8 @@ world""", suffix=" ", rstrip=False) == """\
     pass
   else :
     raise Exception_expected
-  out4 = cPickle.loads(cPickle.dumps(out2))
-  out5 = cPickle.loads(cPickle.dumps(out3))
+  out4 = pickle.loads(pickle.dumps(out2))
+  out5 = pickle.loads(pickle.dumps(out3))
   assert out4.getvalue()==out1.getvalue()==out2.getvalue()==out5.getvalue()
   #
   from libtbx.str_utils import reformat_terminal_text
@@ -267,4 +267,4 @@ def run(args):
 
 if (__name__ == "__main__"):
   import sys
-  run(args=sys.argv[1:])
+  run(args=sy

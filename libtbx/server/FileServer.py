@@ -1,10 +1,7 @@
 from __future__ import division
 from __future__ import print_function
 import threading
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import cPickle as pickle
 import SocketServer
 import sys
 import traceback

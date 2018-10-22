@@ -1,6 +1,6 @@
 from __future__ import division
 from __future__ import print_function
-import cPickle as pickle
+from six.moves import cPickle as pickle
 import subprocess
 #import sys
 import os

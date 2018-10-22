@@ -6,7 +6,7 @@ module (Queue and Job), with certain restrictions placed by the pickle module
 """
 from __future__ import division
 
-import cPickle as pickle
+from six.moves import cPickle as pickle
 import subprocess
 import os
 import time
@@ -164,10 +164,7 @@ class Job(object):
 """\
 source %s
 libtbx.python << EOF
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import cPickle as pickle
 ( target, args, kwargs ) = pickle.load( open( "%s.target" ) )
 target( *args, **kwargs )
 EOF
