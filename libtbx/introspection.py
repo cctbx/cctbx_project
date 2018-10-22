@@ -60,7 +60,7 @@ def print_trace(frame, event, arg):
 
 def start_print_trace():
   if ("pydoc" in sys.modules):
-    from cStringIO import StringIO
+    from six.moves import cStringIO as StringIO
     s = StringIO()
     show_stack(out=s)
     for line in s.getvalue().splitlines():

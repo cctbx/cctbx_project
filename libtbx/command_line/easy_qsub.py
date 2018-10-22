@@ -16,7 +16,7 @@ from __future__ import print_function
 import os
 import re
 import subprocess
-import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 import time
 import stat
@@ -273,7 +273,7 @@ def process_args(args):
 def get_queue_machine_details():
   cmd = "qstat -f"
   ero = easy_run.fully_buffered(command = cmd)
-  out = StringIO.StringIO()
+  out = StringIO()
   ero.show_stdout(out = out)
   rc = {}
   for line in out.getvalue().split("\n"):
@@ -522,7 +522,7 @@ def run(phenix_source=None,
 
   # Run the command, and then find the job id in the output
   ero = easy_run.fully_buffered(command = cmd)
-  out = StringIO.StringIO()
+  out = StringIO()
   ero.show_stdout(out = out)
   # Line looks like:
   # "Your job-array 5436256.1-122:1 ("easy_qsub") has been submitted"

@@ -1,7 +1,7 @@
 from __future__ import division
 from __future__ import print_function
 from types import FrameType
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 import gc
 import sys
 

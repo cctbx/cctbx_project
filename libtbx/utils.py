@@ -754,7 +754,7 @@ def show_exception_info_if_full_testing(prefix="EXCEPTION_INFO: "):
       and not disable_tracebacklimit):
     return
   from libtbx import introspection
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   sio = StringIO()
   introspection.show_stack(out=sio)
   traceback.print_exc(file=sio)

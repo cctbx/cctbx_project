@@ -1,6 +1,9 @@
 
 from __future__ import division
 from __future__ import print_function
+
+from six.moves import cStringIO as StringIO
+
 from builtins import range
 from libtbx.thread_utils import thread_with_callback_and_wait
 from libtbx.thread_utils import process_with_callbacks
@@ -181,8 +184,7 @@ def _target_function04 (args, kwds, connection) :
   return _tst_print(*args, **kwds)
 
 def tst_stdout () :
-  import cStringIO
-  tmpout = cStringIO.StringIO()
+  tmpout = StringIO()
   _tst_print(tmpout)
 
   for buffer_stdout in [True, False] :
@@ -253,8 +255,8 @@ def tst_abort_2 () :
 
 def _target_function08 (args, kwds, connection) :
   import libtbx.callbacks # import dependency
-  import cStringIO
-  log = cStringIO.StringIO()
+
+  log = StringIO()
   libtbx.call_back.set_warning_log(log)
   time.sleep(1)
   libtbx.warn("Hello, world!")

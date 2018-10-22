@@ -4,7 +4,7 @@ from __future__ import print_function
 import libtbx.load_env
 from libtbx.utils import multi_out
 from optparse import OptionParser
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os.path as op
 import os
 import sys

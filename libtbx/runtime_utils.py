@@ -12,12 +12,12 @@
 from __future__ import division
 from __future__ import print_function
 from builtins import range
+from six.moves import cStringIO as StringIO
 from libtbx.utils import Sorry, Abort, multi_out, host_and_user
 from libtbx import easy_pickle
 from libtbx import adopt_init_args, group_args
 import libtbx.load_env
 import libtbx.phil
-import cStringIO
 import traceback
 import signal
 import stat
@@ -486,7 +486,7 @@ def run (args) :
 class simple_client (detached_process_client) :
   def __init__ (self, *args, **kwds) :
     self.n_cb = 0
-    self.out = cStringIO.StringIO()
+    self.out = StringIO()
     detached_process_client.__init__(self, *args, **kwds)
 
   def callback_error (self, error, traceback_info) :

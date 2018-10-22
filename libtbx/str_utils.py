@@ -1,13 +1,8 @@
 from __future__ import division, absolute_import
 from __future__ import print_function
 
-try:
-  import six
-except ImportError:
-  # six really should be available on all systems. But this is the first
-  # time we are using it in libtbx, so allow workaround. 20180319
-  six = None
-  import cStringIO
+from six.moves import cStringIO
+
 import sys
 
 def format_none(format, null_value=0, replace_with="None"):
@@ -314,7 +309,7 @@ class line_feeder(object):
 # StringIO with pickling support and extra read-only semantics
 class StringIO (object) :
   def __init__ (self, *args, **kwds) :
-    self._buffer = (six or cStringIO).StringIO(*args, **kwds)
+    self._buffer = cStringIO(*args, **kwds)
     self.read_only = bool(args)
 
   def __getattr__ (self, *args, **kwds) :

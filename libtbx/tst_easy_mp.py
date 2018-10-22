@@ -4,7 +4,7 @@ from builtins import range
 from libtbx import unpicklable
 from libtbx.test_utils import Exception_expected
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 def exercise_func_wrapper_sub_directories():

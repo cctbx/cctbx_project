@@ -5,7 +5,7 @@ from libtbx.test_utils import show_diff, Exception_expected
 from libtbx.phil import interface
 import libtbx.load_env
 import libtbx.phil
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 def exercise () :

@@ -3,7 +3,7 @@ from __future__ import print_function
 from builtins import range
 from libtbx import utils
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import warnings
 import random
 import time
@@ -339,7 +339,6 @@ def exercise_str_unicode():
 
 def exercise_group_args():
   from libtbx import group_args
-  from cStringIO import StringIO
   out = StringIO()
   a = group_args(
       a=1,

@@ -1,17 +1,18 @@
 from __future__ import division
 from __future__ import print_function
 
+from six.moves import cStringIO as StringIO
+
 import os, time
 import libtbx.load_env
 from libtbx import xmlrpc_utils
-import cStringIO
 
 def exercise () :
   ext_module = libtbx.env.find_in_repositories(
     relative_path="libtbx/xmlrpc_server_example.py",
     test=os.path.isfile)
   full_cmd = "libtbx.python %s" % ext_module
-  log = cStringIO.StringIO()
+  log = StringIO()
   server = xmlrpc_utils.external_program_server(command=full_cmd,
                                                 program_id="TEST",
                                                 timeout=None,

@@ -230,7 +230,7 @@ def call(command):
   return subprocess.call(args=command, shell=True)
 
 def exercise(args=None):
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   if (args is None): args = sys.argv[1:]
   verbose = "--verbose" in args
   #

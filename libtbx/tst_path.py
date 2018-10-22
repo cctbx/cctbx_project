@@ -124,7 +124,7 @@ def exercise_move_old_create_new_directory():
 
 def exercise_cleanup () :
   from libtbx.path import clean_out_directory
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   import shutil
   import os
   if os.path.isdir("tmp_libtbx_path_cleanup") :

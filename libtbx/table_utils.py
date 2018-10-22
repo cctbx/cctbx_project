@@ -8,8 +8,9 @@ from __future__ import print_function
 ## slightly modifed functionality.
 ##
 from builtins import range
+from six.moves import cStringIO as StringIO
 import libtbx.forward_compatibility # for sum
-import cStringIO,operator
+import operator
 
 def format(rows,
            comments=None,
@@ -58,7 +59,7 @@ def format(rows,
                     + len(delim)*(len(max_widths)-1))
     # select the appropriate justify method
     justify = {'center':str.center, 'right':str.rjust, 'left':str.ljust}[justify.lower()]
-    output=cStringIO.StringIO()
+    output=StringIO()
 
     total_row_width=0
     line=None
@@ -312,7 +313,7 @@ def excercise_spreadsheet():
       self.printTable(columns_to_print,printed_rows=to_print,out=out)
       print(legend, file=out)
 
-  OC = cStringIO.StringIO()
+  OC = StringIO()
   derived_1 = typical_use_case_1()
   derived_1.show(message="Analysis of signals after noise suppression",out=OC)
   assert "\n".join([i.rstrip() for i in OC.getvalue().split("\n")]) == \
@@ -354,7 +355,7 @@ Detailed explanation of each column here
       self.printTable(default,out=out)
       #print >>out,"0"
 
-  OC = cStringIO.StringIO()
+  OC = StringIO()
   derived_2 = typical_use_case_2()
   derived_2.show(out=OC)
 

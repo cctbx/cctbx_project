@@ -4,7 +4,7 @@ from builtins import range
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import traceback
 import os
 import sys
@@ -791,4 +791,3 @@ def run_parallel(
   return results
 
 #  -------  END OF SIMPLE INTERFACE TO MULTIPROCESSING -------------
-

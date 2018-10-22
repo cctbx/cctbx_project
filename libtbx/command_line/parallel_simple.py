@@ -63,7 +63,7 @@ def run_one_cmd(cmd_info):
         join_stdout_stderr=True,
         stdout_splitlines=False)
     except: # intentional
-      from cStringIO import StringIO
+      from six.moves import cStringIO as StringIO
       sio = StringIO()
       show_traceback(file=sio)
       buffers = None
