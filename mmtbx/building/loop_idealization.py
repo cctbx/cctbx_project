@@ -247,6 +247,10 @@ class loop_idealization():
           model.set_sites_cart(
               sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
               update_grm = True)
+        if self.params.debug:
+          self.model.get_hierarchy().write_pdb_file(
+              file_name="%d%s_all_not_minized.pdb" % (self.number_of_ccd_trials,
+                  self.params.output_prefix))
         if self.reference_map is None:
           minimize_wrapper_for_ramachandran(
               model = self.model,
