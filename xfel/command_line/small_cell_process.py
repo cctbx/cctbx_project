@@ -30,7 +30,7 @@ class Processor(BaseProcessor):
 
     params = copy.deepcopy(self.params)
 
-    max_clique_len, experiments, indexed = small_cell_index_detail(datablock, reflections, params)
+    max_clique_len, experiments, indexed = small_cell_index_detail(datablock, reflections, params, write_output=False)
 
     logger.info('')
     logger.info('Time Taken = %f seconds' % (time() - st))

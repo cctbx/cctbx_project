@@ -611,7 +611,7 @@ def small_cell_index(path, horiz_phil):
   max_clique_len, experiments, refls = small_cell_index_detail(datablock, reflections, horiz_phil)
   return max_clique_len
 
-def small_cell_index_detail(datablock, reflections, horiz_phil):
+def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = True):
   """ Index an image with a few spots and a known, small unit cell,
   with unknown basis vectors """
   import os,math
@@ -1346,26 +1346,27 @@ def small_cell_index_detail(datablock, reflections, horiz_phil):
           f.write(line)
         f.close()
 
-        info = dict(
-          xbeam = refined_bcx,
-          ybeam = refined_bcy,
-          distance = distance,
-          wavelength = wavelength,
-          #residual = local["r_residual"],
-          #mosaicity = local["r_mosaicity"],
-          pointgroup = horiz_phil.small_cell.spacegroup,
-          observations = [cctbx.miller.set(sym,indexed_hkls).array(indexed_intensities,indexed_sigmas)],
-          mapped_predictions = [mapped_predictions],
-          model_partialities = [None],
-          sa_parameters = [None],
-          max_signal = [max_signal],
-          current_orientation = [ori],
-          current_cb_op_to_primitive = [sgtbx.change_of_basis_op()], #identity.  only support primitive lattices.
-          pixel_size = pixel_size,
-        )
-        G = open("int-" + os.path.splitext(os.path.basename(path))[0] +".pickle","wb")
-        import pickle
-        pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
+        if write_output:
+          info = dict(
+            xbeam = refined_bcx,
+            ybeam = refined_bcy,
+            distance = distance,
+            wavelength = wavelength,
+            #residual = local["r_residual"],
+            #mosaicity = local["r_mosaicity"],
+            pointgroup = horiz_phil.small_cell.spacegroup,
+            observations = [cctbx.miller.set(sym,indexed_hkls).array(indexed_intensities,indexed_sigmas)],
+            mapped_predictions = [mapped_predictions],
+            model_partialities = [None],
+            sa_parameters = [None],
+            max_signal = [max_signal],
+            current_orientation = [ori],
+            current_cb_op_to_primitive = [sgtbx.change_of_basis_op()], #identity.  only support primitive lattices.
+            pixel_size = pixel_size,
+          )
+          G = open("int-" + os.path.splitext(os.path.basename(path))[0] +".pickle","wb")
+          import pickle
+          pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
 
         from dxtbx.model import MosaicCrystalSauter2014
         from dxtbx.model.experiment_list import ExperimentListFactory, ExperimentListDumper
@@ -1377,8 +1378,9 @@ def small_cell_index_detail(datablock, reflections, horiz_phil):
         crystal.set_domain_size_ang(100) # hardcoded here, but could be refiend using nave_parameters
         crystal.set_half_mosaicity_deg(0.05) # hardcoded here, but could be refiend using nave_parameters
         experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, crystal)
-        dump = ExperimentListDumper(experiments)
-        dump.as_json(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated_experiments.json")
+        if write_output:
+          dump = ExperimentListDumper(experiments)
+          dump.as_json(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated_experiments.json")
 
         refls = flex.reflection_table()
         refls['id'] = flex.int(len(indexed_hkls), 0)
@@ -1398,7 +1400,8 @@ def small_cell_index_detail(datablock, reflections, horiz_phil):
         refls = indexer_base.map_spots_pixel_to_mm_rad(refls, detector, None)
 
         refls.set_flags(flex.bool(len(refls), True), refls.flags.indexed)
-        refls.as_pickle(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated.pickle")
+        if write_output:
+          refls.as_pickle(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated.pickle")
 
         print "cctbx.small_cell: integrated %d spots."%len(results),
         integrated_count = len(results)
