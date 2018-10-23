@@ -641,7 +641,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
     self.update_statusbar("Writing " + file_name + "...")
     if dialog.GetFilterIndex() == 0:
-        from cStringIO import StringIO
+        from six.moves import cStringIO as StringIO
 
         # XXX Copied from tile_generation.py; all its disclaimers
         # apply.

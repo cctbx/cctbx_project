@@ -2,7 +2,8 @@ from __future__ import division
 from BaseHTTPServer import BaseHTTPRequestHandler
 from scitbx.array_family import flex
 from libtbx.development.timers import Timer
-import StringIO, cgi, sys, copy
+from six.moves import StringIO
+import cgi, sys, copy
 from spotfinder.applications.stats_distl import optionally_add_saturation_webice,key_adaptor
 
 from urlparse import urlparse
@@ -85,7 +86,7 @@ class image_request_handler(BaseHTTPRequestHandler):
         L.append(self.rfile.read(chunk_size))
         size_remaining -= len(L[-1])
     data = ''.join(L)
-    post_data = StringIO.StringIO(data)
+    post_data = StringIO(data)
 
     # Parse the multipart/form-data
     contentTypeHeader = self.headers.getheaders('content-type').pop()
@@ -120,7 +121,7 @@ class image_request_handler(BaseHTTPRequestHandler):
     print "beam_center_convention",Files.images[0].beam_center_convention
     print "beam_center_reference_frame",Files.images[0].beam_center_reference_frame
 
-    logfile = StringIO.StringIO()
+    logfile = StringIO()
     if response_params.distl.bins.verbose: sys.stdout = logfile
 
     from spotfinder.applications.wrappers import spotfinder_factory
@@ -204,7 +205,7 @@ class image_request_handler(BaseHTTPRequestHandler):
       signal_strength.run_signal_strength(params)
     except Exception:
       import traceback
-      logger = StringIO.StringIO()
+      logger = StringIO()
       logger.write(
       "Sorry, can't process %s.  Please contact authors.\n"% params.distl.image)
       traceback.print_exc(file=logger)

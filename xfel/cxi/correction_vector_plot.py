@@ -30,8 +30,8 @@ class manage_sql:
     for table in new_tables:
       cursor.execute("DROP TABLE IF EXISTS %s;"%table[0])
       cursor.execute("CREATE TABLE %s "%table[0]+table[1].replace("\n"," ")+" ;")
-    import cStringIO
-    self.query = cStringIO.StringIO()
+    from six.moves import cStringIO as StringIO
+    self.query = StringIO()
     self.query.write("INSERT INTO %s_spotfinder VALUES "%self.params.mysql.runtag)
     self.firstcomma = ""
 

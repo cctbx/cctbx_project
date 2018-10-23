@@ -2,7 +2,8 @@ from __future__ import division
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from scitbx.array_family import flex
 from libtbx.development.timers import Timer
-import StringIO, cgi, sys
+import cgi, sys
+from six.moves import StringIO
 from spotfinder.applications.stats_distl import optionally_add_saturation_webice,key_adaptor
 
 from urlparse import urlparse
@@ -65,7 +66,7 @@ class image_request_handler(BaseHTTPRequestHandler):
         L.append(self.rfile.read(chunk_size))
         size_remaining -= len(L[-1])
     data = ''.join(L)
-    post_data = StringIO.StringIO(data)
+    post_data = StringIO(data)
 
     # Parse the multipart/form-data
     contentTypeHeader = self.headers.getheaders('content-type').pop()
@@ -108,7 +109,7 @@ class image_request_handler(BaseHTTPRequestHandler):
 
     frames = Files.frames()
 
-    logfile = StringIO.StringIO()
+    logfile = StringIO()
     sys.stdout = logfile
 
     from spotfinder.applications.stats_distl import pretty_image_stats,notes

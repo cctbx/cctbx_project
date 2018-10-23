@@ -327,7 +327,7 @@ class SingleDialsFrameFromFiles(SingleFrame):
 
 class CellOnlyFrame(SingleFrame):
   def __init__(self, crystal_symmetry, path=None, name=None, lattice_id=None):
-    from cStringIO import StringIO
+    from six.moves import cStringIO as StringIO
     f = StringIO()
     self.crystal_symmetry = crystal_symmetry
     self.crystal_symmetry.show_summary(f=f)

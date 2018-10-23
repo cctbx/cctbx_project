@@ -1,5 +1,5 @@
 from __future__ import division
-import cStringIO as StringIO
+from six.moves import cStringIO as StringIO
 from iotbx.detectors.adsc_module import ADSCModule
 from iotbx.detectors.pilatus_slice import PilatusSlice
 
@@ -31,7 +31,7 @@ def module_or_slice_from_http_request(request):
     P = PilatusSlice()
 
   P.moduleindex = tags["moduleindex"]
-  P.object = StringIO.StringIO(tags["adsc_data"])
+  P.object = StringIO(tags["adsc_data"])
   P.copy_common_attributes_from_parent_instance(tags_class)
   P.parameters = {}
   for item in ['DISTANCE', 'PHI', 'WAVELENGTH',

@@ -79,12 +79,12 @@ def pretty_image_stats(Spotfinder,key):
         print "%25s : %s"%(item[1],item[0]%item[2])
 
 def webice_image_stats(Spotfinder,key):
-    import StringIO
+    from six.moves import StringIO
     image = Spotfinder.images[key]
     canonical_info = []
     canonical_info.extend(key_safe_items_webice(image))
     optionally_add_saturation_webice(canonical_info,image)
-    g = StringIO.StringIO()
+    g = StringIO()
     for item in canonical_info:
       if item[2]==None:
         print >>g,"%35s: None"%item[1]

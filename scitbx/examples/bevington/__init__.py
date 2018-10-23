@@ -8,8 +8,8 @@ from scitbx_examples_bevington_ext import *
 class _(boost.python.injector, ext.non_linear_ls_eigen_wrapper):
 
   def get_eigen_summary(self): # ported from c++ code to encapsulate printing
-    import StringIO
-    S = StringIO.StringIO()
+    from six.moves import StringIO
+    S = StringIO()
     assert self.solved()
     nm_ncols = self.get_normal_matrix_ncols()
     matsize = nm_ncols * (nm_ncols+1)/2

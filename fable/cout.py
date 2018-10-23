@@ -2502,7 +2502,7 @@ def generate_common_report(
       member_registry,
       variant_due_to_equivalence_common_names,
       stringio):
-  from six import StringIO
+  from six.moves import StringIO
   variant_common_names = set()
   if (stringio is None):
     report = StringIO()

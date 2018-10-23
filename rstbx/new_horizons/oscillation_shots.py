@@ -1,6 +1,7 @@
 from __future__ import division
 from six.moves import range
-import math,os, cStringIO as StringIO
+import math,os
+from six.moves import cStringIO as StringIO
 from six.moves import cPickle as pickle
 from labelit.dptbx.status import cellstr
 from libtbx.utils import Sorry
@@ -219,7 +220,7 @@ class IntegrateCharacters:
       if filename != None:
         filename = "%s_%d_%d.pkl"%(filename,setting["counter"],keys[i])
 
-        SIO = StringIO.StringIO()
+        SIO = StringIO()
         table_raw = show_observations(integrate_worker.get_obs(
           local["spacegroup"]),out=SIO)
         limitobject = ResolutionAnalysisMetaClass(local, self.horizons_phil)

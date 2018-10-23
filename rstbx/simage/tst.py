@@ -140,7 +140,7 @@ def exercise_create():
   from rstbx.simage import create
   from libtbx.test_utils import block_show_diff
   from libtbx.str_utils import show_string
-  from cStringIO import StringIO
+  ffrom six.moves import cStringIO as StringIO
   #
   def check(args, expected_block):
     sio = StringIO()

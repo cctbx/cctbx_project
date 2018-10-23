@@ -104,8 +104,9 @@ def print_table():
   print "At the R=0 limit, expected S/V==pi and centroid/R = 4/(3*pi) = 0.4244 [from mathworld.wolfram.com]"
 
 def test_formulae():
-  import sys,cStringIO
-  F = cStringIO.StringIO()
+  import sys
+  from six.moves import cStringIO as StringIO
+  F = StringIO()
   sys.stdout = F
   print_table()
   result = F.getvalue()

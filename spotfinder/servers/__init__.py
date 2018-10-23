@@ -1,9 +1,10 @@
 from __future__ import division
-import cStringIO as StringIO,sys
+from six.moves import cStringIO as StringIO
+import sys
 
 class LoggingFramework:
   def __init__(self):
-    self.k = StringIO.StringIO()
+    self.k = StringIO()
     self.current_out = sys.stdout
     self.current_err = sys.stderr
     sys.stdout = self.k

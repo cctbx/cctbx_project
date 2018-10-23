@@ -9,7 +9,7 @@ def tst_run(args=[]):
     path="examples/fit2d_data.cbf")
   assert op.isfile(cbf)
   from cbflib_adaptbx.command_line import dump
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   sio = StringIO()
   dump.process(file_name=cbf, out=sio)
   from libtbx.test_utils import show_diff

@@ -1,12 +1,12 @@
 from __future__ import division
 from mod_python import apache
-import StringIO
+from six.moves import StringIO
 
 def handler(req):
   req.content_type = "text/plain"
   from mod_python.util import FieldStorage
   FS = FieldStorage(req)
-  logfile = StringIO.StringIO()
+  logfile = StringIO()
 
   if req.filename.find("distl.signal_strength_bcsb")>=0:
     from spotfinder.servers.apache_bcsb import run as run_command
@@ -56,7 +56,7 @@ def run(args, verbose=False):
     signal_strength.run_signal_strength(params)
   except Exception:
     import traceback
-    logger = StringIO.StringIO()
+    logger = StringIO()
     logger.write(
     "Sorry, can't process %s.  Please contact authors.\n"% params.distl.image)
     traceback.print_exc(file=logger)

@@ -138,7 +138,7 @@ class process_file_info(object):
     from libtbx import easy_run
     from libtbx.str_utils import show_string
     from libtbx.test_utils import show_diff
-    from cStringIO import StringIO
+    from six.moves import cStringIO as StringIO
     import os.path as op
     import sys
     opts = O.opts

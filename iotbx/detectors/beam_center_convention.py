@@ -104,7 +104,7 @@ def convert_beam_instrument_to_module(input_image,image_divider,moduleindex,
 if __name__=="__main__":
   from libtbx import adopt_init_args
   from libtbx.test_utils import show_diff
-  import StringIO
+  from six.moves import StringIO
   class test_tile:
     def __init__(self,first,last):
       adopt_init_args(self, locals())
@@ -124,7 +124,7 @@ if __name__=="__main__":
   input_object = DetectorImageBase("no file")
   input_object.parameters = input_parameters
   ID = test_divider()
-  S = StringIO.StringIO()
+  S = StringIO()
   for convention in range(8):
     for moduleidx in range(9):
       B = convert_beam_instrument_to_module(input_object,ID,moduleidx,convention)

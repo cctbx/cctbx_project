@@ -20,7 +20,7 @@ from libtbx.str_utils import format_value
 from libtbx.utils import Usage, Sorry, multi_out
 from libtbx import easy_pickle
 from libtbx import adopt_init_args, group_args, Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import os
 import math
 import time
