@@ -39,8 +39,8 @@ tst_list = (
   )
 
 def run () :
-  build_dir = libtbx.env.under_build("scitbx")
-  dist_dir = libtbx.env.dist_path("scitbx")
+  build_dir = libtbx.env.under_build("cbflib_adaptbx")
+  dist_dir = libtbx.env.dist_path("cbflib_adaptbx")
 
   test_utils.run_tests(build_dir, dist_dir, tst_list)
 
