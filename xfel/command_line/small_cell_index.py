@@ -40,15 +40,6 @@ small_cell {
   override_wavelength = None
     .type=float
     .help= "Use to override the wavelength found in the image file"
-  override_beam_x = None
-    .type=float
-    .help= "Use to override the beam center x position (in mm) found in the image file"
-  override_beam_y = None
-    .type=float
-    .help= "Use to override the beam center y position (in mm) found in the image file"
-  override_distance = None
-    .type=float
-    .help= "Use to override the detector distance (in mm) found in the image file"
 }
 """
 

@@ -256,24 +256,13 @@ def write_cell (ori,beam,max_clique,phil):
   f.write("""load "arrows.p"\n""")
   f.close()
 
-def hkl_to_xy (ori,wavelength,hkl,distance,bc,pixel_size,panel,beam):
+def hkl_to_xy (ori,hkl,detector,beam):
   """ Given an hkl, crystal orientation, and sufficient experimental parameters, compute
   the refelction's predicted xy position on a given image
   @param ori crystal orientation
-  @param wavelength incident beam wavelength (angstroms)
-  @param hkl small_cell_hkl object
-  @param distance detector distance (mm)
-  @param bc beam center (tuple, mm)
-  @param pixel_size pixel size in mm
-  @param panel dxtbx panel object
+  @param detector dxtbx detector object
   @param beam dxtbx beam object
   """
-
-  detector_normal = col(panel.get_normal())
-  detector_fast   = col(panel.get_fast_axis())
-  detector_slow   = col(panel.get_slow_axis())
-  detector_origin = col([bc[0], bc[1], 0.])
-  pixel_size      = col([pixel_size,pixel_size,0])
 
   A = sqr(ori.reciprocal_matrix())
 
@@ -294,13 +283,12 @@ def hkl_to_xy (ori,wavelength,hkl,distance,bc,pixel_size,panel,beam):
 
   intersection = (-a * s0_unit) - (b * chord_direction)
   q = intersection + s0
-  q_unit = q.normalize()
 
-  #check if diffracted ray parallel to detector face
-  q_dot_n = q_unit.dot(detector_normal)
-  assert q_dot_n != 0.
-
-  return panel.get_ray_intersection_px(q)
+  try:
+    panel_id, xy = detector.get_ray_intersection(q)
+  except RuntimeError:
+    return None, None
+  return panel_id, xy
 
 def small_cell_index(path, horiz_phil):
   """ Index an image with a few spots and a known, small unit cell,
@@ -360,50 +348,40 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
   path = imageset.paths()[0]
 
   detector = imageset.get_detector()
-  assert len(detector) == 1 # multipanel support coming soon
-  panel = detector[0]
   beam = imageset.get_beam()
-  beam_x, beam_y = panel.get_beam_centre(beam.get_s0())
-  if horiz_phil.small_cell.override_beam_x is not None:
-    beam_x = horiz_phil.small_cell.override_beam_x
-
-  if horiz_phil.small_cell.override_beam_y is not None:
-    beam_y = horiz_phil.small_cell.override_beam_y
-
-  if horiz_phil.small_cell.override_distance is not None:
-    distance = horiz_phil.small_cell.override_distance
-  else:
-    distance=panel.get_distance()
 
   if horiz_phil.small_cell.override_wavelength is not None:
     beam.set_wavelength(horiz_phil.small_cell.override_wavelength)
   wavelength = beam.get_wavelength()
+  s0 = col(beam.get_s0())
+  s0u = s0.normalize()
 
-  beam_center = col((beam_x, beam_y))
-  pixel_size = panel.get_pixel_size()[0] # XXX
   raw_data = imageset[0]
-  if isinstance(raw_data, tuple): raw_data = raw_data[0] # again, multipanel support coming soon
-
-  print "Using beam center %s, %s, distance %s, and wavelength %s"%(beam_x, beam_y, distance, wavelength)
+  if not isinstance(raw_data, tuple):
+    raw_data = (raw_data,)
 
   recip_coords = flex.vec3_double()
+  radial_labs = flex.vec3_double()
   radial_sizes = flex.double()
   azimuthal_sizes = flex.double()
+  s0_projs = flex.vec3_double()
   for ref in reflections:
     # calculate reciprical space coordinates
     x, y, z = ref['xyzobs.px.value']
-    xyz = col(panel.get_pixel_lab_coord((x,y)))
-    xyz /= wavelength * xyz.length()
+    panel = detector[ref['panel']]
+    xyz_lab = col(panel.get_pixel_lab_coord((x,y)))
+    xyz = xyz_lab / (wavelength * xyz_lab.length())
     xyz -= col(beam.get_s0()) # translate to origin of reciprocal space
     recip_coords.append(xyz)
-
 
     # Calculate unit-length radial and azimuthal (tangential) direction
     # vectors, r and a, respectively.  The azimuthal direction vector
     # is the radial vector rotated by 90 degrees counter-clockwise.
 
-    radial = (col((x,y)) - beam_center).normalize()
-    azimuthal = col((-radial[1],+radial[0]))
+    s0_proj = xyz_lab.length()*math.cos(xyz_lab.angle(s0)) * s0u
+    radial_lab = xyz_lab - s0_proj
+    radial = radial_lab.normalize()
+    azimuthal = radial.cross(s0u)
 
     # Determine the extent of the spot along the radial and azimuthal
     # directions from its center.
@@ -418,7 +396,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
     for my, y in zip(range(b-t),range(t,b)):
       for mx, x in zip(range(r-l),range(l,r)):
         if ref['shoebox'].mask[0,my,mx] == mask_peak:
-          p = col((x,y)) - beam_center
+          p = col(panel.get_pixel_lab_coord((x,y)))
           pa = p.dot(azimuthal)
           pr = p.dot(radial)
 
@@ -431,12 +409,16 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
           if pr < r_min:
             r_min = pr
 
+    radial_labs.append(radial_lab)
     radial_sizes.append(r_max - r_min)
     azimuthal_sizes.append(a_max - a_min)
+    s0_projs.append(s0_proj)
 
   reflections['xyzrecip'] = recip_coords
+  reflections['radial_lab'] = radial_labs
   reflections['radial_size'] = radial_sizes
   reflections['azimuthal_size'] = azimuthal_sizes
+  reflections['s0_proj'] = s0_projs
 
   all_spots = []
   for i, ref in enumerate(reflections):
@@ -480,15 +462,19 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
   spots_on_drings = []
 
   for spot in all_spots:
-    dist = measure_distance((spot.spot_dict['xyzobs.px.value'][0],spot.spot_dict['xyzobs.px.value'][1]),(beam_x/pixel_size, beam_y/pixel_size))
+    dist = col(spot.spot_dict['radial_lab']).length()
     inner = dist - (spot.spot_dict['radial_size']/2)
     outer = dist + (spot.spot_dict['radial_size']/2)
 
+    #L = 2dsinT
+    inner_angle = math.atan2(inner, col(spot.spot_dict['s0_proj']).length())
+    outer_angle = math.atan2(outer, col(spot.spot_dict['s0_proj']).length())
+    outer_d = wavelength/2/math.sin(inner_angle/2) # inner becomes outer
+    inner_d = wavelength/2/math.sin(outer_angle/2) # outer becomes inner
 
     found_one = False
     for d in spacings:
-      dpix = d_in_pixels(d[1], wavelength, distance, pixel_size)
-      if dpix <= outer and dpix >= inner:
+      if d[1] <= outer_d and d[1] >= inner_d:
         # we will only examine asymmetric unit HKLs first.  Later we will try and determine original HKLs
         spot.hkls.append(small_cell_hkl(col(d[0]),col(d[0])))
         found_one = True
@@ -858,15 +844,13 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
 
       #calculate the basis vectors
       loop_count = loop_count + 1
-      result = get_crystal_orientation(working_set, sym, beam_x, beam_y, distance, True, loop_count)
-      if result is None:
+      ori = get_crystal_orientation(working_set, sym, True, loop_count)
+      if ori is None:
         print "Couldn't get basis vectors for max clique"
         break
       ok_to_integrate = True
 
       # here I should test the angles too
-      ori, refined_bcx, refined_bcy, refined_distance = result
-
       if approx_equal(ori.unit_cell().reciprocal().parameters()[0], a, out=None, eps=1.e-2) and \
          approx_equal(ori.unit_cell().reciprocal().parameters()[1], b, out=None, eps=1.e-2) and \
          approx_equal(ori.unit_cell().reciprocal().parameters()[2], c, out=None, eps=1.e-2):
@@ -883,11 +867,13 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
 
       # caluculate predicted detector locations for these indicies
       f = open("preds.txt", "w")
+      predicted_panel = []
       predicted = []
       for index in indicies_orig:
-        xy = hkl_to_xy(ori,wavelength,col(index),refined_distance,(refined_bcx,refined_bcy),pixel_size,panel,beam)
-        if xy[0] > 0 and xy[0] <= panel.get_image_size()[0] and xy[1] > 0 and xy[1] <= panel.get_image_size()[0]:
-          f.write("%d %d %d %f %f\n"%(index[0],index[1],index[2],xy[0],xy[1]))
+        panel_id, xy = hkl_to_xy(ori,col(index),detector,beam)
+        if panel is None or xy is None: continue
+        f.write("%d %d %d %f %f\n"%(index[0],index[1],index[2],xy[0],xy[1]))
+        predicted_panel.append(panel)
         predicted.append(xy)
       f.close()
 
@@ -895,7 +881,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
       possibles = []
       for spot in working_set:
         possibles.append(spot)
-        spot.pred = hkl_to_xy(ori,wavelength,col(spot.hkl.ohkl.elems),refined_distance,(refined_bcx,refined_bcy),pixel_size,panel,beam)
+        spot.pred_panel_id, spot.pred = hkl_to_xy(ori,col(spot.hkl.ohkl.elems),detector,beam)
 
       for spot in all_spots:
         found_it = False
@@ -908,7 +894,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
 
         s_x = spot.spot_dict['xyzobs.px.value'][0]
         s_y = spot.spot_dict['xyzobs.px.value'][1]
-        for index_o, index_a, pred in zip(indicies_orig, indicies_asu, predicted):
+        for index_o, index_a, pred_panel, pred in zip(indicies_orig, indicies_asu, predicted_panel, predicted):
           if measure_distance((s_x, s_y),(pred[1],pred[0])) <= horiz_phil.small_cell.interspot_distance:
             # don't add the working_set spots here.  They were added above
             found_it = False
@@ -920,6 +906,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
               spot.hkl = small_cell_hkl(col(index_a),col(index_o))
               possibles.append(spot)
 
+              spot.pred_panel_id = pred_panel
               spot.pred = pred
 
       # throw out any spots which share the same original index.  This can happen if a prediction is within 10 pixels of two spots.
@@ -955,7 +942,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
         break
       # end finding preds and crystal orientation matrix refinement loop
 
-    if result is not None:
+    if ori is not None:
       write_cell(ori,beam,indexed,horiz_phil)
 
     indexed_hkls = flex.vec2_double()
@@ -970,12 +957,12 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
       indexed_intensities = flex.double()
       indexed_sigmas = flex.double()
       mapped_predictions = flex.vec2_double()
+      mapped_panels = flex.size_t()
       max_signal = flex.double()
       xyzobs = flex.vec3_double()
       xyzvar = flex.vec3_double()
       shoeboxes = flex.shoebox()
       s1 = flex.vec3_double()
-      s0 = col(beam.get_s0())
       bbox = flex.int6()
 
       rmsd = 0
@@ -985,14 +972,16 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
         peakvals = []
         tmp = []
         is_bad = False
+        panel = detector[spot.pred_panel_id]
+        panel_raw_data = raw_data[spot.pred_panel_id]
         for p in spot.peak_pixels:
-          if is_bad_pixel(raw_data,p):
+          if is_bad_pixel(panel_raw_data,p):
             is_bad = True
             break
           p = (p[0]+.5,p[1]+.5)
           peakpix.append(p)
           tmp.append(p)
-          peakvals.append(raw_data[int(p[1]),int(p[0])])
+          peakvals.append(panel_raw_data[int(p[1]),int(p[0])])
         if is_bad: continue
 
         buffers.append(grow_by(peakpix,1))
@@ -1007,7 +996,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
         raw_bg_sum = 0
         for p in backgrounds[-1]:
           try:
-            i = raw_data[int(p[1]),int(p[0])]
+            i = panel_raw_data[int(p[1]),int(p[0])]
           except IndexError:
             continue
           if i is not None and i > 0:
@@ -1030,14 +1019,14 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
           intensity += v - (bp_a*p[0] + bp_b*p[1] + bp_c)
           bg_peak += bp_a*p[0] + bp_b*p[1] + bp_c
 
-        gain = 7.5 # XXX
+        gain = panel.get_gain()
         sigma = math.sqrt(gain * (intensity + bg_peak + ((len(peakvals)/len(bg_vals))**2) * raw_bg_sum))
 
         print "ID: %3d, ohkl: %s, ahkl: %s, I: %9.1f, sigI: %9.1f, RDiff: %9.6f"%( \
           spot.ID, spot.hkl.get_ohkl_str(), spot.hkl.get_ahkl_str(), intensity, sigma,
           (sqr(ori.reciprocal_matrix())*spot.hkl.ohkl - spot.xyz).length())
 
-        max_sig = raw_data[int(spot.spot_dict['xyzobs.px.value'][1]),int(spot.spot_dict['xyzobs.px.value'][0])]
+        max_sig = panel_raw_data[int(spot.spot_dict['xyzobs.px.value'][1]),int(spot.spot_dict['xyzobs.px.value'][0])]
 
         s = "Orig HKL: % 4d % 4d % 4d "%(spot.hkl.ohkl.elems)
         s = s + "Asu HKL: % 4d % 4d % 4d "%(spot.hkl.ahkl.elems)
@@ -1047,8 +1036,10 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
 
         if spot.pred is None:
           mapped_predictions.append((spot.spot_dict['xyzobs.px.value'][0], spot.spot_dict['xyzobs.px.value'][1]))
+          mapped_panels.append(spot.spot_dict['panel'])
         else:
           mapped_predictions.append((spot.pred[0],spot.pred[1]))
+          mapped_panels.append(spot.pred_panel_id)
         xyzobs.append(spot.spot_dict['xyzobs.px.value'])
         xyzvar.append(spot.spot_dict['xyzobs.px.variance'])
         shoeboxes.append(spot.spot_dict['shoebox'])
@@ -1079,6 +1070,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
             pointgroup = horiz_phil.small_cell.spacegroup,
             observations = [cctbx.miller.set(sym,indexed_hkls).array(indexed_intensities,indexed_sigmas)],
             mapped_predictions = [mapped_predictions],
+            mapped_panels = [mapped_panels],
             model_partialities = [None],
             sa_parameters = [None],
             max_signal = [max_signal],
@@ -1106,7 +1098,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
 
         refls = flex.reflection_table()
         refls['id'] = flex.int(len(indexed_hkls), 0)
-        refls['panel'] = flex.size_t(len(indexed_hkls), 0)
+        refls['panel'] = mapped_panels
         refls['integration.sum.value'] = indexed_intensities
         refls['integration.sum.variance'] = indexed_sigmas**2
         refls['xyzobs.px.value'] = xyzobs
@@ -1159,17 +1151,14 @@ def hkl_to_xyz(hkl,abasis,bbasis,cbasis):
   """
   return (hkl[0]*abasis) + (hkl[1]*bbasis) + (hkl[2]*cbasis)
 
-def get_crystal_orientation(spots, sym, beam_x, beam_y, distance, use_minimizer=True, loop_count = 0):
+def get_crystal_orientation(spots, sym, use_minimizer=True, loop_count = 0):
   """ given a set of refelctions and input geometry, determine a crystal orientation using a set
   of linear equations, then refine it.
   @param spots list of small cell spot objects
   @param sym cctbx symmetry object
-  @param beam_x beam center x position (mm)
-  @param beam_y beam center y position (mm)
-  @param distance detector distance (mm)
   @param use_minimizer if true, refine final orientation using a miminizer
   @param loop_count output during printout (debug use only)
-  @return a tuple containing the orientation and refined beam x, beam y, and distance
+  @return the orientation
   """
 
   # determine initial orientation matrix from the set of reflections
@@ -1199,7 +1188,7 @@ def get_crystal_orientation(spots, sym, beam_x, beam_y, distance, use_minimizer=
     return None
 
   if not use_minimizer:
-    return (ori_start, beam_x, beam_y, distance)
+    return ori_start
 
   from scitbx.math import euler_angles_as_matrix
   ori_rot = ori_start
@@ -1252,7 +1241,7 @@ def get_crystal_orientation(spots, sym, beam_x, beam_y, distance, use_minimizer=
   m = m.as_list_of_lists()
   print "Final euler angles: ", math.atan2(m[2][0],m[2][1])*180/math.pi,math.acos(m[2][2])*180/math.pi,math.atan2(m[0][2],m[1][2])*180/math.pi
 
-  return (ori_final, beam_x, beam_y, distance)
+  return ori_final
 
 def grow_by(pixels, amt):
   """
