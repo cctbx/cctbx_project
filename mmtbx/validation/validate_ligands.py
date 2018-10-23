@@ -148,15 +148,22 @@ class ligand_result(object):
       b_isos = self._xrs.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
       n_iso   = self._xrs.use_u_iso().count(True)
       n_aniso = self._xrs.use_u_aniso().count(True)
+      n_zero = (b_isos < 0.01).count(True)
+      # TODO: what number as cutoff?
+      n_above_100 = (b_isos > 100).count(True)
+      isel_above_100 = (b_isos > 100).iselection()
       b_min, b_max, b_mean = b_isos.min_max_mean().as_tuple()
       # TODO: Get adp from surrounding residues
 
       self._adps = group_args(
-        n_iso   = n_iso,
-        n_aniso = n_aniso,
-        b_min   = b_min,
-        b_max   = b_max,
-        b_mean  = b_mean
+        n_iso          = n_iso,
+        n_aniso        = n_aniso,
+        n_zero         = n_zero,
+        n_above_100    = n_above_100,
+        isel_above_100 = isel_above_100,
+        b_min          = b_min,
+        b_max          = b_max,
+        b_mean         = b_mean
         )
     return self._adps
 
