@@ -59,8 +59,8 @@ world""", suffix=" ", rstrip=False) == """\
 ^world """ % " "
   #
   from libtbx.str_utils import show_sorted_by_counts
-  import cStringIO
-  out = cStringIO.StringIO()
+  from six.moves import cStringIO
+  out = cStringIO()
   assert show_sorted_by_counts(
     label_count_pairs=[("b", 3), ("a", 3), ("c", -2)],
     out=out, prefix="%")
@@ -69,7 +69,7 @@ world""", suffix=" ", rstrip=False) == """\
 %"b"  3
 %"c" -2
 """)
-  out = cStringIO.StringIO()
+  out = cStringIO()
   assert show_sorted_by_counts(
     label_count_pairs=[("b", -3), ("a", -3), ("c", 2)], reverse=False,
      out=out, prefix="%", annotations=[None, "", "x"])
@@ -91,7 +91,7 @@ world""", suffix=" ", rstrip=False) == """\
     assert [block for block in line_breaker(string, width=7)]==expected_result
   #
   from libtbx.str_utils import StringIO
-  out1 = cStringIO.StringIO()
+  out1 = cStringIO()
   out2 = StringIO()
   out3 = StringIO("Hello world!\n")
   print("Hello world!", file=out1)
