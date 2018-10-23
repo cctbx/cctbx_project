@@ -1179,6 +1179,12 @@ def get_crystal_orientation(spots, sym, beam_x, beam_y, distance, use_minimizer=
   solver = small_cell_orientation(miller_indices, u_vectors, sym)
   ori = solver.unrestrained_setting()
 
+  det = sqr(ori.crystal_rotation_matrix()).determinant()
+  if det <= 0:
+    ori = ori.make_positive()
+    for spot in spots: # fix the signs of the hkls in the clique using this new basis
+      spot.hkl.flipped = True
+
   from cctbx import crystal_orientation
   F = sqr(sym.unit_cell().fractionalization_matrix()).transpose()
 
@@ -1188,27 +1194,6 @@ def get_crystal_orientation(spots, sym, beam_x, beam_y, distance, use_minimizer=
 
     print "powder  cell and residuals round %3d from %3d spots "%(loop_count,len(spots)),"[%.7f, %.7f, %.7f]"%(0,0,0),         ;sym.unit_cell().show_parameters()
     print "derived cell and residuals round %3d from %3d spots "%(loop_count,len(spots)),"[%.7f, %.7f, %.7f]"%tuple(solver.residuals),;ori.unit_cell().show_parameters()
-
-    det = sqr(ori_start.crystal_rotation_matrix()).determinant()
-    if not approx_equal(det, 1.0, out=None, eps=1.e-3):
-      # some attempts to deal with matrices with non-one determinates is preserved here, commented out
-      if approx_equal(det, -1.0, out=None, eps=1.e-3):
-        #print "Reflected rotation matrix.  Fixing..."
-        print "Note, reflected rotation matrix."
-
-        #ori_start = ori_start.make_positive() # reflect the basis vectors
-
-        #det = sqr(ori_start.crystal_rotation_matrix()).determinant()
-        #if not approx_equal(det, 1.0, out=None, eps=1.e-3):
-          #print "Couldn't fix the rotation matrix.  Cannot use this image."
-          #return None
-
-        #for spot in spots: # fix the signs of the hkls in the clique using this new basis
-          #spot.hkl.flipped = True
-
-      else:
-        print "Invalid rotation matrix.  Determinant: ", det
-        return None
   except Exception as e: # can fail here w/ a corrupt metrical matrix or math domain error
     print e.message
     return None

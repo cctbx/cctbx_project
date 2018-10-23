@@ -46,12 +46,8 @@ class small_cell_orientation:
   if len(self.residuals) == 0:
     self.residuals = [0,0,0] # happens when only 3 spots in the max clique
 
-  #print "Summed squared residuals of x,y,z for %d spots in 1/angstroms: %.7f, %.7f, %.7f"%(N,self.residuals[0],self.residuals[1],self.residuals[2])
+  print "Summed squared residuals of x,y,z for %d spots in 1/angstroms: %.7f, %.7f, %.7f"%(N,self.residuals[0],self.residuals[1],self.residuals[2])
   Amatrix = sqr(solution.flatten()).transpose()
-
-  # Johan believes this can happen if there aren't 3 hkls that aren't co-linear (IIRC)
-  if Amatrix.determinant() <= 0:
-    return None
 
   from cctbx import crystal_orientation
   ori = crystal_orientation.crystal_orientation(Amatrix, crystal_orientation.basis_type.reciprocal)
