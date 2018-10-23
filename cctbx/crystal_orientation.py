@@ -84,10 +84,16 @@ class _(boost.python.injector,ext.crystal_orientation):
        and S[3]==O[3] and S[4]==O[4] and S[5]==O[5] \
        and S[6]==O[6] and S[7]==O[7] and S[8]==O[8]
 
+  # The "U" matrix such that A(reciprocal) = U * B, where B is orthogonalization.transpose()
   def crystal_rotation_matrix(self):
     from scitbx import matrix
     return matrix.sqr(self.reciprocal_matrix()) \
          * matrix.sqr(self.unit_cell().orthogonalization_matrix()).transpose()
+
+  def get_U_as_sqr(self):
+    U = self.crystal_rotation_matrix()
+    assert U.is_r3_rotation_matrix()
+    return U
 
   def set_new_crystal_rotation_matrix(self,mat3):
     from scitbx import matrix
@@ -95,27 +101,27 @@ class _(boost.python.injector,ext.crystal_orientation):
          * matrix.sqr(self.unit_cell().fractionalization_matrix()).transpose(),\
          basis_type.reciprocal)
 
-  def get_U_as_sqr(self):
-    from scitbx import matrix
-    uc = self.unit_cell()
-    B_UPPER = matrix.sqr(self.unit_cell().orthogonalization_matrix())
-    Unitary = matrix.sqr(self.direct_matrix()) * B_UPPER.inverse()
-    return Unitary
-
   def show(self,legend=None,basis=basis_type.direct):
     from scitbx import matrix
     uc = self.unit_cell()
-    B_UPPER = matrix.sqr(self.unit_cell().orthogonalization_matrix())
-    Unitary = matrix.sqr(self.direct_matrix()) * B_UPPER.inverse()
-
+    U  = self.crystal_rotation_matrix()
     A  = self.direct_matrix()
+    B = matrix.sqr(self.unit_cell().fractionalization_matrix()).transpose()
     if legend is not None: print ("%s:"%legend)
-    print ("""    Unit cell:  %9.3f,%9.3f,%9.3f,%7.2f,%7.2f,%7.2f"""%(uc.parameters()))
-    print ("""    U matrix:   %9.3f,%9.3f,%9.3f,
-                %9.3f,%9.3f,%9.3f,
-                %9.3f,%9.3f,%9.3f"""%(Unitary.elems)
+    print ("""    Unit cell:  %9.4f,%9.4f,%9.4f,%7.2f,%7.2f,%7.2f"""%(uc.parameters()))
+    print ("""    U matrix:   %9.4f,%9.4f,%9.4f,
+                %9.4f,%9.4f,%9.4f,
+                %9.4f,%9.4f,%9.4f"""%(U.elems)
     )
-    print ("""    A direct:   %9.3f,%9.3f,%9.3f,
-                %9.3f,%9.3f,%9.3f,
-                %9.3f,%9.3f,%9.3f"""%(A)
+    print ("""    B matrix:   %9.4f,%9.4f,%9.4f,
+                %9.4f,%9.4f,%9.4f,
+                %9.4f,%9.4f,%9.4f"""%(B.elems)
+    )
+    print ("""    A recipr:   %9.4f,%9.4f,%9.4f,
+                %9.4f,%9.4f,%9.4f,
+                %9.4f,%9.4f,%9.4f"""%(self.reciprocal_matrix())
+    )
+    print ("""    A direct:   %9.4f,%9.4f,%9.4f,
+                %9.4f,%9.4f,%9.4f,
+                %9.4f,%9.4f,%9.4f"""%(A)
     )
