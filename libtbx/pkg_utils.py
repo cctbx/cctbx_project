@@ -133,19 +133,15 @@ def require(pkgname, version=None):
 
 @contextlib.contextmanager
 def _silence():
-  '''Helper context which shuts up stdout and stderr.'''
+  '''Helper context which shuts up stdout.'''
   try:
     oldstdout = os.dup(sys.stdout.fileno())
-    oldstderr = os.dup(sys.stderr.fileno())
     dest_file = open(os.devnull, 'w')
     os.dup2(dest_file.fileno(), sys.stdout.fileno())
-    os.dup2(dest_file.fileno(), sys.stderr.fileno())
     yield
   finally:
     if oldstdout is not None:
       os.dup2(oldstdout, sys.stdout.fileno())
-    if oldstderr is not None:
-      os.dup2(oldstderr, sys.stderr.fileno())
     if dest_file is not None:
       dest_file.close()
 
@@ -182,6 +178,10 @@ def define_entry_points(epdict, **kwargs):
     raise RuntimeError("Entry points have already been defined for package %s. There must only be a single call to "
                        "define_entry_points() per calling package" % caller)
   _defined_entrypoints.add(caller)
+
+  print("Updating entry points for {caller}".format(caller=caller))
+  for ep in epdict:
+    print("  {n} entries for entry point {ep}".format(ep=ep, n=len(epdict[ep])))
 
   # Temporarily change to build/ directory. This is where a directory named
   # libtbx.{caller}.egg-info will be created containing the entry point info.
