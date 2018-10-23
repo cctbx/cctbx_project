@@ -267,4 +267,4 @@ def run(args):
 
 if (__name__ == "__main__"):
   import sys
-  run(args=sy
+  run(args=sys.argv[1:])
