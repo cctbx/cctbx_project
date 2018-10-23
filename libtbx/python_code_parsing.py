@@ -1,4 +1,7 @@
 from __future__ import division
+
+from builtins import object
+
 import sys
 assert sys.version_info[0:2] >= (2, 6)
 
@@ -29,7 +32,7 @@ class imported_name(object):
     return '.'.join(self.name)
 
 
-class unused_imports(ast.NodeVisitor):
+class unused_imports(ast.NodeVisitor, object):
   """ Unused import's in a module.
   This finds more of them than the algorithm in
   libtbx.find_unused_imports_crude
@@ -71,7 +74,7 @@ class unused_imports(ast.NodeVisitor):
   def __iter__(self):
     return iter(self._unused)
 
-  def __nonzero__(self):
+  def __bool__(self):
     return bool(self._unused)
 
   @property
@@ -182,7 +185,7 @@ class old_style_class(object):
     return '.'.join(self.name)
 
 
-class find_old_style_classes(ast.NodeVisitor):
+class find_old_style_classes(ast.NodeVisitor, object):
   """ Finds old-style classes (i.e. ones that don't inherit from object)
   """
 
@@ -213,7 +216,7 @@ class find_old_style_classes(ast.NodeVisitor):
   def __iter__(self):
     return iter(self._old_style_classes)
 
-  def __nonzero__(self):
+  def __bool__(self):
     return bool(self._old_style_classes)
 
   def visit_ClassDef(self, node):

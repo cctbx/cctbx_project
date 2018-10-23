@@ -95,23 +95,23 @@ unused_imports_test_case_1_1 = """\
 
 unused_imports_test_case_1_2 = """\
 %s
-print foo.z
+type(foo.z)
 """ % unused_imports_test_case_1_header
 
 unused_imports_test_case_1_3 = """\
 %s
-print baz.x
+type(baz.x)
 """ % unused_imports_test_case_1_header
 
 unused_imports_test_case_1_4 = """\
 %s
-print foo.z
-print baz.x
+type(foo.z)
+type(baz.x)
 """ % unused_imports_test_case_1_header
 
 unused_imports_test_case_1_5 = """\
 %s
-print foo.baz
+type(foo.baz)
 """ % unused_imports_test_case_1_header
 
 
@@ -119,14 +119,14 @@ unused_imports_test_case_2 = """\
 import foo
 
 def f():
-  print foo.z
+  return type(foo.z)
 """
 
 unused_imports_test_case_3 = """\
 import foo
 
 def f():
-  print bar.foo.z
+  return type(bar.foo.z)
 """
 
 unused_imports_test_case_4 = """\
@@ -134,7 +134,7 @@ import bar
 
 def f():
   import foo
-  print bar.foo.z
+  return type(bar.foo.z)
 """
 
 unused_imports_test_case_5 = """\
@@ -143,7 +143,7 @@ import bar
 def f():
   import foo
   def g():
-    print bar.foo.z
+    return type(bar.foo.z)
   return g
 """
 
@@ -153,7 +153,7 @@ import bar
 def f():
   import foo
   def g():
-    print foo.z
+    return type(foo.z)
   return g
 """
 
@@ -162,7 +162,7 @@ import bar
 
 def f():
   def g():
-    print foo.z
+    return type(foo.z)
   import foo
   return g
 """
@@ -172,10 +172,10 @@ import bar
 
 def f():
   def g():
-    print foo.z
+    return type(foo.z)
   import foo
   def h():
-    print foo.y
+    return type(foo.y)
   return g, h
 """
 
@@ -221,32 +221,32 @@ def run():
 
 unused_imports_test_case_12 = """\
 import foo.bar
-print foo.bar.x
+type(foo.bar.x)
 """
 
 unused_imports_test_case_13 = """\
 import foo, bar
-print foo.moo.maz
+type(foo.moo.maz)
 """
 
 unused_imports_test_case_14 = """\
 import foo, bar
-print foo.moo().moz
+type(foo.moo().moz)
 """
 
 unused_imports_test_case_15 = """\
 import foo, bar
-print foo.moo[5].moz
+type(foo.moo[5].moz)
 """
 
 unused_imports_test_case_16 = """\
 from foo import bobar
-print bobar
+type(bobar)
 """
 
 unused_imports_test_case_17 = """\
 import foobar
-print '.'.join(foobar.z)
+text = '.'.join(foobar.z)
 """
 
 unused_imports_test_case_18 = """\
@@ -270,13 +270,13 @@ unused_imports_test_case_21 = """\
 from foo.bar import bakar
 import foo.bar.bakar.baaz
 
-print bakar.baaz
+type(bakar.baaz)
 """
 
 unused_imports_test_case_22 = """\
 from foo.bar import boz
 def f():
-  print g( boz(q) ).k
+  return g( boz(q) ).k
 """
 
 unused_imports_test_case_23 = """\
