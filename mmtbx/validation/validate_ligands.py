@@ -87,13 +87,8 @@ class manager(dict):
             (round(adps.b_min,1), round(adps.b_max,1), round(adps.b_mean,1),
            adps.n_iso, adps.n_aniso),
             file = self.log)
-#          if (occs.occ_min == occs.occ_max):
-#            print(lr.resname, lr.id_str, altloc, pad2, occs.occ_min,
-#              file = self.log)
-#          else:
-#            print(lr.resname, lr.id_str, altloc, pad2, '%s   %s   %s' %
-#              (occs.occ_min, occs.occ_max, occs.occ_mean),
-#              file = self.log)
+
+  # ---------------------------------------------------------------------------
 
   def print_ligand_occupancies(self):
     make_sub_header(' Occupancies ', out=self.log)
