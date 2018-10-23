@@ -8,6 +8,8 @@ import importlib
 import os
 import string
 
+from operator import attrgetter
+
 import libtbx.load_env
 import libtbx.phil
 from libtbx import str_utils
@@ -304,8 +306,8 @@ def show_citation(article, out=None, max_width=79, format='default'):
 
 def show_citations(articles, out=None, max_width=79, sort_by_name=True,
                    format='default'):
-  if (sort_by_name):
-    articles.sort(lambda x, y: cmp(x.authors, y.authors))
+  if (sort_by_name): # sort in place
+    articles.sort(key=attrgetter('authors'))
   for article in articles:
     show_citation(article, out, max_width, format)
 
