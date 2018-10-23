@@ -6,7 +6,7 @@ import numpy as np
 import math
 import logging
 from cctbx.array_family import flex
-import cPickle
+from six.moves import cPickle as pickle
 from prime.api import InputFrame
 logger = logging.getLogger('sf')
 
@@ -62,7 +62,7 @@ class SingleFrame(InputFrame):
     else:
       try:
         d = easy_pickle.load(path)
-      except (cPickle.UnpicklingError, ValueError, EOFError, IOError):
+      except (pickle.UnpicklingError, ValueError, EOFError, IOError):
         d = {}
         logger.warning("Could not read %s. It may not be a pickle file." % path)
     if 'observations' not in d or len(d['observations'][crystal_num].data()) == 0:

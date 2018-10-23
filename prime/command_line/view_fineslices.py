@@ -7,7 +7,7 @@ Desc        : Read pickle files (hopefully fine-sliced, and named after the
               intensity.
 """
 import sys
-import cPickle as pickle
+from six.moves import cPickle as pickle
 from dials.array_family import flex
 import matplotlib.pyplot as plt
 import numpy as np

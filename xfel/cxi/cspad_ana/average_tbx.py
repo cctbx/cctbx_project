@@ -224,7 +224,7 @@ class average_mixin(common_mode.common_mode_correction):
 
     if ("output" in self.flags):
       try:
-        import cPickle as pickle
+        from six.moves import cPickle as pickle
       except ImportError:
         import pickle
       import os

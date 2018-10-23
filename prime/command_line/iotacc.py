@@ -11,7 +11,7 @@ import math
 from iotbx import reflection_file_reader
 from cctbx.array_family import flex
 from cctbx import miller
-import cPickle as pickle
+from six.moves import cPickle as pickle
 from cctbx.crystal import symmetry
 from scitbx.matrix import sqr
 import shutil

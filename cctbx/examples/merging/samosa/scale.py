@@ -17,7 +17,7 @@ class execute_case(object):
  def __init__(self,datadir,work_params,plot=False,esd_plot=False,half_data_flag=0):
   casetag = work_params.output.prefix
   # read the ground truth values back in
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
   # it is assumed (for now) that the reference millers contain a complete asymmetric unit
   # of indices, within the (d_max,d_min) region of interest and possibly outside the region.
   reference_millers = pickle.load(open(os.path.join(datadir,casetag+"_miller.pickle"),"rb"))

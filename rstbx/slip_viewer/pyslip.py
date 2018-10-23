@@ -51,10 +51,7 @@ from six.moves import range
 import os
 import sys
 import glob
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+from six.moves import cPickle as pickle
 import wx
 from scitbx.matrix import col
 import math

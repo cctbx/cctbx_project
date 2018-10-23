@@ -1,5 +1,6 @@
 from __future__ import division
-import copy,cPickle
+import copy
+from six.moves import cPickle as pickle
 from iotbx.detectors.pilatus_minicbf import PilatusImage
 from iotbx.detectors import ImageException
 from scitbx.array_family import flex
@@ -86,7 +87,7 @@ class PilatusSlice(PilatusImage):
     return result
 
   def slice_callback_with_portable_http_data(self):
-    linearintdata = cPickle.load(self.object)
+    linearintdata = pickle.load(self.object)
     del self.object #once the data are copied, close the stream
     return linearintdata
 

@@ -1,5 +1,5 @@
 from __future__ import division
-import cPickle as pickle
+from six.moves import cPickle as pickle
 from prime.postrefine import postref_handler
 from .mod_lbfgs import lbfgs_handler
 import numpy as np

@@ -494,7 +494,7 @@ def load_result (file_name,
     K = T.getmembers()
     this_member = K[int(imember)]
     fileIO = T.extractfile(member=this_member)
-    import cPickle as pickle
+    from six.moves import cPickle as pickle
     try:
       obj = pickle.load(fileIO)
     except Exception:

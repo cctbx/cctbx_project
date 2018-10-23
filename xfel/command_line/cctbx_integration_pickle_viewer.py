@@ -3,7 +3,7 @@ from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cctbx.integration_pickle_viewer
 from cctbx.array_family import flex # implicit dependency
 from matplotlib import pyplot as plt
-import cPickle as pickle
+from six.moves import cPickle as pickle
 
 def get_CSPAD_active_areas(image, version_phil):
   from libtbx.phil import parse

@@ -1,6 +1,7 @@
 from __future__ import division
 from six.moves import range
-import math,os, cPickle as pickle,cStringIO as StringIO
+import math,os, cStringIO as StringIO
+from six.moves import cPickle as pickle
 from labelit.dptbx.status import cellstr
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal

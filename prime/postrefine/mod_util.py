@@ -7,7 +7,7 @@ from libtbx.utils import Sorry
 import math, os
 import numpy as np
 from copy import deepcopy
-import cPickle as pickle
+from six.moves import cPickle as pickle
 from collections import Counter
 from .mod_merge_data import merge_data_handler
 from .mod_mx import mx_handler

@@ -17,7 +17,7 @@ class GenericDetector(object):
 
   def readHeader(self):
     return
-    import cPickle as pickle
+    from six.moves import cPickle as pickle
     G = open(self.filename,"rb")
     phil_stuff=pickle.load(G)
     data_stuff=pickle.load(G)

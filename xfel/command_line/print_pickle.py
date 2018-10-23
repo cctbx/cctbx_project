@@ -111,14 +111,13 @@ def generate_streams_from_path(tar_or_other):
       yield fileIO,tar_or_other
 
 def generate_data_from_streams(args, verbose=False):
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
   for path in args:
     if not os.path.isfile(path):
       if verbose: print "Not a file:", path
       continue
 
     # interpret the object as a tar of pickles, a pickle, or none of the above
-    from cPickle import UnpicklingError
     for fileIO,path in generate_streams_from_path(path):
       try:
         data = pickle.load(fileIO)
@@ -130,7 +129,7 @@ def generate_data_from_streams(args, verbose=False):
           data["path"] = path
           yield data
 
-      except UnpicklingError as e:
+      except pickle.UnpicklingError as e:
         if verbose: print "\ndoesn't unpickle",path
       except EOFError as e:
         if verbose: print "\nEOF error",path

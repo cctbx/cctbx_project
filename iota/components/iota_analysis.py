@@ -27,7 +27,7 @@ try:  # for Py3 compatibility
 except ImportError:
     pass
 
-import cPickle as pickle
+from six.moves import cPickle as pickle
 from libtbx import easy_pickle as ep
 from cctbx import crystal, uctbx, sgtbx
 

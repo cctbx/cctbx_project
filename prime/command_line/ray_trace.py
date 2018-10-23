@@ -6,7 +6,7 @@ Created     : 11/1/2015
 Description : read integration pickles and view systemetic absences and beam X, Y position
 """
 
-import cPickle as pickle
+from six.moves import cPickle as pickle
 from cctbx.array_family import flex
 from cctbx.uctbx import unit_cell
 from scitbx.matrix import sqr

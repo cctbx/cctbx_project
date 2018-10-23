@@ -3,7 +3,7 @@ from six.moves import range
 from scitbx.array_family import flex
 import math
 from math import exp,pi,log,pow
-import cPickle as pickle
+from six.moves import cPickle as pickle
 import cStringIO as StringIO
 from scitbx.lbfgs import run,termination_parameters,exception_handling_parameters,core_parameters
 

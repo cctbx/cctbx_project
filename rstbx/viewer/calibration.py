@@ -2,10 +2,7 @@ from __future__ import division
 from six.moves import range
 from scitbx.array_family import flex
 import math
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import cPickle as pickle
 
 class sb_wrapper:
   def __init__(self,working_phil):

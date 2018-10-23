@@ -2,11 +2,10 @@ from __future__ import division
 from six.moves import range
 from dials.array_family import flex # implicit dependency
 import libtbx.load_env # implicit dependency
-import cPickle as pickle
+from six.moves import cPickle as pickle
 from cctbx.crystal import symmetry
 from scitbx.matrix import col
 from rstbx.bandpass import parameters_bp3, use_case_bp3
-import cPickle as pickle
 from libtbx import easy_pickle
 from libtbx.phil import parse
 from spotfinder.applications.xfel.cxi_phil import cxi_basic_start

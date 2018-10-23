@@ -1,8 +1,5 @@
 from __future__ import division
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import cPickle as pickle
 from cStringIO import StringIO
 from cctbx import crystal,sgtbx,uctbx
 from cctbx.sgtbx import lattice_symmetry
