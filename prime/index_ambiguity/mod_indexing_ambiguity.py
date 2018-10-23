@@ -1,7 +1,7 @@
 from __future__ import division
 import cPickle as pickle
 from prime.postrefine import postref_handler
-from mod_lbfgs import lbfgs_handler
+from .mod_lbfgs import lbfgs_handler
 import numpy as np
 from cctbx import sgtbx
 import random

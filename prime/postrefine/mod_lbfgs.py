@@ -1,7 +1,7 @@
 from __future__ import division
 from scitbx import lbfgs
 from cctbx.array_family import flex
-from mod_lbfgs_partiality import lbfgs_partiality_handler
+from .mod_lbfgs_partiality import lbfgs_partiality_handler
 
 class lbfgs_handler(object):
   """
