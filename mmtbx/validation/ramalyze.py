@@ -632,6 +632,36 @@ class ramachandran_plot (data_plots.simple_matplotlib_plot,
     data_plots.simple_matplotlib_plot.__init__(self, *args, **kwds)
     ramachandran_plot_mixin.__init__(self, *args, **kwds)
 
+def get_contours(position_type):
+  '''
+  Function for determining the contours in a Ramachandran plot
+
+  Parameters
+  ----------
+  position_type: int, defined in beginning of file (e.g. RAMA_GENERAL)
+
+  Returns
+  -------
+  list containing contours (2 numbers)
+
+  data for plotting is being "scaled" in
+  mmtbx/validation/utils.py: export_ramachandran_distribution():
+    return npz ** scale_factor, # scale_factor = 0.25
+  Therefore to calculate contours we need to look at
+  mmtbx/validation/ramalyze.py: evalScore() for the logic and
+  put the cutoff numbers to the power of 0.25
+  '''
+  general_contours = [0.1495, 0.376] # [0.0005**0.25, 0.02**0.25]
+  cispro_contours = [0.21147, 0.376] # [0.002**0.25, 0.02**0.25]
+  default_contours = [0.1778, 0.376] # [0.001**0.25, 0.02**0.25]
+
+  contours = default_contours
+  if position_type == RAMA_GENERAL :
+    contours = general_contours
+  elif position_type == RAMA_CISPRO :
+    contours = cispro_contours
+  return contours
+
 def draw_ramachandran_plot (points,
                             rotarama_data,
                             position_type,
@@ -640,19 +670,7 @@ def draw_ramachandran_plot (points,
                             show_labels=True,
                             point_style='bo') :
   p = ramachandran_plot()
-  # data for plotting is being "scaled" in
-  # mmtbx/validation/utils.py: export_ramachandran_distribution():
-  #   return npz ** scale_factor, # scale_factor = 0.25
-  # Therefore to calculate contours we need to look at
-  # mmtbx/validation/ramalyze.py: evalScore() for the logic and
-  # put the cutoff numbers to the power of 0.25
-
-  if position_type == RAMA_GENERAL :
-    contours = [0.1495, 0.376] # [0.0005**0.25, 0.02**0.25]
-  elif position_type == RAMA_CISPRO :
-    contours = [0.21147, 0.376] # [0.002**0.25, 0.02**0.25]
-  else:
-    contours = [0.1778, 0.376] # [0.001**0.25, 0.02**0.25]
+  contours = get_contours(position_type)
   p.draw_plot(
     stats=rotarama_data,
     title=title,

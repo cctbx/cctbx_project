@@ -172,10 +172,7 @@ class ramalyze_frame (rotarama_frame) :
     else :
       points = self._point_cache[(pos_type, res_type, pt_type)]
       coords = self._xyz_cache[(pos_type, res_type, pt_type)]
-    if (pos_type == ramalyze.RAMA_GENERAL) :
-      contours = [0.1495, 0.376]
-    else :
-      contours = [0.2115, 0.376]
+    contours = ramalyze.get_contours(pos_type)
     self.plot_panel.show_plot(
       stats=self._map_cache[pos_type],
       title=title,
