@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from operator import itemgetter
 from libtbx.utils import Usage
 import fileinput
 import sys, os
@@ -34,12 +35,7 @@ def run(command_name=os.environ.get(
   if (n != 0):
     buffer.append((n, prev))
   if (len(buffer) != 0):
-    def cmp_buffer_entries(a, b):
-      result = cmp(b[0], a[0])
-      if (result == 0):
-        result = cmp(a[1], b[1])
-      return result
-    buffer.sort(cmp_buffer_entries)
+    buffer.sort(key=itemgetter(0,1))
     sum_n = 0
     n_fmt = "%%%dd: " % len("%d" % buffer[0][0])
     for n,line in buffer:

@@ -1,6 +1,7 @@
 from __future__ import division, absolute_import
 from __future__ import print_function
 
+from functools import cmp_to_key
 from six.moves import cStringIO
 
 import sys
@@ -240,12 +241,12 @@ def show_sorted_by_counts(
     else:
       if (a[1] < b[1]): return -1
       if (a[1] > b[1]): return  1
-    return cmp(a[0], b[0])
+    return (a[0] > b[0]) - (a[0] < b[0]) # cmp(a[0], b[0])
   if (annotations is None):
     annotations = [None]*len(label_count_pairs)
   lca = [(show_string(l), c, a)
     for (l,c),a in zip(label_count_pairs, annotations)]
-  lca.sort(sort_function)
+  lca.sort(key=cmp_to_key(sort_function))
   fmt = "%%-%ds %%%dd" % (
     max([len(l) for l,c,a in lca]),
     max([len(str(lca[i][1])) for i in [0,-1]]))
