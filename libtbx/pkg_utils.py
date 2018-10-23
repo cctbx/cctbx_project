@@ -134,6 +134,7 @@ def require(pkgname, version=None):
 @contextlib.contextmanager
 def _silence():
   '''Helper context which shuts up stdout.'''
+  sys.stdout.flush()
   try:
     oldstdout = os.dup(sys.stdout.fileno())
     dest_file = open(os.devnull, 'w')
