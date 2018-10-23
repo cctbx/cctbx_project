@@ -131,6 +131,7 @@ electron density values/CC.
     ligand_manager.run()
     ligand_manager.print_ligand_counts()
     ligand_manager.print_ligand_occupancies()
+    ligand_manager.print_adps()
     #print('time running manager: ', time.time()-t0)
 
     # TODO
