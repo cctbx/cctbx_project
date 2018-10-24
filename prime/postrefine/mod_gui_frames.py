@@ -22,15 +22,14 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-import iota.components.iota_misc as misc
+import iota.components.iota_utils as util
 import iota.components.iota_ui_controls as ct
-from iota.components.iota_utils import InputFinder
 
 import prime.postrefine.mod_gui_dialogs as dlg
 import prime.postrefine.mod_threads as thr
 from prime.postrefine.mod_input import master_phil
 
-ginp = InputFinder()
+ginp = util.InputFinder()
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -55,7 +54,7 @@ elif (wx.Platform == '__WXMSW__'):
 user = os.getlogin()
 icons = os.path.join(os.path.dirname(os.path.abspath(ct.__file__)), 'icons/')
 
-f = misc.WxFlags()
+f = util.WxFlags()
 
 def str_split(string, delimiters=(' ', ','), maxsplit=0):
   import re
@@ -165,7 +164,7 @@ class PRIMEInputWindow(BasePanel):
         self.pparams.hklrefin = reference
 
     self.out_dir = self.out_box.ctr.GetValue()
-    self.pparams.run_no = misc.set_base_dir(out_dir=self.out_dir)               # Need to change
+    self.pparams.run_no = util.set_base_dir(out_dir=self.out_dir)  # Need to change
     self.pparams.title = self.project_title.ctr.GetValue()
     self.pparams.n_residues = self.opt_spc_nres.ctr.GetValue()
     self.pparams.n_processors = self.opt_spc_nproc.ctr.GetValue()
@@ -198,7 +197,7 @@ class PRIMEInputWindow(BasePanel):
     self.pparams = self.prime_phil.extract()
 
   def generate_phil_string(self, current_phil):
-    with misc.Capturing() as txt_output:
+    with util.Capturing() as txt_output:
       current_phil.show()
     self.phil_string = ''
     for one_output in txt_output:

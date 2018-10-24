@@ -14,7 +14,8 @@ from wxtbx import bitmaps
 from libtbx import easy_run
 import iotbx.phil as ip
 
-import iota.components.iota_misc as misc
+from iota import prime_description, prime_license
+from iota.components.iota_utils import Capturing
 import iota.components.iota_ui_controls as ct
 from prime.postrefine import mod_gui_frames as frm
 from prime.postrefine import mod_gui_dialogs as dlg
@@ -157,8 +158,8 @@ class PRIMEWindow(wx.Frame):
     info = wx.AboutDialogInfo()
     info.SetName('PRIME')
     info.SetWebSite('http://cci.lbl.gov/xfel')
-    info.SetLicense(misc.prime_license)
-    info.SetDescription(misc.prime_description)
+    info.SetLicense(prime_license)
+    info.SetDescription(prime_description)
     info.AddDeveloper('Monarin Uervirojnangkoorn')
     info.AddDeveloper('Axel Brunger')
     wx.AboutBox(info)
@@ -291,7 +292,7 @@ class PRIMEWindow(wx.Frame):
     if self.sanity_check():
       prime_phil = master_phil.format(python_object=self.pparams)
 
-      with misc.Capturing() as output:
+      with Capturing() as output:
         prime_phil.show()
 
       txt_out = ''
@@ -320,7 +321,7 @@ class PRIMEWindow(wx.Frame):
 
     # Generate text of params
     final_phil = master_phil.format(python_object=self.pparams)
-    with misc.Capturing() as txt_output:
+    with Capturing() as txt_output:
       final_phil.show()
     txt_out = ''
     for one_output in txt_output:
@@ -413,7 +414,7 @@ class PRIMEWindow(wx.Frame):
     self.input_window.opt_spc_nres.reset_default()
 
     # Generate Python object and text of parameters
-    with misc.Capturing() as txt_output:
+    with Capturing() as txt_output:
       master_phil.show()
     self.phil_string = ''
     for one_output in txt_output:

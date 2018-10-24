@@ -15,9 +15,8 @@ from wxtbx import bitmaps
 
 from iotbx import phil as ip
 
-import iota.components.iota_misc as misc
+from iota.components.iota_utils import WxFlags, Capturing
 import iota.components.iota_ui_controls as ct
-from iota.components.iota_misc import WxFlags
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -430,7 +429,7 @@ class PRIMEAdvancedOptions(BaseBackendDialog):
     self.cycles.ctr.SetValue(int(self.pparams.n_postref_cycle))
 
   def generate_phil_string(self):
-    with misc.Capturing() as txt_output:
+    with Capturing() as txt_output:
       self.prime_phil.show()
     self.phil_string = ''
     for one_output in txt_output:
