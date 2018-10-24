@@ -650,7 +650,7 @@ def check_and_add_hydrogen(
         stdin_lines=clean_out.stdout_lines)
     if (build_out.return_code != 0) :
       with open(stdin_fname, 'w') as f:
-        f.write(clean_out.stdout_lines)
+        f.write("\n".join(clean_out.stdout_lines))
       msg_str = "Reduce crashed with command '%s'.\nDumping stdin to file '%s'.\n" +\
           "Dumping stderr:\n%s"
       raise Sorry(msg_str % (build, stdin_fname, "\n".join(build_out.stderr_lines)))
