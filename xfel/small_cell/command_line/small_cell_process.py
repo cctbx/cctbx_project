@@ -12,7 +12,7 @@ DIALS script for processing sparse images.
 '''
 
 from dials.command_line.stills_process import phil_scope, Processor as BaseProcessor
-from xfel.command_line.small_cell_index import small_cell_phil_str
+from xfel.small_cell.command_line.small_cell_index import small_cell_phil_str
 from iotbx.phil import parse
 phil_scope.adopt_scope(parse(small_cell_phil_str))
 
