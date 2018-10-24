@@ -375,8 +375,8 @@ class AdvancedSettingsDialog(BaseDialog):
 
     # Processing back-ends
     self.dispatchers_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.back_ends = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'dials.stills_process', 'LABELIT', 'custom']
-    self.dispatchers = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'dials.stills_process', 'cxi.xtc_process', 'custom']
+    self.back_ends = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'dials.stills_process', 'LABELIT', 'Small cell', 'custom']
+    self.dispatchers = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'dials.stills_process', 'cxi.xtc_process', 'cctbx.xfel.small_cell_process', 'custom']
     self.back_end = gctr.ChoiceCtrl(self,
                                     label='Processing back end:',
                                     label_size=(180, -1),

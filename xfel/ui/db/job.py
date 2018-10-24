@@ -442,14 +442,14 @@ def submit_job(app, job):
   submit_root = libtbx.env.find_in_repositories("xfel/ui/db/cfgs")
   if dispatcher in ['cxi.xtc_process', 'cctbx.xfel.xtc_process']:
     template = open(os.path.join(submit_root, "submit_xtc_process.phil"))
-  elif dispatcher == 'cctbx.xfel.process':
+  elif dispatcher in ['cctbx.xfel.process', 'cctbx.xfel.small_cell_process']:
     template = open(os.path.join(submit_root, "submit_xfel_process.phil"))
   else:
     test_root = os.path.join(submit_root, "submit_" + dispatcher + ".phil")
     if os.path.exists(test_root):
       template = open(test_root)
     else:
-      template = open(os.path.joins(submit_root, "submit.phil"))
+      template = open(os.path.join(submit_root, "submit.phil"))
   phil = open(submit_phil_path, "w")
 
   if dispatcher == 'cxi.xtc_process':

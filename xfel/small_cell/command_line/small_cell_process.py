@@ -36,10 +36,10 @@ class Processor(BaseProcessor):
     logger.info('Time Taken = %f seconds' % (time() - st))
     return experiments, indexed
 
-from dials.command_line import stills_process
-stills_process.Processor = Processor
-
 if __name__ == '__main__':
+  from dials.command_line import stills_process
+  stills_process.Processor = Processor
+
   from dials.util import halraiser
   try:
     script = stills_process.Script()
