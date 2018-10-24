@@ -375,13 +375,20 @@ class AdvancedSettingsDialog(BaseDialog):
 
     # Processing back-ends
     self.dispatchers_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.back_ends = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'dials.stills_process', 'LABELIT', 'Small cell', 'custom']
-    self.dispatchers = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'dials.stills_process', 'cxi.xtc_process', 'cctbx.xfel.small_cell_process', 'custom']
+    self.back_ends = ['cctbx.xfel (XTC+CBF mode)', 'cctbx.xfel (XTC mode)', 'Ha14', 'Small cell', 'custom']
+    self.dispatchers = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'cxi.xtc_process', 'cctbx.xfel.small_cell_process', 'custom']
+    self.dispatcher_descriptions = [
+      'Process the data according to Brewster 2018, using DIALS for indexing, refinement and integration, with stills-specific defaults. Converts XTC into CBF in memory and optionally provides dumping of CBFs',
+      'Process the data according to Brewster 2018, using DIALS for indexing, refinement and integration, with stills-specific defaults. Reads XTC directly.',
+      'Process the data according to Hattne 2014, using LABELIT for initial indexing and stills-specific refinement and integration code implemented in the package cctbx.rstbx.',
+      'Process the data according to Brewster 2015, using small cell for initial indexing and using DIALS for refinement and integration, with stills-specific defaults.',
+      'Provide a custom program. See authors for details.']
+
     self.back_end = gctr.ChoiceCtrl(self,
                                     label='Processing back end:',
                                     label_size=(180, -1),
                                     label_style='bold',
-                                    ctrl_size=(200, -1),
+                                    ctrl_size=(220, -1),
                                     choices=self.back_ends)
     self.Bind(wx.EVT_CHOICE, self.onBackendChoice)
     self.dispatchers_sizer.Add(self.back_end, flag=wx.ALIGN_LEFT)
@@ -399,6 +406,10 @@ class AdvancedSettingsDialog(BaseDialog):
       self.custom_dispatcher.ctr.SetValue(params.dispatcher)
 
     self.analysis_sizer.Add(self.dispatchers_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.dispatcher_help = wx.StaticText(self, label=self.dispatcher_descriptions[self.back_end.ctr.GetSelection()], size=(600,80))
+    self.dispatcher_help.Wrap(600)
+    self.analysis_sizer.Add(self.dispatcher_help, flag=wx.EXPAND | wx.ALL, border=10)
 
     img_types = ['corrected', 'raw']
     self.avg_img_type = gctr.ChoiceCtrl(self,
@@ -452,6 +463,8 @@ class AdvancedSettingsDialog(BaseDialog):
 
   def onBackendChoice(self, e):
     self.params.dispatcher = self.dispatchers[self.back_end.ctr.GetSelection()]
+    self.dispatcher_help.SetLabel(self.dispatcher_descriptions[self.back_end.ctr.GetSelection()])
+    self.dispatcher_help.Wrap(600)
     if self.params.dispatcher == 'custom':
       self.custom_dispatcher.Show()
       self.Layout()
