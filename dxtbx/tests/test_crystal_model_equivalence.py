@@ -37,7 +37,6 @@ json_is = """{
       "beam": 0,
       "detector": 0,
       "crystal": 0,
-      "profile": 0,
       "imageset": 0
     }
   ],
@@ -198,16 +197,7 @@ json_is = """{
       "ML_half_mosaicity_deg": 0.3692704083777256,
       "ML_domain_size_ang": 416.04559892901716
     }
-  ],
-  "profile": [
-    {
-      "n_sigma": 3.0,
-      "__id__": "gaussian_rs",
-      "sigma_m": 0.0,
-      "sigma_b": 0.14442609665641026
-    }
-  ],
-  "scaling_model": []
+  ]
 }"""
 
 def test_compare_example():
