@@ -1,5 +1,3 @@
-from __future__ import division
-
 """
 Reads a libtbx_env file and dumps the entire contents.
 Some structures e.g. module dictionaries refer to the same object in multiple
@@ -10,7 +8,8 @@ path anyway).
 Usage:
   read_env.py <libtbx_env>
 """
-from __future__ import print_function
+
+from __future__ import division, print_function
 
 from six.moves import cPickle as pickle
 from pprint import pprint
