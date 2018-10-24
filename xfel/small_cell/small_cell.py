@@ -968,6 +968,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
       rmsd = 0
       rmsd_n = 0
       for spot in indexed:
+        if spot.pred is None: continue
         peakpix = []
         peakvals = []
         tmp = []
@@ -1137,9 +1138,15 @@ def spots_rmsd(spots):
   @param RMSD (pixels) of each spot
   """
   rmsd = 0
+  count = 0
+  print 'Spots with no preds', [spot.pred is None for spot in spots].count(True), 'of', len(spots)
   for spot in spots:
+    if spot.pred is None:
+      continue
     rmsd += measure_distance(col((spot.spot_dict['xyzobs.px.value'][0],spot.spot_dict['xyzobs.px.value'][1])),col(spot.pred))**2
-  return math.sqrt(rmsd/len(spots))
+    count += 1
+  if count == 0: return 0
+  return math.sqrt(rmsd/count)
 
 def hkl_to_xyz(hkl,abasis,bbasis,cbasis):
   """ Compute reciprocal space coordinates of an hkl given a set of basis vectors
@@ -1169,6 +1176,7 @@ def get_crystal_orientation(spots, sym, use_minimizer=True, loop_count = 0):
   ori = solver.unrestrained_setting()
 
   det = sqr(ori.crystal_rotation_matrix()).determinant()
+  print "Got crystal rotation matrix, deteriminant", det
   if det <= 0:
     ori = ori.make_positive()
     for spot in spots: # fix the signs of the hkls in the clique using this new basis
