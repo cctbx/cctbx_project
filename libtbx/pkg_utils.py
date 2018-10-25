@@ -2,7 +2,7 @@
 #
 # To let libtbx modules specify and satisfy their requirements and capabilities.
 
-from __future__ import division, absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 
 import contextlib
 import os

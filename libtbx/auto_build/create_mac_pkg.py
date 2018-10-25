@@ -4,8 +4,7 @@ Create a graphical Mac installer for a complete installation of CCTBX or
 Phenix (or any other derived software).
 """
 
-from __future__ import absolute_import, division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 import os.path as op

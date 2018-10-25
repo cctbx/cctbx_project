@@ -11,9 +11,7 @@ probably need to perform additional modifications to the installer tree
 before it can be tarred.
 """
 
-from __future__ import division
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from optparse import OptionParser
 import os.path as op
 import shutil

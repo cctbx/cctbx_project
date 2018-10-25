@@ -2,8 +2,7 @@
 # XXX: this module is used exclusively by the Phenix GUI, which needs an
 # index of all current phil parameters, and an easy way to change them.
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx import easy_pickle, str_utils, smart_open
 from libtbx import adopt_init_args, Auto
 from libtbx.phil import gui_objects

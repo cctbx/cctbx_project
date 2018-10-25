@@ -54,9 +54,7 @@ Note that the location of the install script is not mandatory, but it must be
 able to correctly detect the base installer directory.
 """
 
-from __future__ import division
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from optparse import OptionParser
 import os.path as op
 import os

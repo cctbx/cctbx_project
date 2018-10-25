@@ -5,9 +5,7 @@ Provides drop-in replacement classes to those defined in the multiprocessing
 module (Queue and Process), with certain restrictions placed by the pickle
 module
 """
-from __future__ import division
-from __future__ import with_statement
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function, with_statement
 
 from six.moves import cPickle as pickle
 import os

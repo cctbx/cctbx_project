@@ -4,7 +4,7 @@ Generic module to provide parallel job execution on queuing systems
 Provides drop-in replacement classes to those defined in the multiprocessing
 module (Queue and Job), with certain restrictions placed by the pickle module
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from six.moves import cPickle as pickle
 import subprocess

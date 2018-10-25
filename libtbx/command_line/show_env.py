@@ -9,7 +9,7 @@ Usage:
   read_env.py <libtbx_env>
 """
 
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 from six.moves import cPickle as pickle
 from pprint import pprint

@@ -11,8 +11,7 @@ probably need to perform additional modifications to the installer tree
 before it can be tarred.
 """
 
-from __future__ import absolute_import, division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import imp
 import os

@@ -1,8 +1,7 @@
-from __future__ import division, print_function
-
 '''
 Functionality for handling citations
 '''
+from __future__ import absolute_import, division, print_function
 
 import importlib
 import os

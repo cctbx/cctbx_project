@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from builtins import range
 from distutils.dir_util import remove_tree
 import random

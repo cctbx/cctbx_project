@@ -8,9 +8,7 @@ where create_windows_installer.py supersedes it to invoke creating a NullSoft se
 # of the rest of CCTBX if necessary, although it will use installed resources
 # if found
 
-from __future__ import division
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 try :
   import libtbx.load_env
   libtbx_env = libtbx.env

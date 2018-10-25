@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 # XXX this is intended to be a simple template for debugging queueing system
 # support issues, not a full regression test.

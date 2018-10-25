@@ -3,8 +3,7 @@
 Master script for making distributable installers on Linux and Mac.
 """
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.auto_build.installer_utils import *
 from libtbx.auto_build import setup_installer
 from libtbx.auto_build import create_mac_pkg

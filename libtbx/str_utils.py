@@ -1,5 +1,4 @@
-from __future__ import division, absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from functools import cmp_to_key
 from six.moves import cStringIO

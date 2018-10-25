@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from six.moves import cPickle as pickle
 import socket
 import sys
@@ -173,7 +172,7 @@ def LockReadPickleProcessWritePickleUnlock(client, file, id, func):
 
 if __name__=="__main__":
 
-  import FileServer
+  from . import FileServer
   import time
   import libtbx.load_env
 

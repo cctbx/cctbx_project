@@ -20,7 +20,7 @@ Pool methods:
   worker_count(): return an approximate number of active workers
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import time
 from collections import deque

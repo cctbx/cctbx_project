@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # this is Scons tool definition for 'crossmingw' copied from
 # http://www.scons.org/wiki/CrossCompilingMingw (2011-11-25)
 

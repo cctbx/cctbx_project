@@ -1,16 +1,15 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import threading
 from six.moves import cPickle as pickle
-import SocketServer
+from . import SocketServer
 import sys
 import traceback
 import os
 import socket
 import time
 
-import FileClient
-import FileSocket
+from . import FileClient
+from . import FileSocket
 
 # Socket Server
 

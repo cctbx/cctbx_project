@@ -2,8 +2,7 @@
 # XXX this module is designed to be run independently of the rest of CCTBX if
 # necessary, although it will use installed resources if found
 
-from __future__ import absolute_import, division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import optparse
 import os

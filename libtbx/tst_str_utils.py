@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 def exercise():
   from libtbx.test_utils import show_diff, Exception_expected
   from six.moves import cPickle as pickle

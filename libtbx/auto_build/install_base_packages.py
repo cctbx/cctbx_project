@@ -7,8 +7,7 @@ function.  In the future this will be used as the core of the CCI nightly build
 system and the Phenix installer.
 """
 
-from __future__ import absolute_import, division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 import os.path as op

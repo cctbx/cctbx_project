@@ -19,7 +19,7 @@ Scheduler methods:
   process_count(): return number of running processes
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import time
 from collections import deque

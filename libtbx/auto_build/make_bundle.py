@@ -18,9 +18,7 @@ part of a separate bundle.  This will allow re-use of precompiled base packages
 with the latest source, which should speed up installer generation.
 """
 
-from __future__ import division
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from optparse import OptionParser
 import os.path as op
 import shutil

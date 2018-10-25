@@ -50,7 +50,7 @@ True
 
 
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 __author__ = "Joe Bowers"
 __license__ = "MIT License"

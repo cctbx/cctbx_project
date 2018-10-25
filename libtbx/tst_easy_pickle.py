@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from builtins import range
 def exercise(n, use_dumps=False):
   from libtbx import easy_pickle

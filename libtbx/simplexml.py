@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 class SimpleNode:
   def __init__(self,tag,contents='',indent=True):
     self.tag=tag

@@ -1,7 +1,7 @@
 """
 http://pypi.python.org/pypi/cluster/1.1.1b3
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 #
 # This is part of "python-cluster". A library to group similar items together.

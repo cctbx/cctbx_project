@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import compileall
 from six.moves import cStringIO as StringIO
 import sys, os

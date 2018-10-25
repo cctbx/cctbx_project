@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 prios = ["boost", "scitbx", "cctbx", "rstbx", "labelit"]
 prios = dict(zip(prios, range(len(prios))))
 priority_modules = ['dials_algorithms_profile_model_modeller_ext']

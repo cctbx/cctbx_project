@@ -4,8 +4,7 @@ An SI prefix (also known as a metric prefix) is a name or associated
 symbol that precedes a basic unit of measure (or its symbol) to form a
 decimal multiple or submultiple.
 """
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 yotta = 1e24
 zetta = 1e21

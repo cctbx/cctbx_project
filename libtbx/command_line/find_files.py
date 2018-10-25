@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.path import walk_source_tree
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry

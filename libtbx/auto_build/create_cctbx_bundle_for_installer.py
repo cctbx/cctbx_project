@@ -5,8 +5,7 @@ Package the CCTBX bundle used for various installers (Phenix, etc.) using
 sources in the specified repositories directory.
 """
 
-from __future__ import absolute_import, division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import optparse
 import os
