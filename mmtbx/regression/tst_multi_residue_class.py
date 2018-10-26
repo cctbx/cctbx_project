@@ -70,7 +70,7 @@ def run():
   f.close()
   pdb_inp = pdb.input(filename)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
-  from mmtbx.conformation_dependent_library.test_rdl import \
+  from mmtbx.conformation_dependent_library.tst_rdl import \
       get_geometry_restraints_manager
   geometry_restraints_manager = get_geometry_restraints_manager(filename)
   pdb_hierarchy.reset_i_seq_if_necessary()
