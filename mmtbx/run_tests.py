@@ -3,6 +3,7 @@ from libtbx import test_utils
 import libtbx.load_env
 from libtbx import easy_run
 import libtbx.load_env
+from libtbx.test_utils.pytest import discover
 
 general_tests = [
   # ions SVM
@@ -357,7 +358,7 @@ general_tests = [
   "$D/regression/fix_cablam/tst_insertion_codes.py",
   #
   "$D/regression/tst_scattering_type_registry.py"
-  ]
+  ] + discover()
 
 probe_tests = [
   "$D/regression/pdb_interpretation/tst_edits.py",
