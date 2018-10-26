@@ -313,7 +313,7 @@ class FormatCBFMini(FormatCBF):
     exposure_time = exposure_period  # simulation is a perfect detector
 
     tau = 0 # assume simulation is a perfect detector with no pile-up error
-    count_cutoff = 2**20  # not actually sure what this is
+    count_cutoff = detector[0].get_trusted_range()[1]
 
     wavelength = beam.get_wavelength()  # get the wavelength in the conventional way
     energy = 12398.4245/wavelength
