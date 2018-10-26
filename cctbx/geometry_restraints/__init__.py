@@ -1851,7 +1851,7 @@ def _show_sorted_impl(O,
   item_label_blank = " " * len(item_label)
   outl = StringIO.StringIO()
   for (labels, restraint) in sorted_table :
-    if (proxy_type is dihedral) and origin_id==0:
+    if (proxy_type is dihedral) and (origin_id==0 or origin_id is None):
       if restraint.periodicity<=0: n_harmonic+=1
       else: n_sinusoidal+=1
     s = item_label
@@ -1860,9 +1860,12 @@ def _show_sorted_impl(O,
       s = item_label_blank
     restraint._show_sorted_item(f=outl, prefix=prefix)
   if (n_not_shown != 0):
+    if (proxy_type is dihedral):
+      n_harmonic = O.count_harmonic()
+      n_sinusoidal = O.size() - n_harmonic
     print >> outl, prefix + "... (remaining %d not shown)" % n_not_shown
   #
-  if (proxy_type is dihedral) and origin_id==0:
+  if (proxy_type is dihedral) and (origin_id==0 or origin_id is None):
     print >> f, prefix+"  sinusoidal: %d" % n_sinusoidal
     print >> f, prefix+"    harmonic: %d" % n_harmonic
   print >> f, "%sSorted by %s:" % (prefix, by_value)
