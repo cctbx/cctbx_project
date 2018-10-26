@@ -3,9 +3,13 @@ from __future__ import division
 bond_origin_ids = {}
 angle_origin_ids = {}
 torsion_origin_ids = {}
+chiral_origin_ids = {}
+plane_origin_ids = {}
 origin_ids = [bond_origin_ids,
               angle_origin_ids,
               torsion_origin_ids,
+              chiral_origin_ids,
+              plane_origin_ids,
               ]
 
 class origins(list):
@@ -21,7 +25,7 @@ class origins(list):
 
 starting_id = 0
 for link_info in [
-    ['covalent geometry'],
+    ['covalent geometry', [0,1,2,3,4]],
     ['SS BOND', # short desc.
      # complete desc.
      'Disulphide bond for CYS-like sulphur atoms within 3A (default) using '
@@ -31,21 +35,39 @@ for link_info in [
      'Comput. Cryst. Newsl. (2015), 6, 13-13.',
      # geo file header - bond, angle, dihedral (None will suppress output)
      ['Disulphide bridge']*3,
+     # internals
+     [0,1,2], # does not seem to be used much...
     ],
     ['hydrogen bonds',
      'hydrogen bonds added both for protein SS and NA basepairs',
      '',
      ['Bond-like', 'Secondary Structure restraints around h-bond', None],
+     [0,1],
     ],
     ['metal coordination',
      '',
      '',
-     ['Metal coordination']*2+[None],
+     ['Metal coordination']*2,
+     [0,1],
     ],
     ['edits',
      '',
      'www.phenix-online.org/documentation/reference/refinement.html#definition-of-custom-bonds-and-angles',
-     ['User supplied']*3,
+     ['User supplied']*3+[None, 'User supplied'],
+     [0,1,2,4],
+    ],
+    ['glycosidic',
+     'Standard glycosidic CIF link blocks such as link_??? and ???',
+     '',
+     ['Standard Glycosidic']*5, # includes chirals!!!
+     [0,1,2,3,4],
+    ],
+    ['glycosidic custom',
+     'Custom glycosidic links need to be generated when the atom names of'
+     "the carbohydrates don't conform to the standard.",
+     '',
+     ['Custom Glycosidic']*5,
+     [0,1,2,3,4],
     ],
     #['Misc. bond',
     # 'Bond created based on atom type and distance.',
@@ -54,7 +76,7 @@ for link_info in [
     ]:
   for oi in origin_ids:
     assert starting_id not in oi
-    oi[starting_id] = origins(link_info, internals=[0,1,2])
+    oi[starting_id] = origins(link_info[:-1], internals=link_info[-1])
   starting_id+=1
 
 # only angles

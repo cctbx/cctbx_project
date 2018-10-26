@@ -544,7 +544,9 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
                                              geometry_proxy_registries,
                                              rt_mx_ji,
                                              link_carbon_dist=2.0,
+                                             origin_id=None,
                                              ):
+  assert origin_id
   def _add_bond(i_seqs,
                 bond_params_table,
                 bond_asu_table,

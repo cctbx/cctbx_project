@@ -45,7 +45,7 @@ Look for a key in the list below
       if self[k1]<self[k2]: return -1
       return 1
     def _filter_on_internals(k1):
-      ptr = {'bonds':0, 'angles':1,'dihedrals':2}[internals]
+      ptr = {'bonds':0, 'angles':1,'dihedrals':2,'planes':3,'chirals':4}[internals]
       if internals is None: return True
       if ptr in self.data[k1].internals: return True
       return False
@@ -62,6 +62,12 @@ Look for a key in the list below
   def get_dihedral_origin_id_labels(self):
     return self._get_origin_id_labels(internals='dihedrals')
 
+  def get_chiral_origin_id_labels(self):
+    return self._get_origin_id_labels(internals='chirals')
+
+  def get_plane_origin_id_labels(self):
+    return self._get_origin_id_labels(internals='planes')
+
   def get_geo_file_header(self, origin_id_label, internals=None):
     info = self.data.get(origin_id_label, None)
     assert info
@@ -71,6 +77,8 @@ Look for a key in the list below
       if internals in [None, 'bonds']: return rc[0]
       elif internals in ['angles']: return rc[1]
       elif internals in ['dihedrals']: return rc[2]
+      elif internals in ['chirals']: return rc[3]
+      elif internals in ['planes']: return rc[4]
       else: assert 0
     else: return info[0]
 

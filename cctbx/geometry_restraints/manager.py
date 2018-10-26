@@ -1630,61 +1630,60 @@ class manager(Base_geometry):
             origin_id=origin_id)
         print >> f, label, tempbuffer.getvalue()[5:]
 
-    if (self.angle_proxies is not None):
-      self.angle_proxies.show_sorted(
-        by_value="residual",
-        sites_cart=sites_cart,
-        site_labels=site_labels,
-        f=f,
-        origin_id=default_origin_id)
-      print >> f
-      for key in origin_ids.get_angle_origin_id_labels():
-        origin_id=origin_ids.get_origin_id(key)
-        if origin_id==default_origin_id: continue
-        label=origin_ids.get_geo_file_header(key, internals='angles')
-        tempbuffer = StringIO.StringIO()
-        self.angle_proxies.show_sorted(
-            by_value="residual",
-            sites_cart=sites_cart,
-            site_labels=site_labels,
-            f=tempbuffer,
-            prefix="",
-            origin_id=origin_id)
-        print >> f, label, tempbuffer.getvalue()[5:]
-
-    if (self.dihedral_proxies is not None):
-      self.dihedral_proxies.show_sorted(
-        by_value="residual",
-        sites_cart=sites_cart,
-        site_labels=site_labels,
-        f=f,
-        origin_id=default_origin_id)
-      print >> f
-      for key in origin_ids.get_dihedral_origin_id_labels():
-        origin_id=origin_ids.get_origin_id(key)
-        if origin_id==default_origin_id: continue
-        label=origin_ids.get_geo_file_header(key, internals='dihedrals')
-        if label is None: continue
-        label = '%s torsion' % label
-        tempbuffer = StringIO.StringIO()
-        self.dihedral_proxies.show_sorted(
-            by_value="residual",
-            sites_cart=sites_cart,
-            site_labels=site_labels,
-            f=tempbuffer,
-            prefix="",
-            origin_id=origin_id)
-        print >> f, label, tempbuffer.getvalue()[9:]
+    for p_label, proxies, internals, i_label, keys, start in [
+      ("Bond angle",
+       self.angle_proxies, # self.get_all_angle_proxies(),
+       'angles',
+       '',
+       origin_ids.get_angle_origin_id_labels(),
+       5),
+      ("Dihedral angle",
+       self.dihedral_proxies, # self.get_dihedral_proxies(),
+       'dihedrals',
+       'torsion',
+       origin_ids.get_dihedral_origin_id_labels(),
+       9),
+      ("Chirality",
+       self.chirality_proxies,
+       'chirals',
+       '',
+       origin_ids.get_chiral_origin_id_labels(),
+       0),
+      ("Planes",
+       self.planarity_proxies,
+       'planes',
+       '',
+       origin_ids.get_plane_origin_id_labels(),
+       0),
+      ]:
+      if (proxies is not None):
+        proxies.show_sorted(
+          by_value="residual",
+          sites_cart=sites_cart,
+          site_labels=site_labels,
+          f=f,
+          origin_id=default_origin_id)
+        print >> f
+        for key in keys: #origin_ids.get_dihedral_origin_id_labels():
+          origin_id=origin_ids.get_origin_id(key)
+          if origin_id==default_origin_id: continue
+          label=origin_ids.get_geo_file_header(key, internals=internals)
+          if label is None: continue
+          if i_label: label = '%s %s' % (label, i_label)
+          tempbuffer = StringIO.StringIO()
+          proxies.show_sorted(
+              by_value="residual",
+              sites_cart=sites_cart,
+              site_labels=site_labels,
+              f=tempbuffer,
+              prefix="",
+              origin_id=origin_id)
+          print >> f, label, tempbuffer.getvalue()[start:]
 
     for p_label, proxies in [
-        #("Dihedral angle", self.get_dihedral_proxies()),
-        #("C-Beta improper torsion angle", self.get_c_beta_torsion_proxies()),
-        #("Side chain torsion angle", self.get_chi_torsion_proxies()),
         ("Reference torsion angle", self.reference_dihedral_manager),
         ("NCS torsion angle", self.ncs_dihedral_manager),
         ("", self.ramachandran_manager),
-        ("Chirality", self.chirality_proxies),
-        ("", self.planarity_proxies),
         ("", self.parallelity_proxies)]:
       if proxies is not None:
         proxies.show_sorted(

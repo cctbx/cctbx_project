@@ -27,7 +27,9 @@ def _apply_link_using_proxies(link,
                               geometry_proxy_registries,
                         #      distance,
                               rt_mx_ji,
+                              origin_id=None,
                               ):
+  assert origin_id
   ######################################
   def _get_restraint_i_seqs(atom_group1,
                             atom_group2,
@@ -134,7 +136,9 @@ def _apply_link_using_proxies(link,
     proxy = geometry_restraints.bond_simple_proxy(
       i_seqs=i_seqs,
       distance_ideal=getattr(bond, value),
-      weight=1/bond.value_dist_esd**2)
+      weight=1/bond.value_dist_esd**2,
+      origin_id=origin_id,
+      )
     bond_params_table.update(i_seq=i_seqs[0],
                              j_seq=i_seqs[1],
                              params=proxy)
@@ -156,7 +160,9 @@ def _apply_link_using_proxies(link,
     proxy = geometry_restraints.angle_proxy(
       i_seqs=i_seqs,
       angle_ideal=angle.value_angle,
-      weight=1/angle.value_angle_esd**2)
+      weight=1/angle.value_angle_esd**2,
+      origin_id=origin_id,
+      )
     geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
   #
   for tor in link.tor_list:
@@ -170,6 +176,7 @@ def _apply_link_using_proxies(link,
       angle_ideal=tor.value_angle,
       weight=1/tor.value_angle_esd**2,
       periodicity=tor.period,
+      origin_id=origin_id,
       )
     geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
   #
@@ -191,6 +198,7 @@ def _apply_link_using_proxies(link,
       volume_ideal=volume_ideal,
       both_signs=both_signs,
       weight=25.,
+      origin_id=origin_id,
       )
     geometry_proxy_registries.chirality.add_if_not_duplicated(proxy=proxy)
   #
@@ -212,6 +220,7 @@ def _apply_link_using_proxies(link,
       proxy = geometry_restraints.planarity_proxy(
         i_seqs=planes[plane_id],
         weights=weights[plane_id],
+        origin_id=origin_id,
         )
       geometry_proxy_registries.planarity.add_if_not_duplicated(proxy=proxy)
   return count, bond_i_seqs
@@ -451,6 +460,7 @@ class linking_mixins(object):
       #
       # include & exclude selection
       #
+      origin_id = None
       if ( include_selections and
            distance>=max_bonded_cutoff_standard
            ):
@@ -638,6 +648,9 @@ Residue classes
       if not link_amino_acid_rna_dna:
         if "common_amino_acid" in class_key and "common_rna_dna" in class_key:
           continue
+      # get origin_id
+      if 'common_saccharide' in class_key:
+        origin_id = origin_ids['glycosidic']
       #
       names = [atom1.name, atom2.name]
       if verbose: print 'names',names
@@ -745,6 +758,7 @@ Residue classes
           bond_asu_table,
           geometry_proxy_registries,
           rt_mx_ji=link_rt_mx_ji,
+          origin_id=origin_id,
         )
         if len(bond_i_seqs)==0:
           if verbose:
@@ -794,6 +808,7 @@ Residue classes
             geometry_proxy_registries,
             rt_mx_ji=link_rt_mx_ji,
             link_carbon_dist=carbohydrate_bond_cutoff,
+            origin_id=origin_ids['glycosidic custom'],
           )
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
