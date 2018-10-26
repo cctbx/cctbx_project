@@ -328,7 +328,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     return Scan(
       vec2<int>(first_image_index, last_image_index),
       scan.get_image_oscillation(first_image_index),
-      new_exposure_times, new_epochs);
+      new_exposure_times, new_epochs, scan.get_batch_offset());
   }
 
   void scan_swap(Scan &lhs, Scan &rhs) {

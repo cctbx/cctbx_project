@@ -2,6 +2,7 @@ from __future__ import absolute_import, division
 
 from dxtbx.model import Scan
 
+import copy
 import pytest
 
 @pytest.fixture
@@ -13,7 +14,7 @@ def scan():
   return scan
 
 def test_is_batch_valid(scan):
-  """Check that the is_angle_valid function behaves properly."""
+  """Check that the is_batch_valid function behaves properly."""
   br1, br2 = scan.get_batch_range()
   for i in range(0, br1):
     assert scan.is_batch_valid(i) is False
@@ -21,6 +22,17 @@ def test_is_batch_valid(scan):
     assert scan.is_batch_valid(i) is True
   for i in range(br2+1, br2+100):
     assert scan.is_batch_valid(i) is False
+
+def test_batch_deepcopy(scan):
+  """Check that copy.deepcopy(scan) behaves properly."""
+  assert scan.get_batch_offset() == 100
+  scan1 = copy.deepcopy(scan)
+  assert scan1.get_batch_offset() == scan.get_batch_offset()
+
+def test_scan_slice(scan):
+  assert scan.get_batch_offset() == 100
+  scan1 = scan[:10]
+  assert scan1.get_batch_offset() == scan.get_batch_offset()
 
 def test_is_angle_valid(scan):
   """Check that the is_angle_valid function behaves properly."""
