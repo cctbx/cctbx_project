@@ -1,22 +1,4 @@
 from __future__ import absolute_import, division, print_function
-prios = ["boost", "scitbx", "cctbx", "rstbx", "labelit"]
-prios = dict(zip(prios, range(len(prios))))
-priority_modules = ['dials_algorithms_profile_model_modeller_ext']
-
-def cmp_so(a, b):
-  if a in priority_modules:
-    return -1
-  elif b in priority_modules:
-    return 1
-
-  def prio(s):
-    k = s.split("_")[0]
-    return prios.get(k, len(prios))
-  pa, pb = prio(a), prio(b)
-  result = cmp(pa, pb)
-  if (result == 0):
-    result = cmp(a, b)
-  return result
 
 def import_modules():
   # Search for __init__.py file and import those modules. This ensures all dependencies are loaded
@@ -74,7 +56,6 @@ def run(args):
     pylibext = sysconfig.get_config_vars("SO")[0]
     if (node.endswith("_ext" + pylibext)):
       ext_so.append(node.split(".")[0])
-  ext_so.sort(cmp_so)
   print("Before importing extensions:")
   vmi = introspection.virtual_memory_info()
   vmi.show(prefix="  ")
