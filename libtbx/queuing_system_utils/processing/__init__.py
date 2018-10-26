@@ -12,7 +12,7 @@ import os
 import time
 import itertools
 import glob
-from Queue import Empty as QueueEmptyException
+from six.moves.queue import Empty as QueueEmptyException
 
 class InstantTimeout(object):
   """

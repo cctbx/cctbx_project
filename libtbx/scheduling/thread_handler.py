@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import threading
-import Queue
+from six.moves import queue
 
 
 class exception_capturing_thread(threading.Thread):
@@ -49,7 +49,7 @@ class exception_capturing_thread(threading.Thread):
 
 class qfactory(object):
   """
-  Creator pattern for Queue.Queue, also include destruction
+  Creator pattern for queue.Queue, also include destruction
 
   Note this is a singleton object
   """
@@ -57,10 +57,10 @@ class qfactory(object):
   @staticmethod
   def create():
 
-    return Queue.Queue()
+    return queue.Queue()
 
 
   @staticmethod
-  def destroy(queue):
+  def destroy(q):
 
     pass

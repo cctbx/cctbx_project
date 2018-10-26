@@ -145,8 +145,8 @@ class QQFactory(object):
   @staticmethod
   def create():
 
-    import Queue
-    return Queue.Queue()
+    from six.moves import queue
+    return queue.Queue()
 
 
   @staticmethod

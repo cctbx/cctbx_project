@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from Queue import Empty
+from six.moves.queue import Empty
 from six.moves import cPickle as pickle
 import fcntl
 import tempfile

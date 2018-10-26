@@ -24,7 +24,7 @@ from __future__ import absolute_import, division, print_function
 
 import time
 from collections import deque
-from Queue import Empty, Full
+from six.moves.queue import Empty, Full
 
 from libtbx.scheduling import SchedulingError, identifier
 from libtbx.scheduling import result

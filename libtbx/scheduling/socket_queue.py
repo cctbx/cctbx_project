@@ -10,8 +10,8 @@ class MultiQueue(object):
 
   def create(self, name):
 
-    import Queue
-    self.queue_for[ name ] = Queue.Queue()
+    from six.moves import queue
+    self.queue_for[ name ] = queue.Queue()
 
 
   def remove(self, name):

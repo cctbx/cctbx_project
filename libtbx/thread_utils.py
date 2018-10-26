@@ -5,7 +5,7 @@ from libtbx.utils import Abort
 from libtbx import object_oriented_patterns as oop
 from libtbx import adopt_init_args
 import libtbx.callbacks # import dependency
-import Queue
+from six.moves import queue
 import threading
 import warnings
 import traceback
@@ -28,8 +28,8 @@ class thread_with_callback_and_wait(threading.Thread):
     self._run_kwds['callback'] = self._callback_proxy
     self._callback = callback
     self._first_callback = first_callback
-    self._caller_wait = Queue.Queue(0)
-    self._queue = Queue.Queue(0)
+    self._caller_wait = queue.Queue(0)
+    self._queue = queue.Queue(0)
     threading.Thread.__init__(self)
 
   def run(self):

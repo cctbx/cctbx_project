@@ -23,7 +23,7 @@ from __future__ import absolute_import, division, print_function
 
 import time
 from collections import deque
-from Queue import Empty
+from six.moves.queue import Empty
 
 from libtbx.scheduling import result
 from libtbx.scheduling import identifier

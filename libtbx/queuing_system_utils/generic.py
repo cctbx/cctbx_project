@@ -7,13 +7,13 @@ module (Queue and Job), with certain restrictions placed by the pickle module
 from __future__ import absolute_import, division, print_function
 
 from six.moves import cPickle as pickle
+from six.moves.queue import Empty as QueueEmptyException
 import subprocess
 import os
 import time
 import itertools
 import glob
 import re
-from Queue import Empty as QueueEmptyException
 
 import libtbx.load_env
 

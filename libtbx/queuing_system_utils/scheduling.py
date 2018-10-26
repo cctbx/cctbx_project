@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from builtins import range
+from six.moves.queue import Empty, Full
 from libtbx.scheduling import result
 
 import time
@@ -110,8 +111,6 @@ class RetrieveProcessor(object):
 
 
   def finalize(self, job):
-
-    from Queue import Empty
 
     try:
       job_result = self.queue.get( block = self.block, timeout = self.timeout )
@@ -296,8 +295,6 @@ class WorkerMaintenance(object):
     if process.is_alive():
       outqueue.put( None )
 
-      from Queue import Empty
-
       try:
         inqueue.get( timeout = self.grace )
 
@@ -410,8 +407,6 @@ class WorkerJob(object):
   def poll(self, block):
 
     if self.exitcode is None:
-      from Queue import Empty
-
       try:
         self.result = self.worker.get( block = block )
         self.exitcode = 0
@@ -1302,8 +1297,6 @@ def pool_process_cycle(pid, inqueue, outqueue, waittime, lifeman, sentinel):
   manager = lifeman()
   outqueue.put( ( worker_startup_event, pid ) )
 
-  from Queue import Empty
-
   while manager.is_alive():
     try:
       data = inqueue.get( timeout = waittime )
@@ -1647,8 +1640,6 @@ class ProcessPool(object):
 
         self.terminatings.add( pid )
         del self.process_numbered_as[ pid ]
-
-    from Queue import Empty, Full
 
     while self.unreporteds:
       try:
