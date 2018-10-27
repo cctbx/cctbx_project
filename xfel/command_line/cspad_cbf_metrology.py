@@ -375,7 +375,21 @@ def refine_expanding(params, merged_scope, combine_phil):
     result.show_stdout()
   else:
     input_name = "combined"
-
+  # --------------------------
+  if params.panel_filter is not None:
+    from libtbx import easy_pickle
+    print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in params.panel_filter]))
+    combined_path = "%s_combined_reflections.pickle"%params.tag
+    data = easy_pickle.load(combined_path)
+    sel = None
+    for panel_id in params.panel_filter:
+      if sel is None:
+        sel = data['panel'] == panel_id
+      else:
+        sel |= data['panel'] == panel_id
+    print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
+    easy_pickle.dump(combined_path, data.select(sel))
+  # ----------------------------------
   # this is the order to refine the CSPAD in
   steps = {}
   steps[0] = [2, 3]
@@ -483,7 +497,10 @@ def refine_expanding(params, merged_scope, combine_phil):
         # Iterate through the panel groups at this level
         for panel_group in iterate_detector_at_level(detector.hierarchy(), 0, i):
           # Were there panels refined in this step in this panel group?
-          test = [list(detector).index(panel) in steps[j] for panel in iterate_panels(panel_group)]
+          if params.panel_filter:
+            test = [list(detector).index(panel) in steps[j] for panel in iterate_panels(panel_group) if list(detector).index(panel) in params.panel_filter]
+          else:
+            test = [list(detector).index(panel) in steps[j] for panel in iterate_panels(panel_group)]
           if not any(test): continue
           # Compute the translation along the normal of this panel group.  This is defined as distance in dials.refine
           displacements.append(col(panel_group.get_local_fast_axis()).cross(col(panel_group.get_local_slow_axis())).dot(col(panel_group.get_local_origin())))
@@ -499,7 +516,10 @@ def refine_expanding(params, merged_scope, combine_phil):
         # If all of the panel groups in this level moved, no need to do anything.
         if len(displacements) != len(list(iterate_detector_at_level(detector.hierarchy(), 0, i))):
           for panel_group in iterate_detector_at_level(detector.hierarchy(), 0, i):
-            test = [list(detector).index(panel) in steps[j] for panel in iterate_panels(panel_group)]
+            if params.panel_filter:
+              test = [list(detector).index(panel) in steps[j] and list(detector).index(panel) in params.panel_filter for panel in iterate_panels(panel_group)]
+            else:
+              test = [list(detector).index(panel) in steps[j] for panel in iterate_panels(panel_group)]
             # If any of the panels in this panel group moved, no need to do anything
             if any(test): continue
 
