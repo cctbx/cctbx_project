@@ -328,7 +328,9 @@ class detached_process_client (detached_base) :
 
   def check_stdout (self) :
     if self._logfile is None and os.path.exists(self.stdout_file) :
-      self._logfile = open(self.stdout_file, "r", 0)
+      self._logfile = open(self.stdout_file, "r")
+      stat = os.stat(self.stdout_file)
+      self._logfile.seek(stat.st_size)
     if self._logfile is not None :
       last = self._logfile.tell()
       data = self._logfile.read()
