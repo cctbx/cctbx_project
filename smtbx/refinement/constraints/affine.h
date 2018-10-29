@@ -33,8 +33,8 @@ public:
     this->a[1] = a_1;
   }
 
-  affine_scalar_parameter(af::const_ref<scalar_parameter *> const &u,
-                          af::const_ref<double> const &a, double b)
+  affine_scalar_parameter(af::shared<scalar_parameter *> const &u,
+                          af::shared<double> const &a, double b)
   : parameter(u.size()), a(new double[a.size()]), b(b)
   {
     SMTBX_ASSERT(u.size() == a.size())(u.size())(a.size());
