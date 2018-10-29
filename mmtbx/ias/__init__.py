@@ -661,6 +661,7 @@ class manager(object):
      self.ias_selection = None
      if(log is None): self.log = sys.stdout
      if(self.params is None): self.params = ias_master_params.extract()
+     self.geometry.pair_proxies(xray_structure.sites_cart())
      bond_proxies_simple, asu = self.geometry.get_covalent_bond_proxies()
      print >> self.log, \
                   "Total number of covalent bonds = ", len(bond_proxies_simple)
