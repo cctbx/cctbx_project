@@ -22,8 +22,8 @@ namespace smtbx { namespace refinement { namespace constraints {
              ((arg("dependee_0"), arg("a_0"),
                arg("dependee_1"), arg("a_1"),
                arg("b"))))
-        .def(init<af::const_ref<scalar_parameter *> const &,
-                  af::const_ref<double> const &, double>
+        .def(init<af::shared<scalar_parameter *> const &,
+                  af::shared<double> const &, double>
              ((arg("dependees"), arg("a"), arg("b"))))
         .add_property("affine_form", &wt::affine_form)
         ;

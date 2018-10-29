@@ -26,15 +26,14 @@ namespace smtbx { namespace refinement { namespace constraints {
                arg("dependee_1"), arg("a_1"),
                arg("b"),
                arg("scatterer"))))
-          .def(init<af::const_ref<scalar_parameter *> const &,
-                    af::const_ref<double> const &, double,
+          .def(init<af::shared<scalar_parameter *> const &,
+                    af::shared<double> const &, double,
                     wt::scatterer_type *>
                ((arg("dependees"), arg("a"), arg("b"), arg("scatterer"))))
             ;
         implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
       }
     };
-
 
     struct dependent_occu_wrapper  {
       typedef dependent_occupancy wt;
