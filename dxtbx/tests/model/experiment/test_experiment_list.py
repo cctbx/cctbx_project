@@ -703,6 +703,14 @@ def test_experimentlist_with_identifiers():
   experiments[0].identifier = "spam"
   assert tuple(experiments.identifiers()) == ("spam", "sausage")
 
+  experiments.append(Experiment(identifier="bacon"))
+  experiments.select_on_experiment_identifiers(["spam", "bacon"])
+  assert list(experiments.identifiers()) == ["spam", "bacon"]
+  experiments.append(Experiment(identifier="ham"))
+  experiments.append(Experiment(identifier="jam"))
+  experiments.remove_on_experiment_identifiers(["spam", "jam"])
+  assert list(experiments.identifiers()) == ["bacon", "ham"]
+
 def check(el1, el2):
   # All the experiment lists should be the same length
   assert len(el1) == 1

@@ -77,6 +77,38 @@ namespace dxtbx { namespace model {
     }
 
     /**
+     * Remove experiments from the experiment list based on experiment identifiers
+     */
+    void remove_on_experiment_identifiers(boost::python::list identifiers) {
+        boost::python::ssize_t n = boost::python::len(identifiers);
+        for (boost::python::ssize_t i=0; i<n; i++){
+            boost::python::object elem = identifiers[i];
+            std::string elem_str = boost::python::extract<std::string>(elem);
+            std::size_t j = find(elem_str);
+            erase(j);
+        }
+    }
+    /**
+    * Select experiments from the experiment list based on experiment identifiers
+    */
+    void select_on_experiment_identifiers(boost::python::list identifiers) {
+        boost::python::ssize_t n = boost::python::len(identifiers);
+        int n_exp = data_.size();
+        for (int i=n_exp; i > 0; i--) {
+            std::string iden = data_[i-1].get_identifier();
+            bool in_list = false;
+            for (boost::python::ssize_t j=0; j<n; j++){
+                boost::python::object elem = identifiers[j];
+                std::string elem_str = boost::python::extract<std::string>(elem);
+                if (elem_str == iden)
+                  in_list = true;
+            }
+            if (in_list == false)
+                erase(i-1);
+        }
+    }
+
+    /**
      * Get the number of experiments
      */
     std::size_t size() const {
