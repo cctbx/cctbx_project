@@ -131,7 +131,7 @@ class traceback_info(object):
 
   def raise_with_traceback(self, exception):
 
-    raise_(type(exception), None, self.traceback)
+    raise_(type(exception), exception, self.traceback)
 
 
   def getstate_with_traceback(self):
