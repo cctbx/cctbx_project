@@ -17,8 +17,12 @@ class Script(Script_Base):
 
     return file_list
 
-  def run(self, comm):
+  def run(self, comm = None):
     print('''Mock run, merge some data.''')
+
+    if comm is None:
+      from mpi4py import MPI
+      comm = MPI.COMM_WORLD
 
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -49,7 +53,9 @@ class Script(Script_Base):
 
     print ('Rank %d has read %d experiments consisting of %d reflections'%(rank, len(experiments), len(reflections)))
 
-    return
+    experiments, reflections = self.modify(experiments, reflections)
+
+    return experiments, reflections
 
   def load_data(self, file_list):
     from dxtbx.model.experiment_list import ExperimentList

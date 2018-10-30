@@ -376,6 +376,9 @@ class Script(object):
     from xfel.merging.application.validation.application import application
     application(self.params)
 
+  def modify(self, experiments, reflections):
+    return experiments, reflections #nop
+
   def run(self):
     print('''Initializing and validating phil...''')
 
