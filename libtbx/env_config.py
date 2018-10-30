@@ -1620,6 +1620,8 @@ selfx:
     Write indirect dispatcher scripts for all console_scripts entry points
     that have existing dispatcher scripts in the base/bin directory, but
     add a 'libtbx.' prefix.
+    Generate dispatchers for any libtbx.dispatcher.script entry points.
+    These can be arbitrary non-python scripts defined by modules.
     '''
     try:
       import pkg_resources
@@ -1640,6 +1642,14 @@ selfx:
       self.write_dispatcher(
           source_file=os.path.join(bin_directory, ep.name),
           target_file=os.path.join('bin', 'libtbx.' + ep.name),
+      )
+
+    entry_points = pkg_resources.iter_entry_points('libtbx.dispatcher.script')
+    entry_points = filter(lambda ep: ep.name in entry_point_candidates, entry_points)
+    for ep in entry_points:
+      self.write_dispatcher(
+          source_file=os.path.join(bin_directory, ep.module_name),
+          target_file=os.path.join('bin', ep.name),
       )
 
   def write_command_version_duplicates(self):
