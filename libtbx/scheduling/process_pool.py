@@ -566,7 +566,7 @@ class manager(object):
 
   def poll(self):
 
-    for ( pid, process ) in self.process_numbered_as.items():
+    for (pid, process) in list(self.process_numbered_as.items()):
       if not process.is_alive():
         process.join()
 

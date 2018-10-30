@@ -188,7 +188,7 @@ class manager(object):
   def poll(self):
 
     # Check existing jobs
-    for jobid in self.process_data_for.keys():
+    for jobid in list(self.process_data_for):
       process = self.process_data_for[ jobid ]
 
       if not process.is_alive():

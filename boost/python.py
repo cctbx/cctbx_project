@@ -23,7 +23,7 @@ def import_ext(name, optional=False):
     previous_dlopenflags = sys.getdlopenflags()
     sys.setdlopenflags(0x100|0x2)
   try: mod = __import__(name)
-  except ImportError, e:
+  except ImportError as e:
     if (optional): return None
     error_msg = str(e)
     m = symbol_not_found_pat.search(error_msg)
@@ -228,7 +228,7 @@ def process_docstring_options(env_var="BOOST_ADAPTBX_DOCSTRING_OPTIONS"):
       {},
       {"docstring_options": ext.docstring_options})
   except KeyboardInterrupt: raise
-  except Exception, e:
+  except Exception as e:
     from libtbx.str_utils import show_string
     raise RuntimeError(
       "Error processing %s=%s\n" % (env_var, show_string(from_env))
