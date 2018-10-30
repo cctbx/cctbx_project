@@ -229,8 +229,11 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
       cmd.test_name = test_name
     yield cmd
 
+if sys.hexversion >= 0x03000000:
+  unicode = str
+
 def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
-  if isinstance(a1, str) or isinstance(a1, unicode):
+  if isinstance(a1, (bytes, unicode)):
     return a1 == a2
   if hasattr(a1, "__len__"): # traverse list
     if (len(a1) != len(a2)):
@@ -701,7 +704,8 @@ approx_equal multiplier: 10000000000.0
   assert not approx_equal(0, 1.e-5, out=out)
   assert approx_equal(0, 1.e-6)
   out = StringIO()
-  assert not approx_equal([[0,1],[2j,3]],[[0,1],[-2j,3]], out=out, prefix="$%")
+  assert not approx_equal([[0,1],[2j,3]],[[0,1],[complex(0,-2),3]], out=out,
+                          prefix="$%")
   assert not show_diff(out.getvalue().replace("1e-006", "1e-06"), """\
 $%approx_equal eps: 1e-06
 $%approx_equal multiplier: 10000000000.0
@@ -745,7 +749,8 @@ eps_eq eps: 1e-06
   assert not eps_eq(0, 1.e-5, out=out)
   assert eps_eq(0, 1.e-6)
   out = StringIO()
-  assert not eps_eq([[0,1],[2j,3]],[[0,1],[-2j,3]], out=out, prefix="$%")
+  assert not eps_eq([[0,1],[2j,3]],[[0,1],[complex(0,-2),3]], out=out,
+                    prefix="$%")
   assert not show_diff(out.getvalue().replace("1e-006", "1e-06"), """\
 $%eps_eq eps: 1e-06
 $%    0
