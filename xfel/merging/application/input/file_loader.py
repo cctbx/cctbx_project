@@ -30,11 +30,6 @@ class file_loader(object):
                self.params.input.experiments_suffix)
             if not os.path.exists(experiments_path): continue
             yield experiments_path, path
-          elif filename.endswith(self.params.input.experiments_suffix):
-            pickle_path = os.path.join(dirname, filename.split(self.params.input.experiments_suffix)[0] +
-               self.params.input.reflections_suffix)
-            if not os.path.exists(pickle_path): continue
-            yield path, pickle_path
 
   # used by rank 0, striping
   def filename_lister(self):
@@ -81,6 +76,8 @@ class Script(Script_Base):
 
     experiments, reflections = self.load_data()
     print ('Read %d experiments consisting of %d reflections'%(len(experiments), len(reflections)))
+
+    experiments, reflections = self.modify(experiments, reflections)
 
     return
 
