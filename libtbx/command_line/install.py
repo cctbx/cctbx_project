@@ -76,6 +76,8 @@ def run(args):
 
     if warehouse[package].get('configure', True):
       packages_to_configure.add(package)
+    if warehouse[package].get('force-configure'):
+      packages_to_configure.add('libtbx')
 
   if packages_to_configure:
     packages_to_configure = sorted(packages_to_configure)
@@ -164,11 +166,22 @@ def install_zip(**kwargs):
   cleanup()
   return True
 
+def install_pip(**kwargs):
+  git_installation = install_git(**kwargs)
+  if not git_installation:
+    return False
+  result = procrunner.run_process(['libtbx.pip', 'install', '-e', kwargs['location']], print_stderr=True)
+  if result['exitcode']:
+    return False
+  return True
+
 mechanisms = collections.OrderedDict((
   ('git-auth', install_git),
   ('git-anon', install_git),
   ('http-zip', install_zip),
   ('http-tgz', install_tgz),
+  ('pip-auth', install_pip),
+  ('pip-anon', install_pip),
 ))
 
 warehouse = {
@@ -180,6 +193,12 @@ warehouse = {
   'dlstbx': {
     'git-auth': 'dascgitolite@dasc-git.diamond.ac.uk:/dials/dlstbx.git',
   },
+  'fast_dp': {
+    'pip-auth': 'git@github.com:/DiamondLightSource/fast_dp',
+    'pip-anon': 'https://github.com/DiamondLightSource/fast_dp.git',
+    'configure': False,
+    'force-configure': True,
+  },
   'i19': {
     'git-auth': 'git@github.com:/xia2/i19',
     'git-anon': 'https://github.com/xia2/i19.git',
@@ -188,11 +207,6 @@ warehouse = {
   'msgpack': {
     'http-tgz': { 'url': 'https://github.com/msgpack/msgpack-c/releases/download/cpp-2.1.5/msgpack-2.1.5.tar.gz' },
     'configure': False,
-  },
-  'xia2_regression': {
-    'git-auth': 'git@github.com:/xia2/xia2_regression',
-    'git-anon': 'https://github.com/xia2/xia2_regression.git',
-    'http-zip': { 'url': 'https://github.com/xia2/xia2_regression/archive/master.zip', 'trim': 1 },
   },
 }
 
