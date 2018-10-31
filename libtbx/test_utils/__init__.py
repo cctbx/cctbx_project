@@ -13,6 +13,7 @@ import sys
 import time
 import types
 
+import six
 try:
   import threading
 except ImportError:
@@ -229,11 +230,8 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
       cmd.test_name = test_name
     yield cmd
 
-if sys.hexversion >= 0x03000000:
-  unicode = str
-
 def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
-  if isinstance(a1, (bytes, unicode)):
+  if isinstance(a1, (six.text_type, six.binary_type)):
     return a1 == a2
   if hasattr(a1, "__len__"): # traverse list
     if (len(a1) != len(a2)):
