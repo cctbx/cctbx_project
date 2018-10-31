@@ -1,7 +1,7 @@
 from __future__ import division
 from libtbx.utils import Sorry, null_out
 from iotbx.pdb import common_residue_names_get_class
-from iotbx.pdb import amino_acid_codes, input
+from iotbx.pdb import input
 from cctbx.array_family import flex
 import math
 import sys
@@ -316,60 +316,6 @@ def get_angle_average(angles):
     sum += a2
   average = sum / n_angles
   return average
-
-def chain_from_selection(chain, selection):
-  from iotbx.pdb.hierarchy import new_hierarchy_from_chain
-  new_hierarchy = new_hierarchy_from_chain(chain=chain).select(selection)
-
-def hierarchy_from_selection(pdb_hierarchy, selection, log):
-  import iotbx.pdb.hierarchy
-  temp_hierarchy = pdb_hierarchy.select(selection)
-  altloc = None
-  hierarchy = iotbx.pdb.hierarchy.root()
-  model = iotbx.pdb.hierarchy.model()
-  for chain in temp_hierarchy.chains():
-    for conformer in chain.conformers():
-      if not conformer.is_protein() and not conformer.is_na():
-        continue
-      elif altloc is None or conformer.altloc == altloc:
-        model.append_chain(chain.detached_copy())
-        altloc = conformer.altloc
-      else:
-        print >> log, \
-        "* Multiple alternate conformations found, using altid %s *" \
-        % altloc
-        continue
-  if len(model.chains()) != 1:
-    raise Sorry("more than one chain in selection")
-  hierarchy.append_model(model)
-  return hierarchy
-
-def is_residue_in_selection(i_seqs, selection):
-  assert isinstance(selection, flex.bool)
-  for i_seq in i_seqs:
-    if not selection[i_seq]:
-      return False
-  return True
-
-def get_nucleic_acid_one_letter_code(resname):
-  olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
-  if olc != "X":
-    return "X"
-  if resname[0:2] == "  ":
-    return resname[2]
-  elif resname[0] == " " and (resname[1] == "D" or resname[1] == "d"):
-    return resname[2]
-  else:
-    return resname[0]
-
-def get_unique_segid(chain):
-  segid = None
-  for atom in chain.atoms():
-    if segid is None:
-      segid = atom.segid
-    elif segid != atom.segid:
-      return None
-  return segid
 
 def check_for_internal_chain_ter_records(
       pdb_hierarchy,
