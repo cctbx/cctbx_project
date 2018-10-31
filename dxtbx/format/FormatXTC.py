@@ -65,6 +65,7 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
       params = FormatXTC.params_from_phil(locator_scope,image_file)
     except Exception:
       return False
+    if params is None: return False
 
     ds = FormatXTC._get_datasource(image_file, params)
     return True
