@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/16/2018
+Last Changed: 10/30/2018
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -147,8 +147,8 @@ class Triage(object):
 
     # Read settings from the DIALS target (.phil) file
     # If none is provided, use default settings (and may God have mercy)
-    if self.params.dials.target is not None:
-      with open(self.params.dials.target, 'r') as settings_file:
+    if self.params.cctbx_xfel.target is not None:
+      with open(self.params.cctbx_xfel.target, 'r') as settings_file:
         settings_file_contents = settings_file.read()
       settings = parse(settings_file_contents)
       current_phil = phil_scope.fetch(sources=[settings])
@@ -161,20 +161,20 @@ class Triage(object):
     self.processor = IOTADialsProcessor(params=self.phil)
 
     # Set customized parameters
-    beamX = self.params.image_conversion.beam_center.x
-    beamY = self.params.image_conversion.beam_center.y
+    beamX = self.params.image_import.beam_center.x
+    beamY = self.params.image_import.beam_center.y
     if beamX != 0 or beamY != 0:
       self.phil.geometry.detector.slow_fast_beam_centre = '{} {}'.format(
         beamY, beamX)
-    if self.params.image_conversion.distance != 0:
-      self.phil.geometry.detector.distance = self.params.image_conversion.distance
+    if self.params.image_import.distance != 0:
+      self.phil.geometry.detector.distance = self.params.image_import.distance
     if self.params.advanced.estimate_gain:
       self.phil.spotfinder.threshold.dispersion.gain = gain
-    if self.params.image_conversion.mask is not None:
-      self.phil.spotfinder.lookup.mask = self.params.image_conversion.mask
-      self.phil.integration.lookup.mask = self.params.image_conversion.mask
+    if self.params.image_import.mask is not None:
+      self.phil.spotfinder.lookup.mask = self.params.image_import.mask
+      self.phil.integration.lookup.mask = self.params.image_import.mask
 
-    if self.params.dials.auto_threshold:
+    if self.params.cctbx_xfel.auto_threshold:
       threshold = int(center_intensity)
       self.phil.spotfinder.threshold.dispersion.global_threshold = threshold
 
@@ -189,7 +189,7 @@ class Triage(object):
     # Triage image
     try:
       observed = self.processor.find_spots(datablock=self.datablock)
-      if len(observed) >= self.params.image_triage.min_Bragg_peaks:
+      if len(observed) >= self.params.cctbx_ha14.image_triage.min_Bragg_peaks:
         log_info = 'ACCEPTED! {} observed reflections.'.format(len(observed))
         status = None
       else:
@@ -222,8 +222,8 @@ class Integrator(object):
 
     # Read settings from the DIALS target (.phil) file
     # If none is provided, use default settings (and may God have mercy)
-    if self.params.dials.target is not None:
-      with open(self.params.dials.target, 'r') as settings_file:
+    if self.params.cctbx_xfel.target is not None:
+      with open(self.params.cctbx_xfel.target, 'r') as settings_file:
         settings_file_contents = settings_file.read()
       settings = parse(settings_file_contents)
       current_phil = phil_scope.fetch(source=settings)
@@ -244,45 +244,34 @@ class Integrator(object):
     self.int_log = logfile
 
     # Set customized parameters
-    beamX = self.params.image_conversion.beam_center.x
-    beamY = self.params.image_conversion.beam_center.y
+    beamX = self.params.image_import.beam_center.x
+    beamY = self.params.image_import.beam_center.y
     if beamX != 0 or beamY != 0:
       self.phil.geometry.detector.slow_fast_beam_centre = '{} {}'.format(
         beamY, beamX)
-    if self.params.image_conversion.distance != 0:
-      self.phil.geometry.detector.distance = self.params.image_conversion.distance
-    if self.params.image_conversion.mask is not None:
-      self.phil.spotfinder.lookup.mask = self.params.image_conversion.mask
-      self.phil.integration.lookup.mask = self.params.image_conversion.mask
+    if self.params.image_import.distance != 0:
+      self.phil.geometry.detector.distance = self.params.image_import.distance
+    if self.params.image_import.mask is not None:
+      self.phil.spotfinder.lookup.mask = self.params.image_import.mask
+      self.phil.integration.lookup.mask = self.params.image_import.mask
 
-    if self.params.dials.target_space_group is not None:
-      sg = self.params.dials.target_space_group
+    if self.params.cctbx_xfel.target_space_group is not None:
+      sg = self.params.cctbx_xfel.target_space_group
       self.phil.indexing.known_symmetry.space_group = sg
 
-    if self.params.dials.target_unit_cell is not None:
-      uc = self.params.dials.target_unit_cell
+    if self.params.cctbx_xfel.target_unit_cell is not None:
+      uc = self.params.cctbx_xfel.target_unit_cell
       self.phil.indexing.known_symmetry.unit_cell = uc
 
-    if self.params.dials.use_fft3d:
+    if self.params.cctbx_xfel.use_fft3d:
       self.phil.indexing.stills.method_list = ['fft1d',
                                                'fft3d',
                                                'real_space_grid_search']
-    if self.params.dials.significance_filter.flag_on:
-      if self.params.dials.significance_filter.sigma is not None:
-        sigma = self.params.dials.significance_filter.sigma
+    if self.params.cctbx_xfel.significance_filter.flag_on:
+      if self.params.cctbx_xfel.significance_filter.sigma is not None:
+        sigma = self.params.cctbx_xfel.significance_filter.sigma
         self.phil.significance_filter.enable = True
         self.phil.significance_filter.isigi_cutoff = sigma
-
-    # # Write target file for this IOTA run
-    # with util.Capturing() as output:
-    #   mod_phil = current_phil.format(python_object=self.phil)
-    #   mod_phil.show()
-    #   txt_out = ''
-    # for one_output in output:
-    #   txt_out += one_output + '\n'
-    # local_target_file = os.path.join(self.int_base, 'target.phil')
-    # with open(local_target_file, 'w') as tf:
-    #   tf.write(txt_out)
 
     self.img = [source_image]
     self.obj_base = object_folder
@@ -294,7 +283,7 @@ class Integrator(object):
     self.obj_filename = "int_{}".format(os.path.basename(self.img[0]))
 
     # Auto-set threshold and gain (not saved for target.phil)
-    if self.params.dials.auto_threshold:
+    if self.params.cctbx_xfel.auto_threshold:
       # This is still experimental and I'm not sure if it does anything...
 
       # rad_avg = RadAverageCalculator(datablock=self.datablock)
@@ -378,7 +367,7 @@ class Integrator(object):
 
       if (                                        self.fail is None and
               self.phil.indexing.known_symmetry.space_group is None and
-                             self.params.dials.determine_sg_and_reindex
+                             self.params.cctbx_xfel.determine_sg_and_reindex
           ):
         try:
           print ("{:-^100}\n".format(" DETERMINING SPACE GROUP : "))
@@ -409,13 +398,13 @@ class Integrator(object):
           print (error_message)
           self.fail = 'failed integration'
 
-    if self.fail is None and self.params.dials.filter.flag_on:
+    if self.fail is None and self.params.cctbx_xfel.filter.flag_on:
       selector = Selector(frame=self.frame,
-                          uc_tol=self.params.dials.filter.target_uc_tolerance,
-                          pg=self.params.dials.filter.target_pointgroup,
-                          uc=self.params.dials.filter.target_unit_cell,
-                          min_ref=self.params.dials.filter.min_reflections,
-                          min_res=self.params.dials.filter.min_resolution)
+                          uc_tol=self.params.cctbx_xfel.filter.target_uc_tolerance,
+                          pg=self.params.cctbx_xfel.filter.target_pointgroup,
+                          uc=self.params.cctbx_xfel.filter.target_unit_cell,
+                          min_ref=self.params.cctbx_xfel.filter.min_reflections,
+                          min_res=self.params.cctbx_xfel.filter.min_resolution)
       self.fail = selector.result_filter()
 
     with open(self.int_log, 'w') as tf:
@@ -435,7 +424,7 @@ class Integrator(object):
       sigmas = obs.sigmas()
       I_over_sigI = Is / sigmas
       spots = len(Is)
-      strong_spots = len([i for i in I_over_sigI if i >= self.params.cctbx.selection.min_sigma])
+      strong_spots = len([i for i in I_over_sigI if i >= self.params.cctbx_ha14.selection.min_sigma])
 
       # Mosaicity parameters
       mosaicity = round((self.frame.get('ML_half_mosaicity_deg', [0])[0]), 6)

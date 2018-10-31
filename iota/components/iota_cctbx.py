@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/16/2018
+Last Changed: 10/30/2018
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
@@ -74,15 +74,15 @@ class Triage(object):
 
     # Perform spotfinding
     # ... using spotfinding grid search
-    if self.params.image_triage.type == 'grid_search':
+    if self.params.cctbx_ha14.image_triage.type == 'grid_search':
       log_info.append('\n CCTBX TRIAGE grid search:')
       # Determine grid search extent
-      a_min = self.params.image_triage.grid_search.area_min
-      a_max = self.params.image_triage.grid_search.area_max
-      a_step = (a_max - a_min) // self.params.image_triage.grid_search.step_size
-      h_min = self.params.image_triage.grid_search.height_min
-      h_max = self.params.image_triage.grid_search.height_max
-      h_step = (h_max - h_min) // self.params.image_triage.grid_search.step_size
+      a_min = self.params.cctbx_ha14.image_triage.grid_search.area_min
+      a_max = self.params.cctbx_ha14.image_triage.grid_search.area_max
+      a_step = (a_max - a_min) // self.params.cctbx_ha14.image_triage.grid_search.step_size
+      h_min = self.params.cctbx_ha14.image_triage.grid_search.height_min
+      h_max = self.params.cctbx_ha14.image_triage.grid_search.height_max
+      h_step = (h_max - h_min) // self.params.cctbx_ha14.image_triage.grid_search.step_size
 
       # Cycle through grid points
       spotlist = []
@@ -117,21 +117,21 @@ class Triage(object):
     # ... using spotfinding without grid search
     else:
       # Set spotfinding params
-      sf_params.distl.minimum_spot_area = self.params.cctbx.grid_search.area_median
-      sf_params.distl.minimum_spot_height = self.params.cctbx.grid_search.height_median
-      sf_params.distl.minimum_signal_height = self.params.cctbx.grid_search.height_median
+      sf_params.distl.minimum_spot_area = self.params.cctbx_ha14.grid_search.area_median
+      sf_params.distl.minimum_spot_height = self.params.cctbx_ha14.grid_search.height_median
+      sf_params.distl.minimum_signal_height = self.params.cctbx_ha14.grid_search.height_median
 
       # Perform spotfinding
       Bragg_spots = self.run_distl(sf_params)
 
       # Extract spotfinding results
       N_Bragg_spots = len(Bragg_spots)
-      start_sph = self.params.cctbx.grid_search.height_median
-      start_sih = self.params.cctbx.grid_search.height_median
-      start_spa = self.params.cctbx.grid_search.area_median
+      start_sph = self.params.cctbx_ha14.grid_search.height_median
+      start_sih = self.params.cctbx_ha14.grid_search.height_median
+      start_spa = self.params.cctbx_ha14.grid_search.area_median
 
     # Determine triage success
-    if N_Bragg_spots >= self.params.image_triage.min_Bragg_peaks:
+    if N_Bragg_spots >= self.params.cctbx_ha14.image_triage.min_Bragg_peaks:
       log_info.append('ACCEPTED! Selected starting point:')
       log_info.append('{:<{w}}: S = {:<2}, H = {:<2}, A = {:<2}, Bragg = {:<6.0f}'\
                       ''.format(img_filename, start_sih, start_sph, start_spa,
@@ -162,16 +162,16 @@ class Integrator(object):
     self.params = params
     self.img = source_image
     self.out_img = output_image
-    self.min_sigma = self.params.cctbx.selection.min_sigma
-    self.target = os.path.abspath(self.params.cctbx.target)
+    self.min_sigma = self.params.cctbx_ha14.selection.min_sigma
+    self.target = os.path.abspath(self.params.cctbx_ha14.target)
     self.viz = viz
     self.tag = tag
     self.int_log = log
     self.charts = self.params.analysis.charts
     self.tmp_base = tmp_base
     self.single_image = single_image
-    self.method = self.params.mp_method
-    self.queue = self.params.mp_queue
+    self.method = self.params.mp.method
+    self.queue = self.params.mp.queue
 
     self.args = ["target={}".format(self.target),
                  "indexing.data={}".format(self.img),
@@ -184,13 +184,13 @@ class Integrator(object):
                  "indexing.verbose_cv=True"]
 
     # Add target unit cell if exists
-    if self.params.cctbx.target_unit_cell is not None:
-      t_uc = [str(i) for i in self.params.cctbx.target_unit_cell.parameters()]
+    if self.params.cctbx_ha14.target_unit_cell is not None:
+      t_uc = [str(i) for i in self.params.cctbx_ha14.target_unit_cell.parameters()]
       self.args.extend(['target_cell="{}"'.format(' '.join(t_uc))])
 
     # Translate / add target lattice if exists
-    t_lat = self.params.cctbx.target_lattice_type
-    if t_lat is not None:
+    t_lat = util.makenone(self.params.cctbx_ha14.target_lattice_type)
+    if t_lat:
       if t_lat == 'triclinic':
         known_setting = 1
       elif t_lat == 'monoclinic':
@@ -206,13 +206,13 @@ class Integrator(object):
       self.args.extend(['known_setting={}'.format(known_setting)])
 
     # Centering type if exists
-    t_ctype = self.params.cctbx.target_centering_type
+    t_ctype = self.params.cctbx_ha14.target_centering_type
     if t_ctype is not None:
       self.args.extend(['target_cell_centring_type={}'.format(t_ctype)])
 
     # Resolution, if exists
-    hires = self.params.cctbx.resolution_limits.high
-    lowres = self.params.cctbx.resolution_limits.low
+    hires = self.params.cctbx_ha14.resolution_limits.high
+    lowres = self.params.cctbx_ha14.resolution_limits.low
     if hires is None:
       hires = 1.5
     if lowres is None:

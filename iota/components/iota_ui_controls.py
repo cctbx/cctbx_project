@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 10/17/2018
+Last Changed: 10/30/2018
 Description : IOTA GUI controls
 '''
 
@@ -686,9 +686,12 @@ class OptionCtrl(CtrlBase):
       opt_box.AddGrowableRow(0)
 
     if expand_cols is not None:
-      assert isinstance(expand_cols, (list, tuple))
-      for col in expand_cols:
-        self.ctrl_box.AddGrowableCol(col)
+      assert isinstance(expand_cols, (list, tuple, int))
+      if type(expand_cols) == int:
+        self.ctrl_box.AddGrowableCol(expand_cols)
+      else:
+        for col in expand_cols:
+          self.ctrl_box.AddGrowableCol(col)
       opt_box.AddGrowableCol(cols-1)
 
     opt_box.Add(self.ctrl_box, flag=wx.EXPAND)

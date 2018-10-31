@@ -4,78 +4,29 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/26/2014
-Last Changed: 10/18/2018
+Last Changed: 10/30/2018
 Description : IOTA image processing submission module
 '''
 
-import os
-from threading import Thread
+from iota.components.iota_base import ProcessGeneral
 
-from libtbx.easy_mp import parallel_map
-from libtbx import easy_pickle as ep
+class SilentProcess(ProcessGeneral):
+  """ Process module customized for 'silent' running (for UI and queueing) """
+  def __init__(self, init, iterable, stage, abort_file):
+    ProcessGeneral.__init__(self, init=init, iterable=iterable,
+                            stage=stage, abort_file=abort_file)
 
-import iota.components.iota_image as img
-from iota.components.iota_threads import IOTATermination
+class UIProcess(ProcessGeneral):
+  """ Process module customized for 'silent' running (for UI and queueing) """
+  def __init__(self, init, iterable, stage, abort_file):
+    ProcessGeneral.__init__(self, init=init, iterable=iterable,
+                            stage=stage, abort_file=abort_file)
 
-class ProcessImage():
-  ''' Wrapper class to do full processing of an image '''
-  def __init__(self, init, input_entry, input_type = 'image'):
-    self.init = init
-    self.input_entry = input_entry
-    self.input_type = input_type
-
-
-  def run(self):
-    if self.input_type == 'image':
-      img_object = img.SingleImage(self.input_entry, self.init)
-      img_object.import_image()
-    elif self.input_type == 'object':
-      img_object = self.input_entry[2]
-      img_object.import_int_file(self.init)
-    else:
-      img_object = None
-
-    if self.init.params.image_conversion.convert_only:
-      return img_object
-    else:
-      img_object.process()
-      return img_object
-
-class ProcessAll(Thread):
-  def __init__(self,
-               init,
-               iterable,
-               input_type='image',
-               abort_file=None):
-    Thread.__init__(self)
-    self.init = ep.load(init)
-    self.iterable = ep.load(iterable)
-    self.type = input_type
-    self.abort_file = abort_file
-
-  def run(self):
-    try:
-      parallel_map(iterable=self.iterable,
-                   func = self.full_proc_wrapper,
-                   processes=self.init.params.n_processors)
-    except IOTATermination, e:
-      aborted_file = os.path.join(self.init.int_base, '.aborted.tmp')
-      with open(aborted_file, 'w') as abtf:
-        abtf.write('')
-      raise e
-
-  def full_proc_wrapper(self, input_entry):
-    abort = os.path.isfile(self.abort_file)
-    if abort:
-      # print ('ABORTING ... NOW!!')
-      os.remove(self.abort_file)
-      raise IOTATermination('IOTA: Run aborted by user')
-    else:
-      # print ('Processing --- {}'.format(input_entry[2]))
-      proc_image_instance = ProcessImage(init=self.init,
-                                         input_entry=input_entry,
-                                         input_type=self.type)
-      proc_image_instance.run()
+  def callback(self, result):
+    """ Will add object file to tmp list for inclusion in info """
+    if result:
+      with open(self.init.info.obj_list_file, 'a') as olf:
+        olf.write('{}\n'.format(result.obj_file))
 
 
 def parse_command_args():
@@ -90,6 +41,9 @@ def parse_command_args():
                       help='Specify input type')
   parser.add_argument('--stopfile', type=str, default=None,
                       help='Path to temporary hidden abort signal file')
+  parser.add_argument('--mode', type=str, nargs='?', const=None, default='ui',
+                      help='Specify input type')
+
   return parser
 
 # ============================================================================ #
@@ -97,6 +51,18 @@ if __name__ == "__main__":
   import argparse
   args, unk_args = parse_command_args().parse_known_args()
 
-  proc = ProcessAll(init=args.init, iterable=args.files,
-                    input_type=args.type, abort_file=args.stopfile)
-  proc.start()
+  from libtbx import easy_pickle as ep
+  init = ep.load(args.init)
+  iterable = ep.load(args.files)
+
+  if args.mode == 'ui':
+    proc = UIProcess(init=init, iterable=iterable, stage='all',
+                         abort_file=args.stopfile)
+  elif args.mode == 'silent':
+    proc = SilentProcess(init=init, iterable=iterable, stage='all',
+                         abort_file=args.stopfile)
+  else:
+    proc = None
+
+  if proc is not None:
+    proc.start()

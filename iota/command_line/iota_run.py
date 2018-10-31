@@ -8,16 +8,12 @@ Last Changed: 10/18/2018
 Description : IOTA command-line module.
 '''
 import os
-from libtbx import easy_pickle as ep
 
 from iota import iota_version
-from iota.components.iota_analysis import Analyzer
 from iota.components.iota_init import XInitAll
-import iota.components.iota_image as img
+from iota.components.iota_base import ProcessGeneral
 import dials.util.command_line as cmd
 import iota.components.iota_utils as util
-
-from libtbx.easy_mp import parallel_map
 
 iota_version = iota_version
 
@@ -49,187 +45,72 @@ beam stop shadow.
 
 """
 
-
-
-class XTermIOTA():
-  """ Main class that will initalize and run everything"""
-
-  def __init__(self):
+class XProcessAll(ProcessGeneral):
+  """ Process module customized for command line use """
+  def __init__(self, init, iterable, stage, abort_file):
+    ProcessGeneral.__init__(self, init=init, iterable=iterable,
+                            stage=stage, abort_file=abort_file)
     self.prog_count = 0
-    self.init = XInitAll(help_message)
-    good_init = self.init.run() # Returns False if something goes wrong
-
-    if not good_init:
-      util.iota_exit()
-
-    self.full = self.init.args.full
-
-  def proc_wrapper(self, input_entry):
-    """ Wrapper for processing function using the image object
-    @param input_entry: [image_number, total_images, image_object]
-    @return: image object
-    """
-    try:
-      if type(input_entry[2]) is str:
-        img_object = img.SingleImage(input_entry, self.init)
-      else:
-        img_object = input_entry[2]
-    except Exception:
-      return None
-
-    try:
-      if self.stage == 'import':
-        if self.init.params.cctbx.selection.select_only.flag_on:
-          img_object.import_int_file(self.init)
-        else:
-          img_object.import_image()
-      elif self.stage == 'process':
-        img_object.process()
-      elif self.stage == 'all':
-        img_object.import_image()
-        img_object.process()
-    except Exception as e:
-      print ('\nDEBUG: PROCESSING ERROR!', e)
-      return None
-
-    return img_object
 
   def callback(self, result):
     """ To be run on completion of each step
     @param result: image_object
-    @return:
     """
     if self.prog_count < len(self.init.input_list):
       prog_step = 100 / len(self.init.input_list)
-      self.gs_prog.update(self.prog_count * prog_step) #, self.prog_count)
+      self.gs_prog.update(self.prog_count * prog_step)
       self.prog_count += 1
     else:
       self.gs_prog.finished()
 
-  def run_all(self):
-    """ Run the full processing in multiprocessing mode """
-
-    # Determine whether reading in image objects or images, create image list
-    if self.init.params.cctbx.selection.select_only.flag_on:
-      self.img_list = [[i, len(self.init.gs_img_objects) + 1, j] for i, j in
-                       enumerate(self.init.gs_img_objects, 1)]
-    else:
-      self.img_list = [[i, len(self.init.input_list) + 1, j] for i, j in
-                       enumerate(self.init.input_list, 1)]
-    cmd.Command.start("Processing {} images".format(len(self.img_list)))
-
-    # Run processing
-    self.prog_count = 0
-    self.gs_prog = cmd.ProgressBar(title='PROCESSING')
-    self.img_objects = parallel_map(iterable=self.img_list,
-                                    func=self.proc_wrapper,
-                                    callback=self.callback,
-                                    processes=self.init.params.n_processors)
-    cmd.Command.end("Processing {} images -- DONE "
-                    "".format(len(self.img_objects)))
-
-
-  def run_import(self):
-    """ Import images or image objects """
-    if self.init.params.cctbx.selection.select_only.flag_on:
-      msg = "Reading {} image objects".format(len(self.init.gs_img_objects))
-      title = 'READING IMAGE OBJECTS'
-      self.img_list = [[i, len(self.init.gs_img_objects) + 1, j] for i, j in
-                       enumerate(self.init.gs_img_objects, 1)]
-    else:
-      msg = "Importing {} images".format(len(self.init.input_list))
-      title = 'IMPORTING IMAGES'
-      self.img_list = [[i, len(self.init.input_list) + 1, j] for i, j in
-                       enumerate(self.init.input_list, 1)]
-
-    cmd.Command.start(msg)
-    self.prog_count = 0
-    self.gs_prog = cmd.ProgressBar(title=title)
-    self.img_objects = parallel_map(iterable=self.img_list,
-                                    func=self.proc_wrapper,
-                                    callback=self.callback,
-                                    processes=self.init.params.n_processors)
-
-  def run_process(self):
-    """ Run indexing / integration of imported images """
-
-    # write init file
-    ep.dump(os.path.join(self.init.int_base, 'init.cfg'), self.init)
-
-    cmd.Command.start("Processing {} images".format(len(self.img_objects)))
-    self.img_list = [[i, len(self.img_objects) + 1, j] for i, j in
-                      enumerate(self.img_objects, 1)]
-    self.prog_count = 0
-    self.gs_prog = cmd.ProgressBar(title='PROCESSING')
-    self.img_objects = parallel_map(iterable=self.img_list,
-                               func=self.proc_wrapper,
-                               callback=self.callback,
-                               processes=self.init.params.n_processors)
-    cmd.Command.end("Processing {} images -- DONE "
-                    "".format(len(self.img_objects)))
-
-
-  def run_analysis(self):
-    """ Run analysis of integrated images """
-    cmd.Command.start("Analyzing results ")
-    analysis = Analyzer(init=self.init, all_objects=self.img_objects)
-    cmd.Command.end("Analyzing results -- DONE")
-    analysis.print_results()
-    analysis.unit_cell_analysis()
-    analysis.print_summary()
-    analysis.make_prime_input()
-
-  def run_full_proc(self):
-    """ Run IOTA in full-processing mode (i.e. process image from import to
-    integration; allows real-time tracking of output """
-
-    # Process images
-    self.stage = 'all'
-    self.run_all()
-
-    # Analysis of integration results
-    final_objects = [i for i in self.img_objects if i.fail is None]
-    if len(final_objects) > 0:
-      self.run_analysis()
-    else:
-      print ('No images successfully integrated!')
-
-    # Exit IOTA
-    util.iota_exit()
-
-
   def run(self):
-    """ Run IOTA """
+    """ Run Process module from command line """
 
-    # Import Images
-    self.stage = 'import'
-    self.run_import()
+    if self.stage == 'import':    # Import Images
+      self.create_image_iterable()
 
-    # Remove rejected images from image object list
-    acc_img_objects = [i.fail for i in self.img_objects if i.fail is None]
-    cmd.Command.end("Accepted {} of {} images -- DONE " \
-                    "".format(len(acc_img_objects), len(self.img_objects)))
-
-    # Exit if none of the images have diffraction
-    if str(self.init.params.image_triage.type).lower() != 'none':
-      if len(acc_img_objects) == 0:
-        util.main_log(self.init.logfile, 'No images have diffraction!', True)
-        util.iota_exit()
+      if self.init.params.cctbx_ha14.selection.select_only.flag_on:
+        msg = "Reading {} image objects".format(len(self.init.gs_img_objects))
+        title = 'READING IMAGE OBJECTS'
       else:
-        util.main_log(self.init.logfile,
-                      "{} out of {} images have diffraction "
-                      "(at least {} Bragg peaks)"
-                      "".format(len(acc_img_objects),
-                                len(self.img_objects),
-                                self.init.params.image_triage.min_Bragg_peaks))
+        msg = "Importing {} images".format(len(self.init.input_list))
+        title = 'IMPORTING IMAGES'
+      cmd.Command.start(msg)
+      self.prog_count = 0
+      self.gs_prog = cmd.ProgressBar(title=title)
+      self.run_process()
 
-    # Check for -c option and exit if true
-    if self.init.params.image_conversion.convert_only:
-      util.iota_exit()
+      # Remove rejected images from image object list
+      acc_img_objects = [i.fail for i in self.img_objects if i.fail is None]
+      cmd.Command.end("Accepted {} of {} images -- DONE " \
+                      "".format(len(acc_img_objects), len(self.img_objects)))
+
+
+      # Exit if none of the images have diffraction
+      if str(self.init.params.cctbx_ha14.image_triage.type).lower() != 'none':
+        if len(acc_img_objects) == 0:
+          util.main_log(self.init.logfile, 'No images have diffraction!', True)
+          util.iota_exit()
+        else:
+          util.main_log(self.init.logfile,
+                        "{} out of {} images have diffraction "
+                        "(at least {} Bragg peaks)"
+                        "".format(len(acc_img_objects),
+                                  len(self.img_objects),
+                                  self.init.params.cctbx_ha14.image_triage.min_Bragg_peaks))
+          self.stage = 'process'
+
+      # Check for -c option and exit if true
+      if self.init.params.cctbx_ha14.image_conversion.convert_only:
+        util.iota_exit()
 
     # Process Images
-    self.stage = 'process'
+    self.create_image_iterable()
+    cmd.Command.start("Processing {} images".format(len(self.img_list)))
+    self.prog_count = 0
+    self.gs_prog = cmd.ProgressBar(title='PROCESSING')
     self.run_process()
+    cmd.Command.end("Processing {} images -- DONE".format(len(self.img_list)))
 
     # Analysis of integration results
     final_objects = [i for i in self.img_objects if i.fail is None]
@@ -241,12 +122,31 @@ class XTermIOTA():
     # Exit IOTA
     util.iota_exit()
 
+
+class XTermIOTA():
+  """ Main class that will initalize and run everything"""
+  def __init__(self):
+    self.init = XInitAll(help_message)
+
+  def run(self):
+    good_init, msg = self.init.run()  # Returns False if something goes wrong
+
+    if not good_init:
+      print (msg)
+      util.iota_exit()
+
+    if self.init.args.full:
+      stage = 'all'
+    else:
+      stage = 'import'
+
+    abort_file = os.path.join(self.init.int_base, '.abort')
+    processor = XProcessAll(init=self.init, iterable=self.init.input_list,
+                            stage=stage, abort_file=abort_file)
+    processor.start()
 
 # ============================================================================ #
 if __name__ == "__main__":
 
   iota = XTermIOTA()
-  if iota.full:
-    iota.run_full_proc()
-  else:
-    iota.run()
+  iota.run()

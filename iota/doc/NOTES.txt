@@ -1,4 +1,30 @@
-IOTA v1.2.006 - refactoring to remove redundant code
+IOTA v1.2.007 - generalized job submission and better threading
 
-  - general Init module, with overrides for Xterm and UI specifics
-  - tweak to Xterm process submission
+Changes:
+  - created a iota_base.py module for base classes; so far have
+    - processing worker class
+    - processing submission thread class
+    - initialization class
+
+  - Moved processes to separate threads
+    - iota.process launched from own thread for all MP cases
+    - iota.process write image object filename to temp text file
+    - object reader thread reads object filenames from text file; imports
+    objects; reads info from objects; populates 'info' object with results
+    - moved runtime PRIME input maker and launch to own thread
+
+  - Abort / quit immediately shuts down iota_process and all child processes
+    - subclassed easy_run and introduced a kill function
+    - removed timeout (not going to use)
+
+  - Dynamic timer increases UI responsiveness
+    - estimate time for object reading and plotting (most time-consuming tasks)
+    - multiply by 5, round up to nearest 1000
+    - restart proc tab polling timer with new interval
+
+  - Deprecated old (HA14) backend
+    - still can use w/ command-line and GUI
+    - changed param choices to reflect current terminology
+
+Misc:
+  - Generalized PHIL-to-text conversion (called in many places)

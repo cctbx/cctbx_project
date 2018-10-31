@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 10/18/2018
+Last Changed: 10/30/2018
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -17,7 +17,9 @@ assert time
 import dials.util.command_line as cmd
 
 import iota.components.iota_input as inp
-from iota.components.iota_utils import InitAll, InputFinder, get_mpi_rank_and_size
+from iota.components.iota_utils import InputFinder, get_mpi_rank_and_size
+from iota.components.iota_base import InitGeneral
+
 
 # --------------------------- Initialize IOTA -------------------------------- #
 
@@ -58,10 +60,10 @@ def parse_command_args(iver, help_message):
   return parser
 
 
-class XInitAll(InitAll):
+class XInitAll(InitGeneral):
   """ Class to initialize IOTA parameters for command-line jobs """
   def __init__(self, help_message):
-    InitAll.__init__(self)
+    InitGeneral.__init__(self)
 
     self.logo = "\n\n" \
                 "     IIIIII            OOOOOOO        TTTTTTTTTT          A                 \n" \
@@ -117,19 +119,20 @@ class XInitAll(InitAll):
 
     :return: True if successful, False if fails
     """
+    print ("DEBUG: INITIALIZING XTERM UI... ")
+
     self.args, self.phil_args = parse_command_args(self.iver,
                                                    self.help_message).parse_known_args()
     ginp = InputFinder()
 
     # Check for type of input
-    if len(self.args.path) == 0 or self.args.path is None:  # No input
+    if not self.args.path:  # No input
       parse_command_args(self.iver, self.help_message).print_help()
       if self.args.default:  # Write out default params and exit
         help_out, txt_out = inp.print_params()
         print('\n{:-^70}\n'.format('IOTA Parameters'))
         print(help_out)
-        inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
-      return False
+      return False, 'IOTA_XTERM_INIT: OUTPUT PARAMETERS ONLY'
     elif len(self.args.path) > 1:  # If multiple paths / wildcards
       file_list = ginp.make_input_list(self.args.path)
       list_file = os.path.join(os.path.abspath(os.path.curdir), 'input.lst')
@@ -149,7 +152,7 @@ class XInitAll(InitAll):
           msg = "\nIOTA will run in SINGLE-FILE mode using {}:\n".format(carg)
           mode = 'auto'
         elif ('iota' and 'settings' in ptype.lower()):
-          msg = ''
+          msg = '\nIOTA will run in SCRIPT mode using {}:\n'.format(carg)
           mode = 'file'
         elif 'list' in ptype.lower():
           msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
@@ -166,23 +169,25 @@ class XInitAll(InitAll):
               mode = 'auto'
           else:
             print('Exiting...')
-            return False
+            return False, 'IOTA_XTERM_INIT_ERROR: Unrecognizable input!'
       elif os.path.isdir(carg):
         ptype = ginp.get_folder_type(carg)
         if ('image' and 'folder' in ptype.lower()):
           msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
           mode = 'auto'
         else:
+          msg = "IOTA_XTERM_INIT_ERROR: No images in {}!".format(carg)
           print(self.logo)
-          print("ERROR: No images in {}!".format(carg))
-          return False
+          print(msg)
+          return False, msg
 
       # If user provided gibberish
       else:
-        msg = "ERROR: Invalid input! Need parameter filename or data folder."
+        msg = "IOTA_XTERM_INIT_ERROR: Invalid input! Need parameter filename " \
+              "or data folder."
         print(self.logo)
         print(msg)
-        return False
+        return False, msg
 
       # Initialize parameters for this command-line run
       self.iota_phil = inp.process_input(self.args, self.phil_args,
@@ -190,7 +195,7 @@ class XInitAll(InitAll):
       self.params = self.iota_phil.extract()
 
     # Identify indexing / integration program and add to logo
-    b_end = " with {}".format(str(self.params.advanced.integrate_with).upper())
+    b_end = " with {}".format(str(self.params.advanced.processing_backend).upper())
     prg = "{:>{w}}".format(b_end, w=76)
     self.logo += prg
     print(self.logo)
@@ -204,7 +209,7 @@ class XInitAll(InitAll):
       self.analyze_prior_results('{:003d}'.format(int(self.args.analyze)))
       return False
 
-    if self.params.mp_method == 'mpi':
+    if self.params.mp.method == 'mpi':
       rank, size = get_mpi_rank_and_size()
       self.master_process = rank == 0
     else:
@@ -212,7 +217,7 @@ class XInitAll(InitAll):
 
     # Call function to read input folder structure (or input file) and
     # generate list of image file paths
-    if self.params.cctbx.selection.select_only.flag_on:
+    if self.params.cctbx_ha14.selection.select_only.flag_on:
       cmd.Command.start("Importing saved grid search results")
       self.gs_img_objects = self.make_int_object_list()
       self.input_list = [i.conv_img for i in self.gs_img_objects]
@@ -248,7 +253,8 @@ class XInitAll(InitAll):
         list_file = os.path.join(list_folder,
                                  "input_{}.lst".format(len(list_files)))
 
-      print ('\nINPUT LIST ONLY option selected')
+      msg = 'IOTA_XTERM_INIT: INPUT LIST ONLY option selected'
+      print ('\n{}'.format(msg))
       print ('Input list in {} \n\n'.format(list_file))
       with open(list_file, "w") as lf:
         for i, input_file in enumerate(self.input_list, 1):
@@ -256,9 +262,38 @@ class XInitAll(InitAll):
           print ("{}: {}".format(i, input_file))
           lf.write('{}\n'.format(input_file))
       print ('\nExiting...\n\n')
-      return False
+      return False, msg
 
-    return True
+    return True, 'IOTA_XTERM_INIT: Initialization complete!'
+
+  def run(self):
+    ''' Override of base INIT class to account for XTerm specifics
+
+    :return: True if okay, False if not, and a message (ok or error)
+    '''
+
+    # Interface-specific options
+    ui_init_good, msg = self.initialize_interface()
+    if not ui_init_good:
+      return False, msg
+
+    # Create output file structure
+    init_out, msg = self.initialize_output()
+    if not init_out:
+      return False, msg
+
+    # Initialize IOTA and backend parameters
+    init_param, msg = self.initialize_parameters()
+    if not init_param:
+      return False, msg
+
+    # Initalize main log (iota.log)
+    init_log, msg = self.initialize_main_log()
+    if not init_log:
+      return False, msg
+
+    # Return True for successful initialization
+    return True, msg
 
 
 
@@ -268,5 +303,5 @@ if __name__ == "__main__":
   iota_version = '1.0.001G'
   help_message = ""
 
-  initialize = InitAll()
+  initialize = InitGeneral()
   initialize.run()

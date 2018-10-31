@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/16/2018
+Last Changed: 10/30/2018
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -53,8 +53,8 @@ class SingleImage(object):
     self.gs_results = []
     self.main_log = init.logfile
     self.verbose = verbose
-    self.hmed = self.params.cctbx.grid_search.height_median
-    self.amed = self.params.cctbx.grid_search.area_median
+    self.hmed = self.params.cctbx_ha14.grid_search.height_median
+    self.amed = self.params.cctbx_ha14.grid_search.area_median
 
     self.input_base = init.input_base
     self.conv_base = init.conv_base
@@ -64,7 +64,6 @@ class SingleImage(object):
     self.viz_base = init.viz_base
     self.log_base = init.log_base
     self.tmp_base = init.tmp_base
-    self.abort_file = os.path.join(self.int_base, '.abort.tmp')
 
     # self.filename_correction = False
     self.obj_path = None
@@ -79,10 +78,6 @@ class SingleImage(object):
   def import_int_file(self, init):
     """ Replaces path settings in imported image object with new settings
         NEED TO RE-DO LATER """
-
-    if os.path.isfile(self.abort_file):
-      self.fail = 'aborted'
-      return self
 
     # Generate paths to output files
     self.params = init.params
@@ -130,8 +125,8 @@ class SingleImage(object):
 
   def determine_gs_result_file(self):
     """ For 'selection-only' cctbx.xfel runs, determine where the image objects are """
-    if self.params.cctbx.selection.select_only.grid_search_path is not None:
-      obj_path = os.path.abspath(self.params.cctbx.selection.select_only.grid_search_path)
+    if self.params.cctbx_ha14.selection.select_only.grid_search_path is not None:
+      obj_path = os.path.abspath(self.params.cctbx_ha14.selection.select_only.grid_search_path)
     else:
       run_number = int(os.path.basename(self.int_base)) - 1
       obj_path = "{}/integration/{:03d}/image_objects"\
@@ -224,12 +219,12 @@ class SingleImage(object):
     h_max = self.hmed + self.hrange
     a_min = self.amed - self.arange
     a_max = self.amed + self.arange
-    h_std = self.params.cctbx.grid_search.height_range
-    a_std = self.params.cctbx.grid_search.area_range
+    h_std = self.params.cctbx_ha14.grid_search.height_range
+    a_std = self.params.cctbx_ha14.grid_search.area_range
 
     for spot_area in range(a_min, a_max + 1):
       for spot_height in range (h_min, h_max + 1):
-        if self.params.cctbx.grid_search.sig_height_search:
+        if self.params.cctbx_ha14.grid_search.sig_height_search:
           if spot_height >= 1 + h_std:
             sigs = range(spot_height - h_std, spot_height + 1)
           elif spot_height < 1 + h_std:
@@ -280,7 +275,7 @@ class SingleImage(object):
 
     # the new image will be twice the size as the smallest distance between the
     # beam center and one of the edges of the images
-    if self.params.image_conversion.square_mode == 'crop':
+    if self.params.cctbx_ha14.image_conversion.square_mode == 'crop':
       new_half_size = min([right, left, top, bottom])
       new_size = new_half_size * 2
       min_x = int(beam_x - new_half_size)
@@ -301,7 +296,7 @@ class SingleImage(object):
 
     # the new image will be twice the size as the LARGEST distance between the
     # beam center and one of the edges of the images
-    elif self.params.image_conversion.square_mode == 'pad':
+    elif self.params.cctbx_ha14.image_conversion.square_mode == 'pad':
       new_half_size = max([right, left, top, bottom])
       new_size = new_half_size * 2
       delta_x = new_half_size - beam_x
@@ -339,7 +334,7 @@ class SingleImage(object):
         less than 0.4 * image average intensity), to be refined later.
     """
     img_raw_bytes = data['DATA']
-    beamstop = self.params.image_conversion.beamstop
+    beamstop = self.params.image_import.beamstop
 
     img_thresh = int((beamstop*flex.mean(img_raw_bytes.as_double())))
     beam_stop_sel = img_raw_bytes <= img_thresh
@@ -359,9 +354,9 @@ class SingleImage(object):
     full_mask = ep.load(mask_file)
     assert len(full_mask) == 1
 
-    if self.params.advanced.integrate_with == 'cctbx':
+    if self.params.advanced.processing_backend == 'ha14':
       mask = full_mask[0] == False
-    elif self.params.advanced.integrate_with == 'dials':
+    elif self.params.advanced.processing_backend == 'cctbx.xfel':
       mask = full_mask[0]
     else:
       mask = None
@@ -380,41 +375,6 @@ class SingleImage(object):
           - Thresholds and masks beamstop shadow (optional)
     """
 
-    if os.path.isfile(self.abort_file):
-      self.fail = 'aborted'
-      return self
-
-    # TODO: remove when dxtbx/model/scan_helpers.py fixes go through.
-    # fn_end = os.path.splitext(self.raw_img)[0].split('_')[-1]
-    # if not fn_end.isdigit():
-    #   self.filename_correction = True
-    #   number = '0001'
-    # elif fn_end.isdigit() and len(str(fn_end)) < 5:
-    #   self.filename_correction = True
-    #   number = '{:05d}'.format(int(fn_end))
-    # else:
-    #   number = fn_end
-    #
-    # if self.filename_correction:
-    #   self.corr_base = util.set_base_dir('corrected_images',
-    #                                      out_dir=self.params.output)
-    #   img_path = util.make_image_path(self.raw_img, self.input_base,
-    #                                   self.corr_base)
-    #   img_filename = util.make_filename(self.raw_img).replace(fn_end, number)
-    #   img_extension = os.path.splitext(self.raw_img)[1]
-    #   new_img = os.path.abspath(os.path.join(img_path,
-    #             '{}{}'.format(img_filename, img_extension)))
-    #   try:
-    #     if not os.path.isdir(img_path):
-    #       os.makedirs(img_path)
-    #   except OSError:
-    #     pass
-    #   shutil.copyfile(self.raw_img, new_img)
-    #   self.conv_img = new_img
-    #   img_data, img_type = self.load_image(img=self.conv_img)
-    # else:
-    #   img_data, img_type = self.load_image(img=self.raw_img)
-
     # Load image
     img_data, img_type = self.load_image(img=self.raw_img)
     self.status = 'loaded'
@@ -429,7 +389,7 @@ class SingleImage(object):
       self.status = 'failed import'
       self.fail = 'failed import'
 
-      if not self.params.image_conversion.convert_only:
+      if not self.params.cctbx_ha14.image_conversion.convert_only:
         self.obj_path = util.make_image_path(self.conv_img, self.input_base,
                                              self.obj_base)
         rej_name = filter(None, util.make_filename(self.conv_img)) + '_reject.int'
@@ -445,9 +405,9 @@ class SingleImage(object):
       return self
 
     # if DIALS is selected, change image type to skip conversion step
-    if self.params.advanced.integrate_with == 'dials':
+    if self.params.advanced.processing_backend == 'cctbx.xfel':
       img_type = 'dials_input'
-      if self.params.dials.auto_threshold:
+      if self.params.cctbx_xfel.auto_threshold:
         try:
           beam_x_px = int(img_data['BEAM_CENTER_X'] / img_data['PIXEL_SIZE'])
           beam_y_px = int(img_data['BEAM_CENTER_Y'] / img_data['PIXEL_SIZE'])
@@ -471,20 +431,20 @@ class SingleImage(object):
 
     # Deactivate image squaring if beam center is in the center of the image
     # CCTBX.XFEL ONLY (Need a better displacement cutoff)
-    if (                  self.params.advanced.integrate_with == 'dials' or
+    if (                  self.params.advanced.processing_backend == 'cctbx.xfel' or
         abs(img_data['BEAM_CENTER_X'] - img_data['BEAM_CENTER_Y']) < 0.1
         ):
-      self.params.image_conversion.square_mode = 'no_modification'
+      self.params.cctbx_ha14.image_conversion.square_mode = 'no_modification'
 
     # Check if conversion/modification is required and carry them out
-    if self.params.advanced.integrate_with != 'dials' and \
+    if self.params.advanced.processing_backend != 'dials' and \
        (
                                                        img_type == 'raw' or
-           self.params.image_conversion.square_mode != "no_modification" or
-                         self.params.image_conversion.beam_center.x != 0 or
-                         self.params.image_conversion.beam_center.y != 0 or
-                              self.params.image_conversion.beamstop != 0 or
-                              self.params.image_conversion.distance != 0
+           self.params.cctbx_ha14.image_conversion.square_mode != "no_modification" or
+                         self.params.image_import.beam_center.x != 0 or
+                         self.params.image_import.beam_center.y != 0 or
+                              self.params.image_import.beamstop != 0 or
+                              self.params.image_import.distance != 0
         ):
 
       # Check for and/or create a converted pickles folder
@@ -495,7 +455,7 @@ class SingleImage(object):
         pass
 
       # Generate converted image pickle filename
-      rename_choice = str(self.params.image_conversion.rename_pickle).lower()
+      rename_choice = str(self.params.cctbx_ha14.image_conversion.rename_pickle).lower()
       if rename_choice in ("keep_file_structure", "none"):
         img_path = util.make_image_path(self.raw_img, self.input_base,
                                         self.conv_base)
@@ -511,7 +471,7 @@ class SingleImage(object):
         if rename_choice == "auto_filename":
           prefix = self.user_id
         elif rename_choice == "custom_filename":
-          prefix = self.params.image_conversion.rename_pickle_prefix
+          prefix = self.params.cctbx_ha14.image_conversion.rename_pickle_prefix
         else:
           prefix = 'iota'
         number = int(os.path.basename(self.conv_base))
@@ -519,12 +479,12 @@ class SingleImage(object):
                     "{}_{}_{:05d}.pickle".format(prefix, number, self.img_index)))
 
       # Convert raw image to image pickle
-      beamstop = self.params.image_conversion.beamstop
-      distance = self.params.image_conversion.distance
-      beam_center = [self.params.image_conversion.beam_center.x,
-                     self.params.image_conversion.beam_center.y]
-      square = self.params.image_conversion.square_mode
-      mask_file = self.params.image_conversion.mask
+      beamstop = self.params.image_import.beamstop
+      distance = self.params.image_import.distance
+      beam_center = [self.params.image_import.beam_center.x,
+                     self.params.image_import.beam_center.y]
+      square = self.params.cctbx_ha14.image_conversion.square_mode
+      mask_file = self.params.image_import.mask
       if mask_file is not None:
         img_data = self.apply_mask_from_file(img_data, mask_file)
       if beam_center != [0,0]:
@@ -553,29 +513,30 @@ class SingleImage(object):
       # Save converted image pickle
       ep.dump(self.conv_img, img_data)
 
-    # Triage image (i.e. check for usable diffraction, using selected method)
-    if str(self.params.image_triage.type).lower() in ('simple', 'grid_search'):
-      if self.params.advanced.integrate_with == 'cctbx':
+      # Triage image (i.e. check for usable diffraction, using selected method)
+      if str(self.params.cctbx_ha14.image_triage.type).lower() in ('simple', 'grid_search'):
+        # if self.params.advanced.processing_backend == 'ha14':
         from iota.components.iota_cctbx import Triage
         triage = Triage(self.conv_img, self.gain, self.params)
         self.fail, log_entry, self.hmed, self.amed = triage.triage_image()
 
-      elif self.params.advanced.integrate_with == 'dials':
-        from iota.components.iota_dials import Triage
-        triage = Triage(img=self.conv_img,
-                        gain=self.gain,
-                        center_intensity=self.center_int,
-                        params=self.params)
-        self.fail, log_entry = triage.triage_image()
+      # Since DIALS has a separable spotfinding step, can just fail spotfinding
+      # elif self.params.advanced.processing_backend == 'cctbx.xfel':
+      #   from iota.components.iota_dials import Triage
+      #   triage = Triage(img=self.conv_img,
+      #                   gain=self.gain,
+      #                   center_intensity=self.center_int,
+      #                   params=self.params)
+      #   self.fail, log_entry = triage.triage_image()
 
-      self.log_info.append(log_entry)
-      self.status = 'triaged'
-    else:
-      self.fail = None
+        self.log_info.append(log_entry)
+        self.status = 'triaged'
+      else:
+        self.fail = None
 
-    # Generate integration result dictionary for cctbx.xfel or DIALS
-    if self.params.advanced.integrate_with == 'cctbx':
-      gs_type = str(self.params.cctbx.grid_search.type).lower()
+    # Generate integration result dictionary
+    if self.params.advanced.processing_backend == 'ha14':
+      gs_type = str(self.params.cctbx_ha14.grid_search.type).lower()
       if gs_type == 'smart':
         self.hrange = 1
         self.arange = 1
@@ -583,11 +544,11 @@ class SingleImage(object):
         self.hrange = 0
         self.arange = 0
       else:
-        self.hrange = self.params.cctbx.grid_search.height_range
-        self.arange = self.params.cctbx.grid_search.area_range
+        self.hrange = self.params.cctbx_ha14.grid_search.height_range
+        self.arange = self.params.cctbx_ha14.grid_search.area_range
       self.grid_points = []
       self.generate_grid()
-    elif self.params.advanced.integrate_with == 'dials':
+    elif self.params.advanced.processing_backend == 'cctbx.xfel':
       self.final = {'img':self.conv_img, 'a':0, 'b':0, 'c':0, 'alpha':0,
                     'beta':0, 'gamma':0, 'sg':'','strong':0, 'res':0,
                     'lres':0, 'mos':0, 'epv':0, 'info':'','final':None,
@@ -598,7 +559,7 @@ class SingleImage(object):
     filename = util.make_filename(self.conv_img)
     self.test_filename = filename
 
-    if not self.params.image_conversion.convert_only:
+    if not self.params.cctbx_ha14.image_conversion.convert_only:
       img = self.conv_img
       # if self.filename_correction:
       #   img = self.raw_img
@@ -666,12 +627,6 @@ class SingleImage(object):
       if tag == 'grid search':
         self.log_info.append('\nCCTBX grid search:')
         for i in range(len(self.grid)):
-
-          # If aborted from GUI
-          if os.path.isfile(self.abort_file):
-            self.fail = 'aborted'
-            return self
-
           int_results = integrator.integrate(self.grid[i])
           self.grid[i].update(int_results)
           img_filename = os.path.basename(self.conv_img)
@@ -691,11 +646,6 @@ class SingleImage(object):
         self.status = 'grid search'
 
       elif tag == 'split grid':
-
-        if os.path.isfile(self.abort_file):
-          self.fail = 'aborted'
-          return self
-
         self.log_info.append('\nCCTBX INTEGRATION grid search:')
         int_results = integrator.integrate(self.grid[grid_point])
         self.grid[grid_point].update(int_results)
@@ -711,11 +661,6 @@ class SingleImage(object):
         self.gs_results.append(log_entry)
 
       elif tag == 'integrate':
-
-        if os.path.isfile(self.abort_file):
-          self.fail = 'aborted'
-          return self
-
         self.log_info.append('\nCCTBX final integration:')
         final_results = integrator.integrate(self.final)
         self.final.update(final_results)
@@ -740,22 +685,17 @@ class SingleImage(object):
 
   def select_cctbx(self):
     """ Selects best grid search result using the Selector class """
-
-    if os.path.isfile(self.abort_file):
-      self.fail = 'aborted'
-      return self
-
     if self.fail is None:
       from iota.components.iota_cctbx import Selector
       selector = Selector(self.grid,
                           self.final,
-                          self.params.cctbx.selection.prefilter.flag_on,
-                          self.params.cctbx.selection.prefilter.target_uc_tolerance,
-                          self.params.cctbx.selection.prefilter.target_pointgroup,
-                          self.params.cctbx.selection.prefilter.target_unit_cell,
-                          self.params.cctbx.selection.prefilter.min_reflections,
-                          self.params.cctbx.selection.prefilter.min_resolution,
-                          self.params.cctbx.selection.select_by)
+                          self.params.cctbx_ha14.selection.prefilter.flag_on,
+                          self.params.cctbx_ha14.selection.prefilter.target_uc_tolerance,
+                          self.params.cctbx_ha14.selection.prefilter.target_pointgroup,
+                          self.params.cctbx_ha14.selection.prefilter.target_unit_cell,
+                          self.params.cctbx_ha14.selection.prefilter.min_reflections,
+                          self.params.cctbx_ha14.selection.prefilter.min_resolution,
+                          self.params.cctbx_ha14.selection.select_by)
 
       self.fail, self.final, log_entry = selector.select()
       self.status = 'selection'
@@ -769,7 +709,7 @@ class SingleImage(object):
       self.status = 'processing'
 
     #for CCTBX indexing / integration
-    if self.params.advanced.integrate_with == 'cctbx':
+    if self.params.advanced.processing_backend == 'ha14':
       terminate = False
       prev_status = self.status
       prev_fail = 'first cycle'
@@ -777,10 +717,6 @@ class SingleImage(object):
       prev_epv = 9999
 
       while not terminate:
-        if os.path.isfile(self.abort_file):
-          self.fail = 'aborted'
-          return self
-
         # Run grid search if haven't already
         if self.fail is None and 'grid search' not in self.status:
           self.integrate_cctbx('grid search', single_image=single_image)
@@ -790,7 +726,7 @@ class SingleImage(object):
           self.select_cctbx()
 
         # If smart grid search is active run multiple rounds until convergence
-        if self.params.cctbx.grid_search.type == 'smart':
+        if self.params.cctbx_ha14.grid_search.type == 'smart':
           if self.fail is None and self.final['epv'] < prev_epv:
             prev_epv = self.final['epv']
             prev_final = self.final
@@ -848,12 +784,7 @@ class SingleImage(object):
 
 
     # For DIALS integration (WORK IN PROGRESS)
-    elif self.params.advanced.integrate_with == 'dials':
-
-      if os.path.isfile(self.abort_file):
-        self.fail = 'aborted'
-        return self
-
+    elif self.params.advanced.processing_backend == 'cctbx.xfel':
       if self.fail is None:
         # Create DIALS integrator object
         from iota.components.iota_dials import Integrator

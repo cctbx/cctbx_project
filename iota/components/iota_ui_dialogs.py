@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 10/17/2018
+Last Changed: 10/30/2018
 Description : IOTA GUI Dialogs
 '''
 
@@ -168,12 +168,12 @@ class BaseBackendDialog(BaseDialog):
       return None
 
   def write_default_phil(self):
-    if str.lower(self.backend) in ('cctbx', 'cctbx.xfel', 'labelit'):
-      method = 'cctbx'
-    elif str.lower(self.backend) == 'dials':
-      method = 'dials'
+    if str.lower(self.backend) in ('cctbx.xfel', 'dials'):
+      method = 'cctbx.xfel'
+    elif str.lower(self.backend) in ('cctbx', 'ha14', 'labelit'):
+      method = 'ha14'
     else:
-      method = 'cctbx'
+      method = 'current'
     from iota.components.iota_input import write_defaults
     default_phil, _ = write_defaults(method=method, write_target_file=False,
                                      write_param_file=False)
@@ -212,11 +212,11 @@ class IOTAPreferences(BaseDialog):
       self.params = master_phil.extract()
     else:
       self.params = phil.extract()
-    self.method = self.params.mp_method
-    self.queue = self.params.mp_queue
-    self.monitor_mode = self.params.advanced.monitor_mode
-    self.mm_timeout = self.params.advanced.monitor_mode_timeout
-    self.mm_timeout_len = self.params.advanced.monitor_mode_timeout_length
+    self.method = self.params.mp.method
+    self.queue = self.params.mp.queue
+    self.monitor_mode = self.params.gui.monitor_mode
+    self.mm_timeout = self.params.gui.monitor_mode_timeout
+    self.mm_timeout_len = self.params.gui.monitor_mode_timeout_length
     self.random_subset = self.params.advanced.random_sample.flag_on
     self.random_subset_number = self.params.advanced.random_sample.number
     self.image_range = self.params.advanced.image_range.flag_on
@@ -254,6 +254,16 @@ class IOTAPreferences(BaseDialog):
     # Advanced Preferences
     adv_box = wx.StaticBox(self, label='Advanced Preferences')
     adv_sizer = wx.StaticBoxSizer(adv_box, wx.VERTICAL)
+
+    # Backend choice (NOT RECOMMENDED!)
+    self.proc_backend = ct.ChoiceCtrl(self,
+                                 label='Processing Backend:',
+                                 label_size=(150, -1),
+                                 choices=['cctbx.xfel', 'cctbx.xfel HA14'],
+                                 ctrl_size=(200, -1))
+    self.proc_backend.ctr.SetSelection(0)
+    adv_sizer.Add(self.proc_backend, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
+                  border=10)
 
     # Viewer preferences
     v_choices = ['dials.image_viewer',
@@ -356,9 +366,19 @@ class IOTAPreferences(BaseDialog):
       self.mp_methods.ctr.SetSelection(inp_method)
     self.check_method()
 
+    # Set backend values
+
+    if self.params.advanced.processing_backend == 'cctbx.xfel':
+      pos = 0
+    elif self.params.advanced.processing_backend == 'ha14':
+      pos = 1
+    else:
+      pos = 0
+    self.proc_backend.ctr.SetSelection(pos)
+
     # Set viewer values
     try:   # Need this for backwards compatibility with old scripts
-      viewer = self.params.advanced.image_viewer
+      viewer = self.params.gui.image_viewer
     except Exception:
       viewer = 'dials.image_viewer'
     v_selection = self.viewers.ctr.FindString(viewer)
@@ -452,6 +472,14 @@ class IOTAPreferences(BaseDialog):
     else:
       self.queue = None
 
+    n_bck = self.proc_backend.ctr.GetSelection()
+    if n_bck == 0:
+      backend = 'cctbx.xfel'
+    elif n_bck == 1:
+      backend = 'ha14'
+    else:
+      backend = 'cctbx.xfel'
+
     viewer = self.viewers.ctr.GetString(self.viewers.ctr.GetSelection())
     temp_folder = noneset(self.temp_folder.ctr.GetValue())
 
@@ -468,13 +496,18 @@ class IOTAPreferences(BaseDialog):
 
     # test generation of PHIL settings
     prefs_text = '\n'.join([
-      'mp_method = {}'.format(str(self.method)),
-      'mp_queue = {}'.format(str(self.queue)),
-      'advanced {',
+      'mp {',
+      'method = {}'.format(str(self.method)),
+      'queue = {}'.format(str(self.queue)),
+      '}',
+      'gui {',
       '  image_viewer = {}'.format(viewer),
       '  monitor_mode = {}'.format(self.monitor_mode),
       '  monitor_mode_timeout = {}'.format(self.mm_timeout),
       '  monitor_mode_timeout_length = {}'.format(int(self.mm_timeout_len)),
+      '}',
+      'advanced {',
+      '  processing_backend = {}'.format(backend),
       '  prime_prefix = {}'.format(self.prime_prefix.prefix.GetValue()),
       '  temporary_output_folder = {}'.format(temp_folder),
       '  image_range',
@@ -646,13 +679,13 @@ class ImportWindow(BaseDialog):
     filepath = self.mod_mask.ctr.GetValue()
     if os.path.isfile(filepath):
       viewer = thr.ImageViewerThread(self,
-                                     viewer=self.params.advanced.image_viewer,
+                                     viewer=self.params.gui.image_viewer,
                                      file_string=filepath)
       viewer.start()
 
   def triage_choice(self, selection):
 
-    if str(self.params.image_triage.type).lower() == 'none':
+    if str(self.params.cctbx_ha14.image_triage.type).lower() == 'none':
       selection = 'no_triage'
     self.img_triage.ctr.SetSelection(self.img_triage.ctr.FindString(selection))
     if selection.lower() == 'no_triage':
@@ -663,34 +696,34 @@ class ImportWindow(BaseDialog):
     elif selection.lower() == 'simple':
       self.min_bragg_peaks.Enable()
       self.min_bragg_peaks.n_bragg.SetValue(
-        str(self.params.image_triage.min_Bragg_peaks))
+        str(self.params.cctbx_ha14.image_triage.min_Bragg_peaks))
       self.triage_spot_area.Disable()
       self.triage_spot_height.Disable()
       self.triage_step_size.Disable()
     elif selection.lower() == 'grid_search':
       self.min_bragg_peaks.Enable()
       self.min_bragg_peaks.n_bragg.SetValue(
-        str(self.params.image_triage.min_Bragg_peaks))
+        str(self.params.cctbx_ha14.image_triage.min_Bragg_peaks))
       self.triage_spot_area.Enable()
       self.triage_spot_area.min.SetValue(
-        str(self.params.image_triage.grid_search.area_min))
+        str(self.params.cctbx_ha14.image_triage.grid_search.area_min))
       self.triage_spot_area.max.SetValue(
-        str(self.params.image_triage.grid_search.area_max))
+        str(self.params.cctbx_ha14.image_triage.grid_search.area_max))
       self.triage_spot_height.Enable()
       self.triage_spot_height.min.SetValue(
-        str(self.params.image_triage.grid_search.height_min))
+        str(self.params.cctbx_ha14.image_triage.grid_search.height_min))
       self.triage_spot_height.max.SetValue(
-        str(self.params.image_triage.grid_search.height_max))
+        str(self.params.cctbx_ha14.image_triage.grid_search.height_max))
       self.triage_step_size.Enable()
       self.triage_step_size.step.SetValue(
-        str(self.params.image_triage.grid_search.step_size))
+        str(self.params.cctbx_ha14.image_triage.grid_search.step_size))
 
   def read_phil(self):
     """ TODO: make PHIL reading more automated! """
 
     # Rename pickle prefix
-    conv_prefix = str(self.params.image_conversion.rename_pickle).lower()
-    custom_filename = str(self.params.image_conversion.rename_pickle_prefix).lower()
+    conv_prefix = str(self.params.cctbx_ha14.image_conversion.rename_pickle).lower()
+    custom_filename = str(self.params.cctbx_ha14.image_conversion.rename_pickle_prefix).lower()
 
     if conv_prefix in self.conv_rename.choices:
       idx = self.conv_rename.ctr.FindString(conv_prefix)
@@ -700,7 +733,7 @@ class ImportWindow(BaseDialog):
     self.conv_rename.set_choice(custom=custom_filename)
 
     # Image modification
-    square_mode = self.params.image_conversion.square_mode
+    square_mode = self.params.cctbx_ha14.image_conversion.square_mode
     if square_mode in self.mod_square.choices:
       idx = self.mod_square.ctr.FindString(square_mode)
     else:
@@ -713,18 +746,18 @@ class ImportWindow(BaseDialog):
 
     self.flip_beamxy.SetValue(self.params.advanced.flip_beamXY)
 
-    if str(self.params.image_conversion.mask).lower() == 'none':
+    if str(self.params.image_import.mask).lower() == 'none':
       self.mod_mask.ctr.SetValue('')
     else:
-      self.mod_mask.ctr.SetValue(str(self.params.image_conversion.mask))
+      self.mod_mask.ctr.SetValue(str(self.params.image_import.mask))
     self.mod_beamstop.threshold.SetValue(
-      str(self.params.image_conversion.beamstop))
-    self.mod_detZ.detZ.SetValue(str(self.params.image_conversion.distance))
-    self.mod_beamXY.X.SetValue(str(self.params.image_conversion.beam_center.x))
-    self.mod_beamXY.Y.SetValue(str(self.params.image_conversion.beam_center.y))
+      str(self.params.image_import.beamstop))
+    self.mod_detZ.detZ.SetValue(str(self.params.image_import.distance))
+    self.mod_beamXY.X.SetValue(str(self.params.image_import.beam_center.x))
+    self.mod_beamXY.Y.SetValue(str(self.params.image_import.beam_center.y))
 
     # Image modification
-    self.triage_choice(self.params.image_triage.type)
+    self.triage_choice(self.params.cctbx_ha14.image_triage.type)
 
   def onOK(self, e):
     """ Accept changes and populate the PHIL scope """
@@ -807,7 +840,7 @@ class ImportWindow(BaseDialog):
     e.Skip()
 
 
-class CCTBXOptions(BaseBackendDialog):
+class OldBackendOptions(BaseBackendDialog):
   # CCTBX.XFEL options
 
   def __init__(self, parent,
@@ -815,7 +848,7 @@ class CCTBXOptions(BaseBackendDialog):
                *args, **kwargs):
 
     BaseBackendDialog.__init__(self, parent,
-                               backend_name='LABELIT',
+                               backend_name='HA14',
                                target=target,
                                phil=phil,
                                opt_size=(500, 500),
@@ -1087,34 +1120,34 @@ class CCTBXOptions(BaseBackendDialog):
       self.signal_search.Disable()
       self.signal_search.SetValue(False)
       self.spot_height.range.Disable()
-      self.spot_height.median.SetValue(str(self.params.cctbx.grid_search.height_median))
+      self.spot_height.median.SetValue(str(self.params.cctbx_ha14.grid_search.height_median))
       self.spot_height.range.SetValue('0')
       self.spot_area.range.Disable()
-      self.spot_area.median.SetValue(str(self.params.cctbx.grid_search.area_median))
+      self.spot_area.median.SetValue(str(self.params.cctbx_ha14.grid_search.area_median))
       self.spot_area.range.SetValue('0')
     elif idx == 1:
       self.signal_search.Enable()
       self.signal_search.SetValue(False)
       self.spot_height.range.Enable()
       self.spot_height.median.SetValue(
-        str(self.params.cctbx.grid_search.height_median))
+        str(self.params.cctbx_ha14.grid_search.height_median))
       self.spot_height.range.SetValue(
-        str(self.params.cctbx.grid_search.height_range))
+        str(self.params.cctbx_ha14.grid_search.height_range))
       self.spot_area.range.Enable()
       self.spot_area.median.SetValue(
-        str(self.params.cctbx.grid_search.area_median))
+        str(self.params.cctbx_ha14.grid_search.area_median))
       self.spot_area.range.SetValue(
-        str(self.params.cctbx.grid_search.area_range))
+        str(self.params.cctbx_ha14.grid_search.area_range))
     elif idx == 2:
       self.signal_search.Enable()
       self.signal_search.SetValue(False)
       self.spot_height.range.Disable()
       self.spot_height.median.SetValue(
-        str(self.params.cctbx.grid_search.height_median))
+        str(self.params.cctbx_ha14.grid_search.height_median))
       self.spot_height.range.SetValue('1')
       self.spot_area.range.Disable()
       self.spot_area.median.SetValue(
-        str(self.params.cctbx.grid_search.area_median))
+        str(self.params.cctbx_ha14.grid_search.area_median))
       self.spot_area.range.SetValue('1')
 
   def read_param_phil(self):
@@ -1128,8 +1161,8 @@ class CCTBXOptions(BaseBackendDialog):
     # Resolution limits
     # "Try/except" for backwards compatibility
     try:
-      lowres = self.params.cctbx.resolution_limits.low
-      hires = self.params.cctbx.resolution_limits.high
+      lowres = self.params.cctbx_ha14.resolution_limits.low
+      hires = self.params.cctbx_ha14.resolution_limits.high
       self.res_limits.lowres.SetValue(str(lowres))
       self.res_limits.hires.SetValue(str(hires))
     except AttributeError:
@@ -1138,10 +1171,10 @@ class CCTBXOptions(BaseBackendDialog):
     # Target options
     # "Try/except" for backwards compatibility
     try:
-      t_uc = self.params.cctbx.target_unit_cell
-      t_lat = self.params.cctbx.target_lattice_type
+      t_uc = self.params.cctbx_ha14.target_unit_cell
+      t_lat = self.params.cctbx_ha14.target_lattice_type
       l_idx = self.target_lattice.ctr.FindString(str(t_lat))
-      t_ctype = self.params.cctbx.target_centering_type
+      t_ctype = self.params.cctbx_ha14.target_centering_type
       if t_ctype == 'P':
         c_idx = 1
       elif t_ctype == 'C':
@@ -1163,28 +1196,28 @@ class CCTBXOptions(BaseBackendDialog):
       pass
 
     # Grid search options
-    idx = self.gs_type.ctr.FindString(self.params.cctbx.grid_search.type)
+    idx = self.gs_type.ctr.FindString(self.params.cctbx_ha14.grid_search.type)
     self.set_grid_search(idx=idx)
-    self.signal_search.SetValue(self.params.cctbx.grid_search.sig_height_search)
+    self.signal_search.SetValue(self.params.cctbx_ha14.grid_search.sig_height_search)
 
     # # Selection options
-    # self.select_only.SetValue(self.params.cctbx.selection.select_only.flag_on)
+    # self.select_only.SetValue(self.params.cctbx_ha14.selection.select_only.flag_on)
     # self.img_objects_path.Enable(self.select_only.GetValue())
 
-    idx = self.select_by.ctr.FindString(self.params.cctbx.selection.select_by)
+    idx = self.select_by.ctr.FindString(self.params.cctbx_ha14.selection.select_by)
     self.select_by.ctr.SetSelection(idx)
 
-    self.min_sigma.sigma.SetValue(str(self.params.cctbx.selection.min_sigma))
+    self.min_sigma.sigma.SetValue(str(self.params.cctbx_ha14.selection.min_sigma))
 
     # Selection filters
-    if self.params.cctbx.selection.prefilter.flag_on:
-      pg = self.params.cctbx.selection.prefilter.target_pointgroup
-      ut = self.params.cctbx.selection.prefilter.target_uc_tolerance
-      rs = self.params.cctbx.selection.prefilter.min_resolution
-      rf = self.params.cctbx.selection.prefilter.min_reflections
-      if self.params.cctbx.selection.prefilter.target_unit_cell is not None:
+    if self.params.cctbx_ha14.selection.prefilter.flag_on:
+      pg = self.params.cctbx_ha14.selection.prefilter.target_pointgroup
+      ut = self.params.cctbx_ha14.selection.prefilter.target_uc_tolerance
+      rs = self.params.cctbx_ha14.selection.prefilter.min_resolution
+      rf = self.params.cctbx_ha14.selection.prefilter.min_reflections
+      if self.params.cctbx_ha14.selection.prefilter.target_unit_cell is not None:
         try:
-          uc = self.params.cctbx.selection.prefilter.target_unit_cell.parameters()
+          uc = self.params.cctbx_ha14.selection.prefilter.target_unit_cell.parameters()
         except AttributeError:
           uc = None
       else:
@@ -1299,7 +1332,7 @@ class CCTBXOptions(BaseBackendDialog):
 
     # Populate IOTA settings
     proc_phil_text = '\n'.join([
-      'cctbx',
+      'cctbx_ha14',
       '{',
       '  resolution_limits',
       '  {',
@@ -1346,7 +1379,7 @@ class CCTBXOptions(BaseBackendDialog):
     e.Skip()
 
 
-class DIALSOptions(BaseBackendDialog):
+class BackendOptions(BaseBackendDialog):
   # DIALS options
 
   def __init__(self, parent,
@@ -1354,7 +1387,7 @@ class DIALSOptions(BaseBackendDialog):
                *args, **kwargs):
 
     BaseBackendDialog.__init__(self, parent,
-                               backend_name='DIALS',
+                               backend_name='CCTBX.XFEL',
                                phil=phil,
                                target=target,
                                phil_size=(500, 500),
@@ -1549,35 +1582,35 @@ class DIALSOptions(BaseBackendDialog):
     # Target options
     # "Try/except" for backwards compatibility
     try:
-      if self.params.dials.target_unit_cell is not None:
-        uc_str = [str(i) for i in self.params.dials.target_unit_cell.parameters()]
+      if self.params.cctbx_xfel.target_unit_cell is not None:
+        uc_str = [str(i) for i in self.params.cctbx_xfel.target_unit_cell.parameters()]
         self.target_uc.cell.SetValue(' '.join(uc_str))
-      if self.params.dials.target_space_group is not None:
-        sg_info = str(self.params.dials.target_space_group).replace(' ', '')
+      if self.params.cctbx_xfel.target_space_group is not None:
+        sg_info = str(self.params.cctbx_xfel.target_space_group).replace(' ', '')
         self.target_sg.sg.SetValue(sg_info)
-      self.use_fft3d.SetValue(self.params.dials.use_fft3d)
-      if self.params.dials.significance_filter.flag_on:
-        sigma = self.params.dials.significance_filter.sigma
+      self.use_fft3d.SetValue(self.params.cctbx_xfel.use_fft3d)
+      if self.params.cctbx_xfel.significance_filter.flag_on:
+        sigma = self.params.cctbx_xfel.significance_filter.sigma
         self.sig_filter.toggle_boxes()
         self.sig_filter.sigma.SetValue(str(sigma))
     except AttributeError:
       pass
 
     # Optimization options
-    self.reindex.SetValue(self.params.dials.determine_sg_and_reindex)
+    self.reindex.SetValue(self.params.cctbx_xfel.determine_sg_and_reindex)
     self.estimate_gain.SetValue(self.params.advanced.estimate_gain)
-    self.auto_threshold.SetValue(self.params.dials.auto_threshold)
+    self.auto_threshold.SetValue(self.params.cctbx_xfel.auto_threshold)
 
    # Selection filters
     try:
-      if self.params.dials.filter.flag_on:
-        pg = self.params.dials.filter.target_pointgroup
-        ut = self.params.dials.filter.target_uc_tolerance
-        rs = self.params.dials.filter.min_resolution
-        rf = self.params.dials.filter.min_reflections
-        if self.params.dials.filter.target_unit_cell is not None:
+      if self.params.cctbx_xfel.filter.flag_on:
+        pg = self.params.cctbx_xfel.filter.target_pointgroup
+        ut = self.params.cctbx_xfel.filter.target_uc_tolerance
+        rs = self.params.cctbx_xfel.filter.min_resolution
+        rf = self.params.cctbx_xfel.filter.min_reflections
+        if self.params.cctbx_xfel.filter.target_unit_cell is not None:
           try:
-            uc = self.params.dials.filter.target_unit_cell.parameters()
+            uc = self.params.cctbx_xfel.filter.target_unit_cell.parameters()
           except AttributeError:
             uc = None
         else:
@@ -1667,7 +1700,7 @@ class DIALSOptions(BaseBackendDialog):
       res = None
 
     dials_phil_text = '\n'.join([
-      'dials',
+      'cctbx_xfel',
       '{',
       '  target_space_group = {}'.format(t_sg),
       '  target_unit_cell = {}'.format(t_uc),

@@ -248,9 +248,9 @@ class MainWindow(wx.Frame):
             self.input_window.input.add_item(os.path.abspath(carg))
 
     if self.args.watch > 0:
-      self.gparams.advanced.monitor_mode = True
-      self.gparams.advanced.monitor_mode_timeout = True
-      self.gparams.advanced.monitor_mode_timeout_length = self.args.watch[0]
+      self.gparams.gui.monitor_mode = True
+      self.gparams.gui.monitor_mode_timeout = True
+      self.gparams.gui.monitor_mode_timeout_length = self.args.watch[0]
 
     if self.args.random > 0:
       self.gparams.advanced.random_sample.flag_on = True
@@ -260,7 +260,7 @@ class MainWindow(wx.Frame):
       self.gparams.advanced.temporary_output_folder = self.args.tmp[0]
 
     if self.args.nproc is not None:
-      self.gparams.n_processors = self.args.nproc
+      self.gparams.mp.n_processors = self.args.nproc
 
     self.iota_phil = self.iota_phil.format(python_object=self.gparams)
 
@@ -303,7 +303,9 @@ class MainWindow(wx.Frame):
     prefs.Destroy()
 
     self.input_window.input_phil = self.iota_phil
-    self.input_window.gparams = self.iota_phil.extract()
+    self.gparams = self.iota_phil.extract()
+    self.input_window.gparams = self.gparams
+
 
   def onImportOptions(self, e):
     """ Opens dialog for image import options
@@ -327,38 +329,34 @@ class MainWindow(wx.Frame):
     :return: modifies self.iota_phil with updated parameters
     """
 
-    # For cctbx.xfel options
-    if self.input_window.int_box.ctr.GetCurrentSelection() == 0:
-      int_dialog = dlg.CCTBXOptions(self,
-                                    phil=self.iota_phil,
-                                    target=self.target_phil,
-                                    title='cctbx.xfel Options',
-                                    style=wx.DEFAULT_DIALOG_STYLE |
+    # For current cctbx.xfel options
+    if self.gparams.advanced.processing_backend == 'cctbx.xfel':
+      int_dialog = dlg.BackendOptions(self,
+                                      phil=self.iota_phil,
+                                      target=self.target_phil,
+                                      title='cctbx.xfel Options',
+                                      style=wx.DEFAULT_DIALOG_STYLE |
                                           wx.STAY_ON_TOP | wx.RESIZE_BORDER)
       int_dialog.SetMinSize((600, -1))
       int_dialog.Fit()
 
-      # Get values and set parameters
-      if (int_dialog.ShowModal() == wx.ID_OK):
-        self.iota_phil = self.iota_phil.fetch(sources=[int_dialog.proc_phil])
-        self.target_phil = int_dialog.target_phil
-      int_dialog.Destroy()
-
-    # For DIALS options
-    elif self.input_window.int_box.ctr.GetCurrentSelection() == 1:
-      int_dialog = dlg.DIALSOptions(self,
-                                    phil=self.iota_phil,
-                                    target=self.target_phil,
-                                    title='DIALS Options',
-                                    style=wx.DEFAULT_DIALOG_STYLE |
+    # For deprecated cctbx.xfel HA14 options
+    elif self.gparams.advanced.processing_backend == 'ha14':
+      int_dialog = dlg.OldBackendOptions(self,
+                                         phil=self.iota_phil,
+                                         target=self.target_phil,
+                                         title='cctbx.xfel HA14 Options',
+                                         style=wx.DEFAULT_DIALOG_STYLE |
                                           wx.STAY_ON_TOP | wx.RESIZE_BORDER)
       int_dialog.SetMinSize((600, -1))
       int_dialog.Fit()
+    else:
+      int_dialog = None
 
-      # Get values and set parameters
-      if (int_dialog.ShowModal() == wx.ID_OK):
-        self.iota_phil = self.iota_phil.fetch(source=int_dialog.proc_phil)
-        self.target_phil = int_dialog.target_phil
+    # Get values and set parameters
+    if int_dialog and (int_dialog.ShowModal() == wx.ID_OK):
+      self.iota_phil = self.iota_phil.fetch(source=int_dialog.proc_phil)
+      self.target_phil = int_dialog.target_phil
       int_dialog.Destroy()
 
   def onAnalysisOptions(self, e):
@@ -393,10 +391,7 @@ class MainWindow(wx.Frame):
     self.gparams.description = util.noneset(
       self.input_window.project_title.ctr.GetValue())
     self.gparams.output = self.input_window.project_folder.ctr.GetValue()
-    self.gparams.n_processors = self.input_window.opt_spc_nprocs.ctr.GetValue()
-    self.gparams.advanced.integrate_with = \
-      str(self.input_window.int_box.ctr.GetString(
-        self.input_window.int_box.ctr.GetSelection())).lower()
+    self.gparams.mp.n_processors = self.input_window.opt_spc_nprocs.ctr.GetValue()
 
     # Format main IOTA PHIL
     self.iota_phil = self.iota_phil.format(python_object=self.gparams)
@@ -514,7 +509,9 @@ class MainWindow(wx.Frame):
                                       target_phil=self.target_phil,
                                       phil=self.iota_phil)
     init = UIInitAll()
-    init.target_phil = self.target_phil
+
+    if self.target_phil:
+      init.target_phil = self.target_phil
     init.input_list = input_list
     self.proc_window.run(init)
 
@@ -543,29 +540,18 @@ class MainWindow(wx.Frame):
 
       # Save target PHIL file, if a PHIL script exists
       if self.target_phil is not None:
-        if self.gparams.advanced.integrate_with == 'cctbx':
+        if self.gparams.advanced.processing_backend == 'ha14':
           phil_filepath = os.path.join(os.path.dirname(script_filepath),
-                                       'cctbx.phil')
-          self.gparams.cctbx.target = phil_filepath
-        if self.gparams.advanced.integrate_with == 'dials':
+                                       'cctbx_ha14.phil')
+          self.gparams.cctbx_ha14.target = phil_filepath
+        if self.gparams.advanced.processing_backend == 'cctbx.xfel':
           phil_filepath = os.path.join(os.path.dirname(script_filepath),
-                                       'dials.phil')
-          self.gparams.dials.target = phil_filepath
+                                       'cctbx_xfel.phil')
+          self.gparams.cctbx_xfel.target = phil_filepath
 
       # Generate text of params
       final_phil = self.iota_phil.format(python_object=self.gparams)
-
-      test_params = final_phil.extract()
-
-      with util.Capturing() as txt_output:
-        final_phil.show()
-      txt_out = ''
-      for one_output in txt_output:
-        txt_out += one_output + '\n'
-
-      # Save files
-      with open(script_filepath, 'w') as param_file:
-        param_file.write(txt_out)
+      final_phil_txt = util.convert_phil_to_text(final_phil, script_filepath)
 
       if self.target_phil is not None:
         with open(phil_filepath, 'w') as phil_file:
@@ -602,20 +588,25 @@ class MainWindow(wx.Frame):
       phil_string = '\n'.join(pf.readlines())
     user_phil = ip.parse(phil_string)
 
-    self.iota_phil = self.fix_old_phil(phil=user_phil)
+    phil_fixer = inp.PHILFixer()
+
+    self.iota_phil = phil_fixer.run(old_phil=user_phil)
     self.prefs_phil = self.iota_phil
+
     self.gparams = self.iota_phil.extract()
 
     # Pass on param PHIL to input window
     self.input_window.input_phil = self.iota_phil
 
     # Pass on target PHIL (if found) to input window
-    if self.gparams.advanced.integrate_with == 'cctbx':
-      target = self.gparams.cctbx.target
-    elif self.gparams.advanced.integrate_with == 'dials':
-      target = self.gparams.dials.target
+    if self.gparams.advanced.processing_backend == 'ha14':
+      target = self.gparams.cctbx_ha14.target
+    elif self.gparams.advanced.processing_backend == 'cctbx.xfel':
+      target = self.gparams.cctbx_xfel.target
+    else:
+      target = None
 
-    if target is not None:
+    if target:
       try:
         with open(target, 'r') as pf:
           self.target_phil = pf.read()
@@ -627,7 +618,6 @@ class MainWindow(wx.Frame):
     # Update input window with loaded parameters
     if update_input_window:
       self.update_input_window()
-
 
   def reset_settings(self):
     """ Clear all controls in input window """
@@ -645,16 +635,11 @@ class MainWindow(wx.Frame):
     # Reset input window with default values
     self.gparams.description = ''
     self.gparams.output = os.path.abspath(os.curdir)
-    self.gparams.n_processors = multiprocessing.cpu_count()
+    self.gparams.mp.n_processors = multiprocessing.cpu_count()
     self.update_input_window()
 
   def update_input_window(self):
     """ Update input window with parameters in PHIL """
-
-    # Choice of backend
-    idx = self.input_window.int_box.ctr.FindString(
-      self.gparams.advanced.integrate_with)
-    self.input_window.int_box.ctr.SetSelection(idx)
 
     # Description
     if self.gparams.description is not None:
@@ -674,109 +659,113 @@ class MainWindow(wx.Frame):
         self.input_window.input.add_item(inp_path)
 
     # Number of processors
-    self.input_window.opt_spc_nprocs.ctr.SetValue(self.gparams.n_processors)
+    self.input_window.opt_spc_nprocs.ctr.SetValue(self.gparams.mp.n_processors)
 
     # PHILs
     self.input_window.input_phil = self.iota_phil
     self.input_window.target_phil = self.target_phil
 
-  def fix_old_phil(self, phil):
-    """ Backwards compatibility: convert settings from old format to new """
-
-    temp_phil = inp.master_phil.fetch(source=phil)
-    params = temp_phil.extract()
-
-    # Renaming of imported images
-    if not hasattr(params.image_conversion, 'rename_pickle'):
-      prefix = params.image_conversion.rename_pickle_prefix
-      if 'none' in str(prefix).lower():
-        params.image_conversion.__inject__('rename_pickle',
-                                           'keep_file_structure')
-        params.image_conversion.rename_pickle_prefix = None
-      elif 'auto' in str(prefix).lower():
-        params.image_conversion.__inject__('rename_pickle', 'auto_filename')
-        params.image_conversion.rename_pickle_prefix = None
-      else:
-        params.image_conversion.__inject__('rename_pickle', 'custom_filename')
-        if hasattr(prefix, '__iter__'):
-          if len(prefix) > 1:
-            params.image_conversion.rename_pickle_prefix = \
-              [i for i in prefix if "*" in i][0].replace('*', '')
-          else:
-            params.image_conversion.rename_pickle_prefix = prefix[0]
-
-    if str(params.image_conversion.square_mode).lower() == 'none':
-      params.image_conversion.square_mode = 'no_modification'
-
-    if str(params.image_triage.type).lower() == 'none':
-      params.image_triage.type = 'no_triage'
-
-    if str(params.cctbx.grid_search.type).lower() == 'none':
-      params.cctbx.grid_search.type = 'no_grid_search'
-
-    if str(params.analysis.viz).lower() == 'none':
-      params.analysis.viz = 'no_visualization'
-
-    fixed_phil = temp_phil.format(python_object=params)
-
-    return fixed_phil
-
-
   def onQuit(self, e):
-    if self.term_file is not None:
-      with open(self.term_file, 'w') as tf:
-        tf.write('')
+
+    # Check if processing window has been launched
+    if hasattr(self, "proc_window"):
+
+      # Check if proc_thread exists
+      if hasattr(self.proc_window, 'proc_thread'):
+
+        # Check if proc_thread is running
+        if self.proc_window.proc_thread.is_alive():
+          tmp_aborted_file = os.path.join(self.proc_window.tmp_aborted_file)
+          with open(tmp_aborted_file, 'w') as tf:
+            tf.write('')
+          self.proc_window.proc_thread.abort()
+
+          # Close window only when thread is dead
+          while self.proc_window.proc_thread.is_alive():
+            continue
+
+      import shutil
+      try:
+        shutil.rmtree(self.proc_window.init.tmp_base)
+      except Exception:
+        pass
+      print('JOB TERMINATED!')
+
     self.Close()
+
 
 
 # ------------------------------ Initialization  ----------------------------- #
 
-from iota.components.iota_init import InitAll
+from iota.components.iota_base import InitGeneral
 
-class UIInitAll(InitAll):
+class ProcessInfo(object):
+  """ Object with all the processing info UI needs to plot results """
+  pass
+
+class UIInitAll(InitGeneral):
   def __init__(self):
-    InitAll.__init__(self)
+    InitGeneral.__init__(self)
 
   def sanity_check(self):
     """ Check for conditions necessary to starting the run
     @return: True if passed, False if failed
     """
-
-    # Check for existence of appropriate target files. If none are specified,
-    # ask to generate defaults; if user says no, fail sanity check. If file is
-    # specified but doesn't exist, show error message and fail sanity check
-    if self.target_phil is None:
-      if self.params.advanced.integrate_with == 'cctbx':
-        write_def = wx.MessageDialog(None,
-                                     'WARNING! No target file for CCTBX.XFEL. '
-                                     'Generate defaults?','WARNING',
-                                     wx.YES_NO | wx.NO_DEFAULT | wx.ICON_EXCLAMATION)
-        if (write_def.ShowModal() == wx.ID_YES):
-          self.target_phil, _ = inp.write_defaults(
-            current_path=self.params.output, write_param_file=False)
-          return True
-        else:
-          return False
-
-      elif self.params.advanced.integrate_with == 'dials':
-          write_def = wx.MessageDialog(None,
-                                       'WARNING! No target file for DIALS. '
-                                       'Generate defaults?', 'WARNING',
-                                       wx.YES_NO | wx.NO_DEFAULT | wx.ICON_EXCLAMATION)
-          if (write_def.ShowModal() == wx.ID_YES):
-            self.target_phil, _ = inp.write_defaults(current_path=self.params.output,
-                                                     write_param_file=False,
-                                                     method='dials')
-            return True
-          else:
-            return False
-
+    msg = ''
     # Check for data not found
     if len(self.input_list) == 0:
+      msg = 'IOTA_UI_INIT_ERROR: Data Not Found!'
       wx.MessageBox('ERROR: Data Not Found!', 'ERROR', wx.OK | wx.ICON_ERROR)
-      return False
+      return False, msg
 
-    return True
+    return True, 'msg'
+
+  def initialize_info_object(self):
+
+    self.info = ProcessInfo()
+    self.info.__setattr__('finished_objects', [])
+    self.info.__setattr__('img_list', [])
+
+    self.info.__setattr__('nref_list', [])
+    self.info.__setattr__('nref_xaxis', [])
+    self.info.__setattr__('nsref_x', None)
+    self.info.__setattr__('nsref_y', None)
+    self.info.__setattr__('nsref_median', None)
+    self.info.__setattr__('res_list', [])
+    self.info.__setattr__('res_x', None)
+    self.info.__setattr__('res_y', None)
+    self.info.__setattr__('res_median', None)
+
+    self.info.__setattr__('user_sg', 'P1')
+    self.info.__setattr__('idx_array', None)
+    self.info.__setattr__('merged_indices', None)
+    self.info.__setattr__('b_factors', [])
+
+    self.info.__setattr__('status_summary',
+                          {'nonzero':[], 'names':[], 'patches':[]})
+
+    self.info.__setattr__('bookmark', 0)
+    self.info.__setattr__('unread_files', [])
+    self.info.__setattr__('unprocessed_images', 0)
+    self.info.__setattr__('cluster_iterable', [])
+    self.info.__setattr__('int_pickles', [])
+
+    self.info.__setattr__('best_pg', None)
+    self.info.__setattr__('best_uc', None)
+    self.info.__setattr__('cluster_info', {})
+    self.info.__setattr__('prime_info', {})
+
+    self.info.__setattr__('msg', '')
+    self.info.__setattr__('test_attribute', 0)
+    self.info.__setattr__('obj_list_file',
+                          os.path.join(self.tmp_base, 'finished_objects.lst'))
+    self.info.__setattr__('finished_pickles_file',
+                          os.path.join(self.int_base, 'finished_pickles.lst'))
+    self.info.__setattr__('cluster_info_file',
+                          os.path.join(self.int_base, 'cluster_info.pickle'))
+
+    # set info filepath
+    self.info_file = os.path.join(self.int_base, 'proc.info')
 
   def initialize_interface(self):
     """ Override with UI-specific init procedure
@@ -786,9 +775,19 @@ class UIInitAll(InitAll):
     :return: True = initialization OK; False = initialization Failed
     """
 
+    # Generate default backend settings if none are specified
+    if self.target_phil is None:
+      self.target_phil, _ = inp.write_defaults(current_path=self.params.output,
+                                               write_param_file=False,
+                                               method='current')
+
     # If input list for some reason isn't transmitted from main window, make it
     if self.input_list is None:
       self.input_list = self.make_input_list()
+
+    # In case any sub-setting of the input is anticipated, create a list of
+    # all found input for future reference (i.e. run recovery)
+    self.all_input = self.input_list
 
     # Select range of images if turned on
     if self.params.advanced.image_range.flag_on:
@@ -799,5 +798,10 @@ class UIInitAll(InitAll):
             self.params.advanced.random_sample.number < len(self.input_list):
       self.input_list = self.select_random_subset(self.input_list)
 
+    # Initialize info object for UI
+    self.initialize_info_object()
+
     # Run the sanity check procedure & return result
-    return self.sanity_check()
+    is_good, msg = self.sanity_check()
+
+    return is_good, msg

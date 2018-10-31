@@ -12,7 +12,6 @@ Description : IOTA GUI Windows / frames
 '''
 
 import os
-import shutil
 import wx
 from wxtbx import bitmaps
 import wx.lib.buttons as btn
@@ -38,11 +37,8 @@ assert Axes3D
 from libtbx import easy_run
 from libtbx import easy_pickle as ep
 from libtbx.utils import to_unicode
-from cctbx import miller, crystal, statistics
-from cctbx.array_family import flex
 
 from prime.postrefine.mod_mx import mx_handler
-import prime.postrefine.mod_threads as pthr
 import prime.postrefine.mod_plotter as ppl
 
 from iota.components.iota_analysis import Analyzer, Plotter
@@ -92,10 +88,10 @@ class InputWindow(iota.components.iota_ui_dialogs.BasePanel):
     self.gparams = self.input_phil.extract()
     self.imageset = None
 
-    if str(self.gparams.advanced.integrate_with).lower() == 'cctbx':
-      target = self.gparams.cctbx.target
-    elif str(self.gparams.advanced.integrate_with).lower() == 'dials':
-      target = self.gparams.dials.target
+    if str(self.gparams.advanced.processing_backend).lower() == 'cctbx':
+      target = self.gparams.cctbx_ha14.target
+    elif str(self.gparams.advanced.processing_backend).lower() == 'dials':
+      target = self.gparams.cctbx_xfel.target
     else:
       target = None
 
@@ -105,13 +101,6 @@ class InputWindow(iota.components.iota_ui_dialogs.BasePanel):
           self.target_phil = pf.read()
       except Exception:
         self.target_phil = None
-
-    self.int_box = ct.ChoiceCtrl(self,
-                                 label='Integrate with:',
-                                 label_size=(150, -1),
-                                 choices=['cctbx', 'DIALS'],
-                                 ctrl_size=(200, -1))
-    self.int_box.ctr.SetSelection(0)
 
     self.project_folder = ct.InputCtrl(self, label='Project Folder: ',
                                        label_size=(150, -1),
@@ -126,7 +115,6 @@ class InputWindow(iota.components.iota_ui_dialogs.BasePanel):
     self.input = FileListCtrl(self)
 
     # Put everything into main sizer
-    self.main_sizer.Add(self.int_box, flag=f.expand, border=10)
     self.main_sizer.Add(self.project_title, flag=f.expand, border=10)
     self.main_sizer.Add(self.project_folder, flag=f.expand, border=10)
     self.main_sizer.Add(self.input, 1, flag=wx.EXPAND | wx.ALL, border=10)
@@ -394,7 +382,7 @@ class FileListCtrl(ct.CustomListCtrl):
 
   def view_images(self, img_list, img_type=None):
     """ Launches image viewer (depending on backend) """
-    viewer = self.parent.gparams.advanced.image_viewer
+    viewer = self.parent.gparams.gui.image_viewer
     if viewer == 'cxi.view' and 'pickle' not in img_type:
         wx.MessageBox('cxi.view only accepts image pickles', 'Warning',
                       wx.OK | wx.ICON_EXCLAMATION)
@@ -576,27 +564,20 @@ class LogTab(wx.Panel):
       self.log_window.ShowPosition(found_pos)
 
 
-class ProcessingTab(d.ScrolledPanel):
+# class ProcessingTab(d.ScrolledPanel):
+class ProcessingTab(wx.Panel):
   def __init__(self, parent):
+    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
     self.gparams = None
     self.init = None
     self.parent = parent
 
-    self.finished_objects = []
-    self.img_list = []
-    self.nref_list = []
-    self.res_list = []
-    self.indices = []
-    self.b_factors = []
-    self.spacegroup = None
-    self.idx_array = None
-    self.b_factor_array = None
+    self.info = None
 
     self.hkl_view_axis = 'l'
     self.pick = {'image':None, 'index':0, 'axis':None, 'picked':False}
     self.proc_fnames = None
 
-    d.ScrolledPanel.__init__(self, parent)
     self.main_fig_sizer = wx.GridBagSizer(0, 0)
 
     # Set regular font
@@ -697,9 +678,6 @@ class ProcessingTab(d.ScrolledPanel):
                                 ctrl_size=wx.DefaultSize)
     hkl_sizer.Add(self.hkl_sg, flag=wx.ALIGN_CENTER)
 
-    self.Bind(wx.EVT_TEXT_ENTER, self.onSGTextEnter, self.hkl_sg.sg)
-    self.Bind(wx.EVT_CHECKBOX, self.onSGCheckbox, self.hkl_sg.toggle)
-
     # Processing summary figure
     self.proc_panel = wx.Panel(self, size=(-1, 120))
     proc_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -742,61 +720,18 @@ class ProcessingTab(d.ScrolledPanel):
 
     self.SetSizer(self.main_fig_sizer)
 
-  def onSGTextEnter(self, e):
-    self.spacegroup = str(self.hkl_sg.sg.GetValue())
-    self.draw_plots()
-
-  def onSGCheckbox(self, e):
-    if self.hkl_sg.toggle.GetValue():
-      if self.spacegroup is not None:
-        self.hkl_sg.sg.SetValue(str(self.spacegroup))
-      else:
-        self.spacegroup = 'P1'
-        self.hkl_sg.sg.SetValue('P1')
-    else:
-      self.hkl_sg.sg.SetValue('')
-    self.draw_plots()
-
   def draw_summary(self):
-    # noinspection PyListCreation
     try:
-      # Summary horizontal stack bar graph
-      categories = [
-        ['failed triage', '#d73027',
-         len([i for i in self.finished_objects if
-              i.fail in ('failed triage', 'failed import')])],
-        ['failed indexing / integration', '#f46d43',
-         len([i for i in self.finished_objects if
-              i.fail == 'failed grid search'])],
-        ['failed filter', '#ffffbf',
-         len([i for i in self.finished_objects if
-              i.fail == 'failed prefilter' or
-              i.fail == 'failed filter'])],
-        ['failed spotfinding', '#f46d43',
-         len([i for i in self.finished_objects if
-              i.fail == 'failed spotfinding'])],
-        ['failed indexing', '#fdae61',
-         len([i for i in self.finished_objects if
-              i.fail == 'failed indexing'])],
-        ['failed integration', '#fee090',
-         len([i for i in self.finished_objects if
-              i.fail == 'failed integration'])],
-        ['integrated', '#4575b4',
-         len([i for i in self.finished_objects if
-              i.fail is None and i.final['final'] is not None])]
-      ]
-      categories.append(['not processed', '#e0f3f8',
-                         len(self.img_list) - sum([i[2] for i in categories])])
-      nonzero = [i for i in categories if i[2] > 0]
-      names = [i[0] for i in nonzero]
-      patches = [None] * len(nonzero)
+      nonzero = self.info.status_summary['nonzero']
+      names = self.info.status_summary['names']
+      patches = self.info.status_summary['patches']
 
       self.sum_axes.clear()
-      self.sum_axes.axis([0, 1.01*len(self.img_list), -0.5, 0.75])
+      self.sum_axes.axis([0, 1.01*len(self.info.img_list), -0.5, 0.75])
       self.sum_axes.axis('off')
 
       for i in range(len(nonzero)):
-        percent = np.round(nonzero[i][2] / len(self.img_list) * 100)
+        percent = np.round(nonzero[i][2] / len(self.info.img_list) * 100)
 
         previous = [j[2] for j in nonzero[:i]]
         lf = np.sum(previous)
@@ -819,7 +754,7 @@ class ProcessingTab(d.ScrolledPanel):
                            loc='upper center', fontsize=9,
                            frameon=False, handlelength=1)
 
-      self.bracket = mpatches.Rectangle((0, 0), len(self.img_list), 1,
+      self.bracket = mpatches.Rectangle((0, 0), len(self.info.img_list), 1,
                                         facecolor='white', edgecolor='black',
                                         zorder=2, lw=2, visible=False)
       self.sum_axes.add_patch(self.bracket)
@@ -830,20 +765,20 @@ class ProcessingTab(d.ScrolledPanel):
         p_idx = [patches.index(i) for i in patches if
                  i[0][0] <= idx <= i[0][1]][0]
         cat = names[p_idx]
-        if self.gparams.advanced.integrate_with == 'cctbx':
+        if self.gparams.advanced.processing_backend == 'ha14':
           if cat == 'failed indexing / integration':
             cat = 'failed grid search'
           elif cat == 'failed filter':
             cat = 'failed prefilter'
 
         if cat not in ('integrated', 'not processed'):
-          self.proc_fnames = [i.conv_img for i in self.finished_objects
+          self.proc_fnames = [i.conv_img for i in self.info.finished_objects
                               if i.fail == cat]
         elif cat == 'integrated':
-          self.proc_fnames = [i.conv_img for i in self.finished_objects if
+          self.proc_fnames = [i.conv_img for i in self.info.finished_objects if
                               i.fail is None and i.final['final'] is not None]
         elif cat == 'not processed':
-          self.proc_fnames = [i.conv_img for i in self.finished_objects if
+          self.proc_fnames = [i.conv_img for i in self.info.finished_objects if
                               i.fail is None and i.final['final'] is None]
         else:
           self.proc_fnames = ''
@@ -862,35 +797,32 @@ class ProcessingTab(d.ScrolledPanel):
       print ('SUMMARY PLOT ERROR: ', e)
 
   def draw_plots(self):
-    if sum(self.nref_list) > 0 and sum(self.res_list) > 0:
+    if sum(self.info.nref_list) > 0 and sum(self.info.res_list) > 0:
       self.draw_integration_plots()
-      self.draw_b_factors()
-      self.draw_measured_indices()
+      if self.info.b_factors:
+        self.draw_b_factors()
+      if self.info.merged_indices:
+        self.draw_measured_indices()
       self.int_canvas.draw()
     self.Layout()
-    self.SetupScrolling()
-
 
   def draw_integration_plots(self):
     try:
       # Strong reflections per frame
       self.nsref_axes.clear()
-      self.nsref_x = np.array([i + 1 for i in
-                               range(len(self.img_list))]).astype(np.double)
-      self.nsref_y = np.array([np.nan if i == 0 else i for i in
-                               self.nref_list]).astype(np.double)
       nsref_ylabel = 'Reflections (I/{0}(I) > {1})' \
-                     ''.format(r'$\sigma$',
-                               self.gparams.cctbx.selection.min_sigma)
+                     ''.format(r'$\sigma$', self.gparams.cctbx_ha14.selection.min_sigma)
+      self.nsref = self.nsref_axes.scatter(self.info.nsref_x,
+                                           self.info.nsref_y,
+                                           s=45, marker='o',
+                                           edgecolors='black',
+                                           color='#ca0020',
+                                           picker=True)
+      nsref_med = self.nsref_axes.axhline(self.info.nsref_median,
+                                          c='#ca0020', ls='--')
 
-      self.nsref = self.nsref_axes.scatter(self.nsref_x, self.nsref_y, s=45,
-                                           marker='o', edgecolors='black',
-                                           color='#ca0020', picker=True)
-      nsref_median = np.median([i for i in self.nref_list if i > 0])
-      nsref_med = self.nsref_axes.axhline(nsref_median, c='#ca0020', ls='--')
-
-      self.nsref_axes.set_xlim(0, np.nanmax(self.nsref_x) + 2)
-      nsref_ymax = np.nanmax(self.nsref_y) * 1.25 + 10
+      self.nsref_axes.set_xlim(0, np.nanmax(self.info.nsref_x) + 2)
+      nsref_ymax = np.nanmax(self.info.nsref_y) * 1.25 + 10
       if nsref_ymax == 0:
         nsref_ymax = 100
       self.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
@@ -905,26 +837,21 @@ class ProcessingTab(d.ScrolledPanel):
     try:
       # Resolution per frame
       self.res_axes.clear()
-      self.res_x = np.array([i + 1 for i in range(len(self.img_list))]) \
-        .astype(np.double)
-      self.res_y = np.array([np.nan if i == 0 else i for i in self.res_list]) \
-        .astype(np.double)
-      res_m = np.isfinite(self.res_y)
+      res_m = np.isfinite(self.info.res_y)
 
-      self.res = self.res_axes.scatter(self.res_x[res_m], self.res_y[res_m],
+      self.res = self.res_axes.scatter(self.info.res_x[res_m],
+                                       self.info.res_y[res_m],
                                        s=45, marker='o', edgecolors='black',
                                        color='#0571b0', picker=True)
 
       with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
+        res_med = self.res_axes.axhline(self.info.res_median,
+                                        c='#0571b0', ls='--')
 
-        res_median = np.median([i for i in self.res_list if i > 0])
-        res_med = self.res_axes.axhline(res_median, c='#0571b0',
-                                      ls='--')
-
-      self.res_axes.set_xlim(0, np.nanmax(self.res_x) + 2)
-      res_ymax = np.nanmax(self.res_y) * 1.1
-      res_ymin = np.nanmin(self.res_y) * 0.9
+      self.res_axes.set_xlim(0, np.nanmax(self.info.res_x) + 2)
+      res_ymax = np.nanmax(self.info.res_y) * 1.1
+      res_ymin = np.nanmin(self.info.res_y) * 0.9
       if res_ymin == res_ymax:
         res_ymax = res_ymin + 1
       self.res_axes.set_ylim(ymin=res_ymin, ymax=res_ymax)
@@ -934,14 +861,14 @@ class ProcessingTab(d.ScrolledPanel):
       self.res_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
       plt.setp(self.res_axes.get_xticklabels(), visible=False)
 
-      self.nsref_pick, = self.nsref_axes.plot(self.nsref_x[0],
-                                              self.nsref_y[0],
+      self.nsref_pick, = self.nsref_axes.plot(self.info.nsref_x[0],
+                                              self.info.nsref_y[0],
                                               marker='o',
                                               ms=12, alpha=0.5,
                                               zorder=2,
                                               color='yellow', visible=False)
-      self.res_pick, = self.res_axes.plot(self.res_x[0],
-                                          self.res_x[0],
+      self.res_pick, = self.res_axes.plot(self.info.res_x[0],
+                                          self.info.res_x[0],
                                           marker='o',
                                           zorder=2,
                                           ms=12, alpha=0.5,
@@ -951,13 +878,14 @@ class ProcessingTab(d.ScrolledPanel):
         idx = self.pick['index']
         axis = self.pick['axis']
         if axis == 'nsref':
-          if not np.isnan(self.nsref_y[idx]):
+          if not np.isnan(self.info.nsref_y[idx]):
             self.nsref_pick.set_visible(True)
-            self.nsref_pick.set_data(self.nsref_x[idx], self.nsref_y[idx])
+            self.nsref_pick.set_data(self.info.nsref_x[idx],
+                                     self.info.nsref_y[idx])
         elif axis == 'res':
-          if not np.isnan(self.res_y[idx]):
+          if not np.isnan(self.info.res_y[idx]):
             self.res_pick.set_visible(True)
-            self.res_pick.set_data(self.res_x[idx], self.res_y[idx])
+            self.res_pick.set_data(self.info.res_x[idx], self.info.res_y[idx])
         self.info_txt.SetValue(img)
         self.btn_left.Enable()
         self.btn_right.Enable()
@@ -967,110 +895,83 @@ class ProcessingTab(d.ScrolledPanel):
       print ("RES ERROR: ", e)
 
 
-
   def draw_b_factors(self):
     self.wp_axes.clear()
     self.wp_axes.set_xlabel('B-factor')
     self.wp_axes.set_ylabel('Count')
     self.wp_axes.set_title('Wilson B-factor Histogram')
-    if len(self.b_factors) > 0:
-      self.wp_axes.hist(self.b_factors, 50, normed=False, facecolor='#4575b4',
+    if self.info.b_factors:
+      self.wp_axes.hist(self.info.b_factors, 50, normed=False,
+                        facecolor='#4575b4',
                         histtype='stepfilled')
 
   def draw_measured_indices(self):
-    # Extract indices from list and apply symmetry if any via miller object
-    if self.idx_array is None:
-      self.idx_array = flex.miller_index(self.indices)
+    # Draw a h0, k0, or l0 slice of merged data so far
+    self.hkl_axes.clear()
+    try:
+      self.hkl_colorbar.remove()
+    except Exception:
+      pass
+
+    slice = self.info.merged_indices.slice(axis=self.hkl_view_axis,
+                                           slice_start=0, slice_end=0)
+
+    hkl = [i[0] for i in slice]
+    freq = [i[1] for i in slice]
+
+    if self.hkl_view_axis == 'l':
+      x = [i[0] for i in hkl]
+      y = [i[1] for i in hkl]
+      self.hkl_axes.set_xlabel('h', weight='bold')
+      self.hkl_axes.set_ylabel('k', weight='bold', rotation='horizontal')
+    elif self.hkl_view_axis == 'k':
+      x = [i[0] for i in hkl]
+      y = [i[2] for i in hkl]
+      self.hkl_axes.set_xlabel('h', weight='bold')
+      self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
+    elif self.hkl_view_axis == 'h':
+      x = [i[1] for i in hkl]
+      y = [i[2] for i in hkl]
+      self.hkl_axes.set_xlabel('k', weight='bold')
+      self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
     else:
-      if self.indices:
-        self.idx_array.extend(flex.miller_index(self.indices))
-    self.indices = []
+      # if for some reason this goes to plotting without any indices
+      x = np.zeros(500)
+      y = np.zeros(500)
+      freq = np.zeros(500)
 
-    if self.hkl_sg.toggle.GetValue():
-      try:
-        crystal_symmetry = crystal.symmetry(space_group_symbol=self.spacegroup)
-      except RuntimeError:
-        crystal_symmetry = crystal.symmetry(space_group_symbol='P1')
-    else:
-      crystal_symmetry = crystal.symmetry(space_group_symbol='P1')
+    # Format plot
+    pt_size = int(max(self.hkl_panel.GetSize()) / 250)
+    if pt_size == 0:
+      pt_size = 1
 
-    if len(self.idx_array) > 0:
-      try:
-        ms = miller.set(crystal_symmetry=crystal_symmetry,
-                        indices=self.idx_array, anomalous_flag=False)
-        equiv = ms.multiplicities().merge_equivalents()
-        merged_indices = equiv.redundancies()
+    hkl_scatter = self.hkl_axes.scatter(x, y, c=freq, cmap="jet", s=pt_size,
+                                        edgecolor='none')
+    self.hkl_axes.axhline(0, lw=0.5, c='black', ls='-')
+    self.hkl_axes.axvline(0, lw=0.5, c='black', ls='-')
+    self.hkl_axes.set_xticks([])
+    self.hkl_axes.set_yticks([])
+    self.hkl_axes.xaxis.set_label_coords(x=1, y=0.5)
+    self.hkl_axes.yaxis.set_label_coords(x=0.5, y=1)
 
-      except Exception as e:
-        print ('HKL ERROR: ', e)
-        return
+    try:
+      xmax = abs(max(x, key=abs))
+      ymax = abs(max(y, key=abs))
+      self.hkl_axes.set_xlim(xmin=-xmax, xmax=xmax)
+      self.hkl_axes.set_ylim(ymin=-ymax, ymax=ymax)
+    except ValueError:
+      pass
 
-      # Draw a h0, k0, or l0 slice of merged data so far
-      self.hkl_axes.clear()
-      try:
-        self.hkl_colorbar.remove()
-      except Exception:
-        pass
-
-      slice = merged_indices.slice(axis=self.hkl_view_axis,
-                                   slice_start=0, slice_end=0)
-
-      hkl = [i[0] for i in slice]
-      freq = [i[1] for i in slice]
-
-      if self.hkl_view_axis == 'l':
-        x = [i[0] for i in hkl]
-        y = [i[1] for i in hkl]
-        self.hkl_axes.set_xlabel('h', weight='bold')
-        self.hkl_axes.set_ylabel('k', weight='bold', rotation='horizontal')
-      elif self.hkl_view_axis == 'k':
-        x = [i[0] for i in hkl]
-        y = [i[2] for i in hkl]
-        self.hkl_axes.set_xlabel('h', weight='bold')
-        self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
-      elif self.hkl_view_axis == 'h':
-        x = [i[1] for i in hkl]
-        y = [i[2] for i in hkl]
-        self.hkl_axes.set_xlabel('k', weight='bold')
-        self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
-      else:
-        # if for some reason this goes to plotting without any indices
-        x = np.zeros(500)
-        y = np.zeros(500)
-        freq = np.zeros(500)
-
-      # Format plot
-      pt_size = int(max(self.hkl_panel.GetSize()) / 250)
-      if pt_size == 0:
-        pt_size = 1
-
-      hkl_scatter = self.hkl_axes.scatter(x, y, c=freq, cmap="jet", s=pt_size,
-                                          edgecolor='none')
-      self.hkl_axes.axhline(0, lw=0.5, c='black', ls='-')
-      self.hkl_axes.axvline(0, lw=0.5, c='black', ls='-')
-      self.hkl_axes.set_xticks([])
-      self.hkl_axes.set_yticks([])
-      self.hkl_axes.xaxis.set_label_coords(x=1, y=0.5)
-      self.hkl_axes.yaxis.set_label_coords(x=0.5, y=1)
-
-      try:
-        xmax = abs(max(x, key=abs))
-        ymax = abs(max(y, key=abs))
-        self.hkl_axes.set_xlim(xmin=-xmax, xmax=xmax)
-        self.hkl_axes.set_ylim(ymin=-ymax, ymax=ymax)
-      except ValueError as e:
-        pass
-
-      norm = colors.Normalize(vmin=0, vmax=np.max(freq))
-      self.hkl_colorbar = self.hkl_figure.colorbar(hkl_scatter,
-                                                   ax=self.hkl_axes, cmap='jet',
-                                                   norm=norm,
-                                                   orientation='vertical',
-                                                   aspect=40)
+    norm = colors.Normalize(vmin=0, vmax=np.max(freq))
+    self.hkl_colorbar = self.hkl_figure.colorbar(hkl_scatter,
+                                                 ax=self.hkl_axes, cmap='jet',
+                                                 norm=norm,
+                                                 orientation='vertical',
+                                                 aspect=40)
 
   def onImageView(self, e):
     filepath = self.info_txt.GetValue()
-    viewer = self.gparams.advanced.image_viewer
+    viewer = self.gparams.gui.image_viewer
     if os.path.isfile(filepath):
       viewer = thr.ImageViewerThread(self,
                                      viewer=viewer,
@@ -1095,7 +996,7 @@ class ProcessingTab(d.ScrolledPanel):
             if int(n) <= len(self.proc_fnames):
               filenames.append(self.proc_fnames[int(n)])
         file_string = ' '.join(filenames)
-        viewer = self.gparams.advanced.image_viewer
+        viewer = self.gparams.gui.image_viewer
         viewer = thr.ImageViewerThread(self,
                                        viewer=viewer,
                                        file_string=file_string)
@@ -1116,14 +1017,14 @@ class ProcessingTab(d.ScrolledPanel):
         if self.pick['axis'] == 'nsref':
           if not np.isnan(self.nsref_y[idx]):
             self.pick['index'] = idx
-            self.pick['image'] = self.finished_objects[idx].conv_img
+            self.pick['image'] = self.info.finished_objects[idx].conv_img
             search = False
           else:
             search = True
         if self.pick['axis'] == 'res':
           if not np.isnan(self.res_y[idx]):
             self.pick['index'] = idx
-            self.pick['image'] = self.finished_objects[idx].conv_img
+            self.pick['image'] = self.info.finished_objects[idx].conv_img
             search = False
           else:
             search = True
@@ -1137,7 +1038,7 @@ class ProcessingTab(d.ScrolledPanel):
   def on_pick(self, event):
     self.pick['picked'] = True
     idx = int(round(event.mouseevent.xdata)) - 1
-    obj_i = [i for i in self.finished_objects if i.img_index == idx + 1]
+    obj_i = [i for i in self.info.finished_objects if i.img_index == idx + 1]
     img = obj_i[0].conv_img
 
     print ('{}: {}'.format(idx+1, img))
@@ -1271,8 +1172,21 @@ class LiveAnalysisTab(d.ScrolledPanel):
     self.tb1_box_sizer = wx.StaticBoxSizer(tb1_box, wx.VERTICAL)
     self.tb1_panel.SetSizer(self.tb1_box_sizer)
 
-    # Run analysis button
-    self.btn_run_analysis = wx.Button(self, label='Run Analysis')
+    # Analysis Options
+    self.opt_panel = wx.Panel(self)
+    self.opt_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.opt_panel.SetSizer(self.opt_sizer)
+    self.pg_uc = ct.OptionCtrl(self.opt_panel,
+                               items=[('pg', ''), ('uc', '')],
+                               sub_labels=('symmetry', 'cell'),
+                               grid=(2, 2),
+                               expand_cols=(1),
+                               label_size=wx.DefaultSize,
+                               ctrl_size=wx.DefaultSize)
+    self.opt_sizer.Add(self.pg_uc, flag=wx.EXPAND | wx.ALL, border=5)
+
+    self.btn_run_analysis = wx.Button(self.opt_panel, label='Run Analysis')
+    self.opt_sizer.Add(self.btn_run_analysis, wx.TOP, border=10)
 
     self.main_fig_sizer.Add(self.uc_panel, pos=(0, 0), span=(2, 4),
                             flag=wx.EXPAND)
@@ -1280,7 +1194,7 @@ class LiveAnalysisTab(d.ScrolledPanel):
                             flag=wx.EXPAND)
     self.main_fig_sizer.Add(self.tb1_panel, pos=(2, 3), span=(1, 1),
                             flag=wx.EXPAND)
-    self.main_fig_sizer.Add(self.btn_run_analysis, pos=(3, 3))
+    self.main_fig_sizer.Add(self.opt_panel, pos=(3, 3), flag=wx.EXPAND)
 
     self.main_fig_sizer.AddGrowableCol(0)
     self.main_fig_sizer.AddGrowableCol(1)
@@ -1296,7 +1210,9 @@ class LiveAnalysisTab(d.ScrolledPanel):
       self.report_clustering_results()
     if self.prime_info is not None:
       self.report_prime_results()
-    self.draw_uc_histograms()
+    if self.finished_objects:
+      self.draw_uc_histograms()
+
     self.Layout()
     self.SetupScrolling()
 
@@ -1355,56 +1271,41 @@ class LiveAnalysisTab(d.ScrolledPanel):
   def draw_uc_histograms(self):
     try:
       # Unit cell histograms
-      finished = [i for i in self.finished_objects if
-                  i.fail is None and i.final['final'] is not None]
-      if len(finished) > 0:
-        self.a_axes.clear()
-        self.b_axes.clear()
-        self.c_axes.clear()
-        self.alpha_axes.clear()
-        self.beta_axes.clear()
-        self.gamma_axes.clear()
+      self.a_axes.clear()
+      self.b_axes.clear()
+      self.c_axes.clear()
+      self.alpha_axes.clear()
+      self.beta_axes.clear()
+      self.gamma_axes.clear()
 
-        a = [i.final['a'] for i in finished]
-        b = [i.final['b'] for i in finished]
-        c = [i.final['c'] for i in finished]
-        alpha = [i.final['alpha'] for i in finished]
-        beta = [i.final['beta'] for i in finished]
-        gamma = [i.final['gamma'] for i in finished]
+      a = [i.final['a'] for i in self.finished_objects]
+      b = [i.final['b'] for i in self.finished_objects]
+      c = [i.final['c'] for i in self.finished_objects]
+      alpha = [i.final['alpha'] for i in self.finished_objects]
+      beta = [i.final['beta'] for i in self.finished_objects]
+      gamma = [i.final['gamma'] for i in self.finished_objects]
 
-        self.calculate_uc_histogram(a, self.a_axes, set_ylim=True)
-        # self.a_axes.hist(a, 50, normed=False, facecolor='#4575b4',
-        #                 histtype='stepfilled')
-        edge_ylabel = 'a, b, c ({})'.format(r'$\AA$')
-        self.a_axes.set_ylabel(edge_ylabel)
+      self.calculate_uc_histogram(a, self.a_axes, set_ylim=True)
+      edge_ylabel = 'a, b, c ({})'.format(r'$\AA$')
+      self.a_axes.set_ylabel(edge_ylabel)
 
-        self.calculate_uc_histogram(b, self.b_axes)
-        # self.b_axes.hist(b, 50, normed=False, facecolor='#4575b4',
-        #                 histtype='stepfilled')
-        plt.setp(self.b_axes.get_yticklabels(), visible=False)
+      self.calculate_uc_histogram(b, self.b_axes)
+      plt.setp(self.b_axes.get_yticklabels(), visible=False)
 
-        self.calculate_uc_histogram(c, self.c_axes)
-        # self.c_axes.hist(a, 50, normed=False, facecolor='#4575b4',
-        #                 histtype='stepfilled')
-        plt.setp(self.c_axes.get_yticklabels(), visible=False)
+      self.calculate_uc_histogram(c, self.c_axes)
+      plt.setp(self.c_axes.get_yticklabels(), visible=False)
 
-        self.calculate_uc_histogram(alpha, self.alpha_axes,
-                                    xticks_loc='bottom', set_ylim=True)
-        # self.alpha_axes.hist(alpha, 50, normed=False, facecolor='#4575b4',
-        #                 histtype='stepfilled')
-        ang_ylabel = '{}, {}, {} ({})'.format(r'$\alpha$', r'$\beta$',
-                                              r'$\gamma$', r'$^\circ$')
-        self.alpha_axes.set_ylabel(ang_ylabel)
+      self.calculate_uc_histogram(alpha, self.alpha_axes,
+                                  xticks_loc='bottom', set_ylim=True)
+      ang_ylabel = '{}, {}, {} ({})'.format(r'$\alpha$', r'$\beta$',
+                                            r'$\gamma$', r'$^\circ$')
+      self.alpha_axes.set_ylabel(ang_ylabel)
 
-        self.calculate_uc_histogram(beta, self.beta_axes, xticks_loc='bottom')
-        # self.beta_axes.hist(beta, 50, normed=False, facecolor='#4575b4',
-        #                 histtype='stepfilled')
-        plt.setp(self.beta_axes.get_yticklabels(), visible=False)
+      self.calculate_uc_histogram(beta, self.beta_axes, xticks_loc='bottom')
+      plt.setp(self.beta_axes.get_yticklabels(), visible=False)
 
-        self.calculate_uc_histogram(gamma, self.gamma_axes, xticks_loc='bottom')
-        # self.gamma_axes.hist(gamma, 50, normed=False, facecolor='#4575b4',
-        #                 histtype='stepfilled')
-        plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
+      self.calculate_uc_histogram(gamma, self.gamma_axes, xticks_loc='bottom')
+      plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
 
     except ValueError as e:
       print ('UC HISTOGRAM ERROR: ', e)
@@ -1454,7 +1355,7 @@ class SummaryTab(d.ScrolledPanel):
     summary_sizer.Add(run_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Integration summary
-    if self.gparams.advanced.integrate_with == 'cctbx':
+    if self.gparams.advanced.processing_backend == 'ha14':
       int_box = wx.StaticBox(self, label='Analysis of Integration')
       int_box.SetFont(sfont)
       int_box_sizer = wx.StaticBoxSizer(int_box, wx.HORIZONTAL)
@@ -1631,7 +1532,7 @@ class SummaryTab(d.ScrolledPanel):
     self.Bind(wx.EVT_BUTTON, self.onPRIME, self.smr_runprime)
     self.Bind(wx.EVT_BUTTON, self.onCLUSTER, self.smr_runcluster)
 
-    if self.gparams.advanced.integrate_with == 'cctbx':
+    if self.gparams.advanced.processing_backend == 'ha14':
       self.noprf_txt = wx.StaticText(self, label='20')
       self.noprf_txt.SetFont(sfont)
       smr_box_grid.AddMany([(wx.StaticText(self,
@@ -1639,7 +1540,7 @@ class SummaryTab(d.ScrolledPanel):
                               (self.noint_txt),
                               (wx.StaticText(self, label='Failed filter')),
                               (self.noprf_txt)])
-    elif self.gparams.advanced.integrate_with == 'dials':
+    elif self.gparams.advanced.processing_backend == 'cctbx.xfel':
       self.nospf_txt = wx.StaticText(self, label='10')
       self.nospf_txt.SetFont(sfont)
       self.noidx_txt = wx.StaticText(self, label='20')
@@ -1748,6 +1649,7 @@ class ProcWindow(wx.Frame):
     self.logtext = ''
     self.obj_counter = 0
     self.bookmark = 0
+    self.iota_phil = phil
     self.gparams = phil.extract()
 
     self.target_phil = target_phil
@@ -1755,27 +1657,30 @@ class ProcWindow(wx.Frame):
     self.recovery = False
 
     self.abort_initiated = False
+    self.run_aborted = False
     self.monitor_mode = False
     self.monitor_mode_timeout = None
     self.timeout_start = None
     self.find_new_images = self.monitor_mode
     self.start_object_finder = True
+    self.plotter_time = []
+    self.obj_reader_time = []
 
     self.running_cluster = False
     self.running_prime = False
-    self.draw_analysis = False
     self.running_manual_analysis = False
-    self.img_process = None
     self.job_id = None
 
     self.finished_objects = []
     self.read_object_files = []
     self.new_images = []
     self.indices = []
+    self.b_factors = []
     self.cluster_info = None
     self.pparams = None
     self.prime_info = None
 
+    # Initialize mx handler
     self.mxh = mx_handler()
 
     self.main_panel = wx.Panel(self)
@@ -1849,20 +1754,22 @@ class ProcWindow(wx.Frame):
     self.gauge_process.Hide()
 
     # Output polling timer
-    self.timer = wx.Timer(self)
+    self.proc_timer = wx.Timer(self)
     self.chart_timer = wx.Timer(self)
 
     # PostEvent bindings
     self.Bind(thr.EVT_ALLDONE, self.onFinishedProcess)
     self.Bind(thr.EVT_IMGDONE, self.onFinishedImageFinder)
+    self.Bind(thr.EVT_OBJDONE, self.onFinishedObjectReader)
     self.Bind(thr.EVT_CLUSTERDONE, self.onFinishedCluster)
-    self.Bind(pthr.EVT_ALLDONE, self.onFinishedPRIME)
+    self.Bind(thr.EVT_PRIMEDONE, self.onFinishedPRIME)
 
     # Event bindings
     self.sb.Bind(wx.EVT_SIZE, self.onStatusBarResize)
-    self.Bind(wx.EVT_TIMER, self.onTimer, id=self.timer.GetId())
+    self.Bind(wx.EVT_TIMER, self.onProcTimer, id=self.proc_timer.GetId())
     self.Bind(wx.EVT_TIMER, self.onChartTimer, id=self.chart_timer.GetId())
-    self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onTabChange, self.proc_nb)
+    self.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CHANGED, self.onTabChange,
+              self.proc_nb)
 
     # Button bindings
     self.Bind(wx.EVT_TOOL, self.onAbort, self.tb_btn_abort)
@@ -1872,15 +1779,19 @@ class ProcWindow(wx.Frame):
     self.Bind(wx.EVT_BUTTON, self.onAnalysisManualRun,
               self.chart_tab.btn_run_analysis)
 
+    # Proc Tab bindings
+    self.Bind(wx.EVT_TEXT_ENTER, self.onSGTextEnter, self.proc_tab.hkl_sg.sg)
+    self.Bind(wx.EVT_CHECKBOX, self.onSGCheckbox, self.proc_tab.hkl_sg.toggle)
+
     # Determine if monitor mode was previously selected
-    if self.gparams.advanced.monitor_mode:
+    if self.gparams.gui.monitor_mode:
       self.proc_toolbar.ToggleTool(self.tb_btn_monitor.GetId(), True)
       self.monitor_mode = True
-      if self.gparams.advanced.monitor_mode_timeout:
-        if self.gparams.advanced.monitor_mode_timeout_length is None:
+      if self.gparams.gui.monitor_mode_timeout:
+        if self.gparams.gui.monitor_mode_timeout_length is None:
           self.monitor_mode_timeout = 30
         else:
-          self.monitor_mode_timeout = self.gparams.advanced.monitor_mode_timeout_length
+          self.monitor_mode_timeout = self.gparams.gui.monitor_mode_timeout_length
 
   def set_position(self):
     """ Determines screen position w/ respect to parent window; will also
@@ -1906,15 +1817,29 @@ class ProcWindow(wx.Frame):
       py = dymax - pl * 1.1
     self.SetPosition((px, py))
 
+  def onSGTextEnter(self, e):
+    self.info.user_sg = str(self.proc_tab.hkl_sg.sg.GetValue())
+
+  def onSGCheckbox(self, e):
+    # TODO: find a way to re-draw just this plot on the fly (maybe put all
+    # TODO: plot generation in yet another thread?)
+    if e.IsChecked():
+      if self.gparams.cctbx_xfel.target_space_group:
+        self.proc_tab.hkl_sg.sg.SetValue(str(self.gparams.cctbx_xfel.target_space_group))
+      else:
+        self.proc_tab.hkl_sg.sg.SetValue('P1')
+      self.info.user_sg = str(self.proc_tab.hkl_sg.sg.GetValue())
+    else:
+      self.info.user_sg = 'P1'
+      self.proc_tab.hkl_sg.sg.SetValue('')
+
   def onTabChange(self, e):
-    """ Only update displays if user changes to the tab """
-    # tab = self.proc_nb.GetSelection()
-    # if tab == 0:
-    #   self.display_log()
-    # if tab == 1:
-    #   self.plot_integration()
-    # if tab == 2:
-    #   self.plot_live_analysis()
+  #   """ Only update displays if user changes to the tab """
+  #   tab = self.proc_nb.GetSelection()
+  #   if tab == 2:
+  #     self.chart_timer.Start(15000)
+  #   else:
+  #     self.chart_timer.Stop()
     pass
 
   def onAnalysisManualRun(self, e):
@@ -1927,25 +1852,28 @@ class ProcWindow(wx.Frame):
 
   def onAnalysis(self, e):
     if self.proc_toolbar.GetToolState(self.tb_btn_analysis.GetId()):
+      if hasattr(self, 'proc_thread'):
+        self.chart_timer.Start(15000)
       self.proc_nb.InsertPage(n=2, page=self.chart_tab, text='Analysis',
                               select=True)
       if self.proc_nb.GetSelection() != 2:
         self.proc_nb.SetSelection(2)
-      self.draw_analysis = True
+      self.plot_live_analysis(force_plot=True)
     else:
+      if self.chart_timer.IsRunning():
+        self.chart_timer.Stop()
       if self.proc_nb.GetSelection() == 2:
         self.proc_nb.SetSelection(1)
       self.proc_nb.RemovePage(2)
-      self.draw_analysis = False
 
   def onMonitor(self, e):
     if self.proc_toolbar.GetToolState(self.tb_btn_monitor.GetId()):
       self.monitor_mode = True
-      if self.gparams.advanced.monitor_mode_timeout:
-        if self.gparams.advanced.monitor_mode_timeout_length is None:
+      if self.gparams.gui.monitor_mode_timeout:
+        if self.gparams.gui.monitor_mode_timeout_length is None:
           self.monitor_mode_timeout = 30
         else:
-          self.monitor_mode_timeout = self.gparams.advanced.monitor_mode_timeout_length
+          self.monitor_mode_timeout = self.gparams.gui.monitor_mode_timeout_length
     elif not self.proc_toolbar.GetToolState(self.tb_btn_monitor.GetId()):
       self.monitor_mode = False
       self.monitor_mode_timeout = None
@@ -1959,7 +1887,7 @@ class ProcWindow(wx.Frame):
     self.Layout()
 
   def onAbort(self, e):
-    if self.gparams.mp_method == 'lsf':
+    if self.gparams.mp.method == 'lsf':
       kill_command = 'bkill -J {}'.format(self.job_id)
       easy_run.fully_buffered(kill_command)
     with open(self.tmp_abort_file, 'w') as af:
@@ -1985,39 +1913,20 @@ class ProcWindow(wx.Frame):
     self.abort_initiated = False
     self.run_aborted = False
 
-    # Re-generate new image info to include un-processed images
-    input_entries = [i for i in self.gparams.input if i is not None]
-    ext_file_list = ginp.make_input_list(input_entries,
-                                         filter=True,
-                                         filter_type='image')
-    old_file_list = [i.raw_img for i in self.finished_objects]
-    new_file_list = [i for i in ext_file_list if i not in old_file_list]
+    # Reset tmp folder
+    if not os.path.isdir(self.init.tmp_base):
+      os.makedirs(self.init.tmp_base)
 
-    # Generate list of new images
-    self.new_images = [[i, len(ext_file_list) + 1, j] for i, j in enumerate(
-      new_file_list, len(old_file_list) + 1)]
+    # Reset toolbar buttons
+    self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), True)
+    self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), False)
+    self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), True)
 
-    # Reset self.img_list to only processed images
-    self.img_list = [[i, len(ext_file_list) + 1, j] for i, j in
-                     enumerate(old_file_list, 1)]
-
-
-    # Check if no images are left to process:
-    if len(self.new_images) == 0:
-      self.state = 'finished'
-      self.finish_process()
-    else:
-      # Reset toolbar buttons
-      self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), True)
-      self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), False)
-      self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), True)
-
-      # Run processing, etc.
-      self.timer.Start(1000)
-      self.chart_timer.Start(15000)
-      self.state = 'resume'
-      self.process_images()
-
+    # Run processing, etc.
+    self.proc_timer.Start(1000)
+    self.chart_timer.Start(15000)
+    self.state = 'resume'
+    self.process_images()
 
   def recover(self, int_path, status, init, params):
     self.recovery = True
@@ -2026,29 +1935,18 @@ class ProcWindow(wx.Frame):
     self.tmp_abort_file = os.path.join(int_path, '.abort.tmp')
     self.tmp_aborted_file = os.path.join(int_path, '.aborted.tmp')
 
-    self.img_list = [[i, len(self.init.input_list) + 1, j] for
-                     i, j in enumerate(self.init.input_list, 1)]
+    self.info = ep.load(self.init.info_file)
 
     self.status_txt.SetLabel('Searching in {} ...'.format(int_path))
-
-    self.status_summary = [0] * len(self.img_list)
-    self.nref_list = [0] * len(self.img_list)
-    self.nref_xaxis = [i[0] for i in self.img_list]
-    self.res_list = [0] * len(self.img_list)
-
     self.state = status
-    self.finished_objects = []
-
-    self.last_object = None
     self.finish_process()
 
   def run(self, init):
     # Initialize IOTA parameters and log
-
     self.init = init
     self.init.params = self.gparams
     self.init.target_phil = self.target_phil
-    good_init = self.init.run()
+    good_init, msg = self.init.run()
 
     # Start process
     if good_init:
@@ -2056,155 +1954,99 @@ class ProcWindow(wx.Frame):
       self.tmp_aborted_file = os.path.join(self.init.int_base, '.aborted.tmp')
       self.status_txt.SetForegroundColour('black')
       self.status_txt.SetLabel('Running...')
+
+      self.info = self.init.info
       self.process_images()
       self.good_to_go = True
-      self.timer.Start(1000)
-      self.chart_timer.Start(15000)
-
-      # write init file
-      ep.dump(os.path.join(self.init.int_base, 'init.cfg'), self.init)
-
+      self.proc_timer.Start(3000)
     else:
+      print (msg)
       self.good_to_go = False
+
+
+  def extend_image_lists(self, img_list=None, img_only=False):
+    ''' Extends image or input lists, as well as info lists, w/ new entries
+
+    :param img_list: list of newly-found images
+    :param img_only: do not extend info lists
+    '''
+
+    if img_list:
+      self.init.input_list.extend(img_list)
+      self.info.img_list.extend(img_list)
+      if not img_only:
+        self.info.nref_list.extend([0] * len(img_list))
+        self.info.nref_xaxis.extend([i[0] for i in img_list])
+        self.info.res_list.extend([0] * len(img_list))
+    else:
+      self.info.img_list = [[i, len(self.init.input_list) + 1, j] for
+                            i, j in enumerate(self.init.input_list, 1)]
+      self.info.nref_list = [0] * len(self.info.img_list)
+      self.info.nref_xaxis = [i[0] for i in self.info.img_list]
+      self.info.res_list = [0] * len(self.info.img_list)
+
+
+  def set_proc_iterable(self):
+    ''' Sets the following iterables for image processing
+
+    :return: IOTA image iterable
+    '''
+
+    if self.state == 'new images':
+      self.extend_image_lists(self.new_images)
+      msg = 'Processing additional {} images ({} total)...'\
+            ''.format(len(self.new_images), len(self.info.img_list))
+      return self.new_images, msg
+
+    elif self.state == 'resume':
+      subset = ( self.gparams.advanced.image_range.flag_on or
+                 self.gparams.advanced.random_sample.flag_on )
+      if self.new_images and not subset:
+        self.extend_image_lists(self.new_images)
+      done_img_list = [i.raw_img for i in self.info.finished_objects]
+      iterable = [i for i in self.info.img_list if i[2] not in done_img_list]
+
+      if iterable:
+        msg = 'Processing {} remaining images ({} total)...' \
+              ''.format(len(iterable), len(self.info.img_list))
+      else:
+        msg = 'All {} images processed!'.format(len(self.info.img_list))
+        self.state = 'finished'
+      return iterable, msg
+
+    else:  # New run
+      self.extend_image_lists()
+      msg = 'Processing {} images...'.format(len(self.info.img_list))
+      return self.info.img_list, msg
 
 
   def process_images(self):
     """ One-fell-swoop importing / triaging / integration of images """
 
+    # Generate iterable as per run status
+    iterable, msg = self.set_proc_iterable()
+    self.info.unprocessed_images = len(iterable)
+
+    if self.state == 'finished':
+        self.finish_process()
+
     # Set font properties for status window
-    font = self.sb.GetFont()
-    font.SetWeight(wx.NORMAL)
-    self.status_txt.SetFont(font)
+    # font = self.sb.GetFont()
+    # font.SetWeight(wx.NORMAL)
+    # self.status_txt.SetFont(font)
     self.status_txt.SetForegroundColour('black')
+    self.status_txt.SetLabel(msg)
 
-
-    if self.init.params.cctbx.selection.select_only.flag_on:
-      self.img_list = [[i, len(self.init.gs_img_objects) + 1, j] for
-                       i, j in enumerate(self.init.gs_img_objects, 1)]
-      iterable = self.img_list
-      self.status_summary = [0] * len(self.img_list)
-      self.nref_list = [0] * len(self.img_list)
-      self.nref_xaxis = [i[0] for i in self.img_list]
-      self.res_list = [0] * len(self.img_list)
-      type = 'object'
-      self.status_txt.SetLabel('Re-running selection...')
-    else:
-      type = 'image'
-      if self.state == 'new images':
-        iterable = self.new_images
-        self.img_list.extend(self.new_images)
-        self.init.input_list.extend(self.new_images)
-        self.new_images = []
-        self.status_summary.extend([0] * len(iterable))
-        self.nref_list.extend([0] * len(iterable))
-        self.nref_xaxis.extend([i[0] for i in iterable])
-        self.res_list.extend([0] * len(iterable))
-        self.status_txt.SetForegroundColour('black')
-        self.status_txt.SetLabel('Processing additional {} images ({} total)...'
-                                 ''.format(len(iterable), len(self.img_list)))
-        self.plot_integration()
-      elif self.state == 'resume':
-        iterable = self.new_images
-        self.img_list.extend(self.new_images)
-        # self.nref_list.extend([0] * len(self.new_images))
-        # self.nref_xaxis.extend([i[0] for i in self.new_images])
-        # self.res_list.extend([0] * len(self.new_images))
-
-        self.new_images = []
-        self.status_txt.SetLabel('Processing {} remaining images ({} total)...'
-                                 ''.format(len(iterable), len(self.img_list)))
-        self.start_object_finder = True
-      else:
-        self.img_list = [[i, len(self.init.input_list) + 1, j] for
-                         i, j in enumerate(self.init.input_list, 1)]
-        iterable = self.img_list
-        self.status_summary = [0] * len(self.img_list)
-        self.nref_list = [0] * len(self.img_list)
-        self.nref_xaxis = [i[0] for i in self.img_list]
-        self.res_list = [0] * len(self.img_list)
-        self.status_txt.SetLabel('Processing {} images...'
-                                 ''.format(len(self.img_list)))
-    self.gauge_process.SetRange(len(self.img_list))
-
+    # TODO: Find a way to manage the iterable correctly
     iter_path = os.path.join(self.init.int_base, 'iter.cfg')
-    init_path = os.path.join(self.init.int_base, 'init.cfg')
     ep.dump(iter_path, iterable)
+    init_path = os.path.join(self.init.int_base, 'init.cfg')
     ep.dump(init_path, self.init)
 
-    # New processing submit: run iota_process.py in all cases w/ different
-    # commands
-
-    queue = self.gparams.mp_queue
-    nproc = self.init.params.n_processors
-
-    if self.init.params.mp_method == 'lsf':
-      logfile = os.path.join(self.init.int_base, 'bsub.log')
-      pid = os.getpid()
-      try:
-        user = os.getlogin()
-      except OSError:
-        user = 'iota'
-      self.job_id = 'J_{}{}'.format(user[0], pid)
-      command = 'bsub -o {} -q {} -n {} -J {} ' \
-                'iota.process {} --files {} --type {} --stopfile {}' \
-                ''.format(logfile, queue, nproc, self.job_id,
-                          init_path, iter_path, type, self.tmp_abort_file)
-    elif self.init.params.mp_method == 'torq':
-      params = '{} --files {} --type {} --stopfile {}' \
-               ''.format(init_path, iter_path, type, self.tmp_abort_file)
-      command = 'qsub -e /dev/null -o /dev/null -d {} iota.process -F "{}"' \
-                ''.format(self.init.params.output, params)
-    else:
-      command = 'iota.process {} --files {} --type {} --stopfile {}' \
-                ''.format(init_path, iter_path, type, self.tmp_abort_file)
-
-    self.job_submit = thr.JobSubmitThread(self, command=command,
-                                          job_id=self.job_id)
-    self.job_submit.start()
-
-    # The old way (separate multiprocessing thread)
-    # if self.gparams.mp_method == 'multiprocessing':
-    #   self.img_process = thr.ProcThread(self,
-    #                                     init=self.init,
-    #                                     iterable=iterable,
-    #                                     input_type=type,
-    #                                     term_file=self.tmp_abort_file)
-    #   self.img_process.start()
-    # else:
-    #   self.img_process = None
-    #   self.job_id = None
-    #   queue = self.gparams.mp_queue
-    #   nproc = self.init.params.n_processors
-    #
-    #   if self.init.params.mp_method == 'lsf':
-    #     logfile = os.path.join(self.init.int_base, 'bsub.log')
-    #     pid = os.getpid()
-    #     try:
-    #       user = os.getlogin()
-    #     except OSError:
-    #       user = 'iota'
-    #     self.job_id = 'J_{}{}'.format(user[0], pid)
-    #     command = 'bsub -o {} -q {} -n {} -J {} ' \
-    #               'iota.process {} --files {} --type {} --stopfile {}' \
-    #               ''.format(logfile, queue, nproc, self.job_id,
-    #                         init_path, iter_path, type, self.tmp_abort_file)
-    #   elif self.init.params.mp_method == 'torq':
-    #     params = '{} --files {} --type {} --stopfile {}' \
-    #              ''.format(init_path, iter_path, type, self.tmp_abort_file)
-    #     command = 'qsub -e /dev/null -o /dev/null -d {} iota.process -F "{}"' \
-    #               ''.format(self.init.params.output, params)
-    #   else:
-    #     command = None
-    #   if command is not None:
-    #     try:
-    #       print (command)
-    #       easy_run.fully_buffered(command, join_stdout_stderr=True).show_stdout()
-    #       print ('JOB NAME = ', self.job_id)
-    #     except thr.IOTATermination as e:
-    #       print ('IOTA: JOB TERMINATED',  e)
-    #   else:
-    #     print ('IOTA ERROR: COMMAND NOT ISSUED!')
-    #     return
+    self.proc_thread = thr.JobSubmitThread(self, params=self.gparams,
+                                           output_folder=self.init.int_base,
+                                           abort_file=self.tmp_abort_file)
+    self.proc_thread.start()
 
 
   def analyze_results(self, analysis=None):
@@ -2213,149 +2055,148 @@ class ProcWindow(wx.Frame):
       self.status_txt.SetLabel('No images successfully integrated')
 
     else:
-      if not self.gparams.image_conversion.convert_only:
-        self.status_txt.SetForegroundColour('black')
-        self.status_txt.SetLabel('Analyzing results...')
+      self.status_txt.SetForegroundColour('black')
+      self.status_txt.SetLabel('Analyzing results...')
 
-        # Do analysis
-        if analysis is None:
-          self.recovery = False
-          analysis = Analyzer(self.init,
-                              self.finished_objects,
-                              gui_mode=True)
-        plot = Plotter(self.gparams,
-                       self.final_objects,
-                       self.init.viz_base)
+      # Do analysis
+      if analysis is None:
+        self.recovery = False
+        analysis = Analyzer(self.init,
+                            self.info.finished_objects,
+                            gui_mode=True)
+      plot = Plotter(self.gparams,
+                     self.final_objects,
+                     self.init.viz_base)
 
-        # Initialize summary tab
-        prime_file = os.path.join(self.init.int_base,
-                                  '{}.phil'.format(self.gparams.advanced.prime_prefix))
-        self.summary_tab = SummaryTab(self.proc_nb,
-                                      init=self.init,
-                                      gparams=self.gparams,
-                                      final_objects=self.final_objects,
-                                      out_dir=os.path.dirname(prime_file),
-                                      plot=plot)
+      # Initialize summary tab
+      prime_file = os.path.join(self.init.int_base,
+                                '{}.phil'.format(self.gparams.advanced.prime_prefix))
+      self.summary_tab = SummaryTab(self.proc_nb,
+                                    init=self.init,
+                                    gparams=self.gparams,
+                                    final_objects=self.final_objects,
+                                    out_dir=os.path.dirname(prime_file),
+                                    plot=plot)
 
-        # Run information
-        self.summary_tab.title_txt.SetLabel(ut.noneset(self.gparams.description))
-        self.summary_tab.folder_txt.SetLabel(self.gparams.output)
+      # Run information
+      self.summary_tab.title_txt.SetLabel(ut.noneset(self.gparams.description))
+      self.summary_tab.folder_txt.SetLabel(self.gparams.output)
 
-        # Analysis of integration
-        if self.gparams.advanced.integrate_with == 'cctbx':
-          self.summary_tab.sih_min.SetLabel("{:4.0f}".format(np.min(analysis.s)))
-          self.summary_tab.sih_max.SetLabel("{:4.0f}".format(np.max(analysis.s)))
-          self.summary_tab.sih_avg.SetLabel("{:4.2f}".format(np.mean(analysis.s)))
-          self.summary_tab.sih_std.SetLabel("{:4.2f}".format(np.std(analysis.s)))
-          self.summary_tab.sph_min.SetLabel("{:4.0f}".format(np.min(analysis.h)))
-          self.summary_tab.sph_max.SetLabel("{:4.0f}".format(np.max(analysis.h)))
-          self.summary_tab.sph_avg.SetLabel("{:4.2f}".format(np.mean(analysis.h)))
-          self.summary_tab.sph_std.SetLabel("{:4.2f}".format(np.std(analysis.h)))
-          self.summary_tab.spa_min.SetLabel("{:4.0f}".format(np.min(analysis.a)))
-          self.summary_tab.spa_max.SetLabel("{:4.0f}".format(np.max(analysis.a)))
-          self.summary_tab.spa_avg.SetLabel("{:4.2f}".format(np.mean(analysis.a)))
-          self.summary_tab.spa_std.SetLabel("{:4.2f}".format(np.std(analysis.a)))
+      # Analysis of integration
+      if self.gparams.advanced.processing_backend == 'ha14':
+        self.summary_tab.sih_min.SetLabel("{:4.0f}".format(np.min(analysis.s)))
+        self.summary_tab.sih_max.SetLabel("{:4.0f}".format(np.max(analysis.s)))
+        self.summary_tab.sih_avg.SetLabel("{:4.2f}".format(np.mean(analysis.s)))
+        self.summary_tab.sih_std.SetLabel("{:4.2f}".format(np.std(analysis.s)))
+        self.summary_tab.sph_min.SetLabel("{:4.0f}".format(np.min(analysis.h)))
+        self.summary_tab.sph_max.SetLabel("{:4.0f}".format(np.max(analysis.h)))
+        self.summary_tab.sph_avg.SetLabel("{:4.2f}".format(np.mean(analysis.h)))
+        self.summary_tab.sph_std.SetLabel("{:4.2f}".format(np.std(analysis.h)))
+        self.summary_tab.spa_min.SetLabel("{:4.0f}".format(np.min(analysis.a)))
+        self.summary_tab.spa_max.SetLabel("{:4.0f}".format(np.max(analysis.a)))
+        self.summary_tab.spa_avg.SetLabel("{:4.2f}".format(np.mean(analysis.a)))
+        self.summary_tab.spa_std.SetLabel("{:4.2f}".format(np.std(analysis.a)))
 
-        # Dataset information
-        if self.recovery:
-          if hasattr(analysis, 'clusters'):
-            clusters = analysis.clusters
-            pg = clusters[0]['pg']
-            uc = clusters[0]['uc']
-          else:
-            clusters = []
-            if hasattr(analysis, 'cons_pg'):
-              pg = analysis.cons_pg
-            else:
-              pg = None
-            if hasattr(analysis, 'cons_uc'):
-              uc = analysis.cons_uc
-            else:
-              uc = None
-        else:
-          analysis.print_results()
-          clusters = analysis.unit_cell_analysis()
+      # Dataset information
+      if self.recovery:
+        if hasattr(analysis, 'clusters'):
+          clusters = analysis.clusters
           pg = clusters[0]['pg']
           uc = clusters[0]['uc']
-
-        if clusters:
-          self.summary_tab.report_clustering_results(clusters=clusters)
-
-        if pg is not None:
-          self.summary_tab.pg_txt.SetLabel(str(pg))
-        if uc is not None:
-          if type(uc) is str:
-            unit_cell = uc
+        else:
+          clusters = []
+          if hasattr(analysis, 'cons_pg'):
+            pg = analysis.cons_pg
           else:
-            unit_cell = " ".join(['{:4.1f}'.format(i) for i in uc])
+            pg = None
+          if hasattr(analysis, 'cons_uc'):
+            uc = analysis.cons_uc
+          else:
+            uc = None
+      else:
+        analysis.print_results()
+        clusters = analysis.unit_cell_analysis()
+        pg = clusters[0]['pg']
+        uc = clusters[0]['uc']
+
+      if clusters:
+        self.summary_tab.report_clustering_results(clusters=clusters)
+
+      if pg is not None:
+        self.summary_tab.pg_txt.SetLabel(str(pg))
+      if uc is not None:
+        if type(uc) is str:
+          unit_cell = uc
         else:
-          unit_cell = ''
+          unit_cell = " ".join(['{:4.1f}'.format(i) for i in uc])
+      else:
+        unit_cell = ''
 
-        self.summary_tab.uc_txt.SetLabel(unit_cell)
-        res = to_unicode(u"{:4.2f} - {:4.2f} {}".format(np.mean(analysis.lres),
-                                  np.mean(analysis.hres),
-                                  u'\u212B'))
-        self.summary_tab.rs_txt.SetLabel(res)
+      self.summary_tab.uc_txt.SetLabel(unit_cell)
+      res = to_unicode(u"{:4.2f} - {:4.2f} {}".format(np.mean(analysis.lres),
+                                np.mean(analysis.hres),
+                                u'\u212B'))
+      self.summary_tab.rs_txt.SetLabel(res)
 
-        if self.recovery and (
-                hasattr(analysis, 'beamX_mm') and
-                hasattr(analysis, 'beamY_mm') and
-                hasattr(analysis, 'pixel_size')
-                ):
-          beamX_mm = analysis.beamX_mm
-          beamY_mm = analysis.beamY_mm
-          pixel_size = analysis.pixel_size
-        else:
-          with warnings.catch_warnings():
-            # To catch any 'mean of empty slice' runtime warnings
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            beamxy_calc = plot.calculate_beam_xy()
-            beamX, beamY = beamxy_calc[:2]
-            pixel_size = beamxy_calc[-1]
-            beamX_mm = np.median(beamX)
-            beamY_mm = np.median(beamY)
-        beamX_px = beamX_mm / pixel_size
-        beamY_px = beamY_mm / pixel_size
-        beamXY = "X = {:4.1f} mm / {:4.0f} px\n" \
-                 "Y = {:4.1f} mm / {:4.0f} px" \
-                 "".format(beamX_mm, beamX_px, beamY_mm, beamY_px)
-        self.summary_tab.xy_txt.SetLabel(beamXY)
+      if self.recovery and (
+              hasattr(analysis, 'beamX_mm') and
+              hasattr(analysis, 'beamY_mm') and
+              hasattr(analysis, 'pixel_size')
+              ):
+        beamX_mm = analysis.beamX_mm
+        beamY_mm = analysis.beamY_mm
+        pixel_size = analysis.pixel_size
+      else:
+        with warnings.catch_warnings():
+          # To catch any 'mean of empty slice' runtime warnings
+          warnings.simplefilter("ignore", category=RuntimeWarning)
+          beamxy_calc = plot.calculate_beam_xy()
+          beamX, beamY = beamxy_calc[:2]
+          pixel_size = beamxy_calc[-1]
+          beamX_mm = np.median(beamX)
+          beamY_mm = np.median(beamY)
+      beamX_px = beamX_mm / pixel_size
+      beamY_px = beamY_mm / pixel_size
+      beamXY = "X = {:4.1f} mm / {:4.0f} px\n" \
+               "Y = {:4.1f} mm / {:4.0f} px" \
+               "".format(beamX_mm, beamX_px, beamY_mm, beamY_px)
+      self.summary_tab.xy_txt.SetLabel(beamXY)
 
-        # Summary
-        if self.recovery:
-          self.summary_tab.readin_txt.SetLabel(str(analysis.n_all_objects))
-          self.summary_tab.nodiff_txt.SetLabel(str(analysis.n_no_diff_objects))
-          self.summary_tab.w_diff_txt.SetLabel(str(analysis.n_diff_objects))
-          if self.gparams.advanced.integrate_with == 'cctbx':
-            self.summary_tab.noint_txt.SetLabel(str(analysis.n_not_int_objects))
-            self.summary_tab.noprf_txt.SetLabel(str(analysis.n_filter_fail_objects))
-          elif self.gparams.advanced.integrate_with == 'dials':
-            self.summary_tab.nospf_txt.SetLabel(str(analysis.n_not_spf_objects))
-            self.summary_tab.noidx_txt.SetLabel(str(analysis.n_not_idx_objects))
-            self.summary_tab.noint_txt.SetLabel(str(analysis.n_not_int_objects))
-            self.summary_tab.noflt_txt.SetLabel(str(analysis.n_filter_fail_objects))
-          self.summary_tab.final_txt.SetLabel(str(analysis.n_final_objects))
-        else:
-          self.summary_tab.readin_txt.SetLabel(str(len(analysis.all_objects)))
-          self.summary_tab.nodiff_txt.SetLabel(str(len(analysis.no_diff_objects)))
-          self.summary_tab.w_diff_txt.SetLabel(str(len(analysis.diff_objects)))
-          if self.gparams.advanced.integrate_with == 'cctbx':
-            self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
-            self.summary_tab.noprf_txt.SetLabel(str(len(analysis.filter_fail_objects)))
-          elif self.gparams.advanced.integrate_with == 'dials':
-            self.summary_tab.nospf_txt.SetLabel(str(len(analysis.not_spf_objects)))
-            self.summary_tab.noidx_txt.SetLabel(str(len(analysis.not_idx_objects)))
-            self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
-            self.summary_tab.noflt_txt.SetLabel(str(len(analysis.filter_fail_objects)))
-          self.summary_tab.final_txt.SetLabel(str(len(analysis.final_objects)))
+      # Summary
+      if self.recovery:
+        self.summary_tab.readin_txt.SetLabel(str(analysis.n_all_objects))
+        self.summary_tab.nodiff_txt.SetLabel(str(analysis.n_no_diff_objects))
+        self.summary_tab.w_diff_txt.SetLabel(str(analysis.n_diff_objects))
+        if self.gparams.advanced.processing_backend == 'ha14':
+          self.summary_tab.noint_txt.SetLabel(str(analysis.n_not_int_objects))
+          self.summary_tab.noprf_txt.SetLabel(str(analysis.n_filter_fail_objects))
+        elif self.gparams.advanced.processing_backend == 'cctbx.xfel':
+          self.summary_tab.nospf_txt.SetLabel(str(analysis.n_not_spf_objects))
+          self.summary_tab.noidx_txt.SetLabel(str(analysis.n_not_idx_objects))
+          self.summary_tab.noint_txt.SetLabel(str(analysis.n_not_int_objects))
+          self.summary_tab.noflt_txt.SetLabel(str(analysis.n_filter_fail_objects))
+        self.summary_tab.final_txt.SetLabel(str(analysis.n_final_objects))
+      else:
+        self.summary_tab.readin_txt.SetLabel(str(len(analysis.all_objects)))
+        self.summary_tab.nodiff_txt.SetLabel(str(len(analysis.no_diff_objects)))
+        self.summary_tab.w_diff_txt.SetLabel(str(len(analysis.diff_objects)))
+        if self.gparams.advanced.processing_backend == 'ha14':
+          self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
+          self.summary_tab.noprf_txt.SetLabel(str(len(analysis.filter_fail_objects)))
+        elif self.gparams.advanced.processing_backend == 'cctbx.xfel':
+          self.summary_tab.nospf_txt.SetLabel(str(len(analysis.not_spf_objects)))
+          self.summary_tab.noidx_txt.SetLabel(str(len(analysis.not_idx_objects)))
+          self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
+          self.summary_tab.noflt_txt.SetLabel(str(len(analysis.filter_fail_objects)))
+        self.summary_tab.final_txt.SetLabel(str(len(analysis.final_objects)))
 
-          # Generate input file for PRIME
-          analysis.print_summary()
-          analysis.make_prime_input(filename=prime_file)
+        # Generate input file for PRIME
+        analysis.print_summary()
+        analysis.make_prime_input(filename=prime_file)
 
-        # Display summary
-        self.proc_nb.AddPage(self.summary_tab, 'Summary', select=True)
-        # self.proc_nb.SetSelection(2)
+      # Display summary
+      self.proc_nb.AddPage(self.summary_tab, 'Summary', select=True)
+      self.proc_nb.SetSelection(self.proc_nb.GetPageCount())
 
       # Signal end of run
       font = self.sb.GetFont()
@@ -2370,7 +2211,7 @@ class ProcWindow(wx.Frame):
     self.plot_live_analysis(force_plot=True)
 
     # Stop timer
-    self.timer.Stop()
+    self.proc_timer.Stop()
     self.chart_timer.Stop()
 
   def display_log(self):
@@ -2387,360 +2228,177 @@ class ProcWindow(wx.Frame):
   def plot_integration(self, force_plot=False):
     """ This function will plot fast-drawing runtime processing charts on the
         "Processing" tab """
-
-    if (self.nref_list is not None and self.res_list is not None) :
+    sw = wx.StopWatch()
+    if (self.info.nref_list and self.info.res_list) :
       self.proc_tab.init = self.init
       self.proc_tab.gparams = self.gparams
-      self.proc_tab.finished_objects = self.finished_objects
-      self.proc_tab.img_list = self.img_list
-      self.proc_tab.res_list = self.res_list
-      self.proc_tab.nref_list = self.nref_list
-
-      if self.proc_tab.spacegroup is None:
-        if self.gparams.advanced.integrate_with == 'dials':
-          sg = self.gparams.dials.target_space_group
-          if sg is not None:
-            self.proc_tab.spacegroup = str(sg)
-        else:
-          self.proc_tab.spacegroup = 'P1'
-
-      self.proc_tab.indices = self.indices
-      self.indices = []
-      self.proc_tab.b_factors.extend(self.b_factors)
-      self.b_factors = []
-
+      self.proc_tab.info = self.info
       if self.proc_nb.GetSelection() == 1 or force_plot:
+        s = time.time()
         self.proc_tab.draw_plots()
         self.proc_tab.draw_summary()
+    self.plotter_time.append(sw.Time())
 
   def plot_live_analysis(self, force_plot=False):
     """ This function will plot in-depth analysis that will (importantly)
         involve expensive and slow-drawing charts on the Live Analysis tab """
 
-    if (self.nref_list is not None and self.res_list is not None) :
+    if self.proc_nb.GetSelection() == 2 or force_plot:
       self.chart_tab.init = self.init
       self.chart_tab.gparams = self.gparams
-      self.chart_tab.finished_objects = self.finished_objects
+      self.chart_tab.finished_objects = self.info.finished_objects
 
-      self.chart_tab.cluster_info = self.cluster_info
-      self.chart_tab.prime_info = self.prime_info
+      if self.cluster_info:
+        self.chart_tab.cluster_info = self.cluster_info
 
-      if (self.proc_nb.GetSelection() == 2 or self.draw_analysis) or force_plot:
-        self.chart_tab.draw_plots()
+      if self.prime_info:
+        self.chart_tab.prime_info = self.prime_info
 
-
-  def find_objects(self, find_old=False):
-    if find_old or self.gparams.advanced.integrate_with == 'cctbx':
-      min_back = None
-    else:
-      min_back = -5
-    object_files = ginp.get_file_list(self.init.obj_base,
-                                      ext_only='int',
-                                      min_back=min_back)
-    new_object_files = list(set(object_files) - set(self.read_object_files))
-    new_objects = [self.read_object_file(i) for i in new_object_files]
-    new_finished_objects = [i for i in new_objects if
-                            i is not None and i.status == 'final']
-
-    self.finished_objects.extend(new_finished_objects)
-    self.read_object_files = [i.obj_file for i in self.finished_objects]
-
-    self.populate_data_points(objects=new_finished_objects)
-
-    if str(self.state).lower() in ('finished', 'aborted', 'unknown'):
-      if self.finished_objects:
-        self.finish_process()
-      else:
-        return
-    else:
-      self.start_object_finder = True
-
-  def read_object_file(self, filepath):
-    try:
-      object = ep.load(filepath)
-    except Exception as e:
-      print ('OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e))
-      return None
-
-    try:
-      if object.final['final'] is not None:
-        pickle_path = object.final['final']
-        if os.path.isfile(pickle_path):
-          pickle = ep.load(pickle_path)
-          object.final['observations'] = pickle['observations'][0]
-      return object
-    except Exception as e:
-      print ('OBJECT_ATTRIBUTE_ERROR for {}: {}'.format(filepath, e))
-      return object
-
-  def populate_data_points(self, objects=None):
-    self.indices = []
-    self.b_factors = []
-    if objects is not None:
-      for obj in objects:
-        try:
-          self.nref_list[obj.img_index - 1] = obj.final['strong']
-          self.res_list[obj.img_index - 1] = obj.final['res']
-          if 'observations' in obj.final:
-            obs = obj.final['observations']
-            self.indices.extend([i[0] for i in obs])
-            try:
-              asu_contents = self.mxh.get_asu_contents(500)
-              observations_as_f = obs.as_amplitude_array()
-              observations_as_f.setup_binner(auto_binning=True)
-              wp = statistics.wilson_plot(observations_as_f, asu_contents,
-                                          e_statistics=True)
-              self.b_factors.append(wp.wilson_b)
-            except RuntimeError:
-              self.b_factors.append(0)
-        except Exception as e:
-          print ('OBJECT_ERROR:', e, "({})".format(obj.obj_file))
-          self.finished_objects.pop(self.finished_objects.index(obj))
+      self.chart_tab.draw_plots()
 
   def onChartTimer(self, e):
     self.plot_live_analysis()
-    if not self.running_cluster:
+    if not (self.running_cluster or self.running_prime):
       self.run_clustering_thread()
 
-    if self.running_cluster or self.running_prime:
-      self.chart_tab.btn_run_analysis.Disable()
-    else:
-      self.chart_tab.btn_run_analysis.Enable()
-
   def run_clustering_thread(self):
-    # Run clustering
-    if (self.finished_objects is not None or self.finished_objects != []):
-      if self.proc_nb.GetSelection() == 2:
-        iterable = []
-        for obj in self.finished_objects:
-          try:
-            fin = obj.final
-            iterable.append([float(fin['a']),
-                             float(fin['b']),
-                             float(fin['c']),
-                             float(fin['alpha']),
-                             float(fin['beta']),
-                             float(fin['gamma']),
-                             fin['sg']
-                             ])
-          except Exception:
-            pass
-        self.running_cluster = True
-        cl_thread = thr.ClusterThread(self, iterable=iterable)
-        cl_thread.start()
+    self.chart_tab.btn_run_analysis.Disable()
+    self.running_cluster = True
+    self.cluster_thread = thr.ClusterThread(self,
+                                            iterable=self.info.cluster_iterable)
+    self.cluster_thread.start()
 
   def onFinishedCluster(self, e):
     self.cluster_info = e.GetValue()
     self.running_cluster = False
 
-    # Output cluster results
-    cluster_info_file = os.path.join(self.init.int_base, 'cluster_info.pickle')
-    ep.dump(cluster_info_file, obj=self.cluster_info)
+    if self.cluster_info is not None:
+      cl_sorted = sorted(self.cluster_info, key=lambda i: i['number'],
+                         reverse=True)
+      self.info.best_pg = cl_sorted[0]['pg'].split('/')[0]
+      self.info.best_uc = cl_sorted[0]['uc']
 
-    if not self.running_prime:
+    # Output cluster results
+    ep.dump(self.info.cluster_info_file, obj=self.cluster_info)
+
+    if not (hasattr(self, 'prime_thread') and self.prime_thread.isAlive()):
       self.pparams = None
       self.run_prime_thread()
 
   def run_prime_thread(self):
     # Run PRIME (basic merge only)
-    if (self.finished_objects is not None or self.finished_objects != []):
-      if self.proc_nb.GetSelection() == 2:
-        # Collect list of final integrated pickles and write to file
-        final_files = [o.final['final'] for o in self.finished_objects if
-                       o.final is not None and
-                       (o.final['final'] is not None and
-                        os.path.isfile(o.final['final']))]
-        final_list_file = os.path.join(self.init.int_base, 'finished_pickles.lst')
-        with open(final_list_file, 'w') as ff:
-          ff.write('\n'.join(final_files))
+    self.chart_tab.btn_run_analysis.Disable()
+    self.running_prime = True
+    pg = ut.makenone(self.chart_tab.pg_uc.pg.GetValue())
+    uc = ut.makenone(self.chart_tab.pg_uc.uc.GetValue())
 
-        # make PRIME input file
-        if self.cluster_info is not None:
-          cl_sorted = sorted(self.cluster_info, key=lambda i: i['number'],
-                             reverse=True)
-          best_pg = cl_sorted[0]['pg'].split('/')[0]
-          best_uc = cl_sorted[0]['uc']
+    self.prime_thread = thr.PRIMEThread(self,
+                                        info=self.info,
+                                        init=self.init,
+                                        best_pg=pg, best_uc=uc)
 
-          analyzer = Analyzer(init=self.init, all_objects=self.finished_objects)
-          analyzer.prime_data_path = final_list_file
-
-          if self.gparams.advanced.integrate_with == 'dials':
-            if self.gparams.dials.target_space_group is not None:
-              analyzer.cons_pg = str(self.gparams.dials.target_space_group)
-            else:
-              analyzer.cons_pg = best_pg
-            if self.gparams.dials.target_unit_cell is not None:
-              uc = [str(i) for i in self.gparams.dials.target_unit_cell.parameters()]
-              analyzer.cons_uc = ' '.join(uc)
-            else:
-              analyzer.cons_uc = best_uc
-          elif self.gparams.advanced.integrate_with == 'cctbx':
-            if self.gparams.cctbx.selection.prefilter.flag_on:
-              if self.gparams.cctbx.selection.prefilter.target_pointgroup is \
-                      not None:
-                analyzer.cons_pg = self.gparams.cctbx.selection.prefilter.target_pointgroup
-              else:
-                analyzer.cons_pg = best_pg
-              if self.gparams.cctbx.selection.prefilter.target_unit_cell is not\
-                      None:
-                analyzer.cons_uc = self.gparams.cctbx.selection.prefilter.target_unit_cell
-              else:
-                analyzer.cons_uc = best_uc
-            else:
-              analyzer.cons_pg = best_pg
-              analyzer.cons_uc = best_uc
-
-          prime_phil = analyzer.make_prime_input(filename='live_prime.phil',
-                                       run_zero=True)
-          self.pparams = prime_phil.extract()
-
-          # Modify specific options based in IOTA settings
-          # Queue options
-          if (
-                  self.init.params.mp_method == 'lsf' and
-                  self.init.params.mp_queue is not None
-          ):
-            self.pparams.queue.mode = 'bsub'
-            self.pparams.queue.qname = self.init.params.mp_queue
-
-          # Number of processors (automatically, 1/2 of IOTA procs)
-          self.pparams.n_processors = int(self.init.params.n_processors / 2)
-
-          # Generate command args
-          cmd_args_list = ['n_postref_cycle=0',
-                           'queue.mode={}'.format(self.pparams.queue.mode),
-                           'queue.qname={}'.format(self.pparams.queue.qname),
-                           'n_processors={}'.format(self.pparams.n_processors),
-                           'timeout_seconds=120'
-                           ]
-          cmd_args = ' '.join(cmd_args_list)
-
-          # remove previous run to avoid conflict
-          prime_dir = os.path.join(self.init.int_base, 'prime/000')
-          if os.path.isdir(prime_dir):
-            shutil.rmtree(prime_dir)
-
-          # Launch PRIME
-          self.running_prime = True
-          out_file = os.path.join(prime_dir, 'log.txt')
-          prime_file = os.path.join(self.init.int_base, 'live_prime.phil')
-          prime_thread = pthr.PRIMEThread(self,
-                                          prime_file=prime_file,
-                                          out_file=out_file,
-                                          cmd_args=cmd_args,
-                                          signal_finished=True,
-                                          verbose=True)
-          prime_thread.start()
+    self.prime_thread.start()
 
   def onFinishedPRIME(self, e):
+    self.prime_info = e.GetValue()
     self.running_prime = False
-    if self.pparams is not None:
-      self.get_prime_stats()
 
     if self.running_manual_analysis:
       self.plot_live_analysis(force_plot=True)
       self.running_manual_analysis = False
-      self.chart_tab.btn_run_analysis.Enable()
+    self.chart_tab.btn_run_analysis.Enable()
 
-  def get_prime_stats(self):
-    stats_folder = os.path.join(self.pparams.run_no, 'stats')
-    if os.path.isdir(stats_folder):
-      stat_files = [os.path.join(stats_folder, i) for i in
-                    os.listdir(stats_folder) if i.endswith('stat')]
-      if stat_files:
-        assert len(stat_files) == 1
-        stat_file = stat_files[0]
-        if os.path.isfile(stat_file):
-          self.prime_info = ep.load(stat_file)
-          live_prime_info_file = os.path.join(self.init.int_base,
-                                              'life_prime_info.pickle')
-          shutil.copyfile(stat_file, live_prime_info_file)
+  def adjust_timer(self, new_interval):
+    self.proc_timer.Stop()
+    self.proc_timer.Start(new_interval)
+    print ("IOTA: TIMER SET TO {} SECONDS".format(new_interval/1000))
 
-  def onTimer(self, e):
+
+  def onProcTimer(self, e):
+    sw_means = np.mean(self.plotter_time) + np.mean(self.obj_reader_time)
+    timer_adjustment = np.ceil(sw_means*5/1000)*1000
+    if not (
+            np.isnan(timer_adjustment) or
+            timer_adjustment == self.proc_timer.GetInterval()
+    ):
+      self.adjust_timer(new_interval=timer_adjustment)
+
+    # Info object handling
+    if self.info:
+      # Save info object (could be trouble)
+      info_filepath = os.path.join(self.init.int_base, 'proc.info')
+      ep.dump(info_filepath, self.info)
+
+      # Plot integration and display lob
+      self.plot_integration()
+      self.display_log()
+
     if self.abort_initiated:
-      if self.img_process is not None:
-        self.run_aborted = self.img_process.aborted
-      elif self.gparams.mp_method == 'lsf':
+      if self.gparams.mp.method == 'lsf':
         info_command = 'bjobs -J {}'.format(self.job_id)
         lsf_info = easy_run.fully_buffered(info_command).stdout_lines
         self.run_aborted = (lsf_info == [])
       else:
-        self.run_aborted = os.path.isfile(self.tmp_aborted_file)
+        self.run_aborted = (not self.proc_thread.is_alive())
+        if not self.run_aborted:
+          self.proc_thread.abort()
 
       if self.run_aborted:
+        print ("IOTA: RUN ABORTED!")
         self.finish_process()
     else:
       self.run_aborted = False
 
-    # Find processed image objects
-    if self.start_object_finder:
-      self.start_object_finder = False
-      if self.finished_objects is None or self.finished_objects == []:
-        self.last_object = None
-      else:
-        self.last_object = self.finished_objects[-1]
-      self.find_objects()
-
-    if len(self.finished_objects) > self.obj_counter:
-      self.plot_integration()
-      self.obj_counter = len(self.finished_objects)
-
-    # Update gauge
-    self.gauge_process.Show()
-    self.gauge_process.SetValue(len(self.finished_objects))
-
-    # Update status bar
-    if self.gparams.image_conversion.convert_only:
-      img_with_diffraction = [i for i in self.finished_objects if i.status == 'imported' and i.fail is None]
-      self.sb.SetStatusText('{} of {} images imported, {} have diffraction'\
-                            ''.format(self.obj_counter, len(self.init.input_list),
-                                      len(img_with_diffraction)), 1)
+    # If all current images processed, check for new ones and/or finish process
+    if self.info.unprocessed_images <= 0:
+      self.monitor_filesystem()
     else:
-      processed_images = [i for i in self.finished_objects if i.fail is None]
-      self.sb.SetStatusText('{} of {} images processed, {} successfully integrated' \
-                            ''.format(self.obj_counter, len(self.img_list),
-                                      len(processed_images)), 1)
+      # Instantiate and start processing thread
+      if not (hasattr(self, 'object_reader') and self.object_reader.is_alive()):
+        self.obj_sw = wx.StopWatch()
+        self.object_reader = thr.ObjectReaderThread(self, init=self.init,
+                                                    info=self.info)
+        self.object_reader.start()
 
-    # Update log
-    self.display_log()
-
+  def monitor_filesystem(self):
     # Check if all images have been looked at; if yes, finish process
-    if self.obj_counter >= len(self.img_list):
-      if self.monitor_mode:
-        if self.find_new_images:
-          self.search_for_new_images()
-        else:
-          self.find_new_images = (len(self.new_images) == 0)
-
-        if len(self.new_images) > 0:
-          self.status_txt.SetLabel('Found {} new images'.format(len(self.new_images)))
-          self.timeout_start = None
-          self.state = 'new images'
-          self.process_images()
-        else:
-          if self.monitor_mode_timeout is not None:
-            if self.timeout_start is None:
-              self.timeout_start = time.time()
-            else:
-              interval = time.time() - self.timeout_start
-              if interval >= self.monitor_mode_timeout:
-                self.status_txt.SetLabel('Timed out. Finishing...')
-                self.finish_process()
-              else:
-                timeout_msg = 'No images found! Timing out in {} seconds' \
-                            ''.format(int(self.monitor_mode_timeout - interval))
-                self.status_txt.SetLabel(timeout_msg)
-          else:
-            self.status_txt.SetLabel('No new images found! Waiting ...')
+    if self.monitor_mode:
+      if self.find_new_images:
+        self.get_images_from_filesystem()
       else:
-        self.status_txt.SetLabel('Wrapping up ...')
-        self.finish_process()
+        self.find_new_images = (not self.new_images)
 
+      if self.new_images:
+        self.status_txt.SetLabel(
+          'Found {} new images'.format(len(self.new_images)))
+        self.timeout_start = None
+        self.state = 'new images'
+        self.process_images()
+      else:
+        if self.monitor_mode_timeout:
+          if self.timeout_start is None:
+            self.timeout_start = time.time()
+          else:
+            interval = time.time() - self.timeout_start
+            if interval >= self.monitor_mode_timeout:
+              self.status_txt.SetLabel('Timed out. Finishing...')
+              self.finish_process()
+            else:
+              timeout_msg = 'No images found! Timing out in {} seconds' \
+                            ''.format(
+                int(self.monitor_mode_timeout - interval))
+              self.status_txt.SetLabel(timeout_msg)
+        else:
+          self.status_txt.SetLabel('No new images found! Waiting ...')
+    else:
+      print ('DEBUG: WRAPPING UP!!')
+      self.status_txt.SetLabel('Wrapping up ...')
+      self.finish_process()
 
-  def search_for_new_images(self):
+  def get_images_from_filesystem(self):
     img_finder = thr.ImageFinderThread(self,
                                        image_paths=self.gparams.input,
-                                       image_list=self.img_list)
+                                       image_list=self.info.img_list)
     img_finder.start()
 
   def onFinishedProcess(self, e):
@@ -2752,9 +2410,21 @@ class ProcWindow(wx.Frame):
   def onFinishedImageFinder(self, e):
     self.new_images = e.GetValue()
 
+  def onFinishedObjectReader(self, info):
+    # Read info object
+    self.info = info.GetValue()
+
+    # Update w/ latest Cluster and PRIME results
+    self.info.prime_info = self.prime_info
+    self.info.cluster_info = self.cluster_info
+
+    if not self.recovery:
+      self.obj_reader_time.append(self.obj_sw.Time())
+
+
   def finish_process(self):
     import shutil
-    self.timer.Stop()
+    self.proc_timer.Stop()
     self.chart_timer.Stop()
 
     if self.finished_objects is None:
@@ -2765,7 +2435,21 @@ class ProcWindow(wx.Frame):
       self.status_txt.SetLabel('OBJECT READ-IN ERROR! NONE IMPORTED')
       return
 
-    if str(self.state).lower() in ('finished', 'aborted', 'unknown'):
+    if self.run_aborted:
+      self.gauge_process.Hide()
+      font = self.sb.GetFont()
+      font.SetWeight(wx.BOLD)
+      self.status_txt.SetFont(font)
+      self.status_txt.SetForegroundColour('red')
+      self.status_txt.SetLabel('ABORTED BY USER')
+      self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
+      try:
+        shutil.rmtree(self.init.tmp_base)
+      except Exception:
+        pass
+      print('JOB TERMINATED!')
+      return
+    elif self.recovery:
       self.gauge_process.Hide()
       font = self.sb.GetFont()
       font.SetWeight(wx.BOLD)
@@ -2776,27 +2460,33 @@ class ProcWindow(wx.Frame):
       self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), False)
       self.proc_toolbar.ToggleTool(self.tb_btn_monitor.GetId(), False)
 
+      self.display_log()
+
       analysis_file = os.path.join(self.init.int_base, 'analysis.pickle')
       if os.path.isfile(analysis_file):
         analysis = ep.load(analysis_file)
       else:
         analysis = None
 
-      if not self.finished_objects:
-        # Get image processing data from finished objects
-        if analysis is not None and hasattr(analysis, 'image_objects'):
-          self.finished_objects = [i for i in analysis.image_objects if
-                                   i is not None and i.status == 'final']
-        else:
-          self.find_objects(find_old=True)
+      # TODO: check if you even need this for backwards compatibility
+      if not self.info.finished_objects:
+        self.object_reader = thr.ObjectReaderThread(self,
+                                                    init=self.init,
+                                                    info=self.info,
+                                                    from_folder=True)
+        self.object_reader.start()
 
-        # Check for and recover clustering data
+      # Check for and recover clustering data
+      if not self.info.cluster_info:
         cluster_info_file = os.path.join(self.init.int_base,
                                          'cluster_info.pickle')
         if os.path.isfile(cluster_info_file):
           self.cluster_info = ep.load(cluster_info_file)
+      else:
+        self.cluster_info = self.info.cluster_info
 
         # Check for and recover live PRIME results
+      if not self.info.prime_info:
         live_prime_phil = os.path.join(self.init.int_base, 'live_prime.phil')
         if os.path.isfile(live_prime_phil):
           import iotbx.phil as ip
@@ -2810,44 +2500,30 @@ class ProcWindow(wx.Frame):
                                               'life_prime_info.pickle')
           if os.path.isfile(live_prime_info_file):
             self.prime_info = ep.load(live_prime_info_file)
+      else:
+        self.prime_info = self.info.prime_info
 
-      self.populate_data_points(objects=self.finished_objects)
-
-      if str(self.state).lower() == 'finished':
-        self.final_objects = [i for i in self.finished_objects if i.fail is None]
+      if (
+              str(self.state).lower() == 'finished' or
+              len( self.info.finished_objects) >= len(self.info.img_list)
+      ):
+        self.final_objects = [i for i in self.info.finished_objects if not i.fail]
         self.analyze_results(analysis=analysis)
 
       else:
-        if len(self.finished_objects) > 0:
+        if len(self.info.finished_objects) > 0:
           self.plot_integration(force_plot=True)
           self.plot_live_analysis(force_plot=True)
         if os.path.isfile(os.path.join(self.init.int_base, 'init.cfg')):
           self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
-
-      return
-
-    elif self.run_aborted:
-      self.gauge_process.Hide()
-      font = self.sb.GetFont()
-      font.SetWeight(wx.BOLD)
-      self.status_txt.SetFont(font)
-      self.status_txt.SetForegroundColour('red')
-      self.status_txt.SetLabel('ABORTED BY USER')
-      self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
-      try:
-        shutil.rmtree(self.init.tmp_base)
-      except Exception:
-        pass
-      print ('JOB TERMINATED!')
       return
     else:
-      self.final_objects = [i for i in self.finished_objects if i.fail is None]
+      self.final_objects = [i for i in self.info.finished_objects if not i.fail]
       self.gauge_process.Hide()
       self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
       self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), False)
       self.proc_toolbar.ToggleTool(self.tb_btn_monitor.GetId(), False)
-      self.sb.SetStatusText('{} of {} images successfully integrated'\
-                            ''.format(len(self.final_objects), len(self.img_list)), 1)
+
       if len(self.final_objects) > 0:
         # Signal end of run
         self.plot_integration(force_plot=True)

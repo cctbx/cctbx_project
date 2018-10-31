@@ -5,7 +5,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 10/17/2018
+Last Changed: 10/30/2018
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -120,10 +120,10 @@ class Plotter(object):
     """ calculates beam xy and other parameters """
     info = []
 
-    if self.params.advanced.integrate_with == 'cctbx':
+    if self.params.advanced.processing_backend == 'ha14':
       img_pickle = self.final_objects[0].final['img']
       pixel_size = pickle.load(open(img_pickle, "rb"))['PIXEL_SIZE']
-    elif self.params.advanced.integrate_with == 'dials':
+    elif self.params.advanced.processing_backend == 'cctbx.xfel':
       proc_pickle = self.final_objects[0].final['final']
       pixel_size = pickle.load(open(proc_pickle, 'rb'))['pixel_size']
 
@@ -331,12 +331,12 @@ class Analyzer(object):
                               i.fail == 'failed triage']
       self.diff_objects = [i for i in self.all_objects if
                            i.fail != 'failed triage']
-      if self.params.advanced.integrate_with == 'cctbx':
+      if self.params.advanced.processing_backend == 'ha14':
         self.not_int_objects = [i for i in self.all_objects if
                                 i.fail == 'failed grid search']
         self.filter_fail_objects = [i for i in self.all_objects if
                                     i.fail == 'failed prefilter']
-      elif self.params.advanced.integrate_with == 'dials':
+      elif self.params.advanced.processing_backend == 'cctbx.xfel':
         self.not_spf_objects = [i for i in self.all_objects if
                                 i.fail == 'failed spotfinding']
         self.not_idx_objects = [i for i in self.all_objects if
@@ -350,7 +350,7 @@ class Analyzer(object):
       self.lres = [i.final['lres'] for i in self.final_objects]
       self.spots = [i.final['strong'] for i in self.final_objects]
       self.mos = [i.final['mos'] for i in self.final_objects]
-      if self.params.advanced.integrate_with == 'cctbx':
+      if self.params.advanced.processing_backend == 'ha14':
         self.h = [i.final['sph'] for i in self.final_objects]
         self.s = [i.final['sih'] for i in self.final_objects]
         self.a = [i.final['spa'] for i in self.final_objects]
@@ -369,7 +369,7 @@ class Analyzer(object):
                                        len(self.no_diff_objects))
       self.analysis_result.__setattr__('n_not_int_objects',
                                        len(self.not_int_objects))
-      if self.params.advanced.integrate_with == 'dials':
+      if self.params.advanced.processing_backend == 'cctbx.xfel':
         self.analysis_result.__setattr__('n_not_spf_objects',
                                          len(self.not_spf_objects))
         self.analysis_result.__setattr__('n_not_idx_objects',
@@ -395,7 +395,7 @@ class Analyzer(object):
       if self.final_objects is None:
         final_table.append('NO IMAGES INTEGRATED!')
       else:
-        if self.params.advanced.integrate_with == 'cctbx':
+        if self.params.advanced.processing_backend == 'ha14':
           final_table.append("Avg. signal height:    {:<8.3f}  std. dev:   "
                              "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
                              "".format(np.mean(self.s), np.std(self.s),
@@ -421,8 +421,8 @@ class Analyzer(object):
         if len(self.final_objects) > 1:
           plot = Plotter(self.params, self.final_objects, self.viz_dir)
           if self.params.analysis.summary_graphs:
-            if ( self.params.advanced.integrate_with == 'cctbx' and
-                    self.params.cctbx.grid_search.type is not None
+            if ( self.params.advanced.processing_backend == 'ha14' and
+                    self.params.cctbx_ha14.grid_search.type is not None
             ):
               plot.plot_spotfinding_heatmap(write_files=True)
             plot.plot_res_histogram(write_files=True)
@@ -707,12 +707,12 @@ class Analyzer(object):
                    ''.format(len(self.no_diff_objects)))
     summary.append('raw images with diffraction:         {}'\
                    ''.format(len(self.diff_objects)))
-    if self.params.advanced.integrate_with == 'cctbx':
+    if self.params.advanced.processing_backend == 'ha14':
       summary.append('failed indexing / integration:       {}'\
                      ''.format(len(self.not_int_objects)))
       summary.append('failed prefilter:                    {}'\
                      ''.format(len(self.filter_fail_objects)))
-    elif self.params.advanced.integrate_with == 'dials':
+    elif self.params.advanced.processing_backend == 'cctbx.xfel':
       summary.append('failed spotfinding:                  {}'\
                      ''.format(len(self.not_spf_objects)))
       summary.append('failed indexing:                     {}'\
@@ -767,7 +767,7 @@ class Analyzer(object):
           for obj in self.filter_fail_objects:
             pff.write('{}\n'.format(obj.conv_img))
 
-      if self.params.advanced.integrate_with == 'dials':
+      if self.params.advanced.processing_backend == 'cctbx.xfel':
         if len(self.not_spf_objects) > 0:
           with open(spotfinding_fail_file, 'w') as sff:
             for obj in self.not_spf_objects:
@@ -795,51 +795,23 @@ class Analyzer(object):
     """ Imports default PRIME input parameters, modifies correct entries and
         prints out a starting PHIL file to be used with PRIME
     """
-    if self.params.advanced.integrate_with == 'cctbx':
+    if self.params.advanced.processing_backend == 'ha14':
       img_pickle = self.final_objects[0].final['img']
       pixel_size = pickle.load(open(img_pickle, "rb"))['PIXEL_SIZE']
-    elif self.params.advanced.integrate_with == 'dials':
+    elif self.params.advanced.processing_backend == 'cctbx.xfel':
       proc_pickle = self.final_objects[0].final['final']
       pixel_size = pickle.load(open(proc_pickle, 'rb'))['pixel_size']
     else:
       pixel_size = 0
 
-    triclinic = ['P1']
-    monoclinic = ['C2', 'P2', 'P121', 'P1211', 'C121', 'Pm', 'Cm', 'P2/m',
-                  'P21/m', 'C2/m']
-    orthorhombic = ['P222', 'C222', 'C2221', 'I222', 'F222', 'Pmmm', 'Cmmm',
-                    'Fmmm', 'Immm']
-    tetragonal = ['I4', 'I422', 'P4', 'P422', 'P4/m', 'P42/m', 'I4/m',
-                  'P4mm', 'I4mm', 'P4/mmm', 'I4/mmm']
-    hexagonal = ['P3', 'P312', 'P321', 'P6', 'P622', 'P6m', 'P6mm', 'P6/mmm',
-                 'H3', 'H32', 'R3', 'R32', 'R3:H', 'R32:H', 'R-3m:H']
-    cubic = ['F23', 'F432', 'I23', 'I432', 'P23', 'P432']
-
     try:
       sg = str(self.cons_pg).replace(" ", "")
     except AttributeError as e:
-      print ('PRIME INPUT ERROR: ', e)
+      print ('PRIME INPUT ERROR, SPACE GROUP: ', e)
       sg = 'P1'
 
-    try:
-      uc = ['{:4.2f}'.format(i) for i in self.cons_uc]
-    except Exception:
-      uc = ['100', '100', '100', '90', '90', '90']
-
-    if sg in triclinic:
-      crystal_system = 'Triclinic'
-    elif sg in monoclinic:
-      crystal_system = 'Monoclinic'
-    elif sg in orthorhombic:
-      crystal_system = 'Orthorhombic'
-    elif sg in tetragonal:
-      crystal_system = 'Tetragonal'
-    elif sg in hexagonal:
-      crystal_system = 'Hexagonal'
-    elif sg in cubic:
-      crystal_system = 'Cubic'
-    else:
-      crystal_system = 'None'
+    sym = crystal.symmetry(space_group_symbol=sg)
+    crystal_system = str(sym.space_group().crystal_system())
 
     # Determine number of images for indexing ambiguity resolution
     # My default: 1/2 of images or 300, whichever is smaller
@@ -857,6 +829,7 @@ class Analyzer(object):
     else:
       run_no = '001'
 
+    # Populate pertinent data parameters
     prime_params.run_no = os.path.join(os.path.dirname(self.prime_data_path),
                                          'prime/{}'.format(run_no))
     prime_params.data = [self.prime_data_path]
@@ -883,17 +856,22 @@ class Analyzer(object):
     prime_params.indexing_ambiguity.n_sample_frames = idx_ambiguity_sample
     prime_params.indexing_ambiguity.n_selected_frames = idx_ambiguity_selected
 
+    # Determine which queue to run on (i.e. match IOTA queue)
+    # Modify specific options based in IOTA settings
+    # Queue options
+    if (
+            self.params.mp.method == 'lsf' and
+            self.params.mp.queue is not None
+    ):
+      prime_params.queue.mode = 'bsub'
+      prime_params.queue.qname = self.params.mp.queue
+
+    # Number of processors (automatically, 1/2 of IOTA procs)
+    prime_params.n_processors = int(self.params.mp.n_processors / 2)
+
+    # Generate PRIME param PHIL
     prime_phil = mod_input.master_phil.format(python_object=prime_params)
-
-    with util.Capturing() as output:
-      prime_phil.show()
-
-    txt_out = ''
-    for one_output in output:
-      txt_out += one_output + '\n'
-
     prime_file = os.path.join(self.output_dir, filename)
-    with open(prime_file, 'w') as pf:
-      pf.write(txt_out)
+    prime_phil_txt = util.convert_phil_to_text(prime_phil, prime_file)
 
     return prime_phil

@@ -8,7 +8,7 @@ from past.builtins import xrange
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/31/2018
-Last Changed: 10/16/2018
+Last Changed: 10/30/2018
 Description : IOTA Single Image: can process single image using DIALS,
 with an array of options (i.e. anything from only spotfinding, to indexing,
 space group determination, refinement, integration)
@@ -28,8 +28,7 @@ from threading import Thread
 
 from iota.components.iota_dials import IOTADialsProcessor
 from dials.command_line.stills_process import phil_scope
-from iota.components.iota_threads import IOTATermination
-from iota.components.iota_utils import Capturing
+from iota.components.iota_utils import Capturing, IOTATermination
 from iota.components.iota_input import write_defaults
 
 
@@ -81,7 +80,7 @@ class DIALSSpfIdx(Thread):
     self.backend = backend
     self.paramfile = paramfile
     self.termfile = termfile
-    self.n_processors = n_processors
+    self.mp.n_processors = n_processors
     self.index = index
     self.verbose = verbose
     self.min_bragg = min_bragg
@@ -113,16 +112,16 @@ class DIALSSpfIdx(Thread):
         with open(self.paramfile, 'r') as phil_file:
           phil_string = phil_file.read()
         user_phil = ip.parse(phil_string)
-        self.dials_phil = phil_scope.fetch(source=user_phil)
+        self.cctbx_xfel_phil = phil_scope.fetch(source=user_phil)
       else:
         default_params, _ = write_defaults(method='dials',
                                            write_target_file=False,
                                            write_param_file=False)
         default_phil_string = '\n'.join(default_params)
         default_phil = ip.parse(default_phil_string)
-        self.dials_phil = phil_scope.fetch(source=default_phil)
+        self.cctbx_xfel_phil = phil_scope.fetch(source=default_phil)
 
-      self.params = self.dials_phil.extract()
+      self.params = self.cctbx_xfel_phil.extract()
 
     # Modify default DIALS parameters
     # These parameters will be set no matter what

@@ -3,13 +3,15 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 10/17/2018
+Last Changed: 10/30/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
 import os
 import wx
+import shutil
 from threading import Thread
+import numpy as np
 
 from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
@@ -18,13 +20,17 @@ from libtbx import easy_run
 from dxtbx.datablock import DataBlockFactory
 import multiprocessing
 
+import subprocess
+import sys
+import signal
+
 from xfel.clustering.cluster import Cluster
+from cctbx import crystal, miller, statistics
 from cctbx.uctbx import unit_cell
 from cctbx.sgtbx import lattice_symmetry
-from cctbx import crystal
+from cctbx.array_family import flex
 
-from iota.components.iota_utils import InputFinder, Capturing
-import iota.components.iota_image as img
+from iota.components.iota_utils import InputFinder, Capturing, IOTATermination
 
 ginp = InputFinder()
 
@@ -32,7 +38,7 @@ ginp = InputFinder()
 import time
 assert time
 
-# -------------------------------- Threading --------------------------------- #
+# -------------------------------- Processing -------------------------------- #
 
 # Set up events for finishing one cycle and for finishing all cycles
 tp_EVT_ALLDONE = wx.NewEventType()
@@ -68,135 +74,305 @@ class AllDone(wx.PyCommandEvent):
   def GetValue(self):
     return self.image_objects
 
-class ProcessingInfo(object):
-  """ Object with all the processing info UI needs to plot results """
-  def __init__(self):
-    """ constructor """
-
-    self.image_objects = []
-    self.nref_list = []
-    self.nref_xaxis = []
-    self.res_list = []
-    self.img_list = []
-    self.indices = []
-    self.b_factors = []
-    self.cluster_info = {}
-    self.prime_info = {}
-    self.status_summary = []
-    self.msg = None
-    self.test_attribute = 0
-
-class ProcessImage():
-  """ Wrapper class to do full processing of an image """
-  def __init__(self, init, input_entry, input_type = 'image', abort=False):
-    self.init = init
-    self.input_entry = input_entry
-    self.input_type = input_type
-    self.abort = abort
-
-  def run(self):
-    if self.abort:
-      raise IOTATermination('IOTA: Run aborted by user')
-    else:
-      if self.input_type == 'image':
-        img_object = img.SingleImage(self.input_entry, self.init)
-        img_object.import_image()
-      elif self.input_type == 'object':
-        img_object = self.input_entry[2]
-        img_object.import_int_file(self.init)
-      else:
-        img_object = None
-
-      if self.init.params.image_conversion.convert_only:
-        return img_object
-      else:
-        img_object.process()
-        return img_object
-
-class ProcThread(Thread):
-  """ Worker thread; generated so that the GUI does not lock up when
-      processing is running """
-  def __init__(self,
-               parent,
-               init,
-               iterable,
-               term_file,
-               input_type='image',
-               UI_thread=False):
-    Thread.__init__(self)
-    self.parent = parent
-    self.init = init
-    self.iterable = iterable
-    self.type = input_type
-    self.term_file = term_file
-    self.aborted = False
-    self.UI_thread = UI_thread
-
-  def run(self):
-    try:
-      img_objects = parallel_map(iterable=self.iterable,
-                                 func = self.full_proc_wrapper,
-                                 callback=self.callback,
-                                 processes=self.init.params.n_processors)
-    except IOTATermination as e:
-      self.aborted = True
-      print (e)
-      return
-
-    # Send "all done" event to GUI
-    try:
-      if self.UI_thread:
-        wx.CallAfter(self.parent.onProcThreadDone, img_objects)
-      else:
-        evt = AllDone(tp_EVT_ALLDONE, -1, img_objects=img_objects)
-        wx.PostEvent(self.parent, evt)
-    except Exception:
-      pass
-
-  def full_proc_wrapper(self, input_entry):
-    abort = os.path.isfile(self.term_file)
-    if abort:
-      os.remove(self.term_file)
-    try:
-      proc_image_instance = ProcessImage(init=self.init,
-                                         input_entry=input_entry,
-                                         input_type=self.type,
-                                         abort=abort)
-      proc_image = proc_image_instance.run()
-      return proc_image
-    except IOTATermination as e:
-      raise e
-    except Exception as e:
-      print ('IOTA PROC ERROR: ', e)
-      pass
-
-  def callback(self, result):
-    if self.UI_thread:
-      wx.CallAfter(self.parent.onProcThreadOneDone, result)
-
 class JobSubmitThread(Thread):
   """ Thread for easy_run submissions so that they don't block GUI """
-  def __init__(self, parent, command, job_id):
+  def __init__(self, parent, params, output_folder, abort_file):
     Thread.__init__(self)
     self.parent = parent
-    self.command = command
-    self.job_id = job_id
+    self.params = params
+    self.job_id = None
+
+    # New processing submit: run iota_process.py in all cases w/ different
+    # commands
+    queue = params.mp.queue
+    nproc = params.mp.n_processors
+    iter_path = os.path.join(output_folder, 'iter.cfg')
+    init_path = os.path.join(output_folder, 'init.cfg')
+
+    # TODO: Write a generic queueing dialog
+    if params.mp.method == 'lsf':
+      # Command for submission to LCLS queue
+      logfile = os.path.join(output_folder, 'bsub.log')
+      pid = os.getpid()
+      try:
+        user = os.getlogin()
+      except OSError:
+        user = 'iota'
+      self.job_id = 'J_{}{}'.format(user[0], pid)
+      self.command = 'bsub -o {} -q {} -n {} -J {} ' \
+                     'iota.process {} --files {} --stopfile {} --mode ui' \
+                     ''.format(logfile, queue, nproc, self.job_id,
+                               init_path, iter_path, abort_file)
+    elif params.mp.method == 'torq':
+      sub_string = '{} --files {} --stopfile {} --mode ui' \
+                   ''.format(init_path, iter_path, abort_file)
+      self.command = 'qsub -e /dev/null -o /dev/null -d {} iota.process -F "{}"' \
+                     ''.format(params.output, sub_string)
+    else:
+      # Command for submission to multiprocessing
+      self.command = 'iota.process {} --files {} --stopfile {} ' \
+                     '--mode ui'.format(init_path, iter_path, abort_file)
+
+  def abort(self):
+    self.job.kill_thread()
 
   def run(self):
     if self.command is not None:
-      try:
-        print(self.command)
-        easy_run.fully_buffered(self.command,
-                                join_stdout_stderr=True).show_stdout()
-        if self.job_id is not None:
-          print('JOB NAME = ', self.job_id)
-        return
-      except IOTATermination as e:
-        print('IOTA: JOB TERMINATED', e)
-        return
+      print(self.command)
+      self.job = CustomRun(command=self.command,
+                           join_stdout_stderr=True)
+      self.job.run()
+      self.job.show_stdout()
+      if self.job_id is not None:
+        print('JOB NAME = ', self.job_id)
+      return
     else:
       print('IOTA ERROR: COMMAND NOT ISSUED!')
       return
+
+class ObjectCruncher():
+  def __init__(self, info, object_folder=None):
+    self.info = info
+    self.list_file = info.obj_list_file
+    self.new_finished_objects = []
+    self.object_folder = object_folder
+
+  def get_object_filenames(self):
+    """ Reads file from bookmark and appends new object filenames to table
+
+        Note: reading from file takes slightly longer to get going than
+        directly looking for objects, but is much faster, with less chance of
+        skipping a file when several are written simultaneously
+    """
+
+    if os.path.isfile(self.list_file):
+      with open(self.list_file, 'r') as olf:
+        olf.seek(self.info.bookmark)
+        new_filenames = [l.replace('\n', '') for l in olf.readlines()]
+        self.info.bookmark = olf.tell()
+    else:
+      new_filenames = []
+
+    if new_filenames:
+      self.info.unread_files.extend(new_filenames)
+
+  def objects_from_folder(self):
+    self.info.unread_files = ginp.get_file_list(self.object_folder,
+                                                ext_only='int')
+
+  def read_object(self, filepath):
+    """ Reads (using easy_pickle) an object pickle and extracts relevant
+    information; this will be put into the various lists and dictionaries in
+    the info object; the full image-associated object will also be saved
+
+    :param filepath: path to object file
+    :return: SingleImage object
+    """
+    try:
+      obj = ep.load(filepath)
+      if obj and obj.status == 'final':
+        if not obj.fail:
+          pickle_path = obj.final['final']
+          if os.path.isfile(pickle_path):
+            try:
+              pickle = ep.load(pickle_path)
+              self.info.int_pickles.append(pickle_path)
+            except Exception as e:
+              print('IMAGE_PICKLE_ERROR for {}: {}'.format(pickle_path, e))
+              return obj
+          else:
+            return obj
+
+          # Populate w/ observations if object doesn't have them
+          if 'observations' not in obj.final:
+            obs = pickle['observations'][0]
+            obj.final['observations'] = obs
+      else:
+        obj = None
+      return obj
+
+    except EOFError as e:
+      print ('OBJECT_IMPORT_ERROR: ', e)
+      return None
+
+  def get_new_finished_objects(self):
+    read_files = []
+    for fn in self.info.unread_files:
+      if os.path.isfile(fn):
+        obj = self.read_object(fn)
+        if obj is not None:
+          self.new_finished_objects.append(obj)
+          read_files.append(fn)
+
+    if read_files:
+      self.info.unread_files = [f for f in self.info.unread_files if f not in
+                             read_files]
+
+  def populate_data_points(self, objects=None):
+    for obj in objects:
+      try:
+        if not obj.fail:
+          # Get processing statistics
+          self.info.nref_list[obj.img_index - 1] = obj.final['strong']
+          self.info.res_list[obj.img_index - 1] = obj.final['res']
+          obs = obj.final['observations']
+
+          # Extract indices and convert to flex array
+          indices = [i[0] for i in obs]
+          if self.info.idx_array is None:
+            self.info.idx_array = flex.miller_index(indices)
+          else:
+            if indices:
+              self.info.idx_array.extend(flex.miller_index(indices))
+
+          # Determine Wilson B-factor
+          try:
+            from cctbx import statistics
+            from prime.postrefine.mod_mx import mx_handler
+            mxh = mx_handler()
+
+            asu_contents = mxh.get_asu_contents(500)
+            observations_as_f = obs.as_amplitude_array()
+            observations_as_f.setup_binner(auto_binning=True)
+            wp = statistics.wilson_plot(observations_as_f, asu_contents,
+                                        e_statistics=True)
+            self.info.b_factors.append(wp.wilson_b)
+          except RuntimeError as e:
+            print ('B_FACTOR_ERROR: ', e)
+            self.info.b_factors.append(0)
+
+          # Create Cluster iterable
+          try:
+            self.info.cluster_iterable.append(
+              [float(obj.final['a']),
+               float(obj.final['b']),
+               float(obj.final['c']),
+               float(obj.final['alpha']),
+               float(obj.final['beta']),
+               float(obj.final['gamma']),
+               obj.final['sg']
+               ])
+          except Exception as e:
+            print ('CLUSTER_ITERABLE_ERROR for {}: {}'.format(obj.obj_file, e))
+            pass
+
+      except Exception as e:
+        print ('OBJECT_ERROR:', e, "({})".format(obj.obj_file))
+
+  def calculate_summary_chart(self):
+
+    failed_triage = len([i for i in self.info.finished_objects if
+                         i.fail in ('failed triage', 'failed import')])
+    failed_idx_int = len([i for i in self.info.finished_objects if
+                          i.fail == 'failed grid search'])
+    failed_filter = len([i for i in self.info.finished_objects if
+                         i.fail == 'failed prefilter' or
+                         i.fail == 'failed filter'])
+    failed_spf = len([i for i in self.info.finished_objects if
+                      i.fail == 'failed spotfinding'])
+    failed_idx = len([i for i in self.info.finished_objects if
+                      i.fail == 'failed indexing'])
+    failed_int = len([i for i in self.info.finished_objects if
+                      i.fail == 'failed integration'])
+    integrated = len([i for i in self.info.finished_objects if
+                      i.fail is None and i.final['final'] is not None])
+    waiting = len(self.info.img_list) - len(self.info.finished_objects)
+
+    categories = [
+      ['failed triage', '#d73027', failed_triage],
+      ['failed indexing / integration', '#f46d43', failed_idx_int],
+      ['failed filter', '#ffffbf', failed_filter],
+      ['failed spotfinding', '#f46d43', failed_spf],
+      ['failed indexing', '#fdae61', failed_idx],
+      ['failed integration', '#fee090', failed_int],
+      ['integrated', '#4575b4', integrated],
+      ['not processed', '#e0f3f8', waiting]
+    ]
+
+    nonzero = [i for i in categories if i[2] > 0]
+    self.info.unprocessed_images = waiting
+    self.info.status_summary = {'nonzero':nonzero,
+                                'names':[i[0] for i in nonzero],
+                                'patches':[None] * len(nonzero)}
+
+  def calculate_proc_plot(self):
+    self.info.nsref_x = np.array([i + 1 for i in
+                              range(len(self.info.img_list))]).astype(np.double)
+    self.info.nsref_y = np.array([np.nan if i == 0 else i for i in
+                                  self.info.nref_list]).astype(np.double)
+    self.info.nsref_median = np.median([i for i in self.info.nref_list if i > 0])
+
+    self.info.res_x = np.array([i + 1 for i in
+                           range(len(self.info.img_list))]).astype(np.double)
+    self.info.res_y = np.array([np.nan if i == 0 else i for i in
+                                self.info.res_list]).astype(np.double)
+    self.info.res_median = np.median([i for i in self.info.res_list if i > 0])
+
+  def calculate_hkl_plot(self):
+
+    try:
+      crystal_symmetry = crystal.symmetry(space_group_symbol=self.info.user_sg)
+    except RuntimeError:
+      crystal_symmetry = crystal.symmetry(space_group_symbol='P1')
+
+    if self.info.idx_array:
+      try:
+        ms = miller.set(crystal_symmetry=crystal_symmetry,
+                        indices=self.info.idx_array, anomalous_flag=False)
+        equiv = ms.multiplicities().merge_equivalents()
+        self.info.merged_indices = equiv.redundancies()
+
+      except Exception as e:
+        print ('HKL ERROR: ', e)
+        self.info.merged_indices = None
+
+
+  def calculate_Wilson_plot(self):
+    pass
+
+  def calc_cycle(self):
+    """ Performs all the object-getting and stats calculations """
+
+    # Read file and get object filenames
+    if self.object_folder:
+      self.objects_from_folder()
+    else:
+      self.get_object_filenames()
+
+    # Read new finished objects
+    self.get_new_finished_objects()
+
+    # Extract data and add to info object
+    if self.new_finished_objects:
+      self.populate_data_points(objects=self.new_finished_objects)
+      self.info.finished_objects.extend(self.new_finished_objects)
+
+    self.calculate_proc_plot()
+    self.calculate_hkl_plot()
+    self.calculate_summary_chart()
+
+    return self.info
+
+class ObjectReaderThread(Thread):
+  """ Thread for reading processed objects and making all calculations for
+      plotting in main GUI thread """
+  def __init__(self, parent, init, info=None, from_folder=False):
+    Thread.__init__(self, name='object_reader')
+    self.parent = parent
+    self.init = init
+    self.info = info
+    if from_folder:
+      self.object_folder = init.obj_base
+    else:
+      self.object_folder = None
+
+  def run(self):
+    self.obj_worker = ObjectCruncher(info=self.info,
+                                     object_folder=self.object_folder)
+    self.info = self.obj_worker.calc_cycle()
+
+    evt = ObjectFinderAllDone(tp_EVT_OBJDONE, -1, obj_list=self.info)
+    wx.PostEvent(self.parent, evt)
 
 class ImageFinderThread(Thread):
   """ Worker thread generated to poll filesystem on timer. Will check to see
@@ -291,6 +467,140 @@ class ImageViewerThread(Thread):
     command = '{} {}'.format(self.viewer, self.file_string)
     easy_run.fully_buffered(command)
 
+# ---------------------------------- PRIME ----------------------------------- #
+
+tp_EVT_PRIMEDONE = wx.NewEventType()
+EVT_PRIMEDONE = wx.PyEventBinder(tp_EVT_PRIMEDONE, 1)
+
+class PRIMEAllDone(wx.PyCommandEvent):
+  """ Send event when finished all cycles  """
+  def __init__(self, etype, eid, info=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.info = info
+  def GetValue(self):
+    return self.info
+
+class PRIMEThread(Thread):
+  """ Thread for running all PRIME calculations; will prepare info for plotting
+      in main GUI thread """
+  def __init__(self, parent, init,
+               info=None, best_pg=None, best_uc=None):
+    Thread.__init__(self, name='live_prime')
+    self.parent = parent
+    self.init = init
+    self.info = info
+    self.best_pg = best_pg
+    self.best_uc = best_uc
+
+  def prepare_PRIME_input(self):
+    """ Prepare the list of integrated pickles as well as pertinent
+    parameters; create a PRIME input file """
+
+    # Check if any pg/uc information is available; pg/uc info from UI
+    # supercedes pg/uc from Cluster
+
+    if self.best_pg is None:
+      self.best_pg = self.info.best_pg
+
+    if self.best_uc is None:
+      self.best_uc = self.info.best_uc
+    else:
+      uc_params = str(self.best_uc).rsplit()
+      self.best_uc = [float(i) for i in uc_params]
+
+    # Only run PRIME if both pg and uc are provided
+    if (self.best_pg and self.best_uc):
+      from iota.components.iota_analysis import Analyzer
+
+      # Create a file with list of integrated pickles (overwrite old file)
+      with open(self.info.finished_pickles_file, 'w') as ff:
+        ff.write('\n'.join(self.info.int_pickles))
+
+      # Create PRIME input file
+      analyzer = Analyzer(init=self.init,
+                          all_objects=self.info.finished_objects)
+
+      analyzer.prime_data_path = self.info.finished_pickles_file
+      analyzer.cons_pg = self.best_pg
+      analyzer.cons_uc = self.best_uc
+
+      prime_phil = analyzer.make_prime_input(filename='live_prime.phil',
+                                             run_zero=True)
+      self.pparams = prime_phil.extract()
+
+      # Modify specific options based in IOTA settings
+      # Queue options
+      if (
+              self.init.params.mp.method == 'lsf' and
+              self.init.params.mp.queue is not None
+      ):
+        self.pparams.queue.mode = 'bsub'
+        self.pparams.queue.qname = self.init.params.mp.queue
+
+      # Number of processors (automatically, 1/2 of IOTA procs)
+      self.pparams.n_processors = int(self.init.params.mp.n_processors / 2)
+
+      # Generate command args
+      cmd_args_list = ['n_postref_cycle=0',
+                       'queue.mode={}'.format(self.pparams.queue.mode),
+                       'queue.qname={}'.format(self.pparams.queue.qname),
+                       'n_processors={}'.format(self.pparams.n_processors)]
+      if self.pparams.queue.mode == 'bsub':
+        cmd_args_list.append('timeout_seconds=120')
+      cmd_args = ' '.join(cmd_args_list)
+
+      return cmd_args
+    else:
+      return None
+
+  def get_prime_stats(self):
+    stats_folder = os.path.join(self.pparams.run_no, 'stats')
+    prime_info = None
+    if os.path.isdir(stats_folder):
+      stat_files = [os.path.join(stats_folder, i) for i in
+                    os.listdir(stats_folder) if i.endswith('stat')]
+      if stat_files:
+        assert len(stat_files) == 1
+        stat_file = stat_files[0]
+        if os.path.isfile(stat_file):
+          prime_info = ep.load(stat_file)
+          live_prime_info_file = os.path.join(self.init.int_base,
+                                              'life_prime_info.pickle')
+          shutil.copyfile(stat_file, live_prime_info_file)
+
+    return prime_info
+
+
+  def run(self):
+    # Generate PRIME input
+    cmd_args = self.prepare_PRIME_input()
+
+    # Run PRIME
+    if cmd_args:
+      # remove previous run to avoid conflict
+      prime_dir = os.path.join(self.init.int_base, 'prime/000')
+      if os.path.isdir(prime_dir):
+        shutil.rmtree(prime_dir)
+
+      # Launch PRIME
+      prime_file = os.path.join(self.init.int_base, 'live_prime.phil')
+      cmd = 'prime.run {} {}'.format(prime_file, cmd_args)
+      # easy_run.fully_buffered(cmd, join_stdout_stderr=False).show_stderr()
+
+      try:
+        easy_run.fully_buffered(cmd, join_stdout_stderr=True)
+        prime_info = self.get_prime_stats()
+      except Exception as e:
+        print ("LIVE PRIME ERROR: ", e)
+        prime_info = None
+
+    else:
+      prime_info = None
+
+    # Send signal to UI
+    if prime_info:
+      evt = PRIMEAllDone(tp_EVT_PRIMEDONE, -1, info=prime_info)
+      wx.PostEvent(self.parent, evt)
 
 #------------------------------ IMAGE TRACKING ------------------------------ #
 
@@ -305,10 +615,6 @@ EVT_SLICEDONE = wx.PyEventBinder(tp_EVT_SLICEDONE)
 
 tp_EVT_SPFTERM = wx.NewEventType()
 EVT_SPFTERM = wx.PyEventBinder(tp_EVT_SPFTERM)
-
-class IOTATermination(Exception):
-  def __init__(self, termination):
-    Exception.__init__(self, termination)
 
 class SpotFinderAllDone(wx.PyCommandEvent):
   """ Send event when finished all cycles  """
@@ -411,9 +717,6 @@ class SpotFinderDIALSThread():
 
       return [idx, int(len(observed)), img, sg, uc]
 
-
-
-
 class SpotFinderMosflmThread():
   def __init__(self, parent, term_file):
     self.meta_parent = parent.parent
@@ -503,7 +806,6 @@ class SpotFinderMosflmThread():
         pass
 
       return [idx, spots, img, sg, cell]
-
 
 class SpotFinderThread(Thread):
   """ Basic spotfinder (with defaults) that could be used to rapidly analyze
@@ -604,7 +906,6 @@ class SpotFinderThread(Thread):
 
   # def terminate_thread(self):
   #   raise IOTATermination('IOTA_TRACKER: SPF THREAD Terminated!')
-
 
 class InterceptorFileThread(Thread):
   def __init__(self,
@@ -845,7 +1146,6 @@ class InterceptorThread(Thread):
   def terminate_thread(self):
     self.terminated = True
 
-
 # ------------------------------ UC CLUSTERING ------------------------------- #
 
 tp_EVT_CLUSTERDONE = wx.NewEventType()
@@ -906,7 +1206,7 @@ class ClusterThread(Thread):
   def __init__(self,
                parent,
                iterable):
-    Thread.__init__(self)
+    Thread.__init__(self, name='live_cluster')
     self.parent = parent
     self.iterable = iterable
     self.clustering = ClusterWorkThread(self)
@@ -915,3 +1215,74 @@ class ClusterThread(Thread):
     info = self.clustering.run(iterable=self.iterable)
     evt = SpotFinderOneDone(tp_EVT_CLUSTERDONE, -1, info=info)
     wx.PostEvent(self.parent, evt)
+
+
+# ------------------------------- SUBPROCESS --------------------------------- #
+
+class CustomRun(easy_run.fully_buffered_base):
+  ''' A subclass from easy_run with a "kill switch" for easy process
+      termination from UI; took out timeout, since that won't be used,
+      and doesn't work on all systems, anyway
+
+      Tested on Mac OS X 10.13.6 and CentOS 6 so far.
+  '''
+  def __init__(self,
+        command,
+        timeout=None,
+        stdin_lines=None,
+        join_stdout_stderr=False,
+        stdout_splitlines=True,
+        bufsize=-1):
+    self.command = command
+    self.join_stdout_stderr = join_stdout_stderr
+    self.timeout = timeout
+    self.stdin_lines = stdin_lines
+    self.stdout_splitlines=stdout_splitlines
+    self.bufsize = bufsize
+    self.thread = None
+
+  def target(self, process, lines, result):
+    o, e = process.communicate(input=lines)
+    result[0] = o
+    result[1] = e
+
+  def kill_thread(self):
+    os.killpg(os.getpgid(self.p.pid), signal.SIGTERM)
+
+  def run(self):
+    if (not isinstance(self.command, str)):
+      self.command = subprocess.list2cmdline(self.command)
+    if (sys.platform == 'darwin'):   # bypass SIP on OS X 10.11
+      self.command = ("DYLD_LIBRARY_PATH=%s exec "%
+                      os.environ.get("DYLD_LIBRARY_PATH","")) + self.command
+    if (self.stdin_lines is not None):
+      if (not isinstance(self.stdin_lines, str)):
+        self.stdin_lines = os.linesep.join(self.stdin_lines)
+        if (len(self.stdin_lines) != 0):
+          self.stdin_lines += os.linesep
+    if (self.join_stdout_stderr):
+      stderr = subprocess.STDOUT
+    else:
+      stderr = subprocess.PIPE
+    self.p = subprocess.Popen(
+      args=self.command,
+      shell=True,
+      bufsize=self.bufsize,
+      stdin=subprocess.PIPE,
+      stdout=subprocess.PIPE,
+      stderr=stderr,
+      universal_newlines=True,
+      close_fds=(sys.platform != 'win32'),
+      preexec_fn=os.setsid if sys.platform != 'win32' else None)
+    o, e = self.p.communicate(input=self.stdin_lines)
+    if (self.stdout_splitlines):
+      self.stdout_buffer = None
+      self.stdout_lines = o.splitlines()
+    else:
+      self.stdout_buffer = o
+      self.stdout_lines = None
+    if (self.join_stdout_stderr):
+      self.stderr_lines = []
+    else:
+      self.stderr_lines = e.splitlines()
+    self.return_code = self.p.returncode
