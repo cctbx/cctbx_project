@@ -38,7 +38,7 @@ class _(boost.python.injector, dps_extended):
       self.max_cell = NN.max_cell
 
     if self.recommended_grid_sampling_rad is None:
-      rossmann_suggestion = 0.029 # radians; value used in Stellar (1997)
+      rossmann_suggestion = 0.029 # radians; value used in Steller (1997)
       norms = reciprocal_space_vectors.norms()
       naive_obs_highest_resolution = 1./flex.max(norms)
       characteristic_grid = naive_obs_highest_resolution / self.max_cell
