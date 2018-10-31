@@ -70,8 +70,7 @@ class fragment_refinement_driver (object) :
     if (params.exclude_resnames is not None) :
       exclude_resnames = [ n.upper() for n in params.exclude_resnames ]
     for chain in self.pdb_hierarchy.only_model().chains() :
-      main_conf = chain.conformers()[0]
-      if (not main_conf.is_protein()) :
+      if not chain.is_protein():
         continue
       residues = chain.residue_groups()
       fragments = alt_confs.fragment_single_conformer_chain(residues)

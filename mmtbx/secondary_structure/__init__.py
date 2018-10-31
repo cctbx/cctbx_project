@@ -828,15 +828,6 @@ def analyze_distances (self, params, pdb_hierarchy=None, log=sys.stdout) :
   print >> log, ""
   return True
 
-def find_nucleic_acids (pdb_hierarchy) :
-  assert 0, "Anybody using this?"
-  for model in pdb_hierarchy.models() :
-    for chain in model.chains() :
-      for conformer in chain.conformers() :
-        if conformer.is_na() :
-          return True
-  return False
-
 def manager_from_pdb_file (pdb_file) :
   assert 0, "will not work"
   from iotbx import file_reader

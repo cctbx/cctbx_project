@@ -326,13 +326,7 @@ def check_for_internal_chain_ter_records(
   chain_ter_matches = {}
   chain_ranges = {}
   for chain in chains:
-    found_conformer = False
-    for conformer in chain.conformers():
-      if not conformer.is_protein() and not conformer.is_na():
-        continue
-      else:
-        found_conformer = True
-    if not found_conformer:
+    if not chain.is_protein() and not chain.is_na():
       continue
     min = None
     max = None

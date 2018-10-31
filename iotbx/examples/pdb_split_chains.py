@@ -71,9 +71,8 @@ def run (args=(), params=None, out=None) :
   id_counts = {}
   outputs = []
   for chain in hierarchy.models()[0].chains() :
-    main_conf = chain.conformers()[0]
     if (params.exclude_heteroatoms) :
-      if ((not main_conf.is_protein()) and (not main_conf.is_na())) :
+      if not chain.is_protein() and not chain.is_na():
         continue
       elif (len(chain.residue_groups()) == 1) :
         continue

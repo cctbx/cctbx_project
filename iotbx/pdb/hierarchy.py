@@ -2364,6 +2364,7 @@ class _(boost.python.injector, ext.conformer):
 
   def is_protein (self, min_content=0.8) :
     # XXX DEPRECATED
+    # Used only in mmtbx/validation and wxtbx. Easy to eliminate.
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
@@ -2374,6 +2375,7 @@ class _(boost.python.injector, ext.conformer):
 
   def is_na (self, min_content=0.8) :
     # XXX DEPRECATED
+    # Used only in mmtbx/validation and wxtbx. Easy to eliminate.
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]

@@ -159,8 +159,7 @@ def find_single_protein_chain (hierarchy) :
   assert (len(hierarchy.models()) == 1)
   chain_id = None
   for chain in hierarchy.models()[0].chains() :
-    main_conf = chain.conformers()[0]
-    if (main_conf.is_protein()) :
+    if chain.is_protein():
       if (chain_id is not None) :
         raise RuntimeError("More than one protein chain in hierarchy.")
       chain_id = chain.id
@@ -184,16 +183,14 @@ class distance_difference_matrix (object) :
     chain_1 = chain_2 = None
     for chain in hierarchy_1.models()[0].chains() :
       if (chain.id == chain_id_1) :
-        main_conf = chain.conformers()[0]
-        if (main_conf.is_protein()) :
+        if chain.is_protein():
           if (chain_1 is not None) :
             raise Sorry("Multiple protein chains with ID '%s' in hierarchy_1")
           else :
             chain_1 = chain
     for chain in hierarchy_2.models()[0].chains() :
       if (chain.id == chain_id_2) :
-        main_conf = chain.conformers()[0]
-        if (main_conf.is_protein()) :
+        if chain.is_protein():
           if (chain_2 is not None) :
             raise Sorry("Multiple protein chains with ID '%s' in hierarchy_1")
           else :

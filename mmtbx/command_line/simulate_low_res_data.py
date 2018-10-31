@@ -540,10 +540,9 @@ def get_counts (hierarchy) :
   n_residues = 0
   n_bases = 0
   for chain in hierarchy.models()[0].chains() :
-    main_conf = chain.conformers()[0]
-    if (main_conf.is_protein()) :
+    if chain.is_protein():
       n_residues += len(chain.residue_groups())
-    elif (main_conf.is_na()) :
+    elif chain.is_na():
       n_bases += len(chain.residue_groups())
   return n_residues, n_bases
 

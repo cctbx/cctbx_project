@@ -320,7 +320,7 @@ def remove_clashing_atoms (
         chain.remove_residue_group(residue_group)
         show_removed(other_atoms)
       else :
-        if (chain.conformers()[0].is_protein()) :
+        if (chain.is_protein()) :
           if (atom.name.strip() in ["N","C","CA","CB","O","H","HA"]) :
             show_removed(other_atoms)
             deleted.extend(other_atoms.extract_i_seq())
