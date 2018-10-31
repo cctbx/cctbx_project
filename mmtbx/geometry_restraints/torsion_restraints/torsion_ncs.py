@@ -1122,7 +1122,7 @@ class torsion_ncs(object):
     sites_cart_moving = xray_structure.sites_cart()
     for model in pdb_hierarchy.models():
       for chain in model.chains():
-        if not utils.is_protein_chain(chain=chain):
+        if not chain.is_protein():
           continue
         for residue_group in chain.residue_groups():
           all_dict = \
@@ -1186,7 +1186,7 @@ class torsion_ncs(object):
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         #only works with protein sidechains
-        if not utils.is_protein_chain(chain=chain):
+        if not chain.is_protein():
           continue
         for residue_group in chain.residue_groups():
           all_dict = rotalyze.construct_complete_sidechain(residue_group)
@@ -1287,7 +1287,7 @@ class torsion_ncs(object):
 
     for model in pdb_hierarchy.models():
       for chain in model.chains():
-        if not utils.is_protein_chain(chain=chain):
+        if not chain.is_protein():
           continue
         for residue_group in chain.residue_groups():
           all_dict = rotalyze.construct_complete_sidechain(residue_group)

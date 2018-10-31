@@ -538,12 +538,6 @@ def check_residues_are_connected (ca_1, ca_2, max_sep=4.0, min_sep=0.) :
     return False
   return True
 
-def is_protein_chain(chain):
-  for conformer in chain.conformers():
-    if not conformer.is_protein():
-      return False
-  return True
-
 def prepare_map(
       fmodel,
       exclude_free_r_reflections=False):
