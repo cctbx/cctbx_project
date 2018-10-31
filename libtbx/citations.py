@@ -137,7 +137,7 @@ def author_list_with_periods (authors, initials_first=False) :
       initials = names[-1]
       new_initials = ""
       for letter in initials :
-        if letter in string.letters :
+        if letter in string.ascii_letters :
           new_initials += ("%s." % letter)
         else : # usually '-'
           new_initials += letter

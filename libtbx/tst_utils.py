@@ -375,6 +375,16 @@ def exercise_group_args():
   assert c.a==11
   assert c.b==12
 
+def exercise_round2():
+  assert(2 == int(utils.round2(1.5, 0)))
+  assert(3 == int(utils.round2(2.5, 0)))
+  assert(-2 == int(utils.round2(-1.5, 0)))
+  assert(-3 == int(utils.round2(-2.5, 0)))
+  assert approx_equal(0.2, utils.round2(0.15, 1))
+  assert approx_equal(0.3, utils.round2(0.25, 1))
+  assert approx_equal(-0.2, utils.round2(-0.15, 1))
+  assert approx_equal(-0.3, utils.round2(-0.25, 1))
+
 def run(args):
   assert len(args) == 0
   if '--exercise-retrieve-unless-exists' in args:
@@ -406,6 +416,7 @@ def run(args):
   exercise_file_utils()
   exercise_dir_utils()
   exercise_group_args()
+  exercise_round2()
   print(utils.format_cpu_times())
 
 if (__name__ == "__main__"):

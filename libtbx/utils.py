@@ -1753,6 +1753,28 @@ class progress_bar(progress_displayed_as_fraction):
     sys.stdout.flush()
     self.i += 1
 
+def round2(x, d=0):
+  '''
+  Python 3 defaults to rounding to the nearest even number (round half to even),
+  so this function keeps the Python 2 behavior, which is rounding half away
+  from zero.
+
+  References:
+  https://docs.python.org/3.7/library/functions.html#round
+  https://en.wikipedia.org/wiki/Rounding#Round_half_to_even
+
+  https://docs.python.org/2.7/library/functions.html#round
+  https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero
+
+  Function from:
+  http://python3porting.com/differences.html#rounding-behavior
+  '''
+  p = 10 ** d
+  if x > 0:
+    return float(math.floor((x * p) + 0.5))/p
+  else:
+    return float(math.ceil((x * p) - 0.5))/p
+
 def format_float_with_standard_uncertainty(value, standard_uncertainty,
                                            minimum=1e-15):
   """
@@ -1776,19 +1798,19 @@ def format_float_with_standard_uncertainty(value, standard_uncertainty,
   '0.0050000(10)'
   """
   if standard_uncertainty <= minimum: return str(value)
-  precision = -int(round(math.log10(standard_uncertainty)))
+  precision = -int(round2(math.log10(standard_uncertainty)))
   if precision > -1:
     su = standard_uncertainty * math.pow(10, precision)
-    if round(su,1) < 2:
+    if round2(su,1) < 2:
       su *= 10
       precision += 1
     fmt_str = "%%.%if(%%i)" %precision
-    return fmt_str %(value, round(su))
+    return fmt_str %(value, round2(su))
   else:
     precision += 1
-    su = int(round(standard_uncertainty, precision))
+    su = int(round2(standard_uncertainty, precision))
     fmt_str = "%.0f(%i)"
-    return fmt_str %(round(value, precision), su)
+    return fmt_str %(round2(value, precision), su)
 
 def random_hex_code(number_of_digits):
   """
@@ -2321,12 +2343,18 @@ def try_send_to_trash (path_name, delete_if_not_available=False,
     else :
       send2trash.send2trash(path_name)
 
+if sys.hexversion >= 0x03000000:
+  unicode = str
+
 def to_unicode(text, codec=None):
   '''
   Function for handling text when it is first encountered
-  Changes str type to unicode type
-  The input is returned unmodified if it is already unicode
-  Will convert other types (e.g. int, float) to str
+
+  Changes bytestring type (str or bytes in Python 2, bytes in Python 3) to
+  text string type (unicode in Python 2, str in Python 3)
+
+  The input is returned unmodified if it is already a text string
+  Will convert other types (e.g. int, float) to text string
   None is returned as None, not as u'None'
 
   For Linux/OS X, the default filesystem encoding is utf8.
@@ -2343,7 +2371,7 @@ def to_unicode(text, codec=None):
 
   if (isinstance(text, unicode)):
     return text
-  elif (isinstance(text, str)):
+  elif (isinstance(text, bytes)):
     new_text = text
     try:
       new_text = text.decode(codec, errors='replace')
@@ -2356,13 +2384,16 @@ def to_unicode(text, codec=None):
   else:
     return None
 
-def to_str(text, codec=None):
+def to_bytes(text, codec=None):
   '''
   Function for handling text when it is passed to cctbx functions that expect
-  the str type
-  Changes unicode type to str type
-  The input is returned unmodified if it is already str
-  Will convert other types (e.g. int, float) to str
+  bytestrings
+
+  Changes text string type (unicode in Python 2, str in Python 3) to
+  bytestring type (str or bytes in Python 2, bytes in Python 3)
+
+  The input is returned unmodified if it is already a bytestring
+  Will convert other types (e.g. int, float) to bytestring
   None is returned as None, not as 'None'
 
   For Linux/OS X, the default filesystem encoding is utf8.
@@ -2377,7 +2408,7 @@ def to_str(text, codec=None):
     if (sys.platform == 'win32'):
       codec = 'mbcs'
 
-  if (isinstance(text, str)):
+  if (isinstance(text, bytes)):
     return text
   elif (isinstance(text, unicode)):
     new_text = text
@@ -2388,9 +2419,11 @@ def to_str(text, codec=None):
     finally:
       return new_text
   elif (text is not None):
-    return str(text)
+    return bytes(text)
   else:
     return None
+# keep to_str name
+to_str = to_bytes
 
 def guess_total_memory(meminfo_file='/proc/meminfo'):
   import subprocess
