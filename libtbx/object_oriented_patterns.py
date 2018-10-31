@@ -1,7 +1,8 @@
 """ A library of object-oriented patterns """
 from __future__ import absolute_import, division, print_function
 
-import new, weakref
+import weakref
+from types import MethodType
 
 class injector:
   """ Injection of new methods into an existing class
@@ -85,7 +86,7 @@ class memoize_method(object):
       # It's always better to enable reference counting to collect
       # unreachable object as soon as they become so instead of relying
       # on a later gc collection.
-      func = new.instancemethod(self.meth, weakref.proxy(obj), type)
+      func = MethodType(self.meth, weakref.proxy(obj), type)
       memoized = memoize(func)
       setattr(obj, self.cache, memoized)
       return memoized

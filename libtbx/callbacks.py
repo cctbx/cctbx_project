@@ -1,10 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
-from libtbx import str_utils
-from libtbx import group_args, adopt_init_args
-import os
-import sys
-
 """
 Using GUI callbacks in CCTBX
 ----------------------------
@@ -67,6 +60,15 @@ A final note: while this is of course intended to be called from Python code,
 it is possible to send callbacks from C++ code as well, and this is
 implemented in the Phaser software.
 """
+from __future__ import absolute_import, division, print_function
+
+import six
+
+from libtbx import str_utils
+from libtbx import group_args, adopt_init_args
+from libtbx.utils import to_unicode
+import os
+import sys
 
 class manager (object) :
   def __init__ (self) :
@@ -99,8 +101,8 @@ class manager (object) :
     self.warn(message)
 
   def warn (self, message) :
-    if (not isinstance(message, basestring)) :
-      message = str(message)
+    if (not isinstance(message, (six.text_type, six.binary_type))) :
+      message = to_unicode(message)
     self.__call__(message="warn", data=message, accumulate=True, cached=True)
     if (self._log is not None) :
       log = self._log
