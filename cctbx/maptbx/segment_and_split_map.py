@@ -7090,7 +7090,8 @@ def adjust_bounds(params,
   # range is lower_bounds to upper_bounds
   lower_bounds=list(lower_bounds)
   upper_bounds=list(upper_bounds)
-  if params.output_files.box_buffer is None: params.output_files.box_buffer=0
+  if params is None or params.output_files.box_buffer is None:
+     params.output_files.box_buffer=0
   for i in xrange(3):
     if lower_bounds[i] is None: lower_bounds[i]=0
     if upper_bounds[i] is None: upper_bounds[i]=0
