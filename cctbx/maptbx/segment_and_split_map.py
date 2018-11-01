@@ -7091,13 +7091,15 @@ def adjust_bounds(params,
   lower_bounds=list(lower_bounds)
   upper_bounds=list(upper_bounds)
   if params is None or params.output_files.box_buffer is None:
-     params.output_files.box_buffer=0
+     box_buffer=0
+  else:
+     box_buffer=params.output_files.box_buffer
   for i in xrange(3):
     if lower_bounds[i] is None: lower_bounds[i]=0
     if upper_bounds[i] is None: upper_bounds[i]=0
-    lower_bounds[i]-=params.output_files.box_buffer
+    lower_bounds[i]-=box_buffer
     lower_bounds[i]=max(0,lower_bounds[i])
-    upper_bounds[i]+=params.output_files.box_buffer
+    upper_bounds[i]+=box_buffer
     upper_bounds[i]=min(map_data.all()[i]-1,upper_bounds[i])
 
 
