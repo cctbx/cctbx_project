@@ -63,12 +63,13 @@ phil_scope = parse("""
       .type = float
       .help = Interquartile multiplier
   }
-  n_subset_method = *random n_refl
+  n_subset_method = *random n_refl significance_filter
     .type = choice
     .help = Algorithm to be used for choosing the n_subset images/experiments for \
             refinement.  n_refl chooses the set with the largest numbers of reflections \
             listed in the pickle files, thus giving maximal coverage of the detector tiles \
-            with the fewest refineable parameters.
+            with the fewest refineable parameters. Significance_filter chooses the subset of \
+            images with maximum reflections above an I/sigI cutoff
   n_refl_panel_list = None
     .type = ints
     .help = If n_subset_method is n_refl, specify which panels to search on.
