@@ -19,6 +19,8 @@ reference_structure = None
   .type = path
 only_segid = None
   .type = str
+nproc = 1
+  .type = int
 verbose = False
   .type = bool
 update_scales = True
@@ -127,6 +129,7 @@ electron density values/CC.
     #t0 = time.time()
     ligand_manager = validate_ligands.manager(
       model = model,
+      nproc = self.params.nproc,
       log   = self.logger)
     ligand_manager.run()
     ligand_manager.print_ligand_counts()

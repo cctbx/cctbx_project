@@ -1,5 +1,7 @@
 from __future__ import division, print_function
 
+import time
+
 import iotbx.pdb
 from cctbx import adptbx
 from cctbx.array_family import flex
@@ -11,29 +13,79 @@ from libtbx.str_utils import make_sub_header
 
 class manager(dict):
 
-  def __init__(self, model, log):
+  def __init__(self, model, nproc=1, log=None):
     self.model = model
+    self.nproc = nproc
     self.log   = log
 
   # ---------------------------------------------------------------------------
 
+  def parallel_populate(self, args):
+    from libtbx import easy_mp
+    def _run(lr, func):
+      func = getattr(lr, func)
+      rc = func()
+      return rc
+    funcs = []
+    ligand_results = []
+    inputs = []
+    for id_tuple, rg, altloc, conformer_isel in args:
+      lr = ligand_result(
+        model = self.model,
+        isel = conformer_isel,
+        id_str = rg.id_str())
+      ligand_results.append(lr)
+      for attr, func in lr._result_attrs.items():
+        funcs.append([lr, func])
+        inputs.append([id_tuple, altloc, func])
+
+    results = []
+    t0=time.time()
+    for i, (args, res, err_str) in enumerate(easy_mp.multi_core_run(
+      _run,
+      funcs,
+      self.nproc,
+      )):
+      results.append([args, res, err_str])
+      if self.nproc>1:
+        print('\n  Returning Selection : %s AltLoc : %s Func : %s' % tuple(inputs[i]))
+        print('  Cumulative time: %6.2f (s)' % (time.time()-t0))
+      if err_str:
+        print('Error output from %s' % args)
+        print(err_str)
+        print('_'*80)
+
+    i=0
+    for lr in ligand_results:
+      for attr, func in lr._result_attrs.items():
+        setattr(lr, attr, results[i][1])
+        i+=1
+    return ligand_results
+
   def run(self):
-    ph = self.model.get_hierarchy()
-    ligand_isel_dict = self.get_ligands(ph = ph)
-    for id_tuple, isel in ligand_isel_dict.items():
-      for rg in ph.select(isel).residue_groups():
-        ligand_dict = {}
-        for conformer in rg.conformers():
-          altloc = conformer.altloc
-          conformer_isel = conformer.atoms().extract_i_seq()
-          lr = ligand_result(
-            model = self.model,
-            isel = conformer_isel,
-            id_str = rg.id_str())
-          lr.get_occupancies()
-          lr.get_adps()
-          ligand_dict[altloc] = lr
-      self[id_tuple] = ligand_dict
+    args = []
+    def _generate_ligand_isel():
+      #done = []
+      ph = self.model.get_hierarchy()
+      ligand_isel_dict = self.get_ligands(ph = ph)
+      for id_tuple, isel in ligand_isel_dict.items():
+        for rg in ph.select(isel).residue_groups():
+          ligand_dict = {}
+          for conformer in rg.conformers():
+            altloc = conformer.altloc
+            #key = (id_tuple, altloc)
+            #print (key)
+            #if key in done: continue
+            #done.append(key)
+            conformer_isel = conformer.atoms().extract_i_seq()
+            yield id_tuple, rg, altloc, conformer_isel
+    for id_tuple, rg, altloc, conformer_isel in _generate_ligand_isel():
+      args.append([id_tuple, rg, altloc, conformer_isel])
+    results = self.parallel_populate(args)
+    for lr, (id_tuple, rg, altloc, conformer_isel) in zip(results,
+                                                          _generate_ligand_isel()):
+      ligand_dict = self.setdefault(id_tuple, {})
+      ligand_dict[altloc] = lr
 
   # ---------------------------------------------------------------------------
 
@@ -129,8 +181,12 @@ class ligand_result(object):
     self.isel = isel
     self.id_str = id_str
     # results
-    self._occupancies = None
-    self._adps = None
+    self._result_attrs = {'_occupancies' : 'get_occupancies',
+                          '_adps'        : 'get_adps',
+    }
+    for attr, func in self._result_attrs.items():
+      setattr(self, attr, None)
+      assert hasattr(self, func)
     # to be used internally
     self._ph = self.model.get_hierarchy()
     self._atoms = self._ph.select(self.isel).atoms()
@@ -139,6 +195,12 @@ class ligand_result(object):
     #TODO: prob not necessary, let's see if we want to keep it
     rg_ligand = self._ph.select(self.isel).only_residue_group()
     self.resname = ",".join(rg_ligand.unique_resnames())
+
+  def __repr__(self):
+    outl = 'ligand %s\n' % self.id_str
+    for attr in self._result_attrs:
+      outl += '  %s : %s\n' % (attr, getattr(self, attr))
+    return outl
 
   # ---------------------------------------------------------------------------
 
