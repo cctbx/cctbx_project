@@ -104,7 +104,7 @@ to convert the complex structure factors to intensities::
   f_calc_sq = f_calc.as_intensity_array()
   f_calc_sq.show_summary().show_array()
 
-Finally we output the calculated intensities to a CIF file::
+Finally we output the calculated intensities to a HKL file::
 
   f_calc_sq.as_cif_simple(
     array_type="calc", data_name="quartz", out=open("quartz.hkl", "wb"))
