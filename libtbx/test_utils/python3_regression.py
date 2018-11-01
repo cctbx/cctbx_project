@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import procrunner
 
 def find_new_python3_incompatible_code(module_under_test):
   '''
@@ -20,6 +19,15 @@ def find_new_python3_incompatible_code(module_under_test):
 
     Known violations are kept in file .known-python3-violations in the
     module directory.
+
+    :param module_under_test: The imported module that should be tested.
+                              This is the module object, not a string
+                              containing the name of the module.
+    :return: False if the module contains no unexpected python 3 incompatible
+             code. Returns None if the test can't be run. This will typically
+             be due to a missing dependency such as the python 3 interpreter
+             or a required library. If unexpected python 3 incompatible code
+             is found a string containing a short summary is returned.
   '''
 
   # File containing list of excluded files
@@ -30,7 +38,10 @@ def find_new_python3_incompatible_code(module_under_test):
 
   module_path = module_under_test.__path__[0]
   try:
+    import procrunner
     result = procrunner.run(['python3', '-m', 'compileall', '-x', '\.git', '-q', module_path], environment_override=environ_override, print_stdout=False)
+  except ImportError:
+    return None
   except OSError as e:
     if e.errno == 2:
       return None
