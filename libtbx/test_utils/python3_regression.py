@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import procrunner
+from libtbx import easy_run
 
 def find_new_python3_incompatible_code(module_under_test):
   '''
@@ -22,27 +22,28 @@ def find_new_python3_incompatible_code(module_under_test):
     module directory.
   '''
 
+  # Check for python 3
+  try:
+    result = easy_run.fully_buffered('python3').raise_if_errors()
+  except RuntimeError as e:
+    return None
+
   # File containing list of excluded files
   allowed_broken_files_list = '.known-python3-violations'
 
-  # Mask all *PYTHON* variables from environment - Python3 will not like cctbx python settings
-  environ_override = { k: '' for k in list(os.environ) if 'PYTHON' in k }
-
   module_path = module_under_test.__path__[0]
   try:
-    result = procrunner.run(['python3', '-m', 'compileall', '-x', '\.git', '-q', module_path], environment_override=environ_override, print_stdout=False)
-  except OSError as e:
-    if e.errno == 2:
-      return None
-    raise
-
-  if result['stderr']:
+    result = easy_run.fully_buffered(['PYTHONPATH=""', 'python3', '-m', 'compileall', '-x', '\.git', '-q', module_path])
+    if len(result.stderr_lines) > 0:
+      result.show_stderr()
+      result.raise_if_errors()
+  except RuntimeError as e:
     return 'Python3 compilation exited with unexpected STDERR output'
 
-  if not result['exitcode']: # No compilation errors
+  if not result.return_code: # No compilation errors
     return False
 
-  errors = map(lambda x: x.replace(module_path + os.path.sep, '').strip(), result['stdout'].split('***'))
+  errors = map(lambda x: x.replace(module_path + os.path.sep, '').strip(), '\n'.join(result.stdout_lines).split('***'))
   errors = filter(lambda x: "'" in x, errors)
   broken_files = { error.split("'")[1]: error for error in errors }
 
