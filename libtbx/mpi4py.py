@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import division
 import time
 
 ''' mpi4py wrapper: emulating mpi4py behavior for a single rank when the real mpi4py is not installed '''
