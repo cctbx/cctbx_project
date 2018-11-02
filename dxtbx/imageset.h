@@ -732,10 +732,10 @@ namespace dxtbx {
         DXTBX_ASSERT(p.size() == 0 || r.accessor().all_eq(p.accessor()));
 
         // Create the result array
-        array_type c(r.accessor());
+        array_type c(r.accessor(), scitbx::af::init_functor_null<array_type::value_type>());
 
         // Copy the data values
-        std::copy(r.begin(), r.end(), c.begin());
+        std::uninitialized_copy(r.begin(), r.end(), c.begin());
 
         // Apply dark
         if (p.size() > 0) {
