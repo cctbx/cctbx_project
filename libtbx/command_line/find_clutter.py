@@ -87,17 +87,17 @@ def run(args):
     def _is_whitespace(s):
       if s.find("tabs or trailing")>-1: return True
       return False
-    message_lines = filter(_is_whitespace, message_lines)
+    message_lines = list(filter(_is_whitespace, message_lines))
   elif only_dos:
     def _is_dos(s):
       if s.find("dos format")>-1: return True
       return False
-    message_lines = filter(_is_dos, message_lines)
+    message_lines = list(filter(_is_dos, message_lines))
   elif only_future:
     def _is_future(s):
       if s.find("from __future__")>-1: return True
       return False
-    message_lines = filter(_is_future, message_lines)
+    message_lines = list(filter(_is_future, message_lines))
   else:
     if (n_has_unused_imports != 0):
       please_use.append("libtbx.find_unused_imports_crude")

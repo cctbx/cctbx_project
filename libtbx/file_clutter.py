@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.command_line import find_unused_imports_crude
+from libtbx.utils import to_unicode
 import sys, os
 import re
 
@@ -25,18 +26,18 @@ class file_clutter(object):
     self.missing_eol = False
     self.n_bare_excepts = 0
     self.unused_imports = None
-    self.n_from_future_import_division = None
+    self.n_from_future_import_division = -1
     self.flag_absolute_import = flag_absolute_import
-    self.n_from_future_import_absolute_import = None
+    self.n_from_future_import_absolute_import = -1
     self.flag_print_function = flag_print_function
-    self.n_from_future_import_print_function = None
+    self.n_from_future_import_print_function = -1
     self.bad_indentation = None
     self.file_should_be_empty = False
 
     if self.ignore_file():
       return
 
-    bytes = open(path, "rb").read()
+    bytes = to_unicode(open(path, "rb").read())
     if (len(bytes) > 0):
       if (bytes[-1] != "\n"):
         self.missing_eol = True
