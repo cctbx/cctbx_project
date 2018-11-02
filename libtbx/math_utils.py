@@ -1,6 +1,28 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
+from builtins import object, range
 import math
+
+def round2(x, d=0):
+  '''
+  Python 3 defaults to rounding to the nearest even number (round half to even),
+  so this function keeps the Python 2 behavior, which is rounding half away
+  from zero.
+
+  References:
+  https://docs.python.org/3.7/library/functions.html#round
+  https://en.wikipedia.org/wiki/Rounding#Round_half_to_even
+
+  https://docs.python.org/2.7/library/functions.html#round
+  https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero
+
+  Function from:
+  http://python3porting.com/differences.html#rounding-behavior
+  '''
+  p = 10 ** d
+  if x > 0:
+    return float(math.floor((x * p) + 0.5))/p
+  else:
+    return float(math.ceil((x * p) - 0.5))/p
 
 def iround(x):
   if (x < 0): return int(x-0.5)
@@ -47,7 +69,7 @@ class nested_loop(object):
   def __iter__(O):
     return O
 
-  def next(O):
+  def __next__(O):
     b = O.begin
     e = O.end
     c = O.current

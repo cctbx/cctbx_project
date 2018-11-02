@@ -15,6 +15,7 @@ import traceback
 import warnings
 
 from libtbx.queuing_system_utils import pbs_utils, sge_utils
+from libtbx.math_utils import round2
 from libtbx.str_utils import show_string
 
 try: import gzip
@@ -1752,28 +1753,6 @@ class progress_bar(progress_displayed_as_fraction):
     sys.stdout.flush()
     self.i += 1
 
-def round2(x, d=0):
-  '''
-  Python 3 defaults to rounding to the nearest even number (round half to even),
-  so this function keeps the Python 2 behavior, which is rounding half away
-  from zero.
-
-  References:
-  https://docs.python.org/3.7/library/functions.html#round
-  https://en.wikipedia.org/wiki/Rounding#Round_half_to_even
-
-  https://docs.python.org/2.7/library/functions.html#round
-  https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero
-
-  Function from:
-  http://python3porting.com/differences.html#rounding-behavior
-  '''
-  p = 10 ** d
-  if x > 0:
-    return float(math.floor((x * p) + 0.5))/p
-  else:
-    return float(math.ceil((x * p) - 0.5))/p
-
 def format_float_with_standard_uncertainty(value, standard_uncertainty,
                                            minimum=1e-15):
   """
@@ -2469,3 +2448,32 @@ def guess_total_memory(meminfo_file='/proc/meminfo'):
         elif spl[2].lwer()=='mb':
           mem=mem*1024*1024
         return mem
+
+MANGLE_LEN = 256 # magic constant from compile.c
+def mangle(name, klass):
+  '''
+  Since the compiler module is removed in Python 3, this is a copy of the
+  mangle function from compiler.misc.
+
+  This function is used for name mangling in libtbx/__init__.py for the
+  slots_getstate_setstate class.
+  '''
+  if not name.startswith('__'):
+    return name
+  if len(name) + 2 >= MANGLE_LEN:
+    return name
+  if name.endswith('__'):
+    return name
+  try:
+    i = 0
+    while klass[i] == '_':
+      i = i + 1
+  except IndexError:
+    return name
+  klass = klass[i:]
+
+  tlen = len(klass) + len(name)
+  if tlen > MANGLE_LEN:
+    klass = klass[:MANGLE_LEN-tlen]
+
+  return "_%s%s" % (klass, name)

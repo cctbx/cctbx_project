@@ -101,7 +101,7 @@ class slots_getstate_setstate(object):
     try:
       # avoid printing deprecation warning to stderr when loading mangle
       warnings.simplefilter("ignore")
-      from compiler.misc import mangle
+      from libtbx.utils import mangle
 
     finally:
       warnings.showwarning = show_warning

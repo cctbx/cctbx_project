@@ -317,11 +317,11 @@ def exercise(args=None):
   if verbose: print(result.stdout_lines)
   assert result.stdout_lines[0].startswith("Python " + sys.version.split()[0])
   result = fb(
-    command='%s -c "print 3+4"' % pyexe).raise_if_errors()
+    command='%s -c "print(3+4)"' % pyexe).raise_if_errors()
   if verbose: print(result.stdout_lines)
   assert result.stdout_lines == ["7"]
   command = command = pyexe \
-    + ' -c "import sys; print len(sys.stdin.read().splitlines())"'
+    + ' -c "import sys; print(len(sys.stdin.read().splitlines()))"'
   result = fb(command=command).raise_if_errors()
   if verbose: print(result.stdout_lines)
   assert result.stdout_lines == ["0"]
