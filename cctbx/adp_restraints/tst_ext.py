@@ -260,6 +260,111 @@ def exercise_rigid_bond():
       weight=1)
     assert approx_equal(a.residual(), expected_residual)
 
+def exercise_rigu():
+  i_seqs = (1,2)
+  weight = 1.0
+  p = adp_restraints.rigu_proxy(i_seqs=i_seqs,weight=weight)
+  # rigid bond for comparison
+  p_rigid = adp_restraints.rigid_bond_proxy(i_seqs=i_seqs,weight=weight)
+  assert p.i_seqs == i_seqs
+  assert p.weight == weight
+  sites = ((1,2,3),(2,3,4))
+  u_cart = ((1,2,3,4,5,6), (3,4,5,6,7,8))
+  expected_gradient_13 = (-2.4173154764631446e-18, 2.4173154764631446e-18, 0.0, 0.0, -2.4173154764631446e-18, 2.4173154764631446e-18)
+  r = adp_restraints.rigu(sites=sites, u_cart=u_cart, weight=weight)
+  assert approx_equal(r.weight, 0.0133333333333)
+  assert approx_equal(r.delta_13(), 2.22044604925e-16)
+  assert approx_equal(r.delta_23(), -2.22044604925e-16)
+  assert approx_equal(r.delta_33(), -6)
+  assert approx_equal(r.residual_13(), 6.57384087684e-34)
+  assert approx_equal(r.residual_23(), 6.57384087684e-34)
+  assert approx_equal(r.residual_33(), 0.48)
+  assert approx_equal(r.gradient_13(), expected_gradient_13)
+  sites_cart = flex.vec3_double(((1,2,3),(2,5,4),(3,4,5)))
+  u_cart = flex.sym_mat3_double(((1,2,3,4,5,6),
+                                 (2,3,3,5,7,7),
+                                 (3,4,5,3,7,8)))
+  r = adp_restraints.rigu(
+    adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart),
+    proxy=p)
+  # rigid bond for comparison
+  r_rigid = adp_restraints.rigid_bond(
+    adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart),
+    proxy=p_rigid)
+  assert approx_equal(r.weight, 0.0120481927711)
+  unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
+  sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
+  u_star = flex.sym_mat3_double([
+    adptbx.u_cart_as_u_star(unit_cell, u_cart_i)
+    for u_cart_i in u_cart])
+  # rigid_bond is normal here. 
+  # I am comparing delta_z (rigid_bond) and delta_33 (rigu) which is the same
+  pair = adp_restraints.rigid_bond_pair(sites_frac[1],
+                                     sites_frac[2],
+                                     u_star[1],
+                                     u_star[2],
+                                     unit_cell)
+  assert approx_equal(pair.delta_z(), abs(r.delta_33()))
+  assert approx_equal(pair.z_12(), r.z_1_33())
+  assert approx_equal(pair.z_21(), r.z_2_33())
+  # comparing gradient of rigid_bond and gradient_33 from rigu which should be the same corrected by the weight
+  # rigu uses a different weight based on the distance and Ueq
+  gr = []
+  for gr_i in list(r_rigid.gradients())[0]:
+    gr += [0.0120481927711*gr_i]
+  assert approx_equal(gr, r.gradient_33())
+  #
+  gradients_aniso_cart = flex.sym_mat3_double(sites_cart.size(), (0,0,0,0,0,0))
+  gradients_iso = flex.double(sites_cart.size(), 0)
+  proxies = adp_restraints.shared_rigu_proxy([p,p])
+  params = adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart)
+  residuals = adp_restraints.rigu_residuals(params, proxies=proxies)
+  assert approx_equal(residuals, (r.residual(),r.residual()))
+  deltas = adp_restraints.rigu_deltas(params, proxies=proxies)
+  assert approx_equal(deltas, (r.delta_13(),r.delta_23(), r.delta_33(), 
+    r.delta_13(),r.delta_23(), r.delta_33()))
+  residual_sum = adp_restraints.rigu_residual_sum(
+    params=params,
+    proxies=proxies,
+    gradients_aniso_cart=gradients_aniso_cart)
+  assert approx_equal(residual_sum, 2 * r.residual())
+  for g,e in zip(gradients_aniso_cart[1:3], r.gradients()):    
+    assert approx_equal(g, matrix.col(e)*2.0)
+  fd_grads_aniso, fd_grads_iso = finite_difference_gradients(
+    restraint_type=adp_restraints.rigu,
+    proxy=p,
+    sites_cart=sites_cart,
+    u_cart=u_cart)
+  print(list(gradients_aniso_cart))
+  print("f grad", fd_grads_aniso)
+  
+  for g,e in zip(gradients_aniso_cart, fd_grads_aniso):
+    assert approx_equal(g, matrix.col(e)*2)
+  #
+  # check frame invariance of residual
+  #
+  u_cart_1 = matrix.sym(sym_mat3=(0.1,0.2,0.05,0.03,0.02,0.01))
+  u_cart_2 = matrix.sym(sym_mat3=(0.21,0.32,0.11,0.02,0.02,0.07))
+  u_cart = (u_cart_1.as_sym_mat3(),u_cart_2.as_sym_mat3())
+  site_cart_1 = matrix.col((1,2,3))
+  site_cart_2 = matrix.col((3,1,4.2))
+  sites = (tuple(site_cart_1),tuple(site_cart_2))
+  a = adp_restraints.rigu(sites=sites, u_cart=u_cart, weight=1)
+  expected_residual = a.residual()
+  gen = flex.mersenne_twister()
+  for i in range(20):
+    R = matrix.rec(gen.random_double_r3_rotation_matrix(),(3,3))
+    u_cart_1_rot = R * u_cart_1 * R.transpose()
+    u_cart_2_rot = R * u_cart_2 * R.transpose()
+    u_cart = (u_cart_1_rot.as_sym_mat3(),u_cart_2_rot.as_sym_mat3())
+    site_cart_1_rot = R * site_cart_1
+    site_cart_2_rot = R * site_cart_2
+    sites = (tuple(site_cart_1_rot),tuple(site_cart_2_rot))
+    a = adp_restraints.rigu(
+      sites=sites, u_cart=u_cart,
+      weight=1)
+    assert approx_equal(a.residual(), expected_residual)
+
 def exercise_adp_similarity():
   u_cart = ((1,3,2,4,3,6),(2,4,2,6,5,1))
   u_iso = (-1,-1)
@@ -640,6 +745,7 @@ def exercise():
   exercise_isotropic_adp()
   exercise_rigid_bond()
   exercise_rigid_bond_test()
+  exercise_rigu()
   print "OK"
 
 if (__name__ == "__main__"):

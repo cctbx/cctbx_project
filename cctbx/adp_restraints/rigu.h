@@ -6,7 +6,6 @@
 #include <cctbx/adptbx.h>
 #include <cctbx/adp_restraints/adp_restraints.h>
 #include <scitbx/matrix/matrix_vector_operations.h>
-#include <iostream>
 
 namespace cctbx { namespace adp_restraints {
 
@@ -77,20 +76,20 @@ using scitbx::sym_mat3;
 
     //! weight * delta[i]**2.
     double
-    residual33() const {
+    residual_33() const {
       return weight * scitbx::fn::pow2(delta_33_);
     }
     double
-    residual13() const {
+    residual_13() const {
       return weight * scitbx::fn::pow2(delta_13_);
     }
     double
-    residual23() const {
+    residual_23() const {
       return weight * scitbx::fn::pow2(delta_23_);
     }
     double
     residual() const {
-      return residual33() + residual13() + residual23();
+      return residual_33() + residual_13() + residual_23();
     }
 
     /** Gradient of U_cart after linear transformation RM
@@ -130,28 +129,10 @@ using scitbx::sym_mat3;
     }
 
     af::tiny<scitbx::sym_mat3<double>, 2>
-    gradients33() const
+    gradients() const
     {
       af::tiny<scitbx::sym_mat3<double>, 2> result;
-      result[0] = gradient_33();
-      result[1] = -result[0];
-      return result;
-    }
-
-    af::tiny<scitbx::sym_mat3<double>, 2>
-    gradients13() const
-    {
-      af::tiny<scitbx::sym_mat3<double>, 2> result;
-      result[0] = gradient_13();
-      result[1] = -result[0];
-      return result;
-    }
-
-    af::tiny<scitbx::sym_mat3<double>, 2>
-    gradients23() const
-    {
-      af::tiny<scitbx::sym_mat3<double>, 2> result;
-      result[0] = gradient_23();
+      result[0] = gradient_13() + gradient_23() + gradient_33();
       result[1] = -result[0];
       return result;
     }
@@ -213,10 +194,12 @@ using scitbx::sym_mat3;
 
     }
 
+    double z_1_33() { return z_1_33_; }
+    double z_2_33() { return z_2_33_; }
     double delta_33() { return delta_33_; }
     double delta_13() { return delta_13_; }
     double delta_23() { return delta_23_; }
-    double delta() { return delta_33_+delta_13_+delta_23_; }
+    double delta() { return std::abs(delta_33_)+std::abs(delta_13_)+std::abs(delta_23_); }
 
     double weight;
 
@@ -236,7 +219,7 @@ using scitbx::sym_mat3;
       rot2[1] = rot3[2];
       rot2[2] = -rot3[0]-rot3[1];
 
-      if(abs(rot2[0])+abs(rot2[1])+abs(rot2[1])<1e-4) {
+      if(std::abs(rot2[0])+std::abs(rot2[1])+std::abs(rot2[1])<1e-4) {
         rot2[0] = -rot3[1]-rot3[2];
         rot2[1] = rot3[1];
         rot2[2] = rot3[1];
@@ -256,6 +239,8 @@ using scitbx::sym_mat3;
       RUcart2 = (RM*tmp2)*RM.transpose();
 
       //! calculating the 3 deltas involved
+      z_1_33_ = RUcart1(2,2);
+      z_2_33_ = RUcart2(2,2);
       delta_33_ = RUcart1(2,2) - RUcart2(2,2);
       delta_13_ = RUcart1(0,2) - RUcart2(0,2);
       delta_23_ = RUcart1(1,2) - RUcart2(1,2);
@@ -303,7 +288,7 @@ using scitbx::sym_mat3;
 
       double kron[9][9];
 
-      //! calulating the kronecker product
+      //! calulating the kronecker product RM @ RM
       for(int i = 0; i < 3; i++){
         for(int j = 0; j < 3; j++){
           int startRow = i*3;
@@ -316,7 +301,7 @@ using scitbx::sym_mat3;
         }
       }
 
-      /** vec(dRUcart) = kron vec(dUcart).
+      /** vec(dRUcart) = kron vec(dUcart) with kron = RM @ RM
        *  Derivatives of (RUcart = RM Ucart RM^t)
        */
       memset(&dRUcart[0][0], 0, 9*6*sizeof(dRUcart[0][0]));
@@ -338,6 +323,8 @@ using scitbx::sym_mat3;
       return p*p / ((p*p + UeqA + UeqB) * d*d) * weight;
     }
 
+    double z_1_33_;
+    double z_2_33_;
     double delta_33_;
     double delta_13_;
     double delta_23_;
@@ -347,6 +334,23 @@ using scitbx::sym_mat3;
     double dRUcart[9][6];
   };
 
+  /*! \brief Fast computation of rigid_bond::delta_z() given an array
+      of rigid_bond proxies.
+   */
+  af::shared<double>
+  rigu_deltas(
+    adp_restraint_params<double> const &params,
+    af::const_ref<rigu_proxy> const& proxies)
+  {
+    af::shared<double> result((af::reserve(proxies.size())));
+    for(std::size_t i=0; i<proxies.size(); i++) {
+      result.push_back(rigu(params, proxies[i]).delta_13());
+      result.push_back(rigu(params, proxies[i]).delta_23());
+      result.push_back(rigu(params, proxies[i]).delta_33());
+    }
+    return result;
+  }
+  
 }} // namespace cctbx::adp_restraints
 
 #endif // CCTBX_ADP_RESTRAINTS_RIGU_H

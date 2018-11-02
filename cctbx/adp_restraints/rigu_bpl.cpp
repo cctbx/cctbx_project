@@ -60,15 +60,20 @@ namespace {
           (arg("params"),
            arg("proxy"))))
         .add_property("weight", make_getter(&w_t::weight, rbv()))
+        .def("delta", &w_t::delta)
         .def("delta_33", &w_t::delta_33)
         .def("delta_13", &w_t::delta_13)
         .def("delta_23", &w_t::delta_23)
-        .def("residual33", &w_t::residual33)
-        .def("residual13", &w_t::residual13)
-        .def("residual23", &w_t::residual23)
-        .def("gradients33", &w_t::gradients33)
-        .def("gradients13", &w_t::gradients13)
-        .def("gradients23", &w_t::gradients23)
+        .def("z_1_33", &w_t::z_1_33)
+        .def("z_2_33", &w_t::z_2_33)
+        .def("residual", &w_t::residual)
+        .def("residual_33", &w_t::residual_33)
+        .def("residual_13", &w_t::residual_13)
+        .def("residual_23", &w_t::residual_23)
+        .def("gradients", &w_t::gradients)
+        .def("gradient_33", &w_t::gradient_33)
+        .def("gradient_13", &w_t::gradient_13)
+        .def("gradient_23", &w_t::gradient_23)
       ;
     }
   };
@@ -85,6 +90,10 @@ namespace {
          arg("gradients_aniso_cart")));
       def("rigu_residuals",
         adp_restraint_residuals<rigu_proxy,rigu>::impl,
+        (arg("params"),
+         arg("proxies")));
+      def("rigu_deltas",
+        rigu_deltas,
         (arg("params"),
          arg("proxies")));
   }
