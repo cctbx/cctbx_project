@@ -1,9 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
-import sys
-
-from dxtbx.serialize import xds
-
 #!/usr/bin/env python
 # to_xds.py
 #
@@ -15,7 +9,11 @@ from dxtbx.serialize import xds
 # Print out the contents of the dxtbx understanding of a bunch of images to
 # an example XDS.INP file. This should illustrate the usage of the dxtbx
 # classes.
+from __future__ import absolute_import, division, print_function
 
+import sys
+
+from dxtbx.serialize import xds
 
 def run(file_names):
   if len(file_names) == 1 and file_names[0].endswith('json'):
@@ -36,7 +34,6 @@ def run(file_names):
     sweep = ImageSetFactory.new(file_names)[0]
   xsx = xds.to_xds(sweep)
   xsx.XDS_INP()
-
 
 if __name__ == '__main__':
   run(sys.argv[1:])
