@@ -1,9 +1,8 @@
 "Sun Grid Engine utilities"
 from __future__ import absolute_import, division, print_function
 
-# from builtins import range
-# causes python module import issue with phenix/heavy_search/pc_multi.py
-# in conjunction with libtbx/utils.py
+from builtins import range
+
 import sys
 import os
 
