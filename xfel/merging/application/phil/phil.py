@@ -22,6 +22,29 @@ input {
   experiments_suffix = _integrated_experiments.json
     .type = str
     .help = Find file names with this suffix for experiments
+  parallel_file_load {
+    method = *uniform node_memory
+      .type = choice
+      .help = uniform: distribute input json/pickle files uniformly over all ranks
+      .help = node_memory: distribute input json/pickle files over the nodes according to the node memory limit, then uniformly over the ranks within each node
+    node_memory {
+      architecture = "Cori KNL"
+        .type = str
+        .help = Node architecture is used to determine the node memory limit, number of available ranks per node, and pickle file size-to-memory coefficient
+      limit = 90.0
+        .type = float
+        .help = node memory limit, GB
+      pickle_to_memory = 3.5
+        .type = float
+        .help = an empirical coefficient to convert pickle file size to anticipated run-time process memory required to load a file of that size
+      ranks_per_node = 68
+        .type = int
+        .help = number of ranks available per node
+      scale = 1.0
+        .type = float
+        .help = Decrease the node memory limit by this factor in order to utilize more nodes
+    }
+  }
 }
 
 filter
@@ -288,9 +311,12 @@ output {
   title = None
     .type = str
     .help = Title for run - will appear in MTZ file header
-        output_dir = None
+  output_dir = None
     .type = str
     .help = output file directory
+  tmp_dir = None
+    .type = str
+    .help = temporary file directory
 }
 
 statistics {
@@ -335,7 +361,7 @@ parallel {
     .help = 1, use no parallel execution.
     .type = int
   a2a = 1
-    .help = Memory partition factor for MPI alltoall - used to address mpy4py memory errors, when hkl chunks are too large for the cpu
+    .help = Number of iterations to split MPI alltoall - used to address mpy4py memory errors, when hkl chunks are too large for the cpu.
     .type = int
 }
 

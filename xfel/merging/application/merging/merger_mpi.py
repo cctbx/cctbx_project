@@ -19,19 +19,22 @@ except ImportError:
 Functions for merging reflections
 """
 
-from xfel.merging.application.input.file_loader_mpi import Script as Script_Base
+from xfel.merging.application.phil.phil import Script as Script_Base
+from xfel.merging.application.input.file_loader import file_loader
+from xfel.merging.application.input.calculate_file_load import file_load_calculator
+
 from dials.array_family import flex
 
-# create a reflection table for storing reflections distributed over hkl chunks
 def distribute_reflection_table():
+  '''Create a reflection table for storing reflections distributed over hkl chunks'''
   table = flex.reflection_table()
   table['miller_index_asymmetric']  = flex.miller_index()
   table['intensity.sum.value']      = flex.double()
   table['intensity.sum.variance']   = flex.double()
   return table
 
-# create a reflection table for storing merged reflectionsf
 def merging_reflection_table():
+  '''Create a reflection table for storing merged reflections'''
   table = flex.reflection_table()
   table['miller_index'] = flex.miller_index()
   table['intensity']    = flex.double()
@@ -43,66 +46,82 @@ def merging_reflection_table():
 class Script(Script_Base):
   '''A class for running the script.'''
 
-  # add a "symmetry-reduced hkl" column to the reflection table
-  def add_asu_miller_indices_column(self, experiments, reflections):
-
-    from cctbx import miller
-    from cctbx.crystal import symmetry
+  def load_data(self, file_list):
+    from dxtbx.model.experiment_list import ExperimentList
     from dials.array_family import flex
+    all_experiments = ExperimentList()
+    all_reflections = flex.reflection_table()
 
-    new_reflections = flex.reflection_table()
-    for experiment_id, experiment in enumerate(experiments):
-      refls = reflections.select(reflections['id'] == experiment_id)
-      SYM = symmetry(unit_cell = experiment.crystal.get_unit_cell(),
-                                space_group = str(self.params.filter.unit_cell.value.target_space_group))
-      mset = SYM.miller_set(anomalous_flag=(not self.params.merging.merge_anomalous), indices=refls['miller_index'])
+    loader = file_loader(self.params)
 
-      refls['miller_index_original'] = refls['miller_index']
-      del refls['miller_index']
+    for experiments_filename, reflections_filename in file_list:
 
-      refls['miller_index_asymmetric'] = mset.map_to_asu().indices()
-      new_reflections.extend(refls)
+      experiments, reflections = loader.load_data(experiments_filename, reflections_filename)
 
-    return new_reflections
+      for experiment_id, experiment in enumerate(experiments):
+        all_experiments.append(experiment)
+        refls = reflections.select(reflections['id'] == experiment_id)
 
-  # given a unit cell, space group info, and resolution, generate all symmetry-reduced miller indices
+        if len(refls) > 0:
+          refls['id'] = flex.int(len(refls), len(all_experiments)-1)
+          all_reflections.extend(refls)
+
+    return all_experiments, all_reflections
+
+  def add_asu_miller_indices_column(self, experiments, reflections):
+    '''Add a "symmetry-reduced hkl" column to the reflection table'''
+    from cctbx import miller
+    from cctbx.crystal import symmetry
+
+    # assert that the space group used to integrate the data is consistent with the input space group for merging
+    target_symmetry = symmetry(unit_cell = self.params.filter.unit_cell.value.target_unit_cell, space_group = str(self.params.filter.unit_cell.value.target_space_group))
+    target_space_group = target_symmetry.space_group()
+    target_patterson_group_info = target_space_group.build_derived_patterson_group().info().symbol_and_number()
+
+    for experiment in experiments:
+      experiment_patterson_group_info = experiment.crystal.get_space_group().build_derived_patterson_group().info().symbol_and_number()
+      if target_patterson_group_info != experiment_patterson_group_info:
+        assert False, "Target patterson group %s is different from an experiment patterson group %s"%(target_patterson_group_info, experiment_patterson_group_info)
+
+    target_miller = target_symmetry.miller_set(anomalous_flag=(not self.params.merging.merge_anomalous), indices=reflections['miller_index'])
+
+    # change the name of the original hkl column
+    reflections['miller_index_original'] = reflections['miller_index']
+    del reflections['miller_index']
+
+    # add a new hkl column
+    reflections['miller_index_asymmetric'] = target_miller.map_to_asu().indices()
+
   def generate_all_miller_indices(self):
+    '''Given a unit cell, space group info, and resolution, generate all symmetry-reduced miller indices'''
 
     from cctbx import miller
     from cctbx.crystal import symmetry
 
-    self.log_step_time("GENERATE_MILLER_SET")
     unit_cell = self.params.filter.unit_cell.value.target_unit_cell
     space_group_info = self.params.filter.unit_cell.value.target_space_group
     symm = symmetry(unit_cell = unit_cell, space_group_info = space_group_info)
     miller_set = symm.build_miller_set(anomalous_flag=(not self.params.merging.merge_anomalous), d_max=1000.0, d_min=self.params.filter.resolution.d_min)
     self.mpi_log_write("\nRank 0 generated %d miller indices"%miller_set.indices().size())
-    self.log_step_time("GENERATE_MILLER_SET", True)
 
     return miller_set
 
-  # set up a list of reflection tables for distributing loaded reflections
   def setup_hkl_chunks(self):
-
+    '''Set up a list of reflection tables for distributing loaded reflections'''
     # generate all expected symmetry-reduced hkls
     full_miller_set = self.generate_all_miller_indices()
 
     # split the hkl set into chunks; the number of chunks is equal to the number of ranks
-    self.log_step_time("SPLIT_MILLER_SET")
     import numpy as np
     self.hkl_split_set = np.array_split(full_miller_set.indices(), self.rank_count)
-    self.log_step_time("SPLIT_MILLER_SET", True)
 
     # initialize a list of hkl chunks - reflection tables to store distributed reflections
-    self.log_step_time("INIT_CHUNKS")
     self.hkl_chunks = []
     for i in range(len(self.hkl_split_set)):
       self.hkl_chunks.append(distribute_reflection_table())
-    self.log_step_time("INIT_CHUNKS", True)
 
-  # slice reflection table into sub-tables by symmetry-reduced hkl
   def get_next_hkl_reflection_table(self, reflections):
-
+    '''Slice reflection table into sub-tables by symmetry-reduced hkl's'''
     i_begin = 0
     hkl_ref = reflections[0].get('miller_index_asymmetric')
 
@@ -117,8 +136,8 @@ class Script(Script_Base):
 
     yield reflections[i_begin:i+1]
 
-  # Generate an exact number of slices from a reflection table. Make slices as even as possible. If don't have enough reflections - generate empty tables.
   def get_next_reflection_table_slice(self, reflections, n_slices):
+    '''Generate an exact number of slices from a reflection table. Make slices as even as possible. If not enough reflections, generate empty tables'''
     assert n_slices >= 0
 
     if n_slices == 1:
@@ -147,19 +166,16 @@ class Script(Script_Base):
       for i in range(empty_slices):
         yield distribute_reflection_table()
 
-  # remove reflection table columns which are not relevant for merging
   def prune_reflection_columns(self, reflections):
-
-    self.log_step_time("PRUNE")
+    '''Remove reflection table columns which are not relevant for merging'''
     if reflections.size() > 0:
       all_keys = list()
       for key in reflections[0]:
         all_keys.append(key)
 
       for key in all_keys:
-        if key != 'intensity.sum.value' and key != 'intensity.sum.variance' and key != 'miller_index_asymmetric':
+        if key != 'intensity.sum.value' and key != 'intensity.sum.variance' and key != 'miller_index_asymmetric' and key != 'id':
           del reflections[key]
-    self.log_step_time("PRUNE", True)
 
   def distribute_reflections_over_hkl_chunks(self, reflections):
 
@@ -190,7 +206,7 @@ class Script(Script_Base):
 
     reflections.clear()
 
-  def get_reflections_alltoall(self, comm):
+  def get_reflections_from_alltoall(self, comm):
 
     result_reflections = distribute_reflection_table()
 
@@ -215,8 +231,8 @@ class Script(Script_Base):
 
     return result_reflections
 
-  # For alltoall, split each hkl chunk into N slices. This is needed to address an MPI alltoall memory problem.
-  def get_reflections_alltoall_sliced(self, comm, number_of_slices):
+  def get_reflections_from_alltoall_sliced(self, comm, number_of_slices):
+    '''For alltoall, split each hkl chunk into N slices. This is needed to address the MPI alltoall memory problem.'''
 
     result_reflections = distribute_reflection_table() # all reflections that the rank will receive from alltoall
 
@@ -257,8 +273,8 @@ class Script(Script_Base):
 
     return result_reflections
 
-  # do intensity statistics on reflection table
   def calc_reflection_intensity_stats(self, reflections):
+    '''Do intensity statistics on reflection table'''
 
     multiplicity = len(reflections)
     assert multiplicity != 0
@@ -275,8 +291,8 @@ class Script(Script_Base):
             'rmsd'          : rmsd,
             'multiplicity'  : multiplicity}
 
-  # log elapsed time for a step in the merging process
   def log_step_time(self, step, finished=False):
+    '''Log elapsed time for a step in the merging process'''
 
     if not self.do_timing:
       return
@@ -330,46 +346,60 @@ class Script(Script_Base):
       self.timing_table = dict()
 
     # get rank and rank count
-    self.rank = comm.Get_rank()
+    self.rank       = comm.Get_rank()
     self.rank_count = comm.Get_size()
 
     self.log_step_time("TOTAL")
 
-    transmitted = None
+    # prepare a list of input params and data files to be transmitted to all worker ranks
+    transmitted = {}
     if self.rank == 0:
+      self.log_step_time("PARSE_INPUT_PARAMS")
+
       # read and parse phil
       self.initialize()
       self.validate()
 
-      # initialize output paths
+      # initialize output paths; doing it here for rank 0 only - to be able to log timing, etc., before every rank initializes the paths
       if self.do_timing:
         self.mpi_timing_file_path = self.params.output.output_dir + '/timing_%06d_%06d.out'%(self.rank_count, self.rank)
       self.mpi_log_file_path = self.params.output.output_dir + '/rank_%06d_%06d.out'%(self.rank_count, self.rank)
       self.merged_reflections_file_path = self.params.output.output_dir + '/merge.out'
 
+      self.log_step_time("PARSE_INPUT_PARAMS", True)
+
       ###########################
       # GET JSON/PICKLE FILE LIST
       self.log_step_time("LIST_FILES")
-      file_list = self.get_list()
-      self.mpi_log_write("\nRank 0 generated a list of %d file items"%len(file_list))
+      loader = file_loader(self.params)
+      file_list = loader.filename_lister()
+
+      self.log_step_time("CALCULATE_FILE_LOAD")
+      load_calculator = file_load_calculator(self.params, file_list)
+      rank_files = load_calculator.calculate_file_load(self.rank_count)
+
+      total_file_pairs = 0
+      for key, value in rank_files.items():
+        total_file_pairs += len(value)
+      self.mpi_log_write("\nRank 0 generated a list of %d file items for %d ranks"%(total_file_pairs,len(rank_files)))
+      self.log_step_time("CALCULATE_FILE_LOAD", True)
+
       self.log_step_time("LIST_FILES", True)
 
       # prepare for transmitting the job to all ranks
       self.mpi_log_write("\nRank 0 transmitting file list of length %d"%(len(file_list)))
-      transmitted = dict(params = self.params, options = self.options, file_list = file_list)
+      transmitted = dict(params = self.params, options = self.options, rank_files = rank_files)
 
     #########################################
     # BROADCAST WORK FROM RANK 0 TO ALL RANKS
     comm.barrier()
     self.log_step_time("BROADCAST")
-    transmitted = comm.bcast(transmitted, root = 0)
 
-    if self.rank == 0:
-      del file_list[:]
+    transmitted = comm.bcast(transmitted, root = 0)
 
     self.params = transmitted['params']
     self.options = transmitted['options']
-    new_file_list = transmitted['file_list'][self.rank::self.rank_count]
+    new_file_list = transmitted['rank_files'][self.rank]
 
     if self.do_timing:
       self.mpi_timing_file_path = self.params.output.output_dir + '/timing_%06d_%06d.out'%(self.rank_count, self.rank)
@@ -381,7 +411,10 @@ class Script(Script_Base):
 
     ################################################################################################
     # EACH RANK: SET UP HKL CHUNKS TO BE USED FOR DISTRIBUTING LOADED REFLECTIONS AND FOR ALL-TO-ALL
+    self.log_step_time("SETUP_HKL_CHUNKS")
     self.setup_hkl_chunks() # even if a rank got no files to load, it still has to participate in all-to-all
+    comm.barrier()
+    self.log_step_time("SETUP_HKL_CHUNKS", True)
 
     # initialize data loading statistics
     rank_experiment_count = 0
@@ -404,6 +437,7 @@ class Script(Script_Base):
 
       ###############################################################################
       # EACH RANK: GET THE TOTAL NUMBER OF LOADED EXPERIMENTS, IMAGES AND REFLECTIONS
+      self.log_step_time("LOAD_STATISTICS")
       rank_experiment_count = len(experiments)
 
       # count number of images
@@ -413,28 +447,34 @@ class Script(Script_Base):
       rank_image_count = len(set(all_imgs))
 
       rank_reflection_count = len(reflections)
+      comm.barrier()
+      self.log_step_time("LOAD_STATISTICS", True)
 
       #####################################################
       # EACH RANK: ADD A COLUMN WITH SYMMETRY-REDUCED HKL's
-      reflections = self.add_asu_miller_indices_column(experiments, reflections)
+      self.log_step_time("ADD_ASU_HKL_COLUMN")
+      #reflections = self.add_asu_miller_indices_column(experiments, reflections)
+      self.add_asu_miller_indices_column(experiments, reflections)
+      comm.barrier()
+      self.log_step_time("ADD_ASU_HKL_COLUMN", True)
 
       #########################################################################
       # EACH RANK: PRUNE REFLECTION COLUMNS, WHICH ARE NOT RELEVANT FOR MERGING
+      self.log_step_time("PRUNE")
       self.prune_reflection_columns(reflections=reflections)
-
-      #######################################################
-      # EACH RANK: DISTRIBUTE REFLECTIONS OVER ALL HKL CHUNKS
-      self.log_step_time("DISTRIBUTE")
-      self.distribute_reflections_over_hkl_chunks(reflections=reflections)
       comm.barrier()
-      self.log_step_time("DISTRIBUTE", True)
+      self.log_step_time("PRUNE", True)
     else:
+      reflections = distribute_reflection_table()
       self.mpi_log_write ("\nRank %d received no data" % self.rank)
+      comm.barrier()
+      comm.barrier()
       comm.barrier()
       comm.barrier()
 
     ########################################
     # MPI-REDUCE ALL DATA LOADING STATISTICS
+    self.log_step_time("REDUCE_LOAD_STATS")
     total_experiment_count  = comm.reduce(rank_experiment_count, MPI.SUM, 0)
     total_image_count       = comm.reduce(rank_image_count, MPI.SUM, 0)
     total_reflection_count  = comm.reduce(rank_reflection_count, MPI.SUM, 0)
@@ -450,14 +490,22 @@ class Script(Script_Base):
       self.mpi_log_write('\nThe maximum number of reflections loaded per rank is: %d reflections'%max_reflection_count)
       self.mpi_log_write('\nThe minimum number of reflections loaded per rank is: %d reflections'%min_reflection_count)
 
-      final_merged_reflection_table = merging_reflection_table()
+    comm.barrier()
+    self.log_step_time("REDUCE_LOAD_STATS", True)
+
+    #######################################################
+    # EACH RANK: DISTRIBUTE REFLECTIONS OVER ALL HKL CHUNKS
+    self.log_step_time("DISTRIBUTE")
+    self.distribute_reflections_over_hkl_chunks(reflections=reflections)
+    comm.barrier()
+    self.log_step_time("DISTRIBUTE", True)
 
     #############################################################
     # EACH RANK: GET A REFLECTION TABLE FOR MERGING BY ALL-TO-ALL
     if self.params.parallel.a2a == 1:
-      alltoall_reflections = self.get_reflections_alltoall(comm=comm)
+      alltoall_reflections = self.get_reflections_from_alltoall(comm=comm)
     else: # if encountered alltoall memory problem, do alltoall on chunk slices
-      alltoall_reflections = self.get_reflections_alltoall_sliced(comm=comm, number_of_slices=self.params.parallel.a2a)
+      alltoall_reflections = self.get_reflections_from_alltoall_sliced(comm=comm, number_of_slices=self.params.parallel.a2a)
 
     #####################################################
     # EACH RANK: SORT THE REFLECTION TABLE BEFORE MERGING
@@ -502,6 +550,8 @@ class Script(Script_Base):
     # RANK 0: DO FINAL MERGING OF TABLES
     if self.rank == 0:
       self.log_step_time("MERGE")
+      final_merged_reflection_table = merging_reflection_table()
+
       self.mpi_log_write ("\nRank 0 doing final merging of reflection tables received from all ranks...")
       for table in all_merged_reflection_tables:
         final_merged_reflection_table.extend(table)
@@ -522,7 +572,7 @@ class Script(Script_Base):
 
 if __name__ == '__main__':
 
-  from mpi4py import MPI
+  from libtbx.mpi4py import MPI
 
   comm = MPI.COMM_WORLD
 
