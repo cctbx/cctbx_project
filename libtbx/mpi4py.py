@@ -14,7 +14,6 @@ class mpiCommEmulator(object):
   def bcast(self, transmitted, root):
     return transmitted
   def reduce(self, value, operation, root):
-    assert root == 0
     if operation == mpiEmulator.SUM or operation == mpiEmulator.MAX or operation == mpiEmulator.MIN:
       return value
     else:
