@@ -277,11 +277,6 @@ namespace cctbx { namespace geometry_restraints {
         delta_sign = -1;
         if (both_signs && volume_model < 0) delta_sign = 1;
         delta = volume_ideal + delta_sign * volume_model;
-        std::cout << sites[0][0] << " " << sites[0][1] << " " << sites[0][2] << "\n";
-        std::cout << sites[1][0] << " " << sites[1][1] << " " << sites[1][2] << "\n";
-        std::cout << sites[2][0] << " " << sites[2][1] << " " << sites[2][2] << "\n";
-        std::cout << sites[3][0] << " " << sites[3][1] << " " << sites[3][2] << "\n";
-        std::cout << volume_ideal << " " << volume_model << " " << delta << "\n";
       }
   };
 
