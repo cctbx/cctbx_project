@@ -761,7 +761,7 @@ class SpotFinderMosflmThread():
 
       with open(autoindex_filename, 'w') as af:
         af.write(autoindex_string)
-      os.chmod(autoindex_filename, 0755)
+      os.chmod(autoindex_filename, 0o755)
 
       # Run Mosflm autoindexing
       command = './{}'.format(autoindex_filename)
