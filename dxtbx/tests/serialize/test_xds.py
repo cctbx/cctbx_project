@@ -16,6 +16,10 @@ def test_to_xds(dials_regression, tmpdir):
   to_xds = xds.to_xds(sweep)
   s1 = StringIO()
   to_xds.XDS_INP(out=s1)
+  empty = StringIO()
+  s1a = to_xds.XDS_INP(as_str=True, out=empty)
+  assert empty.getvalue() == ''
+  assert s1.getvalue().strip() == s1a
   s2 = StringIO()
   real_space_a = (-5.327642, -39.034747, -4.988286)
   real_space_b = (-35.253495, 7.596265, -22.127661)

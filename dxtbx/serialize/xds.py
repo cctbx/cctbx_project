@@ -269,9 +269,24 @@ class to_xds(object):
   def XDS_INP(self, out=None,
               space_group_number=None,
               real_space_a=None, real_space_b=None, real_space_c=None,
-              job_card="XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT"):
+              job_card="XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT",
+              as_str=False):
     if out is None:
       out = sys.stdout
+
+    # horrible hack to allow returning result as string; would be nice if the
+    # structure of this was to make the XDS.INP in memory then print it...
+    # see also show() method on things.
+    str_result = []
+    if as_str:
+      def print(str, file=None):
+        str_result.append(str)
+    else:
+      try:
+        import __builtin__
+      except ImportError:
+        import builtins as __builtin__
+      print = __builtin__.print
 
     assert [real_space_a, real_space_b, real_space_c].count(None) in (0,3)
 
@@ -380,6 +395,8 @@ class to_xds(object):
         print('SEGMENT_ORGX= %.2f SEGMENT_ORGY= %.2f' % self.panel_origin[panel_id], file=out)
         print(file=out)
 
+    if as_str:
+      return '\n'.join(str_result)
 
   def xparm_xds(self, real_space_a, real_space_b, real_space_c,
                 space_group, out=None):
