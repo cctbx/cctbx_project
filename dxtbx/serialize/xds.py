@@ -282,11 +282,8 @@ class to_xds(object):
       def print(str, file=None):
         str_result.append(str)
     else:
-      try:
-        import __builtin__
-      except ImportError:
-        import builtins as __builtin__
-      print = __builtin__.print
+      from dxtbx import get_print
+      print = get_print()
 
     assert [real_space_a, real_space_b, real_space_c].count(None) in (0,3)
 

@@ -37,3 +37,11 @@ def load(filename):
     filename = filename.__fspath__()
   format_instance = Registry.find(filename)
   return format_instance(filename)
+
+def get_print():
+  '''Get the builtin print function.'''
+  try:
+    import __builtin__
+  except ImportError:
+    import builtins as __builtin__
+  return __builtin__.print
