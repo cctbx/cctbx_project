@@ -74,7 +74,7 @@ class lines(correction_vector_store):
       path = self.params.outdir_template
       stream = open(path,"r")
       print path
-      for line in stream.xreadlines():
+      for line in stream:
         if line.find("XFEL processing:") == 0:
            tokens = line.strip().split("/")
            picklefile = line.strip().split()[2]
@@ -100,7 +100,7 @@ class lines(correction_vector_store):
           path = os.path.join(templ,item)
           stream = open(path,"r")
           print path
-          for line in stream.xreadlines():
+          for line in stream:
             if line.find("CV OBSCENTER")==0:
               potential_tokens = line.strip().split()
               if len(potential_tokens)==22 and \
