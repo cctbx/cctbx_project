@@ -1,5 +1,5 @@
 from __future__ import division
-import re,types,struct
+import re,struct
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 from iotbx.detectors.detectorbase import DetectorImageBase
@@ -44,19 +44,19 @@ class DTREKImage(DetectorImageBase):
     self.enf= [("SIZE1",int,1),
                ("SIZE2",int,1),
                ("SATURATED_VALUE",int,1),
-               ("DETECTOR_NAMES",types.StringType,0),
+               ("DETECTOR_NAMES",str,0),
                (r"\n([0-9A-Za-z]+_DETECTOR_DIMENSIONS)",float,2),
                (r"\n([0-9A-Za-z]+_DETECTOR_SIZE)",float,2),
                (r"\n(ROTATION)=",float,10),
-               (r"\n([0-9A-Za-z]+_GONIO_NAMES)",types.StringType,0),
-               (r"\n([0-9A-Za-z]+_GONIO_UNITS)",types.StringType,0),
+               (r"\n([0-9A-Za-z]+_GONIO_NAMES)",str,0),
+               (r"\n([0-9A-Za-z]+_GONIO_UNITS)",str,0),
                (r"\n([0-9A-Za-z]+_GONIO_VALUES)",float,0),
                ("SOURCE_WAVELENGTH",float,2), #must be one wavelength
-               (r"\n([0-9A-Za-z]+_SPATIAL_DISTORTION_TYPE)",types.StringType,1),
+               (r"\n([0-9A-Za-z]+_SPATIAL_DISTORTION_TYPE)",str,1),
                (r"\n([0-9A-Za-z]+_SPATIAL_DISTORTION_INFO)",float,4),
-               ("DETECTOR_TYPE",types.StringType,1),
-               ("DATA_TYPE",types.StringType,1),
-               ("BYTE_ORDER",types.StringType,1),
+               ("DETECTOR_TYPE",str,1),
+               ("DATA_TYPE",str,1),
+               ("BYTE_ORDER",str,1),
                ("RAXIS_COMPRESSION_RATIO",int,1),
                ("HEADER_BYTES",int,1),
               ]

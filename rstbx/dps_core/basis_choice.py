@@ -1,6 +1,6 @@
 from __future__ import division
 from six.moves import range
-import exceptions,math,types
+import exceptions,math
 from scitbx import matrix
 from cctbx.uctbx.reduction_base import iteration_limit_exceeded as KGerror
 from rstbx.dps_core.cell_assessment import unit_cell_too_small,SmallUnitCellVolume
@@ -106,7 +106,7 @@ class HandleCombo:
   def setA(self,solns):
     from scitbx import matrix as vector # to clarify role of column vector
     # set the orientation matrix based on list of three rstbx basis Directions
-    assert type(solns) == types.ListType
+    assert type(solns) == list
     assert not 0 in [isinstance(x,Direction) for x in solns]
     self.ai.combo_state = solns # for derived feature in LABELIT
     realaxis=[]
