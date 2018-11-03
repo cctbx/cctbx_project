@@ -7679,6 +7679,8 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
     assert min_point[i] >= 0
     assert max_point[i] <= na[i]
   new_map_data = maptbx.copy(map_data, tuple(min_point), tuple(max_point))
+  # NOTE: end point of map is max_point, so size of map (new all()) is
+  #   (max_point-min_point+ (1,1,1))
   # shrink unit cell, angles are the same
   shrunk_uc = []
   for i in range(3):
