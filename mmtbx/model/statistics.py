@@ -278,7 +278,6 @@ class geometry(object):
        prefix, fmt(d.mean, d.max, d.n),
        prefix, fmt2(n.min),
        prefix)
-    result += "%s" % prefix
     result += """
 %sMOLPROBITY STATISTICS.
 %s  ALL-ATOM CLASHSCORE : %s
