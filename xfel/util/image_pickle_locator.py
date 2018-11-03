@@ -27,7 +27,7 @@ def find_image_in_dirs(dirs, image_name=None, int_name=None, prefix="idx-", max_
   assert not isinstance(dirs, basestring)
   if image_name is None:
     if int_name is None:
-      raise Sorry, "either image name or integration pickle name must be specified"
+      raise Sorry("either image name or integration pickle name must be specified")
     image_name = get_image_filename(int_name, prefix=prefix)
   for d in dirs:
     paths = limited_walk(d, max_depth=max_depth)
@@ -35,7 +35,7 @@ def find_image_in_dirs(dirs, image_name=None, int_name=None, prefix="idx-", max_
     if image_name in filenames:
       return paths[filenames.index(image_name)]
   if sorry_on_fail:
-    raise Sorry, "could not locate image"
+    raise Sorry("could not locate image")
   return None
 
 def find_many_images_in_dirs(images, dirs, max_depth=4):

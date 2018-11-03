@@ -108,10 +108,10 @@ def read_xds_integrate(xds_integrate_file):
             r = float(record.split()[-1])
 
     if not sg_num:
-        raise RuntimeError, 'spacegroup missing'
+        raise RuntimeError('spacegroup missing')
 
     if not r:
-        raise RuntimeError, 'rotation missing'
+        raise RuntimeError('rotation missing')
 
     sg = space_group(space_group_symbols(sg_num).hall())
 

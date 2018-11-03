@@ -70,7 +70,7 @@ if __name__ == "__main__":
     print "using active areas from LG36 CSPAD metrology"
     active_areas = LG36_active_areas
   else:
-    raise Sorry, "Specify both a detector version phil and an example image to extract active areas."
+    raise Sorry("Specify both a detector version phil and an example image to extract active areas.")
   for arg in cmd_line.args:
     file = open(arg, "rb")
     data = pickle.load(file)

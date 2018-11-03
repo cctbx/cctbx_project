@@ -128,7 +128,7 @@ class get_submit_command(object):
   def substitute(self, template, marker, value):
     if marker in template:
       if value is None:
-        raise Sorry, "No value found for %s" % marker
+        raise Sorry("No value found for %s" % marker)
       return template.replace(marker, value)
 
   def make_executable(self, file):
@@ -245,7 +245,7 @@ class get_sge_submit_command(get_submit_command):
 
     # -q <queue>
     if self.params.queue is None:
-      raise Sorry, "Queue not specified."
+      raise Sorry("Queue not specified.")
     queue_str = "-q %s" % self.params.queue
     self.options.append(queue_str)
 
@@ -304,7 +304,7 @@ class get_pbs_submit_command(get_submit_command):
 
     # -q <queue>
     if self.params.queue is None:
-      raise Sorry, "Queue not specified."
+      raise Sorry("Queue not specified.")
     queue_str = "#PBS -q %s" % self.params.queue
     self.options_inside_submit_script.append(queue_str)
 
@@ -345,7 +345,7 @@ class get_shifter_submit_command(get_submit_command):
     # template for sbatch.sh
     self.sbatch_template = self.params.shifter.sbatch_script_template
     if self.sbatch_template is None:
-      raise Sorry, "sbatch script template required for shifter"
+      raise Sorry("sbatch script template required for shifter")
     sb = open(self.sbatch_template, "rb")
     self.sbatch_contents = sb.read()
     self.destination = os.path.dirname(self.submit_path)
@@ -355,7 +355,7 @@ class get_shifter_submit_command(get_submit_command):
     # template for srun.sh
     self.srun_template = self.params.shifter.srun_script_template
     if self.srun_template is None:
-      raise Sorry, "srun script template required for shifter"
+      raise Sorry("srun script template required for shifter")
     sr = open(self.srun_template, "rb")
     self.srun_contents = sr.read()
     sr.close()
@@ -424,12 +424,12 @@ class get_custom_submit_command(get_submit_command):
     # template for the script to be submitted, beginning with #!
     self.script_template = self.params.custom.submit_script_template
     if not os.path.exists(self.template):
-      raise Sorry, ("Custom submission template file not found: %s" % self.template)
+      raise Sorry("Custom submission template file not found: %s" % self.template)
 
     # template for the submission command itself, e.g. qsub -n <nproc> -q <queue> script.sh
     self.command_template = self.params.custom.submit_command_template
     if self.command_template is None:
-      raise Sorry, ("Custom submit command must be specified for custom environments.")
+      raise Sorry("Custom submit command must be specified for custom environments.")
 
   def eval_params(self):
     # any changes to the script to be submitted
@@ -494,7 +494,7 @@ def get_submit_command_chooser(command, submit_path, stdoutdir, params,
   elif params.method == "custom":
     choice = get_custom_submit_command
   else:
-    raise Sorry, ("Multiprocessing method %s not recognized" % params.method)
+    raise Sorry("Multiprocessing method %s not recognized" % params.method)
   command_generator = choice(command, submit_path, stdoutdir, params,
                              log_name=log_name, err_name=err_name, job_name=job_name)
   return command_generator()

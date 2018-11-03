@@ -90,7 +90,7 @@ class coordinate_frame_information:
 
     def get(self, parameter_name):
         if not hasattr(self, '_%s' % parameter_name):
-            raise RuntimeError, 'no parameter %s' % parameter_name
+            raise RuntimeError('no parameter %s' % parameter_name)
         return getattr(self, '_%s' % parameter_name)
 
     def R_to_CBF(self):

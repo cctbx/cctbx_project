@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
     # require XDS configuration file, e.g. xparm-uc1-2.xds
     if len(sys.argv) != 2:
-        raise RuntimeError, '%s configuration-file' % sys.argv[0]
+        raise RuntimeError('%s configuration-file' % sys.argv[0])
 
     configuration_file = sys.argv[1]
 

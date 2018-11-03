@@ -346,7 +346,8 @@ class SingleDialsFrameFromJson(SingleFrame):
     from dials.util.options import Importer, flatten_experiments
     importer = Importer([expts_path], read_experiments=True, read_reflections=False, check_format=False)
     if importer.unhandled:
-      raise Exception("unable to process:"), importer.unhandled
+      # in python 2: raise Exception("unable to process:"), importer.unhandled
+      raise Exception("unable to process:")
     experiments_l = flatten_experiments(importer.experiments)
     assert len(experiments_l)==1, "Sorry, only supports one experiment per json at present."
     tcrystal = experiments_l[0].crystal

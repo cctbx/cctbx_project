@@ -8,8 +8,8 @@ class JobStopper(object):
     if self.queueing_system in ["mpi", "lsf"]:
       self.command = "bkill %s"
     else:
-      raise NotImplementedError, "job stopper not implemented for %s queueing system" \
-      % self.queueing_system
+      raise NotImplementedError("job stopper not implemented for %s queueing system" \
+      % self.queueing_system)
 
   def stop_job(self, submission_id):
     result = easy_run.fully_buffered(command=self.command%submission_id)
@@ -26,8 +26,8 @@ class QueueInterrogator(object):
     if self.queueing_system in ["mpi", "lsf"]:
       self.command = "bjobs %s | grep %s | awk '{ print $3 }'"
     else:
-      raise NotImplementedError, "queue interrogator not implemented for %s queueing system" \
-      % self.queueing_system
+      raise NotImplementedError(
+      "queue interrogator not implemented for %s queueing system"%self.queueing_system)
 
   def query(self, submission_id):
     result = easy_run.fully_buffered(command=self.command % \
@@ -50,8 +50,8 @@ class LogReader(object):
     if self.queueing_system in ["mpi", "lsf"]:
       self.command = "tail -17 %s | head -1"
     else:
-      raise NotImplementedError, "queue interrogator not implemented for %s queueing system" \
-      % self.queueing_system
+      raise NotImplementedError(
+      "queue interrogator not implemented for %s queueing system"%self.queueing_system)
 
   def read_result(self, log_path):
     result = easy_run.fully_buffered(command=self.command % log_path)

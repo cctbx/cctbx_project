@@ -323,7 +323,7 @@ def allocate_chunks(results_dir,
     chunk_size = int(math.ceil(n_img/n_chunks))
     batch_chunk_nums_sizes[batch] = (n_chunks, chunk_size)
   if len(batch_contents) == 0:
-    raise Sorry, "no DIALS integration results found."
+    raise Sorry("no DIALS integration results found.")
   batch_chunks = {}
   for batch, num_size_tuple in batch_chunk_nums_sizes.iteritems():
     num, size = num_size_tuple
@@ -419,7 +419,7 @@ class Script(object):
     # Validation
     if self.params.reintegration.enable:
       if self.params.combine_experiments.output.delete_shoeboxes:
-        raise Sorry, ("Keep shoeboxes during combine_experiments and joint refinement when reintegrating."+\
+        raise Sorry("Keep shoeboxes during combine_experiments and joint refinement when reintegrating."+
           "Set combine_experiments.output.delete_shoeboxes = False when using reintegration.")
 
     # Setup
