@@ -53,8 +53,6 @@ class character_iterator(slots_getstate_setstate):
       if (result == "\n"): O.line_number += 1
     return result
 
-  next = __next__
-
   def scan_for_start(O, intro, followups):
     while True:
       if (O.i_char == len(O.input_string)): return 0
@@ -203,7 +201,7 @@ class word_iterator(slots_getstate_setstate):
   def __iter__(O):
     return O
 
-  def next(O, settings_index=0):
+  def __next__(O, settings_index=0):
     settings = O.list_of_settings[settings_index]
     char_iter = O.char_iter
     char_iter.mark_for_backup()
@@ -280,11 +278,11 @@ class word_iterator(slots_getstate_setstate):
     raise StopIteration
 
   def try_pop(O, settings_index=0):
-    try: return O.next(settings_index)
+    try: return O.__next__(settings_index)
     except StopIteration: return None
 
   def pop(O, settings_index=0):
-    try: return O.next(settings_index)
+    try: return O.__next__(settings_index)
     except StopIteration: raise RuntimeError("Unexpected end of input.")
 
   def try_pop_unquoted(O, settings_index=0):

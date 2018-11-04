@@ -5879,7 +5879,7 @@ scope {
     new_phil_str = libtbx.phil.change_default_phil_values(
       master_phil_str, new_default_str)
   except Sorry as e:
-    assert(e.message ==
+    assert(str(e) ==
            'Unrecognized PHIL parameter(s)\nunknown.name (input line 1)')
   else:
     raise Exception_expected
@@ -5890,7 +5890,7 @@ scope {
     new_phil_str = libtbx.phil.change_default_phil_values(
       master_phil_str, new_default_str)
   except RuntimeError as e:
-    assert('Error interpreting scope.number="what"' in e.message)
+    assert('Error interpreting scope.number="what"' in str(e))
   else:
     raise Exception_expected
 

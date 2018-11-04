@@ -1752,7 +1752,8 @@ class scope(slots_getstate_setstate):
       path = path[1:]
     candidates = []
     for object in self.objects:
-      if (object.primary_id >= stop_id): break
+      if (object.primary_id is not None and
+          object.primary_id >= stop_id): break
       if (object.is_definition):
         if (object.name == path):
           candidates.append(object)
