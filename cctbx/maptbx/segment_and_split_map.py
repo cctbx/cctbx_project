@@ -4021,6 +4021,7 @@ def apply_soft_mask(map_data=None,
           rad_smooth=None,
           crystal_symmetry=None,
           set_outside_to_mean_inside=False,
+          set_mean_to_zero=False,
           threshold=0.5,
           verbose=False,
           out=sys.stdout):
@@ -4089,6 +4090,9 @@ def apply_soft_mask(map_data=None,
   set_to_mean.set_selected(ss, target_value_for_outside)
 
   masked_map= (map_data * mask_data ) +  (set_to_mean * (1-mask_data))
+
+  if set_mean_to_zero:  # remove average
+    masked_map=masked_map - masked_map.as_1d().min_max_mean().mean
 
   if verbose:
     print >>out,"\nFinal mean value inside and outside mask:"
