@@ -32,6 +32,7 @@ class ProteinResidues(list):
                geometry,
                length=3, # CDL & other psi/phi apps
                registry=None,
+               include_non_linked=False,
               ):
     assert registry is not None
     self.length = length
@@ -44,6 +45,7 @@ class ProteinResidues(list):
     self.errors = []
     self.start = None
     self.end = None
+    self.include_non_linked = include_non_linked
 
   def __repr__(self):
     if 1: return self.show()
@@ -163,6 +165,7 @@ class ProteinResidues(list):
     list.append(self, residue)
     while len(self)>self.length:
       del self[0]
+    if self.include_non_linked: return
     if len(self)>=self.length-1:
       while not self.are_linked():
         del self[0]
