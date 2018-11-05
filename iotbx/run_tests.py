@@ -19,6 +19,7 @@ tst_list = (
   "$D/cif/tests/tst_validation.py",
   "$D/cif/tests/tst_ucif_examples_compilation.py",
   "$D/cif/tests/tst_parser.py",
+  "$D/cif/tests/tst_citations.py",
   "$D/shelx/tst_lex_parse_build.py",
   "$D/shelx/tst_hklf.py",
   "$D/shelx/tst_writer.py",
