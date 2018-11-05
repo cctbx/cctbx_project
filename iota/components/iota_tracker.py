@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 10/17/2018
+Last Changed: 11/05/2018
 Description : IOTA image-tracking GUI module
 '''
 
@@ -31,7 +31,7 @@ from iotbx import phil as ip
 from iota import iota_version
 from iota.components.iota_ui_dialogs import DIALSSpfDialog
 from iota.components.iota_utils import InputFinder
-from iota.components.iota_dials import phil_scope
+from iota.components.iota_processing import phil_scope
 import iota.components.iota_threads as thr
 import iota.components.iota_ui_controls as ct
 import iota.components.iota_utils as util

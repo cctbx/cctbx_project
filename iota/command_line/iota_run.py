@@ -4,14 +4,14 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 10/18/2018
+Last Changed: 11/05/2018
 Description : IOTA command-line module.
 '''
 import os
 
 from iota import iota_version
 from iota.components.iota_init import XInitAll
-from iota.components.iota_base import ProcessGeneral
+from iota.components.iota_base import ProcessingThreadBase
 import dials.util.command_line as cmd
 import iota.components.iota_utils as util
 
@@ -45,12 +45,22 @@ beam stop shadow.
 
 """
 
-class XProcessAll(ProcessGeneral):
+class XProcessAll(ProcessingThreadBase):
   """ Process module customized for command line use """
   def __init__(self, init, iterable, stage, abort_file):
-    ProcessGeneral.__init__(self, init=init, iterable=iterable,
-                            stage=stage, abort_file=abort_file)
+    ProcessingThreadBase.__init__(self, init=init, iterable=iterable,
+                                  stage=stage)
     self.prog_count = 0
+
+    # Initialize importer and processor depending on backend
+    if init.params.advanced.processing_backend == 'ha14':
+      from iota.components.iota_image import OldImageImporter as Importer
+      from iota.components.iota_cctbx_ha14 import Integrator
+    else:
+      from iota.components.iota_image import ImageImporter as Importer
+      from iota.components.iota_processing import Integrator
+    self.importer   = Importer(init=init)
+    self.integrator = Integrator(init=init)
 
   def callback(self, result):
     """ To be run on completion of each step
@@ -63,7 +73,7 @@ class XProcessAll(ProcessGeneral):
     else:
       self.gs_prog.finished()
 
-  def run(self):
+  def process(self):
     """ Run Process module from command line """
 
     if self.stage == 'import':    # Import Images
@@ -106,16 +116,25 @@ class XProcessAll(ProcessGeneral):
 
     # Process Images
     self.create_image_iterable()
-    cmd.Command.start("Processing {} images".format(len(self.img_list)))
+    cmd.Command.start("Processing {} images".format(len(self.iterable)))
     self.prog_count = 0
     self.gs_prog = cmd.ProgressBar(title='PROCESSING')
     self.run_process()
-    cmd.Command.end("Processing {} images -- DONE".format(len(self.img_list)))
+    cmd.Command.end("Processing {} images -- DONE".format(len(self.iterable)))
 
     # Analysis of integration results
     final_objects = [i for i in self.img_objects if i.fail is None]
     if len(final_objects) > 0:
       self.run_analysis()
+
+      # Write info object / file (TODO: Revisit this later!)
+      from iota.components.iota_threads import ObjectReaderThread
+      self.object_reader = ObjectReaderThread(self,
+                                              info=self.init.info,
+                                              source=self.img_objects,
+                                              info_file=self.init.info_file)
+      self.object_reader.start()
+
     else:
       print ('No images successfully integrated!')
 
@@ -132,13 +151,19 @@ class XTermIOTA():
     good_init, msg = self.init.run()  # Returns False if something goes wrong
 
     if not good_init:
-      print (msg)
+      if msg:
+        print (msg)
       util.iota_exit()
 
     if self.init.args.full:
       stage = 'all'
     else:
       stage = 'import'
+
+    # Save init and image iterable for potential UI recovery
+    from libtbx import easy_pickle
+    easy_pickle.dump(self.init.init_file, self.init)
+    easy_pickle.dump(self.init.iter_file, self.init.input_list)
 
     abort_file = os.path.join(self.init.int_base, '.abort')
     processor = XProcessAll(init=self.init, iterable=self.init.input_list,

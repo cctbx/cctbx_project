@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 10/30/2018
+Last Changed: 11/05/2018
 Description : IOTA GUI Dialogs
 '''
 
@@ -831,6 +831,9 @@ class ImportWindow(BaseDialog):
     '    height_max = {}'.format(triage_spot_height_max),
     '    step_size = {}'.format(triage_step_size),
     '  }',
+    '}',
+    'cctbx_xfel {',
+    '  min_Bragg_peaks = {}'.format(self.min_bragg_peaks.n_bragg.GetValue()),
     '}',
     'advanced',
     '{',

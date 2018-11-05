@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/30/2018
+Last Changed: 11/05/2018
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -12,8 +12,8 @@ Description : Runs DIALS spotfinding, indexing, refinement and integration
 import os
 import sys
 
+from libtbx import easy_pickle as ep
 from iotbx.phil import parse
-from dxtbx.datablock import DataBlockFactory
 from cctbx import sgtbx
 import copy
 
@@ -131,117 +131,125 @@ class IOTADialsProcessor(Processor):
 
       self.frame = ConstructFrame(integrated, experiments[0]).make_frame()
       self.frame["pixel_size"] = experiments[0].detector[0].get_pixel_size()[0]
+
       easy_pickle.dump(self.phil.output.integration_pickle, self.frame)
 
-class Triage(object):
-  """ Performs quick spotfinding (with mostly defaults) and determines if the number of
-      found reflections is above the minimum, and thus if the image should be accepted
-      for further processing.
-  """
+# class Triage(object):
+#   """ Performs quick spotfinding (with mostly defaults) and determines if the number of
+#       found reflections is above the minimum, and thus if the image should be accepted
+#       for further processing.
+#   """
+#
+#   def __init__(self, img, gain, params, center_intensity=0):
+#     """ Initialization and data read-in
+#     """
+#     self.gain = gain
+#     self.params = params
+#
+#     # Read settings from the DIALS target (.phil) file
+#     # If none is provided, use default settings (and may God have mercy)
+#     if self.params.cctbx_xfel.target is not None:
+#       with open(self.params.cctbx_xfel.target, 'r') as settings_file:
+#         settings_file_contents = settings_file.read()
+#       settings = parse(settings_file_contents)
+#       current_phil = phil_scope.fetch(sources=[settings])
+#       self.phil = current_phil.extract()
+#     else:
+#       self.phil = phil_scope.extract()
+#
+#     # Modify settings
+#     self.phil.output.strong_filename = None
+#     self.processor = IOTADialsProcessor(params=self.phil)
+#
+#     # Set customized parameters
+#     beamX = self.params.image_import.beam_center.x
+#     beamY = self.params.image_import.beam_center.y
+#     if beamX != 0 or beamY != 0:
+#       self.phil.geometry.detector.slow_fast_beam_centre = '{} {}'.format(
+#         beamY, beamX)
+#     if self.params.image_import.distance != 0:
+#       self.phil.geometry.detector.distance = self.params.image_import.distance
+#     if self.params.advanced.estimate_gain:
+#       self.phil.spotfinder.threshold.dispersion.gain = gain
+#     if self.params.image_import.mask is not None:
+#       self.phil.spotfinder.lookup.mask = self.params.image_import.mask
+#       self.phil.integration.lookup.mask = self.params.image_import.mask
+#
+#     if self.params.cctbx_xfel.auto_threshold:
+#       threshold = int(center_intensity)
+#       self.phil.spotfinder.threshold.dispersion.global_threshold = threshold
+#
+#     # Convert raw image into single-image datablock
+#     with util.Capturing() as junk_output:
+#       self.datablock = DataBlockFactory.from_filenames([img])[0]
+#
+#   def triage_image(self):
+#     """ Perform triage by running spotfinding and analyzing results
+#     """
+#
+#     # Triage image
+#     try:
+#       observed = self.processor.find_spots(datablock=self.datablock)
+#       if len(observed) >= self.params.cctbx_ha14.image_triage.min_Bragg_peaks:
+#         log_info = 'ACCEPTED! {} observed reflections.'.format(len(observed))
+#         status = None
+#       else:
+#         log_info = 'REJECTED! {} observed reflections.'.format(len(observed))
+#         status = 'failed triage'
+#     except Exception, e:
+#       status = 'failed triage'
+#       return status, 'REJECTED! SPOT-FINDING ERROR!'
+#
+#     return status, log_info
 
-  def __init__(self, img, gain, params, center_intensity=0):
-    """ Initialization and data read-in
-    """
-    self.gain = gain
-    self.params = params
 
-    # Read settings from the DIALS target (.phil) file
-    # If none is provided, use default settings (and may God have mercy)
+class Integrator():
+  ''' Class for indexing, integration, etc. using current cctbx.xfel '''
+
+  def __init__(self, init):
+    ''' Constructor
+    :param init: IOTA InitAll instance with all the parameters
+    '''
+    self.init = init
+    self.params = init.params
+    self.img_object = None
+
+  def prep_script(self, img_object):
+    ''' Prepare all the settings and parameters; if no datablock is given,
+    generate one from file.
+
+    :param img_object: A Python object with image info (including data)
+    '''
+
+    # Set image object
+    self.img_object = img_object
+
+    # Read cctbx.xfel parameter (i.e. target) file
     if self.params.cctbx_xfel.target is not None:
-      with open(self.params.cctbx_xfel.target, 'r') as settings_file:
-        settings_file_contents = settings_file.read()
-      settings = parse(settings_file_contents)
-      current_phil = phil_scope.fetch(sources=[settings])
-      self.phil = current_phil.extract()
-    else:
-      self.phil = phil_scope.extract()
-
-    # Modify settings
-    self.phil.output.strong_filename = None
-    self.processor = IOTADialsProcessor(params=self.phil)
-
-    # Set customized parameters
-    beamX = self.params.image_import.beam_center.x
-    beamY = self.params.image_import.beam_center.y
-    if beamX != 0 or beamY != 0:
-      self.phil.geometry.detector.slow_fast_beam_centre = '{} {}'.format(
-        beamY, beamX)
-    if self.params.image_import.distance != 0:
-      self.phil.geometry.detector.distance = self.params.image_import.distance
-    if self.params.advanced.estimate_gain:
-      self.phil.spotfinder.threshold.dispersion.gain = gain
-    if self.params.image_import.mask is not None:
-      self.phil.spotfinder.lookup.mask = self.params.image_import.mask
-      self.phil.integration.lookup.mask = self.params.image_import.mask
-
-    if self.params.cctbx_xfel.auto_threshold:
-      threshold = int(center_intensity)
-      self.phil.spotfinder.threshold.dispersion.global_threshold = threshold
-
-    # Convert raw image into single-image datablock
-    with util.Capturing() as junk_output:
-      self.datablock = DataBlockFactory.from_filenames([img])[0]
-
-  def triage_image(self):
-    """ Perform triage by running spotfinding and analyzing results
-    """
-
-    # Triage image
-    try:
-      observed = self.processor.find_spots(datablock=self.datablock)
-      if len(observed) >= self.params.cctbx_ha14.image_triage.min_Bragg_peaks:
-        log_info = 'ACCEPTED! {} observed reflections.'.format(len(observed))
-        status = None
-      else:
-        log_info = 'REJECTED! {} observed reflections.'.format(len(observed))
-        status = 'failed triage'
-    except Exception, e:
-      status = 'failed triage'
-      return status, 'REJECTED! SPOT-FINDING ERROR!'
-
-    return status, log_info
-
-
-class Integrator(object):
-  """ A class for indexing, integration, etc. using DIALS modules """
-
-  def __init__(self,
-               source_image,
-               object_folder,
-               int_folder,
-               final_filename,
-               final,
-               logfile,
-               gain = 0.32,
-               center_intensity = 0,
-               params=None):
-    """Initialise the script."""
-
-    self.params = params
-    self.int_base = int_folder
-
-    # Read settings from the DIALS target (.phil) file
-    # If none is provided, use default settings (and may God have mercy)
-    if self.params.cctbx_xfel.target is not None:
-      with open(self.params.cctbx_xfel.target, 'r') as settings_file:
-        settings_file_contents = settings_file.read()
-      settings = parse(settings_file_contents)
+      with open(self.params.cctbx_xfel.target, 'r') as tf:
+        target_file_contents = tf.read()
+      settings = parse(target_file_contents)
       current_phil = phil_scope.fetch(source=settings)
     else:
       current_phil = phil_scope
     self.phil = current_phil.extract()
 
-   # Set general file-handling settings
-    file_basename = util.make_filename(source_image)
-    self.phil.output.datablock_filename = "{}/{}.json".format(object_folder, file_basename)
-    self.phil.output.indexed_filename = "{}/{}_indexed.pickle".format(object_folder, file_basename)
-    self.phil.output.strong_filename = "{}/{}_strong.pickle".format(object_folder, file_basename)
-    self.phil.output.refined_experiments_filename = "{}/{}_refined_experiments.json".format(object_folder, file_basename)
-    self.phil.output.integrated_experiments_filename = "{}/{}_integrated_experiments.json".format(object_folder, file_basename)
-    self.phil.output.integrated_filename = "{}/{}_integrated.pickle".format(object_folder, file_basename)
-    self.phil.output.profile_filename = "{}/{}_profile.phil".format(object_folder, file_basename)
-    self.phil.output.integration_pickle = final_filename
-    self.int_log = logfile
+    # Turn off all peripheral output (may need to revisit this later...)
+    self.phil.output.datablock_filename = None
+    self.phil.output.indexed_filename = None
+    self.phil.output.strong_filename = None
+    self.phil.output.refined_experiments_filename = None
+    self.phil.output.integrated_experiments_filename = None
+    self.phil.output.integrated_filename = None
+    self.phil.output.profile_filename = None
+
+    # Set up integration pickle path and logfile
+    self.phil.output.integration_pickle = self.img_object.int_file
+    self.int_log = self.img_object.int_log
+
+    # Create output folder if one does not exist
+    if not os.path.isdir(self.img_object.int_path):
+      os.makedirs(self.img_object.int_path)
 
     # Set customized parameters
     beamX = self.params.image_import.beam_center.x
@@ -273,36 +281,26 @@ class Integrator(object):
         self.phil.significance_filter.enable = True
         self.phil.significance_filter.isigi_cutoff = sigma
 
-    self.img = [source_image]
-    self.obj_base = object_folder
-    self.fail = None
-    self.frame = None
-    self.final = final
-    self.final['final'] = final_filename
-    self.datablock = DataBlockFactory.from_filenames(self.img)[0]
-    self.obj_filename = "int_{}".format(os.path.basename(self.img[0]))
+    if not self.img_object.datablock:
+      from dxtbx.datablock import DataBlockFactory as db
+      self.img_object.datablock = db.from_filenames([self.img_object.img_path])[0]
 
     # Auto-set threshold and gain (not saved for target.phil)
     if self.params.cctbx_xfel.auto_threshold:
-      # This is still experimental and I'm not sure if it does anything...
-
-      # rad_avg = RadAverageCalculator(datablock=self.datablock)
-      # means, res = rad_avg.make_radial_average(num_bins=20, lowres=90)
-      # threshold = int(np.min(means) * 5)
-      threshold = int(center_intensity)
+      threshold = int(self.img_object.center_int)
       self.phil.spotfinder.threshold.dispersion.global_threshold = threshold
     if self.params.advanced.estimate_gain:
-      self.phil.spotfinder.threshold.dispersion.gain = gain
-
+      self.phil.spotfinder.threshold.dispersion.gain = self.img_object.gain
 
   def find_spots(self):
     # Perform spotfinding
-    self.observed = self.processor.find_spots(datablock=self.datablock)
+    self.observed = self.processor.find_spots(
+      datablock=self.img_object.datablock)
 
   def index(self):
     # Run indexing
     self.experiments, self.indexed = self.processor.index(
-      datablock=self.datablock, reflections=self.observed)
+      datablock=self.img_object.datablock, reflections=self.observed)
 
   def refine_bravais_settings_and_reindex(self):
     # Find highest-symmetry Bravais lattice
@@ -316,7 +314,6 @@ class Integrator(object):
         experiments=self.experiments,
         solution=solution)
 
-
   def refine(self):
     # Run refinement
     self.experiments, self.indexed = self.processor.refine(
@@ -328,8 +325,9 @@ class Integrator(object):
                                                indexed=self.indexed)
     self.frame = self.processor.frame
 
-  def run(self):
+  def process(self, img_object):
 
+    self.prep_script(img_object)
     self.processor = IOTADialsProcessor(params=self.phil)
 
     log_entry = ['\n']
@@ -338,39 +336,47 @@ class Integrator(object):
       try:
         print ("{:-^100}\n".format(" SPOTFINDING: "))
         self.find_spots()
-        print ("{:-^100}\n\n".format(" FOUND {} SPOTS: ".format(len(self.observed))))
+
+        # Apply minimum Bragg peaks cutoff
+        if len(self.observed) < self.params.cctbx_xfel.minimum_Bragg_peaks:
+          msg = " TOO FEW ({}) SPOTS FOUND! ".format(len(self.observed))
+          self.img_object.fail = 'failed triage'
+        else:
+          msg = " FOUND {} SPOTS ".format(len(self.observed))
+        print("{:-^100}\n\n".format(msg))
+
       except Exception as e:
         if hasattr(e, "classname"):
-          print (e.classname, "for %s:"%self.img[0],)
+          print (e.classname, "for {}:".format(self.img_object.img_path),)
           error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
         else:
-          print ("Spotfinding error for %s:"%self.img[0],)
+          print ("Spotfinding error for {}:".format(self.img_object.img_path),)
           error_message = "{}".format(str(e).replace('\n', ' ')[:50])
         print (error_message)
-        self.fail = 'failed spotfinding'
+        self.img_object.fail = 'failed spotfinding'
 
-      if self.fail is None:
+      if self.img_object.fail is None:
         try:
-          print ("{:-^100}\n".format(" INDEXING: "))
+          print ("{:-^100}\n".format(" INDEXING "))
           self.index()
           if self.indexed is not None:
-           print ("{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS: "
+           print ("{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS "
                                        "".format(len(self.indexed))))
         except Exception, e:
           if hasattr(e, "classname"):
             error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
           else:
-            print ("Indexing error for %s:"%self.img[0],)
+            print ("Indexing error for {}:".format(self.img_object.img_path),)
             error_message = "{}".format(str(e).replace('\n', ' ')[:50])
           print (error_message)
-          self.fail = 'failed indexing'
+          self.img_object.fail = 'failed indexing'
 
-      if (                                        self.fail is None and
+      if (                             self.img_object.fail is None and
               self.phil.indexing.known_symmetry.space_group is None and
-                             self.params.cctbx_xfel.determine_sg_and_reindex
+                        self.params.cctbx_xfel.determine_sg_and_reindex
           ):
         try:
-          print ("{:-^100}\n".format(" DETERMINING SPACE GROUP : "))
+          print ("{:-^100}\n".format(" DETERMINING SPACE GROUP "))
           self.refine_bravais_settings_and_reindex()
           lat = self.experiments[0].crystal.get_space_group().info()
           sg = str(lat).replace(' ', '')
@@ -381,38 +387,38 @@ class Integrator(object):
         except Exception as e:
           print ("Bravais / Reindexing Error: ", e)
 
-      if self.fail is None:
+      if self.img_object.fail is None:
         try:
           self.refine()
-          print ("{:-^100}\n".format(" INTEGRATING: "))
+          print ("{:-^100}\n".format(" INTEGRATING "))
           self.integrate()
           print ("{:-^100}\n\n".format(" FINAL {} INTEGRATED REFLECTIONS "
                                       "".format(len(self.integrated))))
         except Exception as e:
           if hasattr(e, "classname"):
-            print (e.classname, "for %s:"%self.img[0],)
+            print (e.classname, "for {}:".format(self.img_object.img_path),)
             error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
           else:
-            print ("Integration error for %s:"%self.img[0],)
+            print ("Integration error for {}:".format(self.img_object.img_path),)
             error_message = "{}".format(str(e).replace('\n', ' ')[:50])
           print (error_message)
-          self.fail = 'failed integration'
+          self.img_object.fail = 'failed integration'
 
-    if self.fail is None and self.params.cctbx_xfel.filter.flag_on:
+    if self.img_object.fail is None and self.params.cctbx_xfel.filter.flag_on:
       selector = Selector(frame=self.frame,
                           uc_tol=self.params.cctbx_xfel.filter.target_uc_tolerance,
                           pg=self.params.cctbx_xfel.filter.target_pointgroup,
                           uc=self.params.cctbx_xfel.filter.target_unit_cell,
                           min_ref=self.params.cctbx_xfel.filter.min_reflections,
                           min_res=self.params.cctbx_xfel.filter.min_resolution)
-      self.fail = selector.result_filter()
+      self.img_object.fail = selector.result_filter()
 
-    with open(self.int_log, 'w') as tf:
+    with open(self.img_object.int_log, 'w') as tf:
       for i in output:
         if 'cxi_version' not in i:
           tf.write('\n{}'.format(i))
 
-    if self.fail is None:
+    if self.img_object.fail is None:
       # Collect information
       obs = self.frame['observations'][0]
       Bravais_lattice = self.frame['pointgroup']
@@ -424,7 +430,8 @@ class Integrator(object):
       sigmas = obs.sigmas()
       I_over_sigI = Is / sigmas
       spots = len(Is)
-      strong_spots = len([i for i in I_over_sigI if i >= self.params.cctbx_ha14.selection.min_sigma])
+      strong_spots = len([i for i in I_over_sigI if
+                          i >= self.params.cctbx_ha14.selection.min_sigma])
 
       # Mosaicity parameters
       mosaicity = round((self.frame.get('ML_half_mosaicity_deg', [0])[0]), 6)
@@ -447,33 +454,53 @@ class Integrator(object):
                      'mos':mosaicity, 'epv':ewald_proximal_volume,
                      'info':int_status, 'ok':True}
 
-      # Update final entry with integration results
-      self.final.update(int_results)
-
       # Generate log summary of integration results
-      img_filename = os.path.basename(self.img[0])
-      log_entry.append('DIALS integration:')
+      img_filename = os.path.basename(self.img_object.img_path)
+      log_entry.append('CCTBX.XFEL integration:')
       log_entry.append('{:<{width}} --->  {}'.format(img_filename, int_status,
                        width = len(img_filename) + 2))
 
     else:
       # Generate log summary of integration results
-      if 'spotfinding' in self.fail:
+      if 'spotfinding' in self.img_object.fail:
         step_id = 'SPOTFINDING'
-      elif 'indexing' in self.fail:
+      elif 'indexing' in self.img_object.fail:
         step_id = 'INDEXING'
-      elif 'integration' in self.fail:
+      elif 'integration' in self.img_object.fail:
         step_id = 'INTEGRATION'
-      elif 'filter' in self.fail:
+      elif 'filter' in self.img_object.fail:
         step_id = 'FILTER'
+      else:
+        step_id = 'PROCESSING'
       log_entry.append('\n {} FAILED - {}'.format(step_id, e))
       int_status = 'not integrated -- {}'.format(e)
       int_results = {'info':int_status}
-      self.final['final'] = None
+      self.img_object.final['final'] = None
 
+    # Update final entry with integration results
+    self.img_object.final.update(int_results)
+
+    # Update image log
     log_entry = "\n".join(log_entry)
+    self.img_object.log_info.append(log_entry)
 
-    return self.fail, self.final, log_entry
+    # Update main log
+    main_log_entry = "\n".join(self.img_object.log_info)
+    util.main_log(self.init.logfile, main_log_entry)
+    util.main_log(self.init.logfile, '\n{:-^100}\n'.format(''))
+
+    # Make a temporary process log into a final process log
+    final_int_log = self.img_object.int_log.split('.')[0] + ".log"
+    os.rename(img_object.int_log, final_int_log)
+
+    # Set status to final and write image object to file
+    self.img_object.status = 'final'
+    ep.dump(img_object.obj_file, self.img_object)
+
+    return self.img_object
+
+  def run(self, img_object):
+    return self.process(img_object=img_object)
 
 class Selector(object):
   """ Class for selection of optimal spotfinding parameters from grid search """

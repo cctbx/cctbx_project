@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/18/2018
+Last Changed: 11/05/2018
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -79,6 +79,9 @@ cctbx_xfel
       .type = float
       .help = Sigma level to determine resolution cutoff
   }
+  minimum_Bragg_peaks = 10
+    .type = int
+    .help = Minimum number of Bragg peaks to establish diffraction
   determine_sg_and_reindex = True
     .type = bool
     .help = Will determine sg and reindex if no target space group supplied

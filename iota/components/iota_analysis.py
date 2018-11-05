@@ -5,7 +5,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 10/30/2018
+Last Changed: 11/05/2018
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -120,19 +120,14 @@ class Plotter(object):
     """ calculates beam xy and other parameters """
     info = []
 
-    if self.params.advanced.processing_backend == 'ha14':
-      img_pickle = self.final_objects[0].final['img']
-      pixel_size = pickle.load(open(img_pickle, "rb"))['PIXEL_SIZE']
-    elif self.params.advanced.processing_backend == 'cctbx.xfel':
-      proc_pickle = self.final_objects[0].final['final']
-      pixel_size = pickle.load(open(proc_pickle, 'rb'))['pixel_size']
-
     # Import relevant info
+    pixel_size = self.final_objects[0].final['pixel_size']
     for i in [j.final for j in self.final_objects]:
       try:
         info.append([i, i['beamX'], i['beamY'], i['wavelength'], i['distance'],
                     (i['a'], i['b'], i['c'], i['alpha'], i['beta'], i['gamma'])])
       except IOError as e:
+        print ('IOTA ANALYSIS ERROR: BEAMXY failed! ', e)
         pass
 
     # Calculate beam center coordinates and distances
@@ -750,32 +745,32 @@ class Analyzer(object):
       if len(self.no_diff_objects) > 0:
         with open(blank_images_file, 'w') as bif:
           for obj in self.no_diff_objects:
-            bif.write('{}\n'.format(obj.conv_img))
+            bif.write('{}\n'.format(obj.img_path))
 
       if len(self.diff_objects) > 0:
         with open(input_list_file, 'w') as ilf:
           for obj in self.diff_objects:
-            ilf.write('{}\n'.format(obj.conv_img))
+            ilf.write('{}\n'.format(obj.img_path))
 
       if len(self.not_int_objects) > 0:
         with open(not_integrated_file, 'w') as nif:
           for obj in self.not_int_objects:
-            nif.write('{}\n'.format(obj.conv_img))
+            nif.write('{}\n'.format(obj.img_path))
 
       if len(self.filter_fail_objects) > 0:
         with open(prefilter_fail_file, 'w') as pff:
           for obj in self.filter_fail_objects:
-            pff.write('{}\n'.format(obj.conv_img))
+            pff.write('{}\n'.format(obj.img_path))
 
       if self.params.advanced.processing_backend == 'cctbx.xfel':
         if len(self.not_spf_objects) > 0:
           with open(spotfinding_fail_file, 'w') as sff:
             for obj in self.not_spf_objects:
-              sff.write('{}\n'.format(obj.conv_img))
+              sff.write('{}\n'.format(obj.img_path))
         if len(self.not_idx_objects) > 0:
           with open(indexing_fail_file, 'w') as iff:
             for obj in self.not_idx_objects:
-              iff.write('{}\n'.format(obj.conv_img))
+              iff.write('{}\n'.format(obj.img_path))
 
       if len(self.final_objects) > 0:
         with open(integrated_file, 'w') as intf:
@@ -788,22 +783,13 @@ class Analyzer(object):
       # Dump the Analyzer object into a pickle file for later fast recovery
       ep.dump(analyzer_file, self.analysis_result)
 
-
   def make_prime_input(self,
                        filename='prime.phil',
                        run_zero=False):
     """ Imports default PRIME input parameters, modifies correct entries and
         prints out a starting PHIL file to be used with PRIME
     """
-    if self.params.advanced.processing_backend == 'ha14':
-      img_pickle = self.final_objects[0].final['img']
-      pixel_size = pickle.load(open(img_pickle, "rb"))['PIXEL_SIZE']
-    elif self.params.advanced.processing_backend == 'cctbx.xfel':
-      proc_pickle = self.final_objects[0].final['final']
-      pixel_size = pickle.load(open(proc_pickle, 'rb'))['pixel_size']
-    else:
-      pixel_size = 0
-
+    pixel_size = self.final_objects[0].final['pixel_size']
     try:
       sg = str(self.cons_pg).replace(" ", "")
     except AttributeError as e:

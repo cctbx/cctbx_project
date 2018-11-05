@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 10/18/2018
+Last Changed: 11/05/2018
 Description : IOTA GUI Initialization module
 '''
 
@@ -444,7 +444,6 @@ class MainWindow(wx.Frame):
       selected = path_dlg.selected
       recovery_mode = path_dlg.recovery_mode
       int_path = selected[1]
-
       init_file = os.path.join(int_path, 'init.cfg')
 
       if os.path.isfile(init_file):
@@ -693,19 +692,17 @@ class MainWindow(wx.Frame):
 
     self.Close()
 
-
-
 # ------------------------------ Initialization  ----------------------------- #
 
-from iota.components.iota_base import InitGeneral
+from iota.components.iota_base import InitBase
 
 class ProcessInfo(object):
   """ Object with all the processing info UI needs to plot results """
   pass
 
-class UIInitAll(InitGeneral):
+class UIInitAll(InitBase):
   def __init__(self):
-    InitGeneral.__init__(self)
+    InitBase.__init__(self)
 
   def sanity_check(self):
     """ Check for conditions necessary to starting the run
@@ -718,54 +715,7 @@ class UIInitAll(InitGeneral):
       wx.MessageBox('ERROR: Data Not Found!', 'ERROR', wx.OK | wx.ICON_ERROR)
       return False, msg
 
-    return True, 'msg'
-
-  def initialize_info_object(self):
-
-    self.info = ProcessInfo()
-    self.info.__setattr__('finished_objects', [])
-    self.info.__setattr__('img_list', [])
-
-    self.info.__setattr__('nref_list', [])
-    self.info.__setattr__('nref_xaxis', [])
-    self.info.__setattr__('nsref_x', None)
-    self.info.__setattr__('nsref_y', None)
-    self.info.__setattr__('nsref_median', None)
-    self.info.__setattr__('res_list', [])
-    self.info.__setattr__('res_x', None)
-    self.info.__setattr__('res_y', None)
-    self.info.__setattr__('res_median', None)
-
-    self.info.__setattr__('user_sg', 'P1')
-    self.info.__setattr__('idx_array', None)
-    self.info.__setattr__('merged_indices', None)
-    self.info.__setattr__('b_factors', [])
-
-    self.info.__setattr__('status_summary',
-                          {'nonzero':[], 'names':[], 'patches':[]})
-
-    self.info.__setattr__('bookmark', 0)
-    self.info.__setattr__('unread_files', [])
-    self.info.__setattr__('unprocessed_images', 0)
-    self.info.__setattr__('cluster_iterable', [])
-    self.info.__setattr__('int_pickles', [])
-
-    self.info.__setattr__('best_pg', None)
-    self.info.__setattr__('best_uc', None)
-    self.info.__setattr__('cluster_info', {})
-    self.info.__setattr__('prime_info', {})
-
-    self.info.__setattr__('msg', '')
-    self.info.__setattr__('test_attribute', 0)
-    self.info.__setattr__('obj_list_file',
-                          os.path.join(self.tmp_base, 'finished_objects.lst'))
-    self.info.__setattr__('finished_pickles_file',
-                          os.path.join(self.int_base, 'finished_pickles.lst'))
-    self.info.__setattr__('cluster_info_file',
-                          os.path.join(self.int_base, 'cluster_info.pickle'))
-
-    # set info filepath
-    self.info_file = os.path.join(self.int_base, 'proc.info')
+    return True, msg
 
   def initialize_interface(self):
     """ Override with UI-specific init procedure
@@ -797,9 +747,6 @@ class UIInitAll(InitGeneral):
     if self.params.advanced.random_sample.flag_on and \
             self.params.advanced.random_sample.number < len(self.input_list):
       self.input_list = self.select_random_subset(self.input_list)
-
-    # Initialize info object for UI
-    self.initialize_info_object()
 
     # Run the sanity check procedure & return result
     is_good, msg = self.sanity_check()

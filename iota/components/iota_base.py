@@ -4,80 +4,299 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 10/30/2018
+Last Changed: 11/05/2018
 Description : IOTA base classes
 '''
 
 import os
+import math
+try:  # for Py3 compatibility
+    import itertools.ifilter as filter
+except ImportError:
+    pass
+
+from dxtbx import datablock as db, load as data_load
+from libtbx import easy_pickle as ep
+from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp
 
 from libtbx.easy_mp import parallel_map
 
-from iota.components.iota_image import SingleImage
+from iota.components.iota_processing import Integrator
 from threading import Thread
 import iota.components.iota_utils as util
 
-# ------------------------------ Processing Base ----------------------------- #
+# -------------------------------- Image Base -------------------------------- #
 
-class ProcessImage():
-  ''' Wrapper class to do full processing of an image '''
-  def __init__(self, init, input_entry, stage='all'):
+class SingleImageBase(object):
+  ''' Base class for containing all info (including data) for single image;
+  can also save to file if necessary or perform conversion if necessary '''
+
+  def __init__(self, imgpath, idx=None):
+    self.img_path = imgpath
+    self.obj_path = None
+    self.obj_file = None
+    self.int_path = None
+    self.int_file = None
+    self.viz_path = None
+    self.int_log = None
+    self.datablock = None
+
+    if idx:
+      self.img_index = idx
+    else:
+      self.img_index = 0
+
+
+    # Processing properties
+    self.status = None
+    self.fail = None
+    self.log_info = []
+
+    # Final statistics (may add stuff to dictionary later, as needed)
+    self.final = {'img': None,                        # Image filepath
+                  'final': None,                      # Integrated pickle
+                  'info': '',                         # Information (general)
+                  'a': 0, 'b': 0, 'c': 0,             # Cell edges
+                  'alpha': 0, 'beta': 0, 'gamma': 0,  # Cell angles
+                  'sg': None,                         # Space group
+                  'strong': 0,                        # Strong reflections
+                  'res': 0, 'lres': 0,                # Resolution, low res.
+                  'mos': 0, 'epv': 0,                 # Mosaicity, EPV
+                  'wavelength': 0,                    # Wavelength
+                  'distance': 0,                      # Distance
+                  'beamX': 0, 'beamY': 0,             # Beam XY (mm)
+                  'img_size':(0, 0),                  # Image size (pixels)
+                  'pixel_size':0,                     # Pixel Size
+                  'gain':0                            # Detector gain
+                  }
+
+  def write_to_file(self):
+    pass
+
+
+class ImageImporterBase():
+  ''' Base class for image importer, which will:
+        1. read an image file and extract data and info
+        2. apply any modifications if requested / necessary
+        3. output a datablock or file for processing
+  '''
+
+  def __init__(self, init):
     self.init = init
-    self.input_entry = input_entry
-    self.stage = stage
+    self.img_type = None
+    self.iparams = init.params
+    self.filepath = None
+    self.modify = False
 
-  def run(self):
-    """ Wrapper for processing function using the image object
-    @param input_entry: [image_number, total_images, image_object]
-    @return: image object
-    """
-    try:
-      if type(self.input_entry[2]) is str:
-        img_object = SingleImage(self.input_entry, self.init)
-      else:
-        img_object = self.input_entry[2]
-    except Exception:
-      return None
+  def instantiate_image_object(self, filepath, idx=None):
+    ''' Override to instantiate a SingleImage object for current backend
+    :param filepath: path to image file
+    :return: an image object
+    '''
+    self.img_object = SingleImageBase(imgpath=filepath, idx=idx)
 
+  def load_image_file(self, filepath):
+    ''' Loads datablock and populates image information dictionary (can
+    override to load images for old-timey HA14 processing)
+
+    :param filepath: path to raw diffraction image (or pickle!)
+    :return: datablock, error message (if any)
+    '''
+    # Create datablock from file
     try:
-      if self.stage == 'import':
-        if self.init.params.cctbx_ha14.selection.select_only.flag_on:
-          img_object.import_int_file(self.init)
-        else:
-          img_object.import_image()
-      elif self.stage == 'process':
-        img_object.process()
-      elif self.stage == 'all':
-        img_object.import_image()
-        img_object.process()
+      datablock = db.DataBlockFactory.from_filenames(filenames=[filepath])[0]
     except Exception as e:
-      print ('\nDEBUG: PROCESSING ERROR!', e)
-      return None
+      error = 'IOTA IMPORTER ERROR: Import failed! {}'.format(e)
+      print (error)
+      return None, error
 
+    # Load image infromation from datablock
+    try:
+      imgset = datablock.extract_imagesets()[0]
+      beam = imgset.get_beam()
+      s0 = beam.get_s0()
+      detector = imgset.get_detector()[0]
+
+      self.img_object.final['pixel_size'] = detector.get_pixel_size()[0]
+      self.img_object.final['img_size'] = detector.get_image_size()
+      self.img_object.final['beamX'] = detector.get_beam_centre(s0)[0]
+      self.img_object.final['beamY'] = detector.get_beam_centre(s0)[1]
+      self.img_object.final['gain'] = detector.get_gain()
+      self.img_object.final['distance'] = detector.get_distance()
+      self.img_object.final['wavelength'] = beam.get_wavelength()
+
+    except Exception as e:
+      error = 'IOTA IMPORTER ERROR: Information extraction failed! {}'.format(e)
+      print (error)
+      return datablock, error
+
+    return datablock, None
+
+  def modify_image(self, data=None):
+    ''' Override for specific backend needs (i.e. convert, mask, and/or square
+    images and output pickles for HA14'''
+    return data, None
+
+  def calculate_parameters(self, datablock=None):
+    ''' Override to perform calculations of image-specific parameters
+    :param datablock: Datablock with image info
+    :return: datablock, error message
+    '''
+    return datablock, None
+
+  def write_to_file(self, datablock, filepath):
+    filename = os.path.basename(filepath)
+    db_dump = db.DataBlockDumper(datablock)
+    db_dump.as_file(filename=filename)
+
+  def update_log(self, data=None, status='imported', msg=None):
+    if not data:
+      self.img_object.log_info.append('\n{}'.format(msg))
+      self.img_object.status = 'failed import'
+      self.img_object.fail = 'failed import'
+    else:
+      beamx = 'BEAM_X = {:<4.2f}, '.format(self.img_object.final['beamX'])
+      beamy = 'BEAM_Y = {:<4.2f}, '.format(self.img_object.final['beamY'])
+      pixel = 'PIXEL_SIZE = {:<8.6f}, ' \
+              ''.format(self.img_object.final['pixel_size'])
+      size  = 'IMG_SIZE = {:<4} X {:<4}, ' \
+              ''.format(self.img_object.final['img_size'][0],
+                        self.img_object.final['img_size'][1])
+      dist  = 'DIST = {}'.format(self.img_object.final['distance'])
+      info  = ['Parameters      :', beamx, beamy, pixel, size, dist]
+      self.img_object.log_info.append(''.join(info))
+      self.img_object.status = status
+      self.img_object.fail = None
+
+  def prep_output(self):
+    ''' Assign output paths to image object (will be used by various modules
+    to write out files in appropriate locations) '''
+
+    # Object path (may not need)
+    self.img_object.obj_path = util.make_image_path(self.img_object.img_path,
+                                                    self.init.input_base,
+                                                    self.init.obj_base)
+    fname = util.make_filename(self.img_object.img_path, new_ext='int')
+    self.img_object.obj_file = os.path.join(self.img_object.obj_path, fname)
+
+    # Final integration pickle path
+    self.img_object.int_path = util.make_image_path(self.img_object.img_path,
+                                                    self.init.input_base,
+                                                    self.init.fin_base)
+    fname = util.make_filename(self.img_object.img_path, prefix='int',
+                               new_ext='pickle')
+    self.img_object.int_file = os.path.join(self.img_object.int_path, fname)
+
+    # Processing log path for image
+    self.img_object.log_path = util.make_image_path(self.img_object.img_path,
+                                                    self.init.input_base,
+                                                    self.init.log_base)
+    fname = util.make_filename(self.img_object.img_path, new_ext='tmp')
+    self.img_object.int_log = os.path.join(self.img_object.log_path, fname)
+
+    # Visualization path (may need to deprecate)
+    self.img_object.viz_path = util.make_image_path(self.img_object.img_path,
+                                                    self.init.input_base,
+                                                    self.init.viz_base)
+    fname = util.make_filename(self.img_object.img_path, prefix='int',
+                               new_ext='png')
+    self.viz_file = os.path.join(self.img_object.viz_path, fname)
+
+    # Populate the 'final' dictionary
+    self.img_object.final['final'] = self.img_object.int_file
+    self.img_object.final['img'] = self.img_object.img_path
+
+  def import_image(self, input_entry):
+    ''' Image importing: read file, modify if requested, make datablock
+    :return: An image object with info and datablock
+    '''
+
+    # Interpret input
+    if type(input_entry) == list:
+      idx      = input_entry[0]
+      filepath = input_entry[2]
+    elif type(input_entry) == str:
+      idx = None
+      filepath = input_entry
+    else:
+      raise util.InputError('IOTA IMPORT ERROR: Unrecognized input -- {}'
+                            ''.format(input_entry))
+
+    # Instantiate image object and prep requisite paths
+    self.instantiate_image_object(filepath=filepath, idx=idx)
+    self.prep_output()
+
+    # Load image (default is datablock, override for HA14-style pickling)
+    self.datablock, error = self.load_image_file(filepath=filepath)
+
+    # Log initial image information
+    self.img_object.log_info.append('\n{:-^100}\n'.format(filepath))
+    self.update_log(data=self.datablock, msg=error)
+
+    # Stop there if data did not load
+    if not self.datablock:
+      return self.img_object, error
+
+    # Modify image as per backend (or not)
+    if self.modify:
+      self.datablock, error = self.modify_image(data=self.datablock)
+      if not self.datablock:
+        self.update_log(data=None, msg=error)
+        return self.img_object, error
+      else:
+        self.update_log(data=self.datablock, msg=error, status='converted')
+
+    # Calculate image-specific parameters (work in progress)
+    self.datablock, error = self.calculate_parameters(datablock=self.datablock)
+    if error:
+      self.update_log(data=self.datablock, msg=error)
+
+    # Finalize and output
+    self.img_object.datablock = self.datablock
+    self.img_object.status = 'imported'
+    return self.img_object, None
+
+  def make_image_object(self, input_entry):
+    '''Run image importer (override as needed)'''
+    img_object, error = self.import_image(input_entry=input_entry)
+    if error:
+      print(error)
     return img_object
 
-class ProcessGeneral(Thread):
+  def run(self, input_entry):
+    return self.make_image_object(input_entry)
+
+
+# ------------------------------ Processing Base ----------------------------- #
+
+class ProcessingThreadBase(Thread):
+  ''' Base class for submitting processing jobs to multiple cores '''
   def __init__(self,
                init=None,
                iterable=None,
-               stage='all',
-               abort_file=None):
+               stage='all'):
     Thread.__init__(self, name='iota_proc')
     self.init = init
     self.iterable = iterable
     self.stage = stage
-    self.abort = os.path.isfile(abort_file)
+    self.importer = None
+    self.integrator = None
 
-  def proc_wrapper(self, input_entry):
-    proc_image_instance = ProcessImage(init=self.init,
-                                       input_entry=input_entry,
-                                       stage=self.stage)
-    return proc_image_instance.run()
+  def import_and_process(self, input_entry):
+    if self.stage != 'process':
+      img_object = self.importer.run(input_entry)
+    else:
+      img_object = input_entry[2]
+    if self.stage != 'import' and img_object.status == 'imported':
+      img_object = self.integrator.run(img_object)
+    return img_object
 
   def callback(self, result):
     """ Override for custom callback behavior (or not) """
     return result
 
   def create_image_iterable(self):
+    # This is mostly for backward compatibility; may need to remove
     if self.stage == 'process':
       self.iterable = [[i, len(self.img_objects) + 1, j] for i, j in
                        enumerate(self.img_objects, 1)]
@@ -91,7 +310,7 @@ class ProcessGeneral(Thread):
 
   def run_process(self):
     self.img_objects = parallel_map(iterable=self.iterable,
-                                    func=self.proc_wrapper,
+                                    func=self.import_and_process,
                                     callback=self.callback,
                                     processes=self.init.params.mp.n_processors)
 
@@ -104,22 +323,87 @@ class ProcessGeneral(Thread):
     analysis.print_summary()
     analysis.make_prime_input()
 
-  def run(self):
-    """ Run IOTA in full-processing mode (i.e. process image from import to
-    integration; allows real-time tracking of output """
+  def process(self):
+    """ Run importer and/or processor """
 
-    # Make sure IOTA has been initialized and a list of images provided
+    # Create iterable if needed
+    if self.stage != 'process':
+      if not self.iterable:
+        self.create_image_iterable()
+
+    # Make sure all the important stuff has been provided
     assert self.init
-
-    if not self.iterable:
-      self.create_image_iterable()
+    assert self.iterable
+    if self.stage == 'all':
+      assert (self.importer and self.integrator)
+    elif self.stage == 'import':
+      assert self.importer
+    elif self.stage == 'process':
+      assert self.integrator
 
     self.run_process()
 
+  def run(self):
+    self.process()
 
 # -------------------------------- Init Base --------------------------------- #
 
-class InitGeneral(object):
+class ProcessInfo(object):
+  """ Object with all the processing info UI needs to plot results """
+  def __init__(self, tmp_base, int_base):
+
+    # Image tracking
+    self.bookmark = 0
+    self.finished_objects = []
+    self.img_list = []
+    self.unread_files = []
+    self.unprocessed_images = 0
+    self.int_pickles = []
+
+    # Processing stats
+    self.nref_list = []
+    self.nref_xaxis = []
+    self.nsref_x = None
+    self.nsref_y = None
+    self.nsref_median = None
+    self.res_list = None
+    self.res_x = None
+    self.res_y = None
+    self.res_median = None
+
+    # HKL / bfactor stats
+    self.user_sg = 'P1'
+    self.idx_array = None
+    self.merged_indices = None
+    self.b_factors = []
+
+    # Summary
+    self.status_summary = {
+      'nonzero': [],
+      'names': [],
+      'patches': []
+    }
+
+    # Clustering
+    self.cluster_iterable = []
+    self.cluster_info = {}
+
+    # PRIME
+    self.best_pg = None
+    self.best_uc = None
+    self.prime_info = {}
+
+    # Runtime files
+    self.obj_list_file         = os.path.join(tmp_base, 'finished_objects.lst')
+    self.finished_pickles_file = os.path.join(int_base, 'finished_pickles.lst')
+    self.cluster_info_file     = os.path.join(int_base, 'cluster_info.pickle')
+
+    # Miscellaneous
+    self.msg = ''
+    self.test_attribute = 0
+
+
+class InitBase(object):
   """ Base class to initialize an IOTA run """
 
   def __init__(self):
@@ -230,8 +514,6 @@ class InitGeneral(object):
 
   def initialize_output(self):
     try:
-      self.conv_base = util.set_base_dir('converted_pickles',
-                                         out_dir=self.params.output)
       self.int_base = util.set_base_dir('integration',
                                         out_dir=self.params.output)
       self.obj_base = os.path.join(self.int_base, 'image_objects')
@@ -259,7 +541,17 @@ class InitGeneral(object):
         if not os.path.isdir(self.tmp_base):
           os.makedirs(self.tmp_base)
       except OSError:
-        pass
+        self.tmp_base = os.path.join(self.int_base, 'tmp')
+        if not os.path.isdir(self.tmp_base):
+          os.makedirs(self.tmp_base)
+
+      # Designate files for init and image list iterable
+      self.init_file = os.path.join(self.int_base, 'init.cfg')
+      self.iter_file = os.path.join(self.int_base, 'iter.cfg')
+
+      # Initialize info object
+      self.info = ProcessInfo(int_base=self.int_base, tmp_base=self.tmp_base)
+      self.info_file = os.path.join(self.int_base, 'proc.info')
 
       return True, 'IOTA_INIT: OUTPUT INITIALIZED'
     except Exception as e:
@@ -352,7 +644,8 @@ class InitGeneral(object):
 
     # Interface-specific options - override in subclass
     ui_init_good, msg = self.initialize_interface()
-    print (msg)
+    if msg:
+      print (msg)
     if not ui_init_good:
       return False, msg
 

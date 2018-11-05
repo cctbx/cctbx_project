@@ -7,7 +7,7 @@ import iota.components.iota_ui_dialogs
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 10/18/2018
+Last Changed: 11/05/2018
 Description : IOTA GUI Windows / frames
 '''
 
@@ -772,13 +772,13 @@ class ProcessingTab(wx.Panel):
             cat = 'failed prefilter'
 
         if cat not in ('integrated', 'not processed'):
-          self.proc_fnames = [i.conv_img for i in self.info.finished_objects
+          self.proc_fnames = [i.img_path for i in self.info.finished_objects
                               if i.fail == cat]
         elif cat == 'integrated':
-          self.proc_fnames = [i.conv_img for i in self.info.finished_objects if
+          self.proc_fnames = [i.img_path for i in self.info.finished_objects if
                               i.fail is None and i.final['final'] is not None]
         elif cat == 'not processed':
-          self.proc_fnames = [i.conv_img for i in self.info.finished_objects if
+          self.proc_fnames = [i.img_path for i in self.info.finished_objects if
                               i.fail is None and i.final['final'] is None]
         else:
           self.proc_fnames = ''
@@ -1017,14 +1017,14 @@ class ProcessingTab(wx.Panel):
         if self.pick['axis'] == 'nsref':
           if not np.isnan(self.nsref_y[idx]):
             self.pick['index'] = idx
-            self.pick['image'] = self.info.finished_objects[idx].conv_img
+            self.pick['image'] = self.info.finished_objects[idx].img_path
             search = False
           else:
             search = True
         if self.pick['axis'] == 'res':
           if not np.isnan(self.res_y[idx]):
             self.pick['index'] = idx
-            self.pick['image'] = self.info.finished_objects[idx].conv_img
+            self.pick['image'] = self.info.finished_objects[idx].img_path
             search = False
           else:
             search = True
@@ -1039,7 +1039,7 @@ class ProcessingTab(wx.Panel):
     self.pick['picked'] = True
     idx = int(round(event.mouseevent.xdata)) - 1
     obj_i = [i for i in self.info.finished_objects if i.img_index == idx + 1]
-    img = obj_i[0].conv_img
+    img = obj_i[0].img_path
 
     print ('{}: {}'.format(idx+1, img))
     self.pick['image'] = img
@@ -1963,7 +1963,6 @@ class ProcWindow(wx.Frame):
       print (msg)
       self.good_to_go = False
 
-
   def extend_image_lists(self, img_list=None, img_only=False):
     ''' Extends image or input lists, as well as info lists, w/ new entries
 
@@ -2356,8 +2355,8 @@ class ProcWindow(wx.Frame):
       # Instantiate and start processing thread
       if not (hasattr(self, 'object_reader') and self.object_reader.is_alive()):
         self.obj_sw = wx.StopWatch()
-        self.object_reader = thr.ObjectReaderThread(self, init=self.init,
-                                                    info=self.info)
+        self.object_reader = thr.ObjectReaderThread(self, info=self.info,
+                                          source=self.info.obj_list_file)
         self.object_reader.start()
 
   def monitor_filesystem(self):
@@ -2391,7 +2390,6 @@ class ProcWindow(wx.Frame):
         else:
           self.status_txt.SetLabel('No new images found! Waiting ...')
     else:
-      print ('DEBUG: WRAPPING UP!!')
       self.status_txt.SetLabel('Wrapping up ...')
       self.finish_process()
 
@@ -2469,11 +2467,16 @@ class ProcWindow(wx.Frame):
         analysis = None
 
       # TODO: check if you even need this for backwards compatibility
-      if not self.info.finished_objects:
+      from multiprocessing import cpu_count
+      n_proc = int(cpu_count() * 0.75)
+      if not self.info.finished_objects:  # Find finished objects if none loaded
+        source = self.info.obj_list_file  # default to tmp/finished_objects.lst
+        if not os.path.isfile(source):    # if not, find object folder
+          source = self.init.obj_base
         self.object_reader = thr.ObjectReaderThread(self,
-                                                    init=self.init,
+                                                    source=source,
                                                     info=self.info,
-                                                    from_folder=True)
+                                                    n_proc=n_proc)
         self.object_reader.start()
 
       # Check for and recover clustering data

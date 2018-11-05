@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 10/30/2018
+Last Changed: 11/05/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -131,13 +131,13 @@ class JobSubmitThread(Thread):
       return
 
 class ObjectCruncher():
-  def __init__(self, info, object_folder=None):
+  def __init__(self, info, source, n_proc=None):
     self.info = info
-    self.list_file = info.obj_list_file
     self.new_finished_objects = []
-    self.object_folder = object_folder
+    self.source = source
+    self.n_proc = n_proc
 
-  def get_object_filenames(self):
+  def get_object_filenames(self, filepath):
     """ Reads file from bookmark and appends new object filenames to table
 
         Note: reading from file takes slightly longer to get going than
@@ -145,20 +145,18 @@ class ObjectCruncher():
         skipping a file when several are written simultaneously
     """
 
-    if os.path.isfile(self.list_file):
-      with open(self.list_file, 'r') as olf:
+    if os.path.isfile(filepath):
+      with open(filepath, 'r') as olf:
         olf.seek(self.info.bookmark)
         new_filenames = [l.replace('\n', '') for l in olf.readlines()]
         self.info.bookmark = olf.tell()
     else:
       new_filenames = []
 
-    if new_filenames:
-      self.info.unread_files.extend(new_filenames)
+    return new_filenames
 
-  def objects_from_folder(self):
-    self.info.unread_files = ginp.get_file_list(self.object_folder,
-                                                ext_only='int')
+  def objects_from_folder(self, dir):
+    return ginp.get_file_list(dir, ext_only='int')
 
   def read_object(self, filepath):
     """ Reads (using easy_pickle) an object pickle and extracts relevant
@@ -171,93 +169,107 @@ class ObjectCruncher():
     try:
       obj = ep.load(filepath)
       if obj and obj.status == 'final':
-        if not obj.fail:
-          pickle_path = obj.final['final']
-          if os.path.isfile(pickle_path):
-            try:
-              pickle = ep.load(pickle_path)
-              self.info.int_pickles.append(pickle_path)
-            except Exception as e:
-              print('IMAGE_PICKLE_ERROR for {}: {}'.format(pickle_path, e))
-              return obj
-          else:
-            return obj
-
-          # Populate w/ observations if object doesn't have them
-          if 'observations' not in obj.final:
-            obs = pickle['observations'][0]
-            obj.final['observations'] = obs
+        return obj
       else:
-        obj = None
-      return obj
-
+        return None
     except EOFError as e:
       print ('OBJECT_IMPORT_ERROR: ', e)
       return None
 
   def get_new_finished_objects(self):
-    read_files = []
-    for fn in self.info.unread_files:
-      if os.path.isfile(fn):
-        obj = self.read_object(fn)
-        if obj is not None:
-          self.new_finished_objects.append(obj)
-          read_files.append(fn)
+
+    if os.path.isdir(self.source):
+      new_filenames = self.objects_from_folder(dir=self.source)
+    elif os.path.isfile(self.source):
+      new_filenames = self.get_object_filenames(filepath=self.source)
+    else:
+      new_filenames = []
+    self.info.unread_files.extend(new_filenames)
+
+    if self.n_proc:
+      objects = parallel_map(iterable=self.info.unread_files,
+                             func=self.read_object,
+                             processes=self.n_proc)
+    else:
+      objects = [self.read_object(fn) for fn in self.info.unread_files]
+
+    finished = [o for o in objects if o is not None]
+    read_files = [o.obj_file for o in finished]
+    self.new_finished_objects.extend(finished)
 
     if read_files:
       self.info.unread_files = [f for f in self.info.unread_files if f not in
                              read_files]
 
-  def populate_data_points(self, objects=None):
-    for obj in objects:
-      try:
-        if not obj.fail:
-          # Get processing statistics
-          self.info.nref_list[obj.img_index - 1] = obj.final['strong']
-          self.info.res_list[obj.img_index - 1] = obj.final['res']
-          obs = obj.final['observations']
+  def populate_data_points(self, obj):
+    # Don't do for images that failed processing at any point
+    if obj.fail:
+      return obj
 
-          # Extract indices and convert to flex array
-          indices = [i[0] for i in obs]
-          if self.info.idx_array is None:
-            self.info.idx_array = flex.miller_index(indices)
-          else:
-            if indices:
-              self.info.idx_array.extend(flex.miller_index(indices))
+    try:
+      # Get processing statistics
+      self.info.nref_list[obj.img_index - 1] = obj.final['strong']
+      self.info.res_list[obj.img_index - 1] = obj.final['res']
 
-          # Determine Wilson B-factor
+      # Get observations if not in obj.final already
+      if 'observations' not in obj.final:
+        obs = None
+        pickle_path = obj.final['final']
+        if os.path.isfile(pickle_path):
           try:
-            from cctbx import statistics
-            from prime.postrefine.mod_mx import mx_handler
-            mxh = mx_handler()
-
-            asu_contents = mxh.get_asu_contents(500)
-            observations_as_f = obs.as_amplitude_array()
-            observations_as_f.setup_binner(auto_binning=True)
-            wp = statistics.wilson_plot(observations_as_f, asu_contents,
-                                        e_statistics=True)
-            self.info.b_factors.append(wp.wilson_b)
-          except RuntimeError as e:
-            print ('B_FACTOR_ERROR: ', e)
-            self.info.b_factors.append(0)
-
-          # Create Cluster iterable
-          try:
-            self.info.cluster_iterable.append(
-              [float(obj.final['a']),
-               float(obj.final['b']),
-               float(obj.final['c']),
-               float(obj.final['alpha']),
-               float(obj.final['beta']),
-               float(obj.final['gamma']),
-               obj.final['sg']
-               ])
+            pickle = ep.load(pickle_path)
           except Exception as e:
-            print ('CLUSTER_ITERABLE_ERROR for {}: {}'.format(obj.obj_file, e))
-            pass
+            print('IMAGE_PICKLE_ERROR for {}: {}'.format(pickle_path, e))
+          else:
+            self.info.int_pickles.append(pickle_path)
+            if 'observations' not in obj.final:
+              obs = pickle['observations'][0]
+              obj.final['observations'] = obs
+      else:
+        obs = obj.final['observations']
+
+      # Extract indices and convert to flex array
+      if obs:
+        indices = [i[0] for i in obs]
+        if self.info.idx_array is None:
+          self.info.idx_array = flex.miller_index(indices)
+        else:
+          if indices:
+            self.info.idx_array.extend(flex.miller_index(indices))
+
+      # Determine Wilson B-factor
+      try:
+        from cctbx import statistics
+        from prime.postrefine.mod_mx import mx_handler
+        mxh = mx_handler()
+
+        asu_contents = mxh.get_asu_contents(500)
+        observations_as_f = obs.as_amplitude_array()
+        observations_as_f.setup_binner(auto_binning=True)
+        wp = statistics.wilson_plot(observations_as_f, asu_contents,
+                                    e_statistics=True)
+        self.info.b_factors.append(wp.wilson_b)
+      except RuntimeError as e:
+        print ('B_FACTOR_ERROR: ', e)
+        self.info.b_factors.append(0)
+
+      # Create Cluster iterable
+      try:
+        self.info.cluster_iterable.append(
+          [float(obj.final['a']),
+           float(obj.final['b']),
+           float(obj.final['c']),
+           float(obj.final['alpha']),
+           float(obj.final['beta']),
+           float(obj.final['gamma']),
+           obj.final['sg']
+           ])
 
       except Exception as e:
-        print ('OBJECT_ERROR:', e, "({})".format(obj.obj_file))
+        print ('CLUSTER_ITERABLE_ERROR for {}: {}'.format(obj.obj_file, e))
+        pass
+    except Exception as e:
+      print ('OBJECT_ERROR:', e, "({})".format(obj.obj_file))
 
   def calculate_summary_chart(self):
 
@@ -332,47 +344,49 @@ class ObjectCruncher():
 
   def calc_cycle(self):
     """ Performs all the object-getting and stats calculations """
-
-    # Read file and get object filenames
-    if self.object_folder:
-      self.objects_from_folder()
-    else:
-      self.get_object_filenames()
-
-    # Read new finished objects
-    self.get_new_finished_objects()
+    # Read objects from source
+    if type(self.source) == str:
+      self.get_new_finished_objects()
+    elif type(self.source) == list:
+      self.new_finished_objects = self.source
 
     # Extract data and add to info object
     if self.new_finished_objects:
-      self.populate_data_points(objects=self.new_finished_objects)
+      if self.n_proc:
+        parallel_map(iterable=self.new_finished_objects,
+                     func=self.populate_data_points,
+                     processes=self.n_proc)
+      else:
+        for obj in self.new_finished_objects:
+          self.populate_data_points(obj=obj)
       self.info.finished_objects.extend(self.new_finished_objects)
 
-    self.calculate_proc_plot()
-    self.calculate_hkl_plot()
-    self.calculate_summary_chart()
+    if self.info.finished_objects:
+      self.calculate_proc_plot()
+      self.calculate_hkl_plot()
+      self.calculate_summary_chart()
 
+  def run(self):
+    self.calc_cycle()
     return self.info
 
 class ObjectReaderThread(Thread):
   """ Thread for reading processed objects and making all calculations for
       plotting in main GUI thread """
-  def __init__(self, parent, init, info=None, from_folder=False):
+  def __init__(self, parent, source, info=None, info_file=None, n_proc=None):
     Thread.__init__(self, name='object_reader')
     self.parent = parent
-    self.init = init
-    self.info = info
-    if from_folder:
-      self.object_folder = init.obj_base
-    else:
-      self.object_folder = None
+    self.info_file = info_file
+    self.obj_worker = ObjectCruncher(info=info, source=source, n_proc=n_proc)
 
   def run(self):
-    self.obj_worker = ObjectCruncher(info=self.info,
-                                     object_folder=self.object_folder)
-    self.info = self.obj_worker.calc_cycle()
+    info = self.obj_worker.run()
 
-    evt = ObjectFinderAllDone(tp_EVT_OBJDONE, -1, obj_list=self.info)
-    wx.PostEvent(self.parent, evt)
+    if self.info_file:
+      ep.dump(self.info_file, info)
+    else:
+      evt = ObjectFinderAllDone(tp_EVT_OBJDONE, -1, obj_list=info)
+      wx.PostEvent(self.parent, evt)
 
 class ImageFinderThread(Thread):
   """ Worker thread generated to poll filesystem on timer. Will check to see
@@ -844,7 +858,7 @@ class SpotFinderThread(Thread):
       proc_params.output.profile_filename = None
       proc_params.output.integration_pickle = None
 
-      from iota.components.iota_dials import IOTADialsProcessor
+      from iota.components.iota_processing import IOTADialsProcessor
       self.processor = IOTADialsProcessor(params=proc_params)
 
   def run(self):

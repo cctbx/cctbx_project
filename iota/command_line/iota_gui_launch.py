@@ -6,7 +6,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 10/16/2018
+Last Changed: 11/05/2018
 Description : IOTA GUI startup module.
 '''
 
@@ -20,14 +20,14 @@ class MainApp(wx.App):
     self.frame = MainWindow(None, -1, title='IOTA v.{}'.format(iota_version))
 
     # Initialize Main window
-
     self.frame.place_and_size()
     self.frame.read_command_line_options()
 
+    # Show main window
     self.frame.Show(True)
     self.SetTopWindow(self.frame)
     return True
 
 if __name__ == '__main__':
-  app = MainApp(0)
+  app = MainApp(0, useBestVisual=True)
   app.MainLoop()

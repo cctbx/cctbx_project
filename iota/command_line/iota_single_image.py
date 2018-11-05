@@ -8,7 +8,7 @@ from past.builtins import xrange
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/31/2018
-Last Changed: 10/30/2018
+Last Changed: 11/05/2018
 Description : IOTA Single Image: can process single image using DIALS,
 with an array of options (i.e. anything from only spotfinding, to indexing,
 space group determination, refinement, integration)
@@ -26,7 +26,7 @@ from xfel.command_line.frame_extractor import ConstructFrame
 
 from threading import Thread
 
-from iota.components.iota_dials import IOTADialsProcessor
+from iota.components.iota_processing import IOTADialsProcessor
 from dials.command_line.stills_process import phil_scope
 from iota.components.iota_utils import Capturing, IOTATermination
 from iota.components.iota_input import write_defaults
@@ -80,7 +80,7 @@ class DIALSSpfIdx(Thread):
     self.backend = backend
     self.paramfile = paramfile
     self.termfile = termfile
-    self.mp.n_processors = n_processors
+    self.n_processors = n_processors
     self.index = index
     self.verbose = verbose
     self.min_bragg = min_bragg

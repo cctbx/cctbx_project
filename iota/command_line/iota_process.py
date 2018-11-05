@@ -4,23 +4,32 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/26/2014
-Last Changed: 10/30/2018
+Last Changed: 11/05/2018
 Description : IOTA image processing submission module
 '''
 
-from iota.components.iota_base import ProcessGeneral
+from iota.components.iota_base import ProcessingThreadBase
 
-class SilentProcess(ProcessGeneral):
+class SilentProcess(ProcessingThreadBase):
   """ Process module customized for 'silent' running (for UI and queueing) """
-  def __init__(self, init, iterable, stage, abort_file):
-    ProcessGeneral.__init__(self, init=init, iterable=iterable,
-                            stage=stage, abort_file=abort_file)
+  def __init__(self, init, iterable, stage):
+    ProcessingThreadBase.__init__(self, init=init, iterable=iterable,
+                                  stage=stage)
 
-class UIProcess(ProcessGeneral):
+    # Initialize importer and processor depending on backend
+    if init.params.advanced.processing_backend == 'ha14':
+      from iota.components.iota_image import OldImageImporter as Importer
+      from iota.components.iota_cctbx_ha14 import Integrator
+    else:
+      from iota.components.iota_image import ImageImporter as Importer
+      from iota.components.iota_processing import Integrator
+    self.importer   = Importer(init=init)
+    self.integrator = Integrator(init=init)
+
+class UIProcess(SilentProcess):
   """ Process module customized for 'silent' running (for UI and queueing) """
-  def __init__(self, init, iterable, stage, abort_file):
-    ProcessGeneral.__init__(self, init=init, iterable=iterable,
-                            stage=stage, abort_file=abort_file)
+  def __init__(self, init, iterable, stage):
+    SilentProcess.__init__(self, init=init, iterable=iterable, stage=stage)
 
   def callback(self, result):
     """ Will add object file to tmp list for inclusion in info """
@@ -56,11 +65,9 @@ if __name__ == "__main__":
   iterable = ep.load(args.files)
 
   if args.mode == 'ui':
-    proc = UIProcess(init=init, iterable=iterable, stage='all',
-                         abort_file=args.stopfile)
+    proc = UIProcess(init=init, iterable=iterable, stage='all')
   elif args.mode == 'silent':
-    proc = SilentProcess(init=init, iterable=iterable, stage='all',
-                         abort_file=args.stopfile)
+    proc = SilentProcess(init=init, iterable=iterable, stage='all')
   else:
     proc = None
 

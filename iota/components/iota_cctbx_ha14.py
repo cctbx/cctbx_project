@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/30/2018
+Last Changed: 11/05/2018
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
@@ -35,7 +35,6 @@ class Triage(object):
 
   def __init__(self,
                img,
-               gain,  # Currently not used by DISTL, how awkward!
                params):
 
     self.img = img
@@ -45,10 +44,12 @@ class Triage(object):
     """ Performs a quick DISTL spotfinding and returns Bragg spots information.
     """
     from spotfinder.applications import signal_strength
-
     # run DISTL spotfinder
-    with util.Capturing() as distl_output:
-      Org = signal_strength.run_signal_strength(params)
+    try:
+      with util.Capturing() as distl_output:
+        Org = signal_strength.run_signal_strength(params)
+    except NotImplementedError as e:
+      print ("NOT IMPLEMENTED ERROR FOR {}".format(self.img))
 
     # Extract relevant spotfinding info
     for frame in Org.S.images.keys():
@@ -146,7 +147,207 @@ class Triage(object):
     return status, log_entry, start_sph, start_spa
 
 
-class Integrator(object):
+class Integrator():
+  ''' Replaces img.process() function in old SingleImage object '''
+  def __init__(self, init, verbose=True):
+    self.init = init
+    self.params = init.params
+    self.img_object = None
+    self.verbose = verbose
+
+  def integrate_cctbx(self, tag, grid_point=0, single_image=False):
+    """ Runs integration using the Integrator class """
+
+    # Check to see if the image is suitable for grid search / integration
+    if self.img_object.fail is not None:
+      self.img_object.grid = []
+      self.img_object.final['final'] = None
+    else:
+      integrator = Processor(params=self.init.params,
+                             source_image=self.img_object.img_path,
+                             output_image=self.img_object.int_file,
+                             viz=self.img_object.viz_path,
+                             log=self.img_object.int_log,
+                             tag=tag,
+                             tmp_base=self.init.tmp_base,
+                             gain=self.img_object.gain,
+                             single_image=single_image)
+      if tag == 'grid search':
+        self.img_object.log_info.append('\nCCTBX grid search:')
+        for i in range(len(self.img_object.grid)):
+          int_results = integrator.integrate(self.img_object.grid[i])
+          self.img_object.grid[i].update(int_results)
+          img_filename = os.path.basename(self.img_object.conv_img)
+          log_entry ='{:<{width}}: S = {:<3} H = {:<3} ' \
+                     'A = {:<3} ---> {}'.format(img_filename,
+                      self.img_object.grid[i]['sih'],
+                      self.img_object.grid[i]['sph'],
+                      self.img_object.grid[i]['spa'],
+                      self.img_object.grid[i]['info'],
+                      width = len(img_filename) + 2)
+          self.img_object.log_info.append(log_entry)
+          self.img_object.gs_results.append(log_entry)
+
+        # Throw out grid search results that yielded no integration
+        self.img_object.grid = [i for i in self.img_object.grid if
+                                "not integrated" not in i['info'] and
+                                "no data recorded" not in i['info']]
+        self.img_object.status = 'grid search'
+
+      elif tag == 'split grid':
+        self.img_object.log_info.append('\nCCTBX INTEGRATION grid search:')
+        int_results = integrator.integrate(self.img_object.grid[grid_point])
+        self.img_object.grid[grid_point].update(int_results)
+        img_filename = os.path.basename(self.img_object.conv_img)
+        log_entry = '{:<{width}}: S = {:<3} H = {:<3} A = {:<3} ---> {}' \
+                    ''.format(img_filename,
+                              self.img_object.grid[grid_point]['sih'],
+                              self.img_object.grid[grid_point]['sph'],
+                              self.img_object.grid[grid_point]['spa'],
+                              self.img_object.grid[grid_point]['info'],
+                              width=len(img_filename) + 2)
+        self.img_object.log_info.append(log_entry)
+        self.img_object.gs_results.append(log_entry)
+
+      elif tag == 'integrate':
+        self.img_object.log_info.append('\nCCTBX final integration:')
+        final_results = integrator.integrate(self.img_object.final)
+        self.img_object.final.update(final_results)
+        self.img_object.status = 'final'
+        img_filename = os.path.basename(self.img_object.conv_img)
+        log_entry = '{:<{width}}: S = {:<3} H = {:<3} A = {:<3} ---> {}' \
+                    ''.format(img_filename,
+                              self.img_object.final['sih'],
+                              self.img_object.final['sph'],
+                              self.img_object.final['spa'],
+                              self.img_object.final['info'],
+                              width=len(img_filename) + 2)
+        self.img_object.log_info.append(log_entry)
+
+        import iota.components.iota_vis_integration as viz
+        if self.params.analysis.viz == 'integration':
+          viz.make_png(self.img_object.final['img'],
+                       self.img_object.final['final'],
+                       self.img_object.viz_file)
+        elif self.params.analysis.viz == 'cv_vectors':
+          viz.cv_png(self.img_object.final['img'],
+                     self.img_object.final['final'],
+                     self.img_object.viz_file)
+
+  def select_cctbx(self):
+    """ Selects best grid search result using the Selector class """
+    if self.img_object.fail is None:
+      selector = Selector(self.img_object.grid,
+                          self.img_object.final,
+                          self.params.cctbx_ha14.selection.prefilter.flag_on,
+                          self.params.cctbx_ha14.selection.prefilter.target_uc_tolerance,
+                          self.params.cctbx_ha14.selection.prefilter.target_pointgroup,
+                          self.params.cctbx_ha14.selection.prefilter.target_unit_cell,
+                          self.params.cctbx_ha14.selection.prefilter.min_reflections,
+                          self.params.cctbx_ha14.selection.prefilter.min_resolution,
+                          self.params.cctbx_ha14.selection.select_by)
+
+      self.img_object.fail, self.img_object.final, log_entry = selector.select()
+      self.img_object.status = 'selection'
+      self.img_object.log_info.append(log_entry)
+
+  def process(self, img_object, single_image=False):
+    """ Image processing; selects method, runs requisite modules """
+    self.img_object = img_object
+
+    if self.img_object.status != 'bypass grid search':
+      self.img_object.status = 'processing'
+
+    #for CCTBX indexing / integration
+    terminate = False
+    prev_status = self.img_object.status
+    prev_fail = 'first cycle'
+    prev_final = self.img_object.final
+    prev_epv = 9999
+
+    while not terminate:
+      # Run grid search if haven't already
+      if (
+              self.img_object.fail is None and
+              'grid search' not in self.img_object.status
+      ):
+        self.integrate_cctbx('grid search', single_image=single_image)
+
+      # Run selection if haven't already
+      if (
+              self.img_object.fail is None and
+              self.img_object.status != 'selection'
+      ):
+        self.select_cctbx()
+
+      # If smart grid search is active run multiple rounds until convergence
+      if self.params.cctbx_ha14.grid_search.type == 'smart':
+        if (
+                self.img_object.fail is None and
+                self.img_object.final['epv'] < prev_epv
+        ):
+          prev_epv = self.img_object.final['epv']
+          prev_final = self.img_object.final
+          prev_status = self.img_object.status
+          prev_fail = self.img_object.fail
+          self.hmed = self.img_object.final['sph']
+          self.amed = self.img_object.final['spa']
+          self.img_object.generate_grid()
+          self.img_object.final['final'] = self.img_object.int_file
+          if len(self.img_object.grid) == 0:
+            self.img_object.final = prev_final
+            self.img_object.status = prev_status
+            self.img_object.fail = prev_fail
+            terminate = True
+            continue
+          if self.verbose:
+            log_entry = '\nNew starting point: H = {}, A = {}\n'\
+                        ''.format(self.hmed, self.amed)
+            self.img_object.log_info.append(log_entry)
+        else:
+          if prev_fail != 'first cycle':
+            self.img_object.final = prev_final
+            self.img_object.status = prev_status
+            self.img_object.fail = prev_fail
+            if self.verbose:
+              log_entry = '\nFinal set of parameters: H = {}, A = {}'\
+                          ''.format(self.img_object.final['sph'],
+                                    self.img_object.final['spa'])
+              self.img_object.log_info.append(log_entry)
+          terminate = True
+
+      # If brute force grid search is selected run one round
+      else:
+        terminate = True
+
+    # Run final integration if haven't already
+    if self.img_object.fail is None and self.img_object.status != 'final':
+      self.integrate_cctbx('integrate', single_image=single_image)
+
+    # If verbose output selected (default), write to main log
+    if self.verbose:
+       log_entry = "\n".join(self.img_object.log_info)
+       util.main_log(self.init.logfile, log_entry)
+       util.main_log(self.init.logfile, '\n\n')
+
+    # Make a temporary process log into a final process log
+    if os.path.isfile(self.img_object.int_log):
+      l_fname = util.make_filename(self.img_object.int_log, new_ext='log')
+      final_int_log = os.path.join(self.img_object.log_path, l_fname)
+      os.rename(self.img_object.int_log, final_int_log)
+
+    # Save results into a pickle file
+    self.img_object.status = 'final'
+    from libtbx import easy_pickle as ep
+    ep.dump(self.img_object.obj_file, self.img_object)
+
+    return self.img_object
+
+  def run(self, img_object):
+    return self.process(img_object=img_object, single_image=False)
+
+
+class Processor(object):
   """ Class for image integration (w/ grid search params) """
   def __init__(self,
                params,
@@ -203,7 +404,11 @@ class Integrator(object):
         known_setting = 12
       elif t_lat == 'cubic':
         known_setting = 22
-      self.args.extend(['known_setting={}'.format(known_setting)])
+      else:
+        known_setting = None
+
+      if known_setting:
+        self.args.extend(['known_setting={}'.format(known_setting)])
 
     # Centering type if exists
     t_ctype = self.params.cctbx_ha14.target_centering_type
@@ -371,7 +576,6 @@ class Integrator(object):
           f.write('{}\n'.format(entry))
 
     return int_results
-
 
 class Selector(object):
   """ Class for selection of optimal spotfinding parameters from grid search """

@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/30/2018
+Last Changed: 11/05/2018
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -31,124 +31,122 @@ from libtbx import easy_pickle as ep
 from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp
 
 import iota.components.iota_utils as util
-import iota.components.iota_vis_integration as viz
+from iota.components.iota_base import SingleImageBase, ImageImporterBase
 
-class SingleImage(object):
 
-  def __init__(self, img, init, verbose=True, imported_grid=None):
-    """ Constructor for the SingleImage object using a raw image file or pickle
+class OldSingleImage(SingleImageBase):
+  ''' SingleImage object for use with the old HA14 processing (with
+  conversion and all those goodies) '''
+  def __init__(self, imgpath, idx=None):
+    SingleImageBase.__init__(self, imgpath=imgpath, idx=idx)
+    self.raw_img = imgpath
+    self.conv_img = None
+    self.gain = 1.0
+
+    # Grid search parameters
+    self.grid = []
+    self.gs_results = []
+
+    # Append DISTL spot-finding parameters to final info object
+    self.final['sih'] = 0       # Signal height
+    self.final['sph'] = 0       # Spot height
+    self.final['spa'] = 0       # Spot area
+
+  def generate_grid(self, gs_type='brute_force', sig_search=False,
+                    hr=0, ar=0, hmed=0, amed=0):
+    ''' HA14-specific function to run image triage and generate grid search '''
+
+    if gs_type == 'smart':
+      hrange = 1
+      arange = 1
+    elif gs_type in ('none', 'no_grid_search'):
+      hrange = 0
+      arange = 0
+    else:
+      hrange = hr
+      arange = ar
+    grid_points = []
+
+    h_min = hmed - hrange
+    h_max = hmed + hrange
+    a_min = amed - arange
+    a_max = amed + arange
+    h_std = hr
+    a_std = ar
+
+    for spot_area in range(a_min, a_max + 1):
+      for spot_height in range(h_min, h_max + 1):
+        if sig_search:
+          if spot_height >= 1 + h_std:
+            sigs = range(spot_height - h_std, spot_height + 1)
+          elif spot_height < 1 + h_std:
+            sigs = range(1, spot_height + 1)
+          elif spot_height == 1:
+            sigs = [1]
+        else:
+          sigs = [spot_height]
+
+        for sig_height in sigs:
+          if (spot_area, spot_height, sig_height) not in grid_points:
+            grid_points.append((spot_area, spot_height, sig_height))
+            self.grid.append(
+              {'sih': sig_height,
+               'sph': spot_height,
+               'spa': spot_area,
+               'a': 0, 'b': 0, 'c': 0,
+               'alpha': 0, 'beta': 0, 'gamma': 0,
+               'sg': '', 'strong': 0, 'res': 0, 'lres': 0,
+               'mos': 0, 'epv': 0, 'info': '', 'ok': True}
+            )
+
+class OldImageImporter(ImageImporterBase):
+  ''' Image importer for old-skool HA14 processing (outputs an image pickle) '''
+
+  def __init__(self, init):
+    ImageImporterBase.__init__(self, init=init)
+    self.params = init.params
+    self.modify = True
+    self.conv_base = util.set_base_dir('converted_pickles',
+                                       out_dir=self.params.output)
+
+  def instantiate_image_object(self, filepath, idx=None):
+    ''' Instantiate a SingleImage object for current backend
+    :param filepath: path to image file
+    '''
+    self.img_object = OldSingleImage(imgpath=filepath, idx=idx)
+
+  def image_triage(self):
+    # Triage image (i.e. check for usable diffraction, using selected method)
+    from iota.components.iota_cctbx_ha14 import Triage
+    triage = Triage(self.img_object.conv_img, self.params)
+    fail, log_entry, hmed, amed = triage.triage_image()
+
+    if not fail:
+      self.img_object.status = 'triaged'
+    else:
+      self.img_object.status = fail
+
+    self.img_object.fail = fail
+    self.img_object.log_info.append(log_entry)
+
+    return hmed, amed
+
+  def load_image_file(self, filepath):
+    """ Reads a single image file (e.g. a CBF or MCCD) and returns raw data,
+    experiment information, and an image type (e.g. pickle, raw image, or none)
+    :param img: path to image file
+    :return: data: raw image data and experiment info
+             img_type: which type of image this was, or None if not loaded
     """
 
-    # Initialize parameters
-    self.params = init.params
-    self.user_id = init.user_id
-    self.raw_img = img[2]
-    self.conv_img = img[2]
-    self.img_index = img[0]
-    self.center_int = 0
-    self.status = None
-    self.fail = None
-    self.final = None
-    self.log_info = []
-    self.gs_results = []
-    self.main_log = init.logfile
-    self.verbose = verbose
-    self.hmed = self.params.cctbx_ha14.grid_search.height_median
-    self.amed = self.params.cctbx_ha14.grid_search.area_median
-
-    self.input_base = init.input_base
-    self.conv_base = init.conv_base
-    self.int_base = init.int_base
-    self.obj_base = init.obj_base
-    self.fin_base = init.fin_base
-    self.viz_base = init.viz_base
-    self.log_base = init.log_base
-    self.tmp_base = init.tmp_base
-
-    # self.filename_correction = False
-    self.obj_path = None
-    self.obj_file = None
-    self.fin_path = None
-    self.fin_file = None
-    self.viz_path = None
-
-
-# ============================== SELECTION-ONLY FUNCTIONS ============================== #
-
-  def import_int_file(self, init):
-    """ Replaces path settings in imported image object with new settings
-        NEED TO RE-DO LATER """
-
-    # Generate paths to output files
-    self.params = init.params
-    self.main_log = init.logfile
-    self.input_base = init.input_base
-    self.conv_base = init.conv_base
-    self.int_base = init.int_base
-    self.obj_base = init.obj_base
-    self.fin_base = init.fin_base
-    self.log_base = init.log_base
-    self.viz_base = init.viz_base
-    filename = util.make_filename(self.conv_img)
-
-    self.obj_path = util.make_image_path(self.conv_img, self.input_base, self.obj_base)
-    self.obj_file = os.path.abspath(os.path.join(self.obj_path, filename + ".int"))
-    self.fin_path = util.make_image_path(self.conv_img, self.input_base, self.fin_base)
-    self.fin_file = os.path.abspath(os.path.join(self.fin_path, filename + "_int.pickle"))
-    self.viz_path = util.make_image_path(self.conv_img, self.input_base, self.viz_base)
-    self.viz_file = os.path.join(self.viz_path, filename + "_int.png")
-    self.log_path = util.make_image_path(self.conv_img, self.input_base, self.log_base)
-
-    self.final['final'] = self.fin_file
-    self.final['img'] = self.conv_img
-
-    # Create actual folders (if necessary)
-    try:
-      if not os.path.isdir(self.obj_path):
-        os.makedirs(self.obj_path)
-      if not os.path.isdir(self.fin_path):
-        os.makedirs(self.fin_path)
-      if not os.path.isdir(self.viz_path):
-        os.makedirs(self.viz_path)
-    except OSError:
-      pass
-
-    # Grid search / integration log file
-    self.int_log = os.path.join(self.log_path,
-                          os.path.basename(self.conv_img).split('.')[0] + '.tmp')
-
-    # Reset status to 'grid search' to pick up at selection (if no fail)
-    if self.fail is None:
-      self.status = 'bypass grid search'
-
-    return self
-
-  def determine_gs_result_file(self):
-    """ For 'selection-only' cctbx.xfel runs, determine where the image objects are """
-    if self.params.cctbx_ha14.selection.select_only.grid_search_path is not None:
-      obj_path = os.path.abspath(self.params.cctbx_ha14.selection.select_only.grid_search_path)
-    else:
-      run_number = int(os.path.basename(self.int_base)) - 1
-      obj_path = "{}/integration/{:03d}/image_objects"\
-                "".format(os.path.abspath(os.curdir), run_number)
-    gs_result_file = os.path.join(obj_path, os.path.basename(self.obj_file))
-    return gs_result_file
-
-
-# =============================== IMAGE IMPORT FUNCTIONS =============================== #
-
-  def load_image(self, img):
-    """ Reads raw image file and extracts data for conversion into pickle
-        format. Also estimates gain if turned on."""
-    # Load raw image or image pickle
-
+    error = None
     try:
       with util.Capturing() as junk_output:
-        loaded_img = dxtbx.load(img)
+        loaded_img = dxtbx.load(filepath)
     except Exception as e:
-      print ('IOTA IMPORT ERROR:', e)
+      error = 'IOTA IMPORTER ERROR: DXTBX failed! {}'.format(e)
+      print (e)
       loaded_img = None
-      pass
 
     # Extract image information
     if loaded_img is not None:
@@ -165,9 +163,7 @@ class SingleImage(object):
 
       if scan is None:
         timestamp = None
-        img_type = 'pickle'
       else:
-        img_type = 'raw'
         msec, sec = math.modf(scan.get_epochs()[0])
         timestamp = evt_timestamp((sec,msec))
 
@@ -189,80 +185,118 @@ class SingleImage(object):
           data['OSC_START'] = 0 #osc_start
           data['OSC_RANGE'] = 0 #osc_start
           data['TIME'] = scan.get_exposure_times()[0]
+
+      # Populate image object information
+      self.img_object.final['pixel_size'] = pixel_size
+      self.img_object.final['img_size'] = (data['SIZE1'], data['SIZE2'])
+      self.img_object.final['beamX'] = beam_x
+      self.img_object.final['beamY'] = beam_y
+      self.img_object.final['gain'] = detector.get_gain()
+      self.img_object.final['distance'] = distance
+      self.img_object.final['wavelength'] = wavelength
+
     else:
       data = None
-      img_type = 'not imported'
 
-    # Estimate gain (or set gain to 1.00 if cannot calculate)
-    # Cribbed from estimate_gain.py by Richard Gildea
-    if self.params.advanced.estimate_gain:
-      from dxtbx.datablock import DataBlockFactory
-      from dials.command_line.estimate_gain import estimate_gain
-      with util.Capturing() as junk_output:
-        try:
-          datablock = DataBlockFactory.from_filenames([self.raw_img])[0]
-          imageset = datablock.extract_imagesets()[0]
-          self.gain = estimate_gain(imageset)
-        except Exception:
-          self.gain = 1.0
+    return data, error
+
+  def apply_mask_from_file(self, data, mask_file, invert=False):
+    ''' Read a mask from file (should be a bool array) and set every pixel
+    under mask to -2 (i.e. will be ignored by processing)
+
+    :param data: raw image data
+    :param mask_file: filepath to the mask
+    :param invert: invert boolean array from True to False (need for HA14)
+    :return: masked data '''
+
+    img_raw_bytes = data['DATA']
+    error = None
+
+    try:
+      full_mask = ep.load(mask_file)
+      if type(full_mask) == tuple:
+        full_mask = full_mask[0]
+
+      if invert:
+        mask = full_mask == False
+      else:
+        mask = full_mask
+      if mask is not None:
+        img_masked = img_raw_bytes.set_selected(mask, -2)
+        data['DATA'] = img_masked
+
+    except Exception as e:
+      error =  'IOTA IMPORTER ERROR: Mask failed! {}'.format(e)
+      print (error)
+
+    return data, error
+
+  def rename_converted_image(self, filepath):
+    # Generate converted image pickle filename
+    rename_choice = str(
+      self.params.cctbx_ha14.image_conversion.rename_pickle).lower()
+    if rename_choice in ("keep_file_structure", "none"):
+      img_dir = util.make_image_path(filepath, self.input_base, self.conv_base)
+      img_filename = util.make_filename(filepath, new_ext='pickle')
     else:
-      self.gain = 1.0
+      self.input_base = self.conv_base
+      if rename_choice == "auto_filename":
+        prefix = self.init.user_id
+      elif rename_choice == "custom_filename":
+        prefix = self.params.cctbx_ha14.image_conversion.rename_pickle_prefix
+      else:
+        prefix = 'iota'
+      img_dir = self.conv_base
+      number = int(os.path.basename(self.conv_base))
+      img_filename = "{}_{}_{:05d}.pickle" \
+                 "".format(prefix, number, self.img_object.img_index)
+    return os.path.abspath(os.path.join(img_dir, img_filename))
 
-    return data, img_type
+  def apply_threshold(self, data):
+    """ Identifies beamstop shadow and sets pixels inside to -2 (to be ignored by
+        processing software). Clunky now (merely finds all pixels with intensity
+        less than 0.4 * image average intensity), to be refined later.
+    """
+    try:
+      img_raw_bytes = data['DATA']
+      beamstop = self.params.image_import.beamstop
 
-  def generate_grid(self):
-    """ Function to generate grid search parameters for this image object
-        CCTBX.XFEL ONLY """
+      img_thresh = int((beamstop*flex.mean(img_raw_bytes.as_double())))
+      beam_stop_sel = img_raw_bytes <= img_thresh
+      img_masked = img_raw_bytes.set_selected(beam_stop_sel, -2)
 
-    self.grid = []
-    h_min = self.hmed - self.hrange
-    h_max = self.hmed + self.hrange
-    a_min = self.amed - self.arange
-    a_max = self.amed + self.arange
-    h_std = self.params.cctbx_ha14.grid_search.height_range
-    a_std = self.params.cctbx_ha14.grid_search.area_range
+      # mask extensive overloads, too
+      #top_thresh = data['SATURATED_VALUE']
+      #beam_stop_sel = img_raw_bytes >= top_thresh
+      #img_masked_2 = img_masked.set_selected(beam_stop_sel, -2)
 
-    for spot_area in range(a_min, a_max + 1):
-      for spot_height in range (h_min, h_max + 1):
-        if self.params.cctbx_ha14.grid_search.sig_height_search:
-          if spot_height >= 1 + h_std:
-            sigs = range(spot_height - h_std, spot_height + 1)
-          elif spot_height < 1 + h_std:
-            sigs = range(1, spot_height + 1)
-          elif spot_height == 1:
-            sigs = [1]
-        else:
-          sigs = [spot_height]
+      data['DATA'] = img_masked
+      return data, None
 
-        for sig_height in sigs:
-          if (spot_area, spot_height, sig_height) not in self.grid_points:
-            self.grid_points.append((spot_area, spot_height, sig_height))
-            self.grid.append({'sih':sig_height, 'sph':spot_height,
-                                  'spa':spot_area, 'a':0, 'b':0, 'c':0,
-                                  'alpha':0, 'beta':0, 'gamma':0, 'sg':'',
-                                  'strong':0, 'res':0, 'lres':0, 'mos':0,
-                                  'epv':0, 'info':'', 'ok':True})
+    except Exception as e:
+      error = 'IOTA IMPORTER ERROR: Image thresholding failed! {}'.format(e)
+      return None, error
 
-    self.final = {'img':self.conv_img, 'sih':0, 'sph':0, 'spa':0, 'a':0, 'b':0,
-                  'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'', 'strong':0,
-                  'res':0, 'lres':0, 'mos':0, 'epv':0, 'info':'', 'final':None,
-                  'wavelength': 0, 'distance':0, 'beamX': 0, 'beamY': 0,
-                  'program':'cctbx'}
 
   def square_pickle(self, data):
     """ A function to crop the image pickle to a square such that the beam center
         is in the center of image (mostly copied from cxi_image2pickle.py)
         CCTBX.XFEL ONLY """
 
-    # only one active area is allowed, and it should be the size of the image.
+    error = None
 
-    test = flex.int([0,0,data['SIZE1'],data['SIZE2']]) == data['ACTIVE_AREAS']
-    assert test.all_eq(True)
+    # only one active area is allowed, and it should be the size of the image.
+    try:
+      test = flex.int([0, 0, data['SIZE1'], data['SIZE2']]) == data['ACTIVE_AREAS']
+      assert test.all_eq(True)
+    except AssertionError as e:
+      error = 'IOTA IMPORTER ERROR: Image modification failed! {}'.format(e)
+      return None, error
 
     # retrieve parameters from the dictionary
     pixel_size = data['PIXEL_SIZE']
-    beam_x = int(round(data['BEAM_CENTER_X']/pixel_size))
-    beam_y = int(round(data['BEAM_CENTER_Y']/pixel_size))
+    beam_x = int(round(data['BEAM_CENTER_X'] / pixel_size))
+    beam_y = int(round(data['BEAM_CENTER_Y'] / pixel_size))
     width = data['SIZE1']
     height = data['SIZE2']
     pixels = data['DATA']
@@ -276,23 +310,27 @@ class SingleImage(object):
     # the new image will be twice the size as the smallest distance between the
     # beam center and one of the edges of the images
     if self.params.cctbx_ha14.image_conversion.square_mode == 'crop':
-      new_half_size = min([right, left, top, bottom])
-      new_size = new_half_size * 2
-      min_x = int(beam_x - new_half_size)
-      min_y = int(beam_y - new_half_size)
-      max_x = int(beam_x + new_half_size)
-      max_y = int(beam_y + new_half_size)
+      try:
+        new_half_size = min([right, left, top, bottom])
+        new_size = new_half_size * 2
+        min_x = int(beam_x - new_half_size)
+        min_y = int(beam_y - new_half_size)
+        max_x = int(beam_x + new_half_size)
+        max_y = int(beam_y + new_half_size)
 
-      if self.params.advanced.flip_beamXY:
-        new_beam_x = data['BEAM_CENTER_X'] - min_y * pixel_size
-        new_beam_y = data['BEAM_CENTER_Y'] - min_x * pixel_size
-        new_pixels = pixels[min_x:max_x, min_y:max_y]
-      else:
-        new_beam_x = data['BEAM_CENTER_X'] - min_x * pixel_size
-        new_beam_y = data['BEAM_CENTER_Y'] - min_y * pixel_size
-        new_pixels = pixels[min_y:max_y, min_x:max_x]
+        if self.params.advanced.flip_beamXY:
+          new_beam_x = data['BEAM_CENTER_X'] - min_y * pixel_size
+          new_beam_y = data['BEAM_CENTER_Y'] - min_x * pixel_size
+          new_pixels = pixels[min_x:max_x, min_y:max_y]
+        else:
+          new_beam_x = data['BEAM_CENTER_X'] - min_x * pixel_size
+          new_beam_y = data['BEAM_CENTER_Y'] - min_y * pixel_size
+          new_pixels = pixels[min_y:max_y, min_x:max_x]
 
-      assert new_pixels.focus()[0] == new_pixels.focus()[1]
+        assert new_pixels.focus()[0] == new_pixels.focus()[1]
+      except (AssertionError, Exception) as e:
+        error = 'IOTA IMPORTER ERROR: Image modification failed! {}'.format(e)
+        return None, error
 
     # the new image will be twice the size as the LARGEST distance between the
     # beam center and one of the edges of the images
@@ -322,161 +360,31 @@ class SingleImage(object):
       data['DATA'] = new_pixels
       data['SIZE1'] = new_size
       data['SIZE2'] = new_size
-      data['ACTIVE_AREAS'] = flex.int([0 , 0, new_size, new_size])
+      data['ACTIVE_AREAS'] = flex.int([0, 0, new_size, new_size])
       data['BEAM_CENTER_X'] = new_beam_x
       data['BEAM_CENTER_Y'] = new_beam_y
 
-    return data
+    return data, error
 
-  def mask_image(self, data):
-    """ Identifies beamstop shadow and sets pixels inside to -2 (to be ignored by
-        processing software). Clunky now (merely finds all pixels with intensity
-        less than 0.4 * image average intensity), to be refined later.
-    """
-    img_raw_bytes = data['DATA']
-    beamstop = self.params.image_import.beamstop
-
-    img_thresh = int((beamstop*flex.mean(img_raw_bytes.as_double())))
-    beam_stop_sel = img_raw_bytes <= img_thresh
-    img_masked = img_raw_bytes.set_selected(beam_stop_sel, -2)
-
-    # mask extensive overloads, too
-    #top_thresh = data['SATURATED_VALUE']
-    #beam_stop_sel = img_raw_bytes >= top_thresh
-    #img_masked_2 = img_masked.set_selected(beam_stop_sel, -2)
-
-    data['DATA'] = img_masked
-    return data
-
-  def apply_mask_from_file(self, data, mask_file):
-    img_raw_bytes = data['DATA']
-
-    full_mask = ep.load(mask_file)
-    assert len(full_mask) == 1
-
-    if self.params.advanced.processing_backend == 'ha14':
-      mask = full_mask[0] == False
-    elif self.params.advanced.processing_backend == 'cctbx.xfel':
-      mask = full_mask[0]
-    else:
-      mask = None
-
-    if mask is not None:
-      img_masked = img_raw_bytes.set_selected(mask, -2)
-      data['DATA'] = img_masked
-
-    return data
-
-  def import_image(self):
-    """ Image conversion:
-          - Writes out data in pickle format (cctbx.xfel only)
-          - Moves beam center into center of image, crops / pads image (cctbx.xfel only)
-          - Adjusts beam center and distance (optional)
-          - Thresholds and masks beamstop shadow (optional)
-    """
-
-    # Load image
-    img_data, img_type = self.load_image(img=self.raw_img)
-    self.status = 'loaded'
-
-    if img_data is None:
-      self.log_path = util.make_image_path(self.raw_img, self.input_base,
-                                           self.log_base)
-      self.int_log = os.path.join(self.log_path,
-                                  util.make_filename(self.raw_img) + '.tmp')
-      self.log_info.append('\n{:-^100}\n'.format(self.raw_img))
-      self.log_info.append('FAILED TO IMPORT')
-      self.status = 'failed import'
-      self.fail = 'failed import'
-
-      if not self.params.cctbx_ha14.image_conversion.convert_only:
-        self.obj_path = util.make_image_path(self.conv_img, self.input_base,
-                                             self.obj_base)
-        rej_name = filter(None, util.make_filename(self.conv_img)) + '_reject.int'
-        self.obj_file = os.path.abspath(os.path.join(self.obj_path, rej_name))
-
-        try:
-          if not os.path.isdir(self.obj_path):
-            os.makedirs(self.obj_path)
-        except OSError:
-          pass
-
-      ep.dump(self.obj_file, self)
-      return self
-
-    # if DIALS is selected, change image type to skip conversion step
-    if self.params.advanced.processing_backend == 'cctbx.xfel':
-      img_type = 'dials_input'
-      if self.params.cctbx_xfel.auto_threshold:
-        try:
-          beam_x_px = int(img_data['BEAM_CENTER_X'] / img_data['PIXEL_SIZE'])
-          beam_y_px = int(img_data['BEAM_CENTER_Y'] / img_data['PIXEL_SIZE'])
-          data_array = img_data['DATA'].as_numpy_array().astype(float)
-          self.center_int = np.nanmax(data_array[beam_y_px - 20:beam_y_px + 20,
-                                                 beam_x_px - 20:beam_x_px + 20])
-        except Exception as e:
-          print ('IMPORT ERROR: ', e)
-
-    # Log initial image information
-    self.log_info.append('\n{:-^100}\n'.format(self.raw_img))
-    self.log_info.append('Imported image  : {}'.format(self.raw_img))
-    self.log_info.append('Parameters      : BEAM_X = {:<4.2f}, BEAM_Y = {:<4.2f}, '\
-                         'PIXEL_SIZE = {:<8.6f}, IMG_SIZE = {:<4} X {:<4}, '\
-                         'DIST = {}'.format(img_data['BEAM_CENTER_X'],
-                                            img_data['BEAM_CENTER_Y'],
-                                            img_data['PIXEL_SIZE'],
-                                            img_data['SIZE1'],
-                                            img_data['SIZE2'],
-                                            img_data['DISTANCE']))
+  def modify_image(self, data=None):
+    if not data:
+      error = 'IOTA IMPORTER ERROR: Modification failed, no data!'
+      return None, error
 
     # Deactivate image squaring if beam center is in the center of the image
     # CCTBX.XFEL ONLY (Need a better displacement cutoff)
-    if (                  self.params.advanced.processing_backend == 'cctbx.xfel' or
-        abs(img_data['BEAM_CENTER_X'] - img_data['BEAM_CENTER_Y']) < 0.1
-        ):
+    if (abs(data['BEAM_CENTER_X'] - data['BEAM_CENTER_Y']) < 0.1) :
       self.params.cctbx_ha14.image_conversion.square_mode = 'no_modification'
 
+
     # Check if conversion/modification is required and carry them out
-    if self.params.advanced.processing_backend != 'dials' and \
-       (
-                                                       img_type == 'raw' or
-           self.params.cctbx_ha14.image_conversion.square_mode != "no_modification" or
-                         self.params.image_import.beam_center.x != 0 or
-                         self.params.image_import.beam_center.y != 0 or
-                              self.params.image_import.beamstop != 0 or
-                              self.params.image_import.distance != 0
-        ):
-
-      # Check for and/or create a converted pickles folder
-      try:
-        if not os.path.isdir(self.conv_base):
-          os.makedirs(self.conv_base)
-      except OSError:
-        pass
-
-      # Generate converted image pickle filename
-      rename_choice = str(self.params.cctbx_ha14.image_conversion.rename_pickle).lower()
-      if rename_choice in ("keep_file_structure", "none"):
-        img_path = util.make_image_path(self.raw_img, self.input_base,
-                                        self.conv_base)
-        img_filename = util.make_filename(self.raw_img) + ".pickle"
-        self.conv_img = os.path.abspath(os.path.join(img_path, img_filename))
-        try:
-          if not os.path.isdir(img_path):
-            os.makedirs(img_path)
-        except OSError:
-          pass
-      else:
-        self.input_base = self.conv_base
-        if rename_choice == "auto_filename":
-          prefix = self.user_id
-        elif rename_choice == "custom_filename":
-          prefix = self.params.cctbx_ha14.image_conversion.rename_pickle_prefix
-        else:
-          prefix = 'iota'
-        number = int(os.path.basename(self.conv_base))
-        self.conv_img = os.path.abspath(os.path.join(self.conv_base,
-                    "{}_{}_{:05d}.pickle".format(prefix, number, self.img_index)))
+    if (
+            self.params.cctbx_ha14.image_conversion.square_mode != "no_modification" or
+            self.params.image_import.beam_center.x != 0 or
+            self.params.image_import.beam_center.y != 0 or
+            self.params.image_import.beamstop != 0 or
+            self.params.image_import.distance != 0
+    ):
 
       # Convert raw image to image pickle
       beamstop = self.params.image_import.beamstop
@@ -485,334 +393,137 @@ class SingleImage(object):
                      self.params.image_import.beam_center.y]
       square = self.params.cctbx_ha14.image_conversion.square_mode
       mask_file = self.params.image_import.mask
+
+      # Apply mask
       if mask_file is not None:
-        img_data = self.apply_mask_from_file(img_data, mask_file)
+        data, error = self.apply_mask_from_file(data, mask_file)
+        if not data:
+          return None, error
+
+      # Override beam center
       if beam_center != [0,0]:
-        pixel_size = img_data['PIXEL_SIZE']
-        img_data['BEAM_CENTER_X'] = int(round(beam_center[0] * pixel_size))
-        img_data['BEAM_CENTER_Y'] = int(round(beam_center[1] * pixel_size))
+        pixel_size = data['PIXEL_SIZE']
+        data['BEAM_CENTER_X'] = int(round(beam_center[0] * pixel_size))
+        data['BEAM_CENTER_Y'] = int(round(beam_center[1] * pixel_size))
       if distance != 0:
-        img_data['DISTANCE'] = distance
+        data['DISTANCE'] = distance
       if square in ('crop', 'pad'):
-        img_data = self.square_pickle(img_data)
+        data, error = self.square_pickle(data)
+        if not data:
+          return None, error
       if beamstop != 0:
-        img_data = self.mask_image(img_data)
+        data, error = self.apply_threshold(data)
+        if not data:
+          return None, error
 
-      # Log converted image information
-      self.log_info.append('Converted image : {}'.format(self.conv_img))
-      self.log_info.append('Parameters      : BEAM_X = {:<4.2f}, BEAM_Y = {:<4.2f}, '\
-                           'PIXEL_SIZE = {:<8.6f}, IMG_SIZE = {:<4} X {:<4}, '\
-                           'DIST = {}'.format(img_data['BEAM_CENTER_X'],
-                                              img_data['BEAM_CENTER_Y'],
-                                              img_data['PIXEL_SIZE'],
-                                              img_data['SIZE1'],
-                                              img_data['SIZE2'],
-                                              img_data['DISTANCE']))
-      self.status = 'converted'
+    # Generate new name for a converted image pickle
+    new_path = self.rename_converted_image(self.img_object.img_path)
+    self.img_object.raw_img = self.img_object.img_path
+    self.img_object.conv_img = new_path
+    self.img_object.img_path = new_path
 
-      # Save converted image pickle
-      ep.dump(self.conv_img, img_data)
+    # Output converted image to file
+    try:
+      img_dir = os.path.dirname(new_path)
+      if not os.path.isdir(img_dir):
+        os.makedirs(img_dir)
+    except OSError as e:
+      error = 'IOTA IMPORTER ERROR: Cannot create folder! {}'.format(e)
+      return error, None
+    else:
+      ep.dump(new_path, data)
 
-      # Triage image (i.e. check for usable diffraction, using selected method)
-      if str(self.params.cctbx_ha14.image_triage.type).lower() in ('simple', 'grid_search'):
-        # if self.params.advanced.processing_backend == 'ha14':
-        from iota.components.iota_cctbx import Triage
-        triage = Triage(self.conv_img, self.gain, self.params)
-        self.fail, log_entry, self.hmed, self.amed = triage.triage_image()
+    return data, None
 
-      # Since DIALS has a separable spotfinding step, can just fail spotfinding
-      # elif self.params.advanced.processing_backend == 'cctbx.xfel':
-      #   from iota.components.iota_dials import Triage
-      #   triage = Triage(img=self.conv_img,
-      #                   gain=self.gain,
-      #                   center_intensity=self.center_int,
-      #                   params=self.params)
-      #   self.fail, log_entry = triage.triage_image()
+  def make_image_object(self, input_entry):
+    self.img_object, error = self.import_image(input_entry)
 
-        self.log_info.append(log_entry)
-        self.status = 'triaged'
+    # Triage image and generate grid search parameters
+    if self.img_object.datablock:
+      triage_type = str(self.params.cctbx_ha14.image_triage.type).lower()
+      if triage_type in ('simple', 'grid_search'):
+        hmed, amed = self.image_triage()
       else:
-        self.fail = None
-
-    # Generate integration result dictionary
-    if self.params.advanced.processing_backend == 'ha14':
+        hmed = self.params.cctbx_ha14.grid_search.height_median
+        amed = self.params.cctbx_ha14.grid_search.area_median
+      hr = self.params.cctbx_ha14.grid_search.height_range
+      ar = self.params.cctbx_ha14.grid_search.area_range
+      sig_search = self.params.cctbx_ha14.grid_search.sig_height_search
       gs_type = str(self.params.cctbx_ha14.grid_search.type).lower()
-      if gs_type == 'smart':
-        self.hrange = 1
-        self.arange = 1
-      elif gs_type in ('none', 'no_grid_search'):
-        self.hrange = 0
-        self.arange = 0
+
+      # Generate grid in image object (put that in there so that the HA14
+      # integrator can work)
+      if not self.img_object.fail:
+        self.img_object.generate_grid(gs_type=gs_type, sig_search=sig_search,
+                                      hr=hr, ar=ar, hmed=hmed, amed=amed)
+        self.img_object.status = 'imported'
       else:
-        self.hrange = self.params.cctbx_ha14.grid_search.height_range
-        self.arange = self.params.cctbx_ha14.grid_search.area_range
-      self.grid_points = []
-      self.generate_grid()
-    elif self.params.advanced.processing_backend == 'cctbx.xfel':
-      self.final = {'img':self.conv_img, 'a':0, 'b':0, 'c':0, 'alpha':0,
-                    'beta':0, 'gamma':0, 'sg':'','strong':0, 'res':0,
-                    'lres':0, 'mos':0, 'epv':0, 'info':'','final':None,
-                    'wavelength': 0, 'distance':0, 'beamX': 0, 'beamY':0,
-                    'program':'dials'}
+        self.img_object.status = 'final'
 
-    # Generate names for output folders and files:
-    filename = util.make_filename(self.conv_img)
-    self.test_filename = filename
+    return self.img_object
 
-    if not self.params.cctbx_ha14.image_conversion.convert_only:
-      img = self.conv_img
-      # if self.filename_correction:
-      #   img = self.raw_img
-      # else:
-      #   img = self.conv_img
-      self.obj_path = util.make_image_path(img, self.input_base, self.obj_base)
-      self.obj_file = os.path.abspath(os.path.join(self.obj_path,
-                                    filename + ".int"))
-      self.fin_path = util.make_image_path(img, self.input_base, self.fin_base)
-      self.log_path = util.make_image_path(img, self.input_base, self.log_base)
-      self.fin_file = os.path.abspath(os.path.join(self.fin_path,
-                     "int_{}.pickle".format(filename)))
-      self.final['final'] = self.fin_file
-      self.final['img'] = img
-      self.int_log = os.path.join(self.log_path, filename + '.tmp')
-      self.viz_path = util.make_image_path(img, self.input_base, self.viz_base)
-      self.viz_file = os.path.join(self.viz_path, "int_{}.png".format(filename))
+class SingleImage(SingleImageBase):    # For current cctbx.xfel
+  def __init__(self, imgpath, idx=None):
+    SingleImageBase.__init__(self, imgpath=imgpath, idx=idx)
+    self.center_int = None
+    self.gain = 1.0
+    self.img_index = idx
 
-      # Create actual folders (if necessary)
-      try:
-        if not os.path.isdir(self.obj_path):
-          os.makedirs(self.obj_path)
-        if not os.path.isdir(self.fin_path):
-          os.makedirs(self.fin_path)
-        if not os.path.isdir(self.log_path):
-          os.makedirs(self.log_path)
-        if not os.path.isdir(self.viz_path):
-          os.makedirs(self.viz_path)
-      except OSError:
-        pass
+class ImageImporter(ImageImporterBase):
+  def __init__(self, init):
+    ImageImporterBase.__init__(self, init=init)
 
-      self.status = 'imported'
+  def instantiate_image_object(self, filepath, idx=None):
+    ''' Instantiate a SingleImage object for current backend
+    :param filepath: path to image file
+    '''
+    self.img_object = SingleImage(imgpath=filepath, idx=idx)
 
-      # Save image object to file
-      ep.dump(self.obj_file, self)
+  def calculate_parameters(self, datablock=None):
+    ''' Image modification for current cctbx.xfel '''
 
-    # If conversion only option is selected, write conversion info to log
+    if not datablock:
+      # If data are given, apply modifications as specified below
+      error = 'IOTA IMPORT ERROR: Datablock not found!'
+      return None, error
     else:
-      log_entry = "\n".join(self.log_info)
-      util.main_log(self.main_log, log_entry)
+      error = []
 
-    return self
+      # Calculate auto-threshold
+      # TODO: Revisit this; I REALLY don't like it.
+      if self.iparams.cctbx_xfel.auto_threshold:
+        beamX = self.img_object.final['beamX']
+        beamY = self.img_object.final['beamY']
+        px_size = self.img_object.final['pixel']
+        try:
+          img = dxtbx.load(self.img_object.img_path)
+          raw_data = img.get_raw_data()
+          beam_x_px = int(beamX / px_size)
+          beam_y_px = int(beamY / px_size)
+          data_array = raw_data.as_numpy_array().astype(float)
+          self.center_int = np.nanmax(data_array[beam_y_px - 20:beam_y_px + 20,
+                                                 beam_x_px - 20:beam_x_px + 20])
+        except Exception as e:
+          error.append('IOTA IMPORT ERROR: Auto-threshold failed! {}'.format(e))
 
+      # Estimate gain (or set gain to 1.00 if cannot calculate)
+      if self.iparams.advanced.estimate_gain:
+        from dials.command_line.estimate_gain import estimate_gain
+        with util.Capturing() as junk_output:
+          try:
+            assert self.img_object.datablock   # Must have datablock here
+            imageset = self.img_object.datablock.extract_imagesets()[0]
+            self.img_object.gain = estimate_gain(imageset)
+          except Exception as e:
+            error.append('IOTA IMPORT ERROR: Estimate gain failed! '.format(e))
 
-# ================================= IMAGE INTEGRATORS ================================== #
+      # Collect error messages for logging
+      if error:
+        error_message = '\n'.join(error)
+      else:
+        error_message = None
 
-  def integrate_cctbx(self, tag, grid_point=0, single_image=False):
-    """ Runs integration using the Integrator class """
+      return datablock, error_message
 
-    # Check to see if the image is suitable for grid search / integration
-    if self.fail is not None:
-      self.grid = []
-      self.final['final'] = None
-    else:
-      from iota.components.iota_cctbx import Integrator
-      integrator = Integrator(params = self.params,
-                              source_image=self.conv_img,
-                              output_image=self.fin_file,
-                              viz=self.viz_path,
-                              log=self.int_log,
-                              tag=tag,
-                              tmp_base=self.tmp_base,
-                              gain=self.gain,
-                              single_image=single_image)
-      if tag == 'grid search':
-        self.log_info.append('\nCCTBX grid search:')
-        for i in range(len(self.grid)):
-          int_results = integrator.integrate(self.grid[i])
-          self.grid[i].update(int_results)
-          img_filename = os.path.basename(self.conv_img)
-          log_entry ='{:<{width}}: S = {:<3} H = {:<3} ' \
-                     'A = {:<3} ---> {}'.format(img_filename,
-                      self.grid[i]['sih'],
-                      self.grid[i]['sph'],
-                      self.grid[i]['spa'],
-                      self.grid[i]['info'],
-                      width = len(img_filename) + 2)
-          self.log_info.append(log_entry)
-          self.gs_results.append(log_entry)
-
-        # Throw out grid search results that yielded no integration
-        self.grid = [i for i in self.grid if "not integrated" not in i['info'] and\
-                     "no data recorded" not in i['info']]
-        self.status = 'grid search'
-
-      elif tag == 'split grid':
-        self.log_info.append('\nCCTBX INTEGRATION grid search:')
-        int_results = integrator.integrate(self.grid[grid_point])
-        self.grid[grid_point].update(int_results)
-        img_filename = os.path.basename(self.conv_img)
-        log_entry ='{:<{width}}: S = {:<3} H = {:<3} ' \
-                   'A = {:<3} ---> {}'.format(img_filename,
-                                              self.grid[grid_point]['sih'],
-                                              self.grid[grid_point]['sph'],
-                                              self.grid[grid_point]['spa'],
-                                              self.grid[grid_point]['info'],
-                                              width = len(img_filename) + 2)
-        self.log_info.append(log_entry)
-        self.gs_results.append(log_entry)
-
-      elif tag == 'integrate':
-        self.log_info.append('\nCCTBX final integration:')
-        final_results = integrator.integrate(self.final)
-        self.final.update(final_results)
-        self.status = 'final'
-        img_filename = os.path.basename(self.conv_img)
-        log_entry ='{:<{width}}: S = {:<3} H = {:<3} ' \
-                   'A = {:<3} ---> {}'.format(img_filename,
-                    self.final['sih'],
-                    self.final['sph'],
-                    self.final['spa'],
-                    self.final['info'],
-                    width = len(img_filename) + 2)
-        self.log_info.append(log_entry)
-
-        if self.params.analysis.viz == 'integration':
-          viz.make_png(self.final['img'], self.final['final'], self.viz_file)
-        elif self.params.analysis.viz == 'cv_vectors':
-          viz.cv_png(self.final['img'], self.final['final'], self.viz_file)
-
-    return self
-
-
-  def select_cctbx(self):
-    """ Selects best grid search result using the Selector class """
-    if self.fail is None:
-      from iota.components.iota_cctbx import Selector
-      selector = Selector(self.grid,
-                          self.final,
-                          self.params.cctbx_ha14.selection.prefilter.flag_on,
-                          self.params.cctbx_ha14.selection.prefilter.target_uc_tolerance,
-                          self.params.cctbx_ha14.selection.prefilter.target_pointgroup,
-                          self.params.cctbx_ha14.selection.prefilter.target_unit_cell,
-                          self.params.cctbx_ha14.selection.prefilter.min_reflections,
-                          self.params.cctbx_ha14.selection.prefilter.min_resolution,
-                          self.params.cctbx_ha14.selection.select_by)
-
-      self.fail, self.final, log_entry = selector.select()
-      self.status = 'selection'
-      self.log_info.append(log_entry)
-
-    return self
-
-  def process(self, single_image=False):
-    """ Image processing; selects method, runs requisite modules """
-    if self.status != 'bypass grid search':
-      self.status = 'processing'
-
-    #for CCTBX indexing / integration
-    if self.params.advanced.processing_backend == 'ha14':
-      terminate = False
-      prev_status = self.status
-      prev_fail = 'first cycle'
-      prev_final = self.final
-      prev_epv = 9999
-
-      while not terminate:
-        # Run grid search if haven't already
-        if self.fail is None and 'grid search' not in self.status:
-          self.integrate_cctbx('grid search', single_image=single_image)
-
-        # Run selection if haven't already
-        if self.fail is None and self.status != 'selection':
-          self.select_cctbx()
-
-        # If smart grid search is active run multiple rounds until convergence
-        if self.params.cctbx_ha14.grid_search.type == 'smart':
-          if self.fail is None and self.final['epv'] < prev_epv:
-            prev_epv = self.final['epv']
-            prev_final = self.final
-            prev_status = self.status
-            prev_fail = self.fail
-            self.hmed = self.final['sph']
-            self.amed = self.final['spa']
-            self.generate_grid()
-            self.final['final'] = self.fin_file
-            if len(self.grid) == 0:
-              self.final = prev_final
-              self.status = prev_status
-              self.fail = prev_fail
-              terminate = True
-              continue
-            if self.verbose:
-              log_entry = '\nNew starting point: H = {}, A = {}\n'\
-                          ''.format(self.hmed, self.amed)
-              self.log_info.append(log_entry)
-          else:
-            if prev_fail != 'first cycle':
-              self.final = prev_final
-              self.status = prev_status
-              self.fail = prev_fail
-              if self.verbose:
-                log_entry = '\nFinal set of parameters: H = {}, A = {}'\
-                            ''.format(self.final['sph'], self.final['spa'])
-                self.log_info.append(log_entry)
-            terminate = True
-
-        # If brute force grid search is selected run one round
-        else:
-          terminate = True
-
-      # Run final integration if haven't already
-      if self.fail is None and self.status != 'final':
-        self.integrate_cctbx('integrate', single_image=single_image)
-
-      # If verbose output selected (default), write to main log
-      if self.verbose:
-         log_entry = "\n".join(self.log_info)
-         util.main_log(self.main_log, log_entry)
-         util.main_log(self.main_log, '\n\n')
-
-      # Make a temporary process log into a final process log
-      if os.path.isfile(self.int_log):
-        final_int_log = os.path.join(self.log_path,
-                                    os.path.basename(self.int_log).split('.')[0] + '.log')
-        os.rename(self.int_log, final_int_log)
-
-      # Save results into a pickle file
-      self.status = 'final'
-      ep.dump(self.obj_file, self)
-      return self
-
-
-    # For DIALS integration (WORK IN PROGRESS)
-    elif self.params.advanced.processing_backend == 'cctbx.xfel':
-      if self.fail is None:
-        # Create DIALS integrator object
-        from iota.components.iota_dials import Integrator
-        integrator = Integrator(source_image=self.conv_img,
-                                object_folder=self.obj_path,
-                                int_folder=self.int_base,
-                                final_filename=self.fin_file,
-                                final=self.final,
-                                logfile=self.int_log,
-                                gain=self.gain,
-                                center_intensity=self.center_int,
-                                params=self.params)
-
-        # Run DIALS
-        self.fail, self.final, int_log = integrator.run()
-        if self.fail is not None:
-          self.status = 'final'
-        self.log_info.append(int_log)
-        log_entry = "\n".join(self.log_info)
-        util.main_log(self.main_log, log_entry)
-        util.main_log(self.main_log, '\n{:-^100}\n'.format(''))
-
-        # Make a temporary process log into a final process log
-        final_int_log = self.int_log.split('.')[0] + ".log"
-        os.rename(self.int_log, final_int_log)
-
-      self.status = 'final'
-      ep.dump(self.obj_file, self)
-      return self
 
 # **************************************************************************** #
