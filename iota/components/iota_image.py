@@ -18,21 +18,16 @@ import os
 import math
 import numpy as np
 
-try:  # for Py3 compatibility
-    import itertools.ifilter as filter
-except ImportError:
-    pass
-
-
 from scitbx.array_family import flex
 
 import dxtbx
 from libtbx import easy_pickle as ep
 from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp
+from dials.command_line.estimate_gain import estimate_gain
 
 import iota.components.iota_utils as util
+from iota.components.iota_cctbx_ha14 import Triage
 from iota.components.iota_base import SingleImageBase, ImageImporterBase
-
 
 class OldSingleImage(SingleImageBase):
   ''' SingleImage object for use with the old HA14 processing (with
@@ -117,7 +112,6 @@ class OldImageImporter(ImageImporterBase):
 
   def image_triage(self):
     # Triage image (i.e. check for usable diffraction, using selected method)
-    from iota.components.iota_cctbx_ha14 import Triage
     triage = Triage(self.img_object.conv_img, self.params)
     fail, log_entry, hmed, amed = triage.triage_image()
 
@@ -508,7 +502,6 @@ class ImageImporter(ImageImporterBase):
 
       # Estimate gain (or set gain to 1.00 if cannot calculate)
       if self.iparams.advanced.estimate_gain:
-        from dials.command_line.estimate_gain import estimate_gain
         with util.Capturing() as junk_output:
           try:
             assert self.img_object.datablock   # Must have datablock here

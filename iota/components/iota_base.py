@@ -9,19 +9,14 @@ Description : IOTA base classes
 '''
 
 import os
-import math
 try:  # for Py3 compatibility
     import itertools.ifilter as filter
 except ImportError:
     pass
 
-from dxtbx import datablock as db, load as data_load
-from libtbx import easy_pickle as ep
-from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp
-
+from dxtbx import datablock as db
 from libtbx.easy_mp import parallel_map
 
-from iota.components.iota_processing import Integrator
 from threading import Thread
 import iota.components.iota_utils as util
 
