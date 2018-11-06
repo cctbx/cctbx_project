@@ -5,8 +5,8 @@ from dials.command_line.stills_process import Processor
 class DialsProcessorWithLogging(Processor):
   '''Overrides for steps of dials processing of stills with XFEL GUI database logging.'''
 
-  def __init__(self, params, composite_tag = None):
-    super(DialsProcessorWithLogging, self).__init__(params, composite_tag)
+  def __init__(self, params, composite_tag = None, rank = 0):
+    super(DialsProcessorWithLogging, self).__init__(params, composite_tag, rank)
     self.tt_low = None
     self.tt_high = None
 
