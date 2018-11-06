@@ -3,13 +3,14 @@ def run(args):
   assert len(args) == 0
   from libtbx import lzw
   enc = lzw.ByteEncoder(12)
-  bigstr = "gabba gabba yo gabba gabba gabba yo gabba gabba gabba" \
-    " yo gabba gabba gabba yo"
+  bigstr = b"gabba gabba yo gabba gabba gabba yo gabba gabba gabba" \
+    b" yo gabba gabba gabba yo"
   encoding = enc.encodetobytes(bigstr)
-  encoded = "".join([b for b in encoding])
+  encoded = b"".join([b for b in encoding])
+  assert(len(bigstr) > len(encoded))
   dec = lzw.ByteDecoder()
   decoding = dec.decodefrombytes(encoded)
-  decoded = "".join(decoding)
+  decoded = b"".join(decoding)
   assert decoded == bigstr
   print("OK")
 

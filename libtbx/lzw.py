@@ -54,10 +54,12 @@ from __future__ import absolute_import, division, print_function
 
 __author__ = "Joe Bowers"
 __license__ = "MIT License"
-__version__ = "0.01.01"
+__version__ = "0.01.11"
 __status__ = "Development"
 __email__ = "joerbowers@gmail.com"
 __url__ = "http://www.joe-bowers.com/static/lzw"
+
+import sys
 
 import struct
 import itertools
@@ -174,8 +176,7 @@ class BitPacker(object):
     Translates a stream of lzw codepoints into a variable width packed
     stream of bytes, for use by L{BitUnpacker}.  One of a (potential)
     set of encoders for a stream of LZW codepoints, intended to behave
-    as closely to the TIFF variable-width encoding scheme as closely
-    as possible.
+    as closely to the TIFF variable-width encoding as possible.
 
     The inbound stream of integer lzw codepoints are packed into
     variable width bit fields, starting at the smallest number of bits
@@ -389,6 +390,8 @@ class Decoder(object):
         for cp in codepoints:
             decoded = self._decode_codepoint(cp)
             for character in decoded:
+                if (isinstance(character, int)):
+                    character = chr(character).encode('latin-1')
                 yield character
 
 
@@ -414,7 +417,7 @@ class Decoder(object):
         True
         """
 
-        ret = ""
+        ret = b""
 
         if codepoint == CLEAR_CODE:
             self._clear_codes()
@@ -423,11 +426,18 @@ class Decoder(object):
         else:
             if codepoint in self._codepoints:
                 ret = self._codepoints[ codepoint ]
+
                 if None != self._prefix:
-                    self._codepoints[ len(self._codepoints) ] = self._prefix + ret[0]
+                    r = ret[0]
+                    if (isinstance(r, int)):
+                        r = chr(r).encode('latin-1')
+                    self._codepoints[ len(self._codepoints) ] = self._prefix + r
 
             else:
-                ret = self._prefix + self._prefix[0]
+                p = self._prefix[0]
+                if (isinstance(p, int)):
+                    p = chr(p).encode('latin-1')
+                ret = self._prefix + p
                 self._codepoints[ len(self._codepoints) ] = ret
 
             self._prefix = ret
@@ -436,7 +446,7 @@ class Decoder(object):
 
 
     def _clear_codes(self):
-        self._codepoints = dict([(pt, struct.pack("B", pt)) for pt in range(256)])
+        self._codepoints = dict( (pt, struct.pack("B", pt)) for pt in range(256) )
         self._codepoints[CLEAR_CODE] = CLEAR_CODE
         self._codepoints[END_OF_INFO_CODE] = END_OF_INFO_CODE
         self._prefix = None
@@ -457,7 +467,7 @@ class Encoder(object):
         self.closed = False
 
         self._max_code_size = max_code_size
-        self._buffer = ''
+        self._buffer = b''
         self._clear_codes()
 
         if max_code_size < self.code_size():
@@ -483,7 +493,7 @@ class Encoder(object):
 
         if self._buffer:
             yield self._prefixes[ self._buffer ]
-            self._buffer = ''
+            self._buffer = b''
 
         yield CLEAR_CODE
         self._clear_codes()
@@ -523,7 +533,8 @@ class Encoder(object):
         # want to call this.
 
         new_prefix = self._buffer
-
+        if (isinstance(byte, int)):
+            byte = chr(byte).encode('latin-1')
         if new_prefix + byte in self._prefixes:
             new_prefix = new_prefix + byte
         elif new_prefix:
@@ -543,7 +554,7 @@ class Encoder(object):
         # Teensy hack, CLEAR_CODE and END_OF_INFO_CODE aren't
         # equal to any possible string.
 
-        self._prefixes = dict([(struct.pack("B", codept), codept) for codept in range(256)])
+        self._prefixes = dict( (struct.pack("B", codept), codept) for codept in range(256) )
         self._prefixes[ CLEAR_CODE ] = CLEAR_CODE
         self._prefixes[ END_OF_INFO_CODE ] = END_OF_INFO_CODE
 
@@ -617,8 +628,8 @@ class PagingDecoder(object):
         self._remains = []
 
         try:
-            while True:
-                cp = next(codepoints)
+            while 1:
+                cp = codepoints.next()
                 if cp != END_OF_INFO_CODE:
                     yield cp
                 else:
@@ -687,7 +698,10 @@ def unpackbyte(b):
    Given a one-byte long byte string, returns an integer. Equivalent
    to struct.unpack("B", b)
    """
-   (ret,) = struct.unpack("B", b)
+   if sys.hexversion < 0x03000000:
+       (ret,) = struct.unpack("B", b)
+   else:
+       ret = b
    return ret
 
 
@@ -712,8 +726,9 @@ def readbytes(filename, buffersize=1024):
     Opens a file named by filename and iterates over the L{filebytes}
     found therein.  Will close the file when the bytes run out.
     """
-    for byte in filebytes(open(filename, "rb"), buffersize):
-        yield byte
+    with open(filename, "rb") as infile:
+        for byte in filebytes(infile, buffersize):
+            yield byte
 
 
 
@@ -724,9 +739,9 @@ def writebytes(filename, bytesource):
     from bytesource into it, and closes it
     """
 
-    outfile = open(filename, "wb")
-    for bt in bytesource:
-        outfile.write(bt)
+    with open(filename, "wb") as outfile:
+        for bt in bytesource:
+            outfile.write(bt)
 
 
 def inttobits(anint, width=None):
