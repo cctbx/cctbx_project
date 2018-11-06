@@ -485,9 +485,12 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
 
   def composition(self):
     asc = self.atom_selection_cache()
-    def rc(sel_str):
+    def rc(sel_str, as_atoms=False):
       sel = asc.selection(sel_str)
-      return len(list(self.select(sel).residue_groups()))
+      if(as_atoms):
+        return self.select(sel).atoms().size()
+      else:
+        return len(list(self.select(sel).residue_groups()))
     sel_str_other = "not (water or nucleotide or protein)"
     other_cnts = collections.Counter()
     for rg in self.select(asc.selection(sel_str_other)).residue_groups():
@@ -499,7 +502,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       n_protein    = rc("protein"),
       n_nucleotide = rc("nucleotide"),
       n_water      = rc("water"),
-      n_hd         = rc("element H or element D"),
+      n_hd         = rc(sel_str="element H or element D",as_atoms=True),
       n_other      = rc(sel_str_other),
       other_cnts   = other_cnts)
 
