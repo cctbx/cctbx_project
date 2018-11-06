@@ -6,6 +6,7 @@ from __future__ import division
 from libtbx.program_utils.result import program_result
 from libtbx.utils import Sorry, multi_out
 from libtbx import Auto, easy_pickle, runtime_utils
+import iotbx.phil
 import libtbx.load_env
 import mmtbx.model
 import os.path
@@ -13,7 +14,7 @@ import sys
 
 def get_master_phil () :
   from mmtbx.command_line import generate_master_phil_with_inputs
-  return generate_master_phil_with_inputs(
+  phil_scope = generate_master_phil_with_inputs(
     enable_automatic_twin_detection=True,
     enable_twin_law=True,
     enable_pdb_interpretation_params=True,
@@ -108,6 +109,16 @@ output {
   include scope libtbx.phil.interface.tracking_params
 }
 """)
+  phil_extract = phil_scope.extract()
+
+  # change default
+  phil_extract.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+  new_str = phil_scope.format(python_object=phil_extract).as_str(
+    expert_level=4, attributes_level=4)
+
+  phil_scope = iotbx.phil.parse(new_str, process_includes=True)
+
+  return phil_scope
 
 usage_string = """\
 phenix.molprobity model.pdb [data.mtz] [options ...]
