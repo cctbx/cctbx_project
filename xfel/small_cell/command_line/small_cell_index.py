@@ -39,7 +39,10 @@ small_cell {
     .help = "Number of d rings a spot can overlap before it is removed from consideration. Set to None to use all spots, but this can be time consuming"
   override_wavelength = None
     .type=float
-    .help= "Use to override the wavelength found in the image file"
+    .help = "Use to override the wavelength found in the image file"
+  write_gnuplot_input = False
+    .type = bool
+    .help = "Use to produce a series of files as inputs to gnuplot to show the indexing results"
 }
 """
 

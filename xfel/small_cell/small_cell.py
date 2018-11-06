@@ -826,10 +826,11 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
       print spot.ID, spot.hkl.ohkl.elems
     if len(max_clique_spots) > 4:
       print "############################"
-      gfile = open(os.path.splitext(os.path.basename(path))[0] + ".sif", 'w')
-      for line in graph_lines:
-        gfile.write(line)
-      gfile.close()
+      # Uncomment this to write a sif file, useful as input to graph display programs
+      #gfile = open(os.path.splitext(os.path.basename(path))[0] + ".sif", 'w')
+      #for line in graph_lines:
+      #  gfile.write(line)
+      #gfile.close()
 
     working_set = []
     for spot in max_clique_spots:
@@ -866,16 +867,13 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
       indicies_orig, indicies_asu = filter_indicies(ori,beam,horiz_phil.small_cell.high_res_limit,horiz_phil)
 
       # caluculate predicted detector locations for these indicies
-      f = open("preds.txt", "w")
       predicted_panel = []
       predicted = []
       for index in indicies_orig:
         panel_id, xy = hkl_to_xy(ori,col(index),detector,beam)
         if panel is None or xy is None: continue
-        f.write("%d %d %d %f %f\n"%(index[0],index[1],index[2],xy[0],xy[1]))
         predicted_panel.append(panel)
         predicted.append(xy)
-      f.close()
 
       # find spotfinder spots within a certain distance of predictions
       possibles = []
@@ -942,7 +940,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
         break
       # end finding preds and crystal orientation matrix refinement loop
 
-    if ori is not None:
+    if ori is not None and horiz_phil.small_cell.write_gnuplot_input:
       write_cell(ori,beam,indexed,horiz_phil)
 
     indexed_hkls = flex.vec2_double()
@@ -1057,10 +1055,11 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
           rmsd += measure_distance(col((spot.spot_dict['xyzobs.px.value'][0],spot.spot_dict['xyzobs.px.value'][1])),col(spot.pred))**2
 
       if len(results) >= horiz_phil.small_cell.min_spots_to_integrate:
-        f = open(os.path.splitext(os.path.basename(path))[0] + ".int","w")
-        for line in results:
-          f.write(line)
-        f.close()
+        # Uncomment to get a text version of the integration results
+        #f = open(os.path.splitext(os.path.basename(path))[0] + ".int","w")
+        #for line in results:
+        #  f.write(line)
+        #f.close()
 
         if write_output:
           info = dict(
@@ -1121,8 +1120,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
         print "cctbx.small_cell: integrated %d spots."%len(results),
         integrated_count = len(results)
       else:
-        print "cctbx.small_cell: not enough spots to integrate (%d)."%len(results),
-        experiments = refls = None
+        raise RuntimeError("cctbx.small_cell: not enough spots to integrate (%d)."%len(results))
 
       if rmsd_n > 0:
         print " RMSD: %f"%math.sqrt((1/rmsd_n)*rmsd)
