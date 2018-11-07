@@ -1,12 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
+"""
+This tests the ability to import extension modules with two passes:
+1) Imports all modules with __init__.py files which should implicitly import all extension modules
+2) Discovers all extension modules available and imports them, which picks up any modules not imported by a __init__.py file
+"""
+
 def import_modules():
   # Search for __init__.py file and import those modules. This ensures all dependencies are loaded
   # prior to import individual so files
   import libtbx.load_env, os, traceback
   # Modules in the form of X/X/__init__.py
   doubled = ["elbow","phaser","phenix"]
-  # These modules are not dependencies not maintained by cctbx or should be skipped for other reasons
+  # These modules are dependencies not maintained by cctbx or should be skipped for other reasons
   skip_modules = ["boost","cbflib","crys3d","PyQuante","phenix_html","tntbx","reel",
                   "amber", # external
                   ]
