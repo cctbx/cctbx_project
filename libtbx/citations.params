@@ -96,6 +96,15 @@ journal {
   id_CSD = None
 }
 
+journal {
+  name = Protein Science
+  name_full = Protein Science
+  abbrev_CAS = Protein Sci.
+  id_ASTM = PRCIEI
+  id_ISSN = 1469-896X
+  id_CSD = None
+}
+
 citation {
   article_id = hhpred
   authors = Söding J

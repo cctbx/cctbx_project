@@ -11,8 +11,8 @@ def test_format():
   assert list(cif_block['_citation.id']) == [
     'phenix', 'phenix.refine', 'phaser', 'molprobity']
   assert list(cif_block['_citation.journal_id_CSD']) == [
-    '0766', '0766', '0228', '0766']
-  assert list(cif_block['_citation.journal_volume']) == ['66', '68', '40', '66']
+    '0766', '0766', '0228', '?']
+  assert list(cif_block['_citation.journal_volume']) == ['66', '68', '40', '27']
   expected_keys = ('_citation.id', '_citation.title', '_citation.journal_abbrev',
                    '_citation.journal_volume', '_citation.page_first',
                    '_citation.page_last', '_citation.year',
