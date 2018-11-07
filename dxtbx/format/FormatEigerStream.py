@@ -143,10 +143,7 @@ class FormatEigerStream(FormatMultiImage, Format):
   def get_raw_data(self, index):
     '''
     Get the raw data from the image
-
     '''
-    from os.path import join, exists
-    import json
     import numpy as np
     from scitbx.array_family import flex
 
@@ -178,10 +175,9 @@ class FormatEigerStream(FormatMultiImage, Format):
   def readLZ4(self, data, shape, dtype, size):
     """
     Unpack lz4 compressed frame and return np array image data
-
     """
     import numpy as np
-    import lz4, bitshuffle
+    import lz4
 
     dtype = np.dtype(dtype)
     data = lz4.loads(data)
