@@ -604,6 +604,12 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     if params.output.logging_dir is None:
       info_path = ''
       debug_path = ''
+    elif params.output.logging_dir == 'DevNull':
+      print "Redirecting stdout, stderr and other DIALS logfiles to /dev/null"
+      sys.stdout = open(os.devnull,'w', buffering=0)
+      sys.stderr = open(os.devnull,'w',buffering=0)
+      info_path = os.devnull
+      debug_path = os.devnull
     else:
       log_path = os.path.join(params.output.logging_dir, "log_rank%04d.out"%rank)
       error_path = os.path.join(params.output.logging_dir, "error_rank%04d.out"%rank)
