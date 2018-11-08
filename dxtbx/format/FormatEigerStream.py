@@ -194,3 +194,7 @@ class FormatEigerStream(FormatMultiImage, Format):
     data = lz4.loads(data)
 
     return np.reshape(np.fromstring(data, dtype=dtype), shape[::-1])
+
+  def get_vendortype(self):
+    from dxtbx.format.FormatPilatusHelpers import get_vendortype_eiger
+    return get_vendortype_eiger(self.get_detector())
