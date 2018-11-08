@@ -1,6 +1,8 @@
 """ A library of object-oriented patterns """
 from __future__ import absolute_import, division, print_function
 
+from builtins import object
+
 import weakref
 from types import MethodType
 
@@ -86,7 +88,12 @@ class memoize_method(object):
       # It's always better to enable reference counting to collect
       # unreachable object as soon as they become so instead of relying
       # on a later gc collection.
-      func = MethodType(self.meth, weakref.proxy(obj), type)
+      try:
+        # Python 2: 3 arguments
+        func = MethodType(self.meth, weakref.proxy(obj), type)
+      except TypeError:
+        # Python 3: 2 arguments
+        func = MethodType(self.meth, weakref.proxy(obj))
       memoized = memoize(func)
       setattr(obj, self.cache, memoized)
       return memoized
@@ -108,7 +115,7 @@ class null(object):
 
   def __repr__(self): return 'null()'
 
-  def __nonzero__(self): return False
+  def __bool__(self): return False
 
 
 class proxy(object):
