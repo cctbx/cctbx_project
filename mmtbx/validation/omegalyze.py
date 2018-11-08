@@ -521,56 +521,6 @@ def find_omega_type(omega):
   else: omega_type = OMEGALYZE_TWISTED
   return omega_type
 
-#construct_residues was adpated from ramalyze.construct_complete_residues
-#main change invloved accepting incomplete residues, since complete ones were
-#  not necessary for calculation of omega
-#This required checks against None-valued atoms elsewhere in the code, but
-#  allows assessment of all models omega dihedrals
-def construct_residues(res_group):
-  if (res_group is not None):
-    complete_dict = {}
-    nit, ca, co, oxy = None, None, None, None
-    atom_groups = res_group.atom_groups()
-    reordered = []
-    # XXX always process blank-altloc atom group first
-    for ag in atom_groups :
-      if (ag.altloc == '') :
-        reordered.insert(0, ag)
-      else :
-        reordered.append(ag)
-    for ag in reordered :
-      changed = False
-      for atom in ag.atoms():
-        if (atom.name == " N  "): nit = atom
-        if (atom.name == " CA "): ca = atom
-        if (atom.name == " C  "): co = atom
-        if (atom.name == " O  "): oxy = atom
-        if (atom.name in [" N  ", " CA ", " C  ", " O  "]) :
-          changed = True
-      if (changed):
-        complete_dict[ag.altloc] = [nit, ca, co, oxy]
-    if len(complete_dict) > 0:
-      return complete_dict
-  return None
-
-#def get_omega(prev_atoms, atoms):
-#  import mmtbx.rotamer
-#  prevCA, prevC, thisN, thisCA = None, None, None, None
-#  if (prev_atoms is not None):
-#    for atom in prev_atoms:
-#      if atom is not None:
-#        if (atom.name == " CA "): prevCA = atom
-#        if (atom.name == " C  "): prevC = atom
-#  if (atoms is not None):
-#    for atom in atoms:
-#      if atom is not None:
-#        if (atom.name == " N  "): thisN = atom
-#        if (atom.name == " CA "): thisCA = atom
-#  if (prevCA is not None and prevC is not None and thisN is not None and thisCA is not None):
-#    return mmtbx.rotamer.omega_from_atoms(prevCA, prevC, thisN, thisCA)
-#  else:
-#    return None
-
 def get_omega(omega_atoms):
   #omega_atoms = [CA1 C1 N2 CA2]
   if None in omega_atoms:
