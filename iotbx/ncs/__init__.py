@@ -484,6 +484,9 @@ class input(object):
   def get_ncs_restraints_group_list(self):
     return self.ncs_restraints_group_list
 
+  def set_ncs_restraints_group_list(self, nrgl):
+    self.ncs_restraints_group_list = nrgl
+
   def get_ncs_info_as_spec(
           self,
           exclude_h=None,
