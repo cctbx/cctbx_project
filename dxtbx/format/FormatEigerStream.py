@@ -151,6 +151,8 @@ class FormatEigerStream(FormatMultiImage, Format):
     data = injected_data['streamfile_3']
     if info["encoding"] == "lz4<":
       data = self.readLZ4(data, info["shape"], info["type"], info['size'])
+    elif info["encoding"] == "bs16-lz4<":
+      data = self.readBS16LZ4(data, info["shape"], info["type"], info['size'])
     elif info["encoding"] == "bs32-lz4<":
       data = self.readBSLZ4(data, info["shape"], info["type"], info['size'])
     else:
@@ -165,12 +167,21 @@ class FormatEigerStream(FormatMultiImage, Format):
     Unpack bitshuffle-lz4 compressed frame and return np array image data
     """
     import numpy as np
-    import lz4, bitshuffle
+    import bitshuffle
     blob = np.fromstring(data[12:], dtype=np.uint8)
     # blocksize is big endian uint32 starting at byte 8, divided by element size
     blocksize = np.ndarray(shape=(), dtype=">u4", buffer=data[8:12])/4
     imgData = bitshuffle.decompress_lz4(blob, shape[::-1], np.dtype(dtype), blocksize)
     return imgData
+
+  def readBS16LZ4(self, data, shape, dtype, size):
+    """
+    Unpack bitshuffle-lz4 compressed 16 bit frame and return np array image data
+    """
+    import bitshuffle
+    import numpy
+    blob = numpy.fromstring(data[12:], dtype=numpy.uint8)
+    return bitshuffle.decompress_lz4(blob, shape[::-1], numpy.dtype(dtype))
 
   def readLZ4(self, data, shape, dtype, size):
     """
