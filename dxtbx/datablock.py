@@ -391,13 +391,14 @@ class DataBlockTemplateImporter(object):
     first = int(filenames[0][index])
     last = int(filenames[-1][index])
 
-    # Check all images in range are present
-    all_numbers = {int(f[index]) for f in filenames}
-    missing = set(range(first, last + 1)) - all_numbers
-    if missing:
-      raise Sorry("Missing image{} {} from imageset ({}-{})".format(
-          "s" if len(missing) > 1 else "",
-          ", ".join(str(x) for x in sorted(missing)), first, last))
+    # Check all images in range are present - if allowed
+    if not kwargs.get('allow_incomplete_sweeps', False):
+      all_numbers = {int(f[index]) for f in filenames}
+      missing = set(range(first, last + 1)) - all_numbers
+      if missing:
+        raise Sorry("Missing image{} {} from imageset ({}-{})".format(
+            "s" if len(missing) > 1 else "",
+            ", ".join(str(x) for x in sorted(missing)), first, last))
 
     # Read the image
     fmt = format_class(filenames[0], **(kwargs.get('format_kwargs', {})))
