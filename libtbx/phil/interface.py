@@ -8,7 +8,6 @@ from libtbx import adopt_init_args, Auto
 from libtbx.phil import gui_objects
 from libtbx.utils import Sorry
 import libtbx.phil
-import string
 import re
 import os
 import sys
@@ -909,7 +908,7 @@ def reformat_phil_name (phil_name) :
   if phil_name == "" :
     return phil_name
   _name = " ".join(str(phil_name).split("_"))
-  name = string.upper(_name[0]) + _name[1:]
+  name = _name[0].upper() + _name[1:]
   return name
 
 def join_scope_paths (scope1, scope2) :
