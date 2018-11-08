@@ -364,7 +364,6 @@ def submit_job(app, job):
         if mode == 'rayonix':
           from xfel.cxi.cspad_ana import rayonix_tbx
           pixel_size = rayonix_tbx.get_rayonix_pixel_size(job.rungroup.binning)
-          fast, slow = rayonix_tbx.get_rayonix_detector_dimensions(job.rungroup.binning)
           extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-job.rungroup.beamx * pixel_size,
                                                                                             job.rungroup.beamy * pixel_size,
                                                                                            -job.rungroup.detz_parameter))

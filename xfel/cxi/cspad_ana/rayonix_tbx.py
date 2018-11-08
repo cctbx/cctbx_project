@@ -22,6 +22,10 @@ I believe the accuracy of the MEAN pixel size to be at least as good as 0.1%
 which is the limit to which I can measure our calibration plate and exceeds the
  parallax error in our calibration station.
 
+Note, the Rayonix MX340 has the same pixel size as the MX170:
+
+unbinned 340/7680  = 0.04427
+
   @param bin_size rayonix bin size as an integer
   '''
   pixel_size=bin_size*170/3840
