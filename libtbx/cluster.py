@@ -21,7 +21,6 @@ from __future__ import absolute_import, division, print_function
 #
 
 from builtins import range
-from types import TupleType
 
 class ClusteringError(Exception):
    pass
@@ -70,7 +69,6 @@ def minkowski_distance(x, y, p=2):
    """
    from math import pow
    assert(len(y)==len(x))
-   assert(x>=1)
    sum = 0
    for i in range(len(x)):
       sum += abs(x[i]-y[i]) ** p
@@ -570,7 +568,9 @@ class HierarchicalClustering(BaseClusterMethod):
             for cell in row:
                # if we are not on the diagonal (which is always 0)
                # and if this cell represents a new minimum...
-               if (rowindex != cellindex) and ( cell < mindistance or smallestpair is None ):
+               if (rowindex != cellindex) and (
+                     (mindistance is not None and cell < mindistance) or
+                     smallestpair is None ):
                   smallestpair = ( rowindex, cellindex )
                   mindistance  = cell
                cellindex += 1
@@ -644,13 +644,13 @@ class KMeansClustering:
       self.__initial_length = len(data)
 
       # test if each item is of same dimensions
-      if len(data) > 1 and isinstance(data[0], TupleType):
+      if len(data) > 1 and isinstance(data[0], tuple):
          control_length = len(data[0])
          for item in data[1:]:
             if len(item) != control_length:
                raise ValueError("Each item in the data list must have the same amount of dimensions. Item", item, "was out of line!")
       # now check if we need and have a distance function
-      if len(data) > 1 and not isinstance(data[0], TupleType) and distance is None:
+      if len(data) > 1 and not isinstance(data[0], tuple) and distance is None:
          raise ValueError("You supplied non-standard items but no distance function! We cannot continue!")
       # we now know that we have tuples, and assume therefore that it's items are numeric
       elif distance is None:
