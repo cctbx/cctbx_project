@@ -609,7 +609,7 @@ def get_local_omega_altlocs(twores):
   prevres_alt = ''
   mainres_alt = ''
   for atom in twores[1].atoms():
-    if atom.name not in [" N  ", " CA ", " C  ", " O  "]:
+    if atom.name not in [" N  ", " CA "]:
       continue
     altchar = atom.id_str()[9:10]
     if altchar != ' ':
