@@ -143,7 +143,7 @@ class loop_idealization():
     self.number_of_ccd_trials = 0
     # print "logic expr outcome:", (self.number_of_ccd_trials < 10 and self.berkeley_p_before_minimization_rama_outliers > 0.001)
     # print self.number_of_ccd_trials < 10
-    # print "berkeley before rama out:", self.berkeley_p_before_minimization_rama_outliers
+    print >> self.log, "Rama outliers before idealization:", berkeley_count, self.berkeley_p_before_minimization_rama_outliers
     if (self.berkeley_p_before_minimization_rama_outliers <= 0.001 and
         (n_bad_omegas<1 and self.params.make_all_trans)):
       print >> self.log, "No ramachandran outliers, skipping CCD step."
