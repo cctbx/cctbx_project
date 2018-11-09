@@ -279,7 +279,7 @@ class to_xds(object):
     # see also show() method on things.
     str_result = []
     if as_str:
-      def print(str, file=None):
+      def print(str='', file=None):
         str_result.append(str)
     else:
       from dxtbx import get_print
