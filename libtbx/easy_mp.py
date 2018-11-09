@@ -254,7 +254,7 @@ class func_wrapper_sub_directories_impl(object):
 class func_wrapper_sub_directories(object):
   """Implementation detail"""
 
-  def __init__(O, sub_name_format="mp%03d", makedirs_mode=0777):
+  def __init__(O, sub_name_format="mp%03d", makedirs_mode=0o777):
     assert isinstance(sub_name_format, str)
     s = sub_name_format
     if (s.find("%") < 0):

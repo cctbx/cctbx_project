@@ -57,7 +57,7 @@ def eval_parallel(
   if (not exercise_out_of_range):
     assert mp_results == list(range(3, size+3))
   else:
-    assert mp_results[:size] == zip([""]*size, range(3, size+3))
+    assert mp_results[:size] == list(zip([""]*size, range(3, size+3)))
     assert mp_results[size][0].startswith("CAUGHT EXCEPTION:")
     assert mp_results[size][0].find("IndexError: ") > 0
     assert mp_results[size][1] is None
@@ -192,17 +192,17 @@ def check_if_stacktrace_is_propagated_properly(method, nproc):
   except ZeroDivisionError as e:
     exception_seen = True
     exc_type, exc_value, exc_traceback = sys.exc_info()
-    assert "division by zero" in str(exc_value.message), "Exception value mismatch: '%s'" % exc_value
+    assert "division by zero" in str(exc_value), "Exception value mismatch: '%s'" % exc_value
 
     stack_contains_fail_function = False
     # Two options: Either the original stack is available directly
     for (filename, line, function, text) in traceback.extract_tb(exc_traceback):
-      if function == _may_divide_by_zero.func_name:
+      if function == _may_divide_by_zero.__name__:
         stack_contains_fail_function = True
     # or it should be preserved in the string representation of the exception
     from libtbx.scheduling import stacktrace
     ex, st = stacktrace.exc_info()
-    if ex is not None and _may_divide_by_zero.func_name in "".join( st ):
+    if ex is not None and _may_divide_by_zero.__name__ in "".join( st ):
       stack_contains_fail_function = True
     if not stack_contains_fail_function:
       print("Thrown exception: %s:" % str(e))

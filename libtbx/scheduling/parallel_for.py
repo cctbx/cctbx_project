@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from builtins import range
+from builtins import object, range
 from collections import deque
 
 class single_pooler(object):
@@ -239,7 +239,7 @@ class iterator(object):
     return self
 
 
-  def next(self):
+  def __next__(self):
 
     while not self.resiter:
       self.process_next_one()
