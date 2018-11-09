@@ -7,6 +7,11 @@ from __future__ import absolute_import, division, print_function
 ## slightly modifed functionality.
 ##
 from builtins import range
+try: # Python 3
+    from itertools import zip_longest
+except ImportError: # Python 2
+    from itertools import izip_longest as zip_longest
+from functools import reduce
 from six.moves import cStringIO as StringIO
 import libtbx.forward_compatibility # for sum
 import operator
@@ -41,11 +46,12 @@ def format(rows,
     # closure for breaking logical rows to physical, using wrapfunc
     def row_wrapper(row):
         new_rows = [wrapfunc(item).split('\n') for item in row]
-        return [[substr or '' for substr in item] for item in map(None,*new_rows)]
+        return [[substr or '' for substr in item] for item in
+                map(lambda *a: a, *zip(*zip_longest(*new_rows)))]
     # break each logical row into one or more physical ones
     logical_rows = [row_wrapper(row) for row in rows]
     # columns of physical rows
-    columns = map(None,*reduce(operator.add,logical_rows))
+    columns = list(map(lambda *a: a, *zip(*zip_longest(*reduce(operator.add, logical_rows)))))
     # get the maximum of each column by the string length of its items
     max_widths = [max([len(str(item))
       for item in column]) for column in columns]
@@ -386,6 +392,75 @@ alpha | beta | gamma
 comments here"""
   print("OK")
 
+def exercise_general():
+  labels = ('First Name', 'Last Name', 'Age', 'Position')
+  data = \
+      '''John,Smith,24,Software Engineer
+      Mary,Brohowski,23,Sales Manager
+      Aristidis,Papageorgopoulos,28,Senior Reseacher'''
+  rows = [row.strip().split(',')  for row in data.splitlines()]
+
+  table = format([labels]+rows, has_header=True)
+  assert table == '''\
+-------------------------------------------------------
+First Name | Last Name        | Age | Position
+-------------------------------------------------------
+John       | Smith            | 24  | Software Engineer
+Mary       | Brohowski        | 23  | Sales Manager
+Aristidis  | Papageorgopoulos | 28  | Senior Reseacher
+-------------------------------------------------------'''
+
+  # test indent with different wrapping functions
+  width = 10
+  wrapped_output = [
+      '''\
+----------------------------------------------
+| First Name | Last Name  | Age | Position   |
+----------------------------------------------
+| John       | Smith      | 24  | Software E |
+|            |            |     | ngineer    |
+----------------------------------------------
+| Mary       | Brohowski  | 23  | Sales Mana |
+|            |            |     | ger        |
+----------------------------------------------
+| Aristidis  | Papageorgo | 28  | Senior Res |
+|            | poulos     |     | eacher     |
+----------------------------------------------''',
+      '''\
+---------------------------------------------------
+| First Name | Last Name        | Age | Position  |
+---------------------------------------------------
+| John       | Smith            | 24  | Software  |
+|            |                  |     | Engineer  |
+---------------------------------------------------
+| Mary       | Brohowski        | 23  | Sales     |
+|            |                  |     | Manager   |
+---------------------------------------------------
+| Aristidis  | Papageorgopoulos | 28  | Senior    |
+|            |                  |     | Reseacher |
+---------------------------------------------------''',
+      '''\
+---------------------------------------------
+| First Name | Last Name  | Age | Position  |
+---------------------------------------------
+| John       | Smith      | 24  | Software  |
+|            |            |     | Engineer  |
+---------------------------------------------
+| Mary       | Brohowski  | 23  | Sales     |
+|            |            |     | Manager   |
+---------------------------------------------
+| Aristidis  | Papageorgo | 28  | Senior    |
+|            | poulos     |     | Reseacher |
+---------------------------------------------'''
+  ]
+  for wrapper, output in zip((wrap_always,wrap_onspace,wrap_onspace_strict),
+                             wrapped_output):
+      table = format([labels]+rows, has_header=True, separate_rows=True,
+                     prefix='| ', postfix=' |',
+                     wrapfunc=lambda x: wrapper(x,width))
+      assert table == output
+
 if (__name__ == "__main__"):
   excercise_spreadsheet()
   exercise_flat_table()
+  exercise_general()
