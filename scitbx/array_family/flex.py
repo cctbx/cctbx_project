@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import hashlib
+import six
 import sys
 
 import boost.optional # import dependency
@@ -14,6 +15,25 @@ import scitbx.stl.map # import dependency
 import scitbx.random
 from scitbx.random import get_random_seed, set_random_seed
 from libtbx.str_utils import format_value
+
+if six.PY3:
+  from collections.abc import Iterable, Sequence
+else:
+  from collections import Iterable, Sequence
+# Register extension classes that look like a sequence, ie. have a
+# length and adressable elements, as a Sequence. Same for Iterable.
+for entry in ext.__dict__.values():
+  # Only consider types (=classes), not object instances
+  if not isinstance(entry, type): continue
+  # The Iterable interface means the type contains retrievable items.
+  # If the type fulfills this but is not already a known Iterable then
+  # register it as such.
+  if hasattr(entry, "__getitem__") and not issubclass(entry, Iterable):
+    Iterable.register(entry)
+  # A Sequence is an Iterable that also has a determinable length.
+  if hasattr(entry, "__getitem__") and hasattr(entry, "__len__") \
+      and not issubclass(entry, Sequence):
+    Sequence.register(entry)
 
 def bool_md5(self):
   return hashlib.md5(self.__getstate__()[1])
