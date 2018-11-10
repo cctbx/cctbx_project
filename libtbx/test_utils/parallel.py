@@ -258,7 +258,7 @@ class run_command_list(object):
     else:
       # Run tests serially.
       for command in self.cmd_list:
-        rc = run_command(command, verbosity=verbosity, out=out)
+        rc = run_command(command, verbosity=verbosity)
         if self.save_result(rc) == False:
           break
 
