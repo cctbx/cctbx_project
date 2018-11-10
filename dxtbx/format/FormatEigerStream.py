@@ -8,6 +8,8 @@ from dxtbx.model import Goniometer # import dependency
 from dxtbx.model import Scan # import dependency
 
 injected_data = {}
+#from dlstbx.eiger_stream.data import valid_things
+#injected_data = valid_things
 
 class FormatEigerStream(FormatMultiImage, Format):
   '''
@@ -49,9 +51,12 @@ class FormatEigerStream(FormatMultiImage, Format):
     from dxtbx.model.detector import DetectorFactory
     configuration = self.header['configuration']
 
+    from pprint import pprint
+    pprint(configuration)
+
     # Set the trusted range
 #   trusted_range = 0, configuration['countrate_correction_count_cutoff']
-    trusted_range = 0, 2 ** configuration['bit_depth_readout']
+    trusted_range = 0, 2 ** configuration['bit_depth_readout'] - 1
 
     # Get the sensor material and thickness
     sensor_material = str(configuration['sensor_material'])
@@ -144,6 +149,8 @@ class FormatEigerStream(FormatMultiImage, Format):
     '''
     Get the raw data from the image
     '''
+#   if hasattr(self, 'raw_data_cache'):
+#     return self.raw_data_cache
     import numpy as np
     from scitbx.array_family import flex
 
@@ -160,7 +167,20 @@ class FormatEigerStream(FormatMultiImage, Format):
 
     data = np.array(data,ndmin=3) # handle data, must be 3 dim
     data = data.reshape(data.shape[1:3]).astype("int32")
+
+#   from pprint import pprint
+    print("Get raw data")
+#   import traceback
+#   traceback.print_stack()
+#   pprint(info)
+
+    if info['type'] == 'uint16':
+      bad_sel = data==2**16-1
+      data[bad_sel] = -1
+
     return flex.int(data)
+#   self.raw_data_cache = flex.int(data)
+#   return self.raw_data_cache
 
   def readBSLZ4(self, data, shape, dtype, size):
     """
