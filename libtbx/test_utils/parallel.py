@@ -86,8 +86,7 @@ def find_tests(dir_name):
   return all_tests
 
 def run_command(command,
-                verbosity=DEFAULT_VERBOSITY,
-                out=None):
+                verbosity=DEFAULT_VERBOSITY):
   try:
     t0=time.time()
     cmd_result = easy_run.fully_buffered(
@@ -244,7 +243,7 @@ class run_command_list(object):
       for command in self.cmd_list:
         self.pool.apply_async(
           run_command,
-          [command, verbosity, out],
+          [command, verbosity],
           callback=self.save_result)
       try:
         self.pool.close()
