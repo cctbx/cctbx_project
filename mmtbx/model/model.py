@@ -1431,7 +1431,7 @@ class manager(object):
       self.extract_tls_selections_from_input()
     return self.input_tls_selections
 
-  def get_searched_tls_selections(self, nproc):
+  def get_searched_tls_selections(self, nproc, log):
     if "searched_tls_selections" not in self.__dict__.keys():
       tls_params = find_tls_groups.master_phil.fetch().extract()
       tls_params.nproc = nproc
@@ -1442,7 +1442,7 @@ class manager(object):
         xray_structure=deepcopy(self._xray_structure),
         return_as_list=True,
         ignore_pdb_header_groups=True,
-        out=StringIO())
+        out=log)
     return self.searched_tls_selections
 
   def determine_tls_groups(self, selection_strings, generate_tlsos):

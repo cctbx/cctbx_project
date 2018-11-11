@@ -259,9 +259,9 @@ class refinement_monitor(object):
     has_bonds_angles=True
     if len(self.geom.bonds):
       print >> out, remark + \
-        " stage       r-work r-free bonds angles b_min b_max b_ave n_water shift"
+        " stage r-work r-free bonds angles b_min b_max b_ave n_water shift"
       format = remark + "%s%ds"%("%",max_step_len)+\
-        " %6.4f %6.4f %5.3f %5.2f %5.1f %5.1f %5.1f %3d %s"
+        " %6.4f %6.4f %5.3f %6.3f %5.1f %5.1f %5.1f %3d %s"
     else:
       print >> out, remark + \
         " stage       r-work r-free b_min b_max b_ave n_water shift"
