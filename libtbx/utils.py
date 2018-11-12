@@ -2324,7 +2324,7 @@ def try_send_to_trash (path_name, delete_if_not_available=False,
 if sys.hexversion >= 0x03000000:
   unicode = str
 
-def to_unicode(text, codec=None):
+def to_unicode(text, codec=None, errors='replace'):
   '''
   Function for handling text when it is first encountered
 
@@ -2352,7 +2352,7 @@ def to_unicode(text, codec=None):
   elif (isinstance(text, bytes)):
     new_text = text
     try:
-      new_text = text.decode(codec, errors='replace')
+      new_text = text.decode(codec, errors)
     except UnicodeDecodeError: # in case errors='strict'
       raise Sorry('Unable to decode text with %s' % codec)
     finally:
@@ -2362,7 +2362,7 @@ def to_unicode(text, codec=None):
   else:
     return None
 
-def to_bytes(text, codec=None):
+def to_bytes(text, codec=None, errors='replace'):
   '''
   Function for handling text when it is passed to cctbx functions that expect
   bytestrings
@@ -2391,7 +2391,7 @@ def to_bytes(text, codec=None):
   elif (isinstance(text, unicode)):
     new_text = text
     try:
-      new_text = text.encode(codec, errors='replace')
+      new_text = text.encode(codec, errors)
     except UnicodeEncodeError: # in case errors='strict'
       raise Sorry('Unable to encode text with %s' % codec)
     finally:
@@ -2400,8 +2400,22 @@ def to_bytes(text, codec=None):
     return bytes(text)
   else:
     return None
-# keep to_str name
-to_str = to_bytes
+
+def to_str(text, codec=None, errors='replace'):
+  '''
+  Function for handling text in a way compatible with both Python 2 and 3 and
+  with Boost.
+
+  Boost defines boost::python::str as Unicode text in Python 3 (str type) and
+  as text/byte string in Python 2 (also str type, or bytes type).
+
+  This function just calls to_unicode and to_bytes to return the appropriate
+  type depending on the Python version
+  '''
+  if sys.hexversion >= 0x03000000:
+    return to_unicode(text, codec, errors)
+  else:
+    return to_bytes(text, codec, errors)
 
 def guess_total_memory(meminfo_file='/proc/meminfo'):
   import subprocess

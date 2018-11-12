@@ -165,14 +165,19 @@ to be reset.
 
 """)
   #
+  import sys
   from libtbx.str_utils import string_representation
   iset = list(range(130)) + list(range(250,256))
   for i in iset:
     s = chr(i)
     for j in iset:
       ss = s + chr(j)
-      assert string_representation(
-        string=ss, preferred_quote="'", alternative_quote='"') == repr(ss)
+      sr = string_representation(
+        string=ss, preferred_quote="'", alternative_quote='"')
+      if sys.hexversion < 0x03000000:
+        assert sr == repr(ss)
+      else:
+        assert eval(sr) == ss
   from libtbx.str_utils import framed_output
   out = StringIO()
   box = framed_output(out, frame='#')

@@ -544,7 +544,10 @@ namespace {
     char alternative_quote)
   {
 #ifdef IS_PY3K
-    PyBytesObject* op = (PyBytesObject*) string.ptr();
+    PyObject * tmp_op = PyUnicode_AsEncodedString(string.ptr(),
+                                                  "raw_unicode_escape",
+                                                  "strict");
+    PyBytesObject* op = (PyBytesObject*) tmp_op;
 #else
     PyStringObject* op = (PyStringObject*) string.ptr();
 #endif
