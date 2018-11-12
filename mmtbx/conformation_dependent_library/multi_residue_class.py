@@ -299,7 +299,6 @@ class ThreeProteinResidues(ProteinResidues):
 
   def provide_second_sub_unit_if_unlinked(self):
     # used if residue is appended using superclass method
-    assert 0
     if not self.are_linked():
       sub_unit = copy.copy(self) # calls append to delete first sub unit
       while not self.are_linked():
