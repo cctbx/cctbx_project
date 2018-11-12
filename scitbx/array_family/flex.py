@@ -322,9 +322,14 @@ class _(boost.python.injector, ext.histogram):
 
   def show(self, f=None, prefix="", format_cutoffs="%.8g"):
     if (f is None): f = sys.stdout
+    print(self.as_str(prefix=prefix, format_cutoffs=format_cutoffs), file=f)
+
+  def as_str(self, prefix="", format_cutoffs="%.8g"):
+    output = []
     fmt = "%s" + format_cutoffs + " - " + format_cutoffs + ": %d"
     for info in self.slot_infos():
-      print(fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n), file=f)
+      output.append(fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n))
+    return "\n".join(output)
 
 def show_count_stats(
       counts,
