@@ -40,6 +40,7 @@ def test_scan():
     oscillation=(5.0, 0.1),
     exposure_times=flex.double(range(20)),
     epochs=flex.double(range(20,40)))
+  s1.set_valid_image_ranges("0", (1, 20))
 
   d = s1.to_dict()
   s2 = Scan.from_dict(d)

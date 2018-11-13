@@ -82,6 +82,16 @@ namespace dxtbx { namespace model { namespace boost_python {
   template <>
   CrystalBase* from_dict<CrystalBase>(boost::python::dict obj);
 
+  template <typename K, typename V>
+  boost::python::dict MaptoPythonDict(std::map<K, V> map) {
+    typename std::map<K, V>::iterator iter;
+      boost::python::dict dictionary;
+      for (iter = map.begin(); iter != map.end(); ++iter) {
+        dictionary[iter->first] = boost::python::list(iter->second);
+      }
+      return dictionary;
+  }
+
 }}} // namespace dxtbx::model::boost_python
 
 #endif /* DXTBX_MODEL_BOOST_PYTHON_TO_FROM_DICT_H */
