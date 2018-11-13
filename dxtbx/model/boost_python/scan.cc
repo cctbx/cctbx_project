@@ -65,6 +65,8 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["oscillation"] = rad_as_deg(obj.get_oscillation());
     result["exposure_time"] = boost::python::list(obj.get_exposure_times());
     result["epochs"] = boost::python::list(obj.get_epochs());
+    boost::python::dict valid_image_ranges = MaptoPythonDict(obj.get_valid_image_ranges());
+    result["valid_image_ranges"] = valid_image_ranges;
     return result;
   }
 
@@ -127,7 +129,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       boost::python::extract< vec2<double> >(obj["oscillation"]));
     DXTBX_ASSERT(ir[1] >= ir[0]);
     std::size_t num = ir[1] - ir[0] + 1;
-    return new Scan(ir, osc,
+    Scan*  scan = new Scan(ir, osc,
       make_exposure_times(num,
         boost::python::extract<boost::python::list>(
           obj.get("exposure_time", boost::python::list()))),
@@ -135,6 +137,18 @@ namespace dxtbx { namespace model { namespace boost_python {
         boost::python::extract<boost::python::list>(
           obj.get("epochs", boost::python::list()))),
       bo);
+    boost::python::dict rangemap = boost::python::extract<boost::python::dict >(
+      obj["valid_image_ranges"]);
+    boost::python::list keys = rangemap.keys();
+    boost::python::list values = rangemap.values();
+    for (int i = 0; i < len(keys); ++i) {
+      boost::python::extract<std::string> extracted_key(keys[i]);
+      boost::python::extract<scitbx::af::shared<int> > extracted_val(values[i]);
+      std::string key = extracted_key;
+      scitbx::af::shared<int> values = extracted_val;
+      scan->set_valid_image_ranges(key, values);
+    }
+    return scan;
   }
 
   static Scan* make_scan(vec2 <int> image_range, vec2 <double> oscillation,
@@ -363,6 +377,10 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("deg") = true)))
       .def("get_image_range",
         &Scan::get_image_range)
+      .def("get_valid_image_ranges",
+        &Scan::get_valid_image_ranges_key)
+      .def("set_valid_image_ranges",
+        &Scan::set_valid_image_ranges)
       .def("set_image_range",
         &Scan::set_image_range)
       .def("get_batch_offset",

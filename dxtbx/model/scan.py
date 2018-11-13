@@ -122,7 +122,8 @@ class ScanFactory:
       d['exposure_time'] = [d['exposure_time']]
 
     d.setdefault('batch_offset', 0) # backwards compatibility 20180205
-
+    if 'valid_image_ranges' not in d:
+      d['valid_image_ranges'] = {} # backwards compatibility 20181113
     # Create the model from the dictionary
     return Scan.from_dict(d)
 

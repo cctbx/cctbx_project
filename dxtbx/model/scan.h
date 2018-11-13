@@ -13,12 +13,15 @@
 
 #include <cmath>
 #include <iostream>
+#include <map>
 #include <scitbx/vec2.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/simple_tiny_io.h>
 #include <dxtbx/error.h>
 #include "scan_helpers.h"
+
+typedef std::map<std::string, scitbx::af::shared<int> > ExpImgRangeMap;
 
 namespace dxtbx { namespace model {
 
@@ -102,6 +105,7 @@ namespace dxtbx { namespace model {
     /** Copy */
     Scan(const Scan &rhs)
       : image_range_(rhs.image_range_),
+        valid_image_ranges_(rhs.valid_image_ranges_),
         oscillation_(rhs.oscillation_),
         num_images_(rhs.num_images_),
         batch_offset_(rhs.batch_offset_),
@@ -119,6 +123,32 @@ namespace dxtbx { namespace model {
     /** Get the image range */
     vec2 <int> get_image_range() const {
       return image_range_;
+    }
+
+    /** Get the map, not exported to python **/
+    ExpImgRangeMap get_valid_image_ranges() const {
+      return valid_image_ranges_;
+    }
+
+    /** Get the element for a given key if it exists, else return empty array**/
+    scitbx::af::shared<int> get_valid_image_ranges_key(std::string i) const {
+      if (valid_image_ranges_.find(i) == valid_image_ranges_.end()) {
+        scitbx::af::shared<int> empty;
+        return empty;
+      }
+      else {
+        return valid_image_ranges_.at(i);
+      }
+    }
+
+    void set_valid_image_ranges(std::string i, scitbx::af::shared<int> values){
+      /** Set a list of valid image ranges for experiment identifier 'i'**/
+      DXTBX_ASSERT(values.size() % 2 == 0);
+      for (std::size_t i = 0; i < values.size(); ++i) {
+        DXTBX_ASSERT(values[i] >= image_range_[0]);
+        DXTBX_ASSERT(values[i] <= image_range_[1]);
+      }
+      valid_image_ranges_[i] = values;
     }
 
     /** Get the batch offset */
@@ -435,6 +465,7 @@ namespace dxtbx { namespace model {
   private:
 
     vec2 <int> image_range_;
+    ExpImgRangeMap valid_image_ranges_; /** initialised as an empty map **/
     vec2 <double> oscillation_;
     int num_images_;
     int batch_offset_;
