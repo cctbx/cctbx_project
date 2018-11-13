@@ -2355,6 +2355,13 @@ def run_and_test(cmd, pdb, i, skip_links=False):
                       'Bond-like restraints:',
                       'Metal coordination restraints:',
                       'User supplied restraints restraints:',
+                      #
+                      'Disulphide bridge restraints:',
+                      'Bond-like restraints:',
+                      'Metal coordination restraints:',
+                      'User supplied restraints:',
+                      'Standard Glycosidic restraints:',
+                      'Custom Glycosidic restraints:',
                       ]:
       if line.find(bond_like)>-1:
         print 'Adding %s for %s' % (int(line.split()[-1]), bond_like)
