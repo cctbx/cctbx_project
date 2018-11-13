@@ -1048,6 +1048,15 @@ def selection_string_from_selection(pdb_h,
   #     "%d (result) != %d (input): conversion to string selects different number of atoms!.\n" \
   #     % (len(isel), len(selection)) +\
   #     "String lead to error: '%s'" % sel_str
+
+  # This hack is implemented to allow a chain be completely in two alternative
+  # conformations. Above check would fail. Selections outputted in refinement
+  # are incorrect, but underlying iselections are actually correct and refinement
+  # should be fine. General solution would be a universal procedure which can
+  # handle alternative conformations correctly, but this is time-demanding project.
+  # http://phenix-online.org/pipermail/phenixbb/2018-November/024006.html
+  if sel_str == '':
+    sel_str = "not all"
   return sel_str
 
 def get_atom_str(atom_str):
