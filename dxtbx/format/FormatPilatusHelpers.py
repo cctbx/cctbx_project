@@ -81,6 +81,45 @@ def determine_pilatus_mask(xdetector):
 
   return mask
 
+def determine_eiger_mask(xdetector):
+  '''Return an appropriate pixel mask for an Eiger detector.'''
+
+  size = xdetector[0].get_image_size()
+
+  # Hardcoded module size and gap size
+
+  if size[1] in [2164]:
+    module_size_fast, module_size_slow = (1030, 514)
+    gap_size_fast, gap_size_slow = (10, 36)
+  else:
+    module_size_fast, module_size_slow = (1030, 514)
+    gap_size_fast, gap_size_slow = (10, 37)
+
+  # Edge dead areas not included, only gaps between modules matter
+  n_fast, remainder = divmod(size[0], module_size_fast)
+  assert (n_fast-1) * gap_size_fast == remainder
+
+  n_slow, remainder = divmod(size[1], module_size_slow)
+  assert (n_slow-1) * gap_size_slow == remainder
+
+  # Specify the dead areas between the modules, i.e. the rows and columns
+  # where there are no active pixels
+  mask = []
+  for i_fast in range(n_fast-1):
+    mask.append([
+      (i_fast+1) * module_size_fast + i_fast * gap_size_fast + 1,
+      (i_fast+1) * module_size_fast + i_fast * gap_size_fast + gap_size_fast,
+      1, size[1]
+    ])
+  for i_slow in range(n_slow-1):
+    mask.append([
+      1, size[0],
+      (i_slow+1) * module_size_slow + i_slow * gap_size_slow + 1,
+      (i_slow+1) * module_size_slow + i_slow * gap_size_slow + gap_size_slow
+    ])
+
+  return mask
+
 def get_vendortype(xdetector):
   array = xdetector[0].get_image_size()
   if array == (2463,2527): return "Pilatus-6M"
