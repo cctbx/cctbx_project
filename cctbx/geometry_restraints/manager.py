@@ -1721,6 +1721,59 @@ class manager(Base_geometry):
       hd_sel=hd_sel,
       site_labels=site_labels).result
 
+  def get_struct_conn_mmcif(self, atoms):
+    def _atom_info(atom):
+      return [atom.parent().resname,
+              atom.parent().parent().parent().id,
+              atom.parent().parent().resseq.strip(),
+              atom.name.strip(),
+             ]
+    simple, asu = self.get_all_bond_proxies()
+    simple = simple.get_proxies_without_origin_id(0)
+    asu = asu.get_proxies_without_origin_id(0)
+    from cctbx.geometry_restraints.auto_linking_types import origin_ids
+    struct_conn_loop = iotbx.cif.model.loop(header=(
+      '_struct_conn.id',
+      '_struct_conn.conn_type_id',
+      '_struct_conn.ptnr1_label_comp_id',
+      '_struct_conn.ptnr1_label_asym_id',
+      '_struct_conn.ptnr1_label_seq_id',
+      '_struct_conn.ptnr1_label_atom_id',
+      '_struct_conn.ptnr1_role',
+      #'_struct_conn.ptnr1_symmetry',
+      '_struct_conn.ptnr2_label_comp_id',
+      '_struct_conn.ptnr2_label_asym_id',
+      '_struct_conn.ptnr2_label_seq_id',
+      '_struct_conn.ptnr2_label_atom_id',
+      '_struct_conn.ptnr2_role',
+      #'_struct_conn.ptnr2_symmetry',
+      '_struct_conn.details',
+      ))
+    for i, bond in enumerate(list(simple)+list(asu)):
+      if simple.size()+asu.size()>99:
+        row = ['C%05d' % (i+1)]
+      else:
+        row = ['C%02d' % (i+1)]
+      origin_id_info = origin_ids[0].get(bond.origin_id, None)
+      assert origin_id_info
+      if origin_id_info[0]=='SS BOND': row.append('disulf')
+      elif origin_id_info[0]=='metal coordination': row.append('metalc')
+      else: row.append('covale')
+      if hasattr(bond, 'i_seqs'): row += _atom_info(atoms[bond.i_seqs[0]])
+      else: row += _atom_info(atoms[bond.i_seq])
+      row.append('.')      # role
+      #row.append('1_555') # symmetry!
+      if hasattr(bond, 'i_seqs'): row += _atom_info(atoms[bond.i_seqs[1]])
+      else: row += _atom_info(atoms[bond.j_seq])
+      row.append('.')
+      #row.append('1_555')
+      if origin_id_info[2]: row.append(origin_id_info[2])
+      elif origin_id_info[1]: row.append(origin_id_info[1])
+      else: row.append('.') # details
+      struct_conn_loop.add_row(row)
+    return struct_conn_loop
+
+
 def construct_non_crystallographic_conserving_bonds_and_angles(
       sites_cart,
       edge_list_bonds,
@@ -1815,3 +1868,5 @@ def format_distances_for_error_message(
             sd = "%.6g" % dist
           result.append("distance: %s - %s: %s%s" % (si, sj, sd, ss))
   return result
+
+

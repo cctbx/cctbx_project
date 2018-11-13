@@ -822,6 +822,10 @@ class manager(object):
       else:
         cif_block = hierarchy_to_output.as_cif_block()
 
+    grm = self.get_restraints_manager().geometry
+    struct_conn_loop = grm.get_struct_conn_mmcif(self.get_atoms())
+    cif_block.add_loop(struct_conn_loop)
+
     # outputting HELIX/SHEET records
     ss_cif_loops = []
     ss_ann = None
