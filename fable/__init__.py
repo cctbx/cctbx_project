@@ -5,6 +5,7 @@ except Exception:
   ext = None
 else:
   ext = boost.python.import_ext("fable_ext", optional=True)
+from six.moves import range
 
 # compare with fem/utils/string.hpp
 def py_fem_utils_unsigned_integer_scan(code, start=0, stop=-1):

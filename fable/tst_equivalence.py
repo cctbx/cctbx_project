@@ -1,14 +1,11 @@
-from __future__ import absolute_import, division, print_function
+from __future__ import division
 from six.moves import range
-
 import fable.equivalence
-import pytest
-import random
 
 def fem_array_alignment(members_size, i_mbr_byte_offset_pairs):
   fueaa = fable.fem_utils_equivalence_array_alignment(
     members_size=members_size)
-  for p0, p1 in i_mbr_byte_offset_pairs:
+  for p0,p1 in i_mbr_byte_offset_pairs:
     i0, a0 = p0
     i1, a1 = p1
     fueaa.add_anchor(i0=i0, a0=a0, i1=i1, a1=a1)
@@ -18,24 +15,19 @@ def check_array_alignment(array_alignment, n, pairs):
   diffs0 = array_alignment(
     members_size=n,
     i_mbr_byte_offset_pairs=pairs)
-  for p0, p1 in pairs:
+  for p0,p1 in pairs:
     i0, a0 = p0
     i1, a1 = p1
     assert diffs0[i1] - diffs0[i0] == a0 - a1
   return diffs0
 
-@pytest.mark.parametrize("array_alignment", [
-    fable.equivalence.array_alignment,
-    pytest.param(fem_array_alignment,
-        marks=pytest.mark.skipif(not fable.ext,
-                                 reason="test depends on C++ library")),
-])
-@pytest.mark.parametrize("n", range(2,6))
-def test_given_members_size(array_alignment, n, n_trials=10):
+def exercise_given_members_size(array_alignment, n, n_trials=10):
+  from libtbx.math_utils import random_permutation_in_place
+  import random
   random.seed(0)
   i_mbrs = list(range(n))
   for i_trial in range(n_trials):
-    random.shuffle(i_mbrs)
+    random_permutation_in_place(list=i_mbrs)
     #
     pair0 = i_mbrs[0], random.randrange(n+5)
     pairs = []
@@ -57,7 +49,7 @@ def test_given_members_size(array_alignment, n, n_trials=10):
     diffs_in = [0]
     for i in range(n-1):
       diffs_in.append(random.randrange(n+5))
-    random.shuffle(diffs_in)
+    random_permutation_in_place(list=diffs_in)
     all_pairs = []
     for i in range(n):
       for j in range(3):
@@ -72,12 +64,10 @@ def test_given_members_size(array_alignment, n, n_trials=10):
         a1 = diffs_in[i1] + sh
         all_pairs.append(((i0,a0), (i1,a1)))
         all_pairs.append(((i1,a1), (i0,a0)))
-    random.shuffle(all_pairs)
+    random_permutation_in_place(list=all_pairs)
     check_array_alignment(array_alignment, n, all_pairs)
   #
-  # non-sensical inputs to exercise stability
-  # these may cause RuntimeErrors, but must not cause
-  # any other exceptions (e.g. asserts)
+  # non-sensical inputs to exercise stability (e.g. asserts)
   for i_trial in range(n_trials):
     pairs = []
     for i_pair in range(n+2):
@@ -88,37 +78,36 @@ def test_given_members_size(array_alignment, n, n_trials=10):
       pairs.append(((i0,o0), (i1,o1)))
       try:
         check_array_alignment(array_alignment, n, pairs)
-      except RuntimeError:
-        pass # these are to be expected
+      except RuntimeError as e:
+        pass
 
-
-@pytest.mark.parametrize("array_alignment", [
-    fable.equivalence.array_alignment,
-    pytest.param(fem_array_alignment,
-        marks=pytest.mark.skipif(not fable.ext,
-                                 reason="test depends on C++ library")),
-])
-def test_exceptions(array_alignment):
+def exercise_exceptions(array_alignment):
+  from libtbx.test_utils import Exception_expected
   for n,pairs in [
         (2, [((0,0),(0,1))]),
         (2, [((0,0),(1,0)), ((0,0),(1,1))])]:
-
-    with pytest.raises(RuntimeError) as e:
+    try:
       array_alignment(n, pairs)
-    assert str(e.value).endswith("directly conflicting input")
-
+    except RuntimeError as e:
+      assert str(e).endswith("directly conflicting input")
+    else: raise Exception_expected
+  #
   for n,pairs in [
         (3, [((0,0),(1,0)), ((2,0),(1,1)), ((2,0),(0,0))]),
         (4, [((1,4),(2,8)), ((3,3),(1,4)), ((3,6),(2,6)), ((0,0),(2,4))])]:
-    with pytest.raises(RuntimeError) as e:
+    try:
       array_alignment(n, pairs)
-    assert str(e.value).endswith("indirectly conflicting input")
-
-  with pytest.raises(RuntimeError) as e:
+    except RuntimeError as e:
+      assert str(e).endswith("indirectly conflicting input")
+    else: raise Exception_expected
+  #
+  try:
     array_alignment(3, [((0,0),(1,0))])
-  assert str(e.value).endswith("insufficient input")
+  except RuntimeError as e:
+    assert str(e).endswith("insufficient input")
+  else: raise Exception_expected
 
-def test_cluster_unions():
+def exercise_cluster_unions():
   cu = fable.equivalence.cluster_unions()
   cu.add(("a", "b"))
   assert cu.unions == [["a", "b"]]
@@ -145,3 +134,25 @@ def test_cluster_unions():
     "a": 0, "c": 0, "b": 0, "e": 0, "d": 0, "g": 0, "f": 0, "i": 1, "h": 1}
   cu.add(("h", "j"))
   assert cu.unions == [["a", "b", "c", "d", "e", "f", "g"], ["h", "i", "j"]]
+
+def run(args):
+  assert len(args) in [0,1]
+  if (len(args) == 0):
+    n_trials = 10
+  else:
+    n_trials = int(args[0])
+    print("n_trials:", n_trials)
+    assert n_trials >= 0
+  def exercise_array_alignment(f):
+    for n in range(2,6):
+      exercise_given_members_size(array_alignment=f, n=n, n_trials=n_trials)
+    exercise_exceptions(array_alignment=f)
+  exercise_array_alignment(fable.equivalence.array_alignment)
+  if (fable.ext is not None):
+    exercise_array_alignment(fem_array_alignment)
+  exercise_cluster_unions()
+  print("OK")
+
+if (__name__ == "__main__"):
+  import sys
+  run(args=sys.argv[1:])
