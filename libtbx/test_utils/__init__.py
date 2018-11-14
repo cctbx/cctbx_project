@@ -414,7 +414,7 @@ def precision_approx_equal(self,other,precision=24):
 def show_diff(a, b, out=sys.stdout,
     selections=None, expected_number_of_lines=None,
     strip_trailing_whitespace=False):
-  if (not isinstance(a, str)):
+  if (not isinstance(a, (str,bytes))):
     a = "\n".join(a)+"\n"
   if (selections is None):
     assert expected_number_of_lines is None
