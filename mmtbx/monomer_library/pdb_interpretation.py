@@ -4601,7 +4601,7 @@ class build_all_chain_proxies(linking_mixins):
         i_seqs=flex.size_t(i_seqs),
         j_seqs=flex.size_t(j_seqs),
         weight=weight,
-        origin_id = 3,
+        origin_id=origin_ids.get_origin_id('edits'),
         target_angle_deg=target_angle_deg)
       result.append(proxy)
     print >> log, "    Total number of custom parallelities:", len(result)
