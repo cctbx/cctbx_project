@@ -842,6 +842,8 @@ Residue classes
             tmp = atom_group2
             atom_group2 = atom_group1
             atom_group1 = tmp
+          oi = origin_ids['trans peptide link']
+          assert key=='TRANS'
           rc = _apply_link_using_proxies(link,
                                          atom_group1,
                                          atom_group2,
@@ -849,6 +851,7 @@ Residue classes
                                          bond_asu_table,
                                          geometry_proxy_registries,
                                          rt_mx_ji=link_rt_mx_ji,
+                                         origin_id=oi,
             )
           if not rc:
             tmp = atom_group2
@@ -861,6 +864,7 @@ Residue classes
                                            bond_asu_table,
                                            geometry_proxy_registries,
                                            rt_mx_ji=link_rt_mx_ji,
+                                           origin_id-oi,
               )
           # not added to links so not LINK record
           if sym_op:
