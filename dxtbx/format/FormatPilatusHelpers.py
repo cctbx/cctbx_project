@@ -47,6 +47,52 @@ def pilatus_300K_mask():
   return [[1, 487, 196, 212],
           [1, 487, 408, 424]]
 
+
+def sensor_active_areas(xdetector):
+  '''Return the sensitive areas on the detector for pixel array detectors
+     yes, does include hard coded magic numbers; returns [(x0, y0 x1, x1)]'''
+
+  assert xdetector[0].get_type() == 'SENSOR_PAD'
+  assert len(xdetector) == 1
+
+  size = xdetector[0].get_image_size()
+
+  pilatus_sizes = [487, 487 * 3 + 7 * 2, 487 * 5 + 7 * 4]
+
+  if size[0] in pilatus_sizes:
+    # is Pilatus
+    module_size_fast, module_size_slow = (487, 195)
+    gap_size_fast, gap_size_slow = (7, 17)
+  else:
+    # is Eiger
+    if size[1] in [2164]: # because Eiger 2 4M ; list will extend
+      module_size_fast, module_size_slow = (1030, 514)
+      gap_size_fast, gap_size_slow = (10, 36)
+    else:
+      module_size_fast, module_size_slow = (1030, 514)
+      gap_size_fast, gap_size_slow = (10, 37)
+
+  # iterate over these to produce a list of the TLC, BRC of the modules
+  # as a list
+  n_fast, remainder = divmod(size[0], module_size_fast)
+  assert (n_fast-1) * gap_size_fast == remainder
+
+  n_slow, remainder = divmod(size[1], module_size_slow)
+  assert (n_slow-1) * gap_size_slow == remainder
+
+  # Specify the dead areas between the modules, i.e. the rows and columns
+  # where there are no active pixels
+
+  panels = []
+
+  for i_fast in range(n_fast):
+    for i_slow in range(n_slow):
+      panels.append((i_fast * module_size_fast, i_slow * module_size_slow,
+                    (i_fast + 1) * module_size_fast,
+                    (i_slow + 1) * module_size_slow))
+
+  return panels
+
 def determine_pilatus_mask(xdetector):
   '''Return an appropriate pixel mask for a Pilatus detector.'''
 
