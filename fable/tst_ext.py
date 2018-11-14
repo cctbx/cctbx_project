@@ -1,19 +1,13 @@
-from __future__ import absolute_import, division, print_function
-
-import math
-
+from __future__ import division, print_function
 import fable
-import pytest
+from libtbx.test_utils import Exception_expected
 
 def try_code_none(f):
-  with pytest.raises(TypeError):
-    f(code=None)
+  try: f(code=None)
+  except TypeError as e: pass
+  else: raise Exception_expected
 
-@pytest.mark.parametrize("f", [
-    fable.py_unsigned_integer_scan,
-    fable.unsigned_integer_scan,
-])
-def test_unsigned_integer_scan(f):
+def exercise_unsigned_integer_scan(f):
   try_code_none(f=f)
   assert f(code="") == -1
   assert f(code="0") == 1
@@ -27,11 +21,7 @@ def test_unsigned_integer_scan(f):
   assert f(code="3456", start=1, stop=-1) == 4
   assert f(code="3456", start=1, stop=3) == 3
 
-@pytest.mark.parametrize("f", [
-    fable.py_floating_point_scan_after_exponent_char,
-    fable.floating_point_scan_after_exponent_char,
-])
-def test_floating_point_scan_after_exponent_char(f):
+def exercise_floating_point_scan_after_exponent_char(f):
   try_code_none(f=f)
   assert f(code="") == -1
   assert f(code="e") == -1
@@ -46,11 +36,7 @@ def test_floating_point_scan_after_exponent_char(f):
   assert f(code="-+34", start=1, stop=-1) == 4
   assert f(code="-+34", start=1, stop=3) == 3
 
-@pytest.mark.parametrize("f", [
-    fable.py_floating_point_scan_after_dot,
-    fable.floating_point_scan_after_dot,
-])
-def test_floating_point_scan_after_dot(f):
+def exercise_floating_point_scan_after_dot(f):
   try_code_none(f=f)
   assert f(code="") == 0
   assert f(code="0") == 1
@@ -67,11 +53,7 @@ def test_floating_point_scan_after_dot(f):
   assert f(code="xe+56", start=1, stop=-1) == 5
   assert f(code="xe+56", start=1, stop=4) == 4
 
-@pytest.mark.parametrize("f", [
-    fable.py_identifier_scan,
-    fable.identifier_scan,
-])
-def test_identifier_scan(f):
+def exercise_identifier_scan(f):
   try_code_none(f=f)
   assert f(code="") == -1
   assert f(code=")") == -1
@@ -88,11 +70,7 @@ def test_identifier_scan(f):
   assert f(code="*abc", start=1, stop=-1) == 4
   assert f(code="*abc", start=1, stop=3) == 3
 
-@pytest.mark.parametrize("f", [
-    fable.py_find_closing_parenthesis,
-    fable.find_closing_parenthesis,
-])
-def test_find_closing_parenthesis(f):
+def exercise_find_closing_parenthesis(f):
   try_code_none(f=f)
   assert f(code="") == -1
   assert f(code=")") == 0
@@ -109,8 +87,7 @@ def test_find_closing_parenthesis(f):
   assert f(code="x)", start=1, stop=-1) == 1
   assert f(code="x)", start=1, stop=1) == -1
 
-@pytest.mark.skipif(not fable.ext, reason="test depends on C++ library")
-def test_fem_utils_split_comma_separated():
+def exercise_fem_utils_split_comma_separated():
   scs = fable.exercise_fem_utils_split_comma_separated
   assert scs("") == []
   assert scs(" , ") == []
@@ -120,48 +97,68 @@ def test_fem_utils_split_comma_separated():
   assert scs(" f , g ") == ["f", "g"]
   assert scs(" abc,,def,g ,hi, jkl ") == ["abc", "def", "g", "hi", "jkl"]
 
-@pytest.mark.skipif(not fable.ext, reason="test depends on C++ library")
-def test_fem_utils_int_types():
+def exercise_fem_utils_int_types():
   int_sizes = fable.exercise_fem_utils_int_types()
   expected = [1, 2, 4, 8]
-  assert int_sizes == expected, '''
-    Sizes are %s but should be %s
-    fem/utils/int_sizes.hpp needs to be adjusted for this platform.
-  ''' % (int_sizes, expected)
+  if (int_sizes != expected):
+    hpp = "fem/utils/int_sizes.hpp"
+    print("FATAL: %s: sizes are" % hpp, int_sizes, "but should be", expected)
+    raise RuntimeError(
+      "%s needs to be adjusted for this platform." % hpp)
 
-@pytest.mark.skipif(not fable.ext, reason="test depends on C++ library")
-def test_fem_real_types():
+def exercise_fem_real_types():
   real_sizes = fable.exercise_fem_real_types()
   expected = [4, 8]
-  assert real_sizes[:2] == expected, '''
-    Sizes are %s but should be %s
-    fem/data_types_star.hpp needs to be adjusted for this platform.
-  ''' % (real_sizes[:2], expected)
+  if (real_sizes[:2] != expected):
+    hpp = "fem/data_types_star.hpp"
+    print("FATAL: %s: sizes are" % hpp, real_sizes[:2], \
+      "but should be", expected)
+    raise RuntimeError(
+      "%s needs to be adjusted for this platform." % hpp)
   assert real_sizes[2] >= real_sizes[1]
 
-@pytest.mark.skipif(not fable.ext, reason="test depends on C++ library")
-def test_fem_format_tokenizer():
+def exercise_fem_format_tokenizer():
   f = fable.exercise_fem_format_tokenizer
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: empty string$"):
-    f("")
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: \($"):
-    f("(")
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: x$"):
-    f("x")
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: x$"):
-    f("  x  ")
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: '$"):
-    f("'")
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: ''$"):
-    f("''")
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: '''$"):
-    f("'''")
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: ''''$"):
-    f("''''")
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: ' '$"):
-    f("' '")
-  with pytest.raises(RuntimeError, match=r'^Invalid FORMAT specification: " "$'):
-    f('" "')
+  try: f("")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: empty string"
+  else: raise Exception_expected
+  try: f("(")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: ("
+  else: raise Exception_expected
+  try: f("x")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: x"
+  else: raise Exception_expected
+  try: f("  x  ")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: x"
+  else: raise Exception_expected
+  try: f("'")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: '"
+  else: raise Exception_expected
+  try: f("''")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: ''"
+  else: raise Exception_expected
+  try: f("'''")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: '''"
+  else: raise Exception_expected
+  try: f("''''")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: ''''"
+  else: raise Exception_expected
+  try: f("' '")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: ' '"
+  else: raise Exception_expected
+  try: f('" "')
+  except RuntimeError as e:
+    assert str(e) == 'Invalid FORMAT specification: " "'
+  else: raise Exception_expected
   assert f("()") == []
   assert f(" (\t ) \t") == []
   assert f("(x)") == [("format", "x")]
@@ -182,10 +179,15 @@ def test_fem_format_tokenizer():
   assert f(' ( " X "" \'\t" ) ') == [("string", ' X " \'\t')]
   assert f(" ( + 1 P ) ") == [("format", "+1p")]
   assert f(" ( - 2 3 p ) ") == [("format", "-23p")]
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: \(\+1x\)$"):
-    f(" ( + 1 X ) ")
-  with pytest.raises(RuntimeError, match=r"^FATAL: Not supported: FORMAT Hollerith edit descriptor: \(8h\)$"):
-    f(" ( 8 H ) ")
+  try: f(" ( + 1 X ) ")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: (+1x)"
+  else: raise Exception_expected
+  try: f(" ( 8 H ) ")
+  except RuntimeError as e:
+    assert str(e) == \
+      "FATAL: Not supported: FORMAT Hollerith edit descriptor: (8h)"
+  else: raise Exception_expected
   assert f(" ( 3 4 x ) ") == [("format", "34x")]
   assert f(" ( 5 6 7 p ) ") == [("format", "567p")]
   assert f(" ( 2 3 4 5 ) ") == [("integer", "2345")]
@@ -197,8 +199,10 @@ def test_fem_format_tokenizer():
   assert f("(Z)") == [("format", "z")]
   assert f("(D20)") == [("format", "d20")]
   assert f("(D30.10)") == [("format", "d30.10")]
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: \(d30\.\)$"):
-    f("(D30.)")
+  try: f("(D30.)")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: (d30.)"
+  else: raise Exception_expected
   assert f("(A)") == [("format", "a")]
   assert f("(A37)") == [("format", "a37")]
   assert f("(L)") == [("format", "l")]
@@ -208,10 +212,14 @@ def test_fem_format_tokenizer():
   assert f("(S)") == [("format", "s")]
   assert f("( S P )") == [("format", "sp")]
   assert f("( s S )") == [("format", "ss")]
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: \(t\)$"):
-    f("(T)")
-  with pytest.raises(RuntimeError, match=r"^Invalid FORMAT specification: \(tl\)$"):
-    f("(TL)")
+  try: f("(T)")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: (t)"
+  else: raise Exception_expected
+  try: f("(TL)")
+  except RuntimeError as e:
+    assert str(e) == "Invalid FORMAT specification: (tl)"
+  else: raise Exception_expected
   assert f("(T12)") == [("format", "t12")]
   assert f("(TL23)") == [("format", "tl23")]
   assert f("(TR34)") == [("format", "tr34")]
@@ -281,13 +289,13 @@ def test_fem_format_tokenizer():
     ("op", ")")]
 
 def compare_floats(v, val):
-  vm, ve = math.frexp(val)
+  from math import frexp
+  vm, ve = frexp(val)
   scale = 2.0**(-ve)
   delta = abs(v*scale - val*scale)
   return delta < 1.e-14
 
-@pytest.mark.skipif(not fable.ext, reason="test depends on C++ library")
-def test_fem_utils_string_to_double():
+def exercise_fem_utils_string_to_double():
   stream_end = 256
   err_eoi = "End of input while reading floating-point value."
   err_inv = "Invalid character while reading floating-point value: "
@@ -397,13 +405,13 @@ def test_fem_utils_string_to_double():
   assert v == 0
   assert e == err_inv + '"\'" (single quote, ordinal=39)'
   assert n == ord('"')
-  v,e,n = f(chr(134)+'x')
+  from libtbx.utils import to_bytes
+  v,e,n = f(to_bytes(chr(134)+'x', codec='latin-1'))
   assert v == 0
   assert e == err_inv + 'ordinal=134'
   assert n == ord("x")
 
-@pytest.mark.skipif(not fable.ext, reason="test depends on C++ library")
-def test_fem_utils_string_to_double_fmt():
+def exercise_fem_utils_string_to_double_fmt():
   f = fable.exercise_fem_utils_string_to_double_fmt
   def check(str, w, d, blanks_zero, exp_scale, val):
     v,e,n = f(str=str, w=w, d=d, blanks_zero=blanks_zero, exp_scale=exp_scale)
@@ -431,3 +439,33 @@ def test_fem_utils_string_to_double_fmt():
   check("3 5 e 1 24", 9, 0, True, 0, 3.05e105)
   check("3 5 e 1 24", 9, 1, False, 0, 3500000000000.)
   check("3 5 e 1 24", 9, 1, True, 0, 3.05e104)
+
+def run(args):
+  assert len(args) == 0
+  for f in [fable.py_unsigned_integer_scan,
+               fable.unsigned_integer_scan]:
+    exercise_unsigned_integer_scan(f)
+  for f in [fable.py_floating_point_scan_after_exponent_char,
+               fable.floating_point_scan_after_exponent_char]:
+    exercise_floating_point_scan_after_exponent_char(f)
+  for f in [fable.py_floating_point_scan_after_dot,
+               fable.floating_point_scan_after_dot]:
+    exercise_floating_point_scan_after_dot(f)
+  for f in [fable.py_identifier_scan,
+               fable.identifier_scan]:
+    exercise_identifier_scan(f)
+  for f in [fable.py_find_closing_parenthesis,
+               fable.find_closing_parenthesis]:
+    exercise_find_closing_parenthesis(f)
+  if (fable.ext is not None):
+    exercise_fem_utils_split_comma_separated()
+    exercise_fem_utils_int_types()
+    exercise_fem_real_types()
+    exercise_fem_format_tokenizer()
+    exercise_fem_utils_string_to_double()
+    exercise_fem_utils_string_to_double_fmt()
+  print ("OK")
+
+if (__name__ == "__main__"):
+  import sys
+  run(args=sys.argv[1:])

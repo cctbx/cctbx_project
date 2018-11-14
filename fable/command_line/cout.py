@@ -1,15 +1,10 @@
-from __future__ import absolute_import, division
-import fable
+from __future__ import division, print_function
 import fable.cout
 
 import hashlib
-import optparse
-import os
-import sys
-
 def compute_hexdigest(text):
   m = hashlib.md5()
-  m.update(text)
+  m.update(text.encode("utf-8"))
   return m.hexdigest()
 
 def check_fingerprint(file_name):
@@ -24,20 +19,24 @@ def check_fingerprint(file_name):
   return (orig_hexdigest == curr_hexdigest)
 
 def write_only_if_safe(file_name, text):
-  if os.path.exists(file_name):
-    if not os.path.isfile(file_name):
+  from libtbx.str_utils import show_string
+  import os
+  op = os.path
+  if (op.exists(file_name)):
+    if (not op.isfile(file_name)):
       raise RuntimeError(
-        "Not a regular file: %s" % file_name)
+        "Not a regular file: %s" % show_string(file_name))
     stat = check_fingerprint(file_name=file_name)
     if (stat is None or not stat):
       raise RuntimeError(
-        "File '%s' appears to be manually modified" % file_name)
+        "File appears to be manually modified: %s" % show_string(file_name))
   hexdigest = compute_hexdigest(text=text)
-  with open(file_name, "w") as f:
-    f.write("// fingerprint %s\n" % hexdigest)
-    f.write(text)
+  f = open(file_name, "w")
+  f.write("// fingerprint %s\n" % hexdigest)
+  f.write(text)
 
 class process(object):
+
   __slots__ = ["options", "dynamic_parameters", "n_calls"]
 
   def __init__(O, options):
@@ -46,13 +45,14 @@ class process(object):
       O.dynamic_parameters = None
     else:
       from fable.cout import dynamic_parameter_props
+      from libtbx.utils import Sorry
       O.dynamic_parameters = []
       for opt_dp in options.dynamic_parameter:
         flds = opt_dp.replace("=", " ").split()
         if (len(flds) != 3):
-          sys.exit('Invalid --dynamic-parameter="%s"' % opt_dp)
+          raise Sorry('Invalid --dynamic-parameter="%s"' % opt_dp)
         if (flds[1] in O.dynamic_parameters):
-          sys.exit('Duplicate --dynamic-parameter="%s"' % opt_dp)
+          raise Sorry('Duplicate --dynamic-parameter="%s"' % opt_dp)
         O.dynamic_parameters.append(dynamic_parameter_props(
           name=flds[1],
           ctype=flds[0],
@@ -60,8 +60,9 @@ class process(object):
     O.n_calls = 0
 
   def __call__(O, file_names):
+    import sys
     if (O.n_calls != 0):
-      print
+      print()
     O.n_calls += 1
     opts = O.options
     lines = fable.cout.process(
@@ -82,70 +83,117 @@ class process(object):
     if (opts.top_procedure is None or not opts.debug):
       sys.stdout.write(text)
     if (len(file_names) != 0 and opts.compile):
-      print
+      print()
       write_only_if_safe(file_name="fable_cout.cpp", text=text)
       from fable import simple_compilation
       comp_env = simple_compilation.environment()
       out_name = comp_env.build(
         link=opts.link, file_name_cpp="fable_cout.cpp", show_command=True)
-      print
+      print()
       if (opts.run):
         from libtbx import easy_run
-        cmd = os.path.join(".", out_name)
+        import os
+        op = os.path
+        cmd = op.join(".", out_name)
         if (opts.valgrind):
           cmd = "valgrind " + cmd
-        print cmd
+        print(cmd)
         easy_run.call(command=cmd)
 
 def run(args):
-  if not args:
+  import libtbx.load_env
+  if (len(args) == 0):
     args = ["--help"]
-  elif args == ["--example"]:
-    import libtbx.load_env
+  elif (args == ["--example"]):
     args = [
       libtbx.env.under_dist(module_name="fable", path="test/valid/sf.f"),
       "--namespace", "example",
       "--run"]
-  parser = optparse.OptionParser(usage="fable.cout [options] fortran_file ...")
-  parser.add_option("-?", action="help", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--compile", action="store_true", default=False)
-  parser.add_option("--link", action="store_true", default=False)
-  parser.add_option("--run", action="store_true", default=False)
-  parser.add_option("--valgrind", action="store_true", default=False)
-  parser.add_option("--each", action="store_true", default=False)
-  parser.add_option("--top_procedure", action="append", type="str", metavar="IDENTIFIER")
-  parser.add_option("--top-procedure", action="append", type="str", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--include_guard_suffix", action="store", type="str", metavar="STRING")
-  parser.add_option("--include-guard-suffix", action="store", type="str", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--dynamic_parameter", action="append", type="str", metavar="STRING", help='example: --dynamic_parameter="int array_size=100"')
-  parser.add_option("--dynamic-parameter", action="append", type="str", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--fortran_file_comments", action="store_true", default=False)
-  parser.add_option("--fortran-file-comments", action="store_true", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--no_fem_do_safe", action="store_true", default=False)
-  parser.add_option("--no-fem-do-safe", action="store_true", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--arr_nd_size_max", action="store", type="int", default=fable.cout.default_arr_nd_size_max, metavar='INTEGER (default: %d)' % fable.cout.default_arr_nd_size_max)
-  parser.add_option("--arr-nd-size-max", action="store", type="int", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--inline_all", action="store_true", default=False)
-  parser.add_option("--inline-all", action="store_true", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--common_equivalence_simple", action="store", type="str", default="", metavar="STRING", help='comma-separated list of common names')
-  parser.add_option("--common-equivalence-simple", action="store", type="str", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--namespace", action="store", type="str")
-  parser.add_option("--separate_cmn_hpp", action="store_true", default=False)
-  parser.add_option("--separate-cmn-hpp", action="store_true", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--number_of_function_files", action="store", type="int", metavar="INTEGER")
-  parser.add_option("--number-of-function-files", action="store", type="int", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--example", action="store_true", default=False)
-  parser.add_option("--debug", action="store_true", default=False)
-  co, files = parser.parse_args(args)
-
-  if co.valgrind: co.run = True
-  if co.run: co.link = True
-  if co.link: co.compile = True
-  if not co.each:
-    process(options=co)(file_names=files)
+  from libtbx.option_parser import option_parser
+  command_line = (option_parser(
+    usage="%s [options] fortran_file ..." % libtbx.env.dispatcher_name)
+    .option(None, "--compile",
+      action="store_true",
+      default=False)
+    .option(None, "--link",
+      action="store_true",
+      default=False)
+    .option(None, "--run",
+      action="store_true",
+      default=False)
+    .option(None, "--valgrind",
+      action="store_true",
+      default=False)
+    .option(None, "--each",
+      action="store_true",
+      default=False)
+    .option(None, "--top_procedure",
+      action="append",
+      type="str",
+      metavar="IDENTIFIER")
+    .option(None, "--top-procedure",
+      action="append",
+      type="str",
+      metavar="IDENTIFIER")
+    .option(None, "--include_guard_suffix",
+      action="store",
+      type="str",
+      metavar="STRING")
+    .option(None, "--dynamic-parameter",
+      action="append",
+      type="str",
+      metavar="STRING",
+      help='example: --dynamic-parameter="int array_size=100"')
+    .option(None, "--fortran_file_comments",
+      action="store_true",
+      default=False)
+    .option(None, "--fortran-file-comments",
+      action="store_true",
+      default=False)
+    .option(None, "--no_fem_do_safe",
+      action="store_true",
+      default=False)
+    .option(None, "--arr_nd_size_max",
+      action="store",
+      type="int",
+      default=fable.cout.default_arr_nd_size_max,
+      metavar='INTEGER (default: %d)' % fable.cout.default_arr_nd_size_max)
+    .option(None, "--inline_all",
+      action="store_true",
+      default=False)
+    .option(None, "--common_equivalence_simple",
+      action="store",
+      type="str",
+      default="",
+      metavar="STRING",
+      help='comma-separated list of common names')
+    .option(None, "--namespace",
+      action="store",
+      type="str")
+    .option(None, "--separate_cmn_hpp",
+      action="store_true",
+      default=False)
+    .option(None, "--number_of_function_files",
+      action="store",
+      type="int",
+      metavar="INTEGER")
+    .option(None, "--example",
+      action="store_true",
+      default=False)
+    .option(None, "--debug",
+      action="store_true",
+      default=False)
+  ).process(args=args)
+  co = command_line.options
+  if (co.valgrind): co.run = True
+  if (co.run): co.link = True
+  if (co.link): co.compile = True
+  if (not co.each):
+    process(options=co)(file_names=command_line.args)
   else:
     from fable.command_line.read import process_each
-    process_each(process=process(options=co), file_names=files)
+    process_each(process=process(options=co), file_names=command_line.args)
 
-if __name__ == "__main__":
+if (__name__ == "__main__"):
+  import sys
   run(args=sys.argv[1:])

@@ -1,8 +1,4 @@
-from __future__ import absolute_import, division
-
-import optparse
-import sys
-
+from __future__ import division, print_function
 def process_each(process, file_names, report_success=False):
   import traceback
   n_fail = 0
@@ -12,16 +8,16 @@ def process_each(process, file_names, report_success=False):
       process(file_names=[file_name])
     except Exception:
       n_fail += 1
-      print "FAILING:", file_name
-      print traceback.format_exc(limit=None)
+      print("FAILING:", file_name)
+      print(traceback.format_exc(limit=None))
     else:
       if (report_success):
-        print "SUCCESS:", file_name
+        print("SUCCESS:", file_name)
       n_succ += 1
   if (n_fail != 0):
-    print "Failing:", n_fail
+    print("Failing:", n_fail)
   if (n_succ != 0):
-    print "Success:", n_succ
+    print("Success:", n_succ)
 
 def report_equivalence_clusters_with_mixed_data_types(fproc):
   for equiv_tok_cluster in fproc.equivalence_info().equiv_tok_clusters:
@@ -36,33 +32,45 @@ def report_equivalence_clusters_with_mixed_data_types(fproc):
           data_types_list.append((identifier,dt.value))
           data_types_set.add(dt.value)
     if (len(data_types_set) > 1):
-      print equiv_tok_cluster[0].value[0].value[0].format_error(
+      print(equiv_tok_cluster[0].value[0].value[0].format_error(
         msg="Warning: EQUIVALENCE cluster with mixed data types: %s" %
-          ", ".join(sorted(data_types_set)))
+          ", ".join(sorted(data_types_set))))
       for identifier,dtv in data_types_list:
-        print "  %s: %s" % (identifier, dtv)
+        print("  %s: %s" % (identifier, dtv))
 
 def run(args):
-  if not args: args = ["--help"]
-  parser = optparse.OptionParser(usage="fable.read [options] fortran_file ...")
-  parser.add_option("-?", action="help", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--each", action="store_true", default=False)
-  parser.add_option("--report_success", action="store_true", default=False)
-  parser.add_option("--report-success", action="store_true", help=optparse.SUPPRESS_HELP)
-  parser.add_option("--warnings", action="store_true", default=False)
-
-  co, files = parser.parse_args(args)
-  if co.each and co.warnings:
-    sys.exit("fable.read: options are mutually exclusive: --each, --warnings")
+  if (len(args) == 0): args = ["--help"]
+  from libtbx.option_parser import option_parser
+  import libtbx.load_env
+  command_line = (option_parser(
+    usage="%s [options] fortran_file ..." % libtbx.env.dispatcher_name)
+    .option(None, "--each",
+      action="store_true",
+      default=False)
+    .option(None, "--report_success",
+      action="store_true",
+      default=False)
+    .option(None, "--warnings",
+      action="store_true",
+      default=False)
+  ).process(args=args)
+  co = command_line.options
+  def sorry_exclusive(opt_name):
+    from libtbx.utils import Sorry
+    raise Sorry(
+      "%s: options are mutually exclusive: --each, --%s"
+        % (libtbx.env.dispatcher_name, opt_name))
+  if (co.each):
+    if (co.warnings): sorry_exclusive("warnings")
   from fable.read import process
-  if co.each:
+  if (co.each):
     process_each(
       process=process,
-      file_names=files,
+      file_names=command_line.args,
       report_success=co.report_success)
   else:
-    all_fprocs = process(file_names=files)
-    if co.warnings:
+    all_fprocs = process(file_names=command_line.args)
+    if (co.warnings):
       for fproc in all_fprocs.all_in_input_order:
         report_equivalence_clusters_with_mixed_data_types(fproc=fproc)
 
