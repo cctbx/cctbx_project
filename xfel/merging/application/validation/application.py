@@ -1,10 +1,11 @@
 from __future__ import division
 
 class application:
-  def __init__(self,param):
+  def __init__(self,params):
 
-    self.param = param
+    self.params = params
     self.application_level_validation()
 
   def application_level_validation(self):
-     pass
+    assert [self.params.scaling.model, self.params.scaling.unit_cell].count(None) == 1, 'Provide only the model or a unit cell, not both'
+    assert [self.params.scaling.model, self.params.scaling.space_group].count(None) == 1, 'Provide only the model or a space group, not both'

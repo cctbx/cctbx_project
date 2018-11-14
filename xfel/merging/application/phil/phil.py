@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-import iotbx.phil
+from iotbx.phil import parse
 
 help_message = '''
 Redesign script for merging xfel data
@@ -184,18 +184,42 @@ scaling {
   model = None
     .type = str
     .help = PDB filename containing atomic coordinates & isomorphous cryst1 record
-    .help = or MTZ filename from a previous cycle
+    .help = or MTZ filename from a previous cycle. If MTZ, specify mtz.mtz_column_F.
+  unit_cell = None
+    .type = unit_cell
+    .help = Unit cell to be used during scaling and merging. Used if model is not provided
+    .help = (e.g. mark1).
+  space_group = None
+    .type = space_group
+    .help = Space group to be used during scaling and merging. Used if model is not provided
+    .help = (e.g. mark1).
   model_reindex_op = h,k,l
     .type = str
     .help = Kludge for cases with an indexing ambiguity, need to be able to adjust scaling model
-  k_sol = 0.35
+  resolution_scalar = 0.969
     .type = float
-    .help = If model is taken from coordinates, use k_sol for the bulk solvent scale factor
-    .help = default is approximate mean value in PDB (according to Pavel)
-  b_sol = 46.00
-    .type = float
-    .help = If model is taken from coordinates, use b_sol for bulk solvent B-factor
-    .help = default is approximate mean value in PDB (according to Pavel)
+    .help = Accomodates a few more miller indices at the high resoultion limit to account for
+    .help = unit cell variation in the sample. merging.d_min is multiplied by resolution_scalar
+    .help = when computing which reflections are within the resolution limit.
+  mtz {
+    mtz_column_F = fobs
+      .type = str
+      .help = scaling reference column name containing reference structure factors. Can be
+      .help = intensities or amplitudes
+  }
+  pdb {
+    include_bulk_solvent = True
+      .type = bool
+      .help = Whether to simulate bulk solvent
+    k_sol = 0.35
+      .type = float
+      .help = If model is taken from coordinates, use k_sol for the bulk solvent scale factor
+      .help = default is approximate mean value in PDB (according to Pavel)
+    b_sol = 46.00
+      .type = float
+      .help = If model is taken from coordinates, use b_sol for bulk solvent B-factor
+      .help = default is approximate mean value in PDB (according to Pavel)
+  }
   algorithm = *mark0 mark1
     .type = choice
     .help = "mark0: original per-image scaling by reference to isomorphous PDB model"
@@ -367,6 +391,8 @@ parallel {
 
 """ + mysql_master_phil
 
+phil_scope = parse(master_phil)
+
 class Script(object):
   '''A class for running the script.'''
 
@@ -379,8 +405,6 @@ class Script(object):
   def initialize(self):
     '''Initialise the script.'''
     from dials.util.options import OptionParser
-    from iotbx.phil import parse
-    phil_scope = parse(master_phil)
     # Create the parser
     self.parser = OptionParser(
       usage=self.usage,

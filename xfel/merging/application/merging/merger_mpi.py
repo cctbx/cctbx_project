@@ -68,14 +68,12 @@ class Script(Script_Base):
 
     return all_experiments, all_reflections
 
-  def add_asu_miller_indices_column(self, experiments, reflections):
+  def add_asu_miller_indices_column(self, experiments, reflections, target_space_group):
     '''Add a "symmetry-reduced hkl" column to the reflection table'''
     from cctbx import miller
-    from cctbx.crystal import symmetry
+    import copy
 
     # assert that the space group used to integrate the data is consistent with the input space group for merging
-    target_symmetry = symmetry(unit_cell = self.params.filter.unit_cell.value.target_unit_cell, space_group = str(self.params.filter.unit_cell.value.target_space_group))
-    target_space_group = target_symmetry.space_group()
     target_patterson_group_info = target_space_group.build_derived_patterson_group().info().symbol_and_number()
 
     for experiment in experiments:
@@ -83,14 +81,11 @@ class Script(Script_Base):
       if target_patterson_group_info != experiment_patterson_group_info:
         assert False, "Target patterson group %s is different from an experiment patterson group %s"%(target_patterson_group_info, experiment_patterson_group_info)
 
-    target_miller = target_symmetry.miller_set(anomalous_flag=(not self.params.merging.merge_anomalous), indices=reflections['miller_index'])
-
-    # change the name of the original hkl column
-    reflections['miller_index_original'] = reflections['miller_index']
-    del reflections['miller_index']
-
     # add a new hkl column
-    reflections['miller_index_asymmetric'] = target_miller.map_to_asu().indices()
+    reflections['miller_index_asymmetric'] = copy.deepcopy(reflections['miller_index'])
+    miller.map_to_asu(target_space_group.type(),
+                      not self.params.merging.merge_anomalous,
+                      reflections['miller_index_asymmetric'])
 
   def generate_all_miller_indices(self):
     '''Given a unit cell, space group info, and resolution, generate all symmetry-reduced miller indices'''
@@ -286,7 +281,7 @@ class Script(Script_Base):
     if multiplicity > 1:
       rmsd = stats.unweighted_sample_standard_deviation()
 
-    return {'average'       : stats.mean(),
+    return {'intensity'     : stats.mean(),
             'esd'           : propagated_esd,
             'rmsd'          : rmsd,
             'multiplicity'  : multiplicity}
@@ -454,7 +449,7 @@ class Script(Script_Base):
       # EACH RANK: ADD A COLUMN WITH SYMMETRY-REDUCED HKL's
       self.log_step_time("ADD_ASU_HKL_COLUMN")
       #reflections = self.add_asu_miller_indices_column(experiments, reflections)
-      self.add_asu_miller_indices_column(experiments, reflections)
+      self.add_asu_miller_indices_column(experiments, reflections, self.params.filter.unit_cell.value.target_space_group)
       comm.barrier()
       self.log_step_time("ADD_ASU_HKL_COLUMN", True)
 
@@ -527,11 +522,8 @@ class Script(Script_Base):
     if len(alltoall_reflections) > 0:
       for hkl_reflection_table in self.get_next_hkl_reflection_table(reflections=alltoall_reflections):
         intensity_stats = self.calc_reflection_intensity_stats(reflections=hkl_reflection_table)
-        all_rank_merged_reflections.append({'miller_index': hkl_reflection_table[0].get('miller_index_asymmetric'),
-                                            'intensity': intensity_stats['average'],
-                                            'esd' : intensity_stats['esd'],
-                                            'rmsd' : intensity_stats['rmsd'],
-                                            'multiplicity': intensity_stats['multiplicity']})
+        intensity_stats['miller_index'] = hkl_reflection_table[0].get('miller_index_asymmetric')
+        all_rank_merged_reflections.append(intensity_stats)
 
     self.mpi_log_write ("\nRank %d merged intensities for %d HKLs"%(self.rank, all_rank_merged_reflections.size()))
     comm.barrier()
