@@ -304,15 +304,29 @@ def exercise(args=None):
   for stdout_splitlines in [True, False]:
     result = fb(
       command="%s -V" % pyexe,
-      stdout_splitlines=stdout_splitlines).raise_if_output()
-    if verbose: print(result.stderr_lines)
-    assert result.stderr_lines[0].startswith("Python " + sys.version.split()[0])
-    if (stdout_splitlines):
-      assert result.stdout_buffer is None
-      assert result.stdout_lines == []
+      stdout_splitlines=stdout_splitlines)
+    # python -V outputs to stdout or stderr depending on version
+    # https://bugs.python.org/issue18338
+    if (len(result.stderr_lines) > 0):
+      if verbose: print(result.stderr_lines)
+      assert result.stderr_lines[0].startswith(
+        "Python " + sys.version.split()[0])
+      if (stdout_splitlines):
+        assert result.stdout_buffer is None
+        assert result.stdout_lines == []
+      else:
+        assert result.stdout_buffer == ""
+        assert result.stdout_lines is None
     else:
-      assert result.stdout_buffer == ""
-      assert result.stdout_lines is None
+      if verbose: print(result.stdout_lines)
+      if (stdout_splitlines):
+        assert result.stdout_buffer is None
+        assert result.stdout_lines[0].startswith(
+          "Python " + sys.version.split()[0])
+      else:
+        assert result.stdout_buffer.startswith(
+          "Python " + sys.version.split()[0])
+        assert result.stdout_lines is None
   result = go(command="%s -V" % pyexe)
   if verbose: print(result.stdout_lines)
   assert result.stdout_lines[0].startswith("Python " + sys.version.split()[0])
