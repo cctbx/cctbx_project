@@ -1658,6 +1658,12 @@ class manager(Base_geometry):
        '',
        origin_ids.get_plane_origin_id_labels(),
        0),
+      ("Parallelity",
+       self.parallelity_proxies,
+       'parallelities',
+       '',
+       origin_ids.get_parallelity_origin_id_labels(),
+       0),
       ]:
       if (proxies is not None):
         proxies.show_sorted(
@@ -1687,7 +1693,7 @@ class manager(Base_geometry):
         ("Reference torsion angle", self.reference_dihedral_manager),
         ("NCS torsion angle", self.ncs_dihedral_manager),
         ("", self.ramachandran_manager),
-        ("", self.parallelity_proxies)]:
+        ]:
       if proxies is not None:
         proxies.show_sorted(
             by_value="residual",

@@ -1564,13 +1564,15 @@ class _(boost.python.injector, shared_parallelity_proxy):
         proxy_label=None, # not used yet
         f=None,
         prefix="",
-        max_items=None):
+        max_items=None,
+        origin_id=None):
     if (f is None): f = sys.stdout
     sorted_table, n_not_shown = self.get_sorted(
           by_value=by_value,
           sites_cart=sites_cart,
           site_labels=site_labels,
-          max_items=max_items)
+          max_items=max_items,
+          origin_id=origin_id)
     print >> f, "Parallelity restraints: %d" % (self.size())
     if (self.size() == 0): return
     if (max_items is not None and max_items <= 0): return
@@ -1603,12 +1605,14 @@ class _(boost.python.injector, shared_parallelity_proxy):
         by_value,
         sites_cart,
         site_labels=None,
-        max_items=None):
+        max_items=None,
+        origin_id=None):
     return _get_sorted_impl(O=self,
         proxy_type=parallelity,
         by_value=by_value, unit_cell=None, sites_cart=sites_cart,
         site_labels=site_labels, max_items=max_items,
-        get_restraints_only=False)
+        get_restraints_only=False,
+        origin_id=origin_id)
 
 class _(boost.python.injector, shared_bond_similarity_proxy):
 
@@ -1633,7 +1637,8 @@ class _(boost.python.injector, shared_bond_similarity_proxy):
       unit_cell=None,
       f=None,
       prefix="",
-      max_items=None):
+      max_items=None,
+      origin_id=None):
     assert by_value in ["residual", "rms_deltas"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if (f is None): f = sys.stdout
@@ -1658,6 +1663,7 @@ class _(boost.python.injector, shared_bond_similarity_proxy):
     print >> f, "%sSorted by %s:" % (prefix, by_value)
     for i_proxy in i_proxies_sorted:
       proxy = O[i_proxy]
+      if origin_id is not None and proxy.origin_id!=origin_id: continue
       len_max = 0
       ls = []
       for pair in proxy.i_seqs:

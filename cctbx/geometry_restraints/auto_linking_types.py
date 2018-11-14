@@ -74,8 +74,8 @@ for link_info in [
     ['trans peptide link',
     'Applying the standard TRANS peptide link to a non-standard peptide',
     '',
-    ['Trans Peptide']*4,
-    [0,1,2,3]
+    ['Trans Peptide']*3+[None],
+    [0,1,2,4]
     ]
     #['Misc. bond',
     # 'Bond created based on atom type and distance.',

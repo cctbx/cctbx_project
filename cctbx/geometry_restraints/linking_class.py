@@ -88,7 +88,7 @@ Look for a key in the list below
       elif internals in ['dihedrals']: return rc[2]
       elif internals in ['chirals']: return rc[3]
       elif internals in ['planes']: return rc[4]
-      elif internals in ['parallelity']: return rc[5]
+      elif internals in ['parallelities']: return rc[5]
       else: assert 0
     else: return info[0]
 
