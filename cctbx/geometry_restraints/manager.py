@@ -498,6 +498,8 @@ class manager(Base_geometry):
       origin_id=specific_origin_id)
     planarity = self.planarity_proxies.proxy_select(
       origin_id=specific_origin_id)
+    print self.parallelity_proxies
+    print self.parallelity_proxies.size()
     parallelity = self.parallelity_proxies.proxy_select(
       origin_id=specific_origin_id)
     return bonds_simpe, bonds_asu, angles, planarity, parallelity
@@ -538,6 +540,7 @@ class manager(Base_geometry):
 
   def get_parallelity_proxies_without_user_supplied(self):
     specific_origin_id = origin_ids.get_origin_id('edits')
+    print self.parallelity_proxies
     if self.parallelity_proxies is not None:
       return self.parallelity_proxies.proxy_remove(origin_id=specific_origin_id)
     return None

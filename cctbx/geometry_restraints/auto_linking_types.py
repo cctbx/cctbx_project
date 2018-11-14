@@ -5,11 +5,13 @@ angle_origin_ids = {}
 torsion_origin_ids = {}
 chiral_origin_ids = {}
 plane_origin_ids = {}
+parallelity_origin_ids = {}
 origin_ids = [bond_origin_ids,
               angle_origin_ids,
               torsion_origin_ids,
-              chiral_origin_ids,
               plane_origin_ids,
+              chiral_origin_ids,
+              parallelity_origin_ids,
               ]
 
 class origins(list):
@@ -25,7 +27,7 @@ class origins(list):
 
 starting_id = 0
 for link_info in [
-    ['covalent geometry', [0,1,2,3,4]],
+    ['covalent geometry', [0,1,2,3,4,5]],
     ['SS BOND', # short desc.
      # complete desc.
      'Disulphide bond for CYS-like sulphur atoms within 3A (default) using '
@@ -53,8 +55,8 @@ for link_info in [
     ['edits',
      '',
      'www.phenix-online.org/documentation/reference/refinement.html#definition-of-custom-bonds-and-angles',
-     ['User supplied']*3+[None, 'User supplied'],
-     [0,1,2,4],
+     ['User supplied']*4+[None, 'User supplied'],
+     [0,1,2,3,5],
     ],
     ['glycosidic',
      'Standard glycosidic CIF link blocks such as link_??? and ???',
@@ -72,8 +74,8 @@ for link_info in [
     ['trans peptide link',
     'Applying the standard TRANS peptide link to a non-standard peptide',
     '',
-    ['Trans Peptide']*3+[None, 'Trans Peptide'],
-    [0,1,2,4]
+    ['Trans Peptide']*4,
+    [0,1,2,3]
     ]
     #['Misc. bond',
     # 'Bond created based on atom type and distance.',

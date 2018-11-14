@@ -864,7 +864,7 @@ Residue classes
                                            bond_asu_table,
                                            geometry_proxy_registries,
                                            rt_mx_ji=link_rt_mx_ji,
-                                           origin_id-oi,
+                                           origin_id=oi,
               )
           # not added to links so not LINK record
           if sym_op:
