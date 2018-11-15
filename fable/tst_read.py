@@ -810,7 +810,7 @@ def exercise_unsupported(verbose):
 def exercise_tokens_as_string(verbose):
   t_dir = libtbx.env.under_dist(
     module_name="fable", path="test/valid", test=op.isdir)
-  from tokenization import tokens_as_string
+  from fable.tokenization import tokens_as_string
   for file_name in sorted(os.listdir(t_dir)):
     if (not file_name.endswith(".f")): continue
     if (verbose):
