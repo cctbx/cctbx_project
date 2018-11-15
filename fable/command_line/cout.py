@@ -88,7 +88,7 @@ class process(object):
       write_only_if_safe(file_name="fable_cout.cpp", text=text)
       from fable import simple_compilation
       comp_env = simple_compilation.environment()
-      out_name = comp_env.build(
+      out_name = comp_env.build(exe_name=opts.exe_name,
         link=opts.link, file_name_cpp="fable_cout.cpp", show_command=True)
       print()
       if (opts.run):
@@ -138,6 +138,8 @@ def run(args):
   parser.add_option("--number-of-function-files", action="store", type="int", help=optparse.SUPPRESS_HELP)
   parser.add_option("--example", action="store_true", default=False)
   parser.add_option("--debug", action="store_true", default=False)
+  parser.add_option("--exe_name", action="store", type="str")
+  parser.add_option("--exe-name", action="store", type="str",help=optparse.SUPPRESS_HELP)
 
   co, files = parser.parse_args(args)
   if co.valgrind: co.run = True

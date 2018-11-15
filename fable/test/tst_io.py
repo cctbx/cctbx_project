@@ -9,7 +9,12 @@ def remove_file(path):
     os.remove(path)
   assert not op.exists(path)
 
-def build_cmds(tst_f, opts, ignore_ifort=False):
+class build_cmds_class(object):
+ def __init__(self):
+  # prevent race condition by naming each executable uniquely
+  self.iteration = 0
+ def __call__(self,tst_f, opts, ignore_ifort=False):
+  self.iteration += 1
   from fable import simple_compilation
   comp_env = simple_compilation.environment()
   exe = comp_env.exe_suffix
@@ -21,13 +26,15 @@ def build_cmds(tst_f, opts, ignore_ifort=False):
     easy_run.fully_buffered(command=cmd).raise_if_errors()
     assert op.exists("a.out")
     result.append("a.out")
-  remove_file("fable_cout")
-  cmd = "fable.cout %s --link" % tst_f
+  #remove_file("fable_cout")
+  cmd = "fable.cout %s --link --exe_name=fable_cout%02d" %(tst_f,self.iteration)
   if (opts.verbose): print(cmd)
   easy_run.fully_buffered(command=cmd).raise_if_errors()
-  assert op.exists("fable_cout"+exe)
-  result.append("fable_cout"+exe)
+  assert op.exists("fable_cout%02d"%self.iteration+exe)
+  result.append("fable_cout%02d"%self.iteration+exe)
   return [op.join(".", cmd) for cmd in result]
+
+build_cmds = build_cmds_class()
 
 def exercise_open(opts):
   for status in ["old", "new", "unknown", "scratch"]:
