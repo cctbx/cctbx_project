@@ -21,13 +21,13 @@
 #include <dxtbx/error.h>
 #include "scan_helpers.h"
 
-typedef std::map<std::string, scitbx::af::shared<int> > ExpImgRangeMap;
-
 namespace dxtbx { namespace model {
 
   using scitbx::vec2;
   using scitbx::rad_as_deg;
   using scitbx::constants::pi;
+
+  typedef std::map<std::string, scitbx::af::shared<vec2<int> > > ExpImgRangeMap;
 
   /** A scan base class */
   class ScanBase {};
@@ -126,14 +126,14 @@ namespace dxtbx { namespace model {
     }
 
     /** Get the map, not exported to python **/
-    ExpImgRangeMap get_valid_image_ranges() const {
+    ExpImgRangeMap get_valid_image_ranges_map() const {
       return valid_image_ranges_;
     }
 
     /** Get the element for a given key if it exists, else return empty array**/
-    scitbx::af::shared<int> get_valid_image_ranges_key(std::string i) const {
+    scitbx::af::shared<vec2<int> > get_valid_image_ranges_key(std::string i) const {
       if (valid_image_ranges_.find(i) == valid_image_ranges_.end()) {
-        scitbx::af::shared<int> empty;
+        scitbx::af::shared<vec2<int> > empty;
         return empty;
       }
       else {
@@ -141,12 +141,14 @@ namespace dxtbx { namespace model {
       }
     }
 
-    void set_valid_image_ranges(std::string i, scitbx::af::shared<int> values){
-      /** Set a list of valid image ranges for experiment identifier 'i'**/
-      DXTBX_ASSERT(values.size() % 2 == 0);
+    void set_valid_image_ranges_array(std::string i, scitbx::af::shared<vec2<int> > values){
+      /** Set a list of valid image range tuples for experiment identifier 'i'**/
       for (std::size_t i = 0; i < values.size(); ++i) {
-        DXTBX_ASSERT(values[i] >= image_range_[0]);
-        DXTBX_ASSERT(values[i] <= image_range_[1]);
+        vec2<int> pair = values[i];
+        DXTBX_ASSERT(pair[0] >= image_range_[0]);
+        DXTBX_ASSERT(pair[0] <= image_range_[1]);
+        DXTBX_ASSERT(pair[1] >= image_range_[0]);
+        DXTBX_ASSERT(pair[1] <= image_range_[1]);
       }
       valid_image_ranges_[i] = values;
     }

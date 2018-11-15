@@ -57,6 +57,20 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
   };
 
+  boost::python::dict MaptoPythonDict(ExpImgRangeMap map) {
+    ExpImgRangeMap::iterator iter;
+    boost::python::dict dictionary;
+    for (iter = map.begin(); iter != map.end(); ++iter) {
+      scitbx::af::shared<vec2<int> > val = iter->second;
+      boost::python::list result;
+      for (int k=0; k < val.size(); ++k){
+        result.append(val[k]);
+      }
+      dictionary[iter->first] = result;
+    }
+    return dictionary;
+  }
+
   template <>
   boost::python::dict to_dict<Scan>(const Scan &obj) {
     boost::python::dict result;
@@ -65,7 +79,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["oscillation"] = rad_as_deg(obj.get_oscillation());
     result["exposure_time"] = boost::python::list(obj.get_exposure_times());
     result["epochs"] = boost::python::list(obj.get_epochs());
-    boost::python::dict valid_image_ranges = MaptoPythonDict(obj.get_valid_image_ranges());
+    boost::python::dict valid_image_ranges = MaptoPythonDict(obj.get_valid_image_ranges_map());
     result["valid_image_ranges"] = valid_image_ranges;
     return result;
   }
@@ -143,12 +157,37 @@ namespace dxtbx { namespace model { namespace boost_python {
     boost::python::list values = rangemap.values();
     for (int i = 0; i < len(keys); ++i) {
       boost::python::extract<std::string> extracted_key(keys[i]);
-      boost::python::extract<scitbx::af::shared<int> > extracted_val(values[i]);
+      scitbx::af::shared<vec2<int> > result;
+      int n_tuples = boost::python::len(values[i]);
+      for (int n = 0; n < n_tuples; ++n){
+        result.push_back(boost::python::extract<vec2<int> >(values[i][n]));
+      }
       std::string key = extracted_key;
-      scitbx::af::shared<int> values = extracted_val;
-      scan->set_valid_image_ranges(key, values);
+      scan->set_valid_image_ranges_array(key, result);
     }
     return scan;
+  }
+
+  static
+  void set_valid_image_ranges(Scan &scan, std::string i, boost::python::list obj){
+    int n = boost::python::len(obj);
+    scitbx::af::shared<vec2 <int> > ranges;
+    for (int k = 0; k < n; ++k){
+      ranges.push_back(boost_python::extract<vec2 <int> >(obj[k]));
+    }
+    scan.set_valid_image_ranges_array(i, ranges);
+  }
+
+  static
+  boost::python::list get_valid_image_ranges(Scan &scan, std::string i) {
+    scitbx::af::shared<vec2<int> > ranges = scan.get_valid_image_ranges_key(i);
+    boost::python::list result;
+    if (ranges.size() != 0){
+      for (int k = 0; k < ranges.size(); ++k){
+        result.append(ranges[k]);
+      }
+    }
+    return result;
   }
 
   static Scan* make_scan(vec2 <int> image_range, vec2 <double> oscillation,
@@ -378,9 +417,9 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_image_range",
         &Scan::get_image_range)
       .def("get_valid_image_ranges",
-        &Scan::get_valid_image_ranges_key)
+        get_valid_image_ranges)
       .def("set_valid_image_ranges",
-        &Scan::set_valid_image_ranges)
+        set_valid_image_ranges)
       .def("set_image_range",
         &Scan::set_image_range)
       .def("get_batch_offset",

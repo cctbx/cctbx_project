@@ -102,12 +102,12 @@ def test_swap():
 
 def test_valid_image_ranges():
   scan = Scan((1, 100), (0.0, 1.0))
-  scan.set_valid_image_ranges("0", (1,80))
-  scan.set_valid_image_ranges("1", (1,50))
-  assert list(scan.get_valid_image_ranges("0")) == [1, 80]
-  assert list(scan.get_valid_image_ranges("1")) == [1, 50]
-  scan.set_valid_image_ranges("0", (1,50, 80, 100))
-  assert list(scan.get_valid_image_ranges("0")) == [1, 50, 80, 100]
+  scan.set_valid_image_ranges("0", [(1,80)])
+  scan.set_valid_image_ranges("1", [(1,50)])
+  assert list(scan.get_valid_image_ranges("0")) == [(1, 80)]
+  assert list(scan.get_valid_image_ranges("1")) == [(1, 50)]
+  scan.set_valid_image_ranges("0", [(1,50), (80, 100)])
+  assert list(scan.get_valid_image_ranges("0")) == [(1, 50), (80, 100)]
   assert list(scan.get_valid_image_ranges("2")) == []
 
 def test_from_phil():
