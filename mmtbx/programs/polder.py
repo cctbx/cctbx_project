@@ -236,7 +236,7 @@ Optional output:
         d_max = self.params.low_resolution)
 
     if (f_obs.anomalous_flag()):
-      f_obs, r_free_flags = prepare_f_obs_and_flags_if_anomalous(
+      f_obs, r_free_flags = self.prepare_f_obs_and_flags_if_anomalous(
         f_obs        = f_obs,
         r_free_flags = r_free_flags)
 
