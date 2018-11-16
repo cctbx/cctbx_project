@@ -412,7 +412,7 @@ the output images in the folder cxi49812.
       from xfel.cxi.cspad_ana import rayonix_tbx
       pixel_size = rayonix_tbx.get_rayonix_pixel_size(command_line.options.bin_size)
       beam_center = [command_line.options.override_beam_x,command_line.options.override_beam_y]
-      active_areas = flex.int([0,0,mean.focus()[1],mean.focus()[0]])
+      active_areas = flex.int([0,0,mean.shape[1],mean.shape[0]])
       split_address = cspad_tbx.address_split(address)
       old_style_address = split_address[0] + "-" + split_address[1] + "|" + split_address[2] + "-" + split_address[3]
       for data, path in zip(all_data, dest_paths):
