@@ -17,4 +17,4 @@ Assuming you have already downloaded the relevant source files with ```bootstrap
 
 The ```--with-python``` flag is used to specify which ```python``` to use. The ```base``` option is not used because the ```conda``` should environment contain the necessary dependencies.
 ## Using the build
-Activating the ```conda``` environment does not seem to be necessary once everything is built. You can use the installation normally by setting up your paths with ```build/setpaths.sh``` (or the ```csh`` equivalent).
+Activating the ```conda``` environment does not seem to be necessary once everything is built. You can use the installation normally by setting up your paths with ```build/setpaths.sh``` (or the ```csh``` equivalent).
