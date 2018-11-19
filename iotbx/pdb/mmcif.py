@@ -704,6 +704,30 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         serial_number=sn)
     return result
 
+  def get_restraints_used(self):
+    return {'CDL' : self.used_cdl_restraints(),
+            'omega' : self.used_omega_restraints(),
+            'Amber' : self.used_amber_restraints(),
+           }
+
+  def _used_what_restraints(self, what):
+    rc = False
+    for cif_key, cif_block in self.cif_model.iteritems() :
+      target = cif_block.get("_refine.pdbx_stereochemistry_target_values")
+      if (target is not None) and (what in target) :
+        rc = True
+        break
+    return rc
+
+  def used_cdl_restraints(self):
+    return self._used_what_restraints('CDL')
+
+  def used_omega_cdl_restraints(self):
+    return self._used_what_restraints('omega-cdl')
+
+  def used_amber_restraints(self):
+    return self._used_what_restraints('Amber')
+
 def _float_or_None(value):
   if value is not None:
     if value == '?' or value == '.':

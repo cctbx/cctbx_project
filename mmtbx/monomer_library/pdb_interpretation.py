@@ -5218,38 +5218,14 @@ class build_all_chain_proxies(linking_mixins):
       self.process_geometry_restraints_remove(
         params=params_remove, geometry_restraints_manager=result)
     self.time_building_geometry_restraints_manager = timer.elapsed()
+    restraints_source = "GeoStd + Monomer Library"
     use_cdl = self.params.restraints_library.cdl
     if (use_cdl is Auto) :
-      # XXX this should be methods of pdb_input and cif_input
-      # with the same name and become something like this:
-      # if self.pdb_inp.present_cdl_mention():
-      #   use_cdl = True
-      # else:
-      #   use_cdl = False
-      if (self.pdb_inp.file_type() == "pdb") :
-        for line in self.pdb_inp.remark_section() :
-          if line.startswith("REMARK   3") and ("CDL" in line) :
-            use_cdl = True
-            break
-        else :
-          use_cdl = False
-      elif (self.pdb_inp.file_type() == "mmcif") :
-        for cif_key, cif_block in self.pdb_inp.cif_model.iteritems() :
-          target = cif_block.get("_refine.pdbx_stereochemistry_target_values")
-          if (target is not None) and ("CDL" in target) :
-            use_cdl = True
-            break
-        else :
-          use_cdl = False
-      else :
-        use_cdl = False
+      use_cdl = self.pdb_inp.used_cdl_restraints()
       if (use_cdl) :
         print >> log, "  Switching to conformation-dependent library"
-    if(not use_cdl):
-      result.set_source(source = "GeoStd + Monomer Library")
-    else:
-      result.set_source(
-        source = mmtbx.conformation_dependent_library.cdl_database.version)
+    if use_cdl:
+      restraints_source += ' + %s' % mmtbx.conformation_dependent_library.cdl_database.version
       from mmtbx.conformation_dependent_library.cdl_setup import setup_restraints
       from mmtbx.conformation_dependent_library import update_restraints
       from libtbx import utils
@@ -5262,7 +5238,7 @@ class build_all_chain_proxies(linking_mixins):
         log=log,
         verbose=True,
         )
-      self.use_cdl = True
+      self.use_cdl = True # what is this used for???
       cdl_time = time.time()-t0
       print >> log, """\
   Conformation dependent library (CDL) restraints added in %0.1f %sseconds
@@ -5270,7 +5246,13 @@ class build_all_chain_proxies(linking_mixins):
     #
     # need autodetect code
     #
-    if getattr(self.params.restraints_library, "omega_cdl", False):
+    use_omega_cdl = self.params.restraints_library.omega_cdl
+    if (use_omega_cdl is Auto) :
+      use_omega_cdl = self.pdb_inp.used_omega_cdl_restraints()
+      if (use_omega_cdl) :
+        print >> log, "  Switching to omega-CDL"
+    if use_omega_cdl:
+      restraints_source += ' + omega-cdl'
       from mmtbx.conformation_dependent_library.omega import setup_restraints
       from mmtbx.conformation_dependent_library.omega import update_restraints
       from libtbx import utils
@@ -5283,11 +5265,12 @@ class build_all_chain_proxies(linking_mixins):
         log=log,
         verbose=True,
         )
-      self.use_cdl = True
+      self.use_omega_cdl = True
       cdl_time = time.time()-t0
       print >> log, """\
   omega-Conformation dependent library (o-CDL) restraints added in %0.1f %sseconds
   """ % utils.greek_time(cdl_time)
+    #
     if getattr(self.params.restraints_library, "rdl", False):
       from mmtbx.conformation_dependent_library import rotamers
       from libtbx import utils
@@ -5320,6 +5303,12 @@ class build_all_chain_proxies(linking_mixins):
       print >> log, """\
   Histidine protonation dependent restraints added in %0.1f %sseconds
   """ % utils.greek_time(hpr_time)
+    #
+    if self.pdb_inp and self.pdb_inp.used_amber_restraints():
+      restraints_source = 'Amber'
+      self.params.use_neutron_distances = True
+    #
+    result.set_source(source = restraints_source)
     return result
 
   def extract_xray_structure(self, unknown_scattering_type_substitute = "?"):

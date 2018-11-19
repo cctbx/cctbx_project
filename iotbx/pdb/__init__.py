@@ -1406,6 +1406,29 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         break
       break
 
+  def get_restraints_used(self):
+    return {'CDL' : self.used_cdl_restraints(),
+            'omega' : self.used_omega_restraints(),
+            'Amber' : self.used_amber_restraints(),
+           }
+
+  def _used_what_restraints(self, what):
+    rc = False
+    for line in self.remark_section() :
+      if line.startswith("REMARK   3") and (what in line) :
+        rc = True
+        break
+    return rc
+
+  def used_cdl_restraints(self):
+    return self._used_what_restraints('CDL')
+
+  def used_omega_cdl_restraints(self):
+    return self._used_what_restraints('omega-cdl')
+
+  def used_amber_restraints(self):
+    return self._used_what_restraints('Amber')
+
 class rewrite_normalized(object):
 
   def __init__(self,
