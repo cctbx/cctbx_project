@@ -23,6 +23,14 @@ def get_master_phil():
       .help = choose style of points, use matplotlib format from e.g. here: \
         https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.plot.html \
         very small is ',', little bigger is '.'
+    markersize=3
+      .type=int
+    markerfacecolor = white
+      .type = str
+    markeredgecolor="black"
+      .type = str
+    dpi=100
+      .type=int
     wxplot = False
       .type = bool
       .help = Display interactive plots (requires wxPython and Matplotlib)
@@ -101,7 +109,11 @@ def run (args, out=sys.stdout, quiet=False) :
         plot_file_base=plot_file_base,
         out=out,
         show_labels=params.show_labels,
-        point_style=params.point_style)
+        point_style=params.point_style,
+        markerfacecolor=params.markerfacecolor,
+        dpi=params.dpi,
+        markeredgecolor=params.markeredgecolor,
+        markersize=params.markersize)
   if params.wxplot :
     try :
       import wxtbx.app
