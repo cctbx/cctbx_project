@@ -376,11 +376,15 @@ class MetallicButton (wx.PyControl) :
 
     if self._label2 != '' :
       if wx.Platform == '__WXMAC__' :
-        dc = wx.GraphicsContext.CreateMeasuringContext()
+        if wx.__version__[0] == '4':
+          dc = wx.GraphicsContext.Create()
+        else:
+          dc = wx.GraphicsContext.CreateMeasuringContext()
+        dc.SetFont(self._label2_font, self.GetForegroundColour())
       else :
         dc = wx.ClientDC(self)
         #dc = wx.MemoryDC()
-      dc.SetFont(self._label2_font)
+        dc.SetFont(self._label2_font)
       min_w, min_h = self.GetSize() #self._size
       if min_w == -1 :
         min_w = 120
