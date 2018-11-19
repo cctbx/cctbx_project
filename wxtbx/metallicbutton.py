@@ -17,7 +17,6 @@ __all__ = ["MetallicButton", "AdjustAlpha", "AdjustColour",
            "GRADIENT_NORMAL", "GRADIENT_PRESSED", "GRADIENT_HIGHLIGHT",
            "MB_STYLE_DEFAULT", "GB_STYLE_BOLD_LABEL", "GB_STYLE_DROPARROW"]
 
-
 import wx
 import wx.lib.wordwrap
 import wx.lib.imageutils
@@ -28,7 +27,7 @@ CAPTION_SIZE = 9
 LABEL_SIZE = 11
 if wx.Platform == '__WXMAC__':
   import Carbon.Appearance
-elif (wx.Platform == '__WXMSW__') :
+elif (wx.Platform == '__WXMSW__'):
   CAPTION_SIZE = 9
   LABEL_SIZE = 11
 
@@ -40,60 +39,61 @@ MB_STYLE_DEFAULT = 1
 MB_STYLE_BOLD_LABEL = 2
 MB_STYLE_DROPARROW = 4
 
-class MetallicButton (wx.Control) :
-  def __init__ (self,
-                parent,
-                id_=wx.ID_ANY,
-                label='',
-                label2='',
-                bmp=None,
-                pos=wx.DefaultPosition,
-                size=wx.DefaultSize,
-                style=MB_STYLE_DEFAULT,
-                name=wx.ButtonNameStr,
-                start_color=(218,218,218),
-                gradient_percent=15.0,
-                highlight_color=(230,230,230),
-                label_size=LABEL_SIZE,
-                caption_size=CAPTION_SIZE,
-                button_margin=2,
-                disable_after_click=0,
-                bmp2=None):
+
+class MetallicButton(wx.Control):
+  def __init__(self,
+               parent,
+               id_=wx.ID_ANY,
+               label='',
+               label2='',
+               bmp=None,
+               pos=wx.DefaultPosition,
+               size=wx.DefaultSize,
+               style=MB_STYLE_DEFAULT,
+               name=wx.ButtonNameStr,
+               start_color=(218, 218, 218),
+               gradient_percent=15.0,
+               highlight_color=(230, 230, 230),
+               label_size=LABEL_SIZE,
+               caption_size=CAPTION_SIZE,
+               button_margin=2,
+               disable_after_click=0,
+               bmp2=None):
     wx.Control.__init__(self, parent, id_, pos, size,
-      wx.NO_BORDER, name=name)
+                        wx.NO_BORDER, name=name)
     self.InheritAttributes()
     self._bmp = dict(enable=bmp)
     self._margin = button_margin
-    if bmp is not None :
+    if bmp is not None:
       img = bmp.ConvertToImage()
-      #img = img.ConvertToGreyscale(.795, .073, .026)
+      # img = img.ConvertToGreyscale(.795, .073, .026)
       wx.lib.imageutils.grayOut(img)
       self._bmp['disable'] = img.ConvertToBitmap()
-    else :
+    else:
       self._bmp['disable'] = None
     self._bmp2 = bmp2
     self._use_secondary_bitmap = False
     self._label2_font = self.GetFont()
     self._label2_font.SetPointSize(caption_size)
     # XXX this crashes on wxOSX_Cocoa!
-    if (not 'wxOSX-cocoa' in wx.PlatformInfo) :
+    if (not 'wxOSX-cocoa' in wx.PlatformInfo):
       self._label2_font.SetStyle(wx.FONTSTYLE_ITALIC)
     font_size = label_size
     self._label_font = self.GetFont()
     self._label_font.SetPointSize(label_size)
-    if style & MB_STYLE_BOLD_LABEL :
+    if style & MB_STYLE_BOLD_LABEL:
       self._label_font.SetWeight(wx.FONTWEIGHT_BOLD)
     self.SetFont(self._label_font)
-    #self._label2_font = wx.Font(caption_size, wx.SWISS, wx.ITALIC, wx.NORMAL)
+    # self._label2_font = wx.Font(caption_size, wx.SWISS, wx.ITALIC, wx.NORMAL)
 
     self._menu = None
     self.SetLabel(label)
     self._label2 = label2
     self._style = style
-    #self._size = tuple(size)
+    # self._size = tuple(size)
     self._state = dict(pre=GRADIENT_NORMAL, cur=GRADIENT_NORMAL)
     self._color = self.__InitColors(start_color, highlight_color,
-      gradient_percent)
+                                    gradient_percent)
     self._caption_lines = None
     self._disable_after_click = disable_after_click
 
@@ -117,7 +117,7 @@ class MetallicButton (wx.Control) :
     self.Bind(wx.EVT_KEY_UP, self.OnKeyUp)
     self.Bind(wx.EVT_CONTEXT_MENU, self.OnContextMenu)
 
-  def OnPaint (self, event) :
+  def OnPaint(self, event):
     self.__DrawButton()
 
   def __DrawBitmap(self, gc):
@@ -127,7 +127,7 @@ class MetallicButton (wx.Control) :
 
     """
     bmp = None
-    if (self._use_secondary_bitmap) :
+    if (self._use_secondary_bitmap):
       assert (self._bmp2 is not None)
       bmp = self._bmp2
     elif self.IsEnabled():
@@ -138,10 +138,10 @@ class MetallicButton (wx.Control) :
     if bmp is not None and bmp.IsOk():
       bw, bh = bmp.GetSize()
       cw, ch = self.GetSize()
-      if ch > (bh + 4) : # (self._margin * 2)):
+      if ch > (bh + 4):  # (self._margin * 2)):
         ypos = ((ch - bh) / 2) - (self._margin / 2) + 1
         xpos = self._margin + 2
-      else :
+      else:
         ypos = 0
         xpos = 0
       gc.DrawBitmap(bmp, xpos, ypos, bmp.GetMask() != None)
@@ -191,29 +191,29 @@ class MetallicButton (wx.Control) :
     rgc = gc.GetGraphicsContext()
     brush = rgc.CreateLinearGradientBrush(0, 1, 0, height, color, end_color)
     rgc.SetBrush(brush)
-    gc.DrawRectangle(1, 1, width-2, height-2)
+    gc.DrawRectangle(1, 1, width - 2, height - 2)
 
-  def __DrawCaption (self, gc, xpos, ypos) :
-    if self._label2 != '' :
+  def __DrawCaption(self, gc, xpos, ypos):
+    if self._label2 != '':
       gc.SetFont(self._label2_font)
-      min_w, min_h = self.GetSize() #self._size
-      if min_w == -1 :
+      min_w, min_h = self.GetSize()  # self._size
+      if min_w == -1:
         min_w = 120
       txt_w = min_w - xpos - 10
-      if False : #self._caption_lines is not None :
+      if False:  # self._caption_lines is not None :
         lines = self._caption_lines
-      else :
-        if (wx.Platform in ['__WXGTK__', '__WXMSW__']) :
+      else:
+        if (wx.Platform in ['__WXGTK__', '__WXMSW__']):
           dc = wx.ClientDC(self)
           dc.SetFont(self._label2_font)
-          #txt_w += 100
-        else :
+          # txt_w += 100
+        else:
           dc = gc
         lines = wx.lib.wordwrap.wordwrap(self._label2,
-          width=txt_w,
-          dc=dc) #wx.MemoryDC())
+                                         width=txt_w,
+                                         dc=dc)  # wx.MemoryDC())
       offset = 0
-      for line in lines.splitlines() :
+      for line in lines.splitlines():
         line_w, line_h = gc.GetTextExtent(line)
         gc.DrawText(line.rstrip(), xpos, ypos + offset)
         offset += line_h + 2
@@ -234,24 +234,24 @@ class MetallicButton (wx.Control) :
     dc.SetBrush(wx.WHITE_BRUSH)
     gc.SetBrush(wx.WHITE_BRUSH)
     gc.SetFont(self.GetFont())
-    #gc.SetBackgroundMode(wx.TRANSPARENT)
+    # gc.SetBackgroundMode(wx.TRANSPARENT)
 
     # Calc Object Positions
     width, height = self.GetSize()
-    #get text dimensions from dc rather than gc as gc reports wrong height for empty strings on Windows
+    # get text dimensions from dc rather than gc as gc reports wrong height for empty strings on Windows
     tw, th = dc.GetTextExtent(self.GetLabel())
-    if self._label2 != '' :
-      txt_y = 4 #th + 4 #height - th - 4
+    if self._label2 != '':
+      txt_y = 4  # th + 4 #height - th - 4
       txt2_y = th + 8
-    else :
+    else:
       txt_y = max((height - th) / 2 - 1, 1)
       txt2_y = None
-    #print height, th, txt_y, txt2_y
-    #gc.SetBrush(wx.TRANSPARENT_BRUSH)
-    #gc.DrawRectangle(0, 0, width, height)
-    gc.SetPen(wx.Pen((100,100,100)))
-    gc.SetBrush(wx.Brush((240,240,240)))
-    gc.DrawRectangle(0,0,width,height)
+    # print height, th, txt_y, txt2_y
+    # gc.SetBrush(wx.TRANSPARENT_BRUSH)
+    # gc.DrawRectangle(0, 0, width, height)
+    gc.SetPen(wx.Pen((100, 100, 100)))
+    gc.SetBrush(wx.Brush((240, 240, 240)))
+    gc.DrawRectangle(0, 0, width, height)
     gc.SetPen(wx.TRANSPARENT_PEN)
 
     if self._state['cur'] == GRADIENT_HIGHLIGHT:
@@ -259,14 +259,18 @@ class MetallicButton (wx.Control) :
       self.__DrawHighlight(gc, width, height)
 
     elif self._state['cur'] == GRADIENT_PRESSED:
+      if wx.__version__[0] == '4':
+        style = wx.BRUSHSTYLE_SOLID
+      else:
+        style = wx.SOLID
       gc.SetTextForeground(self._color['htxt'])
       if wx.Platform == '__WXMAC__':
-        brush = wx.Brush((100,100,100))
+        brush = wx.Brush((100, 100, 100))
         brush.MacSetTheme(Carbon.Appearance.kThemeBrushFocusHighlight)
-        pen = wx.Pen(brush.GetColour(), 1, wx.SOLID)
+        pen = wx.Pen(brush.GetColour(), 1, style)
       else:
         pen = wx.Pen(AdjustColour(self._color['press_start'], -80, 220), 1)
-      #gc.SetPen(pen)
+      # gc.SetPen(pen)
 
       self.__DrawHighlight(gc, width, height)
       txt_x = self.__DrawBitmap(gc)
@@ -276,12 +280,13 @@ class MetallicButton (wx.Control) :
 
     else:
       rgc = gc.GetGraphicsContext()
-      #gc.SetPen(wx.TRANSPARENT_PEN)
-      color =  wx.Colour(218,218,218)
+      # gc.SetPen(wx.TRANSPARENT_PEN)
+      color = wx.Colour(218, 218, 218)
       brush = rgc.CreateLinearGradientBrush(0, 1, 0, height,
-        self._color['gradient_start'], self._color['gradient_end'])
+                                            self._color['gradient_start'],
+                                            self._color['gradient_end'])
       rgc.SetBrush(brush)
-      gc.DrawRectangle(1, 2, width-2, height-3)
+      gc.DrawRectangle(1, 2, width - 2, height - 3)
       if self.IsEnabled():
         gc.SetTextForeground(self.GetForegroundColour())
       else:
@@ -293,18 +298,18 @@ class MetallicButton (wx.Control) :
       txt_x = self.__DrawBitmap(gc)
       gc.DrawText(self.GetLabel(), txt_x + 2, txt_y)
       self.__DrawCaption(gc, txt_x + 2, txt2_y)
-      #self.__DrawDropArrow(gc, txt_x + tw + 6, (height / 2) - 2)
+      # self.__DrawDropArrow(gc, txt_x + tw + 6, (height / 2) - 2)
 
   def __InitColors(self, start_color, highlight_color, gradient_percent):
     """Initialize the default colors"""
     start_color = wx.Colour(*start_color)
-    start_hcolor = wx.Colour(*highlight_color) #GetHighlightColour()
+    start_hcolor = wx.Colour(*highlight_color)  # GetHighlightColour()
     start_pcolor = AdjustColour(start_hcolor, -12)
-    if gradient_percent != 0 :
+    if gradient_percent != 0:
       end_color = AdjustColour(start_color, gradient_percent)
       end_hcolor = AdjustColour(start_hcolor, gradient_percent)
       end_pcolor = AdjustColour(start_pcolor, gradient_percent)
-    else :
+    else:
       end_color = start_color
       end_hcolor = start_hcolor
       end_pcolor = start_pcolor
@@ -315,13 +320,13 @@ class MetallicButton (wx.Control) :
                   hlight_end=end_hcolor,
                   press_start=start_pcolor,
                   press_end=end_pcolor,
-                  htxt=wx.Colour(0,0,0))
+                  htxt=wx.Colour(0, 0, 0))
     # BestLabelColour(self.GetForegroundColour()))
     return colors
 
-  #---- End Private Member Function ----#
+  # ---- End Private Member Function ----#
 
-  #---- Public Member Functions ----#
+  # ---- Public Member Functions ----#
   def AcceptsFocus(self):
     """Can this window have the focus?"""
     return self.IsEnabled()
@@ -369,42 +374,42 @@ class MetallicButton (wx.Control) :
       label_width = lsize[0]
       label_height = lsize[1]
 
-    if self._label2 != '' :
-      if wx.Platform == '__WXMAC__' :
+    if self._label2 != '':
+      if wx.Platform == '__WXMAC__':
         dc = wx.GraphicsContext.CreateMeasuringContext()
-      else :
+      else:
         dc = wx.ClientDC(self)
-        #dc = wx.MemoryDC()
+        # dc = wx.MemoryDC()
       dc.SetFont(self._label2_font)
-      min_w, min_h = self.GetSize() #self._size
-      if min_w == -1 :
+      min_w, min_h = self.GetSize()  # self._size
+      if min_w == -1:
         min_w = 120
       txt_w = min_w - width - 10
-      if wx.Platform == '__WXGTK__' :
+      if wx.Platform == '__WXGTK__':
         txt_w += 40
       lines = wx.lib.wordwrap.wordwrap(self._label2,
-        width=txt_w,
-        dc=dc)
+                                       width=txt_w,
+                                       dc=dc)
       self._caption_lines = lines
       offset = 0
-      if wx.Platform == "__WXMAC__" :
+      if wx.Platform == "__WXMAC__":
         buffer = 4
-      else :
+      else:
         buffer = 0
-      for line in lines.splitlines() :
+      for line in lines.splitlines():
         line_w, line_h = dc.GetTextExtent(line)
-        if line_w > caption_width :
+        if line_w > caption_width:
           caption_width = line_w
         caption_height += line_h + buffer
-      if (wx.Platform == '__WXMSW__') :
+      if (wx.Platform == '__WXMSW__'):
         caption_height += 4
     width += max(caption_width, label_width) + 4
     height = max(caption_height + label_height + 12, height)
 
-    if self._menu is not None or self._style & MB_STYLE_DROPARROW :
-       width += 12
+    if self._menu is not None or self._style & MB_STYLE_DROPARROW:
+      width += 12
 
-    if width < self.GetSize()[0] : #self._size[0] :
+    if width < self.GetSize()[0]:  # self._size[0] :
       width = self.GetSize()[0]
     best = wx.Size(width, height)
     self.CacheBestSize(best)
@@ -421,18 +426,23 @@ class MetallicButton (wx.Control) :
     @note: used internally when on gtk
 
     """
-    if wx.Platform == '__WXMAC__' : #or self._style & PB_STYLE_NOBG:
+    if wx.Platform == '__WXMAC__':  # or self._style & PB_STYLE_NOBG:
       return wx.TRANSPARENT_BRUSH
 
+    if wx.__version__[0] == '4':
+      style = wx.BRUSHSTYLE_SOLID
+    else:
+      style = wx.SOLID
+
     bkgrd = self.GetBackgroundColour()
-    brush = wx.Brush(bkgrd, wx.SOLID)
+    brush = wx.Brush(bkgrd, style)
     my_attr = self.GetDefaultAttributes()
     p_attr = self.GetParent().GetDefaultAttributes()
     my_def = bkgrd == my_attr.colBg
     p_def = self.GetParent().GetBackgroundColour() == p_attr.colBg
     if my_def and not p_def:
       bkgrd = self.GetParent().GetBackgroundColour()
-      brush = wx.Brush(bkgrd, wx.SOLID)
+      brush = wx.Brush(bkgrd, style)
     return brush
 
   def GetBitmapDisabled(self):
@@ -472,7 +482,7 @@ class MetallicButton (wx.Control) :
     """Property for getting the label of the button"""
     return self.GetLabel()
 
-  #---- Event Handlers ----#
+  # ---- Event Handlers ----#
 
   def OnErase(self, evt):
     """Trap the erase event to keep the background transparent
@@ -484,10 +494,10 @@ class MetallicButton (wx.Control) :
 
   def OnFocus(self, evt):
     """Set the visual focus state if need be"""
-    if not self.IsEnabled() :
+    if not self.IsEnabled():
       return
     if self._state['cur'] == GRADIENT_NORMAL:
-        self.SetState(GRADIENT_HIGHLIGHT)
+      self.SetState(GRADIENT_HIGHLIGHT)
 
   def OnKeyUp(self, evt):
     """Execute a single button press action when the Return key is pressed
@@ -519,7 +529,7 @@ class MetallicButton (wx.Control) :
     show the popup menu if one has been set.
 
     """
-    if not self.IsEnabled() :
+    if not self.IsEnabled():
       return
     # pos = evt.GetPositionTuple()
     pos = evt.GetPosition()
@@ -537,18 +547,18 @@ class MetallicButton (wx.Control) :
     @param evt: wx.MouseEvent
 
     """
-    if not self.IsEnabled() :
+    if not self.IsEnabled():
       return
     if self._state['cur'] == GRADIENT_PRESSED:
       # pos = evt.GetPositionTuple()
       pos = evt.GetPosition()
       size = self.GetSize()
-      if self._disable_after_click > 0 :
+      if self._disable_after_click > 0:
         self.Enable(False)
       self.__PostEvent()
     self.SetState(GRADIENT_HIGHLIGHT)
-    if self._disable_after_click > 0 :
-      wx.CallLater(self._disable_after_click, lambda : self.Enable(True))
+    if self._disable_after_click > 0:
+      wx.CallLater(self._disable_after_click, lambda: self.Enable(True))
 
   def OnMenuClose(self, evt):
     """Refresh the control to a proper state after the menu has been
@@ -563,27 +573,27 @@ class MetallicButton (wx.Control) :
       self.SetState(GRADIENT_NORMAL)
     evt.Skip()
 
-  def OnEnter (self, evt) :
-    if not self.IsEnabled() :
+  def OnEnter(self, evt):
+    if not self.IsEnabled():
       return
     self.SetState(GRADIENT_HIGHLIGHT)
 
-  def OnLeave (self, evt) :
-    if not self.IsEnabled() :
+  def OnLeave(self, evt):
+    if not self.IsEnabled():
       return
     self.SetState(GRADIENT_NORMAL)
 
-  def OnDoubleClick (self, evt) :
-    if not self.IsEnabled() :
+  def OnDoubleClick(self, evt):
+    if not self.IsEnabled():
       return
     self.ToggleState()
 
-  def OnContextMenu (self, evt) :
-    if not self.IsEnabled() :
+  def OnContextMenu(self, evt):
+    if not self.IsEnabled():
       return
     self.ShowMenu()
 
-  #---- End Event Handlers ----#
+  # ---- End Event Handlers ----#
 
   def SetBitmap(self, bmp):
     """Set the bitmap displayed in the button
@@ -592,7 +602,7 @@ class MetallicButton (wx.Control) :
     """
     self._bmp['enable'] = bmp
     img = bmp.ConvertToImage()
-    img = img.ConvertToGreyscale(.795, .073, .026) #(.634, .224, .143)
+    img = img.ConvertToGreyscale(.795, .073, .026)  # (.634, .224, .143)
     self._bmp['disable'] = img.ConvertToBitmap()
     self.InvalidateBestSize()
 
@@ -681,7 +691,7 @@ class MetallicButton (wx.Control) :
       self._color['hlight'] = AdjustAlpha(color, 200)
     else:
       self._color['hlight'] = color
-    #self._color['press'] = AdjustColour(color, -10, 160)
+    # self._color['press'] = AdjustColour(color, -10, 160)
     self._color['htxt'] = BestLabelColour(self._color['hlight'])
     self.Refresh()
 
@@ -735,15 +745,17 @@ class MetallicButton (wx.Control) :
     else:
       self.SetState(GRADIENT_HIGHLIGHT)
 
-  def SwapBitmap (self) :
+  def SwapBitmap(self):
     assert (self._bmp2 is not None)
-    if (self._use_secondary_bitmap) :
+    if (self._use_secondary_bitmap):
       self._use_secondary_bitmap = False
-    else :
+    else:
       self._use_secondary_bitmap = True
 
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
   from wx.lib.embeddedimage import PyEmbeddedImage
+
   folder_home = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAI9UlEQVRYhaWXfXBU1RnGf+fe"
     "u3t3s9ndbLKEEJKQBBICifIhtGBEqaCFarFWWooIFBVERtBaa9WO7VRL4yhFR5RpC1OGTrX2"
@@ -805,31 +817,31 @@ if __name__ == "__main__" :
     parent=panel,
     label="Simple button",
     button_margin=4)
-  panel_sizer.Add(btn1, 0, wx.ALL|wx.EXPAND, 10)
+  panel_sizer.Add(btn1, 0, wx.ALL | wx.EXPAND, 10)
   btn2 = MetallicButton(
     parent=panel,
     label="Button with bitmap",
     bmp=folder_home.GetBitmap(),
     button_margin=4)
-  panel_sizer.Add(btn2, 0, wx.ALL|wx.EXPAND, 10)
+  panel_sizer.Add(btn2, 0, wx.ALL | wx.EXPAND, 10)
   btn3 = MetallicButton(
     parent=panel,
     label="Disabled button",
     bmp=folder_home.GetBitmap(),
     button_margin=4)
   btn3.Enable(False)
-  panel_sizer.Add(btn3, 0, wx.ALL|wx.EXPAND, 10)
+  panel_sizer.Add(btn3, 0, wx.ALL | wx.EXPAND, 10)
   btn4 = MetallicButton(
     parent=panel,
     label="Button with bitmap and caption",
-    label2="This is the button caption that I can't figure out how to wrap "+
-      "properly on any platform (but especially Linux!).",
+    label2="This is the button caption that I can't figure out how to wrap " +
+           "properly on any platform (but especially Linux!).",
     bmp=folder_home.GetBitmap(),
     button_margin=4,
-    size=(320,-1))
-  panel_sizer.Add(btn4, 0, wx.ALL|wx.EXPAND, 10)
+    size=(320, -1))
+  panel_sizer.Add(btn4, 0, wx.ALL | wx.EXPAND, 10)
   panel_sizer.Fit(panel)
-  #frame_sizer.Fit(frame)
+  # frame_sizer.Fit(frame)
   frame.Fit()
   frame.Show()
   app.MainLoop()
