@@ -40,7 +40,7 @@ MB_STYLE_DEFAULT = 1
 MB_STYLE_BOLD_LABEL = 2
 MB_STYLE_DROPARROW = 4
 
-class MetallicButton (wx.PyControl) :
+class MetallicButton (wx.Control) :
   def __init__ (self,
                 parent,
                 id_=wx.ID_ANY,
@@ -59,7 +59,7 @@ class MetallicButton (wx.PyControl) :
                 button_margin=2,
                 disable_after_click=0,
                 bmp2=None):
-    wx.PyControl.__init__(self, parent, id_, pos, size,
+    wx.Control.__init__(self, parent, id_, pos, size,
       wx.NO_BORDER, name=name)
     self.InheritAttributes()
     self._bmp = dict(enable=bmp)
@@ -343,7 +343,7 @@ class MetallicButton (wx.PyControl) :
 
   def Disable(self):
     """Disable the control"""
-    wx.PyControl.Disable(self)
+    wx.Control.Disable(self)
     self.Refresh()
 
   def DoGetBestSize(self):
@@ -412,7 +412,7 @@ class MetallicButton (wx.PyControl) :
 
   def Enable(self, enable=True):
     """Enable/Disable the control"""
-    wx.PyControl.Enable(self, enable)
+    wx.Control.Enable(self, enable)
     self.Refresh()
 
   def GetBackgroundBrush(self, dc):
@@ -454,7 +454,7 @@ class MetallicButton (wx.PyControl) :
   GetBitmapHover = GetBitmapLabel
 
   # Alias for GetLabel
-  GetLabelText = wx.PyControl.GetLabel
+  GetLabelText = wx.Control.GetLabel
 
   def GetMenu(self):
     """Return the menu associated with this button or None if no
@@ -521,9 +521,10 @@ class MetallicButton (wx.PyControl) :
     """
     if not self.IsEnabled() :
       return
-    pos = evt.GetPositionTuple()
+    # pos = evt.GetPositionTuple()
+    pos = evt.GetPosition()
     self.SetState(GRADIENT_PRESSED)
-    size = self.GetSizeTuple()
+    size = self.GetSize()
     if pos[0] >= size[0] - 16:
       if self._menu is not None:
         self.ShowMenu()
@@ -539,8 +540,9 @@ class MetallicButton (wx.PyControl) :
     if not self.IsEnabled() :
       return
     if self._state['cur'] == GRADIENT_PRESSED:
-      pos = evt.GetPositionTuple()
-      size = self.GetSizeTuple()
+      # pos = evt.GetPositionTuple()
+      pos = evt.GetPosition()
+      size = self.GetSize()
       if self._disable_after_click > 0 :
         self.Enable(False)
       self.__PostEvent()
@@ -611,11 +613,11 @@ class MetallicButton (wx.PyControl) :
     """Set this control to have the focus"""
     if self._state['cur'] != GRADIENT_PRESSED:
       self.SetState(GRADIENT_HIGHLIGHT)
-    wx.PyControl.SetFocus(self)
+    wx.Control.SetFocus(self)
 
   def SetFont(self, font):
     """Adjust size of control when font changes"""
-    wx.PyControl.SetFont(self, font)
+    wx.Control.SetFont(self, font)
     self.InvalidateBestSize()
 
   def SetLabel(self, label):
@@ -623,7 +625,7 @@ class MetallicButton (wx.PyControl) :
     @param label: lable string
 
     """
-    wx.PyControl.SetLabel(self, label)
+    wx.Control.SetLabel(self, label)
     self.InvalidateBestSize()
 
   def SetLabelColor(self, normal, hlight=wx.NullColour):
@@ -707,7 +709,7 @@ class MetallicButton (wx.PyControl) :
 
   def SetWindowVariant(self, variant):
     """Set the variant/font size of this control"""
-    wx.PyControl.SetWindowVariant(self, variant)
+    wx.Control.SetWindowVariant(self, variant)
     self.InvalidateBestSize()
 
   def ShouldInheritColours(self):
@@ -720,7 +722,7 @@ class MetallicButton (wx.PyControl) :
   def ShowMenu(self):
     """Show the dropdown menu if one is associated with this control"""
     if self._menu is not None:
-      size = self.GetSizeTuple()
+      size = self.GetSize()
       adj = wx.Platform == '__WXMAC__' and 3 or 0
 
       xpos = 1
