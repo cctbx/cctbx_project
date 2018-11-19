@@ -40,7 +40,7 @@ MB_STYLE_DEFAULT = 1
 MB_STYLE_BOLD_LABEL = 2
 MB_STYLE_DROPARROW = 4
 
-class MetallicButton (wx.Control) :
+class MetallicButton (wx.PyControl) :
   def __init__ (self,
                 parent,
                 id_=wx.ID_ANY,
@@ -59,7 +59,7 @@ class MetallicButton (wx.Control) :
                 button_margin=2,
                 disable_after_click=0,
                 bmp2=None):
-    wx.Control.__init__(self, parent, id_, pos, size,
+    wx.PyControl.__init__(self, parent, id_, pos, size,
       wx.NO_BORDER, name=name)
     self.InheritAttributes()
     self._bmp = dict(enable=bmp)
@@ -370,7 +370,7 @@ class MetallicButton (wx.Control) :
       width += 10
 
     if self.GetLabel():
-      lsize = self.GetTextExtent(self.GetLabel())
+      lsize = self.GetFullTextExtent(self.GetLabel())
       label_width = lsize[0]
       label_height = lsize[1]
 
