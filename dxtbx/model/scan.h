@@ -132,19 +132,20 @@ namespace dxtbx { namespace model {
 
     /** Get the element for a given key if it exists, else return empty array**/
     scitbx::af::shared<vec2<int> > get_valid_image_ranges_key(std::string i) const {
-      if (valid_image_ranges_.find(i) == valid_image_ranges_.end()) {
-        scitbx::af::shared<vec2<int> > empty;
-        return empty;
+      typedef ExpImgRangeMap::const_iterator iterator;
+      for (iterator it = valid_image_ranges_.begin(); it != valid_image_ranges_.end(); ++it){
+        if (it->first == i){
+          return it->second;
+        }
       }
-      else {
-        return valid_image_ranges_.at(i);
-      }
+      scitbx::af::shared<vec2<int> > empty;
+      return empty;
     }
 
     void set_valid_image_ranges_array(std::string i, scitbx::af::shared<vec2<int> > values){
       /** Set a list of valid image range tuples for experiment identifier 'i'**/
-      for (std::size_t i = 0; i < values.size(); ++i) {
-        vec2<int> pair = values[i];
+      for (std::size_t j = 0; j < values.size(); ++j) {
+        vec2<int> pair = values[j];
         DXTBX_ASSERT(pair[0] >= image_range_[0]);
         DXTBX_ASSERT(pair[0] <= image_range_[1]);
         DXTBX_ASSERT(pair[1] >= image_range_[0]);
