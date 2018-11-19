@@ -2822,15 +2822,13 @@ class manager(object):
   def get_model_statistics_info(self,
       fmodel_x          = None,
       fmodel_n          = None,
-      refinement_params = None,
-      use_molprobity    = True):
+      refinement_params = None):
     if self.model_statistics_info is None:
       self.model_statistics_info = mmtbx.model.statistics.info(
           model             = self,
           fmodel_x          = fmodel_x,
           fmodel_n          = fmodel_n,
-          refinement_params = refinement_params,
-          use_molprobity    = use_molprobity)
+          refinement_params = refinement_params)
     return self.model_statistics_info
 
   def composition(self):

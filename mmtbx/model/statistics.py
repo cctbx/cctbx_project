@@ -500,8 +500,7 @@ class info(object):
   def __init__(self, model,
                      fmodel_x          = None,
                      fmodel_n          = None,
-                     refinement_params = None,
-                     use_molprobity    = True):
+                     refinement_params = None):
     ref_par = refinement_params
     self.wilson_b = None
     self.model = model

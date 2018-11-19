@@ -658,7 +658,7 @@ class simple_matplotlib_plot (object) :
     #self.canvas.toolbar = oop.null()
     #self.figmgr = FigureManager(self.canvas, 1, self)
 
-  def save_image (self, file_name) :
+  def save_image (self, file_name, dpi) :
     assert (file_name is not None) and (file_name != "")
     base, ext = os.path.splitext(file_name)
     if (ext == ".pdf") :
@@ -666,7 +666,7 @@ class simple_matplotlib_plot (object) :
     elif (ext == ".ps") :
       self.figure.savefig(file_name, orientation="landscape", format="ps")
     elif (ext == ".png") :
-      self.figure.savefig(file_name, format="png")
+      self.figure.savefig(file_name, format="png", dpi=dpi)
     else :
       raise RuntimeError("Extension %s not supported" % s)
 

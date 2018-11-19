@@ -255,7 +255,8 @@ class ramalyze (validation) :
     self.results += other.results
     return self
 
-  def write_plots (self, plot_file_base, out, show_labels=True, point_style='bo') :
+  def write_plots (self, plot_file_base, out, show_labels=True, point_style='bo',
+    markersize=10,markeredgecolor="black", dpi=100,markerfacecolor="white") :
     """
     Write a set of six PNG images representing the plots for each residue type.
 
@@ -278,7 +279,11 @@ class ramalyze (validation) :
         title=format_ramachandran_plot_title(pos, '*'),
         file_name=plot_file_name,
         show_labels=show_labels,
-        point_style=point_style)
+        dpi=dpi,
+        markeredgecolor=markeredgecolor,
+        markerfacecolor=markerfacecolor,
+        point_style=point_style,
+        markersize=markersize)
       print >> out, "  wrote %s" % plot_file_name
 
   def display_wx_plots (self, parent=None,
@@ -667,7 +672,11 @@ def draw_ramachandran_plot (points,
                             position_type,
                             title,
                             file_name,
+                            dpi,
                             show_labels=True,
+                            markerfacecolor="white",
+                            markeredgecolor="black",
+                            markersize=10,
                             point_style='bo') :
   p = ramachandran_plot()
   contours = get_contours(position_type)
@@ -678,5 +687,8 @@ def draw_ramachandran_plot (points,
     show_labels=show_labels,
     colormap="Blues",
     contours=contours,
+    markerfacecolor=markerfacecolor,
+    markeredgecolor=markeredgecolor,
+    markersize=markersize,
     point_style=point_style)
-  p.save_image(file_name)
+  p.save_image(file_name, dpi=dpi)
