@@ -2,8 +2,6 @@ from __future__ import division, print_function, absolute_import
 
 from past.builtins import range
 
-import iota.components.iota_ui_dialogs
-
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
