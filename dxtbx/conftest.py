@@ -21,8 +21,12 @@ def dials_regression():
 
 def pytest_addoption(parser):
   '''Add '--regression' options to pytest.'''
-  parser.addoption("--regression", action="store_true", default=False,
-                   help="run (time-intensive) regression tests")
+  try:
+    parser.addoption("--regression", action="store_true", default=False,
+                     help="run (time-intensive) regression tests")
+  except ValueError:
+    # Thrown in case the command line option is already defined
+    pass
 
 def pytest_collection_modifyitems(config, items):
   '''Tests marked as regression are only run with --regression.
