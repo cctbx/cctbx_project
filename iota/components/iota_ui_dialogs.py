@@ -58,22 +58,22 @@ class BaseDialog(wx.Dialog):
     self.SetSizer(self.envelope)
 
     if label_style == 'normal':
-      self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
     elif label_style == 'bold':
-      self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
     elif label_style == 'italic':
-      self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.NORMAL)
+      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_NORMAL)
     elif label_style == 'italic_bold':
-      self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.BOLD)
+      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
 
     if content_style == 'normal':
-      self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
     elif content_style == 'bold':
-      self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
     elif content_style == 'italic':
-      self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.NORMAL)
+      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_NORMAL)
     elif content_style == 'italic_bold':
-      self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.BOLD)
+      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
 
 
 class BaseBackendDialog(BaseDialog):
@@ -148,7 +148,7 @@ class BaseBackendDialog(BaseDialog):
       self.phil_panel.SetSize(self.phil_size)
       self.options.SetSize(self.opt_size)
       self.btn_hide_script.SetLabel('Show Script >>>')
-    self.splitter.SizeWindows()
+    self.splitter.UpdateSize()
 
   def get_target_file(self):
     dlg = wx.FileDialog(
@@ -156,7 +156,7 @@ class BaseBackendDialog(BaseDialog):
       defaultDir=os.curdir,
       defaultFile="*.phil",
       wildcard="*",
-      style=wx.OPEN | wx.CHANGE_DIR
+      style=wx.FD_OPEN | wx.FD_CHANGE_DIR
     )
     if dlg.ShowModal() == wx.ID_OK:
       filepath = dlg.GetPaths()[0]
@@ -179,13 +179,6 @@ class BaseBackendDialog(BaseDialog):
                                      write_param_file=False)
     self.target_phil = '\n'.join(default_phil)
 
-
-class BasePanel(wx.Panel):
-  def __init__(self, parent):
-    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=(800, 500))
-
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.SetSizer(self.main_sizer)
 
 # ---------------------------------------------------------------------------- #
 
@@ -668,7 +661,7 @@ class ImportWindow(BaseDialog):
       defaultDir=os.curdir,
       defaultFile="*.pickle",
       wildcard="*.pickle",
-      style=wx.OPEN | wx.CHANGE_DIR
+      style=wx.FD_OPEN | wx.FD_CHANGE_DIR
     )
     if dlg.ShowModal() == wx.ID_OK:
       filepath = dlg.GetPaths()[0]
@@ -1023,7 +1016,7 @@ class OldBackendOptions(BaseBackendDialog):
                                   ctrl_size=(100, -1))
     filter_box_sizer.Add(self.filt_ref, flag=wx.ALL, border=10)
 
-    self.f_spacer = filter_box_sizer.AddSpacer((-1, 10))
+    self.f_spacer = filter_box_sizer.AddSpacer(10)
 
     self.filter_options.SetSizer(filter_box_sizer)
 
@@ -1441,7 +1434,7 @@ class BackendOptions(BaseBackendDialog):
     self.sig_filter.toggle_boxes(False)
     target_box_sizer.Add(self.sig_filter, flag=wx.ALL, border=10)
 
-    self.t_spacer = target_box_sizer.AddSpacer((-1, 10))
+    self.t_spacer = target_box_sizer.AddSpacer(10)
 
     # Optimization options
     self.opt_options = wx.Panel(self.options)
@@ -1512,7 +1505,7 @@ class BackendOptions(BaseBackendDialog):
                                   ctrl_size=(100, -1))
     filter_box_sizer.Add(self.filt_ref, flag=wx.ALL, border=10)
 
-    self.f_spacer = filter_box_sizer.AddSpacer((-1, 10))
+    self.f_spacer = filter_box_sizer.AddSpacer(10)
 
     # Add all to sizers
     self.options_sizer.Add(self.trg_options, flag=wx.ALL | wx.EXPAND, border=10)
@@ -2124,10 +2117,17 @@ class RecoveryDialog(BaseDialog):
       else:
         img_id = 2       # "unknown" icon
         status = 'Unknown'
-      idx = self.pathlist.InsertImageItem(i, img_id)
-      self.pathlist.SetStringItem(idx, 1, str(run_no))
-      self.pathlist.SetStringItem(idx, 2, status)
-      self.pathlist.SetStringItem(idx, 3, pathlist[i])
+      if 'classic' in wx.version():
+        idx = self.pathlist.InsertImageItem(i, img_id)
+        self.pathlist.SetStringItem(idx, 1, str(run_no))
+        self.pathlist.SetStringItem(idx, 2, status)
+        self.pathlist.SetStringItem(idx, 3, pathlist[i])
+      elif 'phoenix' in wx.version():
+        idx = self.pathlist.InsertItem(i, img_id)
+        self.pathlist.SetItem(idx, 1, str(run_no))
+        self.pathlist.SetItem(idx, 2, status)
+        self.pathlist.SetItem(idx, 3, pathlist[i])
+
       self.pathlist.SetColumnWidth(0, width=-1)
       self.pathlist.SetColumnWidth(1, width=-1)
       self.pathlist.SetColumnWidth(2, width=-1)
@@ -2242,7 +2242,7 @@ class DIALSSpfDialog(BaseDialog):
                         defaultDir=os.curdir,
                         defaultFile="*.pickle",
                         wildcard="*.pickle",
-                        style=wx.OPEN | wx.CHANGE_DIR)
+                        style=wx.FD_OPEN | wx.FD_CHANGE_DIR)
     if dlg.ShowModal() == wx.ID_OK:
       filepath = dlg.GetPaths()[0]
       self.mod_mask.ctr.SetValue(filepath)

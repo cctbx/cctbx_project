@@ -23,8 +23,8 @@ import time
 import warnings
 import multiprocessing
 
+import matplotlib as mpl
 import matplotlib.gridspec as gridspec
-from matplotlib import pyplot as plt
 from matplotlib import colors
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -41,7 +41,9 @@ from libtbx.utils import to_unicode
 from prime.postrefine.mod_mx import mx_handler
 import prime.postrefine.mod_plotter as ppl
 
-from iota.components.iota_analysis import Analyzer, Plotter
+from iota.components.iota_ui_base import IOTABaseFrame, IOTABasePanel
+from iota.components.iota_analysis import Analyzer
+from iota.components.iota_plotter import Plotter, PlotWindow
 import iota.components.iota_ui_controls as ct
 import iota.components.iota_threads as thr
 import iota.components.iota_ui_dialogs as d
@@ -76,11 +78,11 @@ elif (wx.Platform == '__WXMSW__'):
 
 # ------------------------------ Input Window -------------------------------- #
 
-class InputWindow(iota.components.iota_ui_dialogs.BasePanel):
+class InputWindow(IOTABasePanel):
   """ Input window - data input, description of project """
 
   def __init__(self, parent, phil):
-    iota.components.iota_ui_dialogs.BasePanel.__init__(self, parent=parent)
+    IOTABasePanel.__init__(self, parent=parent)
 
     # Generate default parameters
     self.input_phil = phil
@@ -226,7 +228,7 @@ class FileListCtrl(ct.CustomListCtrl):
                              defaultDir=os.curdir,
                              defaultFile="*",
                              wildcard="*",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST |
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST |
                                    wx.FD_MULTIPLE)
     if file_dlg.ShowModal() == wx.ID_OK:
       files = file_dlg.GetPaths()
@@ -293,7 +295,7 @@ class FileListCtrl(ct.CustomListCtrl):
                                              'raw image file',
                                              'raw image list',
                                              'image pickle list']:
-      self.main_window.toolbar.EnableTool(self.main_window.tb_btn_run.GetId(), True)
+      self.main_window.set_tool_state(self.main_window.tb_btn_run, True)
       self.all_data_images[item.path] = inputs
 
       # Calculate # of images and display w/ item
@@ -345,12 +347,8 @@ class FileListCtrl(ct.CustomListCtrl):
     for idx in range(self.ctr.GetItemCount()):
       if self.ctr.GetItemData(idx).type_selection != 0:
         data_items += 1
-    if data_items > 0:
-      self.main_window.toolbar.EnableTool(self.main_window.tb_btn_run.GetId(),
-                                          True)
-    else:
-      self.main_window.toolbar.EnableTool(self.main_window.tb_btn_run.GetId(),
-                                          False)
+    self.main_window.set_tool_state(self.main_window.tb_btn_run,
+                                    (data_items > 0))
     e.Skip()
 
 
@@ -476,7 +474,7 @@ class LogTab(wx.Panel):
                                       style=rt.RE_MULTILINE |
                                             rt.RE_READONLY |
                                             wx.TE_DONTWRAP)
-    self.log_window.SetFont(wx.Font(9, wx.TELETYPE, wx.NORMAL, wx.NORMAL, False))
+    self.log_window.SetFont(wx.Font(9, wx.FONTFAMILY_TELETYPE, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False))
     self.log_sizer.Add(self.log_window, proportion=1, flag= wx.EXPAND | wx.ALL, border=10)
 
     self.find_string = ct.TextCtrlWithButtons(self,
@@ -581,8 +579,8 @@ class ProcessingTab(wx.Panel):
     self.main_fig_sizer = wx.GridBagSizer(0, 0)
 
     # Set regular font
-    plt.rc('font', family='sans-serif', size=plot_font_size)
-    plt.rc('mathtext', default='regular')
+    mpl.rc('font', family='sans-serif', size=plot_font_size)
+    mpl.rc('mathtext', default='regular')
 
     # Integration figure (resolution & reflections / frame)
     self.int_panel = wx.Panel(self)
@@ -627,7 +625,7 @@ class ProcessingTab(wx.Panel):
     self.res_axes.set_ylabel('Resolution')
     self.res_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.res_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
-    plt.setp(self.res_axes.get_xticklabels(), visible=False)
+    self.res_axes.set_yticklabels(list(''*5), visible=False)
     self.nsref_axes = self.int_figure.add_subplot(int_gsp[1])
     self.nsref_axes.set_xlabel('Frame')
     self.nsref_axes.set_ylabel('Strong Spots')
@@ -859,7 +857,7 @@ class ProcessingTab(wx.Panel):
       self.res_axes.set_ylabel(res_ylabel, fontsize=10)
       self.res_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
       self.res_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
-      plt.setp(self.res_axes.get_xticklabels(), visible=False)
+      self.res_axes.set_yticklabels(list(''*5), visible=False)
 
       self.nsref_pick, = self.nsref_axes.plot(self.info.nsref_x[0],
                                               self.info.nsref_y[0],
@@ -1112,8 +1110,8 @@ class LiveAnalysisTab(d.ScrolledPanel):
     self.main_fig_sizer = wx.GridBagSizer(0, 0)
 
     # Set regular font
-    plt.rc('font', family='sans-serif', size=plot_font_size)
-    plt.rc('mathtext', default='regular')
+    mpl.rc('font', family='sans-serif', size=plot_font_size)
+    mpl.rc('mathtext', default='regular')
 
     # UC Histogram / cluster figure
     self.uc_panel = wx.Panel(self)
@@ -1130,11 +1128,11 @@ class LiveAnalysisTab(d.ScrolledPanel):
     self.b_axes = self.uc_figure.add_subplot(uc_gsub[1], sharey=self.a_axes)
     self.b_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.b_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    plt.setp(self.b_axes.get_yticklabels(), visible=False)
+    self.b_axes.set_yticklabels(list(''*5), visible=False)
     self.c_axes = self.uc_figure.add_subplot(uc_gsub[2], sharey=self.a_axes)
     self.c_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.c_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    plt.setp(self.c_axes.get_yticklabels(), visible=False)
+    self.c_axes.set_yticklabels(list(''*5), visible=False)
     self.alpha_axes = self.uc_figure.add_subplot(uc_gsub[3])
     self.alpha_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.alpha_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
@@ -1142,12 +1140,12 @@ class LiveAnalysisTab(d.ScrolledPanel):
                                                 sharey=self.alpha_axes)
     self.beta_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.beta_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    plt.setp(self.beta_axes.get_yticklabels(), visible=False)
+    self.beta_axes.set_yticklabels(list(''*5), visible=False)
     self.gamma_axes = self.uc_figure.add_subplot(uc_gsub[5],
                                                  sharey=self.alpha_axes)
     self.gamma_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.gamma_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
+    self.gamma_axes.set_yticklabels(list(''*5), visible=False)
 
     self.uc_figure.set_tight_layout(True)
     self.uc_canvas = FigureCanvas(self.uc_panel, -1, self.uc_figure)
@@ -1290,10 +1288,10 @@ class LiveAnalysisTab(d.ScrolledPanel):
       self.a_axes.set_ylabel(edge_ylabel)
 
       self.calculate_uc_histogram(b, self.b_axes)
-      plt.setp(self.b_axes.get_yticklabels(), visible=False)
+      self.b_axes.set_yticklabels(list(''*5), visible=False)
 
       self.calculate_uc_histogram(c, self.c_axes)
-      plt.setp(self.c_axes.get_yticklabels(), visible=False)
+      self.c_axes.set_yticklabels(list(''*5), visible=False)
 
       self.calculate_uc_histogram(alpha, self.alpha_axes,
                                   xticks_loc='bottom', set_ylim=True)
@@ -1302,10 +1300,10 @@ class LiveAnalysisTab(d.ScrolledPanel):
       self.alpha_axes.set_ylabel(ang_ylabel)
 
       self.calculate_uc_histogram(beta, self.beta_axes, xticks_loc='bottom')
-      plt.setp(self.beta_axes.get_yticklabels(), visible=False)
+      self.beta_axes.set_yticklabels(list(''*5), visible=False)
 
       self.calculate_uc_histogram(gamma, self.gamma_axes, xticks_loc='bottom')
-      plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
+      self.gamma_axes.set_yticklabels(list(''*5), visible=False)
 
     except ValueError as e:
       print ('UC HISTOGRAM ERROR: ', e)
@@ -1330,8 +1328,8 @@ class SummaryTab(d.ScrolledPanel):
 
     summary_sizer = wx.BoxSizer(wx.VERTICAL)
 
-    sfont = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
-    bfont = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+    sfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+    bfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
     self.SetFont(bfont)
 
     # Run information
@@ -1622,28 +1620,38 @@ class SummaryTab(d.ScrolledPanel):
 
   def onPlotHeatmap(self, e):
     if self.final_objects is not None:
-      self.plot.plot_spotfinding_heatmap()
+      fig = self.plot.plot_spotfinding_heatmap()
+      self.draw_plot(figure=fig)
 
   def onPlotBeamXY(self, e):
     if self.final_objects is not None:
-      self.plot.plot_beam_xy()
+      fig = self.plot.plot_beam_xy()
+      self.draw_plot(figure=fig)
 
   def onPlotBeam3D(self, e):
     if self.final_objects is not None:
-      self.plot.plot_beam_xy(threeD=True)
+      fig = self.plot.plot_beam_xy(threeD=True)
+      self.draw_plot(figure=fig, axes3D=True)
 
   def onPlotResHist(self, e):
     if self.final_objects is not None:
-      self.plot.plot_res_histogram()
+      fig = self.plot.plot_res_histogram()
+      self.draw_plot(figure=fig)
 
-class ProcWindow(wx.Frame):
+  def draw_plot(self, figure, axes3D=False):
+    plot_window = PlotWindow(parent=self, id=wx.ID_ANY,
+                             title="Resolution Histogram")
+    plot_window.plot(figure=figure, axes3D=axes3D)
+    plot_window.Show(True)
+
+class ProcWindow(IOTABaseFrame):
   """ New frame that will show processing info """
 
   def __init__(self, parent, id, title, phil, target_phil=None):
-    wx.Frame.__init__(self, parent, id, title,
-                      size=(800, 900),
-                      style= wx.SYSTEM_MENU | wx.CAPTION |
-                             wx.CLOSE_BOX | wx.RESIZE_BORDER)
+    IOTABaseFrame.__init__(self, parent, id, title,
+                           size=(800, 900),
+                           style=wx.SYSTEM_MENU | wx.CAPTION |
+                                 wx.CLOSE_BOX | wx.RESIZE_BORDER)
 
     self.parent = parent
     self.logtext = ''
@@ -1683,36 +1691,31 @@ class ProcWindow(wx.Frame):
     # Initialize mx handler
     self.mxh = mx_handler()
 
-    self.main_panel = wx.Panel(self)
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-
     # Toolbar
-    self.proc_toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS | wx.TB_TEXT)
-    abort_bmp = bitmaps.fetch_icon_bitmap('actions', 'stop')
-    self.tb_btn_abort = self.proc_toolbar.AddLabelTool(wx.ID_ANY, label='Abort',
-                                                bitmap=abort_bmp,
-                                                shortHelp='Abort')
+    self.initialize_toolbar()
+    self.tb_btn_abort = self.add_tool(label='Abort',
+                                      bitmap=('actions', 'stop'),
+                                      shortHelp='Quit')
+
     resume_bmp = bitmaps.fetch_icon_bitmap('actions', 'quick_restart')
-    self.tb_btn_resume = self.proc_toolbar.AddLabelTool(wx.ID_ANY,
-                                                        label='Resume',
-                                                        bitmap=resume_bmp,
-                                                        shortHelp='Resume aborted run')
-    self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), False)
-    self.proc_toolbar.AddSeparator()
+    self.tb_btn_resume = self.add_tool(label='Resume',
+                                       bitmap=('actions', 'quick_restart'),
+                                       shortHelp='Resume aborted run')
+    self.add_toolbar_separator()
     watch_bmp = bitmaps.fetch_icon_bitmap('apps', 'search')
-    self.tb_btn_monitor = self.proc_toolbar.AddCheckLabelTool(wx.ID_ANY,
-                                                label='Monitor',
-                                                bitmap=watch_bmp,
-                                                shortHelp='Monitor Mode')
-    hist_bmp = bitmaps.fetch_icon_bitmap('mimetypes', 'spreadsheet', size=32)
-    self.tb_btn_analysis = self.proc_toolbar.AddCheckLabelTool(wx.ID_ANY,
-                                              label='Analysis',
-                                              bitmap=hist_bmp,
-                                              shortHelp='Toggle Runtime Analysis Tab')
-    self.proc_toolbar.Realize()
+    self.tb_btn_monitor = self.add_tool(label='Monitor',
+                                        kind=wx.ITEM_CHECK,
+                                        bitmap=('apps', 'search'),
+                                        shortHelp='Monitor Mode')
+    self.tb_btn_analysis = self.add_tool(label='Analysis',
+                                         kind=wx.ITEM_CHECK,
+                                         bitmap=('mimetypes', 'spreadsheet', 32),
+                                         shortHelp='Toggle Runtime Analysis Tab')
+    self.set_tool_state(self.tb_btn_resume, False)
+    self.realize_toolbar()
 
     # Status box
-    self.status_panel = wx.Panel(self.main_panel)
+    self.status_panel = wx.Panel(self)
     self.status_sizer = wx.BoxSizer(wx.VERTICAL)
     self.status_box = wx.StaticBox(self.status_panel, label='Status')
     self.status_box_sizer = wx.StaticBoxSizer(self.status_box, wx.HORIZONTAL)
@@ -1724,7 +1727,7 @@ class ProcWindow(wx.Frame):
     self.status_panel.SetSizer(self.status_sizer)
 
     # Tabbed output window(s)
-    self.proc_panel = wx.Panel(self.main_panel)
+    self.proc_panel = wx.Panel(self)
     # self.proc_nb = wx.Notebook(self.proc_panel, style=0)
     self.proc_nb = AuiNotebook(self.proc_panel, style=wx.aui.AUI_NB_TOP)
     self.proc_tab = ProcessingTab(self.proc_nb)
@@ -1739,7 +1742,6 @@ class ProcWindow(wx.Frame):
 
     self.main_sizer.Add(self.status_panel, flag=wx.EXPAND | wx.ALL, border=3)
     self.main_sizer.Add(self.proc_panel, 1, flag=wx.EXPAND | wx.ALL, border=3)
-    self.main_panel.SetSizer(self.main_sizer)
 
     #Processing status bar
     self.sb = self.CreateStatusBar()
@@ -1785,7 +1787,7 @@ class ProcWindow(wx.Frame):
 
     # Determine if monitor mode was previously selected
     if self.gparams.gui.monitor_mode:
-      self.proc_toolbar.ToggleTool(self.tb_btn_monitor.GetId(), True)
+      self.toolbar.ToggleTool(self.tb_btn_monitor.GetId(), True)
       self.monitor_mode = True
       if self.gparams.gui.monitor_mode_timeout:
         if self.gparams.gui.monitor_mode_timeout_length is None:
@@ -1793,29 +1795,29 @@ class ProcWindow(wx.Frame):
         else:
           self.monitor_mode_timeout = self.gparams.gui.monitor_mode_timeout_length
 
-  def set_position(self):
-    """ Determines screen position w/ respect to parent window; will also
-    detect if it goes beyond the display edge, and adjust """
-
-    # Position proc window w/ respect to IOTA window
-    mx, my = self.parent.GetPosition()
-    px = mx + 50
-    py = my + 50
-
-    # Calculate if proc window is going out of bounds, and adjust
-    disp_idx = wx.Display.GetFromWindow(window=self.parent)
-    disp_geom = wx.Display(disp_idx).GetClientArea()
-    dxmin = disp_geom[0]
-    dxmax = disp_geom[0] + disp_geom[2]
-    dymin = disp_geom[1]
-    dymax = disp_geom[1] + disp_geom[3]
-
-    pw, pl = self.GetSize()
-    if not (px + pw * 1.1 in range(dxmin, dxmax)):
-      px = dxmax - pw * 1.1
-    if not (py + pl * 1.1 in range(dymin, dymax)):
-      py = dymax - pl * 1.1
-    self.SetPosition((px, py))
+  # def set_position(self):
+  #   """ Determines screen position w/ respect to parent window; will also
+  #   detect if it goes beyond the display edge, and adjust """
+  #
+  #   # Position proc window w/ respect to IOTA window
+  #   mx, my = self.parent.GetPosition()
+  #   px = mx + 50
+  #   py = my + 50
+  #
+  #   # Calculate if proc window is going out of bounds, and adjust
+  #   disp_idx = wx.Display.GetFromWindow(win=self.parent)
+  #   disp_geom = wx.Display(disp_idx).GetClientArea()
+  #   dxmin = disp_geom[0]
+  #   dxmax = disp_geom[0] + disp_geom[2]
+  #   dymin = disp_geom[1]
+  #   dymax = disp_geom[1] + disp_geom[3]
+  #
+  #   pw, pl = self.GetSize()
+  #   if not (px + pw * 1.1 in range(dxmin, dxmax)):
+  #     px = dxmax - pw * 1.1
+  #   if not (py + pl * 1.1 in range(dymin, dymax)):
+  #     py = dymax - pl * 1.1
+  #   self.SetPosition((px, py))
 
   def onSGTextEnter(self, e):
     self.info.user_sg = str(self.proc_tab.hkl_sg.sg.GetValue())
@@ -1851,13 +1853,18 @@ class ProcWindow(wx.Frame):
       self.run_clustering_thread()
 
   def onAnalysis(self, e):
-    if self.proc_toolbar.GetToolState(self.tb_btn_analysis.GetId()):
+    if self.toolbar.GetToolState(self.tb_btn_analysis.GetId()):
       if hasattr(self, 'proc_thread'):
         self.chart_timer.Start(15000)
-      self.proc_nb.InsertPage(n=2, page=self.chart_tab, text='Analysis',
-                              select=True)
-      if self.proc_nb.GetSelection() != 2:
-        self.proc_nb.SetSelection(2)
+
+      if 'phoenix' in wx.version():
+        self.proc_nb.InsertPage(page_idx=2, page=self.chart_tab,
+                                caption='Analysis', select=True)
+      elif 'classic' in wx.version():
+        self.proc_nb.InsertPage(n=2, page=self.chart_tab,
+                                text='Analysis')
+        if self.proc_nb.GetSelection() != 2:
+          self.proc_nb.SetSelection(2)
       self.plot_live_analysis(force_plot=True)
     else:
       if self.chart_timer.IsRunning():
@@ -1867,14 +1874,14 @@ class ProcWindow(wx.Frame):
       self.proc_nb.RemovePage(2)
 
   def onMonitor(self, e):
-    if self.proc_toolbar.GetToolState(self.tb_btn_monitor.GetId()):
+    if self.toolbar.GetToolState(self.tb_btn_monitor.GetId()):
       self.monitor_mode = True
       if self.gparams.gui.monitor_mode_timeout:
         if self.gparams.gui.monitor_mode_timeout_length is None:
           self.monitor_mode_timeout = 30
         else:
           self.monitor_mode_timeout = self.gparams.gui.monitor_mode_timeout_length
-    elif not self.proc_toolbar.GetToolState(self.tb_btn_monitor.GetId()):
+    elif not self.toolbar.GetToolState(self.tb_btn_monitor.GetId()):
       self.monitor_mode = False
       self.monitor_mode_timeout = None
     self.find_new_images = self.monitor_mode
@@ -1895,7 +1902,7 @@ class ProcWindow(wx.Frame):
     self.abort_initiated = True
     self.status_txt.SetForegroundColour('red')
     self.status_txt.SetLabel('Aborting...')
-    self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
+    self.set_tool_state(self.tb_btn_abort, False)
 
   def onResume(self, e):
     """ Restarts an aborted run if the processing window is still open.
@@ -1918,9 +1925,9 @@ class ProcWindow(wx.Frame):
       os.makedirs(self.init.tmp_base)
 
     # Reset toolbar buttons
-    self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), True)
-    self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), False)
-    self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), True)
+    self.set_tool_states([(self.tb_btn_abort, True),
+                          (self.tb_btn_resume, False),
+                          (self.tb_btn_monitor, False, True)])
 
     # Run processing, etc.
     self.proc_timer.Start(1000)
@@ -2199,7 +2206,7 @@ class ProcWindow(wx.Frame):
 
       # Signal end of run
       font = self.sb.GetFont()
-      font.SetWeight(wx.BOLD)
+      font.SetWeight(wx.FONTWEIGHT_BOLD)
       self.status_txt.SetFont(font)
       self.status_txt.SetForegroundColour('blue')
       self.status_txt.SetLabel('DONE')
@@ -2427,7 +2434,7 @@ class ProcWindow(wx.Frame):
 
     if self.finished_objects is None:
       font = self.sb.GetFont()
-      font.SetWeight(wx.BOLD)
+      font.SetWeight(wx.FONTWEIGHT_BOLD)
       self.status_txt.SetFont(font)
       self.status_txt.SetForegroundColour('blue')
       self.status_txt.SetLabel('OBJECT READ-IN ERROR! NONE IMPORTED')
@@ -2436,11 +2443,11 @@ class ProcWindow(wx.Frame):
     if self.run_aborted:
       self.gauge_process.Hide()
       font = self.sb.GetFont()
-      font.SetWeight(wx.BOLD)
+      font.SetWeight(wx.FONTWEIGHT_BOLD)
       self.status_txt.SetFont(font)
       self.status_txt.SetForegroundColour('red')
       self.status_txt.SetLabel('ABORTED BY USER')
-      self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
+      self.set_tool_state(self.tb_btn_resume, True)
       try:
         shutil.rmtree(self.init.tmp_base)
       except Exception:
@@ -2450,13 +2457,12 @@ class ProcWindow(wx.Frame):
     elif self.recovery:
       self.gauge_process.Hide()
       font = self.sb.GetFont()
-      font.SetWeight(wx.BOLD)
+      font.SetWeight(wx.FONTWEIGHT_BOLD)
       self.status_txt.SetFont(font)
       run_no = int(self.init.int_base.split('/')[-1])
       self.status_txt.SetLabel('Run #{} Loaded!'.format(run_no))
-      self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
-      self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), False)
-      self.proc_toolbar.ToggleTool(self.tb_btn_monitor.GetId(), False)
+      self.set_tool_states([(self.tb_btn_abort, False),
+                            (self.tb_btn_monitor, False, False)])
 
       self.display_log()
 
@@ -2518,14 +2524,13 @@ class ProcWindow(wx.Frame):
           self.plot_integration(force_plot=True)
           self.plot_live_analysis(force_plot=True)
         if os.path.isfile(os.path.join(self.init.int_base, 'init.cfg')):
-          self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
+          self.set_tool_state(self.tb_btn_resume, True)
       return
     else:
       self.final_objects = [i for i in self.info.finished_objects if not i.fail]
       self.gauge_process.Hide()
-      self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
-      self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), False)
-      self.proc_toolbar.ToggleTool(self.tb_btn_monitor.GetId(), False)
+      self.set_tool_states([(self.tb_btn_abort, False),
+                            (self.tb_btn_monitor, False, False)])
 
       if len(self.final_objects) > 0:
         # Signal end of run
@@ -2534,7 +2539,7 @@ class ProcWindow(wx.Frame):
         self.analyze_results()
       else:
         font = self.sb.GetFont()
-        font.SetWeight(wx.BOLD)
+        font.SetWeight(wx.FONTWEIGHT_BOLD)
         self.status_txt.SetFont(font)
         self.status_txt.SetForegroundColour('blue')
         self.status_txt.SetLabel('NO IMAGES PROCESSED')
