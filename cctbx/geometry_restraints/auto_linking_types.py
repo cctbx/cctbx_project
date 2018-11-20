@@ -58,25 +58,25 @@ for link_info in [
      ['User supplied']*4+[None, 'User supplied'],
      [0,1,2,3,5],
     ],
-    ['glycosidic',
-     'Standard glycosidic CIF link blocks such as link_??? and ???',
-     '',
-     ['Standard Glycosidic']*5, # includes chirals!!!
-     [0,1,2,3,4],
-    ],
+    # ['glycosidic',
+    #  'Standard glycosidic CIF link blocks such as link_??? and ???',
+    #  '',
+    #  ['Standard Glycosidic']*5, # includes chirals!!!
+    #  [0,1,2,3,4],
+    # ],
     ['glycosidic custom',
-     'Custom glycosidic links need to be generated when the atom names of'
-     "the carbohydrates don't conform to the standard.",
+     'Custom glycosidic links need to be generated when the atom names of '
+     '''the carbohydrates don't conform to the standard.''',
      '',
      ['Custom Glycosidic']*5,
      [0,1,2,3,4],
     ],
-    ['trans peptide link',
-    'Applying the standard TRANS peptide link to a non-standard peptide',
-    '',
-    ['Trans Peptide']*3+[None],
-    [0,1,2,4]
-    ]
+    # ['trans peptide link',
+    # 'Applying the standard TRANS peptide link to a non-standard peptide',
+    # '',
+    # ['Trans Peptide']*3+[None],
+    # [0,1,2,4]
+    # ]
     #['Misc. bond',
     # 'Bond created based on atom type and distance.',
     # '',
@@ -107,6 +107,19 @@ for link_info in [
   ]:
   torsion_origin_ids[starting_id] = origins(link_info, internals=[2])
   starting_id+=1
+
+from cctbx.geometry_restraints.standard_cif_links import standard_cif_links
+for scl in standard_cif_links:
+  oi[starting_id] = origins(scl, internals=[0,1,2,3,4,5])
+  starting_id+=1
+
+# for oi in origin_ids:
+#   print '-'*80
+#   for key, item in oi.items():
+#     print key
+#     print item
+
+#assert 0
 
 if __name__=="__main__":
   print '-'*80

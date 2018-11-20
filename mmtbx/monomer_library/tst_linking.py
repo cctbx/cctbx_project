@@ -2347,10 +2347,10 @@ def run_and_test(cmd, pdb, i, skip_links=False):
   print "OK"
   # test .geo
   f=file(pdb.replace(".pdb", "_minimized.geo"), "rb")
-  lines = f.readlines()
+  lines = f.read()
   f.close()
   bonds = 0
-  for line in lines:
+  for line in lines.splitlines():
     for bond_like in ["Bond restraints:",
                       'Bond-like restraints:',
                       'Metal coordination restraints:',
@@ -2360,10 +2360,13 @@ def run_and_test(cmd, pdb, i, skip_links=False):
                       'Standard Glycosidic restraints:',
                       'Custom Glycosidic restraints:',
                       'Trans Peptide restraints:',
+                      #
+                      'link_'
                       ]:
       if line.find(bond_like)>-1:
-        print 'Adding %s for %s' % (int(line.split()[-1]), bond_like)
+        print 'Adding %s for "%s"' % (int(line.split()[-1]), line)
         bonds += int(line.split()[-1])
+    if line.find('Bond angle')>-1: break
   assert bonds == links[pdb][i], "found %d bonds but expected %s! File: %s" % (
     bonds,
     links[pdb][i],

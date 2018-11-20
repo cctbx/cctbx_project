@@ -1628,7 +1628,8 @@ class manager(Base_geometry):
             f=tempbuffer,
             prefix="",
             origin_id=origin_id)
-        print >> f, label, tempbuffer.getvalue()[5:]
+        if tempbuffer.getvalue().find(': 0')==-1:
+          print >> f, label, tempbuffer.getvalue()[5:]
 
     for p_label, proxies, internals, i_label, keys, start in [
       ("Bond angle",
@@ -1684,7 +1685,8 @@ class manager(Base_geometry):
               f=tempbuffer,
               prefix="",
               origin_id=origin_id)
-          print >> f, label, tempbuffer.getvalue()[start:]
+          if tempbuffer.getvalue().find(': 0')==-1:
+            print >> f, label, tempbuffer.getvalue()[start:]
 
     for p_label, proxies in [
         ("Reference torsion angle", self.reference_dihedral_manager),

@@ -648,9 +648,6 @@ Residue classes
       if not link_amino_acid_rna_dna:
         if "common_amino_acid" in class_key and "common_rna_dna" in class_key:
           continue
-      # get origin_id
-      if 'common_saccharide' in class_key:
-        origin_id = origin_ids['glycosidic']
       #
       names = [atom1.name, atom2.name]
       if verbose: print 'names',names
@@ -750,6 +747,8 @@ Residue classes
       #
       if link:
         # apply a standard link
+        origin_id = origin_ids['link_%s' % key]
+        print 'origin_id',origin_id
         count, bond_i_seqs = _apply_link_using_proxies(
           link,
           atom_group1,
@@ -760,6 +759,7 @@ Residue classes
           rt_mx_ji=link_rt_mx_ji,
           origin_id=origin_id,
         )
+        origin_id = None
         if len(bond_i_seqs)==0:
           if verbose:
             print 'failed to link using %s' % key
