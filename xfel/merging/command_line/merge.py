@@ -35,7 +35,7 @@ class Script(object):
 
     # Create the workers using the factories
     workers = []
-    for step in ['input']:
+    for step in ['input', 'modify']:
       factory = importlib.import_module('xfel.merging.application.'+step+'.factory')
       workers.extend(factory.factory.from_parameters(self.params))
 
