@@ -18,10 +18,11 @@ __all__ = ["MetallicButton", "AdjustAlpha", "AdjustColour",
            "MB_STYLE_DEFAULT", "GB_STYLE_BOLD_LABEL", "GB_STYLE_DROPARROW"]
 
 
-import wx
 import wx.lib.wordwrap
 import wx.lib.imageutils
 from wx.lib.colourutils import *
+
+from wxtbx import wx4_compatibility as wx4c
 
 # Used on OSX to get access to carbon api constants
 CAPTION_SIZE = 9
@@ -40,7 +41,8 @@ MB_STYLE_DEFAULT = 1
 MB_STYLE_BOLD_LABEL = 2
 MB_STYLE_DROPARROW = 4
 
-class MetallicButton (wx.Control) :
+WxCtrl = wx4c.get_wx_mod(wx, wx.Control)
+class MetallicButton (WxCtrl) :
   def __init__ (self,
                 parent,
                 id_=wx.ID_ANY,
@@ -59,9 +61,10 @@ class MetallicButton (wx.Control) :
                 button_margin=2,
                 disable_after_click=0,
                 bmp2=None):
-    wx.Control.__init__(self, parent, id_, pos, size,
-      wx.NO_BORDER, name=name)
+
+    WxCtrl.__init__(self, parent, id_, pos, size, wx.NO_BORDER, name=name)
     self.InheritAttributes()
+
     self._bmp = dict(enable=bmp)
     self._margin = button_margin
     if bmp is not None :
@@ -78,11 +81,15 @@ class MetallicButton (wx.Control) :
     # XXX this crashes on wxOSX_Cocoa!
     if (not 'wxOSX-cocoa' in wx.PlatformInfo) :
       self._label2_font.SetStyle(wx.FONTSTYLE_ITALIC)
+      # with wx4c.set_font_style(wx.FONTSTYLE_ITALIC) as fs:
+      #   self._label2_font.SetStyle(fs)
     font_size = label_size
     self._label_font = self.GetFont()
     self._label_font.SetPointSize(label_size)
     if style & MB_STYLE_BOLD_LABEL :
-      self._label_font.SetWeight(wx.FONTWEIGHT_BOLD)
+      self._label2_font.SetWeight(wx.FONTWEIGHT_BOLD)
+      # with wx4c.set_font_weight(wx.FONTWEIGHT_BOLD) as fw:
+      #   self._label2_font.SetWeight(fw)
     self.SetFont(self._label_font)
     #self._label2_font = wx.Font(caption_size, wx.SWISS, wx.ITALIC, wx.NORMAL)
 
@@ -263,7 +270,8 @@ class MetallicButton (wx.Control) :
       if wx.Platform == '__WXMAC__':
         brush = wx.Brush((100,100,100))
         brush.MacSetTheme(Carbon.Appearance.kThemeBrushFocusHighlight)
-        pen = wx.Pen(brush.GetColour(), 1, wx.SOLID)
+        with wx4c.set_brush_style(wx.BRUSHSTYLE_SOLID) as bstyle:
+          pen = wx.Pen(brush.GetColour(), 1, bstyle)
       else:
         pen = wx.Pen(AdjustColour(self._color['press_start'], -80, 220), 1)
       #gc.SetPen(pen)
@@ -343,7 +351,7 @@ class MetallicButton (wx.Control) :
 
   def Disable(self):
     """Disable the control"""
-    wx.Control.Disable(self)
+    WxCtrl.Disable(self)
     self.Refresh()
 
   def DoGetBestSize(self):
@@ -371,11 +379,14 @@ class MetallicButton (wx.Control) :
 
     if self._label2 != '' :
       if wx.Platform == '__WXMAC__' :
-        dc = wx.GraphicsContext.CreateMeasuringContext()
+        with wx4c.create_measuring_context() as context:
+          dc = context
+          gfont = dc.CreateFont(self._label2_font, self.GetForegroundColour())
       else :
         dc = wx.ClientDC(self)
+        gfont = self._label2_font
         #dc = wx.MemoryDC()
-      dc.SetFont(self._label2_font)
+      dc.SetFont(gfont)
       min_w, min_h = self.GetSize() #self._size
       if min_w == -1 :
         min_w = 120
@@ -412,7 +423,7 @@ class MetallicButton (wx.Control) :
 
   def Enable(self, enable=True):
     """Enable/Disable the control"""
-    wx.Control.Enable(self, enable)
+    WxCtrl.Enable(self, enable)
     self.Refresh()
 
   def GetBackgroundBrush(self, dc):
@@ -425,14 +436,16 @@ class MetallicButton (wx.Control) :
       return wx.TRANSPARENT_BRUSH
 
     bkgrd = self.GetBackgroundColour()
-    brush = wx.Brush(bkgrd, wx.SOLID)
+    with wx4c.set_brush_style(wx.BRUSHSTYLE_SOLID) as bstyle:
+        brush = wx.Brush(bkgrd, bstyle)
     my_attr = self.GetDefaultAttributes()
     p_attr = self.GetParent().GetDefaultAttributes()
     my_def = bkgrd == my_attr.colBg
     p_def = self.GetParent().GetBackgroundColour() == p_attr.colBg
     if my_def and not p_def:
       bkgrd = self.GetParent().GetBackgroundColour()
-      brush = wx.Brush(bkgrd, wx.SOLID)
+      with wx4c.set_brush_style(wx.BRUSHSTYLE_SOLID) as bstyle:
+        brush = wx.Brush(bkgrd, bstyle)
     return brush
 
   def GetBitmapDisabled(self):
@@ -454,7 +467,7 @@ class MetallicButton (wx.Control) :
   GetBitmapHover = GetBitmapLabel
 
   # Alias for GetLabel
-  GetLabelText = wx.Control.GetLabel
+  GetLabelText = WxCtrl.GetLabel
 
   def GetMenu(self):
     """Return the menu associated with this button or None if no
@@ -613,11 +626,11 @@ class MetallicButton (wx.Control) :
     """Set this control to have the focus"""
     if self._state['cur'] != GRADIENT_PRESSED:
       self.SetState(GRADIENT_HIGHLIGHT)
-    wx.Control.SetFocus(self)
+    WxCtrl.SetFocus(self)
 
   def SetFont(self, font):
     """Adjust size of control when font changes"""
-    wx.Control.SetFont(self, font)
+    WxCtrl.SetFont(self, font)
     self.InvalidateBestSize()
 
   def SetLabel(self, label):
@@ -625,7 +638,7 @@ class MetallicButton (wx.Control) :
     @param label: lable string
 
     """
-    wx.Control.SetLabel(self, label)
+    WxCtrl.SetLabel(self, label)
     self.InvalidateBestSize()
 
   def SetLabelColor(self, normal, hlight=wx.NullColour):
@@ -709,7 +722,7 @@ class MetallicButton (wx.Control) :
 
   def SetWindowVariant(self, variant):
     """Set the variant/font size of this control"""
-    wx.Control.SetWindowVariant(self, variant)
+    WxCtrl.SetWindowVariant(self, variant)
     self.InvalidateBestSize()
 
   def ShouldInheritColours(self):
@@ -821,7 +834,8 @@ if __name__ == "__main__" :
   panel_sizer.Add(btn3, 0, wx.ALL|wx.EXPAND, 10)
   btn4 = MetallicButton(
     parent=panel,
-    label="Button with bitmap and caption",
+    style=MB_STYLE_BOLD_LABEL,
+    label="Button with bitmap and BOLD caption",
     label2="This is the button caption that I can't figure out how to wrap "+
       "properly on any platform (but especially Linux!).",
     bmp=folder_home.GetBitmap(),
