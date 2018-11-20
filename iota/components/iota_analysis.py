@@ -31,19 +31,6 @@ from six.moves import cPickle as pickle
 from libtbx import easy_pickle as ep
 from cctbx import crystal, uctbx, sgtbx
 
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-from matplotlib import cm, colors
-from mpl_toolkits.mplot3d import Axes3D
-
-# workaround to avoid unused import warning
-assert Axes3D
-assert cm
-assert colors
-
-import time
-assert time
-
 from iota import iota_version, now
 import iota.components.iota_utils as util
 from prime.postrefine import mod_input
@@ -71,6 +58,8 @@ class Plotter(object):
     self.font = {'fontfamily':'sans-serif', 'fontsize':12}
 
   def plot_spotfinding_heatmap(self, write_files=False):
+
+    import matplotlib.pyplot as plt
 
     hlist = [i.final['sph'] for i in self.final_objects]
     alist = [i.final['spa'] for i in self.final_objects]
@@ -173,6 +162,8 @@ class Plotter(object):
         predicted mis-indexing shift by L +/- 1 (calculated for each axis).
     """
 
+    import matplotlib.pyplot as plt
+
     # Get values
     beamX, beamY, cbeamX, cbeamY, obeamX, obeamY, \
     beam_dist, distances, aD, bD, cD, pixel_size = self.calculate_beam_xy()
@@ -252,6 +243,8 @@ class Plotter(object):
 
 
   def plot_res_histogram(self, write_files=False):
+
+    import matplotlib.pyplot as plt
 
     # Get resolution values
     hres = [i.final['res'] for i in self.final_objects]

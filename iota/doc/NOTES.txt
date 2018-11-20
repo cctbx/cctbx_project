@@ -1,11 +1,8 @@
-IOTA v1.2.008 - generalized image handling
+IOTA v1.2.009 - wxPython 4 compatibility
 
-- New classes:
-    - SingleImage base class: carries just the IOTA-related info and a dxtbx
-    datablock where appropriate
-    - Importer base class: creates a datablock from image (or creates an image
-    pickle for HA14, with required modifications), instantiates the SingleImage
-    objects, and populates it with image-specific information (beamXY, gain,
-    paths, etc.)
-    - SingleImage, Importer, and Integrator are subclassed from base classes
-    depending on backend
+- Created a iota_ui_base module for base Frames, Windows, etc. (idea is to use
+base classes for a wxPython version check)
+- Separate iota_plotter module (for plots in separate window instead of PyPlot,
+which doesn't work well with wxPython 4 in Matplotlib 2.0; will later become a
+module with base plot classes)
+- Clunky so far, will update with a more general approach later

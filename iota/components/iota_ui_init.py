@@ -10,8 +10,10 @@ Description : IOTA GUI Initialization module
 
 import os
 import wx
+
+print (wx.version())
+
 import wx.lib.agw.ultimatelistctrl as ulc
-from wxtbx import bitmaps
 import multiprocessing
 import argparse
 
@@ -27,6 +29,7 @@ import iota.components.iota_input as inp
 import iota.components.iota_utils as util
 import iota.components.iota_ui_frames as frm
 import iota.components.iota_ui_dialogs as dlg
+from iota.components.iota_ui_base import IOTABaseFrame
 
 ginp = util.InputFinder()
 pid = os.getpid()
@@ -84,11 +87,11 @@ def parse_command_args(help_message):
 
 # ------------------------------- Main Window -------------------------------- #
 
-class MainWindow(wx.Frame):
+class MainWindow(IOTABaseFrame):
   """ Frame housing the entire app; all windows open from this one """
 
   def __init__(self, parent, id, title):
-    wx.Frame.__init__(self, parent, id, title, size=(800, 500))
+    IOTABaseFrame.__init__(self, parent, id, title, size=(800, 500))
     self.parent = parent
     self.iota_phil = inp.master_phil
     self.prefs_phil = None
@@ -122,65 +125,36 @@ class MainWindow(wx.Frame):
 
     self.SetMenuBar(menubar)
 
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.SetSizer(self.main_sizer)
-
     # Toolbar
-    self.toolbar = self.CreateToolBar(style=wx.TB_3DBUTTONS | wx.TB_TEXT)
-    quit_bmp = bitmaps.fetch_icon_bitmap('actions', 'exit')
-    self.tb_btn_quit = self.toolbar.AddLabelTool(wx.ID_EXIT, label='Quit',
-                                                 bitmap=quit_bmp,
-                                                 shortHelp='Quit',
-                                                 longHelp='Quit IOTA')
-    pref_bmp = bitmaps.fetch_icon_bitmap('apps', 'advancedsettings')
-    self.tb_btn_prefs = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                  label='Preferences',
-                                                  bitmap=pref_bmp,
-                                                  shortHelp='Preferences',
-                                                  longHelp='IOTA Preferences')
-    self.toolbar.AddSeparator()
-    load_bmp = bitmaps.fetch_icon_bitmap('actions', 'open')
-    self.tb_btn_load = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                 label='Load Script',
-                                                 bitmap=load_bmp,
-                                                 shortHelp='Load Script',
-                                                 longHelp='Load IOTA Script')
-    save_bmp = bitmaps.fetch_icon_bitmap('actions', 'save')
-    self.tb_btn_save = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                 label='Save Script',
-                                                 bitmap=save_bmp,
-                                                 shortHelp='Save Script',
-                                                 longHelp='Save IOTA Script')
-    reset_bmp = bitmaps.fetch_icon_bitmap('actions', 'reload')
-    self.tb_btn_reset = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                  label='Reset',
-                                                  bitmap=reset_bmp,
-                                                  shortHelp='Reset Settings',
-                                                  longHelp='Reset IOTA settings with defaults')
-    self.toolbar.AddSeparator()
-    analyze_bmp = bitmaps.fetch_icon_bitmap('mimetypes', 'text-x-generic-2')
-    self.tb_btn_analysis = self.toolbar.AddLabelTool(wx.ID_ANY, label='Recover',
-                                                     bitmap=analyze_bmp,
-                                                     shortHelp='Recover',
-                                                     longHelp='Recover run, show statistics and restart if aborted ')
-    run_bmp = bitmaps.fetch_icon_bitmap('actions', 'run')
-    self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
-                                                bitmap=run_bmp,
-                                                shortHelp='Run',
-                                                longHelp='Run all stages of refinement')
+    self.initialize_toolbar()
+    self.tb_btn_quit = self.add_tool(label='Quit',
+                                     bitmap=('actions', 'exit'),
+                                     shortHelp='Quit')
 
-    # Test buttons for test windows - comment out when not needed
-    # self.toolbar.AddSeparator()
-    test_bmp = bitmaps.fetch_icon_bitmap('actions', 'utilities')
-    self.tb_btn_test = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                 label='Test',
-                                                 bitmap=test_bmp)
-    self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_test)
-    self.toolbar.RemoveTool(self.tb_btn_test.GetId())
+    self.tb_btn_prefs = self.add_tool(label='Preferences',
+                                      bitmap=('apps', 'advancedsettings'),
+                                      shortHelp='Preferences')
+    self.toolbar.AddSeparator()
+    self.tb_btn_load = self.add_tool(label='Load Script',
+                                     bitmap=('actions', 'download'),
+                                     shortHelp='Load Script')
+    self.tb_btn_save = self.add_tool(label='Save Script',
+                                     bitmap=('actions', 'save_all'),
+                                     shortHelp='Save Script')
+    self.tb_btn_reset = self.add_tool(label='Reset',
+                                      bitmap=('actions', 'reload'),
+                                      shortHelp='Reset Settings')
+    self.toolbar.AddSeparator()
+    self.tb_btn_analysis = self.add_tool(label='Recover',
+                                         bitmap=('actions', 'list'),
+                                         shortHelp='Recover')
+    self.tb_btn_run = self.add_tool(label='Run',
+                                    bitmap=('actions', 'run'),
+                                    shortHelp='Run')
 
     # These buttons will be disabled until input path is provided
-    self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
-    self.toolbar.Realize()
+    self.set_tool_state(self.tb_btn_run, False)
+    self.realize_toolbar()
 
     # Instantiate windows
     self.input_window = frm.InputWindow(self, phil=self.iota_phil)
@@ -219,18 +193,18 @@ class MainWindow(wx.Frame):
               self.input_window.input)
 
 
-  def place_and_size(self):
-    """ Place and size the frame"""
-
-    # Determine effective minimum size
-    self.SetMinSize(self.GetEffectiveMinSize())
-
-    # Find mouse position
-    mx, my = wx.GetMousePosition()
-
-    # Center on display
-    self.SetPosition((mx, my))
-    self.Center()
+  # def place_and_size(self):
+  #   """ Place and size the frame"""
+  #
+  #   # Determine effective minimum size
+  #   self.SetMinSize(self.GetEffectiveMinSize())
+  #
+  #   # Find mouse position
+  #   mx, my = wx.GetMousePosition()
+  #
+  #   # Center on display
+  #   self.SetPosition((mx, my))
+  #   self.Center()
 
 
   def read_command_line_options(self):
@@ -398,7 +372,7 @@ class MainWindow(wx.Frame):
 
   def OnAboutBox(self, e):
     """ About dialog """
-    info = wx.AboutDialogInfo()
+    info = wx.adv.AboutDialogInfo()
     info.SetName('IOTA')
     info.SetVersion(iota_version)
     info.SetDescription(gui_description)
@@ -411,7 +385,7 @@ class MainWindow(wx.Frame):
     info.AddDeveloper('Axel Brunger')
     info.AddDocWriter('Art Lyubimov')
     info.AddTranslator('Art Lyubimov')
-    wx.AboutBox(info)
+    wx.adv.AboutBox(info)
 
   def onInput(self, e):
     if self.input_window.inp_box.ctr.GetValue() != '':
@@ -485,18 +459,14 @@ class MainWindow(wx.Frame):
                                  init=rec_init,
                                  status=selected[0],
                                  params=self.gparams)
-        self.proc_window.set_position()
+        self.proc_window.place_and_size(set_by='parent')
         self.proc_window.Show(True)
 
   def onRun(self, e):
     # Run full processing
 
-    if e.GetId() == self.tb_btn_test.GetId():  # Not testing right now
-      self.init_settings()
-      title = 'Test'
-    else:
-      self.init_settings()
-      title = 'Image Processing'
+    self.init_settings()
+    title = 'Image Processing'
 
     input_list = []
     input_items = self.input_window.input.all_data_images
@@ -517,7 +487,7 @@ class MainWindow(wx.Frame):
     if self.proc_window.good_to_go:
       self.term_file = self.proc_window.tmp_abort_file
 
-      self.proc_window.set_position()
+      self.proc_window.place_and_size(set_by='parent')
       self.proc_window.Show(True)
 
   def onOutputScript(self, e):
@@ -567,7 +537,7 @@ class MainWindow(wx.Frame):
                              defaultDir=os.curdir,
                              defaultFile="*.param",
                              wildcard="*.param",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                              )
     if load_dlg.ShowModal() == wx.ID_OK:
       self.load_script(load_dlg.GetPaths()[0])

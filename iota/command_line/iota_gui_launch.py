@@ -20,11 +20,12 @@ class MainApp(wx.App):
     self.frame = MainWindow(None, -1, title='IOTA v.{}'.format(iota_version))
 
     # Initialize Main window
-    self.frame.place_and_size()
+    self.frame.place_and_size(set_size=True, set_by='mouse', center=True)
     self.frame.read_command_line_options()
 
     # Show main window
     self.frame.Show(True)
+
     self.SetTopWindow(self.frame)
     return True
 
