@@ -18,11 +18,10 @@ __all__ = ["MetallicButton", "AdjustAlpha", "AdjustColour",
            "MB_STYLE_DEFAULT", "GB_STYLE_BOLD_LABEL", "GB_STYLE_DROPARROW"]
 
 
+import wx
 import wx.lib.wordwrap
 import wx.lib.imageutils
 from wx.lib.colourutils import *
-
-from wxtbx import wx4_compatibility as wx4c
 
 # Used on OSX to get access to carbon api constants
 CAPTION_SIZE = 9
@@ -41,8 +40,7 @@ MB_STYLE_DEFAULT = 1
 MB_STYLE_BOLD_LABEL = 2
 MB_STYLE_DROPARROW = 4
 
-WxCtrl = wx4c.get_wx_mod(wx, wx.Control)
-class MetallicButton (WxCtrl) :
+class MetallicButton (wx.PyControl) :
   def __init__ (self,
                 parent,
                 id_=wx.ID_ANY,
@@ -61,11 +59,8 @@ class MetallicButton (WxCtrl) :
                 button_margin=2,
                 disable_after_click=0,
                 bmp2=None):
-
-    WxCtrl.__init__(self, parent, id_, pos, size, wx.NO_BORDER, name=name)
-
-    print (WxCtrl.__name__)
-
+    wx.PyControl.__init__(self, parent, id_, pos, size,
+      wx.NO_BORDER, name=name)
     self.InheritAttributes()
     self._bmp = dict(enable=bmp)
     self._margin = button_margin
@@ -353,7 +348,7 @@ class MetallicButton (WxCtrl) :
 
   def Disable(self):
     """Disable the control"""
-    WxCtrl.Disable(self)
+    wx.Control.Disable(self)
     self.Refresh()
 
   def DoGetBestSize(self):
@@ -426,7 +421,7 @@ class MetallicButton (WxCtrl) :
 
   def Enable(self, enable=True):
     """Enable/Disable the control"""
-    WxCtrl.Enable(self, enable)
+    wx.Control.Enable(self, enable)
     self.Refresh()
 
   def GetBackgroundBrush(self, dc):
@@ -473,7 +468,7 @@ class MetallicButton (WxCtrl) :
   GetBitmapHover = GetBitmapLabel
 
   # Alias for GetLabel
-  GetLabelText = WxCtrl.GetLabel
+  GetLabelText = wx.Control.GetLabel
 
   def GetMenu(self):
     """Return the menu associated with this button or None if no
@@ -632,11 +627,11 @@ class MetallicButton (WxCtrl) :
     """Set this control to have the focus"""
     if self._state['cur'] != GRADIENT_PRESSED:
       self.SetState(GRADIENT_HIGHLIGHT)
-    WxCtrl.SetFocus(self)
+    wx.Control.SetFocus(self)
 
   def SetFont(self, font):
     """Adjust size of control when font changes"""
-    WxCtrl.SetFont(self, font)
+    wx.Control.SetFont(self, font)
     self.InvalidateBestSize()
 
   def SetLabel(self, label):
@@ -644,7 +639,7 @@ class MetallicButton (WxCtrl) :
     @param label: lable string
 
     """
-    WxCtrl.SetLabel(self, label)
+    wx.Control.SetLabel(self, label)
     self.InvalidateBestSize()
 
   def SetLabelColor(self, normal, hlight=wx.NullColour):
@@ -728,7 +723,7 @@ class MetallicButton (WxCtrl) :
 
   def SetWindowVariant(self, variant):
     """Set the variant/font size of this control"""
-    WxCtrl.SetWindowVariant(self, variant)
+    wx.Control.SetWindowVariant(self, variant)
     self.InvalidateBestSize()
 
   def ShouldInheritColours(self):
