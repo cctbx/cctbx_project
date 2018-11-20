@@ -1,19 +1,16 @@
 from __future__ import print_function, division
 from dials.array_family import flex
 from scitbx import matrix
+from xfel.merging.application.worker import worker
 
-"""
-Compute the polarazation correction as defined by Kahn 1982.
+class polarization(worker):
+  """
+  Computes the polarazation correction as defined by Kahn 1982.
 
-Modifies the intensity.sum.value and intensity.sum.variance columns
-in place.
-"""
-
-class polarization(object):
-  def __init__(self, params):
-    self.params = params
-
-  def __call__(self, experiments, reflections, add_correction_column=False):
+  Modifies the intensity.sum.value and intensity.sum.variance columns
+  in place.
+  """
+  def run(self, experiments, reflections):
     result = flex.reflection_table()
 
     for expt_id, experiment in enumerate(experiments):
@@ -67,26 +64,7 @@ class polarization(object):
       # Polarization model as described by Kahn, Fourme, Gadet, Janin, Dumas & Andre
       # (1982) J. Appl. Cryst. 15, 330-337, equations 13 - 15.
 
-      if add_correction_column:
-        refls['polarization_correction'] = correction
-
       result.extend(refls)
 
-    return result
-
-from xfel.merging.application.phil.phil import Script as Script_Base
-class Script(Script_Base):
-  def modify(self, experiments, reflections):
-    result = polarization(None)(experiments, reflections)
     print ("Mean intensity changed from %.2f to %.2f"%(flex.mean(reflections['intensity.sum.value']), flex.mean(result['intensity.sum.value'])))
-    return experiments, reflections
-
-if __name__ == '__main__':
-  import sys
-  from dxtbx.model.experiment_list import ExperimentListFactory
-  from libtbx import easy_pickle
-  experiments_filename, reflections_filename = sys.argv[1:3]
-  experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format=False)
-  reflections = easy_pickle.load(reflections_filename)
-  result = polarization(None)(experiments, reflections)
-  print ("Mean intensity changed from %.2f to %.2f"%(flex.mean(reflections['intensity.sum.value']), flex.mean(result['intensity.sum.value'])))
+    return experiments, result
