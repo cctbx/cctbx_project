@@ -7,12 +7,13 @@ from libtbx import easy_pickle
 Utility functions used for reading input data
 """
 
-class file_loader(object):
+class file_lister(object):
+  """ Class for matching jsons to reflection table pickles """
   def __init__(self, params):
     self.params = params
 
-  # used by rank 0, client/server
   def filepair_generator(self):
+    """ Used by rank 0, client/server to yield a list of json/reflection table pairs """
     for pathstring in self.params.input.path:
       for path in glob.glob(pathstring):
         if os.path.isdir(path):
@@ -31,57 +32,66 @@ class file_loader(object):
             if not os.path.exists(experiments_path): continue
             yield experiments_path, path
 
-  # used by rank 0, striping
   def filename_lister(self):
+    """ Used by rank 0, striping """
     return list(self.filepair_generator())
 
-  # used by worker rank
-  def load_data(self, experiments_filename, reflections_filename):
-
-    experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
-    reflections = easy_pickle.load(reflections_filename)
-
-    return experiments, reflections
-
-
-from xfel.merging.application.phil.phil import Script as Script_Base
-
-class Script(Script_Base):
+from xfel.merging.application.worker import worker
+class simple_file_loader(worker):
   '''A class for running the script.'''
 
-  def load_data(self):
+  def get_list(self):
+    """ Read the list of json/reflection table pickle pairs """
+    lister = file_lister(self.params)
+
+    file_list = list(lister.filepair_generator())
+
+    return file_list
+
+  def run(self, all_experiments, all_reflections):
+    """ Load all the data using MPI """
     from dxtbx.model.experiment_list import ExperimentList
     from dials.array_family import flex
-    all_experiments = ExperimentList()
-    all_reflections = flex.reflection_table()
+    from libtbx.mpi4py import MPI
+    comm = MPI.COMM_WORLD
 
-    # example showing what reading all the data into a single experiment list/
-    # reflection table would look like
-    loader = file_loader(self.params)
-    for experiments_filename, reflections_filename in loader.filepair_generator():
-      experiments, reflections = loader.load_data(experiments_filename, reflections_filename)
-      sel = (reflections['id'] < 0) | (reflections['id'] >= len(experiments))
-      assert sel.count(True) == 0, "Unindexed or invalid reflections found"
-      reflections['id'] += len(all_experiments)
-      all_reflections.extend(reflections)
-      all_experiments.extend(experiments)
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    # Both must be none or not none
+    test = [all_experiments is None, all_reflections is None].count(True)
+    assert test in [0,2]
+    if test == 2:
+      all_experiments = ExperimentList()
+      all_reflections = flex.reflection_table()
+      starting_expts_count = starting_refls_count = 0
+    else:
+      starting_expts_count = len(all_experiments)
+      starting_refls_count = len(all_reflections)
+
+    # Send the list of file paths to each worker
+    if rank == 0:
+      file_list = self.get_list()
+      self.params.input.path = None # the input is already parsed
+      print ('Transmitting file list of length %d'%(len(file_list)))
+      transmitted = file_list
+    else:
+      transmitted = None
+
+    transmitted = comm.bcast(transmitted, root = 0)
+
+    # Read the data
+    new_file_list = transmitted[rank::size]
+    for experiments_filename, reflections_filename in new_file_list:
+      experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
+      reflections = easy_pickle.load(reflections_filename)
+      for experiment_id, experiment in enumerate(experiments):
+        refls = reflections.select(reflections['id'] == experiment_id)
+        all_experiments.append(experiment)
+        refls['id'] = flex.int(len(refls), len(all_experiments)-1)
+        all_reflections.extend(refls)
+
+    print ('Rank %d has read %d experiments consisting of %d reflections'%(rank,
+      len(all_experiments)-starting_expts_count, len(all_reflections)-starting_refls_count))
 
     return all_experiments, all_reflections
-
-  def run(self):
-    print('''Mock run, merge some data.''')
-    self.initialize()
-
-    self.validate()
-
-    experiments, reflections = self.load_data()
-    print ('Read %d experiments consisting of %d reflections'%(len(experiments), len(reflections)))
-
-    experiments, reflections = self.modify(experiments, reflections)
-
-    return
-
-if __name__ == '__main__':
-  script = Script()
-  result = script.run()
-  print ("OK")
