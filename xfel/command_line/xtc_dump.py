@@ -189,7 +189,8 @@ class Script(object):
             raise Sorry("Couldn't load calibration file for run %d"%run.run())
         elif params.format.cbf.mode == "rayonix":
           # load a header only rayonix cbf from the input parameters
-          base_dxtbx = rayonix_tbx.get_dxtbx_from_params(params.format.cbf.rayonix)
+          detector_size = rayonix_tbx.get_rayonix_detector_dimensions(ds.env())
+          base_dxtbx = rayonix_tbx.get_dxtbx_from_params(params.format.cbf.rayonix, detector_size)
 
       # list of all events
       times = run.times()

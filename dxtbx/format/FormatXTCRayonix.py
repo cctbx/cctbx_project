@@ -35,11 +35,11 @@ class FormatXTCRayonix(FormatXTC):
     rayonix_cfg = cfgs.get(psana.Rayonix.ConfigV2, psana.Source('Rayonix'))
     if self.params.rayonix.bin_size is None:
       assert rayonix_cfg.binning_f() == rayonix_cfg.binning_s()
-      self._bin_size = rayonix_cfg.binning_f()
+      bin_size = rayonix_cfg.binning_f()
     else:
-      self._bin_size = self.params.rayonix.bin_size
-    self._pixel_size = rayonix_tbx.get_rayonix_pixel_size(self._bin_size)
-    self._image_size = rayonix_cfg.width(), rayonix_cfg.height()
+      bin_size = self.params.rayonix.bin_size
+    self._pixel_size = rayonix_tbx.get_rayonix_pixel_size(bin_size)
+    self._image_size = rayonix_tbx.get_rayonix_detector_dimensions(self._ds.env())
 
   @staticmethod
   def understand(image_file):

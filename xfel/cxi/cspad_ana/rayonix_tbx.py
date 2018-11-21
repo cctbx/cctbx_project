@@ -31,24 +31,21 @@ unbinned 340/7680  = 0.04427
   pixel_size=bin_size*170/3840
   return pixel_size
 
-
-def get_rayonix_detector_dimensions(bin_size):
-  ''' Given the bin size determine the detector dimensions.
-      Based on the number of pixels (unbinned) and the bin size calculate
-      integer detector dimensions.
-
-      @param bin_size rayonix bin size as an integer
+def get_rayonix_detector_dimensions(env):
+  ''' Given a psana env object, find the detector dimensions
+      @param env psana environment object
   '''
-  assert 3840%bin_size==0
-  return 3840//bin_size,3840//bin_size
+  import psana
+  cfgs = env.configStore()
+  rayonix_cfg = cfgs.get(psana.Rayonix.ConfigV2, psana.Source('Rayonix'))
+  return rayonix_cfg.width(), rayonix_cfg.height()
 
-def get_rayonix_cbf_handle(tiles, metro, timestamp, cbf_root, wavelength, distance, bin_size, verbose = True, header_only = False):
+def get_rayonix_cbf_handle(tiles, metro, timestamp, cbf_root, wavelength, distance, bin_size, detector_size, verbose = True, header_only = False):
   # set up the metrology dictionary to include axis names, pixel sizes, and so forth
   dserial = None
   dname = None
   detector_axes_names = [] # save these for later
   pixel_size = get_rayonix_pixel_size(bin_size)
-  detector_size = get_rayonix_detector_dimensions(bin_size)
   for key in sorted(metro):
     basis = metro[key]
     if len(key) == 1:
@@ -231,7 +228,7 @@ from dxtbx.format.FormatCBFCspad import FormatCBFFullStillInMemory
 class FormatCBFRayonixInMemory(FormatCBFFullStillInMemory):
   """Mixin class for Rayonix in memory"""
 
-def get_dxtbx_from_params(params):
+def get_dxtbx_from_params(params, detector_size):
   """ Build a dxtbx format object for the Rayonix based on input paramters (beam center and binning) """
   from xfel.cftbx.detector.cspad_cbf_tbx import basis
   from scitbx.matrix import col
@@ -242,14 +239,13 @@ def get_dxtbx_from_params(params):
   elif params.override_beam_x is not None and params.override_beam_y is not None:
     # compute the offset from the origin given the provided beam center override
     pixel_size = get_rayonix_pixel_size(params.bin_size)
-    detector_size = get_rayonix_detector_dimensions(params.bin_size)
     image_center = col(detector_size)/2
     override_center = col((params.override_beam_x, params.override_beam_y))
     delta = (image_center-override_center)*pixel_size
     metro = {(0,): basis(null_ori, col((delta[0], -delta[1], 0)))} # note the -Y
   else:
     assert False, "Please provide both override_beam_x and override_beam_y or provide neither"
-  cbf = get_rayonix_cbf_handle(None, metro, None, "test", None, fake_distance, params.bin_size, verbose = True, header_only = True)
+  cbf = get_rayonix_cbf_handle(None, metro, None, "test", None, fake_distance, params.bin_size, detector_size, verbose = True, header_only = True)
   base_dxtbx = FormatCBFRayonixInMemory(cbf)
   return base_dxtbx
 
