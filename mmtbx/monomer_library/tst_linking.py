@@ -1790,6 +1790,35 @@ XYP        H5B2    H   HCH2  .          1.0868   -0.0955   -1.9429
 XYP        HO2B    H   HOH1  .         -1.7421    1.6494    1.9136
 XYP        HO3B    H   HOH1  .          0.7049   -0.5731    2.4459
 XYP        HO4B    H   HOH1  .          2.8778   -1.6570    0.0880
+#
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+XYP   O4A     C1B   single        1.359 0.020     1.359
+XYP   O4A    HO4A   single        0.850 0.020     0.980
+XYP   C1B     C2B   single        1.528 0.020     1.528
+XYP   C1B     O5B   single        1.500 0.020     1.500
+XYP   C1B     H1B   single        0.970 0.020     1.090
+XYP   C2B     C3B   single        1.489 0.020     1.489
+XYP   C2B     O2B   single        1.435 0.020     1.435
+XYP   C2B     H2B   single        0.970 0.020     1.090
+XYP   C3B     C4B   single        1.495 0.020     1.495
+XYP   C3B     O3B   single        1.453 0.020     1.453
+XYP   C3B     H3B   single        0.970 0.020     1.090
+XYP   C4B     C5B   single        1.536 0.020     1.536
+XYP   C4B     O4B   single        1.428 0.020     1.428
+XYP   C4B     H4B   single        0.970 0.020     1.090
+XYP   C5B     O5B   single        1.479 0.020     1.479
+XYP   C5B    H5B1   single        0.970 0.020     1.090
+XYP   C5B    H5B2   single        0.970 0.020     1.090
+XYP   O2B    HO2B   single        0.850 0.020     0.980
+XYP   O3B    HO3B   single        0.850 0.020     0.980
+XYP   O4B    HO4B   single        0.850 0.020     0.980
 """,
   "linking_test_cyclic.pdb" : """
 ATOM   3269  N   SER P   1      18.059  15.260 -24.071  1.00 30.30           N
@@ -2314,7 +2343,7 @@ links = {
   "linking_test_1jbe_ALA-SNN-ACY-ALA.pdb" : [10,13],
   "linking_test_3gmq_NAG-FUC.pdb" : [24,25],
   "linking_test_CD_GHE_A_B.pdb" : [0,0],             #4],
-  "linking_test_XYP_XYP.pdb" : [0,1],
+  "linking_test_XYP_XYP.pdb" : [18,19],
   "linking_test_ALY_MCM.pdb" : [11,12], # links AA with quasi-AA
   "linking_test_cyclic.pdb" : [67,68],
   "linking_test_over_valence.pdb" : [6,6],
@@ -2359,7 +2388,7 @@ def run_and_test(cmd, pdb, i, skip_links=False):
                       'User supplied restraints:',
                       'Standard Glycosidic restraints:',
                       'Custom Glycosidic restraints:',
-                      'Trans Peptide restraints:',
+                      'Misc. restraints:',
                       #
                       'link_'
                       ]:

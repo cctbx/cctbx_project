@@ -594,8 +594,8 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
         key = long_tmp_key
       else:
         data_link_key = "%s%s-%s" % (hand,
-                                     c_atom.name.strip()[-1],
-                                     o_atom.name.strip()[-1],
+                                     c_atom.name.strip(), #[-1],
+                                     o_atom.name.strip(), #[-1],
                                      )
         #if data_link_key in [
         #  "BETAB-B",

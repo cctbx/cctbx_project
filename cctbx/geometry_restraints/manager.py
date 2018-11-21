@@ -1685,7 +1685,7 @@ class manager(Base_geometry):
               f=tempbuffer,
               prefix="",
               origin_id=origin_id)
-          if tempbuffer.getvalue().find(': 0')==-1:
+          if len(tempbuffer.getvalue()) and tempbuffer.getvalue().find(': 0')==-1:
             print >> f, label, tempbuffer.getvalue()[start:]
 
     for p_label, proxies in [

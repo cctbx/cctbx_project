@@ -133,6 +133,7 @@ def _apply_link_using_proxies(link,
         )
       if i_seqs is None: continue
     value = "value_dist"
+    assert origin_id
     proxy = geometry_restraints.bond_simple_proxy(
       i_seqs=i_seqs,
       distance_ideal=getattr(bond, value),
@@ -798,7 +799,7 @@ Residue classes
         print 'link',link
         print 'link_key',link_key
         print 'link_atoms',link_atoms
-      if key.find("ALPHA1")>-1 or key.find("BETA1")>-1: # is handled in elif
+      if not link and glyco_utils.is_standard_glyco_link(key, link):
         key, cif, bond_i_seqs = \
           glyco_utils.apply_glyco_link_using_proxies_and_atoms(
             atom_group2,
@@ -816,6 +817,7 @@ Residue classes
         self._cif.cif["link_%s" % key] = cif
         continue
       elif link:
+        origin_id = origin_ids['link_%s' % key]
         count, bond_i_seqs = _apply_link_using_proxies(
           link,
           atom_group1,
@@ -824,7 +826,9 @@ Residue classes
           bond_asu_table,
           geometry_proxy_registries,
           rt_mx_ji=link_rt_mx_ji,
+          origin_id=origin_id,
         )
+        origin_id=None
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
         links[key][-1]+=bond_i_seqs[0]
@@ -842,8 +846,7 @@ Residue classes
             tmp = atom_group2
             atom_group2 = atom_group1
             atom_group1 = tmp
-          oi = origin_ids['trans peptide link']
-          assert key=='TRANS'
+          origin_id = origin_ids['link_%s' % key]
           rc = _apply_link_using_proxies(link,
                                          atom_group1,
                                          atom_group2,
@@ -851,7 +854,7 @@ Residue classes
                                          bond_asu_table,
                                          geometry_proxy_registries,
                                          rt_mx_ji=link_rt_mx_ji,
-                                         origin_id=oi,
+                                         origin_id=origin_id,
             )
           if not rc:
             tmp = atom_group2
@@ -864,8 +867,9 @@ Residue classes
                                            bond_asu_table,
                                            geometry_proxy_registries,
                                            rt_mx_ji=link_rt_mx_ji,
-                                           origin_id=oi,
+                                           origin_id=origin_id,
               )
+          origin_id=None
           # not added to links so not LINK record
           if sym_op:
             sym_links += 1
@@ -888,20 +892,21 @@ Residue classes
       custom_links.setdefault(ii, [])
       custom_links[ii].append([atom_group1, atom_group2, atom1, atom2])
       # simple
-      bond_name = "bond"
+      origin_id=origin_ids['Misc. bond']
       if ((classes1.common_rna_dna or
         classes1.ccp4_mon_lib_rna_dna) and
        (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)):
         bond_name = "h-dna"
+        assert 0
       elif (linking_utils.get_classes(atom1, important_only=True)=="metal" or
             linking_utils.get_classes(atom2, important_only=True)=="metal"):
-        bond_name = "metal coordination"
+        origin_id = origin_ids['metal coordination']
       if sym_op:
         sym_bonds += 1
         bond_data.append( (atoms[i_seq].id_str(),
                            atoms[j_seq].id_str(),
                            rt_mx_ji,
-                           bond_name,
+                           origin_id,
             )
           )
         bond_data_i_seqs.setdefault(i_seq, [])
@@ -914,7 +919,7 @@ Residue classes
         bond_data.append( (atoms[i_seq].id_str(),
                            atoms[j_seq].id_str(),
                            None, #rt_mx,
-                           bond_name,
+                           origin_id,
             )
           )
         bond_data_i_seqs.setdefault(i_seq, [])
@@ -941,11 +946,7 @@ Residue classes
     retain = []
     for ijk, sym_pair in enumerate(pair_sym_table.iterator()):
       i_seq, j_seq = sym_pair.i_seqs()
-      origin_id=0
-      print bond_data[ijk]
-      if bond_data[ijk][-1]=="metal coordination":
-        origin_id=origin_ids['metal coordination']
-      #assert len(bond_i_seqs)==1
+      origin_id = bond_data[ijk][-1]
       assert i_seq == nonbonded_i_seqs[i_seq]
       assert j_seq == nonbonded_i_seqs[j_seq]
       atom1 = atoms[i_seq]
@@ -985,6 +986,7 @@ Residue classes
         retain.append(ijk)
         if (sym_pair.rt_mx_ji.is_unit_mx()): n_simple += 1
         else:                                n_symmetry += 1
+        assert origin_id
         bond_params_table.update(
           i_seq=i_seq,
           j_seq=j_seq,

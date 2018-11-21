@@ -77,10 +77,12 @@ for link_info in [
     # ['Trans Peptide']*3+[None],
     # [0,1,2,4]
     # ]
-    #['Misc. bond',
-    # 'Bond created based on atom type and distance.',
-    # '',
-    #],
+    ['Misc. bond',
+     'Bond created based on atom type and distance.',
+     '',
+     ['Misc.']*5,
+     [0,1,2,3,4]
+    ],
     ]:
   for oi in origin_ids:
     assert starting_id not in oi
