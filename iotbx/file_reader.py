@@ -52,7 +52,7 @@ standard_file_extensions = {
   'aln'  : ["aln", "ali", "clustal"],
   'hhr'  : ["hhr"],
   'ncs'  : ["ncs","ncs_spec"],
-  'img'  : ["img", "osc", "mccd", "cbf"],
+  'img'  : ["img", "osc", "mccd", "cbf", ".nxs", ".h5", ".hdf5"],
   # XXX these are not supported by this module, but are used in Phenix, so we
   # need to be able to include them in GUI tools in wxtbx.
   'smi' : ['smi'],
