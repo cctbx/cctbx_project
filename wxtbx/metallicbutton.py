@@ -270,8 +270,8 @@ class MetallicButton(WxCtrl):
       if wx.Platform == '__WXMAC__':
         brush = wx.Brush((100,100,100))
         brush.MacSetTheme(Carbon.Appearance.kThemeBrushFocusHighlight)
-        with wx4c.set_brush_style(wx.BRUSHSTYLE_SOLID) as bstyle:
-          pen = wx.Pen(brush.GetColour(), 1, bstyle)
+        with wx4c.set_pen_style(wx.PENSTYLE_SOLID) as pstyle:
+          pen = wx.Pen(brush.GetColour(), 1, pstyle)
       else:
         pen = wx.Pen(AdjustColour(self._color['press_start'], -80, 220), 1)
       #gc.SetPen(pen)
