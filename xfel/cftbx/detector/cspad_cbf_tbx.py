@@ -22,7 +22,7 @@ def get_psana_corrected_data(psana_det, evt, use_default = False, dark = True, c
   @param evt psana event
   @param use_default If true, apply the default calibration only, using the psana algorithms. Otherise, use the corrections
   specified by the rest of the flags and values passed in.
-  @param dark Whether to apply the detector dark
+  @param dark Whether to apply the detector dark, bool or numpy array
   @param common_mode Which common mode algorithm to apply. None: apply no algorithm. Default: use the algorithm specified
   in the calib folder. Otherwise should be a list as specified by the psana documentation for common mode customization
   @param apply_gain_mask Whether to apply the common mode gain mask correction
@@ -32,6 +32,7 @@ def get_psana_corrected_data(psana_det, evt, use_default = False, dark = True, c
   """
   # order is pedestals, then common mode, then gain mask, then per pixel gain
   run = evt.run()
+
   if use_default:
     return psana_det.calib(evt) # applies psana's complex run-dependent calibrations
   data = psana_det.raw_data(evt)
@@ -41,8 +42,12 @@ def get_psana_corrected_data(psana_det, evt, use_default = False, dark = True, c
   import numpy as np
   data = data.astype(np.float64)
 
-  if dark:
-    data -= psana_det.pedestals(run)
+  if isinstance(dark, bool):
+    if dark:
+      data -= psana_det.pedestals(run)
+  elif isinstance( dark, np.ndarray ):
+    data -= dark
+
   if common_mode:
     if common_mode == 'default':
       common_mode = None
