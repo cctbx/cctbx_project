@@ -222,6 +222,8 @@ class FullCBFWriter(object):
       node = panel_group_from_key(key)
 
       if node.is_panel():
+        axis_settings[-1][-2]="0" # Drop the setting change for leaves as it's encoded below
+
         aname = level_string(key)
         fast = [str(v) for v in node.get_local_fast_axis()]
         slow = [str(v) for v in node.get_local_slow_axis()]
@@ -387,7 +389,7 @@ class FullCBFWriter(object):
     assert [index, cbf].count(None) in (1,2), "Supply either index or cbf"
 
     if cbf is None:
-      cbf = self.get_cbf_handle(index=index)
+      cbf = self.get_cbf_handle(index=index, header_only=True)
       self.add_data_to_cbf(cbf, index=index)
 
     cbf.write_widefile(filename, pycbf.CBF,pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
