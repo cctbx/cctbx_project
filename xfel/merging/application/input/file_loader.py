@@ -72,7 +72,6 @@ class simple_file_loader(worker):
     # Send the list of file paths to each worker
     if rank == 0:
       file_list = self.get_list()
-      self.params.input.path = None # the input is already parsed
       print ('Transmitting file list of length %d'%(len(file_list)))
       transmitted = file_list
     else:
@@ -95,3 +94,7 @@ class simple_file_loader(worker):
       len(all_experiments)-starting_expts_count, len(all_reflections)-starting_refls_count))
 
     return all_experiments, all_reflections
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(simple_file_loader)

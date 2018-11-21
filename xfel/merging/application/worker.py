@@ -25,3 +25,26 @@ class factory(object):
     """ Construct a list of workers given the params object. The list contains all workers
         that comprise a single step, in the order that they will be executed """
     pass
+
+def exercise_worker(worker_class):
+  """ Boilerplate code for testing a worker class """
+  from xfel.merging.application.phil.phil import phil_scope
+  from dials.util.options import OptionParser
+  # Create the parser
+  parser = OptionParser(phil=phil_scope)
+
+  # Parse the command line. quick_parse is required for MPI compatibility
+  params, options = parser.parse_args(show_diff_phil=True,quick_parse=True)
+
+  # Load the data for the worker
+  if 'simple_file_loader' in str(worker_class):
+    experiments = reflections = None
+  else:
+    from xfel.merging.application.input.file_loader import simple_file_loader
+    loader = simple_file_loader(params)
+    loader.validate()
+    experiments, reflections = loader.run(None, None)
+
+  worker = worker_class(params)
+  worker.validate()
+  worker.run(experiments, reflections)

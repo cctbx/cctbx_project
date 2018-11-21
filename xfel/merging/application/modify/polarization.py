@@ -68,3 +68,7 @@ class polarization(worker):
 
     print ("Mean intensity changed from %.2f to %.2f"%(flex.mean(reflections['intensity.sum.value']), flex.mean(result['intensity.sum.value'])))
     return experiments, result
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(polarization)
