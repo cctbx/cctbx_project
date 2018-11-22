@@ -1761,6 +1761,7 @@ def exercise_flex_vec3_double():
   a2 = flex.vec3_double([(5,0,0),(0,3,2),(2,0,2),(5,5,5)])
   assert approx_equal(a1.min_distance_between_any_pair(a2),2)
   assert approx_equal(a1.min_distance_between_any_pair_with_id(a2),(2.0,2,2))
+  assert approx_equal(a1.max_distance_between_any_pair_with_id(a2),(8.66025403784,0,3))
   assert approx_equal(a.sum_sq(), 285)
   assert approx_equal(a.sum_sq(), flex.sum_sq(a.as_double()))
   assert approx_equal(a.norm(), math.sqrt(285))
