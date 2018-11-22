@@ -3,22 +3,21 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/05/2018
+Last Changed: 11/21/2018
 Description : IOTA GUI Dialogs
 '''
 
 import os
 import wx
 from wx.lib.scrolledpanel import ScrolledPanel
-from wx.lib.buttons import GenToggleButton
 from wxtbx import bitmaps
 
 from iotbx import phil as ip
 
+from iota.components.iota_ui_base import BaseDialog, BaseBackendDialog
 import iota.components.iota_ui_controls as ct
 from iota.components.iota_input import master_phil
-from iota.components.iota_utils import UnicodeCharacters, WxFlags, noneset, \
-  norm_font_size
+from iota.components.iota_utils import UnicodeCharacters, WxFlags, noneset
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -41,143 +40,6 @@ elif (wx.Platform == '__WXMSW__'):
 # Initialize unicode font and wx flags
 u = UnicodeCharacters()
 f = WxFlags()
-
-
-# ------------------------------ Base Classes -------------------------------- #
-
-class BaseDialog(wx.Dialog):
-  def __init__(self, parent, style=wx.DEFAULT_DIALOG_STYLE,
-               label_style='bold',
-               content_style='normal',
-               *args, **kwargs):
-    wx.Dialog.__init__(self, parent, style=style, *args, **kwargs)
-
-    self.envelope = wx.BoxSizer(wx.VERTICAL)
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.envelope.Add(self.main_sizer, 1, flag=wx.EXPAND | wx.ALL, border=5)
-    self.SetSizer(self.envelope)
-
-    if label_style == 'normal':
-      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
-    elif label_style == 'bold':
-      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
-    elif label_style == 'italic':
-      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_NORMAL)
-    elif label_style == 'italic_bold':
-      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
-
-    if content_style == 'normal':
-      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
-    elif content_style == 'bold':
-      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
-    elif content_style == 'italic':
-      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_NORMAL)
-    elif content_style == 'italic_bold':
-      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
-
-
-class BaseBackendDialog(BaseDialog):
-  def __init__(self, parent, phil,
-               backend_name = 'BACKEND',
-               target=None,
-               content_style='normal',
-               label_style='bold',
-               opt_size=(500, 500),
-               phil_size=(500, 500),
-               *args, **kwargs):
-    BaseDialog.__init__(self, parent,
-                        content_style=content_style,
-                        label_style=label_style,
-                        *args, **kwargs)
-
-    self.parent = parent
-    self.target_phil = target
-    self.backend = backend_name
-    self.params = phil.extract()
-    self.opt_size = opt_size
-    self.phil_size = phil_size
-    self.sash_position = None
-
-    self.splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE |
-                                                  wx.SP_3DSASH |
-                                                  wx.SP_NOBORDER)
-
-    # Create options panel (all objects should be called as self.options.object)
-    self.options = ScrolledPanel(self.splitter, size=self.opt_size)
-    self.options_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.options.SetSizer(self.options_sizer)
-
-    # Create PHIL panel
-    phil_label = "{} Target Settings".format(backend_name)
-    self.phil_panel = wx.Panel(self.splitter, size=self.opt_size)
-    phil_box = wx.StaticBox(self.phil_panel, label=phil_label)
-    self.phil_sizer = wx.StaticBoxSizer(phil_box, wx.VERTICAL)
-    self.phil_panel.SetSizer(self.phil_sizer)
-
-    # Dialog control
-    self.dlg_ctr = ct.DialogButtonsCtrl(self, preset='PROC_DIALOG')
-
-    # Splitter button
-    self.btn_hide_script = GenToggleButton(self, label='Show Script >>>')
-    self.show_hide_script()
-    self.btn_hide_script.SetValue(False)
-
-    self.main_sizer.Add(self.btn_hide_script, flag=wx.ALIGN_RIGHT | wx.ALL,
-                        border=10)
-    self.main_sizer.Add(self.splitter, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.dlg_ctr,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.RIGHT,
-                        border=10)
-
-  def show_hide_script(self, initialized=False):
-    if self.btn_hide_script.GetValue():
-      if initialized:
-        h = self.GetSize()[1]
-        w = self.GetSize()[0] + self.phil_size[0]
-        self.SetSize((w, h))
-      self.splitter.SplitVertically(self.options, self.phil_panel)
-      self.splitter.SetSashPosition(self.sash_position)
-      self.phil_panel.SetSize(self.phil_size)
-      self.options.SetSize(self.opt_size)
-      self.btn_hide_script.SetLabel('<<< Hide Script')
-    else:
-      h = self.GetSize()[1]
-      w = self.GetSize()[0] - self.phil_size[0]
-      self.SetSize((w, h))
-      self.splitter.Unsplit()
-      self.phil_panel.SetSize(self.phil_size)
-      self.options.SetSize(self.opt_size)
-      self.btn_hide_script.SetLabel('Show Script >>>')
-    self.splitter.UpdateSize()
-
-  def get_target_file(self):
-    dlg = wx.FileDialog(
-      self, message="Select CCTBX.XFEL target file",
-      defaultDir=os.curdir,
-      defaultFile="*.phil",
-      wildcard="*",
-      style=wx.FD_OPEN | wx.FD_CHANGE_DIR
-    )
-    if dlg.ShowModal() == wx.ID_OK:
-      filepath = dlg.GetPaths()[0]
-
-      with open(filepath, 'r') as phil_file:
-        phil_content = phil_file.read()
-      return phil_content
-    else:
-      return None
-
-  def write_default_phil(self):
-    if str.lower(self.backend) in ('cctbx.xfel', 'dials'):
-      method = 'cctbx.xfel'
-    elif str.lower(self.backend) in ('cctbx', 'ha14', 'labelit'):
-      method = 'ha14'
-    else:
-      method = 'current'
-    from iota.components.iota_input import write_defaults
-    default_phil, _ = write_defaults(method=method, write_target_file=False,
-                                     write_param_file=False)
-    self.target_phil = '\n'.join(default_phil)
 
 
 # ---------------------------------------------------------------------------- #
@@ -2140,7 +2002,8 @@ class RecoveryDialog(BaseDialog):
       if self.pathlist.IsSelected(idx=i):
 
         self.selected = [self.pathlist.GetItemText(i, col=2),
-                         self.pathlist.GetItemText(i, col=3)]
+                         self.pathlist.GetItemText(i, col=3),
+                         self.pathlist.GetItemText(i, col=1)]
         self.recovery_mode = self.dlg_ctr.choice.GetSelection()
     e.Skip()
 

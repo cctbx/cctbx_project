@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 11/05/2018
+Last Changed: 11/21/2018
 Description : IOTA base classes
 '''
 
@@ -532,6 +532,7 @@ class InitBase(object):
       os.makedirs(self.obj_base)
       os.makedirs(self.fin_base)
       os.makedirs(self.log_base)
+      os.makedirs(self.viz_base)
       try:
         if not os.path.isdir(self.tmp_base):
           os.makedirs(self.tmp_base)

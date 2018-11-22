@@ -5,7 +5,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/05/2018
+Last Changed: 11/21/2018
 Description : IOTA GUI Windows / frames
 '''
 
@@ -41,7 +41,7 @@ import prime.postrefine.mod_plotter as ppl
 
 from iota.components.iota_ui_base import IOTABaseFrame, IOTABasePanel
 from iota.components.iota_analysis import Analyzer
-from iota.components.iota_plotter import Plotter, PlotWindow
+from iota.components.iota_plotter import Plotter, PlotWindow, Calculator
 import iota.components.iota_ui_controls as ct
 import iota.components.iota_threads as thr
 import iota.components.iota_ui_dialogs as d
@@ -1227,7 +1227,7 @@ class LiveAnalysisTab(d.ScrolledPanel):
       self.tb1.Destroy()
 
     try:
-      self.plot = ppl.Plotter(info=self.prime_info)
+      self.plot = ppl.Plotter(self, info=self.prime_info)
       self.tb1_labels, self.tb1_data = self.plot.table_one()
       self.tb1 = ct.TableCtrl(self.tb1_panel,
                               rlabels=self.tb1_labels,
@@ -1313,15 +1313,13 @@ class SummaryTab(d.ScrolledPanel):
                init=None,
                gparams=None,
                final_objects=None,
-               out_dir=None,
-               plot=None):
+               out_dir=None):
     d.ScrolledPanel.__init__(self, parent)
 
     self.parent = parent
     self.final_objects = final_objects
     self.gparams = gparams
     self.out_dir = out_dir
-    self.plot = plot
     self.init = init
 
     summary_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -1568,10 +1566,11 @@ class SummaryTab(d.ScrolledPanel):
 
   def onPRIME(self, e):
     from prime.postrefine.mod_gui_init import PRIMEWindow
-    self.prime_window = PRIMEWindow(self, -1, title='PRIME',
+    self.prime_window = PRIMEWindow(None, -1, title='PRIME',
                                     prefix=self.gparams.advanced.prime_prefix)
     self.prime_window.load_script(out_dir=self.out_dir)
-    self.prime_window.SetMinSize(self.prime_window.GetEffectiveMinSize())
+    self.prime_window.place_and_size(set_by='mouse', center=True)
+    os.chdir(self.init.int_base)
     self.prime_window.Show(True)
 
   def onCLUSTER(self, e):
@@ -1616,31 +1615,41 @@ class SummaryTab(d.ScrolledPanel):
     self.Refresh()
     self.SetupScrolling()
 
+  def initialize_standalone_plot(self, figsize=(8, 8)):
+    self.plot_window = PlotWindow(self, -1, title='IOTA Plot')
+    self.plot = Plotter(self.plot_window, params=self.gparams,
+                        final_objects=self.final_objects)
+    self.plot_window.plot_panel = self.plot
+    self.plot.initialize_figure(figsize=figsize)
+
   def onPlotHeatmap(self, e):
     if self.final_objects is not None:
-      fig = self.plot.plot_spotfinding_heatmap()
-      self.draw_plot(figure=fig)
+      self.initialize_standalone_plot()
+      self.plot.plot_spotfinding_heatmap()
+      self.plot_window.plot()
+      self.plot_window.Show()
 
   def onPlotBeamXY(self, e):
     if self.final_objects is not None:
-      fig = self.plot.plot_beam_xy()
-      self.draw_plot(figure=fig)
+      self.initialize_standalone_plot()
+      self.plot.plot_beam_xy()
+      self.plot_window.plot()
+      self.plot_window.Show()
 
   def onPlotBeam3D(self, e):
     if self.final_objects is not None:
-      fig = self.plot.plot_beam_xy(threeD=True)
-      self.draw_plot(figure=fig, axes3D=True)
+      self.initialize_standalone_plot()
+      self.plot.plot_beam_xy(threeD=True)
+      self.plot_window.plot()
+      self.plot_window.Show()
 
   def onPlotResHist(self, e):
     if self.final_objects is not None:
-      fig = self.plot.plot_res_histogram()
-      self.draw_plot(figure=fig)
+      self.initialize_standalone_plot()
+      self.plot.plot_res_histogram()
+      self.plot_window.plot()
+      self.plot_window.Show()
 
-  def draw_plot(self, figure, axes3D=False):
-    plot_window = PlotWindow(parent=self, id=wx.ID_ANY,
-                             title="Resolution Histogram")
-    plot_window.plot(figure=figure, axes3D=axes3D)
-    plot_window.Show(True)
 
 class ProcWindow(IOTABaseFrame):
   """ New frame that will show processing info """
@@ -1895,8 +1904,8 @@ class ProcWindow(IOTABaseFrame):
     if self.gparams.mp.method == 'lsf':
       kill_command = 'bkill -J {}'.format(self.job_id)
       easy_run.fully_buffered(kill_command)
-    with open(self.tmp_abort_file, 'w') as af:
-      af.write('')
+    # with open(self.tmp_abort_file, 'w') as af:
+    #   af.write('')
     self.abort_initiated = True
     self.status_txt.SetForegroundColour('red')
     self.status_txt.SetLabel('Aborting...')
@@ -1922,10 +1931,16 @@ class ProcWindow(IOTABaseFrame):
     if not os.path.isdir(self.init.tmp_base):
       os.makedirs(self.init.tmp_base)
 
+    # Reconstitute object list (if necessary)
+    if not os.path.isfile(self.info.obj_list_file):
+      with open(self.info.obj_list_file, 'w') as olf:
+        for obj in self.info.finished_objects:
+          olf.write('{}\n'.format(obj.obj_file))
+
     # Reset toolbar buttons
     self.set_tool_states([(self.tb_btn_abort, True),
                           (self.tb_btn_resume, False),
-                          (self.tb_btn_monitor, False, True)])
+                          (self.tb_btn_monitor, True)])
 
     # Run processing, etc.
     self.proc_timer.Start(1000)
@@ -2007,7 +2022,7 @@ class ProcWindow(IOTABaseFrame):
                  self.gparams.advanced.random_sample.flag_on )
       if self.new_images and not subset:
         self.extend_image_lists(self.new_images)
-      done_img_list = [i.raw_img for i in self.info.finished_objects]
+      done_img_list = [i.img_path for i in self.info.finished_objects]
       iterable = [i for i in self.info.img_list if i[2] not in done_img_list]
 
       if iterable:
@@ -2050,6 +2065,7 @@ class ProcWindow(IOTABaseFrame):
     self.proc_thread = thr.JobSubmitThread(self, params=self.gparams,
                                            output_folder=self.init.int_base,
                                            abort_file=self.tmp_abort_file)
+    self.proc_thread.name = 'IOTAJobSubmitThread'
     self.proc_thread.start()
 
 
@@ -2068,9 +2084,6 @@ class ProcWindow(IOTABaseFrame):
         analysis = Analyzer(self.init,
                             self.info.finished_objects,
                             gui_mode=True)
-      plot = Plotter(self.gparams,
-                     self.final_objects,
-                     self.init.viz_base)
 
       # Initialize summary tab
       prime_file = os.path.join(self.init.int_base,
@@ -2079,8 +2092,7 @@ class ProcWindow(IOTABaseFrame):
                                     init=self.init,
                                     gparams=self.gparams,
                                     final_objects=self.final_objects,
-                                    out_dir=os.path.dirname(prime_file),
-                                    plot=plot)
+                                    out_dir=os.path.dirname(prime_file))
 
       # Run information
       self.summary_tab.title_txt.SetLabel(ut.noneset(self.gparams.description))
@@ -2154,7 +2166,8 @@ class ProcWindow(IOTABaseFrame):
         with warnings.catch_warnings():
           # To catch any 'mean of empty slice' runtime warnings
           warnings.simplefilter("ignore", category=RuntimeWarning)
-          beamxy_calc = plot.calculate_beam_xy()
+          calculator = Calculator(final_objects=self.final_objects)
+          beamxy_calc = calculator.calculate_beam_xy()
           beamX, beamY = beamxy_calc[:2]
           pixel_size = beamxy_calc[-1]
           beamX_mm = np.median(beamX)
@@ -2343,9 +2356,14 @@ class ProcWindow(IOTABaseFrame):
         lsf_info = easy_run.fully_buffered(info_command).stdout_lines
         self.run_aborted = (lsf_info == [])
       else:
-        self.run_aborted = (not self.proc_thread.is_alive())
+        self.run_aborted = not (hasattr(self, 'proc_thread') and
+                                self.proc_thread.is_alive())
         if not self.run_aborted:
           self.proc_thread.abort()
+          if self.running_cluster:
+            self.cluster_thread.abort()
+          if self.running_prime:
+            self.prime_thread.abort()
 
       if self.run_aborted:
         print ("IOTA: RUN ABORTED!")
@@ -2362,6 +2380,7 @@ class ProcWindow(IOTABaseFrame):
         self.obj_sw = wx.StopWatch()
         self.object_reader = thr.ObjectReaderThread(self, info=self.info,
                                           source=self.info.obj_list_file)
+        self.object_reader.name = 'IOTAObjectReader'
         self.object_reader.start()
 
   def monitor_filesystem(self):
@@ -2396,6 +2415,11 @@ class ProcWindow(IOTABaseFrame):
           self.status_txt.SetLabel('No new images found! Waiting ...')
     else:
       self.status_txt.SetLabel('Wrapping up ...')
+      # interrupt long-running PRIME thread
+      if self.running_cluster:
+        self.cluster_thread.abort()
+      if self.running_prime:
+        self.prime_thread.abort()
       self.finish_process()
 
   def get_images_from_filesystem(self):
@@ -2446,10 +2470,10 @@ class ProcWindow(IOTABaseFrame):
       self.status_txt.SetForegroundColour('red')
       self.status_txt.SetLabel('ABORTED BY USER')
       self.set_tool_state(self.tb_btn_resume, True)
-      try:
-        shutil.rmtree(self.init.tmp_base)
-      except Exception:
-        pass
+      # try:
+      #   shutil.rmtree(self.init.tmp_base)
+      # except Exception:
+      #   pass
       print('JOB TERMINATED!')
       return
     elif self.recovery:

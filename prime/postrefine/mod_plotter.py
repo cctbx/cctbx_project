@@ -3,23 +3,77 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/25/2016
-Last Changed: 08/30/2018
+Last Changed: 10/21/2018
 Description : PRIME Result Plotter module
 '''
 
+import wx
+import os
 import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib import gridspec
+
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+from matplotlib.figure import Figure
+from matplotlib import gridspec, rc
+
 from libtbx import utils as u
 
-class Plotter(object):
+from iota.components.iota_ui_base import IOTABaseFrame, IOTABasePanel
+
+class PlotWindow(IOTABaseFrame):
+  def __init__(self, parent, id, title, plot_panel=None):
+    IOTABaseFrame.__init__(self, parent, id, title)
+
+    self.initialize_toolbar()
+    self.tb_btn_quit = self.add_tool(label='Quit',
+                                     bitmap=('actions', 'exit'),
+                                     shortHelp='Quit')
+    self.tb_btn_save = self.add_tool(label='Save',
+                                     bitmap=('actions', 'save_all'),
+                                     shortHelp='Save image in various formats')
+    self.realize_toolbar()
+
+    self.Bind(wx.EVT_TOOL, self.onSave, self.tb_btn_save)
+    self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
+
+    self.plot_panel = plot_panel
+
+  def plot(self):
+    if self.plot_panel:
+      self.main_sizer.Add(self.plot_panel, 1, flag=wx.EXPAND)
+      self.SetSize(self.plot_panel.canvas.GetSize())
+      self.plot_panel.canvas.draw()
+      self.Layout()
+
+  def onSave(self, e):
+    save_dlg = wx.FileDialog(self,
+                             message="Save Image",
+                             defaultDir=os.curdir,
+                             defaultFile="*",
+                             wildcard="*",
+                             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
+                             )
+    if save_dlg.ShowModal() == wx.ID_OK:
+      script_filepath = save_dlg.GetPath()
+      self.plot_panel.figure.savefig(script_filepath, format='pdf',
+                                     bbox_inches=0)
+
+  def onQuit(self, e):
+    self.Close()
+
+class Plotter(IOTABasePanel):
   ''' Class with function to plot various PRIME charts (includes Table 1) '''
 
-  def __init__(self, info, output_dir=None, anomalous_flag=False):
+  def __init__(self, parent, info, output_dir=None, anomalous_flag=False,
+               *args, **kwargs):
+    IOTABasePanel.__init__(self, parent=parent, *args, **kwargs)
     self.target_anomalous_flag = anomalous_flag
     self.info = info
     self.output_dir = output_dir
 
+  def initialize_figure(self, figsize=(8, 8)):
+    self.figure = Figure(figsize=figsize)
+    self.canvas = FigureCanvas(self, -1, self.figure)
+    self.main_sizer.Add(self.canvas, 1, flag=wx.EXPAND)
 
   def table_one(self):
     ''' Constructs Table 1 for GUI or logging '''
@@ -88,12 +142,11 @@ class Plotter(object):
     ''' Displays charts of CC1/2, Completeness, Multiplicity and I / sig(I)
         per resolution bin after the final cycle of post-refinement '''
 
-    fig = plt.figure(figsize=(9, 9))
     gsp = gridspec.GridSpec(2, 2)
 
-    fig.set_alpha(0)
-    plt.rc('font', family='sans-serif', size=12)
-    plt.rc('mathtext', default='regular')
+    self.figure.set_alpha(0)
+    rc('font', family='sans-serif', size=12)
+    rc('mathtext', default='regular')
 
     x = self.info['binned_resolution'][-1]
     bins = np.arange(len(x))
@@ -102,7 +155,7 @@ class Plotter(object):
     sel_xlabels = [xlabels[t] for t in sel_bins]
 
     # Plot CC1/2 vs. resolution
-    ax_cc12 = fig.add_subplot(gsp[0])
+    ax_cc12 = self.figure.add_subplot(gsp[0])
     reslabel = 'Resolution ({})'.format(r'$\AA$')
     ax_cc12.set_xlabel(reslabel, fontsize=15)
     ax_cc12.ticklabel_format(axis='y', style='plain')
@@ -124,7 +177,7 @@ class Plotter(object):
                           fontsize=9, fancybox=True)
 
     # Plot Completeness vs. resolution
-    ax_comp = fig.add_subplot(gsp[1])
+    ax_comp = self.figure.add_subplot(gsp[1])
     ax_comp.set_xlabel(reslabel, fontsize=15)
     ax_comp.ticklabel_format(axis='y', style='plain')
     ax_comp.set_ylabel('Completeness (%)', fontsize=15)
@@ -141,7 +194,7 @@ class Plotter(object):
                           fontsize=9, fancybox=True)
 
     # Plot Multiplicity (no. of observations) vs. resolution
-    ax_mult = fig.add_subplot(gsp[2])
+    ax_mult = self.figure.add_subplot(gsp[2])
     ax_mult.set_xlabel(reslabel, fontsize=15)
     ax_mult.ticklabel_format(axis='y', style='plain')
     ax_mult.set_ylabel('# of Observations', fontsize=15)
@@ -155,7 +208,7 @@ class Plotter(object):
                           fontsize=9, fancybox=True)
 
     # Plot I / sig(I) vs. resolution
-    ax_i_sigi = fig.add_subplot(gsp[3])
+    ax_i_sigi = self.figure.add_subplot(gsp[3])
     ax_i_sigi.set_xlabel(reslabel, fontsize=15)
     ax_i_sigi.ticklabel_format(axis='y', style='plain')
     ax_i_sigi.set_ylabel(r'I / $\sigma$(I)', fontsize=15)
@@ -170,5 +223,4 @@ class Plotter(object):
     ax_i_sigi.legend([start, end], labels, loc='lower left',
                           fontsize=9, fancybox=True)
 
-    plt.tight_layout()
-    plt.show()
+    self.figure.set_tight_layout(True)

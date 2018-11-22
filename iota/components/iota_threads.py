@@ -3,14 +3,14 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 11/05/2018
+Last Changed: 11/21/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
 import os
 import wx
 import shutil
-from threading import Thread
+from threading import Thread, enumerate
 import numpy as np
 
 from libtbx.easy_mp import parallel_map
@@ -585,6 +585,10 @@ class PRIMEThread(Thread):
     return prime_info
 
 
+  def abort(self):
+    # TODO: put in an LSF kill command
+    self.job.kill_thread()
+
   def run(self):
     # Generate PRIME input
     cmd_args = self.prepare_PRIME_input()
@@ -602,11 +606,20 @@ class PRIMEThread(Thread):
       # easy_run.fully_buffered(cmd, join_stdout_stderr=False).show_stderr()
 
       try:
-        easy_run.fully_buffered(cmd, join_stdout_stderr=True)
+        self.job = CustomRun(command=cmd,
+                             join_stdout_stderr=True)
+        self.job.run()
         prime_info = self.get_prime_stats()
       except Exception as e:
         print ("LIVE PRIME ERROR: ", e)
         prime_info = None
+
+      # try:
+      #   easy_run.fully_buffered(cmd, join_stdout_stderr=True)
+      #   prime_info = self.get_prime_stats()
+      # except Exception as e:
+      #   print ("LIVE PRIME ERROR: ", e)
+      #   prime_info = None
 
     else:
       prime_info = None
@@ -1176,6 +1189,7 @@ class ClusteringDone(wx.PyCommandEvent):
 class ClusterWorkThread():
   def __init__(self, parent):
     self.parent = parent
+    self.abort = False
 
   def run(self, iterable):
 
@@ -1191,6 +1205,8 @@ class ClusterWorkThread():
     if len(clusters) > 0:
       info = []
       for cluster in clusters:
+        if self.abort:
+          return None
         uc_init = unit_cell(cluster.medians)
         symmetry = crystal.symmetry(unit_cell=uc_init, space_group_symbol='P1')
         groups = lattice_symmetry.metric_subgroups(input_symmetry=symmetry,
@@ -1224,6 +1240,9 @@ class ClusterThread(Thread):
     self.parent = parent
     self.iterable = iterable
     self.clustering = ClusterWorkThread(self)
+
+  def abort(self):
+    self.clustering.abort = True
 
   def run(self):
     info = self.clustering.run(iterable=self.iterable)

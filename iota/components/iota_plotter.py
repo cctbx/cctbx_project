@@ -5,7 +5,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 11/05/2018
+Last Changed: 11/21/2018
 Description : IOTA Plotter module. Exists to provide custom MatPlotLib plots
               that are dynamic, fast-updating, interactive, and keep up with
               local wxPython upgrades.
@@ -31,7 +31,7 @@ assert colors
 from iota.components.iota_ui_base import IOTABaseFrame, IOTABasePanel
 
 class PlotWindow(IOTABaseFrame):
-  def __init__(self, parent, id, title):
+  def __init__(self, parent, id, title, plot_panel=None):
     IOTABaseFrame.__init__(self, parent, id, title, size=(500, 500))
 
     self.initialize_toolbar()
@@ -46,14 +46,14 @@ class PlotWindow(IOTABaseFrame):
     self.Bind(wx.EVT_TOOL, self.onSave, self.tb_btn_save)
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
 
-    self.plot_panel = PlotPanel(self)
-    self.main_sizer.Add(self.plot_panel, 1, flag=wx.EXPAND)
+    self.plot_panel = plot_panel
 
-  def plot(self, figure, axes3D=False):
-    self.figure = figure
-    self.plot_panel.embed_plot(self.figure, axes3D)
-    self.plot_panel.canvas.draw()
-    self.Layout()
+  def plot(self):
+    if self.plot_panel:
+      self.main_sizer.Add(self.plot_panel, 1, flag=wx.EXPAND)
+      self.SetSize(self.plot_panel.canvas.GetSize())
+      self.plot_panel.canvas.draw()
+      self.Layout()
 
   def onSave(self, e):
     save_dlg = wx.FileDialog(self,
@@ -65,35 +65,34 @@ class PlotWindow(IOTABaseFrame):
                              )
     if save_dlg.ShowModal() == wx.ID_OK:
       script_filepath = save_dlg.GetPath()
-      self.figure.savefig(script_filepath, format='pdf', bbox_inches=0)
+      self.plot_panel.figure.savefig(script_filepath, format='pdf',
+                                     bbox_inches=0)
 
   def onQuit(self, e):
     self.Close()
 
-class PlotPanel(IOTABasePanel):
-  def __init__(self, parent, *args, **kwargs):
-    IOTABasePanel.__init__(self, parent=parent, *args, **kwargs)
-
-  def embed_plot(self, figure, axes3D=False):
-    self.canvas = FigureCanvas(self, -1, figure)
-    self.main_sizer.Add(self.canvas, 1, flag=wx.EXPAND)
-
-class Plotter():
+class Plotter(IOTABasePanel):
   ''' Generic Plotter (will plot anything given specific data) '''
 
-  def __init__(self,
+  def __init__(self, parent,
                params=None,
                final_objects=None,
-               viz_dir=None):
-    ''' constructor '''
+               # viz_dir=None,
+               *args, **kwargs):
+    IOTABasePanel.__init__(self, parent=parent, *args, **kwargs)
     self.final_objects = final_objects
     self.params = params
-    if viz_dir:
-      self.hm_file = os.path.join(viz_dir, 'heatmap.pdf')
-      self.xy_file = os.path.join(viz_dir, 'beam_xy.pdf')
-      self.hi_file = os.path.join(viz_dir, 'res_histogram.pdf')
+    # if viz_dir:
+    #   self.hm_file = os.path.join(viz_dir, 'heatmap.pdf')
+    #   self.xy_file = os.path.join(viz_dir, 'beam_xy.pdf')
+    #   self.hi_file = os.path.join(viz_dir, 'res_histogram.pdf')
 
     self.font = {'fontfamily':'sans-serif', 'fontsize':12}
+
+  def initialize_figure(self, figsize=(9, 9)):
+    self.figure = Figure(figsize=figsize)
+    self.canvas = FigureCanvas(self, -1, self.figure)
+    self.main_sizer.Add(self.canvas, 1, flag=wx.EXPAND)
 
   def plot_res_histogram(self):
 
@@ -102,9 +101,8 @@ class Plotter():
     lres = [i.final['lres'] for i in self.final_objects]
 
     # Plot figure
-    fig = Figure(figsize=(9, 13))
     gsp = gridspec.GridSpec(2, 1)
-    hr = fig.add_subplot(gsp[0, :])
+    hr = self.figure.add_subplot(gsp[0, :])
     hr_n, hr_bins, hr_patches = hr.hist(hres, 20, facecolor='b', alpha=0.75,
                                          histtype='stepfilled')
     hr_height = (np.max(hr_n) + 9) // 10 * 10
@@ -113,7 +111,7 @@ class Plotter():
     hr.set_xlabel(reslim, fontsize=15)
     hr.set_ylabel('No. of frames', fontsize=15)
 
-    lr = fig.add_subplot(gsp[1, :])
+    lr = self.figure.add_subplot(gsp[1, :])
     lr_n, lr_bins, lr_patches = lr.hist(lres, 20, facecolor='b', alpha=0.75,
                                          histtype='stepfilled')
     lr_height = (np.max(lr_n) + 9) // 10 * 10
@@ -122,8 +120,8 @@ class Plotter():
     lr.set_xlabel(reslim, fontsize=15)
     lr.set_ylabel('No. of frames', fontsize=15)
 
-    fig.set_tight_layout(tight=True)
-    return fig
+    self.figure.set_tight_layout(tight=True)
+
 
   def plot_spotfinding_heatmap(self):
 
@@ -144,8 +142,7 @@ class Plotter():
     row_labels = [str(i) for i in rows]
     col_labels = [str(j) for j in cols]
 
-    fig = Figure()
-    ax = fig.add_subplot(111)
+    ax = self.figure.add_subplot(111)
     ax.pcolor(hm_data, cmap='Reds')
 
     ax.set_yticks(np.arange(len(rows))+.5, minor=False)
@@ -166,8 +163,90 @@ class Plotter():
                      verticalalignment='center',
                      )
 
-    fig.set_tight_layout(True)
-    return fig
+    self.figure.set_tight_layout(True)
+
+  def plot_beam_xy(self, write_files=False, return_values=False, threeD=False):
+    """ Plot beam center coordinates and a histogram of distances from the median
+        of beam center coordinates to each set of coordinates. Superpose a
+        predicted mis-indexing shift by L +/- 1 (calculated for each axis).
+    """
+
+    # Get values
+    calculator = Calculator(final_objects=self.final_objects)
+    beamX, beamY, cbeamX, cbeamY, obeamX, obeamY, \
+    beam_dist, distances, aD, bD, cD, pixel_size = calculator.calculate_beam_xy()
+
+    # Plot figure
+    if threeD:
+      self.figure.set_size_inches(w=8, h=8)
+      ax1 = self.figure.add_subplot(111, projection='3d')
+      Axes3D.mouse_init(ax1)
+    else:
+      self.figure.set_size_inches(w=9, h=13)
+      gsp = gridspec.GridSpec(2, 1, height_ratios=[3, 1])
+      ax1 = self.figure.add_subplot(gsp[0, :], aspect='equal')
+
+    # Calculate axis limits of beam center scatter plot
+    ax1_delta = np.ceil(np.max(beam_dist))
+    xmax = round(np.median(beamX) + ax1_delta)
+    xmin = round(np.median(beamX) - ax1_delta)
+    ymax = round(np.median(beamY) + ax1_delta)
+    ymin = round(np.median(beamY) - ax1_delta)
+    zmax = round(np.ceil(np.max(distances)))
+    zmin = round(np.floor(np.min(distances)))
+
+    ax1.set_xlim(xmin, xmax)
+    ax1.set_ylim(ymin, ymax)
+    if threeD:
+      ax1.set_zlim(zmin, zmax)
+
+    # Plot beam center scatter plot
+    if threeD:
+      ax1.scatter(beamX, beamY, distances, alpha=1, s=20, c='grey', lw=1)
+      ax1.plot([np.median(beamX)], [np.median(beamY)], [np.median(distances)],
+               markersize=8, marker='o', c='yellow', lw=2)
+    else:
+      ax1.scatter(cbeamX, cbeamY, alpha=1, s=20, c='grey', lw=1)
+      ax1.scatter(obeamX, obeamY, alpha=1, s=20, c='red', lw=1)
+      ax1.plot(np.median(beamX), np.median(beamY), markersize=8, marker='o',
+               c='yellow', lw=2)
+
+      # Plot projected mis-indexing limits for all three axes
+      from matplotlib.patches import Circle
+      circle_a = Circle((np.median(beamX), np.median(beamY)), radius=aD,
+                            color='r', fill=False, clip_on=True)
+      circle_b = Circle((np.median(beamX), np.median(beamY)), radius=bD,
+                            color='g', fill=False, clip_on=True)
+      circle_c = Circle((np.median(beamX), np.median(beamY)), radius=cD,
+                            color='b', fill=False, clip_on=True)
+      ax1.add_patch(circle_a)
+      ax1.add_patch(circle_b)
+      ax1.add_patch(circle_c)
+
+    # Set labels
+    ax1.set_xlabel('BeamX (mm)', fontsize=15)
+    ax1.set_ylabel('BeamY (mm)', fontsize=15)
+    if threeD:
+      ax1.set_zlabel('Distance (mm)', fontsize=15)
+      ax1.set_title('Beam XYZ Coordinates')
+    else:
+      ax1.set_title('Beam XY Coordinates')
+
+    if not threeD:
+      # Plot histogram of distances to each beam center from median
+      ax2 = self.figure.add_subplot(gsp[1, :])
+      ax2_n, ax2_bins, ax2_patches = ax2.hist(beam_dist, 20, facecolor='b',
+                                              alpha=0.75, histtype='stepfilled')
+      ax2_height = (np.max(ax2_n) + 9) // 10 * 10
+      ax2.axis([0, np.max(beam_dist), 0, ax2_height])
+      ax2.set_xlabel('Distance from median (mm)', fontsize=15)
+      ax2.set_ylabel('No. of images', fontsize=15)
+
+    self.figure.set_tight_layout(True)
+
+class Calculator():
+  def __init__(self, final_objects=None):
+    self.final_objects = final_objects
 
   def calculate_beam_xy(self):
     """ calculates beam xy and other parameters """
@@ -219,82 +298,3 @@ class Plotter():
 
     return beamX, beamY, cbeamX, cbeamY, obeamX, obeamY, beam_dist, \
            [i[4] for i in info], aD, bD, cD, pixel_size
-
-  def plot_beam_xy(self, write_files=False, return_values=False, threeD=False):
-    """ Plot beam center coordinates and a histogram of distances from the median
-        of beam center coordinates to each set of coordinates. Superpose a
-        predicted mis-indexing shift by L +/- 1 (calculated for each axis).
-    """
-
-    # Get values
-    beamX, beamY, cbeamX, cbeamY, obeamX, obeamY, \
-    beam_dist, distances, aD, bD, cD, pixel_size = self.calculate_beam_xy()
-
-    # Plot figure
-    if threeD:
-      fig = Figure(figsize=(8, 8))
-      ax1 = fig.add_subplot(111, projection='3d')
-      Axes3D.mouse_init(ax1)
-    else:
-      fig = Figure(figsize=(9, 13))
-      gsp = gridspec.GridSpec(2, 1, height_ratios=[3, 1])
-      ax1 = fig.add_subplot(gsp[0, :], aspect='equal')
-
-    # Calculate axis limits of beam center scatter plot
-    ax1_delta = np.ceil(np.max(beam_dist))
-    xmax = round(np.median(beamX) + ax1_delta)
-    xmin = round(np.median(beamX) - ax1_delta)
-    ymax = round(np.median(beamY) + ax1_delta)
-    ymin = round(np.median(beamY) - ax1_delta)
-    zmax = round(np.ceil(np.max(distances)))
-    zmin = round(np.floor(np.min(distances)))
-
-    ax1.set_xlim(xmin, xmax)
-    ax1.set_ylim(ymin, ymax)
-    if threeD:
-      ax1.set_zlim(zmin, zmax)
-
-    # Plot beam center scatter plot
-    if threeD:
-      ax1.scatter(beamX, beamY, distances, alpha=1, s=20, c='grey', lw=1)
-      ax1.plot([np.median(beamX)], [np.median(beamY)], [np.median(distances)],
-               markersize=8, marker='o', c='yellow', lw=2)
-    else:
-      ax1.scatter(cbeamX, cbeamY, alpha=1, s=20, c='grey', lw=1)
-      ax1.scatter(obeamX, obeamY, alpha=1, s=20, c='red', lw=1)
-      ax1.plot(np.median(beamX), np.median(beamY), markersize=8, marker='o',
-               c='yellow', lw=2)
-
-      # Plot projected mis-indexing limits for all three axes
-      from matplotlib.patches import Circle
-      circle_a = Circle((np.median(beamX), np.median(beamY)), radius=aD,
-                            color='r', fill=False, clip_on=True)
-      circle_b = Circle((np.median(beamX), np.median(beamY)), radius=bD,
-                            color='g', fill=False, clip_on=True)
-      circle_c = Circle((np.median(beamX), np.median(beamY)), radius=cD,
-                            color='b', fill=False, clip_on=True)
-      ax1.add_patch(circle_a)
-      ax1.add_patch(circle_b)
-      ax1.add_patch(circle_c)
-
-    # Set labels
-    ax1.set_xlabel('BeamX (mm)', fontsize=15)
-    ax1.set_ylabel('BeamY (mm)', fontsize=15)
-    if threeD:
-      ax1.set_zlabel('Distance (mm)', fontsize=15)
-      ax1.set_title('Beam XYZ Coordinates')
-    else:
-      ax1.set_title('Beam XY Coordinates')
-
-    if not threeD:
-      # Plot histogram of distances to each beam center from median
-      ax2 = fig.add_subplot(gsp[1, :])
-      ax2_n, ax2_bins, ax2_patches = ax2.hist(beam_dist, 20, facecolor='b',
-                                              alpha=0.75, histtype='stepfilled')
-      ax2_height = (np.max(ax2_n) + 9) // 10 * 10
-      ax2.axis([0, np.max(beam_dist), 0, ax2_height])
-      ax2.set_xlabel('Distance from median (mm)', fontsize=15)
-      ax2.set_ylabel('No. of images', fontsize=15)
-
-    fig.set_tight_layout(True)
-    return fig

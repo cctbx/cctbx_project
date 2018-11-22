@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 10/30/2018
+Last Changed: 11/21/2018
 Description : IOTA GUI controls
 '''
 
@@ -43,6 +43,16 @@ elif (wx.Platform == '__WXMSW__'):
   button_font_size = 11
   LABEL_SIZE = 11
   CAPTION_SIZE = 9
+
+# Metallicbutton globals (temporary!)
+GRADIENT_NORMAL = 0
+GRADIENT_PRESSED = 1
+GRADIENT_HIGHLIGHT = 2
+
+MB_STYLE_DEFAULT = 1
+MB_STYLE_BOLD_LABEL = 2
+MB_STYLE_DROPARROW = 4
+
 
 # --------------------------------- Widgets ---------------------------------- #
 
@@ -87,6 +97,44 @@ class GradButton(mb.MetallicButton):
                                )
     if handler_function is not None:
       self.bind_event(wx.EVT_BUTTON, handler_function)
+
+  def OnLeftDown(self, evt):
+    """Sets the pressed state and depending on the click position will
+    show the popup menu if one has been set.
+    """
+    if not self.IsEnabled() :
+      return
+    pos = evt.GetPosition()
+    self.SetState(GRADIENT_PRESSED)
+    size = self.GetSize()
+    if pos[0] >= size[0] - 16:
+      if self._menu is not None:
+        self.ShowMenu()
+    self.SetFocus()
+
+  def OnLeftUp(self, evt):
+    """Post a button event if the control was previously in a
+    pressed state.
+    @param evt: wx.MouseEvent
+    """
+    if not self.IsEnabled() :
+      return
+    if self._state['cur'] == GRADIENT_PRESSED:
+      pos = evt.GetPosition()
+      size = self.GetSize()
+      if self._disable_after_click > 0 :
+        self.Enable(False)
+      self.__PostEvent()
+    self.SetState(GRADIENT_HIGHLIGHT)
+    if self._disable_after_click > 0 :
+      wx.CallLater(self._disable_after_click, lambda : self.Enable(True))
+
+  def __PostEvent(self):
+    """Post a button event to parent of this control"""
+    bevt = wx.CommandEvent(wx.wxEVT_COMMAND_BUTTON_CLICKED, self.GetId())
+    bevt.SetEventObject(self)
+    bevt.SetString(self.GetLabel())
+    wx.PostEvent(self.GetParent(), bevt)
 
 class MiniButtonBox(wx.Panel):
   """ A box with three mini buttons for IOTA panel """
@@ -286,7 +334,9 @@ class FileListItem(object):
 # --------------------------------- Controls --------------------------------- #
 
 class CtrlBase(wx.Panel):
-  """ Control panel base class """
+  """ Control panel base class
+     @DynamicAttrs
+  """
   def __init__(self,
                parent,
                label_style='normal',
@@ -295,22 +345,31 @@ class CtrlBase(wx.Panel):
 
     wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=size)
     if label_style == 'normal':
-      self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                          wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
     elif label_style == 'bold':
-      self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                          wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
     elif label_style == 'italic':
-      self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.NORMAL)
+      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                          wx.FONTSTYLE_ITALIC,
+                          wx.FONTWEIGHT_NORMAL)
     elif label_style == 'italic_bold':
-      self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.BOLD)
+      self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                          wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
 
     if content_style == 'normal':
-      self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                           wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
     elif content_style == 'bold':
-      self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                           wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
     elif content_style == 'italic':
-      self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.NORMAL)
+      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                           wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_NORMAL)
     elif content_style == 'italic_bold':
-      self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.BOLD)
+      self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                           wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
 
 class DialogButtonsCtrl(CtrlBase):
   """ Customizable "bottom of window" set of buttons for dialogs """

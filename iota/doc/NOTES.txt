@@ -1,8 +1,16 @@
-IOTA v1.2.009 - wxPython 4 compatibility
+IOTA v1.2.010 - bugfixes to IOTA and PRIME GUIs
 
-- Created a iota_ui_base module for base Frames, Windows, etc. (idea is to use
-base classes for a wxPython version check)
-- Separate iota_plotter module (for plots in separate window instead of PyPlot,
-which doesn't work well with wxPython 4 in Matplotlib 2.0; will later become a
-module with base plot classes)
-- Clunky so far, will update with a more general approach later
+PRIME:
+    - PRIME now launches in independent window (i.e. won't be closed if IOTA is
+      closed)
+    - Made PRIME GUI wxPython4-compatible
+    - Final result now written out into a subdirectory in the directory from
+      which PRIME is launched
+    - PRIME window launches on current display
+
+IOTA:
+    - Fixed a bug that caused run resumption to fail
+    - Abort command for LivePRIME in IOTA
+    - Visualization base folder created at all times
+    - Fixed 3D bug in standalone plotting window
+    - Run number in title bar
