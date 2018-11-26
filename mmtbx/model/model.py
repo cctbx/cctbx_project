@@ -1584,6 +1584,8 @@ class manager(object):
     self.set_sites_cart_from_xrs()
 
   def set_sites_cart(self, sites_cart, update_grm=False):
+    if not self._xray_structure:
+      self.get_xray_structure()
     assert sites_cart.size() == self._pdb_hierarchy.atoms_size() == \
         self._xray_structure.scatterers().size()
     self._xray_structure.set_sites_cart(sites_cart)

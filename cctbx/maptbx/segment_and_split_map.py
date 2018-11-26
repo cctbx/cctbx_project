@@ -7686,6 +7686,8 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
   # NOTE: end point of map is max_point, so size of map (new all()) is
   #   (max_point-min_point+ (1,1,1))
   # shrink unit cell, angles are the same
+  #  NOTE 2: the origin of output map will be min_point (not 0,0,0).
+
   shrunk_uc = []
   for i in range(3):
     shrunk_uc.append(
