@@ -180,15 +180,13 @@ Optional output:
   def prepare_f_obs_and_flags_if_anomalous(self, f_obs, r_free_flags):
     sel = f_obs.data()>0
     f_obs = f_obs.select(sel)
-    r_free_flags = r_free_flags.select(sel)
-    #
     merged = f_obs.as_non_anomalous_array().merge_equivalents()
     f_obs = merged.array().set_observation_type(f_obs)
-    #
-    merged = r_free_flags.as_non_anomalous_array().merge_equivalents()
-    r_free_flags = merged.array().set_observation_type(r_free_flags)
-    #
-    f_obs, r_free_flags = f_obs.common_sets(r_free_flags)
+    if r_free_flags:
+      r_free_flags = r_free_flags.select(sel)
+      merged_free = r_free_flags.as_non_anomalous_array().merge_equivalents()
+      r_free_flags = merged_free.array().set_observation_type(r_free_flags)
+      f_obs, r_free_flags = f_obs.common_sets(r_free_flags)
     return f_obs, r_free_flags
 
   # ---------------------------------------------------------------------------

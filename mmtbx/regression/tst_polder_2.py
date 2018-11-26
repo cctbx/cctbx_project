@@ -142,7 +142,6 @@ def exercise():
   """
   Test for phenix.polder: accepting anomalous data labels.
   """
-  # write simple pdb file from pdb_str
   f = open("tst_polder_2.pdb", "w")
   f.write(pdb_str)
   f.close()
@@ -159,10 +158,10 @@ def exercise():
       else: result.append(False)
     return miller_array.array(data = result)
   # generate anomalous and non-anomalous data arrays
-  f_anom = abs(xrs.structure_factors(d_min=3.0).f_calc().as_anomalous_array())
+  f_anom = abs(xrs.structure_factors(d_min=3.0).f_calc().generate_bijvoet_mates())
   f_obs = abs(xrs.structure_factors(d_min=3.0).f_calc())
-  flags_anom = generate_r_free_flags_systematic(miller_array=f_anom)
   flags_obs = generate_r_free_flags_systematic(miller_array=f_obs)
+  flags_anom = flags_obs.generate_bijvoet_mates()
   #
   print('*'*79)
   print('Test reading one mtz with F and Rfree as anomalous arrays')
@@ -170,20 +169,20 @@ def exercise():
     fobs_1  = f_anom,
     flags_1 = flags_anom,
     prefix  = "tst_polder_2_1")
-  print("command success")
+  print("OK")
   print('*'*79)
   print('Test reading one mtz with F as anomalous array (no Rfree present)')
   exercise_02(
     fobs_1 = f_anom,
     prefix = "tst_polder_2_2")
-  print("command success")
+  print("OK")
   print('*'*79)
   print('Test reading mtz with F as anomalous array and Rfree is usual array')
   exercise_03(
     fobs_1  = f_anom,
     flags_1 = flags_obs,
     prefix  = "tst_polder_2_3")
-  print("command success")
+  print("OK")
 
 def check(tuple_calc, selection, prefix):
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
