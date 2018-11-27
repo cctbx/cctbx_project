@@ -2069,4 +2069,3 @@ def random_sequence(n_residues=None,residue_basket=None):
     s+=residue_basket[id]
   return s
 
-  print dir(random)
