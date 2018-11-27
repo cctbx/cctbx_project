@@ -121,26 +121,29 @@ class virtual_memory_info(proc_file_reader):
     result = self.get_bytes('VmPeak:')
     if (result is not None):
       virtual_memory_info.have_vmpeak = True
-    virtual_memory_info.max_virtual_memory_size = max(
-    virtual_memory_info.max_virtual_memory_size, result)
+      virtual_memory_info.max_virtual_memory_size = max(
+        virtual_memory_info.max_virtual_memory_size, result)
     return result
 
   def virtual_memory_size(self):
     result = self.get_bytes('VmSize:')
-    virtual_memory_info.max_virtual_memory_size = max(
-    virtual_memory_info.max_virtual_memory_size, result)
+    if (result is not None):
+      virtual_memory_info.max_virtual_memory_size = max(
+        virtual_memory_info.max_virtual_memory_size, result)
     return result
 
   def resident_set_size(self):
     result = self.get_bytes('VmRSS:')
-    virtual_memory_info.max_resident_set_size = max(
-    virtual_memory_info.max_resident_set_size, result)
+    if (result is not None):
+      virtual_memory_info.max_resident_set_size = max(
+        virtual_memory_info.max_resident_set_size, result)
     return result
 
   def stack_size(self):
     result = self.get_bytes('VmStk:')
-    virtual_memory_info.max_stack_size = max(
-    virtual_memory_info.max_stack_size, result)
+    if (result is not None):
+      virtual_memory_info.max_stack_size = max(
+        virtual_memory_info.max_stack_size, result)
     return result
 
   def update_max(self):
