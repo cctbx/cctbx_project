@@ -30,8 +30,8 @@ def custom_args_proc(cli_parser):
         cli_parser.namespace.write_pdb_file
 
   if len(cli_parser.namespace.unknown) > 0:
-    print("What is unknown: %s" % cli_parser.namespace.unknown)
-    print("Curr selection: '%s'" % wf.atom_selection_program.inselection)
+    # print("What is unknown: %s" % cli_parser.namespace.unknown)
+    # print("Curr selection: '%s'" % wf.atom_selection_program.inselection)
     wf.atom_selection_program.inselection = cli_parser.namespace.unknown
     cli_parser.namespace.unknown = []
   cli_parser.working_phil = cli_parser.master_phil.format(python_object=wf)
