@@ -19,17 +19,21 @@ def custom_args_proc(cli_parser):
   """
   wf = cli_parser.working_phil.extract()
 
-  wf.atom_selection_program.cryst1_replacement_buffer_layer = \
-      cli_parser.namespace.cryst1_replacement_buffer_layer
-  wf.atom_selection_program.write_pdb_file = \
-      cli_parser.namespace.write_pdb_file
+  # Since we have phil parameters for these as well, we want to make
+  # sure that we don't overwrite them if nothing was provided via
+  # command-line.
+  if wf.atom_selection_program.cryst1_replacement_buffer_layer is not None:
+    wf.atom_selection_program.cryst1_replacement_buffer_layer = \
+        cli_parser.namespace.cryst1_replacement_buffer_layer
+  if cli_parser.namespace.write_pdb_file is not None:
+    wf.atom_selection_program.write_pdb_file = \
+        cli_parser.namespace.write_pdb_file
 
   if len(cli_parser.namespace.unknown) > 0:
-    # print("What is unknown: %s" % cli_parser.namespace.unknown)
-    # print("Curr selection: '%s'" % wf.atom_selection_program.inselection)
-    wf.atom_selection_program.inselection[0] = cli_parser.namespace.unknown[0]
-    del cli_parser.namespace.unknown[0]
-
+    print("What is unknown: %s" % cli_parser.namespace.unknown)
+    print("Curr selection: '%s'" % wf.atom_selection_program.inselection)
+    wf.atom_selection_program.inselection = cli_parser.namespace.unknown
+    cli_parser.namespace.unknown = []
   cli_parser.working_phil = cli_parser.master_phil.format(python_object=wf)
 
 
@@ -48,6 +52,10 @@ def run(args):
   # file_name is obsolet, parser takes care of it putting it in data manager
   # inselections is going to be handled by custom_args_proc function
   # because it is intended to be positional argument
+  #
+  # !!! This is done here for legacy support and illustrative purposes.
+  # Don't do it anywhere else, since we strive to have the same
+  # command-line flags across all programs, like --overwrite etc.
   parser.add_argument(
       "--cryst1-replacement-buffer-layer",
       action="store",
@@ -56,7 +64,7 @@ def run(args):
         " atoms plus a surrounding buffer layer",
       default=None)
   parser.add_argument(
-      "--write-pdb-file",
+      "--write-pdb-file", "--write_pdb_file", "--write_pdb-file", "--write-pdb_file",
       action="store",
       help="write selected atoms to new PDB file",
       default=None)
