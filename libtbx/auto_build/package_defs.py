@@ -83,6 +83,8 @@ SIX_VERSION="1.11.0"
 SPHINX_VERSION = "1.7.7" # for documentation
 TABULATE_VERSION = "0.8.2"
 TQDM_VERSION = "4.23.4"
+PSUTIL_VERSION = "5.4.8"
+MRCFILE_VERSION = "1.1.0"
 
 # HDF5
 BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/"

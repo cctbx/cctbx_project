@@ -262,7 +262,7 @@ class installer (object) :
     if options.molprobity:
       options.build_gui = False
       options.build_all = False
-      packages += ['tiff']
+      packages += ['tiff', 'psutil', 'mrcfile']
     if options.cctbx:
       options.build_gui = True
       options.build_all = True
@@ -326,7 +326,7 @@ class installer (object) :
 
     # Additional recommended dependencies.
     if options.build_all:
-      packages += ['biopython', 'misc', 'sphinx']
+      packages += ['biopython', 'misc', 'sphinx', 'psutil', 'mrcfile']
 
     # Non-all packages.
     # Scipy
@@ -726,6 +726,8 @@ Installation of Python packages may fail.
       'procrunner',
       'tqdm',
       'tabulate',
+      'psutil',
+      'mrcfile',
       # ...
       'freetype',
       'matplotlib',
@@ -1164,6 +1166,16 @@ _replace_sysconfig_paths(build_time_vars)
     self.build_python_module_pip(
       'tabulate', package_version=TABULATE_VERSION,
       confirm_import_module='tabulate')
+
+  def build_psutil(self):
+    self.build_python_module_pip(
+      'psutil', package_version=PSUTIL_VERSION,
+      confirm_import_module='psutil')
+
+  def build_mrcfile(self):
+    self.build_python_module_pip(
+      'mrcfile', package_version=MRCFILE_VERSION,
+      confirm_import_module='mrcfile')
 
   def build_hdf5(self):
     pkg_log = self.start_building_package("HDF5")
