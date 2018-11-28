@@ -32,7 +32,6 @@ tst_list = (
   "$D/tst_binary_search.py",
   "$D/tst_topological_sort.py",
   "$D/clusterTests.py",
-  "$D/tst_lzw.py",
   "$D/tst_citations.py",
   "$D/tst_python_code_parsing.py",
   "$D/tst_representation.py",
