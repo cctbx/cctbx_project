@@ -1065,11 +1065,10 @@ class manager(Base_geometry):
 
     t3 = time.time()
     proxies_i_seqs = {}
-    np = 0
     proxies_iselection = []
-    for p in proxies:
+    for np, p in enumerate(proxies):
       proxies_i_seqs[p.i_seqs] = np
-      np += 1
+      proxies_i_seqs[(p.i_seqs[1], p.i_seqs[0])] = np
       for i in list(p.i_seqs):
         if i not in proxies_iselection:
           proxies_iselection.append(i)
@@ -1118,7 +1117,7 @@ class manager(Base_geometry):
       if n_proxy is None:
         continue
       # Sanity check (not necessary because of 'continue' in previous line)
-      # print "n_proxy", n_proxy
+      # print "  n_proxy", n_proxy
       if n_proxy is not None:
         # print "Adding to options,", n_proxy, rt_mx_ji_options
         #Trying to find rt_mx_ji for connecting atoms
@@ -1126,14 +1125,21 @@ class manager(Base_geometry):
         rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
         rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
         rt_mx_ji_options[n_proxy].append(rt_mx_ji)
-        # print "pair:",  pair.i_seq, pair.j_seq, "n_proxy ", n_proxy,rt_mx_ji
+        # print "  pair:",  pair.i_seq, pair.j_seq, "n_proxy ", n_proxy,rt_mx_ji
     # print "rt_mx_ji_options:", rt_mx_ji_options
-    # for i, op in enumerate(rt_mx_ji_options):
-    #   print len(op)
-    # STOP()
+    # for i, opts in enumerate(rt_mx_ji_options):
+    #   print "  ",i,
+    #   for o in opts:
+    #     print o,",",
+    #   print
+    # print
+    # print "STARTING TO PICK rt_mx_ji for proxies"
     for proxy, rt_mx_ji_option in zip(proxies, rt_mx_ji_options):
-      # print "rt_mx_ji_option", rt_mx_ji_option
-      # choose rt_mx_ji
+      # print "rt_mx_ji_options:",
+      # for op in rt_mx_ji_option:
+      #   print op,
+      # print
+      # print "  choose rt_mx_ji"
       rt_mx_ji = None
       if len(rt_mx_ji_option) >= 1:
         rt_mx_ji = rt_mx_ji_option[0]
@@ -1143,9 +1149,9 @@ class manager(Base_geometry):
           if rmj.is_unit_mx():
             rt_mx_ji = rmj
       # Add new defined bond
-      # print "rt_mx_ji", rt_mx_ji
+      # print "  chosen rt_mx_ji", rt_mx_ji
       if rt_mx_ji is not None:
-        # print "Adding new bond:", proxy.i_seqs[0], proxy.i_seqs[1], rt_mx_ji
+        # print "  Adding new bond:", proxy.i_seqs[0], proxy.i_seqs[1], rt_mx_ji
         all_bonds_asu_table.add_pair(
           i_seq=proxy.i_seqs[0],
           j_seq=proxy.i_seqs[1],
