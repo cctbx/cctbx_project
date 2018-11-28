@@ -22,7 +22,7 @@ def custom_args_proc(cli_parser):
   # Since we have phil parameters for these as well, we want to make
   # sure that we don't overwrite them if nothing was provided via
   # command-line.
-  if wf.atom_selection_program.cryst1_replacement_buffer_layer is not None:
+  if cli_parser.namespace.cryst1_replacement_buffer_layer is not None:
     wf.atom_selection_program.cryst1_replacement_buffer_layer = \
         cli_parser.namespace.cryst1_replacement_buffer_layer
   if cli_parser.namespace.write_pdb_file is not None:
