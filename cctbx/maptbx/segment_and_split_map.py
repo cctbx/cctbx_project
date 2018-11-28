@@ -8867,6 +8867,9 @@ def select_box_map_data(si=None,
         crystal_symmetry=box_crystal_symmetry,
         map=box_map,
         out=out)
+    if box_solvent_fraction is None:
+      box_solvent_fraction=si.solvent_fraction
+      print >>out,"Using overall solvent fraction for box"
     print >>out,"Local solvent fraction: %7.2f" %(box_solvent_fraction)
   else:
     box_solvent_fraction=None
