@@ -105,7 +105,7 @@ def get_gcc_version(command_name="gcc"):
   if (len(buffer.stdout_lines) != 1):
     return None
   major_minor_patchlevel = buffer.stdout_lines[0].split(".")
-  if (len(major_minor_patchlevel) not in [2,3]):
+  if (len(major_minor_patchlevel) not in [1,2,3]):
     return None
   num = []
   for fld in major_minor_patchlevel:
@@ -113,6 +113,8 @@ def get_gcc_version(command_name="gcc"):
     except ValueError:
       return None
     num.append(i)
+  # substitute missing minor and patchlevel for gcc7 on Ubuntu18
+  if (len(num) == 1): num.append(0); num.append(0)
   if (len(num) == 2): num.append(0) # substitute missing patchlevel
   return ((num[0]*100)+num[1])*100+num[2]
 
