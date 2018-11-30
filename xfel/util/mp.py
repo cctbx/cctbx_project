@@ -39,7 +39,7 @@ mp_phil_str = '''
       .multiple = True
       .help = Path to script sourcing a particular environment (optional)
     shifter {
-      submit_command = "sbatch"
+      submit_command = "sbatch "
         .type = str
         .help = Command used to run the zero-level script sbatch.sh.
       sbatch_script_template = None
@@ -59,6 +59,9 @@ mp_phil_str = '''
       partition = regular
         .type = str
         .help = Partition to run jobs on, e.g. regular or debug.
+      jobname = LCLS_EXP
+        .type = str
+        .help = Jobname
       nnodes = 1
         .type = int
         .help = Number of nodes to request with sbatch -N <nnodes>.
@@ -130,6 +133,8 @@ class get_submit_command(object):
       if value is None:
         raise Sorry("No value found for %s" % marker)
       return template.replace(marker, value)
+    else:
+      return template
 
   def make_executable(self, file):
     import stat
@@ -383,6 +388,9 @@ class get_shifter_submit_command(get_submit_command):
     # -p <partition>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<partition>",
       self.params.shifter.partition)
+    # --job-name
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<jobname>",
+      self.params.shifter.jobname)
 
     # <srun_script>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<srun_script>",
