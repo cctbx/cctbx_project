@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 11/15/2018
-Last Changed: 11/21/2018
+Last Changed: 11/29/2018
 Description : IOTA GUI base classes (with backwards compatibility for
               wxPython 3)
 '''
@@ -14,9 +14,29 @@ from wx.lib.buttons import GenToggleButton
 from wx.lib.scrolledpanel import ScrolledPanel
 
 from wxtbx import bitmaps
+from iotbx.phil import parse
 
 import iota.components.iota_ui_controls as ct
 from iota.components.iota_utils import norm_font_size
+
+gui_phil = parse('''
+gui
+  .help = Options for IOTA GUI only
+{
+  image_viewer = *dials.image_viewer cctbx.image_viewer distl.image_viewer cxi.view
+    .type = choice
+    .help = Select image viewer (GUI only)
+  monitor_mode = False
+    .type = bool
+    .help = Set to true to keep watch for incoming images (GUI only)
+  monitor_mode_timeout = False
+    .type = bool
+    .help = Set to true to auto-terminate continuous mode (GUI only)
+  monitor_mode_timeout_length = 0
+    .type = int
+    .help = Timeout length in seconds (GUI only)
+}
+''')
 
 class IOTAFrameError(Exception):
   def __init__(self, msg):

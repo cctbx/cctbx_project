@@ -5,7 +5,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/21/2018
+Last Changed: 11/29/2018
 Description : IOTA GUI Windows / frames
 '''
 
@@ -19,7 +19,6 @@ from wx.aui import AuiNotebook
 import numpy as np
 import time
 import warnings
-import multiprocessing
 
 import matplotlib as mpl
 import matplotlib.gridspec as gridspec
@@ -32,8 +31,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 assert Axes3D
 
-from libtbx import easy_run
-from libtbx import easy_pickle as ep
+from libtbx import easy_run, easy_pickle as ep
 from libtbx.utils import to_unicode
 
 from prime.postrefine.mod_mx import mx_handler
@@ -88,13 +86,7 @@ class InputWindow(IOTABasePanel):
     self.gparams = self.input_phil.extract()
     self.imageset = None
 
-    if str(self.gparams.advanced.processing_backend).lower() == 'cctbx':
-      target = self.gparams.cctbx_ha14.target
-    elif str(self.gparams.advanced.processing_backend).lower() == 'dials':
-      target = self.gparams.cctbx_xfel.target
-    else:
-      target = None
-
+    target = self.gparams.cctbx_xfel.target
     if str(target).lower != 'none':
       try:
         with open(target, 'r') as pf:
@@ -114,30 +106,18 @@ class InputWindow(IOTABasePanel):
     # List control to add / manage input items
     self.input = FileListCtrl(self)
 
+    # Insert option buttons into input window sizer
+    self.opt_btn_import = wx.Button(self.input, label='Import options...')
+    self.opt_btn_process = wx.Button(self.input, label='Processing options...')
+    self.opt_btn_analysis = wx.Button(self.input, label='Analysis options...')
+    self.input.button_sizer.Add(self.opt_btn_import)
+    self.input.button_sizer.Add(self.opt_btn_process)
+    self.input.button_sizer.Add(self.opt_btn_analysis)
+
     # Put everything into main sizer
     self.main_sizer.Add(self.project_title, flag=f.expand, border=10)
     self.main_sizer.Add(self.project_folder, flag=f.expand, border=10)
     self.main_sizer.Add(self.input, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND)
-
-    # Options
-    opt_box = wx.FlexGridSizer(1, 5, 0, 15)
-    total_procs = multiprocessing.cpu_count()
-    self.opt_spc_nprocs = ct.SpinCtrl(self,
-                                      label='No. Processors: ',
-                                      label_size=(120, -1),
-                                      ctrl_min = 1,
-                                      ctrl_value = str(int(total_procs / 2)))
-    self.opt_btn_import = wx.Button(self, label='Import options...')
-    self.opt_btn_process = wx.Button(self, label='Processing options...')
-    self.opt_btn_analysis = wx.Button(self, label='Analysis options...')
-    opt_box.AddMany([(self.opt_spc_nprocs),
-                     (0, 0),
-                     (self.opt_btn_import),
-                     (self.opt_btn_process),
-                     (self.opt_btn_analysis)])
-    opt_box.AddGrowableCol(1)
-    self.main_sizer.Add(opt_box, flag=f.expand, border=10)
 
     # Button bindings
     self.project_folder.btn_browse.Bind(wx.EVT_BUTTON, self.onOutputBrowse)
@@ -204,14 +184,15 @@ class FileListCtrl(ct.CustomListCtrl):
 
     # Add file / folder buttons
     # self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.button_sizer = wx.FlexGridSizer(1, 3, 0, 10)
+    self.button_sizer = wx.FlexGridSizer(1, 6, 0, 10)
     self.btn_add_file = wx.Button(self, label='Add File...')
     self.btn_add_dir = wx.Button(self, label='Add Folder...')
-    self.txt_total_images = wx.StaticText(self, label='')
+    # self.txt_total_images = wx.StaticText(self, label='')
     self.button_sizer.Add(self.btn_add_file)
     self.button_sizer.Add(self.btn_add_dir)
-    self.button_sizer.Add(self.txt_total_images)
-    self.button_sizer.AddGrowableCol(1)
+    self.button_sizer.Add((0, 0))
+    # self.button_sizer.Add(self.txt_total_images)
+    self.button_sizer.AddGrowableCol(2)
 
     self.sizer.Add(self.button_sizer, flag=wx.EXPAND | wx.TOP | wx.BOTTOM,
                    border=10)
@@ -378,6 +359,7 @@ class FileListCtrl(ct.CustomListCtrl):
 
   def view_images(self, img_list, img_type=None):
     """ Launches image viewer (depending on backend) """
+    # self.parent.input_phil.show()
     viewer = self.parent.gparams.gui.image_viewer
     if viewer == 'cxi.view' and 'pickle' not in img_type:
         wx.MessageBox('cxi.view only accepts image pickles', 'Warning',
@@ -459,7 +441,19 @@ class FileListCtrl(ct.CustomListCtrl):
                     wx.ICON_INFORMATION)
 
   def update_total_image_count(self):
-    self.txt_total_images.SetLabel("{} total images".format(self.image_count))
+    # pass
+    # self.txt_total_images.SetLabel("{} total images".format(self.image_count))
+    col1 = self.ctr.GetColumn(1)
+    col1.SetFooterText("{} total images".format(self.image_count))
+
+    font = self.ctr.GetFont()
+    font.SetPointSize(18)
+    font.SetWeight(wx.FONTWEIGHT_BOLD)
+    col1.SetFooterFont(font)
+
+    self.ctr.SetColumn(1, col1)
+
+
 
 # ----------------------------  Processing Window ---------------------------  #
 
@@ -475,9 +469,9 @@ class LogTab(wx.Panel):
     self.log_window.SetFont(wx.Font(9, wx.FONTFAMILY_TELETYPE, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False))
     self.log_sizer.Add(self.log_window, proportion=1, flag= wx.EXPAND | wx.ALL, border=10)
 
-    self.find_string = ct.TextCtrlWithButtons(self,
-                                              buttons=[('Forward', -1),
-                                                       ('Reverse', -1)],
+    buttons = {'forward': (-1, 'Forward'),
+               'reverse': (-1, 'Reverse')}
+    self.find_string = ct.TextCtrlWithButtons(self, buttons=buttons,
                                               ctrl_label='Find String:')
     self.log_sizer.Add(self.find_string, flag=wx.EXPAND | wx.ALL, border=10)
     self.SetSizer(self.log_sizer)
@@ -807,7 +801,7 @@ class ProcessingTab(wx.Panel):
       # Strong reflections per frame
       self.nsref_axes.clear()
       nsref_ylabel = 'Reflections (I/{0}(I) > {1})' \
-                     ''.format(r'$\sigma$', self.gparams.cctbx_ha14.selection.min_sigma)
+                     ''.format(r'$\sigma$', self.gparams.image_import.strong_sigma)
       self.nsref = self.nsref_axes.scatter(self.info.nsref_x,
                                            self.info.nsref_y,
                                            s=45, marker='o',
@@ -2045,6 +2039,7 @@ class ProcWindow(IOTABaseFrame):
     # Generate iterable as per run status
     iterable, msg = self.set_proc_iterable()
     self.info.unprocessed_images = len(iterable)
+    self.init.iterable = iterable
 
     if self.state == 'finished':
         self.finish_process()
@@ -2057,8 +2052,8 @@ class ProcWindow(IOTABaseFrame):
     self.status_txt.SetLabel(msg)
 
     # TODO: Find a way to manage the iterable correctly
-    iter_path = os.path.join(self.init.int_base, 'iter.cfg')
-    ep.dump(iter_path, iterable)
+    # iter_path = os.path.join(self.init.int_base, 'iter.cfg')
+    # ep.dump(iter_path, iterable)
     init_path = os.path.join(self.init.int_base, 'init.cfg')
     ep.dump(init_path, self.init)
 

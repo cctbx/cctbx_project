@@ -4,7 +4,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/26/2014
-Last Changed: 11/05/2018
+Last Changed: 11/29/2018
 Description : IOTA image processing submission module
 '''
 
@@ -12,24 +12,22 @@ from iota.components.iota_base import ProcessingThreadBase
 
 class SilentProcess(ProcessingThreadBase):
   """ Process module customized for 'silent' running (for UI and queueing) """
-  def __init__(self, init, iterable, stage):
-    ProcessingThreadBase.__init__(self, init=init, iterable=iterable,
-                                  stage=stage)
+  def __init__(self, init, stage):
+    ProcessingThreadBase.__init__(self, init=init, stage=stage)
 
-    # Initialize importer and processor depending on backend
+    # Initialize importer and processor
     if init.params.advanced.processing_backend == 'ha14':
-      from iota.components.iota_image import OldImageImporter as Importer
-      from iota.components.iota_cctbx_ha14 import Integrator
+      from iota.components.iota_cctbx_ha14 import ImageImporter, Integrator
     else:
-      from iota.components.iota_image import ImageImporter as Importer
+      from iota.components.iota_image import ImageImporter
       from iota.components.iota_processing import Integrator
-    self.importer   = Importer(init=init)
+    self.importer   = ImageImporter(init=init)
     self.integrator = Integrator(init=init)
 
 class UIProcess(SilentProcess):
   """ Process module customized for 'silent' running (for UI and queueing) """
-  def __init__(self, init, iterable, stage):
-    SilentProcess.__init__(self, init=init, iterable=iterable, stage=stage)
+  def __init__(self, init, stage):
+    SilentProcess.__init__(self, init=init, stage=stage)
 
   def callback(self, result):
     """ Will add object file to tmp list for inclusion in info """
@@ -50,8 +48,8 @@ def parse_command_args():
                       help='Specify input type')
   parser.add_argument('--stopfile', type=str, default=None,
                       help='Path to temporary hidden abort signal file')
-  parser.add_argument('--mode', type=str, nargs='?', const=None, default='ui',
-                      help='Specify input type')
+  parser.add_argument('--mode', type=str, nargs=1, const=None, default='ui',
+                      help='Specify run mode')
 
   return parser
 
@@ -62,12 +60,11 @@ if __name__ == "__main__":
 
   from libtbx import easy_pickle as ep
   init = ep.load(args.init)
-  iterable = ep.load(args.files)
 
   if args.mode == 'ui':
-    proc = UIProcess(init=init, iterable=iterable, stage='all')
+    proc = UIProcess(init=init, stage='all')
   elif args.mode == 'silent':
-    proc = SilentProcess(init=init, iterable=iterable, stage='all')
+    proc = SilentProcess(init=init, stage='all')
   else:
     proc = None
 

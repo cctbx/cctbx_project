@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 11/05/2018
+Last Changed: 11/29/2018
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -416,46 +416,66 @@ class InputFinder():
   def test_phil(self, filepath):
     """ Tests incoming PHIL file to try and determine what it's for """
 
-    import iotbx.phil as ip
+    from iotbx import phil as ip
+    from iotbx.file_reader import any_file as af
+
     try:
-      test_phil = ip.parse(open(filepath).read())
+      if af(filepath).file_type == 'phil':
+        test_phil = ip.parse(open(filepath).read())
+      else:
+        test_phil = None
+    except RuntimeError:  # If not a PHIL file or a bad PHIL file
+      return 'text'
+    else:
+      if test_phil:
+        # Test if IOTA parameter file
+        from iota.components.iota_input import master_phil as iota_phil
+        new_phil, unused = iota_phil.fetch(sources=[test_phil],
+                                           track_unused_definitions=True)
+        len_test = len(test_phil.all_definitions(suppress_multiple=True))
+        percent_fit = (1 - len(unused) / len_test) * 100
+        if percent_fit >= 50:
+          return 'IOTA settings'
 
-      # Test if IOTA parameter file
-      from iota.components.iota_input import master_phil as iota_phil
-      new_phil, unused = iota_phil.fetch(sources=[test_phil],
-                                         track_unused_definitions=True)
-      if len(unused) == 0:
-        return 'IOTA settings'
-
-      # Test if PRIME parameter file
-      from prime.postrefine.mod_input import master_phil as prime_phil
-      new_phil, unused = prime_phil.fetch(sources=[test_phil],
-                                          track_unused_definitions=True)
-      if len(unused) == 0:
-        return 'PRIME settings'
-
-      # Test if LABELIT target file
-      from labelit.phil_preferences import iotbx_defs, libtbx_defs
-      labelit_phil = ip.parse(input_string=iotbx_defs + libtbx_defs,
-                              process_includes=True)
-      new_phil, unused = labelit_phil.fetch(sources=[test_phil],
+        # Test if PRIME parameter file
+        from prime.postrefine.mod_input import master_phil as prime_phil
+        new_phil, unused = prime_phil.fetch(sources=[test_phil],
                                             track_unused_definitions=True)
-      if len(unused) == 0:
-        return 'LABELIT target'
+        len_test = len(test_phil.all_definitions(suppress_multiple=True))
+        percent_fit = (1 - len(unused) / len_test) * 100
+        if percent_fit >= 50:
+          return 'PRIME settings'
 
-      # Test if DIALS target file
-      from dials.command_line.stills_process import control_phil_str, \
-        dials_phil_str
-      dials_phil = ip.parse(control_phil_str + dials_phil_str,
-                            process_includes=True)
-      new_phil, unused = dials_phil.fetch(sources=[test_phil],
-                                          track_unused_definitions=True)
-      if len(unused) == 0:
-        return 'DIALS target'
+        # Test if LABELIT target file (LABELIT not always available)
+        try:
+          from labelit.phil_preferences import iotbx_defs, libtbx_defs
+        except ImportError:
+          pass
+        else:
+          labelit_phil = ip.parse(input_string=iotbx_defs + libtbx_defs,
+                                  process_includes=True)
+          new_phil, unused = labelit_phil.fetch(sources=[test_phil],
+                                                track_unused_definitions=True)
+          len_test = len(test_phil.all_definitions(suppress_multiple=True))
+          percent_fit = (1 - len(unused) / len_test) * 100
+          if percent_fit >= 50:
+            return 'LABELIT target'
+
+        # Test if DIALS target file
+        from dials.command_line.stills_process import control_phil_str, \
+          dials_phil_str
+        dials_phil = ip.parse(control_phil_str + dials_phil_str,
+                              process_includes=True)
+        new_phil, unused = dials_phil.fetch(sources=[test_phil],
+                                            track_unused_definitions=True)
+        len_test = len(test_phil.all_definitions(suppress_multiple=True))
+        percent_fit = (1 - len(unused) / len_test) * 100
+        if percent_fit >= 50:
+          return 'DIALS target'
+        else:
+          return 'text'
       else:
         return 'text'
-    except Exception:
-      return 'text'
 
   def get_input(self, path, filter=True, filter_type='image', last=None,
                 min_back=None):
@@ -511,10 +531,19 @@ class InputFinder():
 
   def get_folder_type(self, path):
     if os.path.isdir(path):
-      file_list = self.get_file_list(path)
+      file_list = self.get_file_list(path=path)
       input_types = [self.identify_file_type(f) for f in file_list]
-      folder_type = '{} folder'.format(Counter(input_types).most_common(1)[0][0])
-      return folder_type
+
+      # Images can be outnumbered by other files in a folder; for that
+      # reason, search for even one occurence of an image
+      choices = ['raw image', 'image pickle']
+      input_type = next((s for s in input_types if s in choices), None)
+
+      # Test for whatever's most common
+      if not input_type:
+        input_type = '{}'.format(Counter(input_types).most_common(1)[0][0])
+
+      return "{} folder".format(input_type)
     else:
       return 'unknown'
 

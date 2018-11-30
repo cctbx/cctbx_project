@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 11/21/2018
+Last Changed: 11/29/2018
 Description : IOTA GUI Initialization module
 '''
 
@@ -18,8 +18,6 @@ import argparse
 
 from iotbx import phil as ip
 from libtbx import easy_pickle as ep
-from libtbx.phil.command_line import argument_interpreter as argint
-from libtbx.utils import Sorry
 from cctbx import miller
 assert miller
 
@@ -75,8 +73,10 @@ def parse_command_args(help_message):
             help = 'Prints version info of IOTA')
   parser.add_argument('-w', type=int, nargs=1, default=0, dest='watch',
             help = 'Run IOTA in watch mode - check for new images')
-  parser.add_argument('-r', type=int, nargs=1, default=0, dest='random',
-            help = 'Run IOTA with a random subset of images, e.g. "-r 5"')
+  parser.add_argument('-random', type=int, nargs=1, default=0,
+            help = 'Size of randomized subset, e.g. "--random 10"')
+  parser.add_argument('--range', type=str, nargs='?', default=None,
+            help = 'Range of images, e.g."--range 1-5,25,200-250"')
   parser.add_argument('-n', type=int, nargs='?', default=0, dest='nproc',
             help = 'Specify a number of cores for a multiprocessor run"')
   parser.add_argument('--tmp', type=str, nargs = 1, default = None,
@@ -92,18 +92,11 @@ class MainWindow(IOTABaseFrame):
   def __init__(self, parent, id, title):
     IOTABaseFrame.__init__(self, parent, id, title, size=(800, 500))
     self.parent = parent
-    self.iota_phil = inp.master_phil
+
     self.prefs_phil = None
     self.target_phil = None
-    self.term_file = None
-
-    # Create some defaults on startup
-    # Figure out temp folder
-    self.gparams = self.iota_phil.extract()
-    tmp_folder = '/tmp/{}_{}'.format(user, pid)
-    self.gparams.advanced.temporary_output_folder = tmp_folder
-
-    self.iota_phil = self.iota_phil.format(python_object=self.gparams)
+    self.args = None
+    self.phil_args = None
 
     # Menu bar
     menubar = wx.MenuBar()
@@ -155,14 +148,16 @@ class MainWindow(IOTABaseFrame):
     self.set_tool_state(self.tb_btn_run, False)
     self.realize_toolbar()
 
-    # Instantiate windows
-    self.input_window = frm.InputWindow(self, phil=self.iota_phil)
+    # Instantiate settings
+    self.on_startup()
 
-    # Single input window
+    # Instantiate input windows
+    self.input_window = frm.InputWindow(self, phil=self.iota_phil)
     self.main_sizer.Add(self.input_window, 1,
                         flag=wx.ALL | wx.EXPAND,
                         border=10)
     self.main_sizer.Add((-1, 20))
+    self.update_input_window()
 
     # button bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
@@ -195,56 +190,65 @@ class MainWindow(IOTABaseFrame):
     print('Python  : ', python_version())
     print('wxPython: ', wx.__version__)
 
-  def read_command_line_options(self):
+  def on_startup(self):
+    ''' Read command-line args, create PHIL, apply command-line args
+    :return: inputs: list of input entries to update input window
+    '''
 
-    help_message = '''This command will run the IOTA GUI '''
+    help_msg = '''This command will run the IOTA GUI '''
+    self.args, self.phil_args = parse_command_args(help_msg).parse_known_args()
 
-    self.args, self.phil_args = parse_command_args('').parse_known_args()
-
-    if self.args.path is not None and len(self.args.path) > 0:
+    # Understand path(s)
+    inputs = []
+    messages = []
+    paramfile = None
+    if self.args.path and len(self.args.path) > 0:
       for carg in self.args.path:
-        if os.path.exists(carg):
-          if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
-            self.load_script(filepath=carg, update_input_window=False)
+        msg = None
+        if os.path.isfile(carg):
+          ptype = ginp.get_file_type(carg)
+          if 'image' in ptype:
+            inputs.append(carg)
+          elif 'IOTA settings' in ptype:
+            paramfile = carg
           else:
-            self.input_window.input.add_item(os.path.abspath(carg))
+            if 'settings' in ptype:
+              msg = '- Cannot recognize settings file {}'.format(carg)
+            elif 'file' in ptype:
+              msg = '- Format for {} not recognized'.format(carg)
+        elif os.path.isdir(carg):
+          ptype = ginp.get_folder_type(carg)
+          if 'image' in ptype:
+            inputs.append(carg)
+          else:  #TODO: empty folder check
+            msg = '- Invalid input in {} ({})'.format(carg, ptype)
+        else:
+          msg = '- Error accessing {}: no such file or directory'.format(carg)
+        if msg:
+          messages.append(msg)
 
-    if self.args.watch > 0:
-      self.gparams.gui.monitor_mode = True
-      self.gparams.gui.monitor_mode_timeout = True
-      self.gparams.gui.monitor_mode_timeout_length = self.args.watch[0]
+    # Load script or generate IOTA PHIL:
+    if paramfile:
+      self.load_script(filepath=paramfile, reset=False,
+                       update_input_window=False)
+    else:
+      self.iota_phil = inp.process_ui_input(args=self.args,
+                                            phil_args=self.phil_args,
+                                            input_source=None)
+      self.gparams = self.iota_phil.extract()
 
-    if self.args.random > 0:
-      self.gparams.advanced.random_sample.flag_on = True
-      self.gparams.advanced.random_sample.number = self.args.random[0]
+    # Add any inputs found in command-line args
+    # TODO: add better handling of wildcards
+    if inputs:
+      for path in inputs:
+        self.gparams.input.append(os.path.abspath(path))
 
-    if self.args.tmp is not None:
-      self.gparams.advanced.temporary_output_folder = self.args.tmp[0]
-
-    if self.args.nproc is not None:
-      self.gparams.mp.n_processors = self.args.nproc
-
-    self.iota_phil = self.iota_phil.format(python_object=self.gparams)
-
-    # Parse in-line params into phil
-    argument_interpreter = argint(master_phil=self.iota_phil)
-    consume = []
-    for arg in self.phil_args:
-      try:
-        command_line_params = argument_interpreter.process(arg=arg)
-        self.iota_phil = self.iota_phil.fetch(sources=[command_line_params, ])
-        consume.append(arg)
-      except Sorry:
-        pass
-    for item in consume:
-      self.phil_args.remove(item)
-    if len(self.phil_args) > 0:
-      raise Sorry(
-        "Not all arguments processed, remaining: {}".format(self.phil_args))
-
-    self.gparams = self.iota_phil.extract()
-    self.update_input_window()
-
+    # Report errors if any (can get REALLY annoying if a lot of text)
+    if messages:
+      msg_string = 'IOTA Reported the following error(s):{}\n\n' \
+                   ''.format('\n'.join(messages))
+      wx.MessageBox(caption='Command-line Argument Error!',
+                    message=msg_string, style=wx.OK | wx.ICON_ERROR)
 
   def onItemInserted(self, e):
     print (self.input_window.input.all_data_images)
@@ -261,7 +265,9 @@ class MainWindow(IOTABaseFrame):
     prefs.set_choices()
 
     if prefs.ShowModal() == wx.ID_OK:
-      self.iota_phil = self.iota_phil.fetch(source=prefs.prefs_phil)
+      full_phil = self.iota_phil.fetch(source=prefs.prefs_phil)
+      fixer = inp.PHILFixer()  # Backend switching requires the PHIL fixer
+      self.iota_phil = fixer.run(old_phil=full_phil)
     prefs.Destroy()
 
     self.input_window.input_phil = self.iota_phil
@@ -274,13 +280,24 @@ class MainWindow(IOTABaseFrame):
     :param e: event object for self.input_window.opt_btn_import
     :return: modifies self.iota_phil with updated parameters
     """
-    imp_dialog = dlg.ImportWindow(self,
-                                  phil=self.iota_phil,
-                                  title='Import Options',
-                                  style=wx.DEFAULT_DIALOG_STYLE | wx.STAY_ON_TOP)
-    imp_dialog.Fit()
+    if self.gparams.advanced.processing_backend == 'cctbx.xfel':
+      imp_dialog = dlg.ImportWindow(self,
+                                    phil=self.iota_phil,
+                                    title='Import Options',
+                                    style=wx.DEFAULT_DIALOG_STYLE |
+                                          wx.STAY_ON_TOP)
+      imp_dialog.Fit()
+    elif self.gparams.advanced.processing_backend == 'ha14':
+      imp_dialog = dlg.HA14ImportWindow(self,
+                                        phil=self.iota_phil,
+                                        title='Import Options',
+                                        style=wx.DEFAULT_DIALOG_STYLE |
+                                              wx.STAY_ON_TOP)
+      imp_dialog.Fit()
+    else:
+      imp_dialog = None
 
-    if (imp_dialog.ShowModal() == wx.ID_OK):
+    if (imp_dialog and imp_dialog.ShowModal() == wx.ID_OK):
       self.iota_phil = self.iota_phil.fetch(source=imp_dialog.import_phil)
     imp_dialog.Destroy()
 
@@ -304,11 +321,11 @@ class MainWindow(IOTABaseFrame):
 
     # For deprecated cctbx.xfel HA14 options
     elif self.gparams.advanced.processing_backend == 'ha14':
-      int_dialog = dlg.OldBackendOptions(self,
-                                         phil=self.iota_phil,
-                                         target=self.target_phil,
-                                         title='cctbx.xfel HA14 Options',
-                                         style=wx.DEFAULT_DIALOG_STYLE |
+      int_dialog = dlg.HA14BackendOptions(self,
+                                          phil=self.iota_phil,
+                                          target=self.target_phil,
+                                          title='cctbx.xfel HA14 Options',
+                                          style=wx.DEFAULT_DIALOG_STYLE |
                                           wx.STAY_ON_TOP | wx.RESIZE_BORDER)
       int_dialog.SetMinSize((600, -1))
       int_dialog.Fit()
@@ -316,7 +333,7 @@ class MainWindow(IOTABaseFrame):
       int_dialog = None
 
     # Get values and set parameters
-    if int_dialog and (int_dialog.ShowModal() == wx.ID_OK):
+    if (int_dialog and int_dialog.ShowModal() == wx.ID_OK):
       self.iota_phil = self.iota_phil.fetch(source=int_dialog.proc_phil)
       self.target_phil = int_dialog.target_phil
       int_dialog.Destroy()
@@ -327,18 +344,29 @@ class MainWindow(IOTABaseFrame):
     :return: modifies self.iota_phil with updated parameters
     """
 
-    an_dialog = dlg.AnalysisWindow(self,
-                                   phil=self.iota_phil,
-                                   title='Dataset Analysis Options',
-                                   style=wx.DEFAULT_DIALOG_STYLE |
-                                         wx.STAY_ON_TOP | wx.RESIZE_BORDER)
-    an_dialog.SetMinSize((600, -1))
-    an_dialog.Fit()
+    if self.gparams.advanced.processing_backend == 'cctbx.xfel':
+      an_dialog = dlg.AnalysisWindow(self,
+                                     phil=self.iota_phil,
+                                     title='Dataset Analysis Options',
+                                     style=wx.DEFAULT_DIALOG_STYLE |
+                                           wx.STAY_ON_TOP | wx.RESIZE_BORDER)
+    elif self.gparams.advanced.processing_backend == 'ha14':
+      an_dialog = dlg.HA14AnalysisWindow(self,
+                                         phil=self.iota_phil,
+                                         title='Dataset Analysis Options',
+                                         style=wx.DEFAULT_DIALOG_STYLE |
+                                               wx.STAY_ON_TOP | wx.RESIZE_BORDER)
+    else:
+      an_dialog = None
 
-    # Get values and set parameters
-    if (an_dialog.ShowModal() == wx.ID_OK):
-      self.iota_phil = self.iota_phil.fetch(source=an_dialog.viz_phil)
-    an_dialog.Destroy()
+    if an_dialog:
+      an_dialog.SetMinSize((600, -1))
+      an_dialog.Fit()
+
+      # Get values and set parameters
+      if (an_dialog.ShowModal() == wx.ID_OK):
+        self.iota_phil = self.iota_phil.fetch(source=an_dialog.viz_phil)
+      an_dialog.Destroy()
 
   def init_settings(self):
     # Grab params from main window class
@@ -353,7 +381,6 @@ class MainWindow(IOTABaseFrame):
     self.gparams.description = util.noneset(
       self.input_window.project_title.ctr.GetValue())
     self.gparams.output = self.input_window.project_folder.ctr.GetValue()
-    self.gparams.mp.n_processors = self.input_window.opt_spc_nprocs.ctr.GetValue()
 
     # Format main IOTA PHIL
     self.iota_phil = self.iota_phil.format(python_object=self.gparams)
@@ -374,12 +401,6 @@ class MainWindow(IOTABaseFrame):
     info.AddDocWriter('Art Lyubimov')
     info.AddTranslator('Art Lyubimov')
     wx.adv.AboutBox(info)
-
-  def onInput(self, e):
-    if self.input_window.inp_box.ctr.GetValue() != '':
-      self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
-    else:
-      self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
 
   def onRecovery(self, e):
     # Find finished runs and display results
@@ -408,11 +429,19 @@ class MainWindow(IOTABaseFrame):
       int_path = selected[1]
       init_file = os.path.join(int_path, 'init.cfg')
 
+      rec_init = None
       if os.path.isfile(init_file):
-        rec_init = ep.load(init_file)
-        tmp_phil = inp.master_phil.format(python_object=rec_init.params)
-        self.iota_phil = self.iota_phil.fetch(source=tmp_phil)
-      else:
+        try:
+          rec_init = ep.load(init_file)
+          tmp_phil = rec_init.iota_phil
+        except Exception:
+          pass
+        else:
+          fixer = inp.PHILFixer()
+          tmp_phil.show()
+          self.iota_phil = fixer.run(old_phil=tmp_phil)
+
+      if not rec_init:
         rec_init = UIInitAll()
         rec_init.int_base = int_path
         rec_init.obj_base = os.path.join(int_path, 'image_objects')
@@ -466,14 +495,13 @@ class MainWindow(IOTABaseFrame):
                                       phil=self.iota_phil)
     init = UIInitAll()
 
+    init.iota_phil = self.iota_phil
     if self.target_phil:
       init.target_phil = self.target_phil
     init.input_list = input_list
     self.proc_window.run(init)
 
     if self.proc_window.good_to_go:
-      self.term_file = self.proc_window.tmp_abort_file
-
       self.proc_window.place_and_size(set_by='parent')
       self.proc_window.SetTitle('Image Processing Run {}' \
                                 ''.format(int(os.path.basename(init.int_base))))
@@ -498,14 +526,9 @@ class MainWindow(IOTABaseFrame):
 
       # Save target PHIL file, if a PHIL script exists
       if self.target_phil is not None:
-        if self.gparams.advanced.processing_backend == 'ha14':
-          phil_filepath = os.path.join(os.path.dirname(script_filepath),
-                                       'cctbx_ha14.phil')
-          self.gparams.cctbx_ha14.target = phil_filepath
-        if self.gparams.advanced.processing_backend == 'cctbx.xfel':
-          phil_filepath = os.path.join(os.path.dirname(script_filepath),
-                                       'cctbx_xfel.phil')
-          self.gparams.cctbx_xfel.target = phil_filepath
+        fn = '{}.phil'.format(self.gparams.advanced.processing_backend.replace('.', '_'))
+        phil_filepath = os.path.join(os.path.dirname(script_filepath), fn)
+        self.gparams.cctbx_xfel.target = phil_filepath
 
       # Generate text of params
       final_phil = self.iota_phil.format(python_object=self.gparams)
@@ -531,38 +554,24 @@ class MainWindow(IOTABaseFrame):
     if load_dlg.ShowModal() == wx.ID_OK:
       self.load_script(load_dlg.GetPaths()[0])
 
-  def load_script(self, filepath, update_input_window=True):
-    """
-    Clears settings and loads new settings from IOTA param file
+  def load_script(self, filepath, reset=True, update_input_window=True):
+    '''Clears settings and loads new settings from IOTA param file
 
-    :param update_input_window:
-    :param filepath: path to script file
-    :return:
-    """
+    :param filepath: path to IOTA parameter file
+    :param update_input_window: set to True to update input window with settings
+    :return: None
+    '''
 
-    self.reset_settings()
-    # Extract params from file
-    with open(filepath, 'r') as pf:
-      phil_string = '\n'.join(pf.readlines())
-    user_phil = ip.parse(phil_string)
+    if reset:
+      self.reset_settings()
 
-    phil_fixer = inp.PHILFixer()
-
-    self.iota_phil = phil_fixer.run(old_phil=user_phil)
+    self.iota_phil = inp.process_ui_input(input_source=filepath, args=self.args,
+                                          phil_args=self.phil_args, mode='file')
     self.prefs_phil = self.iota_phil
-
     self.gparams = self.iota_phil.extract()
 
-    # Pass on param PHIL to input window
-    self.input_window.input_phil = self.iota_phil
-
     # Pass on target PHIL (if found) to input window
-    if self.gparams.advanced.processing_backend == 'ha14':
-      target = self.gparams.cctbx_ha14.target
-    elif self.gparams.advanced.processing_backend == 'cctbx.xfel':
-      target = self.gparams.cctbx_xfel.target
-    else:
-      target = None
+    target = self.gparams.cctbx_xfel.target
 
     if target:
       try:
@@ -615,9 +624,6 @@ class MainWindow(IOTABaseFrame):
     for inp_path in self.gparams.input:
       if inp_path is not None:
         self.input_window.input.add_item(inp_path)
-
-    # Number of processors
-    self.input_window.opt_spc_nprocs.ctr.SetValue(self.gparams.mp.n_processors)
 
     # PHILs
     self.input_window.input_phil = self.iota_phil
@@ -684,7 +690,7 @@ class UIInitAll(InitBase):
     if self.target_phil is None:
       self.target_phil, _ = inp.write_defaults(current_path=self.params.output,
                                                write_param_file=False,
-                                               method='current')
+                                               method='cctbx.xfel')
 
     # If input list for some reason isn't transmitted from main window, make it
     if self.input_list is None:

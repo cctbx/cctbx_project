@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 11/05/2018
+Last Changed: 11/29/2018
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -24,6 +24,64 @@ from dials.command_line.refine_bravais_settings import \
   bravais_lattice_to_space_group_table
 
 import iota.components.iota_utils as util
+
+cctbx_str = '''
+cctbx_xfel
+  .help = Options for diffraction image processing with current cctbx.xfel
+{
+  target = None
+    .type = str
+    .multiple = False
+    .help = Target (.phil) file with integration parameters for DIALS
+  target_space_group = None
+    .type = space_group
+    .help = Target space (or point) group (if known)
+  target_unit_cell = None
+    .type = unit_cell
+    .help = Target unit cell parameters (if known)
+  use_fft3d = True
+    .type = bool
+    .help = Set to True to use FFT3D in indexing
+  significance_filter
+    .help = Set to True and add value to determine resolution based on I/sigI
+  {
+    flag_on = True
+      .type = bool
+      .help = Set to true to activate significance filter
+    sigma = 1.0
+      .type = float
+      .help = Sigma level to determine resolution cutoff
+  }
+  determine_sg_and_reindex = True
+    .type = bool
+    .help = Will determine sg and reindex if no target space group supplied
+  auto_threshold = False
+    .type = bool
+    .help = Set to True to estimate global threshold for each image
+  filter
+      .help = Throw out results that do not fit user-defined parameters
+    {
+      flag_on = False
+        .type = bool
+        .help = Set to True to activate prefilter
+      target_pointgroup = None
+        .type = str
+        .help = Target point group, e.g. "P4"
+      target_unit_cell = None
+        .type = unit_cell
+        .help = In format of "a, b, c, alpha, beta, gamma", e.g. 79.4, 79.4, 38.1, 90.0, 90.0, 90.0
+      target_uc_tolerance = None
+        .type = float
+        .help = Maximum allowed unit cell deviation from target
+      min_reflections = None
+        .type = int
+        .help = Minimum integrated reflections per image
+      min_resolution = None
+        .type = float
+        .help = Minimum resolution for accepted images
+    }
+}
+'''
 
 class IOTADialsProcessor(Processor):
   """ Subclassing the Processor module from dials.stills_process to introduce
@@ -134,6 +192,7 @@ class IOTADialsProcessor(Processor):
 
       easy_pickle.dump(self.phil.output.integration_pickle, self.frame)
 
+# TODO: Bring this one back!
 # class Triage(object):
 #   """ Performs quick spotfinding (with mostly defaults) and determines if the number of
 #       found reflections is above the minimum, and thus if the image should be accepted
@@ -289,7 +348,7 @@ class Integrator():
     if self.params.cctbx_xfel.auto_threshold:
       threshold = int(self.img_object.center_int)
       self.phil.spotfinder.threshold.dispersion.global_threshold = threshold
-    if self.params.advanced.estimate_gain:
+    if self.params.image_import.estimate_gain:
       self.phil.spotfinder.threshold.dispersion.gain = self.img_object.gain
 
   def find_spots(self):
@@ -338,7 +397,7 @@ class Integrator():
         self.find_spots()
 
         # Apply minimum Bragg peaks cutoff
-        if len(self.observed) < self.params.cctbx_xfel.minimum_Bragg_peaks:
+        if len(self.observed) < self.params.image_import.minimum_Bragg_peaks:
           msg = " TOO FEW ({}) SPOTS FOUND! ".format(len(self.observed))
           self.img_object.fail = 'failed triage'
         else:
@@ -431,7 +490,7 @@ class Integrator():
       I_over_sigI = Is / sigmas
       spots = len(Is)
       strong_spots = len([i for i in I_over_sigI if
-                          i >= self.params.cctbx_ha14.selection.min_sigma])
+            i >= self.params.image_import.strong_sigma])
 
       # Mosaicity parameters
       mosaicity = round((self.frame.get('ML_half_mosaicity_deg', [0])[0]), 6)

@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 11/21/2018
+Last Changed: 11/29/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -84,37 +84,20 @@ class JobSubmitThread(Thread):
 
     # New processing submit: run iota_process.py in all cases w/ different
     # commands
-    queue = params.mp.queue
-    nproc = params.mp.n_processors
-    iter_path = os.path.join(output_folder, 'iter.cfg')
     init_path = os.path.join(output_folder, 'init.cfg')
+    backend = params.advanced.processing_backend
 
-    # TODO: Write a generic queueing dialog
-    if params.mp.method == 'lsf':
-      # Command for submission to LCLS queue
-      logfile = os.path.join(output_folder, 'bsub.log')
-      pid = os.getpid()
-      try:
-        user = os.getlogin()
-      except OSError:
-        user = 'iota'
-      self.job_id = 'J_{}{}'.format(user[0], pid)
-      self.command = 'bsub -o {} -q {} -n {} -J {} ' \
-                     'iota.process {} --files {} --stopfile {} --mode ui' \
-                     ''.format(logfile, queue, nproc, self.job_id,
-                               init_path, iter_path, abort_file)
-    elif params.mp.method == 'torq':
-      sub_string = '{} --files {} --stopfile {} --mode ui' \
-                   ''.format(init_path, iter_path, abort_file)
-      self.command = 'qsub -e /dev/null -o /dev/null -d {} iota.process -F "{}"' \
-                     ''.format(params.output, sub_string)
+    iota_cmd = 'iota.process {}'.format(init_path)
+    if params.mp.submit_command:
+      self.command = params.mp.submit_command.replace('<iota_command>', iota_cmd)
     else:
-      # Command for submission to multiprocessing
-      self.command = 'iota.process {} --files {} --stopfile {} ' \
-                     '--mode ui'.format(init_path, iter_path, abort_file)
+      self.command = iota_cmd
 
   def abort(self):
-    self.job.kill_thread()
+    if self.params.mp.kill_command:
+      kill = CustomRun(command=self.params.mp.kill_command)
+    else:
+      self.job.kill_thread()
 
   def run(self):
     if self.command is not None:
@@ -587,7 +570,8 @@ class PRIMEThread(Thread):
 
   def abort(self):
     # TODO: put in an LSF kill command
-    self.job.kill_thread()
+    if hasattr(self, 'job'):
+      self.job.kill_thread()
 
   def run(self):
     # Generate PRIME input

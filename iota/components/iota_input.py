@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 11/05/2018
+Last Changed: 11/29/2018
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -11,9 +11,11 @@ Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
 
 import os
 import iotbx.phil as ip
-from iota.components.iota_utils import convert_phil_to_text
 
-master_phil = ip.parse("""
+from iota.components.iota_utils import convert_phil_to_text
+from iota.components.iota_processing import cctbx_str
+
+master_phil_str = """
 description = None
   .type = str
   .help = Run description (optional).
@@ -25,17 +27,28 @@ input = None
   .help = Path to folder with raw data in pickle format, list of files or single file
   .help = Can be a tree with folders
   .optional = False
-output = None
+output = $PWD
   .type = path
   .multiple = False
-  .help = Base output directory, current directory in command-line, can be set in GUI
-  .optional = True
+  .help = Base output directory
 image_import
-  .help = Parameters for image importing (for current cctbx.xfel only!)
+  .help = Parameters for image importing (& triage)
 {
+  image_triage = True
+    .type = bool
+    .help = Perform a round of spotfinding to see if image has diffraction
+  minimum_Bragg_peaks = 10
+    .type = int
+    .help = Minimum number of Bragg peaks to establish diffraction
+  strong_sigma = 5.0
+    .type = float
+    .help = Sigma level to define a strong reflection
   mask = None
     .type = path
     .help = Mask for ignored pixels
+  estimate_gain = False
+    .type = bool
+    .help = Estimates detector gain (helps improve spotfinding)
   beamstop = 0
     .type = float
     .help = Beamstop shadow threshold, zero to skip
@@ -51,65 +64,6 @@ image_import
     y = 0
       .type = int
   }
-}
-cctbx_xfel
-  .help = Options for DIALS-based image processing
-  .help = This option is not yet ready for general use!
-{
-  target = None
-    .type = str
-    .multiple = False
-    .help = Target (.phil) file with integration parameters for DIALS
-  target_space_group = None
-    .type = space_group
-    .help = Target space (or point) group (if known)
-  target_unit_cell = None
-    .type = unit_cell
-    .help = Target unit cell parameters (if known)
-  use_fft3d = True
-    .type = bool
-    .help = Set to True to use FFT3D in indexing
-  significance_filter
-    .help = Set to True and add value to determine resolution based on I/sigI
-  {
-    flag_on = True
-      .type = bool
-      .help = Set to true to activate significance filter
-    sigma = 1.0
-      .type = float
-      .help = Sigma level to determine resolution cutoff
-  }
-  minimum_Bragg_peaks = 10
-    .type = int
-    .help = Minimum number of Bragg peaks to establish diffraction
-  determine_sg_and_reindex = True
-    .type = bool
-    .help = Will determine sg and reindex if no target space group supplied
-  auto_threshold = False
-    .type = bool
-    .help = Set to True to estimate global threshold for each image
-  filter
-      .help = Used to throw out integration results that do not fit user-defined unit cell information
-    {
-      flag_on = False
-        .type = bool
-        .help = Set to True to activate prefilter
-      target_pointgroup = None
-        .type = str
-        .help = Target point group, e.g. "P4"
-      target_unit_cell = None
-        .type = unit_cell
-        .help = In format of "a, b, c, alpha, beta, gamma", e.g. 79.4, 79.4, 38.1, 90.0, 90.0, 90.0
-      target_uc_tolerance = None
-        .type = float
-        .help = Maximum allowed unit cell deviation from target
-      min_reflections = None
-        .type = int
-        .help = Minimum integrated reflections per image
-      min_resolution = None
-        .type = float
-        .help = Minimum resolution for accepted images
-    }
 }
 analysis
   .help = "Analysis / visualization options."
@@ -146,12 +100,6 @@ advanced
   processing_backend = *cctbx.xfel ha14
     .type = choice
     .help = Choose image processing backend software
-  estimate_gain = False
-    .type = bool
-    .help = Estimates detector gain (helps improve spotfinding)
-  flip_beamXY = False
-    .type = bool
-    .help = flip beamX and beamY parameters when modifying image
   debug = False
     .type = bool
     .help = Used for various debugging purposes.
@@ -180,228 +128,148 @@ advanced
       .type = bool
     number = 0
       .type = int
-      .help = Number of random samples. Set to zero to select 10% of input.
+      .help = Number of images in random sample
   }
-}
-gui
-  .help = Options for IOTA GUI only
-{
-  image_viewer = *dials.image_viewer cctbx.image_viewer distl.image_viewer cxi.view
-    .type = choice
-    .help = Select image viewer (GUI only)
-  monitor_mode = False
-    .type = bool
-    .help = Set to true to keep watch for incoming images (GUI only)
-  monitor_mode_timeout = False
-    .type = bool
-    .help = Set to true to auto-terminate continuous mode (GUI only)
-  monitor_mode_timeout_length = 0
-    .type = int
-    .help = Timeout length in seconds (GUI only)
 }
 mp
   .help = Multiprocessing options
 {
-  n_processors = 32
+  n_processors = 0
     .type = int
     .help = No. of processing units
-  method = *multiprocessing mpi lsf torq
+  method = *multiprocessing mpi lsf torq custom
     .type = choice
     .help = Multiprocessing method
   queue = None
     .type = str
     .help = Multiprocessing queue
-}
-cctbx_ha14
-  .help = Settings for a 2014 version of cctbx.xfel (DEPRECATED!)
-{
-  target = None
+  submit_command = None
     .type = str
-    .multiple = False
-    .help = Target (.phil) file with integration parameters
-  resolution_limits
-    .help = Sets several resolution limits in Labelit settings
-  {
-    low = 50.0
-      .type = float
-    high = 1.5
-      .type = float
-  }
-  target_lattice_type = *None triclinic monoclinic orthorhombic tetragonal rhombohedral hexagonal cubic
-    .type = choice
-    .help = Target Bravais lattice type if known
-  target_centering_type = *None P C I R F
-    .type = choice
-    .help = Target lattice centering type if known
-  target_unit_cell = None
-    .type = unit_cell
-    .help = Target unit cell parameters (if known)
-  image_conversion
-    .help = Parameters for raw image conversion to pickle format
-  {
-    rename_pickle = None keep_file_structure *auto_filename custom_filename
-      .type = choice
-      .help = "keep_file_structure" retains the input filenames w/ folder tree
-      .help = "auto_filename" is <your_login_name>_<conversion_run>_<#####>
-    rename_pickle_prefix = None
-      .type = str
-      .help = Will only be used in conjunction with "custom_filename"
-    convert_only = False
-      .type = bool
-      .help = Set to True (or use -c option) to convert and exit
-    square_mode = None no_modification *pad crop
-      .type = choice
-      .help = Method to generate square image
-  }
-  image_triage
-    .help = Check if images have diffraction using basic spotfinding (-t option)
-  {
-    type = None no_triage *simple grid_search
-      .type = choice
-      .help = Set to None to attempt integrating all images
-    min_Bragg_peaks = 10
-      .type = int
-      .help = Minimum number of Bragg peaks to establish diffraction
-    grid_search
-      .help = "Parameters for the grid search."
-    {
-      area_min = 6
-        .type = int
-        .help = Minimal spot area.
-      area_max = 24
-        .type = int
-        .help = Maximal spot area.
-      height_min = 2
-        .type = int
-        .help = Minimal spot height.
-      height_max = 20
-        .type = int
-        .help = Maximal spot height.
-      step_size = 4
-        .type = int
-        .help = Grid search step size
-    }
-  }
-  grid_search
-    .help = "Parameters for the grid search."
-  {
-    type = None no_grid_search *brute_force smart
-      .type = choice
-      .help = Set to None to only use median spotfinding parameters
-    area_median = 5
-      .type = int
-      .help = Median spot area.
-    area_range = 2
-      .type = int
-      .help = Plus/minus range for spot area.
-    height_median = 4
-      .type = int
-      .help = Median spot height.
-    height_range = 2
-      .type = int
-      .help = Plus/minus range for spot height.
-    sig_height_search = False
-      .type = bool
-      .help = Set to true to scan signal height in addition to spot height
-  }
-  selection
-    .help = Parameters for integration result selection
-  {
-    select_only
-      .help = set to True to re-do selection with previous
-      {
-      flag_on = False
-        .type = bool
-        .help = set to True to bypass grid search and just run selection
-      grid_search_path = None
-        .type = path
-        .help = set if you want to use specific grid_search results
-        .help = leave as None to use grid search results from previous run
-      }
-    min_sigma = 5
-      .type = int
-      .help = minimum I/sigma(I) cutoff for "strong spots"
-    select_by = *epv mosaicity
-      .type = choice
-      .help = Use mosaicity or Ewald proximal volume for optimal parameter selection
-    prefilter
-      .help = Used to throw out integration results that do not fit user-defined unit cell information
-    {
-      flag_on = False
-        .type = bool
-        .help = Set to True to activate prefilter
-      target_pointgroup = None
-        .type = str
-        .help = Target point group, e.g. "P4"
-      target_unit_cell = None
-        .type = unit_cell
-        .help = In format of "a, b, c, alpha, beta, gamma", e.g. 79.4, 79.4, 38.1, 90.0, 90.0, 90.0
-      target_uc_tolerance = None
-        .type = float
-        .help = Maximum allowed unit cell deviation from target
-      min_reflections = None
-        .type = int
-        .help = Minimum integrated reflections per image
-      min_resolution = None
-        .type = float
-        .help = Minimum resolution for accepted images
-    }
-  }
+    .help = Command to submit IOTA job to a queue
+  kill_command = None
+    .type = str
+    .help = Command to kill the current IOTA job submitted to a queue
 }
-""")
+"""
 
-def process_input(args,
-                  phil_args,
-                  input_file,
-                  mode='auto',
-                  now=None):
-  """ Read and parse parameter file and/or command-line args; if none found,
-  create a default parameter object
+master_phil = ip.parse(master_phil_str + cctbx_str, process_includes=True)
 
-  :param args: command-line arguments upon launch
-  :param phil_args: command-line arguments pertaining to IOTA parameters
-  :param input_file: text file with IOTA parameters
-  :param mode: Mode of XtermIOTA run. See the InitAll base class
-  :param now: date / time stamp
-  :return: PHIL-formatted parameters
-  """
-
+def get_input_phil(input_source=None, phil_args=None, mode='auto',
+                   ha14=False, gui=False):
+  ''' Generate PHIL from file, master, and/or command arguments
+  :param args: command line arguments
+  :param phil_args: PHIL settings as command line arguments
+  :param input_source: file with input settings in PHIL format
+  :param mode:
+  :return:
+  '''
   from libtbx.phil.command_line import argument_interpreter
   from libtbx.utils import Sorry
 
   # Depending on mode, either read input from file, or generate defaults
   if mode == 'file':
-    user_phil = [ip.parse(open(inp).read()) for inp in [input_file]]
-    working_phil = master_phil.fetch(sources=user_phil)
+    with open(input_source, 'r') as inpf:
+      user_phil = ip.parse(inpf.read())
+    phil_fixer = PHILFixer()
+    working_phil = phil_fixer.run(old_phil=user_phil, write_file=True)
   else:
-    working_phil = master_phil
+    if ha14:
+      from iota.components.iota_cctbx_ha14 import ha14_str
+      working_phil = ip.parse(master_phil_str + ha14_str, process_includes=True)
+    else:
+      working_phil = master_phil
+
+  if gui:
+    from libtbx.phil import find_scope
+    if not find_scope(working_phil, 'gui'):
+      from iota.components.iota_ui_base import gui_phil
+      working_phil.adopt_scope(gui_phil)
 
   # Parse in-line params into phil
-  argument_interpreter = argument_interpreter(master_phil=master_phil)
-  consume = []
-  for arg in phil_args:
-    try:
-      command_line_params = argument_interpreter.process(arg=arg)
-      working_phil = working_phil.fetch(sources=[command_line_params,])
-      consume.append(arg)
-    except Sorry,e:
-      pass
-  for item in consume:
-    phil_args.remove(item)
-  if len(phil_args) > 0:
-    raise Sorry("Not all arguments processed, remaining: {}".format(phil_args))
+  if phil_args:
+    argument_interpreter = argument_interpreter(master_phil=working_phil)
+    for arg in phil_args:
+      try:
+        command_line_params = argument_interpreter.process(arg=arg)
+        working_phil = working_phil.fetch(sources=[command_line_params,])
+        phil_args.remove(arg)
+      except Sorry:
+        pass
+    if len(phil_args) > 0:
+      raise Sorry("Not all arguments processed, remaining: {}".format(phil_args))
+
+  # Self-fetch to resolve variables
+  return working_phil.fetch(source=working_phil)
+
+def process_ui_input(args, phil_args, input_source, mode='auto'):
+  ''' Read and parse parameter file and/or command-line args for IOTA GUI
+
+  :param args: command-line arguments upon launch
+  :param phil_args: command-line arguments pertaining to IOTA parameters
+  :param input_source: text file with IOTA parameters
+  :return:
+  '''
+  working_phil = get_input_phil(phil_args=phil_args, input_source=input_source,
+                                mode=mode, gui=True)
+  params = working_phil.extract()
+
+  # Check for -r option and set random subset parameter
+  if args.random > 0:
+    params.advanced.random_sample.flag_on = True
+    params.advanced.random_sample.number = args.random[0]
+
+  if args.watch > 0:
+    params.gui.monitor_mode = True
+    params.gui.monitor_mode_timeout = True
+    params.gui.monitor_mode_timeout_length = args.watch[0]
+
+  if args.tmp is not None:
+    params.advanced.temporary_output_folder = args.tmp[0]
+
+  # Check for -n option and set number of processors override
+  # (for parallel map only, for now)
+  from multiprocessing import cpu_count
+  max_proc = cpu_count() - 2
+  if args.nproc > 0:
+    if args.nproc >= max_proc:
+      params.mp.n_processors = max_proc
+    else:
+      params.mp.n_processors = args.nproc[0]
+  elif params.mp.method == 'multiprocessing':
+    if (params.mp.n_processors >= max_proc or
+            params.mp.n_processors == 0):
+      params.mp.n_processors = int(max_proc / 2)
+
+  return working_phil.format(python_object=params)
+
+def process_input(args, phil_args, input_source, mode='auto', now=None):
+  """ Read and parse parameter file and/or command-line args; if none found,
+  create a default parameter object
+
+  :param args: command-line arguments upon launch
+  :param phil_args: command-line arguments pertaining to IOTA parameters
+  :param input_source: text file with IOTA parameters (if 'file' mode) or
+                       source of images (if 'auto' mode)
+  :param mode: Mode of XtermIOTA run. See the InitAll base class
+  :param now: date / time stamp
+  :return: PHIL-formatted parameters
+  """
+
+  working_phil = get_input_phil(phil_args=phil_args, ha14=args.ha14,
+                                mode=mode, input_source=input_source)
 
   # Perform command line check and modify params accordingly
   params = working_phil.extract()
+  if args.ha14:
+    params.advanced.processing_backend = 'ha14'
 
   if mode == 'auto':
     output_dir = os.path.abspath(os.curdir)
-    if params.advanced.processing_backend == 'cctbx.xfel':
-      params.cctbx_xfel.target = os.path.join(output_dir, 'cctbx_xfel.phil')
-    elif params.advanced.processing_backend == 'ha14':
-      params.cctbx_ha14.target = os.path.join(output_dir, 'cctbx_ha14.phil')
+    target_filename = '{}.phil'.format(
+      params.advanced.processing_backend.replace('.', '_'))
+    params.cctbx_xfel.target = os.path.join(output_dir, target_filename)
     params.description = 'IOTA parameters auto-generated on {}'.format(now)
-    params.input = [input_file]
+    params.input = [input_source]
     params.output = output_dir
 
   # Check for -r option and set random subset parameter
@@ -414,38 +282,18 @@ def process_input(args,
   if args.nproc > 0:
     params.mp.n_processors = args.nproc[0]
 
-  # Check for -c option and set flags to exit IOTA after raw image conversion
-  if args.convert:
-    params.cctbx_ha14.image_conversion.convert_only = True
-
-  # Check -p option to see if converted file prefix is supplied; will run
-  # conversion automatically if prefix is supplied
-  if str(args.prefix).lower() != "auto":
-    params.cctbx_ha14.image_conversion.convert_images = True
-    params.cctbx_ha14.image_conversion.rename_pickle_prefix = args.prefix
-
-  #Check -s option to bypass grid search and run selection/integration only
-  if args.select:
-    params.cctbx_ha14.selection.select_only.flag_on = True
-
-  # Check if grid search is turned off; if so, set everything to zero
-  if str(params.cctbx_ha14.grid_search.type).lower() == 'none':
-    params.cctbx_ha14.grid_search.area_range = 0
-    params.cctbx_ha14.grid_search.height_range = 0
-    params.cctbx_ha14.grid_search.sig_height_search = False
-
-  final_phil = master_phil.format(python_object=params)
+  final_phil = working_phil.format(python_object=params)
 
   if mode == 'auto':
-    txt_out = convert_phil_to_text(final_phil)
-    write_defaults(os.path.abspath(os.curdir), txt_out,
+    write_defaults(os.path.abspath(os.curdir), final_phil.as_str(),
                    params.advanced.processing_backend)
 
   return final_phil
 
 
-def write_defaults(current_path=None, txt_out=None, method='current',
-                   write_target_file=True, write_param_file=True):
+def write_defaults(current_path=None, txt_out=None, method='cctbx_xfel',
+                   write_target_file=True, write_param_file=True,
+                   filepath=None):
   """ Generates list of default parameters for a reasonable target file:
         - old cctbx.xfel (HA14) now deprecated, but can still be used
         - also writes out the IOTA parameter file.
@@ -458,9 +306,14 @@ def write_defaults(current_path=None, txt_out=None, method='current',
   :return: default backend settings as list, IOTA parameters as string
   """
 
+  if filepath:
+    def_target_file = filepath
+  else:
+    def_target_file = '{}/{}.phil' \
+                      ''.format(current_path, method.replace('.', '_'))
+
   if method.lower() in ('cctbx', 'ha14'):
     # This is a deprecated backend from 2014; no longer recommended, may suck
-    def_target_file = '{}/cctbx_ha14.phil'.format(current_path)
     default_target = ['# -*- mode: conf -*-',
                       'difflimit_sigma_cutoff = 0.01',
                       'distl{',
@@ -490,8 +343,7 @@ def write_defaults(current_path=None, txt_out=None, method='current',
                       'distl_permit_binning=False',
                       'beam_search_scope=0.5'
                       ]
-  elif method.lower() in ('dials', 'current', 'cctbx.xfel'):
-    def_target_file = '{}/cctbx_xfel.phil'.format(current_path)
+  elif method.lower() in ('dials', 'cctbx.xfel'):
     default_target = ['verbosity=10',
                       'spotfinder {',
                       '  threshold {',
@@ -587,14 +439,11 @@ class PHILFixer():
   def __init__(self):
 
     self.diffs = [
-      ('cctbx', 'cctbx_ha14'),
-      ('dials', 'cctbx_xfel'),
-      ('image_triage', 'cctbx_ha14.cctbx_ha14.image_triage'),
-      ('image_conversion', 'cctbx_ha14.cctbx_ha14.image_conversion'),
-      ('image_conversion.beamstop', 'image_import.beamstop'),
-      ('image_conversion.distance', 'image_import.distance'),
-      ('image_conversion.mask', 'image_import.mask'),
-      ('image_conversion.beam_center', 'image_import.beam_center'),
+      ('image_triage.min_Bragg_peaks', 'image_import.miminum_Bragg_peaks'),
+      ('cctbx_xfel.minimum_Bragg_peaks', 'image_import.miminum_Bragg_peaks'),
+      ('cctbx_xfel.strong_sigma', 'image_import.strong_sigma'),
+      ('cctbx_xfel.selection.min_sigma', 'image_import.strong_sigma'),
+      ('image_conversion', 'image_import'),
       ('integrate_with', 'processing_backend'),
       ('n_processors', 'mp.n_processors'),
       ('mp_method', 'mp.method'),
@@ -618,22 +467,41 @@ class PHILFixer():
                                               track_unused_definitions=True)
     return new_phil, wrong_defs
 
-  def make_changes(self, wrong_defs):
+  def make_changes(self, wrong_defs, backend='cctbx_xfel'):
     """ Find paths that have changed and change them to new paths
 
     :return: 'user phil' object with corrected paths
     """
     from libtbx.phil import strings_from_words
     fix_txt = ''
+    fixed_defs = []
+
+    # Change old paths to new paths
     for l in wrong_defs:
       path = l.path
-      object = l.object
-
-      # Change paths to new paths
       for fix in self.diffs:
         if fix[0] in path:
           new_path = path.replace(fix[0], fix[1])
           value = strings_from_words(l.object.words)
+          value = self.check_values(new_path, value)
+          if type(value) == list:
+            value = ' '.join(value)
+          entry = '{} = {}\n'.format(new_path, value)
+          fix_txt += entry
+          fixed_defs.append(l)
+
+    # Change backend to the appropriate version
+    remaining_defs = list(set(wrong_defs) - set(fixed_defs))
+    if backend == 'ha14':
+      backend_defs = ['cctbx', 'cctbx_ha14']
+    else:
+      backend_defs = ['dials']
+    for r in remaining_defs:
+      path = r.path
+      for bd in backend_defs:
+        if bd in path:
+          new_path = path.replace(bd, 'cctbx_xfel')
+          value = strings_from_words(r.object.words)
           value = self.check_values(new_path, value)
           if type(value) == list:
             value = ' '.join(value)
@@ -646,7 +514,6 @@ class PHILFixer():
     for wd in self.word_diffs:
       if wd[0] in path:
         if type(value) == list:
-          # value = [v.replace(wd[1], wd[2]) if wd[1] in v else v for v in value]
           for v in value:
             if wd[1] == v.replace('*', ''):
               value[value.index(v)]= v.replace(wd[1], wd[2])
@@ -655,52 +522,97 @@ class PHILFixer():
           value = wd[2]
     return value
 
-  def fix_old_phil(self, phil):
-    """ Backwards compatibility: convert settings from old format to new """
+  # def fix_ha14_params(self, params):
+  #   # Renaming of imported images
+  #   if not hasattr(params.cctbx_ha14.image_conversion, 'rename_pickle'):
+  #     prefix = params.cctbx_ha14.image_conversion.rename_pickle_prefix
+  #     if 'none' in str(prefix).lower():
+  #       params.cctbx_ha14.image_conversion.__inject__('rename_pickle',
+  #                                          'keep_file_structure')
+  #       params.cctbx_ha14.image_conversion.rename_pickle_prefix = None
+  #     elif 'auto' in str(prefix).lower():
+  #       params.cctbx_ha14.image_conversion.__inject__('rename_pickle', 'auto_filename')
+  #       params.cctbx_ha14.image_conversion.rename_pickle_prefix = None
+  #     else:
+  #       params.cctbx_ha14.image_conversion.__inject__('rename_pickle', 'custom_filename')
+  #       if hasattr(prefix, '__iter__'):
+  #         if len(prefix) > 1:
+  #           params.cctbx_ha14.image_conversion.rename_pickle_prefix = \
+  #             [i for i in prefix if "*" in i][0].replace('*', '')
+  #         else:
+  #           params.cctbx_ha14.image_conversion.rename_pickle_prefix = prefix[0]
+  #
+  #   if str(params.cctbx_ha14.image_conversion.square_mode).lower() == 'none':
+  #     params.cctbx_ha14.image_conversion.square_mode = 'no_modification'
+  #
+  #   if str(params.cctbx_ha14.image_triage.type).lower() == 'none':
+  #     params.cctbx_ha14.image_triage.type = 'no_triage'
+  #
+  #   if str(params.cctbx_ha14.grid_search.type).lower() == 'none':
+  #     params.cctbx_ha14.grid_search.type = 'no_grid_search'
+  #
+  # def fix_old_phil(self, phil):
+  #   """ Backwards compatibility: convert settings from old format to new """
+  #
+  #   temp_phil = master_phil.fetch(source=phil)
+  #   params = temp_phil.extract()
+  #
+  #   if str(params.analysis.viz).lower() == 'none':
+  #     params.analysis.viz = 'no_visualization'
+  #
+  #   fixed_phil = temp_phil.format(python_object=params)
+  #
+  #   return fixed_phil
 
-    temp_phil = master_phil.fetch(source=phil)
-    params = temp_phil.extract()
+  def determine_backend(self, phil=None, prm=None):
+    # Try to get parameter for backend type (for backwards compatibility)
+    if phil and not prm:
+      prm = phil.extract()
 
-    # Renaming of imported images
-    if not hasattr(params.cctbx_ha14.image_conversion, 'rename_pickle'):
-      prefix = params.cctbx_ha14.image_conversion.rename_pickle_prefix
-      if 'none' in str(prefix).lower():
-        params.cctbx_ha14.image_conversion.__inject__('rename_pickle',
-                                           'keep_file_structure')
-        params.cctbx_ha14.image_conversion.rename_pickle_prefix = None
-      elif 'auto' in str(prefix).lower():
-        params.cctbx_ha14.image_conversion.__inject__('rename_pickle', 'auto_filename')
-        params.cctbx_ha14.image_conversion.rename_pickle_prefix = None
-      else:
-        params.cctbx_ha14.image_conversion.__inject__('rename_pickle', 'custom_filename')
-        if hasattr(prefix, '__iter__'):
-          if len(prefix) > 1:
-            params.cctbx_ha14.image_conversion.rename_pickle_prefix = \
-              [i for i in prefix if "*" in i][0].replace('*', '')
-          else:
-            params.cctbx_ha14.image_conversion.rename_pickle_prefix = prefix[0]
+    backend = None
+    try:
+      backend = prm.advanced.processing_backend
+    except AttributeError:
+      backend = prm.advanced.integrate_with
+    finally:
+      if backend and type(backend) == list:
+        for b in backend:
+          if b.startswith('*'):
+            backend = b[1:]
+            break
+      return backend
 
-    if str(params.cctbx_ha14.image_conversion.square_mode).lower() == 'none':
-      params.cctbx_ha14.image_conversion.square_mode = 'no_modification'
+  def create_current_phil(self, phil):
+    # Create master PHIL based on backend and settings
+    if phil.__class__.__name__ == 'scope_extract':
+      backend = self.determine_backend(prm=phil)
+    elif phil.__class__.__name__ == 'scope':
+      backend = self.determine_backend(phil=phil)
+    else:
+      return None
 
-    if str(params.cctbx_ha14.image_triage.type).lower() == 'none':
-      params.cctbx_ha14.image_triage.type = 'no_triage'
+    if not backend:
+      return None
 
-    if str(params.cctbx_ha14.grid_search.type).lower() == 'none':
-      params.cctbx_ha14.grid_search.type = 'no_grid_search'
+    if backend.lower() in ('ha14', 'cctbx'):
+      from iota.components.iota_cctbx_ha14 import ha14_str
+      new_phil = ip.parse(master_phil_str + ha14_str)
+    else:
+      new_phil = master_phil
 
-    if str(params.analysis.viz).lower() == 'none':
-      params.analysis.viz = 'no_visualization'
+    # Append GUI PHIL if it should be there:
+    from libtbx.phil import find_scope
+    gui_phil = find_scope(phil, 'gui')
+    if gui_phil:
+      from iota.components.iota_ui_base import gui_phil
+      new_phil.adopt_scope(gui_phil)
 
-    fixed_phil = temp_phil.format(python_object=params)
+    return new_phil
 
-    return fixed_phil
-
-
-  def run(self, old_phil, current_phil=None):
+  def run(self, old_phil, current_phil=None, write_file=False):
 
     if not current_phil:
-      current_phil = master_phil
+      current_phil = self.create_current_phil(phil=old_phil)
 
     # Get mismatched definitions
     new_phil, wrong_defs = self.read_in_phil(old_phil=old_phil,
@@ -708,8 +620,16 @@ class PHILFixer():
 
     # If no mismatches found, return PHIL, else, fix it
     if not wrong_defs:
-      return new_phil
+      fixed_phil = new_phil
     else:
-      phil_fixes = self.make_changes(wrong_defs)
+      backend = self.determine_backend(phil=current_phil)
+      phil_fixes = self.make_changes(wrong_defs, backend=backend)
       fixed_phil = new_phil.fetch(source=phil_fixes)
-      return fixed_phil
+
+      if write_file:
+        fixed_filepath = '{}/iota_fixed.param'.format(
+          os.path.abspath(os.curdir))
+        with open(fixed_filepath, 'w') as default_param_file:
+          default_param_file.write(fixed_phil.as_str())
+
+    return fixed_phil

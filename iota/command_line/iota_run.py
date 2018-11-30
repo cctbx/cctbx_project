@@ -4,10 +4,11 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 11/05/2018
+Last Changed: 11/29/2018
 Description : IOTA command-line module.
 '''
 import os
+from contextlib import contextmanager
 
 from iota import iota_version
 from iota.components.iota_init import XInitAll
@@ -45,6 +46,15 @@ beam stop shadow.
 
 """
 
+@contextmanager  # Will print start / stop messages around some processes
+def prog_message(msg, msg2=None):
+  cmd.Command.start(msg)
+  yield
+  if msg2:
+    cmd.Command.end('{} -- DONE'.format(msg2))
+  else:
+    cmd.Command.end('{} -- DONE'.format(msg))
+
 class XProcessAll(ProcessingThreadBase):
   """ Process module customized for command line use """
   def __init__(self, init, iterable, stage, abort_file):
@@ -54,7 +64,7 @@ class XProcessAll(ProcessingThreadBase):
 
     # Initialize importer and processor depending on backend
     if init.params.advanced.processing_backend == 'ha14':
-      from iota.components.iota_image import OldImageImporter as Importer
+      from iota.components.iota_cctbx_ha14 import ImageImporter as Importer
       from iota.components.iota_cctbx_ha14 import Integrator
     else:
       from iota.components.iota_image import ImageImporter as Importer
@@ -79,15 +89,9 @@ class XProcessAll(ProcessingThreadBase):
     if self.stage == 'import':    # Import Images
       self.create_image_iterable()
 
-      if self.init.params.cctbx_ha14.selection.select_only.flag_on:
-        msg = "Reading {} image objects".format(len(self.init.gs_img_objects))
-        title = 'READING IMAGE OBJECTS'
-      else:
-        msg = "Importing {} images".format(len(self.init.input_list))
-        title = 'IMPORTING IMAGES'
-      cmd.Command.start(msg)
+      cmd.Command.start("Importing {} images".format(len(self.init.input_list)))
       self.prog_count = 0
-      self.gs_prog = cmd.ProgressBar(title=title)
+      self.gs_prog = cmd.ProgressBar(title='IMPORTING IMAGES')
       self.run_process()
 
       # Remove rejected images from image object list
@@ -97,30 +101,24 @@ class XProcessAll(ProcessingThreadBase):
 
 
       # Exit if none of the images have diffraction
-      if str(self.init.params.cctbx_ha14.image_triage.type).lower() != 'none':
-        if len(acc_img_objects) == 0:
-          util.main_log(self.init.logfile, 'No images have diffraction!', True)
-          util.iota_exit()
-        else:
-          util.main_log(self.init.logfile,
-                        "{} out of {} images have diffraction "
-                        "(at least {} Bragg peaks)"
-                        "".format(len(acc_img_objects),
-                                  len(self.img_objects),
-                                  self.init.params.cctbx_ha14.image_triage.min_Bragg_peaks))
-          self.stage = 'process'
-
-      # Check for -c option and exit if true
-      if self.init.params.cctbx_ha14.image_conversion.convert_only:
+      if len(acc_img_objects) == 0:
+        util.main_log(self.init.logfile, 'No images have diffraction!', True)
         util.iota_exit()
+      else:
+        util.main_log(self.init.logfile,
+                      "{} out of {} images have diffraction "
+                      "(at least {} Bragg peaks)"
+                      "".format(len(acc_img_objects),
+                                len(self.img_objects),
+                                self.init.params.image_import.minimum_Bragg_peaks))
+        self.stage = 'process'
 
     # Process Images
     self.create_image_iterable()
-    cmd.Command.start("Processing {} images".format(len(self.iterable)))
-    self.prog_count = 0
-    self.gs_prog = cmd.ProgressBar(title='PROCESSING')
-    self.run_process()
-    cmd.Command.end("Processing {} images -- DONE".format(len(self.iterable)))
+    with prog_message("Processing {} images".format(len(self.iterable))):
+      self.prog_count = 0
+      self.gs_prog = cmd.ProgressBar(title='PROCESSING')
+      self.run_process()
 
     # Analysis of integration results
     final_objects = [i for i in self.img_objects if i.fail is None]

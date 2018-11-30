@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 11/21/2018
+Last Changed: 11/29/2018
 Description : IOTA GUI controls
 '''
 
@@ -104,9 +104,14 @@ class GradButton(mb.MetallicButton):
     """
     if not self.IsEnabled() :
       return
-    pos = evt.GetPosition()
-    self.SetState(GRADIENT_PRESSED)
-    size = self.GetSize()
+    if wx.__version__[0] == '4':
+      pos = evt.GetPosition()
+      self.SetState(GRADIENT_PRESSED)
+      size = self.GetSize()
+    else:
+      pos = evt.GetPositionTuple()
+      self.SetState(GRADIENT_PRESSED)
+      size = self.GetSizeTuple()
     if pos[0] >= size[0] - 16:
       if self._menu is not None:
         self.ShowMenu()
@@ -120,8 +125,12 @@ class GradButton(mb.MetallicButton):
     if not self.IsEnabled() :
       return
     if self._state['cur'] == GRADIENT_PRESSED:
-      pos = evt.GetPosition()
-      size = self.GetSize()
+      if wx.__version__[0] == '4':
+        pos = evt.GetPosition()
+        size = self.GetSize()
+      else:
+        pos = evt.GetPositionTuple()
+        size = self.GetSizeTuple()
       if self._disable_after_click > 0 :
         self.Enable(False)
       self.__PostEvent()
@@ -427,24 +436,32 @@ class TextCtrlWithButtons(CtrlBase):
   def __init__(self, parent,
                buttons = None,
                button_size = wx.DefaultSize,
+               button_style = wx.BU_AUTODRAW,
                ctrl_value = '',
                ctrl_size = wx.DefaultSize,
-               ctrl_label = ''):
+               ctrl_label = '',
+               ctrl_label_size=wx.DefaultSize):
     CtrlBase.__init__(self, parent=parent)
 
     main_sizer = wx.FlexGridSizer(1, 3, 0, 15)
 
-    self.txt_label = wx.StaticText(self, label=ctrl_label, size=ctrl_size)
-    self.txt_ctrl = wx.TextCtrl(self)
+    self.txt_label = wx.StaticText(self, label=ctrl_label, size=ctrl_label_size)
+    self.txt_ctrl = wx.TextCtrl(self, size=ctrl_size,
+                                style=wx.TE_PROCESS_ENTER | wx.TE_DONTWRAP)
     self.txt_ctrl.SetValue(ctrl_value)
     main_sizer.Add(self.txt_label)
     main_sizer.Add(self.txt_ctrl, flag=wx.EXPAND)
 
     if buttons is not None:
       btn_sizer = wx.FlexGridSizer(1, len(buttons), 0, 0)
-      for key, id in buttons:
+      for key, id in buttons.items():
         btn_name = 'btn_{}'.format(str.lower(key))
-        button = wx.Button(self, label=key, id=id, size=button_size)
+        if type(id[1]) == str:
+          button = wx.Button(self, label=id[1], id=id[0], size=button_size,
+                             style=button_style)
+        else:
+          button = GradButton(self, bmp=id[1], start_color=(250, 250, 250),
+                              size=(28, 28), gradient_percent=0)
         self.__setattr__(btn_name, button)
         btn_sizer.Add(button, flag=wx.RIGHT, border=5)
       main_sizer.Add(btn_sizer)
@@ -901,7 +918,8 @@ class CustomListCtrl(CtrlBase):
                                    ulc.ULC_VRULES |
                                    ulc.ULC_SINGLE_SEL |
                                    ulc.ULC_HAS_VARIABLE_ROW_HEIGHT |
-                                   ulc.ULC_NO_HIGHLIGHT)
+                                   ulc.ULC_NO_HIGHLIGHT |
+                                   ulc.ULC_FOOTER)
     self.control_sizer.Add(self.ctr, -1, flag=wx.EXPAND)
     self.sizer.Add(self.control_sizer, 1, flag=wx.EXPAND)
 

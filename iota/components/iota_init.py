@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 11/05/2018
+Last Changed: 11/29/2018
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -13,6 +13,7 @@ import os
 import argparse
 import time
 assert time
+from contextlib import contextmanager
 
 import dials.util.command_line as cmd
 
@@ -39,25 +40,29 @@ def parse_command_args(iver, help_message):
             help = 'Output a file (input.lst) with input image paths and stop')
   parser.add_argument('-w', '--watch', action = 'store_true',
             help = 'Run IOTA in watch mode - check for new images')
-  parser.add_argument('-c', '--convert', action = 'store_true',
-            help = 'Convert raw images to pickles and stop')
   parser.add_argument('-f', '--full', action = 'store_true',
             help = 'Run IOTA in "full-processing" mode (advanced)')
   parser.add_argument('-d', '--default', action = 'store_true',
             help = 'Generate default settings files and stop')
-  parser.add_argument('-p', '--prefix', type=str, default="Auto",
-            help = 'Specify custom prefix for converted pickles')
-  parser.add_argument('-s', '--select', action = 'store_true',
-            help = 'Selection only, no grid search')
-  parser.add_argument('-r', type=int, nargs=1, default=0, dest='random',
-            help = 'Run IOTA with a random subset of images, e.g. "-r 5"')
-  parser.add_argument('-n', type=int, nargs=1, default=0, dest='nproc',
+  parser.add_argument('--ha14', action = 'store_true',
+            help = 'Run IOTA with old HA14 backend')
+  parser.add_argument('-random', type=int, nargs=1, default=0,
+            help = 'Size of randomized subset, e.g. "--random 10"')
+  parser.add_argument('--range', type=str, nargs='?', default=None,
+            help = 'Range of images, e.g."--range 1-5,25,200-250"')
+  parser.add_argument('-n', '--nproc', type=int, nargs=1, default=0,
             help = 'Specify a number of cores for a multiprocessor run"')
   parser.add_argument('--mpi', type=str, nargs='?', const=None, default=None,
             help = 'Specify stage of process - for MPI only')
   parser.add_argument('--analyze', type=str, nargs='?', const=None, default=None,
             help = 'Use for analysis only; specify run number or folder')
   return parser
+
+@contextmanager    # Will print start / stop messages around some processes
+def prog_message(msg):
+  cmd.Command.start(msg)
+  yield
+  cmd.Command.end('{} -- DONE'.format(msg))
 
 
 class XInitAll(InitBase):
@@ -95,11 +100,9 @@ class XInitAll(InitBase):
         print ('Run #{} not found'.format(analysis_source))
 
     if os.path.isdir(int_folder):
-
-      cmd.Command.start("Analyzing results in {}".format(int_folder))
-      int_list = [os.path.join(int_folder, i) for i in os.listdir(int_folder)]
-      img_objects = [ep.load(i) for i in int_list if i.endswith('.int')]
-      cmd.Command.end("Analyzing results -- DONE")
+      with prog_message('Analyzing Results'):
+        int_list = [os.path.join(int_folder, i) for i in os.listdir(int_folder)]
+        img_objects = [ep.load(i) for i in int_list if i.endswith('.int')]
 
       self.logfile = os.path.abspath(os.path.join(int_folder, 'iota.log'))
       self.viz_base = os.path.join('/'.join(int_folder.split('/')),
@@ -215,15 +218,9 @@ class XInitAll(InitBase):
 
     # Call function to read input folder structure (or input file) and
     # generate list of image file paths
-    if self.params.cctbx_ha14.selection.select_only.flag_on:
-      cmd.Command.start("Importing saved grid search results")
-      self.gs_img_objects = self.make_int_object_list()
-      self.input_list = [i.conv_img for i in self.gs_img_objects]
-      cmd.Command.end("Importing saved grid search results -- DONE")
-    else:
-      cmd.Command.start("Reading input files")
+
+    with prog_message("Reading input files"):
       self.input_list = self.make_input_list()
-      cmd.Command.end("Reading input files -- DONE")
 
     # Select range of images/objects if turned on
     if self.params.advanced.image_range.flag_on:
@@ -232,13 +229,10 @@ class XInitAll(InitBase):
     # Pick a randomized subset of images/objects if turned on
     if self.params.advanced.random_sample.flag_on and \
             self.params.advanced.random_sample.number < len(self.input_list):
-      cmd.Command.start("Selecting {} random images out of {} found"
+      with prog_message("Selecting {} random images out of {} found"
                         "".format(self.params.advanced.random_sample.number,
-                                  len(self.input_list)))
-      self.input_list = self.select_random_subset(self.input_list)
-      cmd.Command.end("Selecting {} random images out of {} found -- DONE"
-                        "".format(self.params.advanced.random_sample.number,
-                                  len(self.input_list)))
+                                  len(self.input_list))):
+        self.input_list = self.select_random_subset(self.input_list)
 
       # Check for -l option, output list of input files and exit
     if self.args.list:

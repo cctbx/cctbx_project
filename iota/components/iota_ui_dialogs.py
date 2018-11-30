@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/21/2018
+Last Changed: 11/29/2018
 Description : IOTA GUI Dialogs
 '''
 
@@ -55,56 +55,76 @@ class IOTAPreferences(BaseDialog):
                content_style='normal',
                *args, **kwargs):
     dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
+    self.parent = parent
 
     BaseDialog.__init__(self, parent, style=dlg_style,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, 500),
+                        size=(600, 800),
                         *args, **kwargs)
 
     # Import current PHIL and set params to current values
     if phil is None:
-      self.params = master_phil.extract()
-    else:
-      self.params = phil.extract()
-    self.method = self.params.mp.method
-    self.queue = self.params.mp.queue
-    self.monitor_mode = self.params.gui.monitor_mode
-    self.mm_timeout = self.params.gui.monitor_mode_timeout
-    self.mm_timeout_len = self.params.gui.monitor_mode_timeout_length
-    self.random_subset = self.params.advanced.random_sample.flag_on
-    self.random_subset_number = self.params.advanced.random_sample.number
-    self.image_range = self.params.advanced.image_range.flag_on
-    self.image_range_string = self.params.advanced.image_range.range
+      from iota.components.iota_ui_base import gui_phil
+      phil = master_phil.adopt(gui_phil)
+
+    self.params = phil.extract()
 
     # Queue Preferences
-    queue_box = wx.StaticBox(self, label='Multiprocessing Preferences')
-    queue_sizer = wx.StaticBoxSizer(queue_box, wx.VERTICAL)
+    mp_box = wx.StaticBox(self, label='Multiprocessing Preferences')
+    mp_sizer = wx.StaticBoxSizer(mp_box, wx.VERTICAL)
 
-    mp_choices = ['multiprocessing', 'lsf', 'torq']
+    self.opt_spc_nprocs = ct.SpinCtrl(self,
+                                      label='No. Processors: ',
+                                      label_size=(120, -1),
+                                      ctrl_min = 1,
+                                      ctrl_value = 1)
+    mp_sizer.Add(self.opt_spc_nprocs, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
+                    border=10)
+
+    mp_choices = ['multiprocessing', 'lsf', 'torq', 'custom']
     self.mp_methods = ct.ChoiceCtrl(self,
                                     label='Method:',
                                     label_size=(120, -1),
                                     label_style='bold',
                                     ctrl_size=wx.DefaultSize,
                                     choices=mp_choices)
-    queue_sizer.Add(self.mp_methods, flag=wx.ALL,border=10)
+    mp_sizer.Add(self.mp_methods, flag=wx.ALL,border=10)
 
-    q_choices = ['psanaq', 'psnehq', 'psfehq'] + ['custom']
+    q_choices = ['psanaq', 'psnehq', 'psfehq',
+                 'psnehprioq', 'psnehhiprioq',
+                 'psfehprioq', 'psfehhiprioq'] + ['custom']
     self.queues = ct.ChoiceCtrl(self,
                                 label='Queue:',
                                 label_size=(120, -1),
                                 label_style='bold',
                                 ctrl_size=wx.DefaultSize,
                                 choices=q_choices)
-    queue_sizer.Add(self.queues, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
+    mp_sizer.Add(self.queues, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
                     border=10)
 
     self.custom_queue = ct.OptionCtrl(self, items=[('cqueue', '')],
                                       label='Custom Queue:',
                                       label_size=(120, -1), ctrl_size=(150, -1))
-    queue_sizer.Add(self.custom_queue, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
+    mp_sizer.Add(self.custom_queue, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
                     border=10)
+
+    info_bmp = bitmaps.fetch_icon_bitmap('actions', 'info', size=16)
+    self.submit_cmd = ct.TextCtrlWithButtons(self,
+                                             buttons={'info': (-1, info_bmp)},
+                                             ctrl_label='Submit Command: ',
+                                             ctrl_label_size=(120, -1),
+                                             ctrl_size=(300, -1))
+    mp_sizer.Add(self.submit_cmd, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM |
+                                       wx.EXPAND, border=10)
+
+    self.kill_cmd = ct.TextCtrlWithButtons(self,
+                                           buttons={'info': (-1, info_bmp)},
+                                           ctrl_label='Kill Command: ',
+                                           ctrl_label_size=(120, -1),
+                                           ctrl_size=(300, -1))
+    mp_sizer.Add(self.kill_cmd, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM |
+                                     wx.EXPAND, border=10)
 
     # Advanced Preferences
     adv_box = wx.StaticBox(self, label='Advanced Preferences')
@@ -175,7 +195,7 @@ class IOTAPreferences(BaseDialog):
                                     buttons=True)
     adv_sizer.Add(self.temp_folder, flag=wx.ALL | wx.EXPAND, border=10)
 
-    self.main_sizer.Add(queue_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(adv_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
@@ -186,12 +206,20 @@ class IOTAPreferences(BaseDialog):
 
     self.Bind(wx.EVT_CHOICE, self.onQueue, self.queues.ctr)
     self.Bind(wx.EVT_CHOICE, self.onMethod, self.mp_methods.ctr)
+    self.Bind(wx.EVT_CHOICE, self.onBackend, self.proc_backend.ctr)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
     self.Bind(wx.EVT_CHECKBOX, self.onMonitor, self.chk_cont_mode)
     self.Bind(wx.EVT_CHECKBOX, self.onTimeout, self.chk_mm_timeout)
     self.Bind(wx.EVT_BUTTON, self.onTempBrowse, self.temp_folder.btn_browse)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onCustomQueue, self.custom_queue.cqueue)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onSubmitCommand, self.submit_cmd.txt_ctrl)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onKillCommand, self.kill_cmd.txt_ctrl)
+    self.Bind(wx.EVT_BUTTON, self.onCmdInfo, self.submit_cmd.btn_info)
+    self.Bind(wx.EVT_BUTTON, self.onKillInfo, self.kill_cmd.btn_info)
+    self.Bind(wx.EVT_SPINCTRL, self.onNumProcessors, self.opt_spc_nprocs.ctr)
 
     self.Fit()
+    self.set_choices()
 
   def onTempBrowse(self, e):
     """ On clicking the Browse button: show the DirDialog and populate 'Output'
@@ -203,17 +231,41 @@ class IOTAPreferences(BaseDialog):
     dlg.Destroy()
 
   def set_choices(self):
+    self.n_processors = self.params.mp.n_processors
+    self.method = self.params.mp.method
+    self.queue = self.params.mp.queue
+    self.monitor_mode = self.params.gui.monitor_mode
+    self.mm_timeout = self.params.gui.monitor_mode_timeout
+    self.mm_timeout_len = self.params.gui.monitor_mode_timeout_length
+    self.random_subset = self.params.advanced.random_sample.flag_on
+    self.random_subset_number = self.params.advanced.random_sample.number
+    self.image_range = self.params.advanced.image_range.flag_on
+    self.image_range_string = self.params.advanced.image_range.range
+    self.submit_command = self.params.mp.submit_command
+    self.kill_command = self.params.mp.kill_command
+
     # Set queue to default value
-    if self.queue is None:
-      self.queue = 'None'
-    inp_queue = self.queues.ctr.FindString(self.queue)
-    if inp_queue != wx.NOT_FOUND:
-      self.queues.ctr.SetSelection(inp_queue)
-    else:
-      self.custom_queue.Enable()
-      self.custom_queue.cqueue.SetValue(self.queue)
-      custom_sel = self.queues.ctr.FindString('custom')
-      self.queues.ctr.SetSelection(custom_sel)
+    self.opt_spc_nprocs.ctr.SetValue(self.n_processors)
+
+    # Set method/queue states
+    if self.method == 'lsf':
+      if self.queue is None:
+        self.queues.ctr.SetSelection(0)
+        self.queue = self.queues.ctr.GetString(0)
+      inp_queue = self.queues.ctr.FindString(self.queue)
+      if inp_queue != wx.NOT_FOUND:
+        self.queues.ctr.SetSelection(inp_queue)
+      else:
+        self.custom_queue.Enable()
+        self.custom_queue.cqueue.SetValue(self.queue)
+        custom_sel = self.queues.ctr.FindString('custom')
+        self.queues.ctr.SetSelection(custom_sel)
+    elif self.method == 'multiprocessing':
+      self.queues.Disable()
+      self.custom_queue.Disable()
+
+    # Set commands
+    self.set_command(set_from_params=True)
 
     # Set method to default value
     inp_method = self.mp_methods.ctr.FindString(noneset(self.method))
@@ -222,7 +274,6 @@ class IOTAPreferences(BaseDialog):
     self.check_method()
 
     # Set backend values
-
     if self.params.advanced.processing_backend == 'cctbx.xfel':
       pos = 0
     elif self.params.advanced.processing_backend == 'ha14':
@@ -265,20 +316,124 @@ class IOTAPreferences(BaseDialog):
     if self.params.advanced.temporary_output_folder is not None:
       self.temp_folder.ctr.SetValue(self.params.advanced.temporary_output_folder)
 
-
   def onMethod(self, e):
     self.check_method()
+
+  def onNumProcessors(self, e):
+    self.n_processors = self.opt_spc_nprocs.ctr.GetValue()
+    self.set_command()
 
   def check_method(self):
     choice = self.mp_methods.ctr.GetString(self.mp_methods.ctr.GetSelection())
     if choice == 'lsf':
       self.queues.Enable()
       queue = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
-      if queue == 'custom':
-        self.custom_queue.Enable()
+      if queue:
+        if queue == 'custom':
+          self.custom_queue.Enable()
+        else:
+          self.queue = queue
+      else:
+        self.queue = self.queues.ctr.GetString(0)
+        self.queues.ctr.SetSelection(0)
+
     else:
       self.queues.Disable()
       self.custom_queue.Disable()
+    self.method = self.mp_methods.ctr.GetString(self.mp_methods.ctr.GetSelection())
+    self.set_command()
+
+  def set_command(self, set_from_params=False):
+    if set_from_params:
+      if not self.submit_command:
+        self.submit_command = '<iota_command>'
+      if not self.kill_command:
+        self.kill_command = ''
+      self.submit_cmd.txt_ctrl.SetValue(self.submit_command)
+      self.kill_cmd.txt_ctrl.SetValue(self.kill_command)
+    else:
+      self.submit_command = '<iota_command>'
+      self.kill_command = ''
+
+      if self.method == 'lsf':
+        logfile = os.path.join(os.curdir, 'bsub.log')
+        pid = os.getpid()
+        try:
+          user = os.getlogin()
+        except OSError:
+          user = 'iota'
+        job_id = 'J_{}{}'.format(user[0], pid)
+        self.submit_command = 'bsub -o {} -q {} -n {:.0f} -J {} {}' \
+                       ''.format(logfile, self.queue, self.n_processors,
+                                 job_id, self.submit_command)
+        self.kill_command = 'bkill -J {}'.format(job_id)
+
+    self.submit_cmd.txt_ctrl.SetValue(self.submit_command)
+    self.kill_cmd.txt_ctrl.SetValue(self.kill_command)
+
+  def onSubmitCommand(self, e):
+    custom_command = self.submit_cmd.txt_ctrl.GetValue()
+    if custom_command != self.submit_command:
+      mb = wx.MessageDialog(self, caption='Edited Submission Command',
+                            message='Is this the submission command you want?',
+                            style=wx.YES_NO | wx.ICON_QUESTION)
+      if mb.ShowModal() == wx.ID_YES:
+        if custom_command == '':
+          self.submit_command = '<iota_command>'
+        else:
+          self.submit_command = custom_command
+          self.method.ctr.SetSelection(self.method.ctr.FindString('custom'))
+          self.queues.Disable()
+          self.custom_queue.Disable()
+
+    self.submit_cmd.txt_ctrl.SetValue(self.submit_command)
+
+    # Auto-generate kill command from submit string (for LSF only)
+    if 'bsub' in self.submit_command:
+      pieces = self.submit_command.rsplit()
+      for i in pieces:
+        idx = pieces.index(i)
+        if i == '-J':
+          self.kill_command = "bkill {} {}".format(i, pieces[idx + 1])
+          break
+
+  def onKillCommand(self, e):
+    custom_kill = self.kill_cmd.txt_ctrl.GetValue()
+    if custom_kill != self.kill_command:
+      mb = wx.MessageDialog(self, caption='Edited Kill Command',
+                            message='Custom Kill command may not work at intended! Are you sure? ',
+                            style=wx.YES_NO | wx.ICON_QUESTION)
+      if mb.ShowModal() == wx.ID_YES:
+        if custom_kill == '':
+          self.kill_command = None
+        else:
+          self.kill_command = custom_kill
+      else:
+        self.kill_command.txt_ctrl.SetValue(self.kill_command)
+
+  def onCmdInfo(self, e):
+    info_msg = '''This is a submission command for the processing script; an IOTA command (typically a call to iota.process) will be inserted in place of <iota_command>, which can be preceded and/or followed by any additional commands required to submit the IOTA processing script to a processing queue. It is also possible to insert one's own IOTA command if desired.
+
+Example: a command that submits an IOTA job to an LCLS queue would look like this:
+
+  bsub -o bsub.log -q psanaq -n 50 -J myJob2020 <iota_command>
+
+The above method and queue controls can be used to select some of the most common multiprocessing methods; the command string will be constructed automatically. A custom submit command can be supplied if a favorite method is not included in the choices, or if a different setting is desired.
+'''
+    wx.MessageBox(caption='Submit Command', message = info_msg,
+                  style=wx.OK | wx.ICON_INFORMATION)
+
+  def onKillInfo(self, e):
+    info_msg = '''This is a command that will abort any job submitted to the processing queue.
+
+Example: a command that will kill a specific job submitted to LCLS queue:
+
+    bkill -J myJob2020
+
+For multiprocessing on the same CPU on which IOTA is running, no special kill command is necessary'''
+
+    wx.MessageBox(caption='Submit Command', message = info_msg,
+                  style=wx.OK | wx.ICON_INFORMATION)
 
   def onQueue(self, e):
     choice = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
@@ -286,6 +441,16 @@ class IOTAPreferences(BaseDialog):
       self.custom_queue.Enable()
     else:
       self.custom_queue.Disable()
+      self.queue = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
+      self.set_command()
+
+  def onCustomQueue(self, e):
+    queue = self.custom_queue.cqueue.GetValue()
+    if queue == '':
+      wx.MessageBox('Please choose or enter a queue', wx.OK)
+    else:
+      self.queue = queue
+      self.set_command()
 
   def onMonitor(self, e):
     if self.chk_cont_mode.GetValue():
@@ -304,8 +469,30 @@ class IOTAPreferences(BaseDialog):
       self.opt_timeout.Disable()
       self.opt_timeout.timeout.SetValue('')
 
+  def onBackend(self, e):
+    # TODO: Make less clunky!
+    n_bck = self.proc_backend.ctr.GetSelection()
+    if n_bck == 1:
+      backend = 'ha14'
+    else:
+      backend = 'cctbx.xfel'
+
+    # Check if backend has changed and warn user
+    if self.params.advanced.processing_backend != backend:
+      msg = 'NOTE: The {} backend has been selected! Some of your settings ' \
+            'may have reverted to defaults. Do you wish to proceed?' \
+            ''.format(self.proc_backend.ctr.GetString(n_bck).upper())
+      b_mb = wx.MessageDialog(self, message=msg,
+                       caption='Backend Changed!',
+                       style=wx.ICON_EXCLAMATION | wx.YES_NO)
+      if b_mb.ShowModal() != wx.ID_YES:
+        if n_bck == 1:
+          self.proc_backend.ctr.SetSelection(0)
+        else:
+          self.proc_backend.ctr.SetSelection(1)
+
   def onOK(self, e):
-    # Get continous mode settings
+    # Monitor mode settings
     self.monitor_mode = self.chk_cont_mode.GetValue()
     self.mm_timeout = self.chk_mm_timeout.GetValue()
 
@@ -314,23 +501,7 @@ class IOTAPreferences(BaseDialog):
     else:
       self.mm_timeout_len = int(self.opt_timeout.timeout.GetValue())
 
-    self.method = self.mp_methods.ctr.GetString(self.mp_methods.ctr.GetSelection())
-    if self.method == 'lsf':
-      queue_selection = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
-      if queue_selection == 'custom':
-        if self.custom_queue.cqueue.GetValue() == '':
-          wx.MessageBox('Please choose or enter a queue', wx.OK)
-        else:
-          self.queue = self.custom_queue.cqueue.GetValue()
-      else:
-        self.queue = queue_selection
-    else:
-      self.queue = None
-
-    n_bck = self.proc_backend.ctr.GetSelection()
-    if n_bck == 0:
-      backend = 'cctbx.xfel'
-    elif n_bck == 1:
+    if self.proc_backend.ctr.GetSelection() == 1:
       backend = 'ha14'
     else:
       backend = 'cctbx.xfel'
@@ -348,12 +519,14 @@ class IOTAPreferences(BaseDialog):
     else:
       img_range = None
 
-
-    # test generation of PHIL settings
+    # Generate PHIL settings
     prefs_text = '\n'.join([
       'mp {',
-      'method = {}'.format(str(self.method)),
-      'queue = {}'.format(str(self.queue)),
+      '  n_processors = {}'.format(self.n_processors),
+      '  method = {}'.format(str(self.method)),
+      '  queue = {}'.format(str(self.queue)),
+      '  submit_command = {}'.format(str(self.submit_command)),
+      '  kill_command = {}'.format(noneset(self.kill_command)),
       '}',
       'gui {',
       '  image_viewer = {}'.format(viewer),
@@ -382,6 +555,179 @@ class IOTAPreferences(BaseDialog):
 
 
 class ImportWindow(BaseDialog):
+  # Import window - image import, modification and triage
+
+  def __init__(self, parent, phil,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    BaseDialog.__init__(self, parent,
+                        label_style=label_style,
+                        content_style=content_style,
+                        size=(600, 500),
+                        *args, **kwargs)
+
+    self.params = phil.extract()
+    self.import_phil = None
+
+    conv_box = wx.StaticBox(self, label='Image Conversion Options')
+    conv_box_sizer = wx.StaticBoxSizer(conv_box, wx.VERTICAL)
+
+    self.mod_beamstop = ct.OptionCtrl(self,
+                                      items=[('threshold', 0.0)],
+                                      label='Beamstop shadow threshold',
+                                      label_size=(200, -1),
+                                      ctrl_size=(100, -1))
+    conv_box_sizer.Add(self.mod_beamstop, flag=wx.ALL | wx.EXPAND, border=10)
+
+    self.mod_detZ = ct.OptionCtrl(self,
+                                  items=[('detZ', 0.0)],
+                                  label='Detector distance (mm):',
+                                  label_size=(200, -1),
+                                  ctrl_size=(100, -1))
+    conv_box_sizer.Add(self.mod_detZ, flag=wx.ALL | wx.EXPAND, border=10)
+
+    self.mod_beamXY = ct.OptionCtrl(self,
+                                    items=[('X', 0), ('Y', 0)],
+                                    label='Direct beam XY (pixels)',
+                                    label_size=(200, -1),
+                                    ctrl_size=(100, -1))
+    conv_box_sizer.Add(self.mod_beamXY, flag=wx.ALL | wx.EXPAND, border=10)
+
+    self.mod_mask = ct.InputCtrl(self,
+                                 label='Mask',
+                                 label_size=wx.DefaultSize,
+                                 buttons=True)
+    conv_box_sizer.Add(self.mod_mask, 1, flag=wx.ALL | wx.EXPAND, border=10)
+
+    self.estimate_gain = wx.CheckBox(self,
+                                     label='Estimate gain for each image')
+    self.estimate_gain.SetValue(False)
+    conv_box_sizer.Add(self.estimate_gain, flag=wx.ALL, border=10)
+
+    # Image triage options
+    trg_box = wx.StaticBox(self, label='Diffraction Triage Options')
+    trg_box_sizer = wx.StaticBoxSizer(trg_box, wx.VERTICAL)
+
+    self.img_triage = wx.CheckBox(self, label='Image triage')
+    trg_box_sizer.Add(self.img_triage, flag=wx.ALL | wx.EXPAND, border=10)
+    self.img_triage.SetValue(True)
+
+    self.min_bragg_peaks = ct.SpinCtrl(self,
+                                       label='Minimum Bragg peaks:',
+                                       label_size=(200, -1),
+                                       ctrl_size=(100, -1),
+                                       ctrl_min=5)
+    trg_box_sizer.Add(self.min_bragg_peaks, flag=wx.ALL | wx.EXPAND, border=10)
+
+    self.strong_sigma = ct.SpinCtrl(self,
+                                    label='Strong Spot Sigma Cutoff:',
+                                    label_size=(200, -1),
+                                    ctrl_size=(100, -1),
+                                    ctrl_min=1)
+    trg_box_sizer.Add(self.strong_sigma, flag=wx.ALL | wx.EXPAND, border=10)
+
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+
+    # Add all to main sizer
+    self.main_sizer.Add(conv_box_sizer, flag=wx.ALL | wx.EXPAND, border=15)
+    self.main_sizer.Add(trg_box_sizer, flag=wx.ALL | wx.EXPAND, border=15)
+    self.main_sizer.Add(dialog_box, flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                   border=10)
+
+    self.Bind(wx.EVT_CHECKBOX, self.onTriage, self.img_triage)
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+    self.Bind(wx.EVT_BUTTON, self.onMaskBrowse, self.mod_mask.btn_browse)
+    self.Bind(wx.EVT_BUTTON, self.onViewMask, self.mod_mask.btn_mag)
+
+    self.read_phil()
+
+  def onTriage(self, e):
+    if self.img_triage.GetValue():
+      self.min_bragg_peaks.Enable()
+    else:
+      self.min_bragg_peaks.Disable()
+
+  def onMaskBrowse(self, e):
+    dlg = wx.FileDialog(
+      self, message="Select mask file",
+      defaultDir=os.curdir,
+      defaultFile="*.pickle",
+      wildcard="*.pickle",
+      style=wx.FD_OPEN | wx.FD_CHANGE_DIR
+    )
+    if dlg.ShowModal() == wx.ID_OK:
+      filepath = dlg.GetPaths()[0]
+      self.mod_mask.ctr.SetValue(filepath)
+
+  def onViewMask(self, e):
+    import iota.components.iota_threads as thr
+    filepath = self.mod_mask.ctr.GetValue()
+    if os.path.isfile(filepath):
+      viewer = thr.ImageViewerThread(self,
+                                     viewer=self.params.gui.image_viewer,
+                                     file_string=filepath)
+      viewer.start()
+
+  def read_phil(self):
+    """ TODO: make PHIL reading more automated! """
+
+    # Image modification
+    if str(self.params.image_import.mask).lower() == 'none':
+      self.mod_mask.ctr.SetValue('')
+    else:
+      self.mod_mask.ctr.SetValue(str(self.params.image_import.mask))
+    self.mod_beamstop.threshold.SetValue(
+      str(self.params.image_import.beamstop))
+    self.mod_detZ.detZ.SetValue(str(self.params.image_import.distance))
+    self.mod_beamXY.X.SetValue(str(self.params.image_import.beam_center.x))
+    self.mod_beamXY.Y.SetValue(str(self.params.image_import.beam_center.y))
+
+    # Image modification
+    self.img_triage.SetValue(self.params.image_import.image_triage)
+    bragg_peaks = str(self.params.image_import.minimum_Bragg_peaks)
+    self.min_bragg_peaks.ctr.SetValue(int(bragg_peaks))
+    if self.img_triage.GetValue():
+      self.min_bragg_peaks.Enable()
+    else:
+      self.min_bragg_peaks.Disable()
+
+    self.strong_sigma.ctr.SetValue(int(self.params.image_import.strong_sigma))
+    self.estimate_gain.SetValue(self.params.image_import.estimate_gain)
+
+  def onOK(self, e):
+    """ Accept changes and populate the PHIL scope """
+
+    if self.mod_mask.ctr.GetValue() == '':
+      maskpath = None
+    else:
+      maskpath = self.mod_mask.ctr.GetValue()
+
+    self.phil_text = '\n'.join([
+    'image_import',
+    '{',
+    '  image_triage = {}'.format(self.img_triage.GetValue()),
+    '  minimum_Bragg_peaks = {}'.format(self.min_bragg_peaks.ctr.GetValue()),
+    '  strong_sigma = {}'.format(self.strong_sigma.ctr.GetValue()),
+    '  mask = {}'.format(maskpath),
+    '  estimate_gain = {}'.format(self.estimate_gain.GetValue()),
+    '  beamstop = {}'.format(self.mod_beamstop.threshold.GetValue()),
+    '  distance = {}'.format(self.mod_detZ.detZ.GetValue()),
+    '  beam_center',
+    '  {',
+    '    x = {}'.format(self.mod_beamXY.X.GetValue()),
+    '    y = {}'.format(self.mod_beamXY.Y.GetValue()),
+    '  }',
+    '}'
+    ])
+    self.import_phil = ip.parse(self.phil_text)
+    e.Skip()
+
+
+class HA14ImportWindow(BaseDialog):
   # Import window - image import, modification and triage
 
   def __init__(self, parent, phil,
@@ -448,45 +794,25 @@ class ImportWindow(BaseDialog):
                                  buttons=True)
     conv_box_sizer.Add(self.mod_mask, 1, flag=wx.ALL | wx.EXPAND, border=10)
 
+    self.estimate_gain = wx.CheckBox(self,
+                                     label='Estimate gain for each image')
+    self.estimate_gain.SetValue(False)
+    conv_box_sizer.Add(self.estimate_gain, flag=wx.ALL, border=10)
+
     # Image triage options
     trg_box = wx.StaticBox(self, label='Diffraction Triage Options')
     trg_box_sizer = wx.StaticBoxSizer(trg_box, wx.VERTICAL)
 
-    self.img_triage = ct.ChoiceCtrl(self,
-                                    label='Diffraction triage:',
-                                    choices=['no_triage', 'simple',
-                                             'grid_search'],
-                                    ctrl_size=(150, -1))
+    self.img_triage = wx.CheckBox(self, label='Image triage')
     trg_box_sizer.Add(self.img_triage, flag=wx.ALL | wx.EXPAND, border=10)
+    self.img_triage.SetValue(True)
 
-    self.min_bragg_peaks = ct.OptionCtrl(self,
-                                         items=[('n_bragg', 10)],
-                                         label='Minimum Bragg peaks:',
-                                         label_size=(200, -1),
-                                         ctrl_size=(100, -1))
+    self.min_bragg_peaks = ct.SpinCtrl(self,
+                                       label='Minimum Bragg peaks:',
+                                       label_size=(200, -1),
+                                       ctrl_size=(100, -1),
+                                       ctrl_min=5)
     trg_box_sizer.Add(self.min_bragg_peaks, flag=wx.ALL | wx.EXPAND, border=10)
-
-    self.triage_spot_height = ct.OptionCtrl(self,
-                                            items=[('min', ''), ('max', '')],
-                                            label='Triage spot height:',
-                                            label_size=(200, -1),
-                                            ctrl_size=(50, -1))
-    trg_box_sizer.Add(self.triage_spot_height, flag=wx.ALL | wx.EXPAND,
-                      border=10)
-
-    self.triage_spot_area = ct.OptionCtrl(self,
-                                            items=[('min', ''), ('max', '')],
-                                            label='Triage spot area:',
-                                            label_size=(200, -1),
-                                            ctrl_size=(50, -1))
-    trg_box_sizer.Add(self.triage_spot_area, flag=wx.ALL | wx.EXPAND, border=10)
-
-    self.triage_step_size = ct.OptionCtrl(self,
-                                          items=[('step', '')],
-                                          label='Grid search step:',
-                                          label_size=(200, -1),
-                                          ctrl_size=(50, -1))
-    trg_box_sizer.Add(self.triage_step_size, flag=wx.ALL | wx.EXPAND, border=10)
 
 
     # Dialog control
@@ -499,7 +825,7 @@ class ImportWindow(BaseDialog):
                    border=10)
 
     self.Bind(wx.EVT_CHOICE, self.onImageModChoice, self.mod_square.ctr)
-    self.Bind(wx.EVT_CHOICE, self.onTriageChoice, self.img_triage.ctr)
+    self.Bind(wx.EVT_CHECKBOX, self.onTriageChoice, self.img_triage)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
     self.Bind(wx.EVT_BUTTON, self.onMaskBrowse, self.mod_mask.btn_browse)
     self.Bind(wx.EVT_BUTTON, self.onViewMask, self.mod_mask.btn_mag)
@@ -514,8 +840,10 @@ class ImportWindow(BaseDialog):
       self.flip_beamxy.Disable()
 
   def onTriageChoice(self, e):
-    selection = self.img_triage.ctr.GetString(self.img_triage.ctr.GetSelection())
-    self.triage_choice(selection=selection)
+    if self.img_triage.GetValue():
+      self.min_bragg_peaks.Enable()
+    else:
+      self.min_bragg_peaks.Disable()
 
   def onMaskBrowse(self, e):
     dlg = wx.FileDialog(
@@ -538,47 +866,12 @@ class ImportWindow(BaseDialog):
                                      file_string=filepath)
       viewer.start()
 
-  def triage_choice(self, selection):
-
-    if str(self.params.cctbx_ha14.image_triage.type).lower() == 'none':
-      selection = 'no_triage'
-    self.img_triage.ctr.SetSelection(self.img_triage.ctr.FindString(selection))
-    if selection.lower() == 'no_triage':
-      self.min_bragg_peaks.Disable()
-      self.triage_spot_area.Disable()
-      self.triage_spot_height.Disable()
-      self.triage_step_size.Disable()
-    elif selection.lower() == 'simple':
-      self.min_bragg_peaks.Enable()
-      self.min_bragg_peaks.n_bragg.SetValue(
-        str(self.params.cctbx_ha14.image_triage.min_Bragg_peaks))
-      self.triage_spot_area.Disable()
-      self.triage_spot_height.Disable()
-      self.triage_step_size.Disable()
-    elif selection.lower() == 'grid_search':
-      self.min_bragg_peaks.Enable()
-      self.min_bragg_peaks.n_bragg.SetValue(
-        str(self.params.cctbx_ha14.image_triage.min_Bragg_peaks))
-      self.triage_spot_area.Enable()
-      self.triage_spot_area.min.SetValue(
-        str(self.params.cctbx_ha14.image_triage.grid_search.area_min))
-      self.triage_spot_area.max.SetValue(
-        str(self.params.cctbx_ha14.image_triage.grid_search.area_max))
-      self.triage_spot_height.Enable()
-      self.triage_spot_height.min.SetValue(
-        str(self.params.cctbx_ha14.image_triage.grid_search.height_min))
-      self.triage_spot_height.max.SetValue(
-        str(self.params.cctbx_ha14.image_triage.grid_search.height_max))
-      self.triage_step_size.Enable()
-      self.triage_step_size.step.SetValue(
-        str(self.params.cctbx_ha14.image_triage.grid_search.step_size))
-
   def read_phil(self):
     """ TODO: make PHIL reading more automated! """
 
     # Rename pickle prefix
-    conv_prefix = str(self.params.cctbx_ha14.image_conversion.rename_pickle).lower()
-    custom_filename = str(self.params.cctbx_ha14.image_conversion.rename_pickle_prefix).lower()
+    conv_prefix = str(self.params.image_import.rename_pickle).lower()
+    custom_filename = str(self.params.image_import.rename_pickle_prefix).lower()
 
     if conv_prefix in self.conv_rename.choices:
       idx = self.conv_rename.ctr.FindString(conv_prefix)
@@ -588,7 +881,7 @@ class ImportWindow(BaseDialog):
     self.conv_rename.set_choice(custom=custom_filename)
 
     # Image modification
-    square_mode = self.params.cctbx_ha14.image_conversion.square_mode
+    square_mode = self.params.image_import.square_mode
     if square_mode in self.mod_square.choices:
       idx = self.mod_square.ctr.FindString(square_mode)
     else:
@@ -599,7 +892,7 @@ class ImportWindow(BaseDialog):
     else:
       self.flip_beamxy.Disable()
 
-    self.flip_beamxy.SetValue(self.params.advanced.flip_beamXY)
+    self.flip_beamxy.SetValue(self.params.image_import.flip_beamXY)
 
     if str(self.params.image_import.mask).lower() == 'none':
       self.mod_mask.ctr.SetValue('')
@@ -612,7 +905,15 @@ class ImportWindow(BaseDialog):
     self.mod_beamXY.Y.SetValue(str(self.params.image_import.beam_center.y))
 
     # Image modification
-    self.triage_choice(self.params.cctbx_ha14.image_triage.type)
+    self.img_triage.SetValue(self.params.image_import.image_triage)
+    bragg_peaks = str(self.params.image_import.minimum_Bragg_peaks)
+    self.min_bragg_peaks.ctr.SetValue(int(bragg_peaks))
+    if self.img_triage.GetValue():
+      self.min_bragg_peaks.Enable()
+    else:
+      self.min_bragg_peaks.Disable()
+
+    self.estimate_gain.SetValue(self.params.image_import.estimate_gain)
 
   def onOK(self, e):
     """ Accept changes and populate the PHIL scope """
@@ -621,26 +922,6 @@ class ImportWindow(BaseDialog):
       maskpath = None
     else:
       maskpath = self.mod_mask.ctr.GetValue()
-    if self.triage_spot_area.min.GetValue() == '':
-      triage_spot_area_min = None
-    else:
-      triage_spot_area_min = self.triage_spot_area.min.GetValue()
-    if self.triage_spot_area.max.GetValue() == '':
-      triage_spot_area_max = None
-    else:
-      triage_spot_area_max = self.triage_spot_area.max.GetValue()
-    if self.triage_spot_height.min.GetValue() == '':
-      triage_spot_height_min = None
-    else:
-      triage_spot_height_min = self.triage_spot_height.min.GetValue()
-    if self.triage_spot_height.max.GetValue() == '':
-      triage_spot_height_max = None
-    else:
-      triage_spot_height_max = self.triage_spot_height.max.GetValue()
-    if self.triage_step_size.step.GetValue() == '':
-      triage_step_size = None
-    else:
-      triage_step_size = self.triage_step_size.step.GetValue()
 
     if self.conv_rename.custom.GetValue() == '':
       conv_pickle_prefix = None
@@ -656,49 +937,31 @@ class ImportWindow(BaseDialog):
       flip_beamXY = False
 
     self.phil_text = '\n'.join([
-    'image_conversion',
-    '{',
-    '  rename_pickle = {}'.format(self.conv_rename.ctr.GetString(
-      self.conv_rename.ctr.GetSelection())),
-    '  rename_pickle_prefix = {}'.format(conv_pickle_prefix),
-    '  square_mode = {}'.format(self.mod_square.ctr.GetString(
-      self.mod_square.ctr.GetSelection())),
-    '  mask = {}'.format(maskpath),
-    '  beamstop = {}'.format(self.mod_beamstop.threshold.GetValue()),
-    '  distance = {}'.format(self.mod_detZ.detZ.GetValue()),
-    '  beam_center',
-    '  {',
-    '    x = {}'.format(self.mod_beamXY.X.GetValue()),
-    '    y = {}'.format(self.mod_beamXY.Y.GetValue()),
-    '  }',
-    '}',
-    'image_triage',
-    '{',
-    '  type = {}'.format(self.img_triage.ctr.GetString(
-      self.img_triage.ctr.GetSelection())),
-    '    .type = choice',
-    '  min_Bragg_peaks = {}'.format(self.min_bragg_peaks.n_bragg.GetValue()),
-    '  grid_search',
-    '  {',
-    '    area_min = {}'.format(triage_spot_area_min),
-    '    area_max = {}'.format(triage_spot_area_max),
-    '    height_min = {}'.format(triage_spot_height_min),
-    '    height_max = {}'.format(triage_spot_height_max),
-    '    step_size = {}'.format(triage_step_size),
-    '  }',
-    '}',
-    'cctbx_xfel {',
-    '  min_Bragg_peaks = {}'.format(self.min_bragg_peaks.n_bragg.GetValue()),
-    '}',
-    'advanced',
-    '{',
-    '  flip_beamXY = {}'.format(flip_beamXY),
-    '}'])
+      'image_import',
+      '{',
+      '  image_triage = {}'.format(self.img_triage.GetValue()),
+      '  minimum_Bragg_peaks = {}'.format(self.min_bragg_peaks.ctr.GetValue()),
+      '  rename_pickle = {}'.format(self.conv_rename.ctr.GetString(
+        self.conv_rename.ctr.GetSelection())),
+      '  rename_pickle_prefix = {}'.format(conv_pickle_prefix),
+      '  square_mode = {}'.format(self.mod_square.ctr.GetString(
+        self.mod_square.ctr.GetSelection())),
+      '  flip_beamXY = {}'.format(flip_beamXY),
+      '  mask = {}'.format(maskpath),
+      '  estimate_gain = {}'.format(self.estimate_gain.GetValue()),
+      '  beamstop = {}'.format(self.mod_beamstop.threshold.GetValue()),
+      '  distance = {}'.format(self.mod_detZ.detZ.GetValue()),
+      '  beam_center',
+      '  {',
+      '    x = {}'.format(self.mod_beamXY.X.GetValue()),
+      '    y = {}'.format(self.mod_beamXY.Y.GetValue()),
+      '  }',
+      '}',
+    ])
     self.import_phil = ip.parse(self.phil_text)
     e.Skip()
 
-
-class OldBackendOptions(BaseBackendDialog):
+class HA14BackendOptions(BaseBackendDialog):
   # CCTBX.XFEL options
 
   def __init__(self, parent,
@@ -715,6 +978,8 @@ class OldBackendOptions(BaseBackendDialog):
 
     self.params = phil.extract()
     self.proc_phil = None
+
+    phil.show()
 
     self.splitter.SplitVertically(self.options, self.phil_panel)
 
@@ -805,15 +1070,6 @@ class OldBackendOptions(BaseBackendDialog):
     sel_box = wx.StaticBox(self.sel_options,
                            label='Grid Search Selection Options')
     sel_box_sizer = wx.StaticBoxSizer(sel_box, wx.VERTICAL)
-
-    # self.select_only = wx.CheckBox(self.sel_options, label="Select only")
-    # sel_box_sizer.Add(self.select_only, flag=f.stack, border=10)
-    #
-    # self.img_objects_path = ct.InputCtrl(self.sel_options,
-    #                                      label='Image objects:',
-    #                                      label_size=(120, -1),
-    #                                      buttons=True)
-    # sel_box_sizer.Add(self.img_objects_path, 1, flag=f.expand, border=10)
 
     self.select_by = ct.ChoiceCtrl(self.sel_options,
                                    label='Select by:',
@@ -906,7 +1162,6 @@ class OldBackendOptions(BaseBackendDialog):
     self.Bind(wx.EVT_CHOICE, self.onGSChoice, self.gs_type.ctr)
     self.Bind(wx.EVT_CHOICE, self.onLatChoice, self.target_lattice.ctr)
     self.Bind(wx.EVT_CHOICE, self.onCentChoice, self.target_centering.ctr)
-    # self.Bind(wx.EVT_CHECKBOX, self.onSelCheck, self.select_only)
     self.Bind(wx.EVT_BUTTON, self.onHideScript, self.btn_hide_script)
     self.Bind(wx.EVT_CHOICE, self.onAdvanced, self.dlg_ctr.choice)
 
@@ -949,9 +1204,6 @@ class OldBackendOptions(BaseBackendDialog):
     self.write_default_phil()
     self.phil.ctr.SetValue(self.target_phil)
 
-  # def onSelCheck(self, e):
-  #   self.img_objects_path.Enable(self.select_only.GetValue())
-
   def onGSChoice(self, e):
     self.set_grid_search(self.gs_type.ctr.GetSelection())
 
@@ -978,34 +1230,34 @@ class OldBackendOptions(BaseBackendDialog):
       self.signal_search.Disable()
       self.signal_search.SetValue(False)
       self.spot_height.range.Disable()
-      self.spot_height.median.SetValue(str(self.params.cctbx_ha14.grid_search.height_median))
+      self.spot_height.median.SetValue(str(self.params.cctbx_xfel.grid_search.height_median))
       self.spot_height.range.SetValue('0')
       self.spot_area.range.Disable()
-      self.spot_area.median.SetValue(str(self.params.cctbx_ha14.grid_search.area_median))
+      self.spot_area.median.SetValue(str(self.params.cctbx_xfel.grid_search.area_median))
       self.spot_area.range.SetValue('0')
     elif idx == 1:
       self.signal_search.Enable()
       self.signal_search.SetValue(False)
       self.spot_height.range.Enable()
       self.spot_height.median.SetValue(
-        str(self.params.cctbx_ha14.grid_search.height_median))
+        str(self.params.cctbx_xfel.grid_search.height_median))
       self.spot_height.range.SetValue(
-        str(self.params.cctbx_ha14.grid_search.height_range))
+        str(self.params.cctbx_xfel.grid_search.height_range))
       self.spot_area.range.Enable()
       self.spot_area.median.SetValue(
-        str(self.params.cctbx_ha14.grid_search.area_median))
+        str(self.params.cctbx_xfel.grid_search.area_median))
       self.spot_area.range.SetValue(
-        str(self.params.cctbx_ha14.grid_search.area_range))
+        str(self.params.cctbx_xfel.grid_search.area_range))
     elif idx == 2:
       self.signal_search.Enable()
       self.signal_search.SetValue(False)
       self.spot_height.range.Disable()
       self.spot_height.median.SetValue(
-        str(self.params.cctbx_ha14.grid_search.height_median))
+        str(self.params.cctbx_xfel.grid_search.height_median))
       self.spot_height.range.SetValue('1')
       self.spot_area.range.Disable()
       self.spot_area.median.SetValue(
-        str(self.params.cctbx_ha14.grid_search.area_median))
+        str(self.params.cctbx_xfel.grid_search.area_median))
       self.spot_area.range.SetValue('1')
 
   def read_param_phil(self):
@@ -1019,8 +1271,8 @@ class OldBackendOptions(BaseBackendDialog):
     # Resolution limits
     # "Try/except" for backwards compatibility
     try:
-      lowres = self.params.cctbx_ha14.resolution_limits.low
-      hires = self.params.cctbx_ha14.resolution_limits.high
+      lowres = self.params.cctbx_xfel.resolution_limits.low
+      hires = self.params.cctbx_xfel.resolution_limits.high
       self.res_limits.lowres.SetValue(str(lowres))
       self.res_limits.hires.SetValue(str(hires))
     except AttributeError:
@@ -1029,10 +1281,10 @@ class OldBackendOptions(BaseBackendDialog):
     # Target options
     # "Try/except" for backwards compatibility
     try:
-      t_uc = self.params.cctbx_ha14.target_unit_cell
-      t_lat = self.params.cctbx_ha14.target_lattice_type
+      t_uc = self.params.cctbx_xfel.target_unit_cell
+      t_lat = self.params.cctbx_xfel.target_lattice_type
       l_idx = self.target_lattice.ctr.FindString(str(t_lat))
-      t_ctype = self.params.cctbx_ha14.target_centering_type
+      t_ctype = self.params.cctbx_xfel.target_centering_type
       if t_ctype == 'P':
         c_idx = 1
       elif t_ctype == 'C':
@@ -1054,28 +1306,22 @@ class OldBackendOptions(BaseBackendDialog):
       pass
 
     # Grid search options
-    idx = self.gs_type.ctr.FindString(self.params.cctbx_ha14.grid_search.type)
+    idx = self.gs_type.ctr.FindString(self.params.cctbx_xfel.grid_search.type)
     self.set_grid_search(idx=idx)
-    self.signal_search.SetValue(self.params.cctbx_ha14.grid_search.sig_height_search)
+    self.signal_search.SetValue(self.params.cctbx_xfel.grid_search.sig_height_search)
 
-    # # Selection options
-    # self.select_only.SetValue(self.params.cctbx_ha14.selection.select_only.flag_on)
-    # self.img_objects_path.Enable(self.select_only.GetValue())
-
-    idx = self.select_by.ctr.FindString(self.params.cctbx_ha14.selection.select_by)
+    idx = self.select_by.ctr.FindString(self.params.cctbx_xfel.selection.select_by)
     self.select_by.ctr.SetSelection(idx)
 
-    self.min_sigma.sigma.SetValue(str(self.params.cctbx_ha14.selection.min_sigma))
-
     # Selection filters
-    if self.params.cctbx_ha14.selection.prefilter.flag_on:
-      pg = self.params.cctbx_ha14.selection.prefilter.target_pointgroup
-      ut = self.params.cctbx_ha14.selection.prefilter.target_uc_tolerance
-      rs = self.params.cctbx_ha14.selection.prefilter.min_resolution
-      rf = self.params.cctbx_ha14.selection.prefilter.min_reflections
-      if self.params.cctbx_ha14.selection.prefilter.target_unit_cell is not None:
+    if self.params.cctbx_xfel.selection.prefilter.flag_on:
+      pg = self.params.cctbx_xfel.selection.prefilter.target_pointgroup
+      ut = self.params.cctbx_xfel.selection.prefilter.target_uc_tolerance
+      rs = self.params.cctbx_xfel.selection.prefilter.min_resolution
+      rf = self.params.cctbx_xfel.selection.prefilter.min_reflections
+      if self.params.cctbx_xfel.selection.prefilter.target_unit_cell is not None:
         try:
-          uc = self.params.cctbx_ha14.selection.prefilter.target_unit_cell.parameters()
+          uc = self.params.cctbx_xfel.selection.prefilter.target_unit_cell.parameters()
         except AttributeError:
           uc = None
       else:
@@ -1190,7 +1436,7 @@ class OldBackendOptions(BaseBackendDialog):
 
     # Populate IOTA settings
     proc_phil_text = '\n'.join([
-      'cctbx_ha14',
+      'cctbx_xfel',
       '{',
       '  resolution_limits',
       '  {',
@@ -1212,12 +1458,6 @@ class OldBackendOptions(BaseBackendDialog):
       '    }',
       '  selection',
       '  {',
-      # '    select_only',
-      # '    {',
-      # '      flag_on = {}'.format(self.select_only.GetValue()),
-      # '      grid_search_path = {}'.format(grid_search_path),
-      # '    }',
-      '    min_sigma = {}'.format(self.min_sigma.sigma.GetValue()),
       '    select_by = {}'.format(self.select_by.ctr.GetString(
         self.select_by.ctr.GetSelection())),
       '    prefilter',
@@ -1309,11 +1549,6 @@ class BackendOptions(BaseBackendDialog):
     self.reindex.SetValue(True)
     optz_box_sizer.Add(self.reindex, flag=wx.ALL, border=10)
 
-    self.estimate_gain = wx.CheckBox(self.opt_options,
-                                     label='Estimate gain for each image')
-    self.estimate_gain.SetValue(True)
-    optz_box_sizer.Add(self.estimate_gain, flag=wx.ALL, border=10)
-
     self.auto_threshold = wx.CheckBox(self.opt_options,
                                       label='Estimate threshold for each image')
     self.auto_threshold.SetValue(True)
@@ -1397,7 +1632,6 @@ class BackendOptions(BaseBackendDialog):
   def show_hide_advanced(self, show=False):
     if show:
       self.use_fft3d.Show()
-      self.estimate_gain.Show()
       self.auto_threshold.Show()
       self.filt_ref.Show()
       self.filt_res.Show()
@@ -1405,7 +1639,6 @@ class BackendOptions(BaseBackendDialog):
       self.f_spacer.Show(False)
     else:
       self.use_fft3d.Hide()
-      self.estimate_gain.Hide()
       self.auto_threshold.Hide()
       self.filt_ref.Hide()
       self.filt_res.Hide()
@@ -1456,7 +1689,6 @@ class BackendOptions(BaseBackendDialog):
 
     # Optimization options
     self.reindex.SetValue(self.params.cctbx_xfel.determine_sg_and_reindex)
-    self.estimate_gain.SetValue(self.params.advanced.estimate_gain)
     self.auto_threshold.SetValue(self.params.cctbx_xfel.auto_threshold)
 
    # Selection filters
@@ -1580,15 +1812,10 @@ class BackendOptions(BaseBackendDialog):
       '      min_resolution = {}'.format(res),
       '    }',
       '}',
-      'advanced',
-      '{',
-      '  estimate_gain = {}'.format(self.estimate_gain.GetValue()),
-      '}'
     ])
 
     self.proc_phil = ip.parse(dials_phil_text)
     e.Skip()
-
 
 class AnalysisWindow(BaseDialog):
   # Import window - image import, modification and triage
@@ -1611,8 +1838,8 @@ class AnalysisWindow(BaseDialog):
     options_sizer = wx.BoxSizer(wx.VERTICAL)
     self.options.SetSizer(options_sizer)
 
-    viz_box = wx.StaticBox(self.options, label='Analysis Options')
-    viz_box_sizer = wx.StaticBoxSizer(viz_box, wx.VERTICAL)
+    self.viz_box = wx.StaticBox(self.options, label='Analysis Options')
+    self.viz_box_sizer = wx.StaticBoxSizer(self.viz_box, wx.VERTICAL)
 
     # Unit cell clustering options
     self.clustering = ct.OptionCtrl(self.options,
@@ -1627,7 +1854,7 @@ class AnalysisWindow(BaseDialog):
                                     grid=(4, 2),
                                     label_size=(160, -1),
                                     ctrl_size=(100, -1))
-    viz_box_sizer.Add(self.clustering, flag=f.stack, border=10)
+    self.viz_box_sizer.Add(self.clustering, flag=f.stack, border=10)
 
     # Visualization options
     self.visualization = ct.ChoiceCtrl(self.options,
@@ -1637,21 +1864,17 @@ class AnalysisWindow(BaseDialog):
                                        label='Visualization:',
                                        label_size=(160, -1),
                                        ctrl_size=(160, -1))
-    viz_box_sizer.Add(self.visualization, flag=f.stack, border=10)
-
-    self.proc_charts = wx.CheckBox(self.options,
-                                   label='Output processing charts')
-    viz_box_sizer.Add(self.proc_charts, flag=f.stack, border=10)
+    self.viz_box_sizer.Add(self.visualization, flag=f.stack, border=10)
 
     self.summary_graphs = wx.CheckBox(self.options,
                                       label='Output run summary graphs')
-    viz_box_sizer.Add(self.summary_graphs, flag=wx.ALL, border=10)
+    self.viz_box_sizer.Add(self.summary_graphs, flag=wx.ALL, border=10)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
 
     # Add to sizer
-    options_sizer.Add(viz_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    options_sizer.Add(self.viz_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.options, 1, flag=wx.EXPAND| wx.ALL, border=10)
     self.main_sizer.Add(dialog_box,
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
@@ -1682,8 +1905,53 @@ class AnalysisWindow(BaseDialog):
       viz_idx = 0
     self.visualization.ctr.SetSelection(viz_idx)
 
-    self.proc_charts.SetValue(self.params.analysis.charts)
     self.summary_graphs.SetValue(self.params.analysis.summary_graphs)
+
+  def onOK(self, e):
+    """ Populate param PHIL and pass on to main """
+
+    viz = self.visualization.ctr.GetString(self.visualization.ctr.GetSelection())
+
+    analysis_phil_txt = '\n'.join([
+      'analysis',
+      '{',
+      ' run_clustering = {}'.format(self.clustering.toggle.GetValue()),
+      ' cluster_threshold = {}'.format(noneset(
+          self.clustering.threshold.GetValue())),
+      ' cluster_limit = {}'.format(noneset(
+          self.clustering.limit.GetValue())),
+      ' cluster_n_images = {}'.format(noneset(
+          self.clustering.n_images.GetValue())),
+      ' viz = {}'.format(viz),
+      ' summary_graphs = {}'.format(self.summary_graphs.GetValue()),
+      '}'
+    ])
+
+    self.viz_phil = ip.parse(analysis_phil_txt)
+    e.Skip()
+
+class HA14AnalysisWindow(AnalysisWindow):
+  # Import window - image import, modification and triage
+
+  def __init__(self, parent, phil,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    AnalysisWindow.__init__(self, parent, phil,
+                        label_style=label_style,
+                        content_style=content_style,
+                        *args, **kwargs)
+
+    self.proc_charts = wx.CheckBox(self.options,
+                                   label='Output processing charts')
+    self.viz_box_sizer.Add(self.proc_charts, flag=f.stack, border=10)
+
+    self.read_param_phil()
+    self.proc_charts.SetValue(self.params.analysis.charts)
+
+    # Button bindings
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def onOK(self, e):
     """ Populate param PHIL and pass on to main """

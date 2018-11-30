@@ -6,7 +6,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 11/05/2018
+Last Changed: 11/29/2018
 Description : IOTA GUI startup module.
 '''
 
@@ -21,7 +21,6 @@ class MainApp(wx.App):
 
     # Initialize Main window
     self.frame.place_and_size(set_size=True, set_by='mouse', center=True)
-    self.frame.read_command_line_options()
 
     # Show main window
     self.frame.Show(True)
