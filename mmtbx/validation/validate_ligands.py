@@ -1,7 +1,6 @@
 from __future__ import division, print_function
 
 import time
-
 import iotbx.pdb
 from cctbx import adptbx
 from cctbx.array_family import flex
@@ -30,10 +29,12 @@ class manager(dict):
     ligand_results = []
     inputs = []
     for id_tuple, rg, altloc, conformer_isel in args:
+      id_list = list(id_tuple)
+      id_list.append(altloc)
       lr = ligand_result(
         model = self.model,
         isel = conformer_isel,
-        id_str = rg.id_str())
+        id_list = id_list)
       ligand_results.append(lr)
       for attr, func in lr._result_attrs.items():
         funcs.append([lr, func])
@@ -89,8 +90,7 @@ class manager(dict):
 
   # ---------------------------------------------------------------------------
 
-  @staticmethod
-  def get_ligands(ph):
+  def get_ligands(self, ph):
     # Store ligands as list of iselections --> better way? Careful if H will be
     # added at some point!
     ligand_isel_dict = {}
@@ -114,7 +114,7 @@ class manager(dict):
     make_sub_header(' Ligands in input model ', out=self.log)
     for id_tuple, ligand_dict in self.items():
       for altloc, lr in ligand_dict.items():
-        print(lr.resname, lr.id_str, altloc)
+        print(lr.id_str)
 
   # ---------------------------------------------------------------------------
 
@@ -123,63 +123,39 @@ class manager(dict):
     pad1 = ' '*20
     print(pad1, "min   max    mean   n_iso   n_aniso", file=self.log)
     for id_tuple, ligand_dict in self.items():
-      if len(ligand_dict) == 1:
-        pad2 = ' '*4
-        lr = ligand_dict.values()[0]
+      for altloc, lr in ligand_dict.items():
         adps = lr.get_adps()
-        print(lr.resname, lr.id_str, pad2, '%7s%7s%7s%7s%7s' %
+        print(lr.id_str.ljust(14), '%7s%7s%7s%7s%7s' %
           (round(adps.b_min,1), round(adps.b_max,1), round(adps.b_mean,1),
-           adps.n_iso, adps.n_aniso),
-          file = self.log)
-      else:
-        pad2 = ' '*2
-        for altloc, lr in ligand_dict.items():
-          adps = lr.get_adps()
-          print(lr.resname, lr.id_str, altloc, pad2, '%7s%7s%7s%7s%7s' %
-            (round(adps.b_min,1), round(adps.b_max,1), round(adps.b_mean,1),
-           adps.n_iso, adps.n_aniso),
-            file = self.log)
+           adps.n_iso, adps.n_aniso), file = self.log)
+        print('neighbors'.ljust(14), '%7s%7s%7s' %
+          (round(adps.b_min_within,1), round(adps.b_max_within,1),
+           round(adps.b_mean_within,1) ), file = self.log)
 
   # ---------------------------------------------------------------------------
 
   def print_ligand_occupancies(self):
     make_sub_header(' Occupancies ', out=self.log)
     pad1 = ' '*20
-    #print(pad1, "min    max    mean", file=self.log)
     print('If three values: min, max, mean, otherwise the same occupancy for entire ligand.', file=self.log)
     for id_tuple, ligand_dict in self.items():
-      if len(ligand_dict) == 1:
-        pad2 = ' '*8
-        lr = ligand_dict.values()[0]
+      for altloc, lr in ligand_dict.items():
         occs = lr.get_occupancies()
         if (occs.occ_min == occs.occ_max):
-          print(lr.resname, lr.id_str, pad2, occs.occ_min,
-              file = self.log)
+          print(lr.id_str.ljust(16), occs.occ_min, file = self.log)
         else:
-          print(lr.resname, lr.id_str, pad2, '%s   %s   %s' %
-            (occs.occ_min, occs.occ_max, occs.occ_mean),
-            file = self.log)
-      else:
-        pad2 = ' '*6
-        for altloc, lr in ligand_dict.items():
-          occs = lr.get_occupancies()
-          if (occs.occ_min == occs.occ_max):
-            print(lr.resname, lr.id_str, altloc, pad2, occs.occ_min,
-              file = self.log)
-          else:
-            print(lr.resname, lr.id_str, altloc, pad2, '%s   %s   %s' %
-              (occs.occ_min, occs.occ_max, occs.occ_mean),
-              file = self.log)
+          print(lr.id_str.ljust(16), '%s   %s   %s' %
+            (occs.occ_min, occs.occ_max, occs.occ_mean), file = self.log)
 
 # =============================================================================
 # Class storing info per ligand
 
 class ligand_result(object):
 
-  def __init__(self, model, isel, id_str):
+  def __init__(self, model, isel, id_list):
     self.model = model
     self.isel = isel
-    self.id_str = id_str
+
     # results
     self._result_attrs = {'_occupancies' : 'get_occupancies',
                           '_adps'        : 'get_adps',
@@ -192,9 +168,15 @@ class ligand_result(object):
     self._atoms = self._ph.select(self.isel).atoms()
     self._xrs = self.model.select(isel).get_xray_structure()
 
-    #TODO: prob not necessary, let's see if we want to keep it
     rg_ligand = self._ph.select(self.isel).only_residue_group()
-    self.resname = ",".join(rg_ligand.unique_resnames())
+    resname = ",".join(rg_ligand.unique_resnames())
+    self.id_str = " ".join([id_list[0], id_list[1], resname, id_list[2], id_list[3]])
+    self.sel_str = " ".join(['chain', id_list[1], 'and resseq', id_list[2]])
+    if (id_list[0] != ''):
+      self.sel_str = " ".join(['model', id_list[0], 'and', self.sel_str])
+    if (id_list[3] != ''):
+      self.sel_str = " ".join([self.sel_str, 'and altloc', id_list[3]])
+    self.id_str = self.id_str.strip()
 
   def __repr__(self):
     outl = 'ligand %s\n' % self.id_str
@@ -217,6 +199,14 @@ class ligand_result(object):
       b_min, b_max, b_mean = b_isos.min_max_mean().as_tuple()
       # TODO: Get adp from surrounding residues
 
+      #if this selection is used somewhere else, it might be better to do it outside
+      within_radius = 3.0 #TODO should this be a parameter?
+      sel_within_str = '(within (%s, %s)) and (protein or water)' % (within_radius, self.sel_str)
+      isel_within = self.model.iselection(sel_within_str)
+      xrs_within = self.model.select(isel_within).get_xray_structure()
+      b_isos_within = xrs_within.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
+      b_min_within, b_max_within, b_mean_within = b_isos_within.min_max_mean().as_tuple()
+
       self._adps = group_args(
         n_iso          = n_iso,
         n_aniso        = n_aniso,
@@ -225,7 +215,10 @@ class ligand_result(object):
         isel_above_100 = isel_above_100,
         b_min          = b_min,
         b_max          = b_max,
-        b_mean         = b_mean
+        b_mean         = b_mean,
+        b_min_within   = b_min_within,
+        b_max_within   = b_max_within,
+        b_mean_within  = b_mean_within
         )
     return self._adps
 
