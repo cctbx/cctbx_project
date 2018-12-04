@@ -282,29 +282,29 @@ class geometry(object):
 %sMOLPROBITY STATISTICS.
 %s  ALL-ATOM CLASHSCORE : %s
 %s  RAMACHANDRAN PLOT:
-%s    OUTLIERS : %-5.2f %%
-%s    ALLOWED  : %-5.2f %%
-%s    FAVORED  : %-5.2f %%
-%s  ROTAMER OUTLIERS : %s %%
-%s  CBETA DEVIATIONS : %-5.2f %%
+%s    OUTLIERS : %5.2f %%
+%s    ALLOWED  : %5.2f %%
+%s    FAVORED  : %5.2f %%
+%s  ROTAMER OUTLIERS : %5.2f %%
+%s  CBETA DEVIATIONS : %5.2f %%
 %s  PEPTIDE PLANE:
 %s    CIS-PROLINE     : %s %%
 %s    CIS-GENERAL     : %s %%
 %s    TWISTED PROLINE : %s %%
 %s    TWISTED GENERAL : %s %%"""%(
         prefix,
-        prefix, format_value("%-5.2f", res.clash.score).strip(),
+        prefix, format_value("%5.2f", res.clash.score).strip(),
         prefix,
         prefix, res.ramachandran.outliers,
         prefix, res.ramachandran.allowed,
         prefix, res.ramachandran.favored,
-        prefix, str("%6.2f"%(res.rotamer.outliers)).strip(),
+        prefix, res.rotamer.outliers,
         prefix, res.c_beta.outliers,
         prefix,
-        prefix, format_value("%-5.2f", res.omega.cis_proline).strip(),
-        prefix, format_value("%-5.2f", res.omega.cis_general).strip(),
-        prefix, format_value("%-5.2f", res.omega.twisted_proline).strip(),
-        prefix, format_value("%-5.2f", res.omega.twisted_general).strip())
+        prefix, format_value("%5.2f", res.omega.cis_proline).strip(),
+        prefix, format_value("%5.2f", res.omega.cis_general).strip(),
+        prefix, format_value("%5.2f", res.omega.twisted_proline).strip(),
+        prefix, format_value("%5.2f", res.omega.twisted_general).strip())
     if(lowercase):
       result = result.swapcase()
     print >> log, result
