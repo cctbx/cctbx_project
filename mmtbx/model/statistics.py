@@ -276,35 +276,35 @@ class geometry(object):
        prefix, fmt(c.mean, c.max, c.n),
        prefix, fmt(p.mean, p.max, p.n),
        prefix, fmt(d.mean, d.max, d.n),
-       prefix, fmt2(n.min),
+       prefix, fmt2(n.min).strip(),
        prefix)
     result += """
 %sMOLPROBITY STATISTICS.
 %s  ALL-ATOM CLASHSCORE : %s
 %s  RAMACHANDRAN PLOT:
-%s    OUTLIERS : %-5.2f %s
-%s    ALLOWED  : %-5.2f %s
-%s    FAVORED  : %-5.2f %s
-%s  ROTAMER OUTLIERS : %s %s
-%s  CBETA DEVIATIONS : %-d
+%s    OUTLIERS : %-5.2f %%
+%s    ALLOWED  : %-5.2f %%
+%s    FAVORED  : %-5.2f %%
+%s  ROTAMER OUTLIERS : %s %%
+%s  CBETA DEVIATIONS : %-5.2f %%
 %s  PEPTIDE PLANE:
-%s    CIS-PROLINE     : %s
-%s    CIS-GENERAL     : %s
-%s    TWISTED PROLINE : %s
-%s    TWISTED GENERAL : %s"""%(
+%s    CIS-PROLINE     : %s %%
+%s    CIS-GENERAL     : %s %%
+%s    TWISTED PROLINE : %s %%
+%s    TWISTED GENERAL : %s %%"""%(
         prefix,
-        prefix, format_value("%-6.2f", res.clash.score).strip(),
+        prefix, format_value("%-5.2f", res.clash.score).strip(),
         prefix,
-        prefix, res.ramachandran.outliers, "%",
-        prefix, res.ramachandran.allowed, "%",
-        prefix, res.ramachandran.favored, "%",
-        prefix, str("%6.2f"%(res.rotamer.outliers)).strip(),"%",
+        prefix, res.ramachandran.outliers,
+        prefix, res.ramachandran.allowed,
+        prefix, res.ramachandran.favored,
+        prefix, str("%6.2f"%(res.rotamer.outliers)).strip(),
         prefix, res.c_beta.outliers,
         prefix,
-        prefix, str(res.omega.cis_proline),
-        prefix, str(res.omega.cis_general),
-        prefix, str(res.omega.twisted_proline),
-        prefix, str(res.omega.twisted_general))
+        prefix, format_value("%-5.2f", res.omega.cis_proline).strip(),
+        prefix, format_value("%-5.2f", res.omega.cis_general).strip(),
+        prefix, format_value("%-5.2f", res.omega.twisted_proline).strip(),
+        prefix, format_value("%-5.2f", res.omega.twisted_general).strip())
     if(lowercase):
       result = result.swapcase()
     print >> log, result

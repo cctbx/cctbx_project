@@ -230,7 +230,6 @@ general_tests = [
   "$D/validation/regression/tst_rotalyze.py",
   "$D/validation/regression/tst_ramalyze.py",
   "$D/validation/regression/tst_ramalyze2.py",
-  "$D/validation/regression/tst_cbetadev.py",
   "$D/validation/regression/tst_clashscore.py",
   "$D/validation/regression/tst_restraints.py",
   "$D/validation/regression/tst_omegalyze.py",
@@ -364,6 +363,8 @@ probe_tests = [
   "$D/regression/tst_altloc_chain_break.py",
   "$D/regression/ncs/tst_geometry_minimization_ncs_constraints.py",
   "$D/regression/tst_clashes.py",
+  "$D/validation/regression/tst_cbetadev.py",
+  "$D/regression/tst_statistics_output.py",
   "$D/regression/tst_geo_min_restraints_phil.py",
   "$D/regression/tst_model_vs_map.py",
   # validation/molprobity
