@@ -1203,6 +1203,8 @@ Wait for the command to finish, then try again.""" % vars())
     print('@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value(), file=f)
     write_dispatcher_include(where="before_command")
     qnew_tmp = qnew
+    if self.python_version_major_minor[0] == 3:
+      qnew_tmp = '' # -Q is gone in Python3.
     if self.build_options.python3warn == 'warn':
       qnew_tmp += " -3"
     elif self.build_options.python3warn == 'fail':
@@ -1507,11 +1509,11 @@ selfx:
 
   def write_setpath_files(self):
     for suffix in ["", "_all", "_debug"]:
-      if (hasattr(os, "symlink")):
+      if (sys.platform == "win32"):
+        self.write_setpaths_bat(suffix)
+      else:
         self.write_setpaths_sh(suffix)
         self.write_setpaths_csh(suffix)
-      else:
-        self.write_setpaths_bat(suffix)
 
   def process_exe(self):
     for path in [self.exe_path,
