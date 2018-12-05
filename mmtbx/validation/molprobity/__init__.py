@@ -386,7 +386,7 @@ class molprobity (slots_getstate_setstate) :
       self.hydrogens.print_results(prefix='  ', log=out)
 
     make_header("Molprobity validation", out=out)
-    self.model_statistics_geometry.show(log=out, prefix="  ", lowercase=True)
+    self.model_statistics_geometry.show(log=out, prefix="  ", uppercase=False)
     if (self.nqh_flips is not None) :
       make_sub_header("Asn/Gln/His flips", out=out)
       self.nqh_flips.show(out=out, prefix="  ")

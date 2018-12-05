@@ -246,7 +246,7 @@ class geometry(object):
       self.cached_result.cablam.gui_table      = None
     return self.cached_result
 
-  def show(self, log=None, prefix="", lowercase=False):
+  def show(self, log=None, prefix="", uppercase=True):
     if(log is None): log = sys.stdout
     def fmt(f1,f2,d1):
       fmt_str= "%6.3f %7.3f %6d"
@@ -260,14 +260,14 @@ class geometry(object):
       res.planarity, res.nonbonded
     result = "%s" % prefix
     result += """
-%sGEOMETRY RESTRAINTS LIBRARY: %s
-%sDEVIATIONS FROM IDEAL VALUES.
-%s  BOND      : %s
-%s  ANGLE     : %s
-%s  CHIRALITY : %s
-%s  PLANARITY : %s
-%s  DIHEDRAL  : %s
-%s  MIN NONBONDED DISTANCE : %s
+%sGeometry Restraints Library: %s
+%sDeviations from Ideal Values.
+%s  Bond      : %s
+%s  Angle     : %s
+%s  Chirality : %s
+%s  Planarity : %s
+%s  Dihedral  : %s
+%s  Min Nonbonded Distance : %s
 %s"""%(prefix,
        self.restraints_source,
        prefix,
@@ -279,19 +279,19 @@ class geometry(object):
        prefix, fmt2(n.min).strip(),
        prefix)
     result += """
-%sMOLPROBITY STATISTICS.
-%s  ALL-ATOM CLASHSCORE : %s
-%s  RAMACHANDRAN PLOT:
-%s    OUTLIERS : %5.2f %%
-%s    ALLOWED  : %5.2f %%
-%s    FAVORED  : %5.2f %%
-%s  ROTAMER OUTLIERS : %5.2f %%
-%s  CBETA DEVIATIONS : %5.2f %%
-%s  PEPTIDE PLANE:
-%s    CIS-PROLINE     : %s %%
-%s    CIS-GENERAL     : %s %%
-%s    TWISTED PROLINE : %s %%
-%s    TWISTED GENERAL : %s %%"""%(
+%sMolprobity Statistics.
+%s  All-atom Clashscore : %s
+%s  Ramachandran Plot:
+%s    Outliers : %5.2f %%
+%s    Allowed  : %5.2f %%
+%s    Favored  : %5.2f %%
+%s  Rotamer Outliers : %5.2f %%
+%s  Cbeta Deviations : %5.2f %%
+%s  Peptide Plane:
+%s    Cis-proline     : %s %%
+%s    Cis-general     : %s %%
+%s    Twisted Proline : %s %%
+%s    Twisted General : %s %%"""%(
         prefix,
         prefix, format_value("%5.2f", res.clash.score).strip(),
         prefix,
@@ -305,8 +305,8 @@ class geometry(object):
         prefix, format_value("%5.2f", res.omega.cis_general).strip(),
         prefix, format_value("%5.2f", res.omega.twisted_proline).strip(),
         prefix, format_value("%5.2f", res.omega.twisted_general).strip())
-    if(lowercase):
-      result = result.swapcase()
+    if( uppercase ):
+      result = result.upper()
     print >> log, result
 
   def as_cif_block(self, cif_block=None, pdbx_refine_id=''):
