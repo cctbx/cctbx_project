@@ -60,10 +60,12 @@ https://conda.anaconda.org/conda-forge/linux-64/psutil-5.4.8-py27h470a237_0.tar.
 https://conda.anaconda.org/conda-forge/linux-64/ptyprocess-0.6.0-py27_1000.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/py-1.7.0-py_0.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/pycparser-2.19-py_0.tar.bz2
+https://conda.anaconda.org/conda-forge/linux-64/pyopengl-3.1.0-py27_0.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/pyparsing-2.3.0-py_0.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/pysocks-1.6.8-py27_1002.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/pytz-2018.7-py_0.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/scandir-1.9.0-py27h470a237_0.tar.bz2
+https://conda.anaconda.org/conda-forge/noarch/send2trash-1.5.0-py_0.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/simplegeneric-0.8.1-py_1.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/six-1.11.0-py27_1001.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/snowballstemmer-1.2.1-py_1.tar.bz2
