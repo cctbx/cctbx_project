@@ -6,6 +6,7 @@ import numpy as np
 from cctbx import sgtbx
 import random
 from cctbx.array_family import flex
+from prime.postrefine.mod_input import read_frame
 
 class indamb_handler(object):
   """
@@ -46,7 +47,7 @@ class indamb_handler(object):
     return alternates
 
   def get_observations(self, pickle_filename, iparams):
-    main_obs_pickle = pickle.load(open(pickle_filename,"rb"))
+    main_obs_pickle = read_frame(pickle_filename)
     prh = postref_handler()
     avg_mode = 'average'
     try:
