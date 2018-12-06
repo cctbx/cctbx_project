@@ -76,6 +76,7 @@ class environment(object):
         file_names,
         out_name):
     qon = quote(out_name)
+    import libtbx.load_env
     if (O.compiler == "cl"):
       if (not link): part = "/c /Fo%s" % qon
       else:          part = "/Fe%s" % qon
@@ -100,8 +101,13 @@ class environment(object):
         opt_i = O.assemble_include_search_paths()
       else:
         opt_i = " -I."
-      result = "%s -o %s %s%s -g -O0%s%s %s" % (
-        O.compiler, qon, opt_c, opt_w, opt_i, opt_x, quote_list(file_names))
+      if libtbx.env.build_options.enable_cxx11:
+        opt_11 = " -std=c++11"
+      else:
+        opt_11 = ""
+      result = "%s -o %s %s%s -g -O0%s%s%s %s" % (
+        O.compiler, qon, opt_c, opt_w, opt_i, opt_x, opt_11, quote_list(file_names))
+      print(result)
     return result
 
   def file_name_obj(O, file_name_cpp):
