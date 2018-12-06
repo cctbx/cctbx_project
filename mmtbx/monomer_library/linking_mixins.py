@@ -799,7 +799,7 @@ Residue classes
         print 'link',link
         print 'link_key',link_key
         print 'link_atoms',link_atoms
-      if not link and glyco_utils.is_standard_glyco_link(key, link):
+      if key.find("ALPHA1")>-1 or key.find("BETA1")>-1: # is handled in elif
         key, cif, bond_i_seqs = \
           glyco_utils.apply_glyco_link_using_proxies_and_atoms(
             atom_group2,
