@@ -109,24 +109,24 @@ class glyco_link_class:
       outl += "\n"
     return outl
 
-  def is_correct(self):
+  def is_correct(self, verbose=False):
     if (self.anomeric_carbon is None or
         self.link_oxygen is None or
         self.ring_oxygen is None or
         #ring_carbon is None or
         self.link_carbon is None
         ):
-      if 0:
-        print '''
-  self.anomeric_carbon %s
-  self.link_oxygen     %s
-  self.ring_carbon     %s
-  self.link_carbon     %s
-''' % (self.anomeric_carbon.quote(),
-       self.link_oxygen.quote(),
-       self.ring_oxygen.quote(),
-       self.link_carbon.quote(),
-       )
+      if verbose:
+        attrs = [
+          'anomeric_carbon',
+          'link_oxygen',
+          'ring_oxygen',
+          'link_carbon',
+          ]
+        for attr in attrs:
+          atom = getattr(self, attr)
+          if atom: atom = atom.quote()
+          print '  %-15s : %s' % (attr, atom)
       return False
     return True
 
