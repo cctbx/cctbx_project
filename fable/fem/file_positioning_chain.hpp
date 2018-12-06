@@ -3,6 +3,12 @@
 
 #include <fem/io.hpp>
 
+#if __cplusplus >= 201103L                // If using C++11 or a later version
+#define NOEXCEPT_FALSE noexcept(false)
+#else
+#define NOEXCEPT_FALSE
+#endif
+
 namespace fem {
 
   struct file_positioning_chain
@@ -36,7 +42,7 @@ namespace fem {
       other.u_ptr = 0;
     }
 
-    ~file_positioning_chain()
+    ~file_positioning_chain() NOEXCEPT_FALSE
     {
       if (u_ptr == 0) {
         throw TBXX_NOT_IMPLEMENTED(); // should open file file
