@@ -32,6 +32,7 @@ Create and configure FABLE:
   mkdir build36
   cd ${WORK}/build36
   python ../modules/cctbx_project/libtbx/configure.py fable
+  # python ../modules/cctbx_project/libtbx/configure.py --enable_cxx11 fable # support C++11 standard
   source ${WORK}/build36/setpaths.sh
   cd ${WORK}/build36; make; cd ${WORK}
   cd ${WORK}/build36; make; cd ${WORK}
