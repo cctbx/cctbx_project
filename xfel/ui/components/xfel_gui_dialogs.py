@@ -1919,9 +1919,8 @@ class TrialDialog(BaseDialog):
         from spotfinder.applications.xfel import cxi_phil
         phil_scope = cxi_phil.cxi_versioned_extract().persist.phil_scope
       else:
-        from xfel.ui import known_dials_dispatchers
-        import importlib
-        phil_scope = importlib.import_module(known_dials_dispatchers[dispatcher]).phil_scope
+        from xfel.ui import load_phil_scope_from_dispatcher
+        phil_scope = load_phil_scope_from_dispatcher(dispatcher)
 
       from iotbx.phil import parse
       msg = None

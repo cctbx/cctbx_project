@@ -240,10 +240,13 @@ def submit_job(app, job):
   if job.rungroup.extra_phil_str is not None:
     phil_str += "\n" + job.rungroup.extra_phil_str
 
-  from xfel.ui import known_dials_dispatchers
-  if dispatcher in known_dials_dispatchers:
-    import importlib
-    orig_phil_scope = importlib.import_module(known_dials_dispatchers[dispatcher]).phil_scope
+  from xfel.ui import load_phil_scope_from_dispatcher
+  if dispatcher == "cxi.xtc_process":
+    image_format = 'pickle'
+  else:
+    orig_phil_scope = load_phil_scope_from_dispatcher(dispatcher)
+    if os.path.isfile(dispatcher):
+      dispatcher = 'libtbx.python ' + dispatcher
     from iotbx.phil import parse
     if job.rungroup.two_theta_low is not None or job.rungroup.two_theta_high is not None:
       override_str = """
@@ -271,13 +274,9 @@ def submit_job(app, job):
         mode = "jungfrau"
       else:
         assert False, "Couldn't figure out what kind of detector is specified by address %s"%job.rungroup.detector_address
-    if dispatcher == 'cctbx.xfel.xtc_process':
+    if hasattr(trial_params, 'format'):
       trial_params.format.file_format = image_format
       trial_params.format.cbf.mode = mode
-  elif dispatcher == "cxi.xtc_process":
-    image_format = 'pickle'
-  else:
-    raise RuntimeError("Unknown dispatcher: %s"%dispatcher)
 
   if job.rungroup.calib_dir is not None or job.rungroup.config_str is not None or dispatcher == 'cxi.xtc_process' or image_format == 'pickle':
     config_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d.cfg"%
@@ -304,7 +303,7 @@ def submit_job(app, job):
     two_theta_high            = job.rungroup.two_theta_high,
     # Generally for job submission
     dry_run                   = app.params.dry_run,
-    dispatcher                = app.params.dispatcher,
+    dispatcher                = dispatcher,
     cfg                       = config_path,
     experiment                = app.params.experiment,
     run_num                   = job.run.run,
@@ -331,9 +330,9 @@ def submit_job(app, job):
 
   if dispatcher == 'cxi.xtc_process':
     phil.write(phil_str)
-  elif dispatcher in known_dials_dispatchers:
+  else:
     extra_scope = None
-    if dispatcher == 'cctbx.xfel.xtc_process':
+    if hasattr(trial_params, 'format'):
       if image_format == "cbf":
         trial_params.input.address = job.rungroup.detector_address
         trial_params.format.cbf.detz_offset = job.rungroup.detz_parameter
@@ -441,14 +440,12 @@ def submit_job(app, job):
   submit_root = libtbx.env.find_in_repositories("xfel/ui/db/cfgs")
   if dispatcher in ['cxi.xtc_process', 'cctbx.xfel.xtc_process']:
     template = open(os.path.join(submit_root, "submit_xtc_process.phil"))
-  elif dispatcher in ['cctbx.xfel.process', 'cctbx.xfel.small_cell_process']:
-    template = open(os.path.join(submit_root, "submit_xfel_process.phil"))
   else:
     test_root = os.path.join(submit_root, "submit_" + dispatcher + ".phil")
     if os.path.exists(test_root):
       template = open(test_root)
     else:
-      template = open(os.path.join(submit_root, "submit.phil"))
+      template = open(os.path.join(submit_root, "submit_xfel_process.phil"))
   phil = open(submit_phil_path, "w")
 
   if dispatcher == 'cxi.xtc_process':

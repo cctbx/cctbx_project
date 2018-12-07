@@ -213,9 +213,8 @@ class xfel_db_application(object):
         trial_params = cxi_phil.cxi_versioned_extract().persist.phil_scope.fetch(parse(trial.target_phil_str)).extract()
         isoforms = trial_params.isoforms
       else:
-        from xfel.ui import known_dials_dispatchers
-        import importlib
-        phil_scope = importlib.import_module(known_dials_dispatchers[self.params.dispatcher]).phil_scope
+        from xfel.ui import load_phil_scope_from_dispatcher
+        phil_scope = load_phil_scope_from_dispatcher(self.params.dispatcher)
         trial_params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
         isoforms = trial_params.indexing.stills.isoforms
       if len(isoforms) > 0:

@@ -81,6 +81,16 @@ known_dials_dispatchers = {
   'cctbx.xfel.small_cell_process': 'xfel.small_cell.command_line.small_cell_process',
 }
 
+def load_phil_scope_from_dispatcher(dispatcher):
+  import importlib
+  try:
+    phil_scope = importlib.import_module(known_dials_dispatchers[dispatcher]).phil_scope
+  except KeyError:
+    import imp
+    mod = imp.load_source('module', dispatcher)
+    phil_scope = mod.phil_scope
+  return phil_scope
+
 def load_cached_settings():
   if os.path.exists(settings_file):
     user_phil = parse(file_name = settings_file)
