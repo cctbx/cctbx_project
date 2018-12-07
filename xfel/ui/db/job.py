@@ -445,7 +445,10 @@ def submit_job(app, job):
     if os.path.exists(test_root):
       template = open(test_root)
     else:
-      template = open(os.path.join(submit_root, "submit_xfel_process.phil"))
+      if hasattr(trial_params, 'format'):
+        template = open(os.path.join(submit_root, "submit_xtc_process.phil"))
+      else:
+        template = open(os.path.join(submit_root, "submit_xfel_process.phil"))
   phil = open(submit_phil_path, "w")
 
   if dispatcher == 'cxi.xtc_process':
