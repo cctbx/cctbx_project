@@ -1786,16 +1786,6 @@ class manager(Base_geometry):
   def get_cif_link_entries(self, mon_lib_srv):
     from cctbx.geometry_restraints.auto_linking_types import origin_ids
     links = iotbx.cif.model.cif()
-
-  #   return mon_lib_srv.link_link_id_dict[simple_key], False, simple_key
-  # simple_key = "%s-%s" % (
-  #   atom_group2.resname,
-  #   atom_group1.resname,
-  #   )
-  # if simple_key in mon_lib_srv.link_link_id_dict:
-  #   return mon_lib_srv.link_link_id_dict[simple_key], True, simple_key
-  # return None, None, None
-
     for i, bond in enumerate(self._bond_generator()):
       row = ['C%05d' % (i+1)]
       origin_id_info = origin_ids[0].get(bond.origin_id, None)
@@ -1804,9 +1794,12 @@ class manager(Base_geometry):
       link_key = 'link_%s' % origin_id_info[0]
       if origin_id_info[0]=='SS BOND':
         links['link_SS'] = mon_lib_srv.link_link_id_dict['SS'].as_cif_block()
+      elif origin_id_info[0]=='Misc. bond':
+        pass
       elif key in mon_lib_srv.link_link_id_dict:
-        links[key] = mon_lib_srv.link_link_id_dict[key].as_cif_block()
+        links['link_%s' % key] = mon_lib_srv.link_link_id_dict[key].as_cif_block()
       else:
+        print origin_id_info
         assert 0
     return links
 
