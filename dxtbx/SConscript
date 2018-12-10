@@ -31,7 +31,11 @@ if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
 
   env_etc.dxtbx_includes.append(os.path.join(env_etc.cctbx_include,"msvc9.0_include"))
   env_etc.dxtbx_includes.append(libtbx.env.under_base('libtiff'))
-                                 
+
+  if (libtbx.env.build_options.use_conda):
+    env_etc.dxtbx_includes.extend(env_etc.conda_cpppath)
+    env_etc.dxtbx_lib_paths.extend(env_etc.conda_libpath)
+
 # for the hdf5.h file - look at where Python is coming from unless is OS X
 # framework build... messy but appears to work on Linux and OS X
 include_root = os.path.split(env_etc.python_include)[0]
@@ -85,14 +89,14 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       'format/boost_python/nexus_ext.cc'],
       LIBS=env_etc.libs_python+env_etc.libm+env_etc.dxtbx_libs+env_etc.dxtbx_hdf5_libs,
       LIBPATH=env_etc.dxtbx_lib_paths+env_etc.dxtbx_hdf5_lib_paths)
-  
+
   imageset = env.SharedLibrary(
     target='#/lib/dxtbx_imageset_ext',
     source=[
       'boost_python/imageset_ext.cc'],
       LIBS=env_etc.libs_python+env_etc.libm+env_etc.dxtbx_libs+env_etc.dxtbx_hdf5_libs,
       LIBPATH=env_etc.dxtbx_lib_paths+env_etc.dxtbx_hdf5_lib_paths)
-  
+
   image = env.SharedLibrary(
     target='#/lib/dxtbx_format_image_ext',
     source=[

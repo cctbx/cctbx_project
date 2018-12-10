@@ -482,7 +482,7 @@ libtbx.scons: Warning: compiling with /MDd:
         "Cross-compiler gcc not found. How is it prefixed? (see crossmingw.py)"
     # the options here are mostly copied from unix_gcc
     env_etc.libm = ["m"]
-    env_etc.static_libraries = 1 
+    env_etc.static_libraries = 1
     env_etc.static_bpl = 0
     env_etc.gcc_version = libtbx.env_config.get_gcc_version(
                                                  command_name=env_base['CC'])
@@ -950,6 +950,25 @@ if( libtbx.env.build_options.use_environment_flags ):
   else:
     env_etc.shlinkflags = flg
   env_base.Append(LINKFLAGS=flg)
+
+# conda header and library paths
+if (libtbx.env.build_options.use_conda):
+  conda_prefix = os.environ.get('CONDA_PREFIX')
+  env_etc.conda_cpppath = [os.path.join(conda_prefix, 'include')]
+  env_etc.conda_libpath = [os.path.join(conda_prefix, 'lib')]
+  if (sys.platform =='win32'):
+    env_etc.conda_cpppath.append(
+      os.path.join(conda_prefix, 'Library', 'include'))
+    env_etc.conda_libpath.extend([os.path.join(conda_prefix, 'libs'),
+                                  os.path.join(conda_prefix, 'Library', 'lib')])
+  if ("CPPPATH" not in env_base):
+    env_base["CPPPATH"] = env_etc.conda_cpppath
+  else:
+    env_base.Prepend(CPPPATH, env_etc.conda_cpppath)
+  if ("LIBPATH" not in env_base):
+    env_base["LIBPATH"] = env_etc.conda_libpath
+  else:
+    env_base.Append(LIBPATH, env_etc.conda_libpath)
 
 # C++11 flags for any compiler
 # XXX feautre duplication, see determine_cpp0x_flag

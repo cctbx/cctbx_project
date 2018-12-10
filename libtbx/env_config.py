@@ -36,6 +36,7 @@ default_enable_boost_threads = True
 default_enable_cuda = False
 default_opt_resources = False
 default_enable_cxx11 = False
+default_use_conda = False
 
 def is_64bit_architecture():
   # this appears to be most compatible (hat tip: James Stroud)
@@ -783,6 +784,7 @@ Wait for the command to finish, then try again.""" % vars())
         enable_boost_threads
           =command_line.options.enable_boost_threads,
         enable_cuda=command_line.options.enable_cuda,
+        use_conda=command_line.options.use_conda,
         opt_resources=command_line.options.opt_resources,
         use_environment_flags=command_line.options.use_environment_flags,
         force_32bit=command_line.options.force_32bit,
@@ -791,6 +793,7 @@ Wait for the command to finish, then try again.""" % vars())
         python3warn=command_line.options.python3warn,
         skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
       self.build_options.get_flags_from_environment()
+      self.build_options.check_conda()
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
           command_line.options.command_version_suffix
@@ -2092,6 +2095,7 @@ class build_options:
         enable_openmp_if_possible=default_enable_openmp_if_possible,
         enable_boost_threads=True,
         enable_cuda=default_enable_cuda,
+        use_conda=default_use_conda,
         opt_resources=default_opt_resources,
         precompile_headers=False,
         use_environment_flags=False,
@@ -2136,6 +2140,24 @@ class build_options:
       if flg is not None:
         self.env_ldflags = flg
 
+  def check_conda(self):
+    '''
+    Check to see if the conda environment is working
+    Raises a RuntimeError if conda is not working
+    '''
+    if (self.use_conda):
+      # basic check if we're even in a conda environment
+      conda_prefix = os.environ.get("CONDA_PREFIX")
+      if (conda_prefix is None):
+        raise RuntimeError("conda environment is not active.")
+      # check that python exists
+      if (sys.platform == "win32"):
+        conda_python_exe = os.path.join(conda_prefix, "python.exe")
+      else:
+        conda_python_exe = os.path.join(conda_prefix, "bin", "python")
+      if (not os.path.isfile(conda_python_exe)):
+          raise RuntimeError("Python is not available.")
+
   def report(self, f=None):
     if (f is None): f = sys.stdout
     print("Compiler:", self.compiler, file=f)
@@ -2155,6 +2177,7 @@ class build_options:
     print("Enable OpenMP if possible:", self.enable_openmp_if_possible, file=f)
     print("Boost threads enabled:", self.enable_boost_threads, file=f)
     print("Enable CUDA:", self.enable_cuda, file=f)
+    print("Use conda:", self.use_conda, file=f)
     print("Use opt_resources if available:", self.opt_resources, file=f)
     print("Use environment flags:", self.use_environment_flags, file=f)
     print("Enable C++11:", self.enable_cxx11, file=f)
@@ -2337,7 +2360,13 @@ class pre_process_args:
     parser.option(None, "--enable_cuda",
       action="store_true",
       default=default_enable_cuda,
-      help="Use optimized CUDA routines for certain calculations.  Requires at least one NVIDIA GPU with compute capability of 2.0 or higher, and CUDA Toolkit 4.0 or higher (default: don't)")
+      help="Use optimized CUDA routines for certain calculations.  Requires at least one NVIDIA GPU with compute capability of 2.0 or higher, and CUDA Toolkit 4.0 or higher (default: %s)"
+        % default_enable_cuda)
+    parser.option(None, "--use_conda",
+      action="store_true",
+      default=default_use_conda,
+      help="Use conda as the source for Python and dependencies (default: %s)"
+        % default_use_conda)
     parser.option(None, "--opt_resources",
       action="store",
       type="bool",

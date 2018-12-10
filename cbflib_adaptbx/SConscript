@@ -64,6 +64,10 @@ cbflib_092_forward = []
 if os.path.isfile( os.path.join(env_etc.cbflib_dist,"src","cbf_ws.c") ):
   cbflib_092_forward.append("src/cbf_ws.c")
 
+cpppath = env_etc.cbflib_common_includes
+if (libtbx.env.build_options.use_conda):
+  cpppath += env_etc.conda_cpppath
+
 env.StaticLibrary(target='#lib/cbf',
   source = [prefix+"/"+s for s in [
     "src/img.c",
@@ -97,7 +101,7 @@ env.StaticLibrary(target='#lib/cbf',
     "detectors/cbf_byte_offset_optimized.cpp",
     "detectors/buffer_based_service.cpp",
   ],
-  CPPPATH=env_etc.cbflib_common_includes )
+  CPPPATH=cpppath)
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
@@ -118,9 +122,7 @@ if (not env_etc.no_boost_python):
 
   SConscript("detectors/boost_python/SConscript")
 
-env_standalone = env.Clone(
-  LIBS = [env_etc.libm,],CPPPATH=env_etc.cbflib_common_includes
-)
+env_standalone = env.Clone(LIBS = [env_etc.libm,],CPPPATH=cpppath)
 env_standalone.Prepend(LIBS=["cbf",])
 
 for source in ["detectors/tst_memory",]:
