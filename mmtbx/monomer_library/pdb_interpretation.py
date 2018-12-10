@@ -4882,17 +4882,6 @@ class build_all_chain_proxies(linking_mixins):
         log=log)
     disulfide_cif_block = None
     disulfide_cif_loop = None
-    if disulfide_sym_table.size():
-      self._cif.cif["link_SS"] = disulfide_link.as_cif_block()
-      # FIXME missing loop contents in some situations
-      #disulfide_cif_block = iotbx.cif.model.block()
-      #disulfide_cif_loop = iotbx.cif.model.loop(header=(
-      #  "_phenix.link_id",
-      #  "_phenix.atom_id_1",
-      #  "_phenix.atom_id_2",
-      #  "_phenix.sym_op",
-      #))
-    #
     max_bond_distance = max_disulfide_bond_distance
     if (bond_distances_model.size() > 0):
       max_bond_distance = max(max_bond_distance,
@@ -5071,8 +5060,9 @@ class build_all_chain_proxies(linking_mixins):
                                     self.pdb_atoms[j_seq].pdb_label_columns(),
                                     sym_str,
                                     ))
-        added = True
-    if added: self._cif.cif["link_SS"] = disulfide_link.as_cif_block()
+        # added = True
+    # if added:
+    #   self._cif.cif["link_SS"] = disulfide_link.as_cif_block()
     #
     # ====================== End of disulfides ========================
     #

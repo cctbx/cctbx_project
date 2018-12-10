@@ -856,6 +856,10 @@ class manager(object):
         if key.replace('comp_', '') in skip_residues:
           del restraints[key]
       cif.update(restraints)
+
+    links = grm.get_cif_link_entries(self.get_mon_lib_srv())
+    cif.update(links)
+
     cif.show(out=out, align_columns=align_columns)
     return out.getvalue()
 

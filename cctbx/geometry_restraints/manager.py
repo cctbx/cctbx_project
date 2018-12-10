@@ -1729,6 +1729,13 @@ class manager(Base_geometry):
       hd_sel=hd_sel,
       site_labels=site_labels).result
 
+  def _bond_generator(self):
+    simple, asu = self.get_all_bond_proxies()
+    simple = simple.get_proxies_without_origin_id(0)
+    asu = asu.get_proxies_without_origin_id(0)
+    for bond in list(simple)+list(asu):
+      yield bond
+
   def get_struct_conn_mmcif(self, atoms):
     def _atom_info(atom):
       return [atom.parent().resname,
@@ -1736,9 +1743,6 @@ class manager(Base_geometry):
               atom.parent().parent().resseq.strip(),
               atom.name.strip(),
              ]
-    simple, asu = self.get_all_bond_proxies()
-    simple = simple.get_proxies_without_origin_id(0)
-    asu = asu.get_proxies_without_origin_id(0)
     from cctbx.geometry_restraints.auto_linking_types import origin_ids
     struct_conn_loop = iotbx.cif.model.loop(header=(
       '_struct_conn.id',
@@ -1757,11 +1761,8 @@ class manager(Base_geometry):
       #'_struct_conn.ptnr2_symmetry',
       '_struct_conn.details',
       ))
-    for i, bond in enumerate(list(simple)+list(asu)):
-      if simple.size()+asu.size()>99:
-        row = ['C%05d' % (i+1)]
-      else:
-        row = ['C%02d' % (i+1)]
+    for i, bond in enumerate(self._bond_generator()):
+      row = ['C%05d' % (i+1)]
       origin_id_info = origin_ids[0].get(bond.origin_id, None)
       assert origin_id_info
       if origin_id_info[0]=='SS BOND': row.append('disulf')
@@ -1781,6 +1782,30 @@ class manager(Base_geometry):
       struct_conn_loop.add_row(row)
     return struct_conn_loop
 
+  def get_cif_link_entries(self, mon_lib_srv):
+    from cctbx.geometry_restraints.auto_linking_types import origin_ids
+    links = iotbx.cif.model.cif()
+    print mon_lib_srv.link_link_id_dict.keys()
+
+  #   return mon_lib_srv.link_link_id_dict[simple_key], False, simple_key
+  # simple_key = "%s-%s" % (
+  #   atom_group2.resname,
+  #   atom_group1.resname,
+  #   )
+  # if simple_key in mon_lib_srv.link_link_id_dict:
+  #   return mon_lib_srv.link_link_id_dict[simple_key], True, simple_key
+  # return None, None, None
+
+    for i, bond in enumerate(self._bond_generator()):
+      row = ['C%05d' % (i+1)]
+      origin_id_info = origin_ids[0].get(bond.origin_id, None)
+      assert origin_id_info
+      print origin_id_info
+      if origin_id_info[0]=='SS BOND':
+        links['link_SS'] = mon_lib_srv.link_link_id_dict['SS'].as_cif_block()
+      else:
+        assert 0
+    return links
 
 def construct_non_crystallographic_conserving_bonds_and_angles(
       sites_cart,
