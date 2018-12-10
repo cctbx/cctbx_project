@@ -255,6 +255,30 @@ class ramalyze (validation) :
     self.results += other.results
     return self
 
+  def get_plots(self, show_labels=True, point_style='bo',
+      markersize=10,markeredgecolor="black", dpi=100,markerfacecolor="white"):
+    """
+    Create a dictionary of six PNG images representing the plots for each residue type.
+    :param out: log filehandle
+    """
+    result = {}
+    for pos in range(6):
+      stats = utils.get_rotarama_data(
+        pos_type=res_types[pos],
+        convert_to_numpy_array=True)
+      points, coords = self.get_plot_data(position_type=pos)
+      result[pos] = draw_ramachandran_plot(
+        points=points,
+        rotarama_data=stats,
+        position_type=pos,
+        title=format_ramachandran_plot_title(pos, '*'),
+        show_labels=show_labels,
+        markeredgecolor=markeredgecolor,
+        markerfacecolor=markerfacecolor,
+        point_style=point_style,
+        markersize=markersize)
+    return result
+
   def write_plots (self, plot_file_base, out, show_labels=True, point_style='bo',
     markersize=10,markeredgecolor="black", dpi=100,markerfacecolor="white") :
     """
@@ -265,25 +289,17 @@ class ramalyze (validation) :
     """
     print >> out, ""
     print >> out, "Creating images of plots..."
+    plots = self.get_plots(
+        show_labels=show_labels,
+        point_style=point_style,
+        markersize=markersize,
+        markeredgecolor=markeredgecolor,
+        dpi=dpi,
+        markerfacecolor=markerfacecolor)
     for pos in range(6) :
-      stats = utils.get_rotarama_data(
-        pos_type=res_types[pos],
-        convert_to_numpy_array=True)
       file_label = res_type_labels[pos].replace("/", "_")
       plot_file_name = plot_file_base + "_rama_%s.png" % file_label
-      points, coords = self.get_plot_data(position_type=pos)
-      draw_ramachandran_plot(
-        points=points,
-        rotarama_data=stats,
-        position_type=pos,
-        title=format_ramachandran_plot_title(pos, '*'),
-        file_name=plot_file_name,
-        show_labels=show_labels,
-        dpi=dpi,
-        markeredgecolor=markeredgecolor,
-        markerfacecolor=markerfacecolor,
-        point_style=point_style,
-        markersize=markersize)
+      plots[pos].save_image(plot_file_name, dpi=dpi)
       print >> out, "  wrote %s" % plot_file_name
 
   def display_wx_plots (self, parent=None,
@@ -671,8 +687,6 @@ def draw_ramachandran_plot (points,
                             rotarama_data,
                             position_type,
                             title,
-                            file_name,
-                            dpi,
                             show_labels=True,
                             markerfacecolor="white",
                             markeredgecolor="black",
@@ -691,4 +705,4 @@ def draw_ramachandran_plot (points,
     markeredgecolor=markeredgecolor,
     markersize=markersize,
     point_style=point_style)
-  p.save_image(file_name, dpi=dpi)
+  return p
