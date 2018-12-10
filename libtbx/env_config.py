@@ -2598,6 +2598,9 @@ def unpickle():
   # XXX backward compatibility 2017-11-03
   if not hasattr(env.build_options, "python3warn"):
     env.build_options.python3warn = 'none'
+  # XXX backward compatibility 2018-12-10
+  if not hasattr(env.build_options, "use_conda"):
+    env.build_options.use_conda = False
   return env
 
 def warm_start(args):
