@@ -2335,6 +2335,7 @@ class manager(object):
       h = h.select(s)
     for r in h.residue_groups():
       sizes.append(r.atoms().size())
+    if(sizes.size()==0): return 0
     return sizes.count(1)*100./sizes.size()
 
   def select(self, selection):
