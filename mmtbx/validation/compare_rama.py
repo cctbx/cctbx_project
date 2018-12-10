@@ -47,7 +47,7 @@ class rcompare(object):
     rama2 = ramalyze(model2.get_hierarchy(), out=null_out())
     print dir(rama1)
     print dir(rama1.results[0])
-    results = []
+    self.results = []
     for r1, r2 in zip(rama1.results, rama2.results):
       assert r1.id_str() == r2.id_str()
       diff = math.sqrt((r1.phi-r2.phi)**2 + (r1.psi-r2.psi)**2)
@@ -61,14 +61,14 @@ class rcompare(object):
 
       print r1.id_str(), "%.2f, (%.1f:%.1f), (%.1f:%.1f)" % (
           diff2, r1.phi, r1.psi, r2.phi, r2.psi), v
-      results.append((r1.id_str(), diff2, r1.phi, r1.psi, r2.phi, r2.psi, v))
-    results.sort(key=lambda tup: tup[1])
+      self.results.append((r1.id_str(), diff2, r1.phi, r1.psi, r2.phi, r2.psi, v))
+    self.sorted_res = sorted(self.results, key=lambda tup: tup[1])
     print "="*80
-    for r in results:
+    for r in self.sorted_res:
       print "%s %.2f, (%.1f:%.1f), (%.1f:%.1f) %s" % r
 
   def get_results(self):
-    pass
+    self.results
 
   @staticmethod
   def get_default_params():
