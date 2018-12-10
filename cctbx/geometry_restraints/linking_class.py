@@ -8,13 +8,13 @@ class linking_class(dict):
     for oi in origin_ids:
       for i, item in oi.items():
         if item[0] in self: continue
-        self[item[0]] = origin_id
+        self[item[0]] = i #origin_id
         self.data[item[0]] = item
         origin_id+=1
 
   def __repr__(self):
     outl = 'links\n'
-    for i, item in self.items():
+    for i, item in sorted(self.items()):
       if type(i)==type(0) and 0:
         outl += '  %3d\n' % (i)
         for j in item:

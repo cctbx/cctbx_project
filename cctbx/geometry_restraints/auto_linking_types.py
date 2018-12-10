@@ -112,7 +112,8 @@ for link_info in [
 
 from cctbx.geometry_restraints.standard_cif_links import standard_cif_links
 for scl in standard_cif_links:
-  oi[starting_id] = origins(scl, internals=[0,1,2,3,4,5])
+  assert starting_id not in origin_ids[0]
+  origin_ids[0][starting_id] = origins(scl, internals=[0,1,2,3,4,5])
   starting_id+=1
 
 # for oi in origin_ids:

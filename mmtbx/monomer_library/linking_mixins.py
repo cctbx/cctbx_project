@@ -749,7 +749,6 @@ Residue classes
       if link:
         # apply a standard link
         origin_id = origin_ids['link_%s' % key]
-        print 'origin_id',origin_id
         count, bond_i_seqs = _apply_link_using_proxies(
           link,
           atom_group1,
@@ -769,8 +768,6 @@ Residue classes
         links[key].append([atom_group1, atom_group2])
         links[key][-1]+=bond_i_seqs[0] # odd?
         if verbose: print "predefined residue named link",key
-        self._cif.cif["link_%s" % key] = link.cif_object
-        assert 0
         continue
       #
       #if atoms_must_be:
