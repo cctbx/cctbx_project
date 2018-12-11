@@ -418,8 +418,11 @@ class lbfgs(object):
       self.ncs_restraints_group_list = self.ncs_restraints_group_list.shift_translation_to_center(
           shifts = self.ncs_groups_coordinates_centers)
       self.x = self.ncs_restraints_group_list.concatenate_rot_tran()
+    lbfgs_core_params = scitbx.lbfgs.core_parameters(
+      stpmax = 25.0)
     minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
+      core_params=lbfgs_core_params,
       termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=max_iterations,
         traditional_convergence_test_eps=traditional_convergence_test_eps),

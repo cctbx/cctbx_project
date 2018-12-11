@@ -75,6 +75,8 @@ class simple(object):
         states_accumulator=None,
         ncs_groups=None):
     adopt_init_args(self, locals())
+    self.lbfgs_core_params = scitbx.lbfgs.core_parameters(
+      stpmax = 25.0)
     self.lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations)
     self.lbfgs_exception_handling_params = scitbx.lbfgs.\
@@ -99,6 +101,7 @@ class simple(object):
         geometry_restraints_manager     = self.geometry_restraints_manager,
         real_space_target_weight        = weight,
         real_space_gradients_delta      = self.real_space_gradients_delta,
+        lbfgs_core_params               = self.lbfgs_core_params,
         lbfgs_termination_params        = self.lbfgs_termination_params,
         lbfgs_exception_handling_params = self.lbfgs_exception_handling_params,
         states_collector                = self.states_accumulator)
