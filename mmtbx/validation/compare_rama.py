@@ -43,19 +43,23 @@ class rcompare(object):
     self.params = params
     if self.params is None:
       self.params = rcompare.get_default_params().compare_rama
-    rama1 = ramalyze(model1.get_hierarchy(), out=null_out())
-    rama2 = ramalyze(model2.get_hierarchy(), out=null_out())
+    self.rama1 = ramalyze(model1.get_hierarchy(), out=null_out())
+    self.rama2 = ramalyze(model2.get_hierarchy(), out=null_out())
     self.results = []
-    for r1, r2 in zip(rama1.results, rama2.results):
+    print dir(self.rama1.results[0])
+    for r1, r2 in zip(self.rama1.results, self.rama2.results):
       assert r1.id_str() == r2.id_str()
       diff = math.sqrt((r1.phi-r2.phi)**2 + (r1.psi-r2.psi)**2)
       v = determine_validation_change_text(r1, r2)
       diff2 = math.sqrt(get_distance(r1.phi, r2.phi)**2 +
           get_distance(r1.psi, r2.psi)**2)
-      self.results.append((r1.id_str(), diff2, r1.phi, r1.psi, r2.phi, r2.psi, v))
+      self.results.append((r1.id_str(), diff2, r1.phi, r1.psi, r2.phi, r2.psi, v, r2.res_type))
 
   def get_results(self):
     return self.results
+
+  def get_ramalyze_objects(self):
+    return self.rama1, self.rama2
 
   @staticmethod
   def get_default_params():
