@@ -353,81 +353,81 @@ def write_defaults(current_path=None, txt_out=None, method='cctbx_xfel',
                       'beam_search_scope=0.5'
                       ]
   elif method.lower() in ('dials', 'cctbx.xfel'):
-    default_target = ['verbosity=10',
-                      'spotfinder {',
-                      '  threshold {',
-                      '    dispersion {',
-                      '      gain = 1',
-                      '      sigma_strong = 3',
-                      '      global_threshold = 0',
-                      '      }',
-                      '   }',
-                      '}',
-                      'geometry {',
-                      '  detector {',
-                      '    distance = None',
-                      '    slow_fast_beam_centre = None',
-                      '  }',
-                      '}',
-                      'indexing {',
-                      '  refinement_protocol {',
-                      '    n_macro_cycles = 1',
-                      '    d_min_start = 2.0',
-                      '  }',
-                      '  basis_vector_combinations.max_combinations = 10',
-                      '  stills { ',
-                      '    indexer = stills',
-                      '    method_list = fft1d real_space_grid_search',
-                      '  }',
-                      '}',
-                      'refinement {',
-                      '  parameterisation {',
-                      '    beam.fix = *all in_spindle_plane out_spindle_plane wavelength',
-                      '    detector  {',
-                      '      fix = all position orientation',
-                      '      hierarchy_level=0',
-                      '    }',
-                      '    auto_reduction {',
-                      '      action=fix',
-                      '      min_nref_per_parameter=1',
-                      '    }',
-                      '  }',
-                      '  reflections {',
-                      '    outlier.algorithm=null',
-                      '    weighting_strategy  {',
-                      '      override=stills',
-                      '      delpsi_constant=1000000',
-                      '    }',
-                      '  }',
-                      '}',
-                      'integration {',
-                      '  integrator=stills',
-                      '  profile.fitting=False',
-                      '  background {',
-                      '    simple {',
-                      '      outlier {',
-                      '        algorithm = null',
-                      '      }',
-                      '    }',
-                      '  }',
-                      '}',
-                      'profile {',
-                      '  gaussian_rs {',
-                      '    min_spots.overall = 0',
-                      '  }',
-                      '}'
-                      ]
+    default_target_str = '''verbosity=10
+                            spotfinder {
+                              threshold {
+                                dispersion {
+                                  gain = 1
+                                  sigma_strong = 3
+                                  global_threshold = 0
+                                  }
+                               }
+                            }
+                            geometry {
+                              detector {
+                                distance = None
+                                slow_fast_beam_centre = None
+                              }
+                            }
+                            indexing {
+                              refinement_protocol {
+                                n_macro_cycles = 1
+                                d_min_start = 2.0
+                              }
+                              basis_vector_combinations.max_combinations = 10
+                              stills {
+                                indexer = stills
+                                method_list = fft1d real_space_grid_search
+                              }
+                            }
+                            refinement {
+                              parameterisation {
+                                beam.fix = *all in_spindle_plane out_spindle_plane wavelength
+                                detector  {
+                                  fix = all position orientation
+                                  hierarchy_level=0
+                                }
+                                auto_reduction {
+                                  action=fix
+                                  min_nref_per_parameter=1
+                                }
+                              }
+                              reflections {
+                                outlier.algorithm=null
+                                weighting_strategy  {
+                                  override=stills
+                                  delpsi_constant=1000000
+                                }
+                              }
+                            }
+                            integration {
+                              integrator=stills
+                              profile.fitting=False
+                              background {
+                                simple {
+                                  outlier {
+                                    algorithm = null
+                                  }
+                                }
+                              }
+                            }
+                            profile {
+                              gaussian_rs {
+                                min_spots.overall = 0
+                              }
+                            }
+                            '''
 
+  target_phil = ip.parse(default_target_str)
   if write_target_file:
     with open(def_target_file, 'w') as targ:
-      for line in default_target:
-        targ.write('{}\n'.format(line))
+      targ.write('{}'.format(target_phil.as_str()))
 
   if write_param_file:
     with open('{}/iota.param'.format(current_path), 'w') as default_param_file:
       default_param_file.write(txt_out)
 
-  return default_target, txt_out
+  return target_phil.as_str(), txt_out
 
 def print_params():
   """ Print out master parameters for IOTA """

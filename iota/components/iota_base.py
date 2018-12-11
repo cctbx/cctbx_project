@@ -186,7 +186,7 @@ class ImageImporterBase():
     self.img_object.log_path = util.make_image_path(self.img_object.img_path,
                                                     self.init.input_base,
                                                     self.init.log_base)
-    fname = util.make_filename(self.img_object.img_path, new_ext='tmp')
+    fname = util.make_filename(self.img_object.img_path, new_ext='log')
     self.img_object.int_log = os.path.join(self.img_object.log_path, fname)
 
     # Visualization path (may need to deprecate)
@@ -576,7 +576,7 @@ class InitBase(object):
 
         if target_file:
           with open(target_file, 'r') as phil_file:
-            self.target_phil = phil_file.readlines()
+            self.target_phil = phil_file.read()
         else:
           return False, 'IOTA_INIT_ERROR: TARGET FILE NOT FOUND!'
 

@@ -548,9 +548,9 @@ class Integrator():
     util.main_log(self.init.logfile, main_log_entry)
     util.main_log(self.init.logfile, '\n{:-^100}\n'.format(''))
 
-    # Make a temporary process log into a final process log
-    final_int_log = self.img_object.int_log.split('.')[0] + ".log"
-    os.rename(img_object.int_log, final_int_log)
+    # # Make a temporary process log into a final process log
+    # final_int_log = self.img_object.int_log.split('.')[0] + ".log"
+    # os.rename(img_object.int_log, final_int_log)
 
     # Set status to final and write image object to file
     self.img_object.status = 'final'

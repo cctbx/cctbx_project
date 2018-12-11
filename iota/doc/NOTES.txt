@@ -1,5 +1,4 @@
-IOTA v1.2.012 - minor bugfix
+IOTA v1.2.013 - minor bugfixes
 
-- Fixed two XTerm IOTA bugs:
-  - iterable safely passed on to processor
-  - number of cores correctly estimated when not specified
+- no longer using temporary log filenames
+- removed blank lines from target PHIL string
