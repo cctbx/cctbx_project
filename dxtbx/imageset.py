@@ -205,16 +205,27 @@ class ImageSetLazy(ImageSet):
         self.set_scan(scan,index)
     return scan
 
+  def _load_models(self, index):
+    if index is None: index = 0
+    # Sets the list for detector, beam etc before being accessed by functions in imageset.h
+    self.get_detector(index)
+    self.get_beam(index)
+    self.get_goniometer(index)
+    self.get_scan(index)
+
   def __getitem__(self, item):
     if isinstance(item, slice):
       return ImageSetLazy(self.data(), indices = self.indices()[item])
-    else:
-      # Sets the list for detector, beam etc before being accessed by functions in imageset.h
-      self.get_detector(item)
-      self.get_beam(item)
-      self.get_goniometer(item)
-      self.get_scan(item)
+    self._load_models(item)
     return super(ImageSetLazy,self).__getitem__(item)
+
+  def get_corrected_data(self, index):
+    self._load_models(index)
+    return super(ImageSetLazy,self).get_corrected_data(index)
+
+  def get_gain(self, index):
+    self._load_models(index)
+    return super(ImageSetLazy,self).get_gain(index)
 
 class ImageSweepAux(boost.python.injector, ImageSweep):
 
