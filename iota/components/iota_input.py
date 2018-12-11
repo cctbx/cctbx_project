@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 11/29/2018
+Last Changed: 12/10/2018
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -279,8 +279,17 @@ def process_input(args, phil_args, input_source, mode='auto', now=None):
 
   # Check for -n option and set number of processors override
   # (for parallel map only, for now)
+  from multiprocessing import cpu_count
+  max_proc = cpu_count() - 2
   if args.nproc > 0:
-    params.mp.n_processors = args.nproc[0]
+    if args.nproc >= max_proc:
+      params.mp.n_processors = max_proc
+    else:
+      params.mp.n_processors = args.nproc[0]
+  elif params.mp.method == 'multiprocessing':
+    if (params.mp.n_processors >= max_proc or
+            params.mp.n_processors == 0):
+      params.mp.n_processors = int(max_proc / 2)
 
   final_phil = working_phil.format(python_object=params)
 

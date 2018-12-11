@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 11/29/2018
+Last Changed: 12/10/2018
 Description : IOTA base classes
 '''
 
@@ -275,11 +275,11 @@ class ProcessingThreadBase(Thread):
   ''' Base class for submitting processing jobs to multiple cores '''
   def __init__(self,
                init=None,
-               # iterable=None,
+               iterable=None,
                stage='all'):
     Thread.__init__(self, name='iota_proc')
     self.init = init
-    self.iterable = self.init.iterable
+    self.iterable = self.init.iterable if hasattr(self.init, 'iterable') else iterable
     self.stage = stage
     self.importer = None
     self.integrator = None

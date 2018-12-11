@@ -4,7 +4,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 11/29/2018
+Last Changed: 12/10/2018
 Description : IOTA command-line module.
 '''
 import os
@@ -61,6 +61,7 @@ class XProcessAll(ProcessingThreadBase):
     ProcessingThreadBase.__init__(self, init=init, iterable=iterable,
                                   stage=stage)
     self.prog_count = 0
+
 
     # Initialize importer and processor depending on backend
     if init.params.advanced.processing_backend == 'ha14':
@@ -157,6 +158,7 @@ class XTermIOTA():
       stage = 'all'
     else:
       stage = 'import'
+
 
     # Save init and image iterable for potential UI recovery
     from libtbx import easy_pickle

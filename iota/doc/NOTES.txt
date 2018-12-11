@@ -1,29 +1,8 @@
-IOTA v1.2.011 - streamlined processor
+IOTA v1.2.012 - minor bugfix
 
-Bugfixes:
-  - InputFinder will now return a folder type as "image" even if images in that
-    folder are outnumbered by non-image files
+- Fixed two XTerm IOTA bugs:
+  - iterable safely passed on to processor
+  - number of cores correctly estimated when not specified
 
-Changes:
-  - deprecated HA14 backend - may still check if it works on xfel builds
-  - new input handling (with backward compatibility)
-    - moved backend settings to separate PHILs in backend modules
-    - image conversion for HA14 to its own top bracket and renamed to 'image
-      import'
-    - removed triage for HA14; grid search will be fully gone (never used) and
-      minimum Bragg peaks now an option in general import
-    - moved "flip XY" from Advanced to HA14 import
-    - moved 'estimate gain' from Advanced to general import
-    - moved UI options to separate PHIL in iota_ui_base
-    - made backend-specific options dialogs for Import and Analysis
-    - PHILFixer now handles all old scripts
-    - UI updates for new PHIL and HA14 deprecation
-      - Custom submission scripts added to IOTA Prefs
-      - Moved all widgets to reflect their new positions in PHIL hierarchy
-      - Created a more general PHIL import procedure for XTerm and GUI
-      - moved n_processors widget to IOTA Prefs; streamlined main window
-      - put in a couple of message dialogs that pop up when important things
-      change (e.g. command string, or backend)
-  - Custom submission scripts enabled (say, for submission to mp queues)
-  - Removed iota_bulletproof.py from command_line folder
+
 
