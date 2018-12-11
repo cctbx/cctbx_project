@@ -3,6 +3,3 @@ IOTA v1.2.012 - minor bugfix
 - Fixed two XTerm IOTA bugs:
   - iterable safely passed on to processor
   - number of cores correctly estimated when not specified
-
-
-
