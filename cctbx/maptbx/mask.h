@@ -19,7 +19,9 @@ af::versa<FloatType, af::c_grid<3> > mask(
   af::tiny<int, 3> const& n_real,
   FloatType const& mask_value_inside_molecule,
   FloatType const& mask_value_outside_molecule,
-  af::const_ref<FloatType> const& radii)
+  af::const_ref<FloatType> const& radii,
+  bool const& wrapping
+      )
 {
   int nx = n_real[0];
   int ny = n_real[1];
@@ -34,8 +36,16 @@ af::versa<FloatType, af::c_grid<3> > mask(
     af::tiny<int, 3> box_min, box_max;
     for(int i = 0; i <= 2; i++) {
       FloatType rf=radii[j]/ucp[i]/(ucs/std::sin(scitbx::deg_as_rad(ucp[i+3])));
-      box_min[i] = sm::nearest_integer(n_real[i]*(site_frac[i]-rf));
-      box_max[i] = sm::nearest_integer(n_real[i]*(site_frac[i]+rf));
+      if (wrapping) {
+        box_min[i] = sm::nearest_integer(n_real[i]*(site_frac[i]-rf));
+        box_max[i] = sm::nearest_integer(n_real[i]*(site_frac[i]+rf));
+      } else {
+        box_min[i] = std::max(0,
+           sm::nearest_integer(n_real[i]*(site_frac[i]-rf)));
+        box_max[i] = std::min(n_real[i]-1,
+           sm::nearest_integer(n_real[i]*(site_frac[i]+rf)));
+      }
+    
     }
     for(int kx = box_min[0]; kx < box_max[0]; kx++) {
       FloatType xn=FloatType(kx)/n_real[0];

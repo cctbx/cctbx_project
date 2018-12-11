@@ -586,6 +586,24 @@ def get_last_resno(hierarchy):
         last_resno=rg.resseq_as_int()
   return last_resno
 
+def get_middle_resno(hierarchy,first_resno=None,last_resno=None):
+  if not hierarchy:
+    return None
+  if first_resno is None:
+     first_resno=get_first_resno(hierarchy)
+  if last_resno is None:
+     last_resno=get_last_resno(hierarchy)
+  target_resno=int(0.5+(first_resno+last_resno)/2)
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        middle_resno=rg.resseq_as_int()
+        if middle_resno >= target_resno:
+          return middle_resno
+  return last_resno
+
+
+
 def verify_existence(hierarchy=None,
    prev_hierarchy=None,strand=None,registration=None,helix=None):
   ok=True

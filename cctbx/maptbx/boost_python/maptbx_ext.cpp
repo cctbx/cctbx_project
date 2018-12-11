@@ -708,13 +708,16 @@ namespace {
           af::tiny<int, 3> const&,
           double const&,
           double const&,
-          af::const_ref<double> const&)) mask, (
+          af::const_ref<double> const&,
+          bool const&)) mask, (
       arg("sites_frac"),
       arg("unit_cell"),
       arg("n_real"),
       arg("mask_value_inside_molecule"),
       arg("mask_value_outside_molecule"),
-      arg("radii")));
+      arg("radii"),
+      arg("wrapping")=true
+       ));
 
     def("convert_to_non_negative",
       (void(*)
