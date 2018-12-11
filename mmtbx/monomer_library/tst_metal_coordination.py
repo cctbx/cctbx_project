@@ -105,6 +105,8 @@ def run_and_test(cmd, pdb, i):
     if line.find("Metal coordination restraints:")>-1:
       bonds = int(line.split()[-1])
       break
+  else:
+    bonds = 0
   assert bonds == links[pdb][i], "found %d bonds but expected %s!" % (
     bonds,
     links[pdb][i],
