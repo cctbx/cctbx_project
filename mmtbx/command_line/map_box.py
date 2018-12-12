@@ -70,6 +70,10 @@ master_phil = libtbx.phil.parse("""
     .type = float
     .help = Resolution factor for calculation of map coefficients
     .short_caption = Resolution factor
+  map_scale_factor = None
+    .type = float
+    .help = Scale factor to apply to map
+    .short_caption = Map scale factor
   scale_max = 99999
     .type = float
     .help = Maximum value of amplitudes for output mtz file. If None, apply\
@@ -443,6 +447,10 @@ Parameters:"""%h
   else: # have map_data
     map_or_map_coeffs_prefix=None
 
+  if params.map_scale_factor:
+    print "Applying scale factor of %s to map data on read-in" %(
+       params.map_scale_factor)
+    map_data=map_data*params.map_scale_factor
 
   if params.output_origin_grid_units is not None:
     origin_to_match=tuple(params.output_origin_grid_units)
