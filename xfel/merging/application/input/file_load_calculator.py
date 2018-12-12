@@ -9,28 +9,32 @@ ranks_per_node = 68 # ranks per cori knl node
 pickle_to_memory = 3.5 # an empirical coefficient to convert pickle file size to anticipated run-time process memory on Cori KNL
 
 debug_file_load_calculator = False
-log_path = None
+debug_log_path = None
 
-def log_write(string):
+def debug_log_write(string):
 
   if not debug_file_load_calculator:
     return
 
-  log_file_handle = open(log_path, 'a')
-  log_file_handle.write(string)
-  log_file_handle.close()
+  debug_log_file_handle = open(debug_log_path, 'a')
+  debug_log_file_handle.write(string)
+  debug_log_file_handle.close()
+
+from xfel.merging.application.mpi_logger import mpi_logger
 
 class file_load_calculator(object):
   def __init__(self, params, file_list):
     self.params = params
     self.file_list = file_list
+    self.mpi_logger = mpi_logger(params)
 
-    global log_path
+    global debug_log_path
     if debug_file_load_calculator:
-      log_path = self.params.output.output_dir + '/calculate_file_load.out'
+      debug_log_path = self.params.output.output_dir + '/calculate_file_load.out'
 
   def calculate_file_load(self, available_rank_count=0):
-    '''Create a dictionary {rank:file_list} for the input number of ranks'''
+    '''Calculate a load and build a dictionary {rank:file_list} for the input number of ranks'''
+    self.mpi_logger.log_step_time("CALCULATE_FILE_LOAD")
     rank_files = {}
     if self.params.input.parallel_file_load.method == "uniform":
       rank_files = self.calculate_file_load_simple(available_rank_count)
@@ -39,9 +43,15 @@ class file_load_calculator(object):
 
     if debug_file_load_calculator:
       for rank in range(len(rank_files)):
-        log_write("\nRank %d"%rank)
+        debug_log_write("\nRank %d"%rank)
         for file_pair in rank_files[rank]:
-          log_write("\n%s"%str(file_pair))
+          debug_log_write("\n%s"%str(file_pair))
+          
+    total_file_pairs = 0
+    for key, value in rank_files.items():
+      total_file_pairs += len(value)
+    self.mpi_logger.log("Generated a list of %d file items for %d ranks"%(total_file_pairs, len(rank_files)))
+    self.mpi_logger.log_step_time("CALCULATE_FILE_LOAD", True)
 
     return rank_files
 
@@ -91,7 +101,7 @@ class file_load_calculator(object):
         if len(rank_files[rank]) > 0:
           required_number_of_ranks += 1
 
-    if available_rank_count > 0: # if the caller has provided the available rank count, assert that it's enough
+    if available_rank_count > 0: # if the caller has provided the available rank count, assert that we have enough ranks
       assert required_number_of_ranks <= available_rank_count, "Not enough ranks to load the pickle files: available %d rank(s), required %d rank(s)"%(available_rank_count, required_number_of_ranks)
 
     # optionally print out the anticipated memory load per node
@@ -100,12 +110,12 @@ class file_load_calculator(object):
         anticipated_memory_usage_GB = 0
         for file_pair in node_files[node]:
           anticipated_memory_usage_GB += os.stat(file_pair[1]).st_size / b2GB * pickle_to_memory
-        log_write ("\nNode %d: anticipated memory usage %f GB"%(node, anticipated_memory_usage_GB))
+        debug_log_write ("\nNode %d: anticipated memory usage %f GB"%(node, anticipated_memory_usage_GB))
 
     return rank_files
 
 from xfel.merging.application.phil.phil import Script as Script_Base
-from xfel.merging.application.input.file_loader import file_loader
+from xfel.merging.application.input.file_loader import simple_file_loader
 
 class Script(Script_Base):
   '''A class for running the script.'''
@@ -141,4 +151,4 @@ if __name__ == '__main__':
   if result is None:
     sys.exit(1)
 
-  log_write ("\nOK")
+  debug_log_write("\nOK")
