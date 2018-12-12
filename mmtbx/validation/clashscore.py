@@ -304,7 +304,7 @@ class probe_clashscore_manager(object):
                                  'probe', 'exe', 'probe')
     if os.getenv('CCP4'):
       ccp4_probe = os.path.join(os.environ['CCP4'],'bin','probe')
-      if (os.path.isfile(ccp4_probe)):
+      if (os.path.isfile(ccp4_probe) and not os.path.isfile(probe_command)):
         probe_command = ccp4_probe
     probe_command = '"%s"' % probe_command   # in case of spaces in path
     nuclear_flag = ""
