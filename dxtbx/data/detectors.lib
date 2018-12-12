@@ -32,6 +32,7 @@ PAD          2070 2167   75   75 eiger-4M
 PAD          2070 2164   75   75 eiger-4M
 PAD          3110 3269   75   75 eiger-9M
 PAD          4150 4371   75   75 eiger-16M
+PAD          4148 4362   75   75 eiger-16M
 PAD          2100 2290  150  150 adsc-HF4M
 IMAGE_PLATE  3000 3000  100  100 raxis-IV
 CCD          2084 2084   35   35 rigaku-saturn-724
