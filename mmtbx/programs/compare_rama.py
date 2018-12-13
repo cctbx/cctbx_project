@@ -137,19 +137,41 @@ Usage examples:
     model_2 = self.data_manager.get_model(filename=m_names[1])
     return model_1, model_2
 
-def add_arrows_on_plot(p, arrows_data, color='green'):
+def breake_arrow_if_needed(abeg, aend, plot_ranges):
+  tp = compare_rama.two_rama_points(abeg, aend)
+  actual_len = tp.length(abeg, aend)
+  min_len = tp.min_length()
+  best_xy_multipliers = tp.get_xy_multipliers()
+  if True or best_xy_multipliers == [0,0]:
+    return [(abeg,aend)]
+  # Now we figure out how to brake it.
+  return [(abeg,aend)]
+
+
+def add_arrows_on_plot(
+    p,
+    arrows_data,
+    color='green',
+    wrap_arrows=True,
+    plot_ranges=[(-180, 180), (-180, 180)]):
   """
   p - pyplot
   arrows_data - [((x,y beginning), (x,y end)), ... ((xy),(xy))]
+  wrap_arrows - draw shortest possible arrow - wrap around plot edges
+  ranges - ranges of the plot
   """
   import matplotlib.patches as patches
-  import matplotlib
   style="Simple,head_length=10,head_width=5,tail_width=1"
   for arrow in arrows_data:
+    if wrap_arrows:
+      r = breake_arrow_if_needed(arrow[0], arrow[1], plot_ranges)
+      for lines in r[:-1]:
+        # draw just a line here
+        pass
 
     p.plot.add_patch(patches.FancyArrowPatch(
-        arrow[0],
-        arrow[1],
+        r[-1][0],
+        r[-1][1],
         arrowstyle=style,
         color = color,
         linewidth=0.5,

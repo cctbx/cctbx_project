@@ -2,8 +2,8 @@ from __future__ import division
 
 import iotbx.phil
 from libtbx.utils import null_out
-from mmtbx.validation.ramalyze import ramalyze, RAMALYZE_OUTLIER, \
-    RAMALYZE_ALLOWED, RAMALYZE_FAVORED, RAMALYZE_ANY, RAMALYZE_NOT_FAVORED
+from libtbx.test_utils import approx_equal
+from mmtbx.validation.ramalyze import ramalyze
 import math
 
 master_phil_str = '''
@@ -25,6 +25,40 @@ def get_distance(a1, a2):
   if a > 180:
     a = a-360
   return a
+
+class two_rama_points(object):
+  def __init__(self, a, b):
+    self.a = a
+    self.b = b
+    self.min_len = None
+    self.best_xy_multipliers = None
+
+  def length(self, abeg, aend):
+    return math.sqrt((abeg[0]-aend[0])**2 + (abeg[1]-aend[1])**2)
+  def get_xy_multipliers(self):
+    if self.best_xy_multipliers is not None:
+      self.min_length()
+    return self.best_xy_multipliers
+
+  def min_length(self, plot_ranges=((-180, 180),(-180, 180))):
+    if self.min_len is not None:
+      return self.min_len
+    base_len = self.length(self.a, self.b)
+    self.min_len = base_len
+    # print("base_len", base_len)
+    xspan = plot_ranges[0][1] - plot_ranges[0][0]
+    yspan = plot_ranges[1][1] - plot_ranges[1][0]
+    self.best_xy_multipliers = [0,0]
+    for x in [-1,0,1]:
+      for y in [-1,0,1]:
+        new_x = self.b[0] + x*xspan
+        new_y = self.b[1] + y*yspan
+        tlen = self.length(self.a, (new_x, new_y))
+        if tlen < self.min_len:
+          self.min_len = tlen
+          self.best_xy_multipliers = [x,y]
+          # print("  min_len", min_len, best_xy_multipliers)
+    return self.min_len
 
 def determine_validation_change_text(r1, r2):
   rt1 = r1.ramalyze_type()
@@ -53,6 +87,8 @@ class rcompare(object):
       v = determine_validation_change_text(r1, r2)
       diff2 = math.sqrt(get_distance(r1.phi, r2.phi)**2 +
           get_distance(r1.psi, r2.psi)**2)
+      diff3 = two_rama_points((r1.phi, r1.psi), (r2.phi, r2.psi)).min_length()
+      assert approx_equal(diff2, diff3), "%s, %s" % ((r1.phi, r1.psi), (r2.phi, r2.psi))
       self.results.append((r1.id_str(), diff2, r1.phi, r1.psi, r2.phi, r2.psi, v, r2.res_type))
 
   def get_results(self):
