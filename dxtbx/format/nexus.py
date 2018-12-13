@@ -1355,8 +1355,13 @@ class GoniometerFactory(object):
     # Construct the model - if nonsense present cope by failing over...
     try:
       axis = tuple(unroll(rotation_axis))
+      from scitbx import matrix
+      cob = matrix.sqr((-1,  0,  0,
+                         0,  1,  0,
+                         0,  0, -1))
+      axis = cob * matrix.col(axis)      
       self.model = Goniometer(axis)
-    except Exception:
+    except Exception as e:
       self.model = Goniometer((1, 0, 0))
 
 def find_goniometer_rotation(obj):
