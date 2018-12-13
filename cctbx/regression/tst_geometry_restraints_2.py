@@ -415,20 +415,6 @@ bond 0
   ideal  model  delta    sigma   weight residual
   2.453  2.462 -0.009 1.41e-01 5.00e+01 3.92e-03
 
-Disulphide bridge restraints: 0
-
-Bond-like restraints: 0
-
-Metal coordination restraints: 0
-
-User supplied restraints: 0
-
-Standard Glycosidic restraints: 0
-
-Custom Glycosidic restraints: 0
-
-Trans Peptide restraints: 0
-
 """
   assert not show_diff(sio.getvalue(), expected_first_part + """\
 Nonbonded interactions: 0
@@ -559,14 +545,14 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
         1.46 -     1.54: 25
         1.54 -     1.61: 5
   Bond restraints: 87""",
-  """\
+  '''\
   Histogram of bond angle deviations from ideal:
        99.49 -   105.87: 23
       105.87 -   112.26: 36
       112.26 -   118.65: 28
       118.65 -   125.04: 30
       125.04 -   131.42: 13
-  Bond angle restraints: 130"""
+  Bond angle restraints: 130''',
   ]
   open("tst_cctbx_geometry_restraints_2_na.pdb", "w").write(pdb_str_1dpl_cutted)
   out1 = StringIO()
@@ -616,8 +602,9 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
       'Secondary Structure restraints around h-bond angle restraints: 12',
       "Parallelity restraints: 4",
       "Nonbonded interactions: 504"]
-  non_ss_geo_portions = ["Bond-like restraints: 0",
-      'Secondary Structure restraints around h-bond angle restraints: 0',
+  non_ss_geo_portions = [
+      #"Bond-like restraints: 0",
+      #'Secondary Structure restraints around h-bond angle restraints: 0',
       "Parallelity restraints: 0",
       "Nonbonded interactions: 526"]
   acp = processed_pdb_file.all_chain_proxies

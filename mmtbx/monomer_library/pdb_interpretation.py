@@ -5608,7 +5608,7 @@ class process(object):
           n_slots=params.show_histogram_slots.bond_lengths,
           f=self.log,
           prefix="  ",
-          origin_id=None)
+          origin_id=origin_ids.get_origin_id('covalent geometry'))
         smallest_distance_model = \
           pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
@@ -5617,7 +5617,7 @@ class process(object):
             f=self.log,
             prefix="  ",
             max_items=params.show_max_items.bond_restraints_sorted_by_residual,
-            origin_id=None)
+            origin_id=origin_ids.get_origin_id('covalent geometry'))
         if (    smallest_distance_model is not None
             and hard_minimum_bond_distance_model is not None
             and smallest_distance_model < hard_minimum_bond_distance_model):
@@ -5632,7 +5632,7 @@ class process(object):
               .bond_angle_deviations_from_ideal,
             f=self.log,
             prefix="  ",
-            origin_id=None)
+            origin_id=origin_ids.get_origin_id('covalent geometry'))
         self._geometry_restraints_manager.angle_proxies \
           .show_sorted(
             by_value="residual",
@@ -5642,7 +5642,7 @@ class process(object):
             prefix="  ",
             max_items=params.show_max_items
               .bond_angle_restraints_sorted_by_residual,
-            origin_id=None)
+            origin_id=origin_ids.get_origin_id('covalent geometry'))
         print >> self.log
         self._geometry_restraints_manager.dihedral_proxies \
           .show_histogram_of_deltas(
