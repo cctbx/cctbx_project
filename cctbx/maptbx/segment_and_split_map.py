@@ -936,6 +936,11 @@ master_phil = iotbx.phil.parse("""
       .help = Use 4 times half-width at half-height as estimate of max size
       .short_caption = Half-height width estimation
 
+    fraction_of_max_mask_threshold = .05
+      .type = float
+      .help = threshold in backup identification of solvent content.
+      .short_caption = Fraction of max mask_threshold
+
     mask_threshold = None
       .type = float
       .help = threshold in identification of overall mask. If None, guess \
@@ -2041,6 +2046,8 @@ class sharpening_info:
       self.max_ratio_to_target=params.segmentation.max_ratio_to_target
       self.min_ratio_to_target=params.segmentation.min_ratio_to_target
       self.residues_per_region=params.segmentation.residues_per_region
+      self.fraction_of_max_mask_threshold=\
+         params.segmentation.fraction_of_max_mask_threshold
       self.starting_density_threshold=\
          params.segmentation.starting_density_threshold
       self.density_threshold=params.segmentation.density_threshold
@@ -4608,6 +4615,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         crystal_symmetry=crystal_symmetry,
         verbose=params.control.verbose,
         resolve_size=params.control.resolve_size,
+        fraction_of_max_mask_threshold=params.segmentation.fraction_of_max_mask_threshold,
+        mask_resolution=params.crystal_info.resolution,
         map=map_data,
         out=out)
     if params.crystal_info.solvent_content:
@@ -8075,6 +8084,7 @@ def get_marked_points_cart(mask_data=None,unit_cell=None,
 def get_overall_mask(
     map_data=None,
     mask_threshold=None,
+    fraction_of_max_mask_threshold=None,
     solvent_fraction=None,
     crystal_symmetry=None,
     radius=None,
@@ -8144,6 +8154,12 @@ def get_overall_mask(
     max_in_sd_map,
     mean_in_map,
     min_in_map)
+
+  if fraction_of_max_mask_threshold:
+    mask_threshold=fraction_of_max_mask_threshold*max_in_sd_map
+    print >>out,"Using fraction of max as threshold: %.3f " %(
+        fraction_of_max_mask_threshold), \
+        "which is threshold of %.3f" %(mask_threshold)
 
   if mask_threshold:
     print >>out,"Cutoff for mask will be input threshold"
@@ -8368,7 +8384,10 @@ def put_bounds_in_range(
 def get_iterated_solvent_fraction(map=None,
     verbose=None,
     resolve_size=None,
-    crystal_symmetry=None,out=sys.stdout):
+    crystal_symmetry=None,
+    fraction_of_max_mask_threshold=None,
+    mask_resolution=None,
+    out=sys.stdout):
   try:
     from phenix.autosol.map_to_model import iterated_solvent_fraction
     return iterated_solvent_fraction(
@@ -8395,8 +8414,29 @@ def get_iterated_solvent_fraction(map=None,
        "\nIt may be possible to go on by supplying solvent content"+
       "or molecular_mass")
 
+    # Try to get solvent fraction with low_res mask
+    return get_solvent_fraction_from_low_res_mask(
+      crystal_symmetry=crystal_symmetry,
+      map_data=map.deep_copy(),
+      fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+      mask_resolution=mask_resolution)
 
-    return None  # was not available
+def get_solvent_fraction_from_low_res_mask(
+      crystal_symmetry=None,map_data=None,
+      fraction_of_max_mask_threshold=None,
+      mask_resolution=None,
+      out=sys.stdout):
+
+  overall_mask,max_in_sd_map,sd_map=get_overall_mask(map_data=map_data,
+    fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+    crystal_symmetry=crystal_symmetry,
+    resolution=mask_resolution,
+    out=out)
+
+  solvent_fraction=overall_mask.count(False)/overall_mask.size()
+  print >>out,"Solvent fraction from overall mask: %.3f " %(solvent_fraction)
+  return solvent_fraction
+
 
 def get_solvent_fraction_from_molecular_mass(
         crystal_symmetry=None,molecular_mass=None,out=sys.stdout):
@@ -8866,6 +8906,8 @@ def select_box_map_data(si=None,
       box_solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=box_crystal_symmetry,
         map=box_map,
+        fraction_of_max_mask_threshold=si.fraction_of_max_mask_threshold,
+        mask_resolution=si.resolution,
         out=out)
     if box_solvent_fraction is None:
       box_solvent_fraction=si.solvent_fraction
@@ -9596,6 +9638,8 @@ def auto_sharpen_map_or_map_coeffs(
         crystal_symmetry=crystal_symmetry,
         verbose=si.verbose,
         resolve_size=si.resolve_size,
+        fraction_of_max_mask_threshold=si.fraction_of_max_mask_threshold,
+        mask_resolution=si.resolution,
         map=map,
         out=out)
     if si.solvent_fraction:
@@ -9646,6 +9690,8 @@ def auto_sharpen_map_or_map_coeffs(
         crystal_symmetry=crystal_symmetry,
         verbose=overall_si.verbose,
         resolve_size=overall_si.resolve_size,
+        fraction_of_max_mask_threshold=si.fraction_of_max_mask_threshold,
+        mask_resolution=si.resolution,
         map=working_map,
         out=out)
       print >>out,"Resetting solvent fraction to %.2f " %(
