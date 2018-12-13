@@ -1972,7 +1972,7 @@ END
     log=log)
   grm = processed_pdb_file.geometry_restraints_manager()
   assert grm.angle_proxies.size() == 15
-  assert grm.get_dihedral_proxies().size() == 9
+  assert grm.get_dihedral_proxies().size() == 3
   selected_dihedrals = grm.dihedral_proxies.proxy_select(
     n_seq=13, iselection=flex.size_t([4,5,10,11,12]))
   # select SS dihedrals, 2 in this case because of alternative SG atom
@@ -2018,7 +2018,7 @@ END
     log=log)
   grm = processed_pdb_file.geometry_restraints_manager()
   assert grm.angle_proxies.size() == 21
-  assert grm.get_dihedral_proxies().size() == 9, \
+  assert grm.get_dihedral_proxies().size() == 5, \
     "dihedrals %d" % grm.get_dihedral_proxies().size()
 
 def exercise_bad_water(mon_lib_srv, ener_lib):
