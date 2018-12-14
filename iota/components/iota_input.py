@@ -26,7 +26,7 @@ input = None
   .multiple = True
   .help = Path to folder with raw data in pickle format, list of files or single file
   .help = Can be a tree with folders
-  .optional = False
+  .optional = True
 output = $PWD
   .type = path
   .multiple = False
@@ -323,35 +323,65 @@ def write_defaults(current_path=None, txt_out=None, method='cctbx_xfel',
 
   if method.lower() in ('cctbx', 'ha14'):
     # This is a deprecated backend from 2014; no longer recommended, may suck
-    default_target = ['# -*- mode: conf -*-',
-                      'difflimit_sigma_cutoff = 0.01',
-                      'distl{',
-                      '  peak_intensity_maximum_factor=1000',
-                      '  spot_area_maximum_factor=20',
-                      '  compactness_filter=False',
-                      '  method2_cutoff_percentage=2.5',
-                      '}',
-                      'integration {',
-                      '  background_factor=2',
-                      '  enable_one_to_one_safeguard=True',
-                      '  model=user_supplied',
-                      '  spotfinder_subset=spots_non-ice',
-                      '  mask_pixel_value=-2',
-                      '  greedy_integration_limit=True',
-                      '  combine_sym_constraints_and_3D_target=True',
-                      '  spot_prediction=dials',
-                      '  guard_width_sq=4.',
-                      '  mosaic {',
-                      '    refinement_target=LSQ *ML',
-                      '    domain_size_lower_limit=4.',
-                      '    enable_rotational_target_highsym=True',
-                      '  }',
-                      '}',
-                      'mosaicity_limit=2.0',
-                      'distl_minimum_number_spots_for_indexing=16',
-                      'distl_permit_binning=False',
-                      'beam_search_scope=0.5'
-                      ]
+    default_target_str = '''# -*- mode: conf -*-
+difflimit_sigma_cutoff = 0.01
+distl {
+  peak_intensity_maximum_factor = 1000
+  spot_area_maximum_factor = 20
+  compactness_filter = False
+  method2_cutoff_percentage = 2.5
+}
+integration {
+  background_factor = 2
+  enable_one_to_one_safeguard = True
+  model = user_supplied
+  spotfinder_subset = spots_non-ice
+  mask_pixel_value = -2
+  greedy_integration_limit = True
+  combine_sym_constraints_and_3D_target = True
+  spot_prediction = dials
+  guard_width_sq = 4.
+  mosaic {
+    refinement_target = LSQ *ML
+    domain_size_lower_limit = 4.
+    enable_rotational_target_highsym = True
+  }
+}
+mosaicity_limit = 2.0
+distl_minimum_number_spots_for_indexing = 16
+distl_permit_binning = False
+beam_search_scope = 0.5'''
+
+    # default_target = ['# -*- mode: conf -*-',
+    #                       'difflimit_sigma_cutoff = 0.01',
+    #                       'distl{',
+    #                       '  peak_intensity_maximum_factor=1000',
+    #                       '  spot_area_maximum_factor=20',
+    #                       '  compactness_filter=False',
+    #                       '  method2_cutoff_percentage=2.5',
+    #                       '}',
+    #                       'integration {',
+    #                       '  background_factor=2',
+    #                       '  enable_one_to_one_safeguard=True',
+    #                       '  model=user_supplied',
+    #                       '  spotfinder_subset=spots_non-ice',
+    #                       '  mask_pixel_value=-2',
+    #                       '  greedy_integration_limit=True',
+    #                       '  combine_sym_constraints_and_3D_target=True',
+    #                       '  spot_prediction=dials',
+    #                       '  guard_width_sq=4.',
+    #                       '  mosaic {',
+    #                       '    refinement_target=LSQ *ML',
+    #                       '    domain_size_lower_limit=4.',
+    #                       '    enable_rotational_target_highsym=True',
+    #                       '  }',
+    #                       '}',
+    #                       'mosaicity_limit=2.0',
+    #                       'distl_minimum_number_spots_for_indexing=16',
+    #                       'distl_permit_binning=False',
+    #                       'beam_search_scope=0.5'
+    #                       ]
+    # default_target_str = '\n'.join(default_target)
   elif method.lower() in ('dials', 'cctbx.xfel'):
     default_target_str = '''verbosity=10
                             spotfinder {

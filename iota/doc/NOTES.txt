@@ -1,4 +1,4 @@
 IOTA v1.2.013 - minor bugfixes
 
-- no longer using temporary log filenames
-- removed blank lines from target PHIL string
+- fixed HA14 spotfinding bug
+- fixed HA14 args processing bug
