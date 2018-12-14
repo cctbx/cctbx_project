@@ -1698,11 +1698,11 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   # Process PDB file
   cif_objects = inputs.cif_objects
   pdb_file = inputs.pdb_file_names[0]
-  pdb_ip = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
-  pdb_ip.clash_guard.nonbonded_distance_threshold = -1.0
-  pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
-  pdb_ip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
-  pdb_ip.proceed_with_excessive_length_bonds=True
+  pdb_ip = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  pdb_ip.pdb_interpretation.clash_guard.nonbonded_distance_threshold = -1.0
+  pdb_ip.pdb_interpretation.clash_guard.max_number_of_distances_below_threshold = 100000000
+  pdb_ip.pdb_interpretation.clash_guard.max_fraction_of_distances_below_threshold = 1.0
+  pdb_ip.pdb_interpretation.proceed_with_excessive_length_bonds=True
 
   # Model
   pdb_inp = iotbx.pdb.input(file_name=pdb_file)
