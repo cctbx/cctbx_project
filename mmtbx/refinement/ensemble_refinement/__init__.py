@@ -1703,6 +1703,8 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
   pdb_ip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
   pdb_ip.proceed_with_excessive_length_bonds=True
+  if hasattr(er_params, 'schrodinger'):
+      pdb_ip.__inject__('schrodinger', er_params.schrodinger)
 
   # Model
   pdb_inp = iotbx.pdb.input(file_name=pdb_file)

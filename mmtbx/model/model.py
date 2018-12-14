@@ -1025,10 +1025,11 @@ class manager(object):
           selection=None,
           log=self.log)
 
-    if (getattr(self._pdb_interpretation_params, "schrodinger", None) and
-        self._pdb_interpretation_params.schrodinger.use_schrodinger):
-      # so schrodinger would have fully constructed geometry to play with
-      geometry = None # schrodinger_geometry(geometry)
+    # Use Schrodinger force field if requested
+    params = self._pdb_interpretation_params
+    if hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
+      from mmtbx.geometry_restraints.schrodinger import schrodinger_manager
+      geometry = schrodinger_manager(self._pdb_hierarchy, params, cleanup=True, grm=geometry)
 
     restraints_manager = mmtbx.restraints.manager(
       geometry      = geometry,

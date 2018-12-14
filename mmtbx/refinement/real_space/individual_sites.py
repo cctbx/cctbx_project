@@ -347,6 +347,13 @@ class box_refinement_manager(object):
       geo_box.remove_reference_coordinate_restraints_in_place() # disaster happens otherwise
       map_box = box.map_box
       sites_cart_box = box.xray_structure_box.sites_cart()
+
+      # When using the Schrodinger force field, move the whole structure as the
+      # selected atoms are environment aware.
+      if (hasattr(geo_box, 'params') and hasattr(geo_box.params, 'schrodinger') and 
+          geo_box.params.schrodinger.use_schrodinger):
+        geo_box.shift_cart(box.shift_cart)
+
       rsr_simple_refiner = simple(
         target_map                  = map_box,
         selection                   = sel,
@@ -362,6 +369,7 @@ class box_refinement_manager(object):
         rms_bonds_limit = rms_bonds_limit,
         rms_angles_limit = rms_angles_limit)
       self.weight_optimal = real_space_result.weight_final
+
       sites_cart_box_refined = real_space_result.sites_cart_result
       shift_back = [-box.shift_cart[i] for i in xrange(3)]
       sites_cart_box_refined_shifted_back = \
