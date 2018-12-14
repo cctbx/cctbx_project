@@ -878,9 +878,11 @@ class manager(object):
       else:
         cif_block = hierarchy_to_output.as_cif_block()
 
-    grm = self.get_restraints_manager().geometry
-    struct_conn_loop = grm.get_struct_conn_mmcif(self.get_atoms())
-    cif_block.add_loop(struct_conn_loop)
+    if self.get_restraints_manager() is not None:
+      grm_geometry = self.get_restraints_manager().geometry
+      grm_geometry.pair_proxies(self.get_sites_cart())
+      struct_conn_loop = grm_geometry.get_struct_conn_mmcif(self.get_atoms())
+      cif_block.add_loop(struct_conn_loop)
 
     # outputting HELIX/SHEET records
     ss_cif_loops = []
@@ -906,7 +908,7 @@ class manager(object):
     restraints = self.extract_restraints_as_cif_blocks()
     cif.update(restraints)
 
-    links = grm.get_cif_link_entries(self.get_mon_lib_srv())
+    links = grm_geometry.get_cif_link_entries(self.get_mon_lib_srv())
     cif.update(links)
 
     cif.show(out=out, align_columns=align_columns)
