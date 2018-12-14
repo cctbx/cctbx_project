@@ -812,14 +812,12 @@ class manager(object):
       if ag.resname in skip_residues: continue
       if ag.resname in done: continue
       done.append(ag.resname)
-      ccid = mon_lib_srv.get_comp_comp_id_direct(ag.resname)
-      print ccid
-      print dir(ccid)
-      chem_comps.append(ccid.chem_comp)
+      ccid = mon_lib_srv.get_comp_comp_id_direct(ag.resname.strip())
       if ccid is None:
-        print 'writing mmCIF without restraints for %s' % ag.resname
+        if ag.resname.strip() not in ['DA', 'DC', 'DG', 'DT']:
+          print 'writing mmCIF without restraints for %s' % ag.resname
         continue
-      print ccid.source_info
+      chem_comps.append(ccid.chem_comp)
       restraints['comp_%s' % ag.resname] = ccid.cif_object
     chem_comp_loops = []
     for cc in chem_comps:
