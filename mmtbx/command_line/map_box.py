@@ -251,6 +251,11 @@ master_phil = libtbx.phil.parse("""
     .short_caption = Output origin
     .expert_level = 3
 
+  output_origin_match_this_file = None
+    .type = path
+    .help = As output_origin_grid_units, but use origin from this file
+    .short_caption = File with origin info
+
   restrict_map_size = False
     .type=bool
     .help = Do not go outside original map boundaries
@@ -385,6 +390,14 @@ Parameters:"""%h
         new_output_format.append(x)
     params.output_format=new_output_format
 
+  if params.output_origin_match_this_file:
+    af = any_file(params.output_origin_match_this_file)
+    if (af.file_type == 'ccp4_map'):
+      origin=af.file_content.data.origin()
+      params.output_origin_grid_units=origin
+      print "Origin of (%s,%s,%s) taken from %s" %(
+         origin[0],origin[1],origin[2],params.output_origin_match_this_file)
+    
   if params.output_origin_grid_units is not None and params.keep_origin:
     params.keep_origin=False
     print "Setting keep_origin=False as output_origin_grid_units is set"
