@@ -550,16 +550,18 @@ class info(object):
   def as_cif_block(self, cif_block=None):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
+    pdbx_refine_id = ''
     if self.data_x is not None:
-      cif_block = self.data_x.as_cif_block(cif_block=cif_block)
+      pdbx_refine_id = 'X-RAY DIFFRACTION'
+    if self.data_n is not None:
+      # !!! Warning: "X-ray+Neutron" is not compliant with mmCIF dictionary:
+      # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_exptl.method.html
+      pdbx_refine_id = 'NEUTRON DIFFRACTION' if self.data_x is None else 'X-ray+Neutron'
+    if self.data_x is not None:
+      cif_block = self.data_x.as_cif_block(cif_block=cif_block, scattering_type=pdbx_refine_id)
     # XXX Neutron data?
 
     if self.geometry is not None:
-      pdbx_refine_id = ''
-      if self.data_x is not None:
-        pdbx_refine_id = 'X-ray'
-      if self.data_n is not None:
-        pdbx_refine_id = 'Neutron' if self.data_x is None else 'X-ray+Neutron'
       cif_block = self.geometry.as_cif_block(cif_block=cif_block, pdbx_refine_id=pdbx_refine_id)
     if self.adp is not None:
       cif_block = self.adp.as_cif_block(cif_block=cif_block)

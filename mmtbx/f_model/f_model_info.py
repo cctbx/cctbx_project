@@ -316,11 +316,12 @@ class info(object):
       self.sf_algorithm.upper()
     out.flush()
 
-  def as_cif_block(self, cif_block=None):
+  def as_cif_block(self, cif_block=None, scattering_type="X-RAY DIFFRACTION"):
     import iotbx.cif.model
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
 
+    cif_block["_refine.pdbx_refine_id"] = scattering_type
     cif_block["_refine.ls_d_res_low"] = round_2_for_cif(self.d_max)
     cif_block["_refine.ls_d_res_high"] = round_2_for_cif(self.d_min)
     cif_block["_refine.pdbx_ls_sigma_F"] = round_2_for_cif(self.min_f_obs_over_sigma)
@@ -358,7 +359,7 @@ class info(object):
     for bin in self.bins:
       d_max, d_min = [float(d) for d in bin.d_range.split('-')]
       loop.add_row((
-        '?',
+        scattering_type,
         round_2_for_cif(d_min),
         round_2_for_cif(d_max),
         bin.n_work,
