@@ -1182,7 +1182,7 @@ def exercise_d_amino_acid_chain_perfect_in_box():
 Simple disulfide: pdb=" SG  DCY A   4 " - pdb=" SG  DCY A  19 " distance=2.03
 """) >= 0
   assert not block_show_diff(lv, """\
-  Bond restraints: 122
+  Bond restraints: 121
   Sorted by residual:
   bond pdb=" CG  DPR A   7 "
        pdb=" CD  DPR A   7 "
@@ -1190,13 +1190,13 @@ Simple disulfide: pdb=" SG  DCY A   4 " - pdb=" SG  DCY A  19 " distance=2.03
     1.503  1.507 -0.004 3.40e-02 8.65e+02 1.39e-02
 """)
   assert not block_show_diff(lv, """\
-  Bond angle restraints: 163
+  Bond angle restraints: 161
   Sorted by residual:
-  angle pdb=" SG  DCY A   4 "
-        pdb=" SG  DCY A  19 "
-        pdb=" CB  DCY A  19 "
+  angle pdb=" C   DIL A  10 "
+        pdb=" CA  DIL A  10 "
+        pdb=" CB  DIL A  10 "
       ideal   model   delta    sigma   weight residual
-     104.20   80.00   24.20 2.10e+00 2.27e-01 1.33e+02
+     111.60  109.11    2.49 2.00e+00 2.50e-01 1.55e+00
 """)
   assert not block_show_diff(lv, """\
   Dihedral angle restraints: 50
