@@ -391,13 +391,17 @@ Parameters:"""%h
     params.output_format=new_output_format
 
   if params.output_origin_match_this_file:
+   
     af = any_file(params.output_origin_match_this_file)
     if (af.file_type == 'ccp4_map'):
       origin=af.file_content.data.origin()
       params.output_origin_grid_units=origin
       print "Origin of (%s,%s,%s) taken from %s" %(
          origin[0],origin[1],origin[2],params.output_origin_match_this_file)
-    
+    if not params.ccp4_map_file:
+      raise Sorry(
+       "Need to specify ccp4_map_file=xxx if you use "+
+           "output_origin_match_this_file=xxxx")
   if params.output_origin_grid_units is not None and params.keep_origin:
     params.keep_origin=False
     print "Setting keep_origin=False as output_origin_grid_units is set"
