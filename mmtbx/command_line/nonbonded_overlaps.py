@@ -56,6 +56,10 @@ master_phil_str = """
   show_normalized_nbo = False
     .type = bool
     .help = When True, will show non-bonded overlaps per 1000 atoms
+
+  show_non_binary_overlap_values = True
+    .type = bool
+    .help = use a function
 """
 
 usage_string = """\

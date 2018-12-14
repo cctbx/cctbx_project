@@ -9,6 +9,8 @@ from mmtbx.monomer_library import glyco_utils
 import bondlength_defaults
 from libtbx.utils import Sorry
 
+origin_ids = geometry_restraints.linking_class.linking_class()
+
 hydrogens = ["H", "D", "T"]
 
 class ResidueLinkClass(dict):
@@ -25,7 +27,9 @@ def _apply_link_using_proxies(link,
                               geometry_proxy_registries,
                         #      distance,
                               rt_mx_ji,
+                              origin_id=None,
                               ):
+  assert origin_id
   ######################################
   def _get_restraint_i_seqs(atom_group1,
                             atom_group2,
@@ -129,10 +133,13 @@ def _apply_link_using_proxies(link,
         )
       if i_seqs is None: continue
     value = "value_dist"
+    assert origin_id
     proxy = geometry_restraints.bond_simple_proxy(
       i_seqs=i_seqs,
       distance_ideal=getattr(bond, value),
-      weight=1/bond.value_dist_esd**2)
+      weight=1/bond.value_dist_esd**2,
+      origin_id=origin_id,
+      )
     bond_params_table.update(i_seq=i_seqs[0],
                              j_seq=i_seqs[1],
                              params=proxy)
@@ -154,7 +161,9 @@ def _apply_link_using_proxies(link,
     proxy = geometry_restraints.angle_proxy(
       i_seqs=i_seqs,
       angle_ideal=angle.value_angle,
-      weight=1/angle.value_angle_esd**2)
+      weight=1/angle.value_angle_esd**2,
+      origin_id=origin_id,
+      )
     geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
   #
   for tor in link.tor_list:
@@ -168,6 +177,7 @@ def _apply_link_using_proxies(link,
       angle_ideal=tor.value_angle,
       weight=1/tor.value_angle_esd**2,
       periodicity=tor.period,
+      origin_id=origin_id,
       )
     geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
   #
@@ -189,6 +199,7 @@ def _apply_link_using_proxies(link,
       volume_ideal=volume_ideal,
       both_signs=both_signs,
       weight=25.,
+      origin_id=origin_id,
       )
     geometry_proxy_registries.chirality.add_if_not_duplicated(proxy=proxy)
   #
@@ -210,6 +221,7 @@ def _apply_link_using_proxies(link,
       proxy = geometry_restraints.planarity_proxy(
         i_seqs=planes[plane_id],
         weights=weights[plane_id],
+        origin_id=origin_id,
         )
       geometry_proxy_registries.planarity.add_if_not_duplicated(proxy=proxy)
   return count, bond_i_seqs
@@ -449,6 +461,7 @@ class linking_mixins(object):
       #
       # include & exclude selection
       #
+      origin_id = None
       if ( include_selections and
            distance>=max_bonded_cutoff_standard
            ):
@@ -735,6 +748,7 @@ Residue classes
       #
       if link:
         # apply a standard link
+        origin_id = origin_ids['link_%s' % key]
         count, bond_i_seqs = _apply_link_using_proxies(
           link,
           atom_group1,
@@ -743,7 +757,9 @@ Residue classes
           bond_asu_table,
           geometry_proxy_registries,
           rt_mx_ji=link_rt_mx_ji,
+          origin_id=origin_id,
         )
+        origin_id = None
         if len(bond_i_seqs)==0:
           if verbose:
             print 'failed to link using %s' % key
@@ -752,7 +768,6 @@ Residue classes
         links[key].append([atom_group1, atom_group2])
         links[key][-1]+=bond_i_seqs[0] # odd?
         if verbose: print "predefined residue named link",key
-        self._cif.cif["link_%s" % key] = link.cif_object
         continue
       #
       #if atoms_must_be:
@@ -792,13 +807,17 @@ Residue classes
             geometry_proxy_registries,
             rt_mx_ji=link_rt_mx_ji,
             link_carbon_dist=carbohydrate_bond_cutoff,
+            origin_id=origin_ids['glycosidic custom'],
           )
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
         links[key][-1]+=bond_i_seqs
+        print 'self._cif'
         self._cif.cif["link_%s" % key] = cif
+        assert 0
         continue
       elif link:
+        origin_id = origin_ids['link_%s' % key]
         count, bond_i_seqs = _apply_link_using_proxies(
           link,
           atom_group1,
@@ -807,7 +826,9 @@ Residue classes
           bond_asu_table,
           geometry_proxy_registries,
           rt_mx_ji=link_rt_mx_ji,
+          origin_id=origin_id,
         )
+        origin_id=None
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
         links[key][-1]+=bond_i_seqs[0]
@@ -825,6 +846,7 @@ Residue classes
             tmp = atom_group2
             atom_group2 = atom_group1
             atom_group1 = tmp
+          origin_id = origin_ids['link_%s' % key]
           rc = _apply_link_using_proxies(link,
                                          atom_group1,
                                          atom_group2,
@@ -832,6 +854,7 @@ Residue classes
                                          bond_asu_table,
                                          geometry_proxy_registries,
                                          rt_mx_ji=link_rt_mx_ji,
+                                         origin_id=origin_id,
             )
           if not rc:
             tmp = atom_group2
@@ -844,7 +867,9 @@ Residue classes
                                            bond_asu_table,
                                            geometry_proxy_registries,
                                            rt_mx_ji=link_rt_mx_ji,
+                                           origin_id=origin_id,
               )
+          origin_id=None
           # not added to links so not LINK record
           if sym_op:
             sym_links += 1
@@ -867,20 +892,21 @@ Residue classes
       custom_links.setdefault(ii, [])
       custom_links[ii].append([atom_group1, atom_group2, atom1, atom2])
       # simple
-      bond_name = "bond"
+      origin_id=origin_ids['Misc. bond']
       if ((classes1.common_rna_dna or
         classes1.ccp4_mon_lib_rna_dna) and
        (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)):
         bond_name = "h-dna"
+        assert 0
       elif (linking_utils.get_classes(atom1, important_only=True)=="metal" or
             linking_utils.get_classes(atom2, important_only=True)=="metal"):
-        bond_name = "metal-coordination"
+        origin_id = origin_ids['metal coordination']
       if sym_op:
         sym_bonds += 1
         bond_data.append( (atoms[i_seq].id_str(),
                            atoms[j_seq].id_str(),
                            rt_mx_ji,
-                           bond_name,
+                           origin_id,
             )
           )
         bond_data_i_seqs.setdefault(i_seq, [])
@@ -893,7 +919,7 @@ Residue classes
         bond_data.append( (atoms[i_seq].id_str(),
                            atoms[j_seq].id_str(),
                            None, #rt_mx,
-                           bond_name,
+                           origin_id,
             )
           )
         bond_data_i_seqs.setdefault(i_seq, [])
@@ -920,9 +946,7 @@ Residue classes
     retain = []
     for ijk, sym_pair in enumerate(pair_sym_table.iterator()):
       i_seq, j_seq = sym_pair.i_seqs()
-      origin_id=0
-      if bond_data[ijk][-1]=="metal-coordination": origin_id=2
-      #assert len(bond_i_seqs)==1
+      origin_id = bond_data[ijk][-1]
       assert i_seq == nonbonded_i_seqs[i_seq]
       assert j_seq == nonbonded_i_seqs[j_seq]
       atom1 = atoms[i_seq]
@@ -962,6 +986,7 @@ Residue classes
         retain.append(ijk)
         if (sym_pair.rt_mx_ji.is_unit_mx()): n_simple += 1
         else:                                n_symmetry += 1
+        assert origin_id
         bond_params_table.update(
           i_seq=i_seq,
           j_seq=j_seq,
@@ -1061,7 +1086,7 @@ Residue classes
         sym_bonds,
         )
       for caption, bond_type in [
-          ("Coordination",'metal-coordination'),
+          ("Coordination",'metal coordination'),
           ("Other bonds",'bond'),
         ]:
         print >> log, "  %s:" % caption

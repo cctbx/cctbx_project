@@ -3510,42 +3510,6 @@ class build_all_chain_proxies(linking_mixins):
     state["pdb_atoms"] = [ hroot.atoms()[i] for i in state["pdb_atoms"] ]
     self.__dict__.update( state )
 
-  def extract_restraints_as_cif_blocks(self):
-    chem_comp_loops = []
-    for cc in self._cif.chem_comps:
-      chem_comp_loops.append(cc.as_cif_loop())
-    for key, block in self._cif.cif.items():
-      for loop in block.iterloops():
-        if '_chem_comp_plane_atom.comp_id' in loop.keys():
-          # plane atom - add plane
-          plane_ids = []
-          comp_id = loop.get('_chem_comp_plane_atom.comp_id')[0]
-          for k, item in loop.iteritems():
-            if k=='_chem_comp_plane_atom.plane_id':
-              for plane_id in item:
-                if plane_id not in plane_ids: plane_ids.append(plane_id)
-          plane_loop = iotbx.cif.model.loop(header=[
-            '_chem_comp_plane.comp_id',
-            '_chem_comp_plane.id',
-            ])
-          for plane_id in plane_ids:
-            plane_loop.add_row([comp_id, plane_id])
-          block.add_loop(plane_loop)
-        if '_chem_link_bond.link_id' in loop.keys():
-          # link id
-          comp_id = loop.get('_chem_link_bond.link_id')[0]
-          link_loop = iotbx.cif.model.loop(header=[
-            '_chem_link.id',
-            ])
-          link_loop.add_row([comp_id])
-          block.add_loop(link_loop)
-      for cc in chem_comp_loops:
-        cc_id = cc.get('_chem_comp.id')[0]
-        if key=='comp_%s' % cc_id:
-          block.add_loop(cc)
-          break
-    return self._cif.cif
-
   def update_internals_due_to_coordinates_change(self, pdb_h):
     self.pdb_hierarchy = pdb_h
     self.pdb_atoms = self.pdb_hierarchy.atoms()
@@ -3824,6 +3788,7 @@ class build_all_chain_proxies(linking_mixins):
                   angles=True,
                   verbose=False,
                   ):
+    assert 0
     import linking_utils
     from math import sqrt
     from mmtbx.monomer_library.cif_types import link_link_id, chem_comp
@@ -4601,7 +4566,7 @@ class build_all_chain_proxies(linking_mixins):
         i_seqs=flex.size_t(i_seqs),
         j_seqs=flex.size_t(j_seqs),
         weight=weight,
-        origin_id = 3,
+        origin_id=origin_ids.get_origin_id('edits'),
         target_angle_deg=target_angle_deg)
       result.append(proxy)
     print >> log, "    Total number of custom parallelities:", len(result)
@@ -4882,17 +4847,6 @@ class build_all_chain_proxies(linking_mixins):
         log=log)
     disulfide_cif_block = None
     disulfide_cif_loop = None
-    if disulfide_sym_table.size():
-      self._cif.cif["link_SS"] = disulfide_link.as_cif_block()
-      # FIXME missing loop contents in some situations
-      #disulfide_cif_block = iotbx.cif.model.block()
-      #disulfide_cif_loop = iotbx.cif.model.loop(header=(
-      #  "_phenix.link_id",
-      #  "_phenix.atom_id_1",
-      #  "_phenix.atom_id_2",
-      #  "_phenix.sym_op",
-      #))
-    #
     max_bond_distance = max_disulfide_bond_distance
     if (bond_distances_model.size() > 0):
       max_bond_distance = max(max_bond_distance,
@@ -4937,6 +4891,7 @@ class build_all_chain_proxies(linking_mixins):
       j_seq = self.cystein_sulphur_i_seqs[sym_pair.j_seq]
       # add atoms to PDB link object
       # need to include sym. op.
+      specific_origin_id = origin_ids.get_origin_id('SS BOND')
       self.pdb_link_records.setdefault("SSBOND", [])
       self.pdb_link_records["SSBOND"].append([self.pdb_atoms[i_seq],
                                               self.pdb_atoms[j_seq],
@@ -4948,7 +4903,9 @@ class build_all_chain_proxies(linking_mixins):
         j_seq=j_seq,
         params=geometry_restraints.bond_params(
           distance_ideal=disulfide_bond.value_dist,
-          weight=1/disulfide_bond.value_dist_esd**2))
+          weight=1/disulfide_bond.value_dist_esd**2,
+          origin_id=specific_origin_id,
+          ))
       bond_asu_table.add_pair(
         i_seq=i_seq,
         j_seq=j_seq,
@@ -5010,12 +4967,14 @@ class build_all_chain_proxies(linking_mixins):
           proxy = geometry_restraints.angle_proxy(
             i_seqs=[lookup["1CB"],i_seq,j_seq],
             angle_ideal=disulfide_angle.value_angle,
-            weight=angle_weight)
+            weight=angle_weight,
+            origin_id=specific_origin_id)
           self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
           proxy = geometry_restraints.angle_proxy(
             i_seqs=[i_seq,j_seq,lookup["2CB"]],
             angle_ideal=disulfide_angle.value_angle,
-            weight=angle_weight)
+            weight=angle_weight,
+            origin_id=specific_origin_id)
           self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
           if 0:
             indent=14
@@ -5057,7 +5016,8 @@ class build_all_chain_proxies(linking_mixins):
               angle_ideal=disulfide_torsion.value_angle,
               weight=1/disulfide_torsion.value_angle_esd**2,
               periodicity=disulfide_torsion.period,
-              alt_angle_ideals=alt_value_angle)
+              alt_angle_ideals=alt_value_angle,
+              origin_id=specific_origin_id)
             self.geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
       if disulfide_cif_loop is not None:
         disulfide_cif_loop.add_row(("SS",
@@ -5065,8 +5025,9 @@ class build_all_chain_proxies(linking_mixins):
                                     self.pdb_atoms[j_seq].pdb_label_columns(),
                                     sym_str,
                                     ))
-        added = True
-    if added: self._cif.cif["link_SS"] = disulfide_link.as_cif_block()
+        # added = True
+    # if added:
+    #   self._cif.cif["link_SS"] = disulfide_link.as_cif_block()
     #
     # ====================== End of disulfides ========================
     #

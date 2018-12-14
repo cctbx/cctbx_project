@@ -15,7 +15,7 @@ def generate_torsion_restraints(
       limit=15.0,
       chi_angles_only=False,
       top_out_potential=False,
-      origin_id=2):
+      origin_id=None):
   torsion_proxies = geometry_restraints.shared_dihedral_proxy()
   if pdb_hierarchy.atoms_size() < 4:
     return torsion_proxies
