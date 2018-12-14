@@ -1,7 +1,6 @@
+from __future__ import division
 from mmtbx.regression import model_1yjp, model_1yjp_with_waters
 from iotbx.data_manager import DataManager
-
-from mmtbx.monomer_library.pdb_interpretation import geometry_restraints_edits_str
 
 count_1yjp = {
               'Bond restraints': 59,

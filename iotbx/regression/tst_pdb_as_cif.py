@@ -60,7 +60,7 @@ ATOM      9 O    GLY     2      26.154  23.705  18.108  1.00  9.22
                 args=["tst_pdb_as_cif_2.pdb"],
                 logger=out,
                 )
-  except:
+  except Exception, e:
     pass
   if 0:
     assert (out.getvalue() == """\

@@ -1,19 +1,10 @@
 
-# from __future__ import division
-# import iotbx.pdb
-# import mmtbx.model
-# import os
-# import sys
 from __future__ import division, print_function
 try:
   from phenix.program_template import ProgramTemplate
 except ImportError:
   from libtbx.program_template import ProgramTemplate
-import os, sys
-from libtbx.utils import null_out, Sorry
-import mmtbx.utils
-from libtbx import group_args
-from cctbx.array_family import flex
+import os
 
 master_phil_str = '''
 model_file_name = None

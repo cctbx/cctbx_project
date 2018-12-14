@@ -1897,5 +1897,3 @@ def format_distances_for_error_message(
             sd = "%.6g" % dist
           result.append("distance: %s - %s: %s%s" % (si, sj, sd, ss))
   return result
-
-

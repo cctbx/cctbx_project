@@ -1,3 +1,4 @@
+from __future__ import division
 standard_cif_links = [
   ['link_ACE_C-N', 'Taken from Monomer Library or GeoStd'],
   ['link_AHT-ALA', 'Taken from Monomer Library or GeoStd'],
