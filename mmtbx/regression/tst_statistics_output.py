@@ -16,7 +16,7 @@ def test_1():
   out = StringIO()
   stats.show(log=out)
   assert not show_diff(out.getvalue(), """
-GEOMETRY RESTRAINTS LIBRARY: None
+GEOMETRY RESTRAINTS LIBRARY: NONE
 DEVIATIONS FROM IDEAL VALUES.
   BOND      :  0.000   0.000      0
   ANGLE     :  0.000   0.000      0
