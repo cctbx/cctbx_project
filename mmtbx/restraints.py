@@ -69,7 +69,7 @@ class manager(object):
           compute_gradients = compute_gradients,
           log=log,
           print_amber_energies=self.print_amber_energies,
-          )
+          qmmask=params.amber.qmmask)
 
   def cleanup_amber(self):
     if self.sander and self.amber_structs:
