@@ -68,6 +68,7 @@ def generate_protein_tuples(hierarchy,
                             cdl_class=False,
                             omega_cdl=False,
                             #
+                            retain_selection="name ca or name c or name n or name o or name cb",
                             verbose=False,
                             ):
   assert length
@@ -85,7 +86,7 @@ def generate_protein_tuples(hierarchy,
   if include_non_standard_peptides:
     peptide_lookup.append('modified_amino_acid')
   backbone_asc = hierarchy.atom_selection_cache()
-  backbone_sel = backbone_asc.selection("name ca or name c or name n or name o or name cb")
+  backbone_sel = backbone_asc.selection(retain_selection)
   backbone_hierarchy = hierarchy.select(backbone_sel)
   get_class = iotbx.pdb.common_residue_names_get_class
   threes = ProteinResidues(geometry, registry=registry, length=length)
