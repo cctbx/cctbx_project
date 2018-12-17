@@ -246,7 +246,7 @@ class EigerNXmxFixer(object):
         key = handle['/entry/instrument/detector/detector_number'].value
         default_axis = {'E-32-0105':(0,1,0)}[key]
       except KeyError as e:
-        default_axis = (1,0,0)
+        default_axis = (-1,0,0)
 
       num_images = 0
       for name in sorted(handle['/entry/data'].iterkeys()):
