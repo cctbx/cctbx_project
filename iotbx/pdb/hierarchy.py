@@ -991,9 +991,6 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     chem_comp_loop = iotbx.cif.model.loop(header=(
       '_chem_comp.id',
       ))
-    chem_comp_atom_loop = iotbx.cif.model.loop(header=(
-      '_chem_comp_atom.atom_id',
-      ))
     struct_asym_loop = iotbx.cif.model.loop(header=(
       '_struct_asym.id',
       ))
@@ -1101,8 +1098,6 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     for row in chem_comp_ids: chem_comp_loop.add_row([row])
     h_cif_block.add_loop(chem_comp_loop)
     chem_comp_atom_ids.sort()
-    for row in chem_comp_atom_ids: chem_comp_atom_loop.add_row([row])
-    h_cif_block.add_loop(chem_comp_atom_loop)
     for row in struct_asym_ids: struct_asym_loop.add_row([row])
     h_cif_block.add_loop(struct_asym_loop)
     #
