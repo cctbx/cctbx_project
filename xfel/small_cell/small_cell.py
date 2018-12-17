@@ -152,7 +152,7 @@ def test_spot_connection(hklA,hklB,xyzA,xyzB,metrical_matrix,phil):
 def filter_indicies(ori,beam,resolution,phil):
   """ Given a unit cell, determine reflections in the diffracting condition, assuming the mosiaicity
   passed in the target phil file. Include their locations in reciprocal space given a crystal
-  orientaiton.
+  orientation.
   @param ori crystal orientation
   @param dxtbx beam object
   @param resolution limiting resolution to determine miller indices
@@ -288,6 +288,7 @@ def hkl_to_xy (ori,hkl,detector,beam):
     panel_id, xy = detector.get_ray_intersection(q)
   except RuntimeError:
     return None, None
+  xy = detector[panel_id].millimeter_to_pixel(xy)
   return panel_id, xy
 
 def small_cell_index(path, horiz_phil):
@@ -871,8 +872,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
       predicted = []
       for index in indicies_orig:
         panel_id, xy = hkl_to_xy(ori,col(index),detector,beam)
-        if panel is None or xy is None: continue
-        predicted_panel.append(panel)
+        predicted_panel.append(panel_id)
         predicted.append(xy)
 
       # find spotfinder spots within a certain distance of predictions
@@ -893,7 +893,8 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
         s_x = spot.spot_dict['xyzobs.px.value'][0]
         s_y = spot.spot_dict['xyzobs.px.value'][1]
         for index_o, index_a, pred_panel, pred in zip(indicies_orig, indicies_asu, predicted_panel, predicted):
-          if measure_distance((s_x, s_y),(pred[1],pred[0])) <= horiz_phil.small_cell.interspot_distance:
+          if pred_panel is None or pred is None: continue
+          if measure_distance((s_x, s_y),(pred[0],pred[1])) <= horiz_phil.small_cell.interspot_distance:
             # don't add the working_set spots here.  They were added above
             found_it = False
             for ws_spot in working_set:
