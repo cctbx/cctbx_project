@@ -37,6 +37,8 @@ class file_lister(object):
     return list(self.filepair_generator())
 
 from xfel.merging.application.worker import worker
+from xfel.merging.application.input.data_counter import data_counter
+
 class simple_file_loader(worker):
   '''A class for running the script.'''
 
@@ -52,11 +54,6 @@ class simple_file_loader(worker):
     """ Load all the data using MPI """
     from dxtbx.model.experiment_list import ExperimentList
     from dials.array_family import flex
-    from libtbx.mpi4py import MPI
-    comm = MPI.COMM_WORLD
-
-    rank = comm.Get_rank()
-    size = comm.Get_size()
 
     # Both must be none or not none
     test = [all_experiments is None, all_reflections is None].count(True)
@@ -69,18 +66,30 @@ class simple_file_loader(worker):
       starting_expts_count = len(all_experiments)
       starting_refls_count = len(all_reflections)
 
-    # Send the list of file paths to each worker
-    if rank == 0:
+    # Generate and send a list of file paths to each worker
+    if self.mpi_helper.rank == 0:
       file_list = self.get_list()
-      print ('Transmitting file list of length %d'%(len(file_list)))
-      transmitted = file_list
+      self.params.input.path = None # the input is already parsed
+
+      from xfel.merging.application.input.file_load_calculator import file_load_calculator
+      load_calculator = file_load_calculator(self.params, file_list)
+      calculated_file_list = load_calculator.calculate_file_load(self.mpi_helper.size)
+      self.logger.log('Transmitting a list of %d file lists'%(len(calculated_file_list)))
+      transmitted = calculated_file_list
     else:
       transmitted = None
 
-    transmitted = comm.bcast(transmitted, root = 0)
+    self.logger.log_step_time("BROADCAST_FILE_LIST")
+
+    transmitted = self.mpi_helper.comm.bcast(transmitted, root = 0)
+
+    new_file_list = transmitted[self.mpi_helper.rank]
+
+    self.logger.log("Received a list of %d file pairs"%len(new_file_list))
+    self.logger.log_step_time("BROADCAST_FILE_LIST", True)
 
     # Read the data
-    new_file_list = transmitted[rank::size]
+    self.logger.log_step_time("LOAD")
     for experiments_filename, reflections_filename in new_file_list:
       experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
       reflections = easy_pickle.load(reflections_filename)
@@ -89,9 +98,12 @@ class simple_file_loader(worker):
         all_experiments.append(experiment)
         refls['id'] = flex.int(len(refls), len(all_experiments)-1)
         all_reflections.extend(refls)
+    self.logger.log_step_time("LOAD", True)
 
-    print ('Rank %d has read %d experiments consisting of %d reflections'%(rank,
-      len(all_experiments)-starting_expts_count, len(all_reflections)-starting_refls_count))
+    self.logger.log('Read %d experiments consisting of %d reflections'%(len(all_experiments)-starting_expts_count, len(all_reflections)-starting_refls_count))
+
+    input_data_counter = data_counter(self.params)
+    input_data_counter.count(all_experiments, all_reflections)
 
     return all_experiments, all_reflections
 

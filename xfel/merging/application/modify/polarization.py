@@ -5,12 +5,15 @@ from xfel.merging.application.worker import worker
 
 class polarization(worker):
   """
-  Computes the polarazation correction as defined by Kahn 1982.
+  Computes the polarization correction as defined by Kahn 1982.
 
   Modifies the intensity.sum.value and intensity.sum.variance columns
   in place.
   """
   def run(self, experiments, reflections):
+
+    self.logger.log_step_time("POLARIZATION_CORRECTION")
+
     result = flex.reflection_table()
 
     for expt_id, experiment in enumerate(experiments):
@@ -67,6 +70,12 @@ class polarization(worker):
       result.extend(refls)
 
     print ("Mean intensity changed from %.2f to %.2f"%(flex.mean(reflections['intensity.sum.value']), flex.mean(result['intensity.sum.value'])))
+
+    self.logger.log("Applied polarization correction. Mean intensity changed from %.2f to %.2f"%(flex.mean(reflections['intensity.sum.value']), flex.mean(result['intensity.sum.value'])))
+
+    self.logger.log_step_time("POLARIZATION_CORRECTION", True)
+
+
     return experiments, result
 
 if __name__ == '__main__':

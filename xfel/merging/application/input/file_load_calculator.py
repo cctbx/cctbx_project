@@ -46,7 +46,7 @@ class file_load_calculator(object):
         debug_log_write("\nRank %d"%rank)
         for file_pair in rank_files[rank]:
           debug_log_write("\n%s"%str(file_pair))
-          
+
     total_file_pairs = 0
     for key, value in rank_files.items():
       total_file_pairs += len(value)

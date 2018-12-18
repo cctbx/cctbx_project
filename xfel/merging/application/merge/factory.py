@@ -7,4 +7,3 @@ class factory(factory_base):
   @staticmethod
   def from_parameters(params):
     return [merger(params)]
-    

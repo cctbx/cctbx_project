@@ -341,6 +341,9 @@ output {
   tmp_dir = None
     .type = str
     .help = temporary file directory
+  do_timing = False
+    .type = bool
+    .help = When True, calculate and log elapsed time for execution steps
 }
 
 statistics {

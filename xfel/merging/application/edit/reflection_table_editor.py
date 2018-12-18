@@ -11,15 +11,15 @@ class reflection_table_editor(worker):
     '''Add a "symmetry-reduced hkl" column to the reflection table'''
     if reflections.size() == 0:
       return
-    
+
     from cctbx import miller
     from cctbx.crystal import symmetry
     import copy
-    
+
     # assert that the space group used to integrate the data is consistent with the input space group for merging
-    
+
     #target_patterson_group_info = target_space_group.build_derived_patterson_group().info().symbol_and_number()
-    
+
     # build target space group and target patterson group info
     target_unit_cell = self.params.scaling.unit_cell
     target_space_group_info = self.params.scaling.space_group
@@ -60,10 +60,5 @@ class reflection_table_editor(worker):
     self.logger.log_step_time("PRUNE_COLUMNS")
     self.prune_reflection_columns(reflections)
     self.logger.log_step_time("PRUNE_COLUMNS", True)
-  
+
     return experiments, reflections
-      
-    
-    
-    
-    

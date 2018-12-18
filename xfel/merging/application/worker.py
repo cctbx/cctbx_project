@@ -4,10 +4,19 @@ from __future__ import division
 Base classes for the merging application
 """
 
+from xfel.merging.application.mpi_helper import mpi_helper
+from xfel.merging.application.mpi_logger import mpi_logger
+
 class worker(object):
   """ Base class for the worker objects. Performs validation and does work using the run method """
   def __init__(self, params):
     self.params = params
+
+    # create logger
+    self.logger = mpi_logger(self.params)
+
+    # create MPI helper
+    self.mpi_helper = mpi_helper()
 
   def validate(self):
     """ Override to perform any validation of the input parameters """

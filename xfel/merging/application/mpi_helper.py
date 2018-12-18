@@ -8,10 +8,9 @@ class mpi_helper(object):
     self.comm = self.MPI.COMM_WORLD
     self.rank = self.comm.Get_rank()
     self.size = self.comm.Get_size()
-  
+
   def time(self):
     return self.MPI.Wtime()
-  
+
   def finalize(self):
     self.MPI.Finalize()
-

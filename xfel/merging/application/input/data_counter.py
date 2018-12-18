@@ -18,20 +18,20 @@ class data_counter(object):
     # count experiments and reflections
     experiment_count = len(experiments)
     reflection_count = len(reflections)
-    
+
     # count images
     image_count = 0
     all_imgs = []
     for iset in experiments.imagesets():
       all_imgs.extend(iset.paths())
       image_count = len(set(all_imgs))
-      
+
     #from IPython import embed; embed()
-      
+
     self.logger.log_step_time("LOAD_STATISTICS")
     comm = self.mpi_helper.comm
     MPI = self.mpi_helper.MPI
-        
+
     # MPI-reduce all counts
     total_experiment_count  = comm.reduce(experiment_count, MPI.SUM, 0)
     total_image_count       = comm.reduce(image_count, MPI.SUM, 0)
@@ -47,6 +47,3 @@ class data_counter(object):
       self.logger.log('The maximum number of reflections loaded per rank is: %d reflections'%max_reflection_count)
       self.logger.log('The minimum number of reflections loaded per rank is: %d reflections'%min_reflection_count)
     self.logger.log_step_time("LOAD_STATISTICS", True)
-
-    
-

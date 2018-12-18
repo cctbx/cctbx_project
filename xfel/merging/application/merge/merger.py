@@ -21,7 +21,7 @@ class merger(worker):
   """
   Merges multiple measurements of symmetry-reduced hkl's.
   """
-  
+
   def merging_reflection_table(self):
     '''Create a reflection table for storing merged reflections'''
     table = flex.reflection_table()
@@ -231,12 +231,12 @@ class merger(worker):
       merged_file.write("%s %f %f %f %d\n"%(ref.get('miller_index'), ref.get('intensity'), ref.get('esd'), ref.get('rmsd'), ref.get('multiplicity')))
 
     merged_file.close()
-  
+
   def run(self, experiments, reflections):
 
     # set up hkl chunks to be used for all-to-all; every avialable rank participates in all-to-all, even if that rank doesn't load any data
     self.logger.log_step_time("SETUP_HKL_CHUNKS")
-    self.setup_hkl_chunks() 
+    self.setup_hkl_chunks()
     self.logger.log_step_time("SETUP_HKL_CHUNKS", True)
 
     # for the ranks, which have loaded the data, distribute the reflections over the hkl chunks
@@ -271,7 +271,7 @@ class merger(worker):
     self.logger.log("Merged intensities for %d HKLs"%(all_rank_merged_reflections.size()))
     self.logger.log_step_time("AVERAGE", True)
 
-    # gather all merged intensities at rank 0 
+    # gather all merged intensities at rank 0
     self.logger.log_step_time("GATHER")
     if self.mpi_helper.rank != 0:
       self.logger.log("Executing MPI gathering of all reflection tables at rank 0...")
