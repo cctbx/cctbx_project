@@ -115,7 +115,6 @@ class file_load_calculator(object):
     return rank_files
 
 from xfel.merging.application.phil.phil import Script as Script_Base
-from xfel.merging.application.input.file_loader import simple_file_loader
 
 class Script(Script_Base):
   '''A class for running the script.'''

@@ -1,5 +1,4 @@
 from __future__ import print_function, division
-from dials.array_family import flex
 from xfel.merging.application.worker import worker
 
 class reflection_table_editor(worker):

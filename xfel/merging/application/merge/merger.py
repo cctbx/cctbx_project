@@ -2,7 +2,6 @@ from __future__ import print_function, division
 from dials.array_family import flex
 from xfel.merging.application.worker import worker
 from six.moves import range
-import sys
 
 try:
   import resource

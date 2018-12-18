@@ -1,5 +1,4 @@
 from __future__ import division
-from six.moves import range
 
 from xfel.merging.application.mpi_helper import mpi_helper
 from xfel.merging.application.mpi_logger import mpi_logger
