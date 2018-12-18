@@ -9139,22 +9139,40 @@ def fit_bounds_inside_box(lower,upper,box_size=None,all=None):
 
   return new_lower,new_upper
 
-def split_boxes(lower=None,upper=None,target_size=None,target_n_overlap=None):
+def split_boxes(lower=None,upper=None,target_size=None,target_n_overlap=None,
+     fix_target_size_and_overlap=None):
   # purpose: split the region from lower to upper into overlapping
   # boxes of size about target_size
+  # NOTE: does not actually use target_n_overlap unless
+  #     fix_target_size_and_overlap is set
 
   all_box_list=[]
   for l,u,ts in zip (lower,upper,target_size):
     n=u+1-l
-    n_box=max(1,(n+(3*ts//4))//ts)
-    new_target_size=int(0.9+n/n_box)
+    # offset defined by: ts-offset + ts-offset+...+ts =n
+    #                 ts*n_box-offset*(n_box-1)=n approx
+    #             n_box (ts-offset) +offset=n
+    #             n_box= (n-offset)/(ts-offset)
+    assert ts>target_n_overlap
+    if fix_target_size_and_overlap:
+      n_box=(n-target_n_overlap-1)/(ts-target_n_overlap)
+      if n_box>int(n_box):
+        n_box=int(n_box)+1
+      else:
+        n_box=int(n_box)
 
-    # offset defined by: (n_box-1)*offset+ts=n
-    offset=int(0.9+(n-new_target_size)/max(1,n_box-1))
+      new_target_size=ts
+      offset=ts-target_n_overlap
+    else: # original version
+      n_box=max(1,(n+(3*ts//4))//ts)
+      new_target_size=int(0.9+n/n_box)
+      offset=int(0.9+(n-new_target_size)/max(1,n_box-1))
     box_list=[]
     for i in xrange(n_box):
       start_pos=max(l,l+i*offset)
       end_pos=min(u,start_pos+new_target_size)
+      if fix_target_size_and_overlap:
+        start_pos=max(0,min(start_pos,end_pos-new_target_size))
       box_list.append([start_pos,end_pos])
     all_box_list.append(box_list)
   new_lower_upper_list=[]
