@@ -215,6 +215,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
           rnames.reverse()
           angle_proxy = cdl_proxies.get(tuple(rnames), None)
         if angle_proxy is None: continue
+        if angle_proxy.origin_id!=0: continue
         if 0:
           outl=""
           for key in atoms:
