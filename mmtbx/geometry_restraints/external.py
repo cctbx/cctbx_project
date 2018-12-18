@@ -69,17 +69,6 @@ if schrodinger_installed:
       .help = Parameters for using Schrodinger's force fields.
       .expert_level = 3
     {
-      use_schrodinger = False
-        .help = Use Schrodinger supported force field.
-        .type = bool
-      ligand_selection = None
-        .help = Use force field parameters only for selected ligands.
-        .type = atom_selection
-      forcefield = OPLS3e* None
-        .help = Force field to use during refinement.
-        .type = choice
-      maestro_file = None
-        .help = Schrodinger Maestro file containing structure.
-        .type = path
+      include scope mmtbx.geometry_restraints.schrodinger.master_phil_str
     }
 """
