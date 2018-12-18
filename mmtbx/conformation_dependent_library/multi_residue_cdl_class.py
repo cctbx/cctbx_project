@@ -8,6 +8,9 @@ from mmtbx.conformation_dependent_library.cdl_utils import \
   get_c_ca_n, round_to_ten, get_omega_value
 from mmtbx.conformation_dependent_library.cdl_setup import columns
 
+from cctbx.geometry_restraints.linking_class import linking_class
+origin_ids = linking_class()
+
 class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
   #
   # CDL specific methods
@@ -215,7 +218,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
           rnames.reverse()
           angle_proxy = cdl_proxies.get(tuple(rnames), None)
         if angle_proxy is None: continue
-        if angle_proxy.origin_id!=0: continue
+        if angle_proxy.origin_id==origin_ids.get_origin_id('edits'): continue
         if 0:
           outl=""
           for key in atoms:
