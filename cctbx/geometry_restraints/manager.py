@@ -1798,8 +1798,11 @@ class manager(Base_geometry):
         pass
       elif key in mon_lib_srv.link_link_id_dict:
         links['link_%s' % key] = mon_lib_srv.link_link_id_dict[key].as_cif_block()
+      elif origin_id_info[0] in ['hydrogen bonds']:
+        # not writing cif_link for various reasons like programatic links
+        pass
       else:
-        print origin_id_info
+        print origin_id_info[0]
         assert 0
     return links
 
