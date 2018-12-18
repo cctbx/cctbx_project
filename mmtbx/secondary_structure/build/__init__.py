@@ -852,6 +852,7 @@ def substitute_ss(
   # print >> log, "Running GM               : %.4f" % (t11-t10)
   # print_hbond_proxies(grm.geometry,real_h)
   grm.geometry.remove_reference_coordinate_restraints_in_place()
+  grm.geometry.remove_chi_torsion_restraints_in_place(nonss_for_tors_selection)
   return grm.geometry.get_chi_torsion_proxies()
 
 
