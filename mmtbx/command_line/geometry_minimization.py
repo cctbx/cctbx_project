@@ -457,7 +457,7 @@ class run(object):
     if self.params.write_geo_file:
       broadcast(m=prefix, log = self.log)
       s = self.model.geometry_statistics()
-      s.show(log = self.log)
+      s.show(log = self.log, uppercase=False)
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
