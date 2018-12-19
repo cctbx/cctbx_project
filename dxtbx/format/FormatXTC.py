@@ -45,9 +45,13 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
     self.current_event = None
     self._psana_runs = {} ## empty container, to prevent breaking other formats
     if 'locator_scope' in kwargs:
-      self.params = FormatXTC.params_from_phil(kwargs['locator_scope'],image_file,strict=True)
+      self.params = FormatXTC.params_from_phil( master_phil=kwargs['locator_scope'],
+                                                user_phil=image_file,
+                                                strict=True)
     else:
-      self.params = FormatXTC.params_from_phil(locator_scope,image_file,strict=True)
+      self.params = FormatXTC.params_from_phil(master_phil=locator_scope,
+                                               user_phil=image_file,
+                                               strict=True)
     assert self.params.mode == 'idx', 'idx mode should be used for analysis'
     self._initialized = True
 
@@ -62,7 +66,7 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
     except ImportError:
       return False
     try:
-      params = FormatXTC.params_from_phil(locator_scope,image_file)
+      params = FormatXTC.params_from_phil(locator_scope, image_file)
     except Exception:
       return False
     if params is None: return False
@@ -71,7 +75,7 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
     return True
 
   @staticmethod
-  def params_from_phil(master_phil, user_phil,strict=False):
+  def params_from_phil(master_phil, user_phil, strict=False):
     """ Read the locator file """
     try:
       user_input = parse(file_name = user_phil)

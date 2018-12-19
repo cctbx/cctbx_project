@@ -21,6 +21,14 @@ cspad_locator_str = """
     dark_correction = True
       .type = bool
       .help = flag to decide if dark correction should be done
+    use_psana_calib = False
+      .type = bool
+      .help = Use the psana calibration
+    common_mode = default
+      .type = str
+      .help = Common mode correction "default", "cspad_default", or "unbonded"\
+              see https://confluence.slac.stanford.edu/display/PSDM/Common+mode+correction+algorithms\
+              default means no common mode corrections... the other two are psana corrections
     }
 """
 
@@ -28,14 +36,15 @@ cspad_locator_scope = parse(cspad_locator_str+locator_str, process_includes=True
 
 class FormatXTCCspad(FormatXTC):
 
-  def __init__(self, image_file, **kwargs):
+  def __init__(self, image_file, locator_scope=cspad_locator_scope, **kwargs):
     assert(self.understand(image_file))
-    FormatXTC.__init__(self, image_file, locator_scope = cspad_locator_scope, **kwargs)
+    FormatXTC.__init__(self, image_file, locator_scope=locator_scope, **kwargs)
     assert self.params.cspad.detz_offset is not None, "Supply a detz_offset for the cspad"
     self._ds = FormatXTC._get_datasource(image_file, self.params)
     self._psana_runs = FormatXTC._get_psana_runs(self._ds)
     self._cache_psana_det()  # NOTE: move to base FormatXTC class
     self._cache_psana_pedestals()  # NOTE: move to base FormatXTC class
+    self._cache_psana_gain()
     self.populate_events()
     self.n_images = len(self.times)
 
@@ -47,6 +56,18 @@ class FormatXTCCspad(FormatXTC):
       return False
     ds = FormatXTC._get_datasource(image_file, params)
     return any(['cspad' in src.lower() for src in params.detector_address])
+
+  def _cache_psana_gain(self):
+    """
+    checks if user wants gain applied and caches a gain map per run
+    """
+    run_numbers = self._psana_runs.keys()
+    self._gain_masks = {}
+    for r in run_numbers:
+      if self.params.cspad.apply_gain_mask:
+        self._gain_masks[r] = self._psana_det[r].gain_mask(r) > 0
+      else:
+        self._gain_masks[r] = None
 
   def _cache_psana_det(self):
     """Store a psana detector instance for each run"""
@@ -61,24 +82,24 @@ class FormatXTCCspad(FormatXTC):
     self._pedestals = {}
     for run_number, run in self._psana_runs.iteritems():
       det = self._psana_det[run_number]
-      self._pedestals[ run_number ] = det.pedestals( run )
+      self._pedestals[run_number] = det.pedestals(run)
 
   def get_raw_data(self,index):
-    import psana
     from scitbx.array_family import flex
     import numpy as np
     assert len(self.params.detector_address) == 1
-    d = FormatXTCCspad.get_detector(self, index)
+    d = self.get_detector(index)
     event = self._get_event(index)
     run_number = event.run()
     det = self._psana_det[ run_number]
     data = cspad_cbf_tbx.get_psana_corrected_data(det, event,
-                                                  use_default=False,
+                                                  use_default=self.params.cspad.use_psana_calib,
                                                   dark=self._pedestals[run_number],
-                                                  common_mode=None,
+                                                  common_mode=self.params.cspad.common_mode,
                                                   apply_gain_mask=self.params.cspad.apply_gain_mask,
                                                   gain_mask_value=None,
-                                                  per_pixel_gain=False)
+                                                  per_pixel_gain=False,
+                                                  gain_mask=self._gain_masks[run_number])
     data = data.astype(np.float64)
     self._raw_data = []
     for quad_count, quad in enumerate(d.hierarchy()):
