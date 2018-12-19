@@ -59,16 +59,26 @@ if (afitt_installed) :
 
 # Schrodinger
 schrodinger_installed = False
-if os.environ.get("SCHRODINGER", None):
+if os.environ.get("SCHRODINGER", False):
   if os.path.exists(os.environ["SCHRODINGER"]):
     schrodinger_installed = True
 
 if schrodinger_installed:
-  external_energy_params_str += """
+  from glob import glob
+  paths = glob(os.path.join(
+      os.environ["SCHRODINGER"], 'psp-v*', 'data', 'phenix'))
+  if len(paths) == 1:
+    import sys
+    sys.path.append(paths[0])
+  try:
+    import phenix_schrodinger
+    external_energy_params_str += """
     schrodinger
       .help = Parameters for using Schrodinger's force fields.
       .expert_level = 3
     {
-      include scope mmtbx.geometry_restraints.schrodinger.master_phil_str
+      include scope phenix_schrodinger.master_phil_str
     }
 """
+  except ImportError:
+    schrodinger_installed = False
