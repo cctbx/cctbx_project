@@ -350,7 +350,7 @@ class box_refinement_manager(object):
 
       # When using the Schrodinger force field, move the whole structure as the
       # selected atoms are environment aware.
-      if hasattr(geo_box, 'schrodinger') and geo_box.schrodinger.use_schrodinger:
+      if geobox.get_source() == 'SCHRODINGER':
         geo_box.shift_cart(box.shift_cart)
 
       rsr_simple_refiner = simple(
@@ -377,7 +377,7 @@ class box_refinement_manager(object):
         iselection, sites_cart_refined)
       self.xray_structure.set_sites_cart(sites_cart_moving)
       self.sites_cart = self.xray_structure.sites_cart()
-      if hasattr(geo_box, 'schrodinger') and geo_box.schrodinger.use_schrodinger:
+      if geobox.get_source() == 'SCHRODINGER':
         geo_box.shift_cart(shift_back)
     else: # NCS constraints are present
       # select on xrs, grm, ncs_groups
