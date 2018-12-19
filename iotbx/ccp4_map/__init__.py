@@ -7,7 +7,7 @@ ext = boost.python.import_ext("iotbx_ccp4_map_ext")
 from iotbx_ccp4_map_ext import *
 import iotbx_ccp4_map_ext as ext
 
-class _(boost.python.injector, ext.map_reader) :
+class utils :  # These routines are used by both ccp4_map and mrcfile
 
   def show_summary (self, out=None, prefix="") :
     if (out is None) : out = sys.stdout
@@ -85,3 +85,8 @@ class _(boost.python.injector, ext.map_reader) :
     c = self.unit_cell_parameters[2] / self.unit_cell_grid[2]
     alpha,beta,gamma = self.unit_cell_parameters[3:6]
     return uctbx.unit_cell((a,b,c,alpha,beta,gamma))
+
+class _(boost.python.injector, ext.map_reader, utils) : # A way to access these
+  def dummy(self):
+    pass # don't do anything
+

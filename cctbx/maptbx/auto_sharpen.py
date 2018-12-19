@@ -768,6 +768,20 @@ def get_map_and_model(params=None,
   if map_data and crystal_symmetry:
     original_crystal_symmetry=crystal_symmetry
     original_unit_cell_grid=None
+    acc=map_data.accessor()
+    shift_needed = not \
+       (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
+        map_data.is_0_based())
+    if(shift_needed):
+      map_data = map_data.shift_origin()
+      origin_shift=(
+        map_data.origin()[0]/map_data.all()[0],
+        map_data.origin()[1]/map_data.all()[1],
+        map_data.origin()[2]/map_data.all()[2])
+      origin_frac=origin_shift  # NOTE: fraction of NEW cell
+    else:
+      origin_frac=(0.,0.,0.)
+
 
   elif params.input_files.map_file:
     print >>out,"\nReading map from %s\n" %( params.input_files.map_file)
@@ -1016,7 +1030,6 @@ def run(args=None,params=None,
 
   offset_map_data=new_map_data.deep_copy()
   if acc is not None:  # offset the map to match original if possible
-    #ZZZoffset_map_data=offset_map_data.as_1d()
     offset_map_data.reshape(acc)
 
   if write_output_files and params.output_files.sharpened_map_file and \

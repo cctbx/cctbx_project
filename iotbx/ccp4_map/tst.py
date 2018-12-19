@@ -5,13 +5,32 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from cStringIO import StringIO
-import sys
+import sys,os
+from iotbx import mrcfile
 
-def exercise_with_tst_input_map():
+
+def add_list(list_a,list_b):
+  assert len(list_a)==len(list_b)
+  new_list=[]
+  for a,b in zip(list_a,list_b):
+    new_list.append(a+b)
+  return new_list
+
+def subtract_list(list_a,list_b):
+  assert len(list_a)==len(list_b)
+  new_list=[]
+  for a,b in zip(list_a,list_b):
+    new_list.append(a-b)
+  return new_list
+
+def exercise_with_tst_input_map(use_mrcfile=None):
   file_name = libtbx.env.under_dist(
-    module_name="iotbx",
-    path="ccp4_map/tst_input.map")
-  m = iotbx.ccp4_map.map_reader(file_name=file_name)
+      module_name="iotbx",
+      path="ccp4_map/tst_input.map")
+  if use_mrcfile:
+    m = mrcfile.map_reader(file_name=file_name)
+  else:
+    m = iotbx.ccp4_map.map_reader(file_name=file_name)
   assert approx_equal(m.header_min, -0.422722190619)
   assert approx_equal(m.header_max, 0.335603952408)
   assert approx_equal(m.header_mean, 0)
@@ -32,18 +51,63 @@ def exercise_with_tst_input_map():
   assert approx_equal(m.grid_unit_cell().parameters(),
     (5.13094, 4.68175, 4.35225, 90, 101.476, 90))
 
-def exercise_crystal_symmetry_from_ccp4_map():
+  # Read and write map with offset
+
+  from scitbx.array_family.flex import grid
+  from scitbx.array_family import flex
+  from cctbx import uctbx, sgtbx
+
+  real_map=m.data.as_double()
+  grid_start=(5,5,5)
+  grid_end=(9,10,11)
+  if use_mrcfile:
+    iotbx.mrcfile.write_ccp4_map(
+      file_name="shifted_map.mrc",
+      unit_cell=uctbx.unit_cell(m.unit_cell().parameters()),
+      space_group=sgtbx.space_group_info("P1").group(),
+      gridding_first=grid_start,
+      gridding_last=grid_end,
+      map_data=real_map,
+      labels=flex.std_string(["iotbx.ccp4_map.tst"]))
+    m = mrcfile.map_reader(file_name='shifted_map.mrc')
+
+  else:
+    iotbx.ccp4_map.write_ccp4_map(
+      file_name="shifted_map.ccp4",
+      unit_cell=uctbx.unit_cell(m.unit_cell().parameters()),
+      space_group=sgtbx.space_group_info("P1").group(),
+      gridding_first=grid_start,
+      gridding_last=grid_end,
+      map_data=real_map,
+      labels=flex.std_string(["iotbx.ccp4_map.tst"]))
+    m = iotbx.ccp4_map.map_reader(file_name='shifted_map.ccp4')
+
+  print m.data.origin(),m.data.all()
+  print "GRID:",m.unit_cell_grid
+  assert m.unit_cell_grid == (16, 8, 16)
+  assert approx_equal(m.unit_cell_parameters, (
+    82.095001220703125, 37.453998565673828, 69.636001586914062,
+    90.0, 101.47599792480469, 90.0))
+  assert m.space_group_number == 1
+  assert m.data.origin() == (5,5,5)
+  assert m.data.all() == (5,6,7)
+
+
+def exercise_crystal_symmetry_from_ccp4_map(use_mrcfile=None):
   from iotbx.ccp4_map import crystal_symmetry_from_ccp4_map
   file_name = libtbx.env.under_dist(
     module_name="iotbx",
     path="ccp4_map/tst_input.map")
   cs = crystal_symmetry_from_ccp4_map.extract_from(file_name=file_name)
 
-def exercise(args):
-  exercise_with_tst_input_map()
+def exercise(args,use_mrcfile=None):
+  exercise_with_tst_input_map(use_mrcfile=use_mrcfile)
   for file_name in args:
-    print file_name
-    m = iotbx.ccp4_map.map_reader(file_name=file_name)
+    print "\n",file_name,"use_mrcfile=",use_mrcfile
+    if use_mrcfile:
+      m = iotbx.mrcfile.map_reader(file_name=file_name)
+    else:
+      m = iotbx.ccp4_map.map_reader(file_name=file_name)
     print "header_min: ", m.header_min
     print "header_max: ", m.header_max
     print "header_mean:", m.header_mean
@@ -61,7 +125,7 @@ def exercise(args):
       assert approx_equal(map_stats.sigma(), m.header_rms)
     print
 
-def exercise_writer () :
+def exercise_writer (use_mrcfile=None) :
   from cctbx import uctbx, sgtbx
   from scitbx.array_family import flex
   mt = flex.mersenne_twister(0)
@@ -149,9 +213,10 @@ def exercise_writer () :
 
 def run(args):
   import iotbx.ccp4_map
-  exercise(args=args)
-  exercise_writer()
-  exercise_crystal_symmetry_from_ccp4_map()
+  for use_mrcfile in [True,False]:
+    exercise(args=args,use_mrcfile=use_mrcfile)
+    exercise_writer(use_mrcfile=use_mrcfile)
+    exercise_crystal_symmetry_from_ccp4_map(use_mrcfile=use_mrcfile)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
