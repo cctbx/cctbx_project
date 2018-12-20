@@ -8,6 +8,7 @@ from mmtbx.validation.ramalyze import res_type_labels
 
 import numpy as np
 from collections import Counter
+from libtbx.test_utils import approx_equal
 
 # =============================================================================
 
@@ -112,6 +113,23 @@ Usage examples:
           # print (len(data))
           if data and len(data) < 0: continue
           ad = [((x[2], x[3]),(x[4], x[5])) for x in data]
+          testing = False
+          if testing:
+            if color=="lime":
+              ad_testing = []
+              # ad_testing.append( ((60,-120), (120, -120)) )
+              # ad_testing.append( ((-125, 120), (-125,  179)) )
+              # ad_testing.append( ((-120, 120), (-120, -120)) ) # wrapping up
+              # ad_testing.append( ((-115, -120), (-115, 120)) ) # wrapping down
+              # ad_testing.append( ((120, -60), (-120, -60)) ) # wrapping right
+              # ad_testing.append( ((-120, -65), (120, -65)) ) # wrapping left
+              # ad_testing.append( ((120, 0), (-120, 60)) ) # diag right
+              # ad_testing.append( ((-120, 55), (120, -5)) )# diag left
+              ad_testing.append( ((-60, 120), (0, -120)) ) # diag up
+              ad_testing.append( ((5, -120), (-55, 120)) ) # diag up
+              ad = ad_testing
+            else:
+              ad = []
           add_arrows_on_plot(
               plot,
               ad,
@@ -138,14 +156,84 @@ Usage examples:
     return model_1, model_2
 
 def breake_arrow_if_needed(abeg, aend, plot_ranges):
+  eps = 1e-3
   tp = compare_rama.two_rama_points(abeg, aend)
   actual_len = tp.length(abeg, aend)
   min_len = tp.min_length()
   best_xy_multipliers = tp.get_xy_multipliers()
-  if True or best_xy_multipliers == [0,0]:
+  result = []
+  if best_xy_multipliers == [0,0]:
     return [(abeg,aend)]
   # Now we figure out how to brake it.
-  return [(abeg,aend)]
+
+  result = [ [abeg, (0,0)], [(0,0), aend] ]
+  # case where x1 == x2
+  if approx_equal(abeg[0], aend[0], eps, out=None):
+    # print ("HERE", abeg, aend)
+    if best_xy_multipliers[1]>0:
+      # arrow should go up
+      result[0][1] = (abeg[0], plot_ranges[0][1])
+      result[1][0] = (abeg[0], plot_ranges[0][0])
+    else:
+      # arrow should go down
+      result[0][1] = (abeg[0], plot_ranges[0][0])
+      result[1][0] = (abeg[0], plot_ranges[0][1])
+    # print ("  Wrapped:", result)
+
+  # case where y1 == y2
+  elif approx_equal(abeg[1], aend[1], eps, out=None):
+    # print ("HERE", abeg, aend, best_xy_multipliers)
+    if best_xy_multipliers[0]>0:
+      # arrow should go right
+      result[0][1] = (plot_ranges[1][1], abeg[1])
+      result[1][0] = (plot_ranges[1][0], abeg[1])
+    else:
+      # arrow should go left
+      result[0][1] = (plot_ranges[0][0], abeg[1])
+      result[1][0] = (plot_ranges[1][1], abeg[1])
+    # print ("  Wrapped:", result)
+  elif best_xy_multipliers.count(0) == 1:
+    # general case, 1 border crossing
+    # y = ax + b
+    n_aend = (aend[0]+360*best_xy_multipliers[0], aend[1]+360*best_xy_multipliers[1])
+    # print ("General", abeg, aend, best_xy_multipliers, n_aend)
+    a = (n_aend[1]-abeg[1]) / (n_aend[0] - abeg[0])
+    b = n_aend[1] - a*n_aend[0]
+    # print ("  a,b:", a, b)
+    if best_xy_multipliers[0] != 0:
+      # x wrapping, calculating y
+      if best_xy_multipliers[0] > 0:
+        # arrow should go right
+        y = a*(plot_ranges[0][1]) + b
+        y = compare_rama.get_distance(y, 0)
+        result[0][1] = (plot_ranges[0][1], y)
+        result[1][0] = (plot_ranges[0][0], y)
+      else:
+        # arrow should go left
+        y = a*(plot_ranges[0][0]) + b
+        y = compare_rama.get_distance(y, 0)
+        result[0][1] = (plot_ranges[0][0], y)
+        result[1][0] = (plot_ranges[0][1], y)
+    else:
+      # y wrapping, calculating x
+      if best_xy_multipliers[1] > 0:
+        # arrow should go up
+        x = (plot_ranges[1][1] - b) / a
+        x = compare_rama.get_distance(x, 0)
+        result[0][1] = (x, plot_ranges[1][1])
+        result[1][0] = (x, plot_ranges[1][0])
+      else:
+        # arrow should go down
+        x = (plot_ranges[1][0] - b) / a
+        x = compare_rama.get_distance(x, 0)
+        result[0][1] = (x, plot_ranges[1][0])
+        result[1][0] = (x, plot_ranges[1][1])
+
+    # print ("  result:", result)
+  else:
+    print ("NOT handling correctly yet!")
+    result = [(abeg,aend)]
+  return result
 
 
 def add_arrows_on_plot(
@@ -161,13 +249,23 @@ def add_arrows_on_plot(
   ranges - ranges of the plot
   """
   import matplotlib.patches as patches
+  import matplotlib.lines as lines
+
   style="Simple,head_length=10,head_width=5,tail_width=1"
   for arrow in arrows_data:
     if wrap_arrows:
       r = breake_arrow_if_needed(arrow[0], arrow[1], plot_ranges)
-      for lines in r[:-1]:
+      for l_coors in r[:-1]:
         # draw just a line here
-        pass
+        # print (dir(p.plot))
+        l = lines.Line2D(
+            xdata = [l_coors[0][0], l_coors[1][0]],
+            ydata = [l_coors[0][1], l_coors[1][1]],
+            linewidth=1.7, color=color)
+        # l = lines.Line2D([l_coors[0]], [l_coors[1]], linewidth=1, color=color)
+        p.plot.add_line(l)
+        # p.figure.lines.extend(l)
+        # pass
 
     p.plot.add_patch(patches.FancyArrowPatch(
         r[-1][0],
