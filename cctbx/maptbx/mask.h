@@ -45,7 +45,7 @@ af::versa<FloatType, af::c_grid<3> > mask(
         box_max[i] = std::min(n_real[i]-1,
            sm::nearest_integer(n_real[i]*(site_frac[i]+rf)));
       }
-    
+
     }
     for(int kx = box_min[0]; kx < box_max[0]; kx++) {
       FloatType xn=FloatType(kx)/n_real[0];

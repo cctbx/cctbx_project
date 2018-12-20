@@ -56,8 +56,8 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
     elif common_mode == 'unbonded':
       common_mode = (5,0,0,0,0)  # unbonded pixels used for correction
       psana_det.common_mode_apply(run, data, common_mode)
-    else:  # this is how it was before.. Though I think common_mode would need to be a tuple.. 
-      psana_det.common_mode_apply(run, data, common_mode)  
+    else:  # this is how it was before.. Though I think common_mode would need to be a tuple..
+      psana_det.common_mode_apply(run, data, common_mode)
   if apply_gain_mask:
     if gain_mask is None:  # TODO: consider try/except here
       gain_mask = psana_det.gain_mask(run) == 1

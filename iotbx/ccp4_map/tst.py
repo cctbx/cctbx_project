@@ -5,7 +5,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from cStringIO import StringIO
-import sys,os
+import sys
 from iotbx import mrcfile
 
 

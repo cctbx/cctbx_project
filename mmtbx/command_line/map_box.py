@@ -391,7 +391,7 @@ Parameters:"""%h
     params.output_format=new_output_format
 
   if params.output_origin_match_this_file:
-   
+
     af = any_file(params.output_origin_match_this_file)
     if (af.file_type == 'ccp4_map'):
       origin=af.file_content.data.origin()

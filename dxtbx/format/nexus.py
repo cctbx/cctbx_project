@@ -1359,7 +1359,7 @@ class GoniometerFactory(object):
       cob = matrix.sqr((-1,  0,  0,
                          0,  1,  0,
                          0,  0, -1))
-      axis = cob * matrix.col(axis)      
+      axis = cob * matrix.col(axis)
       self.model = Goniometer(axis)
     except Exception as e:
       self.model = Goniometer((1, 0, 0))

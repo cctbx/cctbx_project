@@ -1,11 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
-import glob
 import sys
 from scitbx import matrix
 from rstbx.cftbx.coordinate_frame_helpers import align_reference_frame
 from dxtbx.model.detector_helpers_types import detector_helpers_types
-from dxtbx.sweep_filenames import template_regex
 
 def to_imageset(input_filename, extra_filename=None):
   '''Get an image set from the xds input filename plus an extra filename
