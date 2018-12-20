@@ -9,10 +9,15 @@ from iotbx.ccp4_map import utils  # utilities in common with ccp4_map
 #  Access to ccp4/mrc maps in a fashion parallel to iotbx.ccp4_map except
 #    using mrcfile libraries instead of cmap libraries from ccp4-em
 
+#  See http://www.ccpem.ac.uk/mrc_format/mrc2014.php for MRC format
+#  See https://pypi.org/project/mrcfile/ for mrcfile library documentation
+
 
 class map_reader(utils):
 
-  def __init__(self,file_name=None,header_only=False):
+  # Read an mrc/ccp4 map file
+
+  def __init__(self, file_name=None, header_only=False, verbose=False):
 
     # Check for file
 
@@ -49,13 +54,21 @@ class map_reader(utils):
     #   real numbers indicating the placement of the grid point (0,0,0) relative
     #   to an external reference frame (typically that of a model)
 
-    self.origin=tuple(mrc.header.origin.tolist())
+    # Here we will use "external_origin" to refer to the mrc origin and
+    # "origin" for nxstart_nystart_nzstart.
 
+    self.external_origin=tuple(mrc.header.origin.tolist())
+
+    # Unit cell parameters (size of full unit cell in A)
     self.unit_cell_parameters=tuple(
           mrc.header.cella.tolist()+
           mrc.header.cellb.tolist())
 
+    # Space group number (1 for cryo-EM data)
     self.space_group_number=mrc.header.ispg.tolist()
+
+    if verbose:
+      mrc.print_header()
 
     if header_only:
       return
@@ -63,7 +76,7 @@ class map_reader(utils):
     # Get the data. Note that the map file may have axes in any order. The
     #  order is defined by mapc, mapr, maps (columns, rows, sections).
     # Convert everything to the order 3,2,1 (Z-sections, Y-rows, X-columns).
-    #  self.data is a float array (same as ccp4_map.reader.data)
+    #  self.data is a flex float array (same as ccp4_map.reader.data)
 
     self.data=numpy_map_as_flex_standard_order(np_array=mrc.data,
      mapc=mrc.header.mapc,mapr=mrc.header.mapr,maps=mrc.header.maps)
@@ -76,9 +89,12 @@ class map_reader(utils):
       g=grid(grid_start,grid_end)
       self.data.reshape(g)
 
-    # Ready with self.data as float flex array
+    # Ready with self.data as float flex array. For normal use convert to
+    # double with map_data=self.data.as_double()
 
 class write_ccp4_map:
+
+    # Write an mrc/CCP4 map file
 
     # Class parallel to iotbx.ccp4_map.write_ccp4_map
 
@@ -91,8 +107,12 @@ class write_ccp4_map:
       gridding_first=None,
       gridding_last=None,
       unit_cell_grid=None,
+      external_origin=None,
       standard_order=[3,2,1],
+      verbose=False,
       ):
+
+    #  The parameter map_data should be a flex array (normally flex.vec3_double)
 
     #  Options:  specify unit_cell_grid, or gridding_first and gridding_last,
     #     or take grid values from map_data.
@@ -136,9 +156,14 @@ class write_ccp4_map:
       new_map_data=new_map_data.shift_origin() # this is the map we will pass in
 
     elif unit_cell_grid is not None:
-      # Use unit_cell_grid supplied
+      # This is the recommended way to use this writer
+      # Uses supplied unit_cell_grid, allowing writing just a part of
+      #   a map to a file, but retaining information on size of whole map
+      # Takes origin and size of map to write from the map_data array
+
       assert len(unit_cell_grid)==3
       assert gridding_first is None and gridding_last is None
+
       nxyz_start=map_data.origin()
       nxyz_end=map_data.last(False)  # last points where data is present
       new_map_data=map_data.deep_copy().shift_origin()
@@ -155,10 +180,11 @@ class write_ccp4_map:
 
     assert new_map_data.origin()==(0,0,0) # must not be shifted at this point
 
+    # Open file for writing
     import mrcfile
     mrc=mrcfile.new(file_name,overwrite=True)
 
-    # Data
+    # Data.  Convert to numpy array required for mrcfile
     numpy_data=new_map_data.as_float().as_numpy_array()
     mrc.set_data(numpy_data) # numpy array
 
@@ -189,9 +215,16 @@ class write_ccp4_map:
     mrc.header.my=unit_cell_grid[1]
     mrc.header.mz=unit_cell_grid[2]
 
+    # External origin
+    if external_origin is None:
+      external_origin=(0.,0.,0.,)
+    mrc.header.origin=external_origin
+
+    # Update header
     mrc.update_header_stats()
 
-    # mrc.print_header()
+    if verbose:
+      mrc.print_header()
 
     # Write the file
     mrc.close()
@@ -268,6 +301,10 @@ def numpy_map_as_flex_standard_order(np_array=None,
 
   assert np_array is not None and mapc is not None and \
     mapr is not None and maps is not None
+
+  # Verify that the numpy array is float.  If it isn't then this conversion
+  #   will not work below when we convert to a flex array (but it will not
+  #   give an error message).
 
   assert type(np_array[0,0,0].tolist())==type(float(1))
 

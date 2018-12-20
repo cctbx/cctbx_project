@@ -31,7 +31,7 @@ def exercise_with_tst_input_map(use_mrcfile=None):
   print "\nTesting read of input map with axis order 3 1 2 "+\
          "\n and use_mrcfile=",use_mrcfile
   if use_mrcfile:
-    m = mrcfile.map_reader(file_name=file_name)
+    m = mrcfile.map_reader(file_name=file_name,verbose=True)
   else:
     m = iotbx.ccp4_map.map_reader(file_name=file_name)
   assert approx_equal(m.header_min, -0.422722190619)
@@ -74,8 +74,9 @@ def exercise_with_tst_input_map(use_mrcfile=None):
       gridding_first=grid_start,
       gridding_last=grid_end,
       map_data=real_map,
-      labels=flex.std_string(["iotbx.ccp4_map.tst"]))
-    m = mrcfile.map_reader(file_name='shifted_map.mrc')
+      labels=flex.std_string(["iotbx.ccp4_map.tst"]),
+      verbose=True)
+    m = mrcfile.map_reader(file_name='shifted_map.mrc',verbose=True)
 
   else:
     iotbx.ccp4_map.write_ccp4_map(
