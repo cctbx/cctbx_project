@@ -117,16 +117,24 @@ Usage examples:
           if testing:
             if color=="lime":
               ad_testing = []
-              # ad_testing.append( ((60,-120), (120, -120)) )
-              # ad_testing.append( ((-125, 120), (-125,  179)) )
-              # ad_testing.append( ((-120, 120), (-120, -120)) ) # wrapping up
-              # ad_testing.append( ((-115, -120), (-115, 120)) ) # wrapping down
-              # ad_testing.append( ((120, -60), (-120, -60)) ) # wrapping right
-              # ad_testing.append( ((-120, -65), (120, -65)) ) # wrapping left
-              # ad_testing.append( ((120, 0), (-120, 60)) ) # diag right
-              # ad_testing.append( ((-120, 55), (120, -5)) )# diag left
+              ad_testing.append( ((60,-120), (120, -120)) )
+              ad_testing.append( ((-125, 120), (-125,  179)) )
+              ad_testing.append( ((-120, 120), (-120, -120)) ) # wrapping up
+              ad_testing.append( ((-115, -120), (-115, 120)) ) # wrapping down
+              ad_testing.append( ((120, -60), (-120, -60)) ) # wrapping right
+              ad_testing.append( ((-120, -65), (120, -65)) ) # wrapping left
+              ad_testing.append( ((120, 0), (-120, 60)) ) # diag right
+              ad_testing.append( ((-120, 55), (120, -5)) )# diag left
               ad_testing.append( ((-60, 120), (0, -120)) ) # diag up
               ad_testing.append( ((5, -120), (-55, 120)) ) # diag up
+              ad_testing.append( ((150, 150), (-150, -150)) ) # going to top right corner straight
+              ad_testing.append( ((140, 155), (-130, -140)) ) # going to top right corner not straight
+              ad_testing.append( ((150, -150), (-150, 150)) ) # going to bottom right corner straight
+              ad_testing.append( ((140, -155), (-130, 140)) ) # going to bottom right corner not straight
+              ad_testing.append( ((-150, 150), (150, -150)) ) # going to top left corner straight
+              ad_testing.append( ((-140, 155), (130, -140)) ) # going to top left corner not straight
+              ad_testing.append( ((-150, -150), (150, 150)) ) # going to bottom left corner straight
+              ad_testing.append( ((-140, -155), (130, 140)) ) # going to bottom left corner not straight
               ad = ad_testing
             else:
               ad = []
@@ -231,8 +239,13 @@ def breake_arrow_if_needed(abeg, aend, plot_ranges):
 
     # print ("  result:", result)
   else:
-    print ("NOT handling correctly yet!")
-    result = [(abeg,aend)]
+    # both sides cutting. just go to the corner to make things simple
+    # print ("both", abeg, aend, best_xy_multipliers)
+    ix = 0 if best_xy_multipliers[0] == -1 else 1
+    iy = 0 if best_xy_multipliers[1] == -1 else 1
+    result[0][1] = (plot_ranges[0][ix], plot_ranges[1][iy])
+    result[1][0] = (plot_ranges[0][1-ix], plot_ranges[1][1-iy])
+  print ("  result:", result)
   return result
 
 
@@ -256,17 +269,11 @@ def add_arrows_on_plot(
     if wrap_arrows:
       r = breake_arrow_if_needed(arrow[0], arrow[1], plot_ranges)
       for l_coors in r[:-1]:
-        # draw just a line here
-        # print (dir(p.plot))
         l = lines.Line2D(
             xdata = [l_coors[0][0], l_coors[1][0]],
             ydata = [l_coors[0][1], l_coors[1][1]],
             linewidth=1.7, color=color)
-        # l = lines.Line2D([l_coors[0]], [l_coors[1]], linewidth=1, color=color)
         p.plot.add_line(l)
-        # p.figure.lines.extend(l)
-        # pass
-
     p.plot.add_patch(patches.FancyArrowPatch(
         r[-1][0],
         r[-1][1],
