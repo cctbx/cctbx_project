@@ -19,6 +19,7 @@ import cctbx.miller
 from cctbx.uctbx import unit_cell
 from cctbx import sgtbx
 import operator
+from dxtbx.model.experiment_list import ExperimentListFactory, ExperimentListDumper
 
 from dials.algorithms.shoebox import MaskCode
 mask_peak = MaskCode.Valid|MaskCode.Foreground
@@ -291,6 +292,17 @@ def hkl_to_xy (ori,hkl,detector,beam):
   xy = detector[panel_id].millimeter_to_pixel(xy)
   return panel_id, xy
 
+def ori_to_crystal(ori, spacegroup):
+  from dxtbx.model import MosaicCrystalSauter2014
+  direct_matrix = ori.direct_matrix()
+  real_a = direct_matrix[0:3]
+  real_b = direct_matrix[3:6]
+  real_c = direct_matrix[6:9]
+  crystal = MosaicCrystalSauter2014(real_a, real_b, real_c, spacegroup)
+  crystal.set_domain_size_ang(100) # hardcoded here, but could be refiend using nave_parameters
+  crystal.set_half_mosaicity_deg(0.05) # hardcoded here, but could be refiend using nave_parameters
+  return crystal
+
 def small_cell_index(path, horiz_phil):
   """ Index an image with a few spots and a known, small unit cell,
   with unknown basis vectors """
@@ -421,6 +433,12 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
   reflections['azimuthal_size'] = azimuthal_sizes
   reflections['s0_proj'] = s0_projs
 
+  from dials.algorithms.indexing.indexer import indexer_base
+  from dials.algorithms.indexing import index_reflections
+  reflections['imageset_id'] = reflections['id']
+  reflections = indexer_base.map_spots_pixel_to_mm_rad(reflections, detector, None)
+  indexer_base.map_centroids_to_reciprocal_space(reflections, detector, beam, None)
+
   all_spots = []
   for i, ref in enumerate(reflections):
     all_spots.append(small_cell_spot(ref, i))
@@ -501,7 +519,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
 
   print "Finding spot connections..."
 
-  # test every pair of spots to see if any of thier possible HKLs are connected
+  # test every pair of spots to see if any of their possible HKLs are connected
   spots_count = 2
   if len(spots_on_drings) >= spots_count:
     count = 0
@@ -759,7 +777,10 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
     max_clique = []
     for clique in cliques:
       #print len(clique)
-      if len(clique) > biggest:
+      # use >= here since the list should be sorted such that later entries have nodes with higher degree
+      # spots, so in the case of a tie, picking a later entry will get a clique where the nodes are more
+      # connected
+      if len(clique) >= biggest:
         max_clique = clique
         biggest = len(clique)
     print "max clique:", max_clique
@@ -846,7 +867,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
 
       #calculate the basis vectors
       loop_count = loop_count + 1
-      ori = get_crystal_orientation(working_set, sym, True, loop_count)
+      ori = get_crystal_orientation(working_set, sym, False, loop_count)
       if ori is None:
         print "Couldn't get basis vectors for max clique"
         break
@@ -864,59 +885,26 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
       sym.unit_cell().show_parameters()
       ori.unit_cell().show_parameters()
 
-      # get the indicies that satisfy the difraction condition
-      indicies_orig, indicies_asu = filter_indicies(ori,beam,horiz_phil.small_cell.high_res_limit,horiz_phil)
+      from dials.algorithms.refinement.prediction.managed_predictors import ExperimentsPredictorFactory
+      from cctbx import miller
+      import copy
+      crystal = ori_to_crystal(ori, horiz_phil.small_cell.spacegroup)
+      experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, crystal)
+      reflections['id'] = flex.int(len(reflections), -1)
+      index_reflections(reflections, experiments)#, tolerance=0.15)
+      reflections['miller_index_asymmetric'] = copy.deepcopy(reflections['miller_index'])
+      miller.map_to_asu(crystal.get_space_group().type(), True, reflections['miller_index_asymmetric'])
+      ref_predictor = ExperimentsPredictorFactory.from_experiments(experiments, force_stills=experiments.all_stills())
+      reflections = ref_predictor(reflections)
 
-      # caluculate predicted detector locations for these indicies
-      predicted_panel = []
-      predicted = []
-      for index in indicies_orig:
-        panel_id, xy = hkl_to_xy(ori,col(index),detector,beam)
-        predicted_panel.append(panel_id)
-        predicted.append(xy)
-
-      # find spotfinder spots within a certain distance of predictions
-      possibles = []
-      for spot in working_set:
-        possibles.append(spot)
-        spot.pred_panel_id, spot.pred = hkl_to_xy(ori,col(spot.hkl.ohkl.elems),detector,beam)
-
-      for spot in all_spots:
-        found_it = False
-        for ws_spot in working_set:
-          if spot.ID == ws_spot.ID:
-            found_it = True
-            break
-        if found_it:
-          continue
-
-        s_x = spot.spot_dict['xyzobs.px.value'][0]
-        s_y = spot.spot_dict['xyzobs.px.value'][1]
-        for index_o, index_a, pred_panel, pred in zip(indicies_orig, indicies_asu, predicted_panel, predicted):
-          if pred_panel is None or pred is None: continue
-          if measure_distance((s_x, s_y),(pred[0],pred[1])) <= horiz_phil.small_cell.interspot_distance:
-            # don't add the working_set spots here.  They were added above
-            found_it = False
-            for ws_spot in working_set:
-              if ws_spot.hkl.ohkl.elems == index_o:
-                found_it = True
-
-            if not found_it:
-              spot.hkl = small_cell_hkl(col(index_a),col(index_o))
-              possibles.append(spot)
-
-              spot.pred_panel_id = pred_panel
-              spot.pred = pred
-
-      # throw out any spots which share the same original index.  This can happen if a prediction is within 10 pixels of two spots.
       indexed = []
-      for possible in possibles:
-        count = 0
-        for test in possibles:
-          if test.hkl == possible.hkl:
-            count += 1
-        if count == 1:
-          indexed.append(possible)
+      for i, ref in enumerate(reflections):
+        if ref['id'] < 0: continue
+        spot = small_cell_spot(ref, i)
+        spot.pred = ref['xyzcal.px'][0:2]
+        spot.pred_panel_id = ref['panel']
+        spot.hkl = small_cell_hkl(col(ref['miller_index_asymmetric']), col(ref['miller_index']))
+        indexed.append(spot)
 
       indexed_rmsd = spots_rmsd(indexed)
       working_rmsd = spots_rmsd(working_set)
@@ -926,12 +914,18 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
       print "Working set: ",
       for s in working_set: print s.ID,
       print
-      print "Possible set: ",
-      for s in possibles: print s.ID,
-      print
       print "Indexed set: ",
       for s in indexed: print s.ID,
       print
+
+      #print "**** SHOWING DISTS ****"
+      #for spot in indexed:
+      #  if spot.pred is None:
+      #    print "NO PRED"; continue
+      #  s_x, s_y, _ = spot.spot_dict['xyzobs.px.value']
+      #  _dist = measure_distance((s_x, s_y),(spot.pred[0],spot.pred[1]))
+      #  print _dist
+      #print "**** SHOWED DISTS ****"
 
       if len(working_set) < len(indexed):# and working_rmsd * 1.1 < indexed_rmsd: # allow a small increase in RMSD
         working_set = indexed
@@ -975,9 +969,9 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
         panel = detector[spot.pred_panel_id]
         panel_raw_data = raw_data[spot.pred_panel_id]
         for p in spot.peak_pixels:
-          if is_bad_pixel(panel_raw_data,p):
-            is_bad = True
-            break
+          #if is_bad_pixel(panel_raw_data,p):
+          #  is_bad = True
+          #  break
           p = (p[0]+.5,p[1]+.5)
           peakpix.append(p)
           tmp.append(p)
@@ -1083,15 +1077,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
           import pickle
           pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
 
-        from dxtbx.model import MosaicCrystalSauter2014
-        from dxtbx.model.experiment_list import ExperimentListFactory, ExperimentListDumper
-        direct_matrix = ori.direct_matrix()
-        real_a = direct_matrix[0:3]
-        real_b = direct_matrix[3:6]
-        real_c = direct_matrix[6:9]
-        crystal = MosaicCrystalSauter2014(real_a, real_b, real_c, horiz_phil.small_cell.spacegroup)
-        crystal.set_domain_size_ang(100) # hardcoded here, but could be refiend using nave_parameters
-        crystal.set_half_mosaicity_deg(0.05) # hardcoded here, but could be refiend using nave_parameters
+        crystal = ori_to_crystal(ori, horiz_phil.small_cell.spacegroup)
         experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, crystal)
         if write_output:
           dump = ExperimentListDumper(experiments)
