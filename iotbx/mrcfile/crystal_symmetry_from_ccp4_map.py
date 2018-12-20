@@ -1,7 +1,6 @@
 from __future__ import division
 import iotbx.mrcfile
 from cctbx import crystal
-import sys, os
 
 def extract_from(file_name):
   # XXX This is just to be parallel to ccp4_map.
