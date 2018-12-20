@@ -27,6 +27,9 @@ def exercise_with_tst_input_map(use_mrcfile=None):
   file_name = libtbx.env.under_dist(
       module_name="iotbx",
       path="ccp4_map/tst_input.map")
+
+  print "\nTesting read of input map with axis order 3 1 2 "+\
+         "\n and use_mrcfile=",use_mrcfile
   if use_mrcfile:
     m = mrcfile.map_reader(file_name=file_name)
   else:
@@ -53,6 +56,8 @@ def exercise_with_tst_input_map(use_mrcfile=None):
 
   # Read and write map with offset
 
+  print "\nReading and writing map with origin not at zero, use_mrcfile=",use_mrcfile
+
   from scitbx.array_family.flex import grid
   from scitbx.array_family import flex
   from cctbx import uctbx, sgtbx
@@ -60,6 +65,7 @@ def exercise_with_tst_input_map(use_mrcfile=None):
   real_map=m.data.as_double()
   grid_start=(5,5,5)
   grid_end=(9,10,11)
+
   if use_mrcfile:
     iotbx.mrcfile.write_ccp4_map(
       file_name="shifted_map.mrc",
@@ -89,16 +95,22 @@ def exercise_with_tst_input_map(use_mrcfile=None):
     82.095001220703125, 37.453998565673828, 69.636001586914062,
     90.0, 101.47599792480469, 90.0))
   assert m.space_group_number == 1
+  print m.data.origin(),m.data.all()
   assert m.data.origin() == (5,5,5)
   assert m.data.all() == (5,6,7)
 
 
 def exercise_crystal_symmetry_from_ccp4_map(use_mrcfile=None):
-  from iotbx.ccp4_map import crystal_symmetry_from_ccp4_map
   file_name = libtbx.env.under_dist(
     module_name="iotbx",
     path="ccp4_map/tst_input.map")
+  if use_mrcfile:
+    from iotbx.mrcfile import crystal_symmetry_from_ccp4_map
+  else:
+    from iotbx.ccp4_map import crystal_symmetry_from_ccp4_map
   cs = crystal_symmetry_from_ccp4_map.extract_from(file_name=file_name)
+  print cs.unit_cell().parameters(),cs.space_group().info()
+
 
 def exercise(args,use_mrcfile=None):
   exercise_with_tst_input_map(use_mrcfile=use_mrcfile)
@@ -134,13 +146,24 @@ def exercise_writer (use_mrcfile=None) :
   real_map_data = mt.random_double(size=grid.size_1d())
   real_map_data.reshape(grid)
   unit_cell=uctbx.unit_cell((10,10,10,90,90,90))
-  iotbx.ccp4_map.write_ccp4_map(
+
+  if use_mrcfile:
+    iotbx.mrcfile.write_ccp4_map(
+      file_name="four_by_four.mrc",
+      unit_cell=unit_cell,
+      space_group=sgtbx.space_group_info("P1").group(),
+      map_data=real_map_data,
+      labels=flex.std_string(["iotbx.ccp4_map.tst"]))
+    input_real_map = iotbx.mrcfile.map_reader(file_name="four_by_four.mrc")
+  else:
+    iotbx.ccp4_map.write_ccp4_map(
       file_name="four_by_four.map",
       unit_cell=unit_cell,
       space_group=sgtbx.space_group_info("P1").group(),
       map_data=real_map_data,
       labels=flex.std_string(["iotbx.ccp4_map.tst"]))
-  input_real_map = iotbx.ccp4_map.map_reader(file_name="four_by_four.map")
+    input_real_map = iotbx.ccp4_map.map_reader(file_name="four_by_four.map")
+
   input_map_data=input_real_map.map_data()
   real_map_mmm = real_map_data.as_1d().min_max_mean()
   input_map_mmm = input_map_data.as_1d().min_max_mean()
@@ -160,15 +183,27 @@ def exercise_writer (use_mrcfile=None) :
     real_map = mt.random_double(size=grid.size_1d())
     real_map=real_map-0.5
     real_map.reshape(grid)
-    iotbx.ccp4_map.write_ccp4_map(
-      file_name="random.map",
-      unit_cell=uctbx.unit_cell((1,1,1,90,90,90)),
-      space_group=sgtbx.space_group_info("P1").group(),
-      gridding_first=(0,0,0),
-      gridding_last=tuple(grid.last(False)),
-      map_data=real_map,
-      labels=flex.std_string(["iotbx.ccp4_map.tst"]))
-    m = iotbx.ccp4_map.map_reader(file_name="random.map")
+    if use_mrcfile:
+      iotbx.mrcfile.write_ccp4_map(
+        file_name="random.mrc",
+        unit_cell=uctbx.unit_cell((1,1,1,90,90,90)),
+        space_group=sgtbx.space_group_info("P1").group(),
+        gridding_first=(0,0,0),
+        gridding_last=tuple(grid.last(False)),
+        map_data=real_map,
+        labels=flex.std_string(["iotbx.ccp4_map.tst"]))
+      m = iotbx.mrcfile.map_reader(file_name="random.mrc")
+    else:
+      iotbx.ccp4_map.write_ccp4_map(
+        file_name="random.map",
+        unit_cell=uctbx.unit_cell((1,1,1,90,90,90)),
+        space_group=sgtbx.space_group_info("P1").group(),
+        gridding_first=(0,0,0),
+        gridding_last=tuple(grid.last(False)),
+        map_data=real_map,
+        labels=flex.std_string(["iotbx.ccp4_map.tst"]))
+      m = iotbx.ccp4_map.map_reader(file_name="random.map")
+
     mmm = flex.double(list(real_map)).min_max_mean()
     m1=real_map.as_1d()
     m2=m.map_data().as_1d()
@@ -203,12 +238,21 @@ def exercise_writer (use_mrcfile=None) :
     gridding_last=tuple(grid.last(False))
     map_box = maptbx.copy(real_map, gridding_first, gridding_last)
     map_box.reshape(flex.grid(map_box.all()))
-    iotbx.ccp4_map.write_ccp4_map(
-      file_name="random_box.map",
-      unit_cell=uctbx.unit_cell((1,1,1,90,90,90)),
-      space_group=sgtbx.space_group_info("P1").group(),
-      map_data=map_box,
-      labels=flex.std_string(["iotbx.ccp4_map.tst"]))
+
+    if use_mrcfile:
+      iotbx.mrcfile.write_ccp4_map(
+        file_name="random_box.mrc",
+        unit_cell=uctbx.unit_cell((1,1,1,90,90,90)),
+        space_group=sgtbx.space_group_info("P1").group(),
+        map_data=map_box,
+        labels=flex.std_string(["iotbx.ccp4_map.tst"]))
+    else:
+      iotbx.ccp4_map.write_ccp4_map(
+        file_name="random_box.map",
+        unit_cell=uctbx.unit_cell((1,1,1,90,90,90)),
+        space_group=sgtbx.space_group_info("P1").group(),
+        map_data=map_box,
+        labels=flex.std_string(["iotbx.ccp4_map.tst"]))
   print "OK"
 
 def run(args):
