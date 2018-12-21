@@ -438,6 +438,10 @@ class manager(Base_geometry):
     result.set_source(source = self.get_source())
     return result
 
+  def shift_sites_cart(self, shift):
+    # just a stub from RSR. Proper treatment can be implemented here.
+    self.remove_reference_coordinate_restraints_in_place()
+
   def discard_symmetry(self, new_unit_cell):
     assert self.site_symmetry_table is not None #XXX lazy
     assert self.shell_sym_tables is not None #XXX lazy

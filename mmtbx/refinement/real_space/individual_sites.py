@@ -344,14 +344,9 @@ class box_refinement_manager(object):
       new_unit_cell = box.xray_structure_box.unit_cell()
       geo_box = self.geometry_restraints_manager.select(box.selection)
       geo_box = geo_box.discard_symmetry(new_unit_cell=new_unit_cell)
-      geo_box.remove_reference_coordinate_restraints_in_place() # disaster happens otherwise
+      geo_box.shift_sites_cart(box.shift_cart) # disaster happens otherwise
       map_box = box.map_box
       sites_cart_box = box.xray_structure_box.sites_cart()
-
-      # When using the Schrodinger force field, move the whole structure as the
-      # selected atoms are environment aware.
-      if geo_box.get_source() == 'SCHRODINGER':
-        geo_box.shift_cart(box.shift_cart)
 
       rsr_simple_refiner = simple(
         target_map                  = map_box,
@@ -377,8 +372,6 @@ class box_refinement_manager(object):
         iselection, sites_cart_refined)
       self.xray_structure.set_sites_cart(sites_cart_moving)
       self.sites_cart = self.xray_structure.sites_cart()
-      if geo_box.get_source() == 'SCHRODINGER':
-        geo_box.shift_cart(shift_back)
     else: # NCS constraints are present
       # select on xrs, grm, ncs_groups
       grm = self.geometry_restraints_manager.select(selection)
