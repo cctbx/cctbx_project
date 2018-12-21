@@ -160,11 +160,11 @@ def exercise(args,use_mrcfile=None):
       assert approx_equal(map_stats.sigma(), m.header_rms)
     print
 
-def exercise_writer (use_mrcfile=None) :
+def exercise_writer (use_mrcfile=None,output_axis_order=[3,2,1]) :
   from cctbx import uctbx, sgtbx
   from scitbx.array_family import flex
   mt = flex.mersenne_twister(0)
-  nxyz = (4,4,4,)
+  nxyz = (4,5,6,)
   grid = flex.grid(nxyz)
   real_map_data = mt.random_double(size=grid.size_1d())
   real_map_data.reshape(grid)
@@ -172,26 +172,28 @@ def exercise_writer (use_mrcfile=None) :
 
   if use_mrcfile:
     iotbx.mrcfile.write_ccp4_map(
-      file_name="four_by_four.mrc",
+      file_name="four_five_six.mrc",
       unit_cell=unit_cell,
       space_group=sgtbx.space_group_info("P1").group(),
       map_data=real_map_data,
-      labels=flex.std_string(["iotbx.ccp4_map.tst"]))
-    input_real_map = iotbx.mrcfile.map_reader(file_name="four_by_four.mrc")
+      labels=flex.std_string(["iotbx.ccp4_map.tst"]),
+      output_axis_order=output_axis_order)
+    input_real_map = iotbx.mrcfile.map_reader(file_name="four_five_six.mrc")
   else:
     iotbx.ccp4_map.write_ccp4_map(
-      file_name="four_by_four.map",
+      file_name="four_five_six.map",
       unit_cell=unit_cell,
       space_group=sgtbx.space_group_info("P1").group(),
       map_data=real_map_data,
       labels=flex.std_string(["iotbx.ccp4_map.tst"]))
-    input_real_map = iotbx.ccp4_map.map_reader(file_name="four_by_four.map")
+    input_real_map = iotbx.ccp4_map.map_reader(file_name="four_five_six.map")
 
   input_map_data=input_real_map.map_data()
   real_map_mmm = real_map_data.as_1d().min_max_mean()
   input_map_mmm = input_map_data.as_1d().min_max_mean()
   cc=flex.linear_correlation(real_map_data.as_1d(),input_map_data.as_1d()).coefficient()
   assert cc > 0.999
+  print "\nMRCFILE with 4x5x6 map and axis order %s %s" %(output_axis_order,cc)
 
   assert approx_equal(input_real_map.unit_cell_parameters,
                       unit_cell.parameters())
@@ -283,6 +285,11 @@ def run(args):
   for use_mrcfile in [True,False]:
     exercise(args=args,use_mrcfile=use_mrcfile)
     exercise_writer(use_mrcfile=use_mrcfile)
+    if use_mrcfile:
+      exercise_writer(use_mrcfile=use_mrcfile,output_axis_order=[1,2,3],)
+      exercise_writer(use_mrcfile=use_mrcfile,output_axis_order=[2,3,1],)
+
+
     exercise_crystal_symmetry_from_ccp4_map(use_mrcfile=use_mrcfile)
   print format_cpu_times()
 

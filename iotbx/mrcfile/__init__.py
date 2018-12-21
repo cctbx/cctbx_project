@@ -17,19 +17,21 @@ from iotbx.ccp4_map import utils  # utilities in common with ccp4_map
 #  Hard-wired to write maps with internal_standard_order of axes of (3,2,1)
 #    corresponding to columns in Z, rows in Y, sections in X to match
 #    flex array layout.  This could be modified by changing the values in
-#    write_standard_order AND transposing the numpy array just before using
+#    output_axis_order AND transposing the numpy array just before using
 #    it in mrcfile.
 
 #  Also hard-wired to convert input maps of any order to
 #    internal_standard_order before conversion to flex arrays
 #    This is not modifiable.
 
+INTERNAL_STANDARD_ORDER=[3,2,1]
 
 class map_reader(utils):
 
   # Read an mrc/ccp4 map file
 
-  def __init__(self, file_name=None, internal_standard_order=[3,2,1],
+  def __init__(self, file_name=None,
+     internal_standard_order=INTERNAL_STANDARD_ORDER,
      header_only=False, verbose=None):
 
     # Check for file
@@ -140,7 +142,8 @@ class write_ccp4_map:
       gridding_last=None,
       unit_cell_grid=None,
       external_origin=None,
-      write_standard_order=[3,2,1],
+      output_axis_order=INTERNAL_STANDARD_ORDER,
+      internal_standard_order=INTERNAL_STANDARD_ORDER,
       verbose=None,
       ):
 
@@ -242,15 +245,21 @@ class write_ccp4_map:
     # This numpy_data array is always in the order (3,2,1): columns are Z,
     #  rows are Y, sections in X.  This comes from the shape of flex arrays.
 
-    assert write_standard_order==[3,2,1]
-    # To write with another order, change write_standard_order and
-    #  transpose numpy_data accordingly (not implemented)
+    # To write with another order, call with values for output_axis_order
 
-    mrc.header.mapc=write_standard_order[0]
-    mrc.header.mapr=write_standard_order[1]
-    mrc.header.maps=write_standard_order[2]
+    if output_axis_order!=internal_standard_order:
+      i_order=get_standard_order(output_axis_order[0],
+        output_axis_order[1],output_axis_order[2],
+        internal_standard_order=internal_standard_order,reverse=True)
+      import numpy as np
+      numpy_data_output_axis_order=np.transpose(numpy_data,i_order)
+    else:
+      numpy_data_output_axis_order=numpy_data
+    mrc.header.mapc=output_axis_order[0]
+    mrc.header.mapr=output_axis_order[1]
+    mrc.header.maps=output_axis_order[2]
 
-    mrc.set_data(numpy_data) # numpy array
+    mrc.set_data(numpy_data_output_axis_order) # numpy array
 
     # Labels
     mrc.header.nlabl=labels.size()
@@ -305,13 +314,17 @@ class write_ccp4_map:
     # Write the file
     mrc.close()
 
-def get_standard_order(mapc,mapr,maps,internal_standard_order=None):
+def get_standard_order(mapc,mapr,maps,internal_standard_order=None,
+    reverse=False):
 
   # Phenix standard order is 3,2,1 (columns Z, rows Y, sections in X).
   #     Convert everything to this order.
 
   # This is the order that allows direct conversion of a numpy 3D array
-  #  to a flex array.
+  #  with axis order (mapc,mapr,maps) to a flex array.
+
+  # For reverse=True, supply order that converts flex array to numpy 3D array
+  #  with order (mapc,mapr,maps)
 
   # Note that this does not mean input or output maps have to be in this order.
   #  It just means that before conversion of numpy to flex or vice-versa
@@ -344,6 +357,8 @@ def get_standard_order(mapc,mapr,maps,internal_standard_order=None):
   #     np.transpose(a,(0,1,2))  does nothing
   #     np.transpose(a,(1,2,0)) output axis 0 is input axis 1
   #
+
+
   # We want output axes to always be 2,1,0 and input axes for numpy array are
   #   (mapc-1,mapr-1,maps-1):
 
@@ -378,11 +393,22 @@ def get_standard_order(mapc,mapr,maps,internal_standard_order=None):
 
   i_order=tuple(i_order)
 
-  assert i_order.count(None)==0
-  for i in xrange(3):
-    assert i_order.count(i)==1
-
-  return i_order
+  if not reverse:
+    assert i_order.count(None)==0
+    for i in xrange(3):
+      assert i_order.count(i)==1
+    return i_order
+  else:
+    # To reverse it:
+    #   if standard is: input axis 0 -> output 2 :i0=2
+    #   then reversed:  input 2 -> output 0      :i2=0
+    i_order_reverse=[None,None,None]
+    for i in xrange(3):
+      i_order_reverse[i_order[i]]=i
+    assert i_order_reverse.count(None)==0
+    for i in xrange(3):
+      assert i_order_reverse.count(i)==1
+    return i_order_reverse
 
 def origin_as_crs(origin=None,mapc=None,mapr=None,maps=None):
 
