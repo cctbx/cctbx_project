@@ -148,79 +148,35 @@ def breake_arrow_if_needed(abeg, aend, plot_ranges):
   if best_xy_multipliers == [0,0]:
     return [(abeg,aend)]
   # Now we figure out how to brake it.
-
   result = [ [abeg, (0,0)], [(0,0), aend] ]
-  # case where x1 == x2
+  ix = 0 if best_xy_multipliers[0] == -1 else 1
+  iy = 0 if best_xy_multipliers[1] == -1 else 1
   if approx_equal(abeg[0], aend[0], eps, out=None):
-    # print ("HERE", abeg, aend)
-    if best_xy_multipliers[1]>0:
-      # arrow should go up
-      result[0][1] = (abeg[0], plot_ranges[0][1])
-      result[1][0] = (abeg[0], plot_ranges[0][0])
-    else:
-      # arrow should go down
-      result[0][1] = (abeg[0], plot_ranges[0][0])
-      result[1][0] = (abeg[0], plot_ranges[0][1])
-    # print ("  Wrapped:", result)
-
-  # case where y1 == y2
-  elif approx_equal(abeg[1], aend[1], eps, out=None):
-    # print ("HERE", abeg, aend, best_xy_multipliers)
-    if best_xy_multipliers[0]>0:
-      # arrow should go right
-      result[0][1] = (plot_ranges[1][1], abeg[1])
-      result[1][0] = (plot_ranges[1][0], abeg[1])
-    else:
-      # arrow should go left
-      result[0][1] = (plot_ranges[0][0], abeg[1])
-      result[1][0] = (plot_ranges[1][1], abeg[1])
-    # print ("  Wrapped:", result)
+    # case where x1 == x2
+    result[0][1] = (abeg[0], plot_ranges[0][iy])
+    result[1][0] = (abeg[0], plot_ranges[0][1-iy])
   elif best_xy_multipliers.count(0) == 1:
     # general case, 1 border crossing
     # y = ax + b
     n_aend = (aend[0]+360*best_xy_multipliers[0], aend[1]+360*best_xy_multipliers[1])
-    # print ("General", abeg, aend, best_xy_multipliers, n_aend)
     a = (n_aend[1]-abeg[1]) / (n_aend[0] - abeg[0])
     b = n_aend[1] - a*n_aend[0]
-    # print ("  a,b:", a, b)
     if best_xy_multipliers[0] != 0:
       # x wrapping, calculating y
-      if best_xy_multipliers[0] > 0:
-        # arrow should go right
-        y = a*(plot_ranges[0][1]) + b
-        y = compare_rama.get_distance(y, 0)
-        result[0][1] = (plot_ranges[0][1], y)
-        result[1][0] = (plot_ranges[0][0], y)
-      else:
-        # arrow should go left
-        y = a*(plot_ranges[0][0]) + b
-        y = compare_rama.get_distance(y, 0)
-        result[0][1] = (plot_ranges[0][0], y)
-        result[1][0] = (plot_ranges[0][1], y)
+      y = a*(plot_ranges[0][ix]) + b
+      y = compare_rama.get_distance(y, 0)
+      result[0][1] = (plot_ranges[0][ix],   y)
+      result[1][0] = (plot_ranges[0][1-ix], y)
     else:
       # y wrapping, calculating x
-      if best_xy_multipliers[1] > 0:
-        # arrow should go up
-        x = (plot_ranges[1][1] - b) / a
-        x = compare_rama.get_distance(x, 0)
-        result[0][1] = (x, plot_ranges[1][1])
-        result[1][0] = (x, plot_ranges[1][0])
-      else:
-        # arrow should go down
-        x = (plot_ranges[1][0] - b) / a
-        x = compare_rama.get_distance(x, 0)
-        result[0][1] = (x, plot_ranges[1][0])
-        result[1][0] = (x, plot_ranges[1][1])
-
-    # print ("  result:", result)
+      x = (plot_ranges[1][iy] - b) / a
+      x = compare_rama.get_distance(x, 0)
+      result[0][1] = (x, plot_ranges[1][iy])
+      result[1][0] = (x, plot_ranges[1][1-iy])
   else:
     # both sides cutting. just go to the corner to make things simple
-    # print ("both", abeg, aend, best_xy_multipliers)
-    ix = 0 if best_xy_multipliers[0] == -1 else 1
-    iy = 0 if best_xy_multipliers[1] == -1 else 1
     result[0][1] = (plot_ranges[0][ix], plot_ranges[1][iy])
     result[1][0] = (plot_ranges[0][1-ix], plot_ranges[1][1-iy])
-  print ("  result:", result)
   return result
 
 
