@@ -207,11 +207,16 @@ class simple_quadratic(object):
 
 class mpi_quadratic(simple_quadratic):
 
-  def reinitialize(self,idx):
-    self.datax = self.datax[idx]
-    self.datay = self.datay[idx]
+  def reinitialize(self,idx,logical_size):
+    if idx >= logical_size:
+      self.skip_flag = True
+    else:
+      self.skip_flag = False
+      self.datax = self.datax[idx]
+      self.datay = self.datay[idx]
 
   def compute_functional_and_gradients(self):
+    if self.skip_flag: return 0,flex.double(self.n)
     a = self.x
     residual = (self.datay - a[0]*self.datax*self.datax - a[1]*self.datax - a[2])
     f = 0.5 * residual * residual
@@ -229,7 +234,7 @@ def run_mpi():
   comm = MPI.COMM_WORLD
   rank = comm.Get_rank()
   size = comm.Get_size()
-  print ("hello from rank %d of %d"%(rank,size))
+  #print ("hello from rank %d of %d"%(rank,size))
 
   W = simple_quadratic()
   if rank==0:
@@ -239,8 +244,9 @@ def run_mpi():
     pass
   comm.barrier()
 
+
   M = mpi_quadratic()
-  M.reinitialize(idx=rank)
+  M.reinitialize(idx=rank, logical_size=len(W.datax))
   minimizer = mpi_split_evaluator_run(target_evaluator=M,
         termination_params=scitbx.lbfgs.termination_parameters(
         traditional_convergence_test=True,
