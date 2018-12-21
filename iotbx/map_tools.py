@@ -434,7 +434,7 @@ class map_info (object) :
 
 def write_ccp4_map (sites_cart, unit_cell, map_data, n_real, file_name,
     buffer=10) :
-  import iotbx.ccp4_map
+  import iotbx.mrcfile
   from cctbx import sgtbx
   from scitbx.array_family import flex
   if sites_cart is not None :

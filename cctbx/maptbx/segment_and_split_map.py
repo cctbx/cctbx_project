@@ -2379,7 +2379,7 @@ def get_map_object(file_name=None,out=sys.stdout):
     m.unit_cell_grid=m.data.all() # just so we have something
     m.space_group_number=0 # so we have something
   else:
-    from iotbx import mrcfile 
+    from iotbx import mrcfile
     m = mrcfile.map_reader(file_name=file_name)
     print >>out,"MIN MAX MEAN RMS of map: %7.2f %7.2f  %7.2f  %7.2f " %(
       m.header_min, m.header_max, m.header_mean, m.header_rms)
@@ -4594,7 +4594,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     if len(params.input_files.half_map_file) != 2:
       raise Sorry("Please supply none or two half_map_file values")
 
-    from iotbx import mrcfile 
+    from iotbx import mrcfile
     half_map_data_list=[]
     half_map_data_list.append(iotbx.mrcfile.map_reader(
        file_name=params.input_files.half_map_file[0]).data.as_double())
@@ -11022,4 +11022,3 @@ def run(args,
 
 if __name__=="__main__":
   run(args=sys.argv[1:])
-
