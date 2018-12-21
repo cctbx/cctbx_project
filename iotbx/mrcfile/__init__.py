@@ -38,7 +38,7 @@ class map_reader(utils):
      internal_standard_order=INTERNAL_STANDARD_ORDER,
      header_only=False, 
      ignore_missing_machine_stamp=True,
-     print_warning_messages=True,
+     print_warning_messages=False,
      ignore_all_errors=False,
      verbose=None):
 
