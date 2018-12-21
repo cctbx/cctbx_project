@@ -45,7 +45,9 @@ class map_reader(utils):
 
     import mrcfile
 
-    mrc=mrcfile.mmap(file_name, mode='r')  # Read memory-mapped for speed
+    mrc=mrcfile.mmap(file_name, mode='r', permissive=True)  
+    # Read memory-mapped for speed. Permissive to allow reading files with
+    # no machine stamp.
 
     # Set the same attributes that are set in ccp4_map.reader()
 
