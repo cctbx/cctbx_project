@@ -3,6 +3,11 @@ import cctbx.array_family.flex as flex# import dependency
 import os
 from libtbx.utils import Sorry
 from iotbx.ccp4_map import utils  # utilities in common with ccp4_map
+import mrcfile
+import warnings
+from scitbx.array_family.flex import grid
+from cctbx import maptbx
+import numpy as np
 
 #  mrcfile
 
@@ -43,9 +48,11 @@ class map_reader(utils):
 
     # Read the data
 
-    import mrcfile
-
-    mrc=mrcfile.mmap(file_name, mode='r', permissive=True)  
+    with warnings.catch_warnings(record=True) as w:
+      mrc=mrcfile.mmap(file_name, mode='r', permissive=True)
+      # Here we can deal with them
+      # for war in w:
+      #   print war.message
     # Read memory-mapped for speed. Permissive to allow reading files with
     # no machine stamp.
 
@@ -115,7 +122,6 @@ class map_reader(utils):
 
     # Shift the origin of this map to nxstart,nystart,nzstart
     if self.nxstart_nystart_nzstart != (0,0,0):
-      from scitbx.array_family.flex import grid
       grid_start=self.origin
       grid_end=tuple(add_list(grid_start,self.data.all()))
       g=grid(grid_start,grid_end)
@@ -190,7 +196,6 @@ class write_ccp4_map:
     # Make sure map is unpadded
 
     if map_data.is_padded(): # copied from cctbx/miller/__init__.py
-      from cctbx import maptbx
       map_data=maptbx.copy(map_data, flex.grid(map_data.focus()))
 
 
@@ -207,7 +212,6 @@ class write_ccp4_map:
       nxyz_end=gridding_last
       unit_cell_grid=map_data.all()
 
-      from cctbx import maptbx
       new_map_data = maptbx.copy(map_data, tuple(nxyz_start), tuple(nxyz_end))
       #   NOTE: end point of map is nxyz_end, so size of map (new all()) is
       #   (nxyz_end-nxyz_start+ (1,1,1))
@@ -245,7 +249,6 @@ class write_ccp4_map:
     assert unit_cell is not None
 
     # Open file for writing
-    import mrcfile
     mrc=mrcfile.new(file_name,overwrite=True)
 
     # Convert flex array to the numpy array required for mrcfile
@@ -260,7 +263,6 @@ class write_ccp4_map:
       i_order=get_standard_order(output_axis_order[0],
         output_axis_order[1],output_axis_order[2],
         internal_standard_order=internal_standard_order,reverse=True)
-      import numpy as np
       numpy_data_output_axis_order=np.transpose(numpy_data,i_order)
     else:
       numpy_data_output_axis_order=numpy_data
@@ -490,7 +492,6 @@ def numpy_map_as_flex_standard_order(np_array=None,
      internal_standard_order=internal_standard_order)
 
   # Transpose the input numpy array to match Phenix expected order of (3,2,1)
-  import numpy as np
   np_array_standard_order=np.transpose(np_array,i_order)
 
   # this np array may have any actual memory layout. We have to
@@ -506,7 +507,6 @@ def numpy_map_as_flex_standard_order(np_array=None,
   flex_array=flex.float(np_array_standard_order_1d)
 
   # set up new shape (same as was in the numpy array after transposing it)
-  from scitbx.array_family.flex import grid
   flex_grid=grid(shape)
 
   # Reshape the flex array
