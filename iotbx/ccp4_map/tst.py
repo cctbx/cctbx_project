@@ -23,8 +23,9 @@ def subtract_list(list_a,list_b):
     new_list.append(a-b)
   return new_list
 
-def exercise_with_tst_input_map(use_mrcfile=None):
-  file_name = libtbx.env.under_dist(
+def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
+  if not file_name:
+    file_name = libtbx.env.under_dist(
       module_name="iotbx",
       path="ccp4_map/tst_input.map")
 
@@ -100,6 +101,26 @@ def exercise_with_tst_input_map(use_mrcfile=None):
   assert m.data.origin() == (5,5,5)
   assert m.data.all() == (5,6,7)
 
+def exercise_with_tst_input_map_2(use_mrcfile=None,file_name=None):
+  if not file_name:
+    file_name = libtbx.env.under_dist(
+      module_name="iotbx",
+      path="ccp4_map/ccp4_20_21_22_to_30_40_50.ccp4")
+
+  print "\nTesting read of input map with offset origin and axis order 3 1 2 "+\
+         "\n and use_mrcfile=",use_mrcfile
+  if use_mrcfile:
+    m = mrcfile.map_reader(file_name=file_name,verbose=True)
+  else:
+    m = iotbx.ccp4_map.map_reader(file_name=file_name)
+  print m.unit_cell_grid,m.data.origin(),m.data.all(),m.unit_cell_parameters,
+  assert m.unit_cell_grid == (55, 59, 61)
+  assert approx_equal(m.unit_cell_parameters,
+    (24.53101921081543, 24.61971664428711, 26.457056045532227,
+      90.0, 90.0, 90.0))
+  assert m.data.origin() == (20, 21, 22)
+  assert m.data.all() == (11, 20, 29)
+
 
 def exercise_crystal_symmetry_from_ccp4_map(use_mrcfile=None):
   file_name = libtbx.env.under_dist(
@@ -115,6 +136,7 @@ def exercise_crystal_symmetry_from_ccp4_map(use_mrcfile=None):
 
 def exercise(args,use_mrcfile=None):
   exercise_with_tst_input_map(use_mrcfile=use_mrcfile)
+  exercise_with_tst_input_map_2(use_mrcfile=use_mrcfile)
   for file_name in args:
     print "\n",file_name,"use_mrcfile=",use_mrcfile
     if use_mrcfile:

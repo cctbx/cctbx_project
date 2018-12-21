@@ -2363,8 +2363,8 @@ class shift_origin(object):
       crystal_symmetry=self.crystal_symmetry)
 
   def write_map_file(self, file_name):
-    from iotbx import ccp4_map
-    ccp4_map.write_ccp4_map(
+    from iotbx import mrcfile
+    mrcfile.write_ccp4_map(
       file_name=file_name,
       unit_cell=self.crystal_symmetry.unit_cell(),
       space_group=self.crystal_symmetry.space_group(),
@@ -2820,12 +2820,13 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       output_unit_cell_grid=None,
       output_sd=None,
       output_mean=None,
-      output_crystal_symmetry=None):
+      output_crystal_symmetry=None,
+      output_external_origin=None):
 
     # If output_unit_cell_grid is specified, then write this out
     #  instead of the size of the actual available map (self.map_box.all())
 
-    from iotbx import ccp4_map
+    from iotbx import mrcfile
     assert tuple(self.map_box.origin())==(0,0,0)
     if shift_back:
       map_data=self.shift_map_back(self.map_box)
@@ -2845,13 +2846,14 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       output_crystal_symmetry=self.xray_structure_box.crystal_symmetry()
     if output_unit_cell_grid is None:
       output_unit_cell_grid=map_data.all()
-    ccp4_map.write_ccp4_map(
+    mrcfile.write_ccp4_map(
       file_name      = file_name,
       unit_cell      = output_crystal_symmetry.unit_cell(),
       space_group    = output_crystal_symmetry.space_group(),
       unit_cell_grid = output_unit_cell_grid,
       map_data       = map_data,
-      labels=flex.std_string([" "]))
+      labels=flex.std_string([" "]),
+      external_origin=output_external_origin)
 
   def box_map_coefficients_as_fft_map(self, d_min, resolution_factor):
     box_map_coeffs = self.box_map_coefficients(d_min = d_min)

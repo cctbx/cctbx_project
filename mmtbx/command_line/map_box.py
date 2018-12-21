@@ -256,6 +256,13 @@ master_phil = libtbx.phil.parse("""
     .help = As output_origin_grid_units, but use origin from this file
     .short_caption = File with origin info
 
+  output_external_origin = None
+    .type = floats
+    .help = Write ORIGIN record to map file (this is an external origin \
+            used to specify relationship to external files such as model files.\
+            Three floating point numbers (A).
+    .short_caption = output external origin
+
   restrict_map_size = False
     .type=bool
     .help = Do not go outside original map boundaries
@@ -852,7 +859,8 @@ Parameters:"""%h
        output_mean=params.output_ccp4_map_mean,
        output_sd=params.output_ccp4_map_sd,
        output_unit_cell_grid=output_unit_cell_grid,
-       shift_back=shift_back)
+       shift_back=shift_back,
+       output_external_origin=params.output_external_origin)
      print >> log, "Writing boxed map "+\
           "to CCP4 formatted file:   %s"%file_name
 

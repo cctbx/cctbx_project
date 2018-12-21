@@ -12,12 +12,25 @@ from iotbx.ccp4_map import utils  # utilities in common with ccp4_map
 #  See http://www.ccpem.ac.uk/mrc_format/mrc2014.php for MRC format
 #  See https://pypi.org/project/mrcfile/ for mrcfile library documentation
 
+#  Same conventions as iotbx.ccp4_map
+
+#  Hard-wired to write maps with internal_standard_order of axes of (3,2,1)
+#    corresponding to columns in Z, rows in Y, sections in X to match
+#    flex array layout.  This could be modified by changing the values in
+#    write_standard_order AND transposing the numpy array just before using
+#    it in mrcfile.
+
+#  Also hard-wired to convert input maps of any order to
+#    internal_standard_order before conversion to flex arrays
+#    This is not modifiable.
+
 
 class map_reader(utils):
 
   # Read an mrc/ccp4 map file
 
-  def __init__(self, file_name=None, header_only=False, verbose=False):
+  def __init__(self, file_name=None, internal_standard_order=[3,2,1],
+     header_only=False, verbose=None):
 
     # Check for file
 
@@ -45,11 +58,23 @@ class map_reader(utils):
                                mrc.header.my.tolist(),
                                mrc.header.mz.tolist(),))
 
+    # NOTE: the values of nxstart,nystart,nzstart refer to columns, rows,
+    #    sections, not to X,Y,Z.  The must be mapped using mapc,mapr,maps
+    #    to get the value of "origin" that phenix uses to indicate the
+    #    lower left corner of the map
+    #  self.origin is self.nxstart_nystart_nzstart mapped to represent the
+    #   origin in XYZ directions
+
     self.nxstart_nystart_nzstart=tuple(( mrc.header.nxstart.tolist(),
                                          mrc.header.nystart.tolist(),
                                          mrc.header.nzstart.tolist(),))
+    self.origin=origin_as_xyz(
+       nxstart_nystart_nzstart=self.nxstart_nystart_nzstart,
+       mapc=mrc.header.mapc,mapr=mrc.header.mapr,maps=mrc.header.maps)
 
-    # NOTE phenix calls "origin" the value of nxstart_nystart_nzstart
+
+    # NOTE phenix calls "origin" the position of the lower left corner
+    #   of the map.
     # mrcfile calls "origin" the value of the field "origin" which is 3
     #   real numbers indicating the placement of the grid point (0,0,0) relative
     #   to an external reference frame (typically that of a model)
@@ -66,6 +91,8 @@ class map_reader(utils):
 
     # Space group number (1 for cryo-EM data)
     self.space_group_number=mrc.header.ispg.tolist()
+    if self.space_group_number <= 0:
+      self.space_group_number=1
 
     if verbose:
       mrc.print_header()
@@ -75,16 +102,17 @@ class map_reader(utils):
 
     # Get the data. Note that the map file may have axes in any order. The
     #  order is defined by mapc, mapr, maps (columns, rows, sections).
-    # Convert everything to the order 3,2,1 (Z-sections, Y-rows, X-columns).
+    # Convert everything to the order 3,2,1 (X-sections, Y-rows, Z-columns).
     #  self.data is a flex float array (same as ccp4_map.reader.data)
 
     self.data=numpy_map_as_flex_standard_order(np_array=mrc.data,
-     mapc=mrc.header.mapc,mapr=mrc.header.mapr,maps=mrc.header.maps)
+       mapc=mrc.header.mapc,mapr=mrc.header.mapr,maps=mrc.header.maps,
+       internal_standard_order=internal_standard_order)
 
     # Shift the origin of this map to nxstart,nystart,nzstart
     if self.nxstart_nystart_nzstart != (0,0,0):
       from scitbx.array_family.flex import grid
-      grid_start=self.nxstart_nystart_nzstart
+      grid_start=self.origin
       grid_end=tuple(add_list(grid_start,self.data.all()))
       g=grid(grid_start,grid_end)
       self.data.reshape(g)
@@ -95,6 +123,10 @@ class map_reader(utils):
 class write_ccp4_map:
 
     # Write an mrc/CCP4 map file
+    # Always writes with column,row,section (mapc,mapr,maps) of (3,2,1)
+    #  Columns are Z, rows are Y, sections in X.  This matches the shape of
+    #  flex arrays.  Could be changed without difficulty by transposing the
+    #  numpy array as is done in the map_reader class.
 
     # Class parallel to iotbx.ccp4_map.write_ccp4_map
 
@@ -108,11 +140,11 @@ class write_ccp4_map:
       gridding_last=None,
       unit_cell_grid=None,
       external_origin=None,
-      standard_order=[3,2,1],
-      verbose=False,
+      write_standard_order=[3,2,1],
+      verbose=None,
       ):
 
-    #  The parameter map_data should be a flex array (normally flex.vec3_double)
+    #  The parameter map_data should be a flex array (normally flex double)
 
     #  Options:  specify unit_cell_grid, or gridding_first and gridding_last,
     #     or take grid values from map_data.
@@ -120,10 +152,28 @@ class write_ccp4_map:
     #  If gridding_first and last supplied, input map origin must be at (0,0,0)
 
     #  Notes on grid values:
-    #    unit_cell_grid (grid units along axes of full unit cell)
-    #    nxyz_start (starting point of map that is present, in grid units)
-    #    nxyz_end   (ending point of map that is present, in grid units)
 
+    #  All input grid values, cell dimensions, etc are along X,Y,Z
+
+    #  Definitions:
+
+    #    unit_cell_grid (grid units along axes of full unit cell)
+
+    #    nxyz_start (starting point of map to be written out, in grid units,
+    #    nxyz_end (ending point of map to be written out, in grid units,
+    #     optionally set with gridding_first and gridding_last if input map
+    #     has origin at (0,0,0))
+
+    #    mapc,mapr,maps (assignment of the axes to X, Y and Z in numpy array
+    #      on input or output using mrcfile.  Columns are mapc (X=1, Y=2, Z=3),
+    #      rows are mapr (X=1, Y=2, Z=3), sections are maps (X=1, Y=2, Z=3).
+    #    Phenix writes maps with (mapc,mapr,maps)=(3,2,1).  Many other
+    #      programs use (1,2,3). This routine can read any order.
+
+    #   origin of flex array (grid point of lower left point in the map)
+    #   all of flex array (number of grid points in each direction)
+
+    #   Examples:
     #   For map_data with origin=(0,0,0) and all=(3,3,3) the map runs from
     #     0 to 2 in each direction, total elements = 27.  nxyz_start=(0,0,0)
     #     nxyz_end=(2,2,2).
@@ -179,38 +229,61 @@ class write_ccp4_map:
     # Ready to write the map
 
     assert new_map_data.origin()==(0,0,0) # must not be shifted at this point
+    assert space_group is not None
+    assert unit_cell is not None
 
     # Open file for writing
     import mrcfile
     mrc=mrcfile.new(file_name,overwrite=True)
 
-    # Data.  Convert to numpy array required for mrcfile
+    # Convert flex array to the numpy array required for mrcfile
     numpy_data=new_map_data.as_float().as_numpy_array()
+
+    # This numpy_data array is always in the order (3,2,1): columns are Z,
+    #  rows are Y, sections in X.  This comes from the shape of flex arrays.
+
+    assert write_standard_order==[3,2,1]
+    # To write with another order, change write_standard_order and
+    #  transpose numpy_data accordingly (not implemented)
+
+    mrc.header.mapc=write_standard_order[0]
+    mrc.header.mapr=write_standard_order[1]
+    mrc.header.maps=write_standard_order[2]
+
     mrc.set_data(numpy_data) # numpy array
 
     # Labels
     mrc.header.nlabl=labels.size()
     for i in xrange(min(10,labels.size())):
       mrc.header.label[i]=labels[i]
-    mrc.update_header_from_data() # don't move later as we overwrite values
+    mrc.update_header_from_data() # don't move this later as we overwrite values
 
-    # Unit cell parameters
+    # Unit cell parameters and space group
     abc=unit_cell.parameters()[:3]
     angles=unit_cell.parameters()[3:]
     mrc.header.cella=abc
     mrc.header.cellb=angles
-
-    # Axis order. Always is (3,2,1)  (see standard_order)
-    mrc.header.mapc=standard_order[0]
-    mrc.header.mapr=standard_order[1]
-    mrc.header.maps=standard_order[2]
+    space_group_number=space_group.info().type().number()
+    mrc.header.ispg=space_group_number
 
     # Start point of the supplied map in grid units
-    mrc.header.nxstart=nxyz_start[0]
-    mrc.header.nystart=nxyz_start[1]
-    mrc.header.nzstart=nxyz_start[2]
+
+    # nxyz_start is the origin (grid units) in XYZ coordinate system.
+    # The mrc header needs the origin along columns, rows, sections which
+    #  is represented here as nxstart_nystart_nzstart
+
+    nxstart_nystart_nzstart=origin_as_crs(origin=nxyz_start,
+       mapc=mrc.header.mapc,mapr=mrc.header.mapr,maps=mrc.header.maps)
+
+    mrc.header.nxstart=nxstart_nystart_nzstart[0]
+    mrc.header.nystart=nxstart_nystart_nzstart[1]
+    mrc.header.nzstart=nxstart_nystart_nzstart[2]
 
     # Size of entire unit cell in grid units
+    # This is ALWAYS along X,Y,Z regardless of the sectioning of the map
+    # Note that this can cause confusion as mrc.header.nx may be a different
+    #   axis than mrc.header.mx (mx is always X, nx is whatever axis is
+    #   specified by mapc)
     mrc.header.mx=unit_cell_grid[0]
     mrc.header.my=unit_cell_grid[1]
     mrc.header.mz=unit_cell_grid[2]
@@ -218,7 +291,10 @@ class write_ccp4_map:
     # External origin
     if external_origin is None:
       external_origin=(0.,0.,0.,)
-    mrc.header.origin=external_origin
+    # This also is ALWAYS along X,Y,Z regardless of the sectioning of the map
+    mrc.header.origin.x=external_origin[0]
+    mrc.header.origin.y=external_origin[1]
+    mrc.header.origin.z=external_origin[2]
 
     # Update header
     mrc.update_header_stats()
@@ -229,10 +305,19 @@ class write_ccp4_map:
     # Write the file
     mrc.close()
 
-def get_standard_order(mapc,mapr,maps,
-    standard_order=[3,2,1]):
+def get_standard_order(mapc,mapr,maps,internal_standard_order=None):
 
-  # MRC standard order is 3,2,1.  Convert everything to this order.
+  # Phenix standard order is 3,2,1 (columns Z, rows Y, sections in X).
+  #     Convert everything to this order.
+
+  # This is the order that allows direct conversion of a numpy 3D array
+  #  to a flex array.
+
+  # Note that this does not mean input or output maps have to be in this order.
+  #  It just means that before conversion of numpy to flex or vice-versa
+  #  the array has to be in this order.
+
+  #  Note that MRC standard order for input/ouput is 1,2,3.
 
   #  NOTE: numpy arrays indexed from 0 so this is equivalent to
   #   order of 2,1,0 in the numpy array
@@ -244,11 +329,11 @@ def get_standard_order(mapc,mapr,maps,
   #   be accessed using mrc.data[z][y][x].
 
   # NOTE: normal expectation is that phenix will read/write with the
-  #   order 3,2,1. This means Z-sections (index=3), Y rows (index=2),
-  #   X columns (index=1). This correxponds to
-  #    mapc (columns) =   1 or X
+  #   order 3,2,1. This means X-sections (index=3), Y rows (index=2),
+  #   Z columns (index=1). This correxponds to
+  #    mapc (columns) =   3 or Z
   #    mapr (rows)    =   2 or Y
-  #    maps (sections) =  3 or Z
+  #    maps (sections) =  1 or X
 
   # In the numpy array (2,1,0 instead of 3,2,1):
 
@@ -262,23 +347,29 @@ def get_standard_order(mapc,mapr,maps,
   # We want output axes to always be 2,1,0 and input axes for numpy array are
   #   (mapc-1,mapr-1,maps-1):
 
-  # For hard-wired mrcfile library, The transposition is always:
+  # For example, in typical phenix usage, the transposition is:
   #   i_mapc=3    i_mapc_np=2
   #   i_mapr=2    i_mapr_np=1
   #   i_maps=1    i_maps_np=0
 
-  assert standard_order==[3,2,1]  # Take this out if you want to change it
+  assert internal_standard_order==[3,2,1]  # This is hard-wired for flex array
 
   standard_order_np=[
-    standard_order[0]-1,
-    standard_order[1]-1,
-    standard_order[2]-1]
+    internal_standard_order[0]-1,
+    internal_standard_order[1]-1,
+    internal_standard_order[2]-1]
 
   mapc_np=mapc-1
   mapr_np=mapr-1
   maps_np=maps-1
 
   # Set up ordering for transposition
+  # if mapc,mapr,maps=(3,2,1) then with internal_standard_order=(3,2,1),
+  #   i_order=(1,2,3)
+  #  (0,1,2) and (2,1,0) for axis number 0-2)
+
+  #  from above:
+  #   i_order[0]=2 means input axis 0 becomes output axis 2
 
   i_order=[None,None,None]
   i_order[mapc_np]=standard_order_np[0]
@@ -293,8 +384,56 @@ def get_standard_order(mapc,mapr,maps,
 
   return i_order
 
+def origin_as_crs(origin=None,mapc=None,mapr=None,maps=None):
+
+  # convert  origin (origin along x,y,z) to nxstart,nystart,nzstart (origin
+  #   along columns,rows,sections)
+
+  # mapc is (1,2,or 3) indicating that columns are the (X,Y,or Z) axis
+  #  same for mapr (rows) and maps (sections).
+
+  # So if mapc=1, origin along columns is origin[0]
+  #    if mapc=3, origin along columns is origin[3]
+
+  order=(mapc-1,mapr-1,maps-1)
+
+  assert origin is not None and mapc is not None and \
+    mapr is not None and maps is not None
+
+  # order[0]=2 means mapc-1=2, or columns are Z, or that nxstart (column start)
+  #   is the origin along Z
+
+  nxstart_nystart_nzstart=[None,None,None]
+  for i in xrange(3):
+    nxstart_nystart_nzstart[order[i]]=origin[i]
+  return nxstart_nystart_nzstart
+
+def origin_as_xyz(nxstart_nystart_nzstart=None,mapc=None,mapr=None,maps=None):
+
+  # convert  nxstart,nystart,nzstart (origin along columns,rows,sections) to
+  #   origin (origin along x,y,z)
+
+  # mapc is (1,2,or 3) indicating that columns are the (X,Y,or Z) axis
+  #  same for mapr (rows) and maps (sections).
+
+  # So if mapc=1, origin along x is nxstart.
+  #    if mapc=3, origin along x is nzstart
+
+  order=(mapc-1,mapr-1,maps-1)
+
+  assert nxstart_nystart_nzstart is not None and mapc is not None and \
+    mapr is not None and maps is not None
+
+  # order[0]=2 means mapc-1=2, or columns are Z, or that nxstart (column start)
+  #   is the origin along Z
+
+  origin=[None,None,None]
+  for i in xrange(3):
+    origin[order[i]]=nxstart_nystart_nzstart[i]
+  return origin
+
 def numpy_map_as_flex_standard_order(np_array=None,
-  mapc=None,mapr=None,maps=None):
+  mapc=None,mapr=None,maps=None,internal_standard_order=None):
 
 
   # Convert numpy version of map (from CCP4-EM mrcfile) to flex.float array
@@ -308,8 +447,14 @@ def numpy_map_as_flex_standard_order(np_array=None,
 
   assert type(np_array[0,0,0].tolist())==type(float(1))
 
-  i_order=get_standard_order(mapc,mapr,maps)
+  # Input map can have columns, rows, sections corresponding to any of (X,Y,Z)
 
+  # Get the order for transposing input map (columns are mapc (X=1, Y=2, Z=3),
+  #   rows are mapr (X=1, Y=2, Z=3), sections are maps (X=1, Y=2, Z=3).
+  i_order=get_standard_order(mapc,mapr,maps,
+     internal_standard_order=internal_standard_order)
+
+  # Transpose the input numpy array to match Phenix expected order of (3,2,1)
   import numpy as np
   np_array_standard_order=np.transpose(np_array,i_order)
 
