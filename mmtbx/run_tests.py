@@ -357,6 +357,7 @@ general_tests = [
   ]
 
 probe_tests = [
+  "$D/regression/tst_add_arrows_on_plot.py",
   "$D/regression/model/tst_model.py",
   "$D/regression/tst_reduce_timeout.py",
   "$D/regression/tst_altloc_chain_break.py",

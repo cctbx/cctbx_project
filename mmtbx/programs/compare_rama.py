@@ -113,31 +113,6 @@ Usage examples:
           # print (len(data))
           if data and len(data) < 0: continue
           ad = [((x[2], x[3]),(x[4], x[5])) for x in data]
-          testing = False
-          if testing:
-            if color=="lime":
-              ad_testing = []
-              ad_testing.append( ((60,-120), (120, -120)) )
-              ad_testing.append( ((-125, 120), (-125,  179)) )
-              ad_testing.append( ((-120, 120), (-120, -120)) ) # wrapping up
-              ad_testing.append( ((-115, -120), (-115, 120)) ) # wrapping down
-              ad_testing.append( ((120, -60), (-120, -60)) ) # wrapping right
-              ad_testing.append( ((-120, -65), (120, -65)) ) # wrapping left
-              ad_testing.append( ((120, 0), (-120, 60)) ) # diag right
-              ad_testing.append( ((-120, 55), (120, -5)) )# diag left
-              ad_testing.append( ((-60, 120), (0, -120)) ) # diag up
-              ad_testing.append( ((5, -120), (-55, 120)) ) # diag up
-              ad_testing.append( ((150, 150), (-150, -150)) ) # going to top right corner straight
-              ad_testing.append( ((140, 155), (-130, -140)) ) # going to top right corner not straight
-              ad_testing.append( ((150, -150), (-150, 150)) ) # going to bottom right corner straight
-              ad_testing.append( ((140, -155), (-130, 140)) ) # going to bottom right corner not straight
-              ad_testing.append( ((-150, 150), (150, -150)) ) # going to top left corner straight
-              ad_testing.append( ((-140, 155), (130, -140)) ) # going to top left corner not straight
-              ad_testing.append( ((-150, -150), (150, 150)) ) # going to bottom left corner straight
-              ad_testing.append( ((-140, -155), (130, 140)) ) # going to bottom left corner not straight
-              ad = ad_testing
-            else:
-              ad = []
           add_arrows_on_plot(
               plot,
               ad,
