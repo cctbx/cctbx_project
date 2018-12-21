@@ -19,14 +19,13 @@ import numpy as np
 
 #  Same conventions as iotbx.ccp4_map
 
-#  Hard-wired to write maps with internal_standard_order of axes of (3,2,1)
+#  Default is to write maps with INTERNAL_STANDARD_ORDER of axes of [3,2,1]
 #    corresponding to columns in Z, rows in Y, sections in X to match
-#    flex array layout.  This could be modified by changing the values in
-#    output_axis_order AND transposing the numpy array just before using
-#    it in mrcfile.
+#    flex array layout.  This can be modified by changing the values in
+#    output_axis_order.
 
-#  Also hard-wired to convert input maps of any order to
-#    internal_standard_order before conversion to flex arrays
+#  Hard-wired to convert input maps of any order to
+#    INTERNAL_STANDARD_ORDER = [3,2,1] before conversion to flex arrays
 #    This is not modifiable.
 
 INTERNAL_STANDARD_ORDER=[3,2,1]
@@ -37,7 +36,11 @@ class map_reader(utils):
 
   def __init__(self, file_name=None,
      internal_standard_order=INTERNAL_STANDARD_ORDER,
-     header_only=False, verbose=None):
+     header_only=False, 
+     ignore_missing_machine_stamp=True,
+     print_warning_messages=True,
+     ignore_all_errors=False,
+     verbose=None):
 
     # Check for file
 
@@ -51,8 +54,20 @@ class map_reader(utils):
     with warnings.catch_warnings(record=True) as w:
       mrc=mrcfile.mmap(file_name, mode='r', permissive=True)
       # Here we can deal with them
-      # for war in w:
-      #   print war.message
+      for war in w:
+         text="\n  NOTE: WARNING message for the file '%s':\n  '%s'\n " %(
+            file_name,war.message)
+         if print_warning_messages:
+           print text
+
+         if ignore_all_errors:
+           pass
+         elif str(war.message).find("Unrecognised machine stamp")>-1 and \
+              ignore_missing_machine_stamp:
+           pass
+         else:
+           raise Sorry(text)
+
     # Read memory-mapped for speed. Permissive to allow reading files with
     # no machine stamp.
 
@@ -378,7 +393,7 @@ def get_standard_order(mapc,mapr,maps,internal_standard_order=None,
   #   i_mapr=2    i_mapr_np=1
   #   i_maps=1    i_maps_np=0
 
-  assert internal_standard_order==[3,2,1]  # This is hard-wired for flex array
+  assert internal_standard_order==INTERNAL_STANDARD_ORDER  # This is hard-wired for flex array
 
   standard_order_np=[
     internal_standard_order[0]-1,
