@@ -10,6 +10,7 @@ sources = [
   "conversions.cpp",
   "gradient_flags.cpp",
   "gradients_direct.cpp",
+  "each_hkl_gradients_direct.cpp",
   "fast_gradients.cpp",
   "minimization.cpp",
   "scatterer_flags.cpp",
