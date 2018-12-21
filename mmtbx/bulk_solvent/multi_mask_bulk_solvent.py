@@ -14,8 +14,8 @@ def ccp4_map(cg, file_name, mc=None, map_data=None):
   assert [mc, map_data].count(None)==1
   if(map_data is None):
     map_data = get_map(mc=mc, cg=cg)
-  from iotbx import ccp4_map
-  ccp4_map.write_ccp4_map(
+  from iotbx import mrcfile
+  mrcfile.write_ccp4_map(
       file_name=file_name,
       unit_cell=cg.unit_cell(),
       space_group=cg.space_group(),

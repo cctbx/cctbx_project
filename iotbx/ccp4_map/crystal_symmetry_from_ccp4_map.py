@@ -3,14 +3,13 @@ import iotbx.ccp4_map
 from cctbx import crystal
 import sys, os
 
-SHIFT_TO_MRCFILE=False
-
 def extract_from(file_name):
 
-  if SHIFT_TO_MRCFILE:
-    from iotbx.mrcfile.crystal_symmetry_from_ccp4_map \
+  from iotbx.mrcfile.crystal_symmetry_from_ccp4_map \
         import extract_from as extract_using_mrcfile
-    return extract_using_mrcfile(file_name)
+  return extract_using_mrcfile(file_name)
+
+  # BELOW HERE IS NOT USED ANY MORE
 
   # XXX This is to hide stdout from ccp4io code (ccp4_cmap_open) about input
   # XXX being non-ccp4 map. That's why we never have io in c/c++ code!
@@ -26,7 +25,7 @@ def extract_from(file_name):
   sys.stdout = os.fdopen(newstdout, 'w')
   ####
   try: # run application
-    m = iotbx.ccp4_map.map_reader(file_name=file_name)
+    m = iotbx.mrcfile.map_reader(file_name=file_name)
   except: # intentional
     # restore sys.stdout
     sys.stdout = save_stdout

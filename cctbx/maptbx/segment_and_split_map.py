@@ -1,7 +1,7 @@
 from __future__ import division
 import iotbx.phil
 import iotbx.pdb
-import iotbx.ccp4_map
+import iotbx.mrcfile
 from cctbx import crystal
 from cctbx import maptbx
 from libtbx.utils import Sorry
@@ -2379,8 +2379,8 @@ def get_map_object(file_name=None,out=sys.stdout):
     m.unit_cell_grid=m.data.all() # just so we have something
     m.space_group_number=0 # so we have something
   else:
-    from iotbx import ccp4_map
-    m = ccp4_map.map_reader(file_name=file_name)
+    from iotbx import mrcfile 
+    m = mrcfile.map_reader(file_name=file_name)
     print >>out,"MIN MAX MEAN RMS of map: %7.2f %7.2f  %7.2f  %7.2f " %(
       m.header_min, m.header_max, m.header_mean, m.header_rms)
     print >>out,"grid: ",m.unit_cell_grid
@@ -2462,7 +2462,7 @@ def write_ccp4_map(crystal_symmetry, file_name, map_data,
   if output_unit_cell_grid is None:
     output_unit_cell_grid=map_data.all()
 
-  iotbx.ccp4_map.write_ccp4_map(
+  iotbx.mrcfile.write_ccp4_map(
       file_name=file_name,
       unit_cell=crystal_symmetry.unit_cell(),
       space_group=crystal_symmetry.space_group(),
@@ -4575,8 +4575,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
   if map_data:
     pass # ok
   elif params.input_files.map_file:
-    from iotbx import ccp4_map
-    ccp4_map=iotbx.ccp4_map.map_reader(
+    from iotbx import mrcfile
+    ccp4_map=iotbx.mrcfile.map_reader(
     file_name=params.input_files.map_file)
     if not crystal_symmetry:
       crystal_symmetry=ccp4_map.crystal_symmetry() # 2018-07-18
@@ -4594,11 +4594,11 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     if len(params.input_files.half_map_file) != 2:
       raise Sorry("Please supply none or two half_map_file values")
 
-    from iotbx import ccp4_map
+    from iotbx import mrcfile 
     half_map_data_list=[]
-    half_map_data_list.append(iotbx.ccp4_map.map_reader(
+    half_map_data_list.append(iotbx.mrcfile.map_reader(
        file_name=params.input_files.half_map_file[0]).data.as_double())
-    half_map_data_list.append(iotbx.ccp4_map.map_reader(
+    half_map_data_list.append(iotbx.mrcfile.map_reader(
        file_name=params.input_files.half_map_file[1]).data.as_double())
 
   # Get the NCS object

@@ -1,7 +1,7 @@
 from __future__ import division
 from scitbx.array_family import flex
 import iotbx.pdb
-import iotbx.ccp4_map
+import iotbx.mrcfile
 import iotbx.xplor.map
 from libtbx import easy_run
 import time
@@ -91,7 +91,7 @@ def run(prefix="tst_model_map"):
   #
   easy_run.call("phenix.model_map %s.pdb output_file_name_prefix=%s"%(
     prefix, prefix))
-  m1 = iotbx.ccp4_map.map_reader(file_name="%s.ccp4"%prefix).data.as_double()
+  m1 = iotbx.mrcfile.map_reader(file_name="%s.ccp4"%prefix).data.as_double()
   m2 = iotbx.xplor.map.reader(file_name="%s.xplor"%prefix).data
   #
   fc1 = fc0.structure_factors_from_map(

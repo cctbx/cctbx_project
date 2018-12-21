@@ -446,7 +446,7 @@ def write_ccp4_map (sites_cart, unit_cell, map_data, n_real, file_name,
   gridding_first = tuple([ifloor(f*n) for f,n in zip(frac_min,n_real)])
   gridding_last = tuple([iceil(f*n) for f,n in zip(frac_max,n_real)])
   space_group = sgtbx.space_group_info("P1").group()
-  iotbx.ccp4_map.write_ccp4_map(
+  iotbx.mrcfile.write_ccp4_map(
     file_name=file_name,
     unit_cell=unit_cell,
     space_group=space_group,

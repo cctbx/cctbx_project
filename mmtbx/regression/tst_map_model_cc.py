@@ -35,8 +35,8 @@ END
 """
 
 def write_ccp4_map(map_data, cs, file_name):
-  from iotbx import ccp4_map
-  ccp4_map.write_ccp4_map(
+  from iotbx import mrcfile 
+  mrcfile.write_ccp4_map(
     file_name=file_name,
     unit_cell=cs.unit_cell(),
     space_group=cs.space_group(),

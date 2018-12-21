@@ -5748,7 +5748,7 @@ class fft_map(maptbx.crystal_gridding):
     """
     Write the real component of the map to a CCP4-format file.
     """
-    from iotbx import ccp4_map
+    from iotbx import mrcfile 
     map_data = self.real_map(direct_access=False)
     if gridding_first is None :
       gridding_first = (0,0,0)
@@ -5758,7 +5758,7 @@ class fft_map(maptbx.crystal_gridding):
       if (gridding_first == (0,0,0)) :
         gridding_last = tuple([ (n-1) for n in gridding_last ])
     assert (len(labels) <= 10)
-    ccp4_map.write_ccp4_map(file_name=file_name,
+    mrcfile.write_ccp4_map(file_name=file_name,
       unit_cell=self.unit_cell(),
       space_group=self.space_group(),
       gridding_first=gridding_first,

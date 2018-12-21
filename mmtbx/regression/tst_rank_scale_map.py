@@ -1,6 +1,6 @@
 from __future__ import division
 import iotbx.pdb
-import iotbx.ccp4_map
+import iotbx.mrcfile
 from scitbx.array_family import flex
 from libtbx import easy_run
 from libtbx.test_utils import approx_equal
@@ -16,7 +16,7 @@ def exercise_00(prefix="tst_rank_scale_map"):
   cs = fc.crystal_symmetry()
   fft_map = fc.fft_map(resolution_factor=0.25)
   m = fft_map.real_map_unpadded()
-  iotbx.ccp4_map.write_ccp4_map(
+  iotbx.mrcfile.write_ccp4_map(
     file_name="%s.ccp4"%prefix,
     unit_cell=cs.unit_cell(),
     space_group=cs.space_group(),
@@ -26,7 +26,7 @@ def exercise_00(prefix="tst_rank_scale_map"):
     labels=flex.std_string([""]))
   easy_run.call("phenix.rank_scale_map %s.ccp4"%prefix)
   #
-  ccp4_map = iotbx.ccp4_map.map_reader(
+  ccp4_map = iotbx.mrcfile.map_reader(
     file_name="%s.ccp4_rank_scaled.ccp4"%prefix)
   m = ccp4_map.data.as_double()
   mmm = m.as_1d().min_max_mean().as_tuple()

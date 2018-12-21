@@ -185,6 +185,13 @@ class write_ccp4_map:
     #     5 to 7 in each direction, total elements = 27.  nxyz_start=(5,5,5)
     #     nxyz_end=(7,7,7).  map_data.all()=(3,3,3). map_data.focus()=(8,8,8)
 
+    # Make sure map is unpadded
+
+    if map_data.is_padded(): # copied from cctbx/miller/__init__.py
+      from cctbx import maptbx
+      map_data=maptbx.copy(map_data, flex.grid(map_data.focus()))
+
+
     if gridding_first is not None and gridding_last is not None:
 
       # Writing box from gridding_first to gridding_last (inclusive)
@@ -202,7 +209,7 @@ class write_ccp4_map:
       new_map_data = maptbx.copy(map_data, tuple(nxyz_start), tuple(nxyz_end))
       #   NOTE: end point of map is nxyz_end, so size of map (new all()) is
       #   (nxyz_end-nxyz_start+ (1,1,1))
-      assert new_map_data.origin() == nxyz_start
+      assert tuple(new_map_data.origin()) == tuple(nxyz_start)
       assert new_map_data.all()==tuple(
          add_list((1,1,1),subtract_list(gridding_last,gridding_first)))
 

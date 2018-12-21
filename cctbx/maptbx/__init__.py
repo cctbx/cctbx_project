@@ -1500,8 +1500,8 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
     rad_smooth     = 2.0)
   map_data = map_data * mask_object.mask_smooth
   #
-  from iotbx import ccp4_map
-  ccp4_map.write_ccp4_map(
+  from iotbx import mrcfile 
+  mrcfile.write_ccp4_map(
     file_name="%s.ccp4"%file_name_prefix,
     unit_cell=cg.unit_cell(),
     space_group=cg.space_group(),
