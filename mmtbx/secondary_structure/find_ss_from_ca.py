@@ -258,7 +258,8 @@ def is_close_to(r,last_r,distance_cutoff=None,use_default_distance_cutoff=True):
     return False
 
 def split_model(model=None,hierarchy=None,verbose=False,info=None,
-     only_first_model=None,distance_cutoff=None,use_default_distance_cutoff=True,
+     only_first_model=None,distance_cutoff=None,
+     use_default_distance_cutoff=True,
      out=sys.stdout):
   # XXX NOTE: this splits model at all icode residues (one model per residue)
   # The routine extract_segment below assumes that the residues in an individual
