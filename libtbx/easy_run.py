@@ -12,6 +12,18 @@ def _show_lines(lines, out, prefix):
   for line in lines:
     print(prefix+line, file=out)
 
+def macos_dyld():
+  '''
+  Convenience funtion for returning either DYLD_LIBRARY_PATH or
+  DYLD_FALLBACK_LIBRARY_PATH (for conda environments)
+  '''
+  dyld_options = ['DYLD_LIBRARY_PATH', 'DYLD_FALLBACK_LIBRARY_PATH']
+  for dyld in dyld_options:
+    dyld_path = os.environ.get(dyld)
+    if (dyld_path is not None):
+      return '%s="%s"' % (dyld, dyld_path)
+  return 'DYLD_LIBRARY_PATH= '
+
 class fully_buffered_base(object):
 
   def format_errors_if_any(self):
@@ -144,8 +156,7 @@ class fully_buffered_subprocess(fully_buffered_base):
     # https://stackoverflow.com/questions/1191374/using-module-subprocess-with-timeout
     # https://stackoverflow.com/questions/4789837/how-to-terminate-a-python-subprocess-launched-with-shell-true
     if (sys.platform == 'darwin'):   # bypass SIP on OS X 10.11
-      command = ("DYLD_LIBRARY_PATH=%s exec "%\
-                 os.environ.get("DYLD_LIBRARY_PATH","")) + command
+      command = ('%s exec ' % macos_dyld()) + command
     if (stdin_lines is not None):
       if (not isinstance(stdin_lines, str)):
         stdin_lines = os.linesep.join(stdin_lines)
@@ -225,8 +236,7 @@ def call(command):
     flush = getattr(s, "flush", None)
     if (flush is not None): flush()
   if (sys.platform == 'darwin'):   # bypass SIP on OS X 10.11
-    command = ("DYLD_LIBRARY_PATH=%s exec "%\
-               os.environ.get("DYLD_LIBRARY_PATH","")) + command
+    command = ('%s exec ' % macos_dyld()) + command
   return subprocess.call(args=command, shell=True)
 
 def exercise(args=None):

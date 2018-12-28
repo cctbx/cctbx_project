@@ -841,7 +841,8 @@ int main() {
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
 
-    base_macos_flags = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+    min_macos = 10.7
+    base_macos_flags = ['-stdlib=libc++', '-mmacosx-version-min=%s' % min_macos]
 
     link_flags = ["-w"] # suppress "source/lib does not exist" warning
     link_flags.extend(base_macos_flags)
@@ -956,11 +957,18 @@ if (libtbx.env.build_options.use_conda):
   conda_prefix = os.environ.get('CONDA_PREFIX')
   env_etc.conda_cpppath = [os.path.join(conda_prefix, 'include')]
   env_etc.conda_libpath = [os.path.join(conda_prefix, 'lib')]
-  if (sys.platform =='win32'):
+  if (sys.platform == 'win32'):
     env_etc.conda_cpppath.append(
       os.path.join(conda_prefix, 'Library', 'include'))
     env_etc.conda_libpath.extend([os.path.join(conda_prefix, 'libs'),
                                   os.path.join(conda_prefix, 'Library', 'lib')])
+  if (sys.platform == 'darwin'):
+    env_etc.conda_shlinkflags = ['-headerpad_max_install_names']
+    env_etc.conda_rpath = [
+      os.path.join(conda_prefix, 'lib'),
+      os.path.join(abs(libtbx.env.build_path), 'lib')
+    ]
+    env_base.Append(SHLINKFLAGS=env_etc.conda_shlinkflags)
   if ("CPPPATH" not in env_base):
     env_base["CPPPATH"] = env_etc.conda_cpppath
   else:
@@ -984,9 +992,11 @@ if libtbx.env.build_options.enable_cxx11:
     return t
   if env_etc.compiler=='darwin_c++' and ver(env_etc.clang_version)>=ver((4,1)):
     # version numbers are inconsisternt between Apple clang and original clang
-    cxx11_flags = ["-std=c++11", "-stdlib=libc++", "-mmacosx-version-min=10.7"]
+    cxx11_flags = ["-std=c++11", "-stdlib=libc++",
+                   "-mmacosx-version-min=%s" % min_macos]
   elif ver(env_etc.clang_version)>=ver((3,1)):
-    cxx11_flags = ["-std=c++11", "-stdlib=libc++", "-mmacosx-version-min=10.7"]
+    cxx11_flags = ["-std=c++11", "-stdlib=libc++",
+                   "-mmacosx-version-min=%s" % min_macos]
   elif ver(env_etc.gcc_version) >= ver((4,7)):
     cxx11_flags = ["-std=c++11"]
   elif ver(env_etc.gcc_version) >= ver((4,4)):

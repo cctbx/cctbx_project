@@ -68,7 +68,8 @@ def darwin_shlinkcom(env_etc, env, lo, dylib):
     else:
       opt_m = " -m"
     shlinkcom = [
-      "ld -dynamic%s -r -d -bind_at_load -o %s $SOURCES" % (opt_m, lo),
+      "ld -dynamic%s -headerpad_max_install_names -r -d -bind_at_load -o %s $SOURCES" %
+        (opt_m, lo),
       "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
         " %s -o %s %s" % (dylib1, dylib, lo)]
     if (env_etc.mac_os_use_dsymutil):
@@ -180,14 +181,6 @@ def python_include_path():
     raise RuntimeError("Cannot locate Python's include directory: %s" % include_path)
   return include_path
 
-def ld_library_path_var_name():
-  if (os.name == "nt"):
-    return "PATH"
-  if (sys.platform.startswith("darwin")):
-    return "DYLD_LIBRARY_PATH"
-  else:
-    return "LD_LIBRARY_PATH"
-
 def highlight_dispatcher_include_lines(lines):
   m = max([len(line) for line in lines])
   if (os.name == "nt") :
@@ -262,7 +255,7 @@ class common_setpaths(object):
         os.pathsep.join([
           self.path_script_value(_) for _ in self.env.pythonpath]))
       self.update_path(
-        ld_library_path_var_name(),
+        self.env.ld_library_path_var_name(),
         os.pathsep.join([self.path_script_value(_)
           for _ in self.env.ld_library_path_additions()]))
 
@@ -932,6 +925,16 @@ Wait for the command to finish, then try again.""" % vars())
       result.append(p)
     return ":".join(result)
 
+  def ld_library_path_var_name(self):
+    if (os.name == "nt"):
+      return "PATH"
+    if (sys.platform.startswith("darwin")):
+      if (self.build_options.use_conda):
+        return "DYLD_FALLBACK_LIBRARY_PATH"
+      return "DYLD_LIBRARY_PATH"
+    else:
+      return "LD_LIBRARY_PATH"
+
   def ld_library_path_additions(self):
     result = [self.lib_path]
     dirs = []
@@ -1037,7 +1040,7 @@ Wait for the command to finish, then try again.""" % vars())
       print(line, file=f)
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((
-      ld_library_path_var_name(),
+      self.ld_library_path_var_name(),
       self.ld_library_path_additions()))
     essentials.append(("PATH", [self.bin_path]))
 
@@ -1197,7 +1200,7 @@ Wait for the command to finish, then try again.""" % vars())
           print("@" + line, file=f)
     write_dispatcher_include(where="at_start")
     essentials = [("PYTHONPATH", self.pythonpath)]
-    essentials.append((ld_library_path_var_name(), [self.lib_path]))
+    essentials.append((self.ld_library_path_var_name(), [self.lib_path]))
     essentials.append(("PATH", [self.bin_path]))
     for n,v in essentials:
       if (len(v) == 0): continue
@@ -1768,7 +1771,7 @@ selfx:
     self.process_exe()
     self.write_command_version_duplicates()
     if (os.name != "nt"):     # LD_LIBRARY_PATH for dependencies
-      os.environ[ld_library_path_var_name()] = ":".join(
+      os.environ[self.ld_library_path_var_name()] = ":".join(
         [abs(p) for p in self.ld_library_path_additions()])
     regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
     self.pickle()
@@ -2156,7 +2159,7 @@ class build_options:
       else:
         conda_python_exe = os.path.join(conda_prefix, "bin", "python")
       if (not os.path.isfile(conda_python_exe)):
-          raise RuntimeError("Python is not available.")
+        raise RuntimeError("Python is not available.")
 
   def report(self, f=None):
     if (f is None): f = sys.stdout
