@@ -117,7 +117,8 @@ master_phil = libtbx.phil.parse("""
   symmetry = None
     .type = str
     .help = Optional symmetry (e.g., D7, I, C2) to be used if extract_unique\
-            is set.  Alternative to symmetry_file.
+            is set.  Alternative to symmetry_file.  To find symmetry \
+            automatically specify symmetry=ALL.
     .short_caption = Symmetry
   symmetry_file = None
     .type = path
@@ -377,6 +378,9 @@ Parameters:"""%h
       raise Sorry("Please set resolution for extract_unique")
     if (not params.symmetry) and (not params.symmetry_file) and \
         (not ncs_object):
+      raise Sorry(
+        "Please supply a symmetry file or symmetry for extract_unique (you "+
+       "\ncan try symmetry=ALL if you do not know your symmetry)")
       from mmtbx.ncs.ncs import ncs
       ncs_object=ncs()
       ncs_object.set_unit_ncs()
