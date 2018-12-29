@@ -18,7 +18,7 @@ https://conda.anaconda.org/conda-forge/linux-64/openssl-1.0.2p-h470a237_1.tar.bz
 https://conda.anaconda.org/conda-forge/linux-64/xz-5.2.4-h470a237_1.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/zlib-1.2.11-h470a237_3.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/blas-1.1-openblas.tar.bz2
-https://conda.anaconda.org/conda-forge/linux-64/hdf5-1.10.3-hc401514_2.tar.bz2
+https://conda.anaconda.org/conda-forge/linux-64/hdf5-1.10.4-nompi_h5598ddc_1105.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/libpng-1.6.36-ha92aebf_0.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/libtiff-4.0.10-he6b73bb_0.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/readline-7.0-haf1bffa_1.tar.bz2
@@ -88,7 +88,7 @@ https://conda.anaconda.org/conda-forge/noarch/packaging-18.0-py_0.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/pathlib2-2.3.3-py27_1000.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/pexpect-4.6.0-py27_1000.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/pillow-5.3.0-py27hc736899_0.tar.bz2
-https://conda.anaconda.org/cctbx/noarch/procrunner-0.8.0-py_0.tar.bz2
+https://conda.anaconda.org/conda-forge/linux-64/procrunner-0.9.0-py27_1050.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/python-dateutil-2.7.5-py_0.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/scipy-1.1.0-py27_blas_openblashb06ca3d_202.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/setuptools-40.6.2-py27_0.tar.bz2
@@ -105,13 +105,13 @@ https://conda.anaconda.org/conda-forge/linux-64/scikit-learn-0.20.1-py27_blas_op
 https://conda.anaconda.org/conda-forge/linux-64/tornado-5.1.1-py27h470a237_0.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/unittest2-1.1.0-py_0.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/wheel-0.32.3-py27_0.tar.bz2
-https://conda.anaconda.org/conda-forge/linux-64/h5py-2.8.0-py27h097b052_4.tar.bz2
+https://conda.anaconda.org/conda-forge/linux-64/h5py-2.8.0-py27he5c79e1_5.tar.bz2
 https://conda.anaconda.org/cctbx/linux-64/matplotlib-2.0.2-py27hcbf7160_0.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/pip-18.1-py27_1000.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/prompt_toolkit-1.0.15-py_1.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/pyopenssl-18.0.0-py27_1000.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/pytest-forked-0.2-py_0.tar.bz2
-https://conda.anaconda.org/cctbx/linux-64/hdf5_plugins-0.1.0-py27h9d27c22_0.tar.bz2
+https://conda.anaconda.org/cctbx/linux-64/hdf5_plugins-0.1.0-py27h9d27c22_1.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/ipython-5.8.0-py27_0.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/pbr-4.2.0-py_0.tar.bz2
 https://conda.anaconda.org/conda-forge/noarch/pytest-xdist-1.24.1-py_0.tar.bz2
