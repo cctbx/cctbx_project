@@ -59,8 +59,15 @@ class map_symmetry:
 
   def run(self):
 
-    # Shift the map origin if necessary
 
+    # Print out values of parameters
+    import iotbx.phil
+    from phenix.programs.map_symmetry import master_phil_str
+    master_phil=iotbx.phil.parse(master_phil_str)
+    print ("\nInput parameters for map_symmetry:\n",file=self.log)
+    master_phil.format(python_object=self.params).show(out=self.log)
+
+    # Shift the map origin if necessary
     self.shift_origin()
     self.get_resolution()
 

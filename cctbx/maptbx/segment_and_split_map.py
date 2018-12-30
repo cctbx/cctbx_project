@@ -305,12 +305,11 @@ master_phil = iotbx.phil.parse("""
           if that fails, found automatically as the center of the \
           density in the map.
 
-     optimize_center = None
+     optimize_center = False
        .type = bool
        .short_caption = Optimize symmetry center
-       .help = Optimize position of symmetry center. Default is False \
-           if symmetry_center is supplied or center of map is used and \
-           True if it is found automatically).
+       .help = Optimize position of symmetry center. Also checks for center \
+                at (0,0,0) vs center of map 
 
      helical_rot_deg = None
        .type = float
@@ -936,9 +935,16 @@ master_phil = iotbx.phil.parse("""
       .help = Use 4 times half-width at half-height as estimate of max size
       .short_caption = Half-height width estimation
 
+    cell_cutoff_for_solvent_from_mask = 150
+      .type = float
+      .help = For cells with average edge over this cutoff, use the\
+               low resolution mask (backup) method for solvent estimation
+      .short_caption = Cell cutoff for solvent_from_mask
+
     fraction_of_max_mask_threshold = .05
       .type = float
-      .help = threshold in backup identification of solvent content.
+      .help = threshold in low resolution mask (backup) identification of \
+              solvent content.
       .short_caption = Fraction of max mask_threshold
 
     mask_threshold = None
@@ -2048,6 +2054,8 @@ class sharpening_info:
       self.residues_per_region=params.segmentation.residues_per_region
       self.fraction_of_max_mask_threshold=\
          params.segmentation.fraction_of_max_mask_threshold
+      self.cell_cutoff_for_solvent_from_mask=\
+         params.segmentation.cell_cutoff_for_solvent_from_mask
       self.starting_density_threshold=\
          params.segmentation.starting_density_threshold
       self.density_threshold=params.segmentation.density_threshold
@@ -2848,7 +2856,10 @@ def run_get_ncs_from_map(params=None,
   ncs_obj_to_check=None
   if params.reconstruction_symmetry.symmetry and (
      not ncs_obj or ncs_obj.max_operators()<2):
-    center_try_list=[True,False]
+    if params.reconstruction_symmetry.optimize_center:
+      center_try_list=[True,False]
+    else:
+      center_try_list=[True]
   elif ncs_obj:
     center_try_list=[True]
     ncs_obj_to_check=ncs_obj
@@ -2856,7 +2867,6 @@ def run_get_ncs_from_map(params=None,
     center_try_list=[None]
   else:
     return None,None,None # did not even try
-
   new_ncs_obj,ncs_cc,ncs_score=None,None,None
   for use_center_of_map in center_try_list:
     new_ncs_obj,ncs_cc,ncs_score=get_ncs_from_map(params=params,
@@ -2986,6 +2996,8 @@ def get_ncs_from_map(params=None,
        identify_ncs_id=identify_ncs_id,
        ncs_in_cell_only=ncs_in_cell_only,
       sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
+    if cc_avg < min_ncs_cc:
+      score=0. # Do not allow low CC values to be used
     if score is None:
       print >>out,"symmetry:",symmetry," no score",ncs_obj.max_operators()
     else:
@@ -3008,6 +3020,8 @@ def get_ncs_from_map(params=None,
         identify_ncs_id=identify_ncs_id,
         ncs_in_cell_only=ncs_in_cell_only,
         sites_orth=new_sites_orth,crystal_symmetry=crystal_symmetry,out=out)
+      if cc_avg < min_ncs_cc:
+        score=0. # Do not allow low CC values to be used
       if score is None:
         print >>out,"symmetry:",symmetry," no score",ncs_obj.max_operators()
       else:
@@ -3017,6 +3031,9 @@ def get_ncs_from_map(params=None,
     results_list=rescore_list
 
   print >>out,"Ranking of NCS types:"
+  if min_ncs_cc is not None:
+    print >>out,"NOTE: any NCS type with CC < %.2f (min_ncs_cc) is unscored " %(
+      min_ncs_cc)
   print >>out,"\n  SCORE    CC   OPERATORS     SYMMETRY"
   for score,cc_avg,ncs_obj,symmetry in results_list:
     if not symmetry: symmetry=""
@@ -3035,6 +3052,7 @@ def get_ncs_from_map(params=None,
        helical_rot_deg=helical_rot_deg,
        two_fold_along_x=two_fold_along_x,
        op_max=op_max,
+       min_ncs_cc=min_ncs_cc,
        identify_ncs_id=identify_ncs_id,
        ncs_obj_to_check=ncs_obj_to_check,
        ncs_in_cell_only=ncs_in_cell_only,
@@ -3048,7 +3066,7 @@ def get_ncs_from_map(params=None,
   print >>out,"\nBest NCS type is: ",
   print >>out,"\n  SCORE    CC   OPERATORS     SYMMETRY"
   if not ncs_info: ncs_info=""
-  print >>out," %6.2f  %5.2f    %2d          %s" %(
+  print >>out," %6.2f  %5.2f    %2d          %s  Best NCS type" %(
        score,cc_avg,ncs_obj.max_operators(), ncs_info.strip(),)
   return ncs_obj,cc_avg,score
 
@@ -3062,6 +3080,7 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
      identify_ncs_id=None,
      ncs_obj_to_check=None,
      ncs_in_cell_only=None,
+     min_ncs_cc=None,
      helical_trans_z_angstrom=None,out=sys.stdout):
 
   if ncs_info is None:
@@ -3105,6 +3124,8 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
           identify_ncs_id=identify_ncs_id,
           ncs_in_cell_only=ncs_in_cell_only,
           sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
+        if cc_avg < min_ncs_cc:
+          score=0. # Do not allow low CC values to be used
       else:
         ncs_obj=None
         score,cc_avg=None,None
@@ -3180,6 +3201,8 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
         # This version does not assume point-group symmetry: find the NCS
         #  operator that maps each point on to all others the best, then save
   #  that list of values
+
+  # XXX must never be here because return is only one item below??
 
   identify_ncs_id_list=list(xrange(ncs_group.n_ncs_oper()))+[None]
 
@@ -3644,6 +3667,8 @@ def find_helical_symmetry(params=None,
 
 
   if best_helical_rot_deg and best_helical_trans_z_angstrom and best_score and best_ncs_cc:
+    # Check to make sure there is no overlap
+
     print >>out," %.2f   %.2f   %.2f   %.2f (Final)" %(
      best_helical_rot_deg,best_helical_trans_z_angstrom,\
          best_score,best_ncs_cc)
@@ -4615,7 +4640,10 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         crystal_symmetry=crystal_symmetry,
         verbose=params.control.verbose,
         resolve_size=params.control.resolve_size,
-        fraction_of_max_mask_threshold=params.segmentation.fraction_of_max_mask_threshold,
+        fraction_of_max_mask_threshold=\
+           params.segmentation.fraction_of_max_mask_threshold,
+        cell_cutoff_for_solvent_from_mask=\
+           params.segmentation.cell_cutoff_for_solvent_from_mask,
         mask_resolution=params.crystal_info.resolution,
         map=map_data,
         out=out)
@@ -5038,7 +5066,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data,None
 
   if looking_for_ncs and (not found_ncs) and \
-         params.reconstruction_symmetry.symmetry != 'ANY':
+         params.reconstruction_symmetry.symmetry.upper() not in ['ANY','ALL']:
       raise Sorry(
         "Unable to identify %s symmetry automatically in this map." %(
         params.reconstruction_symmetry.symmetry)+
@@ -8386,17 +8414,35 @@ def get_iterated_solvent_fraction(map=None,
     resolve_size=None,
     crystal_symmetry=None,
     fraction_of_max_mask_threshold=None,
+    cell_cutoff_for_solvent_from_mask=None,
     mask_resolution=None,
     out=sys.stdout):
+  if cell_cutoff_for_solvent_from_mask and \
+   crystal_symmetry.unit_cell().volume() > cell_cutoff_for_solvent_from_mask**3:
+     #go directly to low_res_mask 
+     return get_solvent_fraction_from_low_res_mask(
+      crystal_symmetry=crystal_symmetry,
+      map_data=map.deep_copy(),
+      fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+      mask_resolution=mask_resolution)
+
   try:
     from phenix.autosol.map_to_model import iterated_solvent_fraction
-    return iterated_solvent_fraction(
+    solvent_fraction=iterated_solvent_fraction(
       crystal_symmetry=crystal_symmetry,
       map_as_double=map,
       verbose=verbose,
       resolve_size=resolve_size,
       return_solvent_fraction=True,
       out=out)
+    if solvent_fraction<=0.989:  # means that it was 0.99 which is hard limit
+      return solvent_fraction
+    else:  # use backup method
+      return get_solvent_fraction_from_low_res_mask(
+        crystal_symmetry=crystal_symmetry,
+        map_data=map.deep_copy(),
+        fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+        mask_resolution=mask_resolution)
   except Exception,e:
     # catch case where map was not on proper grid
     if str(e).find("sym equiv of a grid point must be a grid point")>-1:
