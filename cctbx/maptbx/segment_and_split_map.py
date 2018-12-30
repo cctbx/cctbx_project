@@ -941,10 +941,10 @@ master_phil = iotbx.phil.parse("""
                low resolution mask (backup) method for solvent estimation
       .short_caption = Cell cutoff for solvent_from_mask
 
-    fraction_of_max_mask_threshold = .05
+    fraction_of_max_mask_threshold = .01
       .type = float
-      .help = threshold in low resolution mask (backup) identification of \
-              solvent content.
+      .help = threshold of standard deviation map in low resolution mask \
+             identification of solvent content.
       .short_caption = Fraction of max mask_threshold
 
     mask_threshold = None
@@ -2867,9 +2867,22 @@ def run_get_ncs_from_map(params=None,
     center_try_list=[None]
   else:
     return None,None,None # did not even try
+  # check separately for helical symmetry 
+  if params.reconstruction_symmetry.symmetry.lower()=='helical':
+    helical_list=[True]
+  elif params.reconstruction_symmetry.symmetry.lower() in ['all','any'] and\
+      params.reconstruction_symmetry.include_helical_symmetry:
+    helical_list=[False,True]
+  else:
+    helical_list=[False]
+
   new_ncs_obj,ncs_cc,ncs_score=None,None,None
   for use_center_of_map in center_try_list:
-    new_ncs_obj,ncs_cc,ncs_score=get_ncs_from_map(params=params,
+   for include_helical in helical_list:
+    local_params=deepcopy(params)
+    local_params.reconstruction_symmetry.include_helical_symmetry=\
+       include_helical
+    new_ncs_obj,ncs_cc,ncs_score=get_ncs_from_map(params=local_params,
       map_data=map_data,
       map_symmetry_center=map_symmetry_center,
       use_center_of_map_as_center=use_center_of_map,
