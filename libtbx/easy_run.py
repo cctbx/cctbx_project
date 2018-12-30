@@ -14,7 +14,7 @@ def _show_lines(lines, out, prefix):
 
 def macos_dyld():
   '''
-  Convenience funtion for returning either DYLD_LIBRARY_PATH or
+  Convenience function for returning either DYLD_LIBRARY_PATH or
   DYLD_FALLBACK_LIBRARY_PATH (for conda environments)
   '''
   dyld_options = ['DYLD_LIBRARY_PATH', 'DYLD_FALLBACK_LIBRARY_PATH']
