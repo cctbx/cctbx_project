@@ -45,6 +45,38 @@ def is_64bit_architecture():
   nbits = 8 * struct.calcsize("P")
   return (nbits == 64)
 
+def using_conda_python():
+  '''
+  Return True if Python is from conda, False otherwise.
+  This check is independent of being in an active conda environment.
+  '''
+  if ('conda' in sys.version) or ('continuum' in sys.version.lower()):
+    return True
+  return False
+
+def get_conda_prefix():
+  '''
+  Return the root directory of the conda environment. Usually, this is defined
+  by the CONDA_PREFIX environment variable. This function will try to figure
+  out the root directory if the environment is not active. A special case
+  exists for macOS where the framework package (python.app) is used for GUI
+  programs.
+
+  A RuntimeError is raised if the root directory of the conda environment
+  cannot be determined.
+  '''
+  conda_prefix = None
+  if (using_conda_python()):
+    conda_prefix = os.environ.get('CONDA_PREFIX')
+    if (conda_prefix is None):  # case where environment is not active
+      conda_prefix = sys.prefix
+      if (sys.platform == 'darwin'):  # case where python.app is used
+        if ('python.app' in conda_prefix):
+          conda_prefix = conda_prefix.split('python.app')[0]
+  if (conda_prefix is None):
+    raise RuntimeError('Unable to find conda environment.')
+  return conda_prefix
+
 def unique_paths(paths):
   hash = set()
   result = []
@@ -177,6 +209,12 @@ def python_include_path():
         "%s != %s" % (include_path, sysconfig_path)
 
   include_path = sysconfig.get_paths()['include']
+  try:  # conda environment
+    conda_prefix = get_conda_prefix()
+    include_path = os.path.join(conda_prefix, 'include',
+                                'python%d.%d' % sys.version_info[:2])
+  except RuntimeError:
+    pass
   if not op.isdir(include_path):
     raise RuntimeError("Cannot locate Python's include directory: %s" % include_path)
   return include_path
@@ -786,7 +824,8 @@ Wait for the command to finish, then try again.""" % vars())
         python3warn=command_line.options.python3warn,
         skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
       self.build_options.get_flags_from_environment()
-      self.build_options.check_conda()
+      if (self.build_options.use_conda):
+        get_conda_prefix()
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
           command_line.options.command_version_suffix
@@ -2142,24 +2181,6 @@ class build_options:
       flg = os.environ.get("LDFLAGS")
       if flg is not None:
         self.env_ldflags = flg
-
-  def check_conda(self):
-    '''
-    Check to see if the conda environment is working
-    Raises a RuntimeError if conda is not working
-    '''
-    if (self.use_conda):
-      # basic check if we're even in a conda environment
-      conda_prefix = os.environ.get("CONDA_PREFIX")
-      if (conda_prefix is None):
-        raise RuntimeError("conda environment is not active.")
-      # check that python exists
-      if (sys.platform == "win32"):
-        conda_python_exe = os.path.join(conda_prefix, "python.exe")
-      else:
-        conda_python_exe = os.path.join(conda_prefix, "bin", "python")
-      if (not os.path.isfile(conda_python_exe)):
-        raise RuntimeError("Python is not available.")
 
   def report(self, f=None):
     if (f is None): f = sys.stdout

@@ -954,18 +954,18 @@ if( libtbx.env.build_options.use_environment_flags ):
 
 # conda header and library paths
 if (libtbx.env.build_options.use_conda):
-  conda_prefix = os.environ.get('CONDA_PREFIX')
-  env_etc.conda_cpppath = [os.path.join(conda_prefix, 'include')]
-  env_etc.conda_libpath = [os.path.join(conda_prefix, 'lib')]
+  env_etc.conda_prefix = libtbx.env_config.get_conda_prefix()
+  env_etc.conda_cpppath = [os.path.join(env_etc.conda_prefix, 'include')]
+  env_etc.conda_libpath = [os.path.join(env_etc.conda_prefix, 'lib')]
   if (sys.platform == 'win32'):
     env_etc.conda_cpppath.append(
-      os.path.join(conda_prefix, 'Library', 'include'))
-    env_etc.conda_libpath.extend([os.path.join(conda_prefix, 'libs'),
-                                  os.path.join(conda_prefix, 'Library', 'lib')])
+      os.path.join(env_etc.conda_prefix, 'Library', 'include'))
+    env_etc.conda_libpath.extend([os.path.join(env_etc.conda_prefix, 'libs'),
+                                  os.path.join(env_etc.conda_prefix, 'Library', 'lib')])
   if (sys.platform == 'darwin'):
     env_etc.conda_shlinkflags = ['-headerpad_max_install_names']
     env_etc.conda_rpath = [
-      os.path.join(conda_prefix, 'lib'),
+      os.path.join(env_etc.conda_prefix, 'lib'),
       os.path.join(abs(libtbx.env.build_path), 'lib')
     ]
     env_base.Append(SHLINKFLAGS=env_etc.conda_shlinkflags)
