@@ -309,7 +309,7 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .short_caption = Optimize symmetry center
        .help = Optimize position of symmetry center. Also checks for center \
-                at (0,0,0) vs center of map 
+                at (0,0,0) vs center of map
 
      helical_rot_deg = None
        .type = float
@@ -941,7 +941,15 @@ master_phil = iotbx.phil.parse("""
                low resolution mask (backup) method for solvent estimation
       .short_caption = Cell cutoff for solvent_from_mask
 
-    fraction_of_max_mask_threshold = .01
+    mask_padding_fraction = 0.05
+      .type = float
+      .help = Adjust threshold of standard deviation map in low resolution \
+            mask identification of solvent content to give this much more \
+            inside mask than would be obtained with the value of\
+             fraction_of_max_mask_threshold.
+      .short_caption = Mask padding fraction
+
+    fraction_of_max_mask_threshold = .05
       .type = float
       .help = threshold of standard deviation map in low resolution mask \
              identification of solvent content.
@@ -2052,6 +2060,8 @@ class sharpening_info:
       self.max_ratio_to_target=params.segmentation.max_ratio_to_target
       self.min_ratio_to_target=params.segmentation.min_ratio_to_target
       self.residues_per_region=params.segmentation.residues_per_region
+      self.mask_padding_fraction=\
+         params.segmentation.mask_padding_fraction
       self.fraction_of_max_mask_threshold=\
          params.segmentation.fraction_of_max_mask_threshold
       self.cell_cutoff_for_solvent_from_mask=\
@@ -2867,7 +2877,7 @@ def run_get_ncs_from_map(params=None,
     center_try_list=[None]
   else:
     return None,None,None # did not even try
-  # check separately for helical symmetry 
+  # check separately for helical symmetry
   if params.reconstruction_symmetry.symmetry.lower()=='helical':
     helical_list=[True]
   elif params.reconstruction_symmetry.symmetry.lower() in ['all','any'] and\
@@ -4653,6 +4663,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         crystal_symmetry=crystal_symmetry,
         verbose=params.control.verbose,
         resolve_size=params.control.resolve_size,
+        mask_padding_fraction=\
+           params.segmentation.mask_padding_fraction,
         fraction_of_max_mask_threshold=\
            params.segmentation.fraction_of_max_mask_threshold,
         cell_cutoff_for_solvent_from_mask=\
@@ -8126,6 +8138,7 @@ def get_overall_mask(
     map_data=None,
     mask_threshold=None,
     fraction_of_max_mask_threshold=None,
+    mask_padding_fraction=None,
     solvent_fraction=None,
     crystal_symmetry=None,
     radius=None,
@@ -8201,6 +8214,19 @@ def get_overall_mask(
     print >>out,"Using fraction of max as threshold: %.3f " %(
         fraction_of_max_mask_threshold), \
         "which is threshold of %.3f" %(mask_threshold)
+    if mask_padding_fraction:
+      # Adjust threshold to increase by mask_padding_fraction, proportional
+      #  to fraction available
+      overall_mask=(sd_map>= mask_threshold)
+      current_above_threshold=overall_mask.count(True)/overall_mask.size()
+      # current+(1-current)*pad
+      additional_padding=(1-current_above_threshold)*mask_padding_fraction
+      target_above_threshold=min(
+        0.99,current_above_threshold+additional_padding)
+      print >>out,"Target with padding of %.2f will be %.2f" %(
+         mask_padding_fraction,target_above_threshold)
+      solvent_fraction=(1-target_above_threshold)
+      mask_threshold=None
 
   if mask_threshold:
     print >>out,"Cutoff for mask will be input threshold"
@@ -8426,16 +8452,18 @@ def get_iterated_solvent_fraction(map=None,
     verbose=None,
     resolve_size=None,
     crystal_symmetry=None,
+    mask_padding_fraction=None,
     fraction_of_max_mask_threshold=None,
     cell_cutoff_for_solvent_from_mask=None,
     mask_resolution=None,
     out=sys.stdout):
   if cell_cutoff_for_solvent_from_mask and \
    crystal_symmetry.unit_cell().volume() > cell_cutoff_for_solvent_from_mask**3:
-     #go directly to low_res_mask 
+     #go directly to low_res_mask
      return get_solvent_fraction_from_low_res_mask(
       crystal_symmetry=crystal_symmetry,
       map_data=map.deep_copy(),
+      mask_padding_fraction=mask_padding_fraction,
       fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
       mask_resolution=mask_resolution)
 
@@ -8454,6 +8482,7 @@ def get_iterated_solvent_fraction(map=None,
       return get_solvent_fraction_from_low_res_mask(
         crystal_symmetry=crystal_symmetry,
         map_data=map.deep_copy(),
+        mask_padding_fraction=mask_padding_fraction,
         fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
         mask_resolution=mask_resolution)
   except Exception,e:
@@ -8477,17 +8506,20 @@ def get_iterated_solvent_fraction(map=None,
     return get_solvent_fraction_from_low_res_mask(
       crystal_symmetry=crystal_symmetry,
       map_data=map.deep_copy(),
+      mask_padding_fraction=mask_padding_fraction,
       fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
       mask_resolution=mask_resolution)
 
 def get_solvent_fraction_from_low_res_mask(
       crystal_symmetry=None,map_data=None,
       fraction_of_max_mask_threshold=None,
+      mask_padding_fraction=None,
       mask_resolution=None,
       out=sys.stdout):
 
   overall_mask,max_in_sd_map,sd_map=get_overall_mask(map_data=map_data,
     fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+    mask_padding_fraction=mask_padding_fraction,
     crystal_symmetry=crystal_symmetry,
     resolution=mask_resolution,
     out=out)
