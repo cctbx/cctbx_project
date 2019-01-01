@@ -941,7 +941,7 @@ master_phil = iotbx.phil.parse("""
                low resolution mask (backup) method for solvent estimation
       .short_caption = Cell cutoff for solvent_from_mask
 
-    mask_padding_fraction = 0.05
+    mask_padding_fraction = 0.025
       .type = float
       .help = Adjust threshold of standard deviation map in low resolution \
             mask identification of solvent content to give this much more \
