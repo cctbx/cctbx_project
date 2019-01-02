@@ -8,7 +8,7 @@ from libtbx.utils import to_str
 
 t_wait = 250
 
-def start_coot_and_wait (
+def start_coot_and_wait(
     pdb_file,
     map_file,
     ligand_files,
@@ -16,7 +16,7 @@ def start_coot_and_wait (
     cif_files=(),
     work_dir=None,
     coot_cmd="coot",
-    log=None) :
+    log=None):
   from iotbx import file_reader
   from libtbx.str_utils import make_header
   from libtbx import easy_run
@@ -25,7 +25,7 @@ def start_coot_and_wait (
   if (log is None) : log = sys.stdout
   cwd = os.getcwd()
   if (work_dir is None) : work_dir = cwd
-  if (not os.path.isdir(work_dir)) :
+  if (not os.path.isdir(work_dir)):
     os.makedirs(work_dir)
   os.chdir(work_dir)
   base_script = __file__.replace(".pyc", ".py")
@@ -51,13 +51,13 @@ def start_coot_and_wait (
   make_header("Ligand selection in Coot", log)
   rc = easy_run.call("\"%s\" --no-state-script --script edit_in_coot.py &" %
     coot_cmd)
-  if (rc != 0) :
+  if (rc != 0):
     raise RuntimeError("Launching Coot failed with status %d" % rc)
   print >> log, "  Waiting for user input at %s" % str(time.asctime())
   out_file = ".COOT_LIGANDS"
   output_files = output_ccs = None
-  while (True) :
-    if (os.path.isfile(out_file)) :
+  while (True):
+    if (os.path.isfile(out_file)):
       print >> log, "  Coot editing complete at %s" % str(time.asctime())
       ligand_indices = [ int(i) for i in open(out_file).read().split() ]
       output_files = []
@@ -72,8 +72,8 @@ def start_coot_and_wait (
   os.chdir(cwd)
   return output_files, output_ccs
 
-class manager (object) :
-  def __init__ (self, ligand_file_info) :
+class manager (object):
+  def __init__(self, ligand_file_info):
     import gtk
     import coot # import dependency
     title = "Select ligand(s)"
@@ -121,14 +121,14 @@ class manager (object) :
     outside_vbox.pack_end(continue_btn, False, False, 0)
     self.window.show_all()
 
-  def OnToggle (self, cell, path, model):
+  def OnToggle(self, cell, path, model):
     model[path][0] = not model[path][0]
 
-  def OnContinue (self, *args) :
+  def OnContinue(self, *args):
     import gtk
     selected = []
-    for i_lig in range(len(self.ligand_file_info)) :
-      if (self.model[i_lig][0]) :
+    for i_lig in range(len(self.ligand_file_info)):
+      if (self.model[i_lig][0]):
         print "  selected ligand %d" % (i_lig+1)
         pdb_out = "coot_ligand_out_%d.pdb" % (i_lig+1)
         save_coordinates(self.ligand_imols[i_lig], pdb_out)

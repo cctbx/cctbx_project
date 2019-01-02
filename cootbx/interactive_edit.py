@@ -11,17 +11,17 @@ t_wait = 250 # in milliseconds
 
 #-----------------------------------------------------------------------
 # Phenix side
-def start_coot_and_wait (
+def start_coot_and_wait(
     pdb_file,
     map_file,
     data_file,
     work_dir=None,
     coot_cmd="coot",
     needs_rebuild=False,
-    log=None) :
+    log=None):
   if (log is None) : log = sys.stdout
   if (work_dir is None) : work_dir = os.getcwd()
-  if (not os.path.isdir(work_dir)) :
+  if (not os.path.isdir(work_dir)):
     os.makedirs(work_dir)
   import mmtbx.maps.utils
   from libtbx.str_utils import make_header
@@ -30,9 +30,9 @@ def start_coot_and_wait (
   import cootbx
   base_script = __file__.replace(".pyc", ".py")
   os.chdir(work_dir)
-  if (os.path.exists("coot_out_tmp.pdb")) :
+  if (os.path.exists("coot_out_tmp.pdb")):
     os.remove("coot_out_tmp.pdb")
-  if (os.path.exists("coot_out.pdb")) :
+  if (os.path.exists("coot_out.pdb")):
     os.remove("coot_out.pdb")
   f = open("edit_in_coot.py", "w")
   f.write(open(base_script).read())
@@ -51,11 +51,11 @@ def start_coot_and_wait (
   tmp_file = os.path.join(base_dir, "coot_out_tmp.pdb")
   edit_file = os.path.join(base_dir, "coot_tmp_edits.pdb")
   maps_file = os.path.join(base_dir, ".NEW_MAPS")
-  while (True) :
-    if (os.path.isfile(tmp_file)) :
+  while (True):
+    if (os.path.isfile(tmp_file)):
       print >> log, "  Coot editing complete at %s" % str(time.asctime())
       break
-    elif (os.path.isfile(maps_file)) :
+    elif (os.path.isfile(maps_file)):
       t1 = time.time()
       assert os.path.isfile(edit_file)
       mmtbx.maps.utils.create_map_from_pdb_and_mtz(
@@ -79,8 +79,8 @@ def start_coot_and_wait (
   new_model = os.path.join(work_dir, "coot_out.pdb")
   new_map = os.path.join(work_dir, "coot_out_maps.mtz")
   skip_rebuild = None
-  if (needs_rebuild) :
-    if (os.path.isfile(os.path.join(base_dir, "NO_BUILD"))) :
+  if (needs_rebuild):
+    if (os.path.isfile(os.path.join(base_dir, "NO_BUILD"))):
       skip_rebuild = True
     else :
       skip_rebuild = False
@@ -91,8 +91,8 @@ def start_coot_and_wait (
 
 #-----------------------------------------------------------------------
 # Coot side
-class manager (object) :
-  def __init__ (self, pdb_file, map_file, needs_rebuild=False) :
+class manager (object):
+  def __init__(self, pdb_file, map_file, needs_rebuild=False):
     self.file_name = pdb_file
     self.needs_rebuild = needs_rebuild
     import gtk
@@ -125,8 +125,8 @@ class manager (object) :
     dialog.run()
     dialog.destroy()
 
-  def load_maps (self, map_file) :
-    if (len(self._map_mols) > 0) :
+  def load_maps(self, map_file):
+    if (len(self._map_mols) > 0):
       set_colour_map_rotation_for_map(0)
       for imol in self._map_mols :
         close_molecule(imol)
@@ -135,7 +135,7 @@ class manager (object) :
     print "Loading %s" % to_str(map_file)
     self._map_mols = []
     map_imol = auto_read_make_and_draw_maps(to_str(map_file))
-    if (isinstance(map_imol, int)) :
+    if (isinstance(map_imol, int)):
       # XXX this may be dangerous, but auto_read_make_and_draw_maps only returns
       # the last imol
       self._map_mols = [ map_imol - 1, map_imol ]
@@ -144,12 +144,12 @@ class manager (object) :
     set_imol_refinement_map(self._map_mols[0])
     set_scrollable_map(self._map_mols[0])
 
-  def OnReturn (self, *args) :
+  def OnReturn(self, *args):
     import coot
     import gtk
     dir_name = os.path.dirname(self.file_name)
     pdb_out = os.path.join(dir_name, "coot_out_tmp.pdb")
-    if (self.needs_rebuild) :
+    if (self.needs_rebuild):
       dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO,
         gtk.BUTTONS_YES_NO,
         "Phenix has determined that your model needs to rebuilt in "+
@@ -157,7 +157,7 @@ class manager (object) :
         "this may no longer be necessary.  Do you want to run AutoBuild now? "+
         "(Clicking \"No\" will skip to the next step.")
       response = dialog.run()
-      if (dialog != gtk.RESPONSE_YES) :
+      if (dialog != gtk.RESPONSE_YES):
         open(os.path.join(dir_name, "NO_BUILD"), "w").write("1")
       dialog.destroy()
     save_coordinates(self._imol, pdb_out)
@@ -169,14 +169,14 @@ class manager (object) :
     dialog.destroy()
     gtk.main_quit()
 
-  def OnNewMaps (self, *args) :
+  def OnNewMaps(self, *args):
     import coot
     import gtk
     import gobject
     dir_name = os.path.dirname(self.file_name)
     pdb_out = os.path.join(dir_name, "coot_tmp_edits.pdb")
     maps_in = os.path.join(dir_name, "maps_for_coot.mtz")
-    if (os.path.exists(maps_in)) :
+    if (os.path.exists(maps_in)):
       os.remove(maps_in)
     write_pdb_file(self._imol, pdb_out)
     dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO,
@@ -184,17 +184,17 @@ class manager (object) :
       "Phenix will generate new maps; these will be automatically loaded "+
       "when complete.")
     response = dialog.run()
-    if (response == gtk.RESPONSE_OK) :
+    if (response == gtk.RESPONSE_OK):
       print "WRITING .NEW_MAPS"
       open(os.path.join(dir_name, ".NEW_MAPS"), "w").write("1")
       gobject.timeout_add(t_wait, self.OnWaitForMaps)
     dialog.destroy()
 
-  def OnWaitForMaps (self, *args) :
+  def OnWaitForMaps(self, *args):
     # TODO a spinner or progress bar might be nice here...
     dir_name = os.path.dirname(self.file_name)
     maps_in = os.path.join(dir_name, "maps_for_coot.mtz")
-    if (os.path.isfile(maps_in)) :
+    if (os.path.isfile(maps_in)):
       self.load_maps(maps_in)
       os.remove(maps_in)
       return False # this kills the timeout
