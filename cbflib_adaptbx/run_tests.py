@@ -38,7 +38,7 @@ tst_list = (
   tst_run,
   )
 
-def run () :
+def run():
   build_dir = libtbx.env.under_build("cbflib_adaptbx")
   dist_dir = libtbx.env.dist_path("cbflib_adaptbx")
 
