@@ -7,7 +7,7 @@ except ImportError :
   gobject = None
 import sys
 
-class coot_extension_gui (object):
+class coot_extension_gui(object):
   def __init__(self, title):
     import gtk
     self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
@@ -61,7 +61,7 @@ class coot_extension_gui (object):
           box=vbox)
 
 # Molprobity result viewer
-class coot_molprobity_todo_list_gui (coot_extension_gui):
+class coot_molprobity_todo_list_gui(coot_extension_gui):
   data_keys = [ "rama", "rota", "cbeta", "probe" ]
   data_titles = { "rama"  : "Ramachandran outliers",
                   "rota"  : "Rotamer outliers",
@@ -129,14 +129,14 @@ class coot_molprobity_todo_list_gui (coot_extension_gui):
       self._overlaps_only = self.dots2_btn.get_active()
       self.toggle_probe_dots()
 
-class rsc_todo_list_gui (coot_extension_gui):
+class rsc_todo_list_gui(coot_extension_gui):
   data_keys = ["by_res", "by_atom"]
   data_titles = ["Real-space correlation by residue",
                  "Real-space correlation by atom"]
   data_names = {}
   data_types = {}
 
-class residue_properties_list (object):
+class residue_properties_list(object):
   def __init__(self, columns, column_types, rows, box,
       default_size=(380,200)):
     assert len(columns) == (len(column_types) - 1)

@@ -72,7 +72,7 @@ def start_coot_and_wait(
   os.chdir(cwd)
   return output_files, output_ccs
 
-class manager (object):
+class manager(object):
   def __init__(self, ligand_file_info):
     import gtk
     import coot # import dependency
