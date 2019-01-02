@@ -8,7 +8,7 @@ import wx
 import os
 import sys
 
-def run (args) :
+def run(args):
   if (len(args) == 0) or (not os.path.isfile(args[-1])):
     raise Usage("wxtbx.show_file_info [options] file_name")
   app = wx.App(0)
@@ -17,17 +17,17 @@ def run (args) :
     raise_sorry_if_errors=True)
   f.show_summary()
   frame = None
-  if (f.file_type == "pdb") :
+  if (f.file_type == "pdb"):
     frame = info_panels.PDBFileInfo(None)
-  elif (f.file_type == "hkl") :
+  elif (f.file_type == "hkl"):
     frame = info_panels.ReflectionFileInfo(None)
-  elif (f.file_type == "img") :
+  elif (f.file_type == "img"):
     frame = info_panels.ImageFileInfo(None)
-  if (frame is None) :
+  if (frame is None):
     raise Sorry("File type %s not supported for display." % f.file_type)
   frame.set_file(f.file_name)
   frame.Show()
   app.MainLoop()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

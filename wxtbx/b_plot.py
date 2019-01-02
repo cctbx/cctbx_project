@@ -33,18 +33,18 @@ b_plot
 }
 """)
 
-class residue_info (object) :
-  def __init__ (self,
+class residue_info (object):
+  def __init__(self,
                 chain_id,
                 resseq,
                 icode,
                 has_altconf,
                 has_partocc,
-                avg_b) :
+                avg_b):
     adopt_init_args(self, locals())
 
-class analyze (object) :
-  def __init__ (self, pdb_hierarchy, xray_structure, params, out=sys.stdout) :
+class analyze (object):
+  def __init__(self, pdb_hierarchy, xray_structure, params, out=sys.stdout):
     from cctbx import adptbx
     from scitbx.array_family import flex
     self.plot_range = params.plot_range
@@ -53,37 +53,37 @@ class analyze (object) :
     b_isos = xray_structure.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.0)
     occ = pdb_hierarchy.atoms().extract_occ()
     model = pdb_hierarchy.models()[0]
-    for chain in model.chains() :
+    for chain in model.chains():
       main_conf = chain.conformers()[0]
       is_na = main_conf.is_na()
       is_protein = main_conf.is_protein()
-      if (not is_protein) and (not is_na) :
+      if (not is_protein) and (not is_na):
         print >> out, "Skipping chain '%s' - not protein or DNA/RNA." %chain.id
         continue
       self.chains.append(chain.id)
       self.residues.append([])
-      for residue_group in chain.residue_groups() :
+      for residue_group in chain.residue_groups():
         n_conformers = len(residue_group.atom_groups())
         rg_i_seqs = residue_group.atoms().extract_i_seq()
         rg_occ = residue_group.atoms().extract_occ()
-        if (params.average_b_over == "residue") :
+        if (params.average_b_over == "residue"):
           use_i_seqs = rg_i_seqs
-        elif (params.average_b_over == "mainchain") :
+        elif (params.average_b_over == "mainchain"):
           use_i_seqs = []
-          if (is_protein) :
-            for j_seq, atom in enumerate(residue_group.atoms()) :
+          if (is_protein):
+            for j_seq, atom in enumerate(residue_group.atoms()):
               #alab = atom.fetch_labels()
-              if (atom.name in [" N  ", " C  ", " CA ", " O  "]) :
+              if (atom.name in [" N  ", " C  ", " CA ", " O  "]):
                 use_i_seqs.append(rg_i_seqs[j_seq])
           else :
             raise Sorry("Mainchain-only mode not supported for nucleic acids.")
         else :
           use_i_seqs = []
-          if (is_protein) :
-            for j_seq, atom in enumerate(residue_group.atoms()) :
-              if (not atom.name in [" N  ", " C  ", " CA ", " O  "]) :
+          if (is_protein):
+            for j_seq, atom in enumerate(residue_group.atoms()):
+              if (not atom.name in [" N  ", " C  ", " CA ", " O  "]):
                 use_i_seqs.append(rg_i_seqs[j_seq])
-        if (len(use_i_seqs) > 0) :
+        if (len(use_i_seqs) > 0):
           has_partocc = ((flex.min(occ.select(use_i_seqs)) < 1.0) and
                          (n_conformers == 1))
           res_info = residue_info(
@@ -95,13 +95,13 @@ class analyze (object) :
             avg_b=flex.mean(b_isos.select(use_i_seqs)))
           self.residues[-1].append(res_info)
 
-  def make_plots (self, plot_range=None) :
-    if (plot_range is None) :
+  def make_plots(self, plot_range=None):
+    if (plot_range is None):
       plot_range = self.plot_range
     import numpy
     plots = []
-    if (plot_range == "by_chain") :
-      for chain, residues in zip(self.chains, self.residues) :
+    if (plot_range == "by_chain"):
+      for chain, residues in zip(self.chains, self.residues):
         altconf_val = max(min([ resi.avg_b for resi in residues ]) - 2, 0)
         resid_start = ("%d%s" % (residues[0].resseq,residues[0].icode)).strip()
         resid_end = ("%d%s" % (residues[-1].resseq,residues[-1].icode)).strip()
@@ -111,18 +111,18 @@ class analyze (object) :
         labels = []
         last_resseq = None
         for residue in residues :
-          if (last_resseq is not None) :
-            if (residue.resseq > (last_resseq + 1)) :
+          if (last_resseq is not None):
+            if (residue.resseq > (last_resseq + 1)):
               gap_size = residue.resseq - last_resseq
               chain_vals.extend([numpy.NaN]* gap_size)
               is_altconf.extend([numpy.NaN] * gap_size)
               is_partocc.extend([numpy.NaN] * gap_size)
               labels.extend([None] * gap_size)
-          if (residue.has_altconf) :
+          if (residue.has_altconf):
             is_altconf.append(altconf_val)
           else :
             is_altconf.append(numpy.NaN)
-          if (residue.has_partocc) :
+          if (residue.has_partocc):
             is_partocc.append(altconf_val)
           else :
             is_partocc.append(numpy.NaN)
@@ -133,7 +133,7 @@ class analyze (object) :
         plots.append((chain_label, chain_vals, is_altconf, is_partocc, labels))
     return plots
 
-def run (args=(), params=None, out=sys.stdout) :
+def run(args=(), params=None, out=sys.stdout):
   pdb_file = params.b_plot.pdb_file
   from iotbx import file_reader
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
@@ -146,16 +146,16 @@ def run (args=(), params=None, out=sys.stdout) :
     params=params.b_plot,
     out=out)
 
-def show_plot_frame (result, parent=None) :
+def show_plot_frame(result, parent=None):
   frame = BPlotFrame(parent, -1, "B-factor plot")
   plots = result.make_plots()
-  if (len(plots) == 0) :
+  if (len(plots) == 0):
     raise Sorry("No suitable chains found in PDB file.")
   frame.set_plot_data(plots)
   frame.Show()
 
-class BPlotFrame (plots.plot_frame) :
-  def draw_top_panel (self) :
+class BPlotFrame (plots.plot_frame):
+  def draw_top_panel(self):
     panel = wx.Panel(self)
     psizer = wx.BoxSizer(wx.VERTICAL)
     panel.SetSizer(psizer)
@@ -171,12 +171,12 @@ class BPlotFrame (plots.plot_frame) :
     psizer.Add(bsizer)
     self.top_panel = panel
 
-  def create_plot_panel (self) :
+  def create_plot_panel(self):
     return b_plot_panel(
       parent=self,
       figure_size=(8,6))
 
-  def set_plot_data (self, plots) :
+  def set_plot_data(self, plots):
     assert (len(plots) > 0)
     self._plot_data = plots
     all_b = []
@@ -188,43 +188,43 @@ class BPlotFrame (plots.plot_frame) :
     self.chooser.SetSelection(0)
     self.plot_panel.set_plot(self._plot_data[0])
 
-  def OnChoosePlot (self, event) :
+  def OnChoosePlot(self, event):
     assert hasattr(self, "_plot_data")
     choice = event.GetEventObject().GetSelection()
     self.plot_panel.set_plot(self._plot_data[choice])
 
-def extract_labels (labels) :
+def extract_labels(labels):
   nx = len(labels)
   tickmarks = []
   show_labels = []
-  if (nx <= 100) :
-    for i, s in enumerate(labels) :
-      if (s is not None) and (s.endswith("0")) :
+  if (nx <= 100):
+    for i, s in enumerate(labels):
+      if (s is not None) and (s.endswith("0")):
         tickmarks.append(i+1)
         show_labels.append(s)
-  elif (nx <= 250) :
-    for i, s in enumerate(labels) :
-      if (s is not None) and (s[-2:] in ["00", "25", "50", "75"]) :
+  elif (nx <= 250):
+    for i, s in enumerate(labels):
+      if (s is not None) and (s[-2:] in ["00", "25", "50", "75"]):
         tickmarks.append(i+1)
         show_labels.append(s)
-  elif (nx <= 500) :
-    for i, s in enumerate(labels) :
-      if (s is not None) and (s[-2:] in ["00", "50"]) :
+  elif (nx <= 500):
+    for i, s in enumerate(labels):
+      if (s is not None) and (s[-2:] in ["00", "50"]):
         tickmarks.append(i+1)
         show_labels.append(s)
   else :
-    for i, s in enumerate(labels) :
-      if (s is not None) and (s.endswith("00")) :
+    for i, s in enumerate(labels):
+      if (s is not None) and (s.endswith("00")):
         tickmarks.append(i+1)
         show_labels.append(s)
   return (tickmarks, show_labels)
 
-class b_plot_panel (plots.plot_container) :
-  def set_limits (self, ymin, ymax) :
+class b_plot_panel (plots.plot_container):
+  def set_limits(self, ymin, ymax):
     self._ymin = ymin
     self._ymax = ymax
 
-  def set_plot (self, plot) :
+  def set_plot(self, plot):
     from matplotlib import cm
     from matplotlib.colors import BoundaryNorm
     from matplotlib.collections import LineCollection
@@ -254,16 +254,16 @@ class b_plot_panel (plots.plot_container) :
     a.set_ylim(self._ymin, self._ymax)
     a.set_xlim(0, len(plot[4]))
     plot_labels = ["B(iso)"]
-    if (set(is_alt) != set([numpy.NaN])) :
+    if (set(is_alt) != set([numpy.NaN])):
       p.plot(x, is_alt, "d", color='m')
       plot_labels.append("Alt. conf.")
-    if (set(is_partial) != set([numpy.NaN])) :
+    if (set(is_partial) != set([numpy.NaN])):
       p.plot(x, is_partial, "^", color='c')
       plot_labels.append("Partial occupancy")
     self.figure.legend(p.collections + p.lines, plot_labels, prop=self.get_font("legend"))
     self.canvas.draw()
     self.parent.Refresh()
 
-def validate_params (params) :
-  if (params.b_plot.pdb_file is None) :
+def validate_params(params):
+  if (params.b_plot.pdb_file is None):
     raise Sorry("No PDB file defined!")

@@ -11,8 +11,8 @@ STD_FLAGS = wx.ALL|wx.ALIGN_CENTER_VERTICAL
 all_keys = polygon.keys_to_show + polygon.other_numerical_keys
 all_captions = polygon.key_captions + polygon.other_captions
 
-class ConfigFrame (wx.Frame) :
-  def __init__ (self, *args, **kwds) :
+class ConfigFrame (wx.Frame):
+  def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
     self.statusbar = self.CreateStatusBar()
     self.statusbar.SetStatusText("Reference: Urzhumtseva et al. (2009) "+
@@ -98,15 +98,15 @@ class ConfigFrame (wx.Frame) :
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
     self._db = None
 
-  def get_db (self) :
-    if (self._db is None) :
+  def get_db(self):
+    if (self._db is None):
       self._db = polygon.load_db()
     return self._db
 
-  def OnPlotCorr (self, evt) :
+  def OnPlotCorr(self, evt):
     x_key = all_keys[self.x_chooser.GetSelection()]
     y_key = all_keys[self.y_chooser.GetSelection()]
-    if (x_key == y_key) :
+    if (x_key == y_key):
       raise Sorry("X and Y selections are the same statistic!")
     db = self.get_db()
     x_stats = db[x_key]
@@ -114,7 +114,7 @@ class ConfigFrame (wx.Frame) :
     limits = group_args(x_min=None, x_max=None, y_min=None, y_max=None)
     for lim in ["x_min", "x_max", "y_min", "y_max"] :
       lim_txt = getattr(self, lim).GetValue()
-      if (lim_txt != "") :
+      if (lim_txt != ""):
         try :
           lim_val = float(lim_txt)
         except ValueError :
@@ -123,7 +123,7 @@ class ConfigFrame (wx.Frame) :
           setattr(limits, lim, lim_val)
     x_values = []
     y_values = []
-    for x_, y_ in zip(x_stats, y_stats) :
+    for x_, y_ in zip(x_stats, y_stats):
       try :
         x = float(x_)
         y = float(y_)
@@ -137,21 +137,21 @@ class ConfigFrame (wx.Frame) :
           x_values.append(x)
           y_values.append(y)
     assert (len(x_values) == len(y_values))
-    if (len(x_values) == 0) :
+    if (len(x_values) == 0):
       raise Sorry("No points within specified limits.")
     plt = CorrPlotFrame(self)
     plt.set_plot(x_values, y_values, self.x_chooser.GetStringSelection(),
       self.y_chooser.GetStringSelection())
     plt.Show()
 
-  def OnPlotHist (self, evt) :
+  def OnPlotHist(self, evt):
     h_key = all_keys[self.h_chooser.GetSelection()]
     db = self.get_db()
     h_values = db[h_key]
     limits = group_args(d_min=None, d_max=None, h_min=None, h_max=None)
     for lim in ["d_min", "d_max", "h_min", "h_max"] :
       lim_txt = getattr(self, lim).GetValue()
-      if (lim_txt != "") :
+      if (lim_txt != ""):
         try :
           lim_val = float(lim_txt)
         except ValueError :
@@ -161,7 +161,7 @@ class ConfigFrame (wx.Frame) :
           setattr(limits, lim, lim_val)
     reference_value = None
     reference_value_txt = self.ref_value.GetValue()
-    if (reference_value_txt != "") :
+    if (reference_value_txt != ""):
       try :
         reference_value = float(reference_value_txt)
       except ValueError :
@@ -173,7 +173,7 @@ class ConfigFrame (wx.Frame) :
       raise Sorry("Number of bins must be a decimal number.")
     data = []
     print limits.h_min, limits.h_max
-    for (d_, v_) in zip(db['high_resolution'], db[h_key]) :
+    for (d_, v_) in zip(db['high_resolution'], db[h_key]):
       try :
         d_min = float(d_)
         value = float(v_)
@@ -185,7 +185,7 @@ class ConfigFrame (wx.Frame) :
         elif (limits.h_max is not None) and (value > limits.h_max) : continue
         else :
           data.append(value)
-    if (len(data) == 0) :
+    if (len(data) == 0):
       raise Sorry("No points within specified limits.")
     plt = HistogramFrame(self)
     plt.show_histogram(
@@ -195,19 +195,19 @@ class ConfigFrame (wx.Frame) :
       xlabel=self.h_chooser.GetStringSelection())
     plt.Show()
 
-  def OnShowTable (self, evt) :
+  def OnShowTable(self, evt):
     pass
 
-  def OnClose (self, evt) :
+  def OnClose(self, evt):
     self.Destroy()
 
-  def OnDestroy (self, evt) :
+  def OnDestroy(self, evt):
     parent = self.GetParent()
-    if (parent is not None) :
+    if (parent is not None):
       parent.plot_frame = None
 
-class CorrPlot (plots.plot_container) :
-  def set_plot (self, x, y, x_label, y_label) :
+class CorrPlot (plots.plot_container):
+  def set_plot(self, x, y, x_label, y_label):
     from scitbx.array_family import flex
     self.figure.clear()
     ax = self.figure.add_subplot(111)
@@ -224,17 +224,17 @@ class CorrPlot (plots.plot_container) :
     #  cc)
     self.parent.Refresh()
 
-class CorrPlotFrame (plots.plot_frame) :
+class CorrPlotFrame (plots.plot_frame):
   show_controls_default = False
-  def create_plot_panel (self) :
+  def create_plot_panel(self):
     self.statusbar = self.CreateStatusBar()
     return CorrPlot(self, figure_size=(12,8))
 
-  def set_plot (self, *args, **kwds) :
+  def set_plot(self, *args, **kwds):
     self.plot_panel.set_plot(*args, **kwds)
 
-class HistogramPlot (plots.histogram) :
-  def show_histogram (self, data, n_bins, reference_value, xlabel) :
+class HistogramPlot (plots.histogram):
+  def show_histogram(self, data, n_bins, reference_value, xlabel):
     from scitbx.array_family import flex
     mean = flex.mean(flex.double(data))
     p = plots.histogram.show_histogram(self,
@@ -245,7 +245,7 @@ class HistogramPlot (plots.histogram) :
     p.axvline(mean, color='g', linewidth=2)
     p.get_axes().set_ylabel("Number of structures")
     p.get_axes().set_xlabel(xlabel)
-    if (reference_value is not None) :
+    if (reference_value is not None):
       labels = ["Reference value", "Mean (%.3f)" % mean]
     else :
       labels = ["Mean (%.3f)" % mean]
@@ -254,11 +254,11 @@ class HistogramPlot (plots.histogram) :
     self.canvas.draw()
     self.parent.Refresh()
 
-class HistogramFrame (plots.plot_frame) :
+class HistogramFrame (plots.plot_frame):
   show_controls_default = False
-  def create_plot_panel (self) :
+  def create_plot_panel(self):
     self.statusbar = self.CreateStatusBar()
     return HistogramPlot(self, figure_size=(12,8))
 
-  def show_histogram (self, *args, **kwds) :
+  def show_histogram(self, *args, **kwds):
     self.plot_panel.show_histogram(*args, **kwds)

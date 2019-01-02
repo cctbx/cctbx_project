@@ -3,7 +3,7 @@ from __future__ import division
 from wxtbx import phil_controls
 import wx
 
-class MultiChoiceCtrl (wx.Panel, phil_controls.PhilCtrl) :
+class MultiChoiceCtrl (wx.Panel, phil_controls.PhilCtrl):
   """
   Control for phil type 'choice(multi=True)'
 
@@ -22,7 +22,7 @@ class MultiChoiceCtrl (wx.Panel, phil_controls.PhilCtrl) :
   parameter files.  When extracted as a Python object, the parameter will be
   a list of strings corresponding to the selected choices.
   """
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     super(MultiChoiceCtrl, self).__init__(*args, **kwds)
     self._n_columns = 3
     self._sizer = wx.FlexGridSizer(cols=self._n_columns, hgap=20, vgap=5)
@@ -30,13 +30,13 @@ class MultiChoiceCtrl (wx.Panel, phil_controls.PhilCtrl) :
     self._option_names = []
     self._option_controls = {}
 
-  def SetCols (self, n_columns) :
+  def SetCols(self, n_columns):
     self._n_columns = n_columns
     self._sizer.SetCols(n_columns)
-    if (len(self._option_controls) > 0) :
+    if (len(self._option_controls) > 0):
       self.Realize()
 
-  def SetToolTip (self, tooltip) :
+  def SetToolTip(self, tooltip):
     super(MultiChoiceCtrl, self).SetToolTip(tooltip)
     for key, ctrl in self._option_controls.iteritems():
       # Never reuse a Tooltip as this will may lead to a nasty crash of Python
@@ -44,23 +44,23 @@ class MultiChoiceCtrl (wx.Panel, phil_controls.PhilCtrl) :
       newtt = wx.ToolTip(tooltip.GetTip())
       ctrl.SetToolTip(newtt)
 
-  def Realize (self) :
+  def Realize(self):
     """Finalizes layout and fits the panel."""
     self._sizer.Layout()
     self._sizer.Fit(self)
 
-  def GetChoiceCtrl (self, choice) :
+  def GetChoiceCtrl(self, choice):
     return self._option_controls.get(choice)
 
-  def AddChoice (self, choice, label=None) :
+  def AddChoice(self, choice, label=None):
     """Adds a checkbox to the grid.  If choice starts with '*', the box will
     be checked automatically."""
     auto_enable = False
-    if (choice.startswith("*")) :
+    if (choice.startswith("*")):
       auto_enable = True
       choice = choice[1:]
     assert (not choice in self._option_names)
-    if (label is None) :
+    if (label is None):
       label = choice
     box = wx.CheckBox(
       parent=self,
@@ -71,78 +71,78 @@ class MultiChoiceCtrl (wx.Panel, phil_controls.PhilCtrl) :
     self._sizer.Add(box) #, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self._option_names.append(choice)
     self._option_controls[choice] = box
-    if (auto_enable) :
+    if (auto_enable):
       box.SetValue(True)
 
-  def Enable (self, enable=True) :
+  def Enable(self, enable=True):
     for choice in self._option_names :
       self._option_controls[choice].Enable(enable)
 
-  def EnableChoice (self, choice, enable=True) :
+  def EnableChoice(self, choice, enable=True):
     """Enables or disables the checkbox corresponding to the choice."""
     self._option_controls[choice].Enable(enable)
 
-  def SetChoice (self, choice, selected=True) :
+  def SetChoice(self, choice, selected=True):
     """Select or deselect the specified choice."""
     self._option_controls[choice].SetValue(selected)
 
-  def GetChoiceIndex (self, choice) :
-    if (choice in self._option_names) :
+  def GetChoiceIndex(self, choice):
+    if (choice in self._option_names):
       return self._option_names.index(choice)
     return None
 
-  def GetValue (self) :
+  def GetValue(self):
     raise NotImplementedError()
 
-  def SetValue (self, value) :
+  def SetValue(self, value):
     """
     Check the boxes specified by value.  A list is preferred, but either of
     the two string conventions may be used (selected choices separated by '+',
     or all choices separated by spaces with '*' denoting selected).
     """
-    if (isinstance(value, str)) :
-      if ("+" in value) :
+    if (isinstance(value, str)):
+      if ("+" in value):
         value = value.split("+")
       else :
         value_ = value.split()
         value = []
         for choice in value_ :
-          if (choice.startswith("*")) :
+          if (choice.startswith("*")):
             value.append(choice[1:])
     assert (isinstance(value, list)) or (isinstance(value, tuple))
     for choice in self._option_names :
       box = self._option_controls[choice]
-      if (choice in value) :
+      if (choice in value):
         box.SetValue(True)
       else :
         box.SetValue(False)
 
-  def GetPhilValue (self) :
+  def GetPhilValue(self):
     """Returns a list of strings."""
     values = []
     for choice in self._option_names :
       box = self._option_controls[choice]
-      if (box.GetValue() == True) :
+      if (box.GetValue() == True):
         values.append(choice)
     return values
 
-  def GetStringValue (self) :
+  def GetStringValue(self):
     """Returns the long format (all choices, '*' denotes selected)."""
     values = []
     for choice in self._option_names :
       box = self._option_controls[choice]
-      if (box.GetValue() == True) :
+      if (box.GetValue() == True):
         values.append("*" + choice)
       else :
         values.append(choice)
     return " ".join(values)
 
-  def OnCheck (self, event) :
+  def OnCheck(self, event):
     box = event.GetEventObject()
     self.DoSendEvent(original_window=box)
 
 # testing
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   app = wx.App(0)
   frame = wx.Frame(None, -1, "Multi-choice test")
   panel = wx.Panel(frame, -1, size=(720,480))
@@ -158,7 +158,7 @@ if (__name__ == "__main__") :
                  "group_anomalous"]
   labels = ["Individual B-factors", "XYZ coordinates", "Real-space", "TLS",
     "Group B-factors", "Occupancies", "Anomalous scatterers"]
-  for choice, label in zip(choices1, labels) :
+  for choice, label in zip(choices1, labels):
     choice_ctrl.AddChoice(choice, label)
   choice_ctrl.Realize()
   txt2 = wx.StaticText(panel, -1, "Output formats:", pos=(20,300))

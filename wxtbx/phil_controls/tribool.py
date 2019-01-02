@@ -9,12 +9,12 @@ WXTBX_TRIBOOL_YES_NO = 1
 WXTBX_TRIBOOL_DISABLE_AUTO = 2
 WXTBX_TRIBOOL_AUTO_IS_NONE = 4
 
-class TriBoolCtrl (wx.Choice, phil_controls.PhilCtrl) :
+class TriBoolCtrl (wx.Choice, phil_controls.PhilCtrl):
   """
   Three-way boolean control: returns True, False, or Auto (optionally None).
   Can be two-way if WXTBX_TRIBOOL_DISABLE_AUTO is specified.
   """
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     phil_controls.PhilCtrl.__init__(self)
     self.SetOptional(True)
     kwds = dict(kwds)
@@ -22,45 +22,45 @@ class TriBoolCtrl (wx.Choice, phil_controls.PhilCtrl) :
     kwds['style'] = 0
     wx.Choice.__init__(self, *args, **kwds)
     items = []
-    if (self._tribool_style & WXTBX_TRIBOOL_YES_NO) :
+    if (self._tribool_style & WXTBX_TRIBOOL_YES_NO):
       items.extend(["Yes","No"])
     else :
       items.extend(["True","False"])
-    if (not self._tribool_style & WXTBX_TRIBOOL_DISABLE_AUTO) :
+    if (not self._tribool_style & WXTBX_TRIBOOL_DISABLE_AUTO):
       items.append("Auto")
     self.SetItems(items)
     self.Bind(wx.EVT_CHOICE, lambda evt: self.DoSendEvent(), self)
 
-  def SetValue (self, value) :
-    if (value == True) :
+  def SetValue(self, value):
+    if (value == True):
       self.SetSelection(0)
-    elif (value == False) :
+    elif (value == False):
       self.SetSelection(1)
     else :
       assert (value in [None, Auto])
-      if (self._tribool_style & WXTBX_TRIBOOL_DISABLE_AUTO) :
+      if (self._tribool_style & WXTBX_TRIBOOL_DISABLE_AUTO):
         self.SetSelection(wx.NOT_FOUND)
       else :
         self.SetSelection(2)
 
-  def GetValue (self) :
+  def GetValue(self):
     return self.GetPhilValue()
 
-  def GetPhilValue (self) :
+  def GetPhilValue(self):
     sel = self.GetSelection()
-    if (sel < 0) :
+    if (sel < 0):
       return self.ReturnNoneIfOptional()
     vals = [True, False]
-    if (self._tribool_style & WXTBX_TRIBOOL_AUTO_IS_NONE) :
+    if (self._tribool_style & WXTBX_TRIBOOL_AUTO_IS_NONE):
       vals.append(None)
     else :
       vals.append(Auto)
     return vals[self.GetSelection()]
 
-  def GetStringValue (self) :
+  def GetStringValue(self):
     return str(self.GetPhilValue())
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   app = wx.App(0)
   frame = wx.Frame(None, -1, "Tribool test")
   panel = wx.Panel(frame, -1, size=(720,480))

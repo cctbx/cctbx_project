@@ -41,9 +41,9 @@ blank = PyEmbeddedImage(
     "Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAOSURBVCjPY2AYBaMAAQACEAABFMLA"
     "kgAAAABJRU5ErkJggg==")
 
-class CheckListCtrl (wx.ListCtrl) :
+class CheckListCtrl (wx.ListCtrl):
   use_blank = True
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     wx.ListCtrl.__init__(self, *args, **kwds)
     self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect)
     self.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.OnDeSelect)
@@ -51,7 +51,7 @@ class CheckListCtrl (wx.ListCtrl) :
     self.Bind(wx.EVT_CHAR, self.OnChar)
     self._checklist = []
     il = wx.ImageList(16, 16, True)
-    if (self.use_blank) :
+    if (self.use_blank):
       il.Add(blank.GetBitmap())
     else :
       il.Add(empty_box.GetBitmap())
@@ -67,66 +67,66 @@ backspace/delete unchecks them."""
 holding down the shift key in combination with mouse selection."""
     self.SetToolTip(wx.ToolTip(tip))
 
-  def IsItemChecked (self, item) :
+  def IsItemChecked(self, item):
     return self._checklist[item]
 
-  def GetCheckedItems (self) :
+  def GetCheckedItems(self):
     i = 0
     items = []
-    while (i < self.GetItemCount()) :
+    while (i < self.GetItemCount()):
       if self._checklist[i] :
         items.append(i)
       i += 1
     return items
 
-  def GetCheckedItemsText (self) :
+  def GetCheckedItemsText(self):
     items = self.GetCheckedItems()
     strings = []
     for item in items :
       strings.append(str(self.GetItemText(item)))
     return strings
 
-  def InsertStringItem (self, *args, **kwds) :
+  def InsertStringItem(self, *args, **kwds):
     kwds['imageIndex'] = 0
     i = wx.ListCtrl.InsertStringItem(self, *args, **kwds)
     self._checklist.append(False)
     return i
 
-  def InsertItem (self, *args, **kwds) :
+  def InsertItem(self, *args, **kwds):
     kwds['imageIndex'] = 0
     i = wx.ListCtrl.InsertItem(self, *args, **kwds)
     self._checklist.append(False)
     return i
 
-  def CheckItem (self, item, check=True) :
+  def CheckItem(self, item, check=True):
     self._checklist[item] = check
     if check :
       self.SetItemImage(item, 1)
     else :
       self.SetItemImage(item, 0)
 
-  def ToggleItems (self, items, check=None) :
+  def ToggleItems(self, items, check=None):
     if (len(items) == 0) : return
     assert (check in [True, False, None])
     item_status = []
     for item in items :
       item_status.append(self.IsItemChecked(item))
-    if (item_status.count(True) > 0) :
+    if (item_status.count(True) > 0):
       for item in items :
-        if (check is None) :
+        if (check is None):
           self.CheckItem(item, False)
         else :
           self.CheckItem(item, check)
     else :
       for item in items :
-        if (check is None) :
+        if (check is None):
           self.CheckItem(item, True)
         else :
           self.CheckItem(item, check)
 
-  def OnDoubleClick (self, event) :
+  def OnDoubleClick(self, event):
     i, flags = self.HitTest(event.GetPosition())
-    if (flags & wx.LIST_HITTEST_ONITEM) :
+    if (flags & wx.LIST_HITTEST_ONITEM):
       if self._multiple_sele :
         item_list = self.GetSelectedItems()
         self.ToggleItems(item_list)
@@ -134,44 +134,44 @@ holding down the shift key in combination with mouse selection."""
         is_checked = self.IsItemChecked(i)
         self.CheckItem(i, not is_checked)
 
-  def GetSelectedItems (self) :
+  def GetSelectedItems(self):
     item_list = []
     item = self.GetFirstSelected()
-    while (item >= 0) :
+    while (item >= 0):
       item_list.append(item)
       item = self.GetNextSelected(item)
     return item_list
 
-  def OnChar (self, event) :
+  def OnChar(self, event):
     key = event.GetKeyCode()
-    if (key == wx.WXK_RETURN) :
+    if (key == wx.WXK_RETURN):
       items = self.GetSelectedItems()
       self.ToggleItems(items, check=True)
-    elif (key == wx.WXK_DELETE) or (key == wx.WXK_BACK) :
+    elif (key == wx.WXK_DELETE) or (key == wx.WXK_BACK):
       items = self.GetSelectedItems()
       self.ToggleItems(items, check=False)
-    elif (key == wx.WXK_UP) :
+    elif (key == wx.WXK_UP):
       item = self.GetFirstSelected()
-      if (item > 0) :
+      if (item > 0):
         self.Select(item - 1)
         self.EnsureVisible(item - 1)
-    elif (key == wx.WXK_DOWN) :
+    elif (key == wx.WXK_DOWN):
       items = self.GetSelectedItems()
       if (len(items) == 0) : return
-      if (items[-1] < (self.GetItemCount() - 1)) :
+      if (items[-1] < (self.GetItemCount() - 1)):
         self.Select(items[-1] + 1)
         self.EnsureVisible(items[-1] + 1)
 
-  def UpdateParentControls (self) :
+  def UpdateParentControls(self):
     pass
 
-  def OnSelect (self, event) :
+  def OnSelect(self, event):
     pass
 
-  def OnDeSelect (self, event) :
+  def OnDeSelect(self, event):
     pass
 
-def demo () :
+def demo():
   import random
   app = wx.App(0)
   frame = wx.Frame(None, -1, "Test frame for CheckListCtrl")
@@ -189,7 +189,7 @@ def demo () :
   sizer2.Add(ctrl1, 0, wx.ALL, 5)
   btn1 = wx.Button(panel, -1, "Print checked items")
   sizer2.Add(btn1, 0, wx.ALL, 5)
-  def OnShow1 (event) :
+  def OnShow1(event):
     items = ctrl1.GetCheckedItemsText()
     print "Control 1 selection:"
     print "\n".join([ " " + item for item in items ])
@@ -205,13 +205,13 @@ def demo () :
   ctrl2.SetColumnWidth(1, 200)
   sizer2.Add(ctrl2, 0, wx.ALL, 5)
   btn2 = wx.Button(panel, -1, "Print checked items")
-  def OnShow2 (event) :
+  def OnShow2(event):
     items = ctrl2.GetCheckedItemsText()
     print "Control 2 selection:"
     print "\n".join([ " " + item for item in items ])
   sizer2.Add(btn2, 0, wx.ALL, 5)
   frame.Bind(wx.EVT_BUTTON, OnShow2, btn2)
-  for i in range(10) :
+  for i in range(10):
     ctrl1.InsertStringItem(sys.maxint, "Item %d" % i)
     item = ctrl2.InsertStringItem(sys.maxint, "Item %d" % i)
     ctrl2.SetStringItem(item, 1, str(random.random() * 1000))

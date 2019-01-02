@@ -28,7 +28,7 @@ CAPTION_SIZE = 9
 LABEL_SIZE = 11
 if wx.Platform == '__WXMAC__':
   import Carbon.Appearance
-elif (wx.Platform == '__WXMSW__') :
+elif (wx.Platform == '__WXMSW__'):
   CAPTION_SIZE = 9
   LABEL_SIZE = 11
 
@@ -40,8 +40,8 @@ MB_STYLE_DEFAULT = 1
 MB_STYLE_BOLD_LABEL = 2
 MB_STYLE_DROPARROW = 4
 
-class MetallicButton (wx.PyControl) :
-  def __init__ (self,
+class MetallicButton (wx.PyControl):
+  def __init__(self,
                 parent,
                 id_=wx.ID_ANY,
                 label='',
@@ -76,7 +76,7 @@ class MetallicButton (wx.PyControl) :
     self._label2_font = self.GetFont()
     self._label2_font.SetPointSize(caption_size)
     # XXX this crashes on wxOSX_Cocoa!
-    if (not 'wxOSX-cocoa' in wx.PlatformInfo) :
+    if (not 'wxOSX-cocoa' in wx.PlatformInfo):
       self._label2_font.SetStyle(wx.FONTSTYLE_ITALIC)
     font_size = label_size
     self._label_font = self.GetFont()
@@ -117,7 +117,7 @@ class MetallicButton (wx.PyControl) :
     self.Bind(wx.EVT_KEY_UP, self.OnKeyUp)
     self.Bind(wx.EVT_CONTEXT_MENU, self.OnContextMenu)
 
-  def OnPaint (self, event) :
+  def OnPaint(self, event):
     self.__DrawButton()
 
   def __DrawBitmap(self, gc):
@@ -127,7 +127,7 @@ class MetallicButton (wx.PyControl) :
 
     """
     bmp = None
-    if (self._use_secondary_bitmap) :
+    if (self._use_secondary_bitmap):
       assert (self._bmp2 is not None)
       bmp = self._bmp2
     elif self.IsEnabled():
@@ -193,7 +193,7 @@ class MetallicButton (wx.PyControl) :
     rgc.SetBrush(brush)
     gc.DrawRectangle(1, 1, width-2, height-2)
 
-  def __DrawCaption (self, gc, xpos, ypos) :
+  def __DrawCaption(self, gc, xpos, ypos):
     if self._label2 != '' :
       gc.SetFont(self._label2_font)
       min_w, min_h = self.GetSize() #self._size
@@ -203,7 +203,7 @@ class MetallicButton (wx.PyControl) :
       if False : #self._caption_lines is not None :
         lines = self._caption_lines
       else :
-        if (wx.Platform in ['__WXGTK__', '__WXMSW__']) :
+        if (wx.Platform in ['__WXGTK__', '__WXMSW__']):
           dc = wx.ClientDC(self)
           dc.SetFont(self._label2_font)
           #txt_w += 100
@@ -213,7 +213,7 @@ class MetallicButton (wx.PyControl) :
           width=txt_w,
           dc=dc) #wx.MemoryDC())
       offset = 0
-      for line in lines.splitlines() :
+      for line in lines.splitlines():
         line_w, line_h = gc.GetTextExtent(line)
         gc.DrawText(line.rstrip(), xpos, ypos + offset)
         offset += line_h + 2
@@ -391,12 +391,12 @@ class MetallicButton (wx.PyControl) :
         buffer = 4
       else :
         buffer = 0
-      for line in lines.splitlines() :
+      for line in lines.splitlines():
         line_w, line_h = dc.GetTextExtent(line)
         if line_w > caption_width :
           caption_width = line_w
         caption_height += line_h + buffer
-      if (wx.Platform == '__WXMSW__') :
+      if (wx.Platform == '__WXMSW__'):
         caption_height += 4
     width += max(caption_width, label_width) + 4
     height = max(caption_height + label_height + 12, height)
@@ -484,7 +484,7 @@ class MetallicButton (wx.PyControl) :
 
   def OnFocus(self, evt):
     """Set the visual focus state if need be"""
-    if not self.IsEnabled() :
+    if not self.IsEnabled():
       return
     if self._state['cur'] == GRADIENT_NORMAL:
         self.SetState(GRADIENT_HIGHLIGHT)
@@ -519,7 +519,7 @@ class MetallicButton (wx.PyControl) :
     show the popup menu if one has been set.
 
     """
-    if not self.IsEnabled() :
+    if not self.IsEnabled():
       return
     pos = evt.GetPositionTuple()
     self.SetState(GRADIENT_PRESSED)
@@ -536,7 +536,7 @@ class MetallicButton (wx.PyControl) :
     @param evt: wx.MouseEvent
 
     """
-    if not self.IsEnabled() :
+    if not self.IsEnabled():
       return
     if self._state['cur'] == GRADIENT_PRESSED:
       pos = evt.GetPositionTuple()
@@ -561,23 +561,23 @@ class MetallicButton (wx.PyControl) :
       self.SetState(GRADIENT_NORMAL)
     evt.Skip()
 
-  def OnEnter (self, evt) :
-    if not self.IsEnabled() :
+  def OnEnter(self, evt):
+    if not self.IsEnabled():
       return
     self.SetState(GRADIENT_HIGHLIGHT)
 
-  def OnLeave (self, evt) :
-    if not self.IsEnabled() :
+  def OnLeave(self, evt):
+    if not self.IsEnabled():
       return
     self.SetState(GRADIENT_NORMAL)
 
-  def OnDoubleClick (self, evt) :
-    if not self.IsEnabled() :
+  def OnDoubleClick(self, evt):
+    if not self.IsEnabled():
       return
     self.ToggleState()
 
-  def OnContextMenu (self, evt) :
-    if not self.IsEnabled() :
+  def OnContextMenu(self, evt):
+    if not self.IsEnabled():
       return
     self.ShowMenu()
 
@@ -733,9 +733,9 @@ class MetallicButton (wx.PyControl) :
     else:
       self.SetState(GRADIENT_HIGHLIGHT)
 
-  def SwapBitmap (self) :
+  def SwapBitmap(self):
     assert (self._bmp2 is not None)
-    if (self._use_secondary_bitmap) :
+    if (self._use_secondary_bitmap):
       self._use_secondary_bitmap = False
     else :
       self._use_secondary_bitmap = True

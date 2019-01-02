@@ -5,13 +5,13 @@ from wxtbx.utils import std_sizer_flags, add_ok_cancel_buttons
 from libtbx.utils import Abort
 import wx
 
-class SimpleInputDialog (wx.Dialog) :
-  def __init__ (self,
+class SimpleInputDialog (wx.Dialog):
+  def __init__(self,
                 parent,
                 title,
                 label,
                 value=None,
-                caption=None) :
+                caption=None):
     style = wx.CAPTION|wx.CLOSE_BOX|wx.RAISED_BORDER| \
       wx.WS_EX_VALIDATE_RECURSIVELY | wx.RESIZE_BORDER
     wx.Dialog.__init__(self,
@@ -22,7 +22,7 @@ class SimpleInputDialog (wx.Dialog) :
     self.SetSizer(self.sizer)
     self.inner_sizer = wx.BoxSizer(wx.VERTICAL)
     self.sizer.Add(self.inner_sizer, 1, wx.EXPAND|wx.ALL, 5)
-    if (caption is not None) :
+    if (caption is not None):
       caption_txt = wx.StaticText(self, -1, caption)
       caption_txt.Wrap(480)
       self.inner_sizer.Add(caption_txt, 0, wx.ALL, 5)
@@ -36,91 +36,91 @@ class SimpleInputDialog (wx.Dialog) :
     self.Fit()
     self.Centre(wx.BOTH)
 
-  def CreatePhilControl (self, value) :
+  def CreatePhilControl(self, value):
     raise NotImplementedError()
 
-  def GetPhilValue (self) :
+  def GetPhilValue(self):
     return self.phil_ctrl.GetPhilValue()
 
-  def __getattr__ (self, name) :
+  def __getattr__(self, name):
     return getattr(self.phil_ctrl, name)
 
-class IntegerDialog (SimpleInputDialog) :
-  def CreatePhilControl (self, value) :
+class IntegerDialog (SimpleInputDialog):
+  def CreatePhilControl(self, value):
     return intctrl.IntCtrl(
       parent=self,
       value=value)
 
-class FloatDialog (SimpleInputDialog) :
-  def CreatePhilControl (self, value) :
+class FloatDialog (SimpleInputDialog):
+  def CreatePhilControl(self, value):
     return floatctrl.FloatCtrl(
       parent=self,
       value=value)
 
-class StringDialog (SimpleInputDialog) :
-  def CreatePhilControl (self, value) :
+class StringDialog (SimpleInputDialog):
+  def CreatePhilControl(self, value):
     return strctrl.StrCtrl(
       parent=self,
       value=value)
 
-class SymopDialog (SimpleInputDialog) :
-  def CreatePhilControl (self, value) :
+class SymopDialog (SimpleInputDialog):
+  def CreatePhilControl(self, value):
     return symop.SymopCtrl(
       parent=self,
       value=value)
 
-class SymopChoiceDialog (SimpleInputDialog) :
-  def CreatePhilControl (self, value) :
+class SymopChoiceDialog (SimpleInputDialog):
+  def CreatePhilControl(self, value):
     return symop.SymopChoiceCtrl(
       parent=self)
 
-class IntegersDialog (SimpleInputDialog) :
-  def CreatePhilControl (self, value) :
+class IntegersDialog (SimpleInputDialog):
+  def CreatePhilControl(self, value):
     return ints.IntsCtrl(
       parent=self,
       value=value)
 
-class ChoiceDialog (SimpleInputDialog) :
-  def CreatePhilControl (self, value=None) :
+class ChoiceDialog (SimpleInputDialog):
+  def CreatePhilControl(self, value=None):
     return choice.ChoiceCtrl(
       parent=self)
 
-  def SetChoices (self, *args, **kwds) :
+  def SetChoices(self, *args, **kwds):
     self.phil_ctrl.SetChoices(*args, **kwds)
     self.Layout()
 
-def get_phil_value_from_dialog (dlg) :
+def get_phil_value_from_dialog(dlg):
   abort = False
-  if (dlg.ShowModal() == wx.ID_OK) :
+  if (dlg.ShowModal() == wx.ID_OK):
     value = dlg.GetPhilValue()
   else :
     abort = True
   wx.CallAfter(dlg.Destroy)
-  if (abort) :
+  if (abort):
     raise Abort()
   return value
 
-def get_float_value (**kwds) :
+def get_float_value(**kwds):
   dlg = FloatDialog(**kwds)
   return get_phil_value_from_dialog(dlg)
 
-def get_integer_value (**kwds) :
+def get_integer_value(**kwds):
   dlg = IntegerDialog(**kwds)
   return get_phil_value_from_dialog(dlg)
 
-def get_miller_index (**kwds) :
+def get_miller_index(**kwds):
   dlg = IntegersDialog(**kwds)
   dlg.SetSizeMin(3)
   dlg.SetSizeMax(3)
   dlg.SetOptional(False)
   result = get_phil_value_from_dialog(dlg)
-  if (isinstance(result, list)) :
+  if (isinstance(result, list)):
     return tuple(result)
   return result
 
 RT_DIALOG_ENABLE_FRACTIONAL = 1
-class RTDialog (wx.Dialog) :
-  def __init__ (self, *args, **kwds) :
+class RTDialog (wx.Dialog):
+  def __init__(self, *args, **kwds):
     kwds = dict(kwds)
     style = kwds.get('style', 0)
     style |= wx.CAPTION|wx.CLOSE_BOX|wx.RAISED_BORDER| \
@@ -140,12 +140,12 @@ class RTDialog (wx.Dialog) :
     szr.Add(grid, 0, wx.ALL, 5)
     label1 = wx.StaticText(self, -1, "Rotation:")
     grid.Add(label1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    for i in range(3) :
-      if (i > 0) :
+    for i in range(3):
+      if (i > 0):
         grid.Add((1,1))
-      for j in range(3) :
+      for j in range(3):
         _value = 0.0
-        if (j == i) :
+        if (j == i):
           _value = 1.0
         ctrl = floatctrl.FloatCtrl(
           parent=self,
@@ -156,7 +156,7 @@ class RTDialog (wx.Dialog) :
         self._r_ctrls.append(ctrl)
     label2 = wx.StaticText(self, -1, "Translation:")
     grid.Add(label2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    for i in range(3) :
+    for i in range(3):
       ctrl = floatctrl.FloatCtrl(
         parent=self,
         name="Translation",
@@ -165,42 +165,42 @@ class RTDialog (wx.Dialog) :
       grid.Add(ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
       self._t_ctrls.append(ctrl)
     self.frac_box = None
-    if (extra_style & RT_DIALOG_ENABLE_FRACTIONAL) :
+    if (extra_style & RT_DIALOG_ENABLE_FRACTIONAL):
       self.frac_box = wx.CheckBox(self, -1, "Use fractional coordinates")
       szr.Add(self.frac_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     add_ok_cancel_buttons(self, szr)
     self.Fit()
     self.Centre(wx.BOTH)
 
-  def GetMatrix (self) :
+  def GetMatrix(self):
     from scitbx import matrix
     r = [ c.GetPhilValue() for c in self._r_ctrls ]
     t = [ c.GetPhilValue() for c in self._t_ctrls ]
     return matrix.rt((r,t))
 
-  def IsFractional (self) :
-    if (self.frac_box is not None) :
+  def IsFractional(self):
+    if (self.frac_box is not None):
       return self.frac_box.GetValue()
     return False
 
-def get_rt_matrix (parent=None, enable_fractional=False) :
+def get_rt_matrix(parent=None, enable_fractional=False):
   style = 0
-  if (enable_fractional) :
+  if (enable_fractional):
     style = RT_DIALOG_ENABLE_FRACTIONAL
   dlg = RTDialog(
     parent=parent,
     title="Rotation/translation operator",
     wxtbxStyle=style)
   rt = None
-  if (dlg.ShowModal() == wx.ID_OK) :
+  if (dlg.ShowModal() == wx.ID_OK):
     rt = dlg.GetMatrix()
   wx.CallAfter(dlg.Destroy)
-  if (rt is None) :
+  if (rt is None):
     raise Abort()
   return rt
 
-class HTTPProxyDialog (wx.Dialog) :
-  def __init__ (self, *args, **kwds) :
+class HTTPProxyDialog (wx.Dialog):
+  def __init__(self, *args, **kwds):
     wx.Dialog.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
@@ -240,29 +240,29 @@ class HTTPProxyDialog (wx.Dialog) :
     self.Fit()
     self.Centre(wx.BOTH)
 
-  def SetProxyServer (self, server) :
+  def SetProxyServer(self, server):
     self.server_ctrl.SetValue(server)
 
-  def SetProxyUser (self, user) :
+  def SetProxyUser(self, user):
     self.user_ctrl.SetValue(user)
 
-  def SetProxyPort (self, port) :
+  def SetProxyPort(self, port):
     assert isinstance(port, int)
     self.port_ctrl.SetValue(port)
 
-  def GetProxyServer (self) :
+  def GetProxyServer(self):
     return self.server_ctrl.GetPhilValue()
 
-  def GetProxyPort (self) :
+  def GetProxyPort(self):
     return self.port_ctrl.GetPhilValue()
 
-  def GetProxyPassword (self) :
+  def GetProxyPassword(self):
     return self.password_ctrl.GetPhilValue()
 
-  def GetProxyUser (self) :
+  def GetProxyUser(self):
     return self.user_ctrl.GetPhilValue()
 
-  def InstallProxy (self) :
+  def InstallProxy(self):
     import libtbx.utils
     libtbx.utils.install_urllib_http_proxy(
       server=self.GetProxyServer(),
@@ -270,7 +270,7 @@ class HTTPProxyDialog (wx.Dialog) :
       user=self.GetProxyUser(),
       password=self.GetProxyPassword())
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   app = wx.App(0)
   value1 = get_float_value(
     parent=None,
@@ -295,8 +295,8 @@ if (__name__ == "__main__") :
     parent=None,
     title="Rotation/translation operator",
     wxtbxStyle=RT_DIALOG_ENABLE_FRACTIONAL)
-  if (dlg.ShowModal() == wx.ID_OK) :
+  if (dlg.ShowModal() == wx.ID_OK):
     rt = dlg.GetMatrix()
   dlg = HTTPProxyDialog(None, title="HTTP proxy authentication")
-  if (dlg.ShowModal() == wx.ID_OK) :
+  if (dlg.ShowModal() == wx.ID_OK):
     dlg.InstallProxy()
