@@ -91,8 +91,8 @@ class symmetry(object):
             if (ls.endswith(" :H")):
               self._space_group_info = sgi.primitive_setting()
       if (assert_is_compatible_unit_cell):
-        if (raise_sorry_if_incompatible_unit_cell) :
-          if (not self.is_compatible_unit_cell()) :
+        if (raise_sorry_if_incompatible_unit_cell):
+          if (not self.is_compatible_unit_cell()):
             raise Sorry(("The space group '%s' is incompatible with unit cell "+
               "parameters %s.") % (str(self._space_group_info),
               str(self._unit_cell.parameters())))

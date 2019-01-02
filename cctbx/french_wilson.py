@@ -92,7 +92,7 @@ def fw_acentric(
       I,
       sigma_I,
       mean_intensity,
-      sigma_iobs_rejection_criterion) :
+      sigma_iobs_rejection_criterion):
   assert (mean_intensity != 0) and (sigma_I != 0)
   h = (I/sigma_I) - (sigma_I/mean_intensity)
   h_min = sigma_iobs_rejection_criterion
@@ -128,7 +128,7 @@ def fw_centric(
       I,
       sigma_I,
       mean_intensity,
-      sigma_iobs_rejection_criterion) :
+      sigma_iobs_rejection_criterion):
   assert (mean_intensity != 0) and (sigma_I != 0)
   h = (I/sigma_I) - ( sigma_I/(2.0*mean_intensity) )
   h_min = sigma_iobs_rejection_criterion
@@ -258,7 +258,7 @@ def calculate_mean_intensities(miller_array, log=None):
             assert (d_1 > d > d_2)
             if ( not ( (m_1 > mean_i > m_2) or (m_2 > mean_i > m_1) ) and
                  not (m_1 == mean_i == m_2 == 0.0) and
-                     (math.fabs(m_1-m_2) > 1.0e-10) ) :
+                     (math.fabs(m_1-m_2) > 1.0e-10) ):
               raise RuntimeError(
                 "Internal error: i_bin=%d d=%f m_1=%f mean_i=%f m_2=%f" %
                   (i_bin, d, m_1, mean_i, m_2))
@@ -296,7 +296,7 @@ def calculate_mean_intensities(miller_array, log=None):
             assert (d_1 > d > d_2)
             if ( not ( (m_1 > mean_i > m_2) or (m_2 > mean_i > m_1) ) and
                  not (m_1 == mean_i == m_2 == 0.0) and
-                     (math.fabs(m_1-m_2) > 1.0e-10) ) :
+                     (math.fabs(m_1-m_2) > 1.0e-10) ):
               raise RuntimeError(
                 "Internal error: i_bin=%d d=%f m_1=%f mean_i=%f m_2=%f" %
                   (i_bin, d, m_1, mean_i, m_2))
@@ -325,13 +325,13 @@ def french_wilson_scale(
   if miller_array.sigmas() is None:
     raise Sorry("Input array does not contain sigma values. "+
       "This method requires input intensities with associated sigmas.")
-  if (not miller_array.is_unique_set_under_symmetry()) :
-    if (merge) :
+  if (not miller_array.is_unique_set_under_symmetry()):
+    if (merge):
       miller_array = miller_array.merge_equivalents().array()
     else :
       raise Sorry("Unmerged data not allowed - please merge "+
         "symmetry-equivalent reflections first.")
-  if (miller_array.data().all_eq(miller_array.data()[0])) :
+  if (miller_array.data().all_eq(miller_array.data()[0])):
     # XXX some Scalepack files (and possibly others) crash the routine if this
     # check is not performed.  presumably an HKL2000 bug?
     raise Sorry(("The input intensities have uniform values (%g); this is probably "+
@@ -343,16 +343,16 @@ def french_wilson_scale(
     params.max_bins = 60
   if log == None:
     log = sys.stdout
-  if (sigma_iobs_rejection_criterion is None) :
+  if (sigma_iobs_rejection_criterion is None):
     sigma_iobs_rejection_criterion = -4.0
-  elif (sigma_iobs_rejection_criterion == 0.0) :
+  elif (sigma_iobs_rejection_criterion == 0.0):
     libtbx.warn(
       "For French and Wilson scaling, sigma_iobs_rejection_criterion " +
       "must be a value between -4.0 and -1.0, or None. " +
       "Setting sigma_iobs_rejection_criteriont to -4.0.")
     sigma_iobs_rejection_criterion = -4.0
   elif ((sigma_iobs_rejection_criterion < -4.0) or
-        (sigma_iobs_rejection_criterion > -1.0)) :
+        (sigma_iobs_rejection_criterion > -1.0)):
     raise Sorry(
       "For French and Wilson scaling, sigma_iobs_rejection_criterion " +
       "must be a value between -4.0 and -1.0, or None.")
@@ -386,10 +386,10 @@ def french_wilson_scale(
                                    cen.sigmas(),
                                    cen.indices()):
         mean_intensity = d_mean_intensities[index]
-        if (mean_intensity == 0) :
+        if (mean_intensity == 0):
           # XXX is this the appropriate way to handle this?
           rejected.append( (index, I, sigma_I, mean_intensity) )
-        elif (sigma_I <= 0) :
+        elif (sigma_I <= 0):
           if I <= 0 or sigma_I < 0 :
             rejected.append( (index, I, sigma_I, mean_intensity) )
             continue
@@ -418,9 +418,9 @@ def french_wilson_scale(
                                    acen.sigmas(),
                                    acen.indices()):
         mean_intensity = d_mean_intensities[index]
-        if (mean_intensity == 0) :
+        if (mean_intensity == 0):
           rejected.append( (index, I, sigma_I, mean_intensity) )
-        elif (sigma_I <= 0) :
+        elif (sigma_I <= 0):
           if I <= 0 or sigma_I < 0 :
             rejected.append( (index, I, sigma_I, mean_intensity) )
             continue

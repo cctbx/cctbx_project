@@ -11,22 +11,22 @@ def __build_tables():
   global expected_bond_lengths, vdw_radii
   expected_bond_lengths = map.stl_string_double()
   vdw_radii = map.stl_string_double()
-  for (e1, e2), length in expected_bond_lengths_by_element_pair.iteritems() :
+  for (e1, e2), length in expected_bond_lengths_by_element_pair.iteritems():
     assert e1.find(":") < 0
     assert e2.find(":") < 0
     expected_bond_lengths[e1+":"+e2] = length
-  for k, v in vdw.table.items() :
+  for k, v in vdw.table.items():
     vdw_radii[k.upper()] = v
 __build_tables()
 
-def build_simple_two_way_bond_sets (
+def build_simple_two_way_bond_sets(
       sites_cart,
       elements,
       conformer_indices=None,
       search_max_distance=None,
       tolerance_factor_expected_bond_length=1.3,
       fallback_expected_bond_length=2.0,
-      fallback_search_max_distance=3.0) :
+      fallback_search_max_distance=3.0):
   assert sites_cart.size() == elements.size()
   assert (isinstance(tolerance_factor_expected_bond_length, float) or
           isinstance(tolerance_factor_expected_bond_length, int))
@@ -34,7 +34,7 @@ def build_simple_two_way_bond_sets (
           isinstance(fallback_expected_bond_length, int))
   assert (isinstance(fallback_search_max_distance, float) or
           isinstance(fallback_search_max_distance, int))
-  if (conformer_indices is None) :
+  if (conformer_indices is None):
     conformer_indices = flex.size_t(sites_cart.size(), 0)
   stripped_elements = elements.strip().upper()
   if (search_max_distance is None):

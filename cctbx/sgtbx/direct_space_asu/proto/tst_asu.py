@@ -199,7 +199,7 @@ def run():
     for line in tmp_file.readlines(): # newlines retained
       groups.append( line.strip() ) # removes whitespace in the begining and end
     tmp_file.close()
-  if (opts.space_group is None) & (len(groups)==0) :
+  if (opts.space_group is None) & (len(groups)==0):
     groups.extend(SpaceGroups)
   elif opts.space_group == "all" :
     for isg in xrange(1,231):

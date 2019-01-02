@@ -182,7 +182,7 @@ class energies(scitbx.restraints.energies):
       self.number_of_restraints += self.n_chirality_proxies
       self.residual_sum += self.chirality_residual_sum
 
-    if (external_energy_function is not None) :
+    if (external_energy_function is not None):
       self.external_energy = external_energy_function(
         sites_cart=sites_cart,
         gradient_array=self.gradients)

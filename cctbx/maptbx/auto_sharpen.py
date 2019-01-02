@@ -697,7 +697,7 @@ def set_sharpen_params(params,out=sys.stdout):
        ['b_iso_to_d_cut'],['b_iso']])   or  \
      (params.map_modification.resolution_dependent_b and \
        params.map_modification.auto_sharpen_methods in [
-       ['resolution_dependent']]) :
+       ['resolution_dependent']]):
     if params.map_modification.box_in_auto_sharpen and (
       not getattr(params.map_modification,'allow_box_if_b_iso_set',None)):
       params.map_modification.box_in_auto_sharpen=False
@@ -1081,8 +1081,8 @@ def run(args=None,params=None,
 # =============================================================================
 # GUI-specific bits for running command
 from libtbx import runtime_utils
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher (runtime_utils.target_with_save_result):
+  def run(self):
     import os
     from wxGUI2 import utils
     utils.safe_makedirs(self.output_dir)

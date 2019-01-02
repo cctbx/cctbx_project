@@ -112,7 +112,7 @@ def test_extensively( this_chunk ):
 
     group = sgtbx.space_group(sg.hall())
 
-    #if group != sgtbx.space_group_info( symbol = 'I 21 21 21' ).group() :
+    #if group != sgtbx.space_group_info( symbol = 'I 21 21 21' ).group():
     #  continue
 
     unit_cell =sgtbx.space_group_info(group=group).any_compatible_unit_cell(

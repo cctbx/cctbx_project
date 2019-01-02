@@ -198,7 +198,7 @@ class alternative_find_best_cell(object):
       best_index = self.order_check_array.index( True )
     else: # there is more then one possible solution, use the first solution one encounters
       for order, ii in zip( self.order_check_array,
-                            range(len(self.order_check_array)) ) :
+                            range(len(self.order_check_array)) ):
         if order:
           best_index = ii
           break

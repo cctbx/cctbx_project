@@ -211,7 +211,7 @@ class Base_geometry(object):
     # requires modification of pair_proxies and as complicated as addition
     # of bond restraint.
     raise NotImplementedError
-  def set_external_energy_function (self, energy_function) :
+  def set_external_energy_function(self, energy_function):
     pass
   def _get_n_bond_proxies_origin(self, origin_id):
     return 0
@@ -320,10 +320,10 @@ class Base_geometry(object):
     """
     raise NotImplementedError
 
-  def update_atom_nonbonded_type (self,
+  def update_atom_nonbonded_type(self,
         i_seq,
         nonbonded_type,
-        charge=0) :
+        charge=0):
     pass
 
   def write_geo_file(self,

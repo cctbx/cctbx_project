@@ -329,7 +329,7 @@ def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
       format="ccp4")
     assert (isinstance(flags1.data(), flex.int))
     assert (isinstance(flags2.data(), flex.int))
-    if (anomalous_flag) :
+    if (anomalous_flag):
       flags1_ave = flags1.average_bijvoet_mates()
       flags2_ave = flags2.average_bijvoet_mates()
     try :
@@ -2287,7 +2287,7 @@ def exercise_randomize_amplitude_and_phase(space_group_info,
     assert approx_equal(r[0], v/100., 0.05)
     assert approx_equal(r[1], v, 5)
 
-def exercise_permute () :
+def exercise_permute():
   xrs = random_structure.xray_structure(
     space_group_info=sgtbx.space_group_info(number=1),
     elements=["C"]*300)
@@ -2302,7 +2302,7 @@ def exercise_permute () :
   assert fc_other.data().all_eq(fc_perm_other.data())
   assert not fc_high.data().all_eq(fc_perm_high.data())
 
-def exercise_diagnostics () :
+def exercise_diagnostics():
   xs = crystal.symmetry((30,40,50), "P 2 2 2")
   ms = miller.build_set(crystal_symmetry=xs, anomalous_flag=True, d_min=2.9)
   da, db, dc = ms.d_min_along_a_b_c_star()
@@ -2332,7 +2332,7 @@ def exercise_convert_to_non_anomalous_if_ratio_pairs_lone_less_than():
   assert ma.completeness()>0.99
   assert ma.anomalous_flag() is False
 
-def exercise_change_symmetry () :
+def exercise_change_symmetry():
   # these should run without warnings
   with warnings.catch_warnings(record=True) as w:
     test_inputs = [
@@ -2354,7 +2354,7 @@ def exercise_change_symmetry () :
       (40.15, 40.15, 65, 90, 90, 90),
       (40.1, 40.2, 65, 90, 90, 90),
     ]
-    for i_inp, (uc_old, sg_old, sg_new) in enumerate(test_inputs) :
+    for i_inp, (uc_old, sg_old, sg_new) in enumerate(test_inputs):
       cs = crystal.symmetry(
         unit_cell=uc_old,
         space_group_symbol=sg_old)
@@ -2374,7 +2374,7 @@ def exercise_change_symmetry () :
       ( (39.0, 40.7, 65, 89.98, 90.02, 121.05), "P1", "P63" ),
       ( (40.1, 40.2, 65, 90, 90, 90), "P222", "P1"),
     ]
-    for i_inp, (uc_old, sg_old, sg_new) in enumerate(test_inputs) :
+    for i_inp, (uc_old, sg_old, sg_new) in enumerate(test_inputs):
       cs = crystal.symmetry(
         unit_cell=uc_old,
         space_group_symbol=sg_old)
@@ -2387,7 +2387,7 @@ def exercise_change_symmetry () :
         expand_to_p1_if_necessary=False)
     assert len(w) == 2
 
-def exercise_systematic_absences_info () :
+def exercise_systematic_absences_info():
   xrs = random_structure.xray_structure(
     sgtbx.space_group_info("P21212"),
     elements=["const"]*100)

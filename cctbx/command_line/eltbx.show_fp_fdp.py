@@ -4,8 +4,8 @@ from libtbx.option_parser import option_parser
 from libtbx.utils import Sorry, Usage
 import sys
 
-def run (args) :
-  if (len(args) == 0) or ("--help" in args) :
+def run(args):
+  if (len(args) == 0) or ("--help" in args):
     raise Usage("""
 eltbx.show_fp_fdp.py --elements=S,CL --wavelength=1.54
 eltbx.show_fp_fdp.py --elements=S,CL --source=CuA1""")
@@ -15,9 +15,9 @@ eltbx.show_fp_fdp.py --elements=S,CL --source=CuA1""")
   parser.add_option('--wavelength')
   options, args = parser.parse_args(args)
 
-  if (options.xray_source is not None) :
+  if (options.xray_source is not None):
     print "Source: %s" % options.xray_source
-  elif (options.wavelength is not None) :
+  elif (options.wavelength is not None):
     print "Wavelength: %g Angstrom" % float(options.wavelength)
   print
   for element in options.elements.split(','):
@@ -26,10 +26,10 @@ eltbx.show_fp_fdp.py --elements=S,CL --source=CuA1""")
     for table_name, table in (('Henke et al.', henke.table),
                               ('Sasaki et al.', sasaki.table)):
       inelastic_scattering = table(element)
-      if (options.xray_source) :
+      if (options.xray_source):
         fp_fdp = inelastic_scattering.at_angstrom(
           wavelengths.characteristic(options.xray_source).as_angstrom())
-      elif (options.wavelength) :
+      elif (options.wavelength):
         fp_fdp = inelastic_scattering.at_angstrom(float(options.wavelength))
       else :
         raise Sorry("Either --xray_source=... or --wavelength=... required")
@@ -38,5 +38,5 @@ eltbx.show_fp_fdp.py --elements=S,CL --source=CuA1""")
       fdp.append(fp_fdp.fdp())
     print "  diff f''=%.2f %%" % ((fdp[1] - fdp[0])/(fdp[1] + fdp[0]) * 100)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

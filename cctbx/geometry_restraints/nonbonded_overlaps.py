@@ -610,7 +610,7 @@ def create_cif_file_using_ready_set(
     open(file_name,'w').write(pdb_hierarchy.as_pdb_string(cryst_sym))
   cmd = "phenix.ready_set {} --silent".format(file_name)
   out = easy_run.fully_buffered(cmd)
-  if (out.return_code != 0) :
+  if (out.return_code != 0):
     msg_str = "ready_set crashed - dumping stderr:\n%s"
     raise RuntimeError(msg_str % ( "\n".join(out.stderr_lines)))
   fn_pdb = file_name.replace('.pdb','.updated.pdb')

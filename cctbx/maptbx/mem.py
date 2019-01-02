@@ -52,8 +52,8 @@ def show_map_stat(m, prefix, out=sys.stdout):
     "%s (min/max/mean/sum, Hw, Hn): %9.6f %9.6f %9.6f %9.6f %9.6f %9.6f"%(
     prefix, flex.min(m), flex.max(m), flex.mean(m), flex.sum(m), Hw(m), Hn(m))
 
-class run(object) :
-  def __init__ (self,
+class run(object):
+  def __init__(self,
                 f,
                 f_000             = None,
                 lam               = None,
@@ -176,7 +176,7 @@ class run(object) :
     else: raise Sorry("Invalid initial map modification choice.")
     return rho / flex.sum(rho)
 
-  def map_coefficients (self, d_min=None) :
+  def map_coefficients(self, d_min=None):
     o=maptbx.non_linear_map_modification_to_match_average_cumulative_histogram(
       map_1 = self.rho, map_2 = self.rho_obs)
     # XXX p1 must be equal to p2 very accurately; sometimes not the case
