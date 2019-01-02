@@ -6,7 +6,7 @@ from __future__ import division
 import wx, math
 
 class UCSettingsFrame(wx.MiniFrame):
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     super(UCSettingsFrame, self).__init__(*args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.phil_params = args[0].params
@@ -21,7 +21,7 @@ class UCSettingsFrame(wx.MiniFrame):
 
 
 class UCSettingsPanel(wx.Panel):
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     super(UCSettingsPanel, self).__init__(*args, **kwds)
 
     self.phil_params = args[0].phil_params

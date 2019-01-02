@@ -9,7 +9,7 @@ from scitbx.array_family import flex
 from math import log
 import wx
 
-def glbox (xyz1, xyz2) :
+def glbox(xyz1, xyz2):
   x1 = min(xyz1[0], xyz2[0])
   x2 = max(xyz1[0], xyz2[0])
   y1 = min(xyz1[1], xyz2[1])
@@ -65,8 +65,8 @@ def glbox (xyz1, xyz2) :
   glVertex3f(x2, y1, z2)
   glEnd()
 
-class pixel_viewer_3d (wx_viewer.wxGLWindow) :
-  def __init__ (self, *args, **kwds) :
+class pixel_viewer_3d (wx_viewer.wxGLWindow):
+  def __init__(self, *args, **kwds):
     wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
     self.SetSize((400,400))
     self.SetMinSize((400,400))
@@ -98,18 +98,18 @@ class pixel_viewer_3d (wx_viewer.wxGLWindow) :
     self.initialize_modelview()
     gltbx.util.handle_error()
 
-  def process_pick_points (self) :
+  def process_pick_points(self):
     pass
 
-  def set_image (self, img) :
+  def set_image(self, img):
     self._img = img
 
-  def recenter (self, x, y) :
+  def recenter(self, x, y):
     self.x_center = x
     self.y_center = y
     self.Refresh()
 
-  def DrawGL (self) :
+  def DrawGL(self):
     if (None in [self._img, self.x_center, self.y_center]) : return
     if self.flag_draw_boxes :
       r, g, b = self._img.get_opengl_background()
@@ -119,7 +119,7 @@ class pixel_viewer_3d (wx_viewer.wxGLWindow) :
       glClearColor(0, 0, 0, 0.)
       self._draw_lines()
 
-  def _draw_lines (self) :
+  def _draw_lines(self):
     values = self._img.get_intensities_in_box(
       x=self.x_center,
       y=self.y_center,
@@ -130,39 +130,39 @@ class pixel_viewer_3d (wx_viewer.wxGLWindow) :
     w_range = [0.0,0.0]
     glGetFloatv(GL_LINE_WIDTH_RANGE, w_range)
     line_width = 0.1
-    if (w_range[0] > 0.1) :
+    if (w_range[0] > 0.1):
       line_width = w_range[0]
     glLineWidth(line_width)
-    for i, row in enumerate(values) :
+    for i, row in enumerate(values):
       y = -i
       glBegin(GL_LINES)
-      for j, value in enumerate(row) :
-        if (j > 0) :
+      for j, value in enumerate(row):
+        if (j > 0):
           x = j
           val1 = row[j-1] / scale_factor
           val2 = value / scale_factor
-          if (self.flag_log_scale) :
+          if (self.flag_log_scale):
             val1 = log(val1)
             val2 = log(val2)
           glVertex3f(x-1, y, val1)
           glVertex3f(x, y, val2)
       glEnd()
-    for i in range(40) :
+    for i in range(40):
       x = i
       glBegin(GL_LINES)
-      for j, row in enumerate(values) :
-        if (j > 0) :
+      for j, row in enumerate(values):
+        if (j > 0):
           y = -j
           val1 = values[j-1][i] / scale_factor
           val2 = row[i] / scale_factor
-          if (self.flag_log_scale) :
+          if (self.flag_log_scale):
             val1 = log(val1)
             val2 = log(val2)
           glVertex3f(x, y+1, val1)
           glVertex3f(x, y, val2)
       glEnd()
 
-  def _draw_boxes (self) :
+  def _draw_boxes(self):
     values = self._img.get_intensities_in_box(
       x=self.x_center,
       y=self.y_center,
@@ -176,11 +176,11 @@ class pixel_viewer_3d (wx_viewer.wxGLWindow) :
     if (wx_image is None) : return
     glPolygonMode(GL_FRONT, GL_FILL)
     scale_factor = self.scale_factor
-    for y_, row in enumerate(values) :
+    for y_, row in enumerate(values):
       y = -y_
-      for x, value in enumerate(row) :
+      for x, value in enumerate(row):
         z = value / scale_factor
-        if (self.flag_log_scale) :
+        if (self.flag_log_scale):
           z = log(z)
         R = wx_image.GetRed(x,y_)
         G = wx_image.GetGreen(x,y_)
@@ -188,8 +188,8 @@ class pixel_viewer_3d (wx_viewer.wxGLWindow) :
         glColor3f(R/255., G/255., B/255.)
         glbox((x,y,0),(x+1,y+1,z))
 
-class pixel_viewer_3d_frame (wx.MiniFrame) :
-  def __init__ (self, *args, **kwds) :
+class pixel_viewer_3d_frame (wx.MiniFrame):
+  def __init__(self, *args, **kwds):
     wx.MiniFrame.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(szr)
@@ -218,20 +218,20 @@ class pixel_viewer_3d_frame (wx.MiniFrame) :
     szr.Fit(self._viewer)
     self.Fit()
 
-  def __getattr__ (self, name) :
+  def __getattr__(self, name):
     return getattr(self._viewer, name)
 
-  def OnChangeRenderStyle (self, event) :
+  def OnChangeRenderStyle(self, event):
     wires = event.GetEventObject().GetValue()
     self._viewer.flag_draw_boxes = not wires
     self._viewer.Refresh()
 
-  def OnChangeScale (self, event) :
+  def OnChangeScale(self, event):
     scale = event.GetEventObject().GetValue()
     self._viewer.flag_log_scale = scale
     self._viewer.Refresh()
 
-  def OnSetScale (self, event) :
+  def OnSetScale(self, event):
     scale = event.GetEventObject().GetValue()
     self._viewer.scale_factor = scale
     self._viewer.Refresh()

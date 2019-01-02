@@ -14,21 +14,21 @@ import os
 # Instance to bind external update event to an event handler
 EVT_EXTERNAL_UPDATE = wx.PyEventBinder(wx.NewEventType(), 0)
 
-class ExternalUpdateEvent (wx.PyCommandEvent) :
+class ExternalUpdateEvent (wx.PyCommandEvent):
   """XXX This class, along with the EVT_EXTERNAL_UPDATE instance
   should perhaps move into its own file?
   """
 
-  def __init__ (self, eventType=EVT_EXTERNAL_UPDATE.evtType[0], id=0) :
+  def __init__(self, eventType=EVT_EXTERNAL_UPDATE.evtType[0], id=0):
     wx.PyCommandEvent.__init__(self, eventType, id)
     self.img = None
     self.title = None
 
-class XrayFrame (wx.Frame) :
+class XrayFrame (wx.Frame):
   # Maximum number of entries in the chooser.
   CHOOSER_SIZE = 1024
 
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     super(XrayFrame, self).__init__(*args, **kwds)
     self.settings = rstbx.viewer.settings()
     self.viewer = rstbx.viewer.display.XrayView(self, -1, size=(1024,640))
@@ -54,7 +54,7 @@ class XrayFrame (wx.Frame) :
     self.OnShowSettings(None)
     self.Bind(EVT_EXTERNAL_UPDATE, self.OnExternalUpdate)
 
-  def OnExternalUpdate (self, event) :
+  def OnExternalUpdate(self, event):
     """The OnExternalUpdate() function updates the image and the title
     from @p event.
     """
@@ -70,7 +70,7 @@ class XrayFrame (wx.Frame) :
     self.update_statusbar()
     self.Layout()
 
-  def setup_toolbar (self) :
+  def setup_toolbar(self):
     btn = self.toolbar.AddLabelTool(id=-1,
       label="Load file",
       bitmap=icons.hkl_file.GetBitmap(),
@@ -107,7 +107,7 @@ class XrayFrame (wx.Frame) :
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnNext, btn)
 
-  def setup_menus (self) :
+  def setup_menus(self):
     file_menu = wx.Menu()
     self.mb.Append(file_menu, "File")
     item = file_menu.Append(-1, "Open integration results...")
@@ -123,7 +123,7 @@ class XrayFrame (wx.Frame) :
     item = actions_menu.Append(-1, "Save screenshot...")
     self.Bind(wx.EVT_MENU, self.OnScreenShot, item)
 
-  def get_key (self, file_name_or_data) :
+  def get_key(self, file_name_or_data):
     """The get_key() function returns the key of @p file_name_or_data.
     In the case of dictionaries, it is the timestamp of the image.
     For file names, the key is an ASCII-encoded absolute path string.
@@ -149,13 +149,13 @@ class XrayFrame (wx.Frame) :
 
     return None
 
-  def load_image (self, file_name_or_data) :
+  def load_image(self, file_name_or_data):
     """The load_image() function displays the image from @p
     file_name_or_data.  The chooser is updated appropriately.
     """
 
     key = self.get_key(file_name_or_data)
-    if (type(file_name_or_data) is dict) :
+    if (type(file_name_or_data) is dict):
       self._img = rstbx.viewer.image(file_name_or_data)
     else :
       try :
@@ -170,27 +170,27 @@ class XrayFrame (wx.Frame) :
     self.image_chooser.SetSelection(i)
 
     self.viewer.set_image(self._img)
-    if (self.settings_frame is not None) :
+    if (self.settings_frame is not None):
       self.settings_frame.set_image(self._img)
     self.SetTitle(to_unicode(key))
     self.update_statusbar()
     self.Layout()
 
-  def load_distl_output (self, file_name) :
+  def load_distl_output(self, file_name):
     distl = easy_pickle.load(file_name)
     self._distl = distl
     img_files = []
-    for img_id in sorted(distl.images.keys()) :
+    for img_id in sorted(distl.images.keys()):
       img = distl.images[img_id]
       img_files.append(img['relpath'])
-    if (len(img_files) == 0) :
+    if (len(img_files) == 0):
       raise Sorry("No images in this result!")
     self.image_chooser.SetItems([ os.path.basename(f) for f in img_files ])
     self.image_chooser.SetSelection(0)
     self.load_image(img_files[0])
     self.annotate_image(img_files[0])
 
-  def add_file_name_or_data (self, file_name_or_data) :
+  def add_file_name_or_data(self, file_name_or_data):
     """The add_file_name_or_data() function appends @p
     file_name_or_data to the image chooser, unless it is already
     present.  For file-backed images, the base name is displayed in
@@ -202,28 +202,28 @@ class XrayFrame (wx.Frame) :
     """
 
     key = self.get_key(file_name_or_data)
-    for i in range(self.image_chooser.GetCount()) :
-      if (key == self.image_chooser.GetClientData(i)) :
+    for i in range(self.image_chooser.GetCount()):
+      if (key == self.image_chooser.GetClientData(i)):
         return i
-    if (self.image_chooser.GetCount() >= self.CHOOSER_SIZE) :
+    if (self.image_chooser.GetCount() >= self.CHOOSER_SIZE):
       self.image_chooser.Delete(0)
     i = self.image_chooser.GetCount()
-    if (type(file_name_or_data) is dict) :
+    if (type(file_name_or_data) is dict):
       self.image_chooser.Insert(key, i, None)
     else :
       self.image_chooser.Insert(os.path.basename(key), i, key)
     return i
 
-  def annotate_image (self, file_name) :
+  def annotate_image(self, file_name):
     assert (self._distl is not None)
-    for img_id in sorted(self._distl.images.keys()) :
+    for img_id in sorted(self._distl.images.keys()):
       img = self._distl.images[img_id]
-      if (img['relpath'] == file_name) :
+      if (img['relpath'] == file_name):
         spots = img['spotoutput']['inlier_spots']
         self._img.set_spots(spots)
         break
 
-  def load_integration (self, dir_name) :
+  def load_integration(self, dir_name):
     from rstbx.viewer import processing
     assert os.path.isdir(dir_name)
     self.proc_frame = processing.ProcessingFrame(None, -1, "LABELIT")
@@ -231,59 +231,59 @@ class XrayFrame (wx.Frame) :
     self.proc_frame.LoadResults(dir_name)
     self.proc_frame.Show()
 
-  def display_integration_result (self, result) :
+  def display_integration_result(self, result):
     assert isinstance(result, dict)
     self._img.set_integration_results(result)
     self.viewer.Refresh()
 
-  def update_statusbar (self, info=None) :
-    if (info is None) :
+  def update_statusbar(self, info=None):
+    if (info is None):
       self.statusbar.SetStatusText("Click and drag to pan; "+
         "middle-click and drag to plot intensity profile, right-click to zoom")
     else :
       self.statusbar.SetStatusText(info.format())
 
-  def update_settings (self, layout=True) :
+  def update_settings(self, layout=True):
     self.viewer.update_settings(layout)
 
-  def set_brightness (self, brightness) :
-    if (brightness > 0) and (brightness <= 500) :
+  def set_brightness(self, brightness):
+    if (brightness > 0) and (brightness <= 500):
       self.settings.brightness = brightness
-      if (self.settings_frame is not None) :
+      if (self.settings_frame is not None):
         self.settings_frame.update_controls()
       self.viewer.update_settings(layout=False)
 
-  def OnLoadFile (self, event) :
+  def OnLoadFile(self, event):
     wildcard_str = ""
-    if (wx.PlatformInfo[4] != "wxOSX-cocoa") :
+    if (wx.PlatformInfo[4] != "wxOSX-cocoa"):
       from iotbx import file_reader
       wildcard_str = file_reader.get_wildcard_string("img")
     file_name = wx.FileSelector("Reflections file",
       wildcard=wildcard_str,
       default_path="",
       flags=wx.OPEN)
-    if (file_name != "") :
+    if (file_name != ""):
       self.load_image(file_name)
 
-  def OnLoadLabelitResult (self, event) :
+  def OnLoadLabelitResult(self, event):
     file_name = wx.FileSelector("Labelit result",
       default_path="",
       flags=wx.OPEN)
-    if (file_name != "") :
+    if (file_name != ""):
       self.load_image(file_name)
 
-  def OnLoadIntegration (self, event) :
+  def OnLoadIntegration(self, event):
     dir_name = wx.DirSelector("Integration result",
       defaultPath="")
-    if (dir_name != "") :
+    if (dir_name != ""):
       self.load_integration(dir_name)
 
-  def OnShowSettings (self, event) :
-    if (self.settings_frame is None) :
+  def OnShowSettings(self, event):
+    if (self.settings_frame is None):
       frame_rect = self.GetRect()
       display_rect = wx.GetClientDisplayRect()
       x_start = frame_rect[0] + frame_rect[2]
-      if (x_start > (display_rect[2] - 400)) :
+      if (x_start > (display_rect[2] - 400)):
         x_start = display_rect[2] - 400
       y_start = frame_rect[1]
       self.settings_frame = SettingsFrame(self, -1, "Settings",
@@ -291,16 +291,16 @@ class XrayFrame (wx.Frame) :
         pos=(x_start, y_start))
     self.settings_frame.Show()
 
-  def OnShowZoom (self, event) :
-    if (self.zoom_frame is None) :
+  def OnShowZoom(self, event):
+    if (self.zoom_frame is None):
       self.zoom_frame = ZoomFrame(self, -1, "Zoom",
         style=wx.CAPTION|wx.CLOSE_BOX|wx.RESIZE_BORDER|wx.SYSTEM_MENU)
       self.zoom_frame.set_image(self._img)
       self.zoom_frame.Show()
     self.zoom_frame.Raise()
 
-  def OnShow3D (self, event) :
-    if (self.zoom_3d is None) :
+  def OnShow3D(self, event):
+    if (self.zoom_3d is None):
       from rstbx.viewer import pixels3d
       self.zoom_3d = pixels3d.pixel_viewer_3d_frame(self, -1, "3D view",
         style=wx.CAPTION|wx.CLOSE_BOX|wx.RESIZE_BORDER|wx.SYSTEM_MENU)
@@ -308,52 +308,52 @@ class XrayFrame (wx.Frame) :
       self.zoom_3d.Show()
     self.zoom_3d.Raise()
 
-  def OnShowPlot (self, event) :
-    if (self.plot_frame is None) :
+  def OnShowPlot(self, event):
+    if (self.plot_frame is None):
       self.plot_frame = PlotFrame(self, -1, "Intensity profile",
         style=wx.CAPTION|wx.CLOSE_BOX|wx.SYSTEM_MENU)
       self.plot_frame.Show()
 
-  def OnZoom (self, event) :
-    if (self.settings.zoom_level == 6) :
+  def OnZoom(self, event):
+    if (self.settings.zoom_level == 6):
       self.settings.zoom_level = 0
     else :
       self.settings.zoom_level += 1
-    if hasattr(self.viewer, "update_settings") :
+    if hasattr(self.viewer, "update_settings"):
       self.viewer.update_settings(layout=True)
-    if (self.settings_frame is not None) :
+    if (self.settings_frame is not None):
       self.settings_frame.update_controls()
 
-  def OnChooseImage (self, event) :
+  def OnChooseImage(self, event):
     self.load_image(self.image_chooser.GetClientData(
         self.image_chooser.GetSelection()))
 
-  def OnPrevious (self, event) :
+  def OnPrevious(self, event):
     n = self.image_chooser.GetSelection()
-    if (n != wx.NOT_FOUND and n - 1 >= 0) :
+    if (n != wx.NOT_FOUND and n - 1 >= 0):
       self.load_image(self.image_chooser.GetClientData(n - 1))
 
-  def OnNext (self, event) :
+  def OnNext(self, event):
     n = self.image_chooser.GetSelection()
-    if (n != wx.NOT_FOUND and n + 1 < self.image_chooser.GetCount()) :
+    if (n != wx.NOT_FOUND and n + 1 < self.image_chooser.GetCount()):
       self.load_image(self.image_chooser.GetClientData(n + 1))
 
-  def OnScreenShot (self, event) :
+  def OnScreenShot(self, event):
     file_name = wx.FileSelector(
       default_filename="xray.png",
       default_path="",
       wildcard="PNG image (*.png)|*.png",
       flags=wx.SAVE)
-    if (file_name != "") :
+    if (file_name != ""):
       self.viewer.save_image(file_name)
 
-  def OnChangeBeamCenter (self, event) :
+  def OnChangeBeamCenter(self, event):
     wx.MessageBox("Click on any point in the image to set the new beam center.")
     self.statusbar.SetStatusText("Changing beam center")
     self.viewer.ChangeBeamCenter()
 
-class SettingsFrame (wx.MiniFrame) :
-  def __init__ (self, *args, **kwds) :
+class SettingsFrame (wx.MiniFrame):
+  def __init__(self, *args, **kwds):
     super(SettingsFrame, self).__init__(*args, **kwds)
     self.settings = self.GetParent().settings
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -367,25 +367,25 @@ class SettingsFrame (wx.MiniFrame) :
     self.Bind(wx.EVT_CLOSE, lambda evt : self.Destroy(), self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
 
-  def OnDestroy (self, event) :
+  def OnDestroy(self, event):
     self.GetParent().settings_frame = None
 
-  def update_controls (self) :
+  def update_controls(self):
     self.panel.zoom_ctrl.SetSelection(self.settings.zoom_level)
     self.panel.brightness_ctrl.SetValue(self.settings.brightness)
 
-  def set_image (self, image) :
+  def set_image(self, image):
     self.panel.thumb_panel.set_image(image)
     self.panel.GetSizer().Layout()
     self.sizer.Fit(self.panel)
     self.Layout()
     self.Fit()
 
-  def refresh_thumbnail (self) :
+  def refresh_thumbnail(self):
     self.panel.thumb_panel.Refresh()
 
-class SettingsPanel (wx.Panel) :
-  def __init__ (self, *args, **kwds) :
+class SettingsPanel (wx.Panel):
+  def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.settings = self.GetParent().settings
     self._sizer = wx.BoxSizer(wx.VERTICAL)
@@ -443,7 +443,7 @@ class SettingsPanel (wx.Panel) :
     s.Add(self.thumb_panel, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 #    self.Bind(wx.EVT_CHECKBOX, self.OnUpdate2, self.invert_ctrl)
 
-  def collect_values (self) :
+  def collect_values(self):
     if self.settings.enable_collect_values:
       self.settings.zoom_level = self.zoom_ctrl.GetSelection()
       self.settings.brightness = self.brightness_ctrl.GetValue()
@@ -453,26 +453,26 @@ class SettingsPanel (wx.Panel) :
       self.settings.color_scheme = self.color_ctrl.GetSelection()
 #     self.settings.invert_beam_center_axes = self.invert_ctrl.GetValue()
 
-  def OnUpdate (self, event) :
+  def OnUpdate(self, event):
     self.collect_values()
     self.GetParent().GetParent().update_settings(layout=True)
 
-  def OnUpdateBrightness (self, event) :
+  def OnUpdateBrightness(self, event):
     mouse = wx.GetMouseState()
     if (mouse.LeftDown()) : return
     self.collect_values()
     self.GetParent().GetParent().update_settings(layout=False)
 
-  def OnUpdate2 (self, event) :
+  def OnUpdate2(self, event):
     self.collect_values()
     self.GetParent().GetParent().update_settings(layout=False)
 
-  def refresh_main (self) :
+  def refresh_main(self):
     self.GetParent().GetParent().viewer.Refresh()
 
 mag_levels = [8,16,24,32,48,64]
-class ZoomFrame (wx.MiniFrame) :
-  def __init__ (self, *args, **kwds) :
+class ZoomFrame (wx.MiniFrame):
+  def __init__(self, *args, **kwds):
     super(ZoomFrame, self).__init__(*args, **kwds)
     self.settings = self.GetParent().settings
     self.control_panel = wx.Panel(self)
@@ -510,21 +510,21 @@ class ZoomFrame (wx.MiniFrame) :
     szr.Fit(self.panel)
     self.Fit()
 
-  def __getattr__ (self, name) :
+  def __getattr__(self, name):
     return getattr(self.panel, name)
 
-  def OnDestroy (self, event) :
+  def OnDestroy(self, event):
     self.GetParent().zoom_frame = None
 
-  def OnChangeSettings (self, event) :
+  def OnChangeSettings(self, event):
     self.panel.flag_show_intensities = self.numbers_box.GetValue()
     self.panel.text_color = self.text_color.GetValue()
     zoom = mag_levels[ self.mag_ctrl.GetSelection() ]
     self.panel.zoom_level = zoom
     self.Refresh()
 
-class PlotFrame (wx.MiniFrame) :
-  def __init__ (self, *args, **kwds) :
+class PlotFrame (wx.MiniFrame):
+  def __init__(self, *args, **kwds):
     super(PlotFrame, self).__init__(*args, **kwds)
     self.plot = LinePlot(self, figure_size=(8,3))
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -534,20 +534,20 @@ class PlotFrame (wx.MiniFrame) :
     self.Bind(wx.EVT_CLOSE, lambda evt : self.Destroy(), self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
 
-  def __getattr__ (self, name) :
+  def __getattr__(self, name):
     return getattr(self.plot, name)
 
-  def OnDestroy (self, event) :
+  def OnDestroy(self, event):
     self.GetParent().plot_frame = None
 
-class LinePlot (wxtbx.plots.plot_container) :
-  def show_plot (self, line) :
+class LinePlot (wxtbx.plots.plot_container):
+  def show_plot(self, line):
     self.figure.clear()
     ax = self.figure.add_subplot(111)
     x_data = range(len(line.values))
     ax.plot(x_data, line.values, 'b-', linewidth=1)
     ax.set_ylabel("Intensity")
-    if (line.lattice_length is not None) :
+    if (line.lattice_length is not None):
       ax.set_title(
         "Line distance = %.2fmm; avg. lattice length = %.2f Angstrom" %
           (line.distance, line.lattice_length))

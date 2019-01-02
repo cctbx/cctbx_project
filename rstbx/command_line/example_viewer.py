@@ -6,7 +6,7 @@ from __future__ import division
 import sys
 from rstbx.command_line.viewer import run
 
-def modified_image_factory (filename):
+def modified_image_factory(filename):
   from iotbx.detectors.generic_detector import GenericDetector
   I = GenericDetector(filename)
   I.readHeader()
@@ -16,7 +16,7 @@ def modify_the_iotbx_detector_list():
   from iotbx import detectors
   detectors.ImageFactory = modified_image_factory
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   modify_the_iotbx_detector_list()
   file_arguments = sys.argv[1:]
   if len(file_arguments) > 0:

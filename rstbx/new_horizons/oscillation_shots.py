@@ -149,7 +149,7 @@ class IntegrateCharacters:
       except Exception as e:
         local["ewald_proximal_volume"]=None
 
-      if (self.horizons_phil.indexing.open_wx_viewer) :
+      if (self.horizons_phil.indexing.open_wx_viewer):
        if True: #use updated slip viewer
         try:
           import wx

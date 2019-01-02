@@ -4,25 +4,25 @@ import wx
 import os
 from rstbx.viewer.frame import XrayFrame,SettingsFrame,SettingsPanel
 
-class SBFrame(XrayFrame) :
-  def __init__ (self, *args, **kwds) :
+class SBFrame(XrayFrame):
+  def __init__(self, *args, **kwds):
     self.horizons_phil = kwds["horizons_phil"]
     del kwds["horizons_phil"]
     super(SBFrame, self).__init__(*args, **kwds)
 
-  def OnShowSettings (self, event) :
-    if (self.settings_frame is None) :
+  def OnShowSettings(self, event):
+    if (self.settings_frame is None):
       frame_rect = self.GetRect()
       display_rect = wx.GetClientDisplayRect()
       x_start = frame_rect[0] + frame_rect[2]
-      if (x_start > (display_rect[2] - 400)) :
+      if (x_start > (display_rect[2] - 400)):
         x_start = display_rect[2] - 400
       y_start = frame_rect[1]
       self.settings_frame = SBSettingsFrame(self, -1, "Settings",
         style=wx.CAPTION|wx.MINIMIZE_BOX, pos=(x_start, y_start))
     self.settings_frame.Show()
 
-  def load_image_restricted (self) :
+  def load_image_restricted(self):
     #This method can probably be back-edited to rely more on the base class code...later
 
     file_name = os.path.abspath(self.path)
@@ -37,22 +37,22 @@ class SBFrame(XrayFrame) :
     self.viewer._img.update_settings(
       brightness=self.viewer.settings.brightness)
     self.viewer.Refresh()
-    if (self.viewer.GetParent().zoom_frame is not None) :
+    if (self.viewer.GetParent().zoom_frame is not None):
       self.viewer.GetParent().zoom_frame.Refresh()
     self.viewer.GetParent().settings_frame.refresh_thumbnail()
 
     self.settings_frame.set_image(self._img)
     self.SetTitle(file_name)
     items = self.image_chooser.GetItems()
-    if (not file_name in items) :
+    if (not file_name in items):
       items.append(file_name)
     self.image_chooser.SetItems(items)
     self.image_chooser.SetStringSelection(file_name)
     self.update_statusbar()
     self.Layout()
 
-class SBSettingsFrame (SettingsFrame) :
-  def __init__ (self, *args, **kwds) :
+class SBSettingsFrame (SettingsFrame):
+  def __init__(self, *args, **kwds):
     super(SettingsFrame, self).__init__(*args, **kwds)
     self.settings = self.GetParent().settings
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -66,8 +66,8 @@ class SBSettingsFrame (SettingsFrame) :
     self.Bind(wx.EVT_CLOSE, lambda evt : self.Destroy(), self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
 
-class SBSettingsPanel (SettingsPanel) :
-  def __init__ (self, *args, **kwds) :
+class SBSettingsPanel (SettingsPanel):
+  def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.settings = self.GetParent().settings
     self._sizer = wx.BoxSizer(wx.VERTICAL)
@@ -165,14 +165,14 @@ class SBSettingsPanel (SettingsPanel) :
       style=wx.SUNKEN_BORDER)
     s.Add(self.thumb_panel, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 
-  def collect_values (self) :
+  def collect_values(self):
     if self.settings.enable_collect_values:
       self.settings.zoom_level = self.zoom_ctrl.GetSelection()
       self.settings.brightness = self.brightness_ctrl.GetValue()
       self.settings.show_beam_center = self.center_ctrl.GetValue()
       self.settings.distance = self.distance_ctrl.GetPhilValue()
 
-  def OnUpdateQuad (self, event) :
+  def OnUpdateQuad(self, event):
     for iq,s_quad in enumerate(["UL","UR","LL","LR"]):
       setattr(self.settings,s_quad+"x",getattr(self,s_quad+"x_ctrl").GetPhilValue())
       setattr(self.settings,s_quad+"y",getattr(self,s_quad+"y_ctrl").GetPhilValue())
@@ -181,6 +181,6 @@ class SBSettingsPanel (SettingsPanel) :
     self.GetParent().GetParent().load_image_restricted()
     #self.GetParent().GetParent().update_settings(layout=True)
 
-  def OnUpdateDist (self, event) :
+  def OnUpdateDist(self, event):
     self.collect_values()
     self.GetParent().GetParent().update_settings(layout=False)

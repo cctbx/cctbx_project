@@ -37,8 +37,8 @@ def derived_draw_spotfinder_spots(self,dc):
       dc.DrawCircle(x,y,1)
 rstbx.viewer.display.XrayView.draw_spotfinder_spots = derived_draw_spotfinder_spots
 
-class SpotFrame(XrayFrame) :
-  def __init__ (self, *args, **kwds) :
+class SpotFrame(XrayFrame):
+  def __init__(self, *args, **kwds):
     self.horizons_phil = kwds["horizons_phil"]
     self.spot_organizer = kwds["spot_organizer"]
     del kwds["horizons_phil"]; del kwds["spot_organizer"] #otherwise wx complains
@@ -48,20 +48,20 @@ class SpotFrame(XrayFrame) :
     self.viewer.frames = self.spot_organizer.frames
     self.viewer.organizer = self.spot_organizer
 
-  def OnShowSettings (self, event) :
-    if (self.settings_frame is None) :
+  def OnShowSettings(self, event):
+    if (self.settings_frame is None):
       frame_rect = self.GetRect()
       display_rect = wx.GetClientDisplayRect()
       x_start = frame_rect[0] + frame_rect[2]
-      if (x_start > (display_rect[2] - 400)) :
+      if (x_start > (display_rect[2] - 400)):
         x_start = display_rect[2] - 400
       y_start = frame_rect[1]
       self.settings_frame = SpotSettingsFrame(self, -1, "Settings",
         style=wx.CAPTION|wx.MINIMIZE_BOX, pos=(x_start, y_start))
     self.settings_frame.Show()
 
-class SpotSettingsFrame (SettingsFrame) :
-  def __init__ (self, *args, **kwds) :
+class SpotSettingsFrame (SettingsFrame):
+  def __init__(self, *args, **kwds):
     super(SettingsFrame, self).__init__(*args, **kwds)
     self.settings = self.GetParent().settings
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -75,8 +75,8 @@ class SpotSettingsFrame (SettingsFrame) :
     self.Bind(wx.EVT_CLOSE, lambda evt : self.Destroy(), self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
 
-class SpotSettingsPanel (SettingsPanel) :
-  def __init__ (self, *args, **kwds) :
+class SpotSettingsPanel (SettingsPanel):
+  def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.settings = self.GetParent().settings
     # CONTROLS 4: additional settings for derived class
@@ -165,7 +165,7 @@ class SpotSettingsPanel (SettingsPanel) :
     s.Add(self.thumb_panel, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 
   # CONTROLS 2:  Fetch values from widgets
-  def collect_values (self) :
+  def collect_values(self):
     if self.settings.enable_collect_values:
       self.settings.zoom_level = self.zoom_ctrl.GetSelection()
       self.settings.brightness = self.brightness_ctrl.GetValue()
@@ -174,7 +174,7 @@ class SpotSettingsPanel (SettingsPanel) :
       self.settings.show_max_pix = self.max_pix.GetValue()
       self.settings.show_all_pix = self.all_pix.GetValue()
 
-  def OnUpdateCM (self, event) :
+  def OnUpdateCM(self, event):
     self.collect_values()
     self.GetParent().GetParent().horizons_phil.distl.minimum_spot_area = self.minspotarea_ctrl.GetPhilValue()
     self.GetParent().GetParent().update_settings(layout=False)
