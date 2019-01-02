@@ -255,5 +255,5 @@ def save_image(command_line, imgpath, scan, raw_data, distance, pixel_size, wave
 
   easy_pickle.dump(destpath, data)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

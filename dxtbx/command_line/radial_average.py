@@ -52,9 +52,9 @@ master_phil = libtbx.phil.parse("""
     .type = int
 """)
 
-def distance (a,b): return math.sqrt((math.pow(b[0]-a[0],2)+math.pow(b[1]-a[1],2)))
+def distance(a,b): return math.sqrt((math.pow(b[0]-a[0],2)+math.pow(b[1]-a[1],2)))
 
-def run (args, imageset = None):
+def run(args, imageset = None):
   from xfel import radial_average
   from scitbx.array_family import flex
   import os, sys
@@ -261,5 +261,5 @@ def run (args, imageset = None):
 
   return xvals, results
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])
