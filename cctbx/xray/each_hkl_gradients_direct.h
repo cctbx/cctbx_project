@@ -136,9 +136,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
         std::size_t n_parameters=0)
       {
         SCITBX_ASSERT(scattering_type_registry.size()<=1);
-        // The purpose of this class is to compute the Miller arrays giving 
+        // The purpose of this class is to compute the Miller arrays giving
         // d(F_calc[H])/d(parameter), where parameter is e.g. fprime or fdoubleprime.
-        // Therefore, it only makes sense to consider scatterer lists where all the 
+        // Therefore, it only makes sense to consider scatterer lists where all the
         // sites are considered to be of the same chemical type, such as all methionine sulfurs, etc.
         math::cos_sin_exact<float_type> cos_sin;
         compute(cos_sin, unit_cell, space_group, miller_indices,

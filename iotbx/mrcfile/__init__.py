@@ -36,7 +36,7 @@ class map_reader(utils):
 
   def __init__(self, file_name=None,
      internal_standard_order=INTERNAL_STANDARD_ORDER,
-     header_only=False, 
+     header_only=False,
      ignore_missing_machine_stamp=True,
      print_warning_messages=False,
      ignore_all_errors=False,
@@ -544,4 +544,3 @@ def subtract_list(list_a,list_b):
   for a,b in zip(list_a,list_b):
     new_list.append(a-b)
   return new_list
-
