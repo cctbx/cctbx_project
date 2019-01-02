@@ -7,7 +7,7 @@ import wx
 import os
 import sys
 
-class IntegrationTable (controls.ListBase):
+class IntegrationTable(controls.ListBase):
   def __init__(self, *args, **kwds):
     kwds = dict(kwds)
     kwds['style'] = wx.LC_REPORT|wx.LC_VIRTUAL|wx.LC_SINGLE_SEL
@@ -25,7 +25,7 @@ class IntegrationTable (controls.ListBase):
     self.dataSource = ResultData(results)
     self.RefreshAllItems()
 
-class ResolutionBinTable (controls.ListBase):
+class ResolutionBinTable(controls.ListBase):
   def __init__(self, *args, **kwds):
     kwds = dict(kwds)
     kwds['style'] = wx.LC_REPORT|wx.LC_VIRTUAL|wx.LC_SINGLE_SEL
@@ -42,7 +42,7 @@ class ResolutionBinTable (controls.ListBase):
     self.dataSource = BinData(table)
     self.RefreshAllItems()
 
-class IntegrationPanel (wx.Panel):
+class IntegrationPanel(wx.Panel):
   def __init__(self, *args, **kwds):
     self.result = None
     wx.Panel.__init__(self, *args, **kwds)
@@ -125,7 +125,7 @@ class IntegrationPanel (wx.Panel):
     if (code == wx.WXK_ENTER):
       self.OnView(None)
 
-class ResultsFrame (wx.Frame):
+class ResultsFrame(wx.Frame):
   def __init__(self, *args, **kwds):
     kwds['style'] = wx.DEFAULT_FRAME_STYLE
     wx.Frame.__init__(self, *args, **kwds)

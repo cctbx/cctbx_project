@@ -9,7 +9,7 @@ import os
 
 RSTBX_SELECT_IMAGE_IDS = 1
 
-class SelectDatasetPanelMixin (object):
+class SelectDatasetPanelMixin(object):
   def draw_dataset_controls(self, sizer=None, pick_frames=True):
     if (sizer is None):
       sizer = self.GetSizer()
@@ -83,7 +83,7 @@ class SelectDatasetPanelMixin (object):
   def OnChooseDataset(self, event):
     print self.stack_ctrl.GetSelection()
 
-class SelectDatasetDialog (wx.Dialog, SelectDatasetPanelMixin):
+class SelectDatasetDialog(wx.Dialog, SelectDatasetPanelMixin):
   def __init__(self, *args, **kwds):
     self._datasets = []
     style = wx.CAPTION

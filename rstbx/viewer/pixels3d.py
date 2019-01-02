@@ -65,7 +65,7 @@ def glbox(xyz1, xyz2):
   glVertex3f(x2, y1, z2)
   glEnd()
 
-class pixel_viewer_3d (wx_viewer.wxGLWindow):
+class pixel_viewer_3d(wx_viewer.wxGLWindow):
   def __init__(self, *args, **kwds):
     wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
     self.SetSize((400,400))
@@ -188,7 +188,7 @@ class pixel_viewer_3d (wx_viewer.wxGLWindow):
         glColor3f(R/255., G/255., B/255.)
         glbox((x,y,0),(x+1,y+1,z))
 
-class pixel_viewer_3d_frame (wx.MiniFrame):
+class pixel_viewer_3d_frame(wx.MiniFrame):
   def __init__(self, *args, **kwds):
     wx.MiniFrame.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)

@@ -9,7 +9,7 @@ from rstbx.viewer import screen_params
 import wx
 user_callback = None
 
-class XrayView (wx.Panel):
+class XrayView(wx.Panel):
   def __init__(self, *args, **kwds):
     self._img = None
     super(XrayView, self).__init__(*args, **kwds)
@@ -342,7 +342,7 @@ class XrayView (wx.Panel):
 ########################################################################
 # AUXILARY CLASSES: THUMBNAIL AND ZOOM
 #
-class ThumbnailView (XrayView):
+class ThumbnailView(XrayView):
   def __init__(self, *args, **kwds):
     XrayView.__init__(self, *args, **kwds)
     self.flag_always_show_predictions = True
@@ -375,8 +375,8 @@ class ThumbnailView (XrayView):
     self.Refresh()
     self.GetParent().refresh_main()
 
-#class ZoomView (wx.Panel):
-class ZoomView (XrayView):
+#class ZoomView(wx.Panel):
+class ZoomView(XrayView):
   def __init__(self, *args, **kwds):
     super(ZoomView, self).__init__(*args, **kwds)
     self.SetSize((400,400))
