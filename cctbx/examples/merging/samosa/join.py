@@ -21,7 +21,7 @@ from xfel.command_line.cxi_merge import get_observations
 from xfel.command_line.cxi_merge import frame_data, null_data
 from xfel.command_line.cxi_merge import consistent_set_and_model
 
-class unit_cell_distribution (object):
+class unit_cell_distribution(object):
   """
   Container for collecting unit cell edge length statistics - for frames
   included in the final dataset.
@@ -78,7 +78,7 @@ class unit_cell_distribution (object):
 
 #-----------------------------------------------------------------------
 from xfel.command_line.cxi_merge import scaling_manager as scaling_manager_base
-class scaling_manager (scaling_manager_base):
+class scaling_manager(scaling_manager_base):
   def __init__(self, miller_set, i_model, params, log=None):
     scaling_manager_base.__init__(self, miller_set, i_model, params, log)
 
@@ -718,7 +718,7 @@ def run(args):
 
 from xfel.command_line.cxi_merge import show_overall_observations
 
-class scaling_result (group_args):
+class scaling_result(group_args):
   """
   Container for any objects that might need to be saved for future use (e.g.
   in a GUI).  Must be pickle-able!
@@ -735,7 +735,7 @@ def plot_overall_completeness(completeness):
   plt.show()
 
 from xfel.command_line.cxi_merge import plot_statistics as plot_base
-class plot_statistics (plot_base):
+class plot_statistics(plot_base):
   """
   Container for assorted histograms of frame statistics.  The resolution bin
   plots are stored separately, since they can be displayed using the loggraph

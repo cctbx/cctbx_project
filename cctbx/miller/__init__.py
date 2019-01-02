@@ -5870,7 +5870,7 @@ def compute_cc_one_half(unmerged, n_trials=1, return_n_refl=False):
     return cc_one_half, data_1.size()
   return cc_one_half
 
-class systematic_absences_info (object):
+class systematic_absences_info(object):
   """
   Container for information about possible systematically absent reflections in
   the array, trying both the current space group and all intensity-equivalent

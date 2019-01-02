@@ -1048,7 +1048,7 @@ def ccv(map_1, map_2, modified, centered, cutoff=None, n_bins=10000):
     return flex.linear_correlation(x = map_1.as_1d(), y = map_2.as_1d(),
       subtract_mean = centered).coefficient()
 
-class spherical_variance_around_point (object):
+class spherical_variance_around_point(object):
   def __init__(self,
       real_map,
       unit_cell,

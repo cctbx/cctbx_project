@@ -28,7 +28,7 @@ def generate_systematic_absences(array,
       #niggli_cell().expand_to_p1()
   return absence_array
 
-class scene (object):
+class scene(object):
   """
   Data for visualizing a Miller array graphically, either as a 3D view or
   a 2D zone of reciprocal space.  Currently used in phenix.data_viewer, but
@@ -353,7 +353,7 @@ class scene (object):
       value = self.data[k]
     return (hkl, d_min, value)
 
-class render_2d (object):
+class render_2d(object):
   def __init__(self, scene, settings):
     self.scene = scene
     self.settings = settings
