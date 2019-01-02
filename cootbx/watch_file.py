@@ -4,7 +4,7 @@ import os.path
 
 from libtbx.utils import to_str
 
-class watch_model (object):
+class watch_model(object):
   """
   Simple filesystem-only automatic loader for PDB files.  Once invoked with
   the specified file name, it will inspect the file mtime at regular intervals
@@ -30,7 +30,7 @@ class watch_model (object):
         self.last_mtime = file_mtime
 
 
-class watch_model_and_maps (object):
+class watch_model_and_maps(object):
   """
   Simple filesystem-only automatic loader for PDB and MTZ map coefficient
   files.  Identical to the watch_model class in most respects.

@@ -91,7 +91,7 @@ def start_coot_and_wait(
 
 #-----------------------------------------------------------------------
 # Coot side
-class manager (object):
+class manager(object):
   def __init__(self, pdb_file, map_file, needs_rebuild=False):
     self.file_name = pdb_file
     self.needs_rebuild = needs_rebuild

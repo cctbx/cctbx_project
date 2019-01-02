@@ -23,7 +23,7 @@ try :
 except Exception, e :
   print "Could not import coot_python module!"
   print "Coot GUI extensions will be disabled."
-  class empty (object):
+  class empty(object):
     def main_menubar(self):
       return None
     def main_toolbar(self):
@@ -33,7 +33,7 @@ except Exception, e :
 def coot_startup():
   gui = coot_interface()
 
-class coot_interface (object):
+class coot_interface(object):
   """
   Class for managing communications, including a toolbar button to toggle the
   XML-RPC connection (which doesn't actually change the socket connection,
@@ -101,7 +101,7 @@ class coot_interface (object):
       clear_and_update_molecule_from_file(self.current_imol,
         pdb_file)
 
-class coot_xmlrpc_server (SimpleXMLRPCServer.SimpleXMLRPCServer):
+class coot_xmlrpc_server(SimpleXMLRPCServer.SimpleXMLRPCServer):
   """
   Replacement for the SimpleXMLRPCServer class, which can call methods
   defined in multiple places.
