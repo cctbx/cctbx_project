@@ -40,7 +40,7 @@ def clean_up():
 # scitbx.fftpack compatibility API
 # XXX a smarter way to do this would be to set up the plan and cache it -
 # however, it isn't clear whether this would save us any time in practice
-class complex_to_complex_3d (object):
+class complex_to_complex_3d(object):
   def __init__(self, n_complex):
     self.n_complex = n_complex
 
@@ -54,7 +54,7 @@ class complex_to_complex_3d (object):
       data=data,
       direction=1)
 
-class real_to_complex_3d (object):
+class real_to_complex_3d(object):
   def __init__(self, n_real):
     self.n_real = n_real
 
