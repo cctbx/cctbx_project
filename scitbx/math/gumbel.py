@@ -16,6 +16,17 @@ from __future__ import division
 #  pp = result = probability you would have gotten a higher score than this
 #   by chance.
 
+# for small values, calculate directly
+
+def p_of_none_greater(z,n):
+  from scitbx.math import erf
+  x=z/(2**0.5)
+  p_one_greater=0.5*(1-erf(x)) # two-tailed prob of Z > z
+  p_not_one_greater=1-p_one_greater # prob Z is not > z
+  p_all_not_greater=p_not_one_greater**n # prob all N not >z
+  p_at_least_one_greater=1-p_all_not_greater # prob at least one >z
+  return p_at_least_one_greater
+
 import math
 
 def exp(x):
@@ -37,18 +48,21 @@ def get_an_bn(n):
   an=1/bn
   return an,bn
 
-def get_prob_more_than_z_n_tries(z,n):
-  return 1-get_prob_less_than_z_n_tries(z,n)
+def get_prob_more_than_z_n_tries(z,n,n_direct=10):
+  return 1-get_prob_less_than_z_n_tries(z,n,n_direct=n_direct)
 
-def get_prob_less_than_z_n_tries(z,n):
- an,bn=get_an_bn(n)
- return cdf_of_x(z,an,bn)
+def get_prob_less_than_z_n_tries(z,n,n_direct=10):
+  if n <= n_direct:
+    return 1-p_of_none_greater(z,n)
+  else:
+   an,bn=get_an_bn(n)
+   return cdf_of_x(z,an,bn)
 
 def exercise():
   from libtbx.test_utils import approx_equal
-  for n in [100,1000,10000,]:
+  for n in [10,100,1000,10000,]:
     an,bn=get_an_bn(n)
-    print "N=",n," expected maximum Z:",bn
+    print "\nN=",n," expected maximum Z:",bn
     last_pdf_u=None
     sum=0
     for i in xrange(1000000):
@@ -56,13 +70,21 @@ def exercise():
       pdf_u=pdf_of_x(x,an,bn)
       sum+=pdf_u*0.0001
       if last_pdf_u and pdf_u < last_pdf_u:
-        print n,x,an,bn,pdf_u,sum,cdf_of_x(x,an,bn),\
-           get_prob_less_than_z_n_tries(x,n)
+        print "N %s Z: %.2f Scale: %.2f Expected: %.2f  " %(
+              n,x,an,bn,)
+        print "P(Z): %.2f CDF(sum): %.2f  CDF(Z): %.2f " %(
+          pdf_u,sum,cdf_of_x(x,an,bn))
+        print "P(z>Z): %.2f  P(z>Z),direct: %.2f" %(
+            get_prob_more_than_z_n_tries(x,n),p_of_none_greater(x,n))
         assert approx_equal(bn,x,eps=0.01)
-        assert approx_equal(
-          cdf_of_x(x,an,bn),
-          get_prob_less_than_z_n_tries(x,n),eps=0.01)
-        assert approx_equal(sum,cdf_of_x(x,an,bn),eps=0.01)
+        if n > 10:
+          assert approx_equal(
+          1-cdf_of_x(x,an,bn),
+          get_prob_more_than_z_n_tries(x,n),eps=0.01)
+        if n >=100:
+          assert approx_equal(sum,cdf_of_x(x,an,bn),eps=0.01)
+          assert approx_equal(get_prob_more_than_z_n_tries(x,n),
+            p_of_none_greater(x,n),eps=0.1)
         break
       last_pdf_u=pdf_u
 
