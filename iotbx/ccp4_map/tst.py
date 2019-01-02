@@ -160,7 +160,7 @@ def exercise(args,use_mrcfile=None):
       assert approx_equal(map_stats.sigma(), m.header_rms)
     print
 
-def exercise_writer (use_mrcfile=None,output_axis_order=[3,2,1]) :
+def exercise_writer(use_mrcfile=None,output_axis_order=[3,2,1]):
   from cctbx import uctbx, sgtbx
   from scitbx.array_family import flex
   mt = flex.mersenne_twister(0)

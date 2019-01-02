@@ -49,9 +49,9 @@ class reader(object):
         self.iobs_column = self.column_index(line)
       elif (line.startswith("!ITEM_SIGMA(IOBS)=")):
         self.sigma_iobs_column = self.column_index(line)
-      elif (line.startswith("!ITEM_ZD=")) :
+      elif (line.startswith("!ITEM_ZD=")):
         self.zd_column = self.column_index(line)
-      elif (line.startswith("!X-RAY_WAVELENGTH=")) :
+      elif (line.startswith("!X-RAY_WAVELENGTH=")):
         self.wavelength = float(get_rhs(line))
       elif (line.startswith("!END_OF_HEADER")):
         break
@@ -71,7 +71,7 @@ class reader(object):
       self.iobs = flex.double()
       self.sigma_iobs = flex.double()
       self.zd = None
-      if (self.zd_column is not None) :
+      if (self.zd_column is not None):
         self.zd = flex.double()
       for line in f:
         if (line.startswith("!END_OF_DATA")):
@@ -82,7 +82,7 @@ class reader(object):
         self.miller_indices.append(h)
         self.iobs.append(float(data[self.iobs_column]))
         self.sigma_iobs.append(float(data[self.sigma_iobs_column]))
-        if (self.zd_column is not None) :
+        if (self.zd_column is not None):
           self.zd.append(float(data[self.zd_column]))
 
   def column_index(self, line):
@@ -95,9 +95,9 @@ class reader(object):
       unit_cell=self.unit_cell,
       space_group_symbol=self.space_group_number)
 
-  def miller_set (self,
+  def miller_set(self,
         crystal_symmetry=None,
-        force_symmetry=False) :
+        force_symmetry=False):
     crystal_symmetry_from_file = self.crystal_symmetry()
     return miller.set(
         crystal_symmetry=crystal_symmetry_from_file.join_symmetry(
@@ -125,7 +125,7 @@ class reader(object):
         crystal_symmetry_from_file=crystal_symmetry_from_file,
         wavelength=self.wavelength))
       .set_observation_type_xray_intensity())
-    if (merge_equivalents) :
+    if (merge_equivalents):
       info = array.info()
       info.merged = True
       array = array.merge_equivalents().array().set_info(info)
@@ -142,10 +142,10 @@ class reader(object):
       merge_equivalents=merge_equivalents,
       base_array_info=base_array_info)]
 
-  def batch_as_miller_array (self,
+  def batch_as_miller_array(self,
         crystal_symmetry=None,
         force_symmetry=False,
-        base_array_info=None) :
+        base_array_info=None):
     if (base_array_info is None):
       base_array_info = miller.array_info(source_type="xds_ascii")
     crystal_symmetry_from_file = self.crystal_symmetry()

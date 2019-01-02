@@ -33,24 +33,24 @@ import urllib2
 import re
 import os
 
-def looks_like_pdb_id (id) :
+def looks_like_pdb_id(id):
   return (len(id) == 4) and (re.match("[1-9]{1}[a-zA-Z0-9]{3}", id))
 
-def validate_pdb_id (id) :
-  if (not looks_like_pdb_id(id)) :
+def validate_pdb_id(id):
+  if (not looks_like_pdb_id(id)):
     raise RuntimeError(("Invalid PDB ID '%s'.  IDs must be exactly four "+
       "alphanumeric characters, starting with a number from 1-9.") % id)
 
-def validate_pdb_ids (id_list) :
+def validate_pdb_ids(id_list):
   for id in id_list :
     try :
       validate_pdb_id(id)
     except RuntimeError, e :
       raise Sorry(str(e))
 
-def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
+def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
     force_download=False,
-    local_cache=None) :
+    local_cache=None):
   """
   Locate and open a data file for the specified PDB ID and format, either in a
   local mirror or online.
@@ -69,17 +69,17 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   if (log is None) : log = null_out()
 
   id = id.lower()
-  if (not force_download) :
-    if (local_cache is not None) and (data_type == "pdb") :
+  if (not force_download):
+    if (local_cache is not None) and (data_type == "pdb"):
       from iotbx.file_reader import guess_file_type
-      if (local_cache is Auto) :
+      if (local_cache is Auto):
         local_cache = os.getcwd()
       cache_files = os.listdir(local_cache)
       for file_name in cache_files :
-        if (len(file_name) > 4) :
+        if (len(file_name) > 4):
           file_id = re.sub("^pdb", "", file_name)[0:4]
-          if (file_id.lower() == id) :
-            if (guess_file_type(file_name) == "pdb") :
+          if (file_id.lower() == id):
+            if (guess_file_type(file_name) == "pdb"):
               file_name = os.path.join(local_cache, file_name)
               print >> log, "Reading from cache directory:"
               print >> log, "  " + file_name
@@ -87,32 +87,32 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
               return f
     # try local mirror for PDB and X-ray data files first, if it exists
     if (data_type == "pdb") and (format == "pdb") and \
-           ("PDB_MIRROR_PDB" in os.environ) :
+           ("PDB_MIRROR_PDB" in os.environ):
       subdir = os.path.join(os.environ["PDB_MIRROR_PDB"], id[1:3])
-      if (os.path.isdir(subdir)) :
+      if (os.path.isdir(subdir)):
         file_name = os.path.join(subdir, "pdb%s.ent.gz" % id)
-        if (os.path.isfile(file_name)) :
+        if (os.path.isfile(file_name)):
           print >> log, "Reading from local mirror:"
           print >> log, "  " + file_name
           f = smart_open.for_reading(file_name)
           return f
     if (data_type == "pdb") and (format == "cif") and \
-           ("PDB_MIRROR_MMCIF" in os.environ) :
+           ("PDB_MIRROR_MMCIF" in os.environ):
       subdir = os.path.join(os.environ["PDB_MIRROR_MMCIF"], id[1:3])
-      if (os.path.isdir(subdir)) :
+      if (os.path.isdir(subdir)):
         file_name = os.path.join(subdir, "%s.cif.gz" % id)
-        if (os.path.isfile(file_name)) :
+        if (os.path.isfile(file_name)):
           print >> log, "Reading from local mirror:"
           print >> log, "  " + file_name
           f = smart_open.for_reading(file_name)
           return f
     if ((data_type == "xray") and
-        ("PDB_MIRROR_STRUCTURE_FACTORS" in os.environ)) :
+        ("PDB_MIRROR_STRUCTURE_FACTORS" in os.environ)):
       sf_dir = os.environ["PDB_MIRROR_STRUCTURE_FACTORS"]
       subdir = os.path.join(sf_dir, id[1:3])
-      if (os.path.isdir(subdir)) :
+      if (os.path.isdir(subdir)):
         file_name = os.path.join(subdir, "r%ssf.ent.gz" % id)
-        if (os.path.isfile(file_name)) :
+        if (os.path.isfile(file_name)):
           print >> log, "Reading from local mirror:"
           print >> log, "  " + file_name
           f = smart_open.for_reading(file_name)
@@ -120,30 +120,30 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   # No mirror found (or out of date), default to HTTP download
   url = None
   compressed = False
-  if (mirror == "rcsb") :
+  if (mirror == "rcsb"):
     url_base = 'https://files.rcsb.org/download/'
     pdb_ext = ".pdb"
     sf_prefix = ""
     sf_ext = "-sf.cif"
-  elif (mirror == "pdbe") :
+  elif (mirror == "pdbe"):
     url_base = "https://www.ebi.ac.uk/pdbe-srv/view/files/"
     pdb_ext = ".ent"
     sf_prefix = "r"
     sf_ext = "sf.ent"
-  elif (mirror == "pdbj") :
+  elif (mirror == "pdbj"):
     url_base = "ftp://ftp.pdbj.org/pub/pdb/data/structures/divided/"
-    if (data_type == "pdb") :
+    if (data_type == "pdb"):
       compressed = True
-      if (format == "pdb") :
+      if (format == "pdb"):
         url = url_base + "pdb/%s/pdb%s.ent.gz" % (id[1:3], id)
-      elif (format == "cif") :
+      elif (format == "cif"):
         url = url_base + "mmCIF/%s/%s.cif.gz" % (id[1:3], id)
-    elif (data_type == "xray") :
+    elif (data_type == "xray"):
       compressed = True
       url = url_base + "structure_factors/%s/r%ssf.ent.gz" % (id[1:3], id)
-    elif (data_type in ["fasta", "seq"]) :
+    elif (data_type in ["fasta", "seq"]):
       url = "https://pdbj.org/rest/downloadPDBfile?format=fasta&id=%s" % id
-    if (url is None) and (data_type != "fasta") :
+    if (url is None) and (data_type != "fasta"):
       raise Sorry("Can't determine PDBj download URL for this data/format "+
         "combination.")
   elif mirror == "pdb-redo":
@@ -159,7 +159,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
         url = url_base + "{id}/{id}{format}".format(id=id, format=cif_ext)
     elif (data_type == 'xray'):
       url = url_base + "{id}/{id}{format}".format(id=id, format=sf_ext)
-  if (data_type in ["fasta", "seq"]) :
+  if (data_type in ["fasta", "seq"]):
     # XXX the RCSB doesn't appear to have a simple URL for FASTA files
     if (url is None) : # TODO PDBe equivalent doesn't exist?
       url = "https://www.rcsb.org/pdb/download/downloadFastaFiles.do?structureIdList=%s&compressionType=uncompressed" % id
@@ -171,7 +171,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       else :
         raise
   elif data_type == "xray" :
-    if (url is None) :
+    if (url is None):
       url = url_base + sf_prefix + id + sf_ext
     try :
       data = libtbx.utils.urlopen(url)
@@ -181,7 +181,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       else :
         raise
   else :
-    if (url is None) :
+    if (url is None):
       if format == "pdb" :
         url = url_base + id + pdb_ext
       else :
@@ -193,7 +193,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
         raise RuntimeError("Couldn't download model for %s." % id)
       else :
         raise
-  if (compressed) :
+  if (compressed):
     try :
       import gzip
     except ImportError :
@@ -205,8 +205,8 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       return gzip.GzipFile(fileobj=StringIO(data.read()))
   return data
 
-def load_pdb_structure (id, format="pdb", allow_unknowns=False,
-    local_cache=None) :
+def load_pdb_structure(id, format="pdb", allow_unknowns=False,
+    local_cache=None):
   """
   Simple utility method to load the PDB hierarchy and xray structure objects
   directly (without intermediate files).
@@ -222,7 +222,7 @@ def load_pdb_structure (id, format="pdb", allow_unknowns=False,
     enable_scattering_type_unknown=allow_unknowns)
   return hierarchy, xray_structure
 
-def get_pdb (id, data_type, mirror, log, quiet=False, format="pdb") :
+def get_pdb(id, data_type, mirror, log, quiet=False, format="pdb"):
   """
   Frontend for fetch(...), writes resulting data to disk.
   """
@@ -236,7 +236,7 @@ def get_pdb (id, data_type, mirror, log, quiet=False, format="pdb") :
     open(file_name, "w").write(data.read())
     if not quiet :
       print >> log, "Structure factors saved to %s" % file_name
-  elif (data_type in ["fasta", "seq"]) :
+  elif (data_type in ["fasta", "seq"]):
     file_name = os.path.join(os.getcwd(), "%s.fa" % id)
     open(file_name, "w").write(data.read())
     if not quiet :
@@ -248,9 +248,9 @@ def get_pdb (id, data_type, mirror, log, quiet=False, format="pdb") :
       print >> log, "Model saved to %s" % file_name
   return file_name
 
-def get_chemical_components_cif (code, return_none_if_already_present=False) :
+def get_chemical_components_cif(code, return_none_if_already_present=False):
   assert (code is not None)
-  if (len(code) == 0) or (len(code) > 3) :
+  if (len(code) == 0) or (len(code) > 3):
     raise Sorry(("Bad code '%s': PDB residue codes must be at least 1 but no "+
       "more than 3 characters.") % code)
   first_char = code[0].lower()
@@ -259,7 +259,7 @@ def get_chemical_components_cif (code, return_none_if_already_present=False) :
     relative_path="chem_data/chemical_components/%s/data_%s.cif" % (first_char,
       code),
     test=os.path.isfile)
-  if (chem_comp_cif is None) :
+  if (chem_comp_cif is None):
     url = "http://www.rcsb.org/pdb/files/ligand/%s.cif" % code
     try :
       data = libtbx.utils.urlopen(url)
@@ -272,15 +272,15 @@ def get_chemical_components_cif (code, return_none_if_already_present=False) :
       file_name = "%s.cif" % code
       open(file_name, "w").write(data.read())
       return file_name
-  elif (not return_none_if_already_present) :
+  elif (not return_none_if_already_present):
     return chem_comp_cif
   return None
 
 # TODO backwards compatibility, remove ASAP
-def get_ncbi_pdb_blast (*args, **kwds) :
+def get_ncbi_pdb_blast(*args, **kwds):
   import iotbx.bioinformatics.structure
   return iotbx.bioinformatics.structure.get_ncbi_pdb_blast(*args, **kwds)
 
-def get_ebi_pdb_wublast (*args, **kwds) :
+def get_ebi_pdb_wublast(*args, **kwds):
   import iotbx.bioinformatics.structure
   return iotbx.bioinformatics.structure.get_ebi_pdb_wublast(*args, **kwds)

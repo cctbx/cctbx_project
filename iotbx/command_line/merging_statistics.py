@@ -45,24 +45,24 @@ json {
 """ % iotbx.merging_statistics.merging_params_str
 
 # Hack for handling SHELX files
-class cmdline_processor (iotbx.phil.process_command_line_with_files) :
-  def process_other (self, arg) :
-    if ("=" in arg) :
+class cmdline_processor (iotbx.phil.process_command_line_with_files):
+  def process_other(self, arg):
+    if ("=" in arg):
       fields = arg.split("=")
       if (len(fields) == 2) and (fields[1] in ["amplitudes", "intensities",
-          "hklf3", "hklf4"]) :
+          "hklf3", "hklf4"]):
         from iotbx import reflection_file_reader
         hkl_in = reflection_file_reader.any_reflection_file(arg)
-        if (hkl_in.file_type() is not None) :
+        if (hkl_in.file_type() is not None):
           return iotbx.phil.parse("%s=%s" % (self.reflection_file_def,
             arg))
     return False
 
-def run (args, out=None, master_params=None,
-    assume_shelx_observation_type_is="intensities") :
+def run(args, out=None, master_params=None,
+    assume_shelx_observation_type_is="intensities"):
   if (out is None) : out = sys.stdout
   import iotbx.phil
-  if (master_params is None) :
+  if (master_params is None):
     master_params = iotbx.phil.parse(master_phil, process_includes=True)
   cmdline = cmdline_processor(
     args=args,
@@ -89,28 +89,28 @@ already be on a common scale, but with individual observations unmerged.
   params.labels = i_obs.info().label_string()
   validate_params(params)
   symm = sg = uc = None
-  if (params.symmetry_file is not None) :
+  if (params.symmetry_file is not None):
     from iotbx import crystal_symmetry_from_any
     symm = crystal_symmetry_from_any.extract_from(
       file_name=params.symmetry_file)
-    if (symm is None) :
+    if (symm is None):
       raise Sorry("No symmetry records found in %s." % params.symmetry_file)
   else :
     sg = i_obs.space_group()
-    if (params.space_group is not None) :
+    if (params.space_group is not None):
       sg = params.space_group.group()
-    elif (sg is None) :
+    elif (sg is None):
       raise Sorry("Missing space group information.")
     uc = i_obs.unit_cell()
-    if (params.unit_cell is not None) :
+    if (params.unit_cell is not None):
       uc = params.unit_cell
-    elif (uc is None) :
+    elif (uc is None):
       raise Sorry("Missing unit cell information.")
     from cctbx import crystal
     symm = crystal.symmetry(
       space_group=sg,
       unit_cell=uc)
-  if (i_obs.sigmas() is None) :
+  if (i_obs.sigmas() is None):
     raise Sorry("Sigma(I) values required for this application.")
   result = iotbx.merging_statistics.dataset_statistics(
     i_obs=i_obs,
@@ -130,9 +130,9 @@ already be on a common scale, but with individual observations unmerged.
     cc_one_half_method=params.cc_one_half_method,
     log=out)
   result.show(out=out)
-  if (getattr(params, "loggraph", False)) :
+  if (getattr(params, "loggraph", False)):
     result.show_loggraph(out=out)
-  if (params.estimate_cutoffs) :
+  if (params.estimate_cutoffs):
     result.show_estimated_cutoffs(out=out)
   if params.json.file_name is not None:
     result.as_json(file_name=params.json.file_name, indent=params.json.indent)
@@ -144,30 +144,30 @@ already be on a common scale, but with individual observations unmerged.
 
 #-----------------------------------------------------------------------
 # Phenix GUI stuff
-def validate_params (params) :
-  if (params.file_name is None) :
+def validate_params(params):
+  if (params.file_name is None):
     raise Sorry("No data file specified!")
-  elif (params.labels is None) :
+  elif (params.labels is None):
     raise Sorry("No data labels selected!")
-  if (not None in [params.high_resolution, params.low_resolution]) :
-    if (params.low_resolution < params.high_resolution) :
+  if (not None in [params.high_resolution, params.low_resolution]):
+    if (params.low_resolution < params.high_resolution):
       raise Sorry("Resolution limits flipped - high resolution must be a "+
         "smaller number than low resolution.")
-  elif (params.extend_d_max_min) :
+  elif (params.extend_d_max_min):
     raise Sorry("High and low resolution limits must be explicitly given "+
       "when calculating statistics relative to user-defined resolution "+
       "range (extend_d_max_min=True).")
   return True
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher (runtime_utils.target_with_save_result):
+  def run(self):
     return run(args=list(self.args),
                out=sys.stdout,
                assume_shelx_observation_type_is="intensities")
 
-def finish_job (result) :
+def finish_job(result):
   stats = []
-  if (result is not None) :
+  if (result is not None):
     stats = [
       ("High resolution", format_value("%.3g", result.overall.d_min)),
       ("Redundancy", format_value("%.1f", result.overall.mean_redundancy)),
@@ -182,5 +182,5 @@ def finish_job (result) :
     ]
   return ([], stats)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

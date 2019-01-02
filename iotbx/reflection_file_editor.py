@@ -264,20 +264,20 @@ mtz_file
   }
 }""", process_includes=True)
 
-class array_input (slots_getstate_setstate) :
+class array_input (slots_getstate_setstate):
   __slots__ = ["miller_arrays", "file_names", "array_types"]
-  def __init__ (self, params, input_files=None) :
+  def __init__(self, params, input_files=None):
     from iotbx import file_reader
-    if (input_files is None) :
+    if (input_files is None):
       input_files = {}
     self.miller_arrays = []
     self.file_names = []
     self.array_types = []
-    for i_array, array_params in enumerate(params.mtz_file.miller_array) :
-      if (array_params.file_name is None) :
+    for i_array, array_params in enumerate(params.mtz_file.miller_array):
+      if (array_params.file_name is None):
         raise Sorry("Missing file name for array %d (labels=%s)" %
           (i_array+1, str(array_params.labels)))
-      elif (not os.path.isfile(array_params.file_name)) :
+      elif (not os.path.isfile(array_params.file_name)):
         raise Sorry("The path '%s' does not exist or is not a file." %
           array_params.file_name)
       input_file = input_files.get(array_params.file_name)
@@ -290,7 +290,7 @@ class array_input (slots_getstate_setstate) :
         input_file.assert_file_type("hkl")
         input_files[input_file.file_name] = input_file
       found = False
-      for miller_array in input_file.file_object.as_miller_arrays() :
+      for miller_array in input_file.file_object.as_miller_arrays():
         array_info = miller_array.info()
         label_string = array_info.label_string()
         if label_string == array_params.labels :
@@ -307,25 +307,25 @@ class array_input (slots_getstate_setstate) :
         raise Sorry("Couldn't find the Miller array %s in file %s!" %
                     (array_params.labels, array_params.file_name))
 
-  def resolve_unit_cell (self) :
+  def resolve_unit_cell(self):
     unit_cells = []
     for any_array_type in [False, True] :
       for array in self.miller_arrays :
-        if array.is_experimental_data() :
+        if array.is_experimental_data():
           cs = array.crystal_symmetry()
-          if (cs is not None) :
+          if (cs is not None):
             uc = cs.unit_cell()
             unit_cells.append(uc)
-      if (len(unit_cells) > 0) :
+      if (len(unit_cells) > 0):
         break
-    if (len(unit_cells) == 0) :
+    if (len(unit_cells) == 0):
       raise Sorry("No unit cell found in inputs - please specify explicitly.")
     return unit_cells
 
-class process_arrays (object) :
-  def __init__ (self, params, input_files=None, inputs_object=None,
-      log=sys.stderr, accumulation_callback=None, symmetry_callback=None) :
-    if (input_files is None) :
+class process_arrays (object):
+  def __init__(self, params, input_files=None, inputs_object=None,
+      log=sys.stderr, accumulation_callback=None, symmetry_callback=None):
+    if (input_files is None):
       input_files = {}
     adopt_init_args(self, locals())
     validate_params(params)
@@ -337,14 +337,14 @@ class process_arrays (object) :
 
     #-------------------------------------------------------------------
     # COLLECT ARRAYS
-    if (inputs_object is None) :
+    if (inputs_object is None):
       inputs_object = array_input(params=params, input_files=input_files)
     miller_arrays = inputs_object.miller_arrays
     file_names = inputs_object.file_names
     array_types = inputs_object.array_types
     if params.show_arrays :
       shown_files = []
-      for file_name, miller_array in zip(file_names, miller_arrays) :
+      for file_name, miller_array in zip(file_names, miller_arrays):
         if not file_name in shown_files :
           print >> log, "%s:" % file_name
           shown_files.append(file_name)
@@ -358,32 +358,32 @@ class process_arrays (object) :
     self.final_arrays = []
     self.mtz_dataset = None
     self.wavelength = params.mtz_file.wavelength
-    if (self.wavelength is None) :
+    if (self.wavelength is None):
       file_wavelengths = {}
       for miller_array in miller_arrays :
         if (not miller_array.is_xray_data_array()) : continue
         info = miller_array.info()
-        if (info is not None) :
-          if (not info.source in file_wavelengths) :
-            if (info.wavelength is not None) :
+        if (info is not None):
+          if (not info.source in file_wavelengths):
+            if (info.wavelength is not None):
               try :
                 file_wavelengths[info.source] = float(info.wavelength)
               except ValueError, e :
                 print >> log, "Warning: bad wavelength '%s'" % info.wavelength
       all_wavelengths = set([ w for f, w in file_wavelengths.iteritems() ])
-      if (len(all_wavelengths) == 1) :
+      if (len(all_wavelengths) == 1):
         self.wavelength = all_wavelengths.pop()
-      elif (len(all_wavelengths) > 1) :
+      elif (len(all_wavelengths) > 1):
         filtered_wavelengths = set([])
         # MTZ files typically have the wavelength set to 1.0 if it was not
         # previously specified, so we ignore these.
-        for file_name, wavelength in file_wavelengths.iteritems() :
-          if (file_name.endswith(".mtz") and wavelength in [0.0, 1.0]) :
+        for file_name, wavelength in file_wavelengths.iteritems():
+          if (file_name.endswith(".mtz") and wavelength in [0.0, 1.0]):
             continue
           filtered_wavelengths.add(wavelength)
-        if (len(filtered_wavelengths) == 1) :
+        if (len(filtered_wavelengths) == 1):
           self.wavelength = filtered_wavelengths.pop()
-        elif (len(filtered_wavelengths) > 1) :
+        elif (len(filtered_wavelengths) > 1):
           raise Sorry(("Multiple wavelengths present in input experimental "+
             "data arrays: %s.  Please specify the wavelength parameter "+
             "explicitly.") %
@@ -394,7 +394,7 @@ class process_arrays (object) :
     change_symmetry = change_point_group = False
     input_space_group = params.mtz_file.crystal_symmetry.space_group
     output_space_group = params.mtz_file.crystal_symmetry.output_space_group
-    if (output_space_group is not None) :
+    if (output_space_group is not None):
       output_sg = params.mtz_file.crystal_symmetry.output_space_group.group()
       input_point_group = input_space_group.group().build_derived_point_group()
       output_point_group = \
@@ -402,7 +402,7 @@ class process_arrays (object) :
       pg_number_in = input_point_group.type().number()
       pg_number_out = output_point_group.type().number()
       change_symmetry = True
-      if (pg_number_out != pg_number_in) :
+      if (pg_number_out != pg_number_in):
         change_point_group = True
         print >> log, "Will expand to P1 symmetry before merging."
     else :
@@ -420,7 +420,7 @@ class process_arrays (object) :
       space_group_info=params.mtz_file.crystal_symmetry.space_group,
       assert_is_compatible_unit_cell=False,
       force_compatible_unit_cell=False)
-    if (not input_symm.is_compatible_unit_cell()) :
+    if (not input_symm.is_compatible_unit_cell()):
       raise Sorry(("Input unit cell %s is incompatible with the specified "+
         "space group (%s).") % (str(params.mtz_file.crystal_symmetry.unit_cell),
           str(params.mtz_file.crystal_symmetry.space_group)))
@@ -430,13 +430,13 @@ class process_arrays (object) :
       space_group=output_sg,
       assert_is_compatible_unit_cell=False,
       force_compatible_unit_cell=False)
-    if (not output_symm.is_compatible_unit_cell()) :
+    if (not output_symm.is_compatible_unit_cell()):
       raise Sorry(("Output unit cell %s is incompatible with the specified "+
         "space group (%s).") % (str(output_uc), str(output_sg)))
 
     # Resolution limits
     (d_max, d_min) = get_best_resolution(miller_arrays, input_symm)
-    if (d_max is None) and (params.mtz_file.d_max is None) :
+    if (d_max is None) and (params.mtz_file.d_max is None):
       raise Sorry("No low-resolution cutoff could be found in the "+
         "parameters or input file(s); you need to explicitly set this value "+
         "for the program to run.")
@@ -448,9 +448,9 @@ class process_arrays (object) :
     # XXX resolution limits are used even if outside the range used by the
     # input data, in case we want to generate extra R-free flags for future
     # use
-    if (params.mtz_file.d_max is not None) :
+    if (params.mtz_file.d_max is not None):
       d_max = params.mtz_file.d_max
-    if (params.mtz_file.d_min is not None) :
+    if (params.mtz_file.d_min is not None):
       d_min = params.mtz_file.d_min
     if r_free_params.random_seed is not None :
       random.seed(r_free_params.random_seed)
@@ -461,7 +461,7 @@ class process_arrays (object) :
     i = 0
     r_free_arrays = []
     for (array_params, file_name, miller_array) in \
-        zip(params.mtz_file.miller_array, file_names, miller_arrays) :
+        zip(params.mtz_file.miller_array, file_names, miller_arrays):
       info = miller_array.info()
       array_name = "%s:%s" % (file_name, array_params.labels)
 
@@ -471,13 +471,13 @@ class process_arrays (object) :
       array_uc = miller_array.unit_cell()
       ignore_sg = params.mtz_file.crystal_symmetry.disable_space_group_check
       ignore_uc = params.mtz_file.crystal_symmetry.disable_unit_cell_check
-      if (array_sg is not None) and (not ignore_sg) :
+      if (array_sg is not None) and (not ignore_sg):
         if array_sg.build_derived_point_group() != derived_sg :
           raise Sorry(("The point group for the Miller array %s (%s) does "+
             "not match the point group of the overall space group (%s).") %
             (array_name, str(array_sg), str(input_symm.space_group())))
-      if (array_uc is not None) and (not ignore_uc) :
-        if not array_uc.is_similar_to(input_symm.unit_cell()) :
+      if (array_uc is not None) and (not ignore_uc):
+        if not array_uc.is_similar_to(input_symm.unit_cell()):
           raise Sorry(("The unit cell for the Miller array %s (%s) is "+
             "significantly different than the output unit cell (%s).  You "+
             "can ignore this by setting disable_unit_cell_check=True (in "+
@@ -489,11 +489,11 @@ class process_arrays (object) :
         miller_array = miller_array.expand_to_p1()
       elif change_symmetry :
         sg_number = miller_array.space_group_info().type().number()
-        if (change_point_group) and (sg_number != 1) :
+        if (change_point_group) and (sg_number != 1):
           miller_array = miller_array.expand_to_p1()
         miller_array = miller_array.customized_copy(
           crystal_symmetry=output_symm)
-      if not miller_array.is_unique_set_under_symmetry() :
+      if not miller_array.is_unique_set_under_symmetry():
         if miller_array.is_integer_array() and not is_rfree_array(miller_array,info):
           raise Sorry(("The data in %s cannot be merged because they are in "+
             "integer format.  If you wish to change symmetry (or the input "+
@@ -531,7 +531,7 @@ class process_arrays (object) :
       output_array = output_array.resolution_filter(
         d_min=params.mtz_file.d_min,
         d_max=params.mtz_file.d_max)
-      if (len(params.mtz_file.exclude_reflection) > 0) :
+      if (len(params.mtz_file.exclude_reflection) > 0):
         for hkl in params.mtz_file.exclude_reflection :
           output_array = output_array.delete_index(hkl)
 
@@ -540,28 +540,28 @@ class process_arrays (object) :
       assert isinstance(output_array, cctbx.miller.array)
       default_label = array_params.column_root_label
       output_labels = array_params.output_labels
-      if (default_label is not None) :
+      if (default_label is not None):
         output_labels = None
       else :
         default_label = 2 * string.uppercase[i]
       column_types = None
       import iotbx.mtz
       default_types = iotbx.mtz.default_column_types(output_array)
-      if (array_types[i] is not None) :
-        if output_array.is_xray_amplitude_array() :
+      if (array_types[i] is not None):
+        if output_array.is_xray_amplitude_array():
           array_types[i] = re.sub("J", "F", array_types[i])
-        elif output_array.is_xray_intensity_array() :
+        elif output_array.is_xray_intensity_array():
           array_types[i] = re.sub("F", "J", array_types[i])
-        if len(default_types) == len(array_types[i]) :
+        if len(default_types) == len(array_types[i]):
           print >> log, "Recovering original column types %s" % array_types[i]
           column_types = array_types[i]
-      if (output_array.data().size() == 0) :
+      if (output_array.data().size() == 0):
         raise Sorry("The array %s:%s ended up empty.  Please check the "+
           "resolution cutoffs to make sure they do not exclude all data "+
           "from the input file.  If you think the parameters were correct, "+
           "this is probably a bug; please contact bugs@phenix-online.org "+
           "with a description of the problem.")
-      if is_rfree_array(output_array, info) :
+      if is_rfree_array(output_array, info):
         r_free_arrays.append((output_array, info, output_labels,
           array_params.column_root_label, file_name))
       else :
@@ -574,16 +574,16 @@ class process_arrays (object) :
           default_label=default_label,
           column_types=column_types,
           out=log)
-        if (output_labels is not None) :
+        if (output_labels is not None):
           for label in output_labels :
             labels.append(label)
             label_files.append(file_name)
         else :
           n_cols = len(default_types)
           if (output_array.anomalous_flag() and
-              not output_array.is_xray_reconstructed_amplitude_array()) :
+              not output_array.is_xray_reconstructed_amplitude_array()):
             n_cols *= 2
-          for k in range(n_cols) :
+          for k in range(n_cols):
             labels.append(None)
             label_files.append(file_name)
         self.final_arrays.append(output_array)
@@ -603,18 +603,18 @@ class process_arrays (object) :
           d_max=d_max+eps)
         # XXX big hack
         missing = combined_set.lone_set(other=complete_set)
-        if (missing.size() > 0) :
+        if (missing.size() > 0):
           complete_set = complete_set.concatenate(other=missing)
-      if (len(self.final_arrays) > 1) :
+      if (len(self.final_arrays) > 1):
         warnings.warn("Multiple Miller arrays are already present in this "+
           "file; the R-free flags will be generated based on the total "+
           "of reflections in all arrays combined.  If you want the fraction "+
           "of test set reflections to be relative to a specific array, you "+
           "should run the editor with that array separately first.",
           UserWarning)
-      if (r_free_params.relative_to_complete_set) :
+      if (r_free_params.relative_to_complete_set):
         combined_set = complete_set
-      elif (combined_set is not None) :
+      elif (combined_set is not None):
         check_and_warn_about_incomplete_r_free_flags(combined_set)
       i = 0
       for (new_array, info, output_labels, root_label, file_name) in \
@@ -627,11 +627,11 @@ class process_arrays (object) :
         flag_scores = get_r_free_flags_scores(miller_arrays=[new_array],
           test_flag_value=r_free_params.old_test_flag_value)
         test_flag_value = flag_scores.test_flag_values[0]
-        if (test_flag_value is None) :
-          if (r_free_params.old_test_flag_value is not None) :
+        if (test_flag_value is None):
+          if (r_free_params.old_test_flag_value is not None):
             test_flag_value = r_free_params.old_test_flag_value
           elif ((r_free_params.warn_if_all_same_value) or
-                (r_free_params.extend)) :
+                (r_free_params.extend)):
             raise Sorry(("The data in %s:%s appear to be R-free flags, but "+
               "a suitable test flag value (usually 1 or 0) could not be "+
               "automatically determined.  This may indicate that the flags "+
@@ -644,7 +644,7 @@ class process_arrays (object) :
               "\"Warn if R-free flags are all the same value\" will skip this "+
               "step, but you will not be able to extend the flags to higher "+
               "resolution.") % (file_name, info.label_string()))
-        if (r_free_params.preserve_input_values) :
+        if (r_free_params.preserve_input_values):
           assert (not r_free_params.remediate_mismatches)
           r_free_flags = new_array
         else :
@@ -653,22 +653,22 @@ class process_arrays (object) :
           r_free_flags = new_array.array(data=new_data)
         r_free_flags = r_free_flags.map_to_asu()
         generate_bijvoet_mates = (array_params.anomalous_data=="anomalous")
-        if not r_free_flags.is_unique_set_under_symmetry() :
+        if not r_free_flags.is_unique_set_under_symmetry():
           r_free_flags = r_free_flags.merge_equivalents().array()
-        if (r_free_flags.anomalous_flag()) :
-          if (r_free_params.remediate_mismatches) :
+        if (r_free_flags.anomalous_flag()):
+          if (r_free_params.remediate_mismatches):
             print >> log, \
               "Remediating any mismatched flags for Friedel mates..."
             r_free_flags = r_free_utils.remediate_mismatches(
               array=r_free_flags,
               log=log)
           r_free_flags = r_free_flags.average_bijvoet_mates()
-          if (output_labels is not None) and (len(output_labels) != 1) :
+          if (output_labels is not None) and (len(output_labels) != 1):
             assert (not combined_set.anomalous_flag())
             # XXX can't do this operation on a miller set - will expand the
             # r-free flags later
             generate_bijvoet_mates = True
-        if (r_free_params.adjust_fraction) :
+        if (r_free_params.adjust_fraction):
           print >> log, "Resizing test set in %s" % array_name
           r_free_as_bool = get_r_free_as_bool(r_free_flags,
             test_flag_value)
@@ -676,7 +676,7 @@ class process_arrays (object) :
             miller_array=r_free_as_bool,
             fraction=r_free_params.fraction,
             log=log)
-        if (r_free_params.extend) :
+        if (r_free_params.extend):
           r_free_flags = r_free_utils.extend_flags(
             r_free_flags=r_free_flags,
             test_flag_value=test_flag_value,
@@ -688,25 +688,25 @@ class process_arrays (object) :
             d_min=d_min,
             log=log)
         output_array = r_free_flags
-        if (generate_bijvoet_mates) :
+        if (generate_bijvoet_mates):
           output_array = output_array.generate_bijvoet_mates()
-        if (len(params.mtz_file.exclude_reflection) > 0) :
+        if (len(params.mtz_file.exclude_reflection) > 0):
           for hkl in params.mtz_file.exclude_reflection :
             output_array = output_array.delete_index(hkl)
-        if (r_free_params.export_for_ccp4) :
+        if (r_free_params.export_for_ccp4):
           print >> log, "%s: converting to CCP4 convention" % array_name
           output_array = export_r_free_flags(
             miller_array=output_array,
             test_flag_value=True)
         default_label = root_label
-        if (default_label is None) :
+        if (default_label is None):
           default_label = "A" + string.uppercase[i+1]
         self.add_array_to_mtz_dataset(
           output_array=output_array,
           default_label=default_label,
           column_types="I",
           out=log)
-        if (output_labels is not None) :
+        if (output_labels is not None):
           validate_output_labels(
             miller_array=output_array,
             array_params=array_params,
@@ -716,7 +716,7 @@ class process_arrays (object) :
             labels.append(label)
             label_files.append(file_name)
         else :
-          if (output_array.anomalous_flag()) :
+          if (output_array.anomalous_flag()):
             labels.extend([None,None])
             label_files.extend([file_name,file_name])
           else :
@@ -728,8 +728,8 @@ class process_arrays (object) :
     #-------------------------------------------------------------------
     # NEW R-FREE ARRAY
     if ((r_free_params.generate and not have_r_free_array) or
-        r_free_params.force_generate) :
-      if (len(self.final_arrays) > 1) :
+        r_free_params.force_generate):
+      if (len(self.final_arrays) > 1):
         warnings.warn("Multiple Miller arrays are already present in this "+
           "file; the R-free flags will be generated based on the total "+
           "of reflections in all arrays combined.  If you want the fraction "+
@@ -741,7 +741,7 @@ class process_arrays (object) :
       complete_set = combined_set.complete_set(
         d_min=d_min-r_free_params.d_eps,
         d_max=d_max+r_free_params.d_eps)
-      if (r_free_params.relative_to_complete_set) :
+      if (r_free_params.relative_to_complete_set):
         combined_set = complete_set
       else :
         check_and_warn_about_incomplete_r_free_flags(combined_set)
@@ -763,7 +763,7 @@ class process_arrays (object) :
           test_flag_value=True)
       else:
         output_array = new_r_free_array
-      if (len(params.mtz_file.exclude_reflection) > 0) :
+      if (len(params.mtz_file.exclude_reflection) > 0):
         for hkl in params.mtz_file.exclude_reflection :
           output_array = output_array.delete_index(hkl)
       self.add_array_to_mtz_dataset(
@@ -780,7 +780,7 @@ class process_arrays (object) :
     mtz_object = self.mtz_dataset.mtz_object()
     self.label_changes = []
     self.mtz_object = mtz_object
-    if not len(labels) == mtz_object.n_columns() :
+    if not len(labels) == mtz_object.n_columns():
       print >> log, "\n".join([ "LABEL: %s" % label for label in labels ])
       self.show(out=log)
       raise Sorry("The number of output labels does not match the final "+
@@ -789,8 +789,8 @@ class process_arrays (object) :
     i = 0
     used = dict([ (label, 0) for label in labels ])
     invalid_chars = re.compile("[^A-Za-z0-9_\-+\(\)]")
-    for column in self.mtz_object.columns() :
-      if (labels[i] is not None) and (column.label() != labels[i]) :
+    for column in self.mtz_object.columns():
+      if (labels[i] is not None) and (column.label() != labels[i]):
         label = labels[i]
         original_label = label
         if invalid_chars.search(label) is not None :
@@ -800,7 +800,7 @@ class process_arrays (object) :
             % label)
         if used[label] > 0 :
           if params.mtz_file.resolve_label_conflicts :
-            if label.endswith("(+)") or label.endswith("(-)") :
+            if label.endswith("(+)") or label.endswith("(-)"):
               label = label[0:-3] + ("_%d" % (used[label]+1)) + label[-3:]
             else :
               label += "_%d" % (used[labels[i]] + 1)
@@ -813,7 +813,7 @@ class process_arrays (object) :
         try :
           column.set_label(label)
         except RuntimeError, e :
-          if ("new_label is used already" in str(e)) :
+          if ("new_label is used already" in str(e)):
             col_names = [ col.label() for col in mtz_object.columns() ]
             raise RuntimeError(("Duplicate column label '%s': current labels "+
               "are %s; user-specified output labels are %s.") %
@@ -822,16 +822,16 @@ class process_arrays (object) :
           used[original_label] += 1
       i += 1
 
-  def add_array_to_mtz_dataset (self, output_array, default_label,
-      column_types, out=sys.stdout) :
+  def add_array_to_mtz_dataset(self, output_array, default_label,
+      column_types, out=sys.stdout):
     # apply change of basis here
-    if (self.params.mtz_file.crystal_symmetry.change_of_basis is not None) :
+    if (self.params.mtz_file.crystal_symmetry.change_of_basis is not None):
       output_array, cb_op = output_array.apply_change_of_basis(
         change_of_basis=self.params.mtz_file.crystal_symmetry.change_of_basis,
         eliminate_invalid_indices=\
           self.params.mtz_file.crystal_symmetry.eliminate_invalid_indices,
         out=out)
-    if (self.params.mtz_file.crystal_symmetry.eliminate_sys_absent) :
+    if (self.params.mtz_file.crystal_symmetry.eliminate_sys_absent):
       output_array = output_array.eliminate_sys_absent()
     if self.mtz_dataset is None :
       self.mtz_dataset = output_array.as_mtz_dataset(
@@ -844,14 +844,14 @@ class process_arrays (object) :
         column_root_label=default_label,
         column_types=column_types)
 
-  def show (self, out=sys.stdout) :
+  def show(self, out=sys.stdout):
     if self.mtz_object is not None :
       print >> out, ""
       print >> out, ("=" * 20) + " Summary of output file " + ("=" * 20)
       self.mtz_object.show_summary(out=out, prefix="  ")
       print >> out, ""
 
-  def finish (self) :
+  def finish(self):
     assert self.mtz_object is not None
     if self.params.verbose :
       self.show(out=self.log)
@@ -863,21 +863,21 @@ class process_arrays (object) :
 
 #-----------------------------------------------------------------------
 # TODO get rid of these two (need to make sure they aren't imported elsewhere)
-def get_r_free_stats (*args, **kwds) :
+def get_r_free_stats(*args, **kwds):
   from cctbx import r_free_utils
   return r_free_utils.get_r_free_stats(*args, **kwds)
 
-def get_r_free_as_bool (*args, **kwds) :
+def get_r_free_as_bool(*args, **kwds):
   from cctbx import r_free_utils
   return r_free_utils.get_r_free_as_bool(*args, **kwds)
 
-def get_best_resolution (miller_arrays, input_symm=None) :
+def get_best_resolution(miller_arrays, input_symm=None):
   best_d_min = None
   best_d_max = None
   for array in miller_arrays :
     array_symm = array.crystal_symmetry()
     if ((None in [array_symm.space_group(), array_symm.unit_cell()]) and
-        (input_symm is not None)) :
+        (input_symm is not None)):
       array = array.customized_copy(crystal_symmetry=input_symm)
     try :
       (d_max, d_min) = array.d_max_min()
@@ -889,20 +889,20 @@ def get_best_resolution (miller_arrays, input_symm=None) :
       pass
   return (best_d_max, best_d_min)
 
-def is_rfree_array (miller_array, array_info) :
+def is_rfree_array(miller_array, array_info):
   from iotbx import reflection_file_utils
   return ((miller_array.is_integer_array() or
            miller_array.is_bool_array()) and
           reflection_file_utils.looks_like_r_free_flags_info(array_info))
 
-def export_r_free_flags (miller_array, test_flag_value) :
+def export_r_free_flags(miller_array, test_flag_value):
   from cctbx import r_free_utils
   new_flags = r_free_utils.export_r_free_flags_for_ccp4(
     flags=miller_array.data(),
     test_flag_value=test_flag_value)
   return miller_array.customized_copy(data=new_flags)
 
-def get_original_array_types (input_file, original_labels) :
+def get_original_array_types(input_file, original_labels):
   array_types = ""
   mtz_file = input_file.file_object.file_content()
   mtz_columns = mtz_file.column_labels()
@@ -912,47 +912,47 @@ def get_original_array_types (input_file, original_labels) :
     array_types += mtz_crossref[label]
   return array_types
 
-def guess_array_output_labels (miller_array) :
+def guess_array_output_labels(miller_array):
   info = miller_array.info()
   assert info is not None
   labels = info.labels
   output_labels = labels
-  if (labels in [["i_obs","sigma"], ["Intensity+-","SigmaI+-"]]) :
-    if miller_array.anomalous_flag() :
+  if (labels in [["i_obs","sigma"], ["Intensity+-","SigmaI+-"]]):
+    if miller_array.anomalous_flag():
       output_labels = ["I(+)", "SIGI(+)", "I(-)", "SIGI(-)"]
     else :
       output_labels = ["I", "SIGI"]
-  elif (miller_array.is_xray_reconstructed_amplitude_array()) :
+  elif (miller_array.is_xray_reconstructed_amplitude_array()):
     output_labels = ["F", "SIGF", "DANO", "SIGDANO", "ISYM"]
   elif ((miller_array.is_xray_amplitude_array() or
          miller_array.is_xray_intensity_array()) and
-        miller_array.anomalous_flag()) :
-    if (len(labels) == 2) and (miller_array.sigmas() is not None) :
+        miller_array.anomalous_flag()):
+    if (len(labels) == 2) and (miller_array.sigmas() is not None):
       output_labels = [ "%s(+)" % labels[0],  # data(+)
                         "%s(+)" % labels[1],  # sigma(+)
                         "%s(-)" % labels[0],  # data(-)
                         "%s(-)" % labels[1] ] # sigma(-)
-    elif (len(labels) == 1) and (miller_array.sigmas() is None) :
+    elif (len(labels) == 1) and (miller_array.sigmas() is None):
       output_labels = [ "%s(+)" % labels[0], "%s(-)" % labels[0] ]
   return output_labels
 
-def modify_array (
+def modify_array(
     miller_array,
     array_name,
     array_params,
     array_info=None,
     verbose=True,
     debug=False,
-    log=sys.stdout) :
+    log=sys.stdout):
   """
   Perform various manipulations on a Miller array.  This can be applied to
   any data type, although certain options are limited to experimental data.
   """
   from scitbx.array_family import flex
   output_labels = array_params.output_labels
-  if (output_labels is None) and (array_params.column_root_label is None) :
+  if (output_labels is None) and (array_params.column_root_label is None):
     raise Sorry("Missing output labels for %s!" % array_name)
-  if (array_params.column_root_label is not None) :
+  if (array_params.column_root_label is not None):
     output_labels = None
   labels_base = re.sub(",merged$", "", array_params.labels)
   input_labels = labels_base.split(",")
@@ -974,9 +974,9 @@ def modify_array (
   if array_params.d_min is not None and array_params.d_min <= 0 :
     array_params.d_min = None
   output_labels = array_params.output_labels
-  if (output_labels is None) and (array_params.column_root_label is None) :
+  if (output_labels is None) and (array_params.column_root_label is None):
     raise Sorry("Missing output labels for %s!" % array_name)
-  if (array_params.column_root_label is not None) :
+  if (array_params.column_root_label is not None):
     output_labels = None
   wavelength = getattr(array_info, "wavelength", None)
   if not None in [array_params.scale_factor, array_params.scale_max] :
@@ -1005,12 +1005,12 @@ def modify_array (
       frint >> log, "          sigmas: %d" % miller_array.sigmas().size()
   # anomalous manipulation
   if (miller_array.anomalous_flag() and
-      array_params.anomalous_data == "merged") :
+      array_params.anomalous_data == "merged"):
     print >> log, ("Converting array %s from anomalous to non-anomalous." %
                    array_name)
-    if (not miller_array.is_xray_intensity_array()) :
+    if (not miller_array.is_xray_intensity_array()):
       miller_array = miller_array.average_bijvoet_mates()
-      if miller_array.is_xray_reconstructed_amplitude_array() :
+      if miller_array.is_xray_reconstructed_amplitude_array():
         miller_array.set_observation_type_xray_amplitude()
     else :
       miller_array = miller_array.f_sq_as_f()
@@ -1018,15 +1018,15 @@ def modify_array (
       miller_array = miller_array.f_as_f_sq()
       miller_array.set_observation_type_xray_intensity()
   elif ((not miller_array.anomalous_flag()) and
-        (array_params.anomalous_data == "anomalous")) :
+        (array_params.anomalous_data == "anomalous")):
     print >> log, "Generating Bijvoet mates for %s" % array_name
     miller_array = miller_array.generate_bijvoet_mates()
   # scale factors
-  if (array_params.scale_max is not None) :
+  if (array_params.scale_max is not None):
     print >> log, ("Scaling %s such that the maximum value is: %.6g" %
                    (array_name, array_params.scale_max))
     miller_array = miller_array.apply_scaling(target_max=array_params.scale_max)
-  elif (array_params.scale_factor is not None) :
+  elif (array_params.scale_factor is not None):
     print >> log, ("Multiplying data in %s with the factor: %.6g" %
                    (array_name, array_params.scale_factor))
     miller_array = miller_array.apply_scaling(factor=array_params.scale_factor)
@@ -1040,57 +1040,57 @@ def modify_array (
   # Information removal for running control experiments - normally these
   # would be used on experimental data, but there is no reason why they can't
   # be applied to other array types.
-  if (array_params.shuffle_values) :
+  if (array_params.shuffle_values):
     print >> log, "Shuffling values for %s" % array_name
     combined_array = None
     tmp_array = miller_array.deep_copy()
     tmp_array.setup_binner(n_bins=min(100, tmp_array.indices().size()//10))
-    for i_bin in tmp_array.binner().range_used() :
+    for i_bin in tmp_array.binner().range_used():
       bin_sel = tmp_array.binner().selection(i_bin)
       bin_array = tmp_array.select(bin_sel)
       perm = flex.random_permutation(bin_array.data().size())
       sigmas = bin_array.sigmas()
-      if (sigmas is not None) :
+      if (sigmas is not None):
         sigmas = sigmas.select(perm)
       data = bin_array.data().select(perm)
       bin_array = bin_array.customized_copy(data=data, sigmas=sigmas)
-      if (combined_array is None) :
+      if (combined_array is None):
         combined_array = bin_array.deep_copy()
       else :
         combined_array = combined_array.concatenate(bin_array)
-    if (combined_array.indices().size() != miller_array.indices().size()) :
+    if (combined_array.indices().size() != miller_array.indices().size()):
       raise RuntimeError("Array size changed: %d versus %d" %
         (combined_array.indices().size(), miller_array.indices().size()))
     miller_array = combined_array
-  if (array_params.reset_values_to) :
+  if (array_params.reset_values_to):
     if (not miller_array.is_real_array() and
-        not miller_array.is_integer_array()) :
+        not miller_array.is_integer_array()):
       raise Sorry("Resetting the values for %s is not permitted." %
         array_name)
     print >> log, "Resetting values for %s to %g" % (array_name,
       array_params.reset_values_to)
     data = miller_array.data().deep_copy()
     new_value = array_params.reset_values_to
-    if miller_array.is_integer_array() :
+    if miller_array.is_integer_array():
       new_value = int(new_value)
     data.fill(new_value)
     miller_array = miller_array.customized_copy(data=data)
-  if (array_params.force_type != "auto") :
-    if (not miller_array.is_xray_data_array()) :
+  if (array_params.force_type != "auto"):
+    if (not miller_array.is_xray_data_array()):
       raise Sorry(("You may only override the output observation type for "+
         "amplitudes or intensities - the data in %s are unsupported.") %
         array_name)
-    if (array_params.force_type == "amplitudes") :
+    if (array_params.force_type == "amplitudes"):
       miller_array = miller_array.set_observation_type_xray_amplitude()
-    elif (array_params.force_type == "intensities") :
+    elif (array_params.force_type == "intensities"):
       miller_array = miller_array.set_observation_type_xray_intensity()
-  if (not is_rfree_array(miller_array, array_info)) :
-    if (array_params.column_root_label is not None) :
+  if (not is_rfree_array(miller_array, array_info)):
+    if (array_params.column_root_label is not None):
       validate_column_root_label(
         miller_array=miller_array,
         array_name=array_name,
         root_label=array_params.column_root_label)
-    elif (output_labels is not None) :
+    elif (output_labels is not None):
       validate_output_labels(
         miller_array=miller_array,
         array_params=array_params,
@@ -1098,25 +1098,25 @@ def modify_array (
         output_labels=output_labels)
   return miller_array
 
-def modify_experimental_data_array (
+def modify_experimental_data_array(
     miller_array,
     array_name,
     array_params,
-    log=sys.stdout) :
+    log=sys.stdout):
   """
   Manipulations common to amplitude and intensity arrays only.
   """
   # negative intensity/amplitude remediation
-  if (array_params.remove_negatives) :
-    if (miller_array.is_real_array()) :
+  if (array_params.remove_negatives):
+    if (miller_array.is_real_array()):
       print >> log, "Removing negatives from %s" % array_name
       miller_array = miller_array.select(miller_array.data() > 0)
-      if (miller_array.sigmas() is not None) :
+      if (miller_array.sigmas() is not None):
         miller_array = miller_array.select(miller_array.sigmas() > 0)
     else :
       raise Sorry("remove_negatives not applicable to %s." % array_name)
-  elif (array_params.massage_intensities) :
-    if (miller_array.is_xray_intensity_array()) :
+  elif (array_params.massage_intensities):
+    if (miller_array.is_xray_intensity_array()):
       if array_params.output_as == "amplitudes" :
         miller_array = miller_array.enforce_positive_amplitudes()
       else :
@@ -1126,19 +1126,19 @@ def modify_experimental_data_array (
       raise Sorry("The parameter massage_intensities is only valid for "+
         "X-ray intensity arrays.")
   # I/sigma filtering
-  if (array_params.filter_by_signal_to_noise is not None) :
-    if (not miller_array.is_xray_data_array()) :
+  if (array_params.filter_by_signal_to_noise is not None):
+    if (not miller_array.is_xray_data_array()):
       raise Sorry(("Filtering by signal-to-noise is only supported for "+
         "amplitudes or intensities (failed on %s).") % array_name)
-    elif (array_params.filter_by_signal_to_noise <= 0) :
+    elif (array_params.filter_by_signal_to_noise <= 0):
       raise Sorry(("A value greater than zero is required for the "+
         "cutoff for filtering by signal to noise ratio (failed array: %s).") %
         array_name)
     sigmas = miller_array.sigmas()
-    if (sigmas is None) :
+    if (sigmas is None):
       raise Sorry(("Sigma values must be defined to filter by signal "+
         "to noise ratio (failed on %s).") % array_name)
-    elif (not sigmas.all_ne(0.0)) :
+    elif (not sigmas.all_ne(0.0)):
       # XXX should it just remove these too?
       raise Sorry(("The sigma values for the array %s include one or "+
         "more zeros - filtering by signal to noise not supported.") %
@@ -1149,26 +1149,26 @@ def modify_experimental_data_array (
   # apply B-factors
   # leave the default as [0]*6 to make the format clear, but reset to
   # None if unchanged
-  if (array_params.add_b_aniso == [0,0,0,0,0,0]) :
+  if (array_params.add_b_aniso == [0,0,0,0,0,0]):
     array_params.add_b_aniso = None
   if ((array_params.add_b_iso is not None) or
-      (array_params.add_b_aniso is not None)) :
+      (array_params.add_b_aniso is not None)):
     if (not miller_array.is_real_array() and
-        not miller_array.is_complex_array()) :
+        not miller_array.is_complex_array()):
       raise Sorry(("Applying a B-factor to the data in %s is not "+
         "permitted.") % array_name)
-    if (array_params.add_b_iso is not None) :
+    if (array_params.add_b_iso is not None):
       miller_array = miller_array.apply_debye_waller_factors(
         b_iso=array_params.add_b_iso,
         apply_to_sigmas=True)
-    if (array_params.add_b_aniso is not None) :
+    if (array_params.add_b_aniso is not None):
       miller_array = miller_array.apply_debye_waller_factors(
         b_cart=array_params.add_b_aniso,
         apply_to_sigmas=True)
   # data type manipulation
-  if miller_array.is_xray_intensity_array() :
-    if (array_params.output_as in ["amplitudes", "amplitudes_fw"]) :
-      if (array_params.output_as == "amplitudes") :
+  if miller_array.is_xray_intensity_array():
+    if (array_params.output_as in ["amplitudes", "amplitudes_fw"]):
+      if (array_params.output_as == "amplitudes"):
         miller_array = miller_array.f_sq_as_f()
       else :
         from cctbx import french_wilson
@@ -1176,22 +1176,22 @@ def modify_experimental_data_array (
           miller_array=miller_array,
           log=log)
       miller_array.set_observation_type_xray_amplitude()
-  elif miller_array.is_xray_amplitude_array() :
+  elif miller_array.is_xray_amplitude_array():
     if array_params.output_as == "intensities" :
       miller_array = miller_array.f_as_f_sq()
       miller_array.set_observation_type_xray_intensity()
   return miller_array
 
-def validate_output_labels (
+def validate_output_labels(
     miller_array,
     array_name,
     array_params,
-    output_labels) :
+    output_labels):
   """
   Check output labels for consistency with selected options (done before the
   array undergoes most modifications).
   """
-  def raise_sorry_if_wrong_number_of_labels (n_expected) :
+  def raise_sorry_if_wrong_number_of_labels(n_expected):
     assert (n_expected is not None)
     msg_extra = "If you are "+ \
         "unsure which labels to provide, use the simpler column root label "+ \
@@ -1200,87 +1200,87 @@ def validate_output_labels (
         "necessarily correspond to the expected number of output labels.)"
     n_used = len(output_labels)
     msg_expected = "%d are" % n_expected
-    if (n_expected == 1) :
+    if (n_expected == 1):
       msg_expected = "%d is" % n_expected
     msg_used = "labels \"%s\" have" % " ".join(output_labels)
-    if (n_used == 1) :
+    if (n_used == 1):
       msg_used = "label \"%s\" has" % " ".join(output_labels)
-    if (n_expected > n_used) :
+    if (n_expected > n_used):
       raise Sorry(("You have not specified enough MTZ column labels for the "+
         "array %s; only the %s been specified, but %s "+
         "required for the output array after processing.  " + msg_extra) %
         (array_name, msg_used, msg_expected))
-    elif (n_expected < n_used) :
+    elif (n_expected < n_used):
       raise Sorry(("You have specified too many column labels for the array "+
         "%s; the %s been specified, but only %s are allowed "+
         "for the output array after processing.  " + msg_extra) %
         (array_name, msg_used, msg_expected))
   n_expected = None
-  if (miller_array.is_xray_reconstructed_amplitude_array()) :
+  if (miller_array.is_xray_reconstructed_amplitude_array()):
     # FIXME this needs to be handled better - but it should at least
     # catch files from CCP4 data processing
     if ((len(output_labels) != 5) and
-        (not array_params.anomalous_data == "merged")) :
+        (not array_params.anomalous_data == "merged")):
       raise Sorry(("The array %s will be output as "+
         "amplitudes and anomalous differences with sigmas, plus ISYM. "+
         "Five columns will be written, but %d labels were specified.") %
         (array_name, len(output_labels)))
     n_expected = 5
-  elif (miller_array.anomalous_flag()) :
-    if miller_array.is_real_array() :
-      if (miller_array.sigmas() is not None) :
+  elif (miller_array.anomalous_flag()):
+    if miller_array.is_real_array():
+      if (miller_array.sigmas() is not None):
         n_expected = 4
       else :
         n_expected = 2
-    elif miller_array.is_complex_array() :
+    elif miller_array.is_complex_array():
       assert miller_array.sigmas() is None
       n_expected = 4
-    elif miller_array.is_hendrickson_lattman_array() :
+    elif miller_array.is_hendrickson_lattman_array():
       n_expected = 8
     else :
       n_expected = 2
   else :
-    if miller_array.is_real_array() :
-      if (miller_array.sigmas() is not None) :
+    if miller_array.is_real_array():
+      if (miller_array.sigmas() is not None):
         n_expected = 2
       else :
         n_expected = 1
-    elif miller_array.is_complex_array() :
-      if (miller_array.sigmas() is not None) :
+    elif miller_array.is_complex_array():
+      if (miller_array.sigmas() is not None):
         raise RuntimeError("Combination of sigmas and complex data not allowed for array %s" % array_name)
       n_expected = 2
-    elif miller_array.is_hendrickson_lattman_array() :
+    elif miller_array.is_hendrickson_lattman_array():
       n_expected = 4
     else :
       n_expected = 1
   raise_sorry_if_wrong_number_of_labels(n_expected)
-  if miller_array.is_xray_data_array() :
+  if miller_array.is_xray_data_array():
     validate_column_root_label(
       miller_array=miller_array,
       root_label = output_labels[0].upper(),
       array_name=array_name)
   return True
 
-def validate_column_root_label (miller_array, root_label, array_name) :
+def validate_column_root_label(miller_array, root_label, array_name):
   """
   Check the root MTZ label for a Miller array to ensure consistency with
   data type - this is done after the array has been processed.
   """
   root_label = root_label.upper()
-  if (miller_array.is_xray_intensity_array()) :
-    if (not root_label.startswith("I")) :
+  if (miller_array.is_xray_intensity_array()):
+    if (not root_label.startswith("I")):
       raise Sorry(("The column label prefix for the array '%s' "+
         "is inconsistent with the output array type (intensities). "+
         "Please use 'I' (either case) as the first character in the "+
         "label.") % (array_name))
-  elif (miller_array.is_xray_amplitude_array()) :
-    if (not root_label.startswith("F")) :
+  elif (miller_array.is_xray_amplitude_array()):
+    if (not root_label.startswith("F")):
       raise Sorry(("The specified column label prefix for the array '%s' "+
         "is inconsistent with the output array type (amplitudes). "+
         "Please use 'F' (either case) as the first character in the "+
         "label.") % (array_name))
   else :
-    if (root_label == "I") or (root_label == "F") :
+    if (root_label == "I") or (root_label == "F"):
       raise Sorry(("You have specified the column label prefix '%s' "+
         "for the array '%s', which is neither intensities nor "+
         "amplitudes; the base labels 'I' and 'F' are reserved "+
@@ -1292,49 +1292,49 @@ def validate_column_root_label (miller_array, root_label, array_name) :
 # problematic for automation, where labels and operations are very
 # standardized.  so I added this to identify unique symmetry information
 # in the collected input files.
-def collect_symmetries (file_names) :
+def collect_symmetries(file_names):
   from iotbx import crystal_symmetry_from_any
   file_names = set(file_names)
   file_symmetries = []
   for file_name in file_names :
     symm = crystal_symmetry_from_any.extract_from(file_name)
-    if (symm is not None) :
+    if (symm is not None):
       file_symmetries.append(symm)
   return file_symmetries
 
-def resolve_symmetry (file_symmetries, current_space_group, current_unit_cell):
+def resolve_symmetry(file_symmetries, current_space_group, current_unit_cell):
   space_groups = []
   unit_cells = []
   for symm in file_symmetries :
-    if (symm is not None) :
+    if (symm is not None):
       space_group = symm.space_group_info()
       unit_cell = symm.unit_cell()
-      if (space_group is not None) and (unit_cell is not None) :
-        if (current_space_group is None) :
+      if (space_group is not None) and (unit_cell is not None):
+        if (current_space_group is None):
           group = space_group.group()
           for other_sg in space_groups :
             other_group = other_sg.group()
-            if (other_sg.type().number() != group.type().number()) :
+            if (other_sg.type().number() != group.type().number()):
               raise Sorry("Ambiguous space group information in input files - "+
                 "please specify symmetry parameters.")
-        if (current_unit_cell is None) :
+        if (current_unit_cell is None):
           for other_uc in unit_cells :
-            if (not other_uc.is_similar_to(unit_cell, 0.001, 0.1)) :
+            if (not other_uc.is_similar_to(unit_cell, 0.001, 0.1)):
               raise Sorry("Ambiguous unit cell information in input files - "+
                 "please specify symmetry parameters.")
         space_groups.append(space_group)
         unit_cells.append(unit_cell)
   consensus_space_group = current_space_group
   consensus_unit_cell = current_unit_cell
-  if (len(space_groups) > 0) and (current_space_group is None) :
+  if (len(space_groups) > 0) and (current_space_group is None):
     consensus_space_group = space_groups[0]
-  if (len(unit_cells) > 0) and (current_unit_cell is None) :
+  if (len(unit_cells) > 0) and (current_unit_cell is None):
     consensus_unit_cell = unit_cells[0]
   return (consensus_space_group, consensus_unit_cell)
 
-def check_and_warn_about_incomplete_r_free_flags (combined_set) :
+def check_and_warn_about_incomplete_r_free_flags(combined_set):
   completeness = combined_set.completeness()
-  if (completeness < 0.99) :
+  if (completeness < 0.99):
     warnings.warn(("The arrays in the input file are incomplete "+
       "(%.1f%% of reflections missing), so the newly generated R-free "+
       "flags will be incomplete as well.  This will not cause a problem "+
@@ -1344,7 +1344,7 @@ def check_and_warn_about_incomplete_r_free_flags (combined_set) :
       "complete set\" in the R-free options dialog window.") %
       (100 * (1-completeness)), UserWarning)
 
-def usage (out=sys.stdout, attributes_level=0) :
+def usage(out=sys.stdout, attributes_level=0):
   print >> out, """
 # usage: iotbx.reflection_file_editor [file1.mtz ...] [parameters.eff]
 #            --help      (print this message)
@@ -1353,7 +1353,7 @@ def usage (out=sys.stdout, attributes_level=0) :
 """
   master_phil.show(out=out, attributes_level=attributes_level)
 
-def generate_params (file_name, miller_array, include_resolution=False) :
+def generate_params(file_name, miller_array, include_resolution=False):
   param_str = """mtz_file.miller_array {
   file_name = %s
   labels = %s
@@ -1372,31 +1372,31 @@ def generate_params (file_name, miller_array, include_resolution=False) :
   param_str += "}"
   return param_str
 
-def validate_params (params) :
-  if (len(params.mtz_file.miller_array) == 0) :
+def validate_params(params):
+  if (len(params.mtz_file.miller_array) == 0):
     raise Sorry("No Miller arrays have been selected for the output file.")
   elif len(params.mtz_file.miller_array) > 25 :
     raise Sorry("Only 25 or fewer arrays may be used.")
   if None in [params.mtz_file.crystal_symmetry.space_group,
               params.mtz_file.crystal_symmetry.unit_cell] :
     raise Sorry("Missing or incomplete symmetry information.")
-  if (params.mtz_file.r_free_flags.preserve_input_values) :
-    if (not (0 < params.mtz_file.r_free_flags.fraction < 0.5)) :
+  if (params.mtz_file.r_free_flags.preserve_input_values):
+    if (not (0 < params.mtz_file.r_free_flags.fraction < 0.5)):
       raise Sorry("The R-free flags fraction must be greater than zero and "+
         "less than 0.5.")
-    if (params.mtz_file.r_free_flags.export_for_ccp4) :
+    if (params.mtz_file.r_free_flags.export_for_ccp4):
       raise Sorry("r_free_flags.preserve_input_values and "+
         "r_free_flags.export_for_ccp4 may not be used together.")
-    if (params.mtz_file.r_free_flags.adjust_fraction) :
+    if (params.mtz_file.r_free_flags.adjust_fraction):
       raise Sorry("Preserving input values of R-free flags is not supported "+
         "when resizing a test set to the specified fraction.")
-    if (params.mtz_file.r_free_flags.remediate_mismatches) :
+    if (params.mtz_file.r_free_flags.remediate_mismatches):
       raise Sorry("Preserving input values of R-free flags is not supported "+
         "when correcting mismatched Friedel/Bijvoet pairs.")
   check_if_output_directory_exists(file_name=params.mtz_file.output_file)
 
 #-----------------------------------------------------------------------
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   from iotbx import file_reader
   crystal_symmetry_from_pdb = None
   crystal_symmetries_from_hkl = []
@@ -1414,7 +1414,7 @@ def run (args, out=sys.stdout) :
       return True
     elif arg in ["-q", "--quiet"] :
       out = null_out()
-    elif os.path.isfile(arg) :
+    elif os.path.isfile(arg):
       full_path = os.path.abspath(arg)
       try :
         file_phil = iotbx.phil.parse(file_name=full_path)
@@ -1438,7 +1438,7 @@ def run (args, out=sys.stdout) :
         if symm is not None :
           crystal_symmetry_from_pdb = symm
     else :
-      if arg.startswith("--") :
+      if arg.startswith("--"):
         arg = arg[2:] + "=True"
       try :
         cmdline_phil = interpreter.process(arg=arg)
@@ -1470,7 +1470,7 @@ def run (args, out=sys.stdout) :
     need_symmetry_for_files = []
     for file_name in all_hkl_file_names :
       file_name = os.path.abspath(file_name)
-      if (not file_name in reflection_file_names) :
+      if (not file_name in reflection_file_names):
         need_symmetry_for_files.append(file_name)
     crystal_symmetries_from_hkl.extend(
       collect_symmetries(need_symmetry_for_files))
@@ -1482,8 +1482,8 @@ def run (args, out=sys.stdout) :
     params.mtz_file.crystal_symmetry.unit_cell = unit_cell
   if params.mtz_file.output_file is None :
     n = 0
-    for file_name in os.listdir(os.getcwd()) :
-      if file_name.startswith("reflections_") and file_name.endswith(".mtz") :
+    for file_name in os.listdir(os.getcwd()):
+      if file_name.startswith("reflections_") and file_name.endswith(".mtz"):
         n += 1
     params.mtz_file.output_file = "reflections_%d.mtz" % (n+1)
   params.mtz_file.output_file = os.path.abspath(params.mtz_file.output_file)

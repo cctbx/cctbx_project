@@ -42,14 +42,14 @@ remediator
 def run(args=(), params=None, out=sys.stdout):
   from iotbx.pdb.remediation import remediator
   from iotbx import file_reader
-  if (params is None) :
+  if (params is None):
     interpreter = master_phil.command_line_argument_interpreter()
     pdb_file = None
     sources = []
     for arg in args :
-      if os.path.isfile(arg) :
+      if os.path.isfile(arg):
         input_file = file_reader.any_file(arg)
-        if (input_file.file_type == "pdb") :
+        if (input_file.file_type == "pdb"):
           pdb_file = input_file
           sources.append(interpreter.process(arg="file_name=\"%s\"" % arg))
       else :
@@ -59,11 +59,11 @@ def run(args=(), params=None, out=sys.stdout):
     work_params = work_phil.extract()
   else : # XXX for phenix GUI
     work_params = params
-    if (work_params.remediator.output_file is None) :
+    if (work_params.remediator.output_file is None):
       base, ext = os.path.splitext(work_params.remediator.file_name)
       work_params.remediator.output_file = base + "_remediated.pdb"
-  if (work_params.remediator.file_name is None) :
-    if (pdb_file is None) :
+  if (work_params.remediator.file_name is None):
+    if (pdb_file is None):
       summary = remediator.get_summary()
       raise Usage(summary)
     else :
@@ -72,8 +72,8 @@ def run(args=(), params=None, out=sys.stdout):
   remediator.remediator(params)
   return work_params.remediator.output_file
 
-def validate_params (params) :
-  if (params.remediator.file_name is None) :
+def validate_params(params):
+  if (params.remediator.file_name is None):
     raise Sorry("Please specify a PDB file.")
   return True
 

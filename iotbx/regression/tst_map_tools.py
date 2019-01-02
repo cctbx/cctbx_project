@@ -7,7 +7,7 @@ from iotbx import mtz
 from scitbx.array_family import flex
 import os
 
-def exercise_map_tools () :
+def exercise_map_tools():
   prefix = "tmp_iotbx_map_tools"
   pdb_file = prefix + ".pdb"
   mtz_file = prefix + ".mtz"
@@ -109,6 +109,6 @@ ATOM      9  HA3 GLY P  -1     -23.352  -3.933  16.803  1.00  0.00           H
   assert (labels == ['2FOFCWT,PH2FOFCWT', 'FOFCWT,PHFOFCWT', 'ANOM,PHANOM',
                      'other,PHother'])
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_map_tools()
   print "OK"

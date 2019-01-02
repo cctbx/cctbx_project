@@ -6,7 +6,7 @@ from libtbx.test_utils import Exception_expected
 from libtbx.utils import Sorry
 from cStringIO import StringIO
 
-def exercise () :
+def exercise():
   m = iotbx.symmetry.manager(prefer_pdb_space_group=True)
   (uc_mismatch, sg_mismatch) = m.add_reflections_file(
     file_name="data.mtz",
@@ -64,6 +64,6 @@ data_neutron.mtz: (50.1, 60, 70.1, 90, 90, 90) P 2 2 2
 data_rfree.hkl: None None
 """)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

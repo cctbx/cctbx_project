@@ -456,9 +456,9 @@ def run(
       use_lattice_symmetry=co.use_lattice_symmetry_in_r_free_flag_generation,
       format=co.r_free_flags_format)
     test_flag_value = True
-    if (co.r_free_flags_format == "ccp4") :
+    if (co.r_free_flags_format == "ccp4"):
       test_flag_value = 0
-    elif (co.r_free_flags_format == "shelx") :
+    elif (co.r_free_flags_format == "shelx"):
       test_flag_value = -1
     r_free_as_bool = r_free_flags.customized_copy(
       data=r_free_flags.data()==test_flag_value)
@@ -473,10 +473,10 @@ def run(
       r_free_as_bool.data().count(True))
     r_free_info_str = StringIO()
     r_free_as_bool.show_r_free_flags_info(prefix="  ", out=r_free_info_str)
-    if (co.r_free_flags_format == "ccp4") :
+    if (co.r_free_flags_format == "ccp4"):
       r_free_info.append("  convention: CCP4 (test=0, work=1-%d)" %
         flex.max(r_free_flags.data()))
-    elif (co.r_free_flags_format == "shelx") :
+    elif (co.r_free_flags_format == "shelx"):
       r_free_info.append("  convention: SHELXL (test=-1, work=1)")
     else :
       r_free_info.append("  convention: CNS/X-PLOR (test=1, work=0)")

@@ -251,7 +251,7 @@ DETECTOR_SN=%(DETECTOR_SN)d;
     raise AttributeError
 
   def show_header(self, out=None):
-    if (out is None) :
+    if (out is None):
       out = sys.stdout
     print >> out, "File:",self.filename
     print >> out, "Number of pixels: slow=%d fast=%d"%(self.size1,self.size2)
@@ -274,40 +274,40 @@ DETECTOR_SN=%(DETECTOR_SN)d;
     if verbose:
       print "beam center convention: %d" % bc
     # FIXME what about 2-4 & 6-7?
-    if (bc == 0) :
+    if (bc == 0):
       self._invert_beam_center = True
       self._invert_y = True
-    elif (bc == 1) :
+    elif (bc == 1):
       self._invert_y = False
-    elif (bc == 5) :
+    elif (bc == 5):
       self._invert_y = True
 
     self.image_size_fast = self.size2 # width
     self.image_size_slow = self.size1 # height
     self.pixel_resolution = self.pixel_size
 
-  def detector_coords_as_image_coords_float (self, x, y) :
+  def detector_coords_as_image_coords_float(self, x, y):
     """
     Convert absolute detector position (in mm) to floating-value image pixel coordinates.
     """
     dw = self.image_size_fast * self.pixel_resolution
     dh = self.image_size_slow * self.pixel_resolution
     x_frac = x / dw
-    if (self._invert_y) :
+    if (self._invert_y):
       y_frac = - ((y / dh) - 1.0)
     else :
       y_frac = y / dh
     return x_frac * self.image_size_fast, \
            y_frac * self.image_size_slow
 
-  def detector_coords_as_image_coords (self, x, y) :
+  def detector_coords_as_image_coords(self, x, y):
     """
     Convert absolute detector position (in mm) to integer-value image pixel coordinates.
     """
     x_point,y_point = self.detector_coords_as_image_coords_float(x,y)
     return (int(x_point), int(y_point))
 
-  def image_coords_as_detector_coords (self, x, y, readout=None) :
+  def image_coords_as_detector_coords(self, x, y, readout=None):
     """
     Convert image pixel coordinates to absolute position on the detector
     (in mm).
@@ -317,15 +317,15 @@ DETECTOR_SN=%(DETECTOR_SN)d;
     x_frac = x / self.image_size_fast
     y_frac = y / self.image_size_slow
     x_detector = x_frac * dw
-    if (self._invert_y) :
+    if (self._invert_y):
       y_detector = (1.0 - y_frac) * dh
     else :
       y_detector = y_frac * dh
     return x_detector, y_detector
 
-  def get_beam_center_mm (self) :
+  def get_beam_center_mm(self):
     # FIXME Pilatus and ADSC images appear to have different conventions???
-    if (self._invert_beam_center) :
+    if (self._invert_beam_center):
       center_x = self.beamy
       center_y = self.beamx
     else :

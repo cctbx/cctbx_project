@@ -32,11 +32,11 @@ _refine.ls_R_factor_R_free                     0.2238
   assert approx_equal(constants.r_work, 0.1690)
   assert approx_equal(constants.r_free, 0.2238)
 
-def exercise_extract_header_misc () :
+def exercise_extract_header_misc():
   cif_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3orl.cif",
     test=os.path.isfile)
-  if (cif_file is None) :
+  if (cif_file is None):
     return
   cif_in = mmcif.cif_input(file_name=cif_file)
   assert (cif_in.file_type() == "mmcif")

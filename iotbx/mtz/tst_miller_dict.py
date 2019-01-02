@@ -4,7 +4,7 @@ from iotbx import mtz
 import libtbx.load_env
 import os.path
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   fname = libtbx.env.find_in_repositories(
     relative_path="iotbx/regression/data/insulin_unmerged_cutted_from_ccp4.mtz",
     test=os.path.isfile)

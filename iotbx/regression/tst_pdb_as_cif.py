@@ -8,7 +8,7 @@ from iotbx.cli_parser import run_program
 from mmtbx.programs import pdb_as_cif
 
 def exercise_01():
-  if (os.path.isfile("tst_pdb_as_cif_1.cif")) :
+  if (os.path.isfile("tst_pdb_as_cif_1.cif")):
     os.remove("tst_pdb_as_cif_1.cif")
   open("tst_pdb_as_cif_1.pdb", "w").write("""\
 CRYST1   97.470  113.870  196.190  90.00  90.00  90.00 P 21 21 21   16
@@ -71,7 +71,7 @@ ATOM      9 O    GLY     2      26.154  23.705  18.108  1.00  9.22
   assert not os.path.isfile("tst_pdb_as_cif_2.cif")
 
 def exercise_02():
-  if (os.path.isfile("tst_pdb_as_cif_2.cif")) :
+  if (os.path.isfile("tst_pdb_as_cif_2.cif")):
     os.remove("tst_pdb_as_cif_2.cif")
   open("tst_pdb_as_cif_2.pdb", "w").write("""\
 CRYST1  209.050  447.220  608.960  90.00  90.00  90.00 P 21 21 21

@@ -317,7 +317,7 @@ class miller_array_builder(crystal_symmetry_builder):
         other_symmetry=base_array_info.crystal_symmetry_from_file,
       force=True)
     self._arrays = OrderedDict()
-    if (wavelengths is None) :
+    if (wavelengths is None):
       wavelengths = {}
     if base_array_info is None:
       base_array_info = miller.array_info(source_type="cif")
@@ -701,13 +701,13 @@ and have an optional esd in brackets associated with it"""
     return string
   return float(string.strip('\'').strip('"').split('(')[0])
 
-def get_wavelengths (cif_block) :
+def get_wavelengths(cif_block):
   for loop in cif_block.loops.values():
     for key in loop.keys():
-      if ("_diffrn_radiation_wavelength." in key) :
+      if ("_diffrn_radiation_wavelength." in key):
         wavelength_ids = loop.get("_diffrn_radiation_wavelength.id")
         wavelength_strs = loop.get("_diffrn_radiation_wavelength.wavelength")
-        if (not None in [wavelength_ids, wavelength_strs]) :
+        if (not None in [wavelength_ids, wavelength_strs]):
           wl_ = {}
           for wavelength_id,wavelength in zip(wavelength_ids,wavelength_strs):
             try :
@@ -720,7 +720,7 @@ def get_wavelengths (cif_block) :
           return None
   wavelength_id = cif_block.get("_diffrn_radiation_wavelength.id")
   wavelength_str = cif_block.get("_diffrn_radiation_wavelength.wavelength")
-  if (not None in [wavelength_id, wavelength_str]) :
+  if (not None in [wavelength_id, wavelength_str]):
     try :
       wl_id = int(wavelength_id)
       return { int(wavelength_id) : float(wavelength_str) }

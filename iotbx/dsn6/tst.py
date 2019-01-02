@@ -7,8 +7,8 @@ import os.path as op
 import os
 import sys
 
-def exercise_writer (space_group_info, n_sites=100, d_min=1.5) :
-  if op.isfile("tst_iotbx_dsn6.omap") :
+def exercise_writer(space_group_info, n_sites=100, d_min=1.5):
+  if op.isfile("tst_iotbx_dsn6.omap"):
     os.remove("tst_iotbx_dsn6.omap")
   xrs = random_structure.xray_structure(
     space_group_info=space_group_info,
@@ -32,7 +32,7 @@ def exercise_writer (space_group_info, n_sites=100, d_min=1.5) :
   size = op.getsize("tst_iotbx_dsn6.omap")
   assert (size == (n_blocks+1)*512)
 
-def run_call_back (flags, space_group_info) :
+def run_call_back(flags, space_group_info):
   exercise_writer(space_group_info)
 
 if (__name__ == "__main__"):

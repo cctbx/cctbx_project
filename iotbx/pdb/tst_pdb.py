@@ -628,7 +628,7 @@ REMARK 350   BIOMT3   4  0.309017  0.809017  0.500000        0.00000
   assert approx_equal(mtrix_info.t[1], [0.10000,0.02000,0.00300])
   assert mtrix_info.serial_number == [1, 2, 3, 4]
 
-def exercise_header_misc (regression_pdb) :
+def exercise_header_misc(regression_pdb):
   pdb_inp = pdb.input(file_name=op.join(regression_pdb, "pdb1a1q.ent"))
   wavelength = pdb_inp.extract_wavelength()
   assert approx_equal(wavelength, 0.995)

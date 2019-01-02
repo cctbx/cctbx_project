@@ -1792,7 +1792,7 @@ class test_hhalign_parser(unittest.TestCase):
     for ( o, e ) in zip( i1, i2 ):
       self.assertAlmostEqual( o, e, digits )
 
-def exercise_guess_chain_types () :
+def exercise_guess_chain_types():
   from iotbx.bioinformatics import \
      guess_chain_types_from_sequences,text_from_chains_matching_chain_type
   print "Testing guess_chain_types ...",
@@ -1877,7 +1877,7 @@ TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
  """
 
   print "OK"
-def exercise_random_sequences () :
+def exercise_random_sequences():
   import random
   random.seed(71231)
   seq=bioinformatics.random_sequence(n_residues=100,
@@ -1886,7 +1886,7 @@ def exercise_random_sequences () :
   assert seq=="EEEEDCDCCEEECDEADEEEADEEECAEDEDECEEEEEAECCEDEDCAEEEDCDDECDDDEEEDCEEEACEDEADCCEEDCCADECDCDCEAAEEADACE"
 
 
-def exercise_merge_sequences () :
+def exercise_merge_sequences():
   print "Testing merge_sequences ...",
   open("tmp_iotbx_bioinfo.fa", "w").write("""\
 > 9zzz

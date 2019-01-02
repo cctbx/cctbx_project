@@ -1,7 +1,7 @@
 from __future__ import division
 from libtbx.test_utils import show_diff
 
-def exercise () :
+def exercise():
   from iotbx.command_line import pdb_as_fasta
   pdb_str = """\
 ATOM      2  CA  GLY A   3      -9.052   4.207   4.651  1.00 16.57           C
@@ -77,6 +77,6 @@ GNMQ
 >tst_pdb_as_fasta2 chain 'BB'
 GAXXCU""")
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

@@ -57,7 +57,7 @@ def run_call_back(flags, space_group_info):
       anomalous_flag=anomalous_flag,
       verbose=flags.Verbose)
 
-def exercise_overloads () :
+def exercise_overloads():
   open("overloads.sca", "w").write("""\
     1
  -987
