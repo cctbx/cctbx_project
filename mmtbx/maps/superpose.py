@@ -40,7 +40,7 @@ def generate_p1_box(pdb_hierarchy, buffer=10.0):
   symm = crystal_symmetry_from_any.from_string(combined)
   return symm
 
-class common_frame_of_reference (object):
+class common_frame_of_reference(object):
   def __init__(self, all_sites_cart, lsq_fits, buffer=10.0, log=sys.stdout):
     fitted_sites = []
     original_sites = []
@@ -141,7 +141,7 @@ def transform_map_by_lsq_fit(fft_map,
   return xray_structure, map_data_superposed
 
 # XXX: wrapper for multiprocessing
-class transform_maps (object):
+class transform_maps(object):
   def __init__(self,
                 map_coeffs,
                 map_types,

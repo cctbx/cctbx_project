@@ -911,7 +911,7 @@ from wxGUI2 import utils
 def validate_params(params):
   return True
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     utils.safe_makedirs(self.output_dir)
     os.chdir(self.output_dir)

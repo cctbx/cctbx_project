@@ -30,7 +30,7 @@ max_r_free = 0.4
   .type = float
 """)
 
-class evaluate_model (slots_getstate_setstate):
+class evaluate_model(slots_getstate_setstate):
   """
   Create an fmodel object (including bulk solvent correction) and calculate
   R-factors, with or without optional rigid-body refinement.
@@ -100,7 +100,7 @@ class evaluate_model (slots_getstate_setstate):
 def ucf(unit_cell):
   return "%g %g %g %g %g %g" % unit_cell.parameters()
 
-class select_model (object):
+class select_model(object):
   def __init__(self,
       model_names,
       model_data,

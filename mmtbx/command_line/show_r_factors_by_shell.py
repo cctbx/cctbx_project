@@ -18,7 +18,7 @@ n_bins = 10
   .type = int
 """
 
-class r_factor_shell (object):
+class r_factor_shell(object):
   __slots__ = ["d_min", "d_max", "r_work", "r_free"]
 
   def __init__(self, d_min, d_max, r_work, r_free):
@@ -31,7 +31,7 @@ class r_factor_shell (object):
     print >> out, "%s%6.3f - %6.3f  %6.4f  %6.4f" % (prefix, self.d_max,
       self.d_min, self.r_work, self.r_free)
 
-class r_factor_shells (slots_getstate_setstate):
+class r_factor_shells(slots_getstate_setstate):
   __slots__ = ["shells", "overall"]
 
   def __init__(self, f_obs, f_calc, r_free_flags, n_bins=10):

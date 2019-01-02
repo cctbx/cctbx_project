@@ -33,7 +33,7 @@ nproc = 1
   .style = renderer:draw_nproc_widget
 """
 
-class ringer_chi (object):
+class ringer_chi(object):
   """
   Sampling results for a single sidechain Chi angle.
   """
@@ -68,7 +68,7 @@ class ringer_chi (object):
   def deviate(self, chi):
     return min(abs(chi-i) for i in [60, 180, 300])
 
-class ringer_residue (object):
+class ringer_residue(object):
   """
   Container of sampling results for a single residue with at least one Chi
   angle.
@@ -184,7 +184,7 @@ def sample_angle(
   #print densities
   return densities, difference_densities
 
-class iterate_over_residues (object):
+class iterate_over_residues(object):
   """
   Given a PDB hierarchy and electron density, run Ringer analysis for all
   applicable amino acid residues in the model.  Defaults to examining all chi
@@ -375,7 +375,7 @@ class iterate_over_residues (object):
           results.append(res_out)
     return results
 
-class Peak (object):
+class Peak(object):
   """
   Container for information about the sampling angle where density is at the
   global maximum for the given Chi angle.  Used for EMRinger.
@@ -388,7 +388,7 @@ class Peak (object):
   def __repr__(self):
     return "\n%s\t%s\t%s\t%s\t%d\t%f" % (self.resname,self.resid,self.chain_id,self.n_chi,self.chi_value*5,self.rho_value)
 
-class Peaklist (object):
+class Peaklist(object):
   # Right now this is just a slightly specialized list. I may add functionality
   # later, however.
   def __init__(self):

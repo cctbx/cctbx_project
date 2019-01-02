@@ -72,7 +72,7 @@ include scope libtbx.phil.interface.tracking_params
 master_phil = get_master_phil()
 master_params = master_phil # for phenix GUI
 
-class peaks_holes_container (object):
+class peaks_holes_container(object):
   def __init__(self, peaks, holes, map_cutoff=3.0, anom_peaks=None,
       anom_map_cutoff=3.0, water_peaks=None, water_anom_peaks=None,
       non_water_anom_peaks=None):
@@ -236,7 +236,7 @@ class peaks_holes_container (object):
       output_files.append((self.map_file, "Map coefficients"))
     return output_files
 
-class summary (group_args):
+class summary(group_args):
   def show(self, out=sys.stdout):
     print >> out, ""
     print >> out, "SUMMARY OF MAP PEAKS:"
@@ -275,7 +275,7 @@ class summary (group_args):
       print >> out, "  %s %s" % (formatted, value)
     print >> out, ""
 
-class water_peak (object):
+class water_peak(object):
   def __init__(self, id_str, xyz, peak_height, map_type="mFo-DFc"):
     adopt_init_args(self, locals())
 
@@ -536,7 +536,7 @@ def validate_params(params, callback=None):
     raise Sorry("The parameter 'Minimum cross distance' must be greater than "+
       "zero.")
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     os.chdir(self.output_dir)
     return run(args=list(self.args), out=sys.stdout)

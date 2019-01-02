@@ -27,7 +27,7 @@ ligand in each model and calculates RMSDs between them.  Used for validating
 ligand fitting tools in Phenix.""")
 
   import iotbx.phil
-  class _cmdline (iotbx.phil.process_command_line_with_files):
+  class _cmdline(iotbx.phil.process_command_line_with_files):
     def process_other(self, arg):
       if (len(arg) <= 3) and (arg.isalnum()):
         return iotbx.phil.parse("""ligand_code=%s""" % arg)

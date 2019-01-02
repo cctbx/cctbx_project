@@ -106,7 +106,7 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
     orig_label         = "2mFo-DFc")
   return os.path.abspath(mtz_file_name)
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)

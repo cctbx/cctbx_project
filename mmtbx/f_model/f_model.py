@@ -2525,7 +2525,7 @@ def show_histogram(data, n_slots, log):
     print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
     lc_1 = hc_1
 
-class mask_result (object):
+class mask_result(object):
   def __init__(self, r_solv, r_shrink, r_work, r_free, r_work_low):
     adopt_init_args(self, locals())
 
@@ -2542,8 +2542,8 @@ class mask_result (object):
 # bad hack... - relative import
 # Change to absolute import
 from . import f_model_info
-class info (f_model_info.info):
+class info(f_model_info.info):
   pass
 
-class resolution_bin (f_model_info.resolution_bin):
+class resolution_bin(f_model_info.resolution_bin):
   pass

@@ -36,14 +36,14 @@ res_type_plot_labels = ["all non-Pro/Gly residues", "Glycine", "cis-Proline",
 rama_types = ["OUTLIER", "Allowed", "Favored", "Any", "Allowed/Outlier"]
 rama_type_labels = ["Outlier", "Allowed", "Favored", "Any", "Allowed/Outlier"]
 
-class c_alpha (slots_getstate_setstate):
+class c_alpha(slots_getstate_setstate):
   """Container class used in the generation of kinemages."""
   __slots__ = ['id_str', 'xyz']
   def __init__(self, id_str, xyz):
     self.id_str = id_str
     self.xyz = xyz
 
-class ramachandran (residue):
+class ramachandran(residue):
   """
   Result class for protein backbone Ramachandran analysis (phenix.ramalyze).
   """
@@ -101,7 +101,7 @@ class ramachandran (residue):
     return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname,self.resid),
              self.residue_type(), self.score, self.phi, self.psi ]
 
-class ramachandran_ensemble (residue):
+class ramachandran_ensemble(residue):
   """Container for results for an ensemble of residues"""
   __slots__ = ramachandran.__slots__
   def __init__(self, all_results):
@@ -124,7 +124,7 @@ class ramachandran_ensemble (residue):
   def phi_range(self):
     pass
 
-class ramalyze (validation):
+class ramalyze(validation):
   """
   Frontend for calculating Ramachandran statistics for a model.  Can directly
   generate the corresponding plots.
@@ -636,7 +636,7 @@ def format_ramachandran_plot_title(position_type, residue_type):
     title = "Ramachandran plot for " + residue_type
   return title
 
-class ramachandran_plot_mixin (graphics.rotarama_plot_mixin):
+class ramachandran_plot_mixin(graphics.rotarama_plot_mixin):
   extent = [-180,180,-180,180]
   def set_labels(self, y_marks=()):
     axes = self.plot.get_axes()
@@ -647,7 +647,7 @@ class ramachandran_plot_mixin (graphics.rotarama_plot_mixin):
     axes.set_ylim((-182,182))
     axes.set_xlim((-182,182))
 
-class ramachandran_plot (data_plots.simple_matplotlib_plot,
+class ramachandran_plot(data_plots.simple_matplotlib_plot,
                          ramachandran_plot_mixin):
   def __init__(self, *args, **kwds):
     data_plots.simple_matplotlib_plot.__init__(self, *args, **kwds)

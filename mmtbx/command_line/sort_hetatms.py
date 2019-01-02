@@ -428,7 +428,7 @@ Full parameters:
     n_mm_chains=result.n_mm_chains,
     n_het_residues=result.n_het_residues)
 
-class sort_hetatms_result (object):
+class sort_hetatms_result(object):
   def __init__(self, n_mm_chains, n_het_residues, pdb_hierarchy=None,
       file_name=None):
     adopt_init_args(self, locals())
@@ -444,7 +444,7 @@ def validate_params(params):
     raise Sorry("Model file (file_name) not specified.")
   return True
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     return run(args=list(self.args), out=sys.stdout)
 

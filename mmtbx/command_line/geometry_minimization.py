@@ -459,7 +459,7 @@ class run(object):
       s = self.model.geometry_statistics()
       s.show(log = self.log, uppercase=False)
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)

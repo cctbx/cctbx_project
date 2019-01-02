@@ -124,7 +124,7 @@ include scope mmtbx.find_peaks.master_params
 def fo_minus_fo_master_params():
   return iotbx.phil.parse(fo_minus_fo_master_params_str, process_includes=True)
 
-class compute_fo_minus_fo_map (object):
+class compute_fo_minus_fo_map(object):
   def __init__(self,
       data_arrays,
       xray_structure,
@@ -519,7 +519,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     anomalous=params.advanced.anomalous).file_names
   return output_files
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     os.makedirs(self.output_dir)
     os.chdir(self.output_dir)

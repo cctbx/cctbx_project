@@ -17,7 +17,7 @@ from libtbx import table_utils
 import math
 import sys
 
-class gamma_protein (object):
+class gamma_protein(object):
   __slots__ = [
     "gamma",
     "sigma_gamma",
@@ -108,7 +108,7 @@ class gamma_protein (object):
     self.gamma = gamma_cheb.f( d_star_sq )
     self.sigma_gamma = gamma_sigma_cheb.f( d_star_sq )
 
-class gamma_nucleic (object):
+class gamma_nucleic(object):
   def __init__(self, d_star_sq):
     ## Coefficient for gamma as a function of resolution
     ## described by a chebyshev polynome.
@@ -194,7 +194,7 @@ class gamma_nucleic (object):
     self.sigma_gamma = gamma_sigma_cheb.f( d_star_sq )
 
 
-class expected_intensity (object):
+class expected_intensity(object):
   """
   This class computes the expected intensity for a given d_star_sq_array given
   some basic info about ASU contents.
@@ -409,7 +409,7 @@ def anisotropic_correction(cache_0,
 # SCALING ROUTINES
 ########################################################################
 
-class ml_iso_absolute_scaling (scaling.xtriage_analysis):
+class ml_iso_absolute_scaling(scaling.xtriage_analysis):
   """
   Maximum likelihood isotropic wilson scaling.
 

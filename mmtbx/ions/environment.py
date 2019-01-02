@@ -47,7 +47,7 @@ CHEM_ENV_LABELS = [
   "Coordinating sulfur",
   ]
 
-class ScatteringEnvironment (slots_getstate_setstate):
+class ScatteringEnvironment(slots_getstate_setstate):
   """
   Container for information summarizing a site's scattering environment.
 
@@ -124,7 +124,7 @@ class ScatteringEnvironment (slots_getstate_setstate):
 #    if (self.anom_density is not None):
 #      if (fp_fdp.wave
 
-class atom_contact (slots_getstate_setstate):
+class atom_contact(slots_getstate_setstate):
   """
   Container for information about an interacting atom.  Most of the methods
   are simply wrappers for frequently called operations on the atom object, but
@@ -288,7 +288,7 @@ class atom_contact (slots_getstate_setstate):
   def __str__(self):
     return self.id_str()
 
-class ChemicalEnvironment (slots_getstate_setstate):
+class ChemicalEnvironment(slots_getstate_setstate):
   """
   Container for information summarizing a site's chemical environment.
 

@@ -28,7 +28,7 @@ def get_mean_coordinate(sites):
     v = flex.vec3_double(sites)
     return v.mean()
 
-class chain (object):
+class chain(object):
   """
   Stores information on a protein or nucleic acid chain, its alignment to
   the target sequence, and the coordinates of each residue.  For command-line
@@ -264,7 +264,7 @@ class chain (object):
           bottom_name="sequence",
           show_ruler=False)
 
-class validation (object):
+class validation(object):
   def __init__(self, pdb_hierarchy, sequences, params=None, log=None,
       nproc=Auto, include_secondary_structure=False,
       extract_coordinates=False, extract_residue_groups=False,

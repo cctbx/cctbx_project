@@ -296,13 +296,13 @@ def run(args,
     other_result=validation,
     other_files=[ params.input.pdb.file_name[0] ])
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
     return run(args=self.args, out=sys.stdout)
 
-class result (program_result):
+class result(program_result):
   """
   Wrapper object for Phenix GUI.
   """

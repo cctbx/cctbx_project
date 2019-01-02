@@ -91,7 +91,7 @@ def make_dir(f):
     if not os.path.exists(f):
         os.makedirs(f)
 
-class main (object):
+class main(object):
   def __init__(self,
       ringer_results,
       dir_name=None,

@@ -4,7 +4,7 @@ from libtbx import slots_getstate_setstate, \
     slots_getstate_setstate_default_initializer
 import sys
 
-class conformer (slots_getstate_setstate):
+class conformer(slots_getstate_setstate):
   __slots__ = ["atom_groups", "label", "selection"]
   def __init__(self, atom_group):
     from scitbx.array_family import flex
@@ -18,7 +18,7 @@ class conformer (slots_getstate_setstate):
     self.atom_groups.append(atom_group)
     self.selection.extend(atom_group.atoms().extract_i_seq())
 
-class conformer_group (slots_getstate_setstate):
+class conformer_group(slots_getstate_setstate):
   __slots__ = ["residue_groups"]
   def __init__(self, residue_groups):
     self.residue_groups = residue_groups
@@ -31,7 +31,7 @@ class conformer_group (slots_getstate_setstate):
         else :
           self.conformers[i_group].append_atom_group(atom_group)
 
-class nb_clash (slots_getstate_setstate_default_initializer):
+class nb_clash(slots_getstate_setstate_default_initializer):
   __slots__ = ["i_seq", "j_seq", "id_str_i", "id_str_j", "overlap"]
 
   def show(self, out=sys.stdout, prefix=""):

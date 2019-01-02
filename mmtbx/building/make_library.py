@@ -128,7 +128,7 @@ def load_all_models_in_directory(dir_name,
         file_names_and_objects.append((full_path, input_file.file_object))
   return file_names_and_objects
 
-class related_chain (slots_getstate_setstate_default_initializer):
+class related_chain(slots_getstate_setstate_default_initializer):
   """
   Container for a protein chain (as hierarchy object) and metadata, extracted
   based on similarity to a target sequence.
@@ -193,7 +193,7 @@ def find_similar_chains(pdb_hierarchy,
         if (first_chain_only) : break
   return results
 
-class extract_related_models (object):
+class extract_related_models(object):
   """
   Multiprocessing wrapper for pulling matching chains out of a collection of
   PDB hierarchies (either from local files or from a PDB mirror).
@@ -307,7 +307,7 @@ def selection_by_symmetry(crystal_symmetries,
   return selection
 
 # FIXME needs to be much smarter about residue matching
-class ensembler (object):
+class ensembler(object):
   """
   Superpose a collection of single-chain models on a reference chain.  This is
   intentionally very limited in function, but flexible with respect to the

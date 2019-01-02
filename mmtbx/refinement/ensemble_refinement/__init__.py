@@ -1866,7 +1866,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     validate=validate,
     log=log)
 
-class run_wrapper (object):
+class run_wrapper(object):
   def __init__(self, model, fmodel, raw_data, raw_flags, er_params, log):
     adopt_init_args(self, locals())
 
@@ -1904,7 +1904,7 @@ class run_wrapper (object):
       log_out=log_out,
       number_of_models=len(ensemble_refinement.er_data.xray_structures))
 
-class trial (slots_getstate_setstate):
+class trial(slots_getstate_setstate):
   __slots__ = ["r_work", "r_free", "pdb_file", "mtz_file", "number_of_models",
                "log_out", "ptls"]
   def __init__(self, **kwds):
@@ -1923,7 +1923,7 @@ class trial (slots_getstate_setstate):
 
 ########################################################################
 # Phenix GUI hooks
-class result (slots_getstate_setstate):
+class result(slots_getstate_setstate):
   __slots__ = [
     "directory", "r_work", "r_free",
     "number_of_models", "pdb_file", "mtz_file","validation", "chi_angles"
@@ -1968,7 +1968,7 @@ class result (slots_getstate_setstate):
        ("Models", str(self.number_of_models)),]
     )
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)

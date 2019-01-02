@@ -35,7 +35,7 @@ simulated_annealing {
 }
 """
 
-class refine_into_difference_density (object):
+class refine_into_difference_density(object):
   """
   Driver for the annealing into mFo-DFc density with selected atoms at partial
   occupancy.  Can be run in parallel with different random seeds or occupancy.

@@ -3,7 +3,7 @@ from __future__ import division
 import mmtbx.polygon.output
 import cPickle
 
-class test_renderer (mmtbx.polygon.output.renderer):
+class test_renderer(mmtbx.polygon.output.renderer):
   def draw_box(self, out, points, color):
     pass
 

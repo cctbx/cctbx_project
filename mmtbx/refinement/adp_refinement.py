@@ -540,7 +540,7 @@ class refine_adp(object):
       self.model.set_xray_structure(fmodel.xray_structure)
     else: raise RuntimeError("Bad ncs options.")
 
-class weight_result (object):
+class weight_result(object):
   def __init__(self, r_work, r_free, delta_b, mean_b, weight, xray_target,
       neutron_r_work, neutron_r_free, u_star, u_iso):
     adopt_init_args(self, locals())

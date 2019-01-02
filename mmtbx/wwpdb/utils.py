@@ -174,7 +174,7 @@ def combine_split_structure(
     return combined_ids
   return None
 
-class filter_pdb_file (object):
+class filter_pdb_file(object):
   """
   Processing of PDB files to remove common pathologies and enable automatic
   refinement behavior.  In particular, delete unknown atoms and ligands,

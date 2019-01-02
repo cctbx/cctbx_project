@@ -166,7 +166,7 @@ class p_vm_calculator(object):
         guess = ii+1
     return guess
 
-class matthews_rupp (scaling.xtriage_analysis):
+class matthews_rupp(scaling.xtriage_analysis):
   """Probabilistic estimation of number of copies in the asu"""
   def __init__(self,
       crystal_symmetry,

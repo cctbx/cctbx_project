@@ -13,7 +13,7 @@ import sys
 # actually be file paths + chain IDs.  to ensure that MUSCLE doesn't choke
 # on these, the option is given to substitute numerical sequence names
 # internally, while still allowing retrieval using the original names.
-class align_pdb_residues (object):
+class align_pdb_residues(object):
   """
   Provides mapping between original residue numbers or IDs and a reference
   numbering, via multiple sequence alignment.  Depending on whether or not

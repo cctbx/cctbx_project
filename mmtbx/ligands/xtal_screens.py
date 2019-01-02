@@ -13,7 +13,7 @@ screen_number = None
   .help = ...
 """
 
-class server (object):
+class server(object):
   def __init__(self):
     import iotbx.cif
     params_path = os.path.join(os.path.split(__file__)[0],
@@ -68,7 +68,7 @@ class server (object):
     raise RuntimeError("Condition '%s' not found in '%s'." % (condition_id,
       screen_name))
 
-class solution (slots_getstate_setstate):
+class solution(slots_getstate_setstate):
   """
   Container for information about a specific crystallization condition (as
   defined in crystallization_screens.cif).

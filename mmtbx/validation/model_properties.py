@@ -9,7 +9,7 @@ from libtbx import slots_getstate_setstate
 from libtbx.test_utils import approx_equal
 import sys
 
-class model_statistics (slots_getstate_setstate):
+class model_statistics(slots_getstate_setstate):
   """
   Atom statistics for the overall model, and various selections within.
   This does not actually contain individual outliers, which are instead held
@@ -136,7 +136,7 @@ class model_statistics (slots_getstate_setstate):
       return dummy_validation()
     return self._ligands
 
-class residue_occupancy (residue):
+class residue_occupancy(residue):
   __slots__ = residue.__slots__ + ["chain_type", "b_iso"]
 
   def as_string(self, prefix=""):
@@ -146,7 +146,7 @@ class residue_occupancy (residue):
   def as_table_row_phenix(self):
     return [ self.id_str(), "residue", self.occupancy, self.b_iso ]
 
-class atom_occupancy (atom):
+class atom_occupancy(atom):
   """
   Container for single-atom occupancy outliers (usually atoms with zero
   occupancy).
@@ -161,18 +161,18 @@ class atom_occupancy (atom):
   def as_table_row_phenix(self):
     return [ self.id_str(), "atom", self.occupancy, self.b_iso ]
 
-class residue_bfactor (residue_occupancy):
+class residue_bfactor(residue_occupancy):
 
   def as_string(self, prefix=""):
     return "%s %4s   b_iso=%.2f" % (self.atom_group_id_str(), self.name,
       self.b_iso)
 
-class atom_bfactor (atom_occupancy):
+class atom_bfactor(atom_occupancy):
   pass
 
 # FIXME redundant with model_vs_data, but what can I do???
 # TODO add validation stuff
-class xray_structure_statistics (validation):
+class xray_structure_statistics(validation):
   """
   Occupancy and B-factor statistics.
   """

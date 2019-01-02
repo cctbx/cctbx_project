@@ -19,7 +19,7 @@ import sys
 from scitbx.array_family import flex
 from libtbx import group_args
 
-class cbeta (residue):
+class cbeta(residue):
   """
   Result class for protein C-beta deviation analysis (phenix.cbetadev).
   """
@@ -55,7 +55,7 @@ class cbeta (residue):
     return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname, self.resid),
              self.deviation, self.dihedral_NABB ]
 
-class cbetadev (validation):
+class cbetadev(validation):
   __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs","stats"]
   program_description = "Analyze protein sidechain C-beta deviation"
   output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
@@ -202,7 +202,7 @@ class cbetadev (validation):
           result.altloc, result.deviation, result.xyz))
     return data
 
-class calculate_ideal_and_deviation (object):
+class calculate_ideal_and_deviation(object):
   __slots__ = ["deviation", "ideal", "dihedral"]
   def __init__(self, relevant_atoms, resname):
     assert (resname != "GLY")

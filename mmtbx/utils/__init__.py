@@ -3079,7 +3079,7 @@ def check_and_set_crystal_symmetry(
       maptbx.assert_same_gridding(map_1=m0, map_2=m.map_data())
   return crystal_symmetry
 
-class detect_hydrogen_nomenclature_problem (object):
+class detect_hydrogen_nomenclature_problem(object):
   """
   This allows us to avoid the following problems:
   1) a bug in automatic linking which deletes the monomer library definition

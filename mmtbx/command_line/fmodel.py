@@ -411,7 +411,7 @@ def run(args, log = sys.stdout):
   print >> log, "-"*79
   return ofn
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     return run(args=list(self.args), log=sys.stdout)
 

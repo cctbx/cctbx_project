@@ -396,7 +396,7 @@ def validate_params(params):
 # =============================================================================
 # GUI-specific class for running command
 from libtbx import runtime_utils
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     result = run(args=self.args, validated=True, out=sys.stdout)
     return result

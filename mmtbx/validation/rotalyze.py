@@ -10,7 +10,7 @@ import os, sys
 OUTLIER_THRESHOLD = 0.003
 ALLOWED_THRESHOLD = 0.02
 
-class rotamer (residue):
+class rotamer(residue):
   """
   Result class for protein sidechain rotamer analysis (molprobity.rotalyze).
   """
@@ -65,7 +65,7 @@ class rotamer (residue):
     return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname,self.resid),
              self.score ] + self.format_chi_angles(pad=True).split(",")#list(self.chi_angles)
 
-class rotamer_ensemble (residue):
+class rotamer_ensemble(residue):
   """Container for validation results for an ensemble of residues."""
   __slots__ = rotamer.__slots__
   def __init__(self, all_results):
@@ -86,7 +86,7 @@ class rotamer_ensemble (residue):
     rot_out = [ "%s (%d)" % (rid, n_rot) for (rid, n_rot) in rotamers ]
     return "%-20s %s" % (self.id_str(), ", ".join(rot_out))
 
-class rotalyze (validation):
+class rotalyze(validation):
   __slots__ = validation.__slots__ + ["n_allowed", "n_favored", "out_percent",
         "outlier_threshold", "data_version"]
   program_description = "Analyze protein sidechain rotamers"
@@ -343,7 +343,7 @@ def evaluate_residue(
     else:
       return is_outlier, value
 
-class residue_evaluator (object):
+class residue_evaluator(object):
   def __init__(self):
     from mmtbx.rotamer.sidechain_angles import SidechainAngles
     from mmtbx.rotamer import rotamer_eval
@@ -410,7 +410,7 @@ def get_occupancy(atom_group):
 
 #-----------------------------------------------------------------------
 # GRAPHICS
-class rotamer_plot_mixin (graphics.rotarama_plot_mixin):
+class rotamer_plot_mixin(graphics.rotarama_plot_mixin):
   def set_labels(self, y_marks=(60,180,300)):
     axes = self.plot.get_axes()
     axes.set_xlabel("Chi1")
@@ -419,7 +419,7 @@ class rotamer_plot_mixin (graphics.rotarama_plot_mixin):
     axes.set_yticks(list(y_marks))
     axes.grid(True, color="0.75")
 
-class rotamer_plot (data_plots.simple_matplotlib_plot, rotamer_plot_mixin):
+class rotamer_plot(data_plots.simple_matplotlib_plot, rotamer_plot_mixin):
   def __init__(self, *args, **kwds):
     data_plots.simple_matplotlib_plot.__init__(self, *args, **kwds)
     rotamer_plot_mixin.__init__(self, *args, **kwds)

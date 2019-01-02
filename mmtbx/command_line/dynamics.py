@@ -59,7 +59,7 @@ def run_cartesian_dynamics(
   print >> log, ""
   print >> log, "RMSD from starting structure: %.3f" % rmsd
 
-class run (geometry_minimization.run):
+class run(geometry_minimization.run):
   _pdb_suffix = "shaken"
   def master_params(self):
     return master_params()
@@ -103,7 +103,7 @@ Usage examples:
       raise NotImplementedError()
     self.model.set_sites_cart_from_xrs()
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)

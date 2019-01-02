@@ -33,7 +33,7 @@ shear_increment = 2
 
 pseudosymmetric_sidechains = ["PHE","TYR","HIS","ASP","ASN","GLU","GLN"]
 
-class conformation (object):
+class conformation(object):
   """
   Stores information about a specific conformation of a residue (and optionally
   the adjacent backrub atoms) or of a pair of residues (and optionally the
@@ -110,7 +110,7 @@ class conformation (object):
     self.rmsd = sites_sc.rms_difference(sites_sc_start)
     return self
 
-class fragment (object):
+class fragment(object):
   """
   Pseudo-residue object for an arbitrary collection of atoms.
   """
@@ -323,7 +323,7 @@ def shear_rotate(
     sites_new.append(xyz_avg)
   sites.set_selected(i_seqs_middle, sites_new)
 
-class residue_conformation_generator (object):
+class residue_conformation_generator(object):
   """
   Class for sampling all rotameric conformations of a residue, including the
   backrub and shear motions if possible.

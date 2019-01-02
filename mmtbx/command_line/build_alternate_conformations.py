@@ -56,7 +56,7 @@ output {
 }
 """)
 
-class build_and_refine (object):
+class build_and_refine(object):
   def __init__(self,
       fmodel,
       pdb_hierarchy,

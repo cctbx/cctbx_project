@@ -524,7 +524,7 @@ def permutations_as_atom_selection_string(groups, perm):
   return result
 
 # XXX for multiprocessing
-class analyze_permutations (object):
+class analyze_permutations(object):
   def __init__(self, groups, sites_cart, u_cart, u_iso):
     self.groups = groups
     self.sites_cart = sites_cart
@@ -900,7 +900,7 @@ def find_tls(params,
     return groups_out.getvalue()
 
 # XXX wrapper for running in Phenix GUI
-class _run_find_tls (object):
+class _run_find_tls(object):
   def __init__(self, params, pdb_hierarchy, xray_structure):
     self.params = params
     self.pdb_hierarchy = pdb_hierarchy

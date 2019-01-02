@@ -4,7 +4,7 @@ from libtbx import slots_getstate_setstate
 from libtbx.str_utils import format_value
 import sys
 
-class entity (slots_getstate_setstate):
+class entity(slots_getstate_setstate):
   """
   Base class for all validation results.  This includes a boolean outlier flag,
   the information used to zoom in the Phenix GUI (optional, but strongly
@@ -120,7 +120,7 @@ __residue_attr__ = [
   "segid",
 ]
 
-class residue (entity):
+class residue(entity):
   """
   Base class for validation information about a single residue, which depending
   on context could mean either any one of the residue_group, atom_group, or
@@ -200,7 +200,7 @@ class residue (entity):
     assert (len(sel) > 0)
     self.xyz = pdb_hierarchy.atoms().select(sel).extract_xyz().mean()
 
-class atoms (entity):
+class atoms(entity):
   """
   Base class for validation results involving a specific set of atoms, such
   as covalent geometry restraints, clashes, etc.
@@ -241,7 +241,7 @@ class atoms (entity):
         return True
     return False
 
-class atom_base (slots_getstate_setstate):
+class atom_base(slots_getstate_setstate):
   """
   Container for metadata for a single atom, in the context of validation
   results involving multiple atoms.  Intended to be used as-is inside various
@@ -307,7 +307,7 @@ class atom_base (slots_getstate_setstate):
     return "%1s%3s%2s%4s%1s" % (self.altloc, self.resname, self.chain_id,
       self.resseq, self.icode)
 
-class atom_info (atom_base):
+class atom_info(atom_base):
   """
   Container for metadata for a single atom, in the context of validation
   results involving multiple atoms.  Intended to be used as-is inside various
@@ -339,7 +339,7 @@ def get_atoms_info(pdb_atoms, iselection,
     proxy_atoms.append(info)
   return proxy_atoms
 
-class atom (atom_base, entity):
+class atom(atom_base, entity):
   """
   Base class for validation results for a single atom.  This is distinct from
   the atom_info class above, which is used to track individual atoms within
@@ -351,7 +351,7 @@ class atom (atom_base, entity):
     return True
 
 #-----------------------------------------------------------------------
-class validation (slots_getstate_setstate):
+class validation(slots_getstate_setstate):
   """
   Container for a set of results from a single analysis (rotamers, clashes,
   etc.).  This is responsible for the console display of these results and
@@ -514,7 +514,7 @@ class validation (slots_getstate_setstate):
       return self.results[i_res]
     return None
 
-class dummy_validation (object):
+class dummy_validation(object):
   """
   Placeholder for cases where values may be undefined because of molecule type
   (e.g. all-RNA structures) but we want to substitute None automatically.

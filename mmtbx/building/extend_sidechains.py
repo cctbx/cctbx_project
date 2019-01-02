@@ -88,7 +88,7 @@ def correct_sequence(pdb_hierarchy,
   pdb_hierarchy.atoms().reset_i_seq()
   return n_changed
 
-class conformation_scorer (object):
+class conformation_scorer(object):
   """
   Stand-in for the conformation scoring class in mmtbx.refinement.real_space;
   instead of calculating fit to the map, this simply uses the change in
@@ -321,7 +321,7 @@ def refit_residues(
             two_fofc_mean_start, two_fofc_mean_end, flag)
   return hierarchy, xrs
 
-class prefilter (object):
+class prefilter(object):
   """
   Optional filter for excluding residues with poor backbone density from being
   extended.  This is done as a separate callback to enable the main rebuilding
@@ -352,7 +352,7 @@ class prefilter (object):
       return False
     return True
 
-class extend_and_refine (object):
+class extend_and_refine(object):
   """
   Run the combined sidechain extension and real-space fitting, and optionally
   write final model and map coefficients.

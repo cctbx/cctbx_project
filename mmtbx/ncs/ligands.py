@@ -53,7 +53,7 @@ def xyz_distance(xyz1, xyz2):
   x2,y2,z2 = xyz2
   return sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
 
-class group_operators (object):
+class group_operators(object):
   """
   Object for storing information about NCS relationships relative to an
   atom selection, i.e. given four identical chains A, B, C, and D, this might
@@ -99,7 +99,7 @@ class group_operators (object):
       print >> out, ""
     print >> out, ""
 
-class sample_operators (object):
+class sample_operators(object):
   """
   Determines an appropriate "reference" ligand, and samples the density around
   sites transformed by each operator, applying the best operator to the
@@ -348,7 +348,7 @@ def remove_clashing_atoms(
     xrs_new = xray_structure
   return xrs_new
 
-class get_final_maps_and_cc (object):
+class get_final_maps_and_cc(object):
   def __init__(self,
       fmodel,
       ligands,
@@ -473,7 +473,7 @@ def combine_ligands_and_hierarchy(pdb_hierarchy, ligands, log=None):
     chain_id_counts[best_chain_id] = new_resseq
 
 # Main function
-class apply_ligand_ncs (object):
+class apply_ligand_ncs(object):
   """
   Wrapper class; this should be the primary entry point for external calling
   routines.

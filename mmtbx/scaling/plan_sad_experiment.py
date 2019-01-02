@@ -724,7 +724,7 @@ def get_dmin_ranges(resolution=None,target_list=[6,5,3,2.5,2,1.5]):
   return new_list
 
 
-class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis):
+class estimate_necessary_i_sigi(mmtbx.scaling.xtriage_analysis):
   def __init__(self,
       chain_type='PROTEIN',
       residues=250,

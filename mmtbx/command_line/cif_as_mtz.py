@@ -656,7 +656,7 @@ def validate_params(params):
         "directory.") % output_dir)
   return True
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     os.chdir(self.output_dir)
     return run2(args=list(self.args), log=sys.stdout)

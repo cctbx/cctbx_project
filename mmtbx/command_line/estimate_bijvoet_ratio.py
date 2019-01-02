@@ -30,7 +30,7 @@ mw = None
 def run(args, out=sys.stdout, params=None):
   import iotbx.phil
   from cctbx.eltbx import chemical_elements, sasaki
-  class interpreter (iotbx.phil.process_command_line_with_files):
+  class interpreter(iotbx.phil.process_command_line_with_files):
     def process_other(self, arg):
       if (len(arg) <= 2):
         if (arg.upper() in chemical_elements.proper_upper_list()):
