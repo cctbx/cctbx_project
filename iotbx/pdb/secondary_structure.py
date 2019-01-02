@@ -333,7 +333,7 @@ class registration_atoms:
     return None
 
 
-class structure_base (object):
+class structure_base(object):
 
   def as_pdb_str(self):
     return None
@@ -1673,7 +1673,7 @@ class annotation(structure_base):
 #        88        88 88888888888 88888888888 88 8P        Y8
 #=============================================================================
 
-class pdb_helix (structure_base):
+class pdb_helix(structure_base):
   _helix_class_array = ['unknown','alpha', 'unknown', 'pi', 'unknown',
         '3_10', 'unknown', 'unknown', 'unknown', 'unknown', 'unknown']
 

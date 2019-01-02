@@ -19,10 +19,10 @@ standard_map_names = {
   'ANOM' : 'anomalous',
 }
 
-class MapNotFound (RuntimeError):
+class MapNotFound(RuntimeError):
   pass
 
-class server (object):
+class server(object):
   """
   Manager for files containing map coefficients (either as complex arrays or
   separate F, PHI, and optional FOM).  Once an MTZ file or collection of
@@ -402,7 +402,7 @@ class server (object):
       maps.append(map_info(anom_map, MAP_TYPE_ANOMALOUS, "anomalous"))
     return maps
 
-class map_info (object):
+class map_info(object):
   def __init__(self, map_coeffs, map_type, map_name=None):
     self.map_coeffs = map_coeffs
     self.map_type = map_type
@@ -520,7 +520,7 @@ def convert_map_coefficients(map_coefficients,
     outputs.append((map_file, map.map_type))
   return outputs
 
-class write_ccp4_maps_wrapper (object):
+class write_ccp4_maps_wrapper(object):
   """
   Callable object for running map conversions in parallel (probably overkill,
   but anything we can do to take advantage of multiple CPUs is worth trying).
@@ -624,7 +624,7 @@ def get_map_summary(map, resolution_factor=0.25):
   info.append(("Skewness", "%.2f" % more_stats.skewness()))
   return info
 
-class auto_convert_map_coefficients (object):
+class auto_convert_map_coefficients(object):
   def __init__(self, mtz_file, pdb_file=None, resolution_factor=0.25):
     self.f_map = None
     self.diff_map = None

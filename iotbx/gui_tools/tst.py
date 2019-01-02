@@ -126,7 +126,7 @@ def exercise_reflections():
   assert (hl_coeffs.is_hendrickson_lattman_array())
   from iotbx.mtz import label_decorator
   import iotbx.mtz
-  class resolve_label_decorator (label_decorator):
+  class resolve_label_decorator(label_decorator):
     def phases(self, *args, **kwds):
       return label_decorator.phases(self, *args, **kwds) + "M"
     def hendrickson_lattman(self, *args, **kwds):

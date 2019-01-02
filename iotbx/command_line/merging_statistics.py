@@ -45,7 +45,7 @@ json {
 """ % iotbx.merging_statistics.merging_params_str
 
 # Hack for handling SHELX files
-class cmdline_processor (iotbx.phil.process_command_line_with_files):
+class cmdline_processor(iotbx.phil.process_command_line_with_files):
   def process_other(self, arg):
     if ("=" in arg):
       fields = arg.split("=")
@@ -159,7 +159,7 @@ def validate_params(params):
       "range (extend_d_max_min=True).")
   return True
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     return run(args=list(self.args),
                out=sys.stdout,

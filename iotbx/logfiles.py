@@ -17,11 +17,11 @@ def percent_to_float(value):
   assert value.endswith("%")
   return float(re.sub("\%$", "", value))
 
-class experiment_info (object):
+class experiment_info(object):
   def extract_all_stats(self):
     return self
 
-class integration_info (object):
+class integration_info(object):
   def __init__(self, program_name="NULL"):
     self.program_name = program_name
     self.wavelength = None
@@ -40,7 +40,7 @@ class integration_info (object):
   def extract_all_stats(self):
     return self
 
-class scaling_info (object):
+class scaling_info(object):
   def __init__(self, program_name="NULL"):
     self.program_name = program_name
     self.stats_overall = {}
@@ -112,17 +112,17 @@ class scaling_info (object):
                       r_meas=None, # TODO?
                       i_over_sigma=float_or_none(s2n_bin))
 
-class all_none (object):
+class all_none(object):
   def __getattr__(self, name):
     return None
 
-class empty_info (object):
+class empty_info(object):
   def extract_all_stats(self):
     return all_none()
   def extract_outer_shell_stats(self):
     return all_none()
 
-class processing_info (object):
+class processing_info(object):
   def __init__(self, experiment, integration, scaling):
     self.experiment = experiment
     self.integration = integration

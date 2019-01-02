@@ -5,7 +5,7 @@ from libtbx.utils import Sorry
 import os
 import sys
 
-class manager (object):
+class manager(object):
   """
   Class for keeping track of symmetry information from multiple files.  This
   is particularly problematic in the phenix.refine GUI, where users may supply

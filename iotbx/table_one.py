@@ -83,7 +83,7 @@ optional_if_none = set([
 
 keyword_formats = dict([ (kw, fs) for (kw, label, fs, cif_tag) in keywords ])
 
-class column (slots_getstate_setstate):
+class column(slots_getstate_setstate):
   """
   Statistics for a single structure, including optional high-resolution
   shell.  Any combination of standard attributes is permitted as keyword
@@ -133,7 +133,7 @@ class column (slots_getstate_setstate):
         lines.append("%s %s" % (stat_name, value))
     return "\n".join(lines)
 
-class table (slots_getstate_setstate):
+class table(slots_getstate_setstate):
   """
   Combined table of statistics for one or more structures published together.
   """

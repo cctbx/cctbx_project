@@ -151,7 +151,7 @@ def identify_dataset(path_name):
     results.append(dataset)
   return results
 
-class dataset_info (object):
+class dataset_info(object):
   def __init__(self, base_name, ranges):
     self.base_name = base_name
     self.ranges = ranges

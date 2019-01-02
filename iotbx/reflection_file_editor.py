@@ -264,7 +264,7 @@ mtz_file
   }
 }""", process_includes=True)
 
-class array_input (slots_getstate_setstate):
+class array_input(slots_getstate_setstate):
   __slots__ = ["miller_arrays", "file_names", "array_types"]
   def __init__(self, params, input_files=None):
     from iotbx import file_reader
@@ -322,7 +322,7 @@ class array_input (slots_getstate_setstate):
       raise Sorry("No unit cell found in inputs - please specify explicitly.")
     return unit_cells
 
-class process_arrays (object):
+class process_arrays(object):
   def __init__(self, params, input_files=None, inputs_object=None,
       log=sys.stderr, accumulation_callback=None, symmetry_callback=None):
     if (input_files is None):

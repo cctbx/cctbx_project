@@ -107,7 +107,7 @@ def get_wildcard_strings(formats, include_any=True):
   wildcards_str = "|".join(wildcards)
   return wildcards_str
 
-class FormatError (Sorry):
+class FormatError(Sorry):
   pass
 
 def strip_shelx_format_extension(file_name):
@@ -216,7 +216,7 @@ def splitext(file_name):
       file_ext = ext2
   return (file_base, file_ext)
 
-class any_file_input (object):
+class any_file_input(object):
   """
   Container for file data of any supported type.  Usually obtained via the
   any_file() function rather than being instantiated directly.
@@ -625,7 +625,7 @@ def any_file_fast(file_name,
     return input_class(file_name=file_name,
       valid_types=valid_types)
 
-class any_file_fast_input (object):
+class any_file_fast_input(object):
   __extensions__ = standard_file_extensions
   __descriptions__ = standard_file_descriptions
   def __init__(self, file_name, valid_types):
@@ -645,7 +645,7 @@ class any_file_fast_input (object):
     # PHENIX GUI displays the specific format, which requires actually reading
     # in the file.  the stub class below will work for obvious formats.
     if (self.file_type == "hkl"):
-      class fake_data_object (object):
+      class fake_data_object(object):
         def __init__(self, ext):
           self.ext = ext
         def file_type(self):
@@ -654,7 +654,7 @@ class any_file_fast_input (object):
           else : return "Data (other)"
       self.file_object = fake_data_object(file_ext)
 
-class directory_input (object):
+class directory_input(object):
   def __init__(self, dir_name):
     self.file_name = dir_name
     self.file_object = dircache.listdir(dir_name)
@@ -665,7 +665,7 @@ class directory_input (object):
   def file_info(self, show_file_size=False):
     return "Folder"
 
-class group_files (object):
+class group_files(object):
   def __init__(self,
                 file_names,
                 template_format="pdb",
