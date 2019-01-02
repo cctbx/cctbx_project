@@ -1929,7 +1929,7 @@ def create_run_directory(prefix, default_directory_number=None):
     os.makedirs(dir_name)
   return os.path.abspath(dir_name)
 
-class tmp_dir_wrapper (object):
+class tmp_dir_wrapper(object):
   """
   Convenience methods for running in a (presumably empty) temporary directory
   and copying all files to another directory.  Can be used whether or not the
@@ -2121,7 +2121,7 @@ def retrieve_unless_exists(url, filename, digests=None):
 
 
 
-class download_progress (object):
+class download_progress(object):
   """
   Simple proxy for displaying download status - here with methods for
   writing to the console, but can be subclassed and used for graphical display.
@@ -2198,7 +2198,7 @@ class download_progress (object):
     """
     pass
 
-class download_target (object):
+class download_target(object):
   """
   Flexible callable object for retrieving a file from a URL, with optional
   HTTPS authentication.  Designed to be runnable in a separate thread with

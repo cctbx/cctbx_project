@@ -43,7 +43,7 @@ fsync = True
   .type = bool
 """)
 
-class simple_target (object):
+class simple_target(object):
   def __init__(self, args, output_dir=None):
     adopt_init_args(self, locals())
     if output_dir is None :
@@ -52,7 +52,7 @@ class simple_target (object):
   def __call__(self):
     return True
 
-class target_with_save_result (object):
+class target_with_save_result(object):
   def __init__(self, args, file_name, output_dir=None, log_file=None,
       job_title=None):
     assert isinstance(file_name, basestring)
@@ -83,7 +83,7 @@ class target_with_save_result (object):
   def run(self):
     raise NotImplementedError()
 
-class detached_process_driver (object):
+class detached_process_driver(object):
   def __init__(self, target):
     adopt_init_args(self, locals())
 
@@ -91,12 +91,12 @@ class detached_process_driver (object):
     result = self.target()
     return result
 
-class detached_process_driver_mp (detached_process_driver):
+class detached_process_driver_mp(detached_process_driver):
   def __call__(self, args, kwds, child_conn):
     result = self.target()
     return result
 
-class detached_base (object):
+class detached_base(object):
   def __init__(self, params):
     adopt_init_args(self, locals())
     self._accumulated_callbacks = []
@@ -144,7 +144,7 @@ class detached_base (object):
   def callback_other(self, status):
     pass
 
-class stdout_redirect (object):
+class stdout_redirect(object):
   def __init__(self, handler):
     adopt_init_args(self, locals())
 
@@ -157,7 +157,7 @@ class stdout_redirect (object):
   def close(self):
     pass
 
-class detached_process_server (detached_base):
+class detached_process_server(detached_base):
   def __init__(self, target, *args, **kwds):
     detached_base.__init__(self, *args, **kwds)
     self.target = target
@@ -259,7 +259,7 @@ class detached_process_server (detached_base):
     self._stdout.close()
 
 # TODO pause/resume?
-class detached_process_client (detached_base):
+class detached_process_client(detached_base):
   def __init__(self, *args, **kwds):
     detached_base.__init__(self, *args, **kwds)
     self._logfile = None
@@ -484,7 +484,7 @@ def run(args):
 
 ########################################################################
 # testing classes (see tst_runtime_utils.py for usage)
-class simple_client (detached_process_client):
+class simple_client(detached_process_client):
   def __init__(self, *args, **kwds):
     self.n_cb = 0
     self.out = StringIO()
@@ -506,7 +506,7 @@ class simple_client (detached_process_client):
   def callback_final(self, result):
     self.result = result
 
-class simple_run (object):
+class simple_run(object):
   def __init__(self, output_dir):
     adopt_init_args(self, locals())
 
@@ -532,7 +532,7 @@ class simple_run (object):
       print("current is %f" % pu)
     return pu_total
 
-class simple_func (object):
+class simple_func(object):
   def __init__(self, x):
     self.x = x
   def __call__(self):

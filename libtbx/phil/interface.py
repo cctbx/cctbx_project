@@ -20,7 +20,7 @@ tracking_params = libtbx.phil.parse("""
     .style = noauto bold
 """)
 
-class index (object):
+class index(object):
   def __init__(self, master_phil, working_phil=None, parse=None,
       fetch_new=False):
     adopt_init_args(self, locals())

@@ -87,7 +87,7 @@ class TimeoutTransport(xmlrpclib.Transport):
 default_timeout = 5.0
 if (sys.platform == "win32"):
   default_timeout = 1.0
-class ServerProxy (object):
+class ServerProxy(object):
   def __init__(self, uri, transport=None, encoding=None, verbose=0,
                allow_none=0, use_datetime=0, timeout=default_timeout,
                raise_errors=True):
@@ -211,7 +211,7 @@ class ServerProxy (object):
     return self._errors
 
 #-----------------------------------------------------------------------
-class external_program_thread (threading.Thread):
+class external_program_thread(threading.Thread):
   def __init__(self, command_args, program_id, log=None,
       intercept_output=True):
     adopt_init_args(self, locals())
@@ -242,7 +242,7 @@ class external_program_thread (threading.Thread):
   def is_alive(self):
     return self._alive
 
-class external_program_server (object):
+class external_program_server(object):
   port_ranges = [ (40001, 40840),
                   (46000, 46999) ]
   def __init__(self, command_args, program_id, timeout, cache_requests=False,

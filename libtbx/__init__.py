@@ -120,7 +120,7 @@ class mutable(slots_getstate_setstate):
   def __init__(O, value):
     O.value = value
 
-class slots_getstate_setstate_default_initializer (slots_getstate_setstate):
+class slots_getstate_setstate_default_initializer(slots_getstate_setstate):
   """
   Merges together functionality from slots_getstate_setstate with
   adopt_optional_init_args.

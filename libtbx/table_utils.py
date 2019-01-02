@@ -95,7 +95,7 @@ def manage_columns(table_data, include_columns):
     new_table.append(new_row)
   return new_table
 
-class simple_table (object):
+class simple_table(object):
   """
   Container for generic table contents, used in Xtriage and elsewhere.  The
   table cells are assumed to be pre-formatted as strings (but not fixed-width).

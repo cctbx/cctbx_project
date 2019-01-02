@@ -402,7 +402,7 @@ class relocatable_path(path_mixin):
   def __hash__(self):
     return hash((self._anchor, self.relocatable))
 
-class clean_out_directory (object):
+class clean_out_directory(object):
   """
   Utility for cleaning out Phenix (etc.) project folders, which tend to
   accumulate large amounts of temporary files and other large objects (CCP4

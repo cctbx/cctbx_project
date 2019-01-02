@@ -60,7 +60,7 @@ class thread_with_callback_and_wait(threading.Thread):
 
 null_callback = oop.null()
 
-class queue_monitor_thread (threading.Thread):
+class queue_monitor_thread(threading.Thread):
   def __init__(self, q, callback, sleep_interval=1.0):
     self.q = q
     self.cb = callback
@@ -80,7 +80,7 @@ class queue_monitor_thread (threading.Thread):
   def exit(self):
     self._exit = True
 
-class file_monitor_thread (threading.Thread):
+class file_monitor_thread(threading.Thread):
   def __init__(self, dir_name, file_names, callback, sleep_interval=1.0):
     assert os.path.isdir(dir_name)
     self.cb = callback
@@ -111,7 +111,7 @@ class file_monitor_thread (threading.Thread):
   def exit(self):
     self._exit = True
 
-class simple_task_thread (threading.Thread):
+class simple_task_thread(threading.Thread):
   def __init__(self, thread_function, parent_window=None):
     threading.Thread.__init__(self)
     self.f = thread_function
@@ -134,11 +134,11 @@ class simple_task_thread (threading.Thread):
   def get_error(self):
     return str(self._exception)
 
-class child_process_message (object):
+class child_process_message(object):
   def __init__(self, message_type, data):
     adopt_init_args(self, locals())
 
-class child_process_pipe (object):
+class child_process_pipe(object):
   def __init__(self, connection_object):
     adopt_init_args(self, locals())
 
@@ -153,7 +153,7 @@ class child_process_pipe (object):
     return self.connection_object.recv(*args, **kwds)
 
 # fake filehandle, sends data up pipe to parent process
-class stdout_pipe (object):
+class stdout_pipe(object):
   def __init__(self, connection):
     self._c = connection
     self._data = ""
@@ -181,7 +181,7 @@ wait_before_flush = 0.2 # minimum time between send() calls
 max_between_flush = 5
 
 # this slows down the output so it won't stall a GUI
-class stdout_pipe_buffered (stdout_pipe):
+class stdout_pipe_buffered(stdout_pipe):
   def __init__(self, *args, **kwds):
     stdout_pipe.__init__(self, *args, **kwds)
     self._last_t = time.time()
@@ -208,11 +208,11 @@ class stdout_pipe_buffered (stdout_pipe):
 try:
   import multiprocessing
 except ImportError:
-  class process_with_callbacks (object):
+  class process_with_callbacks(object):
     def __init__(self, *args, **kwds):
       raise ImportError("The multiprocessing module is not available.")
 else:
-  class _process_with_stdout_redirect (multiprocessing.Process):
+  class _process_with_stdout_redirect(multiprocessing.Process):
     def __init__(self, group=None, target=None, name=None, args=(), kwargs={},
         connection=None, buffer_stdout=True):
       multiprocessing.Process.__init__(self, group, target, name, args, kwargs)
@@ -261,7 +261,7 @@ else:
     connection.send(True)
 
   # not really a process, but a wrapper for one.
-  class process_with_callbacks (threading.Thread):
+  class process_with_callbacks(threading.Thread):
     def __init__(self,
         target,
         args=(),

@@ -323,7 +323,7 @@ def pool_map(
   >>> print len(result)
   ... 1000
 
-  >>> class f_caller (object):
+  >>> class f_caller(object):
   ...   def __init__(self, non_pickleable_object):
   ...     self._obj = non_pickleable_object
   ...   def __call__(self, x):
@@ -746,7 +746,7 @@ def multi_core_run( myfunction, argstuples, nproc ):
 
 #  Class to just run a method. This is part of run_parallel below.
 
-class run_anything (object):
+class run_anything(object):
   def __init__(self,kw_list=None,target_function=None):
     self.kw_list=kw_list
     self.target_function=target_function

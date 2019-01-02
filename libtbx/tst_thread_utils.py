@@ -59,7 +59,7 @@ def exercise_threading():
 ########################################################################
 # THREADING + MULTIPROCESSING
 #
-class _callback_handler (object):
+class _callback_handler(object):
   def __init__(self):
     self._err = None
     self._result = None
@@ -278,7 +278,7 @@ def _target_function09(args, kwds, connection):
     print(i)
     time.sleep(1)
 
-class _callback_handler_2 (object):
+class _callback_handler_2(object):
   def __init__(self):
     self.lines = ""
     self.paused = False

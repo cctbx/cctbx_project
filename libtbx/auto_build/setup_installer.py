@@ -140,7 +140,7 @@ if (not libtbx_path in sys.path):
   sys.path.append(libtbx_path)
 from libtbx.auto_build import install_distribution
 
-class installer (install_distribution.installer):
+class installer(install_distribution.installer):
   product_name = "%(product)s"
   dest_dir_prefix = "%(pkg)s"
   make_apps = []

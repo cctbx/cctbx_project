@@ -36,7 +36,7 @@ python_dependencies = {"_ssl" : "Secure Socket Library",
 os.environ['PYTHONNOUSERSITE'] = '1'
 
 
-class installer (object):
+class installer(object):
   def __init__(self, args=None, packages=None, log=sys.stdout):
     #assert (sys.platform in ["linux2", "linux3", "darwin"])
     # Check python version >= 2.7 or >= 3.4
