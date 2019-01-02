@@ -199,7 +199,7 @@ def integrate_triple_zernike2d(n1,n2,n3,m, Bnmk_obj):
     value = value + Fraction( ck[kk],(kk+2))
   return float(value)
 
-class Bnmk (object):
+class Bnmk(object):
   "Bnmk coefficient object hold 2d zernike expansion coefs"
   def __init__(self, nmax):
     self.nmax=nmax
