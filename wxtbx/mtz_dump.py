@@ -10,7 +10,7 @@ column_widths = [ 60, 100, 80, 80, 100, 100, 100 ]
 
 aln_flags = wx.ALL|wx.ALIGN_CENTER_VERTICAL
 
-class MtzInspectionFrame (wx.Frame):
+class MtzInspectionFrame(wx.Frame):
   def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.VERTICAL)
@@ -34,7 +34,7 @@ class MtzInspectionFrame (wx.Frame):
     if (file_name is not None):
       self.SetMtzFile(file_name)
 
-class MtzContentsPanel (wx.Panel):
+class MtzContentsPanel(wx.Panel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.VERTICAL)
@@ -104,7 +104,7 @@ class MtzContentsPanel (wx.Panel):
     self.sizer.Fit(self)
     self.Fit()
 
-class MtzDatasetPanel (wx.Panel):
+class MtzDatasetPanel(wx.Panel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.VERTICAL)
@@ -133,7 +133,7 @@ class MtzDatasetPanel (wx.Panel):
     self.Layout()
     self.Refresh()
 
-class MtzColumnList (wx.ListCtrl):
+class MtzColumnList(wx.ListCtrl):
   def __init__(self, *args, **kwds):
     style = kwds.get('style', 0)
     if (not style & wx.LC_REPORT):

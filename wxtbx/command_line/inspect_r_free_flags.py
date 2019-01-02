@@ -83,7 +83,7 @@ def display_file_info(file_name, parent=None):
   frame.Fit()
   frame.Show()
 
-class RfreeInspector (wx.Panel):
+class RfreeInspector(wx.Panel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.VERTICAL)
@@ -152,7 +152,7 @@ in shells; we suggest creating a new set in such cases.""")
        100 * self.stats[array_selection].percent_free))
     self.Refresh()
 
-class RfreeFlagsPlot (wxtbx.plots.plot_container):
+class RfreeFlagsPlot(wxtbx.plots.plot_container):
   def show_pie(self, flags, test_flag_value):
     values = sorted(list(set(flags)))
     n_values = len(values)

@@ -6,7 +6,7 @@ Miscellaneous custom wxPython windowing objects.
 from __future__ import division
 import wx
 
-class ChoiceBook (wx.Panel):
+class ChoiceBook(wx.Panel):
   """
   Notebook-like container with a wx.Choice control instead of tabs.
   """

@@ -9,7 +9,7 @@ from libtbx import Auto
 import wx
 import sys
 
-class IntCtrl (ValidatedTextCtrl):
+class IntCtrl(ValidatedTextCtrl):
   def __init__(self, *args, **kwds):
     super(IntCtrl, self).__init__(*args, **kwds)
     self.min = -sys.maxint
@@ -114,7 +114,7 @@ class IntCtrl (ValidatedTextCtrl):
         self.SetValue(value)
         self.DoSendEvent()
 
-class IntValidator (TextCtrlValidator):
+class IntValidator(TextCtrlValidator):
   def CheckFormat(self, value):
     value = int(value)
     window = self.GetWindow()

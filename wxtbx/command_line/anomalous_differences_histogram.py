@@ -32,7 +32,7 @@ def display_file_info(file_name, obs_type="amplitudes", parent=None,
       array_name=array_name)
     frame.Show()
 
-class AnomHistPlotFrame (wxtbx.plots.plot_frame):
+class AnomHistPlotFrame(wxtbx.plots.plot_frame):
   def __init__(self, *args, **kwds):
     self._array = kwds.pop("array")
     self._array_name = kwds.pop("array_name")

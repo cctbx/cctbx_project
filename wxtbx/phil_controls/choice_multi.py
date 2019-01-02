@@ -3,7 +3,7 @@ from __future__ import division
 from wxtbx import phil_controls
 import wx
 
-class MultiChoiceCtrl (wx.Panel, phil_controls.PhilCtrl):
+class MultiChoiceCtrl(wx.Panel, phil_controls.PhilCtrl):
   """
   Control for phil type 'choice(multi=True)'
 

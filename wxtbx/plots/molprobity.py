@@ -9,7 +9,7 @@ import wxtbx.plots
 import wx
 from math import sqrt, floor
 
-class rotarama_plot (wxtbx.plots.plot_container):
+class rotarama_plot(wxtbx.plots.plot_container):
   hit_test_radius = 3.0
   hit_test_minimum_difference = 0.5
   def __init__(self, parent, figure_size=(8,8), xyz_shift=None):
@@ -43,18 +43,18 @@ class rotarama_plot (wxtbx.plots.plot_container):
                xyz[2] + self.xyz_shift[2])
       self.parent.zoom_callback(xyz=xyz)
 
-class ramalyze_plot (rotarama_plot,
+class ramalyze_plot(rotarama_plot,
                      ramalyze.ramachandran_plot_mixin):
   def __init__(self, *args, **kwds):
     rotarama_plot.__init__(self, *args, **kwds)
     ramalyze.ramachandran_plot_mixin.__init__(self)
 
-class rotalyze_plot (rotarama_plot, rotalyze.rotamer_plot_mixin):
+class rotalyze_plot(rotarama_plot, rotalyze.rotamer_plot_mixin):
   def __init__(self, *args, **kwds):
     rotarama_plot.__init__(self, *args, **kwds)
     rotalyze.rotamer_plot_mixin.__init__(self)
 
-class rotarama_frame (wxtbx.plots.plot_frame):
+class rotarama_frame(wxtbx.plots.plot_frame):
   frame_name = "rotarama_frame"
   show_controls_default = True
   def __init__(self, parent, title, validation):
@@ -79,7 +79,7 @@ class rotarama_frame (wxtbx.plots.plot_frame):
     if getattr(self.GetParent(), "main_window", None) is not None :
       self.GetParent().main_window.show_gfx_selection(**kwds)
 
-class ramalyze_frame (rotarama_frame):
+class ramalyze_frame(rotarama_frame):
   frame_name = "rama_frame"
   def draw_top_panel(self):
     self.top_panel = wx.Panel(self)
@@ -186,7 +186,7 @@ class ramalyze_frame (rotarama_frame):
     (pos_type,res_type,pt_type,cm_name,show_labels) = self.get_current_state()
     self.set_plot_type(pos_type, res_type, pt_type, cm_name, show_labels)
 
-class rotalyze_frame (rotarama_frame):
+class rotalyze_frame(rotarama_frame):
   frame_name = "rota_frame"
   residues = ["Arg", "Asn", "Asp", "Gln", "Glu", "His", "Ile", "Leu", "Lys",
               "Met", "Phe", "Trp", "Tyr"]
@@ -280,7 +280,7 @@ class rotalyze_frame (rotarama_frame):
     (res_type,pt_type,cm_name,show_labels) = self.get_current_state()
     self.set_plot_type(res_type, pt_type, cm_name, show_labels)
 
-class multi_criterion_plot (wxtbx.plots.plot_container,
+class multi_criterion_plot(wxtbx.plots.plot_container,
     graphics.multi_criterion_plot_mixin):
   def __init__(self, parent, binner, y_limits):
     self._reset = False
@@ -339,7 +339,7 @@ class multi_criterion_plot (wxtbx.plots.plot_container,
         self.parent.zoom_callback(selection_string=selection_string,
                                   xyz=xyz)
 
-class multi_criterion_frame (wxtbx.plots.plot_frame):
+class multi_criterion_frame(wxtbx.plots.plot_frame):
   show_controls_default = True
   def __init__(self, parent, title, validation):
     self._binner = validation.binned_data()

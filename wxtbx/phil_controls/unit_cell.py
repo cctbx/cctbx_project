@@ -3,7 +3,7 @@ from __future__ import division
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 import wx
 
-class UnitCellCtrl (ValidatedTextCtrl):
+class UnitCellCtrl(ValidatedTextCtrl):
   def __init__(self, *args, **kwds):
     super(UnitCellCtrl, self).__init__(*args, **kwds)
     self.SetToolTip(wx.ToolTip(
@@ -39,7 +39,7 @@ class UnitCellCtrl (ValidatedTextCtrl):
     from cctbx import uctbx
     return uctbx.unit_cell(val_str)
 
-class UnitCellValidator (TextCtrlValidator):
+class UnitCellValidator(TextCtrlValidator):
   def CheckFormat(self, value):
     if (len(value) == 0):
       return ""

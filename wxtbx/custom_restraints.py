@@ -20,7 +20,7 @@ ATOM_SELECTION_BUTTONS = 1
 #-----------------------------------------------------------------------
 # Basic panel
 
-class CustomRestraintsPanel (wx.Panel):
+class CustomRestraintsPanel(wx.Panel):
   n_atom_selections = -1
   list_label = None
   def __init__(self, *args, **kwds):
@@ -155,7 +155,7 @@ class CustomRestraintsPanel (wx.Panel):
     self.Bind(wx.EVT_BUTTON, self.GetTopLevelParent().OnView, btn)
     return btn
 
-class AtomSelectionButton (metallicbutton.MetallicButton):
+class AtomSelectionButton(metallicbutton.MetallicButton):
   def __init__(self, parent, selection_ctrl):
     metallicbutton.MetallicButton.__init__(self,
       parent=parent,
@@ -164,7 +164,7 @@ class AtomSelectionButton (metallicbutton.MetallicButton):
       highlight_color=(200,220,240))
     self.selection_ctrl = selection_ctrl
 
-class CustomBondPanel (CustomRestraintsPanel):
+class CustomBondPanel(CustomRestraintsPanel):
   n_atom_selections = 2
   list_label = "Custom bond restraints:"
   def CreateList(self):
@@ -199,7 +199,7 @@ class CustomBondPanel (CustomRestraintsPanel):
     event.GetEventObject().PopupMenu(menu)
     menu.Destroy()
 
-class CustomAnglePanel (CustomRestraintsPanel):
+class CustomAnglePanel(CustomRestraintsPanel):
   n_atom_selections = 3
   list_label = "Custom angle restraints:"
   def CreateList(self):
@@ -230,7 +230,7 @@ class CustomAnglePanel (CustomRestraintsPanel):
     event.GetEventObject().PopupMenu(menu)
     menu.Destroy()
 
-class CustomPlanarityPanel (CustomRestraintsPanel):
+class CustomPlanarityPanel(CustomRestraintsPanel):
   n_atom_selections = 1
   list_label = "Custom planarity restraints:"
   def CreateList(self):
@@ -259,7 +259,7 @@ class CustomPlanarityPanel (CustomRestraintsPanel):
 #-----------------------------------------------------------------------
 # ListCtrl-derived classes
 
-class RestraintsListBase (wx.ListCtrl):
+class RestraintsListBase(wx.ListCtrl):
   restraint_name = None
   n_columns = -1
   def __init__(self, *args, **kwds):
@@ -322,7 +322,7 @@ class RestraintsListBase (wx.ListCtrl):
 def fv(fs, val):
   return str_utils.format_value(fs, val, replace_none_with="---")
 
-class BondRestraintsList (RestraintsListBase):
+class BondRestraintsList(RestraintsListBase):
   restraint_name = "bond"
   def CreateColumns(self):
     self.InsertColumn(0, "Selections", width=400)
@@ -432,7 +432,7 @@ class BondRestraintsList (RestraintsListBase):
         self._params[item].symmetry_operation = symop
         self.SetStringItem(item, 4, fv("%s", symop))
 
-class AngleRestraintsList (RestraintsListBase):
+class AngleRestraintsList(RestraintsListBase):
   restraint_name = "angle"
   def CreateColumns(self):
     self.InsertColumn(0, "Selections", width=600)
@@ -507,7 +507,7 @@ class AngleRestraintsList (RestraintsListBase):
         self.SetStringItem(item, 2, "%g" % sigma)
       dlg.Destroy()
 
-class PlanarityRestraintsList (RestraintsListBase):
+class PlanarityRestraintsList(RestraintsListBase):
   restraint_name = "planarity"
   def CreateColumns(self):
     self.InsertColumn(0, "Atom selection", width=680)
@@ -559,7 +559,7 @@ class PlanarityRestraintsList (RestraintsListBase):
 
 # XXX fix for true division bug
 flatnotebook.PageContainer.OnMouseWheel = lambda win, evt: False
-class RestraintsFrame (wx.Frame):
+class RestraintsFrame(wx.Frame):
   def __init__(self, *args, **kwds):
     kwds['style'] = wx.DEFAULT_FRAME_STYLE
     wx.Frame.__init__(self, *args, **kwds)

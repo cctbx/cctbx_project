@@ -8,7 +8,7 @@ import wxtbx.plots
 import wx
 import sys
 
-class TableView (wx.ListCtrl):
+class TableView(wx.ListCtrl):
   """
   Table display using wx.ListCtrl in combination with iotbx.data_plots.
   """

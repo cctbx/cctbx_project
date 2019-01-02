@@ -6,7 +6,7 @@ from libtbx import Auto
 import wx
 import sys
 
-class FloatCtrl (ValidatedTextCtrl):
+class FloatCtrl(ValidatedTextCtrl):
   def __init__(self, *args, **kwds):
     super(FloatCtrl, self).__init__(*args, **kwds)
     self.min = float(-sys.maxint)
@@ -58,7 +58,7 @@ class FloatCtrl (ValidatedTextCtrl):
   def FormatValue(self, value):
     return str(value)
 
-class FloatValidator (TextCtrlValidator):
+class FloatValidator(TextCtrlValidator):
   def CheckFormat(self, value):
     value = float(value)
     window = self.GetWindow()

@@ -20,7 +20,7 @@ if (sys.platform != 'win32'):
   import locale
   locale.setlocale(locale.LC_ALL, '')
 
-class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin):
+class plot_container(wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin):
   def __init__(self,
                 parent,
                 figure_size=(8,6),
@@ -157,7 +157,7 @@ class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin):
       else :
         self.figure.savefig(output_file, format="png")
 
-class histogram (plot_container):
+class histogram(plot_container):
   def show_histogram(self, data, n_bins, reference_value=None, pos=(1,1,1),
                       draw_now=True, x_label=None, y_label=None, title=None,
                       log_scale=False, x_lim=None, y_lim=None):
@@ -207,7 +207,7 @@ def convert_xyz_value_list(values, null_value=0.0):
       #  z_values[j].append(null_value)
   return (numpy.array(x_values), numpy.array(y_values), numpy.array(z_values))
 
-class image_plot (plot_container):
+class image_plot(plot_container):
   def show_plot(self,
                  x_data=(),
                  y_data=(),
@@ -239,7 +239,7 @@ class image_plot (plot_container):
       ax.set_title(title)
     self.canvas.draw()
 
-class iotbx_data_plot_base (plot_container):
+class iotbx_data_plot_base(plot_container):
   def __init__(self,
                 parent,
                 tables,
@@ -394,7 +394,7 @@ class iotbx_data_plot_base (plot_container):
   def OnSave(self, event=None):
     self.save_image()
 
-class small_plot (iotbx_data_plot_base):
+class small_plot(iotbx_data_plot_base):
   def __init__(self, parent, table, size=(320,320)):
     iotbx_data_plot_base.__init__(self,
       parent=parent,
@@ -405,7 +405,7 @@ class small_plot (iotbx_data_plot_base):
       title_alignment="center",
       point_types=('+'))
 
-class plot_frame (wx.Frame):
+class plot_frame(wx.Frame):
   controls_on_top = True
   show_controls_default = True
   def __init__(self, *args, **kwds):
@@ -478,7 +478,7 @@ class plot_frame (wx.Frame):
     self.sizer.Layout()
     self.Fit()
 
-class loggraph (plot_frame):
+class loggraph(plot_frame):
   plot_type = "loggraph"
   controls_on_top = True
   show_controls_default = True

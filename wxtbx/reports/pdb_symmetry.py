@@ -4,7 +4,7 @@ from wxtbx import reports
 import wx
 import sys
 
-class SymmetryListFrame (wx.Frame, reports.PDBLinkMixin):
+class SymmetryListFrame(wx.Frame, reports.PDBLinkMixin):
   def __init__(self, *args, **kwds):
     super(SymmetryListFrame, self).__init__(*args, **kwds)
     self.statusbar = self.CreateStatusBar()
@@ -46,7 +46,7 @@ class SymmetryListFrame (wx.Frame, reports.PDBLinkMixin):
   def get_pdb_id_for_viewing(self):
     return self.symm_list.GetSelectedID()
 
-class PDBSymmList (wx.ListCtrl):
+class PDBSymmList(wx.ListCtrl):
   def __init__(self, *args, **kwds):
     super(PDBSymmList, self).__init__(*args, **kwds)
     cols = ["PDB ID", "RMSD", "Volume ratio", "Space group", "Unit cell"]

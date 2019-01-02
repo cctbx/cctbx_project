@@ -3,7 +3,7 @@ from __future__ import division
 from wxtbx import phil_controls
 import wx
 
-class ArrayLabelCtrl (wx.Choice, phil_controls.PhilCtrl):
+class ArrayLabelCtrl(wx.Choice, phil_controls.PhilCtrl):
   def __init__(self, *args, **kwds):
     super(ArrayLabelCtrl, self).__init__(*args, **kwds)
     self._default_value = "---"
@@ -42,7 +42,7 @@ class ArrayLabelCtrl (wx.Choice, phil_controls.PhilCtrl):
     label = self.GetPhilValue()
     print label
 
-class ArrayLabelsCtrl (ArrayLabelCtrl):
+class ArrayLabelsCtrl(ArrayLabelCtrl):
   def SetLabel(self, label):
     if (isinstance(label, list)):
       assert (len(label) == 1)

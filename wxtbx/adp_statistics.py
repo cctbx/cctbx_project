@@ -6,7 +6,7 @@ import sys
 
 #-----------------------------------------------------------------------
 # GUI objects
-class ADPStatisticsFrame (wx.Frame):
+class ADPStatisticsFrame(wx.Frame):
   def __init__(self, *args, **kwds):
     super(ADPStatisticsFrame, self).__init__(*args, **kwds)
     s = wx.BoxSizer(wx.VERTICAL)
@@ -121,7 +121,7 @@ class ADPStatisticsFrame (wx.Frame):
     if (not y2.all_eq(0)):
       self.plot2.convert_histogram(y2)
 
-class adp_histogram (plots.histogram):
+class adp_histogram(plots.histogram):
   def convert_histogram(self, bins):
     # XXX flex.histogram has already binned values, so I make new fake values
     # that matplotlib then re-bins

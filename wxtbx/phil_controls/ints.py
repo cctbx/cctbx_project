@@ -4,7 +4,7 @@ from wxtbx.phil_controls.numbers import NumbersCtrlBase, NumbersValidator
 from libtbx import Auto
 import wx
 
-class IntsCtrl (NumbersCtrlBase):
+class IntsCtrl(NumbersCtrlBase):
   def CheckType(self, value):
     return isinstance(value, int)
 
@@ -39,7 +39,7 @@ class IntsCtrl (NumbersCtrlBase):
     format = " ".join([ "%d" for x in range(len(value)) ])
     return format % tuple(value)
 
-class IntsValidator (NumbersValidator):
+class IntsValidator(NumbersValidator):
   def ConvertValue(self, value):
     return int(value)
 

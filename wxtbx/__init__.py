@@ -15,7 +15,7 @@ elif (wx.Platform == '__WXMAC__'):
 else :
   default_font_size = 11
 
-class MouseWheelTransparencyMixin (object):
+class MouseWheelTransparencyMixin(object):
   """
   This mixin provides an event handler for passing the mouse wheel event to
   the parent, presumably a ScrolledPanel or similar.  For this to happen, the

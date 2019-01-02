@@ -13,7 +13,7 @@ from wxGUI2 import AdvancedWidgets, Base
 import wx
 import sys
 
-class ensemble_validation_plot (plots.histogram):
+class ensemble_validation_plot(plots.histogram):
   def show_plot(self,
       values,
       as_histogram=False,
@@ -42,7 +42,7 @@ class ensemble_validation_plot (plots.histogram):
       self.canvas.draw()
 
 # =============================================================================
-class ensemble_validation_panel (wx.Panel):
+class ensemble_validation_panel(wx.Panel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     sizer = wx.BoxSizer(wx.VERTICAL)

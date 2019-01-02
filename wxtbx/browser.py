@@ -11,7 +11,7 @@ import wxtbx.bitmaps
 import wx.html
 import wx
 
-class browser_frame (wx.Frame):
+class browser_frame(wx.Frame):
   def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -179,7 +179,7 @@ class browser_frame (wx.Frame):
     pass
     #print event.GetNavigationType()
 
-class HtmlPanel (wx.html.HtmlWindow):
+class HtmlPanel(wx.html.HtmlWindow):
   """
   Adapter class to provide an API equivalent to WebKit/IE
   """

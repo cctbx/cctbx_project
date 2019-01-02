@@ -4,7 +4,7 @@ from wxtbx import reports
 import wx
 import sys
 
-class BlastFrame (wx.Frame, reports.PDBLinkMixin):
+class BlastFrame(wx.Frame, reports.PDBLinkMixin):
   def __init__(self, *args, **kwds):
     super(BlastFrame, self).__init__(*args, **kwds)
     self.statusbar = self.CreateStatusBar()
@@ -43,7 +43,7 @@ class BlastFrame (wx.Frame, reports.PDBLinkMixin):
   def get_pdb_id_for_viewing(self):
     return self.hit_list.GetSelectedID()
 
-class BlastList (wx.ListCtrl):
+class BlastList(wx.ListCtrl):
   def __init__(self, *args, **kwds):
     super(BlastList, self).__init__(*args, **kwds)
     cols = ["PDB ID", "Chain ID", "E-value", "Length", "% Identity",

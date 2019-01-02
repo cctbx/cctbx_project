@@ -5,7 +5,7 @@ import wxtbx.bitmaps
 import wx
 import sys
 
-class ListEditor (wx.Panel):
+class ListEditor(wx.Panel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self._default_label = "---"

@@ -4,7 +4,7 @@ from wxtbx import phil_controls
 import wx
 import re
 
-class ChoiceCtrl (wx.Choice, phil_controls.PhilCtrl):
+class ChoiceCtrl(wx.Choice, phil_controls.PhilCtrl):
   def __init__(self, *args, **kwds):
     super(ChoiceCtrl, self).__init__(*args, **kwds)
     self._options = None

@@ -35,7 +35,7 @@ WXTBX_SEQ_DEFAULT_STYLE = WXTBX_SEQ_SHOW_LINE_NUMBERS | \
                           WXTBX_SEQ_ENABLE_SELECT_MISSING | \
                           WXTBX_SEQ_FANCY_HELICES
 
-class sequence_panel (wx.PyPanel):
+class sequence_panel(wx.PyPanel):
   tooltip = "Double-click a residue to select it; hold down Shift to select \
 multiple residues."
   __bg_color = (255,255,255)
@@ -437,7 +437,7 @@ multiple residues."
     (x, y) = (event.GetX(), event.GetY())
 
 #-----------------------------------------------------------------------
-class sequence_with_structure_panel (sequence_panel):
+class sequence_with_structure_panel(sequence_panel):
   tooltip = """\
 Double-click on any residue or secondary-structure element to select the \
 residue(s).  Holding down shift enables multiple selections."""
@@ -827,7 +827,7 @@ def make_helix(x1, y1, x2, y2, strip_width=10, strip_height=20):
   return strips
 
 ########################################################################
-class control_panel (wx.Panel):
+class control_panel(wx.Panel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -850,7 +850,7 @@ class control_panel (wx.Panel):
     self.Bind(wx.EVT_BUTTON, frame.OnHelp, self.help_btn)
 
 # XXX keep this general so it can be embedded in other windows
-class sequence_window (object):
+class sequence_window(object):
   cp_style = wx.NO_BORDER
   seq_panel_style = WXTBX_SEQ_DEFAULT_STYLE
   def create_main_panel(self, sizer=None):
@@ -1019,7 +1019,7 @@ class sequence_window (object):
   def OnHelp(self, evt):
     pass
 
-class sequence_frame_mixin (wx.Frame):
+class sequence_frame_mixin(wx.Frame):
   cp_style = wx.SIMPLE_BORDER
   def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
@@ -1046,12 +1046,12 @@ class sequence_frame_mixin (wx.Frame):
     else :
       self.SetSize((800,600))
 
-class sequence_frame (sequence_frame_mixin, sequence_window):
+class sequence_frame(sequence_frame_mixin, sequence_window):
   def callback_on_select(self):
     txt = self.seq_panel.get_selection_info()
     self.statusbar.SetStatusText(txt)
 
-class msa_frame (sequence_frame_mixin, sequence_window):
+class msa_frame(sequence_frame_mixin, sequence_window):
   seq_panel_style = WXTBX_SEQ_SHOW_SELECTIONS | \
                     WXTBX_SEQ_SHOW_LABELS | \
                     WXTBX_SEQ_ENABLE_SELECT_STRUCTURE | \

@@ -41,7 +41,7 @@ blank = PyEmbeddedImage(
     "Q29tbWVudABDcmVhdGVkIHdpdGggR0lNUFeBDhcAAAAOSURBVCjPY2AYBaMAAQACEAABFMLA"
     "kgAAAABJRU5ErkJggg==")
 
-class CheckListCtrl (wx.ListCtrl):
+class CheckListCtrl(wx.ListCtrl):
   use_blank = True
   def __init__(self, *args, **kwds):
     wx.ListCtrl.__init__(self, *args, **kwds)

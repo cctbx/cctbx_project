@@ -5,7 +5,7 @@ from wxtbx.phil_controls import strctrl, floatctrl
 from libtbx.utils import Sorry
 import wx
 
-class AnomPlot (wxtbx.plots.plot_container):
+class AnomPlot(wxtbx.plots.plot_container):
   def __init__(self, *args, **kwds):
     wxtbx.plots.plot_container.__init__(self, *args, **kwds)
     self.canvas.mpl_connect('motion_notify_event', self.parent.OnHover)
@@ -63,7 +63,7 @@ class AnomPlot (wxtbx.plots.plot_container):
   def OnHover(self, mpl_event):
     (xdata, ydata) = (mpl_event.xdata, mpl_event.ydata)
 
-class AnomPlotFrame (wxtbx.plots.plot_frame):
+class AnomPlotFrame(wxtbx.plots.plot_frame):
   def draw_top_panel(self):
     self.top_panel = ControlPanel(parent=self, style=wx.SUNKEN_BORDER)
     self.statusbar = self.CreateStatusBar()
@@ -93,7 +93,7 @@ class AnomPlotFrame (wxtbx.plots.plot_frame):
         wavelength, energy, ydata)
       self.statusbar.SetStatusText(status_label)
 
-class ControlPanel (wx.Panel):
+class ControlPanel(wx.Panel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)

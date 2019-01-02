@@ -20,11 +20,11 @@ import sys
 
 TEXT_WIDTH = 800
 
-class wx_panel (wx.lib.scrolledpanel.ScrolledPanel):
+class wx_panel(wx.lib.scrolledpanel.ScrolledPanel):
   def OnChildFocus(self, evt):
     pass
 
-class wx_output_base (mmtbx.scaling.xtriage_output):
+class wx_output_base(mmtbx.scaling.xtriage_output):
   """
   Implements wxPython controls for Xtriage output handler, independent of
   window type.
@@ -267,7 +267,7 @@ class wx_output_base (mmtbx.scaling.xtriage_output):
     self.SetPage(self.GetPageIndex(page))
     page.ScrollChildIntoView(section)
 
-class wx_output (wx_output_base, wxtbx.windows.ChoiceBook):
+class wx_output(wx_output_base, wxtbx.windows.ChoiceBook):
   """
   Xtriage output implemented as a wxPython notebook.
   """
@@ -291,7 +291,7 @@ class wx_output (wx_output_base, wxtbx.windows.ChoiceBook):
     else :
       self.AddPage(panel, title)
 
-class wx_output_panel (wx_output_base, wx_panel):
+class wx_output_panel(wx_output_base, wx_panel):
   """
   Single panel for displaying an individual Xtriage result.  If more than
   one section is displayed (corresponding to multiple notebook pages in the
@@ -342,7 +342,7 @@ def DrawStatusLightControl(parent, message, name, level):
     btn.SetName(name)
   return btn
 
-class XtriageFrame (wx.Frame):
+class XtriageFrame(wx.Frame):
   """
   Frame for displaying a wx_output notebook independently (used in AutoSol
   and similar apps).
@@ -386,7 +386,7 @@ class XtriageFrame (wx.Frame):
       else :
         pass
 
-class XtriageFrameSingleResult (XtriageFrame):
+class XtriageFrameSingleResult(XtriageFrame):
   def create_panel(self):
     return wx_output_panel(parent=self)
 

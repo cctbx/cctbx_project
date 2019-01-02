@@ -10,10 +10,10 @@ from wxtbx import phil_controls
 import wxtbx.plots
 import wx
 
-class peaks_plot (wxtbx.plots.plot_container):
+class peaks_plot(wxtbx.plots.plot_container):
   pass
 
-class emringer_plot_frame (wxtbx.plots.plot_frame):
+class emringer_plot_frame(wxtbx.plots.plot_frame):
   """Base class for all frames enclosing plots."""
   def __init__(self, *args, **kwds):
     self._result = None
@@ -26,7 +26,7 @@ class emringer_plot_frame (wxtbx.plots.plot_frame):
   def _load_result(self):
     raise NotImplementedError()
 
-class peaks_plot_frame (emringer_plot_frame):
+class peaks_plot_frame(emringer_plot_frame):
   def create_plot_panel(self):
     return peaks_plot(self)
 
@@ -54,10 +54,10 @@ class peaks_plot_frame (emringer_plot_frame):
       i_threshold=i)
     self.plot_panel.canvas.draw()
 
-class threshold_plot (wxtbx.plots.plot_container):
+class threshold_plot(wxtbx.plots.plot_container):
   pass
 
-class threshold_plot_frame (emringer_plot_frame):
+class threshold_plot_frame(emringer_plot_frame):
   def create_plot_panel(self):
     return threshold_plot(self)
 
@@ -66,10 +66,10 @@ class threshold_plot_frame (emringer_plot_frame):
     self._result.draw_wx_progression_plot(plot=self.plot_panel)
     self.plot_panel.canvas.draw()
 
-class rolling_plot (wxtbx.plots.plot_container):
+class rolling_plot(wxtbx.plots.plot_container):
   pass
 
-class rolling_plot_frame (emringer_plot_frame):
+class rolling_plot_frame(emringer_plot_frame):
   def create_plot_panel(self):
     return rolling_plot(self)
 

@@ -7,7 +7,7 @@ from libtbx import Auto
 import wx
 import sys
 
-class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl):
+class ValidatedTextCtrl(wx.TextCtrl, phil_controls.PhilCtrl):
   def __init__(self, *args, **kwds):
     saved_value = None
     if (kwds.get('value', "") != ""):
@@ -75,7 +75,7 @@ class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl):
     else :
       self.SetBackgroundColour((200,200,200))
 
-class TextCtrlValidator (wx.PyValidator):
+class TextCtrlValidator(wx.PyValidator):
   def __init__(self):
     wx.PyValidator.__init__(self)
     self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter)

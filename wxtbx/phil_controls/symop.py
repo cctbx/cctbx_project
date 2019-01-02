@@ -6,7 +6,7 @@ from libtbx.utils import Sorry
 from libtbx import Auto
 import wx
 
-class SymopCtrl (ValidatedTextCtrl):
+class SymopCtrl(ValidatedTextCtrl):
   def CreateValidator(self):
     return SymopValidator()
 
@@ -39,14 +39,14 @@ class SymopCtrl (ValidatedTextCtrl):
   def FormatValue(self, value):
     return str(value)
 
-class SymopValidator (TextCtrlValidator):
+class SymopValidator(TextCtrlValidator):
   def CheckFormat(self, value):
     if type(value)==type(u'abc'): value = value.encode("ascii", "ignore")
     from cctbx import sgtbx
     rt_mx = sgtbx.rt_mx(symbol=value)
     return value
 
-class SymopChoiceCtrl (wx.Choice, phil_controls.PhilCtrl):
+class SymopChoiceCtrl(wx.Choice, phil_controls.PhilCtrl):
   def __init__(self, *args, **kwds):
     super(SymopChoiceCtrl, self).__init__(*args, **kwds)
     self._space_group = None
