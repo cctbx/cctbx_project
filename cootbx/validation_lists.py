@@ -7,8 +7,8 @@ except ImportError :
   gobject = None
 import sys
 
-class coot_extension_gui (object) :
-  def __init__ (self, title) :
+class coot_extension_gui (object):
+  def __init__(self, title):
     import gtk
     self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     scrolled_win = gtk.ScrolledWindow()
@@ -21,7 +21,7 @@ class coot_extension_gui (object) :
     scrolled_win.add_with_viewport(self.inside_vbox)
     scrolled_win.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 
-  def finish_window (self) :
+  def finish_window(self):
     import gtk
     self.outside_vbox.set_border_width(2)
     ok_button = gtk.Button("  Close  ")
@@ -30,18 +30,18 @@ class coot_extension_gui (object) :
     self.window.connect("delete_event", lambda a, b: self.destroy_window())
     self.window.show_all()
 
-  def destroy_window (self, *args) :
+  def destroy_window(self, *args):
     self.window.destroy()
     self.window = None
 
-  def confirm_data (self, data) :
+  def confirm_data(self, data):
     for data_key in self.data_keys :
       outlier_list = data.get(data_key)
       if outlier_list is not None and len(outlier_list) > 0 :
         return True
     return False
 
-  def create_property_lists (self, data) :
+  def create_property_lists(self, data):
     import gtk
     for data_key in self.data_keys :
       outlier_list = data[data_key]
@@ -61,7 +61,7 @@ class coot_extension_gui (object) :
           box=vbox)
 
 # Molprobity result viewer
-class coot_molprobity_todo_list_gui (coot_extension_gui) :
+class coot_molprobity_todo_list_gui (coot_extension_gui):
   data_keys = [ "rama", "rota", "cbeta", "probe" ]
   data_titles = { "rama"  : "Ramachandran outliers",
                   "rota"  : "Rotamer outliers",
@@ -71,7 +71,7 @@ class coot_molprobity_todo_list_gui (coot_extension_gui) :
                  "rota"  : ["Chain", "Residue", "Name", "Score"],
                  "cbeta" : ["Chain", "Residue", "Name", "Conf.", "Deviation"],
                  "probe" : ["Atom 1", "Atom 2", "Overlap"] }
-  if (gobject is not None) :
+  if (gobject is not None):
     data_types = { "rama" : [gobject.TYPE_STRING, gobject.TYPE_STRING,
                              gobject.TYPE_STRING, gobject.TYPE_FLOAT,
                              gobject.TYPE_PYOBJECT],
@@ -86,11 +86,11 @@ class coot_molprobity_todo_list_gui (coot_extension_gui) :
   else :
     data_types = dict([ (s, []) for s in ["rama","rota","cbeta","probe"] ])
 
-  def __init__ (self, data_file=None, data=None) :
+  def __init__(self, data_file=None, data=None):
     assert ([data, data_file].count(None) == 1)
-    if (data is None) :
+    if (data is None):
       data = load_pkl(data_file)
-    if not self.confirm_data(data) :
+    if not self.confirm_data(data):
       return
     coot_extension_gui.__init__(self, "MolProbity to-do list")
     self.dots_btn = None
@@ -100,7 +100,7 @@ class coot_molprobity_todo_list_gui (coot_extension_gui) :
     self.create_property_lists(data)
     self.finish_window()
 
-  def add_top_widgets (self, data_key, box) :
+  def add_top_widgets(self, data_key, box):
     import gtk
     if data_key == "probe" :
       hbox = gtk.HBox(False, 2)
@@ -114,7 +114,7 @@ class coot_molprobity_todo_list_gui (coot_extension_gui) :
       self.toggle_probe_dots()
       box.pack_start(hbox, False, False, 0)
 
-  def toggle_probe_dots (self, *args) :
+  def toggle_probe_dots(self, *args):
     if self.dots_btn is not None :
       show_dots = self.dots_btn.get_active()
       overlaps_only = self.dots2_btn.get_active()
@@ -124,23 +124,23 @@ class coot_molprobity_todo_list_gui (coot_extension_gui) :
         self.dots2_btn.set_sensitive(False)
       show_probe_dots(show_dots, overlaps_only)
 
-  def toggle_all_probe_dots (self, *args) :
+  def toggle_all_probe_dots(self, *args):
     if self.dots2_btn is not None :
       self._overlaps_only = self.dots2_btn.get_active()
       self.toggle_probe_dots()
 
-class rsc_todo_list_gui (coot_extension_gui) :
+class rsc_todo_list_gui (coot_extension_gui):
   data_keys = ["by_res", "by_atom"]
   data_titles = ["Real-space correlation by residue",
                  "Real-space correlation by atom"]
   data_names = {}
   data_types = {}
 
-class residue_properties_list (object) :
-  def __init__ (self, columns, column_types, rows, box,
-      default_size=(380,200)) :
+class residue_properties_list (object):
+  def __init__(self, columns, column_types, rows, box,
+      default_size=(380,200)):
     assert len(columns) == (len(column_types) - 1)
-    if (len(rows) > 0) and (len(rows[0]) != len(column_types)) :
+    if (len(rows) > 0) and (len(rows[0]) != len(column_types)):
       raise RuntimeError("Wrong number of rows:\n%s" % str(rows[0]))
     import gtk
     self.liststore = gtk.ListStore(*column_types)
@@ -148,7 +148,7 @@ class residue_properties_list (object) :
     self.listctrl = gtk.TreeView(self.listmodel)
     self.listctrl.column = [None]*len(columns)
     self.listctrl.cell = [None]*len(columns)
-    for i, column_label in enumerate(columns) :
+    for i, column_label in enumerate(columns):
       cell = gtk.CellRendererText()
       column = gtk.TreeViewColumn(column_label)
       self.listctrl.append_column(column)
@@ -170,7 +170,7 @@ class residue_properties_list (object) :
     inside_vbox = gtk.VBox(False, 0)
     sw.add(self.listctrl)
 
-  def OnChange (self, treeview) :
+  def OnChange(self, treeview):
     import coot # import dependency
     selection = self.listctrl.get_selection()
     (model, tree_iter) = selection.get_selected()
@@ -182,12 +182,12 @@ class residue_properties_list (object) :
         set_zoom(30)
         graphics_draw()
 
-def show_probe_dots (show_dots, overlaps_only) :
+def show_probe_dots(show_dots, overlaps_only):
   import coot # import dependency
   n_objects = number_of_generic_objects()
   sys.stdout.flush()
   if show_dots :
-    for object_number in range(n_objects) :
+    for object_number in range(n_objects):
       obj_name = generic_object_name(object_number)
       if overlaps_only and not obj_name in ["small overlap", "bad overlap"] :
         sys.stdout.flush()
@@ -196,10 +196,10 @@ def show_probe_dots (show_dots, overlaps_only) :
         set_display_generic_object(object_number, 1)
   else :
     sys.stdout.flush()
-    for object_number in range(n_objects) :
+    for object_number in range(n_objects):
       set_display_generic_object(object_number, 0)
 
-def load_pkl (file_name) :
+def load_pkl(file_name):
   pkl = open(file_name, "rb")
   data = cPickle.load(pkl)
   pkl.close()
