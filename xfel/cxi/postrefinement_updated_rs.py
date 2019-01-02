@@ -189,6 +189,7 @@ class updated_rs(legacy_rs):
     I_weight.set_selected(I_invalid,0.)
     SWC = simple_weighted_correlation(I_weight, I_reference, observations.data())
     print >> self.out, "CORR: NEW correlation is", SWC.corr
+    print >> self.out, "ASTAR_FILE",file_name,tuple(self.refinery.get_eff_Astar(values))
     self.final_corr = SWC.corr
     self.refined_mini = self.MINI
     #another range assertion
