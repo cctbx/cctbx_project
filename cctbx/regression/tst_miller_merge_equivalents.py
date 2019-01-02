@@ -94,7 +94,7 @@ def exercise_incompatible_flags_replacement():
   me = merging.array()
   assert approx_equal(me.data(), (1,1,2))
 
-def exercise_split_unmerged () :
+def exercise_split_unmerged():
   import random
   random.seed(42)
   flex.set_random_seed(42)
@@ -113,11 +113,11 @@ def exercise_split_unmerged () :
   redundancies = flex.size_t()
   # XXX grossly overengineered, but I wanted to get a realistic CC to make sure
   # the reflections are being split properly
-  for i, hkl in enumerate(indices) :
+  for i, hkl in enumerate(indices):
     n_obs = min(8, 1 + i % 12)
     redundancies.append(n_obs)
     intensity_merged = (510 - i) + (510 % 27)
-    for j in range(n_obs) :
+    for j in range(n_obs):
       unmerged_hkl.append(hkl)
       intensity = intensity_merged + 20 * (510 % (7 * (j+1)))
       sigma = max(0.5, i % 10)

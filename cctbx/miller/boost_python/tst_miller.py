@@ -657,7 +657,7 @@ def exercise_union_of_indices():
   u.update(indices=flex.miller_index([(3,2,0)]))
   assert sorted(u.as_array()) == [(1,2,0), (3,2,0)]
 
-def exercise_slices () :
+def exercise_slices():
   i = flex.miller_index(((1,2,3), (3,0,3), (2,4,1),(0,1,2)))
   s = miller.simple_slice(
     indices=i,

@@ -24,7 +24,7 @@ def as_hkl( op ):
                 nn = "+"+j
               else:
                 nn = "+"+str(n)+j
-          if n < rational.int(0) :
+          if n < rational.int(0):
             if part==1:
               if n==rational.int(-1):
                 nn = "-"+j

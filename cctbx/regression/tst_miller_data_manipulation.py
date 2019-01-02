@@ -104,7 +104,7 @@ def run_call_back(flags, space_group_info):
 
 # TODO ideally this should loop over all possible space groups and all
 # possible twin laws
-def exercise_twinning () :
+def exercise_twinning():
   xrs = random_structure.xray_structure(
     unit_cell=(12,5,12,90,90,90),
     space_group_symbol="P1",

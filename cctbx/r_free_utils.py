@@ -31,13 +31,13 @@ generate_r_free_params_str = """\
       .short_caption = Number of resolution shells
 """
 
-def assign_random_r_free_flags (n_refl, fraction_free, format="cns") :
+def assign_random_r_free_flags(n_refl, fraction_free, format="cns"):
   assert (fraction_free > 0) and (fraction_free < 0.5)
   from scitbx.array_family import flex
   from libtbx.math_utils import iround
   group_size = 1/(fraction_free)
   assert group_size >= 2
-  if (format == "cns") or (format == "shelx") :
+  if (format == "cns") or (format == "shelx"):
     result = flex.bool(n_refl, False)
     i_start = 0
     for i_group in count(1):
@@ -49,18 +49,18 @@ def assign_random_r_free_flags (n_refl, fraction_free, format="cns") :
       assert i_end - i_start >= 2
       result[random.randrange(i_start, i_end)] = True
       i_start = i_end
-    if (format == "shelx") :
+    if (format == "shelx"):
       result_ = flex.int(n_refl, 1)
       result_.set_selected(result, -1)
       result = result_
-  elif (format == "ccp4") :
+  elif (format == "ccp4"):
     result = flex.int()
     flag_max = iround(group_size) - 1
-    for i in range(n_refl) :
+    for i in range(n_refl):
       result.append(random.randint(0, flag_max))
   return result
 
-def assign_r_free_flags_by_shells (n_refl, fraction_free, n_bins) :
+def assign_r_free_flags_by_shells(n_refl, fraction_free, n_bins):
   assert (fraction_free > 0) and (fraction_free < 0.5)
   assert (n_bins > 1) and (n_bins < n_refl) # XXX this should be smarter
   from scitbx.array_family import flex
@@ -78,10 +78,10 @@ def assign_r_free_flags_by_shells (n_refl, fraction_free, n_bins) :
   flags.resize(n_refl, False)
   return flags
 
-def export_r_free_flags_for_ccp4 (flags, test_flag_value) :
+def export_r_free_flags_for_ccp4(flags, test_flag_value):
   assert (test_flag_value == True) or isinstance(test_flag_value, int)
   from scitbx.array_family import flex
-  if (isinstance(flags, flex.bool)) :
+  if (isinstance(flags, flex.bool)):
     test_flag_value = True
   else :
     assert isinstance(flags, flex.int)
@@ -90,36 +90,36 @@ def export_r_free_flags_for_ccp4 (flags, test_flag_value) :
     return flags
   new_flags = flex.int(flags.size())
   n_free = flags.count(test_flag_value)
-  if (n_free > 0) :
+  if (n_free > 0):
     n_bins = iceil(flags.size() / n_free)
   else :
     n_bins = 1 # XXX dangerous!  but necessary for tiny sets
-  for i in range(flags.size()) :
+  for i in range(flags.size()):
     if flags[i] == test_flag_value :
       new_flags[i] = 0
     else :
       new_flags[i] = iceil(random.random() * (n_bins - 1))
   return new_flags
 
-def export_r_free_flags_for_shelx (flags, test_flag_value) :
+def export_r_free_flags_for_shelx(flags, test_flag_value):
   assert (test_flag_value == True) or isinstance(test_flag_value, int)
   from scitbx.array_family import flex
-  if (isinstance(flags, flex.bool)) :
+  if (isinstance(flags, flex.bool)):
     test_flag_value = True
   else :
     assert isinstance(flags, flex.int)
   new_flags = flex.int(flags.size(), 1)
-  for i in range(flags.size()) :
-    if (flags[i] == test_flag_value) :
+  for i in range(flags.size()):
+    if (flags[i] == test_flag_value):
       new_flags[i] = -1
   return new_flags
 
-def looks_like_ccp4_flags (flags) :
+def looks_like_ccp4_flags(flags):
   from scitbx.array_family import flex
   assert isinstance(flags.data(), flex.int)
   return (flex.max(flags.data()) >= 4)
 
-def adjust_fraction (miller_array, fraction, log=None) :
+def adjust_fraction(miller_array, fraction, log=None):
   """
   Expand or shrink an existing set of R-free flags to match the target
   fraction.
@@ -136,9 +136,9 @@ def adjust_fraction (miller_array, fraction, log=None) :
   print >> log, "                 target: %g" % fraction
   new_flags = None
   # XXX this should probably be more approximate
-  if (current_fraction == fraction) :
+  if (current_fraction == fraction):
     new_flags = miller_array
-  elif (current_fraction > fraction) :
+  elif (current_fraction > fraction):
     # move existing flags to work set
     sub_fraction = fraction / current_fraction
     print >> log, "  shrinking old test set by a factor of %g" % sub_fraction
@@ -149,9 +149,9 @@ def adjust_fraction (miller_array, fraction, log=None) :
     # to prevent users from doing something stupid, I'm using this clumsy
     # workaround.
     assert (sub_fraction > 0) and (sub_fraction < 1.0)
-    if (sub_fraction == 0.5) :
+    if (sub_fraction == 0.5):
       sub_fraction = 0.501
-    if (sub_fraction >= 0.5) :
+    if (sub_fraction >= 0.5):
       free_set_new = free_set.generate_r_free_flags(
         fraction=1.0-sub_fraction,
         max_free=None,
@@ -185,7 +185,7 @@ def adjust_fraction (miller_array, fraction, log=None) :
 # XXX if the flags don't actually need extending, the original
 # values will be preserved.  I think this is a good thing, but does
 # this inconsistency cause problems elsewhere?
-def extend_flags (
+def extend_flags(
     r_free_flags,
     test_flag_value,
     array_label,
@@ -195,7 +195,7 @@ def extend_flags (
     allow_uniform_flags=False,
     d_max=None,
     d_min=None,
-    log=None) :
+    log=None):
   from scitbx.array_family import flex
   if (log is None) : log = null_out()
   assert (test_flag_value is not None)
@@ -209,8 +209,8 @@ WARNING: array of R-free flags (%s) is empty.""" % array_label
     return r_free_flags
   fraction_free = r_free_as_bool.count(True) / r_free_as_bool.size()
   print >>log, "%s: fraction_free=%.3f" %(array_label, fraction_free)
-  if (fraction_free == 0) :
-    if (allow_uniform_flags) :
+  if (fraction_free == 0):
+    if (allow_uniform_flags):
       msg = """\
 WARNING: R-free flags in %s do not appear to contain a valid test, so they \
 can't be extended to higher resolution.""" % array_label
@@ -220,7 +220,7 @@ can't be extended to higher resolution.""" % array_label
       raise Sorry(("Can't extend R-free flags in %s to higher resolution "+
         "because no valid test set with flag value '%s' was found.") %
         (array_label, test_flag_value))
-  if (complete_set is not None) :
+  if (complete_set is not None):
     missing_set = complete_set.lone_set(r_free_flags)
   else :
     tmp_d_max, tmp_d_min = r_free_flags.d_max_min()
@@ -231,8 +231,8 @@ can't be extended to higher resolution.""" % array_label
   n_missing = missing_set.indices().size()
   print >> log, "%s: missing %d reflections" % (array_label, n_missing)
   output_array = r_free_flags
-  if (n_missing != 0) :
-    if (n_missing <= 20) :
+  if (n_missing != 0):
+    if (n_missing <= 20):
       # FIXME: MASSIVE CHEAT necessary for tiny sets
       missing_flags = missing_set.array(data=flex.bool(n_missing,False))
     else :
@@ -240,14 +240,14 @@ can't be extended to higher resolution.""" % array_label
         if not accumulation_callback(miller_array=r_free_flags,
                                      test_flag_value=test_flag_value,
                                      n_missing=n_missing,
-                                     column_label=array_label) :
+                                     column_label=array_label):
           return r_free_flags
       missing_flags = missing_set.generate_r_free_flags(
         fraction=fraction_free,
         max_free=None,
         use_lattice_symmetry=True)
-    if (preserve_input_values) :
-      if (looks_like_ccp4_flags(r_free_flags)) :
+    if (preserve_input_values):
+      if (looks_like_ccp4_flags(r_free_flags)):
         print >> log, "Exporting missing flags to CCP4 convention"
         exported_flags = export_r_free_flags_for_ccp4(
           flags=missing_flags.data(),
@@ -258,19 +258,19 @@ can't be extended to higher resolution.""" % array_label
         # XXX this is gross too - what conventions (if any) should be
         # followed here?
         work_flag_value = None
-        if (test_flag_value in [1,-1]) :
+        if (test_flag_value in [1,-1]):
           work_flag_value = 0
-        elif (test_flag_value == 0) :
+        elif (test_flag_value == 0):
           work_flag_value = 1
-        if (work_flag_value is None) :
+        if (work_flag_value is None):
           raise Sorry(("PHENIX doesn't know how to deal with the "+
             "R-free flag convention in %s; you will need to "+
             "disable either extending the flags or preserving the "+
             "input values.") % (array_label))
         exported_flags = flex.int()
         new_flags = missing_flags.data()
-        for i_seq in range(missing_flags.data().size()) :
-          if (new_flags[i_seq]) :
+        for i_seq in range(missing_flags.data().size()):
+          if (new_flags[i_seq]):
             exported_flags.append(test_flag_value)
           else :
             exported_flags.append(work_flag_value)
@@ -280,7 +280,7 @@ can't be extended to higher resolution.""" % array_label
       output_array = r_free_flags.concatenate(other=missing_flags)
   return output_array
 
-def get_r_free_stats (miller_array, test_flag_value) :
+def get_r_free_stats(miller_array, test_flag_value):
   from scitbx.array_family import flex
   array = get_r_free_as_bool(miller_array, test_flag_value)
   n_free = array.data().count(True)
@@ -295,13 +295,13 @@ def get_r_free_stats (miller_array, test_flag_value) :
   n_ref_last = 0
   sse = flex.sum(flex.pow(y_ideal - accu.free_fractions, 2))
   for x in accu.reflection_counts :
-    if x > (n_ref_last + 1) :
+    if x > (n_ref_last + 1):
       n_bins += 1
     n_ref_last = x
   return (n_bins, n_free, sse, accu)
 
-def get_r_free_as_bool (miller_array, test_flag_value=0) :
-  if miller_array.is_bool_array() :
+def get_r_free_as_bool(miller_array, test_flag_value=0):
+  if miller_array.is_bool_array():
     return miller_array
   else :
     from scitbx.array_family import flex
@@ -311,14 +311,14 @@ def get_r_free_as_bool (miller_array, test_flag_value=0) :
     assert isinstance(new_data, flex.bool)
     return miller_array.customized_copy(data=new_data, sigmas=None)
 
-def remediate_mismatches (array, verbose=False, log=None) :
+def remediate_mismatches(array, verbose=False, log=None):
   """
   Given a set of R-free flags generated for anomalous data, detect any
   mismatches between Friedel/Bijvoet mates, and move reflections to the
   free set as needed to ensure consistency.
   """
   if (log is None) : log = null_out()
-  if (not array.anomalous_flag()) :
+  if (not array.anomalous_flag()):
     return array
   assert array.is_bool_array()
   array = array.map_to_asu()

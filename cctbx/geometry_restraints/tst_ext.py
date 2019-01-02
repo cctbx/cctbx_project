@@ -735,14 +735,14 @@ def exercise_bond():
     weight=400,
     limit=0.6,
     top_out=True)
-  for i in range(200) :
+  for i in range(200):
     sites[1][0] = 1.5 + 0.01 * (i - 100)
     sites_cart = flex.vec3_double(sites) # XXX why isn't this automatic?
     bond1 = geometry_restraints.bond(sites_cart, proxy1)
     bond2 = geometry_restraints.bond(sites_cart, proxy2)
     res1 = bond1.residual()
     res2 = bond2.residual()
-    if (i <= 100) :
+    if (i <= 100):
       assert (res1 == res2)
     else :
       assert (res2 < res1)

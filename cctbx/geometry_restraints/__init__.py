@@ -550,10 +550,10 @@ class _(boost.python.injector, shared_bond_simple_proxy):
       b = pdb_atoms[j_seq].xyz
       ab = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
       result += """@dotlist {Drawn dots} color= green"""
-      for x in range(1, 12) :
+      for x in range(1, 12):
         fac = float(x) / 12
         vec = (a[0] + (ab[0]*fac), a[1] + (ab[1]*fac), a[2] + (ab[2]*fac))
-        if (x == 1) :
+        if (x == 1):
           result += "{drawn} %.4f %.4f %.4f" % vec
         else :
           result += "{''} %.4f %.4f %.4f" % vec
@@ -1110,7 +1110,7 @@ class _(boost.python.injector, angle):
       O.angle_ideal, O.angle_model, O.delta,
       weight_as_sigma(weight=O.weight), O.weight, O.residual())
 
-  def _get_sorted_item (O) :
+  def _get_sorted_item(O):
     return [O.angle_ideal, O.angle_model, O.delta,
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
@@ -1205,7 +1205,7 @@ class _(boost.python.injector, shared_angle_proxy):
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
         origin_id=origin_id)
 
-  def get_sorted (self,
+  def get_sorted(self,
         by_value,
         sites_cart,
         site_labels=None,
@@ -1242,7 +1242,7 @@ class _(boost.python.injector, dihedral):
       angle_ideal, O.angle_model, O.delta, O.periodicity,
       weight_as_sigma(weight=O.weight), O.weight, O.residual())
 
-  def _get_sorted_item (O) :
+  def _get_sorted_item(O):
     return [O.angle_ideal, O.angle_model, O.delta, O.periodicity,
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
@@ -1294,7 +1294,7 @@ class _(boost.python.injector, shared_dihedral_proxy):
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
         origin_id=origin_id)
 
-  def get_sorted (self,
+  def get_sorted(self,
         by_value,
         sites_cart,
         site_labels=None,
@@ -1328,7 +1328,7 @@ class _(boost.python.injector, chirality):
       str(O.both_signs), O.volume_ideal, O.volume_model, O.delta,
       weight_as_sigma(weight=O.weight), O.weight, O.residual())
 
-  def _get_sorted_item (O) :
+  def _get_sorted_item(O):
     return [str(O.both_signs), O.volume_ideal, O.volume_model, O.delta,
       weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
@@ -1369,7 +1369,7 @@ class _(boost.python.injector, shared_chirality_proxy):
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
         origin_id=origin_id)
 
-  def get_sorted (self,
+  def get_sorted(self,
         by_value,
         sites_cart,
         site_labels=None,
@@ -1396,7 +1396,7 @@ class _(boost.python.injector, shared_planarity_proxy):
       return planarity_residuals(
         unit_cell=unit_cell, sites_cart=sites_cart, proxies=O)
 
-  def get_sorted (O,
+  def get_sorted(O,
         by_value,
         sites_cart,
         site_labels=None,
@@ -1910,7 +1910,7 @@ class pair_proxies(object):
       assert nonbonded_distance_cutoff_plus_buffer is not None
       assert shell_asu_tables is not None
       assert len(shell_asu_tables) > 0
-      if (nonbonded_charges is None) :
+      if (nonbonded_charges is None):
         nonbonded_charges = flex.int(nonbonded_types.size(), 0)
       assert (nonbonded_types.size() == nonbonded_charges.size())
       self.nonbonded_proxies = nonbonded_sorted_asu_proxies(

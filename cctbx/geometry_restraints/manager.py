@@ -93,7 +93,7 @@ class manager(Base_geometry):
       assert shell_sym_tables[0].size() == site_symmetry_table.indices().size()
     if (nonbonded_types is not None and site_symmetry_table is not None):
       assert nonbonded_types.size() == site_symmetry_table.indices().size()
-    if (nonbonded_types is not None) and (nonbonded_charges is not None) :
+    if (nonbonded_types is not None) and (nonbonded_charges is not None):
       assert (nonbonded_charges.size() == nonbonded_types.size())
     adopt_init_args(self, locals(), exclude=["log"])
     self.reset_internals()
@@ -323,8 +323,8 @@ class manager(Base_geometry):
       assert nonbonded_types.size() == n_additional_sites
       nonbonded_types = self.nonbonded_types.concatenate(
         nonbonded_types)
-    if (self.nonbonded_charges is not None) :
-      if (nonbonded_charges is None) :
+    if (self.nonbonded_charges is not None):
+      if (nonbonded_charges is None):
         nonbonded_charges = flex.int(n_additional_sites, 0)
       assert (nonbonded_charges.size() == n_additional_sites)
       nonbonded_charges = self.nonbonded_charges.concatenate(
@@ -558,7 +558,7 @@ class manager(Base_geometry):
 
   def remove_reference_coordinate_restraints_in_place(self,
       selection=None):
-    if (selection is not None) :
+    if (selection is not None):
       self.reference_coordinate_proxies = \
         self.reference_coordinate_proxies.proxy_remove(selection=selection)
     else :
@@ -853,7 +853,7 @@ class manager(Base_geometry):
     # of bond restraint.
     raise NotImplementedError
 
-  def set_external_energy_function (self, energy_function) :
+  def set_external_energy_function(self, energy_function):
     self.external_energy_function = energy_function
 
   def _get_n_bond_proxies_origin(self, origin_id):
@@ -1572,13 +1572,13 @@ class manager(Base_geometry):
                                  ref_site       = x[1])
     return gradients
 
-  def update_atom_nonbonded_type (self,
+  def update_atom_nonbonded_type(self,
         i_seq,
         nonbonded_type,
-        charge=0) :
-    if (self.nonbonded_types is not None) :
+        charge=0):
+    if (self.nonbonded_types is not None):
       self.nonbonded_types[i_seq] = nonbonded_type
-    if (self.nonbonded_charges is not None) :
+    if (self.nonbonded_charges is not None):
       self.nonbonded_charges[i_seq] = charge
 
   def write_geo_file(self,

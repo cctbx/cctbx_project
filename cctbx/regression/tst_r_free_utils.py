@@ -12,7 +12,7 @@ from cStringIO import StringIO
 from itertools import count
 import random
 
-def exercise () :
+def exercise():
   random.seed(12345)
   flex.set_random_seed(12345)
   flags_1 = assign_random_r_free_flags(n_refl=100000, fraction_free=0.05)
@@ -66,10 +66,10 @@ def exercise () :
   frac_7 = flags_7.data().count(True) / flags_7.data().size()
   assert approx_equal(frac_7, 0.05, eps=0.001)
   n_flipped = 0
-  for i_hkl, (h,k,l) in enumerate(flags_5.indices()) :
-    if (i_hkl % 100 == 0) and (h > 0) and (k > 0) and (l > 0) :
+  for i_hkl, (h,k,l) in enumerate(flags_5.indices()):
+    if (i_hkl % 100 == 0) and (h > 0) and (k > 0) and (l > 0):
       flag = flags_5.data()[i_hkl]
-      if (not flag) :
+      if (not flag):
         n_flipped += 1
         flags_5.data()[i_hkl] = True
   # XXX check this for reproducibility on other systems
@@ -86,6 +86,6 @@ def exercise () :
   #assert (out.getvalue() == "  1559 reflections moved to test set\n")
   flags_10 = flags_9.average_bijvoet_mates()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

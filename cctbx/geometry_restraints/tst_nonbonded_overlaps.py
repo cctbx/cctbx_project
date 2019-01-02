@@ -1129,7 +1129,7 @@ if (__name__ == "__main__"):
   # use for individual tests
   # unittest.TextTestRunner().run(run_selected_tests())
 
-  if (chem_data is None) :
+  if (chem_data is None):
     print "chem_data not present, skipping"
   else :
     unittest.main(verbosity=0)

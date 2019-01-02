@@ -122,7 +122,7 @@ def run(show_plots,args):
   from xfel.merging.phil_validation import application,samosa
   application(work_params)
   samosa(work_params)
-  if ("--help" in args) :
+  if ("--help" in args):
     libtbx.phil.parse(master_phil.show())
     return
 

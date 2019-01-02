@@ -435,7 +435,7 @@ def run_multiprocess(L, asymmetric=3, nproc=20, verbose=False, show_plot=True,
   # Each process accumulates its own statistics in serial, and the
   # grand total is eventually collected by the main process'
   #  _mpcallback
-  for i in xrange(nproc-1) :
+  for i in xrange(nproc-1):
     pool.apply_async(
       func=algo2,
       args=[input_queue, alternates, True],

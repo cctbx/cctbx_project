@@ -29,7 +29,7 @@ def exercise_00():
     ba.append(b)
   fw_ext.is_FrenchWilson(F=xa, SIGF=ya, is_centric=ba, eps=0.001)
 
-def exercise_01 () :
+def exercise_01():
   """
   Sanity check - don't crash when mean intensity for a bin is zero.
   """
