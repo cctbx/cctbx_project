@@ -41,7 +41,7 @@ class simplex_opt(object):
     if((len(matrix) != self.dimension+1) or (matrix[0].size() != self.dimension)):
        raise Sorry("The initial simplex matrix does not match dimensions specified")
     for vector in matrix[1:]:
-      if (vector.size() !=  matrix[0].size()) :
+      if (vector.size() !=  matrix[0].size()):
         raise Sorry("Vector length in intial simplex do not match up" )
 
     self.alpha=alpha

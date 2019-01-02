@@ -4,7 +4,7 @@ from scitbx import graphics_utils
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 
-def exercise () :
+def exercise():
   g = graphics_utils.make_rainbow_gradient(nbins=21)
   assert approx_equal(g[0], (0.0, 0.0, 1.0))
   assert approx_equal(g[10], (0.0, 1.0, 0.0))
@@ -38,6 +38,6 @@ def exercise () :
     selection=flex.bool(b.size(), True))
   assert approx_equal(c3[2], (0.95,0.95,0.95))
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

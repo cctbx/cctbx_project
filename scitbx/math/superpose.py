@@ -80,15 +80,15 @@ class least_squares_fit(object):
     return matrix.rt(tuple_r_t=(self.r, self.t))
 
 # TODO test
-def sieve_fit (sites_fixed,
+def sieve_fit(sites_fixed,
                sites_moving,
                selection=None,
-               frac_discard=0.5) :
+               frac_discard=0.5):
   """
   Reference: Chothia & Lesk???
   """
   assert (sites_fixed.size() == sites_moving.size() > 0)
-  if (selection is None) :
+  if (selection is None):
     selection = flex.bool(sites_fixed.size(), True)
   # step 1: superpose using originally selected atoms
   sites_fixed_aln = sites_fixed.select(selection)
@@ -102,7 +102,7 @@ def sieve_fit (sites_fixed,
   deltas_sorted = flex.sorted(deltas)
   cutoff = deltas_sorted[int((1-frac_discard)*deltas.size())]
   selection = (deltas > cutoff)
-  if (selection.count(True) == 0) :
+  if (selection.count(True) == 0):
     return lsq_fit_obj
   sites_fixed_aln = sites_fixed_aln.select(selection)
   sites_moving_aln = sites_moving_aln.select(selection)
