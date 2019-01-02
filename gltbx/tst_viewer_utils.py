@@ -25,7 +25,7 @@ END
 """
 
 #---
-def exercise () :
+def exercise():
   bonds = shared.stl_set_unsigned([
     [1, 2, 3, 5],
     [0, 4],

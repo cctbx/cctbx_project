@@ -45,8 +45,8 @@ def v3distsq(a, b):
   return result
 
 VIEWER_UPDATE_ID = wx.NewId()
-class ViewerUpdateEvent (wx.PyEvent) :
-  def __init__ (self, data=None, recenter=False) :
+class ViewerUpdateEvent (wx.PyEvent):
+  def __init__(self, data=None, recenter=False):
     wx.PyEvent.__init__(self)
     self.data = data
     self.recenter = recenter
@@ -170,8 +170,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnSize(self, event=None):
     self.w, self.h = self.GetClientSizeTuple()
-    if (self.GetParent().IsShown()) :
-      if (self.context is not None) :
+    if (self.GetParent().IsShown()):
+      if (self.context is not None):
         if wx.VERSION[0] < 3:
           self.SetCurrent(self.context)
         else:
@@ -199,10 +199,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.snap_back_rotation()
     elif (key == ord('s')):
       self.autospin_allowed = not self.autospin_allowed
-    elif (key == ord('l')) :
+    elif (key == ord('l')):
       self.flag_show_labels = not self.flag_show_labels
       self.OnRedraw()
-    elif (key == ord('S')) :
+    elif (key == ord('S')):
       self.save_screen_shot()
     elif (key == ord('V')):
       gltbx.util.show_versions()
@@ -303,7 +303,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.set_lights()
     self.setup_fog()
 
-  def get_clipping_distances (self) :
+  def get_clipping_distances(self):
     slab = self.far - self.near
     clip = (1.0 - self.slab_scale) * (slab / 2.0)
     near = self.near + clip
@@ -314,7 +314,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       near = self.min_near
     return (near, far)
 
-  def setup_lighting (self) :
+  def setup_lighting(self):
     if self.flag_use_lights :
       glEnable(GL_LIGHTING)
       glEnable(GL_LIGHT0)
@@ -326,7 +326,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       glLightfv(GL_LIGHT0, GL_DIFFUSE, [1, 1, 1, 1])
       glLightfv(GL_LIGHT0, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
 
-  def set_lights (self) :
+  def set_lights(self):
     if self.flag_use_lights :
       glMatrixMode(GL_MODELVIEW)
       glPushMatrix()
@@ -336,7 +336,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       glLightfv(GL_LIGHT0, GL_POSITION, self.light0_position)
       glPopMatrix()
 
-  def setup_fog (self) :
+  def setup_fog(self):
     if self.flag_show_fog :
       near, far = self.get_clipping_distances()
       fog_start = near + self.fog_scale_factor*(far - near)
@@ -475,8 +475,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.OnRecordMouse(event)
 
   def OnScale(self, scale):
-    if (abs(scale) > self.scale_max) :
-      if (scale < 0) :
+    if (abs(scale) > self.scale_max):
+      if (scale < 0):
         scale = -self.scale_max
       else :
         scale = self.scale_max
@@ -512,9 +512,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.yspin, self.xspin, 0, 0)
     self.OnRedraw()
 
-  def rotate_view (self, x1, y1, x2, y2, shift_down=False, scale=0.5) :
+  def rotate_view(self, x1, y1, x2, y2, shift_down=False, scale=0.5):
     rc = self.rotation_center
-    if (not shift_down) :
+    if (not shift_down):
       gltbx.util.rotate_object_about_eye_x_and_y(
         scale, rc[0], rc[1], rc[2],
         x2, y2, x1, y1)
@@ -532,7 +532,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
         angle=angle)
     self.OnRedraw()
 
-  def adjust_slab (self, delta) :
+  def adjust_slab(self, delta):
     self.slab_scale += delta
     if self.slab_scale > 1.0 :
       self.slab_scale = 1.0
@@ -595,7 +595,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnPaint(self, event=None):
     wx.PaintDC(self)
-    if (self.context is not None) :
+    if (self.context is not None):
       self.SetCurrent(self.context)
     else :
       self.SetCurrent()
@@ -607,18 +607,18 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnRedraw(self, event=None):
     wx.ClientDC(self)
-    if (self.context is not None) :
+    if (self.context is not None):
       self.SetCurrent(self.context)
     else :
       self.SetCurrent()
     self.OnRedrawGL(event)
 
-  def setup_distances (self) :
+  def setup_distances(self):
     s = self.minimum_covering_sphere
     r = self.buffer_factor*s.radius()
     #z = -gltbx.util.object_as_eye_coordinates(s.center())[2]
     z = -gltbx.util.object_as_eye_coordinates(self.rotation_center)[2]
-    if (z < self.z_min) :
+    if (z < self.z_min):
       z = self.z_min
     self.near = max(self.min_near, z-r)
     self.far = max(self.near+1, z+r)
@@ -637,7 +637,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.SwapBuffers()
     if (event is not None): event.Skip()
 
-  def show_stack_sizes (self) :
+  def show_stack_sizes(self):
     mv_depth = [0]
     pr_depth = [0]
     tx_depth = [0]
@@ -647,13 +647,13 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     print "Modelview: %d  Projection: %d  Texture: %d" % (mv_depth[0],
       pr_depth[0], tx_depth[0])
 
-  def OnUpdate (self, event=None) :
+  def OnUpdate(self, event=None):
     pass
 
-  def force_update (self, recenter=False) :
+  def force_update(self, recenter=False):
     wx.PostEvent(self, ViewerUpdateEvent(data=None, recenter=recenter))
 
-  def edit_opengl_settings (self, event=None) :
+  def edit_opengl_settings(self, event=None):
     if self._settings_widget is None :
       self._settings_widget = OpenGLSettingsToolbox(self)
       self._settings_widget.Show()
@@ -737,7 +737,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
         "Cannot save screen shot in any of the formats specified.")
     return n_written
 
-  def OnClose (self, event=None):
+  def OnClose(self, event=None):
     self.spintimer.Stop()
 
 class show_points_and_lines_mixin(wxGLWindow):
@@ -911,8 +911,8 @@ class show_points_and_lines_mixin(wxGLWindow):
       print txt
       self.parent.SetStatusText(txt)
 
-class OpenGLSettingsToolbox (wx.MiniFrame) :
-  def __init__ (self, parent) :
+class OpenGLSettingsToolbox (wx.MiniFrame):
+  def __init__(self, parent):
     wx.MiniFrame.__init__(self, parent, -1, title="OpenGL settings",
       pos=(100,100), style=wx.CAPTION|wx.CLOSE_BOX|wx.RAISED_BORDER)
     self.parent = parent
@@ -944,14 +944,14 @@ class OpenGLSettingsToolbox (wx.MiniFrame) :
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdate)
     self.Bind(wx.EVT_CLOSE, self.OnClose)
 
-  def OnUpdate (self, event=None) :
-    for setting_name, widget in self.widgets.iteritems() :
+  def OnUpdate(self, event=None):
+    for setting_name, widget in self.widgets.iteritems():
       new_value = float(widget.GetValue()) / 100.0
       setattr(self.parent, setting_name, new_value)
     self.parent.flag_show_fog = self.fog_box.GetValue()
     self.parent.OnRedrawGL()
 
-  def OnClose (self, event=None):
+  def OnClose(self, event=None):
     self.Destroy()
     self.parent._settings_widget = None
 
