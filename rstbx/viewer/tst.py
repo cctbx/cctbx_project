@@ -1,6 +1,6 @@
 from __future__ import division
 
-def exercise_1 () :
+def exercise_1():
   from rstbx.viewer import screen_params
   p = screen_params()
   p.set_image_size(2048,2048)
@@ -24,9 +24,9 @@ def exercise_1 () :
   assert (p.get_bitmap_params() == (512, 640, 1024, 768))
 
 # TODO: use a real image
-def exercise_2 () :
+def exercise_2():
   pass
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_1()
   print "OK"

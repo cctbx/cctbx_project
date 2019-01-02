@@ -87,7 +87,7 @@ class fwhm_2d_response:
       Rmin = round(Lmin-2.0,1)
       Rmax = round(Lmax+2.0,1)
       #print "Range %6.2f"%(Rmax-Rmin)
-      def histogram_bin (j) : return int(10.*(j-Rmin)) # bin units of 1/10 pixel
+      def histogram_bin(j) : return int(10.*(j-Rmin)) # bin units of 1/10 pixel
 
       histo_x = flex.double((int(10*(Rmax-Rmin))))
       histo_y = flex.double(len(histo_x))

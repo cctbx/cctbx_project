@@ -7,8 +7,8 @@ import wx
 import os
 import sys
 
-class IntegrationTable (controls.ListBase) :
-  def __init__ (self, *args, **kwds) :
+class IntegrationTable (controls.ListBase):
+  def __init__(self, *args, **kwds):
     kwds = dict(kwds)
     kwds['style'] = wx.LC_REPORT|wx.LC_VIRTUAL|wx.LC_SINGLE_SEL
     kwds['size'] = (720,120)
@@ -16,34 +16,34 @@ class IntegrationTable (controls.ListBase) :
     labels = ["#","Point group","Beam center","Distance","Resolution",
       "Mosaicity","RMS"]
     widths = [60,120,120,100,100,80,80]
-    for i, label in enumerate(labels) :
+    for i, label in enumerate(labels):
       self.InsertColumn(i, label, wx.LIST_FORMAT_RIGHT)
       self.SetColumnWidth(i, widths[i])
     self.SetResults([])
 
-  def SetResults (self, results) :
+  def SetResults(self, results):
     self.dataSource = ResultData(results)
     self.RefreshAllItems()
 
-class ResolutionBinTable (controls.ListBase) :
-  def __init__ (self, *args, **kwds) :
+class ResolutionBinTable (controls.ListBase):
+  def __init__(self, *args, **kwds):
     kwds = dict(kwds)
     kwds['style'] = wx.LC_REPORT|wx.LC_VIRTUAL|wx.LC_SINGLE_SEL
     kwds['size'] = (600,240)
     controls.ListBase.__init__(self, *args, **kwds)
     labels = ["Bin","Resolution","Completeness", "<I>", "<I/sig(I)>"]
     widths = [60,180,140,100,100]
-    for i, label in enumerate(labels) :
+    for i, label in enumerate(labels):
       self.InsertColumn(i, label, wx.LIST_FORMAT_RIGHT)
       self.SetColumnWidth(i, widths[i])
     self.SetBins([])
 
-  def SetBins (self, table) :
+  def SetBins(self, table):
     self.dataSource = BinData(table)
     self.RefreshAllItems()
 
-class IntegrationPanel (wx.Panel) :
-  def __init__ (self, *args, **kwds) :
+class IntegrationPanel (wx.Panel):
+  def __init__(self, *args, **kwds):
     self.result = None
     wx.Panel.__init__(self, *args, **kwds)
     pszr = wx.BoxSizer(wx.VERTICAL)
@@ -80,12 +80,12 @@ class IntegrationPanel (wx.Panel) :
       self.integration_list)
     self.Bind(wx.EVT_CHAR, self.OnChar, self.integration_list)
 
-  def SetResults (self, result) :
+  def SetResults(self, result):
     self.result = result
     self.image_ctrl.SetItems(result.get_images())
     self.ChooseImage(result.get_images()[0])
 
-  def ChooseImage (self, file_name) :
+  def ChooseImage(self, file_name):
     image_id = self.result.get_image_id(file_name)
     #solutions = self.result.get_integration_solutions()
     int_results, summaries = self.result.get_integration(image_id)
@@ -95,13 +95,13 @@ class IntegrationPanel (wx.Panel) :
     self.integration_list.SetResults(summaries)
     self.integration_list.Select(0)
 
-  def OnChooseImage (self, event) :
+  def OnChooseImage(self, event):
     file_name = self.image_ctrl.GetStringSelection()
     self.ChooseImage(file_name)
 
-  def OnView (self, evt) :
+  def OnView(self, evt):
     sol = self.integration_list.GetFirstSelected()
-    if (sol < 0) :
+    if (sol < 0):
       raise Sorry("No solution selected!")
     main_window = self.GetTopLevelParent()
     result = self._int_results[sol]
@@ -109,24 +109,24 @@ class IntegrationPanel (wx.Panel) :
     viewer.load_image(self.image_ctrl.GetStringSelection())
     viewer.display_integration_result(result)
 
-  def OnSelect (self, evt) :
+  def OnSelect(self, evt):
     sol = self.integration_list.GetFirstSelected()
-    if (sol >= 0) :
+    if (sol >= 0):
       self.view_btn.Enable(True)
       self.bin_list.SetBins(self._summaries[sol]['bins'])
 
-  def OnDeSelect (self, evt) :
+  def OnDeSelect(self, evt):
     sol = self.integration_list.GetFirstSelected()
-    if (sol < 0) :
+    if (sol < 0):
       self.view_btn.Enable(False)
 
-  def OnChar (self, evt) :
+  def OnChar(self, evt):
     code = evt.GetKeyCode()
-    if (code == wx.WXK_ENTER) :
+    if (code == wx.WXK_ENTER):
       self.OnView(None)
 
-class ResultsFrame (wx.Frame) :
-  def __init__ (self, *args, **kwds) :
+class ResultsFrame (wx.Frame):
+  def __init__(self, *args, **kwds):
     kwds['style'] = wx.DEFAULT_FRAME_STYLE
     wx.Frame.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -137,14 +137,14 @@ class ResultsFrame (wx.Frame) :
     self.Fit()
     self.panel = p
 
-  def __getattr__ (self, name) :
+  def __getattr__(self, name):
     return getattr(self.panel, name)
 
-def load_results () :
+def load_results():
   file_base = sys.argv[1]
   results, summaries = results_base.load_integration_results(os.getcwd(),
     file_base)
-  if (len(results) == 0) :
+  if (len(results) == 0):
     raise Sorry("No files matching %s!" % file_base)
   app = wx.App(0)
   frame = ResultsFrame(None, -1, "Integration results")
@@ -152,5 +152,5 @@ def load_results () :
   frame.Show()
   app.MainLoop()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   load_results()

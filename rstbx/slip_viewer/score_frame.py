@@ -14,7 +14,7 @@ _scores = OrderedDict()
 class ScoreSettingsFrame(wx.MiniFrame):
   # XXX Is this scoring or rating?
 
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     super(ScoreSettingsFrame, self).__init__(*args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
     panel = ScoreSettingsPanel(self)
@@ -28,7 +28,7 @@ class ScoreSettingsFrame(wx.MiniFrame):
 
 
 class ScoreSettingsPanel(wx.Panel):
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     from wxtbx import bitmaps
 
     super(ScoreSettingsPanel, self).__init__(*args, **kwds)
@@ -115,7 +115,7 @@ class ScoreSettingsPanel(wx.Panel):
       wildcard="Text files (*.txt)|*.txt")
     if dialog.ShowModal() == wx.ID_OK:
       path = dialog.GetPath()
-      if (path != '') :
+      if (path != ''):
         stream = open(path, "w")
         for (key, score) in _scores.iteritems():
           if score is None:

@@ -616,7 +616,7 @@ class _Tiles(object):
           text_data.append((txt_x, txt_y, "%i" %i))
       return box_data, text_data
 
-    def get_resolution (self, x, y, readout=None) :
+    def get_resolution(self, x, y, readout=None):
         """
         Determine the resolution of a pixel.
         Arguments are in image pixel coordinates (starting from 1,1).
@@ -643,7 +643,7 @@ class _Tiles(object):
         else:
           return None
 
-    def get_detector_distance (self) :
+    def get_detector_distance(self):
         detector = self.raw_image.get_detector()
         if len(detector) == 1:
           dist = abs(detector[0].get_distance())
@@ -652,12 +652,12 @@ class _Tiles(object):
           # supported.
           dist = self.raw_image.distance
         twotheta = self.get_detector_2theta()
-        if (twotheta == 0.0) :
+        if (twotheta == 0.0):
             return dist
         else :
             return dist / math.cos(twotheta)
 
-    def get_detector_2theta (self) :
+    def get_detector_2theta(self):
         from scitbx.matrix import col
 
         detector = self.raw_image.get_detector()
