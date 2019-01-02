@@ -323,7 +323,7 @@ def is_atom_pair_linked(atom1,
   class1 = linking_setup.adjust_class(atom1, class1)
   class2 = linking_setup.adjust_class(atom2, class2)
   if ( linking_setup.sulfur_class(atom1, class1)=="sulfur" and
-       linking_setup.sulfur_class(atom2, class2)=="sulfur" ) :
+       linking_setup.sulfur_class(atom2, class2)=="sulfur" ):
     class1 = 'sulfur'
     class2 = 'sulfur'
   lookup = [class1, class2]
@@ -365,7 +365,7 @@ def is_atom_pair_linked(atom1,
     print atom1.quote(),linking_setup.sulfur_class(atom1, class1)
     print atom2.quote(),linking_setup.sulfur_class(atom2, class2)
   if ( linking_setup.sulfur_class(atom1, class1)=="sulfur" and
-       linking_setup.sulfur_class(atom2, class2)=="sulfur" ) :
+       linking_setup.sulfur_class(atom2, class2)=="sulfur" ):
     return True
   #
   # saccharides

@@ -109,7 +109,7 @@ END
 """
 
 def run():
-  if (not libtbx.env.has_module("reduce")) :
+  if (not libtbx.env.has_module("reduce")):
     print "Reduce not installed, needed for model.idealize_h_minimization(). skipping"
     return
   for pdb_str in [pdb_str_1, pdb_str_2]:

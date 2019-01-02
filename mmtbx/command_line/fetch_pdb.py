@@ -45,7 +45,7 @@ fetch_pdb
 }""")
 
 # XXX for use in the PHENIX GUI only - run2 is used from the command line
-def run (args=(), params=None, out=sys.stdout) :
+def run(args=(), params=None, out=sys.stdout):
   """
   For use in PHENIX GUI only, fetches pdb filesand/or
   reflection data from the PDB.
@@ -67,9 +67,9 @@ def run (args=(), params=None, out=sys.stdout) :
   mirror = "--mirror=%s" % params.fetch_pdb.site
   for id in params.fetch_pdb.pdb_ids :
     args = [mirror, id]
-    if (params.fetch_pdb.action in ["all_data","all_plus_mtz"]) :
+    if (params.fetch_pdb.action in ["all_data","all_plus_mtz"]):
       args.insert(0, "--all")
-      if (params.fetch_pdb.action == "all_plus_mtz") :
+      if (params.fetch_pdb.action == "all_plus_mtz"):
         args.insert(1, "--mtz")
       try :
         data_files = run2(args=args, log=out)
@@ -83,7 +83,7 @@ def run (args=(), params=None, out=sys.stdout) :
       output_files.append(pdb_file)
   return output_files, errors
 
-def run2 (args, log=sys.stdout) :
+def run2(args, log=sys.stdout):
   """
   Fetches pdb files and/or reflection data from the PDB.
 
@@ -117,35 +117,35 @@ Command-line options:
   mirror = "rcsb"
   ids = []
   for arg in args :
-    if (arg == "--all") :
+    if (arg == "--all"):
       data_type = "all"
-    elif (arg == "-x") :
+    elif (arg == "-x"):
       data_type = "xray"
-    elif (arg == "-f") :
+    elif (arg == "-f"):
       data_type = "fasta"
-    elif (arg == "-q") :
+    elif (arg == "-q"):
       quiet = True
-    elif (arg == "--mtz") :
+    elif (arg == "--mtz"):
       convert_to_mtz = True
       data_type = "all"
-    elif (arg == "-c") :
+    elif (arg == "-c"):
       format = "cif"
-    elif (arg.startswith("--mirror=")) :
+    elif (arg.startswith("--mirror=")):
       mirror = arg.split("=")[1]
-      if (not mirror in ["rcsb", "pdbe", "pdbj", "pdb-redo"]) :
+      if (not mirror in ["rcsb", "pdbe", "pdbj", "pdb-redo"]):
         raise Sorry(
           "Unrecognized mirror site '%s' (choices: rcsb, pdbe, pdbj, pdb-redo)" %
           mirror)
     else :
       ids.append(arg)
-  if (len(ids) == 0) :
+  if (len(ids) == 0):
     raise Sorry("No PDB IDs specified.")
-  if (data_type != "all") :
+  if (data_type != "all"):
     #mirror = "rcsb"
     files = []
     for id in ids :
       files.append(get_pdb(id, data_type, mirror, log, format=format))
-    if (len(files) == 1) :
+    if (len(files) == 1):
       return files[0]
     return files
   else :
@@ -154,28 +154,28 @@ Command-line options:
       for data_type_, data_format in [("pdb", "pdb"), ("fasta", "pdb"),
                                       ("xray", "pdb"), ("pdb", "cif")] :
         files.append(get_pdb(id, data_type_, mirror, log, format=data_format))
-      if (convert_to_mtz) :
+      if (convert_to_mtz):
         misc_args = ["--merge", "--map_to_asu", "--extend_flags",
                      "--ignore_bad_sigmas"]
         easy_run.call("phenix.cif_as_mtz %s-sf.cif %s" %
           (id, " ".join(misc_args)))
-        if os.path.isfile("%s-sf.mtz" % id) :
+        if os.path.isfile("%s-sf.mtz" % id):
           os.rename("%s-sf.mtz" % id, "%s.mtz" % id)
           print >> log, "Converted structure factors saved to %s.mtz" % id
         #  os.remove("%s-sf.cif" % id)
         files[-1] = os.path.abspath("%s.mtz" % id)
-        if (not os.path.isfile("%s.mtz" % id)) :
+        if (not os.path.isfile("%s.mtz" % id)):
           raise Sorry("MTZ conversion failed - try running phenix.cif_as_mtz "+
             "manually (and check %s-sf.cif for format errors)." % id)
         from iotbx.file_reader import any_file
         mtz_in = any_file("%s.mtz" % id)
         mtz_in.assert_file_type("hkl")
         for array in mtz_in.file_server.miller_arrays :
-          if (array.anomalous_flag()) :
+          if (array.anomalous_flag()):
             print >> log, "  %s is anomalous" % array.info().label_string()
     return files
 
-def validate_params (params) :
+def validate_params(params):
   """
   Validates that the input parameters specify a PDB file to download.
 
@@ -192,7 +192,7 @@ def validate_params (params) :
   Sorry
       Raised if a pdb file is not specified to be fetched within params.
   """
-  if (params.fetch_pdb.pdb_ids is None) or (len(params.fetch_pdb.pdb_ids)==0) :
+  if (params.fetch_pdb.pdb_ids is None) or (len(params.fetch_pdb.pdb_ids)==0):
     raise Sorry("No PDB IDs specified!")
   return True
 

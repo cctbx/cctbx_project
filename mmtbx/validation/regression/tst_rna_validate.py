@@ -12,7 +12,7 @@ import sys, os
 
 # This actually tests expected output - the remaining tests guard against
 # fixed bugs.
-def exercise_1 () :
+def exercise_1():
   # derived from 2goz
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb2goz_refmac_tls.ent",
@@ -36,7 +36,7 @@ def exercise_1 () :
     params=None)
   pickle_unpickle(result)
 
-def exercise_2 ():
+def exercise_2():
   # fragment from 3g8t
   pdb_raw = """\
 ATOM   7975  P     G Q 140      10.347 137.422  73.792  1.00118.69           P
@@ -91,7 +91,7 @@ TER    8020        A Q 141
   assert len(rv.puckers.results) == 1
   pickle_unpickle(rv)
 
-def exercise_3 () :
+def exercise_3():
   # derived from 3bbi
   pdb_raw = """\
 ATOM      1  O5'A  U A   1      39.826  29.792  61.182  0.50 82.88           O
@@ -153,7 +153,7 @@ ATOM     54  C6    C A   2      35.840  29.624  58.297  1.00 47.22           C
   rv = rna_validate.run(args=["tst_rna_validate_2.pdb"], out=null_out())
   pickle_unpickle(rv)
 
-def pickle_unpickle (result) :
+def pickle_unpickle(result):
   result2 = loads(dumps(result))
   out1 = StringIO()
   out2 = StringIO()

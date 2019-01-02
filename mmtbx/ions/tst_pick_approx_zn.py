@@ -4,7 +4,7 @@ import os
 from libtbx import easy_run
 import time
 
-def exercise () :
+def exercise():
   from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs
   base = "tst_pick_approx_zn"
   mtz_file, pdb_file = generate_zinc_inputs(file_base=base, anonymize = True)
@@ -27,5 +27,5 @@ def exercise () :
   os.remove(os.path.splitext(pdb_file)[0][:-4] + "_fmodel.eff")
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

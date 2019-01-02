@@ -244,7 +244,7 @@ def exercise_01():
     xrs_1.structure_factors(d_min=2).f_calc().data(),
     xrs_2.structure_factors(d_min=2).f_calc().data())
 
-def exercise_02 () :
+def exercise_02():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=m3_in_str)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
   pdb_hierarchy.atoms().reset_i_seq()

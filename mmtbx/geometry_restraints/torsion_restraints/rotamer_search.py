@@ -238,7 +238,7 @@ class manager(object):
           remove_clusters_with_all_h=True,
           include_labels=True,
           log=None)
-    if (axis_and_atoms_to_rotate is None) :
+    if (axis_and_atoms_to_rotate is None):
       print >> self.log, "Skipped %s rotamer (TARDY error)" % key
       return False
     assert len(m_chis) == len(r_chis)

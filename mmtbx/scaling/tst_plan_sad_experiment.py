@@ -4,7 +4,7 @@ from mmtbx.command_line import plan_sad_experiment
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import null_out, Sorry
 
-def exercise () :
+def exercise():
   # Generic SeMet protein (actually Rv0577)
   args = [
     "resolution=2.2",
@@ -67,6 +67,6 @@ FVNQHLCGSHLVEALYLVCGERGFFYTPKA
   else :
     raise Exception_expected
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

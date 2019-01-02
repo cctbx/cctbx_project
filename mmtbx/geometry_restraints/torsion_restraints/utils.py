@@ -201,20 +201,20 @@ def build_i_seq_hash(pdb_hierarchy):
     name_i_seq_hash[key]=atom.i_seq
   return name_i_seq_hash
 
-def id_str (chain_id,
+def id_str(chain_id,
             resseq,
             resname,
             icode,
             altloc,
             segid=None,
-            ignore_altloc=False) :
+            ignore_altloc=False):
   base = "%2s%4s%1s" % (chain_id, resseq, icode)
-  if (not ignore_altloc) :
+  if (not ignore_altloc):
     base += "%1s" % altloc
   else :
     base += " "
   base += "%3s" % resname
-  if (segid is not None) :
+  if (segid is not None):
     base += " segid='%4s'" % segid
   return base
 
@@ -469,12 +469,12 @@ def get_c_alpha_hinges(pdb_hierarchy,
       c_alpha_hinges[current[0].i_seq] = [nodes, moving]
   return c_alpha_hinges
 
-def check_residues_are_connected (ca_1, ca_2, max_sep=4.0, min_sep=0.) :
+def check_residues_are_connected(ca_1, ca_2, max_sep=4.0, min_sep=0.):
   from scitbx import matrix
   ca_1_mat = matrix.col(ca_1.xyz)
   ca_2_mat = matrix.col(ca_2.xyz)
   dist = (ca_1_mat - ca_2_mat).length()
-  if (dist > max_sep) or (dist < min_sep) :
+  if (dist > max_sep) or (dist < min_sep):
     return False
   return True
 

@@ -2,7 +2,7 @@
 from __future__ import division
 import sys
 
-def get_master_phil () :
+def get_master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     phil_string="""
@@ -10,7 +10,7 @@ clash_min = 0.2
   .type = float
 """)
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   import mmtbx.command_line
   cmdline = mmtbx.command_line.load_model_and_data(
     args=args,
@@ -26,5 +26,5 @@ def run (args, out=sys.stdout) :
     clash_min=cmdline.params.clash_min,
     out=out)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

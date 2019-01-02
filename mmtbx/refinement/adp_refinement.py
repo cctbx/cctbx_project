@@ -323,7 +323,7 @@ class refine_adp(object):
     if nproc is None:
       nproc =  all_params.main.nproc
     parallel = False
-    if (len(trial_weights) > 1) and ((nproc is Auto) or (nproc > 1)) :
+    if (len(trial_weights) > 1) and ((nproc is Auto) or (nproc > 1)):
       parallel = True
       from libtbx import easy_mp
       stdout_and_results = easy_mp.pool_map(
@@ -337,8 +337,8 @@ class refine_adp(object):
         result = self.try_weight(weight, print_stats=True)
         trial_results.append(result)
     for result in trial_results :
-      if(result is not None) and (result.r_work is not None) :
-        if (parallel) :
+      if(result is not None) and (result.r_work is not None):
+        if (parallel):
           result.show(out=self.log)
         rw     .append(result.r_work)
         rf     .append(result.r_free)
@@ -377,7 +377,7 @@ class refine_adp(object):
       best_u_star = None
       best_u_iso = None
       for result in trial_results :
-        if(abs(result.weight-w_best)<=1.e-8) :
+        if(abs(result.weight-w_best)<=1.e-8):
           best_u_star = result.u_star
           best_u_iso = result.u_iso
           break
@@ -415,7 +415,7 @@ class refine_adp(object):
     self.model.set_xray_structure(self.fmodels.fmodel_xray().xray_structure)
 
   # XXX parallelized
-  def try_weight (self, weight, print_stats=False) :
+  def try_weight(self, weight, print_stats=False):
     if(self.target_weights is not None):
       self.fmodels.fmodel_xray().xray_structure.replace_scatterers(
         self.save_scatterers.deep_copy())
@@ -440,7 +440,7 @@ class refine_adp(object):
       print >> self.log, "  r_work=%5.2f r_free=%5.2f"%(r_work, r_free)
       return None
     neutron_r_work = neutron_r_free = None
-    if (show_neutron) and (self.fmodels.fmodel_neutron() is not None) :
+    if (show_neutron) and (self.fmodels.fmodel_neutron() is not None):
       neutron_r_work = self.fmodels.fmodel_neutron().r_work()*100.
       neutron_r_free = self.fmodels.fmodel_neutron().r_free()*100.
     xrs = self.fmodels.fmodel_xray().xray_structure
@@ -455,7 +455,7 @@ class refine_adp(object):
       neutron_r_free=neutron_r_free,
       u_star=xrs.scatterers().extract_u_star(),
       u_iso=xrs.scatterers().extract_u_iso())
-    if (print_stats) :
+    if (print_stats):
       result.show(out=self.log)
     return result
 
@@ -540,19 +540,19 @@ class refine_adp(object):
       self.model.set_xray_structure(fmodel.xray_structure)
     else: raise RuntimeError("Bad ncs options.")
 
-class weight_result (object) :
-  def __init__ (self, r_work, r_free, delta_b, mean_b, weight, xray_target,
-      neutron_r_work, neutron_r_free, u_star, u_iso) :
+class weight_result (object):
+  def __init__(self, r_work, r_free, delta_b, mean_b, weight, xray_target,
+      neutron_r_work, neutron_r_free, u_star, u_iso):
     adopt_init_args(self, locals())
     self.r_gap = r_free - r_work
 
-  def show (self, out, prefix="") :
+  def show(self, out, prefix=""):
     if (out is None) : return
     if(len(prefix.strip())>0): prefix += " "
     format = prefix+"%5.2f %5.2f %6.2f %6.3f  %6.3f %6.3f   %6.3f"
     print >> out, format % (self.r_work, self.r_free, self.r_gap, self.delta_b,
       self.mean_b, self.weight, self.xray_target)
-    if (self.neutron_r_work is not None) :
+    if (self.neutron_r_work is not None):
       print >> out, ""
       print >> out, "Neutron data: r_work=%5.2f r_free=%5.2f"%(
         self.neutron_r_work, self.neutron_r_free)

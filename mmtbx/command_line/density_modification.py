@@ -444,48 +444,48 @@ class density_modify(density_modification.density_modification):
         flex.arg(model_coeffs.data()),
         flex.arg(dm_coeffs.data())))/density_modification.pi_180)
 
-def validate_params (params) :
+def validate_params(params):
   params_ = params.density_modification
-  if (params_.input.reflection_data.file_name is None) :
+  if (params_.input.reflection_data.file_name is None):
     raise Sorry("No reflection data provided.")
-  if (params_.input.reflection_data.labels is None) :
+  if (params_.input.reflection_data.labels is None):
     raise Sorry("Data labels not specified.")
-  if (params_.input.experimental_phases.file_name is None) :
+  if (params_.input.experimental_phases.file_name is None):
     raise Sorry("Experimental phases (Hendrickson-Lattman coefficients " +
                 "not specified.")
-  if (params_.input.experimental_phases.labels is None) :
+  if (params_.input.experimental_phases.labels is None):
     raise Sorry("Experimental phase labels not specified.")
   if ((params_.output.map.file_name is None) and
-      (params_.output.mtz.file_name is None)) :
+      (params_.output.mtz.file_name is None)):
     raise Sorry("No output requested!")
-  if (params_.solvent_fraction is None) :
+  if (params_.solvent_fraction is None):
     raise Sorry("Please specify the solvent fraction!")
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher (runtime_utils.target_with_save_result):
+  def run(self):
     return run(args=list(self.args),
       log=sys.stdout, # 2012-03-09 should be called with log defined?
       as_gui_program=True)
 
-class result (object) :
-  def __init__ (self, map_file, mtz_file, stats) :
+class result (object):
+  def __init__(self, map_file, mtz_file, stats):
     adopt_init_args(self, locals())
 
-  def extract_loggraph (self) :
+  def extract_loggraph(self):
     return self.stats.extract_loggraph()
 
-  def get_final_job_statistics (self) :
+  def get_final_job_statistics(self):
     stats = [
       ("FOM", self.stats.get_cycle_stats(-1).fom),
       ("Skewness", self.stats.get_cycle_stats(-1).skewness)
     ]
     return stats
 
-  def finish_job (self) :
+  def finish_job(self):
     output_files = []
-    if (self.mtz_file is not None) :
+    if (self.mtz_file is not None):
       output_files.append((self.mtz_file, "Map coefficients"))
-    if (self.map_file is not None) :
+    if (self.map_file is not None):
       output_files.append((self.map_file, "Real-space map"))
     stats = self.get_final_job_statistics()
     return (output_files, stats)

@@ -25,7 +25,7 @@ class Program(ProgramTemplate):
     pdb_atoms = hierarchy.atoms()
     pdb_atoms.set_chemical_element_simple_if_necessary()
     elements = pdb_atoms.extract_element().strip()
-    if (not elements.all_ne("")) :
+    if (not elements.all_ne("")):
       n_missing = elements.count("")
       raise RuntimeError("Missing element symbol for %d atoms." % n_missing)
 

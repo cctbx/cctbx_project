@@ -15,7 +15,7 @@ import os
 import sys
 import time
 
-def exercise () :
+def exercise():
   fns = [generate_calcium_inputs, generate_zinc_inputs]
   wavelengths = [1.025, 1.54]
 
@@ -62,7 +62,7 @@ def exercise () :
           # Or a label indicating the residue is a water
           resname = atom_group.resname.strip().upper()
 
-          if (resname in WATER_RES_NAMES) :
+          if (resname in WATER_RES_NAMES):
             atoms = atom_group.atoms()
             if (len(atoms) == 1) : # otherwise it probably has hydrogens, skip
               waters.append(atoms[0].i_seq)
@@ -104,7 +104,7 @@ def exercise () :
   print "OK"
 
 if __name__ == "__main__":
-  if (not libtbx.env.find_in_repositories("chem_data")) :
+  if (not libtbx.env.find_in_repositories("chem_data")):
     warnings.warn("chem_data not available, skipping this test")
   else :
     try :

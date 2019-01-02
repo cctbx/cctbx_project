@@ -9,7 +9,7 @@ from libtbx.easy_pickle import loads, dumps
 from libtbx.utils import null_out
 from cStringIO import StringIO
 
-def exercise_1 () :
+def exercise_1():
   pdb_raw = """\
 ATOM   1134  N   LYS A  82       5.933  36.285  21.572  1.00 70.94           N
 ATOM   1135  CA  LYS A  82       6.564  37.423  20.931  1.00 76.69           C
@@ -184,7 +184,7 @@ Waters:
   assert (len(outliers) == 86)
 
 # corner case: deuterium as ligand (from 3qza)
-def exercise_2 () :
+def exercise_2():
   pdb_raw = """\
 ATOM   6407  N   GLY A 388      -0.783   9.368 -16.436  1.00 51.96           N
 ATOM   6408  CA  GLY A 388      -0.227   9.888 -15.197  1.00 54.04           C
@@ -207,7 +207,7 @@ HETATM 6419  D2  DOD A1001      -4.625  -4.741 -37.845  1.00 14.81           D
   assert ("B_iso: mean =  15.2  max =  15.2  min =  15.2" in out.getvalue())
 
 # explicitly specified ligand selection
-def exercise_3 () :
+def exercise_3():
   pdb_raw = """\
 ATOM      1  CA  GLY A   1      -0.227   9.888 -15.197  1.00 54.04           C
 ATOM      2  CA  GLY A   2      -0.227   9.888 -15.197  1.00 54.04           C
@@ -365,7 +365,7 @@ ATOM    139  HZ3BLYS A  82      11.621  39.269  18.944  0.50 73.75           H
   assert (len(mstats.all.different_occ) == 1)  # occupancies in residue differ
   return True
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_1()
   exercise_2()
   exercise_3()

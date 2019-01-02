@@ -293,7 +293,7 @@ class run_with_minimization(object):
       selection  = cl.selection)
     angle_start = 0
     angle_end = 360
-    if (self.backbone_sample_angle is not None) :
+    if (self.backbone_sample_angle is not None):
       assert (self.backbone_sample_angle > 0)
       angle_start = - self.backbone_sample_angle
       angle_end = self.backbone_sample_angle
@@ -334,7 +334,7 @@ def get_rotamer_iterator(mon_lib_srv, residue):
     comp_id=residue.resname,
     atom_names=residue.atoms().extract_name(),
     sites_cart=residue.atoms().extract_xyz())
-  if (rotamer_iterator is None) :
+  if (rotamer_iterator is None):
     return None
   if (rotamer_iterator.problem_message is not None):
     return None

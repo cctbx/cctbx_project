@@ -607,7 +607,7 @@ class find_peak_at_bond(object):
       self.status = False
 
 def set_status(iass, params):
-  if (params.build_ias_types is None) :
+  if (params.build_ias_types is None):
     raise Sorry("build_ias_types must be specified.")
   for ias in iass:
     if(ias.status is not False and ias.type in ["B", "BH"] and

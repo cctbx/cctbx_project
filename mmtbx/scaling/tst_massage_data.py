@@ -9,7 +9,7 @@ from libtbx.utils import null_out
 import os.path as op
 import random
 
-def exercise_twin_detwin () :
+def exercise_twin_detwin():
   random.seed(12345)
   flex.set_random_seed(12345)
   xrs = random_structure.xray_structure(
@@ -36,8 +36,8 @@ def exercise_twin_detwin () :
   mtz_in = file_reader.any_file("tmp_massage_twinned.mtz")
   fc_twin = mtz_in.file_server.miller_arrays[0].f_sq_as_f()
   fc_twin, fc_tmp = fc_twin.common_sets(other=fc)
-  for hkl, f1, f2 in zip(fc_tmp.indices(), fc_tmp.data(), fc_twin.data()) :
-    if (abs(hkl[0]) != abs(hkl[2])) :
+  for hkl, f1, f2 in zip(fc_tmp.indices(), fc_tmp.data(), fc_twin.data()):
+    if (abs(hkl[0]) != abs(hkl[2])):
       assert not approx_equal(f1, f2, eps=0.01, out=null_out()), (hkl, f1, f2)
   massage_data.run(
     args=[
@@ -67,9 +67,9 @@ def exercise_twin_detwin () :
   fc_detwin, fc_tmp = fc_detwin.common_sets(other=fc)
   # XXX we appear to lose some accuracy here, possibly due to the use of
   # MTZ format
-  for hkl, f1, f2 in zip(fc_tmp.indices(), fc_tmp.data(), fc_detwin.data()) :
+  for hkl, f1, f2 in zip(fc_tmp.indices(), fc_tmp.data(), fc_detwin.data()):
     assert approx_equal(f1, f2, eps=0.01), hkl
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_twin_detwin()
   print "OK"

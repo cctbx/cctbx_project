@@ -615,39 +615,39 @@ scale_restraints
 }
 """
 
-def validate_geometry_edits_params (params) :
-  for k, bond in enumerate(params.bond) :
-    if (None in [bond.atom_selection_1, bond.atom_selection_2]) :
+def validate_geometry_edits_params(params):
+  for k, bond in enumerate(params.bond):
+    if (None in [bond.atom_selection_1, bond.atom_selection_2]):
       raise Sorry(("A custom bond definition (#%d in the list) is incomplete; "+
         "two atom selections are required.") % k)
-    elif (bond.distance_ideal is None) :
+    elif (bond.distance_ideal is None):
       raise Sorry(("The ideal distance for custom bond #%d is not defined. "+
         "(Atom selections: %s, %s)") % (k, bond.atom_selection_1,
         bond.atom_selection_2))
-    elif (bond.sigma is None) :
+    elif (bond.sigma is None):
       raise Sorry(("The sigma for custom bond #%d is not defined. "+
         "(Atom selections: %s, %s)") % (k, bond.atom_selection_1,
         bond.atom_selection_2))
-  for k, angle in enumerate(params.angle) :
+  for k, angle in enumerate(params.angle):
     if (None in [angle.atom_selection_1, angle.atom_selection_2,
-                 angle.atom_selection_3]) :
+                 angle.atom_selection_3]):
       raise Sorry(("A custom angle definition (#%d in the list) is "+
         "incomplete; two atom selections are required.") % k)
-    elif (angle.angle_ideal is None) :
+    elif (angle.angle_ideal is None):
       raise Sorry(("The ideal angle for custom angle #%d is not defined. "+
         "(Atom selections: %s, %s, %s)") % (k, angle.atom_selection_1,
         angle.atom_selection_2, angle.atom_selection_3))
-    elif (angle.sigma is None) :
+    elif (angle.sigma is None):
       raise Sorry(("The sigma for custom angle #%d is not defined. "+
         "(Atom selections: %s, %s, %s)") % (k, angle.atom_selection_1,
         angle.atom_selection_2, angle.atom_selection_3))
-  for k, plane in enumerate(params.planarity) :
-    if (plane.atom_selection is None) :
+  for k, plane in enumerate(params.planarity):
+    if (plane.atom_selection is None):
       raise Sorry("The atom selection for custom plane #%d is not defined."% k)
-    elif (plane.sigma is None) :
+    elif (plane.sigma is None):
       raise Sorry(("The sigma for custom plane #%d is not defined.  (Atom "+
         "selection: '%s')") % (k, plane.atom_selection))
-  for k, parallelity in enumerate(params.parallelity) :
+  for k, parallelity in enumerate(params.parallelity):
     if (None in [parallelity.atom_selection_1, parallelity.atom_selection_2]):
       raise Sorry(("A custom parallelity definition (#%d in the list) is "+
           "incomplete; two atom selections are required.") % k)
@@ -712,7 +712,7 @@ def all_atoms_are_in_main_conf(atoms):
     if (atom.parent().altloc != ""): return False
   return True
 
-def residue_id_str (residue, suppress_segid=0) :
+def residue_id_str(residue, suppress_segid=0):
   try :
     return residue.id_str(suppress_segid=suppress_segid)
   except ValueError, e :
@@ -833,7 +833,7 @@ class type_symbol_registry_base(object):
   def assign_directly(self, i_seq, symbol):
     self.symbols[i_seq] = symbol
 
-  def assign_charge (self, i_seq, charge=0) :
+  def assign_charge(self, i_seq, charge=0):
     self.charges[i_seq] = charge
 
   def assign_from_monomer_mapping(self, conf_altloc, mm):
@@ -881,11 +881,11 @@ class type_symbol_registry_base(object):
         self.source_n_expected_atoms[i_seq] = source_n_expected_atoms
         if (self.type_label == "nonbonded energy"):
           charge_str = atom.charge_tidy(strip=True)
-          if (charge_str is not None) and (len(charge_str) != 0) :
+          if (charge_str is not None) and (len(charge_str) != 0):
             charge = 0
-            if ("-" in charge_str) :
+            if ("-" in charge_str):
               charge = - int(charge_str.replace("-", ""))
-            elif ("+" in charge_str) :
+            elif ("+" in charge_str):
               charge = int(charge_str.replace("+", ""))
             self.charges[i_seq] = charge
           elif ((len(mm.expected_atoms) == 1) and
@@ -931,7 +931,7 @@ class type_symbol_registry_base(object):
       print >> log, "%sNumber of resolved %s type symbol conflicts: %d" % (
         prefix, self.type_label, self.n_resolved_conflicts)
 
-  def get_unknown_atoms (self, pdb_atoms, return_iseqs=False) :
+  def get_unknown_atoms(self, pdb_atoms, return_iseqs=False):
     n_unknown = self.n_unknown_type_symbols()
     if (n_unknown > 0):
       i_seqs = (self.symbols == "").iselection()
@@ -1269,7 +1269,7 @@ class monomer_mapping(slots_getstate_setstate):
               atom_name = atom_name_given
       if (    len(atom_name) != 0
           and not atom_dict.has_key(atom_name)
-          and ((self.is_rna_dna) or (self.monomer.normalized_rna_dna))) :
+          and ((self.is_rna_dna) or (self.monomer.normalized_rna_dna))):
         aliases = pdb.rna_dna_atom_names_backbone_aliases
         if (rna_dna_bb_cif_by_ref is None):
           rna_dna_bb_cif_by_ref = {}
@@ -2339,7 +2339,7 @@ def ener_lib_as_nonbonded_params(
     if (r is not None):
       params.radius_table[atom_type] = r
     r_ionic = getattr(energy_lib_atom, "ion_radius")
-    if (r_ionic is not None) :
+    if (r_ionic is not None):
       params.ionic_radius_table[atom_type] = r_ionic
     # N = 0, D = 1, A = 2, B = 3, H = 4
     if getattr(energy_lib_atom, "hb_type") == 'N':
@@ -3547,7 +3547,7 @@ class build_all_chain_proxies(linking_mixins):
         "  columns 77-78 of the PDB file."])
     return "\n  ".join(result)
 
-  def extract_secondary_structure (self, log=None) :
+  def extract_secondary_structure(self, log=None):
     if hasattr(self.pdb_inp, "extract_secondary_structure"):
       return self.pdb_inp.extract_secondary_structure(log=log)
     else:
@@ -4555,7 +4555,7 @@ class build_all_chain_proxies(linking_mixins):
           parallelity.atom_selection_2 is None):
         print >> log, "Warning: Ignoring parallelity with empty atom selection."
         continue
-      if (parallelity.sigma is None) or (parallelity.sigma <= 0) :
+      if (parallelity.sigma is None) or (parallelity.sigma <= 0):
         raise Sorry("Custom parallelity sigma is undefined or zero/negative - "+
           "this must be a positive decimal number.")
       elif (parallelity.action != "add"):
@@ -4585,7 +4585,7 @@ class build_all_chain_proxies(linking_mixins):
     return result
 
 
-  def process_geometry_restraints_scale (self, params, log) :
+  def process_geometry_restraints_scale(self, params, log):
     """
     Scale the weights for selected basic geometry restraints for given
     atom selections.  This allows geometry to be manually tightened or
@@ -4601,19 +4601,19 @@ class build_all_chain_proxies(linking_mixins):
     sel_cache = self.pdb_hierarchy.atom_selection_cache()
     other_selections = []
     other_selection_strs = []
-    if (len(params.scale_restraints) > 0) :
+    if (len(params.scale_restraints) > 0):
       print >> log, "Scaling restraint weights for %d selections" % \
         len(params.scale_restraints)
     for scale_params in params.scale_restraints :
-      if (scale_params.scale < 0) :
+      if (scale_params.scale < 0):
         raise Sorry("scale_restraints.scale must be at least zero.")
       selection = self.phil_atom_selection(
         cache=sel_cache,
         scope_extract=scale_params,
         attr="atom_selection",
         raise_if_empty_selection=True)
-      for other, other_str in zip(other_selections, other_selection_strs) :
-        if (not (selection & other).all_eq(False)) :
+      for other, other_str in zip(other_selections, other_selection_strs):
+        if (not (selection & other).all_eq(False)):
           raise Sorry(("Error scaling selected restraint weights: the atom "+
             "selection \"%s\" overlaps with at least one other previously "+
             "defined atom selection (\"%s\").") % (scale_params.atom_selection,
@@ -4626,13 +4626,13 @@ class build_all_chain_proxies(linking_mixins):
                       self.geometry_proxy_registries.bond_simple.proxies ]
       proxy_types = ["angle", "dihedral", "chirality", "bond"]
       modified_proxies = []
-      for k, proxies in enumerate(proxy_lists) :
-        if (not proxy_types[k] in scale_params.apply_to) :
+      for k, proxies in enumerate(proxy_lists):
+        if (not proxy_types[k] in scale_params.apply_to):
           continue
-        for j, proxy in enumerate(proxies) :
+        for j, proxy in enumerate(proxies):
           for i_seq in proxy.i_seqs :
-            if (selection[i_seq]) :
-              if ((k,j) in modified_proxies) :
+            if (selection[i_seq]):
+              if ((k,j) in modified_proxies):
                 print >> log, \
                   "  skipping %s restraint proxy #%d - already modified" % (
                     proxy_types[k], j)
@@ -4659,9 +4659,9 @@ class build_all_chain_proxies(linking_mixins):
         sel_cache=sel_cache, params=params, log=log)
     return result
 
-  def process_hydrogen_bonds (self, bonds_table, log, verbose=False) :
+  def process_hydrogen_bonds(self, bonds_table, log, verbose=False):
     atoms = self.pdb_atoms
-    def show_atoms (i_seqs, log) :
+    def show_atoms(i_seqs, log):
       for i_seq in i_seqs :
         print >> log, "     %s" % atoms[i_seq].fetch_labels().quote()
     unit_cell = self.special_position_settings.unit_cell()
@@ -4671,7 +4671,7 @@ class build_all_chain_proxies(linking_mixins):
     n_excessive = 0
     bond_distance_model_max = 0
     bond_sym_proxies = []
-    for bond in bonds_table.get_bond_restraint_data() :
+    for bond in bonds_table.get_bond_restraint_data():
       i_seqs = [bond.donor_i_seq, bond.acceptor_i_seq]
       slack = bond.slack
       if (slack is None or slack < 0):
@@ -4734,17 +4734,17 @@ class build_all_chain_proxies(linking_mixins):
       bond_sym_proxies=bond_sym_proxies,
       bond_distance_model_max=bond_distance_model_max)
 
-  def process_custom_nonbonded_exclusions (self, log, exclude_pair_indices,
-      shell_asu_tables, verbose=True) :
+  def process_custom_nonbonded_exclusions(self, log, exclude_pair_indices,
+      shell_asu_tables, verbose=True):
     space_group = self.special_position_settings.space_group()
     rt_mx_ji = sgtbx.rt_mx(symbol="x,y,z", t_den=space_group.t_den())
     have_header = False
     for (i_seq, j_seq) in exclude_pair_indices :
-      if (verbose) and (not have_header) :
+      if (verbose) and (not have_header):
         print >> log
         print >> log, "  Custom nonbonded exclusions (H-bonds, etc.):"
         have_header = True
-      if (verbose) :
+      if (verbose):
         print >> log, "    %s  %s" % (self.pdb_atoms[i_seq].id_str(),
                                       self.pdb_atoms[j_seq].id_str())
       try :
@@ -4822,7 +4822,7 @@ class build_all_chain_proxies(linking_mixins):
         log=None):
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
-    #if (params_edits is not None) :
+    #if (params_edits is not None):
     #  self.process_geometry_restraints_scale(params_edits, log)
     bond_params_table = geometry_restraints.extract_bond_params(
       n_seq=self.sites_cart.size(),
@@ -5146,7 +5146,7 @@ class build_all_chain_proxies(linking_mixins):
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=bond_asu_table,
       max_shell=3)
-    if (custom_nonbonded_exclusions is not None) :
+    if (custom_nonbonded_exclusions is not None):
       self.process_custom_nonbonded_exclusions(
         log=log,
         exclude_pair_indices=custom_nonbonded_exclusions,
@@ -5162,7 +5162,7 @@ class build_all_chain_proxies(linking_mixins):
       const_shrink_donor_acceptor=self.params.const_shrink_donor_acceptor)
     if(self.params.nonbonded_weight is None):
       nonbonded_weight = 100 # c_rep in prolsq repulsion function
-      if(assume_hydrogens_all_missing) :
+      if(assume_hydrogens_all_missing):
         nonbonded_weight = 100
     else:
       nonbonded_weight = self.params.nonbonded_weight
@@ -5199,9 +5199,9 @@ class build_all_chain_proxies(linking_mixins):
     self.time_building_geometry_restraints_manager = timer.elapsed()
     restraints_source = "GeoStd + Monomer Library"
     use_cdl = self.params.restraints_library.cdl
-    if (use_cdl is Auto) :
+    if (use_cdl is Auto):
       use_cdl = self.pdb_inp.used_cdl_restraints()
-      if (use_cdl) :
+      if (use_cdl):
         print >> log, "  Switching to conformation-dependent library"
     if use_cdl:
       restraints_source += ' + %s' % mmtbx.conformation_dependent_library.cdl_database.version
@@ -5226,9 +5226,9 @@ class build_all_chain_proxies(linking_mixins):
     # need autodetect code
     #
     use_omega_cdl = self.params.restraints_library.omega_cdl
-    if (use_omega_cdl is Auto) :
+    if (use_omega_cdl is Auto):
       use_omega_cdl = self.pdb_inp.used_omega_cdl_restraints()
-      if (use_omega_cdl) :
+      if (use_omega_cdl):
         print >> log, "  Switching to omega-CDL"
     if use_omega_cdl:
       restraints_source += ' + omega-cdl'
@@ -5516,7 +5516,7 @@ class process(object):
       ramachandran_manager = None
       pep_link_params = self.all_chain_proxies.params.peptide_link
       if pep_link_params.ramachandran_restraints :
-        if (not pep_link_params.discard_psi_phi) :
+        if (not pep_link_params.discard_psi_phi):
           # Not sure anymore why this is necessary
           raise Sorry("You may not use Ramachandran restraints when "+
             "discard_psi_phi=False.")

@@ -36,7 +36,7 @@ max_deviation_from_plane = 0.8
   .type = float
 """
 
-def is_negatively_charged_oxygen (atom_name, resname) :
+def is_negatively_charged_oxygen(atom_name, resname):
   """
   Determine whether the oxygen atom of interest is either negatively charged
   (usually a carboxyl group or sulfate/phosphate), or has a lone pair (and
@@ -52,19 +52,19 @@ def is_negatively_charged_oxygen (atom_name, resname) :
   bool
   """
   if ((atom_name in ["OD1","OD2","OE1","OE2"]) and
-      (resname in ["GLU","ASP","GLN","ASN"])) :
+      (resname in ["GLU","ASP","GLN","ASN"])):
     return True
-  elif ((atom_name == "O") and (not resname in ["HOH","WAT"])) :
+  elif ((atom_name == "O") and (not resname in ["HOH","WAT"])):
     return True # sort of - the lone pair acts this way
   elif ((len(atom_name) == 3) and (atom_name[0:2] in ["O1","O2","O3"]) and
-        (atom_name[2] in ["A","B","G"])) :
+        (atom_name[2] in ["A","B","G"])):
     return True
-  elif (resname in ["SO4","PO4"]) :
+  elif (resname in ["SO4","PO4"]):
     return True
   return False
 
 # XXX distance cutoff may be too generous, but 0.5 is too strict
-def _is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.75):
+def _is_coplanar_with_sidechain(atom, residue, distance_cutoff=0.75):
   """
   Given an isolated atom and an interacting residue with one or more amine
   groups, determine whether the atom is approximately coplanar with the terminus
@@ -83,13 +83,13 @@ def _is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.75):
   """
   sidechain_sites = []
   resname = residue.resname
-  for other in residue.atoms() :
+  for other in residue.atoms():
     name = other.name.strip()
-    if (resname == "ARG") and (name in ["NH1","NH2","NE"]) :
+    if (resname == "ARG") and (name in ["NH1","NH2","NE"]):
       sidechain_sites.append(other.xyz)
-    elif (resname == "GLN") and (name in ["OE1","NE2","CD"]) :
+    elif (resname == "GLN") and (name in ["OE1","NE2","CD"]):
       sidechain_sites.append(other.xyz)
-    elif (resname == "ASN") and (name in ["OD1","ND2","CG"]) :
+    elif (resname == "ASN") and (name in ["OD1","ND2","CG"]):
       sidechain_sites.append(other.xyz)
   if (len(sidechain_sites) != 3) : # XXX probably shouldn't happen
     return False
@@ -97,7 +97,7 @@ def _is_coplanar_with_sidechain (atom, residue, distance_cutoff=0.75):
   #print atom.id_str(), D
   return (D <= distance_cutoff)
 
-def is_favorable_halide_environment (
+def is_favorable_halide_environment(
     i_seq,
     contacts,
     pdb_atoms,
@@ -105,7 +105,7 @@ def is_favorable_halide_environment (
     connectivity,
     unit_cell,
     params,
-    assume_hydrogens_all_missing=Auto) :
+    assume_hydrogens_all_missing=Auto):
   """
   Detects if an atom's site exists in a favorable environment for a halide
   ion. This includes coordinating by a positively charged sidechain or backbone
@@ -126,7 +126,7 @@ def is_favorable_halide_environment (
   -------
   bool
   """
-  if (assume_hydrogens_all_missing in [None, Auto]) :
+  if (assume_hydrogens_all_missing in [None, Auto]):
     elements = pdb_atoms.extract_element()
     assume_hydrogens_all_missing = not ("H" in elements or "D" in elements)
   atom = pdb_atoms[i_seq]
@@ -140,7 +140,7 @@ def is_favorable_halide_environment (
   for contact in contacts :
     # to analyze local geometry, we use the target site mapped to be in the
     # same ASU as the interacting site
-    def get_site (k_seq) :
+    def get_site(k_seq):
       return unit_cell.orthogonalize(
         site_frac = (contact.rt_mx * sites_frac[k_seq]))
     other = contact.atom
@@ -151,7 +151,7 @@ def is_favorable_halide_environment (
     j_seq = other.i_seq
     # XXX need to figure out exactly what this should be - CL has a
     # fairly large radius though (1.67A according to ener_lib.cif)
-    if (distance < params.min_distance_to_other_sites) :
+    if (distance < params.min_distance_to_other_sites):
       return False
     if not element in ["C", "N", "H", "O", "S"]:
       charge = server.get_charge(element)
@@ -161,14 +161,14 @@ def is_favorable_halide_environment (
       if charge > 0 and distance <= params.max_distance_to_cation:
         # Nearby cation
         near_cation = True
-        if (distance < min_distance_to_cation) :
+        if (distance < min_distance_to_cation):
           min_distance_to_cation = distance
     # Lysine sidechains (can't determine planarity)
     elif (atom_name in ["NZ"] and #, "NE", "NH1", "NH2"] and
           resname in ["LYS"] and
           distance <= params.max_distance_to_cation):
       near_lys = True
-      if (distance < min_distance_to_cation) :
+      if (distance < min_distance_to_cation):
         min_distance_to_cation = distance
     # sidechain amide groups, no hydrogens (except Arg)
     # XXX this would be more reliable if we also calculate the expected
@@ -176,26 +176,26 @@ def is_favorable_halide_environment (
     elif (atom_name in ["NZ","NH1","NH2","ND2","NE2"] and
           resname in ["ARG","ASN","GLN"] and
           (assume_hydrogens_all_missing or resname == "ARG") and
-          distance <= params.max_distance_to_cation) :
+          distance <= params.max_distance_to_cation):
       if (_is_coplanar_with_sidechain(atom, other.parent(),
-            distance_cutoff = params.max_deviation_from_plane)) :
+            distance_cutoff = params.max_deviation_from_plane)):
         binds_amide_hydrogen = True
-        if (resname == "ARG") and (distance < min_distance_to_cation) :
+        if (resname == "ARG") and (distance < min_distance_to_cation):
           min_distance_to_cation = distance
     # hydroxyl groups - note that the orientation of the hydrogen is usually
     # arbitrary and we can't determine precise bonding
     elif ((atom_name in ["OG1", "OG2", "OH1"]) and
           (resname in ["SER", "THR", "TYR"]) and
-          (distance <= params.max_distance_to_hydroxyl)) :
+          (distance <= params.max_distance_to_hydroxyl)):
       near_hydroxyl = True
-      if (distance < min_distance_to_hydroxyl) :
+      if (distance < min_distance_to_hydroxyl):
         min_distance_to_hydroxyl = distance
     # Backbone amide, explicit H
     elif atom_name in ["H"]:
       # TODO make this more general for any amide H?
       xyz_h = col(contact.site_cart)
       bonded_atoms = connectivity[j_seq]
-      if (len(bonded_atoms) != 1) :
+      if (len(bonded_atoms) != 1):
         continue
       xyz_n = col(get_site(bonded_atoms[0]))
       vec_hn = xyz_h - xyz_n
@@ -229,7 +229,7 @@ def is_favorable_halide_environment (
           binds_amide_hydrogen = True
     # sidechain NH2 groups, explicit H
     elif ((atom_name in ["HD1","HD2"] and resname in ["ASN"]) or
-          (atom_name in ["HE1","HE2"] and resname in ["GLN"])) :
+          (atom_name in ["HE1","HE2"] and resname in ["GLN"])):
           # XXX not doing this for Arg because it can't handle the bidentate
           # coordination
           #(atom_name in ["HH11","HH12","HH21","HH22"] and resname == "ARG")):
@@ -248,14 +248,14 @@ def is_favorable_halide_environment (
   # carboxyl groups), but with some leeway if a cation is also nearby.
   # backbone carbonyl atoms are also excluded.
   for contact in contacts :
-    if (contact.altloc() not in ["", "A"]) :
+    if (contact.altloc() not in ["", "A"]):
       continue
     resname = contact.resname()
     atom_name = contact.atom_name()
     distance = abs(contact)
     if ((distance < 3.2) and
         (distance < (min_distance_to_cation + 0.2)) and
-        is_negatively_charged_oxygen(atom_name, resname)) :
+        is_negatively_charged_oxygen(atom_name, resname)):
       #print contact.id_str(), distance
       return False
   return (binds_amide_hydrogen or near_cation or near_lys)

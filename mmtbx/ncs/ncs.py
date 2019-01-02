@@ -3738,7 +3738,7 @@ class ncs:
      self.init_ncs_group()
 
 
-  def display_all (self,verbose=True,log=None):
+  def display_all(self,verbose=True,log=None):
     if log==None:
       log=sys.stdout
     count=0

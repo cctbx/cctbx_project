@@ -33,15 +33,15 @@ symmetry_search
 }
 """)
 
-def run (args=(), params=None, out=sys.stdout) :
-  if (len(args) > 0) :
+def run(args=(), params=None, out=sys.stdout):
+  if (len(args) > 0):
     cmdline = iotbx.phil.process_command_line_with_files(
       args=args,
       master_phil=master_phil,
       pdb_file_def="symmetry_search.file_name",
       reflection_file_def="symmetry_search.file_name")
     params = cmdline.work.extract().symmetry_search
-  elif (params is None) :
+  elif (params is None):
     raise Usage("""mmtbx.search_pdb_symmetry [file] [space_group] [unit_cell]
   Utility for finding similar unit cells deposited in the PDB.
 """)
@@ -51,12 +51,12 @@ def run (args=(), params=None, out=sys.stdout) :
   from iotbx import crystal_symmetry_from_any
   from cctbx import crystal
   db = pdb_symmetry.load_db()
-  if (params.file_name is not None) :
+  if (params.file_name is not None):
     symm = crystal_symmetry_from_any.extract_from(file_name=params.file_name)
-    if (symm is None) :
+    if (symm is None):
       raise Sorry("The file %s does not include symmetry information." %
         params.file_name)
-    elif (symm.space_group() is None) or (symm.unit_cell() is None) :
+    elif (symm.space_group() is None) or (symm.unit_cell() is None):
       raise Sorry("Incomplete symmetry information in %s." % params.file_name)
   else :
     symm = crystal.symmetry(
@@ -89,12 +89,12 @@ def run (args=(), params=None, out=sys.stdout) :
     crystal_symmetry=symm,
     hits=results)
 
-def validate_params (params) :
+def validate_params(params):
   params = params.symmetry_search
   have_symm = (not None in [params.unit_cell, params.space_group])
-  if (not have_symm) and (params.file_name is None) :
+  if (not have_symm) and (params.file_name is None):
     raise Sorry("Missing or incomplete symmetry information.")
   return True
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

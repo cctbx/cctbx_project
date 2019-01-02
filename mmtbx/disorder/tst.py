@@ -5,7 +5,7 @@ import iotbx.pdb.hierarchy
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 
-def exercise () :
+def exercise():
   pdb_str = """\
 MODEL        1
 ATOM      1  CA  ALA A  73      40.400   8.490  10.792  0.01 13.69           C
@@ -75,6 +75,6 @@ ENDMDL
   assert approx_equal(list(model.atoms().extract_b()),
     [0.684434, 0.779022, 0.881886])
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

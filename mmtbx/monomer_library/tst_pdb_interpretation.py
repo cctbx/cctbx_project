@@ -1258,14 +1258,14 @@ def exercise_asp_glu_acid():
 
 # tests automatic aliasing of OP1/O1P etc. when the residue is not detected as
 # RNA/DNA but the monomer entry is
-def exercise_rna_dna_synonyms () :
+def exercise_rna_dna_synonyms():
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/PGP.pdb",
     test=os.path.isfile)
   cif_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/cif_files/PGP.cif",
     test=os.path.isfile)
-  if (None in [pdb_file, cif_file]) :
+  if (None in [pdb_file, cif_file]):
     print "Skipping exercise_rna_dna_synonyms() - input file(s) unavailable."
   else :
     log = StringIO()
@@ -1835,7 +1835,7 @@ ATOM     10  CA  VAL A  10      50.711  63.858  50.117  1.00  0.00           C
   else: raise Exception_expected
 
 # Test automatic detection of CDL
-def exercise_cdl_automatic () :
+def exercise_cdl_automatic():
   pdbstring = """\
 ATOM      0  CA  GLY A   3       5.804  -2.100   7.324  1.00  1.36           C
 ATOM      1  C   GLY A   3       4.651  -1.149   7.578  1.00  1.01           C

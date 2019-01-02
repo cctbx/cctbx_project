@@ -3,7 +3,7 @@ from __future__ import division
 from libtbx.utils import Sorry
 import sys
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   from mmtbx.refinement import anomalous_scatterer_groups
   import mmtbx.command_line
   master_phil = mmtbx.command_line.generate_master_phil_with_inputs(
@@ -41,7 +41,7 @@ scattering coefficients.  Intended as a diagnostic/development tool only!
     prefer_anomalous=True,
     usage_string=usage_string)
   fmodel = cmdline.fmodel
-  if (not fmodel.f_obs().anomalous_flag()) :
+  if (not fmodel.f_obs().anomalous_flag()):
     raise Sorry("Anomalous data required.")
   pdb_hierarchy = cmdline.pdb_hierarchy
   params = cmdline.params
@@ -58,5 +58,5 @@ scattering coefficients.  Intended as a diagnostic/development tool only!
     reset_water_u_iso=params.reset_water_u_iso,
     out=out)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

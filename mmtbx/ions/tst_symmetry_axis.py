@@ -5,7 +5,7 @@ from libtbx.utils import null_out
 from libtbx import group_args
 from cStringIO import StringIO
 
-def exercise () :
+def exercise():
   from mmtbx.regression import make_fake_anomalous_data
   import mmtbx.command_line.water_screen
   import mmtbx.ions.utils
@@ -142,6 +142,6 @@ TER
   os.remove(file_base + ".mtz")
   os.remove(file_base + "_fmodel.eff")
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

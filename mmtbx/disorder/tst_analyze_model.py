@@ -8,7 +8,7 @@ import libtbx.load_env
 import mmtbx.model
 from cStringIO import StringIO
 
-def analyze_fragment (pdb_str) :
+def analyze_fragment(pdb_str):
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_str)
   model = mmtbx.model.manager(pdb_in.input)
   validation = molprobity.molprobity(model, outliers_only=False)
@@ -18,7 +18,7 @@ def analyze_fragment (pdb_str) :
     log=null_out())
   return result
 
-def exercise () :
+def exercise():
   # single alternate, split at C-alpha (from 1ytt)
   pdb_str = """\
 CRYST1   65.508   72.216   45.035  90.00  90.00  90.00 P 21 21 21    8
@@ -55,8 +55,8 @@ END
   assert ("atom_group=B CYS  occ=0.45 phi=-111.6 psi=146.7  rot=t" in
     out.getvalue())
 
-if (__name__ == "__main__") :
-  if (not libtbx.env.has_module("probe")) :
+if (__name__ == "__main__"):
+  if (not libtbx.env.has_module("probe")):
     print "Probe not configured, skipping test"
   else :
     exercise()

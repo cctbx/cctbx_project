@@ -27,15 +27,15 @@ mw = None
 """
 
 
-def run (args, out=sys.stdout, params=None) :
+def run(args, out=sys.stdout, params=None):
   import iotbx.phil
   from cctbx.eltbx import chemical_elements, sasaki
-  class interpreter (iotbx.phil.process_command_line_with_files) :
-    def process_other (self, arg) :
-      if (len(arg) <= 2) :
-        if (arg.upper() in chemical_elements.proper_upper_list()) :
+  class interpreter (iotbx.phil.process_command_line_with_files):
+    def process_other(self, arg):
+      if (len(arg) <= 2):
+        if (arg.upper() in chemical_elements.proper_upper_list()):
           return iotbx.phil.parse("element=%s" % arg)
-  if (params is None) :
+  if (params is None):
     cmdline = interpreter(
       args=args,
       master_phil_string=master_phil_str,
@@ -49,14 +49,14 @@ given an anomalous scatterer type and expected asymmetric unit contents.""")
     params = cmdline.work.extract()
   validate_params(params)
   fdp = params.fdp
-  if (fdp is None) :
-    if (params.wavelength is not None) :
+  if (fdp is None):
+    if (params.wavelength is not None):
       fdp = sasaki.table(params.element).at_angstrom(params.wavelength).fdp()
       caption = "%s A" % params.wavelength
     else :
       fdp = sasaki.table(params.element).at_ev(params.energy).fdp()
       caption = "%s eV" % params.energy
-  if (params.n_res is not None) :
+  if (params.n_res is not None):
     n_atoms = params.n_res * 110 / 15
   else :
     n_atoms = params.mw / 15
@@ -64,7 +64,7 @@ given an anomalous scatterer type and expected asymmetric unit contents.""")
   print >> out, "Heavy atom type: %s" % params.element
   print >> out, "Number of sites: %d" % params.n_sites
   print >> out, "Approx. # of non-H/D atoms: %d" % n_atoms
-  if (params.fdp is None) :
+  if (params.fdp is None):
     print >> out, "f'' of %s at %s : %6.3f" % (params.element, caption, fdp)
   else :
     print >> out, "f'' (experimental) : %6.3f" % fdp
@@ -72,23 +72,23 @@ given an anomalous scatterer type and expected asymmetric unit contents.""")
     (bijvoet_ratio_acentric * 100)
   return bijvoet_ratio_acentric
 
-def validate_params (params) :
+def validate_params(params):
   from cctbx.eltbx import chemical_elements
   all_elems = chemical_elements.proper_upper_list()
-  if (params.element is None) :
+  if (params.element is None):
     raise Sorry("Element symbol not specified.")
-  elif (not params.element.upper() in all_elems) :
+  elif (not params.element.upper() in all_elems):
     raise Sorry("Element symbol '%s' not recognized." % params.element)
-  if (params.n_sites is None) :
+  if (params.n_sites is None):
     raise Sorry("Number of sites not specified.")
-  if ([params.fdp, params.energy, params.wavelength].count(None) != 2) :
+  if ([params.fdp, params.energy, params.wavelength].count(None) != 2):
     print [params.fdp, params.energy, params.wavelength]
     raise Sorry("Please specify either an X-ray wavelength or energy "+
       "(but not both), or the expected f''.")
-  if ([params.n_res, params.mw].count(None) != 1) :
+  if ([params.n_res, params.mw].count(None) != 1):
     raise Sorry("Please specify either the number of residues or the "+
       "approximate molecular weight (but not both).")
   return True
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

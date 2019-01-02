@@ -62,7 +62,7 @@ Full scope of parameters:
   print help_msg
   master_phil.show()
 
-def run (args, params=None, out=sys.stdout, log=sys.stderr) :
+def run(args, params=None, out=sys.stdout, log=sys.stderr):
   # params keyword is for running program from GUI dialog
   if ( ((len(args) == 0) and (params is None)) or
        ((len(args) > 0) and ((args[0] == "-h") or (args[0] == "--help"))) ):
@@ -171,13 +171,13 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
       "# To use them in other Phenix tools remove ",
       "# 'refinement.' if front of pdb_interpretation."])
     print >> result_out, comment
-    if (prefix_scope != "") :
+    if (prefix_scope != ""):
       print >> result_out, "%s {" % prefix_scope
     if work_params.show_all_params :
       working_phil.show(prefix="  ", out=result_out)
     else :
       phil_diff.show(prefix="  ", out=result_out)
-    if (prefix_scope != "") :
+    if (prefix_scope != ""):
       print >> result_out, "}"
   elif work_params.format == "pdb":
     print >> result_out, m.actual_sec_str.as_pdb_str()

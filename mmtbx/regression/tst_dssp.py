@@ -5,7 +5,7 @@ from libtbx import easy_run
 import libtbx.load_env
 import os
 
-def exercise_basic () :
+def exercise_basic():
   # extracted from 1ywf
   pdb_in = """\
 ATOM      1  N   ASP A 181      27.197  36.852   5.496  1.00 33.48           N
@@ -167,11 +167,11 @@ HELIX    1   1 ASP A  181  ARG A  191  1                                  11
 HELIX    3   3 SER A  195  GLN A  209  1                                  15""")
 
 # these exercised depend on files in other SVN trees
-def exercise_advanced () :
+def exercise_advanced():
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1ywf.pdb",
     test=os.path.isfile)
-  if (pdb_file is None) :
+  if (pdb_file is None):
     print "phenix_regression not available, skipping test"
     return
   result = easy_run.fully_buffered("mmtbx.dssp \"%s\"" % pdb_file
@@ -198,7 +198,7 @@ SHEET    5   1 5 ASP A  74  LEU A  77  1  O  ASP A  74   N  VAL A  52""")
   cctbx_p_dir = libtbx.env.find_in_repositories(
     relative_path="cctbx_project",
     test=os.path.isdir)
-  if (cctbx_p_dir is not None) :
+  if (cctbx_p_dir is not None):
     # mostly beta
     pdb_file_1 = os.path.join(cctbx_p_dir, "mmtbx", "regression", "pdbs", "p9.pdb")
     result = easy_run.fully_buffered("mmtbx.dssp \"%s\"" % pdb_file_1
@@ -263,6 +263,6 @@ SHEET   17   117 TYR     7  VAL    15 -1  O  TYR    14   N  ALA   281""")
   # TODO add 1lfh test
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_basic()
   exercise_advanced()

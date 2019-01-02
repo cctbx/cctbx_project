@@ -475,7 +475,7 @@ class manager(manager_mixin):
     assert len(state) == 1
     self.__dict__.update(state[0])
 
-  def is_twin_fmodel_manager (self) :
+  def is_twin_fmodel_manager(self):
     return False
 
   def _get_structure_factor_gradients_w(self):
@@ -906,7 +906,7 @@ class manager(manager_mixin):
     trial_params = zip(r_solvs, r_shrinks)
     parallel = False
     mask_results = []
-    if(nproc is Auto) or (nproc > 1) :
+    if(nproc is Auto) or (nproc > 1):
       parallel = True
       from libtbx import easy_mp
       stdout_and_results = easy_mp.pool_map(
@@ -921,7 +921,7 @@ class manager(manager_mixin):
         result.show(out=out)
         mask_results.append(result)
     for result in mask_results :
-      if (parallel) :
+      if (parallel):
         result.show(out=out)
       if(result.r_work < rw_):
         rw_       = result.r_work
@@ -942,7 +942,7 @@ class manager(manager_mixin):
     return True
 
   # XXX parallel routine
-  def try_mask_params (self, args) :
+  def try_mask_params(self, args):
     r_solv, r_shrink = args
     self.mask_params.solvent_radius = r_solv
     self.mask_params.shrink_truncation_radius = r_shrink
@@ -2280,7 +2280,7 @@ class manager(manager_mixin):
     hl_b_model = t * sin_f_model_phases
     return flex.hendrickson_lattman(a = hl_a_model, b = hl_b_model)
 
-  def f_model_phases_as_hl_coeffs_array (self) :
+  def f_model_phases_as_hl_coeffs_array(self):
     hl_coeffs = miller.set(crystal_symmetry=self.f_obs().crystal_symmetry(),
         indices = self.f_obs().indices(),
         anomalous_flag=False).array(
@@ -2319,24 +2319,24 @@ class manager(manager_mixin):
   def electron_density_map(self):
     return map_tools.electron_density_map(fmodel = self)
 
-  def map_coefficients (self, **kwds) :
+  def map_coefficients(self, **kwds):
     emap = self.electron_density_map()
     return emap.map_coefficients(**kwds)
 
-  def _get_real_map (self, **kwds) :
+  def _get_real_map(self, **kwds):
     map_coeffs = self.map_coefficients(**kwds)
     return map_coeffs.fft_map(
       resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
 
-  def two_fofc_map (self, **kwds) :
+  def two_fofc_map(self, **kwds):
     kwds['map_type'] = "2mFo-DFc"
     return self._get_real_map(**kwds)
 
-  def fofc_map (self, **kwds) :
+  def fofc_map(self, **kwds):
     kwds['map_type'] = "mFo-DFc"
     return self._get_real_map(**kwds)
 
-  def anomalous_map (self, **kwds) :
+  def anomalous_map(self, **kwds):
     if (not self.f_obs().anomalous_flag()) : return None
     kwds['map_type'] = "anom"
     return self._get_real_map(**kwds)
@@ -2347,7 +2347,7 @@ class manager(manager_mixin):
       free_reflections_per_bin= self.alpha_beta_params.free_reflections_per_bin
     if(max_number_of_bins is None):
       max_number_of_bins = self.max_number_of_bins
-    if (n_bins is None) :
+    if (n_bins is None):
       n_bins = self.n_resolution_bins_output
     return mmtbx.f_model.f_model_info.info(
       fmodel                   = self,
@@ -2413,10 +2413,10 @@ class manager(manager_mixin):
        "k_mask        = bulk-solvent scale factor"]:
       print >> out, prefix + line + suffix
 
-  def export_f_obs_flags_as_mtz (self,
+  def export_f_obs_flags_as_mtz(self,
       file_name,
       merge_anomalous=False,
-      include_hendrickson_lattman=True) :
+      include_hendrickson_lattman=True):
     """
     Dump all input data to an MTZ file using standard column labels.  This may
     be useful when running modules or programs that require an MTZ file as
@@ -2425,13 +2425,13 @@ class manager(manager_mixin):
     f_obs = self.f_obs()
     flags = self.r_free_flags()
     hl_coeffs = self.hl_coeffs()
-    if (merge_anomalous) :
+    if (merge_anomalous):
       f_obs = f_obs.average_bijvoet_mates()
       flags = flags.average_bijvoet_mates()
-      if (hl_coeffs is not None) :
+      if (hl_coeffs is not None):
         hl_coeffs = hl_coeffs.average_bijvoet_mates()
     mtz_dataset = f_obs.as_mtz_dataset(column_root_label="F")
-    if (hl_coeffs is not None) and (include_hendrickson_lattman) :
+    if (hl_coeffs is not None) and (include_hendrickson_lattman):
       mtz_dataset.add_miller_array(hl_coeffs, column_root_label="HL")
     mtz_dataset.add_miller_array(flags, column_root_label="FreeR_flag")
     mtz_dataset.mtz_object().write(file_name)
@@ -2525,11 +2525,11 @@ def show_histogram(data, n_slots, log):
     print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
     lc_1 = hc_1
 
-class mask_result (object) :
-  def __init__ (self, r_solv, r_shrink, r_work, r_free, r_work_low) :
+class mask_result (object):
+  def __init__(self, r_solv, r_shrink, r_work, r_free, r_work_low):
     adopt_init_args(self, locals())
 
-  def show (self, out) :
+  def show(self, out):
     if (out is None) : return
     print >> out, "r_solv=%s r_shrink=%s r_work=%s r_free=%s r_work_low=%s"%(
           format_value("%6.2f", self.r_solv),
@@ -2542,8 +2542,8 @@ class mask_result (object) :
 # bad hack... - relative import
 # Change to absolute import
 from . import f_model_info
-class info (f_model_info.info) :
+class info (f_model_info.info):
   pass
 
-class resolution_bin (f_model_info.resolution_bin) :
+class resolution_bin (f_model_info.resolution_bin):
   pass

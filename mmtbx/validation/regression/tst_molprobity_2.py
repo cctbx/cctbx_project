@@ -11,14 +11,14 @@ from cStringIO import StringIO
 import os.path as op
 
 # test on protein - we need real model/data for this
-def exercise_protein () :
+def exercise_protein():
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3ifk.pdb",
     test=op.isfile)
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/3ifk.mtz",
     test=op.isfile)
-  if (pdb_file is None) :
+  if (pdb_file is None):
     print "phenix_regression not available, skipping."
     return
   args1 = [
@@ -117,7 +117,7 @@ def exercise_protein () :
   stats = result2.get_statistics_for_phenix_gui()
   assert ('R-work (neutron)' in [ label for (label, stat) in stats ])
 
-def exercise_rna () :
+def exercise_rna():
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb2goz_refmac_tls.ent",
     test=op.isfile)
@@ -134,12 +134,12 @@ def exercise_rna () :
   result.show(out=out2)
   assert (out2.getvalue() == out.getvalue())
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   if (not libtbx.env.has_module(name="probe")):
     print "Skipping tests: probe not configured"
   else :
     exercise_protein()
-    if (not libtbx.env.has_module(name="suitename")) :
+    if (not libtbx.env.has_module(name="suitename")):
       print "Skipping RNA test: suitename not available"
     else :
       exercise_rna()

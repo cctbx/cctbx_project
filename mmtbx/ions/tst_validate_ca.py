@@ -4,7 +4,7 @@ import os
 from libtbx import easy_run
 import time
 
-def exercise () :
+def exercise():
   from mmtbx.regression.make_fake_anomalous_data import generate_calcium_inputs
   base = "tst_validate_ca"
   mtz_file, pdb_file = generate_calcium_inputs(file_base=base, anonymize=False)
@@ -24,7 +24,7 @@ def exercise () :
     os.remove(base + ext)
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   print "WARNING: TEST TOO SLOW. MAKE IT RUN UNDER 300s AND ENABLE BACK."
   if 0: #XXX FIXME disabled
     t0 = time.time()

@@ -41,7 +41,7 @@ Example:
 
 """ % locals()
 
-def run (args, out=sys.stdout, quiet=False) :
+def run(args, out=sys.stdout, quiet=False):
   from mmtbx.monomer_library import pdb_interpretation
   from mmtbx.monomer_library import server
   import iotbx.pdb
@@ -51,7 +51,7 @@ def run (args, out=sys.stdout, quiet=False) :
     pdb_file_def="model",
     usage_string=usage_string)
   params = cmdline.work.extract()
-  if (params.model is None) :
+  if (params.model is None):
     raise Usage(usage_string)
   pdb_in = iotbx.pdb.input(source_info=params.model, file_name=params.model)
   mon_lib_srv = server.server()
@@ -71,5 +71,5 @@ def run (args, out=sys.stdout, quiet=False) :
   result.show(out=out)
   return result
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

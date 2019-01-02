@@ -75,7 +75,7 @@ def is_proxy_present(proxies, n_seq, proxy):
   return ps.size() > 0
 
 class ramachandran_manager(object):
-  def __init__ (self, pdb_hierarchy, params=None,
+  def __init__(self, pdb_hierarchy, params=None,
       log=sys.stdout,
       proxies=None, tables=None,
       initialize=True):
@@ -230,7 +230,7 @@ class ramachandran_manager(object):
       gradient_array=None,
       residuals_array_oldfield=None,
       residuals_array_emsley=None):
-    if(gradient_array is None) :
+    if(gradient_array is None):
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
     n_oldfield_proxies = self.get_n_oldfield_proxies()
     self.residuals_array_oldfield = residuals_array_oldfield
@@ -351,10 +351,10 @@ class ramachandran_manager(object):
       print >> f, ""
 
 
-def load_tables (params=None) :
-  if (params is None) :
+def load_tables(params=None):
+  if (params is None):
     params = master_phil.fetch().extract()
-  if (params.scale_allowed <= 0.0) :
+  if (params.scale_allowed <= 0.0):
     raise Sorry("Ramachandran restraint parameter scale_allowed must be "+
       "a positive number (current value: %g)." % params.scale_allowed)
   tables = {}
@@ -365,7 +365,7 @@ def load_tables (params=None) :
       test=os.path.isfile)
     f = open(file_name, "r")
     data = flex.double()
-    for line in f.readlines() :
+    for line in f.readlines():
       val, phi, psi = line.split()
       assert ((int(phi) % 2 == 1) and (int(psi) % 2 == 1))
       data.append(float(val))

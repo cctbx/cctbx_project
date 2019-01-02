@@ -18,7 +18,7 @@ nproc = Auto
 include scope mmtbx.building.alternate_conformations.density_sampling.master_params
 """, process_includes=True)
 
-def run (args, out=None ):
+def run(args, out=None ):
   if (out is None) : out = sys.stdout
   from mmtbx.building.alternate_conformations import density_sampling
   import mmtbx.maps.utils
@@ -46,17 +46,17 @@ def run (args, out=None ):
   sites_cart = pdb_atoms.extract_xyz()
   ensembles = []
   t1 = time.time()
-  for chain in hierarchy.only_model().chains() :
+  for chain in hierarchy.only_model().chains():
     prev_residue = next_residue = None
     residue_groups = chain.residue_groups()
     n_groups = len(residue_groups)
-    for i_res, residue_group in enumerate(residue_groups) :
-      if (i_res < n_groups - 1) :
+    for i_res, residue_group in enumerate(residue_groups):
+      if (i_res < n_groups - 1):
         next_residue = residue_groups[i_res+1].atom_groups()[0]
       i_seqs = residue_group.atoms().extract_i_seq()
-      if (selection.select(i_seqs).all_eq(True)) :
+      if (selection.select(i_seqs).all_eq(True)):
         atom_group = residue_group.only_atom_group()
-        if (get_class(atom_group.resname) != "common_amino_acid") :
+        if (get_class(atom_group.resname) != "common_amino_acid"):
           continue
         confs = density_sampling.screen_residue(
           residue=atom_group,
@@ -77,13 +77,13 @@ def run (args, out=None ):
           ensemble.append("\n".join(pdb_lines))
         ensembles.append(ensemble)
       prev_residue = residue_group.atom_groups()[0]
-  if (len(ensembles) == 0) :
+  if (len(ensembles) == 0):
     raise Sorry("No alternate conformations found.")
   t2 = time.time()
   print >> out, "search time: %.1fs" % (t2-t1)
-  for i_ens, ensemble in enumerate(ensembles) :
+  for i_ens, ensemble in enumerate(ensembles):
     ensemble_hierarchy = iotbx.pdb.hierarchy.root()
-    for k, model_str in enumerate(ensemble) :
+    for k, model_str in enumerate(ensemble):
       input = iotbx.pdb.hierarchy.input(pdb_string=model_str)
       model = input.hierarchy.only_model().detached_copy()
       model.id = str(k+1)
@@ -92,9 +92,9 @@ def run (args, out=None ):
     f.write(ensemble_hierarchy.as_pdb_string())
     f.close()
     print "wrote ensemble_%d.pdb" % (i_ens+1)
-  if (params.coot) :
+  if (params.coot):
     easy_run.call("coot --pdb %s --auto map_coeffs.mtz --pdb ensemble.pdb" %
       params.input.pdb.file_name[0])
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

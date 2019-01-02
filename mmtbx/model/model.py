@@ -577,15 +577,15 @@ class manager(object):
     return (self._anomalous_scatterer_groups is not None and
         len(self._anomalous_scatterer_groups) > 0)
 
-  def update_anomalous_groups (self, out=sys.stdout) :
+  def update_anomalous_groups(self, out=sys.stdout):
     if self.have_anomalous_scatterer_groups():
       modified = False
       sel_cache = self.get_atom_selection_cache()
-      for i_group, group in enumerate(self._anomalous_scatterer_groups) :
-        if (group.update_from_selection) :
+      for i_group, group in enumerate(self._anomalous_scatterer_groups):
+        if (group.update_from_selection):
           isel = sel_cache.selection(group.selection_string).iselection()
           assert (len(isel) == len(group.iselection))
-          if (not isel.all_eq(group.iselection)) :
+          if (not isel.all_eq(group.iselection)):
             print >> out, "Updating %d atom(s) in anomalous group %d" % \
               (len(isel), i_group+1)
             print >> out, "  selection string: %s" % group.selection_string
@@ -2327,7 +2327,7 @@ class manager(object):
           rbt_value = p.delta_z()*10000.
           rbt_array.append(rbt_value)
           name_i, name_j = atom_i.name, atom_j.name
-          if (use_id_str) :
+          if (use_id_str):
             name_i = atom_i.id_str()
             name_j = atom_j.id_str()
           print >> out, "%s%s %s %10.3f"%(prefix, name_i, name_j, rbt_value)
@@ -2368,7 +2368,7 @@ class manager(object):
       resname = (a.parent().resname).strip()
       if(get_class(name = resname) == "common_water"):
         result.append(True)
-      elif (a.segid.strip() == "ION") and (include_ions) :
+      elif (a.segid.strip() == "ION") and (include_ions):
         result.append(True)
       else: result.append(False)
     return result
@@ -2612,7 +2612,7 @@ class manager(object):
       segids=None,
       i_seq_start = 0,
       chain_id     = " ",
-      reset_labels=False) :
+      reset_labels=False):
     assert refine_adp in ["isotropic", "anisotropic"]
     assert new_xray_structure.scatterers().size() == len(atom_names) == \
         len(residue_names) == len(nonbonded_types)
@@ -2688,7 +2688,7 @@ class manager(object):
         donor_acceptor_excl_groups = None
       else:
         donor_acceptor_excl_groups = flex.size_t(number_of_new_atoms, 0)
-      if (nonbonded_charges is None) :
+      if (nonbonded_charges is None):
         nonbonded_charges = flex.int(number_of_new_atoms, 0)
       geometry = geometry.new_including_isolated_sites(
         n_additional_sites =number_of_new_atoms,
@@ -2717,14 +2717,14 @@ class manager(object):
         n_new_atoms         = number_of_new_atoms)
       self.riding_h_manager = new_riding_h_manager
 
-  def _append_pdb_atoms (self,
+  def _append_pdb_atoms(self,
       new_xray_structure,
       atom_names,
       residue_names,
       chain_id,
       segids=None,
       i_seq_start=0,
-      reset_labels=False) :
+      reset_labels=False):
     """ Add atoms from new_xray_structure to the model in place."""
     assert (len(atom_names) == len(residue_names) ==
             len(new_xray_structure.scatterers()))
@@ -2734,7 +2734,7 @@ class manager(object):
     orth = new_xray_structure.unit_cell().orthogonalize
     n_seq = self.pdb_atoms.size()
     i_seq = i_seq_start
-    for j_seq, sc in enumerate(new_xray_structure.scatterers()) :
+    for j_seq, sc in enumerate(new_xray_structure.scatterers()):
       i_seq += 1
       element, charge = sc.element_and_charge_symbols()
       new_atom = (iotbx.pdb.hierarchy.atom()
@@ -2746,7 +2746,7 @@ class manager(object):
         .set_element(element)
         .set_charge(charge)
         .set_hetero(new_hetero=True))
-      if (segids is not None) :
+      if (segids is not None):
         new_atom.segid = segids[j_seq]
       new_atom_group = iotbx.pdb.hierarchy.atom_group(altloc="",
         resname=residue_names[j_seq])
@@ -2764,16 +2764,16 @@ class manager(object):
     # deep_copy seems to help with it.
     self._pdb_hierarchy = self._pdb_hierarchy.deep_copy()
     self._update_pdb_atoms()
-    if (reset_labels) :
+    if (reset_labels):
       self._sync_xrs_labels()
     self.all_chain_proxies = None
     self._processed_pdb_file = None
 
   def _sync_xrs_labels(self):
-    for sc, atom in zip(self.get_xray_structure().scatterers(), self.get_hierarchy().atoms()) :
+    for sc, atom in zip(self.get_xray_structure().scatterers(), self.get_hierarchy().atoms()):
       sc.label = atom.id_str()
 
-  def convert_atom (self,
+  def convert_atom(self,
       i_seq,
       scattering_type,
       atom_name,
@@ -2785,7 +2785,7 @@ class manager(object):
       chain_id=None,
       segid=None,
       refine_occupancies=True,
-      refine_adp = None) :
+      refine_adp = None):
     """
     Convert a single atom (usually water) to a different type, including
     adjustment of the xray structure and geometry restraints.
@@ -2794,70 +2794,70 @@ class manager(object):
     atom.name = atom_name
     atom.element = "%2s" % element.strip()
     assert (atom.element.strip() == element)
-    if (charge != 0) :
+    if (charge != 0):
       symbol = "+"
       if (charge < 0) : symbol = "-"
       atom.charge = str(abs(charge)) + symbol
     else :
       atom.charge = ""
     atom.parent().resname = residue_name
-    if (chain_id is not None) :
+    if (chain_id is not None):
       assert (len(chain_id) <= 2)
       atom.parent().parent().parent().id = chain_id
-    if (segid is not None) :
+    if (segid is not None):
       assert (len(segid) <= 4)
       atom.segid = segid
     scatterer = self._xray_structure.scatterers()[i_seq]
     scatterer.scattering_type = scattering_type
     label = atom.id_str()
     all_labels = [ s.label for s in self._xray_structure.scatterers() ]
-    while (label in all_labels) :
+    while (label in all_labels):
       rg = atom.parent().parent()
       resseq = rg.resseq_as_int()
       rg.resseq = "%4d" % (resseq + 1)
       label = atom.id_str()
     # scatterer.label = atom.id_str() # will be done below for whole xrs
-    if (initial_occupancy is not None) :
+    if (initial_occupancy is not None):
       # XXX preserve partial occupancies on special positions
-      if (scatterer.occupancy != 1.0) :
+      if (scatterer.occupancy != 1.0):
         initial_occupancy = scatterer.occupancy
       scatterer.occupancy = initial_occupancy
       atom.occ = initial_occupancy
-    if (initial_b_iso is not None) :
+    if (initial_b_iso is not None):
       atom.b = initial_b_iso
       scatterer.u_iso = adptbx.b_as_u(initial_b_iso)
     atom_selection = flex.size_t([i_seq])
     if(refine_adp == "isotropic"):
       scatterer.convert_to_isotropic(unit_cell=self._xray_structure.unit_cell())
       if ((self.refinement_flags is not None) and
-          (self.refinement_flags.adp_individual_iso is not None)) :
+          (self.refinement_flags.adp_individual_iso is not None)):
         self.refinement_flags.adp_individual_iso.set_selected(atom_selection,
           True)
-        if (self.refinement_flags.adp_individual_aniso is not None) :
+        if (self.refinement_flags.adp_individual_aniso is not None):
           self.refinement_flags.adp_individual_aniso.set_selected(
             atom_selection, False)
     elif(refine_adp == "anisotropic"):
       scatterer.convert_to_anisotropic(
         unit_cell=self._xray_structure.unit_cell())
       if ((self.refinement_flags is not None) and
-          (self.refinement_flags.adp_individual_aniso is not None)) :
+          (self.refinement_flags.adp_individual_aniso is not None)):
         self.refinement_flags.adp_individual_aniso.set_selected(atom_selection,
           True)
-        if (self.refinement_flags.adp_individual_iso is not None) :
+        if (self.refinement_flags.adp_individual_iso is not None):
           self.refinement_flags.adp_individual_iso.set_selected(atom_selection,
             False)
     if ((self.refinement_flags is not None) and
-        (self.refinement_flags.sites_individual is not None)) :
+        (self.refinement_flags.sites_individual is not None)):
       self.refinement_flags.sites_individual.set_selected(atom_selection, True)
     if ((self.refinement_flags is not None) and
-        (self.refinement_flags.s_occupancies is not None)) :
+        (self.refinement_flags.s_occupancies is not None)):
       flagged = False
       for occgroup in self.refinement_flags.s_occupancies:
         for occsel in occgroup :
-          if (i_seq in occsel) :
+          if (i_seq in occsel):
             flagged = True
             break
-      if (not flagged) :
+      if (not flagged):
         self.refinement_flags.s_occupancies.append([atom_selection])
     self.restraints_manager.geometry.update_atom_nonbonded_type(
       i_seq=i_seq,

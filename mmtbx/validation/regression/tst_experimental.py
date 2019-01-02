@@ -10,7 +10,7 @@ import libtbx.load_env
 import random
 
 # Deuterium as ligand - formerly crashed real-space correlation
-def exercise_01 () :
+def exercise_01():
   pdb_raw = """\
 CRYST1   10.000   15.000   10.000  90.00  90.00  90.00 P 1
 ATOM   6407  N   GLY A 388      -0.783   9.368 -16.436  1.00 51.96           N
@@ -52,6 +52,6 @@ HETATM 6419  D2  DOD A1001      -4.625   2.741 -13.845  1.00 14.81           D
   ds = result.data_stats
   assert (ds.n_free > 0)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_01()
   print "OK"

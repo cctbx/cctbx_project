@@ -3,15 +3,15 @@ from __future__ import division
 from mmtbx.ringer import em_rscc
 from cctbx import crystal
 
-def exercise () :
+def exercise():
   import mmtbx.regression
   from iotbx import file_reader
   from cStringIO import StringIO
   pdb_file = "tmp_em_rscc.pdb"
   map_file = "tmp_em_rscc.map"
   f = open(pdb_file, "w")
-  for line in mmtbx.regression.model_1yjp.splitlines() :
-    if line.startswith("ATOM") :
+  for line in mmtbx.regression.model_1yjp.splitlines():
+    if line.startswith("ATOM"):
       f.write(line + "\n")
   f.close()
   pdb_in = file_reader.any_file(pdb_file).file_object
@@ -38,6 +38,6 @@ def exercise () :
     if line.find(" A  ")==-1: continue
     assert abs(float(line.split()[2])-1)<0.1
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

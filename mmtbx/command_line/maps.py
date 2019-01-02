@@ -130,9 +130,9 @@ def analyze_input_params(params):
   # Analyze map_coefficients
   mcp = params.maps.map_coefficients
   i = 0
-  while (i < len(mcp)) :
+  while (i < len(mcp)):
     mcp_ = mcp[i]
-    if (mcp_.map_type is None) :
+    if (mcp_.map_type is None):
       del mcp[i]
       continue
     if(mmtbx.map_names(mcp_.map_type).anomalous):
@@ -145,9 +145,9 @@ def analyze_input_params(params):
   # Analyze maps
   mp = params.maps.map
   i = 0
-  while (i < len(mp)) :
+  while (i < len(mp)):
     mp_ = mp[i]
-    if (mp_.map_type is None) :
+    if (mp_.map_type is None):
       del mp[i]
       continue
     if(mmtbx.map_names(mp_.map_type).anomalous):
@@ -158,7 +158,7 @@ def analyze_input_params(params):
       mp_.sharpening_b_factor = None
     i += 1
 
-def run (args, log = sys.stdout, use_output_directory=True,
+def run(args, log = sys.stdout, use_output_directory=True,
     suppress_fmodel_output=False):
   print >> log, legend
   print >> log, "-"*79
@@ -185,21 +185,21 @@ def run (args, log = sys.stdout, use_output_directory=True,
   working_phil = processed_args.params
   params = working_phil.extract()
   fmodel_data_file_format = params.maps.output.fmodel_data_file_format
-  if (len(params.maps.map_coefficients) == 0) and (len(params.maps.map) == 0) :
+  if (len(params.maps.map_coefficients) == 0) and (len(params.maps.map) == 0):
     print >> log, "No map input specified - using default map types"
     working_phil = master_params.fetch(sources=[working_phil,
         iotbx.phil.parse(default_params)])
     params = working_phil.extract()
   # XXX BUG - the extra fetch will always set fmodel_data_file_format to
   # mtz; this is probaby a low-level phil problem
-  if (fmodel_data_file_format is None) or (suppress_fmodel_output) :
+  if (fmodel_data_file_format is None) or (suppress_fmodel_output):
     params.maps.output.fmodel_data_file_format = None
   analyze_input_params(params=params)
   have_phil_file_input = len(processed_args.phil_file_names) > 0
-  if (len(processed_args.pdb_file_names) > 1) :
+  if (len(processed_args.pdb_file_names) > 1):
     raise Sorry("Only one model file is allowed as input.")
   if ((params.maps.input.pdb_file_name is None) and
-      (len(processed_args.pdb_file_names) == 1)) :
+      (len(processed_args.pdb_file_names) == 1)):
     params.maps.input.pdb_file_name = processed_args.pdb_file_names[0]
   if(not os.path.isfile(str(params.maps.input.pdb_file_name))):
     raise Sorry(
@@ -207,7 +207,7 @@ def run (args, log = sys.stdout, use_output_directory=True,
       str(params.maps.input.pdb_file_name))
   if ((params.maps.input.reflection_data.file_name is None) and
       (params.maps.input.reflection_data.r_free_flags.file_name is None) and
-      (len(processed_args.reflection_file_names) == 1)) :
+      (len(processed_args.reflection_file_names) == 1)):
     params.maps.input.reflection_data.file_name = \
       processed_args.reflection_file_names[0]
   print >> log, "FORMAT:", params.maps.output.fmodel_data_file_format
@@ -232,7 +232,7 @@ def run (args, log = sys.stdout, use_output_directory=True,
       from_coordinate_files=cs_from_coordinate_files,
       from_reflection_files=cs_from_reflection_files)
   except AssertionError, e :
-    if ("No unit cell and symmetry information supplied" in str(e)) :
+    if ("No unit cell and symmetry information supplied" in str(e)):
       raise Sorry("Missing or incomplete symmetry information.  This program "+
         "will only work with reflection file formats that contain both "+
         "unit cell and space group records, such as MTZ files.")
@@ -241,7 +241,7 @@ def run (args, log = sys.stdout, use_output_directory=True,
   reflection_file_names = []
   for rfn in [params.maps.input.reflection_data.file_name,
              params.maps.input.reflection_data.r_free_flags.file_name]:
-    if(os.path.isfile(str(rfn))) and (not rfn in reflection_file_names) :
+    if(os.path.isfile(str(rfn))) and (not rfn in reflection_file_names):
       reflection_files.append(reflection_file_reader.any_reflection_file(
         file_name = rfn, ensure_read_access = False))
       reflection_file_names.append(rfn)
@@ -292,8 +292,8 @@ def run (args, log = sys.stdout, use_output_directory=True,
     xray_structure   = xray_structure,
     d_min            = f_obs.d_min(),
     log              = log)
-  if (params.maps.wavelength is not None) :
-    if (params.maps.scattering_table == "neutron") :
+  if (params.maps.wavelength is not None):
+    if (params.maps.scattering_table == "neutron"):
       raise Sorry("Wavelength parameter not supported when the neutron "+
         "scattering table is used.")
     xray_structure.set_inelastic_form_factors(
@@ -317,7 +317,7 @@ def run (args, log = sys.stdout, use_output_directory=True,
   print >> log, "Compute maps."
   # XXX if run from the Phenix GUI, the output directory parameter is actually
   # one level up from the current directory, and use_output_directory=False
-  if (params.maps.output.directory is not None) and (use_output_directory) :
+  if (params.maps.output.directory is not None) and (use_output_directory):
     assert os.path.isdir(params.maps.output.directory)
     output_dir = params.maps.output.directory
   else :
@@ -343,7 +343,7 @@ def run (args, log = sys.stdout, use_output_directory=True,
     log = log)
   map_coeff_file_name = file_name_base+"_map_coeffs.mtz"
   r_free_flags_output = None
-  if (params.maps.output.include_r_free_flags) :
+  if (params.maps.output.include_r_free_flags):
     r_free_flags_output = fmodel.r_free_flags().average_bijvoet_mates()
   write_mtz_file_result = cmo.write_mtz_file(file_name = map_coeff_file_name,
     r_free_flags=r_free_flags_output)
@@ -357,15 +357,15 @@ def run (args, log = sys.stdout, use_output_directory=True,
       params.maps.output.fmodel_data_file_format)
     fmodel_file_object.close()
   print >> log, "All done."
-  if (write_mtz_file_result) :
+  if (write_mtz_file_result):
     print >> log, "Map coefficients: %s" % map_coeff_file_name
   for file_name in xplor_maps :
     print >> log, "CCP4 or XPLOR map: %s" % file_name
   print >> log, "-"*79
   return (map_coeff_file_name, xplor_maps)
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher (runtime_utils.target_with_save_result):
+  def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
     return run(args=list(self.args),
@@ -373,7 +373,7 @@ class launcher (runtime_utils.target_with_save_result) :
       use_output_directory=False,
       suppress_fmodel_output=True) # XXX bug fix
 
-def validate_params (params, callback=None) :
+def validate_params(params, callback=None):
   if params.maps.input.pdb_file_name is None :
     raise Sorry("No model file defined.")
   elif params.maps.input.reflection_data.file_name is None :
@@ -383,57 +383,57 @@ def validate_params (params, callback=None) :
   elif len(params.maps.map) == 0 and len(params.maps.map_coefficients) == 0 :
     raise Sorry("You have not requested any maps for output.")
   elif ((params.maps.output.directory is not None) and
-        (not os.path.isdir(params.maps.output.directory))) :
+        (not os.path.isdir(params.maps.output.directory))):
     raise Sorry(("The output directory %s does not exist; please choose a "+
       "valid directory, or leave this parameter blank.") %
       params.maps.output.directory)
-  if (params.maps.wavelength is not None) :
-    if (params.maps.scattering_table == "neutron") :
+  if (params.maps.wavelength is not None):
+    if (params.maps.scattering_table == "neutron"):
       raise Sorry("Wavelength parameter not supported when the neutron "+
         "scattering table is used.")
   validate_map_params(params.maps)
   # TODO double-check this - can we get None by accident in GUI?
   #for map_coeffs in params.maps.map_coefficients :
-  #  if (map_coeffs.map_type is None) :
+  #  if (map_coeffs.map_type is None):
   #    raise Sorry("One or more map coefficients is missing a map type "+
   #      "definition.")
   return True
 
-def validate_map_params (params) :
+def validate_map_params(params):
   from mmtbx import map_names
   labels = []
   for map_coeffs in params.map_coefficients :
-    if (map_coeffs.map_type is not None) :
+    if (map_coeffs.map_type is not None):
       try :
         decode_map = map_names(map_coeffs.map_type)
       except RuntimeError, e :
         raise Sorry(str(e))
       f = map_coeffs.mtz_label_amplitudes
       phi = map_coeffs.mtz_label_phases
-      if (f in labels) or (phi in labels) :
+      if (f in labels) or (phi in labels):
         raise Sorry(("The map coefficients with MTZ labels %s,%s duplicates at"+
           " least one previously defined label.  You may output multiple sets "+
           "of coefficients with the same map type, but the column labels must "+
           "be unique.") % (f, phi))
-      elif (None in [f, phi]) :
+      elif (None in [f, phi]):
         raise Sorry("Please specify both MTZ column labels for map_type '%s'."%
           map_coeffs.map_type)
       labels.extend([f,phi])
-  if (hasattr(params, "map")) :
+  if (hasattr(params, "map")):
     for map in params.map :
-      if (map.grid_resolution_factor > 0.5) :
+      if (map.grid_resolution_factor > 0.5):
         # XXX can't we enforce this in phil?
         raise Sorry("The grid resolution factor for CCP4 and X-PLOR maps "+
           "must be 0.5 or less.")
   return True
 
-def finish_job (results) :
+def finish_job(results):
   (mtz_file, map_files) = results
   output_files = []
-  if mtz_file is not None and os.path.isfile(mtz_file) :
+  if mtz_file is not None and os.path.isfile(mtz_file):
     output_files.append((mtz_file, "MTZ file"))
   for map_file in map_files :
-    if os.path.isfile(map_file) :
+    if os.path.isfile(map_file):
       output_files.append((map_file, "XPLOR map"))
   return (output_files, [])
 

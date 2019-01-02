@@ -351,7 +351,7 @@ class determine_data_and_flags(object):
       print >> self.log
       processed = merged.array()
       info = info.customized_copy(merged=True)
-    if (self.force_non_anomalous) :
+    if (self.force_non_anomalous):
       processed = processed.average_bijvoet_mates()
     return processed.set_info(info)
 
@@ -411,13 +411,13 @@ class determine_data_and_flags(object):
            processed = merged.array()
            info = info.customized_copy(merged=True)
            del merged
-        if (self.force_non_anomalous) :
+        if (self.force_non_anomalous):
           processed = processed.average_bijvoet_mates()
         r_free_flags = processed.set_info(info)
     if(r_free_flags is None):
       if ((params.fraction is None) or
           (params.lattice_symmetry_max_delta is None) or
-          (params.use_lattice_symmetry is None)) :
+          (params.use_lattice_symmetry is None)):
         raise Sorry("No R-free flags are available, but one or more "+
           "parameters required to generate new flags is undefined.")
       print >> self.log, "Generating a new array of R-free flags."
@@ -473,7 +473,7 @@ class determine_data_and_flags(object):
     if(f_obs.is_complex_array()): f_obs = abs(f_obs)
     f_obs_fw = None
     if(f_obs.is_xray_intensity_array()):
-      if(self.parameters.french_wilson_scale) :
+      if(self.parameters.french_wilson_scale):
         f_obs_fw = french_wilson.french_wilson_scale(
           miller_array=f_obs,
           params=self.parameters.french_wilson,
@@ -482,7 +482,7 @@ class determine_data_and_flags(object):
           log=self.log)
         if f_obs_fw is not None:
           f_obs = f_obs_fw
-      if (not self.parameters.french_wilson_scale or f_obs_fw is None) :
+      if (not self.parameters.french_wilson_scale or f_obs_fw is None):
         selection_by_isigma = self._apply_sigma_cutoff(
           f_obs   = f_obs,
           n       = self.parameters.sigma_iobs_rejection_criterion,
@@ -580,7 +580,7 @@ class determine_data_and_flags(object):
         r_free_flags,
         missing_show_max_lines=10):
     test_flag_value = self.parameters.r_free_flags.test_flag_value
-    if (test_flag_value is None) :
+    if (test_flag_value is None):
       raise Sorry(("PHENIX could not determine an appropriate test flag "+
         "for the data with label(s) '%s'.  This may happen if they are all "+
         "a single value; please check the file to make sure the flags are "+
@@ -712,7 +712,7 @@ will become meaningful only after many cycles of refinement.
       for i in xrange(2): print >> log, "*"*79
       print >> log
       if (not ignore_pdb_hexdigest):
-        if ("PHENIX_GUI_ENVIRONMENT" in os.environ) :
+        if ("PHENIX_GUI_ENVIRONMENT" in os.environ):
           log.flush()
           raise Sorry("This model appears to have previously been refined "+
             "against a different set of R-free flags.  Please resolve the "+
@@ -802,7 +802,7 @@ pdb_params = iotbx.phil.parse("""\
       file_type_default
 """)
 
-def find_overlapping_selections (selections, selection_strings) :
+def find_overlapping_selections(selections, selection_strings):
   """
   Given a list of atom selections (:py:class:`scitbx.array_family.flex.bool`
   arrays) and corresponding selection strings, inspect the selections to
@@ -810,17 +810,17 @@ def find_overlapping_selections (selections, selection_strings) :
   of selection strings found to overlap, or None if all selections are unique.
   """
   assert (len(selections) == len(selection_strings))
-  for i_sel in range(len(selections) - 1) :
+  for i_sel in range(len(selections) - 1):
     selection1 = selections[i_sel]
-    for j_sel in range(i_sel + 1, len(selections)) :
+    for j_sel in range(i_sel + 1, len(selections)):
       selection2 = selections[j_sel]
-      if (isinstance(selection1, flex.bool)) :
+      if (isinstance(selection1, flex.bool)):
         joint_sel = selection1 & selection2
-        if (joint_sel.count(True) > 0) :
+        if (joint_sel.count(True) > 0):
           return (selection_strings[i_sel], selection_strings[j_sel])
       else :
         intersection = selection1.intersection(selection2)
-        if (len(intersection) > 0) :
+        if (len(intersection) > 0):
           return (selection_strings[i_sel], selection_strings[j_sel])
   return None
 
@@ -884,7 +884,7 @@ def get_atom_selections(
         tmp = tmp + tmp_s.as_int()
     if(flex.max(tmp)>1):
       sel1, sel2 = find_overlapping_selections(selections, selection_strings)
-      if (parameter_name is not None) :
+      if (parameter_name is not None):
         raise Sorry("One or more overlapping selections for %s:\n%s\n%s" %
           (parameter_name, sel1, sel2))
       else :
@@ -902,7 +902,7 @@ def get_atom_selections(
       else:
         s0.extend(s)
     selections = s0
-    if (iselection) :
+    if (iselection):
       selections = selections.select(flex.sort_permutation(selections))
   return selections
 
@@ -936,7 +936,7 @@ def set_log(args, out=sys.stdout, replace_stderr=True):
   string_buffer = StringIO()
   string_buffer_plots = StringIO()
   log.register(label="log_buffer", file_object=string_buffer)
-  if (replace_stderr) :
+  if (replace_stderr):
     sys.stderr = log
   return log
 
@@ -1098,7 +1098,7 @@ class process_pdb_file_srv(object):
       ignore_unknown_scattering_types=False,
       ignore_unknown_nonbonded_energy_types=ignore_unknown_nonbonded_energy_types)
     if (msg is not None):
-  #     if (self.stop_for_unknowns is not None) :
+  #     if (self.stop_for_unknowns is not None):
   #       msg += """
   # Alternatively, to continue despite this problem use:
   #   stop_for_unknowns=False"""
@@ -1722,8 +1722,8 @@ class process_command_line_args(object):
       else:
         raise e
 
-  def get_reflection_file_server (self) :
-    if (self.reflection_file_server is None) :
+  def get_reflection_file_server(self):
+    if (self.reflection_file_server is None):
       reflection_file_server = reflection_file_utils.reflection_file_server(
         crystal_symmetry=self.crystal_symmetry,
         force_symmetry=True,
@@ -2049,7 +2049,7 @@ class fmodel_from_xray_structure(object):
       self.f_model._sigmas = sigmas
     if(params.r_free_flags_fraction is not None):
       self.r_free_flags = fmodel.r_free_flags()
-      if merge_r_free_flags and self.r_free_flags.anomalous_flag() :
+      if merge_r_free_flags and self.r_free_flags.anomalous_flag():
         self.r_free_flags = self.r_free_flags.average_bijvoet_mates()
 
   def Sorry_high_resolution_is_not_defined(self):
@@ -2099,7 +2099,7 @@ class fmodel_from_xray_structure(object):
             print >> ofo, " %s= %.6g TEST=%d" % (op.label, values[1],values[2])
     else:
       output_array = self.f_model
-      if (obs_type == "intensities") :
+      if (obs_type == "intensities"):
         output_array = output_array.f_as_f_sq()
         output_array.set_observation_type_xray_intensity()
       mtz_dataset= output_array.as_mtz_dataset(column_root_label="%s"%op.label)
@@ -3079,7 +3079,7 @@ def check_and_set_crystal_symmetry(
       maptbx.assert_same_gridding(map_1=m0, map_2=m.map_data())
   return crystal_symmetry
 
-class detect_hydrogen_nomenclature_problem (object) :
+class detect_hydrogen_nomenclature_problem (object):
   """
   This allows us to avoid the following problems:
   1) a bug in automatic linking which deletes the monomer library definition
@@ -3094,7 +3094,7 @@ class detect_hydrogen_nomenclature_problem (object) :
   n_hydrogen: number of hydrogens missing geometry restraints
   n_other: number of non-hydrogen atoms missing geometry restraints
   """
-  def __init__ (self, pdb_file, cif_files=()) :
+  def __init__(self, pdb_file, cif_files=()):
     args = [ pdb_file, ] + list(cif_files)
     import mmtbx.monomer_library.server
     mon_lib_srv = mmtbx.monomer_library.server.server()
@@ -3114,15 +3114,15 @@ class detect_hydrogen_nomenclature_problem (object) :
     self.n_asn_hd22 = 0
     self.n_hydrogen = 0
     self.n_other = 0
-    if (nb_reg.n_unknown_type_symbols() > 0) :
+    if (nb_reg.n_unknown_type_symbols() > 0):
       unknown_atoms = nb_reg.get_unknown_atoms(pdb_atoms)
       for atom in unknown_atoms :
         print atom.quote()
         labels = atom.fetch_labels()
-        if (atom.name == "HD22") and (labels.resname == "ASN") :
+        if (atom.name == "HD22") and (labels.resname == "ASN"):
           self.n_asn_hd22 += 1
           self.bad_hydrogens.append(atom.id_str())
-        elif (atom.element.strip() == "H") :
+        elif (atom.element.strip() == "H"):
           self.n_hydrogen += 1
           self.bad_hydrogens.append(atom.id_str())
         else :

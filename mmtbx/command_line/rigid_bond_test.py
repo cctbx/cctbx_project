@@ -12,8 +12,8 @@ restraints = None
   .multiple = True
 """)
 
-def run (args, out=sys.stdout) :
-  if (len(args) == 0) or ("--help" in args) :
+def run(args, out=sys.stdout):
+  if (len(args) == 0) or ("--help" in args):
     raise Usage("mmtbx.rigid_bond_test model.pdb")
   import mmtbx.restraints
   import mmtbx.model
@@ -34,10 +34,10 @@ def run (args, out=sys.stdout) :
     use_id_str=True,
     prefix="  ")
 
-def validate_params (params) :
-  if (params.model is None) :
+def validate_params(params):
+  if (params.model is None):
     raise Sorry("Please specify a PDB file.")
   return True
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

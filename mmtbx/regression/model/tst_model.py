@@ -1023,7 +1023,7 @@ def exercise_4():
   solvent_sel = mol.solvent_selection()
   assert solvent_sel.count(True)+1 == result.count(True)
 
-def exercise_convert_atom() :
+def exercise_convert_atom():
   from iotbx.pdb import hierarchy
   from cctbx import crystal
   from cctbx.xray import anomalous_scatterer_group
@@ -1034,7 +1034,7 @@ def exercise_convert_atom() :
   chain = hierarchy.chain(id="S")
   root.append_model(model)
   model.append_chain(chain)
-  for k, xyz in enumerate(coords) :
+  for k, xyz in enumerate(coords):
     rg = hierarchy.residue_group(resseq=str(k+1))
     ag = hierarchy.atom_group(resname="HOH")
     atom = hierarchy.atom()
@@ -1081,7 +1081,7 @@ def exercise_convert_atom() :
   mol.set_sites_cart_from_hierarchy()
   # if the nonbonded type is set correctly, the nonbonded restraints should
   # not push the
-  for atom in mol.get_hierarchy(sync_with_xray_structure=True).atoms() :
+  for atom in mol.get_hierarchy(sync_with_xray_structure=True).atoms():
     xyz_max = max([ abs(n) for n in atom.xyz])
     assert (xyz_max < 2.5)
   mol = mol.select(flex.size_t([1,2,3,4,5,6]))

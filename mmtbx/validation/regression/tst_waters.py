@@ -6,7 +6,7 @@ from libtbx.utils import null_out
 from libtbx import easy_pickle
 from libtbx import group_args
 
-def exercise_heavy () :
+def exercise_heavy():
   from mmtbx.regression import make_fake_anomalous_data
   from mmtbx.command_line import validate_waters
   import mmtbx.ions.utils
@@ -39,6 +39,6 @@ def exercise_heavy () :
   # XXX statistics are approximate (probably a precision issue), so we can't
   # directly compare outputs
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_heavy()
   print "OK"

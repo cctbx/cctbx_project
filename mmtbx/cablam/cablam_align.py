@@ -46,7 +46,7 @@ cablam_align {
 #}}}
 
 # {{{ usage
-def  usage():
+def usage():
   sys.stderr.write("""
 --------------------------------------------------------------------------------
 python cablam_align.py 1234.pdb abcd.pdb
@@ -57,11 +57,11 @@ The user must provide TWO and only TWO pdb files.
 #}}}
 
 # {{{ cablam_residues
-class cablam_residues(object) :
+class cablam_residues(object):
 
   #{{{ get_continuous_segments
   # retuns a list of segments. segments are list of cablam linked_residue objects
-  def get_continuous_segments(self) :
+  def get_continuous_segments(self):
     segments = []
     n_residues =[v for k,v in self.cablam_residues.items() if v.prevres == None]
     for res in n_residues :
@@ -78,7 +78,7 @@ class cablam_residues(object) :
   def __init__(self,
                pdb_infile = None,
                pdbid      = None,
-               hierarchy  = None) :
+               hierarchy  = None):
     assert pdb_infile != None or hierarchy != None
     if pdb_infile != None and hierarchy != None :
       w = "WARNING: pdb_infile AND hierarchy detected; hierarchy will be used.\n"
@@ -99,7 +99,7 @@ class cablam_residues(object) :
 #}}}
 
 # {{{ not_enough_pdbs
-def not_enough_pdbs() :
+def not_enough_pdbs():
   sys.stderr.write("You must provide TWO and only TWO pdb files\n")
   usage()
   sys.exit()
@@ -122,7 +122,7 @@ def not_enough_pdbs() :
 #        smallest difference mean.
 #
 ################################################################################
-class FindSimilarCablamRegions(object) :
+class FindSimilarCablamRegions(object):
 
   def __init__(self,
                residues_1,
@@ -141,7 +141,7 @@ class FindSimilarCablamRegions(object) :
 
 
   # {{{ get_measures
-  def get_measures(self, segment) :
+  def get_measures(self, segment):
     measures = []
     for r in segment :
       if len(r.measures) == 0 :
@@ -155,7 +155,7 @@ class FindSimilarCablamRegions(object) :
   # }}}
 
   # {{{ simple_align_measures
-  def simple_align_measures(self) :
+  def simple_align_measures(self):
     similar_regions = []
     smallest_mean = 5000
     self.simple_aligned_regions = []
@@ -180,7 +180,7 @@ class FindSimilarCablamRegions(object) :
           is_1 = [i for i in range(sr.i_1, sr.i_1 + sr.window_length)]
           is_2 = [i for i in range(sr.i_2, sr.i_2 + sr.window_length)]
           ar = []
-          for i in range(len(is_1)) :
+          for i in range(len(is_1)):
             ar.append((seg_1[is_1[i]], seg_2[is_2[i]]))
           if self.threshold > 0 :
             self.simple_aligned_regions.append(group_args(aligned_residues = ar,
@@ -205,7 +205,7 @@ class AlignCablamMeasures(object):
                      pdb_name_1,
                      pdb_name_2,
                      window_size,
-                     threshold) :
+                     threshold):
 
     # get cablam residues
     residues_1 = cablam_residues(hierarchy = hierarchy_1, pdbid = pdb_name_1)
@@ -230,8 +230,8 @@ class AlignCablamMeasures(object):
   # }}}
 
   # {{{ print_simple_similar_regions
-  def print_simple_similar_regions(self, log) :
-    for i,ar in enumerate(self.simple_similar_region_obj.simple_aligned_regions) :
+  def print_simple_similar_regions(self, log):
+    for i,ar in enumerate(self.simple_similar_region_obj.simple_aligned_regions):
       print >> log, "similar fragment %i" % i
       print >> log,  "mean : %.03f, diff : %i" % (ar.mean,abs(ar.aligned_residues[0][0].resnum-ar.aligned_residues[0][1].resnum))
       for t in ar.aligned_residues :
@@ -239,7 +239,7 @@ class AlignCablamMeasures(object):
   # }}}
 
   # {{{ condense_simple_aligned_regions
-  def condense_simple_aligned_regions(self) :
+  def condense_simple_aligned_regions(self):
 
     self.aligned_regions = []
     sar = self.simple_similar_region_obj.simple_aligned_regions
@@ -251,7 +251,7 @@ class AlignCablamMeasures(object):
     while 1 :
       if new_region == None : new_region = sar[i].aligned_residues[:]
       i += 1
-      if i == len(sar) :
+      if i == len(sar):
         if new_region not in self.aligned_regions :
           self.aligned_regions.append(new_region)
         break
@@ -279,13 +279,13 @@ class AlignCablamMeasures(object):
   # }}}
 
   # {{{ print_aligned_regions
-  def print_aligned_regions(self,log) :
-    for i,region in enumerate(self.aligned_regions) :
+  def print_aligned_regions(self,log):
+    for i,region in enumerate(self.aligned_regions):
       self.print_region(region,i,log)
   # }}}
 
   # {{{ print_region
-  def print_region(self, region, title, log) :
+  def print_region(self, region, title, log):
     print >> log, "*"*77
     print >> log, "**** %s" % title
     print >> log, "diff : %i" % abs(region[0][0].resnum-region[0][1].resnum)
@@ -296,7 +296,7 @@ class AlignCablamMeasures(object):
 # }}}
 
 # {{{ get_chain_selection
-def get_chain_selection(hierarchy, chain) :
+def get_chain_selection(hierarchy, chain):
   s = "chain %s" % chain.upper()
   sel = hierarchy.atom_selection_cache().selection(string = s)
   return hierarchy.select(sel)
@@ -306,7 +306,7 @@ def get_chain_selection(hierarchy, chain) :
 # wrapper for AlignCablamMeasures
 def cablam_align_wrapper(pdb_1, pdb_2, window_size, threshold,
                          chain_1 = None, chain_2 = None,
-                         pdb_name_1 = None, pdb_name_2 = None) :
+                         pdb_name_1 = None, pdb_name_2 = None):
 
   # {{{ get pdb hierarchies
   if pdb_name_1 == None : pdb_name_1 = os.path.basename(pdb_1)[:-4]
@@ -331,7 +331,7 @@ def cablam_align_wrapper(pdb_1, pdb_2, window_size, threshold,
 # }}}
 
 # {{{ run
-def run(args) :
+def run(args):
 
   #{{{ phil parsing
   #-----------------------------------------------------------------------------

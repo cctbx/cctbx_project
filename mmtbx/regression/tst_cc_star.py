@@ -13,7 +13,7 @@ from libtbx.test_utils import Exception_expected
 from libtbx.utils import Sorry, null_out
 import random
 
-def exercise_space_group_handling () :
+def exercise_space_group_handling():
   flex.set_random_seed(123456)
   random.seed(123456)
   base = "tst_cc_star_space_group"
@@ -94,6 +94,6 @@ def exercise_space_group_handling () :
   else :
     raise Exception_expected
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_space_group_handling()
   print "OK"

@@ -124,8 +124,8 @@ include scope mmtbx.find_peaks.master_params
 def fo_minus_fo_master_params():
   return iotbx.phil.parse(fo_minus_fo_master_params_str, process_includes=True)
 
-class compute_fo_minus_fo_map (object) :
-  def __init__ (self,
+class compute_fo_minus_fo_map (object):
+  def __init__(self,
       data_arrays,
       xray_structure,
       log=None,
@@ -137,18 +137,18 @@ class compute_fo_minus_fo_map (object) :
       r_free_arrays=None,
       write_map=True,
       multiscale=False,
-      anomalous=False) :
+      anomalous=False):
     if (log is None) : log = sys.stdout
     adopt_init_args(self, locals())
     fmodels = []
     for i_seq, d in enumerate(data_arrays):
       if(not silent):
         print >> log, "Data set: %d"%i_seq
-      if(d.anomalous_flag()) and (not anomalous) :
+      if(d.anomalous_flag()) and (not anomalous):
         d = d.average_bijvoet_mates()
-      elif (anomalous) :
+      elif (anomalous):
         assert d.anomalous_flag()
-      if (r_free_arrays is not None) and (i_seq < len(r_free_arrays)) :
+      if (r_free_arrays is not None) and (i_seq < len(r_free_arrays)):
         r_free_flags = r_free_arrays[i_seq]
       else :
         r_free_flags = d.array(data = flex.bool(d.data().size(), False))
@@ -219,7 +219,7 @@ class compute_fo_minus_fo_map (object) :
     num = flex.sum(flex.abs(fobs_1.data()-fobs_2.data()))
     den = flex.sum(flex.abs(fobs_2.data()+fobs_2.data())/2)
     self.r_factor = None
-    if (den != 0) :
+    if (den != 0):
       self.r_factor = num / den
     # map coefficients
     def phase_transfer(miller_array, phase_source):
@@ -228,7 +228,7 @@ class compute_fo_minus_fo_map (object) :
         ).phase_transfer(phase_source = phase_source)
       return miller.array(miller_set = miller_array,
         data = miller_array.data() * tmp.data() )
-    if (not anomalous) :
+    if (not anomalous):
       diff = miller.array(
         miller_set = f_model,
         data       = fobs_1.data()-fobs_2.data())
@@ -250,10 +250,10 @@ class compute_fo_minus_fo_map (object) :
     if(self.map_coeff.anomalous_flag()):
       self.map_coeff = map_coeff.average_bijvoet_mates()
     self.file_names = []
-    if (write_map) :
+    if (write_map):
       self.file_names = self.write_map_file()
 
-  def write_map_file (self) :
+  def write_map_file(self):
   # output MTZ file with map coefficients
     class map_coeffs_mtz_label_manager:
       def __init__(self, amplitudes, phases):
@@ -280,7 +280,7 @@ class compute_fo_minus_fo_map (object) :
     mtz_object.add_history(mtz_history_buffer)
     mtz_object.write(file_name=file_name)
     self.file_names = [ file_name ]
-    if (self.peak_search) :
+    if (self.peak_search):
       from mmtbx.command_line import find_peaks_holes
       from mmtbx import find_peaks
       peak_search_log = self.log
@@ -335,7 +335,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     .enable_symmetry_comprehensive()
     ).process(args=args)
   #
-  if (log is None) :
+  if (log is None):
     log = sys.stdout
   if(not command_line.options.silent):
     utils.print_header("phenix.fobs_minus_fobs_map", out = log)
@@ -358,7 +358,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     print >> log
   params = working_phil.extract()
   consensus_symmetry = None
-  if (params.ignore_non_isomorphous_unit_cells) :
+  if (params.ignore_non_isomorphous_unit_cells):
     if (None in [params.f_obs_1_file_name, params.f_obs_2_file_name,
         params.phase_source]):
       raise Sorry("The file parameters (f_obs_1_file_name, f_obs_2_file_name, "+
@@ -375,12 +375,12 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     sg_err_2, uc_err_2 = symm_manager.process_reflections_file(hkl_in_2)
     out = StringIO()
     symm_manager.show(out=out)
-    if (sg_err_1) or (sg_err_2) :
+    if (sg_err_1) or (sg_err_2):
       raise Sorry(("Incompatible space groups in input files:\n%s\nAll files "+
         "must have the same point group (and ideally the same space group). "+
         "Please note that any symmetry information in the PDB file will be "+
         "used first.") % out.getvalue())
-    elif (uc_err_1) or (uc_err_2) :
+    elif (uc_err_1) or (uc_err_2):
       libtbx.call_back(message="warn",
         data=("Crystal symmetry mismatch:\n%s\nCalculations will continue "+
           "using the symmetry in the PDB file (or if not available, the "+
@@ -476,7 +476,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
   pdb_in = iotbx.pdb.input(source_info = None, lines = raw_recs)
   hierarchy = pdb_in.construct_hierarchy()
   omit_sel = flex.bool(hierarchy.atoms_size(), False)
-  if (params.advanced.omit_selection is not None) :
+  if (params.advanced.omit_selection is not None):
     print >> log, "Will omit selection from phasing model:"
     print >> log, "  " + params.advanced.omit_selection
     omit_sel = hierarchy.atom_selection_cache().selection(
@@ -499,12 +499,12 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
       if(f_obss[i].sigmas() is not None):
         sel = f_obss[i].data() > f_obss[i].sigmas()*params.sigma_cutoff
         f_obss[i] = f_obss[i].select(sel).set_info(info0)
-  for k, f_obs in enumerate(f_obss) :
-    if (f_obs.indices().size() == 0) :
+  for k, f_obs in enumerate(f_obss):
+    if (f_obs.indices().size() == 0):
       raise Sorry("No data left in array %d (labels=%s) after filtering!" % (k+1,
         f_obs.info().label_string()))
   output_file_name = params.output_file
-  if (output_file_name is None) and (params.file_name_prefix is not None) :
+  if (output_file_name is None) and (params.file_name_prefix is not None):
     output_file_name = "%s_%s.mtz" % (params.file_name_prefix, params.job_id)
   output_files = compute_fo_minus_fo_map(
     data_arrays = f_obss,
@@ -519,27 +519,27 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     anomalous=params.advanced.anomalous).file_names
   return output_files
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher (runtime_utils.target_with_save_result):
+  def run(self):
     os.makedirs(self.output_dir)
     os.chdir(self.output_dir)
     return run(args=list(self.args))
 
-def validate_params (params, callback=None) :
-  if (None in [params.f_obs_1_file_name, params.f_obs_2_file_name]) :
+def validate_params(params, callback=None):
+  if (None in [params.f_obs_1_file_name, params.f_obs_2_file_name]):
     raise Sorry("You must supply two files containing F(obs).")
-  if (None in [params.f_obs_1_label, params.f_obs_2_label]) :
+  if (None in [params.f_obs_1_label, params.f_obs_2_label]):
     raise Sorry("You must define the labels for both reflection files.")
-  if (params.phase_source is None) :
+  if (params.phase_source is None):
     raise Sorry("You must specify a PDB file for phasing.")
-  if not os.path.isdir(params.output_dir) :
+  if not os.path.isdir(params.output_dir):
     raise Sorry("Output directory does not exist.")
 
-def finish_job (result) :
+def finish_job(result):
   output_files = []
-  if (result is not None) :
+  if (result is not None):
     assert (isinstance(result, list)) and (len(result) > 0)
     output_files.append((result[0], "Map coefficients"))
-    if (len(result) > 1) :
+    if (len(result) > 1):
       output_files.append((result[1], "Map peaks and holes"))
   return (output_files, [])

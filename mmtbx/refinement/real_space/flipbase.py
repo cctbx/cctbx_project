@@ -36,7 +36,7 @@ flip_base {
 }
 """, process_includes=True)
 
-def usage(msg='', log=sys.stderr) :
+def usage(msg='', log=sys.stderr):
   s = '''
 ******************************************************************************
 Usage :
@@ -81,27 +81,27 @@ base_rotatable_atoms = {
   "U" : ["C2", "O2", "N3", "H3", "C4", "O4", "C5", "H5", "C6", "H6"],
 }
 
-def flip_base (atom_group, angle=180) :
+def flip_base(atom_group, angle=180):
   import scitbx.matrix
   axis_point_1 = axis_point_2 = None
   rotateable_atoms = []
   base_name = atom_group.resname.strip()
-  if ("r" in base_name) :
+  if ("r" in base_name):
     base_name = base_name.replace("r")
-  elif (base_name.startswith("D") and len(base_name) == 2) :
+  elif (base_name.startswith("D") and len(base_name) == 2):
     base_name = base_name[1]
   assert base_name in base_rotation_axes.keys(), base_name
-  for atom in atom_group.atoms() :
+  for atom in atom_group.atoms():
     atom_name = atom.name.strip()
-    if (atom_name == base_rotation_axes[base_name][0]) :
+    if (atom_name == base_rotation_axes[base_name][0]):
       axis_point_1 = atom.xyz
-    elif (atom_name == base_rotation_axes[base_name][1]) :
+    elif (atom_name == base_rotation_axes[base_name][1]):
       axis_point_2 = atom.xyz
-    elif (atom_name in base_rotatable_atoms[base_name]) :
+    elif (atom_name in base_rotatable_atoms[base_name]):
       rotateable_atoms.append(atom)
-  if (None in [axis_point_1, axis_point_2]) :
+  if (None in [axis_point_1, axis_point_2]):
     raise RuntimeError("Missing atom(s) for rotateable axis.")
-  elif (len(rotateable_atoms) == 0) :
+  elif (len(rotateable_atoms) == 0):
     raise RuntimeError("Missing nucleotide base.")
   for atom in rotateable_atoms :
     atom.xyz = scitbx.matrix.rotate_point_around_axis(
@@ -111,7 +111,7 @@ def flip_base (atom_group, angle=180) :
       angle=angle,
       deg=True)
 
-def get_target_map(reflection_file_name,  log=sys.stderr) :
+def get_target_map(reflection_file_name,  log=sys.stderr):
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
     reflection_file_name).as_miller_arrays()
   ma = miller_arrays[0]
@@ -129,7 +129,7 @@ def flip_and_refine(pdb_hierarchy,
                     res_num,
                     alt_loc = None,
                     n_refine_cycles = 3,
-                    log = sys.stdout) :
+                    log = sys.stdout):
   sites_cart = xray_structure.sites_cart()
   ero = False
   for ch in pdb_hierarchy.chains():
@@ -161,7 +161,7 @@ def flip_and_refine(pdb_hierarchy,
   if not ero : raise RuntimeError('Specified residue not found')
   return ero.pdb_hierarchy
 
-def run(args) :
+def run(args):
 
   # phil parsing----------------------------------------------------------
   interpreter = libtbx.phil.command_line.argument_interpreter(master_phil=master_phil)

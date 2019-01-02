@@ -26,23 +26,23 @@ HALIDES = ["F", "CL", "BR", "IOD"]
 TRANSITION_METALS = ["MN", "FE", "CO", "CU", "NI", "ZN", "PT"]
 SUPPORTED = TRANSITION_METALS + HALIDES + ["NA", "MG", "K", "CA", "CD", "HG"]
 
-def _cif_param_as_list (param) :
+def _cif_param_as_list(param):
   if (param == ".") : return None
   return param.split(",")
 
-def _cif_param_as_int (param) :
+def _cif_param_as_int(param):
   if (param == ".") : return None
   return int(param)
 
-def _cif_param_as_float (param) :
+def _cif_param_as_float(param):
   if (param == ".") : return None
   return float(param)
 
-class metal_parameters (group_args) :
-  def __str__ (self) :
+class metal_parameters (group_args):
+  def __str__(self):
     return "%s%+d" % (self.element.upper(), self.charge)
 
-  def charge_as_int (self):
+  def charge_as_int(self):
     """
     Gets the charge of a parameter as an integer.
 
@@ -52,7 +52,7 @@ class metal_parameters (group_args) :
     """
     return self.charge
 
-  def scattering_type (self):
+  def scattering_type(self):
     """
     Makes a string showing the element and its associated charge. Note that this
     format is slightly different from the __str__ method, which puts the +/-
@@ -73,14 +73,14 @@ class metal_parameters (group_args) :
     CL1-
     """
     charge_symbol = ""
-    if (self.charge > 0) :
+    if (self.charge > 0):
       charge_symbol = "+"
-    elif (self.charge < 0) :
+    elif (self.charge < 0):
       charge_symbol = "-"
     s = "%2s%1d%s" % (self.element.strip(), abs(self.charge), charge_symbol)
     return s
 
-class parameter_server (slots_getstate_setstate) :
+class parameter_server (slots_getstate_setstate):
   """
   Class for retrieving information from ion_parameters.cif
 
@@ -91,7 +91,7 @@ class parameter_server (slots_getstate_setstate) :
 
   __slots__ = ["params", "_metal_params", "_charge_params", "_resname_elem",
                "_default_charges"]
-  def __init__ (self) :
+  def __init__(self):
     params_path = os.path.join(os.path.split(__file__)[0],
       "ion_parameters.cif")
     assert os.path.isfile(params_path)
@@ -102,7 +102,7 @@ class parameter_server (slots_getstate_setstate) :
     self._resname_elem = {}
     self._default_charges = {}
 
-  def is_supported_element (self, symbol):
+  def is_supported_element(self, symbol):
     """
     Checks if symbol is a supported element by this parameter server.
 
@@ -116,7 +116,7 @@ class parameter_server (slots_getstate_setstate) :
     """
     return symbol in self.params['_lib_valence.atom_symbol']
 
-  def is_supported_donor (self, symbol) :
+  def is_supported_donor(self, symbol):
     """
     Checks if an element is a supported donor atom.
 
@@ -130,7 +130,7 @@ class parameter_server (slots_getstate_setstate) :
     """
     return symbol in self.params['_lib_valence.donor_symbol']
 
-  def get_valence_params (self, atom1, atom2):
+  def get_valence_params(self, atom1, atom2):
     """
     Gets the valence parameters (r_0 and b) used for calculating valences from
     bond distances.
@@ -155,14 +155,14 @@ class parameter_server (slots_getstate_setstate) :
     >>> print server.get_valence_params(zn_params, n_params)
     (1.77, 0.37)
     """
-    for i_elem, symbol in enumerate(self.params['_lib_valence.atom_symbol']) :
-      if (symbol == atom1.element) :
+    for i_elem, symbol in enumerate(self.params['_lib_valence.atom_symbol']):
+      if (symbol == atom1.element):
         i_charge = int(self.params['_lib_valence.atom_charge'][i_elem])
         i_other = self.params['_lib_valence.donor_symbol'][i_elem]
         i_other_charge = int(self.params['_lib_valence.donor_charge'][i_elem])
         if ((i_charge == atom1.charge_as_int()) and
             (i_other == atom2.element) and
-            (i_other_charge == atom2.charge_as_int())) :
+            (i_other_charge == atom2.charge_as_int())):
           valence = float(self.params['_lib_valence.value'][i_elem])
           return valence, 0.37
     charge1 = atom1.charge_as_int()
@@ -304,7 +304,7 @@ class parameter_server (slots_getstate_setstate) :
         charges.add(int(p["_lib_charge.charge"][i_elem]))
     return sorted(charges)
 
-  def get_metal_parameters (self, element):
+  def get_metal_parameters(self, element):
     """
     Gets all metal parameters associated with an element.
 
@@ -317,9 +317,9 @@ class parameter_server (slots_getstate_setstate) :
     mmtbx.ions.metal_parameters or None
     """
     p = self.params
-    for i_elem, symbol in enumerate(p['_lib_elems.element']) :
-      if (symbol == element.upper()) :
-        if (symbol in self._metal_params) :
+    for i_elem, symbol in enumerate(p['_lib_elems.element']):
+      if (symbol == element.upper()):
+        if (symbol in self._metal_params):
           return self._metal_params[symbol]
         assert (p['_lib_ligands.element'][i_elem] == symbol)
         params = metal_parameters(
@@ -349,7 +349,7 @@ class parameter_server (slots_getstate_setstate) :
         return params
     return None
 
-  def calculate_valence (self, ion, donor, distance):
+  def calculate_valence(self, ion, donor, distance):
     """
     Calculates the single valence contribution of one ion donor pair,
     separated by distance. ion and donor should be AtomGuess objects.
@@ -374,10 +374,10 @@ class parameter_server (slots_getstate_setstate) :
     0.31
     """
     element = donor.element
-    if (not self.is_supported_donor(element)) :
+    if (not self.is_supported_donor(element)):
       return 0
     r_0, b = self.get_valence_params(ion, donor)
-    if (r_0 is None) :
+    if (r_0 is None):
       # Try again, this time using the default charge for the donor
       donor = metal_parameters(
         charge=self.get_charge(element),
@@ -387,7 +387,7 @@ class parameter_server (slots_getstate_setstate) :
         return 0
     return exp((r_0 - distance) / b)
 
-  def calculate_valences (self, ion, nearby_atoms):
+  def calculate_valences(self, ion, nearby_atoms):
     """
     Calculates all of the valence contributions between ion and each
     atom of nearby_atoms, each element of which should be a tuple of an
@@ -439,13 +439,13 @@ class parameter_server (slots_getstate_setstate) :
       valence = self.calculate_valence(ion, donor, distance) * contact.occ
       if valence == 0:
         if ((donor.element not in ["H", "C", "AX"]) and
-            (not self.is_supported_donor(donor.element))) :
+            (not self.is_supported_donor(donor.element))):
           pass
       elif distance != 0:
         vectors.append(contact.vector / distance * valence)
     return vectors
 
-def check_supported (elements):
+def check_supported(elements):
   """
   Checks if elements are supported by ion identitication process.
 
@@ -467,19 +467,19 @@ def check_supported (elements):
   >>> check_supported(["CA", "ZN", "FE"])
   True
   """
-  if (elements is None) :
+  if (elements is None):
     raise Sorry("No elements specified for ion picking - must be either "+
       "'Auto' or a comma-separated list of element symbols.")
-  elif (elements is not Auto) :
+  elif (elements is not Auto):
     # XXX somehow comma-separation of phil strings fields doesn't work
-    if isinstance(elements, str) or isinstance(elements, unicode) :
+    if isinstance(elements, str) or isinstance(elements, unicode):
       elements = elements.replace(",", " ").split()
-    elif (isinstance(elements, list)) and (len(elements) == 1) :
+    elif (isinstance(elements, list)) and (len(elements) == 1):
       elements = elements[0].split(",")
     if (elements == ['X']) : # XXX hack for testing - X is "dummy" element
       return True
     for elem in elements :
-      if (not elem.strip().upper() in SUPPORTED) :
+      if (not elem.strip().upper() in SUPPORTED):
         raise Sorry(
           ("Identification of ions with element symbol '%s' is not supported! "+
           "Choices are: %s") % (elem, " ".join(SUPPORTED)))
@@ -488,7 +488,7 @@ def check_supported (elements):
 # global parameter_server instance
 server = parameter_server()
 
-class atom_type_flags (object) :
+class atom_type_flags (object):
   """
   Simple container for information about the identity of an atom via a set of
   enumerated boolean flags.  The responsibility for toggling these flags based
@@ -501,7 +501,7 @@ class atom_type_flags (object) :
   Examples
   --------
   >>> flags = atom_type_flags("HOH")
-  >>> if (fofc_map_value > 3.0) :
+  >>> if (fofc_map_value > 3.0):
   ...   flags.high_fofc = True
   """
   flag_names_and_labels = [
@@ -537,20 +537,20 @@ class atom_type_flags (object) :
     ("close_contact", "Unusually close contact to oxygen atom"),
   ]
   __slots__ = [ fl for (fl, label) in flag_names_and_labels ] + ["name"]
-  def __init__ (self, name) :
+  def __init__(self, name):
     self.name = name
     for attr in self.__slots__[:-1] :
       setattr(self, attr, False)
 
-  def get_flag_captions (self) :
+  def get_flag_captions(self):
     """
     Retrieve a list of strings describing the issues that have been identified.
     These will have '+++' or '---' appended if they indicate that the actual
     element is heavier or lighter than the current refined scatterer type.
     """
     captions = []
-    for i_attr, attr in enumerate(self.__slots__[:-1]) :
-      if getattr(self, attr) :
+    for i_attr, attr in enumerate(self.__slots__[:-1]):
+      if getattr(self, attr):
         if (i_attr < 6) : # probably something heavier
           captions.append("%s (+++)" % self.flag_names_and_labels[i_attr][1])
         elif (6 <= i_attr < 12) : # probably something lighter
@@ -559,12 +559,12 @@ class atom_type_flags (object) :
           captions.append(self.flag_names_and_labels[i_attr][1])
     return captions
 
-  def show (self, out=sys.stdout, prefix="") :
+  def show(self, out=sys.stdout, prefix=""):
     """
     Print out a list of all issues that have been identified.
     """
     captions = self.get_flag_captions()
-    if (len(captions) == 0) :
+    if (len(captions) == 0):
       print >> out, prefix+"(No problems detected.)"
     else :
       print >> out, prefix+"The following problems were detected with %s:" %\
@@ -574,6 +574,6 @@ class atom_type_flags (object) :
         print >> out, prefix+"  %s" % caption
         if ("---" in caption) : have_minus = True
         elif ("+++" in caption) : have_plus = True
-      if (have_plus or have_minus) :
+      if (have_plus or have_minus):
         print >> out, prefix+\
           "(+++ indicates a heavier element, --- indicates a lighter one)"

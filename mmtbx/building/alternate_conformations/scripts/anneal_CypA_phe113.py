@@ -10,7 +10,7 @@ from mmtbx import building
 import libtbx.load_env
 import os
 
-def exercise () :
+def exercise():
   import mmtbx.utils
   from iotbx.file_reader import any_file
   pdb_file = libtbx.env.find_in_repositories(
@@ -54,5 +54,5 @@ def exercise () :
   hierarchy.write_pdb_file("anneal.pdb", crystal_symmetry=xrs)
   print "wrote anneal.pdb and omit.mtz"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

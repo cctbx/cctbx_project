@@ -3,7 +3,7 @@ from __future__ import division
 from cStringIO import StringIO
 import os
 
-def exercise () :
+def exercise():
   from mmtbx.command_line import compute_map_coefficients
   from mmtbx.regression.make_fake_anomalous_data import generate_cd_cl_inputs
   from iotbx import file_reader
@@ -20,5 +20,5 @@ def exercise () :
           "ANOM_DIFF,PHANOM_DIFF")
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

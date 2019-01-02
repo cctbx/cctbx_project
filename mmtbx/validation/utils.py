@@ -8,7 +8,7 @@ import os.path
 import math
 import sys
 
-def export_ramachandran_distribution (n_dim_table, scale_factor=0.25) :
+def export_ramachandran_distribution(n_dim_table, scale_factor=0.25):
   """
   Convert a MolProbity Ramachandran distribution to a format suitable for
   display using matplotlib (see wxtbx.plots).
@@ -20,7 +20,7 @@ def export_ramachandran_distribution (n_dim_table, scale_factor=0.25) :
   npz = numpy.array(z_grid)
   return npz ** scale_factor
 
-def export_rotamer_distribution (n_dim_table, scale_factor=0.5) :
+def export_rotamer_distribution(n_dim_table, scale_factor=0.5):
   """
   Convert a MolProbity rotamer distribution to a format suitable for
   display using matplotlib (see wxtbx.plots).  Will reduce dimensionality to
@@ -38,17 +38,17 @@ def export_rotamer_distribution (n_dim_table, scale_factor=0.5) :
     for nbins in n_dim_table.nBins[2:] :
       y_width *= nbins
   z_grid = [ [] for i in range(n_dim_table.nBins[1]) ]
-  for i in range(n_dim_table.nBins[0]) :
-    for j in range(n_dim_table.nBins[1]) :
+  for i in range(n_dim_table.nBins[0]):
+    for j in range(n_dim_table.nBins[1]):
       z_total = 0
-      for k in range(y_width) :
+      for k in range(y_width):
         z_total += z[(i * x_offset) + (j * y_width) + k]
       z_grid[j].append(z_total)
   npz = numpy.array(z_grid)
   return npz ** scale_factor
 
-def get_rotarama_data (residue_type=None, pos_type=None, db="rama",
-    convert_to_numpy_array=False) :
+def get_rotarama_data(residue_type=None, pos_type=None, db="rama",
+    convert_to_numpy_array=False):
   from mmtbx.rotamer import ramachandran_eval
   from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
   # backwards compatibility
@@ -64,22 +64,22 @@ def get_rotarama_data (residue_type=None, pos_type=None, db="rama",
     residue_type = "phetyr"
   assert (residue_type is not None)
   rama_data_dir = find_rotarama_data_dir()
-  if (db == "rama") :
+  if (db == "rama"):
     pkl_file = "%s8000-%s.pickle" % (db, residue_type)
   else :
     pkl_file = "%s8000-%s.pickle" % (db, residue_type.lower())
   ndt = easy_pickle.load(os.path.join(rama_data_dir, pkl_file))
   if convert_to_numpy_array :
-    if (db == "rama") :
+    if (db == "rama"):
       return export_ramachandran_distribution(ndt)
     else :
       return export_rotamer_distribution(ndt)
   else :
     return ndt
 
-def decode_atom_str (atom_id) :
+def decode_atom_str(atom_id):
   chain_id = atom_id[8:10].strip()
-  if (chain_id == "") :
+  if (chain_id == ""):
     chain_id = " "
   return group_args(
     name = atom_id[0:4],
@@ -89,16 +89,16 @@ def decode_atom_str (atom_id) :
     resid = atom_id[10:],
     resseq = atom_id[10:-1].strip())
 
-def find_sequence_mismatches (pdb_hierarchy,
+def find_sequence_mismatches(pdb_hierarchy,
                               sequences,
                               assume_same_order=True,
                               expected_sequence_identity=0.8,
-                              log=sys.stdout) :
+                              log=sys.stdout):
   chains = pdb_hierarchy.models()[0].chains()
   chain_ids = []
   actual_seqs = []
   expected_seqs = []
-  if (len(chains) != len(sequences)) or (not assume_same_order) :
+  if (len(chains) != len(sequences)) or (not assume_same_order):
     print >> log, "Can't determine sequence->chain mapping autoamtically"
     print >> log, "Running sequence alignments. . ."
     from mmtbx.alignment import pairwise_global_wrapper
@@ -111,20 +111,20 @@ def find_sequence_mismatches (pdb_hierarchy,
       for sequence in sequences :
         pg = pairwise_global_wrapper(chain_seq, sequence)
         identity = pg.calculate_sequence_identity()
-        if (identity >= expected_sequence_identity) :
-          if (identity >= best_identity) :
+        if (identity >= expected_sequence_identity):
+          if (identity >= best_identity):
             best_identity = identity
             best_sequence = sequence
       expected_seqs.append(best_sequence)
   mismatches = []
 
-def molprobity_score (clashscore, rota_out, rama_fav) :
+def molprobity_score(clashscore, rota_out, rama_fav):
   """
   Calculate the overall Molprobity score, as described here:
     http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2877634/?tool=pubmed
     http://kinemage.biochem.duke.edu/suppinfo/CASP8/methods.html
   """
-  if (clashscore >= 0) and (rota_out >= 0) and (rama_fav >= 0) :
+  if (clashscore >= 0) and (rota_out >= 0) and (rama_fav >= 0):
     rama_iffy = 100. - rama_fav
     mpscore = (( 0.426 * math.log(1 + clashscore) ) +
              ( 0.33 * math.log(1 + max(0, rota_out - 1)) ) +
@@ -165,7 +165,7 @@ def get_segid_as_chainid(chain):
   for atom in chain.atoms():
     return atom.segid
 
-def get_rna_backbone_dihedrals (processed_pdb_file,
+def get_rna_backbone_dihedrals(processed_pdb_file,
       geometry=None, pdb_hierarchy=None):
   # at present, this will only return measurements for angles arising from
   # atoms with altloc ' ' or altloc 'A'
@@ -174,7 +174,7 @@ def get_rna_backbone_dihedrals (processed_pdb_file,
   bb_dihedrals = defaultdict(dict)
   formatted_out = []
   alt_tracker = {}
-  if (processed_pdb_file is not None) :
+  if (processed_pdb_file is not None):
     sites_cart = processed_pdb_file.all_chain_proxies.sites_cart
     geometry = processed_pdb_file.geometry_restraints_manager()
     pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
@@ -338,7 +338,7 @@ def build_name_hash(pdb_hierarchy):
     i_seq_name_hash[atom.i_seq]=atom.pdb_label_columns()
   return i_seq_name_hash
 
-def exercise () :
+def exercise():
   from libtbx.test_utils import approx_equal
   try :
     import numpy

@@ -557,7 +557,7 @@ def add_probe_data(resdata, open_probe_file):
     if src_key not in resdata.keys() : continue
     srcResidue = resdata[src_key]
     targ_key = ' '.join(['', trgChain, '%04i' % trgNum, trgIns])
-    if targ_key not in resdata.keys() :
+    if targ_key not in resdata.keys():
       continue
       #trgResidue = group_args(chain   = trgChain,
       #                        resnum  = trgNum,

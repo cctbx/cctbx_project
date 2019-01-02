@@ -73,12 +73,12 @@ class peaks_holder(object):
     self.sites = sites
     self.iseqs_of_closest_atoms = iseqs_of_closest_atoms
 
-  def filter_by_secondary_map (self, map, min_value) :
+  def filter_by_secondary_map(self, map, min_value):
     n_deleted = 0
     k = 0
-    while (k < len(self.sites)) :
+    while (k < len(self.sites)):
       map_value = map.tricubic_interpolation(self.sites[k])
-      if (map_value < min_value) :
+      if (map_value < min_value):
         del self.sites[k]
         del self.heights[k]
         n_deleted += 1
@@ -86,13 +86,13 @@ class peaks_holder(object):
         k += 1
     return n_deleted
 
-  def sort (self, reverse=False) :
+  def sort(self, reverse=False):
     from scitbx.array_family import flex
     selection = flex.sort_permutation(self.heights, reverse=reverse)
     heights_sorted = self.heights.select(selection)
     sites_sorted = self.sites.select(selection)
     iseqs_sorted = None
-    if (self.iseqs_of_closest_atoms is not None) :
+    if (self.iseqs_of_closest_atoms is not None):
       iseqs_sorted = self.iseqs_of_closest_atoms.select(selection)
     self.heights = heights_sorted
     self.sites = sites_sorted
@@ -114,7 +114,7 @@ class manager(object):
     self.peaks_ = None
     if(self.log is None): self.log = sys.stdout
     if(self.params is None): self.params = master_params.extract()
-    if (map_coeffs is not None) :
+    if (map_coeffs is not None):
       fft_map = map_coeffs.fft_map(
         resolution_factor=self.params.resolution_factor,
         symmetry_flags=maptbx.use_space_group_symmetry)
@@ -182,9 +182,9 @@ class manager(object):
     assert self.mapped == False
     max_dist = self.params.map_next_to_model.max_model_peak_dist
     min_dist = self.params.map_next_to_model.min_model_peak_dist
-    if (min_dist is None) :
+    if (min_dist is None):
       min_dist = 0.
-    if (max_dist is None) :
+    if (max_dist is None):
       max_dist = float(sys.maxint)
     xray_structure = self.fmodel.xray_structure.deep_copy_scatterers()
     use_selection = None

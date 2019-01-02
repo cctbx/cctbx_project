@@ -4,7 +4,7 @@ from libtbx.utils import Sorry
 import os.path
 import sys
 
-def get_master_phil () :
+def get_master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     enable_twin_law=True,
@@ -40,7 +40,7 @@ simulated_annealing {
 }
 """)
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   import mmtbx.command_line
   import mmtbx.building
   cmdline = mmtbx.command_line.load_model_and_data(
@@ -65,7 +65,7 @@ of atoms.  For development purposes and experimentation only.
   map_coeffs = fmodel.map_coefficients(
     map_type=params.target_map,
     exclude_free_r_reflections=True)
-  if (params.output.save_map_coeffs) :
+  if (params.output.save_map_coeffs):
     file_base = os.path.basename(os.path.splitext(params.output.file_name)[0])
     map_file = file_base + "_%s.mtz" % params.target_map
     mtz = map_coeffs.as_mtz_dataset(column_root_label=params.target_map)
@@ -98,9 +98,9 @@ of atoms.  For development purposes and experimentation only.
   print >> out, "Wrote annealed model to %s" % params.output.file_name
   return rmsd
 
-def validate_params (params) :
-  if (params.selection is None) :
+def validate_params(params):
+  if (params.selection is None):
     raise Sorry("You must specificy an atom selection to anneal.")
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -52,7 +52,7 @@ input {
 %(pdb_interpretation)s
 """
 
-def generate_master_phil_with_inputs (
+def generate_master_phil_with_inputs(
     phil_string,
     enable_twin_law=True,
     enable_automatic_twin_detection=False,
@@ -62,7 +62,7 @@ def generate_master_phil_with_inputs (
     enable_full_geometry_params=False,
     enable_unmerged_data=False,
     enable_cdl=None,
-    as_phil_string=False) :
+    as_phil_string=False):
   """
   Generate a complete PHIL parameter block with generic input parameters plus
   user-specified options.  The result is suitable for input for the class
@@ -99,17 +99,17 @@ def generate_master_phil_with_inputs (
   # for legacy, keep the 2 paramters for twin laws
   # one for enabling automatic detection
   # another for specifying a twin law
-  if (enable_automatic_twin_detection) :
+  if (enable_automatic_twin_detection):
     phil_extra_dict["automatic_twin_detection"] = """
       skip_twin_detection = False
         .type = bool"""
-  if (enable_twin_law) :
+  if (enable_twin_law):
     phil_extra_dict["twin_law"] = """
       twin_law = Auto
         .type = str
         .help = Enter twin law if known.
         .input_size = 100"""
-  if (enable_experimental_phases) :
+  if (enable_experimental_phases):
     phil_extra_dict["phases"] = """
       experimental_phases {
         include scope mmtbx.utils.experimental_phases_params_str
@@ -119,7 +119,7 @@ def generate_master_phil_with_inputs (
         .type = bool
         .short_caption = Use experimental phases (Hendrickson-Lattman coefficients)
       """
-  if (enable_unmerged_data) :
+  if (enable_unmerged_data):
     phil_extra_dict["unmerged"] = """
       unmerged_data {
         file_name = None
@@ -129,9 +129,9 @@ def generate_master_phil_with_inputs (
         use_internal_variance = True
           .type = bool
       }"""
-  if (enable_pdb_interpretation_params) or (enable_full_geometry_params) :
+  if (enable_pdb_interpretation_params) or (enable_full_geometry_params):
     stop_for_unknowns_params = ""
-    if (enable_stop_for_unknowns is not None) :
+    if (enable_stop_for_unknowns is not None):
       stop_for_unknowns_params = """
         stop_for_unknowns = %s
           .type = bool""" % enable_stop_for_unknowns
@@ -140,7 +140,7 @@ def generate_master_phil_with_inputs (
         include scope mmtbx.monomer_library.pdb_interpretation.master_params
         %s
       }""" % (stop_for_unknowns_params)
-    if (enable_full_geometry_params) :
+    if (enable_full_geometry_params):
       phil_extra_dict["pdb_interpretation"] += """
         geometry_restraints
           .alias = refinement.geometry_restraints
@@ -159,16 +159,16 @@ def generate_master_phil_with_inputs (
     %s
     %s
   """ % (cmdline_input_phil_str, phil_string)
-  if (as_phil_string) :
+  if (as_phil_string):
     assert (enable_cdl is None)
     return master_phil_str
   master_phil = iotbx.phil.parse(master_phil_str, process_includes=True)
-  if (enable_cdl is not None) :
+  if (enable_cdl is not None):
     wp = iotbx.phil.parse("pdb_interpretation.restraints_library.cdl=%s" % enable_cdl)
     master_phil = master_phil.fetch(source=wp)
   return master_phil
 
-def generic_simple_input_phil () :
+def generic_simple_input_phil():
   """
   Generate minimal PHIL input string with no additional parameters.
   """
@@ -176,7 +176,7 @@ def generic_simple_input_phil () :
     phil_string="",
     enable_automatic_twin_detection=True)
 
-class load_model_and_data (object) :
+class load_model_and_data (object):
   """
   Class for processing command-line input and creating necessary objects.
   The master_phil object should include cmdline_input_phil_str above, plus
@@ -265,7 +265,7 @@ class load_model_and_data (object) :
   >>> assert cmdline.fmodel is not None
   >>> assert cmdline.params.input.wavelength is not None
   """
-  def __init__ (self,
+  def __init__(self,
       args,
       master_phil,
       out=sys.stdout,
@@ -279,7 +279,7 @@ class load_model_and_data (object) :
       usage_string=None,
       create_log_buffer=False,
       remove_unknown_scatterers=False,
-      generate_input_phil=False) :
+      generate_input_phil=False):
     import mmtbx.monomer_library.pdb_interpretation
     import mmtbx.monomer_library.server
     import mmtbx.utils
@@ -289,13 +289,13 @@ class load_model_and_data (object) :
     if generate_input_phil :
       assert isinstance(master_phil, basestring)
       master_phil = generate_master_phil_with_inputs(phil_string=master_phil)
-    if isinstance(master_phil, str) :
+    if isinstance(master_phil, str):
       master_phil = iotbx.phil.parse(master_phil)
-    if (usage_string is not None) :
-      if (len(args) == 0) or ("--help" in args) :
+    if (usage_string is not None):
+      if (len(args) == 0) or ("--help" in args):
         raise Usage("""%s\n\nFull parameters:\n%s""" % (usage_string,
           master_phil.as_str(prefix="  ")))
-    if (force_non_anomalous) :
+    if (force_non_anomalous):
       assert (not prefer_anomalous)
     assert (set_inelastic_form_factors in [None, "sasaki", "henke"])
     self.args = args
@@ -315,7 +315,7 @@ class load_model_and_data (object) :
     self.hl_coeffs = None
     self.cif_objects = []
     self.log = out
-    if ("--quiet" in args) or ("quiet=True" in args) :
+    if ("--quiet" in args) or ("quiet=True" in args):
       self.log = null_out()
     elif create_log_buffer :
       self.log = multi_out()
@@ -339,12 +339,12 @@ class load_model_and_data (object) :
     self.crystal_symmetry = pdb_symm = None
     for pdb_file_name in params.input.pdb.file_name :
       pdb_symm = crystal_symmetry_from_any.extract_from(pdb_file_name)
-      if (pdb_symm is not None) :
+      if (pdb_symm is not None):
         break
     # DATA INPUT
     data_and_flags = hkl_symm = hkl_in = None
-    if (params.input.xray_data.file_name is None) :
-      if (require_data) :
+    if (params.input.xray_data.file_name is None):
+      if (require_data):
         raise Sorry("At least one reflections file is required as input.")
     else :
       # FIXME this may still require that the data file has full crystal
@@ -356,8 +356,8 @@ class load_model_and_data (object) :
       symm = hkl_server.miller_arrays[0].crystal_symmetry()
       if ((symm is None) or
           (symm.space_group() is None) or
-          (symm.unit_cell() is None)) :
-        if (pdb_symm is not None) :
+          (symm.unit_cell() is None)):
+        if (pdb_symm is not None):
           from iotbx.reflection_file_utils import reflection_file_server
           print >> self.log, \
             "No symmetry in X-ray data file - using PDB symmetry:"
@@ -367,7 +367,7 @@ class load_model_and_data (object) :
             reflection_files=[hkl_in.file_object])
         else :
           raise Sorry("No crystal symmetry information found in input files.")
-      if (hkl_server is None) :
+      if (hkl_server is None):
         hkl_server = hkl_in.file_server
       data_and_flags = mmtbx.utils.determine_data_and_flags(
         reflection_file_server=hkl_server,
@@ -390,7 +390,7 @@ class load_model_and_data (object) :
         cif_obj = mmtbx.monomer_library.server.read_cif(file_name=file_name)
         self.cif_objects.append((file_name, cif_obj))
     # SYMMETRY HANDLING - COMBINED
-    if (hkl_symm is not None) :
+    if (hkl_symm is not None):
       use_symmetry = hkl_symm
 
     # check for weird crystal symmetry
@@ -437,7 +437,7 @@ class load_model_and_data (object) :
     self.crystal_symmetry = combine_model_and_data_symmetry(
       model_symmetry=pdb_symm,
       data_symmetry=hkl_symm)
-    if (self.crystal_symmetry is not None) and (self.f_obs is not None) :
+    if (self.crystal_symmetry is not None) and (self.f_obs is not None):
       self.f_obs = self.f_obs.customized_copy(
         crystal_symmetry=self.crystal_symmetry).eliminate_sys_absent().set_info(
           self.f_obs.info())
@@ -446,11 +446,11 @@ class load_model_and_data (object) :
           self.r_free_flags.info())
     # EXPERIMENTAL PHASES
     target_name = "ml"
-    if hasattr(params.input, "experimental_phases") :
+    if hasattr(params.input, "experimental_phases"):
       flag = params.input.use_experimental_phases
-      if (flag in [True, Auto]) :
+      if (flag in [True, Auto]):
         phases_file = params.input.experimental_phases.file_name
-        if (phases_file is None) :
+        if (phases_file is None):
           phases_file = params.input.xray_data.file_name
           phases_in = hkl_in
         else :
@@ -466,12 +466,12 @@ class load_model_and_data (object) :
           parameter_scope        = "input.experimental_phases",
           working_point_group    = point_group,
           symmetry_safety_check  = True)
-        if (hl_coeffs is not None) :
+        if (hl_coeffs is not None):
           hl_coeffs = hl_coeffs.map_to_asu()
-          if hl_coeffs.anomalous_flag() :
-            if (not self.f_obs.anomalous_flag()) :
+          if hl_coeffs.anomalous_flag():
+            if (not self.f_obs.anomalous_flag()):
               hl_coeffs = hl_coeffs.average_bijvoet_mates()
-          elif self.f_obs.anomalous_flag() :
+          elif self.f_obs.anomalous_flag():
             hl_coeffs = hl_coeffs.generate_bijvoet_mates()
           self.hl_coeffs = hl_coeffs.matching_set(other=self.f_obs,
             data_substitute=(0,0,0,0))
@@ -527,18 +527,18 @@ class load_model_and_data (object) :
     self.pdb_hierarchy = self.model.get_hierarchy()
     self.pdb_hierarchy.atoms().reset_i_seq()
     # wavelength
-    if (params.input.energy is not None) :
-      if (params.input.wavelength is not None) :
+    if (params.input.energy is not None):
+      if (params.input.wavelength is not None):
         raise Sorry("Both wavelength and energy have been specified!")
       params.input.wavelength = 12398.424468024265 / params.input.energy
-    if (set_wavelength_from_model_header and params.input.wavelength is None) :
+    if (set_wavelength_from_model_header and params.input.wavelength is None):
       wavelength = self.pdb_inp.extract_wavelength()
-      if (wavelength is not None) :
+      if (wavelength is not None):
         print >> self.log, ""
         print >> self.log, "Using wavelength = %g from PDB header" % wavelength
         params.input.wavelength = wavelength
     # set scattering table
-    if (data_and_flags is not None) :
+    if (data_and_flags is not None):
       self.model.setup_scattering_dictionaries(
           scattering_table=params.input.scattering_table,
           d_min=self.f_obs.d_min(),
@@ -548,17 +548,17 @@ class load_model_and_data (object) :
       self.xray_structure.show_summary(f=self.log)
 
     # FMODEL SETUP
-    if (create_fmodel) and (data_and_flags is not None) :
+    if (create_fmodel) and (data_and_flags is not None):
       make_sub_header("F(model) initialization", out=self.log)
       skip_twin_detection = getattr(params.input, "skip_twin_detection", True)
       twin_law = getattr(params.input, "twin_law", None)
-      if (twin_law is Auto) :
-        if (self.hl_coeffs is not None) :
+      if (twin_law is Auto):
+        if (self.hl_coeffs is not None):
           raise Sorry("Automatic twin law determination not supported when "+
             "experimental phases are used.")
       elif (not skip_twin_detection):
         twin_law = Auto
-      if (twin_law is Auto) :
+      if (twin_law is Auto):
         print >> self.log, "Twinning will be detected automatically."
         self.fmodel = mmtbx.utils.fmodel_simple(
           xray_structures=[self.xray_structure],
@@ -569,7 +569,7 @@ class load_model_and_data (object) :
           target_name=target_name,
           log=self.log)
       else :
-        if ((twin_law is not None) and (self.hl_coeffs is not None)) :
+        if ((twin_law is not None) and (self.hl_coeffs is not None)):
           raise Sorry("Automatic twin law determination not supported when "+
             "experimental phases are used.")
         self.fmodel = mmtbx.utils.fmodel_manager(
@@ -586,15 +586,15 @@ class load_model_and_data (object) :
           show=True)
       self.fmodel.info().show_rfactors_targets_scales_overall(out=self.log)
     # SEQUENCE
-    if (params.input.sequence is not None) :
+    if (params.input.sequence is not None):
       seq_file = file_reader.any_file(params.input.sequence,
         force_type="seq",
         raise_sorry_if_errors=True)
       self.sequence = seq_file.file_object
     # UNMERGED DATA
     self.unmerged_i_obs = None
-    if hasattr(params.input, "unmerged_data") :
-      if (params.input.unmerged_data.file_name is not None) :
+    if hasattr(params.input, "unmerged_data"):
+      if (params.input.unmerged_data.file_name is not None):
         self.unmerged_i_obs = load_and_validate_unmerged_data(
           f_obs=self.f_obs,
           file_name=params.input.unmerged_data.file_name,
@@ -604,7 +604,7 @@ class load_model_and_data (object) :
     print >> self.log, ""
     print >> self.log, "End of input processing"
 
-  def start_log_file (self, file_name) :
+  def start_log_file(self, file_name):
     """
     Open a log file and write out the existing output buffer, returning the
     multi_out pseudo-filehandle.
@@ -620,22 +620,22 @@ class load_model_and_data (object) :
       new_file_object=log_file)
     return self.log
 
-  def save_data_mtz (self, file_name) :
+  def save_data_mtz(self, file_name):
     """
     Write the processed amplitudes, optional Hendrickson-Lattman coefficients,
     and R-free flags to the designated MTZ file.
     """
     assert (self.f_obs is not None)
     mtz_data = self.f_obs.as_mtz_dataset(column_root_label="F")
-    if (self.hl_coeffs is not None) :
+    if (self.hl_coeffs is not None):
       mtz_data.add_miller_array(self.hl_coeffs,
         column_root_label="HL")
-    if (self.r_free_flags is not None) :
+    if (self.r_free_flags is not None):
       mtz_data.add_miller_array(self.r_free_flags,
         column_root_label="FreeR_flag")
     mtz_data.mtz_object().write(file_name)
 
-  def create_model_manager (self, log=None) :
+  def create_model_manager(self, log=None):
     """
     Instantiate an mmtbx.model.manager object with the current pdb hierarchy,
     xray structure, and geometry restraints.
@@ -655,8 +655,8 @@ class load_model_and_data (object) :
       restraints_manager=restraints_manager,
       log=log)
 
-def load_and_validate_unmerged_data (f_obs, file_name, data_labels,
-    log=sys.stdout) :
+def load_and_validate_unmerged_data(f_obs, file_name, data_labels,
+    log=sys.stdout):
   """
   Read in (and verify) unmerged intensities, e.g. from scalepack or XDS.
   """
@@ -666,25 +666,25 @@ def load_and_validate_unmerged_data (f_obs, file_name, data_labels,
     data_labels=data_labels,
     log=log)
   if ((unmerged_i_obs.space_group() is not None) and
-      (unmerged_i_obs.unit_cell() is not None)) :
-    if (not unmerged_i_obs.is_similar_symmetry(f_obs)) :
+      (unmerged_i_obs.unit_cell() is not None)):
+    if (not unmerged_i_obs.is_similar_symmetry(f_obs)):
       pg_f_obs = f_obs.space_group().build_derived_point_group()
       pg_i_obs = unmerged_i_obs.space_group().build_derived_point_group()
-      if (pg_i_obs == pg_f_obs) :
+      if (pg_i_obs == pg_f_obs):
         # special case: same unit cell, same point group, different space group
-        if unmerged_i_obs.unit_cell().is_similar_to(f_obs.unit_cell()) :
+        if unmerged_i_obs.unit_cell().is_similar_to(f_obs.unit_cell()):
           return unmerged_i_obs
       show_symmetry_error("Data file", "Unmerged data", unmerged_i_obs, f_obs)
-  elif (unmerged_i_obs.space_group() is not None) :
+  elif (unmerged_i_obs.space_group() is not None):
     pg_f_obs = f_obs.space_group().build_derived_point_group()
     pg_i_obs = unmerged_i_obs.space_group().build_derived_point_group()
-    if (pg_i_obs != pg_f_obs) :
+    if (pg_i_obs != pg_f_obs):
       raise Sorry("Incompatible space groups in merged and unmerged data:"+
         "%s versus %s" % (f_obs.space_group_info(),
         unmerged_i_obs.space_group_info()))
   return unmerged_i_obs
 
-def show_symmetry_error (file1, file2, symm1, symm2) :
+def show_symmetry_error(file1, file2, symm1, symm2):
   import cStringIO
   symm_out1 = cStringIO.StringIO()
   symm_out2 = cStringIO.StringIO()
@@ -705,7 +705,7 @@ def check_files(phil_scope, file_type, error_message):
       if (f.file_type != file_type):
         raise Sorry(error_message)
 
-def validate_input_params (params) :
+def validate_input_params(params):
   """
   Check for completeness of mandatory input parameters
   """
@@ -718,7 +718,7 @@ def validate_input_params (params) :
     raise Sorry("No reflection file defined.")
   elif params.input.xray_data.labels is None :
     raise Sorry("No labels chosen for reflection data.")
-  elif (params.input.xray_data.r_free_flags.label is None) :
+  elif (params.input.xray_data.r_free_flags.label is None):
     raise Sorry("R-free flags not defined.  If you are trying to run this "+
       "program with a reflections file that is missing R-free flags, use "+
       "the reflection file editor to generate a new tests set.")

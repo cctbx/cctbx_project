@@ -724,8 +724,8 @@ def get_dmin_ranges(resolution=None,target_list=[6,5,3,2.5,2,1.5]):
   return new_list
 
 
-class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
-  def __init__ (self,
+class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis):
+  def __init__(self,
       chain_type='PROTEIN',
       residues=250,
       number_of_s=0,
@@ -751,7 +751,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
       min_in_bin=50,
       data=None,
       data_labels=None,
-      quiet=False) :
+      quiet=False):
     self.min_in_bin = min_in_bin
     self.chain_type = chain_type
     self.residues = residues
@@ -961,7 +961,7 @@ class estimate_necessary_i_sigi (mmtbx.scaling.xtriage_analysis) :
         "%3.2f" % (fom),
       ])
       if ((self.representative_values is None) or
-          len(self.dmin_ranges) < 2 or dmin == self.dmin_ranges[-2]) :
+          len(self.dmin_ranges) < 2 or dmin == self.dmin_ranges[-2]):
         self.representative_values = [dmin,nsites,nrefl,fpp,local_i_over_sigma,
            sigf,cc_half_weak,cc_half,cc_ano_weak,cc_ano,s_ano,solved,fom]
 
@@ -1028,14 +1028,14 @@ FOM:      %3.2f
  self.representative_fom(),
  )
 
-  def is_solvable (self) :
+  def is_solvable(self):
     return (self.representative_values is not None)
 
   def show_characteristics(self, out):
     from mmtbx.scaling import printed_output
     if out is None:
       out=sys.stdout
-    if (not isinstance(out, printed_output)) :
+    if (not isinstance(out, printed_output)):
       out = printed_output(out)
 
     out.show_paragraph_header(
@@ -1083,7 +1083,7 @@ Normalized anomalous scattering:
   Correlation of useful to total anomalous scattering: %4.2f
 """ % (fa,fb,fab))
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_header("SAD experiment planning")
     out.show_sub_header(
       "Dataset overall I/sigma required to solve a structure")
@@ -1093,10 +1093,10 @@ Normalized anomalous scattering:
     out.show_preformatted_text("""
 -------Targets for entire dataset-------  ----------Likely outcome-----------""")
 
-    if (len(self.table_rows) == 0) :
+    if (len(self.table_rows) == 0):
       out.show_text("SAD solution unlikely with the given parameters.")
       return
-    if (not out.gui_output) :
+    if (not out.gui_output):
       out.show_preformatted_text("""
                               Anomalous    Useful    Useful
                             Half-dataset  Anom CC   Anomalous

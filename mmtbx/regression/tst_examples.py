@@ -4,7 +4,7 @@ from libtbx import easy_run
 import libtbx.load_env
 import os
 
-def exercise () :
+def exercise():
   # XXX can't use libtbx.env.find_in_repositories for this in our current
   # nightly build system
   script_file = os.path.join(abs(libtbx.env.module_dist_paths['mmtbx']),
@@ -15,7 +15,7 @@ def exercise () :
   mtz_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/1yjp.mtz",
     test=os.path.isfile)
-  if (None in [pdb_file, mtz_file]) :
+  if (None in [pdb_file, mtz_file]):
     print "phenix_regression not found, skipping"
     return
   assert (script_file is not None)
@@ -27,5 +27,5 @@ def exercise () :
   assert ("CC(obs-calc): 0.949" in result.stdout_lines)
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

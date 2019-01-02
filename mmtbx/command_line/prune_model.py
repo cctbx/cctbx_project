@@ -53,7 +53,7 @@ model_prune_master_phil = """
       nearby density.
 """
 
-def get_master_phil () :
+def get_master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     enable_automatic_twin_detection=True,
@@ -67,19 +67,19 @@ output {
 }
 """ % model_prune_master_phil)
 
-def id_str (chain, residue_group, atom_group) :
+def id_str(chain, residue_group, atom_group):
   return "%3s %s%4s%s" % (atom_group.resname, chain.id, residue_group.resseq,
     residue_group.icode)
 
-class residue_summary (object) :
-  def __init__ (self,
+class residue_summary (object):
+  def __init__(self,
                 chain_id,
                 residue_group,
                 atom_group,
                 score,
                 score_type="CC",
                 map_type="2mFo-DFc",
-                atoms_type="residue") :
+                atoms_type="residue"):
     self.resname = atom_group.resname
     self.chain_id = chain_id
     self.resseq = residue_group.resseq
@@ -89,23 +89,23 @@ class residue_summary (object) :
     self.atoms_type = atoms_type
     self.map_type = map_type
 
-  def show (self, out=None) :
+  def show(self, out=None):
     if (out is None) : out = sys.stdout
     id_str = "%3s %s%4s%s" % (self.resname, self.chain_id, self.resseq,
       self.icode)
-    if (self.score is not None) :
+    if (self.score is not None):
       print >> out, "%s : %s %s %s = %.2f" % (id_str, self.atoms_type,
         self.map_type, self.score_type, self.score)
     else :
       print >> out, "%s : not part of a continuous chain" % id_str
 
-class prune_model (object) :
-  def __init__ (self,
+class prune_model (object):
+  def __init__(self,
                 f_map_coeffs,
                 diff_map_coeffs,
                 model_map_coeffs,
                 pdb_hierarchy,
-                params) :
+                params):
     """
     Removes atoms with poor electron density, as judged by several sigma-level
     cutoffs and overall CC.  This is basically an attempt to apply the same
@@ -134,7 +134,7 @@ class prune_model (object) :
         d_min=f_map_coeffs.d_min(),
         atom_radius=None)
 
-  def get_map_stats_for_atoms (self, atoms) :
+  def get_map_stats_for_atoms(self, atoms):
     from cctbx import maptbx
     from scitbx.array_family import flex
     sites_cart = flex.vec3_double()
@@ -148,7 +148,7 @@ class prune_model (object) :
         site_frac = self.unit_cell.fractionalize(atom.xyz)
         values_2fofc.append(self.f_map.eight_point_interpolation(site_frac))
         values_fofc.append(self.diff_map.eight_point_interpolation(site_frac))
-    if (len(sites_cart_nonH) == 0) :
+    if (len(sites_cart_nonH) == 0):
       return None
     sel = maptbx.grid_indices_around_sites(
       unit_cell=self.unit_cell,
@@ -164,44 +164,44 @@ class prune_model (object) :
       mean_2fofc=flex.mean(values_2fofc),
       mean_fofc=flex.mean(values_fofc))
 
-  def get_density_at_atom (self, atom) :
+  def get_density_at_atom(self, atom):
     site_frac = self.unit_cell.fractionalize(site_cart=atom.xyz)
     two_fofc_value = self.f_map.eight_point_interpolation(site_frac)
     fofc_value = self.diff_map.eight_point_interpolation(site_frac)
     return group_args(two_fofc=two_fofc_value, fofc=fofc_value)
 
-  def process_residues (self, out=None) :
-    if (out is None) :
+  def process_residues(self, out=None):
+    if (out is None):
       out = sys.stdout
     n_res_removed = 0
     n_sc_removed = 0
     n_res_protein = 0
     pruned = []
     make_header("Pruning residues and sidechains", out=out)
-    for chain in self.pdb_hierarchy.models()[0].chains() :
-      if (not chain.is_protein()) :
+    for chain in self.pdb_hierarchy.models()[0].chains():
+      if (not chain.is_protein()):
         continue
       residue_id_hash = {}
       removed_resseqs = []
-      if (len(chain.conformers()) > 1) :
+      if (len(chain.conformers()) > 1):
         print >> out, "WARNING: chain '%s' has multiple conformers" % chain.id
-      for j_seq, residue_group in enumerate(chain.residue_groups()) :
+      for j_seq, residue_group in enumerate(chain.residue_groups()):
         n_res_protein += 1
         residue_id_hash[residue_group.resid()] = j_seq
-        for atom_group in residue_group.atom_groups() :
+        for atom_group in residue_group.atom_groups():
           ag_id_str = id_str(chain, residue_group, atom_group)
           resname = atom_group.resname
           remove_atom_group = False
           sidechain_atoms = []
           backbone_atoms = []
-          for atom in atom_group.atoms() :
-            if (atom.name.strip() in ["N", "O", "C", "H", "CA", "CB"]) :
+          for atom in atom_group.atoms():
+            if (atom.name.strip() in ["N", "O", "C", "H", "CA", "CB"]):
               backbone_atoms.append(atom)
-            elif (not atom_group.resname in ["ALA", "GLY"]) :
+            elif (not atom_group.resname in ["ALA", "GLY"]):
               sidechain_atoms.append(atom)
-          if (len(backbone_atoms) > 0) and (self.params.mainchain) :
+          if (len(backbone_atoms) > 0) and (self.params.mainchain):
             mc_stats = self.get_map_stats_for_atoms(backbone_atoms)
-            if (mc_stats.mean_2fofc < self.params.min_backbone_2fofc) :
+            if (mc_stats.mean_2fofc < self.params.min_backbone_2fofc):
               pruned.append(residue_summary(
                 chain_id=chain.id,
                 residue_group=residue_group,
@@ -210,7 +210,7 @@ class prune_model (object) :
                 score_type="sigma",
                 atoms_type="C-alpha"))
               remove_atom_group = True
-            elif (mc_stats.mean_fofc < self.params.min_backbone_fofc) :
+            elif (mc_stats.mean_fofc < self.params.min_backbone_fofc):
               pruned.append(residue_summary(
                 chain_id=chain.id,
                 residue_group=residue_group,
@@ -220,7 +220,7 @@ class prune_model (object) :
                 atoms_type="C-alpha"))
               remove_atom_group = True
           # map values look okay - now check overall CC
-          if (not remove_atom_group) :
+          if (not remove_atom_group):
             res_stats = self.get_map_stats_for_atoms(atom_group.atoms())
             if (res_stats.cc < self.params.min_cc) and (self.params.mainchain):
               pruned.append(residue_summary(
@@ -229,13 +229,13 @@ class prune_model (object) :
                 atom_group=atom_group,
                 score=res_stats.cc))
               remove_atom_group = True
-            elif (len(sidechain_atoms) > 0) and (self.params.sidechains) :
+            elif (len(sidechain_atoms) > 0) and (self.params.sidechains):
               # overall CC is acceptable - now look at sidechain alone
               remove_sidechain = False
               sc_stats = self.get_map_stats_for_atoms(sidechain_atoms)
-              if (sc_stats is None) :
+              if (sc_stats is None):
                 continue
-              if (sc_stats.cc < self.params.min_cc_sidechain) :
+              if (sc_stats.cc < self.params.min_cc_sidechain):
                 pruned.append(residue_summary(
                   chain_id=chain.id,
                   residue_group=residue_group,
@@ -244,7 +244,7 @@ class prune_model (object) :
                   atoms_type="sidechain"))
                 remove_sidechain = True
               else :
-                if (sc_stats.mean_2fofc < self.params.min_sidechain_2fofc) :
+                if (sc_stats.mean_2fofc < self.params.min_sidechain_2fofc):
                   pruned.append(residue_summary(
                     chain_id=chain.id,
                     residue_group=residue_group,
@@ -253,7 +253,7 @@ class prune_model (object) :
                     score_type="sigma",
                     atoms_type="sidechain"))
                   remove_sidechain = True
-                elif (sc_stats.mean_fofc < self.params.max_sidechain_fofc) :
+                elif (sc_stats.mean_fofc < self.params.max_sidechain_fofc):
                   pruned.append(residue_summary(
                     chain_id=chain.id,
                     residue_group=residue_group,
@@ -264,20 +264,20 @@ class prune_model (object) :
                     map_type="mFo-Dfc"))
                   remove_sidechain = True
                 if ((self.params.check_cgamma) and
-                    (resname in ["ARG","LYS","TYR","TRP","PHE"])) :
+                    (resname in ["ARG","LYS","TYR","TRP","PHE"])):
                   c_gamma = c_delta = None
-                  for atom in atom_group.atoms() :
-                    if (atom.name.strip() == "CG") :
+                  for atom in atom_group.atoms():
+                    if (atom.name.strip() == "CG"):
                       c_gamma = atom
-                    elif (atom.name.strip() == "CD") :
+                    elif (atom.name.strip() == "CD"):
                       c_delta = atom
-                  if (c_gamma is not None) :
+                  if (c_gamma is not None):
                     map_values = self.get_density_at_atom(c_gamma)
                     # FIXME this is horribly subjective, but so is the logic
                     # I use for manual pruning...
                     if ((map_values.two_fofc < 0.8) or
                         ((map_values.two_fofc < 1.0) and
-                         (map_values.fofc < -3.0))) :
+                         (map_values.fofc < -3.0))):
                       pruned.append(residue_summary(
                         chain_id=chain.id,
                         residue_group=residue_group,
@@ -287,37 +287,37 @@ class prune_model (object) :
                         atoms_type="sidechain",
                         map_type="2mFo-Dfc"))
                       remove_sidechain = True
-              if (remove_sidechain) :
+              if (remove_sidechain):
                 assert (self.params.sidechains)
                 for atom in sidechain_atoms :
                   atom_group.remove_atom(atom)
                 n_sc_removed += 1
-          if (remove_atom_group) :
+          if (remove_atom_group):
             assert (self.params.mainchain)
             residue_group.remove_atom_group(atom_group)
-        if (len(residue_group.atom_groups()) == 0) :
+        if (len(residue_group.atom_groups()) == 0):
           chain.remove_residue_group(residue_group)
           n_res_removed += 1
           removed_resseqs.append(residue_group.resseq_as_int())
       # Final pass: remove lone single/pair residues
       if ((self.params.mainchain) and
-          (self.params.min_fragment_size is not None)) :
+          (self.params.min_fragment_size is not None)):
         n_rg = len(chain.residue_groups())
-        for j_seq, residue_group in enumerate(chain.residue_groups()) :
-          if (residue_group.icode.strip() != "") :
+        for j_seq, residue_group in enumerate(chain.residue_groups()):
+          if (residue_group.icode.strip() != ""):
             continue
           resseq = residue_group.resseq_as_int()
           remove = False
-          if (resseq - 1 in removed_resseqs) or (j_seq == 0) :
+          if (resseq - 1 in removed_resseqs) or (j_seq == 0):
             print "candidate:", resseq
-            for k in range(1, self.params.min_fragment_size+1) :
-              if (resseq + k in removed_resseqs) :
+            for k in range(1, self.params.min_fragment_size+1):
+              if (resseq + k in removed_resseqs):
                 remove = True
                 break
-              elif ((j_seq + k) >= len(chain.residue_groups())) :
+              elif ((j_seq + k) >= len(chain.residue_groups())):
                 remove = True
                 break
-          if (remove) :
+          if (remove):
             pruned.append(residue_summary(
               chain_id=chain.id,
               residue_group=residue_group,
@@ -336,15 +336,15 @@ class prune_model (object) :
       n_sc_removed=n_sc_removed,
       outliers=pruned)
 
-def get_atom_radii (atoms, atom_radius) :
+def get_atom_radii(atoms, atom_radius):
   from scitbx.array_family import flex
   radii = flex.double([atom_radius] * len(atoms))
-  for i_seq, atom in enumerate(atoms) :
-    if (atom.element.strip().upper() in ["H", "D"]) :
+  for i_seq, atom in enumerate(atoms):
+    if (atom.element.strip().upper() in ["H", "D"]):
       radii[i_seq] = 1.0
   return radii
 
-def run_post_refinement (
+def run_post_refinement(
     pdb_file,
     map_coeffs_file,
     output_file=None,
@@ -353,9 +353,9 @@ def run_post_refinement (
     diff_map_label="FOFCWT",
     model_map_label="F-model",
     write_model=True,
-    out=None) :
+    out=None):
   if (out is None) : out = sys.stdout
-  if (params is None) :
+  if (params is None):
     params = get_master_phil().fetch().extract().prune
   from iotbx import file_reader
   pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
@@ -369,19 +369,19 @@ def run_post_refinement (
   f_map_coeffs = diff_map_coeffs = model_map_coeffs = None
   for array in mtz_in.file_server.miller_arrays :
     labels = array.info().labels
-    if (labels[0] == f_map_label) :
+    if (labels[0] == f_map_label):
       f_map_coeffs = array
-    elif (labels[0] == diff_map_label) :
+    elif (labels[0] == diff_map_label):
       diff_map_coeffs = array
-    elif (labels[0] in [model_map_label, model_map_label + "(+)"]) :
+    elif (labels[0] in [model_map_label, model_map_label + "(+)"]):
       model_map_coeffs = array.average_bijvoet_mates()
-  if (f_map_coeffs is None) :
+  if (f_map_coeffs is None):
     raise RuntimeError("2mFo-DFc map not found (expected labels %s)." %
       f_map_label)
-  elif (diff_map_coeffs is None) :
+  elif (diff_map_coeffs is None):
     raise RuntimeError("mFo-DFc map not found (expected labels %s)." %
       diff_map_label)
-  elif (model_map_coeffs is None) :
+  elif (model_map_coeffs is None):
     raise RuntimeError("Fc map not found (expected labels %s)." %
       model_map_label)
   result = prune_model(
@@ -390,8 +390,8 @@ def run_post_refinement (
     model_map_coeffs=model_map_coeffs,
     pdb_hierarchy=pdb_hierarchy,
     params=params).process_residues(out=out)
-  if (write_model) :
-    if (output_file is None) :
+  if (write_model):
+    if (output_file is None):
       base_name = os.path.basename(pdb_file)
       output_file = os.path.splitext(base_name)[0] + "_pruned.pdb"
     f = open(output_file, "w")
@@ -402,7 +402,7 @@ def run_post_refinement (
     result.output_file = output_file
   return result
 
-def run (args, out=None) :
+def run(args, out=None):
   if (out is None) : out = sys.stdout
   usage_string = """\
 mmtbx.prune_model model.pdb data.mtz [options...]
@@ -421,7 +421,7 @@ correction) to remove spurious loops and sidechains.
     create_fmodel=True)
   params = cmdline.params
   fmodel = cmdline.fmodel
-  if (params.output.file_name is None) :
+  if (params.output.file_name is None):
     base_name = os.path.basename(params.input.pdb.file_name[0])
     params.output.file_name = os.path.splitext(base_name)[0] + "_pruned.pdb"
   log_file = os.path.splitext(os.path.basename(params.output.file_name))[0] + \
@@ -449,5 +449,5 @@ correction) to remove spurious loops and sidechains.
   print >> out, "Wrote %s" % params.output.file_name
   return params.output.file_name
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

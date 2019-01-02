@@ -44,7 +44,7 @@ def exercise_ramalyze():
   assert (len(r.outlier_selection()) == 494)
   outlier_ids = set([])
   atoms = hierarchy.atoms()
-  for i_seq in r.outlier_selection() :
+  for i_seq in r.outlier_selection():
     atom = atoms[i_seq]
     atom_group = atoms[i_seq].parent()
     outlier_ids.add(atom_group.id_str())
@@ -229,7 +229,7 @@ def exercise_constants():
   assert ramalyze.RAMALYZE_ANY == 3
   assert ramalyze.RAMALYZE_NOT_FAVORED == 4
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   t0=time.time()
   exercise_ramalyze()
   exercise_favored_regions()

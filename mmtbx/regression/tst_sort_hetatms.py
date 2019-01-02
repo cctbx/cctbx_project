@@ -6,7 +6,7 @@ from cStringIO import StringIO
 import os.path as op
 import os
 
-def exercise () :
+def exercise():
   pdb_raw = """\
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
 ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
@@ -81,7 +81,7 @@ END
 """
   pdb_file = "unsorted.pdb"
   open(pdb_file, "w").write(pdb_raw)
-  if (op.exists("unsorted_sorted.pdb")) :
+  if (op.exists("unsorted_sorted.pdb")):
     os.remove("unsorted_sorted.pdb")
   out = StringIO()
   sort_hetatms.run(
@@ -137,7 +137,7 @@ END
 """
   pdb_file = "unsorted2.pdb"
   open(pdb_file, "w").write(pdb_raw2)
-  if (op.exists("unsorted2_sorted.pdb")) :
+  if (op.exists("unsorted2_sorted.pdb")):
     os.remove("unsorted2_sorted.pdb")
   out = StringIO()
   sort_hetatms.run(
@@ -261,7 +261,7 @@ HETATM 4965  O   HOH X 978      41.198  81.209 -30.407  1.00 48.77           O
 """
   pdb_file = "unsorted3.pdb"
   open(pdb_file, "w").write(pdb_raw)
-  if (op.exists("unsorted3_sorted.pdb")) :
+  if (op.exists("unsorted3_sorted.pdb")):
     os.remove("unsorted3_sorted.pdb")
   out = StringIO()
   sort_hetatms.run(
@@ -269,7 +269,7 @@ HETATM 4965  O   HOH X 978      41.198  81.209 -30.407  1.00 48.77           O
     out=out)
   assert op.isfile("unsorted3_sorted.pdb")
   pdb_in = file_reader.any_file("unsorted3_sorted.pdb")
-  for atom in pdb_in.file_object.hierarchy.atoms() :
+  for atom in pdb_in.file_object.hierarchy.atoms():
     assert atom.fetch_labels().chain_id == "A"
   # now with ARG ligand minus waters, but still flagged as HETATM
   pdb_in = file_reader.any_file("unsorted3.pdb")
@@ -279,7 +279,7 @@ HETATM 4965  O   HOH X 978      41.198  81.209 -30.407  1.00 48.77           O
   hierarchy_new = pdb_in.file_object.hierarchy.select(sel)
   open("unsorted4.pdb", "w").write(hierarchy_new.as_pdb_string(
     crystal_symmetry=pdb_in.file_object.crystal_symmetry()))
-  if (op.exists("unsorted4_sorted.pdb")) :
+  if (op.exists("unsorted4_sorted.pdb")):
     os.remove("unsorted4_sorted.pdb")
   out = StringIO()
   sort_hetatms.run(
@@ -287,9 +287,9 @@ HETATM 4965  O   HOH X 978      41.198  81.209 -30.407  1.00 48.77           O
     out=out)
   assert op.isfile("unsorted4_sorted.pdb")
   pdb_in = file_reader.any_file("unsorted4_sorted.pdb")
-  for atom in pdb_in.file_object.hierarchy.atoms() :
+  for atom in pdb_in.file_object.hierarchy.atoms():
     assert atom.fetch_labels().chain_id == "A"
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

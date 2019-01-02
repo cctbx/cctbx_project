@@ -8,14 +8,14 @@ which is why it's not in the command_line directory.
 from __future__ import division
 import sys
 
-def flatten_map (map, xray_structure, selection) :
+def flatten_map(map, xray_structure, selection):
   from cctbx import maptbx
   from scitbx.array_family import flex
   sites = xray_structure.sites_cart().select(selection)
   hd_sel = xray_structure.hd_selection()
   radii = flex.double()
   for i_seq in selection :
-    if (hd_sel[i_seq]) :
+    if (hd_sel[i_seq]):
       radii.append(1.0)
     else :
       radii.append(1.5)
@@ -30,7 +30,7 @@ def flatten_map (map, xray_structure, selection) :
   map.as_1d().set_selected(bg_sel, 0)
   return map
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   master_phil_str = """
 map_coeffs = None
   .type = path
@@ -67,7 +67,7 @@ atom selection to zero.  Used for generating figures in PyMOL.""")
   mtz_in = file_reader.any_file(params.map_coeffs, force_type="hkl")
   two_fofc = fofc = None
   for miller_array in mtz_in.file_server.miller_arrays :
-    if (miller_array.is_complex_array()) :
+    if (miller_array.is_complex_array()):
       label = miller_array.info().labels[0]
       if (label.startswith("F-model")) : continue
       real_map = miller_array.fft_map(resolution_factor=0.25
@@ -86,11 +86,11 @@ atom selection to zero.  Used for generating figures in PyMOL.""")
         file_name=file_name,
         buffer=5)
       print "wrote %s" % file_name
-      if (label == "2FOFCWT") :
+      if (label == "2FOFCWT"):
         two_fofc = file_name
-      elif (label == "FOFCWT") :
+      elif (label == "FOFCWT"):
         fofc = file_name
-  if (params.write_pymol) :
+  if (params.write_pymol):
     f = open(params.prefix + ".pml", "w")
     f.write("""set normalize_ccp4_maps, 0\n""")
     f.write("""load %s\n""" % params.model)
@@ -99,15 +99,15 @@ atom selection to zero.  Used for generating figures in PyMOL.""")
     f.write("""hide lines\n""")
     f.write("""hide nonbonded\n""")
     f.write("""zoom %s\n""" % params.selection)
-    if (two_fofc is not None) :
+    if (two_fofc is not None):
       f.write("""load %s, 2fofc\n""" % two_fofc)
       f.write("""isomesh m1, 2fofc, 1.0, %s, 5\n""" % params.selection)
       f.write("""color grey50, m1\n""")
-    if (fofc is not None) :
+    if (fofc is not None):
       f.write("""load %s, fofc\n""" % fofc)
       f.write("""isomesh m2, fofc, 3.0, %s, 5\n""" % params.selection)
       f.write("""color green, m2\n""")
     f.close()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

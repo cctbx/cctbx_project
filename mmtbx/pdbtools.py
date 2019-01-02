@@ -273,15 +273,15 @@ class modify(object):
     self.pdb_hierarchy = self.model.get_hierarchy()
     # Now only manipulations that use self.pdb_hierarchy are done
 ### segID manipulations
-    if (params.set_seg_id_to_chain_id) :
-      if (params.clear_seg_id) :
+    if (params.set_seg_id_to_chain_id):
+      if (params.clear_seg_id):
         raise Sorry("Parameter conflict - set_seg_id_to_chain_id=True and "+
           "clear_seg_id=True.  Please choose only one of these options.")
-      for atom in self.pdb_hierarchy.atoms() :
+      for atom in self.pdb_hierarchy.atoms():
         labels = atom.fetch_labels()
         atom.segid = "%-4s" % labels.chain_id
-    elif (params.clear_seg_id) :
-      for atom in self.pdb_hierarchy.atoms() :
+    elif (params.clear_seg_id):
+      for atom in self.pdb_hierarchy.atoms():
         atom.segid = "    "
     if(self.params.set_chemical_element_simple_if_necessary or
        self.params.rename_chain_id.old_id or
@@ -361,7 +361,7 @@ class modify(object):
   def _move_waters(self):
     if(self.params.move_waters_last):
       print >> self.log, "Moving waters to end of model"
-      if (len(self.pdb_hierarchy.models()) > 1) :
+      if (len(self.pdb_hierarchy.models()) > 1):
         raise Sorry("Rearranging water molecules is not supported for "+
           "multi-MODEL structures.")
       sel_cache = self.pdb_hierarchy.atom_selection_cache(
@@ -369,13 +369,13 @@ class modify(object):
             crystal_symmetry = self.crystal_symmetry))
       water_sel = sel_cache.selection("resname HOH or resname WAT") # BAD XXX
       n_waters = water_sel.count(True)
-      if (n_waters == 0) :
+      if (n_waters == 0):
         print >> self.log, "No waters found, skipping"
       else :
         print >> self.log, "%d atoms will be moved." % n_waters
         hierarchy_water = self.pdb_hierarchy.select(water_sel)
         hierarchy_non_water = self.pdb_hierarchy.select(~water_sel)
-        for chain in hierarchy_water.only_model().chains() :
+        for chain in hierarchy_water.only_model().chains():
           hierarchy_non_water.only_model().append_chain(chain.detached_copy())
         self.pdb_hierarchy = hierarchy_non_water # does this work?
 
@@ -413,7 +413,7 @@ class modify(object):
       self.pdb_hierarchy.convert_met_to_semet()
 
   def _convert_semet_to_met(self):
-    if(self.params.convert_semet_to_met) :
+    if(self.params.convert_semet_to_met):
       print >> self.log, "Convert MSE->MET"
       self.pdb_hierarchy.convert_semet_to_met()
 
@@ -425,28 +425,28 @@ class modify(object):
       atom_selection = self.params.selection
       pdb_hierarchy  = self.pdb_hierarchy
       selected_i_seqs = None
-      if (atom_selection is not None) :
+      if (atom_selection is not None):
         sel_cache = pdb_hierarchy.atom_selection_cache(
         special_position_settings=crystal.special_position_settings(
             crystal_symmetry = self.crystal_symmetry))
         selected_i_seqs = sel_cache.selection(atom_selection).iselection()
       for model in pdb_hierarchy.models():
         for chain in model.chains():
-          if (selected_i_seqs is not None) :
+          if (selected_i_seqs is not None):
             chain_i_seqs = chain.atoms().extract_i_seq()
             intersection = selected_i_seqs.intersection(chain_i_seqs)
-            if (len(intersection) == 0) :
+            if (len(intersection) == 0):
               continue
-            elif (len(intersection) != len(chain_i_seqs)) :
+            elif (len(intersection) != len(chain_i_seqs)):
               print >> self.log, "Warning: chain '%s' is only partially selected (%d out of %d) - will not renumber." % (chain.id, len(intersection), len(chain_i_seqs))
               continue
-          if (renumber_from is None) :
+          if (renumber_from is None):
             counter = 1
             for rg in chain.residue_groups():
               rg.resseq=counter
               counter += 1
           else :
-            for rg in chain.residue_groups() :
+            for rg in chain.residue_groups():
               resseq = rg.resseq_as_int()
               resseq += renumber_from
               rg.resseq = "%4d" % resseq
@@ -607,7 +607,7 @@ class modify(object):
         selection = selection.indices)
 
   def _process_occupancies(self):
-    def check_if_already_modified() :
+    def check_if_already_modified():
       if(self.top_selection): return
       if (self._occupancies_modified):
         raise Sorry("Can't modify occupancies (already modified).")

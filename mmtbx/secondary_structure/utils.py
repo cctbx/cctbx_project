@@ -1,7 +1,7 @@
 from __future__ import division
 
-def hydrogen_bond_from_selection_pair (donor_sele, acceptor_sele,
-    selection_cache) :
+def hydrogen_bond_from_selection_pair(donor_sele, acceptor_sele,
+    selection_cache):
   isel = selection_cache.iselection
   donor_i_seqs = isel(donor_sele)
   acceptor_i_seqs = isel(acceptor_sele)
@@ -19,7 +19,7 @@ analyze_h_bonds: multiple atoms matching a selection
   %s (%d atoms)""" % (donor_sele, n_donor_sel, acceptor_sele, n_acceptor_sel))
   return (donor_i_seqs[0], acceptor_i_seqs[0])
 
-def get_residue_name_from_selection (resi_sele, selection_cache, atoms) :
+def get_residue_name_from_selection(resi_sele, selection_cache, atoms):
   i_seqs = selection_cache.iselection(resi_sele)
   if len(i_seqs) == 0 :
     raise RuntimeError("Empty selection '%s'" % resi_sele)

@@ -213,7 +213,7 @@ def run(args, command_name="phenix.remove_outliers"):
 
     effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
-    if not os.path.exists( params.outlier_utils.input.xray_data.file_name ) :
+    if not os.path.exists( params.outlier_utils.input.xray_data.file_name ):
       raise Sorry("File %s can not be found"%(params.outlier_utils.input.xray_data.file_name) )
     if params.outlier_utils.input.model.file_name is not None:
       if not os.path.exists( params.outlier_utils.input.model.file_name ):

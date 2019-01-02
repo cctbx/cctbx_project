@@ -2369,7 +2369,7 @@ def run_and_test(cmd, pdb, i, skip_links=False):
   result = easy_run.fully_buffered(cmd).raise_if_errors()
   assert (result.return_code == 0)
   for line in result.stdout_lines :
-    if ("Write PDB file" in line) :
+    if ("Write PDB file" in line):
       break
   else :
     raise RuntimeError("Missing expected log output")
@@ -2401,7 +2401,7 @@ def run_and_test(cmd, pdb, i, skip_links=False):
     links[pdb][i],
     pdb)
   new_geo = pdb.replace(".pdb", "_minimized_%d.geo" % i)
-  if (os.path.isfile(new_geo)) :
+  if (os.path.isfile(new_geo)):
     os.remove(new_geo)
   os.rename(pdb.replace(".pdb", "_minimized.geo"), new_geo)
   print "OK"

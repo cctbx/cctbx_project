@@ -5,9 +5,9 @@ from libtbx import easy_pickle
 from libtbx.utils import Sorry, null_out
 import os
 
-def exercise () :
+def exercise():
   import libtbx.utils
-  if (libtbx.utils.detect_multiprocessing_problem() is not None) :
+  if (libtbx.utils.detect_multiprocessing_problem() is not None):
     print "multiprocessing not available, skipping this test"
     return
   if (os.name == "nt"):
@@ -385,13 +385,13 @@ END
   out = StringIO()
   v.show(out=out)
   # all tests below here have additional dependencies
-  if (not libtbx.env.has_module("ksdssp")) :
+  if (not libtbx.env.has_module("ksdssp")):
     print "Skipping advanced tests (require ksdssp module)"
     return
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1ywf.pdb",
     test=os.path.isfile)
-  if (pdb_file is not None) :
+  if (pdb_file is not None):
     seq = iotbx.bioinformatics.sequence("MGSSHHHHHHSSGLVPRGSHMAVRELPGAWNFRDVADTATALRPGRLFRSSELSRLDDAGRATLRRLGITDVADLRSSREVARRGPGRVPDGIDVHLLPFPDLADDDADDSAPHETAFKRLLTNDGSNGESGESSQSINDAATRYMTDEYRQFPTRNGAQRALHRVVTLLAAGRPVLTHCFAGKDRTGFVVALVLEAVGLDRDVIVADYLRSNDSVPQLRARISEMIQQRFDTELAPEVVTFTKARLSDGVLGVRAEYLAAARQTIDETYGSLGGYLRDAGISQATVNRMRGVLLG")
     pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
     hierarchy = pdb_in.file_object.hierarchy
@@ -511,6 +511,6 @@ END
     finally :
       os.remove(seq_file)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

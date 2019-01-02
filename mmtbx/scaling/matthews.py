@@ -8,11 +8,11 @@ import math
 import sys
 
 log_p_solc = None
-def get_log_p_solc () :
+def get_log_p_solc():
   global log_p_solc
   from cctbx.array_family import flex
   from scitbx.math import chebyshev_polynome
-  if (log_p_solc is None) :
+  if (log_p_solc is None):
     coeffs = flex.double([
       -14.105436736742137,    -0.47015366358636385,
       -2.9151681976244639,   -0.49308859741473005,
@@ -166,9 +166,9 @@ class p_vm_calculator(object):
         guess = ii+1
     return guess
 
-class matthews_rupp (scaling.xtriage_analysis) :
+class matthews_rupp (scaling.xtriage_analysis):
   """Probabilistic estimation of number of copies in the asu"""
-  def __init__ (self,
+  def __init__(self,
       crystal_symmetry,
       n_residues=None,
       n_bases=None,
@@ -177,12 +177,12 @@ class matthews_rupp (scaling.xtriage_analysis) :
     self.n_residues_in = n_residues
     self.n_bases_in = n_bases
     best_guess_is_n_residues = False
-    if (n_residues is None) and (n_bases is None) :
+    if (n_residues is None) and (n_bases is None):
       n_residues = 1
       n_bases = 0
       best_guess_is_n_residues = True
     vm_estimator = p_vm_calculator(crystal_symmetry, n_residues, n_bases, out=out)
-    if (best_guess_is_n_residues) :
+    if (best_guess_is_n_residues):
       self.n_copies = 1
       self.n_residues = int(vm_estimator.best_guess)
       self.n_bases = 0
@@ -202,13 +202,13 @@ class matthews_rupp (scaling.xtriage_analysis) :
     for ii in range( len(vm_estimator.vm_prop) ):
       self.n_possible_contents += 1
       row = []
-      for jj in range(len(vm_estimator.vm_prop[ii])) :
+      for jj in range(len(vm_estimator.vm_prop[ii])):
         if (jj == 0) : row.append(int(vm_estimator.vm_prop[ii][jj]))
         else : row.append(vm_estimator.vm_prop[ii][jj])
       self.table.add_row(row)
 
-  def _show_impl (self, out) :
-    def show_warning () :
+  def _show_impl(self, out):
+    def show_warning():
       out.show_text("""
  Caution: this estimate is based on the distribution of solvent content across
  structures in the PDB, but it does not take into account the resolution of
@@ -218,34 +218,34 @@ class matthews_rupp (scaling.xtriage_analysis) :
  to consider the possibility that the ASU contents are different than expected.
 """)
     out.show_header("Solvent content and Matthews coefficient")
-    if (self.n_residues_in is None) and (self.n_bases_in is None) :
+    if (self.n_residues_in is None) and (self.n_bases_in is None):
       out.newline()
       out.show_text(" Number of residues unknown, assuming 50% solvent content")
       out.newline()
     else :
       clauses = []
-      if (self.n_residues_in is not None) and (self.n_residues_in != 0) :
+      if (self.n_residues_in is not None) and (self.n_residues_in != 0):
         clauses.append("%d protein residues" % self.n_residues_in)
-      if (self.n_bases_in is not None) and (self.n_bases_in != 0) :
+      if (self.n_bases_in is not None) and (self.n_bases_in != 0):
         clauses.append("%d nucleic acid bases" % self.n_bases_in)
       out.show_text(" Crystallized molecule(s) defined as %s" %
         " and ".join(clauses))
-    if (self.n_residues_in is None) and (self.n_bases_in is None) :
+    if (self.n_residues_in is None) and (self.n_bases_in is None):
       out.show_text("  Best guess : %4d residues in the ASU" %
         self.n_residues)
       show_warning()
     else :
       out.show_table(self.table, equal_widths=False)
-      if (self.n_copies == 1) :
+      if (self.n_copies == 1):
         out.show_text(" Best guess : 1 copy in the ASU")
       else :
         out.show_text(" Best guess : %4d copies in the ASU" % self.n_copies)
-      if (self.n_possible_contents > 1) :
+      if (self.n_possible_contents > 1):
         show_warning()
 
 ########################################################################
 # REGRESSION
-def exercise () :
+def exercise():
   from cctbx import crystal
   from libtbx.test_utils import approx_equal
   from cStringIO import StringIO
@@ -262,6 +262,6 @@ def exercise () :
   result = matthews_rupp(crystal_symmetry=symm)
   assert (result.n_residues == 1281)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

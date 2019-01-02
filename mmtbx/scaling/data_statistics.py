@@ -52,7 +52,7 @@ class i_sigi_completeness_stats (scaling.xtriage_analysis):
     self.overall_binned = miller_array.completeness(use_binning=True,
        as_non_anomalous_array = completeness_as_non_anomalous).data[1:-1]
     self.completeness_bins = []
-    def cut_completeness (cut_value):
+    def cut_completeness(cut_value):
       tmp_miller = miller_array.select(
         miller_array.data() > cut_value*miller_array.sigmas() )
       tmp_miller.use_binning_of(miller_array)
@@ -96,7 +96,7 @@ class i_sigi_completeness_stats (scaling.xtriage_analysis):
         if comp_data[ii] > completeness_cut:
           self.resolution_cut = b**-0.5
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_sub_header("Completeness at I/sigma cutoffs")
     out.show_text("""
  The following table lists the completeness in various resolution ranges,
@@ -105,7 +105,7 @@ class i_sigi_completeness_stats (scaling.xtriage_analysis):
  retained, while other intensities are discarded. The resulting completeness
  profiles are an indication of the strength of the data.
 """)
-    if (self.amplitudes_flag) :
+    if (self.amplitudes_flag):
       out.warn("""\
 Please be aware that the input data were given as amplitudes and squared for
 the purposes of this analysis, therefore the numbers displayed here are less
@@ -154,7 +154,7 @@ class completeness_enforcement(object):
     # now select the indices please
     self.new_miller = miller_array.select( selection_array )
 
-class analyze_resolution_limits (scaling.xtriage_analysis) :
+class analyze_resolution_limits (scaling.xtriage_analysis):
   """
   Check for elliptical truncation, which may be applied to the data by some
   processing software (or as a post-processing step).  As a general rule this
@@ -162,17 +162,17 @@ class analyze_resolution_limits (scaling.xtriage_analysis) :
   anisotropy automatically, and users tend to apply it blindly (and even
   deposit the modified data).
   """
-  def __init__ (self, miller_set, d_min_max_delta=0.25) :
+  def __init__(self, miller_set, d_min_max_delta=0.25):
     # XXX very important - for high-symmetry space groups we need to examine
     # all possible positive indices
     tmp_miller = miller_set.expand_to_p1()
-    if (miller_set.unit_cell().parameters()[3:] != (90,90,90)) :
-    #if (miller_set.space_group().n_smx() > 2) :
+    if (miller_set.unit_cell().parameters()[3:] != (90,90,90)):
+    #if (miller_set.space_group().n_smx() > 2):
       all_pos_neg_indices = flex.miller_index()
-      for h,k,l in tmp_miller.indices() :
-        if (h >= 0 and k >= 0 and l >= 0) or (h <= 0 and k <= 0 and l <= 0) :
+      for h,k,l in tmp_miller.indices():
+        if (h >= 0 and k >= 0 and l >= 0) or (h <= 0 and k <= 0 and l <= 0):
           all_pos_neg_indices.append((h,k,l))
-      if isinstance(tmp_miller, miller.array) :
+      if isinstance(tmp_miller, miller.array):
         tmp_miller = tmp_miller.set(indices=all_pos_neg_indices)
       else :
         tmp_miller = tmp_miller.customized_copy(indices=all_pos_neg_indices)
@@ -186,23 +186,23 @@ class analyze_resolution_limits (scaling.xtriage_analysis) :
       tmp_miller.d_min_along_a_b_c_star()
     self.d_min_max_delta = d_min_max_delta
 
-  def max_d_min_delta (self) :
+  def max_d_min_delta(self):
     """
     Return the maximum difference in d_min along any two axes.
     """
     limits = [self.d_min_a, self.d_min_b, self.d_min_c]
     max_delta = 0
-    for i in range(2) :
-      for j in range(i,3) :
+    for i in range(2):
+      for j in range(i,3):
         max_delta = max(max_delta, abs(limits[i] - limits[j]))
     return max_delta
 
-  def is_elliptically_truncated (self, d_min_max_delta=None) :
-    if (d_min_max_delta is None) :
+  def is_elliptically_truncated(self, d_min_max_delta=None):
+    if (d_min_max_delta is None):
       d_min_max_delta = self.d_min_max_delta
     return self.max_d_min_delta() > d_min_max_delta
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_sub_header("Analysis of resolution limits")
     out.show_text("""\
 Your data have been examined to determine the resolution limits of the data
@@ -220,7 +220,7 @@ resolution but does not actually exclude reflections.)""")
     max. difference between axes = %.3f
 """ % (self.d_min_overall, self.d_min_a,
        self.d_min_b, self.d_min_c, max_delta))
-    if (max_delta > self.d_min_max_delta) :
+    if (max_delta > self.d_min_max_delta):
       out.show_text("""\
 The resolution limit appears to be direction-dependent, which may indicate
 issues with the data collection geometry, processing errors, or that elliptical
@@ -233,15 +233,15 @@ uncorrected reflections in the PDB, not the truncated data.""")
       out.show_text("""Resolution limits are within expected tolerances.""")
 
 
-class log_binned_completeness (scaling.xtriage_analysis) :
+class log_binned_completeness (scaling.xtriage_analysis):
   """
   Table of completeness using log-scale resolution binning.
   """
-  def __init__ (self, miller_array,
+  def __init__(self, miller_array,
       n_reflections_in_lowest_resolution_bin=100,
       max_number_of_bins=30,
       min_reflections_in_bin=50,
-      completeness_as_non_anomalous=None) :
+      completeness_as_non_anomalous=None):
     rows = []
     bins = miller_array.log_binning(
       n_reflections_in_lowest_resolution_bin=\
@@ -261,7 +261,7 @@ class log_binned_completeness (scaling.xtriage_analysis) :
       column_headers=["Resolution", "Reflections", "Completeness"],
       table_rows=rows)
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_sub_header("Completeness (log-binning)")
     out.show_text("""\
 The table below presents an alternative overview of data completeness, using
@@ -362,10 +362,10 @@ class possible_outliers (scaling.xtriage_analysis):
                               self.centric_outlier_extreme_val):
       self.centric_outliers_table.add_row([d, hkl, e, p, extr])
 
-  def fraction_outliers (self) :
+  def fraction_outliers(self):
     return self.n_outliers() / self.n_refl
 
-  def n_outliers (self) :
+  def n_outliers(self):
     n_acentric = self.acentric_outlier_miller.size()
     n_centric = self.centric_outlier_miller.size()
     return n_acentric + n_centric
@@ -380,7 +380,7 @@ class possible_outliers (scaling.xtriage_analysis):
     miller_array = miller_array.select( acentric_matches.single_selection(0) )
     return miller_array
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_sub_header("Possible outliers")
     out.show("  Inspired by: Read, Acta Cryst. (1999). D55, 1759-1764\n")
     out.show("Acentric reflections:")
@@ -422,8 +422,8 @@ class possible_outliers (scaling.xtriage_analysis):
  takes into account the size of the dataset.
 """)
 
-  def summarize_issues (self) :
-    if (self.fraction_outliers() > 0.001) :
+  def summarize_issues(self):
+    if (self.fraction_outliers() > 0.001):
       return [(1, "There are a large number of outliers in the data.",
         "Possible outliers")]
     else :
@@ -535,14 +535,14 @@ class ice_ring_checker(scaling.xtriage_analysis):
     cutoff = self.completeness_abnormality_level
     for ii in range(10):
       if ((self.ice_ring_bin_location[ii] is not None) and
-          (self.ice_rel_intens[ii] > self.intensity_level)) :
+          (self.ice_rel_intens[ii] > self.intensity_level)):
         abnormality_completeness = abs(self.abnormality_completeness[ii])
         if ((abnormality_completeness >= cutoff) or
             (self.value_intensity[ii] > z_score_limit) or
-            (abs(self.abnormality_intensity[ii]) >= cutoff)) :
+            (abs(self.abnormality_intensity[ii]) >= cutoff)):
           self.warnings += 1
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_sub_header("Ice ring related problems")
     out.show("""\
  The following statistics were obtained from ice-ring insensitive resolution
@@ -570,9 +570,9 @@ class ice_ring_checker(scaling.xtriage_analysis):
     cutoff = self.completeness_abnormality_level
     for ii in range(10):
       if ((self.ice_ring_bin_location[ii] is not None) and
-          (self.ice_rel_intens[ii] > self.intensity_level)) :
+          (self.ice_rel_intens[ii] > self.intensity_level)):
         abnormality_completeness = abs(self.abnormality_completeness[ii])
-        if (abnormality_completeness >= cutoff) :
+        if (abnormality_completeness >= cutoff):
           problems_detected = True
           out.show("""\
  At %3.2f A there is a lower completeness than expected from the rest of the
@@ -594,7 +594,7 @@ class ice_ring_checker(scaling.xtriage_analysis):
  all z-scores, while at the same time, the completeness does not go down.
 """ %(self.ice_d_spacings[ii], cutoff))
 
-    if (not problems_detected) :
+    if (not problems_detected):
       out.show("""\
  No ice ring related problems detected.
  If ice rings were present, the data does not look worse at ice ring related
@@ -603,13 +603,13 @@ class ice_ring_checker(scaling.xtriage_analysis):
       out.show("""\
  As there was only 1 ice-ring related warning, it is not clear whether or not
  ice ring related features are really present.""")
-    elif (self.warnings >= 2) :
+    elif (self.warnings >= 2):
       out.show("""\
  There were %d ice ring related warnings.  This could indicate the presence of
  ice rings.""" % self.warnings)
 
-  def summarize_issues (self) :
-    if (self.warnings > 0) :
+  def summarize_issues(self):
+    if (self.warnings > 0):
       return [(1, "The data appear to have one or more ice rings.",
         "Ice ring related problems")]
     else :
@@ -656,7 +656,7 @@ class analyze_measurability(scaling.xtriage_analysis):
       reference_marks=ref_marks,
       force_exact_x_labels=True)
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_sub_header("Measurability of anomalous signal")
     message = None
     unknown_cutoffs = ([self.low_d_cut,self.high_d_cut]).count(None)
@@ -704,7 +704,7 @@ class analyze_measurability(scaling.xtriage_analysis):
     if message is not None :
       out.show(message)
     # more details
-    if (self.meas_table is not None) :
+    if (self.meas_table is not None):
       out.show("\nTable of measurability as a function of resolution:\n")
       out.show_table(self.meas_table, indent=2)
       out.show("""
@@ -729,16 +729,16 @@ class analyze_measurability(scaling.xtriage_analysis):
 #-----------------------------------------------------------------------
 # WRAPPER CLASSES
 
-class data_strength_and_completeness (scaling.xtriage_analysis) :
+class data_strength_and_completeness (scaling.xtriage_analysis):
   """
   Collect basic info about overall completeness and signal-to-noise ratios,
   independent of scaling.
   """
-  def __init__ (self,
+  def __init__(self,
       miller_array,
       isigi_cut=3.0,
       completeness_cut=0.85,
-      completeness_as_non_anomalous=None) :
+      completeness_as_non_anomalous=None):
     # Make a deep copy not to upset or change things in
     # the binner that might be present
     tmp_miller = miller_array.deep_copy()
@@ -766,7 +766,7 @@ class data_strength_and_completeness (scaling.xtriage_analysis) :
         x_is_inverse_d_min=True)
     #
     self.data_strength = None
-    if (miller_array.sigmas() is not None) :
+    if (miller_array.sigmas() is not None):
       self.data_strength = i_sigi_completeness_stats(
         miller_array,
         isigi_cut=isigi_cut,
@@ -792,11 +792,11 @@ class data_strength_and_completeness (scaling.xtriage_analysis) :
       binner = low_resolution_completeness.binner
       d_star_sq_ori = []
       comp = []
-      for i_bin in binner.range_used() :
+      for i_bin in binner.range_used():
         d_min = binner.bin_d_min(i_bin)
         d_star_sq_ori.append(1/(d_min**2))
         frac = low_resolution_completeness.data[i_bin]
-        if (frac is None) :
+        if (frac is None):
           frac = 0
         comp.append(frac*100)
       self.low_res_table = data_plots.table_data(
@@ -816,14 +816,14 @@ class data_strength_and_completeness (scaling.xtriage_analysis) :
       completeness_as_non_anomalous=
         completeness_as_non_anomalous)
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_header("Data strength and completeness")
 
     if (hasattr(self, 'overall_i_sig_i') and
         (self.overall_i_sig_i is not None)):
       out.show("Overall <I/sigma> for this dataset is %7.1f" %(
         self.overall_i_sig_i))
-    if (self.data_strength is not None) :
+    if (self.data_strength is not None):
       self.data_strength.show(out)
     if self.low_resolution_completeness is not None:
       out.show_sub_header("Low resolution completeness analyses")
@@ -835,37 +835,37 @@ during data collection, overexposure of frames, interference with the beamstop,
 or omission of reflections by data-processing software.""")
       out.show_table(self.low_resolution_completeness, indent=2)
     self.log_binned.show(out)
-    if (self.d_min_directional is not None) :
+    if (self.d_min_directional is not None):
       self.d_min_directional.show(out)
 
-  def high_resolution_for_twin_tests (self) :
-    if (self.data_strength is None) :
+  def high_resolution_for_twin_tests(self):
+    if (self.data_strength is None):
       return None
     elif (self.data_strength.resolution_cut >
-        self.data_strength.resolution_at_least) :
+        self.data_strength.resolution_at_least):
       return self.data_strength.resolution_at_least
     else:
       return self.data_strength.resolution_cut
 
-  def i_over_sigma_outer_shell (self) :
-    if (self.i_sig_i is not None) :
+  def i_over_sigma_outer_shell(self):
+    if (self.i_sig_i is not None):
       return self.i_sig_i[-1]
     return None
 
-  def summarize_issues (self) :
+  def summarize_issues(self):
     issues = []
-    if (self.d_min_directional is not None) :
-      if self.d_min_directional.is_elliptically_truncated() :
+    if (self.d_min_directional is not None):
+      if self.d_min_directional.is_elliptically_truncated():
         issues.append((1,"The data appear to have been elliptically truncated.",
           "Analysis of resolution limits"))
       else :
         issues.append((0,
           "The resolution cutoff appears to be similar in all directions.",
           "Analysis of resolution limits"))
-    if (0 < self.low_resolution_completeness_overall < 0.75) :
+    if (0 < self.low_resolution_completeness_overall < 0.75):
       issues.append((2, "The overall completeness in low-resolution shells "+
         "is less than 90%.", "Low resolution completeness analyses"))
-    elif (0.75 <= self.low_resolution_completeness_overall < 0.9) :
+    elif (0.75 <= self.low_resolution_completeness_overall < 0.9):
       issues.append((1, "The overall completeness in low-resolution shells "+
         "is less than 90%.", "Low resolution completeness analyses"))
     else :
@@ -873,22 +873,22 @@ or omission of reflections by data-processing software.""")
         "is at least 90%.", "Low resolution completeness analyses"))
     return issues
 
-class anomalous (scaling.xtriage_analysis) :
-  def __init__ (self, miller_array, merging_stats=None,
-      plan_sad_experiment_stats=None) :
+class anomalous (scaling.xtriage_analysis):
+  def __init__(self, miller_array, merging_stats=None,
+      plan_sad_experiment_stats=None):
     assert miller_array.anomalous_flag()
     tmp_miller = miller_array.deep_copy()
     tmp_miller.setup_binner_d_star_sq_step(auto_binning=True)
     self.d_star_sq_ori = tmp_miller.binner().bin_centers(2)
     self.cc_anom_table = None
-    if (merging_stats is not None) :
+    if (merging_stats is not None):
       self.cc_anom_table = merging_stats.cc_anom_table
     self.plan_sad_experiment_stats=None
     if (plan_sad_experiment_stats is not None):
       self.plan_sad_experiment_stats=plan_sad_experiment_stats
     self.measurability = None
     # Get measurability if data is anomalous
-    if (tmp_miller.sigmas() is not None) :
+    if (tmp_miller.sigmas() is not None):
       measurability = tmp_miller.measurability(use_binning=True,
         return_fail=0)
       meas_data = flex.double( measurability.data[1:len(
@@ -910,9 +910,9 @@ class anomalous (scaling.xtriage_analysis) :
         meas_data=meas_data,
         miller_array=tmp_miller)
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_header("Anomalous signal")
-    if (self.cc_anom_table is not None) :
+    if (self.cc_anom_table is not None):
       out.show_sub_header("Half-dataset anomalous correlation")
       out.show_text("""\
  This statistic (also called CC_anom) is calculated from unmerged data, which
@@ -920,11 +920,11 @@ class anomalous (scaling.xtriage_analysis) :
  merged to obtain unique (anomalous) intensities, and their anomalous
  differences compared.  Resolution shells with CC_anom above 0.3 contain
  substantial anomalous signal useful for heavy atom location.""")
-      if (out.gui_output) :
+      if (out.gui_output):
         out.show_plot(self.cc_anom_table)
       else :
         out.show_table(self.cc_anom_table)
-    if (self.measurability is not None) :
+    if (self.measurability is not None):
       self.measurability.show(out)
 
     if (hasattr(self, 'plan_sad_experiment_stats') and
@@ -963,7 +963,7 @@ class anomalous (scaling.xtriage_analysis) :
         issues.append((2, message, section_name))
     return issues
 
-class wilson_scaling (scaling.xtriage_analysis) :
+class wilson_scaling (scaling.xtriage_analysis):
   """
   Calculates isotropic and anisotropic scale factors, Wilson plot, and various
   derived analyses such as ice rings and outliers.
@@ -976,7 +976,7 @@ class wilson_scaling (scaling.xtriage_analysis) :
                n_copies_solc=1,
                n_bases=0,
                z_score_cut=4.5,
-               completeness_as_non_anomalous=None) :
+               completeness_as_non_anomalous=None):
     assert (n_bases+n_residues != 0) and (n_copies_solc != 0)
     info = miller_array.info()
     tmp_miller = miller_array.deep_copy()
@@ -1028,11 +1028,11 @@ class wilson_scaling (scaling.xtriage_analysis) :
     b_trace_min = b_cart_observed[0]
     if  b_cart_observed[1] <b_trace_min: b_trace_min=b_cart_observed[1]
     if  b_cart_observed[2] <b_trace_min: b_trace_min=b_cart_observed[2]
-    if (remove_aniso_final_b == "eigen_min") :
+    if (remove_aniso_final_b == "eigen_min"):
       b_use=aniso_scale_and_b.eigen_values[2]
-    elif (remove_aniso_final_b == "eigen_mean") :
+    elif (remove_aniso_final_b == "eigen_mean"):
       b_use=flex.mean(aniso_scale_and_b.eigen_values)
-    elif (remove_aniso_final_b == "user_b_iso") :
+    elif (remove_aniso_final_b == "user_b_iso"):
       assert remove_aniso_b_iso is not None
       b_use = use_b_iso
     else:
@@ -1128,7 +1128,7 @@ class wilson_scaling (scaling.xtriage_analysis) :
     self.outliers = possible_outliers(absolute_miller)
     self.miller_array_filtered = self.outliers.remove_outliers(absolute_miller)
     self.ice_rings = None
-    if (self.d_star_sq.size() > 1) and (flex.min( self.d_star_sq ) > 0.01) :
+    if (self.d_star_sq.size() > 1) and (flex.min( self.d_star_sq ) > 0.01):
       self.ice_rings = ice_ring_checker(
         bin_centers=self.d_star_sq,
         completeness_data=self.completeness,
@@ -1171,12 +1171,12 @@ class wilson_scaling (scaling.xtriage_analysis) :
       data=[list(self.d_star_sq), list(self.z_scores), list(self.completeness)],
       x_is_inverse_d_min=True)
 
-  def show_worrisome_shells (self, out) :
+  def show_worrisome_shells(self, out):
     out.show_sub_header("Mean intensity analyses")
     out.show("""\
  Inspired by: Morris et al. (2004). J. Synch. Rad.11, 56-59.
  The following resolution shells are worrisome:""")
-    if (self.n_worrisome > 0) :
+    if (self.n_worrisome > 0):
       out.show_table(self.outlier_shell_table, indent=2)
       out.show("""\
  Possible reasons for the presence of the reported unexpected low or elevated
@@ -1197,7 +1197,7 @@ class wilson_scaling (scaling.xtriage_analysis) :
     else :
       out.show(" *** None ***")
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_header("Absolute scaling and Wilson analysis")
     self.iso_scale_and_b.show(out=out)
     self.aniso_scale_and_b.show(out=out)
@@ -1219,7 +1219,7 @@ class wilson_scaling (scaling.xtriage_analysis) :
     if self.ice_rings is not None:
       self.ice_rings.show(out)
 
-  def summarize_issues (self) :
+  def summarize_issues(self):
     issues = []
     if self.ice_rings is not None:
       issues.extend(self.ice_rings.summarize_issues())
@@ -1234,7 +1234,7 @@ class wilson_scaling (scaling.xtriage_analysis) :
   # elsewhere), they are deleted prior to pickling to reduce the amount of
   # data that needs to be transfered or saved.  It is not necessary to
   # implement __setstate__, since we are still just pickling self.__dict__.
-  def __getstate__ (self) :
+  def __getstate__(self):
     """
     Pickling function with storage efficiency optimizations.
     """

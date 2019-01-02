@@ -7,16 +7,16 @@ from __future__ import division
 from libtbx import slots_getstate_setstate
 import itertools
 
-class rotarama_plot_mixin (object) :
+class rotarama_plot_mixin (object):
   extent = [0, 360, 0, 360]
-  def __init__ (self) :
+  def __init__(self):
     assert hasattr(self, "figure")
     self._points = []
     self._xyz = [] # only used by Phenix GUI (not offline plotting)
     self.plot = self.figure.add_subplot(111)
     self.plot.set_position([0.1, 0.1, 0.85, 0.85])
 
-  def draw_plot (self,
+  def draw_plot(self,
                  stats,
                  title,
                  points=None,
@@ -29,24 +29,24 @@ class rotarama_plot_mixin (object) :
                  markerfacecolor="white",
                  markeredgecolor="black",
                  markersize=10,
-                 point_style='bo') :
+                 point_style='bo'):
     # points = [(x,y,label, isoutlier(bool)), (), ...]
     import matplotlib.cm
     self._points = []
     self._xyz = []
     cm = getattr(matplotlib.cm, colormap)
     self.plot.clear()
-    if (extent is None) :
+    if (extent is None):
       extent = self.extent
     else :
       assert (len(extent) == 4)
     self.plot.imshow(stats, origin="lower", cmap=cm, extent=extent)
-    if (contours is not None) :
+    if (contours is not None):
       self.plot.contour(stats, contours,
         origin="lower",
         colors='k',
         extent=extent)
-    if (y_marks is None) :
+    if (y_marks is None):
       self.set_labels()
     else :
       self.set_labels(y_marks=y_marks)
@@ -74,112 +74,112 @@ class rotarama_plot_mixin (object) :
           markeredgecolor=markeredgecolor)
     self.canvas.draw()
 
-class residue_bin (slots_getstate_setstate) :
+class residue_bin (slots_getstate_setstate):
   __slots__ = ["residues", "marks", "labels"]
-  def __init__ (self) :
+  def __init__(self):
     self.residues = []
     self.marks = []
     self.labels = []
 
-  def add_residue (self, residue) :
+  def add_residue(self, residue):
     self.residues.append(residue)
     n_res = len(self.residues)
-    if (n_res % 10 == 0) :
+    if (n_res % 10 == 0):
       self.marks.append(n_res)
-      if (residue is not None) :
+      if (residue is not None):
         self.labels.append(residue.residue_group_id_str())
       else :
         self.labels.append("")
 
-  def add_empty (self, n) :
-    for i in range(n) :
+  def add_empty(self, n):
+    for i in range(n):
       self.add_residue(None)
 
-  def n_res (self) :
+  def n_res(self):
     return len(self.residues)
 
-  def get_residue_range (self) :
+  def get_residue_range(self):
     bin_start = bin_end = None
     i = 0
-    while (i < len(self.residues)) :
-      if (self.residues[i] is not None) :
+    while (i < len(self.residues)):
+      if (self.residues[i] is not None):
         bin_start = self.residues[i].residue_group_id_str()
         break
       i += 1
     i = len(self.residues) - 1
-    while (i >= 0) :
-      if (self.residues[i] is not None) :
+    while (i >= 0):
+      if (self.residues[i] is not None):
         bin_end = self.residues[i].residue_group_id_str()
         break
       i -= 1
     return "%s - %s" % (bin_start, bin_end)
 
-  def x_values (self) :
+  def x_values(self):
     return range(len(self.residues))
 
-  def get_selected (self, index) :
+  def get_selected(self, index):
     return self.residues[index]
 
-  def get_real_space_plot_values (self) :
+  def get_real_space_plot_values(self):
     import numpy
     y = []
     for residue in self.residues :
-      if (residue is not None) :
+      if (residue is not None):
         y.append(residue.get_real_space_plot_values())
       else :
         y.append([numpy.NaN] * 4)
     return numpy.array(y).transpose()
 
-  def get_outlier_plot_values (self) :
+  def get_outlier_plot_values(self):
     import numpy
     y = []
     for residue in self.residues :
-      if (residue is not None) :
+      if (residue is not None):
         y.append(residue.get_outlier_plot_values())
       else :
         y.append([numpy.NaN] * 4)
     return numpy.array(y).transpose()
 
-class residue_binner (object) :
-  def __init__ (self, res_list, bin_size=100, one_chain_per_bin=False) :
+class residue_binner (object):
+  def __init__(self, res_list, bin_size=100, one_chain_per_bin=False):
     self.bins = []
     last_chain = last_resseq = None
-    for i, residue in enumerate(res_list) :
-      if (len(self.bins) == 0) or (self.bins[-1].n_res() == bin_size) :
+    for i, residue in enumerate(res_list):
+      if (len(self.bins) == 0) or (self.bins[-1].n_res() == bin_size):
         self.bins.append(residue_bin())
       chain = residue.chain_id
       resseq = residue.resseq_as_int()
-      if (last_chain is not None) :
+      if (last_chain is not None):
         # FIXME needs to take icode into account!
-        if (chain != last_chain) or (resseq > (last_resseq + 10)) :
+        if (chain != last_chain) or (resseq > (last_resseq + 10)):
           if ((chain != last_chain and one_chain_per_bin) or
-              (self.bins[-1].n_res() > (bin_size - 20))) :
+              (self.bins[-1].n_res() > (bin_size - 20))):
             self.bins.append(residue_bin())
           else :
             self.bins[-1].add_empty(10)
-        elif (resseq > (last_resseq + 1)) and (self.bins[-1].n_res() > 0) :
+        elif (resseq > (last_resseq + 1)) and (self.bins[-1].n_res() > 0):
           gap = resseq - (last_resseq + 1)
           i = 0
-          while (i < gap) and (self.bins[-1].n_res() < bin_size) :
+          while (i < gap) and (self.bins[-1].n_res() < bin_size):
             self.bins[-1].add_empty(1)
             i += 1
       self.bins[-1].add_residue(residue)
       last_chain = chain
       last_resseq = resseq
 
-  def get_bin (self, i_bin) :
+  def get_bin(self, i_bin):
     return self.bins[i_bin]
 
-  def get_ranges (self) :
+  def get_ranges(self):
     return [ bin.get_residue_range() for bin in self.bins ]
 
-class multi_criterion_plot_mixin (object) :
-  def __init__ (self, binner, y_limits) :
+class multi_criterion_plot_mixin (object):
+  def __init__(self, binner, y_limits):
     self.binner = binner
     self.y_limits = y_limits
     self.disabled = False
 
-  def plot_range (self, i_bin) :
+  def plot_range(self, i_bin):
     if (self.disabled) : return
     # TODO: fix y-ticks, x-ticks width residue ID, add legend
     self.figure.clear()

@@ -5,7 +5,7 @@ from libtbx.utils import null_out, Sorry
 from cStringIO import StringIO
 import os.path
 
-def exercise () :
+def exercise():
   from mmtbx.regression.make_fake_anomalous_data import generate_cd_cl_inputs
   from mmtbx.command_line import mtz2map
   import mmtbx.utils
@@ -108,5 +108,5 @@ def exercise () :
   assert (out.getvalue().count("R-free flagged reflections")==4)
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

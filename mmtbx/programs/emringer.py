@@ -115,13 +115,13 @@ How to run:
       print("CCP4 map statistics:", file=self.logger)
       map_inp.show_summary(out=self.logger, prefix="  ")
 
-    if (self.params.output_base is None) :
+    if (self.params.output_base is None):
       pdb_base = os.path.basename(self.data_manager.get_default_model_name())
       self.params.output_base = os.path.splitext(pdb_base)[0] + "_emringer"
 
     if not self.params.quiet:
       plots_dir = self.params.output_base + "_plots"
-      if (not os.path.isdir(plots_dir)) :
+      if (not os.path.isdir(plots_dir)):
         os.makedirs(plots_dir)
 
     task_obj = mmtbx.ringer.emringer.emringer(
@@ -167,16 +167,16 @@ How to run:
         if (array.is_complex_array()):
           all_labels.append(label)
           if (label.startswith("2FOFCWT") or label.startswith("2mFoDFc") or
-              label.startswith("FWT")) :
+              label.startswith("FWT")):
             best_guess = array
             best_labels.append(label)
     if (miller_array is None):
-      if (len(all_labels) == 0) :
+      if (len(all_labels) == 0):
         raise Sorry("No valid (pre-weighted) map coefficients found in file.")
-      elif (len(best_labels) == 0) :
+      elif (len(best_labels) == 0):
         raise Sorry("Couldn't automatically determine appropriate map labels. "+
           "Choices:\n  %s" % "  \n".join(all_labels))
-      elif (len(best_labels) > 1) :
+      elif (len(best_labels) > 1):
         raise Sorry("Multiple appropriate map coefficients found in file. "+
           "Choices:\n  %s" % "\n  ".join(best_labels))
       elif (len(best_labels) == 1):

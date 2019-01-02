@@ -10,8 +10,8 @@ from libtbx.utils import null_out, Sorry
 from libtbx import easy_run
 import os
 
-def exercise () :
-  if (os.path.isfile("tst_fmodel_anomalous.mtz")) :
+def exercise():
+  if (os.path.isfile("tst_fmodel_anomalous.mtz")):
     os.remove("tst_fmodel_anomalous.mtz")
   pdb_file = make_fake_anomalous_data.write_pdb_input_cd_cl(
     file_base="tst_fmodel_anomalous")
@@ -38,8 +38,8 @@ def exercise () :
       % pdb_file)
   print "OK"
 
-def exercise_intensity_output () :
-  if (os.path.isfile("tst_fmodel_anomalous.mtz")) :
+def exercise_intensity_output():
+  if (os.path.isfile("tst_fmodel_anomalous.mtz")):
     os.remove("tst_fmodel_anomalous.mtz")
   pdb_file = make_fake_anomalous_data.write_pdb_input_cd_cl(
     file_base="tst_fmodel_anomalous")
@@ -71,7 +71,7 @@ def exercise_intensity_output () :
   else :
     raise Exception_expected
 
-def exercise_selection_consistency () :
+def exercise_selection_consistency():
   """
   Test that the atom selections for anomalous scatterers actually correspond
   to the intended xray scatterers.  This will be dependent on any re-ordering
@@ -133,17 +133,17 @@ anomalous_scatterers {
   fft_map = map_coeffs.fft_map(resolution_factor=0.25).apply_sigma_scaling()
   real_map = fft_map.real_map_unpadded()
   pdb_in = file_reader.any_file("tst_fmodel_misc.pdb")
-  for atom in pdb_in.file_object.hierarchy.atoms() :
-    if (atom.element == "SE") :
+  for atom in pdb_in.file_object.hierarchy.atoms():
+    if (atom.element == "SE"):
       site = f_model.unit_cell().fractionalize(site_cart=atom.xyz)
       map_val = real_map.eight_point_interpolation(site)
       assert (map_val > 100)
-    elif (atom.element.strip() == "O") :
+    elif (atom.element.strip() == "O"):
       site = f_model.unit_cell().fractionalize(site_cart=atom.xyz)
       map_val = real_map.eight_point_interpolation(site)
       assert (map_val < 5)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_intensity_output()
   exercise_selection_consistency()
   exercise()

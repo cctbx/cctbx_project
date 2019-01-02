@@ -1109,10 +1109,10 @@ END
               [24, 25, 26, 27, 28, 29, 30, 32, 33]] ]
   assert approx_equal(res, answer)
 
-def prepare_correlated_occupancy_inputs (
+def prepare_correlated_occupancy_inputs(
     prefix="tst_group_correlated_occupancy",
     create_mtz=False,
-    d_min=1.0) :
+    d_min=1.0):
   pdb_raw = """\
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1
 SCALE1      0.045585  0.000000  0.014006        0.00000
@@ -1211,7 +1211,7 @@ TER
 """
   pdb_in = "%s_in.pdb" % prefix
   open(pdb_in, "w").write(pdb_raw)
-  if (create_mtz) :
+  if (create_mtz):
     args = [
       pdb_in,
       "high_resolution=%g" % d_min,
@@ -1226,14 +1226,14 @@ TER
   pdb_file = file_reader.any_file(pdb_in)
   hierarchy = pdb_file.file_object.hierarchy
   xrs = pdb_file.file_object.xray_structure_simple()
-  for atom in hierarchy.atoms() :
+  for atom in hierarchy.atoms():
     atom.b = 5
-    if (atom.occ < 1.0) :
+    if (atom.occ < 1.0):
       atom.occ = 0.5
   open("%s_start.pdb" % prefix, "w").write(
     hierarchy.as_pdb_string(crystal_symmetry=xrs))
 
-def exercise_regroup_3d (verbose) :
+def exercise_regroup_3d(verbose):
   if (verbose): log = sys.stdout
   else: log = StringIO()
   prepare_correlated_occupancy_inputs()
@@ -1243,7 +1243,7 @@ def exercise_regroup_3d (verbose) :
     "tst_group_correlated_occupancy_start.pdb",
     "tst_group_correlated_occupancy_in.pdb",
   ]
-  for i_file, pdb_file in enumerate(pdb_files) :
+  for i_file, pdb_file in enumerate(pdb_files):
     model = get_model(pdb_file, log)
     try :
       constraint_groups = occupancy_selections(
@@ -1251,12 +1251,12 @@ def exercise_regroup_3d (verbose) :
         constrain_correlated_3d_groups=True,
         log=null_out())
     except Sorry, s :
-      if (i_file == 0) :
+      if (i_file == 0):
         raise
       else :
         assert ("Inconsistent occupancies" in str(s)), str(s)
     else :
-      if (i_file == 1) :
+      if (i_file == 1):
         raise Exception_expected
       else :
         assert (len(constraint_groups) == 1)

@@ -210,7 +210,7 @@ def exercise_4():
   assert c_beta_restrs.size()==10
   assert c_beta_skip == {}
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_1()
   exercise_2()
   exercise_3()

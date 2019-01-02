@@ -102,7 +102,7 @@ class minimizer(object):
       assert approx_equal(g_fin, g)
     return f, g
 
-def get_single_atom_selection_string (atom) :
+def get_single_atom_selection_string(atom):
   labels = atom.fetch_labels()
   altloc = labels.altloc
   if (altloc == '') : altloc = ' ' # XXX this is gross
@@ -111,11 +111,11 @@ def get_single_atom_selection_string (atom) :
       (labels.chain_id, labels.resname, labels.name, altloc, labels.resid())
   return sele
 
-def find_anomalous_scatterer_groups (
+def find_anomalous_scatterer_groups(
     pdb_atoms,
     xray_structure,
     group_same_element=True, # XXX should this be True by default?
-    out=None) :
+    out=None):
   """
   Automatic setup of anomalously scattering atoms, defined here as anything
   with atomic number 15 (P) or greater.  Not yet accessible from phenix.refine.
@@ -127,8 +127,8 @@ def find_anomalous_scatterer_groups (
   groups = []
   if (out is None) : out = null_out()
   hd_selection = xray_structure.hd_selection()
-  for i_seq, scatterer in enumerate(xray_structure.scatterers()) :
-    if (hd_selection[i_seq]) :
+  for i_seq, scatterer in enumerate(xray_structure.scatterers()):
+    if (hd_selection[i_seq]):
       continue
     element = scatterer.element_symbol().strip()
     try :
@@ -137,9 +137,9 @@ def find_anomalous_scatterer_groups (
       print >> out, "Error for %s" % pdb_atoms[i_seq].id_str()
       print >> out, "  " + str(e)
       continue
-    if (atomic_number >= 15) :
-      if (group_same_element) :
-        if (not element in element_i_seqs) :
+    if (atomic_number >= 15):
+      if (group_same_element):
+        if (not element in element_i_seqs):
           element_i_seqs[element] = flex.size_t()
         element_i_seqs[element].append(i_seq)
       else :
@@ -152,8 +152,8 @@ def find_anomalous_scatterer_groups (
           refine=["f_prime","f_double_prime"],
           selection_string=get_single_atom_selection_string(pdb_atoms[i_seq]))
         groups.append(asg)
-  if (group_same_element) :
-    for elem in sorted(element_i_seqs.keys()) :
+  if (group_same_element):
+    for elem in sorted(element_i_seqs.keys()):
       iselection = element_i_seqs[elem]
       print >> out, \
         "  creating anomalous group for element %s with %d atoms" % \
@@ -167,7 +167,7 @@ def find_anomalous_scatterer_groups (
       groups.append(asg)
   return groups
 
-def refine_anomalous_substructure (
+def refine_anomalous_substructure(
     fmodel,
     pdb_hierarchy,
     wavelength=None,
@@ -180,7 +180,7 @@ def refine_anomalous_substructure (
     reset_water_u_iso=True,
     use_all_anomalous=True,
     verbose=True,
-    out=sys.stdout) :
+    out=sys.stdout):
   """
   Crude mimic of Phaser's substructure completion, with two essential
   differences: only the existing real scatterers in the input model will be
@@ -218,7 +218,7 @@ def refine_anomalous_substructure (
   anomalous_groups = []
   t_start = time.time()
   n_cycle = 0
-  while ((n_cycles_max is None) or (n_cycle < n_cycles_max)) :
+  while ((n_cycles_max is None) or (n_cycle < n_cycles_max)):
     n_cycle += 1
     n_new_groups = 0
     t_start_cycle = time.time()
@@ -229,21 +229,21 @@ def refine_anomalous_substructure (
     map_max = flex.max(anom_map.as_1d())
     print >> out, "  map range: -%.2f sigma to %.2f sigma" % (map_min, map_max)
     reset_u_iso_selection = flex.size_t()
-    for i_seq, atom in enumerate(pdb_atoms) :
+    for i_seq, atom in enumerate(pdb_atoms):
       resname = atom.parent().resname
       elem = atom.element.strip()
       if  ((i_seq in anomalous_iselection) or
            ((exclude_waters) and (resname == "HOH")) or
            ((elem in ["H","D","N","C","O"]) and (resname != "HOH") and
-            exclude_non_water_light_elements)) :
+            exclude_non_water_light_elements)):
         continue
       scatterer = scatterers[i_seq]
       site_frac = sites_frac[i_seq]
       anom_map_value = anom_map.tricubic_interpolation(site_frac)
       if ((anom_map_value >= map_sigma_min) or
-          ((scatterer.fdp != 0) and use_all_anomalous)) :
-        if (verbose) :
-          if (n_new_groups == 0) :
+          ((scatterer.fdp != 0) and use_all_anomalous)):
+        if (verbose):
+          if (n_new_groups == 0):
             print >> out, ""
             print >> out, "  new anomalous scatterers:"
           print >> out, "    %-34s  map height: %6.2f sigma" % (atom.id_str(),
@@ -258,21 +258,21 @@ def refine_anomalous_substructure (
           selection_string=selection_string)
         anomalous_groups.append(group)
         n_new_groups += 1
-        if (resname == "HOH") and (reset_water_u_iso) :
+        if (resname == "HOH") and (reset_water_u_iso):
           water_u_iso = scatterer.u_iso
-          if (water_u_iso < u_iso_mean) :
+          if (water_u_iso < u_iso_mean):
             reset_u_iso_selection.append(i_seq)
-    if (n_new_groups == 0) :
+    if (n_new_groups == 0):
       print >> out, ""
       print >> out, "No new groups - anomalous scatterer search terminated."
       break
-    elif (not verbose) :
+    elif (not verbose):
       print >> out, "  %d new groups" % n_new_groups
     for i_seq in anomalous_iselection :
       sc = scatterers[i_seq]
       sc.fp = 0
       sc.fdp = 0
-    if (verbose) :
+    if (verbose):
       print >> out, ""
       print >> out, "Anomalous refinement:"
       fmodel.info().show_targets(text="before minimization", out=out)
@@ -282,16 +282,16 @@ def refine_anomalous_substructure (
     fmodel.xray_structure.set_u_iso(values=u_iso)
     fmodel.update_xray_structure(update_f_calc=True)
     minimizer(fmodel=fmodel, groups=anomalous_groups)
-    if (verbose) :
+    if (verbose):
       fmodel.info().show_targets(text="after minimization", out=out)
       print >> out, ""
       print >> out, "  Refined sites:"
-      for i_seq, group in zip(anomalous_iselection, anomalous_groups) :
+      for i_seq, group in zip(anomalous_iselection, anomalous_groups):
         print >> out, "    %-34s  f' = %6.3f  f'' = %6.3f" % (
           pdb_atoms[i_seq].id_str(), group.f_prime, group.f_double_prime)
     t_end_cycle = time.time()
     print >> out, ""
-    if (verbose) :
+    if (verbose):
       print >> out, "  time for this cycle: %.1fs" % (t_end_cycle-t_start_cycle)
   fmodel.update(target_name="ml")
   print >> out, "%d anomalous scatterer groups refined" % len(anomalous_groups)
