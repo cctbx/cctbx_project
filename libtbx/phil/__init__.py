@@ -16,7 +16,7 @@ import weakref
 
 default_print_width = 79
 
-class PhilDeprecationWarning (DeprecationWarning):
+class PhilDeprecationWarning(DeprecationWarning):
   pass
 warnings.filterwarnings("always", category=PhilDeprecationWarning)
 

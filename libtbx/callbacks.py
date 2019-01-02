@@ -70,7 +70,7 @@ from libtbx.utils import to_unicode
 import os
 import sys
 
-class manager (object):
+class manager(object):
   def __init__(self):
     self.handlers = []
     self._pid = os.getpid()
@@ -114,7 +114,7 @@ class manager (object):
       print("  " + line, file=log)
     #print >> log, str_utils.wordwrap(msg, 79)
 
-class piped_callback (object):
+class piped_callback(object):
   def __init__(self, connection):
     adopt_init_args(self, locals())
 

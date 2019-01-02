@@ -307,7 +307,7 @@ class line_feeder(object):
         return result
 
 # StringIO with pickling support and extra read-only semantics
-class StringIO (object):
+class StringIO(object):
   def __init__(self, *args, **kwds):
     self._buffer = cStringIO(*args, **kwds)
     self.read_only = bool(args)
@@ -350,7 +350,7 @@ def expandtabs_track_columns(s, tabsize=8):
         j += 1
   return "".join(result_e), result_j
 
-class framed_output (object):
+class framed_output(object):
   """
   Pseudo-output file wrapper for drawing a box around arbitrary content, for
   example:

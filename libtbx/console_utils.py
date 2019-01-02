@@ -2,7 +2,7 @@
 from __future__ import absolute_import, division, print_function
 import sys
 
-class colors_ (object):
+class colors_(object):
   def __init__(self):
     self.black = 30
     self.red = 31
@@ -26,7 +26,7 @@ class colors_ (object):
 
 colors = colors_()
 
-class console_out (object):
+class console_out(object):
   def __init__(self, console_out=None, other_out=None):
     if (console_out is None):
       console_out = sys.stdout

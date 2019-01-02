@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 # various containers for gui directives and objects
 
-class menu_hierarchy (object):
+class menu_hierarchy(object):
   is_menu_item = False
   is_submenu = True
 
@@ -35,7 +35,7 @@ class menu_hierarchy (object):
   def __str__(self):
     return self.menu_name
 
-class menu_item (object):
+class menu_item(object):
   is_menu_item = True
   is_submenu = False
 
@@ -45,7 +45,7 @@ class menu_item (object):
   def __str__(self):
     return self.menu_item_name
 
-class style (object):
+class style(object):
   """
   Container for flags used to alter the appearance of controls in the Phenix
   GUI.  These can either be booleans (style_args) or other values (style_kwds).
@@ -214,7 +214,7 @@ class style (object):
 
 default_style = style(None)
 
-class file_type_map (object):
+class file_type_map(object):
   def __init__(self, param_info, default_label=None):
     self.param_info = param_info
     self.default_label = default_label

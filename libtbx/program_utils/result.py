@@ -4,7 +4,7 @@ from libtbx.program_utils import statistics_info
 from libtbx import adopt_init_args
 import os
 
-class program_result (object):
+class program_result(object):
   def __init__(self,
                 program_name,
                 job_title,

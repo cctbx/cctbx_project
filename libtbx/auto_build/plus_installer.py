@@ -19,7 +19,7 @@ from libtbx.auto_build import install_distribution
 
 from libtbx.auto_build.bootstrap import CCTBXBuilder
 
-class installer (install_distribution.installer):
+class installer(install_distribution.installer):
   # XXX most settings can be edited here
   product_name = "CCTBX"
   dest_dir_prefix = "cctbx"

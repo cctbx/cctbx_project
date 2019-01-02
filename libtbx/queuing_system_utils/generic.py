@@ -355,7 +355,7 @@ class PBSJob(Job):
 
     return m.group( 1 )
 
-class SGEJob (Job):
+class SGEJob(Job):
   def parse_process_stdout(self):
     qsub_out = self.process.stdout.readlines()
     for line in qsub_out :
@@ -363,7 +363,7 @@ class SGEJob (Job):
         self.jobid = int(line.split()[2])
         break
 
-class queue_interface (object):
+class queue_interface(object):
   COMMAND = None
   def __init__(self, command, asynchronous=False):
     self.async = asynchronous

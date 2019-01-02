@@ -182,7 +182,7 @@ git_repositories = {
                  'https://github.com/kiyo-masui/bitshuffle/archive/master.zip'],
 }
 
-class fetch_packages (object):
+class fetch_packages(object):
   """
   Download manager for the packages defined by this module - this is used by
   install_base_packages.py but also for setting up installer bundles.

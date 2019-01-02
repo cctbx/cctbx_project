@@ -330,14 +330,14 @@ def number_of_processors(return_value_if_unknown=None):
     return _number_of_processors
   return return_value_if_unknown
 
-class method_debug_log (object):
+class method_debug_log(object):
   """For Python 2.4 or greater.  Use an instance of this class as a
   decorator for class methods, and it will print the call signature and
   call location before the method is executed.
 
   Example:
   debug = libtbx.introspection.method_debug_log()
-  class a (object):
+  class a(object):
     @debug
     def foo(self, x):
       print x

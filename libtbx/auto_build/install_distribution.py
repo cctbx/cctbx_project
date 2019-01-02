@@ -41,7 +41,7 @@ along these lines:
   import os.path
   import sys
 
-  class installer (install_distribution.installer):
+  class installer(install_distribution.installer):
     product_name = "PHENIX"
     dest_dir_prefix = "phenix"
     make_apps = ["phenix"]

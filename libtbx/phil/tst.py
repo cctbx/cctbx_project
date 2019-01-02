@@ -5548,7 +5548,7 @@ strategy = *xyz *adp tls
   .type = choice(multi=True)
   .deprecated = True
 """)
-  class _showwarning (object):
+  class _showwarning(object):
     def __init__(self):
       self.n = 0
       self.message = None

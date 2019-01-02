@@ -14,7 +14,7 @@ import xmlrpclib
 
 try :
   from SimpleXMLRPCServer import SimpleXMLRPCServer
-  class external_xmlrpc_server (SimpleXMLRPCServer):
+  class external_xmlrpc_server(SimpleXMLRPCServer):
     def __init__(self, addr, cctbx_interface):
       self.cctbx_interface = cctbx_interface
       SimpleXMLRPCServer.__init__(self, addr, logRequests=0)
@@ -32,7 +32,7 @@ try :
           result = -1
       return result
 
-  class external_xmlrpc_interface (object):
+  class external_xmlrpc_interface(object):
     def __init__(self, program_id, auto_start=True, verbose=False):
       self.enable_xmlrpc = True
       self.xmlrpc_server = None
@@ -117,7 +117,7 @@ except ImportError :
     raise Exception("SimpleXMLRPCServer not available on this platform.")
 
 def test_server():
-  class test_module (object):
+  class test_module(object):
     def echo_test(self):
       print("hello, world!")
       sys.stdout.flush()
