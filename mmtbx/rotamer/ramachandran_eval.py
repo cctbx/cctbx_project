@@ -38,7 +38,7 @@ class RamachandranEval:
     # assert self.check_table_name(aaName)
     return self.rama_eval.get_score(aaName, phiPsi[0],phiPsi[1])
 
-  def evaluate_sites (self, aaName, phi_psi_i_seqs, sites_cart) :
+  def evaluate_sites(self, aaName, phi_psi_i_seqs, sites_cart):
     # assert self.check_table_name(aaName)
     (phi, psi) = mmtbx.rotamer.phi_psi_from_sites(
       i_seqs=phi_psi_i_seqs,

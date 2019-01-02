@@ -2,7 +2,7 @@
 from __future__ import division
 from libtbx.utils import null_out
 
-def exercise () :
+def exercise():
   from mmtbx.command_line import refine_anomalous_substructure
   from mmtbx.regression.make_fake_anomalous_data import generate_cd_cl_inputs
   mtz_file, pdb_file = generate_cd_cl_inputs(
@@ -15,5 +15,5 @@ def exercise () :
   assert (len(anom_groups) == 2)
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

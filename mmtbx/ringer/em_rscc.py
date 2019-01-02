@@ -30,7 +30,7 @@ atom_radius = 1.5
   .type = float
 """
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil_string=master_phil_str,
@@ -76,8 +76,8 @@ em_rscc.py model.pdb map.ccp4
   sites_cart = xrs.sites_cart()
   sites_frac = xrs.sites_frac()
   print >> out, "PER-RESIDUE CORRELATION:"
-  for chain in pdb_in.hierarchy.only_model().chains() :
-    for residue_group in chain.residue_groups() :
+  for chain in pdb_in.hierarchy.only_model().chains():
+    for residue_group in chain.residue_groups():
       i_seqs = residue_group.atoms().extract_i_seq()
       values_em = flex.double()
       values_fc = flex.double()
@@ -92,5 +92,5 @@ em_rscc.py model.pdb map.ccp4
       cc = flex.linear_correlation(x=values_em, y=values_fc).coefficient()
       print >> out, residue_group.id_str(), cc
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

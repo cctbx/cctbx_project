@@ -64,7 +64,7 @@ ATOM      0 HD22BASN A  60      14.897  21.766  11.714  1.00 24.09           H  
 END
 """
 
-def run_validation (pdb_file, ignore_hd=True) :
+def run_validation(pdb_file, ignore_hd=True):
   from mmtbx.validation import restraints
   import mmtbx.command_line
   cmdline = mmtbx.command_line.load_model_and_data(

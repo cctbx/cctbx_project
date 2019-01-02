@@ -306,10 +306,10 @@ L1R   C9      C25     C5          119.97 3.000
 """
 
 def run():
-  if (not libtbx.env.has_module("phenix")) :
+  if (not libtbx.env.has_module("phenix")):
     print "phenix not configured, skipping"
     return
-  elif (not libtbx.env.find_in_repositories("chem_data")) :
+  elif (not libtbx.env.find_in_repositories("chem_data")):
     print "chem_data not configured, skipping"
     return
   f=file("l1r.pdb", "wb")

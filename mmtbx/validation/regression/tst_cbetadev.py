@@ -161,5 +161,5 @@ ATOM   1196  OG BSER A 146      23.468  39.645  17.028  0.50 18.32           O  
   assert keys_3 == [[' C  ', ' CA ', ' CB ', ' N  ']]
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_cbetadev()

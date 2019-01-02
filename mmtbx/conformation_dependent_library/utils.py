@@ -51,7 +51,7 @@ def print_grid(grid, phi, psi):
   print outl
 
 # XXX duplicates scitbx/math/interpolation.h
-def interpolate_at_point (p0, p1, p2, p3, t) :
+def interpolate_at_point(p0, p1, p2, p3, t):
   """
   http://en.wikipedia.org/wiki/Cubic_Hermite_spline
   http://www.mvps.org/directx/articles/catmull
@@ -63,7 +63,7 @@ def interpolate_at_point (p0, p1, p2, p3, t) :
        (-p0 + 3.0*p1 - 3.0*p2 + p3) * t3)
   return result
 
-def interpolate_2d (values, coords) :
+def interpolate_2d(values, coords):
   """
   Given a 2-dimensional (4x4) grid of values and fractional coordinates,
   compute the value at these coordinates.  Assumes that the grid covers the
@@ -73,7 +73,7 @@ def interpolate_2d (values, coords) :
   x, y = coords
   assert (0 <= x <= 1) and (0 <= y <= 1)
   p = []
-  for i in range(0, 4) :
+  for i in range(0, 4):
     p0, p1, p2, p3 = values[i]
     p.append(interpolate_at_point(p0, p1, p2, p3, x))
   p0, p1, p2, p3 = p

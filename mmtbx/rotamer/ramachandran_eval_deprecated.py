@@ -48,7 +48,7 @@ class RamachandranEval:
         target_path=pickle_file,
         path_prefix=rama_data_dir)
       if (((pair_info.needs_update) and (not no_update)) or not
-          os.path.exists(os.path.join(rama_data_dir, pickle_file)))  :
+          os.path.exists(os.path.join(rama_data_dir, pickle_file))):
         raise Sorry(
           "chem_data/rotarama_data/*.pickle files are missing or out of date.\n"
           "  Please run\n"
@@ -71,7 +71,7 @@ class RamachandranEval:
     if (ndt is None): return None
     return ndt.valueAt(phiPsi)
 
-  def evaluate_sites (self, aaName, phi_psi_i_seqs, sites_cart) :
+  def evaluate_sites(self, aaName, phi_psi_i_seqs, sites_cart):
     assert (aaName in ["general",
                        "glycine",
                        "cis-proline",

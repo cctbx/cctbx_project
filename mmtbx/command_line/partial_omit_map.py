@@ -48,14 +48,14 @@ map_type_labels = {
   "llg" : "LLG",
 }
 
-def master_phil () :
+def master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     phil_string=master_phil_str,
     enable_automatic_twin_detection=True)
 
-class partial_omit_map (object) :
-  def __init__ (self,
+class partial_omit_map (object):
+  def __init__(self,
       fmodel,
       selection,
       occupancy,
@@ -67,11 +67,11 @@ class partial_omit_map (object) :
       optimize_binning=True,
       box_cushion_radius=2.5,
       nproc=Auto,
-      out=sys.stdout) :
+      out=sys.stdout):
     adopt_init_args(self, locals())
     import mmtbx.maps.composite_omit_map
     occ_saved = fmodel.xray_structure.scatterers().extract_occupancies()
-    if (omit_fraction == 1.0) :
+    if (omit_fraction == 1.0):
       self.omit_groups = [ mmtbx.maps.composite_omit_map.omit_regions(
         serial=1,
         selection=selection) ]
@@ -92,15 +92,15 @@ class partial_omit_map (object) :
     fmodel.xray_structure.scatterers().set_occupancies(occ_saved)
     fmodel.update_xray_structure(update_f_calc=True)
 
-  def combine_maps (self,
+  def combine_maps(self,
       flatten_background=False,
       sigma_scaling=False,
-      resolution_factor=0.25) :
-    if (self.omit_fraction == 1.0) :
+      resolution_factor=0.25):
+    if (self.omit_fraction == 1.0):
       self.map_coeffs = self.omit_map_coeffs[0]
       fft_map = self.map_coeffs.fft_map(
         resolution_factor=resolution_factor).apply_volume_scaling()
-      if (sigma_scaling) :
+      if (sigma_scaling):
         fft_map.apply_sigma_scaling()
       self.composite_map = fft_map.real_map_unpadded()
     else :
@@ -123,17 +123,17 @@ class partial_omit_map (object) :
       self.map_coeffs = composite_map_coeffs
     return self.map_coeffs
 
-  def __call__ (self, omit_group) :
+  def __call__(self, omit_group):
     from scitbx.array_family import flex
     fmodel_tmp = self.fmodel.deep_copy()
     xrs_omit = fmodel_tmp.xray_structure.deep_copy_scatterers()
     xrs_omit.set_occupancies(self.occupancy, selection=omit_group.selection)
-    if (self.selection_delete is not None) :
+    if (self.selection_delete is not None):
       selection_partial = flex.bool(xrs_omit.scatterers().size(), False)
       selection_partial.set_selected(omit_group.selection, True)
       selection_delete = selection_partial & self.selection_delete
       n_del = selection_delete.count(True)
-      if (n_del > 0) :
+      if (n_del > 0):
         #print "setting %d waters to zero occupancy" % n_del
         xrs_omit.set_occupancies(0., selection=selection_delete)
     fmodel_tmp.update_xray_structure(xrs_omit,
@@ -145,7 +145,7 @@ class partial_omit_map (object) :
       exclude_free_r_reflections=self.exclude_free_r_reflections,
       merge_anomalous=True)
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   import mmtbx.command_line
   import iotbx.map_tools
   from scitbx.array_family import flex
@@ -173,7 +173,7 @@ note that no treatment of phase bias is performed.
   selection = sel_cache.selection(params.selection)
   assert (selection.count(True) > 0)
   selection_delete = flex.bool(selection.size(), False)
-  if (params.remove_waters) :
+  if (params.remove_waters):
     selection_delete = sel_cache.selection("resname HOH")
   map_driver = partial_omit_map(
     fmodel=fmodel,
@@ -188,7 +188,7 @@ note that no treatment of phase bias is performed.
     box_cushion_radius=params.box_cushion_radius,
     nproc=params.nproc,
     out=out)
-  if (params.output.mtz_file is not None) :
+  if (params.output.mtz_file is not None):
     map_coeffs = map_driver.combine_maps(
       flatten_background=params.flatten_background,
       sigma_scaling=False,
@@ -198,7 +198,7 @@ note that no treatment of phase bias is performed.
       map_types=[params.map_type],
       file_name=params.output.mtz_file)
     print >> out, "Wrote map coefficients to %s" % params.output.mtz_file
-  if (params.output.ccp4_map is not None) :
+  if (params.output.ccp4_map is not None):
     map_driver.combine_maps(
       flatten_background=params.flatten_background,
       sigma_scaling=True,
@@ -211,5 +211,5 @@ note that no treatment of phase bias is performed.
       file_name=params.output.ccp4_map)
     print >> out, "Wrote CCP4 map to %s" % params.output.ccp4_map
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

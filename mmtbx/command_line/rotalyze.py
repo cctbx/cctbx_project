@@ -33,14 +33,14 @@ Example:
   %(prog)s model=1ubq.pdb outliers_only=True
 """ % locals()
 
-def run (args, out=sys.stdout, quiet=False) :
+def run(args, out=sys.stdout, quiet=False):
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil=get_master_phil(),
     pdb_file_def="model",
     usage_string=usage_string)
   params = cmdline.work.extract()
-  if (params.model is None) :
+  if (params.model is None):
     raise Usage(usage_string)
   pdb_in = cmdline.get_file(params.model, force_type="pdb")
   hierarchy = pdb_in.file_object.hierarchy
@@ -63,5 +63,5 @@ def run (args, out=sys.stdout, quiet=False) :
       result.display_wx_plots()
       app.MainLoop()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

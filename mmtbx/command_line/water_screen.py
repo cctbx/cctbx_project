@@ -5,7 +5,7 @@ from libtbx.utils import Sorry
 from libtbx import Auto
 import sys
 
-def master_phil () :
+def master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     enable_automatic_twin_detection=True,
@@ -24,7 +24,7 @@ nproc = Auto
   .type = int
 """)
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   usage_string = """
 mmtbx.water_screen model.pdb data.mtz [options ...]
 
@@ -45,15 +45,15 @@ environment, electron density maps, and atomic properties.
   fmodel = cmdline.fmodel
   xray_structure = cmdline.xray_structure
   params = cmdline.params
-  if (params.use_svm) :
-    if (params.elements is Auto) :
+  if (params.use_svm):
+    if (params.elements is Auto):
       raise Sorry("You must specify elements to consider when using the SVM "+
         "prediction method.")
   pdb_hierarchy = cmdline.pdb_hierarchy
   geometry = cmdline.geometry
   make_header("Inspecting water molecules", out=out)
   manager_class = None
-  if (params.use_svm) :
+  if (params.use_svm):
     manager_class = mmtbx.ions.svm.manager
   manager = mmtbx.ions.identify.create_manager(
     pdb_hierarchy = pdb_hierarchy,
@@ -67,13 +67,13 @@ environment, electron density maps, and atomic properties.
     manager_class = manager_class)
   manager.show_current_scattering_statistics(out=out)
   candidates = Auto
-  if (params.elements is not Auto) and (params.elements is not None) :
+  if (params.elements is not Auto) and (params.elements is not None):
     from cctbx.eltbx import chemical_elements
     lu = chemical_elements.proper_upper_list()
     elements = params.elements.replace(",", " ")
     candidates = elements.split()
     for elem in candidates :
-      if (elem.upper() not in lu) :
+      if (elem.upper() not in lu):
         raise Sorry("Unrecognized element '%s'" % elem)
   results = manager.analyze_waters(
     out = out,
@@ -81,5 +81,5 @@ environment, electron density maps, and atomic properties.
     candidates = candidates)
   return results, pdb_hierarchy
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

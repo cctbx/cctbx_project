@@ -11,7 +11,7 @@ from libtbx.utils import null_out
 from cStringIO import StringIO
 import sys
 
-def exercise_twin_detection (verbose=False) :
+def exercise_twin_detection(verbose=False):
   # simple model with translational pseudosymmetry
   # XXX one big disadvantage: no centric reflections!
   pdb_str = """\
@@ -116,7 +116,7 @@ END
   summary = tw.twin_summary
   assert approx_equal(summary.l_mean, 0.4989738)
   assert approx_equal(summary.patterson_height, 47.152352)
-  for k, twin_r_factor in enumerate(summary.r_obs) :
+  for k, twin_r_factor in enumerate(summary.r_obs):
     if (k == 6) : assert twin_r_factor < 0.11
     else : assert twin_r_factor > 0.3
   out2 = StringIO()
@@ -128,7 +128,7 @@ END
   out3 = StringIO()
   tw2.l_test.show(out=out3)
   assert not show_diff(out2.getvalue(), out3.getvalue())
-  if (verbose) :
+  if (verbose):
     print out.getvalue()
   # twin_results_interpretation object via cctbx.miller.array API extension
   # XXX I get slightly different numbers here versus running through the
@@ -142,6 +142,6 @@ END
     [0.019980, 0.019980, 0.211788, 0.073926, 0.079920, 0.150849, 0.389610])
   assert result.has_twinning()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_twin_detection(verbose=("--verbose" in sys.argv))
   print "OK"

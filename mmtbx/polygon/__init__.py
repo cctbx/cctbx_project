@@ -119,7 +119,7 @@ def show_histogram(data, n_slots, smooth = True):
       print "%8.4f %8.4f %d" % (t[0], t[1], int("%.0f"%t[2]))
   return histogram
 
-def convert_to_histogram(data, n_slots) :
+def convert_to_histogram(data, n_slots):
   histogram = flex.histogram(data=data, n_slots=n_slots)
   return histogram
 
@@ -152,7 +152,7 @@ def apply_default_filter(database_dict, d_min, key = "high_resolution"):
   #
   return result
 
-def load_db (file_name=None) :
+def load_db(file_name=None):
   if(file_name is None):
     file_name = libtbx.env.find_in_repositories(
       relative_path = "chem_data/polygon_data/all_mvd.pickle",
@@ -193,12 +193,12 @@ def polygon(params = master_params.extract(), d_min = None,
       histograms.append([selected_key,h])
   return histograms
 
-def get_statistics_percentiles (d_min, stats) :
+def get_statistics_percentiles(d_min, stats):
   """
   For a given set of statistics, determine their percentile ranking compared
   to other crystal structures at similar resolution.
   """
-  if (d_min is None) :
+  if (d_min is None):
     return dict([ (s, None) for s in stats.keys()  ])
   try :
     db = load_db()
@@ -207,12 +207,12 @@ def get_statistics_percentiles (d_min, stats) :
   d_min_mvd = flex.double([ float(x) for x in db['high_resolution'] ])
   sel_perm = flex.sort_permutation(d_min_mvd)
   d_min_mvd = d_min_mvd.select(sel_perm)
-  def find_value_in_list (values, value) :
+  def find_value_in_list(values, value):
     i = 0
     j = len(values) - 1
-    while (i != j) :
+    while (i != j):
       k = i + (j - i) // 2
-      if (value <= values[k]) :
+      if (value <= values[k]):
         j = k
       else :
         i = k + 1
@@ -220,24 +220,24 @@ def get_statistics_percentiles (d_min, stats) :
   index = find_value_in_list(d_min_mvd, d_min)
   sel_around = flex.bool(d_min_mvd.size(), False)
   index_tmp = index
-  while (index_tmp > 0) :
+  while (index_tmp > 0):
     d_min_other = d_min_mvd[index_tmp]
-    if (d_min_other < d_min - 0.1) :
+    if (d_min_other < d_min - 0.1):
       break
     sel_around[index_tmp] = True
     index_tmp -= 1
   index_tmp = index
-  while (index_tmp < d_min_mvd.size()) :
+  while (index_tmp < d_min_mvd.size()):
     d_min_other = d_min_mvd[index_tmp]
-    if (d_min_other > d_min + 0.1) :
+    if (d_min_other > d_min + 0.1):
       break
     sel_around[index_tmp] = True
     index_tmp += 1
   #print "%d structures around %g" % (sel_around.count(True), d_min)
   percentiles = {}
-  for stat_name in stats.keys() :
+  for stat_name in stats.keys():
     stat = stats[stat_name]
-    if (not stat_name in db) :
+    if (not stat_name in db):
       percentiles[stat_name] = None
       continue
     values = db[stat_name].select(sel_perm).select(sel_around)

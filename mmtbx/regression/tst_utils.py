@@ -214,7 +214,7 @@ TER
   for i, r in enumerate(result):
     print "selection#: %s occupancy_grad: %-15.6f"%(str(i), r[1])
 
-def exercise_get_atom_selections (verbose=False) :
+def exercise_get_atom_selections(verbose=False):
   pdb_in = """\
 CRYST1   15.000   15.000   15.000  90.00  90.00  90.00 P 212121
 HETATM  115  O   HOH A  18       3.000   5.000   5.000  1.00 10.00           O
@@ -222,7 +222,7 @@ HETATM  115  O   HOH A  19       5.000   5.000   8.000  1.00 10.00           O
 HETATM  115  O   HOH A  20       5.000   5.000   8.000  1.00 10.00           O
 END"""
   log = null_out()
-  if (verbose) :
+  if (verbose):
     log = sys.stdout
   model = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=pdb_in.splitlines(), source_info=None),
@@ -270,7 +270,7 @@ END
                   xray_structure = xrs)
   assert approx_equal(f.f_000, 0.25*125*0.687355324074+6, 1.e-3)
 
-def exercise_detect_link_problems () :
+def exercise_detect_link_problems():
   open("tmp_mmtbx_utils_asn_nag.pdb", "w").write("""\
 CRYST1  124.702  124.702   71.573  90.00  90.00  90.00 P 4 21 2
 ATOM   3196  N   ASN A 284      36.622 -19.654  35.782  1.00 19.63           N

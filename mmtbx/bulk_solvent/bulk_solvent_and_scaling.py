@@ -414,7 +414,7 @@ def kb_range(x_max, x_min, step):
   return [i/sc for i in range(int(x_min*sc), int(x_max*sc)+1, int(step*sc))]
 
 class ksol_bsol_result(object):
-  def __init__ (self, k_sol, b_sol, b_cart, r_factor):
+  def __init__(self, k_sol, b_sol, b_cart, r_factor):
     self.k_sol = k_sol
     self.b_sol = b_sol
     self.b_cart = b_cart

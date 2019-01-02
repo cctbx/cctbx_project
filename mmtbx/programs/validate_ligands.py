@@ -150,7 +150,7 @@ electron density values/CC.
             ligand_code         = ligand_code,
             reference_structure = self.params.reference_structure,
             only_segid          = self.params.only_segid)
-          if (validations is None) :
+          if (validations is None):
             raise Sorry("No ligands named '%s' found." % ligand_code)
           mmtbx.validation.ligands.show_validation_results(validations=validations,
             out     = self.logger,

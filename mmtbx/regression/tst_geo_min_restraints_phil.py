@@ -4,7 +4,7 @@ from libtbx.utils import null_out
 from libtbx.test_utils import show_diff
 from cStringIO import StringIO
 
-def exercise_metal_coordination () :
+def exercise_metal_coordination():
   pdb_in = """\
 HETATM    6  PA  ANP A   1      -2.347   2.100 -17.803  1.00 10.27           P
 HETATM    7  PB  ANP A   1       0.438   2.937 -18.222  1.00 10.85           P
@@ -169,7 +169,7 @@ geometry_restraints.edits {
   assert ("""      atom 1: \"HETATM   37 MG   MG  A   2 .*.    Mg  \"""" in
     out2.getvalue())
   for line1, line2 in zip(out1.getvalue().splitlines(),
-                          out2.getvalue().splitlines()) :
+                          out2.getvalue().splitlines()):
     line1 = line1.strip()
     line2 = line2.strip()
     if (line1.startswith("Date") or line1.startswith("PID") or
@@ -178,7 +178,7 @@ geometry_restraints.edits {
     else :
       assert not show_diff(line1, line2)
 
-def exercise_secondary_structure () :
+def exercise_secondary_structure():
   # what is tested here? Not a single assert or check.
   pdb_in_p1 = """\
 CRYST1   21.348   25.003   18.365  90.00  90.00  90.00 P 1
@@ -259,7 +259,7 @@ END
   geometry_minimization.run(args=args, log=null_out())
   # TODO phenix.pdbtools?
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   # exercise_metal_coordination()
   exercise_secondary_structure()
   print "OK"

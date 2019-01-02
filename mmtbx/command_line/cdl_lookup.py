@@ -65,8 +65,8 @@ def run2(args=(), out=sys.stdout):
   print "\nCDL values\n%s" % outl
   return restraints_values
 
-def validate_params (params) :
-  if (params.fetch_pdb.pdb_ids is None) or (len(params.fetch_pdb.pdb_ids)==0) :
+def validate_params(params):
+  if (params.fetch_pdb.pdb_ids is None) or (len(params.fetch_pdb.pdb_ids)==0):
     raise Sorry("No PDB IDs specified!")
   return True
 

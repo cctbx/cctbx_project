@@ -4,7 +4,7 @@ from libtbx.str_utils import make_header
 from libtbx import Auto
 import sys
 
-def master_phil () :
+def master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     enable_automatic_twin_detection=True,
@@ -18,7 +18,7 @@ nproc = Auto
   .type = int
 """)
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   usage_string="""\
 mmtbx.validate_ions model.pdb data.mtz [options ...]
 
@@ -54,5 +54,5 @@ environment, electron density maps, and atomic properties.
   manager.show_current_scattering_statistics(out=out)
   return manager.validate_ions(out = out, debug = params.debug)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -395,11 +395,11 @@ class map_names(object):
         s = s.replace(tmp,"")
         self.f_obs_filled = True
     if(s.count('ano')):
-      if (s.count('resid')) :
+      if (s.count('resid')):
         self.anomalous_residual = True
       else :
         self.anomalous = True
-    elif (s.count("sad") or s.count("llg")) :
+    elif (s.count("sad") or s.count("llg")):
       self.phaser_sad_llg = True
     elif(s in self.FC):
       self.k = 0
@@ -512,7 +512,7 @@ Wrong map type requested: %s
     >>> print r.format()
     mFobs-DFmodel
     """
-    if (not self.anomalous) and (not self.phaser_sad_llg) :
+    if (not self.anomalous) and (not self.phaser_sad_llg):
       if(abs(int(self.k)-self.k)<1.e-6): k = str(int(self.k))
       else: k = str(self.k)
       if(abs(int(self.n)-self.n)<1.e-6):
@@ -534,6 +534,6 @@ Wrong map type requested: %s
     else:
       assert [self.k,self.n,self.ml_map].count(None) == 3
       assert [self.f_obs_filled].count(False)==1
-      if (self.phaser_sad_llg) :
+      if (self.phaser_sad_llg):
         return "phaser_sad_llg"
       return "anomalous_difference"

@@ -237,7 +237,7 @@ class run(object):
 # Note that most of the program logic lives in the phenix tree due to
 # its use of phenix.refine.
 
-class omit_box (slots_getstate_setstate_default_initializer) :
+class omit_box (slots_getstate_setstate_default_initializer):
   """
   Defines a region in fractional coordinates containing a selection of atoms
   to be omitted.
@@ -245,66 +245,66 @@ class omit_box (slots_getstate_setstate_default_initializer) :
   __slots__ = [ "frac_min", "frac_max", "selection", "serial" ]
 
   @property
-  def n_atoms (self) :
+  def n_atoms(self):
     return len(self.selection)
 
-  def show (self, out=sys.stdout, prefix="") :
+  def show(self, out=sys.stdout, prefix=""):
     print >> out, prefix + \
       "box %d: atoms: %6d  extents: (%.4f, %.4f, %.4f) to (%.4f, %.4f, %.4f)" \
       % tuple([ self.serial, len(self.selection) ] +
         list(self.frac_min) + list(self.frac_max))
 
-class omit_regions (slots_getstate_setstate) :
+class omit_regions (slots_getstate_setstate):
   """
   Groups together multiple omit_box objects (without any implicit spatial
   relationship); this is used to reduce the total number of bins of omitted
   atoms and to make the fraction omitted per bin approximately similar.
   """
   __slots__ = [ "boxes", "selection", "serial" ]
-  def __init__ (self, serial, selection=None) :
+  def __init__(self, serial, selection=None):
     self.serial = serial
     self.boxes = []
     self.selection = selection
-    if (selection is None) :
+    if (selection is None):
       self.selection = flex.size_t()
 
   @property
-  def n_boxes (self) :
+  def n_boxes(self):
     return len(self.boxes)
 
   @property
-  def n_atoms (self) :
+  def n_atoms(self):
     return len(self.selection)
 
-  def add_box (self, box) :
+  def add_box(self, box):
     self.boxes.append(box)
     self.selection = join_selections(box.selection, self.selection)
     return self
 
-  def combine_with (self, other) :
+  def combine_with(self, other):
     for box in other.boxes :
       self.add_box(box)
     return self
 
-  def show (self, out=sys.stdout, prefix="") :
-    if (len(self.boxes) == 0) :
+  def show(self, out=sys.stdout, prefix=""):
+    if (len(self.boxes) == 0):
       print >> out, prefix + "Region %d: empty" % self.serial
     else :
       print >> out, prefix + "Region %d:" % self.serial
       for box in self.boxes :
         box.show(out=out, prefix=prefix+"  ")
 
-class omit_region_results (slots_getstate_setstate_default_initializer) :
+class omit_region_results (slots_getstate_setstate_default_initializer):
   __slots__ = [ "serial", "map_coeffs_list", "r_work", "r_free" ]
 
-def create_omit_regions (xray_structure,
+def create_omit_regions(xray_structure,
     selection=None,
     fraction_omit=0.05,
     optimize_binning=True,
     box_cushion_radius=2.5,
     even_boxing=False,
     asu_buffer_thickness=1.e-5,
-    log=None) :
+    log=None):
   """
   Divide the asymmetric unit into boxes of atoms to omit.  This will include
   a cushion around the actual omit region.  Although the step size is uniform,
@@ -317,7 +317,7 @@ def create_omit_regions (xray_structure,
   to omit along with the boxes of interest (in fractional coordinates).
   """
   if (log is None) : log = null_out()
-  if (selection is None) :
+  if (selection is None):
     selection = flex.bool(xray_structure.scatterers().size(), True)
   iselection = selection.iselection()
   boxes = []
@@ -327,7 +327,7 @@ def create_omit_regions (xray_structure,
   asu = asu_mappings.asu()
   #print asu.box_min(), asu.box_max()
   sites_asu = flex.vec3_double()
-  for i_seq, mappings in enumerate(asu_mappings.mappings()) :
+  for i_seq, mappings in enumerate(asu_mappings.mappings()):
     if (not selection[i_seq]) : continue
     for mapping in mappings :
       site_cart = mapping.mapped_site()
@@ -363,11 +363,11 @@ def create_omit_regions (xray_structure,
   sites_z = sites_1d.select(sel_base*3+2)
   x_start = x_min
   serial = 1
-  while (x_start < x_max) :
+  while (x_start < x_max):
     y_start = y_min
-    while (y_start < y_max) :
+    while (y_start < y_max):
       z_start = z_min
-      while (z_start < z_max) :
+      while (z_start < z_max):
         x_end = x_start + x_step
         y_end = y_start + y_step
         z_end = z_start + z_step
@@ -382,7 +382,7 @@ def create_omit_regions (xray_structure,
                          (sites_z >= z_min_box) & (sites_z < z_max_box))
         box_iselection = box_selection.iselection()
         n_atoms_current_box = len(box_iselection)
-        if (n_atoms_current_box > 0) :
+        if (n_atoms_current_box > 0):
           frac_max = [min(x_end, 1.0), min(y_end, 1.0), min(z_end, 1.0)]
           new_box = omit_box(
             frac_min=[x_start, y_start, z_start],
@@ -398,30 +398,30 @@ def create_omit_regions (xray_structure,
   for box in boxes :
     group = omit_regions(serial=box.serial).add_box(box)
     groups.append(group)
-  if (optimize_binning) :
+  if (optimize_binning):
     # http://en.wikipedia.org/wiki/Bin_packing_problem
     groups = sorted(groups, lambda a,b: cmp(b.n_atoms, a.n_atoms))
     while True :
       n_combined = 0
       i_group = 0
-      while i_group < len(groups) :
+      while i_group < len(groups):
         groups[i_group].serial = i_group + 1
         j_group = 0
         while j_group < i_group :
           n_atoms_combined = groups[i_group].n_atoms + groups[j_group].n_atoms
-          if (n_atoms_combined <= n_omit_per_box) :
+          if (n_atoms_combined <= n_omit_per_box):
             groups[j_group].combine_with(groups[i_group])
             del groups[i_group]
             n_combined += 1
             break
           j_group += 1
         i_group += 1
-      if (n_combined == 0) :
+      if (n_combined == 0):
         break
   assert (len(set([ g.serial for g in groups ])) == len(groups))
   return groups
 
-def join_selections (sel1, sel2) :
+def join_selections(sel1, sel2):
   intersections = sel1.intersection_i_seqs(sel2)
   unique_sel = flex.bool(len(sel1), True)
   unique_sel.set_selected(intersections[0], False)
@@ -429,14 +429,14 @@ def join_selections (sel1, sel2) :
   sel1.extend(sel2)
   return flex.sorted(sel1)
 
-def combine_maps (
+def combine_maps(
     map_arrays,
     omit_groups,
     background_map_coeffs,
     resolution_factor,
     flatten_background=False,
     sigma_scaling=False,
-    control_map=False) :
+    control_map=False):
   """
   For each box, FFT the corresponding omit map coefficients, extract the
   omit regions, and copy them to the combined map, using Marat's asymmetric
@@ -447,11 +447,11 @@ def combine_maps (
   fft_map = background_map_coeffs.fft_map(
     symmetry_flags=maptbx.use_space_group_symmetry,
     resolution_factor=resolution_factor).apply_volume_scaling()
-  if (sigma_scaling) :
+  if (sigma_scaling):
     fft_map.apply_sigma_scaling()
   background_map = fft_map.real_map_unpadded()
   #print "full map:", background_map.focus()
-  if (flatten_background) :
+  if (flatten_background):
     sel_all = flex.bool(background_map.as_1d().size(), True)
     background_map.as_1d().set_selected(sel_all, 0)
   asym_map = asu_map_ext.asymmetric_map(space_group.type(), background_map)
@@ -462,15 +462,15 @@ def combine_maps (
   #print "ORIGIN:", origin
   #print "N_REAL:", n_real_asu
   #print "M_REAL:", m_real_asu
-  if (not control_map) :
+  if (not control_map):
     f2g = maptbx.frac2grid(n_real_all)
     n = 0
-    for group, map_coeffs in zip(omit_groups, map_arrays) :
+    for group, map_coeffs in zip(omit_groups, map_arrays):
       space_group = map_coeffs.space_group()
       omit_fft_map = map_coeffs.fft_map(
         resolution_factor=resolution_factor,
         symmetry_flags=maptbx.use_space_group_symmetry).apply_volume_scaling()
-      if (sigma_scaling) :
+      if (sigma_scaling):
         omit_fft_map.apply_sigma_scaling()
       omit_map = omit_fft_map.real_map_unpadded()
       omit_asym_map = asu_map_ext.asymmetric_map(space_group.type(), omit_map)
@@ -480,9 +480,9 @@ def combine_maps (
         grid_start = tuple(f2g(box.frac_min))
         grid_end = grid_max(f2g(box.frac_max), n_real_asu)
         #print grid_start, grid_end
-        for u in range(grid_start[0], grid_end[0]+1) :
-          for v in range(grid_start[1], grid_end[1]+1) :
-            for w in range(grid_start[2], grid_end[2]+1) :
+        for u in range(grid_start[0], grid_end[0]+1):
+          for v in range(grid_start[1], grid_end[1]+1):
+            for w in range(grid_start[2], grid_end[2]+1):
               try :
                 asym_map.data()[(u,v,w)] = omit_asym_map.data()[(u,v,w)]
               except IndexError :
@@ -490,6 +490,6 @@ def combine_maps (
                   (str(n_real_asu), str(origin), str((u,v,w))))
   return asym_map.map_for_fft()
 
-def grid_max (grid_coords, n_real) :
+def grid_max(grid_coords, n_real):
   return (min(grid_coords[0], n_real[0]-1), min(grid_coords[1], n_real[1]-1),
           min(grid_coords[2], n_real[2]-1))

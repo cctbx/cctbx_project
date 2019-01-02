@@ -191,7 +191,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     wx.PostEvent(O, wx_viewer.ViewerUpdateEvent(
       data=O.tardy_model.sites_moved()))
 
-  def OnUpdate(O, event) :
+  def OnUpdate(O, event):
     sites_moved = event.data
     for i in xrange(len(sites_moved)):
       O.points[i] = sites_moved[i]

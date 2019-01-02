@@ -36,8 +36,8 @@ atom_output = False
 
 TURN_START = 0 # XXX see comment below
 
-class hbond (object) :
-  def __init__ (self, residue1, residue2, energy) : # atom_group objects
+class hbond (object):
+  def __init__(self, residue1, residue2, energy) : # atom_group objects
     adopt_init_args(self, locals())
     self.i_res = residue1.atoms()[0].tmp
     self.j_res = residue2.atoms()[0].tmp
@@ -47,7 +47,7 @@ class hbond (object) :
     self.within_chain = (residue1.parent().parent() ==
                          residue2.parent().parent())
 
-  def show (self, out=None, prefix="") :
+  def show(self, out=None, prefix=""):
     if (out is None) : out = sys.stdout
     print >> out, "%s%s %s %s O --> %s %s %s N : %6.3f [%d,%d]" % (prefix,
       self.residue1.parent().parent().id,
@@ -58,24 +58,24 @@ class hbond (object) :
       self.residue2.parent().resid(),
       self.energy, self.i_res, self.j_res)
 
-  def get_n_turn (self) :
-    if (self.within_chain) :
+  def get_n_turn(self):
+    if (self.within_chain):
       n_turn = self.j_res - self.i_res
-      if (n_turn > 2) and (n_turn < 6) :
+      if (n_turn > 2) and (n_turn < 6):
         return n_turn
     return None
 
-  def set_helical (self, flag=True) :
+  def set_helical(self, flag=True):
     self._helix_flag = flag
 
-  def is_helical (self) :
+  def is_helical(self):
     return self._helix_flag
 
-  def is_same_chain (self, other) :
+  def is_same_chain(self, other):
     if (other is None) : return False
     return self.residue1.parent().parent() == other.residue1.parent().parent()
 
-  def as_pymol_cmd (self) :
+  def as_pymol_cmd(self):
     sel_fmt = "chain '%s' and resi %s and name %s"
     sel1 = sel_fmt % (self.residue1.parent().parent().id.strip(),
                       self.residue1.parent().resid(), "O")
@@ -83,35 +83,35 @@ class hbond (object) :
                       self.residue2.parent().resid(), "N")
     return "dist (%s), (%s)" % (sel1, sel2)
 
-  def is_in_ladder (self, L) :
+  def is_in_ladder(self, L):
     if (L is None) : return False
     i_res_start, i_res_end, j_res_start, j_res_end = L.get_residue_range()
     if (((self.i_res >= i_res_start) and (self.i_res <= i_res_end) and
          (self.j_res >= j_res_start) and (self.j_res <= j_res_end)) or
         ((self.i_res >= j_res_start) and (self.i_res <= j_res_end) and
-         (self.j_res >= i_res_start) and (self.j_res <= i_res_end))) :
+         (self.j_res >= i_res_start) and (self.j_res <= i_res_end))):
       return True
     return False
 
-  def is_bridge (self, other) :
+  def is_bridge(self, other):
     if (((other.j_res == self.i_res) and
          (other.i_res == self._j_res_offset)) or
         ((other.i_res == self.j_res) and
-         (other.j_res == self._i_res_offset))) :
+         (other.j_res == self._i_res_offset))):
       return 1 # parallel
     elif (((other.i_res == self.j_res) and (other.j_res == self.i_res)) or
           ((other.i_res == self._j_res_offset) and
-           (other.j_res == self._i_res_offset))) :
+           (other.j_res == self._i_res_offset))):
       return -1 # antiparallel
     return 0
 
-class bridge (object) :
-  def __init__ (self, hbond1, hbond2, direction, i_res=None, j_res=None) :
+class bridge (object):
+  def __init__(self, hbond1, hbond2, direction, i_res=None, j_res=None):
     adopt_init_args(self, locals())
     assert ([i_res,j_res].count(None) in [0,2])
-    if (i_res is None) :
-      if (direction == 1) :
-        if (hbond1.i_res == hbond2.j_res) :
+    if (i_res is None):
+      if (direction == 1):
+        if (hbond1.i_res == hbond2.j_res):
           i_res = hbond1.i_res
           j_res = hbond1.j_res - 1
         else :
@@ -119,7 +119,7 @@ class bridge (object) :
           i_res = hbond1.i_res + 1
           j_res = hbond1.j_res
       else :
-        if (hbond1.i_res == hbond2.j_res) :
+        if (hbond1.i_res == hbond2.j_res):
           i_res = hbond1.i_res
           j_res = hbond2.i_res
         else :
@@ -128,10 +128,10 @@ class bridge (object) :
       self.i_res = min(i_res, j_res)
       self.j_res = max(i_res, j_res)
 
-  def contains_hbond (self, hbond) :
+  def contains_hbond(self, hbond):
     return (hbond == self.hbond1) or (hbond == self.hbond2)
 
-  def invert (self) :
+  def invert(self):
     return bridge(
       hbond1=self.hbond2,
       hbond2=self.hbond1,
@@ -139,11 +139,11 @@ class bridge (object) :
       i_res=self.j_res,
       j_res=self.i_res)
 
-  def show (self, out=None, prefix="", show_direction=True) :
+  def show(self, out=None, prefix="", show_direction=True):
     if (out is None) : out = sys.stdout
     direction = ""
-    if (show_direction) :
-      if (self.direction == 1) :
+    if (show_direction):
+      if (self.direction == 1):
         direction = " (parallel)"
       else :
         direction = " (antiparallel)"
@@ -152,24 +152,24 @@ class bridge (object) :
     self.hbond1.show(out=out, prefix=prefix+"  ")
     self.hbond2.show(out=out, prefix=prefix+"  ")
 
-class ladder (object) :
-  def __init__ (self) :
+class ladder (object):
+  def __init__(self):
     self.bridges = []
     self.bridge_i_res = []
     self.direction = None
 
-  def add_bridge (self, b) :
-    if (self.direction is None) :
+  def add_bridge(self, b):
+    if (self.direction is None):
       self.direction = b.direction
     else :
       assert (self.direction == b.direction)
-    if (not (b.i_res,b.j_res) in self.bridge_i_res) :
+    if (not (b.i_res,b.j_res) in self.bridge_i_res):
       self.bridges.append(b)
       self.bridge_i_res.append((b.i_res, b.j_res))
 
-  def show (self, out=None, prefix="") :
+  def show(self, out=None, prefix=""):
     if (out is None) : out = sys.stdout
-    if (self.direction == 1) :
+    if (self.direction == 1):
       direction = "parallel"
     else :
       direction = "antiparallel"
@@ -177,7 +177,7 @@ class ladder (object) :
     for bridge in self.bridges :
       bridge.show(out, prefix=prefix+"  ", show_direction=False)
 
-  def get_initial_strand (self, sheet_id, pdb_labels) :
+  def get_initial_strand(self, sheet_id, pdb_labels):
     from iotbx.pdb import secondary_structure
     start_i_res = min(self.bridges[0].i_res, self.bridges[-1].i_res)
     end_i_res = max(self.bridges[0].i_res, self.bridges[-1].i_res)
@@ -197,13 +197,13 @@ class ladder (object) :
       sense=0)
     return first_strand
 
-  def get_next_strand (self, sheet_id, strand_id, pdb_labels,
-      next_ladder=None) :
+  def get_next_strand(self, sheet_id, strand_id, pdb_labels,
+      next_ladder=None):
     from iotbx.pdb import secondary_structure
     start_i_res = end_i_res = None
     next_ladder_i_start = sys.maxint
     next_ladder_i_end = - sys.maxint
-    if (next_ladder is not None) :
+    if (next_ladder is not None):
       next_ladder_i_start = min(next_ladder.bridges[0].i_res,
                                 next_ladder.bridges[-1].i_res)
       next_ladder_i_end = max(next_ladder.bridges[-1].i_res,
@@ -212,7 +212,7 @@ class ladder (object) :
     j_res_end = max(self.bridges[-1].j_res, self.bridges[0].j_res)
     start_i_res = min(j_res_start, next_ladder_i_start)
     end_i_res = max(j_res_end, next_ladder_i_end)
-    if (start_i_res > end_i_res) :
+    if (start_i_res > end_i_res):
       out = cStringIO.StringIO()
       self.show(out=out)
       raise RuntimeError("start_i_res(%d) > end_i_res(%d):\n%s" %
@@ -233,15 +233,15 @@ class ladder (object) :
       sense=self.direction)
     return strand
 
-  def get_residue_range (self) :
+  def get_residue_range(self):
     i_res_start = min(self.bridges[0].i_res, self.bridges[-1].i_res)
     i_res_end = max(self.bridges[0].i_res, self.bridges[-1].i_res)
     j_res_start = min(self.bridges[0].j_res, self.bridges[-1].j_res)
     j_res_end = max(self.bridges[0].j_res, self.bridges[-1].j_res)
     return (i_res_start, i_res_end, j_res_start, j_res_end)
 
-  def get_strand_register (self, hbonds, pdb_labels, prev_ladder=None,
-      is_last_strand=False) :
+  def get_strand_register(self, hbonds, pdb_labels, prev_ladder=None,
+      is_last_strand=False):
     from iotbx.pdb import secondary_structure
     (i_res_start, i_res_end, j_res_start, j_res_end) = self.get_residue_range()
     #print i_res_start, i_res_end, j_res_start, j_res_end
@@ -256,7 +256,7 @@ class ladder (object) :
       #hbond.show(prefix="HB:  ")
       if (self.bridges[0].contains_hbond(hbond) or
           self.bridges[-1].contains_hbond(hbond) or
-          hbond.is_in_ladder(self)) :
+          hbond.is_in_ladder(self)):
         #print hbond.i_res, hbond.j_res
         #print min_i_res, i_res_start, i_res_end
         if ((hbond.i_res < min_i_res) and (hbond.i_res >= i_res_start) and
@@ -276,9 +276,9 @@ class ladder (object) :
           prev_atom = n_label
           curr_i_res = start_hbond.i_res
           prev_i_res = start_hbond.j_res
-    if (start_hbond is None) and (prev_ladder is not None) :
+    if (start_hbond is None) and (prev_ladder is not None):
       for hbond in hbonds :
-        if (hbond.is_in_ladder(prev_ladder)) :
+        if (hbond.is_in_ladder(prev_ladder)):
           if ((hbond.i_res < min_i_res) and (hbond.i_res >= i_res_start) and
               (hbond.i_res <= i_res_end)) : # O atom
             start_hbond = hbond
@@ -295,7 +295,7 @@ class ladder (object) :
             prev_atom = n_label
             curr_i_res = start_hbond.j_res
             prev_i_res = start_hbond.i_res
-    if (start_hbond is None) :
+    if (start_hbond is None):
       out = cStringIO.StringIO()
       self.show(out=out)
       raise RuntimeError("Can't find start of H-bonding:\n%s" % out.getvalue())
@@ -314,7 +314,7 @@ class ladder (object) :
       prev_resseq=prev_res.resseq,
       prev_icode=prev_res.icode)
 
-def get_pdb_fields (atom_group) :
+def get_pdb_fields(atom_group):
   residue_group = atom_group.parent()
   chain = residue_group.parent()
   return group_args(
@@ -323,20 +323,20 @@ def get_pdb_fields (atom_group) :
     resseq=residue_group.resseq_as_int(),
     icode=residue_group.icode)
 
-class dssp (object) :
-  def __init__ (self,
+class dssp (object):
+  def __init__(self,
           pdb_hierarchy,
           xray_structure=None,
           pdb_atoms=None,
           params=None,
           out=None,
-          log=None) :
+          log=None):
     t0 = time.time()
     if (out is None) : out = sys.stdout
     if (log is None) : log = null_out()
     if (params is None) : params = master_phil.extract()
     if (pdb_atoms is None) : pdb_atoms = pdb_hierarchy.atoms()
-    if (xray_structure is None) :
+    if (xray_structure is None):
       xray_structure = pdb_hierarchy.extract_xray_structure()
     self.hbonds = []
     self.pdb_hierarchy = pdb_hierarchy
@@ -353,94 +353,94 @@ class dssp (object) :
     self.pdb_labels = []
     # first mark atoms in each residue with position in sequence
     k = 0
-    for chain in pdb_hierarchy.only_model().chains() :
+    for chain in pdb_hierarchy.only_model().chains():
       last_resseq = None
-      for residue_group in chain.residue_groups() :
+      for residue_group in chain.residue_groups():
         resseq = residue_group.resseq_as_int()
-        if (last_resseq is not None) and ((resseq - last_resseq) > 1) :
+        if (last_resseq is not None) and ((resseq - last_resseq) > 1):
           self.pdb_labels.append(None)
           k += 1 # extra increment to handle probable chain breaks
         last_resseq = resseq
         atom_group = residue_group.atom_groups()[0]
         self.pdb_labels.append(get_pdb_fields(atom_group))
-        for atom in atom_group.atoms() :
-          #if (atom.name.strip() in ["N","C","O"]) :
+        for atom in atom_group.atoms():
+          #if (atom.name.strip() in ["N","C","O"]):
           atom.tmp = k
         k += 1
     # now iterate over backbone O atoms and look for H-bonds
     # XXX this loop takes up most of the runtime
     t1 = time.time()
-    if (self.params.verbosity >= 1) :
+    if (self.params.verbosity >= 1):
       print >> log, "Time to initialize: %.3fs" % (t1-t0)
     t_process = 0
     t_find = 0
-    for chain in pdb_hierarchy.only_model().chains() :
-      if (not chain.is_protein()) :
+    for chain in pdb_hierarchy.only_model().chains():
+      if (not chain.is_protein()):
         continue
-      for residue_group in chain.residue_groups() :
+      for residue_group in chain.residue_groups():
         atom_group = residue_group.atom_groups()[0]
         ag_atoms = atom_group.atoms()
         for atom in ag_atoms :
-          if (atom.name == " O  ") :
+          if (atom.name == " O  "):
             tf0 = time.time()
             n_atoms = self.find_nearby_backbone_n(atom)
             t_find += time.time() - tf0
             tp0 = time.time()
             for n_atom in n_atoms :
               hbond = self.process_o_n_interaction(atom, n_atom)
-              if (hbond is not None) :
+              if (hbond is not None):
                 self.hbonds.append(hbond)
             t_process += time.time() - tp0
             break
     t2 = time.time()
-    if (self.params.verbosity >= 1) :
+    if (self.params.verbosity >= 1):
       print >> log, "Time to find H-bonds: %.3f" % (t2 - t1)
       print >> log, "  local atom detection: %.3f" % t_find
       print >> log, "  analysis: %.3f" % t_process
-    if (self.params.verbosity >= 2) :
+    if (self.params.verbosity >= 2):
       print >> log, "All hydrogen bonds:"
       for hbond in self.hbonds :
         hbond.show(log, prefix="  ")
-    if (self.params.pymol_script is not None) :
+    if (self.params.pymol_script is not None):
       self._pml = open(self.params.pymol_script, "w")
     else :
       self._pml = null_out()
     t1 = time.time()
     self.helices = self.find_helices()
     t2 = time.time()
-    if (self.params.verbosity >= 1) :
+    if (self.params.verbosity >= 1):
       print >> log, "Time to find helices: %.3f" % (t2 - t1)
     self.sheets = self.find_sheets()
     t3 = time.time()
-    if (self.params.verbosity >= 1) :
+    if (self.params.verbosity >= 1):
       print >> log, "Time to find sheets: %.3f" % (t3 - t2)
     self.show(out=out)
     self._pml.close()
     self.log = None
 
-  def show (self, out=None) :
+  def show(self, out=None):
     if (out is None) : out = sys.stdout
     for helix in self.helices :
       print >> out, helix.as_pdb_str()
     for sheet in self.sheets :
       print >> out, sheet.as_pdb_str()
 
-  def get_annotation (self) :
+  def get_annotation(self):
     from iotbx.pdb import secondary_structure
     return secondary_structure.annotation(
       helices=self.helices,
       sheets=self.sheets)
 
-  def find_nearby_backbone_n (self, o_atom) :
+  def find_nearby_backbone_n(self, o_atom):
     from scitbx.matrix import col
     n_atoms = []
     asu_dict = self.asu_table[o_atom.i_seq]
-    for j_seq, j_sym_groups in asu_dict.items() :
+    for j_seq, j_sym_groups in asu_dict.items():
       other = self.pdb_atoms[j_seq]
-      if (other.name.strip() == "N") :
+      if (other.name.strip() == "N"):
         n_atom = other
         n_atom_group = n_atom.parent()
-        if (n_atom_group.resname == "PRO") :
+        if (n_atom_group.resname == "PRO"):
           continue
         o_chain = o_atom.parent().parent().parent()
         other_chain = n_atom.parent().parent().parent()
@@ -448,15 +448,15 @@ class dssp (object) :
         n_resseq = n_atom_group.parent().resseq_as_int()
         # filter out supposed H-bonds between residues very close in sequence;
         # have to rely on the resseq being realistic here...
-        if (o_chain == other_chain) and (abs(n_resseq - o_resseq) < 3) :
+        if (o_chain == other_chain) and (abs(n_resseq - o_resseq) < 3):
           continue
         dxyz = abs(col(n_atom.xyz) - col(o_atom.xyz))
-        if (dxyz > self.params.distance_cutoff) :
+        if (dxyz > self.params.distance_cutoff):
           continue
         n_atoms.append(n_atom)
     return n_atoms
 
-  def process_o_n_interaction (self, o_atom, n_atom) :
+  def process_o_n_interaction(self, o_atom, n_atom):
     import boost.python
     ext = boost.python.import_ext("mmtbx_dssp_ext")
     energy = ext.get_o_n_hbond_energy(O=o_atom, N=n_atom)
@@ -467,13 +467,13 @@ class dssp (object) :
     #  h_xyz=h_xyz,
     #  o_xyz=col(o_atom.xyz),
     #  n_xyz=col(n_atom.xyz))
-    if (energy is not None) and (energy < self.params.energy_cutoff) :
+    if (energy is not None) and (energy < self.params.energy_cutoff):
       return hbond(residue1=o_atom.parent(),
                    residue2=n_atom.parent(),
                    energy=energy)
     return None
 
-  def find_helices (self) :
+  def find_helices(self):
     from iotbx.pdb import secondary_structure
     turns = []
     i_prev = j_prev = -sys.maxint
@@ -482,11 +482,11 @@ class dssp (object) :
     prev_hbond = None
     for hb in self.hbonds :
       n_turn = hb.get_n_turn()
-      if (n_turn is not None) :
+      if (n_turn is not None):
         if ((not hb.is_same_chain(prev_hbond)) or
             (n_turn != prev_n_turn) or
-            (hb.i_res != i_prev + 1)) :
-          if (len(current_turn) > 0) :
+            (hb.i_res != i_prev + 1)):
+          if (len(current_turn) > 0):
             turns.append(current_turn)
           current_turn = [hb]
         else :
@@ -494,9 +494,9 @@ class dssp (object) :
         i_prev = hb.i_res
         prev_n_turn = n_turn
         prev_hbond = hb
-    if (len(current_turn) > 0) :
+    if (len(current_turn) > 0):
       turns.append(current_turn)
-    if (self.params.verbosity >= 2) :
+    if (self.params.verbosity >= 2):
       print >> self.log, "%d basic turns" % len(turns)
       for turn in turns :
         print >> self.log, "TURN:"
@@ -506,27 +506,27 @@ class dssp (object) :
     helix_classes = { 4:1, 5:3, 3:5 } # alpha, 3_10, pi
     ignore_previous = False
     prev_turn = None
-    for k, turn in enumerate(turns) :
+    for k, turn in enumerate(turns):
       turn_start = TURN_START
       n_turn = turn[0].get_n_turn()
-      if (len(turn) < 2) : #and (n_turn != 3) :
+      if (len(turn) < 2) : #and (n_turn != 3):
         prev_turn = None # ignore when processing next turn
         continue
-      if (prev_turn is not None) :
+      if (prev_turn is not None):
         # XXX if previous turn overlaps with this one (and was not discarded),
         # skip to next.  I'm not actually sure this is correct...
         last_hbond_prev_turn = prev_turn[-1]
         first_hbond_curr_turn = turn[turn_start]
         if ((first_hbond_curr_turn.is_same_chain(last_hbond_prev_turn)) and
-            (first_hbond_curr_turn.i_res < last_hbond_prev_turn.j_res)) :
+            (first_hbond_curr_turn.i_res < last_hbond_prev_turn.j_res)):
           turn_start += 1
-          while (turn_start < len(turn)) :
-            if (turn[turn_start].i_res <= last_hbond_prev_turn.j_res) :
+          while (turn_start < len(turn)):
+            if (turn[turn_start].i_res <= last_hbond_prev_turn.j_res):
               turn_start += 1
             else :
               break
           prev_turn = None
-          if (turn_start == len(turn)) or (len(turn[turn_start:]) < 4) :
+          if (turn_start == len(turn)) or (len(turn[turn_start:]) < 4):
             continue
       for hb in turn :
         hb.set_helical()
@@ -556,7 +556,7 @@ class dssp (object) :
         print >> self._pml, hb.as_pymol_cmd()
     return helices
 
-  def find_sheets (self) :
+  def find_sheets(self):
     from iotbx.pdb import secondary_structure
     i_max = len(self.hbonds) - 1
     # first collect bridges
@@ -564,24 +564,24 @@ class dssp (object) :
     # for mostly-alpha structures, but it could probably be made faster
     bridges = []
     t1 = time.time()
-    for k, hbond1 in enumerate(self.hbonds) :
+    for k, hbond1 in enumerate(self.hbonds):
       if hbond1.is_helical() : continue
       n_bridges = 0
       for hbond2 in self.hbonds[k+1:] :
         if hbond2.is_helical() : continue
         is_bridge = hbond1.is_bridge(hbond2)
-        if (is_bridge != 0) :
+        if (is_bridge != 0):
           B = bridge(hbond1, hbond2, is_bridge)
           bridges.append(B)
           n_bridges += 1
-          if (n_bridges == 2) :
+          if (n_bridges == 2):
             break
         #  break
     t2 = time.time()
-    if (self.params.verbosity >= 1) :
+    if (self.params.verbosity >= 1):
       print >> self.log, "Time to find bridges: %.3fs" % (t2-t1)
     bridges.sort(lambda a,b: cmp(a.i_res, b.i_res))
-    if (self.params.verbosity >= 2) :
+    if (self.params.verbosity >= 2):
       for B in bridges :
         B.show(out=self.log)
     # now collect indices of all residues involved in bridges, and identify
@@ -593,38 +593,38 @@ class dssp (object) :
     curr_strand = []
     prev_i_res = -sys.maxint
     for i_res in all_indices :
-      if (i_res == prev_i_res + 1) :
+      if (i_res == prev_i_res + 1):
         curr_strand.append(i_res)
       else :
-        if (len(curr_strand) > 1) :
+        if (len(curr_strand) > 1):
           strands.append(curr_strand)
         curr_strand = [i_res]
       prev_i_res = i_res
-    if (len(curr_strand) > 0) :
+    if (len(curr_strand) > 0):
       strands.append(curr_strand)
     # figure out which strands are connected by bridges
     connections = []
     n_connected = 0
-    for u, strand in enumerate(strands) :
+    for u, strand in enumerate(strands):
       linked = set([])
       for i_res in strand :
         for B in bridges :
           other_i_res = None
-          if (B.i_res == i_res) :
+          if (B.i_res == i_res):
             other_i_res = B.j_res
-          elif (B.j_res == i_res) :
+          elif (B.j_res == i_res):
             other_i_res = B.i_res
-          if (other_i_res is not None) :
-            for v, other_strand in enumerate(strands) :
-              if (u == v) :
+          if (other_i_res is not None):
+            for v, other_strand in enumerate(strands):
+              if (u == v):
                 continue
-              elif (other_i_res in other_strand) :
+              elif (other_i_res in other_strand):
                 linked.add(v)
                 break
       #assert (len(linked) in [1,2])
-      if (len(linked) > 0) :
+      if (len(linked) > 0):
         n_connected += 1
-        if (len(linked) > 2) :
+        if (len(linked) > 2):
           # XXX does this need to be the difference from 2?
           n_connected += 1
       connections.append(linked)
@@ -643,21 +643,21 @@ class dssp (object) :
     n_left_last = -sys.maxint
     start_on_next_strand = False
     #print connections
-    while (n_processed < n_connected) :
+    while (n_processed < n_connected):
       u = 0
       n_left = 0
-      while (u < len(connections)) :
+      while (u < len(connections)):
         linked = connections[u]
-        if (len(linked) == 1) or (start_on_next_strand and len(linked) != 0) :
+        if (len(linked) == 1) or (start_on_next_strand and len(linked) != 0):
           L = ladder()
           strand = strands[u]
           max_connecting_strand_length = 0
           best_strand_index = v = None
-          if (len(linked) > 1) :
+          if (len(linked) > 1):
             # multiple strands linked, so pick the longest one
-            for v_ in sorted(linked) :
+            for v_ in sorted(linked):
               other_ = strands[v_]
-              if (len(other_) > max_connecting_strand_length) :
+              if (len(other_) > max_connecting_strand_length):
                 best_strand_index = v_
                 max_connecting_strand_length = len(other_)
             assert (best_strand_index is not None)
@@ -669,9 +669,9 @@ class dssp (object) :
           other_strand = strands[v]
           for i_res in strand :
             for B in bridges :
-              if ((B.j_res in strand) and (B.i_res in other_strand)) :
+              if ((B.j_res in strand) and (B.i_res in other_strand)):
                 L.add_bridge(B.invert())
-              elif ((B.i_res in strand) and (B.j_res in other_strand)) :
+              elif ((B.i_res in strand) and (B.j_res in other_strand)):
                 L.add_bridge(B)
           sheet_ladders.append(L)
           next_linked = connections[v]
@@ -679,7 +679,7 @@ class dssp (object) :
           next_linked.remove(u)
           n_processed += 1
           u = v
-          if (len(next_linked) == 0) :
+          if (len(next_linked) == 0):
             all_sheet_ladders.append(sheet_ladders)
             sheet_ladders = []
             n_processed += 1
@@ -688,7 +688,7 @@ class dssp (object) :
         else :
           u += 1
           n_left += 1
-      if (n_left == n_left_last) :
+      if (n_left == n_left_last):
         # XXX this means that the last loop did not process any connections,
         # because there are no strands with only a single connection.  this
         # could mean a beta barrel - any other explanations?
@@ -698,9 +698,9 @@ class dssp (object) :
     #print connections
     # convert collections of ladders into SHEET objects
     sheets = []
-    for k, ladders in enumerate(all_sheet_ladders) :
+    for k, ladders in enumerate(all_sheet_ladders):
       sheet_id = k+1
-      if (self.params.verbosity >= 2) :
+      if (self.params.verbosity >= 2):
         print >> self.log, "SHEET %d:" % sheet_id
         for L in ladders :
           L.show(self.log, prefix="  ")
@@ -714,9 +714,9 @@ class dssp (object) :
       current_sheet.add_registration(None)
       sheets.append(current_sheet)
       prev_ladder = None
-      for i_ladder, L in enumerate(ladders) :
+      for i_ladder, L in enumerate(ladders):
         next_ladder = None
-        if (i_ladder < len(ladders) - 1) :
+        if (i_ladder < len(ladders) - 1):
           next_ladder = ladders[i_ladder+1]
         next_strand = L.get_next_strand(
           sheet_id=sheet_id,
@@ -729,8 +729,8 @@ class dssp (object) :
           prev_ladder=prev_ladder,
           is_last_strand=(next_ladder is None))
         prev_ladder = L
-        if (register is None) :
-          if (self.params.verbosity >= 1) :
+        if (register is None):
+          if (self.params.verbosity >= 1):
             print >> self.log, "missing register:"
             L.show(self.log)
           break

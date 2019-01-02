@@ -1,7 +1,7 @@
 from __future__ import division
 
 
-def exercise () :
+def exercise():
   from mmtbx.refinement.print_statistics import coordinate_shifts
   import iotbx.pdb
   hierarchy_start = iotbx.pdb.input(source_info=None, lines="""\
@@ -63,6 +63,6 @@ END""").construct_hierarchy()
   shifts = a3.extract_b()
   assert (shifts[-1] == -1.0)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

@@ -165,7 +165,7 @@ ncs_group {
   nprox = ncs_manager.get_n_proxies()
   assert nprox == 40, "got %d instead of 40" % nprox
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   exercise_1(mon_lib_srv, ener_lib)

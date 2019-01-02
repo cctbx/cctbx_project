@@ -87,7 +87,7 @@ Example:
 >>> mmtbx.nonbonded_overlaps xxxx.pdb verbose=false
 """
 
-def run (args, out=None) :
+def run(args, out=None):
   """
   Calculates number of non-bonded atoms overlaps in a model
 
@@ -127,7 +127,7 @@ def run (args, out=None) :
     cif_file_def="cif",
     usage_string=usage_string)
   params = cmdline.work.extract()
-  if (params.model is None) :
+  if (params.model is None):
     raise Usage(usage_string)
 
   pdb_file_name = [x for x in args if x.endswith('.pdb')]
@@ -191,6 +191,6 @@ def run (args, out=None) :
     print >> out,', '.join(out_list)
   return nb_overlaps
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])
 

@@ -70,7 +70,7 @@ for key in locals().keys():
 
 
 def run(local):
-  if (curated_repository_dir is None) :
+  if (curated_repository_dir is None):
     raise Sorry("chem_data/curated_datasets is not available.")
   print '\nCurated Repository Dir',curated_repository_dir
   for key in local.keys():

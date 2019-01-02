@@ -109,7 +109,7 @@ class den_restraints(object):
                params,
                pdb_hierarchy_ref=None,
                log=None,
-               den_proxies=None) :
+               den_proxies=None):
     if(log is None): log = sys.stdout
     self.log = log
     self.den_proxies = den_proxies
@@ -509,7 +509,7 @@ class den_restraints(object):
     #   f.write(vec)
     f.close()
 
-  def proxy_select (self, n_seq, selection) :
+  def proxy_select(self, n_seq, selection):
     assert (self.den_proxies is not None)
     return den_restraints(
       pdb_hierarchy=self.pdb_hierarchy,

@@ -262,7 +262,7 @@ def run(args, log = sys.stdout):
   # XXX: pre-processing for GUI; duplicates some of mmtbx.utils
   sources = []
   for arg in args :
-    if os.path.isfile(arg) :
+    if os.path.isfile(arg):
       try :
         file_phil = iotbx.phil.parse(file_name=arg)
       except KeyboardInterrupt :
@@ -340,12 +340,12 @@ def run(args, log = sys.stdout):
   cryst1 = pdb_inp.crystal_symmetry_from_cryst1()
   if(cryst1 is None and miller_array is not None):
     cryst1 = miller_array.crystal_symmetry()
-    if (cryst1 is not None) and (params.generate_fake_p1_symmetry) :
+    if (cryst1 is not None) and (params.generate_fake_p1_symmetry):
       raise Sorry("The input reference data already define crystal symmetry; "+
         "you may not use this in combination with the option "+
         "generate_fake_p1_symmetry=True.")
-  if (not params.generate_fake_p1_symmetry) :
-    if(cryst1 is None) :
+  if (not params.generate_fake_p1_symmetry):
+    if(cryst1 is None):
       raise Sorry(
         "CRYST1 record in input PDB file is incomplete or missing.  "+
         "If you want the program to generate P1 symmetry automatically, set "+
@@ -361,10 +361,10 @@ def run(args, log = sys.stdout):
   # atom selection later
   xray_structure = pdb_hierarchy.extract_xray_structure(
     crystal_symmetry = cryst1)
-  if (cryst1 is None) :
+  if (cryst1 is None):
     cryst1 = xray_structure.crystal_symmetry()
-  if (miller_array is not None) :
-    if (miller_array.crystal_symmetry() is None) :
+  if (miller_array is not None):
+    if (miller_array.crystal_symmetry() is None):
       miller_array = miller_array.customized_copy(crystal_symmetry=cryst1)
   xray_structure.show_summary(f = log, prefix="  ")
   if(len(params.anomalous_scatterers.group) != 0):
@@ -374,8 +374,8 @@ def run(args, log = sys.stdout):
       pdb_hierarchy              = pdb_hierarchy,
       xray_structure             = xray_structure,
       anomalous_scatterer_groups = params.anomalous_scatterers.group)
-  elif (params.wavelength is not None) :
-    if (params.scattering_table == "neutron") :
+  elif (params.wavelength is not None):
+    if (params.scattering_table == "neutron"):
       raise Sorry("Wavelength parameter not supported when the neutron "+
         "scattering table is used.")
     print >> log, "Setting inelastic form factors for wavelength = %g" % \
@@ -411,50 +411,50 @@ def run(args, log = sys.stdout):
   print >> log, "-"*79
   return ofn
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher (runtime_utils.target_with_save_result):
+  def run(self):
     return run(args=list(self.args), log=sys.stdout)
 
-def validate_params (params, callback=None) :
+def validate_params(params, callback=None):
   if len(params.pdb_file) == 0 :
     raise Sorry("You must provide at least one model file to use for "+
       "F(model) calculations.")
-  if (params.high_resolution is None) :
-    if (params.reference_file is None) :
+  if (params.high_resolution is None):
+    if (params.reference_file is None):
       raise Sorry("Please specify a high-resolution cutoff.")
-  elif (params.reference_file is not None) :
-    if (params.data_column_label is None) :
+  elif (params.reference_file is not None):
+    if (params.data_column_label is None):
       raise Sorry("Please select a column label to use in the reference "+
         "data file.")
     elif ([params.high_resolution, params.low_resolution].count(None) != 2):
       raise Sorry("High resolution and low resolution must be undefined "+
                   "if reflection data file is given.")
-  if (params.output.file_name is None) :
+  if (params.output.file_name is None):
     raise Sorry("Please specify an output file.")
   validate_params_command_line(params)
 
 def validate_params_command_line(params):
-  if (params.output.type == "complex") and (params.add_sigmas) :
+  if (params.output.type == "complex") and (params.add_sigmas):
     raise Sorry("Sigma values only supported when the output type is 'real'.")
   if (    params.low_resolution is not None
       and params.high_resolution is not None):
     if params.low_resolution < params.high_resolution :
       raise Sorry("Low-resolution cutoff must be larger than the high-"+
         "resolution cutoff.")
-  if (params.output.obs_type == "intensities") :
-    if (params.output.type == "complex") :
+  if (params.output.obs_type == "intensities"):
+    if (params.output.type == "complex"):
       raise Sorry("Output type must be 'real' when intensities specified "+
         "for obs_type.")
-    if (not params.output.label.upper().startswith("I")) :
+    if (not params.output.label.upper().startswith("I")):
       raise Sorry("Output label must start with 'I' (any case) when "+
         "intensities specified for obs_type (was: %s)." % params.output.label)
-    if (params.output.format != "mtz") :
+    if (params.output.format != "mtz"):
       raise Sorry("Output format must be 'mtz' when intensities specified.")
   return True
 
-def finish_job (result) :
+def finish_job(result):
   output_files = []
-  if (result is not None) and (os.path.isfile(result)) :
+  if (result is not None) and (os.path.isfile(result)):
     output_files.append((os.path.abspath(result), "MTZ file"))
   return (output_files, [])
 

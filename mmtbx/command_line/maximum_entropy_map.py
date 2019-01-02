@@ -66,7 +66,7 @@ gui_output_dir = None
 include scope libtbx.phil.interface.tracking_params
 """
 
-def master_params () :
+def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=True)
 
 def broadcast(m, log):
@@ -164,7 +164,7 @@ def run(args, log):
   broadcast(m="Output MEM map coefficients", log = log)
   ind = max(0,reff[0].rfind("."))
   ofn = params.output_file_name
-  if (ofn is None) :
+  if (ofn is None):
     ofn = reff[0]+"_mem.mtz" if ind==0 else reff[0][:ind]+"_mem.mtz"
   print >> log, "  Output file name:", ofn
   result.write_mtz_file(file_name = ofn,
@@ -173,24 +173,24 @@ def run(args, log):
   broadcast(m="All done", log=log)
   return os.path.abspath(ofn)
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher (runtime_utils.target_with_save_result):
+  def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
     return run(args=list(self.args), log=sys.stdout)
 
-def validate_params (params) :
-  if (params.hkl_file_name is None) :
+def validate_params(params):
+  if (params.hkl_file_name is None):
     raise Sorry("Please specify an MTZ file containing map coefficients.")
-  elif (params.label is None) :
+  elif (params.label is None):
     raise Sorry("No column labels specified.")
-  if (params.resolution_factor > 0.5) :
+  if (params.resolution_factor > 0.5):
     raise Sorry("The grid resolution factor must be a decimal number <= 0.5.")
   return True
 
-def finish_job (result) :
+def finish_job(result):
   output_files, stats = [], []
-  if (result is not None) and (os.path.isfile(result)) :
+  if (result is not None) and (os.path.isfile(result)):
     output_files.append((result, "Maximum entropy map"))
   return output_files, stats
 

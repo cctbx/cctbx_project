@@ -117,7 +117,7 @@ def make_atoms(n_atoms):
   assert n_atoms>0
   atoms = []
   for i in xrange(n_atoms):
-    if i < len(Elements) :
+    if i < len(Elements):
       atoms.append( Elements[i] )
     else:
       atoms.append("C")
@@ -424,7 +424,7 @@ def get_resolution(pdb_input, default_resolution):
   else:
     return res[0]
 
-def cci_vetted_tests( options) :
+def cci_vetted_tests( options):
   print "CCI tests,  \n options="
   print options, "\n"
   n_files = options.cci
@@ -506,7 +506,7 @@ def run():
     for line in tmp_file.readlines(): # newlines retained
       groups.append( line.strip() ) # removes whitespace in the begining and end
     tmp_file.close()
-  if (opts.space_group is None) & (len(groups)==0) :
+  if (opts.space_group is None) & (len(groups)==0):
     groups.extend(SpaceGroups)
   elif opts.space_group == "all" :
     for isg in xrange(1,231):

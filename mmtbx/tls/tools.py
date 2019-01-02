@@ -763,7 +763,7 @@ class tls_refinement(object):
                               tls_selections = selections,
                               number_of_macro_cycles = 100,
                               max_iterations         = 100)
-    if (verbose) :
+    if (verbose):
       show_tls(tlsos = tlsos, text = prefix+" start parameters",out = out)
     for macro_cycle in range(1, number_of_macro_cycles+1):
       print >> out
@@ -807,7 +807,7 @@ class tls_refinement(object):
           out                              = out,
           number_of_macro_cycles_for_tls_from_uanisos = 10)
       else: tlsos = minimized.tlsos_result
-    if (verbose) :
+    if (verbose):
       show_tls(tlsos = tlsos,
                text = "TLS refinement: final values", out = out)
     self.tlsos = tlsos
@@ -988,16 +988,16 @@ def finite_differences_grads_of_xray_target_wrt_tls(target_functor,
     derivative_S.append(dS)
   return derivative_T,derivative_L,derivative_S
 
-def water_in_tls_selections (
+def water_in_tls_selections(
     tls_selections,
-    pdb_hierarchy) :
+    pdb_hierarchy):
   cache = pdb_hierarchy.atom_selection_cache()
   water_sel = cache.selection("resname HOH")
   tls_sel = flex.bool(water_sel.size(), False)
   for sele_str in tls_selections :
     group_sel = cache.selection(sele_str)
     tls_sel |= group_sel
-  if ((tls_sel & water_sel).count(True) > 0) :
+  if ((tls_sel & water_sel).count(True) > 0):
     return True
   return False
 

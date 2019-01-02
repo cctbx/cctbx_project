@@ -19,7 +19,7 @@ from libtbx.utils import null_out
 import sys
 import os
 
-def exercise_basic () :
+def exercise_basic():
   t = ramachandran.load_tables()["ala"]
   assert approx_equal(t.get_score(0.0,0.0), -26.16, eps=0.01)
   assert approx_equal(t.get_score(-60,120), 10.41, eps=0.01)
@@ -148,7 +148,7 @@ ATOM     61  CZ3 TRP A   4       0.960   7.272   2.810  1.00  0.00           C
 ATOM     62  CH2 TRP A   4       0.788   6.958   1.455  1.00  0.00           C
 END
 """
-def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
+def exercise_lbfgs_simple(mon_lib_srv, ener_lib, verbose=False):
   # three peptides:
   #  1 = poly-ALA, favored
   #  2 = poly-ALA, outlier
@@ -158,7 +158,7 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
   # but it's still good and we're starting from an excellent score anyway.
   #
   residuals = [0.00168766995882, 170.84797160, 161.5214609]
-  for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
+  for i, peptide in enumerate([pdb1, pdb2, pdb3]):
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
     log = StringIO()
@@ -179,7 +179,7 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
     assert approx_equal(residual_an, residuals[i], eps=0.001)
   if verbose :
     print ""
-  for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
+  for i, peptide in enumerate([pdb1, pdb2, pdb3]):
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
     o = benchmark_structure(pdb_in, mon_lib_srv, ener_lib, verbose)
@@ -199,11 +199,11 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
       print "         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi2, psi2, r2)
       print ""
 
-def exercise_lbfgs_big (verbose=False) :
+def exercise_lbfgs_big(verbose=False):
   file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3mku.pdb",
     test=os.path.isfile)
-  if (file_name is None) :
+  if (file_name is None):
     print "Skipping big test."
     return
   pdb_in = iotbx.pdb.input(source_info="peptide",
@@ -212,7 +212,7 @@ def exercise_lbfgs_big (verbose=False) :
   if verbose :
     show_results(o, "3mhk")
 
-def show_results (o, structure_name) :
+def show_results(o, structure_name):
   print structure_name
   print " before: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
     % (o.b0, o.a0, o.r0.percent_outliers, o.r0.percent_favored)
@@ -222,7 +222,7 @@ def show_results (o, structure_name) :
     % (o.b2, o.a2, o.r2.percent_outliers, o.r2.percent_favored)
   print ""
 
-def benchmark_structure (pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0) :
+def benchmark_structure(pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0):
   log = StringIO()
 
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -482,7 +482,7 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
     # relative_path="phenix_regression/pdb/3mku.pdb",
     relative_path="phenix_regression/pdb/fab_a_cut.pdb",
     test=os.path.isfile)
-  if (file_name is None) :
+  if (file_name is None):
     print "Skipping test."
     return
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -516,7 +516,7 @@ def exercise_allowed_outliers():
   file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3ifk.pdb",
     test=os.path.isfile)
-  if (file_name is None) :
+  if (file_name is None):
     print "Skipping test."
     return
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -596,7 +596,7 @@ def exercise_allowed_outliers_emsley_filling():
   file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3ifk.pdb",
     test=os.path.isfile)
-  if (file_name is None) :
+  if (file_name is None):
     print "Skipping test."
     return
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()

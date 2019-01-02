@@ -19,28 +19,28 @@ __real_space_attr__ = [
   "fmodel",
 ]
 
-class residue_real_space (residue) :
+class residue_real_space (residue):
   # CC is 'score' attribute
   __slots__ = residue.__slots__ + __real_space_attr__
 
   @property
-  def cc (self) :
+  def cc(self):
     return self.score
 
   @staticmethod
-  def header () :
+  def header():
     return "%-20s  %6s  %4s  %6s  %6s  %5s" % ("atom", "b_iso", "occ",
       "2Fo-Fc", "Fmodel", "CC")
 
-  def as_string (self) :
+  def as_string(self):
     return "%-20s  %6.2f  %4.2f  %6.2f  %6.2f  %5.3f" % (self.id_str(),
       self.b_iso, self.occupancy, self.two_fofc, self.fmodel, self.score)
 
-  def as_table_row_phenix (self) :
+  def as_table_row_phenix(self):
     return [ self.id_str(), self.b_iso, self.occupancy, self.two_fofc,
              self.fmodel, self.score ]
 
-class data_statistics (slots_getstate_setstate) :
+class data_statistics (slots_getstate_setstate):
   __slots__ = [
     "d_max",
     "d_min",
@@ -64,8 +64,8 @@ class data_statistics (slots_getstate_setstate) :
     "n_free_outer",
     "anomalous_flag",
   ]
-  def __init__ (self, fmodel, raw_data=None, n_bins=10,
-      count_anomalous_pairs_separately=False) :
+  def __init__(self, fmodel, raw_data=None, n_bins=10,
+      count_anomalous_pairs_separately=False):
     # FIXME n_bins should be automatic by default
     f_obs = fmodel.f_obs().deep_copy()
     r_free_flags = fmodel.r_free_flags().deep_copy()
@@ -74,15 +74,15 @@ class data_statistics (slots_getstate_setstate) :
     self.d_min = f_obs.d_min()
     self.info = fmodel.info(n_bins=n_bins)
     self.wavelength = None
-    if (raw_data is not None) :
+    if (raw_data is not None):
       self.wavelength = getattr(raw_data.info(), "wavelength", None)
       raw_data = raw_data.map_to_asu().eliminate_sys_absent()
       raw_data = raw_data.resolution_filter(d_max=self.d_max, d_min=self.d_min)
-      if (raw_data.anomalous_flag() and not self.anomalous_flag) :
+      if (raw_data.anomalous_flag() and not self.anomalous_flag):
         raw_data = raw_data.average_bijvoet_mates()
     else :
       raw_data = f_obs
-    if (not count_anomalous_pairs_separately) and (self.anomalous_flag) :
+    if (not count_anomalous_pairs_separately) and (self.anomalous_flag):
       f_obs = f_obs.average_bijvoet_mates()
       raw_data = raw_data.average_bijvoet_mates()
       r_free_flags = r_free_flags.average_bijvoet_mates()
@@ -116,15 +116,15 @@ class data_statistics (slots_getstate_setstate) :
       d_min=self.d_min_outer)
     self.n_free_outer = r_free_flags_outer.data().count(True)
 
-  def show_summary (self, out=sys.stdout, prefix="") :
+  def show_summary(self, out=sys.stdout, prefix=""):
     print >> out, "%sHigh resolution       = %7.3f" % (prefix, self.d_min)
     print >> out, "%sR-work                = %8.4f" % (prefix, self.r_work)
     print >> out, "%sR-free                = %8.4f" % (prefix, self.r_free)
 
-  def show (self, out=sys.stdout, prefix="") :
-    def fv (fs, val) :
+  def show(self, out=sys.stdout, prefix=""):
+    def fv(fs, val):
       return format_value(fs, val, replace_none_with="----")
-    if (not self.wavelength in [None, 0]) :
+    if (not self.wavelength in [None, 0]):
       print >> out, "%sWavelength                 = %.4g" % (prefix,
         self.wavelength)
     print >> out, "%sResolution range           = %7.3f - %.3f (%.3f - %.3f)" \
@@ -142,7 +142,7 @@ class data_statistics (slots_getstate_setstate) :
     self.info.show_rwork_rfree_number_completeness(prefix=prefix, out=out,
       title="By resolution bin:")
 
-class real_space (validation) :
+class real_space (validation):
   """
   Real-space correlation calculation for residues
   """
@@ -155,9 +155,9 @@ class real_space (validation) :
   gui_formats = [ "%s", "%6.2f", "%4.2f", "%6.2f", "%6.2f", "%5.3f" ]
   wx_column_widths = [120] * 6
 
-  def get_result_class (self) : return residue_real_space
+  def get_result_class(self) : return residue_real_space
 
-  def __init__ (self, model, fmodel, cc_min=0.8, molprobity_map_params=None) :
+  def __init__(self, model, fmodel, cc_min=0.8, molprobity_map_params=None):
 
     from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
     from mmtbx import real_space_correlation
@@ -229,7 +229,7 @@ class real_space (validation) :
       raise
     else :
       assert ( (self.overall_rsc is not None) and (rsc is not None) )
-      for i, result_ in enumerate(rsc) :
+      for i, result_ in enumerate(rsc):
         if (use_maps): # new rsc calculation (mmtbx/maps/model_map_cc.py)
           result = residue_real_space(
             chain_id=result_.chain_id,
@@ -256,7 +256,7 @@ class real_space (validation) :
             two_fofc=result_.map_value_2,
             outlier=result_.cc < cc_min,
             xyz=result_.residue.atoms().extract_xyz().mean())
-        if result.is_outlier() :
+        if result.is_outlier():
           self.n_outliers += 1
         # XXX unlike other validation metrics, we always save the results for
         # the real-space correlation, since these are used as the basis for
@@ -271,7 +271,7 @@ class real_space (validation) :
         self.everything += self.water
         self.results = self.protein
 
-  def add_water (self, water=None):
+  def add_water(self, water=None):
     """
     Function for incorporating water results from water.py
     """
@@ -279,20 +279,20 @@ class real_space (validation) :
       self.water = water
       self.everything += water
 
-  def show_summary (self, out=sys.stdout, prefix="") :
+  def show_summary(self, out=sys.stdout, prefix=""):
     print >> out, prefix +\
       "%d residues (including water) with CC(Fc,2mFo-DFc) < 0.8" % \
       self.n_outliers
 
-  def show (self, out=sys.stdout, prefix="  ", verbose=True) :
-    if (self.n_outliers > 0) :
+  def show(self, out=sys.stdout, prefix="  ", verbose=True):
+    if (self.n_outliers > 0):
       print >> out, prefix + self.get_result_class().header()
-      for result in (self.protein + self.other) :
-        if result.is_outlier() :
+      for result in (self.protein + self.other):
+        if result.is_outlier():
           print >> out, prefix + str(result)
     self.show_summary(out=out, prefix=prefix)
 
-def merging_and_model_statistics (
+def merging_and_model_statistics(
     f_obs,
     f_model,
     r_free_flags,
@@ -300,7 +300,7 @@ def merging_and_model_statistics (
     n_bins=20,
     sigma_filtering=Auto,
     anomalous=False,
-    use_internal_variance=True) :
+    use_internal_variance=True):
   """
   Compute merging statistics - CC* in particular - together with measures of
   model quality using reciprocal-space data (R-factors and CCs).  See Karplus
@@ -342,7 +342,7 @@ def merging_and_model_statistics (
     if (not free_sel.anomalous_flag()):
       free_sel = free_sel.generate_bijvoet_mates()
 
-  if (free_sel.data().count(True) == 0) :
+  if (free_sel.data().count(True) == 0):
     raise Sorry("R-free array does not select any reflections.  To calculate "+
       "CC* and related statistics, a valid set of R-free flags must be used.")
   work_sel = free_sel.customized_copy(data=~free_sel.data())

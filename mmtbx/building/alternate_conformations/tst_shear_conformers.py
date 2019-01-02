@@ -22,10 +22,10 @@ torsion_search {
   include scope mmtbx.building.alternate_conformations.conformer_generation.torsion_search_params
 }"""
 
-def master_phil () :
+def master_phil():
   return libtbx.phil.parse(master_params, process_includes=True)
 
-def exercise () :
+def exercise():
   from mmtbx.building.alternate_conformations import conformer_generation
   from mmtbx.monomer_library import server
   import iotbx.pdb.hierarchy
@@ -44,15 +44,15 @@ def exercise () :
   xrs = pdb_in.input.xray_structure_simple()
   models = []
   prev_res = next_res = next_next_res = None
-  for chain in hierarchy.only_model().chains() :
+  for chain in hierarchy.only_model().chains():
     residue_groups = chain.residue_groups()
     n_rg = len(residue_groups) # should be 4
-    for i_res, residue_group in enumerate(residue_groups) :
+    for i_res, residue_group in enumerate(residue_groups):
       sites_orig = sites_cart.deep_copy()
       next_res = next_next_res = None
-      if (i_res < (n_rg - 1)) :
+      if (i_res < (n_rg - 1)):
         next_res = residue_groups[i_res+1].atom_groups()[0]
-      if (i_res < (n_rg - 2)) :
+      if (i_res < (n_rg - 2)):
         next_next_res = residue_groups[i_res+2].atom_groups()[0]
       atom_groups = residue_group.atom_groups()
       primary_conf = atom_groups[0]
@@ -72,9 +72,9 @@ def exercise () :
           conf.show_summary(out=out)
           confs.append(conf)
       prev_res = primary_conf
-      if (confs is None) :
+      if (confs is None):
         continue
-      if (i_res == 1) :
+      if (i_res == 1):
         assert ("""  A ILE   7     None     4.0      mt""")
       for conf in confs :
         sites_new = sites_cart.set_selected(conf.sites_selection,
@@ -82,13 +82,13 @@ def exercise () :
         pdb_atoms.set_xyz(sites_new)
         models.append(hierarchy.only_model().detached_copy())
   new_hierarchy = iotbx.pdb.hierarchy.root()
-  for i_model, conf in enumerate(models) :
+  for i_model, conf in enumerate(models):
     conf.id = str(i_model + 1)
     new_hierarchy.append_model(conf)
   open("shear_frag_naive_ensemble.pdb", "w").write(
     new_hierarchy.as_pdb_string())
 
-def generate_inputs () :
+def generate_inputs():
   import iotbx.pdb.hierarchy
   pdb_in = iotbx.pdb.hierarchy.input(source_info=None, pdb_string="""\
 REMARK derived from shear region in crambin (1ejg)
@@ -154,18 +154,18 @@ END
   f = open("shear_frag.pdb", "w")
   f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
   f.close()
-  for chain in pdb_in.hierarchy.only_model().chains() :
-    for residue_group in chain.residue_groups() :
+  for chain in pdb_in.hierarchy.only_model().chains():
+    for residue_group in chain.residue_groups():
       atom_groups = residue_group.atom_groups()
-      if (len(atom_groups) > 1) :
+      if (len(atom_groups) > 1):
         residue_group.remove_atom_group(atom_groups[1])
         atom_groups[0].altloc = " "
-        for atom in residue_group.atoms() :
+        for atom in residue_group.atoms():
           atom.occ = 1.0
   f = open("shear_frag_single.pdb", "w")
   f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
   f.close()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

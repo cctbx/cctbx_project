@@ -256,7 +256,7 @@ class alignment(object):
       similarity_function=blosum50,
       is_similar_threshold=is_similar_threshold)
 
-  def calculate_sequence_identity (self, skip_chars=()) :
+  def calculate_sequence_identity(self, skip_chars=()):
     """
     Returns fractional sequence identity, defined here as the number of matches
     between the aligned sequences divided by the number of valid residues in
@@ -266,13 +266,13 @@ class alignment(object):
     skip_chars = list(skip_chars)
     skip_chars.append("-")
     n_matches = n_total = 0
-    for a, b in zip(self.a, self.b) :
+    for a, b in zip(self.a, self.b):
       # XXX should gaps in 'b' be discounted?
       if (not a in skip_chars) : # and (not b in skip_cars)
         n_total += 1
-        if (a == b) :
+        if (a == b):
           n_matches += 1
-    if (n_total == 0) or (n_matches == 0) :
+    if (n_total == 0) or (n_matches == 0):
       return 0.
     return n_matches / n_total
 
@@ -301,7 +301,7 @@ class alignment(object):
     print >> out
     if comment is not None:
       print >> out, comment
-    if (show_ruler) :
+    if (show_ruler):
       print >> out, "              "+ruler
       print >> out
 
@@ -486,8 +486,8 @@ def exercise_similarity_scores():
   for m in [dayhoff_mdm78_similarity_scores, blosum50_similarity_scores]:
     assert flex.double(m).matrix_is_symmetric(relative_epsilon=1e-15)
 
-class pairwise_global (ext.pairwise_global) :
-  def __init__ (self, seq1, seq2) :
+class pairwise_global (ext.pairwise_global):
+  def __init__(self, seq1, seq2):
     seq1 = seq1.upper()
     seq2 = seq2.upper()
     ext.pairwise_global.__init__(self, seq1, seq2)
@@ -526,7 +526,7 @@ class pairwise_global_wrapper(pairwise_global):
 
     return overall_ranges1,overall_ranges2
 
-  def calculate_sequence_identity (self, skip_chars=()) :
+  def calculate_sequence_identity(self, skip_chars=()):
     a1 = self.result1
     a2 = self.result2
     assert len(a1) == len(a2)
@@ -534,8 +534,8 @@ class pairwise_global_wrapper(pairwise_global):
     n_matching = 0
     skip_chars = list(skip_chars)
     skip_chars.append("-")
-    for i in range(len(a1)) :
-      if (not a1[i] in skip_chars) and (not a2[i] in skip_chars) :
+    for i in range(len(a1)):
+      if (not a1[i] in skip_chars) and (not a2[i] in skip_chars):
         n_aligned_residues += 1
         if a1[i] == a2[i] :
           n_matching += 1

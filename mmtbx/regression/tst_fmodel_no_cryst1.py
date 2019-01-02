@@ -3,7 +3,7 @@ from __future__ import division
 from libtbx import easy_run
 import os
 
-def exercise () :
+def exercise():
   open("tmp_fmodel_fake_p1.pdb", "w").write("""\
 ATOM     47  N   TYR A   7       8.292   1.817   6.147  1.00 14.70           N
 ATOM     48  CA  TYR A   7       9.159   2.144   7.299  1.00 15.18           C
@@ -37,5 +37,5 @@ ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
   #print result.return_code
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

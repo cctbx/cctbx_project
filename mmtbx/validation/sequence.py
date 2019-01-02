@@ -18,17 +18,17 @@ NUCLEIC_ACID = 1
 UNK_AA = "U"
 UNK_NA = "K"
 
-def get_mean_coordinate (sites) :
-  if (len(sites) == 0) :
+def get_mean_coordinate(sites):
+  if (len(sites) == 0):
     return None
-  elif (len(sites) == 1) :
+  elif (len(sites) == 1):
     return sites[0]
   else :
     from scitbx.array_family import flex
     v = flex.vec3_double(sites)
     return v.mean()
 
-class chain (object) :
+class chain (object):
   """
   Stores information on a protein or nucleic acid chain, its alignment to
   the target sequence, and the coordinates of each residue.  For command-line
@@ -36,8 +36,8 @@ class chain (object) :
   fed to the sequence/alignment viewer (wxtbx.sequence_view), which controls
   the graphics window(s).
   """
-  def __init__ (self, chain_id, sequence, resids, chain_type, sec_str=None,
-                resnames=None) :
+  def __init__(self, chain_id, sequence, resids, chain_type, sec_str=None,
+                resnames=None):
     adopt_init_args(self, locals())
     assert (chain_type in [PROTEIN, NUCLEIC_ACID])
     assert (len(sequence) == len(resids))
@@ -57,62 +57,62 @@ class chain (object) :
     self._table = None
     self._flag_indices = []
 
-  def set_alignment (self, alignment, sequence_name, sequence_id) :
+  def set_alignment(self, alignment, sequence_name, sequence_id):
     assert (len(alignment.a) == len(alignment.b)) and (len(alignment.a) > 0)
     self.alignment = alignment
     self.sequence_name = sequence_name
     self.sequence_id = sequence_id
-    if (self.sec_str is not None) :
+    if (self.sec_str is not None):
       raw_sec_str = list(self.sec_str)
     else :
       raw_sec_str = list("-" * len(self.sequence))
     self.sec_str = ""
-    if (self.sequence_name in [None, ""]) :
+    if (self.sequence_name in [None, ""]):
       self.sequence_name = "(unnamed)"
-    if (alignment is not None) :
+    if (alignment is not None):
       self.identity = alignment.calculate_sequence_identity(skip_chars=['X'])
     i_aln = i_resid = 0
     chain_started = False
     prev_char = None
     alignment_length = len(alignment.a)
-    while (i_aln < alignment_length) :
+    while (i_aln < alignment_length):
       symbol_pdb = alignment.a[i_aln]
       symbol_seq = alignment.b[i_aln]
       resid = None
-      if (symbol_pdb != '-') :
+      if (symbol_pdb != '-'):
         resid = self.resids[i_resid]
         self.sec_str += raw_sec_str[i_resid]
         i_resid += 1
       else :
         self.sec_str += "-"
       j_resid = i_aln - self.n_missing_start
-      if (symbol_pdb == 'X') :
-        if (not symbol_seq in ["X","-"]) :
+      if (symbol_pdb == 'X'):
+        if (not symbol_seq in ["X","-"]):
           self.n_missing += 1
           if (not chain_started and
               (self.resnames is None or self.resnames[j_resid] is None)):
             self.n_missing_start += 1
-          elif (prev_char != 'X') :
+          elif (prev_char != 'X'):
             self.n_gaps += 1
-      elif (symbol_pdb == '-') :
+      elif (symbol_pdb == '-'):
         if chain_started:
-          if (j_resid < len(self.resids)) :
+          if (j_resid < len(self.resids)):
             self.resids.insert(j_resid, None)
             raw_sec_str.insert(j_resid, "-")
             if self.resnames is not None:
               self.resnames.insert(j_resid, None)
             i_resid += 1
-        elif (not symbol_seq in ['-']) :
+        elif (not symbol_seq in ['-']):
           self.n_missing += 1
           self.n_missing_start += 1
-      if (not symbol_pdb in ["X","-"]) :
+      if (not symbol_pdb in ["X","-"]):
         chain_started = True
-        if (symbol_seq == "-") :
+        if (symbol_seq == "-"):
           self.extra.append(resid)
           self._flag_indices.append(i_aln)
-        elif (not symbol_seq in ["X","-"]) and (symbol_seq != symbol_pdb) :
+        elif (not symbol_seq in ["X","-"]) and (symbol_seq != symbol_pdb):
           if (((symbol_pdb == UNK_AA) and (self.chain_type == PROTEIN)) or
-              ((symbol_pdb == UNK_NA) and (self.chain_type == NUCLEIC_ACID))) :
+              ((symbol_pdb == UNK_NA) and (self.chain_type == NUCLEIC_ACID))):
             self.unknown.append(resid)
           else :
             self.mismatch.append(resid)
@@ -122,18 +122,18 @@ class chain (object) :
       i_aln += 1
     i_aln = alignment_length - 1
     matches = alignment.matches()
-    while (alignment.a[i_aln] in ["X", "-"]) :
+    while (alignment.a[i_aln] in ["X", "-"]):
       i_resid = i_aln - self.n_missing_start
       if (matches[i_aln] == " " and
           (self.resnames is None or
            (i_resid >= len(self.resnames) or
-           self.resnames[i_resid] is None))) :
+           self.resnames[i_resid] is None))):
         self.n_missing_end += 1
         self.n_missing += 1
       i_aln -= 1
     assert (len(self.sec_str) == len(alignment.a))
 
-  def extract_coordinates (self, pdb_chain) :
+  def extract_coordinates(self, pdb_chain):
     """
     Collect the coordinate of the central atom (CA or P) in each residue,
     padding the array with None so it matches the sequence and resid arrays.
@@ -141,32 +141,32 @@ class chain (object) :
     assert (self.chain_id == pdb_chain.id)
     self._table = []
     k = 0
-    for residue_group in pdb_chain.residue_groups() :
+    for residue_group in pdb_chain.residue_groups():
       resid = residue_group.resid()
-      while (self.resids[k] != resid) :
+      while (self.resids[k] != resid):
         self._xyz.append(None)
         k += 1
       res_class = None
-      if (resid in self.extra) :
+      if (resid in self.extra):
         res_class = "not in sequence"
-      elif (resid in self.mismatch) :
+      elif (resid in self.mismatch):
         res_class = "mismatch to sequence"
-      elif (resid in self.unknown) :
+      elif (resid in self.unknown):
         res_class = "special residue"
       xyz = None
-      for atom in residue_group.atoms() :
-        if (atom.name == " CA ") or (atom.name == " P  ") :
+      for atom in residue_group.atoms():
+        if (atom.name == " CA ") or (atom.name == " P  "):
           xyz = atom.xyz
           break
       else :
         print "WARNING: can't find center of residue %s" % resid
         xyz = residue_group.atoms()[0].xyz
       self._xyz.append(xyz)
-      if (res_class is not None) :
+      if (res_class is not None):
         self._table.append([self.chain_id, resid, res_class,
           "chain '%s' and resid %s" % (self.chain_id, resid), xyz])
       k += 1
-    while (k < len(self.resids)) :
+    while (k < len(self.resids)):
       self._xyz.append(None)
       k += 1
     assert (len(self.resids) == len(self._xyz))
@@ -188,49 +188,49 @@ class chain (object) :
   def extract_residue_groups(self, pdb_chain):
     self.residue_groups = list(self.iter_residue_groups(pdb_chain))
 
-  def get_outliers_table (self) :
+  def get_outliers_table(self):
     """Used in PHENIX validation GUI"""
     return self._table
 
-  def get_highlighted_residues (self) :
+  def get_highlighted_residues(self):
     """Used for wxtbx.sequence_view to highlight mismatches, etc."""
     return self._flag_indices
 
-  def get_coordinates_for_alignment_range (self, i1, i2) :
+  def get_coordinates_for_alignment_range(self, i1, i2):
     assert (len(self._xyz) > 0)
     k = 0
     sites = []
-    for j, a in enumerate(self.alignment.a) :
-      if (j > i2) :
+    for j, a in enumerate(self.alignment.a):
+      if (j > i2):
         break
-      elif (j >= i1) :
+      elif (j >= i1):
         sites.append(self._xyz[k])
-      if (a != '-') :
+      if (a != '-'):
         k += 1
     return sites
 
-  def get_mean_coordinate_for_alignment_range (self, *args, **kwds) :
+  def get_mean_coordinate_for_alignment_range(self, *args, **kwds):
     sites = self.get_coordinates_for_alignment_range(*args, **kwds)
     return get_mean_coordinate(sites)
 
-  def get_coordinates_for_alignment_ranges (self, ranges) :
+  def get_coordinates_for_alignment_ranges(self, ranges):
     sites = []
     for i1, i2 in ranges :
       sites.extend(self.get_coordinates_for_alignment_range(i1,i2))
     return sites
 
-  def get_mean_coordinate_for_alignment_ranges (self, *args, **kwds) :
+  def get_mean_coordinate_for_alignment_ranges(self, *args, **kwds):
     sites = self.get_coordinates_for_alignment_ranges(*args, **kwds)
     return get_mean_coordinate(sites)
 
-  def get_alignment (self, include_sec_str=False) :
-    if (include_sec_str) :
+  def get_alignment(self, include_sec_str=False):
+    if (include_sec_str):
       return [self.alignment.a, self.alignment.b, self.sec_str]
     else :
       return [self.alignment.a, self.alignment.b]
 
-  def show_summary (self, out, verbose=True) :
-    def print_resids (resids) :
+  def show_summary(self, out, verbose=True):
+    def print_resids(resids):
       assert (len(resids) > 0)
       w = 0
       line = " ".join([ resid.strip() for resid in resids ])
@@ -239,42 +239,42 @@ class chain (object) :
       for line in lines[1:] :
         print >> out, "                 %s" % line
     print >> out, "Chain '%s':" % self.chain_id
-    if (self.alignment is None) :
+    if (self.alignment is None):
       print >> out, "  No appropriate sequence match found!"
     else :
       print >> out, "  best matching sequence: %s" % self.sequence_name
       print >> out, "  sequence identity: %.2f%%" % (self.identity*100)
-      if (self.n_missing > 0) :
+      if (self.n_missing > 0):
         print >> out, "  %d residue(s) missing from PDB chain (%d at start, %d at end)" % (self.n_missing, self.n_missing_start, self.n_missing_end)
-      if (self.n_gaps > 0) :
+      if (self.n_gaps > 0):
         print >> out, "  %d gap(s) in chain" % self.n_gaps
-      if (len(self.mismatch) > 0) :
+      if (len(self.mismatch) > 0):
         print >> out, "  %d mismatches to sequence" % len(self.mismatch)
         print_resids(self.mismatch)
-      if (len(self.extra) > 0) :
+      if (len(self.extra) > 0):
         print >> out, "  %d residues not found in sequence" % len(self.extra)
         print_resids(self.extra)
-      if (len(self.unknown) > 0) :
+      if (len(self.unknown) > 0):
         print >> out, "  %d residues of unknown type" % len(self.unknown)
         print_resids(self.unknown)
-      if (verbose) :
+      if (verbose):
         self.alignment.pretty_print(out=out,
           block_size=60,
           top_name="PDB file",
           bottom_name="sequence",
           show_ruler=False)
 
-class validation (object) :
-  def __init__ (self, pdb_hierarchy, sequences, params=None, log=None,
+class validation (object):
+  def __init__(self, pdb_hierarchy, sequences, params=None, log=None,
       nproc=Auto, include_secondary_structure=False,
       extract_coordinates=False, extract_residue_groups=False,
-      minimum_identity=0) :
+      minimum_identity=0):
     assert (len(sequences) > 0)
     for seq_object in sequences :
       assert (seq_object.sequence != "")
-    if (log is None) :
+    if (log is None):
       log = sys.stdout
-    if (params is None) :
+    if (params is None):
       params = master_phil.extract()
     self.n_protein = 0
     self.n_rna_dna = 0
@@ -283,20 +283,20 @@ class validation (object) :
     self.minimum_identity = minimum_identity
     self.sequences = sequences
     self.sequence_mappings = [ None ] * len(sequences)
-    for i_seq in range(1, len(sequences)) :
+    for i_seq in range(1, len(sequences)):
       seq_obj1 = sequences[i_seq]
-      for j_seq in range(0, len(sequences)) :
-        if (j_seq == i_seq) :
+      for j_seq in range(0, len(sequences)):
+        if (j_seq == i_seq):
           break
         else :
           seq_obj2 = sequences[j_seq]
-          if (seq_obj1.sequence == seq_obj2.sequence) :
+          if (seq_obj1.sequence == seq_obj2.sequence):
             self.sequence_mappings[i_seq ] = j_seq
             break
-    if (len(pdb_hierarchy.models()) > 1) :
+    if (len(pdb_hierarchy.models()) > 1):
       raise Sorry("Multi-model PDB files not supported.")
     helix_selection = sheet_selection = None
-    if (include_secondary_structure) :
+    if (include_secondary_structure):
       import mmtbx.secondary_structure
       ssm = mmtbx.secondary_structure.manager(
         pdb_hierarchy=pdb_hierarchy,
@@ -304,15 +304,15 @@ class validation (object) :
       helix_selection = ssm.alpha_selection()
       sheet_selection = ssm.beta_selection()
     pdb_chains = []
-    for pdb_chain in pdb_hierarchy.models()[0].chains() :
+    for pdb_chain in pdb_hierarchy.models()[0].chains():
       unk = UNK_AA
       chain_id = pdb_chain.id
       main_conf = pdb_chain.conformers()[0]
-      if (main_conf.is_na()) :
+      if (main_conf.is_na()):
         self.n_rna_dna += 1
         unk = UNK_NA
         chain_type = NUCLEIC_ACID
-      elif (main_conf.is_protein()) :
+      elif (main_conf.is_protein()):
         self.n_protein += 1
         chain_type = PROTEIN
       else :
@@ -328,7 +328,7 @@ class validation (object) :
         pad=pad, pad_at_start=pad_at_start)
       assert (len(seq) == len(resids) == len(resnames))
       sec_str = None
-      if (helix_selection is not None) and (main_conf.is_protein()) :
+      if (helix_selection is not None) and (main_conf.is_protein()):
         sec_str = main_conf.as_sec_str_sequence(helix_selection,
           sheet_selection, pad=pad, pad_at_start=pad_at_start)
         assert (len(sec_str) == len(seq))
@@ -353,7 +353,7 @@ class validation (object) :
         args=range(len(self.chains)),
         processes=nproc)
     assert (len(alignments_and_names) == len(self.chains) == len(pdb_chains))
-    for i, c in enumerate(self.chains) :
+    for i, c in enumerate(self.chains):
       alignment, seq_name, seq_id = alignments_and_names[i]
       if (alignment is None) : continue
       pdb_chain = pdb_chains[i]
@@ -364,13 +364,13 @@ class validation (object) :
         raise
         print e
       else :
-        if (extract_coordinates) :
+        if (extract_coordinates):
           c.extract_coordinates(pdb_chain)
         if extract_residue_groups:
           c.extract_residue_groups(pdb_chain)
     self.sequences = None
 
-  def align_chain (self, i) :
+  def align_chain(self, i):
     import mmtbx.alignment
     chain = self.chains[i]
     best_alignment = None
@@ -378,7 +378,7 @@ class validation (object) :
     best_seq_id = None
     best_identity = self.minimum_identity
     best_width = sys.maxint
-    for i_seq, seq_object in enumerate(self.sequences) :
+    for i_seq, seq_object in enumerate(self.sequences):
       alignment = mmtbx.alignment.align(
         seq_a=chain.sequence,
         seq_b=seq_object.sequence).extract_alignment()
@@ -395,28 +395,28 @@ class validation (object) :
         best_width = width
     return best_alignment, best_sequence, best_seq_id
 
-  def get_table_data (self) :
+  def get_table_data(self):
     table = []
     for c in self.chains :
       outliers = c.get_outliers_table()
-      if (outliers is not None) :
+      if (outliers is not None):
         table.extend(outliers)
     return table
 
-  def get_missing_chains (self) :
+  def get_missing_chains(self):
     missing = []
     for c in self.chains :
-      if (c.alignment is None) :
+      if (c.alignment is None):
         missing.append((c.chain_id, c.sequence))
     return missing
 
-  def show (self, out=None) :
-    if (out is None) :
+  def show(self, out=None):
+    if (out is None):
       out = sys.stdout
     for chain in self.chains :
       chain.show_summary(out)
 
-  def get_relative_sequence_copy_number (self) :
+  def get_relative_sequence_copy_number(self):
     """
     Count the number of copies of each sequence within the model, used for
     adjusting the input settings for Phaser-MR in Phenix.  This should
@@ -428,17 +428,17 @@ class validation (object) :
     n_seq  = len(self.sequence_mappings)
     counts = [ 0 ] * n_seq
     for c in self.chains :
-      if (c.sequence_id is not None) :
+      if (c.sequence_id is not None):
         counts[c.sequence_id] += 1
     redundancies = [ 1 ] * n_seq
-    for i_seq in range(n_seq) :
+    for i_seq in range(n_seq):
       j_seq = self.sequence_mappings[i_seq]
-      if (j_seq is not None) :
+      if (j_seq is not None):
         redundancies[j_seq] += 1
         redundancies[i_seq] = 0
     counts_relative = [ 0 ] * n_seq
-    for i_seq in range(n_seq) :
-      if (redundancies[i_seq] == 0) :
+    for i_seq in range(n_seq):
+      if (redundancies[i_seq] == 0):
         counts_relative[i_seq] = -1
       else :
         counts_relative[i_seq] = counts[i_seq] / redundancies[i_seq]
@@ -531,7 +531,7 @@ class validation (object) :
     return cif_block
 
 # XXX I am not particularly proud of this code
-def get_sequence_n_copies (
+def get_sequence_n_copies(
     sequences,
     pdb_hierarchy,
     force_accept_composition=False,
@@ -540,7 +540,7 @@ def get_sequence_n_copies (
     minimum_identity=0.3, # okay for MR, may not be suitable in all cases
     assume_xtriage_copies_from_sequence_file=None,
     out=sys.stdout,
-    nproc=1) :
+    nproc=1):
   """
   Utility function for reconciling the contents of the sequence file, the
   chains in the model, and the ASU.  Returns the number of copies of the
@@ -560,58 +560,58 @@ def get_sequence_n_copies (
     extract_coordinates=False,
     minimum_identity=0.3)
   missing = v.get_missing_chains()
-  def raise_sorry (msg) :
+  def raise_sorry(msg):
     raise Sorry(msg + " (Add the parameter force_accept_composition=True to "+
       "disable this error message and continue assuming 1 copy of sequence "+
       "file.)")
-  if (len(missing) > 0) :
+  if (len(missing) > 0):
     error = [
       "%d chain(s) not found in sequence file.  If the sequence does " % \
         len(missing),
       "not accurately represent the contents of the crystal after adjusting ",
       "for copy number, molecular replacement and building may fail.", ]
-    if (force_accept_composition) :
+    if (force_accept_composition):
       print >> out, "WARNING: %s" % error
     else :
       raise_sorry(error)
   counts = v.get_relative_sequence_copy_number()
   unique_counts = set(counts)
   if (-1 in unique_counts) : unique_counts.remove(-1)
-  if (0 in unique_counts) :
+  if (0 in unique_counts):
     unique_counts.remove(0)
     print >> out, "WARNING: %d sequence(s) not found in model.  This is not" %\
       counts.count(0)
     print >> out, "usually a problem, but it may indicate an incomplete model."
   error = freq = None
   model_copies = copies_from_user
-  if (model_copies is Auto) :
+  if (model_copies is Auto):
     model_copies = copies_from_xtriage
-  if (model_copies is None) :
+  if (model_copies is None):
     model_copies = 1
     print >> out, "WARNING: assuming 1 copy of model"
-  if (model_copies < 1) :
+  if (model_copies < 1):
     raise Sorry("Must have at least one copy of model.")
-  if (len(unique_counts) == 0) :
+  if (len(unique_counts) == 0):
     error = "The sequence file provided does not appear to match the " +\
             "search model."
-  elif (len(unique_counts) > 1) :
+  elif (len(unique_counts) > 1):
     error = "The sequence file provided does not map evenly to the "+\
       "search model; this usually means an error in the sequence file (or "+\
       "model) such as accidental duplication or deletion of a chain. "+\
       "[counts: %s]" % list(unique_counts)
   else :
     # XXX float is_integer introduced in Python 2.6
-    def is_integer (x) : return (int(x) == x)
+    def is_integer(x) : return (int(x) == x)
     seq_freq = list(unique_counts)[0]
     assert seq_freq > 0
     # 1-1 mapping between PDB hierarchy and sequence
-    if (seq_freq == 1.0) :
+    if (seq_freq == 1.0):
       print >> out, "Assuming %d copies of sequence file (as well as model)" %\
         model_copies
       return model_copies
-    elif (seq_freq > 1) :
+    elif (seq_freq > 1):
       # hierarchy contains N copies of sequence
-      if is_integer(seq_freq) :
+      if is_integer(seq_freq):
         freq = int(seq_freq) * model_copies
         print >> out, "Assuming %d copies of sequence file present" % freq
         return freq
@@ -624,9 +624,9 @@ def get_sequence_n_copies (
     # more copies of sequence than in model
     else :
       inverse_freq = 1 / seq_freq
-      if is_integer(inverse_freq) :
+      if is_integer(inverse_freq):
         # too much sequence
-        if (inverse_freq > model_copies) :
+        if (inverse_freq > model_copies):
           error = "The number of copies of the model expected is less than "+\
             "the number indicated by the sequence file (%d versus %d).  " % \
             (model_copies, int(inverse_freq)) + \
@@ -634,7 +634,7 @@ def get_sequence_n_copies (
             "number of copies is wrong."
           if ((copies_from_user is Auto) and
               (copies_from_xtriage is not None) and
-              (assume_xtriage_copies_from_sequence_file)) :
+              (assume_xtriage_copies_from_sequence_file)):
             print >> out, error
             print >> out, ""
             print >> out, "Since the number of copies was guessed by Xtriage"
@@ -644,7 +644,7 @@ def get_sequence_n_copies (
             return seq_freq
         # too much model
         # XXX is this actually possible the way I've written the function?
-        elif (inverse_freq < model_copies) :
+        elif (inverse_freq < model_copies):
           error = "The number of copies of the model expected exceeds the "+\
             "number indicated by the sequence file (%d versus %d)." % \
             (model_copies, int(inverse_freq)) + \
@@ -657,8 +657,8 @@ def get_sequence_n_copies (
       else :
         error = "The sequence file does not appear to contain a round "+\
           "number of copies of the model (%g)." % inverse_freq
-  if (error is not None) :
-    if (force_accept_composition) :
+  if (error is not None):
+    if (force_accept_composition):
       print >> out, "WARNING: " + error
       print >> out, ""
       print >> out, "Ambiguous input, defaulting to 1 copy of sequence file"
@@ -668,34 +668,34 @@ def get_sequence_n_copies (
   else :
     raise RuntimeError("No error but frequency not determined")
 
-def get_sequence_n_copies_from_files (seq_file, pdb_file, **kwds) :
+def get_sequence_n_copies_from_files(seq_file, pdb_file, **kwds):
   from iotbx import file_reader
   seq_in = file_reader.any_file(seq_file,
     raise_sorry_if_errors=True,
     raise_sorry_if_not_expected_format=True)
-  if (seq_in.file_type != "seq") :
+  if (seq_in.file_type != "seq"):
     raise Sorry("Can't parse %s as a sequence file.")
   pdb_in = file_reader.any_file(pdb_file,
     raise_sorry_if_errors=True,
     raise_sorry_if_not_expected_format=True)
-  if (pdb_in.file_type != "pdb") :
+  if (pdb_in.file_type != "pdb"):
     raise Sorry("Can't parse %s as a PDB or mmCIF file.")
   kwds['pdb_hierarchy'] = pdb_in.file_object.hierarchy
   kwds['sequences'] = seq_in.file_object
   return get_sequence_n_copies(**kwds)
 
 # XXX test needed
-def group_chains_and_sequences (seq_file, pdb_file, **kwds) :
+def group_chains_and_sequences(seq_file, pdb_file, **kwds):
   from iotbx import file_reader
   seq_in = file_reader.any_file(seq_file,
     raise_sorry_if_errors=True,
     raise_sorry_if_not_expected_format=True)
-  if (seq_in.file_type != "seq") :
+  if (seq_in.file_type != "seq"):
     raise Sorry("Can't parse %s as a sequence file.")
   pdb_in = file_reader.any_file(pdb_file,
     raise_sorry_if_errors=True,
     raise_sorry_if_not_expected_format=True)
-  if (pdb_in.file_type != "pdb") :
+  if (pdb_in.file_type != "pdb"):
     raise Sorry("Can't parse %s as a PDB or mmCIF file.")
   kwds['pdb_hierarchy'] = pdb_in.file_object.hierarchy
   kwds['sequences'] = seq_in.file_object
@@ -705,16 +705,16 @@ def group_chains_and_sequences (seq_file, pdb_file, **kwds) :
   for chain in v.chains :
     seq_id = chain.sequence_id
     chain_id = chain.chain_id
-    if (seq_id is None) :
+    if (seq_id is None):
       raise Sorry("Can't map chain %s to a sequence in %s." % (chain_id,
         seq_file))
     sequence = seq_in.file_object[seq_id].sequence
-    if (chain_id in chain_to_sequence_mappings) :
-      if (chain_to_sequence_mappings[chain_id] != sequence) :
+    if (chain_id in chain_to_sequence_mappings):
+      if (chain_to_sequence_mappings[chain_id] != sequence):
         raise Sorry("Multiple unique chains named '%s'" % chain_id)
     else :
       chain_to_sequence_mappings[chain_id] = sequence
-    if (not chain.sequence in sequence_to_chain_mappings) :
+    if (not chain.sequence in sequence_to_chain_mappings):
       sequence_to_chain_mappings[sequence] = []
     sequence_to_chain_mappings[sequence].append(chain_id)
   return sequence_to_chain_mappings

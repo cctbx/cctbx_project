@@ -73,7 +73,7 @@ the best course of action."""
       # find all other sequences that share more than n% similarity
       sims = self.find_similar_matches( matches[index], matches, used, overlap_thres )
       used = used.set_selected( sims, True )
-      if used.count( True ) == used.size() :
+      if used.count( True ) == used.size():
         done = True
     return final_matches
 

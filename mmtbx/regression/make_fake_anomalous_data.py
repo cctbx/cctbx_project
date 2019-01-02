@@ -7,7 +7,7 @@ from libtbx import group_args
 from libtbx import easy_run
 import os
 
-def generate_calcium_inputs (file_base="ca_frag", anonymize=True) :
+def generate_calcium_inputs(file_base="ca_frag", anonymize=True):
   """
   Generate both a PDB file and an MTZ file for the calcium-bound structure,
   with the calcium optionally  replaced by solvent after F(model) was
@@ -46,7 +46,7 @@ def generate_calcium_inputs (file_base="ca_frag", anonymize=True) :
     assert os.path.isfile(pdb_file)
   return os.path.abspath(mtz_file), os.path.abspath(pdb_file)
 
-def generate_cd_cl_inputs (file_base="cd_cl_frag") :
+def generate_cd_cl_inputs(file_base="cd_cl_frag"):
   """
   Creates a fake model and reflection data for a structure containing cadmium
   and chloride ions.
@@ -71,8 +71,8 @@ def generate_cd_cl_inputs (file_base="cd_cl_frag") :
   assert (os.path.isfile(pdb_file)) and (os.path.isfile(mtz_file))
   return mtz_file, pdb_file
 
-def generate_zinc_inputs (file_base="zn_frag", anonymize=True,
-    wavelength=None) :
+def generate_zinc_inputs(file_base="zn_frag", anonymize=True,
+    wavelength=None):
   """
   Generate both a PDB file and an MTZ file for the zinc-bound structure,
   with the zinc optionally replaced by solvent after F(model) was
@@ -90,7 +90,7 @@ def generate_zinc_inputs (file_base="zn_frag", anonymize=True,
   pdb_path : str
   """
   anom = None
-  if (wavelength is None) :
+  if (wavelength is None):
     fp = -1.3
     fdp = 0.47
     anom = [ group_args(selection="element ZN", fp=fp, fdp=fdp), ]
@@ -112,7 +112,7 @@ def generate_zinc_inputs (file_base="zn_frag", anonymize=True,
     assert os.path.isfile(pdb_file)
   return os.path.abspath(mtz_file), os.path.abspath(pdb_file)
 
-def generate_magnessium_inputs (file_base="mg_frag", anonymize=True) :
+def generate_magnessium_inputs(file_base="mg_frag", anonymize=True):
   """
   Creates a fake model and reflection data for a structure containing magnesium
   ions.
@@ -144,8 +144,8 @@ def generate_magnessium_inputs (file_base="mg_frag", anonymize=True) :
     assert os.path.isfile(pdb_file)
   return os.path.abspath(mtz_file), os.path.abspath(pdb_file)
 
-def generate_mtz_file (file_base, d_min, anomalous_scatterers=None,
-    wavelength=None) :
+def generate_mtz_file(file_base, d_min, anomalous_scatterers=None,
+    wavelength=None):
   """
   Create an MTZ file containing amplitudes (and R-free-flags) calculated from
   the PDB file, at the specified resolution and with enumerated anomalous
@@ -174,7 +174,7 @@ def generate_mtz_file (file_base, d_min, anomalous_scatterers=None,
   >>> assert os.path.isfile(pdb_file) and os.path.isfile(mtz_file)
   """
   mtz_file = file_base + ".mtz"
-  if (os.path.isfile(mtz_file)) :
+  if (os.path.isfile(mtz_file)):
     os.remove(mtz_file)
   params = """
     high_resolution = %g
@@ -203,7 +203,7 @@ def generate_mtz_file (file_base, d_min, anomalous_scatterers=None,
     ).raise_if_errors().return_code == 0)
   return mtz_file
 
-def write_pdb_input_calcium_binding (file_base="ca_frag", write_files=True) :
+def write_pdb_input_calcium_binding(file_base="ca_frag", write_files=True):
   """
   Outputs a selection of atoms from a structure of a calcium-binding fold.
   Original data: d_min=1.4, wavelength=1.116
@@ -347,9 +347,9 @@ HETATM  123  O   HOH S   2       5.396  15.243  10.734  1.00 22.95           O
 HETATM  124  O   HOH S   3       3.629   8.994  14.414  1.00 25.28           O
 END""")
   xrs = pdb_in.input.xray_structure_simple(cryst1_substitution_buffer_layer=5)
-  if (write_files) :
+  if (write_files):
     pdb_file = file_base + ".pdb"
-    if (os.path.exists(pdb_file)) :
+    if (os.path.exists(pdb_file)):
       os.remove(pdb_file)
     f = open(pdb_file, "w")
     f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
@@ -358,7 +358,7 @@ END""")
   else :
     return pdb_in, xrs
 
-def write_pdb_input_cd_cl (file_base="cd_cl_frag") :
+def write_pdb_input_cd_cl(file_base="cd_cl_frag"):
   """
   Outputs a selection of atoms from a structure crystallized in cadmium cloride.
   Original data: d_min=1.37, wavelength=1.116
@@ -460,7 +460,7 @@ HETATM   86 CL   CL  Y   3     -16.374  16.899  -0.285  1.00 10.22      ION CL1-
 END""")
   xrs = pdb_in.input.xray_structure_simple(cryst1_substitution_buffer_layer=5)
   pdb_file = file_base + ".pdb"
-  if (os.path.exists(pdb_file)) :
+  if (os.path.exists(pdb_file)):
     os.remove(pdb_file)
   f = open(pdb_file, "w")
   f.write("""REMARK 200  WAVELENGTH OR RANGE        (A) : 1.116\n""")
@@ -609,7 +609,7 @@ END
   xrs = pdb_in.input.xray_structure_simple(cryst1_substitution_buffer_layer=5)
   if write_files:
     pdb_file = file_base + ".pdb"
-    if (os.path.exists(pdb_file)) :
+    if (os.path.exists(pdb_file)):
       os.remove(pdb_file)
     with open(pdb_file, "w") as f:
       f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
@@ -617,7 +617,7 @@ END
   else:
     return pdb_in, xrs
 
-def write_pdb_input_magnessium_binding (file_base="mg_frag", write_files=True):
+def write_pdb_input_magnessium_binding(file_base="mg_frag", write_files=True):
   """
   Outputs a selection of atoms from a structure crystallized with magnesium.
 
@@ -732,7 +732,7 @@ HETATM   93 MG   MG  A 162      -7.326   2.422   6.749  1.00  5.40      MG  MG
   xrs = pdb_in.input.xray_structure_simple(cryst1_substitution_buffer_layer=5)
   if write_files:
     pdb_file = file_base + ".pdb"
-    if (os.path.exists(pdb_file)) :
+    if (os.path.exists(pdb_file)):
       os.remove(pdb_file)
     with open(pdb_file, "w") as f:
       f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))

@@ -577,7 +577,7 @@ def run(args, command_name="phenix.superpose_pdbs", log=None):
       moving.output(lsq, filename=filename)
 
 class launcher(libtbx.runtime_utils.target_with_save_result):
-  def run(self) :
+  def run(self):
     return run(args=list(self.args), log=sys.stdout)
 
 def finish_job(result):
@@ -588,9 +588,9 @@ def finish_job(result):
     return (output_files, statistics)
   return ([], [])
 
-def validate_params(params) :
+def validate_params(params):
   if (params.input.pdb_file_name_fixed is None or
-      params.input.pdb_file_name_moving is None) :
+      params.input.pdb_file_name_moving is None):
     raise Sorry("One or both PDB files missing.")
   if params.output.file_name is None :
     raise Sorry("Please specify a name for the output file.")

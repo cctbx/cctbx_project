@@ -19,7 +19,7 @@ import os.path
 import sys
 
 # synthetic data
-def exercise_1 () :
+def exercise_1():
   pdb_raw = """\
 CRYST1   23.000    6.666   25.000  90.00 107.08  90.00 P 1 21 1      2
 ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
@@ -402,7 +402,7 @@ Centric reflections:
     raise Exception_expected
   # with only a handful of acentrics
   sel = flex.bool(acentrics.size(), False)
-  for i in range(10) :
+  for i in range(10):
     sel[i] = True
   f_obs_4 = centrics.concatenate(acentrics.select(sel))
   f_obs_4.as_mtz_dataset(column_root_label="F").mtz_object().write(mtz_file)
@@ -414,18 +414,18 @@ Centric reflections:
     raise Exception_expected
 
 # XXX code for debugging pickle size issues
-def show_pickled_object_sizes (result) :
+def show_pickled_object_sizes(result):
   result_pkl = dumps(result)
   print "result", len(result_pkl)
   show_pickle_sizes(result, "  ")
 
 # test consistency of output after pickling and unpickling
-def test_pickle_consistency_and_size (result) :
+def test_pickle_consistency_and_size(result):
   all_out = StringIO()
   result.show(out=all_out)
   result_pkl_str = dumps(result)
   pkl_size = len(result_pkl_str)
-  if (pkl_size >= 100000) :
+  if (pkl_size >= 100000):
     print "Oversized pickle:", pkl_size
     show_pickled_object_sizes(result)
     raise OverflowError()
@@ -435,8 +435,8 @@ def test_pickle_consistency_and_size (result) :
   result_pkl.show(out=all_out_pkl)
   assert not show_diff(all_out.getvalue(), all_out_pkl.getvalue())
 
-def exercise_analyze_resolution_limits () :
-  for x in range(1, 231) :
+def exercise_analyze_resolution_limits():
+  for x in range(1, 231):
     sg = sgtbx.space_group_info(number=x)
     #sg = sgtbx.space_group_info("P222")
     uc = sg.any_compatible_unit_cell(80000)
@@ -447,15 +447,15 @@ def exercise_analyze_resolution_limits () :
       anomalous_flag=True,
       d_min=1.5)
     arl = ds.analyze_resolution_limits(ms)
-    if (x > 2) :
+    if (x > 2):
       assert (arl.max_d_min_delta() < 0.1)
 
 # real data
-def exercise_2 () :
+def exercise_2():
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/wizards/data/p9_se_w2.sca",
     test=os.path.isfile)
-  if (hkl_file is None) :
+  if (hkl_file is None):
     warnings.warn("phenix_regression not available, skipping test")
     return
   hkl_in = file_reader.any_file(hkl_file).assert_file_type("hkl")
@@ -486,7 +486,7 @@ def exercise_2 () :
     relative_path="phenix_examples/p9-build/p9.pdb",
     test=os.path.isfile)
   f_calc = None
-  if (pdb_file is not None) :
+  if (pdb_file is not None):
     pdb_in = file_reader.any_file(pdb_file).assert_file_type("pdb")
     hierarchy = pdb_in.file_object.hierarchy
     xrs = pdb_in.file_object.xray_structure_simple(
@@ -510,7 +510,7 @@ def exercise_2 () :
   assert (15.5 < result.aniso_b_min < 15.9)
   assert (10 < result.aniso_range_of_b < 11)
   # check relative Wilson
-  if (pdb_file is not None) :
+  if (pdb_file is not None):
     assert (result.relative_wilson is not None)
     # FIXME
     #assert (result.relative_wilson.n_outliers() == 34)
@@ -548,11 +548,11 @@ def exercise_2 () :
     eps=0.001)
   # FIXME PDB doesn't actually have unit cell!
   # test detection of symmetry in reference file
-  if (pdb_file is not None) :
+  if (pdb_file is not None):
     args = [hkl_file, pdb_file]
     result = xtriage.run(args=args, out=null_out())
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_2()
   exercise_1()
   exercise_analyze_resolution_limits()

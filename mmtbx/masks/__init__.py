@@ -252,7 +252,7 @@ class manager(object):
     return new_manager
 
   def _get_grid_step(self):
-    if not (self.mask_params.grid_step_factor > 0) :
+    if not (self.mask_params.grid_step_factor > 0):
       raise Sorry("Inappropriate value for grid_step_factor: must be "+
         "positive and non-zero.")
     assert self.mask_params.grid_step_factor > 0

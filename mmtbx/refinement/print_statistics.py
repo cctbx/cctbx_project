@@ -145,7 +145,7 @@ class refinement_monitor(object):
     self.is_amber_monitor = False
     self.geom = group_args(bonds=[], angles=[])
 
-  def dump_statistics (self, file_name) :
+  def dump_statistics(self, file_name):
     stats = {}
     for name in self.__arrays__ :
       stats[name] = getattr(self, name)
@@ -214,8 +214,8 @@ class refinement_monitor(object):
     time_collect_and_process += (t2 - t1)
     self.call_back(model, fmodel, method=step)
 
-  def call_back (self, model, fmodel, method="monitor_collect") :
-    if self.call_back_handler is not None and callable(self.call_back_handler) :
+  def call_back(self, model, fmodel, method="monitor_collect"):
+    if self.call_back_handler is not None and callable(self.call_back_handler):
       self.call_back_handler(self, model, fmodel, method)
 
   def show(self, out=None, remark=""):
@@ -289,16 +289,16 @@ class refinement_monitor(object):
     t2 = time.time()
     time_collect_and_process += (t2 - t1)
 
-  def format_stats_for_phenix_gui (self) :
+  def format_stats_for_phenix_gui(self):
     steps = []
     r_works = []
     r_frees = []
     as_ave = []
     bs_ave = []
-    for i_step, label in enumerate(self.steps) :
+    for i_step, label in enumerate(self.steps):
       label = label.replace(":", "")
       fields = label.split("_")
-      if (len(fields) < 2) :
+      if (len(fields) < 2):
         steps.append(label)
       else :
         cycle = fields[0]
@@ -308,7 +308,7 @@ class refinement_monitor(object):
         steps.append(cycle + "_" + action_label)
       r_works.append(self.r_works[i_step])
       r_frees.append(self.r_frees[i_step])
-      if (self.geom is not None) and (len(self.geom.bonds) != 0) :
+      if (self.geom is not None) and (len(self.geom.bonds) != 0):
         as_ave.append(self.geom.angles[i_step])
         bs_ave.append(self.geom.bonds[i_step])
       else :
@@ -322,21 +322,21 @@ class refinement_monitor(object):
       bs_ave=bs_ave,
       neutron_flag=self.is_neutron_monitor)
 
-  def show_current_r_factors_summary (self, out, prefix="") :
-    if (len(self.steps) == 0) :
+  def show_current_r_factors_summary(self, out, prefix=""):
+    if (len(self.steps) == 0):
       return
     last_step = self.steps[-1].replace(":", "")
     fields = last_step.split("_")
     action_label = None
-    if (len(fields) >= 2) :
+    if (len(fields) >= 2):
       cycle = fields[0]
       action = "_".join(fields[1:])
       action_label = show_actions.get(action, None)
-      if (action_label is None) :
+      if (action_label is None):
         return
       action_label = cycle + "_" + action_label
-    if (action_label is None) :
-      if (len(self.steps) == 1) :
+    if (action_label is None):
+      if (len(self.steps) == 1):
         action_label = "start"
       else :
         action_label = "end"
@@ -345,7 +345,7 @@ class refinement_monitor(object):
       format_value("%.4f", self.r_works[-1]),
       format_value("%.4f", self.r_frees[-1]))
 
-class stats_table (slots_getstate_setstate) :
+class stats_table (slots_getstate_setstate):
   __slots__ = [
     "steps",
     "r_works",
@@ -354,56 +354,56 @@ class stats_table (slots_getstate_setstate) :
     "bs_ave",
     "neutron_flag",
   ]
-  def __init__ (self, **kwds) :
+  def __init__(self, **kwds):
     for attr in self.__slots__ :
       setattr(self, attr, kwds.get(attr))
 
 # we need something simpler for the Phenix GUI...
-class coordinate_shifts (object) :
-  def __init__ (self, hierarchy_start, hierarchy_end) :
+class coordinate_shifts (object):
+  def __init__(self, hierarchy_start, hierarchy_end):
     from scitbx.array_family import flex
     self.hierarchy_shifted = hierarchy_end.deep_copy()
     atoms_shifted = self.hierarchy_shifted.atoms()
     coords_start = {}
-    for atom in hierarchy_start.atoms() :
+    for atom in hierarchy_start.atoms():
       id_str = atom.fetch_labels().id_str()
       coords_start[id_str] = atom.xyz
-    def get_distance (xyz1, xyz2) :
+    def get_distance(xyz1, xyz2):
       x1,y1,z1 = xyz1
       x2,y2,z2 = xyz2
       return math.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
-    for i_seq, atom in enumerate(atoms_shifted) :
+    for i_seq, atom in enumerate(atoms_shifted):
       id_str = atom.fetch_labels().id_str()
-      if (id_str in coords_start) :
+      if (id_str in coords_start):
         atom.b = get_distance(coords_start[id_str], atom.xyz)
       else :
         atom.b = -1.0
 
-  def get_shifts (self) :
+  def get_shifts(self):
     return self.hierarchy_shifted.atoms().extract_b()
 
-  def min_max_mean (self) :
+  def min_max_mean(self):
     shifts = self.hierarchy_shifted.atoms().extract_b()
     shifts = shifts.select(shifts >= 0)
     return shifts.min_max_mean()
 
-  def save_pdb_file (self, file_name) :
+  def save_pdb_file(self, file_name):
     f = open(file_name, "w")
     f.write(self.hierarchy_shifted.as_pdb_string())
     f.close()
 
-class trajectory_output (object) :
+class trajectory_output (object):
   """
   Callback object for saving the intermediate results of refinement as a stack
   of PDB and MTZ files.  Equivalent to the interactivity with Coot in the
   Phenix GUI, but intended for command-line use and demonstrative purposes.
   """
-  def __init__ (self, file_base="refine", filled_maps=True, log=sys.stdout,
-      verbose=True) :
+  def __init__(self, file_base="refine", filled_maps=True, log=sys.stdout,
+      verbose=True):
     adopt_init_args(self, locals())
     self._i_trajectory = 0
 
-  def __call__ (self, monitor, model, fmodel, method="monitor_collect") :
+  def __call__(self, monitor, model, fmodel, method="monitor_collect"):
     import iotbx.map_tools
     self._i_trajectory += 1
     file_base = "%s_traj_%d" % (self.file_base, self._i_trajectory)
@@ -422,12 +422,12 @@ class trajectory_output (object) :
     print >> self.log, "wrote model to %s.pdb" % file_base
     print >> self.log, "wrote map coefficients to %s.mtz" % file_base
 
-class annealing_callback (object) :
-  def __init__ (self, model, monitor) :
+class annealing_callback (object):
+  def __init__(self, model, monitor):
     self.model = model
     self.monitor = monitor
 
-  def __call__ (self, fmodel) :
+  def __call__(self, fmodel):
     self.monitor.call_back(model=self.model,
       fmodel=fmodel,
       method="anneal")

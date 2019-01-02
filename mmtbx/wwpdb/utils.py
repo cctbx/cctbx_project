@@ -10,33 +10,33 @@ from libtbx.utils import null_out, Sorry
 import os
 import sys
 
-def get_program (pdb_file) :
+def get_program(pdb_file):
   from iotbx.pdb import remark_3_interpretation
   lines = open(pdb_file).readlines()
   program = program_full = None
   for line in lines :
-    if (line.startswith("REMARK   3")) and ("PROGRAM" in line) :
+    if (line.startswith("REMARK   3")) and ("PROGRAM" in line):
       program = remark_3_interpretation.get_program(line)
-      if (program is not None) :
+      if (program is not None):
         program_full = line.split(":")[1].strip()
         break
-  if (program == "PHENIX") :
+  if (program == "PHENIX"):
     program = "PHENIX.REFINE"
   return program, program_full
 
-def fetch_pdb_data (
+def fetch_pdb_data(
     pdb_id,
     pdb_dir=None,
     sf_dir=None,
     log=None,
-    verbose=False) :
+    verbose=False):
   """
   Copy data from local repository if defined and available, or download it
   from the PDB, and run cif_as_mtz.
   """
   from mmtbx.command_line import fetch_pdb
   from mmtbx.command_line import cif_as_mtz
-  if (log is None) :
+  if (log is None):
     if (verbose) : log = sys.stdout
     else : log = null_out()
   pdb_file = "%s.pdb" % pdb_id
@@ -45,20 +45,20 @@ def fetch_pdb_data (
   fetch_pdb.run2(args=[pdb_id], log=log)
   assert (os.path.isfile(pdb_file))
   fetch_pdb.run2(args=["-x", pdb_id], log=log)
-  if (not os.path.isfile("%s-sf.cif" % pdb_id)) :
+  if (not os.path.isfile("%s-sf.cif" % pdb_id)):
     raise Sorry("Structure factors are not available for %s." % pdb_id)
   cif_as_mtz.run(args=[
       cif_file,
       "--symmetry=%s" % pdb_file,
       "--merge",
       "--output_file_name=%s" % mtz_file])
-  if (not os.path.isfile(mtz_file)) :
+  if (not os.path.isfile(mtz_file)):
     raise RuntimeError("Missing %s!\ncif_as_mtz stderr:\n%s" %
       (mtz_file, "\n".join(import_out.stderr_lines)))
   return os.path.abspath(pdb_file), os.path.abspath(mtz_file)
 
-def find_data_arrays (mtz_file, log=None, merge_anomalous=False,
-    preferred_labels=None, crystal_symmetry=None) :
+def find_data_arrays(mtz_file, log=None, merge_anomalous=False,
+    preferred_labels=None, crystal_symmetry=None):
   """
   Guess an appropriate data array to use for refinement, plus optional
   Hendrickson-Lattman coefficients and R-free flags if present.
@@ -80,13 +80,13 @@ def find_data_arrays (mtz_file, log=None, merge_anomalous=False,
     minimum_score           = 4,
     prefer_amplitudes       = True,
     prefer_anomalous        = True)
-  if (len(data_arrays) == 0) :
+  if (len(data_arrays) == 0):
     raise Sorry("No data arrays found in %s." % mtz_file)
   data = data_arrays[0]
-  if (preferred_labels is not None) :
+  if (preferred_labels is not None):
     for array in data_arrays :
       array_labels = array.info().label_string()
-      if (array_label== preferred_labels) :
+      if (array_label== preferred_labels):
         data = array
         break
     else :
@@ -100,7 +100,7 @@ def find_data_arrays (mtz_file, log=None, merge_anomalous=False,
     parameter_scope         = "",
     return_all_valid_arrays = True,
     minimum_score           = 1)
-  if (len(hl_arrays) > 0) :
+  if (len(hl_arrays) > 0):
     phases = hl_arrays[0]
   flags_and_values = hkl_server.get_r_free_flags(
     file_name=None,
@@ -110,13 +110,13 @@ def find_data_arrays (mtz_file, log=None, merge_anomalous=False,
     parameter_scope="",
     return_all_valid_arrays=True,
     minimum_score=1)
-  if (len(flags_and_values) > 0) :
+  if (len(flags_and_values) > 0):
     flags, flag_value = flags_and_values[0]
-  if (crystal_symmetry is not None) :
+  if (crystal_symmetry is not None):
     data = data.customized_copy(crystal_symmetry=crystal_symmetry)
-    if (flags is not None) :
+    if (flags is not None):
       flags = flags.customized_copy(crystal_symmetry=crystal_symmetry)
-    if (phases is not None) :
+    if (phases is not None):
       phases = phases.customized_copy(crystal_symmetry=crystal_symmetry)
   return reflection_file_utils.process_raw_data(
     obs=data,
@@ -126,11 +126,11 @@ def find_data_arrays (mtz_file, log=None, merge_anomalous=False,
     log=log,
     merge_anomalous=merge_anomalous)
 
-def combine_split_structure (
+def combine_split_structure(
     pdb_file,
     pdb_id,
     base_dir=None,
-    log=None) :
+    log=None):
   """
   Assembles complete structures from split PDB files (e.g. ribosomes),
   preserving the original file name.  Return value is a list of IDs which
@@ -143,27 +143,27 @@ def combine_split_structure (
   title = pdb_in.title_section()
   other_ids = None
   for line in title :
-    if (line.startswith("SPLIT")) :
+    if (line.startswith("SPLIT")):
       fields = line.strip().lower().split()
       other_ids = fields[1:]
       assert (len(other_ids) > 0)
-  if (other_ids is not None) :
+  if (other_ids is not None):
     pdb_files = [pdb_file]
     combined_ids = []
     for other_id in other_ids :
-      if (other_id.lower() == pdb_id.lower()) :
+      if (other_id.lower() == pdb_id.lower()):
         continue
       dest_dir_2 = os.path.join(base_dir, other_id)
-      if (not os.path.isdir(dest_dir_2)) :
+      if (not os.path.isdir(dest_dir_2)):
         dest_dir_2 = os.getcwd()
       pdb_file_2 = os.path.join(dest_dir_2, "%s.pdb" % other_id)
-      if (not os.path.isfile(pdb_file_2)) :
+      if (not os.path.isfile(pdb_file_2)):
         fetch_pdb.run2(args=[other_id])
-      if (not os.path.isfile(pdb_file_2)) :
+      if (not os.path.isfile(pdb_file_2)):
         break
       pdb_files.append(pdb_file_2)
       combined_ids.append(other_id)
-    if (len(pdb_files) > 1) :
+    if (len(pdb_files) > 1):
       pdb_all = os.path.join(base_dir, "%s_new.pdb" % pdb_id)
       print >> log, "Joining multi-part structure: %s %s" % (pdb_id,
         " ".join(other_ids))
@@ -174,28 +174,28 @@ def combine_split_structure (
     return combined_ids
   return None
 
-class filter_pdb_file (object) :
+class filter_pdb_file (object):
   """
   Processing of PDB files to remove common pathologies and enable automatic
   refinement behavior.  In particular, delete unknown atoms and ligands,
   reduce the occupancy of Se atoms from 1 to trigger occupancy refinement,
   and optionally remove zero-occupancy atoms.
   """
-  def __init__ (self,
+  def __init__(self,
                 pdb_file,
                 output_file=None,
                 log=None,
                 quiet=False,
                 set_se_occ=True,
-                remove_atoms_with_zero_occupancy=False) :
+                remove_atoms_with_zero_occupancy=False):
     from iotbx.file_reader import any_file
     import iotbx.pdb
-    if (log is None) :
+    if (log is None):
       log = null_out()
     pdb_in = any_file(pdb_file, force_type="pdb")
     pdb_in.assert_file_type("pdb")
     hierarchy = pdb_in.file_object.hierarchy
-    if (len(hierarchy.models()) > 1) :
+    if (len(hierarchy.models()) > 1):
       raise Sorry("Multi-MODEL PDB files are not supported.")
     n_unknown = 0
     all_atoms = hierarchy.atoms()
@@ -211,33 +211,33 @@ class filter_pdb_file (object) :
     modified = False
     if ((self.n_unknown > 0) or
         ((self.n_semet > 0) and (set_se_occ)) or
-        (self.n_zero_occ > 0) and (remove_atoms_with_zero_occupancy)) :
+        (self.n_zero_occ > 0) and (remove_atoms_with_zero_occupancy)):
       modified = True
-      if (output_file is None) :
+      if (output_file is None):
         output_file = pdb_file
-    if (self.n_unknown > 0) and (not quiet) :
+    if (self.n_unknown > 0) and (not quiet):
       print >> log, "Warning: %d unknown atoms or ligands removed:" % \
         self.n_unknown
-      for i_seq in (~known_sel).iselection() :
+      for i_seq in (~known_sel).iselection():
         print >> log, "  %s" % all_atoms[i_seq].id_str()
-    if (self.n_zero_occ > 0) :
+    if (self.n_zero_occ > 0):
       msg = "Warning: %d atoms with zero occupancy present in structure:"
-      if (remove_atoms_with_zero_occupancy) :
+      if (remove_atoms_with_zero_occupancy):
         msg = "Warning: %d atoms with zero occupancy removed:"
         keep_sel &= ~zero_occ_sel
-      if (not quiet) :
+      if (not quiet):
         print >> log, msg % self.n_zero_occ
-        for i_seq in zero_occ_sel.iselection() :
+        for i_seq in zero_occ_sel.iselection():
           print >> log, "  %s" % all_atoms[i_seq].id_str()
     hierarchy_filtered = hierarchy.select(keep_sel)
-    if (self.n_semet > 0) and (set_se_occ) :
-      for atom in hierarchy_filtered.atoms() :
-        if (atom.element == "SE") and (atom.fetch_labels().resname == "MSE") :
-          if (atom.occ == 1.0) :
-            if (not quiet) :
+    if (self.n_semet > 0) and (set_se_occ):
+      for atom in hierarchy_filtered.atoms():
+        if (atom.element == "SE") and (atom.fetch_labels().resname == "MSE"):
+          if (atom.occ == 1.0):
+            if (not quiet):
               print >> log, "Set occupancy of %s to 0.99" % atom.id_str()
             atom.occ = 0.99 # just enough to trigger occupancy refinement
-    if (modified) :
+    if (modified):
       f = open(output_file, "w")
       # if the input file is actually from the PDB, we need to preserve the
       # header information for downstream code.

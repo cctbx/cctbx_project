@@ -9,7 +9,7 @@ import iotbx.pdb.secondary_structure as ioss
 from libtbx.utils import null_out
 import os
 
-def exercise_protein () :
+def exercise_protein():
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1ywf.pdb",
     test=os.path.isfile)
@@ -30,7 +30,7 @@ def exercise_protein () :
   import sys
   log = sys.stdout
   expected_distances = [2.9, 1.975]
-  for k, file_name in enumerate([pdb_file, pdb_file_h]) :
+  for k, file_name in enumerate([pdb_file, pdb_file_h]):
     pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
     pdb_hierarchy = pdb_in.hierarchy
     sec_str_from_pdb_file = pdb_in.input.extract_secondary_structure()
@@ -61,7 +61,7 @@ def exercise_protein () :
     # print atom_ids
     # assert (atom_ids == ['pdb=" N   ARG A  41 "', 'pdb=" O   ASP A  37 "'])
     # assert (proxies[0].distance_ideal == 2.9)
-    if (run_ksdssp) :
+    if (run_ksdssp):
       m = manager(pdb_hierarchy=pdb_hierarchy,
           sec_str_from_pdb_file=None)
       m.params.secondary_structure.protein.remove_outliers = False
@@ -70,7 +70,7 @@ def exercise_protein () :
       assert proxies.size() == 90
       assert angle_p.size() == 243+18, angle_p.size()
 
-def exercise_sheet_ends () :
+def exercise_sheet_ends():
   pdb_in = iotbx.pdb.input(source_info=None, lines="""\
 SHEET    1   A 3 ALA A  38  ALA A  44  0
 SHEET    2   A 3 ALA A  76  ALA A  83 -1  N  ALA A  83   O  ALA A  38

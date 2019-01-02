@@ -276,7 +276,7 @@ def get_params(args,out=sys.stdout):
   master_phil.format(python_object=params).show(out=out)
   return params
 
-def setup_params (params, out) :
+def setup_params(params, out):
   if not params.crystal_info.wavelength:
     raise Sorry("Please supply a wavelength for data collection.")
   if not params.crystal_info.atom_type:
@@ -524,14 +524,14 @@ def run_with_params(params,quiet=False,out=sys.stdout):
   else:
     return plan.show(out=out)
 
-def validate_params (params) :
+def validate_params(params):
   return setup_params(params, out=null_out())
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher (runtime_utils.target_with_save_result):
+  def run(self):
     return run(self.args, out=sys.stdout)
 
-def finish_job (result) :
+def finish_job(result):
   return ([], [])
 
 if __name__=="__main__":

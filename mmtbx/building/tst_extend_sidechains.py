@@ -2,7 +2,7 @@ from __future__ import division
 from cStringIO import StringIO
 import os.path
 
-def exercise_model_only () :
+def exercise_model_only():
   from mmtbx.building import extend_sidechains
   import iotbx.pdb.hierarchy
   import mmtbx.monomer_library
@@ -32,7 +32,7 @@ ATOM      9  NZ  LYS A   7       1.911   6.790  -2.075  1.00 26.71           N
 TER
 """)
 
-def exercise_cmdline () :
+def exercise_cmdline():
   from mmtbx.command_line import extend_sidechains
   from mmtbx.regression import model_1yjp
   import iotbx.pdb.hierarchy
@@ -52,7 +52,7 @@ def exercise_cmdline () :
   mtz.add_miller_array(flags, column_root_label="FreeR_flag")
   mtz.mtz_object().write(mtz_file)
   pdb_out = "tst_extend_sidechains_out.pdb"
-  if os.path.isfile(pdb_out) :
+  if os.path.isfile(pdb_out):
     os.remove(pdb_out)
   out = StringIO()
   extend_sidechains.run(
@@ -63,7 +63,7 @@ def exercise_cmdline () :
   pdb_new = iotbx.pdb.hierarchy.input(file_name=pdb_out)
   r1 = rotalyze.rotalyze(pdb_hierarchy=pdb_in.hierarchy, outliers_only=False)
   r2 = rotalyze.rotalyze(pdb_hierarchy=pdb_new.hierarchy, outliers_only=False)
-  for o1, o2 in zip(r1.results, r2.results) :
+  for o1, o2 in zip(r1.results, r2.results):
     assert o1.rotamer_name == o2.rotamer_name
   # Part 2: with sequence corrections
   seq_file = "tst_extend_sidechains.fa"
@@ -74,7 +74,7 @@ def exercise_cmdline () :
     out=out)
   assert ("1 sidechains extended." in out.getvalue())
 
-def exercise_correct_sequence () :
+def exercise_correct_sequence():
   from mmtbx.building import extend_sidechains
   from mmtbx.regression import model_1yjp
   import iotbx.pdb.hierarchy
@@ -97,7 +97,7 @@ def exercise_correct_sequence () :
   assert (n_changed == 1)
   assert ("  chain 'A'    3  ASP --> ASP (3 atoms removed)" in out.getvalue())
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_model_only()
   exercise_correct_sequence()
   exercise_cmdline()

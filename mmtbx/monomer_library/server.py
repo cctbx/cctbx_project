@@ -637,7 +637,7 @@ class server(process_cif_mixin):
         sites_cart,
         fine_sampling=False):
     comp_comp_id = self.get_comp_comp_id_direct(comp_id=comp_id)
-    if (comp_comp_id is None) :
+    if (comp_comp_id is None):
       return None
     return comp_comp_id.rotamer_iterator(
       atom_names=atom_names,

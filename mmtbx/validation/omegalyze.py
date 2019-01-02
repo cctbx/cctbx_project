@@ -590,14 +590,14 @@ def get_omega_atoms(twores):
   return atomlist
 
 
-def run (args, out=sys.stdout, quiet=False) :
+def run(args, out=sys.stdout, quiet=False):
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil=get_master_phil(),
     pdb_file_def="model",
     usage_string=usage_string)
   params = cmdline.work.extract()
-  #if (params.model is None or params.help) :
+  #if (params.model is None or params.help):
     #help printing is handled in iotbx.phil.process_command_line_with_files()
   pdb_in = cmdline.get_file(params.model, force_type="pdb")
   hierarchy = pdb_in.file_object.hierarchy
@@ -614,5 +614,5 @@ def run (args, out=sys.stdout, quiet=False) :
   elif params.text:
     result.show_old_output(out=out, verbose=True)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

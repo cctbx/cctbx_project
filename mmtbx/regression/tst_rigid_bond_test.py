@@ -2,7 +2,7 @@
 from __future__ import division
 from libtbx import easy_run
 
-def exercise () :
+def exercise():
   pdb_in = """\
 CRYST1   25.015   29.415   52.761  89.54  86.10  82.39 P 1
 ATOM      1  N   LEU A   4      24.685  46.025  13.868  1.00 21.07           N
@@ -32,5 +32,5 @@ ANISOU    8  CD2 LEU A   4     3022   3432   2100    219   -528   -600       C
   assert ("""    mean = 52.797""" in result.stdout_lines)
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

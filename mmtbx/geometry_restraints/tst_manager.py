@@ -95,8 +95,8 @@ def exercise_geo_out():
   n_hbp = grm.get_n_hbond_proxies()
   assert n_hbp == 4
 
-if (__name__ == "__main__") :
-  if libtbx.env.has_module("ksdssp") :
+if (__name__ == "__main__"):
+  if libtbx.env.has_module("ksdssp"):
     # removed check for old h-bond proxies
     exercise_geo_out()
     print "OK"

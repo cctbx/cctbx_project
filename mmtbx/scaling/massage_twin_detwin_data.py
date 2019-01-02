@@ -198,7 +198,7 @@ class massage_data(object):
     self.final_array = self.new_miller_array
     if self.params.symmetry.action == "twin":
       alpha = self.params.symmetry.twinning_parameters.fraction
-      if (alpha is None) :
+      if (alpha is None):
         raise Sorry("Twin fraction not specified, not twinning data")
       elif not (0 <= alpha <= 0.5):
         raise Sorry("Twin fraction must be between 0 and 0.5.")
@@ -213,10 +213,10 @@ class massage_data(object):
         twin_law = self.params.symmetry.twinning_parameters.twin_law,
         alpha=alpha).as_intensity_array()
 
-    elif (self.params.symmetry.action == "detwin") :
+    elif (self.params.symmetry.action == "detwin"):
       twin_law = self.params.symmetry.twinning_parameters.twin_law
       alpha = self.params.symmetry.twinning_parameters.fraction
-      if (alpha is None) :
+      if (alpha is None):
         raise Sorry("Twin fraction not specified, not detwinning data")
       elif not (0 <= alpha <= 0.5):
         raise Sorry("Twin fraction must be between 0 and 0.5.")
@@ -247,7 +247,7 @@ ONLY USING A TWIN SPECIFIC TARGET FUNCTION!
       output_type=Auto,
       label_extension="massaged"):
     ## write out this miller array as sca if directed to do so:
-    if (str(output_type) == "Auto") :
+    if (str(output_type) == "Auto"):
       base, ext = os.path.splitext(file_name)
       if ext in [".mtz",".sca"]:
         output_type = ext[1:]

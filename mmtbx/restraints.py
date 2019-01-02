@@ -30,7 +30,7 @@ class manager(object):
         use_sander=False,
         amber_structs=None,
         use_afitt=False, #afitt
-        afitt_object=None) :
+        afitt_object=None):
     self.geometry = geometry
     self.cartesian_ncs_manager = cartesian_ncs_manager
     self.normalization = normalization
@@ -47,7 +47,7 @@ class manager(object):
       self.use_amber = params.amber.use_amber
       self.print_amber_energies = params.amber.print_amber_energies
       self.log = log
-      if (self.use_amber) :
+      if (self.use_amber):
         sites_cart = pdb_hierarchy.atoms().extract_xyz()
         compute_gradients=False
         make_header("Initializing AMBER", out=log)
@@ -79,9 +79,9 @@ class manager(object):
         import sander; sander.cleanup()
 
   def init_afitt(self, params, pdb_hierarchy, log):
-    if hasattr(params, "afitt") :
+    if hasattr(params, "afitt"):
       use_afitt = params.afitt.use_afitt
-      if (use_afitt) :
+      if (use_afitt):
         from mmtbx.geometry_restraints import afitt
         # this only seems to work for a single ligand
         # multiple ligands are using the monomers input
@@ -172,7 +172,7 @@ class manager(object):
     if (self.geometry is None):
       result.geometry = None
     else:
-      if (self.use_amber and not force_restraints_model) :
+      if (self.use_amber and not force_restraints_model):
         geometry_energy = self.geometry.energies_sites(
           sites_cart=sites_cart,
           flags=geometry_flags,

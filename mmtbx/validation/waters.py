@@ -8,7 +8,7 @@ from mmtbx.validation import experimental
 from libtbx.str_utils import format_value
 import sys
 
-class water (atom) :
+class water (atom):
   """
   Container for information about a water atom, including electron density
   properties.
@@ -23,38 +23,38 @@ class water (atom) :
   ]
 
   @property
-  def cc (self) :
+  def cc(self):
     return self.score
 
   @staticmethod
-  def header () :
+  def header():
     return "%-20s  %6s  %4s  %6s  %6s  %6s  %5s" % ("atom", "b_iso", "occ",
       "2Fo-Fc", "Fo-Fc", "Anom", "CC")
 
-  def id_str (self) :
+  def id_str(self):
     return "%2s%4s%1s%1s %-4s" % (self.chain_id, self.resseq, self.icode,
       self.altloc, self.name)
 
-  def as_string (self, prefix="", highlight_if_heavy=False) :
+  def as_string(self, prefix="", highlight_if_heavy=False):
     flag = ""
-    if highlight_if_heavy and self.is_heavy_atom() :
+    if highlight_if_heavy and self.is_heavy_atom():
       flag = " ***"
     return "%-20s  %6.2f  %4.2f  %6.2f  %6.2f  %s  %5.3f%s" % (
       self.id_str(), self.b_iso, self.occupancy, self.two_fofc, self.fofc,
       format_value("%6.2f", self.anom, replace_none_with="---"), self.cc, flag)
 
-  def is_bad_water (self) :
+  def is_bad_water(self):
     return ((self.cc < 0.8) or (self.fofc < -3.0) or (self.occupancy < 0.5)
             or (self.two_fofc < 1.0))
 
-  def is_heavy_atom (self) :
+  def is_heavy_atom(self):
     return (self.fofc > 3.0) or (self.anom > 3.0) or (self.b_iso == 0)
 
-  def as_table_row_phenix (self) :
+  def as_table_row_phenix(self):
     return [ self.id_str(), self.b_iso, self.occupancy, self.two_fofc,
              self.fmodel, self.score]
 
-class waters (validation) :
+class waters (validation):
   """
   Assess the properties of solvent atoms, including local environment and
   electron density.
@@ -62,11 +62,11 @@ class waters (validation) :
 
   __slots__ = validation.__slots__ + ["n_bad", "n_heavy"]
 
-  def get_result_class (self) : return water
+  def get_result_class(self) : return water
 
-  def __init__ (self, pdb_hierarchy, xray_structure, fmodel,
+  def __init__(self, pdb_hierarchy, xray_structure, fmodel,
                 distance_cutoff=4.0, collect_all=True,
-                molprobity_map_params=None) :
+                molprobity_map_params=None):
     validation.__init__(self)
     from mmtbx.real_space_correlation import extract_map_stats_for_single_atoms
     from cctbx import adptbx
@@ -162,13 +162,13 @@ class waters (validation) :
         fmodel=fmodel,
         selection=water_sel)
     waters = []
-    for i_seq, atom in enumerate(pdb_atoms) :
-      if (water_sel[i_seq]) :
+    for i_seq, atom in enumerate(pdb_atoms):
+      if (water_sel[i_seq]):
         rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
         self.n_total += 1
         asu_dict = asu_table[i_seq]
         nearest_atom = nearest_contact = None
-        for j_seq, j_sym_groups in asu_dict.items() :
+        for j_seq, j_sym_groups in asu_dict.items():
           atom_j = pdb_atoms[j_seq]
           site_j = sites_frac[j_seq]
           # Filter out hydrogens
@@ -182,7 +182,7 @@ class waters (validation) :
             vec_i = col(atom.xyz)
             vec_ji = col(site_ji_cart)
             dxyz = abs(vec_i - vec_ji)
-            if (nearest_contact is None) or (dxyz < nearest_contact) :
+            if (nearest_contact is None) or (dxyz < nearest_contact):
               nearest_contact = dxyz
               nearest_atom = atom_info(pdb_atom=atom_j, symop=rt_mx)
         w = water(
@@ -197,38 +197,38 @@ class waters (validation) :
           fofc=map_stats.fofc_values[i_seq],
           anom=map_stats.anom_values[i_seq],
           n_hbonds=None) # TODO
-        if (w.is_bad_water()) :
+        if (w.is_bad_water()):
           w.outlier = True
           self.n_bad += 1
-        elif (w.is_heavy_atom()) :
+        elif (w.is_heavy_atom()):
           w.outlier = True
           self.n_heavy += 1
-        if (w.outlier) or (collect_all) :
+        if (w.outlier) or (collect_all):
           self.results.append(w)
     self.n_outliers = len(self.results)
 
-  def show_summary (self, out=sys.stdout, prefix="  ") :
-    if (self.n_bad > 0) :
+  def show_summary(self, out=sys.stdout, prefix="  "):
+    if (self.n_bad > 0):
       print >> out, "%sPoorly ordered waters:  %4d" % (prefix, self.n_bad)
-    if (self.n_heavy > 0) :
+    if (self.n_heavy > 0):
       print >> out, "%sMislabeled waters:      %4d" % (prefix, self.n_heavy)
-    if (self.n_bad == 0) and (self.n_heavy == 0) :
+    if (self.n_bad == 0) and (self.n_heavy == 0):
       print >> out, "%sAll waters okay." % prefix
 
-  def show (self, out=sys.stdout, prefix="  ", verbose=True) :
-    if (len(self.results) > 0) :
-      if (self.n_bad > 0) :
+  def show(self, out=sys.stdout, prefix="  ", verbose=True):
+    if (len(self.results) > 0):
+      if (self.n_bad > 0):
         print >> out, prefix + "Waters in poor density:"
         print >> out, prefix + self.get_result_class().header()
         for result in self.results :
-          if (result.is_bad_water()) :
+          if (result.is_bad_water()):
             print >> out, prefix + str(result)
         print >> out, ""
-      if (self.n_heavy > 0) :
+      if (self.n_heavy > 0):
         print >> out, prefix + "Possibly mislabeled atoms:"
         print >> out, prefix + self.get_result_class().header()
         for result in self.results :
-          if (result.is_heavy_atom()) :
+          if (result.is_heavy_atom()):
             print >> out, prefix + str(result)
         print >> out, ""
     self.show_summary(out=out, prefix=prefix)

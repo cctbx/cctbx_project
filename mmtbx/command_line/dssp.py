@@ -4,7 +4,7 @@ from libtbx.utils import Sorry
 import time
 import sys
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   from mmtbx.secondary_structure import dssp
   from iotbx.file_reader import any_file
   import iotbx.phil
@@ -13,7 +13,7 @@ def run (args, out=sys.stdout) :
     master_phil=dssp.master_phil,
     pdb_file_def="file_name")
   params = cmdline.work.extract()
-  if (params.file_name is None) :
+  if (params.file_name is None):
     raise Sorry("Please specify a PDB file.")
   f = any_file(params.file_name, force_type="pdb")
   pdb_hierarchy = f.file_object.hierarchy
@@ -28,12 +28,12 @@ def run (args, out=sys.stdout) :
     params=params,
     out=out,
     log=sys.stderr)
-  if (params.atom_output) :
+  if (params.atom_output):
     out.write(pdb_hierarchy.as_pdb_string(crystal_symmetry=xray_structure))
   t2 = time.time()
-  if (params.verbosity >= 1) :
+  if (params.verbosity >= 1):
     print >> sys.stderr, "total DSSP runtime: %.3fs" % (t2-t1)
   return SS
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

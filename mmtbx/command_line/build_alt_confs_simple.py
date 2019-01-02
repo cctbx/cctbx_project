@@ -6,7 +6,7 @@ from libtbx.utils import multi_out
 import os.path
 import sys
 
-def master_phil () :
+def master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     phil_string="""
@@ -25,7 +25,7 @@ output {
 include scope mmtbx.building.alternate_conformations.single_residue.master_phil_str
 """)
 
-def run (args, out=None) :
+def run(args, out=None):
   if (out is None) : out = sys.stdout
   from mmtbx.building.alternate_conformations import single_residue
   import mmtbx.command_line
@@ -70,10 +70,10 @@ mmtbx.build_alternate_conformations if you want refinement and post-processing.
   print >> log, "Wrote %s" % params.output.file_name
   print >> log, "You MUST refine this model before using it!"
 
-def validate_params (params) :
-  if (params.output.file_name is None) :
+def validate_params(params):
+  if (params.output.file_name is None):
     raise Sorry("Please specify an output file name.")
   return True
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

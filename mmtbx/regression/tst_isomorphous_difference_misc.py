@@ -4,7 +4,7 @@ from libtbx import easy_run
 import time
 import os
 
-def exercise_calcium_substitution () :
+def exercise_calcium_substitution():
   from mmtbx.regression.make_fake_anomalous_data import generate_calcium_inputs
   from iotbx.file_reader import any_file
   anom_mtz_file, pdb_file = generate_calcium_inputs(
@@ -43,13 +43,13 @@ def exercise_calcium_substitution () :
   pdb_in = any_file(pdb_file)
   hierarchy = pdb_in.file_object.hierarchy
   xrs = pdb_in.file_object.xray_structure_simple()
-  for i_seq, atom in enumerate(hierarchy.atoms()) :
-    if (atom.element == "CA") :
+  for i_seq, atom in enumerate(hierarchy.atoms()):
+    if (atom.element == "CA"):
       site_frac = xrs.sites_frac()[i_seq]
       val = minus_map.eight_point_interpolation(site_frac)
       assert (val > 40)
 
-def exercise_anomalous_isomorphous_difference_map () :
+def exercise_anomalous_isomorphous_difference_map():
   pdb_1 = """\
 CRYST1   32.247   37.398   33.613  90.00  90.00  90.00 P 1
 HETATM 1983  PG  AGS A 340       5.029   2.780   3.852  1.00 60.68           P
@@ -179,21 +179,21 @@ HETATM   63  CH3 ACT     1       2.127   7.078   8.030  1.00 18.08           C
     resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
   sites_frac = xrs.sites_frac()
   anom_max = mn_anom = 0
-  for i_seq, atom in enumerate(pdb_in.hierarchy.atoms()) :
+  for i_seq, atom in enumerate(pdb_in.hierarchy.atoms()):
     site_frac = sites_frac[i_seq]
     anom_diff = map_1.eight_point_interpolation(site_frac)
     fobs_diff = map_2.eight_point_interpolation(site_frac)
     labels = atom.fetch_labels()
-    if (labels.resname.strip() == "MN") :
+    if (labels.resname.strip() == "MN"):
       assert (anom_diff > 10) and (fobs_diff > 5)
       mn_anom = anom_diff
-    elif (labels.resname.strip() == "ACT") :
+    elif (labels.resname.strip() == "ACT"):
       assert (anom_diff < 3) and (fobs_diff > 5)
-    if (anom_diff > anom_max) :
+    if (anom_diff > anom_max):
       anom_max = anom_diff
   assert (anom_max == mn_anom)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_anomalous_isomorphous_difference_map()
   exercise_calcium_substitution()
   print "OK"

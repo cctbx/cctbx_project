@@ -23,7 +23,7 @@ def n_as_s(format, value):
     return (format % value).strip()
   return [(format % v).strip() for v in value]
 
-def cc (data1, data2) :
+def cc(data1, data2):
   from cctbx.array_family import flex
   return flex.linear_correlation(data1, data2).coefficient()
 
@@ -183,7 +183,7 @@ class info(object):
     fo_w = fmodel.f_obs_work()
     fc_w = fmodel.f_model_scaled_with_k1_w()
     alpha_t, beta_t = fmodel.alpha_beta_t()
-    if (n_bins is None) or (n_bins < 1) :
+    if (n_bins is None) or (n_bins < 1):
       n_bins = fmodel.determine_n_bins(
         free_reflections_per_bin=free_reflections_per_bin,
         max_n_bins=max_number_of_bins)
@@ -536,7 +536,7 @@ class info(object):
     self.show_fom_pher_alpha_beta_in_bins(out = out)
 
   # re-arrange binned statistics for phenix GUI (or logfile)
-  def export_bins_table_data (self, title="Statistics by resolution bin") :
+  def export_bins_table_data(self, title="Statistics by resolution bin"):
     return export_bins_table_data(self.bins, title)
 
 def show_histogram(data, n_slots, log):
@@ -549,7 +549,7 @@ def show_histogram(data, n_slots, log):
     print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
     lc_1 = hc_1
 
-def export_bins_table_data (bins, title="Statistics by resolution bin") :
+def export_bins_table_data(bins, title="Statistics by resolution bin"):
   from iotbx import data_plots
   table_stats = ["r_work", "r_free", "completeness", "fom_work",
                  "pher_free", "scale_k1_work"]
@@ -561,7 +561,7 @@ def export_bins_table_data (bins, title="Statistics by resolution bin") :
                  "Phase error vs. resolution",
                  "Scale factor vs. resolution"]
   graph_columns = [[0,1,2], [0,3], [0,4], [0,5], [0,6]]
-  if hasattr(bins[0], "cc_work") and (bins[0].cc_work is not None) :
+  if hasattr(bins[0], "cc_work") and (bins[0].cc_work is not None):
     table_stats.insert(2, "cc_work")
     table_stats.insert(3, "cc_free")
     labels.insert(3, "CC(work)")

@@ -3,7 +3,7 @@
 
 from __future__ import division
 
-def exercise () :
+def exercise():
   from mmtbx.wwpdb import rcsb_web_services
   lysozyme = """KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSRWWCNDGRTPGSRNLCNIPCSALLSSDITASVNCAKKIVSDGNGMNAWVAWRNRCKGTDVQAWIRGCRL"""
   homologs = rcsb_web_services.sequence_search(lysozyme, d_max=2.0)
@@ -16,5 +16,5 @@ def exercise () :
   assert (len(ligand_info) == 4)
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

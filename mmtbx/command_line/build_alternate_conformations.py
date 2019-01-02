@@ -14,7 +14,7 @@ import time
 import os
 import sys
 
-def master_phil () :
+def master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     phil_string="""
@@ -56,8 +56,8 @@ output {
 }
 """)
 
-class build_and_refine (object) :
-  def __init__ (self,
+class build_and_refine (object):
+  def __init__(self,
       fmodel,
       pdb_hierarchy,
       params=None,
@@ -67,9 +67,9 @@ class build_and_refine (object) :
       cif_files=(), # XXX bug
       debug=None,
       verbose=True,
-      out=sys.stdout) :
+      out=sys.stdout):
     adopt_init_args(self, locals())
-    if (self.params is None) :
+    if (self.params is None):
       self.params = master_phil.extract().alt_confs
     self.extract_selection()
     self.refine_cycle = 1
@@ -77,15 +77,15 @@ class build_and_refine (object) :
     self.r_work_start = fmodel.r_work()
     self.r_free_start = fmodel.r_free()
     t_start = time.time()
-    for i_cycle in range(params.macro_cycles) :
+    for i_cycle in range(params.macro_cycles):
       n_alts = self.build_residue_conformers(stop_if_none=(i_cycle==0))
-      if (n_alts == 0) :
-        if (i_cycle == 0) :
+      if (n_alts == 0):
+        if (i_cycle == 0):
           raise Sorry("No alternate conformations found.")
       else :
         self.refine(constrain_occupancies=False)
         refine_again = self.params.refinement.constrain_correlated_occupancies
-        if (self.rejoin()) :
+        if (self.rejoin()):
           refine_again = True
         self.refine(title="Refining final model")
     make_header("Finished", out=out)
@@ -110,14 +110,14 @@ class build_and_refine (object) :
     print >> self.out, "Total runtime: %d s" % int(t_end - t_start)
     print >> self.out, ""
 
-  def extract_selection (self) :
+  def extract_selection(self):
     self.selection = None
-    if (self.params.selection is not None) :
+    if (self.params.selection is not None):
       sele_cache = self.pdb_hierarchy.atom_selection_cache()
       self.selection = sele_cache.selection(self.params.selection)
       assert (self.selection.count(True) > 0)
 
-  def build_residue_conformers (self, stop_if_none=False) :
+  def build_residue_conformers(self, stop_if_none=False):
     self.extract_selection()
     print >> self.out, ""
     #self.fmodel.info().show_targets(out=self.out, text="starting model")
@@ -135,11 +135,11 @@ class build_and_refine (object) :
       verbose=self.verbose,
       debug=self.debug,
       out=self.out)
-    if (n_alternates == 0) and (stop_if_none) :
+    if (n_alternates == 0) and (stop_if_none):
       raise Sorry("No new conformations generated.")
     return n_alternates
 
-  def build_window_conformers (self, stop_if_none=False) :
+  def build_window_conformers(self, stop_if_none=False):
     self.extract_selection()
     print >> self.out, ""
     self.fmodel.info().show_targets(out=self.out, text="starting model")
@@ -159,20 +159,20 @@ class build_and_refine (object) :
     t2 = time.time()
     print >> self.out, "sampling time: %.3fs" % (t2-t1)
     n_ensembles = driver.n_ensembles()
-    if (n_ensembles == 0) and (stop_if_none) :
+    if (n_ensembles == 0) and (stop_if_none):
       raise Sorry("No new conformations generated.")
     self.pdb_hierarchy = driver.assemble(out=self.out)
     self.processed_pdb_file = None # needs to be reset
     return n_ensembles
 
   # XXX should self.selection also apply here and in rejoin()?
-  def refine (self, title="Refining multi-conformer model",
-      constrain_occupancies=Auto) :
+  def refine(self, title="Refining multi-conformer model",
+      constrain_occupancies=Auto):
     make_sub_header(title, out=self.out)
     t1 = time.time()
     extra_args = []
     if constrain_occupancies :
-      if (self.params.refinement.constrain_correlated_occupancies) :
+      if (self.params.refinement.constrain_correlated_occupancies):
         extra_args.append("constrain_correlated_3d_groups=True")
     else :
       print >> self.out, "  Correlated occupancies will *not* be constrained"
@@ -195,7 +195,7 @@ class build_and_refine (object) :
     self.map_file = refined.map_file
     self.refine_cycle += 1
 
-  def rejoin (self) :
+  def rejoin(self):
     make_sub_header("Re-joining identical conformers", out=self.out)
     pdb_hierarchy = self.pdb_hierarchy.deep_copy()
     n_modified = alternate_conformations.rejoin_split_single_conformers(
@@ -206,7 +206,7 @@ class build_and_refine (object) :
       reset_occupancies=self.params.refinement.constrain_correlated_occupancies,
       verbose=self.verbose,
       log=self.out)
-    if (n_modified > 0) :
+    if (n_modified > 0):
       self.pdb_hierarchy = pdb_hierarchy
       xray_structure = self.pdb_hierarchy.extract_xray_structure(
         crystal_symmetry=self.fmodel.xray_structure)
@@ -220,18 +220,18 @@ class build_and_refine (object) :
       convert_to_isotropic=False)
     return (n_modified > 0)
 
-  def write_pdb_file (self, file_name, remove_hd=False) :
-    if (remove_hd) :
+  def write_pdb_file(self, file_name, remove_hd=False):
+    if (remove_hd):
       self.pdb_hierarchy.remove_hd()
     self.pdb_hierarchy.write_pdb_file(
       file_name=file_name,
       crystal_symmetry=self.fmodel.xray_structure.crystal_symmetry())
     print >> self.out, "wrote model to %s" % file_name
 
-  def write_map_file (self, file_name) :
+  def write_map_file(self, file_name):
     import mmtbx.maps.utils
     import iotbx.map_tools
-    if (self.map_file is None) :
+    if (self.map_file is None):
       two_fofc_coeffs, fofc_coeffs = mmtbx.maps.utils.get_maps_from_fmodel(
         self.fmodel)
       iotbx.map_tools.write_map_coeffs(
@@ -241,8 +241,8 @@ class build_and_refine (object) :
     else :
       shutil.copyfile(self.map_file, file_name)
 
-def run (args, out=None, driver_class=None,
-    require_single_conformer_starting_model=False) :
+def run(args, out=None, driver_class=None,
+    require_single_conformer_starting_model=False):
   import mmtbx.utils
   if (out is None) : out = sys.stdout
   usage_string = """phenix.alternator model.pdb data.mtz [selection=...] [options]"""
@@ -254,10 +254,10 @@ def run (args, out=None, driver_class=None,
     out=out,
     create_log_buffer=True)
   params = cmdline.params
-  if (params.output.output_dir is not None) :
+  if (params.output.output_dir is not None):
     os.chdir(params.output.output_dir)
   dir_name = os.getcwd()
-  if (params.output.create_dir) :
+  if (params.output.create_dir):
     dir_name = create_run_directory("alt_confs",
       default_directory_number=params.output.directory_number)
     os.chdir(dir_name)
@@ -266,12 +266,12 @@ def run (args, out=None, driver_class=None,
   #working_phil = master_phil.format(python_object=params)
   #make_sub_header("Final input parameters", out=log)
   #master_phil.fetch_diff(source=working_phil).show(out=log)
-  if (driver_class is None) :
+  if (driver_class is None):
     driver_class = build_and_refine
   multi_conf_selection = alternate_conformations.multi_conformer_selection(
     pdb_hierarchy=cmdline.pdb_hierarchy)
   if ((len(multi_conf_selection) != 0) and
-      require_single_conformer_starting_model) :
+      require_single_conformer_starting_model):
     atoms = cmdline.pdb_hierarchy.select(multi_conf_selection).atoms()
     print >> log, "First %d atoms with alternate conformations:" % min(10,
       len(atoms))
@@ -297,7 +297,7 @@ def run (args, out=None, driver_class=None,
   # TODO final result object
   return driver.pdb_hierarchy
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   try :
     import phenix.automation.refinement
   except ImportError :

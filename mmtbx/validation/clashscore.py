@@ -14,7 +14,7 @@ import os
 import re
 import sys
 
-class clash (atoms) :
+class clash (atoms):
   __clash_attr__ = [
     "overlap",
     "probe_type",
@@ -23,29 +23,29 @@ class clash (atoms) :
   __slots__ = atoms.__slots__ + __clash_attr__
 
   @staticmethod
-  def header () :
+  def header():
     return "%-20s %-20s  %7s" % ("Atom 1", "Atom 2", "Overlap")
 
-  def id_str (self, spacer=" ") :
+  def id_str(self, spacer=" "):
     return "%s%s%s" % (self.atoms_info[0].id_str(), spacer,
       self.atoms_info[1].id_str())
 
-  def id_str_no_atom_name (self) :
+  def id_str_no_atom_name(self):
     return "%s %s" % (self.atoms_info[0].id_str()[0:11],
       self.atoms_info[1].id_str()[0:11])
 
-  def format_old (self) :
+  def format_old(self):
     return "%s :%.3f" % (self.id_str(), abs(self.overlap))
 
-  def as_string (self) :
+  def as_string(self):
     return "%-20s %-20s  %7.3f" % (self.atoms_info[0].id_str(),
       self.atoms_info[1].id_str(), abs(self.overlap))
 
-  def as_table_row_phenix (self) :
+  def as_table_row_phenix(self):
     return [ self.atoms_info[0].id_str(), self.atoms_info[1].id_str(),
              abs(self.overlap) ]
 
-  def __cmp__ (self, other) : # sort in descending order
+  def __cmp__(self, other) : # sort in descending order
     return cmp(self.overlap, other.overlap)
 
 class clashscore(validation):
@@ -66,9 +66,9 @@ class clashscore(validation):
   gui_formats = ["%s", "%s", ".3f"]
   wx_column_widths = [150, 150, 150] #actually set in GUI's Molprobity/Core.py
 
-  def get_result_class (self) : return clash
+  def get_result_class(self) : return clash
 
-  def __init__ (self,
+  def __init__(self,
       pdb_hierarchy,
       fast = False, # do really fast clashscore, produce only the number
       condensed_probe = False, # Use -CON for probe. Reduces output 10x.
@@ -80,7 +80,7 @@ class clashscore(validation):
       save_modified_hierarchy=False,
       verbose=False,
       do_flips=False,
-      out=sys.stdout) :
+      out=sys.stdout):
     validation.__init__(self)
     self.b_factor_cutoff = b_factor_cutoff
     self.fast = fast
@@ -130,14 +130,14 @@ class clashscore(validation):
         b_factor_cutoff=b_factor_cutoff,
         use_segids=use_segids,
         verbose=verbose)
-      if (save_modified_hierarchy) :
+      if (save_modified_hierarchy):
         self.pdb_hierarchy = iotbx.pdb.hierarchy.input(
           pdb_string=self.probe_clashscore_manager.h_pdb_string).hierarchy
       self.clash_dict[model.id] = self.probe_clashscore_manager.clashscore
       self.clash_dict_b_cutoff[model.id] = self.probe_clashscore_manager.\
                                            clashscore_b_cutoff
       self.list_dict[model.id] = self.probe_clashscore_manager.bad_clashes
-      if (n_models == 1) or (self.clashscore is None) :
+      if (n_models == 1) or (self.clashscore is None):
         self.results = self.probe_clashscore_manager.bad_clashes
         self.n_outliers = len(self.results)
         self.clashscore = self.probe_clashscore_manager.clashscore
@@ -150,14 +150,14 @@ class clashscore(validation):
   def get_clashscore_b_cutoff(self):
     return self.clashscore_b_cutoff
 
-  def show_old_output (self, out=sys.stdout, verbose=False) :
+  def show_old_output(self, out=sys.stdout, verbose=False):
     self.print_clashlist_old(out=out)
     self.show_summary(out=out)
 
-  def show_summary (self, out=sys.stdout, prefix="") :
+  def show_summary(self, out=sys.stdout, prefix=""):
     if self.clashscore is None:
       raise Sorry("PROBE output is empty. Model is not compatible with PROBE.")
-    elif (len(self.clash_dict) == 1) :
+    elif (len(self.clash_dict) == 1):
       k = self.clash_dict.keys()[0]
       #catches case where file has 1 model, but also has model/endmdl cards
       print >> out, prefix + "clashscore = %.2f" % self.clash_dict[k]
@@ -166,14 +166,14 @@ class clashscore(validation):
           (self.b_factor_cutoff,
            self.clash_dict_b_cutoff[k])
     else:
-      for k in sorted(self.clash_dict.keys()) :
+      for k in sorted(self.clash_dict.keys()):
         print >> out, prefix + "MODEL %s clashscore = %.2f" % (k,
           self.clash_dict[k])
         if self.clash_dict_b_cutoff[k] is not None and self.b_factor_cutoff is not None:
           print >> out, "MODEL%s clashscore (B factor cutoff = %d) = %f" % \
             (k, self.b_factor_cutoff, self.clash_dict_b_cutoff[k])
 
-  def print_clashlist_old (self, out=sys.stdout):
+  def print_clashlist_old(self, out=sys.stdout):
     if self.fast:
       print >> out, "Bad Clashes >= 0.4 Angstrom - not available in fast=True mode"
       return
@@ -187,8 +187,8 @@ class clashscore(validation):
         for result in self.list_dict[k] :
           print >> out, result.format_old()
 
-  def show (self, out=sys.stdout, prefix="", outliers_only=None, verbose=None) :
-    if (len(self.clash_dict) == 1) :
+  def show(self, out=sys.stdout, prefix="", outliers_only=None, verbose=None):
+    if (len(self.clash_dict) == 1):
       for result in self.list_dict[''] :
         print >> out, prefix + str(result)
     else :
@@ -197,10 +197,10 @@ class clashscore(validation):
           print >> out, prefix + str(result)
     self.show_summary(out=out, prefix=prefix)
 
-  def as_coot_data (self) :
+  def as_coot_data(self):
     data = []
     for result in self.results :
-      if result.is_outlier() :
+      if result.is_outlier():
         data.append((result.atoms_info[0].id_str(),
           result.atoms_info[1].id_str(), result.overlap, result.xyz))
     return data
@@ -339,7 +339,7 @@ class probe_clashscore_manager(object):
     if self.condensed_probe:
       if (line_info.type == "bo"):
         if (line_info.min_gap <= -0.4):
-          if (key in clash_hash) :
+          if (key in clash_hash):
             if (line_info.min_gap < clash_hash[key].min_gap):
               clash_hash[key] = line_info
           else :
@@ -349,13 +349,13 @@ class probe_clashscore_manager(object):
     else: # not condensed
       if (line_info.type == "so" or line_info.type == "bo"):
         if (line_info.overlap_value <= -0.4):
-          if (key in clash_hash) :
+          if (key in clash_hash):
             if (line_info.overlap_value < clash_hash[key].overlap_value):
               clash_hash[key] = line_info
           else :
             clash_hash[key] = line_info
       elif (line_info.type == "hb"):
-        if (key in hbond_hash) :
+        if (key in hbond_hash):
           if (line_info.gap < hbond_hash[key].gap):
             hbond_hash[key] = line_info
         else :
@@ -451,7 +451,7 @@ class probe_clashscore_manager(object):
 
     probe_out = easy_run.fully_buffered(self.probe_txt,
       stdin_lines=pdb_string)
-    if (probe_out.return_code != 0) :
+    if (probe_out.return_code != 0):
       raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
         "\n".join(probe_out.stderr_lines))
     probe_unformatted = probe_out.stdout_lines
@@ -484,7 +484,7 @@ class probe_clashscore_manager(object):
     err = probe_info.format_errors_if_any()
     if err is not None and err.find("No atom data in input.")>-1:
       return
-    #if (len(probe_info) == 0) :
+    #if (len(probe_info) == 0):
     #  raise RuntimeError("Empty PROBE output.")
     n_atoms = 0
     for line in probe_info.stdout_lines:
@@ -509,7 +509,7 @@ class probe_clashscore_manager(object):
         self.n_clashes_b_cutoff = clashes_b_cutoff
       used = []
 
-      for clash_obj in sorted(temp) :
+      for clash_obj in sorted(temp):
         test_key = clash_obj.id_str_no_atom_name()
         test_key = clash_obj.id_str()
         if test_key not in used:
@@ -529,10 +529,10 @@ class probe_clashscore_manager(object):
         self.clashscore_b_cutoff = \
           (self.n_clashes_b_cutoff*1000) / self.natoms_b_cutoff
 
-def decode_atom_string (atom_str, use_segids=False) :
+def decode_atom_string(atom_str, use_segids=False):
   # Example:
   # ' A  49 LEU HD11B'
-  if (not use_segids) or (len(atom_str) == 16) :
+  if (not use_segids) or (len(atom_str) == 16):
     return atom_info(
       chain_id=atom_str[0:2],
       resseq=atom_str[2:6],
@@ -639,7 +639,7 @@ def check_and_add_hydrogen(
         parameters=trim,
         stdin_lines=stdin_lines)
     stdin_fname = "reduce_fail.pdb"
-    if (clean_out.return_code != 0) :
+    if (clean_out.return_code != 0):
       with open(stdin_fname, 'w') as f:
         f.write(stdin_lines)
       msg_str = "Reduce crashed with command '%s'.\nDumping stdin to file '%s'.\n" +\
@@ -648,7 +648,7 @@ def check_and_add_hydrogen(
     build_out = run_reduce_with_timeout(
         parameters=build,
         stdin_lines=clean_out.stdout_lines)
-    if (build_out.return_code != 0) :
+    if (build_out.return_code != 0):
       with open(stdin_fname, 'w') as f:
         f.write("\n".join(clean_out.stdout_lines))
       msg_str = "Reduce crashed with command '%s'.\nDumping stdin to file '%s'.\n" +\
@@ -668,15 +668,15 @@ def check_and_add_hydrogen(
 #-----------------------------------------------------------------------
 # this isn't really enough code to justify a separate module...
 #
-class nqh_flip (residue) :
+class nqh_flip (residue):
   """
   Backwards Asn/Gln/His sidechain, identified by Reduce's hydrogen-bond
   network optimization.
   """
-  def as_string (self) :
+  def as_string(self):
     return self.id_str()
 
-  def as_table_row_phenix (self) :
+  def as_table_row_phenix(self):
     if self.chain_id:
       return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname,self.resid) ]
     elif self.segid:
@@ -687,7 +687,7 @@ class nqh_flip (residue) :
   #alternate residue class methods for segid compatibility
   #more method overrides may be necessary
   #a more robust propagation of segid would preferable, eventually
-  def atom_selection_string (self) :
+  def atom_selection_string(self):
     if self.chain_id:
       return "(chain '%s' and resid '%s' and resname %s and altloc '%s')" % \
         (self.chain_id, self.resid, self.resname, self.altloc)
@@ -697,31 +697,31 @@ class nqh_flip (residue) :
     else:
       raise Sorry("no chain_id or segid found for nqh flip atom selection")
 
-  def id_str (self, ignore_altloc=False) :
+  def id_str(self, ignore_altloc=False):
     if self.chain_id:
       base = "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
     elif self.segid:
       base = "%4s%4s%1s" % (self.segid, self.resseq, self.icode)
     else:
       raise Sorry("no chain_id or segid found for nqh flip id_str")
-    if (not ignore_altloc) :
+    if (not ignore_altloc):
       base += "%1s" % self.altloc
     else :
       base += " "
     base += "%3s" % self.resname
-    if (self.segid is not None) :
+    if (self.segid is not None):
       base += " segid='%4s'" % self.segid
     return base
   #end segid compatibility
 
-class nqh_flips (validation) :
+class nqh_flips (validation):
   """
   N/Q/H sidechain flips identified by Reduce.
   """
   gui_list_headers = ["Chain", "Residue"]
   gui_formats = ["%s", "%s"]
   wx_column_widths = [75,220]
-  def __init__ (self, pdb_hierarchy) :
+  def __init__(self, pdb_hierarchy):
     re_flip = re.compile(":FLIP")
     validation.__init__(self)
     reduce_out = run_reduce_with_timeout(
@@ -735,7 +735,7 @@ class nqh_flips (validation) :
     #USER  MOD Set 1.1: B  49 GLN     :FLIP  amide:sc=    -2.7! C(o=-5.8!,f=-1.3!)
     #segid format (4-char segid)
     #USER  MOD Set 1.1:B     49 GLN     :FLIP  amide:sc=    -2.7! C(o=-5.8!,f=-1.3!)
-      if re_flip.search(line) :
+      if re_flip.search(line):
         resid = line.split(":")[1]
         #reduce has slightly different outputs using chains versus segid
         if len(resid) == 15: #chain
@@ -768,8 +768,8 @@ class nqh_flips (validation) :
         self.results.append(flip)
         self.n_outliers += 1
 
-  def show (self, out=sys.stdout, prefix="") :
-    if (self.n_outliers == 0) :
+  def show(self, out=sys.stdout, prefix=""):
+    if (self.n_outliers == 0):
       print >> out, prefix+"No backwards Asn/Gln/His sidechains found."
     else :
       for flip in self.results :

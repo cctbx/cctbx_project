@@ -129,18 +129,18 @@ def run(args, out=sys.stdout, replace_stderr=True):
   broadcast(m="All done.", log=log)
   return None
 
-def validate_params (params, callback=None) :
-  if (params.model_file_name is None) :
+def validate_params(params, callback=None):
+  if (params.model_file_name is None):
     raise Sorry("No PDB file(s) specified.")
-  elif (params.output.file_name is not None) :
-    if (os.path.isdir(params.output.file_name)) :
+  elif (params.output.file_name is not None):
+    if (os.path.isdir(params.output.file_name)):
       raise Sorry("The specified output file is a currently existing "+
                   "directory.")
     check_if_output_directory_exists(params.output.file_name)
   return True
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher (runtime_utils.target_with_save_result):
+  def run(self):
     return run(args=list(self.args), out=sys.stdout)
 
 if (__name__ == "__main__"):

@@ -211,10 +211,10 @@ def set_refinable_parameters(xray_structure, parameters, selections,
       xray_structure.set_occupancies(par_all[j], sel__b)
       i+=1
 
-def pack_unpack(x, table) :
+def pack_unpack(x, table):
   result = x.deep_copy()
   for indices in table :
-    if (len(indices) == 1) :
+    if (len(indices) == 1):
       i0 = indices[0]
       result[i0] = x[i0]
     else :
@@ -225,7 +225,7 @@ def pack_unpack(x, table) :
       result[indices[-1]] = 1. - xsum
   return result
 
-def pack_gradients (x, table) :
+def pack_gradients(x, table):
   result = flex.double(x.size(), 0)
   for indices in table :
     if(len(indices) == 1):
@@ -455,7 +455,7 @@ def occupancy_selections(
         result__.append(flex.size_t(sel))
       result_.append(result__)
     result = result_
-    if (constrain_correlated_3d_groups) and (len(result) > 0) :
+    if (constrain_correlated_3d_groups) and (len(result) > 0):
       result = assemble_constraint_groups_3d(
         xray_structure=model.get_xray_structure(),
         pdb_atoms=model.get_atoms(),
@@ -537,13 +537,13 @@ def occupancy_regroupping(pdb_hierarchy, cgs):
   while cgs.count([])>0:
     cgs.remove([])
 
-def assemble_constraint_groups_3d (
+def assemble_constraint_groups_3d(
     xray_structure,
     pdb_atoms,
     constraint_groups,
     interaction_distance_cutoff=4.0,
     verbose=False,
-    log=None) :
+    log=None):
   """
   Re-sorts occupancy constraint groups so that conformers whose motion is
   correlated (i.e. they interact in 3D, without necessarily being part of
@@ -552,7 +552,7 @@ def assemble_constraint_groups_3d (
   will already have connectivity taken into account.  This function will exit
   with an error if the occupancies for the new groups are not consistent.
   """
-  if (log is None) :
+  if (log is None):
     log = null_out()
   make_sub_header("Correlated occupancy grouping", out=log)
   print >> log, """
@@ -570,60 +570,60 @@ def assemble_constraint_groups_3d (
   pair_sym_table = pair_asu_table.extract_pair_sym_table()
   k = 0
   n_groups_start = len(constraint_groups)
-  while (k < len(constraint_groups)) :
+  while (k < len(constraint_groups)):
     groups = constraint_groups[k]
     print >> log, "Constraint group %d: %d conformers" % (k+1, len(groups))
     merge_constraints = []
-    for i_sel, selection in enumerate(groups) :
+    for i_sel, selection in enumerate(groups):
       occ = occupancies.select(selection)
       altloc = pdb_atoms[selection[0]].fetch_labels().altloc
       print >> log, "  conformer '%s': %d atoms" % (altloc, len(selection))
-      if (not occ.all_eq(occ[0])) :
+      if (not occ.all_eq(occ[0])):
         raise Sorry("At least one occupancy constraint group has "+
           "inconsistent occupancies for atoms in a single conformer.  To use "+
           "the automatic 3D constraints, the starting occupancies must be "+
           "uniform within each selection.")
       for i_seq in selection :
         labels = pdb_atoms[i_seq].fetch_labels()
-        if (labels.altloc.strip() == '') :
+        if (labels.altloc.strip() == ''):
           continue
         pair_sym_dict = pair_sym_table[i_seq]
-        if (verbose) :
+        if (verbose):
           print "%s (group %d):" % (pdb_atoms[i_seq].id_str(), k+1)
-        for j_seq, sym_ops in pair_sym_dict.items() :
+        for j_seq, sym_ops in pair_sym_dict.items():
           kk = k + 1
-          while (kk < len(constraint_groups)) :
+          while (kk < len(constraint_groups)):
             combine_group = False
             for other_selection in constraint_groups[kk] :
-              if (j_seq in other_selection) :
-                if (verbose) :
+              if (j_seq in other_selection):
+                if (verbose):
                   print "  %s (group %d)" % (pdb_atoms[j_seq].id_str(), kk+1)
                 merge_constraints.append(constraint_groups[kk])
                 del constraint_groups[kk]
                 combine_group = True
                 break
-            if (not combine_group) :
+            if (not combine_group):
               kk += 1
-    if (len(merge_constraints) > 0) :
+    if (len(merge_constraints) > 0):
       print >> log, "Merging %d constraint groups with group %d" % (
         len(merge_constraints), (k+1))
       for selection in groups :
         first_atom = pdb_atoms[selection[0]]
         altloc = first_atom.fetch_labels().altloc
-        if (altloc.strip() == '') :
+        if (altloc.strip() == ''):
           raise RuntimeError(("Atom '%s' in occupancy constraint group has "+
             "blank altloc ID") % first_atom.id_str())
         for merge_groups in merge_constraints :
           kk = 0
-          while (kk < len(merge_groups)) :
+          while (kk < len(merge_groups)):
             other_selection = merge_groups[kk]
             altloc2 = pdb_atoms[other_selection[0]].fetch_labels().altloc
-            if (altloc2 == altloc) :
+            if (altloc2 == altloc):
               print >> log, "  combining %d atoms with altloc %s" % \
                 (len(other_selection), altloc)
               occ1 = occupancies.select(selection)
               occ2 = occupancies.select(other_selection)
-              if (not occ1.all_eq(occ2[0])) or (not occ2.all_eq(occ1[0])) :
+              if (not occ1.all_eq(occ2[0])) or (not occ2.all_eq(occ1[0])):
                 raise Sorry(
                   ("Inconsistent occupancies in spatially related groups "+
                   "(%.2f versus %.2f).  To use automatic 3D occupancy "+
@@ -634,7 +634,7 @@ def assemble_constraint_groups_3d (
             else :
               kk += 1
       for merge_groups in merge_constraints :
-        if (len(merge_groups) > 0) :
+        if (len(merge_groups) > 0):
           for other_selection in merge_groups :
             altloc = pdb_atoms[other_selection[0]].fetch_labels().altloc
             print >> log, ("  warning: %d atoms with altloc %s do not "+
@@ -642,9 +642,9 @@ def assemble_constraint_groups_3d (
               altloc)
             groups.append(other_selection)
     k += 1
-  if (len(constraint_groups) != n_groups_start) :
+  if (len(constraint_groups) != n_groups_start):
     print >> log, "New occupancy constraint groups:"
-    for i_group, constraint_group in enumerate(constraint_groups) :
+    for i_group, constraint_group in enumerate(constraint_groups):
       print >> log, "  group %d:" % (i_group+1)
       for selection in constraint_group :
         resids = []
@@ -653,7 +653,7 @@ def assemble_constraint_groups_3d (
           atom_group = pdb_atoms[i_seq].parent()
           ag_id = atom_group.id_str()
           altlocs.add(atom_group.altloc)
-          if (not ag_id in resids) :
+          if (not ag_id in resids):
             resids.append(ag_id)
         assert len(altlocs) == 1
         print >> log, "    conformer '%s' (%d atoms):" % (list(altlocs)[0],

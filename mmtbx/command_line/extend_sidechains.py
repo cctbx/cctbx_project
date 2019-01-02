@@ -13,16 +13,16 @@ output_map_coeffs = None
   .type = path
 """
 
-def get_master_phil () :
+def get_master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(phil_string=extend_master_phil,
     enable_automatic_twin_detection=True)
 
-def run (args, out=sys.stdout, verbose=True) :
+def run(args, out=sys.stdout, verbose=True):
   import mmtbx.building.extend_sidechains
   import mmtbx.command_line
   input_out = out
-  if (not verbose) :
+  if (not verbose):
     input_out = null_out()
   cmdline = mmtbx.command_line.load_model_and_data(
     args=args,
@@ -38,7 +38,7 @@ refinement (but needs work).""")
   prefix = os.path.splitext(os.path.basename(params.input.pdb.file_name[0]))[0]
   pdb_hierarchy = cmdline.pdb_hierarchy
   xray_structure = cmdline.xray_structure
-  if (cmdline.params.input.sequence is not None) :
+  if (cmdline.params.input.sequence is not None):
     from iotbx.bioinformatics import any_sequence_format
     sequences, nc = any_sequence_format(cmdline.params.input.sequence)
     make_sub_header("Correcting model sequence", out=out)
@@ -46,7 +46,7 @@ refinement (but needs work).""")
       pdb_hierarchy=pdb_hierarchy,
       sequences=sequences,
       out=out)
-    if (n_changed == 0) :
+    if (n_changed == 0):
       print >> out, "  No modifications required."
     else :
       xray_structure = pdb_hierarchy.extract_xray_structure(
@@ -65,5 +65,5 @@ refinement (but needs work).""")
     output_model=params.output_model,
     output_map_coeffs=params.output_map_coeffs)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

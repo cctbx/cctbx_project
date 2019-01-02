@@ -552,7 +552,7 @@ svm
 }
 """
 
-class svm_prediction (slots_getstate_setstate_default_initializer) :
+class svm_prediction (slots_getstate_setstate_default_initializer):
   """
   Contains information about a SVM's prediction of a site's identity.
 
@@ -570,7 +570,7 @@ class svm_prediction (slots_getstate_setstate_default_initializer) :
   __slots__ = ["i_seq", "pdb_id_str", "atom_info_str", "map_stats",
                "atom_types", "scores", "final_choice"]
 
-  def show (self, out=sys.stdout, prefix="") :
+  def show(self, out=sys.stdout, prefix=""):
     """
     Shows information about a SVM's prediction of a site's identity.
 
@@ -579,16 +579,16 @@ class svm_prediction (slots_getstate_setstate_default_initializer) :
     out : file, optional
     prefix : str, optional
     """
-    for line in self.atom_info_str.splitlines() :
+    for line in self.atom_info_str.splitlines():
       print >> out, prefix+line.rstrip()
     print >> out, prefix+"SVM scores:"
     scores = sorted(zip(self.atom_types, self.scores), key=lambda x: -x[1])
     for elem, score in scores:
       print >> out, prefix+"  %4s : %.3f" % (elem, score)
-    if (self.final_choice is not None) :
+    if (self.final_choice is not None):
       print >> out, prefix+"Final choice: %s" % self.final_choice
 
-  def show_brief (self, out=sys.stdout, prefix="") :
+  def show_brief(self, out=sys.stdout, prefix=""):
     """
     Shows a brief description of a SVM's prediction of a site's identity, for
     use in output as a table.
@@ -599,21 +599,21 @@ class svm_prediction (slots_getstate_setstate_default_initializer) :
     prefix : str, optional
     """
     final_choice = self.final_choice
-    if (final_choice is None) :
+    if (final_choice is None):
       final_choice = "----"
       best_score = "----"
     else :
-      for atom_type, score in zip(self.atom_types, self.scores) :
-        if (atom_type == final_choice.element) :
+      for atom_type, score in zip(self.atom_types, self.scores):
+        if (atom_type == final_choice.element):
           best_score = "%5.3f" % score
           break
     print >> out, prefix+"%s   %4s  %5s  %5.2f  %5.2f" % \
       (self.pdb_id_str, final_choice.element, best_score,
        self.map_stats.two_fofc, self.map_stats.fofc)
 
-class manager (mmtbx.ions.identify.manager) :
-  def analyze_water (self, i_seq, debug=True, candidates=Auto,
-      filter_outputs=True) :
+class manager (mmtbx.ions.identify.manager):
+  def analyze_water(self, i_seq, debug=True, candidates=Auto,
+      filter_outputs=True):
     """
     Analyzes a single water site using a SVM to decide whether to re-assign it
     as an ion.
@@ -631,12 +631,12 @@ class manager (mmtbx.ions.identify.manager) :
     atom_props = mmtbx.ions.identify.AtomProperties(i_seq, self)
     expected_atom_type = atom_props.get_atom_type(
       params=self.params.water)
-    if (expected_atom_type == mmtbx.ions.identify.WATER_POOR) :
+    if (expected_atom_type == mmtbx.ions.identify.WATER_POOR):
       return None
     auto_candidates = candidates is Auto
     if auto_candidates:
       candidates = mmtbx.ions.DEFAULT_IONS
-    elif isinstance(candidates, str) or isinstance(candidates, unicode) :
+    elif isinstance(candidates, str) or isinstance(candidates, unicode):
       candidates = candidates.replace(",", " ").split()
     candidates = [i.strip().upper() for i in candidates]
     if (candidates == ['X']) : # XXX hack for testing - X is "dummy" element
@@ -666,17 +666,17 @@ class manager (mmtbx.ions.identify.manager) :
         chem_env=chem_env,
         scatter_env=scatter_env,
         predictions=predictions)
-    if (predictions is not None) and (len(predictions) > 0) :
+    if (predictions is not None) and (len(predictions) > 0):
       final_choice = None
       predictions.sort(key=lambda x: -x[1])
       best_guess, best_score = predictions[0]
-      if (best_guess != "HOH") :
+      if (best_guess != "HOH"):
         if len(predictions) == 1:
           final_choice = mmtbx.ions.server.get_metal_parameters(best_guess)
         else:
           next_guess, next_score = predictions[1]
           if ((best_score >= self.params.svm.min_score) and
-              (best_score>=(next_score*self.params.svm.min_fraction_of_next))) :
+              (best_score>=(next_score*self.params.svm.min_fraction_of_next))):
             final_choice = mmtbx.ions.server.get_metal_parameters(best_guess)
       atom_info_out = StringIO()
       atom_props.show_properties(identity="HOH", out=atom_info_out)
@@ -691,7 +691,7 @@ class manager (mmtbx.ions.identify.manager) :
       return result
     return None
 
-  def analyze_waters (self, out=sys.stdout, debug=True, candidates=Auto) :
+  def analyze_waters(self, out=sys.stdout, debug=True, candidates=Auto):
     """
     Uses a SVM to analyze all of a model's water sites and decide whether to
     re-assign them as ions.
@@ -718,16 +718,16 @@ class manager (mmtbx.ions.identify.manager) :
         debug=debug,
         candidates=candidates,
         filter_outputs=self.params.svm.filtered_outputs)
-      if (prediction is not None) :
+      if (prediction is not None):
         predictions.append(prediction)
     filtered = []
     for result in predictions :
-      if (debug) :
+      if (debug):
         result.show(out=out, prefix="  ")
         print >> out, ""
-      if (result.final_choice is not None) :
+      if (result.final_choice is not None):
         filtered.append(result)
-    if (len(filtered) == 0) :
+    if (len(filtered) == 0):
       print >> out, ""
       print >> out, "  No waters could be classified as possible ions."
     else :

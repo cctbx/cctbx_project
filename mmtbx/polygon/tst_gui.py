@@ -3,20 +3,20 @@ from __future__ import division
 import mmtbx.polygon.output
 import cPickle
 
-class test_renderer (mmtbx.polygon.output.renderer) :
-  def draw_box (self, out, points, color) :
+class test_renderer (mmtbx.polygon.output.renderer):
+  def draw_box(self, out, points, color):
     pass
 
-  def draw_solid_line (self, out, start, end, color) :
+  def draw_solid_line(self, out, start, end, color):
     pass
 
-  def draw_dashed_line (self, out, start, end, color) :
+  def draw_dashed_line(self, out, start, end, color):
     pass
 
-  def draw_labels (self, out, label, min, max, value, pos, angle) :
+  def draw_labels(self, out, label, min, max, value, pos, angle):
     pass
 
-def exercise () :
+def exercise():
   stats = {
     "r_work" : 0.25,
     "r_free" : 0.28,
@@ -29,7 +29,7 @@ def exercise () :
   s = cPickle.dumps(data)
   histograms = mmtbx.polygon.output.convert_histogram_data(data)
   assert (len(histograms) == 6)
-  for stat_key, histogram in histograms.iteritems() :
+  for stat_key, histogram in histograms.iteritems():
     bins = [ n for n in histogram.slots() ]
     #print "%-16s : %s" % (stat_key, " ".join([ "%5d" % n for n in bins ]))
   renderer = test_renderer(

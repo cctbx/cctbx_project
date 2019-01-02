@@ -4,7 +4,7 @@ from mmtbx.command_line import partial_omit_map
 from mmtbx.regression import tst_build_alt_confs
 from libtbx.utils import null_out
 
-def exercise () :
+def exercise():
   tst_build_alt_confs.prepare_inputs("tst_partial_omit_map")
   args = [
     "tst_partial_omit_map_start.pdb",
@@ -16,6 +16,6 @@ def exercise () :
   ]
   partial_omit_map.run(args=args, out=null_out())
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

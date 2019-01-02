@@ -14,7 +14,7 @@ if __name__ == '__main__':
 #import os
 #import sys
 #
-#def master_phil () :
+#def master_phil():
 #  from mmtbx.command_line import generate_master_phil_with_inputs
 #  return generate_master_phil_with_inputs(
 #    enable_automatic_twin_detection=True,
@@ -30,7 +30,7 @@ if __name__ == '__main__':
 #  .type = bool
 #""")
 #
-#def run (args, out=sys.stdout) :
+#def run(args, out=sys.stdout):
 #  usage_string = """\
 #mmtbx.validate_ligands model.pdb data.mtz LIGAND_CODE [...]
 #
@@ -41,7 +41,7 @@ if __name__ == '__main__':
 #  import mmtbx.command_line
 #  args_ = []
 #  for arg in args :
-#    if (len(arg) == 3) and arg.isalnum() and (not os.path.exists(arg)) :
+#    if (len(arg) == 3) and arg.isalnum() and (not os.path.exists(arg)):
 #      args_.append("ligand_code=%s" % arg)
 #    else :
 #      args_.append(arg)
@@ -51,7 +51,7 @@ if __name__ == '__main__':
 #    process_pdb_file=False,
 #    usage_string=usage_string)
 #  params = cmdline.params
-#  if (params.ligand_code is None) or (len(params.ligand_code) == 0) :
+#  if (params.ligand_code is None) or (len(params.ligand_code) == 0):
 #    raise Sorry("Ligand code required!")
 #  make_sub_header("Validating ligands", out=out)
 #  for ligand_code in params.ligand_code :
@@ -61,11 +61,11 @@ if __name__ == '__main__':
 #      ligand_code=ligand_code,
 #      reference_structure=params.reference_structure,
 #      only_segid=params.only_segid)
-#    if (validations is None) :
+#    if (validations is None):
 #      raise Sorry("No ligands named '%s' found." % ligand_code)
 #    mmtbx.validation.ligands.show_validation_results(validations=validations,
 #      out=out,
 #      verbose=params.verbose)
 #
-#if (__name__ == "__main__") :
+#if (__name__ == "__main__"):
 #  run(sys.argv[1:])

@@ -190,7 +190,7 @@ def run_minimization(
     log                            = log,
     mon_lib_srv                    = mon_lib_srv)
 
-def run_minimization_amber (
+def run_minimization_amber(
       selection,
       restraints_manager,
       pdb_hierarchy,
@@ -279,7 +279,7 @@ class run(object):
     print >> self.log, "  Sum of individual times: %s"%\
       str("%8.3f"%self.total_time).strip()
 
-  def format_usage_message (self) :
+  def format_usage_message(self):
     format_usage_message(log=self.log)
 
   def setup_output_file_names(self):
@@ -333,15 +333,15 @@ class run(object):
           cubic_unit_cell_around_centered_scatterers(
           buffer_size = 10).crystal_symmetry()
     cif_objects = list(self.inputs.cif_objects)
-    if (len(self.params.restraints) > 0) :
+    if (len(self.params.restraints) > 0):
       import iotbx.cif
       for file_name in self.params.restraints :
         cif_object = iotbx.cif.reader(file_path=file_name, strict=False).model()
         cif_objects.append((file_name, cif_object))
-    if (self.params.restraints_directory is not None) :
+    if (self.params.restraints_directory is not None):
       restraint_files = os.listdir(self.params.restraints_directory)
       for file_name in restraint_files :
-        if (file_name.endswith(".cif")) :
+        if (file_name.endswith(".cif")):
           full_path = os.path.join(self.params.restraints_directory, file_name)
           cif_object = iotbx.cif.reader(file_path=full_path,
             strict=False).model()
@@ -459,26 +459,26 @@ class run(object):
       s = self.model.geometry_statistics()
       s.show(log = self.log, uppercase=False)
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher (runtime_utils.target_with_save_result):
+  def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
     filename = run(args=self.args, log=sys.stdout,
                    use_directory_prefix=False).result_model_fname
     return os.path.join(self.output_dir, filename)
 
-def validate_params (params) :
-  if (params.file_name is None) :
+def validate_params(params):
+  if (params.file_name is None):
     raise Sorry("Please specify a model file to minimize.")
-  if (params.restraints_directory is not None) :
-    if (not os.path.isdir(params.restraints_directory)) :
+  if (params.restraints_directory is not None):
+    if (not os.path.isdir(params.restraints_directory)):
       raise Sorry("The path '%s' does not exist or is not a directory." %
         params.restraints_directory)
   return True
 
-def finish_job (result) :
+def finish_job(result):
   output_files = []
-  if (result is not None) :
+  if (result is not None):
     output_files.append((result, "Minimized model"))
   return output_files, []
 

@@ -3,7 +3,7 @@ from __future__ import division
 from libtbx.str_utils import make_sub_header
 import sys
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   from mmtbx.validation import waters
   import mmtbx.command_line
   master_phil = mmtbx.command_line.generate_master_phil_with_inputs("")
@@ -21,5 +21,5 @@ def run (args, out=sys.stdout) :
   result.show(out=out)
   return result
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])
