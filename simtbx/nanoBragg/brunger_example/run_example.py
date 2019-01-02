@@ -23,17 +23,17 @@ stolfile = "./bg.stol"
 imgfile = "./F4_0_00008.mccd.gz"
 
 # get stuff from the web if we have to
-if not os.path.isfile(mtzfile) :
+if not os.path.isfile(mtzfile):
   import urllib
   url = "http://bl831.als.lbl.gov/~jamesh/simtbx/"+mtzfile
   urllib.urlretrieve(url, mtzfile)
 
-if not os.path.isfile(stolfile) :
+if not os.path.isfile(stolfile):
   import urllib
   url = "http://bl831.als.lbl.gov/~jamesh/simtbx/bg.stol"
   urllib.urlretrieve(url, stolfile)
 
-if not os.path.isfile(imgfile) :
+if not os.path.isfile(imgfile):
   import urllib
   url = "http://bl831.als.lbl.gov/~jamesh/simtbx/"+imgfile
   urllib.urlretrieve(url, imgfile)
