@@ -152,13 +152,13 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags,
       equal_element_type))
     r.params.insert(type_flags[0], "ElementType")
     r.return_element_type = ["ElementType"]
-    if (op_class in ("boolean", "bool_result", "logical")):
+    if (op_class in("boolean", "bool_result", "logical")):
       r.return_element_type = ["bool"]
   else:
     r.join(get_template_header_and_parameters(
       r.param_array_type_name, 2, equal_element_type))
     r.return_element_type = [r.nta[0][0][1]]
-    if (op_class in ("boolean", "bool_result", "logical")):
+    if (op_class in("boolean", "bool_result", "logical")):
       r.return_element_type = ["bool"]
     elif (op_class != "n/a"):
       assert op_class == "arithmetic"

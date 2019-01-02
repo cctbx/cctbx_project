@@ -93,7 +93,7 @@ initial = flex.double([10, 900, 80, 27, 225])
 #initial = flex.double([10.4, 958.3, 131.4, 33.9, 205])
 
 from scitbx.examples.bevington import bevington_silver
-class lbfgs_biexponential_fit (bevington_silver):
+class lbfgs_biexponential_fit(bevington_silver):
   def __init__(self, x_obs, y_obs, w_obs, initial):
     super(lbfgs_biexponential_fit,self).__init__()
     self.set_cpp_data(x_obs,y_obs,w_obs)
