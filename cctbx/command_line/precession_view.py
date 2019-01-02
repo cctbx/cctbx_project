@@ -152,7 +152,7 @@ Please choose one by specifying the 'labels' parameter.""" %
 def frac2int(c):
   return (int(c[0]*255), int(c[1]*255), int(c[2]*255))
 
-class render_pil (cctbx.miller.display.render_2d):
+class render_pil(cctbx.miller.display.render_2d):
   def __init__(self, w, h, *args, **kwds):
     self._w = w
     self._h = h
@@ -186,7 +186,7 @@ class render_pil (cctbx.miller.display.render_2d):
       outline=frac2int(color),
       fill=frac2int(color))
 
-class render_postscript (cctbx.miller.display.render_2d):
+class render_postscript(cctbx.miller.display.render_2d):
   def __init__(self, w, h, *args, **kwds):
     self._w = w
     self._h = h

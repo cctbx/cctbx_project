@@ -1081,7 +1081,7 @@ def run(args=None,params=None,
 # =============================================================================
 # GUI-specific bits for running command
 from libtbx import runtime_utils
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     import os
     from wxGUI2 import utils
