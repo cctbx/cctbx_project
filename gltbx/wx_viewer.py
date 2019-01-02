@@ -45,7 +45,7 @@ def v3distsq(a, b):
   return result
 
 VIEWER_UPDATE_ID = wx.NewId()
-class ViewerUpdateEvent (wx.PyEvent):
+class ViewerUpdateEvent(wx.PyEvent):
   def __init__(self, data=None, recenter=False):
     wx.PyEvent.__init__(self)
     self.data = data
@@ -911,7 +911,7 @@ class show_points_and_lines_mixin(wxGLWindow):
       print txt
       self.parent.SetStatusText(txt)
 
-class OpenGLSettingsToolbox (wx.MiniFrame):
+class OpenGLSettingsToolbox(wx.MiniFrame):
   def __init__(self, parent):
     wx.MiniFrame.__init__(self, parent, -1, title="OpenGL settings",
       pos=(100,100), style=wx.CAPTION|wx.CLOSE_BOX|wx.RAISED_BORDER)
