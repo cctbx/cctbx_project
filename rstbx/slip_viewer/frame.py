@@ -51,7 +51,7 @@ class chooser_wrapper(object):
     return self.image_set.get_detectorbase(self.index).show_header()
 
 from rstbx.slip_viewer.slip_display import AppFrame
-class XrayFrame (AppFrame,XFBaseClass):
+class XrayFrame(AppFrame,XFBaseClass):
   def __init__(self, *args, **kwds):
     self.params = kwds.get("params", None)
     if "params" in kwds:

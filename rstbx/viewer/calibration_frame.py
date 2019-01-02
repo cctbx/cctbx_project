@@ -51,7 +51,7 @@ class SBFrame(XrayFrame):
     self.update_statusbar()
     self.Layout()
 
-class SBSettingsFrame (SettingsFrame):
+class SBSettingsFrame(SettingsFrame):
   def __init__(self, *args, **kwds):
     super(SettingsFrame, self).__init__(*args, **kwds)
     self.settings = self.GetParent().settings
@@ -66,7 +66,7 @@ class SBSettingsFrame (SettingsFrame):
     self.Bind(wx.EVT_CLOSE, lambda evt : self.Destroy(), self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
 
-class SBSettingsPanel (SettingsPanel):
+class SBSettingsPanel(SettingsPanel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.settings = self.GetParent().settings

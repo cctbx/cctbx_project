@@ -5,7 +5,7 @@ from libtbx.utils import Sorry
 import re
 import os
 
-class result (object):
+class result(object):
   def __init__(self, dir_name):
     self.dir_name = dir_name
     self._distl = None
@@ -108,7 +108,7 @@ def load_integration_results(dir_name, base_name, image_id=1):
   r_s_sorted = sorted(r_s, lambda x,y: cmp(y[1]['solution'], x[1]['solution']))
   return [ r for r,s in r_s_sorted ], [ s for r, s in r_s_sorted ]
 
-class TableData (object):
+class TableData(object):
   """Base class for wx.ListCtrl data source objects in this module."""
   def __init__(self, table):
     assert isinstance(table, list) or isinstance(table, dict)
@@ -120,14 +120,14 @@ class TableData (object):
   def GetItemImage(self, item):
     return 0
 
-class EmptyData (TableData):
+class EmptyData(TableData):
   def __init__(self, *args, **kwds):
     self.table = []
 
   def GetItemText(self, item, col):
     return ""
 
-class ResultData (TableData):
+class ResultData(TableData):
   def GetItemText(self, item, col):
     n_items = self.GetItemCount()
     assert (item < n_items) and (0 <= col <= 6)
@@ -147,7 +147,7 @@ class ResultData (TableData):
     else :
       return "%.3f" % result['rms']
 
-class BinData (TableData):
+class BinData(TableData):
   def GetItemText(self, item, col):
     n_items = self.GetItemCount()
     assert (item < n_items) and (0 <= col <= 4)

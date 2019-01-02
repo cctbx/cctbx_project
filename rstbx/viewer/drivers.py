@@ -3,7 +3,7 @@ from __future__ import division
 from libtbx.utils import Sorry
 import os
 
-class basic_task (object):
+class basic_task(object):
   def __init__(self, output_dir, args=(), params=None):
     assert (output_dir is not None)
     self.output_dir = output_dir
@@ -20,7 +20,7 @@ class basic_task (object):
   def run(self):
     raise NotImplementedError(str(type(self).__name__))
 
-class run_indexing (basic_task):
+class run_indexing(basic_task):
   def __init__(self, dataset, frames, **kwds):
     basic_task.__init__(self, **kwds)
     if (dataset is None):

@@ -8,7 +8,7 @@ import math
 
 pi_over_180 = math.pi / 180
 
-class screen_params (object):
+class screen_params(object):
   """
   Manager for all display parameters: this is independent of the actual image
   data, although it stores various attributes such as detector dimensions.
@@ -221,7 +221,7 @@ class screen_params (object):
     x2_mm, y2_mm = self._raw.image_coords_as_detector_coords(x2, y2)
     return math.sqrt((x1_mm - x2_mm)**2 + (y1_mm - y2_mm)**2)
 
-class image (screen_params):
+class image(screen_params):
   def __init__(self, file_name):
     screen_params.__init__(self)
     # XXX major hack - Boost.Python doesn't really deal with Unicode strings
@@ -587,7 +587,7 @@ class image (screen_params):
     distance = self.distance_between_points(x1, y1, x2, y2)
     return line_profile(vals, distance, lattice_length)
 
-class point_info (object):
+class point_info(object):
   """
   Container for storing attributes of a pixel, for display by the main
   frame (currently on the statusbar).
@@ -602,14 +602,14 @@ class point_info (object):
     return "resolution = %s  intensity = %.2f  slow=%d  fast=%d" % (
       format_value("%.2f A", self.d_min), self.intensity, self.slow, self.fast)
 
-class line_profile (object):
+class line_profile(object):
   def __init__(self, values, distance, lattice_length):
     self.values = values
     self.distance = distance
     self.lattice_length = lattice_length
 
 # TODO replace this with libtbx.phil
-class settings (object):
+class settings(object):
   def __init__(self):
     self.zoom_level = 0
     self.brightness = 100

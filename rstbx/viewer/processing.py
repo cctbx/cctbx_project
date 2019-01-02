@@ -10,7 +10,7 @@ import wx
 import os
 import sys
 
-class ProcessingFrame (wx.Frame):
+class ProcessingFrame(wx.Frame):
   def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
     self.viewer = None
@@ -84,7 +84,7 @@ class ProcessingFrame (wx.Frame):
   def OnLaunchViewer(self, evt):
     self.launch_viewer_frame()
 
-class StartPanel (wx.Panel, dataset.SelectDatasetPanelMixin):
+class StartPanel(wx.Panel, dataset.SelectDatasetPanelMixin):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)

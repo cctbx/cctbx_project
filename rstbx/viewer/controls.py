@@ -3,7 +3,7 @@ from __future__ import division
 from rstbx.viewer import results_base
 import wx
 
-class ListBase (wx.ListCtrl):
+class ListBase(wx.ListCtrl):
   def Reset(self):
     self.dataSource = results_base.EmptyData()
     self.RefreshAllItems()

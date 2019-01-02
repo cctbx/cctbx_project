@@ -14,7 +14,7 @@ import os
 # Instance to bind external update event to an event handler
 EVT_EXTERNAL_UPDATE = wx.PyEventBinder(wx.NewEventType(), 0)
 
-class ExternalUpdateEvent (wx.PyCommandEvent):
+class ExternalUpdateEvent(wx.PyCommandEvent):
   """XXX This class, along with the EVT_EXTERNAL_UPDATE instance
   should perhaps move into its own file?
   """
@@ -24,7 +24,7 @@ class ExternalUpdateEvent (wx.PyCommandEvent):
     self.img = None
     self.title = None
 
-class XrayFrame (wx.Frame):
+class XrayFrame(wx.Frame):
   # Maximum number of entries in the chooser.
   CHOOSER_SIZE = 1024
 
@@ -352,7 +352,7 @@ class XrayFrame (wx.Frame):
     self.statusbar.SetStatusText("Changing beam center")
     self.viewer.ChangeBeamCenter()
 
-class SettingsFrame (wx.MiniFrame):
+class SettingsFrame(wx.MiniFrame):
   def __init__(self, *args, **kwds):
     super(SettingsFrame, self).__init__(*args, **kwds)
     self.settings = self.GetParent().settings
@@ -384,7 +384,7 @@ class SettingsFrame (wx.MiniFrame):
   def refresh_thumbnail(self):
     self.panel.thumb_panel.Refresh()
 
-class SettingsPanel (wx.Panel):
+class SettingsPanel(wx.Panel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.settings = self.GetParent().settings
@@ -471,7 +471,7 @@ class SettingsPanel (wx.Panel):
     self.GetParent().GetParent().viewer.Refresh()
 
 mag_levels = [8,16,24,32,48,64]
-class ZoomFrame (wx.MiniFrame):
+class ZoomFrame(wx.MiniFrame):
   def __init__(self, *args, **kwds):
     super(ZoomFrame, self).__init__(*args, **kwds)
     self.settings = self.GetParent().settings
@@ -523,7 +523,7 @@ class ZoomFrame (wx.MiniFrame):
     self.panel.zoom_level = zoom
     self.Refresh()
 
-class PlotFrame (wx.MiniFrame):
+class PlotFrame(wx.MiniFrame):
   def __init__(self, *args, **kwds):
     super(PlotFrame, self).__init__(*args, **kwds)
     self.plot = LinePlot(self, figure_size=(8,3))
@@ -540,7 +540,7 @@ class PlotFrame (wx.MiniFrame):
   def OnDestroy(self, event):
     self.GetParent().plot_frame = None
 
-class LinePlot (wxtbx.plots.plot_container):
+class LinePlot(wxtbx.plots.plot_container):
   def show_plot(self, line):
     self.figure.clear()
     ax = self.figure.add_subplot(111)

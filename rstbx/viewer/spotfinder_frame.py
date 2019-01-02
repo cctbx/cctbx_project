@@ -60,7 +60,7 @@ class SpotFrame(XrayFrame):
         style=wx.CAPTION|wx.MINIMIZE_BOX, pos=(x_start, y_start))
     self.settings_frame.Show()
 
-class SpotSettingsFrame (SettingsFrame):
+class SpotSettingsFrame(SettingsFrame):
   def __init__(self, *args, **kwds):
     super(SettingsFrame, self).__init__(*args, **kwds)
     self.settings = self.GetParent().settings
@@ -75,7 +75,7 @@ class SpotSettingsFrame (SettingsFrame):
     self.Bind(wx.EVT_CLOSE, lambda evt : self.Destroy(), self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
 
-class SpotSettingsPanel (SettingsPanel):
+class SpotSettingsPanel(SettingsPanel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.settings = self.GetParent().settings

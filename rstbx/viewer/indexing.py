@@ -12,7 +12,7 @@ columns = ["Solution", "Metric fit", "RMSD", "#spots", "Crystal system",
 column_sizes = [60, 80, 80, 60, 120, 250, 80]
 column_alignments = [0, 1, 1, 1, 1, 0, 1]
 
-class LatticeData (results_base.TableData):
+class LatticeData(results_base.TableData):
   def GetItemText(self, item, col):
     n_items = self.GetItemCount()
     solution = self.table[item]
@@ -34,7 +34,7 @@ class LatticeData (results_base.TableData):
       unit_cell = solution['orient'].unit_cell()
       return str(int(unit_cell.volume()))
 
-class LatticeListCtrl (controls.ListBase):
+class LatticeListCtrl(controls.ListBase):
   def __init__(self, *args, **kwds):
     kwds = dict(kwds)
     kwds['style'] = wx.LC_REPORT|wx.LC_SINGLE_SEL|wx.LC_VIRTUAL
@@ -66,7 +66,7 @@ class LatticeListCtrl (controls.ListBase):
   def OnRightClick(self, event):
     pass
 
-class IndexingPanel (wx.Panel):
+class IndexingPanel(wx.Panel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
