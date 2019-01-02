@@ -4,8 +4,8 @@ from wxtbx import reports
 import wx
 import sys
 
-class BlastFrame (wx.Frame, reports.PDBLinkMixin) :
-  def __init__ (self, *args, **kwds) :
+class BlastFrame (wx.Frame, reports.PDBLinkMixin):
+  def __init__(self, *args, **kwds):
     super(BlastFrame, self).__init__(*args, **kwds)
     self.statusbar = self.CreateStatusBar()
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -33,29 +33,29 @@ class BlastFrame (wx.Frame, reports.PDBLinkMixin) :
     self.SetMinSize(self.GetSize())
     self.web_frame = None
 
-  def SetResults (self, query, results) :
+  def SetResults(self, query, results):
     assert (len(results) > 0)
     self.statusbar.SetStatusText("%d results shown (top match: %s_%s)" %
       (len(results), results[0].pdb_id, results[0].chain_id))
     self.seq_ctrl.SetValue(query)
     self.hit_list.SetResults(results)
 
-  def get_pdb_id_for_viewing (self) :
+  def get_pdb_id_for_viewing(self):
     return self.hit_list.GetSelectedID()
 
-class BlastList (wx.ListCtrl) :
-  def __init__ (self, *args, **kwds) :
+class BlastList (wx.ListCtrl):
+  def __init__(self, *args, **kwds):
     super(BlastList, self).__init__(*args, **kwds)
     cols = ["PDB ID", "Chain ID", "E-value", "Length", "% Identity",
             "% Positives"]
     widths = [100, 80, 100, 100, 100, 100]
     r, l = wx.LIST_FORMAT_RIGHT, wx.LIST_FORMAT_LEFT
     alignments = [l, l, r, r, r, r]
-    for i, col in enumerate(cols) :
+    for i, col in enumerate(cols):
       self.InsertColumn(i, col, alignments[i])
       self.SetColumnWidth(i, widths[i])
 
-  def SetResults (self, results) :
+  def SetResults(self, results):
     self.DeleteAllItems()
     for result in results :
       i = self.InsertStringItem(sys.maxint, result.pdb_id)
@@ -65,13 +65,13 @@ class BlastList (wx.ListCtrl) :
       self.SetStringItem(i, 4, "%.2f" % result.identity)
       self.SetStringItem(i, 5, "%.2f" % result.positives)
 
-  def GetSelectedID (self) :
+  def GetSelectedID(self):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       return self.GetItem(item, 0).GetText()
     return None
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   from iotbx.file_reader import any_file
   from iotbx.bioinformatics.structure import summarize_blast_output
   seq_file = any_file(sys.argv[1], force_type="seq")

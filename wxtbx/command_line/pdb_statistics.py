@@ -6,7 +6,7 @@ from __future__ import division
 from wxtbx.polygon_db_viewer import ConfigFrame
 import wx
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   app = wx.App(0)
   frame = ConfigFrame(None, -1, "PDB statistics from POLYGON database")
   frame.Show()

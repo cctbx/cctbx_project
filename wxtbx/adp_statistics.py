@@ -6,8 +6,8 @@ import sys
 
 #-----------------------------------------------------------------------
 # GUI objects
-class ADPStatisticsFrame (wx.Frame) :
-  def __init__ (self, *args, **kwds) :
+class ADPStatisticsFrame (wx.Frame):
+  def __init__(self, *args, **kwds):
     super(ADPStatisticsFrame, self).__init__(*args, **kwds)
     s = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(s)
@@ -29,7 +29,7 @@ class ADPStatisticsFrame (wx.Frame) :
     s1.Add(self.sele_text, 1, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.EXPAND, 5)
     txt1 = wx.StaticText(p, -1, "Overall statistics:")
     s2.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    if (sys.platform == "darwin") :
+    if (sys.platform == "darwin"):
       size1 = (720,120)
     else :
       size1 = (720,160) # FIXME check this on Linux
@@ -63,7 +63,7 @@ class ADPStatisticsFrame (wx.Frame) :
     self.list2.InsertColumn(0, "Bin", width=50)
     self.list2.InsertColumn(1, "Value range", width=180)
     self.list2.InsertColumn(2, "#atoms", width=60, format=wx.LIST_FORMAT_RIGHT)
-    for i in range(3) :
+    for i in range(3):
       continue
       col = self.list2.GetColumn(i)
       font = col.GetFont()
@@ -81,7 +81,7 @@ class ADPStatisticsFrame (wx.Frame) :
     self.list3.InsertColumn(0, "Bin", width=50)
     self.list3.InsertColumn(1, "Value range", width=180)
     self.list3.InsertColumn(2, "#atoms", width=60, format=wx.LIST_FORMAT_RIGHT)
-    for i in range(3) :
+    for i in range(3):
       continue
       col = self.list3.GetColumn(i)
       font = col.GetFont()
@@ -93,44 +93,44 @@ class ADPStatisticsFrame (wx.Frame) :
     s.Fit(p)
     self.Fit()
 
-  def show_statistics (self, stats) :
+  def show_statistics(self, stats):
     file_name = getattr(stats, "file_name", None)
-    if (file_name is not None) :
+    if (file_name is not None):
       self.file_text.SetLabel(file_name)
     selection = getattr(stats, "selection", None)
-    if (selection is not None) :
+    if (selection is not None):
       self.sele_text.SetLabel(selection)
     t1, t2, t3 = stats.format_tables()
     for row in t1 :
       i = self.list1.InsertStringItem(sys.maxint, str(row[0]))
-      for j, value in enumerate(row[1:]) :
+      for j, value in enumerate(row[1:]):
         self.list1.SetStringItem(i, j+1, str(value))
     for row in t2 :
       i = self.list2.InsertStringItem(sys.maxint, str(row[0]))
-      for j, value in enumerate(row[1:]) :
+      for j, value in enumerate(row[1:]):
         self.list2.SetStringItem(i, j+1, str(value))
     for row in t3 :
       i = self.list3.InsertStringItem(sys.maxint, str(row[0]))
-      for j, value in enumerate(row[1:]) :
+      for j, value in enumerate(row[1:]):
         self.list3.SetStringItem(i, j+1, str(value))
     p1, p2 = stats.format_plots()
     y1, yrange1 = p1
     y2, yrange2 = p2
-    if (not y1.all_eq(0)) :
+    if (not y1.all_eq(0)):
       self.plot1.convert_histogram(y1)
-    if (not y2.all_eq(0)) :
+    if (not y2.all_eq(0)):
       self.plot2.convert_histogram(y2)
 
-class adp_histogram (plots.histogram) :
-  def convert_histogram (self, bins) :
+class adp_histogram (plots.histogram):
+  def convert_histogram(self, bins):
     # XXX flex.histogram has already binned values, so I make new fake values
     # that matplotlib then re-bins
     values = []
-    for i, x in enumerate(bins) :
+    for i, x in enumerate(bins):
       values.extend([i] * x)
     self.show_histogram(values, len(bins), y_label="# of atoms")
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   from mmtbx.command_line import b_factor_statistics
   stats = b_factor_statistics.run(sys.argv[1:])
   app = wx.App(0)

@@ -5,8 +5,8 @@ import wxtbx.bitmaps
 import wx
 import sys
 
-class ListEditor (wx.Panel) :
-  def __init__ (self, *args, **kwds) :
+class ListEditor (wx.Panel):
+  def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self._default_label = "---"
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -48,21 +48,21 @@ class ListEditor (wx.Panel) :
     self._label = None
     self._callback = None
 
-  def CreateList (self) :
+  def CreateList(self):
     self.list = wx.ListCtrl(
       parent=self,
       id=-1,
       style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
     self.list.InsertColumn(0, "Items", width=460)
     self.list.SetMinSize((480,160))
-    if (hasattr(self.list, "SetItemSpacing")) and (wx.VERSION < (2,9)) :
+    if (hasattr(self.list, "SetItemSpacing")) and (wx.VERSION < (2,9)):
       self.list.SetItemSpacing(5)
     self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelect, self.list)
     self.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.OnDeSelect, self.list)
     self.sizer.Add(self.list, 1, wx.EXPAND|wx.ALL, 5)
 
-  def SetLabel (self, label, font_weight=wx.FONTWEIGHT_BOLD) :
-    if (self._label is not None) :
+  def SetLabel(self, label, font_weight=wx.FONTWEIGHT_BOLD):
+    if (self._label is not None):
       self._label.SetLabel(label)
     else :
       self._label = wx.StaticText(parent=self, label=label)
@@ -72,18 +72,18 @@ class ListEditor (wx.Panel) :
       self.sizer.Insert(0, self._label, 0, wx.TOP|wx.LEFT, 5)
     self.sizer.Layout()
 
-  def SetColumnHeader (self, header) :
+  def SetColumnHeader(self, header):
     col = self.list.GetColumn(0)
     col.SetText(header)
     self.list.SetColumn(0, col)
 
-  def SetToolTip (self, tool_tip) :
-    if isinstance(tool_tip, str) :
+  def SetToolTip(self, tool_tip):
+    if isinstance(tool_tip, str):
       self.list.SetToolTip(wx.ToolTip(tool_tip))
     else :
       self.list.SetToolTip(tool_tip)
 
-  def AddControlButton (self, label, bitmap) :
+  def AddControlButton(self, label, bitmap):
     btn = metallicbutton.MetallicButton(
       parent=self,
       label=label,
@@ -92,30 +92,30 @@ class ListEditor (wx.Panel) :
     self.buttons.Add(btn, 0, wx.RIGHT, 5)
     return btn
 
-  def AddItem (self, item) :
+  def AddItem(self, item):
     return self.list.InsertStringItem(sys.maxint, item)
 
-  def OnAdd (self, event) :
+  def OnAdd(self, event):
     i = self.AddItem(self._default_label)
     self.list.Select(i, 1)
     self.edit.SetFocus()
     self.call_back()
 
-  def OnDelete (self, event) :
+  def OnDelete(self, event):
     i = self.list.GetFirstSelected()
-    if (i >= 0) :
+    if (i >= 0):
       self.list.DeleteItem(i)
     self.edit.SetValue("")
     self.call_back()
 
-  def OnUpdate (self, event) :
+  def OnUpdate(self, event):
     evt_type = event.GetEventType()
     txt = self.edit.GetValue()
-    if (txt == "") or (txt is None) :
+    if (txt == "") or (txt is None):
       txt = self._default_label
     i = self.list.GetFirstSelected()
-    if (i == -1) :
-      if (event.GetEventType() == wx.EVT_TEXT_ENTER.typeId) :
+    if (i == -1):
+      if (event.GetEventType() == wx.EVT_TEXT_ENTER.typeId):
         i = self.AddItem(txt)
         self.list.Select(i, 1)
     else :
@@ -123,64 +123,64 @@ class ListEditor (wx.Panel) :
     self.list.SetFocus()
     self.call_back()
 
-  def OnSelect (self, event) :
+  def OnSelect(self, event):
     item = self.list.GetFirstSelected()
     txt = str(self.list.GetItemText(item))
-    if (txt == self._default_label) :
+    if (txt == self._default_label):
       txt = ""
     self.edit.SetValue(txt)
     self.call_back()
 
-  def OnDeSelect (self, event) :
+  def OnDeSelect(self, event):
     self.edit.SetValue("")
     self.call_back()
 
-  def SetDefaultItemLabel (self, label) :
+  def SetDefaultItemLabel(self, label):
     self._default_label = label
 
-  def GetValues (self) :
+  def GetValues(self):
     items = []
     i = 0
     n = self.list.GetItemCount()
-    while (i < n) :
+    while (i < n):
       txt = str(self.list.GetItemText(i))
-      if (txt == self._default_label) :
+      if (txt == self._default_label):
         txt = None
       items.append(txt)
       i += 1
     return items
 
-  def DeleteAllItems (self) :
+  def DeleteAllItems(self):
     self.list.DeleteAllItems()
     self.call_back()
 
-  def OnDeleteAll (self, evt) :
-    if (self.list.GetItemCount() == 0) :
+  def OnDeleteAll(self, evt):
+    if (self.list.GetItemCount() == 0):
       return False
     confirm = wx.MessageBox(caption="Confirm delete",
       message="Are you sure you want to delete all items in the list?")
-    if (confirm == wx.OK) :
+    if (confirm == wx.OK):
       self.DeleteAllItems()
 
-  def SetSelectedValue (self, txt) :
+  def SetSelectedValue(self, txt):
     i = self.list.GetFirstSelected()
-    if (i == -1) :
+    if (i == -1):
       return
     self.list.SetItemText(i, txt)
     self.edit.SetValue(txt)
 
-  def GetSelectedValue (self) :
+  def GetSelectedValue(self):
     i = self.list.GetFirstSelected()
-    if (i == -1) :
+    if (i == -1):
       return None
     return str(self.list.GetItemText(i))
 
-  def SetCallback (self, callback) :
+  def SetCallback(self, callback):
     assert hasattr(callback, "__call__")
     self._callback = callback
 
-  def call_back (self) :
-    if (self._callback is not None) :
+  def call_back(self):
+    if (self._callback is not None):
       self._callback()
 
 if __name__ == "__main__" :

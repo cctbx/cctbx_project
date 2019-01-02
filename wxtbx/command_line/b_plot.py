@@ -8,8 +8,8 @@ import wx
 from libtbx.utils import Usage
 import sys
 
-def run (args) :
-  if (len(args) == 0) :
+def run(args):
+  if (len(args) == 0):
     raise Usage("mmtbx.bfactor_plot model.pdb")
   pdb_file = args[0]
   params = b_plot.master_phil.fetch().extract()
@@ -19,5 +19,5 @@ def run (args) :
   b_plot.show_plot_frame(result)
   app.MainLoop()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

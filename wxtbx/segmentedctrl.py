@@ -30,8 +30,8 @@ elif wx.Platform == '__WXGTK__' :
 else :
   _DEFAULT_PADDING = 6
 
-class SegmentedControl (wx.PyControl) :
-  def __init__ (self,
+class SegmentedControl (wx.PyControl):
+  def __init__(self,
                 parent,
                 id=wx.ID_ANY,
                 pos=wx.DefaultPosition,
@@ -39,7 +39,7 @@ class SegmentedControl (wx.PyControl) :
                 style=SEGBTN_DEFAULT_STYLE,
                 name=wx.ButtonNameStr,
                 border=0,
-                pad=_DEFAULT_PADDING) :
+                pad=_DEFAULT_PADDING):
     wx.PyControl.__init__(self, parent, id, pos=pos, size=size,
       style=wx.NO_BORDER,
       name=name)
@@ -67,27 +67,27 @@ class SegmentedControl (wx.PyControl) :
     self.Bind(wx.EVT_LEAVE_WINDOW, self.OnLeave)
     self.Bind(wx.EVT_MOTION, self.OnMotion)
 
-  def AddSegment (self, label="", bitmap=None) :
+  def AddSegment(self, label="", bitmap=None):
     if label == "" and bitmap is None :
       raise RuntimeError("Must specify either a label or a bitmap or both "+
         "for SegmentControl.AddSegment().")
     self.segments.append((label, bitmap))
     self.values.append(False)
 
-  def InsertSegment (self, index, label="", bitmap=None) :
+  def InsertSegment(self, index, label="", bitmap=None):
     if label == "" and bitmap is None :
       raise RuntimeError("Must specify either a label or a bitmap or both "+
         "for SegmentControl.InsertSegment().")
     self.segments.insert(index, (label, bitmap))
     self.values.append(True)
 
-  def Realize (self) :
+  def Realize(self):
     self.SetSize(self.DoGetBestSize())
 
-  def SetBorderColor (self, color) :
+  def SetBorderColor(self, color):
     self._border_color = color
 
-  def DoGetBestSize (self) :
+  def DoGetBestSize(self):
     dc = wx.ClientDC(self)
     dc.SetFont(self.GetFont())
     n_seg = len(self.segments)
@@ -110,7 +110,7 @@ class SegmentedControl (wx.PyControl) :
     h += (self._border * 2)
     return (w, h)
 
-  def __OverallSegmentContentSize (self, dc) :
+  def __OverallSegmentContentSize(self, dc):
     max_h = 0
     max_w = 0
     for (label, bitmap) in self.segments :
@@ -133,7 +133,7 @@ class SegmentedControl (wx.PyControl) :
         max_w = seg_w
     return (max_w, max_h)
 
-  def __DrawButtons (self) :
+  def __DrawButtons(self):
     dc = wx.AutoBufferedPaintDCFactory(self)
     if wx.Platform == '__WXMSW__' :
       dc.SetBackground(wx.Brush(self.GetParent().GetBackgroundColour()))
@@ -190,7 +190,7 @@ class SegmentedControl (wx.PyControl) :
         seg_h = h -  2
       current_x = 1 + self._border
       current_y = 1 + self._border
-      for i, (label, bitmap) in enumerate(self.segments) :
+      for i, (label, bitmap) in enumerate(self.segments):
         gc.SetPen(border_pen)
         dc.SetPen(border_pen)
         (txt_x, txt_y) = (self._padding + 1, self._padding + 1)
@@ -209,7 +209,7 @@ class SegmentedControl (wx.PyControl) :
           txt_x += current_x
           txt_y += self._border
         if ((self.HasCapture() and i == self._clicked_segment) or
-             self.values[i] == True) :
+             self.values[i] == True):
           xo = current_x + (seg_w / 2)
           yo = current_y + (seg_h / 2)
           radius  = max(seg_w, seg_h) - 1
@@ -217,7 +217,7 @@ class SegmentedControl (wx.PyControl) :
             (220,220,220), (120,120,120))
           rgc.SetBrush(brush)
           gc.SetPen(wx.TRANSPARENT_PEN)
-          if self._style & SEGBTN_ROUNDED_CORNERS and (i == 0 or i == n_seg) :
+          if self._style & SEGBTN_ROUNDED_CORNERS and (i == 0 or i == n_seg):
             gc.DrawRoundedRectangle(current_x, current_y, seg_w, seg_h, 1)
           else :
             gc.DrawRectangle(current_x, current_y, seg_w, seg_h)
@@ -243,7 +243,7 @@ class SegmentedControl (wx.PyControl) :
             img_y += extra_v_space / 2
           gc.DrawBitmap(bitmap, img_x, img_y, bitmap.GetMask() != None)
           txt_y += img_h
-          if (wx.Platform == '__WXMSW__') :
+          if (wx.Platform == '__WXMSW__'):
             txt_y -= 2
         if label != "" :
           #print seg_w, label_w
@@ -259,10 +259,10 @@ class SegmentedControl (wx.PyControl) :
         else :
           current_x += seg_w
 
-  def HandleClick (self) :
+  def HandleClick(self):
     pass
 
-  def HitTest (self, event) :
+  def HitTest(self, event):
     x, y = event.GetPositionTuple()
     dc = wx.ClientDC(self)
     n_seg = len(self.segments)
@@ -276,25 +276,25 @@ class SegmentedControl (wx.PyControl) :
       seg_h = h -  2
     if n_seg == 0 :
       return None
-    elif (x < 1 or x > (w - 1)) or (y < 1 or y > (h-1)) :
+    elif (x < 1 or x > (w - 1)) or (y < 1 or y > (h-1)):
       return None
     elif self._style & SEGBTN_VERTICAL :
       current_y = 1
-      for i in range(n_seg) :
+      for i in range(n_seg):
         max_y = current_y + seg_h
         if y > current_y and y < max_y :
           return i
         current_y = max_y
     else :
       current_x = 1
-      for i in range(n_seg) :
+      for i in range(n_seg):
         max_x = current_x + seg_w -1
         if x >= current_x and x < max_x :
           return i
         current_x = max_x + 2
     return None
 
-  def OnLeftDown (self, event) :
+  def OnLeftDown(self, event):
     segment_id = self.HitTest(event)
     self._have_mouse = True
     self._clicked_segment = segment_id
@@ -302,8 +302,8 @@ class SegmentedControl (wx.PyControl) :
     self.SetFocus()
     self.Refresh()
 
-  def OnLeftUp (self, event) :
-    if self.HasCapture() :
+  def OnLeftUp(self, event):
+    if self.HasCapture():
       self.ReleaseMouse()
     segment_id = self.HitTest(event)
     if segment_id is not None and segment_id == self._clicked_segment :
@@ -311,48 +311,48 @@ class SegmentedControl (wx.PyControl) :
     self._clicked_segment = None
     self.Refresh()
 
-  def OnEnter (self, event) :
-    if event.LeftDown() :
+  def OnEnter(self, event):
+    if event.LeftDown():
       self.CaptureMouse()
       self.Refresh()
 
-  def OnLeave (self, event) :
+  def OnLeave(self, event):
     pass
-    if self.HasCapture() :
+    if self.HasCapture():
       self.ReleaseMouse()
       self.Refresh()
 #      self._clicked_segment = None
 
-  def OnMotion (self, event) :
+  def OnMotion(self, event):
     return
-    if not self.IsEnabled() :
+    if not self.IsEnabled():
       return
     x,y = event.GetPositionTuple()
     w,h = self.GetClientSizeTuple()
-    if (x<0 or y<0 or x>=w or y>=h) and self.HasCapture() :
+    if (x<0 or y<0 or x>=w or y>=h) and self.HasCapture():
       #self._clicked_segment = None
       print -3
       self.ReleaseMouse()
       self.Refresh()
       return
-    elif event.LeftDown() :
+    elif event.LeftDown():
       print -2
       self.CaptureMouse()
       self.Refresh()
       return
     event.Skip()
 
-  def OnErase (self, event) :
+  def OnErase(self, event):
     pass
 
-  def OnFocus (self, event) :
+  def OnFocus(self, event):
     pass
 
-  def OnKillFocus (self, event) :
+  def OnKillFocus(self, event):
     pass
 
-class SegmentedButtonControl (SegmentedControl) :
-  def HandleClick (self) :
+class SegmentedButtonControl (SegmentedControl):
+  def HandleClick(self):
     bevt = wx.CommandEvent(wx.wxEVT_COMMAND_BUTTON_CLICKED, self.GetId())
     bevt.SetEventObject(self)
     bevt.SetString(self.GetLabel())
@@ -360,8 +360,8 @@ class SegmentedButtonControl (SegmentedControl) :
     wx.PostEvent(self.GetParent(), bevt)
     self._clicked_segment = None
 
-class SegmentedRadioControl (SegmentedControl) :
-  def HandleClick (self) :
+class SegmentedRadioControl (SegmentedControl):
+  def HandleClick(self):
     index = self._clicked_segment
     assert index >= 0
     if self.values[index] == True and self._style & SEGBTN_RADIO_ALLOW_NONE :
@@ -375,18 +375,18 @@ class SegmentedRadioControl (SegmentedControl) :
     wx.PostEvent(self.GetParent(), bevt)
     self._clicked_segment = None
 
-  def GetSelection (self) :
+  def GetSelection(self):
     assert self.values.count(True) <= 1
     if True in self.values :
       return self.values.index(True)
     return -1
 
-  def SetSelection (self, index) :
+  def SetSelection(self, index):
     self.values = [False] * len(self.segments)
     self.values[index] = True
 
-class SegmentedToggleControl (SegmentedControl) :
-  def HandleClick (self) :
+class SegmentedToggleControl (SegmentedControl):
+  def HandleClick(self):
     index = self._clicked_segment
     assert index >= 0
     old_value = self.values[index]
@@ -398,19 +398,19 @@ class SegmentedToggleControl (SegmentedControl) :
     wx.PostEvent(self.GetParent(), bevt)
     self._clicked_segment = None
 
-  def GetValue (self, index) :
+  def GetValue(self, index):
     return self.values[index]
 
-  def SetValue (self, index, value) :
+  def SetValue(self, index, value):
     self.values[index] = value
 
 #-----------------------------------------------------------------------
 if __name__ == "__main__" :
-  def OnButton (evt) :
+  def OnButton(evt):
     print "Button clicked: %d" % evt.GetClientData()
-  def OnRadio (evt) :
+  def OnRadio(evt):
     print "Radio button selection: %d" % evt.GetClientData()
-  def OnToggle (evt) :
+  def OnToggle(evt):
     index = evt.GetClientData()
     print "Toggle button clicked: %d, %s" % (index,
       evt.GetEventObject().GetValue(index))
@@ -467,7 +467,7 @@ if __name__ == "__main__" :
     frame.Bind(wx.EVT_TOGGLEBUTTON, OnToggle, btn3)
     v_sizer.Add(wx.StaticText(panel, -1, "Toggle buttons"), 0, wx.ALL, 5)
     v_sizer.Add(btn3, 0, wx.ALL, 5)
-    if (bitmaps is not None) and (bitmaps.icon_lib is not None) :
+    if (bitmaps is not None) and (bitmaps.icon_lib is not None):
       bmp1 = bitmaps.fetch_icon_bitmap("actions", "1leftarrow", 16)
       bmp2 = bitmaps.fetch_icon_bitmap("actions", "gohome", 16)
       bmp3 = bitmaps.fetch_icon_bitmap("actions", "viewmag", 16)

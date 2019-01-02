@@ -7,12 +7,12 @@ from wxtbx import anomalous_scattering
 import wxtbx.app
 import sys
 
-def run (args) :
+def run(args):
   app = wxtbx.app.CCTBXApp(0)
   frame = anomalous_scattering.AnomPlotFrame(parent=None,
     title="Anomalous scattering plot")
   frame.Show()
   app.MainLoop()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

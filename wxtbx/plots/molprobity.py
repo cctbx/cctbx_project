@@ -9,28 +9,28 @@ import wxtbx.plots
 import wx
 from math import sqrt, floor
 
-class rotarama_plot (wxtbx.plots.plot_container) :
+class rotarama_plot (wxtbx.plots.plot_container):
   hit_test_radius = 3.0
   hit_test_minimum_difference = 0.5
-  def __init__ (self, parent, figure_size=(8,8), xyz_shift=None) :
+  def __init__(self, parent, figure_size=(8,8), xyz_shift=None):
     wxtbx.plots.plot_container.__init__(self,
       parent=parent,
       figure_size=figure_size,
       handle_left_click=True)
     self.xyz_shift = xyz_shift
 
-  def show_plot (self, *args, **kwds) :
+  def show_plot(self, *args, **kwds):
     if self.disabled : return
     self.draw_plot(*args, **kwds)
     self.parent.Refresh()
 
-  def process_mouse_click (self, mpl_event) :
+  def process_mouse_click(self, mpl_event):
     (xdata, ydata) = (mpl_event.xdata, mpl_event.ydata)
     if xdata is None or ydata is None :
       return False
     min_dist = self.hit_test_radius
     closest_point = None
-    for i, (x, y) in enumerate(self._points) :
+    for i, (x, y) in enumerate(self._points):
       dist = sqrt((xdata - x)**2 + (ydata - y)**2)
       if dist < min_dist :
         closest_point = i
@@ -44,20 +44,20 @@ class rotarama_plot (wxtbx.plots.plot_container) :
       self.parent.zoom_callback(xyz=xyz)
 
 class ramalyze_plot (rotarama_plot,
-                     ramalyze.ramachandran_plot_mixin) :
-  def __init__ (self, *args, **kwds) :
+                     ramalyze.ramachandran_plot_mixin):
+  def __init__(self, *args, **kwds):
     rotarama_plot.__init__(self, *args, **kwds)
     ramalyze.ramachandran_plot_mixin.__init__(self)
 
-class rotalyze_plot (rotarama_plot, rotalyze.rotamer_plot_mixin) :
-  def __init__ (self, *args, **kwds) :
+class rotalyze_plot (rotarama_plot, rotalyze.rotamer_plot_mixin):
+  def __init__(self, *args, **kwds):
     rotarama_plot.__init__(self, *args, **kwds)
     rotalyze.rotamer_plot_mixin.__init__(self)
 
-class rotarama_frame (wxtbx.plots.plot_frame) :
+class rotarama_frame (wxtbx.plots.plot_frame):
   frame_name = "rotarama_frame"
   show_controls_default = True
-  def __init__ (self, parent, title, validation) :
+  def __init__(self, parent, title, validation):
     self._validation = validation
     wxtbx.plots.plot_frame.__init__(self,
       parent=parent,
@@ -68,20 +68,20 @@ class rotarama_frame (wxtbx.plots.plot_frame) :
     self._xyz_cache = {}
     self.OnUpdatePlot(None)
 
-  def OnDestroy (self, event) :
-    if hasattr(self.GetParent(), self.frame_name) :
+  def OnDestroy(self, event):
+    if hasattr(self.GetParent(), self.frame_name):
       setattr(self.GetParent(), self.frame_name, None)
 
-  def OnUpdatePlot (self, event) :
+  def OnUpdatePlot(self, event):
     pass
 
-  def zoom_callback (self, **kwds) :
+  def zoom_callback(self, **kwds):
     if getattr(self.GetParent(), "main_window", None) is not None :
       self.GetParent().main_window.show_gfx_selection(**kwds)
 
-class ramalyze_frame (rotarama_frame) :
+class ramalyze_frame (rotarama_frame):
   frame_name = "rama_frame"
-  def draw_top_panel (self) :
+  def draw_top_panel(self):
     self.top_panel = wx.Panel(self)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.top_panel.SetSizer(szr)
@@ -107,7 +107,7 @@ class ramalyze_frame (rotarama_frame) :
     grid.Add(utils.bold_text(self.top_panel, "Show data points:"), 0,
       utils.std_sizer_flags, 5)
     default = ramalyze.RAMALYZE_ANY
-    if (self._validation.n_total > 2500) :
+    if (self._validation.n_total > 2500):
       default = ramalyze.RAMALYZE_NOT_FAVORED
     pt_choice = wx.Choice(parent=self.top_panel,
       choices=ramalyze.rama_type_labels)
@@ -127,9 +127,9 @@ class ramalyze_frame (rotarama_frame) :
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdatePlot, self.show_labels)
     grid.Add(self.show_labels, 0, utils.std_sizer_flags, 5)
 
-  def get_current_state (self) :
+  def get_current_state(self):
     pos_type = self.choices[0].GetSelection()
-    if (pos_type != ramalyze.RAMA_GENERAL) :
+    if (pos_type != ramalyze.RAMA_GENERAL):
       self.choices[1].SetSelection(0)
       self.choices[1].Disable()
     else :
@@ -140,16 +140,16 @@ class ramalyze_frame (rotarama_frame) :
     show_labels = self.show_labels.GetValue()
     return (pos_type, res_type, pt_type, cm_name, show_labels)
 
-  def create_plot_panel (self) :
+  def create_plot_panel(self):
     panel = ramalyze_plot(self)
     return panel
 
-  def set_plot_type (self,
+  def set_plot_type(self,
       pos_type,
       res_type="*",
       pt_type=ramalyze.RAMALYZE_ANY,
       cm_name='jet',
-      show_labels=True) :
+      show_labels=True):
     if not pos_type in self._map_cache :
       z_data = mmtbx.validation.utils.get_rotarama_data(
         pos_type=ramalyze.res_types[pos_type],
@@ -182,16 +182,16 @@ class ramalyze_frame (rotarama_frame) :
       contours=contours,
       xyz=coords)
 
-  def OnUpdatePlot (self, event) :
+  def OnUpdatePlot(self, event):
     (pos_type,res_type,pt_type,cm_name,show_labels) = self.get_current_state()
     self.set_plot_type(pos_type, res_type, pt_type, cm_name, show_labels)
 
-class rotalyze_frame (rotarama_frame) :
+class rotalyze_frame (rotarama_frame):
   frame_name = "rota_frame"
   residues = ["Arg", "Asn", "Asp", "Gln", "Glu", "His", "Ile", "Leu", "Lys",
               "Met", "Phe", "Trp", "Tyr"]
 
-  def draw_top_panel (self) :
+  def draw_top_panel(self):
     self.top_panel = wx.Panel(self)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.top_panel.SetSizer(szr)
@@ -223,19 +223,19 @@ class rotalyze_frame (rotarama_frame) :
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdatePlot, self.show_labels)
     grid.Add(self.show_labels, 0, utils.std_sizer_flags, 5)
 
-  def get_current_state (self) :
+  def get_current_state(self):
     res_type = self.choices[0].GetStringSelection()
     pt_type = self.choices[1].GetStringSelection()
     cm_name = self.choices[2].GetStringSelection()
     show_labels = self.show_labels.GetValue()
     return (res_type, pt_type, cm_name, show_labels)
 
-  def create_plot_panel (self) :
+  def create_plot_panel(self):
     panel = rotalyze_plot(self)
     return panel
 
-  def set_plot_type (self, res_type, pt_type="All", cm_name='jet',
-      show_labels=False) :
+  def set_plot_type(self, res_type, pt_type="All", cm_name='jet',
+      show_labels=False):
     if not res_type in self._map_cache :
       z_data = mmtbx.validation.utils.get_rotarama_data(
         residue_type=res_type,
@@ -250,7 +250,7 @@ class rotalyze_frame (rotarama_frame) :
           residue_name=res_type.upper(),
           point_type=pt_type)
         # shift chi2 values by 180 to fit in contours
-        if (res_type.lower() in ["asp", "phe", "tyr"]) :
+        if (res_type.lower() in ["asp", "phe", "tyr"]):
           for i in xrange(len(points)):
             if (points[i][1] > 180.0):
               point = list(points[i])
@@ -262,7 +262,7 @@ class rotalyze_frame (rotarama_frame) :
         points = self._point_cache[(res_type, pt_type)]
         coords = self._xyz_cache[(res_type, pt_type)]
     extent = y_marks = None
-    if (res_type.lower() in ["asp", "phe", "tyr"]) :
+    if (res_type.lower() in ["asp", "phe", "tyr"]):
       extent = [0, 360, 0, 180]
       y_marks = [90]
     self.plot_panel.show_plot(
@@ -276,13 +276,13 @@ class rotalyze_frame (rotarama_frame) :
       extent=extent,
       y_marks=y_marks)
 
-  def OnUpdatePlot (self, event) :
+  def OnUpdatePlot(self, event):
     (res_type,pt_type,cm_name,show_labels) = self.get_current_state()
     self.set_plot_type(res_type, pt_type, cm_name, show_labels)
 
 class multi_criterion_plot (wxtbx.plots.plot_container,
-    graphics.multi_criterion_plot_mixin) :
-  def __init__ (self, parent, binner, y_limits) :
+    graphics.multi_criterion_plot_mixin):
+  def __init__(self, parent, binner, y_limits):
     self._reset = False
     graphics.multi_criterion_plot_mixin.__init__(self,
       binner=binner,
@@ -294,16 +294,16 @@ class multi_criterion_plot (wxtbx.plots.plot_container,
     self.figure.subplots_adjust(hspace=0.001)
     self.canvas.mpl_connect('motion_notify_event', self.OnHover)
 
-  def show_plot (self, *args, **kwds) :
+  def show_plot(self, *args, **kwds):
     if self.disabled : return
     self.draw_plot(*args, **kwds)
     self.parent.Refresh()
 
-  def OnPickRange (self, event) :
+  def OnPickRange(self, event):
     bin = self.choose_range.GetSelection()
     self.plot_range(bin)
 
-  def OnHover (self, mpl_event) :
+  def OnHover(self, mpl_event):
     (xdata, ydata) = (mpl_event.xdata, mpl_event.ydata)
     if xdata is None or ydata is None :
       if self._reset :
@@ -320,7 +320,7 @@ class multi_criterion_plot (wxtbx.plots.plot_container,
         self.parent.residue_status.SetValue(residue.id_str())
         self._reset = True
 
-  def process_mouse_click (self, mpl_event) :
+  def process_mouse_click(self, mpl_event):
     (xdata, ydata) = (mpl_event.xdata, mpl_event.ydata)
     if xdata is None or ydata is None :
       return False
@@ -339,9 +339,9 @@ class multi_criterion_plot (wxtbx.plots.plot_container,
         self.parent.zoom_callback(selection_string=selection_string,
                                   xyz=xyz)
 
-class multi_criterion_frame (wxtbx.plots.plot_frame) :
+class multi_criterion_frame (wxtbx.plots.plot_frame):
   show_controls_default = True
-  def __init__ (self, parent, title, validation) :
+  def __init__(self, parent, title, validation):
     self._binner = validation.binned_data()
     self._y_limits = validation.get_y_limits()
     wxtbx.plots.plot_frame.__init__(self,
@@ -353,13 +353,13 @@ class multi_criterion_frame (wxtbx.plots.plot_frame) :
     self._xyz_cache = {}
     self.OnUpdatePlot(None)
 
-  def create_plot_panel (self) :
+  def create_plot_panel(self):
     panel = multi_criterion_plot(self,
       binner=self._binner,
       y_limits=self._y_limits)
     return panel
 
-  def draw_top_panel (self) :
+  def draw_top_panel(self):
     self.top_panel = wx.Panel(self)
     szr = wx.BoxSizer(wx.VERTICAL)
     self.top_panel.SetSizer(szr)
@@ -378,10 +378,10 @@ class multi_criterion_frame (wxtbx.plots.plot_frame) :
       style=wx.TE_READONLY)
     grid.Add(self.residue_status, 0, utils.std_sizer_flags, 5)
 
-  def OnUpdatePlot (self, event) :
+  def OnUpdatePlot(self, event):
     bin = self.range_choice.GetSelection()
     self.plot_panel.plot_range(bin)
 
-  def zoom_callback (self, **kwds) :
+  def zoom_callback(self, **kwds):
     if getattr(self.GetParent(), "main_window", None) is not None :
       self.GetParent().main_window.show_gfx_selection(**kwds)
