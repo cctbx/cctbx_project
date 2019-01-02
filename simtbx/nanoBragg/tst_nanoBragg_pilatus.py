@@ -222,7 +222,7 @@ def mask_pixels(raw_pixels):
       raw_pixels[iy,ix+1]=-2
     if ry>0.5 :
       raw_pixels[iy+1,ix]=-2
-    if ( rx*ry > 0.25 ) :
+    if ( rx*ry > 0.25 ):
       raw_pixels[iy+1,ix+1]=-2
   #
   # define the mask (f0, f1, s0, s1)
