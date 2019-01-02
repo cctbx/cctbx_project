@@ -9,7 +9,7 @@ import iotbx_ccp4_map_ext as ext
 
 class utils :  # These routines are used by both ccp4_map and mrcfile
 
-  def show_summary (self, out=None, prefix="") :
+  def show_summary(self, out=None, prefix=""):
     if (out is None) : out = sys.stdout
     print >> out, prefix + "header_min: ", self.header_min
     print >> out, prefix + "header_max: ", self.header_max
@@ -52,11 +52,11 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
       self.space_group_number)
 
 
-  def unit_cell (self) :
+  def unit_cell(self):
     from cctbx import uctbx
     return uctbx.unit_cell(self.unit_cell_parameters)
 
-  def statistics (self) :
+  def statistics(self):
     from cctbx import maptbx
     return maptbx.statistics(self.data)
 
@@ -73,7 +73,7 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
     if([f1,f2,f3,f4].count(False)>0): return False
     else: return True
 
-  def grid_unit_cell (self) :
+  def grid_unit_cell(self):
     """
     If we want to use maptbx.non_crystallographic_eight_point_interpolation,
     the "unit cell" is actually the original unit cell divided by the original

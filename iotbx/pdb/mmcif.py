@@ -408,7 +408,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     self.hierarchy = None
     self.builder = None
 
-  def file_type (self) :
+  def file_type(self):
     return "mmcif"
 
   def construct_hierarchy(self, set_atom_i_seq=True, sort_atoms=True):
@@ -416,7 +416,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     self.hierarchy = self.builder.hierarchy
     if sort_atoms:
       self.hierarchy.sort_atoms_in_place()
-      if (set_atom_i_seq) :
+      if (set_atom_i_seq):
         self.hierarchy.reset_atom_i_seqs()
       self.hierarchy.atoms_reset_serial()
 
@@ -474,7 +474,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def connectivity_annotation_section(self):
     return ""
 
-  def extract_secondary_structure (self, log=None):
+  def extract_secondary_structure(self, log=None):
     from iotbx.pdb import secondary_structure
     return secondary_structure.annotation.from_cif_block(self.cif_block, log=log)
 
@@ -568,21 +568,21 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def extract_f_model_core_constants(self):
     return extract_f_model_core_constants(self.cif_block)
 
-  def extract_wavelength (self, first_only=True) :
+  def extract_wavelength(self, first_only=True):
     wavelengths = self.cif_block.get('_diffrn_source.pdbx_wavelength_list')
     wavelength = _float_or_None(self.cif_block.get(
         '_diffrn_source.pdbx_wavelength'))
-    if (first_only) :
-      if (wavelength is not None) :
+    if (first_only):
+      if (wavelength is not None):
         return wavelength
-      elif (wavelengths is not None) :
+      elif (wavelengths is not None):
         wavelengths = [ float(f.strip()) for f in wavelengths.split(",") ]
         return wavelengths[0]
-    elif (wavelengths is not None) :
+    elif (wavelengths is not None):
         return [ float(f) for f in wavelengths.split(",") ]
     return None
 
-  def get_experiment_type (self) :
+  def get_experiment_type(self):
     exptl_method = self.cif_block.get('_exptl.method')
     if(isinstance(exptl_method,flex.std_string)):
       exptl_method = "; ".join(list(exptl_method))
@@ -712,9 +712,9 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
 
   def _used_what_restraints(self, what):
     rc = False
-    for cif_key, cif_block in self.cif_model.iteritems() :
+    for cif_key, cif_block in self.cif_model.iteritems():
       target = cif_block.get("_refine.pdbx_stereochemistry_target_values")
-      if (target is not None) and (what in target) :
+      if (target is not None) and (what in target):
         rc = True
         break
     return rc

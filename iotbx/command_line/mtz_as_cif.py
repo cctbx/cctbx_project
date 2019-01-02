@@ -87,13 +87,13 @@ Usage examples:
 def run(args, params=None, out=sys.stdout):
   from iotbx import file_reader
   work_params = params
-  if (work_params is None) :
+  if (work_params is None):
     cmdline = iotbx.phil.process_command_line_with_files(
       args=args,
       master_phil=master_phil,
       reflection_file_def="mtz_as_cif.mtz_file")
     work_params = cmdline.work.extract()
-  if (len(work_params.mtz_as_cif.mtz_file) == 0) :
+  if (len(work_params.mtz_as_cif.mtz_file) == 0):
     format_usage_message(log = out)
     return
   work_params = work_params.mtz_as_cif
@@ -101,7 +101,7 @@ def run(args, params=None, out=sys.stdout):
   for file_name in work_params.mtz_file :
     input_file = file_reader.any_file(file_name)
     input_file.check_file_type("hkl")
-    if (input_file.file_object.file_type() != 'ccp4_mtz') :
+    if (input_file.file_object.file_type() != 'ccp4_mtz'):
       raise Sorry("Error reading '%s' - only MTZ files may be used as input."
         % file_name)
     mtz_objects.append(input_file.file_object.file_content())
@@ -275,7 +275,7 @@ class mtz_as_cif_blocks(object):
           array=r_free, column_name='_refln.pdbx_r_free_flag')
 
       if input_obs is None or r_free is None: continue
-      if (test_flag_value is None) :
+      if (test_flag_value is None):
         test_flag_value = reflection_file_utils.guess_r_free_flag_value(
           miller_array=r_free)
       assert (test_flag_value is not None)
@@ -312,8 +312,8 @@ class mtz_as_cif_blocks(object):
       return result
 
 
-def validate_params (params) :
-  if (len(params.mtz_as_cif.mtz_file) == 0) :
+def validate_params(params):
+  if (len(params.mtz_as_cif.mtz_file) == 0):
     raise Sorry("No MTZ file(s) specified!")
   return True
 

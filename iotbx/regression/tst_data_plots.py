@@ -4,7 +4,7 @@ from iotbx import data_plots
 import libtbx.load_env
 import os
 
-def exercise_inline () :
+def exercise_inline():
   loggraph1 = """\
 $TABLE: Resolution shell statistics
 $GRAPHS
@@ -118,7 +118,7 @@ Resolution shell statistics
   json_str = t2.export_json()
   assert (json_str == '{"graph_types": ["A", "A"], "graph_columns": [[0, 2], [0, 3]], "title": "Resolution shell statistics", "column_labels": ["1/resol^2", "Nrefl", "R-free", "FOM"], "data": [[0.02, 0.04, 0.06, 0.08, 0.1], [2004, 2084, null, 1949, 1783], [0.25, 0.23, 0.27, 0.28, 0.38], [0.89, 0.88, NaN, 0.75, null]], "graph_names": ["R-free vs. resolution", "FOM vs. resolution"], "x_is_inverse_d_min": false}'), json_str
 
-def exercise_logfile () :
+def exercise_logfile():
   log_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/tracking/scala.log",
     test=os.path.isfile)

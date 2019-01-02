@@ -108,7 +108,7 @@ _d                                4
     labels = array.info().labels
     if len(labels) > 1 :
       for label in labels :
-        if label.startswith("wavelength_id") :
+        if label.startswith("wavelength_id"):
           labels.remove(label)
     mas_as_cif_block.add_miller_array(
       array=array.map_to_asu(), column_names=array.info().labels)

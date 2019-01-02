@@ -27,8 +27,8 @@ file_reader
        " ".join([ re.sub(" ", "_", file_reader.standard_file_descriptions[ft])
                   for ft in file_reader.standard_file_types ])))
 
-def run (args=(), params=None, out=sys.stdout) :
-  if (len(args) == 0) and (params is None) :
+def run(args=(), params=None, out=sys.stdout):
+  if (len(args) == 0) and (params is None):
     raise Usage("""
 iotbx.file_reader filename [force_type=None]
 
@@ -37,11 +37,11 @@ iotbx.file_reader filename [force_type=None]
 """ % ",".join(iotbx.file_reader.standard_file_types))
   user_phil = []
   for arg in args :
-    if (os.path.isfile(arg)) :
+    if (os.path.isfile(arg)):
       user_phil.append(libtbx.phil.parse(
         """file_reader.file_name='%s'""" % arg))
     else :
-      if (arg.startswith("force_type")) :
+      if (arg.startswith("force_type")):
         arg = "file_reader." + arg
       try :
         user_phil.append(libtbx.phil.parse(arg))
@@ -56,9 +56,9 @@ iotbx.file_reader filename [force_type=None]
     force_type=params.file_reader.force_type)
   f.show_summary(out=out)
 
-def validate_params (params) :
-  if (params.file_reader.file_name is None) :
+def validate_params(params):
+  if (params.file_reader.file_name is None):
     raise Sorry("No file specified.")
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

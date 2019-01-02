@@ -18,7 +18,7 @@ labelit.png file_name [output_file] [bin=1|2]
   bin argument: 1 ( default, same-sized png  as detector )
                 2 ( bin detector pixels 2x2 for display )"""
 
-def run (args) :
+def run(args):
   if (len(args) == 0) or (len(args) > 3) or "-large" in args or "help" in args:
     raise Usage(usage_message)
   graphics_bin = 1
@@ -26,9 +26,9 @@ def run (args) :
     graphics_bin = 2
   img_file = args[0]
   output_file = None
-  if (len(args) >= 2) :
+  if (len(args) >= 2):
     output_file = args[1]
-  if (output_file is None) :
+  if (output_file is None):
     output_file = os.path.basename(os.path.splitext(img_file)[0]) + ".png"
   C = convert_image(img_file,graphics_bin)
   C.img.show_header()
@@ -37,7 +37,7 @@ def run (args) :
 
 class convert_image:
 
- def __init__(self,file_name,graphics_bin=1):#, output_file=None) :
+ def __init__(self,file_name,graphics_bin=1):#, output_file=None):
   from rstbx.slip_viewer.slip_viewer_image_factory import SlipViewerImageFactory as ImageFactory
   from iotbx.detectors import ImageException
   try :
@@ -50,7 +50,7 @@ class convert_image:
     raise Sorry(str(e))
   img.read()
   self.img = img
-  if (img.vendortype in ["Pilatus-6M","Pilatus-2M","Pilatus-300K"]) :
+  if (img.vendortype in ["Pilatus-6M","Pilatus-2M","Pilatus-300K"]):
     graphics_bin = 1
   flex_img = img.get_flex_image(binning=graphics_bin, brightness=1)
   flex_img.setWindow(0.0, 0.0, 1)
@@ -72,5 +72,5 @@ class convert_image:
   self.imageout.save(out, "PNG")
   return out
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

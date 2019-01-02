@@ -6,10 +6,10 @@ from libtbx.utils import null_out
 
 prefix = "tst_export_scalepack_unmerged"
 
-def exercise_xds () : pass # TODO
-def exercise_mtz () : pass # TODO
+def exercise_xds() : pass # TODO
+def exercise_mtz() : pass # TODO
 
-def exercise_scalepack () :
+def exercise_scalepack():
   sca_in = """\
     4 i41
   1  0  0  0  1  0  0  0  1
@@ -51,7 +51,7 @@ def exercise_scalepack () :
   assert (list(hkl_in.batch_numbers) == [188, 8, 19, 184, 4, 198, 22, 180, 26,
           10, 184, 19, 193, 11, 185, 18, 4, 189, 13, 198])
 
-def exercise_cif () :
+def exercise_cif():
   # .cif input
   cif_in = """\
 data_r2etdsf
@@ -114,7 +114,7 @@ _refln.intensity_sigma
   assert (not i_obs_new.is_unique_set_under_symmetry())
   assert i_obs_new.indices().all_eq(i_obs_orig.indices())
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_scalepack()
   exercise_cif()
   print "OK"

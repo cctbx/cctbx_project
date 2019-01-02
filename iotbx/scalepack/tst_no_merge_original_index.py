@@ -3,7 +3,7 @@ from __future__ import division
 from libtbx.test_utils import show_diff
 import warnings
 
-def exercise () :
+def exercise():
   from iotbx.scalepack import no_merge_original_index
   from cctbx import crystal
   # input from xia2 with one slight modification to the (44,0,-25) observation,
@@ -132,6 +132,6 @@ def exercise () :
     assert (len(w) == 1)
     assert (str(space_group_info) == "F 41 3 2")
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

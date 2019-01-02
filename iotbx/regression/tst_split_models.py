@@ -2,10 +2,10 @@ from __future__ import division
 
 import os
 
-def exercise () :
-  if (os.path.isfile("multi_model_1.pdb")) :
+def exercise():
+  if (os.path.isfile("multi_model_1.pdb")):
     os.remove("multi_model_1.pdb")
-  if (os.path.isfile("multi_model_2.pdb")) :
+  if (os.path.isfile("multi_model_2.pdb")):
     os.remove("multi_model_2.pdb")
   f = open("multi_model.pdb", "w")
   f.write("""\
@@ -56,6 +56,6 @@ END""")
     sites.append(h.atoms().extract_xyz())
   assert approx_equal(sites[0].rms_difference(sites[1]), 38.9216638)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

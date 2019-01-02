@@ -29,7 +29,7 @@ convert
 }
 """)
 
-def run (args=(), params=None, out=sys.stdout) :
+def run(args=(), params=None, out=sys.stdout):
   assert (params.convert.file_name is not None)
   file_name = params.convert.file_name
   error_message = 'Unable to parse %s. ' % file_name
@@ -56,7 +56,7 @@ def run (args=(), params=None, out=sys.stdout) :
                 % output_file)
   return output_file
 
-def validate_params (params) :
-  if (params.convert.file_name is None) :
+def validate_params(params):
+  if (params.convert.file_name is None):
     raise Sorry("No model file specified!")
   return True

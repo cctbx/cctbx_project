@@ -7,7 +7,7 @@ from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import Sorry
 import os
 
-def find_file (file_name) :
+def find_file(file_name):
   full_path = libtbx.env.find_in_repositories(
     relative_path=file_name,
     test=os.path.isfile)
@@ -23,7 +23,7 @@ phil_names = ["refinement.input.xray_data.file_name",
               "refinement.input.neutron_data.r_free_flags.file_name",
               "refinement.input.experimental_phases.file_name"]
 
-def exercise_reflections () :
+def exercise_reflections():
   hkl_handler = reflections.reflections_handler(allowed_param_names=phil_names)
   from cctbx import miller
   from cctbx import crystal
@@ -79,7 +79,7 @@ def exercise_reflections () :
   mtz_dataset.mtz_object().write(file_name)
   assert (hkl_handler.set_param_file(file_name=file_name,
           file_param_name="refinement.input.xray_data.file_name") == True)
-  for i, phil_name in enumerate(phil_names[1:4]) :
+  for i, phil_name in enumerate(phil_names[1:4]):
     assert (hkl_handler.set_param_file(file_name=file_name,
             file_param_name=phil_name) == False)
   assert (hkl_handler.get_rfree_labels(
@@ -126,10 +126,10 @@ def exercise_reflections () :
   assert (hl_coeffs.is_hendrickson_lattman_array())
   from iotbx.mtz import label_decorator
   import iotbx.mtz
-  class resolve_label_decorator (label_decorator) :
-    def phases (self, *args, **kwds) :
+  class resolve_label_decorator (label_decorator):
+    def phases(self, *args, **kwds):
       return label_decorator.phases(self, *args, **kwds) + "M"
-    def hendrickson_lattman (self, *args, **kwds) :
+    def hendrickson_lattman(self, *args, **kwds):
       return label_decorator.hendrickson_lattman(self, *args, **kwds) + "M"
   mtz_dataset = f_obs_merged.as_mtz_dataset(
     column_root_label="FP")
@@ -253,10 +253,10 @@ def exercise_reflections () :
   (fp, fpp) = reflections.get_fp_fpp_from_sasaki("Se", 0.979)
   assert fp is not None and fpp is not None
 
-def exercise_other_reflection_formats () :
+def exercise_other_reflection_formats():
   hkl_handler = reflections.reflections_handler(allowed_param_names=phil_names)
   # test other file formats (requires phenix_regression)
-  if (regression_dir is None) :
+  if (regression_dir is None):
     print "phenix_regression not found, skipping exercise_other_reflection_formats()"
     return
   cns_file = os.path.join(regression_dir, "reflection_files", "enk.hkl")
@@ -284,9 +284,9 @@ def exercise_other_reflection_formats () :
     allow_reconstructed_amplitudes=False)
   assert (len(labels) == 0)
 
-def exercise_model () :
+def exercise_model():
   # FIXME should be possible to run this independently of phenix_regression
-  if (regression_dir is None) :
+  if (regression_dir is None):
     print "phenix_regression not found, skipping exercise_model()"
     return
   model_handler = models.model_handler(
@@ -360,7 +360,7 @@ def exercise_model () :
   assert (reflections.unit_cell_as_str(symm.unit_cell()) ==
           "59.227 55.922 60.264 90 90 90")
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_reflections()
   exercise_other_reflection_formats()
   exercise_model()

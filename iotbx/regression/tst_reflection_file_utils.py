@@ -775,7 +775,7 @@ def exercise_extract_miller_array_from_file():
   #
   assert sorry_counts == 8
 
-def exercise_automation_wrappers () :
+def exercise_automation_wrappers():
   from iotbx.reflection_file_utils import process_raw_data, \
     change_space_group, load_f_obs_and_r_free
   from cctbx import sgtbx

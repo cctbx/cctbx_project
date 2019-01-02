@@ -3,7 +3,7 @@ from __future__ import division
 from cctbx import crystal
 from cctbx import miller
 
-def exercise_sort() :
+def exercise_sort():
   expected_unsorted_data="""    4 I 4
   1  0  0  0  1  0  0  0  1
   0  0  0
@@ -73,7 +73,7 @@ def exercise_sort() :
   assert unsorted==expected_unsorted_data
   assert sorted==expected_sorted_data
 
-def exercise () :
+def exercise():
   exercise_sort()
   print "OK"
 

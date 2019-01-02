@@ -26,32 +26,32 @@ scalepack_ext = boost.python.import_ext("iotbx_scalepack_ext")
 #    orig. hkl   uniq. hkl    b# c s  a       I    sigI
 #    0   0   3   0   0   3    14 0 0  1    -1.8     1.3
 
-def writer (
+def writer(
     i_obs,
     file_object=None,
     file_name=None,
     batch_numbers=None,
     spindle_flags=None,
     scale_intensities_for_scalepack_merge=False,
-    out=sys.stdout) :
+    out=sys.stdout):
   n_refl = len(i_obs.indices())
   #assert (not i_obs.is_unique_set_under_symmetry()) # TT 2014-01-12 not necessary?
   assert i_obs.is_xray_intensity_array() and i_obs.sigmas() is not None
   # create substitute for batch number and spindle flag - these are impossible
   # to determine from the input array
-  if (type(batch_numbers).__name__ == "array") :
+  if (type(batch_numbers).__name__ == "array"):
     assert batch_numbers.indices().all_eq(i_obs.indices())
     batch_numbers = batch_numbers.data()
-  elif (batch_numbers is None) :
+  elif (batch_numbers is None):
     batch_numbers = flex.int(n_refl, 0)
-  if (type(spindle_flags).__name__ == "array") :
+  if (type(spindle_flags).__name__ == "array"):
     assert spindle_flags.indices().all_eq(i_obs.indices())
     spindle_flags = spindle_flags.data()
-  elif (spindle_flags is None) :
+  elif (spindle_flags is None):
     spindle_flags = flex.int(n_refl, 0)
   assert len(batch_numbers) == len(spindle_flags) == n_refl
   assert ([file_object, file_name].count(None) == 1)
-  if (file_object is None) :
+  if (file_object is None):
     file_object = open(file_name, "w")
   f = file_object
   space_group = i_obs.space_group()
@@ -73,7 +73,7 @@ def writer (
   # write out symmetry operators
   n_smx = space_group.n_smx()
   f.write("%5d %s\n" % (n_smx, i_obs.space_group_info()))
-  for smx in space_group.smx() :
+  for smx in space_group.smx():
     smx_rot = smx.as_int_array()[0:9]
     smx_tra = smx.as_int_array()[9:]
     for r in smx_rot :
@@ -89,7 +89,7 @@ def writer (
     i_obs=scale_intensities_if_necessary(i_obs,out=out)
 
   from iotbx.scalepack.merge import format_f8_1_or_i8 # Sorry if out of range
-  for i_refl, (h,k,l) in enumerate(i_obs.indices()) :
+  for i_refl, (h,k,l) in enumerate(i_obs.indices()):
     (h_asu, k_asu, l_asu) = uniq_indices[i_refl]
     c_flag = centric_tags[i_refl]
     asu_number = abs(isym[i_refl]) + 1 # XXX is this correct?
@@ -218,10 +218,10 @@ class reader(object):
       base_array_info=base_array_info),
             ]
 
-  def batch_as_miller_array (self,
+  def batch_as_miller_array(self,
         crystal_symmetry=None,
         force_symmetry=False,
-        base_array_info=None) :
+        base_array_info=None):
     if (base_array_info is None):
       base_array_info = miller.array_info(
         source_type="scalepack_no_merge_original_index")

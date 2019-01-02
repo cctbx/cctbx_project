@@ -85,7 +85,7 @@ class reader(object):
             raise FormatError, line_error
           # XXX scalepack uses I=0, sigmaI=-1 to denote a missing Friedel
           # mate
-          if (i_obs == 0) and (sigma == -1) :
+          if (i_obs == 0) and (sigma == -1):
             continue
           if (i):
             h = [-e for e in h]

@@ -733,7 +733,7 @@ def pdb_input(
         source_info="file " + str(file_name), # XXX unicode hack - dangerous
         lines=flex.split_lines(smart_open.for_reading(file_name).read()))
     except ValueError, e :
-      if (raise_sorry_if_format_error) :
+      if (raise_sorry_if_format_error):
         raise Sorry("Format error in %s:\n%s" % (str(file_name), str(e)))
       else :
         raise
@@ -745,7 +745,7 @@ def pdb_input(
   try :
     return ext.input(source_info=source_info, lines=lines)
   except ValueError, e :
-    if (raise_sorry_if_format_error) :
+    if (raise_sorry_if_format_error):
       raise Sorry("Format error:\n%s" % str(e))
     else :
       raise
@@ -1090,7 +1090,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       lines.extend(getattr(self, section)())
     return ("pickle", lines)
 
-  def file_type (self) :
+  def file_type(self):
     return "pdb"
 
   def sequence_from_SEQRES(self):
@@ -1164,7 +1164,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         result.append(line)
     return result
 
-  def extract_secondary_structure (self, log=None) :
+  def extract_secondary_structure(self, log=None):
     from iotbx.pdb import secondary_structure
     records = self.secondary_structure_section()
     return secondary_structure.annotation.from_records(records, log)
@@ -1336,38 +1336,38 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     remark_3_records = self.extract_remark_iii_records(3)
     return remark_3_interpretation.extract_f_model_core_constants(remark_3_records)
 
-  def extract_wavelength (self, first_only=True) :
-    for line in self.remark_section() :
+  def extract_wavelength(self, first_only=True):
+    for line in self.remark_section():
       # XXX this will miss multi-line records!
-      if (line.startswith("REMARK 200  WAVELENGTH OR RANGE")) :
+      if (line.startswith("REMARK 200  WAVELENGTH OR RANGE")):
         fields = line.split(":")
         assert (len(fields) == 2)
         subfields = fields[1].replace(";", ",").strip().split(",")
         wavelengths = []
         for field in subfields :
-          if (field.strip() == "") :
+          if (field.strip() == ""):
             continue
-          elif (field.strip() == "NULL") :
+          elif (field.strip() == "NULL"):
             wavelengths.append(None)
           else :
             try :
               wavelengths.append(float(field.strip()))
             except ValueError :
               wavelengths.append(None)
-        if (first_only) :
-          if (len(wavelengths) > 0) :
+        if (first_only):
+          if (len(wavelengths) > 0):
             return wavelengths[0]
           return None
         return wavelengths
     return None
 
-  def get_experiment_type (self) :
-    for line in self.title_section() :
-      if (line.startswith("EXPDTA")) :
+  def get_experiment_type(self):
+    for line in self.title_section():
+      if (line.startswith("EXPDTA")):
         return records.expdta(line).technique.strip()
     return None
 
-  def extract_connectivity (self) :
+  def extract_connectivity(self):
     """
     Parse CONECT records and extract the indices of bonded atoms.  Returns
     a scitbx.array_family.shared.stl_set_unsigned object corresponding to the
@@ -1378,12 +1378,12 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     this method should probably be called after the hierarchy is made.
     """
     lines = self.connectivity_section()
-    if (len(lines) == 0) :
+    if (len(lines) == 0):
       return None
     from scitbx.array_family import shared
     bonds = shared.stl_set_unsigned(len(self.atoms()), [])
     serial_ref_hash = {}
-    for i_seq, atom in enumerate(self.atoms()) :
+    for i_seq, atom in enumerate(self.atoms()):
       serial = atom.serial.strip()
       serial_ref_hash[serial] = i_seq
     for line in lines :
@@ -1392,7 +1392,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       i_seq = serial_ref_hash[record.serial.strip()]
       assert (record.serial_numbers_bonded_atoms.count('') != 4)
       for j_seq_str in record.serial_numbers_bonded_atoms :
-        if (j_seq_str != '') :
+        if (j_seq_str != ''):
           bonds[i_seq].append(serial_ref_hash[j_seq_str.strip()])
     return bonds
 
@@ -1414,8 +1414,8 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
 
   def _used_what_restraints(self, what):
     rc = False
-    for line in self.remark_section() :
-      if line.startswith("REMARK   3") and (what in line) :
+    for line in self.remark_section():
+      if line.startswith("REMARK   3") and (what in line):
         rc = True
         break
     return rc
@@ -1529,7 +1529,7 @@ class join_fragment_files(object):
     for file_name in file_names:
       pdb_inp = iotbx.pdb.input(file_name=file_name)
       z_ = pdb_inp.extract_cryst1_z_columns()
-      if (z_ is not None) :
+      if (z_ is not None):
         z_ = z_.strip()
         if (z_ != "") : z_ = int(z_)
         else : z_ = None
@@ -1553,8 +1553,8 @@ class join_fragment_files(object):
     result.reset_i_seq_if_necessary()
     self.joined = result
 
-def merge_files_and_check_for_overlap (file_names, output_file,
-    site_clash_cutoff=0.5, log=sys.stdout) :
+def merge_files_and_check_for_overlap(file_names, output_file,
+    site_clash_cutoff=0.5, log=sys.stdout):
   assert len(file_names) > 0
   merged_records = combine_unique_pdb_files(file_names)
   warnings = StringIO()
@@ -1568,8 +1568,8 @@ def merge_files_and_check_for_overlap (file_names, output_file,
     out=log)
   return n_clashes
 
-def quick_clash_check (file_name, site_clash_cutoff=0.5, out=sys.stdout,
-    show_outliers=5) :
+def quick_clash_check(file_name, site_clash_cutoff=0.5, out=sys.stdout,
+    show_outliers=5):
   pdb_inp = input(file_name=file_name)
   pdb_atoms = pdb_inp.atoms_with_labels()
   xray_structure = pdb_inp.xray_structure_simple(
@@ -1817,7 +1817,7 @@ def make_atom_with_labels(
       icode=None,
       altloc=None,
       resname=None):
-  if (result is None) :
+  if (result is None):
     result = hierarchy.atom_with_labels()
   else :
     assert type(result).__name__ == 'atom_with_labels'
@@ -1843,13 +1843,13 @@ def make_atom_with_labels(
   if (resname is not None): result.resname = resname
   return result
 
-def get_file_summary (pdb_in, hierarchy=None) :
-  if (hierarchy is None) :
+def get_file_summary(pdb_in, hierarchy=None):
+  if (hierarchy is None):
     hierarchy = pdb_in.construct_hierarchy()
   counts = hierarchy.overall_counts()
   chain_ids = []
-  for id in sorted(counts.chain_ids.keys()) :
-    if (id == " ") :
+  for id in sorted(counts.chain_ids.keys()):
+    if (id == " "):
       chain_ids.append("' '")
     else :
       chain_ids.append(id)
@@ -1859,29 +1859,29 @@ def get_file_summary (pdb_in, hierarchy=None) :
     ("Chain IDs", ", ".join(chain_ids)),
     ("Alternate conformations", counts.n_alt_conf_pure),
   ]
-  if (counts.n_models > 1) :
+  if (counts.n_models > 1):
     info_list.insert(0, ("Number of models", counts.n_models))
   cl = counts.resname_classes
-  if ("common_amino_acid" in cl) :
+  if ("common_amino_acid" in cl):
     info_list.append(("Amino acid residues", cl['common_amino_acid']))
-  if ("common_nucleic_acid" in cl) or ("ccp4_mon_lib_rna_dna" in cl) :
+  if ("common_nucleic_acid" in cl) or ("ccp4_mon_lib_rna_dna" in cl):
     n_atoms = cl.get("common_nucleic_acid", 0) + \
               cl.get("ccp4_mon_lib_rna_dna", 0)
     info_list.append(("Nucleic acid residues", n_atoms))
-  if ("common_water" in cl) :
+  if ("common_water" in cl):
     info_list.append(("Water molecules", cl['common_water']))
-  if ("common_element" in cl) :
+  if ("common_element" in cl):
     names = []
     for name in counts.resnames :
-      if (iotbx.pdb.common_residue_names_get_class(name)=="common_element") :
+      if (iotbx.pdb.common_residue_names_get_class(name)=="common_element"):
         names.append(name)
     value = "%d (%s)" % (cl['common_element'], ", ".join(names))
     info_list.append(("Elemental ions", value))
-  if ("common_small_molecule" in cl) or ("other" in cl) :
+  if ("common_small_molecule" in cl) or ("other" in cl):
     names = []
     for name in counts.resnames :
       res_class = iotbx.pdb.common_residue_names_get_class(name)
-      if (res_class in ["common_small_molecule", "other"]) :
+      if (res_class in ["common_small_molecule", "other"]):
         names.append(name)
     n_atoms = cl.get("common_small_molecule", 0) + cl.get("other", 0)
     value = "%d (%s)" % (n_atoms, ", ".join(names))
@@ -1893,25 +1893,25 @@ def get_file_summary (pdb_in, hierarchy=None) :
   max_b = flex.max(b_factors)
   info_list.append(("Mean isotropic B-factor", "%.2f (range: %.2f - %.2f)" %
     (mean_b, min_b, max_b)))
-  if (min_b <= 0) :
+  if (min_b <= 0):
     n_bad_adp = (b_factors <= 0).count(True)
     info_list.append(("Atoms with iso. B <= 0", "%d ***" % n_bad_adp))
   occ = atoms.extract_occ()
-  if (flex.min(occ) <= 0) :
+  if (flex.min(occ) <= 0):
     n_zero_occ = (occ <= 0).count(True)
     info_list.append(("Atoms with zero ocupancy", "%d ***" % n_zero_occ))
   symm = pdb_in.crystal_symmetry()
-  if (symm is not None) :
+  if (symm is not None):
     space_group = symm.space_group_info()
     info_list.append(("Space group", str(space_group)))
     unit_cell = symm.unit_cell()
-    if (unit_cell is not None) :
+    if (unit_cell is not None):
       uc_str = " ".join([ "%g" % x for x in unit_cell.parameters() ])
       info_list.append(("Unit cell", uc_str))
   return info_list
 
-def show_file_summary (pdb_in, hierarchy=None, out=None) :
-  if (out is None) :
+def show_file_summary(pdb_in, hierarchy=None, out=None):
+  if (out is None):
     out = sys.stdout
   info = get_file_summary(pdb_in, hierarchy)
   label_width = max([ len(l) for l,v in info ]) + 2

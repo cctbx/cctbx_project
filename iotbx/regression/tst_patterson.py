@@ -4,18 +4,18 @@ from libtbx import easy_run
 import libtbx.load_env
 import os
 
-def exercise_simple () :
+def exercise_simple():
   mtz_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/ha_patterson.mtz",
     test=os.path.isfile)
-  if (mtz_file is None) :
+  if (mtz_file is None):
     print "phenix_regression not available, skipping"
     return
   result = easy_run.fully_buffered("cctbx.patterson_map \"%s\"" % mtz_file
     ).raise_if_errors()
   assert (result.return_code == 0)
 
-def exercise_isomorphous () :
+def exercise_isomorphous():
   import iotbx.pdb.hierarchy
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string="""\
 ATOM     47  N   TYR A   7       8.292   1.817   6.147  1.00 14.70           N
@@ -52,7 +52,7 @@ ATOM    100 CL   CL  B   1      12.000   5.000  10.000  1.00 10.00          CL
     " ".join(args)).raise_if_errors()
   assert (result.return_code == 0)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_simple()
   exercise_isomorphous()
   print "OK"

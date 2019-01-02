@@ -85,7 +85,7 @@ The program "dot" is not on PATH:
   rc = easy_run.fully_buffered(
     command=command,
     stdin_lines=buffer.getvalue().splitlines())#.raise_if_errors_or_output()
-  if (rc.return_code != 0) :
+  if (rc.return_code != 0):
     raise RuntimeError("Fatal error running %s:\n%s" % (dot_path,
       "\n".join(rc.stderr_lines)))
   print >> out, "A file named", show_string(file_name), \

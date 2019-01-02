@@ -226,8 +226,8 @@ class label_decorator(__builtins__["object"]):
 
 # XXX this will generate output labels recognizable by the Coot auto-open
 # command, but only for specific root label types.
-class ccp4_label_decorator (label_decorator) :
-  def phases (self, root_label, anomalous_sign=None) :
+class ccp4_label_decorator (label_decorator):
+  def phases(self, root_label, anomalous_sign=None):
     assert (root_label in ["FWT", "DELFWT"])
     root_label = re.sub("F", "", root_label)
     return self.anomalous(
@@ -1095,7 +1095,7 @@ class _(boost.python.injector, ext.column):
         not_a_number_substitute=not_a_number_substitute),
       selection_valid=self.selection_valid())
 
-  def format_fields_for_mtz_dump (self, n_refl) :
+  def format_fields_for_mtz_dump(self, n_refl):
     valid_values = self.extract_valid_values()
     fields = [
       self.label(),
@@ -1199,7 +1199,7 @@ class _(boost.python.injector, ext.batch):
     print >> out, "min & max values of detector coords (pixels):", \
       list(self.detlm())
 
-def cutoff_data (file_name, d_min_cut) :
+def cutoff_data(file_name, d_min_cut):
   """
   Utility function for applying a global resolution cutoff to an MTZ file
   without reference to the contents.  This is only used internally in cases
@@ -1208,15 +1208,15 @@ def cutoff_data (file_name, d_min_cut) :
   mtz_in = object(file_name=file_name)
   cut_arrays = []
   labels = ["H","K","L"]
-  for miller_array in mtz_in.as_miller_arrays() :
+  for miller_array in mtz_in.as_miller_arrays():
     cut_arrays.append(miller_array.resolution_filter(d_min=d_min_cut))
     labels.extend(miller_array.info().labels)
   mtz_dataset = cut_arrays[0].as_mtz_dataset(column_root_label="A")
-  for k, other_array in enumerate(cut_arrays[1:], start=1) :
+  for k, other_array in enumerate(cut_arrays[1:], start=1):
     mtz_dataset.add_miller_array(other_array,
       column_root_label=string.uppercase[k])
   mtz_obj = mtz_dataset.mtz_object()
   assert (len(list(mtz_obj.columns())) == len(labels))
-  for k, column in enumerate(mtz_obj.columns()) :
+  for k, column in enumerate(mtz_obj.columns()):
     column.set_label(labels[k])
   mtz_obj.write(file_name)

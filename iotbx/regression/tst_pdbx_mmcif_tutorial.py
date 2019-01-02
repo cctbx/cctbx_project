@@ -4,7 +4,7 @@ from libtbx import easy_run
 import libtbx.load_env
 
 def exercise():
-  if (not libtbx.env.has_module("phenix_regression")) :
+  if (not libtbx.env.has_module("phenix_regression")):
     print "phenix_regression not configured, skipping tst_pdbx_mmcif_tutorial.py"
     return
   mmcif_file = libtbx.env.find_in_repositories(

@@ -13,7 +13,7 @@ import os.path
 import sys
 
 # this will run without phenix_regression
-def exercise_basic (verbose=False) :
+def exercise_basic(verbose=False):
   symm = crystal.symmetry(
     space_group_info=sgtbx.space_group_info("P212121"),
     unit_cell=uctbx.unit_cell((6,7,8,90,90,90)))
@@ -24,9 +24,9 @@ def exercise_basic (verbose=False) :
   assert (set1.indices().size() == 341)
   data0 = flex.double(set1.indices().size(), 100.)
   sigmas1 = flex.double(set1.indices().size(), 4.)
-  for i in range(10) :
+  for i in range(10):
     data0[2+i*30] = -1
-  for i in range(10) :
+  for i in range(10):
     data0[5+i*30] = 7.5
   array0 = set1.array(data=data0, sigmas=sigmas1)
   array0.set_observation_type_xray_intensity()
@@ -54,9 +54,9 @@ mtz_file {
 }""")
   params = master_phil.fetch(source=new_phil).extract()
   log = sys.stdout
-  if (not verbose) :
+  if (not verbose):
     log = null_out()
-  def run_and_reload (params, file_name) :
+  def run_and_reload(params, file_name):
     p = reflection_file_editor.process_arrays(params, log=log)
     p.finish()
     mtz_in = file_reader.any_file(file_name)
@@ -698,10 +698,10 @@ mtz_file {
     d_min=1.0)
   flags = set1.generate_r_free_flags(fraction=0.1, max_free=None)
   n_flipped = 0
-  for i_hkl, (h,k,l) in enumerate(flags.indices()) :
-    if (i_hkl % 100 == 0) and (h > 0) and (k > 0) and (l > 0) :
+  for i_hkl, (h,k,l) in enumerate(flags.indices()):
+    if (i_hkl % 100 == 0) and (h > 0) and (k > 0) and (l > 0):
       flag = flags.data()[i_hkl]
-      if (not flag) :
+      if (not flag):
         n_flipped += 1
         flags.data()[i_hkl] = True
   assert (n_flipped > 0)
@@ -780,8 +780,8 @@ mtz_file {
 ########################################################################
 # this requires data in phenix_regression
 # TODO replace this with equivalent using synthetic data
-def exercise_command_line () :
-  if (not libtbx.env.has_module("phenix_regression")) :
+def exercise_command_line():
+  if (not libtbx.env.has_module("phenix_regression")):
     print "phenix_regression not available, skipping"
     return
   file1 = libtbx.env.find_in_repositories(
@@ -793,7 +793,7 @@ def exercise_command_line () :
   log = null_out()
   test_file = "tst_hkl_editor_cmdline-1.mtz"
   test_file2 = "tst_hkl_editor_cmdline-2.mtz"
-  if os.path.exists(test_file2) :
+  if os.path.exists(test_file2):
     os.remove(test_file2)
   try :
     p = reflection_file_editor.run(
@@ -874,11 +874,11 @@ def exercise_command_line () :
           ['F_INFL(+)', 'S_INFL(+)', 'F_INFL(-)', 'S_INFL(-)'])
 
 # this mainly just tests recycling of wavelength
-def exercise_xds_input () :
+def exercise_xds_input():
   xds_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/xds_correct_unmerged.hkl",
     test=os.path.isfile)
-  if (xds_file is None) :
+  if (xds_file is None):
     print "phenix_regression not available, skipping exercise_xds_input"
     return False
   xds_in = file_reader.any_file(xds_file)

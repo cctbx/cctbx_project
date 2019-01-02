@@ -128,7 +128,7 @@ class get_r_rfree_sigma(object):
 
 def extract_remark_2_and_3_records(file_name, file_lines=None):
   result = []
-  if (file_lines is None) :
+  if (file_lines is None):
     file_lines = smart_open.for_reading(
       file_name = file_name).read().splitlines()
   else :

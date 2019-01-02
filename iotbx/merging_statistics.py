@@ -69,7 +69,7 @@ class StatisticsError(RuntimeError):
 class StatisticsErrorNoReflectionsInRange(StatisticsError):
   '''Attempted to calculate statistics for an empty resolution range.'''
 
-class model_based_arrays (object) :
+class model_based_arrays (object):
   """
   Container for observed and calculated intensities, along with the selections
   for work and free sets; these should be provided by mmtbx.f_model.  It is
@@ -77,7 +77,7 @@ class model_based_arrays (object) :
   the same as that of the unmerged data, but the current implementation does
   not force this.
   """
-  def __init__ (self, f_obs, i_obs, i_calc, work_sel, free_sel) :
+  def __init__(self, f_obs, i_obs, i_calc, work_sel, free_sel):
     assert (i_obs.data().size() == i_calc.data().size() ==
             work_sel.data().size() == free_sel.data().size())
     assert (len(f_obs.data()) <= len(i_obs.data()))
@@ -87,7 +87,7 @@ class model_based_arrays (object) :
     self.work_sel = work_sel.common_set(other=self.f_obs)
     self.free_sel = free_sel.common_set(other=self.f_obs)
 
-  def cc_work_and_free (self, other) :
+  def cc_work_and_free(self, other):
     """
     Given a unique array of arbitrary resolution range, extract the equivalent
     reflections from the observed and calculated intensities, and calculate
@@ -108,7 +108,7 @@ class model_based_arrays (object) :
     i_calc_free = i_calc_sel.select(free_sel.data())
     f_obs_work = f_obs_sel.select(work_sel.data())
     f_obs_free = f_obs_sel.select(free_sel.data())
-    if (len(f_obs_work.data()) > 0) and (len(f_obs_free.data()) > 0) :
+    if (len(f_obs_work.data()) > 0) and (len(f_obs_free.data()) > 0):
       from scitbx.array_family import flex
       cc_work = flex.linear_correlation(i_obs_work.data(),
         i_calc_work.data()).coefficient()
@@ -119,7 +119,7 @@ class model_based_arrays (object) :
       return cc_work, cc_free, r_work, r_free
     return [None] * 4
 
-def get_filtering_convention (i_obs, sigma_filtering=Auto):
+def get_filtering_convention(i_obs, sigma_filtering=Auto):
   info = i_obs.info()
   if sigma_filtering in [Auto, "auto"]:
     if info is not None and info.source_type == "xds_ascii":
@@ -132,7 +132,7 @@ def get_filtering_convention (i_obs, sigma_filtering=Auto):
       sigma_filtering = "scala"
   return sigma_filtering
 
-class filter_intensities_by_sigma (object) :
+class filter_intensities_by_sigma (object):
   """
   Wrapper for filtering intensities based on one of several different
   conventions:
@@ -145,7 +145,7 @@ class filter_intensities_by_sigma (object) :
   note that ctruncate and cctbx.french_wilson (any others?) do their own
   filtering, e.g. discarding I < -4*sigma in cctbx.french_wilson.
   """
-  def __init__ (self, array, sigma_filtering=Auto, use_internal_variance=True) :
+  def __init__(self, array, sigma_filtering=Auto, use_internal_variance=True):
     sigma_filtering = get_filtering_convention(array, sigma_filtering)
     assert (sigma_filtering in ["scala","scalepack","xds", None])
     self.n_rejected_before_merge = self.n_rejected_after_merge = 0
@@ -153,7 +153,7 @@ class filter_intensities_by_sigma (object) :
     array_merged = merge.array()
     reject_sel = None
     self.observed_criterion_sigma_I = None
-    if (sigma_filtering == "xds") :
+    if (sigma_filtering == "xds"):
       self.observed_criterion_sigma_I = -3
       reject_sel = (array_merged.data() < -3*array_merged.sigmas())
       self.n_rejected_after_merge = reject_sel.count(True)
@@ -163,7 +163,7 @@ class filter_intensities_by_sigma (object) :
       merge = array.merge_equivalents(
         use_internal_variance=use_internal_variance)
       array_merged = merge.array()
-    elif (sigma_filtering == "scalepack") :
+    elif (sigma_filtering == "scalepack"):
       self.observed_criterion_sigma_I = -3
       reject_sel = (array.data() < -3* array.sigmas())
       self.n_rejected_before_merge = reject_sel.count(True)
@@ -171,7 +171,7 @@ class filter_intensities_by_sigma (object) :
       merge = array.merge_equivalents(
         use_internal_variance=use_internal_variance)
       array_merged = merge.array()
-    elif (sigma_filtering == "scala") or (sigma_filtering is None) :
+    elif (sigma_filtering == "scala") or (sigma_filtering is None):
       pass
     else :
       raise ValueError("Unrecognized sigmaI filtering convention '%s'." %
@@ -180,7 +180,7 @@ class filter_intensities_by_sigma (object) :
     self.merge = merge
     self.array_merged = array_merged
 
-class merging_stats (object) :
+class merging_stats (object):
   """
   Calculate standard merging statistics for (scaled) unmerged data.  Usually
   these statistics will consider I(+) and I(-) as observations of the same
@@ -189,7 +189,7 @@ class merging_stats (object) :
   Reflections with negative sigmas will be discarded, and depending on the
   program we're trying to mimic, excessively negative intensities.
   """
-  def __init__ (self,
+  def __init__(self,
       array,
       d_max_min=None,
       model_arrays=None,
@@ -198,7 +198,7 @@ class merging_stats (object) :
       sigma_filtering="scala",
       use_internal_variance=True,
       cc_one_half_significance_level=None,
-      cc_one_half_method='half_dataset') :
+      cc_one_half_method='half_dataset'):
     import cctbx.miller
     from scitbx.array_family import flex
     assert cc_one_half_method in ('half_dataset', 'sigma_tau')
@@ -221,7 +221,7 @@ class merging_stats (object) :
       array=array,
       sigma_filtering=sigma_filtering,
       use_internal_variance=use_internal_variance)
-    if (d_max_min is None) :
+    if (d_max_min is None):
       d_max_min = array.d_max_min()
     self.d_max, self.d_min = d_max_min
     self.observed_criterion_sigma_I = filter.observed_criterion_sigma_I
@@ -234,13 +234,13 @@ class merging_stats (object) :
     self.n_uniq = array_merged.indices().size()
     complete_set = array_merged.complete_set().resolution_filter(
       d_min=self.d_min, d_max=self.d_max)
-    if (self.n_uniq == 0) :
+    if (self.n_uniq == 0):
       complete_set = cctbx.miller.build_set(
         crystal_symmetry=array_merged,
         anomalous_flag=anomalous,
         d_min=self.d_min).resolution_filter(d_min=self.d_min, d_max=self.d_max)
     n_expected = len(complete_set.indices())
-    if (n_expected == 0) :
+    if (n_expected == 0):
       raise StatisticsErrorNoReflectionsInRange(
           ("No reflections within specified resolution range (%g - %g)") % (self.d_max, self.d_min))
     self.completeness = min(self.n_uniq / n_expected, 1.)
@@ -248,7 +248,7 @@ class merging_stats (object) :
     # TODO also calculate when anomalous=False, since it is customary to
     # calculate merging statistics with F+ and F- treated as redundant
     # observations even when we're going to keep them separate.
-    if (anomalous) :
+    if (anomalous):
       self.anom_completeness = array_merged.anomalous_completeness(
         d_max=self.d_max, d_min=self.d_min)
     redundancies = merge.redundancies().data()
@@ -269,9 +269,9 @@ class merging_stats (object) :
     self.cc_one_half_sigma_tau_critical_value = None
     self.cc_star = 0
     self.r_merge = self.r_meas = self.r_pim = None
-    for x in sorted(set(redundancies)) :
+    for x in sorted(set(redundancies)):
       self.redundancies[x] = redundancies.count(x)
-    if (self.n_uniq > 0) :
+    if (self.n_uniq > 0):
       self.mean_redundancy = flex.mean(redundancies.as_double())
       self.i_mean = flex.mean(array_merged.data())
       self.sigi_mean = flex.mean(array_merged.sigmas())
@@ -313,26 +313,26 @@ class merging_stats (object) :
           compute_cc_significance(
             self.cc_one_half_sigma_tau, array_merged.size(),
             cc_one_half_significance_level)
-      if (self.cc_one_half == 0) :
+      if (self.cc_one_half == 0):
         self.cc_star = 0
-      elif (self.cc_one_half < -0.999) :
+      elif (self.cc_one_half < -0.999):
         self.cc_star = float("-inf")
       else :
         mult = 1.
-        if (self.cc_one_half < 0) :
+        if (self.cc_one_half < 0):
           mult = -1.
         self.cc_star = mult * sqrt((2*abs(self.cc_one_half)) /
                                    (1 + self.cc_one_half))
     self.cc_work = self.cc_free = self.r_work = self.r_free = None
-    if (model_arrays is not None) and (self.n_uniq > 0) :
+    if (model_arrays is not None) and (self.n_uniq > 0):
       self.cc_work, self.cc_free, self.r_work, self.r_free = \
         model_arrays.cc_work_and_free(array_merged)
 
   @property
-  def anom_half_corr (self) :
+  def anom_half_corr(self):
     return getattr(self, "cc_anom", None)
 
-  def format (self) :
+  def format(self):
     if self.cc_one_half_method == 'sigma_tau':
       cc_one_half = self.cc_one_half_sigma_tau
       cc_one_half_significance = self.cc_one_half_sigma_tau_significance
@@ -356,7 +356,7 @@ class merging_stats (object) :
       self.cc_anom,
       "*" if self.cc_anom_significance else "")
 
-  def format_for_model_cc (self) :
+  def format_for_model_cc(self):
     return "%6.2f  %6.2f  %6d  %6.2f  %6.2f  %5.3f  %5.3f   %s   %s  %s  %s"%(
       self.d_max, self.d_min, self.n_uniq,
       self.completeness*100, self.i_over_sigma_mean,
@@ -364,7 +364,7 @@ class merging_stats (object) :
       format_value("%5.3f", self.cc_work), format_value("%5.3f", self.cc_free),
       format_value("%5.3f", self.r_work), format_value("%5.3f", self.r_free))
 
-  def format_for_gui (self) :
+  def format_for_gui(self):
     return [ "%.2f - %.2f" % (self.d_max, self.d_min),
              str(self.n_obs),
              str(self.n_uniq),
@@ -376,7 +376,7 @@ class merging_stats (object) :
              "%.3f" % self.r_pim,
              "%.3f" % self.cc_one_half ]
 
-  def format_for_cc_star_gui (self) :
+  def format_for_cc_star_gui(self):
       return [ "%.2f - %.2f" % (self.d_max, self.d_min),
              str(self.n_uniq),
              "%.1f %%" % (self.completeness * 100),
@@ -416,18 +416,18 @@ class merging_stats (object) :
       })
     return d
 
-  def table_data (self) :
+  def table_data(self):
     table = [(1/self.d_min**2), self.n_obs, self.n_uniq, self.mean_redundancy,
             self.completeness*100, self.i_mean, self.i_over_sigma_mean,
             self.r_merge, self.r_meas, self.r_pim, self.cc_one_half,
             self.cc_one_half_significance, self.cc_one_half_critical_value,
             self.cc_anom]
-    if (self.cc_work is not None) :
+    if (self.cc_work is not None):
       table.extend([self.cc_star, self.cc_work, self.cc_free, self.r_work,
         self.r_free])
     return table
 
-  def show_summary (self, out=sys.stdout, prefix="") :
+  def show_summary(self, out=sys.stdout, prefix=""):
     print >> out, prefix+"Resolution: %.2f - %.2f" % (self.d_max, self.d_min)
     print >> out, prefix+"Observations: %d" % self.n_obs
     print >> out, prefix+"Unique reflections: %d" % self.n_uniq
@@ -436,27 +436,27 @@ class merging_stats (object) :
     print >> out, prefix+"Mean intensity: %.1f" % self.i_mean
     print >> out, prefix+"Mean I/sigma(I): %.1f" % self.i_over_sigma_mean
     # negative sigmas are rejected before merging
-    if (self.n_neg_sigmas > 0) :
+    if (self.n_neg_sigmas > 0):
       print >> out, prefix+"SigI < 0 (rejected): %d observations" % \
         self.n_neg_sigmas
     # excessively negative intensities can be rejected either before or after
     # merging, depending on convention used
-    if (self.n_rejected_before_merge > 0) :
+    if (self.n_rejected_before_merge > 0):
       print >> out, prefix+"I < -3*SigI (rejected): %d observations" % \
         self.n_rejected_before_merge
-    if (self.n_rejected_after_merge > 0) :
+    if (self.n_rejected_after_merge > 0):
       print >> out, prefix+"I < -3*SigI (rejected): %d reflections" % \
         self.n_rejected_after_merge
     print >> out, prefix+"R-merge: %5.3f" % self.r_merge
     print >> out, prefix+"R-meas:  %5.3f" % self.r_meas
     print >> out, prefix+"R-pim:   %5.3f" % self.r_pim
 
-class dataset_statistics (object) :
+class dataset_statistics (object):
   """
   Container for overall and by-shell merging statistics, plus a table_data
   object suitable for displaying graphs (or outputting loggraph format).
   """
-  def __init__ (self,
+  def __init__(self,
       i_obs,
       crystal_symmetry=None,
       d_min=None,
@@ -475,38 +475,38 @@ class dataset_statistics (object) :
       cc_one_half_significance_level=None,
       cc_one_half_method='half_dataset',
       assert_is_not_unique_set_under_symmetry=True,
-      log=None) :
+      log=None):
     self.file_name = file_name
     if (log is None) : log = null_out()
     assert (i_obs.sigmas() is not None)
     info = i_obs.info()
     sigma_filtering = get_filtering_convention(i_obs, sigma_filtering)
-    if (crystal_symmetry is None) :
+    if (crystal_symmetry is None):
       assert (i_obs.space_group() is not None)
       crystal_symmetry = i_obs.crystal_symmetry()
     self.crystal_symmetry = crystal_symmetry
     i_obs = i_obs.customized_copy(
       crystal_symmetry=crystal_symmetry).set_info(info)
-    if (assert_is_not_unique_set_under_symmetry and i_obs.is_unique_set_under_symmetry()) :
+    if (assert_is_not_unique_set_under_symmetry and i_obs.is_unique_set_under_symmetry()):
       raise Sorry(("The data in %s are already merged.  Only unmerged (but "+
         "scaled) data may be used in this program.")%
         i_obs.info().label_string())
     d_min_cutoff = d_min
     d_max_cutoff = d_max
-    if (d_min is not None) :
+    if (d_min is not None):
       d_min_cutoff *= (1-d_min_tolerance)
-      if (d_max is not None) :
+      if (d_max is not None):
         assert (d_max > d_min)
-    if (d_max is not None) :
+    if (d_max is not None):
       d_max_cutoff *= 1+d_min_tolerance
     i_obs = i_obs.resolution_filter(
       d_min=d_min_cutoff,
       d_max=d_max_cutoff).set_info(info)
-    if (i_obs.size() == 0) :
+    if (i_obs.size() == 0):
       raise Sorry("No reflections left after applying resolution cutoffs.")
     i_obs.show_summary(f=log)
     self.anom_extra = ""
-    if (not anomalous) :
+    if (not anomalous):
       i_obs = i_obs.customized_copy(anomalous_flag=False).set_info(info)
       self.anom_extra = " (non-anomalous)"
     overall_d_max_min = None
@@ -547,7 +547,7 @@ class dataset_statistics (object) :
       graph_names.extend(["CC1/2 significance", "CC1/2 critical value"])
       graph_columns[-2] = [0,10,12]
     #--- CC* mode
-    if (model_arrays is not None) :
+    if (model_arrays is not None):
       title = "Model quality and intensity merging statistics"
       column_labels.extend(["CC*", "CC(work)", "CC(free)", "R-work", "R-free"])
       graph_names.extend(["CC*", "Model R-factors"])
@@ -561,7 +561,7 @@ class dataset_statistics (object) :
       x_is_inverse_d_min=True,
       force_exact_x_labels=True)
     last_bin = None
-    for bin in i_obs.binner().range_used() :
+    for bin in i_obs.binner().range_used():
       sele_unmerged = i_obs.binner().selection(bin)
       bin_stats = merging_stats(i_obs.select(sele_unmerged),
         d_max_min=i_obs.binner().bin_d_range(bin),
@@ -584,7 +584,7 @@ class dataset_statistics (object) :
       flex.double(b.cc_one_half_sigma_tau_n_refl for b in self.bins))
 
   @property
-  def signal_table (self) :
+  def signal_table(self):
     column_labels = ["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
         "Mean(I)", "Mean(I/sigma)", ]
     graph_names = ["Reflection counts", "Redundancy", "Completeness",
@@ -604,7 +604,7 @@ class dataset_statistics (object) :
     return table
 
   @property
-  def quality_table (self) :
+  def quality_table(self):
     column_labels = ["1/d**2", "R-merge", "R-meas", "R-pim", "CC1/2",
                      "CC(anom)"]
     graph_columns = [[0,1,2,3],[0,4],[0,5]]
@@ -623,7 +623,7 @@ class dataset_statistics (object) :
     return table
 
   @property
-  def cc_anom_table (self) :
+  def cc_anom_table(self):
     column_labels = ["d_min", "CC(anom)"]
     graph_columns = [[0,1]]
     graph_names = ["CC(anom)"]
@@ -640,15 +640,15 @@ class dataset_statistics (object) :
       table.add_row([ (1/bin.d_min**2), bin.cc_anom ])
     return table
 
-  def show_loggraph (self, out=None) :
+  def show_loggraph(self, out=None):
     if (out is None) : out = sys.stdout
     print >> out, ""
     print >> out, self.table.format_loggraph()
     print >> out, ""
 
-  def show (self, out=None, header=True) :
+  def show(self, out=None, header=True):
     if (out is None) : out = sys.stdout
-    if (header) :
+    if (header):
       make_sub_header("Merging statistics", out=out)
     self.overall.show_summary(out)
     print >> out, ""
@@ -665,11 +665,11 @@ class dataset_statistics (object) :
       print >> out, bin_stats.format()
     print >> out, self.overall.format()
 
-  def show_cc_star (self, out=None) :
+  def show_cc_star(self, out=None):
     make_sub_header("CC* and related statistics", out=out)
     print >> out, """\
  d_max   d_min  n_uniq  compl. <I/sI>  cc_1/2    cc* cc_work cc_free r_work r_free"""
-    for k, bin in enumerate(self.bins) :
+    for k, bin in enumerate(self.bins):
       print >> out, bin.format_for_model_cc()
     print >> out, self.overall.format_for_model_cc()
 
@@ -690,7 +690,7 @@ class dataset_statistics (object) :
         print >> f, json_str
     return json_str
 
-  def extract_outer_shell_stats (self) :
+  def extract_outer_shell_stats(self):
     """
     For compatibility with iotbx.logfiles (which should probably now be
     deprecated) and phenix.table_one
@@ -768,14 +768,14 @@ class dataset_statistics (object) :
     cif_block.add_loop(reflns_shell_loop)
     return cif_block
 
-  def as_remark_200 (self, wavelength=None) :
+  def as_remark_200(self, wavelength=None):
     from libtbx.test_utils import approx_equal
     synchrotron = wl = "NULL"
-    if (wavelength is not None) :
+    if (wavelength is not None):
       out = cStringIO.StringIO()
       # XXX somewhat risky...
       if (not approx_equal(wavelength, 1.5418, eps=0.01, out=out) and
-          not approx_equal(wavelength, 0.7107, eps=0.01, out=out)) :
+          not approx_equal(wavelength, 0.7107, eps=0.01, out=out)):
         synchrotron = "Y"
       else :
         synchrotron = "N"
@@ -833,7 +833,7 @@ class dataset_statistics (object) :
     remark_lines = [ "REMARK 200 %s" % line for line in lines ]
     return "\n".join(remark_lines)
 
-  def show_model_vs_data (self, out=None, prefix="") :
+  def show_model_vs_data(self, out=None, prefix=""):
     assert (self.overall.cc_work is not None)
     if (out is None) : out = sys.stdout
     outer_shell = self.bins[-1]
@@ -857,19 +857,19 @@ class dataset_statistics (object) :
       self.overall.cc_star, outer_shell.cc_star)
     print >> out, prefix + "  CC(work)        :  %6.4f (%.4f)" % (
       self.overall.cc_work, outer_shell.cc_work)
-    if (self.overall.cc_free is not None) :
+    if (self.overall.cc_free is not None):
       print >> out, prefix + "  CC(free)        :  %6.4f (%.4f)" % (
         self.overall.cc_free, outer_shell.cc_free)
     else :
       print >> out, prefix + "  CC(free)        :  not available"
 
-  def estimate_d_min (self,
+  def estimate_d_min(self,
       min_i_over_sigma=0,
       min_cc_one_half=0,
       max_r_merge=sys.maxint,
       max_r_meas=sys.maxint,
       min_cc_anom=-1,
-      min_completeness=0) :
+      min_completeness=0):
     """
     Determine approximate resolution cutoffs based on a variety of metrics.
     Numbers are assumed to be fractional, not percentage values, except for
@@ -886,9 +886,9 @@ class dataset_statistics (object) :
       resolution bin, or None if no bins meet the given criteria
     """
     if ([min_i_over_sigma,min_cc_one_half,max_r_merge,max_r_meas,min_cc_anom,
-          min_completeness].count(None) == 6) :
+          min_completeness].count(None) == 6):
       return None
-    if (min_completeness > 1) :
+    if (min_completeness > 1):
       min_completeness /= 100.
     d_min = None
     last_bin = None
@@ -898,19 +898,19 @@ class dataset_statistics (object) :
           ((max_r_merge is not None) and (bin.r_merge > max_r_merge)) or
           ((max_r_meas is not None) and (bin.r_meas > max_r_meas)) or
           (bin.cc_anom < min_cc_anom) or
-          (bin.completeness < min_completeness)) :
+          (bin.completeness < min_completeness)):
         break
       last_bin = bin
-    if (last_bin is None) :
+    if (last_bin is None):
       return None
     else :
       return last_bin.d_min
 
-  def show_estimated_cutoffs (self, out=sys.stdout, prefix="") :
+  def show_estimated_cutoffs(self, out=sys.stdout, prefix=""):
     print >> out, ""
     print >> out, ""
-    def format_d_min (value) :
-      if (value is None) :
+    def format_d_min(value):
+      if (value is None):
         return "(use all data)" #% self.d_min_overall
       return "%7.3f" % value
     make_sub_header("Resolution cutoff estimates", out=out)
@@ -939,8 +939,8 @@ class dataset_statistics (object) :
     print >> out, "NOTE: we recommend using all data out to the CC(1/2) limit"
     print >> out, "for refinement."
 
-def select_data (file_name, data_labels, log=None,
-    assume_shelx_observation_type_is=None, allow_amplitudes=None) :
+def select_data(file_name, data_labels, log=None,
+    assume_shelx_observation_type_is=None, allow_amplitudes=None):
   if (log is None) : log = null_out()
   from iotbx import reflection_file_reader
   hkl_in = reflection_file_reader.any_reflection_file(file_name)
@@ -948,27 +948,27 @@ def select_data (file_name, data_labels, log=None,
   miller_arrays = hkl_in.as_miller_arrays(merge_equivalents=False,
     assume_shelx_observation_type_is=assume_shelx_observation_type_is)
   if ((hkl_in.file_type() == "shelx_hklf") and (not "=" in file_name)
-       and assume_shelx_observation_type_is is None) :
+       and assume_shelx_observation_type_is is None):
     print >> log, "WARNING: SHELX file is assumed to contain intensities"
   i_obs = None
   all_i_obs = []
   for array in miller_arrays :
     labels = array.info().label_string()
-    if (labels == data_labels) :
+    if (labels == data_labels):
       i_obs = array
       break
-    elif (array.is_xray_intensity_array()) :
+    elif (array.is_xray_intensity_array()):
       all_i_obs.append(array)
   # if no intensities...try again with amplitudes
-  if (hkl_in.file_type() == "shelx_hklf" or allow_amplitudes) :
-    if (i_obs is None and len(all_i_obs)==0) :
+  if (hkl_in.file_type() == "shelx_hklf" or allow_amplitudes):
+    if (i_obs is None and len(all_i_obs)==0):
       for array in miller_arrays :
-        if (array.is_xray_amplitude_array()) :
+        if (array.is_xray_amplitude_array()):
           all_i_obs.append(array.f_as_f_sq())
-  if (i_obs is None) :
-    if (len(all_i_obs) == 0) :
+  if (i_obs is None):
+    if (len(all_i_obs) == 0):
       raise Sorry("No intensities found in %s." % file_name)
-    elif (len(all_i_obs) > 1) :
+    elif (len(all_i_obs) > 1):
       raise Sorry("Multiple intensity arrays - please specify one:\n%s" %
         "\n".join(["  labels=%s"%a.info().label_string() for a in all_i_obs]))
     else :
@@ -980,6 +980,6 @@ def select_data (file_name, data_labels, log=None,
     if "M_ISYM" in mtz_object.column_labels():
       indices = mtz_object.extract_original_index_miller_indices()
       i_obs = i_obs.customized_copy(indices=indices, info=i_obs.info())
-  if (not i_obs.is_xray_intensity_array()) :
+  if (not i_obs.is_xray_intensity_array()):
     raise Sorry("%s is not an intensity array." % i_obs.info().label_string())
   return i_obs

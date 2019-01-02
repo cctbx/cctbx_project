@@ -9,8 +9,8 @@ from cStringIO import StringIO
 import os
 import sys
 
-def exercise (debug=False) :
-  if (not libtbx.env.has_module("phenix_regression")) :
+def exercise(debug=False):
+  if (not libtbx.env.has_module("phenix_regression")):
     print "phenix_regression not configured, skipping."
     return
   hkl_file = libtbx.env.find_in_repositories(
@@ -23,12 +23,12 @@ def exercise (debug=False) :
     "unit_cell=113.949,113.949,32.474,90,90,90",
     "loggraph=True",
   ]
-  if (debug) :
+  if (debug):
     args.append("debug=True")
     print " ".join(args)
   out = StringIO()
   result = merging_statistics.run(args, out=out)
-  if (debug) :
+  if (debug):
     print out.getvalue()
   assert ("R-merge: 0.073" in out.getvalue())
   assert ("R-meas:  0.079" in out.getvalue())
@@ -50,7 +50,7 @@ def exercise (debug=False) :
   args2 = list(args[:-1]) + ["high_resolution=2.5", "low_resolution=15"]
   out = StringIO()
   result = merging_statistics.run(args2, out=out)
-  if (debug) :
+  if (debug):
     print out.getvalue()
   assert ("Resolution: 14.96 - 2.50" in out.getvalue())
   # extend binning
@@ -58,7 +58,7 @@ def exercise (debug=False) :
     "--extend_d_max_min"]
   out = StringIO()
   result = merging_statistics.run(args2, out=out)
-  if (debug) :
+  if (debug):
     print out.getvalue()
   assert ("Resolution: 100.00 - 1.50" in out.getvalue())
   assert ("  1.55   1.50      0      0    0.00   0.00       0.0     0.0     None     None     None   0.000   0.000""" in out.getvalue())
@@ -113,12 +113,12 @@ def exercise (debug=False) :
     "unit_cell=113.949,113.949,32.474,90,90,90",
     "loggraph=True",
   ]
-  if (debug) :
+  if (debug):
     args.append("debug=True")
     print " ".join(args)
   out = StringIO()
   result = merging_statistics.run(args, out=out)
-  if (debug) :
+  if (debug):
     print out.getvalue()
   assert (" 28.49   3.76  15737   1224   12.86  99.84   47967.0    11.6    0.482    0.500    0.135   0.973  -0.513" in out.getvalue()), out.getvalue()
   # exercise 2: estimate resolution cutoffs (and symmetry_file argument)
@@ -137,7 +137,7 @@ def exercise (debug=False) :
   ]
   out = StringIO()
   result = merging_statistics.run(args, out=out)
-  if (debug) :
+  if (debug):
     print out.getvalue()
   for line in """\
   resolution of all data          :   2.000
@@ -146,7 +146,7 @@ def exercise (debug=False) :
   based on R-merge < 0.5          :   2.372
   based on R-meas < 0.5           :   2.520
   based on completeness >= 90%    :   2.000
-  based on completeness >= 50%    :   2.000""".splitlines() :
+  based on completeness >= 50%    :   2.000""".splitlines():
     assert line in out.getvalue(), out.getvalue()
   # check suitable error emitted given merged input mtz (not containing M_ISYM column)
   out = StringIO()
@@ -208,6 +208,6 @@ def exercise (debug=False) :
   assert result.bins[-1].cc_one_half_significance is True
   assert result.bins[-1].cc_one_half_sigma_tau_significance is True
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise(debug=("--debug" in sys.argv))
   print "OK"
