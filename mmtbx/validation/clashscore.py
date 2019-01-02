@@ -14,7 +14,7 @@ import os
 import re
 import sys
 
-class clash (atoms):
+class clash(atoms):
   __clash_attr__ = [
     "overlap",
     "probe_type",
@@ -668,7 +668,7 @@ def check_and_add_hydrogen(
 #-----------------------------------------------------------------------
 # this isn't really enough code to justify a separate module...
 #
-class nqh_flip (residue):
+class nqh_flip(residue):
   """
   Backwards Asn/Gln/His sidechain, identified by Reduce's hydrogen-bond
   network optimization.
@@ -714,7 +714,7 @@ class nqh_flip (residue):
     return base
   #end segid compatibility
 
-class nqh_flips (validation):
+class nqh_flips(validation):
   """
   N/Q/H sidechain flips identified by Reduce.
   """

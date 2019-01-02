@@ -21,7 +21,7 @@ from libtbx import table_utils
 import math
 
 
-class i_sigi_completeness_stats (scaling.xtriage_analysis):
+class i_sigi_completeness_stats(scaling.xtriage_analysis):
   """
   Collects resolution-dependent statistics on I/sigma expressed as percentage
   of reflections above specified cutoffs.
@@ -154,7 +154,7 @@ class completeness_enforcement(object):
     # now select the indices please
     self.new_miller = miller_array.select( selection_array )
 
-class analyze_resolution_limits (scaling.xtriage_analysis):
+class analyze_resolution_limits(scaling.xtriage_analysis):
   """
   Check for elliptical truncation, which may be applied to the data by some
   processing software (or as a post-processing step).  As a general rule this
@@ -233,7 +233,7 @@ uncorrected reflections in the PDB, not the truncated data.""")
       out.show_text("""Resolution limits are within expected tolerances.""")
 
 
-class log_binned_completeness (scaling.xtriage_analysis):
+class log_binned_completeness(scaling.xtriage_analysis):
   """
   Table of completeness using log-scale resolution binning.
   """
@@ -272,7 +272,7 @@ showing low-resolution completeness only).""")
 
 #-----------------------------------------------------------------------
 # OUTLIER FILTERING
-class possible_outliers (scaling.xtriage_analysis):
+class possible_outliers(scaling.xtriage_analysis):
   """
   Flag specific reflections with suspicious intensities.  Inspired by:
   Read, Acta Cryst. (1999). D55, 1759-1764
@@ -729,7 +729,7 @@ class analyze_measurability(scaling.xtriage_analysis):
 #-----------------------------------------------------------------------
 # WRAPPER CLASSES
 
-class data_strength_and_completeness (scaling.xtriage_analysis):
+class data_strength_and_completeness(scaling.xtriage_analysis):
   """
   Collect basic info about overall completeness and signal-to-noise ratios,
   independent of scaling.
@@ -873,7 +873,7 @@ or omission of reflections by data-processing software.""")
         "is at least 90%.", "Low resolution completeness analyses"))
     return issues
 
-class anomalous (scaling.xtriage_analysis):
+class anomalous(scaling.xtriage_analysis):
   def __init__(self, miller_array, merging_stats=None,
       plan_sad_experiment_stats=None):
     assert miller_array.anomalous_flag()
@@ -963,7 +963,7 @@ class anomalous (scaling.xtriage_analysis):
         issues.append((2, message, section_name))
     return issues
 
-class wilson_scaling (scaling.xtriage_analysis):
+class wilson_scaling(scaling.xtriage_analysis):
   """
   Calculates isotropic and anisotropic scale factors, Wilson plot, and various
   derived analyses such as ice rings and outliers.

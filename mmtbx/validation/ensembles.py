@@ -10,7 +10,7 @@ from libtbx import easy_mp
 from libtbx import Auto
 import sys
 
-class ensemble_validation (object):
+class ensemble_validation(object):
   def __init__(self,
       pdb_hierarchies, # XXX these must be single-conformer
       reference_hierarchy=None,
@@ -116,7 +116,7 @@ class ensemble_validation (object):
         results.append(hierarchy_sel)
     return results
 
-class residue_analysis (slots_getstate_setstate_default_initializer):
+class residue_analysis(slots_getstate_setstate_default_initializer):
   __slots__ = ["id_str", "rama", "rota", "residues"]
   def show(self, out=sys.stdout, prefix=""):
     if (self.rota is not None):

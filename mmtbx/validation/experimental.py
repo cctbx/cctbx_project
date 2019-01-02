@@ -19,7 +19,7 @@ __real_space_attr__ = [
   "fmodel",
 ]
 
-class residue_real_space (residue):
+class residue_real_space(residue):
   # CC is 'score' attribute
   __slots__ = residue.__slots__ + __real_space_attr__
 
@@ -40,7 +40,7 @@ class residue_real_space (residue):
     return [ self.id_str(), self.b_iso, self.occupancy, self.two_fofc,
              self.fmodel, self.score ]
 
-class data_statistics (slots_getstate_setstate):
+class data_statistics(slots_getstate_setstate):
   __slots__ = [
     "d_max",
     "d_min",
@@ -142,7 +142,7 @@ class data_statistics (slots_getstate_setstate):
     self.info.show_rwork_rfree_number_completeness(prefix=prefix, out=out,
       title="By resolution bin:")
 
-class real_space (validation):
+class real_space(validation):
   """
   Real-space correlation calculation for residues
   """

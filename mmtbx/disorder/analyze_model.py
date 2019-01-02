@@ -12,7 +12,7 @@ import sys
 # slightly and substitute pickle-able objects for the original classes in
 # iotbx.pdb.hierarchy.  Note that parent relationships will be lost in the
 # process.
-class residue_group_proxy (slots_getstate_setstate):
+class residue_group_proxy(slots_getstate_setstate):
   """Pickle-able stand-in for iotbx.pdb.hierarchy.residue_group."""
   __slots__ = ["resseq", "icode", "_atom_groups", "_id_str", ]
   def __init__(self, residue_group):
@@ -29,7 +29,7 @@ class residue_group_proxy (slots_getstate_setstate):
   def atom_groups(self):
     return self._atom_groups
 
-class atom_group_proxy (slots_getstate_setstate):
+class atom_group_proxy(slots_getstate_setstate):
   """Pickle-able stand-in for iotbx.pdb.hierarchy.atom_group."""
   __slots__ = [ "resname", "altloc", "_atoms", ]
   def __init__(self, atom_group):
@@ -40,7 +40,7 @@ class atom_group_proxy (slots_getstate_setstate):
   def atoms(self):
     return self._atoms
 
-class atoms_proxy (slots_getstate_setstate):
+class atoms_proxy(slots_getstate_setstate):
   """
   Pickle-able stand-in for af::shared<atom> array, using the atom_with_labels
   objects as elements.
@@ -58,7 +58,7 @@ class atoms_proxy (slots_getstate_setstate):
   def extract_b(self):
     return flex.double([ a.b for a in self._atoms ])
 
-class disordered_segment (object):
+class disordered_segment(object):
   """
   A group of one or more adjacent residues presumed to form continuous
   alternate conformations.
@@ -442,7 +442,7 @@ def get_nconfs(pdb_hierarchy):
   return n_confs
 
 #-----------------------------------------------------------------------
-class process_residue_groups (object):
+class process_residue_groups(object):
   def __init__(self, chain,
       multi_criterion_validation=None,
       ignore_inconsistent_occupancy=False,
@@ -495,7 +495,7 @@ class process_residue_groups (object):
     for segment in self.segments :
       segment.show(out=out, prefix=prefix+"  ")
 
-class process_pdb_hierarchy (object):
+class process_pdb_hierarchy(object):
   def __init__(self, pdb_hierarchy,
       validation,
       ignore_inconsistent_occupancy=False,

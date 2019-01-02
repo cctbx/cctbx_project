@@ -162,7 +162,7 @@ def residues_are_adjacent(residue1, residue2, max_sep=2.5):
 
 #-----------------------------------------------------------------------
 # MAP-RELATED
-class local_density_quality (object):
+class local_density_quality(object):
   def __init__(self,
       fofc_map,
       two_fofc_map,
@@ -361,7 +361,7 @@ def get_model_map_stats(
 #-----------------------------------------------------------------------
 # OPTIMIZATION
 
-class box_build_refine_base (object):
+class box_build_refine_base(object):
   """
   Base class for handling functions associated with rebuilding and refinement
   of atoms in a box, with the building methods implemented elsewhere.

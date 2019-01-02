@@ -249,7 +249,7 @@ def validate_params(params):
       "or the current refined model.")
   return True
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     return run(args=list(self.args), out=sys.stdout)
 

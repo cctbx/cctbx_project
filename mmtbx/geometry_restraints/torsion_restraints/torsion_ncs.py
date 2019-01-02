@@ -1487,7 +1487,7 @@ class torsion_ncs(object):
           gradient_array=gradient_array)
 
 # XXX wrapper for running in Phenix GUI
-class _run_iotbx_ncs_input (object):
+class _run_iotbx_ncs_input(object):
   def __init__(self, params, pdb_hierarchy):
     self.params = params
     self.pdb_hierarchy = pdb_hierarchy

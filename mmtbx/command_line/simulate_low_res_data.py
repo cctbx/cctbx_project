@@ -207,7 +207,7 @@ def run(args, out=None):
     pdb_in=pdb_in,
     out=out)
 
-class prepare_data (object):
+class prepare_data(object):
   def __init__(self, params, hkl_in=None, pdb_in=None, out=sys.stdout):
     adopt_init_args(self, locals())
     self.params = params
@@ -724,7 +724,7 @@ def apply_sigma_noise(i_obs):
   for i, sigma in enumerate(i_obs.sigmas()):
     data[i] = random.gauss(data[i], sigma)
 
-class profile_sigma_generator (object):
+class profile_sigma_generator(object):
   def __init__(self,
                 mtz_file,
                 pdb_file,
@@ -795,7 +795,7 @@ class profile_sigma_generator (object):
   def get_noise_profile_for_shell(self, i_bin):
     return self._resolution_bins[i_bin-1]
 
-class shell_intensity_bins (object):
+class shell_intensity_bins(object):
   def __init__(self, i_norm, i_over_sigma, n_bins=20):
     self._binner = bin_by_intensity(i_norm.data(), n_bins)
     self._sn_bins = []
@@ -818,7 +818,7 @@ class shell_intensity_bins (object):
         return sn_profile[j]
     return sn_profile[-1]
 
-class bin_by_intensity (object):
+class bin_by_intensity(object):
   def __init__(self, data, n_bins=20):
     from scitbx.array_family import flex
     self._bin_limits = []

@@ -165,7 +165,7 @@ def find_single_protein_chain(hierarchy):
       chain_id = chain.id
   return chain_id
 
-class distance_difference_matrix (object):
+class distance_difference_matrix(object):
   def __init__(self,
                 hierarchy_1,
                 chain_id_1,

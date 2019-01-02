@@ -53,7 +53,7 @@ def create_map_from_pdb_and_mtz(
     fill_maps=fill,
     assume_pdb_data=assume_pdb_data)
 
-class fast_maps_from_hkl_file (object):
+class fast_maps_from_hkl_file(object):
   """
   Automation wrapper for calculating standard 2mFo-DFc, mFo-DFc, and optional
   anomalous difference map coefficients, starting from an X-ray structure and
@@ -208,7 +208,7 @@ def get_anomalous_map(fmodel):
     anom_coeffs = anom_coeffs.average_bijvoet_mates()
   return anom_coeffs
 
-class generate_water_omit_map (object):
+class generate_water_omit_map(object):
   """
   Calculate standard map coefficients (with R-free flags omitted, and missing
   reflections filled) with water occupancies set to zero.  Used for ligand

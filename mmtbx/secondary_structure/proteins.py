@@ -535,7 +535,7 @@ def _get_residue_groups_from_selection(pdb_hierarchy, bool_selection):
 #
 # Won't be used soon
 #
-class find_helices_simple (object):
+class find_helices_simple(object):
   """
   Identify helical regions, defined as any three or more contiguous residues
   with phi and psi within specified limits:

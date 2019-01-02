@@ -33,7 +33,7 @@ assembly {
 }
 """
 
-class fragment_refinement_driver (object):
+class fragment_refinement_driver(object):
   def __init__(self,
       fmodel,
       params,
@@ -249,7 +249,7 @@ class fragment_refinement_driver (object):
       groups=self.group_ensembles(),
       out=out)
 
-class residue_window (slots_getstate_setstate):
+class residue_window(slots_getstate_setstate):
   """
   Container for information about a sliding window along a protein chain.
   Uniquely identified by ID of central residue.
@@ -265,7 +265,7 @@ class residue_window (slots_getstate_setstate):
     return "window: %s [%d atoms in %d residues]" % (self.residue_id_str,
       len(self.selection), (2*self.window_radius)+1)
 
-class ensemble (residue_window):
+class ensemble(residue_window):
   """
   Container for results of refinement of a single sliding window.  The
   hierarchy will be a multi-model ensemble if more than one trial was run.
@@ -388,7 +388,7 @@ class ensemble (residue_window):
   def n_confs(self):
     return len(self.sites_trials)
 
-class ensemble_group (object):
+class ensemble_group(object):
   """
   Collection of ensembles which overlap in some way.  The assumption is that
   each ensemble is unique to a specific central residue, which is enforced in

@@ -345,7 +345,7 @@ class refinement_monitor(object):
       format_value("%.4f", self.r_works[-1]),
       format_value("%.4f", self.r_frees[-1]))
 
-class stats_table (slots_getstate_setstate):
+class stats_table(slots_getstate_setstate):
   __slots__ = [
     "steps",
     "r_works",
@@ -359,7 +359,7 @@ class stats_table (slots_getstate_setstate):
       setattr(self, attr, kwds.get(attr))
 
 # we need something simpler for the Phenix GUI...
-class coordinate_shifts (object):
+class coordinate_shifts(object):
   def __init__(self, hierarchy_start, hierarchy_end):
     from scitbx.array_family import flex
     self.hierarchy_shifted = hierarchy_end.deep_copy()
@@ -392,7 +392,7 @@ class coordinate_shifts (object):
     f.write(self.hierarchy_shifted.as_pdb_string())
     f.close()
 
-class trajectory_output (object):
+class trajectory_output(object):
   """
   Callback object for saving the intermediate results of refinement as a stack
   of PDB and MTZ files.  Equivalent to the interactivity with Coot in the
@@ -422,7 +422,7 @@ class trajectory_output (object):
     print >> self.log, "wrote model to %s.pdb" % file_base
     print >> self.log, "wrote map coefficients to %s.mtz" % file_base
 
-class annealing_callback (object):
+class annealing_callback(object):
   def __init__(self, model, monitor):
     self.model = model
     self.monitor = monitor

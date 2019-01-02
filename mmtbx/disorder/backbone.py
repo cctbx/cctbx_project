@@ -82,7 +82,7 @@ def circ_mean(t, deg=True):
   sy = flex.sum(flex.sin(t)) / len(t)
   return math.degrees(math.atan2(sy, sx))
 
-class backrub_residue (slots_getstate_setstate):
+class backrub_residue(slots_getstate_setstate):
   __slots__ = ["id_str", "i_mod", "j_mod", "rmsd", "backrub_angle", "xyz"]
   def __init__(self, calpha, i_mod, j_mod, rmsd, backrub_angle):
     residue_group = calpha.parent().parent()

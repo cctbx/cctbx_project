@@ -74,7 +74,7 @@ cleanup {
 }
 """ % build_params_str
 
-class rebuild_residue (object):
+class rebuild_residue(object):
   """
   Callable wrapper class for rebuilding a single residue at a time.  This is
   not necessarily limited to modeling disorder, but it has been specifically
@@ -298,7 +298,7 @@ def fit_chi1_simple(
   #print "RMSD:", sites_best.rms_difference(sites_start)
   residue_atoms.set_xyz(sites_best)
 
-class residue_trial (slots_getstate_setstate):
+class residue_trial(slots_getstate_setstate):
   __slots__ = [ "new_hierarchy", "sc_n_atoms", "sc_two_fofc_mean",
                 "sc_fofc_mean", "two_fofc_values", "fofc_values",
                 "stats", "occupancy", "rotamer", ]
@@ -450,7 +450,7 @@ def find_alternate_residue(residue,
       residue.id_str(), t2 - t1)
   return trials
 
-class find_all_alternates (object):
+class find_all_alternates(object):
   """
   Wrapper for parallelizing calls to find_alternate_residue.
   """
@@ -623,7 +623,7 @@ def process_results(
     n_alternates += 1
   return n_alternates
 
-class rsr_fragments_parallel (alt_confs.rsr_fragments_base):
+class rsr_fragments_parallel(alt_confs.rsr_fragments_base):
   def __call__(self, fragment):
     from scitbx.array_family import flex
     frag_selection = flex.bool(self.pdb_atoms.size(), fragment)

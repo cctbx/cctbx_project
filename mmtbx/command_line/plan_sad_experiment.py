@@ -527,7 +527,7 @@ def run_with_params(params,quiet=False,out=sys.stdout):
 def validate_params(params):
   return setup_params(params, out=null_out())
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     return run(self.args, out=sys.stdout)
 

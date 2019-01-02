@@ -70,7 +70,7 @@ def molprobity_flags():
   """
   return libtbx.phil.parse(master_phil_str).extract()
 
-class molprobity (slots_getstate_setstate):
+class molprobity(slots_getstate_setstate):
   """
   Comprehensive validation.  At a minimum this performs the standard MolProbity
   analyses (ramalyze, rotalyze, cbetadev, clashscore).  If a geometry
@@ -680,7 +680,7 @@ class molprobity (slots_getstate_setstate):
       ])
     return stats
 
-class summary (slots_getstate_setstate_default_initializer):
+class summary(slots_getstate_setstate_default_initializer):
   """
   Simplified container for overall statistics; replaces class of the same
   name in mmtbx.command_line.validation_summary.  The more complete molprobity
@@ -764,7 +764,7 @@ class summary (slots_getstate_setstate_default_initializer):
 
 ########################################################################
 
-class pdb_header_info (slots_getstate_setstate):
+class pdb_header_info(slots_getstate_setstate):
   """
   Container for information extracted from the PDB header (if available).
   """
@@ -822,7 +822,7 @@ class pdb_header_info (slots_getstate_setstate):
         print("%sRMS(angles)           = %6.2f" % (prefix,
           self.rms_angles), file=out)
 
-class residue_multi_criterion (residue):
+class residue_multi_criterion(residue):
   """
   Container for multiple outliers associated with a single residue.  If data
   are used, this may include real-space statistics regardless of whether the
@@ -919,7 +919,7 @@ class residue_multi_criterion (residue):
       return y_
     return y
 
-class multi_criterion_view (slots_getstate_setstate):
+class multi_criterion_view(slots_getstate_setstate):
   """
   Container for generating multi-criterion plots and tables from separate lists
   of outliers.

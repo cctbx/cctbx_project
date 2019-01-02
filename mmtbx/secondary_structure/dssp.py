@@ -36,7 +36,7 @@ atom_output = False
 
 TURN_START = 0 # XXX see comment below
 
-class hbond (object):
+class hbond(object):
   def __init__(self, residue1, residue2, energy) : # atom_group objects
     adopt_init_args(self, locals())
     self.i_res = residue1.atoms()[0].tmp
@@ -105,7 +105,7 @@ class hbond (object):
       return -1 # antiparallel
     return 0
 
-class bridge (object):
+class bridge(object):
   def __init__(self, hbond1, hbond2, direction, i_res=None, j_res=None):
     adopt_init_args(self, locals())
     assert ([i_res,j_res].count(None) in [0,2])
@@ -152,7 +152,7 @@ class bridge (object):
     self.hbond1.show(out=out, prefix=prefix+"  ")
     self.hbond2.show(out=out, prefix=prefix+"  ")
 
-class ladder (object):
+class ladder(object):
   def __init__(self):
     self.bridges = []
     self.bridge_i_res = []
@@ -323,7 +323,7 @@ def get_pdb_fields(atom_group):
     resseq=residue_group.resseq_as_int(),
     icode=residue_group.icode)
 
-class dssp (object):
+class dssp(object):
   def __init__(self,
           pdb_hierarchy,
           xray_structure=None,

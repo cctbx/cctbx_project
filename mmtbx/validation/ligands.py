@@ -162,7 +162,7 @@ def compare_ligands_impl(ligand,
           dxyz[i_seq])
   return rmsds, pbss
 
-class ligand_validation (slots_getstate_setstate):
+class ligand_validation(slots_getstate_setstate):
   __slots__ = [
     "cc", "two_fofc_min", "two_fofc_max", "two_fofc_mean", "fofc_min",
     "fofc_max", "fofc_mean", "n_below_two_fofc_cutoff", "n_below_fofc_cutoff",

@@ -136,7 +136,7 @@ def calc_ratio(count_list, sampling_angle=5):
   zscore=(rotamer_count-mean)/(stdev+0.000000000000000000001)
   return rotamer_ratio, zscore
 
-class main (object):
+class main(object):
   def __init__(self,
       file_name,
       ringer_result=None,

@@ -461,13 +461,13 @@ def validate_params(params):
   if (params_.solvent_fraction is None):
     raise Sorry("Please specify the solvent fraction!")
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     return run(args=list(self.args),
       log=sys.stdout, # 2012-03-09 should be called with log defined?
       as_gui_program=True)
 
-class result (object):
+class result(object):
   def __init__(self, map_file, mtz_file, stats):
     adopt_init_args(self, locals())
 

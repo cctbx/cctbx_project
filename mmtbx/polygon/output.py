@@ -52,7 +52,7 @@ def get_basic_histogram_data(d_min):
                                extract_gui_data=True)
   return histograms
 
-class renderer (object):
+class renderer(object):
   ratio_cutoffs = [ 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
 
   def __init__(self, histogram_data, structure_stats, histogram_length=0.30,
@@ -185,7 +185,7 @@ class renderer (object):
     else :
       return "%.3f" % value
 
-class histogram_layout (object):
+class histogram_layout(object):
   def __init__(self, name, histogram, angle, length, center, center_offset):
     self.name = name
     if name in stat_names :
@@ -254,7 +254,7 @@ class histogram_layout (object):
       text_y = y - (h/2)
     return (text_x, text_y)
 
-class polygon_layout (object):
+class polygon_layout(object):
   def __init__(self, stats, histogram_layouts):
     intersections = []
     on_histogram = []
@@ -281,7 +281,7 @@ class polygon_layout (object):
       yield (start, end, False)
 
 #-----------------------------------------------------------------------
-class color_model (object):
+class color_model(object):
   def __init__(self):
     self.ratio_cutoffs = []
     self.ratio_gradient = []
@@ -314,7 +314,7 @@ class color_model (object):
   def get_bin_color(self, value):
     return (0, 0, 0)
 
-class original_color_model (color_model):
+class original_color_model(color_model):
   def __init__(self):
     self.ratio_cutoffs = [ 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
     self.ratio_gradient = [ (240, 240, 240),  # off-white
@@ -327,19 +327,19 @@ class original_color_model (color_model):
                             (130,   0, 255) ] # purple
 
 # these two only work on the original scale
-class blue_color_model (original_color_model):
+class blue_color_model(original_color_model):
   def get_bin_color(self, value):
     return hsv2rgb(240, value, 1)
 
-class red_color_model (original_color_model):
+class red_color_model(original_color_model):
   def get_bin_color(self, value):
     return hsv2rgb(0, value, 1)
 
-class grayscale_color_model (original_color_model):
+class grayscale_color_model(original_color_model):
   def get_bin_color(self, value):
     return hsv2rgb(0, 0, 1-value)
 
-class rainbow_color_model (color_model):
+class rainbow_color_model(color_model):
   def __init__(self):
     self.ratio_cutoffs = [ 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
     self.ratio_gradient = [ hsv2rgb(240.0-(240.0*x), 1, 1) for x in
@@ -349,7 +349,7 @@ class rainbow_color_model (color_model):
     color = hsv2rgb(240.0 - (240.0 * value), 1, 1)
     return color
 
-class rmb_color_model (color_model):
+class rmb_color_model(color_model):
   def __init__(self):
     self.ratio_cutoffs = [ 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
     self.ratio_gradient = [ hsv2rgb(240.0+(120.0*x), 1, 1) for x in

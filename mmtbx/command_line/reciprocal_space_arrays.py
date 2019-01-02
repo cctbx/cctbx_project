@@ -269,7 +269,7 @@ def finish_job(result):
     output_files.append((result, "Data and phases"))
   return output_files, stats
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     return run(args=self.args, log=sys.stdout)
 

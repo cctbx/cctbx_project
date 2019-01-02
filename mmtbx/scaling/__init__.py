@@ -17,11 +17,11 @@ ext = boost.python.import_ext("mmtbx_scaling_ext")
 from mmtbx_scaling_ext import *
 
 
-class data_analysis (slots_getstate_setstate):
+class data_analysis(slots_getstate_setstate):
   def show(self, out=sys.stdout, prefix=""):
     raise NotImplementedError()
 
-class xtriage_output (slots_getstate_setstate):
+class xtriage_output(slots_getstate_setstate):
   """
   Base class for generic output wrappers.
   """
@@ -124,7 +124,7 @@ class xtriage_output (slots_getstate_setstate):
     """
     raise NotImplementedError()
 
-class printed_output (xtriage_output):
+class printed_output(xtriage_output):
   """
   Output class for displaying raw text with minimal formatting.
   """
@@ -190,7 +190,7 @@ class printed_output (xtriage_output):
       self.out.write("%s\n" % line.rstrip())
     self.out.write(text)
 
-class loggraph_output (xtriage_output):
+class loggraph_output(xtriage_output):
   """
   Output class for displaying 'loggraph' format (from ccp4i) as plain text.
   """
@@ -220,7 +220,7 @@ class loggraph_output (xtriage_output):
     for table in tables :
       self.show_plot(table)
 
-class xtriage_analysis (object):
+class xtriage_analysis(object):
   """
   Base class for analyses performed by Xtriage.  This does not impose any
   restrictions on content or functionality, but simply provides a show()

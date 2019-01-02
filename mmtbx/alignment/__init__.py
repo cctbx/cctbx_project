@@ -486,7 +486,7 @@ def exercise_similarity_scores():
   for m in [dayhoff_mdm78_similarity_scores, blosum50_similarity_scores]:
     assert flex.double(m).matrix_is_symmetric(relative_epsilon=1e-15)
 
-class pairwise_global (ext.pairwise_global):
+class pairwise_global(ext.pairwise_global):
   def __init__(self, seq1, seq2):
     seq1 = seq1.upper()
     seq2 = seq2.upper()

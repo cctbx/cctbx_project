@@ -26,7 +26,7 @@ TWIN_FRAC_SIGNIFICANT = 0.05
 PATT_HEIGHT_MISSED_CENTERING = 75
 PATT_HEIGHT_TNCS = 0.2
 
-class obliquity (slots_getstate_setstate):
+class obliquity(slots_getstate_setstate):
   __slots__ = ["type", "u", "h", "t", "tau", "delta"]
   def __init__(self, reduced_cell, rot_mx, deg=True):
     orth = matrix.sqr(reduced_cell.orthogonalization_matrix())
@@ -117,7 +117,7 @@ class twin_law_quality(object):
 
 ## python routines copied from iotbx.reflection_statistics.
 ## Should be moved but are (for now) in a conveniant place.
-class twin_law (slots_getstate_setstate):
+class twin_law(slots_getstate_setstate):
   """
   Basic container for information about a possible twin law, with scores for
   fit to crystal lattice.
@@ -141,7 +141,7 @@ class twin_law (slots_getstate_setstate):
   def __str__(self):
     return str(self.operator.r().as_hkl())
 
-class twin_laws (scaling.xtriage_analysis):
+class twin_laws(scaling.xtriage_analysis):
   """
   Container for all possible twin laws given a crystal lattice and space
   group.
@@ -340,7 +340,7 @@ class wilson_normalised_intensities(scaling.xtriage_analysis):
 # DIAGNOSTIC TESTS
 ########################################################################
 
-class detect_pseudo_translations (scaling.xtriage_analysis):
+class detect_pseudo_translations(scaling.xtriage_analysis):
   """
   Analyze the Patterson map to identify off-origin peaks that are a significant
   fraction of the origin peak height.
@@ -706,7 +706,7 @@ class wilson_moments(scaling.xtriage_analysis):
        self.centric_e_sq_minus_one_library[1]))
     # TODO explanation, citation?
 
-class n_z_test (scaling.xtriage_analysis):
+class n_z_test(scaling.xtriage_analysis):
   def __init__(self,
                normalised_acentric,
                normalised_centric):
@@ -809,7 +809,7 @@ considered.
     else :
       out.show_table(self.table)
 
-class l_test (scaling.xtriage_analysis):
+class l_test(scaling.xtriage_analysis):
   """
   Implementation of:
 
@@ -901,7 +901,7 @@ class l_test (scaling.xtriage_analysis):
 # TWIN LAW-DEPENDENT TESTS
 ########################################################################
 
-class britton_test (scaling.xtriage_analysis):
+class britton_test(scaling.xtriage_analysis):
   def __init__(self,
                twin_law,
                miller_array, # ideally intensities!
@@ -1001,7 +1001,7 @@ class britton_test (scaling.xtriage_analysis):
         "correlation" : self.correlation })
 
 
-class h_test (scaling.xtriage_analysis):
+class h_test(scaling.xtriage_analysis):
   def __init__(self,
                twin_law,
                miller_array, # ideally intensities!
@@ -1231,7 +1231,7 @@ class ml_murray_rust_with_ncs(object):
     self._show_info(out)
     self._show_results(out)
 
-class ml_murray_rust (scaling.xtriage_analysis):
+class ml_murray_rust(scaling.xtriage_analysis):
   """
   Maximum-likelihood twin fraction estimation (Zwart, Read, Grosse-Kunstleve &
   Adams, to be published).
@@ -1319,7 +1319,7 @@ def weighted_cc(x,y,w):
   else:
     return 0.0
 
-class correlation_analyses (scaling.xtriage_analysis):
+class correlation_analyses(scaling.xtriage_analysis):
   def __init__(self,
                miller_obs,
                miller_calc,
@@ -1488,7 +1488,7 @@ class twin_law_dependent_twin_tests(scaling.xtriage_analysis):
 # OTHER SYMMETRY PROBLEMS
 ########################################################################
 
-class symmetry_issues (scaling.xtriage_analysis):
+class symmetry_issues(scaling.xtriage_analysis):
   def __init__(self,
                miller_array,
                max_delta=3.0,
@@ -1739,7 +1739,7 @@ higher than it actually is.
 """)
 
 
-class r_values (scaling.xtriage_analysis):
+class r_values(scaling.xtriage_analysis):
   def __init__(self,
                miller_obs,
                twin_law,
@@ -2210,7 +2210,7 @@ refinement might provide an answer.
         "Patterson analyses"))
     return issues
 
-class twin_analyses (scaling.xtriage_analysis):
+class twin_analyses(scaling.xtriage_analysis):
   """Perform various twin related tests"""
   def __init__(self,
                miller_array,

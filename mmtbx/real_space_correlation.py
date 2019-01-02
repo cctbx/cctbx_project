@@ -594,7 +594,7 @@ def set_detail_level_and_radius(detail, atom_radius, d_min):
     else:                               atom_radius = 2.5
   return detail, atom_radius
 
-class selection_map_statistics_manager (object):
+class selection_map_statistics_manager(object):
   """
   Utility class for performing repeated calculations on multiple maps.  Useful
   in post-refinement validation, ligand fitting, etc. where we want to collect

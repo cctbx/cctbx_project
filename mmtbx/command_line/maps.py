@@ -364,7 +364,7 @@ def run(args, log = sys.stdout, use_output_directory=True,
   print >> log, "-"*79
   return (map_coeff_file_name, xplor_maps)
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)

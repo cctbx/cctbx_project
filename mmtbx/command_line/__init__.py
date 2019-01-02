@@ -176,7 +176,7 @@ def generic_simple_input_phil():
     phil_string="",
     enable_automatic_twin_detection=True)
 
-class load_model_and_data (object):
+class load_model_and_data(object):
   """
   Class for processing command-line input and creating necessary objects.
   The master_phil object should include cmdline_input_phil_str above, plus

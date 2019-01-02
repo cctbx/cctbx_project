@@ -155,7 +155,7 @@ and experimentation only.
   print >> out, "Wrote ensemble model to %s" % params.output.file_name
   return rmsds
 
-class annealing_manager (object):
+class annealing_manager(object):
   def __init__(self,
       xray_structure,
       pdb_hierarchy,

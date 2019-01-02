@@ -775,7 +775,7 @@ information, rather then as enforcing that absence in the space group choices.
 
     return sorted_rows
 
-class absences_list (mmtbx.scaling.xtriage_analysis,
+class absences_list(mmtbx.scaling.xtriage_analysis,
                      miller.systematic_absences_info):
   """
   Container for lists of systematic absences.  This subclass simply overrides

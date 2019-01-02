@@ -163,7 +163,7 @@ master_phil_str = sec_str_master_phil_str # for docs
 sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
 default_params = sec_str_master_phil.fetch().extract()
 
-class manager (object):
+class manager(object):
   def __init__(self,
                 pdb_hierarchy,
                 atom_selection_cache=None,

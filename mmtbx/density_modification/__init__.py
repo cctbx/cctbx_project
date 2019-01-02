@@ -666,7 +666,7 @@ class density_modification(object):
     else:
       return self.params.d_min
 
-class dm_stats (object):
+class dm_stats(object):
   def __init__(self):
     self._stats = []
 

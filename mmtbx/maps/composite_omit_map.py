@@ -237,7 +237,7 @@ class run(object):
 # Note that most of the program logic lives in the phenix tree due to
 # its use of phenix.refine.
 
-class omit_box (slots_getstate_setstate_default_initializer):
+class omit_box(slots_getstate_setstate_default_initializer):
   """
   Defines a region in fractional coordinates containing a selection of atoms
   to be omitted.
@@ -254,7 +254,7 @@ class omit_box (slots_getstate_setstate_default_initializer):
       % tuple([ self.serial, len(self.selection) ] +
         list(self.frac_min) + list(self.frac_max))
 
-class omit_regions (slots_getstate_setstate):
+class omit_regions(slots_getstate_setstate):
   """
   Groups together multiple omit_box objects (without any implicit spatial
   relationship); this is used to reduce the total number of bins of omitted
@@ -294,7 +294,7 @@ class omit_regions (slots_getstate_setstate):
       for box in self.boxes :
         box.show(out=out, prefix=prefix+"  ")
 
-class omit_region_results (slots_getstate_setstate_default_initializer):
+class omit_region_results(slots_getstate_setstate_default_initializer):
   __slots__ = [ "serial", "map_coeffs_list", "r_work", "r_free" ]
 
 def create_omit_regions(xray_structure,

@@ -143,7 +143,7 @@ table_one {
   }
 }""" % structure_params_str
 
-class _ (oop.injector, molprobity.molprobity):
+class _(oop.injector, molprobity.molprobity):
   """
   Injector dummy class to add as_table1_column() method to the main molprobity
   object.  This extracts statistics from the various validation objects and
@@ -401,7 +401,7 @@ def run_single_structure(params,
         molprobity_args.append("monomers.file_name=\"%s\"" % f.file_name)
   return mmtbx.command_line.molprobity.run(args=molprobity_args, out=log)
 
-class table_one (iotbx.table_one.table):
+class table_one(iotbx.table_one.table):
   __slots__ = iotbx.table_one.table.__slots__ + [
     "output_dir", "params", "output_files", ] #"n_warnings"]
 
@@ -601,7 +601,7 @@ def validate_params(params):
     raise Sorry("No formats selected for output!")
   return True
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     if not os.path.exists(self.output_dir):
       os.makedirs(self.output_dir)

@@ -71,7 +71,7 @@ def id_str(chain, residue_group, atom_group):
   return "%3s %s%4s%s" % (atom_group.resname, chain.id, residue_group.resseq,
     residue_group.icode)
 
-class residue_summary (object):
+class residue_summary(object):
   def __init__(self,
                 chain_id,
                 residue_group,
@@ -99,7 +99,7 @@ class residue_summary (object):
     else :
       print >> out, "%s : not part of a continuous chain" % id_str
 
-class prune_model (object):
+class prune_model(object):
   def __init__(self,
                 f_map_coeffs,
                 diff_map_coeffs,

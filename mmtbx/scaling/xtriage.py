@@ -407,7 +407,7 @@ Example usage:
 
 """ % vars()
 
-class merging_statistics (mmtbx.scaling.xtriage_analysis,
+class merging_statistics(mmtbx.scaling.xtriage_analysis,
                           iotbx.merging_statistics.dataset_statistics):
   """
   Subclass of iotbx merging statistics class to override the show() method
@@ -487,7 +487,7 @@ that the useful resolution range may be lower than that of the input data.""")
         "Dataset consistency") ]
     return []
 
-class data_summary (mmtbx.scaling.xtriage_analysis):
+class data_summary(mmtbx.scaling.xtriage_analysis):
   """
   Basic info about the input data (somewhat redundant at the moment).
   """
@@ -607,7 +607,7 @@ are for the merged data.""")
         issues.append((0, message, 'Summary'))
     return issues
 
-class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
+class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
   """
   Run all Xtriage analyses for experimental data, with optional Fcalc or
   reference datasets.
@@ -1002,7 +1002,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
         issues.extend(self.anomalous_info.summarize_issues())
     return summary(issues)
 
-class summary (mmtbx.scaling.xtriage_analysis):
+class summary(mmtbx.scaling.xtriage_analysis):
   def __init__(self, issues, sort=True):
     self._issues = issues
     if (sort):
@@ -1418,7 +1418,7 @@ def change_symmetry(miller_array, space_group_symbol, file_name=None,
       column_root_label=column_root_label).mtz_object().write(file_name)
   return miller_array
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
@@ -1484,7 +1484,7 @@ def validate_params(params, callback=None):
 
 ########################################################################
 # XXX BACKWARDS COMPATIBILITY
-class xtriage_summary (object):
+class xtriage_summary(object):
   """
   Old result class, minus initialization.  Provides backwards compatibility
   with pickle files from Phenix 1.9 and earlier.

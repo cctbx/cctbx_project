@@ -17,7 +17,7 @@ anneal = False
   .type = bool
 """
 
-class resolve_builder (building.box_build_refine_base):
+class resolve_builder(building.box_build_refine_base):
   def __init__(self, params, *args, **kwds):
     self.params = params
     building.box_build_refine_base.__init__(self, *args, **kwds)

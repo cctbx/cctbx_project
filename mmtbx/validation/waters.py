@@ -8,7 +8,7 @@ from mmtbx.validation import experimental
 from libtbx.str_utils import format_value
 import sys
 
-class water (atom):
+class water(atom):
   """
   Container for information about a water atom, including electron density
   properties.
@@ -54,7 +54,7 @@ class water (atom):
     return [ self.id_str(), self.b_iso, self.occupancy, self.two_fofc,
              self.fmodel, self.score]
 
-class waters (validation):
+class waters(validation):
   """
   Assess the properties of solvent atoms, including local environment and
   electron density.

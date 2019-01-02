@@ -31,7 +31,7 @@ def summary(pdb_file=None, pdb_hierarchy=None):
     keep_hydrogens=False,
     header_info=header_info).summarize()
 
-class parallel_driver (object):
+class parallel_driver(object):
   """
   Simple wrapper for passing to easy_mp.pool_map.
   """
@@ -55,7 +55,7 @@ molprobity_stat_labels = [
   "MolProbity Score",
 ]
 
-class ensemble (slots_getstate_setstate):
+class ensemble(slots_getstate_setstate):
   """
   MolProbity validation results for an ensemble of models.  Note that the
   number of atoms in each model is not necessarily consistent.

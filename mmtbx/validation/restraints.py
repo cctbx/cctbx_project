@@ -20,7 +20,7 @@ __restraint_attr__ = [
   "residual",
 ] # XXX others?
 
-class restraint (atoms):
+class restraint(atoms):
   n_atoms = None
   """
   Base class for covalent sterochemistry restraint outliers (except for
@@ -76,7 +76,7 @@ class restraint (atoms):
       "-".join(atom_names))
     return kin_key
 
-class bond (restraint):
+class bond(restraint):
   n_atoms = 2
   __bond_attr__ = [
     "slack",
@@ -101,22 +101,22 @@ class bond (restraint):
     from mmtbx.kinemage.validation import bond_outlier_as_kinemage
     return bond_outlier_as_kinemage(self)
 
-class angle (restraint):
+class angle(restraint):
   n_atoms = 3
   def as_kinemage(self):
     from mmtbx.kinemage.validation import angle_outlier_as_kinemage
     return angle_outlier_as_kinemage(self)
 
-class dihedral (restraint):
+class dihedral(restraint):
   n_atoms = 4
   def as_kinemage(self):
     return None
 
-class chirality (restraint):
+class chirality(restraint):
   def as_kinemage(self):
     return None
 
-class planarity (restraint):
+class planarity(restraint):
   __slots__ = atoms.__slots__ + [
     "rms_deltas",
     "delta_max",
@@ -138,7 +138,7 @@ class planarity (restraint):
   def as_kinemage(self):
     return None
 
-class restraint_validation (validation):
+class restraint_validation(validation):
   """
   Base class for collecting information about all restraints of a certain
   type, including overall statistics and individual outliers.
@@ -242,7 +242,7 @@ class restraint_validation (validation):
       return header + "\n".join(kin_blocks)
     return None
 
-class bonds (restraint_validation):
+class bonds(restraint_validation):
   restraint_type = "bond"
   restraint_label = "Bond length"
   kinemage_header = "@subgroup {length devs} dominant\n"
@@ -298,7 +298,7 @@ class bonds (restraint_validation):
         outliers.append(outlier)
     return outliers
 
-class angles (restraint_validation):
+class angles(restraint_validation):
   restraint_type = "angle"
   restraint_label = "Bond angle"
   kinemage_header = "@subgroup {geom devs} dominant\n"
@@ -335,7 +335,7 @@ class angles (restraint_validation):
         outliers.append(outlier)
     return outliers
 
-class dihedrals (restraint_validation):
+class dihedrals(restraint_validation):
   restraint_type = "dihedral"
   restraint_label = "Dihedral angle"
   def get_result_class(self) : return dihedral
@@ -370,7 +370,7 @@ class dihedrals (restraint_validation):
         outliers.append(outlier)
     return outliers
 
-class chiralities (restraint_validation):
+class chiralities(restraint_validation):
   restraint_type = "chirality"
   restraint_label = "Chiral volume"
   def get_result_class(self) : return chirality
@@ -404,7 +404,7 @@ class chiralities (restraint_validation):
         outliers.append(outlier)
     return outliers
 
-class planarities (restraint_validation):
+class planarities(restraint_validation):
   restraint_type = "planarity"
   restraint_label = "Planar group"
   gui_list_headers = ["Atoms", "Max. delta", "RMS(delta)", "Deviation (sigmas)"]
@@ -480,7 +480,7 @@ def _get_sorted(O,
     sorted_table.append((proxy, proxy_atoms))
   return sorted_table
 
-class combined (slots_getstate_setstate):
+class combined(slots_getstate_setstate):
   """
   Container for individual validations of each of the five covalent restraint
   classes.

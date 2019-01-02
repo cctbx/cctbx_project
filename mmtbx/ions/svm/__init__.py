@@ -552,7 +552,7 @@ svm
 }
 """
 
-class svm_prediction (slots_getstate_setstate_default_initializer):
+class svm_prediction(slots_getstate_setstate_default_initializer):
   """
   Contains information about a SVM's prediction of a site's identity.
 
@@ -611,7 +611,7 @@ class svm_prediction (slots_getstate_setstate_default_initializer):
       (self.pdb_id_str, final_choice.element, best_score,
        self.map_stats.two_fofc, self.map_stats.fofc)
 
-class manager (mmtbx.ions.identify.manager):
+class manager(mmtbx.ions.identify.manager):
   def analyze_water(self, i_seq, debug=True, candidates=Auto,
       filter_outputs=True):
     """

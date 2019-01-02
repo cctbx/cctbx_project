@@ -485,7 +485,7 @@ min_distance_over_u = 1.0
   .type = float
 """)
 
-class disorder_info (slots_getstate_setstate):
+class disorder_info(slots_getstate_setstate):
   __slots__ = [
     "n_confs", "sites", "atom_names", "id_str", "u_isos", "u_stars",
     "max_rmsd", "max_distance_over_u", "dxyz_save", "u_iso_save",
@@ -722,13 +722,13 @@ def finalize_model(pdb_hierarchy,
   pdb_atoms.reset_i_seq()
   pdb_atoms.reset_tmp()
 
-class refined_fragment (slots_getstate_setstate_default_initializer):
+class refined_fragment(slots_getstate_setstate_default_initializer):
   __slots__ = ["label", "selection", "sites_cart", "rmsd"]
   def show(self, out=sys.stdout, prefix=""):
     print >> out, prefix+"refined %s (%d atoms): rmsd=%.3f" % (self.label,
       len(self.selection), self.rmsd)
 
-class rsr_fragments_base (object):
+class rsr_fragments_base(object):
   """
   Template for refinement of a collection of non-overlapping model fragments,
   intended to be used in parallel loops.
@@ -760,7 +760,7 @@ def print_trial_header(out, prefix=""):
   print >> out, prefix + header_2
   print >> out, prefix + "-" * (len(header_2))
 
-class trial_result (object):
+class trial_result(object):
   """
   Container for the results of a fitting run.  The sites_cart attribute
   should correspond to the iselection being refined.

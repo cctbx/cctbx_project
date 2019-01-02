@@ -20,7 +20,7 @@ rna_backbone_atoms = set([
   "C3'", "O3'", "C2'", "O2'", "N1", "N9" ]) #version 3.x naming
 
 # individual validation results
-class rna_bond (validation.residue):
+class rna_bond(validation.residue):
   __slots__ = validation.residue.__slots__ + ["atoms_info", "sigma", "delta"]
 
   @staticmethod
@@ -38,7 +38,7 @@ class rna_bond (validation.residue):
     return [ self.id_str(), self.atoms_info[0].name, self.atoms_info[1].name,
              self.score ]
 
-class rna_angle (validation.residue):
+class rna_angle(validation.residue):
   __slots__ = validation.residue.__slots__ + ["atoms_info", "sigma", "delta"]
 
   @staticmethod
@@ -58,7 +58,7 @@ class rna_angle (validation.residue):
     return [ self.id_str(), self.atoms_info[0].name, self.atoms_info[1].name,
              self.atoms_info[2].name, self.score ]
 
-class rna_pucker (validation.residue):
+class rna_pucker(validation.residue):
   """
   Validation using pucker-specific restraints library.
   """
@@ -92,7 +92,7 @@ class rna_pucker (validation.residue):
   def as_table_row_phenix(self):
     return [ self.id_str(), self.delta_angle, self.epsilon_angle ]
 
-class rna_suite (validation.residue):
+class rna_suite(validation.residue):
   """
   RNA backbone "suite", analyzed using the external program 'suitename'.
   """
@@ -118,7 +118,7 @@ class rna_suite (validation.residue):
   def as_table_row_phenix(self):
     return [ self.suite_id, self.suite, self.suiteness, self.triaged_angle ]
 
-class rna_geometry (validation.validation):
+class rna_geometry(validation.validation):
   def show(self, out=sys.stdout, prefix="  ", verbose=True):
     if (len(self.results) > 0):
       print >> out, prefix + self.get_result_class().header()
@@ -127,7 +127,7 @@ class rna_geometry (validation.validation):
     self.show_summary(out=out, prefix=prefix)
 
 # analysis objects
-class rna_bonds (rna_geometry):
+class rna_bonds(rna_geometry):
   output_header = "#residue:atom_1:atom_2:num_sigmas"
   label = "Backbone bond lenths"
   gui_list_headers = ["Residue", "Atom 1", "Atom 2", "Sigmas"]
@@ -182,7 +182,7 @@ class rna_bonds (rna_geometry):
       print >> out, prefix + "%d/%d bond outliers present" % (self.n_outliers,
         self.n_total)
 
-class rna_angles (rna_geometry):
+class rna_angles(rna_geometry):
   output_header = "#residue:atom_1:atom_2:atom_3:num_sigmas"
   label = "Backbone bond angles"
   gui_list_headers = ["Residue", "Atom 1", "Atom 2", "Atom 3", "Sigmas"]
@@ -236,7 +236,7 @@ class rna_angles (rna_geometry):
       print >> out, prefix + "%d/%d angle outliers present" % (self.n_outliers,
         self.n_total)
 
-class rna_puckers (rna_geometry):
+class rna_puckers(rna_geometry):
   __slots__ = rna_geometry.__slots__ + [
     "pucker_states",
     "pucker_perp_xyz",
@@ -317,7 +317,7 @@ class rna_puckers (rna_geometry):
       print >> out, prefix + "%d/%d pucker outliers present" % (self.n_outliers,
         self.n_total)
 
-class rna_suites (rna_geometry):
+class rna_suites(rna_geometry):
   output_header = "#suiteID:suite:suiteness:triaged_angle"
   label = "Backbone torsion suites"
   gui_list_headers = ["Suite ID", "Suite", "Suiteness", "Triaged angles",]
@@ -399,7 +399,7 @@ class rna_suites (rna_geometry):
         print >> out, prefix + "Average suiteness: %s" % format_value("%.3f",
           self.average_suiteness)
 
-class rna_validation (slots_getstate_setstate):
+class rna_validation(slots_getstate_setstate):
   __slots__ = ["bonds", "angles", "puckers", "suites"]
 
   def __init__(self,

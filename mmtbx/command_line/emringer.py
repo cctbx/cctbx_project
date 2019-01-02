@@ -238,7 +238,7 @@ def validate_params(params):
     raise Sorry("No map coefficients supplied (parameter: map_coeffs)")
   return True
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     os.makedirs(self.output_dir)
     os.chdir(self.output_dir)
@@ -261,7 +261,7 @@ else :
     frame.Show()
     app.MainLoop()
 
-  class RingerFrame (plots.plot_frame):
+  class RingerFrame(plots.plot_frame):
     def create_plot_panel(self):
       plot = RingerPlot(self, figure_size=(6,8))
       plot.canvas.Bind(wx.EVT_CHAR, self.OnChar)
@@ -310,7 +310,7 @@ else :
       self.chooser.SetSelection(selection)
       self.plot_panel.show_residue(self.results[selection])
 
-  class RingerPlot (plots.plot_container):
+  class RingerPlot(plots.plot_container):
     def show_residue(self, residue, show_background_boxes=False):
       if (self.disabled) : return
       self.figure.clear()

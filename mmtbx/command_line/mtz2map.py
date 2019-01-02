@@ -350,7 +350,7 @@ def run(args, log=sys.stdout, run_in_current_working_directory=False):
 def finish_job(result):
   return (result, []) # XXX result is already a file name/desc. list
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     os.makedirs(self.output_dir)
     os.chdir(self.output_dir)

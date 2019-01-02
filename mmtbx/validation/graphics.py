@@ -7,7 +7,7 @@ from __future__ import division
 from libtbx import slots_getstate_setstate
 import itertools
 
-class rotarama_plot_mixin (object):
+class rotarama_plot_mixin(object):
   extent = [0, 360, 0, 360]
   def __init__(self):
     assert hasattr(self, "figure")
@@ -74,7 +74,7 @@ class rotarama_plot_mixin (object):
           markeredgecolor=markeredgecolor)
     self.canvas.draw()
 
-class residue_bin (slots_getstate_setstate):
+class residue_bin(slots_getstate_setstate):
   __slots__ = ["residues", "marks", "labels"]
   def __init__(self):
     self.residues = []
@@ -140,7 +140,7 @@ class residue_bin (slots_getstate_setstate):
         y.append([numpy.NaN] * 4)
     return numpy.array(y).transpose()
 
-class residue_binner (object):
+class residue_binner(object):
   def __init__(self, res_list, bin_size=100, one_chain_per_bin=False):
     self.bins = []
     last_chain = last_resseq = None
@@ -173,7 +173,7 @@ class residue_binner (object):
   def get_ranges(self):
     return [ bin.get_residue_range() for bin in self.bins ]
 
-class multi_criterion_plot_mixin (object):
+class multi_criterion_plot_mixin(object):
   def __init__(self, binner, y_limits):
     self.binner = binner
     self.y_limits = y_limits

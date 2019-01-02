@@ -139,7 +139,7 @@ def validate_params(params, callback=None):
     check_if_output_directory_exists(params.output.file_name)
   return True
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     return run(args=list(self.args), out=sys.stdout)
 

@@ -154,7 +154,7 @@ def ion_master_phil():
 WATER, WATER_POOR, LIGHT_ION, HEAVY_ION = range(4)
 NUC_PHOSPHATE_BINDING = ["MG", "CA", "MN"]
 
-class manager (object):
+class manager(object):
   """
   Wrapper object for extracting local environment and adding or modifying
   scatterers.
@@ -1414,7 +1414,7 @@ class manager (object):
       print >> box, ""
     box.close()
 
-class _analyze_water_wrapper (object):
+class _analyze_water_wrapper(object):
   """
   Simple wrapper for calling manager.analyze_water with keyword arguments
   in a parallelized loop.  Because the water_result object is not pickle-able,
@@ -1442,7 +1442,7 @@ class _analyze_water_wrapper (object):
     except KeyboardInterrupt :
       return (None, None, None)
 
-class _validate_ion_wrapper (object):
+class _validate_ion_wrapper(object):
   """
   Simple wrapper for calling manager.validate_ion with keyword arguments
   in a parallelized loop.  Because the water_result object is not pickle-able,
@@ -1459,7 +1459,7 @@ class _validate_ion_wrapper (object):
     except KeyboardInterrupt :
       return (None, None)
 
-class ion_result (validation.atom):
+class ion_result(validation.atom):
   """
   Class for validation results for an ion site. This includes information about
   both the atom modeled at that site as well as its chemical and scattering
@@ -1474,7 +1474,7 @@ class ion_result (validation.atom):
     # Print brief statistics for lines in a table
     pass
 
-class water_result (object):
+class water_result(object):
   """
   Container for storing the results of manager.analyze_water for later display
   and retrieval.
@@ -1577,7 +1577,7 @@ class water_result (object):
             #    print >> out, "  incompatible ligands for %s" % str(params)
           print >> out, ""
 
-class AtomProperties (object):
+class AtomProperties(object):
   """
   Collect physical attributes of an atom, including B, occupancy, and map
   statistics, and track those which are at odds with its chemical identity.

@@ -2,7 +2,7 @@
 from __future__ import division
 from iotbx.data_plots import simple_matplotlib_plot
 
-class rotarama_plot_mixin (object):
+class rotarama_plot_mixin(object):
   extent = [0, 360, 0, 360]
   def __init__(self):
     assert hasattr(self, "figure")
@@ -56,7 +56,7 @@ class rotarama_plot_mixin (object):
           self.plot.plot((x,),(y,), 'bo', markerfacecolor='white')
     self.canvas.draw()
 
-class ramachandran_plot_mixin (rotarama_plot_mixin):
+class ramachandran_plot_mixin(rotarama_plot_mixin):
   extent = [-179,179,-179,179]
   def set_labels(self, y_marks=()):
     axes = self.plot.get_axes()
@@ -65,7 +65,7 @@ class ramachandran_plot_mixin (rotarama_plot_mixin):
     axes.set_ylabel("Psi")
     axes.set_yticks([-120,-60,0,60,120])
 
-class rotamer_plot_mixin (rotarama_plot_mixin):
+class rotamer_plot_mixin(rotarama_plot_mixin):
   def set_labels(self, y_marks=(60,180,300)):
     axes = self.plot.get_axes()
     axes.set_xlabel("Chi1")
@@ -74,12 +74,12 @@ class rotamer_plot_mixin (rotarama_plot_mixin):
     axes.set_yticks(list(y_marks))
     axes.grid(True, color="0.75")
 
-class ramachandran_plot (simple_matplotlib_plot, ramachandran_plot_mixin):
+class ramachandran_plot(simple_matplotlib_plot, ramachandran_plot_mixin):
   def __init__(self, *args, **kwds):
     simple_matplotlib_plot.__init__(self, *args, **kwds)
     ramachandran_plot_mixin.__init__(self, *args, **kwds)
 
-class rotamer_plot (simple_matplotlib_plot, rotamer_plot_mixin):
+class rotamer_plot(simple_matplotlib_plot, rotamer_plot_mixin):
   def __init__(self, *args, **kwds):
     simple_matplotlib_plot.__init__(self, *args, **kwds)
     rotamer_plot_mixin.__init__(self, *args, **kwds)

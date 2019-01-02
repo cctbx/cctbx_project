@@ -54,7 +54,7 @@ def master_phil():
     phil_string=master_phil_str,
     enable_automatic_twin_detection=True)
 
-class partial_omit_map (object):
+class partial_omit_map(object):
   def __init__(self,
       fmodel,
       selection,

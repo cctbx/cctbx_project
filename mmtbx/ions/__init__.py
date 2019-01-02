@@ -38,7 +38,7 @@ def _cif_param_as_float(param):
   if (param == ".") : return None
   return float(param)
 
-class metal_parameters (group_args):
+class metal_parameters(group_args):
   def __str__(self):
     return "%s%+d" % (self.element.upper(), self.charge)
 
@@ -80,7 +80,7 @@ class metal_parameters (group_args):
     s = "%2s%1d%s" % (self.element.strip(), abs(self.charge), charge_symbol)
     return s
 
-class parameter_server (slots_getstate_setstate):
+class parameter_server(slots_getstate_setstate):
   """
   Class for retrieving information from ion_parameters.cif
 
@@ -488,7 +488,7 @@ def check_supported(elements):
 # global parameter_server instance
 server = parameter_server()
 
-class atom_type_flags (object):
+class atom_type_flags(object):
   """
   Simple container for information about the identity of an atom via a set of
   enumerated boolean flags.  The responsibility for toggling these flags based
