@@ -86,7 +86,7 @@ def format(rows,
     return "\n".join(
       [line.rstrip() for line in output.getvalue().splitlines()])
 
-def manage_columns (table_data, include_columns) :
+def manage_columns(table_data, include_columns):
   for row in table_data:
     assert len(row) == len(include_columns)
   new_table = []
@@ -95,21 +95,21 @@ def manage_columns (table_data, include_columns) :
     new_table.append(new_row)
   return new_table
 
-class simple_table (object) :
+class simple_table (object):
   """
   Container for generic table contents, used in Xtriage and elsewhere.  The
   table cells are assumed to be pre-formatted as strings (but not fixed-width).
   This is designed to be easily fed into the format() function, but it can also
   be displayed in GUIs or HTML tables.
   """
-  def __init__ (self,
+  def __init__(self,
       table_rows,
       column_headers=(),
-      comments=None) :
+      comments=None):
     self.column_headers = list(column_headers)
     self._rows = table_rows
 
-  def format (self, indent=0, equal_widths=None) :
+  def format(self, indent=0, equal_widths=None):
     # FIXME equal_widths is a placeholder, does not currently work
     prefix = " " * indent
     return format(
@@ -118,16 +118,16 @@ class simple_table (object) :
       prefix=prefix+'| ',
       postfix=' |')
 
-  def export (self) :
-    if (len(self.column_headers) != 0) :
+  def export(self):
+    if (len(self.column_headers) != 0):
       return [ self.column_headers ] + self._rows
     else :
       return self._rows
 
-  def export_rows (self) : return self.export()
+  def export_rows(self) : return self.export()
 
   @property
-  def n_rows (self) :
+  def n_rows(self):
     return len(self._rows)
 
 # written by Mike Brown

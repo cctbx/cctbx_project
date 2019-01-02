@@ -14,7 +14,7 @@ set PYTHONUNBUFFERED=
 set PYTHONVERBOSE=
 set PYTHONCASEOK=1
 """
-  if (single_dir) :
+  if (single_dir):
     script += r"""
 cd %(bundle)s
 """

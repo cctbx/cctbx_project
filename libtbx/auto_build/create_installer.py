@@ -313,7 +313,7 @@ class SetupInstaller(object):
       )
 
   def make_dist_pkg(self):
-    if (not os.access("/Applications", os.W_OK|os.X_OK)) :
+    if (not os.access("/Applications", os.W_OK|os.X_OK)):
       print("Can't access /Applications - skipping .pkg build")
       return
 
@@ -411,5 +411,5 @@ def run(args):
   setup.run()
 
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   sys.exit(run(sys.argv[1:]))

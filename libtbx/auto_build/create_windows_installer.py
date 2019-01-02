@@ -50,8 +50,8 @@ def WriteNSISpreamble(productname="Phenix",
   return scriptname
 
 
-def run (args, out=sys.stdout) :
-  if (sys.platform != "win32") :
+def run(args, out=sys.stdout):
+  if (sys.platform != "win32"):
     print("This application will only run on Windows systems.", file=out)
     return 1
   parser = optparse.OptionParser(
@@ -120,5 +120,5 @@ def run (args, out=sys.stdout) :
 
 
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   sys.exit(run(sys.argv[1:]))

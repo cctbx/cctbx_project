@@ -16,7 +16,7 @@ import time
 from . import package_defs
 from .installer_utils import *
 
-def run (args) :
+def run(args):
   datestamp = time.strftime("%Y_%m_%d", time.localtime())
   parser = optparse.OptionParser()
   parser.add_option("--tag", dest="tag", action="store",
@@ -34,7 +34,7 @@ def run (args) :
   parser.add_option("--dest", dest="destination", action="store",
     help="Final destination for tarfile", default=None)
   options, args = parser.parse_args(args)
-  if (len(args) == 1) :
+  if (len(args) == 1):
     repositories = op.abspath(args[0])
   else :
     assert (len(args) == 0)
@@ -43,7 +43,7 @@ def run (args) :
   assert op.isdir(repositories)
   assert (repositories != op.abspath(options.tmp_dir))
   os.chdir(options.tmp_dir)
-  if op.exists("cctbx_tmp") :
+  if op.exists("cctbx_tmp"):
     shutil.rmtree("cctbx_tmp")
   os.mkdir("cctbx_tmp")
   os.chdir("cctbx_tmp")
@@ -73,8 +73,8 @@ def run (args) :
   for module_name in required :
     module_path = op.join(repositories, module_name)
     tarfile_path = module_path + "_hot.tar.gz"
-    if (not op.isdir(module_path)) and (not op.isfile(tarfile_path)) :
-      if (not options.download) :
+    if (not op.isdir(module_path)) and (not op.isfile(tarfile_path)):
+      if (not options.download):
         raise OSError("Essential module '%s' not found in %s!" % (module_name,
           repositories))
       else :
@@ -86,10 +86,10 @@ def run (args) :
   for module_name in recommended :
     module_path = op.join(repositories, module_name)
     tarfile_path = module_path + "_hot.tar.gz"
-    if (not op.isdir(module_path)) and (not op.isfile(tarfile_path)) :
-      if (options.download) :
+    if (not op.isdir(module_path)) and (not op.isfile(tarfile_path)):
+      if (options.download):
         package_defs.fetch_remote_package(module_name)
-      elif (options.ignore_missing) :
+      elif (options.ignore_missing):
         warnings.warn(("Skipping recommended module '%s' (not found in "+
           "repositories directory %s)") % (module_name, repositories))
         continue
@@ -104,10 +104,10 @@ def run (args) :
   for module_name in optional :
     module_path = op.join(repositories, module_name)
     tarfile_path = module_path + "_hot.tar.gz"
-    if (not op.isdir(module_path)) and (not op.isfile(tarfile_path)) :
-      if (options.download) :
+    if (not op.isdir(module_path)) and (not op.isfile(tarfile_path)):
+      if (options.download):
         package_defs.fetch_remote_package(module_name)
-      elif (not options.require_all) :
+      elif (not options.require_all):
         warnings.warn(("Skipping optional module '%s' (not found in "+
           "repositories directory %s)") % (module_name, repositories))
         continue
@@ -122,26 +122,26 @@ def run (args) :
   call("tar -cvzf %s %s" % (options.tarfile, " ".join(have_modules)),
     log=sys.stdout)
   print("Wrote %s" % options.tarfile)
-  if (options.destination is not None) :
+  if (options.destination is not None):
     assert op.isdir(options.destination)
-    if op.exists(op.join(options.destination, options.tarfile)) :
+    if op.exists(op.join(options.destination, options.tarfile)):
       os.remove(op.join(options.destination, options.tarfile))
     shutil.move(options.tarfile, options.destination)
   else :
-    if op.exists(op.join(options.tmp_dir, options.tarfile)) :
+    if op.exists(op.join(options.tmp_dir, options.tarfile)):
       os.remove(op.join(options.tmp_dir, options.tarfile))
     shutil.move(options.tarfile, options.tmp_dir)
   # cleanup
   os.chdir(options.tmp_dir)
   shutil.rmtree("cctbx_tmp")
 
-def copy_dist (dir_name, file_name) :
-  if op.isfile(file_name) :
+def copy_dist(dir_name, file_name):
+  if op.isfile(file_name):
     print("Untarring %s..." % file_name)
     call("tar zxf %s" % file_name, log=sys.stdout)
   else :
     print("Copying %s..." % dir_name)
     archive_dist(dir_name, create_tarfile=False)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

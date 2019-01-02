@@ -43,29 +43,29 @@ fsync = True
   .type = bool
 """)
 
-class simple_target (object) :
-  def __init__ (self, args, output_dir=None) :
+class simple_target (object):
+  def __init__(self, args, output_dir=None):
     adopt_init_args(self, locals())
     if output_dir is None :
       self.output_dir = os.getcwd()
 
-  def __call__ (self) :
+  def __call__(self):
     return True
 
-class target_with_save_result (object) :
-  def __init__ (self, args, file_name, output_dir=None, log_file=None,
-      job_title=None) :
+class target_with_save_result (object):
+  def __init__(self, args, file_name, output_dir=None, log_file=None,
+      job_title=None):
     assert isinstance(file_name, basestring)
     assert (isinstance(args, list) or isinstance(args, tuple))
     assert (output_dir is None) or isinstance(output_dir, basestring)
     assert (log_file is None) or isinstance(log_file, basestring)
     adopt_init_args(self, locals())
-    if (output_dir is None) :
+    if (output_dir is None):
       self.output_dir = os.getcwd()
     self._out = None
 
-  def __call__ (self) :
-    if (self.log_file is not None) :
+  def __call__(self):
+    if (self.log_file is not None):
       log = open(self.log_file, "w")
       new_out = multi_out()
       new_out.register("log", log)
@@ -74,30 +74,30 @@ class target_with_save_result (object) :
       self._out = new_out
     result = self.run()
     easy_pickle.dump(self.file_name, result)
-    if (self._out is not None) and (not getattr(self._out, "closed", False)) :
+    if (self._out is not None) and (not getattr(self._out, "closed", False)):
       self._out.flush()
       # FIXME
       #self._out.close()
     return result
 
-  def run (self) :
+  def run(self):
     raise NotImplementedError()
 
-class detached_process_driver (object) :
-  def __init__ (self, target) :
+class detached_process_driver (object):
+  def __init__(self, target):
     adopt_init_args(self, locals())
 
-  def __call__ (self) :
+  def __call__(self):
     result = self.target()
     return result
 
-class detached_process_driver_mp (detached_process_driver) :
-  def __call__ (self, args, kwds, child_conn) :
+class detached_process_driver_mp (detached_process_driver):
+  def __call__(self, args, kwds, child_conn):
     result = self.target()
     return result
 
-class detached_base (object) :
-  def __init__ (self, params) :
+class detached_base (object):
+  def __init__(self, params):
     adopt_init_args(self, locals())
     self._accumulated_callbacks = []
     if params.prefix is None :
@@ -109,7 +109,7 @@ class detached_base (object) :
     else :
       self.set_file_names(os.getcwd())
 
-  def set_file_names (self, tmp_dir) :
+  def set_file_names(self, tmp_dir):
     prefix = os.path.join(tmp_dir, self.params.prefix)
     self.start_file = prefix + ".libtbx_start"
     self.stdout_file = prefix + ".libtbx_stdout"
@@ -123,51 +123,51 @@ class detached_base (object) :
     self.state_lock = self.state_file + ".LOCK"
     self.prefix = prefix
 
-  def isAlive (self) :
+  def isAlive(self):
     return False
 
-  def callback_start (self, data) :
+  def callback_start(self, data):
     pass
 
-  def callback_stdout (self, data) :
+  def callback_stdout(self, data):
     pass
 
-  def callback_error (self, error, traceback_info) :
+  def callback_error(self, error, traceback_info):
     pass
 
-  def callback_abort (self) :
+  def callback_abort(self):
     pass
 
-  def callback_final (self, result) :
+  def callback_final(self, result):
     pass
 
-  def callback_other (self, status) :
+  def callback_other(self, status):
     pass
 
-class stdout_redirect (object) :
-  def __init__ (self, handler) :
+class stdout_redirect (object):
+  def __init__(self, handler):
     adopt_init_args(self, locals())
 
-  def write (self, data) :
+  def write(self, data):
     self.handler.callback_stdout(data)
 
-  def flush (self) :
+  def flush(self):
     pass
 
-  def close (self) :
+  def close(self):
     pass
 
-class detached_process_server (detached_base) :
-  def __init__ (self, target, *args, **kwds) :
+class detached_process_server (detached_base):
+  def __init__(self, target, *args, **kwds):
     detached_base.__init__(self, *args, **kwds)
     self.target = target
     assert hasattr(self.target, "__call__")
 
   # XXX support for libtbx.queueing_system_utils.generic.Job
-  def __call__ (self, *args, **kwds) :
+  def __call__(self, *args, **kwds):
     return self.run()
 
-  def run (self) :
+  def run(self):
     self.callback_start()
     self._stdout = multi_out()
     self._tmp_stdout = open(self.stdout_file, "w")
@@ -182,13 +182,13 @@ class detached_process_server (detached_base) :
       self.callback_abort()
     except Exception as e :
       print(type(e).__name__, file=sys.stderr)
-      if (type(e).__name__ == "Abort") :
+      if (type(e).__name__ == "Abort"):
         self.callback_abort()
       else :
         if e.__class__.__module__ == "Boost.Python" :
           e = RuntimeError("Boost.Python.%s: %s" % (e.__class__.__name__,
             str(e)))
-        elif hasattr(e, "reset_module") :
+        elif hasattr(e, "reset_module"):
           e.reset_module()
         traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
         self.callback_error(e, traceback_str)
@@ -197,7 +197,7 @@ class detached_process_server (detached_base) :
       self.callback_final(return_value)
     sys.stdout = old_stdout
 
-  def callback_wrapper (self, message, data, accumulate=True, cached=True) :
+  def callback_wrapper(self, message, data, accumulate=True, cached=True):
     if cached :
       self.callback_other(data=group_args(
         message=message,
@@ -205,43 +205,43 @@ class detached_process_server (detached_base) :
         accumulate=accumulate,
         cached=cached))
 
-  def callback_start (self, data=None) :
+  def callback_start(self, data=None):
     info = host_and_user()
     assert (info.pid is not None)
     f = open(self.start_file, "w")
     host_name = info.get_host_name()
-    if (host_name is None) and (sys.platform == "darwin") :
+    if (host_name is None) and (sys.platform == "darwin"):
       host_name = os.uname()[1]
     f.write("%s %d" % (host_name, info.pid))
     f.close()
 
-  def callback_stdout (self, data) :
+  def callback_stdout(self, data):
     self._stdout.write(data)
     self._stdout.flush()
     if self.params.fsync :
       os.fsync(self._tmp_stdout.fileno())
-    if os.path.isfile(self.stop_file) :
+    if os.path.isfile(self.stop_file):
       raise Abort()
 
-  def callback_error (self, error, traceback_info) :
+  def callback_error(self, error, traceback_info):
     self.cleanup()
     easy_pickle.dump(self.error_file, (error, traceback_info))
 
-  def callback_abort (self) :
+  def callback_abort(self):
     self.cleanup()
     easy_pickle.dump(self.abort_file, True)
 
-  def callback_final (self, result) :
+  def callback_final(self, result):
     self.cleanup()
     easy_pickle.dump(self.result_file, result)
 
-  def callback_pause (self) : # TODO
+  def callback_pause(self) : # TODO
     pass
 
-  def callback_resume (self) : # TODO
+  def callback_resume(self) : # TODO
     pass
 
-  def callback_other (self, data) :
+  def callback_other(self, data):
     if not data.cached :
       return
     if data.accumulate :
@@ -254,13 +254,13 @@ class detached_process_server (detached_base) :
       easy_pickle.dump(self.state_file, data)
       os.remove(self.state_lock)
 
-  def cleanup (self) :
+  def cleanup(self):
     self._stdout.flush()
     self._stdout.close()
 
 # TODO pause/resume?
-class detached_process_client (detached_base) :
-  def __init__ (self, *args, **kwds) :
+class detached_process_client (detached_base):
+  def __init__(self, *args, **kwds):
     detached_base.__init__(self, *args, **kwds)
     self._logfile = None
     self._info_mtime = 0.0 # time.time()
@@ -271,13 +271,13 @@ class detached_process_client (detached_base) :
     self._process_pid = None
     self.update_progress = True
 
-  def isAlive (self) :
+  def isAlive(self):
     return (not self.finished)
 
-  def is_started (self) :
+  def is_started(self):
     return self.running
 
-  def run (self) :
+  def run(self):
     timeout = self.params.timeout
     while True :
       self.update()
@@ -287,8 +287,8 @@ class detached_process_client (detached_base) :
         time.sleep(timeout * 0.001)
     return True
 
-  def update (self) :
-    if not self.running and os.path.exists(self.start_file) :
+  def update(self):
+    if not self.running and os.path.exists(self.start_file):
       self.running = True
       data = open(self.start_file, "r").read()
       try :
@@ -302,16 +302,16 @@ class detached_process_client (detached_base) :
     if self.update_progress :
       self.check_stdout()
       self.check_status()
-    if os.path.exists(self.error_file) :
+    if os.path.exists(self.error_file):
       try :
         (error, traceback_info) = easy_pickle.load(self.error_file)
       except EOFError :
         pass
       else :
         self.callback_error(error, traceback_info)
-    elif os.path.exists(self.abort_file) :
+    elif os.path.exists(self.abort_file):
       self.callback_abort()
-    elif os.path.exists(self.result_file) :
+    elif os.path.exists(self.result_file):
       try :
         result = easy_pickle.load(self.result_file)
       except EOFError :
@@ -326,8 +326,8 @@ class detached_process_client (detached_base) :
       return
     self.finished = True
 
-  def check_stdout (self) :
-    if self._logfile is None and os.path.exists(self.stdout_file) :
+  def check_stdout(self):
+    if self._logfile is None and os.path.exists(self.stdout_file):
       self._logfile = open(self.stdout_file, "r")
       stat = os.stat(self.stdout_file)
       self._logfile.seek(stat.st_size)
@@ -339,14 +339,14 @@ class detached_process_client (detached_base) :
       else :
         self.callback_stdout(data)
 
-  def reset_logfile (self) :
+  def reset_logfile(self):
     if self._logfile is not None :
       self._logfile.seek(0)
 
-  def check_status (self) :
-    if os.path.exists(self.info_file) :
+  def check_status(self):
+    if os.path.exists(self.info_file):
       mtime = os.path.getmtime(self.info_file)
-      if mtime > self._info_mtime and not os.path.isfile(self.info_lock) :
+      if mtime > self._info_mtime and not os.path.isfile(self.info_lock):
         self._info_mtime = mtime
         try :
           accumulated_status = easy_pickle.load(self.info_file)
@@ -359,13 +359,13 @@ class detached_process_client (detached_base) :
         else :
           n_cb = len(accumulated_status)
           n_cb_old = len(self._accumulated_callbacks)
-          for i in range(n_cb_old, n_cb) :
+          for i in range(n_cb_old, n_cb):
             new_cb = accumulated_status[i]
             self._accumulated_callbacks.append(new_cb)
             self.callback_other(new_cb)
-    if os.path.exists(self.state_file) :
+    if os.path.exists(self.state_file):
       mtime = os.path.getmtime(self.state_file)
-      if mtime > self._state_mtime and not os.path.isfile(self.state_lock) :
+      if mtime > self._state_mtime and not os.path.isfile(self.state_lock):
         self._state_mtime = mtime
         try :
           current_status = easy_pickle.load(self.state_file)
@@ -380,17 +380,17 @@ class detached_process_client (detached_base) :
 
   # XXX in practice the phenix GUI only sets force=True for jobs running on the
   # same machine; qdel is pretty thorough anyway.
-  def abort (self, force=None) :
+  def abort(self, force=None):
     touch_file(self.stop_file)
-    if (force) and (not None in [self._process_host, self._process_pid]) :
+    if (force) and (not None in [self._process_host, self._process_pid]):
       info = host_and_user()
-      if (info.get_host_name() == self._process_host) :
+      if (info.get_host_name() == self._process_host):
         os.kill(self._process_pid, signal.SIGTERM)
         self.running = False
         self.callback_abort()
 
   # XXX See also libtbx.thread_utils implementation
-  def send_signal (self, signal_number) : # XXX experimental
+  def send_signal(self, signal_number) : # XXX experimental
     """
     Signals the process using os.kill, which despite the name, can also
     pause or resume processes on Unix.
@@ -405,40 +405,40 @@ class detached_process_client (detached_base) :
     else :
       return True
 
-  def pause (self) : # XXX experimental, Unix only
-    if (self.send_signal(signal.SIGSTOP)) :
+  def pause(self) : # XXX experimental, Unix only
+    if (self.send_signal(signal.SIGSTOP)):
       self.callback_pause()
 
-  def resume (self) : # XXX experimental, Unix only
-    if (self.send_signal(signal.SIGCONT)) :
+  def resume(self) : # XXX experimental, Unix only
+    if (self.send_signal(signal.SIGCONT)):
       self.callback_resume()
 
-  def callback_pause (self) : # TODO
+  def callback_pause(self) : # TODO
     pass
 
-  def callback_resume (self) : # TODO
+  def callback_resume(self) : # TODO
     pass
 
-  def purge_files (self) :
+  def purge_files(self):
     files = ["start","stdout","error","stop","abort","result","info","state"]
     for fn in files :
       file_name = getattr(self, "%s_file" % fn)
-      if os.path.exists(file_name) :
+      if os.path.exists(file_name):
         try :
           os.remove(file_name)
         except Exception as e :
           print(e)
 
-def touch_file (file_name) :
+def touch_file(file_name):
   f = open(file_name, "w").close()
 
-def write_params (params, file_name) :
+def write_params(params, file_name):
   param_phil = process_master_phil.format(python_object=params)
   f = open(file_name, "w")
   param_phil.show(out=f)
   f.close()
 
-def write_run_script (file_name, cmds) :
+def write_run_script(file_name, cmds):
   f = open(file_name, "w")
   os.fchmod(f.fileno(),
     stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IROTH)
@@ -446,7 +446,7 @@ def write_run_script (file_name, cmds) :
   use_cctbx_setpaths = True
   if "PHENIX" in os.environ and not "PHENIX_CUSTOM_ENV" in os.environ :
     env_file = os.path.join(os.environ["PHENIX"], "phenix_env.sh")
-    if os.path.isfile(env_file) :
+    if os.path.isfile(env_file):
       f.write("source %s\n" % env_file)
       use_cctbx_setpaths = False
   if use_cctbx_setpaths :
@@ -455,10 +455,10 @@ def write_run_script (file_name, cmds) :
   f.close()
 
 # XXX command-line launcher
-def run (args) :
+def run(args):
   user_phil = []
   for arg in args :
-    if os.path.isfile(arg) :
+    if os.path.isfile(arg):
       file_name = os.path.abspath(arg)
       base, ext = os.path.splitext(file_name)
       if ext in [".params", ".eff", ".def", ".phil"] :
@@ -484,35 +484,35 @@ def run (args) :
 
 ########################################################################
 # testing classes (see tst_runtime_utils.py for usage)
-class simple_client (detached_process_client) :
-  def __init__ (self, *args, **kwds) :
+class simple_client (detached_process_client):
+  def __init__(self, *args, **kwds):
     self.n_cb = 0
     self.out = StringIO()
     detached_process_client.__init__(self, *args, **kwds)
 
-  def callback_error (self, error, traceback_info) :
+  def callback_error(self, error, traceback_info):
     raise error
 
-  def callback_aborted (self) :
+  def callback_aborted(self):
     raise Sorry("aborted as planned.")
 
-  def callback_stdout (self, data) :
+  def callback_stdout(self, data):
     self.out.write(data)
-    #for line in data.splitlines() :
+    #for line in data.splitlines():
 
-  def callback_other (self, data) :
+  def callback_other(self, data):
     self.n_cb += 1
 
-  def callback_final (self, result) :
+  def callback_final(self, result):
     self.result = result
 
-class simple_run (object) :
-  def __init__ (self, output_dir) :
+class simple_run (object):
+  def __init__(self, output_dir):
     adopt_init_args(self, locals())
 
-  def __call__ (self) :
+  def __call__(self):
     pu_total = 0
-    for run in range(0, 4) :
+    for run in range(0, 4):
       (x, n) = (0.1 * (run+1) , 20000)
       mu = 10.0
       pu = 0.0
@@ -532,8 +532,8 @@ class simple_run (object) :
       print("current is %f" % pu)
     return pu_total
 
-class simple_func (object) :
-  def __init__ (self, x) :
+class simple_func (object):
+  def __init__(self, x):
     self.x = x
-  def __call__ (self) :
+  def __call__(self):
     print(self.x)

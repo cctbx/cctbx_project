@@ -25,13 +25,13 @@ def run(args):
       flag_dos_format = False
     elif (arg == "--verbose") or (arg == '-v'):
       verbose = True
-    elif (arg == "--indentation") :
+    elif (arg == "--indentation"):
       flag_indentation = True
-    elif (arg == "--only_whitespace") :
+    elif (arg == "--only_whitespace"):
       only_whitespace = True
-    elif (arg == "--only_dos") :
+    elif (arg == "--only_dos"):
       only_dos = True
-    elif (arg == "--only_future") :
+    elif (arg == "--only_future"):
       only_future = True
     elif (arg == "--absolute_import"):
       flag_absolute_import = True
@@ -72,7 +72,7 @@ def run(args):
       n_missing_from_future_import_print_function += 1
     elif info.n_from_future_import_print_function > 1:
       n_too_many_from_future_import_print_function += 1
-    if (info.bad_indentation is not None) and (flag_indentation) :
+    if (info.bad_indentation is not None) and (flag_indentation):
       n_bad_indentation += 1
     info.show(
       flag_x=flag_x,
@@ -116,7 +116,7 @@ def run(args):
         Rarely necessary:
           except: # intentional
   """.splitlines())
-    if (n_bad_indentation != 0) :
+    if (n_bad_indentation != 0):
       message_lines.append("")
       message_lines.append("*** Please fix indentation in a text editor ***")
   if (len(message_lines) != 0):

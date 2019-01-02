@@ -5307,7 +5307,7 @@ Error interpreting command line argument as parameter definition:
 sites = None
   .type = int
 """)
-  def custom_processor (arg) :
+  def custom_processor(arg):
     try :
       val = int(arg)
     except ValueError :
@@ -5535,7 +5535,7 @@ u
   assert c.scope_extract is params.u
   assert c.keyword_args == {"a": 3, "b": 4}
 
-def exercise_deprecation () :
+def exercise_deprecation():
   master = phil.parse("""
 foo {
   bar = None
@@ -5548,13 +5548,13 @@ strategy = *xyz *adp tls
   .type = choice(multi=True)
   .deprecated = True
 """)
-  class _showwarning (object) :
-    def __init__ (self) :
+  class _showwarning (object):
+    def __init__(self):
       self.n = 0
       self.message = None
 
-    def __call__ (self, message, category, *args, **kwds) :
-      if (category is phil.PhilDeprecationWarning) :
+    def __call__(self, message, category, *args, **kwds):
+      if (category is phil.PhilDeprecationWarning):
         self.n += 1
         self.message = str(message)
   warn = _showwarning()
@@ -5736,7 +5736,7 @@ scope2 {
 """)
 
 
-def exercise_alias () :
+def exercise_alias():
   master_phil = phil.parse("""
 pdb_interpretation
   .alias = refinement.pdb_interpretation

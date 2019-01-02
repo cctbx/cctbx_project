@@ -138,16 +138,16 @@ def exercise_normalize_angle():
   assert approx_equal(n(1.e+8, deg=True), 280)
   assert approx_equal(n(-1.e+8, deg=True), 80)
 
-def exercise_percentile_based_spread() :
+def exercise_percentile_based_spread():
   from libtbx.math_utils import percentile_based_spread
   import random
   import math
   n_points = 123456
   deltas = []
-  for i in range(n_points) :
+  for i in range(n_points):
     x = random.gauss(100, 10)
     deltas.append(x)
-  for i in range(1000) :
+  for i in range(1000):
     x = random.gauss(300, 30)
     deltas.append(x)
   pbs = percentile_based_spread(deltas)

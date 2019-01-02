@@ -120,7 +120,7 @@ class mutable(slots_getstate_setstate):
   def __init__(O, value):
     O.value = value
 
-class slots_getstate_setstate_default_initializer (slots_getstate_setstate) :
+class slots_getstate_setstate_default_initializer (slots_getstate_setstate):
   """
   Merges together functionality from slots_getstate_setstate with
   adopt_optional_init_args.
@@ -134,7 +134,7 @@ class slots_getstate_setstate_default_initializer (slots_getstate_setstate) :
   >>> print(svm_pair.i_seq)
   1
   """
-  def __init__ (self, **kwds) :
+  def __init__(self, **kwds):
     kwds = dict(kwds)
     for key in kwds :
       setattr(self, key, kwds.get(key, None))

@@ -161,7 +161,7 @@ class Job(object):
 
 
   @property
-  def jobid (self):
+  def jobid(self):
 
     return getattr( self.status, "jobid", None )
 
@@ -665,7 +665,7 @@ INTERFACE_FOR = {
   "slurm": ( Slurm, slurm_evaluate ),
   }
 
-def qsub (
+def qsub(
   target,
   name="libtbx_python",
   platform="sge",

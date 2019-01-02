@@ -2,50 +2,50 @@ from __future__ import absolute_import, division, print_function
 
 # various containers for gui directives and objects
 
-class menu_hierarchy (object) :
+class menu_hierarchy (object):
   is_menu_item = False
   is_submenu = True
 
-  def __init__ (self, menu_name) :
+  def __init__(self, menu_name):
     self.menu_name = menu_name
     self.submenus = {}
     self.menu_items = []
     self._used = []
     self.submenu_items = []
 
-  def get_items (self) :
+  def get_items(self):
     return self.menu_items + self.submenu_items
 
-  def add_menu_item (self, menu_item_name) :
+  def add_menu_item(self, menu_item_name):
     if not menu_item_name in self._used :
       self.menu_items.append( menu_item(menu_item_name) )
       self._used.append(menu_item_name)
 
-  def get_submenu (self, submenu_name) :
+  def get_submenu(self, submenu_name):
     return self.submenus[submenu_name]
 
   # this will simply do nothing if the submenu already exists
-  def add_submenu (self, submenu_name) :
+  def add_submenu(self, submenu_name):
     if submenu_name in self.submenus :
       pass
     else :
       self.submenus[submenu_name] = menu_hierarchy(submenu_name)
       self.submenu_items.append(self.submenus[submenu_name])
 
-  def __str__ (self) :
+  def __str__(self):
     return self.menu_name
 
-class menu_item (object) :
+class menu_item (object):
   is_menu_item = True
   is_submenu = False
 
-  def __init__ (self, menu_item_name) :
+  def __init__(self, menu_item_name):
     self.menu_item_name = menu_item_name
 
-  def __str__ (self) :
+  def __str__(self):
     return self.menu_item_name
 
-class style (object) :
+class style (object):
   """
   Container for flags used to alter the appearance of controls in the Phenix
   GUI.  These can either be booleans (style_args) or other values (style_kwds).
@@ -130,7 +130,7 @@ class style (object) :
   special_words = []
   #__slots__ = ["_style_words"] + style_args + style_kwds
 
-  def __init__ (self, style_string=None) :
+  def __init__(self, style_string=None):
     self._style_words = []
     self.child = None
     self.parent = None
@@ -179,22 +179,22 @@ class style (object) :
           self.process_style_keyword(style_word)
       self._style_words = style_words
 
-  def process_style_keyword (self, style_word) :
+  def process_style_keyword(self, style_word):
     pass
 
-  def __str__ (self) :
+  def __str__(self):
     return " ".join(self._style_words)
 
-  def get_list (self, kwd) :
+  def get_list(self, kwd):
     val = getattr(self, kwd, None)
-    if isinstance(val, list) :
+    if isinstance(val, list):
       return val
     elif val is not None :
       return [val]
     else :
       return []
 
-  def get_child_params (self) :
+  def get_child_params(self):
     params = []
     if self.child is not None :
       assert isinstance(self.child, list)
@@ -203,7 +203,7 @@ class style (object) :
         params.append((child_type, child_name))
     return dict(params)
 
-  def get_parent_params (self) :
+  def get_parent_params(self):
     params = []
     if self.parent is not None :
       assert isinstance(self.parent, list)
@@ -214,8 +214,8 @@ class style (object) :
 
 default_style = style(None)
 
-class file_type_map (object) :
-  def __init__ (self, param_info, default_label=None) :
+class file_type_map (object):
+  def __init__(self, param_info, default_label=None):
     self.param_info = param_info
     self.default_label = default_label
     self._names = {}
@@ -227,7 +227,7 @@ class file_type_map (object) :
       label = args[1]
       self._names[label] = name
       self._labels[name] = label
-      if (len(args) >= 3) :
+      if (len(args) >= 3):
         count = args[2]
       else :
         assert (len(args) == 2)
@@ -235,44 +235,44 @@ class file_type_map (object) :
       self._counts[name] = count
     assert (default_label is None) or (default_label in self._names.keys())
 
-  def get_params_and_labels (self) :
+  def get_params_and_labels(self):
     return [ (args[0], args[1]) for args in self.param_info ]
 
-  def get_overall_max_count (self) :
+  def get_overall_max_count(self):
     n = 0
-    for name, count in self._counts.items() :
-      if (count is None) :
+    for name, count in self._counts.items():
+      if (count is None):
         return None
       n += count
     return n
 
-  def get_max_count (self, param_name) :
+  def get_max_count(self, param_name):
     return self._counts[param_name]
 
-  def get_default_label (self) :
-    if (len(self._names) == 1) :
+  def get_default_label(self):
+    if (len(self._names) == 1):
       return list(self._names.keys())[0]
     return self.default_label
 
-  def get_default_param (self) :
-    if (len(self._labels) == 1) :
+  def get_default_param(self):
+    if (len(self._labels) == 1):
       return list(self._labels.keys())[0]
-    if (self.default_label is not None) :
+    if (self.default_label is not None):
       return self._names[self.default_label]
     return None
 
-  def get_param_names (self) :
+  def get_param_names(self):
     return [ args[0] for args in self.param_info ]
 
-  def get_multiple_params (self) :
+  def get_multiple_params(self):
     names = []
-    for name, count in self._counts.items() :
+    for name, count in self._counts.items():
       if count is None :
         names.append(name)
     return names
 
-  def disable_param (self, param_name) :
-    if (param_name in self._labels) :
+  def disable_param(self, param_name):
+    if (param_name in self._labels):
       label = self._labels[param_name]
       self._names.pop(label)
       self._labels.pop(param_name)

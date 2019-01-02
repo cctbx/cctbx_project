@@ -16,12 +16,12 @@ import sys
 
 class thread_with_callback_and_wait(threading.Thread):
 
-  def __init__ (self,
+  def __init__(self,
           run,
           callback,
           first_callback=None,
           run_args=(),
-          run_kwds={}) :
+          run_kwds={}):
     self._run = run
     self._run_args = run_args
     self._run_kwds = dict(run_kwds) # copy, to avoid side effects
@@ -60,28 +60,28 @@ class thread_with_callback_and_wait(threading.Thread):
 
 null_callback = oop.null()
 
-class queue_monitor_thread (threading.Thread) :
-  def __init__ (self, q, callback, sleep_interval=1.0) :
+class queue_monitor_thread (threading.Thread):
+  def __init__(self, q, callback, sleep_interval=1.0):
     self.q = q
     self.cb = callback
     self._exit = False
     self._sleep_interval = sleep_interval
     threading.Thread.__init__(self)
 
-  def run (self) :
+  def run(self):
     t = self._sleep_interval
     while not self._exit :
-      if (self.q.qsize() > 0) :
+      if (self.q.qsize() > 0):
         result = self.q.get(timeout=1)
         self.cb(result)
       else :
         time.sleep(t)
 
-  def exit (self) :
+  def exit(self):
     self._exit = True
 
-class file_monitor_thread (threading.Thread) :
-  def __init__ (self, dir_name, file_names, callback, sleep_interval=1.0) :
+class file_monitor_thread (threading.Thread):
+  def __init__(self, dir_name, file_names, callback, sleep_interval=1.0):
     assert os.path.isdir(dir_name)
     self.cb = callback
     self.dir_name = dir_name
@@ -90,82 +90,82 @@ class file_monitor_thread (threading.Thread) :
     self._sleep_interval = sleep_interval
     threading.Thread.__init__(self)
 
-  def run (self) :
+  def run(self):
     t = self._sleep_interval
     existing_files = []
     pending_files = []
     while not self._exit :
       files = os.listdir(self.dir_name)
       for file_name in files :
-        if (file_name in existing_files) :
+        if (file_name in existing_files):
           continue
-        elif (file_name in pending_files) :
+        elif (file_name in pending_files):
           data = easy_pickle.load(os.path.join(self.dir_name, file_name))
           existing_files.append(file_name)
           #pending_files.remove(file_name)
           self.cb(data)
-        elif (file_name in self.file_names) :
+        elif (file_name in self.file_names):
           pending_files.append(file_name)
       time.sleep(t)
 
-  def exit (self) :
+  def exit(self):
     self._exit = True
 
-class simple_task_thread (threading.Thread) :
-  def __init__ (self, thread_function, parent_window=None) :
+class simple_task_thread (threading.Thread):
+  def __init__(self, thread_function, parent_window=None):
     threading.Thread.__init__(self)
     self.f = thread_function
     self.return_value = None
     self._exception = None
 
-  def is_complete (self) :
+  def is_complete(self):
     return (self.return_value is not None)
 
-  def exception_raised (self) :
+  def exception_raised(self):
     return (self._exception is not None)
 
-  def run (self) :
+  def run(self):
     try :
       self.return_value = self.f()
     except Exception as e :
       sys.stderr.write(str(e))
       self._exception = e
 
-  def get_error (self) :
+  def get_error(self):
     return str(self._exception)
 
-class child_process_message (object) :
-  def __init__ (self, message_type, data) :
+class child_process_message (object):
+  def __init__(self, message_type, data):
     adopt_init_args(self, locals())
 
-class child_process_pipe (object) :
-  def __init__ (self, connection_object) :
+class child_process_pipe (object):
+  def __init__(self, connection_object):
     adopt_init_args(self, locals())
 
-  def send_confirm_abort (self, info=None) :
+  def send_confirm_abort(self, info=None):
     message = child_process_message(message_type="aborted", data=info)
     self.connection_object.send(message)
 
-  def send (self, *args, **kwds) :
+  def send(self, *args, **kwds):
     return self.connection_object.send(*args, **kwds)
 
-  def recv (self, *args, **kwds) :
+  def recv(self, *args, **kwds):
     return self.connection_object.recv(*args, **kwds)
 
 # fake filehandle, sends data up pipe to parent process
-class stdout_pipe (object) :
-  def __init__ (self, connection) :
+class stdout_pipe (object):
+  def __init__(self, connection):
     self._c = connection
     self._data = ""
 
-  def write (self, data) :
+  def write(self, data):
     self._data += data
     self.flush() # this needs to be done immediately for some reason
 
-  def flush (self) :
+  def flush(self):
     self._flush()
 
-  def _flush (self) :
+  def _flush(self):
     try :
       if self._data != "" :
         message = child_process_message(message_type="stdout", data=self._data)
@@ -174,47 +174,47 @@ class stdout_pipe (object) :
     except Exception as e :
       sys.__stderr__.write("Exception in stdout_pipe: %s\n" % str(e))
 
-  def close (self) :
+  def close(self):
     pass
 
 wait_before_flush = 0.2 # minimum time between send() calls
 max_between_flush = 5
 
 # this slows down the output so it won't stall a GUI
-class stdout_pipe_buffered (stdout_pipe) :
-  def __init__ (self, *args, **kwds) :
+class stdout_pipe_buffered (stdout_pipe):
+  def __init__(self, *args, **kwds):
     stdout_pipe.__init__(self, *args, **kwds)
     self._last_t = time.time()
 
-  def write (self, data) :
+  def write(self, data):
     self._data += data
     t = time.time()
-    if (t >= (self._last_t + max_between_flush)) :
+    if (t >= (self._last_t + max_between_flush)):
       self.flush()
 
-  def flush (self) :
+  def flush(self):
     t = time.time()
-    if (t >= (self._last_t + wait_before_flush)) :
+    if (t >= (self._last_t + wait_before_flush)):
       self._flush()
       self._last_t = t
 
-  def close (self) :
+  def close(self):
     pass
 
-  def __del__ (self) :
+  def __del__(self):
     if self._data != "" :
       self._flush()
 
 try:
   import multiprocessing
 except ImportError:
-  class process_with_callbacks (object) :
-    def __init__ (self, *args, **kwds) :
+  class process_with_callbacks (object):
+    def __init__(self, *args, **kwds):
       raise ImportError("The multiprocessing module is not available.")
 else:
-  class _process_with_stdout_redirect (multiprocessing.Process) :
-    def __init__ (self, group=None, target=None, name=None, args=(), kwargs={},
-        connection=None, buffer_stdout=True) :
+  class _process_with_stdout_redirect (multiprocessing.Process):
+    def __init__(self, group=None, target=None, name=None, args=(), kwargs={},
+        connection=None, buffer_stdout=True):
       multiprocessing.Process.__init__(self, group, target, name, args, kwargs)
       self._c = connection
       if buffer_stdout :
@@ -222,7 +222,7 @@ else:
       else :
         self._stdout = stdout_pipe(connection)
 
-    def run (self) :
+    def run(self):
       import libtbx.callbacks # import dependency
       libtbx.call_back.add_piped_callback(self._c)
       old_stdout = sys.stdout
@@ -242,7 +242,7 @@ else:
           if e.__class__.__module__ == "Boost.Python" :
             e = RuntimeError("Boost.Python.%s: %s" % (e.__class__.__name__,
               str(e)))
-          elif hasattr(e, "reset_module") :
+          elif hasattr(e, "reset_module"):
             e.reset_module()
           traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
           message = child_process_message(message_type="exception",
@@ -257,12 +257,12 @@ else:
   #XXX: target functions must use this call signature!!!
   # I normally just write a very short wrapper function that invokes the
   # command I actually care about with args/kwds.
-  def _process_target_function (args, kwds, connection) :
+  def _process_target_function(args, kwds, connection):
     connection.send(True)
 
   # not really a process, but a wrapper for one.
-  class process_with_callbacks (threading.Thread) :
-    def __init__ (self,
+  class process_with_callbacks (threading.Thread):
+    def __init__(self,
         target,
         args=(),
         kwargs={},
@@ -274,7 +274,7 @@ else:
         callback_pause=null_callback,  # XXX experimental
         callback_resume=null_callback, # XXX experimental
         buffer_stdout=True,
-        sleep_after_start=None) :
+        sleep_after_start=None):
       threading.Thread.__init__(self)
       self._target = target
       self._args = args
@@ -305,14 +305,14 @@ else:
               isinstance(sleep_after_start, float))
       self._sleep_after_start = sleep_after_start
 
-    def abort (self, force=False) :
+    def abort(self, force=False):
       self._abort = True
-      if (force) :
+      if (force):
         self.kill()
 
     # XXX experimental
-    def kill (self) :
-      if (self._child_process is not None) :
+    def kill(self):
+      if (self._child_process is not None):
         try :
           self._child_process.terminate()
           self.join(0.1)
@@ -322,7 +322,7 @@ else:
         else :
           self._cb_abort()
 
-    def send_signal (self, signal_number) : # XXX experimental
+    def send_signal(self, signal_number) : # XXX experimental
       """
       Signals the process using os.kill, which despite the name, can also
       pause or resume processes on Unix.
@@ -332,15 +332,15 @@ else:
         os.kill(self._child_process.pid, signal_number)
       except OSError as e :
         print(e)
-        if (not self._child_process.is_alive()) :
+        if (not self._child_process.is_alive()):
           self._cb_abort() # XXX not sure if this is ideal
         return False
       else :
         return True
 
-    def pause (self) :
+    def pause(self):
       if sys.platform != "win32":
-        if (self.send_signal(signal.SIGSTOP)) :
+        if (self.send_signal(signal.SIGSTOP)):
           self._cb_pause()
       else:
         import psutil # really should use psutil globally as it is platform independent
@@ -348,9 +348,9 @@ else:
         p.suspend()
         self._cb_pause()
 
-    def resume (self) :
+    def resume(self):
       if sys.platform != "win32":
-        if (self.send_signal(signal.SIGCONT)) :
+        if (self.send_signal(signal.SIGCONT)):
           self._cb_resume()
       else:
         import psutil
@@ -358,8 +358,8 @@ else:
         p.resume()
         self._cb_resume()
 
-    def run (self) :
-      if (self._sleep_after_start is not None) :
+    def run(self):
+      if (self._sleep_after_start is not None):
         time.sleep(self._sleep_after_start)
       child_process = None
       parent_conn, child_conn = multiprocessing.Pipe()
@@ -382,10 +382,10 @@ else:
           child_process.terminate()
           self._cb_abort()
           break
-        if not parent_conn.poll(1) :
+        if not parent_conn.poll(1):
           continue
         pipe_output = parent_conn.recv()
-        if isinstance(pipe_output, child_process_message) :
+        if isinstance(pipe_output, child_process_message):
           message = pipe_output
           (error, traceback_info) = (None, None)
           if message.message_type == "aborted" :
@@ -406,5 +406,5 @@ else:
             break
         else :
           self._cb_other(pipe_output)
-      if child_process is not None and child_process.is_alive() :
+      if child_process is not None and child_process.is_alive():
         child_process.join()

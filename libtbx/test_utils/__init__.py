@@ -65,13 +65,13 @@ Exception_not_expected = RuntimeError("Exception not expected.")
 
 class Default: pass
 
-def test_usage (cmd) :
+def test_usage(cmd):
   result = easy_run.fully_buffered(cmd)
-  if (result.return_code == 0) :
+  if (result.return_code == 0):
     return True
   else :
-    if (len(result.stderr_lines) > 0) :
-      if ("Usage" in result.stdout_lines[0]) :
+    if (len(result.stderr_lines) > 0):
+      if ("Usage" in result.stdout_lines[0]):
         return True
       else :
         raise Sorry("Bad stderr output from %s:\n%s" % (cmd,
@@ -400,7 +400,7 @@ def precision_approx_equal(self,other,precision=24):
   if precision > 52: raise ValueError()
   if self==other:
     return True
-  if (self > 0.) != (other > 0.) :
+  if (self > 0.) != (other > 0.):
     return False
   #compute the exponent
   import math

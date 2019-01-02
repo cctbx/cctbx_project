@@ -121,12 +121,12 @@ def exercise_move_old_create_new_directory():
   assert sorted(os.listdir("tmp_mocnd")) == [
     "a", "a_001", "a_002", "a_024", "a_025", "a_23", "a_log", "b", "b1"]
 
-def exercise_cleanup () :
+def exercise_cleanup():
   from libtbx.path import clean_out_directory
   from six.moves import cStringIO as StringIO
   import shutil
   import os
-  if os.path.isdir("tmp_libtbx_path_cleanup") :
+  if os.path.isdir("tmp_libtbx_path_cleanup"):
     shutil.rmtree("tmp_libtbx_path_cleanup")
   os.mkdir("tmp_libtbx_path_cleanup")
   os.chdir("tmp_libtbx_path_cleanup")

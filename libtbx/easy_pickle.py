@@ -82,7 +82,7 @@ def load(file_name, faster_but_using_more_memory=True):
     return pickle.loads(_open(file_name, "rb").read())
   return pickle.load(_open(file_name, "rb"))
 
-def loads(string) :
+def loads(string):
   """
   Wraps pickle.loads.
 

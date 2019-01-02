@@ -147,7 +147,7 @@ class option_parser(OptionParser):
     self.multiprocessing_is_enabled = True
     return self
 
-  def enable_dry_run (self) :
+  def enable_dry_run(self):
     self.add_option(make_option(None, "--dry_run",
       action="store_true",
       default=False,

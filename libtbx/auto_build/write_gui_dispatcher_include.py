@@ -6,7 +6,7 @@ import os.path
 import sys
 from optparse import OptionParser
 
-def run (args, prologue=None, epilogue=None, out=sys.stdout) :
+def run(args, prologue=None, epilogue=None, out=sys.stdout):
   parser = OptionParser(
     description="Generate the dispatcher include file for using "+
       "locally installed GUI (and related) libraries.  (Used in Phenix "+
@@ -30,14 +30,14 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
     help="Version number (major.minor.rev) for GTK+", default="2.10.0")
   options, args = parser.parse_args(args)
   build_path = options.build_dir
-  if (not os.path.isdir(build_path)) :
+  if (not os.path.isdir(build_path)):
     raise OSError("The specified build directory (%s) does not exist." %
       build_path)
   build_path = os.path.abspath(build_path)
   base_path = options.base_dir
-  if (base_path is None) :
+  if (base_path is None):
     base_path = os.path.join(build_path, "base")
-  if (not os.path.isdir(base_path)) :
+  if (not os.path.isdir(base_path)):
     raise OSError("%s does not exist." % base_path)
   base_path = os.path.abspath(base_path)
   ld_library_paths = [ os.path.join(base_path, "lib"), ]
@@ -51,12 +51,12 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
   if (sys.platform == "darwin") : check_libs = dyld_library_paths
   if sys.platform != "win32":
     for lib_dir in check_libs :
-      if (not os.path.isdir(lib_dir)) :
+      if (not os.path.isdir(lib_dir)):
         raise OSError("%s does not exist." % lib_dir)
   gtk_path = os.path.join(base_path, "lib", "gtk-2.0", options.gtk_version)
   if ((sys.platform.startswith("linux")) and
       (not os.path.isdir(gtk_path)) and
-      (not options.ignore_missing_dirs)) :
+      (not options.ignore_missing_dirs)):
     raise OSError("The path for the specified version of GTK+ does not "+
       "exist (%s)." % gtk_path)
   dispatcher = os.path.join(build_path, "dispatcher_include_%s.sh" %
@@ -65,9 +65,9 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
     dispatcher = os.path.join(build_path, "dispatcher_include_%s.bat" %
       options.suffix)
   f = open(dispatcher, "w")
-  if (prologue is not None) :
+  if (prologue is not None):
     f.write(prologue + "\n")
-  if (options.prologue is not None) :
+  if (options.prologue is not None):
     if not os.path.exists(options.prologue) and options.prologue.find("\n")>-1:
       f.write("%s\n" % options.prologue)
     else:
@@ -143,12 +143,12 @@ fi
    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$QB_DYLD_LIBRARY_PATH
  fi
 """, file=f)
-  if (epilogue is not None) :
+  if (epilogue is not None):
     f.write(epilogue + "\n")
-  if (options.epilogue is not None) :
+  if (options.epilogue is not None):
     f.write(open(options.epilogue).read() + "\n")
   f.close()
-  if (not options.quiet) :
+  if (not options.quiet):
     print("Wrote %s" % dispatcher, file=out)
     print("You should now run libtbx.refresh to regenerate dispatchers.", file=out)
 
@@ -161,5 +161,5 @@ pymol_paths = """
  fi
 """
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

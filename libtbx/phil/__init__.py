@@ -16,7 +16,7 @@ import weakref
 
 default_print_width = 79
 
-class PhilDeprecationWarning (DeprecationWarning) :
+class PhilDeprecationWarning (DeprecationWarning):
   pass
 warnings.filterwarnings("always", category=PhilDeprecationWarning)
 
@@ -74,7 +74,7 @@ class words_converters(object):
   def as_words(self, python_object, master):
     if (python_object is None):
       return [tokenizer.word(value="None")]
-    if (python_object is Auto) or (isinstance(python_object, type(Auto))) :
+    if (python_object is Auto) or (isinstance(python_object, type(Auto))):
       return [tokenizer.word(value="Auto")]
     for word in python_object:
       assert isinstance(word, tokenizer.word)
@@ -88,7 +88,7 @@ def strings_from_words(words):
 def strings_as_words(python_object):
   if (python_object is None):
     return [tokenizer.word(value="None")]
-  if (python_object is Auto) or (isinstance(python_object, type(Auto))) :
+  if (python_object is Auto) or (isinstance(python_object, type(Auto))):
     return [tokenizer.word(value="Auto")]
   words = []
   for value in python_object:
@@ -145,7 +145,7 @@ class qstr_converters(object):
   def as_words(self, python_object, master):
     if (python_object is None):
       return [tokenizer.word(value="None")]
-    if (python_object is Auto) or (isinstance(python_object, type(Auto))) :
+    if (python_object is Auto) or (isinstance(python_object, type(Auto))):
       return [tokenizer.word(value="Auto")]
     return tokenize_value_literal(
       input_string=python_object,
@@ -193,7 +193,7 @@ class bool_converters(object):
   def as_words(self, python_object, master):
     if (python_object is None):
       return [tokenizer.word(value="None")]
-    if (python_object is Auto) or (isinstance(python_object, type(Auto))) :
+    if (python_object is Auto) or (isinstance(python_object, type(Auto))):
       return [tokenizer.word(value="Auto")]
     if (python_object):
       return [tokenizer.word(value="True")]
@@ -348,7 +348,7 @@ class number_converters_base(_check_value_base):
       else:
         raise RuntimeError(
           "%s cannot be None" % master.full_path())
-    if (python_object is Auto) or (isinstance(python_object, type(Auto))) :
+    if (python_object is Auto) or (isinstance(python_object, type(Auto))):
       return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value=self._value_as_str(value=python_object))]
 
@@ -481,7 +481,7 @@ class numbers_converters_base(_check_value_base):
       return [tokenizer.word(value="None")]
     # XXX note that pickling the object will lose the identity of Auto, so
     # we also need to check the type
-    if (python_object is Auto) or (isinstance(python_object, type(Auto))) :
+    if (python_object is Auto) or (isinstance(python_object, type(Auto))):
       return [tokenizer.word(value="Auto")]
     self._check_size(
       size=len(python_object), path_producer=master.full_path)
@@ -669,7 +669,7 @@ class choice_converters(object):
             else:
               flag = False
           if (flag and value.lower() not in flags):
-            if (ignore_errors) :
+            if (ignore_errors):
               continue
             else :
               raise_not_a_possible_choice(value)
@@ -815,14 +815,14 @@ def full_path(self):
   result.reverse()
   return ".".join(result)
 
-def alias_path (self) :
-  if (self.alias is not None) :
+def alias_path(self):
+  if (self.alias is not None):
     return self.alias
   have_alias = False
   result = [self.name]
   pps = self.primary_parent_scope
   while (pps is not None):
-    if (pps.alias is not None) :
+    if (pps.alias is not None):
       result.append(pps.alias)
       have_alias = True
       break
@@ -839,13 +839,13 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
   if (attributes_level <= 0): return
   for name in self.attribute_names:
     value = getattr(self, name)
-    if (name == "deprecated") and (not value) :
+    if (name == "deprecated") and (not value):
       continue # only show .deprecated if True
     if ((name == "help" and value is not None)
         or (name == "alias" and value is not None)
         or (value is not None and attributes_level > 1)
         or attributes_level > 2):
-      if (name == "alias") and (value is None) :
+      if (name == "alias") and (value is None):
         continue
       if (not isinstance(value, str)):
         # Python 2.2 workaround
@@ -936,7 +936,7 @@ class definition(slots_getstate_setstate):
         style=None,
         expert_level=None,
         deprecated=None,
-        alias=None) :
+        alias=None):
     if (is_reserved_identifier(name)):
       raise RuntimeError('Reserved identifier: "%s"%s' % (name, where_str))
     if (name != "include" and "include" in name.split(".")):
@@ -962,7 +962,7 @@ class definition(slots_getstate_setstate):
     self.deprecated = deprecated
     self.alias = alias
 
-  def __setstate__ (self, *args, **kwds) :
+  def __setstate__(self, *args, **kwds):
     slots_getstate_setstate.__setstate__(self, *args, **kwds)
     # XXX backwards compatibility 2012-03-27
     if (not hasattr(self, "deprecated")) : setattr(self, "deprecated", None)
@@ -983,7 +983,7 @@ class definition(slots_getstate_setstate):
   def full_path(self):
     return full_path(self)
 
-  def alias_path (self) :
+  def alias_path(self):
     return alias_path(self)
 
   def assign_tmp(self, value, active_only=False):
@@ -991,9 +991,9 @@ class definition(slots_getstate_setstate):
       self.tmp = value
 
   def fetch_value(self, source, diff_mode=False,
-      skip_incompatible_objects=False) :
+      skip_incompatible_objects=False):
     if (source.is_scope):
-      if (skip_incompatible_objects) :
+      if (skip_incompatible_objects):
         return self.copy()
       raise RuntimeError(
         'Incompatible parameter objects: definition "%s"%s vs. scope "%s"%s' %
@@ -1001,19 +1001,19 @@ class definition(slots_getstate_setstate):
     source.tmp = True
     source = source.resolve_variables(diff_mode=diff_mode)
     type_fetch = getattr(self.type, "fetch", None)
-    if (self.deprecated) :
+    if (self.deprecated):
       # issue warning if value is not the default, otherwise return None so
       # this parameter stays invisible to users
       result_as_str = strings_from_words(source.words)
       self_as_str = strings_from_words(self.words)
-      if (result_as_str != self_as_str) :
+      if (result_as_str != self_as_str):
         warnings.warn("%s is deprecated - not recommended for use." % \
           self.full_path(), PhilDeprecationWarning)
       else :
         return None
     if (type_fetch is None):
       return self.customized_copy(words=source.words)
-    if (self.type.phil_type == "choice") :
+    if (self.type.phil_type == "choice"):
       return type_fetch(source_words=source.words, master=self,
         ignore_errors=skip_incompatible_objects)
     else :
@@ -1071,7 +1071,7 @@ class definition(slots_getstate_setstate):
     line = prefix + hash + ".".join(merged_names + [self.name])
     if (self.name != "include"): line += " ="
     indent = " " * len(line)
-    if (self.deprecated) :
+    if (self.deprecated):
       print(prefix + "# WARNING: deprecated parameter", file=out)
     for word in self.words:
       line_plus = line + " " + str(word)
@@ -1467,7 +1467,7 @@ class scope(slots_getstate_setstate):
         disable_add=None,
         disable_delete=None,
         expert_level=None,
-        alias=None) :
+        alias=None):
     self.name = name
     self.objects = objects
     self.primary_id = primary_id
@@ -1516,7 +1516,7 @@ class scope(slots_getstate_setstate):
   def full_path(self):
     return full_path(self)
 
-  def alias_path (self) :
+  def alias_path(self):
     return alias_path(self)
 
   def assign_tmp(self, value, active_only=False):
@@ -1717,13 +1717,13 @@ class scope(slots_getstate_setstate):
       return []
     if (len(self.name) == 0):
       if (len(path) == 0): return self.objects
-    elif (self.name == path) or (self.name == alias_path) :
+    elif (self.name == path) or (self.name == alias_path):
       return [self]
     elif (path.startswith(self.name+".")):
       path = path[len(self.name)+1:]
-    elif (alias_path is not None) :
+    elif (alias_path is not None):
       full_path = self.full_path()
-      if (full_path.startswith(alias_path)) :
+      if (full_path.startswith(alias_path)):
         path = path[len(self.name)+1:]
     else:
       return []
@@ -1794,7 +1794,7 @@ class scope(slots_getstate_setstate):
         multiple_scopes_done[object.name] = False
       if (python_object is None):
         result.append(object.format(None))
-      elif (python_object is Auto) or (isinstance(python_object, type(Auto))) :
+      elif (python_object is Auto) or (isinstance(python_object, type(Auto))):
         result.append(object.format(Auto))
       else:
         if (isinstance(python_object, scope_extract)):
@@ -1844,7 +1844,7 @@ class scope(slots_getstate_setstate):
       for source in sources:
         assert source.name == self.name
         if (source.is_definition):
-          if (skip_incompatible_objects) :
+          if (skip_incompatible_objects):
             continue
           raise RuntimeError(
             'Incompatible parameter objects:'
@@ -1882,7 +1882,7 @@ class scope(slots_getstate_setstate):
             result_object = None
         if (result_object is not None):
           result_objects.append(result_object)
-        elif (not diff) and (not master_object.deprecated) :
+        elif (not diff) and (not master_object.deprecated):
           result_objects.append(master_object.copy())
       else:
         processed_as_str = {}
@@ -2041,7 +2041,7 @@ def process_include_scope(
     source_scope = parse(
       input_string=source_scope,
       converter_registry=converter_registry)
-  elif hasattr(source_scope, "__call__") :
+  elif hasattr(source_scope, "__call__"):
     source_scope = source_scope()
   elif (source_scope is None or not isinstance(source_scope, scope)):
     raise RuntimeError(
@@ -2216,13 +2216,13 @@ def process_command_line(args, master_string, parse=None):
   return command_line.process(
     args=args, master_string=master_string, parse=parse)
 
-def find_scope (current_phil, scope_name) :
+def find_scope(current_phil, scope_name):
   i = 0
-  while (i < len(current_phil.objects)) :
+  while (i < len(current_phil.objects)):
     full_path = current_phil.objects[i].full_path()
-    if (full_path == scope_name) :
+    if (full_path == scope_name):
       return current_phil.objects[i]
-    elif (scope_name.startswith(full_path + ".")) :
+    elif (scope_name.startswith(full_path + ".")):
       return find_scope(current_phil.objects[i], scope_name)
     i += 1
 

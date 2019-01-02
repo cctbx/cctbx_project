@@ -6,7 +6,7 @@ import os, time
 import libtbx.load_env
 from libtbx import xmlrpc_utils
 
-def exercise () :
+def exercise():
   ext_module = libtbx.env.find_in_repositories(
     relative_path="libtbx/xmlrpc_server_example.py",
     test=os.path.isfile)
@@ -31,7 +31,7 @@ quitting
   run_server_tests(server)
   print("OK")
 
-def run_server_tests (server) :
+def run_server_tests(server):
   assert server.echo_test() == True
   assert server.is_alive() == True
   server.quit()

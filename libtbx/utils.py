@@ -469,7 +469,7 @@ def remove_files(pattern=None, paths=None, ensure_success=True):
       if (op.isfile(path)):
         os.remove(path)
 
-def find_files (dir_name, pattern="*", files_only=True) :
+def find_files(dir_name, pattern="*", files_only=True):
   """
   Find files matching a pattern in a directory.
 
@@ -489,13 +489,13 @@ def find_files (dir_name, pattern="*", files_only=True) :
   matching_files = []
   for file_name in files :
     full_path = os.path.join(dir_name, file_name)
-    if (files_only) and (not os.path.isfile(full_path)) :
+    if (files_only) and (not os.path.isfile(full_path)):
       continue
-    if (regex.search(file_name) is not None) :
+    if (regex.search(file_name) is not None):
       matching_files.append(full_path)
   return matching_files
 
-def sort_files_by_mtime (file_names=None, dir_name=None, reverse=False) :
+def sort_files_by_mtime(file_names=None, dir_name=None, reverse=False):
   """
   Sorts a list of file names by when they were last modified, ascending.
 
@@ -510,14 +510,14 @@ def sort_files_by_mtime (file_names=None, dir_name=None, reverse=False) :
   list of str
   """
   assert ([file_names, dir_name].count(None) == 1)
-  if (dir_name is not None) :
+  if (dir_name is not None):
     assert os.path.isdir(dir_name)
     file_names = [ os.path.join(dir_name, fn) for fn in os.listdir(dir_name) ]
   files_and_mtimes = []
   for file_name in file_names :
     files_and_mtimes.append((file_name, os.path.getmtime(file_name)))
   files_and_mtimes.sort(key=lambda x: x[1])
-  if (reverse) :
+  if (reverse):
     files_and_mtimes.reverse()
   return [ file_name for file_name, mtime in files_and_mtimes ]
 
@@ -617,7 +617,7 @@ class Sorry(Exception):
   # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
   __module__ = Exception.__module__
 
-  def reset_module (self) :
+  def reset_module(self):
     """
     Reset the class module on an instance to libtbx.utils.
     """
@@ -663,14 +663,14 @@ class Usage(Sorry):
   """
   __module__ = Exception.__module__
 
-class Abort(Sorry) :
+class Abort(Sorry):
   """
   Subclass of Sorry, primarily used in the Phenix GUI in response to user
   input.
   """
   __module__ = Exception.__module__
 
-class Failure(Sorry) :
+class Failure(Sorry):
   """
   Subclass of Sorry.
   """
@@ -692,9 +692,9 @@ def detect_multiprocessing_problem():
       " Python 2.6 or higher is required" \
       " (version currently in use: %d.%d)" % vers_info
   import libtbx.load_env
-  if (libtbx.env.has_module("omptbx")) :
+  if (libtbx.env.has_module("omptbx")):
     import omptbx
-    if (omptbx.omp_version is not None) :
+    if (omptbx.omp_version is not None):
       return "multiprocessing is not compatible with OpenMP"
   sem_open_msg = "This platform lacks a functioning sem_open implementation"
   pool = None
@@ -1058,7 +1058,7 @@ def human_readable_time_as_seconds(time_units, time_unit):
   if (time_unit == "days"): return time_units*60*60*24
   raise RuntimeError("Unknown time_unit: %s" % time_unit)
 
-def format_timestamp_12_hour (unix_time, short=False, replace_with="unknown") :
+def format_timestamp_12_hour(unix_time, short=False, replace_with="unknown"):
   """
   Formats a unix_time in a 12-hour format.
 
@@ -1080,7 +1080,7 @@ def format_timestamp_12_hour (unix_time, short=False, replace_with="unknown") :
   else :
     return time.strftime("%b %d %Y %I:%M %p", time.localtime(float(unix_time)))
 
-def format_timestamp_24_hour (unix_time, short=False, replace_with="unknown") :
+def format_timestamp_24_hour(unix_time, short=False, replace_with="unknown"):
   """
   Formats a unix_time in a 24-hour format.
 
@@ -1229,10 +1229,10 @@ class host_and_user:
     self.user = os.environ.get("USER")
     self.username = os.environ.get("USERNAME")
     self.homedir = None
-    if (os.name == "nt") :
+    if (os.name == "nt"):
       homedrive = os.environ.get("HOMEDRIVE")
       homepath = os.environ.get("HOMEPATH")
-      if (not None in [homedrive, homepath]) :
+      if (not None in [homedrive, homepath]):
         self.homedir = os.path.join(homedrive, homepath)
     else :
       self.homedir = os.environ.get("HOME")
@@ -1244,18 +1244,18 @@ class host_and_user:
     self.sge_info = sge_utils.info()
     self.pbs_info = pbs_utils.chunk_info()
 
-  def get_user_name (self) :
-    if (self.user is not None) :
+  def get_user_name(self):
+    if (self.user is not None):
       return self.user
     else :
       return self.username
 
-  def get_host_name (self) :
-    if (self.host is not None) :
+  def get_host_name(self):
+    if (self.host is not None):
       return self.host
-    elif (self.hostname is not None) :
+    elif (self.hostname is not None):
       return self.hostname
-    elif (self.computername is not None) :
+    elif (self.computername is not None):
       return self.computername
     return None
 
@@ -1297,7 +1297,7 @@ class host_and_user:
     self.sge_info.show(out=out, prefix=prefix)
     self.pbs_info.show(out=out, prefix=prefix)
 
-def allow_delete_directory (target_dir) :
+def allow_delete_directory(target_dir):
   """
   Check for specified reserved directories which are standard on many systems;
   these should never be deleted as part of any program.
@@ -1325,7 +1325,7 @@ def allow_delete_directory (target_dir) :
   ]
   target_dir = os.path.abspath(target_dir)
   for safe_dir in safe_dirs :
-    if (target_dir == safe_dir) :
+    if (target_dir == safe_dir):
       return False
   return True
 
@@ -1851,7 +1851,7 @@ def get_build_tag(path=None):
     tag = open(tag_file_path).readline().strip()
   return tag
 
-def getcwd_safe () :
+def getcwd_safe():
   """
   Returns the current working directory, raising Sorry if it has been deleted or
   unmounted.
@@ -1868,14 +1868,14 @@ def getcwd_safe () :
   try :
     cwd = os.getcwd()
   except OSError as e :
-    if (e.errno == 2) :
+    if (e.errno == 2):
       raise Sorry("Could not determine the current working directory because "+
         "it has been deleted or unmounted.")
     else :
       raise e
   return cwd
 
-def getcwd_or_default (default=None) :
+def getcwd_or_default(default=None):
   """
   Returns the current working directory or default if it cannot be found.
 
@@ -1887,8 +1887,8 @@ def getcwd_or_default (default=None) :
   -------
   str
   """
-  if (default is None) :
-    if (os.name == "nt") :
+  if (default is None):
+    if (os.name == "nt"):
       home_drive = os.environ.get("HOMEDRIVE", "C:")
       home_dir = os.environ.get("HOMEPATH", "\\")
       default = home_drive + home_dir
@@ -1897,13 +1897,13 @@ def getcwd_or_default (default=None) :
   try :
     cwd = os.getcwd()
   except OSError as e:
-    if (e.errno == 2) :
+    if (e.errno == 2):
       cwd = default
     else :
       raise e
   return cwd
 
-def create_run_directory (prefix, default_directory_number=None) :
+def create_run_directory(prefix, default_directory_number=None):
   """
   Create a program output directory using sequential numbering, picking the
   highest run ID.  In other words, if the prefix is 'Refine' and the current
@@ -1911,25 +1911,25 @@ def create_run_directory (prefix, default_directory_number=None) :
   directory will be Refine_10.
   """
   dir_number = default_directory_number
-  if (dir_number is None) :
+  if (dir_number is None):
     dir_ids = []
-    for file_name in os.listdir(os.getcwd()) :
-      if (os.path.isdir(file_name)) and (file_name.startswith(prefix)) :
+    for file_name in os.listdir(os.getcwd()):
+      if (os.path.isdir(file_name)) and (file_name.startswith(prefix)):
         dir_id = file_name.split("_")[-1]
-        if (dir_id.isdigit()) :
+        if (dir_id.isdigit()):
           dir_ids.append(int(dir_id))
-    if (len(dir_ids) > 0) :
+    if (len(dir_ids) > 0):
       dir_number = max(max(dir_ids) + 1, 1)
     else :
       dir_number = 1
   dir_name = prefix + "_" + str(dir_number)
-  if (os.path.isdir(dir_name)) :
+  if (os.path.isdir(dir_name)):
     raise OSError("The directory %s already exists."%os.path.abspath(dir_name))
   else :
     os.makedirs(dir_name)
   return os.path.abspath(dir_name)
 
-class tmp_dir_wrapper (object) :
+class tmp_dir_wrapper (object):
   """
   Convenience methods for running in a (presumably empty) temporary directory
   and copying all files to another directory.  Can be used whether or not the
@@ -1937,23 +1937,23 @@ class tmp_dir_wrapper (object) :
   Otherwise, both tmp_dir and dest_dir (default is current directory) must be
   existing paths.
   """
-  def __init__ (self, tmp_dir, dest_dir=None, out=sys.stdout) :
-    if (dest_dir is None) :
+  def __init__(self, tmp_dir, dest_dir=None, out=sys.stdout):
+    if (dest_dir is None):
       dest_dir = os.getcwd()
     self.tmp_dir = tmp_dir
     self.dest_dir = dest_dir
-    if (tmp_dir is None) :
+    if (tmp_dir is None):
       pass
-    elif (not os.path.isdir(tmp_dir)) :
+    elif (not os.path.isdir(tmp_dir)):
       raise Sorry("The temporary directory %s does not exist." % tmp_dir)
     else :
-      if (not os.path.isdir(dest_dir)) :
+      if (not os.path.isdir(dest_dir)):
         raise Sorry("The destination directory %s does not exist." % dest_dir)
       print("Changing working directory to %s" % tmp_dir, file=out)
       print("Ultimate destination is %s" % dest_dir, file=out)
       os.chdir(tmp_dir)
 
-  def transfer_files (self, out=sys.stdout) :
+  def transfer_files(self, out=sys.stdout):
     if (self.tmp_dir is None) : return False
     assert os.path.isdir(self.dest_dir)
     files = os.listdir(self.tmp_dir)
@@ -1964,7 +1964,7 @@ class tmp_dir_wrapper (object) :
     print("", file=out)
     return True
 
-def show_development_warning (out=sys.stdout) :
+def show_development_warning(out=sys.stdout):
   """
   Shows a warning when running an experimental program.
 
@@ -1982,27 +1982,27 @@ def show_development_warning (out=sys.stdout) :
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 """, file=out)
 
-def check_if_output_directory_exists (file_name=None, dir_name=None) :
-  if (file_name is not None) :
+def check_if_output_directory_exists(file_name=None, dir_name=None):
+  if (file_name is not None):
     assert (dir_name is None)
     dir_name = os.path.dirname(file_name)
   if (dir_name == "") : return
-  if (dir_name is None) :
+  if (dir_name is None):
     raise Sorry("No output directory specified.")
-  if (not op.isdir(dir_name)) :
+  if (not op.isdir(dir_name)):
     raise Sorry(("The specified output directory (%s) does not exist or "+
       "is not a directory.") % dir_name)
   else :
     # XXX writing to Dropbox folders is generally not a good idea
     head, tail = os.path.split(dir_name)
     while tail != "" :
-      if (tail == "Dropbox") :
+      if (tail == "Dropbox"):
         warnings.warn("You are directing output to a Dropbox directory.  "+
           "Please note that this is not guaranteed to work in all cases; "+
           "use at your own risk.", UserWarning)
       head, tail = os.path.split(head)
 
-def concatenate_python_script (out, file_name) :
+def concatenate_python_script(out, file_name):
   """
   Insert a Python script into an existing file, removing any __future__
   import to prevent syntax errors.  (This could be dangerous in most contexts
@@ -2011,8 +2011,8 @@ def concatenate_python_script (out, file_name) :
   data = open(file_name, "r").read()
   print("", file=out)
   print("#--- script copied from %s" % os.path.basename(file_name), file=out)
-  for line in data.splitlines() :
-    if line.startswith("from __future__") :
+  for line in data.splitlines():
+    if line.startswith("from __future__"):
       continue
     else :
       print(line, file=out)
@@ -2051,10 +2051,10 @@ def greek_time(secs):
 
 libtbx_urllib_proxy = None
 
-def install_urllib_http_proxy (server, port=80, user=None, password=None) :
+def install_urllib_http_proxy(server, port=80, user=None, password=None):
   global libtbx_urllib_proxy
   import urllib2
-  if (user is None) :
+  if (user is None):
     proxy = urllib2.ProxyHandler({'http': '%s:%d' % (server, port) })
     opener = urllib2.build_opener(proxy)
   else :
@@ -2068,17 +2068,17 @@ def install_urllib_http_proxy (server, port=80, user=None, password=None) :
   print("Installed urllib2 proxy at %s:%d" % (server, port))
   return proxy
 
-def urlopen (*args, **kwds) :
+def urlopen(*args, **kwds):
   """
   Substitute for urllib2.urlopen, with automatic HTTP proxy configuration
   if specific environment variables are defined.
   """
-  if ("CCTBX_HTTP_PROXY" in os.environ) and (libtbx_urllib_proxy is None) :
+  if ("CCTBX_HTTP_PROXY" in os.environ) and (libtbx_urllib_proxy is None):
     server = os.environ["CCTBX_HTTP_PROXY_SERVER"]
     port = os.environ.get("CCTBX_HTTP_PROXY_PORT", 80)
     user = os.environ.get("CCTBX_HTTP_PROXY_USER", None)
     passwd = os.environ.get("CCTBX_HTTP_PROXY_PASSWORD", None)
-    if (user is not None) and (password is None) :
+    if (user is not None) and (password is None):
       raise Sorry("You have defined a user name for the HTTP proxy, but "+
         "no password was specified.  Please set the environment variable "+
         "CCTBX_HTTP_PROXY_PASSWORD.")
@@ -2121,19 +2121,19 @@ def retrieve_unless_exists(url, filename, digests=None):
 
 
 
-class download_progress (object) :
+class download_progress (object):
   """
   Simple proxy for displaying download status - here with methods for
   writing to the console, but can be subclassed and used for graphical display.
   """
-  def __init__ (self, log=None, n_kb_total=None) :
-    if (log is None) :
+  def __init__(self, log=None, n_kb_total=None):
+    if (log is None):
       log = null_out()
     self.log = log
     self.n_kb_total = n_kb_total
     self.n_kb_elapsed = 0
 
-  def set_total_size (self, n_kb_total) :
+  def set_total_size(self, n_kb_total):
     """
     Updates the total number of bytes to download and resets the number of bytes
     downloaded.
@@ -2146,7 +2146,7 @@ class download_progress (object) :
     self.n_kb_total = n_kb_total
     self.n_kb_elapsed = 0
 
-  def increment (self, n_kb) :
+  def increment(self, n_kb):
     """
     Increments the number of bytes downloaded.
 
@@ -2162,7 +2162,7 @@ class download_progress (object) :
     self.n_kb_elapsed += n_kb
     return self.show_progress()
 
-  def show_progress (self) :
+  def show_progress(self):
     """
     Prints the number of bytes downloaded out of the total.
 
@@ -2175,7 +2175,7 @@ class download_progress (object) :
     self.log.flush()
     return True
 
-  def percent_finished (self) :
+  def percent_finished(self):
     """
     Calculates the percent completion of download.
 
@@ -2186,19 +2186,19 @@ class download_progress (object) :
     assert (self.n_kb_total is not None)
     return 100 * min(1.0, self.n_kb_elapsed / self.n_kb_total)
 
-  def complete (self) :
+  def complete(self):
     """
     Prints a final message indicating download completion.
     """
     self.log.write("\rDownload complete")
 
-  def run_continuously (self) :
+  def run_continuously(self):
     """
     Placeholder for cases where the download is not being run asynchronously.
     """
     pass
 
-class download_target (object) :
+class download_target (object):
   """
   Flexible callable object for retrieving a file from a URL, with optional
   HTTPS authentication.  Designed to be runnable in a separate thread with
@@ -2208,7 +2208,7 @@ class download_target (object) :
   module, in which case we use 'curl' to download securely.  (This will not
   work on Windows, obviously.)
   """
-  def __init__ (self,
+  def __init__(self,
       url,
       file_name,
       use_curl=None, # SSL only
@@ -2221,25 +2221,25 @@ class download_target (object) :
     self.user = user
     self.password = password
     self.base_url = base_url
-    if (not None in [self.user, self.password]) :
+    if (not None in [self.user, self.password]):
       assert (self.base_url is not None)
       import socket
       if ((not self.use_curl) and (hasattr(socket, "ssl")) and
-          (hasattr(socket.ssl, "__call__"))) :
+          (hasattr(socket.ssl, "__call__"))):
         self.use_curl = False
       else :
         self.use_curl = True
 
-  def __call__ (self, log=None, progress_meter=None) :
-    if (log is None) :
+  def __call__(self, log=None, progress_meter=None):
+    if (log is None):
       log = null_out()
-    if (progress_meter is None) :
+    if (progress_meter is None):
       progress_meter = download_progress(log=log)
     from libtbx import easy_run
     import urllib2
     file_name = self.file_name # return value
-    if (not self.use_curl) :
-      if (not None in [self.user, self.password]) :
+    if (not self.use_curl):
+      if (not None in [self.user, self.password]):
         passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
         passman.add_password(None, self.base_url, self.user, self.password)
         authhandler = urllib2.HTTPBasicAuthHandler(passman)
@@ -2256,7 +2256,7 @@ class download_target (object) :
       while True:
         chunk = req.read(chunksize)
         if not chunk: break
-        if not progress_meter.increment(n_kb_chunk) :
+        if not progress_meter.increment(n_kb_chunk):
           file_name = None
           break
         fp.write(chunk)
@@ -2264,14 +2264,14 @@ class download_target (object) :
       progress_meter.complete()
     else :
       progress_meter.run_continuously()
-      if (not None in [self.user, self.password]) :
+      if (not None in [self.user, self.password]):
         curl_args = "--user %s:%s" % (self.user, self.password)
       rc = easy_run.call("curl %s \"%s\" -o %s" % (curl_args, self.url,
         self.file_name))
       progress_meter.complete()
-      if (rc != 0) :
+      if (rc != 0):
         raise RuntimeError("curl exited with code %d" % rc)
-    if (file_name is None) :
+    if (file_name is None):
       return None
     return op.abspath(self.file_name)
 
@@ -2291,17 +2291,17 @@ def remove_path(path_name):
   Bypasses trash and deletes file or directory immediately.
   """
   try:
-    if op.isdir(path_name) :
+    if op.isdir(path_name):
       shutil.rmtree(path_name)
-    elif op.isfile(path_name) :
+    elif op.isfile(path_name):
       os.remove(path_name)
     else:
       raise Sorry('%s is not a file nor a directory.' % path_name)
   except OSError:
     raise Sorry('Unable to delete %s.' % path_name)
 
-def try_send_to_trash (path_name, delete_if_not_available=False,
-                       delete_immediately=False) :
+def try_send_to_trash(path_name, delete_if_not_available=False,
+                       delete_immediately=False):
   """
   Wrapper for deleting a path
   """
