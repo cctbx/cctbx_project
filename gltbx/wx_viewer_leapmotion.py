@@ -27,7 +27,7 @@ LEAP_TRANSLATE_ID = wx.NewId()
 LEAP_ROTATE_ID = wx.NewId()
 LEAP_SCALE_ID = wx.NewId()
 
-class LeapMotionEvent (wx.PyEvent):
+class LeapMotionEvent(wx.PyEvent):
   event_id = None
   def __init__(self, data, **kwds):
     self.data = data
@@ -35,17 +35,17 @@ class LeapMotionEvent (wx.PyEvent):
     wx.PyEvent.__init__(self)
     self.SetEventType(self.event_id)
 
-class LeapTranslationEvent (LeapMotionEvent):
+class LeapTranslationEvent(LeapMotionEvent):
   event_id = LEAP_TRANSLATE_ID
 
-class LeapRotationEvent (LeapMotionEvent):
+class LeapRotationEvent(LeapMotionEvent):
   event_id = LEAP_ROTATE_ID
 
-class LeapScaleEvent (LeapMotionEvent):
+class LeapScaleEvent(LeapMotionEvent):
   event_id = LEAP_SCALE_ID
 
 if (Leap is not None):
-  class Listener (Leap.Listener):
+  class Listener(Leap.Listener):
     def __init__(self, viewer):
       self._prev_frame = None
       self.viewer = viewer
@@ -118,10 +118,10 @@ if (Leap is not None):
       wx.PostEvent(self.viewer, event)
 
 else :
-  class Listener (object):
+  class Listener(object):
     def __init__(self, viewer) : pass
 
-class wxLeapMotionWindowMixin (object):
+class wxLeapMotionWindowMixin(object):
   def __init__(self):
     assert isinstance(self, wx.Window)
     self.Connect(-1, -1, LEAP_TRANSLATE_ID, self.OnLeapTranslate)
@@ -158,7 +158,7 @@ class wxLeapMotionWindowMixin (object):
 from gltbx.wx_viewer import wxGLWindow
 import gltbx.util
 from scitbx import matrix
-class wxGLWindowLeapEnabled (wxGLWindow, wxLeapMotionWindowMixin):
+class wxGLWindowLeapEnabled(wxGLWindow, wxLeapMotionWindowMixin):
   # TODO make these user-configurable
   _leap_rscale = 5
   _leap_tscale = 1/3.

@@ -32,7 +32,7 @@ def read_pixels_to_pil_image(x, y, width, height):
   return PIL.Image.frombytes(
     mode, size, data, decoder_name, raw_mode, stride, orientation)
 
-class fps_monitor (object):
+class fps_monitor(object):
   def __init__(self):
     self._t_start = time.time()
     self._n = 0
