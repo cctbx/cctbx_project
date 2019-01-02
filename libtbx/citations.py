@@ -96,7 +96,7 @@ for journal in journals.journal:
     journals_db[name] = journal
 
 # =============================================================================
-def format_citation (article) :
+def format_citation(article):
   authors = article.authors
   author_list = authors.split(", ")
   if len(author_list) == 1 :
@@ -106,9 +106,9 @@ def format_citation (article) :
   output = "%s." % authors
   if article.year is not None :     output += " (%d)" % article.year
   title = article.title
-  if (title is not None) :
+  if (title is not None):
     title = title.strip()
-    if (not title.endswith(".")) :
+    if (not title.endswith(".")):
       title += "."
     output += " %s" % title
   if article.journal is not None :  output += " %s" % article.journal
@@ -126,7 +126,7 @@ def format_citation (article) :
   return output
 
 # -----------------------------------------------------------------------------
-def author_list_with_periods (authors, initials_first=False) :
+def author_list_with_periods(authors, initials_first=False):
   author_list = authors.split(", ")
   authors_formatted = []
   for author in author_list :
@@ -149,7 +149,7 @@ def author_list_with_periods (authors, initials_first=False) :
   return authors_formatted
 
 # -----------------------------------------------------------------------------
-def format_citation_cell (article) :
+def format_citation_cell(article):
   author_list = author_list_with_periods(article.authors)
   if len(author_list) == 1 :
     authors_out = author_list[0]
@@ -158,9 +158,9 @@ def format_citation_cell (article) :
   output = "%s" % authors_out # XXX no extra period at end!
   if article.year is not None :     output += " (%d)." % article.year
   title = article.title
-  if (title is not None) :
+  if (title is not None):
     title = title.strip()
-    if (not title.endswith(".")) :
+    if (not title.endswith(".")):
       title += "."
     output += " %s" % title
   if article.journal is not None :  output += " %s" % article.journal
@@ -178,7 +178,7 @@ def format_citation_cell (article) :
   return output
 
 # -----------------------------------------------------------------------------
-def format_citation_iucr (article) :
+def format_citation_iucr(article):
   author_list = author_list_with_periods(article.authors)
   if len(author_list) == 1 :
     authors_out = author_list[0]
@@ -249,8 +249,8 @@ def format_citation_doc(article_id):
   return output
 
 # -----------------------------------------------------------------------------
-def format_citation_html (article) :
-  if (article.journal is None) :
+def format_citation_html(article):
+  if (article.journal is None):
     raise ValueError("Missing journal name for '%s'." % article.article_id)
   author_list = author_list_with_periods(article.authors, initials_first=True)
   if len(author_list) == 1 :
@@ -258,7 +258,7 @@ def format_citation_html (article) :
   else :
     authors_out = ", ".join(author_list[:-1]) + ", and %s" % author_list[-1]
   title = article.title.strip()
-  if (not title.endswith(".")) :
+  if (not title.endswith(".")):
     title += "."
   output = "<b>%s</b> %s. " % (title, authors_out)
   if 'Acta Cryst.' in article.journal:
@@ -267,21 +267,21 @@ def format_citation_html (article) :
   else:
     journal_ref = "<i>%s</i>" % article.journal
     journal_section = None
-  if (article.volume is not None) :
+  if (article.volume is not None):
     if journal_section is not None:
       journal_ref += " %s<b>%s</b>" %(journal_section, article.volume)
     else:
       journal_ref += " <b>%s</b>" % article.volume
-  if (article.pages is not None) :
+  if (article.pages is not None):
     journal_ref += ", %s" % article.pages
-  if (article.year is not None) :
+  if (article.year is not None):
     journal_ref += " (%s)" % article.year
-  if (article.url is not None) :
+  if (article.url is not None):
     output += """<a href="%s">%s</a>.""" % (article.url, journal_ref)
-  elif (article.doi_id is not None) :
+  elif (article.doi_id is not None):
     output += """<a href="https://doi.org/%s">%s</a>.""" % (article.doi_id,
       journal_ref)
-  elif (article.pmid is not None) :
+  elif (article.pmid is not None):
     output += """<a href="http://www.ncbi.nlm.nih.gov/pubmed/%s">%s</a>.""" % \
       (article.pmid, journal_ref)
   else :
@@ -299,7 +299,7 @@ def show_citation(article, out=None, max_width=79, format='default'):
   if max_width is None or max_width < 1 :
     print(to_unicode(output), file=out)
   else :
-    for line in str_utils.line_breaker(output, max_width) :
+    for line in str_utils.line_breaker(output, max_width):
       print(to_unicode(line), file=out)
   print(to_unicode(''), file=out)
 

@@ -36,8 +36,8 @@ python_dependencies = {"_ssl" : "Secure Socket Library",
 os.environ['PYTHONNOUSERSITE'] = '1'
 
 
-class installer (object) :
-  def __init__ (self, args=None, packages=None, log=sys.stdout) :
+class installer (object):
+  def __init__(self, args=None, packages=None, log=sys.stdout):
     #assert (sys.platform in ["linux2", "linux3", "darwin"])
     # Check python version >= 2.7 or >= 3.4
     check_python_version()
@@ -149,7 +149,7 @@ class installer (object) :
       return
     print("Setting up directories...", file=log)
     for dir_name in [self.tmp_dir,self.build_dir,self.base_dir]:
-      if (not op.isdir(dir_name)) :
+      if (not op.isdir(dir_name)):
         print("  creating %s" % dir_name, file=log)
         os.makedirs(dir_name)
     self.check_python_dependencies()
@@ -347,22 +347,22 @@ class installer (object) :
 
     return set(packages)
 
-  def call (self, args, log=None, **kwargs) :
+  def call(self, args, log=None, **kwargs):
     if (log is None) : log = self.log
     return call(args, log=log, verbose=self.verbose, **kwargs)
 
-  def chdir (self, dir_name, log=None) :
+  def chdir(self, dir_name, log=None):
     if (log is None) : log = self.log
     print("cd \"%s\"" % dir_name, file=log)
     os.chdir(dir_name)
 
-  def touch_file (self, file_name) :
+  def touch_file(self, file_name):
     f = open(file_name, "w")
     f.write("")
     f.close()
     assert op.isfile(file_name)
 
-  def print_sep (self, char="-") :
+  def print_sep(self, char="-"):
     print("", file=self.log)
     print(char*80, file=self.log)
     print("", file=self.log)
@@ -387,17 +387,17 @@ class installer (object) :
   @staticmethod
   def patch_src(src_file, target, replace_with, output_file=None):
     from shutil import copymode
-    if isinstance(target, str) :
+    if isinstance(target, str):
       assert isinstance(replace_with, str)
       target = [ target ]
       replace_with = [ replace_with ]
     assert len(target) == len(replace_with)
     in_file = src_file
-    if (output_file is None) :
+    if (output_file is None):
       in_file += ".dist"
       os.rename(src_file, in_file)
     src_in = open(in_file)
-    if (output_file is None) :
+    if (output_file is None):
       output_file = src_file
     src_out = open(output_file, "w")
     for line in src_in.readlines():
@@ -408,7 +408,7 @@ class installer (object) :
     src_out.close()
     copymode(in_file, output_file)
 
-  def untar_and_chdir (self, pkg, log=None) :
+  def untar_and_chdir(self, pkg, log=None):
     if (log is None) : log = self.log
     pkg_dir = untar(pkg, log=log)
     os.chdir(pkg_dir)
@@ -481,11 +481,11 @@ Installation of Python packages may fail.
     os.environ["PATH"] = ("%s/bin:" % self.base_dir) + os.environ['PATH']
     lib_paths = [ op.join(self.base_dir, "lib") ]
     if self.flag_is_linux:
-      if ("LD_LIBRARY_PATH" in os.environ) :
+      if ("LD_LIBRARY_PATH" in os.environ):
         lib_paths.append(os.environ["LD_LIBRARY_PATH"])
       os.environ['LD_LIBRARY_PATH'] = ":".join(lib_paths)
     inc_dir = op.join(self.base_dir, "include")
-    if (not op.isdir(inc_dir)) :
+    if (not op.isdir(inc_dir)):
       os.mkdir(inc_dir)
     self.include_dirs.append(inc_dir)
     self.lib_dirs.append(lib_paths[0])
@@ -498,7 +498,7 @@ Installation of Python packages may fail.
     os.environ['CPPFLAGS'] = "%s %s"%(" ".join(inc_paths), self.cppflags_start)
     os.environ['LDFLAGS'] = "%s %s"%(" ".join(lib_paths), self.ldflags_start)
 
-  def verify_python_module (self, pkg_name_label, module_name) :
+  def verify_python_module(self, pkg_name_label, module_name):
     os.chdir(self.tmp_dir) # very important for import to work!
     if hasattr(self, "python_exe"): python_exe = self.python_exe
     else:
@@ -551,7 +551,7 @@ Installation of Python packages may fail.
 
     return
 
-  def configure_and_build(self, config_args=(), log=None, make_args=(), limit_nproc=None) :
+  def configure_and_build(self, config_args=(), log=None, make_args=(), limit_nproc=None):
     # case sensitive file system workaround
     configure = filter(os.path.exists, ('config', 'configure', 'Configure'))
     working_configure = False
@@ -582,14 +582,14 @@ Installation of Python packages may fail.
       config_args += extra_config_args
     self.configure_and_build(config_args=config_args, log=pkg_log)
 
-  def build_python_module_simple (self,
+  def build_python_module_simple(self,
       pkg_url,
       pkg_name,
       pkg_name_label,
       pkg_local_file=None,
       callback_before_build=None,
       callback_after_build=None,
-      confirm_import_module=None) :
+      confirm_import_module=None):
     pkg_log = self.start_building_package(pkg_name_label)
     if pkg_local_file is None:
       pkg_local_file, size = self.fetch_package(pkg_name=pkg_name,
@@ -597,18 +597,18 @@ Installation of Python packages may fail.
                                    return_file_and_status=True)
     if self.check_download_only(pkg_name): return
     self.untar_and_chdir(pkg=pkg_local_file, log=pkg_log)
-    if (callback_before_build is not None) :
+    if (callback_before_build is not None):
       assert callback_before_build(pkg_log), pkg_name
     debug_flag = ""
-    if (self.options.debug) :
+    if (self.options.debug):
       debug_flag = "--debug"
     self.call("%s setup.py build %s" % (self.python_exe, debug_flag),
       log=pkg_log)
     self.call("%s setup.py install" % self.python_exe, log=pkg_log)
-    if (callback_after_build is not None) :
+    if (callback_after_build is not None):
       assert callback_after_build(pkg_log), pkg_name
     os.chdir(self.tmp_dir)
-    if (confirm_import_module is not None) :
+    if (confirm_import_module is not None):
       self.verify_python_module(pkg_name_label, confirm_import_module)
 
   def build_python_module_pip(self, package_name, package_version=None, download_only=None,
@@ -1040,13 +1040,13 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name_label="biopython",
       confirm_import_module="Bio")
 
-  def build_lz4_plugin (self, patch_src=True):
+  def build_lz4_plugin(self, patch_src=True):
     log = self.start_building_package("lz4_plugin")
     repos = ["hdf5_lz4", "bitshuffle"]
     for repo in repos:
       fetch_remote_package(repo, log=log, use_ssh=self.options.git_ssh)
     if self.check_download_only("lz4 plugin"): return
-    if (patch_src) :
+    if (patch_src):
       print("Patching hdf5_lz4/Makefile", file=log)
       self.patch_src(src_file="hdf5_lz4/Makefile",
                      target="HDF5_INSTALL = /home/det/hdf5-1.8.11/hdf5/",
@@ -1200,7 +1200,7 @@ _replace_sysconfig_paths(build_time_vars)
       'h5py', package_version=H5PY_VERSION,
       confirm_import_module='h5py', extra_options=["--no-binary=h5py"])
 
-  def build_openssl(self) :
+  def build_openssl(self):
     # https://wiki.openssl.org/index.php/Compilation_and_Installation#Configure_.26_Config
     # http://stackoverflow.com/a/20740964
 
@@ -1278,7 +1278,7 @@ _replace_sysconfig_paths(build_time_vars)
     if self.check_download_only(GLIB_PKG): return
 
     # Mock executables.
-    if (not op.isdir(op.join(self.base_dir, "bin"))) :
+    if (not op.isdir(op.join(self.base_dir, "bin"))):
       os.makedirs(op.join(self.base_dir, "bin"))
     msgfmt_bin = op.join(self.base_dir, "bin", "msgfmt")
     gettext_bin = op.join(self.base_dir, "bin", "xgettext")
@@ -1311,9 +1311,9 @@ _replace_sysconfig_paths(build_time_vars)
     if self.check_download_only(FONTCONFIG_PKG): return
     self.untar_and_chdir(pkg=pkg, log=pkg_log)
     # Create font directories.
-    if (not op.isdir(op.join(self.base_dir, "share", "fonts"))) :
+    if (not op.isdir(op.join(self.base_dir, "share", "fonts"))):
       os.makedirs(op.join(self.base_dir, "share", "fonts"))
-    if (not op.isdir(op.join(self.base_dir,"etc","fonts"))) :
+    if (not op.isdir(op.join(self.base_dir,"etc","fonts"))):
       os.makedirs(op.join(self.base_dir,"etc","fonts"))
     fc_config_args = [ self.prefix,
       "--disable-docs",
@@ -1390,7 +1390,7 @@ _replace_sysconfig_paths(build_time_vars)
       old_cflags = os.environ.get('CXXFLAGS', '')
       os.environ['CXXFLAGS'] = old_cflags + ' -march=i686'
 
-    for pkg, name in zip([CAIRO_PKG, HARFBUZZ_PKG],["cairo", "harfbuzz"]) :
+    for pkg, name in zip([CAIRO_PKG, HARFBUZZ_PKG],["cairo", "harfbuzz"]):
       self.build_compiled_package_simple(pkg_name=pkg, pkg_name_label=name)
     self.build_compiled_package_simple(
       pkg_name=PANGO_PKG, pkg_name_label="pango",
@@ -1438,7 +1438,7 @@ _replace_sysconfig_paths(build_time_vars)
     if self.check_download_only("fonts"): return
 
     share_dir = op.join(self.base_dir, "share")
-    if (not op.isdir(share_dir)) :
+    if (not op.isdir(share_dir)):
       os.makedirs(share_dir)
     os.chdir(share_dir)
     untar(pkg, log=fonts_log, verbose=True)
@@ -1503,17 +1503,17 @@ _replace_sysconfig_paths(build_time_vars)
       "--with-libjpeg=builtin", # Prevents system version, https://github.com/dials/dials/issues/523
     ]
 
-    if (self.options.debug) :
+    if (self.options.debug):
       config_opts.extend(["--disable-optimize",
                           "--enable-debug"])
-      if (self.flag_is_linux) :
+      if (self.flag_is_linux):
         config_opts.append("--disable-debug_gdb")
     else :
       config_opts.extend(["--enable-optimize",
                           "--disable-debugreport"])
 
-    # if (cocoa) :
-    if (self.flag_is_mac) :
+    # if (cocoa):
+    if (self.flag_is_mac):
       config_opts.extend([
         "--with-osx_cocoa",
         "--with-macosx-version-min=%s" % self.min_macos_version,
@@ -1528,7 +1528,7 @@ _replace_sysconfig_paths(build_time_vars)
         config_opts.append('CPPFLAGS="-D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1 %s"' % self.min_macos_version_flag)
         config_opts.append('LDFLAGS="%s"' % self.min_macos_version_flag)
 
-    elif (self.flag_is_linux) :
+    elif (self.flag_is_linux):
       config_opts.extend([
         "--with-gtk",
         "--with-gtk-prefix=\"%s\"" % self.base_dir,
@@ -1569,7 +1569,7 @@ _replace_sysconfig_paths(build_time_vars)
                               "WX_CONFIG=%s/bin/wx-config" %self.base_dir])
     self.chdir("wxPython", log=pkg_log)
     debug_flag = ""
-    if (self.options.debug) :
+    if (self.options.debug):
       debug_flag = "--debug"
     print("  building wxPython with options:", file=self.log)
     for opt in wxpy_build_opts :
@@ -1581,7 +1581,7 @@ _replace_sysconfig_paths(build_time_vars)
     self.verify_python_module("wxPython", "wx")
 
   def build_matplotlib(self):
-    def patch_matplotlib_src (out) :
+    def patch_matplotlib_src(out):
       print("  patching setup.cfg", file=out)
       self.patch_src(src_file="setup.cfg.template",
                      output_file="setup.cfg",
@@ -1608,7 +1608,7 @@ _replace_sysconfig_paths(build_time_vars)
       callback_before_build=patch_matplotlib_src,
       confirm_import_module="matplotlib")
 
-  def build_misc (self) :
+  def build_misc(self):
     if not self.python3: # This module will never be Python3 compatible
      self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
@@ -1624,10 +1624,10 @@ _replace_sysconfig_paths(build_time_vars)
       )#confirm_import_module="send2trash")
 
   # TODO
-  def write_dispatcher_include (self) :
+  def write_dispatcher_include(self):
     raise NotImplementedError()
 
-def check_wxpython_build_dependencies (log=sys.stderr) :
+def check_wxpython_build_dependencies(log=sys.stderr):
   try :
     call(["pkg-config", "--version"], log=log)
   except RuntimeError :
@@ -1646,7 +1646,7 @@ Please install bash to compile these components, or use the --no-gui option
 to disable GUI compilation.
 """
   if (not op.exists("/usr/include/X11/X.h") and
-      not op.exists("/usr/X11R6/include/X11/X.h")) :
+      not op.exists("/usr/X11R6/include/X11/X.h")):
     return """
 ERROR: The X-windows headers appear to be missing
 Please install the X11 development packages to compile the GUI components,

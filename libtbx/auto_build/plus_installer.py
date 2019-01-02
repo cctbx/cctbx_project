@@ -13,13 +13,13 @@ import os.path
 import sys
 libtbx_path = os.path.join(
   os.path.abspath(os.path.dirname(os.path.dirname(__file__))), "lib")
-if (not libtbx_path in sys.path) :
+if (not libtbx_path in sys.path):
   sys.path.append(libtbx_path)
 from libtbx.auto_build import install_distribution
 
 from libtbx.auto_build.bootstrap import CCTBXBuilder
 
-class installer (install_distribution.installer) :
+class installer (install_distribution.installer):
   # XXX most settings can be edited here
   product_name = "CCTBX"
   dest_dir_prefix = "cctbx"
@@ -31,5 +31,5 @@ class installer (install_distribution.installer) :
 
   installer_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   installer(sys.argv[1:]).install()

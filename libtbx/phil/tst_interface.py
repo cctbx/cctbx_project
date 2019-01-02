@@ -7,7 +7,7 @@ import libtbx.phil
 from six.moves import cStringIO as StringIO
 import sys
 
-def exercise () :
+def exercise():
   master_phil = libtbx.phil.parse("""
 refinement {
   input {
@@ -189,7 +189,7 @@ opt2 = *two_fofc fofc
 
 # XXX sorry about the cross-import here, but I really need to test this on
 # something large and complex
-def exercise_2 (verbose=False) :
+def exercise_2(verbose=False):
   if (not libtbx.env.has_module(name="phenix")):
     print("phenix module not available: skipping advanced tests")
     return
@@ -297,7 +297,7 @@ refinement.output.job_title = Test refinement run
   submenu = menu.get_submenu("Atom_selections")
   assert (str(submenu.get_items()[0]) == "refinement.refine.sites")
 
-def exercise_3 () :
+def exercise_3():
   if (not libtbx.env.has_module(name="phaser")):
     print("phaser module not available: skipping advanced tests")
     return

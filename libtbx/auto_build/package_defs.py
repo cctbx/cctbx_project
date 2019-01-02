@@ -182,13 +182,13 @@ git_repositories = {
                  'https://github.com/kiyo-masui/bitshuffle/archive/master.zip'],
 }
 
-class fetch_packages (object) :
+class fetch_packages (object):
   """
   Download manager for the packages defined by this module - this is used by
   install_base_packages.py but also for setting up installer bundles.
   """
-  def __init__ (self, dest_dir, log, pkg_dirs=None, no_download=False,
-      copy_files=False) :
+  def __init__(self, dest_dir, log, pkg_dirs=None, no_download=False,
+      copy_files=False):
     self.dest_dir = dest_dir
     self.log = log
     self.pkg_dirs = pkg_dirs
@@ -196,23 +196,23 @@ class fetch_packages (object) :
     self.copy_files = copy_files
     self.toolbox = Toolbox()
 
-  def __call__ (self,
+  def __call__(self,
                 pkg_name,
                 pkg_url=None,
                 output_file=None,
                 return_file_and_status=False,
                 download_url=None, # If given this is the URL used for downloading, otherwise construct using pgk_url and pkg_name
-                ) :
-    if (pkg_url is None) :
+                ):
+    if (pkg_url is None):
       pkg_url = BASE_CCI_PKG_URL
-    if (output_file is None) :
+    if (output_file is None):
       output_file = pkg_name
     os.chdir(self.dest_dir)
     print("  getting package %s..." % pkg_name, file=self.log)
-    if (self.pkg_dirs is not None) and (len(self.pkg_dirs) > 0) :
+    if (self.pkg_dirs is not None) and (len(self.pkg_dirs) > 0):
       for pkg_dir in self.pkg_dirs :
         static_file = op.join(pkg_dir, pkg_name)
-        if (op.exists(static_file)) :
+        if (op.exists(static_file)):
           print("    using %s" % static_file, file=self.log)
           if self.copy_files :
             copy_file(static_file, op.join(self.dest_dir, output_file))
@@ -223,8 +223,8 @@ class fetch_packages (object) :
             if return_file_and_status:
               return static_file, 0
             return static_file
-    if (self.no_download) :
-      if (op.exists(pkg_name)) :
+    if (self.no_download):
+      if (op.exists(pkg_name)):
         print("    using ./%s" % pkg_name, file=self.log)
         if return_file_and_status:
           return op.join(self.dest_dir, output_file), 0
@@ -247,12 +247,12 @@ class fetch_packages (object) :
       return op.join(self.dest_dir, output_file), size
     return op.join(self.dest_dir, output_file)
 
-def fetch_all_dependencies (dest_dir,
+def fetch_all_dependencies(dest_dir,
     log,
     pkg_dirs=None,
     copy_files=True,
     gui_packages=True,
-    dials_packages=True) :
+    dials_packages=True):
   """
   Download or copy all dependencies into a local directory (prepping for
   source installer bundling).
@@ -268,7 +268,7 @@ def fetch_all_dependencies (dest_dir,
       IPYTHON_PKG,
     ] :
     fetch_package(pkg_name)
-  if (gui_packages) :
+  if (gui_packages):
     for pkg_name in [
         LIBPNG_PKG, FREETYPE_PKG, GETTEXT_PKG, GLIB_PKG, EXPAT_PKG,
         FONTCONFIG_PKG, RENDER_PKG, XRENDER_PKG, XFT_PKG, PIXMAN_PKG,
@@ -278,20 +278,20 @@ def fetch_all_dependencies (dest_dir,
       ] :
       fetch_package(pkg_name)
 
-def fetch_svn_repository (pkg_name, pkg_url=None, working_copy=True,
-    delete_if_present=False) :
+def fetch_svn_repository(pkg_name, pkg_url=None, working_copy=True,
+    delete_if_present=False):
   """
   Download an SVN repository, with or without metadata required for ongoing
   development.
   """
   ## TODO: Merge this with _add_svn in bootstrap.py.
   #        Unnecessary code duplication
-  if op.exists(pkg_name) :
+  if op.exists(pkg_name):
     if delete_if_present :
       shutil.rmtree(pkg_name)
     else :
       raise OSError("Directory '%s' already exists.")
-  if (pkg_url is None) :
+  if (pkg_url is None):
     pkg_url = optional_repositories[pkg_name]
   if working_copy :
     call("svn co --non-interactive --trust-server-cert %s %s" % (pkg_url, pkg_name), sys.stdout)
@@ -304,11 +304,11 @@ def fetch_git_repository(package, use_ssh):
   Toolbox.git(package, git_repositories[package], destination=os.path.join(os.getcwd(), package), use_ssh=use_ssh, verbose=True)
   assert op.isdir(package)
 
-def fetch_remote_package (module_name, log=sys.stdout, working_copy=False, use_ssh=False) :
+def fetch_remote_package(module_name, log=sys.stdout, working_copy=False, use_ssh=False):
   if (module_name in git_repositories):
     fetch_git_repository(module_name, use_ssh)
-  elif (module_name in dependency_tarballs) :
-    if op.isdir(module_name) :
+  elif (module_name in dependency_tarballs):
+    if op.isdir(module_name):
       shutil.rmtree(module_name)
     pkg_url, pkg_name = dependency_tarballs[module_name]
     tarfile = module_name + ".tar.gz"
@@ -320,8 +320,8 @@ def fetch_remote_package (module_name, log=sys.stdout, working_copy=False, use_s
         output_file=tarfile)
     untar(tarfile, log)
     os.remove(tarfile)
-  elif (module_name in subversion_repositories) :
-    if op.isdir(module_name) :
+  elif (module_name in subversion_repositories):
+    if op.isdir(module_name):
       shutil.rmtree(module_name)
     pkg_url = subversion_repositories[module_name]
     fetch_svn_repository(

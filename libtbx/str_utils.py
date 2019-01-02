@@ -33,7 +33,7 @@ def round_4_for_cif(value):
     return '?'
   return format_value(format="%.4f", value=value, null_value=0, replace_none_with="?")
 
-def pad_string (line, width=72, border="|") :
+def pad_string(line, width=72, border="|"):
   n_spaces = width - (len(border) * 2) - len(line)
   return border + line + (" " * n_spaces) + border
 
@@ -130,7 +130,7 @@ def prefix_each_line(prefix, lines_as_one_string, rstrip=True):
     suffix="",
     rstrip=rstrip)
 
-def make_header (line, out=None, header_len=80):
+def make_header(line, out=None, header_len=80):
   if (out is None): out = sys.stdout
   line_len = len(line)
   #assert line_len <= header_len
@@ -184,12 +184,12 @@ def make_sub_header(text, out=None, header_len=80, sep='-'):
   print(out_string, file=out)
   out.flush()
 
-def wordwrap (text, max_chars=80) :
+def wordwrap(text, max_chars=80):
   words = text.split()
   lines = []
   current_line = ""
   for word in words :
-    if ((len(current_line) + len(word)) >= max_chars) :
+    if ((len(current_line) + len(word)) >= max_chars):
       lines.append(current_line)
       current_line = word
     else :
@@ -197,12 +197,12 @@ def wordwrap (text, max_chars=80) :
   lines.append(current_line)
   return "\n".join(lines)
 
-def reformat_terminal_text (text) :
+def reformat_terminal_text(text):
   text.strip()
   lines = text.splitlines()
   newtext = ""
   lastline = ""
-  for i, line in enumerate(lines) :
+  for i, line in enumerate(lines):
     if line == "" and i != 0 :
       newtext += "\n"
     else :
@@ -212,15 +212,15 @@ def reformat_terminal_text (text) :
     lastline = line
   return newtext
 
-def rstrip_lines (text) :
+def rstrip_lines(text):
   new = []
-  for line in text.splitlines() :
+  for line in text.splitlines():
     new.append(line.rstrip())
   return "\n".join(new)
 
-def strip_lines (text) :
+def strip_lines(text):
   new = []
-  for line in text.splitlines() :
+  for line in text.splitlines():
     new.append(line.strip())
   return "\n".join(new)
 
@@ -307,21 +307,21 @@ class line_feeder(object):
         return result
 
 # StringIO with pickling support and extra read-only semantics
-class StringIO (object) :
-  def __init__ (self, *args, **kwds) :
+class StringIO (object):
+  def __init__(self, *args, **kwds):
     self._buffer = cStringIO(*args, **kwds)
     self.read_only = bool(args)
 
-  def __getattr__ (self, *args, **kwds) :
+  def __getattr__(self, *args, **kwds):
     if self.read_only and args[0] in ('softspace', 'truncate', 'write', 'writelines'):
       raise AttributeError("'libtbx.str_utils.StringIO' has no attribute '%s'" % args[0])
     return getattr(self._buffer, *args, **kwds)
 
-  def __getstate__ (self) :
+  def __getstate__(self):
     is_output_object = (type(self._buffer).__name__ == 'StringO')
     return (self._buffer.getvalue(), is_output_object)
 
-  def __setstate__ (self, state) :
+  def __setstate__(self, state):
     (buffer_value, is_output_object) = state
     if is_output_object :
       self.__init__()
@@ -350,7 +350,7 @@ def expandtabs_track_columns(s, tabsize=8):
         j += 1
   return "".join(result_e), result_j
 
-class framed_output (object) :
+class framed_output (object):
   """
   Pseudo-output file wrapper for drawing a box around arbitrary content, for
   example:
@@ -365,7 +365,7 @@ class framed_output (object) :
 
   :param out: actual output filehandle
   """
-  def __init__ (self,
+  def __init__(self,
       out,
       title=None,
       width=None,
@@ -374,12 +374,12 @@ class framed_output (object) :
       center_title=None,
       #center_frame=None,
       max_width=80,
-      prefix=None) :
+      prefix=None):
     self.out = out
-    if (title is not None) :
+    if (title is not None):
       title = title.strip()
     self.title = title
-    if (center_title is None) :
+    if (center_title is None):
       center_title = center
     self.center_title = center_title
     self.width = width
@@ -392,80 +392,80 @@ class framed_output (object) :
     self._current_line = None
     self._closed = False
 
-  def get_best_text_width (self) :
+  def get_best_text_width(self):
     return self.width - 4
 
-  def write (self, text) :
+  def write(self, text):
     current_text = ""
-    if (self._current_line is not None) :
+    if (self._current_line is not None):
       current_text += self._current_line
       self._current_line = None
     for char in text :
-      if (char == "\n") :
+      if (char == "\n"):
         self.content.append(current_text)
         current_text = ""
       else :
         current_text += char
-    if (current_text != "") :
+    if (current_text != ""):
       self._current_line = current_text
 
-  def flush (self) :
+  def flush(self):
     pass
 
-  def add_separator (self) :
-    if (self._current_line is not None) :
+  def add_separator(self):
+    if (self._current_line is not None):
       self.content.append(self._current_line)
       self._current_line = None
     self.content.append(None)
 
-  def close (self) :
+  def close(self):
     assert (not self._closed)
     self._closed = True
-    if (not self._current_line in [None, ""]) :
+    if (not self._current_line in [None, ""]):
       self.content.append(self._current_line)
     out = self.out
     lines = self.content
     # misc setup
     text_lines = [ s for s in lines if (s is not None) ]
     side_frame = self.frame
-    if (side_frame in ['-', '_']) :
+    if (side_frame in ['-', '_']):
       side_frame = "|"
     width = self.width
-    if (width is None) :
+    if (width is None):
       width = min(self.max_width, 4 + max([ len(s) for s in text_lines ]))
-    def get_padding (text, margin=2, center=self.center) :
+    def get_padding(text, margin=2, center=self.center):
       from libtbx.math_utils import ifloor, iceil
       fill = max(0, width - len(text) - (margin * 2))
-      if (center) :
+      if (center):
         rfill = ifloor(fill / 2)
         lfill = iceil(fill / 2)
       else :
         rfill = 0
         lfill = fill
       return (rfill, lfill)
-    def write_corner () :
-      if (self.frame != '_') :
+    def write_corner():
+      if (self.frame != '_'):
         out.write(side_frame)
       else :
         out.write("_")
-    def write_sep () :
-      if (self.prefix is not None) :
+    def write_sep():
+      if (self.prefix is not None):
         out.write(self.prefix)
       out.write(side_frame)
       out.write(self.frame * (width - 2))
       out.write(side_frame + "\n")
     # header
     out.write("\n")
-    if (self.prefix is not None) :
+    if (self.prefix is not None):
       out.write(self.prefix)
     write_corner()
-    if (self.title is not None) :
+    if (self.title is not None):
       rf, lf = get_padding(self.title, margin=1, center=self.center_title)
       rf += 1
       lf -= 1
       out.write(self.frame * rf)
       out.write(self.title)
-      if (lf > 0) :
+      if (lf > 0):
         out.write(self.frame * lf)
     else :
       out.write(self.frame * (width - 2))
@@ -473,39 +473,39 @@ class framed_output (object) :
     out.write("\n")
     # main output
     for line in lines :
-      if (line is None) :
+      if (line is None):
         write_sep()
       else :
-        if (self.prefix is not None) :
+        if (self.prefix is not None):
           out.write(self.prefix)
         out.write(side_frame + " ")
         rf, lf = get_padding(line)
-        if (rf > 0) :
+        if (rf > 0):
           out.write(" " * rf)
         out.write(line)
-        if (lf > 0) :
+        if (lf > 0):
           out.write(" " * lf)
         out.write(" " + side_frame)
         out.write("\n")
     # footer
-    if (self.prefix is not None) :
+    if (self.prefix is not None):
       out.write(self.prefix)
     write_corner()
     self.out.write(self.frame * (width - 2))
     write_corner()
     out.write("\n")
 
-  def __del__ (self) :
-    if (not self._closed) :
+  def __del__(self):
+    if (not self._closed):
       self.close()
 
-def print_message_in_box (message, **kwds) :
+def print_message_in_box(message, **kwds):
   box = framed_output(**kwds)
-  for line in line_breaker(message, box.get_best_text_width()) :
+  for line in line_breaker(message, box.get_best_text_width()):
     print(line, file=box)
   del box
 
-def make_big_header (line, out=None, header_len=80, border_char="#") :
+def make_big_header(line, out=None, header_len=80, border_char="#"):
   """
   Alternate API for print_message_in_box, for compatibility with make_header
   """

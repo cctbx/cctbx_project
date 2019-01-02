@@ -1510,7 +1510,7 @@ class Builder(object):
       "--gtk_version=2.10.0", # XXX this can change!
       #"--quiet",
     ]
-    #if (not self.flag_build_gui) :
+    #if (not self.flag_build_gui):
     #  dispatcher_opts.append("--ignore_missing_dirs")
     # FIXME this will happen regardless of whether the GUI modules are being
     # distributed or not - will this be problematic?

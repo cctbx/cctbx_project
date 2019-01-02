@@ -64,7 +64,7 @@ def qstat_parse():
     return result
   xml = minidom.parseString("\n".join(qstat_out))
   jobs = xml.getElementsByTagName("Job")
-  def get_tag_content (node, tag_name) :
+  def get_tag_content(node, tag_name):
     node = node.getElementsByTagName(tag_name)[0].childNodes[0]
     assert (node.nodeType == node.TEXT_NODE)
     return node.data

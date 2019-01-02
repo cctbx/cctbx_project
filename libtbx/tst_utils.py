@@ -155,7 +155,7 @@ def exercise_misc():
 from __future__ """ + """import division
 import os.path
 
-def foo () :
+def foo():
   print "bar"
 """
   d = tempfile.mkdtemp()
@@ -169,7 +169,7 @@ def foo () :
   have_def = False
   for line in lines :
     assert (not "__future__" in line)
-    if line.startswith("def foo") :
+    if line.startswith("def foo"):
       have_def = True
   assert have_def
 
@@ -236,9 +236,9 @@ def exercise_approx_equal():
   assert approx_equal([ 2.5, 3.4+5.8j, 7.89],
                       [ 2.4+0.1j, 3.5+5.9j, 7.90], eps=0.2)
 
-def exercise_file_utils () :
+def exercise_file_utils():
   dir_name = tempfile.mkdtemp()
-  if (not os.path.exists(dir_name)) :
+  if (not os.path.exists(dir_name)):
     os.mkdir(dir_name)
   sorted_files = []
   for prefix in ["XYZ", "abc", "qwerty", "123"] :
@@ -257,7 +257,7 @@ def exercise_file_utils () :
     %s
   ''' % (sorted_files_2, sorted_files)
 
-def exercise_dir_utils () :
+def exercise_dir_utils():
   dirs = ["tst_utils_1", "tst_utils_2", "tst_utils_45"]
   for dir_name in dirs :
     if (os.path.isdir(dir_name)) : os.rmdir(dir_name)
@@ -279,7 +279,7 @@ def exercise_dir_utils () :
   dir_name = os.getcwd()
   utils.check_if_output_directory_exists(dir_name=dir_name)
   dir_created = False
-  if (not os.path.exists("Dropbox")) :
+  if (not os.path.exists("Dropbox")):
     os.mkdir("Dropbox")
     dir_created = True
   dir_name = os.path.join(os.getcwd(), "Dropbox")
@@ -288,7 +288,7 @@ def exercise_dir_utils () :
     utils.check_if_output_directory_exists(dir_name=dir_name)
     assert len(w) == 1
     assert "Dropbox directory" in str(w[-1].message)
-  if (dir_created) :
+  if (dir_created):
     os.rmdir("Dropbox")
   host_info = utils.host_and_user()
   assert not utils.allow_delete_directory(host_info.homedir)

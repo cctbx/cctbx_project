@@ -75,7 +75,7 @@ class file_clutter(object):
         if (find_unused_imports and path.endswith(".py")):
           self.unused_imports = find_unused_imports_crude.inspect(
             py_lines=py_lines)
-        if (find_bad_indentation) :
+        if (find_bad_indentation):
           self.bad_indentation = detect_indentation_problems(path)
 
   def ignore_file(self):
@@ -148,7 +148,7 @@ class file_clutter(object):
         sapp("missing 'from __future__ import print_function'")
       elif self.n_from_future_import_print_function > 1:
         sapp("more than one appearance of 'from __future__ import print_function'")
-    if (self.bad_indentation is not None) and (flag_indentation) :
+    if (self.bad_indentation is not None) and (flag_indentation):
       n_tab, n_space = self.bad_indentation
       sapp("non-standard indentation: %d space, %d tab" % (n_space, n_tab))
     return ", ".join(status)
@@ -162,7 +162,7 @@ class file_clutter(object):
         append(msg)
       else:
         print(msg)
-      if (verbose) and (self.has_unused_imports()) :
+      if (verbose) and (self.has_unused_imports()):
         msg2 = "  unused imports: %s" % ", ".join(self.unused_imports)
         if append:
           append(msg2)
@@ -195,7 +195,7 @@ def gather(paths, find_unused_imports=False, find_bad_indentation=False, flag_ab
             capp()
   return clutter
 
-def detect_indentation_problems (file_name) :
+def detect_indentation_problems(file_name):
   try :
     import indent_finder
   except ImportError :
@@ -204,12 +204,12 @@ def detect_indentation_problems (file_name) :
   fi.clear()
   fi.parse_file(file_name)
   result = fi.results()
-  if (result is fi.default_result) :
+  if (result is fi.default_result):
     return None
   itype, ival = result
   n_tab = n_space = 0
-  if (itype != "mixed") :
-    if (itype == "space") :
+  if (itype != "mixed"):
+    if (itype == "space"):
       n_space = ival
     else :
       n_tab = ival

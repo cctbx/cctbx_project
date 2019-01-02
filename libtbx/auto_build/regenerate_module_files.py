@@ -166,7 +166,7 @@ def run(base_dir, out=sys.stdout, only_if_needed=False):
   fix_themes(base_dir, out)
 
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   from optparse import OptionParser
   import libtbx.load_env
 

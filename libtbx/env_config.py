@@ -120,7 +120,7 @@ def get_darwin_gcc_build_number(gcc='gcc'):
   except ValueError:
     return None
 
-def is_llvm_compiler(gcc='gcc') :
+def is_llvm_compiler(gcc='gcc'):
   from libtbx import easy_run
   try:
     gcc_version = (easy_run.fully_buffered(command='%s --version' % gcc)
@@ -221,7 +221,7 @@ def python_include_path():
 
 def highlight_dispatcher_include_lines(lines):
   m = max([len(line) for line in lines])
-  if (os.name == "nt") :
+  if (os.name == "nt"):
     lines.insert(0, "@REM " + "-"*(m-5))
   else :
     lines.insert(0, "# " + "-"*(m-2))
@@ -230,7 +230,7 @@ def highlight_dispatcher_include_lines(lines):
 def source_specific_dispatcher_include(pattern, source_file):
   try: source_lines = source_file.open().read().splitlines()
   except IOError: return []
-  if (os.name == "nt") :
+  if (os.name == "nt"):
     lines = ["@REM lines marked " + pattern]
   else :
     lines = ["# lines marked " + pattern]
@@ -787,11 +787,11 @@ Wait for the command to finish, then try again.""" % vars())
       self.explicitly_requested_modules |= set(module_names)
       if (not command_line.options.only):
         excludes = []
-        if (command_line.options.exclude) :
+        if (command_line.options.exclude):
           excludes = command_line.options.exclude.split(",")
         self.explicitly_requested_modules -= set(excludes)
         for module in self.module_list:
-          if (not module.name in excludes) :
+          if (not module.name in excludes):
             module_names.append(module.name)
       else:
         self.explicitly_requested_modules = set(module_names)
@@ -912,7 +912,7 @@ Wait for the command to finish, then try again.""" % vars())
                             (lines_before_command,
                              self._dispatcher_include_before_command)]:
         if (len(buffer) == 0): continue
-        if (os.name == "nt") :
+        if (os.name == "nt"):
           buffer.insert(0, "@REM included from %s" % abs(path))
         else :
           buffer.insert(0, "# included from %s" % abs(path))
@@ -931,7 +931,7 @@ Wait for the command to finish, then try again.""" % vars())
       raise RuntimeError(
         "--opt_resources not supported in combination with --compiler=icc")
     def get_libs_dir():
-      if (sys.platform.startswith("linux")) :
+      if (sys.platform.startswith("linux")):
         libs = ["libimf.so", "libirc.so"]
         if (is_64bit_architecture()):
           return "linux64", libs
@@ -1233,7 +1233,7 @@ Wait for the command to finish, then try again.""" % vars())
     print('@set LIBTBX_DISPATCHER_NAME=%~nx0', file=f)
     def write_dispatcher_include(where):
       for line in self.dispatcher_include(where=where):
-        if (line.startswith("@")) :
+        if (line.startswith("@")):
           print(line, file=f)
         else :
           print("@" + line, file=f)
@@ -2572,10 +2572,10 @@ def unpickle():
     env.build_options.env_cppflags = ""
     env.build_options.env_ldflags = ""
   # XXX backward compatibility 2009-10-11
-  if (not hasattr(env.build_options, "force_32bit")) :
+  if (not hasattr(env.build_options, "force_32bit")):
     env.build_options.force_32bit = False
   # XXX backward compatibility 2009-10-13
-  if (not hasattr(env.build_options, "msvc_arch_flag")) :
+  if (not hasattr(env.build_options, "msvc_arch_flag")):
     env.build_options.msvc_arch_flag = default_msvc_arch_flag
   # XXX backward compatibility 2010-05-28
   if (not hasattr(env.build_options, "precompile_headers")):

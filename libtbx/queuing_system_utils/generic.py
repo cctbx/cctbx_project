@@ -214,7 +214,7 @@ EOF
 
   # grab job ID, etc. from stdout - subclass as necessary (PBSJob already
   # handles this separately)
-  def parse_process_stdout (self) :
+  def parse_process_stdout(self):
     pass
 
   def is_alive(self):
@@ -355,15 +355,15 @@ class PBSJob(Job):
 
     return m.group( 1 )
 
-class SGEJob (Job) :
-  def parse_process_stdout (self) :
+class SGEJob (Job):
+  def parse_process_stdout(self):
     qsub_out = self.process.stdout.readlines()
     for line in qsub_out :
-      if line.startswith("Your job") :
+      if line.startswith("Your job"):
         self.jobid = int(line.split()[2])
         break
 
-class queue_interface (object) :
+class queue_interface (object):
   COMMAND = None
   def __init__(self, command, asynchronous=False):
     self.async = asynchronous
@@ -371,7 +371,7 @@ class queue_interface (object) :
       assert (self.COMMAND is not None)
       self.command = [ self.COMMAND, ]
     else:
-      if (isinstance(command, str)) :
+      if (isinstance(command, str)):
         self.command = [ command, ]
       else :
         self.command = command
@@ -387,7 +387,7 @@ class sge_interface(queue_interface):
 
     cmd = self.command + [ "-S", "/bin/sh", "-cwd", "-N", name, "-o", out,
       "-e", err ]
-    if (not self.async) :
+    if (not self.async):
       cmd.extend(["-sync", "y"])
     return cmd
 
@@ -402,7 +402,7 @@ class lsf_interface(queue_interface):
   def __call__(self, name, out, err):
 
     cmd = self.command +  [ "-J", name, "-o", out, "-e", err ]
-    if (not self.async) :
+    if (not self.async):
       cmd.append("-K")
     return cmd
 
@@ -417,23 +417,23 @@ class pbs_interface(queue_interface):
 
     return self.command + [ "-d", ".", "-N", name, "-o", out, "-e", err ]
 
-def qsub (target,
+def qsub(target,
           name="libtbx_python",
           platform="sge",
           command=None,
-          asynchronous=True) :
+          asynchronous=True):
   assert hasattr(target, "__call__")
-  if (platform == "sge") :
+  if (platform == "sge"):
     return SGEJob(
       target=target,
       name=name,
       qinterface=sge_interface(command, asynchronous))
-  elif (platform == "pbs") :
+  elif (platform == "pbs"):
     return PBSJob(
       target=target,
       name=name,
       qinterface=pbs_interface(command, asynchronous))
-  elif (platform == "lsf") :
+  elif (platform == "lsf"):
     return Job(
       target=target,
       name=name,

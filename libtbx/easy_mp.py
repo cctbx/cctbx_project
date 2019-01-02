@@ -30,7 +30,7 @@ def detect_problem():
       _problem_cache = libtbx.utils.detect_multiprocessing_problem()
   return _problem_cache
 
-def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
+def enable_multiprocessing_if_possible(nproc=Auto, log=None):
   """
   Switch for using multiple CPUs with the pool_map function, usually called at
   the beginning of an app.  If nproc is Auto or None and we are running
@@ -39,14 +39,14 @@ def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
   :param nproc: default number of processors to use
   :returns: number of processors to use (None or Auto means automatic)
   """
-  if (nproc == 1) or (nproc == 0) :
+  if (nproc == 1) or (nproc == 0):
     return 1
-  if (log is None) :
+  if (log is None):
     from libtbx.utils import null_out
     log = null_out()
   problems = detect_problem()
-  if (problems is not None) and (problems is not Auto) :
-    if (nproc is Auto) or (nproc is None) :
+  if (problems is not None) and (problems is not Auto):
+    if (nproc is Auto) or (nproc is None):
       return 1
     else :
       from libtbx.utils import Sorry
@@ -65,7 +65,7 @@ def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
     return nproc
 
 # FIXME should be more flexible on Windows
-def get_processes (processes) :
+def get_processes(processes):
   """
   Determine number of processes dynamically: number of CPUs minus the current
   load average (with a minimum of 1).
@@ -73,13 +73,13 @@ def get_processes (processes) :
   :param processes: default number of processes (may be None or Auto)
   :returns: actual number of processes to use
   """
-  if (processes in [None, Auto]) :
-    if (os.name == "nt") or (sys.version_info < (2,6)) :
+  if (processes in [None, Auto]):
+    if (os.name == "nt") or (sys.version_info < (2,6)):
       return 1
     from libtbx import introspection
     auto_adjust = (processes is Auto)
     processes = introspection.number_of_processors()
-    if (auto_adjust) :
+    if (auto_adjust):
       processes = max(ifloor(processes - os.getloadavg()[0]), 1)
   else :
     assert (processes > 0)
@@ -312,7 +312,7 @@ def pool_map(
 
   Examples
   --------
-  >>> def f (x) :
+  >>> def f(x):
   ...   return some_long_running_method(x)
   ...
   >>> args = range(1000)
@@ -323,10 +323,10 @@ def pool_map(
   >>> print len(result)
   ... 1000
 
-  >>> class f_caller (object) :
-  ...   def __init__ (self, non_pickleable_object) :
+  >>> class f_caller (object):
+  ...   def __init__(self, non_pickleable_object):
   ...     self._obj = non_pickleable_object
-  ...   def __call__ (self, x) :
+  ...   def __call__(self, x):
   ...     return some_long_running_method(x, self._obj)
   ...
   >>> args = range(1000)
@@ -368,7 +368,7 @@ def pool_map(
   processes = get_processes(processes)
   # XXX since we want to be able to call this function on Windows too, reset
   # processes to 1
-  if (os.name == "nt") or (sys.version_info < (2,6)) :
+  if (os.name == "nt") or (sys.version_info < (2,6)):
     processes = 1
   if (args is not None):
     iterable = args
@@ -386,14 +386,14 @@ def pool_map(
   result = None
   # XXX this allows the function to be used even when parallelization is
   # not enabled or supported, which should keep calling code simpler.
-  if (processes == 1) or (os.name == "nt") :
+  if (processes == 1) or (os.name == "nt"):
     result = []
     for args in iterable :
-      if (func is not None) :
+      if (func is not None):
         result.append(func(args))
       else :
         result.append(fixed_func(args))
-      if (call_back_for_serial_run is not None) :
+      if (call_back_for_serial_run is not None):
         call_back_for_serial_run(result[-1])
   else :
     pool = Pool(
@@ -488,7 +488,7 @@ class posi_and_kwargs(object):
     return self.func( *args, **kwargs )
 
 
-def parallel_map (
+def parallel_map(
     func,
     iterable,
     iterable_type = single_argument,
@@ -501,7 +501,7 @@ def parallel_map (
     preserve_order=True,
     preserve_exception_message=False,
     use_manager=False,
-    stacktrace_handling = "ignore") :
+    stacktrace_handling = "ignore"):
   """
   Generic parallel map() implementation for a variety of platforms, including
   the multiprocessing module and supported queuing systems, via the module
@@ -527,7 +527,7 @@ def parallel_map (
   :param preserve_exception_message: keeps original exception message
   :returns: a list of result objects
   """
-  if (params is not None) :
+  if (params is not None):
     method = params.technology
     processes = params.nproc
     qsub_command = params.qsub_command
@@ -746,12 +746,12 @@ def multi_core_run( myfunction, argstuples, nproc ):
 
 #  Class to just run a method. This is part of run_parallel below.
 
-class run_anything (object) :
-  def __init__ (self,kw_list=None,target_function=None):
+class run_anything (object):
+  def __init__(self,kw_list=None,target_function=None):
     self.kw_list=kw_list
     self.target_function=target_function
 
-  def __call__ (self, i) :
+  def __call__(self, i):
     kw=self.kw_list[i]
     return self.target_function(**kw)
 
@@ -769,7 +769,7 @@ def run_parallel(
     ra=run_anything(kw_list=kw_list,target_function=target_function)
     for i in range(n):
       results.append(ra(i))
-  elif 0:  #(method == "multiprocessing") and (sys.platform != "win32") :
+  elif 0:  #(method == "multiprocessing") and (sys.platform != "win32"):
     # XXX Can crash 2015-10-13 TT so don't use it
     from libtbx.easy_mp import  pool_map
     results = pool_map(

@@ -145,14 +145,14 @@ def exercise(exercise_fail):
     assert open("bf%03d/log" % (i-1)).read().splitlines()[-1] \
       == "RuntimeError: %d" % i
   out = StringIO()
-  def simple_func (arg) :
+  def simple_func(arg):
     from math import log
     x = float(arg)
     y = 0
-    for i in range(2, 1000) :
+    for i in range(2, 1000):
       y += log(x) / log(float(i))
     return y
-  def cb (result) :
+  def cb(result):
     out.write("%.3f\n" % result)
   result = easy_mp.pool_map(
     func=simple_func,

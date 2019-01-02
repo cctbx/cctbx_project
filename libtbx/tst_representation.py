@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from builtins import range
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   for x in range(30):
     J = 7205759403792790 + x
     print(J * 10**30 // 2**56)
@@ -26,7 +26,7 @@ if (__name__ == "__main__") :
     # where the data are from a ~single precision digital-analog converter.
     if self==other:
       return True
-    if (self > 0.) != (other > 0.) :
+    if (self > 0.) != (other > 0.):
       return False
     #compute the exponent
     import math

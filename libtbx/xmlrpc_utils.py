@@ -74,7 +74,7 @@ class TimeoutTransport(xmlrpclib.Transport):
     xmlrpclib.Transport.__init__(self, *args, **kwargs)
     self.timeout = timeout
 
-  def make_connection (self, host) :
+  def make_connection(self, host):
     if self._connection and host == self._connection[0]:
       return self._connection[1]
     # create a HTTP connection object from a host descriptor
@@ -85,9 +85,9 @@ class TimeoutTransport(xmlrpclib.Transport):
     return self._connection[1]
 
 default_timeout = 5.0
-if (sys.platform == "win32") :
+if (sys.platform == "win32"):
   default_timeout = 1.0
-class ServerProxy (object) :
+class ServerProxy (object):
   def __init__(self, uri, transport=None, encoding=None, verbose=0,
                allow_none=0, use_datetime=0, timeout=default_timeout,
                raise_errors=True):
@@ -122,7 +122,7 @@ class ServerProxy (object) :
     self._pending.append((methodname, params))
     return self.flush_requests()
 
-  def flush_requests (self, show_timings=False) :
+  def flush_requests(self, show_timings=False):
     t1 = time.time()
     result = None
     while len(self._pending) > 0 :
@@ -161,30 +161,30 @@ class ServerProxy (object) :
         raise
       except Exception as e :
         msg = to_str(e)
-        if (hasattr(e, "errno")) :
-          if (e.errno in [32,54,61,104,111,10054,10061]) :
+        if (hasattr(e, "errno")):
+          if (e.errno in [32,54,61,104,111,10054,10061]):
             self._pending.insert(0, (methodname, params))
             t = time.strftime("%H:%M:%S", time.localtime())
             self._errors.append("%s -- %s" % (t, msg))
             break
-        if ("timed out" in msg) :
+        if ("timed out" in msg):
           print("XMLRPC timeout, ignoring request")
           self._timeouts += 1
-        elif msg.startswith("<ProtocolError ") :
+        elif msg.startswith("<ProtocolError "):
           self._pending = []
           break
-        elif ("exceptions.SystemExit" in msg) :
+        elif ("exceptions.SystemExit" in msg):
           self._pending = []
           break
         else :
           msg = "XMLRPC error: %s\nMethod: %s\nParams: %s\n" % \
             (msg, to_str(methodname), ", ".join([ to_str(p) for p in params ]))
-          if (not self.raise_errors) :
+          if (not self.raise_errors):
             print(msg, file=sys.stderr)
           else :
             raise RuntimeError(msg)
     t2 = time.time()
-    if (show_timings) :
+    if (show_timings):
       sys.stderr.write("flush_requests: %.3fs\n" % (t2-t1))
     return result
 
@@ -204,23 +204,23 @@ class ServerProxy (object) :
     # magic method dispatcher
     return xmlrpclib._Method(self.__request, name)
 
-  def number_of_timeout_errors (self) :
+  def number_of_timeout_errors(self):
     return self._timeouts
 
-  def get_error_messages (self) :
+  def get_error_messages(self):
     return self._errors
 
 #-----------------------------------------------------------------------
-class external_program_thread (threading.Thread) :
-  def __init__ (self, command_args, program_id, log=None,
-      intercept_output=True) :
+class external_program_thread (threading.Thread):
+  def __init__(self, command_args, program_id, log=None,
+      intercept_output=True):
     adopt_init_args(self, locals())
     if self.log is None :
       self.log = sys.stdout
     threading.Thread.__init__(self)
     self._alive = True
 
-  def run (self) :
+  def run(self):
     if self.intercept_output :
       p = subprocess.Popen(args=self.command_args, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE, shell=True)
@@ -239,21 +239,21 @@ class external_program_thread (threading.Thread) :
     self._alive = False
 
   # XXX: this is probably a bad idea
-  def is_alive (self) :
+  def is_alive(self):
     return self._alive
 
-class external_program_server (object) :
+class external_program_server (object):
   port_ranges = [ (40001, 40840),
                   (46000, 46999) ]
-  def __init__ (self, command_args, program_id, timeout, cache_requests=False,
-                local_port=None, log=None, intercept_output=False) :
+  def __init__(self, command_args, program_id, timeout, cache_requests=False,
+                local_port=None, log=None, intercept_output=False):
     adopt_init_args(self, locals())
     assert isinstance(command_args, list) or isinstance(command_args, tuple)
     self._process = None
     self._server = None
     self.initialize_server()
 
-  def initialize_server (self) :
+  def initialize_server(self):
     if self._process is None and self._server is None :
       valid_ports = []
       for (start, end) in self.port_ranges :
@@ -279,18 +279,18 @@ class external_program_server (object) :
       self._server = proxy_class(uri="http://127.0.0.1:%d/RPC2" %
                                              self._port)
 
-  def flush_requests (self, *args, **kwds) :
+  def flush_requests(self, *args, **kwds):
     if not self.cache_requests :
       return False
     elif self._server is not None :
       return self._server.flush_requests(*args, **kwds)
 
-  def restart (self) :
+  def restart(self):
     self._process = None
     self._server = None
     self.initialize_server()
 
-  def is_alive (self) :
+  def is_alive(self):
     if self._process is None or self._server is None :
       return False
     try :
@@ -305,13 +305,13 @@ class external_program_server (object) :
       else :
         return True
 
-  def get_port (self) :
+  def get_port(self):
     return self._port
 
-  def _ignore (self, *args, **kwds) :
+  def _ignore(self, *args, **kwds):
     return True
 
-  def __getattr__ (self, name) :
+  def __getattr__(self, name):
     if self._process is None or self._server is None :
       return self._ignore
     else :
