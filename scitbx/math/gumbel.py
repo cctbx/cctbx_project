@@ -5,6 +5,9 @@ from __future__ import division
 # Simple function to calculate probability that a Gaussian-distributed sample
 #  with mean zero and SD=1 (such as a Z-score) will be less than Z for all
 #  N tries.
+
+# NOTE: Not exact...see exercise_1()
+
 # See info in http://www.panix.com/~kts/Thesis/extreme/extreme2.html
 # TT 2019-01-02
 # This is based on the Type I Gumbel distribution
@@ -21,7 +24,7 @@ from __future__ import division
 def p_of_none_greater(z,n):
   from scitbx.math import erf
   x=z/(2**0.5)
-  p_one_greater=0.5*(1-erf(x)) # two-tailed prob of Z > z
+  p_one_greater=0.5*(1-erf(x)) # one-tailed prob of Z > z
   p_not_one_greater=1-p_one_greater # prob Z is not > z
   p_all_not_greater=p_not_one_greater**n # prob all N not >z
   p_at_least_one_greater=1-p_all_not_greater # prob at least one >z
@@ -88,6 +91,22 @@ def exercise():
         break
       last_pdf_u=pdf_u
 
+def exercise_1():
+  from scitbx.array_family import flex
+  a=flex.double()
+  b=flex.double()
+  for i in xrange(1,100):
+    for xx in xrange(1,1000):
+      x=xx/10
+      n=10**i
+      if p_of_none_greater(x,n)> 0.001 and p_of_none_greater(x,n)< 0.999:
+        a.append(p_of_none_greater(x,n))
+        b.append(get_prob_more_than_z_n_tries(x,n))
+  print a.size()
+  print flex.linear_correlation(a,b).coefficient()
+  assert flex.linear_correlation(a,b).coefficient() > 0.99
+
+
 def run(args):
   n=float(args[0])
   z=float(args[1])
@@ -98,5 +117,6 @@ if __name__=="__main__":
   args=sys.argv[1:]
   if 'exercise' in args:
     exercise()
+    exercise_1()
   else:
     run(args)
