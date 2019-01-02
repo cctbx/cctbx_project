@@ -41,7 +41,7 @@ def get_ncbi_pdb_blast(sequence, file_name=None, blast_type="blastp",
     f.close()
   return blast_out
 
-class blast_hit (slots_getstate_setstate_default_initializer):
+class blast_hit(slots_getstate_setstate_default_initializer):
   __slots__ = [ "hit_num", "pdb_id", "chain_id", "evalue", "length",
       "identity", "positives", "all_ids", ]
 

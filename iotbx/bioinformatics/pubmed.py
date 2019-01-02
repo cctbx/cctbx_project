@@ -31,7 +31,7 @@ def get_pubmed_xml(pmid):
   assert len(articles) == 1
   return article(articles[0])
 
-class author (slots_getstate_setstate):
+class author(slots_getstate_setstate):
   __slots__ = ["last_name", "initials"]
   def __init__(self, xml_node):
     self.last_name = get_node_data(xml_node, "LastName").encode("utf-8")
@@ -46,7 +46,7 @@ class author (slots_getstate_setstate):
       initials += "%s." % i
     return ("%s, %s" % (self.last_name, initials)).strip()
 
-class article (slots_getstate_setstate):
+class article(slots_getstate_setstate):
   __slots__ = ["authors", "title", "year", "journal", "volume", "pages",
                "pmid", "doi"]
   def __init__(self, xmlrec):

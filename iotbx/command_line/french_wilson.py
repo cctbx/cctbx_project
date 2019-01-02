@@ -138,7 +138,7 @@ def run(args, out=sys.stdout):
   print >> out, "Wrote %s" % output_file
   return output_file
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     return run(args=list(self.args), out=sys.stdout)
 

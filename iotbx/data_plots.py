@@ -99,7 +99,7 @@ def flip_table(table):
         new_table[i].append(elem)
   return new_table
 
-class table_data (object):
+class table_data(object):
   """
   Container for tabular data.  Originally this was solely used as a container
   for CCP4 'loggraph' plots, but it can also be used to display tables that
@@ -536,7 +536,7 @@ class table_data (object):
       newx.append(math.sqrt(1.0/x))
     return newx
 
-class graph_data (object):
+class graph_data(object):
   def __init__(self, name, data, type="plot", data_labels=None, x_axis=None,
       y_axis=None):
     self.name = name
@@ -568,7 +568,7 @@ class graph_data (object):
       plots.append((plot_x, plot_y))
     return plots
 
-class histogram_data (object):
+class histogram_data(object):
   pass
 
 def _tolerant_float(string):
@@ -584,7 +584,7 @@ def ftoa(val, format_string='%.6g'):
   else :
     return format_string % val
 
-class _formatting_buffer (object):
+class _formatting_buffer(object):
   def __init__(self, indent=0):
     self._initial_space = " " * indent
     self._buffer = []
@@ -630,7 +630,7 @@ def import_ccp4i_logfile(file_name=None, log_lines=None):
     tables.append(t)
   return tables
 
-class simple_matplotlib_plot (object):
+class simple_matplotlib_plot(object):
   """
   Class for writing a Matplotlib plot to a static image file without a GUI.
   This should be subclassed and combined with whatever mixin is used to

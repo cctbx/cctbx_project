@@ -23,7 +23,7 @@ def unit_cell_as_str(unit_cell, separator=" "):
   else :
     return ""
 
-class reflections_handler (iotbx.gui_tools.manager):
+class reflections_handler(iotbx.gui_tools.manager):
   file_type = "hkl"
   file_type_label = "Reflections"
   def __init__(self,

@@ -103,7 +103,7 @@ def process_command_line(args, master_string, parse=None):
   return libtbx.phil.process_command_line(
     args=args, master_string=master_string, parse=parse)
 
-class process_command_line_with_files (object):
+class process_command_line_with_files(object):
   def __init__(self,
                 args,
                 master_phil=None,
@@ -263,7 +263,7 @@ Full parameters:
     return input_file
 
 # Utilities for Phenix GUI
-class setup_app_generic (object):
+class setup_app_generic(object):
   def __init__(self, master_phil_path):
     master_phil = self.load_from_cache_if_possible(master_phil_path)
     if master_phil is None :

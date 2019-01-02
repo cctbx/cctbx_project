@@ -887,7 +887,7 @@ def extract_miller_array_from_file(file_name, label=None, type=None, log=None):
           result = ma
   return result
 
-class process_raw_data (object):
+class process_raw_data(object):
   """
   Automation wrapper - prepares single-wavelength experimental data (and
   optional R-free flags and experimental phases) for any future step in the

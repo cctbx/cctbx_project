@@ -199,7 +199,7 @@ def validate_params(params):
     raise Sorry("new_occ must be between 0 and 1.0")
   return True
 
-class launcher (runtime_utils.target_with_save_result):
+class launcher(runtime_utils.target_with_save_result):
   def run(self):
     return run(args=list(self.args), out=sys.stdout)
 

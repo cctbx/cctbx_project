@@ -69,7 +69,7 @@ class StatisticsError(RuntimeError):
 class StatisticsErrorNoReflectionsInRange(StatisticsError):
   '''Attempted to calculate statistics for an empty resolution range.'''
 
-class model_based_arrays (object):
+class model_based_arrays(object):
   """
   Container for observed and calculated intensities, along with the selections
   for work and free sets; these should be provided by mmtbx.f_model.  It is
@@ -132,7 +132,7 @@ def get_filtering_convention(i_obs, sigma_filtering=Auto):
       sigma_filtering = "scala"
   return sigma_filtering
 
-class filter_intensities_by_sigma (object):
+class filter_intensities_by_sigma(object):
   """
   Wrapper for filtering intensities based on one of several different
   conventions:
@@ -180,7 +180,7 @@ class filter_intensities_by_sigma (object):
     self.merge = merge
     self.array_merged = array_merged
 
-class merging_stats (object):
+class merging_stats(object):
   """
   Calculate standard merging statistics for (scaled) unmerged data.  Usually
   these statistics will consider I(+) and I(-) as observations of the same
@@ -451,7 +451,7 @@ class merging_stats (object):
     print >> out, prefix+"R-meas:  %5.3f" % self.r_meas
     print >> out, prefix+"R-pim:   %5.3f" % self.r_pim
 
-class dataset_statistics (object):
+class dataset_statistics(object):
   """
   Container for overall and by-shell merging statistics, plus a table_data
   object suitable for displaying graphs (or outputting loggraph format).

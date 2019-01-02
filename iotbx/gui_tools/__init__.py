@@ -11,7 +11,7 @@ from libtbx.utils import hashlib_md5
 from libtbx import adopt_init_args
 import os
 
-class manager (object):
+class manager(object):
   file_type = None
   file_type_label = None
   def __init__(self,

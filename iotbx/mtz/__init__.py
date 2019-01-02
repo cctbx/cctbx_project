@@ -226,7 +226,7 @@ class label_decorator(__builtins__["object"]):
 
 # XXX this will generate output labels recognizable by the Coot auto-open
 # command, but only for specific root label types.
-class ccp4_label_decorator (label_decorator):
+class ccp4_label_decorator(label_decorator):
   def phases(self, root_label, anomalous_sign=None):
     assert (root_label in ["FWT", "DELFWT"])
     root_label = re.sub("F", "", root_label)

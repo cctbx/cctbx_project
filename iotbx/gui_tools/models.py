@@ -10,11 +10,11 @@ import os, tempfile
 
 model_file_types = {"pdb" : "PDB", "mmcif" : "mmCIF", }
 
-class cif_handler (iotbx.gui_tools.manager):
+class cif_handler(iotbx.gui_tools.manager):
   file_type = "cif"
   file_type_label = "CIF"
 
-class model_handler (iotbx.gui_tools.manager):
+class model_handler(iotbx.gui_tools.manager):
   file_type = "pdb"
   file_type_label = "PDB"
   def __init__(self,
