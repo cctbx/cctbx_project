@@ -3,7 +3,7 @@ from __future__ import division
 import wx
 
 __default_border__ = 5
-class SizerContainer (object):
+class SizerContainer(object):
   __default_text_width__ = 480
   if (wx.Platform == '__WXMAC__'):
     __default_font_size__ = 12
@@ -221,7 +221,7 @@ class SizerContainer (object):
 ########################################################################
 # TESTING
 if (__name__ == "__main__"):
-  class TestPanel (wx.Panel, SizerContainer):
+  class TestPanel(wx.Panel, SizerContainer):
     def __init__(self, *args, **kwds):
       wx.Panel.__init__(self, *args, **kwds)
       SizerContainer.__init__(self)

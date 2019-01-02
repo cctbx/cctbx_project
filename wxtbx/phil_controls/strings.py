@@ -7,7 +7,7 @@ from libtbx.phil import strings_from_words, strings_as_words
 from libtbx.phil import tokenizer
 import wx
 
-class StringsCtrl (ValidatedTextCtrl):
+class StringsCtrl(ValidatedTextCtrl):
   def __init__(self, *args, **kwds):
     ValidatedTextCtrl.__init__(self, *args, **kwds)
 
@@ -31,7 +31,7 @@ class StringsCtrl (ValidatedTextCtrl):
       assert isinstance(value, list), value
       ValidatedTextCtrl.SetValue(self, self.FormatValue(value))
 
-class StringsValidator (TextCtrlValidator):
+class StringsValidator(TextCtrlValidator):
   def CheckFormat(self, value):
     return parse_strings(value)
 

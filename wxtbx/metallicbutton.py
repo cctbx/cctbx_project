@@ -40,7 +40,7 @@ MB_STYLE_DEFAULT = 1
 MB_STYLE_BOLD_LABEL = 2
 MB_STYLE_DROPARROW = 4
 
-class MetallicButton (wx.PyControl):
+class MetallicButton(wx.PyControl):
   def __init__(self,
                 parent,
                 id_=wx.ID_ANY,

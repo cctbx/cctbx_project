@@ -15,7 +15,7 @@ from libtbx.utils import to_unicode, to_str
 
 ALN_FLAGS = wx.ALL|wx.ALIGN_CENTER_VERTICAL
 
-class InfoPanelBase (wx.MiniFrame):
+class InfoPanelBase(wx.MiniFrame):
   def __init__(self, *args, **kwds):
     kwds = dict(kwds)
     kwds['style'] = wx.CAPTION|wx.CLOSE_BOX|wx.RESIZE_BORDER
@@ -50,7 +50,7 @@ class InfoPanelBase (wx.MiniFrame):
   def OnDestroy(self, event):
     pass
 
-class ReflectionFileInfo (InfoPanelBase):
+class ReflectionFileInfo(InfoPanelBase):
   def __init__(self, *args, **kwds):
     super(ReflectionFileInfo, self).__init__(*args, **kwds)
     self.miller_arrays = None
@@ -150,7 +150,7 @@ class ReflectionFileInfo (InfoPanelBase):
     map_info.set_map_coeffs(self._current_array)
     map_info.Show()
 
-class PDBFileInfo (InfoPanelBase):
+class PDBFileInfo(InfoPanelBase):
   def __init__(self, *args, **kwds):
     super(PDBFileInfo, self).__init__(*args, **kwds)
     self._pdb_in = None
@@ -234,7 +234,7 @@ class PDBFileInfo (InfoPanelBase):
       hierarchy=self._hierarchy)
     b_panel.Show()
 
-class PDBChainBisoPanel (InfoPanelBase):
+class PDBChainBisoPanel(InfoPanelBase):
   def __init__(self, *args, **kwds):
     super(PDBChainBisoPanel, self).__init__(*args, **kwds)
     self._hierarchy = None
@@ -298,7 +298,7 @@ class PDBChainBisoPanel (InfoPanelBase):
     self.panel_sizer.Fit(self.panel)
     self.Fit()
 
-class ImageFileInfo (InfoPanelBase):
+class ImageFileInfo(InfoPanelBase):
   def __init__(self, *args, **kwds):
     super(ImageFileInfo, self).__init__(*args, **kwds)
     self._img_in = None
@@ -362,7 +362,7 @@ class ImageFileInfo (InfoPanelBase):
     self.panel_sizer.Fit(self.panel)
     self.Fit()
 
-class MapCoeffsInfo (InfoPanelBase):
+class MapCoeffsInfo(InfoPanelBase):
   def __init__(self, *args, **kwds):
     super(MapCoeffsInfo, self).__init__(*args, **kwds)
     self._current_array = None

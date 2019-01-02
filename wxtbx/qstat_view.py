@@ -22,7 +22,7 @@ status_codes = ["d", "E", "h", "r", "R", "s", "S", "t", "T", "w"]
 status_imgs = [3, 4, 0, 1, 0, 0, 0, 0, 0, 2]
 col_sizes = [wx.LIST_AUTOSIZE] * 4 + [200,200]
 
-class qsub_list_data (object):
+class qsub_list_data(object):
   def __init__(self):
     self._data = []
     self._sortby = None
@@ -79,7 +79,7 @@ class qsub_list_data (object):
         names.append(job.name)
     return names
 
-class qsub_list_view (wx.ListCtrl):
+class qsub_list_view(wx.ListCtrl):
   def __init__(self, *args, **kwds):
     wx.ListCtrl.__init__(self, *args, **kwds)
     self.SetupImages()
@@ -154,7 +154,7 @@ class qsub_list_view (wx.ListCtrl):
     self.dataSource.Refresh()
     self.RefreshAllItems()
 
-class queue_list_frame (wx.Frame):
+class queue_list_frame(wx.Frame):
   def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
     self.statusbar = self.CreateStatusBar()

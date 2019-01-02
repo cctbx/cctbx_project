@@ -11,7 +11,7 @@ STD_FLAGS = wx.ALL|wx.ALIGN_CENTER_VERTICAL
 all_keys = polygon.keys_to_show + polygon.other_numerical_keys
 all_captions = polygon.key_captions + polygon.other_captions
 
-class ConfigFrame (wx.Frame):
+class ConfigFrame(wx.Frame):
   def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
     self.statusbar = self.CreateStatusBar()
@@ -206,7 +206,7 @@ class ConfigFrame (wx.Frame):
     if (parent is not None):
       parent.plot_frame = None
 
-class CorrPlot (plots.plot_container):
+class CorrPlot(plots.plot_container):
   def set_plot(self, x, y, x_label, y_label):
     from scitbx.array_family import flex
     self.figure.clear()
@@ -224,7 +224,7 @@ class CorrPlot (plots.plot_container):
     #  cc)
     self.parent.Refresh()
 
-class CorrPlotFrame (plots.plot_frame):
+class CorrPlotFrame(plots.plot_frame):
   show_controls_default = False
   def create_plot_panel(self):
     self.statusbar = self.CreateStatusBar()
@@ -233,7 +233,7 @@ class CorrPlotFrame (plots.plot_frame):
   def set_plot(self, *args, **kwds):
     self.plot_panel.set_plot(*args, **kwds)
 
-class HistogramPlot (plots.histogram):
+class HistogramPlot(plots.histogram):
   def show_histogram(self, data, n_bins, reference_value, xlabel):
     from scitbx.array_family import flex
     mean = flex.mean(flex.double(data))
@@ -254,7 +254,7 @@ class HistogramPlot (plots.histogram):
     self.canvas.draw()
     self.parent.Refresh()
 
-class HistogramFrame (plots.plot_frame):
+class HistogramFrame(plots.plot_frame):
   show_controls_default = False
   def create_plot_panel(self):
     self.statusbar = self.CreateStatusBar()

@@ -4,7 +4,7 @@ from libtbx.utils import Sorry
 from libtbx import Auto
 import wx
 
-class PhilCtrl (object):
+class PhilCtrl(object):
   def __init__(self):
     self.phil_name = None
     self.optional = False
@@ -71,7 +71,7 @@ class PhilCtrl (object):
 
 wxEVT_PHIL_CONTROL = wx.NewEventType()
 EVT_PHIL_CONTROL = wx.PyEventBinder(wxEVT_PHIL_CONTROL, 1)
-class PhilCtrlEvent (wx.PyCommandEvent):
+class PhilCtrlEvent(wx.PyCommandEvent):
   def __init__(self, eventType, eventId):
     wx.PyCommandEvent.__init__(self, eventType, eventId)
     self._original_window = None

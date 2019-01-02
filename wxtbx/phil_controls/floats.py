@@ -3,7 +3,7 @@ from __future__ import division
 from wxtbx.phil_controls.numbers import NumbersCtrlBase, NumbersValidator
 import wx
 
-class FloatsCtrl (NumbersCtrlBase):
+class FloatsCtrl(NumbersCtrlBase):
   def CheckType(self, value):
     return isinstance(value, int) or isinstance(value, float)
 
@@ -32,7 +32,7 @@ class FloatsCtrl (NumbersCtrlBase):
     format = " ".join([ "%g" for x in range(len(value)) ])
     return format % tuple(value)
 
-class FloatsValidator (NumbersValidator):
+class FloatsValidator(NumbersValidator):
   def ConvertValue(self, value):
     return float(value)
 

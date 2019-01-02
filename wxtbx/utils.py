@@ -8,7 +8,7 @@ import sys
 
 UNICODE_BUILD = (wx.PlatformInfo[2] == 'unicode')
 
-class SettingsToolBase (object):
+class SettingsToolBase(object):
   def __init__(self, *args, **kwds):
     self.parent = self.GetParent()
     self.settings = self.parent.settings
@@ -76,7 +76,7 @@ class SettingsToolBase (object):
     setattr(self.settings, setting, value)
     self.parent.update_settings()
 
-class SettingsFrame (wx.MiniFrame, SettingsToolBase):
+class SettingsFrame(wx.MiniFrame, SettingsToolBase):
   def __init__(self, *args, **kwds):
     wx.MiniFrame.__init__(self, *args, **kwds)
     SettingsToolBase.__init__(self, *args, **kwds)
@@ -98,7 +98,7 @@ class SettingsFrame (wx.MiniFrame, SettingsToolBase):
   def OnDestroy(self, event):
     self.parent.settings_window = None
 
-class SettingsPanel (wx.Panel, SettingsToolBase):
+class SettingsPanel(wx.Panel, SettingsToolBase):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     SettingsToolBase.__init__(self, *args, **kwds)
@@ -128,7 +128,7 @@ def add_ok_cancel_buttons(self, sizer):
   sizer.Add(btn_szr, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
   return ok_btn, cancel_btn
 
-class LogViewer (wx.TextCtrl):
+class LogViewer(wx.TextCtrl):
   font_size = 12
   if (wx.Platform == '__WXGTK__'):
     font_size = 11

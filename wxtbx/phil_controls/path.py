@@ -15,7 +15,7 @@ WXTBX_PHIL_PATH_NARROW = 8
 WXTBX_PHIL_PATH_UPDATE_ON_KILL_FOCUS = 16
 WXTBX_PHIL_PATH_DEFAULT_CWD = 32
 
-class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl):
+class PathCtrl(wx.PyPanel, phil_controls.PhilCtrl):
   def __init__(self, *args, **kwds):
     phil_controls.PhilCtrl.__init__(self)
     self.SetOptional(True) # this will be overridden elsewhere if necessary
@@ -226,7 +226,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl):
       self.PopupMenu(menu)
     menu.Destroy()
 
-class PathValidator (text_base.TextCtrlValidator):
+class PathValidator(text_base.TextCtrlValidator):
   def CheckFormat(self, value):
     style = self.GetWindow().GetParent().GetPathStyle()
     if ('}' in value) or ('{' in value):
@@ -262,7 +262,7 @@ class PathValidator (text_base.TextCtrlValidator):
       else :
         raise ValueError("path does not exist")
 
-class PathDropTarget (wx.FileDropTarget):
+class PathDropTarget(wx.FileDropTarget):
   def __init__(self, window):
     wx.FileDropTarget.__init__(self)
     self.window = window

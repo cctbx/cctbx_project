@@ -5,7 +5,7 @@ from wxtbx.phil_controls.text_base import TextCtrlValidator
 from libtbx.utils import Abort
 import wx
 
-class SpaceGroupCtrl (wx.ComboBox, phil_controls.PhilCtrl):
+class SpaceGroupCtrl(wx.ComboBox, phil_controls.PhilCtrl):
   def __init__(self, *args, **kwds):
     kwds = dict(kwds)
     saved_value = None
@@ -76,7 +76,7 @@ class SpaceGroupCtrl (wx.ComboBox, phil_controls.PhilCtrl):
     def SetBackgroundColour(self, color):
       self.GetChildren()[0].SetBackgroundColour(color)
 
-class SpaceGroupValidator (TextCtrlValidator):
+class SpaceGroupValidator(TextCtrlValidator):
   def CheckFormat(self, value):
     if len(value) == 0 :
       return ""

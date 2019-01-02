@@ -3,7 +3,7 @@ from __future__ import division
 import wx
 import sys
 
-class PDBLinkMixin (object):
+class PDBLinkMixin(object):
   """
   Subclass this along with wx.Frame, etc. to link to the PDB from a list of
   results.  get_pdb_id_for_viewing() must be re-implemented in subclasses.

@@ -30,7 +30,7 @@ elif wx.Platform == '__WXGTK__' :
 else :
   _DEFAULT_PADDING = 6
 
-class SegmentedControl (wx.PyControl):
+class SegmentedControl(wx.PyControl):
   def __init__(self,
                 parent,
                 id=wx.ID_ANY,
@@ -351,7 +351,7 @@ class SegmentedControl (wx.PyControl):
   def OnKillFocus(self, event):
     pass
 
-class SegmentedButtonControl (SegmentedControl):
+class SegmentedButtonControl(SegmentedControl):
   def HandleClick(self):
     bevt = wx.CommandEvent(wx.wxEVT_COMMAND_BUTTON_CLICKED, self.GetId())
     bevt.SetEventObject(self)
@@ -360,7 +360,7 @@ class SegmentedButtonControl (SegmentedControl):
     wx.PostEvent(self.GetParent(), bevt)
     self._clicked_segment = None
 
-class SegmentedRadioControl (SegmentedControl):
+class SegmentedRadioControl(SegmentedControl):
   def HandleClick(self):
     index = self._clicked_segment
     assert index >= 0
@@ -385,7 +385,7 @@ class SegmentedRadioControl (SegmentedControl):
     self.values = [False] * len(self.segments)
     self.values[index] = True
 
-class SegmentedToggleControl (SegmentedControl):
+class SegmentedToggleControl(SegmentedControl):
   def HandleClick(self):
     index = self._clicked_segment
     assert index >= 0

@@ -5,7 +5,7 @@ from wxtbx.utils import std_sizer_flags, add_ok_cancel_buttons
 from libtbx.utils import Abort
 import wx
 
-class SimpleInputDialog (wx.Dialog):
+class SimpleInputDialog(wx.Dialog):
   def __init__(self,
                 parent,
                 title,
@@ -45,42 +45,42 @@ class SimpleInputDialog (wx.Dialog):
   def __getattr__(self, name):
     return getattr(self.phil_ctrl, name)
 
-class IntegerDialog (SimpleInputDialog):
+class IntegerDialog(SimpleInputDialog):
   def CreatePhilControl(self, value):
     return intctrl.IntCtrl(
       parent=self,
       value=value)
 
-class FloatDialog (SimpleInputDialog):
+class FloatDialog(SimpleInputDialog):
   def CreatePhilControl(self, value):
     return floatctrl.FloatCtrl(
       parent=self,
       value=value)
 
-class StringDialog (SimpleInputDialog):
+class StringDialog(SimpleInputDialog):
   def CreatePhilControl(self, value):
     return strctrl.StrCtrl(
       parent=self,
       value=value)
 
-class SymopDialog (SimpleInputDialog):
+class SymopDialog(SimpleInputDialog):
   def CreatePhilControl(self, value):
     return symop.SymopCtrl(
       parent=self,
       value=value)
 
-class SymopChoiceDialog (SimpleInputDialog):
+class SymopChoiceDialog(SimpleInputDialog):
   def CreatePhilControl(self, value):
     return symop.SymopChoiceCtrl(
       parent=self)
 
-class IntegersDialog (SimpleInputDialog):
+class IntegersDialog(SimpleInputDialog):
   def CreatePhilControl(self, value):
     return ints.IntsCtrl(
       parent=self,
       value=value)
 
-class ChoiceDialog (SimpleInputDialog):
+class ChoiceDialog(SimpleInputDialog):
   def CreatePhilControl(self, value=None):
     return choice.ChoiceCtrl(
       parent=self)
@@ -119,7 +119,7 @@ def get_miller_index(**kwds):
   return result
 
 RT_DIALOG_ENABLE_FRACTIONAL = 1
-class RTDialog (wx.Dialog):
+class RTDialog(wx.Dialog):
   def __init__(self, *args, **kwds):
     kwds = dict(kwds)
     style = kwds.get('style', 0)
@@ -199,7 +199,7 @@ def get_rt_matrix(parent=None, enable_fractional=False):
     raise Abort()
   return rt
 
-class HTTPProxyDialog (wx.Dialog):
+class HTTPProxyDialog(wx.Dialog):
   def __init__(self, *args, **kwds):
     wx.Dialog.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)

@@ -6,7 +6,7 @@ import wx
 from libtbx.utils import Sorry
 import sys
 
-class SitesList (wx.ListCtrl,
+class SitesList(wx.ListCtrl,
                   wx.lib.mixins.listctrl.CheckListCtrlMixin):
   """
   ListCtrl for displaying and editing heavy-atom sites.  Only the occupancy
@@ -121,7 +121,7 @@ class SitesList (wx.ListCtrl,
     if (file_name != ""):
       self.LoadFile(file_name)
 
-class OccupancyDialog (wx.Dialog):
+class OccupancyDialog(wx.Dialog):
   def __init__(self, *args, **kwds):
     wx.Dialog.__init__(self, *args, **kwds)
     style = self.GetWindowStyle()
@@ -178,7 +178,7 @@ class OccupancyDialog (wx.Dialog):
   def OnCancel(self, event):
     self.EndModal(wx.ID_CANCEL)
 
-class sites_panel_mixin (object):
+class sites_panel_mixin(object):
   """
   Mixin class for panel objects which contain a SitesList and buttons to
   trigger editing functions.  Should be subclassed along with wx.Panel,
@@ -218,7 +218,7 @@ class sites_panel_mixin (object):
       if (symmetry is not None):
         self.sites_list.SetSymmetry(symmetry)
 
-class sites_panel (sites_panel_mixin, wx.Panel):
+class sites_panel(sites_panel_mixin, wx.Panel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)

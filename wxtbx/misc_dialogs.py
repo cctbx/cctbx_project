@@ -9,7 +9,7 @@ import wx
 from libtbx.utils import Abort
 import os.path
 
-class ChoiceDialog (wx.Dialog):
+class ChoiceDialog(wx.Dialog):
   """
   Dialog containing a single wx.Choice control.  Optionally includes a button
   to flag the selected action as the default for future choices.

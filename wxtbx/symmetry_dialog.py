@@ -6,7 +6,7 @@ import wxtbx.icons
 from libtbx.utils import Sorry, Abort
 import wx
 
-class SymmetryDialog (wx.Dialog):
+class SymmetryDialog(wx.Dialog):
   def __init__(self, *args, **kwds):
     caption = kwds.get("caption",
       "Missing or incomplete symmetry information.  Please enter a space "+
@@ -107,7 +107,7 @@ class SymmetryDialog (wx.Dialog):
   def OnCancel(self, event):
     self.EndModal(wx.ID_CANCEL)
 
-class SymmetryChoiceDialog (wx.Dialog):
+class SymmetryChoiceDialog(wx.Dialog):
   def __init__(self, *args, **kwds):
     default_caption = "The input data specify multiple unique symmetry "+ \
       "and/or unit cell parameters.  Please select the consensus settings "+\

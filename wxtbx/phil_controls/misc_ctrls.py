@@ -10,7 +10,7 @@ WXTBX_ELEMENTS_CTRL_ALLOW_CLUSTERS = 2
 
 clusters = set(['TX', 'XX'])
 
-class ElementCtrl (strctrl.StrCtrl):
+class ElementCtrl(strctrl.StrCtrl):
   """"
   Control for entering a single element symbol or scattering type, using
   phil str type
@@ -24,7 +24,7 @@ class ElementCtrl (strctrl.StrCtrl):
   def CreateValidator(self):
     return SingleElementValidator()
 
-class ElementsCtrl (strings.StringsCtrl):
+class ElementsCtrl(strings.StringsCtrl):
   """
   Control for entering a list of elements (comma- or space-separated) or
   scattering types, using phil strings type
@@ -38,7 +38,7 @@ class ElementsCtrl (strings.StringsCtrl):
   def CreateValidator(self):
     return ElementsValidator()
 
-class ElementsValidator (strings.StringsValidator):
+class ElementsValidator(strings.StringsValidator):
   single_element = False
   def CheckFormat(self, value):
     from cctbx.eltbx import chemical_elements
@@ -61,11 +61,11 @@ class ElementsValidator (strings.StringsValidator):
     else :
       return elem_strings
 
-class SingleElementValidator (ElementsValidator):
+class SingleElementValidator(ElementsValidator):
   single_element = True
 
 # TODO pop-up help
-class AtomSelectionCtrl (strctrl.StrCtrl):
+class AtomSelectionCtrl(strctrl.StrCtrl):
   """Control for editing an atom selection (phil atom_selection type)"""
   def __init__(self, *args, **kwds):
     size = kwds.get('size', None)
@@ -76,7 +76,7 @@ class AtomSelectionCtrl (strctrl.StrCtrl):
   def CreateValidator(self):
     return AtomSelectionValidator()
 
-class AtomSelectionValidator (strctrl.StrValidator):
+class AtomSelectionValidator(strctrl.StrValidator):
   def CheckFormat(self, value):
     # FIXME this breaks on mmtbx-supported selections!
     #import iotbx.pdb.hierarchy

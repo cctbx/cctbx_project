@@ -10,7 +10,7 @@ import libtbx.phil
 import wx
 import sys
 
-class StrCtrl (ValidatedTextCtrl):
+class StrCtrl(ValidatedTextCtrl):
   def __init__(self, *args, **kwds):
     kwds = dict(kwds)
     if (kwds.get("size", wx.DefaultSize) == wx.DefaultSize):
@@ -71,7 +71,7 @@ class StrCtrl (ValidatedTextCtrl):
   def GetMaxLength(self):
     return self._max_len
 
-class StrValidator (TextCtrlValidator):
+class StrValidator(TextCtrlValidator):
   def CheckFormat(self, value):
     window = self.GetWindow()
     if ("$" in value):

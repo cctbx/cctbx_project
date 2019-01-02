@@ -5,7 +5,7 @@ import wx
 from libtbx.utils import Sorry
 import re
 
-class PhilTreeCtrl (customtreectrl.CustomTreeCtrl):
+class PhilTreeCtrl(customtreectrl.CustomTreeCtrl):
   def __init__(self, *args, **kwds):
     kwds = dict(kwds)
     kwds['agwStyle'] = wx.TR_HAS_VARIABLE_ROW_HEIGHT|wx.TR_HAS_BUTTONS| \
@@ -142,7 +142,7 @@ class PhilTreeCtrl (customtreectrl.CustomTreeCtrl):
 valid_text = re.compile("^[a-zA-Z]{1,}[a-zA-z0-9_]*$")
 valid_text_partial = re.compile("^[a-zA-Z0-9_]*$")
 
-class PhilTreeFrame (wx.Frame):
+class PhilTreeFrame(wx.Frame):
   def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
     self.panel = wx.Panel(self)

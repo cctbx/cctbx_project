@@ -10,7 +10,7 @@ from libtbx import adopt_init_args
 from math import radians
 import sys
 
-class wx_renderer (mmtbx.polygon.output.renderer):
+class wx_renderer(mmtbx.polygon.output.renderer):
   def draw_bin(self, out, start, end, angle, color):
     gc = out
     path = gc.CreatePath()
@@ -101,7 +101,7 @@ class wx_renderer (mmtbx.polygon.output.renderer):
       text_y = y - (h/2)
     return (text_x, text_y)
 
-class PolygonPanel (wx.Panel):
+class PolygonPanel(wx.Panel):
   def __init__(self, parent, renderer):
     wx.Panel.__init__(self, parent, -1)
     self.renderer = renderer
@@ -167,7 +167,7 @@ class PolygonPanel (wx.Panel):
   def reset_layout(self):
     pass
 
-class PolygonFrame (wx.Frame):
+class PolygonFrame(wx.Frame):
   def __init__(self, parent, histogram_data, structure_stats):
     wx.Frame.__init__(self, parent, -1, "POLYGON", size=(1024,720))
     self.SetMinSize((800,500))
@@ -328,7 +328,7 @@ in each bin to the average number per bin:""")
         xlabel=mmtbx.polygon.output.stat_names[keys[choice]])
       frame.Show()
 
-class ColorBox (wx.lib.colourselect.ColourSelect):
+class ColorBox(wx.lib.colourselect.ColourSelect):
   def OnClick(self, event):
     pass
 

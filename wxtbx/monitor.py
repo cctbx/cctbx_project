@@ -5,7 +5,7 @@ from wxtbx import metallicbutton
 from wx.lib.agw import flatnotebook as fnb
 import wx
 
-class StatusPanel (wx.Panel):
+class StatusPanel(wx.Panel):
   def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.VERTICAL)
@@ -75,7 +75,7 @@ class StatusPanel (wx.Panel):
           self.status.SetForegroundColour((0,0,0))
       self.sizer.Layout()
 
-class MonitorWindow (wx.MiniFrame):
+class MonitorWindow(wx.MiniFrame):
   def __init__(self, *args, **kwds):
     wx.MiniFrame.__init__(self, *args, **kwds)
     #self.panel = wx.Panel(self)

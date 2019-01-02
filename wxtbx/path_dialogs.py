@@ -7,7 +7,7 @@ from libtbx.utils import Abort, Sorry, to_unicode
 import libtbx.path
 import os.path
 
-class manager (object):
+class manager(object):
   """
   Because wxPython is inconsistent (if not outright buggy on some platforms)
   in its selection of the starting directory for the file/folder dialogs,
@@ -94,7 +94,7 @@ class manager (object):
       return new_path
     return None
 
-class DirectoryCleanupDialog (wx.Dialog):
+class DirectoryCleanupDialog(wx.Dialog):
   def __init__(self, *args, **kwds):
     wx.Dialog.__init__(self, *args, **kwds)
     outer_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -142,7 +142,7 @@ class DirectoryCleanupDialog (wx.Dialog):
   def GetChoices(self):
     return self.remove_ctrl.GetPhilValue()
 
-class ConfirmCleanupDialog (wx.Dialog):
+class ConfirmCleanupDialog(wx.Dialog):
   def __init__(self, parent, cleanup_obj):
     wx.Dialog.__init__(self, parent=parent, title="Confirm delete")
     outer_sizer = wx.BoxSizer(wx.VERTICAL)

@@ -94,7 +94,7 @@ def has_aniso_atoms(pdb_object):
         return True
   return False
 
-class PDBTree (customtreectrl.CustomTreeCtrl):
+class PDBTree(customtreectrl.CustomTreeCtrl):
   max_states = 5 # maximum number of reverts possible
   def __init__(self, *args, **kwds):
     kwds = dict(kwds)
@@ -1702,7 +1702,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl):
 
 ########################################################################
 # AUXILARY GUI CLASSES
-class PDBTreeDropTarget (wx.PyDropTarget):
+class PDBTreeDropTarget(wx.PyDropTarget):
   def __init__(self, tree):
     wx.PyDropTarget.__init__(self)
     self.tree = tree
@@ -1728,7 +1728,7 @@ class PDBTreeDropTarget (wx.PyDropTarget):
 ADD_RESIDUES_START = 0
 ADD_RESIDUES_END = 1
 ADD_RESIDUES_AFTER = 2
-class AddResiduesDialog (wx.Dialog):
+class AddResiduesDialog(wx.Dialog):
   def __init__(self, *args, **kwds):
     super(AddResiduesDialog, self).__init__(*args, **kwds)
     style = self.GetWindowStyle()
@@ -1790,7 +1790,7 @@ class AddResiduesDialog (wx.Dialog):
   def GetResID(self):
     return self._resid_txt.GetPhilValue()
 
-class SelectChainDialog (wx.Dialog):
+class SelectChainDialog(wx.Dialog):
   def __init__(self, parent, title, message, chains, allow_all_chains=False,
       show_residue_range=False, exclude_chain=None):
     self._chains = []
@@ -1870,7 +1870,7 @@ class SelectChainDialog (wx.Dialog):
     return self._resseq_start.GetPhilValue(), self._resseq_end.GetPhilValue()
 
 ########################################################################
-class PDBTreeFrame (wx.Frame):
+class PDBTreeFrame(wx.Frame):
   def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
     self.statusbar = self.CreateStatusBar()

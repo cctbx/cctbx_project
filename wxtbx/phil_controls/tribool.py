@@ -9,7 +9,7 @@ WXTBX_TRIBOOL_YES_NO = 1
 WXTBX_TRIBOOL_DISABLE_AUTO = 2
 WXTBX_TRIBOOL_AUTO_IS_NONE = 4
 
-class TriBoolCtrl (wx.Choice, phil_controls.PhilCtrl):
+class TriBoolCtrl(wx.Choice, phil_controls.PhilCtrl):
   """
   Three-way boolean control: returns True, False, or Auto (optionally None).
   Can be two-way if WXTBX_TRIBOOL_DISABLE_AUTO is specified.

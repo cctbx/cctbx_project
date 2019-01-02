@@ -27,7 +27,7 @@ JOB_RESUME_ID = wx.NewId()
 DOWNLOAD_COMPLETE_ID = wx.NewId()
 DOWNLOAD_INCREMENT_ID = wx.NewId()
 
-class SubprocessEvent (wx.PyEvent):
+class SubprocessEvent(wx.PyEvent):
   event_id = None
 
   def __init__(self, data, **kwds):
@@ -36,34 +36,34 @@ class SubprocessEvent (wx.PyEvent):
     wx.PyEvent.__init__(self)
     self.SetEventType(self.event_id)
 
-class JobStartEvent (SubprocessEvent):
+class JobStartEvent(SubprocessEvent):
   event_id = JOB_START_ID
 
-class LogEvent (SubprocessEvent):
+class LogEvent(SubprocessEvent):
   event_id = LOG_UPDATE_ID
 
-class JobExceptionEvent (SubprocessEvent):
+class JobExceptionEvent(SubprocessEvent):
   event_id = JOB_EXCEPTION_ID
 
-class JobKilledEvent (SubprocessEvent):
+class JobKilledEvent(SubprocessEvent):
   event_id = JOB_KILLED_ID
 
-class JobCompleteEvent (SubprocessEvent):
+class JobCompleteEvent(SubprocessEvent):
   event_id = JOB_COMPLETE_ID
 
-class CallbackEvent (SubprocessEvent):
+class CallbackEvent(SubprocessEvent):
   event_id = CALLBACK_ID
 
-class JobPauseEvent (SubprocessEvent):
+class JobPauseEvent(SubprocessEvent):
   event_id = JOB_PAUSE_ID
 
-class JobResumeEvent (SubprocessEvent):
+class JobResumeEvent(SubprocessEvent):
   event_id = JOB_RESUME_ID
 
-class DownloadCompleteEvent (SubprocessEvent):
+class DownloadCompleteEvent(SubprocessEvent):
   event_id = DOWNLOAD_COMPLETE_ID
 
-class DownloadIncrementEvent (SubprocessEvent):
+class DownloadIncrementEvent(SubprocessEvent):
   event_id = DOWNLOAD_INCREMENT_ID
 
 def setup_stdout_logging_event(window, OnPrint):
@@ -104,7 +104,7 @@ def setup_process_gui_events(
     assert hasattr(OnResume, "__call__")
     window.Connect(-1, -1, JOB_RESUME_ID, OnResume)
 
-class event_agent (object):
+class event_agent(object):
   def __init__(self, window, **kwds):
     self.window = window
     self._kwds = dict(kwds)
@@ -154,14 +154,14 @@ class event_agent (object):
     wx.PostEvent(self.window, event)
 
 # simplified for when the window is really the app object
-class background_event_agent (event_agent):
+class background_event_agent(event_agent):
   def callback_stdout(self, data):
     pass
 
   def callback_other(self, data):
     pass
 
-class detached_process (runtime_utils.detached_process_client):
+class detached_process(runtime_utils.detached_process_client):
   def __init__(self, params, proxy):
     runtime_utils.detached_process_client.__init__(self, params)
     self.proxy = proxy
@@ -194,7 +194,7 @@ class detached_process (runtime_utils.detached_process_client):
     pass
 
 # this just adds event posting callbacks to the original class
-class process_with_gui_callbacks (thread_utils.process_with_callbacks):
+class process_with_gui_callbacks(thread_utils.process_with_callbacks):
   def __init__(self, proxy, target, args=(), kwargs={}, buffer_stdout=True):
     thread_utils.process_with_callbacks.__init__(self,
       target = target,
@@ -215,7 +215,7 @@ class process_with_gui_callbacks (thread_utils.process_with_callbacks):
   def purge_files(self):
     pass
 
-class simple_gui_process (process_with_gui_callbacks):
+class simple_gui_process(process_with_gui_callbacks):
   def __init__(self, window, target, args=(), kwargs={}):
     # XXX fix for phenix gui - is this necessary?
     proxy = event_agent(window, project_id=None, job_id=None)
@@ -226,7 +226,7 @@ class simple_gui_process (process_with_gui_callbacks):
       kwargs=kwargs,
       buffer_stdout=True)
 
-class ThreadProgressDialog (pyprogress.PyProgress):
+class ThreadProgressDialog(pyprogress.PyProgress):
   def __init__(self, parent, title, message):
     pyprogress.PyProgress.__init__(self, parent, -1, title, message,
       agwStyle=wx.PD_ELAPSED_TIME|wx.PD_APP_MODAL)
@@ -236,7 +236,7 @@ class ThreadProgressDialog (pyprogress.PyProgress):
     self.SetFirstGradientColour(wx.Colour(235,235,235))
     self.SetSecondGradientColour(wx.Colour(120, 200, 255))
 
-class download_file_basic (object):
+class download_file_basic(object):
   def __init__(self, window, dl_func, args):
     assert isinstance(window, wx.EvtHandler)
     assert hasattr(dl_func, "__call__")
@@ -265,7 +265,7 @@ class download_file_basic (object):
         caption="Download error", style=wx.ICON_ERROR)
     self.t.join()
 
-class DownloadProgressDialog (wx.ProgressDialog, download_progress):
+class DownloadProgressDialog(wx.ProgressDialog, download_progress):
   """
   Dialog for displaying download progress.  The actual download (not
   implemented here) should be run in a separate thread, with a reasonable
@@ -308,7 +308,7 @@ class DownloadProgressDialog (wx.ProgressDialog, download_progress):
     evt = DownloadCompleteEvent(data=None)
     wx.PostEvent(self, evt)
 
-class BackgroundDownloadDialog (pyprogress.PyProgress, download_progress):
+class BackgroundDownloadDialog(pyprogress.PyProgress, download_progress):
   """
   Placeholder for downloads which block the child thread; will pulse
   continuously but not show changing status.
@@ -358,7 +358,7 @@ def run_function_as_thread_in_dialog(parent, thread_function, title, message):
   return t.return_value
 
 # TODO
-class ProcessDialog (wx.Dialog):
+class ProcessDialog(wx.Dialog):
   def __init__(self, parent, message, caption, callback=None):
     wx.Dialog.__init__(self,
       parent=parent,

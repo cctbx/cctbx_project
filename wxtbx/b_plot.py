@@ -33,7 +33,7 @@ b_plot
 }
 """)
 
-class residue_info (object):
+class residue_info(object):
   def __init__(self,
                 chain_id,
                 resseq,
@@ -43,7 +43,7 @@ class residue_info (object):
                 avg_b):
     adopt_init_args(self, locals())
 
-class analyze (object):
+class analyze(object):
   def __init__(self, pdb_hierarchy, xray_structure, params, out=sys.stdout):
     from cctbx import adptbx
     from scitbx.array_family import flex
@@ -154,7 +154,7 @@ def show_plot_frame(result, parent=None):
   frame.set_plot_data(plots)
   frame.Show()
 
-class BPlotFrame (plots.plot_frame):
+class BPlotFrame(plots.plot_frame):
   def draw_top_panel(self):
     panel = wx.Panel(self)
     psizer = wx.BoxSizer(wx.VERTICAL)
@@ -219,7 +219,7 @@ def extract_labels(labels):
         show_labels.append(s)
   return (tickmarks, show_labels)
 
-class b_plot_panel (plots.plot_container):
+class b_plot_panel(plots.plot_container):
   def set_limits(self, ymin, ymax):
     self._ymin = ymin
     self._ymax = ymax

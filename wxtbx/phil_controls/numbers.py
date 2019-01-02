@@ -8,7 +8,7 @@ from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 from libtbx import Auto
 import re
 
-class NumbersCtrlBase (ValidatedTextCtrl):
+class NumbersCtrlBase(ValidatedTextCtrl):
   def __init__(self, *args, **kwds):
     super(NumbersCtrlBase, self).__init__(*args, **kwds)
     self.size = None
@@ -53,7 +53,7 @@ class NumbersCtrlBase (ValidatedTextCtrl):
     assert (max is None) or (self.CheckType(max))
     self.value_max = max
 
-class NumbersValidator (TextCtrlValidator):
+class NumbersValidator(TextCtrlValidator):
   def ConvertValue(self, value):
     raise NotImplementedError()
 
