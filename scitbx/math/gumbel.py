@@ -33,7 +33,7 @@ def log(n):
   return math.log(max(1.e-30,min(1.e+30,n)))
 
 def get_an_bn(n):
-  bn=(2*log(n)-log(log(n))-log(4.*3.14159))**0.5
+  bn=max(0.001,2*log(n)-log(log(n))-log(4.*3.14159))**0.5
   an=1/bn
   return an,bn
 
