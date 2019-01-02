@@ -47,7 +47,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
   def motion_callback(self, points):
     wx.PostEvent(self, wx_viewer.ViewerUpdateEvent(points))
 
-  def OnUpdate (self, event) :
+  def OnUpdate(self, event):
     for i in xrange(len(event.data)):
       self.points[i] = event.data[i]
     self.labels_display_list = None
