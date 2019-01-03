@@ -103,6 +103,12 @@ ANISOUA0000  C4    U   367    20015  14160  16442  -1873  -2801  -1645  A16S C
   assert cntr == 4, cntr
 
 if (__name__ == "__main__"):
-  exercise_01()
-  exercise_02()
+  import mmtbx.monomer_library.server
+  try:
+    mon_lib_srv = mmtbx.monomer_library.server.server()
+  except mmtbx.monomer_library.server.MonomerLibraryServerError:
+    print "Can not initialize monomer_library, skipping tst_pdb_as_cif."
+  else:
+    exercise_01()
+    exercise_02()
   print "OK"

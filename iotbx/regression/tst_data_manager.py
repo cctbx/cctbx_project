@@ -110,6 +110,12 @@ data_manager {
 
 # -----------------------------------------------------------------------------
 def test_model_datatype():
+  import mmtbx.monomer_library.server
+  try:
+    mon_lib_srv = mmtbx.monomer_library.server.server()
+  except mmtbx.monomer_library.server.MonomerLibraryServerError:
+    print("Can not initialize monomer_library, skipping test_model_datatype.")
+    return
 
   # 1yjp
   model_str = '''
