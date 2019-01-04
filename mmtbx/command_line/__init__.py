@@ -499,13 +499,14 @@ class load_model_and_data (object) :
             source_info = None,
             lines=h.select(known_sel).as_pdb_string())
 
+    model_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     pdb_interp_params = getattr(params, "pdb_interpretation", None)
     if pdb_interp_params is None:
       pdb_interp_params = iotbx.phil.parse(
           input_string=mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str,
           process_includes=True).extract()
       pdb_interp_params = pdb_interp_params.pdb_interpretation
-
+    model_params.pdb_interpretation = pdb_interp_params
     stop_for_unknowns = getattr(pdb_interp_params, "stop_for_unknowns",False) or remove_unknown_scatterers
     if not process_pdb_file:
       stop_for_unknowns = True and not remove_unknown_scatterers
@@ -513,7 +514,7 @@ class load_model_and_data (object) :
         model_input = self.pdb_inp,
         crystal_symmetry= self.crystal_symmetry,
         restraint_objects = self.cif_objects,
-        pdb_interpretation_params = pdb_interp_params,
+        pdb_interpretation_params = model_params,
         process_input = False,
         stop_for_unknowns=stop_for_unknowns,
         log=self.log)

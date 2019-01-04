@@ -1,8 +1,6 @@
 from __future__ import division
 import mmtbx.model
 import libtbx.load_env
-from mmtbx import monomer_library
-import mmtbx.monomer_library.pdb_interpretation
 import iotbx.pdb
 import time
 from libtbx.utils import null_out
@@ -117,8 +115,8 @@ def run():
   for pdb_str in [pdb_str_1, pdb_str_2]:
     for use_neutron_distances in [True, False]:
       print "use_neutron_distances:", use_neutron_distances, "*"*30
-      params = monomer_library.pdb_interpretation.master_params.extract()
-      params.use_neutron_distances = use_neutron_distances
+      params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+      params.pdb_interpretation.use_neutron_distances = use_neutron_distances
       inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
       m = mmtbx.model.manager(
         model_input               = inp,

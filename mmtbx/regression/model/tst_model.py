@@ -3,8 +3,6 @@ from cctbx.array_family import flex
 import os
 import mmtbx.model
 import libtbx.load_env
-from mmtbx import monomer_library
-import mmtbx.monomer_library.pdb_interpretation
 from cStringIO import StringIO
 from libtbx.utils import format_cpu_times, null_out
 from libtbx.test_utils import approx_equal, show_diff
@@ -976,9 +974,9 @@ def exercise():
 def exercise_2():
   pdb_file = libtbx.env.find_in_repositories(
                    relative_path="phenix_regression/pdb/adp_out_stat.pdb", test=os.path.isfile)
-  params = monomer_library.pdb_interpretation.master_params.extract()
-  params.nonbonded_weight = 16
-  params.clash_guard.nonbonded_distance_threshold = None # disable clash_guard
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.nonbonded_weight = 16
+  params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None # disable clash_guard
   mol = mmtbx.model.manager(
       model_input = iotbx.pdb.input(file_name=pdb_file),
       pdb_interpretation_params = params,
@@ -991,8 +989,8 @@ def exercise_3():
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/arg_h_hohh1_sh.pdb",
     test=os.path.isfile)
-  params = monomer_library.pdb_interpretation.master_params.extract()
-  params.nonbonded_weight = 16
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.nonbonded_weight = 16
   mol = mmtbx.model.manager(
     model_input               = iotbx.pdb.input(file_name=pdb_file),
     pdb_interpretation_params = params,

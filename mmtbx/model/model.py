@@ -388,6 +388,8 @@ class manager(object):
       full_params = manager.get_default_pdb_interpretation_params()
       if getattr(params, "sort_atoms", None) is not None:
         full_params.pdb_interpretation = params
+        assert 0, "This is not supported anymore. Pass whatever you got" + \
+            " from get_default_pdb_interpretation_params()"
       if hasattr(params, "pdb_interpretation"):
         full_params.pdb_interpretation = params.pdb_interpretation
       if hasattr(params, "geometry_restraints"):
