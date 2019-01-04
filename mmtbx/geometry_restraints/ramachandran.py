@@ -58,14 +58,17 @@ master_phil = iotbx.phil.parse("""
   restrain_rama_outliers = True
     .type = bool
     .help = Apply restraints to Ramachandran outliers
+    .style = hidden
   restrain_rama_allowed = True
     .type = bool
     .help = Apply restraints to residues in allowed region on Ramachandran plot
+    .style = hidden
   restrain_allowed_outliers_with_emsley = False
     .type = bool
     .help = In case of restrain_rama_outliers=True and/or restrain_rama_allowed=True \
       still restrain these residues with emsley. Make sense only in case of \
       using oldfield potential.
+    .style = hidden
 """)
 
 def is_proxy_present(proxies, n_seq, proxy):
