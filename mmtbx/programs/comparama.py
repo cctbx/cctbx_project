@@ -211,4 +211,5 @@ def add_arrows_on_plot(
         arrowstyle=style,
         color = color,
         linewidth=0.5,
+        zorder=10,
         ))
