@@ -14,7 +14,8 @@ from __future__ import absolute_import, division, print_function
 import os
 
 from dxtbx.format.FormatCBF import FormatCBF
-from dxtbx.model import ParallaxCorrectedPxMmStrategy
+from dxtbx.format.FormatCBFMiniPilatusHelpers import get_pilatus_timestamp
+from dxtbx.model import ParallaxCorrectedPxMmStrategy, SimplePxMmStrategy
 
 if 'DXTBX_OVERLOAD_SCALE' in os.environ:
   dxtbx_overload_scale = float(os.environ['DXTBX_OVERLOAD_SCALE'])
@@ -122,13 +123,20 @@ class FormatCBFMini(FormatCBF):
       thickness = float(
         self._cif_header_dictionary['Silicon'].split()[2]) * 1000.0
       material = 'Si'
+      sensor = 'PAD'
     elif 'CdTe' in self._cif_header_dictionary:
       thickness = float(
         self._cif_header_dictionary['CdTe'].split()[2]) * 1000.0
       material = 'CdTe'
+      sensor = 'PAD'
+    elif 'CCD' in self._cif_header_dictionary:
+      thickness = 0
+      material = None
+      sensor = 'CCD'
     else:
-      thickness = 0.450
-      material = 'Si'
+      thickness = 0
+      material = None
+      sensor = None
 
     nx = int(
         self._cif_header_dictionary['X-Binary-Size-Fastest-Dimension'])
@@ -139,23 +147,28 @@ class FormatCBFMini(FormatCBF):
         self._cif_header_dictionary['Count_cutoff'].split()[0])
     underload = -1
 
-    # take into consideration here the thickness of the sensor also the
-    # wavelength of the radiation (which we have in the same file...)
-    from cctbx.eltbx import attenuation_coefficient
-    table = attenuation_coefficient.get_table(material)
-    mu = table.mu_at_angstrom(wavelength) / 10.0
-    t0 = thickness
+    if material is not None:
+      # take into consideration here the thickness of the sensor also the
+      # wavelength of the radiation (which we have in the same file...)
+      from cctbx.eltbx import attenuation_coefficient
+      table = attenuation_coefficient.get_table(material)
+      mu = table.mu_at_angstrom(wavelength) / 10.0
+      t0 = thickness
+      px_mm = ParallaxCorrectedPxMmStrategy(mu, t0)
+    else:
+      px_mm = SimplePxMmStrategy()
 
     detector = self._detector_factory.simple(
-        'PAD', distance * 1000.0, (beam_x * pixel_x * 1000.0,
+        sensor, distance * 1000.0, (beam_x * pixel_x * 1000.0,
                                    beam_y * pixel_y * 1000.0), '+x', '-y',
         (1000 * pixel_x, 1000 * pixel_y),
         (nx, ny), (underload, overload), [],
-        ParallaxCorrectedPxMmStrategy(mu, t0))
+        px_mm=px_mm)
 
-    detector[0].set_thickness(thickness)
-    detector[0].set_material(material)
-    detector[0].set_mu(mu)
+    if material is not None:
+      detector[0].set_thickness(thickness)
+      detector[0].set_material(material)
+      detector[0].set_mu(mu)
 
     return detector
 
@@ -194,6 +207,26 @@ class FormatCBFMini(FormatCBF):
       pass
 
     return beam
+
+  def _scan(self):
+    format = self._scan_factory.format('CBF')
+
+    exposure_time = float(
+        self._cif_header_dictionary['Exposure_period'].split()[0])
+    osc_start = float(
+        self._cif_header_dictionary['Start_angle'].split()[0])
+    osc_range = float(
+        self._cif_header_dictionary['Angle_increment'].split()[0])
+
+    if "timestamp" in self._cif_header_dictionary:
+      timestamp = get_pilatus_timestamp(
+      self._cif_header_dictionary['timestamp'])
+    else:
+      timestamp = 0.0
+
+    return self._scan_factory.single(
+        self._image_file, format, exposure_time,
+        osc_start, osc_range, timestamp)
 
   def read_cbf_image(self, cbf_image):
     from cbflib_adaptbx import uncompress
@@ -293,7 +326,15 @@ class FormatCBFMini(FormatCBF):
     pixel_y_microns = pixel_xy[1]*1000
 
     # make sure we get the right units
-    thickness_meters = max(0.000001,panel.get_thickness()/1000.0)
+    thickness_meters = panel.get_thickness()/1000.0
+
+    material = panel.get_material()
+    if material == 'Si':
+      sensor = 'Silicon'
+    elif material == 'CdTe':
+      sensor = 'CdTe'
+    elif panel.get_type() == 'SENSOR_CCD':
+      sensor = 'CCD'
 
     # maybe someday more people will do this
     flux = beam.get_flux()
@@ -313,7 +354,8 @@ class FormatCBFMini(FormatCBF):
     exposure_time = exposure_period  # simulation is a perfect detector
 
     tau = 0 # assume simulation is a perfect detector with no pile-up error
-    count_cutoff = detector[0].get_trusted_range()[1]
+    trusted_range = detector[0].get_trusted_range()
+    count_cutoff = trusted_range[1]
 
     wavelength = beam.get_wavelength()  # get the wavelength in the conventional way
     energy = 12398.4245/wavelength
@@ -331,8 +373,8 @@ class FormatCBFMini(FormatCBF):
     cbf.add_row([header_convention, """
 # Detector: %(det_type)s, S/N 60-0000
 # 1972-01-01T00:00:00.000
-# Pixel_size %(pixel_x_microns).0fe-6 m x %(pixel_x_microns).0fe-6 m
-# Silicon sensor, thickness %(thickness_meters)f m
+# Pixel_size %(pixel_x_microns)ge-6 m x %(pixel_x_microns)ge-6 m
+# %(sensor)s sensor, thickness %(thickness_meters)f m
 # Exposure_time %(exposure_time).7f s
 # Exposure_period %(exposure_period).7f s
 # Tau = %(tau)f s
@@ -344,9 +386,9 @@ class FormatCBFMini(FormatCBF):
 # Flat_field: (nil)
 # Trim_file: (nil)
 # Image_path: /ramdisk/
-# Wavelength %(wavelength).5f A
-# Detector_distance %(distance_meters).5f m
-# Beam_xy (%(ORGX).2f, %(ORGY).2f) pixels
+# Wavelength %(wavelength)g A
+# Detector_distance %(distance_meters)g m
+# Beam_xy (%(ORGX)g, %(ORGY)g) pixels
 # Flux %(flux)g
 # Filter_transmission %(transmission).4f
 # Start_angle %(phi_start).4f deg.
