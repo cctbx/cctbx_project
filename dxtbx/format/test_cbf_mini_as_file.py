@@ -11,8 +11,11 @@ from dials.util.options import tolerance_phil_scope
 
 
 @pytest.mark.parametrize(
-  'image_file', ['image_examples/RigakuA200/XV10001.img',
-                 'image_examples/DLS_I02/X4_wide_M1S4_1_0001.cbf'])
+  'image_file', [
+    'image_examples/ALS_831/q315r_lyso_001.img',
+    #'image_examples/RigakuA200/XV10001.img',
+    'image_examples/DLS_I02/X4_wide_M1S4_1_0001.cbf'
+  ])
 def test_cbf_writer(image_file, dials_regression, run_in_tmpdir):
   filename = os.path.join(dials_regression, image_file)
   datablock = DataBlockFactory.from_filenames([filename])[0]
