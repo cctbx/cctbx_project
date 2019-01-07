@@ -4,7 +4,7 @@ import iotbx.pdb
 import mmtbx.model
 from mmtbx.validation.ramalyze import ramalyze
 from libtbx.utils import null_out
-from mmtbx.programs.compare_rama import add_arrows_on_plot
+from mmtbx.programs.comparama import add_arrows_on_plot
 import hashlib
 
 pdb_str = """\

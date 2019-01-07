@@ -3,7 +3,7 @@ from __future__ import division, print_function
 
 from libtbx.program_template import ProgramTemplate
 
-from mmtbx.validation import compare_rama
+from mmtbx.validation import comparama
 from mmtbx.validation.ramalyze import res_type_labels
 
 import numpy as np
@@ -15,18 +15,18 @@ from libtbx.test_utils import approx_equal
 class Program(ProgramTemplate):
 
   description = '''
-phenix.compare_rama: tool for compare Ramachandran plots, e.g. before-after
+phenix.comparama: tool for compare Ramachandran plots, e.g. before-after
   refinement.
 
 Usage examples:
-  phenix.compare_rama model1.pdb model2.pdb
-  phenix.compare_rama model1.cif model2.cif
+  phenix.comparama model1.pdb model2.pdb
+  phenix.comparama model1.cif model2.cif
   '''
 
   datatypes = ['model', 'phil']
 
   master_phil_str = """\
-    include scope mmtbx.validation.compare_rama.master_phil_str
+    include scope mmtbx.validation.comparama.master_phil_str
     output
     {
       individual_residues = True
@@ -62,10 +62,10 @@ Usage examples:
     # this must be mmtbx.model.manager?
     model_1, model_2 = self._get_models()
 
-    self.rama_comp = compare_rama.rcompare(
+    self.rama_comp = comparama.rcompare(
         model1 = model_1,
         model2 = model_2,
-        params = self.params.compare_rama,
+        params = self.params.comparama,
         log = self.logger)
 
     # outputting results
@@ -140,7 +140,7 @@ Usage examples:
 
 def breake_arrow_if_needed(abeg, aend, plot_ranges):
   eps = 1e-3
-  tp = compare_rama.two_rama_points(abeg, aend)
+  tp = comparama.two_rama_points(abeg, aend)
   actual_len = tp.length(abeg, aend)
   min_len = tp.min_length()
   best_xy_multipliers = tp.get_xy_multipliers()
@@ -164,13 +164,13 @@ def breake_arrow_if_needed(abeg, aend, plot_ranges):
     if best_xy_multipliers[0] != 0:
       # x wrapping, calculating y
       y = a*(plot_ranges[0][ix]) + b
-      y = compare_rama.get_distance(y, 0)
+      y = comparama.get_distance(y, 0)
       result[0][1] = (plot_ranges[0][ix],   y)
       result[1][0] = (plot_ranges[0][1-ix], y)
     else:
       # y wrapping, calculating x
       x = (plot_ranges[1][iy] - b) / a
-      x = compare_rama.get_distance(x, 0)
+      x = comparama.get_distance(x, 0)
       result[0][1] = (x, plot_ranges[1][iy])
       result[1][0] = (x, plot_ranges[1][1-iy])
   else:

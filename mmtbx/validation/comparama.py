@@ -7,7 +7,7 @@ from mmtbx.validation.ramalyze import ramalyze
 import math
 
 master_phil_str = '''
-compare_rama {
+comparama {
   nproc = 1
     .type = int
 }
@@ -76,7 +76,7 @@ class rcompare(object):
   def __init__(self, model1, model2, params=None, log=null_out()):
     self.params = params
     if self.params is None:
-      self.params = rcompare.get_default_params().compare_rama
+      self.params = rcompare.get_default_params().comparama
     self.rama1 = ramalyze(model1.get_hierarchy(), out=null_out())
     self.rama2 = ramalyze(model2.get_hierarchy(), out=null_out())
     self.results = []
