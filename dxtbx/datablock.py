@@ -1199,7 +1199,7 @@ class BeamDiff(object):
     if abs(an.angle(bn)) > self.polarization_normal_tolerance:
       text.append(" Polarization Normal: %s, %s" % (tuple(an), tuple(bn)))
     if abs(af - bf) > self.polarization_fraction_tolerance:
-      text.append(" Polarization Fraction: %s, %s" % (tuple(af, bf)))
+      text.append(" Polarization Fraction: %s, %s" % (af, bf))
     if len(text) > 0:
       text = ["Beam:"] + text
     return text
