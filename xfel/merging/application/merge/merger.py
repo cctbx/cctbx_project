@@ -114,7 +114,7 @@ class merger(worker):
 
     result_reflections = self.distribute_reflection_table() # all reflections that the rank will receive from alltoall
 
-    list_of_sliced_hkl_chunks = [] # if self.hkl_chunks is [A,B,C...], this list will be [[A1,A2..,An], [B1,B2,Bn], [C1,C2,Cn], ...], where n is the number of chunk slices
+    list_of_sliced_hkl_chunks = [] # if self.hkl_chunks is [A,B,C...], this list will be [[A1,A2,...,An], [B1,B2,...,Bn], [C1,C2,...,Cn], ...], where n is the number of chunk slices
     for i in range(len(self.hkl_chunks)):
       hkl_chunk_slices = []
       for chunk_slice in self.get_next_reflection_table_slice(self.hkl_chunks[i], number_of_slices):
@@ -157,7 +157,7 @@ class merger(worker):
     target_unit_cell = self.params.scaling.unit_cell
     target_space_group_info = self.params.scaling.space_group
     symm = symmetry(unit_cell = target_unit_cell, space_group_info = target_space_group_info)
-    miller_set = symm.build_miller_set(anomalous_flag=(not self.params.merging.merge_anomalous), d_max=1000.0, d_min=self.params.filter.resolution.d_min)
+    miller_set = symm.build_miller_set(anomalous_flag=(not self.params.merging.merge_anomalous), d_max=1000.0, d_min=self.params.merging.d_min)
     self.logger.log("Generated %d miller indices"%miller_set.indices().size())
 
     return miller_set
