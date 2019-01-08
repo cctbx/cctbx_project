@@ -69,8 +69,8 @@ class Script(object):
     import importlib
 
     workers = []
-    for step in ['input', 'filter', 'modify', 'edit', 'merge']:
-      factory = importlib.import_module('xfel.merging.application.'+step+'.factory')
+    for step in ['input', 'filter', 'modify', 'edit', 'scale', 'merge']:
+      factory = importlib.import_module('xfel.merging.application.'+ step +'.factory')
       workers.extend(factory.factory.from_parameters(self.params))
 
     # Perform phil validation up front
