@@ -3,6 +3,20 @@ import glob, os
 from dxtbx.model.experiment_list import ExperimentListFactory
 from libtbx import easy_pickle
 
+try:
+  import resource
+  import platform
+  def get_memory_usage():
+    # getrusage returns kb on linux, bytes on mac
+    units_per_mb = 1024
+    if platform.system() == "Darwin":
+      units_per_mb = 1024*1024
+    return ('Memory usage: %.1f MB' % (int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) / units_per_mb))
+except ImportError:
+  def debug_memory_usage():
+    pass
+
+
 """
 Utility functions used for reading input data
 """
@@ -89,10 +103,18 @@ class simple_file_loader(worker):
     self.logger.log_step_time("BROADCAST_FILE_LIST", True)
 
     # Read the data
+
+    # TODO: explore whether it makes sense to filter out experiments simultaneously with loading the data
+    #from xfel.merging.application.filter.experiment_filter import experiment_filter
+    #exp_filter = experiment_filter(self.params)
+
     self.logger.log_step_time("LOAD")
     for experiments_filename, reflections_filename in new_file_list:
       experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
       reflections = easy_pickle.load(reflections_filename)
+
+      #experiments, reflections = exp_filter.run(experiments, reflections)
+
       for experiment_id, experiment in enumerate(experiments):
         refls = reflections.select(reflections['id'] == experiment_id)
         all_experiments.append(experiment)
@@ -101,6 +123,7 @@ class simple_file_loader(worker):
     self.logger.log_step_time("LOAD", True)
 
     self.logger.log('Read %d experiments consisting of %d reflections'%(len(all_experiments)-starting_expts_count, len(all_reflections)-starting_refls_count))
+    self.logger.log(get_memory_usage())
 
     input_data_counter = data_counter(self.params)
     input_data_counter.count(all_experiments, all_reflections)
