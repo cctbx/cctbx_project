@@ -3,9 +3,6 @@ from __future__ import division
 from xfel.merging.application.mpi_helper import mpi_helper
 from xfel.merging.application.mpi_logger import mpi_logger
 
-#from libtbx.mpi4py import MPI
-
-
 class data_counter(object):
   def __init__(self, params):
     # create logger
@@ -25,13 +22,11 @@ class data_counter(object):
       all_imgs.extend(iset.paths())
       image_count = len(set(all_imgs))
 
-    #from IPython import embed; embed()
-
-    self.logger.log_step_time("LOAD_STATISTICS")
-    comm = self.mpi_helper.comm
-    MPI = self.mpi_helper.MPI
+    self.logger.log_step_time("CALC_LOAD_STATISTICS")
 
     # MPI-reduce all counts
+    comm = self.mpi_helper.comm
+    MPI = self.mpi_helper.MPI
     total_experiment_count  = comm.reduce(experiment_count, MPI.SUM, 0)
     total_image_count       = comm.reduce(image_count, MPI.SUM, 0)
     total_reflection_count  = comm.reduce(reflection_count, MPI.SUM, 0)
@@ -45,4 +40,5 @@ class data_counter(object):
       self.logger.log('All ranks have read %d reflections'%total_reflection_count)
       self.logger.log('The maximum number of reflections loaded per rank is: %d reflections'%max_reflection_count)
       self.logger.log('The minimum number of reflections loaded per rank is: %d reflections'%min_reflection_count)
-    self.logger.log_step_time("LOAD_STATISTICS", True)
+
+    self.logger.log_step_time("CALC_LOAD_STATISTICS", True)
