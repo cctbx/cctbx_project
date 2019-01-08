@@ -56,7 +56,7 @@ class file_load_calculator(object):
     return rank_files
 
   def calculate_file_load_simple(self, available_rank_count):
-    '''Distribute files over the input number of ranks. Return a dictionary {rank:file_list}'''
+    '''Uniformly distribute json/pickle file pairs over the input number of ranks. Return a dictionary {rank:filepair_list}'''
     assert available_rank_count > 0, "Available rank count has to be greater than zero."
     rank_files = {} #{rank:[file_pair1, file_pair2, ...]}
     for rank in range(0, available_rank_count):
@@ -65,7 +65,7 @@ class file_load_calculator(object):
     return rank_files
 
   def calculate_file_load_node_memory_based(self, available_rank_count):
-    '''Assign files to nodes taking into account node memory limit. Distribute assigned files over the ranks within each node. Return a dictionary {rank:file_list}'''
+    '''Assign json/pickle file pairs to nodes taking into account node memory limit. Then distribute node-assigned file pairs over the ranks within each node. Return a dictionary {rank:file_list}'''
     # get sizes of all files
     file_sizes = {} # {file_pair:file_pair_size_GB}
     for index in range(len(self.file_list)):
