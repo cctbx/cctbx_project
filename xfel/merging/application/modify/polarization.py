@@ -69,12 +69,10 @@ class polarization(worker):
 
       result.extend(refls)
 
-    print ("Mean intensity changed from %.2f to %.2f"%(flex.mean(reflections['intensity.sum.value']), flex.mean(result['intensity.sum.value'])))
-
-    self.logger.log("Applied polarization correction. Mean intensity changed from %.2f to %.2f"%(flex.mean(reflections['intensity.sum.value']), flex.mean(result['intensity.sum.value'])))
+    if len(reflections) > 0:
+      self.logger.log("Applied polarization correction. Mean intensity changed from %.2f to %.2f"%(flex.mean(reflections['intensity.sum.value']), flex.mean(result['intensity.sum.value'])))
 
     self.logger.log_step_time("POLARIZATION_CORRECTION", True)
-
 
     return experiments, result
 
