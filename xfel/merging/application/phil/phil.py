@@ -90,6 +90,7 @@ filter
       .help = Reject the experiment unless some reflections extend beyond this resolution limit
     model_or_image = model image
       .type = choice
+      .help = Calculate resolution either using the scaling model unit cell or from the image itself
   }
   unit_cell
     .help = Various algorithms to restrict unit cell and space group
@@ -103,13 +104,13 @@ filter
       {
       target_unit_cell = Auto
         .type = unit_cell
-      target_space_group = Auto
-        .type = space_group
-      unit_cell_length_tolerance = 0.1
+      relative_length_tolerance = 0.1
         .type = float
         .help = Fractional change in unit cell dimensions allowed (versus target cell).
-      unit_cell_angle_tolerance = 2.
+      absolute_angle_tolerance = 2.
         .type = float
+      target_space_group = Auto
+        .type = space_group
       }
     cluster
       .help = CLUSTER implies an implementation (standalone program or fork?) where all the
