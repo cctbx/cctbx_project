@@ -15,23 +15,13 @@ class reflection_table_editor(worker):
     from cctbx.crystal import symmetry
     import copy
 
-    # assert that the space group used to integrate the data is consistent with the input space group for merging
-
-    #target_patterson_group_info = target_space_group.build_derived_patterson_group().info().symbol_and_number()
-
-    # build target space group and target patterson group info
+    # build target space group
     target_unit_cell = self.params.scaling.unit_cell
     target_space_group_info = self.params.scaling.space_group
     target_symmetry = symmetry(unit_cell=target_unit_cell, space_group_info=target_space_group_info)
     target_space_group = target_symmetry.space_group()
-    target_patterson_group_info = target_space_group.build_derived_patterson_group().info().symbol_and_number()
 
-    for experiment in experiments:
-      experiment_patterson_group_info = experiment.crystal.get_space_group().build_derived_patterson_group().info().symbol_and_number()
-      if target_patterson_group_info != experiment_patterson_group_info:
-        assert False, "Target patterson group %s is different from an experiment patterson group %s"%(target_patterson_group_info, experiment_patterson_group_info)
-
-    # add a new hkl column
+    # generate and add an asu hkl column
     reflections['miller_index_asymmetric'] = copy.deepcopy(reflections['miller_index'])
     miller.map_to_asu(target_space_group.type(),
                       not self.params.merging.merge_anomalous,
