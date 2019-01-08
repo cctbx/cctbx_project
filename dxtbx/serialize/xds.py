@@ -263,25 +263,10 @@ class to_xds(object):
     except AttributeError:
       return 'FIXME####.h5'
 
-
-  def XDS_INP(self, out=None,
-              space_group_number=None,
+  def XDS_INP(self, space_group_number=None,
               real_space_a=None, real_space_b=None, real_space_c=None,
-              job_card="XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT",
-              as_str=False):
-    if out is None:
-      out = sys.stdout
-
-    # horrible hack to allow returning result as string; would be nice if the
-    # structure of this was to make the XDS.INP in memory then print it...
-    # see also show() method on things.
-    str_result = []
-    if as_str:
-      def print(str='', file=None):
-        str_result.append(str)
-    else:
-      from dxtbx import get_print
-      print = get_print()
+              job_card="XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT"):
+    result = []
 
     assert [real_space_a, real_space_b, real_space_c].count(None) in (0,3)
 
@@ -297,97 +282,95 @@ class to_xds(object):
         detector_helpers_types.get(sensor, fast, slow, df, ds))
     trusted = self.get_detector()[0].get_trusted_range()
 
-    print('DETECTOR=%s MINIMUM_VALID_PIXEL_VALUE=%d OVERLOAD=%d' % \
-          (detector, trusted[0] + 1, trusted[1]), file=out)
+    result.append(
+      'DETECTOR=%s MINIMUM_VALID_PIXEL_VALUE=%d OVERLOAD=%d' % \
+        (detector, trusted[0] + 1, trusted[1]))
 
     if detector == 'PILATUS':
-      print('SENSOR_THICKNESS= %.3f' % \
-        self.get_detector()[0].get_thickness(), file=out)
+      result.append('SENSOR_THICKNESS= %.3f' % \
+        self.get_detector()[0].get_thickness())
       if self.get_detector()[0].get_material():
         from cctbx.eltbx import attenuation_coefficient
         material = self.get_detector()[0].get_material()
         table = attenuation_coefficient.get_table(material)
         mu = table.mu_at_angstrom(self.wavelength) / 10.0
-        print('!SENSOR_MATERIAL / THICKNESS %s %.3f' % \
-          (material, self.get_detector()[0].get_thickness()), file=out)
-        print('!SILICON= %f' % mu, file=out)
+        result.append('!SENSOR_MATERIAL / THICKNESS %s %.3f' % \
+          (material, self.get_detector()[0].get_thickness()))
+        result.append('!SILICON= %f' % mu)
 
-    print('DIRECTION_OF_DETECTOR_X-AXIS= %.5f %.5f %.5f' % \
-          self.detector_x_axis, file=out)
+    result.append('DIRECTION_OF_DETECTOR_X-AXIS= %.5f %.5f %.5f' % \
+          self.detector_x_axis)
 
-    print('DIRECTION_OF_DETECTOR_Y-AXIS= %.5f %.5f %.5f' % \
-          self.detector_y_axis, file=out)
+    result.append('DIRECTION_OF_DETECTOR_Y-AXIS= %.5f %.5f %.5f' % \
+          self.detector_y_axis)
 
-    print('NX=%d NY=%d QX=%.4f QY=%.4f' % (fast, slow, f, s), file=out)
+    result.append('NX=%d NY=%d QX=%.4f QY=%.4f' % (fast, slow, f, s))
 
-    print('DETECTOR_DISTANCE= %.6f' % self.detector_distance, file=out)
-    print('ORGX= %.2f ORGY= %.2f' % self.detector_origin, file=out)
-    print('ROTATION_AXIS= %.5f %.5f %.5f' % \
-          self.rotation_axis, file=out)
-    print('STARTING_ANGLE= %.3f' % \
-          self.starting_angle, file=out)
-    print('OSCILLATION_RANGE= %.3f' % \
-          self.oscillation_range, file=out)
-    print('X-RAY_WAVELENGTH= %.5f' % \
-          self.wavelength, file=out)
-    print('INCIDENT_BEAM_DIRECTION= %.3f %.3f %.3f' % \
-          tuple([b / self.wavelength for b in self.beam_vector]), file=out)
+    result.append('DETECTOR_DISTANCE= %.6f' % self.detector_distance)
+    result.append('ORGX= %.2f ORGY= %.2f' % self.detector_origin)
+    result.append('ROTATION_AXIS= %.5f %.5f %.5f' % \
+          self.rotation_axis)
+    result.append('STARTING_ANGLE= %.3f' % \
+          self.starting_angle)
+    result.append('OSCILLATION_RANGE= %.3f' % \
+          self.oscillation_range)
+    result.append('X-RAY_WAVELENGTH= %.5f' % \
+          self.wavelength)
+    result.append('INCIDENT_BEAM_DIRECTION= %.3f %.3f %.3f' % \
+          tuple([b / self.wavelength for b in self.beam_vector]))
 
     # FIXME LATER
     if hasattr(self.get_beam(), "get_polarization_fraction"):
-      print('FRACTION_OF_POLARIZATION= %.3f' % \
-          self.get_beam().get_polarization_fraction(), file=out)
-      print('POLARIZATION_PLANE_NORMAL= %.3f %.3f %.3f' % \
-          self.get_beam().get_polarization_normal(), file=out)
+      result.append('FRACTION_OF_POLARIZATION= %.3f' % \
+          self.get_beam().get_polarization_fraction())
+      result.append('POLARIZATION_PLANE_NORMAL= %.3f %.3f %.3f' % \
+          self.get_beam().get_polarization_normal())
     template = self.get_template()
     if template.endswith('master.h5'):
       template = template.replace('master', '??????')
-    print('NAME_TEMPLATE_OF_DATA_FRAMES= %s' % \
-        template.replace('#', '?'), file=out)
-    print('TRUSTED_REGION= 0.0 1.41', file=out)
+    result.append('NAME_TEMPLATE_OF_DATA_FRAMES= %s' % \
+        template.replace('#', '?'))
+    result.append('TRUSTED_REGION= 0.0 1.41')
     for f0, s0, f1, s1 in self.get_detector()[0].get_mask():
-      print('UNTRUSTED_RECTANGLE= %d %d %d %d' % \
-            (f0, f1 + 1, s0, s1 + 1), file=out)
+      result.append('UNTRUSTED_RECTANGLE= %d %d %d %d' % \
+            (f0, f1 + 1, s0, s1 + 1))
 
     start_end = self.get_scan().get_image_range()
 
     if start_end[0] == 0:
       start_end = (1, start_end[1])
 
-    print('DATA_RANGE= %d %d' % start_end, file=out)
-    print('JOB=%s' %job_card, file=out)
+    result.append('DATA_RANGE= %d %d' % start_end)
+    result.append('JOB=%s' %job_card)
     if space_group_number is not None:
-      print('SPACE_GROUP_NUMBER= %i' %space_group_number, file=out)
+      result.append('SPACE_GROUP_NUMBER= %i' %space_group_number)
     if [real_space_a, real_space_b, real_space_c].count(None) == 0:
       R = self.imagecif_to_xds_transformation_matrix
       unit_cell_a_axis = R * matrix.col(real_space_a)
       unit_cell_b_axis = R * matrix.col(real_space_b)
       unit_cell_c_axis = R * matrix.col(real_space_c)
-      print("UNIT_CELL_A-AXIS= %.6f %.6f %.6f" %unit_cell_a_axis.elems, file=out)
-      print("UNIT_CELL_B-AXIS= %.6f %.6f %.6f" %unit_cell_b_axis.elems, file=out)
-      print("UNIT_CELL_C-AXIS= %.6f %.6f %.6f" %unit_cell_c_axis.elems, file=out)
+      result.append("UNIT_CELL_A-AXIS= %.6f %.6f %.6f" %unit_cell_a_axis.elems)
+      result.append("UNIT_CELL_B-AXIS= %.6f %.6f %.6f" %unit_cell_b_axis.elems)
+      result.append("UNIT_CELL_C-AXIS= %.6f %.6f %.6f" %unit_cell_c_axis.elems)
 
     if len(self.panel_x_axis) > 1:
       for panel_id, panel_x_axis in enumerate(self.panel_x_axis):
 
-        print(file=out)
-        print("!", file=out)
-        print("! SEGMENT %d" %(panel_id+1), file=out)
-        print("!", file=out)
-        print('SEGMENT= %d %d %d %d' % self.panel_limits[panel_id], file=out)
-        print('DIRECTION_OF_SEGMENT_X-AXIS= %.5f %.5f %.5f' % \
-              panel_x_axis, file=out)
+        result.append(file=out)
+        result.append("!")
+        result.append("! SEGMENT %d" %(panel_id+1))
+        result.append("!")
+        result.append('SEGMENT= %d %d %d %d' % self.panel_limits[panel_id])
+        result.append('DIRECTION_OF_SEGMENT_X-AXIS= %.5f %.5f %.5f' % \
+                      panel_x_axis)
 
-        print('DIRECTION_OF_SEGMENT_Y-AXIS= %.5f %.5f %.5f' % \
-              self.panel_y_axis[panel_id], file=out)
+        result.append('DIRECTION_OF_SEGMENT_Y-AXIS= %.5f %.5f %.5f' % \
+                      self.panel_y_axis[panel_id])
 
-        print('SEGMENT_DISTANCE= %.3f' % self.panel_distance[panel_id], file=out)
+        result.append('SEGMENT_DISTANCE= %.3f' % self.panel_distance[panel_id])
 
-        print('SEGMENT_ORGX= %.2f SEGMENT_ORGY= %.2f' % self.panel_origin[panel_id], file=out)
-        print(file=out)
-
-    if as_str:
-      return '\n'.join(str_result)
+        result.append('SEGMENT_ORGX= %.2f SEGMENT_ORGY= %.2f' % self.panel_origin[panel_id])
+    return '\n'.join(result)
 
   def xparm_xds(self, real_space_a, real_space_b, real_space_c,
                 space_group, out=None):

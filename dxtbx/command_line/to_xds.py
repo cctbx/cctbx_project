@@ -33,7 +33,7 @@ def run(file_names):
     from dxtbx.imageset import ImageSetFactory
     sweep = ImageSetFactory.new(file_names)[0]
   xsx = xds.to_xds(sweep)
-  xsx.XDS_INP()
+  print(xsx.XDS_INP())
 
 if __name__ == '__main__':
   run(sys.argv[1:])
