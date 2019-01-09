@@ -10,6 +10,7 @@ from cctbx.array_family import flex
 from scitbx.math import matrix
 from copy import deepcopy
 from libtbx.utils import null_out
+import libtbx.callbacks # import dependency
 
 master_phil = iotbx.phil.parse("""
 
@@ -5590,6 +5591,9 @@ def get_connectivity(b_vs_region=None,
      verbose=None,
      out=sys.stdout):
   print >>out,"\nGetting connectivity"
+  libtbx.call_back(message='segment',data=None)
+
+
   # Normalize map data now to SD of the part that is not solvent
   map_data=renormalize_map_data(
      map_data=map_data,solvent_fraction=solvent_fraction)
@@ -9766,6 +9770,7 @@ def auto_sharpen_map_or_map_coeffs(
 
     # Decide if we are running local sharpening (overlapping set of sharpening
     #   runs at various locations)
+    libtbx.call_back(message='sharpen',data=None)
     if si.local_sharpening:
       return run_local_sharpening(si=si,
          auto_sharpen_methods=auto_sharpen_methods,
