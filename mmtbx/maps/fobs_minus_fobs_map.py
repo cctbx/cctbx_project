@@ -493,7 +493,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     print >> log, "%d atoms selected for removal" % omit_sel.count(True)
   del hierarchy
   xray_structure = xray_structure.select(~omit_sel)
-w  if(not command_line.options.silent):
+  if(not command_line.options.silent):
     print >> log, "*** Model summary:"
     xray_structure.show_summary(f = log)
     print >> log
