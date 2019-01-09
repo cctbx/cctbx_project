@@ -2898,7 +2898,8 @@ class manager(object):
     return mmtbx.model.statistics.composition(
       pdb_hierarchy = self.get_hierarchy())
 
-  def geometry_statistics(self, fast_clash=True, condensed_probe=True):
+  def geometry_statistics(self, use_hydrogens=None, fast_clash=True,
+                          condensed_probe=True):
     scattering_table = \
         self.get_xray_structure().scattering_type_registry().last_table()
     if(self.restraints_manager is None): return None
@@ -2909,11 +2910,12 @@ class manager(object):
       hd_selection = hd_selection.select(~ias_selection)
       ph = ph.select(~ias_selection)
     rm = self.restraints_manager
-    if(self.riding_h_manager is not None or
-       scattering_table in ["n_gaussian","wk1995", "it1992"]):
-      not_hd_sel = ~hd_selection
-      ph = ph.select(not_hd_sel)
-      rm = rm.select(not_hd_sel)
+    if(use_hydrogens is None or not use_hydrogens):
+      if(self.riding_h_manager is not None or
+         scattering_table in ["n_gaussian","wk1995", "it1992"]):
+        not_hd_sel = ~hd_selection
+        ph = ph.select(not_hd_sel)
+        rm = rm.select(not_hd_sel)
     #
     ph_dc = ph.deep_copy()
     ph_dc.atoms().reset_i_seq()

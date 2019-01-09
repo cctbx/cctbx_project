@@ -1235,6 +1235,60 @@ def exercise_from_hierarchy():
   m22 = m2.select(sel)
   check_consistency(m11, m22)
 
+def exercise_7():
+  lines = """
+CRYST1   43.974   32.795   33.672  90.00  90.00  90.00 P 1
+ATOM     56  N   ARG A  10      27.185  16.460  17.483  1.00  2.08           N
+ATOM     57  CA  ARG A  10      26.022  16.782  18.294  1.00  2.02           C
+ATOM     58  C   ARG A  10      25.096  17.774  17.594  1.00  2.02           C
+ATOM     59  O   ARG A  10      23.865  17.608  17.611  1.00  2.22           O
+ATOM     60  CB  ARG A  10      26.464  17.332  19.652  1.00  2.22           C
+ATOM     61  CG  ARG A  10      25.307  17.788  20.546  1.00  2.51           C
+ATOM     62  CD  ARG A  10      24.394  16.657  21.045  1.00  2.89           C
+ATOM     63  NE  ARG A  10      25.123  15.776  21.930  1.00  3.18           N
+ATOM     64  CZ  ARG A  10      24.571  14.673  22.470  1.00  4.37           C
+ATOM     65  NH1 ARG A  10      23.310  14.331  22.245  1.00  6.14           N
+ATOM     66  NH2 ARG A  10      25.349  13.908  23.244  1.00  5.58           N
+ATOM     67  H   ARG A  10      28.082  16.725  17.890  1.00  2.08           H
+ATOM     68  HA  ARG A  10      25.458  15.861  18.445  1.00  2.02           H
+ATOM     69  HB2 ARG A  10      27.033  16.564  20.176  1.00  2.22           H
+ATOM     70  HB3 ARG A  10      27.138  18.173  19.490  1.00  2.22           H
+ATOM     71  HG2 ARG A  10      25.718  18.312  21.409  1.00  2.51           H
+ATOM     72  HG3 ARG A  10      24.702  18.508  19.995  1.00  2.51           H
+ATOM     73  HD2 ARG A  10      23.535  17.078  21.567  1.00  2.89           H
+ATOM     74  HD3 ARG A  10      24.007  16.092  20.197  1.00  2.89           H
+ATOM     75  HE  ARG A  10      26.093  15.999  22.154  1.00  3.18           H
+ATOM     76 HH11 ARG A  10      22.723  14.911  21.645  1.00  6.14           H
+ATOM     77 HH12 ARG A  10      22.926  13.488  22.672  1.00  6.14           H
+ATOM     78 HH21 ARG A  10      26.322  14.169  23.406  1.00  5.58           H
+ATOM     79 HH22 ARG A  10      24.970  13.064  23.672  1.00  5.58           H
+TER
+END
+"""
+  for use_neutron_distances in [True, False]:
+    params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    params.pdb_interpretation.use_neutron_distances=use_neutron_distances
+    model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(source_info=None, lines=lines),
+      build_grm = True,
+      log = null_out(),
+      pdb_interpretation_params = params)
+    gs = model.geometry_statistics(use_hydrogens = True).result()
+    if(use_neutron_distances):
+      assert approx_equal(gs.bond.mean, 0.0072, 0.0001)
+    else:
+      assert approx_equal(gs.bond.mean, 0.1054, 0.0001)
+    bps, asu = model.get_restraints_manager().geometry.get_all_bond_proxies(
+      sites_cart = model.get_sites_cart())
+    elems = model.get_hierarchy().atoms().extract_element()
+    cntr=0
+    for p in bps:
+      i, j = p.i_seqs
+      if([elems[i], elems[j]].count("H")):
+        if(use_neutron_distances): assert p.distance_ideal > 1.0
+        else:                      assert p.distance_ideal < 1.0
+        cntr+=1
+    assert cntr==13
 
 def run():
   exercise_00()
@@ -1246,6 +1300,7 @@ def run():
   exercise_h_counts()
   exercise_5()
   exercise_6()
+  exercise_7()
   exercise_from_hierarchy()
   print format_cpu_times()
 

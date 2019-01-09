@@ -20,6 +20,7 @@ import libtbx.callbacks # import dependency
 from cStringIO import StringIO
 import os
 import sys
+import mmtbx.model
 
 fo_minus_fo_master_params_str = """\
 f_obs_1_file_name = None
@@ -59,7 +60,7 @@ phase_source = None
   .help = PDB file with a model or reflection file with the phases
   .short_caption = PDB file for phasing
   .style = bold OnChange:validate_phase_source file_type:pdb
-scattering_table = *xray neutron
+scattering_table = wk1995 it1992 *n_gaussian electron neutron
   .type = choice(multi=False)
   .help = Choices of scattering table for structure factors calculations
 output_file = None
@@ -474,7 +475,15 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     crystal_symmetry = crystal_symmetry))
   #
   pdb_in = iotbx.pdb.input(source_info = None, lines = raw_recs)
-  hierarchy = pdb_in.construct_hierarchy()
+  model = mmtbx.model.manager(model_input = pdb_in)
+  d_min = min(f_obss[0].d_min(), f_obss[1].d_min())
+  model.setup_scattering_dictionaries(
+    scattering_table = params.scattering_table,
+    log              = log,
+    d_min            = d_min)
+  xray_structure = model.get_xray_structure()
+  hierarchy = model.get_hierarchy()
+  #
   omit_sel = flex.bool(hierarchy.atoms_size(), False)
   if (params.advanced.omit_selection is not None):
     print >> log, "Will omit selection from phasing model:"
@@ -482,9 +491,9 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
     omit_sel = hierarchy.atom_selection_cache().selection(
       params.advanced.omit_selection)
     print >> log, "%d atoms selected for removal" % omit_sel.count(True)
-  xray_structure = pdb_in.xray_structure_simple()
+  del hierarchy
   xray_structure = xray_structure.select(~omit_sel)
-  if(not command_line.options.silent):
+w  if(not command_line.options.silent):
     print >> log, "*** Model summary:"
     xray_structure.show_summary(f = log)
     print >> log
