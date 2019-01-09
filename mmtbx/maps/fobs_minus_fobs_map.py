@@ -479,7 +479,6 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
   d_min = min(f_obss[0].d_min(), f_obss[1].d_min())
   model.setup_scattering_dictionaries(
     scattering_table = params.scattering_table,
-    log              = log,
     d_min            = d_min)
   xray_structure = model.get_xray_structure()
   hierarchy = model.get_hierarchy()
