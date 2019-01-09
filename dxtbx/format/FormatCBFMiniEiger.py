@@ -26,9 +26,13 @@ def determine_eiger_mask(xdetector):
 
   size = xdetector[0].get_image_size()
 
-  # Hardcoded module size and gap size
-  module_size_fast, module_size_slow = (1030, 514)
-  gap_size_fast, gap_size_slow = (10, 37)
+  # Hardcoded module size and gap size - with added technical debt! For Eiger2
+  if size[0] == 4148:
+    module_size_fast, module_size_slow = (1028, 512)
+    gap_size_fast, gap_size_slow = (12, 38)
+  else:
+    module_size_fast, module_size_slow = (1030, 514)
+    gap_size_fast, gap_size_slow = (10, 37)
 
   # Edge dead areas not included, only gaps between modules matter
   n_fast, remainder = divmod(size[0], module_size_fast)
