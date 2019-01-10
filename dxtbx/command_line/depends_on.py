@@ -18,11 +18,12 @@ def depends_on(in_name):
       if thing.attrs.get('NX_class', None) == 'NXsample':
         global sample
         sample = path
-    for k in thing:
-      try:
-        finder(thing[k], path='%s/%s' % (path, k))
-      except (IOError, TypeError, ValueError, KeyError) as e:
-        pass
+    if hasattr(thing, 'keys'):
+      for k in thing:
+        try:
+          finder(thing[k], path='%s/%s' % (path, k))
+        except (IOError, TypeError, ValueError, KeyError) as e:
+          pass
 
   # clean up hierarchy to just have sample stuff
 
@@ -57,7 +58,13 @@ def depends_on(in_name):
   print('')
 
   print('Sample at %s depends on:' % sample)
-  print(f[sample]['depends_on'][()])
+  if 'depends_on' in f[sample]:
+    print(f[sample]['depends_on'][()])
+  elif hasattr(f[sample], 'attrs') and 'depends_on' in f[sample].attrs:
+    print(f[sample].attrs['depends_on'])
+  else:
+    print('%s -> depends_on not found' % sample)
+
 
   f.close()
 
