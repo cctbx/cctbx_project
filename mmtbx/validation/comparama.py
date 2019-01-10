@@ -89,7 +89,8 @@ class rcompare(object):
           get_distance(r1.psi, r2.psi)**2)
       diff3 = two_rama_points((r1.phi, r1.psi), (r2.phi, r2.psi)).min_length()
       assert approx_equal(diff2, diff3), "%s, %s" % ((r1.phi, r1.psi), (r2.phi, r2.psi))
-      self.results.append((r1.id_str(), diff2, r1.phi, r1.psi, r2.phi, r2.psi, v, r2.res_type))
+      self.results.append((r1.id_str(), diff2, r1.phi, r1.psi, r2.phi, r2.psi, v, r2.res_type, r1.score/100, r2.score/100))
+      # print "Score:", r1.score, r2.score
 
   def get_results(self):
     return self.results

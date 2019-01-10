@@ -4,7 +4,7 @@ from __future__ import division, print_function
 from libtbx.program_template import ProgramTemplate
 
 from mmtbx.validation import comparama
-from mmtbx.validation.ramalyze import res_type_labels
+from mmtbx.validation.ramalyze import res_type_labels, find_region_max_value
 
 import numpy as np
 from collections import Counter
@@ -82,8 +82,19 @@ Usage examples:
       print("="*80, file=self.logger)
     print ("mean: %.3f std: %.3f" % (np.mean(res_columns[1]), np.std(res_columns[1])),
         file=self.logger)
+    print("Sum of rama scores: %.3f -> %.3f" % \
+        (np.sum(res_columns[-2]), np.sum(res_columns[-1])) , file=self.logger)
+    print("Sum of rama scores/n_residues: %.4f -> %.4f (%d residues)" % \
+        (np.mean(res_columns[-2]), np.mean(res_columns[-1]), len(res_columns[-1])), file=self.logger)
+    # printing scaled vals
+    # rescale both
+    v1, v2 = rama_rescale(results)
+    print("Sum of rama scores scaled: %.3f -> %.3f" % \
+        (np.sum(v1), np.sum(v2)) , file=self.logger)
+    print("Sum of rama scores/n_residues scaled: %.4f -> %.4f (%d residues)" % \
+        (np.mean(v1), np.mean(v2), len(v1)), file=self.logger)
     if self.params.output.counts:
-      cntr = Counter(res_columns[-2])
+      cntr = Counter(res_columns[-4])
       for k, v in cntr.iteritems():
         print("%-20s: %d" % (k,v), file=self.logger)
 
@@ -98,12 +109,12 @@ Usage examples:
           markerfacecolor="white")
       for pos, plot in plots.iteritems():
         # prepare data
-        got_outliers = [x for x in results if (x[-1]==pos and x[-2].find("-> OUTLIER") > 0)]#.sort(key=lambda x:x[1], reverse=True)
+        got_outliers = [x for x in results if (x[-3]==pos and x[-4].find("-> OUTLIER") > 0)]#.sort(key=lambda x:x[1], reverse=True)
         got_outliers.sort(key=lambda x:x[1], reverse=True)
         print("got_outliers:", len(got_outliers))
         for o in got_outliers:
           self.show_single_result(o)
-        got_not_outliers = [x for x in results if (x[-1]==pos and x[-2] == "OUTLIER -> Favored")]#.sort(key=lambda x:x[1], reverse=True)
+        got_not_outliers = [x for x in results if (x[-3]==pos and x[-4] == "OUTLIER -> Favored")]#.sort(key=lambda x:x[1], reverse=True)
         got_not_outliers.sort(key=lambda x:x[1], reverse=True)
         print("got_not_outliers:", len(got_not_outliers))
         for o in got_not_outliers:
@@ -126,7 +137,9 @@ Usage examples:
         plot.save_image(plot_file_name, dpi=300)
 
   def show_single_result(self, r):
-    print("%s %.2f, (%.1f:%.1f), (%.1f:%.1f), %s" % r[:-1], file=self.logger)
+    print("%s %.2f, (%.1f:%.1f), (%.1f:%.1f), %s, Score: %.4f -> %.4f" % \
+        (r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[8], r[9]),
+        file=self.logger)
 
   # ---------------------------------------------------------------------------
   def get_results(self):
@@ -213,3 +226,21 @@ def add_arrows_on_plot(
         linewidth=0.5,
         zorder=10,
         ))
+
+def rama_rescale(results):
+  res1 = []
+  res2 = []
+  for r1_id_str, diff2, r1_phi, r1_psi, r2_phi, r2_psi, v, r2_res_type, r1_score, r2_score in results:
+    max_value1 = find_region_max_value(r2_res_type, r1_phi, r1_psi)
+    if max_value1 is None:
+      res1.append(r1_score)
+    else:
+      # if max_value1[1] < 1:
+      #   print("rescaling: %.4f -> %.4f" % (r1_score, r1_score/max_value1[1]))
+      res1.append(r1_score/max_value1[1])
+    max_value2 = find_region_max_value(r2_res_type, r2_phi, r2_psi)
+    if max_value2 is None:
+      res2.append(r2_score)
+    else:
+      res2.append(r2_score/max_value2[1])
+  return res1, res2
