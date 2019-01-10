@@ -632,7 +632,7 @@ class torsion_ncs(object):
     #  target_map_data, residual_map_data = self.prepare_map(
     #                                         fmodel=self.fmodel)
     #rama_outliers = None
-    #rama_outlier_list = []
+    rama_outlier_list = []
     omega_outlier_list = []
     if self.filter_phi_psi_outliers:
       rama_outlier_list = \
