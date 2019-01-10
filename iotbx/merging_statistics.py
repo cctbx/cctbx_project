@@ -713,59 +713,39 @@ class dataset_statistics(object):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
 
-    observed_criterion_sigma_I = self.overall.observed_criterion_sigma_I
-    if observed_criterion_sigma_I is None:
-      observed_criterion_sigma_I = "?"
+    from collections import OrderedDict
+    mmcif_to_name = OrderedDict([
+      ('d_res_high', 'd_min'),
+      ('d_res_low', 'd_max'),
+      ('pdbx_CC_half', 'cc_one_half'),
+      ('number_obs', 'n_obs'),
+      ('pdbx_Rpim_I_all', 'r_pim'),
+      ('pdbx_Rrim_I_all', 'r_meas'),
+      ('Rmerge_I_all', 'r_merge'),
+      ('meanI_over_sigI_all', 'i_mean_over_sigi_mean'),
+      ('pdbx_netI_over_sigmaI', 'i_over_sigma_mean'),
+      ('number_measured_all', 'n_obs'),
+      ('pdbx_redundancy', 'mean_redundancy'),
+      ('percent_possible_all', 'completeness'),
+    ])
 
-    cif_block["_reflns.d_resolution_low"] = self.overall.d_max
-    cif_block["_reflns.d_resolution_high"] = self.overall.d_min
-    cif_block["_reflns.percent_possible_obs"] = self.overall.completeness * 100
-    cif_block["_reflns.pdbx_number_measured_all"] = self.overall.n_obs
-    cif_block["_reflns.number_obs"] = self.overall.n_uniq
-    cif_block["_reflns.pdbx_redundancy"] = self.overall.mean_redundancy
-    cif_block["_reflns.phenix_mean_I"] = self.overall.i_mean
-    cif_block["_reflns.pdbx_netI_over_sigmaI"] = self.overall.i_over_sigma_mean
-    cif_block["_reflns.pdbx_Rmerge_I_obs"] = self.overall.r_merge
-    cif_block["_reflns.pdbx_Rrim_I_obs"] = self.overall.r_meas
-    cif_block["_reflns.pdbx_Rpim_I_obs"] = self.overall.r_pim
-    cif_block["_reflns.phenix_cc_star"] = self.overall.cc_star
-    cif_block["_reflns.phenix_cc_1/2"] = self.overall.cc_one_half
-    cif_block["_reflns.observed_criterion_sigma_I"] = observed_criterion_sigma_I
-    cif_block["_reflns.observed_criterion_sigma_F"] = "?"
+    for k, v in mmcif_to_name.iteritems():
+      value = self.overall.__getattribute__(v)
+      if 'percent' in v:
+        value *= 100
+      cif_block['_reflns.' + k] = value
 
-    reflns_shell_loop = iotbx.cif.model.loop(header=(
-      "_reflns_shell.d_res_high",
-      "_reflns_shell.d_res_low",
-      "_reflns_shell.number_measured_obs",
-      "_reflns_shell.number_unique_obs",
-      "_reflns_shell.pdbx_redundancy",
-      "_reflns_shell.percent_possible_obs",
-      "_reflns_shell.phenix_mean_I",
-      "_reflns_shell.pdbx_netI_over_sigmaI_obs",
-      "_reflns_shell.meanI_over_sigI_obs",
-      "_reflns_shell.Rmerge_I_obs",
-      "_reflns_shell.pdbx_Rrim_I_obs",
-      "_reflns_shell.pdbx_Rpim_I_obs",
-      "_reflns_shell.phenix_cc_star",
-      "_reflns_shell.phenix_cc_1/2",
-    ))
-    for bin_stats in self.bins:
-      reflns_shell_loop.add_row((
-        bin_stats.d_min,
-        bin_stats.d_max,
-        bin_stats.n_obs,
-        bin_stats.n_uniq,
-        bin_stats.mean_redundancy,
-        bin_stats.completeness*100,
-        bin_stats.i_mean,
-        bin_stats.i_over_sigma_mean,
-        bin_stats.i_mean_over_sigi_mean,
-        bin_stats.r_merge,
-        bin_stats.r_meas,
-        bin_stats.r_pim,
-        bin_stats.cc_star,
-        bin_stats.cc_one_half))
+    header = ['_reflns_shell.pdbx_ordinal'] + [
+      '_reflns_shell.' + k for k in mmcif_to_name.keys()]
+    reflns_shell_loop = iotbx.cif.model.loop(header=header)
+    for i, bin_stats in enumerate(self.bins):
+      stats_d = bin_stats.as_dict()
+      values = [bin_stats.__getattribute__(v) * 100
+                if 'percent' in k else bin_stats.__getattribute__(v)
+                for k, v in mmcif_to_name.iteritems()]
+      reflns_shell_loop.add_row([i+1] + values)
     cif_block.add_loop(reflns_shell_loop)
+
     return cif_block
 
   def as_remark_200(self, wavelength=None):

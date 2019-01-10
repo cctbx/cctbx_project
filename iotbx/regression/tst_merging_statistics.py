@@ -35,14 +35,12 @@ def exercise(debug=False):
   assert ("""  1.81   1.74  12528   2073    6.04  97.05    1449.2     5.2    0.252    0.275    0.110   0.967   0.281""" in out.getvalue()), out.getvalue()
   cif_block = result.as_cif_block()
   assert "_reflns_shell" in cif_block
-  assert approx_equal(float(cif_block["_reflns.pdbx_Rpim_I_obs"]), result.overall.r_pim)
-  assert approx_equal(float(cif_block["_reflns.phenix_cc_star"]), result.overall.cc_star)
-  assert approx_equal(float(cif_block["_reflns.phenix_cc_1/2"]), result.overall.cc_one_half)
+  assert approx_equal(float(cif_block["_reflns.pdbx_Rpim_I_all"]), result.overall.r_pim)
+  assert approx_equal(float(cif_block["_reflns.pdbx_CC_half"]), result.overall.cc_one_half)
   assert approx_equal(
-    flex.int(cif_block["_reflns_shell.number_measured_obs"]),
+    flex.int(cif_block["_reflns_shell.number_measured_all"]),
     [15737, 15728, 15668, 15371, 14996, 14771, 13899, 13549, 13206, 12528])
-  assert "_reflns_shell.phenix_cc_star" in cif_block
-  assert "_reflns_shell.phenix_cc_1/2" in cif_block
+  assert "_reflns_shell.pdbx_CC_half" in cif_block
   remark_200 = result.as_remark_200(wavelength=0.9792).splitlines()
   assert ("REMARK 200  <I/SIGMA(I)> FOR SHELL         : 5.1536" in remark_200),"\n".join(remark_200)
   assert ("REMARK 200  WAVELENGTH OR RANGE        (A) : 0.9792" in remark_200)
@@ -62,7 +60,8 @@ def exercise(debug=False):
     print out.getvalue()
   assert ("Resolution: 100.00 - 1.50" in out.getvalue())
   assert ("  1.55   1.50      0      0    0.00   0.00       0.0     0.0     None     None     None   0.000   0.000""" in out.getvalue())
-  args2 = args + ["json.file_name=merging_stats.json", "json.indent=2"]
+  args2 = args + ["json.file_name=merging_stats.json", "json.indent=2",
+                  "mmcif.file_name=merging_stats.mmcif", "mmcif.data_name=test"]
   out = StringIO()
   result = merging_statistics.run(args2, out=out)
   assert os.path.exists("merging_stats.json")
@@ -91,6 +90,11 @@ def exercise(debug=False):
     assert 'overall' in d
     assert approx_equal(d['overall']['i_mean'], 18672.03367141032)
     assert approx_equal(d['overall']['multiplicity'], 6.747367444449599)
+  import iotbx.cif
+  assert os.path.exists("merging_stats.mmcif")
+  cif = iotbx.cif.reader("merging_stats.mmcif").model()
+  assert approx_equal(float(cif["test"]["_reflns.pdbx_CC_half"]), 0.997601585888)
+  assert list(cif["test"]["_reflns_shell.number_obs"]) == ['15737', '15728', '15668', '15371', '14996', '14771', '13899', '13549', '13206', '12528']
   # these should crash
   args2 = list(args[:-1]) + ["high_resolution=15", "low_resolution=2.5"]
   try :

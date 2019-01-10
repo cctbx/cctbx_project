@@ -42,6 +42,12 @@ json {
   indent = None
     .type = int(value_min=0)
 }
+mmcif {
+  file_name = None
+    .type = path
+  data_name = data
+    .type = str
+}
 """ % iotbx.merging_statistics.merging_params_str
 
 # Hack for handling SHELX files
@@ -136,6 +142,12 @@ already be on a common scale, but with individual observations unmerged.
     result.show_estimated_cutoffs(out=out)
   if params.json.file_name is not None:
     result.as_json(file_name=params.json.file_name, indent=params.json.indent)
+  if params.mmcif.file_name is not None:
+    import iotbx.cif.model
+    cif = iotbx.cif.model.cif()
+    cif[params.mmcif.data_name] = result.as_cif_block()
+    with open(params.mmcif.file_name, 'wb') as f:
+      print >> f, cif
   print >> out, ""
   print >> out, "References:"
   print >> out, citations_str
