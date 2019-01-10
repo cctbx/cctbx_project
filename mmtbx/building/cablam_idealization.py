@@ -214,7 +214,8 @@ class cablam_idealization(object):
       # [angle, rama, cablam, hbond]
       if (len(s[3]) > 0 and # hbond present
            ((s[1] <= best[1] and s[2] < best[2])
-        or  (s[1] + s[2] < best[1] + best[2]))):
+        # or  (s[1] + s[2] < best[1] + best[2]) # No tolerance to increasing Rama outliers
+        )):
         best = s
     return best[0]
 
