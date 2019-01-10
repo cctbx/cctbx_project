@@ -46,6 +46,7 @@ class manager(object):
     if hasattr(params, "amber"):
       self.use_amber = params.amber.use_amber
       self.print_amber_energies = params.amber.print_amber_energies
+      self.qmmask = params.amber.qmmask
       self.log = log
       if (self.use_amber):
         sites_cart = pdb_hierarchy.atoms().extract_xyz()
@@ -69,7 +70,7 @@ class manager(object):
           compute_gradients = compute_gradients,
           log=log,
           print_amber_energies=self.print_amber_energies,
-          qmmask=params.amber.qmmask)
+          qmmask=self.qmmask)
 
   def cleanup_amber(self):
     if self.sander and self.amber_structs:
@@ -199,7 +200,7 @@ class manager(object):
           # these are only available for use_amber=True
           log=self.log,
           print_amber_energies=self.print_amber_energies,
-          )
+          qmmask=self.qmmask)
 
       elif (self.use_afitt and
             len(sites_cart)==self.afitt_object.total_model_atoms
