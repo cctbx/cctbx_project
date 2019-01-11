@@ -718,7 +718,7 @@ class dataset_statistics(object):
       ('d_res_high', 'd_min'),
       ('d_res_low', 'd_max'),
       ('pdbx_CC_half', 'cc_one_half'),
-      ('number_unique_obs', 'n_obs'),
+      ('number_unique_obs', 'n_uniq'),
       ('pdbx_Rpim_I_obs', 'r_pim'),
       ('pdbx_Rrim_I_obs', 'r_meas'),
       ('Rmerge_I_obs', 'r_merge'),
