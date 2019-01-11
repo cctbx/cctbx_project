@@ -613,7 +613,7 @@ def get_favored_regions(rama_key):
   assert rama_key in range(6)
 
   if rama_key == RAMA_GENERAL:
-    return [(-99, 119), (-63, -43), (53, 43)]
+    return [(-99, 119), (-63, -43), (53, 43), (60,-120)]
   if rama_key == RAMA_GLYCINE:
     return [(63, 41), (-63, -41), (79, -173), (-79, 173)]
   if rama_key == RAMA_CISPRO:
@@ -626,6 +626,77 @@ def get_favored_regions(rama_key):
   if rama_key == RAMA_ILE_VAL:
     return [(-63, -45), (-119, 127)]
   return None
+
+def get_favored_peaks(rama_key):
+  """
+  returns exact favored peaks with their score value
+  """
+  assert rama_key in range(6)
+
+  if rama_key == RAMA_GENERAL:
+    return [((-115.0, 131.0), 0.57068),
+            ((-63.0, -43.0), 1.0),
+            ((53.0, 43.0), 0.323004),
+            ((53.0, -127.0), 0.0246619)]
+  if rama_key == RAMA_GLYCINE:
+    return [((63.0, 41.0), 1.0),
+            ((-63.0, -41.0), 1.0),
+            ((79.0, -173.0), 0.553852),
+            ((-79.0, 173.0), 0.553852)]
+  if rama_key == RAMA_CISPRO:
+    return [((-75.0, 155.0), 1.0),
+            ((-89.0, 5.0), 0.701149)]
+  if rama_key == RAMA_TRANSPRO:
+    return [((-57.0, -37.0), 0.99566),
+            ((-59.0, 143.0), 1.0),
+            ((-81.0, 65.0), 0.0896269)]
+  if rama_key == RAMA_PREPRO:
+    return [((-57.0, -45.0), 1.0),
+            ((-70.1, 149.0), 0.9619998),
+            ((49.0, 57.0), 0.185259)]
+  if rama_key == RAMA_ILE_VAL:
+    return [((-63.0, -45.0), 1.0),
+            ((-121.0, 129.0), 0.76163)]
+  return None
+
+def find_region_max_value(rama_key, phi, psi):
+  from libtbx.test_utils import approx_equal
+  from mmtbx.rotamer import ramachandran_eval
+  eps = 1e-3
+  peaks = get_favored_peaks(rama_key)
+  r = ramachandran_eval.RamachandranEval()
+  value = r.evaluate(rama_key, [phi, psi])
+  rama_type = ramalyze.evalScore(rama_key, value)
+  if RAMALYZE_FAVORED != rama_type:
+    return None
+  for peak in peaks:
+    px, py = peak[0]
+    if approx_equal(phi, px, eps,out=None):
+      # x1 == x2
+      increment = 1 if psi<py else -1
+      y = psi
+      failed = False
+      while abs(abs(y) - abs(py)) > 1 and not failed:
+        value = r.evaluate(rama_key, [phi, y])
+        ramaType = ramalyze.evalScore(rama_key, value)
+        failed = ramaType != RAMALYZE_FAVORED
+        y += increment
+      if not failed:
+        return peak
+    else:
+      # general case, y=ax+b
+      a = (psi - py) / (phi - px)
+      b = psi - a*phi
+      increment = 1 if psi<py else -1
+      y = psi
+      failed = False
+      while abs(abs(y) - abs(py)) > 1 and not failed:
+        value = r.evaluate(rama_key, [(y-b)/a, y])
+        ramaType = ramalyze.evalScore(rama_key, value)
+        failed = ramaType != RAMALYZE_FAVORED
+        y += increment
+      if not failed:
+        return peak
 
 #-----------------------------------------------------------------------
 # GRAPHICS OUTPUT
