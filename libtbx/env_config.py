@@ -212,7 +212,9 @@ def python_include_path():
   try:  # conda environment
     conda_prefix = get_conda_prefix()
     include_path = os.path.join(conda_prefix, 'include',
-                                'python%d.%d' % sys.version_info[:2])
+                                'python%d.%dm' % sys.version_info[:2])
+    if not op.isdir(include_path):
+      include_path = include_path[:-1]
   except RuntimeError:
     pass
   if not op.isdir(include_path):
