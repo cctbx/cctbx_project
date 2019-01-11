@@ -9,6 +9,7 @@ from mmtbx.validation.ramalyze import res_type_labels, find_region_max_value
 import numpy as np
 from collections import Counter
 from libtbx.test_utils import approx_equal
+from matplotlib.backends.backend_pdf import PdfPages
 
 # =============================================================================
 
@@ -37,10 +38,13 @@ Usage examples:
         .type = bool
       prefix = kleywegt
         .type = str
-      plots = True
+      plots = False
         .type = bool
         .help = output Kleywegt plots - arrows on Rama plot showing where \
           residues moved.
+      pdf = True
+        .type = bool
+        .help = save the same plots as one pdf file
     }
 """
 
@@ -98,7 +102,9 @@ Usage examples:
       for k, v in cntr.iteritems():
         print("%-20s: %d" % (k,v), file=self.logger)
 
-    if self.params.output.plots:
+    if self.params.output.plots or self.params.output.pdf:
+      base_fname = "%s--%s" % (self.data_manager.get_model_names()[0].split('.')[0],
+          self.data_manager.get_model_names()[1].split('.')[0])
       rama1, rama2 = self.rama_comp.get_ramalyze_objects()
       plots = rama2.get_plots(
           show_labels=True,
@@ -107,6 +113,9 @@ Usage examples:
           markeredgecolor="black",
           dpi=300,
           markerfacecolor="white")
+      pdf_fname = "%s_%s.pdf" % (base_fname, self.params.output.prefix)
+      if self.params.output.pdf:
+        pdfp = PdfPages(pdf_fname)
       for pos, plot in plots.iteritems():
         # prepare data
         got_outliers = [x for x in results if (x[-3]==pos and x[-4].find("-> OUTLIER") > 0)]#.sort(key=lambda x:x[1], reverse=True)
@@ -129,12 +138,16 @@ Usage examples:
               ad,
               color=color)
         file_label = res_type_labels[pos].replace("/", "_")
-        base_fname = "%s--%s" % (self.data_manager.get_model_names()[0].split('.')[0],
-            self.data_manager.get_model_names()[1].split('.')[0])
         plot_file_name = "%s_%s_%s_plot.png" % (
             base_fname, self.params.output.prefix, file_label)
-        print("saving: '%s'" % plot_file_name)
-        plot.save_image(plot_file_name, dpi=300)
+        if self.params.output.plots:
+          print("saving: '%s'" % plot_file_name)
+          plot.save_image(plot_file_name, dpi=300)
+        if self.params.output.pdf:
+          pdfp.savefig(plot.figure)
+      if self.params.output.pdf:
+        print("saving: '%s'" % pdf_fname)
+        pdfp.close()
 
   def show_single_result(self, r):
     print("%s %.2f, (%.1f:%.1f), (%.1f:%.1f), %s, Score: %.4f -> %.4f" % \
