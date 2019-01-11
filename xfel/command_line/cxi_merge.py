@@ -189,6 +189,12 @@ raw_data {
       plot_refinement_steps = False
         .type = bool
         .help = If True, plot refinement steps during refinement.
+      apply_to_I_only = False
+        .type = bool
+        .expert_level = 4
+        .help = If True, after sdfac refinement, apply the new errors only to the merged I \
+                during the weighted sum, keeping the old errors for the sigI value.        \
+                Flag for research only, not recommended for general use.
     }
   }
 }
@@ -1063,7 +1069,10 @@ class scaling_manager (intensity_data) :
       if (self.summed_weight[i] > 0.):
        if (multiplicity_flag[i]):
         Iobs_all[i] = self.summed_wt_I[i] / self.summed_weight[i]
-        SigI_all[i] = math.sqrt(1. / self.summed_weight[i])
+        if hasattr(self, 'summed_weight_uncorrected'):
+          SigI_all[i] = math.sqrt(1. / self.summed_weight_uncorrected[i])
+        else:
+          SigI_all[i] = math.sqrt(1. / self.summed_weight[i])
     if (self.params.set_average_unit_cell) :
       # XXX since XFEL crystallography runs at room temperature, it may not
       # be appropriate to use the cell dimensions from a cryo structure.

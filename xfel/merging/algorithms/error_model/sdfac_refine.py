@@ -455,6 +455,11 @@ class sdfac_refine_refltable(sdfac_refine):
     """
     Adjust sigmas according to Evans, 2011 Acta D and Evans and Murshudov, 2013 Acta D
     """
+    if self.scaler.params.raw_data.error_models.sdfac_refine.apply_to_I_only:
+      import copy
+      tmp_ISIGI = copy.deepcopy(self.scaler.ISIGI)
+      self.scaler.summed_weight_uncorrected = flex.double(self.scaler.n_refl, 0.)
+
     print >> self.log, "Starting adjust_errors"
     print >> self.log, "Computing initial estimates of sdfac, sdb and sdadd"
     values = self.parameterization(flex.double(self.get_initial_sdparams_estimates()))
@@ -483,6 +488,11 @@ class sdfac_refine_refltable(sdfac_refine):
       variance = sigma * sigma
       self.scaler.summed_wt_I[hkl_id] += Intensity / variance
       self.scaler.summed_weight[hkl_id] += 1 / variance
+
+      if self.scaler.params.raw_data.error_models.sdfac_refine.apply_to_I_only:
+        sigma = Intensity / tmp_ISIGI['isigi'][i] # uncorrected sigma
+        variance = sigma * sigma
+        self.scaler.summed_weight_uncorrected[hkl_id] += 1 / variance
 
     if self.scaler.params.raw_data.error_models.sdfac_refine.plot_refinement_steps:
       from matplotlib.pyplot import cm
