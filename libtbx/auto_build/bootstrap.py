@@ -876,6 +876,12 @@ class phaser_module(SourceModule):
                'git://git.uis.cam.ac.uk/cimr-phaser/phaser.git',
                'https://git.uis.cam.ac.uk/cimr-phaser/phaser.git']
 
+class phaser_tng_module(SourceModule):
+  module = 'phaser_tng'
+  anonymous = ['git',
+               'git://git.uis.cam.ac.uk/cimr-phaser/phaser_tng.git',
+               'https://git.uis.cam.ac.uk/cimr-phaser/phaser_tng.git']
+
 class phaser_regression_module(SourceModule):
   module = 'phaser_regression'
   anonymous = ['git',
@@ -1748,6 +1754,18 @@ class PhaserBuilder(CCIBuilder):
       configlst.append("--enable_openmp_if_possible=True")
     return configlst
 
+class PhaserTNGBuilder(PhaserBuilder):
+  CODEBASES = PhaserBuilder.CODEBASES + ['phaser_tng']
+  LIBTBX = PhaserBuilder.LIBTBX + ['phaser_tng']
+
+  def add_tests(self):
+    self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
+    self.add_test_command('cctbx_regression.test_nightly')
+
+  def get_libtbx_configure(self):
+    configlst = super(PhaserTNGBuilder, self).get_libtbx_configure()
+    configlst.append('--enable_cxx11')
+    return configlst
 
 class CCTBXLiteBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
@@ -2332,6 +2350,7 @@ def run(root=None):
     'molprobity':MOLPROBITYBuilder,
     'qrefine': QRBuilder,
     'phaser': PhaserBuilder,
+    'phaser_tng': PhaserTNGBuilder
   }
 
   parser = optparse.OptionParser(usage=usage)
