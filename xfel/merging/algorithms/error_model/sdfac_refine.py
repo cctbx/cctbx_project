@@ -4,7 +4,6 @@ from scitbx.array_family import flex
 import math, sys
 
 from xfel.merging.algorithms.error_model.error_modeler_base import error_modeler_base
-from xfel import compute_normalized_deviations, apply_sd_error_params
 
 from xfel.cxi.postrefinement_legacy_rs import unpack_base
 class sdfac_parameterization(unpack_base):
@@ -61,14 +60,13 @@ class simplex_minimizer(object):
     """ Compute the functional by first applying the current values for the sd parameters
     to the input data, then computing the complete set of normalized deviations and finally
     using those normalized deviations to compute the functional."""
-
     values = self.parameterization(vector)
 
     if values.SDFAC < 0 or values.SDB < 0 or values.SDADD < 0:
       f = 1e6
     else:
       data = self.apply_sd_error_params(self.data, values)
-      all_sigmas_normalized = compute_normalized_deviations(data, self.indices)
+      all_sigmas_normalized = self.compute_normalized_deviations(data, self.indices)
 
       f = 0
       for bin in self.intensity_bin_selections:
@@ -85,6 +83,7 @@ class simplex_minimizer(object):
     return f
 
   def apply_sd_error_params(self, data, values):
+    from xfel import apply_sd_error_params
     return apply_sd_error_params(data, values.SDFAC, values.SDB, values.SDADD)
 
   def get_refined_params(self):
@@ -190,12 +189,15 @@ class sdfac_refine(error_modeler_base):
 
     return corr, slope, offset
 
+  def compute_normalized_deviations(self, data, indices):
+   from xfel import compute_normalized_deviations
+   return compute_normalized_deviations(data, indices)
+
   def get_initial_sdparams_estimates(self):
     """
     Use normal probability analysis to compute intial sdfac and sdadd parameters.
     """
-    from xfel import compute_normalized_deviations
-    all_sigmas_normalized = compute_normalized_deviations(self.scaler.ISIGI, self.scaler.miller_set.indices())
+    all_sigmas_normalized = self.compute_normalized_deviations(self.scaler.ISIGI, self.scaler.miller_set.indices())
     assert ((all_sigmas_normalized > 0) | (all_sigmas_normalized <= 0)).count(True) == len(all_sigmas_normalized) # no nans allowed
 
     # remove zeros (miller indices with only one observation will have a normalized deviation of 0 which shouldn't contribute to
@@ -295,7 +297,7 @@ class sdfac_refine(error_modeler_base):
       # validate using http://ccp4wiki.org/~ccp4wiki/wiki/index.php?title=Symmetry%2C_Scale%2C_Merge#Analysis_of_Standard_Deviations
       print >> self.log, "Validating"
       from matplotlib import pyplot as plt
-      all_sigmas_normalized = compute_normalized_deviations(self.scaler.ISIGI, self.scaler.miller_set.indices())
+      all_sigmas_normalized = self.compute_normalized_deviations(self.scaler.ISIGI, self.scaler.miller_set.indices())
 
       plt.hist(all_sigmas_normalized, bins=100)
       plt.figure()
@@ -344,6 +346,9 @@ def setup_isigi_stats(ISIGI, indices):
 
 class simplex_minimizer_refltable(simplex_minimizer):
   """Class for refining sdfac, sdb and sdadd"""
+  def compute_normalized_deviations(self, data, indices):
+   from xfel.merging.algorithms.error_model import compute_normalized_deviations
+   return compute_normalized_deviations(data, indices)
 
   def target(self, vector):
     """ Compute the functional by first applying the current values for the sd parameters
@@ -357,7 +362,7 @@ class simplex_minimizer_refltable(simplex_minimizer):
       orig_isigi = self.data['isigi'] * 1
 
       self.apply_sd_error_params(self.data, values)
-      all_sigmas_normalized = compute_normalized_deviations(self.data, self.indices)
+      all_sigmas_normalized = self.compute_normalized_deviations(self.data, self.indices)
       self.data['isigi'] = orig_isigi
 
       f = 0
@@ -375,6 +380,7 @@ class simplex_minimizer_refltable(simplex_minimizer):
     return f
 
   def apply_sd_error_params(self, data, values):
+    from xfel.merging.algorithms.error_model import apply_sd_error_params
     apply_sd_error_params(data, values.SDFAC, values.SDB, values.SDADD, False)
 
 class sdfac_refine_refltable(sdfac_refine):
@@ -383,21 +389,12 @@ class sdfac_refine_refltable(sdfac_refine):
 
     if isinstance(scaler.ISIGI, dict):
       # work around for cxi.xmerge which doesn't make a reflection table
-      from xfel.merging.command_line.dev_cxi_merge_refltable import merging_reflection_table
-      self._isigi_dict = scaler.ISIGI
-      reflections = merging_reflection_table()
-      for i, hkl in enumerate(scaler.miller_set.indices()):
-        if hkl not in scaler.ISIGI: continue
-        for j, refl in enumerate(scaler.ISIGI[hkl]):
-          reflections.append({'miller_index':hkl,
-                              'scaled_intensity': refl[0],
-                              'isigi': refl[1],
-                              'slope': refl[2],
-                              'miller_id':i,
-                              'crystal_id':0,
-                              'iobs':0,
-                              'miller_index_original':(0,0,0)})
-      scaler.ISIGI = reflections
+      from xfel.merging import isigi_dict_to_reflection_table
+      scaler.ISIGI = isigi_dict_to_reflection_table(scaler.miller_set.indices(), scaler.ISIGI);
+
+  def compute_normalized_deviations(self, data, indices):
+   from xfel.merging.algorithms.error_model import compute_normalized_deviations
+   return compute_normalized_deviations(data, indices)
 
   def get_binned_intensities(self, n_bins=100):
     """
@@ -504,7 +501,7 @@ class sdfac_refine_refltable(sdfac_refine):
       # validate using http://ccp4wiki.org/~ccp4wiki/wiki/index.php?title=Symmetry%2C_Scale%2C_Merge#Analysis_of_Standard_Deviations
       print >> self.log, "Validating"
       from matplotlib import pyplot as plt
-      all_sigmas_normalized = compute_normalized_deviations(self.scaler.ISIGI, self.scaler.miller_set.indices())
+      all_sigmas_normalized = self.compute_normalized_deviations(self.scaler.ISIGI, self.scaler.miller_set.indices())
       plt.hist(all_sigmas_normalized, bins=100)
       plt.figure()
 

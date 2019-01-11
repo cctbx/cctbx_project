@@ -3,6 +3,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/list.hpp>
+#include <boost/python/dict.hpp>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/versa.h>
@@ -75,6 +76,37 @@ namespace sx_merging {
        }
     }
   }
+
+  dials::af::reflection_table isigi_dict_to_reflection_table(
+                          dials::af::shared<cctbx::miller::index<> > miller_indices,
+                          boost::python::dict ISIGI) {
+    dials::af::reflection_table table;
+    boost::python::list keys = ISIGI.keys();
+    dials::af::shared<cctbx::miller::index<> > miller_index          = table.get<cctbx::miller::index<> >("miller_index");
+    dials::af::shared<cctbx::miller::index<> > miller_index_original = table.get<cctbx::miller::index<> >("miller_index_original");
+    dials::af::shared<double> scaled_intensity = table.get<double>("scaled_intensity");
+    dials::af::shared<double> isigi            = table.get<double>("isigi");
+    dials::af::shared<double> slope            = table.get<double>("slope");
+    dials::af::shared<double> iobs             = table.get<double>("iobs");
+    dials::af::shared<size_t> miller_id           = table.get<size_t>("miller_id");
+    dials::af::shared<size_t> crystal_id          = table.get<size_t>("crystal_id");
+    for (size_t i = 0; i < miller_indices.size(); i ++) {
+      if (!ISIGI.has_key<cctbx::miller::index<> >(miller_indices[i])) continue;
+      boost::python::list values = boost::python::extract<boost::python::list>(ISIGI[miller_indices[i]]);
+      for (size_t j = 0; j < boost::python::len(values); j++) {
+        miller_index.push_back(miller_indices[i]);
+        boost::python::tuple item = boost::python::extract<boost::python::tuple>(values[j]);
+        scaled_intensity.push_back(boost::python::extract<double>(item[0]));
+        isigi.push_back(boost::python::extract<double>(item[1]));
+        slope.push_back(boost::python::extract<double>(item[2]));
+        miller_id.push_back(i);
+        crystal_id.push_back(0);
+        iobs.push_back(0);
+        miller_index_original.push_back(cctbx::miller::index<int>(0,0,0));
+      }
+    }
+    return table;
+  }
 }
 
 using namespace boost::python;
@@ -89,6 +121,7 @@ namespace boost_python { namespace {
 
     def("foo2",&sx_merging::foo2);
     def("get_hkl_chunks_cpp",&sx_merging::get_hkl_chunks_cpp);
+    def("isigi_dict_to_reflection_table",&sx_merging::isigi_dict_to_reflection_table);
   }
 
 }
