@@ -718,21 +718,22 @@ class dataset_statistics(object):
       ('d_res_high', 'd_min'),
       ('d_res_low', 'd_max'),
       ('pdbx_CC_half', 'cc_one_half'),
-      ('number_obs', 'n_obs'),
-      ('pdbx_Rpim_I_all', 'r_pim'),
-      ('pdbx_Rrim_I_all', 'r_meas'),
-      ('Rmerge_I_all', 'r_merge'),
-      ('meanI_over_sigI_all', 'i_mean_over_sigi_mean'),
+      ('number_unique_obs', 'n_obs'),
+      ('pdbx_Rpim_I_obs', 'r_pim'),
+      ('pdbx_Rrim_I_obs', 'r_meas'),
+      ('Rmerge_I_obs', 'r_merge'),
+      ('meanI_over_sigI_obs', 'i_mean_over_sigi_mean'),
       ('pdbx_netI_over_sigmaI', 'i_over_sigma_mean'),
-      ('number_measured_all', 'n_obs'),
+      ('number_measured_obs', 'n_obs'),
       ('pdbx_redundancy', 'mean_redundancy'),
-      ('percent_possible_all', 'completeness'),
+      ('percent_possible_obs', 'completeness'),
     ])
 
     for k, v in mmcif_to_name.iteritems():
       value = self.overall.__getattribute__(v)
       if 'percent' in v:
         value *= 100
+      k = k.replace('d_res_', 'd_resolution_')
       cif_block['_reflns.' + k] = value
 
     header = ['_reflns_shell.pdbx_ordinal'] + [
