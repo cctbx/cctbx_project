@@ -1,10 +1,13 @@
 from __future__ import division
 
 import iotbx.phil
+from libtbx import group_args
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
-from mmtbx.validation.ramalyze import ramalyze
+from mmtbx.validation.ramalyze import ramalyze, find_region_max_value
 import math
+import numpy as np
+from collections import Counter
 
 master_phil_str = '''
 comparama {
@@ -74,6 +77,7 @@ def determine_validation_change_text(r1, r2):
 
 class rcompare(object):
   def __init__(self, model1, model2, params=None, log=null_out()):
+    self.plots = None
     self.params = params
     if self.params is None:
       self.params = rcompare.get_default_params().comparama
@@ -91,12 +95,59 @@ class rcompare(object):
       assert approx_equal(diff2, diff3), "%s, %s" % ((r1.phi, r1.psi), (r2.phi, r2.psi))
       self.results.append((r1.id_str(), diff2, r1.phi, r1.psi, r2.phi, r2.psi, v, r2.res_type, r1.score/100, r2.score/100))
       # print "Score:", r1.score, r2.score
+    self.res_columns = zip(*self.get_results())
 
   def get_results(self):
     return self.results
 
   def get_ramalyze_objects(self):
     return self.rama1, self.rama2
+
+  def get_number_results(self):
+    v1, v2 = rama_rescale(self.results)
+    return group_args(
+        mean_diff=np.mean(self.res_columns[1]),
+        std_diff=np.std(self.res_columns[1]),
+        sum_1 = np.sum(self.res_columns[-2]),
+        sum_2 = np.sum(self.res_columns[-1]),
+        n_res = len(self.res_columns[-1]),
+        scaled_sum_1 = np.sum(v1),
+        scaled_sum_2 = np.sum(v2),
+        counts = Counter(self.res_columns[-4]),
+        )
+
+  def get_plots(self):
+    if self.plots is not None:
+      return self.plots
+    self.plots = self.rama2.get_plots(
+        show_labels=True,
+        point_style='bo',
+        markersize=3,
+        markeredgecolor="black",
+        dpi=300,
+        markerfacecolor="white")
+    for pos, plot in self.plots.iteritems():
+      # prepare data
+      got_outliers = [x for x in self.results if (x[-3]==pos and x[-4].find("-> OUTLIER") > 0)]#.sort(key=lambda x:x[1], reverse=True)
+      got_outliers.sort(key=lambda x:x[1], reverse=True)
+      # print("got_outliers:", len(got_outliers))
+      # for o in got_outliers:
+      #   self.show_single_result(o)
+      got_not_outliers = [x for x in self.results if (x[-3]==pos and x[-4] == "OUTLIER -> Favored")]#.sort(key=lambda x:x[1], reverse=True)
+      got_not_outliers.sort(key=lambda x:x[1], reverse=True)
+      # print("got_not_outliers:", len(got_not_outliers))
+      # for o in got_not_outliers:
+      #   self.show_single_result(o)
+
+      for data, color in [(got_outliers, "red"), (got_not_outliers, "lime")]:
+        # print (len(data))
+        if data and len(data) < 0: continue
+        ad = [((x[2], x[3]),(x[4], x[5])) for x in data]
+        add_arrows_on_plot(
+            plot,
+            ad,
+            color=color)
+    return self.plots
 
   @staticmethod
   def get_default_params():
@@ -106,3 +157,96 @@ class rcompare(object):
     return iotbx.phil.parse(
           input_string=master_phil_str,
           process_includes=True).extract()
+
+def rama_rescale(results):
+  res1 = []
+  res2 = []
+  for r1_id_str, diff2, r1_phi, r1_psi, r2_phi, r2_psi, v, r2_res_type, r1_score, r2_score in results:
+    max_value1 = find_region_max_value(r2_res_type, r1_phi, r1_psi)
+    if max_value1 is None:
+      res1.append(r1_score)
+    else:
+      # if max_value1[1] < 1:
+      #   print("rescaling: %.4f -> %.4f" % (r1_score, r1_score/max_value1[1]))
+      res1.append(r1_score/max_value1[1])
+    max_value2 = find_region_max_value(r2_res_type, r2_phi, r2_psi)
+    if max_value2 is None:
+      res2.append(r2_score)
+    else:
+      res2.append(r2_score/max_value2[1])
+  return res1, res2
+
+def breake_arrow_if_needed(abeg, aend, plot_ranges):
+  eps = 1e-3
+  tp = two_rama_points(abeg, aend)
+  actual_len = tp.length(abeg, aend)
+  min_len = tp.min_length()
+  best_xy_multipliers = tp.get_xy_multipliers()
+  result = []
+  if best_xy_multipliers == [0,0]:
+    return [(abeg,aend)]
+  # Now we figure out how to brake it.
+  result = [ [abeg, (0,0)], [(0,0), aend] ]
+  ix = 0 if best_xy_multipliers[0] == -1 else 1
+  iy = 0 if best_xy_multipliers[1] == -1 else 1
+  if approx_equal(abeg[0], aend[0], eps, out=None):
+    # case where x1 == x2
+    result[0][1] = (abeg[0], plot_ranges[0][iy])
+    result[1][0] = (abeg[0], plot_ranges[0][1-iy])
+  elif best_xy_multipliers.count(0) == 1:
+    # general case, 1 border crossing
+    # y = ax + b
+    n_aend = (aend[0]+360*best_xy_multipliers[0], aend[1]+360*best_xy_multipliers[1])
+    a = (n_aend[1]-abeg[1]) / (n_aend[0] - abeg[0])
+    b = n_aend[1] - a*n_aend[0]
+    if best_xy_multipliers[0] != 0:
+      # x wrapping, calculating y
+      y = a*(plot_ranges[0][ix]) + b
+      y = get_distance(y, 0)
+      result[0][1] = (plot_ranges[0][ix],   y)
+      result[1][0] = (plot_ranges[0][1-ix], y)
+    else:
+      # y wrapping, calculating x
+      x = (plot_ranges[1][iy] - b) / a
+      x = get_distance(x, 0)
+      result[0][1] = (x, plot_ranges[1][iy])
+      result[1][0] = (x, plot_ranges[1][1-iy])
+  else:
+    # both sides cutting. just go to the corner to make things simple
+    result[0][1] = (plot_ranges[0][ix], plot_ranges[1][iy])
+    result[1][0] = (plot_ranges[0][1-ix], plot_ranges[1][1-iy])
+  return result
+
+def add_arrows_on_plot(
+    p,
+    arrows_data,
+    color='green',
+    wrap_arrows=True,
+    plot_ranges=[(-180, 180), (-180, 180)]):
+  """
+  p - pyplot
+  arrows_data - [((x,y beginning), (x,y end)), ... ((xy),(xy))]
+  wrap_arrows - draw shortest possible arrow - wrap around plot edges
+  ranges - ranges of the plot
+  """
+  import matplotlib.patches as patches
+  import matplotlib.lines as lines
+
+  style="Simple,head_length=10,head_width=5,tail_width=1"
+  for arrow in arrows_data:
+    if wrap_arrows:
+      r = breake_arrow_if_needed(arrow[0], arrow[1], plot_ranges)
+      for l_coors in r[:-1]:
+        l = lines.Line2D(
+            xdata = [l_coors[0][0], l_coors[1][0]],
+            ydata = [l_coors[0][1], l_coors[1][1]],
+            linewidth=1.7, color=color)
+        p.plot.add_line(l)
+    p.plot.add_patch(patches.FancyArrowPatch(
+        r[-1][0],
+        r[-1][1],
+        arrowstyle=style,
+        color = color,
+        linewidth=0.5,
+        zorder=10,
+        ))
