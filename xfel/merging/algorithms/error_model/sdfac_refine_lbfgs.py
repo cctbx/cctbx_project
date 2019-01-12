@@ -4,7 +4,7 @@ from scitbx.array_family import flex
 import math
 
 from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine_refltable
-from xfel.merging.algorithms.error_model import compute_normalized_deviations, apply_sd_error_params
+from xfel.merging.algorithms.error_model import compute_normalized_deviations, apply_sd_error_params, df_dpsq as df_dpsq_cpp
 
 def finite_difference(target, values, p, DELTA = 1.e-7):
   """ Compute finite difference given a target function """
@@ -84,6 +84,7 @@ class sdfac_refinery(object):
 
   def get_normalized_sigmas(self, values):
     orig_isigi = self.ISIGI['isigi'] * 1
+    # time split between these two functions
     self.apply_sd_error_params(self.ISIGI, values)
     all_sigmas_normalized = compute_normalized_deviations(self.ISIGI, self.indices)
 
@@ -93,23 +94,7 @@ class sdfac_refinery(object):
     return all_sigmas_normalized, sigma_prime
 
   def df_dpsq(self, all_sigmas_normalized, sigma_prime, dsigmasq_dpsq):
-    c = self.ISIGI['nn']*((self.ISIGI['scaled_intensity']-self.ISIGI['meanprime_scaled_intensity'])**2)
-
-    dsigmanormsq_dpsq = ( -c / ((sigma_prime**2)**2)) * dsigmasq_dpsq
-
-    g = flex.double(len(self.bins), 0)
-    for b, bin in enumerate(self.bins):
-      binned_normalized_sigmas = all_sigmas_normalized.select(bin)
-      n = len(binned_normalized_sigmas)
-      if n == 0: continue
-      if binned_normalized_sigmas.count(0) == n: continue
-
-      bnssq = binned_normalized_sigmas * binned_normalized_sigmas
-
-      t1 = 2*(1 - math.sqrt(flex.sum(bnssq)/n))
-      t2 = -0.5 / math.sqrt(flex.sum(bnssq)/n)
-      t3 = flex.sum(dsigmanormsq_dpsq.select(bin))/n
-      g[b] = t1 * t2 * t3
+    g = df_dpsq_cpp(all_sigmas_normalized, sigma_prime, dsigmasq_dpsq, self.ISIGI, self.modeler.bin_indices, len(self.bins))
     return g
 
   def df_dsdfacsq(self, values, all_sigmas_normalized, sigma_prime):

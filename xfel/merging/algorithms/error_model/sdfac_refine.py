@@ -419,6 +419,7 @@ class sdfac_refine_refltable(sdfac_refine):
       min_meanI = flex.min(meanI)
       step = (flex.max(meanI)-min_meanI)/n_bins
       print >> self.log, "Bin size:", step
+      self.bin_indices = flex.int(len(ISIGI), -1)
 
       for i in range(n_bins):
         if i+1 == n_bins:
@@ -427,7 +428,9 @@ class sdfac_refine_refltable(sdfac_refine):
           sel = (meanI >= (min_meanI + step * i)) & (meanI < (min_meanI + step * (i+1)))
         if sel.all_eq(False): continue
         sels.append(sel)
+        self.bin_indices.set_selected(sel, len(sels)-1)
         binned_intensities.append((step/2 + step*i)+min(meanI))
+      assert(self.bin_indices == -1).count(True) == False
     else:
       # n obs per bin is the same
       sorted_meanI = meanI.select(flex.sort_permutation(meanI))

@@ -135,12 +135,54 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
   }
 }
 
+scitbx::af::shared<double> df_dpsq(scitbx::af::shared<double>all_sigmas_normalized,
+                                   scitbx::af::shared<double>sigma_prime,
+                                   scitbx::af::shared<double>dsigmasq_dpsq,
+                                   reflection_table ISIGI,
+                                   scitbx::af::shared<int>bin_indices,
+                                   size_t n_bins) {
+  scitbx::af::shared<double> g(n_bins, 0);
+  scitbx::af::shared<double> dsigmanormsq_dpsq(ISIGI.size());
+
+  scitbx::af::const_ref<double> scaled_intensity = ISIGI["scaled_intensity"];
+  scitbx::af::const_ref<double> meanprime_scaled_intensity = ISIGI["meanprime_scaled_intensity"];
+  scitbx::af::const_ref<double> nn = ISIGI["nn"];
+
+  scitbx::af::shared<int> counts(n_bins);
+  scitbx::af::shared<double> bnssq(n_bins);
+  scitbx::af::shared<double> t3(n_bins);
+
+  for (size_t i = 0; i < ISIGI.size(); i++) {
+    double tmp = scaled_intensity[i]-meanprime_scaled_intensity[i];
+    double c = nn[i] * tmp * tmp;
+    dsigmanormsq_dpsq[i] = -c / std::pow(sigma_prime[i], 4) * dsigmasq_dpsq[i];
+
+    int b = bin_indices[i];
+    counts[b]++;
+    bnssq[b] += all_sigmas_normalized[i] * all_sigmas_normalized[i];
+    t3[b] += dsigmanormsq_dpsq[i];
+  }
+
+  for (size_t b = 0; b < n_bins; b++) {
+    int n = counts[b];
+
+    if (n == 0 || bnssq[b] == 0.) continue;
+    bnssq[b] /= n;
+    double t1 = 2 * (1 - std::sqrt(bnssq[b]));
+    double t2 = -0.5 / std::sqrt(bnssq[b]);
+    t3[b] /= n;
+    g[b] = t1 * t2 * t3[b];
+  }
+  return g;
+}
+
 namespace boost_python { namespace {
   void
   init_module() {
     using namespace boost::python;
     def("compute_normalized_deviations", &compute_normalized_deviations);
     def("apply_sd_error_params", &apply_sd_error_params);
+    def("df_dpsq", &df_dpsq);
 }
 }}
 }}}} // namespace
