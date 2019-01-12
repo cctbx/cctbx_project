@@ -429,7 +429,7 @@ class sdfac_refine_refltable(sdfac_refine):
         if sel.all_eq(False): continue
         sels.append(sel)
         self.bin_indices.set_selected(sel, len(sels)-1)
-        binned_intensities.append((step/2 + step*i)+min(meanI))
+        binned_intensities.append((step/2 + step*i)+min_meanI)
       assert(self.bin_indices == -1).count(True) == False
     else:
       # n obs per bin is the same
