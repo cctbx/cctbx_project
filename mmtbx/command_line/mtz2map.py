@@ -53,6 +53,9 @@ d_max = None
 grid_resolution_factor = 0.25
   .type = float
   .help = Grid spacing (multiplied by the high-resolution limit)
+gridding = None
+  .type = ints
+  .help = Gridding
 scale = *sigma volume
   .type = choice(multi=False)
   .expert_level = 1
@@ -248,8 +251,19 @@ def run(args, log=sys.stdout, run_in_current_working_directory=False):
         flags.data().count(True)
       map_coeffs = map_coeffs.select(~(flags.data()))
     from cctbx import maptbx
+
+    if params.gridding:
+      from cctbx.maptbx import crystal_gridding
+      cg=crystal_gridding(
+        unit_cell=map_coeffs.crystal_symmetry().unit_cell(),
+        space_group_info=
+           map_coeffs.crystal_symmetry().space_group_info(),
+        pre_determined_n_real=params.gridding)
+    else:
+      cg=None
     map = map_coeffs.fft_map(resolution_factor=params.grid_resolution_factor,
-      symmetry_flags=maptbx.use_space_group_symmetry)
+      symmetry_flags=maptbx.use_space_group_symmetry,
+      crystal_gridding=cg)
     if params.scale == "sigma" :
       print >> log, "  applying sigma-scaling"
       map.apply_sigma_scaling()
