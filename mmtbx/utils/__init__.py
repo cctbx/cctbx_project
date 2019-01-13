@@ -264,6 +264,9 @@ def data_and_flags_master_params(master_scope_name=None):
   else:
     return iotbx.phil.parse(data_and_flags_str, process_includes=True)
 
+###
+# XXX Severe duplicaiton. Remove once transition is over.
+###
 class determine_data_and_flags(object):
   """
   Encapsulates logic for extracting experimental amplitudes and R-free flags
