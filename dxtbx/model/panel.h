@@ -118,7 +118,6 @@ namespace dxtbx { namespace model {
     
     /** Set the pedestal */
     void set_pedestal(double pedestal) {
-      DXTBX_ASSERT(pedestal > 0);
       pedestal_ = pedestal;
     }
 
