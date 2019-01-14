@@ -1,6 +1,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <dials/array_family/reflection_table.h>
+#include <cctbx/miller.h>
 
 namespace xfel {
 namespace merging {
@@ -176,6 +177,44 @@ scitbx::af::shared<double> df_dpsq(scitbx::af::shared<double>all_sigmas_normaliz
   return g;
 }
 
+/* Jiffy function to compute statistics needed downstream
+  For every observation, computes:
+  mean_scaled_intensity: mean of all observations of this miller index
+  meanprime_scaled_intensity: mean of all observations of this miller index except this observation
+  n_refl: count of observed reflections for this miller index
+  nn: n_refl-1/n_refl
+*/
+void setup_isigi_stats(reflection_table ISIGI, scitbx::af::const_ref<cctbx::miller::index<> > indices) {
+  scitbx::af::shared<double> sumI                = scitbx::af::shared<double>(indices.size(), 0);
+  scitbx::af::shared<double> n_refl              = scitbx::af::shared<double>(indices.size(), 0);
+  scitbx::af::const_ref<size_t> miller_id        = ISIGI["miller_id"];
+  scitbx::af::const_ref<double> scaled_intensity = ISIGI["scaled_intensity"];
+
+  for (size_t i = 0; i < ISIGI.size(); i++) {
+    size_t hkl_id = miller_id[i];
+    sumI[hkl_id] += scaled_intensity[i];
+    n_refl[hkl_id] += 1;
+  }
+
+  scitbx::af::shared<double> all_meanI      = scitbx::af::shared<double>(ISIGI.size(), 0);
+  scitbx::af::shared<double> all_n_refl     = scitbx::af::shared<double>(ISIGI.size(), 0);
+  scitbx::af::shared<double> nn             = scitbx::af::shared<double>(ISIGI.size(), 0);
+  scitbx::af::shared<double> all_imeanprime = scitbx::af::shared<double>(ISIGI.size(), 0);
+  for (size_t i = 0; i < ISIGI.size(); i++) {
+    size_t hkl_id = miller_id[i];
+    all_meanI[i] = sumI[hkl_id]/n_refl[hkl_id];
+    all_n_refl[i] = n_refl[hkl_id];
+    nn[i] = (n_refl[hkl_id]-1)/n_refl[hkl_id];
+    SCITBX_ASSERT(n_refl[hkl_id] > 0);
+    if (n_refl[hkl_id] > 1)
+      all_imeanprime[i] = (sumI[hkl_id]-scaled_intensity[i])/(n_refl[hkl_id]-1);
+  }
+  ISIGI["mean_scaled_intensity"] = all_meanI;
+  ISIGI["n_refl"] = all_n_refl;
+  ISIGI["nn"] = nn;
+  ISIGI["meanprime_scaled_intensity"] = all_imeanprime ;
+}
+
 namespace boost_python { namespace {
   void
   init_module() {
@@ -183,6 +222,7 @@ namespace boost_python { namespace {
     def("compute_normalized_deviations", &compute_normalized_deviations);
     def("apply_sd_error_params", &apply_sd_error_params);
     def("df_dpsq", &df_dpsq);
+    def("setup_isigi_stats", &setup_isigi_stats);
 }
 }}
 }}}} // namespace

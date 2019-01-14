@@ -4,6 +4,7 @@ from scitbx.array_family import flex
 import math, sys
 
 from xfel.merging.algorithms.error_model.error_modeler_base import error_modeler_base
+from xfel.merging.algorithms.error_model import setup_isigi_stats
 
 from xfel.cxi.postrefinement_legacy_rs import unpack_base
 class sdfac_parameterization(unpack_base):
@@ -312,37 +313,6 @@ class sdfac_refine(error_modeler_base):
 
       all_sigmas_normalized = all_sigmas_normalized.select(all_sigmas_normalized != 0)
       self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5), plot = True)
-
-
-def setup_isigi_stats(ISIGI, indices):
-  """ Jiffy function to compute statistics needed downstream
-  For every observstion, computes:
-  mean_scaled_intensity: mean of all observations of this miller index
-  meanprime_scaled_intensity: mean of all observations of this miller index except this observation
-  n_refl: count of observed reflections for this miller index
-  nn: n_refl-1/n_refl
-  """
-  sumI = flex.double(len(indices), 0)
-  n_refl = flex.double(len(indices), 0)
-  for i in range(len(ISIGI)):
-    hkl_id = ISIGI['miller_id'][i]
-    sumI[hkl_id] += ISIGI['scaled_intensity'][i]
-    n_refl[hkl_id] += 1
-
-  all_meanI = flex.double(len(ISIGI), 0)
-  all_n_refl = flex.double(len(ISIGI), 0)
-  all_imeanprime = flex.double(len(ISIGI), 0)
-  for i in range(len(ISIGI)):
-    hkl_id = ISIGI['miller_id'][i]
-    all_meanI[i] = sumI[hkl_id]/n_refl[hkl_id]
-    all_n_refl[i] = n_refl[hkl_id]
-    assert n_refl[hkl_id] > 0
-    if n_refl[hkl_id] > 1:
-      all_imeanprime[i] = (sumI[hkl_id]-ISIGI['scaled_intensity'][i])/(n_refl[hkl_id]-1)
-  ISIGI['mean_scaled_intensity'] = all_meanI
-  ISIGI['n_refl'] = all_n_refl
-  ISIGI['nn'] = (all_n_refl - 1)/all_n_refl
-  ISIGI['meanprime_scaled_intensity'] = all_imeanprime
 
 class simplex_minimizer_refltable(simplex_minimizer):
   """Class for refining sdfac, sdb and sdadd"""
