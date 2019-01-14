@@ -80,11 +80,15 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
    If using squared, it is assumed that sdfac, sdb and sdadd have already been squared
    */
   SCITBX_ASSERT(ISIGI.contains("scaled_intensity"));
+  SCITBX_ASSERT(ISIGI.contains("mean_scaled_intensity"));
+  SCITBX_ASSERT(ISIGI.contains("meanprime_scaled_intensity"));
   SCITBX_ASSERT(ISIGI.contains("isigi"));
   SCITBX_ASSERT(ISIGI.contains("slope"));
   SCITBX_ASSERT(ISIGI.contains("miller_id"));
 
   scitbx::af::const_ref<double>      scaled_intensity = ISIGI["scaled_intensity"];
+  scitbx::af::const_ref<double>      mean_scaled_intensity = ISIGI["mean_scaled_intensity"];
+  scitbx::af::const_ref<double>      meanprime_scaled_intensity = ISIGI["meanprime_scaled_intensity"];
   scitbx::af::ref<double>            isigi = ISIGI["isigi"];
   scitbx::af::const_ref<double>      slope = ISIGI["slope"];
   scitbx::af::shared<double>         sigmas(ISIGI.size(), 0);
@@ -94,27 +98,22 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
   scitbx::af::shared<std::size_t>    n_refl(max_miller_id+1, 0);
   scitbx::af::shared<double>         isum(max_miller_id+1, 0);
 
+  double tmp = 0;
+  double sigma_corrected = 0;
   for (std::size_t i = 0; i < ISIGI.size(); i++) {
     // scaled intensity (iobs/slope)
     // corrected sigma (original sigma/slope)
     sigmas[i] = scaled_intensity[i] / isigi[i];
 
-    isum[miller_id[i]] += scaled_intensity[i];
-    n_refl[miller_id[i]]++;
-  }
-
-  double tmp = 0;
-  double sigma_corrected = 0;
-  for (std::size_t i = 0; i < ISIGI.size(); i++) {
     // apply correction parameters
     if (squared_params) {
-      // compute meanI, which is the mean of all observations of this hkl
-      double meanI = isum[miller_id[i]] / n_refl[miller_id[i]];
+      // use meanI, which is the mean of all observations of this hkl
+      double meanI = mean_scaled_intensity[i];
       tmp = std::pow(sigmas[i],2) + sdb * meanI + sdadd * std::pow(meanI,2);
     }
     else {
-      // compute meanIprime, which for each observation, is the mean of all other observations of this hkl
-      double meanIprime = (isum[miller_id[i]]-scaled_intensity[i]) / (n_refl[miller_id[i]]>1 ? (n_refl[miller_id[i]]-1) : 1);
+      // use meanIprime, which for each observation, is the mean of all other observations of this hkl
+      double meanIprime = meanprime_scaled_intensity[i];
       tmp = std::pow(sigmas[i],2) + sdb * meanIprime + std::pow(sdadd*meanIprime,2);
     }
 
