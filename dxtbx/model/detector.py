@@ -48,6 +48,11 @@ detector_phil_scope = libtbx.phil.parse('''
         .help = "The gain of the detector panel"
         .short_caption = "Gain value"
 
+      pedestal = None
+        .type = float
+        .help = "The pedestal of the detector panel"
+        .short_caption = "Pedestal value"
+
       pixel_size = None
         .type = floats(size=2)
         .help = "Override the panel pixel size"
@@ -205,6 +210,8 @@ class DetectorFactory:
         panel.set_type(panel_params.type)
       if panel_params.gain is not None:
         panel.set_gain(panel_params.gain)
+      if panel_params.pedestal is not None:
+        panel.set_pedestal(panel_params.pedestal)
       if panel_params.pixel_size is not None:
         panel.set_pixel_size(panel_params.pixel_size)
       else:
@@ -310,6 +317,8 @@ class DetectorFactory:
         panel.set_type(panel_params.type)
       if panel_params.gain is not None:
         panel.set_gain(panel_params.gain)
+      if panel_params.pedestal is not None:
+        panel.set_pedestal(panel_params.pedestal)
       if panel_params.pixel_size is not None:
         panel.set_pixel_size(panel_params.pixel_size)
       if panel_params.image_size is not None:
@@ -478,7 +487,7 @@ class DetectorFactory:
   def make_detector(stype, fast_axis, slow_axis, origin,
                     pixel_size, image_size, trusted_range = (0.0, 0.0),
                     px_mm=None, name="Panel", thickness=0.0, material='',
-                    mu=0.0, gain=None, identifier=""):
+                    mu=0.0, gain=None, pedestal=None, identifier=""):
     """Ensure all types are correct before creating c++ detector class."""
 
     if px_mm is None:
@@ -501,12 +510,14 @@ class DetectorFactory:
     p.set_identifier(identifier)
     if gain is not None:
       p.set_gain(gain)
+    if pedestal is not None:
+      p.set_pedestal(pedestal)
     return d
 
   @staticmethod
   def simple(sensor, distance, beam_centre, fast_direction, slow_direction,
              pixel_size, image_size, trusted_range = (0.0, 0.0), mask = [],
-             px_mm=None, mu=0.0, gain=None, identifier=""):
+             px_mm=None, mu=0.0, gain=None, pedestal=None, identifier=""):
     '''Construct a simple detector at a given distance from the sample
     along the direct beam presumed to be aligned with -z, offset by the
     beam centre - the directions of which are given by the fast and slow
@@ -544,6 +555,7 @@ class DetectorFactory:
         px_mm,
         mu=mu,
         gain=gain,
+        pedestal=pedestal,
         identifier=identifier)
     detector[0].mask = mask
     return detector
@@ -552,7 +564,7 @@ class DetectorFactory:
   def two_theta(sensor, distance, beam_centre, fast_direction,
                 slow_direction, two_theta_direction, two_theta_angle,
                 pixel_size, image_size, trusted_range = (0.0, 0.0),
-                mask = [], px_mm = None, mu=0.0, gain=None, identifier=""):
+                mask = [], px_mm = None, mu=0.0, gain=None, pedestal=None, identifier=""):
     '''Construct a simple detector at a given distance from the sample
     along the direct beam presumed to be aligned with -z, offset by the
     beam centre - the directions of which are given by the fast and slow
@@ -590,7 +602,7 @@ class DetectorFactory:
     detector = DetectorFactory.make_detector(
         DetectorFactory.sensor(sensor),
         (R * fast), (R * slow), (R * origin), pixel_size,
-        image_size, trusted_range, px_mm, mu=mu, gain=gain, identifier=identifier)
+        image_size, trusted_range, px_mm, mu=mu, gain=gain, pedestal=pedestal, identifier=identifier)
 
     detector.mask = mask
     return detector
@@ -598,7 +610,7 @@ class DetectorFactory:
   @staticmethod
   def complex(sensor, origin, fast, slow, pixel, size,
               trusted_range = (0.0, 0.0), mask=[], px_mm = None, mu=0.0,
-              gain = None, identifier=""):
+              gain = None, pedestal = None, identifier=""):
     '''A complex detector model, where you know exactly where everything
     is. This is useful for implementation of the Rigaku Saturn header
     format, as that is exactly what is in there. Origin, fast and slow are
@@ -622,6 +634,7 @@ class DetectorFactory:
         px_mm,
         mu=mu,
         gain=gain,
+        pedestal=pedestal,
         identifier=identifier)
     detector[0].mask = mask
     return detector

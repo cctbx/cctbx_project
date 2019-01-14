@@ -89,6 +89,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       data["trusted_range"] = p.get_trusted_range();
       data["thickness"] = p.get_thickness();
       data["gain"] = p.get_gain();
+      data["pedestal"] = p.get_pedestal();
       data["material"] = p.get_material();
       data["identifier"] = p.get_identifier();
       data["mu"] = p.get_mu();
@@ -137,6 +138,9 @@ namespace dxtbx { namespace model { namespace boost_python {
       }
       if (data.has_key("gain")) {
         p.set_gain(extract<double>(data["gain"]));
+      }
+      if (data.has_key("pedestal")) {
+        p.set_pedestal(extract<double>(data["pedestal"]));
       }
       if (data.has_key("material")) {
         p.set_material(extract<std::string>(data["material"]));

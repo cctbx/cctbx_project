@@ -9,6 +9,10 @@ def tst_get_gain(detector):
   detector[0].set_gain(2.0)
   assert abs(detector[0].get_gain() - 2.0) < 1e-7
 
+def tst_get_pedestal(detector):
+  detector[0].set_pedestal(2.0)
+  assert abs(detector[0].get_pedestal() - 2.0) < 1e-7
+
 def tst_get_identifier(detector):
   detector[0].set_identifier("HELLO")
   assert detector[0].get_identifier() == "HELLO"
@@ -199,6 +203,7 @@ def test_detector():
   # Perform some tests
   tst_get_identifier(detector)
   tst_get_gain(detector)
+  tst_get_pedestal(detector)
   tst_set_mosflm_beam_centre(detector)
   tst_get_pixel_lab_coord(detector)
   tst_get_image_size_mm(detector)

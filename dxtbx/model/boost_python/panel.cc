@@ -153,6 +153,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["identifier"] = obj.get_identifier();
     result["mask"] = boost::python::list(obj.get_mask());
     result["gain"] = obj.get_gain();
+    result["pedestal"] = obj.get_pedestal();
     result["px_mm_strategy"] = to_dict(obj.get_px_mm_strategy());
     return result;
   }
@@ -193,6 +194,9 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
     if (obj.has_key("gain")) {
       result->set_gain(boost::python::extract<double>(obj["gain"]));
+    }
+    if (obj.has_key("pedestal")) {
+      result->set_pedestal(boost::python::extract<double>(obj["pedestal"]));
     }
     if (obj.has_key("raw_image_offset")) {
       result->set_raw_image_offset(
@@ -535,6 +539,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("set_identifier", &Panel::set_identifier)
       .def("get_gain", &Panel::get_gain)
       .def("set_gain", &Panel::set_gain)
+      .def("get_pedestal", &Panel::get_pedestal)
+      .def("set_pedestal", &Panel::set_pedestal)
       .def("get_image_size_mm", &Panel::get_image_size_mm)
       .def("get_px_mm_strategy", &Panel::get_px_mm_strategy)
       .def("set_px_mm_strategy", &Panel::set_px_mm_strategy)
