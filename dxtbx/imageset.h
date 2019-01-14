@@ -809,7 +809,39 @@ namespace dxtbx {
      * @returns The pedestal image
      */
     Image<double> get_pedestal(std::size_t index) {
+      //
+      // If the external lookup is empty
       DXTBX_ASSERT(index < indices_.size());
+      if (external_lookup().pedestal().get_data().empty()) {
+
+        // Get the detector
+        Detector detector = detail::safe_dereference(get_detector_for_image(index));
+
+        // Compute the pedestal for each panel
+        bool use_detector_pedestal = true;
+        std::vector<double> pedestal(detector.size(), 0);
+        for (std::size_t i = 0; i < detector.size(); ++i) {
+          pedestal[i] = detector[i].get_pedestal();
+          if (pedestal[i] <= 0) {
+            use_detector_pedestal = false;
+            break;
+          }
+        }
+
+        // If using the pedestal from the panel, construct a pedestal map
+        if (use_detector_pedestal) {
+          Image<double> result;
+          for (std::size_t i = 0; i < detector.size(); ++i) {
+            std::size_t xsize = detector[i].get_image_size()[0];
+            std::size_t ysize = detector[i].get_image_size()[1];
+            scitbx::af::c_grid<2> grid(ysize, xsize);
+            scitbx::af::versa<double, scitbx::af::c_grid<2> > data(grid, pedestal[i]);
+            result.push_back(ImageTile<double>(data));
+          }
+          return result;
+        }
+
+      }
       return external_lookup().pedestal().get_data();
     }
 
