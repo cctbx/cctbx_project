@@ -21,49 +21,20 @@ compute_normalized_deviations(reflection_table ISIGI, shared_miller hkl_list) {
    *
    */
   SCITBX_ASSERT(ISIGI.contains("scaled_intensity"));
+  SCITBX_ASSERT(ISIGI.contains("meanprime_scaled_intensity"));
   SCITBX_ASSERT(ISIGI.contains("isigi"));
-  SCITBX_ASSERT(ISIGI.contains("miller_id"));
+  SCITBX_ASSERT(ISIGI.contains("nn"));
 
   scitbx::af::shared<double>         result(ISIGI.size(), 0);
-  scitbx::af::shared<bool>           accepted(ISIGI.size(), false);
-  scitbx::af::shared<double>         sigmas(ISIGI.size(), 0);
-
-  scitbx::af::shared<double>         isum(hkl_list.size(), 0);
-  scitbx::af::shared<double>         n_accept(hkl_list.size(), 0);
-
   scitbx::af::const_ref<double>      scaled_intensity = ISIGI["scaled_intensity"];
+  scitbx::af::const_ref<double>      meanprime_scaled_intensity = ISIGI["meanprime_scaled_intensity"];
   scitbx::af::const_ref<double>      isigi = ISIGI["isigi"];
-  scitbx::af::const_ref<std::size_t> miller_id = ISIGI["miller_id"];
+  scitbx::af::const_ref<double>      nn = ISIGI["nn"];
 
   for (std::size_t i = 0; i < ISIGI.size(); i++) {
-    // scaled intensity (iobs/slope)
-    // corrected sigma (original sigma/slope)
-    accepted[i] = isigi[i] != 0;
-    if (isigi[i] == 0)
-      continue;
-
-    sigmas[i] = scaled_intensity[i] / isigi[i];
-    accepted[i] = sigmas[i] > 0;
-    if (sigmas[i] <= 0)
-      continue;
-
-    isum[miller_id[i]] += scaled_intensity[i];
-    n_accept[miller_id[i]]++;
-  }
-
-  scitbx::af::shared<double> nn(hkl_list.size(), 0);
-  for (std::size_t i = 0; i < hkl_list.size(); i++) {
-    if (n_accept[i] > 0) {
-      nn[i] = std::sqrt((n_accept[i]-1.0)/n_accept[i]);
-    }
-  }
-
-  for (std::size_t i = 0; i < ISIGI.size(); i++) {
-    if (!accepted[i]) continue;
-
-    std::size_t n = n_accept[miller_id[i]];
-    double meanIprime = (isum[miller_id[i]]-scaled_intensity[i]) / (n>1 ? (n-1) : 1);
-    result[i] = nn[miller_id[i]] * (scaled_intensity[i] - meanIprime) / sigmas[i];
+    if (isigi[i] == 0 || scaled_intensity[i] == 0) continue;
+    double sigma = scaled_intensity[i] / isigi[i];
+    result[i] = std::sqrt(nn[i]) * (scaled_intensity[i] - meanprime_scaled_intensity[i]) / sigma;
   }
   return result;
 }

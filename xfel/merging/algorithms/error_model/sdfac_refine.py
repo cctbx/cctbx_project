@@ -361,6 +361,7 @@ class sdfac_refine_refltable(sdfac_refine):
       # work around for cxi.xmerge which doesn't make a reflection table
       from xfel.merging import isigi_dict_to_reflection_table
       scaler.ISIGI = isigi_dict_to_reflection_table(scaler.miller_set.indices(), scaler.ISIGI);
+    setup_isigi_stats(scaler.ISIGI, self.scaler.miller_set.indices())
 
   def compute_normalized_deviations(self, data, indices):
    from xfel.merging.algorithms.error_model import compute_normalized_deviations
@@ -378,7 +379,6 @@ class sdfac_refine_refltable(sdfac_refine):
     """
     print >> self.log, "Computing intensity bins.",
     ISIGI = self.scaler.ISIGI
-    setup_isigi_stats(ISIGI, self.scaler.miller_set.indices())
     meanI = ISIGI['mean_scaled_intensity']
 
     sels = []
