@@ -277,6 +277,7 @@ def construct_vector(nx_file, item, vector=None):
     vector = nx_file[item].attrs['vector']
     if 'offset' in nx_file[item].attrs:
       offset = nx_file[item].attrs['offset']
+      offset = convert_units(offset, units, "mm")
     else:
       offset = vector * 0.0
     if ttype == 'translation':

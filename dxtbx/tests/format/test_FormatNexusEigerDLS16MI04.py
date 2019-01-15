@@ -113,11 +113,11 @@ def test_units():
   # XXX Need to check and update expected values here, however the ones
   # dxtbx is currently generating from the file are very wrong
   assert panel.get_origin() == pytest.approx(
-    (-167.44717577120824, 172.46833023184868, -350.0))
-  assert panel.get_distance() == 350
+    (-167.35570274412459, 172.4729262553403, -339.9887931971389))
+  assert panel.get_distance() == pytest.approx(339.9887931971389)
 
   assert scan is None
 
   assert beam.get_wavelength() == pytest.approx(0.979499)
   assert beam.get_s0() == pytest.approx((0,0,-1), abs=5e-2)
-  # XXX should check beam centre in mm, px
+  assert panel.get_beam_centre_px(beam.get_s0()) == pytest.approx((2231.41,2299.64))
