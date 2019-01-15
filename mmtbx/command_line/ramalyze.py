@@ -29,6 +29,10 @@ def get_master_phil():
       .type = str
     markeredgecolor="black"
       .type = str
+    show_filling = True
+      .type = bool
+    show_contours = True
+      .type = bool
     dpi=100
       .type=int
     wxplot = False
@@ -111,6 +115,8 @@ def run(args, out=sys.stdout, quiet=False):
         show_labels=params.show_labels,
         point_style=params.point_style,
         markerfacecolor=params.markerfacecolor,
+        show_filling=params.show_filling,
+        show_contours=params.show_contours,
         dpi=params.dpi,
         markeredgecolor=params.markeredgecolor,
         markersize=params.markersize)

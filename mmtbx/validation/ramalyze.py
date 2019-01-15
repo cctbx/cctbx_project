@@ -256,7 +256,8 @@ class ramalyze(validation):
     return self
 
   def get_plots(self, show_labels=True, point_style='bo',
-      markersize=10,markeredgecolor="black", dpi=100,markerfacecolor="white"):
+      markersize=10,markeredgecolor="black", dpi=100,markerfacecolor="white",
+      show_filling=True, show_contours=True):
     """
     Create a dictionary of six PNG images representing the plots for each residue type.
     :param out: log filehandle
@@ -275,12 +276,15 @@ class ramalyze(validation):
         show_labels=show_labels,
         markeredgecolor=markeredgecolor,
         markerfacecolor=markerfacecolor,
+        show_filling=show_filling,
+        show_contours=show_contours,
         point_style=point_style,
         markersize=markersize)
     return result
 
   def write_plots(self, plot_file_base, out, show_labels=True, point_style='bo',
-    markersize=10,markeredgecolor="black", dpi=100,markerfacecolor="white"):
+    markersize=10,markeredgecolor="black", show_filling=True, show_contours=True,
+    dpi=100,markerfacecolor="white"):
     """
     Write a set of six PNG images representing the plots for each residue type.
 
@@ -294,6 +298,8 @@ class ramalyze(validation):
         point_style=point_style,
         markersize=markersize,
         markeredgecolor=markeredgecolor,
+        show_filling=show_filling,
+        show_contours=show_contours,
         dpi=dpi,
         markerfacecolor=markerfacecolor)
     for pos in range(6):
@@ -761,10 +767,14 @@ def draw_ramachandran_plot(points,
                             show_labels=True,
                             markerfacecolor="white",
                             markeredgecolor="black",
+                            show_filling=True,
+                            show_contours=True,
                             markersize=10,
                             point_style='bo'):
   p = ramachandran_plot()
-  contours = get_contours(position_type)
+  contours = None
+  if show_contours:
+    contours = get_contours(position_type)
   p.draw_plot(
     stats=rotarama_data,
     title=title,
@@ -774,6 +784,7 @@ def draw_ramachandran_plot(points,
     contours=contours,
     markerfacecolor=markerfacecolor,
     markeredgecolor=markeredgecolor,
+    show_filling=show_filling,
     markersize=markersize,
     point_style=point_style)
   return p

@@ -28,6 +28,7 @@ class rotarama_plot_mixin(object):
                  y_marks=None,
                  markerfacecolor="white",
                  markeredgecolor="black",
+                 show_filling=True,
                  markersize=10,
                  point_style='bo'):
     # points = [(x,y,label, isoutlier(bool)), (), ...]
@@ -40,7 +41,8 @@ class rotarama_plot_mixin(object):
       extent = self.extent
     else :
       assert (len(extent) == 4)
-    self.plot.imshow(stats, origin="lower", cmap=cm, extent=extent)
+    if show_filling:
+      self.plot.imshow(stats, origin="lower", cmap=cm, extent=extent)
     if (contours is not None):
       self.plot.contour(stats, contours,
         origin="lower",
