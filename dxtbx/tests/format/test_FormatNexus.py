@@ -8,7 +8,7 @@ from dxtbx.datablock import DataBlockFactory
 from dxtbx.model.goniometer import Goniometer
 
 pytestmark = pytest.mark.skipif(
-  not os.path.exists('/dls/mx/data/mx21314/mx21314-27/VMXi-AB0816/well_7/images'),
+  not os.access('/dls/mx/data/mx21314/mx21314-27/VMXi-AB0816/well_7/images', os.R_OK),
   reason='Test images not available')
 
 def test_VMXi_rotation_scan():

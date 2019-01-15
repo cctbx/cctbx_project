@@ -7,7 +7,7 @@ from dxtbx.format.FormatNexusEigerDLS16MI04 import FormatNexusEigerDLS16MI04
 from dxtbx.datablock import DataBlockFactory
 
 pytestmark = pytest.mark.skipif(
-  not os.path.exists('/dls/i04/data/2019/cm23004-1/20190109/Eiger'),
+  not os.access('/dls/i04/data/2019/cm23004-1/20190109/Eiger', os.R_OK),
   reason='Test images not available')
 
 def test_rotation_scan():
