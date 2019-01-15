@@ -51,10 +51,10 @@ class FormatCBFMiniEigerDLS16MSN160(FormatCBFMiniEiger):
       raise IncorrectFormatError(self, image_file)
 
     self._dynamic_shadowing = self.has_dynamic_shadowing(**kwargs)
-    mask = super(FormatCBFMiniEigerDLS16MSN160, self).__init__(image_file, **kwargs)
+    super(FormatCBFMiniEigerDLS16MSN160, self).__init__(image_file, **kwargs)
 
   def _goniometer(self):
-    '''Return a model for a simple single-axis goniometer.
+    '''Return a model for a multi-axis goniometer.
 
     This should be checked against the image header, though for miniCBF
     there are limited options for this.
