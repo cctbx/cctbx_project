@@ -70,7 +70,6 @@ class FormatNexusEigerDLS16MI04(FormatNexus):
       for m, sm in zip(mask, shadow_mask):
         if sm is not None:
           m &= sm
-      raise
     return mask
 
   def get_goniometer_shadow_masker(self, goniometer=None):
