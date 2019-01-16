@@ -1,9 +1,30 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
+from collections import defaultdict
+from glob import glob
+import os.path
+import re
 
 def template_regex(filename):
-  '''Try a bunch of templates to work out the most sensible. N.B. assumes
-  that the image index will be the last digits found in the file name.'''
-  import re
+  '''Works out a template from a filename.
+
+  Tries a bunch of templates to work out the most sensible. N.B. assumes
+  that the image index will be the last digits found in the file name.
+
+  Arguments:
+    filename (str): The filename to template-ize
+
+  Returns:
+      Tuple[str or None, int]:
+          Where the tuple parts are:
+
+          template:
+              The template based on the filename, or None if no template
+              could be found for the filename.
+          index:
+              The template index of the filename, or zero if there
+              was no template filename.
+  '''
 
   # filename template code stolen from xia2...
 
@@ -55,11 +76,28 @@ def template_regex(filename):
 
 
 def template_regex_from_list(filenames):
-  '''
-  Compute the template for a list of filenames
+  '''Compute the template for a list of filenames
 
+  Arguments:
+      filenames (List[str]):
+          List of filenames. *Must* be longer than len(1), or a
+          TypeError will be raised.
+
+  Returns:
+      Tuple[str, List[int]]:
+          Where the tuple parts are:
+
+          template: The template describing all entries
+          indices:  The template indices present in the collection
+
+  Raises:
+      AssertionError:
+          If not all filenames resolve to the same regex
+      TypeError:
+          If none of the filenames resolve to a template, or
+          len(filenames) == 1.
   '''
-  import os.path
+
   common_prefix = os.path.commonprefix(filenames)
   templates, indices = zip(*[template_regex(f[len(common_prefix):]) for f in filenames])
   template = templates[0]
@@ -77,7 +115,6 @@ def group_files_by_imageset(filenames):
   instead.
 
   '''
-  from collections import defaultdict
 
   # Calculate the template for each image. If the template is None
   # (i.e. there are no numbers to identify the filename, add the
@@ -103,8 +140,6 @@ def group_files_by_imageset(filenames):
 def find_matching_images(image_name):
   '''Search in the directory in which this image is for images which share
   the same template: return this list.'''
-
-  import os
 
   directory, filename = os.path.split(image_name)
   if directory is None or directory == '':
@@ -137,7 +172,6 @@ def replace_template_format_with_hash(match):
 
 def template_format_to_string(template):
   '''Convert the template format to the template string.'''
-  import re
   return re.sub(r'%0[0-9]+d', replace_template_format_with_hash, template)
 
 def template_string_to_glob_expr(template):
@@ -154,7 +188,6 @@ def template_string_number_index(template):
 
 def locate_files_matching_template_string(template):
   '''Return all files matching template.'''
-  from glob import glob
   return glob(template_string_to_glob_expr(template))
 
 def template_image_range(template):
