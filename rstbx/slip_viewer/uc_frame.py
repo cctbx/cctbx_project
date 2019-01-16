@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # $Id
@@ -284,7 +285,7 @@ class UCSettingsPanel(wx.Panel):
     frame.update_statusbar("%d %d %d %d %d %d, "%tuple(self._cell) + "number of indices: %d"%len(hkl_list.indices()))
 
     spacings = list(hkl_list.d_spacings())
-    print "Printing spacings, len: %s"%len(spacings)
+    print("Printing spacings, len: %s"%len(spacings))
 
     def cmp(a,b):
       if a[1] > b[1]: return 1
@@ -294,7 +295,7 @@ class UCSettingsPanel(wx.Panel):
     spacings = sorted(spacings, cmp=cmp, reverse=True)
 
     for d in spacings:
-      print d
+      print(d)
 
     detector = self._pyslip.tiles.raw_image.get_detector()
     beam     = self._pyslip.tiles.raw_image.get_beam()

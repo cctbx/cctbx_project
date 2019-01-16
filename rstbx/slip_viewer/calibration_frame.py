@@ -3,6 +3,7 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 
 import wx
@@ -94,7 +95,7 @@ class SBSettingsPanel(wx.Panel):
 
 
   def OnRestoreMetrology(self, event):
-    print "Not implemented"
+    print("Not implemented")
     return
 
     dialog = wx.FileDialog(
@@ -186,7 +187,7 @@ class SBSettingsPanel(wx.Panel):
         cbf.write_widefile(path,pycbf.CBF,\
               pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
 
-        print "Saved cbf header to", path
+        print("Saved cbf header to", path)
 
 
   def OnUpdateQuad(self, event):

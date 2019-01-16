@@ -6,6 +6,8 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 from six.moves import range
 
 import os
@@ -15,6 +17,8 @@ from rstbx.viewer.frame import EVT_EXTERNAL_UPDATE
 from rstbx.viewer.frame import XrayFrame as XFBaseClass
 from rstbx.viewer import settings as rv_settings, image as rv_image
 from wxtbx import bitmaps
+
+from .slip_display import AppFrame
 
 class chooser_wrapper(object):
   def __init__(self, image_set, index):
@@ -50,7 +54,6 @@ class chooser_wrapper(object):
   def show_header(self):
     return self.image_set.get_detectorbase(self.index).show_header()
 
-from rstbx.slip_viewer.slip_display import AppFrame
 class XrayFrame(AppFrame,XFBaseClass):
   def __init__(self, *args, **kwds):
     self.params = kwds.get("params", None)
@@ -58,16 +61,15 @@ class XrayFrame(AppFrame,XFBaseClass):
       del kwds["params"] #otherwise wx complains
 
     ### Collect any plugins
-    import libtbx.load_env
     import imp
-    slip_viewer_dir = os.path.join(libtbx.env.dist_path("rstbx"), "slip_viewer")
+    slip_viewer_dir = os.path.join(os.path.dirname(__file__))
     contents = os.listdir(slip_viewer_dir)
     plugin_names = [f.split(".py")[0] for f in contents if f.endswith("_frame_plugin.py")]
     self.plugins = {}
     for name in plugin_names:
       self.plugins[name] = imp.load_source(name, os.path.join(slip_viewer_dir, name + ".py"))
     if len(plugin_names) > 0:
-      print "Loaded plugins: " + ", ".join(plugin_names)
+      print("Loaded plugins: " + ", ".join(plugin_names))
 
     wx.Frame.__init__(self,*args,**kwds)
     self.settings = rv_settings()
@@ -165,7 +167,8 @@ class XrayFrame(AppFrame,XFBaseClass):
     # build the GUI
     self.make_gui(self.viewer)
 
-    from rstbx.slip_viewer import pyslip
+    from . import pyslip
+
     # finally, bind events to handlers
     self.pyslip.Bind(pyslip.EVT_PYSLIP_SELECT, self.handle_select_event)
     self.pyslip.Bind(pyslip.EVT_PYSLIP_POSITION, self.handle_position_event)
@@ -501,7 +504,7 @@ class XrayFrame(AppFrame,XFBaseClass):
 
 
   def OnRing(self, event):
-    from rstbx.slip_viewer.ring_frame import RingSettingsFrame
+    from .ring_frame import RingSettingsFrame
 
     if not self._ring_frame:
       self._ring_frame = RingSettingsFrame(
@@ -513,7 +516,7 @@ class XrayFrame(AppFrame,XFBaseClass):
       self._ring_frame.Destroy()
 
   def OnUC(self, event):
-    from rstbx.slip_viewer.uc_frame import UCSettingsFrame
+    from .uc_frame import UCSettingsFrame
 
     if not self._uc_frame:
       self._uc_frame = UCSettingsFrame(
@@ -525,7 +528,7 @@ class XrayFrame(AppFrame,XFBaseClass):
       self._uc_frame.Destroy()
 
   def OnScore(self, event):
-    from rstbx.slip_viewer.score_frame import ScoreSettingsFrame
+    from .score_frame import ScoreSettingsFrame
 
     if not self._score_frame:
       self._score_frame = ScoreSettingsFrame(
@@ -895,7 +898,7 @@ class XrayFrame(AppFrame,XFBaseClass):
                  radius, colour, textcolour, fontname, fontsize,
                  offset_x, offset_y, data) in layer.data:
               if placement != 'cc':
-                print Warning("Only centered placement available when drawing text on pdf")
+                print(Warning("Only centered placement available when drawing text on pdf"))
               if layer.map_rel:
                 fs = self.pyslip.tiles.map_relative_to_picture_fast_slow(
                   lon, lat)

@@ -3,6 +3,7 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 
 import wx
@@ -119,11 +120,11 @@ class ScoreSettingsPanel(wx.Panel):
         stream = open(path, "w")
         for (key, score) in _scores.iteritems():
           if score is None:
-            print >> stream, "%s None" % (key)
+            print("%s None" % (key), file=stream)
           else:
-            print >> stream, "%s %d" % (key, score)
+            print("%s %d" % (key, score), file=stream)
         stream.close()
-        print "Dumped scores to", path
+        print("Dumped scores to", path)
 
 
   def OnUpdateNext(self, event):
