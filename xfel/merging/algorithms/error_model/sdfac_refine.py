@@ -83,6 +83,10 @@ class simplex_minimizer(object):
     values.show(self.log)
     return f
 
+  def compute_normalized_deviations(self, data, indices):
+    from xfel import compute_normalized_deviations
+    return compute_normalized_deviations(data, indices)
+
   def apply_sd_error_params(self, data, values):
     from xfel import apply_sd_error_params
     return apply_sd_error_params(data, values.SDFAC, values.SDB, values.SDADD)
