@@ -337,7 +337,6 @@ def construct_axes(nx_file, item, vector=None):
         # Is different coordinate system called mcstas
         # Rotate 180 about up if memory serves
         axis_name = item.name.split('/')[-1]
-        print('$$$', type(vector), list(vector))
         self._axes.append(vector)
         self._angles.append(value)
         self._axis_names.append(str(axis_name))
