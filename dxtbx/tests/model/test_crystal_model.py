@@ -282,6 +282,25 @@ def test_similarity():
 
   # unit_cell.is_similar_to is tested elsewhere
 
+@pytest.mark.xfail
+def test_change_basis_mosaic_crystal():
+  from cctbx.sgtbx import change_of_basis_op
+  mosaic_model = MosaicCrystalSauter2014(real_space_a=(10,0,0),
+                               real_space_b=(0,11,0),
+                               real_space_c=(0,0,12),
+                               space_group_symbol="P 1")
+  mosaic_model.set_half_mosaicity_deg(0.01)
+  mosaic_model.set_domain_size_ang(1000)
+  assert mosaic_model.get_half_mosaicity_deg() == 0.01
+  assert mosaic_model.get_domain_size_ang() == 1000
+
+  # Currently change_basis downgrades the MosaicCrystalSauter2014 to
+  # a Crystal object so this will fail
+  mosaic_model2 = mosaic_model.change_basis(change_of_basis_op())
+  assert mosaic_model2.get_half_mosaicity_deg() == 0.01
+  assert mosaic_model2.get_domain_size_ang() == 1000
+  assert mosaic_model.is_similar_to(mosaic_model2)
+
 def test_check_old_vs_new():
   from dxtbx.tests.model.crystal_model_old import crystal_model_old
 
