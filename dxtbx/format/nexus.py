@@ -324,7 +324,7 @@ def construct_axes(nx_file, item, vector=None):
           value = value[0]
         if units == 'rad':
           value *= math.pi/180
-        elif units != 'deg':
+        elif units not in ['deg', 'degree', 'degrees']:
           raise RuntimeError('Invalid units: %s' % units)
 
         # is the axis moving? Check the values for this axis
@@ -338,7 +338,7 @@ def construct_axes(nx_file, item, vector=None):
         # Rotate 180 about up if memory serves
         axis_name = item.name.split('/')[-1]
         self._axes.append(vector)
-        self._angles.append(value)
+        self._angles.append(float(value))
         self._axis_names.append(str(axis_name))
         self._is_scan_axis.append(is_scan_axis)
 
@@ -1041,7 +1041,7 @@ def get_change_of_basis(transformation):
   if axis_type == "rotation":
     if units == 'rad':
       deg = False
-    elif units in ['deg', 'degrees']:
+    elif units in ['deg', 'degree', 'degrees']:
       deg = True
     else:
       raise RuntimeError('Invalid units: %s' % units)
