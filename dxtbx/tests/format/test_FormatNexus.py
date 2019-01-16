@@ -43,5 +43,4 @@ def test_VMXi_rotation_scan():
   assert scan.get_image_range() == (1, 600)
 
   assert beam.get_wavelength() == pytest.approx(0.979492)
-  assert beam.get_s0() == pytest.approx((0,0,-1), abs=5e-2)
-
+  assert beam.get_s0() == pytest.approx((0,0,-1/beam.get_wavelength()))

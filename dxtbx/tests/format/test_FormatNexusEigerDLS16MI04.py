@@ -46,7 +46,7 @@ def test_rotation_scan():
   assert scan.get_image_range() == (1, 900)
 
   assert beam.get_wavelength() == pytest.approx(0.979499)
-  assert beam.get_s0() == pytest.approx((0,0,-1), abs=5e-2)
+  assert beam.get_s0() == pytest.approx((0,0,-1/beam.get_wavelength()))
 
 def test_grid_scan():
   master_h5 = '/dls/i04/data/2019/cm23004-1/20190109/Eiger/grid/Thaum/Thau_5/Thau_5_1_master.h5'
@@ -80,7 +80,7 @@ def test_grid_scan():
   assert scan is None
 
   assert beam.get_wavelength() == pytest.approx(0.979499)
-  assert beam.get_s0() == pytest.approx((0,0,-1), abs=5e-2)
+  assert beam.get_s0() == pytest.approx((0,0,-1/beam.get_wavelength()))
 
 @pytest.mark.xfail
 def test_screening():
@@ -119,5 +119,5 @@ def test_units():
   assert scan is None
 
   assert beam.get_wavelength() == pytest.approx(0.979499)
-  assert beam.get_s0() == pytest.approx((0,0,-1), abs=5e-2)
+  assert beam.get_s0() == pytest.approx((0,0,-1/beam.get_wavelength()))
   assert panel.get_beam_centre_px(beam.get_s0()) == pytest.approx((2231.41,2299.64))
