@@ -84,7 +84,7 @@ class rcompare(object):
     self.rama1 = ramalyze(model1.get_hierarchy(), out=null_out())
     self.rama2 = ramalyze(model2.get_hierarchy(), out=null_out())
     self.results = []
-    print dir(self.rama1.results[0])
+    # print dir(self.rama1.results[0])
     for r1, r2 in zip(self.rama1.results, self.rama2.results):
       assert r1.id_str() == r2.id_str()
       diff = math.sqrt((r1.phi-r2.phi)**2 + (r1.psi-r2.psi)**2)
