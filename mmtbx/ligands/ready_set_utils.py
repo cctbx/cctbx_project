@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+
 import iotbx
 from iotbx.pdb import amino_acid_codes as aac
 from scitbx.math import dihedral_angle
@@ -50,7 +51,7 @@ def generate_atom_group_atom_names(rg, names, return_Nones=False):
     else:
       yield atoms[0].parent(), atoms
 
-def _new_atom(ag, name, element, xyz, occ, b, hetero, segid=' '*4):
+def _new_atom(name, element, xyz, occ, b, hetero, segid=' '*4):
   # altloc???
   atom = iotbx.pdb.hierarchy.atom()
   atom.name = name
@@ -61,6 +62,41 @@ def _new_atom(ag, name, element, xyz, occ, b, hetero, segid=' '*4):
   atom.hetero = hetero
   atom.segid = segid
   return atom
+
+def _add_atom_to_chain(atom, ag):
+  rg = _add_atom_to_residue_group(atom, ag)
+  chain = ag.parent().parent()
+  tc = iotbx.pdb.hierarchy.chain()
+  tc.id = chain.id
+  tc.append_residue_group(rg)
+  return tc
+
+def _add_atom_to_residue_group(atom, ag):
+  tag = iotbx.pdb.hierarchy.atom_group()
+  tag.resname = ag.resname
+  tag.append_atom(atom)
+  rg = iotbx.pdb.hierarchy.residue_group()
+  rg.resseq = ag.parent().resseq
+  rg.append_atom_group(tag)
+  for i, c in enumerate(letters):
+    if c==ag.parent().parent().id:
+      break
+  atom.tmp = i
+  return rg
+
+def _add_atoms_from_chains_to_end_of_hierarchy(hierarchy, chains):
+  lookup = {}
+  for chain in chains:
+    lookup.setdefault(chain.id, [])
+    lookup[chain.id].append(chain)
+  model = hierarchy.models()[0]
+  for i, chain_group in sorted(lookup.items()):
+    tc = iotbx.pdb.hierarchy.chain()
+    tc.id = i
+    for chain in chain_group:
+      for rg in chain.residue_groups():
+        tc.append_residue_group(rg.detached_copy())
+    model.append_chain(tc)
 
 def _add_hydrogens_to_atom_group_using_bad(ag,
                                            atom_name,
@@ -166,9 +202,11 @@ def conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
         if sgs[0] in p.i_seqs:
           sg_bonds.append(p.i_seqs)
   if len(sg_bonds)==1:
-    add_cys_hg_to_residue_group(rg)
+    rc = add_cys_hg_to_residue_group(rg)
+    assert not rc
 
 def add_n_terminal_hydrogens_to_atom_group(ag,
+                                           bonds=None,
                                            use_capping_hydrogens=False,
                                            append_to_end_of_model=False,
                                            retain_original_hydrogens=True,
@@ -184,6 +222,14 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
     if ca is None: return 'no CA'
     c = ag.get_atom("C")
     if c is None: return 'no C'
+
+  if bonds:
+    ns = []
+    for key in bonds:
+      if n.i_seq == key[0]:
+        ns.append(key)
+    if len(ns)>=3: return rc
+
   atom = ag.get_atom('H')
   dihedral=120.
   if atom:
@@ -242,6 +288,7 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
   return rc
 
 def add_n_terminal_hydrogens_to_residue_group(residue_group,
+                                              bonds=None,
                                               use_capping_hydrogens=False,
                                               append_to_end_of_model=False,
                                              ):
@@ -251,6 +298,7 @@ def add_n_terminal_hydrogens_to_residue_group(residue_group,
                                                        ):
     tmp = add_n_terminal_hydrogens_to_atom_group(
       ag,
+      bonds=bonds,
       use_capping_hydrogens=use_capping_hydrogens,
       append_to_end_of_model=append_to_end_of_model,
       n_ca_c=[n,ca,c],
@@ -260,6 +308,7 @@ def add_n_terminal_hydrogens_to_residue_group(residue_group,
   return rc
 
 def add_c_terminal_oxygens_to_atom_group(ag,
+                                         bonds=None,
                                          use_capping_hydrogens=False,
                                          append_to_end_of_model=False,
                                          c_ca_n=None,
@@ -321,6 +370,7 @@ def add_c_terminal_oxygens_to_atom_group(ag,
   return rc
 
 def add_c_terminal_oxygens_to_residue_group(residue_group,
+                                            bonds=None,
                                             use_capping_hydrogens=False,
                                             append_to_end_of_model=False,
                                            ):
@@ -330,6 +380,7 @@ def add_c_terminal_oxygens_to_residue_group(residue_group,
                                                        ):
     tmp = add_c_terminal_oxygens_to_atom_group(
       ag,
+      bonds=bonds,
       use_capping_hydrogens=use_capping_hydrogens,
       append_to_end_of_model=append_to_end_of_model,
       c_ca_n = [c, ca, n],
@@ -349,7 +400,6 @@ def add_main_chain_o_to_atom_group(ag, c_ca_n=None):
     n = ag.get_atom("N")
     if n is None: return
   atom = ag.get_atom('O')
-  print atom
   dihedral = dihedral_angle(sites=[atom.xyz,
                                    c.xyz,
                                    ca.xyz,
@@ -392,16 +442,15 @@ def add_main_chain_atoms_to_residue_group(residue_group):
                                                           ['C', 'CA', 'N', 'O'],
                                                           return_Nones=True,
                                                           ):
-    print ag.id_str()
-    try: print c.quote(),ca.quote(),n.quote(),o.quote()
-    except: print c,ca,n,o
+    # print ag.id_str()
+    # try: print c.quote(),ca.quote(),n.quote(),o.quote()
+    # except: print c,ca,n,o
     if o is None:
       add_main_chain_o_to_atom_group(ag,
                                      c_ca_n = [c, ca, n],
                                     )
 
 def add_main_chain_atoms_to_protein_three(three):
-  print three
   for ag, (c, ca, n, o) in generate_atom_group_atom_names(three[1],
                                                           ['C', 'CA', 'N', 'O'],
                                                           return_Nones=True,
@@ -532,7 +581,7 @@ def generate_residue_group_with_start_and_end(hierarchy,
     residue_group = slots[i]
     yield residue_group, start, end
 
-def add_terminal_hydrogens(hierarchy,
+def add_terminal_hydrogens_old(hierarchy,
                            geometry_restraints_manager,
                            terminate_all_N_terminals=False,
                            terminate_all_C_terminals=False,
@@ -574,6 +623,94 @@ def add_terminal_hydrogens(hierarchy,
     else:
       pass
   print(additional_hydrogens)
+
+def add_terminal_hydrogens_threes(hierarchy,
+                                  geometry_restraints_manager,
+                                  terminate_all_N_terminals=False,
+                                  terminate_all_C_terminals=False,
+                                  use_capping_hydrogens=False,
+                                  append_to_end_of_model=False,
+                                  verbose=False,
+                                  ):
+  from mmtbx.conformation_dependent_library import generate_protein_threes
+  additional_hydrogens= [] #hierarchy_utils.smart_add_atoms()
+  for three in generate_protein_threes(hierarchy,
+                                       geometry_restraints_manager,
+                                       #include_non_linked=False,
+                                       backbone_only=False,
+                                       include_linked_via_restraints_manager=True,
+                                       verbose=verbose,
+                                       ):
+    # print three
+    #print dir(three)
+    # print geometry_restraints_manager
+    #print dir(geometry_restraints_manager)
+    bond_params_table = geometry_restraints_manager.bond_params_table
+    # print bond_params_table
+    #print dir(bond_params_table)
+    # print 'use_capping_hydrogens',use_capping_hydrogens
+
+    def get_bonds():
+      bonds = {}
+      for i, a1 in enumerate(residue_group.atoms()):
+        for j, a2 in enumerate(residue_group.atoms()):
+          if i>=j: continue
+          bond=three.bond_params_table.lookup(a1.i_seq, a2.i_seq)
+          if bond:
+            bonds[(a1.i_seq, a2.i_seq)] = True
+            bonds[(a2.i_seq, a1.i_seq)] = True
+      return bonds
+
+    if use_capping_hydrogens:
+      for i in range(len(three)):
+        residue_group=three.get_residue_group_from_hierarchy(hierarchy, i)
+        rc = conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
+                                                  residue_group)
+      #assert not rc, '%s' % rc
+    if three.start:
+      residue_group=three.get_residue_group_from_hierarchy(hierarchy, 0)
+      rc = add_n_terminal_hydrogens_to_residue_group(
+        residue_group,
+        bonds=get_bonds(),
+        use_capping_hydrogens=use_capping_hydrogens,
+        append_to_end_of_model=append_to_end_of_model,
+      )
+      if rc: additional_hydrogens.append(rc)
+    if three.end:
+      residue_group=three.get_residue_group_from_hierarchy(hierarchy, 2)
+      rc = add_c_terminal_oxygens_to_residue_group(
+        residue_group,
+        bonds=get_bonds(),
+        use_capping_hydrogens=use_capping_hydrogens,
+        append_to_end_of_model=append_to_end_of_model,
+      )
+      if rc: additional_hydrogens.append(rc)
+  return additional_hydrogens
+
+def add_terminal_hydrogens(hierarchy,
+                           geometry_restraints_manager,
+                           terminate_all_N_terminals=False,
+                           terminate_all_C_terminals=False,
+                           use_capping_hydrogens=False,
+                           append_to_end_of_model=False,
+                           verbose=False,
+                           ):
+  additional_hydrogens = add_terminal_hydrogens_threes(
+    hierarchy,
+    geometry_restraints_manager,
+    terminate_all_N_terminals=terminate_all_N_terminals,
+    terminate_all_C_terminals=terminate_all_C_terminals,
+    use_capping_hydrogens=use_capping_hydrogens,
+    append_to_end_of_model=append_to_end_of_model,
+    verbose=verbose,
+    )
+
+  if append_to_end_of_model and additional_hydrogens:
+    tmp = []
+    for group in additional_hydrogens:
+      for chain in group:
+        tmp.append(chain)
+    _add_atoms_from_chains_to_end_of_hierarchy(hierarchy, tmp)
 
 def add_main_chain_atoms(hierarchy,
                          geometry_restraints_manager,
