@@ -315,7 +315,7 @@ class detached_process_client(detached_base):
       try :
         result = easy_pickle.load(self.result_file)
       except EOFError :
-        print("EOFError trying to load result file!")
+        print("EOFError trying to load result file '%s'" %(self.result_file))
       else :
         time.sleep(1)
         self.check_stdout()
