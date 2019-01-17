@@ -87,7 +87,7 @@ class MetallicButton(WxCtrl):
     self._label_font = self.GetFont()
     self._label_font.SetPointSize(label_size)
     if style & MB_STYLE_BOLD_LABEL :
-      self._label2_font.SetWeight(wx.FONTWEIGHT_BOLD)
+      self._label_font.SetWeight(wx.FONTWEIGHT_BOLD)
       # with wx4c.set_font_weight(wx.FONTWEIGHT_BOLD) as fw:
       #   self._label2_font.SetWeight(fw)
     self.SetFont(self._label_font)
