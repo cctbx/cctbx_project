@@ -17,8 +17,8 @@ master_phil = libtbx.phil.parse("""
   include scope libtbx.phil.interface.tracking_params
   pdb_file = None
     .type = path
-    .help = Model file (optional)
-    .short_caption = Model file
+    .help = Optional model file used to define region to be cut out
+    .short_caption = Model file (optional)
     .style = file_type:pdb bold input_file
   map_coefficients_file = None
     .type = path
