@@ -2396,6 +2396,8 @@ class extract_box_around_model_and_map(object):
                upper_bounds=None,
                extract_unique=None,
                regions_to_keep=None,
+               box_buffer=None,
+               soft_mask_extract_unique=None,
                keep_low_density=None,
                sequence=None,
                chain_type=None,
@@ -2586,6 +2588,11 @@ class extract_box_around_model_and_map(object):
     if self.regions_to_keep:
       args.append("regions_to_keep=%s" %(self.regions_to_keep))
       args.append("iterate_with_remainder=False")
+
+    if self.box_buffer:
+      args.append("box_buffer=%s" %(self.box_buffer))
+    if self.soft_mask_extract_unique:
+      args.append("soft_mask_extract_unique=True")
 
     # import params from s&s here and set them.  set write_files=false etc.
 

@@ -156,6 +156,17 @@ master_phil = libtbx.phil.parse("""
             type is not protein it should be set as well.
     .short_caption = Extract unique
 
+  box_buffer = 5
+    .type = int
+    .help = Padding around unique region
+    .short_caption = Padding around unique region
+
+  soft_mask_extract_unique = True
+    .type = bool
+    .help = Create soft mask at edges of extract_unique box (feather map into \
+               edge of box). Uses resolution as mask_radius
+      .short_caption = Soft mask in extract unique
+
   regions_to_keep = None
     .type = int
     .short_caption = Regions to keep
@@ -175,7 +186,7 @@ master_phil = libtbx.phil.parse("""
             Use None if there is a mixture.
     .short_caption = Chain type
 
-  soft_mask=False
+  soft_mask = False
     .type=bool
     .help = Use Gaussian mask in mask_atoms
     .short_caption = Soft mask
@@ -618,7 +629,9 @@ Parameters:"""%h
     lower_bounds          = params.lower_bounds,
     upper_bounds          = params.upper_bounds,
     extract_unique        = params.extract_unique,
-    regions_to_keep        = params.regions_to_keep,
+    regions_to_keep       = params.regions_to_keep,
+    box_buffer            = params.box_buffer,
+    soft_mask_extract_unique = params.soft_mask_extract_unique,
     keep_low_density      = params.keep_low_density,
     chain_type            = params.chain_type,
     sequence              = sequence,

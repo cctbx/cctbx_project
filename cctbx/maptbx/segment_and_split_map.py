@@ -146,6 +146,12 @@ master_phil = iotbx.phil.parse("""
       .help = Buffer (grid units) around NCS asymmetric unit in box_mask and map
       .short_caption = Box buffer size
 
+    soft_box_mask = True
+      .type = bool
+      .help = Create soft mask at edges of box mask file (feather map into \
+               edge of box). Uses resolution as mask_radius
+      .short_caption = Soft box mask
+
     au_output_file_stem = shifted_au
       .type = str
       .help = File stem for output map files with one NCS asymmetric unit
@@ -3053,6 +3059,14 @@ def get_ncs_from_map(params=None,
     rescore_list.sort()
     rescore_list.reverse()
     results_list=rescore_list
+  if len(results_list)==1:
+    # check for C1
+    score,cc_avg,ncs_obj,symmetry=results_list[0]
+    if symmetry.strip()=='C1':
+      score=1.
+      cc_avg=1.
+      results_list=[[score,cc_avg,ncs_obj,symmetry],]
+
 
   print >>out,"Ranking of NCS types:"
   if min_ncs_cc is not None:
@@ -3061,6 +3075,9 @@ def get_ncs_from_map(params=None,
   print >>out,"\n  SCORE    CC   OPERATORS     SYMMETRY"
   for score,cc_avg,ncs_obj,symmetry in results_list:
     if not symmetry: symmetry=""
+    if not cc_avg: cc_avg=0.0
+
+
     print >>out," %6.2f  %5.2f    %2d          %s" %(
        score,cc_avg,ncs_obj.max_operators(), symmetry.strip(),)
 
@@ -4708,10 +4725,10 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       if not tracking_data.solvent_fraction:
         tracking_data.solvent_fraction=new_si.solvent_fraction
 
-      sharpened_map_file=os.path.join(
+      if tracking_data.params.output_files.sharpened_map_file:
+        sharpened_map_file=os.path.join(
             tracking_data.params.output_files.output_directory,
             tracking_data.params.output_files.sharpened_map_file)
-      if tracking_data.params.output_files.sharpened_map_file:
         sharpened_map_data=map_data.deep_copy()
         if acc is not None:  # offset the map to match original if possible
           sharpened_map_data.reshape(acc)
@@ -7472,6 +7489,8 @@ def write_output_files(params,
         dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
        map_data=mask_data_ncs_au.as_double(),
        crystal_symmetry=tracking_data.crystal_symmetry,
+       soft_mask=params.output_files.soft_box_mask,
+       resolution=params.crystal_info.resolution,
        min_point=lower_bounds, max_point=upper_bounds,out=out)
 
   # Mask
@@ -7765,7 +7784,11 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
   new_crystal_symmetry=crystal.symmetry(
     unit_cell=new_unit_cell_box,space_group='p1')
 
-  if soft_mask and soft_mask_radius is not None:
+  if soft_mask:
+    if soft_mask_radius is None:
+       soft_mask_radius=resolution
+       assert soft_mask_radius is not None
+
     original_map_data=new_map_data.deep_copy()
     new_map_data,smoothed_mask_data=set_up_and_apply_soft_mask(
        map_data=new_map_data,
@@ -7784,8 +7807,9 @@ def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
   crystal_symmetry=None,resolution=None,
   radius=None,out=sys.stdout):
 
-    assert shift_origin  # need to do this
+    acc=map_data.accessor()
     map_data = map_data.shift_origin()
+    new_acc=map_data.accessor()
 
     # Add soft boundary to mean around outside of mask
     # grid_units is how many grid units are about equal to soft_mask_radius
@@ -7803,6 +7827,9 @@ def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
           rad_smooth=resolution,
           crystal_symmetry=crystal_symmetry,
           out=out)
+    if new_acc != acc:
+      new_map_data.reshape(acc)
+      smoothed_mask_data.reshape(acc)
     return new_map_data,smoothed_mask_data
 
 def apply_shift_to_pdb_hierarchy(
