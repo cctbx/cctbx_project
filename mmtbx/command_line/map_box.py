@@ -17,7 +17,7 @@ master_phil = libtbx.phil.parse("""
   include scope libtbx.phil.interface.tracking_params
   pdb_file = None
     .type = path
-    .help = Model file
+    .help = Model file (optional)
     .short_caption = Model file
     .style = file_type:pdb bold input_file
   map_coefficients_file = None
@@ -37,7 +37,7 @@ master_phil = libtbx.phil.parse("""
   selection = all
     .type = str
     .help = Atom selection to be applied to input PDB file
-    .short_caption = Atom selection
+    .short_caption = Atom selection (optional)
     .input_size = 400
   selection_radius = 3.0
     .type = float
@@ -132,14 +132,14 @@ master_phil = libtbx.phil.parse("""
     .type = path
     .help = Sequence file (any standard format). Can be unique part or \
             all copies.  Used in identification of unique part of map.
-    .short_caption = Sequence file
+    .short_caption = Sequence file (optional)
 
   molecular_mass = None
     .type = float
     .help = Molecular mass of object in map in Da (i.e., 33000 for 33 Kd).\
               Used in identification \
             of unique part of map.
-    .short_caption = Molecular mass
+    .short_caption = Molecular mass (optional)
 
   solvent_content = None
     .type = float
