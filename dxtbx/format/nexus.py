@@ -1733,7 +1733,7 @@ class MaskFactory(object):
 
   def __init__(self, objects):
     def make_mask(dset):
-      from dials.array_family import flex
+      from scitbx.array_family import flex
       mask_data = flex.int(dset[()]) == 0
       mask = []
       for slices in all_slices:
