@@ -208,14 +208,15 @@ def python_include_path():
         "%s != %s" % (include_path, sysconfig_path)
 
   include_path = sysconfig.get_paths()['include']
-  try:  # conda environment
-    conda_prefix = get_conda_prefix()
-    include_path = os.path.join(conda_prefix, 'include',
-                                'python%d.%dm' % sys.version_info[:2])
-    if not op.isdir(include_path):
-      include_path = include_path[:-1]
-  except RuntimeError:
-    pass
+  if not op.isdir(include_path):
+    try:  # conda environment
+      conda_prefix = get_conda_prefix()
+      include_path = os.path.join(conda_prefix, 'include',
+                                  'python%d.%dm' % sys.version_info[:2])
+      if not op.isdir(include_path):
+        include_path = include_path[:-1]
+    except RuntimeError:
+      pass
   if not op.isdir(include_path):
     raise RuntimeError("Cannot locate Python's include directory: %s" % include_path)
   return include_path
