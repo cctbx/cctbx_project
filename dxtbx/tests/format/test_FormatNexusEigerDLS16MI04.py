@@ -9,6 +9,7 @@ from dxtbx.datablock import DataBlockFactory
 pytestmark = pytest.mark.skipif(
   not os.access('/dls/i04/data/2019/cm23004-1/20190109/Eiger', os.R_OK),
   reason='Test images not available')
+dials = pytest.importorskip('dials')
 
 def test_rotation_scan():
   master_h5 = '/dls/i04/data/2019/cm23004-1/20190109/Eiger/gw/Thaum/Thau_4/Thau_4_1_master.h5'
