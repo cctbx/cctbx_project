@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import pytest
 
-from dxtbx.format.FormatHDFEigerNearlyNexus import FormatEigerNearlyNexus
+from dxtbx.format.FormatHDF5EigerNearlyNexusSPring8 import FormatHDF5EigerNearlyNexusSPring8
 from dxtbx.datablock import DataBlockFactory
 from dxtbx.model.goniometer import Goniometer
 
@@ -11,15 +11,14 @@ pytestmark = pytest.mark.skipif(
   not os.access('/dls/mx-scratch/rjgildea/zenodo/spring8-ccp4-2018/1443110/ccp4school2018_bl41xu', os.R_OK),
   reason='Test images not available')
 
-@pytest.mark.xfail
 def test_spring8_ccp4_2018_zenodo_1443110_data03():
   # https://zenodo.org/record/1443110#.XD8bD5ynzmE
   master_h5 = '/dls/mx-scratch/rjgildea/zenodo/spring8-ccp4-2018/1443110/ccp4school2018_bl41xu/05/data03/data03_master.h5'
-  assert FormatEigerNearlyNexus.understand(master_h5)
+  assert FormatHDF5EigerNearlyNexusSPring8.understand(master_h5)
 
   datablocks = DataBlockFactory.from_filenames([master_h5])
   imageset = datablocks[0].extract_imagesets()[0]
-  assert imageset.get_format_class() == FormatEigerNearlyNexus
+  assert imageset.get_format_class() == FormatHDF5EigerNearlyNexusSPring8
 
   detector = imageset.get_detector()
   gonio = imageset.get_goniometer()

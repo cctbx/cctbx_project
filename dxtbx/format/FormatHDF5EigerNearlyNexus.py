@@ -283,7 +283,7 @@ class EigerNXmxFixer(object):
     self.handle = handle
     self.handle_orig = handle_orig
 
-class FormatEigerNearlyNexus(FormatHDF5):
+class FormatHDF5EigerNearlyNexus(FormatHDF5):
 
   def __init__(self, image_file, **kwargs):
     from dxtbx import IncorrectFormatError
@@ -410,6 +410,6 @@ class FormatEigerNearlyNexus(FormatHDF5):
 if __name__ == '__main__':
   import sys
 
-  f = FormatEigerNearlyNexus(sys.argv[1])
+  f = FormatHDF5EigerNearlyNexus(sys.argv[1])
   for i in range(10):
     print(f.get_raw_data(i))
