@@ -49,10 +49,9 @@ def using_conda_python():
   '''
   Return True if Python is from conda, False otherwise.
   This check is independent of being in an active conda environment.
+  https://stackoverflow.com/questions/47608532/how-to-detect-from-within-python-whether-packages-are-managed-with-conda?noredirect=1&lq=1
   '''
-  if ('conda' in sys.version) or ('continuum' in sys.version.lower()):
-    return True
-  return False
+  return os.path.exists(os.path.join(sys.prefix, 'conda-meta'))
 
 def get_conda_prefix():
   '''
