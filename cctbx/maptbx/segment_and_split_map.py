@@ -146,12 +146,6 @@ master_phil = iotbx.phil.parse("""
       .help = Buffer (grid units) around NCS asymmetric unit in box_mask and map
       .short_caption = Box buffer size
 
-    soft_box_mask = True
-      .type = bool
-      .help = Create soft mask at edges of box mask file (feather map into \
-               edge of box). Uses resolution as mask_radius
-      .short_caption = Soft box mask
-
     au_output_file_stem = shifted_au
       .type = str
       .help = File stem for output map files with one NCS asymmetric unit
@@ -7489,8 +7483,6 @@ def write_output_files(params,
         dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
        map_data=mask_data_ncs_au.as_double(),
        crystal_symmetry=tracking_data.crystal_symmetry,
-       soft_mask=params.output_files.soft_box_mask,
-       resolution=params.crystal_info.resolution,
        min_point=lower_bounds, max_point=upper_bounds,out=out)
 
   # Mask
@@ -7512,6 +7504,8 @@ def write_output_files(params,
   # Map
   box_map_ncs_au,box_crystal_symmetry,\
        dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
+       soft_mask=tracking_data.params.map_modification.soft_mask,
+       resolution=tracking_data.params.crystal_info.resolution,
        map_data=map_data_ncs_au.as_double(),
        crystal_symmetry=tracking_data.crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds,out=out)
@@ -7519,6 +7513,9 @@ def write_output_files(params,
        tracking_data.set_box_map_ncs_au_map_data(
        box_map_ncs_au_crystal_symmetry=box_crystal_symmetry,
        box_map_ncs_au_map_data=box_map_ncs_au,)
+
+  write_ccp4_map(tracking_data.crystal_symmetry,'map_data_ncs_au.ccp4',map_data_ncs_au)
+  write_ccp4_map(box_crystal_symmetry,'box_map_ncs_au.ccp4',box_map_ncs_au)
 
   if params.output_files.box_map_file:
     # write out NCS map as box_map (cut out region of map enclosed in box_mask)
@@ -7752,7 +7749,7 @@ def get_grid_units(map_data=None,crystal_symmetry=None,radius=None,
     grid_spacing=(sx_cart+sy_cart+sz_cart)/3.
     grid_units=int(radius/grid_spacing)
     min_cell_grid_units=min(N_[0], N_[1], N_[2])
-    grid_units=min(grid_units,int(min_cell_grid_units/3))
+    grid_units=max(1,min(grid_units,int(min_cell_grid_units/3)))
     print >>out,"Grid units representing %7.1f A will be %d" %(
        radius,grid_units)
     return grid_units

@@ -2592,7 +2592,7 @@ class extract_box_around_model_and_map(object):
     if self.box_buffer:
       args.append("box_buffer=%s" %(self.box_buffer))
     if self.soft_mask_extract_unique:
-      args.append("soft_mask_extract_unique=True")
+      args.append("soft_mask=True")
 
     # import params from s&s here and set them.  set write_files=false etc.
 
