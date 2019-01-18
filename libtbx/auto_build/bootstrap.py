@@ -2246,6 +2246,11 @@ class QRBuilder(PhenixBuilder):
     if self.user=='builder': PhenixBuilder.add_make(self)
     pip_installs = ['ase', 'JPype1','pymongo']
     instructions = []
+    # versioning
+    cmd = [os.path.join('..', self.python_base),
+           os.path.join('utils', 'make_version.py'),
+           ]
+    instructions.append(['Versioning', cmd, ['modules/qrefine']])
     for pi in pip_installs:
       instructions.append(['Q|R pip %s' % pi,
                            [self.python_base,
