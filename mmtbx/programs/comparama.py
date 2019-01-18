@@ -71,6 +71,9 @@ Usage examples:
 
     # outputting results
     results = self.rama_comp.get_results()
+    if len(results) == 0:
+      print("No ramachandran residues found!")
+      return
     res_columns = zip(*results)
     if self.params.output.individual_residues:
       for r in results:

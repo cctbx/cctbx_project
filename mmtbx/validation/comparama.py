@@ -95,7 +95,10 @@ class rcompare(object):
       assert approx_equal(diff2, diff3), "%s, %s" % ((r1.phi, r1.psi), (r2.phi, r2.psi))
       self.results.append((r1.id_str(), diff2, r1.phi, r1.psi, r2.phi, r2.psi, v, r2.res_type, r1.score/100, r2.score/100))
       # print "Score:", r1.score, r2.score
-    self.res_columns = zip(*self.get_results())
+    self.res_columns = None
+    if len(self.results) > 0:
+      self.res_columns = zip(*self.get_results())
+
 
   def get_results(self):
     return self.results
@@ -104,17 +107,19 @@ class rcompare(object):
     return self.rama1, self.rama2
 
   def get_number_results(self):
-    v1, v2 = rama_rescale(self.results)
-    return group_args(
-        mean_diff=np.mean(self.res_columns[1]),
-        std_diff=np.std(self.res_columns[1]),
-        sum_1 = np.sum(self.res_columns[-2]),
-        sum_2 = np.sum(self.res_columns[-1]),
-        n_res = len(self.res_columns[-1]),
-        scaled_sum_1 = np.sum(v1),
-        scaled_sum_2 = np.sum(v2),
-        counts = Counter(self.res_columns[-4]),
-        )
+    if len(self.results) > 0:
+      v1, v2 = rama_rescale(self.results)
+      return group_args(
+          mean_diff=np.mean(self.res_columns[1]),
+          std_diff=np.std(self.res_columns[1]),
+          sum_1 = np.sum(self.res_columns[-2]),
+          sum_2 = np.sum(self.res_columns[-1]),
+          n_res = len(self.res_columns[-1]),
+          scaled_sum_1 = np.sum(v1),
+          scaled_sum_2 = np.sum(v2),
+          counts = Counter(self.res_columns[-4]),
+          )
+    return None
 
   def get_plots(self):
     if self.plots is not None:
