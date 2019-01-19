@@ -990,6 +990,7 @@ class Builder(object):
       mpi_build=False,
       python3=False,
       wxpython4=False,
+      config_flags=[],
     ):
     if nproc is None:
       self.nproc=1
@@ -1029,6 +1030,10 @@ class Builder(object):
     self.download_only = download_only
     self.skip_base = skip_base
     self.force_base_build = force_base_build
+    # self.config_flags are only from the command line
+    # get_libtbx_configure can still be used to always set flags specific to a
+    # builder
+    self.config_flags = config_flags
     self.add_init()
 
     # Cleanup
@@ -1537,18 +1542,14 @@ class Builder(object):
     ))
 
   def add_configure(self):
-    self.add_step(self.shell(command=[
-        self.python_base, # default to using our python rather than system python
-        self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
-        ] + self.get_libtbx_configure(),
-      workdir=['build'],
-      description="run configure.py",
-    ))
-    # Prepare saving configure.py command to file should user want to manually recompile Phenix
     configcmd =[
         self.python_base, # default to using our python rather than system python
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
-        ] + self.get_libtbx_configure()
+        ] + self.get_libtbx_configure() + self.config_flags
+    self.add_step(self.shell(command=configcmd, workdir=['build'],
+      description="run configure.py",
+    ))
+    # Prepare saving configure.py command to file should user want to manually recompile Phenix
     fname = self.opjoin("config_modules.cmd")
     ldlibpath = ''
     if self.isPlatformLinux():
@@ -2423,6 +2424,13 @@ def run(root=None):
                     help="Install wxpython4 instead of wxpython3. This is unsupported and purely for development purposes.",
                     action="store_true",
                     default=False)
+  parser.add_option("--config_flags",
+                    dest="config_flags",
+                    help="""Pass flags to the configuration step. Flags should
+be passed separately with quotes to avoid confusion (e.g
+--config_flags="--build=debug" --config_flags="--enable_cxx11")""",
+                    action="append",
+                    default=[])
   options, args = parser.parse_args()
   # process external
   options.specific_external_builder=None
@@ -2485,6 +2493,7 @@ def run(root=None):
     mpi_build=options.mpi_build,
     python3=options.python3,
     wxpython4=options.wxpython4,
+    config_flags=options.config_flags,
   ).run()
   print("\nBootstrap success: %s" % ", ".join(actions))
 
