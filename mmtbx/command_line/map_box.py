@@ -408,7 +408,8 @@ Parameters:"""%h
         (not ncs_object):
       raise Sorry(
         "Please supply a symmetry file or symmetry for extract_unique (you "+
-       "\ncan try symmetry=ALL if you do not know your symmetry)")
+       "\ncan try symmetry=ALL if you do not know your symmetry or "+
+        "symmetry=C1 if \nthere is none)")
       from mmtbx.ncs.ncs import ncs
       ncs_object=ncs()
       ncs_object.set_unit_ncs()
