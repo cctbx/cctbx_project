@@ -788,7 +788,8 @@ def get_map_and_model(params=None,
     from cctbx.maptbx.segment_and_split_map import get_map_object
     map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
         original_crystal_symmetry,original_unit_cell_grid=\
-      get_map_object(file_name=params.input_files.map_file,out=out)
+      get_map_object(file_name=params.input_files.map_file,
+      must_allow_sharpening=True,out=out)
     map_data=map_data.as_double()
     if origin_frac != (0,0,0) and acc is None:
       print >>out,"\nWARNING: Unable to place output map at position of "+\

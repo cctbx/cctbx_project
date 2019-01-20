@@ -7,7 +7,7 @@ from mmtbx.refinement import print_statistics
 import iotbx.pdb
 import libtbx.phil
 from libtbx.utils import Sorry
-import os, sys
+import os, sys, time
 from iotbx import reflection_file_utils
 from iotbx.file_reader import any_file
 from cctbx import maptbx
@@ -167,6 +167,11 @@ master_phil = libtbx.phil.parse("""
                edge of box). Uses resolution as mask_radius
       .short_caption = Soft mask in extract unique
 
+  mask_expand_ratio = 1
+      .type = int
+      .help = Mask expansion relative to resolution for extract_unique
+      .short_caption = Mask expand ratio
+
   regions_to_keep = None
     .type = int
     .short_caption = Regions to keep
@@ -295,6 +300,11 @@ master_phil = libtbx.phil.parse("""
     .help = Choose mean and SD of output CCP4 map
     .short_caption = SD of output CCP4 map
 
+  output_map_labels = None
+    .type = str
+    .multiple = True
+    .help = Add this label to output map
+    .short_caption = Add label
 
   gui
     .help = "GUI-specific parameter required for output directory"
@@ -306,6 +316,13 @@ master_phil = libtbx.phil.parse("""
 """, process_includes=True)
 
 master_params = master_phil
+
+def remove_element(text_list,element=None):
+    new_text_list=[]
+    for x in text_list:
+      if x != element:
+        new_text_list.append(x)
+    return new_text_list
 
 def run(args, crystal_symmetry=None,
      ncs_object=None,
@@ -406,11 +423,13 @@ Parameters:"""%h
        (params.keep_origin) and (not params.keep_map_size)):
     print "\nNOTE: Skipping write of mtz file as keep_origin=True and \n"+\
        "keep_map_size is False\n"
-    new_output_format=[]
-    for x in params.output_format:
-      if x != 'mtz':
-        new_output_format.append(x)
-    params.output_format=new_output_format
+    params.output_format=remove_element(params.output_format,element='mtz')
+
+  if (write_output_files) and ("mtz" in params.output_format) and (
+       (params.extract_unique)):
+    print "\nNOTE: Skipping write of mtz file as extract_unique=True\n"
+    params.output_format=remove_element(params.output_format,element='mtz')
+
 
   if params.output_origin_match_this_file:
 
@@ -440,6 +459,7 @@ Parameters:"""%h
   map_coeff = None
   input_unit_cell_grid=None
   input_unit_cell=None
+  input_map_labels=None
   if (not map_data):
     # read first mtz file
     if ( (len(inputs.reflection_file_names) > 0) or
@@ -476,6 +496,7 @@ Parameters:"""%h
       map_data = ccp4_map.data #map_data()
       input_unit_cell_grid=ccp4_map.unit_cell_grid
       input_unit_cell=ccp4_map.unit_cell_parameters
+      input_map_labels=ccp4_map.get_labels()
 
       if inputs.ccp4_map_file_name.endswith(".ccp4"):
         map_or_map_coeffs_prefix=os.path.basename(
@@ -632,6 +653,7 @@ Parameters:"""%h
     regions_to_keep       = params.regions_to_keep,
     box_buffer            = params.box_buffer,
     soft_mask_extract_unique = params.soft_mask_extract_unique,
+    mask_expand_ratio = params.mask_expand_ratio,
     keep_low_density      = params.keep_low_density,
     chain_type            = params.chain_type,
     sequence              = sequence,
@@ -871,12 +893,33 @@ Parameters:"""%h
      if(params.output_file_name_prefix is None):
        file_name = "%s_box.ccp4"%output_prefix
      else: file_name = "%s.ccp4"%params.output_file_name_prefix
+     if params.output_map_labels:
+       output_map_labels=params.output_map_labels
+     else:
+       output_map_labels=[]
+     text=""
+     if params.extract_unique:
+       limitation="extract_unique"
+       if not limitation in output_map_labels:
+         output_map_labels.append(limitation)
+       text+="using extract_unique"
+     if inputs.ccp4_map_file_name:
+       file_text=inputs.ccp4_map_file_name
+     else:
+       file_text=""
+     label='map_box on %s %s: %s' %(file_text,time.asctime(),text)
+     label=label[:80]
+     output_map_labels.append(label)
+     if input_map_labels:
+       output_map_labels+=input_map_labels
+
      output_box.write_ccp4_map(file_name=file_name,
        output_crystal_symmetry=output_crystal_symmetry,
        output_mean=params.output_ccp4_map_mean,
        output_sd=params.output_ccp4_map_sd,
        output_unit_cell_grid=output_unit_cell_grid,
        shift_back=shift_back,
+       output_map_labels=output_map_labels,
        output_external_origin=params.output_external_origin)
      print >> log, "Writing boxed map "+\
           "to CCP4 formatted file:   %s"%file_name

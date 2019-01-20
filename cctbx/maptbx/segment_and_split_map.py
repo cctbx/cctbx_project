@@ -1099,6 +1099,11 @@ master_phil = iotbx.phil.parse("""
       .help = Mask expansion in addition to expand_size for final map
       .short_caption = Mask additional expansion
 
+    mask_expand_ratio = 1
+      .type = int
+      .help = Mask expansion relative to resolution for save_box_map_ncs_au
+      .short_caption = Mask expand ratio
+
     exclude_points_in_ncs_copies = True
       .type = bool
       .help = Exclude points that are in symmetry copies when creating NCS au. \
@@ -2388,7 +2393,7 @@ def scale_map_coeffs(map_coeffs,scale_max=None,out=sys.stdout):
        ).phase_transfer(phase_source=phases, deg=True)
 
 
-def get_map_object(file_name=None,out=sys.stdout):
+def get_map_object(file_name=None,must_allow_sharpening=None,out=sys.stdout):
   # read a ccp4 map file and return sg,cell and map objects 2012-01-16
   if not os.path.isfile(file_name):
     raise Sorry("The map file %s is missing..." %(file_name))
@@ -2406,6 +2411,8 @@ def get_map_object(file_name=None,out=sys.stdout):
     print >>out,"cell:  %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f  " %tuple(
        m.unit_cell_parameters)
     print >>out,"SG: ",m.space_group_number
+    if must_allow_sharpening and m.cannot_be_sharpened():
+      raise Sorry("Input map is already modified and should not be sharpened")
   print >>out,"ORIGIN: ",m.data.origin()
   print >>out,"EXTENT: ",m.data.all()
   print >>out,"IS PADDED: ",m.data.is_padded()
@@ -5161,6 +5168,11 @@ def get_and_apply_soft_mask_to_maps(
   else:
     buffer_radius=2.*resolution
   original_map_data=map_data.deep_copy()
+  # Check to make sure this is possible
+  cell_dims=crystal_symmetry.unit_cell().parameters()[:3]
+  min_cell_dim=min(cell_dims)
+  if wang_radius > 0.25 * min_cell_dim or buffer_radius > 0.25 * min_cell_dim:
+    raise Sorry("Cell is too small to get solvent fraction")
   mask_data,solvent_fraction=get_mask_around_molecule(map_data=map_data,
     crystal_symmetry=crystal_symmetry,
     wang_radius=wang_radius,
@@ -7351,6 +7363,16 @@ def write_output_files(params,
   #   other NCS copies.  Expand the mask to include neighboring points (but
   #   not those explicitly in other NCS copies
 
+  if params.map_modification.soft_mask and params.control.save_box_map_ncs_au:
+    mask_expand_size=estimate_expand_size(
+       crystal_symmetry=tracking_data.crystal_symmetry,
+       map_data=map_data,
+       expand_target=tracking_data.params.segmentation.mask_expand_ratio*\
+          tracking_data.params.crystal_info.resolution,
+          out=out)
+    params.segmentation.mask_additional_expand_size = max(mask_expand_size,
+      params.segmentation.mask_additional_expand_size,)
+
   bool_selected_regions,bool_ncs_related_mask,lower_bounds,upper_bounds=\
      get_selected_and_related_regions(
       params,ncs_group_obj=ncs_group_obj)
@@ -7457,14 +7479,23 @@ def write_output_files(params,
   mask=map_data.deep_copy()
   mask=mask.set_selected(s,1)
   mask=mask.set_selected(~s,0)
-  map_data_ncs_au=map_data_ncs_au*mask
+  if params.map_modification.soft_mask:
+    # buffer and smooth the mask
+    print "Smoothing mask"
+    map_data_ncs_au,smoothed_mask_data=apply_soft_mask(map_data=map_data_ncs_au,
+      mask_data=mask.as_double(),
+      rad_smooth=tracking_data.params.crystal_info.resolution,
+      crystal_symmetry=tracking_data.crystal_symmetry,
+      out=out)
+  else:
+    map_data_ncs_au=map_data_ncs_au*mask
 
-  one_d=map_data_ncs_au.as_1d()
-  n_zero=mask.count(0)
-  n_tot=mask.size()
-  mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
-  map_data_ncs_au=map_data_ncs_au+(1-mask)*mean_in_box
-  del one_d,mask
+    one_d=map_data_ncs_au.as_1d()
+    n_zero=mask.count(0)
+    n_tot=mask.size()
+    mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
+    map_data_ncs_au=map_data_ncs_au+(1-mask)*mean_in_box
+    del one_d,mask
 
   if au_map_output_file and params.output_files.write_output_maps:
     # Write out the NCS au of density

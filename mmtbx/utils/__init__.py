@@ -2398,6 +2398,7 @@ class extract_box_around_model_and_map(object):
                regions_to_keep=None,
                box_buffer=None,
                soft_mask_extract_unique=None,
+               mask_expand_ratio=None,
                keep_low_density=None,
                sequence=None,
                chain_type=None,
@@ -2593,6 +2594,8 @@ class extract_box_around_model_and_map(object):
       args.append("box_buffer=%s" %(self.box_buffer))
     if self.soft_mask_extract_unique:
       args.append("soft_mask=True")
+    if self.mask_expand_ratio is not None:
+      args.append("mask_expand_ratio=%s" %(self.mask_expand_ratio))
 
     # import params from s&s here and set them.  set write_files=false etc.
 
@@ -2831,7 +2834,8 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       output_sd=None,
       output_mean=None,
       output_crystal_symmetry=None,
-      output_external_origin=None):
+      output_external_origin=None,
+      output_map_labels=None):
 
     # If output_unit_cell_grid is specified, then write this out
     #  instead of the size of the actual available map (self.map_box.all())
@@ -2856,13 +2860,17 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       output_crystal_symmetry=self.xray_structure_box.crystal_symmetry()
     if output_unit_cell_grid is None:
       output_unit_cell_grid=map_data.all()
+    if output_map_labels:
+      labels=flex.std_string(output_map_labels)
+    else:
+      labels=flex.std_string([" "])
     mrcfile.write_ccp4_map(
       file_name      = file_name,
       unit_cell      = output_crystal_symmetry.unit_cell(),
       space_group    = output_crystal_symmetry.space_group(),
       unit_cell_grid = output_unit_cell_grid,
       map_data       = map_data,
-      labels=flex.std_string([" "]),
+      labels         = labels,
       external_origin=output_external_origin)
 
   def box_map_coefficients_as_fft_map(self, d_min, resolution_factor):

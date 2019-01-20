@@ -1,6 +1,6 @@
 from __future__ import division
 import cctbx.array_family.flex as flex# import dependency
-import os
+import os,sys
 from libtbx.utils import Sorry
 from iotbx.ccp4_map import utils  # utilities in common with ccp4_map
 import mrcfile
@@ -29,6 +29,24 @@ import numpy as np
 #    This is not modifiable.
 
 INTERNAL_STANDARD_ORDER=[3,2,1]
+
+# Standard limitations and associated message.
+# These can be checked with: limitations=mrc.get_limitations()
+#   which returns a group_args object with a list of limitations and a list
+#   of corresponding error messages, or None if there are none
+#   see phenix.show_map_info for example
+# These limitations can also be accessed with specific calls placed below:
+#  For example:
+#  mrc.can_be_sharpened()  returns False if "extract_unique" is present
+
+# Map labels that are not limitations can be accessed with:
+#     additional_labels=mrc.get_additional_labels()
+
+STANDARD_LIMITATIONS_DICT={
+    "extract_unique":
+     "This map is masked around unique region and not suitable for sharpening.",
+     }
+
 
 class map_reader(utils):
 
@@ -98,6 +116,12 @@ class map_reader(utils):
        nxstart_nystart_nzstart=self.nxstart_nystart_nzstart,
        mapc=mrc.header.mapc,mapr=mrc.header.mapr,maps=mrc.header.maps)
 
+    # Labels
+    self.labels=[]
+    for i in xrange(mrc.header.nlabl):
+      text=mrc.header.label[i].strip()
+      if text:
+        self.labels.append(mrc.header.label[i])
 
     # NOTE phenix calls "origin" the position of the lower left corner
     #   of the map.
@@ -144,6 +168,58 @@ class map_reader(utils):
 
     # Ready with self.data as float flex array. For normal use convert to
     # double with map_data=self.data.as_double()
+
+  # Code to check for specific text in map labels limiting the use of the map
+
+  def cannot_be_sharpened(self):
+    if self.is_in_limitations("extract_unique"):
+      return True
+    return False
+
+  def is_in_limitations(self,text):
+    limitations=self.get_limitations()
+    if not limitations:
+      return False
+    elif text in limitations.limitations:
+      return True
+    else:
+      return False
+
+  def get_labels(self):
+    return self.labels
+
+  def get_additional_labels(self):
+    # get all labels that are not limitations
+    limitations=self.get_limitations()
+    if not limitations:
+      return self.labels
+    else:
+      additional_labels=[]
+      for label in self.labels:
+        if not label.strip() in limitations.limitations:
+          additional_labels.append(label.strip())
+    return additional_labels
+
+  def get_limitations(self):
+    limitations=[]
+    limitation_messages=[]
+    if self.labels:
+      for label in self.labels:
+        limitation_message=self.get_limitation(label.strip())
+        if limitation_message:
+          limitations.append(label.strip())
+          limitation_messages.append(limitation_message.strip())
+    if limitations:
+      from libtbx import group_args
+      return group_args(
+       limitations=limitations,
+       messages=limitation_messages,
+      )
+    else:
+      return None
+
+  def get_limitation(self,label):
+    return STANDARD_LIMITATIONS_DICT.get(label,None)
 
 class write_ccp4_map:
 
@@ -288,9 +364,12 @@ class write_ccp4_map:
     mrc.set_data(numpy_data_output_axis_order) # numpy array
 
     # Labels
-    mrc.header.nlabl=labels.size()
-    for i in xrange(min(10,labels.size())):
-      mrc.header.label[i]=labels[i]
+    # Keep all limitations labels and other labels up to total of 10 or fewer
+    output_labels=select_output_labels(labels)
+
+    mrc.header.nlabl=len(output_labels)
+    for i in xrange(min(10,len(output_labels))):
+      mrc.header.label[i]=output_labels[i]
     mrc.update_header_from_data() # don't move this later as we overwrite values
 
     # Unit cell parameters and space group
@@ -339,6 +418,27 @@ class write_ccp4_map:
 
     # Write the file
     mrc.close()
+
+def select_output_labels(labels,max_labels=10):
+  n_limitations=0
+  used_labels=[]
+  for label in labels:
+    if label in STANDARD_LIMITATIONS_DICT.keys() and not label in used_labels:
+      n_limitations+=1
+      used_labels.append(label)
+  output_labels=[]
+  n_available=max_labels-n_limitations
+  n_general=0
+  for label in labels:
+    if label in output_labels: continue
+    if len(output_labels)>=max_labels:
+      continue
+    if label in STANDARD_LIMITATIONS_DICT.keys():
+      output_labels.append(label)
+    elif n_general < n_available:
+      n_general+=1
+      output_labels.append(label)
+  return output_labels
 
 def get_standard_order(mapc,mapr,maps,internal_standard_order=None,
     reverse=False):

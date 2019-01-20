@@ -33,6 +33,7 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
          "\n and use_mrcfile=",use_mrcfile
   if use_mrcfile:
     m = mrcfile.map_reader(file_name=file_name,verbose=True)
+    for label in m.labels: print label
   else:
     m = iotbx.ccp4_map.map_reader(file_name=file_name)
   assert approx_equal(m.header_min, -0.422722190619)
