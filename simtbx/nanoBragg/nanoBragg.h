@@ -446,14 +446,13 @@ class nanoBragg {
     /* misseting angles, applied after any provided A and U matrices */
     double misset[4];
 
-
     /* special options */
 //    bool calculate_noise; // = 1;
 //    bool write_pgm; // = 1;
 //    bool binary_spots; // = 0; no inter-Bragg spots, flat-top spots inside FWHM of sinc function instead
 
     /* the constructor that takes a DXTBX detector and beam model */
-    nanoBragg(const dxtbx::model::Detector&, const dxtbx::model::Beam& beam, int verbose);
+    nanoBragg(const dxtbx::model::Detector&, const dxtbx::model::Beam& beam, int verbose, int panel_id = 0);
 
     /* the default constructor */
 //    nanoBragg();

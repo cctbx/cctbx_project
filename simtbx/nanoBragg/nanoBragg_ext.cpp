@@ -1239,10 +1239,11 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       /* constructor that takes a dxtbx detector and beam model */
       .def(init<const dxtbx::model::Detector&,
                 const dxtbx::model::Beam&,
-                int>(
+                int, int>(
         (arg_("detector"),
          arg_("beam"),
-         arg_("verbose")=0),
+         arg_("verbose")=0,
+         arg_("panel_id")=0),
         "nanoBragg simulation initialized from dxtbx detector and beam objects"))
 
        /* constructor that takes any and all parameters with sensible defaults */

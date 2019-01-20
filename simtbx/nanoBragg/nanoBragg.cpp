@@ -11,7 +11,8 @@ namespace nanoBragg {
 nanoBragg::nanoBragg(
     const dxtbx::model::Detector& detector, // no default
     const dxtbx::model::Beam& beam,  // no default
-    int verbose)    // =0
+    int verbose, // =0
+    int panel_id) //=0
 {
     double temp;
     vec3 xyz;
@@ -62,11 +63,11 @@ nanoBragg::nanoBragg(
     /* DETECTOR properties */
 
     /* size of the pixels in meters */
-    pixel_size = detector[0].get_pixel_size()[0]/1000.;
+    pixel_size = detector[panel_id].get_pixel_size()[0]/1000.;
 
     /* pixel count in short and fast-axis directions */
-    spixels = detector[0].get_image_size()[1];
-    fpixels = detector[0].get_image_size()[0];
+    spixels = detector[panel_id].get_image_size()[1];
+    fpixels = detector[panel_id].get_image_size()[0];
 
     /* allocate all the other arrays */
     init_detector();
@@ -74,42 +75,42 @@ nanoBragg::nanoBragg(
     /* direction in 3-space of detector axes */
     beam_convention = CUSTOM;
     /* typically: 1 0 0 */
-    fdet_vector[1] = detector[0].get_fast_axis()[0];
-    fdet_vector[2] = detector[0].get_fast_axis()[1];
-    fdet_vector[3] = detector[0].get_fast_axis()[2];
+    fdet_vector[1] = detector[panel_id].get_fast_axis()[0];
+    fdet_vector[2] = detector[panel_id].get_fast_axis()[1];
+    fdet_vector[3] = detector[panel_id].get_fast_axis()[2];
     unitize(fdet_vector,fdet_vector);
     /* typically: 0 -1 0 */
-    sdet_vector[1] = detector[0].get_slow_axis()[0];
-    sdet_vector[2] = detector[0].get_slow_axis()[1];
-    sdet_vector[3] = detector[0].get_slow_axis()[2];
+    sdet_vector[1] = detector[panel_id].get_slow_axis()[0];
+    sdet_vector[2] = detector[panel_id].get_slow_axis()[1];
+    sdet_vector[3] = detector[panel_id].get_slow_axis()[2];
     unitize(sdet_vector,sdet_vector);
     /* set orthogonal vector to the detector pixel array */
     cross_product(fdet_vector,sdet_vector,odet_vector);
     unitize(odet_vector,odet_vector);
 
     /* dxtbx origin is location of outer corner of the first pixel */
-    pix0_vector[1] = detector[0].get_origin()[0]/1000.0;
-    pix0_vector[2] = detector[0].get_origin()[1]/1000.0;
-    pix0_vector[3] = detector[0].get_origin()[2]/1000.0;
+    pix0_vector[1] = detector[panel_id].get_origin()[0]/1000.0;
+    pix0_vector[2] = detector[panel_id].get_origin()[1]/1000.0;
+    pix0_vector[3] = detector[panel_id].get_origin()[2]/1000.0;
     /* what is the point of closest approach between sample and detector? */
     Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
     Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
     close_distance = distance =  dot_product(pix0_vector,odet_vector);
 
     /* set beam centre */
-    scitbx::vec2<double> dials_bc = detector[0].get_beam_centre(beam.get_s0());
+    scitbx::vec2<double> dials_bc = detector[panel_id].get_beam_centre(beam.get_s0());
     Xbeam = dials_bc[0]/1000.0;
     Ybeam = dials_bc[1]/1000.0;
 
     /* detector sensor layer properties */
-    detector_thick   = detector[0].get_thickness();
-    temp = detector[0].get_mu();        // is this really a mu? or mu/rho ?
+    detector_thick   = detector[panel_id].get_thickness();
+    temp = detector[panel_id].get_mu();        // is this really a mu? or mu/rho ?
     if(temp>0.0) detector_attnlen = 1.0/temp;
 
     /* quantum_gain = amp_gain * electrooptical_gain, does not include capture_fraction */
-    quantum_gain = detector[0].get_gain();
+    quantum_gain = detector[panel_id].get_gain();
 
-    //adc_offset = detector[0].ADC_OFFSET;
+    //adc_offset = detector[panel_id].ADC_OFFSET;
 
     /* SPINDLE properties */
 
