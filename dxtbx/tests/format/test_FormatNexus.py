@@ -27,7 +27,7 @@ def test_VMXi_rotation_scan():
   panel = detector[0]
   assert panel.get_pixel_size() == (0.075,0.075)
   assert panel.get_image_size() == (2068, 2162)
-  assert panel.get_trusted_range() == (-1,4096) # XXX really?!
+  assert panel.get_trusted_range() == (-1,4096)
   assert panel.get_fast_axis() == (1,0,0)
   assert panel.get_slow_axis() == (0,-1,0)
   assert panel.get_origin() == pytest.approx(
