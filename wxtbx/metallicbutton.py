@@ -720,11 +720,7 @@ class MetallicButton(WxCtrl):
 
   def SetWindowVariant(self, variant):
     """Set the variant/font size of this control"""
-<<<<<<< HEAD
-    wx.PyControl.SetWindowVariant(self, variant)
-=======
     WxCtrl.SetWindowVariant(self, variant)
->>>>>>> wxPython 3/4 compatibility
     self.InvalidateBestSize()
 
   def ShouldInheritColours(self):
