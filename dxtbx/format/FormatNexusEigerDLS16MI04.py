@@ -58,6 +58,7 @@ class FormatNexusEigerDLS16MI04(FormatNexus):
     mask = super(FormatNexusEigerDLS16MI04, self).get_mask()
     if mask is None:
       # XXX mask really shouldn't be None
+      # https://jira.diamond.ac.uk/browse/SCI-8308
       mask = tuple(flex.bool(flex.grid(reversed(panel.get_image_size())), True) for panel in self.get_detector())
       panel = self.get_detector()[0]
     if self._dynamic_shadowing:
