@@ -11,8 +11,11 @@ pytestmark = pytest.mark.skipif(
   reason='Test images not available')
 dials = pytest.importorskip('dials')
 
-def test_rotation_scan():
-  master_h5 = '/dls/i04/data/2019/cm23004-1/20190109/Eiger/gw/Thaum/Thau_4/Thau_4_1_master.h5'
+@pytest.mark.parametrize('master_h5', [
+  '/dls/i04/data/2019/cm23004-1/20190109/Eiger/gw/Thaum/Thau_4/Thau_4_1_master.h5',
+  '/dls/i04/data/2019/cm23004-1/20190109/Eiger/gw/Thaum/Thau_4/Thau_4_1.nxs'
+])
+def test_rotation_scan(master_h5):
   assert FormatNexusEigerDLS16MI04.understand(master_h5)
 
   datablocks = DataBlockFactory.from_filenames([master_h5], format_kwargs={'dynamic_shadowing': True})
