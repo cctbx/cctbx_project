@@ -102,19 +102,20 @@ def simulate_powder_pattern(crystalstructure,
             wavelength=wavelength, scale_down=scale_down)
   f.close()
   if scale_down > 10000: raise
-  run_fullprof(pcrfile, verbose=0)
+  run_fullprof(pcrfile, verbose=4)
 
   # fix hkl file for hkl reader
   hklfile = basepath + ".fou"
-  f = open(hklfile, "r")
-  lines = f.readlines()[1:]
-  f.close()
+  try:
+    with open(hklfile, "r") as f:
+        lines = f.readlines()[1:]
+  except IOError:
+      pass
   hklfile = basepath + ".hkl"
   if keep_results == True:
     os.rename(hklfile, basepath + ".hkldata")   # backup old hkl file
-  f = open(hklfile, "w")
-  f.writelines(lines)
-  f.close()
+  with open(hklfile, "w") as f:
+    f.writelines(lines)
 
   # extract intensities
   f_calc = None

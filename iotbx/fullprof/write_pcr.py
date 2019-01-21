@@ -32,7 +32,7 @@ def _make_phase_block(phase, number=1, name="", scale_down=1.0):
  {name:s}
 !
 !Nat Dis Ang Pr1 Pr2 Pr3 Jbt Irf Isy Str Furth       ATZ    Nvk Npr More
-{nat:>4d}   0  0  0.0 0.0 0.0   0   0   0   0   0        {atz}    0   0   0
+{nat:>4d}    0  0  0.0 0.0 0.0   0   0   0   0   0        {atz}    0   0   0
 !
 {space_group}               <--Space group symbol
 !Atom   Typ       X        Y        Z     Biso       Occ     In Fin N_t Spc /Codes
@@ -129,14 +129,14 @@ def _pcr_skelleton(phases,
 """.format(jobtype,nprof,nphase,nbckgd,dum=1 if jobtype == 2 else 0)
   ret += """\
 !
-!Ipr Ppl Ioc Mat Pcr Ls1 Ls2 Ls3 Syo Prf Ins Rpa Sym Hkl Fou Sho Ana
-  2   0   1   1   1   0   0   0   1   1  {filetype}   0   1   4   2   0   0
+!Ipr Ppl Ioc Mat Pcr Ls1 Ls2 Ls3 NLI Prf Ins Rpa Sym Hkl Fou Sho Ana
+   2   0   1   1   1   0   0   0   0   1  {filetype:>3}   0   1   4   2   0   0
 !
-! lambda1 Lambda2    Ratio    Bkpos    Wdt    Cthm     muR   AsyLim   Rpolarz ->Patt# 1
- {xlambda} {xlambda}  1.0000   60.000  5.0000  0.0000  0.0000   50.00    0.0000
+! lambda1 Lambda2    Ratio    Bkpos    Wdt    Cthm     muR   AsyLim   Rpolarz  2nd-muR -> Patt# 1
+ {xlambda} {xlambda}  1.0000   60.000  5.0000  0.0000  0.0000   50.00    0.0000  0.0000
 !
 !NCY  Eps  R_at  R_an  R_pr  R_gl     Thmin       Step       Thmax    PSD    Sent0
- 20  0.01  1.00  1.00  1.00  1.00     10.0000   0.100000   100.0000   0.000   0.000
+ 20  0.01  1.00  1.00  1.00  1.00     10.0000   0.02000   100.0000   0.000   0.000
 !
 !
   #__npar__#    !Number of refined parameters
