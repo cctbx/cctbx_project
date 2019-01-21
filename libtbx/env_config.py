@@ -51,7 +51,11 @@ def using_conda_python():
   This check is independent of being in an active conda environment.
   https://stackoverflow.com/questions/47608532/how-to-detect-from-within-python-whether-packages-are-managed-with-conda?noredirect=1&lq=1
   '''
-  return os.path.exists(os.path.join(sys.prefix, 'conda-meta'))
+  conda_prefix = sys.prefix
+  if (sys.platform == 'darwin'):
+    if ('python.app' in conda_prefix):
+      conda_prefix = conda_prefix.split('python.app')[0]
+  return os.path.exists(os.path.join(conda_prefix, 'conda-meta'))
 
 def get_conda_prefix():
   '''
