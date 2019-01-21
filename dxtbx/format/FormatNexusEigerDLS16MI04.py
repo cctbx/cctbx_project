@@ -85,7 +85,7 @@ class FormatNexusEigerDLS16MI04(FormatNexus):
 
     else:
       raise RuntimeError(
-        "Don't understand this goniometer: %s" %list(goniometer.get_names()))
+        "Don't understand this goniometer: %s" % list(goniometer.get_names()))
 
 if __name__ == '__main__':
 
