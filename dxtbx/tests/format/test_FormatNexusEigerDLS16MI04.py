@@ -27,9 +27,6 @@ def test_rotation_scan(master_h5):
   scan = imageset.get_scan()
   beam = imageset.get_beam()
 
-  print(imageset.masker())
-  print(imageset.masker().get(0, goniometer=gonio))
-
   panel = detector[0]
   assert panel.get_pixel_size() == (0.075,0.075)
   assert panel.get_image_size() == (4148,4362)
