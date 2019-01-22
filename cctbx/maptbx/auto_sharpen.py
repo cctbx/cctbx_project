@@ -952,6 +952,9 @@ def run(args=None,params=None,
         is_crystal=params.crystal_info.is_crystal,
         verbose=params.control.verbose,
         resolve_size=params.control.resolve_size,
+        multiprocessing=params.control.multiprocessing,
+        nproc=params.control.nproc,
+        queue_run_command=params.control.queue_run_command,
         map=map_data,
         half_map_data_list=half_map_data_list,
         solvent_content=params.crystal_info.solvent_content,
@@ -1080,7 +1083,7 @@ def run(args=None,params=None,
         "(NOTE: may be boxed map and may not be "+\
         "\nsame as original location) to %s\n" %(
          output_map_file)
-   
+
     from iotbx.mrcfile import create_output_labels
     program_name='auto_sharpen'
     limitations=["map_is_sharpened"]

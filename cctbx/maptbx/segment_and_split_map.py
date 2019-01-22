@@ -11,6 +11,7 @@ from scitbx.math import matrix
 from copy import deepcopy
 from libtbx.utils import null_out
 import libtbx.callbacks # import dependency
+from libtbx import group_args
 
 master_phil = iotbx.phil.parse("""
 
@@ -1173,6 +1174,23 @@ master_phil = iotbx.phil.parse("""
        .help = Controls whether files are written
        .short_caption = Write files
 
+      multiprocessing = *multiprocessing sge lsf pbs condor pbspro slurm
+        .type = choice
+        .short_caption = multiprocessing type
+        .help = Choices are multiprocessing (single machine) or queuing systems
+
+      queue_run_command = None
+        .type = str
+        .short_caption = Queue run command
+        .help = run command for queue jobs. For example qsub.
+
+      nproc = 1
+        .type = int
+        .short_caption = Number of processors
+        .help = Number of processors to use
+        .style = renderer:draw_nproc_widget bold
+
+
    }
 """, process_includes=True)
 master_params = master_phil
@@ -1822,6 +1840,9 @@ class sharpening_info:
       sharpening_target=None,
       residual_target=None,
       fraction_occupied=None,
+      nproc=None,
+      multiprocessing=None,
+      queue_run_command=None,
       resolution=None, # changed from d_cut
       resolution_dependent_b=None,  # linear sharpening
       normalize_amplitudes_in_resdep=None,  # linear sharpening
@@ -1888,6 +1909,7 @@ class sharpening_info:
       buffer_radius=None,
       pseudo_likelihood=None,
       preliminary_sharpening_done=False,
+
         ):
 
     from libtbx import adopt_init_args
@@ -1996,6 +2018,9 @@ class sharpening_info:
       self.chain_type=params.crystal_info.chain_type
       self.verbose=params.control.verbose
       self.resolve_size=params.control.resolve_size
+      self.multiprocessing=params.control.multiprocessing
+      self.nproc=params.control.nproc
+      self.queue_run_command=params.control.queue_run_command
 
       self.wrapping=params.crystal_info.use_sg_symmetry
       self.fraction_occupied=params.map_modification.fraction_occupied
@@ -8694,6 +8719,9 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'k_sol',
        'b_sol',
        'fraction_complete',
+       'nproc',
+       'multiprocessing',
+       'queue_run_command',
        'verbose',
          ]:
      x=var_dict.get(param)
@@ -9758,6 +9786,9 @@ def auto_sharpen_map_or_map_coeffs(
         return_bsi=False,
         verbose=None,
         resolve_size=None,
+        nproc=None,
+        multiprocessing=None,
+        queue_run_command=None,
         out=sys.stdout):
     if si:  #
       resolution=si.resolution
@@ -9809,7 +9840,6 @@ def auto_sharpen_map_or_map_coeffs(
         pdb_inp=pdb_inp,
         ncs_copies=ncs_copies,
         n_residues=n_residues,out=out)
-
     # Figure out solvent fraction
     if si.solvent_fraction is None:
       si.solvent_fraction=get_iterated_solvent_fraction(
@@ -10467,6 +10497,12 @@ def run_auto_sharpen(
       si_b_iso_list=flex.double()
       si_score_list=flex.double()
       si_id_list=[]
+
+      kw_list=[]
+      first=True
+      if return_bsi: assert local_si.nproc==1  #
+
+      results_list=[]
       for i in xrange(b_n):
         # ============================================
         local_si=deepcopy(si).update_with_box_sharpening_info(
@@ -10474,6 +10510,14 @@ def run_auto_sharpen(
         local_si.sharpening_method=m
         local_si.n_real=map_data.all()
         local_si.k_sharpen=k_sharpen
+
+        if first and local_si.multiprocessing=='multiprocessing' or \
+            local_si.nproc==1:  # can do anything
+          local_log=out
+        else:  # skip log entirely
+          local_log=None  # will set this later and return as r.log_as_text
+        first=False
+
 
         if m=='resolution_dependent':
           print >>out,\
@@ -10522,48 +10566,51 @@ def run_auto_sharpen(
           local_si.b_sharpen=original_b_iso-b_iso
           local_si.b_iso=b_iso
 
-        local_map_and_b=apply_sharpening(
-            f_array=local_f_array,phases=local_phases,
-            sharpening_info_obj=local_si,
-            crystal_symmetry=local_si.crystal_symmetry,
-            out=null_out())
-        local_si=score_map(map_data=local_map_and_b.map_data,
-          sharpening_info_obj=local_si,
-          out=null_out())
-        # Record b_iso values
-        if not local_map_and_b.starting_b_iso:
-          local_map_and_b.starting_b_iso=original_b_iso
-        if not local_map_and_b.final_b_iso:
-          local_map_and_b.final_b_iso=local_si.b_iso
+        # ------ SET UP RUN HERE ----------
+        kw_list.append(
+        {
+        'f_array':local_f_array,
+        'phases':local_phases,
+          'crystal_symmetry':local_si.crystal_symmetry,
+          'original_b_iso':original_b_iso,
+          'local_si':local_si,
+          'm':m,
+          'return_bsi':return_bsi,
+          'out':local_log,
+          'id':i+1,
+         })
+        # We are going to call autosharpening with this
+        # ------ END OF SET UP FOR RUN ----------
 
-        if m=='resolution_dependent':
-          print >>out,\
-           "\nb[0]   b[1]   b[2]   SA   Kurtosis   sa_ratio  Normalized regions"
-          print >>out,\
-            "\nB-sharpen   B-iso   k_sharpen   SA   "+\
-             "Kurtosis  sa_ratio  Normalized regions"
-          print >>out," %6.2f  %6.2f  %6.2f  " %(
-              local_si.resolution_dependent_b[0],
-              local_si.resolution_dependent_b[1],
-              local_si.resolution_dependent_b[2]) +\
-            "  %7.3f  %7.3f  " %(
-                local_si.adjusted_sa,local_si.kurtosis)+\
-            " %7.3f  %7.3f" %(
-             local_si.sa_ratio,local_si.normalized_regions)
-        elif local_si.b_sharpen is not None and local_si.b_iso is not None and\
+
+        # This is the actual run here =============
+
+      from libtbx.easy_mp import run_parallel
+      results_list=run_parallel(
+         method=si.multiprocessing,
+         qsub_command=si.queue_run_command,
+         nproc=si.nproc,
+         target_function=run_sharpen_and_score,kw_list=kw_list)
+      # results looks like: [result,result2]
+
+      sort_list=[]
+      for result in results_list:
+        sort_list.append([result.id,result])
+      sort_list.sort()
+      for id,result in sort_list:
+        local_si=result.local_si
+        local_map_and_b=result.local_map_and_b
+        if result.text:
+          print result.text
+        # Run through all result to get these
+        if local_si.b_sharpen is not None and local_si.b_iso is not None and\
            local_si.k_sharpen is not None and local_si.kurtosis is not None \
-           and local_si.adjusted_sa is not None:
-          print >>out,\
-           " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
-            local_si.b_sharpen,local_si.b_iso,
-             local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
-            "  %7.3f         %7.3f" %(
-             local_si.sa_ratio,local_si.normalized_regions)
-          if local_si.b_iso is not None and local_si.score is not None:
+           and local_si.adjusted_sa is not None and local_si.score is not None:
             si_b_iso_list.append(local_si.b_iso)
             si_score_list.append(local_si.score)
             if local_si.k_sharpen is not None:
-             si_id_list.append("%.3f_%.3f_%.3f" %(local_si.b_iso,local_si.k_sharpen,
+             si_id_list.append("%.3f_%.3f_%.3f" %(
+               local_si.b_iso,local_si.k_sharpen,
                local_si.get_d_cut()))
 
         if m=='no_sharpening':
@@ -10573,6 +10620,7 @@ def run_auto_sharpen(
           local_best_map_and_b=local_map_and_b
 
         # ============================================
+        # DONE WITH ALL RUNS
 
       if not local_best_si.is_model_sharpening() and \
           not local_best_si.is_half_map_sharpening():
@@ -10711,6 +10759,70 @@ def run_auto_sharpen(
         best_si.crystal_symmetry.unit_cell().parameters()))
       # and set tracking data with result
   return best_si
+
+def run_sharpen_and_score(f_array=None,
+  phases=None,
+  local_si=None,
+  crystal_symmetry=None,
+  original_b_iso=None,
+  m=None,
+  return_bsi=None,
+  id=None,
+  out=sys.stdout):
+
+        local_map_and_b=apply_sharpening(
+            f_array=f_array,phases=phases,
+            sharpening_info_obj=local_si,
+            crystal_symmetry=crystal_symmetry,
+            out=null_out())
+        local_si=score_map(map_data=local_map_and_b.map_data,
+          sharpening_info_obj=local_si,
+          out=null_out())
+        # Record b_iso values
+        if not local_map_and_b.starting_b_iso:
+          local_map_and_b.starting_b_iso=original_b_iso
+        if not local_map_and_b.final_b_iso:
+          local_map_and_b.final_b_iso=local_si.b_iso
+
+        # This is printout below here ===============
+
+        if m=='resolution_dependent':
+          text=\
+           "\nb[0]   b[1]   b[2]   SA   Kurtosis   sa_ratio  Normalized regions"
+          text+="\n"+\
+            "\nB-sharpen   B-iso   k_sharpen   SA   "+\
+             "Kurtosis  sa_ratio  Normalized regions"
+          text+="\n"+" %6.2f  %6.2f  %6.2f  " %(
+              local_si.resolution_dependent_b[0],
+              local_si.resolution_dependent_b[1],
+              local_si.resolution_dependent_b[2]) +\
+            "  %7.3f  %7.3f  " %(
+                local_si.adjusted_sa,local_si.kurtosis)+\
+            " %7.3f  %7.3f" %(
+             local_si.sa_ratio,local_si.normalized_regions)
+        elif local_si.b_sharpen is not None and local_si.b_iso is not None and\
+           local_si.k_sharpen is not None and local_si.kurtosis is not None \
+           and local_si.adjusted_sa is not None:
+          text=\
+           " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
+            local_si.b_sharpen,local_si.b_iso,
+             local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
+            "  %7.3f         %7.3f" %(
+             local_si.sa_ratio,local_si.normalized_regions)
+
+        if return_bsi:
+          r=group_args(
+            local_si=local_si,
+            local_map_and_b=local_map_and_b,
+            text=text,
+            id=id)
+        else:
+          r=group_args(
+            local_si=local_si,
+            local_map_and_b=None,
+            text=text,
+            id=id)
+        return r
 
 def effective_b_iso(map_data=None,tracking_data=None,
       box_sharpening_info_obj=None,
