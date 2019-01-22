@@ -10857,6 +10857,8 @@ def run_sharpen_and_score(f_array=None,
              local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
             "  %7.3f         %7.3f" %(
              local_si.sa_ratio,local_si.normalized_regions)
+        else:
+          text=""
 
         if return_bsi:
           r=group_args(
