@@ -2393,10 +2393,12 @@ def scale_map_coeffs(map_coeffs,scale_max=None,out=sys.stdout):
        ).phase_transfer(phase_source=phases, deg=True)
 
 
-def get_map_object(file_name=None,must_allow_sharpening=None,out=sys.stdout):
+def get_map_object(file_name=None,must_allow_sharpening=None,
+      get_map_labels=None,out=sys.stdout):
   # read a ccp4 map file and return sg,cell and map objects 2012-01-16
   if not os.path.isfile(file_name):
     raise Sorry("The map file %s is missing..." %(file_name))
+  map_labels=None
   if file_name.endswith(".xplor"):
     import iotbx.xplor.map
     m = iotbx.xplor.map.reader(file_name=file_name)
@@ -2413,6 +2415,8 @@ def get_map_object(file_name=None,must_allow_sharpening=None,out=sys.stdout):
     print >>out,"SG: ",m.space_group_number
     if must_allow_sharpening and m.cannot_be_sharpened():
       raise Sorry("Input map is already modified and should not be sharpened")
+    if get_map_labels:
+      map_labels=m.labels
   print >>out,"ORIGIN: ",m.data.origin()
   print >>out,"EXTENT: ",m.data.all()
   print >>out,"IS PADDED: ",m.data.is_padded()
@@ -2480,13 +2484,19 @@ def get_map_object(file_name=None,must_allow_sharpening=None,out=sys.stdout):
     original_crystal_symmetry,original_unit_cell_grid=None,None
 
   map=scale_map(map,out=out)
-  return map,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
-    original_crystal_symmetry,original_unit_cell_grid
+  if get_map_labels:
+    return map,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
+      original_crystal_symmetry,original_unit_cell_grid,map_labels
+  else:
+    return map,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
+      original_crystal_symmetry,original_unit_cell_grid
 
 def write_ccp4_map(crystal_symmetry, file_name, map_data,
-   output_unit_cell_grid=None):
+   output_unit_cell_grid=None, labels=None):
   if output_unit_cell_grid is None:
     output_unit_cell_grid=map_data.all()
+  if labels is None:
+    labels=flex.std_string([""])
 
   iotbx.mrcfile.write_ccp4_map(
       file_name=file_name,
@@ -2494,7 +2504,7 @@ def write_ccp4_map(crystal_symmetry, file_name, map_data,
       space_group=crystal_symmetry.space_group(),
       unit_cell_grid = output_unit_cell_grid,
       map_data=map_data.as_double(),
-      labels=flex.std_string([""]))
+      labels=labels)
 
 def set_up_xrs(crystal_symmetry=None):  # dummy xrs to write out atoms
 

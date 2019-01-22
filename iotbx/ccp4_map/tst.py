@@ -172,14 +172,23 @@ def exercise_writer(use_mrcfile=None,output_axis_order=[3,2,1]):
   unit_cell=uctbx.unit_cell((10,10,10,90,90,90))
 
   if use_mrcfile:
+    from iotbx.mrcfile import create_output_labels
+    labels=create_output_labels(
+       program_name='test',
+       limitations=['extract_unique'],
+       output_labels=['test label'],
+       )
     iotbx.mrcfile.write_ccp4_map(
       file_name="four_five_six.mrc",
       unit_cell=unit_cell,
       space_group=sgtbx.space_group_info("P1").group(),
       map_data=real_map_data,
-      labels=flex.std_string(["iotbx.ccp4_map.tst"]),
+      labels=labels,
       output_axis_order=output_axis_order)
     input_real_map = iotbx.mrcfile.map_reader(file_name="four_five_six.mrc")
+    for x in input_real_map.labels:
+      print "LABEL: ",x
+    assert str(input_real_map.labels).find('extract_unique')>-1
   else:
     iotbx.ccp4_map.write_ccp4_map(
       file_name="four_five_six.map",

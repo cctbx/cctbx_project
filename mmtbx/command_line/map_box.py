@@ -891,28 +891,18 @@ Parameters:"""%h
 
     # Write ccp4 map.
     if("ccp4" in params.output_format):
-     if(params.output_file_name_prefix is None):
-       file_name = "%s_box.ccp4"%output_prefix
-     else: file_name = "%s.ccp4"%params.output_file_name_prefix
-     if params.output_map_labels:
-       output_map_labels=params.output_map_labels
-     else:
-       output_map_labels=[]
-     text=""
+     from iotbx.mrcfile import create_output_labels
      if params.extract_unique:
-       limitation="extract_unique"
-       if not limitation in output_map_labels:
-         output_map_labels.append(limitation)
-       text+="using extract_unique"
-     if inputs.ccp4_map_file_name:
-       file_text=inputs.ccp4_map_file_name
+       program_name='map_box using extract_unique'
+       limitations=["extract_unique"]
      else:
-       file_text=""
-     label='map_box on %s %s: %s' %(file_text,time.asctime(),text)
-     label=label[:80]
-     output_map_labels.append(label)
-     if input_map_labels:
-       output_map_labels+=input_map_labels
+       program_name='map_box'
+       limitations=[]
+     labels=create_output_labels(program_name=program_name,
+       input_file_name=inputs.ccp4_map_file_name,
+       input_labels=input_map_labels,
+       limitations=limitations,
+       output_labels=None)
 
      output_box.write_ccp4_map(file_name=file_name,
        output_crystal_symmetry=output_crystal_symmetry,
@@ -920,7 +910,7 @@ Parameters:"""%h
        output_sd=params.output_ccp4_map_sd,
        output_unit_cell_grid=output_unit_cell_grid,
        shift_back=shift_back,
-       output_map_labels=output_map_labels,
+       output_map_labels=labels,
        output_external_origin=params.output_external_origin)
      print >> log, "Writing boxed map "+\
           "to CCP4 formatted file:   %s"%file_name

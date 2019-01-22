@@ -1,6 +1,6 @@
 from __future__ import division
 import cctbx.array_family.flex as flex# import dependency
-import os,sys
+import os,sys,time
 from libtbx.utils import Sorry
 from iotbx.ccp4_map import utils  # utilities in common with ccp4_map
 import mrcfile
@@ -44,7 +44,9 @@ INTERNAL_STANDARD_ORDER=[3,2,1]
 
 STANDARD_LIMITATIONS_DICT={
     "extract_unique":
-     "This map is masked around unique region and not suitable for sharpening.",
+     "This map is masked around unique region and not suitable for auto-sharpening.",
+    "map_is_sharpened":
+     "This map is auto-sharpened and not suitable for further auto-sharpening.",
      }
 
 
@@ -173,6 +175,8 @@ class map_reader(utils):
 
   def cannot_be_sharpened(self):
     if self.is_in_limitations("extract_unique"):
+      return True
+    if self.is_in_limitations("map_is_sharpened"):
       return True
     return False
 
@@ -418,6 +422,51 @@ class write_ccp4_map:
 
     # Write the file
     mrc.close()
+
+def create_output_labels(
+    program_name=None,  # e.g., auto_sharpen
+    input_file_name=None, # mymrc_file.mrc
+    input_labels=None,    # input labels from mymrc_file.mrc
+    output_labels=None,  # any specific output labels
+    limitations=None,    # any standard limitations
+     ):
+
+  output_map_labels=[]
+
+  # get standard label from program_name, input_file_name and date
+  text=""
+  if program_name:
+    text+="%s" %(program_name)
+  if input_file_name:
+    text+=' on %s' %(input_file_name)
+  text+=' %s' %(time.asctime())
+  text=text[:80]
+  output_map_labels.append(text)
+
+  # any specific limitations
+  if limitations:
+    for limitation in limitations:
+      if not limitation in STANDARD_LIMITATIONS_DICT.keys():
+        print "The limitation '%s' is not in STANDARD_LIMITATIONS_DICT: '%s'" %(
+       limitation,str(STANDARD_LIMITATIONS_DICT.keys()))
+      assert limitation in STANDARD_LIMITATIONS_DICT.keys()
+      output_map_labels.append(limitation)
+ 
+  # any specific labels given
+  if output_labels:
+    output_map_labels+=output_labels
+
+  # any input labels to pass on
+  if input_labels:
+    output_map_labels+=input_labels 
+
+  # Now write out up to 10 unique labels
+  final_labels=[]
+  for label in output_map_labels:
+    if not label in final_labels:
+      final_labels.append(label)
+  final_labels=final_labels[:10]
+  return final_labels
 
 def select_output_labels(labels,max_labels=10):
   n_limitations=0

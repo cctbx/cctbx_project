@@ -634,6 +634,28 @@ master_phil = iotbx.phil.parse("""
         .type = int
         .help = "Size of resolve to use. "
         .style = hidden
+
+     ignore_map_limitations = None
+       .type = bool
+       .short_caption = Ignore map limitations
+       .help = Ignore limitations such as 'map cannot be sharpened'
+
+      multiprocessing = *multiprocessing sge lsf pbs condor pbspro slurm
+        .type = choice
+        .short_caption = multiprocessing type
+        .help = Choices are multiprocessing (single machine) or queuing systems
+
+      queue_run_command = None
+        .type = str
+        .short_caption = Queue run command
+        .help = run command for queue jobs. For example qsub.
+
+      nproc = 1
+        .type = int
+        .short_caption = Number of processors
+        .help = Number of processors to use
+        .style = renderer:draw_nproc_widget bold
+
    }
 
   include scope libtbx.phil.interface.tracking_params
@@ -761,6 +783,7 @@ def get_map_and_model(params=None,
     ncs_obj=None,
     half_map_data_list=None,
     map_coords_inside_cell=True,
+    get_map_labels=None,
     out=sys.stdout):
 
   acc=None # accessor used to shift map back to original location if desired
@@ -787,9 +810,10 @@ def get_map_and_model(params=None,
     print >>out,"\nReading map from %s\n" %( params.input_files.map_file)
     from cctbx.maptbx.segment_and_split_map import get_map_object
     map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
-        original_crystal_symmetry,original_unit_cell_grid=\
+        original_crystal_symmetry,original_unit_cell_grid,map_labels=\
       get_map_object(file_name=params.input_files.map_file,
-      must_allow_sharpening=True,out=out)
+      must_allow_sharpening=(not params.control.ignore_map_limitations),
+      get_map_labels=True,out=out)
     map_data=map_data.as_double()
     if origin_frac != (0,0,0) and acc is None:
       print >>out,"\nWARNING: Unable to place output map at position of "+\
@@ -877,7 +901,11 @@ def get_map_and_model(params=None,
       ncs_obj=ncs_obj.coordinate_offset(
        coordinate_offset=matrix.col(origin_shift))
 
-  return pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
+  if get_map_labels:
+    return pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
+       original_crystal_symmetry,original_unit_cell_grid,map_labels
+  else:
+    return pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
        original_crystal_symmetry,original_unit_cell_grid
 
 
@@ -902,13 +930,15 @@ def run(args=None,params=None,
   # get map_data and crystal_symmetry
 
   pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
-       original_crystal_symmetry,original_unit_cell_grid=get_map_and_model(
+       original_crystal_symmetry,original_unit_cell_grid,map_labels=\
+        get_map_and_model(
      map_data=map_data,
      half_map_data_list=half_map_data_list,
      pdb_inp=pdb_inp,
      ncs_obj=ncs_obj,
      map_coords_inside_cell=False,
      crystal_symmetry=crystal_symmetry,
+     get_map_labels=True,
      params=params,out=out)
   # NOTE: map_data is now relative to origin at (0,0,0).
   # Use map_data.reshape(acc) to put it back where it was if acc is not None
@@ -1050,7 +1080,18 @@ def run(args=None,params=None,
         "(NOTE: may be boxed map and may not be "+\
         "\nsame as original location) to %s\n" %(
          output_map_file)
-      write_ccp4_map(crystal_symmetry, output_map_file, offset_map_data)
+   
+    from iotbx.mrcfile import create_output_labels
+    program_name='auto_sharpen'
+    limitations=["map_is_sharpened"]
+    labels=create_output_labels(program_name=program_name,
+       input_file_name=params.input_files.map_file,
+       input_labels=map_labels,
+       limitations=limitations,
+       output_labels=None)
+
+    write_ccp4_map(crystal_symmetry, output_map_file, offset_map_data,
+        labels=labels)
 
   if write_output_files and params.output_files.shifted_sharpened_map_file:
     output_map_file=os.path.join(params.output_files.output_directory,
