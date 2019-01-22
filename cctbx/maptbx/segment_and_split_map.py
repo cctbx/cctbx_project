@@ -10288,18 +10288,66 @@ def run_auto_sharpen(
       b_mid=b_low+0.375*(b_high-b_low)
 
     ok_region_weight=True
+    results_list=[]
+    kw_list=[]
+    first=True
+
+    id=0
     for b_iso in [b_low,b_high,b_mid]:
+      id+=1
 
-      local_si.b_sharpen=original_b_iso-b_iso
-      local_si.b_iso=b_iso
+      if first and local_si.multiprocessing=='multiprocessing' or \
+          local_si.nproc==1:  # can do anything
+        local_log=out
+      else:  # skip log entirely
+        local_log=None  # will set this later and return as r.log_as_text
+      first=False
+      lsi=deepcopy(local_si)
 
+      lsi.b_sharpen=original_b_iso-b_iso
+      lsi.b_iso=b_iso
+
+      # ------ SET UP RUN HERE ----------
+      kw_list.append(
+      {
+      'f_array':f_array,
+      'phases':phases,
+        'crystal_symmetry':lsi.crystal_symmetry,
+        'local_si':lsi,
+        'id':id,
+        'out':local_log,
+       })
+      # We are going to call autosharpening with this
+      # ------ END OF SET UP FOR RUN ----------
+
+      """
+ 
       local_map_and_b=apply_sharpening(
             f_array=f_array,phases=phases,
-            sharpening_info_obj=local_si,
-            crystal_symmetry=local_si.crystal_symmetry,
+            sharpening_info_obj=lsi,
+            crystal_symmetry=lsi.crystal_symmetry,
             out=null_out())
-      local_si=score_map(map_data=local_map_and_b.map_data,sharpening_info_obj=local_si,
+      local_si=score_map(map_data=local_map_and_b.map_data,
+          sharpening_info_obj=local_si,
           out=null_out())
+      """
+      # This is the actual run here =============
+
+    from libtbx.easy_mp import run_parallel
+    results_list=run_parallel(
+       method=si.multiprocessing,
+       qsub_command=si.queue_run_command,
+       nproc=si.nproc,
+       target_function=run_sharpen_and_score,kw_list=kw_list)
+    # results looks like: [result,result2]
+
+    sort_list=[]
+    for result in results_list:
+      sort_list.append([result.id,result])
+    sort_list.sort()
+    for id,result in sort_list:
+      local_si=result.local_si
+
       if local_si.sa_ratio is None or local_si.normalized_regions is None:
         ok_region_weight=False
       sa_ratio_list.append(local_si.sa_ratio)
