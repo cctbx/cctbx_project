@@ -788,6 +788,7 @@ def get_map_and_model(params=None,
 
   acc=None # accessor used to shift map back to original location if desired
   origin_frac=(0,0,0)
+  map_labels=None
   if map_data and crystal_symmetry:
     original_crystal_symmetry=crystal_symmetry
     original_unit_cell_grid=None

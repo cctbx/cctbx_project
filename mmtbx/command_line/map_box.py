@@ -891,6 +891,9 @@ Parameters:"""%h
 
     # Write ccp4 map.
     if("ccp4" in params.output_format):
+     if(params.output_file_name_prefix is None):
+       file_name = "%s_box.ccp4"%output_prefix
+     else: file_name = "%s.ccp4"%params.output_file_name_prefix
      from iotbx.mrcfile import create_output_labels
      if params.extract_unique:
        program_name='map_box using extract_unique'
