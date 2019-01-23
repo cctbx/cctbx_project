@@ -134,6 +134,8 @@ class rcompare(object):
   def get_number_results(self):
     if len(self.results) > 0:
       v1, v2 = rama_rescale(self.results)
+      rv1 = [1-x for x in v1]
+      rv2 = [1-x for x in v2]
       return group_args(
           mean_diff=np.mean(self.res_columns[1]),
           std_diff=np.std(self.res_columns[1]),
@@ -142,6 +144,8 @@ class rcompare(object):
           n_res = len(self.res_columns[-1]),
           scaled_sum_1 = np.sum(v1),
           scaled_sum_2 = np.sum(v2),
+          rev_scaled_sum_1 = np.sum(rv1),
+          rev_scaled_sum_2 = np.sum(rv2),
           counts = Counter(self.res_columns[-4]),
           )
     return None
@@ -191,19 +195,15 @@ class rcompare(object):
 def rama_rescale(results):
   res1 = []
   res2 = []
-  for r1_id_str, diff2, r1_phi, r1_psi, r2_phi, r2_psi, v, r2_res_type, r1_score, r2_score in results:
-    max_value1 = find_region_max_value(r2_res_type, r1_phi, r1_psi)
-    if max_value1 is None:
-      res1.append(r1_score)
-    else:
-      # if max_value1[1] < 1:
-      #   print("rescaling: %.4f -> %.4f" % (r1_score, r1_score/max_value1[1]))
-      res1.append(r1_score/max_value1[1])
-    max_value2 = find_region_max_value(r2_res_type, r2_phi, r2_psi)
-    if max_value2 is None:
-      res2.append(r2_score)
-    else:
-      res2.append(r2_score/max_value2[1])
+  for (r1_id_str, diff2, r1_phi, r1_psi, r2_phi, r2_psi, v, r2_res_type,
+      r1_score, r2_score) in results:
+    for phi, psi, score, res in [(r1_phi, r1_psi, r1_score, res1),
+                                 (r2_phi, r2_psi, r2_score, res2)]:
+      max_value = find_region_max_value(r2_res_type, phi, psi)
+      if max_value is None:
+        res.append(score)
+      else:
+        res.append(score/max_value[1])
   return res1, res2
 
 def breake_arrow_if_needed(abeg, aend, plot_ranges):

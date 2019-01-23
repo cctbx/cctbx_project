@@ -104,6 +104,10 @@ Usage examples:
         (nr.scaled_sum_1, nr.scaled_sum_2) , file=self.logger)
     print("Sum of rama scores/n_residues scaled:\t %.4f -> %.4f (%d residues)" % \
         (nr.scaled_sum_1/nr.n_res, nr.scaled_sum_2/nr.n_res, nr.n_res), file=self.logger)
+    print("Sum of rama scores reverse scaled:\t\t %.3f -> %.3f" % \
+        (nr.rev_scaled_sum_1, nr.rev_scaled_sum_2) , file=self.logger)
+    print("Sum of rama scores/n_residues reverse scaled:\t %.4f -> %.4f (%d residues)" % \
+        (nr.rev_scaled_sum_1/nr.n_res, nr.rev_scaled_sum_2/nr.n_res, nr.n_res), file=self.logger)
 
     if self.params.output.counts:
       for k, v in nr.counts.iteritems():
