@@ -534,9 +534,9 @@ class MetallicButton(WxCtrl):
     """
     if not self.IsEnabled():
       return
-    pos = evt.GetPositionTuple()
+    pos = evt.GetPosition()
     self.SetState(GRADIENT_PRESSED)
-    size = self.GetSizeTuple()
+    size = self.GetSize()
     if pos[0] >= size[0] - 16:
       if self._menu is not None:
         self.ShowMenu()
@@ -552,8 +552,8 @@ class MetallicButton(WxCtrl):
     if not self.IsEnabled():
       return
     if self._state['cur'] == GRADIENT_PRESSED:
-      pos = evt.GetPositionTuple()
-      size = self.GetSizeTuple()
+      pos = evt.GetPosition()
+      size = self.GetSize()
       if self._disable_after_click > 0 :
         self.Enable(False)
       self.__PostEvent()
@@ -733,7 +733,7 @@ class MetallicButton(WxCtrl):
   def ShowMenu(self):
     """Show the dropdown menu if one is associated with this control"""
     if self._menu is not None:
-      size = self.GetSizeTuple()
+      size = self.GetSize()
       adj = wx.Platform == '__WXMAC__' and 3 or 0
 
       xpos = 1
