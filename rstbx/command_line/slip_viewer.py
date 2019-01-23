@@ -95,12 +95,10 @@ def run(argv=None):
 
     # from dxtbx.imageset import ImageSetFactory
     # sets = ImageSetFactory.new(paths)
-    from dxtbx.datablock import DataBlockFactory
+    from dxtbx.model.experiment_list import ExperimentListFactory
     from rstbx.slip_viewer.frame import chooser_wrapper
-    db = DataBlockFactory.from_filenames(paths)
-    sets = []
-    for d in db:
-      sets.extend(d.extract_imagesets())
+    experiments = ExperimentListFactory.from_filenames(paths)
+    sets = experiments.imagesets()
 
     for imgset in sets:
       for idx in imgset.indices():

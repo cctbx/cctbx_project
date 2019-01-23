@@ -252,7 +252,7 @@ class Script(object):
 
     # Verify inputs
     if len(detectors) != 2:
-      print "Please provide two experiments and or datablocks for comparison"
+      print "Please provide two experiments for comparison"
       return
 
     # These lines exercise the iterate_detector_at_level and iterate_panels functions
