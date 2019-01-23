@@ -20,7 +20,7 @@ import libtbx.load_env
 from libtbx.utils import Sorry, Usage
 from dials.util.options import OptionParser
 from libtbx.phil import parse
-from dxtbx.datablock import DataBlockFactory
+from dxtbx.model.experiment_list import ExperimentListFactory
 from scitbx.array_family import flex
 import numpy as np
 from libtbx import easy_pickle
@@ -286,9 +286,9 @@ xtc_phil_str = '''
     logging_dir = None
       .type = str
       .help = Directory output log files will be placed
-    datablock_filename = %s_datablock.json
+    experiments_filename = %s_experiments.json
       .type = str
-      .help = The filename for output datablock
+      .help = The filename for output experiment list
     strong_filename = %s_strong.pickle
       .type = str
       .help = The filename for strong reflections from spot finder output.
@@ -1205,8 +1205,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     if self.params.dispatch.dump_indexed:
       img_path = self.save_image(dxtbx_img, self.params, os.path.join(self.params.output.output_dir, "idx-" + s))
-      datablock = DataBlockFactory.from_filenames([img_path])[0]
-      imgset = datablock.extract_imagesets()[0]
+      experiments = ExperimentListFactory.from_filenames([img_path])
+      imgset = experiments.imagesets()[0]
       assert len(experiments.detectors()) == 1;   imgset.set_detector(experiments[0].detector)
       assert len(experiments.beams()) == 1;       imgset.set_beam(experiments[0].beam)
       assert len(experiments.scans()) <= 1;       imgset.set_scan(experiments[0].scan)

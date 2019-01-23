@@ -72,7 +72,7 @@ class Script(ParentScript):
 
     # Verify inputs
     if len(detectors) != 2:
-      raise Sorry("Please provide a reference and a moving set of experiments and or datablocks")
+      raise Sorry("Please provide a reference and a moving set of experiments")
 
     reflections = reflections[1]
     detector = detectors[1]

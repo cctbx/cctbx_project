@@ -12,7 +12,7 @@ def run(args, verbose=False):
   import os
   from spotfinder.servers import LoggingFramework
   from dials.array_family import flex
-  from dxtbx.datablock import DataBlockFactory
+  from dxtbx.model.experiment_list import ExperimentListFactory
   phil_scope = parse("""
   file_name = None
     .type = str
@@ -45,17 +45,17 @@ def run(args, verbose=False):
   print "Image: %s\n"%params.file_name
 
   try:
-    datablock = DataBlockFactory.from_filenames([params.file_name])[0]
-    imageset = datablock.extract_imagesets()[0]
-    if datablock.num_images() > 0 and params.frame_number is not None:
+    experiments = ExperimentListFactory.from_filenames([params.file_name])
+    assert len(experiments) == 1
+    if len(experiments[0].imageset) > 0 and params.frame_number is not None:
       print "Frame number", params.frame_number
-      imageset = imageset[params.frame_number:params.frame_number+1]
-      datablock = DataBlockFactory.from_imageset(imageset)[0]
-    reflections = flex.reflection_table.from_observations(datablock, params)
+      experiments[0].imageset = experiments[0].imageset[params.frame_number:params.frame_number+1]
+      experiments[0].scan = experiments[0].imageset.get_scan()
+    reflections = flex.reflection_table.from_observations(experiments, params)
 
     if params.stats:
       from dials.algorithms.spot_finding.per_image_analysis import  stats_single_image
-      print stats_single_image(imageset, reflections, i=None, resolution_analysis=True, plot=False)
+      print stats_single_image(experiments[0].imageset, reflections, i=None, resolution_analysis=True, plot=False)
 
   except Exception:
     import traceback

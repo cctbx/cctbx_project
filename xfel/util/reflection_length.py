@@ -10,19 +10,14 @@ from dials.algorithms.shoebox import MaskCode
 class ReflectionsRadialLengths(object):
   """Compute the length of each spotfinder spot in the radial direction."""
   valid_code = MaskCode.Valid | MaskCode.Foreground
-  def __init__(self, strong_spots, experiment=None, datablock=None):
+  def __init__(self, strong_spots, experiment=None):
     self.strong = strong_spots
     assert 'bbox' in self.strong and 'shoebox' in self.strong, \
       "Spotfinder shoeboxes are required for spot length calculations."
-    assert experiment or datablock, \
-      "Supply one experiment or datablock object."
-    if datablock:
-      imgset = datablock._imagesets[0]
-      self.det = imgset.get_detector()
-      self.beam = imgset.get_beam()
-    else:
-      self.det = experiment.detector
-      self.beam = experiment.beam
+    assert experiment, \
+      "Supply one experiment object."
+    self.det = experiment.detector
+    self.beam = experiment.beam
     self.s0 = matrix.col(self.beam.get_unit_s0())
     self.panel_s0_intersections = flex.vec2_double(
       [self.det[i].get_ray_intersection_px(self.s0) for i in range(len(self.det))])
@@ -88,14 +83,13 @@ class ReflectionsRadialLengthsFromFiles(ReflectionsRadialLengths):
       return
     reflections = flatten_reflections(importer.reflections)
     assert len(reflections) == 1, "Implemented only for one reflection table at a time presently"
-    datablock = None
     experiment = None
     if importer.experiments:
       experiments = flatten_experiments(importer.experiments)
       assert len(experiments) == 1, "Implemented only for one experiment at a time presently"
       experiment = experiments[0]
     super(ReflectionsRadialLengthsFromFiles, self).__init__(
-      reflections[0], datablock=datablock, experiment=experiment)
+      reflections[0], experiment=experiment)
 
 if __name__ == "__main__":
   import sys
