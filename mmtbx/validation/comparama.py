@@ -86,7 +86,8 @@ class rcompare(object):
     self.results = []
     # print dir(self.rama1.results[0])
     for r1, r2 in zip(self.rama1.results, self.rama2.results):
-      assert r1.id_str() == r2.id_str()
+      # print "'%s' <-> '%s'" % (r1.id_str(), r2.id_str())
+      assert r1.id_str() == r2.id_str(), "'%s' <-> '%s'" % (r1.id_str(), r2.id_str())
       diff = math.sqrt((r1.phi-r2.phi)**2 + (r1.psi-r2.psi)**2)
       v = determine_validation_change_text(r1, r2)
       diff2 = math.sqrt(get_distance(r1.phi, r2.phi)**2 +

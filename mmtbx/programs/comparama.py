@@ -8,6 +8,8 @@ from mmtbx.validation.ramalyze import res_type_labels
 
 from matplotlib.backends.backend_pdf import PdfPages
 
+import os
+
 # =============================================================================
 
 class Program(ProgramTemplate):
@@ -99,9 +101,9 @@ Usage examples:
       for k, v in nr.counts.iteritems():
         print("%-20s: %d" % (k,v), file=self.logger)
 
-    base_fname = "%s--%s" % (self.data_manager.get_model_names()[0].split('.')[0],
-        self.data_manager.get_model_names()[1].split('.')[0])
-
+    name1 = os.path.basename(self.data_manager.get_model_names()[0]).split('.')[0]
+    name2 = os.path.basename(self.data_manager.get_model_names()[1]).split('.')[0]
+    base_fname = "%s--%s" % (name1, name2)
     if self.params.output.plots:
       for pos, plot in self.rama_comp.get_plots().iteritems():
         file_label = res_type_labels[pos].replace("/", "_")
