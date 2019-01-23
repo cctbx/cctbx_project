@@ -1265,7 +1265,7 @@ class PySlip(_BufferedCanvas):
 
         # prepare the show_level value
         if show_levels is None:
-            show_levels = range(self.min_level, self.max_level + 1)[:]
+            show_levels = range(self.min_level, self.max_level + 1)
 
         # create layer, add unique ID to Z order list
         l = _Layer(id=id, painter=render, data=data, map_rel=map_rel,
