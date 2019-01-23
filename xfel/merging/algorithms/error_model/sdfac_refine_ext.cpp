@@ -31,9 +31,11 @@ compute_normalized_deviations(reflection_table ISIGI, shared_miller hkl_list) {
   scitbx::af::const_ref<double>      isigi = ISIGI["isigi"];
   scitbx::af::const_ref<double>      nn = ISIGI["nn"];
 
+  double sigma;
+  #pragma omp parallel for private(sigma)
   for (std::size_t i = 0; i < ISIGI.size(); i++) {
     if (isigi[i] == 0 || scaled_intensity[i] == 0) continue;
-    double sigma = scaled_intensity[i] / isigi[i];
+    sigma = scaled_intensity[i] / isigi[i];
     result[i] = std::sqrt(nn[i]) * (scaled_intensity[i] - meanprime_scaled_intensity[i]) / sigma;
   }
   return result;
@@ -71,6 +73,8 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
 
   double tmp = 0;
   double sigma_corrected = 0;
+  double meanI, meanIprime, minimum;
+  #pragma omp parallel for private(meanI, meanIprime, minimum)
   for (std::size_t i = 0; i < ISIGI.size(); i++) {
     // scaled intensity (iobs/slope)
     // corrected sigma (original sigma/slope)
@@ -79,17 +83,17 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
     // apply correction parameters
     if (squared_params) {
       // use meanI, which is the mean of all observations of this hkl
-      double meanI = mean_scaled_intensity[i];
+      meanI = mean_scaled_intensity[i];
       tmp = std::pow(sigmas[i],2) + sdb * meanI + sdadd * std::pow(meanI,2);
     }
     else {
       // use meanIprime, which for each observation, is the mean of all other observations of this hkl
-      double meanIprime = meanprime_scaled_intensity[i];
+      meanIprime = meanprime_scaled_intensity[i];
       tmp = std::pow(sigmas[i],2) + sdb * meanIprime + std::pow(sdadd*meanIprime,2);
     }
 
     // avoid rare negatives
-    double minimum = 0.1 * std::pow(sigmas[i],2);
+    minimum = 0.1 * std::pow(sigmas[i],2);
     if (tmp < minimum)
       tmp = minimum;
 
@@ -123,24 +127,28 @@ scitbx::af::shared<double> df_dpsq(scitbx::af::shared<double>all_sigmas_normaliz
   scitbx::af::shared<double> bnssq(n_bins);
   scitbx::af::shared<double> t3(n_bins);
 
+  double tmp, c; int b;
+  // OpenMP doesn't work here. Need a reduction. Easy in OpenMP 4.5 which isn't available yet for my gcc
   for (size_t i = 0; i < ISIGI.size(); i++) {
-    double tmp = scaled_intensity[i]-meanprime_scaled_intensity[i];
-    double c = nn[i] * tmp * tmp;
+    tmp = scaled_intensity[i]-meanprime_scaled_intensity[i];
+    c = nn[i] * tmp * tmp;
     dsigmanormsq_dpsq[i] = -c / std::pow(sigma_prime[i], 4) * dsigmasq_dpsq[i];
 
-    int b = bin_indices[i];
+    b = bin_indices[i];
     counts[b]++;
     bnssq[b] += all_sigmas_normalized[i] * all_sigmas_normalized[i];
     t3[b] += dsigmanormsq_dpsq[i];
   }
 
+  int n; double t1, t2;
+  #pragma omp parallel for private(n, t1, t2)
   for (size_t b = 0; b < n_bins; b++) {
-    int n = counts[b];
+    n = counts[b];
 
     if (n == 0 || bnssq[b] == 0.) continue;
     bnssq[b] /= n;
-    double t1 = 2 * (1 - std::sqrt(bnssq[b]));
-    double t2 = -0.5 / std::sqrt(bnssq[b]);
+    t1 = 2 * (1 - std::sqrt(bnssq[b]));
+    t2 = -0.5 / std::sqrt(bnssq[b]);
     t3[b] /= n;
     g[b] = t1 * t2 * t3[b];
   }
