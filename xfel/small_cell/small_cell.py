@@ -308,7 +308,7 @@ def small_cell_index(path, horiz_phil):
   with unknown basis vectors """
 
   # Load the dials and small cell parameters
-  from dxtbx.datablock import DataBlockFactory
+  from dxtbx.model.experiment_list import ExperimentListFactory
   from dials.algorithms.spot_finding.factory import SpotFinderFactory
   from dials.model.serialize.dump import reflections as reflections_dump
 
@@ -325,8 +325,8 @@ def small_cell_index(path, horiz_phil):
   find_spots = SpotFinderFactory.from_parameters(horiz_phil)
 
   # spotfind
-  datablock = DataBlockFactory.from_imageset(imageset)[0]
-  reflections = find_spots(datablock)
+  experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, None)[0]
+  reflections = find_spots(experiments)
 
   # filter the reflections for those near asic boundries
   print "Filtering %s reflections by proximity to asic boundries..."%len(reflections),
@@ -347,15 +347,15 @@ def small_cell_index(path, horiz_phil):
   reflections_dump(reflections, "spotfinder.pickle")
   print "saved %d"%len(reflections)
 
-  max_clique_len, experiments, refls = small_cell_index_detail(datablock, reflections, horiz_phil)
+  max_clique_len, experiments, refls = small_cell_index_detail(experiments, reflections, horiz_phil)
   return max_clique_len
 
-def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = True):
+def small_cell_index_detail(experiments, reflections, horiz_phil, write_output = True):
   """ Index an image with a few spots and a known, small unit cell,
   with unknown basis vectors """
   import os,math
 
-  imagesets = datablock.extract_imagesets()
+  imagesets = experiments.imagesets()
   assert len(imagesets) == 1
   imageset = imagesets[0]
   path = imageset.paths()[0]
