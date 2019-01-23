@@ -84,28 +84,52 @@ class rcompare(object):
     self.rama1 = ramalyze(model1.get_hierarchy(), out=null_out())
     self.rama2 = ramalyze(model2.get_hierarchy(), out=null_out())
     self.results = []
-    # print dir(self.rama1.results[0])
-    for r1, r2 in zip(self.rama1.results, self.rama2.results):
-      # print "'%s' <-> '%s'" % (r1.id_str(), r2.id_str())
-      assert r1.id_str() == r2.id_str(), "'%s' <-> '%s'" % (r1.id_str(), r2.id_str())
-      diff = math.sqrt((r1.phi-r2.phi)**2 + (r1.psi-r2.psi)**2)
-      v = determine_validation_change_text(r1, r2)
-      diff2 = math.sqrt(get_distance(r1.phi, r2.phi)**2 +
-          get_distance(r1.psi, r2.psi)**2)
-      diff3 = two_rama_points((r1.phi, r1.psi), (r2.phi, r2.psi)).min_length()
-      assert approx_equal(diff2, diff3), "%s, %s" % ((r1.phi, r1.psi), (r2.phi, r2.psi))
-      self.results.append((r1.id_str(), diff2, r1.phi, r1.psi, r2.phi, r2.psi, v, r2.res_type, r1.score/100, r2.score/100))
-      # print "Score:", r1.score, r2.score
+    # looping technique trying to recover when 1 or several residues are
+    # missing
+    i1 = i2 = 0
+    self.skipped_1 = []
+    self.skipped_2 = []
+    while i1 < len(self.rama1.results) and i2 < len(self.rama2.results):
+      r1 = self.rama1.results[i1]
+      r2 = self.rama2.results[i2]
+      if r1.id_str() == r2.id_str():
+        # regular calculations
+        diff = math.sqrt((r1.phi-r2.phi)**2 + (r1.psi-r2.psi)**2)
+        v = determine_validation_change_text(r1, r2)
+        diff2 = math.sqrt(get_distance(r1.phi, r2.phi)**2 +
+            get_distance(r1.psi, r2.psi)**2)
+        diff3 = two_rama_points((r1.phi, r1.psi), (r2.phi, r2.psi)).min_length()
+        assert approx_equal(diff2, diff3), "%s, %s" % ((r1.phi, r1.psi), (r2.phi, r2.psi))
+        self.results.append((r1.id_str(), diff2, r1.phi, r1.psi, r2.phi, r2.psi, v, r2.res_type, r1.score/100, r2.score/100))
+        i1 += 1
+        i2 += 1
+      else:
+        skip_1 = False
+        # figure out what to skip
+        if r1.chain_id == r2.chain_id:
+          if r1.resseq_as_int() < r2.resseq_as_int():
+            skip_1 = True
+        else:
+          if r1.resseq_as_int() > r2.resseq_as_int():
+            skip_1 = True
+        if skip_1:
+          i1 += 1
+          self.skipped_1.append(r1)
+        else:
+          i2 += 1
+          self.skipped_2.append(r2)
     self.res_columns = None
     if len(self.results) > 0:
       self.res_columns = zip(*self.get_results())
-
 
   def get_results(self):
     return self.results
 
   def get_ramalyze_objects(self):
     return self.rama1, self.rama2
+
+  def get_skipped(self):
+    return self.skipped_1, self.skipped_2
 
   def get_number_results(self):
     if len(self.results) > 0:

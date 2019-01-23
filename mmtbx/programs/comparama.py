@@ -87,6 +87,14 @@ Usage examples:
         self.show_single_result(r)
       print("="*80, file=self.logger)
 
+    skip1, skip2 = self.rama_comp.get_skipped()
+    for s in skip1:
+      print("WARNING! No match for '%s' in the second model" % s.id_str(), file=self.logger)
+    for s in skip2:
+      print("WARNING! No match for '%s' in the first model" % s.id_str(), file=self.logger)
+    if len(skip1) + len(skip2) > 0:
+      print("="*80, file=self.logger)
+
     nr = self.rama_comp.get_number_results()
     print ("mean: %.3f std: %.3f" % (nr.mean_diff, nr.std_diff), file=self.logger)
     print("Sum of rama scores: \t\t\t %.3f -> %.3f" % (nr.sum_1, nr.sum_2) , file=self.logger)
