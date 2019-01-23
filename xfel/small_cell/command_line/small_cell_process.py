@@ -17,7 +17,7 @@ from iotbx.phil import parse
 phil_scope.adopt_scope(parse(small_cell_phil_str))
 
 class Processor(BaseProcessor):
-  def index(self, datablock, reflections):
+  def index(self, experiments, reflections):
     from time import time
     import copy
     from xfel.small_cell.small_cell import small_cell_index_detail
@@ -30,7 +30,7 @@ class Processor(BaseProcessor):
 
     params = copy.deepcopy(self.params)
 
-    max_clique_len, experiments, indexed = small_cell_index_detail(datablock, reflections, params, write_output=False)
+    max_clique_len, experiments, indexed = small_cell_index_detail(experiments, reflections, params, write_output=False)
 
     logger.info('')
     logger.info('Time Taken = %f seconds' % (time() - st))

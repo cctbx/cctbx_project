@@ -351,7 +351,6 @@ class Script(DCScript):
       sort_options=True,
       phil=phil_scope,
       read_experiments=True,
-      read_datablocks=True,
       read_reflections=True,
       check_format=False,
       epilog=help_message)

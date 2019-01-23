@@ -1099,10 +1099,10 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       if tt_low is not None or tt_high is not None:
         print "Warning, mod_radial_average is being used while also using xtc_process radial averaging. mod_radial_averaging results will not be logged to the database."
 
-    datablock = DataBlockFactory.from_imageset(imgset)[0]
+    experiments = ExperimentListFactory.from_imageset_and_crystal(imgset, None)[0]
 
     try:
-      self.pre_process(datablock)
+      self.pre_process(experiments)
     except Exception as e:
       self.debug_write("preprocess_exception", "fail")
       return
@@ -1148,7 +1148,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     self.debug_write("spotfind_start")
     try:
-      observed = self.find_spots(datablock)
+      observed = self.find_spots(experiments)
     except Exception as e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
@@ -1196,7 +1196,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     # index and refine
     self.debug_write("index_start")
     try:
-      experiments, indexed = self.index(datablock, observed)
+      experiments, indexed = self.index(experiments, observed)
     except Exception as e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp

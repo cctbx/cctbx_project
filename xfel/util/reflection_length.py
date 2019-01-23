@@ -80,8 +80,8 @@ class ReflectionsRadialLengths(object):
 
 class ReflectionsRadialLengthsFromFiles(ReflectionsRadialLengths):
   def __init__(self, files):
-    from dials.util.options import Importer, flatten_reflections, flatten_experiments, flatten_datablocks
-    importer = Importer(files, read_experiments=True, read_datablocks=True,
+    from dials.util.options import Importer, flatten_reflections, flatten_experiments
+    importer = Importer(files, read_experiments=True,
       read_reflections=True, check_format=False)
     if importer.unhandled:
       print "Unable to handle one or more files:", importer.unhandled
@@ -94,10 +94,6 @@ class ReflectionsRadialLengthsFromFiles(ReflectionsRadialLengths):
       experiments = flatten_experiments(importer.experiments)
       assert len(experiments) == 1, "Implemented only for one experiment at a time presently"
       experiment = experiments[0]
-    if importer.datablocks:
-      datablocks  = flatten_datablocks(importer.datablocks)
-      assert len(datablocks) == 1, "Implemented only for one datablock at a time presently"
-      datablock = datablocks[0]
     super(ReflectionsRadialLengthsFromFiles, self).__init__(
       reflections[0], datablock=datablock, experiment=experiment)
 

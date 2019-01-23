@@ -234,27 +234,21 @@ class Script(object):
       sort_options=True,
       phil=phil_scope,
       read_experiments=True,
-      read_datablocks=True,
       read_reflections=True,
       epilog=help_message)
 
   def run(self):
     ''' Parse the options. '''
-    from dials.util.options import flatten_experiments, flatten_datablocks, flatten_reflections
+    from dials.util.options import flatten_experiments, flatten_reflections
     # Parse the command line arguments
     params, options = self.parser.parse_args(show_diff_phil=True)
     self.params = params
     experiments = flatten_experiments(params.input.experiments)
-    datablocks = flatten_datablocks(params.input.datablock)
     reflections = flatten_reflections(params.input.reflections)
 
     # Find all detector objects
     detectors = []
     detectors.extend(experiments.detectors())
-    dbs = []
-    for datablock in datablocks:
-      dbs.extend(datablock.unique_detectors())
-    detectors.extend(dbs)
 
     # Verify inputs
     if len(detectors) != 2:
