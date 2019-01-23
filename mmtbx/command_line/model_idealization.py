@@ -93,6 +93,9 @@ output_prefix = None
 output_pkl = False
   .type = bool
   .expert_level = 3
+output_model_h = True
+  .type = bool
+  .expert_level = 2
 use_map_for_reference = True
   .type = bool
   .expert_level = 1
@@ -605,6 +608,11 @@ class model_idealization():
       self.shift_and_write_result(
           model=self.model,
           fname_suffix="all_idealized")
+      if self.params.output_model_h:
+        self.shift_and_write_result(
+            model=self.model_h,
+            fname_suffix="all_idealized_h")
+
       self.final_model_statistics = self.get_statistics(self.model)
       # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_end.pdb")
       self.time_for_run = time() - t_0
@@ -733,6 +741,11 @@ class model_idealization():
     self.shift_and_write_result(
         model = self.model,
         fname_suffix="all_idealized")
+    if self.params.output_model_h:
+      self.shift_and_write_result(
+          model=self.model_h,
+          fname_suffix="all_idealized_h")
+
     self.final_model_statistics = self.get_statistics(self.model)
     self.time_for_run = time() - t_0
     if self.params.output_pkl or self.params.debug:
@@ -755,6 +768,7 @@ class model_idealization():
           number_of_cycles=self.params.number_of_refinement_cycles,
           log=self.log,
           )
+      self._update_model_h()
     else:
       print >> self.log, "Using map as reference"
       self.log.flush()
@@ -774,6 +788,7 @@ class model_idealization():
             number_of_cycles=self.params.number_of_refinement_cycles,
             cycles_to_converge=self.params.cycles_to_converge,
             log=self.log)
+        self._update_model_h()
 
   def shift_and_write_result(self, model, fname_suffix=""):
     pdb_str = model.model_as_pdb()
