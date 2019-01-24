@@ -720,6 +720,7 @@ Wait for the command to finish, then try again.""" % vars())
 
   def find_dist_path(self, module_name, optional=False,
                      return_relocatable_path=False):
+    if module_name=='amber': optional=True
     dist_path = self.command_line_redirections.get(module_name, None)
     if (dist_path is not None):
       return dist_path.self_or_abs_if(return_relocatable_path)
