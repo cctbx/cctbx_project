@@ -1099,7 +1099,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       if tt_low is not None or tt_high is not None:
         print "Warning, mod_radial_average is being used while also using xtc_process radial averaging. mod_radial_averaging results will not be logged to the database."
 
-    experiments = ExperimentListFactory.from_imageset_and_crystal(imgset, None)[0]
+    from dxtbx.model.experiment_list import ExperimentListFactory
+    experiments = ExperimentListFactory.from_imageset_and_crystal(imgset, None)
 
     try:
       self.pre_process(experiments)
@@ -1205,8 +1206,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     if self.params.dispatch.dump_indexed:
       img_path = self.save_image(dxtbx_img, self.params, os.path.join(self.params.output.output_dir, "idx-" + s))
-      experiments = ExperimentListFactory.from_filenames([img_path])
-      imgset = experiments.imagesets()[0]
+      imgset = ExperimentListFactory.from_filenames([img_path]).imagesets()[0]
       assert len(experiments.detectors()) == 1;   imgset.set_detector(experiments[0].detector)
       assert len(experiments.beams()) == 1;       imgset.set_beam(experiments[0].beam)
       assert len(experiments.scans()) <= 1;       imgset.set_scan(experiments[0].scan)
