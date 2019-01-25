@@ -8,6 +8,7 @@ https://conda.anaconda.org/conda-forge/linux-64/libgfortran-3.0.0-1.tar.bz2#d7c7
 https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-ng-7.2.0-hdf63c60_3.tar.bz2#6b28769c1660675dfb38d1c36df7f1f2
 https://conda.anaconda.org/conda-forge/linux-64/libsvm-323-0.tar.bz2#f5849cbafea13890fd746cdf95d9a608
 https://conda.anaconda.org/conda-forge/linux-64/lz4-c-1.8.1.2-0.tar.bz2#61aaf0dbcc58eb0a3030d78f6d2c6b15
+https://conda.anaconda.org/conda-forge/linux-64/blosc-1.15.1-hfc679d8_2.tar.bz2#81eb0b23d4e8625832ec2290573273e6
 https://conda.anaconda.org/conda-forge/linux-64/bzip2-1.0.6-h470a237_2.tar.bz2#646e93c0c4ce38a7b34295cb17902b7b
 https://conda.anaconda.org/conda-forge/linux-64/icu-58.2-hfc679d8_0.tar.bz2#e17d61a82f7b047eefca832b07ed8846
 https://conda.anaconda.org/conda-forge/linux-64/jpeg-9c-h470a237_1.tar.bz2#785c0bbc9297a6a5978fbea34656ab7c
@@ -49,9 +50,11 @@ https://conda.anaconda.org/conda-forge/linux-64/idna-2.7-py27_1002.tar.bz2#58c6d
 https://conda.anaconda.org/conda-forge/noarch/imagesize-1.1.0-py_0.tar.bz2#6b1a5989b9313f2c6e17b5359143b46d
 https://conda.anaconda.org/conda-forge/noarch/ipaddress-1.0.22-py_1.tar.bz2#6f2f5f4eab2ae49842b75fc82fa01783
 https://conda.anaconda.org/conda-forge/noarch/ipython_genutils-0.2.0-py_1.tar.bz2#5071c982548b3a20caf70462f04f5287
+https://conda.anaconda.org/cctbx/noarch/libsvm_py-323-py_0.tar.bz2#b83ca7fd48c08cb5ae58d3a4dd5a91ed
 https://conda.anaconda.org/conda-forge/noarch/linecache2-1.0.0-py_1.tar.bz2#6b370c22aa1f8cdaaf6d43621eab94dc
 https://conda.anaconda.org/conda-forge/linux-64/lz4-1.1.0-py27h3b97293_1.tar.bz2#ecafad9acd3ca44bba85f4c1977d6472
 https://conda.anaconda.org/conda-forge/linux-64/markupsafe-1.1.0-py27h470a237_0.tar.bz2#f438c4e8b7be270d02dd88b781277413
+https://conda.anaconda.org/conda-forge/linux-64/msgpack-python-0.6.0-py27h2d50403_0.tar.bz2#7f6cef103b45e0dd5fe736154517e2f3
 https://conda.anaconda.org/conda-forge/linux-64/numpy-1.13.3-py27_blas_openblashb06ca3d_201.tar.bz2#817cf7f5809cc2a2b3a278a06dd74cf7
 https://conda.anaconda.org/conda-forge/noarch/olefile-0.46-py_0.tar.bz2#8a6d3394763144710916ecf556c6287d
 https://conda.anaconda.org/conda-forge/linux-64/orderedset-2.0-py27_0.tar.bz2#0c3d2d1c9d83aa2b3ca9f44d3eaffe3a
@@ -89,6 +92,8 @@ https://conda.anaconda.org/conda-forge/linux-64/pathlib2-2.3.3-py27_1000.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/pexpect-4.6.0-py27_1000.tar.bz2#6e54672168fa3bf2fb4001e7c89a5a7e
 https://conda.anaconda.org/conda-forge/linux-64/pillow-5.3.0-py27hc736899_0.tar.bz2#00920572ee8acb0d0dbf5cdfe07a3b9c
 https://conda.anaconda.org/conda-forge/linux-64/procrunner-0.9.0-py27_1050.tar.bz2#7ae07ea1cf13e62097d6e209ed65c576
+https://conda.anaconda.org/conda-forge/linux-64/pyrtf-0.45-py27_0.tar.bz2#560e3acb94017f47c3f4e0f83df6563c
+https://conda.anaconda.org/conda-forge/linux-64/python-blosc-1.7.0-py27hfc679d8_0.tar.bz2#97bdb3485d3be7e0e67d4c0651fa8b03
 https://conda.anaconda.org/conda-forge/noarch/python-dateutil-2.7.5-py_0.tar.bz2#c6b028f9d5b55c772fad91e3c017861d
 https://conda.anaconda.org/conda-forge/linux-64/scipy-1.1.0-py27_blas_openblashb06ca3d_202.tar.bz2#4da88d5df4280939a3e71064db6728d5
 https://conda.anaconda.org/conda-forge/linux-64/setuptools-40.6.2-py27_0.tar.bz2#1c826858390bbeae9a67bb7ec21da9fb
