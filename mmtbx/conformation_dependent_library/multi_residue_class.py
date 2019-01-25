@@ -122,7 +122,7 @@ class ProteinResidues(list):
   def are_linked(self,
                  return_value=False,
                  use_distance_always=False,
-                 bond_cut_off=2.,
+                 bond_cut_off=3., # Same as link_distance_cutoff of pdb_interpretation
                  verbose=True):
     d2 = None
     bond_cut_off *= bond_cut_off

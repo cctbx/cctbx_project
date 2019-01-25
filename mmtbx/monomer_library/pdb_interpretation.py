@@ -340,6 +340,7 @@ master_params_str = """\
   link_distance_cutoff = 3
     .type=float
     .optional=False
+    .help = Length of link between the linked residues
   disulfide_distance_cutoff = 3
     .type=float
     .optional=False
