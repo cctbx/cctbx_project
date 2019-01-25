@@ -909,6 +909,10 @@ class dials_regression_module(SourceModule):
   authenticated = ['svn',
                    'svn+ssh://%(cciuser)s@cci.lbl.gov/dials_regression/trunk']
 
+class msgpack_module(SourceModule):
+  module = 'msgpack'
+  anonymous = ['curl', "https://gitcdn.link/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz"]
+
 class xfel_regression_module(SourceModule):
   module = 'xfel_regression'
   authenticated = ['svn',
@@ -1831,6 +1835,7 @@ class CCTBXBuilder(CCIBuilder):
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'xia2']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
+  HOT_EXTRA = ['msgpack']
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)

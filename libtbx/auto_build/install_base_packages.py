@@ -273,7 +273,7 @@ class installer(object):
     if options.dials:
       options.build_gui = True
       options.build_all = True
-      packages += ['pillow', 'jinja2', 'orderedset', 'procrunner', 'scipy', 'scikit_learn', 'tqdm']
+      packages += ['pillow', 'jinja2', 'orderedset', 'procrunner', 'scipy', 'scikit_learn', 'tqdm', 'msgpack']
     if options.xia2:
       options.build_gui = True
       options.build_all = True
@@ -306,6 +306,7 @@ class installer(object):
         'pillow',
         'freetype',
         'matplotlib',
+        'msgpack',
         'pyopengl',
         'wxpython',
       ]
@@ -731,6 +732,7 @@ Installation of Python packages may fail.
       # ...
       'freetype',
       'matplotlib',
+      'msgpack',
       'pillow',
       'reportlab',
       # START GUI PACKAGES
@@ -1111,6 +1113,18 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name=REPORTLAB_PKG,
       pkg_name_label="reportlab",
       confirm_import_module="reportlab")
+
+  def build_msgpack(self):
+    self.build_python_module_pip(
+      package_name='msgpack',
+      package_version=MSGPACK_VERSION,
+      confirm_import_module="msgpack",
+    )
+    self.build_python_module_pip(
+      package_name='blosc',
+      package_version=BLOSC_VERSION,
+      confirm_import_module="blosc",
+    )
 
   def build_pillow(self):
     self.build_python_module_pip(

@@ -143,6 +143,8 @@ def install_tgz(**kwargs):
     return False
   import tarfile
   with tarfile.open(tempfile, 'r') as fh:
+    for t in range(source.get('trim', 0)):
+      location = os.path.dirname(location)
     fh.extractall(location)
   cleanup()
   return True
@@ -205,7 +207,7 @@ warehouse = {
     'http-zip': { 'url': 'https://github.com/xia2/i19/archive/master.zip', 'trim': 1 },
   },
   'msgpack': {
-    'http-tgz': { 'url': 'https://github.com/msgpack/msgpack-c/releases/download/cpp-2.1.5/msgpack-2.1.5.tar.gz' },
+    'http-tgz': { 'url': 'https://gitcdn.link/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz', 'trim': 1 },
     'configure': False,
   },
 }
