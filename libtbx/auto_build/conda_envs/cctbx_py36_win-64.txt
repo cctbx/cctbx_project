@@ -6,15 +6,16 @@ https://repo.anaconda.com/pkgs/main/win-64/blas-1.0-mkl.tar.bz2#e8aa6b7daaf09252
 https://conda.anaconda.org/conda-forge/win-64/ca-certificates-2018.11.29-ha4d7672_0.tar.bz2#5dde0cd096df9b3349e3cb1c16cc74df
 https://repo.anaconda.com/pkgs/main/win-64/icc_rt-2017.0.4-h97af966_0.tar.bz2#944301e089acd37660e124d78f0b3a34
 https://repo.anaconda.com/pkgs/main/win-64/intel-openmp-2019.1-144.tar.bz2#5edffe78df0bebc16b89c72e19598543
+https://conda.anaconda.org/conda-forge/win-64/libsvm-323-0.tar.bz2#bfeda92110eed464cf287d5fc64b418a
 https://repo.anaconda.com/pkgs/msys2/win-64/msys2-conda-epoch-20160418-1.tar.bz2#6eaef3074f65f715ed1ca6b8a08be3aa
 https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.0.25420-0.tar.bz2#8f04d49149089a0c61c1161e7a3e98d6
-https://conda.anaconda.org/conda-forge/win-64/libsvm-3.21-vc14_1.tar.bz2#de262ac86d7a9cfd0ac12a117a84aca1
 https://repo.anaconda.com/pkgs/msys2/win-64/m2w64-gmp-6.1.0-2.tar.bz2#fec04371463ec68eb8f5752a22c5b030
 https://repo.anaconda.com/pkgs/msys2/win-64/m2w64-libwinpthread-git-5.0.0.4634.697f757-2.tar.bz2#67e61e700eb27424979778fae9293f13
 https://repo.anaconda.com/pkgs/main/win-64/mkl-2018.0.3-1.tar.bz2#3097902ad98b2f408bad39b7482fa200
 https://conda.anaconda.org/conda-forge/win-64/openssl-1.0.2o-vc14_0.tar.bz2#6b0014b7d85346011278e88f33877eab
 https://conda.anaconda.org/conda-forge/win-64/vc-14-0.tar.bz2#d02c910045ac7ea07190cf0419c2993b
 https://conda.anaconda.org/conda-forge/win-64/zlib-1.2.11-vc14_0.tar.bz2#6633fda3af7ef750def72e3ec5f5014d
+https://conda.anaconda.org/conda-forge/win-64/blosc-1.15.1-h6538335_1002.tar.bz2#793df50f68096543549840052d843553
 https://conda.anaconda.org/conda-forge/win-64/hdf5-1.10.4-nompi_hcc15c50_1105.tar.bz2#9eb55fcfc962f7373d375535c4b3a9db
 https://conda.anaconda.org/conda-forge/win-64/jpeg-9b-vc14_2.tar.bz2#90ddcf328cf373538dc68daf7f116d9f
 https://conda.anaconda.org/conda-forge/win-64/libpng-1.6.36-h7602738_1000.tar.bz2#242ec70a96aee863c105ece4aaa89678
@@ -39,9 +40,11 @@ https://conda.anaconda.org/conda-forge/win-64/future-0.17.0-py36_1000.tar.bz2#3e
 https://conda.anaconda.org/conda-forge/win-64/idna-2.7-py36_1002.tar.bz2#33c69bc57aefe400f96a923dc49c2385
 https://conda.anaconda.org/conda-forge/noarch/imagesize-1.1.0-py_0.tar.bz2#6b1a5989b9313f2c6e17b5359143b46d
 https://conda.anaconda.org/conda-forge/noarch/ipython_genutils-0.2.0-py_1.tar.bz2#5071c982548b3a20caf70462f04f5287
+https://conda.anaconda.org/cctbx/noarch/libsvm_py-323-py_0.tar.bz2#b83ca7fd48c08cb5ae58d3a4dd5a91ed
 https://conda.anaconda.org/conda-forge/win-64/libtiff-4.0.9-vc14_0.tar.bz2#03d6b32b9b26ce583bfe3a1d857fe21f
 https://repo.anaconda.com/pkgs/msys2/win-64/m2w64-gcc-libgfortran-5.3.0-6.tar.bz2#de1b7f7c8221028f6bbe103df4c53bed
 https://conda.anaconda.org/conda-forge/win-64/markupsafe-1.1.0-py36hfa6e2cd_1000.tar.bz2#fe3adabe120c01512d8ad4894c16e5a7
+https://conda.anaconda.org/conda-forge/win-64/msgpack-python-0.6.0-py36he980bc4_1000.tar.bz2#4511716bf6690196290da1b1d2057ee6
 https://conda.anaconda.org/conda-forge/noarch/olefile-0.46-py_0.tar.bz2#8a6d3394763144710916ecf556c6287d
 https://conda.anaconda.org/conda-forge/win-64/orderedset-2.0.1-py36_0.tar.bz2#3f0135428d626c6119f0571ad013362c
 https://conda.anaconda.org/conda-forge/noarch/parso-0.3.1-py_0.tar.bz2#228f09e994904ee5668fe99ef80c3582
@@ -75,6 +78,7 @@ https://conda.anaconda.org/conda-forge/win-64/more-itertools-4.3.0-py36_1000.tar
 https://conda.anaconda.org/conda-forge/noarch/packaging-18.0-py_0.tar.bz2#bd5095c05b51d22b291e42ab44f146a7
 https://conda.anaconda.org/conda-forge/win-64/pillow-5.3.0-py36h9a613e6_1000.tar.bz2#fa751335474debbb719a92480aa11e80
 https://conda.anaconda.org/conda-forge/win-64/procrunner-0.9.0-py36_1050.tar.bz2#bac6ffae62992ad2b22da8d55ef97d03
+https://conda.anaconda.org/conda-forge/win-64/pyrtf-0.45-py36_0.tar.bz2#59c40fbb79f886bfd4abf68d8ce0a563
 https://conda.anaconda.org/conda-forge/win-64/pysocks-1.6.8-py36_1002.tar.bz2#e94fa6222c7160bcc36bb56e6ee08a6b
 https://conda.anaconda.org/conda-forge/noarch/python-dateutil-2.7.5-py_0.tar.bz2#c6b028f9d5b55c772fad91e3c017861d
 https://conda.anaconda.org/conda-forge/win-64/setuptools-40.6.2-py36_0.tar.bz2#8c38f092a9695054a6187a16081ff08b
@@ -106,6 +110,7 @@ https://conda.anaconda.org/conda-forge/win-64/mkl_fft-1.0.10-py36_0.tar.bz2#4a3b
 https://conda.anaconda.org/conda-forge/win-64/mkl_random-1.0.2-py36_0.tar.bz2#e071d15538e2880a73b0ab076f62700a
 https://repo.anaconda.com/pkgs/main/win-64/numpy-1.13.3-py36h5c71026_4.tar.bz2#f6a33495394c8eb0d861e0c06ba1ab7c
 https://conda.anaconda.org/cctbx/noarch/mrcfile-1.1.0-py_0.tar.bz2#3e8a37409f6d9266b48e897b8916724b
+https://conda.anaconda.org/conda-forge/win-64/python-blosc-1.7.0-py36h6538335_1000.tar.bz2#bd76efe0e60a5cdd016b6afe5c76d94e
 https://repo.anaconda.com/pkgs/main/win-64/scipy-1.1.0-py36hc28095f_0.tar.bz2#fa2b2ca5d7eb490370d93aad6d9f5036
 https://repo.anaconda.com/pkgs/main/win-64/scikit-learn-0.20.0-py36heebcf9a_1.tar.bz2#b3c358289d6e380e1f595e5e6b706ad7
 https://conda.anaconda.org/cctbx/win-64/cctbx_dependencies-2018.12.03-0.tar.bz2#a2a0cf680ab5b4430a9318c1e1522c67
