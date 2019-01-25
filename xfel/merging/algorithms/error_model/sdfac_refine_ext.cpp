@@ -33,7 +33,7 @@ compute_normalized_deviations(reflection_table ISIGI, shared_miller hkl_list) {
 
   double sigma;
   #pragma omp parallel for private(sigma)
-  for (std::size_t i = 0; i < ISIGI.size(); i++) {
+  for (int i = 0; i < ISIGI.size(); i++) {
     if (isigi[i] == 0 || scaled_intensity[i] == 0) continue;
     sigma = scaled_intensity[i] / isigi[i];
     result[i] = std::sqrt(nn[i]) * (scaled_intensity[i] - meanprime_scaled_intensity[i]) / sigma;
@@ -75,7 +75,7 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
   double sigma_corrected = 0;
   double meanI, meanIprime, minimum;
   #pragma omp parallel for private(meanI, meanIprime, minimum)
-  for (std::size_t i = 0; i < ISIGI.size(); i++) {
+  for (int i = 0; i < ISIGI.size(); i++) {
     // scaled intensity (iobs/slope)
     // corrected sigma (original sigma/slope)
     sigmas[i] = scaled_intensity[i] / isigi[i];
@@ -129,7 +129,7 @@ scitbx::af::shared<double> df_dpsq(scitbx::af::shared<double>all_sigmas_normaliz
 
   double tmp, c; int b;
   // OpenMP doesn't work here. Need a reduction. Easy in OpenMP 4.5 which isn't available yet for my gcc
-  for (size_t i = 0; i < ISIGI.size(); i++) {
+  for (int i = 0; i < ISIGI.size(); i++) {
     tmp = scaled_intensity[i]-meanprime_scaled_intensity[i];
     c = nn[i] * tmp * tmp;
     dsigmanormsq_dpsq[i] = -c / std::pow(sigma_prime[i], 4) * dsigmasq_dpsq[i];
@@ -142,15 +142,16 @@ scitbx::af::shared<double> df_dpsq(scitbx::af::shared<double>all_sigmas_normaliz
 
   int n; double t1, t2;
   #pragma omp parallel for private(n, t1, t2)
-  for (size_t b = 0; b < n_bins; b++) {
+  for (int b = 0; b < n_bins; b++) {
     n = counts[b];
 
-    if (n == 0 || bnssq[b] == 0.) continue;
-    bnssq[b] /= n;
-    t1 = 2 * (1 - std::sqrt(bnssq[b]));
-    t2 = -0.5 / std::sqrt(bnssq[b]);
-    t3[b] /= n;
-    g[b] = t1 * t2 * t3[b];
+    if (!(n == 0 || bnssq[b] == 0.)) {
+      bnssq[b] /= n;
+      t1 = 2 * (1 - std::sqrt(bnssq[b]));
+      t2 = -0.5 / std::sqrt(bnssq[b]);
+      t3[b] /= n;
+      g[b] = t1 * t2 * t3[b];
+    }
   }
   return g;
 }
