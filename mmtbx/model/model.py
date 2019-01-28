@@ -820,7 +820,7 @@ class manager(object):
           print 'writing mmCIF without restraints for %s' % ag.resname
         continue
       chem_comps.append(ccid.chem_comp)
-      restraints['comp_%s' % ag.resname] = ccid.cif_object
+      restraints['comp_%s' % ag.resname.strip()] = ccid.cif_object
     chem_comp_loops = []
     for cc in chem_comps:
       chem_comp_loops.append(cc.as_cif_loop())
