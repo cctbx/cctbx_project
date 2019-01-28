@@ -11,6 +11,7 @@ https://conda.anaconda.org/conda-forge/osx-64/libsvm-323-0.tar.bz2#9046d7fd777a4
 https://conda.anaconda.org/conda-forge/noarch/llvm-meta-7.0.0-0.tar.bz2#95453e8792fb68702c8aee6d894c7802
 https://conda.anaconda.org/conda-forge/osx-64/lz4-c-1.8.1.2-0.tar.bz2#20f9a500f8af58904792d18de0be14e1
 https://conda.anaconda.org/conda-forge/osx-64/ncurses-6.1-hfc679d8_1.tar.bz2#ccc026ea779b4f0a745cdcdf9f0ace19
+https://repo.anaconda.com/pkgs/main/osx-64/nomkl-3.0-0.tar.bz2#d6fab0c8315628f7594ed7e0f23bb64d
 https://conda.anaconda.org/conda-forge/osx-64/xz-5.2.4-h470a237_1.tar.bz2#d8bae91c2386e5755e2df394e49c55cc
 https://conda.anaconda.org/conda-forge/osx-64/zlib-1.2.11-h470a237_3.tar.bz2#26eb539b03211c0a3c0d4bc3e3e48fd5
 https://conda.anaconda.org/conda-forge/osx-64/hdf5-1.10.4-nompi_h5598ddc_1105.tar.bz2#ccdd2ff8a46b7abf6be3180299e5f320
@@ -24,8 +25,8 @@ https://conda.anaconda.org/conda-forge/osx-64/tk-8.6.9-ha92aebf_0.tar.bz2#36bc3d
 https://conda.anaconda.org/conda-forge/osx-64/blas-1.1-openblas.tar.bz2#794dbf30b6f568889ba6b04a50fd7989
 https://conda.anaconda.org/conda-forge/osx-64/blosc-1.15.1-h0a44026_1002.tar.bz2#5a8388da01aac3d8e768ccc353107a92
 https://conda.anaconda.org/conda-forge/osx-64/freetype-2.9.1-h6debe1e_4.tar.bz2#65c139f34035ef245f7818e79d60ac37
+https://conda.anaconda.org/conda-forge/osx-64/msgpack-c-3.1.1-h372acbd_1000.tar.bz2#48df0efe79d9a52da1409c67433bfec3
 https://conda.anaconda.org/conda-forge/osx-64/sqlite-3.26.0-hb1c47c0_0.tar.bz2#d34b5b86030c07acf40bcd4c17112af2
-https://repo.anaconda.com/pkgs/main/osx-64/nomkl-3.0-0.tar.bz2#d6fab0c8315628f7594ed7e0f23bb64d
 https://conda.anaconda.org/conda-forge/osx-64/python-2.7.15-h33da82c_6.tar.bz2#13a5f483c21c861c1a399130e3bb4f5a
 https://conda.anaconda.org/conda-forge/noarch/alabaster-0.7.12-py_0.tar.bz2#2489a97287f90176ecdc3ca982b4b0a0
 https://conda.anaconda.org/conda-forge/noarch/apipkg-1.5-py_0.tar.bz2#4e79696efff4eae6cbcbeddbb5bbb5ee
