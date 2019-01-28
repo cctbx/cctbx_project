@@ -8,6 +8,7 @@ https://conda.anaconda.org/conda-forge/linux-64/libgfortran-3.0.0-1.tar.bz2#d7c7
 https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-ng-7.2.0-hdf63c60_3.tar.bz2#6b28769c1660675dfb38d1c36df7f1f2
 https://conda.anaconda.org/conda-forge/linux-64/libsvm-323-0.tar.bz2#f5849cbafea13890fd746cdf95d9a608
 https://conda.anaconda.org/conda-forge/linux-64/lz4-c-1.8.1.2-0.tar.bz2#61aaf0dbcc58eb0a3030d78f6d2c6b15
+https://repo.anaconda.com/pkgs/main/linux-64/nomkl-3.0-0.tar.bz2#dd8bdca858ba54245790a3cab33cec32
 https://conda.anaconda.org/conda-forge/linux-64/blosc-1.15.1-hfc679d8_2.tar.bz2#81eb0b23d4e8625832ec2290573273e6
 https://conda.anaconda.org/conda-forge/linux-64/bzip2-1.0.6-h470a237_2.tar.bz2#646e93c0c4ce38a7b34295cb17902b7b
 https://conda.anaconda.org/conda-forge/linux-64/icu-58.2-hfc679d8_0.tar.bz2#e17d61a82f7b047eefca832b07ed8846
@@ -22,10 +23,10 @@ https://conda.anaconda.org/conda-forge/linux-64/blas-1.1-openblas.tar.bz2#c259e7
 https://conda.anaconda.org/conda-forge/linux-64/hdf5-1.10.4-nompi_h5598ddc_1105.tar.bz2#78afd1cb4f86e19353fa078b92c0b31e
 https://conda.anaconda.org/conda-forge/linux-64/libpng-1.6.36-ha92aebf_0.tar.bz2#85663cdf259f6548fa4de73c8f508360
 https://conda.anaconda.org/conda-forge/linux-64/libtiff-4.0.10-he6b73bb_0.tar.bz2#b78092d3fd17554c08d0a753b36b2124
+https://conda.anaconda.org/conda-forge/linux-64/msgpack-c-3.1.1-hf7d5059_0.tar.bz2#f7afcdd45ebdfc0cbd4bd6471acc3e0e
 https://conda.anaconda.org/conda-forge/linux-64/readline-7.0-haf1bffa_1.tar.bz2#b068bddfa5c79e79bf96fbe9de96e0f1
 https://conda.anaconda.org/conda-forge/linux-64/tk-8.6.9-ha92aebf_0.tar.bz2#0e1be2ab5298945a61469707263fa6a2
 https://conda.anaconda.org/conda-forge/linux-64/freetype-2.9.1-h6debe1e_4.tar.bz2#9ad99511641c492fee66317f6cff0314
-https://repo.anaconda.com/pkgs/main/linux-64/nomkl-3.0-0.tar.bz2#dd8bdca858ba54245790a3cab33cec32
 https://conda.anaconda.org/conda-forge/linux-64/sqlite-3.26.0-hb1c47c0_0.tar.bz2#5f6935a700ea91b00851441e5768b4a7
 https://conda.anaconda.org/conda-forge/linux-64/python-2.7.15-h33da82c_6.tar.bz2#e027c7b9f114b65fe48aaf82167baa29
 https://conda.anaconda.org/conda-forge/noarch/alabaster-0.7.12-py_0.tar.bz2#2489a97287f90176ecdc3ca982b4b0a0
