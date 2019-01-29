@@ -1713,10 +1713,13 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     log = log)
   if model.get_number_of_models() > 1:
     raise Sorry("Multiple models not supported.")
-  n_removed_atoms = model.remove_alternative_conformations(
-      always_keep_one_conformer=True)
 
   # Remove alternative conformations if present
+  n_removed_atoms = 0
+  if er_params.remove_alt_conf_from_input_pdb:
+    n_removed_atoms = model.remove_alternative_conformations(
+        always_keep_one_conformer=True)
+
   if n_removed_atoms > 0:
     pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
     print >> log, "\nRemoving alternative conformations"
