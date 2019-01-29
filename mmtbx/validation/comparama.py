@@ -150,7 +150,7 @@ class rcompare(object):
           )
     return None
 
-  def get_plots(self):
+  def get_plots(self, wrap_arrows=True):
     if self.plots is not None:
       return self.plots
     self.plots = self.rama2.get_plots(
@@ -178,8 +178,9 @@ class rcompare(object):
         if data and len(data) < 0: continue
         ad = [((x[2], x[3]),(x[4], x[5])) for x in data]
         add_arrows_on_plot(
-            plot,
-            ad,
+            p=plot,
+            arrows_data=ad,
+            wrap_arrows=wrap_arrows,
             color=color)
     return self.plots
 
@@ -264,6 +265,7 @@ def add_arrows_on_plot(
 
   style="Simple,head_length=10,head_width=5,tail_width=1"
   for arrow in arrows_data:
+    r = [(arrow[0], arrow[1])]
     if wrap_arrows:
       r = breake_arrow_if_needed(arrow[0], arrow[1], plot_ranges)
       for l_coors in r[:-1]:

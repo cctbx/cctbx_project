@@ -44,6 +44,9 @@ Usage examples:
       pdf = True
         .type = bool
         .help = save the same plots as one pdf file
+      wrap_arrows = True
+        .type = bool
+        .help = wrap long arrows around the edges of plot
     }
 """
 
@@ -117,7 +120,7 @@ Usage examples:
     name2 = os.path.basename(self.data_manager.get_model_names()[1]).split('.')[0]
     base_fname = "%s--%s" % (name1, name2)
     if self.params.output.plots:
-      for pos, plot in self.rama_comp.get_plots().iteritems():
+      for pos, plot in self.rama_comp.get_plots(wrap_arrows=self.params.output.wrap_arrows).iteritems():
         file_label = res_type_labels[pos].replace("/", "_")
         plot_file_name = "%s_%s_%s_plot.png" % (
             base_fname, self.params.output.prefix, file_label)
@@ -127,7 +130,7 @@ Usage examples:
     if self.params.output.pdf:
       pdf_fname = "%s_%s.pdf" % (base_fname, self.params.output.prefix)
       pdfp = PdfPages(pdf_fname)
-      for pos, plot in self.rama_comp.get_plots().iteritems():
+      for pos, plot in self.rama_comp.get_plots(wrap_arrows=self.params.output.wrap_arrows).iteritems():
         pdfp.savefig(plot.figure)
       print("saving: '%s'" % pdf_fname)
       pdfp.close()
