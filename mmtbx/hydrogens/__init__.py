@@ -4,6 +4,58 @@ from scitbx.matrix import rotate_point_around_axis
 from cctbx.array_family import flex
 from cctbx import maptbx
 import iotbx.pdb
+import mmtbx.model
+from libtbx.utils import null_out
+
+def add(model, use_neutron_distances=False, adp_scale=1):
+  def mon_lib_query(residue, mon_lib_srv):
+    get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
+    if (get_func is not None): return get_func(comp_id=residue)
+    return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
+  pdb_hierarchy = model.get_hierarchy()
+  mon_lib_srv = model.get_mon_lib_srv()
+  for chain in pdb_hierarchy.only_model().chains():
+    for rg in chain.residue_groups():
+      for ag in rg.atom_groups():
+        actual = [a.name.strip().upper() for a in ag.atoms()]
+        mlq = mon_lib_query(residue=ag.resname, mon_lib_srv=mon_lib_srv)
+        expected_all = mlq.atom_dict().keys()
+        expected_h   = []
+        for k, v in mlq.atom_dict().iteritems():
+          if(v.type_symbol=="H"): expected_h.append(k)
+        missing_h = list(set(expected_h).difference(set(actual)))
+        if 0: print ag.resname, missing_h
+        new_xyz = ag.atoms().extract_xyz().mean()
+        hetero = ag.atoms()[0].hetero
+        for mh in missing_h:
+          a = (iotbx.pdb.hierarchy.atom()
+            .set_name(new_name=mh)
+            .set_element(new_element="H")
+            .set_xyz(new_xyz=new_xyz)
+            .set_hetero(new_hetero=hetero))
+          ag.append_atom(a)
+  pdb_hierarchy.atoms().reset_serial()
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.use_neutron_distances = use_neutron_distances
+  ro = model.get_restraint_objects()
+  model = mmtbx.model.manager(
+    model_input               = None,
+    pdb_hierarchy             = pdb_hierarchy,
+    build_grm                 = True,
+    restraint_objects         = ro,
+    pdb_interpretation_params = p,
+    log                       = null_out())
+  # Remove lone H
+  sel_h = model.get_hd_selection()
+  sel_isolated = model.isolated_atoms_selection()
+  sel_lone = sel_h & sel_isolated
+  model = model.select(~sel_lone)
+  # Rest occupancies, ADPs and idealize
+  model.reset_adp_for_hydrogens(scale=adp_scale)
+  model.reset_occupancy_for_hydrogens_simple()
+  model.idealize_h_riding()
+  return model
 
 hydrogens_master_params_str = """
 refine = individual riding *Auto
