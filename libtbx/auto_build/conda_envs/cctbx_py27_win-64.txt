@@ -10,13 +10,13 @@ https://conda.anaconda.org/conda-forge/win-64/libsvm-323-0.tar.bz2#bfeda92110eed
 https://conda.anaconda.org/conda-forge/win-64/vs2008_runtime-9.0.30729.6161-0.tar.bz2#9531fa584348748d666b66055c771182
 https://conda.anaconda.org/conda-forge/win-64/zlib-1.2.11-vc9_0.tar.bz2#103495bfa9761dba47b86181343472f1
 https://repo.anaconda.com/pkgs/main/win-64/mkl-2018.0.3-1.tar.bz2#3097902ad98b2f408bad39b7482fa200
-https://conda.anaconda.org/conda-forge/win-64/openssl-1.0.2o-vc9_0.tar.bz2#f454e13865bbfa01e4bcfc0491f09975
 https://conda.anaconda.org/conda-forge/win-64/vc-9-0.tar.bz2#a914b67a66d15adde2f00cc47a9d454d
 https://conda.anaconda.org/conda-forge/win-64/blosc-1.15.1-hc56fc5f_1002.tar.bz2#7627853f1fda2e9b9883a8270353b71c
 https://conda.anaconda.org/conda-forge/win-64/hdf5-1.10.4-nompi_hb8085ad_1105.tar.bz2#21849a11799f9cf0a29ea80eafcc1f8b
 https://conda.anaconda.org/conda-forge/win-64/jpeg-9b-vc9_2.tar.bz2#186a8294d04a8ba7cafba13a8a0e8ee6
 https://conda.anaconda.org/conda-forge/win-64/libpng-1.6.36-h7a46e7a_1000.tar.bz2#99215ccb41f440aeb41cb1ca4dcaffcf
 https://conda.anaconda.org/conda-forge/win-64/msgpack-c-3.1.1-hf3bde56_1000.tar.bz2#1b02792044ef3b9390233da10e5a56f4
+https://conda.anaconda.org/conda-forge/win-64/openssl-1.0.2p-h0c8e037_1002.tar.bz2#9e74c69cb23e75c26a7f23eeea48e2d1
 https://conda.anaconda.org/conda-forge/win-64/python-2.7.15-h2880e7c_1006.tar.bz2#df0056ce188a4e94dfd30e9261b532af
 https://conda.anaconda.org/conda-forge/win-64/tk-8.6.8-vc9_0.tar.bz2#0a77dae9642aee0a0ffefc77f9d45f78
 https://conda.anaconda.org/conda-forge/noarch/alabaster-0.7.12-py_0.tar.bz2#2489a97287f90176ecdc3ca982b4b0a0
@@ -116,7 +116,7 @@ https://conda.anaconda.org/conda-forge/win-64/h5py-2.8.0-py27hb721d18_1005.tar.b
 https://conda.anaconda.org/cctbx/win-64/matplotlib-2.0.2-py27h350fbde_0.tar.bz2#37e10fac8e4513ca8ca7c3d4a7822443
 https://conda.anaconda.org/conda-forge/win-64/mkl_fft-1.0.10-py27_0.tar.bz2#166e47d70c430bfe8a269e222658320c
 https://repo.anaconda.com/pkgs/main/win-64/numpy-1.13.3-py27h0bb1d87_4.tar.bz2#4daf7e45dd643c5ed407cad5fe70a868
-https://conda.anaconda.org/cctbx/noarch/mrcfile-1.1.0-py_0.tar.bz2#3e8a37409f6d9266b48e897b8916724b
+https://conda.anaconda.org/conda-forge/win-64/mrcfile-1.1.2-py27_0.tar.bz2#316621ceb2152f9eaeaba9ad781bfcf3
 https://conda.anaconda.org/conda-forge/win-64/python-blosc-1.7.0-py27hc56fc5f_1000.tar.bz2#1086c96da76dc1e61ec495c341258718
 https://repo.anaconda.com/pkgs/main/win-64/scipy-1.1.0-py27ha5da055_0.tar.bz2#e13a0d88784078d89b16838e91b946aa
 https://repo.anaconda.com/pkgs/main/win-64/scikit-learn-0.20.1-py27hc804a74_0.tar.bz2#028fe6cdda85d91d38ae66b1e9f83ac7

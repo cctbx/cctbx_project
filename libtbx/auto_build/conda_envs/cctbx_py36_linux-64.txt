@@ -22,7 +22,7 @@ https://conda.anaconda.org/conda-forge/linux-64/libiconv-1.15-h470a237_3.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/libuuid-2.32.1-h470a237_2.tar.bz2#81cb89240914df986735172eb3c655f0
 https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.1-hfc679d8_1.tar.bz2#d017e2ad96daad008a35f156af08e354
 https://conda.anaconda.org/conda-forge/linux-64/openblas-0.3.3-ha44fe06_1.tar.bz2#764dd985d857090db16ee0286609e3f8
-https://conda.anaconda.org/conda-forge/linux-64/openssl-1.0.2p-h470a237_1.tar.bz2#d4049d6545f3e4b5a8cc7fba0c00c71b
+https://conda.anaconda.org/conda-forge/linux-64/openssl-1.0.2p-h470a237_2.tar.bz2#83c949fc60556c3f9ef31bb11ec88d98
 https://conda.anaconda.org/conda-forge/linux-64/pcre-8.41-hfc679d8_3.tar.bz2#26fc727d6133952dc12a01e5bee08b19
 https://conda.anaconda.org/conda-forge/linux-64/pixman-0.34.0-h470a237_3.tar.bz2#e25ba9d6caed5e1066176e4f4cd06394
 https://conda.anaconda.org/conda-forge/linux-64/pthread-stubs-0.4-h470a237_1.tar.bz2#6b15b58a94a6dd82a4043d986bc37b8c
@@ -108,7 +108,7 @@ https://conda.anaconda.org/conda-forge/linux-64/h5py-2.8.0-py36he5c79e1_5.tar.bz
 https://conda.anaconda.org/conda-forge/linux-64/harfbuzz-1.9.0-h04dbb29_1.tar.bz2#316d633e92ad3901600ccb6c3fd75e44
 https://conda.anaconda.org/conda-forge/linux-64/jedi-0.13.1-py36_1000.tar.bz2#ec2ba2560824a0e4736c9386d2a86bf6
 https://conda.anaconda.org/conda-forge/linux-64/more-itertools-4.3.0-py36_1000.tar.bz2#941af71e79ed99db3c4f40c0f814d2d1
-https://conda.anaconda.org/cctbx/noarch/mrcfile-1.1.0-py_0.tar.bz2#3e8a37409f6d9266b48e897b8916724b
+https://conda.anaconda.org/conda-forge/linux-64/mrcfile-1.1.2-py36_0.tar.bz2#5a840da06328f8e5b0883795bbde1a60
 https://conda.anaconda.org/conda-forge/noarch/packaging-18.0-py_0.tar.bz2#bd5095c05b51d22b291e42ab44f146a7
 https://conda.anaconda.org/conda-forge/linux-64/pexpect-4.6.0-py36_1000.tar.bz2#cd490158a04b9d8e26b1a374228333d4
 https://conda.anaconda.org/conda-forge/linux-64/pillow-5.3.0-py36hc736899_0.tar.bz2#129b9a1c218b78e67645896e5d4e45cf

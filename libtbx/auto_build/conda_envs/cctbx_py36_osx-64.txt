@@ -23,7 +23,7 @@ https://conda.anaconda.org/conda-forge/osx-64/libcxx-7.0.0-h2d50403_2.tar.bz2#16
 https://conda.anaconda.org/conda-forge/osx-64/libpng-1.6.36-ha92aebf_0.tar.bz2#ae5cb9fc04b61708b6da71efaa99ed7c
 https://conda.anaconda.org/conda-forge/osx-64/libtiff-4.0.10-he6b73bb_0.tar.bz2#e80419cceac6451004a88917467c8348
 https://conda.anaconda.org/conda-forge/osx-64/openblas-0.3.3-ha44fe06_1.tar.bz2#a29f8cb78b8cfbf9d137ea2c0d46b1f9
-https://conda.anaconda.org/conda-forge/osx-64/openssl-1.0.2p-h470a237_1.tar.bz2#5b9d840018b29f728b5c5ff73cbddbfa
+https://conda.anaconda.org/conda-forge/osx-64/openssl-1.0.2p-h1de35cc_1002.tar.bz2#68a6c239a52eff69c85ac2a333d8afc4
 https://conda.anaconda.org/conda-forge/osx-64/readline-7.0-haf1bffa_1.tar.bz2#09b3e7f5389a0fbed17f2d786d070f4e
 https://conda.anaconda.org/conda-forge/osx-64/tk-8.6.9-ha92aebf_0.tar.bz2#36bc3d6d9ad397c4ed9c0845dfa275fc
 https://conda.anaconda.org/conda-forge/osx-64/blas-1.1-openblas.tar.bz2#794dbf30b6f568889ba6b04a50fd7989
@@ -86,7 +86,7 @@ https://conda.anaconda.org/conda-forge/noarch/execnet-1.5.0-py_0.tar.bz2#0e27b5a
 https://conda.anaconda.org/conda-forge/osx-64/h5py-2.8.0-py36he5c79e1_5.tar.bz2#fe0ee36727f22216b35d235e57e4c158
 https://conda.anaconda.org/conda-forge/osx-64/jedi-0.13.1-py36_1000.tar.bz2#97d14b32e983beb0f61c9ff86473d2d4
 https://conda.anaconda.org/conda-forge/osx-64/more-itertools-4.3.0-py36_1000.tar.bz2#4ec0f08793b3c6ffe26a3cdfd869eca7
-https://conda.anaconda.org/cctbx/noarch/mrcfile-1.1.0-py_0.tar.bz2#3e8a37409f6d9266b48e897b8916724b
+https://conda.anaconda.org/conda-forge/osx-64/mrcfile-1.1.2-py36_0.tar.bz2#ec7e302335577bb1236913248bc82fbd
 https://conda.anaconda.org/conda-forge/noarch/packaging-18.0-py_0.tar.bz2#bd5095c05b51d22b291e42ab44f146a7
 https://conda.anaconda.org/conda-forge/osx-64/pexpect-4.6.0-py36_1000.tar.bz2#31e5d20f7b0ec8c82de6fc959d0b98dd
 https://conda.anaconda.org/conda-forge/osx-64/pillow-5.3.0-py36hc736899_0.tar.bz2#8edf20351fbb09516c7f1afd06daf31b
