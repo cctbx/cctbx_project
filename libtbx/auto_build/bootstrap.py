@@ -11,7 +11,7 @@
 from __future__ import absolute_import, division, print_function
 
 import ntpath
-import optparse
+import argparse
 import os
 import os.path
 import posixpath
@@ -23,6 +23,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import textwrap
 import time
 import traceback
 import urllib2
@@ -995,6 +996,7 @@ class Builder(object):
       python3=False,
       wxpython4=False,
       config_flags=[],
+      use_conda=None,
     ):
     if nproc is None:
       self.nproc=1
@@ -1038,6 +1040,7 @@ class Builder(object):
     # get_libtbx_configure can still be used to always set flags specific to a
     # builder
     self.config_flags = config_flags
+    self.use_conda = use_conda
     self.add_init()
 
     # Cleanup
@@ -1406,6 +1409,49 @@ class Builder(object):
         description="Checking Windows prerequisites",
       ))
 
+  def _get_conda_manager(self):
+    """
+    Helper function for determining the location of the conda environment
+    """
+    if __name__ == '__main__' and __package__ is None:
+      sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+      from install_conda import conda_manager
+    else:
+      from .install_conda import conda_manager
+
+    # check for active conda environment
+    conda_env = os.environ.get('CONDA_PREFIX')
+
+    # drop output
+    log = open(os.devnull, 'w')
+
+    # no path provided
+    if self.use_conda == '' and conda_env is None:
+      conda_env = os.path.join('..', 'conda_base')
+      # base step is not run yet, so do not check if files exist
+      m = conda_manager(root_dir=os.getcwd(), conda_env=conda_env,
+                        check_file=False, log=log)
+    else:
+      # use $CONDA_PREFIX only if no path is provided to --use-conda
+      if self.use_conda == '' and conda_env is not None:
+        self.use_conda = conda_env
+      # check that directory exists
+      if not os.path.isdir(self.use_conda):
+        raise RuntimeError('The path provided to --use-conda does not exist.')
+      # basic checks for python and conda
+      m = conda_manager(root_dir=os.getcwd(), conda_env=self.use_conda,
+                        check_file=True, log=log)
+
+    return m
+
+  def _get_conda_python(self):
+    """
+    Helper function for determining the location of Python for the base
+    and build actions.
+    """
+    m = self._get_conda_manager()
+    return m.get_conda_python()
+
   def add_command(self, command, name=None, workdir=None, args=None, **kwargs):
     if self.isPlatformWindows():
       command = command + '.bat'
@@ -1493,8 +1539,42 @@ class Builder(object):
       '--python-shared',
       '--%s'%self.BASE_PACKAGES
     ] + extra_opts
-    print("Installing base packages using:\n  " + " ".join(command))
-    self.add_step(self.shell(name='base', command=command, workdir=['.']))
+
+    # Override base with conda
+    #
+    # The use of conda is focused on 2 main groups
+    #   1) Developers who do not actively use conda
+    #      A basic conda installation will be created at the same level as the
+    #      "modules" and "build" directories. The default environment for the
+    #      builder will be created in the "conda_base" directory at the same
+    #      level.
+    #   2) Developers who do
+    #      A path to a conda environment should be provided. No checks are done
+    #      on the environment. The environment files for the build should be
+    #      used to construct the starting environment and the developer is
+    #      responsible for maintaining it. Also, if a conda environment is
+    #      active, the $CONDA_PREFIX environment variable will be used.
+    if self.use_conda is not None:  # --use-conda flag is set
+      # reset command
+      command = []
+
+      # check for active conda environment
+      conda_env = os.environ.get('CONDA_PREFIX')
+
+      # no path provided (case 1)
+      if self.use_conda == '' and conda_env is None:
+        flags = ['--builder={builder}'.format(builder=self.category)]
+        # check for existing miniconda3 installation
+        if not os.path.isdir('miniconda3'):
+          flags.append('--install_conda')
+        command = [
+          'python',
+          self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build',
+                      'install_conda.py',)] + flags
+
+    if len(command) > 0:
+      print("Installing base packages using:\n  " + " ".join(command))
+      self.add_step(self.shell(name='base', command=command, workdir=['.']))
 
   def add_dispatchers(self, product_name="phenix"):
     """Write dispatcher_include file."""
@@ -1520,11 +1600,20 @@ class Builder(object):
     #epilogue = "\n".join(self.product_specific_dispatcher_epilogue())
     dispatcher_opts = [
       "--build_dir=%s" % ".",
-      "--base_dir=%s"  % "../base",
       "--suffix=%s"    % "phenix",
-      "--gtk_version=2.10.0", # XXX this can change!
-      #"--quiet",
     ]
+    if self.use_conda is None:
+      dispatcher_opts += [
+        "--base_dir=%s"  % "../base",
+        "--gtk_version=2.10.0", # XXX this can change!
+        #"--quiet",
+      ]
+    else:
+      dispatcher_opts += [
+      "--base_dir=%s" % self._get_conda_manager().conda_env,
+      "--use_conda",
+      "--ignore_missing_dirs"
+      ]
     #if (not self.flag_build_gui):
     #  dispatcher_opts.append("--ignore_missing_dirs")
     # FIXME this will happen regardless of whether the GUI modules are being
@@ -1546,6 +1635,12 @@ class Builder(object):
     ))
 
   def add_configure(self):
+
+    if self.use_conda is not None:
+      if '--use_conda' not in self.config_flags:
+        self.config_flags.append('--use_conda')
+      self.python_base = self._get_conda_python()
+
     configcmd =[
         self.python_base, # default to using our python rather than system python
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
@@ -1556,7 +1651,7 @@ class Builder(object):
     # Prepare saving configure.py command to file should user want to manually recompile Phenix
     fname = self.opjoin("config_modules.cmd")
     ldlibpath = ''
-    if self.isPlatformLinux():
+    if self.isPlatformLinux() and self.use_conda is not None:
       ldlibpath = 'export LD_LIBRARY_PATH=../base/lib\n'
       # because that was the environment when python and base components were built during bootstrap
     confstr = ldlibpath + subprocess.list2cmdline(configcmd)
@@ -2315,8 +2410,30 @@ class QRBuilder(PhenixBuilder):
     return environment
 
 def run(root=None):
-  usage = """Usage: %prog [options] [actions]
+  builders = {
+    'cctbxlite': CCTBXLiteBuilder,
+    'cctbx': CCTBXBuilder,
+    'phenix': PhenixBuilder,
+    'xfel': XFELBuilder,
+    'labelit': LABELITBuilder,
+    'dials': DIALSBuilder,
+    'external': PhenixExternalRegression,
+    'molprobity':MOLPROBITYBuilder,
+    'qrefine': QRBuilder,
+    'phaser': PhaserBuilder,
+    'phaser_tng': PhaserTNGBuilder
+  }
 
+  wrapper = textwrap.TextWrapper(width=80, initial_indent='  ',
+                                 subsequent_indent='    ')
+  builders_text = ', '.join(sorted(builders.keys()))
+  builders_text = '\n'.join(wrapper.wrap(builders_text))
+
+  prog = os.environ.get('LIBTBX_DISPATCHER_NAME')
+  if prog is None or prog.startswith('python') or prog.endswith('python'):
+    prog = os.path.basename(sys.argv[0])
+
+  description = """
   You may specify one or more actions:
     hot - Update static sources (scons, etc.)
     update - Update source repositories (cctbx, cbflib, etc.)
@@ -2329,7 +2446,7 @@ def run(root=None):
 
   You can specify which package will be downloaded, configured,
   and built with "--builder". Current builders:
-    cctbx, cctbxlite, phenix, xfel, dials, labelit, external, molprobity, qrefine, phaser
+  {builders}
 
   You can provide your SourceForge username with "--sfuser", and
   your CCI SVN username with "--cciuser". These will checkout
@@ -2347,95 +2464,95 @@ def run(root=None):
   Example:
 
     python bootstrap.py --builder=cctbx --sfuser=metalheadd hot update build tests
+  """.format(builders=builders_text)
 
-  """
-  builders = {
-    'cctbxlite': CCTBXLiteBuilder,
-    'cctbx': CCTBXBuilder,
-    'phenix': PhenixBuilder,
-    'xfel': XFELBuilder,
-    'labelit': LABELITBuilder,
-    'dials': DIALSBuilder,
-    'external': PhenixExternalRegression,
-    'molprobity':MOLPROBITYBuilder,
-    'qrefine': QRBuilder,
-    'phaser': PhaserBuilder,
-    'phaser_tng': PhaserTNGBuilder
-  }
-
-  parser = optparse.OptionParser(usage=usage)
-  # parser.add_option("--root", help="Root directory; this will contain base, modules, build, etc.")
-  parser.add_option(
+  parser = argparse.ArgumentParser(
+    prog=prog, description=description,
+    formatter_class=argparse.RawDescriptionHelpFormatter)
+  # parser.add_argument("--root", help="Root directory; this will contain base, modules, build, etc.")
+  parser.add_argument('action', nargs='*', help="Actions for building")
+  parser.add_argument(
     "--builder",
     help="Builder: " + ",".join(builders.keys()),
     default="cctbx")
-  parser.add_option("--cciuser", help="CCI SVN username.")
-  parser.add_option("--sfuser", help="SourceForge SVN username.")
-  parser.add_option("--revert", help="SVN string to revert all SVN trees")
-  parser.add_option("--sfmethod",
+  parser.add_argument("--cciuser", help="CCI SVN username.")
+  parser.add_argument("--sfuser", help="SourceForge SVN username.")
+  parser.add_argument("--revert", help="SVN string to revert all SVN trees")
+  parser.add_argument("--sfmethod",
                     help="SourceForge SVN checkout method.",
                     default="svn+ssh")
-  parser.add_option(
+  parser.add_argument(
     "--git-ssh",
     dest="git_ssh",
     action="store_true",
     help="Use ssh connections for git. This allows you to commit changes without changing remotes and use reference repositories.",
     default=False)
-  parser.add_option(
+  parser.add_argument(
     "--git-reference",
     dest="git_reference",
     help="Path to a directory containing reference copies of repositories for faster checkouts.")
-  parser.add_option("--with-python",
+  parser.add_argument("--with-python",
                     dest="with_python",
                     help="Use specified Python interpreter")
-  parser.add_option("--nproc",
+  parser.add_argument("--nproc",
                     help="number of parallel processes in compile step.")
-  parser.add_option("--download-only",
+  parser.add_argument("--download-only",
                     dest="download_only",
                     action="store_true",
                     help="Do not build, only download prerequisites",
                     default=False)
-  parser.add_option("-v",
+  parser.add_argument("-v",
                     "--verbose",
                     dest="verbose",
                     action="store_true",
                     help="Verbose output",
                     default=False)
-  parser.add_option("--skip-base-packages",
+  parser.add_argument("--skip-base-packages",
                     dest="skip_base",
                     action="store",
                     default="")
-  parser.add_option("--force-base-build",
+  parser.add_argument("--force-base-build",
                     dest="force_base_build",
                     action="store_true",
                     default=False)
-  parser.add_option("--enable-shared",
+  parser.add_argument("--enable-shared",
                     dest="enable_shared",
                     action="store_true",
                     default=False)
-  parser.add_option("--mpi-build",
+  parser.add_argument("--mpi-build",
                     dest="mpi_build",
                     help="Builds software with mpi functionality",
                     action="store_true",
                     default=False)
-  parser.add_option("--python3",
+  parser.add_argument("--python3",
                     dest="python3",
                     help="Install a Python3 interpreter. This is unsupported and purely for development purposes.",
                     action="store_true",
                     default=False)
-  parser.add_option("--wxpython4",
+  parser.add_argument("--wxpython4",
                     dest="wxpython4",
                     help="Install wxpython4 instead of wxpython3. This is unsupported and purely for development purposes.",
                     action="store_true",
                     default=False)
-  parser.add_option("--config_flags",
+  parser.add_argument("--config-flags", "--config_flags",
                     dest="config_flags",
                     help="""Pass flags to the configuration step. Flags should
 be passed separately with quotes to avoid confusion (e.g
 --config_flags="--build=debug" --config_flags="--enable_cxx11")""",
                     action="append",
                     default=[])
-  options, args = parser.parse_args()
+  parser.add_argument("--use-conda", "--use_conda", metavar="ENV_DIRECTORY",
+                    dest="use_conda",
+                    help="""Use conda for dependencies. The directory to an
+existing conda environment can be provided. The build will use that enviroment
+instead of creating a default one for the builder. Also, if a conda environment
+is currently active, $CONDA_PREFIX will be used if ENV_DIRECTORY is not
+provided. Specifying an environment or using $CONDA_PREFIX is for developers
+that maintain their own conda environment.""",
+                    default=None, nargs='?', const='')
+  options = parser.parse_args()
+  args = options.action
+
   # process external
   options.specific_external_builder=None
   if options.builder.lower() in ["afitt",
@@ -2498,6 +2615,7 @@ be passed separately with quotes to avoid confusion (e.g
     python3=options.python3,
     wxpython4=options.wxpython4,
     config_flags=options.config_flags,
+    use_conda=options.use_conda,
   ).run()
   print("\nBootstrap success: %s" % ", ".join(actions))
 
