@@ -47,7 +47,9 @@ def run(args, prologue=None, epilogue=None, out=sys.stdout):
     lib64_path = os.path.join(base_path, "lib64")
     if (os.path.isdir(lib64_path)):
       ld_library_paths.append(lib64_path)
-  dyld_library_paths = ld_library_paths + [
+  dyld_library_paths = ld_library_paths
+  if not options.use_conda:
+    dyld_library_paths += [
     os.path.join(base_path,"Python.framework","Versions","Current","lib"), ]
   check_libs = ld_library_paths
   if (sys.platform == "darwin") : check_libs = dyld_library_paths
