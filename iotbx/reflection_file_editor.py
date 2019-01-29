@@ -1013,9 +1013,7 @@ def modify_array(
       if miller_array.is_xray_reconstructed_amplitude_array():
         miller_array.set_observation_type_xray_amplitude()
     else :
-      miller_array = miller_array.f_sq_as_f()
       miller_array = miller_array.average_bijvoet_mates()
-      miller_array = miller_array.f_as_f_sq()
       miller_array.set_observation_type_xray_intensity()
   elif ((not miller_array.anomalous_flag()) and
         (array_params.anomalous_data == "anomalous")):

@@ -354,9 +354,7 @@ def run(
     if (not processed_array.is_xray_intensity_array()):
       processed_array = processed_array.average_bijvoet_mates()
     else:
-      processed_array = processed_array.f_sq_as_f()
       processed_array = processed_array.average_bijvoet_mates()
-      processed_array = processed_array.f_as_f_sq()
       processed_array.set_observation_type_xray_intensity()
   if (r_free_flags is not None
       and r_free_flags.anomalous_flag()
