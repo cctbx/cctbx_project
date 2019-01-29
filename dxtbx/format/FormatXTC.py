@@ -25,6 +25,9 @@ locator_str = """
     .type = str
     .multiple = True
     .help = detector used for collecting the data at LCLS
+  calib_dir = None
+    .type = str
+    .help = Specifiy path to custom calib directory if needed
 """
 locator_scope = parse(locator_str)
 
@@ -62,7 +65,7 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
         If detector_address is not provided, a command line promp will try to get the address
         from the user '''
     try:
-      from psana import DataSource
+      import psana
     except ImportError:
       return False
     try:
@@ -139,15 +142,16 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
   @staticmethod
   def _get_datasource(image_file, params):
     """ Construct a psana data source object given the locator parameters """
-    from psana import DataSource
-
+    import psana
+    if params.calib_dir is not None:
+      psana.setOption('psana.calib-dir',params.calib_dir)
     if params.data_source is None:
       if params.experiment is None or params.run is None or params.mode is None or len(params.run) == 0:
         return False
       img = "exp=%s:run=%s:%s"%(params.experiment, ','.join(["%d"%r for r in params.run]), params.mode)
     else:
       img = params.data_source
-    return DataSource(img)
+    return psana.DataSource(img)
 
   @staticmethod
   def _get_psana_runs(datasource):
