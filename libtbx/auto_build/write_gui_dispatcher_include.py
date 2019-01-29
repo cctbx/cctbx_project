@@ -24,6 +24,8 @@ def run(args, prologue=None, epilogue=None, out=sys.stdout):
   parser.add_option("--ignore_missing_dirs", dest="ignore_missing_dirs",
     action="store_true", help="Don't raise error if GTK paths don't exist")
   parser.add_option("--quiet", action="store_true")
+  parser.add_option("--use_conda", dest="use_conda", action="store_true",
+    help="Use conda dependencies")
   # this is detached in case we need to upgrade GTK - setting GTK_PATH is
   # essential for the themes to be used correctly
   parser.add_option("--gtk_version", dest="gtk_version", action="store",
@@ -72,7 +74,7 @@ def run(args, prologue=None, epilogue=None, out=sys.stdout):
       f.write("%s\n" % options.prologue)
     else:
       f.write(open(options.prologue).read() + "\n")
-  if sys.platform != "win32":
+  if sys.platform != "win32" and not options.use_conda:
     print("""\
 # include at start
 if [ "$LIBTBX_DISPATCHER_NAME" != "libtbx.scons" ] && \

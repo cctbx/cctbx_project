@@ -1819,7 +1819,8 @@ selfx:
     if (os.name != "nt"):     # LD_LIBRARY_PATH for dependencies
       os.environ[self.ld_library_path_var_name()] = ":".join(
         [abs(p) for p in self.ld_library_path_additions()])
-    regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
+    if not self.build_options.use_conda:
+      regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
     self.pickle()
     print("libtbx_refresh_is_completed", file=completed_file_name.open("w"))
 
