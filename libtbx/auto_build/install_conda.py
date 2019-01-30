@@ -560,19 +560,20 @@ def run():
 Example usage:
 
   {prog}
-    shows this help screen
+    Shows this help screen
 
   {prog} --verbose
-    shows if a base conda installation can be found
+    Shows if a base conda installation can be found. If no installation
+    is found, the latest miniconda3 will be installed.
 
   {prog} --install_conda --builder=<builder>
-    install conda and default environment for <builder>
+    Install conda and default environment for <builder>
 
   {prog} --conda_base=<path> --builder=<builder>
-    install default environment for <builder> with known conda installation
+    Install default environment for <builder> with known conda installation
 
   {prog} --conda_env=<path> --builder=<builder>
-    update conda environment for builder
+    Update conda environment for builder
 
   In an active conda environment, the last example can just be
 
