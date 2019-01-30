@@ -190,6 +190,30 @@ directory for the base conda installation was provided. The directory
 can be found by running "conda info" and looking the "base environment"
 value."""
 
+    # try to determine base environment from $PATH
+    if self.conda_base is None:
+      paths = os.environ.get('PATH')
+      if paths is not None:
+        if self.system == 'Windows':
+          paths = paths.split(';')
+        else:
+          paths = paths.split(':')
+        for path in paths:
+          conda_exe = self.get_conda_exe(path, check_file=False)
+          if os.path.isfile(conda_exe):
+            self.conda_base = os.path.abspath(os.path.join(path, '..'))
+            self.conda_exe = conda_exe
+            break
+
+    # try to determine base environment from .conda/environments.txt
+    if self.conda_base is None:
+      for environment in self.environments:
+        conda_exe = self.get_conda_exe(environment, check_file=False)
+        if os.path.isfile(conda_exe):
+          self.conda_base = environment
+          self.conda_exe = conda_exe
+          break
+
     # -------------------------------------------------------------------------
     # helper function for searching for conda_exe
     def walk_up_check(new_conda_base, new_conda_exe):
@@ -216,7 +240,6 @@ value."""
       if os.path.isfile(conda_exe):
         self.conda_base = conda_base
         self.conda_exe = conda_exe
-        self.environments = self.update_environments()
 
     # install conda if necessary
     if (self.conda_base is None) and (self.conda_env is None):
@@ -229,7 +252,8 @@ value."""
         print('Proceeding with a fresh installation', file=self.log)
         self.conda_base = self.install_miniconda(prefix=self.root_dir)
       self.conda_exe = self.get_conda_exe(self.conda_base, check_file=False)
-      self.environments = self.update_environments()
+
+    self.environments = self.update_environments()
 
     # verify consistency and check conda version
     if self.conda_base is not None:
@@ -537,6 +561,9 @@ Example usage:
 
   {prog}
     shows this help screen
+
+  {prog} --verbose
+    shows if a base conda installation can be found
 
   {prog} --install_conda --builder=<builder>
     install conda and default environment for <builder>
