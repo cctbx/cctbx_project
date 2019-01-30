@@ -1924,8 +1924,7 @@ class PhenixBuilder(CCIBuilder):
     'phaser',
     'phaser_regression',
   ]
-  HOT_EXTRA = [
-  ]
+  HOT_EXTRA = ['msgpack']
   LIBTBX_EXTRA = [
     'chem_data',
     'phenix',
