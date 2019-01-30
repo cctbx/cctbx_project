@@ -340,7 +340,6 @@ class DataBlockTemplateImporter(object):
   def __init__(self, templates, verbose=False, **kwargs):
     ''' Import the datablocks from the given templates. '''
     from dxtbx.sweep_filenames import locate_files_matching_template_string
-    from libtbx.utils import Sorry
     from os.path import normpath
     assert(len(templates) > 0)
 
@@ -870,7 +869,6 @@ class DataBlockFactory(object):
                 scan_tolerance=None,
                 format_kwargs=None):
     ''' Try to load datablocks from any recognized format. '''
-    from libtbx.utils import Sorry
 
     if unhandled is None:
       unhandled = []
