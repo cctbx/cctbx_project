@@ -362,6 +362,9 @@ class manager(object):
     """
     return manager.get_default_pdb_interpretation_scope().extract()
 
+  def size(self):
+    return self.get_hierarchy().atoms().size()
+
   def set_log(self, log):
     self.log = log
 
