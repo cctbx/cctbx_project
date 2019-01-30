@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 11/15/2018
-Last Changed: 11/29/2018
+Last Changed: 01/30/2019
 Description : IOTA GUI base classes (with backwards compatibility for
               wxPython 3)
 '''
@@ -19,22 +19,29 @@ from iotbx.phil import parse
 import iota.components.iota_ui_controls as ct
 from iota.components.iota_utils import norm_font_size
 
+wx4 = wx.__version__[0] == '4'
+
 gui_phil = parse('''
 gui
   .help = Options for IOTA GUI only
+  .alias = GUI Options
 {
   image_viewer = *dials.image_viewer cctbx.image_viewer distl.image_viewer cxi.view
     .type = choice
     .help = Select image viewer (GUI only)
+    .alias = Image Viewer
   monitor_mode = False
     .type = bool
     .help = Set to true to keep watch for incoming images (GUI only)
+    .alias = Process in Monitor Mode
   monitor_mode_timeout = False
     .type = bool
     .help = Set to true to auto-terminate continuous mode (GUI only)
+    .alias = Monitor Mode Timeout
   monitor_mode_timeout_length = 0
     .type = int
     .help = Timeout length in seconds (GUI only)
+    .alias = Timeout (sec)
 }
 ''')
 
@@ -73,25 +80,22 @@ class IOTABaseFrame(wx.Frame):
     short_string = shortHelp if shortHelp else ''
     long_string = longHelp if longHelp else ''
 
-    if 'classic' in wx.version():
-      return self.toolbar.AddLabelTool(id=id,
-                                       label=label,
-                                       kind=kind,
-                                       bitmap=bmp,
-                                       shortHelp=short_string,
-                                       longHelp=long_string)
-    elif 'phoenix' in wx.version():
+    if wx4:
       return self.toolbar.AddTool(toolId=id,
                                   label=label,
                                   kind=kind,
                                   bitmap=bmp,
                                   shortHelp=short_string)
     else:
-      raise IOTAFrameError(msg='Unrecognized wxPython version {}'.format(
-        wx.version()))
+      return self.toolbar.AddLabelTool(id=id,
+                                       label=label,
+                                       kind=kind,
+                                       bitmap=bmp,
+                                       shortHelp=short_string,
+                                       longHelp=long_string)
 
   def add_toolbar_separator(self, stretch=False):
-    if stretch and 'phoenix' in wx.version():
+    if stretch and wx4:
       self.toolbar.AddStretchableSpace()
     else:
       self.toolbar.AddSeparator()
@@ -101,7 +105,6 @@ class IOTABaseFrame(wx.Frame):
 
   def set_tool_states(self, tools):
     for tool in tools:
-      # toggle = tool[2] if len(tool) == 3 else None
       self.set_tool_state(tool=tool[0], enable=tool[1],
                           toggle=tool[2] if len(tool) == 3 else None)
 
@@ -298,4 +301,97 @@ class BaseBackendDialog(BaseDialog):
     from iota.components.iota_input import write_defaults
     default_phil, _ = write_defaults(method=method, write_target_file=False,
                                      write_param_file=False)
-    self.target_phil = default_phil
+    self.target_phil = default_phil.as_str()
+
+class BaseOptionsDialog(BaseDialog):
+  ''' Test class to work out AutoPHIL, etc. '''
+
+  def __init__(self, parent, input, *args, **kwargs):
+    dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
+    BaseDialog.__init__(self, parent, style=dlg_style, *args, **kwargs)
+
+    self.parent = parent
+
+    self.phil_panel = PHILPanelFactory.from_scope_objects(self, scope=input)
+    self.main_sizer.Add(self.phil_panel, -1, flag=wx.EXPAND)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+
+    self.Fit()
+
+
+class PHILPanelFactory(IOTABasePanel):
+  def __init__(self, parent, objects, layers=None, *args, **kwargs):
+    IOTABasePanel.__init__(self, parent=parent, *args, **kwargs)
+
+    self.layers = layers
+
+    for obj in objects:
+      if type(obj) in (list, tuple):
+        pass
+      elif obj.is_scope:
+        self.add_scope_box(obj=obj)
+      elif obj.is_definition:
+        self.add_definition_control(self, obj)
+
+
+  def get_all_path_names(self, phil_object, paths=None):
+    if paths is None:
+      paths = []
+    if phil_object.is_scope:
+      for object in phil_object.objects:
+        paths = self.get_all_path_names(object, paths)
+        paths.extend(paths)
+    elif phil_object.is_definition:
+      full_path = phil_object.full_path()
+      if not full_path in paths:
+        paths.append(full_path)
+    return paths
+
+  def add_definition_control(self, parent, obj):
+    alias = obj.alias_path()
+    label = alias if alias else obj.full_path().split('.')[-1]
+
+    wdg = ct.WidgetFactory.make_widget(parent, obj, label)
+    sizer = parent.GetSizer()
+    sizer.Add(wdg, flag=wx.RIGHT|wx.LEFT|wx.BOTTOM|wx.EXPAND,
+                        border=5)
+    self.__setattr__(label, wdg)
+
+  def add_scope_box(self, obj):
+    obj_name = obj.full_path().split('.')[-1]
+    label = obj.alias_path() if obj.alias_path() else obj_name
+
+    # Make scope panel
+    panel = wx.Panel(self)
+    box = wx.StaticBox(panel, label=label)
+    box_sz = wx.StaticBoxSizer(box, wx.VERTICAL)
+    panel.SetSizer(box_sz)
+
+    self.main_sizer.Add(panel, flag=wx.ALL|wx.EXPAND, border=10)
+
+    # Add widgets to box (do one layer so far)
+    for box_obj in obj.active_objects():
+      if box_obj.is_definition:
+        self.add_definition_control(panel, box_obj)
+
+  @classmethod
+  def from_scope_objects(cls, parent, scope):
+
+    scope_type = type(scope).__name__
+    if scope_type in ('list', 'tuple'):
+      objects = (r for r in scope)
+    elif scope_type == 'scope':
+      objects = scope.active_objects()
+    else:
+      objects = scope
+
+    return cls(parent, objects)
+
+  @classmethod
+  def from_filename(cls, filepath):
+    pass

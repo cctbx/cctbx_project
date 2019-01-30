@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/29/2018
+Last Changed: 01/30/2019
 Description : IOTA GUI Dialogs
 '''
 
@@ -14,7 +14,7 @@ from wxtbx import bitmaps
 
 from iotbx import phil as ip
 
-from iota.components.iota_ui_base import BaseDialog, BaseBackendDialog
+from iota.components.iota_ui_base import BaseDialog, BaseBackendDialog, BaseOptionsDialog
 import iota.components.iota_ui_controls as ct
 from iota.components.iota_input import master_phil
 from iota.components.iota_utils import UnicodeCharacters, WxFlags, noneset
@@ -43,6 +43,14 @@ f = WxFlags()
 
 
 # ---------------------------------------------------------------------------- #
+
+class TestDialog(BaseOptionsDialog):
+  ''' Test class to work out AutoPHIL, etc. '''
+
+  def __init__(self, parent, scope, *args, **kwargs):
+    self.parent = parent
+    BaseOptionsDialog.__init__(self, parent, input=scope, *args, **kwargs)
+
 
 class IOTAPreferences(BaseDialog):
   """ Class for dialog that houses IOTA interface preferences, e.g.:
@@ -928,7 +936,7 @@ class HA14ImportWindow(BaseDialog):
     else:
       conv_pickle_prefix = self.conv_rename.custom.GetValue()
 
-    if self.flip_beamxy.Enabled:
+    if self.flip_beamxy.IsEnabled():
       if self.flip_beamxy.GetValue():
         flip_beamXY = True
       else:
@@ -1560,13 +1568,21 @@ class BackendOptions(BaseBackendDialog):
     filter_box_sizer = wx.StaticBoxSizer(filter_box, wx.VERTICAL)
     self.filt_options.SetSizer(filter_box_sizer)
 
-    self.filt_lattice = ct.OptionCtrl(self.filt_options,
-                                      items=[('lattice', 'P4')],
+    self.filt_crystal = ct.OptionCtrl(self.filt_options,
+                                      items=[('system', 'Tetragonal')],
                                       checkbox=True,
-                                      checkbox_label='Bravais Lattice:',
+                                      checkbox_label='Crystal System:',
                                       label_size=(160, -1),
                                       ctrl_size=(150, -1))
-    filter_box_sizer.Add(self.filt_lattice, flag=f.stack, border=10)
+    filter_box_sizer.Add(self.filt_crystal, flag=f.stack, border=10)
+
+    self.filt_pg = ct.OptionCtrl(self.filt_options,
+                                 items=[('pg', 'P422')],
+                                 checkbox=True,
+                                 checkbox_label='Point Group:',
+                                 label_size=(160, -1),
+                                 ctrl_size=(150, -1))
+    filter_box_sizer.Add(self.filt_pg, flag=f.stack, border=10)
 
     self.filt_uc = ct.OptionCtrl(self.filt_options,
                                  items=[('a', '79.4'), ('b', '79.4'),
@@ -1673,7 +1689,7 @@ class BackendOptions(BaseBackendDialog):
     # Target options
     # "Try/except" for backwards compatibility
     try:
-      if self.params.cctbx_xfel.target_unit_cell is not None:
+      if self.params.cctbx_xfel.target_unit_cell:
         uc_str = [str(i) for i in self.params.cctbx_xfel.target_unit_cell.parameters()]
         self.target_uc.cell.SetValue(' '.join(uc_str))
       if self.params.cctbx_xfel.target_space_group is not None:
@@ -1694,21 +1710,25 @@ class BackendOptions(BaseBackendDialog):
    # Selection filters
     try:
       if self.params.cctbx_xfel.filter.flag_on:
-        pg = self.params.cctbx_xfel.filter.target_pointgroup
-        ut = self.params.cctbx_xfel.filter.target_uc_tolerance
+        cs = self.params.cctbx_xfel.filter.crystal_system
+        pg = self.params.cctbx_xfel.filter.pointgroup
+        ut = self.params.cctbx_xfel.filter.uc_tolerance
         rs = self.params.cctbx_xfel.filter.min_resolution
         rf = self.params.cctbx_xfel.filter.min_reflections
-        if self.params.cctbx_xfel.filter.target_unit_cell is not None:
+        if self.params.cctbx_xfel.filter.unit_cell is not None:
           try:
-            uc = self.params.cctbx_xfel.filter.target_unit_cell.parameters()
+            uc = self.params.cctbx_xfel.filter.unit_cell.parameters()
           except AttributeError:
             uc = None
         else:
           uc = None
 
+        if str(cs).lower() != 'none':
+          self.filt_crystal.toggle_boxes()
+          self.filt_crystal.system.SetValue(str(cs))
         if str(pg).lower() != 'none':
-          self.filt_lattice.toggle_boxes()
-          self.filt_lattice.lattice.SetValue(str(pg))
+          self.filt_pg.toggle_boxes()
+          self.filt_pg.pg.SetValue(str(pg))
         if str(uc).lower() != 'none':
           self.filt_uc.toggle_boxes()
           self.filt_uc.a.SetValue(str(uc[0]))
@@ -1749,34 +1769,41 @@ class BackendOptions(BaseBackendDialog):
     else:
       t_sg = None
 
-    if self.target_uc.cell.GetValue() not in (None, ''):
+    if self.target_uc.cell.GetValue():
       t_uc = self.target_uc.cell.GetValue()
     else:
       t_uc = None
 
     # Filter params
-    filter_on = bool(self.filt_lattice.toggle.GetValue() +
+    filter_on = bool(self.filt_crystal.toggle.GetValue() +
+                     self.filt_pg.toggle.GetValue() +
                      self.filt_uc.toggle.GetValue() +
                      self.filt_ref.toggle.GetValue() +
                      self.filt_res.toggle.GetValue()
                      )
-    if self.filt_lattice.toggle.GetValue():
-      lattice = self.filt_lattice.lattice.GetValue()
+    if self.filt_pg.toggle.GetValue():
+      pg = self.filt_pg.pg.GetValue()
     else:
-      lattice = None
+      pg = None
+    if self.filt_crystal.toggle.GetValue():
+      cs = self.filt_crystal.system.GetValue()
+    else:
+      cs = None
 
     if self.filt_uc.toggle.GetValue():
-      uc = ', '.join([
-                      self.filt_uc.a.GetValue(),
-                      self.filt_uc.b.GetValue(),
-                      self.filt_uc.c.GetValue(),
-                      self.filt_uc.alpha.GetValue(),
-                      self.filt_uc.beta.GetValue(),
-                      (self.filt_uc.gamma.GetValue())
-                      ])
+      f_uc = ', '.join([
+        self.filt_uc.a.GetValue(),
+        self.filt_uc.b.GetValue(),
+        self.filt_uc.c.GetValue(),
+        self.filt_uc.alpha.GetValue(),
+        self.filt_uc.beta.GetValue(),
+        (self.filt_uc.gamma.GetValue())
+      ])
       tolerance = self.filt_uc.tolerance.GetValue()
+      if str(tolerance).lower() == 'none':
+        tolerance = 0.05
     else:
-      uc = None
+      f_uc = None
       tolerance = None
 
     if self.filt_ref.toggle.GetValue():
@@ -1805,9 +1832,10 @@ class BackendOptions(BaseBackendDialog):
       '  filter',
       '    {',
       '      flag_on = {}'.format(filter_on),
-      '      target_pointgroup = {}'.format(lattice),
-      '      target_unit_cell = {}'.format(uc),
-      '      target_uc_tolerance = {}'.format(tolerance),
+      '      crystal_system = {}'.format(cs),
+      '      pointgroup = {}'.format(pg),
+      '      unit_cell = {}'.format(f_uc),
+      '      uc_tolerance = {}'.format(tolerance),
       '      min_reflections = {}'.format(ref),
       '      min_resolution = {}'.format(res),
       '    }',
@@ -2107,6 +2135,7 @@ class ViewerWarning(BaseDialog):
                         label_style=label_style,
                         content_style=content_style,
                         size=(400, 400),
+                        title='Select from {} images'.format(img_list_length),
                         *args, **kwargs)
 
     self.img_list_length = img_list_length
@@ -2114,7 +2143,7 @@ class ViewerWarning(BaseDialog):
 
     self.opt_sizer = wx.FlexGridSizer(6, 3, 10, 10)
 
-    self.rb1_img_view = wx.RadioButton(self, label='First 1 image',
+    self.rb1_img_view = wx.RadioButton(self, label='First image',
                                        style=wx.RB_GROUP)
     self.rb2_img_view = wx.RadioButton(self, label='First 10 images')
     self.rb3_img_view = wx.RadioButton(self, label='First 50 images')
@@ -2140,7 +2169,8 @@ class ViewerWarning(BaseDialog):
     if self.img_list_length < 50:
       self.rb3_img_view.Disable()
     if self.img_list_length < 10:
-      self.rb3_img_view.Disable()
+      self.rb2_img_view.Disable()
+    self.rb1_img_view.SetValue(True)
 
     self.main_sizer.Add(self.opt_sizer, flag=wx.ALL, border=10)
 
@@ -2172,9 +2202,7 @@ class ViewerWarning(BaseDialog):
       self.opt_custom.SetValue('')
 
   def onOK(self, e):
-    if self.rb1_img_view.GetValue():
-      self.no_images = '1'
-    elif self.rb2_img_view.GetValue():
+    if self.rb2_img_view.GetValue():
       self.no_images = '1-10'
     elif self.rb3_img_view.GetValue():
       self.no_images = '1-50'
@@ -2184,6 +2212,8 @@ class ViewerWarning(BaseDialog):
       self.no_images = '1-{}'.format(self.img_list_length)
     elif self.rb_custom.GetValue():
       self.no_images = self.opt_custom.GetValue()
+    else:
+      self.no_images = 1
     self.EndModal(wx.ID_OK)
 
 
@@ -2241,7 +2271,7 @@ class RecoveryDialog(BaseDialog):
       if os.path.isfile(final_file):
         img_id = 0       # "finished" icon
         status = 'Finished'
-      elif os.path.isfile(os.path.join(pathlist[i], '.abort.tmp')):
+      elif os.path.isfile(os.path.join(pathlist[i], '.aborted.tmp')):
         img_id = 1       # "aborted" icon
         status = 'Aborted'
       else:

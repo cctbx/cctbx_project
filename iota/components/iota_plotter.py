@@ -5,7 +5,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 11/21/2018
+Last Changed: 01/30/2019
 Description : IOTA Plotter module. Exists to provide custom MatPlotLib plots
               that are dynamic, fast-updating, interactive, and keep up with
               local wxPython upgrades.
@@ -76,16 +76,12 @@ class Plotter(IOTABasePanel):
 
   def __init__(self, parent,
                params=None,
-               final_objects=None,
-               # viz_dir=None,
+               info=None,
                *args, **kwargs):
     IOTABasePanel.__init__(self, parent=parent, *args, **kwargs)
-    self.final_objects = final_objects
+    self.info = info
     self.params = params
     # if viz_dir:
-    #   self.hm_file = os.path.join(viz_dir, 'heatmap.pdf')
-    #   self.xy_file = os.path.join(viz_dir, 'beam_xy.pdf')
-    #   self.hi_file = os.path.join(viz_dir, 'res_histogram.pdf')
 
     self.font = {'fontfamily':'sans-serif', 'fontsize':12}
 
@@ -97,8 +93,8 @@ class Plotter(IOTABasePanel):
   def plot_res_histogram(self):
 
     # Get resolution values
-    hres = [i.final['res'] for i in self.final_objects]
-    lres = [i.final['lres'] for i in self.final_objects]
+    hres = zip(*self.info.stats['res']['lst'])[2]
+    lres = zip(*self.info.stats['lres']['lst'])[2]
 
     # Plot figure
     gsp = gridspec.GridSpec(2, 1)
@@ -125,12 +121,12 @@ class Plotter(IOTABasePanel):
 
   def plot_spotfinding_heatmap(self):
 
-    hlist = [i.final['sph'] for i in self.final_objects]
-    alist = [i.final['spa'] for i in self.final_objects]
+    hlist = self.info.stats['h']['lst']
+    alist = self.info.stats['a']['lst']
 
     ch = max(hlist) - min(hlist) + 1
     ca = max(alist) - min(alist) + 1
-    ints = [(i.final['sph'], i.final['spa']) for i in self.final_objects]
+    ints = zip(hlist, alist)
     ic = Counter(ints)
 
     hm_data = np.zeros((ch, ca))
@@ -171,10 +167,36 @@ class Plotter(IOTABasePanel):
         predicted mis-indexing shift by L +/- 1 (calculated for each axis).
     """
 
-    # Get values
-    calculator = Calculator(final_objects=self.final_objects)
-    beamX, beamY, cbeamX, cbeamY, obeamX, obeamY, \
-    beam_dist, distances, aD, bD, cD, pixel_size = calculator.calculate_beam_xy()
+    # Calculate beam center coordinates and distances
+    beamX = zip(*self.info.stats['beamX']['lst'])[2]
+    beamY = zip(*self.info.stats['beamY']['lst'])[2]
+    beamZ = zip(*self.info.stats['distance']['lst'])[2]
+    beamXY = zip(beamX, beamY)
+
+    beam_dist = [math.hypot(i[0] - np.median(beamX), i[1] - np.median(beamY))
+                 for i in beamXY]
+    beam_dist_std = np.std(beam_dist)
+    beamXYdist = zip(beamX, beamY, beam_dist)
+
+    # Separate out outliers
+    outliers = [i for i in beamXYdist if i[2] > 2 * beam_dist_std]
+    clean = [i for i in beamXYdist if i[2] <= 2 * beam_dist_std]
+    cbeamX = [i[0] for i in clean]
+    cbeamY = [j[1] for j in clean]
+    obeamX = [i[0] for i in outliers]
+    obeamY = [j[1] for j in outliers]
+
+    wavelength = self.info.stats['wavelength']['median']
+    det_distance = self.info.stats['distance']['median']
+    a = np.median([i[0] for i in self.info.cluster_iterable])
+    b = np.median([i[1] for i in self.info.cluster_iterable])
+    c = np.median([i[2] for i in self.info.cluster_iterable])
+
+    # Calculate predicted L +/- 1 misindexing distance for each cell edge
+    aD = det_distance * math.tan(2 * math.asin(wavelength / (2 * a)))
+    bD = det_distance * math.tan(2 * math.asin(wavelength / (2 * b)))
+    cD = det_distance * math.tan(2 * math.asin(wavelength / (2 * c)))
+
 
     # Plot figure
     if threeD:
@@ -192,8 +214,8 @@ class Plotter(IOTABasePanel):
     xmin = round(np.median(beamX) - ax1_delta)
     ymax = round(np.median(beamY) + ax1_delta)
     ymin = round(np.median(beamY) - ax1_delta)
-    zmax = round(np.ceil(np.max(distances)))
-    zmin = round(np.floor(np.min(distances)))
+    zmax = round(np.ceil(self.info.stats['distance']['max']))
+    zmin = round(np.floor(self.info.stats['distance']['min']))
 
     ax1.set_xlim(xmin, xmax)
     ax1.set_ylim(ymin, ymax)
@@ -202,8 +224,10 @@ class Plotter(IOTABasePanel):
 
     # Plot beam center scatter plot
     if threeD:
-      ax1.scatter(beamX, beamY, distances, alpha=1, s=20, c='grey', lw=1)
-      ax1.plot([np.median(beamX)], [np.median(beamY)], [np.median(distances)],
+      ax1.scatter(beamX, beamY, beamZ, alpha=1, s=20, c='grey', lw=1)
+      ax1.plot([self.info.stats['beamX']['median']],
+               [self.info.stats['beamY']['median']],
+               [self.info.stats['distance']['median']],
                markersize=8, marker='o', c='yellow', lw=2)
     else:
       ax1.scatter(cbeamX, cbeamY, alpha=1, s=20, c='grey', lw=1)
@@ -243,58 +267,3 @@ class Plotter(IOTABasePanel):
       ax2.set_ylabel('No. of images', fontsize=15)
 
     self.figure.set_tight_layout(True)
-
-class Calculator():
-  def __init__(self, final_objects=None):
-    self.final_objects = final_objects
-
-  def calculate_beam_xy(self):
-    """ calculates beam xy and other parameters """
-    info = []
-
-    # Import relevant info
-    pixel_size = self.final_objects[0].final['pixel_size']
-    for i in [j.final for j in self.final_objects]:
-      try:
-        info.append([i, i['beamX'], i['beamY'], i['wavelength'], i['distance'],
-                    (i['a'], i['b'], i['c'], i['alpha'], i['beta'], i['gamma'])])
-      except IOError as e:
-        print ('IOTA ANALYSIS ERROR: BEAMXY failed! ', e)
-        pass
-
-    # Calculate beam center coordinates and distances
-    beamX = [i[1] for i in info]
-    beamY = [j[2] for j in info]
-    beam_dist = [math.hypot(i[1] - np.median(beamX), i[2] - np.median(beamY))
-                 for i in info]
-    beam_dist_std = np.std(beam_dist)
-    img_list = [[i[0], i[1], i[2], i[3], i[4], i[5], j] for i, j in zip(info,
-                                                                beam_dist)]
-
-    # Separate out outliers
-    outliers = [i for i in img_list if i[3] > 2 * beam_dist_std]
-    clean = [i for i in img_list if i[3] <= 2 * beam_dist_std]
-    cbeamX = [i[1] for i in clean]
-    cbeamY = [j[2] for j in clean]
-    obeamX = [i[1] for i in outliers]
-    obeamY = [j[2] for j in outliers]
-
-    # Calculate median wavelength, detector distance and unit cell params from
-    # non-outliers only
-    wavelengths = [i[3] for i in clean]
-    distances = [i[4] for i in clean]
-    cells = [i[5] for i in clean]
-
-    wavelength = np.median(wavelengths)
-    det_distance = np.median(distances)
-    a = np.median([i[0] for i in cells])
-    b = np.median([i[1] for i in cells])
-    c = np.median([i[2] for i in cells])
-
-    # Calculate predicted L +/- 1 misindexing distance for each cell edge
-    aD = det_distance * math.tan(2 * math.asin(wavelength / (2 * a)))
-    bD = det_distance * math.tan(2 * math.asin(wavelength / (2 * b)))
-    cD = det_distance * math.tan(2 * math.asin(wavelength / (2 * c)))
-
-    return beamX, beamY, cbeamX, cbeamY, obeamX, obeamY, beam_dist, \
-           [i[4] for i in info], aD, bD, cD, pixel_size

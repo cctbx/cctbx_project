@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 11/29/2018
+Last Changed: 01/30/2019
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -138,9 +138,9 @@ def main_log(logfile, entry, print_tag=False):
   if print_tag:
     print (entry)
 
-def set_base_dir(dirname=None, sel_flag=False, out_dir=None):
-  """ Generates a base folder for converted pickles and/or grid search and/or
-      integration results; creates subfolder numbered one more than existing
+def set_base_dir(dirname=None, sel_flag=False, out_dir=None, get_run_no=False):
+  """ Generates a base folder for converted pickles and/or integration results;
+      creates subfolder numbered one more than existing
   """
   if out_dir is None and dirname is not None:
     path = os.path.abspath(os.path.join(os.curdir, dirname))
@@ -151,21 +151,23 @@ def set_base_dir(dirname=None, sel_flag=False, out_dir=None):
   else:
     path = os.path.join(os.path.abspath(out_dir), dirname)
 
+  run_no = 1
   if os.path.isdir(path):
     dirs = [d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]
     dirnums = [int(d) for d in dirs if d.isdigit()]
     if len(dirnums) > 0:
       n_top = max(dirnums)
       if sel_flag:
-        new_path = "{}/{:03d}".format(path, n_top)
+        run_no = n_top
       else:
-        new_path = "{}/{:03d}".format(path, n_top + 1)
-    else:
-      new_path = "{}/{:03d}".format(path, 1)
-  else:
-    new_path = "{}/001".format(path)
+        run_no = n_top + 1
 
-  return new_path
+  new_path = "{}/{:03d}".format(path, run_no)
+
+  if get_run_no:
+    return new_path, run_no
+  else:
+    return new_path
 
 def find_base_dir(dirname):
   """ Function to determine the current folder name """
@@ -210,24 +212,42 @@ def make_filename(path, prefix=None, suffix=None, new_ext=None):
   else:
     fn_list = bname.split('.')
     filename = '.'.join(fn_list[0:-1])
-
   if prefix:
     filename = "{}_{}".format(prefix, filename)
-
   if suffix:
     filename = "{}_{}".format(filename, suffix)
-
   if new_ext:
     filename = "{}.{}".format(filename, new_ext)
-
   return filename
 
-def iota_exit(silent=False):
+def iota_exit(silent=False, msg=None):
   if not silent:
     from iota import iota_version, now
+    if msg:
+      print (msg)
     print ('\n\nIOTA version {0}'.format(iota_version))
     print ('{}\n'.format(now))
   sys.exit()
+
+def get_size(obj, seen=None):
+  """Recursively finds size of objects (by Wissam Jarjoui at SHippo,
+     https://goshippo.com/blog/measure-real-size-any-python-object/)"""
+  size = sys.getsizeof(obj)
+  if seen is None:
+    seen = set()
+  obj_id = id(obj)
+  if obj_id in seen:
+    return 0
+  seen.add(obj_id)
+  if isinstance(obj, dict):
+    size += sum([get_size(v, seen) for v in obj.values()])
+    size += sum([get_size(k, seen) for k in obj.keys()])
+  elif hasattr(obj, '__dict__'):
+    size += get_size(obj.__dict__, seen)
+  elif hasattr(obj, '__iter__') and not isinstance(obj,(str, bytes, bytearray)):
+    size += sum([get_size(i, seen) for i in obj])
+
+  return size
 
 
 # ------------------------------ Input Finder -------------------------------- #
@@ -253,14 +273,14 @@ class InputFinder():
       2. Automatically recursive
       3. Automatically returns absolute paths
       4. Can be further modified in command line (size of file, wildcards, etc.)
-    :param min_back:
+    :param min_back: return only files last modified this many minutes ago
     :param as_string: boolean, if true will return file list as a string, if false, as list
     :param ignore_ext:  will ignore extensions as supplied
     :param ext_only: will only find files with these extensions
     :param path: path to all data (top of folder tree)
     :param last: path to last file in a previously-generated input list (
     useful when using this to look for new files in the same folder)
-    :return filepaths: list of absolute file paths
+    :return filepaths: list (or string) with absolute file paths
     """
     if last is not None:
       newer_than = '-newer {}'.format(last)
@@ -279,6 +299,8 @@ class InputFinder():
       filepaths = [path for path in filepaths if path.endswith(ext_only)]
     filepaths = [path for path in filepaths if not
                  os.path.basename(path).startswith('.')]
+
+    filepaths = [os.path.abspath(p) for p in filepaths]
 
     if as_string:
       return '\n'.join(filepaths)
@@ -489,7 +511,7 @@ class InputFinder():
              input_type: type of input file(s)
     """
 
-    input_list = None
+    input_list = []
     input_type = None
     suffix = 'file'
 
@@ -505,33 +527,32 @@ class InputFinder():
       input_list = self.get_file_list(path, last=last, min_back=min_back)
       suffix = "folder"
 
-    if input_list is None:
-      return [], None
-
-    if len(input_list) > 0:
+    if len(input_list) > 1:
       input_pairs = [(filepath, self.identify_file_type(filepath)) for
         filepath in input_list]
 
       if filter:
-        input_pairs = [i for i in input_pairs if filter_type in i[1]]
-        input_pairs = [i for i in input_pairs if not '_tmp' in i[0]]
+        if filter_type == 'self':
+          filter_type = self.get_list_type(file_list=input_list).replace(' folder', '')
+        input_pairs = [i for i in input_pairs if
+                       (filter_type in i[1] and not '_tmp' in i[0])]
 
       if len(input_pairs) > 0:
         input_list = [i[0] for i in input_pairs]
         input_types = [i[1] for i in input_pairs]
         consensus_type = Counter(input_types).most_common(1)[0][0]
         input_type = '{} {}'.format(consensus_type, suffix)
-      else:
-        return [], None
 
-    # sort input by filename and ensure type is str and not unicode
-    input_list = list(map(str, sorted(input_list, key=lambda i: i)))
+        # sort input by filename and ensure type is str and not unicode
+        input_list = list(map(str, sorted(input_list, key=lambda i: i)))
 
     return input_list, input_type
 
-  def get_folder_type(self, path):
-    if os.path.isdir(path):
+  def get_list_type(self, path=None, file_list=None):
+    if path and os.path.isdir(path):
       file_list = self.get_file_list(path=path)
+
+    if file_list:
       input_types = [self.identify_file_type(f) for f in file_list]
 
       # Images can be outnumbered by other files in a folder; for that
@@ -553,16 +574,15 @@ class InputFinder():
       if file_type == 'file list':
         with open(path, 'r') as f:
           input_list = [i.rstrip('\n') for i in f.readlines()]
-          input_types = [self.identify_file_type(f) for f in input_list]
-          consensus_type = Counter(input_types).most_common(1)[0][0]
-          input_type = '{} list'.format(consensus_type)
+          consensus_type = self.get_list_type(file_list=input_list)
+          input_type = consensus_type.replace('folder', 'list')
       else:
         input_type = file_type
       return input_type
     else:
       return 'unknown'
 
-  def make_input_list(self, input_entries,
+  def make_input_list(self, input,
                       filter=False,
                       filter_type=None,
                       last=None,
@@ -572,12 +592,18 @@ class InputFinder():
     :param filter_type:
     :param last:
     :param min_back:
-    :param input_entries: a list of input paths
+    :param input: one or multiple input paths
     :return: input list: a list of input files
     """
 
+
+    if 'scope_extract' in type(input).__name__:
+      input = [str(i) for i in input if i is not None]
+    elif type(input) == str:
+      input = [input]
+
     input_list = []
-    for path in input_entries:
+    for path in input:
       if path is not None:
         filepaths, _ = self.get_input(path, filter=filter,
                                       filter_type=filter_type,
@@ -586,6 +612,53 @@ class InputFinder():
         input_list.extend(filepaths)
     return input_list
 
+  def process_mixed_input(self, input):
+    input_dict = dict(paramfile=None,
+                      imagefiles=[], imagepaths=[],
+                      objectfiles=[], objectpaths=[],
+                      neither=[], badpaths=[])
+
+    if type(input) == str:
+      input = [input]
+
+    for path in input:
+      if os.path.exists(path):
+        if 'IOTA settings' in self.get_file_type(path):
+          input_dict['paramfile'] = path
+
+          # If there's a paramfile, get data from it first (will always be
+          # imagefiles, never objects!)
+          from iota.components.iota_input import get_input_phil
+          phil, _ = get_input_phil(paramfile=input_dict['paramfile'])
+          prm = phil.extract()
+          input_dict['imagefiles'].extend(self.make_input_list(prm.input))
+          input_dict['imagepaths'].extend(prm.input)
+        else:
+          contents, ctype = self.get_input(path, filter=True, filter_type='self')
+          if type(contents) == str:
+            contents = [contents]
+          if 'object' in ctype:
+            input_dict['objectfiles'].extend(contents)
+            input_dict['objectpaths'].append(os.path.abspath(path))
+          elif 'image' in ctype:
+            input_dict['imagefiles'].extend(contents)
+            input_dict['imagepaths'].append(os.path.abspath(path))
+          else:
+            input_dict['neither'].extend(contents)
+            input_dict['badpaths'].append(os.path.abspath(path))
+      else:
+        input_dict['badpaths'].append(os.path.abspath(path))
+
+      # Resolve duplicates
+      if input_dict['imagefiles']:
+        input_dict['imagefiles'] = list(set(input_dict['imagefiles']))
+
+      if input_dict['objectfiles']:
+        input_dict['objectfiles'] = list(set(input_dict['objectfiles']))
+
+    return input_dict
+
+ginp = InputFinder()
 
 class ObjectFinder(object):
   """ A class for finding pickled IOTA image objects and reading in their
@@ -594,7 +667,7 @@ class ObjectFinder(object):
 
   def __init__(self):
     """ Constructor """
-    self.ginp = InputFinder()
+    pass
 
   def find_objects(self, obj_folder, read_object_files=None,
                    find_old=False, finished_only=False):
@@ -612,9 +685,9 @@ class ObjectFinder(object):
       min_back = -1
 
     # Find objects and filter out already-read objects if any
-    object_files = self.ginp.get_file_list(obj_folder,
-                                           ext_only='int',
-                                           min_back=min_back)
+    object_files = ginp.get_file_list(obj_folder,
+                                      ext_only='int',
+                                      min_back=min_back)
 
     if read_object_files is not None:
       new_object_files = list(set(object_files) - set(read_object_files))
@@ -650,6 +723,7 @@ class ObjectFinder(object):
       print ('OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e))
       return None
 
+gobj = ObjectFinder()
 
 # ---------------------------------- Other ----------------------------------- #
 

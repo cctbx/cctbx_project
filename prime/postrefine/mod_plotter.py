@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/25/2016
-Last Changed: 10/21/2018
+Last Changed: 01/30/2019
 Description : PRIME Result Plotter module
 '''
 
@@ -117,8 +117,7 @@ class Plotter(IOTABasePanel):
                    self.info['n_frames_bad_SE'][-1]
     t1_data = [['{}'.format(self.info['n_frames_good'][-1])],
                ['{}'.format(n_frames_bad)],
-               ['{}'.format(self.info['space_group_info'][
-                              -1].symbol_and_number())],
+               ['{}'.format(self.info['space_group_info'][-1])],
                [''],
                ['{}'.format(uc_edges)],
                ['{}'.format(uc_angles)],

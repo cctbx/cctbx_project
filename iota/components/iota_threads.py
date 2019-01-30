@@ -3,15 +3,14 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 11/29/2018
+Last Changed: 01/30/2019
 Description : IOTA GUI Threads and PostEvents
 '''
 
 import os
 import wx
 import shutil
-from threading import Thread, enumerate
-import numpy as np
+from threading import Thread
 
 from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
@@ -25,12 +24,12 @@ import sys
 import signal
 
 from xfel.clustering.cluster import Cluster
-from cctbx import crystal, miller, statistics
+from cctbx import crystal
 from cctbx.uctbx import unit_cell
 from cctbx.sgtbx import lattice_symmetry
-from cctbx.array_family import flex
 
 from iota.components.iota_utils import InputFinder, Capturing, IOTATermination
+from iota.components.iota_analysis import Analyzer
 
 ginp = InputFinder()
 
@@ -52,11 +51,11 @@ EVT_OBJDONE = wx.PyEventBinder(tp_EVT_OBJDONE, 1)
 
 class ImageFinderAllDone(wx.PyCommandEvent):
   """ Send event when finished all cycles  """
-  def __init__(self, etype, eid, image_list=None):
+  def __init__(self, etype, eid, input_list=None):
     wx.PyCommandEvent.__init__(self, etype, eid)
-    self.image_list = image_list
+    self.input_list = input_list
   def GetValue(self):
-    return self.image_list
+    return self.input_list
 
 class ObjectFinderAllDone(wx.PyCommandEvent):
   """ Send event when finished all cycles  """
@@ -76,34 +75,29 @@ class AllDone(wx.PyCommandEvent):
 
 class JobSubmitThread(Thread):
   """ Thread for easy_run submissions so that they don't block GUI """
-  def __init__(self, parent, params, output_folder, abort_file):
+  def __init__(self, parent, params, out_type='gui_silent'):
     Thread.__init__(self)
     self.parent = parent
     self.params = params
     self.job_id = None
 
-    # New processing submit: run iota_process.py in all cases w/ different
-    # commands
-    init_path = os.path.join(output_folder, 'init.cfg')
-    backend = params.advanced.processing_backend
-
-    iota_cmd = 'iota.process {}'.format(init_path)
-    if params.mp.submit_command:
-      self.command = params.mp.submit_command.replace('<iota_command>', iota_cmd)
+    # Enforce silent run if on mp queue (unless need debug statements)
+    if self.params.mp.method != 'multiprocessing' and out_type != 'gui_debug':
+      self.out_type = 'gui_silent'
     else:
-      self.command = iota_cmd
+      self.out_type = out_type
 
-  def abort(self):
-    if self.params.mp.kill_command:
-      kill = CustomRun(command=self.params.mp.kill_command)
+  def submit(self):
+    run_path = self.parent.info.int_base
+    iota_cmd = 'iota.run --run_path {} -o {}'.format(run_path, self.out_type)
+    if self.params.mp.submit_command:
+      command = self.params.mp.submit_command.replace('<iota_command>', iota_cmd)
     else:
-      self.job.kill_thread()
+      command = iota_cmd
 
-  def run(self):
-    if self.command is not None:
-      print(self.command)
-      self.job = CustomRun(command=self.command,
-                           join_stdout_stderr=True)
+    if command is not None:
+      print(command)
+      self.job = CustomRun(command=str(command), join_stdout_stderr=True)
       self.job.run()
       self.job.show_stdout()
       if self.job_id is not None:
@@ -113,278 +107,89 @@ class JobSubmitThread(Thread):
       print('IOTA ERROR: COMMAND NOT ISSUED!')
       return
 
-class ObjectCruncher():
-  def __init__(self, info, source, n_proc=None):
-    self.info = info
-    self.new_finished_objects = []
-    self.source = source
-    self.n_proc = n_proc
-
-  def get_object_filenames(self, filepath):
-    """ Reads file from bookmark and appends new object filenames to table
-
-        Note: reading from file takes slightly longer to get going than
-        directly looking for objects, but is much faster, with less chance of
-        skipping a file when several are written simultaneously
-    """
-
-    if os.path.isfile(filepath):
-      with open(filepath, 'r') as olf:
-        olf.seek(self.info.bookmark)
-        new_filenames = [l.replace('\n', '') for l in olf.readlines()]
-        self.info.bookmark = olf.tell()
+  def abort(self):
+    if self.params.mp.kill_command:
+      CustomRun(command=self.params.mp.kill_command)
     else:
-      new_filenames = []
-
-    return new_filenames
-
-  def objects_from_folder(self, dir):
-    return ginp.get_file_list(dir, ext_only='int')
-
-  def read_object(self, filepath):
-    """ Reads (using easy_pickle) an object pickle and extracts relevant
-    information; this will be put into the various lists and dictionaries in
-    the info object; the full image-associated object will also be saved
-
-    :param filepath: path to object file
-    :return: SingleImage object
-    """
-    try:
-      obj = ep.load(filepath)
-      if obj and obj.status == 'final':
-        return obj
-      else:
-        return None
-    except EOFError as e:
-      print ('OBJECT_IMPORT_ERROR: ', e)
-      return None
-
-  def get_new_finished_objects(self):
-
-    if os.path.isdir(self.source):
-      new_filenames = self.objects_from_folder(dir=self.source)
-    elif os.path.isfile(self.source):
-      new_filenames = self.get_object_filenames(filepath=self.source)
-    else:
-      new_filenames = []
-    self.info.unread_files.extend(new_filenames)
-
-    if self.n_proc:
-      objects = parallel_map(iterable=self.info.unread_files,
-                             func=self.read_object,
-                             processes=self.n_proc)
-    else:
-      objects = [self.read_object(fn) for fn in self.info.unread_files]
-
-    finished = [o for o in objects if o is not None]
-    read_files = [o.obj_file for o in finished]
-    self.new_finished_objects.extend(finished)
-
-    if read_files:
-      self.info.unread_files = [f for f in self.info.unread_files if f not in
-                             read_files]
-
-  def populate_data_points(self, obj):
-    # Don't do for images that failed processing at any point
-    if obj.fail:
-      return obj
-
-    try:
-      # Get processing statistics
-      self.info.nref_list[obj.img_index - 1] = obj.final['strong']
-      self.info.res_list[obj.img_index - 1] = obj.final['res']
-
-      # Get observations if not in obj.final already
-      if 'observations' not in obj.final:
-        obs = None
-        pickle_path = obj.final['final']
-        if os.path.isfile(pickle_path):
-          try:
-            pickle = ep.load(pickle_path)
-          except Exception as e:
-            print('IMAGE_PICKLE_ERROR for {}: {}'.format(pickle_path, e))
-          else:
-            self.info.int_pickles.append(pickle_path)
-            if 'observations' not in obj.final:
-              obs = pickle['observations'][0]
-              obj.final['observations'] = obs
-      else:
-        obs = obj.final['observations']
-
-      # Extract indices and convert to flex array
-      if obs:
-        indices = [i[0] for i in obs]
-        if self.info.idx_array is None:
-          self.info.idx_array = flex.miller_index(indices)
-        else:
-          if indices:
-            self.info.idx_array.extend(flex.miller_index(indices))
-
-      # Determine Wilson B-factor
       try:
-        from cctbx import statistics
-        from prime.postrefine.mod_mx import mx_handler
-        mxh = mx_handler()
-
-        asu_contents = mxh.get_asu_contents(500)
-        observations_as_f = obs.as_amplitude_array()
-        observations_as_f.setup_binner(auto_binning=True)
-        wp = statistics.wilson_plot(observations_as_f, asu_contents,
-                                    e_statistics=True)
-        self.info.b_factors.append(wp.wilson_b)
-      except RuntimeError as e:
-        print ('B_FACTOR_ERROR: ', e)
-        self.info.b_factors.append(0)
-
-      # Create Cluster iterable
-      try:
-        self.info.cluster_iterable.append(
-          [float(obj.final['a']),
-           float(obj.final['b']),
-           float(obj.final['c']),
-           float(obj.final['alpha']),
-           float(obj.final['beta']),
-           float(obj.final['gamma']),
-           obj.final['sg']
-           ])
-
+        self.job.kill_thread()
       except Exception as e:
-        print ('CLUSTER_ITERABLE_ERROR for {}: {}'.format(obj.obj_file, e))
-        pass
-    except Exception as e:
-      print ('OBJECT_ERROR:', e, "({})".format(obj.obj_file))
-
-  def calculate_summary_chart(self):
-
-    failed_triage = len([i for i in self.info.finished_objects if
-                         i.fail in ('failed triage', 'failed import')])
-    failed_idx_int = len([i for i in self.info.finished_objects if
-                          i.fail == 'failed grid search'])
-    failed_filter = len([i for i in self.info.finished_objects if
-                         i.fail == 'failed prefilter' or
-                         i.fail == 'failed filter'])
-    failed_spf = len([i for i in self.info.finished_objects if
-                      i.fail == 'failed spotfinding'])
-    failed_idx = len([i for i in self.info.finished_objects if
-                      i.fail == 'failed indexing'])
-    failed_int = len([i for i in self.info.finished_objects if
-                      i.fail == 'failed integration'])
-    integrated = len([i for i in self.info.finished_objects if
-                      i.fail is None and i.final['final'] is not None])
-    waiting = len(self.info.img_list) - len(self.info.finished_objects)
-
-    categories = [
-      ['failed triage', '#d73027', failed_triage],
-      ['failed indexing / integration', '#f46d43', failed_idx_int],
-      ['failed filter', '#ffffbf', failed_filter],
-      ['failed spotfinding', '#f46d43', failed_spf],
-      ['failed indexing', '#fdae61', failed_idx],
-      ['failed integration', '#fee090', failed_int],
-      ['integrated', '#4575b4', integrated],
-      ['not processed', '#e0f3f8', waiting]
-    ]
-
-    nonzero = [i for i in categories if i[2] > 0]
-    self.info.unprocessed_images = waiting
-    self.info.status_summary = {'nonzero':nonzero,
-                                'names':[i[0] for i in nonzero],
-                                'patches':[None] * len(nonzero)}
-
-  def calculate_proc_plot(self):
-    self.info.nsref_x = np.array([i + 1 for i in
-                              range(len(self.info.img_list))]).astype(np.double)
-    self.info.nsref_y = np.array([np.nan if i == 0 else i for i in
-                                  self.info.nref_list]).astype(np.double)
-    self.info.nsref_median = np.median([i for i in self.info.nref_list if i > 0])
-
-    self.info.res_x = np.array([i + 1 for i in
-                           range(len(self.info.img_list))]).astype(np.double)
-    self.info.res_y = np.array([np.nan if i == 0 else i for i in
-                                self.info.res_list]).astype(np.double)
-    self.info.res_median = np.median([i for i in self.info.res_list if i > 0])
-
-  def calculate_hkl_plot(self):
-
-    try:
-      crystal_symmetry = crystal.symmetry(space_group_symbol=self.info.user_sg)
-    except RuntimeError:
-      crystal_symmetry = crystal.symmetry(space_group_symbol='P1')
-
-    if self.info.idx_array:
-      try:
-        ms = miller.set(crystal_symmetry=crystal_symmetry,
-                        indices=self.info.idx_array, anomalous_flag=False)
-        equiv = ms.multiplicities().merge_equivalents()
-        self.info.merged_indices = equiv.redundancies()
-
-      except Exception as e:
-        print ('HKL ERROR: ', e)
-        self.info.merged_indices = None
-
-
-  def calculate_Wilson_plot(self):
-    pass
-
-  def calc_cycle(self):
-    """ Performs all the object-getting and stats calculations """
-    # Read objects from source
-    if type(self.source) == str:
-      self.get_new_finished_objects()
-    elif type(self.source) == list:
-      self.new_finished_objects = self.source
-
-    # Extract data and add to info object
-    if self.new_finished_objects:
-      if self.n_proc:
-        parallel_map(iterable=self.new_finished_objects,
-                     func=self.populate_data_points,
-                     processes=self.n_proc)
-      else:
-        for obj in self.new_finished_objects:
-          self.populate_data_points(obj=obj)
-      self.info.finished_objects.extend(self.new_finished_objects)
-
-    if self.info.finished_objects:
-      self.calculate_proc_plot()
-      self.calculate_hkl_plot()
-      self.calculate_summary_chart()
+        print ('IOTA JOB ERROR: Cannot kill job thread! {}'.format(e))
 
   def run(self):
-    self.calc_cycle()
-    return self.info
+    return self.submit()
+
+class ObjectReader():
+  def __init__(self):
+    pass
+
+  def update_info(self, info):
+    # # Determine chunk of image objects to check for existing
+    # if self.n_proc:
+    #   chunk = self.n_proc
+    # else:
+    #   chunk = 25
+    # if len(self.info.unread_files) < chunk:
+    #   chunk = len(self.info.unread_files)
+    #
+    # # Create filelist of written image objects
+    # filelist = []
+    # for fp in self.info.unread_files[:chunk]:
+    #   if os.path.isfile(fp):
+    #     filelist.append(fp)
+    #     self.info.unread_files.pop(fp)
+    #
+    # # Perform stat extraction
+    # if filelist:
+    #   from iota.components.iota_analysis import Analyzer
+    #   analyzer = Analyzer(info=self.info)
+    #   stats_OK = analyzer.get_results(filelist=filelist)
+    #   if stats_OK:
+    #     self.info = analyzer.info
+    #     self.obs = analyzer.obs
+
+    finished_objects = info.get_finished_objects_from_file()
+    if finished_objects:
+      analyzer = Analyzer(info=info, gui_mode=True)
+      stats_OK = analyzer.get_results(finished_objects=finished_objects)
+      if stats_OK:
+        return analyzer.info
+    return None
+
+  def run(self, info):
+    return self.update_info(info)
 
 class ObjectReaderThread(Thread):
   """ Thread for reading processed objects and making all calculations for
       plotting in main GUI thread """
-  def __init__(self, parent, source, info=None, info_file=None, n_proc=None):
+  def __init__(self, parent, info=None):
     Thread.__init__(self, name='object_reader')
     self.parent = parent
-    self.info_file = info_file
-    self.obj_worker = ObjectCruncher(info=info, source=source, n_proc=n_proc)
+    self.info = info
+    self.obj_worker = ObjectReader()
 
   def run(self):
-    info = self.obj_worker.run()
-
-    if self.info_file:
-      ep.dump(self.info_file, info)
-    else:
+    info = self.obj_worker.run(self.info)
+    if info:
+      info.export_json()
       evt = ObjectFinderAllDone(tp_EVT_OBJDONE, -1, obj_list=info)
       wx.PostEvent(self.parent, evt)
+
 
 class ImageFinderThread(Thread):
   """ Worker thread generated to poll filesystem on timer. Will check to see
   if any new images have been found. Put on a thread to run in background """
   def __init__(self,
                parent,
-               image_paths,
-               image_list,
+               input,
+               input_list,
                min_back=None,
                last_file=None,
                back_to_thread=False):
     Thread.__init__(self)
     self.parent = parent
-    self.image_paths = image_paths
-    self.image_list = image_list
+    self.input = input
+    self.input_list = input_list
     self.min_back = min_back
     self.last_file = last_file
     self.back_to_thread = back_to_thread
@@ -392,22 +197,17 @@ class ImageFinderThread(Thread):
   def run(self):
     # Poll filesystem and determine which files are new (if any)
 
-    ext_file_list = ginp.make_input_list(self.image_paths,
+    ext_file_list = ginp.make_input_list(self.input,
                                          filter=True,
                                          filter_type='image',
                                          min_back=self.min_back,
                                          last=self.last_file)
-    old_file_list = [i[2] for i in self.image_list]
-    new_file_list = [i for i in ext_file_list if i not in old_file_list]
-
-    # Generate list of new images
-    new_img = [[i, len(ext_file_list) + 1, j] for i, j in enumerate(
-      new_file_list, len(old_file_list) + 1)]
+    new_input_list = list(set(ext_file_list) - set(self.input_list))
 
     if self.back_to_thread:
-      wx.CallAfter(self.parent.onImageFinderDone, new_img)
+      wx.CallAfter(self.parent.onImageFinderDone, new_input_list)
     else:
-      evt = ImageFinderAllDone(tp_EVT_IMGDONE, -1, image_list=new_img)
+      evt = ImageFinderAllDone(tp_EVT_IMGDONE, -1, input_list=new_input_list)
       wx.PostEvent(self.parent, evt)
 
 class ObjectFinderThread(Thread):
@@ -480,11 +280,10 @@ class PRIMEAllDone(wx.PyCommandEvent):
 class PRIMEThread(Thread):
   """ Thread for running all PRIME calculations; will prepare info for plotting
       in main GUI thread """
-  def __init__(self, parent, init,
-               info=None, best_pg=None, best_uc=None):
+  def __init__(self, parent, info, params, best_pg=None, best_uc=None):
     Thread.__init__(self, name='live_prime')
     self.parent = parent
-    self.init = init
+    self.params = params
     self.info = info
     self.best_pg = best_pg
     self.best_uc = best_uc
@@ -510,14 +309,14 @@ class PRIMEThread(Thread):
       from iota.components.iota_analysis import Analyzer
 
       # Create a file with list of integrated pickles (overwrite old file)
-      with open(self.info.finished_pickles_file, 'w') as ff:
-        ff.write('\n'.join(self.info.int_pickles))
+      int_pickles_file = os.path.join(self.info.int_base, 'int_pickles.lst')
+      with open(int_pickles_file, 'w') as ff:
+        ff.write('\n'.join(self.info.categories['integrated'][0]))
 
       # Create PRIME input file
-      analyzer = Analyzer(init=self.init,
-                          all_objects=self.info.finished_objects)
+      analyzer = Analyzer(info=self.info, params=self.params)
 
-      analyzer.prime_data_path = self.info.finished_pickles_file
+      analyzer.prime_data_path = int_pickles_file
       analyzer.cons_pg = self.best_pg
       analyzer.cons_uc = self.best_uc
 
@@ -528,14 +327,14 @@ class PRIMEThread(Thread):
       # Modify specific options based in IOTA settings
       # Queue options
       if (
-              self.init.params.mp.method == 'lsf' and
-              self.init.params.mp.queue is not None
+              self.params.mp.method == 'lsf' and
+              self.params.mp.queue is not None
       ):
         self.pparams.queue.mode = 'bsub'
-        self.pparams.queue.qname = self.init.params.mp.queue
+        self.pparams.queue.qname = self.params.mp.queue
 
       # Number of processors (automatically, 1/2 of IOTA procs)
-      self.pparams.n_processors = int(self.init.params.mp.n_processors / 2)
+      self.pparams.n_processors = int(self.params.mp.n_processors / 2)
 
       # Generate command args
       cmd_args_list = ['n_postref_cycle=0',
@@ -561,9 +360,16 @@ class PRIMEThread(Thread):
         stat_file = stat_files[0]
         if os.path.isfile(stat_file):
           prime_info = ep.load(stat_file)
-          live_prime_info_file = os.path.join(self.init.int_base,
+          live_prime_info_file = os.path.join(self.info.int_base,
                                               'life_prime_info.pickle')
           shutil.copyfile(stat_file, live_prime_info_file)
+
+    # Convert space_group_info object to str, to make compatible with JSON
+    if prime_info:
+      for i in prime_info['space_group_info']:
+        sg = str(i).split('(')[0].rstrip(' ')
+        idx = prime_info['space_group_info'].index(i)
+        prime_info['space_group_info'][idx] = sg
 
     return prime_info
 
@@ -571,7 +377,10 @@ class PRIMEThread(Thread):
   def abort(self):
     # TODO: put in an LSF kill command
     if hasattr(self, 'job'):
-      self.job.kill_thread()
+      try:
+        self.job.kill_thread()
+      except Exception as e:
+        print ('PRIME THREAD ERROR: Cannot terminate thread! {}'.format(e))
 
   def run(self):
     # Generate PRIME input
@@ -580,38 +389,33 @@ class PRIMEThread(Thread):
     # Run PRIME
     if cmd_args:
       # remove previous run to avoid conflict
-      prime_dir = os.path.join(self.init.int_base, 'prime/000')
+      prime_dir = os.path.join(self.info.int_base, 'prime/000')
       if os.path.isdir(prime_dir):
         shutil.rmtree(prime_dir)
 
       # Launch PRIME
-      prime_file = os.path.join(self.init.int_base, 'live_prime.phil')
+      prime_file = os.path.join(self.info.int_base, 'live_prime.phil')
       cmd = 'prime.run {} {}'.format(prime_file, cmd_args)
-      # easy_run.fully_buffered(cmd, join_stdout_stderr=False).show_stderr()
 
       try:
+        # easy_run.fully_buffered(cmd, join_stdout_stderr=True).show_stdout()
         self.job = CustomRun(command=cmd,
                              join_stdout_stderr=True)
         self.job.run()
         prime_info = self.get_prime_stats()
       except Exception as e:
+        import traceback
+        traceback.print_exc()
+
         print ("LIVE PRIME ERROR: ", e)
         prime_info = None
-
-      # try:
-      #   easy_run.fully_buffered(cmd, join_stdout_stderr=True)
-      #   prime_info = self.get_prime_stats()
-      # except Exception as e:
-      #   print ("LIVE PRIME ERROR: ", e)
-      #   prime_info = None
 
     else:
       prime_info = None
 
     # Send signal to UI
-    if prime_info:
-      evt = PRIMEAllDone(tp_EVT_PRIMEDONE, -1, info=prime_info)
-      wx.PostEvent(self.parent, evt)
+    evt = PRIMEAllDone(tp_EVT_PRIMEDONE, -1, info=prime_info)
+    wx.PostEvent(self.parent, evt)
 
 #------------------------------ IMAGE TRACKING ------------------------------ #
 
@@ -855,8 +659,8 @@ class SpotFinderThread(Thread):
       proc_params.output.profile_filename = None
       proc_params.output.integration_pickle = None
 
-      from iota.components.iota_processing import IOTADialsProcessor
-      self.processor = IOTADialsProcessor(params=proc_params)
+      from iota.components.iota_processing import IOTAImageProcessor
+      self.processor = IOTAImageProcessor(phil=proc_params)
 
   def run(self):
     try:
@@ -1177,28 +981,24 @@ class ClusterWorkThread():
 
   def run(self, iterable):
 
-    with Capturing() as junk_output:
-      try:
-        ucs = Cluster.from_iterable(iterable=iterable)
-        clusters, _ = ucs.ab_cluster(5000,
-                                     log=False, write_file_lists=False,
-                                     schnell=True, doplot=False)
-      except Exception:
-        clusters = []
+    # with Capturing() as junk_output:
+    try:
+      ucs = Cluster.from_iterable(iterable=iterable)
+      clusters, _ = ucs.ab_cluster(5000, log=False, write_file_lists=False,
+                                   schnell=True, doplot=False)
+    except Exception:
+      clusters = []
 
-    if len(clusters) > 0:
-      info = []
+    info = []
+    if clusters:
       for cluster in clusters:
-        if self.abort:
-          return None
         uc_init = unit_cell(cluster.medians)
         symmetry = crystal.symmetry(unit_cell=uc_init, space_group_symbol='P1')
         groups = lattice_symmetry.metric_subgroups(input_symmetry=symmetry,
                                                    max_delta=3)
         top_group = groups.result_groups[0]
+        best_sg = str(groups.lattice_group_info()).split('(')[0]
         best_uc = top_group['best_subsym'].unit_cell().parameters()
-        best_sg = top_group['best_subsym'].space_group_info()
-
         uc_no_stdev = "{:<6.2f} {:<6.2f} {:<6.2f} " \
                       "{:<6.2f} {:<6.2f} {:<6.2f} " \
                       "".format(best_uc[0], best_uc[1], best_uc[2],
@@ -1206,11 +1006,7 @@ class ClusterWorkThread():
         cluster_info = {'number': len(cluster.members),
                         'pg': str(best_sg),
                         'uc': uc_no_stdev}
-
         info.append(cluster_info)
-
-    else:
-      info = None
 
     return info
 
@@ -1229,8 +1025,11 @@ class ClusterThread(Thread):
     self.clustering.abort = True
 
   def run(self):
-    info = self.clustering.run(iterable=self.iterable)
-    evt = SpotFinderOneDone(tp_EVT_CLUSTERDONE, -1, info=info)
+    clusters = self.clustering.run(iterable=self.iterable)
+
+    if clusters:
+      clusters = sorted(clusters, key=lambda i: i['number'], reverse=True)
+    evt = SpotFinderOneDone(tp_EVT_CLUSTERDONE, -1, info=clusters)
     wx.PostEvent(self.parent, evt)
 
 
@@ -1281,6 +1080,7 @@ class CustomRun(easy_run.fully_buffered_base):
       stderr = subprocess.STDOUT
     else:
       stderr = subprocess.PIPE
+
     self.p = subprocess.Popen(
       args=self.command,
       shell=True,

@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 11/29/2018
+Last Changed: 01/30/2019
 Description : Subclasses image object and image importer from base classes.
 '''
 
@@ -23,8 +23,11 @@ class SingleImage(SingleImageBase):    # For current cctbx.xfel
     self.img_index = idx
 
 class ImageImporter(ImageImporterBase):
-  def __init__(self, init):
-    ImageImporterBase.__init__(self, init=init)
+  def __init__(self, **kwargs):
+    ImageImporterBase.__init__(self, **kwargs)
+
+    self.auto_threshold = kwargs['threshold'] if 'threshold' in kwargs else False
+    self.estimate_gain = kwargs['gain'] if 'gain' in kwargs else False
 
   def instantiate_image_object(self, filepath, idx=None):
     ''' Instantiate a SingleImage object for current backend
@@ -44,7 +47,7 @@ class ImageImporter(ImageImporterBase):
 
       # Calculate auto-threshold
       # TODO: Revisit this; I REALLY don't like it.
-      if self.iparams.cctbx_xfel.auto_threshold:
+      if self.auto_threshold:
         beamX = self.img_object.final['beamX']
         beamY = self.img_object.final['beamY']
         px_size = self.img_object.final['pixel']
@@ -60,7 +63,7 @@ class ImageImporter(ImageImporterBase):
           error.append('IOTA IMPORT ERROR: Auto-threshold failed! {}'.format(e))
 
       # Estimate gain (or set gain to 1.00 if cannot calculate)
-      if self.iparams.image_import.estimate_gain:
+      if self.estimate_gain:
         with util.Capturing() as junk_output:
           try:
             assert self.img_object.datablock   # Must have datablock here

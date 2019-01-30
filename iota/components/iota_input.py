@@ -3,9 +3,10 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 12/10/2018
+Last Changed: 01/30/2019
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
-              and PHIL defaults if selected.
+              and PHIL defaults if selected. PHILFixer can be used to ensure
+              backwards compatibility with older param sets.
 '''
 
 
@@ -19,20 +20,21 @@ master_phil_str = """
 description = None
   .type = str
   .help = Run description (optional).
-  .multiple = False
-  .optional = True
+  .alias = Description
 input = None
   .type = path
   .multiple = True
   .help = Path to folder with raw data in pickle format, list of files or single file
   .help = Can be a tree with folders
-  .optional = True
+  .style = input_list
 output = $PWD
   .type = path
   .multiple = False
   .help = Base output directory
+  .alias = Project Folder
 image_import
   .help = Parameters for image importing (& triage)
+  .alias = Import Options
 {
   image_triage = True
     .type = bool
@@ -67,6 +69,7 @@ image_import
 }
 analysis
   .help = "Analysis / visualization options."
+  .alias = Analysis Options
 {
   run_clustering = False
     .type = bool
@@ -96,24 +99,27 @@ analysis
 }
 advanced
   .help = "Advanced, debugging and experimental options."
+  .alias = Advanced
 {
   processing_backend = *cctbx.xfel ha14
     .type = choice
     .help = Choose image processing backend software
-  debug = False
-    .type = bool
-    .help = Used for various debugging purposes.
-  experimental = False
-    .type = bool
-    .help = Set to true to run the experimental section of codes
+    .expert_level = 1
+    .alias = Processing Backend
   prime_prefix = prime
     .type = str
     .help = Prefix for the PRIME script filename
+    .expert_level = 0
+    .alias = PRIME Prefix
   temporary_output_folder = None
     .type = path
     .help = If None, temp output goes to <output>/integration/###/tmp/
+    .alias = Temp Folder
+    .expert_level = 1
   image_range
     .help = Use a range of images, e.g. 5 - 1000
+    .expert_level = 0
+    .alias = Image Range
   {
     flag_on = False
       .type = bool
@@ -123,6 +129,8 @@ advanced
   }
   random_sample
     .help = Use a randomized subset of images (or -r <number> option)
+    .expert_level = 0
+    .alias = Random Sample
   {
     flag_on = False
       .type = bool
@@ -133,45 +141,50 @@ advanced
 }
 mp
   .help = Multiprocessing options
+  .alias = Multiprocessing
 {
   n_processors = 0
     .type = int
     .help = No. of processing units
+    .alias = No. Processors
   method = *multiprocessing mpi lsf torq custom
     .type = choice
     .help = Multiprocessing method
+    .alias = Method
   queue = None
     .type = str
     .help = Multiprocessing queue
+    .alias = Queue
   submit_command = None
     .type = str
     .help = Command to submit IOTA job to a queue
+    .alias = Submit Command
   kill_command = None
     .type = str
     .help = Command to kill the current IOTA job submitted to a queue
+    .alias = Kill Command
 }
 """
 
 master_phil = ip.parse(master_phil_str + cctbx_str, process_includes=True)
 
-def get_input_phil(input_source=None, phil_args=None, mode='auto',
-                   ha14=False, gui=False):
+def get_input_phil(paramfile=None, phil_args=None, ha14=False, gui=False):
   ''' Generate PHIL from file, master, and/or command arguments
   :param args: command line arguments
   :param phil_args: PHIL settings as command line arguments
-  :param input_source: file with input settings in PHIL format
-  :param mode:
+  :param paramfile: file with input settings in PHIL format
   :return:
   '''
   from libtbx.phil.command_line import argument_interpreter
   from libtbx.utils import Sorry
 
   # Depending on mode, either read input from file, or generate defaults
-  if mode == 'file':
-    with open(input_source, 'r') as inpf:
+  if paramfile:
+    with open(paramfile, 'r') as inpf:
       user_phil = ip.parse(inpf.read())
     phil_fixer = PHILFixer()
     working_phil = phil_fixer.run(old_phil=user_phil, write_file=True)
+
   else:
     if ha14:
       from iota.components.iota_cctbx_ha14 import ha14_str
@@ -195,28 +208,33 @@ def get_input_phil(input_source=None, phil_args=None, mode='auto',
         phil_args.remove(arg)
       except Sorry:
         pass
-    if len(phil_args) > 0:
-      raise Sorry("Not all arguments processed, remaining: {}".format(phil_args))
 
   # Self-fetch to resolve variables
-  return working_phil.fetch(source=working_phil)
+  working_phil = working_phil.fetch(source=working_phil)
 
-def process_ui_input(args, phil_args, input_source, mode='auto'):
+  return working_phil, phil_args
+
+def process_ui_input(args, phil_args, paramfile, mode='auto'):
   ''' Read and parse parameter file and/or command-line args for IOTA GUI
 
   :param args: command-line arguments upon launch
   :param phil_args: command-line arguments pertaining to IOTA parameters
-  :param input_source: text file with IOTA parameters
+  :param paramfile: text file with IOTA parameters
   :return:
   '''
-  working_phil = get_input_phil(phil_args=phil_args, input_source=input_source,
-                                mode=mode, gui=True)
+  working_phil, bad_args = get_input_phil(phil_args=phil_args,
+                                          paramfile=paramfile,
+                                          gui=True)
   params = working_phil.extract()
 
   # Check for -r option and set random subset parameter
   if args.random > 0:
     params.advanced.random_sample.flag_on = True
     params.advanced.random_sample.number = args.random[0]
+
+  if args.range:
+    params.advanced.image_range.flag_on = True
+    params.advanced.image_range.range = args.range
 
   if args.watch > 0:
     params.gui.monitor_mode = True
@@ -240,9 +258,10 @@ def process_ui_input(args, phil_args, input_source, mode='auto'):
             params.mp.n_processors == 0):
       params.mp.n_processors = int(max_proc / 2)
 
-  return working_phil.format(python_object=params)
+  return working_phil.format(python_object=params), bad_args
 
-def process_input(args, phil_args, input_source, mode='auto', now=None):
+def process_input(args, phil_args, paramfile=None, gui=False,
+                  write_files=False):
   """ Read and parse parameter file and/or command-line args; if none found,
   create a default parameter object
 
@@ -251,31 +270,37 @@ def process_input(args, phil_args, input_source, mode='auto', now=None):
   :param input_source: text file with IOTA parameters (if 'file' mode) or
                        source of images (if 'auto' mode)
   :param mode: Mode of XtermIOTA run. See the InitAll base class
-  :param now: date / time stamp
+  :param gui: Set to True to initialize GUI parameters
   :return: PHIL-formatted parameters
   """
 
-  working_phil = get_input_phil(phil_args=phil_args, ha14=args.ha14,
-                                mode=mode, input_source=input_source)
+  working_phil, bad_args = get_input_phil(phil_args=phil_args, ha14=args.ha14,
+                                          paramfile=paramfile, gui=gui)
 
   # Perform command line check and modify params accordingly
   params = working_phil.extract()
   if args.ha14:
     params.advanced.processing_backend = 'ha14'
 
-  if mode == 'auto':
-    output_dir = os.path.abspath(os.curdir)
-    target_filename = '{}.phil'.format(
-      params.advanced.processing_backend.replace('.', '_'))
-    params.cctbx_xfel.target = os.path.join(output_dir, target_filename)
+  if not params.description:
+    from iota import now
     params.description = 'IOTA parameters auto-generated on {}'.format(now)
-    params.input = [input_source]
-    params.output = output_dir
+
+  if not params.output:
+    params.output = os.path.abspath(os.curdir)
 
   # Check for -r option and set random subset parameter
   if args.random > 0:
     params.advanced.random_sample.flag_on = True
     params.advanced.random_sample.number = args.random[0]
+
+  if args.range:
+    params.advanced.image_range.flag_on = True
+    params.advanced.image_range.range = args.range
+
+  # Set temporary folder path
+  if args.tmp is not None:
+    params.advanced.temporary_output_folder = args.tmp[0]
 
   # Check for -n option and set number of processors override
   # (for parallel map only, for now)
@@ -291,13 +316,31 @@ def process_input(args, phil_args, input_source, mode='auto', now=None):
             params.mp.n_processors == 0):
       params.mp.n_processors = int(max_proc / 2)
 
-  final_phil = working_phil.format(python_object=params)
+  working_phil = working_phil.format(python_object=params)
 
-  if mode == 'auto':
-    write_defaults(os.path.abspath(os.curdir), final_phil.as_str(),
+  if write_files:
+    write_defaults(os.path.abspath(os.curdir), working_phil.as_str(),
                    params.advanced.processing_backend)
 
-  return final_phil
+  return working_phil, bad_args
+
+
+def write_phil(phil_file=None, phil_str=None, dest_file=None,
+               write_target_file=False):
+  assert (phil_file or phil_str)
+
+  if phil_file:
+    with open(phil_file, 'r') as pf:
+      phil = ip.parse(pf.read())
+  elif phil_str:
+    phil = ip.parse(phil_str)
+
+  if write_target_file:
+    assert dest_file
+    with open(dest_file, 'w') as df:
+      df.write(phil.as_str())
+
+  return phil
 
 
 def write_defaults(current_path=None, txt_out=None, method='cctbx_xfel',
@@ -323,141 +366,119 @@ def write_defaults(current_path=None, txt_out=None, method='cctbx_xfel',
 
   if method.lower() in ('cctbx', 'ha14'):
     # This is a deprecated backend from 2014; no longer recommended, may suck
-    default_target_str = '''# -*- mode: conf -*-
-difflimit_sigma_cutoff = 0.01
-distl {
-  peak_intensity_maximum_factor = 1000
-  spot_area_maximum_factor = 20
-  compactness_filter = False
-  method2_cutoff_percentage = 2.5
-}
-integration {
-  background_factor = 2
-  enable_one_to_one_safeguard = True
-  model = user_supplied
-  spotfinder_subset = spots_non-ice
-  mask_pixel_value = -2
-  greedy_integration_limit = True
-  combine_sym_constraints_and_3D_target = True
-  spot_prediction = dials
-  guard_width_sq = 4.
-  mosaic {
-    refinement_target = LSQ *ML
-    domain_size_lower_limit = 4.
-    enable_rotational_target_highsym = True
-  }
-}
-mosaicity_limit = 2.0
-distl_minimum_number_spots_for_indexing = 16
-distl_permit_binning = False
-beam_search_scope = 0.5'''
-
-    # default_target = ['# -*- mode: conf -*-',
-    #                       'difflimit_sigma_cutoff = 0.01',
-    #                       'distl{',
-    #                       '  peak_intensity_maximum_factor=1000',
-    #                       '  spot_area_maximum_factor=20',
-    #                       '  compactness_filter=False',
-    #                       '  method2_cutoff_percentage=2.5',
-    #                       '}',
-    #                       'integration {',
-    #                       '  background_factor=2',
-    #                       '  enable_one_to_one_safeguard=True',
-    #                       '  model=user_supplied',
-    #                       '  spotfinder_subset=spots_non-ice',
-    #                       '  mask_pixel_value=-2',
-    #                       '  greedy_integration_limit=True',
-    #                       '  combine_sym_constraints_and_3D_target=True',
-    #                       '  spot_prediction=dials',
-    #                       '  guard_width_sq=4.',
-    #                       '  mosaic {',
-    #                       '    refinement_target=LSQ *ML',
-    #                       '    domain_size_lower_limit=4.',
-    #                       '    enable_rotational_target_highsym=True',
-    #                       '  }',
-    #                       '}',
-    #                       'mosaicity_limit=2.0',
-    #                       'distl_minimum_number_spots_for_indexing=16',
-    #                       'distl_permit_binning=False',
-    #                       'beam_search_scope=0.5'
-    #                       ]
-    # default_target_str = '\n'.join(default_target)
+    default_target = '''
+    # -*- mode: conf -*-
+    difflimit_sigma_cutoff = 0.01
+    distl{
+      peak_intensity_maximum_factor=1000
+      spot_area_maximum_factor=20
+      compactness_filter=False
+      method2_cutoff_percentage=2.5
+    }
+    integration {
+      background_factor=2
+      enable_one_to_one_safeguard=True
+      model=user_supplied
+      spotfinder_subset=spots_non-ice
+      mask_pixel_value=-2
+      greedy_integration_limit=True
+      combine_sym_constraints_and_3D_target=True
+      spot_prediction=dials
+      guard_width_sq=4.
+      mosaic {
+        refinement_target=LSQ *ML
+        domain_size_lower_limit=4.
+        enable_rotational_target_highsym=True
+      }
+    }
+    mosaicity_limit=2.0
+    distl_minimum_number_spots_for_indexing=16
+    distl_permit_binning=False
+    beam_search_scope=0.5
+    '''
   elif method.lower() in ('dials', 'cctbx.xfel'):
-    default_target_str = '''verbosity=10
-                            spotfinder {
-                              threshold {
-                                dispersion {
-                                  gain = 1
-                                  sigma_strong = 3
-                                  global_threshold = 0
-                                  }
-                               }
-                            }
-                            geometry {
-                              detector {
-                                distance = None
-                                slow_fast_beam_centre = None
-                              }
-                            }
-                            indexing {
-                              refinement_protocol {
-                                n_macro_cycles = 1
-                                d_min_start = 2.0
-                              }
-                              basis_vector_combinations.max_combinations = 10
-                              stills {
-                                indexer = stills
-                                method_list = fft1d real_space_grid_search
-                              }
-                            }
-                            refinement {
-                              parameterisation {
-                                beam.fix = *all in_spindle_plane out_spindle_plane wavelength
-                                detector  {
-                                  fix = all position orientation
-                                  hierarchy_level=0
-                                }
-                                auto_reduction {
-                                  action=fix
-                                  min_nref_per_parameter=1
-                                }
-                              }
-                              reflections {
-                                outlier.algorithm=null
-                                weighting_strategy  {
-                                  override=stills
-                                  delpsi_constant=1000000
-                                }
-                              }
-                            }
-                            integration {
-                              integrator=stills
-                              profile.fitting=False
-                              background {
-                                simple {
-                                  outlier {
-                                    algorithm = null
-                                  }
-                                }
-                              }
-                            }
-                            profile {
-                              gaussian_rs {
-                                min_spots.overall = 0
-                              }
-                            }
-                            '''
+    default_target = '''
+    verbosity=10
+    spotfinder
+    {
+      threshold
+      {
+        dispersion
+        {
+          gain = 1
+          sigma_strong = 3
+          global_threshold = 0
+        }
+      }
+    }
+    geometry
+    {
+      detector
+      {
+        distance = None
+        slow_fast_beam_centre = None
+      }
+    }
+    indexing
+    {
+      refinement_protocol {
+        n_macro_cycles = 1
+        d_min_start = 2.0
+      }
+      basis_vector_combinations.max_combinations = 10
+      stills {
+        indexer = stills
+        method_list = fft1d real_space_grid_search
+      }
+    }
+    refinement
+    {
+      parameterisation {
+        beam.fix = *all in_spindle_plane out_spindle_plane wavelength
+        detector  {
+          fix = all position orientation
+          hierarchy_level=0
+        }
+        auto_reduction {
+          action=fix
+          min_nref_per_parameter=1
+        }
+      }
+      reflections {
+        outlier.algorithm=null
+        weighting_strategy  {
+          override=stills
+          delpsi_constant=1000000
+        }
+      }
+    }
+    integration
+    {
+      integrator=stills
+      profile.fitting=False
+      background {
+        simple {
+          outlier {
+            algorithm = null
+          }
+        }
+      }
+    }
+    profile {
+      gaussian_rs {
+        min_spots.overall = 0
+      }
+    }'''
 
-  target_phil = ip.parse(default_target_str)
   if write_target_file:
     with open(def_target_file, 'w') as targ:
-      targ.write('{}'.format(target_phil.as_str()))
+      targ.write(default_target)
 
   if write_param_file:
     with open('{}/iota.param'.format(current_path), 'w') as default_param_file:
       default_param_file.write(txt_out)
 
-  return target_phil.as_str(), txt_out
+  return ip.parse(default_target), txt_out
 
 def print_params():
   """ Print out master parameters for IOTA """
@@ -488,7 +509,10 @@ class PHILFixer():
       ('mp_method', 'mp.method'),
       ('mp_queue', 'mp.queue'),
       ('advanced.image_viewer', 'gui.image_viewer'),
-      ('advanced.monitor_mode', 'gui.monitor_mode')
+      ('advanced.monitor_mode', 'gui.monitor_mode'),
+      ('cctbx_xfel.filter.target_pointgroup', 'cctbx_xfel.filter.pointgroup'),
+      ('cctbx_xfel.filter.target_unit_cell', 'cctbx_xfel.filter.unit_cell'),
+      ('cctbx_xfel.filter.target_uc_tolerance', 'cctbx_xfel.filter.uc_tolerance')
     ]
 
     self.word_diffs = [
@@ -560,48 +584,6 @@ class PHILFixer():
         else:
           value = wd[2]
     return value
-
-  # def fix_ha14_params(self, params):
-  #   # Renaming of imported images
-  #   if not hasattr(params.cctbx_ha14.image_conversion, 'rename_pickle'):
-  #     prefix = params.cctbx_ha14.image_conversion.rename_pickle_prefix
-  #     if 'none' in str(prefix).lower():
-  #       params.cctbx_ha14.image_conversion.__inject__('rename_pickle',
-  #                                          'keep_file_structure')
-  #       params.cctbx_ha14.image_conversion.rename_pickle_prefix = None
-  #     elif 'auto' in str(prefix).lower():
-  #       params.cctbx_ha14.image_conversion.__inject__('rename_pickle', 'auto_filename')
-  #       params.cctbx_ha14.image_conversion.rename_pickle_prefix = None
-  #     else:
-  #       params.cctbx_ha14.image_conversion.__inject__('rename_pickle', 'custom_filename')
-  #       if hasattr(prefix, '__iter__'):
-  #         if len(prefix) > 1:
-  #           params.cctbx_ha14.image_conversion.rename_pickle_prefix = \
-  #             [i for i in prefix if "*" in i][0].replace('*', '')
-  #         else:
-  #           params.cctbx_ha14.image_conversion.rename_pickle_prefix = prefix[0]
-  #
-  #   if str(params.cctbx_ha14.image_conversion.square_mode).lower() == 'none':
-  #     params.cctbx_ha14.image_conversion.square_mode = 'no_modification'
-  #
-  #   if str(params.cctbx_ha14.image_triage.type).lower() == 'none':
-  #     params.cctbx_ha14.image_triage.type = 'no_triage'
-  #
-  #   if str(params.cctbx_ha14.grid_search.type).lower() == 'none':
-  #     params.cctbx_ha14.grid_search.type = 'no_grid_search'
-  #
-  # def fix_old_phil(self, phil):
-  #   """ Backwards compatibility: convert settings from old format to new """
-  #
-  #   temp_phil = master_phil.fetch(source=phil)
-  #   params = temp_phil.extract()
-  #
-  #   if str(params.analysis.viz).lower() == 'none':
-  #     params.analysis.viz = 'no_visualization'
-  #
-  #   fixed_phil = temp_phil.format(python_object=params)
-  #
-  #   return fixed_phil
 
   def determine_backend(self, phil=None, prm=None):
     # Try to get parameter for backend type (for backwards compatibility)

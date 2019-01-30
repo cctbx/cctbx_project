@@ -5,7 +5,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 11/05/2018
+Last Changed: 01/30/2018
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -20,19 +20,20 @@ import os
 import numpy as np
 from collections import Counter
 import math
-import warnings
 
 try:  # for Py3 compatibility
     import itertools.izip as zip
 except ImportError:
     pass
 
-from six.moves import cPickle as pickle
 from libtbx import easy_pickle as ep
-from cctbx import crystal, uctbx, sgtbx
+from cctbx import crystal, uctbx, statistics
+from cctbx.sgtbx.lattice_symmetry import metric_subgroups
 
 from iota import iota_version, now
 import iota.components.iota_utils as util
+
+from prime.postrefine.mod_mx import mx_handler
 from prime.postrefine import mod_input
 
 def isprop(v):
@@ -44,16 +45,15 @@ class AnalysisResult(object):
 
 class Plotter(object):
 
-  def __init__(self,
-               params,
-               final_objects,
-               viz_dir=None):
+  def __init__(self, params, info):
 
-    self.final_objects = final_objects
+    self.info = info
     self.params = params
-    self.hm_file = os.path.join(viz_dir, 'heatmap.pdf')
-    self.xy_file = os.path.join(viz_dir, 'beam_xy.pdf')
-    self.hi_file = os.path.join(viz_dir, 'res_histogram.pdf')
+    self.final_objects = self.info.get_final_objects()
+
+    self.hm_file = os.path.join(self.info.viz_base, 'heatmap.pdf')
+    self.hi_file = os.path.join(self.info.viz_base, 'res_histogram.pdf')
+    self.xy_file = os.path.join(self.info.viz_base, 'beamXY.pdf')
 
     self.font = {'fontfamily':'sans-serif', 'fontsize':12}
 
@@ -110,7 +110,7 @@ class Plotter(object):
     info = []
 
     # Import relevant info
-    pixel_size = self.final_objects[0].final['pixel_size']
+    pixel_size = self.info.pixel_size
     for i in [j.final for j in self.final_objects]:
       try:
         info.append([i, i['beamX'], i['beamY'], i['wavelength'], i['distance'],
@@ -281,161 +281,192 @@ class Plotter(object):
 class Analyzer(object):
   """ Class to analyze integration results """
 
-  def __init__(self,
-               init,
-               all_objects,
-               gui_mode = False):
+  def __init__(self, info=None, params=None, gui_mode=False):
 
-    self.ver = iota_version
-    self.now = now
-    self.params = init.params
-    self.output_dir = init.int_base
-    self.viz_dir = init.viz_base
+    self.info = info
+    self.params = params
     self.gui_mode = gui_mode
 
-    self.logfile = init.logfile
-    self.prime_data_path = None
+  def get_results(self, finished_objects=None):
+    if not finished_objects:
+      finished_objects = self.info.get_finished_objects()
+      if not finished_objects:
+        return False
+    final_objects = []
 
-    # Create an analysis_result object to save info into
-    AnalysisResult.print_results = self.print_results
-    AnalysisResult.unit_cell_analysis = self.unit_cell_analysis
-    AnalysisResult.print_summary = self.print_summary
-    self.analysis_result = AnalysisResult()
+    if self.gui_mode:
+      self.info.unplotted_stats = {}
+      for key in self.info.stats:
+        self.info.unplotted_stats[key] = dict(lst=[])
 
-    self.cons_pg = None
-    self.cons_uc = None
-    self.clusters = []
+    for obj in finished_objects:
+      if len(self.info.unprocessed) > 0:
+        for item in self.info.unprocessed:
+          if item[0] == obj.img_index:
+            self.info.unprocessed.remove(item)
+            break
 
-    # Analyze image objects
-    self.all_objects = all_objects
-    self.final_objects = [i for i in all_objects if i.fail is None]
+      if len(self.info.categories['not_processed'][0]) > 0:
+        self.info.categories['not_processed'][0].remove(obj.img_path)
 
-    self.analysis_result.__setattr__('image_objects', self.all_objects)
-
-    if self.final_objects is not None:
-      self.sorted_final_images = sorted(self.final_objects,
-                                        key=lambda i: i.final['mos'])
-      self.no_diff_objects = [i for i in self.all_objects if
-                              i.fail == 'failed triage']
-      self.diff_objects = [i for i in self.all_objects if
-                           i.fail != 'failed triage']
-      if self.params.advanced.processing_backend == 'ha14':
-        self.not_int_objects = [i for i in self.all_objects if
-                                i.fail == 'failed grid search']
-        self.filter_fail_objects = [i for i in self.all_objects if
-                                    i.fail == 'failed prefilter']
-      elif self.params.advanced.processing_backend == 'cctbx.xfel':
-        self.not_spf_objects = [i for i in self.all_objects if
-                                i.fail == 'failed spotfinding']
-        self.not_idx_objects = [i for i in self.all_objects if
-                                i.fail == 'failed indexing']
-        self.filter_fail_objects = [i for i in self.all_objects if
-                                    i.fail == 'failed filter']
-        self.not_int_objects = [i for i in self.all_objects if
-                                i.fail == 'failed integration']
-
-      self.hres = [i.final['res'] for i in self.final_objects]
-      self.lres = [i.final['lres'] for i in self.final_objects]
-      self.spots = [i.final['strong'] for i in self.final_objects]
-      self.mos = [i.final['mos'] for i in self.final_objects]
-      if self.params.advanced.processing_backend == 'ha14':
-        self.h = [i.final['sph'] for i in self.final_objects]
-        self.s = [i.final['sih'] for i in self.final_objects]
-        self.a = [i.final['spa'] for i in self.final_objects]
+      if obj.fail:
+        key = obj.fail.replace(' ', '_')
+        if key in self.info.categories:
+          self.info.categories[key][0].append(obj.img_path)
       else:
-        self.s = [0]
-        self.h = [0]
-        self.a = [0]
+        self.info.categories['integrated'][0].append(obj.final['final'])
+        self.info.final_objects.append(obj.obj_file)
+        final_objects.append(obj)
 
-      self.analysis_result.__setattr__('n_all_objects', len(self.all_objects))
-      self.analysis_result.__setattr__('n_diff_objects', len(self.diff_objects))
-      self.analysis_result.__setattr__('n_filter_fail_objects',
-                                       len(self.filter_fail_objects))
-      self.analysis_result.__setattr__('n_final_objects',
-                                       len(self.final_objects))
-      self.analysis_result.__setattr__('n_no_diff_objects',
-                                       len(self.no_diff_objects))
-      self.analysis_result.__setattr__('n_not_int_objects',
-                                       len(self.not_int_objects))
-      if self.params.advanced.processing_backend == 'cctbx.xfel':
-        self.analysis_result.__setattr__('n_not_spf_objects',
-                                         len(self.not_spf_objects))
-        self.analysis_result.__setattr__('n_not_idx_objects',
-                                         len(self.not_idx_objects))
-      self.analysis_result.__setattr__('lres', self.lres)
-      self.analysis_result.__setattr__('hres', self.hres)
-      self.analysis_result.__setattr__('mos', self.mos)
-      self.analysis_result.__setattr__('h', self.h)
-      self.analysis_result.__setattr__('s', self.s)
-      self.analysis_result.__setattr__('a', self.a)
+      if not obj.fail or 'triage' not in obj.fail:
+        self.info.categories['have_diffraction'][0].append(obj.img_path)
+
+    # Calculate processing stats from final objects
+    if final_objects:
+      self.info.pixel_size = final_objects[0].final['pixel_size']
+
+      # Get observations from file
+      try:
+        all_obs = ep.load(self.info.idx_file)
+      except Exception:
+        all_obs = None
+
+      # Collect image processing stats
+      for obj in final_objects:
+        for key in self.info.stats:
+          if key in obj.final:
+            stat_tuple = (obj.img_index, obj.img_path, obj.final[key])
+            self.info.stats[key]['lst'].append(stat_tuple)
+
+            if self.gui_mode:
+              self.info.unplotted_stats[key]['lst'].append(stat_tuple)
+
+        # Unit cells and space groups (i.e. cluster iterable)
+        self.info.cluster_iterable.append(
+          [float(obj.final['a']),
+           float(obj.final['b']),
+           float(obj.final['c']),
+           float(obj.final['alpha']),
+           float(obj.final['beta']),
+           float(obj.final['gamma']),
+           str(obj.final['sg'])
+           ])
+
+        # Get observations from this image
+        obs = None
+        if 'observations' in obj.final:
+          obs = obj.final['observations'].as_non_anomalous_array()
+        else:
+          pickle_path = obj.final['final']
+          if os.path.isfile(pickle_path):
+            try:
+              pickle = ep.load(pickle_path)
+              obs = pickle['observations'][0].as_non_anomalous_array()
+            except Exception as e:
+              print('IMAGE_PICKLE_ERROR for {}: {}'.format(pickle_path, e))
+
+        with util.Capturing():
+          if obs:
+            # Append observations to combined miller array
+            obs = obs.expand_to_p1()
+            if all_obs:
+              all_obs = all_obs.concatenate(obs, assert_is_similar_symmetry=False)
+            else:
+              all_obs = obs
+
+            # Get B-factor from this image
+            try:
+              mxh = mx_handler()
+              asu_contents = mxh.get_asu_contents(500)
+              observations_as_f = obs.as_amplitude_array()
+              observations_as_f.setup_binner(auto_binning=True)
+              wp = statistics.wilson_plot(observations_as_f, asu_contents,
+                                          e_statistics=True)
+              b_factor = wp.wilson_b
+            except RuntimeError as e:
+              b_factor = 0
+              print('B_FACTOR_ERROR: ', e)
+            self.info.b_factors.append(b_factor)
+
+      # Save collected observations to file
+      if all_obs:
+        ep.dump(self.info.idx_file, all_obs)
+
+      # Calculate dataset stats
+      for k in self.info.stats:
+        stat_list = zip(*self.info.stats[k]['lst'])[2]
+        stats = dict(lst  = self.info.stats[k]['lst'],
+                     median = np.median(stat_list),
+                     mean   = np.mean(stat_list),
+                     std    = np.std(stat_list),
+                     max    = np.max(stat_list),
+                     min    = np.min(stat_list),
+                     cons   = Counter(stat_list).most_common(1)[0][0])
+        self.info.stats[k].update(stats)
+      return True
+    else:
+      return False
 
   def print_results(self, final_table=None):
     """ Prints diagnostics from the final integration run. """
 
-    cons_s = Counter(self.s).most_common(1)[0][0]
-    cons_h = Counter(self.h).most_common(1)[0][0]
-    cons_a = Counter(self.a).most_common(1)[0][0]
+    assert self.info
 
-    if final_table is None:
+    if not final_table:
       final_table = ["\n\n{:-^80}\n".format('ANALYSIS OF RESULTS')]
 
-      # In case no images were integrated
-      if self.final_objects is None:
+    if not self.info.categories['integrated']:
         final_table.append('NO IMAGES INTEGRATED!')
-      else:
-        if self.params.advanced.processing_backend == 'ha14':
-          final_table.append("Avg. signal height:    {:<8.3f}  std. dev:   "
-                             "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
-                             "".format(np.mean(self.s), np.std(self.s),
-                                       max(self.s), min(self.s), cons_s))
-          final_table.append("Avg. spot height:      {:<8.3f}  std. dev:   "
-                             "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
-                             "".format(np.mean(self.h), np.std(self.h),
-                                       max(self.h), min(self.h), cons_h))
-          final_table.append("Avg. spot areas:       {:<8.3f}  std. dev:   "
-                             "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
-                            "".format(np.mean(self.a), np.std(self.a),
-                                      max(self.a), min(self.a), cons_a))
-        final_table.append("Avg. resolution:       {:<8.3f}  std. dev:   "
-                           "{:<6.2f}  lowest: {:<6.3f}  highest: {:<6.3f}"
-                          "".format(np.mean(self.hres), np.std(self.hres),
-                                    max(self.hres), min(self.hres)))
-        final_table.append("Avg. number of spots:  {:<8.3f}  std. dev:   {:<6.2f}"
-                          "".format(np.mean(self.spots), np.std(self.spots)))
-        final_table.append("Avg. mosaicity:        {:<8.3f}  std. dev:   {:<6.2f}"
-                          "".format(np.mean(self.mos), np.std(self.mos)))
+    else:
+      label_lens = [len(v['label']) for k, v in self.info.stats.items()]
+      max_label = int(5 * round(float(np.max(label_lens))/5)) + 5
+      for k, v in self.info.stats.items():
+        if k in ('lres', 'res', 'beamX', 'beamY'):
+          continue
+        line = '{: <{l}}:  max = {:<6.2f} min = {:<6.2f} ' \
+               'avg = {:<6.2f} ({:<6.2f})' \
+               ''.format(v['label'], v['max'], v['min'],
+                         v['mean'], v['std'], l=max_label)
+        final_table.append(line)
 
-        # If more than one integrated image, plot various summary graphs
-        if len(self.final_objects) > 1:
-          plot = Plotter(self.params, self.final_objects, self.viz_dir)
-          if self.params.analysis.summary_graphs:
-            if ( self.params.advanced.processing_backend == 'ha14' and
-                    self.params.cctbx_ha14.grid_search.type is not None
-            ):
-              plot.plot_spotfinding_heatmap(write_files=True)
-            plot.plot_res_histogram(write_files=True)
-            med_beamX, med_beamY, pixel_size = plot.plot_beam_xy(write_files=True,
-                                                               return_values=True)
-          else:
-            with warnings.catch_warnings():
-              # To catch any 'mean of empty slice' runtime warnings
-              warnings.simplefilter("ignore", category=RuntimeWarning)
-              beamXY_info = plot.calculate_beam_xy()
-              beamX, beamY = beamXY_info[:2]
-              med_beamX = np.median(beamX)
-              med_beamY = np.median(beamY)
-              pixel_size = beamXY_info[-1]
+      # TODO: Figure out what to do with summary charts
+      # # If more than one integrated image, plot various summary graphs
+      # if len(self.info.categories['integrated']) > 1:
+      #   plot = Plotter(self.params, self.info)
+      #   if self.params.analysis.summary_graphs:
+      #     if ( self.params.advanced.processing_backend == 'ha14' and
+      #             self.params.cctbx_ha14.grid_search.type is not None
+      #     ):
+      #       plot.plot_spotfinding_heatmap(write_files=True)
+      #     plot.plot_res_histogram(write_files=True)
+      #     med_beamX, med_beamY, pixel_size = plot.plot_beam_xy(write_files=True,
+      #                                                        return_values=True)
+      #   else:
+      #     with warnings.catch_warnings():
+      #       # To catch any 'mean of empty slice' runtime warnings
+      #       warnings.simplefilter("ignore", category=RuntimeWarning)
+      #       beamXY_info = plot.calculate_beam_xy()
+      #       beamX, beamY = beamXY_info[:2]
+      #       med_beamX = np.median(beamX)
+      #       med_beamY = np.median(beamY)
+      #       pixel_size = beamXY_info[-1]
 
-          final_table.append("Median Beam Center:    X = {:<4.2f}, Y = {:<4.2f}"
-                             "".format(med_beamX, med_beamY))
-          self.analysis_result.__setattr__('beamX_mm', med_beamX)
-          self.analysis_result.__setattr__('beamY_mm', med_beamY)
-          self.analysis_result.__setattr__('pixel_size', pixel_size)
-      self.analysis_result.__setattr__('final_table', final_table)
+      final_table.append("{: <{l}}:  X = {:<4.2f}, Y = {:<4.2f}"
+                         "".format('Median Beam Center',
+                                   self.info.stats['beamX']['mean'],
+                                   self.info.stats['beamY']['mean'],
+                                   l=max_label))
 
+      # Special entry for resolution last
+      v = self.info.stats['res']
+      final_table.append('{: <{l}}:  low = {:<6.2f} high = {:<6.2f} ' \
+                         'avg = {:<6.2f} ({:<6.2f})' \
+                         ''.format(v['label'], v['max'], v['min'],
+                                   v['mean'], v['std'], l=max_label))
 
     for item in final_table:
-        util.main_log(self.logfile, item, (not self.gui_mode))
+        util.main_log(self.info.logfile, item, False)
+    self.info.update(final_table=final_table)
 
   def unit_cell_analysis(self):
     """ Calls unit cell analysis module, which uses hierarchical clustering
@@ -444,32 +475,25 @@ class Analyzer(object):
         integration without target unit cell specified. """
 
     # Will not run clustering if only one integration result found or if turned off
-    if self.final_objects is None:
-      self.cons_uc = None
-      self.cons_pg = None
-      util.main_log(self.logfile,
+    if not self.info.categories['integrated']:
+      util.main_log(self.info.logfile,
                     "\n\n{:-^80}\n".format(' UNIT CELL ANALYSIS '), True)
-      util.main_log(self.logfile,
+      util.main_log(self.info.logfile,
                     '\n UNIT CELL CANNOT BE DETERMINED!', True)
 
-    elif len(self.final_objects) == 1:
-      unit_cell = (self.final_objects[0].final['a'],
-                   self.final_objects[0].final['b'],
-                   self.final_objects[0].final['c'],
-                   self.final_objects[0].final['alpha'],
-                   self.final_objects[0].final['beta'],
-                   self.final_objects[0].final['gamma'])
-      point_group = self.final_objects[0].final['sg']
-      util.main_log(self.logfile,
+    elif len(self.info.categories['integrated']) == 1:
+      unit_cell = (self.info.cluster_iterable[0][:5])
+      point_group = self.info.cluster_iterable[0][6]
+      util.main_log(self.info.logfile,
                     "\n\n{:-^80}\n".format(' UNIT CELL ANALYSIS '), True)
       uc_line = "{:<6} {:^4}:  {:<6.2f}, {:<6.2f}, {:<6.2f}, {:<6.2f}, "\
                 "{:<6.2f}, {:<6.2f}".format('(1)', point_group,
                       unit_cell[0], unit_cell[1], unit_cell[2],
                       unit_cell[3], unit_cell[4], unit_cell[5])
-      util.main_log(self.logfile, uc_line, True)
+      util.main_log(self.info.logfile, uc_line, True)
 
-      self.cons_pg = point_group
-      self.cons_uc = unit_cell
+      self.info.best_pg = str(point_group)
+      self.info.best_uc = unit_cell
 
     else:
       uc_table = []
@@ -479,30 +503,23 @@ class Analyzer(object):
         # run hierarchical clustering analysis
         from xfel.clustering.cluster import Cluster
         counter = 0
+        self.info.clusters = []
 
         threshold = self.params.analysis.cluster_threshold
         cluster_limit = self.params.analysis.cluster_limit
+        final_pickles = self.info.categories['integrated'][0]
+
+        pickles = []
         if self.params.analysis.cluster_n_images > 0:
-          n_images = self.params.analysis.cluster_n_images
-        else:
-          n_images = len(self.final_objects)
-
-        obj_list = []
-        if n_images < len(self.final_objects):
           import random
-          for i in range(n_images):
-            random_number = random.randrange(0, len(self.final_objects))
-            if self.final_objects[random_number] in obj_list:
-              while self.final_objects[random_number] in obj_list:
-                random_number = random.randrange(0, len(self.final_objects))
-              obj_list.append(self.final_objects[random_number])
-            else:
-              obj_list.append(self.final_objects[random_number])
-
-        if obj_list:
-          pickles = [i.final['final'] for i in obj_list]
+          for i in range(len(self.params.analysis.cluster_n_images)):
+            random_number = random.randrange(0, len(final_pickles))
+            if final_pickles[random_number] in pickles:
+              while final_pickles[random_number] in pickles:
+                random_number = random.randrange(0, len(final_pickles))
+              pickles.append(final_pickles[random_number])
         else:
-          pickles = [i.final['final'] for i in self.final_objects]
+          pickles = final_pickles
 
         # Cluster from files (slow, but will keep for now)
         ucs = Cluster.from_files(pickle_list=pickles)
@@ -530,18 +547,14 @@ class Analyzer(object):
           if len(cluster.members) > cluster_limit:
             counter += 1
 
-            # Sort clustered images by mosaicity, lowest to highest
-            cluster_filenames = [j.path for j in cluster.members]
-            clustered_objects = [i for i in self.final_objects if \
-                                 i.final['final'] in cluster_filenames]
-            sorted_cluster = sorted(clustered_objects,
-                                    key=lambda i: i.final['mos'])
             # Write to file
+            cluster_filenames = [j.path for j in cluster.members]
             if self.params.analysis.cluster_write_files:
-              output_file = os.path.join(self.output_dir, "uc_cluster_{}.lst".format(counter))
-              for obj in sorted_cluster:
+              output_file = os.path.join(self.info.int_base,
+                                         "uc_cluster_{}.lst".format(counter))
+              for fn in cluster_filenames:
                 with open(output_file, 'a') as scf:
-                  scf.write('{}\n'.format(obj.final['final']))
+                  scf.write('{}\n'.format(fn))
 
               mark_output = os.path.basename(output_file)
             else:
@@ -556,11 +569,11 @@ class Analyzer(object):
           uc_init = uctbx.unit_cell(cluster.medians)
           symmetry = crystal.symmetry(unit_cell=uc_init,
                                       space_group_symbol='P1')
-          groups = sgtbx.lattice_symmetry.\
-            metric_subgroups(input_symmetry=symmetry, max_delta=3)
+          groups = metric_subgroups(input_symmetry=symmetry, max_delta=3)
           top_group = groups.result_groups[0]
+          best_sg = str(groups.lattice_group_info()).split('(')[0]
           best_uc = top_group['best_subsym'].unit_cell().parameters()
-          best_sg = top_group['best_subsym'].space_group_info()
+          # best_sg = str(top_group['best_subsym'].space_group_info())
 
           uc_no_stdev = "{:<6.2f} {:<6.2f} {:<6.2f} " \
                         "{:<6.2f} {:<6.2f} {:<6.2f} " \
@@ -570,7 +583,7 @@ class Analyzer(object):
                           'pg': best_sg,
                           'uc':uc_no_stdev,
                           'filename':mark_output}
-          self.clusters.append(cluster_info)
+          self.info.clusters.append(cluster_info)
 
           # format and record output
           # TODO: How to propagate stdevs after conversion from Niggli?
@@ -601,13 +614,8 @@ class Analyzer(object):
         # generate average unit cell
         uc_table.append("\n\n{:-^80}\n" \
                         "".format(' UNIT CELL AVERAGING (no clustering) '))
-        uc_a = [i.final['a'] for i in self.final_objects]
-        uc_b = [i.final['b'] for i in self.final_objects]
-        uc_c = [i.final['c'] for i in self.final_objects]
-        uc_alpha = [i.final['alpha'] for i in self.final_objects]
-        uc_beta = [i.final['beta'] for i in self.final_objects]
-        uc_gamma = [i.final['gamma'] for i in self.final_objects]
-        uc_sg = [i.final['sg'] for i in self.final_objects]
+        uc_a, uc_b, uc_c, uc_alpha, \
+        uc_beta, uc_gamma, uc_sg = zip(*self.info.cluster_iterable)
         cons_pg = Counter(uc_sg).most_common(1)[0][0]
         all_pgs = Counter(uc_sg).most_common()
         unit_cell = (np.median(uc_a), np.median(uc_b), np.median(uc_c),
@@ -617,21 +625,21 @@ class Analyzer(object):
         uc_init = uctbx.unit_cell(unit_cell)
         symmetry = crystal.symmetry(unit_cell=uc_init,
                                     space_group_symbol='P1')
-        groups = sgtbx.lattice_symmetry. \
-          metric_subgroups(input_symmetry=symmetry, max_delta=3)
+        groups = metric_subgroups(input_symmetry=symmetry, max_delta=3)
         top_group = groups.result_groups[0]
+        best_sg = str(groups.lattice_group_info()).split('(')[0]
         best_uc = top_group['best_subsym'].unit_cell().parameters()
-        best_sg = top_group['best_subsym'].space_group_info()
+        # best_sg = str(top_group['best_subsym'].space_group_info())
 
         uc_no_stdev = "{:<6.2f} {:<6.2f} {:<6.2f} " \
                       "{:<6.2f} {:<6.2f} {:<6.2f} " \
                       "".format(best_uc[0], best_uc[1], best_uc[2],
                                 best_uc[3], best_uc[4], best_uc[5])
-        cluster_info = {'number': len(self.final_objects),
+        cluster_info = {'number': len(self.info.cluster_iterable),
                         'pg': best_sg,
                         'uc': uc_no_stdev,
                         'filename': None}
-        self.clusters.append(cluster_info)
+        self.info.clusters.append(cluster_info)
 
         # uc_line = "{:<6} {:^4}:  {:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
         #           "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
@@ -649,7 +657,7 @@ class Analyzer(object):
         lattices = ', '.join(['{} ({})'.format(i[0], i[1]) for i in all_pgs])
         # uc_info = [len(self.final_objects), cons_pg, unit_cell, None,
         #            uc_line, lattices]
-        uc_info = [len(self.final_objects), best_sg, best_uc, None,
+        uc_info = [len(self.info.cluster_iterable), best_sg, best_uc, None,
                    uc_no_stdev, lattices]
         uc_summary.append(uc_info)
 
@@ -661,21 +669,18 @@ class Analyzer(object):
       uc_table.append(uc_pick[4])
       uc_table.append('\nBravais Lattices in Biggest Cluster: {}'
                       ''.format(uc_pick[5]))
-      self.cons_pg = uc_pick[1]
-      self.cons_uc = uc_pick[2]
+      self.info.best_pg = str(uc_pick[1])
+      self.info.best_uc = uc_pick[2]
 
       if uc_pick[3] is not None:
         self.prime_data_path = uc_pick[3]
 
       for item in uc_table:
-        util.main_log(self.logfile, item, (not self.gui_mode))
-
-      self.analysis_result.__setattr__('clusters', self.clusters)
-      self.analysis_result.__setattr__('cons_pg', self.cons_pg)
-      self.analysis_result.__setattr__('cons_uc', self.cons_uc)
+        util.main_log(self.info.logfile, item, False)
+      self.info.update(uc_table=uc_table)
 
       if self.gui_mode:
-        return self.clusters
+        return self.info.clusters
 
 
   def print_summary(self, write_files=True):
@@ -683,108 +688,50 @@ class Analyzer(object):
         on stdout. Also writes out output list files.
     """
 
+    assert self.info
+
+    if not self.info.categories['integrated']:
+      util.main_log(self.info.logfile, "NO IMAGES SUCCESSFULLY PROCESSSED!",
+                    (not self.gui_mode))
+      return
+
     summary = []
+    summary.append("\n\n{:-^80}\n".format('SUMMARY'))
+    categories = ['total', 'failed_triage', 'have_diffraction',
+                  'failed_spotfinding', 'failed_indexing',
+                  'failed_grid_search', 'failed_integration', 'integrated']
+    for cat in categories:
+      lst, fail, fn, _ = self.info.categories[cat]
+      path = os.path.join(self.info.int_base, fn)
+      if len(lst) > 0 or cat in ('integrated', 'diffraction'):
+        summary.append('{: <20}: {}'.format('{} '.format(fail), len(lst)))
+      with open(path, 'w') as cf:
+        for item in lst:
+          cf.write('{}\n'.format(item))
+      if cat == 'integrated' and write_files:
+        if not hasattr(self, 'prime_data_path'):
+          self.prime_data_path = path
 
-    util.main_log(self.logfile,
-                  "\n\n{:-^80}\n".format('SUMMARY'),
-                  (not self.gui_mode))
-
-    summary.append('raw images read in:                  {}'\
-                   ''.format(len(self.all_objects)))
-    summary.append('raw images with no diffraction:      {}'\
-                   ''.format(len(self.no_diff_objects)))
-    summary.append('raw images with diffraction:         {}'\
-                   ''.format(len(self.diff_objects)))
-    if self.params.advanced.processing_backend == 'ha14':
-      summary.append('failed indexing / integration:       {}'\
-                     ''.format(len(self.not_int_objects)))
-      summary.append('failed prefilter:                    {}'\
-                     ''.format(len(self.filter_fail_objects)))
-    elif self.params.advanced.processing_backend == 'cctbx.xfel':
-      summary.append('failed spotfinding:                  {}'\
-                     ''.format(len(self.not_spf_objects)))
-      summary.append('failed indexing:                     {}'\
-                     ''.format(len(self.not_idx_objects)))
-      summary.append('failed filter:                       {}'
-                     ''.format(len(self.filter_fail_objects)))
-      summary.append('failed integration:                  {}'\
-                     ''.format(len(self.not_int_objects)))
-    summary.append('final integrated pickles:            {}'\
-                   ''.format(len(self.sorted_final_images)))
+    summary.append('\n\nIOTA version {0}'.format(iota_version))
+    summary.append("{}\n".format(now))
 
     for item in summary:
-      util.main_log(self.logfile, "{}".format(item), (not self.gui_mode))
-
-    util.main_log(self.logfile, '\n\nIOTA version {0}'.format(self.ver))
-    util.main_log(self.logfile, "{}\n".format(self.now))
+      util.main_log(self.info.logfile, "{}".format(item), False)
+    self.info.update(summary=summary)
 
 
-    # Write list files:
-    if write_files:
-
-      input_list_file = os.path.join(self.output_dir, 'input_images.lst')
-      blank_images_file = os.path.join(self.output_dir, 'blank_images.lst')
-      prefilter_fail_file = os.path.join(self.output_dir, 'failed_cctbx_prefilter.lst')
-      spotfinding_fail_file = os.path.join(self.output_dir, 'failed_dials_spotfinding.lst')
-      indexing_fail_file = os.path.join(self.output_dir, 'failed_dials_indexing.lst')
-      not_integrated_file = os.path.join(self.output_dir, 'not_integrated.lst')
-      integrated_file = os.path.join(self.output_dir, 'integrated.lst')
-      int_images_file = os.path.join(self.output_dir, 'int_image_pickles.lst')
-      analyzer_file = os.path.join(self.output_dir, 'analysis.pickle')
-
-      if self.prime_data_path is None:
-        self.prime_data_path = integrated_file
-
-      if len(self.no_diff_objects) > 0:
-        with open(blank_images_file, 'w') as bif:
-          for obj in self.no_diff_objects:
-            bif.write('{}\n'.format(obj.img_path))
-
-      if len(self.diff_objects) > 0:
-        with open(input_list_file, 'w') as ilf:
-          for obj in self.diff_objects:
-            ilf.write('{}\n'.format(obj.img_path))
-
-      if len(self.not_int_objects) > 0:
-        with open(not_integrated_file, 'w') as nif:
-          for obj in self.not_int_objects:
-            nif.write('{}\n'.format(obj.img_path))
-
-      if len(self.filter_fail_objects) > 0:
-        with open(prefilter_fail_file, 'w') as pff:
-          for obj in self.filter_fail_objects:
-            pff.write('{}\n'.format(obj.img_path))
-
-      if self.params.advanced.processing_backend == 'cctbx.xfel':
-        if len(self.not_spf_objects) > 0:
-          with open(spotfinding_fail_file, 'w') as sff:
-            for obj in self.not_spf_objects:
-              sff.write('{}\n'.format(obj.img_path))
-        if len(self.not_idx_objects) > 0:
-          with open(indexing_fail_file, 'w') as iff:
-            for obj in self.not_idx_objects:
-              iff.write('{}\n'.format(obj.img_path))
-
-      if len(self.final_objects) > 0:
-        with open(integrated_file, 'w') as intf:
-          for obj in self.sorted_final_images:
-            intf.write('{}\n'.format(obj.final['final']))
-        with open(int_images_file, 'w') as ipf:
-          for obj in self.sorted_final_images:
-            ipf.write('{}\n'.format(obj.final['img']))
-
-      # Dump the Analyzer object into a pickle file for later fast recovery
-      ep.dump(analyzer_file, self.analysis_result)
-
-  def make_prime_input(self,
-                       filename='prime.phil',
-                       run_zero=False):
+  def make_prime_input(self, filename='prime.phil', run_zero=False):
     """ Imports default PRIME input parameters, modifies correct entries and
         prints out a starting PHIL file to be used with PRIME
     """
-    pixel_size = self.final_objects[0].final['pixel_size']
+    assert self.info
+
+    pixel_size = self.info.pixel_size
+    hres = self.info.stats['res']
+    lres = self.info.stats['lres']
+
     try:
-      sg = str(self.cons_pg).replace(" ", "")
+      sg = self.info.best_pg.replace(" ", "")
     except AttributeError as e:
       print ('PRIME INPUT ERROR, SPACE GROUP: ', e)
       sg = 'P1'
@@ -794,11 +741,11 @@ class Analyzer(object):
 
     # Determine number of images for indexing ambiguity resolution
     # My default: 1/2 of images or 300, whichever is smaller
-    if len(self.final_objects) >= 600:
+    if len(self.info.categories['integrated']) >= 600:
       idx_ambiguity_sample = 300
       idx_ambiguity_selected = 100
     else:
-      idx_ambiguity_sample = int(round(len(self.final_objects) / 2))
+      idx_ambiguity_sample = int(round(len(self.info.categories['integrated']) / 2))
       idx_ambiguity_selected = int(round(idx_ambiguity_sample / 3))
 
     prime_params = mod_input.master_phil.extract()
@@ -812,22 +759,23 @@ class Analyzer(object):
     prime_params.run_no = os.path.join(os.path.dirname(self.prime_data_path),
                                          'prime/{}'.format(run_no))
     prime_params.data = [self.prime_data_path]
-    prime_params.title = 'Auto-generated by IOTA v{} on {}'.format(self.ver, self.now)
-    prime_params.scale.d_min = np.mean(self.hres)
+    prime_params.title = 'Auto-generated by IOTA v{} on {}' \
+                         ''.format(iota_version, now)
+    prime_params.scale.d_min = hres['mean']
     prime_params.scale.d_max = 8
-    prime_params.postref.scale.d_min = np.mean(self.hres)
-    prime_params.postref.scale.d_max = np.max(self.lres)
-    prime_params.postref.crystal_orientation.d_min = np.mean(self.hres)
-    prime_params.postref.crystal_orientation.d_max = np.max(self.lres)
-    prime_params.postref.reflecting_range.d_min = np.mean(self.hres)
-    prime_params.postref.reflecting_range.d_max = np.max(self.lres)
-    prime_params.postref.unit_cell.d_min = np.mean(self.hres)
-    prime_params.postref.unit_cell.d_max = np.max(self.lres)
-    prime_params.postref.allparams.d_min = np.mean(self.hres)
-    prime_params.postref.allparams.d_max = np.max(self.lres)
-    prime_params.merge.d_min = np.mean(self.hres)
-    prime_params.merge.d_max = np.max(self.lres)
-    prime_params.target_unit_cell = uctbx.unit_cell(self.cons_uc)
+    prime_params.postref.scale.d_min = hres['mean']
+    prime_params.postref.scale.d_max = lres['max']
+    prime_params.postref.crystal_orientation.d_min = hres['mean']
+    prime_params.postref.crystal_orientation.d_max = lres['max']
+    prime_params.postref.reflecting_range.d_min = hres['mean']
+    prime_params.postref.reflecting_range.d_max = lres['max']
+    prime_params.postref.unit_cell.d_min = hres['mean']
+    prime_params.postref.unit_cell.d_max = lres['max']
+    prime_params.postref.allparams.d_min = hres['mean']
+    prime_params.postref.allparams.d_max = lres['max']
+    prime_params.merge.d_min = hres['mean']
+    prime_params.merge.d_max = lres['max']
+    prime_params.target_unit_cell = uctbx.unit_cell(self.info.best_uc)
     prime_params.target_space_group = sg
     prime_params.target_crystal_system = crystal_system
     prime_params.pixel_size_mm = pixel_size
@@ -850,7 +798,17 @@ class Analyzer(object):
 
     # Generate PRIME param PHIL
     prime_phil = mod_input.master_phil.format(python_object=prime_params)
-    prime_file = os.path.join(self.output_dir, filename)
-    prime_phil_txt = util.convert_phil_to_text(prime_phil, prime_file)
+    prime_file = os.path.join(self.info.int_base, filename)
+    with open(prime_file, 'w') as pf:
+      pf.write(prime_phil.as_str())
 
     return prime_phil
+
+  def run_all(self, get_results=True):
+    if get_results:
+      results = self.get_results()
+    self.print_results()
+    self.unit_cell_analysis()
+    self.print_summary()
+    self.make_prime_input()
+    return self.info

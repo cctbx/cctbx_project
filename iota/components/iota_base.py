@@ -4,11 +4,12 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 12/10/2018
+Last Changed: 01/30/2018
 Description : IOTA base classes
 '''
 
 import os
+import json
 try:  # for Py3 compatibility
     import itertools.ifilter as filter
 except ImportError:
@@ -16,6 +17,7 @@ except ImportError:
 
 from dxtbx import datablock as db
 from libtbx.easy_mp import parallel_map
+from libtbx import easy_pickle as ep
 
 from threading import Thread
 import iota.components.iota_utils as util
@@ -46,15 +48,20 @@ class SingleImageBase(object):
     self.status = None
     self.fail = None
     self.log_info = []
+    self.errors = []
 
     # Final statistics (may add stuff to dictionary later, as needed)
     self.final = {'img': None,                        # Image filepath
                   'final': None,                      # Integrated pickle
+                  'observations':None,                # Miller array
                   'info': '',                         # Information (general)
                   'a': 0, 'b': 0, 'c': 0,             # Cell edges
                   'alpha': 0, 'beta': 0, 'gamma': 0,  # Cell angles
                   'sg': None,                         # Space group
-                  'strong': 0,                        # Strong reflections
+                  'spots': 0,                         # Found spots
+                  'indexed': 0,                       # Indexed reflections
+                  'integrated': 0,                    # Integrated reflections
+                  'strong': 0,                        # Strong int. reflections
                   'res': 0, 'lres': 0,                # Resolution, low res.
                   'mos': 0, 'epv': 0,                 # Mosaicity, EPV
                   'wavelength': 0,                    # Wavelength
@@ -65,10 +72,6 @@ class SingleImageBase(object):
                   'gain':0                            # Detector gain
                   }
 
-  def write_to_file(self):
-    pass
-
-
 class ImageImporterBase():
   ''' Base class for image importer, which will:
         1. read an image file and extract data and info
@@ -76,12 +79,16 @@ class ImageImporterBase():
         3. output a datablock or file for processing
   '''
 
-  def __init__(self, init):
-    self.init = init
+  def __init__(self, init=None, info=None, write_output=True):
+
+    self.init = init if init else None
+    self.info = info if info else None
+    assert (init or info)
+
     self.img_type = None
-    self.iparams = init.params
     self.filepath = None
     self.modify = False
+    self.write_output = write_output
 
   def instantiate_image_object(self, filepath, idx=None):
     ''' Override to instantiate a SingleImage object for current backend
@@ -139,11 +146,6 @@ class ImageImporterBase():
     '''
     return datablock, None
 
-  def write_to_file(self, datablock, filepath):
-    filename = os.path.basename(filepath)
-    db_dump = db.DataBlockDumper(datablock)
-    db_dump.as_file(filename=filename)
-
   def update_log(self, data=None, status='imported', msg=None):
     if not data:
       self.img_object.log_info.append('\n{}'.format(msg))
@@ -167,32 +169,35 @@ class ImageImporterBase():
     ''' Assign output paths to image object (will be used by various modules
     to write out files in appropriate locations) '''
 
+    # Get bases
+    input_base = self.info.input_base if self.info else self.init.input_base
+    obj_base = self.info.obj_base if self.info else self.init.obj_base
+    fin_base = self.info.fin_base if self.info else self.init.fin_base
+    log_base = self.info.log_base if self.info else self.init.log_base
+    viz_base = self.info.viz_base if self.info else self.init.viz_base
+
     # Object path (may not need)
     self.img_object.obj_path = util.make_image_path(self.img_object.img_path,
-                                                    self.init.input_base,
-                                                    self.init.obj_base)
+                                                    input_base, obj_base)
     fname = util.make_filename(self.img_object.img_path, new_ext='int')
     self.img_object.obj_file = os.path.join(self.img_object.obj_path, fname)
 
     # Final integration pickle path
     self.img_object.int_path = util.make_image_path(self.img_object.img_path,
-                                                    self.init.input_base,
-                                                    self.init.fin_base)
+                                                    input_base, fin_base)
     fname = util.make_filename(self.img_object.img_path, prefix='int',
                                new_ext='pickle')
     self.img_object.int_file = os.path.join(self.img_object.int_path, fname)
 
     # Processing log path for image
     self.img_object.log_path = util.make_image_path(self.img_object.img_path,
-                                                    self.init.input_base,
-                                                    self.init.log_base)
+                                                    input_base, log_base)
     fname = util.make_filename(self.img_object.img_path, new_ext='log')
     self.img_object.int_log = os.path.join(self.img_object.log_path, fname)
 
     # Visualization path (may need to deprecate)
     self.img_object.viz_path = util.make_image_path(self.img_object.img_path,
-                                                    self.init.input_base,
-                                                    self.init.viz_base)
+                                                    input_base, viz_base)
     fname = util.make_filename(self.img_object.img_path, prefix='int',
                                new_ext='png')
     self.viz_file = os.path.join(self.img_object.viz_path, fname)
@@ -213,9 +218,9 @@ class ImageImporterBase():
     '''
 
     # Interpret input
-    if type(input_entry) == list:
-      idx      = input_entry[0]
-      filepath = input_entry[2]
+    if type(input_entry) in (list, tuple):
+      idx      = int(input_entry[0])
+      filepath = str(input_entry[1])
     elif type(input_entry) == str:
       idx = None
       filepath = input_entry
@@ -223,9 +228,12 @@ class ImageImporterBase():
       raise util.InputError('IOTA IMPORT ERROR: Unrecognized input -- {}'
                             ''.format(input_entry))
 
-    # Instantiate image object and prep requisite paths
+    # Instantiate image object
     self.instantiate_image_object(filepath=filepath, idx=idx)
-    self.prep_output()
+
+    # Generate output paths
+    if self.write_output:
+      self.prep_output()
 
     # Load image (default is datablock, override for HA14-style pickling)
     self.datablock, error = self.load_image_file(filepath=filepath)
@@ -269,186 +277,140 @@ class ImageImporterBase():
     return self.make_image_object(input_entry)
 
 
-# ------------------------------ Processing Base ----------------------------- #
-
-class ProcessingThreadBase(Thread):
+class ProcessingBase(Thread):
   ''' Base class for submitting processing jobs to multiple cores '''
-  def __init__(self,
-               init=None,
-               iterable=None,
-               stage='all'):
-    Thread.__init__(self, name='iota_proc')
-    self.init = init
-    self.iterable = self.init.iterable if hasattr(self.init, 'iterable') else iterable
-    self.stage = stage
-    self.importer = None
-    self.integrator = None
+  def __init__(self, *args, **kwargs):
+    Thread.__init__(self, *args, **kwargs)
+
+    # Set attributes from remaining kwargs
+    for key, value in kwargs.items():
+      setattr(self, name=key, value=value)
+
+  def create_iterable(self, input_list):
+    return [[i, len(input_list) + 1, str(j)] for i, j in enumerate(input_list, 1)]
 
   def import_and_process(self, input_entry):
-    if self.stage != 'process':
-      img_object = self.importer.run(input_entry)
-    else:
-      img_object = input_entry[2]
-    if self.stage != 'import' and img_object.status == 'imported':
+    img_object = self.importer.run(input_entry)
+    if img_object.status == 'imported':
       img_object = self.integrator.run(img_object)
+
+    # Update main log
+    if hasattr(self.info, 'logfile'):
+      main_log_entry = "\n".join(img_object.log_info)
+      util.main_log(self.info.logfile, main_log_entry)
+      util.main_log(self.info.logfile, '\n{:-^100}\n'.format(''))
+
+    # Set status to final
+    img_object.status = 'final'
     return img_object
 
   def callback(self, result):
     """ Override for custom callback behavior (or not) """
     return result
 
-  def create_image_iterable(self):
-    # This is mostly for backward compatibility; may need to remove
-    if self.stage == 'process':
-      self.iterable = [[i, len(self.img_objects) + 1, j] for i, j in
-                       enumerate(self.img_objects, 1)]
-    else:
-      self.iterable = [[i, len(self.init.input_list) + 1, j] for i, j in
-                       enumerate(self.init.input_list, 1)]
-
-  def run_process(self):
-    self.img_objects = parallel_map(iterable=self.iterable,
-                                    func=self.import_and_process,
-                                    callback=self.callback,
-                                    processes=self.init.params.mp.n_processors)
+  def run_process(self, iterable):
+    img_objects = parallel_map(iterable=iterable,
+                               func=self.import_and_process,
+                               callback=self.callback,
+                               processes=self.params.mp.n_processors)
+    return img_objects
 
   def run_analysis(self):
     """ Run analysis of integrated images """
     from iota.components.iota_analysis import Analyzer
-    analysis = Analyzer(init=self.init, all_objects=self.img_objects)
-    analysis.print_results()
-    analysis.unit_cell_analysis()
-    analysis.print_summary()
-    analysis.make_prime_input()
+    analysis = Analyzer(info=self.info, params=self.params)
+    self.info = analysis.run_all()
+    self.info.export_json()
 
   def process(self):
     """ Run importer and/or processor """
 
-    # Create iterable if needed
-    if self.stage != 'process':
-      if not self.iterable:
-        self.create_image_iterable()
-
-    # Make sure all the important stuff has been provided
-    assert self.init
-    assert self.iterable
-    if self.stage == 'all':
-      assert (self.importer and self.integrator)
-    elif self.stage == 'import':
-      assert self.importer
-    elif self.stage == 'process':
-      assert self.integrator
-
-    self.run_process()
+    img_objects = self.run_process(iterable=self.info.unprocessed)
+    self.info.finished_objects = img_objects
+    self.run_analysis()
 
   def run(self):
     self.process()
 
-# -------------------------------- Init Base --------------------------------- #
+  @classmethod
+  def for_new_run(cls, paramfile, run_no, *args, **kwargs):
+    from iota.components.iota_image import ImageImporter as Importer
+    from iota.components.iota_processing import IOTAImageProcessor as Integrator
 
-class ProcessInfo(object):
-  """ Object with all the processing info UI needs to plot results """
-  def __init__(self, tmp_base, int_base):
+    # Initialize processing parameters
+    from iota.components.iota_init import initialize_processing
+    cls.info, cls.params = initialize_processing(paramfile, run_no)
 
-    # Image tracking
-    self.bookmark = 0
-    self.finished_objects = []
-    self.img_list = []
-    self.unread_files = []
-    self.unprocessed_images = 0
-    self.int_pickles = []
+    cls.importer = Importer(info=cls.info)
+    cls.integrator = Integrator(iparams=cls.params)
 
-    # Processing stats
-    self.nref_list = []
-    self.nref_xaxis = []
-    self.nsref_x = None
-    self.nsref_y = None
-    self.nsref_median = None
-    self.res_list = None
-    self.res_x = None
-    self.res_y = None
-    self.res_median = None
+    return cls(*args, **kwargs)
 
-    # HKL / bfactor stats
-    self.user_sg = 'P1'
-    self.idx_array = None
-    self.merged_indices = None
-    self.b_factors = []
+  @classmethod
+  def for_existing_run(cls, info, *args, **kwargs):
 
-    # Summary
-    self.status_summary = {
-      'nonzero': [],
-      'names': [],
-      'patches': []
-    }
+    from iota.components.iota_image import ImageImporter as Importer
+    from iota.components.iota_processing import IOTAImageProcessor as Integrator
 
-    # Clustering
-    self.cluster_iterable = []
-    self.cluster_info = {}
+    # Initialize processing parameters
+    from iota.components.iota_init import resume_processing
+    cls.info, cls.params = resume_processing(info)
 
-    # PRIME
-    self.best_pg = None
-    self.best_uc = None
-    self.prime_info = {}
+    cls.importer = Importer(info=cls.info)
+    cls.integrator = Integrator(iparams=cls.params)
 
-    # Runtime files
-    self.obj_list_file         = os.path.join(tmp_base, 'finished_objects.lst')
-    self.finished_pickles_file = os.path.join(int_base, 'finished_pickles.lst')
-    self.cluster_info_file     = os.path.join(int_base, 'cluster_info.pickle')
+    return cls(*args, **kwargs)
 
-    # Miscellaneous
-    self.msg = ''
-    self.test_attribute = 0
+  @classmethod
+  def for_single_image(cls, info, params, action_code='spotfinding',
+                       verbose=False, *args,  **kwargs):
+
+    from iota.components.iota_image import ImageImporter
+    from iota.components.iota_processing import IOTAImageProcessor
+
+    # Initialize processing parameters
+    cls.info = info
+    cls.params = params
+    cls.action_code = action_code
+    cls.verbose = verbose
+
+    cls.importer = ImageImporter(info=cls.info, write_output=False)
+    cls.integrator = IOTAImageProcessor(iparams=cls.params,
+                                        write_pickle=False,
+                                        write_logs=False,
+                                        last_stage=action_code)
+
+    return cls(*args, **kwargs)
 
 
-class InitBase(object):
-  """ Base class to initialize an IOTA run """
+class ProcInfo(object):
+  ''' Container for all the processing info. Updated by Object Sentinel
+      during processing. Stored as JSON dict and can be used to recover a
+      previous run. '''
 
-  def __init__(self):
-    """ Constructor  """
-    from iota import iota_version, now
-    self.ginp = util.InputFinder()
-    self.pid = os.getpid()
+  def __init__(self, info_dict=None):
+    ''' Constructor
+    :param dict: dictionary of attributes, likely from JSON file
+    '''
 
-    try:
-      self.user_id = os.getlogin()
-    except OSError:
-      self.user_id = 'iota'
+    if info_dict:
+      self.update(info_dict)
 
-    self.iver = iota_version
-    self.now = now
+  def update(self, info_dict=None, **kwargs):
+    ''' Add / overwrite attributes from dictionary and/or set of kwargs '''
+    for dictionary in (info_dict, kwargs):
+      if dictionary:
+        for key, value in dictionary.items():
+          setattr(self, key, value)
 
-    self.input_base = None
-    self.conv_base = None
-    self.obj_base = None
-    self.int_base = None
-
-    self.iota_phil = None
-    self.params = None
-    self.target_phil = None
-    self.input_list = None
-
-  def make_input_list(self):
-    """ Reads input directory or directory tree and makes lists of input images.
-        Optional selection of a random subset
-    """
-
-    # Read input from provided folder(s) or file(s)
-    input_entries = [i for i in self.params.input if i is not None]
-    input_list = self.ginp.make_input_list(input_entries, filter=True,
-                                           filter_type='image')
-
-    return input_list
-
-  def select_image_range(self, full_list):
+  def _select_image_range(self, full_list, range_str):
     """ Selects a range of images (can be complex) """
-    img_range_string = str(self.params.advanced.image_range.range)
-    img_range_elements = img_range_string.split(',')
+    img_range_elements = range_str.split(',')
     img_list = []
     for n in img_range_elements:
       if '-' in n:
         img_limits = [int(i) for i in n.split('-')]
-        start = min(img_limits)
+        start = min(img_limits) - 1
         end = max(img_limits)
         if start <= len(full_list) and end <= len(full_list):
           img_list.extend(full_list[start:end])
@@ -461,197 +423,324 @@ class InitBase(object):
     else:
       return full_list
 
-  def select_random_subset(self, input_list):
+  def _select_random_subset(self, full_list, number=0):
     """ Selects random subset of input entries """
     import random
 
     random_inp_list = []
-    if self.params.advanced.random_sample.number == 0:
-      if len(input_list) <= 5:
-        random_sample_number = len(input_list)
-      elif len(input_list) <= 50:
-        random_sample_number = 5
+    if number == 0:
+      if len(full_list) <= 5:
+        number = len(full_list)
+      elif len(full_list) <= 50:
+        number = 5
       else:
-        random_sample_number = int(len(input_list) * 0.1)
-    else:
-      random_sample_number = self.params.advanced.random_sample.number
+        number = int(len(full_list) * 0.1)
 
-    for i in range(random_sample_number):
-      random_number = random.randrange(0, len(input_list))
-      if input_list[random_number] in random_inp_list:
-        while input_list[random_number] in random_inp_list:
-          random_number = random.randrange(0, len(input_list))
-        random_inp_list.append(input_list[random_number])
+    for i in range(number):
+      random_number = random.randrange(0, len(full_list))
+      if full_list[random_number] in random_inp_list:
+        while full_list[random_number] in random_inp_list:
+          random_number = random.randrange(0, len(full_list))
+        random_inp_list.append(full_list[random_number])
       else:
-        random_inp_list.append(input_list[random_number])
+        random_inp_list.append(full_list[random_number])
 
     return random_inp_list
 
-  def make_int_object_list(self):
-    """ Generates list of image objects from previous grid search """
-    from libtbx import easy_pickle as ep
+  def flatten_input(self, **kw):
+    ''' Generates a flat list of absolute imagefile paths
+    :param kw: Typical kwargs may include a param file, path to images,
+    whether to select a random subset of imagefiles and/or a range, etc.
+    :return: imagefile path iterator
+    '''
 
-    if self.params.cctbx_ha14.selection.select_only.grid_search_path is None:
-      int_dir = util.set_base_dir('integration', True)
+    if 'params' in kw:
+      prm = kw['params']
+    elif hasattr(self, 'params'):
+      prm = self.params
     else:
-      int_dir = self.params.cctbx_ha14.selection.select_only.grid_search_path
+      prm = None
 
-    img_objects = []
+    input_list = None
+    if hasattr(self, 'input_list_file'):
+      input_filepath = self.input_list_file
+    elif 'filepath' in kw:
+      input_filepath = kw['filepath']
+    else:
+      input_filepath = None
 
-    for root, dirs, files in os.walk(int_dir):
-      for filename in files:
-        found_file = os.path.join(root, filename)
-        if found_file.endswith(('int')):
-          obj = ep.load(found_file)
-          img_objects.append(obj)
+    if input_filepath:
+      with open(input_filepath, 'r') as inpf:
+        input_list = [i.replace('\n', '') for i in inpf.readlines()]
+    else:
+      if 'input' in kw:
+        inputs = kw['input']
+      elif prm:
+        inputs = [i for i in prm.input if i is not None]
+      else:
+        inputs = None
 
-    return img_objects
+      if inputs:
+        input_list = util.ginp.make_input_list(inputs, filter=True,
+                                                 filter_type='image')
 
-  def initialize_interface(self):
-    """ Override with interface-specific particulars """
-    return True, 'BASE INTERFACE OKAY'
+    if prm and input_list:
+      if prm.advanced.image_range.flag_on:
+        input_list = self._select_image_range(input_list,
+                                              prm.advanced.image_range.range)
+      if prm.advanced.random_sample.flag_on:
+        input_list = self._select_random_subset(input_list,
+                                              prm.advanced.random_sample.number)
 
-  def initialize_output(self):
+    return [str(i) for i in input_list]
+
+  def generate_input_list(self, **kw):
+    assert not hasattr(self, 'input_list')
+    self.input_list = self.flatten_input(**kw)
+    self.n_input_images = len(self.input_list)
+    self.unprocessed = list(enumerate(self.input_list, 1))
+
+  def update_input_list(self, new_input=None):
+    assert hasattr(self, 'input_list') and hasattr(self, 'categories')
+    if new_input:
+      self.input_list = [str(i) for i in new_input]
+      self.unprocessed = list(enumerate(self.input_list, self.n_input_images + 1))
+      self.categories['not_processed'][0].extend(new_input)
+      self.categories['total'][0].extend(new_input)
+      self.n_input_images += len(new_input)
+
+  def reset_input_list(self):
+    assert hasattr(self, 'input_list') and hasattr(self, 'categories')
+    self.input_list = [str(i[1]) for i in self.unprocessed]
+
+  def get_finished_objects(self):
+    if hasattr(self, 'finished_objects') and self.finished_objects:
+      return (ep.load(o) for o in self.finished_objects)
+
+  def get_finished_objects_from_filelist(self, filelist):
+    assert filelist
+    return (ep.load(o) for o in filelist)
+
+  def get_finished_objects_from_file(self):
+    if hasattr(self, 'obj_list_file') and os.path.isfile(self.obj_list_file):
+      with open(self.obj_list_file, 'r') as objf:
+        objf.seek(self.bookmark)
+        obj_paths = [i.rstrip('\n') for i in objf.readlines()]
+        self.bookmark = objf.tell()
+      if obj_paths:
+        self.finished_objects.extend(obj_paths)
+        return (ep.load(o) for o in obj_paths)
+      else:
+        return None
+
+  def get_final_objects(self):
+    if hasattr(self, 'final_objects') and self.final_objects:
+      return (ep.load(o) for o in self.final_objects)
+
+  # def get_observations(self, to_p1=True):
+  #   if hasattr(self, 'final_objects') and self.final_objects:
+  #
+  #     # Read final objects into a generator
+  #     fin = (ep.load(o) for o in self.final_objects)
+  #
+  #     # Extract miller_index objects from final_objects or integrated pickles
+  #     all_obs = []
+  #     for obj in fin:
+  #       if 'observations' in obj.final:
+  #         obs = obj.final['observations'].as_non_anomalous_array()
+  #       else:
+  #         obs = ep.load(obj.final['final'])['observations'][0].as_non_anomalous_array()
+  #       all_obs.append(obs)
+  #
+  #     # Combine miller_index objects into a single miller_index object
+  #     with util.Capturing():
+  #       observations = None
+  #       for o in all_obs[1:]:
+  #         if to_p1:
+  #           o = o.change_symmetry('P1')
+  #         if observations:
+  #           observations = observations.concatenate(o, assert_is_similar_symmetry=False)
+  #         else:
+  #           observations = o
+  #     return observations
+
+  # def update_indices(self, filepath=None, obs=None):
+  #   if not filepath:
+  #     filepath = self.idx_file
+  #   if not (hasattr(self, 'merged_indices')):
+  #     self.merged_indices = {}
+  #   if not obs:
+  #     obs = ep.load(filepath)
+  #
+  #   with util.Capturing():
+  #     p1_mrg = obs.change_symmetry('P1').merge_equivalents()
+  #     p1_red = p1_mrg.redundancies()
+  #   for i in p1_red:
+  #     hkl = ' '.join([str(j) for j in i[0]])
+  #     red = i[1]
+  #     if hkl in self.merged_indices:
+  #       self.merged_indices[hkl] += red
+  #     else:
+  #       self.merged_indices[hkl] = red
+  #
+  #   with open(os.path.join(self.int_base, 'merged.json'), 'w') as mjf:
+  #     json.dump(self.merged_indices, mjf)
+
+    # dict to list:
+    # idx_list = [tuple([tuple(int(i) for i in k.split(' ')), v])
+    #             for k, v in self.merged_indices.items()]
+
+  def get_hkl_slice(self, sg='P1', axis='l'):
+
     try:
-      self.int_base = util.set_base_dir('integration',
-                                        out_dir=self.params.output)
-      self.obj_base = os.path.join(self.int_base, 'image_objects')
-      self.fin_base = os.path.join(self.int_base, 'final')
-      self.log_base = os.path.join(self.int_base, 'logs')
-      self.viz_base = os.path.join(self.int_base, 'visualization')
-      if not self.params.advanced.temporary_output_folder:
-        self.tmp_base = os.path.join(self.int_base, 'tmp')
-      else:
-        self.tmp_base = os.path.join(self.params.advanced.temporary_output_folder)
+      all_obs = ep.load(self.idx_file)
+    except IOError:
+      return None
 
-      # Determine input base (that'd be the lowest common folder, so that the
-      # directory tree of the input would be mirrored in the output)
-      common_pfx = os.path.abspath(os.path.dirname(os.path.commonprefix(self.input_list)))
-      if os.path.isdir(self.params.input[0]):
-        self.input_base = os.path.commonprefix([self.params.input[0], common_pfx])
-      else:
-        self.input_base = common_pfx
+    with util.Capturing():
+      ext_sg = str(all_obs.space_group_info()).replace(' ', '').lower()
+      sg = sg.replace(' ', '').lower()
+      if ext_sg != sg:
+        all_obs = all_obs.change_symmetry(sg, merge_non_unique=False)
 
-      # Generate base folders
-      os.makedirs(self.int_base)
-      os.makedirs(self.obj_base)
-      os.makedirs(self.fin_base)
-      os.makedirs(self.log_base)
-      os.makedirs(self.viz_base)
+    # Recalculate redundancies and slices from updated indices
+    red = all_obs.merge_equivalents().redundancies()
+    return red.slice(axis=axis, slice_start=0, slice_end=0)
+
+  def export_json(self, **kw):
+    ''' Export contents as JSON dict '''
+
+    if 'filepath' in kw:
+      json_file = kw['filepath']
+    elif hasattr(self, 'info_file'):
+      json_file = self.info_file
+    else:
+      if hasattr(self, 'int_base'):
+        int_base = self.int_base
+      else:
+        int_base = os.path.abspath(os.curdir)
+      json_file = os.path.join(int_base, 'proc.info')
+
+    try:
+      with open(json_file, 'w') as jf:
+        json.dump(self.__dict__, jf)
+    except TypeError as e:
+      raise Exception('IOTA JSON ERROR: {}'.format(e))
+
+  @classmethod
+  def from_json(cls, filepath, **kwargs):
+    ''' Generate INFO object from a JSON file'''
+
+    # Check for file
+    if not os.path.isfile(filepath):
+      return None
+
+    # Read in JSON file
+    with open(filepath, 'r') as json_file:
+      info_dict = json.load(json_file)
+
+    # Allow to override param values with in-code args, etc.
+    info_dict.update(kwargs)
+
+    return cls(info_dict)
+
+  @classmethod
+  def from_pickle(cls, filepath):
+    ''' To recover an old pickled info object '''
+    pass
+
+  @classmethod
+  def from_dict(cls, info_dict):
+    return cls(info_dict)
+
+  @classmethod
+  def from_args(cls, **kwargs):
+    return cls(kwargs)
+
+  @classmethod
+  def from_folder(cls, path, **kwargs):
+    ''' Generate INFO object from an integration folder
+    :param path: path to folder with integration results
+    :param kwargs: additional keyword args
+    :return: ProcInfo class generated with attributes
+    '''
+
+    # Check for folder
+    if not os.path.isdir(path):
+      return None
+
+    # Check for proc.info file
+    info_path = os.path.isfile(os.path.join(path, 'proc.info'))
+    if info_path:
       try:
-        if not os.path.isdir(self.tmp_base):
-          os.makedirs(self.tmp_base)
-      except OSError:
-        self.tmp_base = os.path.join(self.int_base, 'tmp')
-        if not os.path.isdir(self.tmp_base):
-          os.makedirs(self.tmp_base)
+        with open(os.path.join(path, 'proc.info'), 'r') as json_file:
+          info_dict = json.load(json_file)
+          return cls(info_dict)
+      except Exception:
+        pass
 
-      # Designate files for init and image list iterable
-      self.init_file = os.path.join(self.int_base, 'init.cfg')
-      self.iter_file = os.path.join(self.int_base, 'iter.cfg')
+    # If file not there, reconstruct from contents of folder
+    # Create info dictionary
+    obj_base = os.path.join(path, 'image_objects')
+    fin_base = os.path.join(path, 'final')
+    log_base = os.path.join(path, 'logs')
+    viz_base = os.path.join(path, 'visualization')
+    logfile = os.path.join(path, 'iota.log')
+    info_dict = dict(int_base=path,
+                     obj_base=obj_base,
+                     fin_base=fin_base,
+                     log_base=log_base,
+                     viz_base=viz_base,
+                     logfile=logfile)
 
-      # Initialize info object
-      self.info = ProcessInfo(int_base=self.int_base, tmp_base=self.tmp_base)
-      self.info_file = os.path.join(self.int_base, 'proc.info')
+    # Logfile is pretty much the most key element of an IOTA run
+    if not os.path.isfile(logfile):
+      return None
 
-      return True, 'IOTA_INIT: OUTPUT INITIALIZED'
-    except Exception as e:
-      return False, 'IOTA_INIT_ERROR: OUTPUT NOT INITIALIZED: {}'.format(e)
+    # Look for the IOTA paramfile
+    prm_list = util.ginp.get_file_list(path=path, ext_only='param')
+    if prm_list:                             # Read from paramfile
+      with open(prm_list[0], 'r') as prmf:
+        info_dict['iota_phil'] = prmf.read()
+    else:                                    # Last ditch: extract from log
+      with open(logfile, 'r') as logf:
+        lines = []
+        while True:
+          line = next(logf)
+          if '-----' in line:
+            break
+        while True:
+          line = next(logf)
+          if '-----' in line:
+            break
+          else:
+            lines.append(line)
+      if lines:
+        info_dict['iota_phil'] = ''.join(lines)
 
+    # Look for the target PHIL file
+    target_file = os.path.join(path, 'target.phil')
+    if os.path.isfile(target_file):           # Read from target file
+      with open(target_file, 'r') as tarf:
+        info_dict['target_phil'] = tarf.read()
+    else:                                     # Last ditch: extract from log
+      with open(logfile, 'r') as logf:
+        lines = []
+        while True:
+          line = next(logf)
+          if 'BACKEND SETTINGS' in line:
+            break
+        while True:
+          line = next(logf)
+          if '-----' in line:
+            break
+          else:
+            lines.append(line)
+      if lines:
+        info_dict['target_phil'] = ''.join(lines)
 
-  def initialize_parameters(self):
-    """ Initialize IOTA and backend parameters, write to files
-    :return: True if successful, False if something failed
-    """
+    # Generate object list
+    if os.path.isdir(obj_base):
+      info_dict['finished_objects'] = util.ginp.get_file_list(path, ext_only='int')
 
-    try:
-      # If fewer images than requested processors are supplied, set the number of
-      # processors to the number of images
-      if self.params.mp.n_processors > len(self.input_list):
-        self.params.mp.n_processors = len(self.input_list)
-
-      # Read in backend parameters
-      if self.target_phil is None:
-        target_file = self.params.cctbx_xfel.target
-
-        if target_file:
-          with open(target_file, 'r') as phil_file:
-            self.target_phil = phil_file.read()
-        else:
-          return False, 'IOTA_INIT_ERROR: TARGET FILE NOT FOUND!'
-
-      # Create local target file so that backend parameters stay with the run
-      local_target_file = os.path.join(self.int_base, 'target.phil')
-      if type(self.target_phil) == list:
-        self.target_phil = '\n'.join(self.target_phil)
-      with open(local_target_file, 'w') as tf:
-        tf.write(self.target_phil)
-
-      # Point IOTA parameters at local target file
-      self.params.cctbx_xfel.target = local_target_file
-
-      # Collect final params and convert to PHIL object
-      self.iota_phil = self.iota_phil.format(python_object=self.params)
-
-      return True, 'IOTA_INIT: PARAMS INITIALIZED'
-
-    except Exception as e:
-      import traceback
-      traceback.print_exc()
-      return False, 'IOTA_INIT_ERROR: PARAMS NOT INITIALIZED, {}'.format(e)
-
-  def initialize_main_log(self):
-    """ Initialize main log (iota.log) and record starting parameters
-
-    :return: True if successful, False if fails
-    """
-    try:
-      # Generate text of params
-      self.iota_phil_string = util.convert_phil_to_text(self.iota_phil)
-
-      # Initialize main log
-      self.logfile = os.path.abspath(os.path.join(self.int_base, 'iota.log'))
-
-      # Log starting info
-      util.main_log(self.logfile, '{:*^80} \n'.format(' IOTA MAIN LOG '))
-      util.main_log(self.logfile, '{:-^80} \n'.format(' SETTINGS FOR THIS RUN '))
-      util.main_log(self.logfile, self.iota_phil_string)
-
-      # Log cctbx.xfel / DIALS settings
-      util.main_log(self.logfile, '{:-^80} \n'.format('BACKEND SETTINGS'))
-      util.main_log(self.logfile, self.target_phil)
-
-      return True, 'IOTA_INIT: MAIN LOG INITIALIZED'
-    except Exception as e:
-      return False, 'IOTA_INIT_ERROR: MAIN LOG NOT INITIALIZED, {}'.format(e)
-
-  def run(self):
-    """ Run initialization functions (overwrite for customization)
-
-    :return: True if successful, False if failed
-    """
-
-    # Create output file structure
-    init_out, msg = self.initialize_output()
-    if not init_out:
-      return False, msg
-
-    # Interface-specific options - override in subclass
-    ui_init_good, msg = self.initialize_interface()
-    if msg:
-      print (msg)
-    if not ui_init_good:
-      return False, msg
-
-    # Initialize IOTA and backend parameters
-    init_param, msg = self.initialize_parameters()
-    if not init_param:
-      return False, msg
-
-    # Initalize main log (iota.log)
-    init_log, msg = self.initialize_main_log()
-    if not init_log:
-      return False, msg
-
-    # Return True for successful initialization
-    return True, msg
+    return cls(info_dict)

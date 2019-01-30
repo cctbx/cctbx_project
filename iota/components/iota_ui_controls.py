@@ -19,12 +19,10 @@ from wxtbx import metallicbutton as mb
 from wxtbx import bitmaps
 import wx.lib.buttons as btn
 
-try:  # for Py3 compatibility
-    import itertools.izip as zip
-except ImportError:
-    pass
+from iota.components.iota_utils import noneset, InputFinder
+from iota.components.iota_threads import ImageViewerThread
 
-from iota.components.iota_utils import noneset
+ginp = InputFinder()
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -98,52 +96,52 @@ class GradButton(mb.MetallicButton):
     if handler_function is not None:
       self.bind_event(wx.EVT_BUTTON, handler_function)
 
-  def OnLeftDown(self, evt):
-    """Sets the pressed state and depending on the click position will
-    show the popup menu if one has been set.
-    """
-    if not self.IsEnabled() :
-      return
-    if wx.__version__[0] == '4':
-      pos = evt.GetPosition()
-      self.SetState(GRADIENT_PRESSED)
-      size = self.GetSize()
-    else:
-      pos = evt.GetPositionTuple()
-      self.SetState(GRADIENT_PRESSED)
-      size = self.GetSizeTuple()
-    if pos[0] >= size[0] - 16:
-      if self._menu is not None:
-        self.ShowMenu()
-    self.SetFocus()
-
-  def OnLeftUp(self, evt):
-    """Post a button event if the control was previously in a
-    pressed state.
-    @param evt: wx.MouseEvent
-    """
-    if not self.IsEnabled() :
-      return
-    if self._state['cur'] == GRADIENT_PRESSED:
-      if wx.__version__[0] == '4':
-        pos = evt.GetPosition()
-        size = self.GetSize()
-      else:
-        pos = evt.GetPositionTuple()
-        size = self.GetSizeTuple()
-      if self._disable_after_click > 0 :
-        self.Enable(False)
-      self.__PostEvent()
-    self.SetState(GRADIENT_HIGHLIGHT)
-    if self._disable_after_click > 0 :
-      wx.CallLater(self._disable_after_click, lambda : self.Enable(True))
-
-  def __PostEvent(self):
-    """Post a button event to parent of this control"""
-    bevt = wx.CommandEvent(wx.wxEVT_COMMAND_BUTTON_CLICKED, self.GetId())
-    bevt.SetEventObject(self)
-    bevt.SetString(self.GetLabel())
-    wx.PostEvent(self.GetParent(), bevt)
+  # def OnLeftDown(self, evt):
+  #   """Sets the pressed state and depending on the click position will
+  #   show the popup menu if one has been set.
+  #   """
+  #   if not self.IsEnabled() :
+  #     return
+  #   if wx.__version__[0] == '4':
+  #     pos = evt.GetPosition()
+  #     self.SetState(GRADIENT_PRESSED)
+  #     size = self.GetSize()
+  #   else:
+  #     pos = evt.GetPositionTuple()
+  #     self.SetState(GRADIENT_PRESSED)
+  #     size = self.GetSizeTuple()
+  #   if pos[0] >= size[0] - 16:
+  #     if self._menu is not None:
+  #       self.ShowMenu()
+  #   self.SetFocus()
+  #
+  # def OnLeftUp(self, evt):
+  #   """Post a button event if the control was previously in a
+  #   pressed state.
+  #   @param evt: wx.MouseEvent
+  #   """
+  #   if not self.IsEnabled() :
+  #     return
+  #   if self._state['cur'] == GRADIENT_PRESSED:
+  #     if wx.__version__[0] == '4':
+  #       pos = evt.GetPosition()
+  #       size = self.GetSize()
+  #     else:
+  #       pos = evt.GetPositionTuple()
+  #       size = self.GetSizeTuple()
+  #     if self._disable_after_click > 0 :
+  #       self.Enable(False)
+  #     self.__PostEvent()
+  #   self.SetState(GRADIENT_HIGHLIGHT)
+  #   if self._disable_after_click > 0 :
+  #     wx.CallLater(self._disable_after_click, lambda : self.Enable(True))
+  #
+  # def __PostEvent(self):
+  #   """Post a button event to parent of this control"""
+  #   bevt = wx.CommandEvent(wx.wxEVT_COMMAND_BUTTON_CLICKED, self.GetId())
+  #   bevt.SetEventObject(self)
+  #   bevt.SetString(self.GetLabel())
+  #   wx.PostEvent(self.GetParent(), bevt)
 
 class MiniButtonBox(wx.Panel):
   """ A box with three mini buttons for IOTA panel """
@@ -353,6 +351,11 @@ class CtrlBase(wx.Panel):
                size=wx.DefaultSize):
 
     wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=size)
+
+    # Set control attributes
+    self.expert_level = 0
+
+    # Set font attributes for label
     if label_style == 'normal':
       self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
                           wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
@@ -367,6 +370,7 @@ class CtrlBase(wx.Panel):
       self.font = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
                           wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_BOLD)
 
+    # Set font attributes for content
     if content_style == 'normal':
       self.cfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
                            wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
@@ -959,6 +963,421 @@ class VirtualImageListCtrl(CtrlBase):
     self.sizer.Add(self.control_sizer, 1, flag=wx.EXPAND)
 
 
+class FileListCtrl(CustomListCtrl):
+  """ File list window for the input tab """
+
+  def __init__(self, parent, size=(-1, 300)):
+    CustomListCtrl.__init__(self, parent=parent, size=size)
+
+    self.parent = parent
+    self.main_window = parent.GetParent()
+
+    # Initialize dictionaries for imported data types
+    self.all_data_images = {}
+    self.all_img_objects = {}
+    self.all_proc_pickles = {}
+    self.image_count = 0
+
+    # Generate columns
+    self.ctr.InsertColumn(0, "")
+    self.ctr.InsertColumn(1, "Input Path")
+    self.ctr.InsertColumn(2, "Input Type")
+    self.ctr.InsertColumn(3, "Action")
+    self.ctr.setResizeColumn(2)
+
+    # Add file / folder buttons
+    # self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.button_sizer = wx.FlexGridSizer(1, 6, 0, 10)
+    self.btn_add_file = wx.Button(self, label='Add File...')
+    self.btn_add_dir = wx.Button(self, label='Add Folder...')
+    # self.txt_total_images = wx.StaticText(self, label='')
+    self.button_sizer.Add(self.btn_add_file)
+    self.button_sizer.Add(self.btn_add_dir)
+    self.button_sizer.Add((0, 0))
+    # self.button_sizer.Add(self.txt_total_images)
+    self.button_sizer.AddGrowableCol(2)
+
+    self.sizer.Add(self.button_sizer, flag=wx.EXPAND | wx.TOP | wx.BOTTOM,
+                   border=10)
+
+    # Event bindings
+    self.Bind(wx.EVT_BUTTON, self.onAddFile, self.btn_add_file)
+    self.Bind(wx.EVT_BUTTON, self.onAddFolder, self.btn_add_dir)
+
+  def onAddFile(self, e):
+    file_dlg = wx.FileDialog(self,
+                             message="Load File",
+                             defaultDir=os.curdir,
+                             defaultFile="*",
+                             wildcard="*",
+                             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST |
+                                   wx.FD_MULTIPLE)
+    if file_dlg.ShowModal() == wx.ID_OK:
+      files = file_dlg.GetPaths()
+      for item in files:
+        self.add_item(item)
+    file_dlg.Destroy()
+    e.Skip()
+
+  def onAddFolder(self, e):
+    dlg = wx.DirDialog(self, "Load Folder:",
+                       style=wx.DD_DEFAULT_STYLE)
+    if dlg.ShowModal() == wx.ID_OK:
+      self.add_item(dlg.GetPath())
+    dlg.Destroy()
+    e.Skip()
+
+  def set_type_choices(self, path):
+    # Determine what type of input this is and present user with choices
+    # (this so far works for images ONLY)
+    type_choices = ['[  SELECT INPUT TYPE  ]']
+    preferred_selection = 0
+    inputs, input_type = ginp.get_input(path)
+
+    if os.path.isdir(path):
+      type_choices.extend(['raw image folder', 'image pickle folder'])
+      if input_type in type_choices:
+        preferred_selection = type_choices.index(input_type)
+    elif os.path.isfile(path):
+      if input_type in ('image pickle file', 'raw image file'):
+        type_choices.extend(['raw image file', 'image pickle file'])
+        if input_type in type_choices:
+          preferred_selection = type_choices.index(input_type)
+      elif input_type in ('raw image list', 'image pickle list'):
+        type_choices.extend(['raw image list', 'image pickle list'])
+        if input_type in type_choices:
+          preferred_selection = type_choices.index(input_type)
+    return inputs, type_choices, preferred_selection
+
+  def add_item(self, path):
+    # Generate item
+    inputs, inp_choices, inp_sel = self.set_type_choices(path)
+    type_choice = DataTypeChoice(self.ctr,
+                                    choices=inp_choices)
+    item = InputListItem(path=path,
+                            type=type_choice,
+                            buttons=MiniButtonBoxInput(self.ctr))
+
+    self.Bind(wx.EVT_CHOICE, self.onTypeChoice, item.type.type)
+    self.Bind(wx.EVT_BUTTON, self.onMagButton, item.buttons.btn_mag)
+    self.Bind(wx.EVT_BUTTON, self.onDelButton, item.buttons.btn_delete)
+    self.Bind(wx.EVT_BUTTON, self.onInfoButton, item.buttons.btn_info)
+
+    # Insert list item
+    idx = self.ctr.InsertStringItem(self.ctr.GetItemCount() + 1, '')
+    self.ctr.SetStringItem(idx, 1, item.path)
+    self.ctr.SetItemWindow(idx, 2, item.type, expand=True)
+    self.ctr.SetItemWindow(idx, 3, item.buttons, expand=True)
+
+    # Set drop-down selection, check it for data and open other tabs
+    item.type.type.SetSelection(inp_sel)
+    if item.type.type.GetString(inp_sel) in ['raw image folder',
+                                             'image pickle folder',
+                                             'image pickle file',
+                                             'raw image file',
+                                             'raw image list',
+                                             'image pickle list']:
+      self.main_window.set_tool_state(self.main_window.tb_btn_run, True)
+      self.all_data_images[item.path] = inputs
+
+      # Calculate # of images and display w/ item
+      self.ctr.SetStringItem(idx, 0, str(len(inputs)))
+
+      if "image" in item.type.type.GetString(inp_sel):
+        view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer16')
+        item.buttons.btn_mag.SetBitmapLabel(view_bmp)
+    else:
+      warn_bmp = bitmaps.fetch_icon_bitmap('actions', 'status_unknown',
+                                           size=16)
+      item.buttons.btn_info.SetBitmapLabel(warn_bmp)
+      item.warning = True
+
+    # Record index in all relevant places
+    item.id = idx
+    item.buttons.index = idx
+    item.type.index = idx
+    item.type_selection = inp_sel
+
+    # Resize columns to fit content
+    self.ctr.SetColumnWidth(0, width=-1)
+    self.ctr.SetColumnWidth(2, width=-1)
+    self.ctr.SetColumnWidth(3, width=-1)
+    self.ctr.SetColumnWidth(1, width=-3)
+
+    # Make sure all the choice lists are the same size
+    if item.type.type.GetSize()[0] < self.ctr.GetColumnWidth(2) - 5:
+       item.type.type.SetSize((self.ctr.GetColumnWidth(2) - 5, -1))
+
+    # Attach data object to item
+    self.ctr.SetItemData(item.id, item)
+
+    if len(inputs) > 0:
+      self.image_count += len(inputs)
+      if self.image_count > 0:
+        self.update_total_image_count()
+
+    self.main_window.Layout()
+
+  def onTypeChoice(self, e):
+    type = e.GetEventObject().GetParent()
+    item_data = self.ctr.GetItemData(type.index)
+    item_data.type.type.SetSelection(type.type.GetSelection())
+    item_data.type_selection = type.type.GetSelection()
+
+    # Evaluate whether data folders / files are present
+    data_items = 0
+    for idx in range(self.ctr.GetItemCount()):
+      if self.ctr.GetItemData(idx).type_selection != 0:
+        data_items += 1
+    self.main_window.set_tool_state(self.main_window.tb_btn_run,
+                                    (data_items > 0))
+    e.Skip()
+
+
+  def onMagButton(self, e):
+    idx = e.GetEventObject().GetParent().index
+    item_obj = self.ctr.GetItemData(idx)
+    path = item_obj.path
+    type = item_obj.type.type.GetString(item_obj.type_selection)
+
+    if os.path.isfile(path):
+      if type in ('raw image file', 'image pickle file'):
+        self.view_images([path], img_type=type)
+      elif type in ('raw image list', 'image pickle list'):
+        with open(path, 'r') as f:
+          file_list = [i.replace('\n', '') for i in f.readlines()]
+          self.view_images(file_list, img_type=type)
+      elif type == 'text':
+        with open(path, 'r') as f:
+          file_list = f.readlines()
+          msg = ' '.join(file_list)
+          textview = TextFileView(self, title=path, contents=msg)
+          textview.ShowModal()
+      else:
+        wx.MessageBox('Unknown file format', 'Warning',
+                      wx.OK | wx.ICON_EXCLAMATION)
+    elif os.path.isdir(path):
+      file_list, _ = ginp.get_input(path)
+      self.view_images(file_list, img_type=type)
+
+  def view_images(self, img_list, img_type=None):
+    """ Launches image viewer (depending on backend) """
+    # self.parent.input_phil.show()
+    viewer = self.main_window.gparams.gui.image_viewer
+    if viewer == 'cxi.view' and 'pickle' not in img_type:
+        wx.MessageBox('cxi.view only accepts image pickles', 'Warning',
+                      wx.OK | wx.ICON_EXCLAMATION)
+    else:
+      if len(img_list) > 10:
+        view_warning = ViewerWarning(self, len(img_list))
+        if view_warning.ShowModal() == wx.ID_OK:
+          # parse 'other' entry
+          img_no_string = str(view_warning.no_images).split(',')
+          filenames = []
+          for n in img_no_string:
+            if '-' in n:
+              img_limits = [int(i) for i in n.split('-')]
+              start = min(img_limits)
+              end = max(img_limits)
+              if start <= len(img_list) and end <= len(img_list):
+                filenames.extend(img_list[start:end])
+            else:
+              if int(n) <= len(img_list):
+                filenames.append(img_list[int(n)])
+          file_string = ' '.join(filenames)
+        else:
+          return
+        view_warning.Close()
+      elif viewer == 'distl.image_viewer' and len(img_list) > 1:
+        wx.MessageBox('distl.image_viewer can show only one image', 'Warning',
+                      wx.OK | wx.ICON_EXCLAMATION)
+        file_string = img_list[0]
+      else:
+        file_string = ' '.join(img_list)
+
+      viewer = ImageViewerThread(self,
+                                 viewer=viewer,
+                                 file_string=file_string,
+                                 img_type=img_type)
+      viewer.start()
+
+
+  def onDelButton(self, e):
+    item = e.GetEventObject().GetParent()
+    self.delete_button(item.index)
+
+  def delete_all(self):
+    for idx in range(self.ctr.GetItemCount()):
+      self.delete_button(index=0)
+
+  def delete_button(self, index):
+    try:
+      self.image_count -= int(self.ctr.GetItemText(index))
+    except ValueError:
+      self.image_count = 0
+    self.all_data_images.pop(self.ctr.GetItemData(index).path, None)
+    self.update_total_image_count()
+    self.ctr.DeleteItem(index)
+
+    # Refresh widget and list item indices
+    for i in range(self.ctr.GetItemCount()):
+      item_data = self.ctr.GetItemData(i)
+      item_data.id = i
+      item_data.buttons.index = i
+      item_data.type.index = i
+      type_choice = self.ctr.GetItemWindow(i, col=2)
+      type_selection = item_data.type.type.GetSelection()
+      type_choice.type.SetSelection(type_selection)
+      self.ctr.SetItemData(i, item_data)
+
+  def onInfoButton(self, e):
+    """ Info / alert / error button (will change depending on circumstance) """
+    idx = e.GetEventObject().GetParent().index
+    item_obj = self.ctr.GetItemData(idx)
+    item_type = item_obj.type.type.GetString(item_obj.type_selection)
+
+    if item_obj.warning:
+      wx.MessageBox(item_obj.info['WARNING'], 'Warning', wx.OK |
+                    wx.ICON_EXCLAMATION)
+    else:
+      wx.MessageBox(item_obj.info[item_type], 'Info', wx.OK |
+                    wx.ICON_INFORMATION)
+
+  def update_total_image_count(self):
+    # pass
+    # self.txt_total_images.SetLabel("{} total images".format(self.image_count))
+    col1 = self.ctr.GetColumn(1)
+    col1.SetFooterText("{} total images".format(self.image_count))
+
+    font = self.ctr.GetFont()
+    font.SetPointSize(18)
+    font.SetWeight(wx.FONTWEIGHT_BOLD)
+    col1.SetFooterFont(font)
+
+    self.ctr.SetColumn(1, col1)
+
+class TextFileView(wx.Dialog):
+  def __init__(self, parent,
+               contents=None,
+               *args, **kwargs):
+
+    dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
+
+    wx.Dialog.__init__(self, parent, style=dlg_style,
+                        size=(600, 500),
+                        *args, **kwargs)
+
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(self.main_sizer)
+
+    from wx.lib.scrolledpanel import ScrolledPanel
+
+    self.txt_panel = ScrolledPanel(self)
+    self.txt_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.txt_panel.SetSizer(self.txt_sizer)
+
+    self.txt = wx.StaticText(self.txt_panel, label=contents)
+    self.txt_sizer.Add(self.txt)
+
+    self.txt_panel.SetupScrolling()
+    self.main_sizer.Add(self.txt_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Dialog control
+    self.main_sizer.Add(self.CreateSeparatedButtonSizer(wx.OK),
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10)
+
+
+class ViewerWarning(wx.Dialog):
+  def __init__(self, parent,
+               img_list_length = None,
+               *args, **kwargs):
+
+    dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
+    wx.Dialog.__init__(self, parent, style=dlg_style,
+                        size=(400, 400),
+                        *args, **kwargs)
+
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(self.main_sizer)
+
+    self.img_list_length = img_list_length
+    self.no_images = 0
+
+    self.opt_sizer = wx.FlexGridSizer(6, 3, 10, 10)
+
+    self.rb1_img_view = wx.RadioButton(self, label='First 1 image',
+                                       style=wx.RB_GROUP)
+    self.rb2_img_view = wx.RadioButton(self, label='First 10 images')
+    self.rb3_img_view = wx.RadioButton(self, label='First 50 images')
+    self.rb4_img_view = wx.RadioButton(self, label='First 100 images')
+    self.rb5_img_view = wx.RadioButton(self, label='All {} images'
+                                      ''.format(self.img_list_length))
+    self.rb_custom = wx.RadioButton(self, label='Other: ')
+    self.opt_custom = wx.TextCtrl(self, size=(100, -1))
+    self.opt_custom.Disable()
+    self.txt_custom = wx.StaticText(self, label='images')
+    self.txt_custom.Disable()
+
+    self.opt_sizer.AddMany([self.rb1_img_view, (0, 0), (0, 0),
+                            self.rb2_img_view, (0, 0), (0, 0),
+                            self.rb3_img_view, (0, 0), (0, 0),
+                            self.rb4_img_view, (0, 0), (0, 0),
+                            self.rb5_img_view, (0, 0), (0, 0),
+                            self.rb_custom, self.opt_custom, self.txt_custom])
+
+    # Grey out irrelevant radio buttons
+    if self.img_list_length < 100:
+      self.rb4_img_view.Disable()
+    if self.img_list_length < 50:
+      self.rb3_img_view.Disable()
+    if self.img_list_length < 10:
+      self.rb3_img_view.Disable()
+
+    self.main_sizer.Add(self.opt_sizer, flag=wx.ALL, border=10)
+
+    # Dialog control
+    self.main_sizer.Add(self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL),
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10)
+
+    self.rb1_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb2_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb3_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb4_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb5_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb_custom.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def onCustom(self, e):
+    if self.rb_custom.GetValue():
+      self.txt_custom.Enable()
+      self.opt_custom.Enable()
+      if self.img_list_length < 25:
+        value = str(self.img_list_length)
+      else:
+        value = '25'
+      self.opt_custom.SetValue(value)
+    else:
+      self.txt_custom.Disable()
+      self.opt_custom.Disable()
+      self.opt_custom.SetValue('')
+
+  def onOK(self, e):
+    if self.rb1_img_view.GetValue():
+      self.no_images = '1'
+    elif self.rb2_img_view.GetValue():
+      self.no_images = '1-10'
+    elif self.rb3_img_view.GetValue():
+      self.no_images = '1-50'
+    elif self.rb4_img_view.GetValue():
+      self.no_images = '1-100'
+    elif self.rb5_img_view.GetValue():
+      self.no_images = '1-{}'.format(self.img_list_length)
+    elif self.rb_custom.GetValue():
+      self.no_images = self.opt_custom.GetValue()
+    self.EndModal(wx.ID_OK)
+
+
 class PHILBox(CtrlBase):
   def __init__(self, parent,
                btn_clear_size=(120, -1),
@@ -1102,196 +1521,49 @@ class TableCtrl(CtrlBase):
 
     self.SetSizer(self.sizer)
 
-# # ------------------------------ Generic Plotter ----------------------------- #
-#
-# class FastPlotter(CtrlBase):
-#   '''Panel with one or multiple charts in it with these characteristics:
-#         1. Chart is configurable (w/ axis sharing)
-#         2. Chart is fast-updated (i.e. new data are added to existing chart)
-#         3. Data are selectable (w/ up to three span selectors per chart)
-#
-#      n_plots: number of plots, can be either int, signifying number of plots, or
-#               tuple, signifying how the plots are arranged
-#      axes: list of axis object names, e.g. ['ax1', 'ax2', 'ax3']; must be same
-#            length as number of plots
-#      legends: list of tuples; each tuple contains labels for x- and y-axes
-#      transparent: Boolean, set to True if want figure/plot to be transparent
-#   '''
-#
-#   # NOTE: THIS DOES NOT YET WORK!
-#
-#   # Constructor
-#   def __init__(self, parent,
-#                n_plots=1,
-#                axes=None,
-#                labels=None,
-#                chart_label='',
-#                sharex=False,
-#                sharey=False,
-#                transparent=True,
-#                slider=True):
-#
-#     from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-#     from matplotlib import pyplot as plt
-#     import numpy as np
-#
-#     CtrlBase.__init__(self, parent)
-#
-#     # Initialize the main sizer for the chart
-#     self.main_box = wx.StaticBox(self, label=chart_label)
-#     self.main_fig_sizer = wx.StaticBoxSizer(self.main_box, wx.VERTICAL)
-#     self.SetSizer(self.main_fig_sizer)
-#
-#     # Create figure and axis array; flatten axis array to zip with other info
-#     self.track_figure, axarr = plt.subplots(n_plots, sharex=sharex)
-#     axarr_flat = [ax for sub_ax in axarr for ax in sub_ax]
-#
-#     # Make sure the number of axes matches number of axis names / legends
-#     try:
-#       assert len(axarr_flat) == len(axes) == len(labels)
-#     except AssertionError:
-#       print ('FastPlotter Error: Match number of plots to number of ' \
-#             'axes and axis labels!')
-#
-#     # Generate generic Nonetype axis object names & labels if none are provided
-#     if axes is None:
-#       axes = [None] * len(axes)
-#     if labels is None:
-#       labels = [None] * len(axes)
-#     axes_w_names = zip(axes, axarr_flat, labels)
-#
-#     # Attach axis objects to class attributes (handling various cases)
-#     for axn in axes_w_names:
-#       ax_name = axn[0]
-#       if ax_name is None:
-#         ax_name = 'ax' + str(axes_w_names.index(axn))
-#       ax_obj = axn[1]
-#       ax_legend = axn[2]
-#       if transparent:
-#         ax_obj.patch.set_visible(False)
-#       if ax_legend is not None:
-#         if isinstance(ax_legend, (list, tuple)):
-#           ax_obj.set_xlabel(ax_legend[0])
-#           ax_obj.set_ylabel(ax_legend[1])
-#         else:
-#           ax_obj.set_ylabel(ax_legend)
-#       ax_obj.set_autoscaley_on(True)
-#       setattr(self, ax_name, ax_obj)
-#
-#     # Data-handling attributes
-#     self.xdata = []
-#     self.ydata = []
-#     self.x_min = 0
-#     self.x_max = 1
-#     self.y_max = 1
-#
-#     # Chart navigation attributes
-#     self.bracket_set = False
-#     self.button_hold = False
-#     self.plot_zoom = False
-#     self.chart_range = None
-#     self.selector = None
-#     self.max_lock = True
-#     self.patch_x = 0
-#     self.patch_x_last = 1
-#     self.patch_width = 1
-#     self.start_edge = 0
-#     self.end_edge = 1
-#
-#     # Set general figure characteristics (default tight layout)
-#     if transparent:
-#       self.track_figure.patch.set_visible(False)
-#     self.track_figure.set_tight_layout(True)
-#     self.track_canvas = FigureCanvas(self, -1, self.track_figure)
-#
-#     # Slider bar for the plot
-#     if slider:
-#       self.plot_sb = wx.Slider(self, minValue=0, maxValue=1)
-#       self.plot_sb.Hide()
-#       self.Bind(wx.EVT_SCROLL, self.onScroll, self.plot_sb)
-#
-#     self.main_fig_sizer.Add(self.track_canvas, 1, wx.EXPAND)
-#     self.main_fig_sizer.Add(self.plot_sb, flag=wx.EXPAND)
-#
-#     # Plot bindings
-#     self.track_figure.canvas.mpl_connect('button_press_event', self.onPress)
-#
-#   def onScroll(self, e):
-#     sb_center = self.plot_sb.GetValue()
-#     half_span = (self.x_max - self.x_min) / 2
-#     if sb_center - half_span == 0:
-#       self.x_min = 0
-#       self.x_max = half_span * 2
-#     else:
-#       self.x_min = sb_center - half_span
-#       self.x_max = sb_center + half_span
-#
-#     if self.plot_sb.GetValue() == self.plot_sb.GetMax():
-#       self.max_lock = True
-#     else:
-#       self.max_lock = False
-#
-#     self.draw_plot()
-#
-#
-#   def draw_plot(self, new_x=None, new_y=None):
-#
-#     if new_x is None:
-#       new_x = []
-#     if new_y is None:
-#       new_y = []
-#
-#     nref_x = np.append(self.xdata, np.array(new_x).astype(np.double))
-#     nref_y = np.append(self.ydata, np.array(new_y).astype(np.double))
-#     self.xdata = nref_x
-#     self.ydata = nref_y
-#     nref_xy = zip(nref_x, nref_y)
-#     all_acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
-#     all_rej = [i[0] for i in nref_xy if i[1] < min_bragg]
-#
-#     if nref_x != [] and nref_y != []:
-#       if self.plot_zoom:
-#         if self.max_lock:
-#           self.x_max = np.max(nref_x)
-#           self.x_min = self.x_max - self.chart_range
-#       else:
-#         self.x_min = -1
-#         self.x_max = np.max(nref_x) + 1
-#
-#       if min_bragg > np.max(nref_y):
-#         self.y_max = min_bragg + int(0.1 * min_bragg)
-#       else:
-#         self.y_max = np.max(nref_y) + int(0.1 * np.max(nref_y))
-#
-#       self.track_axes.set_xlim(self.x_min, self.x_max)
-#       self.track_axes.set_ylim(0, self.y_max)
-#
-#     else:
-#       self.x_min = -1
-#       self.x_max = 1
-#
-#     acc = [i for i in all_acc if i > self.x_min and i < self.x_max]
-#     rej = [i for i in all_rej if i > self.x_min and i < self.x_max]
-#
-#     self.acc_plot.set_xdata(nref_x)
-#     self.rej_plot.set_xdata(nref_x)
-#     self.acc_plot.set_ydata(nref_y)
-#     self.rej_plot.set_ydata(nref_y)
-#     self.acc_plot.set_markevery(acc)
-#     self.rej_plot.set_markevery(rej)
-#
-#     self.Layout()
-#
-#     count = '{}'.format(len([i for i in nref_xy if i[1] >= min_bragg]))
-#     self.main_window.tracker_panel.count_txt.SetLabel(count)
-#     self.main_window.tracker_panel.status_sizer.Layout()
-#
-#     # Set up scroll bar
-#     if len(self.xdata) > 0:
-#       self.plot_sb.SetMax(np.max(nref_x))
-#       if self.max_lock:
-#         self.plot_sb.SetValue(self.plot_sb.GetMax())
-#
-#     # Draw extended plots
-#     self.track_axes.draw_artist(self.acc_plot)
-#     self.track_axes.draw_artist(self.rej_plot)
+class WidgetFactory(object):
+  ''' Class that will automatically make widgets for automated dialog making '''
+  w_args = [
+    'text',
+    'path',
+    'choice',
+    'checkbox',
+    'input_list'
+  ]
+
+  w_kwargs = [
+    'grid',
+    'browse_btn',
+    'mag_btn',
+    'onChange',
+    'onUpdate',
+    'onToggle',
+  ]
+
+  def __init__(self):
+    pass
+
+  @staticmethod
+  def make_widget(parent, object, label):
+    wtype = object.type.phil_type
+    wstyle = object.style
+
+    print ('DEBUG: ', label, wstyle, wtype)
+
+    if wtype == 'path':  # Two styles only: single line w/ Browse, or input list
+      if wstyle == 'input_list':
+        print ("DEBUG: MAKING FILELISTCTRL FOR ", label, wtype)
+        widget = FileListCtrl(parent=parent)
+      else:
+        widget = InputCtrl(parent=parent, label=label, buttons=True)
+    elif wtype in ('str', 'unit_cell', 'space_group'):
+      widget = InputCtrl(parent=parent, label=label, buttons=False)
+    elif wtype == 'choice':
+      widget = ChoiceCtrl(parent=parent, choices=['blah', 'bleh', 'pfui'],
+                          label=label)
+    elif wtype in ('int', 'float'):
+      widget = SpinCtrl(parent=parent, label=label)
+    elif wtype == 'bool':
+      widget = wx.CheckBox(parent=parent, label=label)
+
+    return widget
