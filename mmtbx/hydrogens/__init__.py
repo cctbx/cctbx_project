@@ -8,28 +8,38 @@ import mmtbx.model
 from libtbx.utils import null_out
 import sys
 
+import boost.python
+ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
+
+
 def mon_lib_query(residue, mon_lib_srv):
     get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
     if (get_func is not None): return get_func(comp_id=residue)
     return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
 
 def exclude_h_on_SS(model):
+  rm = model.get_restraints_manager()
   bond_proxies_simple, asu = rm.geometry.get_all_bond_proxies(
     sites_cart = model.get_sites_cart())
   els = model.get_hierarchy().atoms().extract_element()
   ss_i_seqs = []
-  for proxy in bond_proxies_simple:
-    i, j = proxy.i_seqs
-    print i, i, [els[i],els[j]]
+  all_proxies = [p for p in bond_proxies_simple]
+  for proxy in asu:
+    all_proxies.append(proxy)
+  for proxy in all_proxies:
+    if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
+    elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
+    else: assert 0 # never goes here
     if([els[i],els[j]].count("S")==2):
       ss_i_seqs.extend([i,j])
   sel_remove = flex.size_t()
-  for proxy in bond_proxies_simple:
-    i, j = proxy.i_seqs
+  for proxy in all_proxies:
+    if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
+    elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
+    else: assert 0 # never goes here
     if(els[i] in ["H","D"] and j in ss_i_seqs): sel_remove.append(i)
     if(els[j] in ["H","D"] and i in ss_i_seqs): sel_remove.append(j)
-  sel_remove = flex.bool(model.size(), sel_remove)
-  return model.select(~sel_remove)
+  return model.select(~flex.bool(model.size(), sel_remove))
 
 def add(model, use_neutron_distances=False, adp_scale=1, exclude_water=True):
   pdb_hierarchy = model.get_hierarchy()
@@ -65,6 +75,7 @@ def add(model, use_neutron_distances=False, adp_scale=1, exclude_water=True):
     model_input               = None,
     pdb_hierarchy             = pdb_hierarchy,
     build_grm                 = True,
+    crystal_symmetry          = model.crystal_symmetry(),
     restraint_objects         = ro,
     pdb_interpretation_params = p,
     log                       = null_out())
