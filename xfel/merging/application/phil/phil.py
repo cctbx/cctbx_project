@@ -127,6 +127,14 @@ filter
         .help = Alternatively identify a particular isoform to carry forward for merging.
     }
   }
+  outlier {
+    min_corr = 0.1
+      .type = float
+      .help = Correlation cutoff for rejecting individual experiments by comparing observed intensities to the model.
+      .help = This filter is not applied if scaling.model==None. No experiments are rejected with min_corr=-1.
+      .help = This either keeps or rejects the whole experiment.
+    assmann_diederichs {}
+  }
 }
 
 modify
@@ -140,7 +148,7 @@ modify
 select
   .help = The SELECT section accepts or rejects specified reflections
   {
-  algorithm = panel cspad_sensor significance_filter outlier
+  algorithm = panel cspad_sensor significance_filter
     .type = choice
     .multiple = True
   cspad_sensor {
@@ -170,15 +178,7 @@ select
     sigma = 0.5
       .type = float
       .help = Remove highest resolution bins such that all accepted bins have <I/sigma> >= sigma
-  }
-  outlier {
-    min_corr = 0.1
-      .type = float
-      .help = Correlation cutoff for rejecting individual frames.
-      .help = This filter is not applied if model==None. No experiments are rejected with min_corr=-1.
-      .help = This either keeps or rejects the whole experiment.
-    assmann_diederichs {}
-  }
+    }
 }
 
 scaling {
@@ -199,7 +199,7 @@ scaling {
     .help = Kludge for cases with an indexing ambiguity, need to be able to adjust scaling model
   resolution_scalar = 0.969
     .type = float
-    .help = Accomodates a few more miller indices at the high resoultion limit to account for
+    .help = Accomodates a few more miller indices at the high resolution limit to account for
     .help = unit cell variation in the sample. merging.d_min is multiplied by resolution_scalar
     .help = when computing which reflections are within the resolution limit.
   mtz {
@@ -226,6 +226,15 @@ scaling {
     .help = "mark0: original per-image scaling by reference to isomorphous PDB model"
     .help = "mark1: no scaling, just averaging (i.e. Monte Carlo
              algorithm).  Individual image scale factors are set to 1."
+  mark0 {
+    fit_reference_to_experiment = True
+      .type = bool
+      .help = "When true, fit reference to experiment: I_o = offset + slope * I_r, where I_o is observed intensities and I_r is reference intensities"
+      .help = "When false, fit experiment to reference: I_r = offset + slope * I_o"
+    fit_offset = False
+      .type = bool
+      .help = When true, fit both offset and slope, otherwise fit slope only.
+  }
 }
 
 postrefinement {
