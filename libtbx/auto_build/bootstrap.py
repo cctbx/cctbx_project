@@ -1444,13 +1444,30 @@ class Builder(object):
 
     return m
 
-  def _get_conda_python(self):
+  def _get_conda_python(self, conda_env=None):
     """
     Helper function for determining the location of Python for the base
     and build actions.
     """
-    m = self._get_conda_manager()
-    return m.get_conda_python()
+    try:
+      m = self._get_conda_manager()
+      return m.get_conda_python()
+    except ImportError:  # modules directory is not available
+      if conda_env is None:
+        raise RuntimeError("""
+The "modules" directory is not available. Please provide a path to the
+base conda installation.
+""")
+      # duplicate logic from get_conda_python function in install_conda.py
+      # since install_conda.py may not be available
+      conda_python = os.path.join(conda_env, 'bin', 'python')
+      if self.isPlatformWindows():
+        conda_python = os.path.join(conda_env, 'python.exe')
+      elif self.isPlatformMacOSX():
+        conda_python = os.path.join(conda_env, 'python.app', 'Contents',
+                                    'MacOS', 'python')
+
+    return conda_python
 
   def add_command(self, command, name=None, workdir=None, args=None, **kwargs):
     if self.isPlatformWindows():
@@ -1571,6 +1588,33 @@ class Builder(object):
           'python',
           self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build',
                       'install_conda.py',)] + flags
+        conda_env = os.path.join('conda_base')
+        self.python_base = self._get_conda_python(conda_env=conda_env)
+      # (case 2)
+      # conda environment is active, overrides any path provided to --use-conda
+      elif conda_env is not None:
+        if os.path.isdir(conda_env):
+          self.python_base = self._get_conda_python(conda_env=conda_env)
+          if not os.path.isfile(self.python_base):
+            raise RuntimeError("""
+The path specified by the CONDA_PREFIX environment variable does not have
+python installed. Please make sure you have a valid conda environment in
+{conda_env}""").format(conda_env=conda_env)
+      # use path provided to --use-conda
+      else:
+        self.use_conda = os.path.abspath(self.use_conda)
+        if os.path.isdir(self.use_conda):
+          self.python_base = self._get_conda_python(conda_env=self.use_conda)
+          if not os.path.isfile(self.python_base):
+            raise RuntimeError("""
+The path specified by the --use-conda flag does not have python installed.
+Please make sure you have a valid conda environment in
+{conda_env}""").format(conda_env=conda_env)
+        else:
+          raise RuntimeError("""
+The path specified by the --use-conda flag does not exist. Please make
+sure you have a valid conda environment in
+{conda_env}""").format(conda_env=conda_env)
 
     if len(command) > 0:
       print("Installing base packages using:\n  " + " ".join(command))
@@ -1639,7 +1683,6 @@ class Builder(object):
     if self.use_conda is not None:
       if '--use_conda' not in self.config_flags:
         self.config_flags.append('--use_conda')
-      self.python_base = self._get_conda_python()
 
     configcmd =[
         self.python_base, # default to using our python rather than system python
@@ -1651,7 +1694,7 @@ class Builder(object):
     # Prepare saving configure.py command to file should user want to manually recompile Phenix
     fname = self.opjoin("config_modules.cmd")
     ldlibpath = ''
-    if self.isPlatformLinux() and self.use_conda is not None:
+    if self.isPlatformLinux() and self.use_conda is None:
       ldlibpath = 'export LD_LIBRARY_PATH=../base/lib\n'
       # because that was the environment when python and base components were built during bootstrap
     confstr = ldlibpath + subprocess.list2cmdline(configcmd)
