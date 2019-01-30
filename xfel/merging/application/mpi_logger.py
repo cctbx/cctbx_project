@@ -8,17 +8,25 @@ class mpi_logger(object):
     self.mpi_helper = mpi_helper()
 
     if params:
-      self.set_log_file_path(params)
+      self.set_log_file_paths(params)
     else:
-      self.log_file_path = None
+      self.main_log_file_path = None
+      self.rank_log_file_path = None
       self.timing_file_path = None
 
     self.log_buffer = ''
 
     self.timing_table = dict()
 
-  def set_log_file_path(self, params):
-    self.log_file_path = params.output.output_dir + '/rank_%06d_%06d.out'%(self.mpi_helper.size, self.mpi_helper.rank)
+  def set_log_file_paths(self, params):
+
+    if params.output.title:
+      title = params.output.title
+    else:
+      title = 'merge'
+
+    self.main_log_file_path = params.output.output_dir + '/' + title + ".log"
+    self.rank_log_file_path = params.output.output_dir + '/rank_%06d_%06d.out'%(self.mpi_helper.size, self.mpi_helper.rank)
 
     if params.output.do_timing:
       self.timing_file_path = params.output.output_dir + '/timing_%06d_%06d.out'%(self.mpi_helper.size, self.mpi_helper.rank)
@@ -33,10 +41,23 @@ class mpi_logger(object):
 
     self.log_buffer += rank_message
 
-    if self.log_file_path == None:
+    if self.rank_log_file_path == None:
       return
 
-    log_file_handle = open(self.log_file_path, 'a')
+    log_file_handle = open(self.rank_log_file_path, 'a')
+    log_file_handle.write(self.log_buffer)
+    self.log_buffer = ''
+    log_file_handle.close()
+
+  def main_log(self, message):
+    '''Log a message to the main log file'''
+
+    if self.main_log_file_path == None:
+      return
+
+    self.log_buffer = "\n" + message
+
+    log_file_handle = open(self.main_log_file_path, 'a')
     log_file_handle.write(self.log_buffer)
     self.log_buffer = ''
     log_file_handle.close()

@@ -16,11 +16,7 @@ class data_counter(object):
     reflection_count = len(reflections)
 
     # count images
-    image_count = 0
-    all_imgs = []
-    for iset in experiments.imagesets():
-      all_imgs.extend(iset.paths())
-      image_count = len(set(all_imgs))
+    image_count = sum(len(iset) for iset in experiments.imagesets())
 
     self.logger.log_step_time("CALC_LOAD_STATISTICS")
 
@@ -35,10 +31,10 @@ class data_counter(object):
 
     # rank 0: log data statistics
     if self.mpi_helper.rank == 0:
-      self.logger.log('All ranks have read %d experiments'%total_experiment_count)
-      self.logger.log('All ranks have read %d images'%total_image_count)
-      self.logger.log('All ranks have read %d reflections'%total_reflection_count)
-      self.logger.log('The maximum number of reflections loaded per rank is: %d reflections'%max_reflection_count)
-      self.logger.log('The minimum number of reflections loaded per rank is: %d reflections'%min_reflection_count)
+      self.logger.main_log('All ranks have read %d experiments'%total_experiment_count)
+      self.logger.main_log('All ranks have read %d images'%total_image_count)
+      self.logger.main_log('All ranks have read %d reflections'%total_reflection_count)
+      self.logger.main_log('The maximum number of reflections loaded per rank is: %d reflections'%max_reflection_count)
+      self.logger.main_log('The minimum number of reflections loaded per rank is: %d reflections'%min_reflection_count)
 
     self.logger.log_step_time("CALC_LOAD_STATISTICS", True)

@@ -51,7 +51,7 @@ class Script(object):
     self.params = transmitted['params']
     self.options = transmitted['options']
 
-    self.mpi_logger.set_log_file_path(self.params)
+    self.mpi_logger.set_log_file_paths(self.params)
 
     self.mpi_logger.log("Received input parameters and options")
     self.mpi_logger.log_step_time("BROADCAST_INPUT_PARAMS", True)
@@ -69,7 +69,8 @@ class Script(object):
     import importlib
 
     workers = []
-    for step in ['input', 'filter', 'modify', 'edit', 'scale', 'merge']:
+    #for step in ['input', 'edit', 'filter', 'modify', 'scale', 'merge']:
+    for step in ['input', 'modify', 'edit', 'filter', 'scale', 'merge']:
       factory = importlib.import_module('xfel.merging.application.'+ step +'.factory')
       workers.extend(factory.factory.from_parameters(self.params))
 

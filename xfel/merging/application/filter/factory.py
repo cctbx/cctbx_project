@@ -1,5 +1,6 @@
 from __future__ import division
 from xfel.merging.application.filter.experiment_filter import experiment_filter
+from xfel.merging.application.filter.reflection_filter import reflection_filter
 from xfel.merging.application.worker import factory as factory_base
 
 class factory(factory_base):
@@ -7,4 +8,4 @@ class factory(factory_base):
   @staticmethod
   def from_parameters(params):
     """ """
-    return [experiment_filter(params)]
+    return [experiment_filter(params), reflection_filter(params)]

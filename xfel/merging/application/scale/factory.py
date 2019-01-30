@@ -1,5 +1,5 @@
 from __future__ import division
-from xfel.merging.application.scale.frame_scaler import frame_scaler
+from xfel.merging.application.scale.experiment_scaler import experiment_scaler
 from xfel.merging.application.worker import factory as factory_base
 
 class factory(factory_base):
@@ -7,4 +7,4 @@ class factory(factory_base):
   @staticmethod
   def from_parameters(params):
     """ """
-    return [frame_scaler(params)]
+    return [experiment_scaler(params)]

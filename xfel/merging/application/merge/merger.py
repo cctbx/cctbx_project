@@ -154,10 +154,19 @@ class merger(worker):
     from cctbx import miller
     from cctbx.crystal import symmetry
 
-    target_unit_cell = self.params.scaling.unit_cell
-    target_space_group_info = self.params.scaling.space_group
-    symm = symmetry(unit_cell = target_unit_cell, space_group_info = target_space_group_info)
-    miller_set = symm.build_miller_set(anomalous_flag=(not self.params.merging.merge_anomalous), d_max=1000.0, d_min=self.params.merging.d_min)
+    symm = symmetry(unit_cell = self.params.scaling.unit_cell, space_group_info = self.params.scaling.space_group)
+
+    # set up the resolution limits
+    d_max = 100000 # a default like in cxi-merge
+    if self.params.merging.d_max != None:
+      d_max = self.params.merging.d_max
+    # RB: for later
+    #d_max /= self.params.scaling.resolution_scalar
+    d_min = self.params.merging.d_min * self.params.scaling.resolution_scalar
+
+    miller_set = symm.build_miller_set(anomalous_flag=(not self.params.merging.merge_anomalous), d_max=d_max, d_min=d_min)
+    miller_set = miller_set.change_basis(self.params.scaling.model_reindex_op).map_to_asu()
+
     self.logger.log("Generated %d miller indices"%miller_set.indices().size())
 
     return miller_set
@@ -246,17 +255,17 @@ class merger(worker):
     # run all-to-all
     if self.params.parallel.a2a == 1:
       alltoall_reflections = self.get_reflections_from_alltoall()
-    else: # if encountered alltoall memory problem, do alltoall on chunk slices
+    else: # do alltoall on chunk slices - useful if run-time memory is not sufficient to do alltoall on the whole chunks
       alltoall_reflections = self.get_reflections_from_alltoall_sliced(number_of_slices=self.params.parallel.a2a)
 
-    # sort reflections - necessary for the next step, merging of intensities
+    # sort reflections - necessary for the next step, to merge the intensities
     self.logger.log_step_time("SORT")
     self.logger.log("Sorting consolidated reflection table...")
     if len(alltoall_reflections) > 0:
       alltoall_reflections.sort('miller_index_asymmetric')
     self.logger.log_step_time("SORT", True)
 
-    # merge reflection intensities: calculate average, std, etc.
+    # merge reflection intensities: calculate the average and other statistics
     self.logger.log_step_time("AVERAGE")
     self.logger.log("Averaging intensities...")
     all_rank_merged_reflections = self.merging_reflection_table()
@@ -285,7 +294,7 @@ class merger(worker):
       self.logger.log("Performing final merging of reflection tables received from all ranks...")
       for table in all_merged_reflection_tables:
         final_merged_reflection_table.extend(table)
-      self.logger.log("Total merged HKLs: {}".format(final_merged_reflection_table.size()))
+      self.logger.main_log("Total merged HKLs: {}".format(final_merged_reflection_table.size()))
       self.logger.log_step_time("MERGE", True)
 
       # write the final merged reflection table out to an ASCII file

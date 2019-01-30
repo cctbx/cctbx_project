@@ -37,8 +37,9 @@ class experiment_filter(worker):
 
     return is_ok;
 
-  def remove_experiments(self, experiments, reflections, remove_experiment_ids):
-    ''' Remove selected experiments and corresponding reflections. '''
+  @staticmethod
+  def remove_experiments(experiments, reflections, remove_experiment_ids):
+    ''' Remove specified experiments from the experiment list. Remove corresponding reflections from the reflection table. '''
 
     new_experiments = ExperimentList()
     new_reflections = flex.reflection_table()
@@ -72,11 +73,10 @@ class experiment_filter(worker):
         remove_experiment_ids.append(experiment_id)
         removed_for_unit_cell += 1
 
-    reflection_count_before_removing_experiments = len(reflections)
+    new_experiments, new_reflections = experiment_filter.remove_experiments(experiments, reflections, remove_experiment_ids)
 
-    experiments, reflections = self.remove_experiments(experiments, reflections, remove_experiment_ids)
-
-    removed_reflections = reflection_count_before_removing_experiments - len(reflections)
+    removed_reflections = len(reflections) - len(new_reflections)
+    assert removed_for_space_group + removed_for_unit_cell == len(experiments) - len(new_experiments)
 
     self.logger.log("Experiments rejected because of unit cell dimensions: %d"%removed_for_unit_cell)
     self.logger.log("Experiments rejected because of space group %d"%removed_for_space_group)
@@ -91,10 +91,10 @@ class experiment_filter(worker):
 
     # rank 0: log total counts
     if self.mpi_helper.rank == 0:
-      self.logger.log("Total experiments rejected because of unit cell dimensions: %d"%total_removed_for_unit_cell)
-      self.logger.log("Total experiments rejected because of space group %d"%total_removed_for_space_group)
-      self.logger.log("Total reflections rejected because of rejected experiments %d"%total_reflections_removed)
+      self.logger.main_log("Total experiments rejected because of unit cell dimensions: %d"%total_removed_for_unit_cell)
+      self.logger.main_log("Total experiments rejected because of space group %d"%total_removed_for_space_group)
+      self.logger.main_log("Total reflections rejected because of rejected experiments %d"%total_reflections_removed)
 
     self.logger.log_step_time("FILTER_EXPERIMENTS", True)
 
-    return experiments, reflections
+    return new_experiments, new_reflections

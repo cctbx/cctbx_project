@@ -52,6 +52,7 @@ class file_lister(object):
 
 from xfel.merging.application.worker import worker
 from xfel.merging.application.input.data_counter import data_counter
+from xfel.merging.application.input.model_creator import model_creator
 
 class simple_file_loader(worker):
   '''A class for running the script.'''
@@ -88,7 +89,7 @@ class simple_file_loader(worker):
       from xfel.merging.application.input.file_load_calculator import file_load_calculator
       load_calculator = file_load_calculator(self.params, file_list)
       calculated_file_list = load_calculator.calculate_file_load(self.mpi_helper.size)
-      self.logger.log('Transmitting a list of %d file lists'%(len(calculated_file_list)))
+      self.logger.log('Transmitting a list of %d lists of file pairs'%(len(calculated_file_list)))
       transmitted = calculated_file_list
     else:
       transmitted = None
@@ -125,8 +126,11 @@ class simple_file_loader(worker):
     self.logger.log('Read %d experiments consisting of %d reflections'%(len(all_experiments)-starting_expts_count, len(all_reflections)-starting_refls_count))
     self.logger.log(get_memory_usage())
 
-    input_data_counter = data_counter(self.params)
-    input_data_counter.count(all_experiments, all_reflections)
+    # Do statistics on the loaded data
+    data_counter(self.params).count(all_experiments, all_reflections)
+
+    # Create a model based on the input parameters
+    model_creator(self.params).create_model()
 
     return all_experiments, all_reflections
 
