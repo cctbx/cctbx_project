@@ -30,7 +30,7 @@ def exclude_h_on_SS(model):
     if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
     elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
     else: assert 0 # never goes here
-    if([els[i],els[j]].count("S")==2):
+    if([els[i],els[j]].count("S")==2): # XXX may be coordinated if metal edits used
       ss_i_seqs.extend([i,j])
   sel_remove = flex.size_t()
   for proxy in all_proxies:
@@ -39,6 +39,26 @@ def exclude_h_on_SS(model):
     else: assert 0 # never goes here
     if(els[i] in ["H","D"] and j in ss_i_seqs): sel_remove.append(i)
     if(els[j] in ["H","D"] and i in ss_i_seqs): sel_remove.append(j)
+  return model.select(~flex.bool(model.size(), sel_remove))
+
+def exclude_h_on_coordinated_S(model): # XXX if edits used it should be like in exclude_h_on_SS
+  rm = model.get_restraints_manager().geometry
+  els = model.get_hierarchy().atoms().extract_element()
+  # Find possibly coorinated S
+  exclusion_list = ["H","D","T","S","O","P","N","C","SE"]
+  sel_s = []
+  for proxy in rm.pair_proxies().nonbonded_proxies.simple:
+    i,j = proxy.i_seqs
+    if(els[i] == "S" and not els[j] in exclusion_list): sel_s.append(i)
+    if(els[j] == "S" and not els[i] in exclusion_list): sel_s.append(j)
+  # Find H attached to possibly coordinated S
+  bond_proxies_simple, asu = rm.get_all_bond_proxies(
+    sites_cart = model.get_sites_cart())
+  sel_remove = flex.size_t()
+  for proxy in bond_proxies_simple:
+    i,j = proxy.i_seqs
+    if(els[i] in ["H","D"] and j in sel_s): sel_remove.append(i)
+    if(els[j] in ["H","D"] and i in sel_s): sel_remove.append(j)
   return model.select(~flex.bool(model.size(), sel_remove))
 
 def add(model, use_neutron_distances=False, adp_scale=1, exclude_water=True):
@@ -86,6 +106,7 @@ def add(model, use_neutron_distances=False, adp_scale=1, exclude_water=True):
   model = model.select(~sel_lone)
   #
   model = exclude_h_on_SS(model = model)
+  model = exclude_h_on_coordinated_S(model = model)
   # Reset occupancies, ADPs and idealize
   model.reset_adp_for_hydrogens(scale = adp_scale)
   model.reset_occupancy_for_hydrogens_simple()
