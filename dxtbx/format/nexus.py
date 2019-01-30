@@ -297,6 +297,96 @@ def construct_vector(nx_file, item, vector=None):
   return visitor.result()
 
 
+def construct_axes(nx_file, item, vector=None):
+  '''
+  Walk the dependency chain and create the absolute vector
+  '''
+  from scitbx import matrix
+  from scitbx.array_family import flex
+
+  class Visitor(object):
+    def __init__(self):
+      self._axes = flex.vec3_double()
+      self._angles = flex.double()
+      self._axis_names = flex.std_string()
+      self._is_scan_axis = flex.bool()
+
+    def __call__(self, nx_file, depends_on):
+      item = nx_file[depends_on]
+      value = item[()]
+      units = item.attrs['units']
+      ttype = item.attrs['transformation_type']
+      vector = [float(v) for v in item.attrs['vector']]
+      if ttype == 'translation':
+        return
+      elif ttype == 'rotation':
+        if hasattr(value, '__iter__') and len(value):
+          value = value[0]
+        if units == 'rad':
+          value *= math.pi/180
+        elif units not in ['deg', 'degree', 'degrees']:
+          raise RuntimeError('Invalid units: %s' % units)
+
+        # is the axis moving? Check the values for this axis
+        v = item[()]
+        if min(v) < max(v):
+          is_scan_axis = True
+        else:
+          is_scan_axis = False
+
+        # Is different coordinate system called mcstas
+        # Rotate 180 about up if memory serves
+        axis_name = item.name.split('/')[-1]
+        self._axes.append(vector)
+        self._angles.append(float(value))
+        self._axis_names.append(str(axis_name))
+        self._is_scan_axis.append(is_scan_axis)
+
+      else:
+        raise RuntimeError('Unknown transformation_type: %s' % ttype)
+
+    def result(self):
+      if self._is_scan_axis.count(True) == 0:
+        # XXX not sure how best to handle this, but probably a still so no scan axis
+        scan_axis = 0
+      else:
+        assert self._is_scan_axis.count(True) == 1, (
+          'Only one axis can be a scan axis: %s' % list(self._is_scan_axis))
+        scan_axis = flex.first_index(self._is_scan_axis, True)
+
+      # Rotate 180 about up from McStas coordinate system
+      cb_op = (-1, 0, 0,
+               0, 1, 0,
+               0, 0, -1)
+      return cb_op * self._axes, self._angles, self._axis_names, scan_axis
+
+  if vector is None:
+    value = nx_file[item][()]
+    units = nx_file[item].attrs['units']
+    ttype = nx_file[item].attrs['transformation_type']
+    vector = nx_file[item].attrs['vector']
+    if 'offset' in nx_file[item].attrs:
+      offset = nx_file[item].attrs['offset']
+    else:
+      offset = vector * 0.0
+    if ttype == 'translation':
+      value = convert_units(value, units, "mm")
+      try:
+        vector = vector * value
+      except ValueError:
+        vector = vector * value[0]
+      vector += offset
+
+  else:
+    pass
+  visitor = Visitor()
+  visitor(nx_file, item)
+
+  visit_dependencies(nx_file, item, visitor)
+
+  return visitor.result()
+
+
 def run_checks(handle, items):
   '''
   Run checks for datasets
@@ -951,7 +1041,7 @@ def get_change_of_basis(transformation):
   if axis_type == "rotation":
     if units == 'rad':
       deg = False
-    elif units in ['deg', 'degrees']:
+    elif units in ['deg', 'degree', 'degrees']:
       deg = True
     else:
       raise RuntimeError('Invalid units: %s' % units)
@@ -1337,33 +1427,19 @@ class GoniometerFactory(object):
 
   '''
   def __init__(self, obj):
-    from dxtbx.model import Goniometer
+    from dxtbx.model import GoniometerFactory
 
-    # Get the rotation axis
-    rotation_axis = construct_vector(
+    axes, angles, axis_names, scan_axis = construct_axes(
       obj.handle.file,
       obj.handle.file[obj.handle['depends_on'][()]].name)
 
-    def unroll(iterable):
-      result = []
-      for i in iterable:
-        if hasattr(i, '__iter__'):
-          result.extend(i)
-        else:
-          result.append(float(i))
-      return result
-
-    # Construct the model - if nonsense present cope by failing over...
-    try:
-      axis = tuple(unroll(rotation_axis))
-      from scitbx import matrix
-      cob = matrix.sqr((-1,  0,  0,
-                         0,  1,  0,
-                         0,  0, -1))
-      axis = cob * matrix.col(axis)
-      self.model = Goniometer(axis)
-    except Exception as e:
-      self.model = Goniometer((1, 0, 0))
+    if len(axes) == 1:
+      self.model = GoniometerFactory.make_goniometer(
+        axes[0], (1,0,0,0,1,0,0,0,1))
+    else:
+      self.model = GoniometerFactory.make_multi_axis_goniometer(
+        axes, angles, axis_names, scan_axis)
+    return
 
 def find_goniometer_rotation(obj):
   thing = obj.handle.file[obj.handle['depends_on'][()]]
@@ -1657,7 +1733,7 @@ class MaskFactory(object):
 
   def __init__(self, objects):
     def make_mask(dset):
-      from dials.array_family import flex
+      from scitbx.array_family import flex
       mask_data = flex.int(dset[()]) == 0
       mask = []
       for slices in all_slices:

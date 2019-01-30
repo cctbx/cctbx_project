@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 from scitbx.array_family import flex
-from dxtbx.format.FormatCBFMiniEiger import FormatCBFMiniEiger
+from dxtbx.format.FormatNexus import FormatNexus
 
-class FormatCBFMiniEigerDLS16MSN160(FormatCBFMiniEiger):
+class FormatNexusEigerDLS16MI04(FormatNexus):
   @staticmethod
   def understand(image_file):
     '''Check to see if this format class can understand the image file.
@@ -25,14 +25,15 @@ class FormatCBFMiniEigerDLS16MSN160(FormatCBFMiniEiger):
     except ImportError:
       return False
 
-    header = FormatCBFMiniEiger.get_cbf_header(image_file)
+    import h5py
 
-    for record in header.split('\n'):
-      if '# detector' in record.lower() and \
-             'eiger' in record.lower() and 'S/N 160-0001' in header:
-        return True
+    # Get the file handle
+    handle = h5py.File(image_file, 'r')
+    if ('short_name' not in handle['/entry/instrument'].attrs or
+        handle['/entry/instrument'].attrs['short_name'].lower() != 'i04'):
+      return False
 
-    return False
+    return FormatNexus.understand(image_file)
 
   @staticmethod
   def has_dynamic_shadowing(**kwargs):
@@ -51,51 +52,21 @@ class FormatCBFMiniEigerDLS16MSN160(FormatCBFMiniEiger):
       raise IncorrectFormatError(self, image_file)
 
     self._dynamic_shadowing = self.has_dynamic_shadowing(**kwargs)
-    super(FormatCBFMiniEigerDLS16MSN160, self).__init__(image_file, **kwargs)
+    super(FormatNexusEigerDLS16MI04, self).__init__(image_file, **kwargs)
 
-  def _goniometer(self):
-    '''Return a model for a multi-axis goniometer.
-
-    This should be checked against the image header, though for miniCBF
-    there are limited options for this.
-
-    Returns:
-      dxtbx.model.Goniometer.MultiAxisGoniometer: The goniometer model for
-      this detector.
-
-    '''
-
-    if 'Phi' in self._cif_header_dictionary:
-      phi = float(self._cif_header_dictionary['Phi'].split()[0])
-    else:
-      phi = 0.0
-
-    if 'Chi' in self._cif_header_dictionary:
-      chi = float(self._cif_header_dictionary['Chi'].split()[0])
-    else:
-      chi = 0.0
-
-    if 'Omega' in self._cif_header_dictionary:
-      omega = float(self._cif_header_dictionary['Omega'].split()[0])
-    else:
-      omega = 0.0
-
-    phi_axis = (1, 0, 0)
-    chi_axis = (0, 0, -1)
-    omega_axis = (1, 0, 0)
-    axes = flex.vec3_double((phi_axis, chi_axis, omega_axis))
-    angles = flex.double((phi, chi, omega))
-    names = flex.std_string(("GON_PHI", "GON_CHI", "GON_OMEGA"))
-    return self._goniometer_factory.make_multi_axis_goniometer(
-      axes, angles, names, scan_axis=2)
-
-  def get_mask(self, goniometer=None):
-    mask = super(FormatCBFMiniEigerDLS16MSN160, self).get_mask()
+  def get_mask(self, index, goniometer=None):
+    mask = super(FormatNexusEigerDLS16MI04, self).get_mask()
+    if mask is None:
+      # XXX mask really shouldn't be None
+      # https://jira.diamond.ac.uk/browse/SCI-8308
+      mask = tuple(flex.bool(flex.grid(reversed(panel.get_image_size())), True) for panel in self.get_detector())
+      panel = self.get_detector()[0]
     if self._dynamic_shadowing:
       gonio_masker = self.get_goniometer_shadow_masker(goniometer=goniometer)
       scan = self.get_scan()
       detector = self.get_detector()
-      shadow_mask = gonio_masker.get_mask(detector, scan.get_oscillation()[0])
+      shadow_mask = gonio_masker.get_mask(
+        detector, scan.get_angle_from_image_index(index))
       assert len(mask) == len(shadow_mask)
       for m, sm in zip(mask, shadow_mask):
         if sm is not None:
@@ -108,18 +79,18 @@ class FormatCBFMiniEigerDLS16MSN160(FormatCBFMiniEiger):
 
     assert goniometer is not None
 
-    if goniometer.get_names()[1] == 'GON_CHI':
+    if goniometer.get_names()[1] == 'chi':
       # SmarGon
       from dxtbx.format.SmarGonShadowMask import SmarGonShadowMaskGenerator
       return SmarGonShadowMaskGenerator(goniometer)
 
     else:
       raise RuntimeError(
-        "Don't understand this goniometer: %s" %list(goniometer.get_names()))
+        "Don't understand this goniometer: %s" % list(goniometer.get_names()))
 
 if __name__ == '__main__':
 
   import sys
 
   for arg in sys.argv[1:]:
-    print(FormatCBFMiniEigerDLS16MSN160.understand(arg))
+    print(FormatNexusEigerDLS16MI04.understand(arg))
