@@ -1599,7 +1599,7 @@ base conda installation.
             raise RuntimeError("""
 The path specified by the CONDA_PREFIX environment variable does not have
 python installed. Please make sure you have a valid conda environment in
-{conda_env}""").format(conda_env=conda_env)
+{conda_env}""".format(conda_env=conda_env))
       # use path provided to --use-conda
       else:
         self.use_conda = os.path.abspath(self.use_conda)
@@ -1609,12 +1609,12 @@ python installed. Please make sure you have a valid conda environment in
             raise RuntimeError("""
 The path specified by the --use-conda flag does not have python installed.
 Please make sure you have a valid conda environment in
-{conda_env}""").format(conda_env=conda_env)
+{conda_env}""".format(conda_env=conda_env))
         else:
           raise RuntimeError("""
 The path specified by the --use-conda flag does not exist. Please make
 sure you have a valid conda environment in
-{conda_env}""").format(conda_env=conda_env)
+{conda_env}""".format(conda_env=conda_env))
 
     if len(command) > 0:
       print("Installing base packages using:\n  " + " ".join(command))
