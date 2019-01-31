@@ -1476,12 +1476,12 @@ class Builder(object):
       # (case 1)
       if self.use_conda == '' and conda_env is None:
         conda_python = os.path.join(os.path.join('..', 'conda_base'),
-                                    m_get_conda_python(()))
+                                    m_get_conda_python(self))
       # (case 2)
       # conda environment is active, overrides any path provided to --use-conda
       elif conda_env is not None:
         if os.path.isdir(conda_env):
-          conda_python = os.path.join(conda_env, m_get_conda_python())
+          conda_python = os.path.join(conda_env, m_get_conda_python(self))
         else:
           raise RuntimeError("""
 The path specified by the CONDA_PREFIX environment variable does not
@@ -1491,14 +1491,14 @@ exist. Please make sure you have a valid conda environment in
       else:
         self.use_conda = os.path.abspath(self.use_conda)
         if os.path.isdir(self.use_conda):
-          conda_python = os.path.join(self.use_conda, m_get_conda_python())
+          conda_python = os.path.join(self.use_conda, m_get_conda_python(self))
         else:
           raise RuntimeError("""
 The path specified by the --use-conda flag does not exist. Please make
 sure you have a valid conda environment in
 {conda_env}""".format(conda_env=self.use_conda))
 
-      if conda_python is None or not os.path.isfile(conda_python):
+      if conda_python is None:
         raise RuntimeError('A conda version of python could not be found.')
 
     return conda_python
