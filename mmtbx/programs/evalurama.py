@@ -33,6 +33,11 @@ Usage examples:
   # ---------------------------------------------------------------------------
   def run(self):
     model = self.data_manager.get_model()
+    # names = self.data_manager.get_model_names()
+    # models = []
+    # if for n in names:
+    #   models.append(self.data_manager.get_model(filename=n))
+
 
     self.evalurama = evalurama.eval(
         model = model,

@@ -72,6 +72,8 @@ class grid(list):
       b.append(x.prob_points)
     print "a:", a
     print "b:", b
+    if len(a) == 0 or len(b) == 0:
+      return None
     corr = np.corrcoef(a,b)
     print "Correlation", corr
     return corr
@@ -91,16 +93,17 @@ class grid_over_favored(object):
     self.grid = grid() # list of square objects
     points_x = grid_over_favored._get_grid_points(start_point[0], grid_size)
     points_y = grid_over_favored._get_grid_points(start_point[1], grid_size)
-    # print points_x
-    # print points_y
+    # print "points_x", points_x
+    # print "points_y", points_y
     for x in points_x:
       for y in points_y:
         n_inside = 0
         for dx in [0,1]:
           for dy in [0,1]:
-            reg = find_region_max_value(0, x+grid_size*dx, y+grid_size*dy)
+            reg = find_region_max_value(rama_type, x+grid_size*dx, y+grid_size*dy)
             if reg is not None and reg[0] == rama_region:
               n_inside += 1
+        # print "  x,y,n:", x,y,n_inside
         if n_inside >= corners_inside:
           v = self.r.evaluate(rama_type, [x+0.5*grid_size, y+0.5*grid_size])
           self.grid.append(square((x,y), (x+grid_size, y+grid_size), v))
@@ -114,11 +117,13 @@ class grid_over_favored(object):
 
   def add_points(self, points):
     self.grid.add_points(points)
-    self.grid._show()
+    # self.grid._show()
 
   def get_corr(self):
     c = self.grid.get_corr()
-    return c[0,1]
+    if c is not None:
+      return c[0,1]
+    return None
 
   @staticmethod
   def _get_grid_points(start_point, size):

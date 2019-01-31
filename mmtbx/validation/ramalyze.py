@@ -171,6 +171,7 @@ class ramalyze(validation):
     ##      chain_id = chain.id
     for three in generate_protein_threes(hierarchy=pdb_hierarchy, geometry=None):
       main_residue = three[1]
+      # print main_residue.id_str()
       phi_psi_atoms = three.get_phi_psi_atoms()
       if phi_psi_atoms is None:
         continue
@@ -648,7 +649,8 @@ def get_favored_peaks(rama_key):
     return [((63.0, 41.0), 1.0),
             ((-63.0, -41.0), 1.0),
             ((79.0, -173.0), 0.553852),
-            ((-79.0, 173.0), 0.553852)]
+            # ((-79.0, 173.0), 0.553852),
+            ]
   if rama_key == RAMA_CISPRO:
     return [((-75.0, 155.0), 1.0),
             ((-89.0, 5.0), 0.701149)]
