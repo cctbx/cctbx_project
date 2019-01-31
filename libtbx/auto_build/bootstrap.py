@@ -1432,19 +1432,20 @@ class Builder(object):
       m = conda_manager(root_dir=os.getcwd(), conda_env=conda_env,
                         check_file=False, log=log)
     else:
-      # use $CONDA_PREFIX only if no path is provided to --use-conda
-      if self.use_conda == '' and conda_env is not None:
+      # conda environment is active, overrides any path provided to --use-conda
+      if conda_env is not None:
         self.use_conda = conda_env
       # check that directory exists
       if not os.path.isdir(self.use_conda):
         raise RuntimeError('The path provided to --use-conda does not exist.')
       # basic checks for python and conda
+      self.use_conda = os.path.abspath(self.use_conda)
       m = conda_manager(root_dir=os.getcwd(), conda_env=self.use_conda,
                         check_file=True, log=log)
 
     return m
 
-  def _get_conda_python(self, conda_env=None):
+  def _get_conda_python(self):
     """
     Helper function for determining the location of Python for the base
     and build actions.
@@ -1453,19 +1454,52 @@ class Builder(object):
       m = self._get_conda_manager()
       return m.get_conda_python()
     except ImportError:  # modules directory is not available
-      if conda_env is None:
-        raise RuntimeError("""
-The "modules" directory is not available. Please provide a path to the
-base conda installation.
-""")
+
+      # -----------------------------------------------------------------------
       # duplicate logic from get_conda_python function in install_conda.py
       # since install_conda.py may not be available
-      conda_python = os.path.join(conda_env, 'bin', 'python')
-      if self.isPlatformWindows():
-        conda_python = os.path.join(conda_env, 'python.exe')
-      elif self.isPlatformMacOSX():
-        conda_python = os.path.join(conda_env, 'python.app', 'Contents',
-                                    'MacOS', 'python')
+      def m_get_conda_python(self):
+        m_conda_python = os.path.join('bin', 'python')
+        if self.isPlatformWindows():
+          m_conda_python = os.path.join('python.exe')
+        elif self.isPlatformMacOSX():
+          m_conda_python = os.path.join('python.app', 'Contents',
+                                        'MacOS', 'python')
+        return m_conda_python
+      # -----------------------------------------------------------------------
+
+      conda_python = None
+
+      # check for active conda environment
+      conda_env = os.environ.get('CONDA_PREFIX')
+
+      # (case 1)
+      if self.use_conda == '' and conda_env is None:
+        conda_python = os.path.join(os.path.join('..', 'conda_base'),
+                                    m_get_conda_python(()))
+      # (case 2)
+      # conda environment is active, overrides any path provided to --use-conda
+      elif conda_env is not None:
+        if os.path.isdir(conda_env):
+          conda_python = os.path.join(conda_env, m_get_conda_python())
+        else:
+          raise RuntimeError("""
+The path specified by the CONDA_PREFIX environment variable does not
+exist. Please make sure you have a valid conda environment in
+{conda_env}""".format(conda_env=conda_env))
+      # use path provided to --use-conda
+      else:
+        self.use_conda = os.path.abspath(self.use_conda)
+        if os.path.isdir(self.use_conda):
+          conda_python = os.path.join(self.use_conda, m_get_conda_python())
+        else:
+          raise RuntimeError("""
+The path specified by the --use-conda flag does not exist. Please make
+sure you have a valid conda environment in
+{conda_env}""".format(conda_env=self.use_conda))
+
+      if conda_python is None or not os.path.isfile(conda_python):
+        raise RuntimeError('A conda version of python could not be found.')
 
     return conda_python
 
@@ -1578,7 +1612,7 @@ base conda installation.
       # check for active conda environment
       conda_env = os.environ.get('CONDA_PREFIX')
 
-      # no path provided (case 1)
+      # no path provided (case 1), case 2 handled in _get_conda_python
       if self.use_conda == '' and conda_env is None:
         flags = ['--builder={builder}'.format(builder=self.category)]
         # check for existing miniconda3 installation
@@ -1588,33 +1622,6 @@ base conda installation.
           'python',
           self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build',
                       'install_conda.py',)] + flags
-        conda_env = os.path.join('conda_base')
-        self.python_base = self._get_conda_python(conda_env=conda_env)
-      # (case 2)
-      # conda environment is active, overrides any path provided to --use-conda
-      elif conda_env is not None:
-        if os.path.isdir(conda_env):
-          self.python_base = self._get_conda_python(conda_env=conda_env)
-          if not os.path.isfile(self.python_base):
-            raise RuntimeError("""
-The path specified by the CONDA_PREFIX environment variable does not have
-python installed. Please make sure you have a valid conda environment in
-{conda_env}""".format(conda_env=conda_env))
-      # use path provided to --use-conda
-      else:
-        self.use_conda = os.path.abspath(self.use_conda)
-        if os.path.isdir(self.use_conda):
-          self.python_base = self._get_conda_python(conda_env=self.use_conda)
-          if not os.path.isfile(self.python_base):
-            raise RuntimeError("""
-The path specified by the --use-conda flag does not have python installed.
-Please make sure you have a valid conda environment in
-{conda_env}""".format(conda_env=conda_env))
-        else:
-          raise RuntimeError("""
-The path specified by the --use-conda flag does not exist. Please make
-sure you have a valid conda environment in
-{conda_env}""".format(conda_env=conda_env))
 
     if len(command) > 0:
       print("Installing base packages using:\n  " + " ".join(command))
@@ -1683,6 +1690,7 @@ sure you have a valid conda environment in
     if self.use_conda is not None:
       if '--use_conda' not in self.config_flags:
         self.config_flags.append('--use_conda')
+      self.python_base = self._get_conda_python()
 
     configcmd =[
         self.python_base, # default to using our python rather than system python
