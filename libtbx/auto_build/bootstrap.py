@@ -2480,11 +2480,24 @@ class QRBuilder(PhenixBuilder):
       environment[env] = os.path.join(*dirs)
     return environment
 
+class PhenixTNGBuilder(PhenixBuilder):
+  '''
+  Phenix with phaser_tng and c++11
+  '''
+  CODEBASES = PhenixBuilder.CODEBASES + ['phaser_tng']
+  LIBTBX = PhenixBuilder.CODEBASES + ['phaser_tng']
+
+  def get_libtbx_configure(self):
+    configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
+    configlst.append('--enable_cxx11')
+    return configlst
+
 def run(root=None):
   builders = {
     'cctbxlite': CCTBXLiteBuilder,
     'cctbx': CCTBXBuilder,
     'phenix': PhenixBuilder,
+    'phenix_tng': PhenixTNGBuilder,
     'xfel': XFELBuilder,
     'labelit': LABELITBuilder,
     'dials': DIALSBuilder,

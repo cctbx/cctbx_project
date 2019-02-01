@@ -105,6 +105,7 @@ class conda_manager(object):
     'cctbxlite': default_file,
     'cctbx': default_file,
     'phenix': default_file,
+    'phenix_tng': default_file,
     'xfel': default_file,
     'labelit': default_file,
     'dials': default_file,
