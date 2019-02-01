@@ -151,10 +151,10 @@ class determine_connectivity(object):
     processed, mainly to avoid alternative conformations of the same atom"""
     self.a0a1_dict = {}
     self.a1_atoms = set()
-    for neighbors in self.h_connectivity:
-      if (neighbors is None): continue
-      ih = neighbors.ih
-      i_parent = neighbors.a0['iseq']
+    for neighbor_obj in self.h_connectivity:
+      if (neighbor_obj is None): continue
+      ih = neighbor_obj.ih
+      i_parent = neighbor_obj.a0['iseq']
       second_neighbors_reduced = []
       alt_conf_neighbors = []
       for i_second in self.second_neighbors_raw[ih]:
@@ -174,7 +174,7 @@ class determine_connectivity(object):
         i_parent         = i_parent,
         neighbors_list   = second_neighbors_non_H,
         neighbors_list_H = second_neighbors_H)
-      if (neighbors.number_non_h_neighbors == 1):
+      if (neighbor_obj.number_non_h_neighbors == 1):
         i_a1 = self.h_connectivity[ih].a1['iseq']
         self.a1_atoms.add(i_a1)
         if i_parent in self.a0a1_dict.keys():
@@ -228,12 +228,12 @@ class determine_connectivity(object):
 
   def process_a0_angles_and_third_neighbors_without_dihedral(self):
     """Process raw list of third neighbors withouth ideal dihedral proxy."""
-    for neighbors in self.h_connectivity:
-      if (neighbors is None): continue
-      ih = neighbors.ih
-      i_parent = neighbors.a0['iseq']
+    for neighbor_obj in self.h_connectivity:
+      if (neighbor_obj is None): continue
+      ih = neighbor_obj.ih
+      i_parent = neighbor_obj.a0['iseq']
       self.assign_a0_angles(ih = ih)
-      if (neighbors.number_non_h_neighbors != 1 or 'iseq' in neighbors.b1):
+      if (neighbor_obj.number_non_h_neighbors != 1 or 'iseq' in neighbor_obj.b1):
         continue
       third_neighbors = self.third_neighbors_raw[i_parent]
       third_neighbors_reduced = []
@@ -459,9 +459,9 @@ class determine_connectivity(object):
 
   def get_diagnostics(self):
     h_in_connectivity = []
-    for neighbors in self.h_connectivity:
-      if (neighbors is not None):
-        h_in_connectivity.append(neighbors.ih)
+    for neighbor_obj in self.h_connectivity:
+      if (neighbor_obj is not None):
+        h_in_connectivity.append(neighbor_obj.ih)
     return group_args(
       double_H = self.double_H,
       connectivity_slipped = self.connectivity_slipped,
