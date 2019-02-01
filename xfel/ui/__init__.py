@@ -67,6 +67,9 @@ db {
     .type = bool
     .expert_level = 2
     .help = Print to the terminal all database queries
+  port = 3306
+    .type = int
+    .help = Port number to be used for connection
 }
 """
 master_phil_scope = parse(master_phil_str + db_phil_str, process_includes=True)

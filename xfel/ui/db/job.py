@@ -320,6 +320,7 @@ def submit_job(app, job):
     host                      = app.params.db.host,
     dbname                    = app.params.db.name,
     user                      = app.params.db.user,
+    port                      = app.params.db.port,
   )
   if app.params.db.password is not None and len(app.params.db.password) == 0:
     d['password'] = None

@@ -21,7 +21,7 @@ def get_db_connection(params, block=True):
   sleep_time = 0.1
   while retry_count < retry_max:
     try:
-      dbobj=MySQLdb.connect(passwd=password,user=params.db.user,host=params.db.host,db=params.db.name)
+      dbobj=MySQLdb.connect(passwd=password,user=params.db.user,host=params.db.host,db=params.db.name,port=params.db.port)
       return dbobj
     except Exception as e:
       retry_count += 1

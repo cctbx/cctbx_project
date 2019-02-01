@@ -187,6 +187,7 @@ class SettingsDialog(BaseDialog):
     creds.Center()
     if (creds.ShowModal() == wx.ID_OK):
       self.params.db.host     = creds.db_host.ctr.GetValue()
+      self.params.db.port     = int(creds.db_port.ctr.GetValue())
       self.params.db.name     = creds.db_name.ctr.GetValue()
       self.params.db.user     = creds.db_user.ctr.GetValue()
       self.params.db.password = creds.db_password.ctr.GetValue()
@@ -226,6 +227,15 @@ class DBCredentialsDialog(BaseDialog):
                                        big_button_size=(130, -1),
                                        value=params.db.host)
     self.main_sizer.Add(self.db_host, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Host name
+    self.db_port = gctr.TextButtonCtrl(self,
+                                       label='DB Port number',
+                                       label_style='bold',
+                                       label_size=(150, -1),
+                                       big_button_size=(130, -1),
+                                       value=str(params.db.port))
+    self.main_sizer.Add(self.db_port, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Database name
     self.db_name = gctr.TextButtonCtrl(self,

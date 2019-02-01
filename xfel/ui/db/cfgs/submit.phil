@@ -22,4 +22,5 @@ db {{
   name = {dbname}
   user = {user}
   password = {password}
+  port = {port}
 }}
