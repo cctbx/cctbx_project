@@ -44,7 +44,7 @@ https://conda.anaconda.org/conda-forge/noarch/imagesize-1.1.0-py_0.tar.bz2#6b1a5
 https://conda.anaconda.org/conda-forge/noarch/ipaddress-1.0.22-py_1.tar.bz2#6f2f5f4eab2ae49842b75fc82fa01783
 https://conda.anaconda.org/conda-forge/noarch/ipython_genutils-0.2.0-py_1.tar.bz2#5071c982548b3a20caf70462f04f5287
 https://conda.anaconda.org/cctbx/noarch/libsvm_py-323-py_0.tar.bz2#b83ca7fd48c08cb5ae58d3a4dd5a91ed
-https://conda.anaconda.org/conda-forge/win-64/libtiff-4.0.9-vc9_0.tar.bz2#7b0d7a9300416d3fbbce78253973ebac
+https://conda.anaconda.org/conda-forge/win-64/libtiff-4.0.9-h6ce49d1_1.tar.bz2#a912b95872be8ead82107e668a4a6eaa
 https://conda.anaconda.org/conda-forge/noarch/linecache2-1.0.0-py_1.tar.bz2#6b370c22aa1f8cdaaf6d43621eab94dc
 https://conda.anaconda.org/conda-forge/win-64/markupsafe-1.1.0-py27h0c8e037_1000.tar.bz2#ec787a29848863bc2f2c3bc8ceb2ce85
 https://conda.anaconda.org/conda-forge/win-64/msgpack-python-0.6.0-py27hdc96acc_1000.tar.bz2#fef309b21847326678ce4b398476043b

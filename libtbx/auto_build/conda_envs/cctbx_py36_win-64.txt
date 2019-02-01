@@ -42,7 +42,7 @@ https://conda.anaconda.org/conda-forge/win-64/idna-2.7-py36_1002.tar.bz2#33c69bc
 https://conda.anaconda.org/conda-forge/noarch/imagesize-1.1.0-py_0.tar.bz2#6b1a5989b9313f2c6e17b5359143b46d
 https://conda.anaconda.org/conda-forge/noarch/ipython_genutils-0.2.0-py_1.tar.bz2#5071c982548b3a20caf70462f04f5287
 https://conda.anaconda.org/cctbx/noarch/libsvm_py-323-py_0.tar.bz2#b83ca7fd48c08cb5ae58d3a4dd5a91ed
-https://conda.anaconda.org/conda-forge/win-64/libtiff-4.0.9-vc14_0.tar.bz2#03d6b32b9b26ce583bfe3a1d857fe21f
+https://conda.anaconda.org/conda-forge/win-64/libtiff-4.0.9-hf1753bf_1.tar.bz2#92676f7db7cfd31931cefb4a285bb1bf
 https://repo.anaconda.com/pkgs/msys2/win-64/m2w64-gcc-libgfortran-5.3.0-6.tar.bz2#de1b7f7c8221028f6bbe103df4c53bed
 https://conda.anaconda.org/conda-forge/win-64/markupsafe-1.1.0-py36hfa6e2cd_1000.tar.bz2#fe3adabe120c01512d8ad4894c16e5a7
 https://conda.anaconda.org/conda-forge/win-64/msgpack-python-0.6.0-py36he980bc4_1000.tar.bz2#4511716bf6690196290da1b1d2057ee6
