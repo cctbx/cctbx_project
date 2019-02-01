@@ -131,23 +131,9 @@ class initialize(initialize_base):
       columns_dict[table_name] = [c[0] for c in cursor.fetchall() if c[0] != 'id']
     return columns_dict
 
-class xfel_db_application(object):
-  def __init__(self, params, drop_tables = False, verify_tables = False):
+class db_application(object):
+  def __init__(self, params):
     self.params = params
-    self.query_count = 0
-    dbobj = get_db_connection(params)
-    self.init_tables = initialize(params, dbobj) # only place where a connection is held
-
-    if drop_tables:
-      self.drop_tables()
-
-    if verify_tables and not self.verify_tables():
-      self.create_tables()
-      print 'Creating experiment tables...'
-      if not self.verify_tables():
-        raise Sorry("Couldn't create experiment tables")
-
-    self.columns_dict = self.init_tables.set_up_columns_dict(self)
 
   def execute_query(self, query, commit = False):
     if self.params.db.verbose:
@@ -185,6 +171,24 @@ class xfel_db_application(object):
         print str(e)
         raise e
     raise Sorry("Couldn't execute MYSQL query. Too many reconnects. Query: %s"%query)
+
+class xfel_db_application(db_application):
+  def __init__(self, params, drop_tables = False, verify_tables = False):
+    super(xfel_db_application, self).__init__(params)
+    self.query_count = 0
+    dbobj = get_db_connection(params)
+    self.init_tables = initialize(params, dbobj) # only place where a connection is held
+
+    if drop_tables:
+      self.drop_tables()
+
+    if verify_tables and not self.verify_tables():
+      self.create_tables()
+      print 'Creating experiment tables...'
+      if not self.verify_tables():
+        raise Sorry("Couldn't create experiment tables")
+
+    self.columns_dict = self.init_tables.set_up_columns_dict(self)
 
   def list_lcls_runs(self):
     from xfel.xpp.simulate import file_table
