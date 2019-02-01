@@ -1414,7 +1414,15 @@ class Builder(object):
     Helper function for determining the location of the conda environment
     """
     if __name__ == '__main__' and __package__ is None:
-      sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+      root_path = os.path.dirname(os.path.abspath(__file__))
+      paths = [root_path,
+               os.path.join(root_path, 'modules', 'cctbx_project', 'libtbx',
+                            'auto_build')]
+      for path in paths:
+        if os.path.isfile(os.path.join(path, 'install_conda.py')):
+          if path not in sys.path:
+            sys.path.append(path)
+            break
       from install_conda import conda_manager
     else:
       from .install_conda import conda_manager
