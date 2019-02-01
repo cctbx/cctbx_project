@@ -1668,8 +1668,20 @@ sure you have a valid conda environment in
         #"--quiet",
       ]
     else:
+      # default
+      base_dir = '../conda_base'
+      # use path from --use-conda flag
+      # error-checking done in _get_conda_python function
+      if self.use_conda != '':
+        base_dir = self.use_conda
+      # override with $CONDA_PREFIX
+      # error-checking done in _get_conda_python function
+      conda_env = os.environ.get('CONDA_PREFIX')
+      if conda_env is not None:
+        base_dir = conda_env
+
       dispatcher_opts += [
-      "--base_dir=%s" % self._get_conda_manager().conda_env,
+      "--base_dir=%s" % base_dir,
       "--use_conda",
       "--ignore_missing_dirs"
       ]
