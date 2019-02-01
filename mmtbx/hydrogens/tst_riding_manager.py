@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
+from libtbx.utils import null_out
 from libtbx import group_args
 
 #-------------------------------------------------
@@ -11,7 +12,8 @@ def exercise1():
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = True)
+    build_grm   = True,
+    log         = null_out())
 
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
@@ -105,7 +107,8 @@ def exercise2():
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = True)
+    build_grm   = True,
+    log         = null_out())
 
   pdb_hierarchy = model.get_hierarchy()
   #sites_cart = model.get_sites_cart()
@@ -191,4 +194,4 @@ if (__name__ == "__main__"):
   t0 = time.time()
   exercise1()
   exercise2()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))
