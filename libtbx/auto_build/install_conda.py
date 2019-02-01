@@ -200,9 +200,10 @@ value."""
         else:
           paths = paths.split(':')
         for path in paths:
-          conda_exe = self.get_conda_exe(path, check_file=False)
+          conda_base = os.path.abspath(os.path.join(path, '..'))
+          conda_exe = self.get_conda_exe(conda_base, check_file=False)
           if os.path.isfile(conda_exe):
-            self.conda_base = os.path.abspath(os.path.join(path, '..'))
+            self.conda_base = conda_base
             self.conda_exe = conda_exe
             break
 
