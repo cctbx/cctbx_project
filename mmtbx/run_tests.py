@@ -240,6 +240,7 @@ general_tests = [
   "$D/validation/regression/tst_hydrogen_addition_clashscore.py",
   "$D/validation/regression/tst_symmetry_SS.py",
   "$D/validation/regression/tst_do_flips_clashscore.py",
+  "$D/validation/regression/tst_find_region_max_value.py",
   #
   "$D/refinement/tst_select_best_starting_model.py",
   "$D/regression/tst_refine_anomalous_substructure.py",
