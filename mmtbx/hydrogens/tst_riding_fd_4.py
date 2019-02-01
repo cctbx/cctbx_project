@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 import iotbx.pdb
 import mmtbx.model
 from cctbx.array_family import flex
+from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
 
 #-----------------------------------------------------------------------------
@@ -15,7 +16,8 @@ def exercise(pdb_str, eps, idealize):
 
   model = mmtbx.model.manager(
             model_input = pdb_inp,
-            build_grm   = True)
+            build_grm   = True,
+            log         = null_out())
 
   geometry_restraints = model.restraints_manager.geometry
   xray_structure = model.get_xray_structure()
@@ -340,4 +342,4 @@ def run():
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  print "OK. Time:", round(time.time()-t0, 2), "seconds"
+  print("OK. Time:", round(time.time()-t0, 2), "seconds")
