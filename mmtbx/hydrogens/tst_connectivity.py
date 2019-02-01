@@ -3,6 +3,7 @@ import time
 import mmtbx.model
 import iotbx.pdb
 from mmtbx.hydrogens import connectivity
+from libtbx.utils import null_out
 
 pdb_str = """\
 CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
@@ -39,7 +40,9 @@ END
 
 def exercise():
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
-  model = mmtbx.model.manager(model_input=pdb_inp)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    log         = null_out())
 
   restraints_manager = model.get_restraints_manager()
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()

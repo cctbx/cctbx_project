@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
 import iotbx.phil
 from mmtbx.hydrogens import connectivity
+from libtbx.utils import null_out
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 
 
@@ -236,7 +237,8 @@ geometry_restraints.edits {
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     build_grm   = True,
-    pdb_interpretation_params = params)
+    pdb_interpretation_params = params,
+    log         = null_out())
 
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
@@ -347,7 +349,8 @@ geometry_restraints.edits {
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     build_grm   = True,
-    pdb_interpretation_params = params)
+    pdb_interpretation_params = params,
+    log         = null_out())
 
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
@@ -391,4 +394,4 @@ if (__name__ == "__main__"):
   t0 = time.time()
   exercise1()
   exercise2()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

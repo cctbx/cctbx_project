@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
+from libtbx.utils import null_out
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of H atoms for multiple conformations
@@ -12,7 +13,8 @@ def exercise(pdb_str, type_list_known):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = True)
+    build_grm   = True,
+    log         = null_out())
 
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
@@ -376,7 +378,8 @@ def exercise3(pdb_str, type_list_known):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = True)
+    build_grm   = True,
+    log         = null_out())
 
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
@@ -413,4 +416,4 @@ if (__name__ == "__main__"):
   exercise(pdb_str = pdb_str2, type_list_known = type_list_known2)
   exercise3(pdb_str = pdb_str3, type_list_known = type_list_known3)
 
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

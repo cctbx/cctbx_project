@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
 import iotbx.cif
+from libtbx.utils import null_out
 
 def prepare_inputs(pdb_str, cif_str):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
@@ -14,7 +15,8 @@ def prepare_inputs(pdb_str, cif_str):
   model = mmtbx.model.manager(
     model_input=pdb_inp,
     build_grm   = True,
-    restraint_objects = cif_objects)
+    restraint_objects = cif_objects,
+    log = null_out())
 
   model.setup_riding_h_manager()
   riding_h_manager = model.get_riding_h_manager()
@@ -351,4 +353,4 @@ if (__name__ == "__main__"):
   t0 = time.time()
   exercise1(pdb_str1, cif_str1)
   exercise2(pdb_str2, cif_str2)
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))
