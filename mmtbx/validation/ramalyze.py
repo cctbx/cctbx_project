@@ -660,7 +660,7 @@ def get_favored_peaks(rama_key):
             ((-81.0, 65.0), 0.0896269)]
   if rama_key == RAMA_PREPRO:
     return [((-57.0, -45.0), 1.0),
-            ((-70.1, 149.0), 0.9619998),
+            ((-67.0, 147.0), 0.992025),
             ((49.0, 57.0), 0.185259)]
   if rama_key == RAMA_ILE_VAL:
     return [((-63.0, -45.0), 1.0),
@@ -668,43 +668,52 @@ def get_favored_peaks(rama_key):
   return None
 
 def find_region_max_value(rama_key, phi, psi):
-  from libtbx.test_utils import approx_equal
+  def get_neighbours(rama_key, angle):
+    def normalize(angle):
+      if angle > 180:
+        return angle - 360
+      if angle < -180:
+        return angle + 360
+      return angle
+    phi, psi = angle
+    result = []
+    result.append((normalize(phi+1), psi))
+    result.append((normalize(phi-1), psi))
+    result.append((phi, (normalize(psi+1))))
+    result.append((phi, (normalize(psi-1))))
+    return result
+
   from mmtbx.rotamer import ramachandran_eval
-  eps = 1e-3
-  peaks = get_favored_peaks(rama_key)
+  tempplot =[]
+  for i in range(362):
+    tempplot.append([0]*362)
+  point_list = []
   r = ramachandran_eval.RamachandranEval()
   value = r.evaluate(rama_key, [phi, psi])
-  rama_type = ramalyze.evalScore(rama_key, value)
-  if RAMALYZE_FAVORED != rama_type:
+  if ramalyze.evalScore(rama_key, value) != RAMALYZE_FAVORED:
     return None
-  for peak in peaks:
-    px, py = peak[0]
-    if approx_equal(phi, px, eps,out=None):
-      # x1 == x2
-      increment = 1 if psi<py else -1
-      y = psi
-      failed = False
-      while abs(abs(y) - abs(py)) > 1 and not failed:
-        value = r.evaluate(rama_key, [phi, y])
-        ramaType = ramalyze.evalScore(rama_key, value)
-        failed = ramaType != RAMALYZE_FAVORED
-        y += increment
-      if not failed:
-        return peak
-    else:
-      # general case, y=ax+b
-      a = (psi - py) / (phi - px)
-      b = psi - a*phi
-      increment = 1 if psi<py else -1
-      y = psi
-      failed = False
-      while abs(abs(y) - abs(py)) > 1 and not failed:
-        value = r.evaluate(rama_key, [(y-b)/a, y])
-        ramaType = ramalyze.evalScore(rama_key, value)
-        failed = ramaType != RAMALYZE_FAVORED
-        y += increment
-      if not failed:
-        return peak
+  i = 0
+  point_list.append((round(phi), round(psi)))
+  tempplot[int(phi)+180][int(psi)+180] = 1
+  # print tempplot
+  peaks = [a[0] for a in get_favored_peaks(rama_key)]
+  # print peaks
+  while point_list[i] not in peaks:
+    neigh = get_neighbours(rama_key, point_list[i])
+    # print "neigh:", neigh
+    # tempplot[int(point_list[i][0])+180][int(point_list[i][1])+180] = 1
+    for p in neigh:
+      value = r.evaluate(rama_key, [p[0], p[1]])
+      rama_type = ramalyze.evalScore(rama_key, value)
+      # print "  checking", p, rama_type, tempplot[int(p[0])+180][int(p[1])+180]
+      if rama_type==RAMALYZE_FAVORED and tempplot[int(p[0])+180][int(p[1])+180] == 0:
+        # print "  adding", p
+        point_list.append(p)
+        tempplot[int(p[0])+180][int(p[1])+180] = 1
+    i += 1
+  for p in get_favored_peaks(rama_key):
+    if p[0] == point_list[i]:
+      return p
 
 #-----------------------------------------------------------------------
 # GRAPHICS OUTPUT
@@ -717,14 +726,18 @@ def format_ramachandran_plot_title(position_type, residue_type):
 
 class ramachandran_plot_mixin(graphics.rotarama_plot_mixin):
   extent = [-180,180,-180,180]
+
   def set_labels(self, y_marks=()):
     axes = self.plot.get_axes()
     axes.set_xlabel("Phi")
-    axes.set_xticks([-120,-60,0,60,120])
+    # axes.set_xticks([-120,-60,0,60,120])
+    axes.set_xticks([-160, -140, -120, -100, -80, -60, -40, -20, 0, 20, 40, 60, 80, 100, 120, 140, 160])
     axes.set_ylabel("Psi")
-    axes.set_yticks([-120,-60,0,60,120])
+    # axes.set_yticks([-120,-60,0,60,120])
+    axes.set_yticks([-160, -140, -120, -100, -80, -60, -40, -20, 0, 20, 40, 60, 80, 100, 120, 140, 160])
     axes.set_ylim((-182,182))
     axes.set_xlim((-182,182))
+    axes.grid(which='both', color='lime', linestyle='-', linewidth=2)
 
 class ramachandran_plot(data_plots.simple_matplotlib_plot,
                          ramachandran_plot_mixin):
