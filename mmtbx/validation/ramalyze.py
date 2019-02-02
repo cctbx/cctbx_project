@@ -668,13 +668,13 @@ def get_favored_peaks(rama_key):
   return None
 
 def find_region_max_value(rama_key, phi, psi):
+  def normalize(angle):
+    if angle > 180:
+      return angle - 360
+    if angle < -180:
+      return angle + 360
+    return angle
   def get_neighbours(rama_key, angle):
-    def normalize(angle):
-      if angle > 180:
-        return angle - 360
-      if angle < -180:
-        return angle + 360
-      return angle
     phi, psi = angle
     result = []
     result.append((normalize(phi+1), psi))
@@ -693,21 +693,17 @@ def find_region_max_value(rama_key, phi, psi):
   if ramalyze.evalScore(rama_key, value) != RAMALYZE_FAVORED:
     return None
   i = 0
-  point_list.append((round(phi), round(psi)))
+  phi = normalize(phi)
+  psi = normalize(psi)
+  point_list.append((int(phi), int(psi)))
   tempplot[int(phi)+180][int(psi)+180] = 1
-  # print tempplot
   peaks = [a[0] for a in get_favored_peaks(rama_key)]
-  # print peaks
   while point_list[i] not in peaks:
     neigh = get_neighbours(rama_key, point_list[i])
-    # print "neigh:", neigh
-    # tempplot[int(point_list[i][0])+180][int(point_list[i][1])+180] = 1
     for p in neigh:
       value = r.evaluate(rama_key, [p[0], p[1]])
       rama_type = ramalyze.evalScore(rama_key, value)
-      # print "  checking", p, rama_type, tempplot[int(p[0])+180][int(p[1])+180]
       if rama_type==RAMALYZE_FAVORED and tempplot[int(p[0])+180][int(p[1])+180] == 0:
-        # print "  adding", p
         point_list.append(p)
         tempplot[int(p[0])+180][int(p[1])+180] = 1
     i += 1
