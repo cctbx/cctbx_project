@@ -106,7 +106,10 @@ class ShellCommand(object):
     env = self.kwargs.get('env', None)
     if env:
       for key, item in env.items():
-        env[key] = os.path.abspath(item)
+        if item is None:
+          env[key] = ''
+        else:
+          env[key] = os.path.abspath(item)
       rc = os.environ
       rc.update(env)
       env=rc
@@ -1707,18 +1710,26 @@ sure you have a valid conda environment in
 
   def add_configure(self):
 
+    env = None
+
     if self.use_conda is not None:
       if '--use_conda' not in self.config_flags:
         self.config_flags.append('--use_conda')
       self.python_base = self._get_conda_python()
+      # conda python prefers no environment customizations
+      # the get_environment function in ShellCommand updates the environment
+      env = {
+        'PYTHONPATH': None,
+        'LD_LIBRARY_PATH': None,
+        'DYLD_LIBRARY_PATH': None
+      }
 
     configcmd =[
         self.python_base, # default to using our python rather than system python
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
         ] + self.get_libtbx_configure() + self.config_flags
     self.add_step(self.shell(command=configcmd, workdir=['build'],
-      description="run configure.py",
-    ))
+      description="run configure.py", env=env))
     # Prepare saving configure.py command to file should user want to manually recompile Phenix
     fname = self.opjoin("config_modules.cmd")
     ldlibpath = ''
