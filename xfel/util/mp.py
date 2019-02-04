@@ -8,7 +8,7 @@ import os
 
 mp_phil_str = '''
   mp {
-    method = *lsf sge pbs shifter custom
+    method = *lsf sge pbs sacla shifter custom
       .type = choice
       .help = Computing environment
     use_mpi = True
@@ -16,7 +16,17 @@ mp_phil_str = '''
       .help = Use mpi multiprocessing
     nproc = 1
       .type = int
-      .help = Number of processes
+      .help = Number of processes total (== nnodes x nproc_per_node). \
+              If two of the three params (nproc, nnodes, nproc_per_node) are \
+              specified, the last will be determined by modular arithmetic. \
+              If all three are specified, nnodes is ignored. nproc alone is \
+              sufficient for most methods.
+    nnodes = 1
+      .type = int
+      .help = Number of nodes to request
+    nproc_per_node = 1
+      .type = int
+      .help = Number of processes to allocate per node
     queue = None
       .type = str
       .help = Queue to submit multiprocessing job to (optional for some methods)
@@ -98,7 +108,7 @@ mp_phil_str = '''
 
 class get_submit_command(object):
   def __init__(self, command, submit_path, stdoutdir, params,
-               log_name="log.out", err_name=None, job_name=None):
+               log_name="log.out", err_name="log.err", job_name=None):
     """ Get a submit command for the various compute environments
     @param command Any command line program and its arguments
     @param submit_path Submit script will be written here
@@ -287,13 +297,40 @@ class get_sge_submit_command(get_submit_command):
 class get_pbs_submit_command(get_submit_command):
 
   def customize_for_method(self):
+    if (self.params.nnodes > 1) or (self.params.nproc_per_node > 1):
+      self.params.nproc = self.params.nnodes * self.params.nproc_per_node
     if self.params.use_mpi:
-      self.command = "aprun -n %d %s mp.method=mpi" % self.command
+      self.command = "mpirun -n %d %s mp.method=mpi" % (self.params.nproc, self.command)
 
   def eval_params(self):
-    # -t 1-<nproc>
-    if self.params.nproc > 1:
-      nproc_str = "#PBS -l mppwidth=%d" % self.params.nproc
+
+    # # -t 1-<nproc> # deprecated
+    # if self.params.nproc > 1:
+    #   nproc_str = "#PBS -l mppwidth=%d" % self.params.nproc
+    #   self.options_inside_submit_script.append(nproc_str)
+
+    # -l nodes=<nnodes>:ppn=<procs_per_node>
+    if max(self.params.nproc, self.params.nproc_per_node, self.params.nnodes) > 1:
+      # If specified, nproc overrides procs_per_node and procs_per_node overrides
+      # nnodes. One process per node is requested if only nproc is specified.
+      if self.params.nproc > 1:
+        import math
+        if self.params.nproc <= self.params.nproc_per_node:
+          procs_per_node = self.params.nproc
+          nnodes = 1
+        elif self.params.nproc_per_node > 1:
+          procs_per_node = self.params.nproc_per_node
+          nnodes = int(math.ceil(self.params.nproc/procs_per_node))
+        elif self.params.nnodes > 1:
+          procs_per_node = int(math.ceil(self.params.nproc/self.params.nnodes))
+          nnodes = self.params.nnodes
+        else: # insufficient information; allocate 1 proc per node
+          procs_per_node = 1
+          nnodes = self.params.nproc
+      else:
+        procs_per_node = self.params.nproc_per_node
+        nnodes = self.params.nnodes
+      nproc_str = "#PBS -l nodes=%d:ppn=%d" % (nnodes, procs_per_node)
       self.options_inside_submit_script.append(nproc_str)
 
     # -o <outfile>
@@ -343,6 +380,13 @@ class get_pbs_submit_command(get_submit_command):
     # <args> (optional, following the command)
     for arg in self.params.extra_args:
       self.args.append(arg)
+
+class get_sacla_submit_command(get_pbs_submit_command):
+  def customize_for_method(self):
+    if (self.params.nnodes > 1) or (self.params.nproc_per_node > 1):
+      self.params.nproc = self.params.nnodes * self.params.nproc_per_node
+    if self.params.use_mpi:
+      self.command = "/home/jkern/sources/xfel_june18/SACLA_june18/openmpi-3.1.0/build/bin/mpirun -n %d %s mp.method=mpi" % (self.params.nproc, self.command)
 
 class get_shifter_submit_command(get_submit_command):
 
@@ -490,13 +534,15 @@ class get_custom_submit_command(get_submit_command):
     return self.submit_command_contents
 
 def get_submit_command_chooser(command, submit_path, stdoutdir, params,
-                               log_name="log.out", err_name=None, job_name=None):
+                               log_name="log.out", err_name="log.err", job_name=None):
   if params.method == "lsf":
     choice = get_lsf_submit_command
   elif params.method == "sge":
     choice = get_sge_submit_command
   elif params.method == "pbs":
     choice = get_pbs_submit_command
+  elif params.method == "sacla":
+    choice = get_sacla_submit_command
   elif params.method == "shifter":
     choice = get_shifter_submit_command
   elif params.method == "custom":
