@@ -1,32 +1,9 @@
-IOTA v1.2.013 - streamlined processing
+IOTA v1.3.002 - tweaks and bugfixes
 
-- Single command-line processing script (iota.run), which is less confusing
-- Simplified input interpretation and pre-processing
-    - removed init class (including base class and iota_ui_init.py)
-    - single set of init functions: lighter, more efficient, easier to use
-    - util to interpret mixed input (i.e. paramfiles, input files, etc.)
-- Improved subclassing and instantiation of stills processor
-    - abandoned Integrator class altogether
-    - calling IOTAImageProcessor directly (subclassed from dials.stills_process)
-    - created an import/processing wrapper factory for relatively
-      straightforward adaptation to various processing needs
-- Fewer imports and reduced probability of circular imports
-- Improved processing info storage
-    - abandoned INIT object and ANALYSIS object altogether
-    - new INFO object with containers for stats, lists of files, and a few
-      methods, but no heavy objects
-    - INFO object saved in JSON format, not pickled (lighter and faster)
-- Reduced the use of heavy objects
-    - lists of objects replaced by consumable iterators
-    - modules changed to run through an iterator once and never need it again
-- A bunch of various UI improvements
-    - replaced repetitive command-line print-in-place statements with a general
-      context manager
-    - "silent mode" to run without any stdout altogether (for UI and other
-      purposes)
-    - removed iota_ui_init.py; UI will initialize via generic functions
-    - removed most calculations from main UI thread, for improved responsiveness
-    - greatly improved responsiveness of clickable plots (redraw happens very
-      quickly now)
-    - added a "Crystal System" filter (for very coarse checking of integration
-     results, e.g. if they are all in a tetragonal point group)
+
+BUGFIXES:
+    - Crystal system filter now works
+    - Integration log now fully written for each individual image
+
+TWEAKS:
+    - Integration log now has the final summary entry

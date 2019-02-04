@@ -282,35 +282,35 @@ class IOTAImageProcessor(Processor):
     return experiments, indexed
 
   def error_handler(self, error, p_name, img_object, output=None):
-    if output:
-      log_entry = output
-    else:
-      log_entry = []
+    if not output:
+      output = []
 
     if hasattr(error, "classname"):
-      print(error.classname, "for {}:".format(img_object.img_path), )
+      # print(error.classname, "for {}:".format(img_object.img_path), )
       error_message = "{}: {}".format(error.classname,
                                       error[0].replace('\n', ' ')[:50])
     else:
       p_name = p_name.lower().capitalize()
-      print("{} error for {}:".format(p_name, img_object.img_path), )
+      # print("{} error for {}:".format(p_name, img_object.img_path), )
       error_message = "{}".format(str(error).replace('\n', ' ')[:50])
-    print(error_message)
+    # print(error_message)
     img_object.fail = 'failed {}'.format(p_name.lower())
     img_object.errors.append(error_message)
 
-    log_entry.append('\n{} - {}'.format(img_object.fail.upper(), error))
+    # Generate log summary of integration results
     int_status = 'not integrated -- {}'.format(error)
     int_results = {'info': int_status}
     img_object.final['final'] = None
     img_object.final.update(int_results)
-    log_entry = "\n".join(log_entry)
+
+    log_entry = '\n{} - {}'.format(img_object.fail.upper(), error)
     img_object.log_info.append(log_entry)
 
     # Write log entry into log file
-    if self.write_logs:
+    if self.write_logs and output:
       with open(img_object.int_log, 'w') as tf:
-        tf.write('\n{}'.format(log_entry))
+        for o in output:
+          tf.write('\n{}'.format(o))
 
     return img_object
 
@@ -436,12 +436,6 @@ class IOTAImageProcessor(Processor):
       if fail:
         return self.error_handler(e, 'filter', img_object, proc_output)
 
-    if self.write_logs:
-      with open(img_object.int_log, 'w') as tf:
-        for i in proc_output:
-          if 'cxi_version' not in i:
-            tf.write('\n{}'.format(i))
-
     int_results, log_entry = self.collect_information(img_object=img_object)
 
     # Update final entry with integration results
@@ -450,6 +444,13 @@ class IOTAImageProcessor(Processor):
     # Update image log
     log_entry = "\n".join(log_entry)
     img_object.log_info.append(log_entry)
+
+    if self.write_logs:
+      with open(img_object.int_log, 'w') as tf:
+        for i in proc_output:
+          if 'cxi_version' not in i:
+            tf.write('\n{}'.format(i))
+        tf.write('\n{}'.format(log_entry))
 
     return img_object
 
@@ -523,7 +524,7 @@ class Selector(object):
     self.pg = pg
     self.min_ref = min_ref
     self.min_res = min_res
-    self.fail = None
+    self.fail = False
 
   def result_filter(self):
     """ Unit cell pre-filter. Applies hard space-group constraint and stringent
@@ -568,26 +569,16 @@ class Selector(object):
         fil_pg = fil_sym.space_group().conventional_centring_type_symbol() + \
                  fil_sym.space_group().point_group_type()
         if fil_pg != obs_pg:
-          e.append('Estimated point group {} does not match observed point '
-                   'group {}'.format(self.pg, self.obs_pg))
+          e.append('Point group {} does not match expected ({})'
+                   ''.format(self.obs_pg, self.pg))
 
       if self.xsys:
         if self.xsys != obs_cs:
-          e.append('Estimated crystal system {} does not match observed crystal '
-                   'system {}'.format(self.xsys, obs_cs))
+          e.append('Crystal system {} does not match expected ({})'
+                   ''.format(obs_cs, self.xsys))
 
-
-    i_fail = self.obs_ref <= self.min_ref or \
-             (self.min_res is not None and
-              self.obs_res >= self.min_res) or \
-             (self.pg is not None and
-              self.pg.replace(" ", "") != self.obs_pg.replace(" ", "")) or \
-             not uc_check
-
-    if i_fail:
+    if bool(e):
       fail = 'failed filter'
-      if not e:
-        e.append('Unknown reasons')
       error = ', '.join(e)
     else:
       fail = None
