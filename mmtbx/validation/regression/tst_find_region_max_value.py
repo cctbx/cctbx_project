@@ -6,6 +6,7 @@ from mmtbx.validation.ramalyze import RAMA_GENERAL, RAMA_GLYCINE, RAMA_CISPRO, \
 
 def exercise_1():
   # ((-63.0, -43.0), 1.0)
+  print find_region_max_value(RAMA_GENERAL, -100,0)
   assert find_region_max_value(RAMA_GENERAL, -100,0) == ((-63.0, -43.0), 1.0)
   assert find_region_max_value(RAMA_GENERAL, -120, 40) == ((-63.0, -43.0), 1.0)
   assert find_region_max_value(RAMA_GENERAL, -45, -55) == ((-63.0, -43.0), 1.0)

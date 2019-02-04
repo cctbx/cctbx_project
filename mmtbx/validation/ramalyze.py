@@ -12,6 +12,7 @@ from mmtbx.validation import utils
 from mmtbx.validation.rotalyze import get_center
 import mmtbx.rotamer
 from mmtbx.rotamer import ramachandran_eval
+from mmtbx.validation.fav_lists import fav_tables
 
 # XXX Use these constants internally, never strings!
 RAMA_GENERAL = 0
@@ -669,47 +670,82 @@ def get_favored_peaks(rama_key):
 
 def find_region_max_value(rama_key, phi, psi):
   def normalize(angle):
+    angle = int(angle)
     if angle > 180:
       return angle - 360
     if angle < -180:
       return angle + 360
     return angle
-  def get_neighbours(rama_key, angle):
-    phi, psi = angle
-    result = []
-    result.append((normalize(phi+1), psi))
-    result.append((normalize(phi-1), psi))
-    result.append((phi, (normalize(psi+1))))
-    result.append((phi, (normalize(psi-1))))
-    return result
-
   from mmtbx.rotamer import ramachandran_eval
-  tempplot =[]
-  for i in range(362):
-    tempplot.append([0]*362)
-  point_list = []
+  from collections import Counter
   r = ramachandran_eval.RamachandranEval()
   value = r.evaluate(rama_key, [phi, psi])
-  if ramalyze.evalScore(rama_key, value) != RAMALYZE_FAVORED:
+  ev = ramalyze.evalScore(rama_key, value)
+  if ev != RAMALYZE_FAVORED:
     return None
-  i = 0
-  phi = normalize(phi)
-  psi = normalize(psi)
-  point_list.append((int(phi), int(psi)))
-  tempplot[int(phi)+180][int(psi)+180] = 1
-  peaks = [a[0] for a in get_favored_peaks(rama_key)]
-  while point_list[i] not in peaks:
-    neigh = get_neighbours(rama_key, point_list[i])
-    for p in neigh:
-      value = r.evaluate(rama_key, [p[0], p[1]])
-      rama_type = ramalyze.evalScore(rama_key, value)
-      if rama_type==RAMALYZE_FAVORED and tempplot[int(p[0])+180][int(p[1])+180] == 0:
-        point_list.append(p)
-        tempplot[int(p[0])+180][int(p[1])+180] = 1
-    i += 1
-  for p in get_favored_peaks(rama_key):
-    if p[0] == point_list[i]:
-      return p
+  ph = int(phi)
+  ps = int(psi)
+  peaks = get_favored_peaks(rama_key)
+  v = fav_tables[rama_key][normalize(ph)+180][normalize(ps)+180]
+  values = []
+  if v == 0:
+    # look around, rounding problems
+    for i in [-1,0,1]:
+      for j in [-1,0,1]:
+        values.append(fav_tables[rama_key][normalize(ph+i)+180][normalize(ps+j)+180])
+    for e in Counter(values).elements():
+      if e != 0:
+        return e
+        # assert 0, "original: %d, got %d" % (ev, v)
+    # assert 0, "original: %d, got %d" % (ev, v)
+  if v == 0:
+    return None
+  else:
+    return peaks[v-1]
+
+# def find_region_max_value(rama_key, phi, psi):
+#   def normalize(angle):
+#     if angle > 180:
+#       return angle - 360
+#     if angle < -180:
+#       return angle + 360
+#     return angle
+#   def get_neighbours(rama_key, angle):
+#     phi, psi = angle
+#     result = []
+#     result.append((normalize(phi+1), psi))
+#     result.append((normalize(phi-1), psi))
+#     result.append((phi, (normalize(psi+1))))
+#     result.append((phi, (normalize(psi-1))))
+#     return result
+
+#   from mmtbx.rotamer import ramachandran_eval
+#   tempplot =[]
+#   for i in range(362):
+#     tempplot.append([0]*362)
+#   point_list = []
+#   r = ramachandran_eval.RamachandranEval()
+#   value = r.evaluate(rama_key, [phi, psi])
+#   if ramalyze.evalScore(rama_key, value) != RAMALYZE_FAVORED:
+#     return None
+#   i = 0
+#   phi = normalize(phi)
+#   psi = normalize(psi)
+#   point_list.append((int(phi), int(psi)))
+#   tempplot[int(phi)+180][int(psi)+180] = 1
+#   peaks = [a[0] for a in get_favored_peaks(rama_key)]
+#   while point_list[i] not in peaks:
+#     neigh = get_neighbours(rama_key, point_list[i])
+#     for p in neigh:
+#       value = r.evaluate(rama_key, [p[0], p[1]])
+#       rama_type = ramalyze.evalScore(rama_key, value)
+#       if rama_type==RAMALYZE_FAVORED and tempplot[int(p[0])+180][int(p[1])+180] == 0:
+#         point_list.append(p)
+#         tempplot[int(p[0])+180][int(p[1])+180] = 1
+#     i += 1
+#   for p in get_favored_peaks(rama_key):
+#     if p[0] == point_list[i]:
+#       return p
 
 #-----------------------------------------------------------------------
 # GRAPHICS OUTPUT
