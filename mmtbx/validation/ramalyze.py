@@ -726,14 +726,14 @@ class ramachandran_plot_mixin(graphics.rotarama_plot_mixin):
   def set_labels(self, y_marks=()):
     axes = self.plot.get_axes()
     axes.set_xlabel("Phi")
-    # axes.set_xticks([-120,-60,0,60,120])
-    axes.set_xticks([-160, -140, -120, -100, -80, -60, -40, -20, 0, 20, 40, 60, 80, 100, 120, 140, 160])
+    axes.set_xticks([-120,-60,0,60,120])
+    # axes.set_xticks([-160, -140, -120, -100, -80, -60, -40, -20, 0, 20, 40, 60, 80, 100, 120, 140, 160])
     axes.set_ylabel("Psi")
-    # axes.set_yticks([-120,-60,0,60,120])
-    axes.set_yticks([-160, -140, -120, -100, -80, -60, -40, -20, 0, 20, 40, 60, 80, 100, 120, 140, 160])
+    axes.set_yticks([-120,-60,0,60,120])
+    # axes.set_yticks([-160, -140, -120, -100, -80, -60, -40, -20, 0, 20, 40, 60, 80, 100, 120, 140, 160])
     axes.set_ylim((-182,182))
     axes.set_xlim((-182,182))
-    axes.grid(which='both', color='lime', linestyle='-', linewidth=2)
+    # axes.grid(which='both', color='lime', linestyle='-', linewidth=2)
 
 class ramachandran_plot(data_plots.simple_matplotlib_plot,
                          ramachandran_plot_mixin):
