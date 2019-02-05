@@ -53,7 +53,7 @@ protocol=tcp
 
 def run(args):
   user_phil = []
-  if '--help' or '-h' in args:
+  if '--help' in args or '-h' in args:
     print(help_message)
     phil_scope.show()
     return
