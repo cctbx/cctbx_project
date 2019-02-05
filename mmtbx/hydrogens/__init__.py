@@ -100,12 +100,19 @@ def add(model, use_neutron_distances=False, adp_scale=1, exclude_water=True):
     restraint_objects         = ro,
     pdb_interpretation_params = p,
     log                       = null_out())
-  # Remove lone H
+#  # Remove lone H
+#  sel_h = model.get_hd_selection()
+#  sel_isolated = model.isolated_atoms_selection()
+#  sel_lone = sel_h & sel_isolated
+#  model = model.select(~sel_lone)
+  # Only keep H which have been parameterized in riding H procedure
   sel_h = model.get_hd_selection()
-  sel_isolated = model.isolated_atoms_selection()
-  sel_lone = sel_h & sel_isolated
-  model = model.select(~sel_lone)
-  #
+  model.setup_riding_h_manager()
+  sel_h_in_para = flex.bool(
+                [bool(x) for x in model.riding_h_manager.h_parameterization])
+  sel_h_not_in_para = sel_h_in_para.exclusive_or(sel_h)
+  model = model.select(~sel_h_not_in_para)
+
   model = exclude_h_on_SS(model = model)
   model = exclude_h_on_coordinated_S(model = model)
   # Reset occupancies, ADPs and idealize
