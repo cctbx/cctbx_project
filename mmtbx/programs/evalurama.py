@@ -4,6 +4,8 @@ from __future__ import division, print_function
 from libtbx.program_template import ProgramTemplate
 
 from mmtbx.validation import evalurama
+from mmtbx.validation import ramalyze
+from collections import OrderedDict
 
 # =============================================================================
 
@@ -45,10 +47,11 @@ Usage examples:
         log = self.logger)
 
     results = self.evalurama.get_results()
+    res_sorted = OrderedDict(sorted(results.items()))
     print("Grand total results:")
-    for k, v in results.iteritems():
+    for k, v in res_sorted.iteritems():
       if v is not None:
-        print(k,v, file=self.logger)
+        print("%10s %-30s %.3f %5d" % (ramalyze.res_type_labels[k[0]],k[1], v[0], v[1]), file=self.logger)
 
   # ---------------------------------------------------------------------------
   def get_results(self):

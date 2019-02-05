@@ -78,6 +78,12 @@ class grid(list):
     print "Correlation", corr
     return corr
 
+  def get_total_points(self):
+    t = 0
+    for x in self:
+      t += x.n_points
+    return t
+
   def _show(self):
     for x in self:
       x._show()
@@ -168,7 +174,7 @@ class eval(object):
         c = None
         if len(points) > 30:
           gof.add_points(points)
-          c = gof.get_corr()
+          c = gof.get_corr(), gof.grid.get_total_points()
         self.results[(rama_type, peak)] = c
 
   def get_results(self):
