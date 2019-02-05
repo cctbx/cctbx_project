@@ -157,6 +157,11 @@ class SetupInstaller(object):
     installer_module = imp.load_source('install_script', self.install_script)
     self.installer = installer_module.installer()
 
+    # check for conda
+    self.base_dir = 'base'
+    if os.path.isdir(os.path.join(self.root_dir, 'conda_base')):
+      self.base_dir = 'conda_base'
+
   def run(self):
     # Setup directory structure
     print("Installer will be %s"%self.dest_dir)
@@ -223,10 +228,13 @@ class SetupInstaller(object):
   def copy_dependencies(self):
     # Copy dependencies
     archive(
-      os.path.join(self.root_dir, 'base'),
-      os.path.join(self.dest_dir, 'base')
+      os.path.join(self.root_dir, self.base_dir),
+      os.path.join(self.dest_dir, self.base_dir)
     )
-    libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root_dir, 'base'), os.path.join(self.dest_dir, 'base')])
+    if self.base_dir == 'base':
+      libtbx.auto_build.rpath.run(
+        ['--otherroot', os.path.join(self.root_dir, 'base'),
+         os.path.join(self.dest_dir, 'base')])
 
   def copy_build(self):
     # Copy the entire build directory, minus .o files.
@@ -234,7 +242,7 @@ class SetupInstaller(object):
       os.path.join(self.root_dir, 'build'),
       os.path.join(self.dest_dir, 'build')
     )
-    libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root_dir, 'base'), os.path.join(self.dest_dir, 'build')])
+    libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root_dir, self.base_dir), os.path.join(self.dest_dir, 'build')])
 
   def copy_modules(self):
     # Source modules #
@@ -338,12 +346,13 @@ class SetupInstaller(object):
       import certifi
       from libtbx.auto_build.install_base_packages import installer
       file_list = os.listdir(os.path.join(app_root_dir, 'build', 'bin'))
-      for filename in file_list:
-        installer.patch_src(
-          os.path.join(app_root_dir,'build', 'bin', filename),
-          '"%s"' % certifi.where(),
-          '"$LIBTBX_BUILD/../base/Python.framework/Versions/2.7/lib/python2.7/site-packages/certifi/cacert.pem"'
-        )
+      if self.base_dir == 'base':
+        for filename in file_list:
+          installer.patch_src(
+            os.path.join(app_root_dir,'build', 'bin', filename),
+            '"%s"' % certifi.where(),
+            '"$LIBTBX_BUILD/../base/Python.framework/Versions/2.7/lib/python2.7/site-packages/certifi/cacert.pem"'
+          )
     except ImportError:
       pass
 

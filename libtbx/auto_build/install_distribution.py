@@ -261,6 +261,10 @@ class installer(object):
       if not os.path.exists(i):
         os.makedirs(i)
 
+    # check for conda
+    if os.path.isdir(op.join(self.installer_dir, "conda_base")):
+      self.base_dir = op.join(self.dest_dir, "conda_base")
+
     # Environment variables required by other scripts
     os.environ["%s_MTYPE" % self.product_name] = self.mtype
     os.environ["%s_INSTALLER" % self.product_name] = self.installer_dir
@@ -302,7 +306,7 @@ class installer(object):
     Unpackage the binary bundle in the destination directory.
     """
     # Copy base, build, and modules
-    for i in ['base', 'build', 'modules', 'doc']:
+    for i in ['base', 'conda_base', 'build', 'modules', 'doc']:
       if os.path.exists(os.path.join(self.installer_dir, i)):
         copy_tree(os.path.join(self.installer_dir, i), os.path.join(self.dest_dir, i))
 
@@ -358,19 +362,36 @@ class installer(object):
     Run libtbx/configure.py to configure the build in the new location.
     """
     os.chdir(self.build_dir)
+
+    base_python = os.path.join(self.base_dir, 'bin', 'python')
+    if 'win32' in sys.platform:
+      os.path.join(self.base_dir, 'bin', 'python', 'python.exe')
+
+    # check for conda
+    if self.base_dir.endswith('conda_base'):
+      if 'darwin' in sys.platform:
+        base_python = os.path.join(self.base_dir, 'python.app', 'Contents',
+                                   'MacOS', 'python')
+      elif 'win32' in sys.platform:
+        base_python = os.path.join(self.base_dir, 'python.exe')
+
     args = [
-      os.path.join(self.base_dir, 'bin', 'python'),
+      base_python,
       os.path.join(self.modules_dir, 'cctbx_project', 'libtbx', 'configure.py'),
       "--current_working_directory", self.build_dir
     ]
     if 'win32'==sys.platform:
       args = [
-        os.path.join(self.base_dir, 'bin', 'python', 'python.exe'),
+        base_python,
         os.path.join(self.modules_dir, 'cctbx_project', 'libtbx', 'configure.py'),
       ]
     if 'create_versioned_dispatchers' in self.flags:
       args += [ "--command_version_suffix", self.version ]
     args += self.configure_modules
+
+    # check for conda
+    if self.base_dir.endswith('conda_base'):
+      args += ['--use_conda']
 
     if self.options.verbose:
       print(self.build_dir)
@@ -394,7 +415,8 @@ class installer(object):
     self.write_environment_files()
 
     # Regenerate module files.
-    if (self.flag_build_gui) and (sys.platform != "darwin"):
+    if (self.flag_build_gui) and (sys.platform != "darwin") and \
+      (self.base_dir == 'base'):
       os.environ["LD_LIBRARY_PATH"] = "lib:%s:%s" % \
         (op.join(self.base_dir, "lib"), op.join(self.base_dir, "lib64"))
       regenerate_module_files.run(
@@ -430,6 +452,9 @@ class installer(object):
     ]
     if (not self.flag_build_gui):
       dispatcher_opts.append("--ignore_missing_dirs")
+    # check for conda
+    if (self.base_dir.endswith('conda_base')):
+      dispatcher_opts += ["--use_conda", "--ignore_missing_dirs"]
     # FIXME this will happen regardless of whether the GUI modules are being
     # distributed or not - will this be problematic?
     print('Calling write_gui_dispatcher_include')
