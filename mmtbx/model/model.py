@@ -362,9 +362,6 @@ class manager(object):
     """
     return manager.get_default_pdb_interpretation_scope().extract()
 
-  def size(self):
-    return self.get_hierarchy().atoms().size()
-
   def set_log(self, log):
     self.log = log
 
@@ -503,6 +500,9 @@ class manager(object):
 
   def get_number_of_atoms(self):
     return self.pdb_atoms.size()
+
+  def size(self):
+    return self.get_number_of_atoms()
 
   def get_atoms(self):
     return self.pdb_atoms

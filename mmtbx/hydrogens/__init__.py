@@ -90,6 +90,7 @@ def add(model, use_neutron_distances=False, adp_scale=1, exclude_water=True):
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
   p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   p.pdb_interpretation.use_neutron_distances = use_neutron_distances
+  #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
   ro = model.get_restraint_objects()
   model = mmtbx.model.manager(
     model_input               = None,
