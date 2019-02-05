@@ -9,6 +9,8 @@ from libtbx.utils import Usage, Sorry
 import os.path
 import os, sys
 
+# Pavel's style:
+# plot=True show_labels=False markerfacecolor=yellow markeredgecolor=red
 def get_master_phil():
   return iotbx.phil.parse(input_string="""
     include scope mmtbx.validation.molprobity_cmdline_phil_str
