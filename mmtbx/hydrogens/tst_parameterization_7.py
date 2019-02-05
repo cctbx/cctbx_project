@@ -24,9 +24,9 @@ def prepare_inputs(pdb_str, cif_str):
   return model
 
 #-----------------------------------------------------------------------------
-# This test makes sure that H are corrected according to angle restraint
+# For this ligand, three H cannot be parameterized
 # NH2 group is planar, but there are no dihedral restraints
-# Input model has wrong NH2 configuration --> idealize can correct it.
+# no dihedral restraint for H11
 #-----------------------------------------------------------------------------
 
 def exercise1(pdb_str, cif_str):
@@ -46,7 +46,7 @@ def exercise1(pdb_str, cif_str):
   number_h = model.get_hd_selection().count(True)
   number_h_para = len(h_para) - h_para.count(None)
 
-  assert (number_h_para == number_h), 'Not all H atoms are parameterized'
+  assert (number_h_para == number_h-3), 'Not all H atoms are parameterized'
 
   for ih in h_distances:
     # One atom is expected to be moved
@@ -267,8 +267,9 @@ _chem_comp_plane_atom.dist_esd
 3HA plan-3  C2     0.020
 """
 
-type_list_known1 = ['flat_2neigbs', 'alg1b', 'flat_2neigbs', 'flat_2neigbs',
-  'alg1a', 'alg1a']
+#type_list_known1 = ['flat_2neigbs', 'alg1b', 'flat_2neigbs', 'flat_2neigbs',
+#  'alg1a', 'alg1a']
+type_list_known1 = ['flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs']
 
 # Zundelion ( [H2O -- H -- OH2]+)
 

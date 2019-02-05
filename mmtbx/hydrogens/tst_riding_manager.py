@@ -25,7 +25,8 @@ def exercise1():
   h_parameterization = riding_h_manager.h_parameterization
   number_h = model.get_hd_selection().count(True)
   number_h_para = len(h_parameterization) - h_parameterization.count(None)
-  assert (number_h_para == number_h), 'Not all H atoms are parameterized'
+
+  assert (number_h_para == number_h-1), 'Not all H atoms are parameterized'
 
   rc = h_parameterization[20]
 
@@ -62,7 +63,7 @@ def exercise1():
 
 def apply_selection(riding_h_manager, selection, answers):
   entries_original_h_para = 21
-  entries_cpp_original    = 9
+  entries_cpp_original    = 8
   h_parameterization = riding_h_manager.h_parameterization
 
   pdb_hierarchy = riding_h_manager.pdb_hierarchy
@@ -122,10 +123,11 @@ def exercise2():
   number_h_para = len(h_parameterization) - h_parameterization.count(None)
 
   # Check that all H atoms are parameterized in original manager
-  assert (number_h_para == number_h), 'Not all H atoms are parameterized'
+  assert (number_h_para == number_h - 1), 'Not all H atoms are parameterized'
 
   # Test several selections and compare with known answers
   #
+  print('selection1 = not (name CE1 or name CB)')
   selection1 = pdb_hierarchy.atom_selection_cache().\
       selection("not (name CE1 or name CB)")
   answers1 = group_args(
@@ -137,17 +139,19 @@ def exercise2():
     selection        = selection1,
     answers          = answers1)
   #
+  print('selection2 = not (name CD1 or name HD2 or name C)')
   selection2 = pdb_hierarchy.atom_selection_cache().\
       selection("not (name CD1 or name HD2 or name C)")
   answers2 = group_args(
     entries_selected_h_para = 18,
-    entries_cpp_selected    = 5,
+    entries_cpp_selected    = 4,
     h_in_selected_hierarchy = 8)
   apply_selection(
     riding_h_manager = riding_h_manager,
     selection        = selection2,
     answers          = answers2)
   #
+  print('selection3 = not (name N or name HB2 or name CE2)')
   selection3 = pdb_hierarchy.atom_selection_cache().\
       selection("not (name N or name HB2 or name CE2)")
   answers3 = group_args(

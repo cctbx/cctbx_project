@@ -249,8 +249,14 @@ class determine_connectivity(object):
       # If there is no dihedral ideal angle, use randomly first atom
       # in list of third neighbors
       if third_neighbors_reduced:
-        self.h_connectivity[ih].b1 = {'iseq': third_neighbors_reduced[0]}
-        self.check_for_plane_proxy(ih)
+        if (neighbor_obj.number_h_neighbors == 2):
+          self.h_connectivity[ih].b1 = {'iseq': third_neighbors_reduced[0]}
+        else:
+          self.h_connectivity[ih] = neighbors(
+            ih = ih,
+            number_non_h_neighbors = 0)
+        #self.h_connectivity[ih].b1 = {'iseq': third_neighbors_reduced[0]}
+        #self.check_for_plane_proxy(ih)
 
   def process_plane_proxies(self, planarity_proxies):
     self.plane_h = {}
