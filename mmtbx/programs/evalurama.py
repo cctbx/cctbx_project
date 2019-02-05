@@ -35,11 +35,6 @@ Usage examples:
   # ---------------------------------------------------------------------------
   def run(self):
     model = self.data_manager.get_model()
-    # names = self.data_manager.get_model_names()
-    # models = []
-    # if for n in names:
-    #   models.append(self.data_manager.get_model(filename=n))
-
 
     self.evalurama = evalurama.eval(
         model = model,
@@ -48,7 +43,9 @@ Usage examples:
 
     results = self.evalurama.get_results()
     res_sorted = OrderedDict(sorted(results.items()))
-    print("Grand total results:")
+    print("", file=self.logger)
+    print("Grand total results:", file=self.logger)
+    print("Rama type     Peak coordinates              CC   Number of residues", file=self.logger)
     for k, v in res_sorted.iteritems():
       if v is not None:
         print("%10s %-30s %.3f %5d" % (ramalyze.res_type_labels[k[0]],k[1], v[0], v[1]), file=self.logger)

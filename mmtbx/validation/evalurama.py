@@ -9,6 +9,15 @@ import numpy as np
 
 master_phil_str = """\
 evalurama {
+  use_allowed = False
+    .type = bool
+    .help = include residues that are allowed but still falls into grid squares
+  corners_inside = 1
+    .type = int
+    .help = for grid, how many corners of the square need to be inside favored
+  grid_size = 10
+    .type = float
+    .help = for grid, what size of the squares
   nproc = 1
     .type = int
 }
@@ -43,26 +52,31 @@ class grid(list):
       prob_sum += x.probability
     for x in self:
       x.probability /= prob_sum
-    print "prob_sum", prob_sum
     prob_sum = 0
     for x in self:
       prob_sum += x.probability
-    print "after scaling:", prob_sum
 
-  def add_points(self, points, normalize=True):
+  def add_points(self, points, stop_on_outsiders=True):
     """ points: [(xy),(xy)...] """
     self.total_points = len(points)
+    print "    Using", self.total_points, "points"
+
+    self.not_placed_points = 0
     for p in points:
       placed = False
       for x in self:
         placed = x.add_point_if_inside(p)
         if placed:
           break
-      # print "what's up", p
       if not placed:
+        self.not_placed_points += 1
+      if not placed and not stop_on_outsiders:
         assert 0, "point was not placed in any square (%f, %f)" % (p[0], p[1])
-    for x in self:
-      x.prob_points = x.n_points/self.total_points
+    self.total_points -= self.not_placed_points
+    print "    Total residues placed:", self.total_points
+    if self.total_points > 0:
+      for x in self:
+        x.prob_points = x.n_points/self.total_points
 
   def get_corr(self):
     a = []
@@ -70,12 +84,12 @@ class grid(list):
     for x in self:
       a.append(x.probability)
       b.append(x.prob_points)
-    print "a:", a
-    print "b:", b
     if len(a) == 0 or len(b) == 0:
       return None
+    if self.total_points < 30:
+      return None
     corr = np.corrcoef(a,b)
-    print "Correlation", corr
+    print "    Correlation", corr[0,1]
     return corr
 
   def get_total_points(self):
@@ -89,7 +103,7 @@ class grid(list):
       x._show()
 
 class grid_over_favored(object):
-  def __init__(self, rama_type, rama_region, start_point, grid_size, corners_inside):
+  def __init__(self, rama_type, rama_region, start_point, grid_size, corners_inside, use_allowed=False):
     self.rama_type = rama_type
     self.rama_region = rama_region
     self.start_point = start_point
@@ -99,8 +113,6 @@ class grid_over_favored(object):
     self.grid = grid() # list of square objects
     points_x = grid_over_favored._get_grid_points(start_point[0], grid_size)
     points_y = grid_over_favored._get_grid_points(start_point[1], grid_size)
-    # print "points_x", points_x
-    # print "points_y", points_y
     for x in points_x:
       for y in points_y:
         n_inside = 0
@@ -109,20 +121,15 @@ class grid_over_favored(object):
             reg = find_region_max_value(rama_type, x+grid_size*dx, y+grid_size*dy)
             if reg is not None and reg[0] == rama_region:
               n_inside += 1
-        # print "  x,y,n:", x,y,n_inside
         if n_inside >= corners_inside:
           v = self.r.evaluate(rama_type, [x+0.5*grid_size, y+0.5*grid_size])
           self.grid.append(square((x,y), (x+grid_size, y+grid_size), v))
-    print "len grid", len(self.grid)
+    print "    Number of grid cells", len(self.grid)
 
     self.grid.scale_to_1()
-    # print "=" *80
-    # self.grid.add_points([(-123,0), (-100,0), (-85,0)])
-    # self.grid._show()
-    # self.grid.get_corr()
 
-  def add_points(self, points):
-    self.grid.add_points(points)
+  def add_points(self, points, stop_on_outsiders=True):
+    self.grid.add_points(points, stop_on_outsiders=stop_on_outsiders)
     # self.grid._show()
 
   def get_corr(self):
@@ -151,30 +158,29 @@ class eval(object):
   def __init__(self, model, params, log):
     self.model = model
     self.log = log
+    self.params = params
     self.rama = ramalyze(self.model.get_hierarchy(), out=null_out())
 
     self.results = {}
     for rama_type in range(5):
-      print "Working with", res_types[rama_type]
+      print "Working with", res_types[rama_type], "plot"
       for peak in get_favored_peaks(rama_type):
         print "  Working with peak:", peak
         gof = grid_over_favored(
             rama_type=rama_type,
             rama_region=peak[0],
             start_point=(0,0),
-            grid_size=10,
-            corners_inside=1)
+            grid_size=self.params.grid_size,
+            corners_inside=self.params.corners_inside)
         points = []
         for r in self.rama.results:
-          if (r.res_type == rama_type and r.rama_type == RAMALYZE_FAVORED and
-              find_region_max_value(rama_type, r.phi, r.psi) == peak):
+          if (r.res_type == rama_type
+              and (r.rama_type == RAMALYZE_FAVORED or self.params.use_allowed)):
             points.append((r.phi, r.psi))
-        print points
-        # STOP()
-        c = None
-        if len(points) > 30:
-          gof.add_points(points)
-          c = gof.get_corr(), gof.grid.get_total_points()
+        gof.add_points(points, stop_on_outsiders=self.params.use_allowed)
+        c = gof.get_corr(), gof.grid.get_total_points()
+        if c.count(None) > 0:
+          c = None
         self.results[(rama_type, peak)] = c
 
   def get_results(self):

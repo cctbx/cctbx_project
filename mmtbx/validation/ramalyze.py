@@ -668,7 +668,7 @@ def get_favored_peaks(rama_key):
             ((-121.0, 129.0), 0.76163)]
   return None
 
-def find_region_max_value(rama_key, phi, psi):
+def find_region_max_value(rama_key, phi, psi, allow_outside=False):
   def normalize(angle):
     angle = int(angle)
     if angle > 180:
