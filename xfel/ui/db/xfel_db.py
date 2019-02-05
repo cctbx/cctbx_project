@@ -49,7 +49,7 @@ class initialize(initialize_base):
 
     if tables_ok:
       # Maintain backwards compatibility with SQL tables v2: 09/24/16
-      query = "SHOW columns FROM %s_event"%self.params.experiment_tag
+      query = "SHOW columns FROM `%s_event`"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
@@ -67,7 +67,7 @@ class initialize(initialize_base):
         assert False
 
       # Maintain backwards compatibility with SQL tables v2: 09/28/16
-      query = "SHOW columns FROM %s_job"%self.params.experiment_tag
+      query = "SHOW columns FROM `%s_job`"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
@@ -80,7 +80,7 @@ class initialize(initialize_base):
         cursor.execute(query)
 
       # Maintain backwards compatibility with SQL tables v2: 12/12/16
-      query = "SHOW columns FROM %s_rungroup"%self.params.experiment_tag
+      query = "SHOW columns FROM `%s_rungroup`"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
@@ -96,7 +96,7 @@ class initialize(initialize_base):
           cursor.execute(query)
 
       # Maintain backwards compatibility with SQL tables v2: 06/23/17
-      query = "SHOW columns FROM %s_trial"%self.params.experiment_tag
+      query = "SHOW columns FROM `%s_trial`"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
@@ -107,7 +107,7 @@ class initialize(initialize_base):
           ADD COLUMN d_min FLOAT NULL
         """%self.params.experiment_tag
         cursor.execute(query)
-      query = "SHOW columns FROM %s_cell"%self.params.experiment_tag
+      query = "SHOW columns FROM `%s_cell`"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()

@@ -76,7 +76,7 @@ class db_proxy(object):
           keys.append(key)
       assert len(kwargs) == 0
       if len(keys) > 0:
-        query = "SELECT %s FROM %s WHERE id = %d" % (", ".join(keys), table_name, id)
+        query = "SELECT %s FROM `%s` WHERE id = %d" % (", ".join(keys), table_name, id)
         results = app.execute_query(query).fetchall()[0]
         for key, value in zip(keys, results):
           self._db_dict[key] = value
