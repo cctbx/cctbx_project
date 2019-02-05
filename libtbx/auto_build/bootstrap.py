@@ -2059,6 +2059,7 @@ class XFELBuilder(CCIBuilder):
     'prime',
     'iota'
   ]
+  HOT_EXTRA = ['msgpack']
 
   def add_base(self, extra_opts=[]):
     super(XFELBuilder, self).add_base(
