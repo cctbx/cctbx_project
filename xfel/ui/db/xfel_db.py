@@ -120,6 +120,77 @@ class initialize(initialize_base):
           ADD INDEX fk_cell_trial1_idx (trial_id ASC)
         """%(self.params.experiment_tag, self.params.experiment_tag)
         cursor.execute(query)
+
+      # Maintain backwards compatibility with SQL tables v3: 02/1/19
+      query = "SHOW TABLES LIKE '%s_rungroup_run'"%(self.params.experiment_tag)
+      cursor.execute(query)
+      if cursor.rowcount == 0:
+        print "Upgrading to version 4 of mysql database schema"
+        query = """
+        CREATE TABLE IF NOT EXISTS `%s`.`%s_rungroup_run` (
+          `rungroup_id` INT NOT NULL,
+          `run_id` INT NOT NULL,
+          PRIMARY KEY (`rungroup_id`, `run_id`),
+          INDEX `fk_rungroup_has_run_run1_idx` (`run_id` ASC),
+          INDEX `fk_rungroup_has_run_rungroup1_idx` (`rungroup_id` ASC),
+          CONSTRAINT `fk_%s_rungroup_has_run_rungroup1`
+            FOREIGN KEY (`rungroup_id`)
+            REFERENCES `%s`.`%s_rungroup` (`id`)
+            ON DELETE NO ACTION
+            ON UPDATE NO ACTION,
+          CONSTRAINT `fk_%s_rungroup_has_run_run1`
+            FOREIGN KEY (`run_id`)
+            REFERENCES `%s`.`%s_run` (`id`)
+            ON DELETE NO ACTION
+            ON UPDATE NO ACTION)
+        ENGINE = InnoDB;
+        """%(self.params.db.name, self.params.experiment_tag, self.params.experiment_tag,
+             self.params.db.name, self.params.experiment_tag, self.params.experiment_tag,
+             self.params.db.name, self.params.experiment_tag)
+        cursor.execute(query)
+        # Convert from startrun/endrun to linked table connecting run and rungroup and an 'open' flag in rungroup
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN open TINYINT(1) NOT NULL DEFAULT 0"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "SELECT id, startrun, endrun FROM `%s_rungroup`"%self.params.experiment_tag
+        cursor.execute(query)
+        for rungroup_id, startrun, endrun in cursor.fetchall():
+          if endrun is None:
+            # This run is 'open', so get the last run available and update the open bit for the rungroup
+            query = 'SELECT run FROM `%s_run`'%self.params.experiment_tag
+            cursor.execute(query)
+            endrun = max(zip(*cursor.fetchall())[0])
+            query = 'UPDATE `%s_rungroup` set open = 1 where id = %d'%(self.params.experiment_tag, rungroup_id)
+            cursor.execute(query)
+          # Add all thr runs to the rungroup
+          for run in xrange(startrun, endrun+1):
+            query = 'SELECT id FROM `%s_run` run WHERE run.run = %d'%(self.params.experiment_tag, run)
+            cursor.execute(query)
+            rows = cursor.fetchall(); assert len(rows) <= 1
+            if len(rows) > 0:
+              run_id = rows[0][0]
+              query = "INSERT INTO `%s_rungroup_run` (rungroup_id, run_id) VALUES (%d, %d)" % ( \
+                self.params.experiment_tag, rungroup_id, run_id)
+              cursor.execute(query)
+        self.dbobj.commit()
+        query = "ALTER TABLE `%s_rungroup` DROP COLUMN startrun, DROP COLUMN endrun"%self.params.experiment_tag
+        cursor.execute(query)
+        # remove NOT NULL (and default for format column)
+        query = "ALTER TABLE `%s_rungroup` MODIFY COLUMN format varchar(45)"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_rungroup` MODIFY COLUMN detector_address varchar(100)"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_rungroup` MODIFY COLUMN detz_parameter double"%self.params.experiment_tag
+        cursor.execute(query)
+        # Retype and add new columns
+        query = "ALTER TABLE `%s_run` MODIFY COLUMN run varchar(45) NOT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_run` ADD COLUMN path varchar(4097)"%self.params.experiment_tag
+        cursor.execute(query)
+        column_names = ['number', 'd_min', 'd_max', 'total_hkl']
+        column_types = ['int', 'double', 'double', 'int']
+        for column_name, column_type in zip(column_names, column_types):
+          query = "ALTER TABLE `%s_bin` MODIFY COLUMN %s %s"%(self.params.experiment_tag, column_name, column_type)
+          cursor.execute(query)
     return tables_ok
 
   def set_up_columns_dict(self, app):
