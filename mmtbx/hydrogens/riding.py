@@ -75,11 +75,17 @@ class manager(object):
     n_atoms = new_manager.pdb_hierarchy.atoms_size()
     iselection_original = new_manager.pdb_hierarchy.atoms().extract_i_seq()
     # Properties for the new (selected) manager
-    new_hierachy = new_manager.pdb_hierarchy.deep_copy().select(selection)
+    #new_hierachy = new_manager.pdb_hierarchy.deep_copy()
+    new_hierachy = new_manager.pdb_hierarchy.select(selection)
+    #new_hierachy.select(selection)
+
+    new_geometry_restraints = new_manager.geometry_restraints.select(selection)
+    pdb_atoms = new_hierachy.atoms()
+    pdb_atoms.reset_i_seq()
     hd_selection_new = new_hierachy.atom_selection_cache().\
           selection("element H or element D")
-    new_geometry_restraints = new_manager.geometry_restraints.select(selection)
     new_manager.pdb_hierarchy = new_hierachy
+
     new_manager.hd_selection = hd_selection_new
     new_manager.not_hd_selection = ~hd_selection_new
     new_manager.geometry_restraints = new_geometry_restraints
