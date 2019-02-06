@@ -22,3 +22,39 @@ class Rungroup(db_proxy):
   def __setattr__(self, name, value):
     assert name != "runs"
     super(Rungroup, self).__setattr__(name, value)
+
+  def get_first_and_last_runs(self):
+    runs = self.runs
+    run_runs = [r.run for r in runs]
+    first = runs[run_runs.index(min(run_runs))]
+    if self.open:
+      last = None
+    else:
+      last = runs[run_runs.index(max(run_runs))]
+    return first, last
+
+  def sync_runs(self, first_run, last_run):
+    all_runs = self.app.get_all_runs()
+    runs = self.runs
+    run_numbers = [r.run for r in runs]
+    if self.open:
+      tester = lambda x: int(x.run) >= first_run # LCLS specific comparator
+    else:
+      tester = lambda x: int(x.run) >= first_run and int(x.run) <= last_run # LCLS specific comparator
+    for run in all_runs:
+      if tester(run):
+        if not run.run in run_numbers:
+          self.add_run(run.id)
+      else:
+        if run.run in run_numbers:
+          self.remove_run(run.id)
+
+  def add_run(self, run_id):
+    query = "INSERT INTO `%s_rungroup_run` (rungroup_id, run_id) VALUES (%d, %d)" % ( \
+      self.app.params.experiment_tag, self.id, run_id)
+    self.app.execute_query(query, commit=True)
+
+  def remove_run(self, run_id):
+    query = "DELETE FROM `%s_rungroup_run` WHERE rungroup_id = %d AND run_id = %d" % ( \
+      self.app.params.experiment_tag, self.id, run_id)
+    self.app.execute_query(query, commit=True)
