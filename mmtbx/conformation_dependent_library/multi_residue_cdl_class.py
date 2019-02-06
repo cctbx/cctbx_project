@@ -23,7 +23,7 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
         atom = self[0].find_atom_by(name=name)
         if atom: atoms["%s_minus_1" % name.strip()] = atom
     # i
-    for name in [" N  ", " CA ", " CB ", " C  ", " O  "]:
+    for name in [" N  ", " CA ", " CB ", " C  ", " O  ", ' H  ']:
       atom = self[1].find_atom_by(name=name)
       if atom: atoms["%s_i" % name.strip()] = atom
     # i+1
@@ -182,6 +182,17 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
                     average=True,
                     verbose=False,
                     ):
+    def _get_angle_proxy(names):
+      angle_proxy = cdl_proxies.get(tuple(names), None)
+      if angle_proxy is None:
+        rnames = copy.deepcopy(names)
+        rnames.reverse()
+        angle_proxy = cdl_proxies.get(tuple(rnames), None)
+      return angle_proxy
+    def _get_i_seqs(names):
+      for j in range(len(names)): names[j] = atoms[names[j]].i_seq
+      return names
+    ####################
     if not average:
       if restraint_values[0]=="I":
         print restraint_values
@@ -209,14 +220,9 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
       if "CB_i" in names and not "CB_i" in atoms: continue
       # sometimes the O is not in the model
       if "O_i" in names and not "O_i" in atoms: continue
-      for j in range(len(names)):
-        names[j] = atoms[names[j]].i_seq
+      names = _get_i_seqs(names)
       if len(names)==3:
-        angle_proxy = cdl_proxies.get(tuple(names), None)
-        if angle_proxy is None:
-          rnames = copy.deepcopy(names)
-          rnames.reverse()
-          angle_proxy = cdl_proxies.get(tuple(rnames), None)
+        angle_proxy = _get_angle_proxy(names)
         if angle_proxy is None: continue
         if angle_proxy.origin_id==origin_ids.get_origin_id('edits'): continue
         if 0:
@@ -267,6 +273,24 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
         assert restraint_values[i+1]<.1, 'CDL bond restraint larger than 0.1'
       else:
         assert 0
+    # adjust X-N-H angles to obtain planar
+    nh_atoms = {}
+    for atom in self[0].atoms():
+      if atom.name.strip() in ['C']:
+        nh_atoms[atom.name.strip()] = atom
+    for atom in self[1].atoms():
+      if atom.name.strip() in ['N', 'H', 'CA']:
+        nh_atoms[atom.name.strip()] = atom
+    if len(nh_atoms)==4:
+      CNCA = _get_angle_proxy(_get_i_seqs(["C_minus_1", "N_i", "CA_i"]))
+      CNH = _get_angle_proxy(_get_i_seqs(["C_minus_1", "N_i", "H_i"]))
+      CANH = _get_angle_proxy(_get_i_seqs(["CA_i", "N_i", "H_i"]))
+      assert CNH and CANH, 'CNH or CANH not found'
+      total = CNCA.angle_ideal + CNH.angle_ideal + CANH.angle_ideal
+      diff = (total-360)/2
+      CNH.angle_ideal-=diff
+      CANH.angle_ideal-=diff
+      assert 360 - (CNCA.angle_ideal + CNH.angle_ideal + CANH.angle_ideal)<0.1
 
   def apply_average_updates(self, averages, verbose=False):
     if verbose:

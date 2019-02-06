@@ -68,7 +68,7 @@ def generate_protein_tuples(hierarchy,
                             cdl_class=False,
                             omega_cdl=False,
                             #
-                            retain_selection="name ca or name c or name n or name o or name cb",
+                            retain_selection="name ca or name c or name n or name o or name cb or name h",
                             verbose=False,
                             ):
   assert length
