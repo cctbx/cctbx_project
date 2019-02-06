@@ -73,7 +73,7 @@ class Stats(object):
 
     if self.isigi_cutoff is not None and self.isigi_cutoff >= 0:
       query += " AND cell_bin.avg_i_sigi >= %f"%self.isigi_cutoff
-    query += " GROUP BY bin.id"
+    query += " GROUP BY cell.id, bin.id"
 
     results = self.app.execute_query(query).fetchall()
     if len(results) == 0:
