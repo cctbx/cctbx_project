@@ -69,6 +69,8 @@ class grid(list):
         if placed:
           break
       if not placed:
+        # basically all points in the vicinity of this peak, including outliers
+        # print "      Rejected point:", p
         self.not_placed_points += 1
       if not placed and not stop_on_outsiders:
         assert 0, "point was not placed in any square (%f, %f)" % (p[0], p[1])
@@ -175,7 +177,9 @@ class eval(object):
         points = []
         for r in self.rama.results:
           if (r.res_type == rama_type
-              and (r.rama_type == RAMALYZE_FAVORED or self.params.use_allowed)):
+              and (r.rama_type == RAMALYZE_FAVORED or self.params.use_allowed)
+              and find_region_max_value(rama_type, r.phi, r.psi,
+                  allow_outside=self.params.use_allowed) == peak):
             points.append((r.phi, r.psi))
         gof.add_points(points, stop_on_outsiders=self.params.use_allowed)
         c = gof.get_corr(), gof.grid.get_total_points()

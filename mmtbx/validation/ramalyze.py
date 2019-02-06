@@ -681,7 +681,7 @@ def find_region_max_value(rama_key, phi, psi, allow_outside=False):
   r = ramachandran_eval.RamachandranEval()
   value = r.evaluate(rama_key, [phi, psi])
   ev = ramalyze.evalScore(rama_key, value)
-  if ev != RAMALYZE_FAVORED:
+  if ev != RAMALYZE_FAVORED and not allow_outside:
     return None
   ph = int(phi)
   ps = int(psi)
@@ -696,6 +696,19 @@ def find_region_max_value(rama_key, phi, psi, allow_outside=False):
     for e in Counter(values).elements():
       if e != 0:
         return e
+  if allow_outside:
+    # do more comprehensive search, basically looking for the nearest
+    # favorite region
+    c = 1
+    flag = True
+    while flag:
+      for i in [-1*c,0*c,1*c]:
+        for j in [-1*c,0*c,1*c]:
+          reg_number = fav_tables[rama_key][normalize(ph+i)+180][normalize(ps+j)+180]
+          if reg_number != 0:
+            flag = False
+      c += 1
+    return peaks[reg_number-1]
   if v == 0:
     return None
   else:
