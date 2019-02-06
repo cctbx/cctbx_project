@@ -10,44 +10,43 @@ from libtbx.test_utils import approx_equal
 def run():
   exercise1()
   exercise2()
+  exercise3()
+  exercise4()
 
 # ------------------------------------------------------------------------------
-  # make sure that H of incomplete peptide unit (N-terminal) is not placed
-  # test will need to be adapted once H3 can be placed at N-terminal
+
+def get_model(pdb_str):
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input = pdb_inp,
+                              log         = null_out())
+  model_with_h = mmtbx.hydrogens.add(model = model)
+  return model_with_h
+
+# ------------------------------------------------------------------------------
+# make sure that H of incomplete peptide unit (N-terminal) is not placed
+# test will need to be adapted once H3 can be placed at N-terminal
 # ------------------------------------------------------------------------------
 def exercise1():
-  pdb_inp = iotbx.pdb.input(lines=pdb_str_1.split("\n"), source_info=None)
-  model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
-
-  model_with_h = mmtbx.hydrogens.add(model = model)
-
+  model_with_h = get_model(pdb_str = pdb_str_1)
   number_h = model_with_h.get_hd_selection().count(True)
-  # total number of H atoms in Tyr: 9
-  # but peptide H atom cannot be parameterized
+  # total number of H atoms in Tyr: 9, but peptide H atom cannot be parameterized
   assert(number_h == 8)
 
 # ------------------------------------------------------------------------------
-  # if one heavy atom is missing, it can impact parameterization and thus
-  # placement of SEVERAL H atoms.
+# if one heavy atom is missing, it can impact parameterization and thus
+# placement of SEVERAL H atoms.
 # ------------------------------------------------------------------------------
 def exercise2():
-  pdb_inp = iotbx.pdb.input(lines=pdb_str_2.split("\n"), source_info=None)
-  model = mmtbx.model.manager(model_input=pdb_inp,
-                              log=null_out())
-
-  model_with_h = mmtbx.hydrogens.add(model = model)
-
+  model_with_h = get_model(pdb_str = pdb_str_2)
   number_h = model_with_h.get_hd_selection().count(True)
-  # The following atoms cannot be parameterized:
-  # H, HD1, HE1
-  # number_h = 9 - 3 = 6
-  assert(number_h == 6)
-
   geometry_restraints = model_with_h.get_restraints_manager().geometry
   e_sites = geometry_restraints.energies_sites(
           sites_cart        = model_with_h.get_sites_cart(),
           compute_gradients = False)
   t = e_sites.target
+  # The following atoms cannot be parameterized: H, HD1, HE1
+  # number_h = 9 - 3 = 6
+  assert(number_h == 6)
   # if the target is higher, indicative that H atom is at wrong place
   #assert approx_equal(t,145, 10)
   assert(t < 180)
@@ -74,9 +73,31 @@ def exercise2():
 #      parallelity_residual_sum (n=0): 0
 # new version of connectivity ignores HE1 --> it is not parameterized
 
-#  print(e_sites.bond_residual_sum)
-#  print(e_sites.angle_residual_sum)
-#  print(e_sites.residual_sum)
+# ------------------------------------------------------------------------------
+# Don't put H on disulfides
+# ------------------------------------------------------------------------------
+def exercise3():
+  model_with_h = get_model(pdb_str = pdb_str_3)
+  hd_sel = model_with_h.get_hd_selection()
+  number_h = hd_sel.count(True)
+  h_atoms = model_with_h.get_hierarchy().select(hd_sel).atoms()
+  h_names = list(h_atoms.extract_name())
+
+  assert(number_h == 6)
+  assert('HG' not in h_names)
+
+# ------------------------------------------------------------------------------
+# Put H on lone Cys
+# ------------------------------------------------------------------------------
+def exercise4():
+  model_with_h = get_model(pdb_str = pdb_str_4)
+  hd_sel = model_with_h.get_hd_selection()
+  number_h = hd_sel.count(True)
+  h_atoms = model_with_h.get_hierarchy().select(hd_sel).atoms()
+  h_names = list(h_atoms.extract_name())
+
+  assert(number_h == 4)
+  assert('HG' in h_names)
 
 # ------------------------------------------------------------------------------
 
@@ -112,6 +133,34 @@ ATOM   1950  CE1 TYR A 139       6.966   5.122   5.770  1.00 10.00           C
 ATOM   1951  CE2 TYR A 139       7.064   5.676   8.095  1.00 10.00           C
 ATOM   1952  CZ  TYR A 139       6.345   5.266   6.993  1.00 10.00           C
 ATOM   1953  OH  TYR A 139       5.000   5.000   7.113  1.00 10.00           O
+TER
+"""
+
+pdb_str_3 = """
+CRYST1   14.197   15.507   16.075  90.00  90.00  90.00 P 1
+ATOM      1  N   CYS A 128      14.558 -30.378 -19.478  1.00 11.73           N
+ATOM      2  CA  CYS A 128      13.499 -29.511 -19.901  1.00 11.51           C
+ATOM      3  C   CYS A 128      12.454 -30.316 -20.640  1.00 11.99           C
+ATOM      4  O   CYS A 128      12.765 -31.329 -21.265  1.00 16.86           O
+ATOM      5  CB  CYS A 128      14.059 -28.357 -20.691  1.00 12.94           C
+ATOM      6  SG  CYS A 128      15.213 -27.350 -19.760  1.00 12.36           S
+ATOM      7  N   CYS A 232      13.105 -25.822 -15.371  1.00  4.75           N
+ATOM      8  CA  CYS A 232      14.298 -26.646 -15.573  1.00  5.50           C
+ATOM      9  C   CYS A 232      15.596 -25.838 -15.551  1.00  5.70           C
+ATOM     10  O   CYS A 232      16.651 -26.346 -15.190  1.00  8.25           O
+ATOM     11  CB  CYS A 232      14.178 -27.497 -16.824  1.00  6.69           C
+ATOM     12  SG  CYS A 232      14.060 -26.477 -18.360  1.00  7.70           S
+TER
+"""
+
+pdb_str_4 = """
+CRYST1   14.197   15.507   16.075  90.00  90.00  90.00 P 1
+ATOM      1  N   CYS A 128      14.558 -30.378 -19.478  1.00 11.73           N
+ATOM      2  CA  CYS A 128      13.499 -29.511 -19.901  1.00 11.51           C
+ATOM      3  C   CYS A 128      12.454 -30.316 -20.640  1.00 11.99           C
+ATOM      4  O   CYS A 128      12.765 -31.329 -21.265  1.00 16.86           O
+ATOM      5  CB  CYS A 128      14.059 -28.357 -20.691  1.00 12.94           C
+ATOM      6  SG  CYS A 128      15.213 -27.350 -19.760  1.00 12.36           S
 TER
 """
 
