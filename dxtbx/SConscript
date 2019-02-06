@@ -35,6 +35,12 @@ if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
   if (libtbx.env.build_options.use_conda):
     env_etc.dxtbx_includes.extend(env_etc.conda_cpppath)
     env_etc.dxtbx_lib_paths.extend(env_etc.conda_libpath)
+    # library changes
+    # tiff.lib instead of libtiff.lib for newer libtiff conda packages
+    env_etc.dxtbx_libs = ['tiff' if x == 'libtiff' else x
+                          for x in env_etc.dxtbx_libs]
+    # add zlib.lib for hdf5
+    env_etc.dxtbx_hdf5_libs.append('zlib')
 
 # for the hdf5.h file - look at where Python is coming from unless is OS X
 # framework build... messy but appears to work on Linux and OS X
