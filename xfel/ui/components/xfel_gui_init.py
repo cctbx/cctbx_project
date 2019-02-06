@@ -103,6 +103,11 @@ class RunSentinel(Thread):
           for r in new_runs:
             for t in tags:
               r.add_tag(t)
+        # Sync new runs to rungroups
+        for rungroup in db.get_all_rungroups(only_active=True):
+          first_run, last_run = rungroup.get_first_and_last_runs()
+          rungroup.sync_runs(first_run, last_run)
+
         print "%d new runs" % len(unknown_runs)
         self.post_refresh()
       time.sleep(10)
@@ -1629,7 +1634,10 @@ class JobsTab(BaseTab):
           elif short_status == "SUBMITTED":
             short_status = "SUBMIT"
           t = "t%03d" % job.trial.trial
-          r = "r%04d" % job.run.run
+          try:
+            r = "r%04d" % int(job.run.run)
+          except ValueError:
+            r = "r%s" % job.run.run
           rg = "rg%03d" % job.rungroup.id
           sid = str(job.submission_id)
           s = short_status

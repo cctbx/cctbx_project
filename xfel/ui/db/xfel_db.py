@@ -230,6 +230,7 @@ class db_application(object):
         return cursor
       except OperationalError as e:
         if "Can't connect to MySQL server" not in str(e):
+          print query
           raise e
         retry_count += 1
         print "Couldn't connect to MYSQL, retry", retry_count
@@ -265,7 +266,9 @@ class xfel_db_application(db_application):
     from xfel.xpp.simulate import file_table
     query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.experiment)
     FT = file_table(self.params, query, enforce80=self.params.web.enforce80, enforce81=self.params.web.enforce81)
-    return FT.get_runs()
+    runs = FT.get_runs()
+    for r in runs: r['run'] = str(r['run'])
+    return runs
 
   def verify_tables(self):
     return self.init_tables.verify_tables()
@@ -518,11 +521,12 @@ class xfel_db_application(db_application):
   def get_trial_runs(self, trial_id):
     tag = self.params.experiment_tag
     query = """SELECT run.id FROM `%s_run` run
-               JOIN `%s_rungroup` rg ON run.run >= rg.startrun AND (run.run <= rg.endrun OR rg.endrun is NULL)
+               JOIN `%s_rungroup_run` rgr ON run.id = rgr.run_id
+               JOIN `%s_rungroup` rg ON rg.id = rgr.rungroup_id
                JOIN `%s_trial_rungroup` t_rg on t_rg.rungroup_id = rg.id
                JOIN `%s_trial` trial ON trial.id = t_rg.trial_id
                WHERE trial.id=%d AND rg.active=True
-               """ %(tag, tag, tag, tag, trial_id)
+               """ %(tag, tag, tag, tag, tag, trial_id)
     cursor = self.execute_query(query)
     run_ids = ["%d"%i[0] for i in cursor.fetchall()]
     if len(run_ids) == 0:
@@ -534,11 +538,12 @@ class xfel_db_application(db_application):
     query = """SELECT tag.id FROM `%s_tag` tag
                JOIN `%s_run_tag` rt ON rt.tag_id = tag.id
                JOIN `%s_run` run ON run.id = rt.run_id
-               JOIN `%s_rungroup` rg ON run.run >= rg.startrun AND (run.run <= rg.endrun OR rg.endrun is NULL)
+               JOIN `%s_rungroup_run` rgr ON run.id = rgr.run_id
+               JOIN `%s_rungroup` rg ON rg.id = rgr.rungroup_id
                JOIN `%s_trial_rungroup` t_rg ON t_rg.rungroup_id = rg.id
                JOIN `%s_trial` trial ON trial.id = t_rg.trial_id
                WHERE trial.id=%d AND rg.active=True
-               """ % (tag, tag, tag, tag, tag, tag, trial_id)
+               """ % (tag, tag, tag, tag, tag, tag, tag, trial_id)
     cursor = self.execute_query(query)
     tag_ids = ["%d"%i[0] for i in cursor.fetchall()]
     if len(tag_ids) == 0:
@@ -572,6 +577,17 @@ class xfel_db_application(db_application):
 
   def get_rungroup(self, rungroup_id):
     return Rungroup(self, rungroup_id)
+
+  def get_rungroup_runs(self, rungroup_id):
+    query = """SELECT run.id FROM `%s_run` run
+               JOIN `%s_rungroup_run` rgr ON run.id = rgr.run_id
+               WHERE rgr.rungroup_id = %d"""%(self.params.experiment_tag,
+                 self.params.experiment_tag, rungroup_id)
+    cursor = self.execute_query(query)
+    run_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    if len(run_ids) == 0:
+      return []
+    return self.get_all_x(Run, "run", where = "WHERE run.id IN (%s)"%",".join(run_ids))
 
   def get_all_rungroups(self, only_active = False):
     if only_active:

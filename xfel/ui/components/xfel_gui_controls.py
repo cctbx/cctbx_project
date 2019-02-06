@@ -77,23 +77,19 @@ class RunBlockButton(GradButton):
   def __init__(self, parent, block, size=wx.DefaultSize):
     self.block = block
     db = block.app
-    self.first_run = db.get_run(run_number=block.startrun).run
     self.rnum = block.rungroup_id
-    if block.endrun is None:
-      self.last_run = None
-    else:
-      self.last_run = db.get_run(run_number=block.endrun).run
+    self.first_run, self.last_run = block.get_first_and_last_runs()
 
     GradButton.__init__(self, parent=parent, label='',
                         size=size)
     self.update_label()
 
   def update_label(self):
-    first = self.first_run
+    first = self.first_run.run
     if self.last_run is None:
       last = ' ...'
     else:
-      last = ' - {}'.format(self.last_run)
+      last = ' - {}'.format(self.last_run.run)
 
     self.block_label = '[{}] runs {}{}'.format(self.rnum, first, last)
     self.SetLabel(self.block_label)

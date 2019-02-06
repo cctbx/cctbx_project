@@ -9,13 +9,7 @@ class Rungroup(db_proxy):
   def __getattr__(self, name):
     # Called only if the property cannot be found
     if name == "runs":
-      startrun = self.app.get_run(run_number = self.startrun).run
-      if self.endrun is None:
-        return [r for r in self.app.get_all_runs() if r.run >= startrun]
-      else:
-        endrun = self.app.get_run(run_number = self.endrun).run
-        return [r for r in self.app.get_all_runs() if r.run >= startrun and \
-                                                      r.run <= endrun]
+      return self.app.get_rungroup_runs(self.id)
     else:
       return super(Rungroup, self).__getattr__(name)
 

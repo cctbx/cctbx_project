@@ -1181,11 +1181,12 @@ class RunBlockDialog(BaseDialog):
 
     else:
       db = block.app
-      self.first_run = db.get_run(run_number=block.startrun).run
-      if block.endrun is None:
-        self.last_run = None
-      else:
-        self.last_run = db.get_run(run_number=block.endrun).run
+      self.first_run, self.last_run = block.get_first_and_last_runs()
+      self.first_run = int(self.first_run.run)
+      if self.last_run is not None: self.last_run = int(self.last_run.run)
+
+    self.orig_first_run = self.first_run
+    self.orig_last_run = self.last_run
 
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
@@ -1195,7 +1196,7 @@ class RunBlockDialog(BaseDialog):
 
     # Run block start / end points (choice widgets)
 
-    runs_available = sorted([i.run for i in db.get_all_runs()])
+    runs_available = sorted([int(i.run) for i in db.get_all_runs()]) # LCLS specific cast
     self.first_avail = min(runs_available)
     self.last_avail = max(runs_available)
 
@@ -1458,7 +1459,6 @@ class RunBlockDialog(BaseDialog):
       first = int(self.runblocks_start.ctr.GetValue())
       assert first > 0 and first >= self.first_avail
       self.first_run = first
-      startrun = self.db.get_run(run_number=first).run
     except (ValueError, AssertionError) as e:
       print "Please select a run between %d and %d." % (self.first_avail, self.last_avail)
       raise e
@@ -1467,18 +1467,17 @@ class RunBlockDialog(BaseDialog):
         last = int(self.runblocks_end.ctr.GetValue())
         assert last > 0 and last <= self.last_avail and last >= first
         self.last_run = last
-        endrun = self.db.get_run(run_number=int(last)).run
       except (ValueError, AssertionError) as e:
         print "Please select a run between %d and %d." % (self.first_run, self.last_avail)
         raise e
     elif self.end_type.specify.GetValue() == 0:
-      endrun = None
+      self.last_run = None
     else:
       assert False
+    rg_open = self.last_run is None
 
-    rg_dict = dict(startrun=startrun,
-                   endrun=endrun,
-                   active=True,
+    rg_dict = dict(active=True,
+                   open=rg_open,
                    format=self.img_format.ctr.GetStringSelection(),
                    config_str=self.config.ctr.GetValue(),
                    extra_phil_str=self.phil.ctr.GetValue(),
@@ -1505,24 +1504,26 @@ class RunBlockDialog(BaseDialog):
 
     if self.block is None:
       self.block = self.db.create_rungroup(**rg_dict)
+      self.block.sync_runs(self.first_run, self.last_run)
       self.parent.trial.add_rungroup(self.block)
     else:
       # if all the parameters are unchanged, do nothing
       all_the_same = [str(rg_dict[key]) == str(getattr(self.block, key)) for key in rg_dict].count(False) == 0
+      all_the_same &= self.first_run == self.orig_first_run and self.last_run == self.orig_last_run
       if not all_the_same:
-        # if all the parameters except startrun, endrun and comment are the same,
+        # if all the parameters except open and comment are the same,
         # only update those fields
         keep_old_run_group = [str(rg_dict[key]) == str(getattr(self.block, key)) for key in rg_dict \
-                              if key not in ['startrun', 'endrun', 'comment']].count(False) == 0
+                              if key not in ['open', 'comment']].count(False) == 0
         if keep_old_run_group:
           main = self.parent.parent.GetParent().main
           running = main.job_sentinel is not None and main.job_sentinel.active
           if running:
             main.stop_job_sentinel()
 
-          self.block.startrun = startrun
-          self.block.endrun = endrun
+          self.block.open = rg_open
           self.block.comment = rg_dict['comment']
+          self.block.sync_runs(self.first_run, self.last_run)
 
           if running:
             main.start_job_sentinel()
@@ -1531,6 +1532,7 @@ class RunBlockDialog(BaseDialog):
           # enough parameters have changed to warrant creating a new run group
           self.block.active = False
           self.block = self.db.create_rungroup(**rg_dict)
+          self.block.sync_runs(self.first_run, self.last_run)
           self.parent.trial.add_rungroup(self.block)
 
     e.Skip()
@@ -1678,10 +1680,11 @@ class SelectRunBlocksDialog(BaseDialog):
     selected = []
     for rungroup in self.all_rungroups:
       selected.append(rungroup.id in self.trial_rungroups)
-      if rungroup.endrun is None:
-        desc = "[%d] %d+"%(rungroup.id, rungroup.startrun)
+      first_run, last_run = rungroup.get_first_and_last_runs()
+      if last_run is None:
+        desc = "[%d] %d+"%(rungroup.id, int(first_run.run)) # LCLS specific cast
       else:
-        desc = "[%d] %d-%d"%(rungroup.id, rungroup.startrun, rungroup.endrun)
+        desc = "[%d] %d-%d"%(rungroup.id, int(first_run.run), int(last_run.run)) # LCLS specific cast
       if rungroup.comment is not None:
         desc += " " + rungroup.comment
 

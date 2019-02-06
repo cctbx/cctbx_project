@@ -8,7 +8,10 @@ except ImportError as e:
 
 def get_run_path(rootpath, trial, rungroup, run):
   import os
-  return os.path.join(rootpath, "r%04d"%run.run, "%03d_rg%03d"%(trial.trial, rungroup.id))
+  try:
+    return os.path.join(rootpath, "r%04d"%int(run.run), "%03d_rg%03d"%(trial.trial, rungroup.id))
+  except ValueError:
+    return os.path.join(rootpath, "r%s"%run.run, "%03d_rg%03d"%(trial.trial, rungroup.id))
 
 def get_db_connection(params, block=True):
   if params.db.password is None:

@@ -196,15 +196,7 @@ def submit_all_jobs(app):
   for trial in trials:
     for rungroup in trial.rungroups:
       assert rungroup.active
-      rg_start = app.get_run(run_number=rungroup.startrun)
-      if rungroup.endrun is None:
-        # open ended run group
-        rg_runs = [r for r in runs if r.run >= rg_start.run]
-      else:
-        # closed run group
-        rg_end = app.get_run(run_number=rungroup.endrun)
-        rg_runs = [r for r in runs if r.run >= rg_start.run and r.run <= rg_end.run]
-      for run in rg_runs:
+      for run in rungroup.runs:
         needed_jobs.append(_job(trial, rungroup, run))
 
   all_jobs = [j for j in submitted_jobs] # shallow copy
@@ -212,7 +204,7 @@ def submit_all_jobs(app):
     if job in submitted_jobs:
       continue
 
-    print "Submitting job: trial %d, rungroup %d, run %d"%(job.trial.trial, job.rungroup.id, job.run.run)
+    print "Submitting job: trial %d, rungroup %d, run %s"%(job.trial.trial, job.rungroup.id, job.run.run)
 
     j = app.create_job(trial_id = job.trial.id,
                        rungroup_id = job.rungroup.id,
@@ -232,8 +224,13 @@ def submit_job(app, job):
   configs_dir = os.path.join(settings_dir, "cfgs")
   if not os.path.exists(configs_dir):
     os.makedirs(configs_dir)
-  target_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_params.phil"%
-    (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
+  try:
+    identifier_string = "%s_%s_r%04d_t%03d_rg%03d"% \
+      (app.params.experiment, app.params.experiment_tag, int(job.run.run), job.trial.trial, job.rungroup.id)
+  except ValueError:
+    identifier_string = "%s_%s_r%s_t%03d_rg%03d"% \
+      (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id)
+  target_phil_path = os.path.join(configs_dir, identifier_string + "_params.phil")
   dispatcher = app.params.dispatcher
 
   phil_str = job.trial.target_phil_str
@@ -279,8 +276,7 @@ def submit_job(app, job):
       trial_params.format.cbf.mode = mode
 
   if job.rungroup.calib_dir is not None or job.rungroup.config_str is not None or dispatcher == 'cxi.xtc_process' or image_format == 'pickle':
-    config_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d.cfg"%
-      (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
+    config_path = os.path.join(configs_dir, identifier_string + ".cfg")
   else:
     config_path = None
 
@@ -353,11 +349,10 @@ def submit_job(app, job):
       trial_params.spotfinder.lookup.mask = job.rungroup.untrusted_pixel_mask_path
       trial_params.integration.lookup.mask = job.rungroup.untrusted_pixel_mask_path
 
-      locator_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d.loc"%
-                                  (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
+      locator_path = os.path.join(configs_dir, identifier_string + ".loc")
       locator = open(locator_path, 'w')
       locator.write("experiment=%s\n"%app.params.experiment)
-      locator.write("run=%d\n"%job.run.run)
+      locator.write("run=%s\n"%job.run.run)
       locator.write("detector_address=%s\n"%job.rungroup.detector_address)
 
       if image_format == "cbf":
@@ -435,9 +430,7 @@ def submit_job(app, job):
     if dispatcher != 'cxi.xtc_process':
       d['untrusted_pixel_mask_path'] = job.rungroup.untrusted_pixel_mask_path
 
-  submit_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_submit.phil"%
-    (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
-
+  submit_phil_path = os.path.join(configs_dir, identifier_string + "_submit.phil")
   submit_root = libtbx.env.find_in_repositories("xfel/ui/db/cfgs")
   if dispatcher in ['cxi.xtc_process', 'cctbx.xfel.xtc_process']:
     template = open(os.path.join(submit_root, "submit_xtc_process.phil"))
