@@ -246,6 +246,12 @@ class geometry(object):
       self.cached_result.cablam.gui_table      = None
     return self.cached_result
 
+  def show_short(self):
+    r = self.result()
+    f="bond: %6.3f angle: %6.2f clash: %5.1f rota: %5.2f rama_f: %6.2f rama_o: %6.2f cb: %6.2f"
+    return f%(r.bond.mean, r.angle.mean, r.clash.score, r.rotamer.outliers,
+      r.ramachandran.favored, r.ramachandran.outliers, r.c_beta.outliers)
+
   def show(self, log=None, prefix="", uppercase=True):
     if(log is None): log = sys.stdout
     def fmt(f1,f2,d1):

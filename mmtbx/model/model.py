@@ -2928,7 +2928,11 @@ class manager(object):
       hd_selection = hd_selection.select(~ias_selection)
       ph = ph.select(~ias_selection)
     rm = self.restraints_manager
-    if(use_hydrogens is None or not use_hydrogens):
+    if(use_hydrogens==False):
+      not_hd_sel = ~hd_selection
+      ph = ph.select(not_hd_sel)
+      rm = rm.select(not_hd_sel)
+    if(use_hydrogens is None):
       if(self.riding_h_manager is not None or
          scattering_table in ["n_gaussian","wk1995", "it1992"]):
         not_hd_sel = ~hd_selection
