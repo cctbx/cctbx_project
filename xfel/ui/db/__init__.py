@@ -100,13 +100,13 @@ class db_proxy(object):
       return
 
     if isinstance(value, bool):
-      value = "%s"%int(value)
+      v = "%s"%int(value)
     elif value is None or value == "None" or value == "":
-      value = "NULL"
+      v = "NULL"
     else:
-      value = "'%s'"%value
+      v = "'%s'"%value
 
     query = "UPDATE `%s` SET %s = %s WHERE id = %d"% (
-      self.table_name, key, value, self.id)
+      self.table_name, key, v, self.id)
     self.app.execute_query(query, commit=True)
     self._db_dict[key] = value
