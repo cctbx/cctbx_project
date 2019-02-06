@@ -4,6 +4,11 @@ from iotbx.phil import parse
 from libtbx.utils import Sorry
 
 master_phil_str = """
+facility = *lcls standalone
+  .type = choice
+  .help = Facility for the XFEL gui. LCLS configures the GUI to use LCLS services \
+          for data monitoring, job submission, and so forth. Standlone runs the \
+          GUI for all other data sources.
 dispatcher = cctbx.xfel.xtc_process
   .type = str
   .help = Which program to run. cxi.xtc_process is for module only based processing, \

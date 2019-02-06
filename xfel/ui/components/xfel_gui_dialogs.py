@@ -95,7 +95,7 @@ class SettingsDialog(BaseDialog):
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, 230),
+                        size=(600, -1),
                         *args, **kwargs)
 
     self.params = params
@@ -115,6 +115,28 @@ class SettingsDialog(BaseDialog):
     self.main_sizer.Add(self.db_cred,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
+
+    # Facility control
+    self.facility_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+    choices = ['LCLS', 'Standalone']
+    lower_choices = [f.lower() for f in choices]
+    self.facility = gctr.ChoiceCtrl(self,
+                                    label='Facility',
+                                    label_size=(150, -1),
+                                    ctrl_size=(180, -1),
+                                    label_style='bold',
+                                    choices=choices)
+    self.facility_sizer.Add(self.facility, flag=wx.EXPAND | wx.ALL, border=10)
+    try:
+      self.facility.ctr.SetSelection(lower_choices.index(params.facility))
+    except ValueError:
+      pass
+
+    self.btn_facility_options = wx.Button(self, label='Options...')
+    self.facility_sizer.Add(self.btn_facility_options, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.main_sizer.Add(self.facility_sizer, flag=wx.EXPAND | wx.ALL)
 
     # Experiment name control
     self.experiment = gctr.TextButtonCtrl(self,
@@ -166,6 +188,10 @@ class SettingsDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onAdvanced, id=self.btn_op.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=self.btn_OK.GetId())
     self.Bind(wx.EVT_BUTTON, self.onBrowse, id=self.output.btn_big.GetId())
+    self.Bind(wx.EVT_CHOICE, self.onFacilityChoice)
+    self.Bind(wx.EVT_BUTTON, self.onFacilityOptions, id=self.btn_facility_options.GetId())
+
+    self.setup_facility_options()
 
   def onBrowse(self, e):
     dlg = wx.DirDialog(self, "Choose the input directory:",
@@ -174,6 +200,26 @@ class SettingsDialog(BaseDialog):
     if dlg.ShowModal() == wx.ID_OK:
       self.output.ctr.SetValue(dlg.GetPath())
     dlg.Destroy()
+
+  def onFacilityChoice(self, e):
+    self.params.facility = self.facility.ctr.GetStringSelection().lower()
+    self.setup_facility_options()
+
+  def setup_facility_options(self):
+    if self.params.facility == 'lcls':
+      self.experiment.Enable()
+      self.btn_facility_options.Enable()
+    else:
+      self.experiment.Disable()
+      self.btn_facility_options.Disable()
+
+  def onFacilityOptions(self, e):
+    if self.params.facility == 'lcls':
+      opts = LCLSFacilityOptions(self, self.params)
+      opts.Fit()
+      opts.Center()
+
+      opts.ShowModal()
 
   def onAdvanced(self, e):
     adv = AdvancedSettingsDialog(self, self.params)
@@ -198,6 +244,7 @@ class SettingsDialog(BaseDialog):
 
 
   def onOK(self, e):
+    self.params.facility = self.facility.ctr.GetStringSelection().lower()
     self.params.experiment_tag = self.db_cred.ctr.GetValue()
     self.params.experiment = self.experiment.ctr.GetValue()
     self.params.output_folder = self.output.ctr.GetValue()
@@ -312,6 +359,59 @@ class DBCredentialsDialog(BaseDialog):
         self.chk_drop_tables.SetValue(False)
     e.Skip()
 
+class LCLSFacilityOptions(BaseDialog):
+  ''' Options settings specific to LCLS'''
+  def __init__(self, parent, params,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.params = params
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, *args, **kwargs)
+
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    self.chk_use_ffb = wx.CheckBox(self,
+                                   label='Use ffb (fast feedback) file system. Active experiment only, on hiprio or prio queues')
+    self.chk_use_ffb.SetValue(params.use_ffb)
+
+    self.chk_dump_shots = wx.CheckBox(self,
+                                      label='Dump all images to disk. Useful for tuning spotfinding and indexing parameters')
+    self.chk_dump_shots.SetValue(params.dump_shots)
+
+    self.chk_enforce80 = wx.CheckBox(self,
+                                     label='Require stream 80 (FEE spectrometer) before processing')
+    self.chk_enforce80.SetValue(params.web.enforce80)
+
+
+    self.chk_enforce81 = wx.CheckBox(self,
+                                     label='Require stream 81 (FEE spectrometer) before processing')
+    self.chk_enforce81.SetValue(params.web.enforce81)
+
+    self.main_sizer.Add(self.chk_use_ffb, flag=wx.ALL, border=10)
+    self.main_sizer.Add(self.chk_dump_shots, flag=wx.ALL, border=10)
+    self.main_sizer.Add(self.chk_enforce80, flag=wx.ALL, border=10)
+    self.main_sizer.Add(self.chk_enforce81, flag=wx.ALL, border=10)
+    self.SetSizer(self.main_sizer)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+
+    self.SetTitle('LCLS Settings')
+
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def onOK(self, e):
+    self.params.use_ffb = bool(self.chk_use_ffb.GetValue())
+    self.params.dump_shots = bool(self.chk_dump_shots.GetValue())
+    self.params.web.enforce80 = bool(self.chk_enforce80.GetValue())
+    self.params.web.enforce81 = bool(self.chk_enforce81.GetValue())
+    e.Skip()
+
 
 class AdvancedSettingsDialog(BaseDialog):
   ''' Advanced settings for the cctbx.xfel front end '''
@@ -364,18 +464,6 @@ class AdvancedSettingsDialog(BaseDialog):
                                ctrl_min=1,
                                ctrl_max=1000)
     self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
-
-    self.chk_use_ffb = wx.CheckBox(self,
-                                   label='Use ffb (fast feedback) file system. Active experiment only, on hiprio or prio queues')
-    self.chk_use_ffb.SetValue(params.use_ffb)
-
-    self.mp_sizer.Add(self.chk_use_ffb, flag=wx.ALL, border=10)
-
-    self.chk_dump_shots = wx.CheckBox(self,
-                                      label='Dump all images to disk. Useful for tuning spotfinding and indexing parameters')
-    self.chk_dump_shots.SetValue(params.dump_shots)
-
-    self.mp_sizer.Add(self.chk_dump_shots, flag=wx.ALL, border=10)
 
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -436,18 +524,6 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.analysis_sizer.Add(self.avg_img_type, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.analysis_sizer, flag=wx.EXPAND | wx.ALL, border=10)
-
-    self.chk_enforce80 = wx.CheckBox(self,
-                                     label='Require stream 80 (FEE spectrometer) before processing')
-    self.chk_enforce80.SetValue(params.web.enforce80)
-
-    self.main_sizer.Add(self.chk_enforce80, flag=wx.ALL, border=10)
-
-    self.chk_enforce81 = wx.CheckBox(self,
-                                     label='Require stream 81 (FEE spectrometer) before processing')
-    self.chk_enforce81.SetValue(params.web.enforce81)
-
-    self.main_sizer.Add(self.chk_enforce81, flag=wx.ALL, border=10)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
