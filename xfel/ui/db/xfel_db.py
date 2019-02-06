@@ -563,9 +563,9 @@ class xfel_db_application(db_application):
     assert [run_id, run_number].count(None) == 1
     if run_id is not None:
       return Run(self, run_id)
-    runs = [r for r in self.get_all_runs() if r.run == run_number]
+    runs = [r for r in self.get_all_runs() if r.run == str(run_number)]
     if len(runs) == 0:
-      raise Sorry("Couldn't find run %d"%run_number)
+      raise Sorry("Couldn't find run %s"%run_number)
     assert len(runs) == 1
     return runs[0]
 

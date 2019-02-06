@@ -466,8 +466,12 @@ class RunStatsSentinel(Thread):
   def get_xtc_process_params_for_run(self, trial, rg, run):
     params = {}
     params['experiment'] = str(self.parent.db.params.experiment)
-    params['output_dir'] = os.path.join(str(self.parent.db.params.output_folder),
-      "r%04d"%(run.run), "%03d_rg%03d"%(trial.trial, rg.rungroup_id), "all")
+    try:
+      params['output_dir'] = os.path.join(str(self.parent.db.params.output_folder),
+        "r%04d"%(int(run.run)), "%03d_rg%03d"%(trial.trial, rg.rungroup_id), "all")
+    except ValueError:
+      params['output_dir'] = os.path.join(str(self.parent.db.params.output_folder),
+        "r%s"%(run.run), "%03d_rg%03d"%(trial.trial, rg.rungroup_id), "all")
     params['run'] = run.run
     params['address'] = rg.detector_address
     params['format'] = rg.format
