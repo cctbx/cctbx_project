@@ -115,6 +115,7 @@ general_tests = [
   "$D/regression/tst_altloc_remediate.py",
   "$D/hydrogens/build_hydrogens.py",
   "$D/hydrogens/tst.py",
+  "$D/hydrogens/tst_add_hydrogen.py",
   "$D/hydrogens/tst_validate_H.py",
   "$D/hydrogens/tst_connectivity.py",
   "$D/hydrogens/tst_riding_coefficients.py",
