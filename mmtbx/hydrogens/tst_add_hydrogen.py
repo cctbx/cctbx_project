@@ -12,6 +12,8 @@ def run():
   exercise2()
   exercise3()
   exercise4()
+  exercise5()
+  exercise6()
 
 # ------------------------------------------------------------------------------
 
@@ -100,6 +102,33 @@ def exercise4():
   assert('HG' in h_names)
 
 # ------------------------------------------------------------------------------
+# N atom is missing, make sure peptide H is not placed
+# ------------------------------------------------------------------------------
+def exercise5():
+  model_with_h = get_model(pdb_str = pdb_str_5)
+  hd_sel = model_with_h.get_hd_selection()
+  number_h = hd_sel.count(True)
+  h_atoms = model_with_h.get_hierarchy().select(hd_sel).atoms()
+  h_names = list(h_atoms.extract_name())
+
+  assert(number_h == 8)
+  assert('H' not in h_names)
+
+# ------------------------------------------------------------------------------
+# Don't put H on Cys coordinating a metal
+# ------------------------------------------------------------------------------
+def exercise6():
+  model_with_h = get_model(pdb_str = pdb_str_6)
+  hd_sel = model_with_h.get_hd_selection()
+  number_h = hd_sel.count(True)
+  h_atoms = model_with_h.get_hierarchy().select(hd_sel).atoms()
+  h_names = list(h_atoms.extract_name())
+
+  print(h_names)
+  assert(number_h == 3)
+  assert('HG' not in h_names)
+
+# ------------------------------------------------------------------------------
 
 pdb_str_1 = """
 CRYST1   14.074   14.385   15.410  90.00  90.00  90.00 P 1
@@ -162,6 +191,34 @@ ATOM      4  O   CYS A 128      12.765 -31.329 -21.265  1.00 16.86           O
 ATOM      5  CB  CYS A 128      14.059 -28.357 -20.691  1.00 12.94           C
 ATOM      6  SG  CYS A 128      15.213 -27.350 -19.760  1.00 12.36           S
 TER
+"""
+
+pdb_str_5 = """
+CRYST1   15.000   15.000   15.000  90.00 90.00  90.00 P 1           1
+ATOM      1  CB  PHE H   1       7.767   5.853   7.671  1.00 15.00           C
+ATOM      2  CG  PHE H   1       6.935   5.032   8.622  1.00 15.00           C
+ATOM      3  CD1 PHE H   1       5.918   4.176   8.140  1.00 15.00           C
+ATOM      4  CD2 PHE H   1       7.161   5.107  10.012  1.00 15.00           C
+ATOM      5  CE1 PHE H   1       5.126   3.395   9.038  1.00 15.00           C
+ATOM      6  CE2 PHE H   1       6.382   4.336  10.930  1.00 15.00           C
+ATOM      7  CZ  PHE H   1       5.360   3.476  10.439  1.00 15.00           C
+ATOM      8  C   PHE H   1       7.956   7.811   6.133  1.00 15.00           C
+ATOM      9  O   PHE H   1       8.506   7.237   5.169  1.00 15.00           O
+ATOM     15  CA  PHE H   1       7.000   7.000   7.000  1.00 15.00           C
+END
+"""
+
+pdb_str_6 = """
+CRYST1  108.910  108.910  108.910  90.00  90.00  90.00 I 4 3 2      48
+ATOM    366  N   CYS A  48     -40.561 -16.057   6.830  1.00 99.72           N
+ATOM    367  CA  CYS A  48     -41.351 -14.915   6.380  1.00106.82           C
+ATOM    368  C   CYS A  48     -41.146 -13.719   7.305  1.00104.36           C
+ATOM    369  O   CYS A  48     -40.407 -13.794   8.283  1.00104.56           O
+ATOM    370  CB  CYS A  48     -42.835 -15.275   6.303  1.00105.79           C
+ATOM    371  SG  CYS A  48     -43.707 -15.186   7.879  1.00101.00           S
+TER
+HETATM  459 ZN    ZN A 102     -44.322 -17.446   8.351  1.00 98.67          ZN
+END
 """
 
 if (__name__ == "__main__"):
