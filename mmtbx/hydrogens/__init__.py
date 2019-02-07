@@ -80,6 +80,8 @@ def add(model, use_neutron_distances=False, adp_scale=1, exclude_water=True):
         new_xyz = ag.atoms().extract_xyz().mean()
         hetero = ag.atoms()[0].hetero
         for mh in missing_h:
+          # TODO: this should be probably in a central place
+          if len(mh) < 4: mh = (' ' + mh).ljust(4)
           a = (iotbx.pdb.hierarchy.atom()
             .set_name(new_name=mh)
             .set_element(new_element="H")
@@ -87,6 +89,7 @@ def add(model, use_neutron_distances=False, adp_scale=1, exclude_water=True):
             .set_hetero(new_hetero=hetero))
           ag.append_atom(a)
   pdb_hierarchy.atoms().reset_serial()
+  #pdb_hierarchy.sort_atoms_in_place()
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
   p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   p.pdb_interpretation.use_neutron_distances = use_neutron_distances
