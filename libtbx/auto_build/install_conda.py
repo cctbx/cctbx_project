@@ -40,9 +40,28 @@ except ImportError:
 #     __package__ is None):
 if __package__ is None:
   sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-  from installer_utils import check_output
+  from installer_utils import check_output, call
 else:
-  from .installer_utils import check_output
+  from .installer_utils import check_output, call
+
+# conda on Windows seems to need cmd and the wait() in Popen
+if platform.system() == 'Windows':
+  import subprocess
+  import tempfile
+  def check_output(command_list, *args, **kwargs):
+    # check for "conda info" and "activate" commands and prepend cmd
+    if 'conda.exe' in command_list[0] or 'activate' in command_list[0]:
+      command_list = ['cmd', '/c'] + command_list
+      output = ''
+      with tempfile.TemporaryFile() as f:
+        returncode = subprocess.check_call(command_list, stdout=f, *args, **kwargs)
+        f.seek(0)
+        output = f.read()
+      return output
+    # miniconda3 installation
+    else:
+      returncode = call(command_list, *args, **kwargs)
+      return returncode
 
 # =============================================================================
 # Locations for the files defining the conda environments
@@ -462,7 +481,7 @@ common compilers provided by conda. Please update your version with
     if self.system == 'Windows':
       flags = '/InstallationType=JustMe /RegisterPython=0 /AddToPath=0 /S /D={install_dir}'.\
         format(install_dir=install_dir)
-      command_list = ['start', '/wait', '""', filename, flags]
+      command_list = ['"' + filename + '"', flags]
     else:
       flags = '-b -u -p {install_dir}'.format(install_dir=install_dir)
       command_list = ['/bin/sh', filename, flags]
@@ -533,7 +552,9 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
                     '--file', filename]
     if copy:
       command_list.append('--copy')
-
+    if self.system == 'Windows':
+      command_list = [os.path.join(self.conda_base, 'Scripts', 'activate'),
+                      'base', '&&'] + command_list
     # RuntimeError is raised on failure
     print('{text} {builder} environment with:\n  {filename}'.format(
           text=text_messages[0], builder=builder, filename=filename),
