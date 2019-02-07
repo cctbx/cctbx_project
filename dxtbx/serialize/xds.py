@@ -144,6 +144,8 @@ def xds_detector_name(dxtbx_name):
     return 'MAR345'
   if 'mar' in dxtbx_name:
     return 'MAR'
+  if 'unknown' in dxtbx_name:
+    return 'ADSC'
 
   raise RuntimeError('detector %s unknown' % dxtbx_name)
 

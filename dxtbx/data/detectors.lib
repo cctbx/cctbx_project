@@ -9,6 +9,7 @@ CCD	     2084 2084	128  128 adsc-q270-2x2-binned
 CCD          4168 4168   64   64 adsc-q270
 CCD          6144 6144   51   51 adsc-q315
 CCD          3072 3072  102  102 adsc-q315-2x2-binned
+CCD          2048 2048   28   28 unknown-electron-57
 CCD          2048 2048   64   64 rayonix-ccd-135
 CCD          2048 2048   79   79 rayonix-ccd-165
 CCD          3072 3072   73   73 rayonix-ccd-225

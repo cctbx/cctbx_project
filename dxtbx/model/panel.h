@@ -115,7 +115,7 @@ namespace dxtbx { namespace model {
     double get_gain() const {
       return gain_;
     }
-    
+
     /** Set the pedestal */
     void set_pedestal(double pedestal) {
       pedestal_ = pedestal;
