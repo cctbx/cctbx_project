@@ -4,13 +4,11 @@ import mmtbx.model
 import iotbx.pdb
 import mmtbx.hydrogens
 from libtbx.utils import null_out
-#from libtbx.test_utils import approx_equal
 
 
 def run():
-  exercise1()
+  correct_H_position_with_cdl()
 
-# ------------------------------------------------------------------------------
 
 def get_model(pdb_str):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
@@ -19,11 +17,9 @@ def get_model(pdb_str):
   model_with_h = mmtbx.hydrogens.add(model = model)
   return model_with_h
 
-# ------------------------------------------------------------------------------
-# make sure that H of incomplete peptide unit (N-terminal) is not placed
-# test will need to be adapted once H3 can be placed at N-terminal
-# ------------------------------------------------------------------------------
-def exercise1():
+
+def correct_H_position_with_cdl():
+  """CDL changes ideal angles --> make sure H is placed correctly"""
   fail = False
   try:
     model_with_h = get_model(pdb_str = pdb_str_1)

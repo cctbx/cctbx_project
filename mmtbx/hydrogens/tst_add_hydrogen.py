@@ -8,15 +8,14 @@ from libtbx.test_utils import approx_equal
 
 
 def run():
-  exercise1()
-  exercise2()
-  exercise3()
-  exercise4()
-  exercise5()
-  exercise6()
-  exercise7()
+  incomplete_peptide_unit()
+  CD1_TYR_missing()
+  no_H_on_disulfides()
+  add_H_to_lone_CYS()
+  peptide_unit_N_missing()
+  no_H_on_coordinating_CYS()
+  sym_related_disulfide()
 
-# ------------------------------------------------------------------------------
 
 def get_model(pdb_str):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
@@ -25,21 +24,41 @@ def get_model(pdb_str):
   model_with_h = mmtbx.hydrogens.add(model = model)
   return model_with_h
 
-# ------------------------------------------------------------------------------
-# make sure that H of incomplete peptide unit (N-terminal) is not placed
-# test will need to be adapted once H3 can be placed at N-terminal
-# ------------------------------------------------------------------------------
-def exercise1():
+
+def incomplete_peptide_unit():
+  """Incomplete peptide unit (N-terminal) --> H should not be placed."""
   model_with_h = get_model(pdb_str = pdb_str_1)
   number_h = model_with_h.get_hd_selection().count(True)
-  # total number of H atoms in Tyr: 9, but peptide H atom cannot be parameterized
   assert(number_h == 8)
 
-# ------------------------------------------------------------------------------
-# if one heavy atom is missing, it can impact parameterization and thus
-# placement of SEVERAL H atoms.
-# ------------------------------------------------------------------------------
-def exercise2():
+
+def CD1_TYR_missing():
+  """Atom CD1 is missing --> HE1 should not be placed
+
+     H, HD1, HE1 cannot be parameterized and are not added.
+
+     residual as of 2/6/2019
+        target: 145.107
+          bond_residual_sum (n=16): 0.00813544
+          nonbonded_residual_sum (n=50): 139.635
+          angle_residual_sum (n=24): 0.304979
+          dihedral_residual_sum (n=5): 5.1542
+          chirality_residual_sum (n=1): 0.000916602
+          planarity_residual_sum (n=1): 0.0031465
+          parallelity_residual_sum (n=0): 0
+
+     with old version of connectivity (less strict for existence of dihedral angles),
+     the HE1 atom was placed incorrectly, which yielded following residual
+        target: 343.706
+          bond_residual_sum (n=18): 0.00813544
+          nonbonded_residual_sum (n=76): 286.773
+          angle_residual_sum (n=26): 0.304979
+          dihedral_residual_sum (n=5): 5.1542
+          chirality_residual_sum (n=1): 0.000916602
+          planarity_residual_sum (n=1): 51.4654
+          parallelity_residual_sum (n=0): 0
+     new version of connectivity ignores HE1 --> it is not parameterized
+  """
   model_with_h = get_model(pdb_str = pdb_str_2)
   number_h = model_with_h.get_hd_selection().count(True)
   geometry_restraints = model_with_h.get_restraints_manager().geometry
@@ -47,39 +66,15 @@ def exercise2():
           sites_cart        = model_with_h.get_sites_cart(),
           compute_gradients = False)
   t = e_sites.target
-  # The following atoms cannot be parameterized: H, HD1, HE1
-  # number_h = 9 - 3 = 6
+
   assert(number_h == 6)
   # if the target is higher, indicative that H atom is at wrong place
   #assert approx_equal(t,145, 10)
   assert(t < 180)
 
-# residual as of 2/6/2019
-#    target: 145.107
-#      bond_residual_sum (n=16): 0.00813544
-#      nonbonded_residual_sum (n=50): 139.635
-#      angle_residual_sum (n=24): 0.304979
-#      dihedral_residual_sum (n=5): 5.1542
-#      chirality_residual_sum (n=1): 0.000916602
-#      planarity_residual_sum (n=1): 0.0031465
-#      parallelity_residual_sum (n=0): 0
 
-# with old version of connectivity (less strict for existence of dihedral angles),
-# the HE1 atom was placed incorrectly, which yielded following residual
-#    target: 343.706
-#      bond_residual_sum (n=18): 0.00813544
-#      nonbonded_residual_sum (n=76): 286.773
-#      angle_residual_sum (n=26): 0.304979
-#      dihedral_residual_sum (n=5): 5.1542
-#      chirality_residual_sum (n=1): 0.000916602
-#      planarity_residual_sum (n=1): 51.4654
-#      parallelity_residual_sum (n=0): 0
-# new version of connectivity ignores HE1 --> it is not parameterized
-
-# ------------------------------------------------------------------------------
-# Don't put H on disulfides
-# ------------------------------------------------------------------------------
-def exercise3():
+def no_H_on_disulfides():
+  """Don't put H on disulfides."""
   model_with_h = get_model(pdb_str = pdb_str_3)
   hd_sel = model_with_h.get_hd_selection()
   number_h = hd_sel.count(True)
@@ -89,10 +84,9 @@ def exercise3():
   assert(number_h == 6)
   assert('HG' not in h_names)
 
-# ------------------------------------------------------------------------------
-# Put H on lone Cys
-# ------------------------------------------------------------------------------
-def exercise4():
+
+def add_H_to_lone_CYS():
+  """Make sure to add HG on lone Cys."""
   model_with_h = get_model(pdb_str = pdb_str_4)
   hd_sel = model_with_h.get_hd_selection()
   number_h = hd_sel.count(True)
@@ -102,10 +96,9 @@ def exercise4():
   assert(number_h == 4)
   assert('HG' in h_names)
 
-# ------------------------------------------------------------------------------
-# N atom is missing, make sure peptide H is not placed
-# ------------------------------------------------------------------------------
-def exercise5():
+
+def peptide_unit_N_missing():
+  """N atom is missing, make sure peptide H is not placed"""
   model_with_h = get_model(pdb_str = pdb_str_5)
   hd_sel = model_with_h.get_hd_selection()
   number_h = hd_sel.count(True)
@@ -115,10 +108,9 @@ def exercise5():
   assert(number_h == 8)
   assert('H' not in h_names)
 
-# ------------------------------------------------------------------------------
-# Don't put H on Cys coordinating a metal
-# ------------------------------------------------------------------------------
-def exercise6():
+
+def no_H_on_coordinating_CYS():
+  """Don't put H on Cys coordinating a metal"""
   model_with_h = get_model(pdb_str = pdb_str_6)
   hd_sel = model_with_h.get_hd_selection()
   number_h = hd_sel.count(True)
@@ -128,10 +120,9 @@ def exercise6():
   assert(number_h == 3)
   assert('HG' not in h_names)
 
-# ------------------------------------------------------------------------------
-# Don't put H on Cys forming a disulfide bond with symmetry related molecule
-# ------------------------------------------------------------------------------
-def exercise7():
+
+def sym_related_disulfide():
+  """Don't put H on Cys forming a disulfide bond with symmetry related molecule"""
   model_with_h = get_model(pdb_str = pdb_str_7)
   hd_sel = model_with_h.get_hd_selection()
   number_h = hd_sel.count(True)
