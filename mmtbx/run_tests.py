@@ -116,6 +116,7 @@ general_tests = [
   "$D/hydrogens/build_hydrogens.py",
   "$D/hydrogens/tst.py",
   "$D/hydrogens/tst_add_hydrogen.py",
+  "$D/hydrogens/tst_add_hydrogen_2.py",
   "$D/hydrogens/tst_validate_H.py",
   "$D/hydrogens/tst_connectivity.py",
   "$D/hydrogens/tst_riding_coefficients.py",
