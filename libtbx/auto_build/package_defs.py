@@ -49,8 +49,8 @@ def get_pypi_package_information(package, version=None, information_only=False):
   return package
 
 DEPENDENCIES_BASE = "https://gitcdn.link/repo/dials/dependencies/master/"
-OPENSSL_PKG = "openssl-1.0.2p.tar.gz"    # OpenSSL
-PYTHON3_PKG = "Python-3.7.1.tgz"
+OPENSSL_PKG = "openssl-1.0.2q.tar.gz"    # OpenSSL
+PYTHON3_PKG = "Python-3.7.2.tgz"
 PYTHON_PKG = "Python-2.7.15.tgz"
 
 # from CCI
@@ -63,25 +63,25 @@ IPYTHON_PKG = "ipython-3.2.1.tar.gz"     # IPython
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
-CYTHON_VERSION = "0.28.5"
+CYTHON_VERSION = "0.28.6"
 BLOSC_VERSION = "1.7.0"
 DOCUTILS_VERSION = "0.14"
-FUTURE_VERSION="0.16"
-H5PY_VERSION="2.8.0"
+FUTURE_VERSION = "0.17.1"
+H5PY_VERSION = "2.9.0"
 JINJA2_VERSION = "2.10"
 MOCK_VERSION = "2.0.0"
-MSGPACK_VERSION = "0.6.0"
+MSGPACK_VERSION = "0.6.1"
 MPI4PY_VERSION = "3.0.0"
 NUMPY_VERSION="1.13.3"
 ORDEREDSET_VERSION = "2.0.1"
 PILLOW_VERSION = "4.2.1"
-PROCRUNNER_VERSION = "0.8.0"
+PROCRUNNER_VERSION = "0.9.0"
 PY2APP_VERSION="0.7.3"
-PYTEST_VERSION = "3.6.4"
-PYTEST_XDIST_VERSION = "1.23.0"
+PYTEST_VERSION = "3.10.1"
+PYTEST_XDIST_VERSION = "1.26.1"
 SCIPY_VERSION = "1.0.0"
 SCIKIT_LEARN_VERSION = "0.19.1"
-SIX_VERSION="1.11.0"
+SIX_VERSION = "1.12.0"
 SPHINX_VERSION = "1.7.7" # for documentation
 TABULATE_VERSION = "0.8.2"
 TQDM_VERSION = "4.23.4"
