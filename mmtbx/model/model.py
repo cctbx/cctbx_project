@@ -634,9 +634,8 @@ class manager(object):
           non_unit_occupancy_implies_min_distance_sym_equiv_zero=value))
 
   def get_hd_selection(self):
-    if self._xray_structure is not None:
-      return self._xray_structure.hd_selection()
-    return None
+    xrs = self.get_xray_structure()
+    return xrs.hd_selection()
 
   def get_ias_selection(self):
     if self.ias_manager is None:
