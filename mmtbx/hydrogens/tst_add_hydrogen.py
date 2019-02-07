@@ -14,6 +14,7 @@ def run():
   exercise4()
   exercise5()
   exercise6()
+  exercise7()
 
 # ------------------------------------------------------------------------------
 
@@ -124,7 +125,19 @@ def exercise6():
   h_atoms = model_with_h.get_hierarchy().select(hd_sel).atoms()
   h_names = list(h_atoms.extract_name())
 
-  print(h_names)
+  assert(number_h == 3)
+  assert('HG' not in h_names)
+
+# ------------------------------------------------------------------------------
+# Don't put H on Cys forming a disulfide bond with symmetry related molecule
+# ------------------------------------------------------------------------------
+def exercise7():
+  model_with_h = get_model(pdb_str = pdb_str_7)
+  hd_sel = model_with_h.get_hd_selection()
+  number_h = hd_sel.count(True)
+  h_atoms = model_with_h.get_hierarchy().select(hd_sel).atoms()
+  h_names = list(h_atoms.extract_name())
+
   assert(number_h == 3)
   assert('HG' not in h_names)
 
@@ -218,6 +231,17 @@ ATOM    370  CB  CYS A  48     -42.835 -15.275   6.303  1.00105.79           C
 ATOM    371  SG  CYS A  48     -43.707 -15.186   7.879  1.00101.00           S
 TER
 HETATM  459 ZN    ZN A 102     -44.322 -17.446   8.351  1.00 98.67          ZN
+END
+"""
+
+pdb_str_7 = """
+CRYST1  108.910  108.910  108.910  90.00  90.00  90.00 I 4 3 2      48
+ATOM     80  N   CYS A  12     -50.777 -13.205 -12.246  1.00 95.50           N
+ATOM     81  CA  CYS A  12     -51.774 -13.797 -13.124  1.00103.68           C
+ATOM     82  C   CYS A  12     -51.135 -14.327 -14.399  1.00101.77           C
+ATOM     83  O   CYS A  12     -50.987 -13.597 -15.382  1.00106.09           O
+ATOM     84  CB  CYS A  12     -52.861 -12.775 -13.466  1.00103.91           C
+ATOM     85  SG  CYS A  12     -54.064 -13.357 -14.680  1.00106.39           S
 END
 """
 
