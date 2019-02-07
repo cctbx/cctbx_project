@@ -227,6 +227,9 @@ class installer(object):
       self.build_dir = op.join(self.dest_dir, "build")
       self.base_dir = op.join(self.dest_dir, "base")
       self.modules_dir = op.join(self.dest_dir, "modules")
+      # check for conda
+      if os.path.isdir(op.join(self.installer_dir, "conda_base")):
+        self.base_dir = op.join(self.dest_dir, "conda_base")
       return
     # The default behavior for nearly all program's --prefix options
     # is to create the directory, so I don't think the --makedirs option
@@ -416,7 +419,7 @@ class installer(object):
 
     # Regenerate module files.
     if (self.flag_build_gui) and (sys.platform != "darwin") and \
-      (self.base_dir == 'base'):
+      (not self.base_dir.endswith('conda_base')):
       os.environ["LD_LIBRARY_PATH"] = "lib:%s:%s" % \
         (op.join(self.base_dir, "lib"), op.join(self.base_dir, "lib64"))
       regenerate_module_files.run(

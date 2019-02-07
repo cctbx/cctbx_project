@@ -183,13 +183,14 @@ class SetupInstaller(object):
     if self.binary and sys.platform == "darwin":
       self.make_dist_pkg()
     if self.binary and sys.platform == "win32":
-      vcredist = "vcredist_x64.exe"
-      import platform
-      if int(platform.architecture()[0][0:2]) < 64:
-        vcredist = "vcredist_x86.exe"
-      shutil.copyfile( os.path.join(self.root_dir, 'base_tmp', vcredist),
-                       os.path.join(self.dest_dir, vcredist)
-      )
+      if self.base_dir == 'base':
+        vcredist = "vcredist_x64.exe"
+        import platform
+        if int(platform.architecture()[0][0:2]) < 64:
+          vcredist = "vcredist_x86.exe"
+        shutil.copyfile( os.path.join(self.root_dir, 'base_tmp', vcredist),
+                        os.path.join(self.dest_dir, vcredist)
+        )
       self.make_windows_installer()
 
   def copy_info(self):
@@ -294,7 +295,11 @@ class SetupInstaller(object):
 # Bake version number into the dispatchers and the help files and create rotarama db
 # This is done during installation on other platforms
       from libtbx.auto_build import installer_utils
-      arg = [os.path.join(self.dest_dir,'base','bin','python','python.exe'),
+      python_exe = os.path.join(self.dest_dir,'base','bin','python','python.exe')
+      # check for conda
+      if self.base_dir == 'conda_base':
+        python_exe = os.path.join(self.dest_dir, self.base_dir, 'python.exe')
+      arg = [python_exe,
              os.path.join(self.dest_dir,'bin','install.py'), '--nopycompile']
       installer_utils.call(arg, cwd=self.dest_dir)
 
@@ -375,8 +380,12 @@ class SetupInstaller(object):
   def make_windows_installer(self):
     makedirs(self.dist_dir)
     from libtbx.auto_build import create_windows_installer
-    mainscript = os.path.join(self.dest_dir, "lib","libtbx",
-                                "auto_build", "mainphenixinstaller.nsi")
+    if self.base_dir == 'conda_base':
+      mainscript = os.path.join(self.dest_dir, "lib","libtbx",
+                                  "auto_build", "condaphenixinstaller.nsi")
+    else:
+      mainscript = os.path.join(self.dest_dir, "lib","libtbx",
+                                  "auto_build", "mainphenixinstaller.nsi")
     create_windows_installer.run(args=[
       "--productname", self.installer.product_name,
       "--version", self.version,
