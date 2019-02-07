@@ -157,11 +157,15 @@ class grid_over_favored(object):
     return sorted(result)
 
 class eval(object):
-  def __init__(self, model, params, log):
-    self.model = model
+  def __init__(self, models, params, log):
+    self.models = models
     self.log = log
     self.params = params
-    self.rama = ramalyze(self.model.get_hierarchy(), out=null_out())
+    self.total_rama = []
+    for m in models:
+      rama = ramalyze(m.get_hierarchy(), out=null_out())
+      for r in rama.results:
+        self.total_rama.append(r)
 
     self.results = {}
     for rama_type in range(5):
@@ -175,7 +179,7 @@ class eval(object):
             grid_size=self.params.grid_size,
             corners_inside=self.params.corners_inside)
         points = []
-        for r in self.rama.results:
+        for r in self.total_rama:
           if (r.res_type == rama_type
               and (r.rama_type == RAMALYZE_FAVORED or self.params.use_allowed)
               and find_region_max_value(rama_type, r.phi, r.psi,

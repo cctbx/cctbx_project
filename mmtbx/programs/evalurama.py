@@ -28,16 +28,18 @@ Usage examples:
   # ---------------------------------------------------------------------------
   def validate(self):
     print('Validating inputs', file=self.logger)
-    self.data_manager.has_models(expected_n=1, exact_count=True, raise_sorry=True)
+    self.data_manager.has_models(expected_n=1, exact_count=False, raise_sorry=True)
     m = self.data_manager.get_model()
     assert m.get_hierarchy().models_size() == 1
 
   # ---------------------------------------------------------------------------
   def run(self):
-    model = self.data_manager.get_model()
+    models = []
+    for name in self.data_manager.get_model_names():
+      models.append(self.data_manager.get_model(name))
 
     self.evalurama = evalurama.eval(
-        model = model,
+        models = models,
         params = self.params.evalurama,
         log = self.logger)
 
