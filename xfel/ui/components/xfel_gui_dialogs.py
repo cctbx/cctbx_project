@@ -208,17 +208,19 @@ class SettingsDialog(BaseDialog):
   def setup_facility_options(self):
     if self.params.facility.name == 'lcls':
       self.experiment.Enable()
-      self.btn_facility_options.Enable()
     else:
       self.experiment.Disable()
-      self.btn_facility_options.Disable()
 
   def onFacilityOptions(self, e):
     if self.params.facility.name == 'lcls':
       opts = LCLSFacilityOptions(self, self.params)
       opts.Fit()
       opts.Center()
-
+      opts.ShowModal()
+    elif self.params.facility.name == 'standalone':
+      opts = StandaloneOptions(self, self.params)
+      opts.Fit()
+      opts.Center()
       opts.ShowModal()
 
   def onAdvanced(self, e):
@@ -411,6 +413,99 @@ class LCLSFacilityOptions(BaseDialog):
     self.params.facility.lcls.web.enforce80 = bool(self.chk_enforce80.GetValue())
     self.params.facility.lcls.web.enforce81 = bool(self.chk_enforce81.GetValue())
     e.Skip()
+
+class StandaloneOptions(BaseDialog):
+  ''' Options settings specific to standalone GUI '''
+  def __init__(self, parent, params,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.params = params
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, *args, **kwargs)
+
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    # Output folder text control w/ Browse / magnifying glass button
+    if self.params.facility.standalone.data_dir is None:
+      current_folder = os.path.abspath(os.curdir)
+    else:
+      current_folder = self.params.facility.standalone.data_dir
+    self.data_dir = gctr.TextButtonCtrl(self,
+                                        label='Folder to monitor',
+                                        label_style='bold',
+                                        label_size=(300, -1),
+                                        big_button=True,
+                                        big_button_label='Browse...',
+                                        big_button_size=(120, -1),
+                                        value=current_folder)
+    self.main_sizer.Add(self.data_dir,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    self.SetSizer(self.main_sizer)
+
+    # Raw image option
+    self.monitor_for = gctr.RadioCtrl(self,
+                                      label='Monitor for',
+                                      label_style='bold',
+                                      label_size=(-1, -1),
+                                      direction='horizontal',
+                                      items={'files':'files',
+                                            'folders':'folders'})
+    getattr(self.monitor_for, self.params.facility.standalone.monitor_for).SetValue(1)
+
+    self.main_sizer.Add(self.monitor_for, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # File matching template control
+    if self.params.facility.standalone.template is None:
+      self.params.facility.standalone.template = ''
+    self.template = gctr.TextButtonCtrl(self,
+                                          label='File matching template (example *.h5)',
+                                          label_style='bold',
+                                          label_size=(300, -1),
+                                          value=self.params.facility.standalone.template)
+    self.main_sizer.Add(self.template,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    # Composite check
+    self.chk_composite = wx.CheckBox(self,
+                                   label='Files are composite (like HDF5, files are submitted as individual runs.\nOtherwise, groups of files are submitted as single runs)')
+    self.chk_composite.SetValue(params.facility.standalone.composite_files)
+    self.main_sizer.Add(self.chk_composite,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    self.SetTitle('Standalone settings')
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+    self.Bind(wx.EVT_BUTTON, self.onBrowse, id=self.data_dir.btn_big.GetId())
+
+  def onOK(self, e):
+    self.params.facility.standalone.data_dir = self.data_dir.ctr.GetValue()
+    if self.monitor_for.files.GetValue():
+      self.params.facility.standalone.monitor_for = 'files'
+    else:
+      self.params.facility.standalone.monitor_for = 'folders'
+    self.params.facility.standalone.template = self.template.ctr.GetValue()
+    self.params.facility.standalone.composite_files = self.chk_composite.GetValue()
+    e.Skip()
+
+  def onBrowse(self, e):
+    dlg = wx.DirDialog(self, "Choose the input directory:",
+                       style=wx.DD_DEFAULT_STYLE)
+
+    if dlg.ShowModal() == wx.ID_OK:
+      self.data_dir.ctr.SetValue(dlg.GetPath())
+    dlg.Destroy()
 
 class AdvancedSettingsDialog(BaseDialog):
   ''' Advanced settings for the cctbx.xfel front end '''

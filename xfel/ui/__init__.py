@@ -41,10 +41,25 @@ facility {
       .help = Run on the ffb if possible. Only for active users!
     dump_shots = False
       .type = bool
-      .help = Write images to disk whether they index or not.
-      .help = Helpful for tuning spotfinding and indexing parameters, and necessary
-      .help = for the "Should have indexed" feature of the Run Stats tab.
+      .help = Write images to disk whether they index or not. \
+              Helpful for tuning spotfinding and indexing parameters, and necessary \
+              for the "Should have indexed" feature of the Run Stats tab.
   }
+  standalone {
+    data_dir = None
+      .type = path
+      .help = Folder to monitor for new data
+    monitor_for = *files folders
+      .type = choice
+      .help = Whether to monitor for new files or new folders with files in them
+    template = None
+      .type = str
+      .help = File matching pattern for new data. Example: *.h5
+    composite_files = True
+      .type = bool
+      .help = If True, files are submitted as individual runs. Otherwise, groups \
+              of files are submitted as single runs
+    }
 }
 output_folder = ""
   .type = path
