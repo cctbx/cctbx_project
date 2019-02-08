@@ -129,7 +129,7 @@ class SettingsDialog(BaseDialog):
                                     choices=choices)
     self.facility_sizer.Add(self.facility, flag=wx.EXPAND | wx.ALL, border=10)
     try:
-      self.facility.ctr.SetSelection(lower_choices.index(params.facility))
+      self.facility.ctr.SetSelection(lower_choices.index(params.facility.name))
     except ValueError:
       pass
 
@@ -144,7 +144,7 @@ class SettingsDialog(BaseDialog):
                                           label_style='bold',
                                           label_size=(150, -1),
                                           big_button_size=(130, -1),
-                                          value=self.params.experiment)
+                                          value=self.params.facility.lcls.experiment)
     self.main_sizer.Add(self.experiment,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
@@ -202,11 +202,11 @@ class SettingsDialog(BaseDialog):
     dlg.Destroy()
 
   def onFacilityChoice(self, e):
-    self.params.facility = self.facility.ctr.GetStringSelection().lower()
+    self.params.facility.name = self.facility.ctr.GetStringSelection().lower()
     self.setup_facility_options()
 
   def setup_facility_options(self):
-    if self.params.facility == 'lcls':
+    if self.params.facility.name == 'lcls':
       self.experiment.Enable()
       self.btn_facility_options.Enable()
     else:
@@ -214,7 +214,7 @@ class SettingsDialog(BaseDialog):
       self.btn_facility_options.Disable()
 
   def onFacilityOptions(self, e):
-    if self.params.facility == 'lcls':
+    if self.params.facility.name == 'lcls':
       opts = LCLSFacilityOptions(self, self.params)
       opts.Fit()
       opts.Center()
@@ -237,16 +237,16 @@ class SettingsDialog(BaseDialog):
       self.params.db.name     = creds.db_name.ctr.GetValue()
       self.params.db.user     = creds.db_user.ctr.GetValue()
       self.params.db.password = creds.db_password.ctr.GetValue()
-      self.params.web.user     = creds.web_user.ctr.GetValue()
-      self.params.web.password = creds.web_password.ctr.GetValue()
+      self.params.facility.lcls.web.user     = creds.web_user.ctr.GetValue()
+      self.params.facility.lcls.web.password = creds.web_password.ctr.GetValue()
 
       self.drop_tables = creds.chk_drop_tables.GetValue()
 
 
   def onOK(self, e):
-    self.params.facility = self.facility.ctr.GetStringSelection().lower()
+    self.params.facility.name = self.facility.ctr.GetStringSelection().lower()
     self.params.experiment_tag = self.db_cred.ctr.GetValue()
-    self.params.experiment = self.experiment.ctr.GetValue()
+    self.params.facility.lcls.experiment = self.experiment.ctr.GetValue()
     self.params.output_folder = self.output.ctr.GetValue()
     e.Skip()
 
@@ -324,7 +324,7 @@ class DBCredentialsDialog(BaseDialog):
                                        label_style='bold',
                                        label_size=(150, -1),
                                        big_button_size=(130, -1),
-                                       value=params.web.user)
+                                       value=params.facility.lcls.web.user)
     self.main_sizer.Add(self.web_user, flag=wx.EXPAND | wx.ALL, border=10)
 
     # LCLS password
@@ -334,7 +334,7 @@ class DBCredentialsDialog(BaseDialog):
                                            label_size=(150, -1),
                                            text_style=wx.TE_PASSWORD,
                                            big_button_size=(130, -1),
-                                           value=params.web.password)
+                                           value=params.facility.lcls.web.password)
     self.main_sizer.Add(self.web_password, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
@@ -374,20 +374,20 @@ class LCLSFacilityOptions(BaseDialog):
 
     self.chk_use_ffb = wx.CheckBox(self,
                                    label='Use ffb (fast feedback) file system. Active experiment only, on hiprio or prio queues')
-    self.chk_use_ffb.SetValue(params.use_ffb)
+    self.chk_use_ffb.SetValue(params.facility.lcls.use_ffb)
 
     self.chk_dump_shots = wx.CheckBox(self,
                                       label='Dump all images to disk. Useful for tuning spotfinding and indexing parameters')
-    self.chk_dump_shots.SetValue(params.dump_shots)
+    self.chk_dump_shots.SetValue(params.facility.lcls.dump_shots)
 
     self.chk_enforce80 = wx.CheckBox(self,
                                      label='Require stream 80 (FEE spectrometer) before processing')
-    self.chk_enforce80.SetValue(params.web.enforce80)
+    self.chk_enforce80.SetValue(params.facility.lcls.web.enforce80)
 
 
     self.chk_enforce81 = wx.CheckBox(self,
                                      label='Require stream 81 (FEE spectrometer) before processing')
-    self.chk_enforce81.SetValue(params.web.enforce81)
+    self.chk_enforce81.SetValue(params.facility.lcls.web.enforce81)
 
     self.main_sizer.Add(self.chk_use_ffb, flag=wx.ALL, border=10)
     self.main_sizer.Add(self.chk_dump_shots, flag=wx.ALL, border=10)
@@ -406,12 +406,11 @@ class LCLSFacilityOptions(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def onOK(self, e):
-    self.params.use_ffb = bool(self.chk_use_ffb.GetValue())
-    self.params.dump_shots = bool(self.chk_dump_shots.GetValue())
-    self.params.web.enforce80 = bool(self.chk_enforce80.GetValue())
-    self.params.web.enforce81 = bool(self.chk_enforce81.GetValue())
+    self.params.facility.lcls.use_ffb = bool(self.chk_use_ffb.GetValue())
+    self.params.facility.lcls.dump_shots = bool(self.chk_dump_shots.GetValue())
+    self.params.facility.lcls.web.enforce80 = bool(self.chk_enforce80.GetValue())
+    self.params.facility.lcls.web.enforce81 = bool(self.chk_enforce81.GetValue())
     e.Skip()
-
 
 class AdvancedSettingsDialog(BaseDialog):
   ''' Advanced settings for the cctbx.xfel front end '''
@@ -565,11 +564,11 @@ class AdvancedSettingsDialog(BaseDialog):
     self.params.mp.method = self.mp_option.ctr.GetStringSelection()
     self.params.mp.queue = self.queue.ctr.GetStringSelection()
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
-    self.params.use_ffb = bool(self.chk_use_ffb.GetValue())
-    self.params.dump_shots = bool(self.chk_dump_shots.GetValue())
+    self.params.facility.lcls.use_ffb = bool(self.chk_use_ffb.GetValue())
+    self.params.facility.lcls.dump_shots = bool(self.chk_dump_shots.GetValue())
     self.params.average_raw_data = self.avg_img_type.ctr.GetStringSelection() == 'raw'
-    self.params.web.enforce80 = bool(self.chk_enforce80.GetValue())
-    self.params.web.enforce81 = bool(self.chk_enforce81.GetValue())
+    self.params.facility.lcls.web.enforce80 = bool(self.chk_enforce80.GetValue())
+    self.params.facility.lcls.web.enforce81 = bool(self.chk_enforce81.GetValue())
     e.Skip()
 
 class CalibrationDialog(BaseDialog):

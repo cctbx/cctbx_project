@@ -264,8 +264,8 @@ class xfel_db_application(db_application):
 
   def list_lcls_runs(self):
     from xfel.xpp.simulate import file_table
-    query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.experiment)
-    FT = file_table(self.params, query, enforce80=self.params.web.enforce80, enforce81=self.params.web.enforce81)
+    query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.facility.lcls.experiment)
+    FT = file_table(self.params.facility.lcls, query, enforce80=self.params.facility.lcls.web.enforce80, enforce81=self.params.facility.lcls.web.enforce81)
     runs = FT.get_runs()
     for r in runs: r['run'] = str(r['run'])
     return runs

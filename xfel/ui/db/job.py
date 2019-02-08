@@ -226,10 +226,10 @@ def submit_job(app, job):
     os.makedirs(configs_dir)
   try:
     identifier_string = "%s_%s_r%04d_t%03d_rg%03d"% \
-      (app.params.experiment, app.params.experiment_tag, int(job.run.run), job.trial.trial, job.rungroup.id)
+      (app.params.facility.lcls.experiment, app.params.experiment_tag, int(job.run.run), job.trial.trial, job.rungroup.id) # LCLS specific parameter
   except ValueError:
     identifier_string = "%s_%s_r%s_t%03d_rg%03d"% \
-      (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id)
+      (app.params.facility.lcls.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id) # LCLS specific parameter
   target_phil_path = os.path.join(configs_dir, identifier_string + "_params.phil")
   dispatcher = app.params.dispatcher
 
@@ -301,10 +301,10 @@ def submit_job(app, job):
     dry_run                   = app.params.dry_run,
     dispatcher                = dispatcher,
     cfg                       = config_path,
-    experiment                = app.params.experiment,
+    experiment                = app.params.facility.lcls.experiment, # LCLS specific parameter
     run_num                   = job.run.run,
     output_dir                = app.params.output_folder,
-    use_ffb                   = app.params.use_ffb,
+    use_ffb                   = app.params.facility.lcls.use_ffb, # LCLS specific parameter
     # Generally for both
     trial                     = job.trial.trial,
     rungroup                  = job.rungroup.rungroup_id,
@@ -351,7 +351,7 @@ def submit_job(app, job):
 
       locator_path = os.path.join(configs_dir, identifier_string + ".loc")
       locator = open(locator_path, 'w')
-      locator.write("experiment=%s\n"%app.params.experiment)
+      locator.write("experiment=%s\n"%app.params.facility.lcls.experiment) # LCLS specific parameter
       locator.write("run=%s\n"%job.run.run)
       locator.write("detector_address=%s\n"%job.rungroup.detector_address)
 
@@ -403,7 +403,7 @@ def submit_job(app, job):
     elif image_format == 'pickle':
       modules.insert(0, 'my_ana_pkg.mod_radial_average')
       modules.extend(['my_ana_pkg.mod_image_dict'])
-    if app.params.dump_shots:
+    if app.params.facility.lcls.dump_shots:
       modules.insert(0, 'my_ana_pkg.mod_dump:shot')
 
     if len(modules) > 0:

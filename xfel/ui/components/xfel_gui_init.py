@@ -465,7 +465,7 @@ class RunStatsSentinel(Thread):
 
   def get_xtc_process_params_for_run(self, trial, rg, run):
     params = {}
-    params['experiment'] = str(self.parent.db.params.experiment)
+    params['experiment'] = str(self.parent.db.params.facility.lcls.experiment)
     try:
       params['output_dir'] = os.path.join(str(self.parent.db.params.output_folder),
         "r%04d"%(int(run.run)), "%03d_rg%03d"%(trial.trial, rg.rungroup_id), "all")
@@ -1132,8 +1132,11 @@ class MainWindow(wx.Frame):
 
     if (settings_dlg.ShowModal() == wx.ID_OK):
       self.params = settings_dlg.params
-      self.title = 'CCTBX.XFEL | {} | {}'.format(self.params.experiment_tag,
-                                                 self.params.experiment)
+      if self.params.facility.name == 'lcls':
+        self.title = 'CCTBX.XFEL | {} | {}'.format(self.params.experiment_tag,
+                                                   self.params.facility.lcls.experiment)
+      else:
+        self.title = 'CCTBX.XFEL | {}'.format(self.params.experiment_tag)
 
   def onZoom(self, e):
     self.high_vis = not self.high_vis
