@@ -59,7 +59,6 @@ standard_cif_links = [
   ['link_STA_DFO', 'Taken from Monomer Library or GeoStd'],
   ['link_STA_N-C', 'Taken from Monomer Library or GeoStd'],
   ['link_STA_STA', 'Taken from Monomer Library or GeoStd'],
-  ['link_STRANS', 'Taken from Monomer Library or GeoStd'],
   ['link_TRANS', 'Taken from Monomer Library or GeoStd'],
   ['link_XYS-ASN', 'Taken from Monomer Library or GeoStd'],
   ['link_XYS-SER', 'Taken from Monomer Library or GeoStd'],
