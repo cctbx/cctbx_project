@@ -1439,6 +1439,8 @@ class Builder(object):
     # no path provided
     if self.use_conda == '' and conda_env is None:
       conda_env = os.path.join('..', 'conda_base')
+      if self.isPlatformWindows():
+        conda_env = os.path.join(os.getcwd(), 'conda_base')
       # base step is not run yet, so do not check if files exist
       m = conda_manager(root_dir=os.getcwd(), conda_env=conda_env,
                         check_file=False, log=log)
