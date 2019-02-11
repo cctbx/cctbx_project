@@ -1307,10 +1307,14 @@ class RunBlockDialog(BaseDialog):
     self.block = block
     self.all_blocks = []
     self.db = db
+    self.use_ids = db.params.facility.name != 'lcls'
 
     if block is None:
       runs = self.db.get_all_runs()
-      run_numbers = [r.run for r in runs]
+      if self.use_ids:
+        run_numbers = [r.id for r in runs]
+      else:
+        run_numbers = [int(r.run) for r in runs]
       assert len(set(run_numbers)) == len(run_numbers)
 
       if trial is not None:
@@ -1320,9 +1324,7 @@ class RunBlockDialog(BaseDialog):
         wx.MessageBox("No runs found", "Error", wx.OK | wx.ICON_EXCLAMATION)
         assert False # Close and destroy dialog properly here
 
-      min_run = runs[run_numbers.index(min(run_numbers))]
-      max_run = runs[run_numbers.index(max(run_numbers))]
-      self.first_run = min_run.run
+      self.first_run = min(run_numbers)
       self.last_run = None
 
       class defaults(object):
@@ -1348,8 +1350,12 @@ class RunBlockDialog(BaseDialog):
     else:
       db = block.app
       self.first_run, self.last_run = block.get_first_and_last_runs()
-      self.first_run = int(self.first_run.run)
-      if self.last_run is not None: self.last_run = int(self.last_run.run)
+      if self.use_ids:
+        self.first_run = self.first_run.id
+        if self.last_run is not None: self.last_run = self.last_run.id
+      else:
+        self.first_run = int(self.first_run.run)
+        if self.last_run is not None: self.last_run = int(self.last_run.run)
 
     self.orig_first_run = self.first_run
     self.orig_last_run = self.last_run
@@ -1362,7 +1368,11 @@ class RunBlockDialog(BaseDialog):
 
     # Run block start / end points (choice widgets)
 
-    runs_available = sorted([int(i.run) for i in db.get_all_runs()]) # LCLS specific cast
+    all_runs = db.get_all_runs()
+    if self.use_ids:
+      runs_available = sorted([i.id for i in all_runs])
+    else:
+      runs_available = sorted([int(i.run) for i in all_runs])
     self.first_avail = min(runs_available)
     self.last_avail = max(runs_available)
 
@@ -1670,7 +1680,7 @@ class RunBlockDialog(BaseDialog):
 
     if self.block is None:
       self.block = self.db.create_rungroup(**rg_dict)
-      self.block.sync_runs(self.first_run, self.last_run)
+      self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
       self.parent.trial.add_rungroup(self.block)
     else:
       # if all the parameters are unchanged, do nothing
@@ -1689,7 +1699,7 @@ class RunBlockDialog(BaseDialog):
 
           self.block.open = rg_open
           self.block.comment = rg_dict['comment']
-          self.block.sync_runs(self.first_run, self.last_run)
+          self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
 
           if running:
             main.start_job_sentinel()
@@ -1698,7 +1708,7 @@ class RunBlockDialog(BaseDialog):
           # enough parameters have changed to warrant creating a new run group
           self.block.active = False
           self.block = self.db.create_rungroup(**rg_dict)
-          self.block.sync_runs(self.first_run, self.last_run)
+          self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
           self.parent.trial.add_rungroup(self.block)
 
     e.Skip()

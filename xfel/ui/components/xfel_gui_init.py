@@ -1376,11 +1376,15 @@ class RunTab(BaseTab):
     mptag_dlg.Destroy()
 
   def refresh_rows(self, all=False):
-
     # Get new runs
     old_run_numbers = [run.run for run in self.all_runs]
     all_runs = self.main.db.get_all_runs()
     new_runs = [run for run in all_runs if run.run not in old_run_numbers]
+
+    font = self.GetFont()
+    dc = wx.ScreenDC()
+    dc.SetFont(font)
+    max_width = max([dc.GetTextExtent(str(run))[0] for run in all_runs])
 
     # Update either all or only new runs
     if all:
@@ -1388,7 +1392,9 @@ class RunTab(BaseTab):
     else:
       runs = new_runs
     for run in runs:
-      self.add_row(run)
+      run_row = RunEntry(self.run_panel, run=run, params=self.main.params, label_width = max_width)
+      self.all_tag_buttons.append(run_row.tag_button)
+      self.run_sizer.Add(run_row, flag=wx.ALL | wx.EXPAND, border=0)
 
     self.all_runs = all_runs
 
@@ -1400,13 +1406,6 @@ class RunTab(BaseTab):
 
     self.run_panel.SetupScrolling(scrollToTop=False)
     self.run_panel.Refresh()
-
-  def add_row(self, run):
-    ''' Adds run row to table, matching colname_sizer '''
-    run_row = RunEntry(self.run_panel, run=run, params=self.main.params)
-    self.all_tag_buttons.append(run_row.tag_button)
-    self.run_sizer.Add(run_row, flag=wx.ALL | wx.EXPAND, border=0)
-
 
 class TrialsTab(BaseTab):
   def __init__(self, parent, main):
@@ -3003,15 +3002,15 @@ class TrialPanel(wx.Panel):
 
 class RunEntry(wx.Panel):
   ''' Adds run row to table, with average and view buttons'''
-  def __init__(self, parent, run, params):
+  def __init__(self, parent, run, params, label_width = 60):
     self.run = run
     self.params = params
 
     wx.Panel.__init__(self, parent=parent)
 
     self.sizer = wx.FlexGridSizer(1, 4, 0, 10)
-    run_no = wx.StaticText(self, label=str(run.run),
-                           size=(120, -1))
+    run_no = wx.StaticText(self, label=str(run),
+                           size=(label_width, -1))
     self.tag_button = gctr.TagButton(self, run=run)
     self.avg_button = wx.Button(self, label='Average')
     self.view_button = wx.Button(self, label='View')

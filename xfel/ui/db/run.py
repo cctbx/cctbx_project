@@ -17,6 +17,12 @@ class Run(db_proxy):
     assert name != "tags"
     super(Run, self).__setattr__(name, value)
 
+  def __str__(self):
+    try:
+      return int(self.run)
+    except ValueError:
+      return "%d: %s"%(self.id, self.run)
+
   def add_tag(self, tag):
     query = "INSERT INTO `%s_run_tag` (run_id, tag_id) VALUES (%d, %d)" % (
       self.app.params.experiment_tag, self.id, tag.id)

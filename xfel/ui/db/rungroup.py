@@ -19,28 +19,35 @@ class Rungroup(db_proxy):
 
   def get_first_and_last_runs(self):
     runs = self.runs
-    run_runs = [r.run for r in runs]
-    first = runs[run_runs.index(min(run_runs))]
+    run_ids = [r.id for r in runs]
+    first = runs[run_ids.index(min(run_ids))]
     if self.open:
       last = None
     else:
-      last = runs[run_runs.index(max(run_runs))]
+      last = runs[run_ids.index(max(run_ids))]
     return first, last
 
-  def sync_runs(self, first_run, last_run):
+  def sync_runs(self, first_run, last_run, use_ids = True):
     all_runs = self.app.get_all_runs()
     runs = self.runs
-    run_numbers = [r.run for r in runs]
+    run_ids = [r.id for r in runs]
     if self.open:
-      tester = lambda x: int(x.run) >= first_run # LCLS specific comparator
+      if use_ids:
+        tester = lambda x: x.id >= first_run
+      else:
+        tester = lambda x: int(x.run) >= first_run
     else:
-      tester = lambda x: int(x.run) >= first_run and int(x.run) <= last_run # LCLS specific comparator
+      if use_ids:
+        tester = lambda x: x.id >= first_run and x.id <= last_run
+      else:
+        tester = lambda x: int(x.run) >= first_run and int(x.run) <= last_run
+
     for run in all_runs:
       if tester(run):
-        if not run.run in run_numbers:
+        if not run.id in run_ids:
           self.add_run(run.id)
       else:
-        if run.run in run_numbers:
+        if run.id in run_ids:
           self.remove_run(run.id)
 
   def add_run(self, run_id):

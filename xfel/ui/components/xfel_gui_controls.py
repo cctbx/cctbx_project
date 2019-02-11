@@ -79,17 +79,22 @@ class RunBlockButton(GradButton):
     db = block.app
     self.rnum = block.rungroup_id
     self.first_run, self.last_run = block.get_first_and_last_runs()
+    self.use_ids = db.params.facility.name != 'lcls'
 
     GradButton.__init__(self, parent=parent, label='',
                         size=size)
     self.update_label()
 
   def update_label(self):
-    first = self.first_run.run
+    if self.use_ids:
+      first = self.first_run.id
+    else:
+      first = self.first_run.run
+
     if self.last_run is None:
       last = ' ...'
     else:
-      last = ' - {}'.format(self.last_run.run)
+      last = ' - {}'.format(self.last_run.id if self.use_ids else self.last_run.run)
 
     self.block_label = '[{}] runs {}{}'.format(self.rnum, first, last)
     self.SetLabel(self.block_label)
