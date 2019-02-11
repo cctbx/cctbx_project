@@ -659,11 +659,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.params.mp.method = self.mp_option.ctr.GetStringSelection()
     self.params.mp.queue = self.queue.ctr.GetStringSelection()
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
-    self.params.facility.lcls.use_ffb = bool(self.chk_use_ffb.GetValue())
-    self.params.facility.lcls.dump_shots = bool(self.chk_dump_shots.GetValue())
     self.params.average_raw_data = self.avg_img_type.ctr.GetStringSelection() == 'raw'
-    self.params.facility.lcls.web.enforce80 = bool(self.chk_enforce80.GetValue())
-    self.params.facility.lcls.web.enforce81 = bool(self.chk_enforce81.GetValue())
     e.Skip()
 
 class CalibrationDialog(BaseDialog):
