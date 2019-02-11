@@ -160,7 +160,6 @@ SectionEnd
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC01} "Required executables, scripts and tutorials"
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC02} "Optional C/C++ source code for developers or expert users"
-  !insertmacro MUI_DESCRIPTION_TEXT ${SEC03} "Microsoft Visual C++ 2008 Redistributable Components. Install these only if not already present."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 
@@ -197,7 +196,6 @@ Function MyOnGUIinit
 ;!insertmacro UnSelectSection ${SEC01}
 !insertmacro SelectSection ${SEC01}
 !insertmacro UnSelectSection ${SEC02}
-!insertmacro SelectSection ${SEC03}
 FunctionEnd
 
 
@@ -208,11 +206,6 @@ ${If}  ${SectionIsSelected} ${SEC02}
 !insertmacro SetSectionFlag ${SEC01} ${SF_RO}
 ${Else}
 !insertmacro ClearSectionFlag ${SEC01} ${SF_RO}
-${EndIf}
-${If}  ${SectionIsSelected} ${SEC03}
-!insertmacro SelectSection ${SEC03}
-${Else}
-!insertmacro UnSelectSection ${SEC03}
 ${EndIf}
 FunctionEnd
 
