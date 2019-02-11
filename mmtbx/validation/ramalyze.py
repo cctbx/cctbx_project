@@ -670,12 +670,12 @@ def get_favored_peaks(rama_key):
 
 def find_region_max_value(rama_key, phi, psi, allow_outside=False):
   def normalize(angle):
-    angle = int(angle)
-    if angle > 180:
-      return angle - 360
-    if angle < -180:
-      return angle + 360
-    return angle
+    a = int(angle)
+    while a >= 180:
+      a -= 360
+    while a <= -180:
+      a += 360
+    return a
   from mmtbx.rotamer import ramachandran_eval
   from collections import Counter
   r = ramachandran_eval.RamachandranEval()
@@ -702,12 +702,13 @@ def find_region_max_value(rama_key, phi, psi, allow_outside=False):
     c = 1
     flag = True
     while flag:
-      for i in [-1*c,0*c,1*c]:
-        for j in [-1*c,0*c,1*c]:
+      for i in range(-c,c):
+        for j in range(-c,c):
           reg_number = fav_tables[rama_key][normalize(ph+i)+180][normalize(ps+j)+180]
           if reg_number != 0:
             flag = False
-      c += 1
+            return peaks[reg_number-1]
+      c += 2
     return peaks[reg_number-1]
   if v == 0:
     return None

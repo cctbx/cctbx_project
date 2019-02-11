@@ -5,6 +5,7 @@ from mmtbx.validation.ramalyze import ramalyze, find_region_max_value, get_favor
 from libtbx.utils import null_out
 from mmtbx.rotamer import ramachandran_eval
 import numpy as np
+from libtbx import easy_mp
 
 
 master_phil_str = """\
@@ -18,6 +19,9 @@ evalurama {
   grid_size = 10
     .type = float
     .help = for grid, what size of the squares
+  grid_center_on_peak = False
+    .type = bool
+    .help = center grid on peak. Otherwise, center will be (0,0)
   nproc = 1
     .type = int
 }
@@ -32,11 +36,15 @@ class square(object):
     self.prob_points = 0
 
   def add_point_if_inside(self, point):
-    if (self.low_left[0] <= point[0] <= self.high_right[0] and
-        self.low_left[1] <= point[1] <= self.high_right[1]):
+    inside = False
+    for i in [0,1]:
+      for j in [0,1]:
+        if (self.low_left[0] <= point[0] + 360*i <= self.high_right[0] and
+            self.low_left[1] <= point[1] + 360*j <= self.high_right[1]):
+          inside = True
+    if inside:
       self.n_points += 1
-      return True
-    return False
+    return inside
 
   def _show(self):
     print self.low_left, self.high_right, self.probability, self.n_points, self.prob_points
@@ -132,7 +140,6 @@ class grid_over_favored(object):
 
   def add_points(self, points, stop_on_outsiders=True):
     self.grid.add_points(points, stop_on_outsiders=stop_on_outsiders)
-    # self.grid._show()
 
   def get_corr(self):
     c = self.grid.get_corr()
@@ -156,26 +163,33 @@ class grid_over_favored(object):
       x += size
     return sorted(result)
 
+def ramalyze_parallel(hierarchy):
+  return ramalyze(hierarchy, out=null_out())
+
 class eval(object):
   def __init__(self, models, params, log):
     self.models = models
     self.log = log
     self.params = params
     self.total_rama = []
-    for m in models:
-      rama = ramalyze(m.get_hierarchy(), out=null_out())
-      for r in rama.results:
-        self.total_rama.append(r)
+    rama_res = easy_mp.pool_map(
+        processes=self.params.nproc,
+        fixed_func=ramalyze_parallel,
+        args=[m.get_hierarchy() for m in self.models])
+    for r in rama_res:
+      for res in r.results:
+        self.total_rama.append(res)
 
     self.results = {}
     for rama_type in range(5):
       print "Working with", res_types[rama_type], "plot"
       for peak in get_favored_peaks(rama_type):
         print "  Working with peak:", peak
+        start_point = peak[0] if self.params.grid_center_on_peak else (0,0)
         gof = grid_over_favored(
             rama_type=rama_type,
             rama_region=peak[0],
-            start_point=(0,0),
+            start_point=start_point,
             grid_size=self.params.grid_size,
             corners_inside=self.params.corners_inside)
         points = []
