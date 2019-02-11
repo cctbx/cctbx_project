@@ -91,13 +91,20 @@ class RunSentinel(Thread):
     while self.active:
       # Find the delta
       known_runs = [r.run for r in db.get_all_runs()]
-      unknown_runs = [run['run'] for run in db.list_lcls_runs() if
-                      run['run'] not in known_runs]
+      if self.parent.params.facility.name == 'lcls':
+        unknown_run_runs = [str(run['run']) for run in db.list_lcls_runs() if
+                            str(run['run']) not in known_runs]
+        unknown_run_paths = [''] * len(unknown_run_runs)
+      elif self.parent.params.facility.name == 'standalone':
+        standalone_runs = [run for run in db.list_standalone_runs() if
+                           run[0] not in known_runs]
+        unknown_run_runs = [r[0] for r in standalone_runs]
+        unknown_run_paths = [r[1] for r in standalone_runs]
 
-      if len(unknown_runs) > 0:
-        for run_number in unknown_runs:
-          db.create_run(run = run_number)
-        new_runs = [r for r in db.get_all_runs() if int(r.run) in unknown_runs]
+      if len(unknown_run_runs) > 0:
+        for run_run, run_path in zip(unknown_run_runs, unknown_run_paths):
+          db.create_run(run = run_run, path = run_path)
+        new_runs = [r for r in db.get_all_runs() if r.run in unknown_run_runs]
         if len(self.parent.run_window.runs_tab.persistent_tags) > 0:
           tags = [t for t in db.get_all_tags() if t.name in self.parent.run_window.runs_tab.persistent_tags]
           for r in new_runs:
@@ -108,7 +115,7 @@ class RunSentinel(Thread):
           first_run, last_run = rungroup.get_first_and_last_runs()
           rungroup.sync_runs(first_run, last_run)
 
-        print "%d new runs" % len(unknown_runs)
+        print "%d new runs" % len(unknown_run_runs)
         self.post_refresh()
       time.sleep(10)
 
@@ -3004,7 +3011,7 @@ class RunEntry(wx.Panel):
 
     self.sizer = wx.FlexGridSizer(1, 4, 0, 10)
     run_no = wx.StaticText(self, label=str(run.run),
-                           size=(60, -1))
+                           size=(120, -1))
     self.tag_button = gctr.TagButton(self, run=run)
     self.avg_button = wx.Button(self, label='Average')
     self.view_button = wx.Button(self, label='View')
