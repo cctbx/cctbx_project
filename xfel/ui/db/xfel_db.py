@@ -24,7 +24,7 @@ from xfel.command_line.experiment_manager import initialize as initialize_base
 class initialize(initialize_base):
   expected_tables = ["run", "job", "rungroup", "trial", "tag", "run_tag", "event", "trial_rungroup",
                      "imageset", "imageset_event", "beam", "detector", "experiment",
-                     "crystal", "cell", "cell_bin", "bin", "isoform"]
+                     "crystal", "cell", "cell_bin", "bin", "isoform", "rungroup_run"]
 
   def __getattr__(self, prop):
     if prop == "dbobj":
@@ -45,7 +45,9 @@ class initialize(initialize_base):
     return initialize_base.create_tables(self, sql_path)
 
   def verify_tables(self):
+    self.expected_tables.pop(self.expected_tables.index('rungroup_run'))
     tables_ok = super(initialize, self).verify_tables()
+    self.expected_tables.append('rungroup_run')
 
     if tables_ok:
       # Maintain backwards compatibility with SQL tables v2: 09/24/16
