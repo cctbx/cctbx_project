@@ -135,7 +135,7 @@ if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
 fi
 """ % (base_path, ":".join(ld_library_paths), ":".join(ld_library_paths), options.gtk_version), file=f)
   # restore some variables for conda
-  if options.use_conda:
+  if sys.platform != "win32" and options.use_conda:
     print("""
 if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
   if [ -z "$DISABLE_PHENIX_GUI" ]; then
