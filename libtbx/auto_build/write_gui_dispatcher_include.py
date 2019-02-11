@@ -134,6 +134,16 @@ if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
   fi
 fi
 """ % (base_path, ":".join(ld_library_paths), ":".join(ld_library_paths), options.gtk_version), file=f)
+  # restore some variables for conda
+  if options.use_conda:
+    print("""
+if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
+  if [ -z "$DISABLE_PHENIX_GUI" ]; then
+    export BOOST_ADAPTBX_FPE_DEFAULT=1
+    export BOOST_ADAPTBX_SIGNALS_DEFAULT=1
+  fi
+fi
+""", file=f)
   # QBio DivCon paths
   if sys.platform != "win32":
     print("""
