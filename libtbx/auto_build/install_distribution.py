@@ -368,7 +368,7 @@ class installer(object):
 
     base_python = os.path.join(self.base_dir, 'bin', 'python')
     if 'win32' in sys.platform:
-      os.path.join(self.base_dir, 'bin', 'python', 'python.exe')
+      base_python = os.path.join(self.base_dir, 'bin', 'python', 'python.exe')
 
     # check for conda
     if self.base_dir.endswith('conda_base'):
