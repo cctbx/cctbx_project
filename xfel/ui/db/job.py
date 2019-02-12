@@ -312,6 +312,7 @@ def submit_job(app, job):
     calib_dir                 = job.rungroup.calib_dir,
     nproc                     = app.params.mp.nproc,
     queue                     = app.params.mp.queue,
+    method                    = app.params.mp.method,
     target                    = target_phil_path,
     host                      = app.params.db.host,
     dbname                    = app.params.db.name,

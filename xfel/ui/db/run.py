@@ -19,7 +19,7 @@ class Run(db_proxy):
 
   def __str__(self):
     try:
-      return int(self.run)
+      return str(int(self.run))
     except ValueError:
       return "%d: %s"%(self.id, self.run)
 
