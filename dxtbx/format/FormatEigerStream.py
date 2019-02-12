@@ -52,7 +52,7 @@ class FormatEigerStream(FormatMultiImage, Format):
     configuration = self.header['configuration']
 
     from pprint import pprint
-    pprint(configuration)
+#   pprint(configuration)
 
     # Set the trusted range
 #   trusted_range = 0, configuration['countrate_correction_count_cutoff']
@@ -101,7 +101,6 @@ class FormatEigerStream(FormatMultiImage, Format):
   def _beam(self):
     '''
     Create the beam model
-
     '''
     from dxtbx.model.beam import BeamFactory
     configuration = self.header['configuration']
@@ -110,7 +109,6 @@ class FormatEigerStream(FormatMultiImage, Format):
   def _goniometer(self):
     '''
     Create the goniometer model
-
     '''
     from dxtbx.model.goniometer import GoniometerFactory
     return GoniometerFactory.single_axis()
