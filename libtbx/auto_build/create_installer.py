@@ -351,13 +351,15 @@ class SetupInstaller(object):
       import certifi
       from libtbx.auto_build.install_base_packages import installer
       file_list = os.listdir(os.path.join(app_root_dir, 'build', 'bin'))
-      if self.base_dir == 'base':
-        for filename in file_list:
-          installer.patch_src(
-            os.path.join(app_root_dir,'build', 'bin', filename),
-            '"%s"' % certifi.where(),
-            '"$LIBTBX_BUILD/../base/Python.framework/Versions/2.7/lib/python2.7/site-packages/certifi/cacert.pem"'
-          )
+      for filename in file_list:
+        patch = '"$LIBTBX_BUILD/../base/Python.framework/Versions/2.7/lib/python2.7/site-packages/certifi/cacert.pem"'
+        if self.base_dir == 'conda_base':
+          patch = '"$LIBTBX_BUILD/../conda_base/lib/python2.7/site-packages/certifi/cacert.pem"'
+        installer.patch_src(
+          os.path.join(app_root_dir,'build', 'bin', filename),
+          '"%s"' % certifi.where(),
+          patch
+        )
     except ImportError:
       pass
 
