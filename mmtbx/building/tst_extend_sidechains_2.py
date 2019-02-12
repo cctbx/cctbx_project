@@ -332,7 +332,7 @@ def exercise_extend_sidechains(pdb_str_bad, pdb_str_good, i, Sorry_msg, add_h):
       add_hydrogens = add_h)
   except Exception, e: pass
   if(Sorry_msg is not None):
-    assert Sorry_msg == str(e)
+    assert str(e).find(Sorry_msg)>-1
     return
   #
   pdb_h.write_pdb_file(file_name="m_completed_%d.pdb"%i)

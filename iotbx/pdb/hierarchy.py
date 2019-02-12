@@ -2932,7 +2932,10 @@ def substitute_atom_group(
   aa_backbone_atoms_new     = get_bb_atoms(new_group, aa_backbone_atoms_1)
   if(aa_backbone_atoms_current != aa_backbone_atoms_1 or
      aa_backbone_atoms_new     != aa_backbone_atoms_1):
-    raise Sorry("Main chain must be complete.")
+    outl = ''
+    for atom in current_group.atoms():
+      outl += '\n%s' % atom.quote()
+    raise Sorry("Main chain must be complete. %s" % outl)
   #
   for i_seq, atom in enumerate(current_group.atoms()):
     if(not atom.name in aa_backbone_atoms_2): continue
