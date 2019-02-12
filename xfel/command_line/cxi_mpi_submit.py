@@ -296,7 +296,6 @@ class Script(object):
     os.mkdir(stdoutdir)
     logging_str = ""
     if params.output.split_logs:# test parameter for split_log then open and close log file and loop over nprocs
-<<<<<<< Updated upstream
       for i in range(params.mp.nproc):
         error_files = os.path.join(stdoutdir,"error_rank%04d.out"%i)
         log_files = os.path.join(stdoutdir,"log_rank%04d.out"%i)
