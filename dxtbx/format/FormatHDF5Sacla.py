@@ -55,7 +55,7 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
     pixel_size = detector_info['pixel_size_in_micro_meter'][0]/1000, \
                  detector_info['pixel_size_in_micro_meter'][1]/1000
     tag = detector_2d_assembled_1[self._images[0]]
-    data = tag['detector_data'].value
+    data = tag['detector_data'][()]
 
     # detector_image_size is fast-, slow- , just in case the dataset is ever non-square
     image_size = ( data.shape[1], data.shape[0] )

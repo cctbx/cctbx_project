@@ -30,7 +30,7 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
 
     h5_handle = h5py.File(image_file, 'r')
     if 'metadata/detector' in h5_handle:
-      if "Rayonix" in h5_handle['metadata/detector'].value:
+      if "Rayonix" in h5_handle['metadata/detector'][()]:
         return False
 
     for elem in h5_handle:
@@ -113,16 +113,16 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
 
     if not 'metadata' in h5_handle: return
     try:
-       distance = h5_handle['metadata/distance_in_mm'].value
-       panel_rotations = h5_handle['metadata/angle_in_rad'].value
-       posx = h5_handle['metadata/posx_in_um'].value
-       posy = h5_handle['metadata/posy_in_um'].value
-       posz = h5_handle['metadata/posz_in_um'].value
+       distance = h5_handle['metadata/distance_in_mm'][()]
+       panel_rotations = h5_handle['metadata/angle_in_rad'][()]
+       posx = h5_handle['metadata/posx_in_um'][()]
+       posy = h5_handle['metadata/posy_in_um'][()]
+       posz = h5_handle['metadata/posz_in_um'][()]
        panel_origins = zip(posx, posy, posz)
        sensor = h5_handle['metadata/sensor_id'][0]
        thickness = 0.050
        if sensor.startswith("MPCCD-8B"): thickness = 0.300 # Phase 3 sensor
-       orig_mask = numpy.logical_not(h5_handle['metadata/pixelmask'].value)
+       orig_mask = numpy.logical_not(h5_handle['metadata/pixelmask'][()])
        mask = self.split_panels(orig_mask, bool=True)
     except Exception:
        return
@@ -205,7 +205,7 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
   def _beam(self):
     import h5py
     h5_handle = h5py.File(self.image_filename, 'r')
-    eV = h5_handle[self.tag]['photon_energy_ev'].value
+    eV = h5_handle[self.tag]['photon_energy_ev'][()]
     h5_handle.close()
 
     return self._beam_factory.simple(12398.4 / eV)
@@ -243,7 +243,7 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
         import h5py
         h5_handle = h5py.File(self.image_filename, 'r')
 
-        data = h5_handle[self.tag]["data"].value #[()].astype(numpy.int32)
+        data = h5_handle[self.tag]["data"][()] # .astype(numpy.int32)
         # [()] forces conversion to ndarray
         # this is 8192x512 (slow/fast) tiled image
         h5_handle.close()

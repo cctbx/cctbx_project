@@ -52,7 +52,7 @@ def is_eiger_nearly_nexus_file(filename):
   entry = find_entries(handle)
   if entry is not None:
     try:
-      return 'Dectris Eiger' in entry['instrument']['detector']['description'].value
+      return 'Dectris Eiger' in entry['instrument']['detector']['description'][()]
     except KeyError:
       pass
   return False
@@ -153,7 +153,7 @@ class EigerNXmxFixer(object):
       group,
       "fast_pixel_direction",
       "float32",
-      handle['/entry/instrument/detector/x_pixel_size'].value)
+      handle['/entry/instrument/detector/x_pixel_size'][()])
     group['fast_pixel_direction'].attrs['transformation_type'] = 'translation'
     group['fast_pixel_direction'].attrs['vector'] = fast_axis
     group['fast_pixel_direction'].attrs['offset'] = (0, 0, 0)
@@ -165,7 +165,7 @@ class EigerNXmxFixer(object):
       group,
       "slow_pixel_direction",
       "float32",
-      handle['/entry/instrument/detector/y_pixel_size'].value)
+      handle['/entry/instrument/detector/y_pixel_size'][()])
     group['slow_pixel_direction'].attrs['transformation_type'] = 'translation'
     group['slow_pixel_direction'].attrs['vector'] = slow_axis
     group['slow_pixel_direction'].attrs['offset'] = (0, 0, 0)
@@ -243,7 +243,7 @@ class EigerNXmxFixer(object):
       # E-32-0105 - Max IV, vertical axis
 
       try:
-        key = handle['/entry/instrument/detector/detector_number'].value
+        key = handle['/entry/instrument/detector/detector_number'][()]
         default_axis = {'E-32-0105':(0,1,0)}[key]
       except KeyError as e:
         default_axis = (-1,0,0)
