@@ -287,7 +287,7 @@ class xfel_db_application(db_application):
         else:
           files = sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template)))
           if len(files) > 0:
-            runs.append((foldername, path))
+            runs.append((foldername, os.path.join(path, self.params.facility.standalone.template)))
     elif self.params.facility.standalone.monitor_for == 'files':
       if not self.params.facility.standalone.composite_files:
         print "Warning, monitoring a single folder for single image files is inefficient"
