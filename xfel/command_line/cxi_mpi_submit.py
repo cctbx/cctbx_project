@@ -16,18 +16,18 @@ from libtbx import easy_run
 from xfel.util.mp import mp_phil_str, get_submit_command_chooser
 
 help_str = """
-Use cxi.mpi_submit to submit a cxi.xtc_process job to the cluster for analyzing
-diffraction data in XTC streams.  cxi.mpi_submit will create a directory for
+Use cxi.mpi_submit to submit a cctbx.xfel job to a cluster for analyzing
+diffraction data.  cxi.mpi_submit will create a directory for
 you in the location specified by output.output_dir using the run and trial
 numbers specified.  If no trial number is specified, one will be chosen auto-
 matically by examining the output directory.  The output directory will be
 created if it doesn't exist.
 
-Examples:
+Examples (LCLS, for non-LCLS see below):
 
 cxi.mpi_submit input.cfg=cxi49812/thermo.cfg input.experiment=cxi49812 \\
   input.run_num=25 output.output_dir=\\
-  /reg/d/psdm/cxi/cxi49812/ftc/username/results mp.nproc=100 mp.queue=psanaq
+  /reg/d/psdm/cxi/cxi49812/results/username/results mp.nproc=100 mp.queue=psanaq
 
 This will submit run 25 of experiment cxi49812 to the psana queue for
 processing using the modules specified by cxi49812/thermo.cfg.
@@ -38,16 +38,16 @@ Use the phil parameters in submit.phil to control job submission.
 
 Before the job is submitted, the following occurs:
 
-Directory /reg/d/psdm/cxi/cxi49812/ftc/username/results is created if it
+Directory /reg/d/psdm/cxi/cxi49812/results/username/results is created if it
 doesn't exist.
 
-Directory /reg/d/psdm/cxi/cxi49812/ftc/username/results/r0025 is created if it
+Directory /reg/d/psdm/cxi/cxi49812/results/username/results/r0025 is created if it
 doesn't exist.
 
 The run directory is searched for the next available trial ID, say 003.  That
 directory is created.
 
-Under /reg/d/psdm/cxi/cxi49812/ftc/username/results/r0025/003, the following is
+Under /reg/d/psdm/cxi/cxi49812/results/username/results/r0025/003, the following is
 created:
 
 Directory stdout.  The log for the experiment will go here.
@@ -60,18 +60,16 @@ includes phil files included by copied phil files.
 
 The final bsub command is saved in submit.sh for future use.
 
-For processing away from LCLS, a different dispatcher and any non-default queueing
+For processing non-LCLS data, a different dispatcher and any non-default queueing
 and multiprocessing parameters should be explicitly requested. For example,
 mp.env_script should be specified on any system where the interactive environment
-is not propagated to the queued jobs. Also, input.facility should be specified
-(currently supported: LCLS, SACLA, filesystem).
+is not propagated to the queued jobs.
 
 Example for processing XFEL stills at SACLA:
 
-cxi.mpi_submit input.data_dir=/path/to/h5/runs/directory input.run_num=266708 \\
+cxi.mpi_submit /path/to/h5/runs/directory/266708-0/run*.h5 \\
   input.dispatcher=dials.stills_process output.output_dir=/path/to/results \\
   input.target=/path/to//stills_process.phil input.trial=0 \\
-  input.facility=SACLA \\
   mp.method=pbs mp.queue=psmall mp.nnodes=10 mp.nproc_per_node=28 \\
   mp.env_script=/path/to/setpaths.sh
 """
@@ -86,21 +84,9 @@ phil_str = '''
     experiment = None
       .type = str
       .help = Experiment identifier, e.g. cxi84914 (mandatory for xtc stream processing)
-    data_dir = None
-      .type = path
-      .help = Path to raw data (mandatory for non-xtc stream processing)
-    data_template = None
-      .type = str
-      .help = Formatting string for data files (mandatory for non-xtc stream processing)
     run_num = None
-      .type = int
-      .help = Run number to process
-    run_chunk = None
       .type = str
-      .multiple = True
-      .help = Identifier for one of multiple chunks of a single run, expected as the second \
-              substitution in the input.data_template formatting string. If two substitutions \
-              are expected and only one is supplied, all matching chunks will be processed.
+      .help = Run number to process. Can be a string instead of a number.
     trial = None
       .type = int
       .help = Trial number for this job.  Leave blank to auto determine.
@@ -122,10 +108,6 @@ phil_str = '''
       .type = str
       .help = Locator file needed for cctbx.xfel.process and dials.stills_process to find \
               the XTC streams
-    facility = *LCLS SACLA filesystem
-      .type = choice
-      .help = Choice of facility where the data is written, which guides a number of \
-              assumptions about how to locate and interpret the data.
   }
   output {
     output_dir = "."
@@ -246,24 +228,22 @@ class Script(object):
     params = scope.extract()
     dispatcher_args = ["%s=%s"%(u.path,u.object.words[0].value) for u in unused]
 
+    assert params.input.run_num is not None
     if params.input.dispatcher in ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
       # processing XTC streams at LCLS -- dispatcher will locate raw data
-      assert params.input.experiment is not None
+      assert params.input.experiment is not None or params.input.locator is not None
+      print "Submitting run %d of experiment %s"%(int(params.input.run_num), params.input.experiment)
+      rundir = os.path.join(params.output.output_dir, "r%04d"%int(params.input.run_num))
     else:
-      assert params.input.data_dir is not None
-      assert params.input.data_template is not None
-    assert params.input.run_num is not None
-    if params.input.run_chunk:
-      assert params.input.data_template.count("%") > 1
-      print "Submitting run %d, chunk(s) %s of experiment %s"%\
-      (params.input.run_num, ", ".join(map(str, params.input.run_chunk)), params.input.experiment)
-    else:
-      print "Submitting run %d of experiment %s"%(params.input.run_num, params.input.experiment)
+      print "Submitting run %s"%(params.input.run_num)
+      try:
+        rundir = os.path.join(params.output.output_dir, "r%04d"%int(params.input.run_num))
+      except ValueError:
+        rundir = os.path.join(params.output.output_dir, params.input.run_num)
 
     if not os.path.exists(params.output.output_dir):
        os.makedirs(params.output.output_dir)
 
-    rundir = os.path.join(params.output.output_dir, "r%04d"%params.input.run_num)
     if not os.path.exists(rundir):
       os.mkdir(rundir)
 
@@ -342,9 +322,6 @@ class Script(object):
       params.input.target = os.path.join(trialdir, "params_%d.phil"%target_num)
       target_num += 1
 
-    if params.input.dispatcher == "dials.stills_process" and target_num == 1:
-      raise Sorry("Target phil file required for processing with DIALS")
-
     # Some configs files will specify out_dirname. If not, we want to explicitly create one
     # so the dispatcher will have an output directory.
     output_dir = os.path.join(trialdir, "out")
@@ -357,47 +334,14 @@ class Script(object):
     extra_str = ""
     data_str = ""
 
-    if params.input.facility == "LCLS":
+    assert [params.input.locator, params.input.experiment].count(None) <= 1
+    if params.input.locator is not None:
       locator_file = os.path.join(trialdir, "data.loc")
-      if params.input.locator is None:
-        f = open(locator_file, 'w')
-        f.write("experiment=%s\n"%params.input.experiment)
-        f.write("run=%d\n"%params.input.run_num)
-        f.write("detector_address=MfxEndstation.0:Rayonix.0\n") # guess at the address. User should be providing a full locator anyway
-        f.close()
-      else:
-        shutil.copyfile(params.input.locator, locator_file)
+      shutil.copyfile(params.input.locator, locator_file)
       data_str = locator_file
     elif params.input.experiment is not None:
-      data_str = "input.experiment=%s input.run_num=%d" % (
+      data_str = "input.experiment=%s input.run_num=%s" % (
         params.input.experiment, params.input.run_num)
-    else: # locate data by template
-      #phils = [os.path.join(trialdir, "params_%d.phil" % i) for i in xrange(1, target_num)]
-      #extra_str += " ".join(phils)
-      #print extra_str
-      if params.input.data_template.count("%") == 1:
-        raw_data = [os.path.join(params.input.data_template, params.input.data_template % params.input.run_num)]
-        assert os.path.exists(raw_data[0]), "Cannot access data at %s" % raw_data[0]
-      else: # runs are separataed into chunks
-        # non-greedy regex with perl to substitute the run number (must come first)
-        # followed by pattern matching in the directory to get all available/requested chunks
-        tmp_template = easy_run.fully_buffered(command=\
-          'echo "TEMPLATE" | rev | perl -pe "s:s%:KNUHC:" | rev'.replace(\
-            "TEMPLATE", params.input.data_template)).stdout_lines[0]
-        tmp_template = tmp_template % params.input.run_num
-        first, last = tmp_template.split("CHUNK")
-        if params.input.run_chunk:
-          # select one or more chunks
-          matches = [f for f in os.listdir(params.input.data_dir) \
-            if f.startswith(first) and f.endswith(last) \
-            and f.split(first)[1].split(last)[0] in params.input.run_chunk]
-        else:
-          matches = [f for f in os.listdir(params.input.data_dir) \
-            if f.startswith(first) and f.endswith(last)]
-        raw_data = [os.path.join(params.input.data_dir, m) for m in matches]
-        assert len(raw_data) > 0, "No matching raw data at %s, pattern %s" \
-          % (params.input.data_dir, params.input.data_template)
-      data_str = " ".join(raw_data)
 
     for arg in dispatcher_args:
       extra_str += " %s" % arg
@@ -408,17 +352,15 @@ class Script(object):
     if params.input.rungroup is not None:
       data_str += " input.rungroup=%d" % params.input.rungroup
 
-    nproc_str = "mp.nproc=%d" % params.mp.nproc
-
-    command = "%s %s output.output_dir=%s %s %s %s" % (
+    command = "%s %s output.output_dir=%s %s %s" % (
       params.input.dispatcher, data_str, output_dir,
-      logging_str, extra_str, nproc_str
+      logging_str, extra_str
     )
 
-    job_name = "r%d"%params.input.run_num
+    job_name = "r%s"%params.input.run_num
 
     submit_command = get_submit_command_chooser(command, submit_path, stdoutdir, params.mp, job_name=job_name)
-    if params.mp.method in "lsf sge pbs".split(" "):
+    if params.mp.method in ['lsf', 'sge', 'pbs']:
       parts = submit_command.split(" ")
       script = open(parts.pop(-1), "rb")
       run_command = script.read().split("\n")[-2]
