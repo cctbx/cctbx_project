@@ -218,7 +218,11 @@ class Script(object):
     dispatcher_args = []
     for arg in argv:
       if (os.path.isfile(arg)):
-        user_phil.append(parse(file_name=arg))
+        try:
+          user_phil.append(parse(file_name=arg))
+        except Exception as e:
+          if os.path.splitext(arg)[1] == ".phil": raise e
+          dispatcher_args.append(arg)
       else:
         try:
           user_phil.append(parse(arg))
@@ -226,7 +230,7 @@ class Script(object):
           dispatcher_args.append(arg)
     scope, unused = phil_scope.fetch(sources=user_phil, track_unused_definitions=True)
     params = scope.extract()
-    dispatcher_args = ["%s=%s"%(u.path,u.object.words[0].value) for u in unused]
+    dispatcher_args.extend(["%s=%s"%(u.path,u.object.words[0].value) for u in unused])
 
     assert params.input.run_num is not None
     if params.input.dispatcher in ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
@@ -291,6 +295,7 @@ class Script(object):
     redone_args = []
     for arg in dispatcher_args:
       if not len(arg.split('=')) == 2:
+        redone_args.append(arg)
         continue
       name, value = arg.split('=')
 
@@ -334,12 +339,16 @@ class Script(object):
     extra_str = ""
     data_str = ""
 
-    assert [params.input.locator, params.input.experiment].count(None) <= 1
+    assert [params.input.locator, params.input.experiment].count(None) != 0
     if params.input.locator is not None:
       locator_file = os.path.join(trialdir, "data.loc")
       shutil.copyfile(params.input.locator, locator_file)
       data_str = locator_file
-    elif params.input.experiment is not None:
+    if params.input.experiment is None:
+      if params.input.dispatcher == 'cctbx.xfel.process':
+        data_str = "input.trial=%s input.run_num=%s" % ( # pass along for logging
+          params.input.trial, params.input.run_num)
+    else:
       data_str = "input.experiment=%s input.run_num=%s" % (
         params.input.experiment, params.input.run_num)
 
@@ -395,6 +404,11 @@ class Script(object):
             pass
           else:
             submission_id = str(s)
+        print submission_id
+        return submission_id
+      elif params.mp.method == 'pbs':
+        submission_id = "".join(result.stdout_lines).strip()
+        print submission_id
         return submission_id
     return None
 
