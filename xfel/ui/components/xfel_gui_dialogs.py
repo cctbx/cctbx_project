@@ -239,8 +239,9 @@ class SettingsDialog(BaseDialog):
       self.params.db.name     = creds.db_name.ctr.GetValue()
       self.params.db.user     = creds.db_user.ctr.GetValue()
       self.params.db.password = creds.db_password.ctr.GetValue()
-      self.params.facility.lcls.web.user     = creds.web_user.ctr.GetValue()
-      self.params.facility.lcls.web.password = creds.web_password.ctr.GetValue()
+      if self.params.facility.name == 'lcls':
+        self.params.facility.lcls.web.user     = creds.web_user.ctr.GetValue()
+        self.params.facility.lcls.web.password = creds.web_password.ctr.GetValue()
 
       self.drop_tables = creds.chk_drop_tables.GetValue()
 
@@ -306,7 +307,7 @@ class DBCredentialsDialog(BaseDialog):
 
     # Password
     self.db_password = gctr.TextButtonCtrl(self,
-                                           label='Password',
+                                           label='DB Password',
                                            label_style='bold',
                                            label_size=(150, -1),
                                            text_style=wx.TE_PASSWORD,
@@ -318,26 +319,27 @@ class DBCredentialsDialog(BaseDialog):
     self.chk_drop_tables = wx.CheckBox(self,
                                        label='Delete and regenerate all tables')
     self.main_sizer.Add(self.chk_drop_tables, flag=wx.ALL, border=10)
-    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
 
-    # LCLS user name
-    self.web_user = gctr.TextButtonCtrl(self,
-                                       label='LCLS user name',
-                                       label_style='bold',
-                                       label_size=(150, -1),
-                                       big_button_size=(130, -1),
-                                       value=params.facility.lcls.web.user)
-    self.main_sizer.Add(self.web_user, flag=wx.EXPAND | wx.ALL, border=10)
+    if params.facility.name == 'lcls':
+      self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
+      # LCLS user name
+      self.web_user = gctr.TextButtonCtrl(self,
+                                         label='LCLS user name',
+                                         label_style='bold',
+                                         label_size=(150, -1),
+                                         big_button_size=(130, -1),
+                                         value=params.facility.lcls.web.user)
+      self.main_sizer.Add(self.web_user, flag=wx.EXPAND | wx.ALL, border=10)
 
-    # LCLS password
-    self.web_password = gctr.TextButtonCtrl(self,
-                                           label='LCLS Password',
-                                           label_style='bold',
-                                           label_size=(150, -1),
-                                           text_style=wx.TE_PASSWORD,
-                                           big_button_size=(130, -1),
-                                           value=params.facility.lcls.web.password)
-    self.main_sizer.Add(self.web_password, flag=wx.EXPAND | wx.ALL, border=10)
+      # LCLS password
+      self.web_password = gctr.TextButtonCtrl(self,
+                                             label='LCLS Password',
+                                             label_style='bold',
+                                             label_size=(150, -1),
+                                             text_style=wx.TE_PASSWORD,
+                                             big_button_size=(130, -1),
+                                             value=params.facility.lcls.web.password)
+      self.main_sizer.Add(self.web_password, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
@@ -1900,9 +1902,9 @@ class SelectRunBlocksDialog(BaseDialog):
       selected.append(rungroup.id in self.trial_rungroups)
       first_run, last_run = rungroup.get_first_and_last_runs()
       if last_run is None:
-        desc = "[%d] %d+"%(rungroup.id, int(first_run.run)) # LCLS specific cast
+        desc = "[%d] %d+"%(rungroup.id, int(first_run.id))
       else:
-        desc = "[%d] %d-%d"%(rungroup.id, int(first_run.run), int(last_run.run)) # LCLS specific cast
+        desc = "[%d] %d-%d"%(rungroup.id, int(first_run.id), int(last_run.id))
       if rungroup.comment is not None:
         desc += " " + rungroup.comment
 
