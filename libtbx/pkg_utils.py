@@ -5,6 +5,7 @@
 from __future__ import absolute_import, division, print_function
 
 import contextlib
+import itertools
 import os
 import sys
 
@@ -31,6 +32,20 @@ try:
 except ImportError:
   pip = None
   pkg_resources = None
+
+# Try to find packaging. This is normally(?) installed by setuptools but
+# otherwise pip keeps a copy.
+try:
+  import packaging
+  from packaging.requirements import Requirement
+except ImportError:
+  try:
+    import pip._vendor.packaging as packaging
+    from pip._vendor.packaging.requirements import Requirement
+  except ImportError:
+    # If all else fails then we need the symbol to check
+    Requirement = None
+    packaging = None
 
 try:
   import setuptools
@@ -69,11 +84,20 @@ def require(pkgname, version=None):
   if not version:
     version = ''
 
-  # package name without feature specification
-  basepkgname = pkgname.split('[')[0]
+  requirement = Requirement(pkgname+version)
 
-  requirestring = pkgname + version
-  baserequirestring = basepkgname + version
+  # Check if we have an environment marker in the request
+  if requirement.marker and not requirement.marker.evaluate():
+    # We skip dependencies that don't match our current environment
+    return True
+  # Erase the marker from any further output
+  requirement.marker = None
+
+  # package name without feature specification
+  basepkgname = requirement.name
+
+  requirestring = str(requirement)
+  baserequirestring = requirement.name + str(requirement.specifier)
   try:
     try:
       print("requires %s, has %s" % (requirestring, pkg_resources.require(requirestring)[0].version))
@@ -205,3 +229,81 @@ def define_entry_points(epdict, **kwargs):
       sys.argv = argv_orig
   finally:
     os.chdir(curdir)
+
+def _merge_requirements(requirements, new_req):
+  # type: (List[packaging.requirements.Requirement], packaging.requirements.Requirement) -> None
+  """Merge a new requirement with a list.
+
+  If it exists in an identical form (name, marker) then the
+  specifiers and extras will be merged, otherwise it will be added.
+
+  If the environment markers are different it will assume that they
+  are mutually exclusive - entries will only be merged if identical, which
+  could cause problems with duplicate requirement entries if not filtered
+  by pass status later.
+
+  URL field is also not handled, as unsure how to merge these if they differ.
+
+  Args:
+    requirements (List[packaging.requirements.Requirement]): Existing.
+    new_req (packaging.requirements.Requirement): New requirement
+  """
+  assert new_req.url is None, "URL requirement fields not handled/tested"
+  matches = [
+    x
+    for x in requirements
+    if x.name == new_req.name
+    and x.marker == new_req.marker
+  ]
+  if len(matches) > 0:
+    if len(matches) > 1:
+      print("Warning: More than one match for requirement", new_req, ": ", matches)
+    match = matches[0]
+  else:
+    match = None
+
+  if match:
+    match.specifier = match.specifier & new_req.specifier
+    match.modules = match.modules | new_req.modules
+    match.extras = match.extras | new_req.extras
+  else:
+    requirements.append(new_req)
+
+def collate_python_requirements(modules):
+  # type: (List[libtbx.env_config.module]) -> List[packaging.requirements.Requirement]
+  """Combine python requirements from a module list.
+
+  An attempt will be made to merge any joint requirements. The requirement
+  objects will have an added property 'modules', which is a set of module
+  names that formed the requirement.
+
+  Attr:
+      modules (Iterable[libtbx.env_config.module]): The module list
+
+  Returns:
+      List[packaging.requirements.Requirement]: The merged requirements
+  """
+  requirements = []
+  for module, spec in itertools.chain(*[[(x.name, y) for y in x.python_required] for x in modules if hasattr(x, "python_required")]):
+    requirement = Requirement(spec)
+    # Track where dependencies came from
+    requirement.modules = {module}
+    # Attempt to merge this with any other requirements to avoid double-specifying
+    _merge_requirements(requirements, requirement)
+  return requirements
+
+def resolve_module_python_dependencies(modules):
+  # type: (List[libtbx.env_config.module]) -> None
+  """Resolve all python dependencies from the list of modules"""
+  # Check we can do anything here
+  if Requirement is None:
+    _notice("  WARNING: Can not find package requirements tools - pip/setuptools out of date?",
+            "  Please update pip and setuptools by running:", "",
+            "    libtbx.python -m pip install pip setuptools --upgrade", "",
+            "  or following the instructions at https://pip.pypa.io/en/stable/installing/")
+    return
+  requirements = collate_python_requirements(modules)
+  # Now we should have an unduplicated set of requirements
+  for requirement in requirements:
+    # Pass everything as the requirement string rather than trying to reconstruct
+    result = require(str(requirement), "")

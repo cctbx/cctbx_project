@@ -17,6 +17,9 @@ import re
 import site
 import sys
 import sysconfig
+
+import libtbx.pkg_utils
+
 op = os.path
 
 if os.environ.get('LIBTBX_WINGIDE_DEBUG'):
@@ -1826,6 +1829,10 @@ selfx:
         source_is_python_exe=True)
     for module in self.module_list:
       module.process_command_line_directories()
+      # Reload the libtbx_config in case dependencies have changed
+      module.process_libtbx_config()
+    # Resolve python dependencies in advance of potential use in refresh scripts
+    libtbx.pkg_utils.resolve_module_python_dependencies(self.module_list)
     for path in self.pythonpath:
       sys.path.insert(0, abs(path))
     for module in self.module_list:
@@ -1859,7 +1866,11 @@ selfx:
     return result
 
 class module:
-
+  """
+  Attributes:
+    python_required (List[str]):
+      List of python package requirement specifiers. Should match PEP508-style.
+  """
   def __init__(self, env, name, dist_path=None, mate_suffix="adaptbx"):
     self.env = env
     self.mate_suffix = mate_suffix
@@ -1874,6 +1885,7 @@ class module:
       self.names = [name, name + mate_suffix]
       if (dist_path is not None):
         self.dist_paths = [dist_path, None]
+    self.python_required = []
 
   def names_active(self):
     for name,path in zip(self.names, self.dist_paths):
@@ -1908,6 +1920,7 @@ class module:
     self.exclude_from_binary_bundle = []
     dist_paths = []
     self.extra_command_line_locations = []
+    self.python_required = []
     for dist_path in self.dist_paths:
       if (dist_path is not None):
         while True:
@@ -1948,6 +1961,7 @@ class module:
             "modules_required_for_build", []))
           self.required_for_use.extend(config.get(
             "modules_required_for_use", []))
+          self.python_required.extend(config.get("python_required", []))
           self.optional.extend(config.get(
             "optional_modules", []))
           self.optional.extend(
