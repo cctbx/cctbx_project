@@ -11,7 +11,7 @@ def get_run_path(rootpath, trial, rungroup, run):
   try:
     return os.path.join(rootpath, "r%04d"%int(run.run), "%03d_rg%03d"%(trial.trial, rungroup.id))
   except ValueError:
-    return os.path.join(rootpath, "r%s"%run.run, "%03d_rg%03d"%(trial.trial, rungroup.id))
+    return os.path.join(rootpath, run.run, "%03d_rg%03d"%(trial.trial, rungroup.id))
 
 def get_db_connection(params, block=True):
   if params.db.password is None:

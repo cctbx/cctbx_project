@@ -525,7 +525,7 @@ class AdvancedSettingsDialog(BaseDialog):
     choices = ['python', 'lsf', 'mpi', 'sge', 'pbs', 'custom']
     self.mp_option = gctr.ChoiceCtrl(self,
                                      label='Multiprocessing:',
-                                     label_size=(180, -1),
+                                     label_size=(200, -1),
                                      label_style='bold',
                                      choices=choices)
     self.mp_sizer.Add(self.mp_option, flag=wx.EXPAND | wx.ALL, border=10)
@@ -540,7 +540,7 @@ class AdvancedSettingsDialog(BaseDialog):
                 'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
       self.queue = gctr.ChoiceCtrl(self,
                                    label='Queue:',
-                                   label_size=(180, -1),
+                                   label_size=(200, -1),
                                    label_style='bold',
                                    choices=queues)
       self.Bind(wx.EVT_CHOICE, self.onQueueChoice, self.queue.ctr)
@@ -552,7 +552,7 @@ class AdvancedSettingsDialog(BaseDialog):
 
       self.nproc = gctr.SpinCtrl(self,
                                  label='Number of processors:',
-                                 label_size=(180, -1),
+                                 label_size=(200, -1),
                                  label_style='normal',
                                  ctrl_size=(100, -1),
                                  ctrl_value='%d'%params.mp.nproc,
@@ -562,31 +562,39 @@ class AdvancedSettingsDialog(BaseDialog):
     else:
       # Queue
       self.queue = gctr.TextButtonCtrl(self,
-                                       label='Queue',
+                                       label='Queue:',
                                        label_style='bold',
-                                       label_size=(300, -1),
-                                       value=self.params.mp.queue)
+                                       label_size=(200, -1),
+                                       value=self.params.mp.queue \
+                                             if params.mp.queue is not None else '')
       self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
 
       self.nproc = gctr.SpinCtrl(self,
                                  label='Total number of processors:',
-                                 label_size=(180, -1),
+                                 label_size=(240, -1),
                                  label_style='normal',
                                  ctrl_size=(100, -1),
                                  ctrl_value='%d'%params.mp.nproc,
                                  ctrl_min=1,
                                  ctrl_max=1000)
       self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
-      #self.nproc_per_node = gctr.SpinCtrl(self,
-      #                                    label='Number of processors per node:',
-      #                                    label_size=(180, -1),
-      #                                    label_style='normal',
-      #                                    ctrl_size=(100, -1),
-      #                                    ctrl_value='%d'%params.mp.nproc_per_node,
-      #                                    ctrl_min=1,
-      #                                    ctrl_max=1000)
-      #self.mp_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
+      self.nproc_per_node = gctr.SpinCtrl(self,
+                                          label='Number of processors per node:',
+                                          label_size=(240, -1),
+                                          label_style='normal',
+                                          ctrl_size=(100, -1),
+                                          ctrl_value='%d'%params.mp.nproc_per_node,
+                                          ctrl_min=1,
+                                          ctrl_max=1000)
+      self.mp_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
 
+      self.env_script = gctr.TextButtonCtrl(self,
+                                       label='Environment setup script:',
+                                       label_style='bold',
+                                       label_size=(200, -1),
+                                       value=self.params.mp.env_script[0] \
+                                             if len(params.mp.env_script) > 0 else '')
+      self.mp_sizer.Add(self.env_script, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -635,7 +643,7 @@ class AdvancedSettingsDialog(BaseDialog):
     img_types = ['corrected', 'raw']
     self.avg_img_type = gctr.ChoiceCtrl(self,
                                         label='Avg. Image Type:',
-                                        label_size=(180, -1),
+                                        label_size=(200, -1),
                                         label_style='bold',
                                         ctrl_size=(200, -1),
                                         choices=img_types)
@@ -690,7 +698,8 @@ class AdvancedSettingsDialog(BaseDialog):
       self.params.mp.queue = self.queue.ctr.GetStringSelection()
     else:
       self.params.mp.queue = self.queue.ctr.GetValue()
-      #self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
+      self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
+      self.params.mp.env_script = [self.env_script.ctr.GetValue()]
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
     self.params.average_raw_data = self.avg_img_type.ctr.GetStringSelection() == 'raw'
     e.Skip()

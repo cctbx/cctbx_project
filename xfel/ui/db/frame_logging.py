@@ -30,9 +30,14 @@ class DialsProcessorWithLogging(Processor):
     imageset = sets[0]
     assert len(imageset) == 1
     format_obj = imageset.data().reader().format_class._current_instance_ # XXX
-    run = format_obj.get_run_from_index(imageset.indices()[0])
-    timestamp = format_obj.get_psana_timestamp(imageset.indices()[0])
-    return run.run(), timestamp
+    try: # XTC specific version
+      run = format_obj.get_run_from_index(imageset.indices()[0])
+      timestamp = format_obj.get_psana_timestamp(imageset.indices()[0])
+      return run.run(), timestamp
+    except AttributeError: # General version
+      run = self.params.input.run_num
+      timestamp = str(imageset.indices()[0])
+      return run, timestamp
 
   def pre_process(self, datablock):
     super(DialsProcessorWithLogging, self).pre_process(datablock)

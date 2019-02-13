@@ -150,13 +150,13 @@ class JobMonitor(Thread):
     wx.PostEvent(self.parent.run_window.jobs_tab, evt)
 
   def run(self):
-    from xfel.ui.components.submission_tracker import SubmissionTracker
+    from xfel.ui.components.submission_tracker import TrackerFactory
 
     # one time post for an initial update
     self.post_refresh()
 
     db = xfel_db_application(self.parent.params)
-    tracker = SubmissionTracker(self.parent.params)
+    tracker = TrackerFactory.from_params(self.parent.params)
 
     while self.active:
       self.parent.run_window.jmn_light.change_status('idle')
@@ -1384,7 +1384,10 @@ class RunTab(BaseTab):
     font = self.GetFont()
     dc = wx.ScreenDC()
     dc.SetFont(font)
-    max_width = max([dc.GetTextExtent(str(run))[0] for run in all_runs])
+    if len(all_runs) > 0:
+      max_width = max([dc.GetTextExtent(str(run))[0] for run in all_runs])
+    else:
+      max_width = None
 
     # Update either all or only new runs
     if all:
@@ -3002,11 +3005,12 @@ class TrialPanel(wx.Panel):
 
 class RunEntry(wx.Panel):
   ''' Adds run row to table, with average and view buttons'''
-  def __init__(self, parent, run, params, label_width = 60):
+  def __init__(self, parent, run, params, label_width = None):
     self.run = run
     self.params = params
 
     wx.Panel.__init__(self, parent=parent)
+    if label_width is None: label_width = 60
 
     self.sizer = wx.FlexGridSizer(1, 4, 0, 10)
     run_no = wx.StaticText(self, label=str(run),
