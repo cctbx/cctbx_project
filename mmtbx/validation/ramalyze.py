@@ -727,16 +727,15 @@ class ramachandran_plot_mixin(graphics.rotarama_plot_mixin):
   extent = [-180,180,-180,180]
 
   def set_labels(self, y_marks=()):
-    axes = self.plot.get_axes()
-    axes.set_xlabel("Phi")
-    axes.set_xticks([-120,-60,0,60,120])
-    # axes.set_xticks([-160, -140, -120, -100, -80, -60, -40, -20, 0, 20, 40, 60, 80, 100, 120, 140, 160])
-    axes.set_ylabel("Psi")
-    axes.set_yticks([-120,-60,0,60,120])
-    # axes.set_yticks([-160, -140, -120, -100, -80, -60, -40, -20, 0, 20, 40, 60, 80, 100, 120, 140, 160])
-    axes.set_ylim((-182,182))
-    axes.set_xlim((-182,182))
-    # axes.grid(which='both', color='lime', linestyle='-', linewidth=2)
+    self.plot.set_xlabel("Phi")
+    self.plot.set_xticks([-120,-60,0,60,120])
+    # self.plot.set_xticks([-160, -140, -120, -100, -80, -60, -40, -20, 0, 20, 40, 60, 80, 100, 120, 140, 160])
+    self.plot.set_ylabel("Psi")
+    self.plot.set_yticks([-120,-60,0,60,120])
+    # self.plot.set_yticks([-160, -140, -120, -100, -80, -60, -40, -20, 0, 20, 40, 60, 80, 100, 120, 140, 160])
+    self.plot.set_ylim((-182,182))
+    self.plot.set_xlim((-182,182))
+    # self.plot.grid(which='both', color='lime', linestyle='-', linewidth=2)
 
 class ramachandran_plot(data_plots.simple_matplotlib_plot,
                          ramachandran_plot_mixin):

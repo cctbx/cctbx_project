@@ -243,8 +243,8 @@ class HistogramPlot(plots.histogram):
       reference_value=reference_value,
       draw_now=False)
     p.axvline(mean, color='g', linewidth=2)
-    p.get_axes().set_ylabel("Number of structures")
-    p.get_axes().set_xlabel(xlabel)
+    p.set_ylabel("Number of structures")
+    p.set_xlabel(xlabel)
     if (reference_value is not None):
       labels = ["Reference value", "Mean (%.3f)" % mean]
     else :

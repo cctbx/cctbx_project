@@ -203,11 +203,10 @@ class multi_criterion_plot_mixin(object):
       p1.plot(x, y[2], "-", linewidth=1, color="g")
       p1.plot(x, y[3], "-", linewidth=1, color="k")
       p1.set_title("Multi-criterion validation")
-      a1 = p1.get_axes()
-      a1.set_ylabel("Density", fontproperties=self.get_font("label"))
-      a1.set_xlim(-1, 101)
-      a1.set_ylim(rho_min, rho_max)
-      a1.xaxis.set_major_formatter(self.null_fmt)
+      p1.set_ylabel("Density", fontproperties=self.get_font("label"))
+      p1.set_xlim(-1, 101)
+      p1.set_ylim(rho_min, rho_max)
+      p1.xaxis.set_major_formatter(self.null_fmt)
     else:
       n_plots = 1
     # CC
@@ -217,30 +216,27 @@ class multi_criterion_plot_mixin(object):
     else:
       p2 = self.figure.add_subplot(n_plots, 1, n_plots)
     p2.plot(x, y[1], "-", linewidth=1, color="b")
-    a2 = p2.get_axes()
-    a2.set_ylabel("Local real-space CC", fontproperties=self.get_font("label"),
+    p2.set_ylabel("Local real-space CC", fontproperties=self.get_font("label"),
       color='b')
-    a2.set_xlim(-1, 101)
+    p2.set_xlim(-1, 101)
     cc_min, cc_max = self.y_limits["cc"]
-    a2.set_ylim(cc_min, cc_max)
-    a2.get_yticklabels()[-1].set_visible(False)
+    p2.set_ylim(cc_min, cc_max)
+    p2.get_yticklabels()[-1].set_visible(False)
     # B_iso
     p3 = p2.twinx()
     if (plot_density):
       p3.set_position(bot_position)
     p3.plot(x, y[0], "-", linewidth=1, color="r")
-    a3 = p3.get_axes()
-    a3.set_ylabel("B-factor", fontproperties=self.get_font("label"),
+    p3.set_ylabel("B-factor", fontproperties=self.get_font("label"),
       color='r')
     b_min, b_max = self.y_limits["b"]
-    a3.set_ylim(b_min, b_max)
-    a3.get_yticklabels()[-1].set_visible(False)
+    p3.set_ylim(b_min, b_max)
+    p3.get_yticklabels()[-1].set_visible(False)
     # labels
-    a2 = p2.get_axes()
-    a2.set_xlabel("Residue", fontproperties=self.get_font("label"))
-    a2.set_xticks(bin.marks)
-    a2.set_xticklabels(bin.labels, fontproperties=self.get_font("basic"))
-    a2.get_yticklabels()[-1].set_visible(False)
+    p2.set_xlabel("Residue", fontproperties=self.get_font("label"))
+    p2.set_xticks(bin.marks)
+    p2.set_xticklabels(bin.labels, fontproperties=self.get_font("basic"))
+    p2.get_yticklabels()[-1].set_visible(False)
     # rama, rota, cbeta, clash
     y2 = bin.get_outlier_plot_values()
     p2.plot(x, y2[0] * 0.99, "o")

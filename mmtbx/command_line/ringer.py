@@ -297,12 +297,11 @@ else :
           p.axhspan(0.3,1,facecolor="green",alpha=0.5)
           p.axhspan(-1,0.3,facecolor="grey",alpha=0.5)
         p.set_xlim(0,360)
-        ax = p.get_axes()
-        ax.set_ylabel("Rho")
-        ax.set_xlabel("Chi%d" % i)
+        p.set_ylabel("Rho")
+        p.set_xlabel("Chi%d" % i)
         subplots.append(p)
       for p in subplots[:-1] :
-        for label in p.get_axes().get_xticklabels():
+        for label in p.get_xticklabels():
           label.set_visible(False)
       self.canvas.draw()
       self.canvas.Fit()

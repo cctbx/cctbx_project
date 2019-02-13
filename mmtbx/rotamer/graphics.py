@@ -59,20 +59,18 @@ class rotarama_plot_mixin(object):
 class ramachandran_plot_mixin(rotarama_plot_mixin):
   extent = [-179,179,-179,179]
   def set_labels(self, y_marks=()):
-    axes = self.plot.get_axes()
-    axes.set_xlabel("Phi")
-    axes.set_xticks([-120,-60,0,60,120])
-    axes.set_ylabel("Psi")
-    axes.set_yticks([-120,-60,0,60,120])
+    self.plot.set_xlabel("Phi")
+    self.plot.set_xticks([-120,-60,0,60,120])
+    self.plot.set_ylabel("Psi")
+    self.plot.set_yticks([-120,-60,0,60,120])
 
 class rotamer_plot_mixin(rotarama_plot_mixin):
   def set_labels(self, y_marks=(60,180,300)):
-    axes = self.plot.get_axes()
-    axes.set_xlabel("Chi1")
-    axes.set_xticks([60,180,300])
-    axes.set_ylabel("Chi2")
-    axes.set_yticks(list(y_marks))
-    axes.grid(True, color="0.75")
+    self.plot.set_xlabel("Chi1")
+    self.plot.set_xticks([60,180,300])
+    self.plot.set_ylabel("Chi2")
+    self.plot.set_yticks(list(y_marks))
+    self.plot.grid(True, color="0.75")
 
 class ramachandran_plot(simple_matplotlib_plot, ramachandran_plot_mixin):
   def __init__(self, *args, **kwds):

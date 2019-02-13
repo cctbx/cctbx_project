@@ -412,12 +412,11 @@ def get_occupancy(atom_group):
 # GRAPHICS
 class rotamer_plot_mixin(graphics.rotarama_plot_mixin):
   def set_labels(self, y_marks=(60,180,300)):
-    axes = self.plot.get_axes()
-    axes.set_xlabel("Chi1")
-    axes.set_xticks([60,180,300])
-    axes.set_ylabel("Chi2")
-    axes.set_yticks(list(y_marks))
-    axes.grid(True, color="0.75")
+    self.plot.set_xlabel("Chi1")
+    self.plot.set_xticks([60,180,300])
+    self.plot.set_ylabel("Chi2")
+    self.plot.set_yticks(list(y_marks))
+    self.plot.grid(True, color="0.75")
 
 class rotamer_plot(data_plots.simple_matplotlib_plot, rotamer_plot_mixin):
   def __init__(self, *args, **kwds):

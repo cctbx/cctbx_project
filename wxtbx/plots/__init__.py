@@ -309,8 +309,8 @@ class iotbx_data_plot_base(plot_container):
           self.p.axvline(x=x, linewidth=1)
     self.format_labels()
     if show_grid :
-      self.p.get_axes().grid(True, color="0.75")
-    self.p.get_axes().set_autoscale_on(True)
+      self.p.grid(True, color="0.75")
+    self.p.set_autoscale_on(True)
     self.p.set_title(graph.name, fontproperties=self.get_font("title"),
       horizontalalignment=self.title_alignment)
     self.canvas.draw()
@@ -319,12 +319,12 @@ class iotbx_data_plot_base(plot_container):
   def format_x_axis(self):
     if self.tables[0].x_is_inverse_d_min :
       xdata = self.tables[0].get_x_as_resolution()
-      self.p.get_axes().set_xlabel("Resolution",
+      self.p.set_xlabel("Resolution",
         fontproperties=self.get_font("axis_label"))
       if (getattr(self.tables[0], "force_exact_x_labels", False)):
         xticks_ = self.tables[0].get_x_values()
       else :
-        xticks_ = self.p.get_axes().get_xticks()
+        xticks_ = self.p.get_xticks()
       n_skip = max(1, ifloor(len(xticks_) / 10))
       xticks = []
       xticklabels = []
@@ -341,32 +341,31 @@ class iotbx_data_plot_base(plot_container):
         else : # FIXME?
           xticklabels.append("")
         k += n_skip
-      self.p.get_axes().set_xticks(xticks)
-      self.p.get_axes().set_xticklabels(xticklabels)
+      self.p.set_xticks(xticks)
+      self.p.set_xticklabels(xticklabels)
     else :
       if self.graph.x_axis_label is not None :
-        self.p.get_axes().set_xlabel(self.graph.x_axis_label,
+        self.p.set_xlabel(self.graph.x_axis_label,
           fontproperties=self.get_font("axis_label"))
       else :
-        self.p.get_axes().set_xlabel(self.graph.x_label,
+        self.p.set_xlabel(self.graph.x_label,
           fontproperties=self.get_font("axis_label"))
-    for ticklabel in self.p.get_axes().get_xticklabels():
+    for ticklabel in self.p.get_xticklabels():
       ticklabel.set_fontproperties(self.get_font("value_label"))
 
   def axvline(self, x, **kwargs):
-    axes = self.p#.get_axes()
     if self.tables[0].x_is_inverse_d_min :
-      axes.axvline(x=(1.0 / (x**2)), **kwargs)
+      self.p.axvline(x=(1.0 / (x**2)), **kwargs)
     else :
-      axes.axvline(x=x, **kwargs)
+      self.p.axvline(x=x, **kwargs)
     self.canvas.draw()
     self.parent.Refresh()
 
   def format_y_axis(self):
-    for ticklabel in self.p.get_axes().get_yticklabels():
+    for ticklabel in self.p.get_yticklabels():
       ticklabel.set_fontproperties(self.get_font("value_label"))
     if self.graph.y_axis_label is not None :
-      self.p.get_axes().set_ylabel(self.graph.y_axis_label,
+      self.p.set_ylabel(self.graph.y_axis_label,
           fontproperties=self.get_font("axis_label"))
 
   def format_labels(self):
@@ -377,9 +376,9 @@ class iotbx_data_plot_base(plot_container):
 
   def show_grid(self, show=True):
     if show :
-      self.p.get_axes().grid(True, color="0.75")
+      self.p.grid(True, color="0.75")
     else :
-      self.p.get_axes().grid(False)
+      self.p.grid(False)
     self.canvas.draw()
     self.parent.Refresh()
 
