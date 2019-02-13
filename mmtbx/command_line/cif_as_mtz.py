@@ -179,6 +179,54 @@ def process_files(file_name,
     mtz_object.write(file_name = output_file_name)
     return mtz_object.n_reflections()
 
+def get_label(miller_array, output_r_free_label):
+  label = None
+  for l in miller_array.info().labels:
+    if ('_meas' in l):
+      if miller_array.is_xray_amplitude_array():
+        label = "FOBS"
+      elif miller_array.is_xray_intensity_array():
+        label = "IOBS"
+      elif l.endswith(".phase_meas"):
+        label = "PHIM"
+      break
+    elif ("_calc" in l):
+      if miller_array.is_xray_amplitude_array():
+        label = "FC"
+      elif miller_array.is_xray_intensity_array():
+        label = "ICALC"
+      elif l.endswith(".F_calc"):
+        label = "FC"
+      elif l.endswith(".phase_calc"):
+        label = "PHIC"
+      break
+    elif miller_array.anomalous_flag():
+      if miller_array.is_xray_amplitude_array():
+        label = "F"
+      elif miller_array.is_xray_intensity_array():
+        label = "I"
+      break
+    elif 'status' in l or '_free' in l:
+      label = output_r_free_label
+      break
+    elif miller_array.is_hendrickson_lattman_array():
+      label = "HL"
+    elif (miller_array.is_complex_array()):
+      if (l.endswith("DELFWT")):
+        label = "DELFWT"
+        break
+      elif (l.endswith("FWT")):
+        label = "FWT"
+        break
+    elif (miller_array.is_real_array()):
+      if ("pdbx_anom_difference" in l):
+        label = "DANO"
+        break
+      elif (l.endswith(".fom")):
+        label = "FOM"
+        break
+  return label
+
 def extract(file_name,
             crystal_symmetry,
             wavelength_id,
@@ -206,54 +254,6 @@ def extract(file_name,
   column_labels = set()
   if (extend_flags):
     map_to_asu = True
-  def get_label(miller_array):
-    label = None
-    for l in miller_array.info().labels:
-      if ('_meas' in l):
-        if miller_array.is_xray_amplitude_array():
-          label = "FOBS"
-        elif miller_array.is_xray_intensity_array():
-          label = "IOBS"
-        elif l.endswith(".phase_meas"):
-          label = "PHIM"
-        break
-      elif ("_calc" in l):
-        if miller_array.is_xray_amplitude_array():
-          label = "FC"
-        elif miller_array.is_xray_intensity_array():
-          label = "ICALC"
-        elif l.endswith(".F_calc"):
-          label = "FC"
-        elif l.endswith(".phase_calc"):
-          label = "PHIC"
-        break
-      elif miller_array.anomalous_flag():
-        if miller_array.is_xray_amplitude_array():
-          label = "F"
-        elif miller_array.is_xray_intensity_array():
-          label = "I"
-        break
-      elif 'status' in l or '_free' in l:
-        label = output_r_free_label
-        break
-      elif miller_array.is_hendrickson_lattman_array():
-        label = "HL"
-      elif (miller_array.is_complex_array()):
-        if (l.endswith("DELFWT")):
-          label = "DELFWT"
-          break
-        elif (l.endswith("FWT")):
-          label = "FWT"
-          break
-      elif (miller_array.is_real_array()):
-        if ("pdbx_anom_difference" in l):
-          label = "DANO"
-          break
-        elif (l.endswith(".fom")):
-          label = "FOM"
-          break
-    return label
-
   for (data_name, miller_arrays) in all_miller_arrays.iteritems():
     for ma in miller_arrays.values():
       other_symmetry = crystal_symmetry
@@ -297,7 +297,7 @@ def extract(file_name,
       ma = ma.customized_copy(
         crystal_symmetry=crystal_symmetry).set_info(ma.info())
       labels = ma.info().labels
-      label = get_label(ma)
+      label = get_label(miller_array=ma, output_r_free_label=output_r_free_label)
       if label is None:
         print >> log, "Can't determine output label for %s - skipping." % \
           ma.info().label_string()

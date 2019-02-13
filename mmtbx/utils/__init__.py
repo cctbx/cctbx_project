@@ -477,12 +477,17 @@ class determine_data_and_flags(object):
     f_obs_fw = None
     if(f_obs.is_xray_intensity_array()):
       if(self.parameters.french_wilson_scale):
-        f_obs_fw = french_wilson.french_wilson_scale(
-          miller_array=f_obs,
-          params=self.parameters.french_wilson,
-          sigma_iobs_rejection_criterion=\
-            self.parameters.sigma_iobs_rejection_criterion,
-          log=self.log)
+        try:
+          f_obs_fw = french_wilson.french_wilson_scale(
+            miller_array=f_obs,
+            params=self.parameters.french_wilson,
+            sigma_iobs_rejection_criterion=\
+              self.parameters.sigma_iobs_rejection_criterion,
+            log=self.log)
+        except Exception, e:
+          print >> self.log, str(e)
+          print >> self.log, "Using alternative Iobs->Fobs conversion."
+          f_obs_fw = f_obs.f_sq_as_f()
         if f_obs_fw is not None:
           f_obs = f_obs_fw
       if (not self.parameters.french_wilson_scale or f_obs_fw is None):

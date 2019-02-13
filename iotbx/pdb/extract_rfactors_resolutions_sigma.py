@@ -95,6 +95,8 @@ class get_r_rfree_sigma(object):
     r1 = line.startswith("REMARK   3   R VALUE            (WORKING SET) ")
     r2 = line.startswith(
       "REMARK   3   R VALUE          (WORKING SET, NO CUTOFF) ")
+    #r3 = line.startswith("REMARK   3   R VALUE     (WORKING + TEST SET)")
+    #return r1 or r2 or r3
     return r1 or r2
 
   def is_FreeRValue(self, line):

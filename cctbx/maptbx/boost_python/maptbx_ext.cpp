@@ -625,6 +625,19 @@ namespace {
       arg("unit_cell"),
       arg("cutoff")));
 
+    def("fit_point_3d_grid_search",
+      (cctbx::cartesian<>(*)
+        (cctbx::cartesian<> const&,
+         af::const_ref<double, af::c_grid<3> > const&,
+         uctbx::unit_cell const&,
+         double const&,
+         double const&)) fit_point_3d_grid_search, (
+      arg("site_cart"),
+      arg("map_data"),
+      arg("unit_cell"),
+      arg("amplitude"),
+      arg("increment")));
+
     def("sharpen",
       (void(*)
         (af::ref<double, af::c_grid<3> >,
