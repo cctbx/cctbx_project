@@ -7,6 +7,8 @@ class JobStopper(object):
     self.queueing_system = queueing_system
     if self.queueing_system in ["mpi", "lsf"]:
       self.command = "bkill %s"
+    elif self.queueing_system == 'pbs':
+      self.command = "qdel %s"
     else:
       raise NotImplementedError("job stopper not implemented for %s queueing system" \
       % self.queueing_system)
@@ -25,13 +27,18 @@ class QueueInterrogator(object):
     self.queueing_system = queueing_system
     if self.queueing_system in ["mpi", "lsf"]:
       self.command = "bjobs %s | grep %s | awk '{ print $3 }'"
+    elif self.queueing_system == 'pbs':
+      self.command = "qstat -H %s | tail -n 1 | awk '{ print $10 }'"
     else:
       raise NotImplementedError(
       "queue interrogator not implemented for %s queueing system"%self.queueing_system)
 
   def query(self, submission_id):
-    result = easy_run.fully_buffered(command=self.command % \
-      (submission_id, submission_id))
+    if self.queueing_system in ["mpi", "lsf"]:
+      result = easy_run.fully_buffered(command=self.command % \
+        (submission_id, submission_id))
+    elif self.queueing_system == 'pbs':
+      result = easy_run.fully_buffered(command=self.command%submission_id)
     status = "\n".join(result.stdout_lines)
     error = "\n".join(result.stderr_lines)
     if error != "" and not "Warning: job being submitted without an AFS token." in error:
@@ -47,7 +54,7 @@ class LogReader(object):
   log file termination, and returns an error message if the log file cannot be found or read."""
   def __init__(self, queueing_system):
     self.queueing_system = queueing_system
-    if self.queueing_system in ["mpi", "lsf"]:
+    if self.queueing_system in ["mpi", "lsf", "pbs"]:
       self.command = "tail -17 %s | head -1"
     else:
       raise NotImplementedError(
@@ -70,6 +77,10 @@ class SubmissionTracker(object):
     self.interrogator = QueueInterrogator(self.queueing_system)
     self.reader = LogReader(self.queueing_system)
   def track(self, submission_id, log_path):
+    raise NotImplementedError("Override me!")
+
+class LSFSubmissionTracker(SubmissionTracker):
+  def track(self, submission_id, log_path):
     from xfel.ui.db.job import known_job_statuses
     if submission_id is None:
       return "UNKWN"
@@ -84,3 +95,25 @@ class SubmissionTracker(object):
       return status
     else:
       print "Found an unknown status", status
+
+class PBSSubmissionTracker(SubmissionTracker):
+  def track(self, submission_id, log_path):
+    if submission_id is None:
+      return "UNKWN"
+    status = self.interrogator.query(submission_id)
+    if status == "F":
+      return "DONE"
+    elif status in ["Q", "H", "S"]:
+      return "PEND"
+    elif status in ["R", "T", "W", "E"]:
+      return "RUN"
+    else:
+      print "Found an unknown status", status
+
+class TrackerFactory(object):
+  @staticmethod
+  def from_params(params):
+    if params.mp.method in ['mpi', 'lsf']:
+      return LSFSubmissionTracker(params)
+    elif params.mp.method == 'pbs':
+      return PBSSubmissionTracker(params)

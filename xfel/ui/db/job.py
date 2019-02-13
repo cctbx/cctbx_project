@@ -176,7 +176,7 @@ class Job(db_proxy):
 # Support classes and functions for job submission
 
 class _job(object):
-  """Used to represent a job that may not have been submitted into the cluseter or database  yet"""
+  """Used to represent a job that may not have been submitted into the cluster or database yet"""
   def __init__(self, trial, rungroup, run):
     self.trial = trial
     self.rungroup = rungroup
@@ -224,12 +224,12 @@ def submit_job(app, job):
   configs_dir = os.path.join(settings_dir, "cfgs")
   if not os.path.exists(configs_dir):
     os.makedirs(configs_dir)
-  try:
+  if app.params.facility.name == 'lcls':
     identifier_string = "%s_%s_r%04d_t%03d_rg%03d"% \
-      (app.params.facility.lcls.experiment, app.params.experiment_tag, int(job.run.run), job.trial.trial, job.rungroup.id) # LCLS specific parameter
-  except ValueError:
-    identifier_string = "%s_%s_r%s_t%03d_rg%03d"% \
-      (app.params.facility.lcls.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id) # LCLS specific parameter
+      (app.params.facility.lcls.experiment, app.params.experiment_tag, int(job.run.run), job.trial.trial, job.rungroup.id)
+  else:
+    identifier_string = "%s_%s_t%03d_rg%03d"% \
+      (app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id)
   target_phil_path = os.path.join(configs_dir, identifier_string + "_params.phil")
   dispatcher = app.params.dispatcher
 
@@ -311,7 +311,9 @@ def submit_job(app, job):
     experiment_tag            = app.params.experiment_tag,
     calib_dir                 = job.rungroup.calib_dir,
     nproc                     = app.params.mp.nproc,
+    nproc_per_node            = app.params.mp.nproc_per_node,
     queue                     = app.params.mp.queue,
+    env_script                = app.params.mp.env_script[0] if len(app.params.mp.env_script) > 0 else None,
     method                    = app.params.mp.method,
     target                    = target_phil_path,
     host                      = app.params.db.host,
@@ -350,25 +352,27 @@ def submit_job(app, job):
       trial_params.spotfinder.lookup.mask = job.rungroup.untrusted_pixel_mask_path
       trial_params.integration.lookup.mask = job.rungroup.untrusted_pixel_mask_path
 
-      locator_path = os.path.join(configs_dir, identifier_string + ".loc")
-      locator = open(locator_path, 'w')
-      locator.write("experiment=%s\n"%app.params.facility.lcls.experiment) # LCLS specific parameter
-      locator.write("run=%s\n"%job.run.run)
-      locator.write("detector_address=%s\n"%job.rungroup.detector_address)
+      if app.params.facility.name == 'lcls':
+        locator_path = os.path.join(configs_dir, identifier_string + ".loc")
+        locator = open(locator_path, 'w')
+        locator.write("experiment=%s\n"%app.params.facility.lcls.experiment) # LCLS specific parameter
+        locator.write("run=%s\n"%job.run.run)
+        locator.write("detector_address=%s\n"%job.rungroup.detector_address)
 
-      if image_format == "cbf":
-        if mode == 'rayonix':
-          from xfel.cxi.cspad_ana import rayonix_tbx
-          pixel_size = rayonix_tbx.get_rayonix_pixel_size(job.rungroup.binning)
-          extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-job.rungroup.beamx * pixel_size,
-                                                                                            job.rungroup.beamy * pixel_size,
-                                                                                           -job.rungroup.detz_parameter))
-          locator.write("rayonix.bin_size=%s\n"%job.rungroup.binning)
-        elif mode == 'cspad':
-          locator.write("cspad.detz_offset=%s\n"%job.rungroup.detz_parameter)
-      locator.close()
-      d['locator'] = locator_path
-
+        if image_format == "cbf":
+          if mode == 'rayonix':
+            from xfel.cxi.cspad_ana import rayonix_tbx
+            pixel_size = rayonix_tbx.get_rayonix_pixel_size(job.rungroup.binning)
+            extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-job.rungroup.beamx * pixel_size,
+                                                                                              job.rungroup.beamy * pixel_size,
+                                                                                             -job.rungroup.detz_parameter))
+            locator.write("rayonix.bin_size=%s\n"%job.rungroup.binning)
+          elif mode == 'cspad':
+            locator.write("cspad.detz_offset=%s\n"%job.rungroup.detz_parameter)
+        locator.close()
+        d['locator'] = locator_path
+      else:
+        d['locator'] = None
 
     if job.rungroup.two_theta_low is not None or job.rungroup.two_theta_high is not None:
       try:
@@ -458,4 +462,7 @@ def submit_job(app, job):
   phil.close()
 
   from xfel.command_line.cxi_mpi_submit import Script as submit_script
-  return submit_script().run([submit_phil_path])
+  args = [submit_phil_path]
+  if app.params.facility.name != 'lcls':
+    args.append(job.run.path)
+  return submit_script().run(args)
