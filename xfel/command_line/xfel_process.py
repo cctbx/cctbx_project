@@ -6,19 +6,22 @@ from __future__ import division
 
 help_message = '''
 
-See dials.stills_process.
+See dials.stills_process. This version adds mysql database logging for each event.
 
 '''
 
 from libtbx.phil import parse
 control_phil_str = '''
   input {
+    run_num = None
+      .type = str
+      .help = Run name (not necessarily a number)
     trial = None
       .type = int
-      .help = Optional. Trial number for this run.
+      .help = Trial number for this run.
     rungroup = None
       .type = int
-      .help = Optional. Useful for organizing runs with similar parameters into logical \
+      .help = Useful for organizing runs with similar parameters into logical \
               groupings.
    }
 '''
