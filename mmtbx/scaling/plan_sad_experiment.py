@@ -266,8 +266,17 @@ def get_fp_fdp(atom_type=None,wavelength=None,out=sys.stdout):
   try:
     table = sasaki.table(atom_type)
     fp_fdp = table.at_angstrom(wavelength)
-  except ValueError :
-    raise Sorry("Unable to get scattering factors for %s" %(atom_type))
+  except Exception:
+    return None
+#
+  if not fp_fdp.is_valid():
+    from cctbx.eltbx import henke
+    try:
+      table = henke.table(atom_type)
+      fp_fdp = table.at_angstrom(wavelength)
+    except Exception:
+      return None
+    #print "Using Henke tables for scattering factors"
   if fp_fdp.is_valid():
     return fp_fdp
   else:
@@ -282,7 +291,7 @@ def get_fo(atom_type=None,wavelength=None,out=sys.stdout):
     table = sasaki.table(atom_type)
     fo=table.atomic_number()
   except ValueError :
-    ab=b
+    #ab=b
     raise Sorry("Unable to get scattering factors for %s" %(atom_type))
   return fo
 
