@@ -8,7 +8,7 @@ import os
 
 mp_phil_str = '''
   mp {
-    method = *lsf sge pbs sacla shifter custom
+    method = *lsf sge pbs shifter custom
       .type = choice
       .help = Computing environment
     use_mpi = True
@@ -381,13 +381,6 @@ class get_pbs_submit_command(get_submit_command):
     for arg in self.params.extra_args:
       self.args.append(arg)
 
-class get_sacla_submit_command(get_pbs_submit_command):
-  def customize_for_method(self):
-    if (self.params.nnodes > 1) or (self.params.nproc_per_node > 1):
-      self.params.nproc = self.params.nnodes * self.params.nproc_per_node
-    if self.params.use_mpi:
-      self.command = "/home/jkern/sources/xfel_june18/SACLA_june18/openmpi-3.1.0/build/bin/mpirun -n %d %s mp.method=mpi" % (self.params.nproc, self.command)
-
 class get_shifter_submit_command(get_submit_command):
 
   def customize_for_method(self):
@@ -541,8 +534,6 @@ def get_submit_command_chooser(command, submit_path, stdoutdir, params,
     choice = get_sge_submit_command
   elif params.method == "pbs":
     choice = get_pbs_submit_command
-  elif params.method == "sacla":
-    choice = get_sacla_submit_command
   elif params.method == "shifter":
     choice = get_shifter_submit_command
   elif params.method == "custom":
