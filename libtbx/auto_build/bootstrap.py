@@ -1059,7 +1059,8 @@ class Builder(object):
 
     # Cleanup
     if cleanup:
-      self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'base_tmp', 'build'])
+      self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'base_tmp', 'build',
+                    'conda_base'])
     else:
       self.cleanup(['dist', 'tests', 'tmp'])
 
@@ -2202,7 +2203,7 @@ class PhenixExternalRegression(PhenixBuilder):
     lt = time.localtime()
     cleaning = ['dist', 'tests', 'doc', 'tmp', 'base_tmp']
     if lt.tm_wday==5: # do a completer build on Saturday night
-      cleaning += ['base', 'base_tmp', 'build']
+      cleaning += ['base', 'base_tmp', 'build', 'conda_base']
     # Preparation
     # AFITT
     if self.subcategory in [None, "afitt"]:
