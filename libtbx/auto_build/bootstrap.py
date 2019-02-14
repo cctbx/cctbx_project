@@ -1428,7 +1428,7 @@ class Builder(object):
     """
     Helper function for determining the location of the conda environment
     """
-    if __name__ == '__main__' and __package__ is None:
+    if __package__ is None:
       root_path = os.path.dirname(os.path.abspath(__file__))
       paths = [root_path,
                os.path.join(root_path, 'modules', 'cctbx_project', 'libtbx',
@@ -1486,7 +1486,7 @@ class Builder(object):
       def m_get_conda_python(self):
         m_conda_python = os.path.join('bin', 'python')
         if self.isPlatformWindows():
-          m_conda_python = os.path.join('python.exe')
+          m_conda_python = self.op.join('python.exe')
         elif self.isPlatformMacOSX():
           m_conda_python = os.path.join('python.app', 'Contents',
                                         'MacOS', 'python')
@@ -1500,7 +1500,7 @@ class Builder(object):
 
       # (case 1)
       if self.use_conda == '' and conda_env is None:
-        conda_python = os.path.join(os.path.join('..', 'conda_base'),
+        conda_python = self.op.join('..', 'conda_base',
                                     m_get_conda_python(self))
       # (case 2)
       # conda environment is active, overrides any path provided to --use-conda
