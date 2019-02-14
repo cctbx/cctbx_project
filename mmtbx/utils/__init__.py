@@ -3201,6 +3201,8 @@ class run_reduce_with_timeout(easy_run.fully_buffered):
       stdout_splitlines=True,
       bufsize=-1):
     assert [stdin_lines, file_name].count(None) == 1
+    if stdin_lines is not None and parameters.split()[-1] != '-':
+      raise Sorry(" - should appear at the end of parameters when using stdin_lines mode.")
 
     size_bytes = len(stdin_lines) if stdin_lines is not None else 0
     command_to_run="molprobity.reduce "

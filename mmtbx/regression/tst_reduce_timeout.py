@@ -45,7 +45,7 @@ def exercise(prefix="tst_reduce_timeout_1"):
   rr = run_reduce_with_timeout(
       stdin_lines=model_1yjp,
       file_name=None,
-      parameters="-oh -his -flip -keep -allalt -pen9999",
+      parameters="-oh -his -flip -keep -allalt -pen9999 -",
       override_auto_timeout_with=0.01)
   t1 = time()
   assert t1-t0 < 0.1
