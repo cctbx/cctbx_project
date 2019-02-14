@@ -719,17 +719,19 @@ def get_b_value_anomalous_and_resolution(
 
 def get_dmin_ranges(resolution=None,target_list=[6,5,3,2.5,2,1.5]):
   # get ranges from target_list starting with something near resolution:
-  best_match=None
-  best_dist=None
-  for x in target_list:
-    dist=abs(x-resolution)
-    if best_match is None or dist<best_dist:
-      best_dist=dist
-      best_match=x
+#  best_match=None
+#  best_dist=None
+#  for x in target_list:
+#    dist=abs(x-resolution)
+#    if best_match is None or dist<best_dist:
+#      best_dist=dist
+#      best_match=x
   new_list=[]
   for x in target_list:
-    new_list.append(x)
-    if best_match==x: break
+    if x > resolution:
+      new_list.append(x)
+    #if best_match==x: break
+  new_list.append(resolution)
   return new_list
 
 
