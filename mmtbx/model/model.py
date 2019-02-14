@@ -2445,7 +2445,7 @@ class manager(object):
     new = manager(
       model_input                = self._model_input, # any selection here?
       crystal_symmetry           = self._crystal_symmetry,
-      processed_pdb_file         = self._processed_pdb_file,
+      processed_pdb_file         = None,
       restraint_objects          = self._restraint_objects,
       monomer_parameters         = self._monomer_parameters,
       restraints_manager         = new_restraints_manager,
