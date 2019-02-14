@@ -11,7 +11,6 @@
 from __future__ import absolute_import, division, print_function
 
 import ntpath
-import argparse
 import os
 import os.path
 import posixpath
@@ -29,6 +28,18 @@ import traceback
 import urllib2
 import urlparse
 import zipfile
+
+try:
+  import argparse
+except ImportError:
+  raise RuntimeError("""
+The argparse module is required. If you are using Python 2.6, you may
+need to install it separately. On CentOS 6, you can run
+
+  yum install python-argpase
+
+with administrative privileges.
+""")
 
 windows_remove_list = []
 
