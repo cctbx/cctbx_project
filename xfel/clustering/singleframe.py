@@ -7,7 +7,7 @@ import math
 import logging
 from cctbx.array_family import flex
 from six.moves import cPickle as pickle
-from prime.api import InputFrame
+from api import InputFrame
 logger = logging.getLogger('sf')
 
 class SingleFrame(InputFrame):
