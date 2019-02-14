@@ -61,14 +61,58 @@ def exclude_h_on_coordinated_S(model): # XXX if edits used it should be like in 
     if(els[j] in ["H","D"] and i in sel_s): sel_remove.append(j)
   return model.select(~flex.bool(model.size(), sel_remove))
 
-def add(model, use_neutron_distances=False, adp_scale=1, exclude_water=True):
+aa_codes = [ # XXX PVA: Temporary, ad hoc, remove later!
+"ALA",
+"ARG",
+"ASN",
+"ASP",
+"CYS",
+"GLN",
+"GLU",
+"GLY",
+"HIS",
+"ILE",
+"LEU",
+"LYS",
+"MET",
+"MSE",
+"PHE",
+"PRO",
+"SER",
+"THR",
+"TRP",
+"TYR",
+"VAL"
+]
+
+def add(model,
+        use_neutron_distances=False,
+        adp_scale=1,
+        exclude_water=True,
+        protein_only=False,
+        stop_for_unknowns=True,
+        remove_first=True):
+  if(remove_first):
+    model = model.select(~model.get_hd_selection())
   pdb_hierarchy = model.get_hierarchy()
   mon_lib_srv = model.get_mon_lib_srv()
   get_class = iotbx.pdb.common_residue_names_get_class
+  """
+  for pmodel in pdb_hierarchy.models():
+    for chain in pmodel.chains():
+      for residue_group in chain.residue_groups():
+        for conformer in residue_group.conformers():
+          for residue in conformer.residues():
+            print list(residue.atoms().extract_name())
+  """
+  #XXX This breaks for 1jxt, residue 2, TYR
   for chain in pdb_hierarchy.only_model().chains():
     for rg in chain.residue_groups():
       for ag in rg.atom_groups():
+        #print list(ag.atoms().extract_name())
         if(get_class(name=ag.resname) == "common_water"): continue
+        if(protein_only and
+           not ag.resname.strip().upper() in aa_codes): continue
         actual = [a.name.strip().upper() for a in ag.atoms()]
         mlq = mon_lib_query(residue=ag.resname, mon_lib_srv=mon_lib_srv)
         expected_all = mlq.atom_dict().keys()
@@ -93,12 +137,14 @@ def add(model, use_neutron_distances=False, adp_scale=1, exclude_water=True):
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
   p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   p.pdb_interpretation.use_neutron_distances = use_neutron_distances
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
   #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
   ro = model.get_restraint_objects()
   model = mmtbx.model.manager(
     model_input               = None,
     pdb_hierarchy             = pdb_hierarchy,
     build_grm                 = True,
+    stop_for_unknowns         = stop_for_unknowns,
     crystal_symmetry          = model.crystal_symmetry(),
     restraint_objects         = ro,
     pdb_interpretation_params = p,
