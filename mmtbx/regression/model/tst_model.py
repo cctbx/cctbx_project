@@ -1290,6 +1290,42 @@ END
         cntr+=1
     assert cntr==13
 
+def exercise_8():
+  """
+  Indirectly make sure new model from model.selection() does not inherit
+  pdb_interpretation object as it becomes obsolete as result of selection.
+  """
+  pdb_str = """
+CRYST1   17.862   33.032   12.451  90.00  90.00  90.00 P 21 21 21    0
+HETATM    1  O   MPR A   5      -3.288   3.784  12.142  1.00  0.05           O
+HETATM    2  C1  MPR A   5      -2.721   3.156  13.026  1.00  0.04           C
+HETATM    3  C2  MPR A   5      -3.033   3.296  14.510  1.00  0.05           C
+HETATM    4  C3  MPR A   5      -3.588   4.658  14.899  1.00  0.05           C
+HETATM    5  S3  MPR A   5      -2.358   5.908  15.321  1.00  0.06           S
+HETATM    0  H32 MPR A   5      -4.126   4.992  14.165  1.00  0.05           H
+HETATM    0  H31 MPR A   5      -4.182   4.543  15.657  1.00  0.05           H
+HETATM    0  H22 MPR A   5      -3.673   2.612  14.763  1.00  0.05           H
+HETATM    0  H21 MPR A   5      -2.224   3.129  15.018  1.00  0.05           H
+ATOM     10  N   CYS A   6      -1.838   2.168  12.744  1.00  0.05           N
+ATOM     11  CA  CYS A   6      -1.501   1.856  11.357  1.00  0.04           C
+ATOM     12  C   CYS A   6      -2.711   1.429  10.499  1.00  0.04           C
+ATOM     13  O   CYS A   6      -2.700   1.672   9.296  1.00  0.04           O
+ATOM     14  CB  CYS A   6      -0.431   0.750  11.269  1.00  0.05           C
+ATOM     15  SG  CYS A   6       1.221   1.279  11.825  1.00  0.06           S
+ATOM      0  HA  CYS A   6      -1.159   2.690  10.998  1.00  0.04           H
+ATOM      0  HB2 CYS A   6      -0.716  -0.007  11.804  1.00  0.05           H
+ATOM      0  HB3 CYS A   6      -0.371   0.442  10.351  1.00  0.05           H
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    build_grm   = True,
+    log         = null_out())
+  sel = model.selection(string = "element H and not protein")
+  model = model.select(~sel)
+  sel = model.selection(string="protein")
+  assert model.size() == sel.size(), [model.size(), sel.size()]
+
 def run():
   exercise_00()
   exercise()
@@ -1301,6 +1337,7 @@ def run():
   exercise_5()
   exercise_6()
   exercise_7()
+  exercise_8()
   exercise_from_hierarchy()
   print format_cpu_times()
 
