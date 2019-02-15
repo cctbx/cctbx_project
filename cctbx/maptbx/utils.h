@@ -986,9 +986,11 @@ fit_point_3d_grid_search(
         if(map_value > map_best) {
           map_best = map_value;
           site_cart_result = site_cart_;
-        }
-      }
-    }
+        }}}}
+  if(std::abs(std::abs(site_cart_result[0]-x)-std::abs(amplitude))<1.e-4 ||
+     std::abs(std::abs(site_cart_result[1]-y)-std::abs(amplitude))<1.e-4 ||
+     std::abs(std::abs(site_cart_result[2]-z)-std::abs(amplitude))<1.e-4) {
+    site_cart_result = site_cart;
   }
   return site_cart_result;
 }
