@@ -180,7 +180,6 @@ class manager(object):
       log = None,
       expand_with_mtrix = True,
       # for GRM, selections etc. Do not use when creating an object.
-                     processed_pdb_file = None, # Temporary, for refactoring phenix.refine
                      xray_structure = None, # remove later
                      restraints_manager = None, # remove later
                      tls_groups = None,         # remove later? ! used in def select()
@@ -200,7 +199,7 @@ class manager(object):
     self._shift_manager = None # mmtbx.utils.extract_box_around_model_and_map
 
     self._stop_for_unknowns = stop_for_unknowns
-    self._processed_pdb_file = processed_pdb_file
+    self._processed_pdb_file = None
     self._processed_pdb_files_srv = None
     self._crystal_symmetry = crystal_symmetry
 
@@ -2445,7 +2444,6 @@ class manager(object):
     new = manager(
       model_input                = self._model_input, # any selection here?
       crystal_symmetry           = self._crystal_symmetry,
-      processed_pdb_file         = None,
       restraint_objects          = self._restraint_objects,
       monomer_parameters         = self._monomer_parameters,
       restraints_manager         = new_restraints_manager,
