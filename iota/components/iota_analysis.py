@@ -5,7 +5,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 01/30/2018
+Last Changed: 02/15/2019
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -339,6 +339,8 @@ class Analyzer(object):
             self.info.stats[key]['lst'].append(stat_tuple)
 
             if self.gui_mode:
+              if key not in self.info.unplotted_stats:
+                self.info.unplotted_stats[key] = dict(lst=[])
               self.info.unplotted_stats[key]['lst'].append(stat_tuple)
 
         # Unit cells and space groups (i.e. cluster iterable)

@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 01/30/2019
+Last Changed: 02/15/2019
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -639,22 +639,31 @@ class InputFinder():
             contents = [contents]
           if 'object' in ctype:
             input_dict['objectfiles'].extend(contents)
-            input_dict['objectpaths'].append(os.path.abspath(path))
+            if 'folder' in ctype:
+              input_dict['objectpaths'].append(os.path.abspath(path))
+            else:
+              input_dict['objectpaths'].append(os.path.abspath(os.path.dirname(path)))
           elif 'image' in ctype:
             input_dict['imagefiles'].extend(contents)
-            input_dict['imagepaths'].append(os.path.abspath(path))
+            if 'folder' in ctype:
+              input_dict['imagepaths'].append(os.path.abspath(path))
+            else:
+              input_dict['imagepaths'].append(os.path.abspath(os.path.dirname(path)))
           else:
             input_dict['neither'].extend(contents)
             input_dict['badpaths'].append(os.path.abspath(path))
       else:
         input_dict['badpaths'].append(os.path.abspath(path))
 
-      # Resolve duplicates
+      # Make paths unique
       if input_dict['imagefiles']:
         input_dict['imagefiles'] = list(set(input_dict['imagefiles']))
-
       if input_dict['objectfiles']:
         input_dict['objectfiles'] = list(set(input_dict['objectfiles']))
+      if input_dict['imagepaths']:
+        input_dict['imagepaths'] = list(set(input_dict['imagepaths']))
+      if input_dict['objectpaths']:
+        input_dict['objectpaths'] = list(set(input_dict['objectpaths']))
 
     return input_dict
 

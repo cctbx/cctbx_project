@@ -6,7 +6,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 01/30/2019
+Last Changed: 02/15/2019
 Description : IOTA GUI Windows / frames
 '''
 
@@ -148,7 +148,7 @@ class InputWindow(IOTABasePanel):
 class MainWindow(IOTABaseFrame):
   """ Frame housing the entire app; all windows open from this one """
 
-  def __init__(self, parent, id, title, phil=None, msg=None):
+  def __init__(self, parent, id, title, input_dict=None, phil=None, msg=None):
     IOTABaseFrame.__init__(self, parent, id, title, size=(800, 500))
     self.parent = parent
     self.iota_phil = phil
@@ -213,7 +213,7 @@ class MainWindow(IOTABaseFrame):
     self.input_window = InputWindow(self)
     self.main_sizer.Add(self.input_window, 1, flag=wx.ALL|wx.EXPAND, border=10)
     self.main_sizer.Add((-1, 20))
-    self.update_input_window(messages=msg)
+    self.update_input_window(input_dict=input_dict, messages=msg)
 
     # Toolbar button bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
@@ -556,7 +556,7 @@ class MainWindow(IOTABaseFrame):
     self.gparams.mp.n_processors = multiprocessing.cpu_count() / 2
     self.update_input_window()
 
-  def update_input_window(self, messages=None):
+  def update_input_window(self, input_dict=None, messages=None):
     """ Update input window with parameters in PHIL """
 
     # Report any errors, warnings, or other messages
@@ -582,6 +582,20 @@ class MainWindow(IOTABaseFrame):
     for inp_path in self.gparams.input:
       if inp_path is not None:
         self.input_window.input.add_item(inp_path)
+
+    if input_dict:
+      if len(input_dict['imagepaths']) >= 10:
+        n_input = len([i for i in os.listdir(self.gparams.output)
+                       if i.startswith('input_')])
+        input_fn = "input_{:04d}.lst".format(n_input+1)
+        input_list_file = os.path.join(self.gparams.output, input_fn)
+        with open(input_list_file, 'w') as lf:
+          for f in input_dict['imagefiles']:
+            lf.write('{}\n'.format(f))
+        self.input_window.input.add_item(input_list_file)
+      else:
+        for path in input_dict['imagepaths']:
+          self.input_window.input.add_item(path)
 
 
   def onQuit(self, e):

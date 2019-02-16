@@ -1,9 +1,17 @@
-IOTA v1.3.002 - tweaks and bugfixes
+IOTA v1.3.003 - tweaks and bugfixes
 
 
 BUGFIXES:
-    - Crystal system filter now works
-    - Integration log now fully written for each individual image
+    - Replaced a .exists check for new output subfolders with a try block to
+      handle concurrency problems
+    - Fixed bug that arises upon an attempt to update a non-existent dictionary
+      entry in runtime analysis
+    - Input path(s) provided in command line when launching GUI are populated in
+      the input widget
+    - Fixed Live PRIME key error
 
 TWEAKS:
-    - Integration log now has the final summary entry
+    - GUI attempts to reconstruct initial input folder paths from args
+     (automatically globbed by argparse)
+    - If > 10 input paths, input is written into a list file, which is then used
+      as then input path.

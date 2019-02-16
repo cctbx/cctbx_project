@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 01/30/2019
+Last Changed: 02/15/2019
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -365,7 +365,7 @@ class PRIMEThread(Thread):
           shutil.copyfile(stat_file, live_prime_info_file)
 
     # Convert space_group_info object to str, to make compatible with JSON
-    if prime_info:
+    if prime_info and 'space_group_info' in prime_info:
       for i in prime_info['space_group_info']:
         sg = str(i).split('(')[0].rstrip(' ')
         idx = prime_info['space_group_info'].index(i)

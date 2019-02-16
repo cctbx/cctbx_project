@@ -205,8 +205,10 @@ class ImageImporterBase():
     # Make paths if they don't exist already
     for path in [self.img_object.obj_path, self.img_object.int_path,
                  self.img_object.log_path, self.img_object.viz_path]:
-      if not os.path.isdir(path):
+      try:
         os.makedirs(path)
+      except OSError:
+        pass
 
     # Populate the 'final' dictionary
     self.img_object.final['final'] = self.img_object.int_file
