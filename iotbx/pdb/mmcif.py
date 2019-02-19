@@ -676,11 +676,19 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         serial_number.append((sn,i))
         coordinates_present.append(
           self.cif_block.get('_struct_ncs_oper.code')[i] == 'given')
-        r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y))[i])
-          for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
+        if len(ncs_oper) > 1:
+          r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y))[i])
+            for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
+        else:
+          r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y)))
+            for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
         rots.append(matrix.sqr(map(float,r)))
-        t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x)[i])
-          for x in '123']
+        if len(ncs_oper) > 1:
+          t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x)[i])
+            for x in '123']
+        else:
+          t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x))
+            for x in '123']
         trans.append(matrix.col(map(float,t)))
     # sort records by serial number
     serial_number.sort()
