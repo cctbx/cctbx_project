@@ -223,6 +223,9 @@ def exercise():
 MTRIX2   1  0.010826 -0.793178  0.608894       -1.51400
 MTRIX3   1 -0.004354  0.608886  0.793246        0.70450
 """)
+  m = mmtbx.model.manager(pdb_inp)
+  xrs = m.get_xray_structure()
+  m.set_xray_structure(xrs)
 
 
 if __name__ == "__main__":

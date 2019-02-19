@@ -3114,6 +3114,10 @@ class manager(object):
       assert len(vals[0]) == len(v), chain_ids_match_dict
     result.reset_i_seq_if_necessary()
     self._pdb_hierarchy = result
+    if self._pdb_hierarchy.models_size() == 1:
+      # Drop model.id if there is only one model.
+      # Otherwise there are problems with set_xray_structure...
+      self._pdb_hierarchy.only_model().id = ""
 
     # Now deal with SS annotations
     ssa = self.get_ss_annotation()
