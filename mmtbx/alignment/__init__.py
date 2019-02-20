@@ -109,6 +109,15 @@ class align(ext.align):
     else:
       masking=len(seq_a)*"b"  #  no masking; standard gap penalty everywhere
 
+    # emergency hack - masking need to be of the same type as seq_a.
+    # here we making array of strings for more than 1 character alignment
+    # e.g. residue names.
+    masking_2 = []
+    if not isinstance(seq_a, basestring):
+      for c in masking:
+        masking_2.append(c)
+      masking = flex.std_string(masking_2)
+
     super(align, self).__init__(
         seq_a=seq_a,
         seq_b=seq_b,

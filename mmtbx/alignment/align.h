@@ -83,22 +83,21 @@ public:
   af::versa<float, af::c_grid<2> > I;
   af::versa<float, af::c_grid<2> > E;
 
-  // XXX skip when passing float array
-  std::string masking_as_character="abcdefghijklmnopqrstuvwxyz";  // a=0 z=25
-
   template <typename DataType>
   // we going to need std::string for sequence alignment
   // and array of strings for atom names alignment af::const_ref<std::string> const&
   align(
       DataType const& seq_a,
       DataType const& seq_b,
-      DataType const& masking,  // XXX replace with float array 
+      DataType const& masking,  // XXX replace with float array
       std::string const& style = "global",
       float gap_opening_penalty=1,
       float gap_extension_penalty=1,
       std::string const& similarity_function="identity")
   {
     using namespace std;
+    // XXX skip when passing float array
+    std::string masking_as_character="abcdefghijklmnopqrstuvwxyz";  // a=0 z=25
     gop = gap_opening_penalty;
     gep = gap_extension_penalty;
     int m = seq_a.size();
@@ -108,7 +107,7 @@ public:
     D.resize(af::c_grid<2>(m+1, n+1), 0);
     I.resize(af::c_grid<2>(m+1, n+1), 0);
     E.resize(af::c_grid<2>(m+1, n+1), 0);
-    float G [m+1] ; // scale on gap penalty at position i for sequence a. 
+    float G [m+1] ; // scale on gap penalty at position i for sequence a.
                     // If all 1 it is standard gap penalty
 
     for (int i=0; i<m+1; i++){
@@ -116,7 +115,7 @@ public:
         G[i]=gap_cost(1);
       } else { // XXX replace with passing float values instead of char
        std::size_t i_scale = masking_as_character.find(masking[i]);
-       G[i] = float(i_scale)*gap_cost(1); // cost of gap at i i_scale bigger 
+       G[i] = float(i_scale)*gap_cost(1); // cost of gap at i i_scale bigger
       }
     }
 
