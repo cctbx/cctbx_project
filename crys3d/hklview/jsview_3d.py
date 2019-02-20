@@ -3,6 +3,7 @@
 #  - cached scenes
 
 from __future__ import division
+from libtbx.math_utils import roundoff
 from cctbx.miller import display
 
 class hklview_3d () :
@@ -18,62 +19,51 @@ class hklview_3d () :
     self.flag_show_fog = True
     self.flag_use_lights = True
     self.flag_use_quadrics = False
-    self.minimum_covering_sphere = None
-    self.spheres_display_list = None
-    self.points_display_list = None
-    self.labels_display_list = None
     self.miller_array = None
     self.d_min = None
     self.scene = None
     self.animation_time = 0
-    #self.fps = gltbx.viewer_utils.fps_monitor()
-    # XXX prevent exception when no data are loaded
-    from scitbx.math import minimum_covering_sphere
-    from scitbx.array_family import flex
-    points = flex.vec3_double([(0.0,0.0,0.0),(1.0,1.0,1.0)])
-    mcs = minimum_covering_sphere(points=points, epsilon=0.1)
-    self.minimum_covering_sphere = mcs
+    self.cameratype = "orthographic"
 
-  def set_miller_array (self, miller_array, zoom=False, merge=None) :
+  def set_miller_array (self, miller_array, merge=None, details="") :
     if (miller_array is None) : return
     self.miller_array = miller_array
     self.merge = merge
     self.d_min = miller_array.d_min()
-    self.construct_reciprocal_space(merge=merge)
+    array_info = miller_array.info()
+    uc = "a=%g b=%g c=%g angles=%g,%g,%g" % miller_array.unit_cell().parameters()
+    print "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
+      % (array_info.label_string(), details, miller_array.indices().size(),
+          miller_array.space_group_info(), uc)
 
+    self.construct_reciprocal_space(merge=merge)
 
 
   def construct_reciprocal_space (self, merge=None) :
     self.scene = display.scene(miller_array=self.miller_array,
       merge=merge,
       settings=self.settings)
-    from scitbx.math import minimum_covering_sphere
-    mcs = minimum_covering_sphere(points=self.scene.points,
-                                  epsilon=0.1)
-    self.minimum_covering_sphere = mcs
-    self.spheres_display_list = None
-    self.points_display_list = None
-    self.labels_display_list = None
     self.rotation_center = (0,0,0)
 
 
   def DrawNGLJavaScript(self):
     if self.miller_array is None :
+      print "A miller array must be selected for drawing"
       return
 
     h_axis = self.scene.axes[0]
     k_axis = self.scene.axes[1]
     l_axis = self.scene.axes[2]
 
-    Hstararrowstart = [-h_axis[0]*100, -h_axis[1]*100, -h_axis[2]*100]
-    Hstararrowend = [h_axis[0]*100, h_axis[1]*100, h_axis[2]*100]
-    Hstararrowtxt  = [h_axis[0]*102, h_axis[1]*102, h_axis[2]*102]
-    Kstararrowstart = [-k_axis[0]*100, -k_axis[1]*100, -k_axis[2]*100]
-    Kstararrowend = [k_axis[0]*100, k_axis[1]*100, k_axis[2]*100]
-    Kstararrowtxt  = [k_axis[0]*102, k_axis[1]*102, k_axis[2]*102]
-    Lstararrowstart = [-l_axis[0]*100, -l_axis[1]*100, -l_axis[2]*100]
-    Lstararrowend = [l_axis[0]*100, l_axis[1]*100, l_axis[2]*100]
-    Lstararrowtxt  = [l_axis[0]*102, l_axis[1]*102, l_axis[2]*102]
+    Hstararrowstart = roundoff( [-h_axis[0]*100, -h_axis[1]*100, -h_axis[2]*100] )
+    Hstararrowend = roundoff( [h_axis[0]*100, h_axis[1]*100, h_axis[2]*100] )
+    Hstararrowtxt  = roundoff( [h_axis[0]*102, h_axis[1]*102, h_axis[2]*102] )
+    Kstararrowstart = roundoff( [-k_axis[0]*100, -k_axis[1]*100, -k_axis[2]*100] )
+    Kstararrowend = roundoff( [k_axis[0]*100, k_axis[1]*100, k_axis[2]*100] )
+    Kstararrowtxt  = roundoff( [k_axis[0]*102, k_axis[1]*102, k_axis[2]*102] )
+    Lstararrowstart = roundoff( [-l_axis[0]*100, -l_axis[1]*100, -l_axis[2]*100] )
+    Lstararrowend = roundoff( [l_axis[0]*100, l_axis[1]*100, l_axis[2]*100] )
+    Lstararrowtxt  = roundoff( [l_axis[0]*102, l_axis[1]*102, l_axis[2]*102] )
 
     arrowstr = """
     // xyz arrows
@@ -96,12 +86,21 @@ class hklview_3d () :
     colors = self.scene.colors
     radii = self.scene.radii * self.settings.scale
     points = self.scene.points
+    data = self.scene.data
+    hkls = self.scene.indices
+    dres = self.scene.work_array.d_spacings().data()
+    colstr = self.scene.miller_array.info().label_string()
     assert (colors.size() == radii.size() == self.scene.points.size())
     shapespherestr = ""
-    for i, hkl in enumerate(points) :
+    for i, hklstars in enumerate(points) :
+      tooltip = "'H,K,L: %s, %s, %s" %(hkls[i][0], hkls[i][1], hkls[i][2])
+      tooltip += "\\ndres: %s" %str(roundoff(dres[i])  )
+      tooltip += "\\n%s: %s" %(colstr, str(roundoff(data[i]) ) )
+      tooltip += "'"
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      shapespherestr += "shape.addSphere( %s , %s, %s, %s);\n" \
-         %(str(list(hkl)), str(list(colors[i])), str(radii[i]), "' '" )
+      shapespherestr += "shape.addSphere( %s, %s, %s, %s);\n" \
+         %(str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
+            str(roundoff(radii[i], 2)), tooltip )
     documentstr = """
     window.addEventListener( 'resize', function( event ){
         stage.handleResize();
@@ -113,6 +112,8 @@ class hklview_3d () :
 
           stage = new NGL.Stage('viewport', { backgroundColor: "grey" });
           var shape = new NGL.Shape('shape');
+          stage.setParameters( { cameraType: "%s" } );
+
 
     %s
 
@@ -124,7 +125,7 @@ class hklview_3d () :
 
      });
 
-    """ % (arrowstr, shapespherestr)
+    """ % (self.cameratype, arrowstr, shapespherestr)
     with open( r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr3.js", "w") as f:
       f.write(documentstr)
 
@@ -145,7 +146,6 @@ class hklview_3d () :
         self.closest_point_i_seq = closest_point_i_seq
     if (self.closest_point_i_seq is not None) :
       self.scene.label_points.add(self.closest_point_i_seq)
-      self.labels_display_list = None
       self.GetParent().update_clicked(index=self.closest_point_i_seq)
       #hkl, d_min, value = self.scene.get_reflection_info(
       #  self.closest_point_i_seq)

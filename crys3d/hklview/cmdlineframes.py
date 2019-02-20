@@ -1,8 +1,40 @@
+
 from __future__ import division
 
 # TODO:
 #  - prompt user for missing symmetry
 #  - cached scenes
+
+
+
+r""" usage:
+
+from crys3d.hklview import cmdlineframes
+myHKLview = cmdlineframes.HKLViewFrame()
+
+myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.tncs.mtz")
+
+myHKLview.set_column(3)
+
+myHKLview.settings.expand_anomalous=True
+myHKLview.update_settings()
+
+myHKLview.set_space_group_choice(3)
+
+myHKLview.viewer.settings.show_missing=True
+myHKLview.update_settings()
+
+myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Phenix\dev-2814-working\modules\phenix_examples\lysozyme-MRSAD\lyso2001_scala1.mtz")
+myHKLview.SetCameraType("perspect")
+
+myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Experiments\CRLF3\DLS20151206CRLF3\5840-F11-X1-Hg-SAD-ONsoak\5840-F11-X1_pk_5_5_1_\xia2\dials-run\DataFiles\mx11235v49_x5840F11X1pk551_free.mtz")
+myHKLview.set_column(4)
+myHKLview.ShowSlice(True, "h", 20)
+
+
+"""
+
+
 
 from crys3d.hklview import jsview_3d
 from cctbx.miller import display
@@ -55,48 +87,11 @@ class settings_window () :
   def clear_reflection_info (self) :
     self.update_reflection_info(None, None, None)
 
-  def update_space_group_choices (self, miller_array) :
-    from cctbx.sgtbx.subgroups import subgroups
-    from cctbx import sgtbx
-    sg_info  = miller_array.space_group_info()
-    subgrs = subgroups(sg_info).groups_parent_setting()
-    choices = []
-    for subgroup in subgrs :
-      subgroup_info = sgtbx.space_group_info(group=subgroup)
-      choices.append(str(subgroup_info))
-    if (str(sg_info) in choices) :
-      current = choices.index(str(sg_info))
-    else :
-      choices.insert(0, str(sg_info))
-      current = 0
-    self.sg_ctrl.SetItems(choices)
-    self.sg_ctrl.SetSelection(current)
-    self._last_sg_sel = str(sg_info)
-
-# XXXXXXXXXXXXXXXXXXXXXX
-# Kau added starts here
-
-  # def update_column_choices (self, array_info,valid_arrays,sel) :
-
-  def update_column_choices (self,array_info,arrays,sel) :
-    choices=[]
-        # print("Kau printing array_info from within function", array_info)
-    for labels in array_info:
-        choices.append(str(labels))
-    self.column_ctrl.SetItems(choices)
-    # for f in valid_arrays:
-    #     print("Kau last array selected is ", valid_arrays)
-    current=sel
-    #self.column_ctrl.SetItems(choices)
-    #self.column_ctrl.SetSelection(current)
-    #self._last_column_sel = str(sel)
-
-# Kau added ends here
-# XXXXXXXXXXXXXXXXXXXXXX
 
 class HKLViewFrame () :
   def __init__ (self, *args, **kwds) :
     self.miller_array = None
+    self.spacegroup_choices = None
     self.settings = display.settings()
     self.viewer = jsview_3d.hklview_3d(self.settings)
     self.viewer.set_miller_array(self.viewer.miller_array)
@@ -131,8 +126,8 @@ class HKLViewFrame () :
         "array unmodified?  (Note that if you do not merge the array, the "+
         "options to expand to P1 or generate Friedel pairs will be be disabled"+
         ", and the 2D view will only show indices present in the file, rather "+
-        "than a full pseudo-precession view.). Y/N?")
-      if (merge.lower() == "y") :
+        "than a full pseudo-precession view.). yes/no?\n")
+      if (merge.lower()[0] == "y") :
         merge = True
         #array = array.merge_equivalents().array().set_info(info)
         details.append("merged")
@@ -140,7 +135,7 @@ class HKLViewFrame () :
       else :
         merge = False
         details.append("unmerged data")
-        self.update_settings_for_unmerged()
+        #self.update_settings_for_unmerged()
         self.settings.expand_to_p1 = False
         self.settings.expand_anomalous = False
     #else :
@@ -171,32 +166,47 @@ class HKLViewFrame () :
   def set_miller_array (self, array) :
     if (array is None) : return
     array, array_info = self.process_miller_array(array)
-    print "Data: %s %s (Space group: %s  Unit Cell: %s" \
-      % (array_info.labels, array_info.details_str, array_info.sg,
-          array_info.uc)
     self.miller_array = array
-    # print("kau this is array ",type(array))
-    self.viewer.set_miller_array(array, zoom=True, merge=array_info.merge)
-
+    self.update_space_group_choices()
+    self.viewer.set_miller_array(array, merge=array_info.merge,
+       details=array_info.details_str)
 
   def update_settings (self, *args, **kwds) :
     if (self.miller_array is None) :
+      print "No miller array has been selected"
       return False
     self.viewer.update_settings(*args, **kwds)
 
-  def set_space_group (self, space_group_info) :
-    # print("kau printing space_group_info ", space_group_info)
+  def update_space_group_choices (self) :
+    from cctbx.sgtbx.subgroups import subgroups
+    from cctbx import sgtbx
+    sg_info = self.miller_array.space_group_info()
+    subgrs = subgroups(sg_info).groups_parent_setting()
+    self.spacegroup_choices = []
+    for i,subgroup in enumerate(subgrs) :
+      subgroup_info = sgtbx.space_group_info(group=subgroup)
+      self.spacegroup_choices.append(subgroup_info)
+      print i, subgroup_info.symbol_and_number()
+    if (sg_info in self.spacegroup_choices) :
+      self.current_spacegroup = self.spacegroup_choices.index(sg_info)
+    else :
+      self.spacegroup_choices.insert(0, sg_info)
+      self.current_spacegroup = sg_info
+
+
+  def set_space_group_choice (self, n) :
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
+    self.current_spacegroup = self.spacegroup_choices[n]
     from cctbx import crystal
     symm = crystal.symmetry(
-      space_group_info=space_group_info,
+      space_group_info= self.current_spacegroup,
       unit_cell=self.miller_array.unit_cell())
     array = self.miller_array.expand_to_p1().customized_copy(
       crystal_symmetry=symm)
     print "MERGING 2"
     array = array.merge_equivalents().array().set_info(self.miller_array.info())
-    self.viewer.set_miller_array(array, zoom=False)
+    self.viewer.set_miller_array(array)
     self.viewer.DrawNGLJavaScript()
 
 #kau added starts here
@@ -225,7 +235,7 @@ class HKLViewFrame () :
       raise Sorry("No data loaded!")
     info = self.miller_array.info()
     self.miller_array = self.miller_array.delete_index(hkl).set_info(info)
-    self.viewer.set_miller_array(self.miller_array, zoom=True)
+    self.viewer.set_miller_array(self.miller_array)
     self.viewer.DrawNGLJavaScript()
 
   def load_reflections_file (self, file_name, set_array=True,
@@ -254,6 +264,8 @@ class HKLViewFrame () :
         array_info.append("%s (%s)" % (labels, desc))
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
+      for i,e in enumerate(array_info):
+        print i, e
       if (len(valid_arrays) == 0) :
         msg = "No arrays of the supported types in this file."
         raise Sorry(msg)
@@ -261,5 +273,44 @@ class HKLViewFrame () :
         if (set_array) :
           self.set_miller_array(valid_arrays[0])
         return valid_arrays[0]
+
+  def SetCameraType(self, camtype="ortho"):
+    if camtype.lower() in "orthographic":
+      self.viewer.cameratype = "orthographic"
+    if camtype.lower() in "perspective":
+      self.viewer.cameratype = "perspective"
+    self.viewer.DrawNGLJavaScript()
+
+
+  def ExpandToP1(self, val=False):
+    self.settings.expand_to_p1 = val
+    self.update_settings()
+
+  def ExpandAnomalous(self, val=False):
+    self.settings.expand_anomalous = val
+    self.update_settings()
+
+  def ShowOnlyMissing(self, val=False):
+    self.settings.show_only_missing = val
+    self.update_settings()
+
+  def ShowMissing(self, val=False):
+    self.settings.show_missing = val
+    self.update_settings()
+
+  def ShowDataOverSigma(self, val=False):
+    self.settings.show_data_over_sigma = val
+    self.update_settings()
+
+  def ShowSystematicAbsences(self, val=False):
+    self.settings.show_systematic_absences = val
+    self.update_settings()
+
+  def ShowSlice(self, val=False, axis="h", index=0):
+    self.settings.slice_mode = val
+    self.settings.slice_axis = axis.lower()
+    self.settings.slice_index = index
+    self.update_settings()
+
 
 
