@@ -817,8 +817,12 @@ class manager(object):
       done.append(ag.resname)
       ccid = mon_lib_srv.get_comp_comp_id_direct(ag.resname.strip())
       if ccid is None:
-        if ag.resname.strip() not in ['DA', 'DC', 'DG', 'DT']:
-          print 'writing mmCIF without restraints for %s' % ag.resname
+        # printing here is highly discouraged because it makes
+        # log and screen output inconsistent in refinement programs.
+        # Need to rethink this idea. Accept log for def model_as_mmcif()?
+        # Is it really necessary to output this?
+        # if ag.resname.strip() not in ['DA', 'DC', 'DG', 'DT']:
+        #   print 'writing mmCIF without restraints for %s' % ag.resname
         continue
       chem_comps.append(ccid.chem_comp)
       restraints['comp_%s' % ag.resname.strip()] = ccid.cif_object
@@ -880,9 +884,15 @@ class manager(object):
         cif_block = hierarchy_to_output.as_cif_block()
 
     if self.get_restraints_manager() is not None:
+      ias_selection = self.get_ias_selection()
+      sites_cart = self.get_sites_cart()
+      atoms = self.get_atoms()
+      if ias_selection and ias_selection.count(True) > 0:
+        sites_cart = sites_cart.select(~ias_selection)
+        atoms = atoms.select(~ias_selection)
       grm_geometry = self.get_restraints_manager().geometry
-      grm_geometry.pair_proxies(self.get_sites_cart())
-      struct_conn_loop = grm_geometry.get_struct_conn_mmcif(self.get_atoms())
+      grm_geometry.pair_proxies(sites_cart)
+      struct_conn_loop = grm_geometry.get_struct_conn_mmcif(atoms)
       cif_block.add_loop(struct_conn_loop)
 
     # outputting HELIX/SHEET records

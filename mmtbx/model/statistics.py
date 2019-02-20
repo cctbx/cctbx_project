@@ -498,8 +498,10 @@ class adp(object):
   def as_cif_block(self, cif_block=None):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
-    cif_block["_refine.B_iso_mean"] = \
-      round_2_for_cif(self._result.overall.mean)
+    if self._result.overall is not None:
+      cif_block["_refine.B_iso_mean"] = round_2_for_cif(self._result.overall.mean)
+    else:
+      cif_block["_refine.B_iso_mean"] = '?'
     return cif_block
 
 class info(object):
