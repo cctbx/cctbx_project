@@ -83,12 +83,16 @@ public:
   af::versa<float, af::c_grid<2> > I;
   af::versa<float, af::c_grid<2> > E;
 
+  // XXX skip when passing float array
+  std::string masking_as_character="abcdefghijklmnopqrstuvwxyz";  // a=0 z=25
+
   template <typename DataType>
   // we going to need std::string for sequence alignment
   // and array of strings for atom names alignment af::const_ref<std::string> const&
   align(
       DataType const& seq_a,
       DataType const& seq_b,
+      DataType const& masking,  // XXX replace with float array 
       std::string const& style = "global",
       float gap_opening_penalty=1,
       float gap_extension_penalty=1,
@@ -104,6 +108,17 @@ public:
     D.resize(af::c_grid<2>(m+1, n+1), 0);
     I.resize(af::c_grid<2>(m+1, n+1), 0);
     E.resize(af::c_grid<2>(m+1, n+1), 0);
+    float G [m+1] ; // scale on gap penalty at position i for sequence a. 
+                    // If all 1 it is standard gap penalty
+
+    for (int i=0; i<m+1; i++){
+      if (i==0 || i==m) {
+        G[i]=gap_cost(1);
+      } else { // XXX replace with passing float values instead of char
+       std::size_t i_scale = masking_as_character.find(masking[i]);
+       G[i] = float(i_scale)*gap_cost(1); // cost of gap at i i_scale bigger 
+      }
+    }
 
     if (style == "global")
       for (int i=0; i<m+1; i++) M(i,0) = -gap_cost(i);
@@ -113,10 +128,10 @@ public:
       for (int j=1; j<=n; j++) {
 
         if (i==1) D(i,j) = M(i-1,j)-gap_cost(1);
-        else D(i,j) = std::max( M(i-1,j)-gap_cost(1), D(i-1,j)-gep);
+        else D(i,j) = std::max( M(i-1,j)-G[i], D(i-1,j)-gep);
 
         if (j==1) I(i,j) = M(i,j-1)-gap_cost(1);
-        else I(i,j) = std::max(M(i,j-1)-gap_cost(1), I(i,j-1)-gep);
+        else I(i,j) = std::max(M(i,j-1)-G[i], I(i,j-1)-gep);
 
         M(i,j) = detail::maximum( M(i-1,j-1)+sim_fun_select(seq_a[i-1],seq_b[j-1],similarity_function), D(i,j), I(i,j));
         if (style=="local") M(i,j) = std::max(M(i,j), float(0));

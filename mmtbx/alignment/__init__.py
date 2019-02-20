@@ -71,7 +71,8 @@ class align(ext.align):
         style="global",
         gap_opening_penalty=1,
         gap_extension_penalty=1,
-        similarity_function="identity"):
+        similarity_function="identity",
+        masking_a=None):
     assert style in ["global", "local", "no_end_gaps"]
     sim_fun_str = similarity_function
     self.similarity_function_call = None
@@ -92,9 +93,26 @@ class align(ext.align):
       seq_a = flex.std_string(seq_a)
       seq_b = flex.std_string(seq_b)
 
+    if masking_a:  #  Gap penalty for insertion scaled by masking_a after
+                   #   corresponding position in sequence a and scaled by
+                   #   masking_a for deletion before corresponding position in
+                   #   sequence a.  Allows increasing mask everywhere
+                   #   except where you want a gap to occur
+
+      # XXX just a way to pass the scaling information. To be replaced by float
+      masking_as_character="abcdefghijklmnopqrstuvwxyz"  # a=0 z=25
+      masking=""
+      assert len(list(masking_a))==len(seq_a)
+      for i in xrange(len(seq_a)):
+        j=max(0,min(25,int(masking_a[i]+0.5)))
+        masking+=masking_as_character[j]
+    else:
+      masking=len(seq_a)*"b"  #  no masking; standard gap penalty everywhere
+
     super(align, self).__init__(
         seq_a=seq_a,
         seq_b=seq_b,
+        masking=masking,
         style=style,
         gap_opening_penalty=gap_opening_penalty,
         gap_extension_penalty=gap_extension_penalty,
