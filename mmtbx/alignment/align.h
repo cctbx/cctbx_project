@@ -105,8 +105,9 @@ public:
     D.resize(af::c_grid<2>(m+1, n+1), 0);
     I.resize(af::c_grid<2>(m+1, n+1), 0);
     E.resize(af::c_grid<2>(m+1, n+1), 0);
-    float G [m+1] ; // scale on gap penalty at position i for sequence a.
-                    // If all 1 it is standard gap penalty
+    af::shared<float> G;
+    G.resize(m+1); // scale on gap penalty at position i for sequence a.
+                   // If all 1 it is standard gap penalty
 
     for (int i=0; i<m+1; i++){
       if (i==0 || i==m) {
