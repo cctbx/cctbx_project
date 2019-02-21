@@ -587,6 +587,16 @@ def get_last_resno(hierarchy):
         last_resno=rg.resseq_as_int()
   return last_resno
 
+def get_all_resno(hierarchy):
+  resno_list=[]
+  if not hierarchy:
+    return resno_ist
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        resno_list.append(rg.resseq_as_int())
+  return resno_list
+
 def get_middle_resno(hierarchy,first_resno=None,last_resno=None):
   if not hierarchy:
     return None
