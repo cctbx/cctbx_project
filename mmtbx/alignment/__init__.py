@@ -98,36 +98,24 @@ class align(ext.align):
                    #   masking_a for deletion before corresponding position in
                    #   sequence a.  Allows increasing mask everywhere
                    #   except where you want a gap to occur
-
-      # XXX just a way to pass the scaling information. To be replaced by float
-      masking_as_character="abcdefghijklmnopqrstuvwxyz"  # a=0 z=25
-      masking=""
+      masking = []
       assert len(list(masking_a))==len(seq_a)
       for i in xrange(len(seq_a)):
         j=max(0,min(25,int(masking_a[i]+0.5)))
-        masking+=masking_as_character[j]
+        masking.append(j)
     else:
-      masking=len(seq_a)*"b"  #  no masking; standard gap penalty everywhere
-
-    # emergency hack - masking need to be of the same type as seq_a.
-    # here we making array of strings for more than 1 character alignment
-    # e.g. residue names.
-    masking_2 = []
-    if not isinstance(seq_a, basestring):
-      for c in masking:
-        masking_2.append(c)
-      masking = flex.std_string(masking_2)
+      masking=[1] * len(seq_a)  #  no masking; standard gap penalty everywhere
+    m = flex.float(masking)
 
     super(align, self).__init__(
         seq_a=seq_a,
         seq_b=seq_b,
-        masking=masking,
+        masking=m,
         style=style,
         gap_opening_penalty=gap_opening_penalty,
         gap_extension_penalty=gap_extension_penalty,
         similarity_function=sim_fun_str,
         )
-
     self.seq_a = seq_a
     self.seq_b = seq_b
     self.style = style

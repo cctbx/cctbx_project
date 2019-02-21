@@ -41,7 +41,7 @@ namespace {
       class_<w_t>("align", no_init)
         .def(init<std::string const&,
                   std::string const&,
-                  std::string const&,
+                  af::const_ref<float> const&,
                   std::string const&,
               float, float, std::string const&>((
           arg("seq_a"),
@@ -53,7 +53,7 @@ namespace {
           arg("similarity_function")="identity")))
         .def(init<af::const_ref<std::string> const&,
                   af::const_ref<std::string> const&,
-                  af::const_ref<std::string> const&,
+                  af::const_ref<float> const&,
                   std::string const&,
                   float, float, std::string const&>((
           arg("seq_a"),

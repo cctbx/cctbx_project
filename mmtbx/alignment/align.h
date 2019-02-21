@@ -89,15 +89,13 @@ public:
   align(
       DataType const& seq_a,
       DataType const& seq_b,
-      DataType const& masking,  // XXX replace with float array
+      af::const_ref<float> const& masking,
       std::string const& style = "global",
       float gap_opening_penalty=1,
       float gap_extension_penalty=1,
       std::string const& similarity_function="identity")
   {
     using namespace std;
-    // XXX skip when passing float array
-    std::string masking_as_character="abcdefghijklmnopqrstuvwxyz";  // a=0 z=25
     gop = gap_opening_penalty;
     gep = gap_extension_penalty;
     int m = seq_a.size();
@@ -113,9 +111,9 @@ public:
     for (int i=0; i<m+1; i++){
       if (i==0 || i==m) {
         G[i]=gap_cost(1);
-      } else { // XXX replace with passing float values instead of char
-       std::size_t i_scale = masking_as_character.find(masking[i]);
-       G[i] = float(i_scale)*gap_cost(1); // cost of gap at i i_scale bigger
+      } else {
+       float scale = masking[i];
+       G[i] = scale*gap_cost(1); // cost of gap at i i_scale bigger ??
       }
     }
 
