@@ -883,7 +883,7 @@ class manager(object):
       else:
         cif_block = hierarchy_to_output.as_cif_block()
 
-    if self.get_restraints_manager() is not None:
+    if self.restraints_manager_available():
       ias_selection = self.get_ias_selection()
       sites_cart = self.get_sites_cart()
       atoms = self.get_atoms()
@@ -894,7 +894,6 @@ class manager(object):
       grm_geometry.pair_proxies(sites_cart)
       struct_conn_loop = grm_geometry.get_struct_conn_mmcif(atoms)
       cif_block.add_loop(struct_conn_loop)
-
     # outputting HELIX/SHEET records
     ss_cif_loops = []
     ss_ann = None
@@ -919,8 +918,9 @@ class manager(object):
     restraints = self.extract_restraints_as_cif_blocks()
     cif.update(restraints)
 
-    links = grm_geometry.get_cif_link_entries(self.get_mon_lib_srv())
-    cif.update(links)
+    if self.restraints_manager_available():
+      links = grm_geometry.get_cif_link_entries(self.get_mon_lib_srv())
+      cif.update(links)
 
     cif.show(out=out, align_columns=align_columns)
     return out.getvalue()

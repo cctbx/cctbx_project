@@ -32,8 +32,8 @@ output
     .help = Default is the original file name with the file extension \
             replaced by "_modified.pdb".
     .style = bold new_file file_type:pdb
-  format = *pdb mmcif
-    .type = choice
+  format = *pdb *mmcif
+    .type = choice(multi=True)
     .help = Choose the output format of coordinate file (PDB or mmCIF)
 }
 include scope mmtbx.pdbtools.master_params
@@ -97,16 +97,18 @@ def run(args, out=sys.stdout, replace_stderr=True):
   inputs = get_inputs(args=args, log=log, master_params=master_params())
   ### get i/o file names
   ofn = inputs.params.output.file_name
-  output_format = inputs.params.output.format
   ifn = inputs.pdb_file_names
   if(ofn is None):
-    if output_format == "pdb": ext = "pdb"
-    elif output_format == "mmcif": ext = "cif"
-    if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + "_modified."+ext
-    elif(len(ifn)>1): ofn = os.path.basename(ifn[0]) + "_et_al_modified"+ext
+    if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + "_modified."
+    elif(len(ifn)>1): ofn = os.path.basename(ifn[0]) + "_et_al_modified."
     else:
       pdbout = os.path.basename(inputs.pdb_file_names[0])
-      ofn = pdbout+"_modified."+ext
+      ofn = pdbout+"_modified."
+  else:
+    if ofn[-4:] == ".pdb" or ofn[-4:] == ".cif":
+      ofn = ofn[:-3]
+  output_pdb_name = ofn + 'pdb'
+  output_cif_name = ofn + 'cif'
   # Show parameters
   broadcast(m="Complete set of parameters", log=log)
   master_params().format(inputs.params).show(out = log)
@@ -120,11 +122,13 @@ def run(args, out=sys.stdout, replace_stderr=True):
   results = task_obj.get_results()
   #
   broadcast(m="Writing output model", log=log)
-  print >> log, "Output model file name: ", ofn
-  with open(ofn, 'w') as f:
-    if output_format == "pdb":
+  if "pdb" in inputs.params.output.format:
+    print >> log, "Output model file name: ", output_pdb_name
+    with open(output_pdb_name, 'w') as f:
       f.write(inputs.model.model_as_pdb(output_cs= not inputs.fake_crystal_symmetry))
-    elif output_format =="mmcif":
+  if "mmcif" in inputs.params.output.format:
+    print >> log, "Output model file name: ", output_cif_name
+    with open(output_cif_name, 'w') as f:
       f.write(inputs.model.model_as_mmcif(output_cs= not inputs.fake_crystal_symmetry))
   broadcast(m="All done.", log=log)
   return None
