@@ -137,6 +137,16 @@ fi
   # restore some variables for conda
   if sys.platform != "win32" and options.use_conda:
     print("""
+# include at start
+if [ "$LIBTBX_DISPATCHER_NAME" != "libtbx.scons" ] && \
+   [ -z "$PHENIX_TRUST_OTHER_ENV" ]; then
+  # work around broken library environments
+  LD_LIBRARY_PATH=""
+  DYLD_LIBRARY_PATH=""
+  DYLD_FALLBACK_LIBRARY_PATH=""
+  PYTHONPATH=""
+fi
+# include before command
 if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
   if [ -z "$DISABLE_PHENIX_GUI" ]; then
     export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -147,15 +157,15 @@ fi
   # QBio DivCon paths
   if sys.platform != "win32":
     print("""
- if [ ! -z "$QB_PYTHONPATH" ]; then
-   export PYTHONPATH=$PYTHONPATH:$QB_PYTHONPATH
- fi
- if [ ! -z "$QB_LD_LIBRARY_PATH" ]; then
-   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$QB_LD_LIBRARY_PATH
- fi
- if [ ! -z "$QB_DYLD_LIBRARY_PATH" ]; then
-   export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$QB_DYLD_LIBRARY_PATH
- fi
+if [ ! -z "$QB_PYTHONPATH" ]; then
+  export PYTHONPATH=$PYTHONPATH:$QB_PYTHONPATH
+fi
+if [ ! -z "$QB_LD_LIBRARY_PATH" ]; then
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$QB_LD_LIBRARY_PATH
+fi
+if [ ! -z "$QB_DYLD_LIBRARY_PATH" ]; then
+  export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$QB_DYLD_LIBRARY_PATH
+fi
 """, file=f)
   if (epilogue is not None):
     f.write(epilogue + "\n")
