@@ -590,7 +590,7 @@ def get_last_resno(hierarchy):
 def get_all_resno(hierarchy):
   resno_list=[]
   if not hierarchy:
-    return resno_ist
+    return resno_list
   for model in hierarchy.models():
     for chain in model.chains():
       for rg in chain.residue_groups():
