@@ -98,14 +98,10 @@ class align(ext.align):
                    #   masking_a for deletion before corresponding position in
                    #   sequence a.  Allows increasing mask everywhere
                    #   except where you want a gap to occur
-      masking = []
       assert len(list(masking_a))==len(seq_a)
-      for i in xrange(len(seq_a)):
-        j=max(0,min(25,int(masking_a[i]+0.5)))
-        masking.append(j)
     else:
-      masking=[1] * len(seq_a)  #  no masking; standard gap penalty everywhere
-    m = flex.float(masking)
+      masking_a=[1] * len(seq_a)  #  no masking; standard gap penalty everywhere
+    m = flex.float(masking_a)
 
     super(align, self).__init__(
         seq_a=seq_a,

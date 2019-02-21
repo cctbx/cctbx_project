@@ -113,7 +113,7 @@ public:
         G[i]=gap_cost(1);
       } else {
        float scale = masking[i];
-       G[i] = scale*gap_cost(1); // cost of gap at i i_scale bigger ??
+       G[i] = scale*gap_cost(1); // cost of gap at i i_scale bigger than default
       }
     }
 
