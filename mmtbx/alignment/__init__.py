@@ -102,7 +102,6 @@ class align(ext.align):
     else:
       masking_a=[1] * len(seq_a)  #  no masking; standard gap penalty everywhere
     m = flex.float(masking_a)
-
     super(align, self).__init__(
         seq_a=seq_a,
         seq_b=seq_b,

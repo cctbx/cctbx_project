@@ -1141,16 +1141,18 @@ class annotation(structure_base):
       selections.extend(sheet.as_atom_selections(add_segid=add_segid))
     return selections
 
-  def overall_selection(self,add_segid=None):
+  def overall_selection(self,add_segid=None,trim_ends_by=None):
     selections = []
     for helix in self.helices:
       try :
-        selections.extend(helix.as_atom_selections(add_segid=add_segid))
+        selections.extend(helix.as_atom_selections(add_segid=add_segid,
+         trim_ends_by=trim_ends_by))
       except RuntimeError, e :
         pass
     for sheet in self.sheets:
       try:
-        selections.extend(sheet.as_atom_selections(add_segid=add_segid))
+        selections.extend(sheet.as_atom_selections(add_segid=add_segid,
+          trim_ends_by=trim_ends_by))
       except RuntimeError, e :
         pass
     return "(" + ") or (".join(selections) + ")"
@@ -1980,12 +1982,19 @@ class pdb_helix(structure_base):
       h_class_to_pdb_int(self.helix_class), self.comment, self.length)
     return out.strip()
 
-  def as_atom_selections(self, add_segid=None):
+  def as_atom_selections(self, add_segid=None, trim_ends_by=None):
     segid_extra = ""
     if add_segid is not None :
       segid_extra = "and segid '%s' " % add_segid
-    resid_start = "%s%s" % (self.start_resseq, self.start_icode)
-    resid_end = "%s%s" % (self.end_resseq, self.end_icode)
+    if trim_ends_by and \
+     self.get_end_resseq_as_int()-self.get_start_resseq_as_int()>2*trim_ends_by:
+      resid_start = "%s%s" % (self.convert_resseq(
+         self.get_start_resseq_as_int()+trim_ends_by), self.start_icode)
+      resid_end = "%s%s" % (self.convert_resseq(
+         self.get_end_resseq_as_int()-trim_ends_by), self.end_icode)
+    else:  # usual
+      resid_start = "%s%s" % (self.start_resseq, self.start_icode)
+      resid_end = "%s%s" % (self.end_resseq, self.end_icode)
     sele = "chain '%s' %sand resid %s through %s" % (self.start_chain_id,
       segid_extra, resid_start, resid_end)
     return [sele]
@@ -2162,12 +2171,20 @@ class pdb_strand(structure_base):
   def set_end_resseq(self, resseq):
     self.end_resseq = self.convert_resseq(resseq)
 
-  def as_atom_selections(self, add_segid=None):
+  def as_atom_selections(self, add_segid=None,trim_ends_by=None):
     segid_extra = ""
     if add_segid is not None :
       segid_extra = "and segid '%s' " % add_segid
-    resid_start = "%s%s" % (self.start_resseq, self.start_icode)
-    resid_end = "%s%s" % (self.end_resseq, self.end_icode)
+    if trim_ends_by and \
+     self.get_end_resseq_as_int()-self.get_start_resseq_as_int()>2*trim_ends_by:
+      resid_start = "%s%s" % (self.convert_resseq(
+         self.get_start_resseq_as_int()+trim_ends_by), self.start_icode)
+      resid_end = "%s%s" % (self.convert_resseq(
+         self.get_end_resseq_as_int()-trim_ends_by), self.end_icode)
+    else:  # usual
+      resid_start = "%s%s" % (self.start_resseq, self.start_icode)
+      resid_end = "%s%s" % (self.end_resseq, self.end_icode)
+
     sele = "chain '%s' %sand resid %s through %s" % (self.start_chain_id,
       segid_extra, resid_start, resid_end)
     return sele
@@ -2635,10 +2652,11 @@ class pdb_sheet(structure_base):
   def add_registration(self, registration):
     self.registrations.append(registration)
 
-  def as_atom_selections(self, add_segid=None):
+  def as_atom_selections(self, trim_ends_by=None, add_segid=None):
     strand_selections = []
     for strand in self.strands:
-      strand_selections.append(strand.as_atom_selections(add_segid=add_segid))
+      strand_selections.append(strand.as_atom_selections(add_segid=add_segid,
+       trim_ends_by=trim_ends_by))
     return strand_selections
 
   def get_n_defined_hbonds(self):
