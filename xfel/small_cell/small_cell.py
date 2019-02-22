@@ -433,11 +433,10 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
   reflections['azimuthal_size'] = azimuthal_sizes
   reflections['s0_proj'] = s0_projs
 
-  from dials.algorithms.indexing.indexer import indexer_base
   from dials.algorithms.indexing import index_reflections
   reflections['imageset_id'] = reflections['id']
-  reflections = indexer_base.map_spots_pixel_to_mm_rad(reflections, detector, None)
-  indexer_base.map_centroids_to_reciprocal_space(reflections, detector, beam, None)
+  reflections.centroid_px_to_mm(detector)
+  reflections.map_centroids_to_reciprocal_space(detector, beam)
 
   all_spots = []
   for i, ref in enumerate(reflections):
@@ -1097,8 +1096,7 @@ def small_cell_index_detail(datablock, reflections, horiz_phil, write_output = T
         refls['s1'] = s1
         refls['bbox'] = bbox
 
-        from dials.algorithms.indexing.indexer import indexer_base
-        refls = indexer_base.map_spots_pixel_to_mm_rad(refls, detector, None)
+        refls.centroid_px_to_mm(detector)
 
         refls.set_flags(flex.bool(len(refls), True), refls.flags.indexed)
         if write_output:
