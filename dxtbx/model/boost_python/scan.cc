@@ -169,6 +169,16 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
+  Scan scan_deepcopy(const Scan &scan, boost::python::object dict){
+    return Scan(scan);
+  }
+
+  static
+  Scan scan_copy(const Scan &scan){
+    return Scan(scan);
+  }
+
+  static
   void set_valid_image_ranges(Scan &scan, std::string i, boost::python::list obj){
     int n = boost::python::len(obj);
     scitbx::af::shared<vec2 <int> > ranges;
@@ -464,6 +474,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &is_angle_valid, (
           arg("angle"),
           arg("deg") = true))
+      .def("__deepcopy__", &scan_deepcopy)
+      .def("__copy__", &scan_copy)
       .def("is_angle_valid",
         &is_angle_valid_array, (
           arg("angle"),

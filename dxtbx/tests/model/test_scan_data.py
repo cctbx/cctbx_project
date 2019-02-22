@@ -110,6 +110,11 @@ def test_valid_image_ranges():
   assert list(scan.get_valid_image_ranges("0")) == [(1, 50), (80, 100)]
   assert list(scan.get_valid_image_ranges("2")) == []
 
+  assert scan.get_image_range() == (1, 100)
+  scan2 = copy.copy(scan)
+  assert scan2.get_image_range() == (1, 100)
+  assert list(scan2.get_valid_image_ranges("0")) == [(1, 50), (80, 100)]
+
 def test_from_phil():
   from dxtbx.model.scan import ScanFactory, scan_phil_scope
   from libtbx.phil import parse
