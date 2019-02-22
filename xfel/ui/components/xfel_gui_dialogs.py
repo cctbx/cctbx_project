@@ -1135,7 +1135,7 @@ class MultiRunTagDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def onRunChoice(self, e):
-    run_numbers_selected = map(int, self.select_runs.ctr.GetCheckedStrings())
+    run_numbers_selected = self.select_runs.ctr.GetCheckedStrings()
     self.selected = {}
     for r in self.db_runs:
       if r.run in run_numbers_selected:
