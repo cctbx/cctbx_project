@@ -300,7 +300,7 @@ class get_pbs_submit_command(get_submit_command):
     if (self.params.nnodes > 1) or (self.params.nproc_per_node > 1):
       self.params.nproc = self.params.nnodes * self.params.nproc_per_node
     if self.params.use_mpi:
-      self.command = "mpirun -n %d %s mp.method=mpi" % (self.params.nproc, self.command)
+      self.command = "mpiexec --hostfile $PBS_NODEFILE %s mp.method=mpi" % (self.command)
 
   def eval_params(self):
 
