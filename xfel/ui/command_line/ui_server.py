@@ -6,6 +6,7 @@ from libtbx.utils import Sorry
 import sys, os, time
 from xfel.ui import db_phil_str
 from libtbx import easy_run
+from xfel.ui.db.xfel_db import db_application
 
 help_message = """
 
@@ -42,6 +43,7 @@ socket={basedir}{sep}mysql.sock
 port={port}
 # Disabling symbolic-links is recommended to prevent assorted security risks
 symbolic-links=0
+max_connections=10000
 
 [mysqld_safe]
 log-error={basedir}{sep}mysqld.log
@@ -71,7 +73,6 @@ def run(args):
   if initialize:
     assert params.db.user is not None and len(params.db.user) > 0 and \
            params.db.name is not None and len(params.db.name) > 0
-    from xfel.ui.db.xfel_db import db_application
     import getpass
     print("Initializing")
     print ("You must specify a root password")
@@ -93,14 +94,15 @@ def run(args):
   assert os.path.exists(cnf_path)
   server_process = easy_run.subprocess.Popen(["mysqld", "--defaults-file=%s"%(cnf_path)])
 
+  print ("Sleeping a few seconds to let server start up...")
+  time.sleep(5) # let server start up
+
+  params.db.host = '127.0.0.1'
   if initialize:
-    print ("Sleeping a few seconds to let server start up...")
-    time.sleep(5) # let server start up
     new_user = params.db.user
     new_password = params.db.password
     new_db = params.db.name
     params.db.user = 'root'
-    params.db.host = '127.0.0.1'
     params.db.password = ''
     params.db.name = ''
     print ("Changing password")
@@ -114,7 +116,14 @@ def run(args):
     print ("Setting permissions")
     app.execute_query("GRANT ALL PRIVILEGES ON %s . * TO '%s'@'%%'"%(new_db, new_user))
     app.execute_query("FLUSH PRIVILEGES")
+    app.execute_query("UPDATE mysql.user SET Super_Priv='Y' WHERE user='%s' AND host='%%'"%new_user)
+    app.execute_query("FLUSH PRIVILEGES")
     print ("Initialized")
+  else:
+    app = db_application(params)
+
+  print ("Raising max connections")
+  app.execute_query("SET GLOBAL max_connections=10000")
 
   try:
     while True:
