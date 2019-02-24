@@ -86,10 +86,13 @@ class RunBlockButton(GradButton):
     self.update_label()
 
   def update_label(self):
-    if self.use_ids:
-      first = self.first_run.id
+    if self.first_run is None:
+      first = ' ...'
     else:
-      first = self.first_run.run
+      if self.use_ids:
+        first = self.first_run.id
+      else:
+        first = self.first_run.run
 
     if self.last_run is None:
       last = ' ...'

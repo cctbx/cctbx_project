@@ -19,6 +19,8 @@ class Rungroup(db_proxy):
 
   def get_first_and_last_runs(self):
     runs = self.runs
+    if len(runs) == 0:
+      return (None, None)
     run_ids = [r.id for r in runs]
     first = runs[run_ids.index(min(run_ids))]
     if self.open:

@@ -1353,6 +1353,14 @@ class RunBlockDialog(BaseDialog):
     self.db = db
     self.use_ids = db.params.facility.name != 'lcls'
 
+    all_runs = db.get_all_runs()
+    if self.use_ids:
+      runs_available = sorted([i.id for i in all_runs])
+    else:
+      runs_available = sorted([int(i.run) for i in all_runs])
+    self.first_avail = min(runs_available)
+    self.last_avail = max(runs_available)
+
     if block is None:
       runs = self.db.get_all_runs()
       if self.use_ids:
@@ -1394,12 +1402,15 @@ class RunBlockDialog(BaseDialog):
     else:
       db = block.app
       self.first_run, self.last_run = block.get_first_and_last_runs()
-      if self.use_ids:
-        self.first_run = self.first_run.id
-        if self.last_run is not None: self.last_run = self.last_run.id
+      if self.first_run is None:
+        self.first_run = self.first_avail
       else:
-        self.first_run = int(self.first_run.run)
-        if self.last_run is not None: self.last_run = int(self.last_run.run)
+        if self.use_ids:
+          if self.first_run is not None: self.first_run = self.first_run.id
+          if self.last_run is not None: self.last_run = self.last_run.id
+        else:
+          if self.first_run is not None: self.first_run = int(self.first_run.run)
+          if self.last_run is not None: self.last_run = int(self.last_run.run)
 
     self.orig_first_run = self.first_run
     self.orig_last_run = self.last_run
@@ -1411,14 +1422,6 @@ class RunBlockDialog(BaseDialog):
                         *args, **kwargs)
 
     # Run block start / end points (choice widgets)
-
-    all_runs = db.get_all_runs()
-    if self.use_ids:
-      runs_available = sorted([i.id for i in all_runs])
-    else:
-      runs_available = sorted([int(i.run) for i in all_runs])
-    self.first_avail = min(runs_available)
-    self.last_avail = max(runs_available)
 
     self.config_panel = wx.Panel(self)
     config_box = wx.StaticBox(self.config_panel, label='Configuration')
@@ -1480,7 +1483,7 @@ class RunBlockDialog(BaseDialog):
                                    label='Start run:',
                                    label_style='bold',
                                    label_size=(100, -1),
-                                   ctrl_value=self.first_run,
+                                   ctrl_value=(self.first_run or self.first_avail),
                                    ctrl_min=self.first_avail,
                                    ctrl_max=self.last_avail)
     self.runblocks_end = gctr.SpinCtrl(self.runblock_panel,
@@ -1902,7 +1905,10 @@ class SelectRunBlocksDialog(BaseDialog):
       selected.append(rungroup.id in self.trial_rungroups)
       first_run, last_run = rungroup.get_first_and_last_runs()
       if last_run is None:
-        desc = "[%d] %d+"%(rungroup.id, int(first_run.id))
+        if first_run is None:
+          desc = "[%d]"%(rungroup.id)
+        else:
+          desc = "[%d] %d+"%(rungroup.id, int(first_run.id))
       else:
         desc = "[%d] %d-%d"%(rungroup.id, int(first_run.id), int(last_run.id))
       if rungroup.comment is not None:

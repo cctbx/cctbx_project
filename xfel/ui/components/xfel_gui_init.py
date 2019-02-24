@@ -78,6 +78,10 @@ class RunSentinel(Thread):
     self.parent = parent
     self.active = active
 
+    if self.parent.params.facility.name == 'standalone':
+      from xfel.ui.db.xfel_db import cheetah_run_finder
+      self.finder = cheetah_run_finder(self.parent.params)
+
   def post_refresh(self):
     evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
     wx.PostEvent(self.parent.run_window.runs_tab, evt)
@@ -96,7 +100,7 @@ class RunSentinel(Thread):
                             str(run['run']) not in known_runs]
         unknown_run_paths = [''] * len(unknown_run_runs)
       elif self.parent.params.facility.name == 'standalone':
-        standalone_runs = [run for run in db.list_standalone_runs() if
+        standalone_runs = [run for run in self.finder.list_standalone_runs() if
                            run[0] not in known_runs]
         unknown_run_runs = [r[0] for r in standalone_runs]
         unknown_run_paths = [r[1] for r in standalone_runs]
@@ -113,6 +117,8 @@ class RunSentinel(Thread):
         # Sync new runs to rungroups
         for rungroup in db.get_all_rungroups(only_active=True):
           first_run, last_run = rungroup.get_first_and_last_runs()
+          if first_run is not None: first_run = first_run.id
+          if last_run is not None: last_run = last_run.id
           rungroup.sync_runs(first_run, last_run)
 
         print "%d new runs" % len(unknown_run_runs)
@@ -1818,7 +1824,7 @@ class SpotfinderTab(BaseTab):
   def onRunChoice(self, e):
     self.tag_last_five = False
     self.entire_expt = False
-    run_numbers_selected = map(int, self.run_numbers.ctr.GetCheckedStrings())
+    run_numbers_selected = self.run_numbers.ctr.GetCheckedStrings()
     if self.trial is not None:
       self.selected_runs = [r.run for r in self.trial.runs if r.run in run_numbers_selected]
       self.main.run_window.spotfinder_light.change_status('idle')
@@ -2127,7 +2133,7 @@ class RunStatsTab(SpotfinderTab):
   def onRunChoice(self, e):
     self.tag_last_five = False
     self.entire_expt = False
-    run_numbers_selected = map(int, self.run_numbers.ctr.GetCheckedStrings())
+    run_numbers_selected = self.run_numbers.ctr.GetCheckedStrings()
     if self.trial is not None:
       self.selected_runs = [r.run for r in self.trial.runs if r.run in run_numbers_selected]
       self.main.run_window.runstats_light.change_status('idle')
@@ -2242,7 +2248,7 @@ class RunStatsTab(SpotfinderTab):
     if not os.path.isdir(params['output_dir']):
       os.makedirs(params['output_dir'])
     command = ('cctbx.xfel.xtc_dump input.experiment=%s '%params['experiment'])+\
-    ('input.run_num=%d input.address=%s '%(params['run'], params['address']))+\
+    ('input.run_num=%s input.address=%s '%(str(params['run']), params['address']))+\
     ('format.file_format=%s '%params['format'])+\
     ('output.output_dir=%s '%params['output_dir'])
     if params['format'] == 'cbf':

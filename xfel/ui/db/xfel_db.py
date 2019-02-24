@@ -272,31 +272,6 @@ class xfel_db_application(db_application):
     for r in runs: r['run'] = str(r['run'])
     return runs
 
-  def list_standalone_runs(self):
-    import glob
-
-    runs = []
-    if self.params.facility.standalone.monitor_for == 'folders':
-      for foldername in sorted(os.listdir(self.params.facility.standalone.data_dir)):
-        path = os.path.join(self.params.facility.standalone.data_dir, foldername)
-        if not os.path.isdir(path): continue
-        if self.params.facility.standalone.composite_files:
-          for filepath in sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template))):
-            filename = os.path.basename(filepath)
-            runs.append((foldername + "_" + os.path.splitext(filename)[0], filepath))
-        else:
-          files = sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template)))
-          if len(files) > 0:
-            runs.append((foldername, os.path.join(path, self.params.facility.standalone.template)))
-    elif self.params.facility.standalone.monitor_for == 'files':
-      if not self.params.facility.standalone.composite_files:
-        print "Warning, monitoring a single folder for single image files is inefficient"
-      path = self.params.facility.standalone.data_dir
-      for filepath in sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template))):
-        filename = os.path.basename(filepath)
-        runs.append((os.path.splitext(filename)[0], filepath))
-    return runs
-
   def verify_tables(self):
     return self.init_tables.verify_tables()
 
@@ -717,3 +692,60 @@ class xfel_db_application(db_application):
 
   def get_stats(self, **kwargs):
     return Stats(self, **kwargs)
+
+class standalone_run_finder(object):
+  def __init__(self, params):
+    self.params = params
+
+  def list_standalone_runs(self):
+    import glob
+
+    runs = []
+    if self.params.facility.standalone.monitor_for == 'folders':
+      for foldername in sorted(os.listdir(self.params.facility.standalone.data_dir)):
+        path = os.path.join(self.params.facility.standalone.data_dir, foldername)
+        if not os.path.isdir(path): continue
+        if self.params.facility.standalone.composite_files:
+          for filepath in sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template))):
+            filename = os.path.basename(filepath)
+            runs.append((foldername + "_" + os.path.splitext(filename)[0], filepath))
+        else:
+          files = sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template)))
+          if len(files) > 0:
+            runs.append((foldername, os.path.join(path, self.params.facility.standalone.template)))
+    elif self.params.facility.standalone.monitor_for == 'files':
+      if not self.params.facility.standalone.composite_files:
+        print "Warning, monitoring a single folder for single image files is inefficient"
+      path = self.params.facility.standalone.data_dir
+      for filepath in sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template))):
+        filename = os.path.basename(filepath)
+        runs.append((os.path.splitext(filename)[0], filepath))
+
+    return runs
+
+class cheetah_run_finder(standalone_run_finder):
+  def __init__(self, params):
+    super(cheetah_run_finder, self).__init__(params)
+    self.known_runs = []
+    self.known_bad_runs = []
+
+  def list_standalone_runs(self):
+    runs = super(cheetah_run_finder, self).list_standalone_runs()
+
+    good_runs = []
+    for name, path in runs:
+      if name in self.known_runs:
+        good_runs.append((name, path))
+      elif name not in self.known_bad_runs:
+        status_file = os.path.join(os.path.dirname(path), 'status.txt')
+        if not os.path.exists(status_file): continue
+        l = [line for line in open(status_file).readlines() if 'Status' in line][0].strip()
+        status = l.split(',')[-1].split('=')[-1]
+        print name, status
+        if status == 'Finished':
+          good_runs.append((name, path))
+          self.known_runs.append(name)
+        elif 'error' in status.lower():
+          self.known_bad_runs.append(name)
+
+    return good_runs
