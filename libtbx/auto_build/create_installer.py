@@ -191,6 +191,10 @@ class SetupInstaller(object):
         shutil.copyfile( os.path.join(self.root_dir, 'base_tmp', vcredist),
                         os.path.join(self.dest_dir, vcredist)
         )
+      else:
+        vcredist = "vcredist_x64.exe"
+        shutil.copyfile(os.path.join(self.root_dir, 'conda_base', vcredist),
+                        os.path.join(self.dest_dir, vcredist))
       self.make_windows_installer()
 
   def copy_info(self):
@@ -382,12 +386,8 @@ class SetupInstaller(object):
   def make_windows_installer(self):
     makedirs(self.dist_dir)
     from libtbx.auto_build import create_windows_installer
-    if self.base_dir == 'conda_base':
-      mainscript = os.path.join(self.dest_dir, "lib","libtbx",
-                                  "auto_build", "condaphenixinstaller.nsi")
-    else:
-      mainscript = os.path.join(self.dest_dir, "lib","libtbx",
-                                  "auto_build", "mainphenixinstaller.nsi")
+    mainscript = os.path.join(self.dest_dir, "lib","libtbx",
+                                "auto_build", "mainphenixinstaller.nsi")
     create_windows_installer.run(args=[
       "--productname", self.installer.product_name,
       "--version", self.version,
