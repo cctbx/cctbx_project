@@ -36,8 +36,6 @@ except ImportError:
   py3 = False
 
 # copied from install_base_packages.py
-# if ((__name__ == '__main__' or __name__ == 'install_conda') and
-#     __package__ is None):
 if __package__ is None:
   sys.path.append(os.path.dirname(os.path.abspath(__file__)))
   from installer_utils import check_output, call
@@ -84,6 +82,32 @@ root_dir = os.path.abspath(
   os.path.join(__file__, '..', '..', '..', '..', '..'))
 default_file = os.path.join('cctbx_project', 'libtbx', 'auto_build',
                             'conda_envs', default_filename)
+
+# =============================================================================
+def download_file(url, filename):
+  """
+  Simple function for downloading a file from a URL
+  No error checking is done since anything downloaded is necessary.
+
+  Parameters
+  ----------
+  url: str
+    The url pointing to the location of the file
+  filename: str
+    The name of the local file
+
+  Returns
+  -------
+    Nothing
+  """
+  if py3:
+    with urlopen(url) as response:
+      with open(filename, 'wb') as local_file:
+        shutil.copyfileobj(response, local_file)
+  elif py2:
+    with open(filename, 'wb') as local_file:
+      response = urlopen(url).read()
+      local_file.write(response)
 
 # =============================================================================
 class conda_manager(object):
@@ -462,14 +486,7 @@ common compilers provided by conda. Please update your version with
     # Download from public repository
     if not os.path.isfile(filename):
       print('Downloading {url}'.format(url=url), file=self.log)
-      if py3:
-        with urlopen(url) as response:
-          with open(filename, 'wb') as local_file:
-            shutil.copyfileobj(response, local_file)
-      elif py2:
-        with open(filename, 'wb') as local_file:
-          response = urlopen(url).read()
-          local_file.write(response)
+      download_file(url, filename)
       print('Downloaded file to {filename}'.format(filename=filename),
         file=self.log)
     else:
@@ -564,6 +581,14 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       print(output, file=self.log)
     print('Completed {text}:\n  {prefix}'.format(text=text_messages[1],
           prefix=prefix), file=self.log)
+
+    # on Windows, also download the Visual C++ 2008 Redistributable
+    # use the same version as conda-forge
+    # https://github.com/conda-forge/vs2008_runtime-feedstock
+    if prefix.endswith('conda_base'):
+      download_file(
+        url='https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe',
+        filename=os.path.join(prefix, 'vcredist_x64.exe'))
 
     # check that environment file is updated
     self.environments = self.update_environments()
