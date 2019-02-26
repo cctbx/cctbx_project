@@ -585,7 +585,7 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
     # on Windows, also download the Visual C++ 2008 Redistributable
     # use the same version as conda-forge
     # https://github.com/conda-forge/vs2008_runtime-feedstock
-    if prefix.endswith('conda_base'):
+    if self.system == 'Windows' and prefix.endswith('conda_base'):
       download_file(
         url='https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe',
         filename=os.path.join(prefix, 'vcredist_x64.exe'))
