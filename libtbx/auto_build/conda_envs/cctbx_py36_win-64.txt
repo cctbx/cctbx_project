@@ -16,7 +16,7 @@ https://conda.anaconda.org/conda-forge/win-64/vc-14-0.tar.bz2#d02c910045ac7ea071
 https://conda.anaconda.org/conda-forge/win-64/blosc-1.15.1-h6538335_1002.tar.bz2#793df50f68096543549840052d843553
 https://conda.anaconda.org/conda-forge/win-64/jpeg-9c-hfa6e2cd_1001.tar.bz2#e4ecbdbea17c045df33c8241085a2d5d
 https://repo.anaconda.com/pkgs/msys2/win-64/m2w64-gcc-libs-core-5.3.0-7.tar.bz2#276d396bfe8d958f71173b7134f739fa
-https://conda.anaconda.org/conda-forge/win-64/openssl-1.0.2p-hfa6e2cd_1002.tar.bz2#5f148e46b06f38581f2dd4759e485258
+https://conda.anaconda.org/conda-forge/win-64/openssl-1.0.2q-hfa6e2cd_0.tar.bz2#b572b472a54d1046f436a1d26e49f876
 https://conda.anaconda.org/conda-forge/win-64/python-3.6.6-he025d50_0.tar.bz2#beb54512e227dde16ad110ddb0a98fb8
 https://conda.anaconda.org/conda-forge/win-64/tk-8.6.9-hfa6e2cd_1000.tar.bz2#d73777998507e2194ae6c2c8b4c1c726
 https://conda.anaconda.org/conda-forge/win-64/zlib-1.2.11-h2fa13f4_1004.tar.bz2#ded13addbb481e758ee71d2a7968c9d7
