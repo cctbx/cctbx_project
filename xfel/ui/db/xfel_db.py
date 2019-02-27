@@ -739,7 +739,9 @@ class cheetah_run_finder(standalone_run_finder):
       elif name not in self.known_bad_runs:
         status_file = os.path.join(os.path.dirname(path), 'status.txt')
         if not os.path.exists(status_file): continue
-        l = [line for line in open(status_file).readlines() if 'Status' in line][0].strip()
+        status_lines = [line for line in open(status_file).readlines() if 'Status' in line]
+        if len(status_lines) != 1: continue
+        l = status_lines[0].strip()
         status = l.split(',')[-1].split('=')[-1]
         print name, status
         if status == 'Finished':

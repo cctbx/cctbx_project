@@ -63,9 +63,9 @@ def run(args):
     n_total = len(timestamps)
     n_high_quality = ((average_i_sigi > 0) & (n_strong >= params.n_strong_cutoff)).count(True)
     try:
-      print "% 4d  % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (run_no, n_hit, 100*n_hit/n_total, n_indexed, 100*n_indexed/n_total, n_lattices, n_high_quality, 100*n_high_quality/n_total, 100*n_high_quality/n_indexed, n_total)
+      print "% 20s  % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (run_no, n_hit, 100*n_hit/n_total, n_indexed, 100*n_indexed/n_total, n_lattices, n_high_quality, 100*n_high_quality/n_total, 100*n_high_quality/n_indexed, n_total)
     except ZeroDivisionError:
-      print "% 4d  % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (run_no, n_hit, 0, n_indexed, 0, n_lattices, n_high_quality, 0, 0, n_total)
+      print "% 20s  % 7d % 5.1f   % 7d % 5.1f    % 7d     % 7d % 5.1f % 5.1f    % 7d " % (run_no, n_hit, 0, n_indexed, 0, n_lattices, n_high_quality, 0, 0, n_total)
 
     hit_total += n_hit
     indexed_total += n_indexed
