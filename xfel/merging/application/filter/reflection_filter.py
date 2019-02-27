@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+from six.moves import range
 from xfel.merging.application.worker import worker
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
@@ -8,16 +9,12 @@ from cctbx.crystal import symmetry
 from six.moves import cStringIO as StringIO
 
 class reflection_filter(worker):
-  """
-  Reject individual reflections based on various criteria
-  """
+  '''Reject individual reflections based on various criteria'''
 
   def run(self, experiments, reflections):
-
     if 'significance_filter' in self.params.select.algorithm:
-      new_experiments, new_reflections = self.apply_significance_filter(experiments, reflections)
-
-    return new_experiments, new_reflections
+      experiments, reflections = self.apply_significance_filter(experiments, reflections)
+    return experiments, reflections
 
   def apply_significance_filter(self, experiments, reflections):
 
@@ -53,9 +50,11 @@ class reflection_filter(worker):
 
       assert exp_observations.size() == exp_reflections.size()
 
-      #import sys
-      #bin_results = show_observations(exp_observations, out=sys.stdout, n_bins=N_bins)
-      bin_results = show_observations(exp_observations, out=StringIO(), n_bins=N_bins)
+      out = StringIO()
+      bin_results = show_observations(exp_observations, out=out, n_bins=N_bins)
+
+      if self.params.output.log_level == 0:
+        self.logger.log(out.getvalue())
 
       acceptable_resolution_bins = [bin.mean_I_sigI > self.params.select.significance_filter.sigma for bin in bin_results]
 
@@ -100,7 +99,6 @@ class reflection_filter(worker):
     if self.mpi_helper.rank == 0:
       self.logger.main_log("Total reflections rejected because of significance filter: %d"%total_removed_reflections)
       self.logger.main_log("Total experiments rejected because of significance filter: %d"%total_removed_experiments)
-
 
     self.logger.log_step_time("SIGNIFICANCE_FILTER", True)
 

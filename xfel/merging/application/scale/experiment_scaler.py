@@ -6,6 +6,7 @@ from cctbx import miller
 from cctbx.crystal import symmetry
 
 class scaling_result(object):
+  '''Stores results of scaling of an experiment'''
   err_low_signal = 1
   err_low_correlation = 2 # low correlation between the observed and reference, or model, intensities
 
@@ -19,9 +20,7 @@ class scaling_result(object):
     self.correlation = None
 
 class experiment_scaler(worker):
-  """
-  Scales experiment reflection intensities to the reference, or model, intensities
-  """
+  '''Scales experiment reflection intensities to the reference, or model, intensities'''
 
   def run(self, experiments, reflections):
 
@@ -67,11 +66,14 @@ class experiment_scaler(worker):
       slopes.append(result.slope)
       correlations.append(result.correlation)
 
+      if self.params.output.log_level == 0:
+        self.logger.log("Experiment ID: %d; Slope: %f; Correlation %f"%(exp_id, result.slope, result.correlation))
+
       # count high resolution experiments
       if exp_intensities.d_min() <= self.params.merging.d_min:
         high_res_experiments += 1
 
-      # apply scaling factors
+      # apply scale factors
       if self.params.scaling.mark0.fit_reference_to_experiment:
         exp_reflections['intensity.sum.value'] /= result.slope
         #if self.params.scaling.mark0.fit_offset:
@@ -122,7 +124,7 @@ class experiment_scaler(worker):
     return experiments, reflections
 
   def fit_experiment_to_reference(self, model_intensities, experiment_intensities, matching_indices):
-    'Scale observed intensities to the reference, or model, using a linear least squares fit.'
+    'Scale the observed intensities to the reference, or model, using a linear least squares fit.'
      # Y = offset + slope * X, where Y is I_r and X is I_o
 
     result = scaling_result()
@@ -175,7 +177,7 @@ class experiment_scaler(worker):
     return result
 
   def fit_reference_to_experiment(self, model_intensities, experiment_intensities, matching_indices):
-    'Scale the reference, or model, intensities to observed intensities, using a linear least squares fit.'
+    'Scale the reference, or model, intensities to the observed intensities, using a linear least squares fit.'
     # Y = offset + slope * X, where Y is I_o and X is I_r
 
     result = scaling_result()

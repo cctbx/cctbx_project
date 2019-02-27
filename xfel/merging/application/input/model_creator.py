@@ -5,6 +5,8 @@ import mmtbx.command_line.fmodel
 import mmtbx.utils
 from iotbx import file_reader
 import libtbx.phil.command_line
+from cctbx import miller
+from cctbx.crystal import symmetry
 
 class model_creator(object):
   def __init__(self, params):
@@ -16,11 +18,19 @@ class model_creator(object):
 
     self.logger.log_step_time("CREATE_MODEL")
 
-    # Generate the reference, or model, from the input parameters
+    # Generate the reference, or model, intensities from the input parameters
+    # This will save the space group and unit cell into the input parameters
     if self.params.scaling.model.endswith(".mtz"):
-      self.create_model_from_mtz()
+      i_model = self.create_model_from_mtz()
     elif self.params.scaling.model.endswith(".pdb"):
-      self.create_model_from_pdb()
+      i_model = self.create_model_from_pdb()
+
+    # Generate a full miller set consistent with the model
+    miller_set, i_model = self.consistent_set_and_model(i_model=i_model)
+
+    # Save i_model and miller_set into the input parameters
+    self.params.scaling.__inject__('i_model', i_model)
+    self.params.scaling.__inject__('miller_set', miller_set)
 
     if self.mpi_helper.rank == 0:
       self.logger.main_log("Scaling model: " + self.params.scaling.model)
@@ -93,7 +103,7 @@ class model_creator(object):
     if not self.params.merging.merge_anomalous:
       f_model = f_model.generate_bijvoet_mates()
 
-    self.params.scaling.__inject__('i_model', f_model.as_intensity_array().change_basis(self.params.scaling.model_reindex_op).map_to_asu())
+    return f_model.as_intensity_array().change_basis(self.params.scaling.model_reindex_op).map_to_asu()
 
   def create_model_from_mtz(self):
 
@@ -108,9 +118,7 @@ class model_creator(object):
       if True not in [this_label.find(tag)>=0 for tag in ["iobs","imean", self.params.scaling.mtz.mtz_column_F]]:
         continue
 
-      self.params.scaling.__inject__('i_model', array.as_intensity_array().change_basis(self.params.scaling.model_reindex_op).map_to_asu())
-
-      return
+      return array.as_intensity_array().change_basis(self.params.scaling.model_reindex_op).map_to_asu()
 
     raise Exception("mtz did not contain expected label Iobs or Imean")
 
@@ -139,19 +147,18 @@ class model_creator(object):
     if i_model.anomalous_flag() is False and miller_set.anomalous_flag() is True:
       i_model = i_model.generate_bijvoet_mates()
 
-      # manage the sizes of arrays.  General_fcalc assures that
-      # N(i_model) >= N(miller_set) since it fills non-matches with invalid structure factors
-      # However, if N(i_model) > N(miller_set) it's because this run of cxi.merge requested
-      # a smaller resolution range.  Must prune off the reference model.
-
-      if i_model.indices().size() > miller_set.indices().size():
-        matches = miller.match_indices(i_model.indices(), miller_set.indices())
-        pairs = matches.pairs()
-        i_model = i_model.select(pairs.column(0))
-
+    # manage the sizes of arrays. General_fcalc assures that
+    # N(i_model) >= N(miller_set) since it fills non-matches with invalid structure factors
+    # However, if N(i_model) > N(miller_set), it's because this run of cxi.merge requested
+    # a smaller resolution range.  Must prune off the reference model.
+    if i_model.indices().size() > miller_set.indices().size():
       matches = miller.match_indices(i_model.indices(), miller_set.indices())
-      assert not matches.have_singles()
-      miller_set = miller_set.select(matches.permutation())
+      pairs = matches.pairs()
+      i_model = i_model.select(pairs.column(0))
+
+    matches = miller.match_indices(i_model.indices(), miller_set.indices())
+    assert not matches.have_singles()
+    miller_set = miller_set.select(matches.permutation())
 
     return miller_set, i_model
 

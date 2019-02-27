@@ -11,6 +11,9 @@ class data_counter(object):
     self.mpi_helper = mpi_helper()
 
   def count(self, experiments, reflections):
+
+    self.logger.log_step_time("CALC_LOAD_STATISTICS")
+
     # count experiments and reflections
     experiment_count = len(experiments)
     reflection_count = len(reflections)
@@ -18,7 +21,6 @@ class data_counter(object):
     # count images
     image_count = sum(len(iset) for iset in experiments.imagesets())
 
-    self.logger.log_step_time("CALC_LOAD_STATISTICS")
 
     # MPI-reduce all counts
     comm = self.mpi_helper.comm

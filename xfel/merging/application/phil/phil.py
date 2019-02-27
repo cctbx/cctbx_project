@@ -298,6 +298,8 @@ merging {
       .multiple = False
       .help = ha14, formerly sdfac_auto, apply sdfac to each-image data assuming negative
       .help = intensities are normally distributed noise
+      .help = errors_from_sample_residuals, use the distribution of intensities in a given miller index
+      .help = to compute the error for each merged reflection
     ev11
       .help = formerly sdfac_refine, correct merged sigmas refining sdfac, sdb and sdadd as Evans 2011.
       {
@@ -354,6 +356,9 @@ output {
   do_timing = False
     .type = bool
     .help = When True, calculate and log elapsed time for execution steps
+  log_level = 0
+    .type = int
+    .help = how much information to log. TODO: define it.
 }
 
 statistics {

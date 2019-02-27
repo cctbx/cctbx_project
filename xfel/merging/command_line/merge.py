@@ -69,8 +69,7 @@ class Script(object):
     import importlib
 
     workers = []
-    #for step in ['input', 'edit', 'filter', 'modify', 'scale', 'merge']:
-    for step in ['input', 'modify', 'edit', 'filter', 'scale', 'merge']:
+    for step in ['input', 'modify', 'edit', 'filter', 'scale', 'postrefine', 'group', 'error_model', 'statistics', 'merge']:
       factory = importlib.import_module('xfel.merging.application.'+ step +'.factory')
       workers.extend(factory.factory.from_parameters(self.params))
 

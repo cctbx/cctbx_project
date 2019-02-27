@@ -4,9 +4,7 @@ from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
 
 class experiment_filter(worker):
-  """
-  Reject experiments based on various criteria
-  """
+  '''Reject experiments based on various criteria'''
 
   def check_unit_cell(self, experiment):
 
@@ -15,7 +13,6 @@ class experiment_filter(worker):
     is_ok = experiment_unit_cell.is_similar_to(self.params.filter.unit_cell.value.target_unit_cell,
                                                self.params.filter.unit_cell.value.relative_length_tolerance,
                                                self.params.filter.unit_cell.value.absolute_angle_tolerance)
-
     return is_ok;
 
   def check_space_group(self, experiment):
@@ -39,7 +36,7 @@ class experiment_filter(worker):
 
   @staticmethod
   def remove_experiments(experiments, reflections, remove_experiment_ids):
-    ''' Remove specified experiments from the experiment list. Remove corresponding reflections from the reflection table. '''
+    '''Remove specified experiments from the experiment list. Remove corresponding reflections from the reflection table'''
 
     new_experiments = ExperimentList()
     new_reflections = flex.reflection_table()
