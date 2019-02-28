@@ -231,10 +231,7 @@ def test_no_multiple_format_understanding(test_image):
   def recurse(format, image_file, level):
     global any_understood, highest_level, found_a_repeat
     for child in format._children:
-      try:
-        understood = child.understand(image_file)
-      except Exception as e:
-        understood = False
+      understood = child.understand(image_file)
       if understood:
         any_understood = True
         print ("level: %d" % (level), child.__name__)
@@ -246,10 +243,7 @@ def test_no_multiple_format_understanding(test_image):
   highest_level = 0
   found_a_repeat = False
   for format in Registry._formats:
-    try:
-      understood = format.understand(test_image)
-    except Exception as e:
-      understood = False
+    understood = format.understand(test_image)
     if understood:
       any_understood = True
       print ("level: %d" % (level), format.__name__)
