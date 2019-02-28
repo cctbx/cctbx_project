@@ -76,19 +76,13 @@ class _Registry:
     # format.
     def recurse(format, image_file):
       for child in sorted(format._children, key=lambda x: x.__name__):
-        try:
-          if child.understand(image_file):
-            return recurse(child, image_file)
-        except Exception:
-          pass
+        if child.understand(image_file):
+          return recurse(child, image_file)
       return format
 
     for format in sorted(self._formats, key=lambda x: x.__name__):
-      try:
-        if format.understand(image_file):
-          return recurse(format, image_file)
-      except Exception:
-        pass
+      if format.understand(image_file):
+        return recurse(format, image_file)
 
     # Try opening the file; this could be an easy reason for failure
     if not Format.is_url(image_file):
