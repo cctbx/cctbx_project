@@ -260,3 +260,7 @@ def test_no_multiple_format_understanding(test_image):
   assert not found_a_repeat, "image file understood by multiple Format objects"
   # It's a failure if nothing could understand this file
   assert any_understood, "No formatter could be found"
+
+def test_no_exceptions_from_understand(test_image):
+  for format in Registry._formats:
+    format.understand(test_image)
