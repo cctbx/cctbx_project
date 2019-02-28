@@ -49,7 +49,7 @@ class _(boost.python.injector, grid):
     print("all:", self.all(), file=f)
     return self
 
-def sorted(data, reverse=False, stable=False):
+def sorted(data, reverse=False, stable=True):
   return data.select(
     sort_permutation(data=data, reverse=reverse, stable=stable))
 
