@@ -10,6 +10,8 @@ def class_has_show_but_not_repr(node):
         if isinstance(obj, ast.FunctionDef):
             if obj.name == '__repr__':
                 found_repr = True
+            if obj.name == '__str__':
+                found_repr = True
             if obj.name == 'show':
                 found_show = True
     return found_show and not found_repr
