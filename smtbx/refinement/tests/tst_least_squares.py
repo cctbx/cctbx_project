@@ -22,9 +22,11 @@ import re
 
 tested_ls_engines = (
   least_squares.normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2,
-  least_squares.normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_3,
 )
-
+try:
+  tested_ls_engines += (  least_squares.normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_3,)
+except Exception:
+  pass
 # we use a wrapper to make sure non_linear_ls_with_separable_scale_factor
 # is not an argument with a default value, so as to protect ourself from
 # forgetting to specify that argument in the tests, which would result
@@ -1224,7 +1226,7 @@ def run():
            " computation of all Fc(h) and their derivatives")
     for ls_engine in tested_ls_engines:
       m = re.search(r'BLAS_(\d)', ls_engine.__name__)
-      print "\tNormal matrix accumulation with BLAS level %s" % m.group(1)
+      print("\tNormal matrix accumulation with BLAS level %s" %(m.group(1)))
       exercise_normal_equations(ls_engine, parallelise)
       exercise_floating_origin_dynamic_weighting(ls_engine, parallelise,
                                                  opts.verbose)
