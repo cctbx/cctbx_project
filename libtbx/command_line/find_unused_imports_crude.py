@@ -76,6 +76,8 @@ def inspect(py_lines):
         i = j+1
   idc = "_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
   imported_names = set(imported_names_dict.keys())
+  if "(" in imported_names:
+    imported_names.remove("(")
   used_names = set()
   for l in non_import_lines:
     filtered = []
