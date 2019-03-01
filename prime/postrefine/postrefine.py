@@ -1,7 +1,7 @@
 from __future__ import division
 from cctbx.array_family import flex
 from cctbx import miller, crystal
-import cPickle as pickle
+from six.moves import cPickle as pickle
 from .mod_leastsqr import leastsqr_handler
 from .mod_results import postref_results
 from cctbx.crystal import symmetry

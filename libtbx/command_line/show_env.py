@@ -1,5 +1,3 @@
-from __future__ import division
-
 """
 Reads a libtbx_env file and dumps the entire contents.
 Some structures e.g. module dictionaries refer to the same object in multiple
@@ -11,7 +9,9 @@ Usage:
   read_env.py <libtbx_env>
 """
 
-import pickle
+from __future__ import absolute_import, division, print_function
+
+from six.moves import cPickle as pickle
 from pprint import pprint
 import sys
 from types import ModuleType
@@ -25,7 +25,9 @@ def _read_obj(obj, prev=None):
   prev = list(prev) + [obj]
 
   if isinstance(obj, prop_object):
-    return {name: _read_obj(val, prev) for name, val in obj.__dict__.items()}
+    dic = {name: _read_obj(val, prev) for name, val in obj.__dict__.items()}
+    dic["__type__"] = obj._pathed_type
+    return dic
   elif isinstance(obj, list):
     p = []
     for i in obj:
@@ -40,6 +42,13 @@ class prop_object(object):
   """Object that can convert itself to a dictionary"""
   def to_dict(self):
     return _read_obj(self)
+
+def pathed_prop_object(path):
+  "Create a class that knows the path it's supposed to represent"
+  class _pathed_prop_object(prop_object):
+    """Object that can convert itself to a dictionary"""
+    _pathed_type = path
+  return _pathed_prop_object
 
 class relocatable_path(object):
   def __repr__(self):
@@ -60,9 +69,9 @@ def new_module(name, doc=None):
 libtbx = new_module("libtbx")
 libtbx.env_config = new_module("libtbx.env_config")
 libtbx.path = new_module("libtbx.path")
-libtbx.env_config.environment = prop_object
-libtbx.env_config.build_options = prop_object
-libtbx.env_config.module = prop_object
+libtbx.env_config.environment = pathed_prop_object("libtbx.env_config.environment")
+libtbx.env_config.build_options = pathed_prop_object("libtbx.env_config.build_options")
+libtbx.env_config.module = pathed_prop_object("libtbx.env_config.module")
 libtbx.path.relocatable_path = relocatable_path
 libtbx.path.absolute_path = absolute_path
 

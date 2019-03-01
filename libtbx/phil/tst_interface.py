@@ -1,13 +1,13 @@
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import show_diff, Exception_expected
 from libtbx.phil import interface
 import libtbx.load_env
 import libtbx.phil
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
-def exercise () :
+def exercise():
   master_phil = libtbx.phil.parse("""
 refinement {
   input {
@@ -182,16 +182,16 @@ opt2 = *two_fofc fofc
 """)
   try :
     libtbx.phil.interface.validate_choice_captions(master_phil)
-  except AssertionError, e :
+  except AssertionError as e :
     assert (str(e) == "my_options.opt2")
   else :
     raise Exception_expected
 
 # XXX sorry about the cross-import here, but I really need to test this on
 # something large and complex
-def exercise_2 (verbose=False) :
+def exercise_2(verbose=False):
   if (not libtbx.env.has_module(name="phenix")):
-    print "phenix module not available: skipping advanced tests"
+    print("phenix module not available: skipping advanced tests")
     return
   from phenix.refinement import runtime
   import iotbx.phil
@@ -244,8 +244,8 @@ refinement.pdb_interpretation.secondary_structure.protein {
   params2 = scope.extract()
   assert (params2.protein.helix[0].selection == "chain B and resseq 10:20")
   if verbose :
-    print "Merge with global fetch: %6.1fms" % ((t2-t1) * 1000)
-    print "Merge with local fetch:  %6.1fms" % ((t4-t3) * 1000)
+    print("Merge with global fetch: %6.1fms" % ((t2-t1) * 1000))
+    print("Merge with local fetch:  %6.1fms" % ((t4-t3) * 1000))
   i.merge_phil(phil_string="""
 refinement.input.pdb.file_name = protein.pdb
 refinement.input.pdb.file_name = ligand.pdb
@@ -297,9 +297,9 @@ refinement.output.job_title = Test refinement run
   submenu = menu.get_submenu("Atom_selections")
   assert (str(submenu.get_items()[0]) == "refinement.refine.sites")
 
-def exercise_3 () :
+def exercise_3():
   if (not libtbx.env.has_module(name="phaser")):
-    print "phaser module not available: skipping advanced tests"
+    print("phaser module not available: skipping advanced tests")
     return
   import iotbx.phil
   import phaser.phenix_interface
@@ -469,6 +469,6 @@ if __name__ == "__main__" :
   exercise_2(verbose=("-v" in sys.argv[1:] or "--verbose" in sys.argv[1:]))
   exercise_3()
   exercise_adopt_phil()
-  print "OK"
+  print("OK")
 
 #---end

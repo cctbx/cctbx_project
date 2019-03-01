@@ -6,8 +6,8 @@ import numpy as np
 import math
 import logging
 from cctbx.array_family import flex
-import cPickle
-from prime.api import InputFrame
+from six.moves import cPickle as pickle
+from api import InputFrame
 logger = logging.getLogger('sf')
 
 class SingleFrame(InputFrame):
@@ -62,7 +62,7 @@ class SingleFrame(InputFrame):
     else:
       try:
         d = easy_pickle.load(path)
-      except (cPickle.UnpicklingError, ValueError, EOFError, IOError):
+      except (pickle.UnpicklingError, ValueError, EOFError, IOError):
         d = {}
         logger.warning("Could not read %s. It may not be a pickle file." % path)
     if 'observations' not in d or len(d['observations'][crystal_num].data()) == 0:
@@ -327,7 +327,7 @@ class SingleDialsFrameFromFiles(SingleFrame):
 
 class CellOnlyFrame(SingleFrame):
   def __init__(self, crystal_symmetry, path=None, name=None, lattice_id=None):
-    from cStringIO import StringIO
+    from six.moves import cStringIO as StringIO
     f = StringIO()
     self.crystal_symmetry = crystal_symmetry
     self.crystal_symmetry.show_summary(f=f)
@@ -346,7 +346,8 @@ class SingleDialsFrameFromJson(SingleFrame):
     from dials.util.options import Importer, flatten_experiments
     importer = Importer([expts_path], read_experiments=True, read_reflections=False, check_format=False)
     if importer.unhandled:
-      raise Exception("unable to process:"), importer.unhandled
+      # in python 2: raise Exception("unable to process:"), importer.unhandled
+      raise Exception("unable to process:")
     experiments_l = flatten_experiments(importer.experiments)
     assert len(experiments_l)==1, "Sorry, only supports one experiment per json at present."
     tcrystal = experiments_l[0].crystal

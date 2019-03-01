@@ -422,14 +422,14 @@ class manager(object):
     r_free = fmodel.r_free()
     if((r_work > save_r_work and abs(r_work-save_r_work) > 0.01)):
       print >> log
-      if (self.params.disable_final_r_factor_check) :
+      if (self.params.disable_final_r_factor_check):
         print >> log, "Warning: R-factors increased during refinement."
       else :
         print >> log, "The model after this rigid-body refinement step is not accepted."
         print >> log, "Reason: increase in R-factors after refinement."
       print >> log, "Start/final R-work: %6.4f/%-6.4f"%(save_r_work, r_work)
       print >> log, "Start/final R-free: %6.4f/%-6.4f"%(save_r_free, r_free)
-      if (self.params.disable_final_r_factor_check) :
+      if (self.params.disable_final_r_factor_check):
         print >> log, "(Revert to previous model is disabled, so accepting result.)"
       else :
         print >> log, "Return back to the previous model."
@@ -658,7 +658,7 @@ def rigid_groups_from_pdb_chains(
   assert (not pdb_hierarchy.atoms().extract_i_seq().all_eq(0))
   if (log is None) : log = null_out()
   sel_string = "not (resname HOH or resname WAT)"
-  if (not group_all_by_chain) :
+  if (not group_all_by_chain):
     sel_string = "not (not pepnames and single_atom_residue)"
   selection = pdb_hierarchy.atom_selection_cache().selection(string=sel_string)
   pdb_hierarchy = pdb_hierarchy.select(selection)
@@ -667,22 +667,22 @@ def rigid_groups_from_pdb_chains(
   atom_labels = list(pdb_hierarchy.atoms_with_labels())
   selections = []
   for chain in models[0].chains():
-    if (not (chain.is_protein() or chain.is_na())) :
+    if (not (chain.is_protein() or chain.is_na())):
       continue
     chain_atoms = chain.atoms()
     if(chain_atoms.size() >= min_chain_size):
       rgs = chain.residue_groups()
       chain_sele = "(chain '%s'" % chain.id
-      if (not group_all_by_chain) :
+      if (not group_all_by_chain):
         resid_first = rgs[0].resid().strip()
         resid_last  = rgs[-1].resid().strip()
         chain_sele += " and resid %s through %s"%(resid_first, resid_last)
       else :
         chain_sele += " and " + sel_string
       chain_sele += ")"
-      if (not chain_sele in selections) :
+      if (not chain_sele in selections):
         selections.append(chain_sele)
-  if (check_for_atoms_on_special_positions) :
+  if (check_for_atoms_on_special_positions):
     assert (xray_structure is not None)
     sel_cache = pdb_hierarchy.atom_selection_cache()
     site_symmetry_table = xray_structure.site_symmetry_table()
@@ -690,7 +690,7 @@ def rigid_groups_from_pdb_chains(
     for sele_str in selections :
       isel = sel_cache.selection(sele_str).iselection()
       isel_special = isel.intersection(disallowed_i_seqs)
-      if (len(isel_special) != 0) :
+      if (len(isel_special) != 0):
         print >> log, "  WARNING: selection includes atoms on special positions"
         print >> log, "    selection: %s" % sele_str
         print >> log, "    bad atoms:"

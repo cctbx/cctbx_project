@@ -356,7 +356,7 @@ class xscale6e(object):
 class execute_case(object):
  def __init__(self,datadir,n_frame,transmittance,apply_noise,plot=False,esd_plot=False,half_data_flag=0):
   # read the ground truth values back in
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
   ordered_intensities = pickle.load(open(os.path.join(datadir,"intensities.pickle"),"rb"))
   frames = pickle.load(open(os.path.join(datadir,"frames.pickle"),"rb"))
 

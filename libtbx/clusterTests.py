@@ -1,7 +1,7 @@
 """
 http://pypi.python.org/pypi/cluster/1.1.1b3
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 #
 # This is part of "python-cluster". A library to group similar items together.
@@ -184,7 +184,7 @@ class KClusterSFBugs(unittest.TestCase):
             expected ),
             "Elements differ!\n%s\n%s" % (clusters, expected))
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   unittest.TextTestRunner(stream=sys.stdout, verbosity=0).run(
       unittest.TestSuite((
             unittest.makeSuite(HClusterSmallListTestCase),

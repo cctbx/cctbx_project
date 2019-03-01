@@ -11,17 +11,17 @@ from libtbx import slots_getstate_setstate
 import math
 import sys
 
-def get_calphas (pdb_hierarchy) :
+def get_calphas(pdb_hierarchy):
   n_models = pdb_hierarchy.models_size()
   calphas = []
   for n in range(n_models) : calphas.append([])
-  for i_mod, model in enumerate(pdb_hierarchy.models()) :
-    for chain in model.chains() :
+  for i_mod, model in enumerate(pdb_hierarchy.models()):
+    for chain in model.chains():
       if (not chain.is_protein()) : continue
-      for residue_group in chain.residue_groups() :
+      for residue_group in chain.residue_groups():
         atom_group = residue_group.only_atom_group()
         c_alpha = atom_group.get_atom("CA")
-        if (c_alpha is not None) :
+        if (c_alpha is not None):
           #print "%d: %s" % (i_mod, c_alpha.id_str())
           calphas[i_mod].append(c_alpha)
         else :
@@ -30,18 +30,18 @@ def get_calphas (pdb_hierarchy) :
     assert len(calphas_model) == len(calphas[0])
   return calphas
 
-def get_cbetas (pdb_hierarchy) :
+def get_cbetas(pdb_hierarchy):
   n_models = pdb_hierarchy.models_size()
   cbetas = [ [] ] * n_models
-  for i_mod, model in enumerate(pdb_hierarchy.models()) :
-    for chain in model.chains() :
+  for i_mod, model in enumerate(pdb_hierarchy.models()):
+    for chain in model.chains():
       if (not chain.is_protein()) : continue
-      for residue_group in chain.residue_groups() :
+      for residue_group in chain.residue_groups():
         atom_group = residue_group.only_atom_group()
         c_beta = atom_group.get_atom("CB")
-        if (c_beta is None) :
+        if (c_beta is None):
           c_beta = atom_group.get_atom("2HA")
-        if (c_beta is not None) :
+        if (c_beta is not None):
           cbetas[i_mod].append(c_beta)
         else :
           cbetas[i_mod].append(None)
@@ -49,42 +49,42 @@ def get_cbetas (pdb_hierarchy) :
     assert len(cbetas_model) == len(cbetas[0])
   return cbetas
 
-def circ_stddev (t, deg=True) :
+def circ_stddev(t, deg=True):
   assert (len(t) > 0)
   from scitbx.array_family import flex
-  if (not deg) :
+  if (not deg):
     t = t * 180 / math.pi
   mean = flex.mean(t)
   a = sa = 0
   # FIXME use C++ array operations
-  for i in range(len(t)) :
+  for i in range(len(t)):
     a = abs(mean - t[i]) % 360
-    if (a > 180.0) :
+    if (a > 180.0):
       a = 360.0 - a
     sa += a*a
   return math.sqrt(sa / len(t))
 
-def circ_len (t, deg=True) :
+def circ_len(t, deg=True):
   assert (len(t) > 0)
   from scitbx.array_family import flex
-  if (deg) :
+  if (deg):
     t = math.pi * (t/180)
   sx = flex.sum(flex.cos(t)) / len(t)
   sy = flex.sum(flex.sin(t)) / len(t)
   return math.sqrt(sx**2 + sy**2)
 
-def circ_mean (t, deg=True) :
+def circ_mean(t, deg=True):
   assert (len(t) > 0)
   from scitbx.array_family import flex
-  if (deg) :
+  if (deg):
     t = math.pi * (t/180)
   sx = flex.sum(flex.cos(t)) / len(t)
   sy = flex.sum(flex.sin(t)) / len(t)
   return math.degrees(math.atan2(sy, sx))
 
-class backrub_residue (slots_getstate_setstate) :
+class backrub_residue(slots_getstate_setstate):
   __slots__ = ["id_str", "i_mod", "j_mod", "rmsd", "backrub_angle", "xyz"]
-  def __init__ (self, calpha, i_mod, j_mod, rmsd, backrub_angle) :
+  def __init__(self, calpha, i_mod, j_mod, rmsd, backrub_angle):
     residue_group = calpha.parent().parent()
     self.id_str = residue_group.id_str()
     self.i_mod = i_mod
@@ -93,11 +93,11 @@ class backrub_residue (slots_getstate_setstate) :
     self.backrub_angle = backrub_angle
     self.xyz = calpha.xyz
 
-  def show (self, out=sys.stdout, prefix="") :
+  def show(self, out=sys.stdout, prefix=""):
     print >> out, prefix+"backrub %s (%s,%s): angle=%.1f" % \
       (self.id_str, self.i_mod, self.j_mod, self.backrub_angle)
 
-def evaluate_backrub_pair_impl (
+def evaluate_backrub_pair_impl(
     calphas_A,
     calphas_B,
     labels=(),
@@ -105,11 +105,11 @@ def evaluate_backrub_pair_impl (
     rmsd_limit=0.1,
     backrub_angle_limit=10.0) : # FIXME is this an appropriate cutoff?
   assert (len(calphas_A) == len(calphas_B) == 5)
-  if (None in calphas_A) or (None in calphas_B) :
+  if (None in calphas_A) or (None in calphas_B):
     return None
-  for k_res in range(0, 4) :
+  for k_res in range(0, 4):
     dist = calphas_A[k_res].distance(calphas_A[k_res+1])
-    if (dist > max_calpha_sep) :
+    if (dist > max_calpha_sep):
       return None
   from scitbx.array_family import flex
   from scitbx.math import superpose
@@ -130,8 +130,8 @@ def evaluate_backrub_pair_impl (
     sites=[ca3r.elems, ca2.elems, ca4.elems, ca3m.elems],
     deg=True)
   if ((rmsd <= rmsd_limit) and
-      (abs(backrub_angle) >= backrub_angle_limit)) :
-    if (len(labels) == 0) :
+      (abs(backrub_angle) >= backrub_angle_limit)):
+    if (len(labels) == 0):
       labels = (calphas_A[2].fetch_labels().altloc,
                 calphas_B[2].fetch_labels().altloc)
     return backrub_residue(
@@ -142,50 +142,50 @@ def evaluate_backrub_pair_impl (
       backrub_angle=backrub_angle)
   return None
 
-def find_backrubs (
+def find_backrubs(
     pdb_hierarchy=None,
     residue_group=None,
     max_calpha_sep=5.0,
     rmsd_limit=0.1,
-    backrub_angle_limit=10.0) :
+    backrub_angle_limit=10.0):
   assert ([pdb_hierarchy, residue_group].count(None) == 1)
-  if (residue_group is not None) :
+  if (residue_group is not None):
     return find_ensemble_backrubs(
       residue_group=residue_group,
       max_calpha_sep=max_calpha_sep,
       rmsd_limit=rmsd_limit,
       backrub_angle_limit=backrub_angle_limit)
   backrubs = []
-  for chain in pdb_hierarchy.only_model().chains() :
-    if (not chain.is_protein()) :
+  for chain in pdb_hierarchy.only_model().chains():
+    if (not chain.is_protein()):
       continue
     residue_groups = chain.residue_groups()
     for residue_group in residue_groups[2:-2] :
-      if (residue_group.atom_groups_size() == 1) :
+      if (residue_group.atom_groups_size() == 1):
         continue
       br = find_ensemble_backrubs(
         residue_group=residue_group,
         max_calpha_sep=max_calpha_sep,
         rmsd_limit=rmsd_limit,
         backrub_angle_limit=backrub_angle_limit)
-      if (br is not None) :
+      if (br is not None):
         backrubs.extend(br)
   return backrubs
 
-def find_ensemble_backrubs (
+def find_ensemble_backrubs(
     pdb_hierarchy=None,
     residue_group=None,
     max_calpha_sep=5.0,
     rmsd_limit=0.1,
-    backrub_angle_limit=10.0) :
+    backrub_angle_limit=10.0):
   assert ([pdb_hierarchy, residue_group].count(None) == 1)
   from scitbx.array_family import flex
   from scitbx.math import superpose
   from scitbx.matrix import col
   import scitbx.math
-  if (residue_group is not None) :
+  if (residue_group is not None):
     pdb_hierarchy = extract_backrub_residue_groups(residue_group)
-    if (pdb_hierarchy is None) :
+    if (pdb_hierarchy is None):
       return []
   models = pdb_hierarchy.models()
   n_models = len(models)
@@ -193,14 +193,14 @@ def find_ensemble_backrubs (
   calphas = get_calphas(pdb_hierarchy)
   assert (len(calphas) == n_models)
   backrubs = []
-  def get_labels (i_mod, j_mod) :
+  def get_labels(i_mod, j_mod):
     return (models[i_mod].id.strip(), models[j_mod].id.strip())
-  for k_res in range(2, len(calphas[0]) - 2) :
-    for i_mod in range(n_models-1) :
-      for j_mod in range(i_mod+1, n_models) :
+  for k_res in range(2, len(calphas[0]) - 2):
+    for i_mod in range(n_models-1):
+      for j_mod in range(i_mod+1, n_models):
         calphas_i = [ calphas[i_mod][k] for k in range(k_res-2, k_res+3) ]
         calphas_j = [ calphas[j_mod][k] for k in range(k_res-2, k_res+3) ]
-        if (not None in calphas_i) and (not None in calphas_j) :
+        if (not None in calphas_i) and (not None in calphas_j):
           br = evaluate_backrub_pair_impl(
             calphas_A=calphas_i,
             calphas_B=calphas_j,
@@ -208,23 +208,23 @@ def find_ensemble_backrubs (
             max_calpha_sep=max_calpha_sep,
             rmsd_limit=rmsd_limit,
             backrub_angle_limit=backrub_angle_limit)
-          if (br is not None) :
+          if (br is not None):
             backrubs.append(br)
   return backrubs
 
 #-----------------------------------------------------------------------
 # UTILITY FUNCTIONS
-def extract_backrub_residue_groups (residue_group,
-    as_ensemble=True) :
+def extract_backrub_residue_groups(residue_group,
+    as_ensemble=True):
   import iotbx.pdb.hierarchy
   chain = residue_group.parent()
   root = chain.parent().parent()
   assert (len(root.models()) == 1)
   residue_groups = chain.residue_groups()
   backrub_residues = None
-  for i_res, other_rg in enumerate(residue_groups) :
-    if (other_rg == residue_group) :
-      if (i_res < 2) or (i_res > len(residue_groups) - 3) :
+  for i_res, other_rg in enumerate(residue_groups):
+    if (other_rg == residue_group):
+      if (i_res < 2) or (i_res > len(residue_groups) - 3):
         return None
       backrub_residues = [ residue_groups[k] for k in range(i_res-2,i_res+3) ]
       break
@@ -236,49 +236,49 @@ def extract_backrub_residue_groups (residue_group,
   model.append_chain(new_chain)
   for rg in backrub_residues :
     new_chain.append_residue_group(rg.detached_copy())
-  if (as_ensemble) :
+  if (as_ensemble):
     return alternate_conformations_as_multiple_models(root)
   return root
 
-def alternate_conformations_as_multiple_models (pdb_hierarchy) :
+def alternate_conformations_as_multiple_models(pdb_hierarchy):
   from mmtbx.command_line import altloc_remediate
   import iotbx.pdb.hierarchy
   altlocs = set()
-  for chain in pdb_hierarchy.only_model().chains() :
-    if (not chain.is_protein()) and (not chain.is_na()) :
+  for chain in pdb_hierarchy.only_model().chains():
+    if (not chain.is_protein()) and (not chain.is_na()):
       continue
-    for residue_group in chain.residue_groups() :
+    for residue_group in chain.residue_groups():
       atom_groups = residue_group.atom_groups()
-      if (len(atom_groups) > 1) :
-        if (atom_groups[0].altloc.strip() == '') :
+      if (len(atom_groups) > 1):
+        if (atom_groups[0].altloc.strip() == ''):
           altloc_remediate.spread_to_residue(residue_group)
       altlocs.update(set([ a.altloc for a in residue_group.atom_groups() ]))
   if ('' in altlocs) : altlocs.remove('')
   n_confs = len(altlocs)
-  if (n_confs <= 1) :
+  if (n_confs <= 1):
     return pdb_hierarchy
   root = iotbx.pdb.hierarchy.root()
   altlocs = sorted(altlocs)
   models = {}
-  for i_mod in range(n_confs) :
+  for i_mod in range(n_confs):
     model = iotbx.pdb.hierarchy.model(id=altlocs[i_mod])
     models[altlocs[i_mod]] = model
     root.append_model(model)
-  for chain in pdb_hierarchy.only_model().chains() :
-    if (not chain.is_protein()) and (not chain.is_na()) :
+  for chain in pdb_hierarchy.only_model().chains():
+    if (not chain.is_protein()) and (not chain.is_na()):
       continue
     chains = {}
     for altloc in altlocs :
       new_chain = iotbx.pdb.hierarchy.chain(id=chain.id)
       models[altloc].append_chain(new_chain)
       chains[altloc] = new_chain
-    for residue_group in chain.residue_groups() :
+    for residue_group in chain.residue_groups():
       atom_groups = residue_group.atom_groups()
-      if (len(atom_groups) == 1) :
+      if (len(atom_groups) == 1):
         for altloc in altlocs :
           chains[altloc].append_residue_group(residue_group.detached_copy())
       else :
-        def add_atom_group (ag, new_chain) :
+        def add_atom_group(ag, new_chain):
           new_ag = ag.detached_copy()
           new_ag.altloc = ''
           new_rg = iotbx.pdb.hierarchy.residue_group(
@@ -292,6 +292,6 @@ def alternate_conformations_as_multiple_models (pdb_hierarchy) :
           add_atom_group(atom_group, chains[altloc])
           have_altlocs.add(altloc)
         for altloc in altlocs :
-          if (not altloc in have_altlocs) :
+          if (not altloc in have_altlocs):
             add_atom_group(atom_groups[0], chains[altloc])
   return root

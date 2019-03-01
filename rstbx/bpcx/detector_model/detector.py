@@ -65,7 +65,7 @@ class reflection_predictor:
     def intersect(self, ray, sensor):
         '''Compute intersection of sensor with ray from frame origin, returning
         none if intersection not within limits.'''
-        raise RuntimeError, 'overload me'
+        raise RuntimeError('overload me')
 
 class reflection_predictor_thomas(reflection_predictor):
     '''Implementation of reflection_predictor using David Thomas' matrix

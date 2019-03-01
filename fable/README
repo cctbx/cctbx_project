@@ -1,0 +1,52 @@
+FABLE: Automatic Fortran to C++ conversion (https://doi.org/10.1186/1751-0473-7-5).
+See the "notes" file for more information.
+
+This document (15 Nov 2018) is focused on installing and testing FABLE in the context of Python 3.6.
+
+Pre-requisites:
+
+  1) Please have a Linux environment, bash shell.
+  2) Please create a working directory 
+     export WORK=<new working directory>
+     cd ${WORK}
+  3) Download source code:
+     wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py --no-check-certificate
+     python bootstrap.py hot update --builder=cctbx
+
+
+Create and configure a conda environment:
+
+  wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh --no-check-certificate
+  chmod u+x Miniconda2-latest-Linux-x86_64.sh
+  ./Miniconda2-latest-Linux-x86_64.sh # tested with conda 4.5.11
+     # please install in directory ${WORK}/miniconda2
+     # no, do not prepend Miniconda2 to .bashrc
+
+  source miniconda2/etc/profile.d/conda.sh
+  conda create -y --name fable36 python=3.6
+  conda activate fable36
+  conda install six future
+
+Create and configure FABLE:
+
+  mkdir build36
+  cd ${WORK}/build36
+  python ../modules/cctbx_project/libtbx/configure.py fable
+  # python ../modules/cctbx_project/libtbx/configure.py --enable_cxx11 fable # support C++11 standard
+  source ${WORK}/build36/setpaths.sh
+  cd ${WORK}/build36; make; cd ${WORK}
+  cd ${WORK}/build36; make; cd ${WORK}
+
+Test FABLE in a new login shell (bash, cd ${WORK}):
+
+  source miniconda2/etc/profile.d/conda.sh
+  conda activate fable36
+  source ${WORK}/build36/setpaths.sh
+  mkdir test36; cd test36
+  libtbx.run_tests_parallel module=fable nproc=Auto
+
+Notes:
+  Not yet tested with MacOSX
+  Also works with Python 2.7 (change 3.6 to 2.7)
+
+

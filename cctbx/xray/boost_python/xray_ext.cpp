@@ -5,6 +5,7 @@ namespace cctbx { namespace xray { namespace boost_python {
   void wrap_fast_gradients();
   void wrap_gradient_flags();
   void wrap_gradients_direct();
+  void wrap_each_hkl_gradients_direct();
   void wrap_conversions();
   void wrap_minimization();
   void wrap_scatterer_flags();
@@ -31,6 +32,7 @@ namespace {
     wrap_conversions();
     wrap_gradient_flags();
     wrap_gradients_direct();
+    wrap_each_hkl_gradients_direct();
     wrap_sampling_base();
     wrap_fast_gradients();
     wrap_minimization();

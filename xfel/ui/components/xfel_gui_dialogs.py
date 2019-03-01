@@ -95,7 +95,7 @@ class SettingsDialog(BaseDialog):
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, 230),
+                        size=(600, -1),
                         *args, **kwargs)
 
     self.params = params
@@ -116,13 +116,35 @@ class SettingsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
 
+    # Facility control
+    self.facility_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+    choices = ['LCLS', 'Standalone']
+    lower_choices = [f.lower() for f in choices]
+    self.facility = gctr.ChoiceCtrl(self,
+                                    label='Facility',
+                                    label_size=(150, -1),
+                                    ctrl_size=(180, -1),
+                                    label_style='bold',
+                                    choices=choices)
+    self.facility_sizer.Add(self.facility, flag=wx.EXPAND | wx.ALL, border=10)
+    try:
+      self.facility.ctr.SetSelection(lower_choices.index(params.facility.name))
+    except ValueError:
+      pass
+
+    self.btn_facility_options = wx.Button(self, label='Options...')
+    self.facility_sizer.Add(self.btn_facility_options, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.main_sizer.Add(self.facility_sizer, flag=wx.EXPAND | wx.ALL)
+
     # Experiment name control
     self.experiment = gctr.TextButtonCtrl(self,
                                           label='Experiment',
                                           label_style='bold',
                                           label_size=(150, -1),
                                           big_button_size=(130, -1),
-                                          value=self.params.experiment)
+                                          value=self.params.facility.lcls.experiment)
     self.main_sizer.Add(self.experiment,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
@@ -166,6 +188,10 @@ class SettingsDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onAdvanced, id=self.btn_op.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=self.btn_OK.GetId())
     self.Bind(wx.EVT_BUTTON, self.onBrowse, id=self.output.btn_big.GetId())
+    self.Bind(wx.EVT_CHOICE, self.onFacilityChoice)
+    self.Bind(wx.EVT_BUTTON, self.onFacilityOptions, id=self.btn_facility_options.GetId())
+
+    self.setup_facility_options()
 
   def onBrowse(self, e):
     dlg = wx.DirDialog(self, "Choose the input directory:",
@@ -174,6 +200,28 @@ class SettingsDialog(BaseDialog):
     if dlg.ShowModal() == wx.ID_OK:
       self.output.ctr.SetValue(dlg.GetPath())
     dlg.Destroy()
+
+  def onFacilityChoice(self, e):
+    self.params.facility.name = self.facility.ctr.GetStringSelection().lower()
+    self.setup_facility_options()
+
+  def setup_facility_options(self):
+    if self.params.facility.name == 'lcls':
+      self.experiment.Enable()
+    else:
+      self.experiment.Disable()
+
+  def onFacilityOptions(self, e):
+    if self.params.facility.name == 'lcls':
+      opts = LCLSFacilityOptions(self, self.params)
+      opts.Fit()
+      opts.Center()
+      opts.ShowModal()
+    elif self.params.facility.name == 'standalone':
+      opts = StandaloneOptions(self, self.params)
+      opts.Fit()
+      opts.Center()
+      opts.ShowModal()
 
   def onAdvanced(self, e):
     adv = AdvancedSettingsDialog(self, self.params)
@@ -187,18 +235,21 @@ class SettingsDialog(BaseDialog):
     creds.Center()
     if (creds.ShowModal() == wx.ID_OK):
       self.params.db.host     = creds.db_host.ctr.GetValue()
+      self.params.db.port     = int(creds.db_port.ctr.GetValue())
       self.params.db.name     = creds.db_name.ctr.GetValue()
       self.params.db.user     = creds.db_user.ctr.GetValue()
       self.params.db.password = creds.db_password.ctr.GetValue()
-      self.params.web.user     = creds.web_user.ctr.GetValue()
-      self.params.web.password = creds.web_password.ctr.GetValue()
+      if self.params.facility.name == 'lcls':
+        self.params.facility.lcls.web.user     = creds.web_user.ctr.GetValue()
+        self.params.facility.lcls.web.password = creds.web_password.ctr.GetValue()
 
       self.drop_tables = creds.chk_drop_tables.GetValue()
 
 
   def onOK(self, e):
+    self.params.facility.name = self.facility.ctr.GetStringSelection().lower()
     self.params.experiment_tag = self.db_cred.ctr.GetValue()
-    self.params.experiment = self.experiment.ctr.GetValue()
+    self.params.facility.lcls.experiment = self.experiment.ctr.GetValue()
     self.params.output_folder = self.output.ctr.GetValue()
     e.Skip()
 
@@ -227,6 +278,15 @@ class DBCredentialsDialog(BaseDialog):
                                        value=params.db.host)
     self.main_sizer.Add(self.db_host, flag=wx.EXPAND | wx.ALL, border=10)
 
+    # Host name
+    self.db_port = gctr.TextButtonCtrl(self,
+                                       label='DB Port number',
+                                       label_style='bold',
+                                       label_size=(150, -1),
+                                       big_button_size=(130, -1),
+                                       value=str(params.db.port))
+    self.main_sizer.Add(self.db_port, flag=wx.EXPAND | wx.ALL, border=10)
+
     # Database name
     self.db_name = gctr.TextButtonCtrl(self,
                                        label='DB name',
@@ -247,7 +307,7 @@ class DBCredentialsDialog(BaseDialog):
 
     # Password
     self.db_password = gctr.TextButtonCtrl(self,
-                                           label='Password',
+                                           label='DB Password',
                                            label_style='bold',
                                            label_size=(150, -1),
                                            text_style=wx.TE_PASSWORD,
@@ -259,26 +319,27 @@ class DBCredentialsDialog(BaseDialog):
     self.chk_drop_tables = wx.CheckBox(self,
                                        label='Delete and regenerate all tables')
     self.main_sizer.Add(self.chk_drop_tables, flag=wx.ALL, border=10)
-    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
 
-    # LCLS user name
-    self.web_user = gctr.TextButtonCtrl(self,
-                                       label='LCLS user name',
-                                       label_style='bold',
-                                       label_size=(150, -1),
-                                       big_button_size=(130, -1),
-                                       value=params.web.user)
-    self.main_sizer.Add(self.web_user, flag=wx.EXPAND | wx.ALL, border=10)
+    if params.facility.name == 'lcls':
+      self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
+      # LCLS user name
+      self.web_user = gctr.TextButtonCtrl(self,
+                                         label='LCLS user name',
+                                         label_style='bold',
+                                         label_size=(150, -1),
+                                         big_button_size=(130, -1),
+                                         value=params.facility.lcls.web.user)
+      self.main_sizer.Add(self.web_user, flag=wx.EXPAND | wx.ALL, border=10)
 
-    # LCLS password
-    self.web_password = gctr.TextButtonCtrl(self,
-                                           label='LCLS Password',
-                                           label_style='bold',
-                                           label_size=(150, -1),
-                                           text_style=wx.TE_PASSWORD,
-                                           big_button_size=(130, -1),
-                                           value=params.web.password)
-    self.main_sizer.Add(self.web_password, flag=wx.EXPAND | wx.ALL, border=10)
+      # LCLS password
+      self.web_password = gctr.TextButtonCtrl(self,
+                                             label='LCLS Password',
+                                             label_style='bold',
+                                             label_size=(150, -1),
+                                             text_style=wx.TE_PASSWORD,
+                                             big_button_size=(130, -1),
+                                             value=params.facility.lcls.web.password)
+      self.main_sizer.Add(self.web_password, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
@@ -302,6 +363,151 @@ class DBCredentialsDialog(BaseDialog):
         self.chk_drop_tables.SetValue(False)
     e.Skip()
 
+class LCLSFacilityOptions(BaseDialog):
+  ''' Options settings specific to LCLS'''
+  def __init__(self, parent, params,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.params = params
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, *args, **kwargs)
+
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    self.chk_use_ffb = wx.CheckBox(self,
+                                   label='Use ffb (fast feedback) file system. Active experiment only, on hiprio or prio queues')
+    self.chk_use_ffb.SetValue(params.facility.lcls.use_ffb)
+
+    self.chk_dump_shots = wx.CheckBox(self,
+                                      label='Dump all images to disk. Useful for tuning spotfinding and indexing parameters')
+    self.chk_dump_shots.SetValue(params.facility.lcls.dump_shots)
+
+    self.chk_enforce80 = wx.CheckBox(self,
+                                     label='Require stream 80 (FEE spectrometer) before processing')
+    self.chk_enforce80.SetValue(params.facility.lcls.web.enforce80)
+
+
+    self.chk_enforce81 = wx.CheckBox(self,
+                                     label='Require stream 81 (FEE spectrometer) before processing')
+    self.chk_enforce81.SetValue(params.facility.lcls.web.enforce81)
+
+    self.main_sizer.Add(self.chk_use_ffb, flag=wx.ALL, border=10)
+    self.main_sizer.Add(self.chk_dump_shots, flag=wx.ALL, border=10)
+    self.main_sizer.Add(self.chk_enforce80, flag=wx.ALL, border=10)
+    self.main_sizer.Add(self.chk_enforce81, flag=wx.ALL, border=10)
+    self.SetSizer(self.main_sizer)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+
+    self.SetTitle('LCLS Settings')
+
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def onOK(self, e):
+    self.params.facility.lcls.use_ffb = bool(self.chk_use_ffb.GetValue())
+    self.params.facility.lcls.dump_shots = bool(self.chk_dump_shots.GetValue())
+    self.params.facility.lcls.web.enforce80 = bool(self.chk_enforce80.GetValue())
+    self.params.facility.lcls.web.enforce81 = bool(self.chk_enforce81.GetValue())
+    e.Skip()
+
+class StandaloneOptions(BaseDialog):
+  ''' Options settings specific to standalone GUI '''
+  def __init__(self, parent, params,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.params = params
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, *args, **kwargs)
+
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    # Output folder text control w/ Browse / magnifying glass button
+    if self.params.facility.standalone.data_dir is None:
+      current_folder = os.path.abspath(os.curdir)
+    else:
+      current_folder = self.params.facility.standalone.data_dir
+    self.data_dir = gctr.TextButtonCtrl(self,
+                                        label='Folder to monitor',
+                                        label_style='bold',
+                                        label_size=(300, -1),
+                                        big_button=True,
+                                        big_button_label='Browse...',
+                                        big_button_size=(120, -1),
+                                        value=current_folder)
+    self.main_sizer.Add(self.data_dir,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    self.SetSizer(self.main_sizer)
+
+    # Raw image option
+    self.monitor_for = gctr.RadioCtrl(self,
+                                      label='Monitor for',
+                                      label_style='bold',
+                                      label_size=(-1, -1),
+                                      direction='horizontal',
+                                      items={'files':'files',
+                                            'folders':'folders'})
+    getattr(self.monitor_for, self.params.facility.standalone.monitor_for).SetValue(1)
+
+    self.main_sizer.Add(self.monitor_for, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # File matching template control
+    if self.params.facility.standalone.template is None:
+      self.params.facility.standalone.template = ''
+    self.template = gctr.TextButtonCtrl(self,
+                                          label='File matching template (example *.h5)',
+                                          label_style='bold',
+                                          label_size=(300, -1),
+                                          value=self.params.facility.standalone.template)
+    self.main_sizer.Add(self.template,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    # Composite check
+    self.chk_composite = wx.CheckBox(self,
+                                   label='Files are composite (like HDF5, files are submitted as individual runs.\nOtherwise, groups of files are submitted as single runs)')
+    self.chk_composite.SetValue(params.facility.standalone.composite_files)
+    self.main_sizer.Add(self.chk_composite,
+                        flag=wx.EXPAND | wx.ALL,
+                        border=10)
+
+    self.SetTitle('Standalone settings')
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+    self.Bind(wx.EVT_BUTTON, self.onBrowse, id=self.data_dir.btn_big.GetId())
+
+  def onOK(self, e):
+    self.params.facility.standalone.data_dir = self.data_dir.ctr.GetValue()
+    if self.monitor_for.files.GetValue():
+      self.params.facility.standalone.monitor_for = 'files'
+    else:
+      self.params.facility.standalone.monitor_for = 'folders'
+    self.params.facility.standalone.template = self.template.ctr.GetValue()
+    self.params.facility.standalone.composite_files = self.chk_composite.GetValue()
+    e.Skip()
+
+  def onBrowse(self, e):
+    dlg = wx.DirDialog(self, "Choose the input directory:",
+                       style=wx.DD_DEFAULT_STYLE)
+
+    if dlg.ShowModal() == wx.ID_OK:
+      self.data_dir.ctr.SetValue(dlg.GetPath())
+    dlg.Destroy()
 
 class AdvancedSettingsDialog(BaseDialog):
   ''' Advanced settings for the cctbx.xfel front end '''
@@ -318,10 +524,10 @@ class AdvancedSettingsDialog(BaseDialog):
     mp_box = wx.StaticBox(self, label='Multiprocessing Options')
     self.mp_sizer = wx.StaticBoxSizer(mp_box, wx.VERTICAL)
 
-    choices = ['python', 'lsf', 'mpi', 'sge', 'pbi', 'custom']
+    choices = ['python', 'lsf', 'mpi', 'sge', 'pbs', 'custom']
     self.mp_option = gctr.ChoiceCtrl(self,
                                      label='Multiprocessing:',
-                                     label_size=(180, -1),
+                                     label_size=(200, -1),
                                      label_style='bold',
                                      choices=choices)
     self.mp_sizer.Add(self.mp_option, flag=wx.EXPAND | wx.ALL, border=10)
@@ -330,42 +536,67 @@ class AdvancedSettingsDialog(BaseDialog):
     except ValueError:
       pass
 
-    # Queue
-    queues = ['psanaq', 'psanaq', 'psdebugq','psanaidleq', 'psnehhiprioq',
-              'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
-    self.queue = gctr.ChoiceCtrl(self,
-                                 label='Queue:',
-                                 label_size=(180, -1),
-                                 label_style='bold',
-                                 choices=queues)
-    self.Bind(wx.EVT_CHOICE, self.onQueueChoice, self.queue.ctr)
-    self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
-    try:
-      self.queue.ctr.SetSelection(queues.index(params.mp.queue))
-    except ValueError:
-      pass
+    if params.facility.name == 'lcls':
+      # Queue
+      queues = ['psanaq', 'psanaq', 'psdebugq','psanaidleq', 'psnehhiprioq',
+                'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
+      self.queue = gctr.ChoiceCtrl(self,
+                                   label='Queue:',
+                                   label_size=(200, -1),
+                                   label_style='bold',
+                                   choices=queues)
+      self.Bind(wx.EVT_CHOICE, self.onQueueChoice, self.queue.ctr)
+      self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
+      try:
+        self.queue.ctr.SetSelection(queues.index(params.mp.queue))
+      except ValueError:
+        pass
 
-    self.nproc = gctr.SpinCtrl(self,
-                               label='Number of processors:',
-                               label_size=(180, -1),
-                               label_style='normal',
-                               ctrl_size=(100, -1),
-                               ctrl_value='%d'%params.mp.nproc,
-                               ctrl_min=1,
-                               ctrl_max=1000)
-    self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
+      self.nproc = gctr.SpinCtrl(self,
+                                 label='Number of processors:',
+                                 label_size=(200, -1),
+                                 label_style='normal',
+                                 ctrl_size=(100, -1),
+                                 ctrl_value='%d'%params.mp.nproc,
+                                 ctrl_min=1,
+                                 ctrl_max=1000)
+      self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
+    else:
+      # Queue
+      self.queue = gctr.TextButtonCtrl(self,
+                                       label='Queue:',
+                                       label_style='bold',
+                                       label_size=(200, -1),
+                                       value=self.params.mp.queue \
+                                             if params.mp.queue is not None else '')
+      self.mp_sizer.Add(self.queue, flag=wx.EXPAND | wx.ALL, border=10)
 
-    self.chk_use_ffb = wx.CheckBox(self,
-                                   label='Use ffb (fast feedback) file system. Active experiment only, on hiprio or prio queues')
-    self.chk_use_ffb.SetValue(params.use_ffb)
+      self.nproc = gctr.SpinCtrl(self,
+                                 label='Total number of processors:',
+                                 label_size=(240, -1),
+                                 label_style='normal',
+                                 ctrl_size=(100, -1),
+                                 ctrl_value='%d'%params.mp.nproc,
+                                 ctrl_min=1,
+                                 ctrl_max=1000)
+      self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
+      self.nproc_per_node = gctr.SpinCtrl(self,
+                                          label='Number of processors per node:',
+                                          label_size=(240, -1),
+                                          label_style='normal',
+                                          ctrl_size=(100, -1),
+                                          ctrl_value='%d'%params.mp.nproc_per_node,
+                                          ctrl_min=1,
+                                          ctrl_max=1000)
+      self.mp_sizer.Add(self.nproc_per_node, flag=wx.EXPAND | wx.ALL, border=10)
 
-    self.mp_sizer.Add(self.chk_use_ffb, flag=wx.ALL, border=10)
-
-    self.chk_dump_shots = wx.CheckBox(self,
-                                      label='Dump all images to disk. Useful for tuning spotfinding and indexing parameters')
-    self.chk_dump_shots.SetValue(params.dump_shots)
-
-    self.mp_sizer.Add(self.chk_dump_shots, flag=wx.ALL, border=10)
+      self.env_script = gctr.TextButtonCtrl(self,
+                                       label='Environment setup script:',
+                                       label_style='bold',
+                                       label_size=(200, -1),
+                                       value=self.params.mp.env_script[0] \
+                                             if len(params.mp.env_script) > 0 else '')
+      self.mp_sizer.Add(self.env_script, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -375,13 +606,20 @@ class AdvancedSettingsDialog(BaseDialog):
 
     # Processing back-ends
     self.dispatchers_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.back_ends = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'dials.stills_process', 'LABELIT', 'custom']
-    self.dispatchers = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'dials.stills_process', 'cxi.xtc_process', 'custom']
+    self.back_ends = ['cctbx.xfel (XTC+CBF mode)', 'cctbx.xfel (XTC mode)', 'Ha14', 'Small cell', 'custom']
+    self.dispatchers = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'cxi.xtc_process', 'cctbx.xfel.small_cell_process', 'custom']
+    self.dispatcher_descriptions = [
+      'Process the data according to Brewster 2018, using DIALS for indexing, refinement and integration, with stills-specific defaults. Converts XTC into CBF in memory and optionally provides dumping of CBFs',
+      'Process the data according to Brewster 2018, using DIALS for indexing, refinement and integration, with stills-specific defaults. Reads XTC directly.',
+      'Process the data according to Hattne 2014, using LABELIT for initial indexing and stills-specific refinement and integration code implemented in the package cctbx.rstbx.',
+      'Process the data according to Brewster 2015, using small cell for initial indexing and using DIALS for refinement and integration, with stills-specific defaults.',
+      'Provide a custom program. See authors for details.']
+
     self.back_end = gctr.ChoiceCtrl(self,
                                     label='Processing back end:',
                                     label_size=(180, -1),
                                     label_style='bold',
-                                    ctrl_size=(200, -1),
+                                    ctrl_size=(220, -1),
                                     choices=self.back_ends)
     self.Bind(wx.EVT_CHOICE, self.onBackendChoice)
     self.dispatchers_sizer.Add(self.back_end, flag=wx.ALIGN_LEFT)
@@ -400,10 +638,14 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.analysis_sizer.Add(self.dispatchers_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.dispatcher_help = wx.StaticText(self, label=self.dispatcher_descriptions[self.back_end.ctr.GetSelection()], size=(600,80))
+    self.dispatcher_help.Wrap(600)
+    self.analysis_sizer.Add(self.dispatcher_help, flag=wx.EXPAND | wx.ALL, border=10)
+
     img_types = ['corrected', 'raw']
     self.avg_img_type = gctr.ChoiceCtrl(self,
                                         label='Avg. Image Type:',
-                                        label_size=(180, -1),
+                                        label_size=(200, -1),
                                         label_style='bold',
                                         ctrl_size=(200, -1),
                                         choices=img_types)
@@ -415,18 +657,6 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.analysis_sizer.Add(self.avg_img_type, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.analysis_sizer, flag=wx.EXPAND | wx.ALL, border=10)
-
-    self.chk_enforce80 = wx.CheckBox(self,
-                                     label='Require stream 80 (FEE spectrometer) before processing')
-    self.chk_enforce80.SetValue(params.web.enforce80)
-
-    self.main_sizer.Add(self.chk_enforce80, flag=wx.ALL, border=10)
-
-    self.chk_enforce81 = wx.CheckBox(self,
-                                     label='Require stream 81 (FEE spectrometer) before processing')
-    self.chk_enforce81.SetValue(params.web.enforce81)
-
-    self.main_sizer.Add(self.chk_enforce81, flag=wx.ALL, border=10)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
@@ -452,6 +682,8 @@ class AdvancedSettingsDialog(BaseDialog):
 
   def onBackendChoice(self, e):
     self.params.dispatcher = self.dispatchers[self.back_end.ctr.GetSelection()]
+    self.dispatcher_help.SetLabel(self.dispatcher_descriptions[self.back_end.ctr.GetSelection()])
+    self.dispatcher_help.Wrap(600)
     if self.params.dispatcher == 'custom':
       self.custom_dispatcher.Show()
       self.Layout()
@@ -464,13 +696,14 @@ class AdvancedSettingsDialog(BaseDialog):
     if self.params.dispatcher == 'custom':
       self.params.dispatcher = self.custom_dispatcher.ctr.GetValue()
     self.params.mp.method = self.mp_option.ctr.GetStringSelection()
-    self.params.mp.queue = self.queue.ctr.GetStringSelection()
+    if self.params.facility.name == 'lcls':
+      self.params.mp.queue = self.queue.ctr.GetStringSelection()
+    else:
+      self.params.mp.queue = self.queue.ctr.GetValue()
+      self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
+      self.params.mp.env_script = [self.env_script.ctr.GetValue()]
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
-    self.params.use_ffb = bool(self.chk_use_ffb.GetValue())
-    self.params.dump_shots = bool(self.chk_dump_shots.GetValue())
     self.params.average_raw_data = self.avg_img_type.ctr.GetStringSelection() == 'raw'
-    self.params.web.enforce80 = bool(self.chk_enforce80.GetValue())
-    self.params.web.enforce81 = bool(self.chk_enforce81.GetValue())
     e.Skip()
 
 class CalibrationDialog(BaseDialog):
@@ -902,7 +1135,7 @@ class MultiRunTagDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def onRunChoice(self, e):
-    run_numbers_selected = map(int, self.select_runs.ctr.GetCheckedStrings())
+    run_numbers_selected = self.select_runs.ctr.GetCheckedStrings()
     self.selected = {}
     for r in self.db_runs:
       if r.run in run_numbers_selected:
@@ -1118,10 +1351,22 @@ class RunBlockDialog(BaseDialog):
     self.block = block
     self.all_blocks = []
     self.db = db
+    self.use_ids = db.params.facility.name != 'lcls'
+
+    all_runs = db.get_all_runs()
+    if self.use_ids:
+      runs_available = sorted([i.id for i in all_runs])
+    else:
+      runs_available = sorted([int(i.run) for i in all_runs])
+    self.first_avail = min(runs_available)
+    self.last_avail = max(runs_available)
 
     if block is None:
       runs = self.db.get_all_runs()
-      run_numbers = [r.run for r in runs]
+      if self.use_ids:
+        run_numbers = [r.id for r in runs]
+      else:
+        run_numbers = [int(r.run) for r in runs]
       assert len(set(run_numbers)) == len(run_numbers)
 
       if trial is not None:
@@ -1131,9 +1376,7 @@ class RunBlockDialog(BaseDialog):
         wx.MessageBox("No runs found", "Error", wx.OK | wx.ICON_EXCLAMATION)
         assert False # Close and destroy dialog properly here
 
-      min_run = runs[run_numbers.index(min(run_numbers))]
-      max_run = runs[run_numbers.index(max(run_numbers))]
-      self.first_run = min_run.run
+      self.first_run = min(run_numbers)
       self.last_run = None
 
       class defaults(object):
@@ -1158,11 +1401,19 @@ class RunBlockDialog(BaseDialog):
 
     else:
       db = block.app
-      self.first_run = db.get_run(run_number=block.startrun).run
-      if block.endrun is None:
-        self.last_run = None
+      self.first_run, self.last_run = block.get_first_and_last_runs()
+      if self.first_run is None:
+        self.first_run = self.first_avail
       else:
-        self.last_run = db.get_run(run_number=block.endrun).run
+        if self.use_ids:
+          if self.first_run is not None: self.first_run = self.first_run.id
+          if self.last_run is not None: self.last_run = self.last_run.id
+        else:
+          if self.first_run is not None: self.first_run = int(self.first_run.run)
+          if self.last_run is not None: self.last_run = int(self.last_run.run)
+
+    self.orig_first_run = self.first_run
+    self.orig_last_run = self.last_run
 
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
@@ -1171,10 +1422,6 @@ class RunBlockDialog(BaseDialog):
                         *args, **kwargs)
 
     # Run block start / end points (choice widgets)
-
-    runs_available = sorted([i.run for i in db.get_all_runs()])
-    self.first_avail = min(runs_available)
-    self.last_avail = max(runs_available)
 
     self.config_panel = wx.Panel(self)
     config_box = wx.StaticBox(self.config_panel, label='Configuration')
@@ -1236,7 +1483,7 @@ class RunBlockDialog(BaseDialog):
                                    label='Start run:',
                                    label_style='bold',
                                    label_size=(100, -1),
-                                   ctrl_value=self.first_run,
+                                   ctrl_value=(self.first_run or self.first_avail),
                                    ctrl_min=self.first_avail,
                                    ctrl_max=self.last_avail)
     self.runblocks_end = gctr.SpinCtrl(self.runblock_panel,
@@ -1435,7 +1682,6 @@ class RunBlockDialog(BaseDialog):
       first = int(self.runblocks_start.ctr.GetValue())
       assert first > 0 and first >= self.first_avail
       self.first_run = first
-      startrun = self.db.get_run(run_number=first).run
     except (ValueError, AssertionError) as e:
       print "Please select a run between %d and %d." % (self.first_avail, self.last_avail)
       raise e
@@ -1444,18 +1690,17 @@ class RunBlockDialog(BaseDialog):
         last = int(self.runblocks_end.ctr.GetValue())
         assert last > 0 and last <= self.last_avail and last >= first
         self.last_run = last
-        endrun = self.db.get_run(run_number=int(last)).run
       except (ValueError, AssertionError) as e:
         print "Please select a run between %d and %d." % (self.first_run, self.last_avail)
         raise e
     elif self.end_type.specify.GetValue() == 0:
-      endrun = None
+      self.last_run = None
     else:
       assert False
+    rg_open = self.last_run is None
 
-    rg_dict = dict(startrun=startrun,
-                   endrun=endrun,
-                   active=True,
+    rg_dict = dict(active=True,
+                   open=rg_open,
                    format=self.img_format.ctr.GetStringSelection(),
                    config_str=self.config.ctr.GetValue(),
                    extra_phil_str=self.phil.ctr.GetValue(),
@@ -1482,24 +1727,26 @@ class RunBlockDialog(BaseDialog):
 
     if self.block is None:
       self.block = self.db.create_rungroup(**rg_dict)
+      self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
       self.parent.trial.add_rungroup(self.block)
     else:
       # if all the parameters are unchanged, do nothing
       all_the_same = [str(rg_dict[key]) == str(getattr(self.block, key)) for key in rg_dict].count(False) == 0
+      all_the_same &= self.first_run == self.orig_first_run and self.last_run == self.orig_last_run
       if not all_the_same:
-        # if all the parameters except startrun, endrun and comment are the same,
+        # if all the parameters except open and comment are the same,
         # only update those fields
         keep_old_run_group = [str(rg_dict[key]) == str(getattr(self.block, key)) for key in rg_dict \
-                              if key not in ['startrun', 'endrun', 'comment']].count(False) == 0
+                              if key not in ['open', 'comment']].count(False) == 0
         if keep_old_run_group:
           main = self.parent.parent.GetParent().main
           running = main.job_sentinel is not None and main.job_sentinel.active
           if running:
             main.stop_job_sentinel()
 
-          self.block.startrun = startrun
-          self.block.endrun = endrun
+          self.block.open = rg_open
           self.block.comment = rg_dict['comment']
+          self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
 
           if running:
             main.start_job_sentinel()
@@ -1508,6 +1755,7 @@ class RunBlockDialog(BaseDialog):
           # enough parameters have changed to warrant creating a new run group
           self.block.active = False
           self.block = self.db.create_rungroup(**rg_dict)
+          self.block.sync_runs(self.first_run, self.last_run, self.use_ids)
           self.parent.trial.add_rungroup(self.block)
 
     e.Skip()
@@ -1655,10 +1903,14 @@ class SelectRunBlocksDialog(BaseDialog):
     selected = []
     for rungroup in self.all_rungroups:
       selected.append(rungroup.id in self.trial_rungroups)
-      if rungroup.endrun is None:
-        desc = "[%d] %d+"%(rungroup.id, rungroup.startrun)
+      first_run, last_run = rungroup.get_first_and_last_runs()
+      if last_run is None:
+        if first_run is None:
+          desc = "[%d]"%(rungroup.id)
+        else:
+          desc = "[%d] %d+"%(rungroup.id, int(first_run.id))
       else:
-        desc = "[%d] %d-%d"%(rungroup.id, rungroup.startrun, rungroup.endrun)
+        desc = "[%d] %d-%d"%(rungroup.id, int(first_run.id), int(last_run.id))
       if rungroup.comment is not None:
         desc += " " + rungroup.comment
 
@@ -1906,9 +2158,8 @@ class TrialDialog(BaseDialog):
         from spotfinder.applications.xfel import cxi_phil
         phil_scope = cxi_phil.cxi_versioned_extract().persist.phil_scope
       else:
-        from xfel.ui import known_dials_dispatchers
-        import importlib
-        phil_scope = importlib.import_module(known_dials_dispatchers[dispatcher]).phil_scope
+        from xfel.ui import load_phil_scope_from_dispatcher
+        phil_scope = load_phil_scope_from_dispatcher(dispatcher)
 
       from iotbx.phil import parse
       msg = None

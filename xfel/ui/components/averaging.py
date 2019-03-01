@@ -14,7 +14,7 @@ class AveragingCommand(get_lsf_submit_command):
     # current settings and experiment parameters
     nproc = int(db_params.mp.nproc)
     self.command = "-n %d %s" % (nproc, self.command) # to make sure nproc is passed to mpirun
-    expt = str(db_params.experiment)
+    expt = str(db_params.facility.lcls.experiment)
     self.args.append("-x %s" % expt)
     outdir = os.path.join(str(db_params.output_folder), "averages")
     if not os.path.exists(outdir):
@@ -26,7 +26,7 @@ class AveragingCommand(get_lsf_submit_command):
     self.stdoutdir = logdir
     self.submit_path = os.path.join(logdir, "r%04d.sh" % run_no)
     self.log_name = "r%04d.log" % run_no
-    ffb = db_params.use_ffb
+    ffb = db_params.facility.lcls.use_ffb
     if ffb:
       self.args.append("-f")
     if raw:
@@ -58,4 +58,3 @@ class AveragingCommand(get_lsf_submit_command):
   def customize_for_method(self):
     self.submit_head = "bsub"
     self.command = "mpirun %s" % self.command
-

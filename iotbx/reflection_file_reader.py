@@ -312,12 +312,12 @@ class any_reflection_file(object):
       )
     if (self.file_type() == "shelx_hklf"):
       if ((self._observation_type == "intensities") or
-          (assume_shelx_observation_type_is == "intensities")) :
+          (assume_shelx_observation_type_is == "intensities")):
         result[0].set_info(result[0].info().customized_copy(
           labels=["Iobs", "SigIobs"]))
         result[0].set_observation_type_xray_intensity()
       elif ((self._observation_type == "amplitudes") or
-            (assume_shelx_observation_type_is == "amplitudes")) :
+            (assume_shelx_observation_type_is == "amplitudes")):
         result[0].set_info(result[0].info().customized_copy(
           labels=["Fobs", "SigFobs"]))
         result[0].set_observation_type_xray_amplitude()
@@ -346,7 +346,7 @@ class any_reflection_file(object):
     # discard reflections where sigma <= 0
     # XXX note that this will happen after data merging, so for unmerged data
     # it is better to specify merge_equivalents=False!
-    if (enforce_positive_sigmas) :
+    if (enforce_positive_sigmas):
       result_ = []
       for array in result :
         result_.append(array.enforce_positive_sigmas())

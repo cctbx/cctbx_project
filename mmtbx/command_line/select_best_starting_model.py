@@ -25,10 +25,10 @@ output {
 }
 """
 
-def master_params () :
+def master_params():
   return libtbx.phil.parse(master_phil_str, process_includes=True)
 
-def run (args, external_params=None, out=sys.stdout) :
+def run(args, external_params=None, out=sys.stdout):
   from mmtbx.refinement import select_best_starting_model
   import mmtbx.utils
   from iotbx.file_reader import any_file
@@ -65,7 +65,7 @@ rigid-body refinement on suitable models if requested.""")
   # we can optionally pass a parameter block from elsewhere (e.g. phenix ligand
   # pipeline) and just use this run() method to load files
   params_ = external_params
-  if (params_ is None) :
+  if (params_ is None):
     params_ = params
   result = select_best_starting_model.select_model(
     model_names=params.input.model,
@@ -84,12 +84,12 @@ rigid-body refinement on suitable models if requested.""")
     print >> out, "Wrote updated data to %s" % params.output.data_file_name
   return result
 
-def validate_params (params) :
-  if (len(params.input.model) == 0) :
+def validate_params(params):
+  if (len(params.input.model) == 0):
     raise Sorry("No models specified.")
-  elif (params.input.xray_data.file_name is None) :
+  elif (params.input.xray_data.file_name is None):
     raise Sorry("No data file specified.")
   return True
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

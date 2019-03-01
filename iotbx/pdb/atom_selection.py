@@ -264,7 +264,7 @@ class cache(slots_getstate_setstate):
       result.append(iselection)
     return result
 
-  def get_resid_sequence (self, start, stop) :
+  def get_resid_sequence(self, start, stop):
     assert (not None in [start, stop])
     import iotbx.pdb.hierarchy
     result = iotbx.pdb.hierarchy.get_resid_sequence(
@@ -355,8 +355,8 @@ class cache(slots_getstate_setstate):
       self.nucleotide = (atoms.extract_tmp_as_size_t() == 1).iselection()
     return [self.nucleotide]
 
-  def get_hetero (self) :
-    if (self.hetero is None) :
+  def get_hetero(self):
+    if (self.hetero is None):
       atoms = self.root.atoms()
       self.hetero = atoms.extract_hetero()
     return [self.hetero]
@@ -404,29 +404,29 @@ class cache(slots_getstate_setstate):
         atoms.extract_tmp_as_size_t() == 1).iselection()
     return [self.single_atom_residue]
 
-  def get_bfactor (self, op, value) :
+  def get_bfactor(self, op, value):
     assert (op in [">", "<", "="])
     atoms = self.root.atoms()
     b_iso = atoms.extract_b()
     selection = None
-    if (op == ">") :
+    if (op == ">"):
       selection = b_iso > value
-    elif (op == "<") :
+    elif (op == "<"):
       selection = b_iso < value
-    elif (op == "=") :
+    elif (op == "="):
       selection = b_iso == value
     return [ selection.iselection() ]
 
-  def get_occupancy (self, op, value) :
+  def get_occupancy(self, op, value):
     assert (op in [">", "<", "="])
     atoms = self.root.atoms()
     occ = atoms.extract_occ()
     selection = None
-    if (op == ">") :
+    if (op == ">"):
       selection = occ > value
-    elif (op == "<") :
+    elif (op == "<"):
       selection = occ < value
-    elif (op == "=") :
+    elif (op == "="):
       selection = occ == value
     return [ selection.iselection() ]
 
@@ -467,7 +467,7 @@ class cache(slots_getstate_setstate):
   def sel_resid_range(self, start, stop):
     return self.union(iselections=self.get_resid_range(start=start,stop=stop))
 
-  def sel_resid_sequence(self, start, stop) :
+  def sel_resid_sequence(self, start, stop):
     return self.union(iselections=self.get_resid_sequence(start=start,
       stop=stop))
 
@@ -508,10 +508,10 @@ class cache(slots_getstate_setstate):
   def sel_hetero(self):
     return self.union(iselections=self.get_hetero())
 
-  def sel_bfactor (self, op, value) :
+  def sel_bfactor(self, op, value):
     return self.union(iselections=self.get_bfactor(op, value))
 
-  def sel_occupancy (self, op, value) :
+  def sel_occupancy(self, op, value):
     return self.union(iselections=self.get_occupancy(op, value))
 
   def sel_within(self, radius, primary_selection):
@@ -623,13 +623,13 @@ class cache(slots_getstate_setstate):
                   return arg.value+arg_cont.value, i_colon
                 word_iterator.backup()
             return arg.value, i_colon
-          def try_compose_sequence () :
+          def try_compose_sequence():
             arg_next = word_iterator.try_pop()
-            if (arg_next is None) :
+            if (arg_next is None):
               word_iterator.backup()
               return None, None
             lnext = arg_next.value.lower()
-            if (lnext == "through") :
+            if (lnext == "through"):
               arg_final = word_iterator.pop_argument(arg_next.value)
               return arg.value, arg_final.value
             word_iterator.backup()
@@ -640,7 +640,7 @@ class cache(slots_getstate_setstate):
               result_stack.append(self.sel_resseq(pattern=arg))
             elif (lword in ["resid", "resi"]):
               start, stop = try_compose_sequence()
-              if (start is None) :
+              if (start is None):
                 result_stack.append(self.sel_resid(pattern=arg))
               else :
                 result_stack.append(self.sel_resid_sequence(start=start,
@@ -686,11 +686,11 @@ class cache(slots_getstate_setstate):
           result_stack.append(self.sel_single_atom_residue())
         elif (lword == "water"):
           result_stack.append(self.sel_water())
-        elif (lword == "hetero") or (lword == "hetatm") :
+        elif (lword == "hetero") or (lword == "hetatm"):
           result_stack.append(self.sel_hetero())
-        elif (lword == "bfactor") or (lword == "occupancy") :
+        elif (lword == "bfactor") or (lword == "occupancy"):
           op = word_iterator.pop_argument(word.value).value
-          if (not op in [">", "<", "="]) :
+          if (not op in [">", "<", "="]):
             raise_syntax_error()
           else :
             arg_next = word_iterator.try_pop()
@@ -700,12 +700,12 @@ class cache(slots_getstate_setstate):
             except ValueError :
               raise_syntax_error()
             else :
-              if (lword == "bfactor") :
+              if (lword == "bfactor"):
                 result_stack.append(self.sel_bfactor(op, val))
               else :
                 result_stack.append(self.sel_occupancy(op, val))
         elif ((lword == "within" or lword=='residues_within') and
-              (self.special_position_settings is not None)) :
+              (self.special_position_settings is not None)):
           assert word_iterator.pop().value == "("
           radius = float(word_iterator.pop().value)
           assert word_iterator.pop().value == ","
@@ -813,10 +813,10 @@ class cache(slots_getstate_setstate):
       .intersection(fs(self.resseq.get(link_record.resseq2, sel_null)))
       .intersection(fs(self.icode.get(link_record.icode2, sel_null)))]
 
-def expand_selection_to_entire_atom_groups (selection, pdb_atoms) :
+def expand_selection_to_entire_atom_groups(selection, pdb_atoms):
   assert not pdb_atoms.extract_i_seq().all_eq(0)
   selection_complete = flex.bool(pdb_atoms.size(), False)
-  if (type(selection).__name__ == 'bool') :
+  if (type(selection).__name__ == 'bool'):
     selection = selection.iselection()
   for i_seq in selection :
     atom_group = pdb_atoms[i_seq].parent()
@@ -1048,6 +1048,15 @@ def selection_string_from_selection(pdb_h,
   #     "%d (result) != %d (input): conversion to string selects different number of atoms!.\n" \
   #     % (len(isel), len(selection)) +\
   #     "String lead to error: '%s'" % sel_str
+
+  # This hack is implemented to allow a chain be completely in two alternative
+  # conformations. Above check would fail. Selections outputted in refinement
+  # are incorrect, but underlying iselections are actually correct and refinement
+  # should be fine. General solution would be a universal procedure which can
+  # handle alternative conformations correctly, but this is time-demanding project.
+  # http://phenix-online.org/pipermail/phenixbb/2018-November/024006.html
+  if sel_str == '':
+    sel_str = "not all"
   return sel_str
 
 def get_atom_str(atom_str):

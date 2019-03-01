@@ -75,6 +75,8 @@ class simple(object):
         states_accumulator=None,
         ncs_groups=None):
     adopt_init_args(self, locals())
+    self.lbfgs_core_params = scitbx.lbfgs.core_parameters(
+      stpmax = 25.0)
     self.lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations)
     self.lbfgs_exception_handling_params = scitbx.lbfgs.\
@@ -99,6 +101,7 @@ class simple(object):
         geometry_restraints_manager     = self.geometry_restraints_manager,
         real_space_target_weight        = weight,
         real_space_gradients_delta      = self.real_space_gradients_delta,
+        lbfgs_core_params               = self.lbfgs_core_params,
         lbfgs_termination_params        = self.lbfgs_termination_params,
         lbfgs_exception_handling_params = self.lbfgs_exception_handling_params,
         states_collector                = self.states_accumulator)
@@ -341,9 +344,10 @@ class box_refinement_manager(object):
       new_unit_cell = box.xray_structure_box.unit_cell()
       geo_box = self.geometry_restraints_manager.select(box.selection)
       geo_box = geo_box.discard_symmetry(new_unit_cell=new_unit_cell)
-      geo_box.remove_reference_coordinate_restraints_in_place() # disaster happens otherwise
+      geo_box.shift_sites_cart(box.shift_cart) # disaster happens otherwise
       map_box = box.map_box
       sites_cart_box = box.xray_structure_box.sites_cart()
+
       rsr_simple_refiner = simple(
         target_map                  = map_box,
         selection                   = sel,
@@ -404,6 +408,52 @@ class minimize_wrapper_with_map():
       number_of_cycles=1,
       cycles_to_converge=2,
       log=None):
+
+    # completely new way of doing this. using RSR macro-cycle
+    # for test compatibility:
+    print >> log, "Minimizing using reference map..."
+    if model.ncs_constraints_present():
+      print >> log, "  Minimizing... (NCS)"
+    else:
+      print >> log, "  Minimizing..."
+    from phenix.refinement.macro_cycle_real_space import run as rsr_mc_run
+    import scitbx.math
+    from phenix.command_line.real_space_refine import extract_rigid_body_selections
+    from phenix.command_line.real_space_refine import master_params as rsr_master_params
+    from mmtbx.refinement.real_space.utils import target_map as rsr_target_map
+    import mmtbx.idealized_aa_residues.rotamer_manager
+    sin_cos_table = scitbx.math.sin_cos_table(n=10000)
+    params = rsr_master_params().extract()
+    params.pdb_interpretation = model._pdb_interpretation_params.pdb_interpretation
+    params.refinement.run = "minimization_global+local_grid_search"
+    params.refine_ncs_operators=False
+    params.output.write_all_states = True
+    rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load(
+        rotamers = "favored")
+
+    rigid_body_selections = extract_rigid_body_selections(
+        params        = params,
+        ncs_groups    = model.get_ncs_groups(),
+        pdb_hierarchy = model.get_hierarchy())
+    rsr_tm = rsr_target_map(
+        map_data = target_map,
+        xray_structure = model.get_xray_structure(),
+        d_min = 3.8,
+        atom_radius=params.refinement.atom_radius)
+    res = rsr_mc_run(
+        params=params,
+        model=model,
+        target_map=rsr_tm,
+        log=log,
+        ncs_groups=model.get_ncs_groups(),
+        rotamer_manager=rotamer_manager,
+        sin_cos_table=sin_cos_table,
+        rigid_body_selections=rigid_body_selections)
+    model.set_sites_cart_from_hierarchy(res.model.get_hierarchy())
+    res.structure_monitor.states_collector.write(file_name="rsr_all_states.pdb")
+    return
+    # end ===================================================
+
     from mmtbx.refinement.geometry_minimization import add_rotamer_restraints
     from mmtbx.refinement.minimization_monitor import minimization_monitor
     self.model = model

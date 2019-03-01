@@ -96,6 +96,15 @@ journal {
   id_CSD = None
 }
 
+journal {
+  name = Protein Science
+  name_full = Protein Science
+  abbrev_CAS = Protein Sci.
+  id_ASTM = PRCIEI
+  id_ISSN = 1469-896X
+  id_CSD = None
+}
+
 citation {
   article_id = hhpred
   authors = Söding J
@@ -506,15 +515,16 @@ citation {
 
 citation {
   article_id = molprobity
-  authors = Chen VB, Arendall WB, Headd JJ, Keedy DA, Immormino RM, \
-    Kapral GJ, Murray LW, Richardson JS, Richardson DC
-  title = MolProbity: all-atom structure validation for macromolecular \
-    crystallography
-  year = 2010
-  journal = Acta Cryst. D
-  volume = 66
-  pages = 12-21
-  doi_id =  doi:10.1107/S0907444909042073
+  authors = Williams CJ, Hintze BJ, Headd JJ, Moriarty NW, Chen VB, Jain S, \
+    Prisant MG Lewis SM, Videau LL, Keedy DA, Deis LN, Arendall WB III, \
+    Verma V, Snoeyink JS, Adams PD, Lovell SC, Richardson JS, Richardson DC
+  title = MolProbity: More and better reference data for improved all-atom \
+    structure validation
+  year = 2018
+  journal = Protein Science
+  volume = 27
+  pages = 293-315
+  doi_id =  doi:10.1002/pro.3330
 }
 
 citation {
@@ -1242,6 +1252,7 @@ citation {
   pages = 148-157
   year = 2017
   doi_id = "10.1107/S2059798316018210"
+  pmid = 28177311
 }
 
 citation {
@@ -1266,4 +1277,52 @@ citation {
   pages = None
   pmid = None
   doi_id = 10.1101/267138
+}
+
+citation {
+  article_id = cryo_model_challenge
+  authors = Richardson JS, Williams CJ, Videau LL, Chen VB, Richardson DC
+  title = Assessment of detailed conformations suggests strategies for improving cryoEM models: helix at lower resolution, ensembles, pre-refinement fixups, and validation at a multi-residue length scale
+  year = 2018
+  journal = Struct Biol
+  volume = 204
+  pages = 319-328
+  pmid = None
+  doi_id = 10.1016/j.jsb.2018.08.007
+}
+
+citation {
+  article_id = helix_cap
+  authors = Richardson JS, Richardson DC
+  title = Amino acid preferences for specific locations at the ends of alpha helices
+  year = 1988
+  journal = Science
+  volume = 240(4859)
+  pages = 1648-52
+  pmid = None
+  doi_id = 10.1126/science.3381086
+}
+
+citation {
+  article_id = beta_bulge
+  authors = Richardson JS, Getzoff ED, Richardson DC
+  title = The beta bulge: a common small unit of nonrepetitive protein structure
+  year = 1978
+  journal = PNAS
+  volume = 75(6)
+  pages = 2574-8
+  pmid = None
+  doi_id = 10.1073/pnas.75.6.2574
+}
+
+citation {
+  article_id = isolde
+  authors = Croll TI
+  title = ISOLDE: a physically realistic environment for model building into low‐resolution electron‐density maps
+  year = 2018
+  journal = Acta Cryst. D
+  volume = 74(6)
+  pages = 519-30
+  pmid = None
+  doi_id = 10.1107/S2059798318002425
 }

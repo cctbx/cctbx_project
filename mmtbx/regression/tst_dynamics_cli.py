@@ -3,7 +3,7 @@ from __future__ import division
 from libtbx.utils import null_out
 from cStringIO import StringIO
 
-def exercise_dynamics_command () :
+def exercise_dynamics_command():
   pdb_in = """\
 CRYST1   21.348   25.003   18.365  90.00  90.00  90.00 P 1
 ATOM      1  N   SER A   1      10.914   5.773  13.123  1.00  0.00
@@ -92,6 +92,6 @@ END
   sites_out = xrs_out.sites_cart()
   assert (sites_in.rms_difference(sites_out) > 0.3)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_dynamics_command()
   print "OK"

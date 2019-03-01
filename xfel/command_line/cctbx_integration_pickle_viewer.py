@@ -3,7 +3,7 @@ from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cctbx.integration_pickle_viewer
 from cctbx.array_family import flex # implicit dependency
 from matplotlib import pyplot as plt
-import cPickle as pickle
+from six.moves import cPickle as pickle
 
 def get_CSPAD_active_areas(image, version_phil):
   from libtbx.phil import parse
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     print "using active areas from LG36 CSPAD metrology"
     active_areas = LG36_active_areas
   else:
-    raise Sorry, "Specify both a detector version phil and an example image to extract active areas."
+    raise Sorry("Specify both a detector version phil and an example image to extract active areas.")
   for arg in cmd_line.args:
     file = open(arg, "rb")
     data = pickle.load(file)

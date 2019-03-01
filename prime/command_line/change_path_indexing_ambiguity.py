@@ -6,7 +6,7 @@ Created     : 8/20/2015
 Description : read indexing_ambiguity pickle and overwrite oldpath with new path
 """
 import sys
-import cPickle as pickle
+from six.moves import cPickle as pickle
 
 def read_input(args):
   data = ''

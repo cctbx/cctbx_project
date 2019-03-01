@@ -91,7 +91,7 @@ include scope libtbx.phil.interface.tracking_params
 """, process_includes=True)
 master_params = master_phil # XXX Gui hack
 
-def run (args, out=None, verbose=True, plots_dir=None) :
+def run(args, out=None, verbose=True, plots_dir=None):
   t0 = time.time()
   if (out is None) : out = sys.stdout
   import iotbx.phil
@@ -121,31 +121,31 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
   hierarchy = model.get_hierarchy()
   map_coeffs = map_inp = None
   map_data, unit_cell = None, None
-  if (params.map_coeffs is not None) :
+  if (params.map_coeffs is not None):
     mtz_in = cmdline.get_file(params.map_coeffs)
     mtz_in.check_file_type("hkl")
     best_guess = None
     best_labels = []
     all_labels = []
     for array in mtz_in.file_server.miller_arrays :
-      if (array.info().label_string() == params.map_label) :
+      if (array.info().label_string() == params.map_label):
         map_coeffs = array
         break
-      elif (params.map_label is None) :
-        if (array.is_complex_array()) :
+      elif (params.map_label is None):
+        if (array.is_complex_array()):
           labels = array.info().label_string()
           all_labels.append(labels)
           if (labels.startswith("2FOFCWT") or labels.startswith("2mFoDFc") or
-              labels.startswith("FWT")) :
+              labels.startswith("FWT")):
             best_guess = array
             best_labels.append(labels)
-    if (map_coeffs is None) :
-      if (len(all_labels) == 0) :
+    if (map_coeffs is None):
+      if (len(all_labels) == 0):
         raise Sorry("No valid (pre-weighted) map coefficients found in file.")
-      elif (best_guess is None) :
+      elif (best_guess is None):
         raise Sorry("Couldn't automatically determine appropriate map labels. "+
           "Choices:\n  %s" % "  \n".join(all_labels))
-      elif (len(best_labels) > 1) :
+      elif (len(best_labels) > 1):
         raise Sorry("Multiple appropriate map coefficients found in file. "+
           "Choices:\n  %s" % "\n  ".join(best_labels))
       map_coeffs = best_guess
@@ -177,10 +177,10 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     params=params,
     log=out).results
   t2 = time.time()
-  if (verbose) :
+  if (verbose):
     print("Time excluding I/O: %8.1fs" % (t2 - t1), file=out)
     print("Overall runtime:    %8.1fs" % (t2 - t0), file=out)
-  if (params.output_base is None) :
+  if (params.output_base is None):
     pdb_base = os.path.basename(params.model)
     params.output_base = os.path.splitext(pdb_base)[0] + "_emringer"
   easy_pickle.dump("%s.pkl" % params.output_base, results)
@@ -188,9 +188,9 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
   csv = "\n".join([ r.format_csv() for r in results ])
   open("%s.csv" % params.output_base, "w").write(csv)
   print("Wrote %s.csv" % params.output_base, file=out)
-  if (plots_dir is None) :
+  if (plots_dir is None):
     plots_dir = params.output_base + "_plots"
-  if (not os.path.isdir(plots_dir)) :
+  if (not os.path.isdir(plots_dir)):
     os.makedirs(plots_dir)
   from mmtbx.ringer import em_rolling
   from mmtbx.ringer import em_scoring
@@ -226,20 +226,20 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
   polymorphism in proteins. Protein Sci. 2010 Jul;19(7):1420-31. PubMed PMID:
   20499387"""
   print(references, file=out)
-  if (params.show_gui) :
+  if (params.show_gui):
     run_app(results)
   else :
     return (results, scoring, rolling)
 
-def validate_params (params) :
-  if (params.model is None) :
+def validate_params(params):
+  if (params.model is None):
     raise Sorry("No PDB file supplied (parameter: model)")
-  if (params.map_coeffs is None) and (params.map_file is None) :
+  if (params.map_coeffs is None) and (params.map_file is None):
     raise Sorry("No map coefficients supplied (parameter: map_coeffs)")
   return True
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher(runtime_utils.target_with_save_result):
+  def run(self):
     os.makedirs(self.output_dir)
     os.chdir(self.output_dir)
     return run(args=list(self.args), out=sys.stdout, plots_dir="plots")
@@ -249,25 +249,25 @@ class launcher (runtime_utils.target_with_save_result) :
 try :
   import wx
 except ImportError :
-  def run_app (results) :
+  def run_app(results):
     raise Sorry("wxPython not available.")
 else :
   from wxtbx import plots
 
-  def run_app (results) :
+  def run_app(results):
     app = wx.App(0)
     frame = RingerFrame(None, -1, "Ringer results")
     frame.show_results(results)
     frame.Show()
     app.MainLoop()
 
-  class RingerFrame (plots.plot_frame) :
-    def create_plot_panel (self) :
+  class RingerFrame(plots.plot_frame):
+    def create_plot_panel(self):
       plot = RingerPlot(self, figure_size=(6,8))
       plot.canvas.Bind(wx.EVT_CHAR, self.OnChar)
       return plot
 
-    def draw_top_panel (self) :
+    def draw_top_panel(self):
       self.top_panel = wx.Panel(self, style=wx.SUNKEN_BORDER)
       panel_szr = wx.BoxSizer(wx.VERTICAL)
       self.top_panel.SetSizer(panel_szr)
@@ -282,43 +282,43 @@ else :
       self.chooser.Bind(wx.EVT_CHAR, self.OnChar)
       return self.top_panel
 
-    def OnSelect (self, event) :
+    def OnSelect(self, event):
       selection = event.GetEventObject().GetSelection()
       self.plot_panel.show_residue(self.results[selection])
 
-    def show_results (self, results) :
+    def show_results(self, results):
       self.results = results
       choices = [ result.format() for result in results ]
       self.chooser.SetItems(choices)
       self.chooser.SetSelection(0)
       self.plot_panel.show_residue(self.results[0])
 
-    def OnChar (self, event) :
+    def OnChar(self, event):
       key = event.GetKeyCode()
       if (len(self.results) == 0) : return
       selection = self.chooser.GetSelection()
-      if (key in [wx.WXK_TAB, wx.WXK_RETURN, wx.WXK_SPACE]) :
-        if (selection < (len(self.results) - 1)) :
+      if (key in [wx.WXK_TAB, wx.WXK_RETURN, wx.WXK_SPACE]):
+        if (selection < (len(self.results) - 1)):
           selection += 1
-        elif (len(self.results) > 0) :
+        elif (len(self.results) > 0):
           selection = 0
-      elif (key in [wx.WXK_DELETE, wx.WXK_BACK]) :
-        if (selection > 0) :
+      elif (key in [wx.WXK_DELETE, wx.WXK_BACK]):
+        if (selection > 0):
           selection -= 1
         else :
           selection = len(results) - 1
       self.chooser.SetSelection(selection)
       self.plot_panel.show_residue(self.results[selection])
 
-  class RingerPlot (plots.plot_container) :
-    def show_residue (self, residue, show_background_boxes=False) :
+  class RingerPlot(plots.plot_container):
+    def show_residue(self, residue, show_background_boxes=False):
       if (self.disabled) : return
       self.figure.clear()
       subplots = []
-      for i in range(1, residue.n_chi + 1) :
+      for i in range(1, residue.n_chi + 1):
         chi = residue.get_angle(i)
         if (chi is None) : continue
-        if (len(subplots) > 0) :
+        if (len(subplots) > 0):
           p = self.figure.add_subplot(4, 1, i, sharex=subplots[0])
         else :
           p = self.figure.add_subplot(4, 1, i)
@@ -333,12 +333,11 @@ else :
           p.axhspan(0.3,1,facecolor="green",alpha=0.5)
           p.axhspan(-1,0.3,facecolor="grey",alpha=0.5)
         p.set_xlim(0,360)
-        ax = p.get_axes()
-        ax.set_ylabel("Rho")
-        ax.set_xlabel("Chi%d" % i)
+        p.set_ylabel("Rho")
+        p.set_xlabel("Chi%d" % i)
         subplots.append(p)
       for p in subplots[:-1] :
-        for label in p.get_axes().get_xticklabels() :
+        for label in p.get_xticklabels():
           label.set_visible(False)
       p.text(0,-0.5,'Green = Peak, Blue = Modelled',
           transform=ax.transAxes)
@@ -347,5 +346,5 @@ else :
       self.Layout()
       self.parent.Refresh()
 
-#if (__name__ == "__main__") :
+#if (__name__ == "__main__"):
 #  run(sys.argv[1:])

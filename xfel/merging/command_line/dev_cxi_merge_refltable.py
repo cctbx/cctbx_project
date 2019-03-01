@@ -12,11 +12,6 @@ from xfel.merging.command_line.dev_cxi_merge import Script
 from xfel.cxi.merging_utils import null_data
 from libtbx import Auto
 
-from xfel.merging.algorithms.error_model import compute_normalized_deviations, apply_sd_error_params
-import xfel
-xfel.compute_normalized_deviations = compute_normalized_deviations
-xfel.apply_sd_error_params = apply_sd_error_params
-
 from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine_refltable
 import xfel.merging.algorithms.error_model
 xfel.merging.algorithms.error_model.sdfac_refine.sdfac_refine = sdfac_refine_refltable

@@ -24,6 +24,7 @@ difficulty for most uses is to generate the map tiles.
 from __future__ import division
 from six.moves import range
 
+
 # Copyright (c) 2010, Ross Wilson (rzzzwilson@gmail.com). All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
@@ -51,10 +52,7 @@ from six.moves import range
 import os
 import sys
 import glob
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+from six.moves import cPickle as pickle
 import wx
 from scitbx.matrix import col
 import math
@@ -72,6 +70,8 @@ except Exception:
 __version__ = '2.2'
 
 __all__ = ['PySlip']
+
+WX3 = wx.VERSION[0] == 3
 
 # type of SELECT events
 EventPointSelect = 0
@@ -168,10 +168,12 @@ class _BufferedCanvas(wx.Panel):
         """Causes the canvas to be updated."""
 
         dc = wx.BufferedDC(wx.ClientDC(self), self.buffer)
-        dc.BeginDrawing()
+        if WX3:
+            dc.BeginDrawing()
         dc.Clear()
         self.Draw(dc)
-        dc.EndDrawing()
+        if WX3:
+            dc.EndDrawing()
 
     def OnPaint(self, event):
         """Paint the canvas to the screen."""
@@ -182,7 +184,7 @@ class _BufferedCanvas(wx.Panel):
     def OnSize(self, event=None):
         """Create a new off-screen buffer to hold drawn data."""
 
-        (width, height) = self.GetClientSizeTuple()
+        (width, height) = self.GetClientSizeTuple() if WX3 else self.GetClientSize()
         if width == 0:
             width = 1
         if height == 0:
@@ -1263,7 +1265,7 @@ class PySlip(_BufferedCanvas):
 
         # prepare the show_level value
         if show_levels is None:
-            show_levels = range(self.min_level, self.max_level + 1)[:]
+            show_levels = range(self.min_level, self.max_level + 1)
 
         # create layer, add unique ID to Z order list
         l = _Layer(id=id, painter=render, data=data, map_rel=map_rel,
@@ -1497,7 +1499,7 @@ class PySlip(_BufferedCanvas):
             for (x, y, place, radius, colour, x_off, y_off, pdata) in data:
                 dc.SetPen(wx.Pen(colour))
                 dc.SetBrush(wx.Brush(colour))
-                exec self.point_view_placement[place]
+                exec(self.point_view_placement[place])
                 if radius:
                     dc.DrawCircle(x, y, radius)
 
@@ -1558,7 +1560,7 @@ class PySlip(_BufferedCanvas):
                 place_exec = self.poly_view_placement[place]
                 pp = []
                 for (x, y) in p:
-                    exec place_exec
+                    exec(place_exec)
                     if closed:
                         pp.append((x, y))
                     else:
@@ -1596,7 +1598,7 @@ class PySlip(_BufferedCanvas):
                 pt = self.ConvertGeo2ViewMasked((lon, lat))
                 if pt:
                     (x, y) = pt
-                    exec self.image_map_placement[place]
+                    exec(self.image_map_placement[place])
                     dc.DrawBitmap(bmap, x, y, False)
         else:
             (dc_w, dc_h) = dc.GetSize()
@@ -1605,7 +1607,7 @@ class PySlip(_BufferedCanvas):
             for (x, y, bmap, w, h, place, x_off, y_off, idata) in images:
                 w2 = w / 2
                 h2 = h / 2
-                exec self.image_view_placement[place]
+                exec(self.image_view_placement[place])
                 dc.DrawBitmap(bmap, x, y, False)
 
     def DrawTextLayer(self, dc, text, map_rel):
@@ -1649,7 +1651,7 @@ class PySlip(_BufferedCanvas):
                     (w, h, _, _) = dc.GetFullTextExtent(tdata)
                     w2 = w / 2
                     h2 = h / 2
-                    exec self.text_map_placement[place]
+                    exec(self.text_map_placement[place])
                     dc.SetTextForeground(textcolour)
                     dc.DrawText(tdata, x, y)
         else:
@@ -1676,7 +1678,7 @@ class PySlip(_BufferedCanvas):
                 # draw hotpoint circle - do placement with x & y zero
                 (save_x, save_y) = (x, y)
                 (w, h, w2, h2, x, y) = (0, 0, 0, 0, 0, 0)
-                exec self.text_view_placement[place]
+                exec(self.text_view_placement[place])
                 if radius:
                     dc.DrawCircle(x, y, radius)
                 (x, y) = (save_x, save_y)
@@ -1685,7 +1687,7 @@ class PySlip(_BufferedCanvas):
                 (w, h, _, _) = dc.GetFullTextExtent(tdata)  # size of text
                 w2 = w / 2
                 h2 = h / 2
-                exec self.text_view_placement[place]
+                exec(self.text_view_placement[place])
                 dc.SetTextForeground(textcolour)
                 dc.DrawText(tdata, x, y)
 
@@ -1821,7 +1823,7 @@ class PySlip(_BufferedCanvas):
             self.SetFocus()
 
         # get current mouse position
-        (x, y) = event.GetPositionTuple()
+        (x, y) = event.GetPositionTuple() if WX3 else event.GetPosition()
 
         self.RaiseMousePositionEvent((x, y))
 
@@ -1853,7 +1855,7 @@ class PySlip(_BufferedCanvas):
     def OnLeftDown(self, event):
         """Left mouse button down. Prepare for possible drag."""
 
-        click_posn = event.GetPositionTuple()
+        click_posn = event.GetPositionTuple() if WX3 else event.GetPosition()
 
         if event.ShiftDown():
             self.is_box_select = True
@@ -1918,7 +1920,7 @@ class PySlip(_BufferedCanvas):
                 self.is_box_select = False
             else:
                 # possible point selection
-                clickpt_v = event.GetPositionTuple()
+                clickpt_v = event.GetPositionTuple() if WX3 else event.GetPosition()
                 clickpt_m = self.ConvertView2Geo(clickpt_v)
                 # check each layer for a point select callback
                 # we work on a copy as user callback could change order
@@ -1965,7 +1967,7 @@ class PySlip(_BufferedCanvas):
         # a possible workaround is to limit minimum view level
 
         # get view coords of mouse double click, want same centre afterwards
-        xy = event.GetPositionTuple()
+        xy = event.GetPositionTuple() if WX3 else event.GetPosition()
 
         if event.ShiftDown():
             # zoom out if shift key also down
@@ -1992,7 +1994,7 @@ class PySlip(_BufferedCanvas):
     def OnRightDown(self, event):
         """Right mouse button down. Prepare for right select (no drag)."""
 
-        click_posn = event.GetPositionTuple()
+        click_posn = event.GetPositionTuple() if WX3 else event.GetPosition()
 
         if event.ShiftDown():
             self.is_box_select = True
@@ -2047,7 +2049,7 @@ class PySlip(_BufferedCanvas):
             self.is_box_select = False
         else:
             # possible point selection
-            clickpt_v = event.GetPositionTuple()
+            clickpt_v = event.GetPositionTuple() if WX3 else event.GetPosition()
             clickpt_m = self.ConvertView2Geo(clickpt_v)
             # check each layer for a point select callback
             # we work on a copy as user callback could change order
@@ -2084,7 +2086,7 @@ class PySlip(_BufferedCanvas):
         """Mouse wheel event."""
 
         # get current mouse position
-        mouse_x, mouse_y = event.GetPositionTuple()
+        mouse_x, mouse_y = event.GetPositionTuple() if WX3 else event.GetPosition()
         mouse_latlon = self.ConvertView2Geo((mouse_x, mouse_y))
         # get center of view in map coords
         x, y = self.view_width/2, self.view_height/2
@@ -2104,7 +2106,7 @@ class PySlip(_BufferedCanvas):
         self.GotoPosition(self.ConvertView2Geo(new_center))
 
         # Raise position event to update the status text.
-        self.RaiseMousePositionEvent(event.GetPositionTuple())
+        self.RaiseMousePositionEvent(event.GetPositionTuple() if WX3 else event.GetPosition())
 
     ######
     # Method that overrides _BufferedCanvas.Draw() method.
@@ -2218,7 +2220,7 @@ class PySlip(_BufferedCanvas):
         """
 
         # get new size of the view
-        (self.view_width, self.view_height) = self.GetClientSizeTuple()
+        (self.view_width, self.view_height) = self.GetClientSizeTuple() if WX3 else self.GetClientSize()
 
         # if map > view in X axis
         if self.map_width > self.view_width:
@@ -2348,7 +2350,7 @@ class PySlip(_BufferedCanvas):
                 dc_h -= 1
                 dc_w -= 1
                 (x, y, place, _, _, x_off, y_off, pdata) = p
-                exec self.point_view_placement[place]
+                exec(self.point_view_placement[place])
                 d = (x - ptx) * (x - ptx) + (y - pty) * (y - pty)
                 if d < dist:
                     dist = d
@@ -2399,7 +2401,7 @@ class PySlip(_BufferedCanvas):
                 dc_h -= 1
                 dc_w -= 1
                 (x, y, place, _, _, x_off, y_off, pdata) = p
-                exec self.point_view_placement[place]
+                exec(self.point_view_placement[place])
                 if lx <= x <= rx and by <= y <= ty:
                     result.append(((x, y), pdata))
 

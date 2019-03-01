@@ -130,8 +130,8 @@ def exercise_1(mon_lib_srv, ener_lib):
       "Expected 54, got %d" % len(dihedral_proxies)
 
   # default run (1 residue is out of NCS)
-  params = pdb_interpretation.master_params.extract()
-  params.ncs_search.enabled=True
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.ncs_search.enabled=True
   pdb_inp = iotbx.pdb.input(source_info=None, lines=flex.split_lines(pdb_str_1))
   model = mmtbx.model.manager(
       model_input = pdb_inp,
@@ -146,13 +146,13 @@ def exercise_1(mon_lib_srv, ener_lib):
 
   # supply full NCS
   cuspars = iotbx.phil.parse("""
-ncs_search.enabled=True
-ncs_group {
+pdb_interpretation.ncs_search.enabled=True
+pdb_interpretation.ncs_group {
   reference        = (chain A )
   selection        = (chain B )
 }
 """)
-  params = pdb_interpretation.master_params
+  params = mmtbx.model.manager.get_default_pdb_interpretation_scope()
   p = params.fetch(cuspars).extract()
   pdb_inp = iotbx.pdb.input(source_info=None, lines=flex.split_lines(pdb_str_1))
   model = mmtbx.model.manager(
@@ -165,7 +165,7 @@ ncs_group {
   nprox = ncs_manager.get_n_proxies()
   assert nprox == 40, "got %d instead of 40" % nprox
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   exercise_1(mon_lib_srv, ener_lib)

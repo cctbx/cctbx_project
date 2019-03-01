@@ -6,7 +6,7 @@ from six.moves import range
 
 from iotbx.detectors.detectorbase import DetectorImageBase, tile_manager_base
 from scitbx.array_family          import flex
-import cPickle as pickle
+from six.moves import cPickle as pickle
 
 #INT   = (int,)
 #FLOAT = (float,)

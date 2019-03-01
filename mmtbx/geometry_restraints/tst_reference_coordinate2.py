@@ -268,6 +268,6 @@ def exercise(d_min=5, random_seed=1111111):
     show(prefix="FINAL",pdb_hierarchy = inp.ph, tm=target_map, xrs=tmp, grm=inp.grm.geometry)
     inp.ph.write_pdb_file(file_name="final_%s.pdb"%str(use_reference_torsion))
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

@@ -180,7 +180,7 @@ class binner(ext.binner):
     if (show_counts):
       result.append(self.fmt_both_counts % (
         self._counts_given[i_bin], self._counts_complete[i_bin]))
-    if (join_string) :
+    if (join_string):
       return " ".join(result)
     else :
       return result
@@ -246,13 +246,13 @@ class binner(ext.binner):
     if (legend is not None): return len(legend)
     return None
 
-  def as_simple_table (self,
+  def as_simple_table(self,
       data,
       data_label,
       data_fmt=None,
       replace_none_with="---",
       show_bin_number=False,
-      show_unused=False) :
+      show_unused=False):
     """
     Export table rows for display elsewhere.
     """
@@ -321,9 +321,9 @@ class binned_data(object):
       f=f,
       prefix=prefix)
 
-  def as_simple_table (self,
+  def as_simple_table(self,
         data_label,
-        data_fmt=None) :
+        data_fmt=None):
     """
     Export table rows for display elsewhere.  (Used in Xtriage)
     """
@@ -525,7 +525,7 @@ class set(crystal.symmetry):
           print >> f, prefix + "Completeness with d_max=infinity: %.6g" % (
             n_obs / n_complete)
         if (self.anomalous_flag()) and (self.is_xray_intensity_array() or
-            self.is_xray_amplitude_array()) :
+            self.is_xray_amplitude_array()):
           print >> f, prefix + \
             "Anomalous completeness in resolution range: %.6g" % \
             self.anomalous_completeness()
@@ -1090,14 +1090,14 @@ class set(crystal.symmetry):
     return self.select(
       self.sort_permutation(by_value=by_value, reverse=reverse))
 
-  def generate_r_free_flags (self,
+  def generate_r_free_flags(self,
         fraction=0.1,
         max_free=2000,
         lattice_symmetry_max_delta=5.0,
         use_lattice_symmetry=True,
         use_dataman_shells=False,
         n_shells=20,
-        format="cns") :
+        format="cns"):
     """
     Create an array of R-free flags for the current set, keeping anomalous
     pairs together.  Requires that the set already be unique under symmetry,
@@ -1177,7 +1177,7 @@ class set(crystal.symmetry):
       n_non_ano = matches.pairs().size() + matches.n_singles()
     assert self.is_unique_set_under_symmetry()
     if fraction is not None:
-      if not (fraction > 0 and fraction < 0.5) :
+      if not (fraction > 0 and fraction < 0.5):
         raise Sorry("R-free flags fraction must be greater than 0 and less "+
           "than 0.5.")
       assert n_partitions is None
@@ -1216,7 +1216,7 @@ class set(crystal.symmetry):
     result = None
     if not return_integer_array:
       if use_dataman_shells :
-        if (format == "ccp4") :
+        if (format == "ccp4"):
           raise Sorry("CCP4 convention not available when generating R-free "+
             "flags in resolution shells.")
         result = r_free_utils.assign_r_free_flags_by_shells(
@@ -1263,24 +1263,24 @@ class set(crystal.symmetry):
     assert tmp_flags.indices().all_eq( self.indices() )
     return tmp_flags
 
-  def generate_r_free_flags_basic (self,
+  def generate_r_free_flags_basic(self,
         fraction=0.1,
         max_free=2000,
         use_dataman_shells=False,
         n_shells=20,
-        format="cns") :
+        format="cns"):
     """
     Generate R-free flags, without taking lattice symmetry into account (not
     recommended).  Should not normally be called directly - use
     generate_r_free_flags(...) instead.
     """
-    if not (fraction > 0 and fraction < 0.5) :
+    if not (fraction > 0 and fraction < 0.5):
       raise Sorry("R-free flags fraction must be greater than 0 and less "+
           "than 0.5.")
-    if (use_dataman_shells and n_shells < 5) :
+    if (use_dataman_shells and n_shells < 5):
       raise Sorry("You must use at least 5 resolution shells when assigning "+
         "R-free flags this way.")
-    if (max_free is not None) and (max_free <= 0) :
+    if (max_free is not None) and (max_free <= 0):
       raise Sorry("The maximum number of free reflections must either be "+
         "None, or a positive number.")
     if (self.anomalous_flag()):
@@ -1297,7 +1297,7 @@ class set(crystal.symmetry):
     if (max_free is not None):
       fraction = min(fraction, max_free/max(1,n))
     if use_dataman_shells :
-      if (format == "ccp4") :
+      if (format == "ccp4"):
         raise Sorry("CCP4 convention not available when generating R-free "+
           "flags in resolution shells.")
       result = r_free_utils.assign_r_free_flags_by_shells(
@@ -1323,11 +1323,11 @@ class set(crystal.symmetry):
     if (not self.anomalous_flag()):
       return self.array(data=result)
     del indices
-    if (format == "ccp4") :
+    if (format == "ccp4"):
       test_flag_value = 0
       # XXX are we sure this is the right thing to do?
       result_full = flex.int(self.indices().size(), 1)
-    elif (format == "shelx") :
+    elif (format == "shelx"):
       test_flag_value = -1
       result_full = flex.int(self.indices().size(), 1)
     else :
@@ -1774,16 +1774,16 @@ class set(crystal.symmetry):
       indices          = self._indices.concatenate(other.indices()),
       anomalous_flag   = self.anomalous_flag())
 
-  def slice (self,
+  def slice(self,
       axis=None,
       axis_index=None,
       slice_index=None,
       slice_start=None,
-      slice_end=None) :
-    if (axis is not None) :
+      slice_end=None):
+    if (axis is not None):
       assert (axis_index is None)
       axis_index = ["h","k","l"].index(axis)
-    if (slice_index is not None) :
+    if (slice_index is not None):
       assert (slice_start is None) and (slice_end is None)
       selection = simple_slice(
         indices=self.indices(),
@@ -1798,7 +1798,7 @@ class set(crystal.symmetry):
         slice_end=slice_end)
     return self.select(selection)
 
-  def delete_index (self, hkl) :
+  def delete_index(self, hkl):
     """
     Remove all reflections with the specified Miller index.
     """
@@ -1806,7 +1806,7 @@ class set(crystal.symmetry):
     sele = (self.indices() != hkl)
     return self.select(sele)
 
-  def delete_indices (self, other) :
+  def delete_indices(self, other):
     """
     Delete multiple reflections, as specified by the Miller indices of
     another set.
@@ -1814,7 +1814,7 @@ class set(crystal.symmetry):
     # XXX inefficient - should probably use match_indices but it seems
     # to not like unmerged data
     sele = flex.bool(self.indices().size(), True)
-    for hkl in other.indices() :
+    for hkl in other.indices():
       sele &= (self.indices() != hkl)
     return self.select(sele)
 
@@ -1907,7 +1907,7 @@ class array_info(object):
       crystal_symmetry_from_file = self.crystal_symmetry_from_file
     if (type_hints_from_file is Keep):
       type_hints_from_file = self.type_hints_from_file
-    if (wavelength is Keep) :
+    if (wavelength is Keep):
       wavelength = self.wavelength
     return array_info(
       source=source,
@@ -2035,9 +2035,9 @@ class array(set):
 
   def show_comprehensive_summary(self, f=None, prefix=""):
     set.show_comprehensive_summary(self, f=f, prefix=prefix)
-    if (self.info() is not None) and isinstance(self.info(), array_info) :
+    if (self.info() is not None) and isinstance(self.info(), array_info):
       wavelength = self.info().wavelength
-      if (wavelength is not None) :
+      if (wavelength is not None):
         print >> f, prefix + "Wavelength: %.4f" % wavelength
     return self
 
@@ -2092,7 +2092,7 @@ class array(set):
     from cctbx.xray import observation_types
     return isinstance(self.observation_type(), observation_types.intensity)
 
-  def is_xray_data_array (self) :
+  def is_xray_data_array(self):
     return (self.is_xray_amplitude_array() or self.is_xray_intensity_array())
 
   def copy(self):
@@ -2266,8 +2266,8 @@ class array(set):
         result = False
     return result
 
-  def enforce_positive_sigmas (self) :
-    if (self.sigmas() is None) :
+  def enforce_positive_sigmas(self):
+    if (self.sigmas() is None):
       return self
     else :
       return self.select(self.sigmas() > 0)
@@ -2874,7 +2874,7 @@ class array(set):
     """
     assert self.data() is not None
     tmp_array = self
-    if (enforce_positive_sigmas) :
+    if (enforce_positive_sigmas):
       tmp_array = tmp_array.enforce_positive_sigmas()
     asu, matches = tmp_array.match_bijvoet_mates()
     i = matches.miller_indices_in_hemisphere("+")
@@ -2902,8 +2902,8 @@ class array(set):
         anomalous_flag=False)
        for i_column in (0,1)])
 
-  def anomalous_completeness (self, use_binning=False, d_min_tolerance=1.e-6,
-      d_max=None, d_min=None, relative_to_complete_set=True) :
+  def anomalous_completeness(self, use_binning=False, d_min_tolerance=1.e-6,
+      d_max=None, d_min=None, relative_to_complete_set=True):
     """
     Return the percent of acentric reflections with both h,k,l and -h,-k,-l
     observed (only meaningful for amplitude and intensity arrays).  By default
@@ -2912,11 +2912,11 @@ class array(set):
     assert self.anomalous_flag() and self.is_real_array()
     if (not use_binning):
       merged = self.average_bijvoet_mates()
-      if (relative_to_complete_set) :
+      if (relative_to_complete_set):
         merged = merged.complete_set(d_max=d_max, d_min=d_min,
           d_min_tolerance=d_min_tolerance)
       centric_flags = merged.centric_flags().data()
-      if (centric_flags.count(False) == 0) :
+      if (centric_flags.count(False) == 0):
         return 0
       merged_acentric = merged.select(~centric_flags)
       n_acentric = merged_acentric.size()
@@ -3079,13 +3079,13 @@ class array(set):
                                                     return_fail=return_fail))
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
-  def bijvoet_ratios (self, obs_type="intensity", measurable_only=True,
-      cutoff=3.0) :
+  def bijvoet_ratios(self, obs_type="intensity", measurable_only=True,
+      cutoff=3.0):
     assert self.anomalous_flag()
     obs = self.select(self.data() > 0 )
-    if (obs_type == "amplitude") and (self.is_xray_intensity_array()) :
+    if (obs_type == "amplitude") and (self.is_xray_intensity_array()):
       obs = obs.f_sq_as_f()
-    elif (obs_type == "intensity") and (self.is_xray_amplitude_array()) :
+    elif (obs_type == "intensity") and (self.is_xray_amplitude_array()):
       obs = obs.f_as_f_sq()
     i_plus, i_minus = obs.hemispheres_acentrics()
     assert i_plus.data().size() == i_minus.data().size()
@@ -3346,7 +3346,7 @@ class array(set):
           c *= (flex.sum(o * c) / den)
       elif (scale_factor is not None):
         c *= scale_factor
-      if (emulate_sftools) :
+      if (emulate_sftools):
         return 2 * flex.sum(flex.abs(o - c)) / flex.sum(o+c)
       else :
         return flex.sum(flex.abs(o - c)) / flex.sum(o)
@@ -3915,7 +3915,7 @@ class array(set):
     return self
 
   def __mul__(self, other):
-    if isinstance(other, array) :
+    if isinstance(other, array):
       assert self.indices().all_eq(other.indices())
       return self.customized_copy(data=self.data() * other.data())
     result = self.deep_copy()
@@ -3937,7 +3937,7 @@ class array(set):
     result /= other
     return result
 
-  def value_at_index (self, hkl) :
+  def value_at_index(self, hkl):
     """Extract the value of the array for the specified reflection h,k,l"""
     hkl_array = self.select_indices([hkl])
     assert (len(hkl_array.data()) == 1)
@@ -4187,7 +4187,7 @@ class array(set):
         fourier_coefficients=self,
         f_000=f_000)
 
-  def direct_summation_at_point (self, site_frac, sigma=None) :
+  def direct_summation_at_point(self, site_frac, sigma=None):
     """
     Calculates the exact map value at the specified fractional coordinate
     using direct Fourier summation.  Relatively slow but avoids interpolation
@@ -4195,15 +4195,15 @@ class array(set):
     """
     assert (self.is_complex_array())
     map_coeffs = self
-    if (self.space_group_info().type().number() != 1) :
+    if (self.space_group_info().type().number() != 1):
       map_coeffs = map_coeffs.expand_to_p1()
-    if (not map_coeffs.anomalous_flag()) :
+    if (not map_coeffs.anomalous_flag()):
       map_coeffs = map_coeffs.generate_bijvoet_mates()
     sum = maptbx.direct_summation_at_point(
       miller_indices=map_coeffs.indices(),
       data=map_coeffs.data(),
       site_frac=site_frac)
-    if (sigma is not None) :
+    if (sigma is not None):
       return sum / sigma
     else :
       return sum / self.unit_cell().volume()
@@ -4265,7 +4265,7 @@ class array(set):
     del fft_map
     value_min = flex.min(map_data.as_1d())
     value_max = flex.max(map_data.as_1d())
-    if (value_min == value_max) :
+    if (value_min == value_max):
       cutoffp = cutoffm = value_max
     else :
       # XXX this avoids the huge memory overhead of sorting the entire map to
@@ -4479,12 +4479,12 @@ class array(set):
       array_names=array_names,
       r_free_flags=r_free_flags)
 
-  def export_as_scalepack_unmerged (self,
+  def export_as_scalepack_unmerged(self,
       file_object=None,
       file_name=None,
       batch_numbers=None,
       spindle_flags=None,
-      scale_intensities_for_scalepack_merge=False) :
+      scale_intensities_for_scalepack_merge=False):
     """
     Write data in unmerged scalepack format.
 
@@ -4518,11 +4518,11 @@ class array(set):
     with additional arrays and eventually written to an MTZ file.
     """
     import iotbx.mtz
-    if (wavelength is None) :
+    if (wavelength is None):
       info = self.info()
-      if (info is not None) :
+      if (info is not None):
         wavelength = info.wavelength
-    if (wavelength is None) :
+    if (wavelength is None):
       wavelength = 1.0
     return iotbx.mtz.miller_array_as_mtz_dataset(self,
       column_root_label=column_root_label,
@@ -4740,7 +4740,7 @@ class array(set):
     result.ref_twin_components = twin_components
     return result
 
-  def french_wilson (self, **kwds) :
+  def french_wilson(self, **kwds):
     """
     Perform French-Wilson treatment of X-ray intensities to estimate the "true"
     intensities, replacing very weak and/or negative values, and takes the
@@ -4868,7 +4868,7 @@ class array(set):
       #if(r>1 and data[i_mi]/sigmas[i_mi]<sigma_cutoff): selection[i_mi] = False
     return self.select(selection=selection)
 
-  def permute_d_range (self, d_max, d_min) :
+  def permute_d_range(self, d_max, d_min):
     """
     Randomly shuffle reflections within a given resolution range.  Used for
     control refinements to validate the information content of a dataset.
@@ -4882,11 +4882,11 @@ class array(set):
     all_isel.set_selected(range_selection, range_isel_permuted)
     data = self.data().select(all_isel)
     sigmas = None
-    if (self.sigmas() is not None) :
+    if (self.sigmas() is not None):
       sigmas = self.sigmas().select(all_isel)
     return self.customized_copy(data=data, sigmas=sigmas)
 
-  def is_unmerged_intensity_array (self) :
+  def is_unmerged_intensity_array(self):
     """
     Determine whether the array contains unmerged experimental observations
     or not.  In some files only the centric reflections will appear to be
@@ -4896,15 +4896,15 @@ class array(set):
     centric_flags = self.centric_flags().data()
     centrics = self.select(centric_flags)
     acentric_flags = ~centric_flags
-    if (acentric_flags.count(True) == 0) :
+    if (acentric_flags.count(True) == 0):
       return (not centrics.is_unique_set_under_symmetry())
     acentrics = self.select(acentric_flags)
     return (not acentrics.is_unique_set_under_symmetry())
 
   # this is tested as part of phenix.merging_statistics (note that the exact
   # values are not reproducible)
-  def cc_one_half (self, use_binning=False, n_trials=1, anomalous_flag=False,
-                   return_n_refl=False) :
+  def cc_one_half(self, use_binning=False, n_trials=1, anomalous_flag=False,
+                   return_n_refl=False):
     """
     Calculate the correlation between two randomly assigned pools of unmerged
     data ("CC 1/2").  If desired the mean over multiple trials can be taken.
@@ -4914,7 +4914,7 @@ class array(set):
     function skips this method.
     """
     assert self.is_xray_intensity_array()
-    if (not use_binning) :
+    if (not use_binning):
       tmp_array = self.customized_copy(
         anomalous_flag=anomalous_flag).map_to_asu()
       tmp_array = tmp_array.sort("packed_indices")
@@ -4925,7 +4925,7 @@ class array(set):
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
       bin_array = self.select(sel)
-      if (bin_array.size() == 0) :
+      if (bin_array.size() == 0):
         data.append(None)
       else :
         data.append(bin_array.cc_one_half(
@@ -4968,13 +4968,13 @@ class array(set):
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
       bin_array = self.select(sel)
-      if (bin_array.size() == 0) :
+      if (bin_array.size() == 0):
         data.append(None)
       else :
         data.append(bin_array.cc_one_half_sigma_tau(return_n_refl=return_n_refl))
     return binned_data(binner=self.binner(), data=data, data_fmt="%6.3f")
 
-  def half_dataset_anomalous_correlation (self, use_binning=False, return_n_pairs=False, return_split_datasets=False) :
+  def half_dataset_anomalous_correlation(self, use_binning=False, return_n_pairs=False, return_split_datasets=False):
     """
     Calculate the correlation of the anomalous differences of two randomly
     assigned half-datasets (starting from unmerged data).
@@ -4982,7 +4982,7 @@ class array(set):
     assert self.is_xray_intensity_array()
     tmp_array = self.customized_copy(anomalous_flag=True).map_to_asu()
     tmp_array = tmp_array.sort("packed_indices")
-    if (not use_binning) :
+    if (not use_binning):
       split_datasets = split_unmerged(
         unmerged_indices=tmp_array.indices(),
         unmerged_data=tmp_array.data(),
@@ -5013,19 +5013,19 @@ class array(set):
     for i_bin in tmp_array.binner().range_all():
       sel = tmp_array.binner().selection(i_bin)
       bin_array = tmp_array.select(sel)
-      if (bin_array.size() == 0) :
+      if (bin_array.size() == 0):
         data.append(None)
       else :
         data.append(bin_array.half_dataset_anomalous_correlation())
     return binned_data(binner=tmp_array.binner(), data=data, data_fmt="%6.3f")
 
-  def cc_anom (self, *args, **kwds) :
+  def cc_anom(self, *args, **kwds):
     """
     Alias for array.half_dataset_anomalous_correlation()
     """
     return self.half_dataset_anomalous_correlation(*args, **kwds)
 
-  def r_anom (self) :
+  def r_anom(self):
     """Calculate R_anom, which measures the agreement between Friedel mates.
     Unlike CC_anom and various other R-factors (such as R_pim, which it is
     usually compared to), this requires merged data.
@@ -5036,7 +5036,7 @@ class array(set):
     assert self.is_xray_intensity_array()
     tmp_array = self.customized_copy(
       anomalous_flag=True).map_to_asu()
-    if (not tmp_array.is_unique_set_under_symmetry()) :
+    if (not tmp_array.is_unique_set_under_symmetry()):
       tmp_array = tmp_array.merge_equivalents().array()
     d_ano = tmp_array.anomalous_differences()
     # XXX this appears to be consistent with the published descriptions, but
@@ -5047,7 +5047,7 @@ class array(set):
     assert (denominator > 0)
     return numerator / denominator
 
-  def twin_data (self, twin_law, alpha) :
+  def twin_data(self, twin_law, alpha):
     """
     Apply a twin law to the data, returning an array of the same original type.
 
@@ -5058,7 +5058,7 @@ class array(set):
     assert (alpha is not None) and (0.0 <= alpha <= 0.5)
     assert (twin_law is not None)
     tmp_array = self.map_to_asu()
-    if (tmp_array.is_xray_amplitude_array()) :
+    if (tmp_array.is_xray_amplitude_array()):
       tmp_array = tmp_array.f_as_f_sq()
     assert tmp_array.is_xray_intensity_array()
     twin_law = sgtbx.rt_mx(twin_law, r_den=24, t_den=288)
@@ -5073,11 +5073,11 @@ class array(set):
     new_sigmas = new_data / 100.0 # FIXME this seems wrong...
     twinned = xa.customized_copy(data=new_data,
       sigmas=new_sigmas).set_observation_type_xray_intensity()
-    if (self.is_xray_amplitude_array()) :
+    if (self.is_xray_amplitude_array()):
       return twinned.f_sq_as_f()
     return twinned
 
-  def detwin_data (self, twin_law, alpha) :
+  def detwin_data(self, twin_law, alpha):
     """
     Detwin data using a known twin fraction, returning an array with the same
     original data type.
@@ -5089,7 +5089,7 @@ class array(set):
     assert (alpha is not None) and (0.0 <= alpha <= 0.5)
     assert (twin_law is not None)
     tmp_array = self.map_to_asu()
-    if (tmp_array.is_xray_amplitude_array()) :
+    if (tmp_array.is_xray_amplitude_array()):
       tmp_array = tmp_array.f_as_f_sq()
     assert tmp_array.is_xray_intensity_array()
     twin_law = sgtbx.rt_mx(twin_law, r_den=24, t_den=288)
@@ -5112,20 +5112,20 @@ class array(set):
     new_data = ((1.0 - alpha)*i_old1 - alpha*i_old2) / (1 - 2.0*alpha)
     new_sigmas = None
     tmp_mult = math.sqrt( 1-2*alpha +2*alpha*alpha)/(1-2.0*alpha)
-    if (s_old1 is not None) :
+    if (s_old1 is not None):
       new_sigmas = tmp_mult * flex.sqrt((flex.pow(s_old1,2) + s_old1*s_old2)/2)
     detwinned = tmp_array.customized_copy(
       data=new_data,
       sigmas=new_sigmas).common_set(other=self)
-    if (self.is_xray_amplitude_array()) :
+    if (self.is_xray_amplitude_array()):
       return detwinned.f_sq_as_f()
     return detwinned
 
   # TODO separate test - currently tested implicitly as part of change_symmetry
-  def apply_change_of_basis (self,
+  def apply_change_of_basis(self,
         change_of_basis,
         eliminate_invalid_indices=True,
-        out=None) :
+        out=None):
     """
     Encapsulates a variety of reindexing operations, including handling for a
     variety of corner cases.
@@ -5135,7 +5135,7 @@ class array(set):
       indices
     :returns: new Miller array
     """
-    if (out is None) :
+    if (out is None):
       out = sys.stdout
     miller_array = self
     print >> out, "Change of basis:"
@@ -5178,7 +5178,7 @@ class array(set):
       toss_array = miller_array.select(toss)
       print >> out, "  Mean value for kept reflections:", \
         flex.mean(keep_array.data())
-      if (len(toss_array.data()) > 0) :
+      if (len(toss_array.data()) > 0):
         print >> out, "  Mean value for invalid reflections:", \
           flex.mean(toss_array.data())
       miller_array=keep_array
@@ -5187,14 +5187,14 @@ class array(set):
     crystal.symmetry.show_summary(processed_array, prefix="    ", f=out)
     return processed_array, cb_op
 
-  def change_symmetry (self,
+  def change_symmetry(self,
       space_group_symbol=None,
       space_group_info=None,
       volume_warning_threshold=0.001,
       expand_to_p1_if_necessary=True,
       remove_systematic_absences=True,
       merge_non_unique=True,
-      log=None) :
+      log=None):
     """
     Encapsulates all operations required to convert the original data to a
     different symmetry (e.g. as suggested by Xtriage).  This includes
@@ -5214,7 +5214,7 @@ class array(set):
     :param log: filehandle-like object
     :returns: Miller array in the new symmetry
     """
-    if (log is None) :
+    if (log is None):
       log = sys.stdout
     assert [space_group_symbol,space_group_info].count(None) == 1
     miller_array = self
@@ -5227,10 +5227,10 @@ class array(set):
     symm = miller_array.crystal_symmetry()
     print >> log, "Niggli cell symmetry:"
     symm.show_summary(f=log, prefix="  ")
-    if (space_group_info is None) :
+    if (space_group_info is None):
       space_group_info = sgtbx.space_group_info(space_group_symbol)
     space_group_new = space_group_info.group()
-    if (space_group_new.n_smx() < space_group_old.n_smx()) :
+    if (space_group_new.n_smx() < space_group_old.n_smx()):
       if expand_to_p1_if_necessary :
         print >> log, "Changing to lower symmetry, expanding to P1 first"
         miller_array = miller_array.expand_to_p1()
@@ -5241,15 +5241,15 @@ class array(set):
     number = space_group_info.type().number()
     # reindex automatically if new lattice is P3 or P6 and angles are ~90,90,60
     # but only if the reference setting is requested!
-    if (143 <= number < 195) and space_group_info.is_reference_setting() :
+    if (143 <= number < 195) and space_group_info.is_reference_setting():
       cb_op = sgtbx.change_of_basis_op("a,-b,-c")
       unit_cell_new = unit_cell.change_basis(cb_op)
-      if (unit_cell_new.parameters()[-1] > unit_cell.parameters()[-1]) :
+      if (unit_cell_new.parameters()[-1] > unit_cell.parameters()[-1]):
         print >> log, "Reindexing with a,-b,-c"
         miller_array = miller_array.change_basis(cb_op)
         symm = miller_array.crystal_symmetry()
         unit_cell = symm.unit_cell()
-    if (not space_group_info.group().is_compatible_unit_cell(unit_cell)) :
+    if (not space_group_info.group().is_compatible_unit_cell(unit_cell)):
       unit_cell_old = unit_cell
       unit_cell = space_group_info.group().average_unit_cell(unit_cell_old)
       print >> log, "Coercing unit cell into parameters compatible with %s" % \
@@ -5259,7 +5259,7 @@ class array(set):
       volume_start = unit_cell_old.volume()
       volume_new = unit_cell.volume()
       volume_change_fraction = abs(volume_new - volume_start) / volume_new
-      if (volume_change_fraction > volume_warning_threshold) :
+      if (volume_change_fraction > volume_warning_threshold):
         warnings.warn("This operation will change the unit cell volume by "+
           "more than %.1f%%." % (volume_change_fraction*100), UserWarning)
     symm_new = crystal.symmetry(
@@ -5270,7 +5270,7 @@ class array(set):
       change_of_basis="to_reference_setting",
       eliminate_invalid_indices=True,
       out=log)
-    if merge_non_unique and (not miller_array.is_unique_set_under_symmetry()) :
+    if merge_non_unique and (not miller_array.is_unique_set_under_symmetry()):
       miller_array = miller_array.merge_equivalents().array()
     if remove_systematic_absences :
       ma_old = miller_array.deep_copy()
@@ -5280,7 +5280,7 @@ class array(set):
     miller_array.show_summary(f=log, prefix="  ")
     return miller_array
 
-  def show_all_possible_systematic_absences (self, out=sys.stdout, prefix="") :
+  def show_all_possible_systematic_absences(self, out=sys.stdout, prefix=""):
     """
     For each possible space group sharing the same basic intensity symmetry,
     show a list of possible systematically absent reflections and corresponding
@@ -5295,15 +5295,15 @@ class array(set):
 
   #---------------------------------------------------------------------
   # Xtriage extensions - tested in mmtbx/scaling/tst_xtriage_twin_analyses.py
-  def analyze_intensity_statistics (self, d_min=2.5,
-    completeness_as_non_anomalous=None,  log=None) :
+  def analyze_intensity_statistics(self, d_min=2.5,
+    completeness_as_non_anomalous=None,  log=None):
     """
     Detect translational pseudosymmetry and twinning, using methods in
     Xtriage.  Returns a mmtbx.scaling.twin_analyses.twin_law_interpretation
     object.  (Requires mmtbx to be configured to be functional.)
     """
     import libtbx.load_env
-    if (not libtbx.env.has_module("mmtbx")) :
+    if (not libtbx.env.has_module("mmtbx")):
       raise ImportError("mmtbx is required for this functionality.")
     from mmtbx.scaling import twin_analyses as twin_analyses
     return twin_analyses.analyze_intensity_statistics(
@@ -5312,7 +5312,7 @@ class array(set):
       completeness_as_non_anomalous=completeness_as_non_anomalous,
       log=log)
 
-  def has_twinning (self, d_min=2.5) :
+  def has_twinning(self, d_min=2.5):
     """
     Convenience method for identifying twinned data.  Note that this is
     hugely inefficient if any other Xtriage analyses are planned, since it
@@ -5446,7 +5446,7 @@ class merge_equivalents(object):
             asu_array.indices().select(perm),
             asu_array.data().select(perm))
       except RuntimeError, e :
-        if ("merge_equivalents_exact: incompatible" in str(e)) :
+        if ("merge_equivalents_exact: incompatible" in str(e)):
           raise Sorry(str(e) + " (mismatch between Friedel mates)")
         raise
       sigmas = None
@@ -5525,7 +5525,7 @@ class merge_equivalents(object):
   def r_int(self):
     return self._r_int
 
-  def r_merge (self) :
+  def r_merge(self):
     """
     Standard (but flawed) metric of dataset internal consistency.
 
@@ -5534,7 +5534,7 @@ class merge_equivalents(object):
     """
     return self._r_merge
 
-  def r_meas (self) :
+  def r_meas(self):
     """
     Alternate metric of dataset internal consistency.  Explained in detail in
     Diederichs K & Karplus PA (1997) Nature Structural Biology 4:269-275.
@@ -5544,7 +5544,7 @@ class merge_equivalents(object):
     """
     return self._r_meas
 
-  def r_pim (self) :
+  def r_pim(self):
     """
     Alternate metric of dataset internal consistency or quality.  Explained in
     detail in Weiss MS (2001) J Appl Cryst 34:130-135.
@@ -5676,7 +5676,7 @@ class fft_map(maptbx.crystal_gridding):
     """
     if (not self.anomalous_flag()):
       assert ((self._real_map.is_padded()) or (not direct_access))
-      if (direct_access) :
+      if (direct_access):
         self._real_map_accessed = True
       return self._real_map
     else:
@@ -5689,11 +5689,11 @@ class fft_map(maptbx.crystal_gridding):
 
     :returns: a flex.double object with grid accessor.
     """
-    if (in_place) :
+    if (in_place):
       assert (not self._real_map_accessed)
     result = self.real_map(direct_access=False)
     if (not result.is_padded()): return result
-    elif (in_place) :
+    elif (in_place):
       maptbx.unpad_in_place(map=result)
       return result
     else :
@@ -5740,25 +5740,25 @@ class fft_map(maptbx.crystal_gridding):
       map=self.real_map(direct_access=False),
       verify_symmetry=verify_symmetry)
 
-  def as_ccp4_map (self,
+  def as_ccp4_map(self,
                    file_name,
                    gridding_first=None,
                    gridding_last=None,
-                   labels=["cctbx.miller.fft_map"]) :
+                   labels=["cctbx.miller.fft_map"]):
     """
     Write the real component of the map to a CCP4-format file.
     """
-    from iotbx import ccp4_map
+    from iotbx import mrcfile
     map_data = self.real_map(direct_access=False)
     if gridding_first is None :
       gridding_first = (0,0,0)
     if gridding_last is None :
       gridding_last = tuple(self.n_real())
       # only write out the exact unit cell, without padding
-      if (gridding_first == (0,0,0)) :
+      if (gridding_first == (0,0,0)):
         gridding_last = tuple([ (n-1) for n in gridding_last ])
     assert (len(labels) <= 10)
-    ccp4_map.write_ccp4_map(file_name=file_name,
+    mrcfile.write_ccp4_map(file_name=file_name,
       unit_cell=self.unit_cell(),
       space_group=self.space_group(),
       gridding_first=gridding_first,
@@ -5766,10 +5766,10 @@ class fft_map(maptbx.crystal_gridding):
       map_data=map_data,
       labels=flex.std_string(labels))
 
-  def as_dsn6_map (self,
+  def as_dsn6_map(self,
       file_name,
       gridding_first=None,
-      gridding_last=None) :
+      gridding_last=None):
     """
     Write the real component of the map to a DSN6-format file.
     """
@@ -5780,7 +5780,7 @@ class fft_map(maptbx.crystal_gridding):
     if gridding_last is None :
       gridding_last = tuple(self.n_real())
       # only write out the exact unit cell, without padding
-      if (gridding_first == (0,0,0)) :
+      if (gridding_first == (0,0,0)):
         gridding_last = tuple([ (n-1) for n in gridding_last ])
     dsn6.write_dsn6_map(file_name=file_name,
       unit_cell=self.unit_cell(),
@@ -5841,7 +5841,7 @@ def structure_factor_box_from_map(crystal_symmetry, map=None, n_real=None,
 
 # this is tested as part of phenix.merging_statistics (note that the exact
 # values are not reproducible)
-def compute_cc_one_half (unmerged, n_trials=1, return_n_refl=False) :
+def compute_cc_one_half(unmerged, n_trials=1, return_n_refl=False):
   """
   Implementation of array.cc_one_half, assuming that the reflections are
   already in the ASU.  Because the implementation uses random numbers, the
@@ -5849,11 +5849,11 @@ def compute_cc_one_half (unmerged, n_trials=1, return_n_refl=False) :
   """
   cc_all = []
   unmerged = unmerged.select(unmerged.sigmas() > 0)
-  for x in range(n_trials) :
+  for x in range(n_trials):
     # this will obviously not be very random, but it's close enough for
     # the purpose of sampling different outcomes
     seed = 0
-    if (n_trials > 1) :
+    if (n_trials > 1):
       seed = int(random.random()*10000)
     data_1 = data_2 = None
     split_datasets = split_unmerged(
@@ -5870,7 +5870,7 @@ def compute_cc_one_half (unmerged, n_trials=1, return_n_refl=False) :
     return cc_one_half, data_1.size()
   return cc_one_half
 
-class systematic_absences_info (object) :
+class systematic_absences_info(object):
   """
   Container for information about possible systematically absent reflections in
   the array, trying both the current space group and all intensity-equivalent
@@ -5880,18 +5880,18 @@ class systematic_absences_info (object) :
 
   :param obs: X-ray intensity (preferred) or amplitude array
   """
-  def __init__ (self, obs, was_filtered=None) :
+  def __init__(self, obs, was_filtered=None):
     self.was_filtered = was_filtered
     self.input_amplitudes = False
     assert (obs.sigmas() is not None)
     obs = obs.sort("packed_indices")
-    if obs.is_xray_amplitude_array() :
+    if obs.is_xray_amplitude_array():
       obs = obs.f_as_f_sq()
       self.input_amplitudes = True
     assert obs.is_xray_intensity_array()
-    if (not obs.is_unique_set_under_symmetry()) :
+    if (not obs.is_unique_set_under_symmetry()):
       obs = obs.merge_equivalents().array()
-    if obs.anomalous_flag() :
+    if obs.anomalous_flag():
       obs = obs.average_bijvoet_mates()
     self.space_group_info = obs.space_group_info()
     assert (self.space_group_info is not None)
@@ -5906,10 +5906,10 @@ class systematic_absences_info (object) :
       absent_sel = group.is_sys_absent(obs.indices()).iselection()
       all_possible = group.is_sys_absent(complete_sel.indices()).iselection()
       n_possible = len(all_possible)
-      if (n_possible > self.n_possible_max) :
+      if (n_possible > self.n_possible_max):
         self.n_possible_max = n_possible
       if (len(absent_sel) > 0) : # systematic absences found
-        if (len(absent_sel) > self.n_found_max) :
+        if (len(absent_sel) > self.n_found_max):
           self.n_found_max = len(absent_sel)
         absences = obs.select(absent_sel)
         self.space_group_symbols_and_selections.append((group.info(), absences))
@@ -5919,16 +5919,16 @@ class systematic_absences_info (object) :
         self.space_group_symbols_and_selections.append((group.info(), None))
 
   # FIXME there must be a cleaner way to display this...
-  def show (self, out=sys.stdout, prefix="") :
+  def show(self, out=sys.stdout, prefix=""):
     """
     For each possible space group, show a list of possible systematically
     absent reflections and corresponding I/sigmaI.
     """
-    if (self.n_possible_max == 0) :
+    if (self.n_possible_max == 0):
       print >> out, \
         "No systematic absences possible in any intensity-equivalent groups."
       return self
-    if (self.input_amplitudes) :
+    if (self.input_amplitudes):
       print >> out, """\
 Please note that the input data were amplitudes, which means that weaker
 reflections may have been modified by French-Wilson treatment or discarded
@@ -5937,21 +5937,21 @@ results, use intensities as input.
 """
     for group_info, absences in self.space_group_symbols_and_selections :
       group_note = ""
-      if (str(group_info) == str(self.space_group_info)) :
+      if (str(group_info) == str(self.space_group_info)):
         group_note = " (input space group)"
-      if (absences == False) :
+      if (absences == False):
         print >> out, prefix+"%s%s: no systematic absences possible" % \
           (group_info, group_note)
-      elif (absences is None) :
+      elif (absences is None):
         print >> out, prefix+"%s%s: no absences found" % \
           (group_info, group_note)
       else :
         print >> out, prefix+"%s%s:" % (group_info, group_note)
-        for i_hkl, hkl in enumerate(absences.indices()) :
+        for i_hkl, hkl in enumerate(absences.indices()):
           intensity = absences.data()[i_hkl]
           sigma = absences.sigmas()[i_hkl]
           indices_fmt = "(%4d, %4d, %4d)" % hkl
-          if (sigma == 0) :
+          if (sigma == 0):
             print >> out, prefix+"  %s: i/sigi = undefined" % indices_fmt
           else :
             print >> out, prefix+"  %s: i/sigi = %6.1f" % (indices_fmt,

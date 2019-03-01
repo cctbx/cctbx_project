@@ -269,7 +269,7 @@ def exercise_random_traceless_symmetry_constrained_b_cart():
   assert approx_equal(bc[4],0)
   assert approx_equal(bc[5],0)
 
-def exercise_misc () :
+def exercise_misc():
   import libtbx.load_env
   if (not libtbx.env.has_module("iotbx")) : return
   from iotbx.pdb import hierarchy

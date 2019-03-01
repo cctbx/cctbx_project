@@ -4,7 +4,7 @@ import os
 from libtbx import easy_run
 import time
 
-def exercise () :
+def exercise():
   from mmtbx.regression.make_fake_anomalous_data import generate_magnessium_inputs
   base = "tst_pick_mg"
   mtz_file, pdb_file = generate_magnessium_inputs(file_base=base, anonymize=True)
@@ -15,7 +15,7 @@ def exercise () :
     ).raise_if_errors()
   n_mg = 0
   for line in result.stdout_lines :
-    if ("Probable cation: MG+2" in line) :
+    if ("Probable cation: MG+2" in line):
       n_mg += 1
   if n_mg != 2:
     print "\n".join(result.stdout_lines)

@@ -1,7 +1,7 @@
 
 from __future__ import division
 
-def exercise_misc () :
+def exercise_misc():
   pdb_in = """\
 ATOM      2  CA  LYS A   1      10.524   2.575   9.811  1.00 25.81           C
 ATOM     11  CA  VAL A   2      13.845   2.559  11.678  1.00 24.92           C
@@ -40,6 +40,6 @@ ATOM    205  CA  ASN A  27      28.134  -6.159   3.940  1.00 22.17           C
     sequence='XYRG')
   assert (len(fragments) == 2)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_misc()
   print "OK"

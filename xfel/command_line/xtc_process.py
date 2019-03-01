@@ -55,6 +55,9 @@ xtc_phil_str = '''
         .type = int
         .help = If the number of strong reflections on an image is less than this, and \
                  the hitfinder is enabled, discard this image.
+      maximum_number_of_reflections = None
+       .type = int
+       .help = If specified, ignores images with more than this many number of reflections
     }
     index = True
       .type = bool
@@ -604,6 +607,12 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     if params.output.logging_dir is None:
       info_path = ''
       debug_path = ''
+    elif params.output.logging_dir == 'DevNull':
+      print "Redirecting stdout, stderr and other DIALS logfiles to /dev/null"
+      sys.stdout = open(os.devnull,'w', buffering=0)
+      sys.stderr = open(os.devnull,'w',buffering=0)
+      info_path = os.devnull
+      debug_path = os.devnull
     else:
       log_path = os.path.join(params.output.logging_dir, "log_rank%04d.out"%rank)
       error_path = os.path.join(params.output.logging_dir, "error_rank%04d.out"%rank)
@@ -712,7 +721,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
             raise Sorry("Couldn't load calibration file for run %d, %s"%(run.run(), str(e)))
         elif params.format.cbf.mode == "rayonix":
           # load a header only rayonix cbf from the input parameters
-          self.base_dxtbx = rayonix_tbx.get_dxtbx_from_params(params.format.cbf.rayonix)
+          detector_size = rayonix_tbx.get_rayonix_detector_dimensions(ds.env())
+          self.base_dxtbx = rayonix_tbx.get_dxtbx_from_params(params.format.cbf.rayonix, detector_size)
 
         if self.base_dxtbx is None:
           raise Sorry("Couldn't load calibration file for run %d"%run.run())
@@ -1013,7 +1023,10 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         distance = self.params.format.cbf.override_distance
 
       if self.params.format.cbf.override_energy is None:
-        wavelength = cspad_tbx.evt_wavelength(evt)
+        if PSANA2_VERSION:
+          wavelength = 12398.4187/self.psana_det.photonEnergy(evt)
+        else:
+          wavelength = cspad_tbx.evt_wavelength(evt)
         if wavelength is None:
           print "No wavelength, skipping shot"
           self.debug_write("no_wavelength", "skip")
@@ -1148,6 +1161,11 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       print "Not enough spots to index"
       self.debug_write("not_enough_spots_%d"%len(observed), "stop")
       return
+    if self.params.dispatch.hit_finder.maximum_number_of_reflections is not None:
+      if self.params.dispatch.hit_finder.enable and len(observed) > self.params.dispatch.hit_finder.maximum_number_of_reflections:
+        print "Too many spots to index - Possibly junk"
+        self.debug_write("too_many_spots_%d"%len(observed), "stop")
+        return
 
     self.restore_ranges(dxtbx_img)
 

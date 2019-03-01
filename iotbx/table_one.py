@@ -83,7 +83,7 @@ optional_if_none = set([
 
 keyword_formats = dict([ (kw, fs) for (kw, label, fs, cif_tag) in keywords ])
 
-class column (slots_getstate_setstate) :
+class column(slots_getstate_setstate):
   """
   Statistics for a single structure, including optional high-resolution
   shell.  Any combination of standard attributes is permitted as keyword
@@ -94,66 +94,66 @@ class column (slots_getstate_setstate) :
   __slots__ = [ "outer_shell", "label", "anomalous_flag" ] + \
               [ kw[0] for kw in keywords ]
 
-  def __init__ (self, **kwds) :
+  def __init__(self, **kwds):
     kwds = dict(kwds)
     for name in self.__slots__ :
-      if (name in kwds.keys()) :
+      if (name in kwds.keys()):
         setattr(self, name, kwds[name])
       else :
         setattr(self, name, None)
     self.outer_shell = None
 
-  def add_outer_shell (self, **kwds) :
+  def add_outer_shell(self, **kwds):
     self.outer_shell = column(**kwds)
     return self
 
-  def format_stat (self, name) :
+  def format_stat(self, name):
     value = getattr(self, name, None)
-    if (value is None) and (name in optional_if_none) :
+    if (value is None) and (name in optional_if_none):
       return None
     shell_value = getattr(self.outer_shell, name, None)
     fs = keyword_formats[name]
-    if (name == "d_max_min") :
+    if (name == "d_max_min"):
       cell_value = format_d_max_min(value)
     else :
       cell_value = format_value(fs, value)
-    if (shell_value is not None) :
-      if (name == "d_max_min") :
+    if (shell_value is not None):
+      if (name == "d_max_min"):
         subvalue = format_d_max_min(shell_value)
       else :
         subvalue = format_value(fs, shell_value)
       cell_value += " (%s)" % subvalue
     return cell_value
 
-  def __repr__ (self) :
+  def __repr__(self):
     lines = []
     for (stat_name, label, format_string) in keywords :
       value = getattr(self, stat_name, None)
-      if (value is not None) :
+      if (value is not None):
         lines.append("%s %s" % (stat_name, value))
     return "\n".join(lines)
 
-class table (slots_getstate_setstate) :
+class table(slots_getstate_setstate):
   """
   Combined table of statistics for one or more structures published together.
   """
   __slots__ = ["text_field_separation", "columns"]
 
-  def __init__ (self, text_field_separation=4) :
+  def __init__(self, text_field_separation=4):
     self.text_field_separation = text_field_separation
     self.columns = []
 
-  def add_column (self, col) :
+  def add_column(self, col):
     self.columns.append(col)
 
-  def format_as_txt (self) :
+  def format_as_txt(self):
     rows = []
     rows.append([""] + [ column.label for column in self.columns ])
     for (stat_name, label, fstring, cif_tag) in keywords :
       row = []
       for column in self.columns :
         row.append(column.format_stat(stat_name))
-      if (row == [ None for x in range(len(row)) ]) :
+      if (row == [ None for x in range(len(row)) ]):
         continue
       row.insert(0, label)
       rows.append(row)
@@ -166,7 +166,7 @@ class table (slots_getstate_setstate) :
     out = "\n".join([ sep.join(row) for row in table ])
     return out
 
-  def format_as_csv (self) :
+  def format_as_csv(self):
     rows = []
     rows.append([""] + [ column.label for column in self.columns ])
     for (stat_name, label, fstring, cif_tag) in keywords :
@@ -180,7 +180,7 @@ class table (slots_getstate_setstate) :
       rows.append(row)
     return "\n".join([ ",".join(row) for row in rows ])
 
-  def format_as_rtf (self) :
+  def format_as_rtf(self):
     try :
       import PyRTF
     except ImportError :
@@ -199,7 +199,7 @@ class table (slots_getstate_setstate) :
     anomalous_flag = False
     for column in self.columns :
       label = column.label
-      if (column.anomalous_flag) :
+      if (column.anomalous_flag):
         label += "*"
         anomalous_flag = True
       column_label = PyRTF.Paragraph(ss.ParagraphStyles.Heading2, label)
@@ -210,13 +210,13 @@ class table (slots_getstate_setstate) :
       n_none = 0
       for column in self.columns :
         txt = column.format_stat(stat_name)
-        if (txt is None) :
+        if (txt is None):
           n_none += 1
         p = PyRTF.Paragraph(ss.ParagraphStyles.Normal,
           PyRTF.ParagraphPS(alignment=2))
         p.append(txt)
         row.append(PyRTF.Cell(p))
-      if (n_none == len(row) - 1) :
+      if (n_none == len(row) - 1):
         continue
       table.AddRow(*row)
     section.append(table)
@@ -226,19 +226,19 @@ class table (slots_getstate_setstate) :
     section.append(p)
     return doc
 
-  def save_txt (self, file_name) :
+  def save_txt(self, file_name):
     f = open(file_name, "w")
     out = self.format_as_txt()
     f.write(out)
     f.close()
 
-  def save_csv (self, file_name) :
+  def save_csv(self, file_name):
     f = open(file_name, "w")
     out = self.format_as_csv()
     f.write(out)
     f.close()
 
-  def save_rtf (self, file_name) :
+  def save_rtf(self, file_name):
     import PyRTF
     DR = PyRTF.Renderer()
     doc = self.format_as_rtf()
@@ -250,7 +250,7 @@ class table (slots_getstate_setstate) :
 # UTILITY FUNCTIONS
 
 # XXX is this superfluous?
-def format_value (fs, value) :
+def format_value(fs, value):
   try :
     val_str = str_utils.format_value(fs, value, replace_none_with="").strip()
   except Exception, e :
@@ -258,9 +258,9 @@ def format_value (fs, value) :
   else :
     return val_str
 
-def format_d_max_min (d_max_min) :
+def format_d_max_min(d_max_min):
   """Format a resolution range (e.g. '30 - 2.56')"""
-  if (d_max_min is None) or (d_max_min == (None, None)) :
+  if (d_max_min is None) or (d_max_min == (None, None)):
     return ""
   else :
     (d_max, d_min) = d_max_min
@@ -268,12 +268,12 @@ def format_d_max_min (d_max_min) :
     d_min_str = re.sub("\.$", ".0", re.sub("0*$", "", "%.3f" % d_min))
     return "%s - %s" % (d_max_str, d_min_str)
 
-def resize_column (cell_values, alignment="right") :
+def resize_column(cell_values, alignment="right"):
   max_width = max([ len(str(cell)) for cell in cell_values ])
-  if (alignment == "right") :
+  if (alignment == "right"):
     fs = "%%%ds" % max_width
     return [ fs % cell for cell in cell_values ]
-  elif (alignment == "left") :
+  elif (alignment == "left"):
     fs = "%%%-ds" % max_width
     return [ fs % cell for cell in cell_values ]
   else :

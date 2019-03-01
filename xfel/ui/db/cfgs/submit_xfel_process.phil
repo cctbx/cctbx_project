@@ -1,7 +1,6 @@
 # Phil template for experiment manager
 dry_run = {dry_run}
 input {{
-  experiment = {experiment}
   run_num = {run_num}
   trial = {trial}
   rungroup = {rungroup}
@@ -14,10 +13,12 @@ output {{
   split_logs = True
 }}
 mp {{
-  method = *lsf sge pbs custom
+  method = {method}
   use_mpi = True
   nproc = {nproc}
+  nproc_per_node = {nproc_per_node}
   queue = {queue}
+  env_script = {env_script}
 }}
 experiment_tag = {experiment_tag}
 db {{
@@ -25,4 +26,5 @@ db {{
   name = {dbname}
   user = {user}
   password = {password}
+  port = {port}
 }}

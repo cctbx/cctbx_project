@@ -21,10 +21,10 @@ input
 include scope mmtbx.validation.sequence.master_phil
 """, process_includes=True)
 
-def run (args=(), params=None, out=None) :
-  if (out is None) :
+def run(args=(), params=None, out=None):
+  if (out is None):
     out = sys.stdout
-  if (len(args) == 0) and (params is None) :
+  if (len(args) == 0) and (params is None):
     raise Usage("""\
 phenix.model_vs_sequence model.pdb sequence.fa
 
@@ -50,7 +50,7 @@ and other inconsistencies (similar to validation upon PDB deposition).""")
   seq_in.check_file_type("seq")
   pdb_hierarchy = pdb_in.file_object.hierarchy
   sequences = seq_in.file_object
-  if (len(sequences) == 0) :
+  if (len(sequences) == 0):
     raise Sorry("There don't appear to be any valid sequences in %s!" %
       params.input.seq_file)
   v = mmtbx.validation.sequence.validation(
@@ -60,16 +60,16 @@ and other inconsistencies (similar to validation upon PDB deposition).""")
     log=out)
   v.show(out=out)
 
-def validate_params (params) :
-  if (params.input.pdb_file is None) :
+def validate_params(params):
+  if (params.input.pdb_file is None):
     raise Sorry("No PDB file specified.")
-  elif (not os.path.isfile(params.input.pdb_file)) :
+  elif (not os.path.isfile(params.input.pdb_file)):
     raise Sorry("'%s' is not a file." % params.input.pdb_file)
-  elif (params.input.seq_file is None) :
+  elif (params.input.seq_file is None):
     raise Sorry("No sequence file specified.")
-  elif (not os.path.isfile(params.input.seq_file)) :
+  elif (not os.path.isfile(params.input.seq_file)):
     raise Sorry("'%s' is not a file." % params.input.seq_file)
   return True
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -1,7 +1,8 @@
 from __future__ import division
 from six.moves import range
+import six
 from spotfinder.array_family import flex
-import types,math
+import math
 from spotfinder.exception import SpotfinderError
 from spotfinder.core_toolbox import Distl,SpotFilterAgent,SingleMask
 from spotfinder.math_support import stats_profile
@@ -243,9 +244,9 @@ class heuristics_base(object):
     self.force_detail = False #flag indicates whether percent_overlap > force_detail cutoff
 
   def register_frames(self,frameinfo,imagefilesinstance):
-    if type(frameinfo) in [types.IntType,types.LongType]:
+    if type(frameinfo) in six.integer_types:
       frames = [int(frameinfo),]
-    elif type(frameinfo) in [types.TupleType,types.ListType]:
+    elif type(frameinfo) in [tuple,list]:
       frames = frameinfo
     for x in range(len(frames)):
       self.images[frames[x]] = self.oneImage(frames[x],self.pd,

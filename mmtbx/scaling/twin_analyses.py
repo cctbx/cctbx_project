@@ -26,7 +26,7 @@ TWIN_FRAC_SIGNIFICANT = 0.05
 PATT_HEIGHT_MISSED_CENTERING = 75
 PATT_HEIGHT_TNCS = 0.2
 
-class obliquity (slots_getstate_setstate):
+class obliquity(slots_getstate_setstate):
   __slots__ = ["type", "u", "h", "t", "tau", "delta"]
   def __init__(self, reduced_cell, rot_mx, deg=True):
     orth = matrix.sqr(reduced_cell.orthogonalization_matrix())
@@ -117,7 +117,7 @@ class twin_law_quality(object):
 
 ## python routines copied from iotbx.reflection_statistics.
 ## Should be moved but are (for now) in a conveniant place.
-class twin_law (slots_getstate_setstate):
+class twin_law(slots_getstate_setstate):
   """
   Basic container for information about a possible twin law, with scores for
   fit to crystal lattice.
@@ -138,10 +138,10 @@ class twin_law (slots_getstate_setstate):
     self.delta_lebedev = delta_lebedev
     self.axis_type = axis_type
 
-  def __str__ (self) :
+  def __str__(self):
     return str(self.operator.r().as_hkl())
 
-class twin_laws (scaling.xtriage_analysis):
+class twin_laws(scaling.xtriage_analysis):
   """
   Container for all possible twin laws given a crystal lattice and space
   group.
@@ -231,10 +231,10 @@ PM: Pseudomerohedral twin law""")
     except Exception:
       pass
 
-  def _show_impl (self, out):
+  def _show_impl(self, out):
     assert (self.m + self.pm)==len(self.operators)
     out.show_sub_header("Twin law identification")
-    if (len(self.operators) == 0) :
+    if (len(self.operators) == 0):
       out.show("\nNo twin laws are possible for this crystal lattice.\n")
     else:
       out.show_paragraph_header("Possible twin laws:")
@@ -298,7 +298,7 @@ expressed in the setting desired.  Becasue of this, a full coset table cannot
 be produced. Working with the data in the reduced cell will solve this.
 """)
 
-def get_twin_laws (miller_array) :
+def get_twin_laws(miller_array):
   """
   Convenience method for getting a list of twin law operators (as strings)
   """
@@ -331,7 +331,7 @@ class wilson_normalised_intensities(scaling.xtriage_analysis):
     if (self.acentric.indices().size()<=0):
       raise Sorry("No acentric reflections available. Check your input")
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show("Splitting data in centrics and acentrics")
     out.show("  Number of centrics  : %d" % self.centric.data().size())
     out.show("  Number of acentrics : %d", self.acentric.data().size())
@@ -340,7 +340,7 @@ class wilson_normalised_intensities(scaling.xtriage_analysis):
 # DIAGNOSTIC TESTS
 ########################################################################
 
-class detect_pseudo_translations (scaling.xtriage_analysis):
+class detect_pseudo_translations(scaling.xtriage_analysis):
   """
   Analyze the Patterson map to identify off-origin peaks that are a significant
   fraction of the origin peak height.
@@ -587,7 +587,7 @@ class detect_pseudo_translations (scaling.xtriage_analysis):
         result = best_frac
     return result
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_sub_header("Patterson analyses")
     out.show(" Largest Patterson peak with length larger than 15 Angstrom:")
     out.show_preformatted_text(" Frac. coord.              : %8.3f %8.3f %8.3f"
@@ -606,13 +606,13 @@ class detect_pseudo_translations (scaling.xtriage_analysis):
  a large anomalous scatterer such as Hg, whereas values smaller than 1e-3 are
  a very strong indication for the presence of translational pseudo symmetry.
 """ % self.high_p_value)
-    if (self.high_peak >= 20) :
+    if (self.high_peak >= 20):
       out.show_text("""\
  Translational pseudo-symmetry is very likely present in these data.  Be
  aware that this will change the intensity statistics and may impact subsequent
  analyses, and in practice may lead to higher R-factors in refinement.
 """)
-    if (self.high_p_value <= self.p_value_cut) :
+    if (self.high_p_value <= self.p_value_cut):
       table_rows = []
       for ii in range(len(self.suspected_peaks)):
         if self.suspected_peaks[ii][2] > self.p_value_cut:
@@ -621,20 +621,20 @@ class detect_pseudo_translations (scaling.xtriage_analysis):
           "%6.3f,%6.3f,%6.3f" % self.suspected_peaks[ii][0],
           "%8.3f" % self.suspected_peaks[ii][1],
           "%9.3e" % self.suspected_peaks[ii][2] ])
-      if (len(table_rows) > 1) :
+      if (len(table_rows) > 1):
         out.show(" The full list of Patterson peaks is:")
         table = table_utils.simple_table(
           table_rows=table_rows,
           column_headers=["XYZ", "height", "p-value(height)"])
         out.show_table(table, indent=2)
-      if (self.suggested_space_groups_table is not None) :
+      if (self.suggested_space_groups_table is not None):
         out.show("""\
  If the observed pseudo translationals are crystallographic, the following
  spacegroups and unit cells are possible:
 """)
         out.show_table(self.suggested_space_groups_table, indent=2)
 
-class wilson_moments(scaling.xtriage_analysis) :
+class wilson_moments(scaling.xtriage_analysis):
   centric_i_ratio_library= [3.0,2.0]
   centric_f_ratio_library = [0.637,0.785]
   centric_e_sq_minus_one_library = [0.968,0.736]
@@ -643,7 +643,7 @@ class wilson_moments(scaling.xtriage_analysis) :
   acentric_e_sq_minus_one_library = [0.736, 0.541]
   def __init__(self,
                acentric_z,
-               centric_z) :
+               centric_z):
     self.centric_i_ratio = None
     self.centric_f_ratio = None
     self.centric_e_sq_minus_one = None
@@ -673,7 +673,7 @@ class wilson_moments(scaling.xtriage_analysis) :
       self.centric_f_ratio = mean_e*mean_e/mean_z
       self.centric_abs_e_sq_minus_one = flex.mean( flex.abs(c - 1.0) )
 
-  def _show_impl (self, out):
+  def _show_impl(self, out):
     out.show_sub_header("Wilson ratio and moments")
     out.show("""Acentric reflections:\n""")
     out.show_preformatted_text("""
@@ -706,10 +706,10 @@ class wilson_moments(scaling.xtriage_analysis) :
        self.centric_e_sq_minus_one_library[1]))
     # TODO explanation, citation?
 
-class n_z_test (scaling.xtriage_analysis):
+class n_z_test(scaling.xtriage_analysis):
   def __init__(self,
                normalised_acentric,
-               normalised_centric) :
+               normalised_centric):
     centric_available = True
     acentric_available = True
     if normalised_centric.data().size() == 0:
@@ -765,7 +765,7 @@ class n_z_test (scaling.xtriage_analysis):
     self.mean_diff_c = flex.sum(self.c_obs - self.c_untwinned)/11.0
 
   @property
-  def table (self) :
+  def table(self):
     return data_plots.table_data(
       title = "NZ test",
       column_labels=["z", "Acentric observed", "Acentric untwinned",
@@ -777,7 +777,7 @@ class n_z_test (scaling.xtriage_analysis):
       data=[list(self.z), list(self.ac_obs), list(self.ac_untwinned),
             list(self.c_obs), list(self.c_untwinned) ])
 
-  def _show_impl (self, out):
+  def _show_impl(self, out):
     out.show_sub_header("NZ test for twinning and TNCS")
     out.show("""
 The NZ test is diagnostic for both twinning and translational NCS.  Note
@@ -803,13 +803,13 @@ considered.
         "sign_c" : self.sign_c,
         "mean_diff_ac" : math.fabs(self.mean_diff_ac),
         "mean_diff_c" : math.fabs(self.mean_diff_c), })
-    if (out.gui_output) :
+    if (out.gui_output):
       out.show_plot(self.table)
       out.show_table(self.table)
     else :
       out.show_table(self.table)
 
-class l_test (scaling.xtriage_analysis):
+class l_test(scaling.xtriage_analysis):
   """
   Implementation of:
 
@@ -824,7 +824,7 @@ class l_test (scaling.xtriage_analysis):
       miller_array,
       parity_h=2,
       parity_k=2,
-      parity_l=2) :
+      parity_l=2):
     acentric_data = miller_array.select_acentric().set_observation_type(
       miller_array)
     if not miller_array.is_xray_intensity_array():
@@ -853,7 +853,7 @@ class l_test (scaling.xtriage_analysis):
     self.ml_alpha = l_stats.ml_alpha()
 
   @property
-  def table (self) :
+  def table(self):
     return data_plots.table_data(
       title="L test, acentric data",
       column_labels=["|l|", "Observed", "Acentric theory",
@@ -864,7 +864,7 @@ class l_test (scaling.xtriage_analysis):
       data=[list(self.l_values), list(self.l_cumul),
             list(self.l_cumul_untwinned), list(self.l_cumul_perfect_twin)])
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_sub_header("L test for acentric data")
     out.show("""Using difference vectors (dh,dk,dl) of the form:""")
     out.show_preformatted_text(
@@ -884,7 +884,7 @@ class l_test (scaling.xtriage_analysis):
  %(ml_alpha)3.2f. Note that this estimate is not as reliable as obtained
  via a Britton plot or H-test if twin laws are available.
 """ % { "ml_alpha" : self.ml_alpha, })
-    if (out.gui_output) :
+    if (out.gui_output):
       out.show_plot(self.table)
       out.show_table(self.table)
     else :
@@ -901,7 +901,7 @@ class l_test (scaling.xtriage_analysis):
 # TWIN LAW-DEPENDENT TESTS
 ########################################################################
 
-class britton_test (scaling.xtriage_analysis):
+class britton_test(scaling.xtriage_analysis):
   def __init__(self,
                twin_law,
                miller_array, # ideally intensities!
@@ -980,7 +980,7 @@ class britton_test (scaling.xtriage_analysis):
     return [-a/(b+1.0e-6) ,  correlation, a, b]
 
   @property
-  def table (self) :
+  def table(self):
     return data_plots.table_data(
         title = "Britton plot for twin law %s" % str(self.twin_law),
         column_labels=["alpha", "percentage negatives", "fit"],
@@ -990,7 +990,7 @@ class britton_test (scaling.xtriage_analysis):
         reference_marks=[[self.estimated_alpha]],
         data=[self.britton_alpha, self.britton_obs, self.britton_fit])
 
-  def _show_impl (self, out):
+  def _show_impl(self, out):
     out.show_paragraph_header("Britton analyses")
     out.show("""
   Extrapolation performed on  %(alpha_cut)3.2f < alpha < 0.495
@@ -1001,7 +1001,7 @@ class britton_test (scaling.xtriage_analysis):
         "correlation" : self.correlation })
 
 
-class h_test (scaling.xtriage_analysis):
+class h_test(scaling.xtriage_analysis):
   def __init__(self,
                twin_law,
                miller_array, # ideally intensities!
@@ -1041,7 +1041,7 @@ class h_test (scaling.xtriage_analysis):
       self.cumul_fit = h_test_object.h_cumul_fit()
 
   @property
-  def table (self) :
+  def table(self):
     return data_plots.table_data(
         title="H test for possible twin law %s" % str(self.twin_law),
         column_labels=["H", "Observed S(H)", "Fitted S(H)"],
@@ -1051,7 +1051,7 @@ class h_test (scaling.xtriage_analysis):
         reference_marks=[[self.estimated_alpha]],
         data=[self.h_array, self.cumul_obs, self.cumul_fit])
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_paragraph_header("""H-test on acentric data""")
     out.show_lines("""\
 Only %(fraction)3.1f %% of the strongest twin pairs were used.
@@ -1067,7 +1067,7 @@ Estimation of twin fraction via cum. dist. of H: %(estimated_alpha)4.3f
         "alpha_from_mean_h" : self.alpha_from_mean_h,
         "estimated_alpha" : self.estimated_alpha })
 
-  def __getstate__ (self) :
+  def __getstate__(self):
     """
     Pickling optimization - see note below
     """
@@ -1195,8 +1195,8 @@ class ml_murray_rust_with_ncs(object):
     self.out.flush()
     return f,flex.double(g)
 
-  def _show_info (self, out) :
-    if (not isinstance(out, scaling.xtriage_output)) :
+  def _show_info(self, out):
+    if (not isinstance(out, scaling.xtriage_output)):
       out = scaling.printed_output(out)
     out.show_paragraph_header("Maximum Likelihood twin fraction determination")
     out.show("""
@@ -1216,8 +1216,8 @@ class ml_murray_rust_with_ncs(object):
  and 0.45.  Refinement cycle numbers are printed out to keep you entertained.
 """)
 
-  def _show_results (self, out) :
-    if (not isinstance(out, scaling.xtriage_output)) :
+  def _show_results(self, out):
+    if (not isinstance(out, scaling.xtriage_output)):
       out = scaling.printed_output(out)
     out.show("""
   Cycle : %(cycle)3i
@@ -1227,11 +1227,11 @@ class ml_murray_rust_with_ncs(object):
 """%{"cycle":self.cycle,"log_likelihood":self.log_likelihood,"twin_fraction":self.twin_fraction})
     out.show_table(self.table, indent=2)
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     self._show_info(out)
     self._show_results(out)
 
-class ml_murray_rust (scaling.xtriage_analysis):
+class ml_murray_rust(scaling.xtriage_analysis):
   """
   Maximum-likelihood twin fraction estimation (Zwart, Read, Grosse-Kunstleve &
   Adams, to be published).
@@ -1261,7 +1261,7 @@ class ml_murray_rust (scaling.xtriage_analysis):
       self.nll.append( - ml_murray_rust_object.fast_log_p_given_t( t )  )
     i_t_max = flex.min_index( flex.double( self.nll ) )
     self.estimated_alpha = None
-    if (i_t_max >= 1) and (i_t_max < len(self.nll)-1 ) :
+    if (i_t_max >= 1) and (i_t_max < len(self.nll)-1 ):
       tmp_t = [0,0,0]
       tmp_nll = [0,0,0]
       tmp_t[0] = self.twin_fraction[ i_t_max - 1 ]
@@ -1278,13 +1278,13 @@ class ml_murray_rust (scaling.xtriage_analysis):
                    (tmp_t[0])*(tmp_nll[2] - tmp_nll[0])
       self.estimated_alpha= tmp_top/(2.0*tmp_bottom)
       if ((self.estimated_alpha < tmp_t[0]) or
-          (self.estimated_alpha > tmp_t[2])) :
+          (self.estimated_alpha > tmp_t[2])):
         self.estimated_alpha = self.twin_fraction[ i_t_max ]
     else:
       self.estimated_alpha = self.twin_fraction[ i_t_max ]
 
   @property
-  def table (self) :
+  def table(self):
     return data_plots.table_data(
       title="Likelihood based twin fraction estimation for twin law %s"%\
             str(self.twin_law),
@@ -1295,14 +1295,14 @@ class ml_murray_rust (scaling.xtriage_analysis):
       reference_marks=[[self.estimated_alpha]],
       data=[self.twin_fraction, self.nll])
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_paragraph_header("Maximum Likelihood twin fraction determination")
     out.show("""\
   Zwart, Read, Grosse-Kunstleve & Adams, to be published.
   The estimated twin fraction is equal to %4.3f
 """%(self.estimated_alpha))
 
-def weighted_cc (x,y,w):
+def weighted_cc(x,y,w):
   """
   Utility function for correlation_analyses class.
   """
@@ -1319,12 +1319,12 @@ def weighted_cc (x,y,w):
   else:
     return 0.0
 
-class correlation_analyses (scaling.xtriage_analysis) :
+class correlation_analyses(scaling.xtriage_analysis):
   def __init__(self,
                miller_obs,
                miller_calc,
                twin_law,
-               d_weight=0.1) :
+               d_weight=0.1):
     self.twin_law=sgtbx.change_of_basis_op( twin_law )
     self.twin_law= self.twin_law.new_denominators(
       r_den=miller_calc.space_group().r_den(),
@@ -1346,7 +1346,7 @@ class correlation_analyses (scaling.xtriage_analysis) :
     self.d = d_weight
     self.alpha = []
     self.cc = []
-    def twin_the_data_and_compute_cc (alpha):
+    def twin_the_data_and_compute_cc(alpha):
       wx = obs.sigmas()
       x = obs.data()
       dd = obs.d_star_sq().data()
@@ -1357,7 +1357,7 @@ class correlation_analyses (scaling.xtriage_analysis) :
       w_tot = wx*wx + wy*wy
       cc = weighted_cc( x,y,w_tot )
       return(cc)
-    if (obs.data().size() > 0) :
+    if (obs.data().size() > 0):
       for ii in xrange(50):
         alpha=ii/100.0
         self.alpha.append( alpha )
@@ -1373,7 +1373,7 @@ class correlation_analyses (scaling.xtriage_analysis) :
     max_alpha =  self.alpha[ max_alpha ]
     return max_alpha, max_cc
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_paragraph_header("Correlation analyses")
     out.show("""
   The supplied calculated data are normalized and artificially twinned;
@@ -1454,30 +1454,30 @@ class twin_law_dependent_twin_tests(scaling.xtriage_analysis):
             start_alpha=self.ml_murray_rust.estimated_alpha)
 
   @property
-  def h_frac (self) :
-    if (self.h_test is not None) :
+  def h_frac(self):
+    if (self.h_test is not None):
       return self.h_test.estimated_alpha
 
   @property
-  def britton_frac (self) :
-    if (self.britton_test is not None) :
+  def britton_frac(self):
+    if (self.britton_test is not None):
       return self.britton_test.estimated_alpha
 
   @property
-  def ml_frac (Self) :
-    if (self.ml_murray_rust is not None) :
+  def ml_frac(Self):
+    if (self.ml_murray_rust is not None):
       return self.ml_murray_rust.estimated_alpha
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_sub_header("Analysis of twin law %s" % self.twin_law)
-    if (self.results_available) :
+    if (self.results_available):
       self.h_test.show(out)
       self.britton_test.show(out)
       self.r_values.show(out)
-      if (self.correlation is not None) :
+      if (self.correlation is not None):
         self.correlation.show(out)
       tables = [self.h_test.table, self.britton_test.table]
-      if (self.ml_murray_rust is not None) :
+      if (self.ml_murray_rust is not None):
         tables.append(self.ml_murray_rust.table)
       out.show_plots_row(tables)
     else:
@@ -1488,7 +1488,7 @@ class twin_law_dependent_twin_tests(scaling.xtriage_analysis):
 # OTHER SYMMETRY PROBLEMS
 ########################################################################
 
-class symmetry_issues (scaling.xtriage_analysis):
+class symmetry_issues(scaling.xtriage_analysis):
   def __init__(self,
                miller_array,
                max_delta=3.0,
@@ -1539,7 +1539,7 @@ class symmetry_issues (scaling.xtriage_analysis):
     # loop over all pg's
     for pg in self.pg_max_r_used_table:
       tmp = self.miller_niggli
-      if tmp.is_xray_amplitude_array() :
+      if tmp.is_xray_amplitude_array():
         tmp = tmp.f_as_f_sq()
       sigmas = tmp.sigmas()
       if tmp.sigmas() is None:
@@ -1569,7 +1569,7 @@ class symmetry_issues (scaling.xtriage_analysis):
               'min R_unused', 'BIC', 'choice']
     table_data = []
     min_score = 2e+9
-    def as_string (val, fmt) :
+    def as_string(val, fmt):
       return format_value(fmt, val, replace_none_with="None")
     for pg in self.pg_scores:
       tmp = [pg,
@@ -1695,12 +1695,12 @@ class symmetry_issues (scaling.xtriage_analysis):
     # Preffered symmetry
     # Highest symmetry
     miller_niggli = self.miller_niggli
-    if miller_niggli.is_xray_amplitude_array() :
+    if miller_niggli.is_xray_amplitude_array():
       miller_niggli = miller_niggli.f_as_f_sq()
     return [ miller_niggli, self.pg_low_prim_set_name, self.pg_choice,
              self.pg_lattice_name ]
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_header("Exploring higher metric symmetry")
     if self.sigma_warning is not None:
       out.show_text(self.sigma_warning)
@@ -1716,7 +1716,7 @@ A summary of R values for various possible point groups follow.
        str(self.pg_lattice_name)))
     out.show_table(self.table, indent=2)
     # Phenix GUI hack
-    if hasattr(out, "add_change_symmetry_button") :
+    if hasattr(out, "add_change_symmetry_button"):
       out.add_change_symmetry_button()
     out.show_lines("""
 R_used: mean and maximum R value for symmetry operators *used* in this point group
@@ -1739,7 +1739,7 @@ higher than it actually is.
 """)
 
 
-class r_values (scaling.xtriage_analysis) :
+class r_values(scaling.xtriage_analysis):
   def __init__(self,
                miller_obs,
                twin_law,
@@ -1850,7 +1850,7 @@ class r_values (scaling.xtriage_analysis) :
     if guess is not None:
       self.rvsr_interpretation[ guess ][4]="<---"
 
-  def _show_impl (self, out=sys.stdout):
+  def _show_impl(self, out=sys.stdout):
     out.show_paragraph_header("R vs R statistics")
     out.show("  R_abs_twin = <|I1-I2|>/<|I1+I2|>")
     out.show("    (Lebedev, Vagin, Murshudov. Acta Cryst. (2006). D62, 83-95)")
@@ -1931,7 +1931,7 @@ class twin_results_interpretation(scaling.xtriage_analysis):
         max_tf = -1
         max_index = -1
         for ii, twin_fraction in enumerate(self.britton_alpha):
-          if (twin_fraction is not None) and (float(twin_fraction) > max_tf) :
+          if (twin_fraction is not None) and (float(twin_fraction) > max_tf):
             max_tf = twin_fraction
             max_index = ii
         self.most_worrysome_twin_law = max_index
@@ -1974,23 +1974,23 @@ class twin_results_interpretation(scaling.xtriage_analysis):
     maha_distance_l = math.sqrt(maha_distance_l)
     self.maha_l = maha_distance_l
 
-  def has_pseudo_translational_symmetry (self) :
-    if (self.patterson_p_value is None) :
+  def has_pseudo_translational_symmetry(self):
+    if (self.patterson_p_value is None):
       return None
     return (self.patterson_p_value <= self.patterson_p_cut)
 
-  def has_abnormal_intensity_statistics (self) :
+  def has_abnormal_intensity_statistics(self):
     return ((self.maha_l >= self.maha_l_cut) and (self.l_mean < 0.5))
 
-  def has_twinning (self) :
+  def has_twinning(self):
     return self.has_abnormal_intensity_statistics() and (self.n_twin_laws > 0)
 
-  def has_higher_symmetry (self) :
+  def has_higher_symmetry(self):
     return (self.input_point_group != self.suspected_point_group)
 
-  def patterson_verdict (self) :
+  def patterson_verdict(self):
     verdict = ""
-    if self.has_pseudo_translational_symmetry() :
+    if self.has_pseudo_translational_symmetry():
       verdict = """\
 The analyses of the Patterson function reveals a significant off-origin
 peak that is %3.2f %% of the origin peak, indicating pseudo-translational
@@ -2002,14 +2002,14 @@ in a structure without pseudo-translational symmetry is equal to %5.4e.""" % \
 The detected translational NCS is most likely also responsible for the
 elevated intensity ratio.  See the relevant section of the logfile for more
 details."""
-    elif (self.patterson_p_value is not None) :
+    elif (self.patterson_p_value is not None):
       verdict = """\
 The largest off-origin peak in the Patterson function is %3.2f%% of the
 height of the origin peak. No significant pseudotranslation is detected.""" % \
         self.patterson_height
     return verdict
 
-  def show_verdict (self, out) :
+  def show_verdict(self, out):
     # First, TNCS verdict
     out.show("\n%s\n" % self.patterson_verdict())
     # And now the rest:
@@ -2022,7 +2022,7 @@ The results of the L-test indicate that the intensity statistics
 are significantly different than is expected from good to reasonable,
 untwinned data.""")
         # [1a] ...and we have twin laws!
-        if (self.n_twin_laws > 0) :
+        if (self.n_twin_laws > 0):
           out.show("""
 As there are twin laws possible given the crystal symmetry, twinning could
 be the reason for the departure of the intensity statistics from normality.
@@ -2035,7 +2035,7 @@ twin law is used.  You should also use caution when interpreting the maps from
 refinement, as they will have significantly more model bias.
 """)
           self.twinning_short=True
-          if self.has_higher_symmetry () :
+          if self.has_higher_symmetry ():
             out.show("""
 Note that the symmetry of the intensities suggest that the assumed space group
 is too low. As twinning is however suspected, it is not immediately clear if
@@ -2057,7 +2057,7 @@ reasons.  It could be worthwhile considering reprocessing the data.""")
         out.show("""\
 The results of the L-test indicate that the intensity statistics show more
 centric character than is expected for acentric data.""")
-        if self.has_pseudo_translational_symmetry() :
+        if self.has_pseudo_translational_symmetry():
           out.show("""\
 This behavior might be explained by the presence of the detected pseudo
 translation.""")
@@ -2068,17 +2068,17 @@ translation.""")
       out.show("""\
 The results of the L-test indicate that the intensity statistics behave as
 expected. No twinning is suspected.""")
-      if self.has_higher_symmetry() :
+      if self.has_higher_symmetry():
         out.show("""\
 The symmetry of the lattice and intensity however suggests that the input
 input space group is too low. See the relevant sections of the log file for
 more details on your choice of space groups.""")
 
-      if (self.n_twin_laws > 0) :
-        if (not self.has_higher_symmetry()) :
-          if (self.most_worrysome_twin_law is not None) :
+      if (self.n_twin_laws > 0):
+        if (not self.has_higher_symmetry()):
+          if (self.most_worrysome_twin_law is not None):
             if (self.britton_alpha[ self.most_worrysome_twin_law ]>
-                TWIN_FRAC_SIGNIFICANT) :
+                TWIN_FRAC_SIGNIFICANT):
               out.show("""\
 The correlation between the intensities related by the twin law
 %(twin_law)s with an estimated twin fraction of %(alpha)3.2f is most likely
@@ -2090,7 +2090,7 @@ supplying calculated data as well.
           out.show("""\
 As the symmetry is suspected to be incorrect, it is advisable to reconsider
 data processing.""")
-          if self.has_pseudo_translational_symmetry() :
+          if self.has_pseudo_translational_symmetry():
             out.show("""\
 Note however that the presence of translational NCS (and possible rotational
 pseudo symmetry parallel to the twin axis) can make the detection of twinning
@@ -2099,7 +2099,7 @@ refinement might provide an answer.
 """)
 
   def make_sym_op_table(self):
-    def as_string (x) :
+    def as_string(x):
       return format_value("%4.3f", x).strip()
     legend = None
     table_data = []
@@ -2130,7 +2130,7 @@ refinement might provide an answer.
       column_headers=legend,
       table_rows=table_data)
 
-  def _show_impl (self, out):
+  def _show_impl(self, out):
     out.show_header("Twinning and intensity statistics summary")
     out.show_sub_header("Final verdict")
     self.show_verdict(out=out)
@@ -2165,17 +2165,17 @@ refinement might provide an answer.
 
   # FIXME this uses the Britton test, but the PDB validation server appears to
   # use the H test.  Which is correct?
-  def max_twin_fraction (self) :
-    if (self.most_worrysome_twin_law is not None) :
+  def max_twin_fraction(self):
+    if (self.most_worrysome_twin_law is not None):
       return self.britton_alpha[ self.most_worrysome_twin_law ]
     return 0
 
-  def summarize_issues (self) :
+  def summarize_issues(self):
     issues = []
     bad_data = False
-    if self.has_abnormal_intensity_statistics() :
+    if self.has_abnormal_intensity_statistics():
       if ((self.n_twin_laws > 0) and
-          (self.max_twin_fraction() > TWIN_FRAC_SIGNIFICANT)) :
+          (self.max_twin_fraction() > TWIN_FRAC_SIGNIFICANT)):
         issues.append((2, "Intensity statistics suggest twinning "+
           "(intensities are significantly different from expected for "+
           "normal data) and one or more twin operators show a significant "+
@@ -2187,21 +2187,21 @@ refinement might provide an answer.
     else :
       issues.append((0, "The intensity statistics look normal, indicating "+
         "that the data are not twinned.", "Wilson ratio and moments"))
-      if (self.max_twin_fraction() > TWIN_FRAC_SIGNIFICANT) :
+      if (self.max_twin_fraction() > TWIN_FRAC_SIGNIFICANT):
         issues.append((1, "One or more twin operators show a significant "+
           "twin fraction but since the intensity statistics do not indicate "+
           "twinning, you may have an NCS rotation axis parallel to a "+
           "crystallographic axis.", "Statistics depending on twin laws"))
-      if self.has_higher_symmetry() :
+      if self.has_higher_symmetry():
         issues.append((1, "One or more symmetry operators suggest that the "+
           "data has a higher "+
           "crystallographic symmetry (%s)." % str(self.suspected_point_group),
           "Point group and R-factor analysis"))
-    if (self.patterson_height > 75) :
+    if (self.patterson_height > 75):
       issues.append((2, "Translational NCS is present at a level that might "+
         "be a result of a missed centering operation (one or more peaks "+
         "greater than 75% of the origin).", "Patterson analyses"))
-    elif (self.patterson_height > 20) :
+    elif (self.patterson_height > 20):
       issues.append((2, "Translational NCS is present at a level that may "+
         "complicate refinement (one or more peaks greater than 20% of the "+
         "origin)", "Patterson analyses"))
@@ -2210,7 +2210,7 @@ refinement might provide an answer.
         "Patterson analyses"))
     return issues
 
-class twin_analyses (scaling.xtriage_analysis):
+class twin_analyses(scaling.xtriage_analysis):
   """Perform various twin related tests"""
   def __init__(self,
                miller_array,
@@ -2258,7 +2258,7 @@ class twin_analyses (scaling.xtriage_analysis):
       math.sqrt(1.0/d_star_sq_low_limit),
       math.sqrt(1.0/d_star_sq_high_limit))
     ## Make sure that we actually have some data
-    if (miller_array.indices().size() == 0) :
+    if (miller_array.indices().size() == 0):
       raise Sorry("No suitable data available after resolution cuts")
     if miller_array.observation_type() is None:
       raise RuntimeError("Observation type unknown")
@@ -2275,8 +2275,8 @@ class twin_analyses (scaling.xtriage_analysis):
       raise RuntimeError("Observations should be a real array.")
     # now do the same for calculated data
     f_calc = i_calc = miller_calc
-    if (miller_calc is not None) :
-      if miller_calc.is_xray_amplitude_array() :
+    if (miller_calc is not None):
+      if miller_calc.is_xray_amplitude_array():
         i_calc = miller_calc.f_as_f_sq()
       else :
         f_calc = miller_calc.f_sq_as_f()
@@ -2327,10 +2327,10 @@ class twin_analyses (scaling.xtriage_analysis):
       normalised_centric=centric_cut)
     self.l_test=None
     parity_h = parity_k = parity_l = 2
-    if (not d_hkl_for_l_test in [None, Auto]) :
+    if (not d_hkl_for_l_test in [None, Auto]):
       parity_h, parity_k, parity_l = d_hkl_for_l_test
     if self.translational_pseudo_symmetry is not None:
-      if (d_hkl_for_l_test in [None, Auto]) :
+      if (d_hkl_for_l_test in [None, Auto]):
         parity_h = self.translational_pseudo_symmetry.mod_h
         parity_k = self.translational_pseudo_symmetry.mod_k
         parity_l = self.translational_pseudo_symmetry.mod_l
@@ -2406,21 +2406,21 @@ class twin_analyses (scaling.xtriage_analysis):
       twin_law_related_test=self.twin_law_dependent_analyses,
       symmetry_issues=self.check_sg)
 
-  def _show_impl (self, out) :
-    if (self.abs_sg_anal) :
+  def _show_impl(self, out):
+    if (self.abs_sg_anal):
       self.abs_sg_anal.show(out)
     out.show_header("Diagnostic tests for twinning and pseudosymmetry")
     out.show("Using data between %4.2f to %4.2f Angstrom." % (self.d_max,
       self.d_min))
-    if (self.translational_pseudo_symmetry is not None) :
+    if (self.translational_pseudo_symmetry is not None):
       self.translational_pseudo_symmetry.show(out)
     self.wilson_moments.show(out)
     self.nz_test.show(out)
-    if (self.l_test is not None) :
+    if (self.l_test is not None):
       self.l_test.show(out)
     out.show_header("Twin laws")
     self.possible_twin_laws.show(out=out)
-    if (self.n_twin_laws > 0) :
+    if (self.n_twin_laws > 0):
       out.show_sub_header("Twin law-specific tests")
       out.show("""\
  The following tests analyze the input data with each of the possible twin
@@ -2436,7 +2436,7 @@ class twin_analyses (scaling.xtriage_analysis):
 """)
       for twin_tests in self.twin_law_dependent_analyses :
         twin_tests.show(out=out)
-      if (self.check_sg is not None) :
+      if (self.check_sg is not None):
         self.check_sg.show(out=out)
     self.twin_summary.show(out=out)
 
@@ -2447,14 +2447,14 @@ class twin_analyses (scaling.xtriage_analysis):
   # elsewhere), they are deleted prior to pickling to reduce the amount of
   # data that needs to be transfered or saved.  It is not necessary to
   # implement __setstate__, since we are still just pickling self.__dict__.
-  def __getstate__ (self) :
+  def __getstate__(self):
     """
     Pickling function with storage efficiency optimizations.
     """
-    if (self.abs_sg_anal is not None) :
+    if (self.abs_sg_anal is not None):
       self.abs_sg_anal.miller_array = None
       self.abs_sg_anal.absences_table.miller_array = None
-    if (self.check_sg is not None) :
+    if (self.check_sg is not None):
       self.check_sg.miller_niggli = None
       self.check_sg.miller_array = None
     self.normalised_intensities = None
@@ -2474,7 +2474,7 @@ def merge_data_and_guess_space_groups(miller_array, txt, xs=None,out=None,
   normalizer = absolute_scaling.kernel_normalisation(tmp_ma, auto_kernel=True)
   work_array = normalizer.normalised_miller.deep_copy()
   abs_sg_anal = None
-  if tmp_ma.sigmas() is not None and (check_absences) :
+  if tmp_ma.sigmas() is not None and (check_absences):
     print >> out
     print >> out
     print >> out, "-"*len(txt)
@@ -2505,17 +2505,17 @@ def merge_data_and_guess_space_groups(miller_array, txt, xs=None,out=None,
 # MILLER ARRAY EXTENSIONS
 # Injector class to extend the Miller array class with the intensity analyses
 # contained in this module.
-def analyze_intensity_statistics (self, d_min=2.5,
-    completeness_as_non_anomalous=None, log=None) :
+def analyze_intensity_statistics(self, d_min=2.5,
+    completeness_as_non_anomalous=None, log=None):
   """
   Detect translational pseudosymmetry and twinning.  Returns a
   twin_law_interpretation object.
   """
   if (log is None) : log = null_out()
-  if self.space_group().is_centric() :
+  if self.space_group().is_centric():
     return None
   tmp_array = self.resolution_filter(d_min=d_min)
-  if (not self.sigmas_are_sensible()) :
+  if (not self.sigmas_are_sensible()):
     tmp_array = tmp_array.customized_copy(
       indices=tmp_array.indices(),
       data=tmp_array.data(),
@@ -2548,7 +2548,7 @@ def twin_analyses_brief(miller_array,
            due to twinning.
            Also gives none when something messes up.
   """
-  if (out is None) and (verbose != 0) :
+  if (out is None) and (verbose != 0):
     out = sys.stdout
   summary = miller_array.analyze_intensity_statistics(d_min=cut_off,
     completeness_as_non_anomalous=completeness_as_non_anomalous,

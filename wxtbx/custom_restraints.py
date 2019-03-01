@@ -20,10 +20,10 @@ ATOM_SELECTION_BUTTONS = 1
 #-----------------------------------------------------------------------
 # Basic panel
 
-class CustomRestraintsPanel (wx.Panel) :
+class CustomRestraintsPanel(wx.Panel):
   n_atom_selections = -1
   list_label = None
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     style = kwds.get('style', 0)
     self.flag_atom_selection_buttons = (style & ATOM_SELECTION_BUTTONS)
     wx.Panel.__init__(self, *args, **kwds)
@@ -66,7 +66,7 @@ class CustomRestraintsPanel (wx.Panel) :
     self.CreateSelectionFields()
     szr.Layout()
 
-  def AddControlButton (self, label, bitmap) :
+  def AddControlButton(self, label, bitmap):
     btn = metallicbutton.MetallicButton(
       parent=self,
       label=label,
@@ -75,88 +75,88 @@ class CustomRestraintsPanel (wx.Panel) :
     self.buttons.Add(btn, 0, wx.RIGHT, 5)
     return btn
 
-  def CreateList (self) :
+  def CreateList(self):
     raise NotImplementedError()
 
-  def CreateSelectionFields (self) :
+  def CreateSelectionFields(self):
     raise NotImplementedError()
 
-  def FillSelections (self) :
+  def FillSelections(self):
     selections = self.lc.GetSelections()
     assert (len(selections) == self.n_atom_selections)
-    for i, sele in enumerate(selections) :
+    for i, sele in enumerate(selections):
       field = self.GetSelectionControl(i)
-      if (sele is not None) :
+      if (sele is not None):
         field.SetValue(sele)
       else :
         field.SetValue("")
 
-  def GetSelectionEdits (self) :
+  def GetSelectionEdits(self):
     selections = []
-    for i in range(self.n_atom_selections) :
+    for i in range(self.n_atom_selections):
       field = self.GetSelectionControl(i)
       value = field.GetValue()
-      if (value.isspace()) or (value == "") :
+      if (value.isspace()) or (value == ""):
         value = None
       selections.append(value)
     return selections
 
-  def GetSelectionControl (self, i) :
+  def GetSelectionControl(self, i):
     return getattr(self, "selection_%d" % (i+1))
 
-  def ClearSelections (self) :
-    for i in range(self.n_atom_selections) :
+  def ClearSelections(self):
+    for i in range(self.n_atom_selections):
       field = self.GetSelectionControl(i)
       field.SetValue("")
 
-  def OnSelect (self, event) :
+  def OnSelect(self, event):
     self.FillSelections()
 
-  def OnDeSelect (self, event) :
+  def OnDeSelect(self, event):
     self.ClearSelections()
 
-  def OnDeleteAll (self, evt) :
-    if (self.lc.GetItemCount() == 0) :
+  def OnDeleteAll(self, evt):
+    if (self.lc.GetItemCount() == 0):
       return False
     confirm = wx.MessageBox(caption="Confirm delete",
       message="Are you sure you want to delete all items in the list?")
-    if (confirm == wx.OK) :
+    if (confirm == wx.OK):
       self.lc.DeleteAllItems()
       self.lc.ClearRestraints()
       self.ClearSelections()
 
-  def __getattr__ (self, name) :
+  def __getattr__(self, name):
     return getattr(self.lc, name)
 
-  def OnOptionsMenu (self, event) :
+  def OnOptionsMenu(self, event):
     raise NotImplementedError()
 
-  def OnAdd (self, event) :
+  def OnAdd(self, event):
     selections = self.GetSelectionEdits()
     # XXX if no list item is selected but the selection fields have been
     # edited, apply those to the new selection
     item_selected = (self.lc.GetFirstSelected() >= 0)
     self.lc.AddRestraint()
-    if (not item_selected) and (selections != ([None]*len(selections))) :
+    if (not item_selected) and (selections != ([None]*len(selections))):
       self.lc.SetSelections(selections)
     self.FillSelections()
 
-  def OnDelete (self, event) :
+  def OnDelete(self, event):
     self.lc.DeleteRestraint()
 
-  def OnUpdate (self, event) :
+  def OnUpdate(self, event):
     selections = self.GetSelectionEdits()
     self.lc.SetSelections(selections)
 
-  def CreateAtomSelectionButton (self, selection_ctrl) :
+  def CreateAtomSelectionButton(self, selection_ctrl):
     btn = AtomSelectionButton(
       parent=self,
       selection_ctrl=selection_ctrl)
     self.Bind(wx.EVT_BUTTON, self.GetTopLevelParent().OnView, btn)
     return btn
 
-class AtomSelectionButton (metallicbutton.MetallicButton) :
-  def __init__ (self, parent, selection_ctrl) :
+class AtomSelectionButton(metallicbutton.MetallicButton):
+  def __init__(self, parent, selection_ctrl):
     metallicbutton.MetallicButton.__init__(self,
       parent=parent,
       label="Select...",
@@ -164,29 +164,29 @@ class AtomSelectionButton (metallicbutton.MetallicButton) :
       highlight_color=(200,220,240))
     self.selection_ctrl = selection_ctrl
 
-class CustomBondPanel (CustomRestraintsPanel) :
+class CustomBondPanel(CustomRestraintsPanel):
   n_atom_selections = 2
   list_label = "Custom bond restraints:"
-  def CreateList (self) :
+  def CreateList(self):
     self.lc = BondRestraintsList(self)
 
-  def CreateSelectionFields (self) :
+  def CreateSelectionFields(self):
     edit_szr = wx.FlexGridSizer(cols=3)
     self.sizer.Add(edit_szr, 0, wx.ALL, 5)
     edit_szr.Add(wx.StaticText(self, -1, "Atom selections:"))
-    for i in range(2) :
+    for i in range(2):
       edit_field = wx.TextCtrl(self, -1, size=(540,-1),
         style=wx.TE_PROCESS_ENTER, name="bond")
       setattr(self, "selection_%d" % (i+1), edit_field)
       edit_szr.Add(edit_field, 0, wx.ALL, 5)
       select_btn = (1,1)
-      if (self.flag_atom_selection_buttons) :
+      if (self.flag_atom_selection_buttons):
         select_btn = self.CreateAtomSelectionButton(edit_field)
       edit_szr.Add(select_btn, 0, wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL, 5)
       if (i == 0) : edit_szr.Add((1,1))
       self.Bind(wx.EVT_TEXT_ENTER, self.OnUpdate, edit_field)
 
-  def OnOptionsMenu (self, event) :
+  def OnOptionsMenu(self, event):
     menu = wx.Menu()
     item1 = menu.Append(-1, "Set ideal distance")
     item2 = menu.Append(-1, "Set distance sigma")
@@ -199,29 +199,29 @@ class CustomBondPanel (CustomRestraintsPanel) :
     event.GetEventObject().PopupMenu(menu)
     menu.Destroy()
 
-class CustomAnglePanel (CustomRestraintsPanel) :
+class CustomAnglePanel(CustomRestraintsPanel):
   n_atom_selections = 3
   list_label = "Custom angle restraints:"
-  def CreateList (self) :
+  def CreateList(self):
     self.lc = AngleRestraintsList(self, size=(800,200))
 
-  def CreateSelectionFields (self) :
+  def CreateSelectionFields(self):
     edit_szr = wx.FlexGridSizer(cols=3)
     self.sizer.Add(edit_szr, 0, wx.ALL, 5)
     edit_szr.Add(wx.StaticText(self, -1, "Atom selections:"))
-    for i in range(3) :
+    for i in range(3):
       edit_field = wx.TextCtrl(self, -1, size=(540,-1),
         style=wx.TE_PROCESS_ENTER, name="angle")
       setattr(self, "selection_%d" % (i+1), edit_field)
       edit_szr.Add(edit_field, 0, wx.ALL, 5)
       select_btn = (1,1)
-      if (self.flag_atom_selection_buttons) :
+      if (self.flag_atom_selection_buttons):
         select_btn = self.CreateAtomSelectionButton(edit_field)
       edit_szr.Add(select_btn, 0, wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL, 5)
       if (i < 2) : edit_szr.Add((1,1))
       self.Bind(wx.EVT_TEXT_ENTER, self.OnUpdate, edit_field)
 
-  def OnOptionsMenu (self, event) :
+  def OnOptionsMenu(self, event):
     menu = wx.Menu()
     item1 = menu.Append(-1, "Set ideal angle")
     item2 = menu.Append(-1, "Set angle sigma")
@@ -230,13 +230,13 @@ class CustomAnglePanel (CustomRestraintsPanel) :
     event.GetEventObject().PopupMenu(menu)
     menu.Destroy()
 
-class CustomPlanarityPanel (CustomRestraintsPanel) :
+class CustomPlanarityPanel(CustomRestraintsPanel):
   n_atom_selections = 1
   list_label = "Custom planarity restraints:"
-  def CreateList (self) :
+  def CreateList(self):
     self.lc = PlanarityRestraintsList(self, size=(800,200))
 
-  def CreateSelectionFields (self) :
+  def CreateSelectionFields(self):
     edit_szr = wx.FlexGridSizer(cols=3)
     self.sizer.Add(edit_szr, 0, wx.ALL, 5)
     edit_szr.Add(wx.StaticText(self, -1, "Atom selection:"))
@@ -244,12 +244,12 @@ class CustomPlanarityPanel (CustomRestraintsPanel) :
       style=wx.TE_PROCESS_ENTER, name="plane")
     edit_szr.Add(self.selection_1, 0, wx.ALL, 5)
     select_btn = (1,1)
-    if (self.flag_atom_selection_buttons) :
+    if (self.flag_atom_selection_buttons):
       select_btn = self.CreateAtomSelectionButton(self.selection_1)
     edit_szr.Add(select_btn, 0, wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL, 5)
     self.Bind(wx.EVT_TEXT_ENTER, self.OnUpdate, self.selection_1)
 
-  def OnOptionsMenu (self, event) :
+  def OnOptionsMenu(self, event):
     menu = wx.Menu()
     item1 = menu.Append(-1, "Set planarity sigma")
     self.Bind(wx.EVT_MENU, self.lc.OnSetSigma, item1)
@@ -259,79 +259,79 @@ class CustomPlanarityPanel (CustomRestraintsPanel) :
 #-----------------------------------------------------------------------
 # ListCtrl-derived classes
 
-class RestraintsListBase (wx.ListCtrl) :
+class RestraintsListBase(wx.ListCtrl):
   restraint_name = None
   n_columns = -1
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     kwds['style'] = wx.LC_REPORT|wx.LC_SINGLE_SEL
     wx.ListCtrl.__init__(self, *args, **kwds)
     self.CreateColumns()
     self._params = []
     self._prefix = None
 
-  def GetPhilPath (self) :
-    if (self._prefix is not None) :
+  def GetPhilPath(self):
+    if (self._prefix is not None):
       return self._prefix + ".geometry_restraints.edits." + self.restraint_name
     else :
       return "geometry_restraints.edits." + self.restraint_name
 
-  def SetPhilPrefix (self, prefix) :
+  def SetPhilPrefix(self, prefix):
     self._prefix = prefix
 
-  def ClearRestraints (self) :
+  def ClearRestraints(self):
     self._params = []
 
-  def AddRestraint (self) :
+  def AddRestraint(self):
     item = self.InsertStringItem(sys.maxint, "---")
-    for i in range(self.n_columns - 1) :
+    for i in range(self.n_columns - 1):
       self.SetStringItem(item, i+1, "---")
     new_params = self._index.get_template_copy(self.GetPhilPath()).extract()
     self._params.append(new_params)
     self.Select(item)
 
-  def DeleteRestraint (self) :
+  def DeleteRestraint(self):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       assert (item < len(self._params))
       self.DeleteItem(item)
       del self._params[item]
 
-  def CreateColumns (self) :
+  def CreateColumns(self):
     raise NotImplementedError()
 
-  def SetPhilIndex (self, index) :
+  def SetPhilIndex(self, index):
     self._index = index
 
-  def SetParams (self, params) :
+  def SetParams(self, params):
     self._params = params
-    if (self.GetItemCount() > 0) :
+    if (self.GetItemCount() > 0):
       self.DeleteAllItems()
     self.PopulateList()
 
-  def UpdateSelections (self, selections) :
+  def UpdateSelections(self, selections):
     item = self.GetFirstSelected()
-    if (item >= 0) :
-      for i in range(len(selections)) :
+    if (item >= 0):
+      for i in range(len(selections)):
         sel_attr = "atom_selection_%d" % (i+1)
         assert hasattr(self._params[item], sel_attr)
         setattr(self._params[item], sel_attr, selections[i])
 
-  def GetParams (self) :
+  def GetParams(self):
     return self._params
 
-def fv (fs, val) :
+def fv(fs, val):
   return str_utils.format_value(fs, val, replace_none_with="---")
 
-class BondRestraintsList (RestraintsListBase) :
+class BondRestraintsList(RestraintsListBase):
   restraint_name = "bond"
-  def CreateColumns (self) :
+  def CreateColumns(self):
     self.InsertColumn(0, "Selections", width=400)
     self.InsertColumn(1, "Distance", width=100)
     self.InsertColumn(2, "Sigma", width=80)
     self.InsertColumn(3, "Slack", width=80)
     self.InsertColumn(4, "Sym. exp.", width=120)
 
-  def PopulateList (self) :
+  def PopulateList(self):
     for bond in self._params :
       selections = [bond.atom_selection_1, bond.atom_selection_2]
       sele_str = "; ".join([ fv("%s", s) for s in selections ])
@@ -341,26 +341,26 @@ class BondRestraintsList (RestraintsListBase) :
       self.SetStringItem(item, 3, fv("%g", bond.slack))
       self.SetStringItem(item, 4, fv("%s", bond.symmetry_operation))
 
-  def GetSelections (self) :
+  def GetSelections(self):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       bond = self._params[item]
       return [bond.atom_selection_1, bond.atom_selection_2]
     return [""] * 2
 
-  def SetSelections (self, selections) :
+  def SetSelections(self, selections):
     assert (len(selections) == 2)
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       bond = self._params[item]
       bond.atom_selection_1 = selections[0]
       bond.atom_selection_2 = selections[1]
       sele_text = "; ".join([ str(s) for s in selections ])
       self.SetStringItem(item, 0, sele_text)
 
-  def OnSetDistance (self, event) :
+  def OnSetDistance(self, event):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       dlg = simple_dialogs.FloatDialog(
         parent=self,
         title="Ideal distance",
@@ -371,15 +371,15 @@ class BondRestraintsList (RestraintsListBase) :
           "and 4.")
       dlg.SetMin(0.1)
       dlg.SetOptional(False)
-      if (dlg.ShowModal() == wx.ID_OK) :
+      if (dlg.ShowModal() == wx.ID_OK):
         distance_ideal = dlg.GetPhilValue()
         self._params[item].distance_ideal = distance_ideal
         self.SetStringItem(item, 1, "%g" % distance_ideal)
       dlg.Destroy()
 
-  def OnSetSigma (self, event) :
+  def OnSetSigma(self, event):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       dlg = simple_dialogs.FloatDialog(
         parent=self,
         title="Restraint sigma",
@@ -389,15 +389,15 @@ class BondRestraintsList (RestraintsListBase) :
           "bond; it should be a decimal number between 0.01 and 1.")
       dlg.SetMin(0.001)
       dlg.SetOptional(False)
-      if (dlg.ShowModal() == wx.ID_OK) :
+      if (dlg.ShowModal() == wx.ID_OK):
         sigma = dlg.GetPhilValue()
         self._params[item].sigma = sigma
         self.SetStringItem(item, 2, fv("%g", sigma))
       dlg.Destroy()
 
-  def OnSetSlack (self, event) :
+  def OnSetSlack(self, event):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       dlg = simple_dialogs.FloatDialog(
         parent=self,
         title="Restraint slack",
@@ -409,15 +409,15 @@ class BondRestraintsList (RestraintsListBase) :
           "undefined (or zero).")
       dlg.SetMin(0)
       dlg.SetOptional(True)
-      if (dlg.ShowModal() == wx.ID_OK) :
+      if (dlg.ShowModal() == wx.ID_OK):
         slack = dlg.GetPhilValue()
         self._params[item].slack = slack
         self.SetStringItem(item, 3, fv("%g", slack))
       dlg.Destroy()
 
-  def OnSetSymop (self, event) :
+  def OnSetSymop(self, event):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       dlg = simple_dialogs.SymopDialog(
         parent=self,
         title="Symmetry operator",
@@ -427,23 +427,23 @@ class BondRestraintsList (RestraintsListBase) :
           "the symmetry operation will be applied to the coordinates of the "+
           "second atom when calculating the distance.  The operation should "+
           "be in a format like 'x,y,-z'.")
-      if (dlg.ShowModal() == wx.ID_OK) :
+      if (dlg.ShowModal() == wx.ID_OK):
         symop = dlg.GetPhilValue()
         self._params[item].symmetry_operation = symop
         self.SetStringItem(item, 4, fv("%s", symop))
 
-class AngleRestraintsList (RestraintsListBase) :
+class AngleRestraintsList(RestraintsListBase):
   restraint_name = "angle"
-  def CreateColumns (self) :
+  def CreateColumns(self):
     self.InsertColumn(0, "Selections", width=600)
     self.InsertColumn(1, "Angle", width=100)
     self.InsertColumn(2, "Sigma", width=80)
 
-  def PopulateList (self) :
+  def PopulateList(self):
     for angle in self._params :
       selections = [angle.atom_selection_1, angle.atom_selection_2,
                     angle.atom_selection_3]
-      if (selections == [None, None]) :
+      if (selections == [None, None]):
         sele_str = "---"
       else :
         sele_str = "; ".join([ str(s) for s in selections ])
@@ -451,18 +451,18 @@ class AngleRestraintsList (RestraintsListBase) :
       self.SetStringItem(item, 1, fv("%g", angle.angle_ideal))
       self.SetStringItem(item, 2, fv("%g", angle.sigma))
 
-  def GetSelections (self) :
+  def GetSelections(self):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       angle = self._params[item]
       return [angle.atom_selection_1, angle.atom_selection_2,
               angle.atom_selection_3]
     return [""] * 3
 
-  def SetSelections (self, selections) :
+  def SetSelections(self, selections):
     assert (len(selections) == 3)
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       angle = self._params[item]
       angle.atom_selection_1 = selections[0]
       angle.atom_selection_2 = selections[1]
@@ -470,9 +470,9 @@ class AngleRestraintsList (RestraintsListBase) :
       sele_text = "; ".join([ str(s) for s in selections ])
       self.SetStringItem(item, 0, sele_text)
 
-  def OnSetAngle (self, event) :
+  def OnSetAngle(self, event):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       dlg = simple_dialogs.FloatDialog(
         parent=self,
         title="Ideal angle",
@@ -483,15 +483,15 @@ class AngleRestraintsList (RestraintsListBase) :
       dlg.SetMin(1)
       dlg.SetMax(180)
       dlg.SetOptional(False)
-      if (dlg.ShowModal() == wx.ID_OK) :
+      if (dlg.ShowModal() == wx.ID_OK):
         angle = dlg.GetPhilValue()
         self._params[item].angle_ideal = angle
         self.SetStringItem(item, 1, "%g" % angle)
       dlg.Destroy()
 
-  def OnSetSigma (self, event) :
+  def OnSetSigma(self, event):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       dlg = simple_dialogs.FloatDialog(
         parent=self,
         title="Restraint sigma",
@@ -501,43 +501,43 @@ class AngleRestraintsList (RestraintsListBase) :
           "angle; it should usually be a decimal number between 1 and 5.")
       dlg.SetMin(0.1)
       dlg.SetOptional(False)
-      if (dlg.ShowModal() == wx.ID_OK) :
+      if (dlg.ShowModal() == wx.ID_OK):
         sigma = dlg.GetPhilValue()
         self._params[item].sigma = sigma
         self.SetStringItem(item, 2, "%g" % sigma)
       dlg.Destroy()
 
-class PlanarityRestraintsList (RestraintsListBase) :
+class PlanarityRestraintsList(RestraintsListBase):
   restraint_name = "planarity"
-  def CreateColumns (self) :
+  def CreateColumns(self):
     self.InsertColumn(0, "Atom selection", width=680)
     self.InsertColumn(1, "Sigma", width=100)
 
-  def PopulateList (self) :
+  def PopulateList(self):
     for plane in self._params :
       item = self.InsertStringItem(sys.maxint, fv("%s", plane.atom_selection))
       self.SetStringItem(item, 1, fv("%g", plane.sigma))
 
-  def GetSelections (self) :
+  def GetSelections(self):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       plane = self._params[item]
-      if (len(plane.atom_selection) == 0) :
+      if (len(plane.atom_selection) == 0):
         return [ None ]
       return plane.atom_selection
     return [""]
 
-  def SetSelections (self, selections) :
+  def SetSelections(self, selections):
     assert (len(selections) == 1)
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       plane = self._params[item]
       plane.atom_selection = selections
       self.SetStringItem(item, 0, fv("%s", plane.atom_selection[0]))
 
-  def OnSetSigma (self, event) :
+  def OnSetSigma(self, event):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       dlg = simple_dialogs.FloatDialog(
         parent=self,
         title="Restraint sigma",
@@ -548,7 +548,7 @@ class PlanarityRestraintsList (RestraintsListBase) :
           "library is 0.02.")
       dlg.SetMin(0.01)
       dlg.SetOptional(False)
-      if (dlg.ShowModal() == wx.ID_OK) :
+      if (dlg.ShowModal() == wx.ID_OK):
         sigma = dlg.GetPhilValue()
         self._params[item].sigma = sigma
         self.SetStringItem(item, 1, "%g" % sigma)
@@ -559,8 +559,8 @@ class PlanarityRestraintsList (RestraintsListBase) :
 
 # XXX fix for true division bug
 flatnotebook.PageContainer.OnMouseWheel = lambda win, evt: False
-class RestraintsFrame (wx.Frame) :
-  def __init__ (self, *args, **kwds) :
+class RestraintsFrame(wx.Frame):
+  def __init__(self, *args, **kwds):
     kwds['style'] = wx.DEFAULT_FRAME_STYLE
     wx.Frame.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -609,13 +609,13 @@ class RestraintsFrame (wx.Frame) :
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
     self._index = self._params = self._prefix = None
 
-  def SetPhilIndex (self, index) :
+  def SetPhilIndex(self, index):
     self._index = index
     self.bonds_panel.SetPhilIndex(index)
     self.angles_panel.SetPhilIndex(index)
     self.planes_panel.SetPhilIndex(index)
 
-  def SetParams (self, params, prefix=None) :
+  def SetParams(self, params, prefix=None):
     self._params = params
     self._prefix = prefix
     self.bonds_panel.SetPhilPrefix(prefix)
@@ -627,19 +627,19 @@ class RestraintsFrame (wx.Frame) :
       "%d custom bond, %d custom angle, and %d custom plane restraints loaded."
       % (len(geo_params.bond),len(geo_params.angle),len(geo_params.planarity)))
 
-  def SetPanelParams (self) :
+  def SetPanelParams(self):
     geo_params = self.GetGeoParams()
     self.bonds_panel.SetParams(geo_params.bond)
     self.angles_panel.SetParams(geo_params.angle)
     self.planes_panel.SetParams(geo_params.planarity)
 
-  def GetGeoParams (self) :
+  def GetGeoParams(self):
     geo_params_parent = self._params
-    if (self._prefix is not None) :
+    if (self._prefix is not None):
       geo_params_parent = getattr(geo_params_parent, self._prefix)
     return geo_params_parent.geometry_restraints.edits
 
-  def GetPhilObject (self) :
+  def GetPhilObject(self):
     geo_params = self.GetGeoParams()
     geo_params.bond = self.bonds_panel.GetParams()
     geo_params.angle = self.angles_panel.GetParams()
@@ -648,41 +648,41 @@ class RestraintsFrame (wx.Frame) :
     new_phil = self._index.master_phil.format(python_object=self._params)
     return new_phil
 
-  def Validate (self) :
+  def Validate(self):
     from mmtbx.monomer_library import pdb_interpretation
     pdb_interpretation.validate_geometry_edits_params(self.GetGeoParams())
 
-  def OnCancel (self, event) :
+  def OnCancel(self, event):
     self.Close()
 
-  def OnUpdate (self, event) :
+  def OnUpdate(self, event):
     self.GetPhilObject()
 
-  def OnExit (self, event) :
+  def OnExit(self, event):
     self.OnUpdate(event)
     self.Close()
 
-  def OnClearAll (self, event) :
+  def OnClearAll(self, event):
     confirm = wx.MessageBox("Are you sure you want to delete all custom "+
       "restraints?  This action cannot be undone from the restraints editor, "+
       " but clicking the Cancel "+
       "button on the toolbar will revert to the original parameters.")
-    if (confirm == wx.YES) :
+    if (confirm == wx.YES):
       geo_params = self.GetGeoParams()
       geo_params.bond = []
       geo_params.angle = []
       geo_params.planarity = []
       self.SetPanelParams()
 
-  def OnDestroy (self, event) :
+  def OnDestroy(self, event):
     pass
 
-  def OnView (self, event) :
+  def OnView(self, event):
     pass
 
 #-----------------------------------------------------------------------
 # REGRESSION TESTING
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   from mmtbx.monomer_library import pdb_interpretation
   import iotbx.phil
   import libtbx.phil.interface

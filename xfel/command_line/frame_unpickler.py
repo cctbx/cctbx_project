@@ -31,7 +31,7 @@ def int_pickle_to_filename(int_name, prefix, suffix):
 def find_matching_img(pickle, img_location=None):
   # find the image associated with the pickle file to be processed, or use the pickle file itself as a placeholder
   if pickle is None:
-    raise Sorry, "Cannot find matching image for NoneType in place of pickle"
+    raise Sorry("Cannot find matching image for NoneType in place of pickle")
   if img_location is None:
     if os.path.exists(pickle.split(".pickle")[0] + ".cbf"):
       return pickle.split(".pickle")[0] + ".cbf"
@@ -61,8 +61,8 @@ class construct_reflection_table_and_experiment_list(object):
       if proceed_without_image:
         self.img_location = []
       else:
-        raise Sorry, "No image found at specified location. Override by setting proceed_without_image to False" \
-        + "to produce experiment lists that may only be read when check_format is False."
+        raise Sorry("No image found at specified location. Override by setting proceed_without_image to False"
+        + "to produce experiment lists that may only be read when check_format is False.")
     else:
       self.img_location = [img_location]
 

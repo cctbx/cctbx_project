@@ -1,18 +1,15 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import threading
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
-import SocketServer
+from six.moves import cPickle as pickle
+from . import SocketServer
 import sys
 import traceback
 import os
 import socket
 import time
 
-import FileClient
-import FileSocket
+from . import FileClient
+from . import FileSocket
 
 # Socket Server
 
@@ -87,7 +84,7 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
       obj = pickle.load(f)
       f.close()
     except Exception:
-      print 'failed to load',file
+      print('failed to load',file)
       obj = None
     return obj
 
@@ -97,7 +94,7 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
       pickle.dump(obj, f)
       f.close()
     except Exception:
-      print 'failed to dump',file
+      print('failed to dump',file)
 
   def ReadFile(self, file):
     try:
@@ -105,7 +102,7 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
       lines = f.read()
       f.close()
     except Exception:
-      print 'failed to read',file
+      print('failed to read',file)
       lines = ''
     return lines
 
@@ -115,7 +112,7 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
       f.write(lines)
       f.close()
     except Exception:
-      print 'failed to write',file
+      print('failed to write',file)
 
   def _UnlockFile(self, file, id):
     DICT = self.server.FileLockDictionary
@@ -245,13 +242,13 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
           args = pickle.load(self.rfile)
         except Exception:
           args = ()
-          print 'Method',method
-          print 'error in args ',args
+          print('Method',method)
+          print('error in args ',args)
         try:
           kw = pickle.load(self.rfile)
         except Exception:
           kw = {}
-          print 'error in kw ',kw
+          print('error in kw ',kw)
 
         #print method
         #print args
@@ -270,9 +267,9 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
             pickle.dump('0\n',self.wfile,1)
           except Exception:
             pass
-          print 'Method',meth_obj
-          print 'Args  ',args
-          print 'Kw    ',kw
+          print('Method',meth_obj)
+          print('Args  ',args)
+          print('Kw    ',kw)
           raise
         try:
           self.wfile.flush()
@@ -280,7 +277,7 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
           pass
 
     except Exception:
-      print self.__class__.__name__+'.handle: '
+      print(self.__class__.__name__+'.handle: ')
       traceback.print_exc()
       pass
 
@@ -321,7 +318,7 @@ def ReadServerFile():
     host, port = pickle.load(f)
     f.close()
   except Exception:
-    print 'failed to read server port file'
+    print('failed to read server port file')
   return host, port
 
 def WriteServerFile(port):
@@ -333,7 +330,7 @@ def WriteServerFile(port):
                 )
     f.close()
   except Exception:
-    print 'failed to write server port file'
+    print('failed to write server port file')
 
 def GetServerClient():
   host, port = ReadServerFile()

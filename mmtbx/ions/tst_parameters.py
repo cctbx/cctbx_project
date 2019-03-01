@@ -1,7 +1,7 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
 
-def exercise () :
+def exercise():
   from mmtbx.ions import server as s
   import iotbx.pdb.hierarchy
   import iotbx.pdb
@@ -78,5 +78,5 @@ def exercise () :
 
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

@@ -10,6 +10,23 @@ from libtbx.test_utils import approx_equal
 import operator
 import unittest
 
+def exercise_align_mask():
+  B="GCGAGATAAAGGGACCCATAAA" +"TGTCG"+ "TAGCATCGGGCTAATAGATAAGACACA"
+  A=                          "TGTCG"+  "AGCATCGGGCTAATAGATAAGACACA"
+  scores=[]
+  for i in xrange(len(A)):
+    masking_a=len(A)*[10]
+    masking_a[i]=1
+    obj = align(A,B,masking_a=masking_a)
+    print "score=%.1f" % obj.score()
+    alignment = obj.extract_alignment()
+    print alignment.match_codes
+    scores.append(obj.score())
+  print scores
+  assert scores==[2.0, 2.0, 3.0, 4.0, 5.0, 6.0, 5.0, 4.0, 3.0, 2.0, 2.0,
+                  2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+                  2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+  print "OK"
 def exercise_align():
   #
   i_seqs, j_seqs = align("EASYA",
@@ -211,6 +228,7 @@ alltests = unittest.TestSuite(
   )
 
 def exercise():
+  exercise_align_mask()
   exercise_align()
   exercise_2()
   exercise_similarity_scores()

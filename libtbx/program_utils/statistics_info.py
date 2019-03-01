@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 # Rules of thumb for interpreting program statistics (used in Phenix GUI)
 
@@ -94,14 +94,14 @@ keys_and_labels = {
 }
 
 precisions_dict_ = None
-def get_format (stat_name, default="%g") :
+def get_format(stat_name, default="%g"):
   global precisions_dict_
-  if (precisions_dict_ is None) :
+  if (precisions_dict_ is None):
     precisions_dict_ = dict(precisions)
-  if (stat_name in precisions_dict_) :
+  if (stat_name in precisions_dict_):
     return "%%.%df" % precisions_dict_[stat_name]
-  elif (stat_name in keys_and_labels) :
+  elif (stat_name in keys_and_labels):
     stat_label = keys_and_labels[stat_name]
-    if (stat_label in precisions_dict_) :
+    if (stat_label in precisions_dict_):
       return "%%.%df" % precisions_dict_[stat_label]
   return default

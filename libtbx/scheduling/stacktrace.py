@@ -1,4 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+
+from six import reraise as raise_
 
 __prev_excepthook = None
 __last_exception = ( None, None )
@@ -129,7 +131,7 @@ class traceback_info(object):
 
   def raise_with_traceback(self, exception):
 
-    raise exception, None, self.traceback
+    raise_(type(exception), exception, self.traceback)
 
 
   def getstate_with_traceback(self):

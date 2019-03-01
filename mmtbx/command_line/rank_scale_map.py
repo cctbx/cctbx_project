@@ -2,7 +2,7 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.rank_scale_map
 
 from cctbx import maptbx
-import iotbx.ccp4_map
+import iotbx.mrcfile
 from cctbx import crystal
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
@@ -38,7 +38,7 @@ def run(args):
   if(len(args)!=1): raise Sorry("Need to provide CCP4 formatted map file.")
   # map
   try:
-    ccp4_map = iotbx.ccp4_map.map_reader(file_name=args[0])
+    ccp4_map = iotbx.mrcfile.map_reader(file_name=args[0])
   except Exception: # XXX should probably be RuntimeError?
     raise Sorry("Not a valid file (provide CCP4 formatted map file).")
   cs = crystal.symmetry(ccp4_map.unit_cell().parameters(),
@@ -50,7 +50,7 @@ def run(args):
   m_he = maptbx.volume_scale(map = m,  n_bins = 10000).map_data()
   show_overall_statistics(m=m_he, header="Rank-scaled (HE) map info:")
   #
-  iotbx.ccp4_map.write_ccp4_map(
+  iotbx.mrcfile.write_ccp4_map(
     file_name=args[0]+"_rank_scaled.ccp4",
     unit_cell=cs.unit_cell(),
     space_group=cs.space_group(),

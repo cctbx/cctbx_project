@@ -3,19 +3,20 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 05/24/2017
+Last Changed: 10/21/2018
 Description : PRIME GUI Initialization module
 '''
 
 import os
 import wx
-from wxtbx import bitmaps
 
 from libtbx import easy_run
 import iotbx.phil as ip
 
-import iota.components.iota_misc as misc
-import iota.components.iota_controls as ct
+from iota import prime_description, prime_license
+from iota.components.iota_utils import Capturing
+from iota.components.iota_ui_base import IOTABaseFrame
+import iota.components.iota_ui_controls as ct
 from prime.postrefine import mod_gui_frames as frm
 from prime.postrefine import mod_gui_dialogs as dlg
 from prime.postrefine.mod_input import master_phil
@@ -50,60 +51,44 @@ def str_split(string, delimiters=(' ', ','), maxsplit=0):
 
 # ------------------------------ PRIME Windows ------------------------------- #
 
-class PRIMEWindow(wx.Frame):
+class PRIMEWindow(IOTABaseFrame):
 
   def __init__(self, parent, id, title, prefix='prime'):
-    wx.Frame.__init__(self, parent, id, title, size=(800, 500))
+    IOTABaseFrame.__init__(self, parent, id, title, size=(800, 500))
 
     self.prime_filename = '{}.phil'.format(prefix)
     self.prime_phil = master_phil
 
     # Toolbar
-    self.toolbar = self.CreateToolBar(wx.TB_TEXT)
-    quit_bmp = bitmaps.fetch_icon_bitmap('actions', 'exit')
-    self.tb_btn_quit = self.toolbar.AddLabelTool(wx.ID_EXIT, label='Quit',
-                                                 bitmap=quit_bmp,
-                                                 shortHelp='Quit',
-                                                 longHelp='Exit PRIME')
-    pref_bmp = bitmaps.fetch_icon_bitmap('apps', 'advancedsettings')
-    self.tb_btn_prefs = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                  label='Preferences',
-                                                  bitmap=pref_bmp,
-                                                  shortHelp='Preferences',
-                                                  longHelp='PRIME Preferences')
+    self.initialize_toolbar()
+    self.tb_btn_quit = self.add_tool(label='Quit',
+                                     bitmap=('actions', 'exit'),
+                                     shortHelp='Exit PRIME')
+
+    self.tb_btn_prefs = self.add_tool(label='Preferences',
+                                      bitmap=('apps', 'advancedsettings'),
+                                      shortHelp='PRIME GUI Settings')
+    self.add_toolbar_separator()
+    self.tb_btn_load = self.add_tool(label='Load Script',
+                                     bitmap=('actions', 'open'),
+                                     shortHelp='Load PRIME Script')
+    self.tb_btn_save = self.add_tool(label='Save Script',
+                                     bitmap=('actions', 'save'),
+                                     shortHelp='Save PRIME Script')
+    self.tb_btn_reset = self.add_tool(label='Reset',
+                                                  bitmap=('actions', 'reload'),
+                                                  shortHelp='Reset Settings')
     self.toolbar.AddSeparator()
-    load_bmp = bitmaps.fetch_icon_bitmap('actions', 'open')
-    self.tb_btn_load = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                 label='Load Script',
-                                                 bitmap=load_bmp,
-                                                 shortHelp='Load Script',
-                                                 longHelp='Load PRIME Script')
-    save_bmp = bitmaps.fetch_icon_bitmap('actions', 'save')
-    self.tb_btn_save = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                 label='Save Script',
-                                                 bitmap=save_bmp,
-                                                 shortHelp='Save Script',
-                                                 longHelp='Save PRIME Script')
-    reset_bmp = bitmaps.fetch_icon_bitmap('actions', 'reload')
-    self.tb_btn_reset = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                  label='Reset',
-                                                  bitmap=reset_bmp,
-                                                  shortHelp='Reset Settings',
-                                                  longHelp='Reset PRIME settings with defaults')
-    self.toolbar.AddSeparator()
-    analyze_bmp = bitmaps.fetch_icon_bitmap('mimetypes', 'text-x-generic-2')
-    self.tb_btn_analysis = self.toolbar.AddLabelTool(wx.ID_ANY, label='Recover',
-                                                     bitmap=analyze_bmp,
-                                                     shortHelp='Recover',
-                                                     longHelp='Show past results')
-    run_bmp = bitmaps.fetch_icon_bitmap('actions', 'run')
-    self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
-                                                bitmap=run_bmp,
-                                                shortHelp='Run',
-                                                longHelp='Run scaling, merging and post-refinement with PRIME')
+    self.tb_btn_analysis = self.add_tool(label='Recover',
+                                         bitmap=(
+                                         'mimetypes', 'text-x-generic-2'),
+                                         shortHelp='Recover PRIME run')
+    self.tb_btn_run = self.add_tool(label='Run',
+                                    bitmap=('actions', 'run'),
+                                    shortHelp='Run PRIME')
     # These buttons will be disabled until input path is provided
-    self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
-    self.toolbar.Realize()
+    self.set_tool_state(self.tb_btn_run, enable=False)
+    self.realize_toolbar()
 
     # Status bar
     self.sb = self.CreateStatusBar()
@@ -157,8 +142,8 @@ class PRIMEWindow(wx.Frame):
     info = wx.AboutDialogInfo()
     info.SetName('PRIME')
     info.SetWebSite('http://cci.lbl.gov/xfel')
-    info.SetLicense(misc.prime_license)
-    info.SetDescription(misc.prime_description)
+    info.SetLicense(prime_license)
+    info.SetDescription(prime_description)
     info.AddDeveloper('Monarin Uervirojnangkoorn')
     info.AddDeveloper('Axel Brunger')
     wx.AboutBox(info)
@@ -199,9 +184,9 @@ class PRIMEWindow(wx.Frame):
 
   def onInput(self, e):
     if self.input_window.inp_box.ctr.GetValue() != '':
-      self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
+      self.set_tool_state(self.tb_btn_run, enable=True)
     else:
-      self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
+      self.set_tool_state(self.tb_btn_run, enable=False)
 
   def init_settings(self):
     self.input_window.update_settings()
@@ -291,7 +276,7 @@ class PRIMEWindow(wx.Frame):
     if self.sanity_check():
       prime_phil = master_phil.format(python_object=self.pparams)
 
-      with misc.Capturing() as output:
+      with Capturing() as output:
         prime_phil.show()
 
       txt_out = ''
@@ -310,6 +295,7 @@ class PRIMEWindow(wx.Frame):
                                                  prime_file=prime_file)
       self.prime_run_window.prev_pids = easy_run.fully_buffered('pgrep -u {} {}'
                                         ''.format(user, python)).stdout_lines
+      self.prime_run_window.place_and_size(set_by='parent')
       self.prime_run_window.Show(True)
 
   def onSequence(self, e):
@@ -320,7 +306,7 @@ class PRIMEWindow(wx.Frame):
 
     # Generate text of params
     final_phil = master_phil.format(python_object=self.pparams)
-    with misc.Capturing() as txt_output:
+    with Capturing() as txt_output:
       final_phil.show()
     txt_out = ''
     for one_output in txt_output:
@@ -413,7 +399,7 @@ class PRIMEWindow(wx.Frame):
     self.input_window.opt_spc_nres.reset_default()
 
     # Generate Python object and text of parameters
-    with misc.Capturing() as txt_output:
+    with Capturing() as txt_output:
       master_phil.show()
     self.phil_string = ''
     for one_output in txt_output:

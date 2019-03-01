@@ -1761,6 +1761,7 @@ def exercise_flex_vec3_double():
   a2 = flex.vec3_double([(5,0,0),(0,3,2),(2,0,2),(5,5,5)])
   assert approx_equal(a1.min_distance_between_any_pair(a2),2)
   assert approx_equal(a1.min_distance_between_any_pair_with_id(a2),(2.0,2,2))
+  assert approx_equal(a1.max_distance_between_any_pair_with_id(a2),(8.66025403784,0,3))
   assert approx_equal(a.sum_sq(), 285)
   assert approx_equal(a.sum_sq(), flex.sum_sq(a.as_double()))
   assert approx_equal(a.norm(), math.sqrt(285))
@@ -2064,15 +2065,12 @@ def exercise_histogram():
   hy = flex.histogram(other=h, data=y, relative_tolerance=1)
   assert tuple(hy.slots()) == (7,4,4,4,7)
   assert hy.n_out_of_slot_range() == 0
-  s = StringIO()
-  hy.show(f=s, prefix="*")
-  assert s.getvalue() == """\
+  assert hy.as_str(prefix="*") == """\
 *0 - 3.8: 7
 *3.8 - 7.6: 4
 *7.6 - 11.4: 4
 *11.4 - 15.2: 4
-*15.2 - 19: 7
-"""
+*15.2 - 19: 7"""
   hy = flex.histogram(
     data=y, data_min=2, data_max=10, n_slots=4, relative_tolerance=1.e-4)
   s = StringIO()

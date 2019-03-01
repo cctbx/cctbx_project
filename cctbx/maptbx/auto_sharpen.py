@@ -634,6 +634,28 @@ master_phil = iotbx.phil.parse("""
         .type = int
         .help = "Size of resolve to use. "
         .style = hidden
+
+     ignore_map_limitations = None
+       .type = bool
+       .short_caption = Ignore map limitations
+       .help = Ignore limitations such as 'map cannot be sharpened'
+
+      multiprocessing = *multiprocessing sge lsf pbs condor pbspro slurm
+        .type = choice
+        .short_caption = multiprocessing type
+        .help = Choices are multiprocessing (single machine) or queuing systems
+
+      queue_run_command = None
+        .type = str
+        .short_caption = Queue run command
+        .help = run command for queue jobs. For example qsub.
+
+      nproc = 1
+        .type = int
+        .short_caption = Number of processors
+        .help = Number of processors to use
+        .style = renderer:draw_nproc_widget bold
+
    }
 
   include scope libtbx.phil.interface.tracking_params
@@ -697,7 +719,7 @@ def set_sharpen_params(params,out=sys.stdout):
        ['b_iso_to_d_cut'],['b_iso']])   or  \
      (params.map_modification.resolution_dependent_b and \
        params.map_modification.auto_sharpen_methods in [
-       ['resolution_dependent']]) :
+       ['resolution_dependent']]):
     if params.map_modification.box_in_auto_sharpen and (
       not getattr(params.map_modification,'allow_box_if_b_iso_set',None)):
       params.map_modification.box_in_auto_sharpen=False
@@ -761,20 +783,38 @@ def get_map_and_model(params=None,
     ncs_obj=None,
     half_map_data_list=None,
     map_coords_inside_cell=True,
+    get_map_labels=None,
     out=sys.stdout):
 
   acc=None # accessor used to shift map back to original location if desired
   origin_frac=(0,0,0)
+  map_labels=None
   if map_data and crystal_symmetry:
     original_crystal_symmetry=crystal_symmetry
     original_unit_cell_grid=None
+    acc=map_data.accessor()
+    shift_needed = not \
+       (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
+        map_data.is_0_based())
+    if(shift_needed):
+      map_data = map_data.shift_origin()
+      origin_shift=(
+        map_data.origin()[0]/map_data.all()[0],
+        map_data.origin()[1]/map_data.all()[1],
+        map_data.origin()[2]/map_data.all()[2])
+      origin_frac=origin_shift  # NOTE: fraction of NEW cell
+    else:
+      origin_frac=(0.,0.,0.)
+
 
   elif params.input_files.map_file:
     print >>out,"\nReading map from %s\n" %( params.input_files.map_file)
     from cctbx.maptbx.segment_and_split_map import get_map_object
     map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
-        original_crystal_symmetry,original_unit_cell_grid=\
-      get_map_object(file_name=params.input_files.map_file,out=out)
+        original_crystal_symmetry,original_unit_cell_grid,map_labels=\
+      get_map_object(file_name=params.input_files.map_file,
+      must_allow_sharpening=(not params.control.ignore_map_limitations),
+      get_map_labels=True,out=out)
     map_data=map_data.as_double()
     if origin_frac != (0,0,0) and acc is None:
       print >>out,"\nWARNING: Unable to place output map at position of "+\
@@ -862,7 +902,11 @@ def get_map_and_model(params=None,
       ncs_obj=ncs_obj.coordinate_offset(
        coordinate_offset=matrix.col(origin_shift))
 
-  return pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
+  if get_map_labels:
+    return pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
+       original_crystal_symmetry,original_unit_cell_grid,map_labels
+  else:
+    return pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
        original_crystal_symmetry,original_unit_cell_grid
 
 
@@ -887,13 +931,15 @@ def run(args=None,params=None,
   # get map_data and crystal_symmetry
 
   pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
-       original_crystal_symmetry,original_unit_cell_grid=get_map_and_model(
+       original_crystal_symmetry,original_unit_cell_grid,map_labels=\
+        get_map_and_model(
      map_data=map_data,
      half_map_data_list=half_map_data_list,
      pdb_inp=pdb_inp,
      ncs_obj=ncs_obj,
      map_coords_inside_cell=False,
      crystal_symmetry=crystal_symmetry,
+     get_map_labels=True,
      params=params,out=out)
   # NOTE: map_data is now relative to origin at (0,0,0).
   # Use map_data.reshape(acc) to put it back where it was if acc is not None
@@ -907,6 +953,9 @@ def run(args=None,params=None,
         is_crystal=params.crystal_info.is_crystal,
         verbose=params.control.verbose,
         resolve_size=params.control.resolve_size,
+        multiprocessing=params.control.multiprocessing,
+        nproc=params.control.nproc,
+        queue_run_command=params.control.queue_run_command,
         map=map_data,
         half_map_data_list=half_map_data_list,
         solvent_content=params.crystal_info.solvent_content,
@@ -1016,7 +1065,6 @@ def run(args=None,params=None,
 
   offset_map_data=new_map_data.deep_copy()
   if acc is not None:  # offset the map to match original if possible
-    #ZZZoffset_map_data=offset_map_data.as_1d()
     offset_map_data.reshape(acc)
 
   if write_output_files and params.output_files.sharpened_map_file and \
@@ -1036,7 +1084,18 @@ def run(args=None,params=None,
         "(NOTE: may be boxed map and may not be "+\
         "\nsame as original location) to %s\n" %(
          output_map_file)
-      write_ccp4_map(crystal_symmetry, output_map_file, offset_map_data)
+
+    from iotbx.mrcfile import create_output_labels
+    program_name='auto_sharpen'
+    limitations=["map_is_sharpened"]
+    labels=create_output_labels(program_name=program_name,
+       input_file_name=params.input_files.map_file,
+       input_labels=map_labels,
+       limitations=limitations,
+       output_labels=None)
+
+    write_ccp4_map(crystal_symmetry, output_map_file, offset_map_data,
+        labels=labels)
 
   if write_output_files and params.output_files.shifted_sharpened_map_file:
     output_map_file=os.path.join(params.output_files.output_directory,
@@ -1068,8 +1127,8 @@ def run(args=None,params=None,
 # =============================================================================
 # GUI-specific bits for running command
 from libtbx import runtime_utils
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher(runtime_utils.target_with_save_result):
+  def run(self):
     import os
     from wxGUI2 import utils
     utils.safe_makedirs(self.output_dir)

@@ -485,9 +485,12 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
 
   def composition(self):
     asc = self.atom_selection_cache()
-    def rc(sel_str):
+    def rc(sel_str, as_atoms=False):
       sel = asc.selection(sel_str)
-      return len(list(self.select(sel).residue_groups()))
+      if(as_atoms):
+        return self.select(sel).atoms().size()
+      else:
+        return len(list(self.select(sel).residue_groups()))
     sel_str_other = "not (water or nucleotide or protein)"
     other_cnts = collections.Counter()
     for rg in self.select(asc.selection(sel_str_other)).residue_groups():
@@ -499,7 +502,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       n_protein    = rc("protein"),
       n_nucleotide = rc("nucleotide"),
       n_water      = rc("water"),
-      n_hd         = rc("element H or element D"),
+      n_hd         = rc(sel_str="element H or element D",as_atoms=True),
       n_other      = rc(sel_str_other),
       other_cnts   = other_cnts)
 
@@ -653,7 +656,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
 # need in this tranformation.
 # Currently used exclusively in Tom's code.
 
-  def as_pdb_input (self, crystal_symmetry=None) :
+  def as_pdb_input(self, crystal_symmetry=None):
     """
     Generate corresponding pdb.input object.
     """
@@ -666,7 +669,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
 
 # END_MARKED_FOR_DELETION_OLEG
 
-  def extract_xray_structure(self, crystal_symmetry=None) :
+  def extract_xray_structure(self, crystal_symmetry=None):
     """
     Generate the equivalent cctbx.xray.structure object.  If the crystal
     symmetry is not provided, this will be placed in a P1 box.  In practice it
@@ -988,9 +991,6 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     chem_comp_loop = iotbx.cif.model.loop(header=(
       '_chem_comp.id',
       ))
-    chem_comp_atom_loop = iotbx.cif.model.loop(header=(
-      '_chem_comp_atom.atom_id',
-      ))
     struct_asym_loop = iotbx.cif.model.loop(header=(
       '_struct_asym.id',
       ))
@@ -1098,8 +1098,6 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     for row in chem_comp_ids: chem_comp_loop.add_row([row])
     h_cif_block.add_loop(chem_comp_loop)
     chem_comp_atom_ids.sort()
-    for row in chem_comp_atom_ids: chem_comp_atom_loop.add_row([row])
-    h_cif_block.add_loop(chem_comp_atom_loop)
     for row in struct_asym_ids: struct_asym_loop.add_row([row])
     h_cif_block.add_loop(struct_asym_loop)
     #
@@ -1436,7 +1434,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
               is_first_in_chain = False
               is_first_after_break = False
 
-  def get_conformer_indices (self) :
+  def get_conformer_indices(self):
     n_seq = self.atoms_size()
     conformer_indices = flex.size_t(n_seq, 0)
     altloc_indices = self.altloc_indices()
@@ -1450,18 +1448,18 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
 
   def remove_alt_confs(self, always_keep_one_conformer):
     hierarchy = self
-    for model in hierarchy.models() :
-      for chain in model.chains() :
-        for residue_group in chain.residue_groups() :
+    for model in hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
           atom_groups = residue_group.atom_groups()
           assert (len(atom_groups) > 0)
           cleanup_needed = True
           if always_keep_one_conformer :
-            if (len(atom_groups) == 1) and (atom_groups[0].altloc == '') :
+            if (len(atom_groups) == 1) and (atom_groups[0].altloc == ''):
               continue
             atom_groups_and_occupancies = []
             for atom_group in atom_groups :
-              if (atom_group.altloc == '') :
+              if (atom_group.altloc == ''):
                 continue
               mean_occ = flex.mean(atom_group.atoms().extract_occ())
               atom_groups_and_occupancies.append((atom_group, mean_occ))
@@ -1472,11 +1470,11 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
             single_conf.altloc = ''
           else :
             for atom_group in atom_groups :
-              if (not atom_group.altloc in ["", "A"]) :
+              if (not atom_group.altloc in ["", "A"]):
                 residue_group.remove_atom_group(atom_group=atom_group)
               else :
                 atom_group.altloc = ""
-            if (len(residue_group.atom_groups()) == 0) :
+            if (len(residue_group.atom_groups()) == 0):
               chain.remove_residue_group(residue_group=residue_group)
               cleanup_needed = False
           if cleanup_needed and residue_group.atom_groups_size() > 1:
@@ -1484,7 +1482,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
             for i in range(len(ags)-1, 0, -1):
               residue_group.merge_atom_groups(ags[0], ags[i])
               residue_group.remove_atom_group(ags[i])
-        if (len(chain.residue_groups()) == 0) :
+        if (len(chain.residue_groups()) == 0):
           model.remove_chain(chain=chain)
     atoms = hierarchy.atoms()
     new_occ = flex.double(atoms.size(), 1.0)
@@ -1555,14 +1553,14 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
           atom_group.resname = "MET"
           atom.name = " SD "
           atom.element = " S"
-          for ag_atom in atom_group.atoms() :
+          for ag_atom in atom_group.atoms():
             ag_atom.hetero = False
 
   def convert_met_to_semet(self):
     for i_seq, atom in enumerate(self.atoms()):
       if((atom.name.strip()=="SD") and (atom.element.strip().upper()=="S")):
         atom_group = atom.parent()
-        if(atom_group.resname == "MET") :
+        if(atom_group.resname == "MET"):
           atom_group.resname = "MSE"
           atom.name = " SE "
           atom.element = "SE"
@@ -1758,7 +1756,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
 
   def distance_based_simple_two_way_bond_sets(self,
         fallback_expected_bond_length=1.4,
-        fallback_search_max_distance=2.5) :
+        fallback_search_max_distance=2.5):
     from cctbx.crystal import distance_based_connectivity
     atoms = self.atoms().deep_copy() # XXX potential bottleneck
     atoms.set_chemical_element_simple_if_necessary()
@@ -1772,10 +1770,10 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       fallback_expected_bond_length=fallback_expected_bond_length,
       fallback_search_max_distance=fallback_search_max_distance)
 
-  def reset_i_seq_if_necessary (self) :
+  def reset_i_seq_if_necessary(self):
     atoms = self.atoms()
     i_seqs = atoms.extract_i_seq()
-    if (i_seqs.all_eq(0)) :
+    if (i_seqs.all_eq(0)):
       atoms.reset_i_seq()
 
   def get_peptide_c_alpha_selection(self):
@@ -1797,28 +1795,28 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
                   result.append(atom.i_seq)
     return result
 
-  def contains_protein (self) :
+  def contains_protein(self):
     """
     Inspect residue names (stored in atom_group objects) to determine if any of
     them are protein.
     """
-    for model in self.models() :
-      for chain in self.chains() :
+    for model in self.models():
+      for chain in self.chains():
         if chain.is_protein() : return True
     return False
 
-  def contains_nucleic_acid (self) :
+  def contains_nucleic_acid(self):
     """
     Inspect residue names (stored in atom_group objects) to determine if any of
     them are RNA or DNA.
     """
     import iotbx.pdb
-    for model in self.models() :
-      for chain in self.chains() :
+    for model in self.models():
+      for chain in self.chains():
         if chain.is_na() : return True
     return False
 
-  def contains_rna (self) :
+  def contains_rna(self):
     """
     Inspect residue names (stored in atom_group objects) to determine if any of
     them are RNA.
@@ -1830,33 +1828,33 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         for rg in chain.residue_groups():
           for ag in rg.atom_groups():
             if ((get_class(ag.resname) == "common_rna_dna") and
-                (not "D" in ag.resname.upper())) :
+                (not "D" in ag.resname.upper())):
               return True
     return False
 
-  def remove_hd (self, reset_i_seq=False) :
+  def remove_hd(self, reset_i_seq=False):
     """
     Remove all hydrogen/deuterium atoms in-place.  Returns the number of atoms
     deleted.
     """
     n_removed = 0
-    for pdb_model in self.models() :
-      for pdb_chain in pdb_model.chains() :
-        for pdb_residue_group in pdb_chain.residue_groups() :
-          for pdb_atom_group in pdb_residue_group.atom_groups() :
-            for pdb_atom in pdb_atom_group.atoms() :
-              if (pdb_atom.element.strip().upper() in ["H","D"]) :
+    for pdb_model in self.models():
+      for pdb_chain in pdb_model.chains():
+        for pdb_residue_group in pdb_chain.residue_groups():
+          for pdb_atom_group in pdb_residue_group.atom_groups():
+            for pdb_atom in pdb_atom_group.atoms():
+              if (pdb_atom.element.strip().upper() in ["H","D"]):
                 pdb_atom_group.remove_atom(pdb_atom)
                 n_removed += 1
-            if (pdb_atom_group.atoms_size() == 0) :
+            if (pdb_atom_group.atoms_size() == 0):
               pdb_residue_group.remove_atom_group(pdb_atom_group)
-          if (pdb_residue_group.atom_groups_size() == 0) :
+          if (pdb_residue_group.atom_groups_size() == 0):
             pdb_chain.remove_residue_group(pdb_residue_group)
-        if (pdb_chain.residue_groups_size() == 0) :
+        if (pdb_chain.residue_groups_size() == 0):
           pdb_model.remove_chain(pdb_chain)
-      if (pdb_model.chains_size() == 0) :
+      if (pdb_model.chains_size() == 0):
         self.remove_model(pdb_model)
-    if (reset_i_seq) :
+    if (reset_i_seq):
       self.atoms().reset_i_seq()
     return n_removed
 
@@ -2028,7 +2026,7 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     result.sort(groups_cmp)
     return result
 
-  def get_residue_names_and_classes (self) :
+  def get_residue_names_and_classes(self):
     """
     Extract the residue names and counts of each residue type (protein,
     nucleic acid, etc) within the chain.
@@ -2056,7 +2054,7 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
       residue_classes[c] += 1
     return (rn_seq, residue_classes)
 
-  def as_sequence (self, substitute_unknown='X') :
+  def as_sequence(self, substitute_unknown='X'):
     """
     Naively extract single-character protein or nucleic acid sequence, without
     accounting for residue numbering.
@@ -2075,7 +2073,7 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
       aa_3_as_1_mod = \
         amino_acid_codes.one_letter_given_three_letter_modified_aa
       for rn in rn_seq:
-        if (rn in aa_3_as_1_mod) :
+        if (rn in aa_3_as_1_mod):
           seq.append(aa_3_as_1_mod.get(rn, substitute_unknown))
         else :
           seq.append(aa_3_as_1.get(rn, substitute_unknown))
@@ -2103,28 +2101,28 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     last_resseq = 0
     last_icode = " "
     i = 0
-    for i, residue_group in enumerate(self.residue_groups()) :
-      if (skip_insertions) and (residue_group.icode != " ") :
+    for i, residue_group in enumerate(self.residue_groups()):
+      if (skip_insertions) and (residue_group.icode != " "):
         continue
       resseq = residue_group.resseq_as_int()
-      if (pad) and (resseq > (last_resseq + 1)) :
-        for x in range(resseq - last_resseq - 1) :
+      if (pad) and (resseq > (last_resseq + 1)):
+        for x in range(resseq - last_resseq - 1):
           if last_resseq == 0 and not pad_at_start: break
           padded_seq.append(missing_char)
       last_resseq = resseq
       padded_seq.append(seq[i])
     return "".join(padded_seq)
 
-  def get_residue_ids (self, skip_insertions=False, pad=True, pad_at_start=True) :
+  def get_residue_ids(self, skip_insertions=False, pad=True, pad_at_start=True):
     resids = []
     last_resseq = 0
     last_icode = " "
-    for i, residue_group in enumerate(self.residue_groups()) :
-      if (skip_insertions) and (residue.icode != " ") :
+    for i, residue_group in enumerate(self.residue_groups()):
+      if (skip_insertions) and (residue.icode != " "):
         continue
       resseq = residue_group.resseq_as_int()
-      if (pad) and (resseq > (last_resseq + 1)) :
-        for x in range(resseq - last_resseq - 1) :
+      if (pad) and (resseq > (last_resseq + 1)):
+        for x in range(resseq - last_resseq - 1):
           if last_resseq == 0 and not pad_at_start: break
           resids.append(None)
       last_resseq = resseq
@@ -2136,19 +2134,19 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     resnames = []
     last_resseq = 0
     last_icode = " "
-    for i, residue_group in enumerate(self.residue_groups()) :
-      if (skip_insertions) and (residue.icode != " ") :
+    for i, residue_group in enumerate(self.residue_groups()):
+      if (skip_insertions) and (residue.icode != " "):
         continue
       resseq = residue_group.resseq_as_int()
-      if (pad) and (resseq > (last_resseq + 1)) :
-        for x in range(resseq - last_resseq - 1) :
+      if (pad) and (resseq > (last_resseq + 1)):
+        for x in range(resseq - last_resseq - 1):
           if last_resseq == 0 and not pad_at_start: break
           resnames.append(None)
       last_resseq = resseq
       resnames.append(residue_group.unique_resnames()[0])
     return resnames
 
-  def is_protein (self, min_content=0.8, ignore_water=True) :
+  def is_protein(self, min_content=0.8, ignore_water=True):
     """
     Determine whether the chain represents an amino acid polymer, based on the
     frequency of residue names.
@@ -2158,18 +2156,18 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
-    if (ignore_water) :
+    if (ignore_water):
       while rn_seq.count("HOH") > 0 :
         rn_seq.remove("HOH")
-    if (len(rn_seq) == 0) :
+    if (len(rn_seq) == 0):
       return False
-    elif ((n_aa > n_na) and ((n_aa / len(rn_seq)) >= min_content)) :
+    elif ((n_aa > n_na) and ((n_aa / len(rn_seq)) >= min_content)):
       return True
-    elif (rn_seq == (["UNK"] * len(rn_seq))) :
+    elif (rn_seq == (["UNK"] * len(rn_seq))):
       return True
     return False
 
-  def is_na (self, min_content=0.8, ignore_water=True) :
+  def is_na(self, min_content=0.8, ignore_water=True):
     """
     Determine whether the chain represents a nucleic acid polymer, based on the
     frequency of base names.
@@ -2179,12 +2177,12 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
-    if (ignore_water) :
+    if (ignore_water):
       while rn_seq.count("HOH") > 0 :
         rn_seq.remove("HOH")
-    if (len(rn_seq) == 0) :
+    if (len(rn_seq) == 0):
       return False
-    elif ((n_na > n_aa) and ((n_na / len(rn_seq)) >= min_content)) :
+    elif ((n_na > n_aa) and ((n_na / len(rn_seq)) >= min_content)):
       return True
     return False
 
@@ -2209,10 +2207,10 @@ class _(boost.python.injector, ext.residue_group, __hash_eq_mixin):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
-  def id_str (self) :
+  def id_str(self):
     chain_id = ""
     chain = self.parent()
-    if (chain is not None) :
+    if (chain is not None):
       chain_id = chain.id
     return "%2s%4s%1s" % (chain_id, self.resseq, self.icode)
 
@@ -2223,18 +2221,18 @@ class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
     return self.atoms()[0]
 
   # FIXME suppress_segid has no effect here
-  def id_str (self, suppress_segid=None) :
+  def id_str(self, suppress_segid=None):
     chain_id = ""
     resid = ""
     rg = self.parent()
-    if (rg is not None) :
+    if (rg is not None):
       resid = rg.resid()
       chain = rg.parent()
-      if (chain is not None) :
+      if (chain is not None):
         chain_id = chain.id
     return "%1s%3s%2s%5s" % (self.altloc, self.resname, chain_id, resid)
 
-  def occupancy (self, raise_error_if_non_uniform=False) :
+  def occupancy(self, raise_error_if_non_uniform=False):
     """
     Calculate the mean occupancy for atoms in this group, with option of
     raising ValueError if they differ.
@@ -2242,8 +2240,8 @@ class _(boost.python.injector, ext.atom_group, __hash_eq_mixin):
     atom_occupancies = self.atoms().extract_occ()
     assert (len(atom_occupancies) > 0)
     min_max_mean = atom_occupancies.min_max_mean()
-    if (min_max_mean.min != min_max_mean.max) :
-      if (raise_error_if_non_uniform) :
+    if (min_max_mean.min != min_max_mean.max):
+      if (raise_error_if_non_uniform):
         raise ValueError(("Non-uniform occupancies for atom group %s "+
           "(range: %.2f - %.2f).") % (self.id_str(), min_max_mean.min,
           min_max_mean.max))
@@ -2259,15 +2257,15 @@ class _(boost.python.injector, ext.atom, __hash_eq_mixin):
   residue name.  These may be retrieved either by walking up the hierarchy
   starting with atom.parent(), or by calling atom.fetch_labels().
   """
-  def chain (self) :
+  def chain(self):
     """
     Convenience method for fetching the chain object associated with this
     atom (or None of not defined).
     """
     ag = self.parent()
-    if (ag is not None) :
+    if (ag is not None):
       rg = ag.parent()
-      if (rg is not None) :
+      if (rg is not None):
         return rg.parent()
     return None
 
@@ -2344,7 +2342,7 @@ class _(boost.python.injector, ext.conformer):
   def only_atom(self):
     return self.only_residue().only_atom()
 
-  def get_residue_names_and_classes (self) :
+  def get_residue_names_and_classes(self):
     # XXX This function should probably be deprecated, since it has been
     # duplicated in chain.get_residue_names_and_classes which should probably
     # be preferred to this function
@@ -2362,27 +2360,29 @@ class _(boost.python.injector, ext.conformer):
       residue_classes[c] += 1
     return (rn_seq, residue_classes)
 
-  def is_protein (self, min_content=0.8) :
+  def is_protein(self, min_content=0.8):
     # XXX DEPRECATED
+    # Used only in mmtbx/validation and wxtbx. Easy to eliminate.
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
     non_water = len(rn_seq)-residue_classes.get('common_water', 0)
-    if ((n_aa > n_na) and ((n_aa / non_water) >= min_content)) :
+    if ((n_aa > n_na) and ((n_aa / non_water) >= min_content)):
       return True
     return False
 
-  def is_na (self, min_content=0.8) :
+  def is_na(self, min_content=0.8):
     # XXX DEPRECATED
+    # Used only in mmtbx/validation and wxtbx. Easy to eliminate.
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
     non_water = len(rn_seq)-residue_classes.get('common_water', 0)
-    if ((n_na > n_aa) and ((n_na / non_water) >= min_content)) :
+    if ((n_na > n_aa) and ((n_na / non_water) >= min_content)):
       return True
     return False
 
-  def as_sequence (self, substitute_unknown='X') :
+  def as_sequence(self, substitute_unknown='X'):
     # XXX This function should probably be deprecated, since it has been
     # duplicated in chain.as_sequence which should probably be preferred to
     # this function
@@ -2398,7 +2398,7 @@ class _(boost.python.injector, ext.conformer):
       aa_3_as_1_mod = \
         amino_acid_codes.one_letter_given_three_letter_modified_aa
       for rn in rn_seq:
-        if (rn in aa_3_as_1_mod) :
+        if (rn in aa_3_as_1_mod):
           seq.append(aa_3_as_1_mod.get(rn, substitute_unknown))
         else :
           seq.append(aa_3_as_1.get(rn, substitute_unknown))
@@ -2433,8 +2433,8 @@ class _(boost.python.injector, ext.conformer):
       i = j
     return result
 
-  def as_padded_sequence (self, missing_char='X', skip_insertions=False,
-      pad=True, substitute_unknown='X', pad_at_start=True) :
+  def as_padded_sequence(self, missing_char='X', skip_insertions=False,
+      pad=True, substitute_unknown='X', pad_at_start=True):
     # XXX This function should probably be deprecated, since it has been
     # duplicated in chain.as_padded_sequence which should probably be preferred
     # to this function
@@ -2443,30 +2443,30 @@ class _(boost.python.injector, ext.conformer):
     last_resseq = 0
     last_icode = " "
     i = 0
-    for i, residue in enumerate(self.residues()) :
-      if (skip_insertions) and (residue.icode != " ") :
+    for i, residue in enumerate(self.residues()):
+      if (skip_insertions) and (residue.icode != " "):
         continue
       resseq = residue.resseq_as_int()
-      if (pad) and (resseq > (last_resseq + 1)) :
-        for x in range(resseq - last_resseq - 1) :
+      if (pad) and (resseq > (last_resseq + 1)):
+        for x in range(resseq - last_resseq - 1):
           if last_resseq == 0 and not pad_at_start: break
           padded_seq.append(missing_char)
       last_resseq = resseq
       padded_seq.append(seq[i])
     return "".join(padded_seq)
 
-  def as_sec_str_sequence (self, helix_sele, sheet_sele, missing_char='X',
-                           pad=True, pad_at_start=True) :
+  def as_sec_str_sequence(self, helix_sele, sheet_sele, missing_char='X',
+                           pad=True, pad_at_start=True):
     ss_seq = []
     last_resseq = 0
-    for i, residue in enumerate(self.residues()) :
+    for i, residue in enumerate(self.residues()):
       resseq = residue.resseq_as_int()
-      if pad and resseq > (last_resseq + 1) :
-        for x in range(resseq - last_resseq - 1) :
+      if pad and resseq > (last_resseq + 1):
+        for x in range(resseq - last_resseq - 1):
           if last_resseq == 0 and not pad_at_start: break
           ss_seq.append(missing_char)
       found = False
-      for atom in residue.atoms() :
+      for atom in residue.atoms():
         if helix_sele[atom.i_seq] :
           ss_seq.append('H')
           found = True
@@ -2480,19 +2480,19 @@ class _(boost.python.injector, ext.conformer):
       last_resseq = resseq
     return "".join(ss_seq)
 
-  def get_residue_ids (self, skip_insertions=False, pad=True, pad_at_start=True) :
+  def get_residue_ids(self, skip_insertions=False, pad=True, pad_at_start=True):
     # XXX This function should probably be deprecated, since it has been
     # duplicated in chain.get_residue_ids which should probably be preferred
     # to this function
     resids = []
     last_resseq = 0
     last_icode = " "
-    for i, residue in enumerate(self.residues()) :
-      if (skip_insertions) and (residue.icode != " ") :
+    for i, residue in enumerate(self.residues()):
+      if (skip_insertions) and (residue.icode != " "):
         continue
       resseq = residue.resseq_as_int()
-      if (pad) and (resseq > (last_resseq + 1)) :
-        for x in range(resseq - last_resseq - 1) :
+      if (pad) and (resseq > (last_resseq + 1)):
+        for x in range(resseq - last_resseq - 1):
           if last_resseq == 0 and not pad_at_start: break
           resids.append(None)
       last_resseq = resseq
@@ -2507,12 +2507,12 @@ class _(boost.python.injector, ext.conformer):
     resnames = []
     last_resseq = 0
     last_icode = " "
-    for i, residue in enumerate(self.residues()) :
-      if (skip_insertions) and (residue.icode != " ") :
+    for i, residue in enumerate(self.residues()):
+      if (skip_insertions) and (residue.icode != " "):
         continue
       resseq = residue.resseq_as_int()
-      if (pad) and (resseq > (last_resseq + 1)) :
-        for x in range(resseq - last_resseq - 1) :
+      if (pad) and (resseq > (last_resseq + 1)):
+        for x in range(resseq - last_resseq - 1):
           if last_resseq == 0 and not pad_at_start: break
           resnames.append(None)
       last_resseq = resseq
@@ -2569,7 +2569,7 @@ class _(boost.python.injector, ext.atom_with_labels):
   Stand-in for atom object, which explicitly records the attributes normally
   reserved for parent classes such as residue name, chain ID, etc.
   """
-  def __getstate__ (self) :
+  def __getstate__(self):
     labels_dict = {}
     for attr in [ "xyz", "sigxyz", "occ", "sigocc", "b", "sigb", "uij",
                   "siguij", "hetero", "serial", "name", "segid", "element",
@@ -2578,12 +2578,12 @@ class _(boost.python.injector, ext.atom_with_labels):
       labels_dict[attr] = getattr(self, attr, None)
     return labels_dict
 
-  def __setstate__ (self, state) :
+  def __setstate__(self, state):
     from iotbx.pdb import make_atom_with_labels
     state = dict(state)
     make_atom_with_labels(self, **state)
 
-  def fetch_labels (self) :
+  def fetch_labels(self):
     return self
 
 class input_hierarchy_pair(object):
@@ -2623,7 +2623,7 @@ class input_hierarchy_pair(object):
     sentinel = i_atoms.reset_tmp(first_value=0, increment=1)
     return self.hierarchy.atoms().extract_tmp_as_size_t()
 
-  def xray_structure_simple (self, *args, **kwds) :
+  def xray_structure_simple(self, *args, **kwds):
     """
     Wrapper for the equivalent method of the input object - extracts the
     :py:class:`cctbx.xray.structure` with scatterers in the same order as in
@@ -2633,7 +2633,7 @@ class input_hierarchy_pair(object):
     xrs = self.input.xray_structure_simple(*args, **kwds)
     return xrs.select(perm)
 
-  def construct_hierarchy (self, *args, **kwds) : # TODO remove eventually
+  def construct_hierarchy(self, *args, **kwds) : # TODO remove eventually
     """
     Returns a reference to the existing hierarchy.  For backwards compatibility
     only, and issues a :py:class:`warnings.DeprecationWarning`.
@@ -2642,7 +2642,7 @@ class input_hierarchy_pair(object):
       DeprecationWarning)
     return self.hierarchy
 
-  def crystal_symmetry (self, *args, **kwds) :
+  def crystal_symmetry(self, *args, **kwds):
     return self.input.crystal_symmetry(*args, **kwds)
 
 class input(input_hierarchy_pair):
@@ -2753,7 +2753,7 @@ def join_roots(roots, chain_id_suffixes=Auto):
 
 # XXX: Nat's utility functions
 # also used in ncs_search.py
-def new_hierarchy_from_chain (chain) :
+def new_hierarchy_from_chain(chain):
   """
   Given a chain object, create an entirely new hierarchy object contaning only
   this chain (using a new copy).
@@ -2765,8 +2765,8 @@ def new_hierarchy_from_chain (chain) :
   hierarchy.append_model(model)
   return hierarchy
 
-def find_and_replace_chains (original_hierarchy, partial_hierarchy,
-    log=sys.stdout) :
+def find_and_replace_chains(original_hierarchy, partial_hierarchy,
+    log=sys.stdout):
   """
   Delete and replace the first chain in the original hierarchy corresponding
   to each model/ID combination in the partial hierarchy.  Note that this means
@@ -2774,15 +2774,15 @@ def find_and_replace_chains (original_hierarchy, partial_hierarchy,
   (separated by other chains or TER record(s)), but the partial hierarchy only
   contains a substitute protein chain, the heteroatom chain will be kept.
   """
-  for original_model in original_hierarchy.models() :
-    for partial_model in partial_hierarchy.models() :
+  for original_model in original_hierarchy.models():
+    for partial_model in partial_hierarchy.models():
       if original_model.id == partial_model.id :
         #print >> log, "    found model '%s'" % partial_model.id
         i = 0
-        while i < len(original_model.chains()) :
+        while i < len(original_model.chains()):
           original_chain = original_model.chains()[i]
           j = 0
-          while j < len(partial_model.chains()) :
+          while j < len(partial_model.chains()):
             partial_chain = partial_model.chains()[j]
             if original_chain.id == partial_chain.id :
               #print >> log, "      found chain '%s' at index %d" % (
@@ -2794,32 +2794,32 @@ def find_and_replace_chains (original_hierarchy, partial_hierarchy,
             j += 1
           i += 1
 
-def get_contiguous_ranges (hierarchy) :
+def get_contiguous_ranges(hierarchy):
   assert (len(hierarchy.models()) == 1)
   chain_clauses = []
-  for chain in hierarchy.models()[0].chains() :
+  for chain in hierarchy.models()[0].chains():
     resid_ranges = []
     start_resid = None
     last_resid = None
     last_resseq = - sys.maxint
-    for residue_group in chain.residue_groups() :
+    for residue_group in chain.residue_groups():
       resseq = residue_group.resseq_as_int()
       resid = residue_group.resid()
-      if (resseq != last_resseq) and (resseq != (last_resseq + 1)) :
-        if (start_resid is not None) :
+      if (resseq != last_resseq) and (resseq != (last_resseq + 1)):
+        if (start_resid is not None):
           resid_ranges.append((start_resid, last_resid))
         start_resid = resid
         last_resid = resid
       else :
-        if (start_resid is None) :
+        if (start_resid is None):
           start_resid = resid
         last_resid = resid
       last_resseq = resseq
-    if (start_resid is not None) :
+    if (start_resid is not None):
       resid_ranges.append((start_resid, last_resid))
     resid_clauses = []
     for r1, r2 in resid_ranges :
-      if (r1 == r2) :
+      if (r1 == r2):
         resid_clauses.append("resid %s" % r1)
       else :
         resid_clauses.append("resid %s through %s" % (r1,r2))
@@ -2829,11 +2829,11 @@ def get_contiguous_ranges (hierarchy) :
   return chain_clauses
 
 # used for reporting build results in phenix
-def get_residue_and_fragment_count (pdb_file=None, pdb_hierarchy=None) :
+def get_residue_and_fragment_count(pdb_file=None, pdb_hierarchy=None):
   import iotbx.pdb
   from libtbx import smart_open
   get_class = iotbx.pdb.common_residue_names_get_class
-  if (pdb_file is not None) :
+  if (pdb_file is not None):
     raw_records = flex.std_string()
     f = smart_open.for_reading(file_name=pdb_file)
     raw_records.extend(flex.split_lines(f.read()))
@@ -2851,23 +2851,23 @@ def get_residue_and_fragment_count (pdb_file=None, pdb_hierarchy=None) :
   n_h2o = 0
   for chain in chains :
     i = -999
-    for res in chain.conformers()[0].residues() :
+    for res in chain.conformers()[0].residues():
       residue_type = get_class(res.resname, consider_ccp4_mon_lib_rna_dna=True)
       if ( ('amino_acid' in residue_type) or ('rna_dna' in residue_type) ):
         n_res += 1
         resseq = res.resseq_as_int()
-        if resseq > (i + 1) :
+        if resseq > (i + 1):
           n_frag += 1
         i = resseq
       elif ('water' in residue_type):
         n_h2o += 1
   return (n_res, n_frag, n_h2o)
 
-def sites_diff (hierarchy_1,
+def sites_diff(hierarchy_1,
                 hierarchy_2,
                 exclude_waters=True,
                 return_hierarchy=True,
-                log=None) :
+                log=None):
   """
   Given two PDB hierarchies, calculate the shift of each atom (accounting for
   possible insertions/deletions) and (optionally) apply it to the B-factor for
@@ -2876,23 +2876,23 @@ def sites_diff (hierarchy_1,
   if (log is None) : log = null_out()
   atom_lookup = {}
   deltas = flex.double(hierarchy_2.atoms_size(), -1.)
-  for atom in hierarchy_1.atoms_with_labels() :
-    if (atom.resname in ["HOH", "WAT"]) and (exclude_waters) :
+  for atom in hierarchy_1.atoms_with_labels():
+    if (atom.resname in ["HOH", "WAT"]) and (exclude_waters):
       continue
     atom_id = atom.id_str()
-    if (atom_id in atom_lookup) :
+    if (atom_id in atom_lookup):
       raise RuntimeError("Duplicate atom ID - can't extract coordinates.")
     atom_lookup[atom_id] = atom.xyz
-  for i_seq, atom in enumerate(hierarchy_2.atoms_with_labels()) :
-    if (atom.resname in ["HOH", "WAT"]) and (exclude_waters) :
+  for i_seq, atom in enumerate(hierarchy_2.atoms_with_labels()):
+    if (atom.resname in ["HOH", "WAT"]) and (exclude_waters):
       continue
     atom_id = atom.id_str()
-    if (atom_id in atom_lookup) :
+    if (atom_id in atom_lookup):
       x1,y1,z1 = atom_lookup[atom_id]
       x2,y2,z2 = atom.xyz
       delta = math.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
       deltas[i_seq] = delta
-  if (return_hierarchy) :
+  if (return_hierarchy):
     hierarchy_new = hierarchy_2.deep_copy()
     hierarchy_new.atoms().set_b(deltas)
     return hierarchy_new
@@ -2932,9 +2932,12 @@ def substitute_atom_group(
   aa_backbone_atoms_new     = get_bb_atoms(new_group, aa_backbone_atoms_1)
   if(aa_backbone_atoms_current != aa_backbone_atoms_1 or
      aa_backbone_atoms_new     != aa_backbone_atoms_1):
-    raise Sorry("Main chain must be complete.")
+    outl = ''
+    for atom in current_group.atoms():
+      outl += '\n%s' % atom.quote()
+    raise Sorry("Main chain must be complete. %s" % outl)
   #
-  for i_seq, atom in enumerate(current_group.atoms()) :
+  for i_seq, atom in enumerate(current_group.atoms()):
     if(not atom.name in aa_backbone_atoms_2): continue
     for j_seq, other_atom in enumerate(new_group.atoms()):
       if(atom.name == other_atom.name):

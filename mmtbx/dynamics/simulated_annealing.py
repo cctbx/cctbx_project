@@ -70,7 +70,7 @@ def manager(params,
             states_collector=None,
             callback=None):
   if(out is None): out = sys.stdout
-  if (states_collector is not None) :
+  if (states_collector is not None):
     assert hasattr(states_collector, "add")
   print_statistics.make_header("simulated annealing refinement", out = out)
   model.set_refine_individual_sites()
@@ -171,7 +171,7 @@ class run(object):
           update_f_mask  = True)
       if(states_collector is not None):
         self.states_collector.add(sites_cart = cd_manager.xray_structure.sites_cart())
-      if (callback is not None) :
+      if (callback is not None):
         callback(fmodel=self.fmodel)
       self.show(curr_temp = self.curr_temp)
       self.curr_temp -= params.cool_rate

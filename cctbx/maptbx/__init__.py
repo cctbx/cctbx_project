@@ -284,13 +284,13 @@ class _(boost.python.injector, ext.statistics):
 use_space_group_symmetry = sgtbx.search_symmetry_flags(
   use_space_group_symmetry=True)
 
-class _(boost.python.injector, ext.histogram) :
+class _(boost.python.injector, ext.histogram):
   """
   Injector for extending cctbx.maptbx.histogram
   """
   # XXX make a method of scitbx
-  def get_percentile_cutoffs (self, map, vol_cutoff_plus_percent,
-      vol_cutoff_minus_percent) :
+  def get_percentile_cutoffs(self, map, vol_cutoff_plus_percent,
+      vol_cutoff_minus_percent):
     """
     For the double-step filtration in cctbx.miller (used as part of the
     procedure for replacing missing F-obs in maps), we need to calculate upper
@@ -307,8 +307,8 @@ class _(boost.python.injector, ext.histogram) :
     size = map_values.size()
     # upper limit
     i_bin_plus = -1
-    for i_bin, value in enumerate(self.v_values()) :
-      if ((value*100) <= vol_cutoff_plus_percent) :
+    for i_bin, value in enumerate(self.v_values()):
+      if ((value*100) <= vol_cutoff_plus_percent):
         i_bin_plus = i_bin - 1
         break
     assert (i_bin_plus >= 0)
@@ -325,8 +325,8 @@ class _(boost.python.injector, ext.histogram) :
     del top_values_sorted
     # lower limit
     i_bin_minus = -1
-    for i_bin, value in enumerate(self.c_values()) :
-      if ((value*100) > vol_cutoff_minus_percent) :
+    for i_bin, value in enumerate(self.c_values()):
+      if ((value*100) > vol_cutoff_minus_percent):
         i_bin_minus = i_bin
         break
     assert (i_bin_minus >= 0)
@@ -1048,15 +1048,15 @@ def ccv(map_1, map_2, modified, centered, cutoff=None, n_bins=10000):
     return flex.linear_correlation(x = map_1.as_1d(), y = map_2.as_1d(),
       subtract_mean = centered).coefficient()
 
-class spherical_variance_around_point (object) :
-  def __init__ (self,
+class spherical_variance_around_point(object):
+  def __init__(self,
       real_map,
       unit_cell,
       site_cart,
       radius,
       n_points=40,
       spline_interpolation=True,
-      write_sphere_points_to_pdb_file=None) :
+      write_sphere_points_to_pdb_file=None):
     self.site_cart = site_cart
     self.radius = radius
     assert n_points>0
@@ -1068,7 +1068,7 @@ class spherical_variance_around_point (object) :
     for k in range(1,n_points+1):
       h = -1 + 2 * (k - 1) / float(n_points - 1)
       theta = math.acos(h)
-      if (k == 1) or (k == n_points) :
+      if (k == 1) or (k == n_points):
         phi = 0
       else:
         phi = (old_phi + 3.6/math.sqrt(n_points*(1-h*h))) % (2*math.pi)
@@ -1086,15 +1086,15 @@ class spherical_variance_around_point (object) :
     self.max = flex.max(map_values)
     self.mean = flex.mean(map_values)
     self.standard_deviation = map_values.standard_deviation_of_the_sample()
-    if (write_sphere_points_to_pdb_file is not None) :
+    if (write_sphere_points_to_pdb_file is not None):
       f = open(write_sphere_points_to_pdb_file, "w")
-      for i, point in enumerate(sphere_points) :
+      for i, point in enumerate(sphere_points):
         f.write(
           "HETATM    1  O   HOH A   1     %7.3f %7.3f %7.3f  1.00 20.00\n"%
           point)
       f.close()
 
-  def show (self, out=None, prefix="") :
+  def show(self, out=None, prefix=""):
     if (out is None) : out = sys.stdout
     print >> out, "%sMap values around point [%g, %g, %g], radius=%g:" % \
       (prefix, self.site_cart[0], self.site_cart[1], self.site_cart[2],
@@ -1102,7 +1102,7 @@ class spherical_variance_around_point (object) :
     print >> out, "%s  min=%.2f  max=%.2f  mean=%.2f  stddev=%.2f" % \
       (prefix, self.min, self.max, self.mean, self.standard_deviation)
 
-def principal_axes_of_inertia (
+def principal_axes_of_inertia(
     real_map,
     site_cart,
     unit_cell,
@@ -1500,8 +1500,8 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
     rad_smooth     = 2.0)
   map_data = map_data * mask_object.mask_smooth
   #
-  from iotbx import ccp4_map
-  ccp4_map.write_ccp4_map(
+  from iotbx import mrcfile
+  mrcfile.write_ccp4_map(
     file_name="%s.ccp4"%file_name_prefix,
     unit_cell=cg.unit_cell(),
     space_group=cg.space_group(),

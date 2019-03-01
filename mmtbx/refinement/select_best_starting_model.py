@@ -30,14 +30,14 @@ max_r_free = 0.4
   .type = float
 """)
 
-class evaluate_model (slots_getstate_setstate) :
+class evaluate_model(slots_getstate_setstate):
   """
   Create an fmodel object (including bulk solvent correction) and calculate
   R-factors, with or without optional rigid-body refinement.
   """
   __slots__ = [ "r_work", "r_free", "r_work_start", "r_free_start",
     "xray_structure" ]
-  def __init__ (self,
+  def __init__(self,
       xray_structure,
       pdb_hierarchy,
       f_obs,
@@ -45,7 +45,7 @@ class evaluate_model (slots_getstate_setstate) :
       rigid_body_refine=False,
       optimize_b_factors=False,
       skip_twin_detection=False,
-      scattering_table="n_gaussian") :
+      scattering_table="n_gaussian"):
     self.r_work = None
     self.r_free = None
     self.xray_structure = None
@@ -68,7 +68,7 @@ class evaluate_model (slots_getstate_setstate) :
       scattering_table=scattering_table)
     self.r_work_start = fmodel.r_work()
     self.r_free_start = fmodel.r_free()
-    if (not rigid_body_refine) :
+    if (not rigid_body_refine):
       self.r_work = self.r_work_start
       self.r_free = self.r_free_start
       self.xray_structure = xray_structure
@@ -93,15 +93,15 @@ class evaluate_model (slots_getstate_setstate) :
       self.r_work = refined.fmodel.r_work()
       self.r_free = refined.fmodel.r_free()
 
-  def show (self, out=sys.stdout, prefix="") :
+  def show(self, out=sys.stdout, prefix=""):
     print >> out, prefix + "r_work = %6.4f" % self.r_work
     print >> out, prefix + "r_free = %6.4f" % self.r_free
 
-def ucf (unit_cell) :
+def ucf(unit_cell):
   return "%g %g %g %g %g %g" % unit_cell.parameters()
 
-class select_model (object) :
-  def __init__ (self,
+class select_model(object):
+  def __init__(self,
       model_names,
       model_data,
       f_obs,
@@ -109,15 +109,15 @@ class select_model (object) :
       params=None,
       skip_twin_detection=False,
       nproc=1,
-      log=sys.stdout) :
-    if (params is None) :
+      log=sys.stdout):
+    if (params is None):
       params = master_phil.extract()
     self.model_names = model_names
-    if (model_data is None) :
+    if (model_data is None):
       from iotbx.file_reader import any_file
       model_data = []
       for file_name in model_names :
-        if (not os.path.isfile(file_name)) :
+        if (not os.path.isfile(file_name)):
           raise RuntimeError("model_data is None, but %s is not a file." %
             file_name)
         model_in = any_file(file_name,
@@ -152,13 +152,13 @@ class select_model (object) :
     print >> log, "  unit cell:    %s" % ucf(data_unit_cell)
     pdb_hierarchies = []
     xray_structures = []
-    for k, file_name in enumerate(model_names) :
+    for k, file_name in enumerate(model_names):
       pdb_hierarchy, xray_structure = model_data[k]
       pdb_hierarchy.atoms().reset_i_seq()
       pdb_hierarchies.append(pdb_hierarchy)
       model_symmetry = xray_structure.crystal_symmetry()
       self.model_symmetries.append(model_symmetry)
-      if (model_symmetry is None) :
+      if (model_symmetry is None):
         print >> log, "Model %d is missing symmetry records:" % (k+1)
         print >> log, "  source:  %s" % file_name
         xray_structures.append(None)
@@ -166,20 +166,20 @@ class select_model (object) :
       model_unit_cell = model_symmetry.unit_cell()
       model_space_group = model_symmetry.space_group()
       is_compatible_sg = False
-      if (model_space_group == data_space_group) :
+      if (model_space_group == data_space_group):
         is_compatible_sg = True
       else :
         model_point_group = model_space_group.build_derived_point_group()
-        if (data_point_group == model_point_group) :
+        if (data_point_group == model_point_group):
           is_compatible_sg = True
-      if (not is_compatible_sg) :
+      if (not is_compatible_sg):
         print >> log, "Model %d has incompatible space group:" % (k+1)
         print >> log, "  source:  %s" % file_name
         print >> log, "  space group: %s" % model_space_group.info()
         xray_structures.append(None)
         continue
       is_similar_cell = False
-      if (model_unit_cell.is_similar_to(data_unit_cell)) :
+      if (model_unit_cell.is_similar_to(data_unit_cell)):
         is_similar_cell = True
       else :
         model_cell_edges = model_unit_cell.parameters()[0:3]
@@ -187,9 +187,9 @@ class select_model (object) :
         cell_edge_rmsd = rms_difference(model_cell_edges, data_cell_edges)
         cell_angle_rmsd = rms_difference(model_cell_angles, data_cell_angles)
         if ((cell_edge_rmsd <= params.max_cell_edge_rmsd) and
-            (cell_angle_rmsd <= params.max_cell_angle_rmsd)) :
+            (cell_angle_rmsd <= params.max_cell_angle_rmsd)):
           is_similar_cell = True
-      if (not is_similar_cell) :
+      if (not is_similar_cell):
         print >> log, "Model %d has incompatible space group:" % (k+1)
         print >> log, "  source: %s" % file_name
         print >> log, "  model:  %s" % ucf(model_unit_cell)
@@ -197,7 +197,7 @@ class select_model (object) :
         continue
       else :
         xray_structures.append(xray_structure)
-    if (xray_structures.count(None) != len(xray_structures)) :
+    if (xray_structures.count(None) != len(xray_structures)):
       print >> log, ""
       print >> log, "Calculating R-factors - will use %s processors." % nproc
       evaluations = easy_mp.parallel_map(
@@ -205,11 +205,11 @@ class select_model (object) :
         iterable=zip(xray_structures, pdb_hierarchies),
         processes=nproc)
       passed = []
-      for k, result in enumerate(evaluations) :
-        if (result is not None) :
-          if (result.r_free <= params.max_r_free) :
+      for k, result in enumerate(evaluations):
+        if (result is not None):
+          if (result.r_free <= params.max_r_free):
             passed.append((k, result))
-      if (len(passed) > 0) :
+      if (len(passed) > 0):
         passed.sort(lambda a,b: cmp(a[1].r_free, b[1].r_free))
         i_result, result = passed[0]
         self.evaluations = passed
@@ -219,8 +219,8 @@ class select_model (object) :
         self.best_model_name = self.model_names[i_result]
     self.show(out=log, verbose=True)
 
-  def show (self, out=sys.stdout, verbose=False) :
-    if (self.best_result is None) :
+  def show(self, out=sys.stdout, verbose=False):
+    if (self.best_result is None):
       print >> out, "No models accepted - will need to run MR."
     else :
       print >> out, ""
@@ -228,32 +228,32 @@ class select_model (object) :
       print >> out, "  source: %s" % self.best_model_name
       self.best_result.show(out=out, prefix="    ")
       print >> out, ""
-      if (verbose) and (len(self.evaluations) > 1) :
+      if (verbose) and (len(self.evaluations) > 1):
         print >> out, "Other suitable models:"
         for i_other, other in self.evaluations[1:] :
           print >> out, "  source: %s" % self.model_names[i_other]
           other.show(out=out, prefix="    ")
         print >> out, ""
 
-  def success (self) :
+  def success(self):
     return self.best_pdb_hierarchy is not None
 
-  def r_free (self) :
+  def r_free(self):
     return getattr(self.best_result, "r_free", None)
 
-  def r_work (self) :
+  def r_work(self):
     return getattr(self.best_result, "r_work", None)
 
-  def get_best_model (self, update_structure=True) :
-    if (self.best_result is None) :
+  def get_best_model(self, update_structure=True):
+    if (self.best_result is None):
       return None
     xray_structure = self.best_xray_structure
     pdb_hierarchy = self.best_pdb_hierarchy
-    if (update_structure) :
+    if (update_structure):
       pdb_hierarchy.adopt_xray_structure(xray_structure)
     return xray_structure, pdb_hierarchy
 
-  def save_best_model (self, file_name="best_model.pdb") :
+  def save_best_model(self, file_name="best_model.pdb"):
     assert self.success()
     xray_structure, pdb_hierarchy = self.get_best_model()
     f = open(file_name, "w")
@@ -262,7 +262,7 @@ class select_model (object) :
     f.write(pdb_hierarchy.as_pdb_string(crystal_symmetry=xray_structure))
     f.close()
 
-  def save_updated_data (self, file_name="best_model_data.mtz") :
+  def save_updated_data(self, file_name="best_model_data.mtz"):
     assert self.success()
     xray_structure, pdb_hierarchy = self.get_best_model()
     f_obs = self.f_obs.customized_copy(
@@ -273,9 +273,9 @@ class select_model (object) :
     mtz_data.add_miller_array(r_free_flags, column_root_label="FreeR_flag")
     mtz_data.mtz_object().write(file_name)
 
-  def evaluate_model (self, args) :
+  def evaluate_model(self, args):
     xray_structure, pdb_hierarchy = args
-    if (xray_structure is None) :
+    if (xray_structure is None):
       return None
     return evaluate_model(
       xray_structure=xray_structure,
@@ -285,7 +285,7 @@ class select_model (object) :
       rigid_body_refine=self.params.rigid_body_refine,
       skip_twin_detection=self.skip_twin_detection)
 
-  def space_group_info (self) :
+  def space_group_info(self):
     xray_structure, pdb_hierarchy = self.get_best_model()
     return xray_structure.space_group_info()
 
@@ -316,7 +316,7 @@ strip_model_params = """
     .help = Change HETATM records to ATOM
 """
 
-def strip_model (
+def strip_model(
     pdb_hierarchy=None,
     xray_structure=None,
     file_name=None,
@@ -333,13 +333,13 @@ def strip_model (
     preserve_symmetry=True,
     add_remarks=None,
     output_file=None,
-    log=None) :
+    log=None):
   """
   Utility for removing extraneous records from a model intended for use in
   molecular replacement, etc., including waters, alternate conformations,
   and other features specific to a particular dataset.
   """
-  if (params is not None) :
+  if (params is not None):
     remove_waters = params.remove_waters
     remove_hydrogens = params.remove_hydrogens
     remove_alt_confs = params.remove_alt_confs
@@ -348,11 +348,11 @@ def strip_model (
     reset_occupancies = params.reset_occupancies
     remove_ligands = params.remove_ligands
     reset_hetatm_flag = params.reset_hetatm_flag
-  if (log is None) :
+  if (log is None):
     log = null_out()
   make_sub_header("Processing input model", out=log)
   remarks = None
-  if (file_name is not None) :
+  if (file_name is not None):
     print >> log, "Reading model from %s" % file_name
     assert ([pdb_hierarchy, xray_structure] == [None, None])
     from iotbx import file_reader
@@ -367,60 +367,60 @@ def strip_model (
     pdb_hierarchy = pdb_hierarchy.deep_copy()
     xray_structure = xray_structure.deep_copy_scatterers()
   pdb_hierarchy.atoms().reset_i_seq()
-  if (len(pdb_hierarchy.models()) > 1) :
+  if (len(pdb_hierarchy.models()) > 1):
     raise Sorry("Multiple models not supported.")
-  if (remove_hydrogens) :
+  if (remove_hydrogens):
     sele = ~(xray_structure.hd_selection())
     n_hd = sele.count(False)
-    if (n_hd > 0) :
+    if (n_hd > 0):
       pdb_hierarchy = pdb_hierarchy.select(sele)
       xray_structure = xray_structure.select(sele)
       print >> log, "  removed %d hydrogens" % n_hd
       pdb_hierarchy.atoms().reset_i_seq()
-  if (remove_waters) :
+  if (remove_waters):
     sele = pdb_hierarchy.atom_selection_cache().selection("not (resname HOH)")
     n_wat = sele.count(False)
-    if (n_wat > 0) :
+    if (n_wat > 0):
       pdb_hierarchy = pdb_hierarchy.select(sele)
       xray_structure = xray_structure.select(sele)
       print >> log, "  removed %d waters" % n_wat
       pdb_hierarchy.atoms().reset_i_seq()
   assert_identical_id_str = True
-  if (remove_alt_confs) :
+  if (remove_alt_confs):
     n_atoms_start = xray_structure.scatterers().size()
     pdb_hierarchy.remove_alt_confs(always_keep_one_conformer=False)
     i_seqs = pdb_hierarchy.atoms().extract_i_seq()
     n_atoms_end = i_seqs.size()
-    if (n_atoms_end != n_atoms_start) :
+    if (n_atoms_end != n_atoms_start):
       print >> log, "  removed %d atoms in alternate conformations" % \
         (n_atoms_end - n_atoms_start)
       assert_identical_id_str = False
     xray_structure = xray_structure.select(i_seqs)
     pdb_hierarchy.atoms().reset_i_seq()
-  if (convert_semet_to_met) :
+  if (convert_semet_to_met):
     # XXX need to start from a copy here because the atom-parent relationship
     # seems to be messed up otherwise.  this is probably a bug.
     pdb_hierarchy = pdb_hierarchy.deep_copy()
     pdb_hierarchy.convert_semet_to_met()
-  if (convert_to_isotropic) :
+  if (convert_to_isotropic):
     xray_structure.convert_to_isotropic()
     pdb_hierarchy.adopt_xray_structure(xray_structure,
       assert_identical_id_str=assert_identical_id_str)
     print >> log, "  converted all atoms to isotropic B-factors"
-  if (reset_occupancies) :
+  if (reset_occupancies):
     assert (remove_alt_confs)
     xray_structure.adjust_occupancy(occ_max=1.0, occ_min=1.0)
     pdb_hierarchy.adopt_xray_structure(xray_structure,
       assert_identical_id_str=assert_identical_id_str)
     print >> log, "  reset occupancy to 1.0 for all atoms"
-  if (reset_hetatm_flag) :
-    for atom in pdb_hierarchy.atoms() :
+  if (reset_hetatm_flag):
+    for atom in pdb_hierarchy.atoms():
       atom.hetero = False
-  if (remove_ligands) :
+  if (remove_ligands):
     pdb_hierarchy.atoms().reset_i_seq()
     model = pdb_hierarchy.only_model()
-    for chain in model.chains() :
-      if (not chain.is_protein()) and (not chain.is_na()) :
+    for chain in model.chains():
+      if (not chain.is_protein()) and (not chain.is_na()):
         print >> log, "  removing %d ligand atoms in chain '%s'" % \
           (len(chain.atoms()), chain.id)
         model.remove_chain(chain)
@@ -428,16 +428,16 @@ def strip_model (
     xray_structure = xray_structure.select(i_seqs)
     pdb_hierarchy.atoms().reset_i_seq()
   assert xray_structure.scatterers().size() == pdb_hierarchy.atoms_size()
-  if (output_file is not None) :
+  if (output_file is not None):
     f = open(output_file, "w")
-    if (add_remarks is not None) :
+    if (add_remarks is not None):
       f.write("\n".join(add_remarks))
       f.write("\n")
-    if (preserve_remarks) and (remarks is not None) :
+    if (preserve_remarks) and (remarks is not None):
       f.write("\n".join(remarks))
       f.write("\n")
     symm = None
-    if (preserve_symmetry) :
+    if (preserve_symmetry):
       symm = xray_structure
     f.write(pdb_hierarchy.as_pdb_string(crystal_symmetry=symm))
     f.close()

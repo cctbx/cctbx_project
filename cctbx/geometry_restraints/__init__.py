@@ -14,6 +14,7 @@ from cctbx_geometry_restraints_ext import *
 import scitbx.stl.map
 import math
 import sys
+import StringIO
 
 nonbonded_radius_table = scitbx.stl.map.stl_string_double
 
@@ -463,6 +464,7 @@ def _bond_show_sorted_impl(self,
   if n_not_shown is None: n_not_shown = 0
   print >> f, "%sBond restraints: %d" % (prefix, len_sorted_table+n_not_shown)
   if (f is None): f = sys.stdout
+  if len_sorted_table+n_not_shown==0: return
   print >> f, "%sSorted by %s:" % (prefix, by_value)
   if sorted_table is not None:
     for restraint_info in sorted_table :
@@ -548,10 +550,10 @@ class _(boost.python.injector, shared_bond_simple_proxy):
       b = pdb_atoms[j_seq].xyz
       ab = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
       result += """@dotlist {Drawn dots} color= green"""
-      for x in range(1, 12) :
+      for x in range(1, 12):
         fac = float(x) / 12
         vec = (a[0] + (ab[0]*fac), a[1] + (ab[1]*fac), a[2] + (ab[2]*fac))
-        if (x == 1) :
+        if (x == 1):
           result += "{drawn} %.4f %.4f %.4f" % vec
         else :
           result += "{''} %.4f %.4f %.4f" % vec
@@ -1108,7 +1110,7 @@ class _(boost.python.injector, angle):
       O.angle_ideal, O.angle_model, O.delta,
       weight_as_sigma(weight=O.weight), O.weight, O.residual())
 
-  def _get_sorted_item (O) :
+  def _get_sorted_item(O):
     return [O.angle_ideal, O.angle_model, O.delta,
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
@@ -1203,7 +1205,7 @@ class _(boost.python.injector, shared_angle_proxy):
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
         origin_id=origin_id)
 
-  def get_sorted (self,
+  def get_sorted(self,
         by_value,
         sites_cart,
         site_labels=None,
@@ -1240,7 +1242,7 @@ class _(boost.python.injector, dihedral):
       angle_ideal, O.angle_model, O.delta, O.periodicity,
       weight_as_sigma(weight=O.weight), O.weight, O.residual())
 
-  def _get_sorted_item (O) :
+  def _get_sorted_item(O):
     return [O.angle_ideal, O.angle_model, O.delta, O.periodicity,
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
@@ -1281,16 +1283,18 @@ class _(boost.python.injector, shared_dihedral_proxy):
         unit_cell=None,
         f=None,
         prefix="",
-        max_items=None):
+        max_items=None,
+        origin_id=None):
 
     _show_sorted_impl(O=self,
         proxy_type=dihedral,
         proxy_label=proxy_label,
         item_label="dihedral",
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
-        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
+        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
+        origin_id=origin_id)
 
-  def get_sorted (self,
+  def get_sorted(self,
         by_value,
         sites_cart,
         site_labels=None,
@@ -1324,7 +1328,7 @@ class _(boost.python.injector, chirality):
       str(O.both_signs), O.volume_ideal, O.volume_model, O.delta,
       weight_as_sigma(weight=O.weight), O.weight, O.residual())
 
-  def _get_sorted_item (O) :
+  def _get_sorted_item(O):
     return [str(O.both_signs), O.volume_ideal, O.volume_model, O.delta,
       weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
@@ -1362,15 +1366,17 @@ class _(boost.python.injector, shared_chirality_proxy):
         proxy_label="Chirality",
         f=None,
         prefix="",
-        max_items=None):
+        max_items=None,
+        origin_id=None):
     _show_sorted_impl(O=self,
         proxy_type=chirality,
         proxy_label=proxy_label,
         item_label="chirality",
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
-        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
+        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
+        origin_id=origin_id)
 
-  def get_sorted (self,
+  def get_sorted(self,
         by_value,
         sites_cart,
         site_labels=None,
@@ -1397,7 +1403,7 @@ class _(boost.python.injector, shared_planarity_proxy):
       return planarity_residuals(
         unit_cell=unit_cell, sites_cart=sites_cart, proxies=O)
 
-  def get_sorted (O,
+  def get_sorted(O,
         by_value,
         sites_cart,
         site_labels=None,
@@ -1459,11 +1465,12 @@ class _(boost.python.injector, shared_planarity_proxy):
         unit_cell=None,
         f=None,
         prefix="",
-        max_items=None):
+        max_items=None,
+        origin_id=None):
     assert by_value in ["residual", "rms_deltas"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if (f is None): f = sys.stdout
-    print >> f, "%sPlanarity restraints: %d" % (prefix, O.size())
+    outl = ''
     if (O.size() == 0): return
     if (max_items is not None and max_items <= 0): return
     if (by_value == "residual"):
@@ -1481,9 +1488,11 @@ class _(boost.python.injector, shared_planarity_proxy):
     i_proxies_sorted = flex.sort_permutation(data=data_to_sort, reverse=True)
     if (max_items is not None):
       i_proxies_sorted = i_proxies_sorted[:max_items]
-    print >> f, "%sSorted by %s:" % (prefix, by_value)
+    n_planes=0
     for i_proxy in i_proxies_sorted:
       proxy = O[i_proxy]
+      if origin_id is not None and proxy.origin_id!=origin_id: continue
+      n_planes+=1
       len_max = 0
       ls = []
       for i_seq in proxy.i_seqs:
@@ -1498,8 +1507,7 @@ class _(boost.python.injector, shared_planarity_proxy):
         restraint = planarity(unit_cell=unit_cell, sites_cart=sites_cart,
                               proxy=proxy)
         sym_op_label = " sym.op."
-      print >> f, \
-        "%s      %s    delta    sigma   weight rms_deltas residual%s" % (
+      outl +=  "%s      %s    delta    sigma   weight rms_deltas residual%s\n" % (
           prefix, " "*len_max, sym_op_label)
       s = "plane"
       rdr = None
@@ -1514,7 +1522,7 @@ class _(boost.python.injector, shared_planarity_proxy):
           rt_mx = proxy.sym_ops[i]
           if not rt_mx.is_unit_mx():
             sym_op = "%s %s" %(rdr_spacer, rt_mx.as_xyz())
-        print >> f, "%s%5s %s  %7.3f %6.2e %6.2e%s%s" % (
+        outl += "%s%5s %s  %7.3f %6.2e %6.2e%s%s\n" % (
           prefix, s, l+" "*(len_max-len(l)),
           delta, weight_as_sigma(weight=weight), weight, rdr, sym_op)
         rdr = ""
@@ -1522,7 +1530,13 @@ class _(boost.python.injector, shared_planarity_proxy):
         s = ""
     n_not_shown = O.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
-      print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+      outl += prefix + "... (remaining %d not shown)\n" % n_not_shown
+    if origin_id is None:
+      n_planes = O.size()
+    print >> f, "%sPlanarity restraints: %d" % (prefix, n_planes)
+    if outl:
+      print >> f, "%sSorted by %s:" % (prefix, by_value)
+      print >> f, outl[:-1]
 
 class _(boost.python.injector, parallelity):
 
@@ -1557,13 +1571,15 @@ class _(boost.python.injector, shared_parallelity_proxy):
         proxy_label=None, # not used yet
         f=None,
         prefix="",
-        max_items=None):
+        max_items=None,
+        origin_id=None):
     if (f is None): f = sys.stdout
     sorted_table, n_not_shown = self.get_sorted(
           by_value=by_value,
           sites_cart=sites_cart,
           site_labels=site_labels,
-          max_items=max_items)
+          max_items=max_items,
+          origin_id=origin_id)
     print >> f, "Parallelity restraints: %d" % (self.size())
     if (self.size() == 0): return
     if (max_items is not None and max_items <= 0): return
@@ -1596,12 +1612,14 @@ class _(boost.python.injector, shared_parallelity_proxy):
         by_value,
         sites_cart,
         site_labels=None,
-        max_items=None):
+        max_items=None,
+        origin_id=None):
     return _get_sorted_impl(O=self,
         proxy_type=parallelity,
         by_value=by_value, unit_cell=None, sites_cart=sites_cart,
         site_labels=site_labels, max_items=max_items,
-        get_restraints_only=False)
+        get_restraints_only=False,
+        origin_id=origin_id)
 
 class _(boost.python.injector, shared_bond_similarity_proxy):
 
@@ -1626,7 +1644,8 @@ class _(boost.python.injector, shared_bond_similarity_proxy):
       unit_cell=None,
       f=None,
       prefix="",
-      max_items=None):
+      max_items=None,
+      origin_id=None):
     assert by_value in ["residual", "rms_deltas"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if (f is None): f = sys.stdout
@@ -1651,6 +1670,7 @@ class _(boost.python.injector, shared_bond_similarity_proxy):
     print >> f, "%sSorted by %s:" % (prefix, by_value)
     for i_proxy in i_proxies_sorted:
       proxy = O[i_proxy]
+      if origin_id is not None and proxy.origin_id!=origin_id: continue
       len_max = 0
       ls = []
       for pair in proxy.i_seqs:
@@ -1837,22 +1857,32 @@ def _show_sorted_impl(O,
   if n_not_shown is None: n_not_shown = 0
   print >> f, "%s%s restraints: %d" % (prefix, proxy_label, len_sorted_table+n_not_shown)
   if (O.size() == 0): return
-  if (proxy_type is dihedral):
-    n_harmonic = O.count_harmonic()
-    n_sinusoidal = O.size() - n_harmonic
-    print >> f, prefix+"  sinusoidal: %d" % n_sinusoidal
-    print >> f, prefix+"    harmonic: %d" % n_harmonic
+  if len_sorted_table+n_not_shown==0: return
+  n_harmonic = 0
+  n_sinusoidal = 0
   if (max_items is not None and max_items <= 0): return
   item_label_blank = " " * len(item_label)
-  print >> f, "%sSorted by %s:" % (prefix, by_value)
+  outl = StringIO.StringIO()
   for (labels, restraint) in sorted_table :
+    if (proxy_type is dihedral) and (origin_id==0 or origin_id is None):
+      if restraint.periodicity<=0: n_harmonic+=1
+      else: n_sinusoidal+=1
     s = item_label
     for l in labels :
-      print >> f, "%s%s %s" % (prefix, s, l)
+      print >> outl, "%s%s %s" % (prefix, s, l)
       s = item_label_blank
-    restraint._show_sorted_item(f=f, prefix=prefix)
+    restraint._show_sorted_item(f=outl, prefix=prefix)
   if (n_not_shown != 0):
-    print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+    if (proxy_type is dihedral):
+      n_harmonic = O.count_harmonic()
+      n_sinusoidal = O.size() - n_harmonic
+    print >> outl, prefix + "... (remaining %d not shown)" % n_not_shown
+  #
+  if (proxy_type is dihedral) and (origin_id==0 or origin_id is None):
+    print >> f, prefix+"  sinusoidal: %d" % n_sinusoidal
+    print >> f, prefix+"    harmonic: %d" % n_harmonic
+  print >> f, "%sSorted by %s:" % (prefix, by_value)
+  print >> f, outl.getvalue()[:-1]
 
 class pair_proxies(object):
 
@@ -1887,7 +1917,7 @@ class pair_proxies(object):
       assert nonbonded_distance_cutoff_plus_buffer is not None
       assert shell_asu_tables is not None
       assert len(shell_asu_tables) > 0
-      if (nonbonded_charges is None) :
+      if (nonbonded_charges is None):
         nonbonded_charges = flex.int(nonbonded_types.size(), 0)
       assert (nonbonded_types.size() == nonbonded_charges.size())
       self.nonbonded_proxies = nonbonded_sorted_asu_proxies(

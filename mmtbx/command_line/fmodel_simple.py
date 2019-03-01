@@ -3,7 +3,7 @@ from __future__ import division
 from libtbx import easy_pickle
 import sys
 
-def master_phil () :
+def master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     enable_automatic_twin_detection=True,
@@ -12,7 +12,7 @@ output_file = fmodel.pkl
   .type = path
 """)
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   import mmtbx.command_line
   cmdline = mmtbx.command_line.load_model_and_data(
     args=args,
@@ -27,5 +27,5 @@ def run (args, out=sys.stdout) :
   print >> out, "Wrote fmodel to %s" % cmdline.params.output_file
   return fmodel
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

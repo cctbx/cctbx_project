@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.phil
 from libtbx.utils import Sorry
 from libtbx.option_parser import option_parser
@@ -58,9 +58,9 @@ def run(args, command_name="libtbx.phil", converter_registry=None):
       print_width=co.print_width)
   if (not co.diff):
     for file_name in file_names:
-      print prefix.rstrip()
+      print(prefix.rstrip())
       show(scope=parse(file_name=file_name))
-      print prefix.rstrip()
+      print(prefix.rstrip())
   else:
     if (len(file_names) < 2):
       raise Sorry("Option --diff requires at least two file names.")

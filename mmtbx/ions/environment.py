@@ -47,7 +47,7 @@ CHEM_ENV_LABELS = [
   "Coordinating sulfur",
   ]
 
-class ScatteringEnvironment (slots_getstate_setstate):
+class ScatteringEnvironment(slots_getstate_setstate):
   """
   Container for information summarizing a site's scattering environment.
 
@@ -85,12 +85,12 @@ class ScatteringEnvironment (slots_getstate_setstate):
     self.wavelength = manager.wavelength
     self.fp, self.fpp = manager.get_fp(i_seq), manager.get_fpp(i_seq)
     site_frac = manager.unit_cell.fractionalize(atom.xyz)
-    if (fo_density is not None) :
+    if (fo_density is not None):
       self.fo_density = fo_density
     else :
       self.fo_density = ions.utils.fit_gaussian(manager.unit_cell, atom.xyz,
         fo_map)
-    if (fofc_density is not None) :
+    if (fofc_density is not None):
       self.fofc_density = fofc_density
     else :
       self.fofc_density = (fofc_map.eight_point_interpolation(site_frac), 0,)
@@ -106,25 +106,25 @@ class ScatteringEnvironment (slots_getstate_setstate):
     self.pai = manager.principal_axes_of_inertia(i_seq).center_of_mass()
 
 # TODO
-#  def is_outlier (self, element) :
+#  def is_outlier(self, element):
 #    """
 #    Indicate whether the scattering is consistent with the given element (which
 #    is assumed to be the refined scattering type).
 #    """
 #    flags = []
 #    fp_fdp = None
-#    if (self.wavelength is not None) :
+#    if (self.wavelength is not None):
 #      table = sasaki.table(element)
 #      fp_fdp = table.at_angstrom(self.wavelength)
-#    if (self.fpp is not None) :
-#      if (fp_fdp is not None) :
+#    if (self.fpp is not None):
+#      if (fp_fdp is not None):
 #        fdp_expected = fp_fdp.fdp()
-#        if (self.fpp > fdp_expected*1.2) :
+#        if (self.fpp > fdp_expected*1.2):
 #          flags.append(flag_anom_high
-#    if (self.anom_density is not None) :
+#    if (self.anom_density is not None):
 #      if (fp_fdp.wave
 
-class atom_contact (slots_getstate_setstate) :
+class atom_contact(slots_getstate_setstate):
   """
   Container for information about an interacting atom.  Most of the methods
   are simply wrappers for frequently called operations on the atom object, but
@@ -141,7 +141,7 @@ class atom_contact (slots_getstate_setstate) :
   """
   __slots__ = ["atom", "vector", "site_cart", "rt_mx", "is_carboxy_terminus",
                "element", "charge"]
-  def __init__ (self, atom, vector, site_cart, rt_mx) :
+  def __init__(self, atom, vector, site_cart, rt_mx):
     self.atom = atom.fetch_labels()
     self.is_carboxy_terminus = _is_carboxy_terminus(atom)
     self.vector = vector
@@ -150,7 +150,7 @@ class atom_contact (slots_getstate_setstate) :
     self.element = ions.server.get_element(atom)
     self.charge = ions.server.get_charge(atom)
 
-  def distance (self) :
+  def distance(self):
     """
     Actual distance from target atom.
 
@@ -161,7 +161,7 @@ class atom_contact (slots_getstate_setstate) :
     """
     return abs(self.vector)
 
-  def distance_from (self, other) :
+  def distance_from(self, other):
     """
     Distance from another coordinating atom.
 
@@ -176,7 +176,7 @@ class atom_contact (slots_getstate_setstate) :
     """
     return abs(self.vector - other.vector)
 
-  def id_str (self, suppress_rt_mx=False) :
+  def id_str(self, suppress_rt_mx=False):
     """
     Creates a string from the atom's id string and the symmetry operator
     associated with that site.
@@ -190,12 +190,12 @@ class atom_contact (slots_getstate_setstate) :
     -------
     str
     """
-    if (not self.rt_mx.is_unit_mx()) and (not suppress_rt_mx) :
+    if (not self.rt_mx.is_unit_mx()) and (not suppress_rt_mx):
       return self.atom.id_str() + " " + str(self.rt_mx)
     else :
       return self.atom.id_str()
 
-  def atom_name (self) :
+  def atom_name(self):
     """
     Retrieves the coordinating atom's name (i.e. "OX1")
 
@@ -205,7 +205,7 @@ class atom_contact (slots_getstate_setstate) :
     """
     return self.atom.name.strip()
 
-  def resname (self) :
+  def resname(self):
     """
     Retrieves the residue name associated with te coordinating atom (i.e. "ARG")
 
@@ -216,7 +216,7 @@ class atom_contact (slots_getstate_setstate) :
     return self.atom.fetch_labels().resname.strip().upper()
 
   @property
-  def occ (self) :
+  def occ(self):
     """
     Occupancy of the coordinating atom.
 
@@ -226,7 +226,7 @@ class atom_contact (slots_getstate_setstate) :
     """
     return self.atom.occ
 
-  def atom_i_seq (self) :
+  def atom_i_seq(self):
     """
     Retrieves the sequence ID of the coordinating atom.
 
@@ -236,7 +236,7 @@ class atom_contact (slots_getstate_setstate) :
     """
     return self.atom.i_seq
 
-  def altloc (self) :
+  def altloc(self):
     """
     Retrieves the alternate conformation label, if any, of the coordinating
     atom.
@@ -247,7 +247,7 @@ class atom_contact (slots_getstate_setstate) :
     """
     return self.atom.fetch_labels().altloc.strip()
 
-  def atom_id_no_altloc (self, suppress_rt_mx=False) :
+  def atom_id_no_altloc(self, suppress_rt_mx=False):
     """
     Unique identifier for an atom, ignoring the altloc but taking the symmetry
     operator (if any) into account.
@@ -262,12 +262,12 @@ class atom_contact (slots_getstate_setstate) :
     """
     labels = self.atom.fetch_labels()
     base_id = labels.chain_id + labels.resid() + self.atom.name
-    if (self.rt_mx.is_unit_mx()) or (suppress_rt_mx) :
+    if (self.rt_mx.is_unit_mx()) or (suppress_rt_mx):
       return base_id
     else :
       return base_id + " " + str(self.rt_mx)
 
-  def __eq__ (self, other) :
+  def __eq__(self, other):
     """
     Equality operator, taking symmetry into account but ignoring the
     altloc identifier.
@@ -282,13 +282,13 @@ class atom_contact (slots_getstate_setstate) :
     """
     return (other.atom_id_no_altloc() == self.atom_id_no_altloc())
 
-  def __abs__ (self) :
+  def __abs__(self):
     return self.distance()
 
-  def __str__ (self) :
+  def __str__(self):
     return self.id_str()
 
-class ChemicalEnvironment (slots_getstate_setstate):
+class ChemicalEnvironment(slots_getstate_setstate):
   """
   Container for information summarizing a site's chemical environment.
 
@@ -492,7 +492,7 @@ class ChemicalEnvironment (slots_getstate_setstate):
 
     return chem_env
 
-def find_nearby_atoms (
+def find_nearby_atoms(
     i_seq,
     xray_structure,
     pdb_atoms,
@@ -557,7 +557,7 @@ def find_nearby_atoms (
           rt_mx = rt_mx)
         # XXX I have no idea why the built-in handling of special positions
         # doesn't catch this for us
-        if (j_seq == i_seq) and (not rt_mx.is_unit_mx()) :
+        if (j_seq == i_seq) and (not rt_mx.is_unit_mx()):
           continue
         if contact.distance() < near_distance_cutoff:
           continue
@@ -566,7 +566,7 @@ def find_nearby_atoms (
   # just bonded to genuine coordinating atoms.  This is basically just a
   # way to handle sidechains such as His, Asp/Glu, or Cys where the carbons
   # may be relatively close to the metal site.
-  if filter_by_bonding and (connectivity is not None) :
+  if filter_by_bonding and (connectivity is not None):
     filtered = []
     all_i_seqs = [contact.atom_i_seq() for contact in contacts]
     for contact in contacts:
@@ -583,7 +583,7 @@ def find_nearby_atoms (
       # Examine the mode connectivity to catch more closely bonded atoms
       bonded_j_seqs = []
       for j_seq in connectivity[contact.atom_i_seq()]:
-        if (j_seq in all_i_seqs) :
+        if (j_seq in all_i_seqs):
           bonded_j_seqs.append(j_seq)
       for j_seq in bonded_j_seqs:
         other_contact = contacts[all_i_seqs.index(j_seq)]
@@ -598,7 +598,7 @@ def find_nearby_atoms (
 ########################################################################
 # UTILITY METHODS
 #
-def _is_carboxy_terminus (pdb_object):
+def _is_carboxy_terminus(pdb_object):
   """
   Checks if an atom or residue is part of a carboxy terminus.
 
@@ -615,13 +615,13 @@ def _is_carboxy_terminus (pdb_object):
             the SVM code.
   """
   atoms = None
-  if (type(pdb_object).__name__ == "atom") :
+  if (type(pdb_object).__name__ == "atom"):
     atoms = pdb_object.parent().atoms()
   else :
     assert (type(pdb_object).__name__ in ['residue_group','atom_group'])
     atoms = pdb_object.atoms()
   for atom in atoms :
-    if (atom.name.strip() == "OXT") :
+    if (atom.name.strip() == "OXT"):
       return True
   return False
 

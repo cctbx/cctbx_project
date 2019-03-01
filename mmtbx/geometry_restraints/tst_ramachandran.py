@@ -19,7 +19,7 @@ from libtbx.utils import null_out
 import sys
 import os
 
-def exercise_basic () :
+def exercise_basic():
   t = ramachandran.load_tables()["ala"]
   assert approx_equal(t.get_score(0.0,0.0), -26.16, eps=0.01)
   assert approx_equal(t.get_score(-60,120), 10.41, eps=0.01)
@@ -148,7 +148,7 @@ ATOM     61  CZ3 TRP A   4       0.960   7.272   2.810  1.00  0.00           C
 ATOM     62  CH2 TRP A   4       0.788   6.958   1.455  1.00  0.00           C
 END
 """
-def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
+def exercise_lbfgs_simple(mon_lib_srv, ener_lib, verbose=False):
   # three peptides:
   #  1 = poly-ALA, favored
   #  2 = poly-ALA, outlier
@@ -158,7 +158,7 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
   # but it's still good and we're starting from an excellent score anyway.
   #
   residuals = [0.00168766995882, 170.84797160, 161.5214609]
-  for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
+  for i, peptide in enumerate([pdb1, pdb2, pdb3]):
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
     log = StringIO()
@@ -179,7 +179,7 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
     assert approx_equal(residual_an, residuals[i], eps=0.001)
   if verbose :
     print ""
-  for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
+  for i, peptide in enumerate([pdb1, pdb2, pdb3]):
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
     o = benchmark_structure(pdb_in, mon_lib_srv, ener_lib, verbose)
@@ -199,11 +199,11 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
       print "         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi2, psi2, r2)
       print ""
 
-def exercise_lbfgs_big (verbose=False) :
+def exercise_lbfgs_big(verbose=False):
   file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3mku.pdb",
     test=os.path.isfile)
-  if (file_name is None) :
+  if (file_name is None):
     print "Skipping big test."
     return
   pdb_in = iotbx.pdb.input(source_info="peptide",
@@ -212,7 +212,7 @@ def exercise_lbfgs_big (verbose=False) :
   if verbose :
     show_results(o, "3mhk")
 
-def show_results (o, structure_name) :
+def show_results(o, structure_name):
   print structure_name
   print " before: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
     % (o.b0, o.a0, o.r0.percent_outliers, o.r0.percent_favored)
@@ -222,7 +222,7 @@ def show_results (o, structure_name) :
     % (o.b2, o.a2, o.r2.percent_outliers, o.r2.percent_favored)
   print ""
 
-def benchmark_structure (pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0) :
+def benchmark_structure(pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0):
   log = StringIO()
 
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -352,8 +352,11 @@ END
   gv = out.getvalue()
   # print out.getvalue()
   # STOP()
-  assert gv == """\
-Ramachandran plot restraints: 8
+  assert not show_diff(gv, """\
+Ramachandran plot restraints (Oldfield): 0
+Sorted by residual:
+
+Ramachandran plot restraints (Emsley): 8
 Sorted by residual:
 phi-psi angles formed by             residual
     pdb=" C   ALA     7 "            1.53e+01
@@ -404,7 +407,7 @@ phi-psi angles formed by             residual
     pdb=" C   ALA     6 "
     pdb=" N   ALA     7 "
 
-"""
+""")
 
   params.rama_potential = "oldfield"
   rama_manager = ramachandran.ramachandran_manager(
@@ -417,7 +420,7 @@ phi-psi angles formed by             residual
       f=out)
   gv = out.getvalue()
   assert not show_diff(gv, """\
-Ramachandran plot restraints: 8
+Ramachandran plot restraints (Oldfield): 8
 Sorted by residual:
 phi-psi angles formed by             residual
     pdb=" C   ALA     5 "            3.46e-02
@@ -468,6 +471,9 @@ phi-psi angles formed by             residual
     pdb=" C   ALA     8 "
     pdb=" N   ALA     9 "
 
+Ramachandran plot restraints (Emsley): 0
+Sorted by residual:
+
 """)
 
 def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
@@ -476,7 +482,7 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
     # relative_path="phenix_regression/pdb/3mku.pdb",
     relative_path="phenix_regression/pdb/fab_a_cut.pdb",
     test=os.path.isfile)
-  if (file_name is None) :
+  if (file_name is None):
     print "Skipping test."
     return
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -510,7 +516,7 @@ def exercise_allowed_outliers():
   file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3ifk.pdb",
     test=os.path.isfile)
-  if (file_name is None) :
+  if (file_name is None):
     print "Skipping test."
     return
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -522,7 +528,7 @@ def exercise_allowed_outliers():
       log=null_out())
   grm = model.get_restraints_manager().geometry
   assert grm.ramachandran_manager.get_n_proxies() == 170
-  full_proxies_iseqs = list(tuple(x.get_i_seqs()) for x in grm.ramachandran_manager.proxies)
+  full_proxies_iseqs = list(tuple(x.get_i_seqs()) for x in grm.ramachandran_manager._oldfield_proxies)
 
   params.pdb_interpretation.peptide_link.ramachandran_restraints = True
   params.pdb_interpretation.peptide_link.restrain_rama_outliers = False
@@ -531,8 +537,8 @@ def exercise_allowed_outliers():
   grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   # print "without outliers", nprox
-  assert nprox == 167
-  no_out_proxies_iseqs = list(tuple(x.get_i_seqs()) for x in grm.ramachandran_manager.proxies)
+  assert nprox == 167, nprox
+  no_out_proxies_iseqs = list(tuple(x.get_i_seqs()) for x in grm.ramachandran_manager._oldfield_proxies)
   # assert nprox == 5, ""+\
   #     "Want to get 5 rama proxies, got %d" % nprox
   sdif_list = sorted(list(set(full_proxies_iseqs) - set(no_out_proxies_iseqs)))
@@ -553,7 +559,7 @@ def exercise_allowed_outliers():
   nprox = grm.ramachandran_manager.get_n_proxies()
   # print "without allowed", nprox
   assert nprox == 167
-  no_all_proxies_iseqs = list(tuple(x.get_i_seqs()) for x in grm.ramachandran_manager.proxies)
+  no_all_proxies_iseqs = list(tuple(x.get_i_seqs()) for x in grm.ramachandran_manager._oldfield_proxies)
   sdif_list = sorted(list(set(full_proxies_iseqs) - set(no_all_proxies_iseqs)))
   allowed_txt_list = [
       'pdb=" N   THR A   5 "',
@@ -572,7 +578,7 @@ def exercise_allowed_outliers():
   nprox = grm.ramachandran_manager.get_n_proxies()
   # print "without both", nprox
   assert nprox == 164
-  no_both_proxies_iseqs = list(tuple(x.get_i_seqs()) for x in grm.ramachandran_manager.proxies)
+  no_both_proxies_iseqs = list(tuple(x.get_i_seqs()) for x in grm.ramachandran_manager._oldfield_proxies)
   sdif_list = sorted(list(set(full_proxies_iseqs) - set(no_both_proxies_iseqs)))
   both_txt_list = [
       'pdb=" N   THR A   5 "',
@@ -586,6 +592,38 @@ def exercise_allowed_outliers():
     # print model.get_hierarchy().atoms()[a[1]].id_str()
     assert model.get_hierarchy().atoms()[a[1]].id_str() == answer
 
+def exercise_allowed_outliers_emsley_filling():
+  file_name = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/3ifk.pdb",
+    test=os.path.isfile)
+  if (file_name is None):
+    print "Skipping test."
+    return
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+  params.pdb_interpretation.peptide_link.restrain_rama_outliers = False
+  params.pdb_interpretation.peptide_link.restrain_rama_allowed = True
+  params.pdb_interpretation.peptide_link.restrain_allowed_outliers_with_emsley=True
+  pdb_inp = iotbx.pdb.input(file_name=file_name)
+  model = mmtbx.model.manager(
+      model_input=pdb_inp,
+      pdb_interpretation_params=params,
+      log=null_out())
+  grm = model.get_restraints_manager().geometry
+  assert grm.ramachandran_manager.get_n_proxies() == 170
+  assert grm.ramachandran_manager.get_n_oldfield_proxies() == 167
+  assert grm.ramachandran_manager.get_n_emsley_proxies() == 3
+
+  params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+  params.pdb_interpretation.peptide_link.restrain_rama_outliers = False
+  params.pdb_interpretation.peptide_link.restrain_rama_allowed = False
+  params.pdb_interpretation.peptide_link.restrain_allowed_outliers_with_emsley=True
+  model.set_pdb_interpretation_params(params)
+  grm = model.get_restraints_manager().geometry
+  nprox = grm.ramachandran_manager.get_n_proxies()
+  assert nprox == 170
+  assert grm.ramachandran_manager.get_n_oldfield_proxies() == 164
+  assert grm.ramachandran_manager.get_n_emsley_proxies() == 6
 
 def exercise_acs(mon_lib_srv, ener_lib):
   ac_pdb1 = """\
@@ -703,8 +741,10 @@ if __name__ == "__main__" :
   t5 = time.time()
   exercise_allowed_outliers()
   t6 = time.time()
-  exercise_acs(mon_lib_srv, ener_lib)
+  exercise_allowed_outliers_emsley_filling()
   t7 = time.time()
-  print "Times: %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f. Total: %.3f" % (
-      t1-t0, t2-t1, t3-t2, t4-t3, t5-t4, t6-t5, t7-t6, t7-t0)
+  exercise_acs(mon_lib_srv, ener_lib)
+  t8 = time.time()
+  print "Times: %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f. Total: %.3f" % (
+      t1-t0, t2-t1, t3-t2, t4-t3, t5-t4, t6-t5, t7-t6, t8-t7, t8-t0)
   print "OK"

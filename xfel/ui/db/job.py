@@ -176,7 +176,7 @@ class Job(db_proxy):
 # Support classes and functions for job submission
 
 class _job(object):
-  """Used to represent a job that may not have been submitted into the cluseter or database  yet"""
+  """Used to represent a job that may not have been submitted into the cluster or database yet"""
   def __init__(self, trial, rungroup, run):
     self.trial = trial
     self.rungroup = rungroup
@@ -196,15 +196,7 @@ def submit_all_jobs(app):
   for trial in trials:
     for rungroup in trial.rungroups:
       assert rungroup.active
-      rg_start = app.get_run(run_number=rungroup.startrun)
-      if rungroup.endrun is None:
-        # open ended run group
-        rg_runs = [r for r in runs if r.run >= rg_start.run]
-      else:
-        # closed run group
-        rg_end = app.get_run(run_number=rungroup.endrun)
-        rg_runs = [r for r in runs if r.run >= rg_start.run and r.run <= rg_end.run]
-      for run in rg_runs:
+      for run in rungroup.runs:
         needed_jobs.append(_job(trial, rungroup, run))
 
   all_jobs = [j for j in submitted_jobs] # shallow copy
@@ -212,7 +204,7 @@ def submit_all_jobs(app):
     if job in submitted_jobs:
       continue
 
-    print "Submitting job: trial %d, rungroup %d, run %d"%(job.trial.trial, job.rungroup.id, job.run.run)
+    print "Submitting job: trial %d, rungroup %d, run %s"%(job.trial.trial, job.rungroup.id, job.run.run)
 
     j = app.create_job(trial_id = job.trial.id,
                        rungroup_id = job.rungroup.id,
@@ -232,18 +224,26 @@ def submit_job(app, job):
   configs_dir = os.path.join(settings_dir, "cfgs")
   if not os.path.exists(configs_dir):
     os.makedirs(configs_dir)
-  target_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_params.phil"%
-    (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
+  if app.params.facility.name == 'lcls':
+    identifier_string = "%s_%s_r%04d_t%03d_rg%03d"% \
+      (app.params.facility.lcls.experiment, app.params.experiment_tag, int(job.run.run), job.trial.trial, job.rungroup.id)
+  else:
+    identifier_string = "%s_%s_t%03d_rg%03d"% \
+      (app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id)
+  target_phil_path = os.path.join(configs_dir, identifier_string + "_params.phil")
   dispatcher = app.params.dispatcher
 
   phil_str = job.trial.target_phil_str
   if job.rungroup.extra_phil_str is not None:
     phil_str += "\n" + job.rungroup.extra_phil_str
 
-  from xfel.ui import known_dials_dispatchers
-  if dispatcher in known_dials_dispatchers:
-    import importlib
-    orig_phil_scope = importlib.import_module(known_dials_dispatchers[dispatcher]).phil_scope
+  from xfel.ui import load_phil_scope_from_dispatcher
+  if dispatcher == "cxi.xtc_process":
+    image_format = 'pickle'
+  else:
+    orig_phil_scope = load_phil_scope_from_dispatcher(dispatcher)
+    if os.path.isfile(dispatcher):
+      dispatcher = 'libtbx.python ' + dispatcher
     from iotbx.phil import parse
     if job.rungroup.two_theta_low is not None or job.rungroup.two_theta_high is not None:
       override_str = """
@@ -271,17 +271,12 @@ def submit_job(app, job):
         mode = "jungfrau"
       else:
         assert False, "Couldn't figure out what kind of detector is specified by address %s"%job.rungroup.detector_address
-    if dispatcher == 'cctbx.xfel.xtc_process':
+    if hasattr(trial_params, 'format'):
       trial_params.format.file_format = image_format
       trial_params.format.cbf.mode = mode
-  elif dispatcher == "cxi.xtc_process":
-    image_format = 'pickle'
-  else:
-    raise RuntimeError("Unknown dispatcher: %s"%dispatcher)
 
   if job.rungroup.calib_dir is not None or job.rungroup.config_str is not None or dispatcher == 'cxi.xtc_process' or image_format == 'pickle':
-    config_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d.cfg"%
-      (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
+    config_path = os.path.join(configs_dir, identifier_string + ".cfg")
   else:
     config_path = None
 
@@ -304,23 +299,27 @@ def submit_job(app, job):
     two_theta_high            = job.rungroup.two_theta_high,
     # Generally for job submission
     dry_run                   = app.params.dry_run,
-    dispatcher                = app.params.dispatcher,
+    dispatcher                = dispatcher,
     cfg                       = config_path,
-    experiment                = app.params.experiment,
+    experiment                = app.params.facility.lcls.experiment, # LCLS specific parameter
     run_num                   = job.run.run,
     output_dir                = app.params.output_folder,
-    use_ffb                   = app.params.use_ffb,
+    use_ffb                   = app.params.facility.lcls.use_ffb, # LCLS specific parameter
     # Generally for both
     trial                     = job.trial.trial,
     rungroup                  = job.rungroup.rungroup_id,
     experiment_tag            = app.params.experiment_tag,
     calib_dir                 = job.rungroup.calib_dir,
     nproc                     = app.params.mp.nproc,
+    nproc_per_node            = app.params.mp.nproc_per_node,
     queue                     = app.params.mp.queue,
+    env_script                = app.params.mp.env_script[0] if len(app.params.mp.env_script) > 0 else None,
+    method                    = app.params.mp.method,
     target                    = target_phil_path,
     host                      = app.params.db.host,
     dbname                    = app.params.db.name,
     user                      = app.params.db.user,
+    port                      = app.params.db.port,
   )
   if app.params.db.password is not None and len(app.params.db.password) == 0:
     d['password'] = None
@@ -331,9 +330,9 @@ def submit_job(app, job):
 
   if dispatcher == 'cxi.xtc_process':
     phil.write(phil_str)
-  elif dispatcher in known_dials_dispatchers:
+  else:
     extra_scope = None
-    if dispatcher == 'cctbx.xfel.xtc_process':
+    if hasattr(trial_params, 'format'):
       if image_format == "cbf":
         trial_params.input.address = job.rungroup.detector_address
         trial_params.format.cbf.detz_offset = job.rungroup.detz_parameter
@@ -353,25 +352,27 @@ def submit_job(app, job):
       trial_params.spotfinder.lookup.mask = job.rungroup.untrusted_pixel_mask_path
       trial_params.integration.lookup.mask = job.rungroup.untrusted_pixel_mask_path
 
-      locator_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d.loc"%
-                                  (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
-      locator = open(locator_path, 'w')
-      locator.write("experiment=%s\n"%app.params.experiment)
-      locator.write("run=%d\n"%job.run.run)
-      locator.write("detector_address=%s\n"%job.rungroup.detector_address)
+      if app.params.facility.name == 'lcls':
+        locator_path = os.path.join(configs_dir, identifier_string + ".loc")
+        locator = open(locator_path, 'w')
+        locator.write("experiment=%s\n"%app.params.facility.lcls.experiment) # LCLS specific parameter
+        locator.write("run=%s\n"%job.run.run)
+        locator.write("detector_address=%s\n"%job.rungroup.detector_address)
 
-      if image_format == "cbf":
-        if mode == 'rayonix':
-          from xfel.cxi.cspad_ana import rayonix_tbx
-          pixel_size = rayonix_tbx.get_rayonix_pixel_size(job.rungroup.binning)
-          fast, slow = rayonix_tbx.get_rayonix_detector_dimensions(job.rungroup.binning)
-          extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-job.rungroup.beamx * pixel_size,
-                                                                                            job.rungroup.beamy * pixel_size,
-                                                                                           -job.rungroup.detz_parameter))
-          locator.write("rayonix.bin_size=%s\n"%job.rungroup.binning)
-      locator.close()
-      d['locator'] = locator_path
-
+        if image_format == "cbf":
+          if mode == 'rayonix':
+            from xfel.cxi.cspad_ana import rayonix_tbx
+            pixel_size = rayonix_tbx.get_rayonix_pixel_size(job.rungroup.binning)
+            extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-job.rungroup.beamx * pixel_size,
+                                                                                              job.rungroup.beamy * pixel_size,
+                                                                                             -job.rungroup.detz_parameter))
+            locator.write("rayonix.bin_size=%s\n"%job.rungroup.binning)
+          elif mode == 'cspad':
+            locator.write("cspad.detz_offset=%s\n"%job.rungroup.detz_parameter)
+        locator.close()
+        d['locator'] = locator_path
+      else:
+        d['locator'] = None
 
     if job.rungroup.two_theta_low is not None or job.rungroup.two_theta_high is not None:
       try:
@@ -407,7 +408,7 @@ def submit_job(app, job):
     elif image_format == 'pickle':
       modules.insert(0, 'my_ana_pkg.mod_radial_average')
       modules.extend(['my_ana_pkg.mod_image_dict'])
-    if app.params.dump_shots:
+    if app.params.facility.lcls.dump_shots:
       modules.insert(0, 'my_ana_pkg.mod_dump:shot')
 
     if len(modules) > 0:
@@ -434,20 +435,19 @@ def submit_job(app, job):
     if dispatcher != 'cxi.xtc_process':
       d['untrusted_pixel_mask_path'] = job.rungroup.untrusted_pixel_mask_path
 
-  submit_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_submit.phil"%
-    (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
-
+  submit_phil_path = os.path.join(configs_dir, identifier_string + "_submit.phil")
   submit_root = libtbx.env.find_in_repositories("xfel/ui/db/cfgs")
   if dispatcher in ['cxi.xtc_process', 'cctbx.xfel.xtc_process']:
     template = open(os.path.join(submit_root, "submit_xtc_process.phil"))
-  elif dispatcher == 'cctbx.xfel.process':
-    template = open(os.path.join(submit_root, "submit_xfel_process.phil"))
   else:
     test_root = os.path.join(submit_root, "submit_" + dispatcher + ".phil")
     if os.path.exists(test_root):
       template = open(test_root)
     else:
-      template = open(os.path.joins(submit_root, "submit.phil"))
+      if hasattr(trial_params, 'format'):
+        template = open(os.path.join(submit_root, "submit_xtc_process.phil"))
+      else:
+        template = open(os.path.join(submit_root, "submit_xfel_process.phil"))
   phil = open(submit_phil_path, "w")
 
   if dispatcher == 'cxi.xtc_process':
@@ -462,4 +462,7 @@ def submit_job(app, job):
   phil.close()
 
   from xfel.command_line.cxi_mpi_submit import Script as submit_script
-  return submit_script().run([submit_phil_path])
+  args = [submit_phil_path]
+  if app.params.facility.name != 'lcls':
+    args.append(job.run.path)
+  return submit_script().run(args)

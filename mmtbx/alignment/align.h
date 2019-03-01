@@ -89,6 +89,7 @@ public:
   align(
       DataType const& seq_a,
       DataType const& seq_b,
+      af::const_ref<float> const& masking,
       std::string const& style = "global",
       float gap_opening_penalty=1,
       float gap_extension_penalty=1,
@@ -104,6 +105,18 @@ public:
     D.resize(af::c_grid<2>(m+1, n+1), 0);
     I.resize(af::c_grid<2>(m+1, n+1), 0);
     E.resize(af::c_grid<2>(m+1, n+1), 0);
+    af::shared<float> G;
+    G.resize(m+1); // scale on gap penalty at position i for sequence a.
+                   // If all 1 it is standard gap penalty
+
+    for (int i=0; i<m+1; i++){
+      if (i==0 || i==m) {
+        G[i]=gap_cost(1);
+      } else {
+       float scale = masking[i];
+       G[i] = scale*gap_cost(1); // cost of gap at i i_scale bigger than default
+      }
+    }
 
     if (style == "global")
       for (int i=0; i<m+1; i++) M(i,0) = -gap_cost(i);
@@ -113,10 +126,10 @@ public:
       for (int j=1; j<=n; j++) {
 
         if (i==1) D(i,j) = M(i-1,j)-gap_cost(1);
-        else D(i,j) = std::max( M(i-1,j)-gap_cost(1), D(i-1,j)-gep);
+        else D(i,j) = std::max( M(i-1,j)-G[i], D(i-1,j)-gep);
 
         if (j==1) I(i,j) = M(i,j-1)-gap_cost(1);
-        else I(i,j) = std::max(M(i,j-1)-gap_cost(1), I(i,j-1)-gep);
+        else I(i,j) = std::max(M(i,j-1)-G[i], I(i,j-1)-gep);
 
         M(i,j) = detail::maximum( M(i-1,j-1)+sim_fun_select(seq_a[i-1],seq_b[j-1],similarity_function), D(i,j), I(i,j));
         if (style=="local") M(i,j) = std::max(M(i,j), float(0));

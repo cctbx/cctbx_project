@@ -19,7 +19,7 @@ import sys
 from scitbx.array_family import flex
 from libtbx import group_args
 
-class cbeta (residue) :
+class cbeta(residue):
   """
   Result class for protein C-beta deviation analysis (phenix.cbetadev).
   """
@@ -31,19 +31,19 @@ class cbeta (residue) :
   __slots__ = residue.__slots__ + __cbeta_attr__
 
   @staticmethod
-  def header () :
+  def header():
     return "%-20s  %5s" % ("Residue", "Dev.")
 
-  def as_string (self) :
+  def as_string(self):
     return "%-20s  %5.2f" % (self.id_str(), self.deviation)
 
   # Backwards compatibility
-  def format_old (self) :
+  def format_old(self):
     return "%s:%s:%2s:%4s%1s:%7.3f:%7.2f:%7.2f:%s:" % (self.altloc,
       self.resname.lower(), self.chain_id, self.resseq, self.icode,
       self.deviation, self.dihedral_NABB, self.occupancy, self.altloc)
 
-  def as_kinemage (self) :
+  def as_kinemage(self):
     key = "cb %3s%2s%4s%1s  %.3f %.2f" % (self.resname.lower(),
       self.chain_id, self.resseq, self.icode, self.deviation,
       self.dihedral_NABB)
@@ -51,11 +51,11 @@ class cbeta (residue) :
       self.deviation, '', #The blank char is a placeholder for optional color
       self.ideal_xyz[0], self.ideal_xyz[1], self.ideal_xyz[2])
 
-  def as_table_row_phenix (self) :
+  def as_table_row_phenix(self):
     return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname, self.resid),
              self.deviation, self.dihedral_NABB ]
 
-class cbetadev (validation) :
+class cbetadev(validation):
   __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs","stats"]
   program_description = "Analyze protein sidechain C-beta deviation"
   output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
@@ -63,13 +63,13 @@ class cbetadev (validation) :
   gui_formats = ["%s", "%s", "%.3f", "%.2f"]
   wx_column_widths = [75, 125, 100, 100]
 
-  def get_result_class (self) : return cbeta
+  def get_result_class(self) : return cbeta
 
-  def __init__ (self, pdb_hierarchy,
+  def __init__(self, pdb_hierarchy,
       outliers_only=False,
       out=sys.stdout,
       collect_ideal=False,
-      quiet=False) :
+      quiet=False):
     validation.__init__(self)
     self._outlier_i_seqs = flex.size_t()
     self.beta_ideal = {}
@@ -91,7 +91,7 @@ class cbetadev (validation) :
         for rg in chain.residue_groups():
           for i_cf,cf in enumerate(rg.conformers()):
             for i_residue,residue in enumerate(cf.residues()):
-              if (residue.resname == "GLY") :
+              if (residue.resname == "GLY"):
                 continue
               is_first = (i_cf == 0)
               is_alt_conf = False
@@ -139,18 +139,18 @@ class cbetadev (validation) :
                     outlier=(dev >= 0.25))
                   self.results.append(result)
                   key = result.id_str()
-                  if (collect_ideal) :
+                  if (collect_ideal):
                     self.beta_ideal[key] = betaxyz
 
-  def show_old_output (self, out, verbose=False, prefix="pdb") :
-    if (verbose) :
+  def show_old_output(self, out, verbose=False, prefix="pdb"):
+    if (verbose):
       print >> out, self.output_header
     for result in self.results :
       print >> out, prefix + " :" + result.format_old()
-    if (verbose) :
+    if (verbose):
       self.show_summary(out)
 
-  def show_summary (self, out, prefix="") :
+  def show_summary(self, out, prefix=""):
     print >> out, prefix + \
       'SUMMARY: %d C-beta deviations >= 0.25 Angstrom (Goal: 0)' % \
       self.n_outliers
@@ -185,26 +185,26 @@ class cbetadev (validation) :
   def get_beta_ideal(self):
     return self.beta_ideal
 
-  def as_kinemage (self, chain_id=None) :
+  def as_kinemage(self, chain_id=None):
     cbeta_out = "@subgroup {CB dev} dominant\n"
     cbeta_out += "@balllist {CB dev Ball} color= magenta master= {Cbeta dev}\n"
     for result in self.results :
-      if result.is_outlier() :
-        if (chain_id is None) or (chain_id == result.chain_id) :
+      if result.is_outlier():
+        if (chain_id is None) or (chain_id == result.chain_id):
           cbeta_out += result.as_kinemage() + "\n"
     return cbeta_out
 
-  def as_coot_data (self) :
+  def as_coot_data(self):
     data = []
     for result in self.results :
-      if result.is_outlier() :
+      if result.is_outlier():
         data.append((result.chain_id, result.resid, result.resname,
           result.altloc, result.deviation, result.xyz))
     return data
 
-class calculate_ideal_and_deviation (object) :
+class calculate_ideal_and_deviation(object):
   __slots__ = ["deviation", "ideal", "dihedral"]
-  def __init__ (self, relevant_atoms, resname) :
+  def __init__(self, relevant_atoms, resname):
     assert (resname != "GLY")
     self.deviation = None
     self.ideal = None
@@ -229,7 +229,7 @@ class calculate_ideal_and_deviation (object) :
                                 angleNAB,
                                 dihedralCNAB,
                                 method="CNAB")
-    if (not None in [betaNCAB, betaCNAB]) :
+    if (not None in [betaNCAB, betaCNAB]):
       betaxyz = (col(betaNCAB) + col(betaCNAB)) / 2
       betadist = abs(col(resCA.xyz) - betaxyz)
       if betadist != 0:
@@ -256,7 +256,7 @@ def idealized_calpha_angles(resname):
     angleNAB = 103.0
     dihedralCNAB = -120.7
     angleideal = 111.8
-  elif (resname in ["VAL", "THR", "ILE"]) :
+  elif (resname in ["VAL", "THR", "ILE"]):
     dist = 1.540
     angleCAB = 109.1
     dihedralNCAB = 123.4
@@ -280,7 +280,7 @@ def idealized_calpha_angles(resname):
   return dist, angleCAB, dihedralNCAB, angleNAB, dihedralCNAB, angleideal
 
 def construct_fourth(resN,resCA,resC,dist,angle,dihedral,method="NCAB"):
-  if (not None in [resN, resCA, resC]) :
+  if (not None in [resN, resCA, resC]):
     if (method == "NCAB"):
       res0 = resN
       res1 = resC
@@ -325,7 +325,7 @@ def construct_fourth(resN,resCA,resC,dist,angle,dihedral,method="NCAB"):
       deg=True)
   return None
 
-def extract_atoms_from_residue_group (residue_group) :
+def extract_atoms_from_residue_group(residue_group):
   """
   Given a residue_group object, which may or may not have multiple
   conformations, extract the relevant atoms for each conformer, taking into
@@ -335,9 +335,9 @@ def extract_atoms_from_residue_group (residue_group) :
   each suitable for calling calculate_ideal_and_deviation.
   """
   atom_groups = residue_group.atom_groups()
-  if (len(atom_groups) == 1) :
+  if (len(atom_groups) == 1):
     relevant_atoms = {}
-    for atom in atom_groups[0].atoms() :
+    for atom in atom_groups[0].atoms():
       relevant_atoms[atom.name] = atom
     return [ relevant_atoms ]
   else :
@@ -345,21 +345,21 @@ def extract_atoms_from_residue_group (residue_group) :
     expected_names = [" CA ", " N  ", " CB ", " C  "]
     main_conf = {}
     for atom_group in atom_groups :
-      if (atom_group.altloc.strip() == '') :
-        for atom in atom_group.atoms() :
-          if (atom.name in expected_names) :
+      if (atom_group.altloc.strip() == ''):
+        for atom in atom_group.atoms():
+          if (atom.name in expected_names):
             main_conf[atom.name] = atom
       else :
         relevant_atoms = {}
-        for atom in atom_group.atoms() :
-          if (atom.name in expected_names) :
+        for atom in atom_group.atoms():
+          if (atom.name in expected_names):
             relevant_atoms[atom.name] = atom
         if (len(relevant_atoms) == 0) : continue
-        for atom_name in main_conf.keys() :
-          if (not atom_name in relevant_atoms) :
+        for atom_name in main_conf.keys():
+          if (not atom_name in relevant_atoms):
             relevant_atoms[atom_name] = main_conf[atom_name]
-        if (len(relevant_atoms) != 0) :
+        if (len(relevant_atoms) != 0):
           all_relevant_atoms.append(relevant_atoms)
-    if (len(main_conf) == 4) :
+    if (len(main_conf) == 4):
       all_relevant_atoms.insert(0, main_conf)
     return all_relevant_atoms

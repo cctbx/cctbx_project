@@ -20,7 +20,7 @@ resolve_build {
 }
 """, process_includes=True)
 
-def run (args, out=None) :
+def run(args, out=None):
   if (out is None) : out = sys.stdout
   from mmtbx.building.alternate_conformations import resolve_build
   from mmtbx.building import disorder
@@ -38,7 +38,7 @@ def run (args, out=None) :
   fmodel = cmdline.fmodel
   hierarchy = cmdline.pdb_hierarchy
   sele_cache = hierarchy.atom_selection_cache()
-  if (params.selection is None) :
+  if (params.selection is None):
     raise Sorry("Please specify the selection parameter.")
   selection = sele_cache.selection(params.selection)
   assert (selection.count(True) > 0)
@@ -59,5 +59,5 @@ def run (args, out=None) :
     d_min=fmodel.f_obs().d_min(),
     out=out)
 
-if (__name__ == '__main__') :
+if (__name__ == '__main__'):
   run(sys.argv[1:])

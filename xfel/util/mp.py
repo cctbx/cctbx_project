@@ -16,7 +16,17 @@ mp_phil_str = '''
       .help = Use mpi multiprocessing
     nproc = 1
       .type = int
-      .help = Number of processes
+      .help = Number of processes total (== nnodes x nproc_per_node). \
+              If two of the three params (nproc, nnodes, nproc_per_node) are \
+              specified, the last will be determined by modular arithmetic. \
+              If all three are specified, nnodes is ignored. nproc alone is \
+              sufficient for most methods.
+    nnodes = 1
+      .type = int
+      .help = Number of nodes to request
+    nproc_per_node = 1
+      .type = int
+      .help = Number of processes to allocate per node
     queue = None
       .type = str
       .help = Queue to submit multiprocessing job to (optional for some methods)
@@ -39,7 +49,7 @@ mp_phil_str = '''
       .multiple = True
       .help = Path to script sourcing a particular environment (optional)
     shifter {
-      submit_command = "sbatch"
+      submit_command = "sbatch "
         .type = str
         .help = Command used to run the zero-level script sbatch.sh.
       sbatch_script_template = None
@@ -59,6 +69,9 @@ mp_phil_str = '''
       partition = regular
         .type = str
         .help = Partition to run jobs on, e.g. regular or debug.
+      jobname = LCLS_EXP
+        .type = str
+        .help = Jobname
       nnodes = 1
         .type = int
         .help = Number of nodes to request with sbatch -N <nnodes>.
@@ -95,7 +108,7 @@ mp_phil_str = '''
 
 class get_submit_command(object):
   def __init__(self, command, submit_path, stdoutdir, params,
-               log_name="log.out", err_name=None, job_name=None):
+               log_name="log.out", err_name="log.err", job_name=None):
     """ Get a submit command for the various compute environments
     @param command Any command line program and its arguments
     @param submit_path Submit script will be written here
@@ -128,8 +141,10 @@ class get_submit_command(object):
   def substitute(self, template, marker, value):
     if marker in template:
       if value is None:
-        raise Sorry, "No value found for %s" % marker
+        raise Sorry("No value found for %s" % marker)
       return template.replace(marker, value)
+    else:
+      return template
 
   def make_executable(self, file):
     import stat
@@ -245,7 +260,7 @@ class get_sge_submit_command(get_submit_command):
 
     # -q <queue>
     if self.params.queue is None:
-      raise Sorry, "Queue not specified."
+      raise Sorry("Queue not specified.")
     queue_str = "-q %s" % self.params.queue
     self.options.append(queue_str)
 
@@ -282,13 +297,40 @@ class get_sge_submit_command(get_submit_command):
 class get_pbs_submit_command(get_submit_command):
 
   def customize_for_method(self):
+    if (self.params.nnodes > 1) or (self.params.nproc_per_node > 1):
+      self.params.nproc = self.params.nnodes * self.params.nproc_per_node
     if self.params.use_mpi:
-      self.command = "aprun -n %d %s mp.method=mpi" % self.command
+      self.command = "mpiexec --hostfile $PBS_NODEFILE %s mp.method=mpi" % (self.command)
 
   def eval_params(self):
-    # -t 1-<nproc>
-    if self.params.nproc > 1:
-      nproc_str = "#PBS -l mppwidth=%d" % self.params.nproc
+
+    # # -t 1-<nproc> # deprecated
+    # if self.params.nproc > 1:
+    #   nproc_str = "#PBS -l mppwidth=%d" % self.params.nproc
+    #   self.options_inside_submit_script.append(nproc_str)
+
+    # -l nodes=<nnodes>:ppn=<procs_per_node>
+    if max(self.params.nproc, self.params.nproc_per_node, self.params.nnodes) > 1:
+      # If specified, nproc overrides procs_per_node and procs_per_node overrides
+      # nnodes. One process per node is requested if only nproc is specified.
+      if self.params.nproc > 1:
+        import math
+        if self.params.nproc <= self.params.nproc_per_node:
+          procs_per_node = self.params.nproc
+          nnodes = 1
+        elif self.params.nproc_per_node > 1:
+          procs_per_node = self.params.nproc_per_node
+          nnodes = int(math.ceil(self.params.nproc/procs_per_node))
+        elif self.params.nnodes > 1:
+          procs_per_node = int(math.ceil(self.params.nproc/self.params.nnodes))
+          nnodes = self.params.nnodes
+        else: # insufficient information; allocate 1 proc per node
+          procs_per_node = 1
+          nnodes = self.params.nproc
+      else:
+        procs_per_node = self.params.nproc_per_node
+        nnodes = self.params.nnodes
+      nproc_str = "#PBS -l nodes=%d:ppn=%d" % (nnodes, procs_per_node)
       self.options_inside_submit_script.append(nproc_str)
 
     # -o <outfile>
@@ -304,7 +346,7 @@ class get_pbs_submit_command(get_submit_command):
 
     # -q <queue>
     if self.params.queue is None:
-      raise Sorry, "Queue not specified."
+      raise Sorry("Queue not specified.")
     queue_str = "#PBS -q %s" % self.params.queue
     self.options_inside_submit_script.append(queue_str)
 
@@ -345,7 +387,7 @@ class get_shifter_submit_command(get_submit_command):
     # template for sbatch.sh
     self.sbatch_template = self.params.shifter.sbatch_script_template
     if self.sbatch_template is None:
-      raise Sorry, "sbatch script template required for shifter"
+      raise Sorry("sbatch script template required for shifter")
     sb = open(self.sbatch_template, "rb")
     self.sbatch_contents = sb.read()
     self.destination = os.path.dirname(self.submit_path)
@@ -355,7 +397,7 @@ class get_shifter_submit_command(get_submit_command):
     # template for srun.sh
     self.srun_template = self.params.shifter.srun_script_template
     if self.srun_template is None:
-      raise Sorry, "srun script template required for shifter"
+      raise Sorry("srun script template required for shifter")
     sr = open(self.srun_template, "rb")
     self.srun_contents = sr.read()
     sr.close()
@@ -383,6 +425,9 @@ class get_shifter_submit_command(get_submit_command):
     # -p <partition>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<partition>",
       self.params.shifter.partition)
+    # --job-name
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<jobname>",
+      self.params.shifter.jobname)
 
     # <srun_script>
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<srun_script>",
@@ -424,12 +469,12 @@ class get_custom_submit_command(get_submit_command):
     # template for the script to be submitted, beginning with #!
     self.script_template = self.params.custom.submit_script_template
     if not os.path.exists(self.template):
-      raise Sorry, ("Custom submission template file not found: %s" % self.template)
+      raise Sorry("Custom submission template file not found: %s" % self.template)
 
     # template for the submission command itself, e.g. qsub -n <nproc> -q <queue> script.sh
     self.command_template = self.params.custom.submit_command_template
     if self.command_template is None:
-      raise Sorry, ("Custom submit command must be specified for custom environments.")
+      raise Sorry("Custom submit command must be specified for custom environments.")
 
   def eval_params(self):
     # any changes to the script to be submitted
@@ -482,7 +527,7 @@ class get_custom_submit_command(get_submit_command):
     return self.submit_command_contents
 
 def get_submit_command_chooser(command, submit_path, stdoutdir, params,
-                               log_name="log.out", err_name=None, job_name=None):
+                               log_name="log.out", err_name="log.err", job_name=None):
   if params.method == "lsf":
     choice = get_lsf_submit_command
   elif params.method == "sge":
@@ -494,7 +539,7 @@ def get_submit_command_chooser(command, submit_path, stdoutdir, params,
   elif params.method == "custom":
     choice = get_custom_submit_command
   else:
-    raise Sorry, ("Multiprocessing method %s not recognized" % params.method)
+    raise Sorry("Multiprocessing method %s not recognized" % params.method)
   command_generator = choice(command, submit_path, stdoutdir, params,
                              log_name=log_name, err_name=err_name, job_name=job_name)
   return command_generator()

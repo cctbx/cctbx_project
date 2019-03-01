@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-import iotbx.phil
+from iotbx.phil import parse
 
 help_message = '''
 Redesign script for merging xfel data
@@ -22,6 +22,29 @@ input {
   experiments_suffix = _integrated_experiments.json
     .type = str
     .help = Find file names with this suffix for experiments
+  parallel_file_load {
+    method = *uniform node_memory
+      .type = choice
+      .help = uniform: distribute input json/pickle files uniformly over all ranks
+      .help = node_memory: distribute input json/pickle files over the nodes according to the node memory limit, then uniformly over the ranks within each node
+    node_memory {
+      architecture = "Cori KNL"
+        .type = str
+        .help = Node architecture is used to determine the node memory limit, number of available ranks per node, and pickle file size-to-memory coefficient
+      limit = 90.0
+        .type = float
+        .help = node memory limit, GB
+      pickle_to_memory = 3.5
+        .type = float
+        .help = an empirical coefficient to convert pickle file size to anticipated run-time process memory required to load a file of that size
+      ranks_per_node = 68
+        .type = int
+        .help = number of ranks available per node
+      scale = 1.0
+        .type = float
+        .help = Decrease the node memory limit by this factor in order to utilize more nodes
+    }
+  }
 }
 
 filter
@@ -67,6 +90,7 @@ filter
       .help = Reject the experiment unless some reflections extend beyond this resolution limit
     model_or_image = model image
       .type = choice
+      .help = Calculate resolution either using the scaling model unit cell or from the image itself
   }
   unit_cell
     .help = Various algorithms to restrict unit cell and space group
@@ -80,13 +104,13 @@ filter
       {
       target_unit_cell = Auto
         .type = unit_cell
-      target_space_group = Auto
-        .type = space_group
-      unit_cell_length_tolerance = 0.1
+      relative_length_tolerance = 0.1
         .type = float
         .help = Fractional change in unit cell dimensions allowed (versus target cell).
-      unit_cell_angle_tolerance = 2.
+      absolute_angle_tolerance = 2.
         .type = float
+      target_space_group = Auto
+        .type = space_group
       }
     cluster
       .help = CLUSTER implies an implementation (standalone program or fork?) where all the
@@ -103,6 +127,14 @@ filter
         .help = Alternatively identify a particular isoform to carry forward for merging.
     }
   }
+  outlier {
+    min_corr = 0.1
+      .type = float
+      .help = Correlation cutoff for rejecting individual experiments by comparing observed intensities to the model.
+      .help = This filter is not applied if scaling.model==None. No experiments are rejected with min_corr=-1.
+      .help = This either keeps or rejects the whole experiment.
+    assmann_diederichs {}
+  }
 }
 
 modify
@@ -116,7 +148,7 @@ modify
 select
   .help = The SELECT section accepts or rejects specified reflections
   {
-  algorithm = panel cspad_sensor significance_filter outlier
+  algorithm = panel cspad_sensor significance_filter
     .type = choice
     .multiple = True
   cspad_sensor {
@@ -146,38 +178,63 @@ select
     sigma = 0.5
       .type = float
       .help = Remove highest resolution bins such that all accepted bins have <I/sigma> >= sigma
-  }
-  outlier {
-    min_corr = 0.1
-      .type = float
-      .help = Correlation cutoff for rejecting individual frames.
-      .help = This filter is not applied if model==None. No experiments are rejected with min_corr=-1.
-      .help = This either keeps or rejects the whole experiment.
-    assmann_diederichs {}
-  }
+    }
 }
 
 scaling {
   model = None
     .type = str
     .help = PDB filename containing atomic coordinates & isomorphous cryst1 record
-    .help = or MTZ filename from a previous cycle
+    .help = or MTZ filename from a previous cycle. If MTZ, specify mtz.mtz_column_F.
+  unit_cell = None
+    .type = unit_cell
+    .help = Unit cell to be used during scaling and merging. Used if model is not provided
+    .help = (e.g. mark1).
+  space_group = None
+    .type = space_group
+    .help = Space group to be used during scaling and merging. Used if model is not provided
+    .help = (e.g. mark1).
   model_reindex_op = h,k,l
     .type = str
     .help = Kludge for cases with an indexing ambiguity, need to be able to adjust scaling model
-  k_sol = 0.35
+  resolution_scalar = 0.969
     .type = float
-    .help = If model is taken from coordinates, use k_sol for the bulk solvent scale factor
-    .help = default is approximate mean value in PDB (according to Pavel)
-  b_sol = 46.00
-    .type = float
-    .help = If model is taken from coordinates, use b_sol for bulk solvent B-factor
-    .help = default is approximate mean value in PDB (according to Pavel)
+    .help = Accomodates a few more miller indices at the high resolution limit to account for
+    .help = unit cell variation in the sample. merging.d_min is multiplied by resolution_scalar
+    .help = when computing which reflections are within the resolution limit.
+  mtz {
+    mtz_column_F = fobs
+      .type = str
+      .help = scaling reference column name containing reference structure factors. Can be
+      .help = intensities or amplitudes
+  }
+  pdb {
+    include_bulk_solvent = True
+      .type = bool
+      .help = Whether to simulate bulk solvent
+    k_sol = 0.35
+      .type = float
+      .help = If model is taken from coordinates, use k_sol for the bulk solvent scale factor
+      .help = default is approximate mean value in PDB (according to Pavel)
+    b_sol = 46.00
+      .type = float
+      .help = If model is taken from coordinates, use b_sol for bulk solvent B-factor
+      .help = default is approximate mean value in PDB (according to Pavel)
+  }
   algorithm = *mark0 mark1
     .type = choice
     .help = "mark0: original per-image scaling by reference to isomorphous PDB model"
     .help = "mark1: no scaling, just averaging (i.e. Monte Carlo
              algorithm).  Individual image scale factors are set to 1."
+  mark0 {
+    fit_reference_to_experiment = True
+      .type = bool
+      .help = "When true, fit reference to experiment: I_o = offset + slope * I_r, where I_o is observed intensities and I_r is reference intensities"
+      .help = "When false, fit experiment to reference: I_r = offset + slope * I_o"
+    fit_offset = False
+      .type = bool
+      .help = When true, fit both offset and slope, otherwise fit slope only.
+  }
 }
 
 postrefinement {
@@ -241,6 +298,8 @@ merging {
       .multiple = False
       .help = ha14, formerly sdfac_auto, apply sdfac to each-image data assuming negative
       .help = intensities are normally distributed noise
+      .help = errors_from_sample_residuals, use the distribution of intensities in a given miller index
+      .help = to compute the error for each merged reflection
     ev11
       .help = formerly sdfac_refine, correct merged sigmas refining sdfac, sdb and sdadd as Evans 2011.
       {
@@ -288,9 +347,18 @@ output {
   title = None
     .type = str
     .help = Title for run - will appear in MTZ file header
-        output_dir = None
+  output_dir = None
     .type = str
     .help = output file directory
+  tmp_dir = None
+    .type = str
+    .help = temporary file directory
+  do_timing = False
+    .type = bool
+    .help = When True, calculate and log elapsed time for execution steps
+  log_level = 0
+    .type = int
+    .help = how much information to log. TODO: define it.
 }
 
 statistics {
@@ -334,9 +402,14 @@ parallel {
   nproc = 1
     .help = 1, use no parallel execution.
     .type = int
+  a2a = 1
+    .help = Number of iterations to split MPI alltoall - used to address mpy4py memory errors, when hkl chunks are too large for the cpu.
+    .type = int
 }
 
 """ + mysql_master_phil
+
+phil_scope = parse(master_phil)
 
 class Script(object):
   '''A class for running the script.'''
@@ -350,8 +423,6 @@ class Script(object):
   def initialize(self):
     '''Initialise the script.'''
     from dials.util.options import OptionParser
-    from iotbx.phil import parse
-    phil_scope = parse(master_phil)
     # Create the parser
     self.parser = OptionParser(
       usage=self.usage,
@@ -372,6 +443,9 @@ class Script(object):
   def validate(self):
     from xfel.merging.application.validation.application import application
     application(self.params)
+
+  def modify(self, experiments, reflections):
+    return experiments, reflections #nop
 
   def run(self):
     print('''Initializing and validating phil...''')

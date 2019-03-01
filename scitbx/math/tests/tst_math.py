@@ -1907,7 +1907,7 @@ def exercise_weighted_covariance():
   assert approx_equal(stats.covariance_xy, 6.14274540984693878, eps)
   assert approx_equal(stats.correlation, 0.809980077408506317, eps)
 
-def exercise_interpolation () :
+def exercise_interpolation():
   from scitbx.math import interpolate_catmull_rom_spline
   p0 = (4.6125, 53.1915, -1.0)
   p1 = (4.86, 54.206, 0.603)
@@ -1923,12 +1923,12 @@ def exercise_interpolation () :
   points = interpolate_catmull_rom_spline(p0, p1, p2, p3, 5)
   assert approx_equal(points[1][1], 0.454, eps=0.0001)
 
-def exercise_misc () :
+def exercise_misc():
   from scitbx.math import distance_difference_matrix
   sites1 = flex.vec3_double([(0.,0.,0.),(0.,1.,2.),(3.,4.,5.)])
   sites2 = flex.vec3_double([(1.,1.,1.),(1.,2.,3.),(6.,7.,8.)])
   ddm = distance_difference_matrix(sites1, sites2)
-  for i in range(3) :
+  for i in range(3):
     assert (ddm[(i,i)] == 0)
   assert approx_equal(ddm[(0,2)], 3.4170207)
   assert approx_equal(ddm[(1,2)], 3.4641016)

@@ -1,9 +1,6 @@
 from __future__ import division
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
-from cStringIO import StringIO
+from six.moves import cPickle as pickle
+from six.moves import cStringIO as StringIO
 from cctbx import crystal,sgtbx,uctbx
 from cctbx.sgtbx import lattice_symmetry
 from rstbx.dps_core.lepage import iotbx_converter

@@ -1,5 +1,4 @@
 from __future__ import division
-from six.moves import range
 
 """read PRIME input"""
 #Define exceptions
@@ -13,7 +12,7 @@ class InvalidNumberOfResidues(ReadInputError): pass
 import iotbx.phil
 from libtbx.utils import Usage, Sorry
 import sys, os, shutil, glob, tarfile
-import cPickle as pickle
+from six.moves import cPickle as pickle
 
 master_phil = iotbx.phil.parse("""
 data = None
@@ -412,17 +411,17 @@ def process_input(argv=None, flag_mkdir=True):
   working_phil = master_phil.fetch(sources=user_phil)
   params = working_phil.extract()
   if not params.data:
-    raise InvalidData, "Error: Data is required. Please specify path to your data folder (data=/path/to/integration/results)."
+    raise InvalidData("Error: Data is required. Please specify path to your data folder (data=/path/to/integration/results).")
 
   #check target_crystal_system
   crystal_system_dict = {'Triclinic': 0, 'Monoclinic': 0, 'Orthorhombic': 0, 'Tetragonal': 0, 'Trigonal': 0, 'Hexagonal': 0, 'Cubic':0}
   if params.target_crystal_system is not None:
     if params.target_crystal_system not in crystal_system_dict:
-      raise InvalidCrystalSystem, "Error: Invalid input target_crystal_system. Please choose following options: Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic."
+      raise InvalidCrystalSystem("Error: Invalid input target_crystal_system. Please choose following options: Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic.")
 
   #check n_residues
   if not params.n_residues:
-    raise InvalidNumberOfResidues, "Error: Number of residues is required. Please specify number of residues of your structure in asymmetric unit (n_residues = xxx)."
+    raise InvalidNumberOfResidues("Error: Number of residues is required. Please specify number of residues of your structure in asymmetric unit (n_residues = xxx).")
 
   #check pixel_size
   if not params.pixel_size_mm:
@@ -430,12 +429,11 @@ def process_input(argv=None, flag_mkdir=True):
     try:
       frame_files = read_pickles(params.data)
       frame_0 = frame_files[0]
-      import cPickle as pickle
       int_pickle = read_frame(frame_0)
       params.pixel_size_mm = int_pickle['pixel_size']
       print 'Info: Found pixel size in the integration pickles (override pixel_size_mm=%10.8f)'%(params.pixel_size_mm)
     except Exception:
-      raise InvalidPixelSize, "Error: Pixel size in millimeter is required. Use cctbx.image_viewer to view one of your images and note down the value (e.g. for marccd, set pixel_size_mm=0.079346)."
+      raise InvalidPixelSize("Error: Pixel size in millimeter is required. Use cctbx.image_viewer to view one of your images and note down the value (e.g. for marccd, set pixel_size_mm=0.079346).")
 
   #check sigma rejection
   if params.sigma_rejection < 5:
@@ -455,7 +453,7 @@ def process_input(argv=None, flag_mkdir=True):
     if run_overwrite == 'Y':
       shutil.rmtree(params.run_no)
     else:
-      raise InvalidRunNo, "Error: Run number exists. Please specifiy different run no."
+      raise InvalidRunNo("Error: Run number exists. Please specifiy different run no.")
 
   #make result folders
   if flag_mkdir:
@@ -465,7 +463,7 @@ def process_input(argv=None, flag_mkdir=True):
     os.makedirs(params.run_no+'/stats')
 
   #capture input read out by phil
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   class Capturing(list):
     def __enter__(self):
       self._stdout = sys.stdout
@@ -501,12 +499,12 @@ def read_pickles(data):
       file_list = glob.glob(os.path.join(p,'*'))
     frame_files.extend(file_list)
   if len(frame_files) == 0:
-    raise InvalidData, "Error: no integration results found in the specified data parameter."
+    raise InvalidData("Error: no integration results found in the specified data parameter.")
   if not is_tar: return frame_files
   #take care of tar files
   for tar_filename in frame_files:
     tarf = tarfile.open(name=tar_filename, mode='r')
-    for myindex in range(len(tarf.getmembers())):
+    for myindex in xrange(len(tarf.getmembers())):
       tar_files.append(tar_filename+':ind'+str(myindex))
   return tar_files
 

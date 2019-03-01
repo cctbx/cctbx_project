@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx.scheduling import SetupError
 
@@ -588,7 +588,7 @@ class job_scheduler_backend(object):
       ability = technology.abilities()
 
       if not ability.allows_unlimited_capacity:
-        raise ConfigurationError, "option does not allow unlimited capacity (ncpus=None)"
+        raise ConfigurationError("option does not allow unlimited capacity (ncpus=None)")
 
       else:
         capacity = job_scheduler.unlimited
@@ -641,7 +641,7 @@ class process_pool_backend(object):
     from libtbx.scheduling import process_pool
 
     if ncpus is None: # special for unlimited option
-      raise ConfigurationError, "option does not allow unlimited capacity (ncpus=None)"
+      raise ConfigurationError("option does not allow unlimited capacity (ncpus=None)")
 
     setting = technology.settings( params = params )
 
@@ -747,7 +747,7 @@ class single(object):
             backend = self.backend,
             )
 
-      raise ConfigurationError, "No valid '%s' option with these constraints" % self.caption
+      raise ConfigurationError("No valid '%s' option with these constraints" % self.caption)
 
 
 class multicore(object):
@@ -786,7 +786,7 @@ class multicore(object):
           backend = backend,
           )
 
-    raise ConfigurationError, "No valid '%s' option with these constraints" % self.caption
+    raise ConfigurationError("No valid '%s' option with these constraints" % self.caption)
 
 
 class batch(object):
@@ -818,7 +818,7 @@ class batch(object):
         backend = self.backend,
         )
 
-    raise ConfigurationError, "No valid '%s' option with these constraints" % self.caption
+    raise ConfigurationError("No valid '%s' option with these constraints" % self.caption)
 
 
   def __str__(self):
@@ -862,7 +862,7 @@ class manager(object):
         )
 
     except ConfigurationError:
-      raise ConfigurationError, "'%s' option not valid with this setup" % single.caption
+      raise ConfigurationError("'%s' option not valid with this setup" % single.caption)
 
     try:
       self.option_for[ multicore.caption ] = multicore(
@@ -901,9 +901,9 @@ class manager(object):
         params = getattr( scope, technology, None ),
         )
 
-    except ConfigurationError, e:
+    except ConfigurationError as e:
       from libtbx.utils import Sorry
-      raise Sorry, "Error setting up '%s': %s" % ( technology, e )
+      raise Sorry("Error setting up '%s': %s" % ( technology, e ))
 
 
   def __str__(self):
@@ -940,6 +940,6 @@ def phil_choice(choices, default):
     return None
 
   if default is not None and default not in choices:
-    raise ValueError, "Default not among choices"
+    raise ValueError("Default not among choices")
 
   return " ".join( "*%s" % c if c == default else c for c in choices )

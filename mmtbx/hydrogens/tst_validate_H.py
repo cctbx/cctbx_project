@@ -1,10 +1,11 @@
-from __future__ import division
+from __future__ import division, print_function
 import os, time
 import mmtbx.model
 import iotbx.pdb
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from libtbx.test_utils import approx_equal
 from mmtbx.hydrogens.validate_H import validate_H, validate_H_results
+from libtbx.utils import null_out
 #from validate_H_cl_app import master_params_str
 
 pdb_str = """
@@ -556,7 +557,8 @@ def get_results_from_validate_H(neutron_distances, pdb_str):
       model_input = pdb_inp,
       build_grm   = True,
       stop_for_unknowns = False,
-      pdb_interpretation_params = pi_params)
+      pdb_interpretation_params = pi_params,
+      log = null_out())
 
   c = validate_H(model = model,
                  use_neutron_distances = neutron_distances)
@@ -971,7 +973,8 @@ def exercise_hd_state():
   model = mmtbx.model.manager(
       model_input = pdb_inp,
 #      build_grm   = True, # to speed up test
-      pdb_interpretation_params = pdb_interpretation_phil.extract())
+      pdb_interpretation_params = pdb_interpretation_phil.extract(),
+      log = null_out())
   c = validate_H(model = model,
                  use_neutron_distances = True)
   assert (c.get_hd_state() == 'all_h')
@@ -1012,4 +1015,4 @@ def run():
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

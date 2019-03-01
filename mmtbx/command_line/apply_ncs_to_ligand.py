@@ -17,7 +17,7 @@ output_map = None
 %s
 """
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   from mmtbx.command_line import load_model_and_data
   import mmtbx.ncs.ligands
   cmdline = load_model_and_data(
@@ -38,9 +38,9 @@ successful.
   pdb_hierarchy = cmdline.pdb_hierarchy
   fmodel = cmdline.fmodel
   params = cmdline.params
-  if (params.output_file is None) :
+  if (params.output_file is None):
     params.output_file = "ncs_ligands.pdb"
-  if (params.output_map is None) :
+  if (params.output_map is None):
     params.output_map = "ncs_ligands.mtz"
   make_header("Finding ligands by NCS operators", out=out)
   result = mmtbx.ncs.ligands.apply_ligand_ncs(
@@ -55,5 +55,5 @@ successful.
   result.write_maps(params.output_map)
   return result
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -9,7 +9,7 @@ import libtbx.load_env
 import os
 import sys
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   app = wxtbx.app.CCTBXApp(0)
   bmp_path = libtbx.env.find_in_repositories(
     relative_path="gui_resources/icons/custom/tools.png",
@@ -17,6 +17,6 @@ if (__name__ == "__main__") :
   app.SetTaskbarIcon(bmp_path, "PDB Editor")
   frame = pdb_editor.PDBTreeFrame(None, -1, "PDB Editor")
   frame.Show()
-  if (len(sys.argv) > 1) :
+  if (len(sys.argv) > 1):
     frame.LoadPDB(sys.argv[1])
   app.MainLoop()

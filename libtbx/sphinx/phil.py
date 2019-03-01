@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import docutils.nodes
 from docutils.parsers.rst import Directive
 from docutils.parsers.rst import directives
@@ -59,7 +59,7 @@ class PhilDirective(Directive):
         if isinstance(master_params, ModuleType):
           continue
         break
-      except Exception, e:
+      except Exception as e:
         print(import_path)
         print(e)
 

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 import libtbx.env_config
 import libtbx.path
@@ -14,20 +14,20 @@ def copy_tags(target_root):
         flds.extend(open(src).read().split())
     if (len(flds) > 0):
       dest = libtbx.path.norm_join(target_root, "TAG")
-      print >> open(dest, "w"), " ".join(flds)
+      print(" ".join(flds), file=open(dest, "w"))
 
 def write_bundle_info(target_root, write_build_options=False):
   copy_tags(target_root)
   if (os.path.isdir(target_root)):
     dest = libtbx.path.norm_join(target_root, "bundle_info")
     f = open(dest, "w")
-    print >> f, "date_and_time:", libtbx.utils.date_and_time()
-    print >> f, "hostname:", libtbx.env_config.get_hostname()
-    print >> f, "os.name:", os.name
-    print >> f, "sys.platform:", sys.platform
-    print >> f, "sys.executable:", sys.executable
-    print >> f, "sys.version:", " ".join(sys.version.splitlines())
-    print >> f, "repository_paths:", libtbx.env.repository_paths
+    print("date_and_time:", libtbx.utils.date_and_time(), file=f)
+    print("hostname:", libtbx.env_config.get_hostname(), file=f)
+    print("os.name:", os.name, file=f)
+    print("sys.platform:", sys.platform, file=f)
+    print("sys.executable:", sys.executable, file=f)
+    print("sys.version:", " ".join(sys.version.splitlines()), file=f)
+    print("repository_paths:", libtbx.env.repository_paths, file=f)
     if (write_build_options):
       libtbx.env.build_options.report(f=f)
     f.close()

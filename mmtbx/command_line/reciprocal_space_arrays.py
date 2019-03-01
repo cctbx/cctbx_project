@@ -138,7 +138,7 @@ def run(args, log = sys.stdout):
   params = processed_args.params.extract()
   reflection_files = processed_args.reflection_files
   if(len(reflection_files) == 0):
-    if (params.hkl_file is None) :
+    if (params.hkl_file is None):
       raise Sorry("No reflection file found.")
     else :
       hkl_in = file_reader.any_file(params.hkl_file, force_type="hkl")
@@ -146,7 +146,7 @@ def run(args, log = sys.stdout):
       reflection_files = [ hkl_in.file_object ]
   crystal_symmetry = processed_args.crystal_symmetry
   if(crystal_symmetry is None):
-    if (params.space_group is not None) and (params.unit_cell is not None) :
+    if (params.space_group is not None) and (params.unit_cell is not None):
       from cctbx import crystal
       crystal_symmetry = crystal.symmetry(
         space_group_info=params.space_group,
@@ -154,7 +154,7 @@ def run(args, log = sys.stdout):
     else :
       raise Sorry("No crystal symmetry found.")
   if(len(processed_args.pdb_file_names) == 0):
-    if (params.pdb_file is None) :
+    if (params.pdb_file is None):
       raise Sorry("No model file found.")
     else :
       pdb_file_names = [ params.pdb_file ]
@@ -208,7 +208,7 @@ def run(args, log = sys.stdout):
     raise Sorry("Multiple model file not supported in this tool.")
   # XXX Twining not supported
   xray_structure = model.get_xray_structure()
-  if (not xray_structure.unit_cell().is_similar_to(f_obs.unit_cell())) :
+  if (not xray_structure.unit_cell().is_similar_to(f_obs.unit_cell())):
     raise Sorry("The unit cells in the model and reflections files are not "+
       "isomorphous.")
   print "Input model:"
@@ -246,31 +246,31 @@ def run(args, log = sys.stdout):
   print "All done."
   return output_file_name
 
-def validate_params (params) :
-  if (params.hkl_file is None) :
+def validate_params(params):
+  if (params.hkl_file is None):
     raise Sorry("No reflections file provided.")
-  elif (params.pdb_file is None) :
+  elif (params.pdb_file is None):
     raise Sorry("No model file provided.")
-  elif (params.output_file_name is None) :
+  elif (params.output_file_name is None):
     raise Sorry("No output file name provided.")
-  elif (params.f_obs_label is None) :
+  elif (params.f_obs_label is None):
     raise Sorry("No data label selected.")
-  elif (params.r_free_flags_label is None) :
+  elif (params.r_free_flags_label is None):
     raise Sorry("No R-free flags label selected.  This program requires R-free "+
       "flags to run and will not generate them automatically; use the "+
       "reflection file editor to add them to your data file.")
-  elif (params.space_group is None) or (params.unit_cell is None) :
+  elif (params.space_group is None) or (params.unit_cell is None):
     raise Sorry("Missing or incomplete symmetry information.")
   return True
 
-def finish_job (result) :
+def finish_job(result):
   output_files, stats = [], []
-  if (result is not None) and (os.path.isfile(result)) :
+  if (result is not None) and (os.path.isfile(result)):
     output_files.append((result, "Data and phases"))
   return output_files, stats
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher(runtime_utils.target_with_save_result):
+  def run(self):
     return run(args=self.args, log=sys.stdout)
 
 if(__name__ == "__main__"):

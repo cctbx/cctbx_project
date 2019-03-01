@@ -35,12 +35,12 @@ simulated_annealing {
 }
 """
 
-class refine_into_difference_density (object) :
+class refine_into_difference_density(object):
   """
   Driver for the annealing into mFo-DFc density with selected atoms at partial
   occupancy.  Can be run in parallel with different random seeds or occupancy.
   """
-  def __init__ (self,
+  def __init__(self,
       fmodel,
       pdb_hierarchy,
       processed_pdb_file,
@@ -48,12 +48,12 @@ class refine_into_difference_density (object) :
       selection,
       selection_score=None,
       nproc=Auto,
-      out=None) :
+      out=None):
     adopt_init_args(self, locals())
     from scitbx.array_family import flex
     if (self.out is None) : self.out = sys.stdout
     self.sites_start = fmodel.xray_structure.sites_cart().deep_copy()
-    if (type(selection).__name__ == 'bool') :
+    if (type(selection).__name__ == 'bool'):
       assert (self.selection.count(True) > 0)
       self.iselection = self.selection.iselection()
     else : # actually an iselection
@@ -61,33 +61,33 @@ class refine_into_difference_density (object) :
       self.iselection = self.selection
       self.selection = flex.bool(self.sites_start.size(), False).set_selected(
         self.iselection, True)
-    if (self.selection_score is None) :
+    if (self.selection_score is None):
       self.selection_score = self.selection
     use_mp = (self.params.n_trials > 1)
     assert (params.partial_occupancy is not None)
-    if (len(params.partial_occupancy) > 1) :
+    if (len(params.partial_occupancy) > 1):
       use_mp = True
-    if (not use_mp) :
+    if (not use_mp):
       self._trials = [ self.run_trial(params.partial_occupancy[0]) ]
     else :
       self.out = null_out()
       args = []
       for occ in params.partial_occupancy :
         assert (occ > 0) and (occ <= 1)
-        for k in range(self.params.n_trials) :
+        for k in range(self.params.n_trials):
           args.append(occ)
       self._trials = easy_mp.pool_map(
         fixed_func=self.run_trial,
         args=args,
         processes=self.nproc)
 
-  def get_trials (self) :
+  def get_trials(self):
     """
     Return a list of results, unfiltered.
     """
     return self._trials
 
-  def run_trial (self, occ) :
+  def run_trial(self, occ):
     """
     Actually run the refinement - called in parallel via easy_mp.pool_map
     """
@@ -107,7 +107,7 @@ class refine_into_difference_density (object) :
     sites_start_selected = sites_start.select(iselection)
     occ_start = xrs.scatterers().extract_occupancies().deep_copy()
     u_start = xrs.extract_u_cart_plus_u_iso()
-    if (self.params.adjust_b_factors_if_poor_density) :
+    if (self.params.adjust_b_factors_if_poor_density):
       fofc_map = fmodel.map_coefficients(
         map_type="mFo-DFc",
         exclude_free_r_reflections=True).fft_map(
@@ -116,9 +116,9 @@ class refine_into_difference_density (object) :
       b_scale_isel = flex.size_t()
       for i_seq in iselection :
         map_value = fofc_map.tricubic_interpolation(sites_frac[i_seq])
-        if (map_value < -2.5) :
+        if (map_value < -2.5):
           b_scale_isel.append(i_seq)
-      if (len(b_scale_isel) > 0) :
+      if (len(b_scale_isel) > 0):
         b_scale_sel = flex.bool(sites_frac.size(), False).set_selected(
           b_scale_isel, True)
         xrs.scale_adp(factor=0.75, selection=b_scale_sel)
@@ -134,7 +134,7 @@ class refine_into_difference_density (object) :
       partial_occupancy=occ)
     #xrs.set_occupancies(occ_start)
     make_sub_header("Simulated annealing into mFo-DFc map", out=self.out)
-    if (self.params.shake_sites is not None) :
+    if (self.params.shake_sites is not None):
       xrs.shake_sites_in_place(self.params.shake_sites, selection=selection)
     sites_new = mmtbx.building.run_real_space_annealing(
       xray_structure=xrs,
@@ -171,7 +171,7 @@ class refine_into_difference_density (object) :
     # we may only want the rmsd and max. dev. from a subset of sites, e.g.
     # the central residue of a sliding window (minus hydrogens)
     selection_score = self.selection_score.deep_copy()
-    if (type(selection_score).__name__ != 'bool') :
+    if (type(selection_score).__name__ != 'bool'):
       selection_score = flex.bool(hd_sel.size(), False).set_selected(
         self.selection_score, True)
     selection_score &= ~hd_sel
@@ -187,7 +187,7 @@ class refine_into_difference_density (object) :
       max_dev=site_stats.max_dev,
       cc=map_stats.cc)
 
-  def get_filtered_trials (self, include_pdb_hierarchies=False, log=None) :
+  def get_filtered_trials(self, include_pdb_hierarchies=False, log=None):
     """
     Filter the results based on map statistics and rotamer scoring.
 
@@ -198,30 +198,30 @@ class refine_into_difference_density (object) :
     if (log is None) : log = null_out()
     trials = sorted(self.get_trials(), lambda a,b: cmp(b.cc, a.cc))
     filtered = []
-    for k, trial in enumerate(trials) :
+    for k, trial in enumerate(trials):
       hierarchy = self.pdb_hierarchy.deep_copy()
-      if (trial.min_fofc < self.params.min_fofc) or (trial.cc < self.params.cc_min) :
+      if (trial.min_fofc < self.params.min_fofc) or (trial.cc < self.params.cc_min):
         print >> log, "  discarding trial %d [poor map quality]:" % (k+1)
         trial.show_summary(out=log, prefix="    ")
         continue
       sites = self.sites_start.deep_copy()
       sites.set_selected(self.iselection, trial.sites_cart)
       hierarchy.atoms().set_xyz(sites)
-      if (self.params.filter_rotamer_outliers) :
+      if (self.params.filter_rotamer_outliers):
         n_outliers = alt_confs.score_rotamers(hierarchy=hierarchy,
           selection=self.iselection)
-        if (n_outliers > 0) :
+        if (n_outliers > 0):
           print >> log, "  discarding trial %d [%d rotamer outlier(s)]:" % \
             (k+1, n_outliers)
           trial.show_summary(out=log, prefix="    ")
           continue
-      if (include_pdb_hierarchies) :
+      if (include_pdb_hierarchies):
         filtered.append((trial, hierarchy))
       else :
         filtered.append(trial)
     return filtered
 
-  def as_pdb_ensemble (self, log=None) :
+  def as_pdb_ensemble(self, log=None):
     """
     Create a multi-MselfDEL PDB hierarchy with the trial results after filtering
     by density and rotamer score.
@@ -235,14 +235,14 @@ class refine_into_difference_density (object) :
     trials_and_models = self.get_filtered_trials(include_pdb_hierarchies=True,
       log=log)
     n_kept = 0
-    for k, (trial, hierarchy) in enumerate(trials_and_models) :
+    for k, (trial, hierarchy) in enumerate(trials_and_models):
       n_kept += 1
       new_model = hierarchy.only_model().detached_copy()
       new_model.id = str(n_kept)
       print >> log, "MODEL %d:" % (k+1)
       trial.show_summary(prefix="  ", out=log)
       root.append_model(new_model)
-    if (n_kept == 0) :
+    if (n_kept == 0):
       return None
     else :
       return root

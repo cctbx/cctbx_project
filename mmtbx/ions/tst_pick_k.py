@@ -4,7 +4,7 @@ import os
 from libtbx import easy_run
 import time
 
-def exercise () :
+def exercise():
   # FIXME
   print "Temporarily disabled, skipping"
   return
@@ -17,7 +17,7 @@ def exercise () :
     ).raise_if_errors()
   n_k = 0
   for line in result.stdout_lines :
-    if ("Probable cation: K+1" in line) :
+    if ("Probable cation: K+1" in line):
       n_k += 1
   assert n_k == 3
   os.remove(pdb_file)
@@ -26,5 +26,5 @@ def exercise () :
   os.remove(os.path.splitext(pdb_file)[0][:-4] + "_fmodel.eff")
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

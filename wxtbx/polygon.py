@@ -10,8 +10,8 @@ from libtbx import adopt_init_args
 from math import radians
 import sys
 
-class wx_renderer (mmtbx.polygon.output.renderer) :
-  def draw_bin (self, out, start, end, angle, color) :
+class wx_renderer(mmtbx.polygon.output.renderer):
+  def draw_bin(self, out, start, end, angle, color):
     gc = out
     path = gc.CreatePath()
     path.MoveToPoint(start[0], start[1])
@@ -22,7 +22,7 @@ class wx_renderer (mmtbx.polygon.output.renderer) :
     gc.StrokePath(path)
     gc.PopState()
 
-  def draw_box (self, out, points, color) :
+  def draw_box(self, out, points, color):
     gc = out
     path = gc.CreatePath()
     path.MoveToPoint(points[0][0], points[0][1])
@@ -37,7 +37,7 @@ class wx_renderer (mmtbx.polygon.output.renderer) :
     gc.FillPath(path)
     gc.PopState()
 
-  def draw_solid_line (self, out, start, end, color) :
+  def draw_solid_line(self, out, start, end, color):
     gc = out
     line = gc.CreatePath()
     line.MoveToPoint(start[0], start[1])
@@ -51,10 +51,10 @@ class wx_renderer (mmtbx.polygon.output.renderer) :
     gc.StrokePath(line)
     gc.PopState()
 
-  def draw_dashed_line (self, out, start, end, color) :
+  def draw_dashed_line(self, out, start, end, color):
     pass
 
-  def draw_labels (self, out, label, min, max, value, pos, angle) :
+  def draw_labels(self, out, label, min, max, value, pos, angle):
     gc = out
     label_font = wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.BOLD)
     stat_font = wx.Font(12, wx.MODERN, wx.NORMAL, wx.NORMAL)
@@ -86,14 +86,14 @@ class wx_renderer (mmtbx.polygon.output.renderer) :
     gc.DrawText(max, text_x, text_y)
     gc.PopState()
 
-  def get_text_position (self, w, h, x, y, angle) :
-    if angle >= radians(60) and angle < radians(120) :
+  def get_text_position(self, w, h, x, y, angle):
+    if angle >= radians(60) and angle < radians(120):
       text_x = x - (w/2) - 5
       text_y = y - h - 15
-    elif angle >= radians(120) and angle < radians(240) :
+    elif angle >= radians(120) and angle < radians(240):
       text_x = x - w - 15
       text_y = y - (h/2)
-    elif angle >= radians(240) and angle < radians(300) :
+    elif angle >= radians(240) and angle < radians(300):
       text_x = x - (w/2)
       text_y = y
     else : # 300 =< angle < 420
@@ -101,8 +101,8 @@ class wx_renderer (mmtbx.polygon.output.renderer) :
       text_y = y - (h/2)
     return (text_x, text_y)
 
-class PolygonPanel (wx.Panel) :
-  def __init__ (self, parent, renderer) :
+class PolygonPanel(wx.Panel):
+  def __init__(self, parent, renderer):
     wx.Panel.__init__(self, parent, -1)
     self.renderer = renderer
     self.renderer.resize((640, 640))
@@ -110,17 +110,17 @@ class PolygonPanel (wx.Panel) :
     self.Bind(wx.EVT_PAINT, self.OnPaint)
     self.Bind(wx.EVT_SIZE, self.OnSize)
 
-  def OnSize (self, event) :
+  def OnSize(self, event):
     self.renderer.resize(self.GetSize())
     self.Refresh()
 
-  def OnPaint (self, event) :
+  def OnPaint(self, event):
     self.renderer.resize(self.GetSize())
     dc = wx.PaintDC(self)
     gc = wx.GraphicsContext.Create(dc)
     self.renderer.draw(gc)
 
-  def draw_color_key (self, dc) :
+  def draw_color_key(self, dc):
     gc = wx.GraphicsContext.Create(dc)
     stat_font = wx.Font(12, wx.MODERN, wx.NORMAL, wx.NORMAL)
     x = 40
@@ -135,7 +135,7 @@ class PolygonPanel (wx.Panel) :
       path.CloseSubpath()
       gc.StrokePath(path)
       gc.PopState()
-      if i < len(self.cutoffs) :
+      if i < len(self.cutoffs):
         gc.PushState()
         gc.SetFont(gc.CreateFont(stat_font, wx.BLACK))
         gc.DrawText(str(self.cutoffs[i]), x + 50, y - 6)
@@ -143,12 +143,12 @@ class PolygonPanel (wx.Panel) :
       x += 80
       i += 1
 
-  def OnChar (self, event) :
+  def OnChar(self, event):
     keycode = event.GetKeyCode()
     if keycode == 32 :
       self.OnSave()
 
-  def OnSave (self, event=None) :
+  def OnSave(self, event=None):
     rect = self.GetRect()
     bitmap = wx.EmptyBitmap(rect.width, rect.height)
     memory_dc = wx.MemoryDC()
@@ -164,11 +164,11 @@ class PolygonPanel (wx.Panel) :
     if event is not None :
       event.Skip()
 
-  def reset_layout (self) :
+  def reset_layout(self):
     pass
 
-class PolygonFrame (wx.Frame) :
-  def __init__ (self, parent, histogram_data, structure_stats) :
+class PolygonFrame(wx.Frame):
+  def __init__(self, parent, histogram_data, structure_stats):
     wx.Frame.__init__(self, parent, -1, "POLYGON", size=(1024,720))
     self.SetMinSize((800,500))
     adopt_init_args(self, locals())
@@ -188,11 +188,11 @@ class PolygonFrame (wx.Frame) :
     self.Bind(wx.EVT_CLOSE, self.OnClose)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
 
-  def setup_toolbar (self) :
+  def setup_toolbar(self):
     self.toolbar = None
     save_icon = wxtbx.bitmaps.fetch_icon_bitmap("actions", "save_all")
     plot_icon = wxtbx.bitmaps.fetch_icon_bitmap("mimetypes", "spreadsheet")
-    if (save_icon is not None) and (plot_icon is not None) :
+    if (save_icon is not None) and (plot_icon is not None):
       self.toolbar = wx.ToolBar(self, style=wx.TB_3DBUTTONS|wx.TB_TEXT)
       if sys.platform == "darwin" :
         save_btn = self.toolbar.AddLabelTool(-1, "Save", save_icon,
@@ -206,7 +206,7 @@ class PolygonFrame (wx.Frame) :
       self.SetToolBar(self.toolbar)
       self.toolbar.Realize()
 
-  def draw_top_panel (self) :
+  def draw_top_panel(self):
     top_panel = wx.Panel(self, -1, style=wx.SIMPLE_BORDER)
     top_sizer = wx.BoxSizer(wx.VERTICAL)
     top_panel.SetSizer(top_sizer)
@@ -243,7 +243,7 @@ equilateral polygon.""" %
     top_sizer.Fit(top_panel)
     self.info_sizer.Add(top_panel, 1, wx.ALL|wx.EXPAND)
 
-  def draw_color_key (self) :
+  def draw_color_key(self):
     if self.label_panel is not None :
       self.main_sizer.Detach(self.label_panel)
       self.label_panel.Destroy()
@@ -263,10 +263,10 @@ in each bin to the average number per bin:""")
     key_sizer = wx.FlexGridSizer(rows=0, cols=6)
     lower_sizer.Add(key_sizer)
     colors, cutoffs = self.renderer.get_color_key()
-    for i, color in enumerate(colors) :
+    for i, color in enumerate(colors):
       color_widget = ColorBox(lower_panel, -1, "", color, size=(24,24))
       key_sizer.Add(color_widget, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-      if i < len(cutoffs) :
+      if i < len(cutoffs):
         if self.renderer.relative_scale_colors :
           label = wx.StaticText(lower_panel, -1, "=< %s" % str(cutoffs[i]))
         else :
@@ -278,7 +278,7 @@ in each bin to the average number per bin:""")
     self.Layout()
     self.label_panel = lower_panel
 
-  def OnRecolor (self, event) :
+  def OnRecolor(self, event):
     mode = event.GetEventObject().GetSelection()
     mode_info = [ ("original", True),
                   ("rainbow", False),
@@ -293,21 +293,21 @@ in each bin to the average number per bin:""")
     self.draw_color_key()
     self.Refresh()
 
-  def OnClose (self, event) :
+  def OnClose(self, event):
     wx.CallAfter(self.Destroy)
 
-  def OnDestroy (self, event) :
-    if self.parent is not None and hasattr(self.parent, "polygon_frame") :
+  def OnDestroy(self, event):
+    if self.parent is not None and hasattr(self.parent, "polygon_frame"):
       self.parent.polygon_frame = None
 
-  def OnSave (self, event) :
+  def OnSave(self, event):
     self.polygon_panel.OnSave()
 
-  def OnResize (self, event) :
+  def OnResize(self, event):
     #self.panel.OnResize(event)
     self.polygon_panel.Layout()
 
-  def OnDisplayHistogram (self, event) :
+  def OnDisplayHistogram(self, event):
     keys = [ key for key, data in self.histogram_data ]
     choice = None
     dlg = wx.SingleChoiceDialog(
@@ -315,10 +315,10 @@ in each bin to the average number per bin:""")
       message="Which statistic do you want to view as a histogram?",
       caption="Select a histogram to display",
       choices=keys)
-    if (dlg.ShowModal() == wx.ID_OK) :
+    if (dlg.ShowModal() == wx.ID_OK):
       choice = dlg.GetSelection()
     wx.CallAfter(dlg.Destroy)
-    if (choice is not None) :
+    if (choice is not None):
       frame = wxtbx.polygon_db_viewer.HistogramFrame(
         parent=self)
       frame.show_histogram(
@@ -328,11 +328,11 @@ in each bin to the average number per bin:""")
         xlabel=mmtbx.polygon.output.stat_names[keys[choice]])
       frame.Show()
 
-class ColorBox (wx.lib.colourselect.ColourSelect) :
-  def OnClick (self, event) :
+class ColorBox(wx.lib.colourselect.ColourSelect):
+  def OnClick(self, event):
     pass
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   app = wx.App(0)
   stats = {
     "r_work" : 0.25,

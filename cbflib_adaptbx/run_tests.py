@@ -9,7 +9,7 @@ def tst_run(args=[]):
     path="examples/fit2d_data.cbf")
   assert op.isfile(cbf)
   from cbflib_adaptbx.command_line import dump
-  from cStringIO import StringIO
+  from six.moves import cStringIO as StringIO
   sio = StringIO()
   dump.process(file_name=cbf, out=sio)
   from libtbx.test_utils import show_diff
@@ -38,9 +38,9 @@ tst_list = (
   tst_run,
   )
 
-def run () :
-  build_dir = libtbx.env.under_build("scitbx")
-  dist_dir = libtbx.env.dist_path("scitbx")
+def run():
+  build_dir = libtbx.env.under_build("cbflib_adaptbx")
+  dist_dir = libtbx.env.dist_path("cbflib_adaptbx")
 
   test_utils.run_tests(build_dir, dist_dir, tst_list)
 

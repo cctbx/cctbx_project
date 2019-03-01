@@ -109,7 +109,7 @@ class den_restraints(object):
                params,
                pdb_hierarchy_ref=None,
                log=None,
-               den_proxies=None) :
+               den_proxies=None):
     if(log is None): log = sys.stdout
     self.log = log
     self.den_proxies = den_proxies
@@ -235,14 +235,9 @@ class den_restraints(object):
     residue_range = \
       self.sequence_separation_limit - self.sequence_separation_low
     for chain in pdb_hierarchy.models()[0].chains():
-      found_conformer = None
-      for conformer in chain.conformers():
-        if not conformer.is_protein() and not conformer.is_na():
-          continue
-        elif found_conformer is None:
-          found_conformer = conformer
-        else:
-          print >> self.log, "warning, multiple conformers found, using first"
+      found_conformer = chain.conformers()[0]
+      if not chain.is_protein() and not chain.is_na():
+        continue
       if found_conformer is not None:
         atom_pairs[chain.id] = []
         atom_pairs_test[chain.id] = []
@@ -292,21 +287,16 @@ class den_restraints(object):
   def count_atoms_per_chain(self, pdb_hierarchy):
     atoms_per_chain = {}
     for chain in pdb_hierarchy.models()[0].chains():
-      found_conformer = False
-      for conformer in chain.conformers():
-        if not conformer.is_protein() and not conformer.is_na():
-          continue
-        else:
-          found_conformer = True
-      if found_conformer:
-        if self.exclude_hydrogens:
-          counter = 0
-          for atom in chain.atoms():
-            if not atom.element_is_hydrogen():
-              counter += 1
-          atoms_per_chain[chain.id] = counter
-        else:
-          atoms_per_chain[chain.id] = chain.atoms_size()
+      if not chain.is_protein() and not chain.is_na():
+        continue
+      if self.exclude_hydrogens:
+        counter = 0
+        for atom in chain.atoms():
+          if not atom.element_is_hydrogen():
+            counter += 1
+        atoms_per_chain[chain.id] = counter
+      else:
+        atoms_per_chain[chain.id] = chain.atoms_size()
     return atoms_per_chain
 
   def select_random_den_restraints(self):
@@ -519,7 +509,7 @@ class den_restraints(object):
     #   f.write(vec)
     f.close()
 
-  def proxy_select (self, n_seq, selection) :
+  def proxy_select(self, n_seq, selection):
     assert (self.den_proxies is not None)
     return den_restraints(
       pdb_hierarchy=self.pdb_hierarchy,

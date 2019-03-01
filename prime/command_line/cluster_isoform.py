@@ -6,7 +6,7 @@ __author__ = 'Monarin Uervirojnangkoorn, monarin@gmail.com'
 from prime.isoform_cluster.mod_isoform_cluster import isoform_cluster_handler
 from prime.index_ambiguity.mod_kmeans import kmeans_handler
 from prime.postrefine.mod_mx import mx_handler
-import cPickle as pickle
+from six.moves import cPickle as pickle
 from libtbx.easy_mp import pool_map
 import numpy as np
 import random, os, sys

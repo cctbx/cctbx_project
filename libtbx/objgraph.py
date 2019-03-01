@@ -33,7 +33,7 @@ Object boxes are less crammed with useless information (such as IDs).
 
 Spawns xdot if it is available.
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
 # to deal in the Software without restriction, including without limitation
@@ -112,7 +112,7 @@ def show_most_common_types(limit=10, f=None):
     width = max(len(name) for name, count in stats)
     if (f is None): f = sys.stdout
     for name, count in stats[:limit]:
-        print >> f, name.ljust(width), count
+        print(name.ljust(width), count, file=f)
 
 
 def by_type(typename):
@@ -273,8 +273,8 @@ def show_graph(objs, edge_func, swap_source_target,
     if not isinstance(objs, (list, tuple)):
         objs = [objs]
     f = file('objects.dot', 'w')
-    print >> f, 'digraph ObjectGraph {'
-    print >> f, '  node[shape=box, style=filled, fillcolor=white];'
+    print('digraph ObjectGraph {', file=f)
+    print('  node[shape=box, style=filled, fillcolor=white];', file=f)
     queue = []
     depth = {}
     ignore = set(extra_ignore)
@@ -284,7 +284,7 @@ def show_graph(objs, edge_func, swap_source_target,
     ignore.add(id(depth))
     ignore.add(id(ignore))
     for obj in objs:
-        print >> f, '  %s[fontcolor=red];' % (obj_node_id(obj))
+        print('  %s[fontcolor=red];' % (obj_node_id(obj)), file=f)
         depth[id(obj)] = 0
         queue.append(obj)
     gc.collect()
@@ -293,7 +293,7 @@ def show_graph(objs, edge_func, swap_source_target,
         nodes += 1
         target = queue.pop(0)
         tdepth = depth[id(target)]
-        print >> f, '  %s[label="%s"];' % (obj_node_id(target), obj_label(target, tdepth))
+        print('  %s[label="%s"];' % (obj_node_id(target), obj_label(target, tdepth)), file=f)
         h, s, v = gradient((0, 0, 1), (0, 0, .3), tdepth, max_depth)
         if inspect.ismodule(target):
             h = .3
@@ -302,9 +302,9 @@ def show_graph(objs, edge_func, swap_source_target,
             h = .6
             s = .6
             v = 0.5 + v * 0.5
-        print >> f, '  %s[fillcolor="%g,%g,%g"];' % (obj_node_id(target), h, s, v)
+        print('  %s[fillcolor="%g,%g,%g"];' % (obj_node_id(target), h, s, v), file=f)
         if v < 0.5:
-            print >> f, '  %s[fontcolor=white];' % (obj_node_id(target))
+            print('  %s[fontcolor=white];' % (obj_node_id(target)), file=f)
         if inspect.ismodule(target) or tdepth >= max_depth:
             continue
         neighbours = edge_func(target)
@@ -320,23 +320,23 @@ def show_graph(objs, edge_func, swap_source_target,
             else:
                 srcnode, tgtnode = source, target
             elabel = edge_label(srcnode, tgtnode)
-            print >> f, '  %s -> %s%s;' % (obj_node_id(srcnode), obj_node_id(tgtnode), elabel)
+            print('  %s -> %s%s;' % (obj_node_id(srcnode), obj_node_id(tgtnode), elabel), file=f)
             if id(source) not in depth:
                 depth[id(source)] = tdepth + 1
                 queue.append(source)
             n += 1
             if n >= too_many:
-                print >> f, '  %s[color=red];' % obj_node_id(target)
+                print('  %s[color=red];' % obj_node_id(target), file=f)
                 break
-    print >> f, "}"
+    print("}", file=f)
     f.close()
-    print "Graph written to objects.dot (%d nodes)" % nodes
+    print("Graph written to objects.dot (%d nodes)" % nodes)
     if os.system('which xdot >/dev/null') == 0:
-        print "Spawning graph viewer (xdot)"
+        print("Spawning graph viewer (xdot)")
         os.system("xdot objects.dot &")
     else:
         os.system("dot -Tpng objects.dot > objects.png")
-        print "Image generated as objects.png"
+        print("Image generated as objects.png")
 
 
 def obj_node_id(obj):
@@ -394,11 +394,10 @@ def edge_label(source, target):
     if isinstance(target, dict) and target is getattr(source, '__dict__', None):
         return ' [label="__dict__",weight=10]'
     elif isinstance(source, dict):
-        for k, v in source.iteritems():
+        for k, v in source.items():
             if v is target:
                 if isinstance(k, basestring) and k:
                     return ' [label="%s",weight=2]' % quote(k)
                 else:
                     return ' [label="%s"]' % quote(safe_repr(k))
     return ''
-

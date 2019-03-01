@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.command_line import find_unused_imports_crude
+from libtbx.utils import to_unicode
 import sys, os
 import re
 
@@ -25,18 +26,18 @@ class file_clutter(object):
     self.missing_eol = False
     self.n_bare_excepts = 0
     self.unused_imports = None
-    self.n_from_future_import_division = None
+    self.n_from_future_import_division = -1
     self.flag_absolute_import = flag_absolute_import
-    self.n_from_future_import_absolute_import = None
+    self.n_from_future_import_absolute_import = -1
     self.flag_print_function = flag_print_function
-    self.n_from_future_import_print_function = None
+    self.n_from_future_import_print_function = -1
     self.bad_indentation = None
     self.file_should_be_empty = False
 
     if self.ignore_file():
       return
 
-    bytes = open(path, "rb").read()
+    bytes = to_unicode(open(path, "rb").read())
     if (len(bytes) > 0):
       if (bytes[-1] != "\n"):
         self.missing_eol = True
@@ -74,7 +75,7 @@ class file_clutter(object):
         if (find_unused_imports and path.endswith(".py")):
           self.unused_imports = find_unused_imports_crude.inspect(
             py_lines=py_lines)
-        if (find_bad_indentation) :
+        if (find_bad_indentation):
           self.bad_indentation = detect_indentation_problems(path)
 
   def ignore_file(self):
@@ -147,7 +148,7 @@ class file_clutter(object):
         sapp("missing 'from __future__ import print_function'")
       elif self.n_from_future_import_print_function > 1:
         sapp("more than one appearance of 'from __future__ import print_function'")
-    if (self.bad_indentation is not None) and (flag_indentation) :
+    if (self.bad_indentation is not None) and (flag_indentation):
       n_tab, n_space = self.bad_indentation
       sapp("non-standard indentation: %d space, %d tab" % (n_space, n_tab))
     return ", ".join(status)
@@ -160,13 +161,13 @@ class file_clutter(object):
       if append:
         append(msg)
       else:
-        print msg
-      if (verbose) and (self.has_unused_imports()) :
+        print(msg)
+      if (verbose) and (self.has_unused_imports()):
         msg2 = "  unused imports: %s" % ", ".join(self.unused_imports)
         if append:
           append(msg2)
         else :
-          print msg2
+          print(msg2)
 
 def is_text_file(file_name):
   name = file_name.lower()
@@ -183,7 +184,7 @@ def gather(paths, find_unused_imports=False, find_bad_indentation=False, flag_ab
       flag_print_function=flag_print_function))
   for path in paths:
     if (not os.path.exists(path)):
-      print >> sys.stderr, "No such file or directory:", path
+      print("No such file or directory:", path, file=sys.stderr)
     elif (os.path.isfile(path)):
       capp()
     else:
@@ -194,7 +195,7 @@ def gather(paths, find_unused_imports=False, find_bad_indentation=False, flag_ab
             capp()
   return clutter
 
-def detect_indentation_problems (file_name) :
+def detect_indentation_problems(file_name):
   try :
     import indent_finder
   except ImportError :
@@ -203,12 +204,12 @@ def detect_indentation_problems (file_name) :
   fi.clear()
   fi.parse_file(file_name)
   result = fi.results()
-  if (result is fi.default_result) :
+  if (result is fi.default_result):
     return None
   itype, ival = result
   n_tab = n_space = 0
-  if (itype != "mixed") :
-    if (itype == "space") :
+  if (itype != "mixed"):
+    if (itype == "space"):
       n_space = ival
     else :
       n_tab = ival

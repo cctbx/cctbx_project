@@ -33,7 +33,7 @@ def unit_cell_info(sub_clusters):
         enforce_max_delta_for_generated_two_folds=True)
       group = groups.result_groups[0]
       # suppress stdout output for now
-      from StringIO import StringIO
+      from six.moves import StringIO
       SS = StringIO()
       import sys
       sys.stdout = SS

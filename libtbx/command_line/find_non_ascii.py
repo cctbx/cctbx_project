@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os, sys, string
 
 def visit(arg, dirname, names):
@@ -18,11 +18,11 @@ def visit(arg, dirname, names):
       for j, line in enumerate(lines):
         for i, l in enumerate(line):
           if not l in string.printable:
-            print '-'*80
-            print "Non-ASCII letter at position %d in line %d of file\n\t%s" \
-                  % (i, j, dot_filename)
-            print line
-            print "%s^" % (' '*i)
+            print('-'*80)
+            print("Non-ASCII letter at position %d in line %d of file\n\t%s" \
+                  % (i, j, dot_filename))
+            print(line)
+            print("%s^" % (' '*i))
             break
 
 def run(dir):

@@ -11,7 +11,7 @@ model_error_ml = None
 include scope mmtbx.building.alternate_conformations.rejoin_phil
 """, process_includes=True)
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   from mmtbx.building import alternate_conformations
   import iotbx.phil
   cmdline = iotbx.phil.process_command_line_with_files(
@@ -37,11 +37,11 @@ def run (args, out=sys.stdout) :
       crystal_symmetry=pdb_in.file_object.xray_structure_simple()),
     set_b_iso=True,
     convert_to_isotropic=True)
-  if (n_modified == 0) :
+  if (n_modified == 0):
     print >> out, "No residues modified."
   else :
     open("rejoined.pdb", "w").write(hierarchy.as_pdb_string())
     print >> out, "wrote rejoined.pdb"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

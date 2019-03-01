@@ -390,7 +390,7 @@ class manager(object):
     restraint_sites_cart = self.model.get_sites_cart().deep_copy()
     if ca_only:
       restraint_sites_cart = self.model.get_sites_cart().\
-          deep_copy().select(ca_selection)
+          deep_copy().select(self.model.get_atom_selection_cache().selection("name CA"))
       sel = "name CA"
     self.model.set_reference_coordinate_restraints(
         ref_model=self.model,
@@ -400,9 +400,14 @@ class manager(object):
     # How this check was supposed to hold up when ca_only=True???
     # When ca_only=True, number of restraints will be less than number of atoms.
     # Good that users never change defaults (minimize_c_alpha_only = False).
-    n_rcp = self.model.get_restraints_manager().geometry.get_n_reference_coordinate_proxies()
-    n_sc = len(restraint_sites_cart)
-    assert n_rcp >= n_sc, "%d >= %d fail" % (n_rcp, n_sc)
+    #
+    # XXX finally, removing this assertion. On top of c_alpha_only case,
+    # it also fails (rightfully) when there are water molecules in the model,
+    # they are excluded. The same goes to hydrogens, but it seems no one yet
+    # tried den_refine for model with hydrogens on.
+    # n_rcp = self.model.get_restraints_manager().geometry.get_n_reference_coordinate_proxies()
+    # n_sc = len(restraint_sites_cart)
+    # assert n_rcp >= n_sc, "%d >= %d fail" % (n_rcp, n_sc)
     ########################
 
     # selection = self.model.selection_moving

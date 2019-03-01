@@ -83,10 +83,7 @@ class symmetrize_reduce_enlarge(object):
 
 
 if __name__=="__main__":
-  try:
-    import cPickle as pickle
-  except ImportError:
-    import pickle
+  from six.moves import cPickle as pickle
   import os
   from labelit.symmetry import metricsym
   from cctbx.sgtbx.bravais_types import bravais_lattice

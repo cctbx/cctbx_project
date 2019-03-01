@@ -61,7 +61,7 @@ def mon_lib_query(residue, mon_lib_srv):
   if (get_func is not None): return get_func(comp_id=residue)
   return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
 
-def eval_residue_completeness (residue, mon_lib_srv, ignore_hydrogens=True):
+def eval_residue_completeness(residue, mon_lib_srv, ignore_hydrogens=True):
   atom_list = []
   for atom in residue.atoms():
     atom_list.append(atom.name.strip().upper())
@@ -173,7 +173,7 @@ class RotamerEval:
                     target_path=pickle_file,
                     path_prefix=rotamer_data_dir)
       if (((pair_info.needs_update) and (not no_update)) or not
-          os.path.exists(os.path.join(rotamer_data_dir, pickle_file)))  :
+          os.path.exists(os.path.join(rotamer_data_dir, pickle_file))):
         raise Sorry(
           "chem_data/rotarama_data/*.pickle files are missing or out of date.\n"
           "  Please run\n"
@@ -206,7 +206,7 @@ class RotamerEval:
         atom_dict[atom.name] = atom
     return atom_dict
 
-  def chi_angles (self, residue) :
+  def chi_angles(self, residue):
     atom_dict = self.get_atom_dict(residue)
     return self.sidechain_angles.measureChiAngles(
       res=residue,
@@ -311,7 +311,7 @@ class RotamerID:
   names = {}
 
   def __init__(self):
-    if (len(self.names) == 0) :
+    if (len(self.names) == 0):
       source_dir = self.find_source_dir()
       #f = PropertyFile()
       # can't use f.properties to read in rotamer_names.props

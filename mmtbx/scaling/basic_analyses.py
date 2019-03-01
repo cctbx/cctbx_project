@@ -28,17 +28,17 @@ class basic_analyses(object):  # XXX is this ever used?
     n_copies_solc = 1.0
     self.nres_known = False
     if (phil_object.scaling.input.asu_contents.n_residues is not None or
-        phil_object.scaling.input.asu_contents.n_bases is not None) :
+        phil_object.scaling.input.asu_contents.n_bases is not None):
       self.nres_known = True
-      if (phil_object.scaling.input.asu_contents.sequence_file is not None) :
+      if (phil_object.scaling.input.asu_contents.sequence_file is not None):
         print >> out, "  warning: ignoring sequence file"
-    elif (phil_object.scaling.input.asu_contents.sequence_file is not None) :
+    elif (phil_object.scaling.input.asu_contents.sequence_file is not None):
       print >> out, "  determining composition from sequence file %s" % \
         phil_object.scaling.input.asu_contents.sequence_file
       seq_comp = iotbx.bioinformatics.composition_from_sequence_file(
         file_name=phil_object.scaling.input.asu_contents.sequence_file,
         log=out)
-      if (seq_comp is not None) :
+      if (seq_comp is not None):
         phil_object.scaling.input.asu_contents.n_residues = seq_comp.n_residues
         phil_object.scaling.input.asu_contents.n_bases = seq_comp.n_bases
         self.nres_known = True
@@ -66,7 +66,7 @@ class basic_analyses(object):  # XXX is this ever used?
     miller_array_new = miller_array
     self.data_strength = None
     miller_array_intensities = miller_array
-    if (original_intensities is not None) :
+    if (original_intensities is not None):
       assert original_intensities.is_xray_intensity_array()
       miller_array_intensities = original_intensities
     if miller_array_intensities.sigmas() is not None:
@@ -211,7 +211,7 @@ class basic_analyses(object):  # XXX is this ever used?
 
     #relative wilson plot
     self.rel_wilson = None
-    if (miller_calc is not None) and (miller_calc.d_min() < 4.0) :
+    if (miller_calc is not None) and (miller_calc.d_min() < 4.0):
       try :
         self.rel_wilson = relative_wilson.relative_wilson(
           miller_obs=miller_array,

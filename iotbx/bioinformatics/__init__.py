@@ -885,13 +885,13 @@ def parse_sequence(data):
   return min( results, key = lambda p: len( p[1] ) )
 
 # XXX test needed
-def any_sequence_format (file_name, assign_name_if_not_defined=False,
-    data=None) :
+def any_sequence_format(file_name, assign_name_if_not_defined=False,
+    data=None):
   format_parser = sequence_parser_for(file_name)
   if data is None:
     data = open(file_name, "r").read()
   seq_object = None
-  if (format_parser is not None) :
+  if (format_parser is not None):
     try :
       objects, non_compliant = format_parser.parse(data)
       assert (len(objects) > 0)
@@ -899,16 +899,16 @@ def any_sequence_format (file_name, assign_name_if_not_defined=False,
     except Exception, e :
       pass
     else :
-      if (assign_name_if_not_defined) :
+      if (assign_name_if_not_defined):
         base_name = os.path.splitext(os.path.basename(file_name))[0]
-        for k, seq in enumerate(objects) :
-          if (seq.name == "") :
+        for k, seq in enumerate(objects):
+          if (seq.name == ""):
             seq.name = "%s_%d" % (base_name, k+1)
             print seq.name
       return objects, non_compliant
   for other_parser in [fasta_sequence_parse.parse, pir_sequence_parse.parse,
                        seq_sequence_parse.parse, tf_sequence_parse] :
-    if (other_parser is not format_parser) :
+    if (other_parser is not format_parser):
       try :
         objects, non_compliant = other_parser(data)
         assert (len(objects) > 0)
@@ -916,52 +916,52 @@ def any_sequence_format (file_name, assign_name_if_not_defined=False,
       except Exception, e :
         pass
       else :
-        if (assign_name_if_not_defined) :
+        if (assign_name_if_not_defined):
           base_name = os.path.splitext(os.path.basename(file_name))[0]
-          for k, seq in enumerate(objects) :
-            if (seq.name == "") :
+          for k, seq in enumerate(objects):
+            if (seq.name == ""):
               seq.name = "%s_%d" % (base_name, k+1)
               print seq.name
         return objects, non_compliant
   # fallback: unformatted
   data = re.sub("\s", "", data)
-  if (re.search("[^a-zA-Z\*]", data) is None) :
+  if (re.search("[^a-zA-Z\*]", data) is None):
     seq = sequence(data)
     if (assign_name_if_not_defined ):
       seq.name = os.path.splitext(os.path.basename(file_name))[0]
     return [seq], []
   return None, None
 
-def merge_sequence_files (file_names, output_file, sequences=(),
+def merge_sequence_files(file_names, output_file, sequences=(),
     include_non_compliant=False, call_back_on_error=None,
-    force_new_file=False) :
+    force_new_file=False):
   assert (len(file_names) > 0) or (len(sequences) > 0)
-  if (len(file_names)==1) and (len(sequences)==0) and (not force_new_file) :
+  if (len(file_names)==1) and (len(sequences)==0) and (not force_new_file):
     return file_names[0]
   seq_out = cStringIO.StringIO()
   for seq_file in file_names :
     objects, non_compliant = any_sequence_format(seq_file)
-    if (objects is None) :
+    if (objects is None):
       msg = ("The file '%s' could not be parsed as one of the "+
           "standard formats.  This could either be a problem with the file, "+
           "a non-standard format, or a bug in our code.  For further help, "+
           "please email the developers at help@phenix-online.org.") % seq_file
-      if (hasattr(call_back_on_error, "__call__")) :
+      if (hasattr(call_back_on_error, "__call__")):
         msg += "  (This is not a fatal error, but the combined sequence "+\
                 "file will be incomplete.)"
-        if (not call_back_on_error(msg)) :
+        if (not call_back_on_error(msg)):
           raise Abort()
         continue
       else :
         raise RuntimeError(msg)
     for seq_record in objects :
       name = str(seq_record.name)
-      if (name == "") :
+      if (name == ""):
         name = "none"
       seq_out.write("> %s\n" % name)
       seq_out.write("%s\n" % seq_record.sequence)
-  if (len(sequences) > 0) :
-    for k, seq in enumerate(sequences) :
+  if (len(sequences) > 0):
+    for k, seq in enumerate(sequences):
       seq_out.write("> seq%d\n" % (k+1))
       seq_out.write("%s\n" % seq)
   f = open(output_file, "w")
@@ -1236,11 +1236,11 @@ def known_alignment_formats():
 
   return _implemented_alignment_parsers.keys()
 
-def any_alignment_file (file_name) :
+def any_alignment_file(file_name):
   base, ext = os.path.splitext(file_name)
   data = open(file_name).read()
   parser1 = None
-  if (ext != ".hhr") and (ext in _implemented_alignment_parsers) :
+  if (ext != ".hhr") and (ext in _implemented_alignment_parsers):
     parser1 = _implemented_alignment_parsers.get(ext)
     try :
       aln = parser1(data)[0]
@@ -1251,7 +1251,7 @@ def any_alignment_file (file_name) :
       return aln
   for parser in [pir_alignment_parse, clustal_alignment_parse,
                  fasta_alignment_parse, ali_alignment_parse] :
-    if (parser is parser1) :
+    if (parser is parser1):
       continue
     try :
       aln = parser(data)[0]
@@ -1458,7 +1458,7 @@ class hhsearch_parser(hhpred_parser):
   HITS = re.compile(
     r"""
     No \s ( \d+) \s* (?: \n | \r\n | \r )
-    >( [\w]{4} ) _  ( [\w]? ) \s ( [^\n]* )(?: \n | \r\n | \r )
+    >( [\w]{4} ) _  ( [\w]{1,2} ) \s ( [^\n]* )(?: \n | \r\n | \r )
     Probab = ( [+-]? \d+ \. \d* ) \s+
     E-value = ( \d+ \.? \d* )( e[+-]? \d+ )? \s+
     Score = ( [+-]? \d+\.\d+ ) \s+
@@ -1761,7 +1761,7 @@ class hhalign_parser(hhpred_parser):
       program = "HHPred"
       )
 
-def any_hh_file (file_name) :
+def any_hh_file(file_name):
   data = open(file_name).read()
   for parser in [hhalign_parser, hhsearch_parser] :
     try :
@@ -1773,18 +1773,18 @@ def any_hh_file (file_name) :
       return p
   raise RuntimeError("Not an HHpred/HHalign/HHsearch file!")
 
-def composition_from_sequence_file (file_name, log=None) :
-  if (log is None) :
+def composition_from_sequence_file(file_name, log=None):
+  if (log is None):
     log = sys.stdout
   try :
     seq_file, non_compliant = any_sequence_format(file_name)
-    if (seq_file is None) :
+    if (seq_file is None):
       raise ValueError("Could not parse %s" % file_name)
   except Exception, e :
     print >> log, str(e)
     return None
   else :
-    if (len(non_compliant) > 0) :
+    if (len(non_compliant) > 0):
       print >> log, "Warning: non-compliant entries in sequence file"
       for nc in non_compliant :
         print >> log, "  " + str(nc)
@@ -1795,13 +1795,13 @@ def composition_from_sequence_file (file_name, log=None) :
       n_bases += n_base_seq
     return group_args(n_residues=n_residues, n_bases=n_bases)
 
-def composition_from_sequence (sequence) :
+def composition_from_sequence(sequence):
   seq = sequence.upper()
   n_residues = n_bases = 0
   n_valid = len(seq) - seq.count("X")
   n_na = seq.count("A") + seq.count("U") + seq.count("T") + \
     seq.count("G") + seq.count("C")
-  if (n_na >= int(n_valid * 0.9)) :
+  if (n_na >= int(n_valid * 0.9)):
     n_bases += len(seq)
   else :
     n_residues += len(seq)
@@ -2069,4 +2069,3 @@ def random_sequence(n_residues=None,residue_basket=None):
     s+=residue_basket[id]
   return s
 
-  print dir(random)

@@ -548,7 +548,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
   def twin_test(self):
     return "yes"
 
-  def is_twin_fmodel_manager (self) :
+  def is_twin_fmodel_manager(self):
     return True
 
   def update_f_hydrogens(self, log): # XXX dummy function to conform with non-twin equivalent
@@ -637,7 +637,7 @@ the percentage of R-free reflections).
     new_object.twin_fraction = float(self.twin_fraction_object.twin_fraction)
     new_object.update()
     new_object.did_search = self.did_search
-    if (self.fmodel_ts1 is not None) :
+    if (self.fmodel_ts1 is not None):
       new_object.fmodel_ts1 = self.fmodel_ts1.deep_copy()
     return new_object
 
@@ -1691,24 +1691,24 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     return miller.array(miller_set = f_model,
                         data       = d_obs.data()-f_model.data()*f_model_scale)
 
-  def map_coefficients (self, **kwds) :
+  def map_coefficients(self, **kwds):
     emap = self.electron_density_map()
     return emap.map_coefficients(**kwds)
 
-  def _get_real_map (self, **kwds) :
+  def _get_real_map(self, **kwds):
     map_coeffs = self.map_coefficients(**kwds)
     return map_coeffs.fft_map(
       resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
 
-  def two_fofc_map (self, **kwds) :
+  def two_fofc_map(self, **kwds):
     kwds['map_type'] = "2mFo-DFc"
     return self._get_real_map(**kwds)
 
-  def fofc_map (self, **kwds) :
+  def fofc_map(self, **kwds):
     kwds['map_type'] = "mFo-DFc"
     return self._get_real_map(**kwds)
 
-  def anomalous_map (self, **kwds) :
+  def anomalous_map(self, **kwds):
     if (not self.f_obs().anomalous_flag()) : return None
     kwds['map_type'] = "anom"
     return self._get_real_map(**kwds)
@@ -1722,11 +1722,11 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                        isotropize=None,
                        ncs_average = None,
                        ):
-    if (map_type == "Fmodel") :
+    if (map_type == "Fmodel"):
       map_type = "Fc"
-    elif (map_type == "DFmodel") :
+    elif (map_type == "DFmodel"):
       map_type = "DFc"
-    if (map_type.lower().startswith("anom")) :
+    if (map_type.lower().startswith("anom")):
       map_type = "anom"
     supported_types = ("Fo-Fc", "Fobs-Fmodel",
                         "2mFo-DFc", "2mFobs-DFmodel",
@@ -1742,7 +1742,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       raise Sorry(("Map type '%s' not supported for twinned structures. "+
         "Allowed types: %s.") % (map_type, ", ".join(supported_types)))
     # this is to modify default behavior of phenix.refine
-    if (map_type == "mFo-DFc") or (map_type == "mFobs-DFmodel") :
+    if (map_type == "mFo-DFc") or (map_type == "mFobs-DFmodel"):
       if self.map_types.fofc == "gradient":
         map_type = "gradient"
       if self.map_types.fofc == "m_gradient":
@@ -1750,7 +1750,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       if self.map_types.fofc == "m_dtfo_d_fc":
         map_type = "m_dtfo_d_fc"
 
-    if (map_type == "2mFo-DFc") or (map_type=="2mFobs-DFmodel") :
+    if (map_type == "2mFo-DFc") or (map_type=="2mFobs-DFmodel"):
       if self.map_types.twofofc == "two_m_dtfo_d_fc":
         map_type = "two_m_dtfo_d_fc"
       if  self.map_types.twofofc == "two_dtfo_fc":
@@ -1765,8 +1765,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       data = aniso_scale ).common_set( dt_f_obs )
     aniso_scale = aniso_scale.data()
 
-    if (map_type == "anom") :
-      if (not dt_f_obs.anomalous_flag()) :
+    if (map_type == "anom"):
+      if (not dt_f_obs.anomalous_flag()):
         return None
       anom_diff = dt_f_obs.anomalous_differences()
       tmp_f_model = tmp_f_model.average_bijvoet_mates()
@@ -1777,9 +1777,9 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       return result
     elif map_type not in ["gradient","m_gradient"]:
       result = None
-      if (map_type == "Fc") :
+      if (map_type == "Fc"):
         result = tmp_f_model
-      elif (map_type == "DFc") :
+      elif (map_type == "DFc"):
         sigmaa_object = self.sigmaa_object(
           detwinned_data=dt_f_obs,
           f_model_data=tmp_f_model,
@@ -1790,7 +1790,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         dt_f_obs, tmp_f_model = dt_f_obs.common_sets( tmp_f_model )
         result = tmp_f_model.customized_copy(
           data=tmp_f_model.data()*d.data())
-      elif (map_type == "mFo") :
+      elif (map_type == "mFo"):
         sigmaa_object = self.sigmaa_object(
           detwinned_data=dt_f_obs,
           f_model_data=tmp_f_model,
@@ -1801,7 +1801,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         result = dt_f_obs.customized_copy(
           data=dt_f_obs.data()*m.data()).phase_transfer(
             phase_source=tmp_f_model)
-      elif (map_type in ["Fo-Fc", "Fobs-Fmodel"]) :
+      elif (map_type in ["Fo-Fc", "Fobs-Fmodel"]):
         if ([k,n]).count(None) > 0:
           raise Sorry("Map coefficient multipliers (k and n) must be provided to generate detwinned maps")
         result = self._map_coeff( f_obs         = dt_f_obs,
@@ -1902,7 +1902,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                            sharp=None,
                            pdb_hierarchy=None,
                            merge_anomalous=None): # FIXME ignored
-        if (map_type in ["gradient", "m_gradient", "anom"]) :
+        if (map_type in ["gradient", "m_gradient", "anom"]):
           return self.fmodel.compute_map_coefficients(map_type=map_type)
         else :
           map_name_manager = mmtbx.map_names(map_name_string = map_type)
@@ -1924,7 +1924,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
           resolution_factor = self.resolution_factor
         if(symmetry_flags is None):
           symmetry_flags =  self.symmetry_flags
-        if (map_type in ["gradient", "m_gradient", "anom"]) :
+        if (map_type in ["gradient", "m_gradient", "anom"]):
           map_coefficients = self.fmodel.compute_map_coefficients(
             map_type=map_type)
         else :
@@ -2320,10 +2320,10 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
             ["%.6g" % zero_if_almost_zero(v) for v in self.b_cart()])]:
       print >> out, prefix + line + suffix
 
-  def export_f_obs_flags_as_mtz (self,
+  def export_f_obs_flags_as_mtz(self,
       file_name,
       merge_anomalous=False,
-      include_hendrickson_lattman=True) :
+      include_hendrickson_lattman=True):
     """
     Dump all input data to an MTZ file using standard column labels.  This may
     be useful when running modules or programs that require an MTZ file as
@@ -2332,13 +2332,13 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     f_obs = self.f_obs()
     flags = self.r_free_flags()
     hl_coeffs = self.hl_coeffs()
-    if (merge_anomalous) :
+    if (merge_anomalous):
       f_obs = f_obs.average_bijvoet_mates()
       flags = flags.average_bijvoet_mates()
-      if (hl_coeffs is not None) :
+      if (hl_coeffs is not None):
         hl_coeffs = hl_coeffs.average_bijvoet_mates()
     mtz_dataset = f_obs.as_mtz_dataset(column_root_label="F")
-    if (hl_coeffs is not None) and (include_hendrickson_lattman) :
+    if (hl_coeffs is not None) and (include_hendrickson_lattman):
       mtz_dataset.add_miller_array(hl_coeffs, column_root_label="HL")
     mtz_dataset.add_miller_array(flags, column_root_label="FreeR_flag")
     mtz_dataset.mtz_object().write(file_name)

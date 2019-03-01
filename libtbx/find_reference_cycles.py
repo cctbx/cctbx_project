@@ -1,6 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from types import FrameType
-from StringIO import StringIO
+from six.moves import cStringIO as StringIO
 import gc
 import sys
 
@@ -97,7 +97,7 @@ def exercise():
   assert lines[1].count("bad_class") == 2
   assert lines[2].count("dict") == 1
 
-  print "OK"
+  print("OK")
 
 # =============================================================================
 if (__name__ == "__main__"):

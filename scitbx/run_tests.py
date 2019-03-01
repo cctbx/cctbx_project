@@ -143,7 +143,7 @@ tst_list = (
   "$D/suffixtree/test/tst_single.py",
   )
 
-def run () :
+def run():
   build_dir = libtbx.env.under_build("scitbx")
   dist_dir = libtbx.env.dist_path("scitbx")
 

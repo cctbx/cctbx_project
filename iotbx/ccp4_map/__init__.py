@@ -7,9 +7,9 @@ ext = boost.python.import_ext("iotbx_ccp4_map_ext")
 from iotbx_ccp4_map_ext import *
 import iotbx_ccp4_map_ext as ext
 
-class _(boost.python.injector, ext.map_reader) :
+class utils :  # These routines are used by both ccp4_map and mrcfile
 
-  def show_summary (self, out=None, prefix="") :
+  def show_summary(self, out=None, prefix=""):
     if (out is None) : out = sys.stdout
     print >> out, prefix + "header_min: ", self.header_min
     print >> out, prefix + "header_max: ", self.header_max
@@ -21,7 +21,7 @@ class _(boost.python.injector, ext.map_reader) :
     print >> out, prefix + "map origin:", self.data.origin()
     print >> out, prefix + "map grid:  ", self.data.all()
 
-  def crystal_symmetry(self):
+  def crystal_symmetry(self,sorry_message_if_incompatible=None):
     # This is "crystal_symmetry" of a box the size of the map that is present
     from cctbx import crystal
     map_all = self.map_data().all()
@@ -31,7 +31,17 @@ class _(boost.python.injector, ext.map_reader) :
       a = a * map_all[0]/self.unit_cell_grid[0]
       b = b * map_all[1]/self.unit_cell_grid[1]
       c = c * map_all[2]/self.unit_cell_grid[2]
-      return crystal.symmetry((a,b,c, al,be,ga), self.space_group_number)
+      try:
+        return crystal.symmetry((a,b,c, al,be,ga),
+           self.space_group_number)
+      except Exception,e:
+        from libtbx.utils import Sorry
+        if str(e).find(
+          "incompatible") and \
+          sorry_message_if_incompatible:
+          raise Sorry(sorry_message_if_incompatible)
+        else:
+          raise Sorry(str(e))
     else:
       # map that is present is exactly one unit cell. Use unit cell symmetry
       return self.unit_cell_crystal_symmetry()
@@ -42,11 +52,11 @@ class _(boost.python.injector, ext.map_reader) :
       self.space_group_number)
 
 
-  def unit_cell (self) :
+  def unit_cell(self):
     from cctbx import uctbx
     return uctbx.unit_cell(self.unit_cell_parameters)
 
-  def statistics (self) :
+  def statistics(self):
     from cctbx import maptbx
     return maptbx.statistics(self.data)
 
@@ -63,7 +73,7 @@ class _(boost.python.injector, ext.map_reader) :
     if([f1,f2,f3,f4].count(False)>0): return False
     else: return True
 
-  def grid_unit_cell (self) :
+  def grid_unit_cell(self):
     """
     If we want to use maptbx.non_crystallographic_eight_point_interpolation,
     the "unit cell" is actually the original unit cell divided by the original
@@ -75,3 +85,8 @@ class _(boost.python.injector, ext.map_reader) :
     c = self.unit_cell_parameters[2] / self.unit_cell_grid[2]
     alpha,beta,gamma = self.unit_cell_parameters[3:6]
     return uctbx.unit_cell((a,b,c,alpha,beta,gamma))
+
+class _(boost.python.injector, ext.map_reader, utils) : # A way to access these
+  def dummy(self):
+    pass # don't do anything
+

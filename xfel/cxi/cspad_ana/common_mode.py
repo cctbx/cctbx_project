@@ -219,7 +219,7 @@ class common_mode_correction(mod_event_info):
       assert self.override_beam_x is not None
       assert self.override_beam_y is not None
       from xfel.cxi.cspad_ana import rayonix_tbx
-      maxx, maxy = rayonix_tbx.get_rayonix_detector_dimensions(self.bin_size)
+      maxx, maxy = rayonix_tbx.get_rayonix_detector_dimensions(env)
       if self.crop_rayonix:
         bx = int(round(self.override_beam_x))
         by = int(round(self.override_beam_y))

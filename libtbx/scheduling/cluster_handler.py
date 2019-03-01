@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx.queuing_system_utils import processing
 from libtbx.queuing_system_utils.processing import errors
@@ -15,8 +15,8 @@ class Job(processing.Job):
     try:
       return getattr( super( Job, self ), name )()
 
-    except errors.BatchQueueError, e:
-      raise SetupError, "Queue error: %s" % e
+    except errors.BatchQueueError as e:
+      raise SetupError("Queue error: %s" % e)
 
 
   @property
@@ -25,8 +25,8 @@ class Job(processing.Job):
     try:
       return super( Job, self ).exitcode
 
-    except errors.BatchQueueError, e:
-      raise SetupError, "Queue error: %s" % e
+    except errors.BatchQueueError as e:
+      raise SetupError("Queue error: %s" % e)
 
 
   def start(self):
@@ -83,8 +83,8 @@ class JobFactory(object):
         display_stderr = False,
         )
 
-    except errors.BatchQueueError, e:
-      raise SetupError, "Queue error: %s" % e
+    except errors.BatchQueueError as e:
+      raise SetupError("Queue error: %s" % e)
 
 
   def __call__(self, target, args = (), kwargs = {}):

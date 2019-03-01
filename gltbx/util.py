@@ -6,6 +6,21 @@ import boost.python
 ext = boost.python.import_ext("gltbx_util_ext")
 from gltbx_util_ext import *
 import re
+import sys
+
+def handle_error():
+  '''
+  Windows will sometimes throw extra errors that can be ignored
+  This function will ignore errors with "invalid" in the message (e.g.
+  GL_INVALID_ENUM, GL_INVALID_OPERATION) on Windows.
+  '''
+  try:
+    ext.handle_error()
+  except RuntimeError as e:
+    if (sys.platform == 'win32') and ('invalid' in repr(e)):
+      pass
+    else:
+      raise
 
 def show_versions():
   from gltbx import gl
@@ -26,10 +41,10 @@ def show_versions():
 # this is essential for Linux - if the X server does not support GLX,
 # attempting to use OpenGL will crash the entire program.  this usually
 # only happens with remote display on Windows. . .
-def check_glx_availability () :
+def check_glx_availability():
   glxerr = easy_run.fully_buffered("glxinfo -b").stderr_lines
   for line in glxerr :
-    if re.search('extension "GLX" missing', line) :
+    if re.search('extension "GLX" missing', line):
       return False
   return True
 

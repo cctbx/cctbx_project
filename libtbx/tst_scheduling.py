@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import unittest
 import time
@@ -12,14 +12,14 @@ def normal_function(arg, wait):
 def raise_runtime_error(message, wait):
 
   time.sleep( wait )
-  raise RuntimeError, message
+  raise RuntimeError(message)
 
 
 def raise_sorry(message, wait):
 
   time.sleep( wait )
   from libtbx.utils import Sorry
-  raise Sorry, message
+  raise Sorry(message)
 
 
 def crash_python(wait):

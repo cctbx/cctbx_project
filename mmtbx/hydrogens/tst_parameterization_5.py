@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
+from libtbx.utils import null_out
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of H atoms for multiple conformations
@@ -12,7 +13,8 @@ def exercise(pdb_str, type_list_known):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = True)
+    build_grm   = True,
+    log         = null_out())
 
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
@@ -153,7 +155,6 @@ ATOM     59  C   SER A   6      18.920  19.904  10.378  1.00  3.90           C
 ANISOU   59  C   SER A   6      554    387    543    -50    -15    -34       C
 ATOM     60  O   SER A   6      18.798  19.501   9.222  1.00  4.24           O
 ANISOU   60  O   SER A   6      634    443    534    -77    -67    -59       O
-ATOM     61  H   SER A   6      17.771  20.675  13.110  1.00  4.20           H
 ATOM     62  HA  SER A   6      16.905  19.937  10.839  1.00  4.34           H
 ATOM     63  CB ASER A   6      17.651  21.951  11.144  0.60  5.87           C
 ANISOU   63  CB ASER A   6      843    568    821    229    -39    -32       C
@@ -290,7 +291,7 @@ END
 type_list_known1 = ['2tetra', '2tetra', 'alg1b', '3neigbs', '3neigbs',
   '3neigbs', 'alg1b', '2tetra', '2tetra', '2tetra', '2tetra', 'alg1b',
   '3neigbs', '2tetra', '2tetra', '3neigbs', '2tetra', '2tetra', 'flat_2neigbs',
-  'alg1b', '3neigbs', '2tetra', '2tetra', 'alg1b', '2tetra', '2tetra', 'alg1b',
+  '3neigbs', '2tetra', '2tetra', 'alg1b', '2tetra', '2tetra', 'alg1b',
   '2tetra', '2tetra', 'alg1b', '3neigbs', '3neigbs', 'prop', 'prop', 'prop',
   'prop', 'prop', 'prop', '3neigbs', 'prop', 'prop', 'prop', 'prop', 'prop',
   'prop', '3neigbs', '2tetra', '2tetra', 'alg1b', '2tetra', '2tetra', 'alg1b',
@@ -308,7 +309,6 @@ ATOM    286  N  AALA A  25      18.694  -4.221  25.276  0.50  9.87           N
 ATOM    287  CA AALA A  25      19.812  -3.247  25.214  0.50 10.86           C
 ATOM    288  C  AALA A  25      19.902  -2.496  23.898  0.50  9.98           C
 ATOM    289  O  AALA A  25      20.720  -1.565  23.768  0.50  7.99           O
-ATOM    290  H  AALA A  25      18.945  -5.044  25.293  0.50 10.06           H
 ATOM    291  HA AALA A  25      19.625  -2.606  25.918  0.50 11.03           H
 ATOM    292  HB1AALA A  25      21.824  -3.278  25.378  0.50 11.78           H
 ATOM    293  HB2AALA A  25      21.109  -4.356  26.292  0.50 11.78           H
@@ -317,14 +317,13 @@ ATOM    295  N  BALA A  25      18.682  -4.224  25.328  0.50 10.05           N
 ATOM    296  CA BALA A  25      19.756  -3.242  25.276  0.50 11.02           C
 ATOM    297  C  BALA A  25      19.678  -2.389  23.992  0.50  9.97           C
 ATOM    298  O  BALA A  25      20.024  -1.203  24.029  0.50 11.29           O
-ATOM    299  H  BALA A  25      18.941  -5.043  25.374  0.50 10.06           H
 ATOM    300  HA BALA A  25      19.650  -2.631  26.022  0.50 11.03           H
 ATOM    301  HB1BALA A  25      21.811  -3.264  25.386  0.50 11.78           H
 ATOM    302  HB2BALA A  25      21.142  -4.393  26.273  0.50 11.78           H
 ATOM    303  HB3BALA A  25      21.224  -4.566  24.701  0.50 11.78           H
 """
 
-type_list_known2 = ['alg1b', '3neigbs', 'prop', 'prop', 'prop', 'alg1b',
+type_list_known2 = ['3neigbs', 'prop', 'prop', 'prop',
   '3neigbs', 'prop', 'prop', 'prop']
 
 
@@ -354,7 +353,6 @@ ATOM    582  NE  ARG A  71       1.134  21.965  21.122  1.00 63.41           N
 ATOM    583  CZ  ARG A  71       0.470  22.927  21.755  1.00 62.11           C
 ATOM    584  NH1 ARG A  71      -0.038  22.699  22.955  1.00 60.26           N
 ATOM    585  NH2 ARG A  71       0.310  24.119  21.188  1.00 62.26           N
-ATOM      0  H   ARG A  71       4.587  18.847  22.553  1.00 56.18           H
 ATOM      0  HA  ARG A  71       3.979  20.793  20.783  1.00 50.81           H
 ATOM      0  HB2 ARG A  71       4.047  21.109  23.604  1.00 51.01           H
 ATOM      0  HB3 ARG A  71       3.476  22.167  22.610  1.00 51.01           H
@@ -369,14 +367,15 @@ ATOM      0 HH21 ARG A  71       0.637  24.271  20.407  1.00 62.26           H
 ATOM      0 HH22 ARG A  71      -0.120  24.738  21.602  1.00 62.26           H
 """
 
-type_list_known3 = ['alg1b', '3neigbs', '2tetra', '2tetra', '2tetra', '2tetra',
+type_list_known3 = ['3neigbs', '2tetra', '2tetra', '2tetra', '2tetra',
  '2tetra', '2tetra', 'flat_2neigbs', 'alg1a', 'alg1a']
 
 def exercise3(pdb_str, type_list_known):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = True)
+    build_grm   = True,
+    log         = null_out())
 
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
@@ -413,4 +412,4 @@ if (__name__ == "__main__"):
   exercise(pdb_str = pdb_str2, type_list_known = type_list_known2)
   exercise3(pdb_str = pdb_str3, type_list_known = type_list_known3)
 
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

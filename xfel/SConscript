@@ -76,3 +76,4 @@ if (not env_etc.no_boost_python):
 
   SConscript("mono_simulation/SConscript")
   SConscript("clustering/SConscript")
+  SConscript("merging/SConscript")

@@ -1,7 +1,7 @@
 
 from __future__ import division
 
-def exercise () :
+def exercise():
   from mmtbx.ions import utils as ion_utils
   import iotbx.pdb.hierarchy
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string="""\
@@ -30,7 +30,7 @@ HETATM 1701 CL    CL X  12     -10.068 -10.650   0.239  0.53 22.83      ION CL1-
   hierarchy.append_model(model)
   chain = iotbx.pdb.hierarchy.chain(id="X")
   model.append_chain(chain)
-  for k, atom in enumerate(pdb_atoms) :
+  for k, atom in enumerate(pdb_atoms):
     rg = iotbx.pdb.hierarchy.residue_group(resseq="%4d" % (k+1))
     chain.append_residue_group(rg)
     ag = iotbx.pdb.hierarchy.atom_group(resname=atom.parent().resname)
@@ -54,6 +54,6 @@ HETATM   11 CL    CL X  10     -10.068 -10.650   0.239  0.53 22.83      ION CL1-
 HETATM    4 MG    MG X  11     -14.099  16.408  -0.840  1.00 14.87      ION MG2+
 """)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

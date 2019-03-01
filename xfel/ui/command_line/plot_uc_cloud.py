@@ -15,7 +15,7 @@ phil_str = """
   tag_selection_mode = *union intersection
     .type = choice
   run = None
-    .type = int
+    .type = str
     .multiple = True
   rungroup = None
     .type = int
@@ -56,7 +56,7 @@ def run(args):
     rungroup = None
 
   if extra_title is None and runs is not None:
-    extra_title = "%s"%(",".join(["%d"%r.run for r in runs]))
+    extra_title = "%s"%(",".join(["%s"%r.run for r in runs]))
 
   trial = app.get_trial(trial_number=params.trial)
   info = []

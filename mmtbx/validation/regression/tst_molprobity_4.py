@@ -41,6 +41,6 @@ def test1(prefix="tst_mp4"):
     f.write(pdb_txt)
   result = molprobity.run(args=['%s.pdb' % prefix])
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   test1()
   print "OK"

@@ -24,9 +24,9 @@ map_file_name = iso_diff.ccp4
   .type = path
 """, process_includes=True)
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   show_development_warning(out=out)
-  if (len(args) == 0) or ("--help" in args) :
+  if (len(args) == 0) or ("--help" in args):
     raise Usage("""\
 cctbx.isomorphous_difference_patterson xtal1.mtz xtal2.mtz [options]
 
@@ -43,14 +43,14 @@ Full parameters:
   sources = []
   data_file_1 = data_file_2 = None
   for arg in args :
-    if (os.path.isfile(arg)) :
+    if (os.path.isfile(arg)):
       f = file_reader.any_file(arg)
-      if (f.file_type == "phil") :
+      if (f.file_type == "phil"):
         sources.append(f.file_object)
-      elif (f.file_type == "hkl") :
-        if (data_file_1 is None) :
+      elif (f.file_type == "hkl"):
+        if (data_file_1 is None):
           data_file_1 = f
-        elif (data_file_2 is None) :
+        elif (data_file_2 is None):
           data_file_2 = f
         else :
           raise Sorry("No more than two reflection files are supported.")
@@ -62,11 +62,11 @@ Full parameters:
       except RuntimeError, e :
         raise Sorry("Unrecognized argument '%s'.")
   params = master_phil.fetch(sources=sources).extract()
-  if (params.data_file_1 is not None) :
+  if (params.data_file_1 is not None):
     data_file_1 = file_reader.any_file(params.data_file_1)
-  if (params.data_file_2 is not None) :
+  if (params.data_file_2 is not None):
     data_file_2 = file_reader.any_file(params.data_file_2)
-  if (None in [data_file_1, data_file_2]) :
+  if (None in [data_file_1, data_file_2]):
     raise Sorry("You must provide two datasets for this program to run.  If "+
       "they are different arrays within a specific file, you need to specify "+
       "the parameters explicitly, i.e. 'data_file_1=NAME data_file_2=NAME'.")
@@ -75,11 +75,11 @@ Full parameters:
   sg_err_2, uc_err_2 = symm_manager.process_reflections_file(data_file_2)
   out_tmp = StringIO()
   symm_manager.show(out=out_tmp)
-  if (sg_err_1) or (sg_err_2) :
+  if (sg_err_1) or (sg_err_2):
     raise Sorry(("Incompatible space groups in input files:\n%s\nAll files "+
       "must have the same point group (and ideally the same space group). ") %
       out_tmp.getvalue())
-  elif (uc_err_1) or (uc_err_2) :
+  elif (uc_err_1) or (uc_err_2):
     libtbx.call_back(message="warn",
       data=("Crystal symmetry mismatch:\n%s\nCalculations will continue "+
         "using the symmetry in the PDB file first reflection file, but the "+
@@ -113,7 +113,7 @@ Full parameters:
   print >> out, "  max(F1) = %.2f  max(F2) = %.2f" % (flex.max(f_obs_1.data()),
     flex.max(f_obs_2.data()))
   delta_f = f_obs_1.customized_copy(data=f_obs_1.data()-f_obs_2.data())
-  if (params.relative_diff_limit is not None) :
+  if (params.relative_diff_limit is not None):
     f_obs_1_non_zero = f_obs_1.select(f_obs_1.data() > 0)
     delta_f_non_zero = delta_f.common_set(other=f_obs_1_non_zero)
     relative_diff = delta_f_non_zero.customized_copy(
@@ -121,17 +121,17 @@ Full parameters:
     delta_f = delta_f_non_zero.select(
       relative_diff.data() < params.relative_diff_limit)
     n_discarded = len(delta_f_non_zero.data()) - len(delta_f.data())
-    if (n_discarded > 0) :
+    if (n_discarded > 0):
       print >> out, "Discarded %d reflections with excessive differences." % \
         n_discarded
   print >> out, "  max(delta_F) = %.2f" % flex.max(delta_f.data())
   map = patterson_map.calculate_patterson_map(data=delta_f, params=params,
     normalize=False)
-  if (params.map_file_name is None) :
+  if (params.map_file_name is None):
     params.map_file_name = "iso_diff.ccp4"
   map.as_ccp4_map(
     file_name=params.map_file_name)
   print >> out, "Wrote %s" % params.map_file_name
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

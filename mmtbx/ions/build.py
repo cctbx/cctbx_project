@@ -16,7 +16,7 @@ except ImportError :
   pass
 else :
   svm_params = """
-use_svm = False
+use_svm = True
   .type = bool
   .short_caption = Use Support Vector Machine to classify candidate ions
   .expert_level = 1
@@ -61,7 +61,7 @@ max_distance_between_like_charges = 3.5
 %s
 """ % svm_params
 
-def find_and_build_ions (
+def find_and_build_ions(
       manager,
       fmodels,
       model,
@@ -73,7 +73,7 @@ def find_and_build_ions (
       run_ordered_solvent=False,
       occupancy_strategy_enabled=False,
       group_anomalous_strategy_enabled=False,
-      use_svm=None) :
+      use_svm=None):
   """
   Analyzes the water molecules in a structure and re-labels them as ions if
   they scatter and bind environments that we expect of that ion.
@@ -109,7 +109,7 @@ def find_and_build_ions (
   from cctbx import xray
   from scitbx.array_family import flex
   import scitbx.lbfgs
-  if (use_svm is None) :
+  if (use_svm is None):
     use_svm = getattr(params, "use_svm", False)
   assert (1.0 >= params.initial_occupancy >= 0)
   fmodel = fmodels.fmodel_xray()
@@ -122,14 +122,14 @@ def find_and_build_ions (
   pdb_atoms.reset_i_seq()
   # FIXME why does B for anisotropic waters end up negative?
   u_iso = model.get_xray_structure().extract_u_iso_or_u_equiv()
-  for i_seq, atom in enumerate(pdb_atoms) :
+  for i_seq, atom in enumerate(pdb_atoms):
     labels = atom.fetch_labels()
-    if (labels.resname == "HOH") and (atom.b < 0) :
+    if (labels.resname == "HOH") and (atom.b < 0):
       assert (u_iso[i_seq] >= 0)
       atom.b = adptbx.u_as_b(u_iso[i_seq])
-  if (manager is None) :
+  if (manager is None):
     manager_class = None
-    if (use_svm) :
+    if (use_svm):
       manager_class = mmtbx.ions.svm.manager
       if params.svm.svm_name == "merged_high_res" :
         params.find_anomalous_substructure = False
@@ -158,7 +158,7 @@ def find_and_build_ions (
   manager.show_current_scattering_statistics(out=out)
   anomalous_groups = []
   # XXX somehow comma-separation of phil strings fields doesn't work
-  if (isinstance(elements, list)) and (len(elements) == 1) :
+  if (isinstance(elements, list)) and (len(elements) == 1):
     elements = elements[0].split(",")
   water_ion_candidates = manager.analyze_waters(
     out=out,
@@ -167,26 +167,26 @@ def find_and_build_ions (
   default_b_iso = manager.get_initial_b_iso()
   # Build in the identified ions
   for_building = []
-  if (use_svm) :
+  if (use_svm):
     for result in water_ion_candidates :
       for_building.append((result.i_seq, result.final_choice))
   else :
     for i_seq, final_choices, two_fofc in water_ion_candidates :
-      if (len(final_choices) == 1) :
+      if (len(final_choices) == 1):
         for_building.append((i_seq, final_choices[0]))
   skipped = []
-  if (len(for_building) > 0) :
+  if (len(for_building) > 0):
     make_sub_header("Adding %d ions to model" % len(for_building), out)
-    for k, (i_seq, final_choice) in enumerate(for_building) :
+    for k, (i_seq, final_choice) in enumerate(for_building):
       atom = manager.pdb_atoms[i_seq]
       skip = False
       for other_i_seq, other_ion in for_building[:k] :
         if (other_i_seq in skipped) : continue
         if (((other_ion.charge > 0) and (final_choice.charge > 0)) or
-            ((other_ion.charge < 0) and (final_choice.charge < 0))) :
+            ((other_ion.charge < 0) and (final_choice.charge < 0))):
           other_atom = manager.pdb_atoms[other_i_seq]
           dxyz = atom.distance(other_atom)
-          if (dxyz < params.max_distance_between_like_charges) :
+          if (dxyz < params.max_distance_between_like_charges):
             print >> out, \
               "  %s (%s%+d) is only %.3fA from %s (%s%+d), skipping for now" %\
               (atom.id_str(), final_choice.element, final_choice.charge, dxyz,
@@ -198,17 +198,17 @@ def find_and_build_ions (
       print >> out, "  %s becomes %s%+d" % \
           (atom.id_str(), final_choice.element, final_choice.charge)
       refine_adp = params.refine_ion_adp
-      if (refine_adp == "Auto") :
-        if (fmodel.f_obs().d_min() <= 1.5) :
+      if (refine_adp == "Auto"):
+        if (fmodel.f_obs().d_min() <= 1.5):
           refine_adp = "anisotropic"
-        elif (fmodel.f_obs().d_min() < 2.5) :
+        elif (fmodel.f_obs().d_min() < 2.5):
           atomic_number = sasaki.table(final_choice.element).atomic_number()
-          if (atomic_number >= 19) :
+          if (atomic_number >= 19):
             refine_adp = "anisotropic"
       # Modify the atom object - this is clumsy but they will be grouped into
       # a single chain at the end of refinement
       initial_b_iso = params.initial_b_iso
-      if (initial_b_iso is Auto) :
+      if (initial_b_iso is Auto):
         initial_b_iso = manager.guess_b_iso_real(i_seq)
       element = final_choice.element
       if (element == "IOD") : # FIXME
@@ -226,9 +226,9 @@ def find_and_build_ions (
         segid="ION",
         refine_adp=refine_adp,
         refine_occupancies=False) #params.refine_ion_occupancies)
-      if (params.refine_anomalous) and (anomalous_flag) :
+      if (params.refine_anomalous) and (anomalous_flag):
         scatterer = model.get_xray_structure().scatterers()[i_seq]
-        if (wavelength is not None) :
+        if (wavelength is not None):
           fp_fdp_info = sasaki.table(final_choice.element).at_angstrom(
             wavelength)
           scatterer.fp = fp_fdp_info.fp()
@@ -244,11 +244,11 @@ def find_and_build_ions (
           update_from_selection=True)
         anomalous_groups.append(group)
       modified_iselection.append(i_seq)
-  if (len(modified_iselection) > 0) :
+  if (len(modified_iselection) > 0):
     scatterers = model.get_xray_structure().scatterers()
     # FIXME not sure this is actually working as desired...
     site_symmetry_table = model.get_xray_structure().site_symmetry_table()
-    for i_seq in site_symmetry_table.special_position_indices() :
+    for i_seq in site_symmetry_table.special_position_indices():
       scatterers[i_seq].site = crystal.correct_special_position(
         crystal_symmetry=model.get_xray_structure(),
         special_op=site_symmetry_table.get(i_seq).special_op(),
@@ -257,7 +257,7 @@ def find_and_build_ions (
         tolerance=1.0)
     model.get_xray_structure().replace_scatterers(scatterers=scatterers)
     model.set_xray_structure(model.get_xray_structure())
-    def show_r_factors () :
+    def show_r_factors():
        return "r_work=%6.4f r_free=%6.4f" % (fmodel.r_work(), fmodel.r_free())
     fmodel.update_xray_structure(
       xray_structure=model.get_xray_structure(),
@@ -269,13 +269,13 @@ def find_and_build_ions (
       and ((not occupancy_strategy_enabled) or
            (model.refinement_flags.s_occupancies is None) or
            (len(model.refinement_flags.s_occupancies) == 0)))
-    if (refine_anomalous) :
+    if (refine_anomalous):
       if (model.have_anomalous_scatterer_groups() and
-          (group_anomalous_strategy_enabled)) :
+          (group_anomalous_strategy_enabled)):
         model.set_anomalous_scatterer_groups(
             model.get_anomalous_scatterer_groups()+anomalous_groups)
         refine_anomalous = False
-    if (refine_occupancies) or (refine_anomalous) :
+    if (refine_occupancies) or (refine_anomalous):
       print >> out, ""
       print >> out, "  occupancy refinement (new ions only): start %s" % \
         show_r_factors()
@@ -297,20 +297,20 @@ def find_and_build_ions (
       zero_occ = []
       for i_seq in modified_iselection :
         occ = fmodel.xray_structure.scatterers()[i_seq].occupancy
-        if (occ == 0) :
+        if (occ == 0):
           zero_occ.append(i_seq)
       fmodel.update_xray_structure(
         update_f_calc=True,
         update_f_mask=True)
       print >> out, "                                        final %s" % \
         show_r_factors()
-      if (len(zero_occ) > 0) :
+      if (len(zero_occ) > 0):
         print >> out, "  WARNING: occupancy dropped to zero for %d atoms:"
         atoms = model.get_atoms()
         for i_seq in zero_occ :
           print >> out, "    %s" % atoms[i_seq].id_str(suppress_segid=True)
       print >> out, ""
-    if (refine_anomalous) :
+    if (refine_anomalous):
       assert fmodel.f_obs().anomalous_flag()
       print >> out, "  anomalous refinement (new ions only): start %s" % \
         show_r_factors()
@@ -324,7 +324,7 @@ def find_and_build_ions (
       print >> out, ""
   return manager
 
-def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
+def clean_up_ions(fmodel, model, params, log=None, verbose=True):
   """
   Parameters
   ----------
@@ -339,13 +339,13 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
   mmtbx.model.manager
       An updated model with ions corrected.
   """
-  if (log is None) :
+  if (log is None):
     log = null_out()
   import mmtbx.ions.utils
   ion_selection = model.selection(
     "segid ION")
   ion_iselection = ion_selection.iselection()
-  if (len(ion_iselection) == 0) :
+  if (len(ion_iselection) == 0):
     print >> log, "  No ions (segid=ION) found."
     return model
   n_sites_start = model.get_number_of_atoms()
@@ -377,7 +377,7 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
   assert (n_sites_start == n_sites_end == n_sites_pdb)
   new_selection = new_hierarchy.atom_selection_cache().selection("segid ION")
   ion_atoms = new_hierarchy.atoms().select(new_selection)
-  if (verbose) :
+  if (verbose):
     print >> log, "  Final list of ions:"
     for atom in ion_atoms :
       print >> log, "    %s" % atom.id_str()

@@ -64,7 +64,7 @@ Example:
   %(prog)s model=1ubq.pdb keep_hydrogens=True
 """ % locals()
 
-def run (args, out=sys.stdout, quiet=None) :
+def run(args, out=sys.stdout, quiet=None):
   """
   Calculates nonbonded clashscore using MolProbity (PROBE)
 
@@ -78,7 +78,7 @@ def run (args, out=sys.stdout, quiet=None) :
     pdb_file_def="model",
     usage_string=usage_string)
   params = cmdline.work.extract()
-  if (params.model is None) :
+  if (params.model is None):
     raise Usage(usage_string)
   # if do_flips, make keep_hydrogens false
   if params.do_flips : params.keep_hydrogens = False
@@ -100,5 +100,5 @@ def run (args, out=sys.stdout, quiet=None) :
   else:
     print >> out,round(result.get_clashscore(),2)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

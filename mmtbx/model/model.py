@@ -180,7 +180,6 @@ class manager(object):
       log = None,
       expand_with_mtrix = True,
       # for GRM, selections etc. Do not use when creating an object.
-                     processed_pdb_file = None, # Temporary, for refactoring phenix.refine
                      xray_structure = None, # remove later
                      restraints_manager = None, # remove later
                      tls_groups = None,         # remove later? ! used in def select()
@@ -200,7 +199,7 @@ class manager(object):
     self._shift_manager = None # mmtbx.utils.extract_box_around_model_and_map
 
     self._stop_for_unknowns = stop_for_unknowns
-    self._processed_pdb_file = processed_pdb_file
+    self._processed_pdb_file = None
     self._processed_pdb_files_srv = None
     self._crystal_symmetry = crystal_symmetry
 
@@ -298,11 +297,14 @@ class manager(object):
   @classmethod
   def from_sites_cart(cls,
       sites_cart,
-      atom_name='CA',
+      atom_name=' CA ',
       resname='GLY',
       chain_id='A',
       b_iso=30.,
+      b_iso_list=None,
       occ=1.,
+      count=0,
+      occ_list=None,
       scatterer='C',
       crystal_symmetry=None):
     assert sites_cart is not None
@@ -312,8 +314,12 @@ class manager(object):
     c.id=chain_id
     hierarchy.append_model(m)
     m.append_chain(c)
-    count=0
-    for sc in sites_cart:
+    if not b_iso_list:
+      b_iso_list=sites_cart.size()*[b_iso]
+    if not occ_list:
+      occ_list=sites_cart.size()*[occ]
+    assert len(occ_list) == len(b_iso_list) == sites_cart.size()
+    for sc, b_iso, occ in zip(sites_cart,b_iso_list,occ_list):
       count+=1
       rg=iotbx.pdb.hierarchy.residue_group()
       c.append_residue_group(rg)
@@ -321,7 +327,7 @@ class manager(object):
       rg.append_atom_group(ag)
       a=iotbx.pdb.hierarchy.atom()
       ag.append_atom(a)
-      rg.resseq=str(count)
+      rg.resseq = iotbx.pdb.resseq_encode(count)
       ag.resname=resname
       a.set_b(b_iso)
       a.set_element(scatterer)
@@ -381,6 +387,8 @@ class manager(object):
       full_params = manager.get_default_pdb_interpretation_params()
       if getattr(params, "sort_atoms", None) is not None:
         full_params.pdb_interpretation = params
+        assert 0, "This is not supported anymore. Pass whatever you got" + \
+            " from get_default_pdb_interpretation_params()"
       if hasattr(params, "pdb_interpretation"):
         full_params.pdb_interpretation = params.pdb_interpretation
       if hasattr(params, "geometry_restraints"):
@@ -447,6 +455,9 @@ class manager(object):
     self._processed_pdb_files_srv = None
     self.all_chain_proxies = None
 
+  def get_monomer_parameters(self):
+    return self._monomer_parameters
+
   def setup_ss_annotation(self, log=null_out()):
     if self._model_input is not None:
       self._ss_annotation = self._model_input.extract_secondary_structure()
@@ -488,6 +499,9 @@ class manager(object):
 
   def get_number_of_atoms(self):
     return self.pdb_atoms.size()
+
+  def size(self):
+    return self.get_number_of_atoms()
 
   def get_atoms(self):
     return self.pdb_atoms
@@ -565,15 +579,15 @@ class manager(object):
     return (self._anomalous_scatterer_groups is not None and
         len(self._anomalous_scatterer_groups) > 0)
 
-  def update_anomalous_groups (self, out=sys.stdout) :
+  def update_anomalous_groups(self, out=sys.stdout):
     if self.have_anomalous_scatterer_groups():
       modified = False
       sel_cache = self.get_atom_selection_cache()
-      for i_group, group in enumerate(self._anomalous_scatterer_groups) :
-        if (group.update_from_selection) :
+      for i_group, group in enumerate(self._anomalous_scatterer_groups):
+        if (group.update_from_selection):
           isel = sel_cache.selection(group.selection_string).iselection()
           assert (len(isel) == len(group.iselection))
-          if (not isel.all_eq(group.iselection)) :
+          if (not isel.all_eq(group.iselection)):
             print >> out, "Updating %d atom(s) in anomalous group %d" % \
               (len(isel), i_group+1)
             print >> out, "  selection string: %s" % group.selection_string
@@ -619,9 +633,8 @@ class manager(object):
           non_unit_occupancy_implies_min_distance_sym_equiv_zero=value))
 
   def get_hd_selection(self):
-    if self._xray_structure is not None:
-      return self._xray_structure.hd_selection()
-    return None
+    xrs = self.get_xray_structure()
+    return xrs.hd_selection()
 
   def get_ias_selection(self):
     if self.ias_manager is None:
@@ -790,6 +803,64 @@ class manager(object):
           append_end=True))
     return result.getvalue()
 
+  def extract_restraints_as_cif_blocks(self, skip_residues=None):
+    restraints = iotbx.cif.model.cif()
+    mon_lib_srv = self.get_mon_lib_srv()
+    ph = self.get_hierarchy()
+    if skip_residues is None:
+      skip_residues = one_letter_given_three_letter.keys() + ['HOH']
+    done = []
+    chem_comps = []
+    for ag in ph.atom_groups():
+      if ag.resname in skip_residues: continue
+      if ag.resname in done: continue
+      done.append(ag.resname)
+      ccid = mon_lib_srv.get_comp_comp_id_direct(ag.resname.strip())
+      if ccid is None:
+        # printing here is highly discouraged because it makes
+        # log and screen output inconsistent in refinement programs.
+        # Need to rethink this idea. Accept log for def model_as_mmcif()?
+        # Is it really necessary to output this?
+        # if ag.resname.strip() not in ['DA', 'DC', 'DG', 'DT']:
+        #   print 'writing mmCIF without restraints for %s' % ag.resname
+        continue
+      chem_comps.append(ccid.chem_comp)
+      restraints['comp_%s' % ag.resname.strip()] = ccid.cif_object
+    chem_comp_loops = []
+    for cc in chem_comps:
+      chem_comp_loops.append(cc.as_cif_loop())
+    for key, block in restraints.items():
+      for loop in block.iterloops():
+        if '_chem_comp_plane_atom.comp_id' in loop.keys():
+          # plane atom - add plane
+          plane_ids = []
+          comp_id = loop.get('_chem_comp_plane_atom.comp_id')[0]
+          for k, item in loop.iteritems():
+            if k=='_chem_comp_plane_atom.plane_id':
+              for plane_id in item:
+                if plane_id not in plane_ids: plane_ids.append(plane_id)
+          plane_loop = iotbx.cif.model.loop(header=[
+            '_chem_comp_plane.comp_id',
+            '_chem_comp_plane.id',
+            ])
+          for plane_id in plane_ids:
+            plane_loop.add_row([comp_id, plane_id])
+          block.add_loop(plane_loop)
+        if '_chem_link_bond.link_id' in loop.keys():
+          # link id
+          comp_id = loop.get('_chem_link_bond.link_id')[0]
+          link_loop = iotbx.cif.model.loop(header=[
+            '_chem_link.id',
+            ])
+          link_loop.add_row([comp_id])
+          block.add_loop(link_loop)
+      for cc in chem_comp_loops:
+        cc_id = cc.get('_chem_comp.id')[0]
+        if key=='comp_%s' % cc_id:
+          block.add_loop(cc)
+          break
+    return restraints
+
   def model_as_mmcif(self,
       cif_block_name = "default",
       output_cs = True,
@@ -812,6 +883,17 @@ class manager(object):
       else:
         cif_block = hierarchy_to_output.as_cif_block()
 
+    if self.restraints_manager_available():
+      ias_selection = self.get_ias_selection()
+      sites_cart = self.get_sites_cart()
+      atoms = self.get_atoms()
+      if ias_selection and ias_selection.count(True) > 0:
+        sites_cart = sites_cart.select(~ias_selection)
+        atoms = atoms.select(~ias_selection)
+      grm_geometry = self.get_restraints_manager().geometry
+      grm_geometry.pair_proxies(sites_cart)
+      struct_conn_loop = grm_geometry.get_struct_conn_mmcif(atoms)
+      cif_block.add_loop(struct_conn_loop)
     # outputting HELIX/SHEET records
     ss_cif_loops = []
     ss_ann = None
@@ -832,16 +914,14 @@ class manager(object):
         cif_block.update(ab)
     cif_block.sort(key=category_sort_function)
     cif[cif_block_name] = cif_block
-    # here we are outputting a huge number of restraints
-    if (self.all_chain_proxies is not None):
-      restraints = self.all_chain_proxies.extract_restraints_as_cif_blocks()
-      # should writing ALL restraints be optional?
-      skip_residues = one_letter_given_three_letter.keys() + ['HOH']
-      keys = restraints.keys()
-      for key in keys:
-        if key.replace('comp_', '') in skip_residues:
-          del restraints[key]
-      cif.update(restraints)
+
+    restraints = self.extract_restraints_as_cif_blocks()
+    cif.update(restraints)
+
+    if self.restraints_manager_available():
+      links = grm_geometry.get_cif_link_entries(self.get_mon_lib_srv())
+      cif.update(links)
+
     cif.show(out=out, align_columns=align_columns)
     return out.getvalue()
 
@@ -1015,10 +1095,11 @@ class manager(object):
           selection=None,
           log=self.log)
 
-    if (getattr(self._pdb_interpretation_params, "schrodinger", None) and
-        self._pdb_interpretation_params.schrodinger.use_schrodinger):
-      # so schrodinger would have fully constructed geometry to play with
-      geometry = None # schrodinger_geometry(geometry)
+    # Use Schrodinger force field if requested
+    params = self._pdb_interpretation_params
+    if hasattr(params, "schrodinger") and params.schrodinger.use_schrodinger:
+      from phenix_schrodinger import schrodinger_manager
+      geometry = schrodinger_manager(self._pdb_hierarchy, params, cleanup=True, grm=geometry)
 
     restraints_manager = mmtbx.restraints.manager(
       geometry      = geometry,
@@ -1183,6 +1264,7 @@ class manager(object):
         # set up new groups for refinements
         self._ncs_groups = self._ncs_groups.filter_ncs_restraints_group_list(
             self.get_hierarchy())
+      self.get_ncs_obj().set_ncs_restraints_group_list(self._ncs_groups)
     self._update_master_sel()
 
   def _update_master_sel(self):
@@ -1420,7 +1502,7 @@ class manager(object):
       self.extract_tls_selections_from_input()
     return self.input_tls_selections
 
-  def get_searched_tls_selections(self, nproc):
+  def get_searched_tls_selections(self, nproc, log):
     if "searched_tls_selections" not in self.__dict__.keys():
       tls_params = find_tls_groups.master_phil.fetch().extract()
       tls_params.nproc = nproc
@@ -1431,7 +1513,7 @@ class manager(object):
         xray_structure=deepcopy(self._xray_structure),
         return_as_list=True,
         ignore_pdb_header_groups=True,
-        out=StringIO())
+        out=log)
     return self.searched_tls_selections
 
   def determine_tls_groups(self, selection_strings, generate_tlsos):
@@ -1573,6 +1655,8 @@ class manager(object):
     self.set_sites_cart_from_xrs()
 
   def set_sites_cart(self, sites_cart, update_grm=False):
+    if not self._xray_structure:
+      self.get_xray_structure()
     assert sites_cart.size() == self._pdb_hierarchy.atoms_size() == \
         self._xray_structure.scatterers().size()
     self._xray_structure.set_sites_cart(sites_cart)
@@ -1676,7 +1760,7 @@ class manager(object):
       selection[j_seq] = False
     return selection
 
-  def reset_adp_for_hydrogens(self):
+  def reset_adp_for_hydrogens(self, scale=1.2):
     """
     Set the isotropic B-factor for all hydrogens to those of the associated
     heavy atoms (using the total isotropic equivalent) times a scale factor of
@@ -1689,8 +1773,23 @@ class manager(object):
       bfi = self._xray_structure.extract_u_iso_or_u_equiv()
       for t in self.xh_connectivity_table():
         i_x, i_h = t[0], t[1]
-        bfi[i_h] = adptbx.u_as_b(bfi[i_x])*1.2
+        bfi[i_h] = adptbx.u_as_b(bfi[i_x])*scale
       self._xray_structure.set_b_iso(values = bfi, selection = hd_sel)
+    self.set_sites_cart_from_xrs()
+
+  def reset_occupancy_for_hydrogens_simple(self):
+    """
+    Set occupancy of H to be the same as the parent.
+    """
+    if(self.restraints_manager is None): return
+    hd_sel = self.get_hd_selection()
+    if(hd_sel.count(True) > 0):
+      xh_conn_table = self.xh_connectivity_table()
+      scatterers = self._xray_structure.scatterers()
+      ofi = scatterers.extract_occupancies()
+      for t in self.xh_connectivity_table():
+        i_x, i_h = t[0], t[1]
+        scatterers[i_h].occupancy = ofi[i_x]
     self.set_sites_cart_from_xrs()
 
   def reset_occupancies_for_hydrogens(self):
@@ -2254,7 +2353,7 @@ class manager(object):
           rbt_value = p.delta_z()*10000.
           rbt_array.append(rbt_value)
           name_i, name_j = atom_i.name, atom_j.name
-          if (use_id_str) :
+          if (use_id_str):
             name_i = atom_i.id_str()
             name_j = atom_j.id_str()
           print >> out, "%s%s %s %10.3f"%(prefix, name_i, name_j, rbt_value)
@@ -2295,7 +2394,7 @@ class manager(object):
       resname = (a.parent().resname).strip()
       if(get_class(name = resname) == "common_water"):
         result.append(True)
-      elif (a.segid.strip() == "ION") and (include_ions) :
+      elif (a.segid.strip() == "ION") and (include_ions):
         result.append(True)
       else: result.append(False)
     return result
@@ -2322,6 +2421,7 @@ class manager(object):
       h = h.select(s)
     for r in h.residue_groups():
       sizes.append(r.atoms().size())
+    if(sizes.size()==0): return 0
     return sizes.count(1)*100./sizes.size()
 
   def select(self, selection):
@@ -2354,8 +2454,8 @@ class manager(object):
     new = manager(
       model_input                = self._model_input, # any selection here?
       crystal_symmetry           = self._crystal_symmetry,
-      processed_pdb_file         = self._processed_pdb_file,
       restraint_objects          = self._restraint_objects,
+      monomer_parameters         = self._monomer_parameters,
       restraints_manager         = new_restraints_manager,
       expand_with_mtrix          = False,
       xray_structure             = self.get_xray_structure().select(selection),
@@ -2537,7 +2637,7 @@ class manager(object):
       segids=None,
       i_seq_start = 0,
       chain_id     = " ",
-      reset_labels=False) :
+      reset_labels=False):
     assert refine_adp in ["isotropic", "anisotropic"]
     assert new_xray_structure.scatterers().size() == len(atom_names) == \
         len(residue_names) == len(nonbonded_types)
@@ -2613,7 +2713,7 @@ class manager(object):
         donor_acceptor_excl_groups = None
       else:
         donor_acceptor_excl_groups = flex.size_t(number_of_new_atoms, 0)
-      if (nonbonded_charges is None) :
+      if (nonbonded_charges is None):
         nonbonded_charges = flex.int(number_of_new_atoms, 0)
       geometry = geometry.new_including_isolated_sites(
         n_additional_sites =number_of_new_atoms,
@@ -2642,14 +2742,14 @@ class manager(object):
         n_new_atoms         = number_of_new_atoms)
       self.riding_h_manager = new_riding_h_manager
 
-  def _append_pdb_atoms (self,
+  def _append_pdb_atoms(self,
       new_xray_structure,
       atom_names,
       residue_names,
       chain_id,
       segids=None,
       i_seq_start=0,
-      reset_labels=False) :
+      reset_labels=False):
     """ Add atoms from new_xray_structure to the model in place."""
     assert (len(atom_names) == len(residue_names) ==
             len(new_xray_structure.scatterers()))
@@ -2659,7 +2759,7 @@ class manager(object):
     orth = new_xray_structure.unit_cell().orthogonalize
     n_seq = self.pdb_atoms.size()
     i_seq = i_seq_start
-    for j_seq, sc in enumerate(new_xray_structure.scatterers()) :
+    for j_seq, sc in enumerate(new_xray_structure.scatterers()):
       i_seq += 1
       element, charge = sc.element_and_charge_symbols()
       new_atom = (iotbx.pdb.hierarchy.atom()
@@ -2671,7 +2771,7 @@ class manager(object):
         .set_element(element)
         .set_charge(charge)
         .set_hetero(new_hetero=True))
-      if (segids is not None) :
+      if (segids is not None):
         new_atom.segid = segids[j_seq]
       new_atom_group = iotbx.pdb.hierarchy.atom_group(altloc="",
         resname=residue_names[j_seq])
@@ -2689,16 +2789,16 @@ class manager(object):
     # deep_copy seems to help with it.
     self._pdb_hierarchy = self._pdb_hierarchy.deep_copy()
     self._update_pdb_atoms()
-    if (reset_labels) :
+    if (reset_labels):
       self._sync_xrs_labels()
     self.all_chain_proxies = None
     self._processed_pdb_file = None
 
   def _sync_xrs_labels(self):
-    for sc, atom in zip(self.get_xray_structure().scatterers(), self.get_hierarchy().atoms()) :
+    for sc, atom in zip(self.get_xray_structure().scatterers(), self.get_hierarchy().atoms()):
       sc.label = atom.id_str()
 
-  def convert_atom (self,
+  def convert_atom(self,
       i_seq,
       scattering_type,
       atom_name,
@@ -2710,7 +2810,7 @@ class manager(object):
       chain_id=None,
       segid=None,
       refine_occupancies=True,
-      refine_adp = None) :
+      refine_adp = None):
     """
     Convert a single atom (usually water) to a different type, including
     adjustment of the xray structure and geometry restraints.
@@ -2719,70 +2819,70 @@ class manager(object):
     atom.name = atom_name
     atom.element = "%2s" % element.strip()
     assert (atom.element.strip() == element)
-    if (charge != 0) :
+    if (charge != 0):
       symbol = "+"
       if (charge < 0) : symbol = "-"
       atom.charge = str(abs(charge)) + symbol
     else :
       atom.charge = ""
     atom.parent().resname = residue_name
-    if (chain_id is not None) :
+    if (chain_id is not None):
       assert (len(chain_id) <= 2)
       atom.parent().parent().parent().id = chain_id
-    if (segid is not None) :
+    if (segid is not None):
       assert (len(segid) <= 4)
       atom.segid = segid
     scatterer = self._xray_structure.scatterers()[i_seq]
     scatterer.scattering_type = scattering_type
     label = atom.id_str()
     all_labels = [ s.label for s in self._xray_structure.scatterers() ]
-    while (label in all_labels) :
+    while (label in all_labels):
       rg = atom.parent().parent()
       resseq = rg.resseq_as_int()
       rg.resseq = "%4d" % (resseq + 1)
       label = atom.id_str()
     # scatterer.label = atom.id_str() # will be done below for whole xrs
-    if (initial_occupancy is not None) :
+    if (initial_occupancy is not None):
       # XXX preserve partial occupancies on special positions
-      if (scatterer.occupancy != 1.0) :
+      if (scatterer.occupancy != 1.0):
         initial_occupancy = scatterer.occupancy
       scatterer.occupancy = initial_occupancy
       atom.occ = initial_occupancy
-    if (initial_b_iso is not None) :
+    if (initial_b_iso is not None):
       atom.b = initial_b_iso
       scatterer.u_iso = adptbx.b_as_u(initial_b_iso)
     atom_selection = flex.size_t([i_seq])
     if(refine_adp == "isotropic"):
       scatterer.convert_to_isotropic(unit_cell=self._xray_structure.unit_cell())
       if ((self.refinement_flags is not None) and
-          (self.refinement_flags.adp_individual_iso is not None)) :
+          (self.refinement_flags.adp_individual_iso is not None)):
         self.refinement_flags.adp_individual_iso.set_selected(atom_selection,
           True)
-        if (self.refinement_flags.adp_individual_aniso is not None) :
+        if (self.refinement_flags.adp_individual_aniso is not None):
           self.refinement_flags.adp_individual_aniso.set_selected(
             atom_selection, False)
     elif(refine_adp == "anisotropic"):
       scatterer.convert_to_anisotropic(
         unit_cell=self._xray_structure.unit_cell())
       if ((self.refinement_flags is not None) and
-          (self.refinement_flags.adp_individual_aniso is not None)) :
+          (self.refinement_flags.adp_individual_aniso is not None)):
         self.refinement_flags.adp_individual_aniso.set_selected(atom_selection,
           True)
-        if (self.refinement_flags.adp_individual_iso is not None) :
+        if (self.refinement_flags.adp_individual_iso is not None):
           self.refinement_flags.adp_individual_iso.set_selected(atom_selection,
             False)
     if ((self.refinement_flags is not None) and
-        (self.refinement_flags.sites_individual is not None)) :
+        (self.refinement_flags.sites_individual is not None)):
       self.refinement_flags.sites_individual.set_selected(atom_selection, True)
     if ((self.refinement_flags is not None) and
-        (self.refinement_flags.s_occupancies is not None)) :
+        (self.refinement_flags.s_occupancies is not None)):
       flagged = False
       for occgroup in self.refinement_flags.s_occupancies:
         for occsel in occgroup :
-          if (i_seq in occsel) :
+          if (i_seq in occsel):
             flagged = True
             break
-      if (not flagged) :
+      if (not flagged):
         self.refinement_flags.s_occupancies.append([atom_selection])
     self.restraints_manager.geometry.update_atom_nonbonded_type(
       i_seq=i_seq,
@@ -2810,22 +2910,21 @@ class manager(object):
   def get_model_statistics_info(self,
       fmodel_x          = None,
       fmodel_n          = None,
-      refinement_params = None,
-      use_molprobity    = True):
+      refinement_params = None):
     if self.model_statistics_info is None:
       self.model_statistics_info = mmtbx.model.statistics.info(
           model             = self,
           fmodel_x          = fmodel_x,
           fmodel_n          = fmodel_n,
-          refinement_params = refinement_params,
-          use_molprobity    = use_molprobity)
+          refinement_params = refinement_params)
     return self.model_statistics_info
 
   def composition(self):
     return mmtbx.model.statistics.composition(
       pdb_hierarchy = self.get_hierarchy())
 
-  def geometry_statistics(self, fast_clash=True, condensed_probe=True):
+  def geometry_statistics(self, use_hydrogens=None, fast_clash=True,
+                          condensed_probe=True):
     scattering_table = \
         self.get_xray_structure().scattering_type_registry().last_table()
     if(self.restraints_manager is None): return None
@@ -2836,11 +2935,16 @@ class manager(object):
       hd_selection = hd_selection.select(~ias_selection)
       ph = ph.select(~ias_selection)
     rm = self.restraints_manager
-    if(self.riding_h_manager is not None or
-       scattering_table in ["n_gaussian","wk1995", "it1992"]):
+    if(use_hydrogens==False):
       not_hd_sel = ~hd_selection
       ph = ph.select(not_hd_sel)
       rm = rm.select(not_hd_sel)
+    if(use_hydrogens is None):
+      if(self.riding_h_manager is not None or
+         scattering_table in ["n_gaussian","wk1995", "it1992"]):
+        not_hd_sel = ~hd_selection
+        ph = ph.select(not_hd_sel)
+        rm = rm.select(not_hd_sel)
     #
     ph_dc = ph.deep_copy()
     ph_dc.atoms().reset_i_seq()
@@ -3020,6 +3124,10 @@ class manager(object):
       assert len(vals[0]) == len(v), chain_ids_match_dict
     result.reset_i_seq_if_necessary()
     self._pdb_hierarchy = result
+    if self._pdb_hierarchy.models_size() == 1:
+      # Drop model.id if there is only one model.
+      # Otherwise there are problems with set_xray_structure...
+      self._pdb_hierarchy.only_model().id = ""
 
     # Now deal with SS annotations
     ssa = self.get_ss_annotation()

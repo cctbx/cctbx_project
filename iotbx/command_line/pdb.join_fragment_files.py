@@ -53,12 +53,12 @@ to join all fragment files in the PDB.""" % command_name)
     interpreter = master_phil.command_line_argument_interpreter()
     input_file_type = None
     for arg in args :
-      if os.path.isfile(arg) :
+      if os.path.isfile(arg):
         input_file = file_reader.any_file(arg)
-        if (input_file.file_type == "pdb") :
+        if (input_file.file_type == "pdb"):
           file_names.append(input_file)
           sources.append(interpreter.process(arg="model_file=\"%s\"" % arg))
-        elif (input_file.file_type == "phil") :
+        elif (input_file.file_type == "phil"):
           sources.append(input_file.file_object)
       else :
         arg_phil = interpreter.process(arg=arg)

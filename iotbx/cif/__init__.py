@@ -380,7 +380,7 @@ class cctbx_data_structures_from_cif(object):
             self.xray_structures.setdefault(key, builder(block).structure)
         elif builder == builders.miller_array_builder:
           block_wavelengths = builders.get_wavelengths(block)
-          if (block_wavelengths is not None) :
+          if (block_wavelengths is not None):
             wavelengths = block_wavelengths
           if base_array_info is not None:
             base_array_info = base_array_info.customized_copy(labels=[key])

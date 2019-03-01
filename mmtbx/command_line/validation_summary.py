@@ -13,9 +13,9 @@ from libtbx import easy_mp
 import os
 import sys
 
-def summary (pdb_file=None, pdb_hierarchy=None) :
+def summary(pdb_file=None, pdb_hierarchy=None):
   header_info = None
-  if (pdb_hierarchy is None) :
+  if (pdb_hierarchy is None):
     assert (pdb_file is not None)
     pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
     pdb_in.assert_file_type("pdb")
@@ -31,14 +31,14 @@ def summary (pdb_file=None, pdb_hierarchy=None) :
     keep_hydrogens=False,
     header_info=header_info).summarize()
 
-class parallel_driver (object) :
+class parallel_driver(object):
   """
   Simple wrapper for passing to easy_mp.pool_map.
   """
-  def __init__ (self, pdb_hierarchy) :
+  def __init__(self, pdb_hierarchy):
     self.pdb_hierarchy = pdb_hierarchy
 
-  def __call__ (self, i_model) :
+  def __call__(self, i_model):
     import iotbx.pdb.hierarchy
     model_hierarchy = iotbx.pdb.hierarchy.root()
     model = self.pdb_hierarchy.models()[i_model].detached_copy()
@@ -55,7 +55,7 @@ molprobity_stat_labels = [
   "MolProbity Score",
 ]
 
-class ensemble (slots_getstate_setstate) :
+class ensemble(slots_getstate_setstate):
   """
   MolProbity validation results for an ensemble of models.  Note that the
   number of atoms in each model is not necessarily consistent.
@@ -70,7 +70,7 @@ class ensemble (slots_getstate_setstate) :
     "mpscore",
   ]
 
-  def __init__ (self, pdb_hierarchy, n_models, nproc=Auto) :
+  def __init__(self, pdb_hierarchy, n_models, nproc=Auto):
     assert (len(pdb_hierarchy.models()) == n_models)
     validate = parallel_driver(pdb_hierarchy)
     summaries = easy_mp.pool_map(
@@ -83,17 +83,17 @@ class ensemble (slots_getstate_setstate) :
         array.append(getattr(s, name))
       setattr(self, name, array)
 
-  def show (self, out=None, prefix="", show_percentiles=None) :
-    if (out is None) :
+  def show(self, out=None, prefix="", show_percentiles=None):
+    if (out is None):
       out = sys.stdout
-    def min_max_mean (array) :
-      if (len(array) == 0) or (array.count(None) == len(array)) :
+    def min_max_mean(array):
+      if (len(array) == 0) or (array.count(None) == len(array)):
         return (None, None, None)
       else :
         return min(array), max(array), sum(array) / len(array)
-    def fs (format, value) :
+    def fs(format, value):
       return str_utils.format_value(format, value, replace_none_with=("(none)"))
-    def format_all (format, array) :
+    def format_all(format, array):
       min, max, mean = min_max_mean(array)
       return "%s %s %s" % (fs(format, min), fs(format, max), fs(format, mean))
     print >> out, "%s                           min    max   mean" % prefix
@@ -107,13 +107,13 @@ class ensemble (slots_getstate_setstate) :
       format_all("%6d", self.c_beta_deviations))
     print >> out, "%sClashscore            = %s" % (prefix,
       format_all("%6.2f", self.clashscore))
-    if (self.mpscore is not None) :
+    if (self.mpscore is not None):
       print >> out, "%sMolprobity score      = %s" % (prefix,
         format_all("%6.2f", self.mpscore))
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   import optparse
-  if (len(args) == 0) or ("--help" in args) :
+  if (len(args) == 0) or ("--help" in args):
     raise Usage("""
 mmtbx.validation_summary model.pdb
 
@@ -126,7 +126,7 @@ run phenix.model_vs_data or the validation GUI.)
   parser = optparse.OptionParser()
   options, args = parser.parse_args(args)
   pdb_file = args[0]
-  if (not os.path.isfile(pdb_file)) :
+  if (not os.path.isfile(pdb_file)):
     raise Sorry("Not a file: %s" % pdb_file)
   from iotbx.file_reader import any_file
   pdb_in = any_file(pdb_file, force_type="pdb").check_file_type("pdb")
@@ -134,7 +134,7 @@ run phenix.model_vs_data or the validation GUI.)
   xrs = pdb_in.file_object.input.xray_structures_simple()
   s = None
   extra = ""
-  if (len(xrs) == 1) :
+  if (len(xrs) == 1):
     s = summary(pdb_file=pdb_file)
   else :
     s = ensemble(pdb_hierarchy=hierarchy,
@@ -146,5 +146,5 @@ run phenix.model_vs_data or the validation GUI.)
   print >> out, ""
   return s
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

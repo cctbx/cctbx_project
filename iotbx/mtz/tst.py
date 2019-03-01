@@ -440,7 +440,7 @@ def exercise_hl_ab_only(anomalous_flag):
         ' column labels: "HA(-)", "HB(-)" column types: "A", "F"'
   else: raise Exception_expected
 
-def exercise_wavelength () :
+def exercise_wavelength():
   miller_set = crystal.symmetry(
     unit_cell=(10,10,10,90,90,90),
     space_group_symbol="P1").miller_set(
@@ -558,7 +558,7 @@ def exercise_unmerged(space_group_info):
       #miller.map_to_asu(m.space_group().type(), False, extracted_indices)
       #assert (extracted_indices == m.extract_miller_indices()).count(False) == 0
 
-def exercise_util () :
+def exercise_util():
   miller_set = miller.build_set(
     crystal.symmetry(
       unit_cell=(10,10,10,90,90,90),

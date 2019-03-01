@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.path import walk_source_tree
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
@@ -63,7 +63,7 @@ def run(args, command_name="libtbx.find_files"):
           if (co.quote): fp = show_string(file_path)
           else: fp = file_path
           if (co.grep is None):
-            print fp
+            print(fp)
           else:
             is_binary_file = co.file_names_only
             for line in read_lines_if_possible(file_path=file_path):
@@ -79,13 +79,13 @@ def run(args, command_name="libtbx.find_files"):
                 return True
               if (line_matches_all_grep_patterns()):
                 if (co.file_names_only):
-                  print fp
+                  print(fp)
                   break
                 elif (is_binary_file):
-                  print "%s: match in binary file" % fp
+                  print("%s: match in binary file" % fp)
                   break
                 else:
-                  print "%s: %s" % (fp, line)
+                  print("%s: %s" % (fp, line))
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -8,29 +8,29 @@ import sys
 
 UNICODE_BUILD = (wx.PlatformInfo[2] == 'unicode')
 
-class SettingsToolBase (object) :
-  def __init__ (self, *args, **kwds) :
+class SettingsToolBase(object):
+  def __init__(self, *args, **kwds):
     self.parent = self.GetParent()
     self.settings = self.parent.settings
     self._controls = {}
     assert hasattr(self.parent, "update_settings")
 
-  def add_controls (self) :
+  def add_controls(self):
     raise NotImplementedError()
 
-  def get_control (self, name) :
+  def get_control(self, name):
     return self._controls.get(name, oop.null())
 
-  def create_controls (self,
+  def create_controls(self,
                        setting,
                        label,
                        captions=None,
                        min=-sys.maxint,
-                       max=sys.maxint) :
+                       max=sys.maxint):
     panel = self.panel
     value = getattr(self.settings, setting)
     ctrls = []
-    if isinstance(value, bool) :
+    if isinstance(value, bool):
       box = wx.CheckBox(panel, -1, label)
       self._controls[setting] = box
       box.SetValue(value)
@@ -38,7 +38,7 @@ class SettingsToolBase (object) :
       self.Bind(wx.EVT_CHECKBOX,
         lambda evt: self.update_values(evt, setting),
         box)
-    elif isinstance(value, int) and (captions is None) :
+    elif isinstance(value, int) and (captions is None):
       txt = wx.StaticText(panel, -1, label)
       ctrls.append(txt)
       spinctrl = wx.SpinCtrl(panel, -1)
@@ -49,7 +49,7 @@ class SettingsToolBase (object) :
       self.Bind(wx.EVT_SPINCTRL,
         lambda evt: self.update_values(evt, setting),
         spinctrl)
-    elif isinstance(value, int) and isinstance(captions, list) :
+    elif isinstance(value, int) and isinstance(captions, list):
       txt = wx.StaticText(panel, -1, label)
       ctrls.append(txt)
       choice = wx.Choice(panel, -1, choices=captions)
@@ -63,21 +63,21 @@ class SettingsToolBase (object) :
       assert 0
     return ctrls
 
-  def update_values (self, evt, setting) :
+  def update_values(self, evt, setting):
     assert hasattr(self.settings, setting)
     ctrl = evt.GetEventObject()
-    if isinstance(ctrl, wx.Choice) :
+    if isinstance(ctrl, wx.Choice):
       value = ctrl.GetSelection()
-    elif (type(ctrl).__name__ in ["CheckBox", "SpinCtrl", "Slider"]) :
+    elif (type(ctrl).__name__ in ["CheckBox", "SpinCtrl", "Slider"]):
       value = ctrl.GetValue()
-    elif isinstance(ctrl, wx.lib.colourselect.ColourSelect) :
+    elif isinstance(ctrl, wx.lib.colourselect.ColourSelect):
       value = [ x / 255.0 for x in ctrl.GetValue() ]
     assert (type(value) == type(getattr(self.settings, setting)))
     setattr(self.settings, setting, value)
     self.parent.update_settings()
 
-class SettingsFrame (wx.MiniFrame, SettingsToolBase) :
-  def __init__ (self, *args, **kwds) :
+class SettingsFrame(wx.MiniFrame, SettingsToolBase):
+  def __init__(self, *args, **kwds):
     wx.MiniFrame.__init__(self, *args, **kwds)
     SettingsToolBase.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.VERTICAL)
@@ -92,14 +92,14 @@ class SettingsFrame (wx.MiniFrame, SettingsToolBase) :
     self.Bind(wx.EVT_CLOSE, self.OnClose, self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
 
-  def OnClose (self, event) :
+  def OnClose(self, event):
     self.Destroy()
 
-  def OnDestroy (self, event) :
+  def OnDestroy(self, event):
     self.parent.settings_window = None
 
-class SettingsPanel (wx.Panel, SettingsToolBase) :
-  def __init__ (self, *args, **kwds) :
+class SettingsPanel(wx.Panel, SettingsToolBase):
+  def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     SettingsToolBase.__init__(self, *args, **kwds)
     self.panel = self
@@ -107,7 +107,7 @@ class SettingsPanel (wx.Panel, SettingsToolBase) :
     self.SetSizer(self.panel_sizer)
     self.add_controls()
 
-def bold_text (parent, label) :
+def bold_text(parent, label):
   txt = wx.StaticText(parent, label=label)
   font = txt.GetFont()
   font.SetWeight(wx.FONTWEIGHT_BOLD)
@@ -116,7 +116,7 @@ def bold_text (parent, label) :
 
 std_sizer_flags = wx.ALL|wx.ALIGN_CENTER_VERTICAL
 
-def add_ok_cancel_buttons (self, sizer) :
+def add_ok_cancel_buttons(self, sizer):
   assert isinstance(self, wx.Dialog)
   ok_btn = wx.Button(self, wx.ID_OK)
   cancel_btn = wx.Button(self, wx.ID_CANCEL)
@@ -128,29 +128,29 @@ def add_ok_cancel_buttons (self, sizer) :
   sizer.Add(btn_szr, 0, wx.ALL|wx.ALIGN_RIGHT, 5)
   return ok_btn, cancel_btn
 
-class LogViewer (wx.TextCtrl) :
+class LogViewer(wx.TextCtrl):
   font_size = 12
-  if (wx.Platform == '__WXGTK__') :
+  if (wx.Platform == '__WXGTK__'):
     font_size = 11
-  if (wx.Platform == '__WXMSW__') :
+  if (wx.Platform == '__WXMSW__'):
     font_size = 9
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     kwds['style'] = wx.TE_MULTILINE|wx.TE_WORDWRAP|wx.TE_READONLY
     wx.TextCtrl.__init__(self, *args, **kwds)
     #self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
     self.character_limit = 16000000  # ~ 200,000 lines @ 80 characters/line
 
-  def Clear (self) :
+  def Clear(self):
     wx.TextCtrl.Clear(self)
     self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
 
-  def WriteText (self, text) :
+  def WriteText(self, text):
     if UNICODE_BUILD :
       text = to_unicode(text)
     self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
     wx.TextCtrl.WriteText(self, text)
 
-  def AppendText (self, text) :
+  def AppendText(self, text):
     if UNICODE_BUILD :
       text = to_unicode(text)
     self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
@@ -159,7 +159,7 @@ class LogViewer (wx.TextCtrl) :
     if (self.GetLastPosition() > self.character_limit):
       self.Remove(0,len(text))
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   app = wx.App(0)
   frame = wx.Frame(None, title="Test frame")
   panel = wx.Panel(frame, -1, size=(600,400))

@@ -9,7 +9,7 @@ from libtbx import slots_getstate_setstate
 from libtbx.test_utils import approx_equal
 import sys
 
-class model_statistics (slots_getstate_setstate) :
+class model_statistics(slots_getstate_setstate):
   """
   Atom statistics for the overall model, and various selections within.
   This does not actually contain individual outliers, which are instead held
@@ -29,15 +29,15 @@ class model_statistics (slots_getstate_setstate) :
     "n_nuc",
     "ignore_hd",
   ]
-  def __init__ (self, pdb_hierarchy,
+  def __init__(self, pdb_hierarchy,
       xray_structure,
       all_chain_proxies=None,
       ignore_hd=True,
-      ligand_selection=None) :
+      ligand_selection=None):
     for name in self.__slots__ :
       setattr(self, name, None)
-    if isinstance(ligand_selection, basestring) :
-      if (all_chain_proxies is not None) :
+    if isinstance(ligand_selection, basestring):
+      if (all_chain_proxies is not None):
         ligand_selection = all_chain_proxies.selection(ligand_selection)
       else :
         ligand_selection = pdb_hierarchy.atom_selection_cache().selection(
@@ -54,24 +54,24 @@ class model_statistics (slots_getstate_setstate) :
     hierarchy_tmp = pdb_hierarchy
     # make sure the ligand selection is not counted as part of the protein
     # chains
-    if (ligand_selection is not None) :
+    if (ligand_selection is not None):
       hierarchy_tmp = pdb_hierarchy.select(~ligand_selection)
     first_model = hierarchy_tmp.models()[0]
     # FIXME not totally confident that this will always work...
-    for chain in first_model.chains() :
+    for chain in first_model.chains():
       is_protein = chain.is_protein()
       is_na = False
       chain_type = "other"
-      if (not is_protein) :
+      if (not is_protein):
         is_na = chain.is_na()
         chain_type = "nucleic acid"
       else :
         chain_type = "protein"
       residue_groups = chain.residue_groups()
-      if (is_protein) or (is_na) :
+      if (is_protein) or (is_na):
         n_res = len(residue_groups)
         self.n_polymer += n_res
-        if (is_protein) :
+        if (is_protein):
           self.n_protein += n_res
         else :
           self.n_nuc += n_res
@@ -79,25 +79,25 @@ class model_statistics (slots_getstate_setstate) :
       pdb_hierarchy=pdb_hierarchy,
       xray_structure=xray_structure,
       ignore_hd=ignore_hd)
-    if (all_chain_proxies is not None) :
+    if (all_chain_proxies is not None):
       macro_sel = all_chain_proxies.selection("protein or rna or dna")
       water_sel = all_chain_proxies.selection("water")
-      if (ligand_selection is None) :
+      if (ligand_selection is None):
         ligand_selection = all_chain_proxies.selection(
           "not (protein or dna or rna or water)")
       # make sure we exclude ligands from the "macromolecule" selection!
       macro_sel &= ~ligand_selection
-      if (macro_sel.count(True) > 0) :
+      if (macro_sel.count(True) > 0):
         self._macromolecules = xray_structure_statistics(
           pdb_hierarchy=pdb_hierarchy.select(macro_sel),
           xray_structure=xray_structure.select(macro_sel),
           ignore_hd=ignore_hd)
-      if (water_sel.count(True) > 0) :
+      if (water_sel.count(True) > 0):
         self._water = xray_structure_statistics(
           pdb_hierarchy=pdb_hierarchy.select(water_sel),
           xray_structure=xray_structure.select(water_sel),
           ignore_hd=ignore_hd)
-    if (ligand_selection is not None) and (ligand_selection.count(True) > 0) :
+    if (ligand_selection is not None) and (ligand_selection.count(True) > 0):
       self._ligands = xray_structure_statistics(
         pdb_hierarchy=pdb_hierarchy.select(ligand_selection),
         xray_structure=xray_structure.select(ligand_selection),
@@ -105,74 +105,74 @@ class model_statistics (slots_getstate_setstate) :
     # make sure original i_seq is used
     #pdb_hierarchy.atoms().reset_i_seq()
 
-  def show (self, out=sys.stdout, prefix="") :
+  def show(self, out=sys.stdout, prefix=""):
     print >> out, prefix+"Overall:"
     self.all.show_summary(out=out, prefix=prefix+"  ")
     self.all.show_bad_occupancy(out=out, prefix=prefix+"  ")
-    if (self.ligands) or (self.water) :
+    if (self.ligands) or (self.water):
       for label, props in zip(["Macromolecules", "Ligands", "Waters"],
-          [self.macromolecules, self.ligands, self.water]) :
-        if (props) :
+          [self.macromolecules, self.ligands, self.water]):
+        if (props):
           print >> out, prefix+"%s:" % label
           props.show_summary(out=out, prefix=prefix+"  ")
-    if (self.ignore_hd) and (self.n_hydrogens > 0) :
+    if (self.ignore_hd) and (self.n_hydrogens > 0):
       print >> out, prefix+"(Hydrogen atoms not included in overall counts.)"
 
   @property
-  def macromolecules (self) :
-    if (self._macromolecules is None) :
+  def macromolecules(self):
+    if (self._macromolecules is None):
       return dummy_validation()
     return self._macromolecules
 
   @property
-  def water (self) :
-    if (self._water is None) :
+  def water(self):
+    if (self._water is None):
       return dummy_validation()
     return self._water
 
   @property
-  def ligands (self) :
-    if (self._ligands is None) :
+  def ligands(self):
+    if (self._ligands is None):
       return dummy_validation()
     return self._ligands
 
-class residue_occupancy (residue) :
+class residue_occupancy(residue):
   __slots__ = residue.__slots__ + ["chain_type", "b_iso"]
 
-  def as_string (self, prefix="") :
+  def as_string(self, prefix=""):
     return " %3s%2s%5s (all)  occ=%.2f" % (self.resname, self.chain_id,
       self.resid, self.occupancy)
 
-  def as_table_row_phenix (self) :
+  def as_table_row_phenix(self):
     return [ self.id_str(), "residue", self.occupancy, self.b_iso ]
 
-class atom_occupancy (atom) :
+class atom_occupancy(atom):
   """
   Container for single-atom occupancy outliers (usually atoms with zero
   occupancy).
   """
-  def id_str (self):
+  def id_str(self):
     return super(atom_occupancy, self).id_str(ignore_segid=True)
 
-  def as_string (self, prefix="") :
+  def as_string(self, prefix=""):
     return "%s %4s   occ=%.2f" % (self.atom_group_id_str(), self.name,
       self.occupancy)
 
-  def as_table_row_phenix (self) :
+  def as_table_row_phenix(self):
     return [ self.id_str(), "atom", self.occupancy, self.b_iso ]
 
-class residue_bfactor (residue_occupancy) :
+class residue_bfactor(residue_occupancy):
 
-  def as_string (self, prefix="") :
+  def as_string(self, prefix=""):
     return "%s %4s   b_iso=%.2f" % (self.atom_group_id_str(), self.name,
       self.b_iso)
 
-class atom_bfactor (atom_occupancy) :
+class atom_bfactor(atom_occupancy):
   pass
 
 # FIXME redundant with model_vs_data, but what can I do???
 # TODO add validation stuff
-class xray_structure_statistics (validation) :
+class xray_structure_statistics(validation):
   """
   Occupancy and B-factor statistics.
   """
@@ -201,8 +201,8 @@ class xray_structure_statistics (validation) :
   gui_list_headers = ["Atom(s)", "Type", "Occupancy", "Isotropic B-factor"]
   gui_formats = ["%s","%s","%.2f", "%.2f"]
   wx_column_widths = [300,100,100,200]
-  def __init__ (self, pdb_hierarchy, xray_structure, ignore_hd=True,
-      collect_outliers=True) :
+  def __init__(self, pdb_hierarchy, xray_structure, ignore_hd=True,
+      collect_outliers=True):
     for name in self.__slots__ :
       setattr(self, name, None)
     validation.__init__(self)
@@ -218,7 +218,7 @@ class xray_structure_statistics (validation) :
     subtract_hd = True
     self.n_all = hd_selection.size()
     self.n_hd = hd_selection.count(True)
-    if (ignore_hd) and (0 < self.n_hd < self.n_all) :
+    if (ignore_hd) and (0 < self.n_hd < self.n_all):
       xrs = xrs.select(~hd_selection)
       subtract_hd = False
     u_isos = xrs.extract_u_iso_or_u_equiv()
@@ -233,7 +233,7 @@ class xray_structure_statistics (validation) :
     u_cutoff_high = sys.maxint
     u_cutoff_low = 0
     u_non_zero = u_isos.select(u_isos > 0)
-    if (len(u_non_zero) > 1) :
+    if (len(u_non_zero) > 1):
       mv = flex.mean_and_variance(u_non_zero)
       sigma = mv.unweighted_sample_standard_deviation()
       u_cutoff_high = mv.mean() + (4.0 * sigma)
@@ -250,22 +250,22 @@ class xray_structure_statistics (validation) :
     self.different_occ = []
     self.bad_adps = []
     self.b_histogram = None # TODO
-    def is_u_iso_outlier (u) :
+    def is_u_iso_outlier(u):
       return (u < u_cutoff_low) or (u > u_cutoff_high) or (u <= 0)
     # these statistics cover all atoms!
     occupancies = xray_structure.scatterers().extract_occupancies()
     u_isos = xray_structure.extract_u_iso_or_u_equiv()
     collected = flex.bool(occupancies.size(), False)
-    if (collect_outliers) :
-      for i_seq, occ in enumerate(occupancies) :
+    if (collect_outliers):
+      for i_seq, occ in enumerate(occupancies):
         if (hd_selection[i_seq] and ignore_hd) or collected[i_seq] :
           continue
         pdb_atom = pdb_atoms[i_seq]
         parent = pdb_atom.parent()
-        if (occ <= 0) :
+        if (occ <= 0):
           group_atoms = parent.atoms()
           labels = pdb_atom.fetch_labels()
-          if (len(group_atoms) > 1) and (group_atoms.extract_occ().all_eq(0)) :
+          if (len(group_atoms) > 1) and (group_atoms.extract_occ().all_eq(0)):
             i_seqs = group_atoms.extract_i_seq()
             b_mean = adptbx.u_as_b(flex.mean(u_isos.select(i_seqs)))
             outlier = residue_occupancy(
@@ -292,9 +292,9 @@ class xray_structure_statistics (validation) :
               outlier=True)
             self.zero_occ.append(outlier)
             self.n_outliers += 1
-        elif is_u_iso_outlier(u_isos[i_seq]) :
+        elif is_u_iso_outlier(u_isos[i_seq]):
           # zero displacements will always be recorded on a per-atom basis
-          if (u_isos[i_seq] <= 0) :
+          if (u_isos[i_seq] <= 0):
             outlier = atom_bfactor(
               pdb_atom=pdb_atom,
               occupancy=occ,
@@ -309,7 +309,7 @@ class xray_structure_statistics (validation) :
             group_atoms = parent.atoms()
             i_seqs = group_atoms.extract_i_seq()
             u_mean = flex.mean(u_isos.select(i_seqs))
-            if is_u_iso_outlier(u_mean) :
+            if is_u_iso_outlier(u_mean):
               labels = pdb_atom.fetch_labels()
               outlier = residue_bfactor(
                 chain_id=labels.chain_id,
@@ -337,9 +337,9 @@ class xray_structure_statistics (validation) :
 
       # analyze occupancies for first model
       model = pdb_hierarchy.models()[0]
-      for chain in model.chains() :
+      for chain in model.chains():
         residue_groups = chain.residue_groups()
-        for residue_group in chain.residue_groups() :
+        for residue_group in chain.residue_groups():
           # get unique set of atom names
           atom_names = set()
           for atom in residue_group.atoms():
@@ -393,57 +393,57 @@ class xray_structure_statistics (validation) :
             if (not residue_is_okay):
               break
 
-  def show_summary (self, out=sys.stdout, prefix="") :
+  def show_summary(self, out=sys.stdout, prefix=""):
     print >> out, prefix + "Number of atoms = %d  (anisotropic = %d)" % \
       (self.n_atoms, self.n_aniso)
     print >> out, prefix + "B_iso: mean = %5.1f  max = %5.1f  min = %5.1f" % \
       (self.b_mean, self.b_max, self.b_min)
-    if (self.n_aniso_h > 0) :
+    if (self.n_aniso_h > 0):
       print >> out, prefix + "  warning: %d anisotropic hydrogen atoms" % \
         self.n_aniso_h
-    if (self.o_min != 1.0) :
+    if (self.o_min != 1.0):
       print >> out, prefix + \
         "Occupancy: mean = %4.2f  max = %4.2f  min = %4.2f" % \
         (self.o_mean, self.o_max, self.o_min)
-      if (self.n_zero_occ > 0) :
+      if (self.n_zero_occ > 0):
         print >> out, prefix + "  warning: %d atoms with zero occupancy" % \
           self.n_zero_occ
-    if (self.n_outliers > 0) :
+    if (self.n_outliers > 0):
       print >> out, prefix + \
         "%d total B-factor or occupancy problem(s) detected" % \
         self.n_outliers
 
-  def show_bad_occupancy (self, out=sys.stdout, prefix="") :
-    if (len(self.zero_occ) > 0) :
+  def show_bad_occupancy(self, out=sys.stdout, prefix=""):
+    if (len(self.zero_occ) > 0):
       print >> out, prefix + "Atoms or residues with zero occupancy:"
       for outlier in self.zero_occ :
         print >> out, prefix + str(outlier)
 
-  def show_bfactors (self, out=sys.stdout, prefix="") :
+  def show_bfactors(self, out=sys.stdout, prefix=""):
     print >> out, prefix + "B_iso: mean = %5.1f  max = %5.1f  min = %5.1f" % \
       (self.b_mean, self.b_max, self.b_min)
 
-  def iter_results (self, property_type=None, outliers_only=True) :
-    if (property_type is None) :
+  def iter_results(self, property_type=None, outliers_only=True):
+    if (property_type is None):
       outliers = self.zero_occ + self.partial_occ + self.different_occ +\
                  self.bad_adps
-    elif (property_type == "occupancy") :
+    elif (property_type == "occupancy"):
       outliers = self.zero_occ + self.partial_occ + self.different_occ
-    elif (property_type == "b_factor") :
+    elif (property_type == "b_factor"):
       outliers = self.bad_adps
     else :
       raise RuntimeError("Unknown property type '%s'" % property_type)
     for result in outliers :
-      if (result.is_outlier()) or (not outliers_only) :
+      if (result.is_outlier()) or (not outliers_only):
         yield result
 
-  def as_gui_table_data (self, property_type=None, outliers_only=True,
-      include_zoom=False) :
+  def as_gui_table_data(self, property_type=None, outliers_only=True,
+      include_zoom=False):
     table = []
     for result in self.iter_results(property_type=property_type,
-        outliers_only=outliers_only) :
+        outliers_only=outliers_only):
       extra = []
-      if (include_zoom) :
+      if (include_zoom):
         extra = result.zoom_info()
       row = result.as_table_row_phenix()
       assert (len(row) == len(self.gui_list_headers) == len(self.gui_formats))

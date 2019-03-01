@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from builtins import range
 from libtbx import unpicklable
 from libtbx.test_utils import Exception_expected
 from libtbx import Auto
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
 def exercise_func_wrapper_sub_directories():
@@ -25,7 +26,7 @@ def exercise_func_wrapper_sub_directories():
 class potentially_large(unpicklable):
 
   def __init__(self, size):
-    self.array = range(3, size+3)
+    self.array = list(range(3, size+3))
 
   def __call__(self, i):
     return self.array[i]
@@ -38,7 +39,7 @@ def eval_parallel(
       exercise_out_of_range=False,
       exercise_fail=False):
   size = len(data.array)
-  args = range(size)
+  args = list(range(size))
   if (exercise_out_of_range):
     args.append(size)
   from libtbx import easy_mp
@@ -54,9 +55,9 @@ def eval_parallel(
       index_args=index_args,
       log=log)
   if (not exercise_out_of_range):
-    assert mp_results == range(3, size+3)
+    assert mp_results == list(range(3, size+3))
   else:
-    assert mp_results[:size] == zip([""]*size, range(3, size+3))
+    assert mp_results[:size] == list(zip([""]*size, range(3, size+3)))
     assert mp_results[size][0].startswith("CAUGHT EXCEPTION:")
     assert mp_results[size][0].find("IndexError: ") > 0
     assert mp_results[size][1] is None
@@ -66,7 +67,7 @@ def exercise(exercise_fail):
   from libtbx import easy_mp
   mp_problem = easy_mp.detect_problem()
   if (mp_problem is not None):
-    print "Skipping tst_easy_mp.py: %s" % mp_problem
+    print("Skipping tst_easy_mp.py: %s" % mp_problem)
     return
   check_if_stacktrace_is_propagated_properly(method='threading', nproc=2)
   check_if_stacktrace_is_propagated_properly(method='multiprocessing', nproc=2)
@@ -90,7 +91,7 @@ def exercise(exercise_fail):
   if (exercise_fail):
     eval_parallel(data, exercise_fail=True)
     raise Exception_expected
-  results = easy_mp.pool_map(fixed_func=data, args=range(1000), processes=Auto)
+  results = easy_mp.pool_map(fixed_func=data, args=list(range(1000)), processes=Auto)
   del data
   assert len(easy_mp.fixed_func_registry) == 0
   #
@@ -99,7 +100,7 @@ def exercise(exercise_fail):
   import os
   op = os.path
   def fixed_func(arg):
-    print "hello world", arg
+    print("hello world", arg)
     return 10*arg
   def go():
     return easy_mp.pool_map(
@@ -144,14 +145,14 @@ def exercise(exercise_fail):
     assert open("bf%03d/log" % (i-1)).read().splitlines()[-1] \
       == "RuntimeError: %d" % i
   out = StringIO()
-  def simple_func (arg) :
+  def simple_func(arg):
     from math import log
     x = float(arg)
     y = 0
-    for i in range(2, 1000) :
+    for i in range(2, 1000):
       y += log(x) / log(float(i))
     return y
-  def cb (result) :
+  def cb(result):
     out.write("%.3f\n" % result)
   result = easy_mp.pool_map(
     func=simple_func,
@@ -188,28 +189,28 @@ def check_if_stacktrace_is_propagated_properly(method, nproc):
       method=method,
       processes=nproc,
       preserve_exception_message=True)
-  except ZeroDivisionError, e:
+  except ZeroDivisionError as e:
     exception_seen = True
     exc_type, exc_value, exc_traceback = sys.exc_info()
-    assert "division by zero" in str(exc_value.message), "Exception value mismatch: '%s'" % exc_value
+    assert "division by zero" in str(exc_value), "Exception value mismatch: '%s'" % exc_value
 
     stack_contains_fail_function = False
     # Two options: Either the original stack is available directly
     for (filename, line, function, text) in traceback.extract_tb(exc_traceback):
-      if function == _may_divide_by_zero.func_name:
+      if function == _may_divide_by_zero.__name__:
         stack_contains_fail_function = True
     # or it should be preserved in the string representation of the exception
     from libtbx.scheduling import stacktrace
     ex, st = stacktrace.exc_info()
-    if ex is not None and _may_divide_by_zero.func_name in "".join( st ):
+    if ex is not None and _may_divide_by_zero.__name__ in "".join( st ):
       stack_contains_fail_function = True
     if not stack_contains_fail_function:
-      print "Thrown exception: %s:" % str(e)
+      print("Thrown exception: %s:" % str(e))
       traceback.print_tb(exc_traceback)
-      print ""
+      print("")
       assert stack_contains_fail_function, "Stacktrace lost"
-  except Exception, e:
-    print "Exception type mismatch, expected ZeroDivisionError"
+  except Exception as e:
+    print("Exception type mismatch, expected ZeroDivisionError")
     raise
   assert exception_seen, "Expected exception not thrown"
 
@@ -217,7 +218,7 @@ def run(args):
   assert args in [[], ["--fail"]]
   exercise_fail = (len(args) != 0)
   exercise(exercise_fail)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

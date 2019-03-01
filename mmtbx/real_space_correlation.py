@@ -268,7 +268,7 @@ Examples:
     phil_objects = []
     n_files = 0
     for arg in args :
-      if(os.path.isfile(arg)) :
+      if(os.path.isfile(arg)):
         inp = any_file(arg)
         if(  inp.file_type == "phil"): phil_objects.append(inp.file_object)
         elif(inp.file_type == "pdb"):  pdb_file = inp
@@ -560,7 +560,7 @@ def compute(pdb_hierarchy,
                   occupancy   = atom.occ,
                   n_atoms     = 1)
                 results.append(result)
-          if(detail == "residue") and (len(r_mv1) > 0) :
+          if(detail == "residue") and (len(r_mv1) > 0):
             sel = maptbx.grid_indices_around_sites(
               unit_cell  = unit_cell,
               fft_n_real = fft_n_real,
@@ -594,7 +594,7 @@ def set_detail_level_and_radius(detail, atom_radius, d_min):
     else:                               atom_radius = 2.5
   return detail, atom_radius
 
-class selection_map_statistics_manager (object) :
+class selection_map_statistics_manager(object):
   """
   Utility class for performing repeated calculations on multiple maps.  Useful
   in post-refinement validation, ligand fitting, etc. where we want to collect
@@ -603,19 +603,19 @@ class selection_map_statistics_manager (object) :
   __slots__ = ["fft_m_real", "fft_n_real", "atom_selection", "sites",
                "sites_frac", "atom_radii", "map_sel"]
 
-  def __init__ (self,
+  def __init__(self,
       atom_selection,
       xray_structure,
       fft_m_real,
       fft_n_real,
       atom_radius=1.5,
-      exclude_hydrogens=False) :
+      exclude_hydrogens=False):
     self.fft_m_real = fft_m_real
     self.fft_n_real = fft_n_real
-    if (isinstance(atom_selection, flex.bool)) :
+    if (isinstance(atom_selection, flex.bool)):
       atom_selection = atom_selection.iselection()
     assert (len(atom_selection) == 1) or (not atom_selection.all_eq(0))
-    if (exclude_hydrogens) :
+    if (exclude_hydrogens):
       not_hd_selection = (~(xray_structure.hd_selection())).iselection()
       atom_selection = atom_selection.intersection(not_hd_selection)
     assert (len(atom_selection) != 0)
@@ -635,8 +635,8 @@ class selection_map_statistics_manager (object) :
       sites_cart = self.sites,
       site_radii = self.atom_radii)
 
-  def analyze_map (self, map, model_map=None, min=None, max=None,
-      compare_at_sites_only=False) :
+  def analyze_map(self, map, model_map=None, min=None, max=None,
+      compare_at_sites_only=False):
     """
     Extract statistics for the given map, plus statistics for the model map
     if given.  The CC can either be calculated across grid points within the
@@ -646,27 +646,27 @@ class selection_map_statistics_manager (object) :
     map_sel = map.select(self.map_sel)
     map_values = flex.double()
     model_map_sel = model_map_mean = model_map_values = None
-    if (model_map is not None) :
+    if (model_map is not None):
       assert ((model_map.focus() == self.fft_n_real) and
               (model_map.all() == self.fft_m_real))
       model_map_sel = model_map.select(self.map_sel)
       model_map_values = flex.double()
     for site_frac in self.sites_frac:
       map_values.append(map.eight_point_interpolation(site_frac))
-      if (model_map is not None) :
+      if (model_map is not None):
         model_map_values.append(model_map.eight_point_interpolation(site_frac))
     cc = None
-    if (model_map is not None) :
-      if (compare_at_sites_only) :
+    if (model_map is not None):
+      if (compare_at_sites_only):
         cc = flex.linear_correlation(x=map_values,
           y=model_map_values).coefficient()
       else :
         cc = flex.linear_correlation(x=map_sel, y=model_map_sel).coefficient()
       model_map_mean = flex.mean(model_map_values)
     n_above_max = n_below_min = None
-    if (min is not None) :
+    if (min is not None):
       n_below_min = (map_values < min).count(True)
-    if (max is not None) :
+    if (max is not None):
       n_above_max = (map_values > max).count(True)
     return group_args(
       cc=cc,
@@ -677,7 +677,7 @@ class selection_map_statistics_manager (object) :
       n_above_max=n_above_max,
       model_mean=model_map_mean)
 
-def map_statistics_for_atom_selection (
+def map_statistics_for_atom_selection(
     atom_selection,
     fmodel=None,
     resolution_factor=0.25,
@@ -687,14 +687,14 @@ def map_statistics_for_atom_selection (
     map1_type="2mFo-DFc",
     map2_type="Fmodel",
     atom_radius=1.5,
-    exclude_hydrogens=False) :
+    exclude_hydrogens=False):
   """
   Simple-but-flexible function to give the model-to-map CC and mean density
   values (sigma-scaled, unless pre-calculated maps are provided) for any
   arbitrary atom selection.
   """
   assert (atom_selection is not None) and (len(atom_selection) > 0)
-  if (fmodel is not None) :
+  if (fmodel is not None):
     assert (map1 is None) and (map2 is None) and (xray_structure is None)
     edm = fmodel.electron_density_map()
     map1_coeffs = edm.map_coefficients(map1_type)
@@ -707,12 +707,12 @@ def map_statistics_for_atom_selection (
   else :
     assert (not None in [map1, map2, xray_structure])
     assert isinstance(map1, flex.double) and isinstance(map2, flex.double)
-  if (exclude_hydrogens) :
+  if (exclude_hydrogens):
     hd_selection = xray_structure.hd_selection()
-    if (type(atom_selection).__name__ == "size_t") :
+    if (type(atom_selection).__name__ == "size_t"):
       atom_selection_new = flex.size_t()
       for i_seq in atom_selection :
-        if (not hd_selection[i_seq]) :
+        if (not hd_selection[i_seq]):
           atom_selection_new.append(i_seq)
       atom_selection = atom_selection_new
       assert (len(atom_selection) > 0)
@@ -733,7 +733,7 @@ def map_statistics_for_atom_selection (
     map1_mean=stats.mean,
     map2_mean=stats.model_mean)
 
-def map_statistics_for_fragment (fragment, **kwds) :
+def map_statistics_for_fragment(fragment, **kwds):
   """
   Shortcut to map_statistics_for_atom_selection using a PDB hierarchy object
   to define the atom selection.
@@ -743,7 +743,7 @@ def map_statistics_for_fragment (fragment, **kwds) :
   assert (not i_seqs.all_eq(0))
   return map_statistics_for_atom_selection(i_seqs, **kwds)
 
-def find_suspicious_residues (
+def find_suspicious_residues(
     fmodel,
     pdb_hierarchy,
     hetatms_only=True,
@@ -753,7 +753,7 @@ def find_suspicious_residues (
     min_acceptable_2fofc=1.0,
     max_frac_atoms_below_min=0.5,
     ignore_resnames=(),
-    log=None) :
+    log=None):
   if (log is None) : log = null_out()
   xray_structure = fmodel.xray_structure
   assert (len(pdb_hierarchy.atoms()) == xray_structure.scatterers().size())
@@ -771,20 +771,20 @@ def find_suspicious_residues (
   unit_cell = xray_structure.unit_cell()
   hd_selection = xray_structure.hd_selection()
   outliers = []
-  for chain in pdb_hierarchy.models()[0].chains() :
-    for residue_group in chain.residue_groups() :
+  for chain in pdb_hierarchy.models()[0].chains():
+    for residue_group in chain.residue_groups():
       atom_groups = residue_group.atom_groups()
-      if (len(atom_groups) > 1) and (skip_alt_confs) :
+      if (len(atom_groups) > 1) and (skip_alt_confs):
         continue
-      for atom_group in residue_group.atom_groups() :
-        if (atom_group.resname in ignore_resnames) :
+      for atom_group in residue_group.atom_groups():
+        if (atom_group.resname in ignore_resnames):
           continue
         atoms = atom_group.atoms()
         assert (len(atoms) > 0)
-        if (len(atoms) == 1) and (skip_single_atoms) :
+        if (len(atoms) == 1) and (skip_single_atoms):
           continue
-        if (hetatms_only) :
-          if (not atoms[0].hetero) :
+        if (hetatms_only):
+          if (not atoms[0].hetero):
             continue
         map_stats = map_statistics_for_fragment(
           fragment=atom_group,
@@ -794,20 +794,20 @@ def find_suspicious_residues (
           exclude_hydrogens=True)
         n_below_min = n_heavy = sum = 0
         for atom in atoms :
-          if (hd_selection[atom.i_seq]) :
+          if (hd_selection[atom.i_seq]):
             continue
           n_heavy += 1
           site = atom.xyz
           site_frac = unit_cell.fractionalize(site)
           map_value = map1.tricubic_interpolation(site_frac)
-          if (map_value < min_acceptable_2fofc) :
+          if (map_value < min_acceptable_2fofc):
             n_below_min += 1
           sum += map_value
         map_mean = sum / n_heavy
         frac_below_min = n_below_min / n_heavy
         if ((map_stats.cc < min_acceptable_cc) or
             (frac_below_min > max_frac_atoms_below_min) or
-            (map_mean < min_acceptable_2fofc)) :
+            (map_mean < min_acceptable_2fofc)):
           residue_info = "%1s%3s%2s%5s" % (atom_group.altloc,
             atom_group.resname, chain.id, residue_group.resid())
           xyz_mean = atoms.extract_xyz().mean()
@@ -819,7 +819,7 @@ def find_suspicious_residues (
           print >> log, "  Mean 2mFo-DFc value = %.2f" % map_mean
   return outliers
 
-def extract_map_stats_for_single_atoms (xray_structure, pdb_atoms, fmodel,
+def extract_map_stats_for_single_atoms(xray_structure, pdb_atoms, fmodel,
                                         selection=None, fc_map=None,
                                         two_fofc_map=None):
   """
@@ -829,22 +829,22 @@ def extract_map_stats_for_single_atoms (xray_structure, pdb_atoms, fmodel,
   :param selection: optional atom selection (flex array)
   :returns: group_args object with various simple metrics
   """
-  if (selection is None) :
+  if (selection is None):
     selection = ~(xray_structure.hd_selection())
   sites_cart = xray_structure.sites_cart()
   sites_frac = xray_structure.sites_frac()
   unit_cell = xray_structure.unit_cell()
-  def collect_map_values (map, get_selections=False) :
+  def collect_map_values(map, get_selections=False):
     values = []
     selections = []
-    if (map is None) :
+    if (map is None):
       assert (not get_selections)
       return [ None ] * len(pdb_atoms)
-    for i_seq, atom in enumerate(pdb_atoms) :
-      if (selection[i_seq]) :
+    for i_seq, atom in enumerate(pdb_atoms):
+      if (selection[i_seq]):
         site_frac = sites_frac[i_seq]
         values.append(map.eight_point_interpolation(site_frac))
-        if (get_selections) :
+        if (get_selections):
           sel = maptbx.grid_indices_around_sites(
             unit_cell  = unit_cell,
             fft_n_real = map.focus(),
@@ -855,13 +855,13 @@ def extract_map_stats_for_single_atoms (xray_structure, pdb_atoms, fmodel,
       else :
         values.append(None)
         selections.append(None)
-    if (get_selections) :
+    if (get_selections):
       return values, selections
     else :
       return values
-  def get_map (map_type) :
+  def get_map(map_type):
     map_coeffs = fmodel.map_coefficients(map_type=map_type)
-    if (map_coeffs is not None) :
+    if (map_coeffs is not None):
       return map_coeffs.fft_map(
         resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
 
@@ -893,8 +893,8 @@ def extract_map_stats_for_single_atoms (xray_structure, pdb_atoms, fmodel,
     del fmodel_map
 
   two_fofc_ccs = []
-  for i_seq, atom in enumerate(pdb_atoms) :
-    if (selection[i_seq]) :
+  for i_seq, atom in enumerate(pdb_atoms):
+    if (selection[i_seq]):
       cc = flex.linear_correlation(x=two_fofc_sel[i_seq],
         y=f_model_sel[i_seq]).coefficient()
       two_fofc_ccs.append(cc)

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.phil
 from libtbx.utils import Sorry, format_exception
 import os
@@ -96,7 +96,7 @@ class argument_interpreter(object):
         max_score = max(scores)
         if (scores.count(max_score) > 1):
           raise Sorry("\n".join(error))
-        print "Warning: " + "\n".join(error) + "\nAssuming %s was intended." % self.target_paths[scores.index(max_score)]
+        print("Warning: " + "\n".join(error) + "\nAssuming %s was intended." % self.target_paths[scores.index(max_score)])
 
       complete_definitions += object.customized_copy(
         name=self.target_paths[scores.index(max_score)]).as_str()
@@ -125,12 +125,12 @@ class argument_interpreter(object):
         try: user_phils.append(self.process_arg(arg=arg))
         except Exception: pass
         else: continue
-      if (custom_processor is not None) :
+      if (custom_processor is not None):
         result = custom_processor(arg=arg)
-        if (isinstance(result, libtbx.phil.scope)) :
+        if (isinstance(result, libtbx.phil.scope)):
           user_phils.append(result)
           continue
-        elif (result is not None) and (result != False) :
+        elif (result is not None) and (result != False):
           continue
       if (op.isfile(arg)):
         libtbx.phil.parse(file_name=arg) # exception expected

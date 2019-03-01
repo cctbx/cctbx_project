@@ -142,8 +142,8 @@ simulate_data {
 }
 """, process_includes=True)
 
-def run (args, out=None) :
-  if (out is None) :
+def run(args, out=None):
+  if (out is None):
     out = sys.stdout
   make_header("mmtbx.simulate_low_res_data", out=out)
   print >> out, """
@@ -164,9 +164,9 @@ def run (args, out=None) :
    mmtbx.simulate_low_res_data --help
      (print full parameters with additional info)
 """
-  if (len(args) == 0) or ("--help" in args) :
+  if (len(args) == 0) or ("--help" in args):
     print >> out, "# full parameters:"
-    if ("--help" in args) :
+    if ("--help" in args):
       master_phil.show(attributes_level=1)
     else :
       master_phil.show()
@@ -179,15 +179,15 @@ def run (args, out=None) :
   hkl_in = None
   user_phil = []
   for arg in args :
-    if os.path.isfile(arg) :
+    if os.path.isfile(arg):
       f = file_reader.any_file(arg)
-      if (f.file_type == "pdb") :
+      if (f.file_type == "pdb"):
         pdb_in = f.file_object
         user_phil.append(interpreter.process(arg="pdb_file=%s" % f.file_name))
-      elif (f.file_type == "hkl") :
+      elif (f.file_type == "hkl"):
         hkl_in = f.file_object
         user_phil.append(interpreter.process(arg="hkl_file=%s" % f.file_name))
-      elif (f.file_type == "phil") :
+      elif (f.file_type == "phil"):
         user_phil.append(f.file_object)
     else :
       try :
@@ -207,50 +207,50 @@ def run (args, out=None) :
     pdb_in=pdb_in,
     out=out)
 
-class prepare_data (object) :
-  def __init__ (self, params, hkl_in=None, pdb_in=None, out=sys.stdout) :
+class prepare_data(object):
+  def __init__(self, params, hkl_in=None, pdb_in=None, out=sys.stdout):
     adopt_init_args(self, locals())
     self.params = params
     self.out = out
     self.pdb_hierarchy = None
-    if (params.pdb_file is None) and (params.hkl_file is None) :
+    if (params.pdb_file is None) and (params.hkl_file is None):
       raise Sorry("No PDB file specified.")
-    if (params.generate_noise.add_noise) and (params.hkl_file is None) :
-      if (params.generate_noise.noise_profile_file is None) :
+    if (params.generate_noise.add_noise) and (params.hkl_file is None):
+      if (params.generate_noise.noise_profile_file is None):
         raise Sorry("noise_profile_file required when add_noise=True and "
           "hkl_file is undefined.")
-    if (pdb_in is None) and (params.pdb_file is not None) :
+    if (pdb_in is None) and (params.pdb_file is not None):
       f = file_reader.any_file(params.pdb_file, force_type="pdb")
       f.assert_file_type("pdb")
       self.pdb_in = f.file_object
-    if (self.hkl_in is None) and (params.hkl_file is not None) :
+    if (self.hkl_in is None) and (params.hkl_file is not None):
       f = file_reader.any_file(params.hkl_File, force_type="hkl")
       f.assert_file_type("hkl")
       self.hkl_in = f.file_object
-    if (self.pdb_in is not None) :
+    if (self.pdb_in is not None):
       self.pdb_hierarchy = self.pdb_in.hierarchy
-    if (self.hkl_in is not None) :
+    if (self.hkl_in is not None):
       make_header("Extracting experimental data", out=sys.stdout)
       f_raw, r_free = self.from_hkl()
-    elif (self.pdb_in is not None) :
+    elif (self.pdb_in is not None):
       make_header("Generating fake data with phenix.fmodel", out=sys.stdout)
       f_raw, r_free = self.from_pdb()
-    if (params.r_free_flags.file_name is not None) :
+    if (params.r_free_flags.file_name is not None):
       f_raw, r_free = self.import_r_free_flags(f_raw)
     self.r_free = r_free
     make_header("Applying low-resolution filtering", out=sys.stdout)
     print >> out, "  Target resolution: %.2f A" % params.d_min
     self.n_residues, self.n_bases = None, None
-    if (self.pdb_in is not None) :
+    if (self.pdb_in is not None):
       self.n_residues, self.n_bases = get_counts(self.pdb_hierarchy)
-    #if (params.auto_adjust) :
-    #  if (pdb_in is None) :
+    #if (params.auto_adjust):
+    #  if (pdb_in is None):
     #    raise Sorry("You must supply a PDB file when auto_adjust=True.")
     self.f_out = self.truncate_data(f_raw)
-    if (params.generate_noise.add_noise) :
+    if (params.generate_noise.add_noise):
       make_header("Adding noise using sigma profile", out=sys.stdout)
-      if (self.f_out.sigmas() is None) :
-        if (self.pdb_in is not None) :
+      if (self.f_out.sigmas() is None):
+        if (self.pdb_in is not None):
           iso_scale, aniso_scale = wilson_scaling(self.f_out, self.n_residues,
             self.n_bases)
         i_obs = create_sigmas(
@@ -264,7 +264,7 @@ class prepare_data (object) :
     print >> out, "  Completeness after processing: %.2f%%" % (
       self.f_out.completeness() * 100.)
     print >> out, "  Final resolution: %.2f A" % self.f_out.d_min()
-    if (self.pdb_in is not None) :
+    if (self.pdb_in is not None):
       iso_scale, aniso_scale = wilson_scaling(self.f_out, self.n_residues,
         self.n_bases)
       print >> out, ""
@@ -273,11 +273,11 @@ class prepare_data (object) :
       print >> out, ""
     self.write_output()
 
-  def write_output (self) :
+  def write_output(self):
     f_out = self.f_out
     params = self.params
     out = self.out
-    if (f_out.sigmas() is not None) :
+    if (f_out.sigmas() is not None):
       mtz_dataset = f_out.as_mtz_dataset(
         column_root_label="F",
         column_types="FQ")
@@ -285,22 +285,22 @@ class prepare_data (object) :
       mtz_dataset = f_out.as_mtz_dataset(
         column_root_label="F",
         column_types="F")
-    if (self.r_free is not None) :
+    if (self.r_free is not None):
       r_free = self.r_free.common_set(f_out)
       mtz_dataset.add_miller_array(
         miller_array=r_free,
         column_root_label="FreeR_flag",
         column_types="I")
     mtz_object = mtz_dataset.mtz_object()
-    if (params.output_file is None) :
-      if (params.hkl_file is not None) :
+    if (params.output_file is None):
+      if (params.hkl_file is not None):
         base_name = os.path.splitext(os.path.basename(params.hkl_file))[0]
       else :
         base_name = os.path.splitext(os.path.basename(params.pdb_file))[0]
       params.output_file = base_name + "_low_res.mtz"
     mtz_object.write(file_name=params.output_file)
     print >> out, "  Wrote %s" % params.output_file
-    if (self.pdb_hierarchy is not None) and (params.write_modified_pdb) :
+    if (self.pdb_hierarchy is not None) and (params.write_modified_pdb):
       pdb_out = os.path.splitext(params.output_file)[0] + ".pdb"
       f = open(pdb_out, "w")
       f.write("%s\n" % "\n".join(self.pdb_in.input.crystallographic_section()))
@@ -308,26 +308,26 @@ class prepare_data (object) :
       f.close()
       print >> out, "  Wrote modified model to %s" % pdb_out
 
-  def from_pdb (self) :
+  def from_pdb(self):
     out = self.out
     params = self.params
     pdb_hierarchy = self.pdb_hierarchy
     pdb_sg, pdb_uc = None, None
     pdb_symm = self.pdb_in.crystal_symmetry()
-    if (pdb_symm is not None) :
+    if (pdb_symm is not None):
       pdb_sg = pdb_symm.space_group_info()
       pdb_uc = pdb_symm.unit_cell()
     apply_sg = pdb_sg
     apply_uc = pdb_uc
-    if (params.crystal_symmetry.space_group is not None) :
+    if (params.crystal_symmetry.space_group is not None):
       apply_sg = params.crystal_symmetry.space_group
     else :
       params.crystal_symmetry.space_group = pdb_sg
-    if (params.crystal_symmetry.unit_cell is not None) :
+    if (params.crystal_symmetry.unit_cell is not None):
       apply_uc = params.crystal_symmetry.unit_cell
     else :
       params.crystal_symmetry.unit_cell = pdb_uc
-    if (apply_sg is None) or (apply_uc is None) :
+    if (apply_sg is None) or (apply_uc is None):
       raise Sorry("Incomplete symmetry information - please specify a space "+
         "group and unit cell for this structure.")
     from cctbx import crystal, adptbx
@@ -335,19 +335,19 @@ class prepare_data (object) :
     apply_symm = crystal.symmetry(
       unit_cell=apply_uc,
       space_group_info=apply_sg)
-    if (params.modify_pdb.remove_waters) :
+    if (params.modify_pdb.remove_waters):
       print >> out, "  Removing solvent atoms..."
-      for model in pdb_hierarchy.models() :
-        for chain in model.chains() :
-          for residue_group in chain.residue_groups() :
-            for atom_group in residue_group.atom_groups() :
-              if (atom_group.resname in ["HOH", "WAT"]) :
+      for model in pdb_hierarchy.models():
+        for chain in model.chains():
+          for residue_group in chain.residue_groups():
+            for atom_group in residue_group.atom_groups():
+              if (atom_group.resname in ["HOH", "WAT"]):
                 residue_group.remove_atom_group(atom_group=atom_group)
-            if (len(residue_group.atom_groups()) == 0) :
+            if (len(residue_group.atom_groups()) == 0):
               chain.remove_residue_group(residue_group=residue_group)
-          if (len(chain.atoms()) == 0) :
+          if (len(chain.atoms()) == 0):
             model.remove_chain(chain=chain)
-    if (params.modify_pdb.remove_alt_confs) :
+    if (params.modify_pdb.remove_alt_confs):
       print >> out, "  Removing all alternate conformations and resetting occupancies..."
       from mmtbx import pdbtools
       pdbtools.remove_alt_confs(hierarchy=pdb_hierarchy)
@@ -355,27 +355,27 @@ class prepare_data (object) :
       crystal_symmetry=apply_symm)
     sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
     hd_selection = xray_structure.hd_selection()
-    if (not (("H" in sctr_keys) or ("D" in sctr_keys))) :
+    if (not (("H" in sctr_keys) or ("D" in sctr_keys))):
       print >> out, "  WARNING: this model does not contain hydrogen atoms!"
       print >> out, "           strongly recommend running phenix.ready_set or"
       print >> out, "           equivalent to ensure realistic simulated data."
       print >> out, ""
-    if (params.modify_pdb.convert_to_isotropic) :
+    if (params.modify_pdb.convert_to_isotropic):
       xray_structure.convert_to_isotropic()
     set_b = None
-    if (params.modify_pdb.set_mean_b_iso is not None) :
+    if (params.modify_pdb.set_mean_b_iso is not None):
       assert (not params.modify_pdb.set_wilson_b)
       print >> out, "  Scaling B-factors to have mean of %.2f" % \
         params.modify_pdb.set_mean_b_iso
       assert (params.modify_pdb.set_mean_b_iso > 0)
       set_b = params.modify_pdb.set_mean_b_iso
-    elif (params.modify_pdb.set_wilson_b) :
+    elif (params.modify_pdb.set_wilson_b):
       print >> out, "  Scaling B-factors to match mean Wilson B for this resolution"
       set_b = get_mean_statistic_for_resolution(
         d_min=params.d_min,
         stat_type="wilson_b")
       print >> out, ""
-    if (set_b is not None) :
+    if (set_b is not None):
       u_iso = xray_structure.extract_u_iso_or_u_equiv()
       u_iso = u_iso.select(~hd_selection)
       u_mean = flex.mean(u_iso)
@@ -391,14 +391,14 @@ class prepare_data (object) :
     fmodel_params.high_resolution = params.d_min
     fake_data = params.fake_data_from_fmodel
     fmodel_params.fmodel = fake_data.fmodel
-    if (fmodel_params.fmodel.b_sol == 0) :
+    if (fmodel_params.fmodel.b_sol == 0):
       print >> out, "  b_sol is zero - will use mean value for d_min +/- 0.2A"
       print >> out, "   (this is not strongly correlated with resolution, but"
       print >> out, "    it is preferrable to use a real value instead of leaving"
       print >> out, "    it set to 0)"
       fmodel_params.fmodel.b_sol = 46.0
       print >> out, ""
-    if (fmodel_params.fmodel.k_sol == 0) :
+    if (fmodel_params.fmodel.k_sol == 0):
       print >> out, "  k_sol is zero - will use mean value for d_min +/- 0.2A"
       print >> out, "   (this is not strongly correlated with resolution, but"
       print >> out, "    it is preferrable to use a real value instead of leaving"
@@ -417,37 +417,37 @@ class prepare_data (object) :
     r_free_flags = fmodel_.r_free_flags
     return (f_model, r_free_flags)
 
-  def from_hkl (self) :
+  def from_hkl(self):
     params = self.params
     out = self.out
     miller_arrays = self.hkl_in.as_miller_arrays()
     f_obs = None
     r_free = None
     for array in miller_arrays :
-      if (params.data_label is not None) :
-        if (array.info().label_string() == params.data_label) :
+      if (params.data_label is not None):
+        if (array.info().label_string() == params.data_label):
           f_obs = array.map_to_asu()
-      elif (array.is_xray_amplitude_array()) :
+      elif (array.is_xray_amplitude_array()):
         f_obs = array.map_to_asu()
         params.data_label = array.info().label_string()
         print >> out, "  F-obs: %s" % params.data_label
-      elif (array.is_xray_intensity_array()) :
+      elif (array.is_xray_intensity_array()):
         f_obs = array.f_sq_as_f().map_to_asu()
         params.data_label = array.info().label_string()
         print >> out, "  I-obs: %s" % params.data_label
-      if (params.r_free_flags.label is not None) :
-        if (array.info().label_string() == params.r_free_flags.label) :
+      if (params.r_free_flags.label is not None):
+        if (array.info().label_string() == params.r_free_flags.label):
           r_free = array.map_to_asu()
           print >> out, "  R-free: %s" % array.info().label_string()
-      elif (array.info().label_string() in ["FreeR_flag", "FREE"]) :
+      elif (array.info().label_string() in ["FreeR_flag", "FREE"]):
         r_free = array.map_to_asu()
         print >> out, "  R-free: %s" % array.info().label_string()
     f_obs = f_obs.resolution_filter(d_min=params.d_min)
-    if (r_free is not None) :
+    if (r_free is not None):
       r_free = r_free.common_set(f_obs)
     return f_obs, r_free
 
-  def import_r_free_flags (self, F) :
+  def import_r_free_flags(self, F):
     params = self.params.r_free_flags
     out = self.out
     from iotbx import file_reader
@@ -464,10 +464,10 @@ class prepare_data (object) :
     r_free = r_free.map_to_asu().common_set(F)
     print >> out, "  Using R-free flags from %s:%s" % (rfree_in.file_name,
       r_free_raw.info().label_string())
-    if (F.data().size() != r_free.data().size()) :
+    if (F.data().size() != r_free.data().size()):
       n_missing = F.data().size() - r_free.data().size()
       assert (n_missing > 0)
-      if (params.missing_flags == "discard") :
+      if (params.missing_flags == "discard"):
         print >> out, "    discarding %d amplitudes without R-free flags" % \
           n_missing
         F = F.common_set(r_free)
@@ -483,26 +483,26 @@ class prepare_data (object) :
     assert (F.data().size() == r_free.data().size())
     return F, r_free
 
-  def truncate_data (self, F) :
+  def truncate_data(self, F):
     params = self.params
     out = self.out
     from scitbx.array_family import flex
-    if (params.truncate.add_b_iso is not None) :
+    if (params.truncate.add_b_iso is not None):
       print >> out, "  Applying isotropic B-factor of %.2f A^2" % (
         params.truncate.add_b_iso)
       F = F.apply_debye_waller_factors(
         b_iso=params.truncate.add_b_iso,
         apply_to_sigmas=params.truncate.apply_b_to_sigmas)
-    if (params.truncate.add_b_aniso != [0,0,0,0,0,0]) :
+    if (params.truncate.add_b_aniso != [0,0,0,0,0,0]):
       print >> out, "  Adding anisotropy..."
       F = F.apply_debye_waller_factors(
         b_cart=params.truncate.add_b_aniso,
         apply_to_sigmas=params.truncate.apply_b_to_sigmas)
-    if (params.truncate.add_random_error_percent is not None) :
+    if (params.truncate.add_random_error_percent is not None):
       print >> out, "  Adding random error as percent of amplitude..."
       F = add_random_error(f_obs=F,
         error_percent=params.truncate.add_random_error_percent)
-    if (params.truncate.remove_cone_around_axis is not None) :
+    if (params.truncate.remove_cone_around_axis is not None):
       print >> out, "  Removing cone of data around axis of rotation..."
       print >> out, "    radius = %.1f degrees" % \
         params.truncate.remove_cone_around_axis
@@ -513,11 +513,11 @@ class prepare_data (object) :
         cone_radius=params.truncate.remove_cone_around_axis)
       print >> out, "    removed %d reflections (out of %d)" %(delta_n_hkl,
         n_hkl)
-    if (params.truncate.elliptical_truncation) :
+    if (params.truncate.elliptical_truncation):
       print >> out, "  Truncating the data elliptically..."
       target_completeness = params.truncate.ellipse_target_completeness
       completeness_start = F.completeness() * 100.0
-      if (completeness_start < target_completeness) :
+      if (completeness_start < target_completeness):
         print >> out, "    completeness is already less than target value:"
         print >> out, "       %.2f versus %.2f"
         print >> out, "    elliptical truncation will be skipped."
@@ -536,18 +536,17 @@ class prepare_data (object) :
           n_hkl)
     return F
 
-def get_counts (hierarchy) :
+def get_counts(hierarchy):
   n_residues = 0
   n_bases = 0
-  for chain in hierarchy.models()[0].chains() :
-    main_conf = chain.conformers()[0]
-    if (main_conf.is_protein()) :
+  for chain in hierarchy.models()[0].chains():
+    if chain.is_protein():
       n_residues += len(chain.residue_groups())
-    elif (main_conf.is_na()) :
+    elif chain.is_na():
       n_bases += len(chain.residue_groups())
   return n_residues, n_bases
 
-def wilson_scaling (F, n_residues, n_bases) :
+def wilson_scaling(F, n_residues, n_bases):
   from mmtbx.scaling import absolute_scaling
   iso_scale = absolute_scaling.ml_iso_absolute_scaling(
     miller_array=F,
@@ -559,7 +558,7 @@ def wilson_scaling (F, n_residues, n_bases) :
     n_bases=n_bases)
   return iso_scale, aniso_scale
 
-def show_b_factor_info (iso_scale, aniso_scale, out) :
+def show_b_factor_info(iso_scale, aniso_scale, out):
   b_cart = aniso_scale.b_cart
   print >> out, "    overall isotropic B-factor:   %6.2f" % iso_scale.b_wilson
   print >> out, "    overall anisotropic B-factor: %6.2f, %6.2f, %6.2f" % (
@@ -568,7 +567,7 @@ def show_b_factor_info (iso_scale, aniso_scale, out) :
     b_cart[1], b_cart[5])
   print >> out, "                                  %22.2f" % b_cart[2]
 
-def add_random_error (f_obs, error_percent) :
+def add_random_error(f_obs, error_percent):
   from scitbx.array_family import flex
   assert (100 > error_percent > 0)
   data = f_obs.data()
@@ -581,29 +580,29 @@ def add_random_error (f_obs, error_percent) :
   data = data + ri*fr
   return f_obs.customized_copy(data=data)
 
-def elliptical_truncation (array,
+def elliptical_truncation(array,
                            b_cart,
                            scale_factor=1.0,
-                           target_completeness=None) :
+                           target_completeness=None):
   from cctbx import adptbx
   from scitbx.array_family import flex
   indices = array.indices()
   axis_index = -1
   min_b_directional = sys.maxint
-  for n, b_index in enumerate(b_cart[0:3]) :
-    if (b_index < min_b_directional) :
+  for n, b_index in enumerate(b_cart[0:3]):
+    if (b_index < min_b_directional):
       min_b_directional = b_index
       axis_index = n
   assert (0 <= axis_index <= 3)
   max_index_along_axis = [0,0,0]
   for hkl in indices :
-    if (hkl[axis_index] > max_index_along_axis[axis_index]) :
+    if (hkl[axis_index] > max_index_along_axis[axis_index]):
       max_index_along_axis[axis_index] = hkl[axis_index]
   assert (max_index_along_axis != [0,0,0])
   scale_cutoff = array.unit_cell().debye_waller_factor(
     miller_index=max_index_along_axis, b_cart=b_cart) * scale_factor
   scale = array.debye_waller_factors(b_cart=b_cart).data()
-  if (target_completeness is not None) :
+  if (target_completeness is not None):
     assert (target_completeness > 0) and (target_completeness <= 100)
     completeness_start = array.completeness() * 100.0
     assert (completeness_start > target_completeness)
@@ -614,19 +613,19 @@ def elliptical_truncation (array,
   sigmas = array.sigmas()
   n_hkl = indices.size()
   i = 0
-  while (i < len(indices)) :
-    if (scale[i] < scale_cutoff) :
+  while (i < len(indices)):
+    if (scale[i] < scale_cutoff):
       del indices[i]
       del data[i]
       del scale[i]
-      if (sigmas is not None) :
+      if (sigmas is not None):
         del sigmas[i]
     else :
       i += 1
   delta_n_hkl = n_hkl - indices.size()
   return (n_hkl, delta_n_hkl)
 
-def remove_cone_around_axis (array, axis, cone_radius) :
+def remove_cone_around_axis(array, axis, cone_radius):
   assert (cone_radius < 90) and (cone_radius >= 0)
   from scitbx.matrix import rec
   unit_cell = array.unit_cell()
@@ -638,15 +637,15 @@ def remove_cone_around_axis (array, axis, cone_radius) :
   sigmas = array.sigmas()
   angle_high = 180 - cone_radius
   i = 0
-  while (i < len(indices)) :
+  while (i < len(indices)):
     v2 = rec(rc_vectors[i], (3,1))
     #print v1, v2
     angle = math.degrees(v1.angle(v2))
-    if (angle <= cone_radius) or (angle >= angle_high) :
+    if (angle <= cone_radius) or (angle >= angle_high):
       del rc_vectors[i]
       del indices[i]
       del data[i]
-      if (sigmas is not None) :
+      if (sigmas is not None):
         del sigmas[i]
     else :
       i += 1
@@ -659,8 +658,8 @@ stat_names = {
   'b_sol' : 'Bulk solvent B-factor (b_sol)',
 }
 
-def get_mean_statistic_for_resolution (d_min, stat_type, range=0.2, out=None) :
-  if (out is None) :
+def get_mean_statistic_for_resolution(d_min, stat_type, range=0.2, out=None):
+  if (out is None):
     out = sys.stdout
   from scitbx.array_family import flex
   pkl_file = libtbx.env.find_in_repositories(
@@ -670,13 +669,13 @@ def get_mean_statistic_for_resolution (d_min, stat_type, range=0.2, out=None) :
   all_d_min = db['high_resolution']
   stat_values = db[stat_type]
   values_for_range = flex.double()
-  for (d_, v_) in zip(all_d_min, stat_values) :
+  for (d_, v_) in zip(all_d_min, stat_values):
     try :
       d = float(d_)
       v = float(v_)
     except ValueError : continue
     else :
-      if (d > (d_min - range)) and (d < (d_min + range)) :
+      if (d > (d_min - range)) and (d < (d_min + range)):
         values_for_range.append(v)
   h = flex.histogram(values_for_range, n_slots=10)
   print >> out, "  %s for d_min = %.3f - %.3f A" % (stat_names[stat_type], d_min-range,
@@ -692,7 +691,7 @@ def get_mean_statistic_for_resolution (d_min, stat_type, range=0.2, out=None) :
   h.show(prefix="      ")
   return mean
 
-def create_sigmas (f_obs, params, wilson_b=None, return_as_amplitudes=False) :
+def create_sigmas(f_obs, params, wilson_b=None, return_as_amplitudes=False):
   assert (f_obs.sigmas() is None)
   from scitbx.array_family import flex
   i_obs = f_obs.f_as_f_sq()
@@ -706,37 +705,37 @@ def create_sigmas (f_obs, params, wilson_b=None, return_as_amplitudes=False) :
     n_intensity_bins=params.n_intensity_bins)
   sigmas = flex.double(i_norm.size(), 0.0)
   i_obs.setup_binner(n_bins=params.n_resolution_bins)
-  for j_bin in i_obs.binner().range_used() :
+  for j_bin in i_obs.binner().range_used():
     bin_sel = i_obs.binner().selection(j_bin)
     shell_profile = profiler.get_noise_profile_for_shell(j_bin)
-    for k in bin_sel.iselection() :
+    for k in bin_sel.iselection():
       i_over_sigma = shell_profile.get_i_over_sigma(i_norm[k])
       sigmas[k] = i_obs.data()[k] / i_over_sigma
   i_new = i_obs.customized_copy(sigmas=sigmas)
-  if (return_as_amplitudes) :
+  if (return_as_amplitudes):
     return i_new.f_as_f_sq()
   else :
     return i_new
 
-def apply_sigma_noise (i_obs) :
+def apply_sigma_noise(i_obs):
   assert (i_obs.is_xray_intensity_array())
   assert (i_obs.sigmas() is not None)
   data = i_obs.data()
-  for i, sigma in enumerate(i_obs.sigmas()) :
+  for i, sigma in enumerate(i_obs.sigmas()):
     data[i] = random.gauss(data[i], sigma)
 
-class profile_sigma_generator (object) :
-  def __init__ (self,
+class profile_sigma_generator(object):
+  def __init__(self,
                 mtz_file,
                 pdb_file,
                 wilson_b=None,
                 data_label=None,
                 n_resolution_bins=20,
                 n_intensity_bins=20,
-                out=None) :
-    if (out is None) :
+                out=None):
+    if (out is None):
       out = sys.stdout
-    if (wilson_b is None) or (pdb_file is None) :
+    if (wilson_b is None) or (pdb_file is None):
       print >> out, """\
   WARNING: missing desired Wilson B-factor and/or PDB file
            for noise profile data.  Without this information
@@ -753,16 +752,16 @@ class profile_sigma_generator (object) :
     f_obs = None
     i_obs = None
     for array in miller_arrays :
-      if (array.info().label_string() == data_label) or (data_label is None) :
-        if (array.is_xray_amplitude_array()) and (f_obs is None) :
+      if (array.info().label_string() == data_label) or (data_label is None):
+        if (array.is_xray_amplitude_array()) and (f_obs is None):
           f_obs = array
-        elif (array.is_xray_intensity_array()) and (i_obs is None) :
+        elif (array.is_xray_intensity_array()) and (i_obs is None):
           i_obs = array
-    if (i_obs is None) :
+    if (i_obs is None):
       assert (f_obs is not None) and (f_obs.sigmas() is not None)
       i_obs = f_obs.f_as_f_sq()
     assert (i_obs.sigmas() is not None)
-    if (wilson_b is not None) and (pdb_file is not None) :
+    if (wilson_b is not None) and (pdb_file is not None):
       print >> out, "  Correcting reference data intensity falloff..."
       f_obs = i_obs.f_sq_as_f()
       pdb_hierarchy = any_file(pdb_file).file_object.hierarchy
@@ -783,7 +782,7 @@ class profile_sigma_generator (object) :
       sigmas=i_obs.sigmas() / i_mean)
     i_norm.setup_binner(n_bins=20)
     i_over_sigma = i_obs.data() / i_obs.sigmas()
-    for i_bin in i_norm.binner().range_used() :
+    for i_bin in i_norm.binner().range_used():
       sel = i_norm.binner().selection(i_bin)
       i_shell = i_norm.select(sel)
       sn_shell = i_over_sigma.select(sel)
@@ -793,15 +792,15 @@ class profile_sigma_generator (object) :
         n_bins=n_intensity_bins)
       self._resolution_bins.append(noise_bins)
 
-  def get_noise_profile_for_shell (self, i_bin) :
+  def get_noise_profile_for_shell(self, i_bin):
     return self._resolution_bins[i_bin-1]
 
-class shell_intensity_bins (object) :
-  def __init__ (self, i_norm, i_over_sigma, n_bins=20) :
+class shell_intensity_bins(object):
+  def __init__(self, i_norm, i_over_sigma, n_bins=20):
     self._binner = bin_by_intensity(i_norm.data(), n_bins)
     self._sn_bins = []
     self._i_bins = []
-    for n in range(n_bins) :
+    for n in range(n_bins):
       bin_sel = self._binner.get_bin_selection(n)
       sn_bin = i_over_sigma.select(bin_sel)
       i_bin = i_norm.select(bin_sel)
@@ -809,47 +808,47 @@ class shell_intensity_bins (object) :
       self._sn_bins.append(sn_bin)
       self._i_bins.append(i_bin)
 
-  def get_i_over_sigma (self, I) :
+  def get_i_over_sigma(self, I):
     assert (I <= 1)
     if (I == 0) : return 1 # FIXME add French-Wilson before getting here
     k = self._binner.get_bin(I)
     sn_profile = self._sn_bins[k]
-    for j, i_ref in enumerate(self._i_bins[k]) :
-      if (i_ref >= I) :
+    for j, i_ref in enumerate(self._i_bins[k]):
+      if (i_ref >= I):
         return sn_profile[j]
     return sn_profile[-1]
 
-class bin_by_intensity (object) :
-  def __init__ (self, data, n_bins=20) :
+class bin_by_intensity(object):
+  def __init__(self, data, n_bins=20):
     from scitbx.array_family import flex
     self._bin_limits = []
     self._bins = flex.int(data.size(), -1)
     sorted_data = sorted(data)
     bin_size = data.size() // n_bins
-    for n in range(n_bins) :
+    for n in range(n_bins):
       bin_limit = bin_size * (n+1)
-      if (bin_limit >= data.size()) :
+      if (bin_limit >= data.size()):
         bin_limit = data.size() - 1
       i_max = sorted_data[bin_limit]
       self._bin_limits.append(i_max)
-    for k, I in enumerate(data) :
+    for k, I in enumerate(data):
       bin = self.get_bin(I)
       self._bins[k] = bin
 
-  def get_bin (self, I) :
+  def get_bin(self, I):
     assert (I >= 0)
-    for k, limit in enumerate(self._bin_limits) :
-      if (I < limit) :
+    for k, limit in enumerate(self._bin_limits):
+      if (I < limit):
         return k
     return len(self._bin_limits) - 1
 
-  def get_bin_selection (self, bin) :
+  def get_bin_selection(self, bin):
     from scitbx.array_family import flex
     sel = flex.bool(self._bins.size(), False)
-    for k, n in enumerate(self._bins) :
-      if (n == bin) :
+    for k, n in enumerate(self._bins):
+      if (n == bin):
         sel[k] = True
     return sel
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

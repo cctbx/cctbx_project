@@ -253,7 +253,7 @@ def split_groups(sels, fragment_size):
   return new_sels
 
 def show_groups(sels, out=None):
-  if (out is None) :
+  if (out is None):
     out = sys.stdout
   min_group_size = 1.e+6
   if 0: print >> out, "          Residues  Resseq  Sec.Structure"
@@ -278,8 +278,8 @@ def sels_as_selection_arrays(sels):
 def get_model_partitioning(residues,
                            secondary_structure_selection,
                            max_sels=13,
-                           out=None) :
-  if (out is None) :
+                           out=None):
+  if (out is None):
     out = sys.stdout
   fragment_size = 5
   print >> out, "  Grouping residues by secondary structure..."
@@ -326,8 +326,8 @@ def get_model_partitioning(residues,
   return sels, perms
 
 def chains_and_atoms(pdb_hierarchy, secondary_structure_selection,
-    out=None) :
-  if (out is None) :
+    out=None):
+  if (out is None):
     out = sys.stdout
   new_secondary_structure_selection = flex.bool()
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -524,14 +524,14 @@ def permutations_as_atom_selection_string(groups, perm):
   return result
 
 # XXX for multiprocessing
-class analyze_permutations (object) :
-  def __init__ (self, groups, sites_cart, u_cart, u_iso) :
+class analyze_permutations(object):
+  def __init__(self, groups, sites_cart, u_cart, u_iso):
     self.groups = groups
     self.sites_cart = sites_cart
     self.u_cart = u_cart
     self.u_iso = u_iso
 
-  def __call__ (self, perm) :
+  def __call__(self, perm):
     selections = tls_group_selections(self.groups, perm)
     target = 0
     for selection in selections:
@@ -543,9 +543,9 @@ class analyze_permutations (object) :
       target += mo.f
     return target
 
-def run (args=(), params=None, pdb_hierarchy=None, xray_structure=None,
-    out=None) :
-  if (out is None) :
+def run(args=(), params=None, pdb_hierarchy=None, xray_structure=None,
+    out=None):
+  if (out is None):
     out = sys.stdout
   print_statistics.make_header("phenix.find_tls_groups", out=out)
   default_message="""\
@@ -575,10 +575,10 @@ Usage:
   working_phil = master_phil.fetch(sources=cmdline_phil)
   params = working_phil.extract()
   pdb_file_name = params.pdb_file
-  if (pdb_file_name is None) or (not iotbx.pdb.is_pdb_file(pdb_file_name)) :
+  if (pdb_file_name is None) or (not iotbx.pdb.is_pdb_file(pdb_file_name)):
     print "A model file is required."
     return
-  if (params.nproc is None) :
+  if (params.nproc is None):
     params.nproc = 1
   pdb_inp = iotbx.pdb.input(file_name=pdb_file_name)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
@@ -601,19 +601,19 @@ def total_score(pdb_hierarchy, sites_cart, u_iso, selection_strings):
     sel_str_final = "(%s) and (not resname HOH)" % sel_str
     sel = pdb_hierarchy.atom_selection_cache().selection(
       string = sel_str_final.replace('"',""))
-    for k, other in enumerate(all_selections) :
-      if ((sel & other).count(True) != 0) :
+    for k, other in enumerate(all_selections):
+      if ((sel & other).count(True) != 0):
         raise RuntimeError("Overlapping TLS selections:\n%s\n%s" % (sel_str,
           selection_strings[k]))
     all_selections.append(sel)
     assert sel.size() == u_iso.size()
-    if (sel.count(True) == 0) :
+    if (sel.count(True) == 0):
       continue
     target += tls_refinery(sites_cart=sites_cart, selection=sel, u_iso=u_iso).f
   return target
 
-def external_tls(pdb_inp, pdb_hierarchy, sites_cart, u_iso, out=None) :
-  if (out is None) :
+def external_tls(pdb_inp, pdb_hierarchy, sites_cart, u_iso, out=None):
+  if (out is None):
     out = sys.stdout
   pdb_inp_tls = pdb_inp.extract_tls_params(pdb_hierarchy)
   print_statistics.make_header("TLS groups from PDB file header",
@@ -634,14 +634,14 @@ def external_tls(pdb_inp, pdb_hierarchy, sites_cart, u_iso, out=None) :
     print >> out
     print >> out, "Total target for groups from PDB file header: %10.1f"%total_target
 
-def check_adp(u_iso, step=10, out=None) :
-  if (out is None) :
+def check_adp(u_iso, step=10, out=None):
+  if (out is None):
     out = sys.stdout
   min_adp = flex.min(u_iso)
   if(min_adp<=0):
     bad_i_seqs = []
-    for i_seq in range(len(u_iso)) :
-      if (u_iso[i_seq] <= 0) :
+    for i_seq in range(len(u_iso)):
+      if (u_iso[i_seq] <= 0):
         bad_i_seqs.append(i_seq)
     return bad_i_seqs
   i = 0
@@ -700,21 +700,21 @@ def merge_groups_by_connectivity(pdb_hierarchy, xray_structure,
   #
   print
 
-def find_tls (params,
+def find_tls(params,
               pdb_inp,
               pdb_hierarchy,
               xray_structure,
               return_as_list=False,
               ignore_pdb_header_groups=False,
-              out=None) :
+              out=None):
   """
   !!! WARNING! incoming xray_structure here gets converted to
   isotropic B-factors IN PLACE.
   """
-  if (out is None) :
+  if (out is None):
     out = sys.stdout
   print_statistics.make_header("Analyzing inputs", out=out)
-  if (params.random_seed is None) :
+  if (params.random_seed is None):
     params.random_seed = flex.get_random_seed()
   random.seed(params.random_seed)
   flex.set_random_seed(params.random_seed)
@@ -723,13 +723,13 @@ def find_tls (params,
   u_cart = None
   u_iso  = xray_structure.extract_u_iso_or_u_equiv()#*adptbx.u_as_b(1.) # ?
   bad_i_seqs = check_adp(u_iso=u_iso, out=out)
-  if (bad_i_seqs is not None) :
+  if (bad_i_seqs is not None):
     atoms = pdb_hierarchy.atoms()
     bad_atom_strings = []
     for i_seq in bad_i_seqs[:10] :
       atom_str = atoms[i_seq].format_atom_record()
       bad_atom_strings.append(atom_str)
-    if (len(bad_i_seqs) > 10) :
+    if (len(bad_i_seqs) > 10):
       bad_atom_strings.append("... (remaining %d not shown)" %
         (len(bad_i_seqs)-10))
     raise Sorry(("%d atoms in the model contain isotropic B-factors <= 0:\n"+
@@ -738,7 +738,8 @@ def find_tls (params,
   ssm = mmtbx.secondary_structure.manager(
     pdb_hierarchy                = pdb_hierarchy,
     sec_str_from_pdb_file        = None,
-    params                       = None)
+    params                       = None,
+    log                          = out)
   alpha_h_selection = ssm.alpha_selection()
   secondary_structure_selection = ssm.alpha_selection() | \
       ssm.beta_selection() | ssm.base_pair_selection()
@@ -754,7 +755,7 @@ def find_tls (params,
   chains_and_permutations = []
   chains_and_atom_selection_strings = []
   print_statistics.make_header("Processing chains", out=out)
-  if (params.nproc is None) :
+  if (params.nproc is None):
     params.nproc = 1
   for crs in chains_and_residue_selections:
     print_statistics.make_sub_header("Processing chain '%s'"%crs[0],
@@ -780,7 +781,7 @@ def find_tls (params,
       print >> out, "  Fitting TLS matrices..."
       dic = {}
       target_best = 1.e+9
-      if (params.nproc is Auto) or (params.nproc > 1) :
+      if (params.nproc is Auto) or (params.nproc > 1):
         process_perms = analyze_permutations(
           groups=groups,
           sites_cart=sites_cart,
@@ -794,7 +795,7 @@ def find_tls (params,
           chunksize=100,
           func_wrapper="buffer_stdout_stderr")
         targets = [ t for so, t in stdout_and_targets ]
-        for (perm, target) in zip(perms, targets) :
+        for (perm, target) in zip(perms, targets):
           dic.setdefault(len(perm), []).append([target,perm])
       else :
         for i_perm, perm in enumerate(perms):
@@ -846,7 +847,7 @@ def find_tls (params,
       chains_and_atom_selection_strings.append([crs[0],
         permutations_as_atom_selection_string(groups, perm_choice)])
       #
-  if (pdb_inp is not None) and (not ignore_pdb_header_groups) :
+  if (pdb_inp is not None) and (not ignore_pdb_header_groups):
     external_tls_selections = external_tls(
       pdb_inp       = pdb_inp,
       pdb_hierarchy = pdb_hierarchy,
@@ -893,19 +894,19 @@ def find_tls (params,
       selection_strings = selection_strings)
     print >> out, "Overall best total target for automatically found groups: %10.1f"%total_target
     print >> out
-  if (return_as_list) :
+  if (return_as_list):
     return selection_strings
   else :
     return groups_out.getvalue()
 
 # XXX wrapper for running in Phenix GUI
-class _run_find_tls (object) :
-  def __init__ (self, params, pdb_hierarchy, xray_structure) :
+class _run_find_tls(object):
+  def __init__(self, params, pdb_hierarchy, xray_structure):
     self.params = params
     self.pdb_hierarchy = pdb_hierarchy
     self.xray_structure = xray_structure
 
-  def __call__ (self, *args, **kwds) :
+  def __call__(self, *args, **kwds):
     return find_tls(
       params=self.params,
       pdb_inp=None,

@@ -4,8 +4,8 @@ from wxtbx import reports
 import wx
 import sys
 
-class SymmetryListFrame (wx.Frame, reports.PDBLinkMixin) :
-  def __init__ (self, *args, **kwds) :
+class SymmetryListFrame(wx.Frame, reports.PDBLinkMixin):
+  def __init__(self, *args, **kwds):
     super(SymmetryListFrame, self).__init__(*args, **kwds)
     self.statusbar = self.CreateStatusBar()
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -36,28 +36,28 @@ class SymmetryListFrame (wx.Frame, reports.PDBLinkMixin) :
     self.SetMinSize(self.GetSize())
     self.web_frame = None
 
-  def SetResults (self, symmetry, hits) :
+  def SetResults(self, symmetry, hits):
     sg_txt = str(symmetry.space_group_info())
     uc_txt = "%g %g %g %g %g %g" % symmetry.unit_cell().parameters()
     self.symm_txt.SetLabel("%s (%s)" % (sg_txt, uc_txt))
     self.statusbar.SetStatusText("%d results shown" % len(hits))
     self.symm_list.SetResults(hits)
 
-  def get_pdb_id_for_viewing (self) :
+  def get_pdb_id_for_viewing(self):
     return self.symm_list.GetSelectedID()
 
-class PDBSymmList (wx.ListCtrl) :
-  def __init__ (self, *args, **kwds) :
+class PDBSymmList(wx.ListCtrl):
+  def __init__(self, *args, **kwds):
     super(PDBSymmList, self).__init__(*args, **kwds)
     cols = ["PDB ID", "RMSD", "Volume ratio", "Space group", "Unit cell"]
     widths = [100, 80, 120, 120, 300]
     r, l = wx.LIST_FORMAT_RIGHT, wx.LIST_FORMAT_LEFT
     alignments = [l, r, r, r, r]
-    for i, col in enumerate(cols) :
+    for i, col in enumerate(cols):
       self.InsertColumn(i, col, alignments[i])
       self.SetColumnWidth(i, widths[i])
 
-  def SetResults (self, results) :
+  def SetResults(self, results):
     self.DeleteAllItems()
     for result in results :
       i = self.InsertStringItem(sys.maxint, result.pdb_id)
@@ -67,13 +67,13 @@ class PDBSymmList (wx.ListCtrl) :
       self.SetStringItem(i, 4, "%g %g %g %g %g %g" %
         result.pdb_symmetry.unit_cell().parameters())
 
-  def GetSelectedID (self) :
+  def GetSelectedID(self):
     item = self.GetFirstSelected()
-    if (item >= 0) :
+    if (item >= 0):
       return self.GetItem(item, 0).GetText()
     return None
 
-def run (args) :
+def run(args):
   from mmtbx.command_line import search_pdb_symmetry
   results = search_pdb_symmetry.run(args=args)
   app = wx.App(0)
@@ -82,5 +82,5 @@ def run (args) :
   frame.Show()
   app.MainLoop()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

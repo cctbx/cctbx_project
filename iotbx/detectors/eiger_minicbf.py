@@ -139,6 +139,8 @@ class EigerCBFImage(DetectorImageBase):
 
       if self.size1==4371 and self.size2==4150:
         self.vendortype="Eiger-16M"
+      elif self.size1==4362 and self.size2==4148:
+        self.vendortype="Eiger-16M"
       elif self.size1==3269 and self.size2==3110:
         self.vendortype="Eiger-9M"
       elif self.size1==2167 and self.size2==2070:

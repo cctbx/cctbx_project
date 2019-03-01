@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import runtime_utils
 from libtbx import easy_pickle
 from libtbx import easy_run
@@ -6,12 +6,12 @@ import time
 import os
 import sys
 
-def exercise () :
+def exercise():
   params = runtime_utils.process_master_phil.extract()
   i = 0
   while True :
     output_dir = os.path.join(os.getcwd(), "simple_run%d" % i)
-    if os.path.exists(output_dir) :
+    if os.path.exists(output_dir):
       i += 1
     else :
       os.makedirs(output_dir)
@@ -39,7 +39,7 @@ current is 66666.666667
   assert ([ cb.message for cb in client._accumulated_callbacks ] ==
           ['run 0', 'run 1', 'run 2', 'run 3'])
 
-def exercise2 () :
+def exercise2():
   f = runtime_utils.simple_func(666)
   easy_pickle.dump("myfunc.pkl", f)
   f_out = easy_run.fully_buffered(
@@ -47,11 +47,11 @@ def exercise2 () :
   assert (f_out[0] == "666")
 
 # queueing system support
-def exercise3() :
+def exercise3():
   i = 0
   while True :
     output_dir = os.path.join(os.getcwd(), "simple_run%d" % i)
-    if os.path.exists(output_dir) :
+    if os.path.exists(output_dir):
       i += 1
     else :
       os.makedirs(output_dir)
@@ -80,7 +80,7 @@ current is 66666.666667
 if __name__ == "__main__" :
   exercise()
   exercise2()
-  if ("-q" in sys.argv) :
-    print "Testing queueing system support..."
+  if ("-q" in sys.argv):
+    print("Testing queueing system support...")
     exercise3()
-  print "OK"
+  print("OK")

@@ -1,11 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 try:
   import argparse
 
 except ImportError:
   from libtbx.utils import Sorry
-  raise Sorry, "The argparse module is not available. Check Python version >= 2.7"
+  raise Sorry("The argparse module is not available. Check Python version >= 2.7")
 
 import libtbx.phil
 
@@ -16,7 +16,7 @@ def phil_from_string(string):
     return libtbx.phil.parse( string )
 
   except RuntimeError:
-    raise ValueError, "Incorrect PHIL format"
+    raise ValueError("Incorrect PHIL format")
 
 
 def phil_from_file(file_name):
@@ -87,7 +87,7 @@ class ExtensionFileHandler(object):
     if os.path.splitext( argument )[1] in self.extensions:
       return phil_from_string( string = "%s=%s" % ( self.philpath, argument ) )
 
-    raise ValueError, "Unrecognized file: %s" % argument
+    raise ValueError("Unrecognized file: %s" % argument)
 
 
 # Parser actions

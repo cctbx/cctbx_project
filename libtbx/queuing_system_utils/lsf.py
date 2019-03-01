@@ -1,5 +1,5 @@
-from __future__ import division
-import cPickle as pickle
+from __future__ import absolute_import, division, print_function
+from six.moves import cPickle as pickle
 import subprocess
 #import sys
 import os
@@ -22,16 +22,16 @@ class Job:
     pickleFile.close()
     self.scriptFileName=self.name+'.py'
     scriptFile=open(self.scriptFileName,'w')
-    print >> scriptFile, 'import pickle'
+    print('import pickle', file=scriptFile)
     for m in self.modules:
-      print >> scriptFile, 'from %s import *' % m
-    print >> scriptFile, 'f=open("%s","rb")' % self.pickleInputFileName
-    print >> scriptFile, 'execObj=pickle.load(f)'
-    print >> scriptFile, 'f.close()'
-    print >> scriptFile, 'result=execObj.run()'
-    print >> scriptFile, 'f=open("%s","wb")' % self.pickleOutputFileName
-    print >> scriptFile, 'pickle.dump(result,f)'
-    print >> scriptFile, 'f.close()'
+      print('from %s import *' % m, file=scriptFile)
+    print('f=open("%s","rb")' % self.pickleInputFileName, file=scriptFile)
+    print('execObj=pickle.load(f)', file=scriptFile)
+    print('f.close()', file=scriptFile)
+    print('result=execObj.run()', file=scriptFile)
+    print('f=open("%s","wb")' % self.pickleOutputFileName, file=scriptFile)
+    print('pickle.dump(result,f)', file=scriptFile)
+    print('f.close()', file=scriptFile)
     scriptFile.close()
     cmd='bsub -K %s %s' % (
       self.pythonExec,
@@ -74,9 +74,9 @@ if __name__=='__main__':
   o=testObj()
   j=Job('j1',o,modules=['lsf'],pythonExec='phenix.python')
   j.start()
-  print j.isAlive()
+  print(j.isAlive())
   while j.isAlive():
     time.sleep(10)
   r=j.get()
-  print r.result[0]
-  print len(r.result)
+  print(r.result[0])
+  print(len(r.result))

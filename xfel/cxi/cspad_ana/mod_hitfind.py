@@ -161,7 +161,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     """
 
     super(mod_hitfind, self).beginjob(evt, env)
-    self.set_up_hitfinder()
+    self.set_up_hitfinder(env)
 
     if self.m_db_logging:
       from cxi_xdr_xes.cftbx.cspad_ana import db

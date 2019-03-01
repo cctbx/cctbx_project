@@ -3,7 +3,7 @@ from six.moves import range
 import math
 import sys
 from dials.array_family import flex
-import cPickle as pickle
+from six.moves import cPickle as pickle
 from rstbx.dials_core.integration_core import show_observations
 
 class reduction(object):

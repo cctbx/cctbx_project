@@ -257,6 +257,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("indices", experiment_list_indices_pointers::scan())
       .def("indices", experiment_list_indices_pointers::crystal())
       .def("indices", experiment_list_indices_pointers::object())
+      .def("remove_on_experiment_identifiers", &ExperimentList::remove_on_experiment_identifiers)
+      .def("select_on_experiment_identifiers", &ExperimentList::select_on_experiment_identifiers)
       .def("where", &ExperimentList::where, (
         arg("beam") = boost::shared_ptr<BeamBase>(),
         arg("detector") = boost::shared_ptr<Detector>(),

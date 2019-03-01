@@ -667,7 +667,7 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
     else:
       assert False
     o_i = o_atom.i_seq
-    if pks.has_key(o_i) :
+    if pks.has_key(o_i):
       o_site = scatterers[o_i].site
       o_u = scatterers[o_i].u_iso_or_equiv(unit_cell)
       h_sites = pks[o_i]
@@ -834,7 +834,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
     else:
       assert False
     o_i = o_atom.i_seq
-    if pkss.has_key(o_i) :
+    if pkss.has_key(o_i):
       o_site = scatterers[o_i].site
       site_symmetry = sgtbx.site_symmetry(xs.unit_cell(), xs.space_group(),
         o_site, 0.5, True)

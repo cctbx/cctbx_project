@@ -109,24 +109,24 @@ class glyco_link_class:
       outl += "\n"
     return outl
 
-  def is_correct(self):
+  def is_correct(self, verbose=False):
     if (self.anomeric_carbon is None or
         self.link_oxygen is None or
         self.ring_oxygen is None or
         #ring_carbon is None or
         self.link_carbon is None
         ):
-      if 0:
-        print '''
-  self.anomeric_carbon %s
-  self.link_oxygen     %s
-  self.ring_carbon     %s
-  self.link_carbon     %s
-''' % (self.anomeric_carbon.quote(),
-       self.link_oxygen.quote(),
-       self.ring_oxygen.quote(),
-       self.link_carbon.quote(),
-       )
+      if verbose:
+        attrs = [
+          'anomeric_carbon',
+          'link_oxygen',
+          'ring_oxygen',
+          'link_carbon',
+          ]
+        for attr in attrs:
+          atom = getattr(self, attr)
+          if atom: atom = atom.quote()
+          print '  %-15s : %s' % (attr, atom)
       return False
     return True
 
@@ -544,18 +544,22 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
                                              geometry_proxy_registries,
                                              rt_mx_ji,
                                              link_carbon_dist=2.0,
+                                             origin_id=None,
                                              ):
+  assert origin_id
   def _add_bond(i_seqs,
                 bond_params_table,
                 bond_asu_table,
                 value,
                 esd,
                 rt_mx_ji,
+                origin_id,
                 ):
     proxy = geometry_restraints.bond_simple_proxy(
       i_seqs=i_seqs,
       distance_ideal=value,
-      weight=1/esd**2)
+      weight=1/esd**2,
+      origin_id=origin_id)
     bond_params_table.update(i_seq=i_seqs[0],
                              j_seq=i_seqs[1],
                              params=proxy)
@@ -565,19 +569,21 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
       rt_mx_ji=rt_mx_ji,
       )
   #
-  def _add_angle(i_seqs, geometry_proxy_registries, value, esd):
+  def _add_angle(i_seqs, geometry_proxy_registries, value, esd, origin_id):
     proxy = geometry_restraints.angle_proxy(
       i_seqs=i_seqs,
       angle_ideal=value,
-      weight=1/esd**2)
+      weight=1/esd**2,
+      origin_id=origin_id)
     geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
   #
-  def _add_chiral(i_seqs, geometry_proxy_registries, value, esd, both_signs=False):
+  def _add_chiral(i_seqs, geometry_proxy_registries, value, esd, origin_id, both_signs=False):
     proxy = geometry_restraints.chirality_proxy(
       i_seqs=i_seqs,
       volume_ideal=value,
       both_signs=both_signs,
       weight=1/esd**2,
+      origin_id=origin_id,
       )
     geometry_proxy_registries.chirality.add_if_not_duplicated(proxy=proxy)
 
@@ -636,7 +642,7 @@ anomeric carbon.
   i_seqs = [gla.anomeric_carbon.i_seq, gla.link_oxygen.i_seq]
   bond_i_seqs = i_seqs
   # bonds
-  _add_bond(i_seqs, bond_params_table, bond_asu_table, 1.439, 0.02, rt_mx_ji)
+  _add_bond(i_seqs, bond_params_table, bond_asu_table, 1.439, 0.02, rt_mx_ji, origin_id)
   # angles
   for i_atoms, value, esd in [
       [[gla.link_carbon, gla.link_oxygen,     gla.anomeric_carbon],   108.7,  3.],
@@ -646,7 +652,7 @@ anomeric carbon.
     ]:
     if None in i_atoms: continue
     i_seqs = [atom.i_seq for atom in i_atoms]
-    _add_angle(i_seqs, geometry_proxy_registries, value, esd)
+    _add_angle(i_seqs, geometry_proxy_registries, value, esd, origin_id)
   # chiral
   i_seqs = gla.get_chiral_i_seqs()
   if i_seqs is None:
@@ -661,6 +667,11 @@ anomeric carbon.
   value = get_chiral_sign(gla.anomeric_carbon.parent().resname)
   if value:
     esd = 0.02
-    _add_chiral(i_seqs, geometry_proxy_registries, value, esd)
+    _add_chiral(i_seqs, geometry_proxy_registries, value, esd, origin_id)
 
   return gla.get_isomer(), gla.as_cif(), bond_i_seqs
+
+def is_standard_glyco_link(key, link):
+  if key.find("ALPHA")>-1 or key.find("BETA")>-1:
+    return True
+  return False

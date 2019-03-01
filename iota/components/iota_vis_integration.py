@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 '''
 Author      : Zeldin O.B., Lyubimov A.Y.
@@ -9,7 +9,6 @@ Description : Creates a PNG file visualizing integration results.
 
 from libtbx import easy_pickle as ep
 import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 def make_png(image_pickle, integration_pickle, file_name=None, res=600,
@@ -51,6 +50,7 @@ def make_png(image_pickle, integration_pickle, file_name=None, res=600,
   mosaicity = int_d['mosaicity']
 
   # Create the figure
+  import matplotlib.pyplot as plt
   fig = plt.figure(figsize=(6, 6))
 
   # 1st set of axes for the image
@@ -121,6 +121,7 @@ def cv_png(image_pickle, integration_pickle, file_name=None, res=600,
   mosaicity = int_d['mosaicity']
 
   # Create the figure
+  import matplotlib.pyplot as plt
   fig = plt.figure(figsize=(6, 6))
 
   # 1st set of axes for the image

@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from builtins import range
 from distutils.dir_util import remove_tree
 import random
 import stat
@@ -59,7 +60,7 @@ def rename_files_and_directories_if_possible(paths):
   for path in paths:
     if (op.exists(path)):
       path = op.normpath(path) # strips trailing slash
-      for i_trial in xrange(1000):
+      for i_trial in range(1000):
         new_path = path + "_OBSOLETE_%8.8X" % random.randrange(2**32)
         if (not op.exists(new_path)):
           try:

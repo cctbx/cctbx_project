@@ -229,8 +229,8 @@ def run(fmodels, model, target_weights, params, log,
     potential_obj=potential_obj,
     near_singular_hinges_angular_tolerance_deg=
       params.near_singular_hinges_angular_tolerance_deg)
-  def refinement_callback (fmodel) :
-    if (monitor is not None) and (call_back_after_step) :
+  def refinement_callback(fmodel):
+    if (monitor is not None) and (call_back_after_step):
       monitor.call_back(model, fmodel, "torsion_dynamics")
   action( # XXX neutron
     tardy_model=tardy_model,
@@ -422,7 +422,7 @@ def action(
             format_value("%6.4f", rmsd),
             format_value("%6.4f", fmodel.r_work()),
             format_value("%6.4f", fmodel.r_free()))
-          if hasattr(refinement_callback, "__call__") :
+          if hasattr(refinement_callback, "__call__"):
             refinement_callback(fmodel) # for phenix.refine GUI
       else:
         if (show_column_headings):

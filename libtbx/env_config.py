@@ -36,6 +36,7 @@ default_enable_boost_threads = True
 default_enable_cuda = False
 default_opt_resources = False
 default_enable_cxx11 = False
+default_use_conda = False
 
 def is_64bit_architecture():
   # this appears to be most compatible (hat tip: James Stroud)
@@ -43,6 +44,41 @@ def is_64bit_architecture():
   import struct
   nbits = 8 * struct.calcsize("P")
   return (nbits == 64)
+
+def using_conda_python():
+  '''
+  Return True if Python is from conda, False otherwise.
+  This check is independent of being in an active conda environment.
+  https://stackoverflow.com/questions/47608532/how-to-detect-from-within-python-whether-packages-are-managed-with-conda?noredirect=1&lq=1
+  '''
+  conda_prefix = sys.prefix
+  if (sys.platform == 'darwin'):
+    if ('python.app' in conda_prefix):
+      conda_prefix = conda_prefix.split('python.app')[0]
+  return os.path.exists(os.path.join(conda_prefix, 'conda-meta'))
+
+def get_conda_prefix():
+  '''
+  Return the root directory of the conda environment. Usually, this is defined
+  by the CONDA_PREFIX environment variable. This function will try to figure
+  out the root directory if the environment is not active. A special case
+  exists for macOS where the framework package (python.app) is used for GUI
+  programs.
+
+  A RuntimeError is raised if the root directory of the conda environment
+  cannot be determined.
+  '''
+  conda_prefix = None
+  if (using_conda_python()):
+    conda_prefix = os.environ.get('CONDA_PREFIX')
+    if (conda_prefix is None):  # case where environment is not active
+      conda_prefix = sys.prefix
+      if (sys.platform == 'darwin'):  # case where python.app is used
+        if ('python.app' in conda_prefix):
+          conda_prefix = conda_prefix.split('python.app')[0]
+  if (conda_prefix is None):
+    raise RuntimeError('Unable to find conda environment.')
+  return conda_prefix
 
 def unique_paths(paths):
   hash = set()
@@ -67,7 +103,8 @@ def darwin_shlinkcom(env_etc, env, lo, dylib):
     else:
       opt_m = " -m"
     shlinkcom = [
-      "ld -dynamic%s -r -d -bind_at_load -o %s $SOURCES" % (opt_m, lo),
+      "ld -dynamic%s -headerpad_max_install_names -r -d -bind_at_load -o %s $SOURCES" %
+        (opt_m, lo),
       "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
         " %s -o %s %s" % (dylib1, dylib, lo)]
     if (env_etc.mac_os_use_dsymutil):
@@ -86,7 +123,7 @@ def get_darwin_gcc_build_number(gcc='gcc'):
   except ValueError:
     return None
 
-def is_llvm_compiler(gcc='gcc') :
+def is_llvm_compiler(gcc='gcc'):
   from libtbx import easy_run
   try:
     gcc_version = (easy_run.fully_buffered(command='%s --version' % gcc)
@@ -105,7 +142,7 @@ def get_gcc_version(command_name="gcc"):
   if (len(buffer.stdout_lines) != 1):
     return None
   major_minor_patchlevel = buffer.stdout_lines[0].split(".")
-  if (len(major_minor_patchlevel) not in [2,3]):
+  if (len(major_minor_patchlevel) not in [1,2,3]):
     return None
   num = []
   for fld in major_minor_patchlevel:
@@ -113,6 +150,8 @@ def get_gcc_version(command_name="gcc"):
     except ValueError:
       return None
     num.append(i)
+  # substitute missing minor and patchlevel for gcc7 on Ubuntu18
+  if (len(num) == 1): num.append(0); num.append(0)
   if (len(num) == 2): num.append(0) # substitute missing patchlevel
   return ((num[0]*100)+num[1])*100+num[2]
 
@@ -174,20 +213,21 @@ def python_include_path():
 
   include_path = sysconfig.get_paths()['include']
   if not op.isdir(include_path):
+    try:  # conda environment
+      conda_prefix = get_conda_prefix()
+      include_path = os.path.join(conda_prefix, 'include',
+                                  'python%d.%dm' % sys.version_info[:2])
+      if not op.isdir(include_path):
+        include_path = include_path[:-1]
+    except RuntimeError:
+      pass
+  if not op.isdir(include_path):
     raise RuntimeError("Cannot locate Python's include directory: %s" % include_path)
   return include_path
 
-def ld_library_path_var_name():
-  if (os.name == "nt"):
-    return "PATH"
-  if (sys.platform.startswith("darwin")):
-    return "DYLD_LIBRARY_PATH"
-  else:
-    return "LD_LIBRARY_PATH"
-
 def highlight_dispatcher_include_lines(lines):
   m = max([len(line) for line in lines])
-  if (os.name == "nt") :
+  if (os.name == "nt"):
     lines.insert(0, "@REM " + "-"*(m-5))
   else :
     lines.insert(0, "# " + "-"*(m-2))
@@ -196,7 +236,7 @@ def highlight_dispatcher_include_lines(lines):
 def source_specific_dispatcher_include(pattern, source_file):
   try: source_lines = source_file.open().read().splitlines()
   except IOError: return []
-  if (os.name == "nt") :
+  if (os.name == "nt"):
     lines = ["@REM lines marked " + pattern]
   else :
     lines = ["# lines marked " + pattern]
@@ -259,7 +299,7 @@ class common_setpaths(object):
         os.pathsep.join([
           self.path_script_value(_) for _ in self.env.pythonpath]))
       self.update_path(
-        ld_library_path_var_name(),
+        self.env.ld_library_path_var_name(),
         os.pathsep.join([self.path_script_value(_)
           for _ in self.env.ld_library_path_additions()]))
 
@@ -680,6 +720,7 @@ Wait for the command to finish, then try again.""" % vars())
 
   def find_dist_path(self, module_name, optional=False,
                      return_relocatable_path=False):
+    if module_name=='amber': optional=True
     dist_path = self.command_line_redirections.get(module_name, None)
     if (dist_path is not None):
       return dist_path.self_or_abs_if(return_relocatable_path)
@@ -753,11 +794,11 @@ Wait for the command to finish, then try again.""" % vars())
       self.explicitly_requested_modules |= set(module_names)
       if (not command_line.options.only):
         excludes = []
-        if (command_line.options.exclude) :
+        if (command_line.options.exclude):
           excludes = command_line.options.exclude.split(",")
         self.explicitly_requested_modules -= set(excludes)
         for module in self.module_list:
-          if (not module.name in excludes) :
+          if (not module.name in excludes):
             module_names.append(module.name)
       else:
         self.explicitly_requested_modules = set(module_names)
@@ -781,6 +822,7 @@ Wait for the command to finish, then try again.""" % vars())
         enable_boost_threads
           =command_line.options.enable_boost_threads,
         enable_cuda=command_line.options.enable_cuda,
+        use_conda=command_line.options.use_conda,
         opt_resources=command_line.options.opt_resources,
         use_environment_flags=command_line.options.use_environment_flags,
         force_32bit=command_line.options.force_32bit,
@@ -789,6 +831,8 @@ Wait for the command to finish, then try again.""" % vars())
         python3warn=command_line.options.python3warn,
         skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
       self.build_options.get_flags_from_environment()
+      if (self.build_options.use_conda):
+        get_conda_prefix()
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
           command_line.options.command_version_suffix
@@ -875,7 +919,7 @@ Wait for the command to finish, then try again.""" % vars())
                             (lines_before_command,
                              self._dispatcher_include_before_command)]:
         if (len(buffer) == 0): continue
-        if (os.name == "nt") :
+        if (os.name == "nt"):
           buffer.insert(0, "@REM included from %s" % abs(path))
         else :
           buffer.insert(0, "# included from %s" % abs(path))
@@ -894,7 +938,7 @@ Wait for the command to finish, then try again.""" % vars())
       raise RuntimeError(
         "--opt_resources not supported in combination with --compiler=icc")
     def get_libs_dir():
-      if (sys.platform.startswith("linux")) :
+      if (sys.platform.startswith("linux")):
         libs = ["libimf.so", "libirc.so"]
         if (is_64bit_architecture()):
           return "linux64", libs
@@ -926,6 +970,16 @@ Wait for the command to finish, then try again.""" % vars())
           % show_string(abs(p)))
       result.append(p)
     return ":".join(result)
+
+  def ld_library_path_var_name(self):
+    if (os.name == "nt"):
+      return "PATH"
+    if (sys.platform.startswith("darwin")):
+      if (self.build_options.use_conda):
+        return "DYLD_FALLBACK_LIBRARY_PATH"
+      return "DYLD_LIBRARY_PATH"
+    else:
+      return "LD_LIBRARY_PATH"
 
   def ld_library_path_additions(self):
     result = [self.lib_path]
@@ -1032,7 +1086,7 @@ Wait for the command to finish, then try again.""" % vars())
       print(line, file=f)
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((
-      ld_library_path_var_name(),
+      self.ld_library_path_var_name(),
       self.ld_library_path_additions()))
     essentials.append(("PATH", [self.bin_path]))
 
@@ -1186,13 +1240,13 @@ Wait for the command to finish, then try again.""" % vars())
     print('@set LIBTBX_DISPATCHER_NAME=%~nx0', file=f)
     def write_dispatcher_include(where):
       for line in self.dispatcher_include(where=where):
-        if (line.startswith("@")) :
+        if (line.startswith("@")):
           print(line, file=f)
         else :
           print("@" + line, file=f)
     write_dispatcher_include(where="at_start")
     essentials = [("PYTHONPATH", self.pythonpath)]
-    essentials.append((ld_library_path_var_name(), [self.lib_path]))
+    essentials.append((self.ld_library_path_var_name(), [self.lib_path]))
     essentials.append(("PATH", [self.bin_path]))
     for n,v in essentials:
       if (len(v) == 0): continue
@@ -1201,6 +1255,8 @@ Wait for the command to finish, then try again.""" % vars())
     print('@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value(), file=f)
     write_dispatcher_include(where="before_command")
     qnew_tmp = qnew
+    if self.python_version_major_minor[0] == 3:
+      qnew_tmp = '' # -Q is gone in Python3.
     if self.build_options.python3warn == 'warn':
       qnew_tmp += " -3"
     elif self.build_options.python3warn == 'fail':
@@ -1505,11 +1561,11 @@ selfx:
 
   def write_setpath_files(self):
     for suffix in ["", "_all", "_debug"]:
-      if (hasattr(os, "symlink")):
+      if (sys.platform == "win32"):
+        self.write_setpaths_bat(suffix)
+      else:
         self.write_setpaths_sh(suffix)
         self.write_setpaths_csh(suffix)
-      else:
-        self.write_setpaths_bat(suffix)
 
   def process_exe(self):
     for path in [self.exe_path,
@@ -1620,6 +1676,8 @@ selfx:
     Write indirect dispatcher scripts for all console_scripts entry points
     that have existing dispatcher scripts in the base/bin directory, but
     add a 'libtbx.' prefix.
+    Generate dispatchers for any libtbx.dispatcher.script entry points.
+    These can be arbitrary non-python scripts defined by modules.
     '''
     try:
       import pkg_resources
@@ -1640,6 +1698,14 @@ selfx:
       self.write_dispatcher(
           source_file=os.path.join(bin_directory, ep.name),
           target_file=os.path.join('bin', 'libtbx.' + ep.name),
+      )
+
+    entry_points = pkg_resources.iter_entry_points('libtbx.dispatcher.script')
+    entry_points = filter(lambda ep: ep.name in entry_point_candidates, entry_points)
+    for ep in entry_points:
+      self.write_dispatcher(
+          source_file=os.path.join(bin_directory, ep.module_name),
+          target_file=os.path.join('bin', ep.name),
       )
 
   def write_command_version_duplicates(self):
@@ -1751,9 +1817,10 @@ selfx:
     self.process_exe()
     self.write_command_version_duplicates()
     if (os.name != "nt"):     # LD_LIBRARY_PATH for dependencies
-      os.environ[ld_library_path_var_name()] = ":".join(
+      os.environ[self.ld_library_path_var_name()] = ":".join(
         [abs(p) for p in self.ld_library_path_additions()])
-    regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
+    if not self.build_options.use_conda:
+      regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
     self.pickle()
     print("libtbx_refresh_is_completed", file=completed_file_name.open("w"))
 
@@ -2078,6 +2145,7 @@ class build_options:
         enable_openmp_if_possible=default_enable_openmp_if_possible,
         enable_boost_threads=True,
         enable_cuda=default_enable_cuda,
+        use_conda=default_use_conda,
         opt_resources=default_opt_resources,
         precompile_headers=False,
         use_environment_flags=False,
@@ -2141,6 +2209,7 @@ class build_options:
     print("Enable OpenMP if possible:", self.enable_openmp_if_possible, file=f)
     print("Boost threads enabled:", self.enable_boost_threads, file=f)
     print("Enable CUDA:", self.enable_cuda, file=f)
+    print("Use conda:", self.use_conda, file=f)
     print("Use opt_resources if available:", self.opt_resources, file=f)
     print("Use environment flags:", self.use_environment_flags, file=f)
     print("Enable C++11:", self.enable_cxx11, file=f)
@@ -2323,7 +2392,13 @@ class pre_process_args:
     parser.option(None, "--enable_cuda",
       action="store_true",
       default=default_enable_cuda,
-      help="Use optimized CUDA routines for certain calculations.  Requires at least one NVIDIA GPU with compute capability of 2.0 or higher, and CUDA Toolkit 4.0 or higher (default: don't)")
+      help="Use optimized CUDA routines for certain calculations.  Requires at least one NVIDIA GPU with compute capability of 2.0 or higher, and CUDA Toolkit 4.0 or higher (default: %s)"
+        % default_enable_cuda)
+    parser.option(None, "--use_conda",
+      action="store_true",
+      default=default_use_conda,
+      help="Use conda as the source for Python and dependencies (default: %s)"
+        % default_use_conda)
     parser.option(None, "--opt_resources",
       action="store",
       type="bool",
@@ -2505,10 +2580,10 @@ def unpickle():
     env.build_options.env_cppflags = ""
     env.build_options.env_ldflags = ""
   # XXX backward compatibility 2009-10-11
-  if (not hasattr(env.build_options, "force_32bit")) :
+  if (not hasattr(env.build_options, "force_32bit")):
     env.build_options.force_32bit = False
   # XXX backward compatibility 2009-10-13
-  if (not hasattr(env.build_options, "msvc_arch_flag")) :
+  if (not hasattr(env.build_options, "msvc_arch_flag")):
     env.build_options.msvc_arch_flag = default_msvc_arch_flag
   # XXX backward compatibility 2010-05-28
   if (not hasattr(env.build_options, "precompile_headers")):
@@ -2555,6 +2630,9 @@ def unpickle():
   # XXX backward compatibility 2017-11-03
   if not hasattr(env.build_options, "python3warn"):
     env.build_options.python3warn = 'none'
+  # XXX backward compatibility 2018-12-10
+  if not hasattr(env.build_options, "use_conda"):
+    env.build_options.use_conda = False
   return env
 
 def warm_start(args):

@@ -59,7 +59,7 @@ namespace dxtbx { namespace format { namespace boost_python {
 
     // Create the data array
     scitbx::af::flex_grid<> grid(dims);
-    scitbx::af::versa<int, scitbx::af::flex_grid<> > data(grid);
+    scitbx::af::versa<int, scitbx::af::flex_grid<> > data(grid, scitbx::af::init_functor_null<int>());
 
     // Create the dataspace id
     herr_t status1 = H5Sselect_hyperslab(

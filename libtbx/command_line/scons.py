@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, show_times_at_exit
 from libtbx.str_utils import show_string
 import libtbx.load_env
@@ -30,9 +30,9 @@ def run():
   def show_traceback():
     if (debug_import):
       import traceback
-      print >> sys.stderr
+      print(file=sys.stderr)
       traceback.print_exc()
-      print >> sys.stderr
+      print(file=sys.stderr)
   engine_path = find_scons_engine_path()
   if (engine_path is not None):
     sys.path.insert(0, engine_path)

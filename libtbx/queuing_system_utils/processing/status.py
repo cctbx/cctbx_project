@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import os
 import subprocess
@@ -47,7 +47,7 @@ class NotSubmitted(object):
   @staticmethod
   def is_finished():
 
-    raise RuntimeError, "job has not been submitted yet"
+    raise RuntimeError("job has not been submitted yet")
 
 
   @staticmethod
@@ -59,25 +59,25 @@ class NotSubmitted(object):
   @staticmethod
   def terminate():
 
-    raise RuntimeError, "job has not been submitted yet"
+    raise RuntimeError("job has not been submitted yet")
 
 
   @staticmethod
   def exit_code():
 
-    raise RuntimeError, "job has not been submitted yet"
+    raise RuntimeError("job has not been submitted yet")
 
 
   @staticmethod
   def outcome(timeout, polltime):
 
-    raise RuntimeError, "job has not been submitted yet"
+    raise RuntimeError("job has not been submitted yet")
 
 
   @staticmethod
   def cleanup():
 
-    raise RuntimeError, "job has not been submitted yet"
+    raise RuntimeError("job has not been submitted yet")
 
 
 class Finished(object):
@@ -252,7 +252,7 @@ class Synchronous(JobStatus):
     if stdout is None or stderr is None:
       stdout = self.process.stdout.read()
       stderr = self.process.stderr.read()
-      raise errors.AbnormalExitError, "Queue error:%s\n%s" % ( stdout, stderr )
+      raise errors.AbnormalExitError("Queue error:%s\n%s" % ( stdout, stderr ))
 
     return Finished( stdout = stdout, stderr = stderr, exitcode = exitcode )
 
@@ -345,8 +345,8 @@ class Asynchronous(JobStatus):
     try:
       process = subprocess.Popen( self.qdel + [ self.jobid ] )
 
-    except OSError, e:
-      raise errors.ExecutableError, "'%s %s': %s" % ( self.qdel, self.jobid, e )
+    except OSError as e:
+      raise errors.ExecutableError("'%s %s': %s" % ( self.qdel, self.jobid, e ))
 
     process.communicate()
 
@@ -444,13 +444,13 @@ EOF
         stderr = subprocess.PIPE
         )
 
-    except OSError, e:
-      raise errors.ExecutableError, "'qacct -j %s': %s" % ( self.jobid, e )
+    except OSError as e:
+      raise errors.ExecutableError("'qacct -j %s': %s" % ( self.jobid, e ))
 
     ( out, err ) = process.communicate()
 
     if process.poll():
-      raise errors.AbnormalExitError, "Accounting error:\n%s" % err
+      raise errors.AbnormalExitError("Accounting error:\n%s" % err)
 
     exit_code = extract_exit_code_text( output = out )
 
@@ -472,7 +472,7 @@ def extract_exit_code_text(output):
       return exit_code
 
   else:
-    raise errors.ExtractionError, "Unexpected output: %r" % output
+    raise errors.ExtractionError("Unexpected output: %r" % output)
 
 
 class LogfileStrategy(Asynchronous):

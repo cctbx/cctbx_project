@@ -16,7 +16,7 @@ master_phil = """
     .type = bool
 """
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   import iotbx.phil
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
@@ -29,11 +29,11 @@ Prepare a model for use in MR or isomorphous substitution.  See also
 phenix.pdbtools, which overlaps considerably in functionality.
 """)
   params = cmdline.work.extract()
-  if (params.model is None) :
+  if (params.model is None):
     raise Sorry("No model specified.")
   from mmtbx.refinement import select_best_starting_model
   output_file = params.output_file
-  if (output_file is None) :
+  if (output_file is None):
     output_file = os.path.basename(os.path.splitext(params.model)[0]) + \
       "_modified.pdb"
   select_best_starting_model.strip_model(
@@ -44,5 +44,5 @@ phenix.pdbtools, which overlaps considerably in functionality.
     output_file=output_file,
     log=out)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

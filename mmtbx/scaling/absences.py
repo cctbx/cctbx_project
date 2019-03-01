@@ -420,7 +420,7 @@ class analyze_absences(mmtbx.scaling.xtriage_analysis):
     self.abs_check = absences()
     self.check_conditions()
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_sub_header("Table of systematic absence rules")
     out.show("""\
  The following table gives information about systematic absences allowed for
@@ -646,7 +646,7 @@ class protein_space_group_choices(mmtbx.scaling.xtriage_analysis):
       miller_array=self.miller_array,
       isigi_cut=threshold,
       sigma_inflation=sigma_inflation)
-    if (original_data is not None) :
+    if (original_data is not None):
       self.absences_list = absences_list(obs=original_data,
         was_filtered=False)
     else :
@@ -722,7 +722,7 @@ class protein_space_group_choices(mmtbx.scaling.xtriage_analysis):
                       '<Z/sigZ>_absent', '+++', '---', 'score'],
       table_rows=tmp_rows)
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_header("Systematic absences")
     self.absences_table.show(out)
     out.show_sub_header("Space group identification")
@@ -738,7 +738,7 @@ information, rather then as enforcing that absence in the space group choices.
 """)
     out.show_table(self.sorted_table)
     if (getattr(self, "absences_list", None) is not None) : # backwards compat.
-      if (self.absences_list.n_possible_max > 0) :
+      if (self.absences_list.n_possible_max > 0):
         self.absences_list.show(out)
 
   def suggest_likely_candidates( self, acceptable_violations = 1e+90 ):
@@ -747,7 +747,7 @@ information, rather then as enforcing that absence in the space group choices.
 
     all_done = False
     count = -1
-    if (len(self.tuple_score) == 0) :
+    if (len(self.tuple_score) == 0):
       return []
     tmp_scores = []
     for tt in self.tuple_score:
@@ -775,17 +775,17 @@ information, rather then as enforcing that absence in the space group choices.
 
     return sorted_rows
 
-class absences_list (mmtbx.scaling.xtriage_analysis,
-                     miller.systematic_absences_info) :
+class absences_list(mmtbx.scaling.xtriage_analysis,
+                     miller.systematic_absences_info):
   """
   Container for lists of systematic absences.  This subclass simply overrides
   the default output of the base class in cctbx.miller to be consistent with
   the rest of Xtriage.
   """
-  def show (self, *args, **kwds) :
+  def show(self, *args, **kwds):
     mmtbx.scaling.xtriage_analysis.show(self, *args, **kwds)
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     """
     For each possible space group, show a list of possible systematically
     absent reflections and corresponding I/sigmaI.
@@ -796,7 +796,7 @@ class absences_list (mmtbx.scaling.xtriage_analysis,
  used for twinning detection; therefore, the results shown here may include
  more reflections than shown above.
 """)
-    if (self.input_amplitudes) :
+    if (self.input_amplitudes):
       out.show_text("""\
  Also note that the input data were amplitudes, which means that weaker
  reflections may have been modified by French-Wilson treatment or discarded
@@ -804,22 +804,22 @@ class absences_list (mmtbx.scaling.xtriage_analysis,
 """)
     for group_info, absences in self.space_group_symbols_and_selections :
       group_note = ""
-      if (str(group_info) == str(self.space_group_info)) :
+      if (str(group_info) == str(self.space_group_info)):
         group_note = " (input space group)"
-      if (absences == False) :
+      if (absences == False):
         out.show_paragraph_header("%s%s: no systematic absences possible" % \
           (group_info, group_note))
-      elif (absences is None) :
+      elif (absences is None):
         out.show_paragraph_header("%s%s: no absences found" % \
           (group_info, group_note))
       else :
         out.show_paragraph_header("%s%s" % (group_info, group_note))
         lines = []
-        for i_hkl, hkl in enumerate(absences.indices()) :
+        for i_hkl, hkl in enumerate(absences.indices()):
           intensity = absences.data()[i_hkl]
           sigma = absences.sigmas()[i_hkl]
           indices_fmt = "(%4d, %4d, %4d)" % hkl
-          if (sigma == 0) :
+          if (sigma == 0):
             lines.append("  %s: i/sigi = undefined" % indices_fmt)
           else :
             lines.append("  %s: i/sigi = %6.1f" % (indices_fmt,

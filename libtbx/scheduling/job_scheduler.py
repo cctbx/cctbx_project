@@ -19,11 +19,11 @@ Scheduler methods:
   process_count(): return number of running processes
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import time
 from collections import deque
-from Queue import Empty
+from six.moves.queue import Empty
 
 from libtbx.scheduling import result
 from libtbx.scheduling import identifier
@@ -63,7 +63,7 @@ def job_cycle(outqueue, jobid, target, args, kwargs):
   try:
     value = target( *args, **kwargs )
 
-  except Exception, e:
+  except Exception as e:
     res = result.error( exception = e, traceback = result.get_traceback_info() )
 
   else:
@@ -188,7 +188,7 @@ class manager(object):
   def poll(self):
 
     # Check existing jobs
-    for jobid in self.process_data_for.keys():
+    for jobid in list(self.process_data_for):
       process = self.process_data_for[ jobid ]
 
       if not process.is_alive():

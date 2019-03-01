@@ -3,21 +3,20 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 05/24/2017
+Last Changed: 10/21/2018
 Description : PRIME GUI dialogs module
 '''
 
 import os
 import wx
 from wx.lib.scrolledpanel import ScrolledPanel
-from wx.lib.buttons import GenToggleButton
 from wxtbx import bitmaps
 
 from iotbx import phil as ip
 
-import iota.components.iota_misc as misc
-import iota.components.iota_controls as ct
-from iota.components.iota_misc import WxFlags
+from iota.components.iota_utils import WxFlags, Capturing
+from iota.components.iota_ui_base import BaseDialog, BaseBackendDialog
+import iota.components.iota_ui_controls as ct
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -42,107 +41,16 @@ elif (wx.Platform == '__WXMSW__'):
 f = WxFlags()
 user = os.getlogin()
 
-class BaseDialog(wx.Dialog):
-  def __init__(self, parent, style=wx.DEFAULT_DIALOG_STYLE,
-               label_style='bold',
-               content_style='normal',
-               *args, **kwargs):
-    wx.Dialog.__init__(self, parent, style=style, *args, **kwargs)
 
-    self.envelope = wx.BoxSizer(wx.VERTICAL)
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.envelope.Add(self.main_sizer, 1, flag=wx.EXPAND | wx.ALL, border=5)
-    self.SetSizer(self.envelope)
-
-    if label_style == 'normal':
-      self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
-    elif label_style == 'bold':
-      self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.BOLD)
-    elif label_style == 'italic':
-      self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.NORMAL)
-    elif label_style == 'italic_bold':
-      self.font = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.BOLD)
-
-    if content_style == 'normal':
-      self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
-    elif content_style == 'bold':
-      self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.BOLD)
-    elif content_style == 'italic':
-      self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.NORMAL)
-    elif content_style == 'italic_bold':
-      self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.BOLD)
-
-
-class BaseBackendDialog(BaseDialog):
-  def __init__(self, parent, phil,
-               backend_name = 'BACKEND',
+class PRIMEBaseBackendDialog(BaseBackendDialog):
+  def __init__(self, parent,
                content_style='normal',
                label_style='bold',
-               opt_size=(500, 500),
-               phil_size=(500, 500),
                *args, **kwargs):
-    BaseDialog.__init__(self, parent,
-                        content_style=content_style,
-                        label_style=label_style,
-                        *args, **kwargs)
-
-    self.parent = parent
-    self.backend = backend_name
-    self.opt_size = opt_size
-    self.phil_size = phil_size
-    self.sash_position = None
-
-    self.splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE |
-                                                  wx.SP_3DSASH |
-                                                  wx.SP_NOBORDER)
-
-    # Create options panel (all objects should be called as self.options.object)
-    self.options = ScrolledPanel(self.splitter, size=self.opt_size)
-    self.options_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.options.SetSizer(self.options_sizer)
-
-    # Create PHIL panel
-    phil_label = "{} Target Settings".format(backend_name)
-    self.phil_panel = wx.Panel(self.splitter, size=self.opt_size)
-    phil_box = wx.StaticBox(self.phil_panel, label=phil_label)
-    self.phil_sizer = wx.StaticBoxSizer(phil_box, wx.VERTICAL)
-    self.phil_panel.SetSizer(self.phil_sizer)
-
-    # Dialog control
-    self.dlg_ctr = ct.DialogButtonsCtrl(self, preset='PROC_DIALOG')
-
-    # Splitter button
-    self.btn_hide_script = GenToggleButton(self, label='Show Script >>>')
-    self.show_hide_script()
-    self.btn_hide_script.SetValue(False)
-
-    self.main_sizer.Add(self.btn_hide_script, flag=wx.ALIGN_RIGHT | wx.ALL,
-                        border=10)
-    self.main_sizer.Add(self.splitter, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.dlg_ctr,
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.RIGHT,
-                        border=10)
-
-  def show_hide_script(self, initialized=False):
-    if self.btn_hide_script.GetValue():
-      if initialized:
-        h = self.GetSize()[1]
-        w = self.GetSize()[0] + self.phil_size[0]
-        self.SetSize((w, h))
-      self.splitter.SplitVertically(self.options, self.phil_panel)
-      self.splitter.SetSashPosition(self.sash_position)
-      self.phil_panel.SetSize(self.phil_size)
-      self.options.SetSize(self.opt_size)
-      self.btn_hide_script.SetLabel('<<< Hide Script')
-    else:
-      h = self.GetSize()[1]
-      w = self.GetSize()[0] - self.phil_size[0]
-      self.SetSize((w, h))
-      self.splitter.Unsplit()
-      self.phil_panel.SetSize(self.phil_size)
-      self.options.SetSize(self.opt_size)
-      self.btn_hide_script.SetLabel('Show Script >>>')
-    self.splitter.SizeWindows()
+    BaseBackendDialog.__init__(self, parent,
+                               content_style=content_style,
+                               label_style=label_style,
+                               *args, **kwargs)
 
   def get_target_file(self):
     dlg = wx.FileDialog(
@@ -150,7 +58,7 @@ class BaseBackendDialog(BaseDialog):
       defaultDir=os.curdir,
       defaultFile="*.phil",
       wildcard="*",
-      style=wx.OPEN | wx.CHANGE_DIR
+      style=wx.FD_OPEN | wx.FD_CHANGE_DIR
     )
     if dlg.ShowModal() == wx.ID_OK:
       filepath = dlg.GetPaths()[0]
@@ -161,39 +69,22 @@ class BaseBackendDialog(BaseDialog):
     else:
       return None
 
-  # def write_default_phil(self):
-  #   if str.lower(self.backend) in ('cctbx', 'cctbx.xfel', 'labelit'):
-  #     method = 'cctbx'
-  #   elif str.lower(self.backend) == 'dials':
-  #     method = 'dials'
-  #   else:
-  #     method = 'cctbx'
-  #   from iota.components.iota_input import write_defaults
-  #   default_phil, _ = write_defaults(current_path=None,
-  #                                    txt_out=None,
-  #                                    method=method,
-  #                                    write_target_file=False,
-  #                                    write_param_file=False)
-  #   self.target_phil = '\n'.join(default_phil)
-
-
 def str_split(string, delimiters=(' ', ','), maxsplit=0):
   import re
   rexp = '|'.join(map(re.escape, delimiters))
   return re.split(rexp, string, maxsplit)
 
 
-class PRIMEAdvancedOptions(BaseBackendDialog):
+class PRIMEAdvancedOptions(PRIMEBaseBackendDialog):
   ''' Advanced Options Dialog'''
 
   def __init__(self, parent, phil=None, *args, **kwargs):
-
-    BaseBackendDialog.__init__(self, parent,
-                               backend_name='PRIME',
-                               phil=phil,
-                               phil_size=(500, 500),
-                               opt_size=(500, 500),
-                               *args, **kwargs)
+    PRIMEBaseBackendDialog.__init__(self, parent,
+                                    backend_name='PRIME',
+                                    phil=phil,
+                                    phil_size=(500, 500),
+                                    opt_size=(500, 500),
+                                    *args, **kwargs)
 
     self.prime_phil = phil
     self.new_prime_phil = None
@@ -430,7 +321,7 @@ class PRIMEAdvancedOptions(BaseBackendDialog):
     self.cycles.ctr.SetValue(int(self.pparams.n_postref_cycle))
 
   def generate_phil_string(self):
-    with misc.Capturing() as txt_output:
+    with Capturing() as txt_output:
       self.prime_phil.show()
     self.phil_string = ''
     for one_output in txt_output:
@@ -448,9 +339,12 @@ class PRIMEAdvancedOptions(BaseBackendDialog):
       self.phil.ctr.SetValue(phil_content)
 
   def onResSynchronize(self, e):
-    # Set all activated resolution ranges to Scale Resolution
-    scale_low = self.p_scale_res.low.GetValue()
-    scale_high = self.p_scale_res.high.GetValue()
+    self.synchronize_resolution()
+
+  def synchronize_resolution(self):
+    # Set all activated resolution ranges to Merge Resolution
+    scale_low = self.merge_res.low.GetValue()
+    scale_high = self.merge_res.high.GetValue()
     self.p_scale_res.low.SetValue(scale_low)
     self.p_scale_res.high.SetValue(scale_high)
     if self.p_cryst_res.toggle.GetValue():

@@ -41,20 +41,24 @@ namespace {
       class_<w_t>("align", no_init)
         .def(init<std::string const&,
                   std::string const&,
+                  af::const_ref<float> const&,
                   std::string const&,
               float, float, std::string const&>((
           arg("seq_a"),
           arg("seq_b"),
+          arg("masking"),
           arg("style")="global",
           arg("gap_opening_penalty")=1,
           arg("gap_extension_penalty")=1,
           arg("similarity_function")="identity")))
         .def(init<af::const_ref<std::string> const&,
                   af::const_ref<std::string> const&,
+                  af::const_ref<float> const&,
                   std::string const&,
                   float, float, std::string const&>((
           arg("seq_a"),
           arg("seq_b"),
+          arg("masking"),
           arg("style")="global",
           arg("gap_opening_penalty")=1,
           arg("gap_extension_penalty")=1,

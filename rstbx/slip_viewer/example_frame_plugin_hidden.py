@@ -8,7 +8,7 @@ import wx
 ### Enable the plugin by renaming to end in "_frame_plugin.py"
 
 class ExampleSettingsFrame(wx.MiniFrame):
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     super(ExampleSettingsFrame, self).__init__(*args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
     panel = ExampleSettingsPanel(self)
@@ -22,7 +22,7 @@ class ExampleSettingsFrame(wx.MiniFrame):
 
 
 class ExampleSettingsPanel(wx.Panel):
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
 
     super(ExampleSettingsPanel, self).__init__(*args, **kwds)
 

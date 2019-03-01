@@ -24,7 +24,7 @@ from xfel.command_line.experiment_manager import initialize as initialize_base
 class initialize(initialize_base):
   expected_tables = ["run", "job", "rungroup", "trial", "tag", "run_tag", "event", "trial_rungroup",
                      "imageset", "imageset_event", "beam", "detector", "experiment",
-                     "crystal", "cell", "cell_bin", "bin", "isoform"]
+                     "crystal", "cell", "cell_bin", "bin", "isoform", "rungroup_run"]
 
   def __getattr__(self, prop):
     if prop == "dbobj":
@@ -45,11 +45,13 @@ class initialize(initialize_base):
     return initialize_base.create_tables(self, sql_path)
 
   def verify_tables(self):
+    self.expected_tables.pop(self.expected_tables.index('rungroup_run'))
     tables_ok = super(initialize, self).verify_tables()
+    self.expected_tables.append('rungroup_run')
 
     if tables_ok:
       # Maintain backwards compatibility with SQL tables v2: 09/24/16
-      query = "SHOW columns FROM %s_event"%self.params.experiment_tag
+      query = "SHOW columns FROM `%s_event`"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
@@ -67,7 +69,7 @@ class initialize(initialize_base):
         assert False
 
       # Maintain backwards compatibility with SQL tables v2: 09/28/16
-      query = "SHOW columns FROM %s_job"%self.params.experiment_tag
+      query = "SHOW columns FROM `%s_job`"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
@@ -80,7 +82,7 @@ class initialize(initialize_base):
         cursor.execute(query)
 
       # Maintain backwards compatibility with SQL tables v2: 12/12/16
-      query = "SHOW columns FROM %s_rungroup"%self.params.experiment_tag
+      query = "SHOW columns FROM `%s_rungroup`"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
@@ -96,7 +98,7 @@ class initialize(initialize_base):
           cursor.execute(query)
 
       # Maintain backwards compatibility with SQL tables v2: 06/23/17
-      query = "SHOW columns FROM %s_trial"%self.params.experiment_tag
+      query = "SHOW columns FROM `%s_trial`"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
@@ -107,7 +109,7 @@ class initialize(initialize_base):
           ADD COLUMN d_min FLOAT NULL
         """%self.params.experiment_tag
         cursor.execute(query)
-      query = "SHOW columns FROM %s_cell"%self.params.experiment_tag
+      query = "SHOW columns FROM `%s_cell`"%self.params.experiment_tag
       cursor = self.dbobj.cursor()
       cursor.execute(query)
       columns = cursor.fetchall()
@@ -120,6 +122,77 @@ class initialize(initialize_base):
           ADD INDEX fk_cell_trial1_idx (trial_id ASC)
         """%(self.params.experiment_tag, self.params.experiment_tag)
         cursor.execute(query)
+
+      # Maintain backwards compatibility with SQL tables v3: 02/1/19
+      query = "SHOW TABLES LIKE '%s_rungroup_run'"%(self.params.experiment_tag)
+      cursor.execute(query)
+      if cursor.rowcount == 0:
+        print "Upgrading to version 4 of mysql database schema"
+        query = """
+        CREATE TABLE IF NOT EXISTS `%s`.`%s_rungroup_run` (
+          `rungroup_id` INT NOT NULL,
+          `run_id` INT NOT NULL,
+          PRIMARY KEY (`rungroup_id`, `run_id`),
+          INDEX `fk_rungroup_has_run_run1_idx` (`run_id` ASC),
+          INDEX `fk_rungroup_has_run_rungroup1_idx` (`rungroup_id` ASC),
+          CONSTRAINT `fk_%s_rungroup_has_run_rungroup1`
+            FOREIGN KEY (`rungroup_id`)
+            REFERENCES `%s`.`%s_rungroup` (`id`)
+            ON DELETE NO ACTION
+            ON UPDATE NO ACTION,
+          CONSTRAINT `fk_%s_rungroup_has_run_run1`
+            FOREIGN KEY (`run_id`)
+            REFERENCES `%s`.`%s_run` (`id`)
+            ON DELETE NO ACTION
+            ON UPDATE NO ACTION)
+        ENGINE = InnoDB;
+        """%(self.params.db.name, self.params.experiment_tag, self.params.experiment_tag,
+             self.params.db.name, self.params.experiment_tag, self.params.experiment_tag,
+             self.params.db.name, self.params.experiment_tag)
+        cursor.execute(query)
+        # Convert from startrun/endrun to linked table connecting run and rungroup and an 'open' flag in rungroup
+        query = "ALTER TABLE `%s_rungroup` ADD COLUMN open TINYINT(1) NOT NULL DEFAULT 0"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "SELECT id, startrun, endrun FROM `%s_rungroup`"%self.params.experiment_tag
+        cursor.execute(query)
+        for rungroup_id, startrun, endrun in cursor.fetchall():
+          if endrun is None:
+            # This run is 'open', so get the last run available and update the open bit for the rungroup
+            query = 'SELECT run FROM `%s_run`'%self.params.experiment_tag
+            cursor.execute(query)
+            endrun = max(zip(*cursor.fetchall())[0])
+            query = 'UPDATE `%s_rungroup` set open = 1 where id = %d'%(self.params.experiment_tag, rungroup_id)
+            cursor.execute(query)
+          # Add all thr runs to the rungroup
+          for run in xrange(startrun, endrun+1):
+            query = 'SELECT id FROM `%s_run` run WHERE run.run = %d'%(self.params.experiment_tag, run)
+            cursor.execute(query)
+            rows = cursor.fetchall(); assert len(rows) <= 1
+            if len(rows) > 0:
+              run_id = rows[0][0]
+              query = "INSERT INTO `%s_rungroup_run` (rungroup_id, run_id) VALUES (%d, %d)" % ( \
+                self.params.experiment_tag, rungroup_id, run_id)
+              cursor.execute(query)
+        self.dbobj.commit()
+        query = "ALTER TABLE `%s_rungroup` DROP COLUMN startrun, DROP COLUMN endrun"%self.params.experiment_tag
+        cursor.execute(query)
+        # remove NOT NULL (and default for format column)
+        query = "ALTER TABLE `%s_rungroup` MODIFY COLUMN format varchar(45)"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_rungroup` MODIFY COLUMN detector_address varchar(100)"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_rungroup` MODIFY COLUMN detz_parameter double"%self.params.experiment_tag
+        cursor.execute(query)
+        # Retype and add new columns
+        query = "ALTER TABLE `%s_run` MODIFY COLUMN run varchar(45) NOT NULL"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_run` ADD COLUMN path varchar(4097)"%self.params.experiment_tag
+        cursor.execute(query)
+        column_names = ['number', 'd_min', 'd_max', 'total_hkl']
+        column_types = ['int', 'double', 'double', 'int']
+        for column_name, column_type in zip(column_names, column_types):
+          query = "ALTER TABLE `%s_bin` MODIFY COLUMN %s %s"%(self.params.experiment_tag, column_name, column_type)
+          cursor.execute(query)
     return tables_ok
 
   def set_up_columns_dict(self, app):
@@ -131,23 +204,9 @@ class initialize(initialize_base):
       columns_dict[table_name] = [c[0] for c in cursor.fetchall() if c[0] != 'id']
     return columns_dict
 
-class xfel_db_application(object):
-  def __init__(self, params, drop_tables = False, verify_tables = False):
+class db_application(object):
+  def __init__(self, params):
     self.params = params
-    self.query_count = 0
-    dbobj = get_db_connection(params)
-    self.init_tables = initialize(params, dbobj) # only place where a connection is held
-
-    if drop_tables:
-      self.drop_tables()
-
-    if verify_tables and not self.verify_tables():
-      self.create_tables()
-      print 'Creating experiment tables...'
-      if not self.verify_tables():
-        raise Sorry("Couldn't create experiment tables")
-
-    self.columns_dict = self.init_tables.set_up_columns_dict(self)
 
   def execute_query(self, query, commit = False):
     if self.params.db.verbose:
@@ -173,6 +232,7 @@ class xfel_db_application(object):
         return cursor
       except OperationalError as e:
         if "Can't connect to MySQL server" not in str(e):
+          print query
           raise e
         retry_count += 1
         print "Couldn't connect to MYSQL, retry", retry_count
@@ -186,11 +246,31 @@ class xfel_db_application(object):
         raise e
     raise Sorry("Couldn't execute MYSQL query. Too many reconnects. Query: %s"%query)
 
+class xfel_db_application(db_application):
+  def __init__(self, params, drop_tables = False, verify_tables = False):
+    super(xfel_db_application, self).__init__(params)
+    self.query_count = 0
+    dbobj = get_db_connection(params)
+    self.init_tables = initialize(params, dbobj) # only place where a connection is held
+
+    if drop_tables:
+      self.drop_tables()
+
+    if verify_tables and not self.verify_tables():
+      self.create_tables()
+      print 'Creating experiment tables...'
+      if not self.verify_tables():
+        raise Sorry("Couldn't create experiment tables")
+
+    self.columns_dict = self.init_tables.set_up_columns_dict(self)
+
   def list_lcls_runs(self):
     from xfel.xpp.simulate import file_table
-    query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.experiment)
-    FT = file_table(self.params, query, enforce80=self.params.web.enforce80, enforce81=self.params.web.enforce81)
-    return FT.get_runs()
+    query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.facility.lcls.experiment)
+    FT = file_table(self.params.facility.lcls, query, enforce80=self.params.facility.lcls.web.enforce80, enforce81=self.params.facility.lcls.web.enforce81)
+    runs = FT.get_runs()
+    for r in runs: r['run'] = str(r['run'])
+    return runs
 
   def verify_tables(self):
     return self.init_tables.verify_tables()
@@ -213,9 +293,8 @@ class xfel_db_application(object):
         trial_params = cxi_phil.cxi_versioned_extract().persist.phil_scope.fetch(parse(trial.target_phil_str)).extract()
         isoforms = trial_params.isoforms
       else:
-        from xfel.ui import known_dials_dispatchers
-        import importlib
-        phil_scope = importlib.import_module(known_dials_dispatchers[self.params.dispatcher]).phil_scope
+        from xfel.ui import load_phil_scope_from_dispatcher
+        phil_scope = load_phil_scope_from_dispatcher(self.params.dispatcher)
         trial_params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
         isoforms = trial_params.indexing.stills.isoforms
       if len(isoforms) > 0:
@@ -444,11 +523,12 @@ class xfel_db_application(object):
   def get_trial_runs(self, trial_id):
     tag = self.params.experiment_tag
     query = """SELECT run.id FROM `%s_run` run
-               JOIN `%s_rungroup` rg ON run.run >= rg.startrun AND (run.run <= rg.endrun OR rg.endrun is NULL)
+               JOIN `%s_rungroup_run` rgr ON run.id = rgr.run_id
+               JOIN `%s_rungroup` rg ON rg.id = rgr.rungroup_id
                JOIN `%s_trial_rungroup` t_rg on t_rg.rungroup_id = rg.id
                JOIN `%s_trial` trial ON trial.id = t_rg.trial_id
                WHERE trial.id=%d AND rg.active=True
-               """ %(tag, tag, tag, tag, trial_id)
+               """ %(tag, tag, tag, tag, tag, trial_id)
     cursor = self.execute_query(query)
     run_ids = ["%d"%i[0] for i in cursor.fetchall()]
     if len(run_ids) == 0:
@@ -460,11 +540,12 @@ class xfel_db_application(object):
     query = """SELECT tag.id FROM `%s_tag` tag
                JOIN `%s_run_tag` rt ON rt.tag_id = tag.id
                JOIN `%s_run` run ON run.id = rt.run_id
-               JOIN `%s_rungroup` rg ON run.run >= rg.startrun AND (run.run <= rg.endrun OR rg.endrun is NULL)
+               JOIN `%s_rungroup_run` rgr ON run.id = rgr.run_id
+               JOIN `%s_rungroup` rg ON rg.id = rgr.rungroup_id
                JOIN `%s_trial_rungroup` t_rg ON t_rg.rungroup_id = rg.id
                JOIN `%s_trial` trial ON trial.id = t_rg.trial_id
                WHERE trial.id=%d AND rg.active=True
-               """ % (tag, tag, tag, tag, tag, tag, trial_id)
+               """ % (tag, tag, tag, tag, tag, tag, tag, trial_id)
     cursor = self.execute_query(query)
     tag_ids = ["%d"%i[0] for i in cursor.fetchall()]
     if len(tag_ids) == 0:
@@ -484,9 +565,9 @@ class xfel_db_application(object):
     assert [run_id, run_number].count(None) == 1
     if run_id is not None:
       return Run(self, run_id)
-    runs = [r for r in self.get_all_runs() if r.run == run_number]
+    runs = [r for r in self.get_all_runs() if r.run == str(run_number)]
     if len(runs) == 0:
-      raise Sorry("Couldn't find run %d"%run_number)
+      raise Sorry("Couldn't find run %s"%run_number)
     assert len(runs) == 1
     return runs[0]
 
@@ -498,6 +579,17 @@ class xfel_db_application(object):
 
   def get_rungroup(self, rungroup_id):
     return Rungroup(self, rungroup_id)
+
+  def get_rungroup_runs(self, rungroup_id):
+    query = """SELECT run.id FROM `%s_run` run
+               JOIN `%s_rungroup_run` rgr ON run.id = rgr.run_id
+               WHERE rgr.rungroup_id = %d"""%(self.params.experiment_tag,
+                 self.params.experiment_tag, rungroup_id)
+    cursor = self.execute_query(query)
+    run_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    if len(run_ids) == 0:
+      return []
+    return self.get_all_x(Run, "run", where = "WHERE run.id IN (%s)"%",".join(run_ids))
 
   def get_all_rungroups(self, only_active = False):
     if only_active:
@@ -600,3 +692,62 @@ class xfel_db_application(object):
 
   def get_stats(self, **kwargs):
     return Stats(self, **kwargs)
+
+class standalone_run_finder(object):
+  def __init__(self, params):
+    self.params = params
+
+  def list_standalone_runs(self):
+    import glob
+
+    runs = []
+    if self.params.facility.standalone.monitor_for == 'folders':
+      for foldername in sorted(os.listdir(self.params.facility.standalone.data_dir)):
+        path = os.path.join(self.params.facility.standalone.data_dir, foldername)
+        if not os.path.isdir(path): continue
+        if self.params.facility.standalone.composite_files:
+          for filepath in sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template))):
+            filename = os.path.basename(filepath)
+            runs.append((foldername + "_" + os.path.splitext(filename)[0], filepath))
+        else:
+          files = sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template)))
+          if len(files) > 0:
+            runs.append((foldername, os.path.join(path, self.params.facility.standalone.template)))
+    elif self.params.facility.standalone.monitor_for == 'files':
+      if not self.params.facility.standalone.composite_files:
+        print "Warning, monitoring a single folder for single image files is inefficient"
+      path = self.params.facility.standalone.data_dir
+      for filepath in sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template))):
+        filename = os.path.basename(filepath)
+        runs.append((os.path.splitext(filename)[0], filepath))
+
+    return runs
+
+class cheetah_run_finder(standalone_run_finder):
+  def __init__(self, params):
+    super(cheetah_run_finder, self).__init__(params)
+    self.known_runs = []
+    self.known_bad_runs = []
+
+  def list_standalone_runs(self):
+    runs = super(cheetah_run_finder, self).list_standalone_runs()
+
+    good_runs = []
+    for name, path in runs:
+      if name in self.known_runs:
+        good_runs.append((name, path))
+      elif name not in self.known_bad_runs:
+        status_file = os.path.join(os.path.dirname(path), 'status.txt')
+        if not os.path.exists(status_file): continue
+        status_lines = [line for line in open(status_file).readlines() if 'Status' in line]
+        if len(status_lines) != 1: continue
+        l = status_lines[0].strip()
+        status = l.split(',')[-1].split('=')[-1]
+        print name, status
+        if status == 'Finished':
+          good_runs.append((name, path))
+          self.known_runs.append(name)
+        elif 'error' in status.lower():
+          self.known_bad_runs.append(name)
+
+    return good_runs

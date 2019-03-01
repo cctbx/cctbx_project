@@ -8,7 +8,7 @@ from libtbx.math_utils import ifloor
 from libtbx import adopt_init_args
 import math
 import sys
-if (sys.version_info[2] >= 6) :
+if (sys.version_info[2] >= 6):
   import warnings
   warnings.simplefilter('ignore', DeprecationWarning)
   warnings.simplefilter('ignore', UserWarning) # for matplotlib 1.5.1
@@ -20,8 +20,8 @@ if (sys.platform != 'win32'):
   import locale
   locale.setlocale(locale.LC_ALL, '')
 
-class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin) :
-  def __init__ (self,
+class plot_container(wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin):
+  def __init__(self,
                 parent,
                 figure_size=(8,6),
                 font_size=12,
@@ -31,7 +31,7 @@ class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin) :
                 handle_left_click=False,
                 show_data_points=True,
                 point_types=('o', '^', '+', 's', 'D'),
-                title_alignment="right") :
+                title_alignment="right"):
     wx.BoxSizer.__init__(self, wx.VERTICAL)
     adopt_init_args(self, locals())
     self._fonts = {}
@@ -94,10 +94,10 @@ class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin) :
       if (wx.Platform == '__WXMAC__') : # FIXME MSW okay, check GTK
         self.canvas.Bind(wx.EVT_MOUSEWHEEL, self.OnMouseWheel, self.canvas)
 
-  def GetParent (self) :
+  def GetParent(self):
     return self.parent
 
-  def setup_fonts (self) :
+  def setup_fonts(self):
     import matplotlib.font_manager
     self._fonts["basic"] = matplotlib.font_manager.FontProperties(
       family = ["Courier", "Monaco", "monospace"],
@@ -120,29 +120,29 @@ class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin) :
       weight = "bold",
       size   = self.title_font_size)
 
-  def get_font (self, font_type) :
+  def get_font(self, font_type):
     font = self._fonts.get(font_type, None)
-    if (font is None) :
+    if (font is None):
       font = self._fonts.get("basic", None)
     return font
 
-  def GetToolBar (self) :
+  def GetToolBar(self):
     return None
 
-  def OnRightClick (self, event) :
+  def OnRightClick(self, event):
     pass
 
-  def OnClick (self, event) :
-    if not hasattr(event, "button") :
+  def OnClick(self, event):
+    if not hasattr(event, "button"):
       raise RuntimeError("The OnClick method of plot_container handles "+
         "matplotlib events only.  Please fix your code!")
     if event.button == 1 :
       self.process_mouse_click(event)
 
-  def process_mouse_click (self, mpl_event) :
+  def process_mouse_click(self, mpl_event):
     pass
 
-  def save_image (self, default_path="", default_filename="plot.png") :
+  def save_image(self, default_path="", default_filename="plot.png"):
     output_file = wx.FileSelector("Saved image name",
       default_path=default_path,
       default_filename=default_filename,
@@ -157,49 +157,49 @@ class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin) :
       else :
         self.figure.savefig(output_file, format="png")
 
-class histogram (plot_container) :
-  def show_histogram (self, data, n_bins, reference_value=None, pos=(1,1,1),
+class histogram(plot_container):
+  def show_histogram(self, data, n_bins, reference_value=None, pos=(1,1,1),
                       draw_now=True, x_label=None, y_label=None, title=None,
-                      log_scale=False, x_lim=None, y_lim=None) :
+                      log_scale=False, x_lim=None, y_lim=None):
     assert len(pos) == 3
     self.figure.clear()
     p = self.figure.add_subplot(*pos)
     p.hist(data, n_bins, facecolor='blue', log=log_scale)
     if reference_value is not None :
       p.axvline(reference_value, color='r')
-    if (x_label is not None) :
+    if (x_label is not None):
       p.set_xlabel(x_label)
-    if (y_label is not None) :
+    if (y_label is not None):
       p.set_ylabel(y_label)
     if (x_lim is not None):
       p.set_xlim(x_lim[0], x_lim[1])
     if (y_lim is not None):
       p.set_ylim(y_lim[0], y_lim[1])
-    if (title is not None) :
+    if (title is not None):
       p.set_title(title)
     if draw_now :
       self.canvas.draw()
     return p
 
-def convert_xyz_value_list (values, null_value=0.0) :
+def convert_xyz_value_list(values, null_value=0.0):
   import numpy
   values = sorted(list(values), cmp=lambda x,y: cmp(x[0], y[0]))
   x_rows = [[values[0]]]
-  for i, xyz in enumerate(values[1:]) :
-    if (xyz[0] != x_rows[-1][-1][0]) :
+  for i, xyz in enumerate(values[1:]):
+    if (xyz[0] != x_rows[-1][-1][0]):
       x_rows.append([])
     x_rows[-1].append(xyz)
   x_values = [ x_row[0][0] for x_row in x_rows ]
   y_values = sorted([ x_rows[0][n][1] for n in range(len(x_rows[0])) ])
   assert (len(values) == (len(x_values) * len(y_values)))
   z_values = []
-  for j in range(len(y_values)) :
+  for j in range(len(y_values)):
     z_values.append([])
-  for i, x_row in enumerate(x_rows) :
+  for i, x_row in enumerate(x_rows):
     x_row = sorted(x_row, cmp=lambda x,y: cmp(x[1], y[1]))
-    for j, (x,y,z) in enumerate(x_row) :
+    for j, (x,y,z) in enumerate(x_row):
       assert (y in y_values)
-      if (z is not None) :
+      if (z is not None):
         assert (isinstance(z, int) or isinstance(z, float))
         z_values[j].append(z)
       else :
@@ -207,8 +207,8 @@ def convert_xyz_value_list (values, null_value=0.0) :
       #  z_values[j].append(null_value)
   return (numpy.array(x_values), numpy.array(y_values), numpy.array(z_values))
 
-class image_plot (plot_container) :
-  def show_plot (self,
+class image_plot(plot_container):
+  def show_plot(self,
                  x_data=(),
                  y_data=(),
                  z_data=(),
@@ -217,51 +217,51 @@ class image_plot (plot_container) :
                  y_label=None,
                  title=None,
                  cmap=None,
-                 interpolation="nearest") :
-    if (len(values) > 0) :
+                 interpolation="nearest"):
+    if (len(values) > 0):
       assert (len(x_data) == len(y_data) == len(z_data) == 0)
       (x_data, y_data, z_data) = convert_xyz_value_list(values)
     from matplotlib.image import NonUniformImage
     self.figure.clear()
     ax = self.figure.add_subplot(111)
     im = NonUniformImage(ax, interpolation=interpolation)
-    if (cmap is not None) :
+    if (cmap is not None):
       im.set_cmap(get_colormap(cmap))
     im.set_data(x_data, y_data, z_data)
     ax.images.append(im)
     ax.set_xlim(x_data[0], x_data[-1])
     ax.set_ylim(y_data[0], y_data[-1])
-    if (x_label is not None) :
+    if (x_label is not None):
       ax.set_xlabel(x_label)
-    if (y_label is not None) :
+    if (y_label is not None):
       ax.set_ylabel(y_label)
-    if (title is not None) :
+    if (title is not None):
       ax.set_title(title)
     self.canvas.draw()
 
-class iotbx_data_plot_base (plot_container) :
-  def __init__ (self,
+class iotbx_data_plot_base(plot_container):
+  def __init__(self,
                 parent,
                 tables,
                 size=(640,480),
-                **kwds) :
+                **kwds):
     adopt_init_args(self, locals())
     (x, y, w, h) = tuple(wx.GetClientDisplayRect())
     (width, height) = size
     fig_w = float(width) / 72.0
     fig_h = float(height) / 72.0
-    if (fig_w * 72) > (w - 20) :
+    if (fig_w * 72) > (w - 20):
       fig_w = int(math.floor((w-40) / 72))
-    if (fig_h * 72) > (h - 120) :
+    if (fig_h * 72) > (h - 120):
       fig_h = int(math.floor((h-160) / 72))
     plot_container.__init__(self, parent, (fig_w, fig_h), **kwds)
     self.p = self.figure.add_subplot(111)
     self.plot_type = None
 
-  def set_tables (self, tables) :
+  def set_tables(self, tables):
     self.tables = tables
 
-  def set_plot (self, graph_name=None, table_name=None, table_index=0) :
+  def set_plot(self, graph_name=None, table_name=None, table_index=0):
     table = None
     if table_name is None :
       table = self.tables[table_index]
@@ -274,8 +274,8 @@ class iotbx_data_plot_base (plot_container) :
       graph = table.get_graph(graph_name)
       self.show_plot(graph, reference_lines=table.get_reference_marks())
 
-  def show_plot (self, graph, line_width=1, show_points=True, show_grid=True,
-      reference_lines=None) :
+  def show_plot(self, graph, line_width=1, show_points=True, show_grid=True,
+      reference_lines=None):
     if self.disabled :
       return
     self.figure.clear()
@@ -293,46 +293,46 @@ class iotbx_data_plot_base (plot_container) :
     else :
       point_types = [""]
     point_index = 0
-    for (x_values, y_values) in self.graph.get_plots() :
+    for (x_values, y_values) in self.graph.get_plots():
       plot_type = ""
       if show_points :
         plot_type = "%s" % point_types[point_index]
         point_index += 1
-        if point_index >= len(point_types) :
+        if point_index >= len(point_types):
           point_index = 0
       if show_lines :
         plot_type += "-"
       self.p.plot(x_values, y_values, plot_type, linewidth=line_width)
-    if (reference_lines is not None) :
+    if (reference_lines is not None):
       for x in reference_lines :
-        if (x is not None) :
+        if (x is not None):
           self.p.axvline(x=x, linewidth=1)
     self.format_labels()
     if show_grid :
-      self.p.get_axes().grid(True, color="0.75")
-    self.p.get_axes().set_autoscale_on(True)
+      self.p.grid(True, color="0.75")
+    self.p.set_autoscale_on(True)
     self.p.set_title(graph.name, fontproperties=self.get_font("title"),
       horizontalalignment=self.title_alignment)
     self.canvas.draw()
     self.parent.Refresh()
 
-  def format_x_axis (self) :
+  def format_x_axis(self):
     if self.tables[0].x_is_inverse_d_min :
       xdata = self.tables[0].get_x_as_resolution()
-      self.p.get_axes().set_xlabel("Resolution",
+      self.p.set_xlabel("Resolution",
         fontproperties=self.get_font("axis_label"))
-      if (getattr(self.tables[0], "force_exact_x_labels", False)) :
+      if (getattr(self.tables[0], "force_exact_x_labels", False)):
         xticks_ = self.tables[0].get_x_values()
       else :
-        xticks_ = self.p.get_axes().get_xticks()
+        xticks_ = self.p.get_xticks()
       n_skip = max(1, ifloor(len(xticks_) / 10))
       xticks = []
       xticklabels = []
       k = 0
-      while (k < len(xticks_)) :
+      while (k < len(xticks_)):
         x = xticks_[k]
         xticks.append(x)
-        if (x != 0) :
+        if (x != 0):
           if x > 0.0:
             x = math.sqrt(1 / x)
           else:
@@ -341,49 +341,48 @@ class iotbx_data_plot_base (plot_container) :
         else : # FIXME?
           xticklabels.append("")
         k += n_skip
-      self.p.get_axes().set_xticks(xticks)
-      self.p.get_axes().set_xticklabels(xticklabels)
+      self.p.set_xticks(xticks)
+      self.p.set_xticklabels(xticklabels)
     else :
       if self.graph.x_axis_label is not None :
-        self.p.get_axes().set_xlabel(self.graph.x_axis_label,
+        self.p.set_xlabel(self.graph.x_axis_label,
           fontproperties=self.get_font("axis_label"))
       else :
-        self.p.get_axes().set_xlabel(self.graph.x_label,
+        self.p.set_xlabel(self.graph.x_label,
           fontproperties=self.get_font("axis_label"))
-    for ticklabel in self.p.get_axes().get_xticklabels() :
+    for ticklabel in self.p.get_xticklabels():
       ticklabel.set_fontproperties(self.get_font("value_label"))
 
-  def axvline (self, x, **kwargs) :
-    axes = self.p#.get_axes()
+  def axvline(self, x, **kwargs):
     if self.tables[0].x_is_inverse_d_min :
-      axes.axvline(x=(1.0 / (x**2)), **kwargs)
+      self.p.axvline(x=(1.0 / (x**2)), **kwargs)
     else :
-      axes.axvline(x=x, **kwargs)
+      self.p.axvline(x=x, **kwargs)
     self.canvas.draw()
     self.parent.Refresh()
 
-  def format_y_axis (self) :
-    for ticklabel in self.p.get_axes().get_yticklabels() :
+  def format_y_axis(self):
+    for ticklabel in self.p.get_yticklabels():
       ticklabel.set_fontproperties(self.get_font("value_label"))
     if self.graph.y_axis_label is not None :
-      self.p.get_axes().set_ylabel(self.graph.y_axis_label,
+      self.p.set_ylabel(self.graph.y_axis_label,
           fontproperties=self.get_font("axis_label"))
 
-  def format_labels (self) :
+  def format_labels(self):
     self.figure.legend(self.p.lines, self.graph.y_labels,
       prop=self.get_font("text"))
     self.format_x_axis()
     self.format_y_axis()
 
-  def show_grid (self, show=True) :
+  def show_grid(self, show=True):
     if show :
-      self.p.get_axes().grid(True, color="0.75")
+      self.p.grid(True, color="0.75")
     else :
-      self.p.get_axes().grid(False)
+      self.p.grid(False)
     self.canvas.draw()
     self.parent.Refresh()
 
-  def OnRightClick (self, event) :
+  def OnRightClick(self, event):
     if (wx.Platform != '__WXMAC__') : # FIXME
       menu = wx.Menu()
       menu_item = menu.Append(-1, "Save image")
@@ -391,11 +390,11 @@ class iotbx_data_plot_base (plot_container) :
       self.parent.PopupMenu(menu)
       menu.Destroy()
 
-  def OnSave (self, event=None) :
+  def OnSave(self, event=None):
     self.save_image()
 
-class small_plot (iotbx_data_plot_base) :
-  def __init__ (self, parent, table, size=(320,320)) :
+class small_plot(iotbx_data_plot_base):
+  def __init__(self, parent, table, size=(320,320)):
     iotbx_data_plot_base.__init__(self,
       parent=parent,
       tables=[table],
@@ -405,10 +404,10 @@ class small_plot (iotbx_data_plot_base) :
       title_alignment="center",
       point_types=('+'))
 
-class plot_frame (wx.Frame) :
+class plot_frame(wx.Frame):
   controls_on_top = True
   show_controls_default = True
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
     self.setup_toolbar()
     self.toolbar.Realize()
@@ -430,7 +429,7 @@ class plot_frame (wx.Frame) :
     self.Bind(wx.EVT_CLOSE, self.OnClose, self)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy, self)
 
-  def setup_toolbar (self) :
+  def setup_toolbar(self):
     tb_buttons = [
       ("Show/hide controls",
        bitmaps.fetch_icon_bitmap("apps", "advancedsettings"),
@@ -450,25 +449,25 @@ class plot_frame (wx.Frame) :
       self.Bind(wx.EVT_MENU, function, tool_button)
     self.toolbar = tb
 
-  def draw_top_panel (self) :
+  def draw_top_panel(self):
     self.top_panel = wx.Panel(parent=self, style=wx.SUNKEN_BORDER)
 
-  def create_plot_panel (self) :
+  def create_plot_panel(self):
     return (0,0)
 
-  def OnExit (self, event) :
+  def OnExit(self, event):
     self.Close()
 
-  def OnClose (self, event) :
+  def OnClose(self, event):
     wx.CallAfter(self.Destroy)
 
-  def OnDestroy (self, event) :
+  def OnDestroy(self, event):
     pass
 
-  def OnSave (self, event) :
+  def OnSave(self, event):
     self.plot_panel.save_image()
 
-  def OnToggleControls (self, event) :
+  def OnToggleControls(self, event):
     if self._show_controls :
       self._show_controls = False
       self.top_panel.Hide()
@@ -478,14 +477,14 @@ class plot_frame (wx.Frame) :
     self.sizer.Layout()
     self.Fit()
 
-class loggraph (plot_frame) :
+class loggraph(plot_frame):
   plot_type = "loggraph"
   controls_on_top = True
   show_controls_default = True
   table_selection_label = "Table:"
   plot_selection_label = "Plot:"
-  def __init__ (self, parent, title, tables=None, file_name=None,
-      processed_lines=None) :
+  def __init__(self, parent, title, tables=None, file_name=None,
+      processed_lines=None):
     adopt_init_args(self, locals())
     self.tables = []
     self.graph = None
@@ -506,7 +505,7 @@ class loggraph (plot_frame) :
     self.Centre()
     self.switch_plot()
 
-  def draw_top_panel (self) :
+  def draw_top_panel(self):
     self.top_panel = wx.Panel(parent=self, style=wx.SUNKEN_BORDER)
     cp = self.top_panel
     cp_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -517,7 +516,7 @@ class loggraph (plot_frame) :
     grid.Add(txt, 0, wx.ALL|wx.EXPAND, 5)
     self.table_chooser = wx.Choice(parent=cp,
       choices=[ t.title for t in self.tables])
-    if (len(self.tables) > 0) :
+    if (len(self.tables) > 0):
       self.table_chooser.SetSelection(0)
     self.Bind(wx.EVT_CHOICE, self.OnSelectTable, self.table_chooser)
     grid.Add(self.table_chooser, 0, wx.ALL|wx.EXPAND, 5)
@@ -526,7 +525,7 @@ class loggraph (plot_frame) :
     plot_choices = self.tables[0].graph_names
     self.plot_chooser = wx.Choice(parent=cp,
       choices=plot_choices)
-    if (len(plot_choices) > 0) :
+    if (len(plot_choices) > 0):
       self.plot_chooser.SetSelection(0)
     self.Bind(wx.EVT_CHOICE, self.OnSelectPlot, self.plot_chooser)
     grid.Add(self.plot_chooser, 0, wx.ALL|wx.EXPAND, 5)
@@ -545,14 +544,14 @@ class loggraph (plot_frame) :
     szr.Add(point_box, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     return cp
 
-  def create_plot_panel (self) :
+  def create_plot_panel(self):
     self.plot = iotbx_data_plot_base(
       parent=self,
       tables=self.tables,
       transparent=False)
     return self.plot
 
-  def load_log (self, file_name=None, processed_lines=None, update=True) :
+  def load_log(self, file_name=None, processed_lines=None, update=True):
     from iotbx import data_plots
     if processed_lines :
       self.tables = data_plots.import_ccp4i_logfile(log_lines=processed_lines)
@@ -561,7 +560,7 @@ class loggraph (plot_frame) :
     if update :
       self.update_interface()
 
-  def update_interface (self, update_tables=True) :
+  def update_interface(self, update_tables=True):
     if len(self.tables) > 0 :
       if update_tables :
         table_choices = [t.title for t in self.tables]
@@ -572,7 +571,7 @@ class loggraph (plot_frame) :
       self.top_panel.Layout()
       self.switch_plot()
 
-  def set_current_plot (self, plot_name) :
+  def set_current_plot(self, plot_name):
     for t in self.tables :
       for t_plot_name in t.graph_names :
         if plot_name == t_plot_name :
@@ -581,7 +580,7 @@ class loggraph (plot_frame) :
           break
     self.switch_plot()
 
-  def switch_plot (self) :
+  def switch_plot(self):
     table = self.table_chooser.GetStringSelection()
     plot = self.plot_chooser.GetStringSelection()
     if table != "" and plot != "" :
@@ -589,7 +588,7 @@ class loggraph (plot_frame) :
       #self.Refresh()
 
   #--- EVENTS
-  def OnSelectTable (self, event) :
+  def OnSelectTable(self, event):
     table_name = self.table_chooser.GetStringSelection()
     current_plot = self.plot_chooser.GetStringSelection()
     plot_choices = []
@@ -601,17 +600,17 @@ class loggraph (plot_frame) :
       self.plot_chooser.SetStringSelection(current_plot)
     self.switch_plot()
 
-  def OnSelectPlot (self, event) :
+  def OnSelectPlot(self, event):
     self.switch_plot()
 
-  def OnPrint (self, event) :
+  def OnPrint(self, event):
     pass
 
-  def OnToggleGrid (self, event) :
+  def OnToggleGrid(self, event):
     show = event.GetEventObject().GetValue()
     self.plot.show_grid(show)
 
-  def OnTogglePoints (self, event) :
+  def OnTogglePoints(self, event):
     self.plot.show_data_points = event.GetEventObject().GetValue()
     self.switch_plot()
 
@@ -625,7 +624,7 @@ standard_colormaps = [ ("jet", "Rainbow"),
 colormap_names = [ cm_name for cm_id, cm_name in standard_colormaps ]
 colormap_id_dict = dict([ (name, id) for id, name in standard_colormaps ])
 
-def get_colormap (cm_name) :
+def get_colormap(cm_name):
   import matplotlib.cm
   cm = None
   for cm_id, cm_name2 in standard_colormaps :
@@ -638,7 +637,7 @@ def get_colormap (cm_name) :
     cm = matplotlib.cm.jet
   return cm
 
-def exercise () :
+def exercise():
   values = [
     (1.5, 3.0, 40.2),
     (2.5, 3.5, 35.1),

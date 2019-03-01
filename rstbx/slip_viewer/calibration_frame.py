@@ -3,6 +3,7 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 
 import wx
@@ -10,7 +11,7 @@ from scitbx.matrix import col
 
 
 class SBSettingsFrame(wx.MiniFrame):
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     super(SBSettingsFrame, self).__init__(*args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
     panel = SBSettingsPanel(self)
@@ -31,7 +32,7 @@ class SBSettingsPanel(wx.Panel):
   # rotation, and provide a hierarchical drop-down menu to play with
   # detector, panel, sensor and ASIC.
 
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     super(SBSettingsPanel, self).__init__(*args, **kwds)
     sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(sizer)
@@ -94,7 +95,7 @@ class SBSettingsPanel(wx.Panel):
 
 
   def OnRestoreMetrology(self, event):
-    print "Not implemented"
+    print("Not implemented")
     return
 
     dialog = wx.FileDialog(
@@ -105,7 +106,7 @@ class SBSettingsPanel(wx.Panel):
       wildcard="Phil files (*.eff; *.def)|*.eff;*.def")
     if dialog.ShowModal() == wx.ID_OK:
       path = dialog.GetPath()
-      if (path != "") :
+      if (path != ""):
         from xfel.cftbx.detector.metrology import \
           master_phil, metrology_as_transformation_matrices
         from libtbx import phil
@@ -165,7 +166,7 @@ class SBSettingsPanel(wx.Panel):
       wildcard="Phil files (*.def)|*.def")
     if dialog.ShowModal() == wx.ID_OK:
       path = str(dialog.GetPath())
-      if (path != "") :
+      if (path != ""):
         # The detector object of the format instance is adjusted when the quadrant calibration
         # arrows are clicked.  Sync those adjustments to a new cbf handle, drop uneeded categories
         # (categories frame specific but not metrology specific) and write the file.
@@ -186,7 +187,7 @@ class SBSettingsPanel(wx.Panel):
         cbf.write_widefile(path,pycbf.CBF,\
               pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
 
-        print "Saved cbf header to", path
+        print("Saved cbf header to", path)
 
 
   def OnUpdateQuad(self, event):

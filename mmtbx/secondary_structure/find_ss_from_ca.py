@@ -258,7 +258,8 @@ def is_close_to(r,last_r,distance_cutoff=None,use_default_distance_cutoff=True):
     return False
 
 def split_model(model=None,hierarchy=None,verbose=False,info=None,
-     only_first_model=None,distance_cutoff=None,use_default_distance_cutoff=True,
+     only_first_model=None,distance_cutoff=None,
+     use_default_distance_cutoff=True,
      out=sys.stdout):
   # XXX NOTE: this splits model at all icode residues (one model per residue)
   # The routine extract_segment below assumes that the residues in an individual
@@ -586,6 +587,34 @@ def get_last_resno(hierarchy):
         last_resno=rg.resseq_as_int()
   return last_resno
 
+def get_all_resno(hierarchy):
+  resno_list=[]
+  if not hierarchy:
+    return resno_list
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        resno_list.append(rg.resseq_as_int())
+  return resno_list
+
+def get_middle_resno(hierarchy,first_resno=None,last_resno=None):
+  if not hierarchy:
+    return None
+  if first_resno is None:
+     first_resno=get_first_resno(hierarchy)
+  if last_resno is None:
+     last_resno=get_last_resno(hierarchy)
+  target_resno=int(0.5+(first_resno+last_resno)/2)
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        middle_resno=rg.resseq_as_int()
+        if middle_resno >= target_resno:
+          return middle_resno
+  return last_resno
+
+
+
 def verify_existence(hierarchy=None,
    prev_hierarchy=None,strand=None,registration=None,helix=None):
   ok=True
@@ -833,7 +862,9 @@ def sites_and_seq_from_hierarchy(hierarchy):
   else:
     sites=sele.extract_xray_structure().sites_cart()
     sequence=sequence_from_hierarchy(sele)
-  return sites,sequence
+  start_resno=get_first_resno(sele)
+  end_resno=get_last_resno(sele)
+  return sites,sequence,start_resno,end_resno
 
 class model_info: # mostly just a holder
   def __init__(self,hierarchy=None,id=0,info={},
@@ -874,7 +905,7 @@ class model_info: # mostly just a holder
     # set the chain type if not already set
     if self.info and self.info.get('chain_type'): return
     if not self.info: self.info={}
-    if has_atom(self.hierarchy,name="N"):
+    if has_atom(self.hierarchy,name="N") or has_atom(self.hierarchy,name="CA"):
       self.info['chain_type']="PROTEIN"
     else:
       if has_atom(self.hierarchy,name="O2'") or  \
@@ -3066,11 +3097,14 @@ class fss_result_object:
       annotation=None,
       sequence=None,
       sites=None,
+      start_resno=None,
+      end_resno=None,
       max_rmsd=1):
     adopt_init_args(self, locals())
 
     if hierarchy:  #
-      self.sites,self.sequence=sites_and_seq_from_hierarchy(hierarchy)
+      self.sites,self.sequence,self.start_resno,self.end_resno=\
+         sites_and_seq_from_hierarchy( hierarchy)
 
     self.chain_id_list=[]
     if self.chain_id:
@@ -3078,7 +3112,8 @@ class fss_result_object:
 
   def show_summary(self,out=sys.stdout):
     print >>out,"\nSummary of find_secondary_structure object %s" %(self.id),
-    print >>out,"for sequence: %s\n" %(self.sequence)
+    print >>out,"for sequence: %s_%s::%s\n" %(self.start_resno,self.end_resno,
+       self.sequence)
     print >>out,"Chain ID's where this applies: %s" %(
       " ".join(self.get_chain_id_list()))
     print >>out,"Good H-bonds: %s  Poor H-bonds: %s " %(
@@ -3117,6 +3152,10 @@ class fss_result_object:
     if self.sequence != other.sequence:
        return False
     if not sites_are_similar(self.sites,other.sites,max_rmsd=self.max_rmsd):
+       return False
+    if self.start_resno != other.start_resno:
+       return False
+    if self.end_resno != other.end_resno:
        return False
     return True
 
@@ -3504,8 +3543,11 @@ class find_secondary_structure: # class to look for secondary structure
              annotation=fss.get_annotation())
           # add new fss_result to empty conformation_group and save
           cg.add_fss_result(fss_result=current_fss_result)
-          result_dict[current_fss_result.sequence]=cg
-          unique_sequence_list.append(current_fss_result.sequence)
+          sequence_string="%s_%s::%s" %(
+            current_fss_result.start_resno,current_fss_result.end_resno,
+            current_fss_result.sequence)
+          result_dict[sequence_string]=cg
+          unique_sequence_list.append(sequence_string)
 
 
     # Go through all chains and save annotation and number of good/poor h bonds
@@ -3518,12 +3560,12 @@ class find_secondary_structure: # class to look for secondary structure
     number_of_poor_h_bonds=0
     import iotbx.pdb.secondary_structure as ioss
     i=0
-    for sequence in unique_sequence_list:
-      cg=result_dict[sequence]
+    for sequence_string in unique_sequence_list:
+      cg=result_dict[sequence_string]
       i+=1
       print >>self.out,80*"="
       print >>self.out,"\nAnalysis of chains with sequence %s: %s\n" %(
-        i,sequence)
+        i,sequence_string)
       print >>self.out,80*"="
       for fss_result in cg.get_fss_result_list():
         fss_result.show_summary(out=self.out)

@@ -1,12 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx.scheduling import result
 
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
-
+from six.moves import cPickle as pickle
 
 class Server(object):
   """
@@ -29,7 +25,7 @@ class Server(object):
       try:
         response = command( server = self )
 
-      except Exception, e:
+      except Exception as e:
         pickle.dump( result.Error( exception = e ), self.outstream, 0 )
 
       else:
@@ -76,4 +72,3 @@ class Client(object):
   def close(self):
 
     return self.send( command = ShutDown )
-

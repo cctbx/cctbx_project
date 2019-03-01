@@ -59,12 +59,12 @@ class PilatusImage(DetectorImageBase):
 
     if PilatusImage.is_bz2(filename):
       if bz2 is None:
-        raise RuntimeError, 'bz2 file provided without bz2 module'
+        raise RuntimeError('bz2 file provided without bz2 module')
       fh_func = lambda: bz2.BZ2File(filename, mode)
 
     elif PilatusImage.is_gzip(filename):
       if gzip is None:
-        raise RuntimeError, 'gz file provided without gzip module'
+        raise RuntimeError('gz file provided without gzip module')
       fh_func = lambda: gzip.GzipFile(filename, mode)
 
     else:

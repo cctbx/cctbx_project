@@ -1,12 +1,13 @@
-from __future__ import division, print_function
-
 '''
 Functionality for handling citations
 '''
+from __future__ import absolute_import, division, print_function
 
 import importlib
 import os
 import string
+
+from operator import attrgetter
 
 import libtbx.load_env
 import libtbx.phil
@@ -95,7 +96,7 @@ for journal in journals.journal:
     journals_db[name] = journal
 
 # =============================================================================
-def format_citation (article) :
+def format_citation(article):
   authors = article.authors
   author_list = authors.split(", ")
   if len(author_list) == 1 :
@@ -105,9 +106,9 @@ def format_citation (article) :
   output = "%s." % authors
   if article.year is not None :     output += " (%d)" % article.year
   title = article.title
-  if (title is not None) :
+  if (title is not None):
     title = title.strip()
-    if (not title.endswith(".")) :
+    if (not title.endswith(".")):
       title += "."
     output += " %s" % title
   if article.journal is not None :  output += " %s" % article.journal
@@ -125,7 +126,7 @@ def format_citation (article) :
   return output
 
 # -----------------------------------------------------------------------------
-def author_list_with_periods (authors, initials_first=False) :
+def author_list_with_periods(authors, initials_first=False):
   author_list = authors.split(", ")
   authors_formatted = []
   for author in author_list :
@@ -136,7 +137,7 @@ def author_list_with_periods (authors, initials_first=False) :
       initials = names[-1]
       new_initials = ""
       for letter in initials :
-        if letter in string.letters :
+        if letter in string.ascii_letters :
           new_initials += ("%s." % letter)
         else : # usually '-'
           new_initials += letter
@@ -148,7 +149,7 @@ def author_list_with_periods (authors, initials_first=False) :
   return authors_formatted
 
 # -----------------------------------------------------------------------------
-def format_citation_cell (article) :
+def format_citation_cell(article):
   author_list = author_list_with_periods(article.authors)
   if len(author_list) == 1 :
     authors_out = author_list[0]
@@ -157,9 +158,9 @@ def format_citation_cell (article) :
   output = "%s" % authors_out # XXX no extra period at end!
   if article.year is not None :     output += " (%d)." % article.year
   title = article.title
-  if (title is not None) :
+  if (title is not None):
     title = title.strip()
-    if (not title.endswith(".")) :
+    if (not title.endswith(".")):
       title += "."
     output += " %s" % title
   if article.journal is not None :  output += " %s" % article.journal
@@ -177,7 +178,7 @@ def format_citation_cell (article) :
   return output
 
 # -----------------------------------------------------------------------------
-def format_citation_iucr (article) :
+def format_citation_iucr(article):
   author_list = author_list_with_periods(article.authors)
   if len(author_list) == 1 :
     authors_out = author_list[0]
@@ -248,8 +249,8 @@ def format_citation_doc(article_id):
   return output
 
 # -----------------------------------------------------------------------------
-def format_citation_html (article) :
-  if (article.journal is None) :
+def format_citation_html(article):
+  if (article.journal is None):
     raise ValueError("Missing journal name for '%s'." % article.article_id)
   author_list = author_list_with_periods(article.authors, initials_first=True)
   if len(author_list) == 1 :
@@ -257,7 +258,7 @@ def format_citation_html (article) :
   else :
     authors_out = ", ".join(author_list[:-1]) + ", and %s" % author_list[-1]
   title = article.title.strip()
-  if (not title.endswith(".")) :
+  if (not title.endswith(".")):
     title += "."
   output = "<b>%s</b> %s. " % (title, authors_out)
   if 'Acta Cryst.' in article.journal:
@@ -266,21 +267,21 @@ def format_citation_html (article) :
   else:
     journal_ref = "<i>%s</i>" % article.journal
     journal_section = None
-  if (article.volume is not None) :
+  if (article.volume is not None):
     if journal_section is not None:
       journal_ref += " %s<b>%s</b>" %(journal_section, article.volume)
     else:
       journal_ref += " <b>%s</b>" % article.volume
-  if (article.pages is not None) :
+  if (article.pages is not None):
     journal_ref += ", %s" % article.pages
-  if (article.year is not None) :
+  if (article.year is not None):
     journal_ref += " (%s)" % article.year
-  if (article.url is not None) :
+  if (article.url is not None):
     output += """<a href="%s">%s</a>.""" % (article.url, journal_ref)
-  elif (article.doi_id is not None) :
+  elif (article.doi_id is not None):
     output += """<a href="https://doi.org/%s">%s</a>.""" % (article.doi_id,
       journal_ref)
-  elif (article.pmid is not None) :
+  elif (article.pmid is not None):
     output += """<a href="http://www.ncbi.nlm.nih.gov/pubmed/%s">%s</a>.""" % \
       (article.pmid, journal_ref)
   else :
@@ -298,60 +299,16 @@ def show_citation(article, out=None, max_width=79, format='default'):
   if max_width is None or max_width < 1 :
     print(to_unicode(output), file=out)
   else :
-    for line in str_utils.line_breaker(output, max_width) :
+    for line in str_utils.line_breaker(output, max_width):
       print(to_unicode(line), file=out)
   print(to_unicode(''), file=out)
 
 def show_citations(articles, out=None, max_width=79, sort_by_name=True,
                    format='default'):
-  if (sort_by_name):
-    articles.sort(lambda x, y: cmp(x.authors, y.authors))
+  if (sort_by_name): # sort in place
+    articles.sort(key=attrgetter('authors'))
   for article in articles:
     show_citation(article, out, max_width, format)
-
-# -----------------------------------------------------------------------------
-def citations_as_cif_block(articles, cif_block=None):
-  import iotbx.cif.model
-  if cif_block is None:
-    cif_block = iotbx.cif.model.block()
-  def replace_none_with_question_mark(s):
-    if s is None: return '?'
-    return s
-  citation_loop = iotbx.cif.model.loop(header=(
-    '_citation.id', '_citation.title', '_citation.journal_abbrev',
-    '_citation.journal_volume', '_citation.page_first', '_citation.page_last',
-    '_citation.year', '_citation.journal_id_ASTM', '_citation.journal_id_ISSN',
-    '_citation.journal_id_CSD'))
-  for article in articles:
-    if article.pages is None:
-      first_page, last_page = "?", "?"
-    else:
-      pages = article.pages.split('-')
-      first_page = pages[0]
-      if len(pages) == 1:
-        last_page = '?'
-      else:
-        assert len(pages) == 2
-        last_page = pages[1]
-    journal = journals_db.get(article.journal)
-    assert journal is not None
-    citation_loop.add_row(
-      {'_citation.id': article.article_id,
-       '_citation.title': article.title,
-       '_citation.journal_abbrev': journal.abbrev_CAS,
-       '_citation.journal_volume': article.volume,
-       '_citation.page_first': first_page,
-       '_citation.page_last': last_page,
-       '_citation.year': article.year,
-       '_citation.journal_id_ASTM':
-         replace_none_with_question_mark(journal.id_ASTM),
-       '_citation.journal_id_ISSN':
-         replace_none_with_question_mark(journal.id_ISSN),
-       '_citation.journal_id_CSD':
-         replace_none_with_question_mark(journal.id_CSD),
-       })
-  cif_block.add_loop(citation_loop)
-  return cif_block
 
 # =============================================================================
 # end

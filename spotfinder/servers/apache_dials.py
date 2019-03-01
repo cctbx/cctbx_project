@@ -1,5 +1,5 @@
 from __future__ import division
-import StringIO
+from six.moves import StringIO
 
 def run(args, verbose=False):
   from libtbx.utils import Sorry
@@ -59,7 +59,7 @@ def run(args, verbose=False):
 
   except Exception:
     import traceback
-    logger = StringIO.StringIO()
+    logger = StringIO()
     logger.write(
     "Sorry, can't process %s.  Please contact authors.\n"% params.file_name)
     traceback.print_exc(file=logger)

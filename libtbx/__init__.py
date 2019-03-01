@@ -55,7 +55,7 @@ class AutoType(object):
 
   def __str__(self): return "Auto"
   def __eq__(self, other):
-    return type(other) is self.__class__
+    return isinstance(other, self.__class__)
   def __ne__(self, other):
     return not self.__eq__(other)
   def __hash__(self):
@@ -101,7 +101,7 @@ class slots_getstate_setstate(object):
     try:
       # avoid printing deprecation warning to stderr when loading mangle
       warnings.simplefilter("ignore")
-      from compiler.misc import mangle
+      from libtbx.utils import mangle
 
     finally:
       warnings.showwarning = show_warning
@@ -120,7 +120,7 @@ class mutable(slots_getstate_setstate):
   def __init__(O, value):
     O.value = value
 
-class slots_getstate_setstate_default_initializer (slots_getstate_setstate) :
+class slots_getstate_setstate_default_initializer(slots_getstate_setstate):
   """
   Merges together functionality from slots_getstate_setstate with
   adopt_optional_init_args.
@@ -134,7 +134,7 @@ class slots_getstate_setstate_default_initializer (slots_getstate_setstate) :
   >>> print(svm_pair.i_seq)
   1
   """
-  def __init__ (self, **kwds) :
+  def __init__(self, **kwds):
     kwds = dict(kwds)
     for key in kwds :
       setattr(self, key, kwds.get(key, None))
@@ -217,7 +217,7 @@ def adopt_optional_init_args(obj, kwds):
   >>> a = foo(z=10)
   >>> assert a.z == 10
   """
-  for k,v in kwds.iteritems():
+  for k,v in kwds.items():
     if not hasattr(obj.__class__, k):
       raise RuntimeError("%s must be a class attribute of %s to "
                          "be adopted as optional init argument "

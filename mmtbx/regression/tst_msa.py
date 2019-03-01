@@ -5,8 +5,8 @@ import iotbx.pdb
 import libtbx.load_env
 from cStringIO import StringIO
 
-def exercise () :
-  if (not libtbx.env.has_module(name="muscle")) :
+def exercise():
+  if (not libtbx.env.has_module(name="muscle")):
     print "Skipping MUSCLE tests: muscle module not available."
     return
   fasta_sequences = """\

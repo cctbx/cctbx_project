@@ -4,7 +4,7 @@ import os
 from libtbx import easy_run
 import time
 
-def exercise () :
+def exercise():
   from mmtbx.regression.make_fake_anomalous_data import generate_magnessium_inputs
   base = "tst_validate_mg"
   mtz_file, pdb_file = generate_magnessium_inputs(file_base=base, anonymize=False)
@@ -23,5 +23,5 @@ def exercise () :
     os.remove(base + ext)
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

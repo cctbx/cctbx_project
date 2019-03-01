@@ -1,7 +1,7 @@
 from __future__ import division
 import iotbx.phil
 import iotbx.pdb
-import iotbx.ccp4_map
+import iotbx.mrcfile
 from cctbx import crystal
 from cctbx import maptbx
 from libtbx.utils import Sorry
@@ -10,6 +10,8 @@ from cctbx.array_family import flex
 from scitbx.math import matrix
 from copy import deepcopy
 from libtbx.utils import null_out
+import libtbx.callbacks # import dependency
+from libtbx import group_args
 
 master_phil = iotbx.phil.parse("""
 
@@ -305,12 +307,11 @@ master_phil = iotbx.phil.parse("""
           if that fails, found automatically as the center of the \
           density in the map.
 
-     optimize_center = None
+     optimize_center = False
        .type = bool
        .short_caption = Optimize symmetry center
-       .help = Optimize position of symmetry center. Default is False \
-           if symmetry_center is supplied or center of map is used and \
-           True if it is found automatically).
+       .help = Optimize position of symmetry center. Also checks for center \
+                at (0,0,0) vs center of map
 
      helical_rot_deg = None
        .type = float
@@ -936,6 +937,26 @@ master_phil = iotbx.phil.parse("""
       .help = Use 4 times half-width at half-height as estimate of max size
       .short_caption = Half-height width estimation
 
+    cell_cutoff_for_solvent_from_mask = 150
+      .type = float
+      .help = For cells with average edge over this cutoff, use the\
+               low resolution mask (backup) method for solvent estimation
+      .short_caption = Cell cutoff for solvent_from_mask
+
+    mask_padding_fraction = 0.025
+      .type = float
+      .help = Adjust threshold of standard deviation map in low resolution \
+            mask identification of solvent content to give this much more \
+            inside mask than would be obtained with the value of\
+             fraction_of_max_mask_threshold.
+      .short_caption = Mask padding fraction
+
+    fraction_of_max_mask_threshold = .05
+      .type = float
+      .help = threshold of standard deviation map in low resolution mask \
+             identification of solvent content.
+      .short_caption = Fraction of max mask_threshold
+
     mask_threshold = None
       .type = float
       .help = threshold in identification of overall mask. If None, guess \
@@ -1079,6 +1100,11 @@ master_phil = iotbx.phil.parse("""
       .help = Mask expansion in addition to expand_size for final map
       .short_caption = Mask additional expansion
 
+    mask_expand_ratio = 1
+      .type = int
+      .help = Mask expansion relative to resolution for save_box_map_ncs_au
+      .short_caption = Mask expand ratio
+
     exclude_points_in_ncs_copies = True
       .type = bool
       .help = Exclude points that are in symmetry copies when creating NCS au. \
@@ -1147,6 +1173,23 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .help = Controls whether files are written
        .short_caption = Write files
+
+      multiprocessing = *multiprocessing sge lsf pbs condor pbspro slurm
+        .type = choice
+        .short_caption = multiprocessing type
+        .help = Choices are multiprocessing (single machine) or queuing systems
+
+      queue_run_command = None
+        .type = str
+        .short_caption = Queue run command
+        .help = run command for queue jobs. For example qsub.
+
+      nproc = 1
+        .type = int
+        .short_caption = Number of processors
+        .help = Number of processors to use
+        .style = renderer:draw_nproc_widget bold
+
 
    }
 """, process_includes=True)
@@ -1797,6 +1840,9 @@ class sharpening_info:
       sharpening_target=None,
       residual_target=None,
       fraction_occupied=None,
+      nproc=None,
+      multiprocessing=None,
+      queue_run_command=None,
       resolution=None, # changed from d_cut
       resolution_dependent_b=None,  # linear sharpening
       normalize_amplitudes_in_resdep=None,  # linear sharpening
@@ -1863,6 +1909,7 @@ class sharpening_info:
       buffer_radius=None,
       pseudo_likelihood=None,
       preliminary_sharpening_done=False,
+
         ):
 
     from libtbx import adopt_init_args
@@ -1971,6 +2018,9 @@ class sharpening_info:
       self.chain_type=params.crystal_info.chain_type
       self.verbose=params.control.verbose
       self.resolve_size=params.control.resolve_size
+      self.multiprocessing=params.control.multiprocessing
+      self.nproc=params.control.nproc
+      self.queue_run_command=params.control.queue_run_command
 
       self.wrapping=params.crystal_info.use_sg_symmetry
       self.fraction_occupied=params.map_modification.fraction_occupied
@@ -2041,6 +2091,12 @@ class sharpening_info:
       self.max_ratio_to_target=params.segmentation.max_ratio_to_target
       self.min_ratio_to_target=params.segmentation.min_ratio_to_target
       self.residues_per_region=params.segmentation.residues_per_region
+      self.mask_padding_fraction=\
+         params.segmentation.mask_padding_fraction
+      self.fraction_of_max_mask_threshold=\
+         params.segmentation.fraction_of_max_mask_threshold
+      self.cell_cutoff_for_solvent_from_mask=\
+         params.segmentation.cell_cutoff_for_solvent_from_mask
       self.starting_density_threshold=\
          params.segmentation.starting_density_threshold
       self.density_threshold=params.segmentation.density_threshold
@@ -2362,24 +2418,30 @@ def scale_map_coeffs(map_coeffs,scale_max=None,out=sys.stdout):
        ).phase_transfer(phase_source=phases, deg=True)
 
 
-def get_map_object(file_name=None,out=sys.stdout):
+def get_map_object(file_name=None,must_allow_sharpening=None,
+      get_map_labels=None,out=sys.stdout):
   # read a ccp4 map file and return sg,cell and map objects 2012-01-16
   if not os.path.isfile(file_name):
     raise Sorry("The map file %s is missing..." %(file_name))
+  map_labels=None
   if file_name.endswith(".xplor"):
     import iotbx.xplor.map
     m = iotbx.xplor.map.reader(file_name=file_name)
     m.unit_cell_grid=m.data.all() # just so we have something
     m.space_group_number=0 # so we have something
   else:
-    from iotbx import ccp4_map
-    m = ccp4_map.map_reader(file_name=file_name)
+    from iotbx import mrcfile
+    m = mrcfile.map_reader(file_name=file_name)
     print >>out,"MIN MAX MEAN RMS of map: %7.2f %7.2f  %7.2f  %7.2f " %(
       m.header_min, m.header_max, m.header_mean, m.header_rms)
     print >>out,"grid: ",m.unit_cell_grid
     print >>out,"cell:  %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f  " %tuple(
        m.unit_cell_parameters)
     print >>out,"SG: ",m.space_group_number
+    if must_allow_sharpening and m.cannot_be_sharpened():
+      raise Sorry("Input map is already modified and should not be sharpened")
+    if get_map_labels:
+      map_labels=m.labels
   print >>out,"ORIGIN: ",m.data.origin()
   print >>out,"EXTENT: ",m.data.all()
   print >>out,"IS PADDED: ",m.data.is_padded()
@@ -2447,21 +2509,27 @@ def get_map_object(file_name=None,out=sys.stdout):
     original_crystal_symmetry,original_unit_cell_grid=None,None
 
   map=scale_map(map,out=out)
-  return map,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
-    original_crystal_symmetry,original_unit_cell_grid
+  if get_map_labels:
+    return map,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
+      original_crystal_symmetry,original_unit_cell_grid,map_labels
+  else:
+    return map,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
+      original_crystal_symmetry,original_unit_cell_grid
 
 def write_ccp4_map(crystal_symmetry, file_name, map_data,
-   output_unit_cell_grid=None):
+   output_unit_cell_grid=None, labels=None):
   if output_unit_cell_grid is None:
     output_unit_cell_grid=map_data.all()
+  if labels is None:
+    labels=flex.std_string([""])
 
-  iotbx.ccp4_map.write_ccp4_map(
+  iotbx.mrcfile.write_ccp4_map(
       file_name=file_name,
       unit_cell=crystal_symmetry.unit_cell(),
       space_group=crystal_symmetry.space_group(),
       unit_cell_grid = output_unit_cell_grid,
       map_data=map_data.as_double(),
-      labels=flex.std_string([""]))
+      labels=labels)
 
 def set_up_xrs(crystal_symmetry=None):  # dummy xrs to write out atoms
 
@@ -2841,7 +2909,10 @@ def run_get_ncs_from_map(params=None,
   ncs_obj_to_check=None
   if params.reconstruction_symmetry.symmetry and (
      not ncs_obj or ncs_obj.max_operators()<2):
-    center_try_list=[True,False]
+    if params.reconstruction_symmetry.optimize_center:
+      center_try_list=[True,False]
+    else:
+      center_try_list=[True]
   elif ncs_obj:
     center_try_list=[True]
     ncs_obj_to_check=ncs_obj
@@ -2849,10 +2920,22 @@ def run_get_ncs_from_map(params=None,
     center_try_list=[None]
   else:
     return None,None,None # did not even try
+  # check separately for helical symmetry
+  if params.reconstruction_symmetry.symmetry.lower()=='helical':
+    helical_list=[True]
+  elif params.reconstruction_symmetry.symmetry.lower() in ['all','any'] and\
+      params.reconstruction_symmetry.include_helical_symmetry:
+    helical_list=[False,True]
+  else:
+    helical_list=[False]
 
   new_ncs_obj,ncs_cc,ncs_score=None,None,None
   for use_center_of_map in center_try_list:
-    new_ncs_obj,ncs_cc,ncs_score=get_ncs_from_map(params=params,
+   for include_helical in helical_list:
+    local_params=deepcopy(params)
+    local_params.reconstruction_symmetry.include_helical_symmetry=\
+       include_helical
+    new_ncs_obj,ncs_cc,ncs_score=get_ncs_from_map(params=local_params,
       map_data=map_data,
       map_symmetry_center=map_symmetry_center,
       use_center_of_map_as_center=use_center_of_map,
@@ -2979,6 +3062,8 @@ def get_ncs_from_map(params=None,
        identify_ncs_id=identify_ncs_id,
        ncs_in_cell_only=ncs_in_cell_only,
       sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
+    if cc_avg < min_ncs_cc:
+      score=0. # Do not allow low CC values to be used
     if score is None:
       print >>out,"symmetry:",symmetry," no score",ncs_obj.max_operators()
     else:
@@ -3001,6 +3086,8 @@ def get_ncs_from_map(params=None,
         identify_ncs_id=identify_ncs_id,
         ncs_in_cell_only=ncs_in_cell_only,
         sites_orth=new_sites_orth,crystal_symmetry=crystal_symmetry,out=out)
+      if cc_avg < min_ncs_cc:
+        score=0. # Do not allow low CC values to be used
       if score is None:
         print >>out,"symmetry:",symmetry," no score",ncs_obj.max_operators()
       else:
@@ -3008,11 +3095,25 @@ def get_ncs_from_map(params=None,
     rescore_list.sort()
     rescore_list.reverse()
     results_list=rescore_list
+  if len(results_list)==1:
+    # check for C1
+    score,cc_avg,ncs_obj,symmetry=results_list[0]
+    if symmetry.strip()=='C1':
+      score=1.
+      cc_avg=1.
+      results_list=[[score,cc_avg,ncs_obj,symmetry],]
+
 
   print >>out,"Ranking of NCS types:"
+  if min_ncs_cc is not None:
+    print >>out,"NOTE: any NCS type with CC < %.2f (min_ncs_cc) is unscored " %(
+      min_ncs_cc)
   print >>out,"\n  SCORE    CC   OPERATORS     SYMMETRY"
   for score,cc_avg,ncs_obj,symmetry in results_list:
     if not symmetry: symmetry=""
+    if not cc_avg: cc_avg=0.0
+
+
     print >>out," %6.2f  %5.2f    %2d          %s" %(
        score,cc_avg,ncs_obj.max_operators(), symmetry.strip(),)
 
@@ -3028,6 +3129,7 @@ def get_ncs_from_map(params=None,
        helical_rot_deg=helical_rot_deg,
        two_fold_along_x=two_fold_along_x,
        op_max=op_max,
+       min_ncs_cc=min_ncs_cc,
        identify_ncs_id=identify_ncs_id,
        ncs_obj_to_check=ncs_obj_to_check,
        ncs_in_cell_only=ncs_in_cell_only,
@@ -3041,7 +3143,7 @@ def get_ncs_from_map(params=None,
   print >>out,"\nBest NCS type is: ",
   print >>out,"\n  SCORE    CC   OPERATORS     SYMMETRY"
   if not ncs_info: ncs_info=""
-  print >>out," %6.2f  %5.2f    %2d          %s" %(
+  print >>out," %6.2f  %5.2f    %2d          %s  Best NCS type" %(
        score,cc_avg,ncs_obj.max_operators(), ncs_info.strip(),)
   return ncs_obj,cc_avg,score
 
@@ -3055,6 +3157,7 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
      identify_ncs_id=None,
      ncs_obj_to_check=None,
      ncs_in_cell_only=None,
+     min_ncs_cc=None,
      helical_trans_z_angstrom=None,out=sys.stdout):
 
   if ncs_info is None:
@@ -3098,6 +3201,8 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
           identify_ncs_id=identify_ncs_id,
           ncs_in_cell_only=ncs_in_cell_only,
           sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
+        if cc_avg < min_ncs_cc:
+          score=0. # Do not allow low CC values to be used
       else:
         ncs_obj=None
         score,cc_avg=None,None
@@ -3173,6 +3278,8 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
         # This version does not assume point-group symmetry: find the NCS
         #  operator that maps each point on to all others the best, then save
   #  that list of values
+
+  # XXX must never be here because return is only one item below??
 
   identify_ncs_id_list=list(xrange(ncs_group.n_ncs_oper()))+[None]
 
@@ -3637,6 +3744,8 @@ def find_helical_symmetry(params=None,
 
 
   if best_helical_rot_deg and best_helical_trans_z_angstrom and best_score and best_ncs_cc:
+    # Check to make sure there is no overlap
+
     print >>out," %.2f   %.2f   %.2f   %.2f (Final)" %(
      best_helical_rot_deg,best_helical_trans_z_angstrom,\
          best_score,best_ncs_cc)
@@ -4021,6 +4130,7 @@ def apply_soft_mask(map_data=None,
           rad_smooth=None,
           crystal_symmetry=None,
           set_outside_to_mean_inside=False,
+          set_mean_to_zero=False,
           threshold=0.5,
           verbose=False,
           out=sys.stdout):
@@ -4089,6 +4199,9 @@ def apply_soft_mask(map_data=None,
   set_to_mean.set_selected(ss, target_value_for_outside)
 
   masked_map= (map_data * mask_data ) +  (set_to_mean * (1-mask_data))
+
+  if set_mean_to_zero:  # remove average
+    masked_map=masked_map - masked_map.as_1d().min_max_mean().mean
 
   if verbose:
     print >>out,"\nFinal mean value inside and outside mask:"
@@ -4564,8 +4677,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
   if map_data:
     pass # ok
   elif params.input_files.map_file:
-    from iotbx import ccp4_map
-    ccp4_map=iotbx.ccp4_map.map_reader(
+    from iotbx import mrcfile
+    ccp4_map=iotbx.mrcfile.map_reader(
     file_name=params.input_files.map_file)
     if not crystal_symmetry:
       crystal_symmetry=ccp4_map.crystal_symmetry() # 2018-07-18
@@ -4583,11 +4696,11 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     if len(params.input_files.half_map_file) != 2:
       raise Sorry("Please supply none or two half_map_file values")
 
-    from iotbx import ccp4_map
+    from iotbx import mrcfile
     half_map_data_list=[]
-    half_map_data_list.append(iotbx.ccp4_map.map_reader(
+    half_map_data_list.append(iotbx.mrcfile.map_reader(
        file_name=params.input_files.half_map_file[0]).data.as_double())
-    half_map_data_list.append(iotbx.ccp4_map.map_reader(
+    half_map_data_list.append(iotbx.mrcfile.map_reader(
        file_name=params.input_files.half_map_file[1]).data.as_double())
 
   # Get the NCS object
@@ -4604,6 +4717,13 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         crystal_symmetry=crystal_symmetry,
         verbose=params.control.verbose,
         resolve_size=params.control.resolve_size,
+        mask_padding_fraction=\
+           params.segmentation.mask_padding_fraction,
+        fraction_of_max_mask_threshold=\
+           params.segmentation.fraction_of_max_mask_threshold,
+        cell_cutoff_for_solvent_from_mask=\
+           params.segmentation.cell_cutoff_for_solvent_from_mask,
+        mask_resolution=params.crystal_info.resolution,
         map=map_data,
         out=out)
     if params.crystal_info.solvent_content:
@@ -4641,10 +4761,10 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       if not tracking_data.solvent_fraction:
         tracking_data.solvent_fraction=new_si.solvent_fraction
 
-      sharpened_map_file=os.path.join(
+      if tracking_data.params.output_files.sharpened_map_file:
+        sharpened_map_file=os.path.join(
             tracking_data.params.output_files.output_directory,
             tracking_data.params.output_files.sharpened_map_file)
-      if tracking_data.params.output_files.sharpened_map_file:
         sharpened_map_data=map_data.deep_copy()
         if acc is not None:  # offset the map to match original if possible
           sharpened_map_data.reshape(acc)
@@ -5025,7 +5145,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data,None
 
   if looking_for_ncs and (not found_ncs) and \
-         params.reconstruction_symmetry.symmetry != 'ANY':
+         params.reconstruction_symmetry.symmetry.upper() not in ['ANY','ALL']:
       raise Sorry(
         "Unable to identify %s symmetry automatically in this map." %(
         params.reconstruction_symmetry.symmetry)+
@@ -5083,6 +5203,11 @@ def get_and_apply_soft_mask_to_maps(
   else:
     buffer_radius=2.*resolution
   original_map_data=map_data.deep_copy()
+  # Check to make sure this is possible
+  cell_dims=crystal_symmetry.unit_cell().parameters()[:3]
+  min_cell_dim=min(cell_dims)
+  if wang_radius > 0.25 * min_cell_dim or buffer_radius > 0.25 * min_cell_dim:
+    raise Sorry("Cell is too small to get solvent fraction")
   mask_data,solvent_fraction=get_mask_around_molecule(map_data=map_data,
     crystal_symmetry=crystal_symmetry,
     wang_radius=wang_radius,
@@ -5524,6 +5649,9 @@ def get_connectivity(b_vs_region=None,
      verbose=None,
      out=sys.stdout):
   print >>out,"\nGetting connectivity"
+  libtbx.call_back(message='segment',data=None)
+
+
   # Normalize map data now to SD of the part that is not solvent
   map_data=renormalize_map_data(
      map_data=map_data,solvent_fraction=solvent_fraction)
@@ -7090,13 +7218,16 @@ def adjust_bounds(params,
   # range is lower_bounds to upper_bounds
   lower_bounds=list(lower_bounds)
   upper_bounds=list(upper_bounds)
-  if params.output_files.box_buffer is None: params.output_files.box_buffer=0
+  if params is None or params.output_files.box_buffer is None:
+     box_buffer=0
+  else:
+     box_buffer=params.output_files.box_buffer
   for i in xrange(3):
     if lower_bounds[i] is None: lower_bounds[i]=0
     if upper_bounds[i] is None: upper_bounds[i]=0
-    lower_bounds[i]-=params.output_files.box_buffer
+    lower_bounds[i]-=box_buffer
     lower_bounds[i]=max(0,lower_bounds[i])
-    upper_bounds[i]+=params.output_files.box_buffer
+    upper_bounds[i]+=box_buffer
     upper_bounds[i]=min(map_data.all()[i]-1,upper_bounds[i])
 
 
@@ -7267,6 +7398,16 @@ def write_output_files(params,
   #   other NCS copies.  Expand the mask to include neighboring points (but
   #   not those explicitly in other NCS copies
 
+  if params.map_modification.soft_mask and params.control.save_box_map_ncs_au:
+    mask_expand_size=estimate_expand_size(
+       crystal_symmetry=tracking_data.crystal_symmetry,
+       map_data=map_data,
+       expand_target=tracking_data.params.segmentation.mask_expand_ratio*\
+          tracking_data.params.crystal_info.resolution,
+          out=out)
+    params.segmentation.mask_additional_expand_size = max(mask_expand_size,
+      params.segmentation.mask_additional_expand_size,)
+
   bool_selected_regions,bool_ncs_related_mask,lower_bounds,upper_bounds=\
      get_selected_and_related_regions(
       params,ncs_group_obj=ncs_group_obj)
@@ -7373,14 +7514,23 @@ def write_output_files(params,
   mask=map_data.deep_copy()
   mask=mask.set_selected(s,1)
   mask=mask.set_selected(~s,0)
-  map_data_ncs_au=map_data_ncs_au*mask
+  if params.map_modification.soft_mask:
+    # buffer and smooth the mask
+    print "Smoothing mask"
+    map_data_ncs_au,smoothed_mask_data=apply_soft_mask(map_data=map_data_ncs_au,
+      mask_data=mask.as_double(),
+      rad_smooth=tracking_data.params.crystal_info.resolution,
+      crystal_symmetry=tracking_data.crystal_symmetry,
+      out=out)
+  else:
+    map_data_ncs_au=map_data_ncs_au*mask
 
-  one_d=map_data_ncs_au.as_1d()
-  n_zero=mask.count(0)
-  n_tot=mask.size()
-  mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
-  map_data_ncs_au=map_data_ncs_au+(1-mask)*mean_in_box
-  del one_d,mask
+    one_d=map_data_ncs_au.as_1d()
+    n_zero=mask.count(0)
+    n_tot=mask.size()
+    mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
+    map_data_ncs_au=map_data_ncs_au+(1-mask)*mean_in_box
+    del one_d,mask
 
   if au_map_output_file and params.output_files.write_output_maps:
     # Write out the NCS au of density
@@ -7420,6 +7570,8 @@ def write_output_files(params,
   # Map
   box_map_ncs_au,box_crystal_symmetry,\
        dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
+       soft_mask=tracking_data.params.map_modification.soft_mask,
+       resolution=tracking_data.params.crystal_info.resolution,
        map_data=map_data_ncs_au.as_double(),
        crystal_symmetry=tracking_data.crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds,out=out)
@@ -7427,6 +7579,9 @@ def write_output_files(params,
        tracking_data.set_box_map_ncs_au_map_data(
        box_map_ncs_au_crystal_symmetry=box_crystal_symmetry,
        box_map_ncs_au_map_data=box_map_ncs_au,)
+
+  write_ccp4_map(tracking_data.crystal_symmetry,'map_data_ncs_au.ccp4',map_data_ncs_au)
+  write_ccp4_map(box_crystal_symmetry,'box_map_ncs_au.ccp4',box_map_ncs_au)
 
   if params.output_files.box_map_file:
     # write out NCS map as box_map (cut out region of map enclosed in box_mask)
@@ -7660,7 +7815,7 @@ def get_grid_units(map_data=None,crystal_symmetry=None,radius=None,
     grid_spacing=(sx_cart+sy_cart+sz_cart)/3.
     grid_units=int(radius/grid_spacing)
     min_cell_grid_units=min(N_[0], N_[1], N_[2])
-    grid_units=min(grid_units,int(min_cell_grid_units/3))
+    grid_units=max(1,min(grid_units,int(min_cell_grid_units/3)))
     print >>out,"Grid units representing %7.1f A will be %d" %(
        radius,grid_units)
     return grid_units
@@ -7676,7 +7831,11 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
     assert min_point[i] >= 0
     assert max_point[i] <= na[i]
   new_map_data = maptbx.copy(map_data, tuple(min_point), tuple(max_point))
+  # NOTE: end point of map is max_point, so size of map (new all()) is
+  #   (max_point-min_point+ (1,1,1))
   # shrink unit cell, angles are the same
+  #  NOTE 2: the origin of output map will be min_point (not 0,0,0).
+
   shrunk_uc = []
   for i in range(3):
     shrunk_uc.append(
@@ -7688,7 +7847,11 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
   new_crystal_symmetry=crystal.symmetry(
     unit_cell=new_unit_cell_box,space_group='p1')
 
-  if soft_mask and soft_mask_radius is not None:
+  if soft_mask:
+    if soft_mask_radius is None:
+       soft_mask_radius=resolution
+       assert soft_mask_radius is not None
+
     original_map_data=new_map_data.deep_copy()
     new_map_data,smoothed_mask_data=set_up_and_apply_soft_mask(
        map_data=new_map_data,
@@ -7707,8 +7870,9 @@ def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
   crystal_symmetry=None,resolution=None,
   radius=None,out=sys.stdout):
 
-    assert shift_origin  # need to do this
+    acc=map_data.accessor()
     map_data = map_data.shift_origin()
+    new_acc=map_data.accessor()
 
     # Add soft boundary to mean around outside of mask
     # grid_units is how many grid units are about equal to soft_mask_radius
@@ -7726,6 +7890,9 @@ def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
           rad_smooth=resolution,
           crystal_symmetry=crystal_symmetry,
           out=out)
+    if new_acc != acc:
+      new_map_data.reshape(acc)
+      smoothed_mask_data.reshape(acc)
     return new_map_data,smoothed_mask_data
 
 def apply_shift_to_pdb_hierarchy(
@@ -8064,6 +8231,8 @@ def get_marked_points_cart(mask_data=None,unit_cell=None,
 def get_overall_mask(
     map_data=None,
     mask_threshold=None,
+    fraction_of_max_mask_threshold=None,
+    mask_padding_fraction=None,
     solvent_fraction=None,
     crystal_symmetry=None,
     radius=None,
@@ -8133,6 +8302,25 @@ def get_overall_mask(
     max_in_sd_map,
     mean_in_map,
     min_in_map)
+
+  if fraction_of_max_mask_threshold:
+    mask_threshold=fraction_of_max_mask_threshold*max_in_sd_map
+    print >>out,"Using fraction of max as threshold: %.3f " %(
+        fraction_of_max_mask_threshold), \
+        "which is threshold of %.3f" %(mask_threshold)
+    if mask_padding_fraction:
+      # Adjust threshold to increase by mask_padding_fraction, proportional
+      #  to fraction available
+      overall_mask=(sd_map>= mask_threshold)
+      current_above_threshold=overall_mask.count(True)/overall_mask.size()
+      # current+(1-current)*pad
+      additional_padding=(1-current_above_threshold)*mask_padding_fraction
+      target_above_threshold=min(
+        0.99,current_above_threshold+additional_padding)
+      print >>out,"Target with padding of %.2f will be %.2f" %(
+         mask_padding_fraction,target_above_threshold)
+      solvent_fraction=(1-target_above_threshold)
+      mask_threshold=None
 
   if mask_threshold:
     print >>out,"Cutoff for mask will be input threshold"
@@ -8357,16 +8545,40 @@ def put_bounds_in_range(
 def get_iterated_solvent_fraction(map=None,
     verbose=None,
     resolve_size=None,
-    crystal_symmetry=None,out=sys.stdout):
+    crystal_symmetry=None,
+    mask_padding_fraction=None,
+    fraction_of_max_mask_threshold=None,
+    cell_cutoff_for_solvent_from_mask=None,
+    mask_resolution=None,
+    out=sys.stdout):
+  if cell_cutoff_for_solvent_from_mask and \
+   crystal_symmetry.unit_cell().volume() > cell_cutoff_for_solvent_from_mask**3:
+     #go directly to low_res_mask
+     return get_solvent_fraction_from_low_res_mask(
+      crystal_symmetry=crystal_symmetry,
+      map_data=map.deep_copy(),
+      mask_padding_fraction=mask_padding_fraction,
+      fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+      mask_resolution=mask_resolution)
+
   try:
     from phenix.autosol.map_to_model import iterated_solvent_fraction
-    return iterated_solvent_fraction(
+    solvent_fraction=iterated_solvent_fraction(
       crystal_symmetry=crystal_symmetry,
       map_as_double=map,
       verbose=verbose,
       resolve_size=resolve_size,
       return_solvent_fraction=True,
       out=out)
+    if solvent_fraction<=0.989:  # means that it was 0.99 which is hard limit
+      return solvent_fraction
+    else:  # use backup method
+      return get_solvent_fraction_from_low_res_mask(
+        crystal_symmetry=crystal_symmetry,
+        map_data=map.deep_copy(),
+        mask_padding_fraction=mask_padding_fraction,
+        fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+        mask_resolution=mask_resolution)
   except Exception,e:
     # catch case where map was not on proper grid
     if str(e).find("sym equiv of a grid point must be a grid point")>-1:
@@ -8384,8 +8596,32 @@ def get_iterated_solvent_fraction(map=None,
        "\nIt may be possible to go on by supplying solvent content"+
       "or molecular_mass")
 
+    # Try to get solvent fraction with low_res mask
+    return get_solvent_fraction_from_low_res_mask(
+      crystal_symmetry=crystal_symmetry,
+      map_data=map.deep_copy(),
+      mask_padding_fraction=mask_padding_fraction,
+      fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+      mask_resolution=mask_resolution)
 
-    return None  # was not available
+def get_solvent_fraction_from_low_res_mask(
+      crystal_symmetry=None,map_data=None,
+      fraction_of_max_mask_threshold=None,
+      mask_padding_fraction=None,
+      mask_resolution=None,
+      out=sys.stdout):
+
+  overall_mask,max_in_sd_map,sd_map=get_overall_mask(map_data=map_data,
+    fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
+    mask_padding_fraction=mask_padding_fraction,
+    crystal_symmetry=crystal_symmetry,
+    resolution=mask_resolution,
+    out=out)
+
+  solvent_fraction=overall_mask.count(False)/overall_mask.size()
+  print >>out,"Solvent fraction from overall mask: %.3f " %(solvent_fraction)
+  return solvent_fraction
+
 
 def get_solvent_fraction_from_molecular_mass(
         crystal_symmetry=None,molecular_mass=None,out=sys.stdout):
@@ -8483,6 +8719,9 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'k_sol',
        'b_sol',
        'fraction_complete',
+       'nproc',
+       'multiprocessing',
+       'queue_run_command',
        'verbose',
          ]:
      x=var_dict.get(param)
@@ -8855,7 +9094,12 @@ def select_box_map_data(si=None,
       box_solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=box_crystal_symmetry,
         map=box_map,
+        fraction_of_max_mask_threshold=si.fraction_of_max_mask_threshold,
+        mask_resolution=si.resolution,
         out=out)
+    if box_solvent_fraction is None:
+      box_solvent_fraction=si.solvent_fraction
+      print >>out,"Using overall solvent fraction for box"
     print >>out,"Local solvent fraction: %7.2f" %(box_solvent_fraction)
   else:
     box_solvent_fraction=None
@@ -9083,22 +9327,40 @@ def fit_bounds_inside_box(lower,upper,box_size=None,all=None):
 
   return new_lower,new_upper
 
-def split_boxes(lower=None,upper=None,target_size=None,target_n_overlap=None):
+def split_boxes(lower=None,upper=None,target_size=None,target_n_overlap=None,
+     fix_target_size_and_overlap=None):
   # purpose: split the region from lower to upper into overlapping
   # boxes of size about target_size
+  # NOTE: does not actually use target_n_overlap unless
+  #     fix_target_size_and_overlap is set
 
   all_box_list=[]
   for l,u,ts in zip (lower,upper,target_size):
     n=u+1-l
-    n_box=max(1,(n+(3*ts//4))//ts)
-    new_target_size=int(0.9+n/n_box)
+    # offset defined by: ts-offset + ts-offset+...+ts =n
+    #                 ts*n_box-offset*(n_box-1)=n approx
+    #             n_box (ts-offset) +offset=n
+    #             n_box= (n-offset)/(ts-offset)
+    assert ts>target_n_overlap
+    if fix_target_size_and_overlap:
+      n_box=(n-target_n_overlap-1)/(ts-target_n_overlap)
+      if n_box>int(n_box):
+        n_box=int(n_box)+1
+      else:
+        n_box=int(n_box)
 
-    # offset defined by: (n_box-1)*offset+ts=n
-    offset=int(0.9+(n-new_target_size)/max(1,n_box-1))
+      new_target_size=ts
+      offset=ts-target_n_overlap
+    else: # original version
+      n_box=max(1,(n+(3*ts//4))//ts)
+      new_target_size=int(0.9+n/n_box)
+      offset=int(0.9+(n-new_target_size)/max(1,n_box-1))
     box_list=[]
     for i in xrange(n_box):
       start_pos=max(l,l+i*offset)
       end_pos=min(u,start_pos+new_target_size)
+      if fix_target_size_and_overlap:
+        start_pos=max(0,min(start_pos,end_pos-new_target_size))
       box_list.append([start_pos,end_pos])
     all_box_list.append(box_list)
   new_lower_upper_list=[]
@@ -9524,6 +9786,9 @@ def auto_sharpen_map_or_map_coeffs(
         return_bsi=False,
         verbose=None,
         resolve_size=None,
+        nproc=None,
+        multiprocessing=None,
+        queue_run_command=None,
         out=sys.stdout):
     if si:  #
       resolution=si.resolution
@@ -9575,13 +9840,14 @@ def auto_sharpen_map_or_map_coeffs(
         pdb_inp=pdb_inp,
         ncs_copies=ncs_copies,
         n_residues=n_residues,out=out)
-
     # Figure out solvent fraction
     if si.solvent_fraction is None:
       si.solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=crystal_symmetry,
         verbose=si.verbose,
         resolve_size=si.resolve_size,
+        fraction_of_max_mask_threshold=si.fraction_of_max_mask_threshold,
+        mask_resolution=si.resolution,
         map=map,
         out=out)
     if si.solvent_fraction:
@@ -9599,6 +9865,7 @@ def auto_sharpen_map_or_map_coeffs(
 
     # Decide if we are running local sharpening (overlapping set of sharpening
     #   runs at various locations)
+    libtbx.call_back(message='sharpen',data=None)
     if si.local_sharpening:
       return run_local_sharpening(si=si,
          auto_sharpen_methods=auto_sharpen_methods,
@@ -9632,6 +9899,8 @@ def auto_sharpen_map_or_map_coeffs(
         crystal_symmetry=crystal_symmetry,
         verbose=overall_si.verbose,
         resolve_size=overall_si.resolve_size,
+        fraction_of_max_mask_threshold=si.fraction_of_max_mask_threshold,
+        mask_resolution=si.resolution,
         map=working_map,
         out=out)
       print >>out,"Resetting solvent fraction to %.2f " %(
@@ -10019,18 +10288,66 @@ def run_auto_sharpen(
       b_mid=b_low+0.375*(b_high-b_low)
 
     ok_region_weight=True
-    for b_iso in [b_low,b_high,b_mid]:
+    results_list=[]
+    kw_list=[]
+    first=True
 
-      local_si.b_sharpen=original_b_iso-b_iso
-      local_si.b_iso=b_iso
+    id=0
+    for b_iso in [b_low,b_high,b_mid]:
+      id+=1
+
+      if first and local_si.multiprocessing=='multiprocessing' or \
+          local_si.nproc==1:  # can do anything
+        local_log=out
+      else:  # skip log entirely
+        local_log=None  # will set this later and return as r.log_as_text
+      first=False
+      lsi=deepcopy(local_si)
+
+      lsi.b_sharpen=original_b_iso-b_iso
+      lsi.b_iso=b_iso
+
+      # ------ SET UP RUN HERE ----------
+      kw_list.append(
+      {
+      'f_array':f_array,
+      'phases':phases,
+        'crystal_symmetry':lsi.crystal_symmetry,
+        'local_si':lsi,
+        'id':id,
+        'out':local_log,
+       })
+      # We are going to call autosharpening with this
+      # ------ END OF SET UP FOR RUN ----------
+
+      """
 
       local_map_and_b=apply_sharpening(
             f_array=f_array,phases=phases,
-            sharpening_info_obj=local_si,
-            crystal_symmetry=local_si.crystal_symmetry,
+            sharpening_info_obj=lsi,
+            crystal_symmetry=lsi.crystal_symmetry,
             out=null_out())
-      local_si=score_map(map_data=local_map_and_b.map_data,sharpening_info_obj=local_si,
+      local_si=score_map(map_data=local_map_and_b.map_data,
+          sharpening_info_obj=local_si,
           out=null_out())
+      """
+      # This is the actual run here =============
+
+    from libtbx.easy_mp import run_parallel
+    results_list=run_parallel(
+       method=si.multiprocessing,
+       qsub_command=si.queue_run_command,
+       nproc=si.nproc,
+       target_function=run_sharpen_and_score,kw_list=kw_list)
+    # results looks like: [result,result2]
+
+    sort_list=[]
+    for result in results_list:
+      sort_list.append([result.id,result])
+    sort_list.sort()
+    for id,result in sort_list:
+      local_si=result.local_si
+
       if local_si.sa_ratio is None or local_si.normalized_regions is None:
         ok_region_weight=False
       sa_ratio_list.append(local_si.sa_ratio)
@@ -10228,6 +10545,12 @@ def run_auto_sharpen(
       si_b_iso_list=flex.double()
       si_score_list=flex.double()
       si_id_list=[]
+
+      kw_list=[]
+      first=True
+      if return_bsi: assert local_si.nproc==1  #
+
+      results_list=[]
       for i in xrange(b_n):
         # ============================================
         local_si=deepcopy(si).update_with_box_sharpening_info(
@@ -10235,6 +10558,14 @@ def run_auto_sharpen(
         local_si.sharpening_method=m
         local_si.n_real=map_data.all()
         local_si.k_sharpen=k_sharpen
+
+        if first and local_si.multiprocessing=='multiprocessing' or \
+            local_si.nproc==1:  # can do anything
+          local_log=out
+        else:  # skip log entirely
+          local_log=None  # will set this later and return as r.log_as_text
+        first=False
+
 
         if m=='resolution_dependent':
           print >>out,\
@@ -10283,48 +10614,51 @@ def run_auto_sharpen(
           local_si.b_sharpen=original_b_iso-b_iso
           local_si.b_iso=b_iso
 
-        local_map_and_b=apply_sharpening(
-            f_array=local_f_array,phases=local_phases,
-            sharpening_info_obj=local_si,
-            crystal_symmetry=local_si.crystal_symmetry,
-            out=null_out())
-        local_si=score_map(map_data=local_map_and_b.map_data,
-          sharpening_info_obj=local_si,
-          out=null_out())
-        # Record b_iso values
-        if not local_map_and_b.starting_b_iso:
-          local_map_and_b.starting_b_iso=original_b_iso
-        if not local_map_and_b.final_b_iso:
-          local_map_and_b.final_b_iso=local_si.b_iso
+        # ------ SET UP RUN HERE ----------
+        kw_list.append(
+        {
+        'f_array':local_f_array,
+        'phases':local_phases,
+          'crystal_symmetry':local_si.crystal_symmetry,
+          'original_b_iso':original_b_iso,
+          'local_si':local_si,
+          'm':m,
+          'return_bsi':return_bsi,
+          'out':local_log,
+          'id':i+1,
+         })
+        # We are going to call autosharpening with this
+        # ------ END OF SET UP FOR RUN ----------
 
-        if m=='resolution_dependent':
-          print >>out,\
-           "\nb[0]   b[1]   b[2]   SA   Kurtosis   sa_ratio  Normalized regions"
-          print >>out,\
-            "\nB-sharpen   B-iso   k_sharpen   SA   "+\
-             "Kurtosis  sa_ratio  Normalized regions"
-          print >>out," %6.2f  %6.2f  %6.2f  " %(
-              local_si.resolution_dependent_b[0],
-              local_si.resolution_dependent_b[1],
-              local_si.resolution_dependent_b[2]) +\
-            "  %7.3f  %7.3f  " %(
-                local_si.adjusted_sa,local_si.kurtosis)+\
-            " %7.3f  %7.3f" %(
-             local_si.sa_ratio,local_si.normalized_regions)
-        elif local_si.b_sharpen is not None and local_si.b_iso is not None and\
+
+        # This is the actual run here =============
+
+      from libtbx.easy_mp import run_parallel
+      results_list=run_parallel(
+         method=si.multiprocessing,
+         qsub_command=si.queue_run_command,
+         nproc=si.nproc,
+         target_function=run_sharpen_and_score,kw_list=kw_list)
+      # results looks like: [result,result2]
+
+      sort_list=[]
+      for result in results_list:
+        sort_list.append([result.id,result])
+      sort_list.sort()
+      for id,result in sort_list:
+        local_si=result.local_si
+        local_map_and_b=result.local_map_and_b
+        if result.text:
+          print result.text
+        # Run through all result to get these
+        if local_si.b_sharpen is not None and local_si.b_iso is not None and\
            local_si.k_sharpen is not None and local_si.kurtosis is not None \
-           and local_si.adjusted_sa is not None:
-          print >>out,\
-           " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
-            local_si.b_sharpen,local_si.b_iso,
-             local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
-            "  %7.3f         %7.3f" %(
-             local_si.sa_ratio,local_si.normalized_regions)
-          if local_si.b_iso is not None and local_si.score is not None:
+           and local_si.adjusted_sa is not None and local_si.score is not None:
             si_b_iso_list.append(local_si.b_iso)
             si_score_list.append(local_si.score)
             if local_si.k_sharpen is not None:
-             si_id_list.append("%.3f_%.3f_%.3f" %(local_si.b_iso,local_si.k_sharpen,
+             si_id_list.append("%.3f_%.3f_%.3f" %(
+               local_si.b_iso,local_si.k_sharpen,
                local_si.get_d_cut()))
 
         if m=='no_sharpening':
@@ -10334,6 +10668,7 @@ def run_auto_sharpen(
           local_best_map_and_b=local_map_and_b
 
         # ============================================
+        # DONE WITH ALL RUNS
 
       if not local_best_si.is_model_sharpening() and \
           not local_best_si.is_half_map_sharpening():
@@ -10472,6 +10807,72 @@ def run_auto_sharpen(
         best_si.crystal_symmetry.unit_cell().parameters()))
       # and set tracking data with result
   return best_si
+
+def run_sharpen_and_score(f_array=None,
+  phases=None,
+  local_si=None,
+  crystal_symmetry=None,
+  original_b_iso=None,
+  m=None,
+  return_bsi=None,
+  id=None,
+  out=sys.stdout):
+
+        local_map_and_b=apply_sharpening(
+            f_array=f_array,phases=phases,
+            sharpening_info_obj=local_si,
+            crystal_symmetry=crystal_symmetry,
+            out=null_out())
+        local_si=score_map(map_data=local_map_and_b.map_data,
+          sharpening_info_obj=local_si,
+          out=null_out())
+        # Record b_iso values
+        if not local_map_and_b.starting_b_iso:
+          local_map_and_b.starting_b_iso=original_b_iso
+        if not local_map_and_b.final_b_iso:
+          local_map_and_b.final_b_iso=local_si.b_iso
+
+        # This is printout below here ===============
+
+        if m=='resolution_dependent':
+          text=\
+           "\nb[0]   b[1]   b[2]   SA   Kurtosis   sa_ratio  Normalized regions"
+          text+="\n"+\
+            "\nB-sharpen   B-iso   k_sharpen   SA   "+\
+             "Kurtosis  sa_ratio  Normalized regions"
+          text+="\n"+" %6.2f  %6.2f  %6.2f  " %(
+              local_si.resolution_dependent_b[0],
+              local_si.resolution_dependent_b[1],
+              local_si.resolution_dependent_b[2]) +\
+            "  %7.3f  %7.3f  " %(
+                local_si.adjusted_sa,local_si.kurtosis)+\
+            " %7.3f  %7.3f" %(
+             local_si.sa_ratio,local_si.normalized_regions)
+        elif local_si.b_sharpen is not None and local_si.b_iso is not None and\
+           local_si.k_sharpen is not None and local_si.kurtosis is not None \
+           and local_si.adjusted_sa is not None:
+          text=\
+           " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
+            local_si.b_sharpen,local_si.b_iso,
+             local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
+            "  %7.3f         %7.3f" %(
+             local_si.sa_ratio,local_si.normalized_regions)
+        else:
+          text=""
+
+        if return_bsi:
+          r=group_args(
+            local_si=local_si,
+            local_map_and_b=local_map_and_b,
+            text=text,
+            id=id)
+        else:
+          r=group_args(
+            local_si=local_si,
+            local_map_and_b=None,
+            text=text,
+            id=id)
+        return r
 
 def effective_b_iso(map_data=None,tracking_data=None,
       box_sharpening_info_obj=None,
@@ -10944,4 +11345,3 @@ def run(args,
 
 if __name__=="__main__":
   run(args=sys.argv[1:])
-

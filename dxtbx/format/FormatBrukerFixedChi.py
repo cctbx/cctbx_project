@@ -10,127 +10,142 @@ from __future__ import absolute_import, division, print_function
 from dxtbx.format.FormatBruker import FormatBruker
 from scitbx import matrix
 
+
 class FormatBrukerFixedChi(FormatBruker):
+    @staticmethod
+    def understand(image_file):
 
-  @staticmethod
-  def understand(image_file):
-    #return False
-    try:
-      tag = FormatBruker.open_file(image_file, 'rb').read(1024)
-    except IOError:
-      return False
-    matches = []
-    for x in xrange(0,1024,80):
-      word = tag[x:x+16]
-      if word[0:7].isupper() and word[7]==":":
-        matches.append(word)
+        hdr = FormatBruker.read_header_lines(image_file)
+        hdr_dic = FormatBruker.parse_header(hdr)
 
-    return len(matches)>=12 and 'FixedChiStage' in tag
+        if "FixedChiStage" not in hdr_dic["MODEL"]:
+            return False
+        if "PHOTONII" in hdr_dic["DETTYPE"]:
+            return False
 
-  def __init__(self, image_file, **kwargs):
-    '''Initialise the image structure from the given file, including a
-    proper model of the experiment. Easy from Rigaku Saturn images as
-    they contain everything pretty much we need...'''
-    from dxtbx import IncorrectFormatError
-    if not self.understand(image_file):
-      raise IncorrectFormatError(self, image_file)
+        return True
 
-    self._image_file = image_file
-    FormatBruker.__init__(self, image_file, **kwargs)
+    def __init__(self, image_file, **kwargs):
+        """Initialise the image structure from the given file, including a
+        proper model of the experiment. Easy from Rigaku Saturn images as
+        they contain everything pretty much we need..."""
+        from dxtbx import IncorrectFormatError
 
-  def _start(self):
-    self.header_dict = { }
-    header_text = open(self._image_file).read().split('......')[0]
-    for j in range(0, len(header_text), 80):
-      record = header_text[j:j + 80]
-      if record.startswith('CFR:'):
-        continue
-      key = record[:8]
-      assert(key[-1] == ':')
-      values = record[8:]
-      self.header_dict[key.replace(':', '').strip()] = [
-        v.strip() for v in values.split()]
-    from iotbx.detectors.bruker import BrukerImage
-    self.detectorbase = BrukerImage(self._image_file)
+        if not self.understand(image_file):
+            raise IncorrectFormatError(self, image_file)
 
-  def _goniometer(self):
-    # goniometer angles in ANGLES are 2-theta, omega, phi, chi (FIXED)
-    # AXIS indexes into this list to define the scan axis (in FORTRAN counting)
-    # START and RANGE define the start and step size for each image
-    # assume omega is 1,0,0 axis; chi about 0,0,1 at datum
+        self._image_file = image_file
+        FormatBruker.__init__(self, image_file, **kwargs)
 
-    from scitbx import matrix
-    angles = map(float, self.header_dict['ANGLES'])
+    def _start(self):
+        self.header_dict = {}
+        header_text = open(self._image_file).read().split("......")[0]
+        for j in range(0, len(header_text), 80):
+            record = header_text[j : j + 80]
+            if record.startswith("CFR:"):
+                continue
+            key = record[:8]
+            assert key[-1] == ":"
+            values = record[8:]
+            self.header_dict[key.replace(":", "").strip()] = [
+                v.strip() for v in values.split()
+            ]
+        from iotbx.detectors.bruker import BrukerImage
 
-    beam = matrix.col((0, 0, 1))
-    phi = matrix.col((1, 0, 0)).rotate(-beam, angles[3], deg=True)
+        self.detectorbase = BrukerImage(self._image_file)
 
-    if self.header_dict['AXIS'][0] == '2':
-      # OMEGA scan
-      axis = (-1, 0, 0)
-      incr = float(self.header_dict['INCREME'][0])
-      if incr < 0:
-        axis = (1, 0, 0)
-      fixed = phi.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
-      return self._goniometer_factory.make_goniometer(axis, fixed.elems)
-    else:
-      # PHI scan
-      assert(self.header_dict['AXIS'][0] == '3')
-      omega = matrix.col((1, 0, 0))
-      axis = phi.rotate(omega, angles[1], deg=True)
-      return self._goniometer_factory.known_axis(axis.elems)
+    def _goniometer(self):
+        # goniometer angles in ANGLES are 2-theta, omega, phi, chi (FIXED)
+        # AXIS indexes into this list to define the scan axis (in FORTRAN counting)
+        # START and RANGE define the start and step size for each image
+        # assume omega is 1,0,0 axis; chi about 0,0,1 at datum
 
-  def _detector(self):
-    # goniometer angles in ANGLES are 2-theta, omega, phi, chi (FIXED)
-    two_theta = float(self.header_dict['ANGLES'][0])
-    overload = 60000
-    underload = 0
+        from scitbx import matrix
 
-    fast = matrix.col((1, 0, 0))
-    slow = matrix.col((0, 1, 0))
-    beam = matrix.col((0, 0, 1))
-    pixel_mm = 5.0 / float(self.header_dict['DETTYPE'][1])
-    beam_pixel = map(float, self.header_dict['CENTER'][:2])
-    distance_mm = 10.0 * float(self.header_dict['DISTANC'][1])
-    origin = - distance_mm * beam - fast * pixel_mm * beam_pixel[1] - \
-      slow * pixel_mm * beam_pixel[0]
-    origin = origin.rotate(-fast, two_theta, deg = True)
-    slow = slow.rotate(-fast, two_theta, deg = True)
-    pixel_size = pixel_mm, pixel_mm
-    image_size = int(self.header_dict['NROWS'][0]), \
-      int(self.header_dict['NCOLS'][0])
+        angles = map(float, self.header_dict["ANGLES"])
 
-    return self._detector_factory.complex(
-        'CCD', origin.elems, fast.elems, slow.elems, pixel_size, image_size,
-      (underload, overload))
+        beam = matrix.col((0, 0, 1))
+        phi = matrix.col((1, 0, 0)).rotate(-beam, angles[3], deg=True)
 
-  def _beam(self):
-    wavelength = float(self.header_dict['WAVELEN'][0])
+        if self.header_dict["AXIS"][0] == "2":
+            # OMEGA scan
+            axis = (-1, 0, 0)
+            incr = float(self.header_dict["INCREME"][0])
+            if incr < 0:
+                axis = (1, 0, 0)
+            fixed = phi.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
+            return self._goniometer_factory.make_goniometer(axis, fixed.elems)
+        else:
+            # PHI scan
+            assert self.header_dict["AXIS"][0] == "3"
+            omega = matrix.col((1, 0, 0))
+            axis = phi.rotate(omega, angles[1], deg=True)
+            return self._goniometer_factory.known_axis(axis.elems)
 
-    return self._beam_factory.simple(wavelength)
+    def _detector(self):
+        # goniometer angles in ANGLES are 2-theta, omega, phi, chi (FIXED)
+        two_theta = float(self.header_dict["ANGLES"][0])
+        overload = 60000
+        underload = 0
 
-  def _scan(self):
+        fast = matrix.col((1, 0, 0))
+        slow = matrix.col((0, 1, 0))
+        beam = matrix.col((0, 0, 1))
+        pixel_mm = 5.0 / float(self.header_dict["DETTYPE"][1])
+        beam_pixel = map(float, self.header_dict["CENTER"][:2])
+        distance_mm = 10.0 * float(self.header_dict["DISTANC"][1])
+        origin = (
+            -distance_mm * beam
+            - fast * pixel_mm * beam_pixel[1]
+            - slow * pixel_mm * beam_pixel[0]
+        )
+        origin = origin.rotate(-fast, two_theta, deg=True)
+        slow = slow.rotate(-fast, two_theta, deg=True)
+        pixel_size = pixel_mm, pixel_mm
+        image_size = (
+            int(self.header_dict["NROWS"][0]),
+            int(self.header_dict["NCOLS"][0]),
+        )
 
-    start = float(self.header_dict['START'][0])
-    incr = float(self.header_dict['INCREME'][0])
-    if incr < 0:
-      start *= -1
-      incr *= -1
+        return self._detector_factory.complex(
+            "CCD",
+            origin.elems,
+            fast.elems,
+            slow.elems,
+            pixel_size,
+            image_size,
+            (underload, overload),
+        )
 
-    return self._scan_factory.single(
-      filename = self._image_file,
-      format = "BrukerCCD",
-      exposure_times = 1,
-      osc_start = start,
-      osc_width = incr,
-      epoch = None)
+    def _beam(self):
+        wavelength = float(self.header_dict["WAVELEN"][0])
 
-  # FIXME implement get_raw_data including LINEAR factor (multiplier) =>
-  # explains the observed GAIN around 10
+        return self._beam_factory.simple(wavelength)
 
-if __name__ == '__main__':
+    def _scan(self):
 
-  import sys
+        start = float(self.header_dict["START"][0])
+        incr = float(self.header_dict["INCREME"][0])
+        if incr < 0:
+            start *= -1
+            incr *= -1
 
-  for arg in sys.argv[1:]:
-    print(FormatBrukerFixedChi.understand(arg))
+        return self._scan_factory.single(
+            filename=self._image_file,
+            format="BrukerCCD",
+            exposure_times=1,
+            osc_start=start,
+            osc_width=incr,
+            epoch=None,
+        )
+
+    # FIXME implement get_raw_data including LINEAR factor (multiplier) =>
+    # explains the observed GAIN around 10
+
+
+if __name__ == "__main__":
+
+    import sys
+
+    for arg in sys.argv[1:]:
+        print(FormatBrukerFixedChi.understand(arg))

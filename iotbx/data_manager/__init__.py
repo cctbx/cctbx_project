@@ -5,6 +5,8 @@ from __future__ import division, print_function
 import inspect, os, re, sys
 import importlib
 
+from collections import OrderedDict
+
 import libtbx.phil
 
 from iotbx.file_reader import any_file
@@ -184,7 +186,7 @@ class DataManagerBase(object):
       # data attributes for each data type
       # e.g self._models, self._default_model
       self._set_datatype(datatype)
-      setattr(self, self._current_storage, dict())
+      setattr(self, self._current_storage, OrderedDict())
       setattr(self, self._current_default, None)
 
     # track output files for internal use
@@ -250,8 +252,7 @@ class DataManagerBase(object):
       else:
         filenames = getattr(phil_extract.data_manager, '%s_files' % datatype,
                             None)
-        # filenames are reversed to preserve original order
-        for filename in reversed(filenames):
+        for filename in filenames:
           # call type-specific function (e.g. self.process_model_file())
           # checks if file is already in DataManager
           getattr(self, 'process_%s_file' % datatype)(filename)

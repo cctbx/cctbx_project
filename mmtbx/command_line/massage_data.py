@@ -32,7 +32,7 @@ output {
 }
 """
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   import iotbx.phil
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
@@ -49,25 +49,25 @@ negative intensities, add or remove twinning.  For expert use (and extreme
 cases) only.
 """)
   params = cmdline.work.extract()
-  if (params.input.data is None) :
+  if (params.input.data is None):
     raise Sorry("No data file supplied.")
   from mmtbx.scaling import massage_twin_detwin_data
   from iotbx import crystal_symmetry_from_any
   from iotbx import reflection_file_utils
   from cctbx import crystal
   crystal_symmetry = space_group = unit_cell = None
-  if (params.crystal_symmetry.space_group is not None) :
+  if (params.crystal_symmetry.space_group is not None):
     space_group = params.crystal_symmetry.space_group
-  if (params.crystal_symmetry.unit_cell is not None) :
+  if (params.crystal_symmetry.unit_cell is not None):
     unit_cell = params.crystal_symmetry.unit_cell
   crystal_symmetry = None
-  if (params.crystal_symmetry.symm_file is not None) :
+  if (params.crystal_symmetry.symm_file is not None):
     crystal_symmetry = crystal_symmetry_from_any.extract_from(
       file_name=params.crystal_symmetry.symm_file)
-    if (crystal_symmetry is None) :
+    if (crystal_symmetry is None):
       raise Sorry("No crystal symmetry defined in %s" %
         params.crystal_symmetry.symm_file)
-  if (crystal_symmetry is None) and (not None in [space_group, unit_cell]) :
+  if (crystal_symmetry is None) and (not None in [space_group, unit_cell]):
     crystal_symmetry = crystal.symmetry(
       space_group_info=space_group,
       unit_cell=unit_cell)
@@ -88,9 +88,9 @@ cases) only.
     miller_array=data,
     parameters=params.options,
     out=out)
-  if (params.output.hklout is None) :
+  if (params.output.hklout is None):
     file_base = op.splitext(op.basename(params.input.data))[0]
-    if (params.output.hklout_type in ["Auto", "mtz"]) :
+    if (params.output.hklout_type in ["Auto", "mtz"]):
       params.output.hklout = file_base + ".mtz"
     else :
       params.output.hklout = file_base + ".sca"
@@ -99,5 +99,5 @@ cases) only.
     output_type=params.output.hklout_type,
     label_extension=params.output.label_extension)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

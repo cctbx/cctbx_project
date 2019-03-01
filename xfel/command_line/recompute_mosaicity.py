@@ -17,7 +17,6 @@ from six.moves import range
 from dxtbx.model.experiment_list import ExperimentListDumper
 from dials.algorithms.indexing.nave_parameters import nave_parameters
 from dials.array_family import flex
-from matplotlib import pyplot as plt
 import libtbx.load_env
 from libtbx.phil import parse
 
@@ -100,6 +99,7 @@ class Script(object):
     filtered_reflections.as_pickle(params.output.reflections)
 
     if params.plot_changes:
+      from matplotlib import pyplot as plt
       domain_size = domain_size.select((domain_size >= -10) & (domain_size <= 10))
       mosaic_angle = mosaic_angle.select((mosaic_angle >= -0.1) & (mosaic_angle <= 0.1))
 

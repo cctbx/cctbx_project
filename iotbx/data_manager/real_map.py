@@ -41,12 +41,12 @@ class RealMapDataManager(DataManagerBase):
 
   def write_real_map_file(self, filename, unit_cell, space_group,
                           map_data, labels, overwrite=False):
-    # wrapper for iotbx.ccp4_map.write_ccp4_map
-    # potentially move to mrcfile (https://github.com/ccpem/mrcfile)
+    # WAS: wrapper for iotbx.ccp4_map.write_ccp4_map
+    # NOW: moved to mrcfile (https://github.com/ccpem/mrcfile)
     if (os.path.isfile(filename) and (not overwrite)):
       raise Sorry('%s already exists and overwrite is set to %s.' %
                   (filename, overwrite))
-    import iotbx.ccp4_map
+    import iotbx.mrcfile
 
     # check labels (maybe other arugments?)
     if (not isinstance(labels, flex.std_string)):
@@ -60,7 +60,7 @@ class RealMapDataManager(DataManagerBase):
           raise
 
     try:
-      iotbx.ccp4_map.write_ccp4_map(
+      iotbx.mrcfile.write_ccp4_map(
         file_name = filename,
         unit_cell = unit_cell,
         space_group = space_group,

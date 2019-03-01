@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from builtins import range
 import locale
 import shutil
 import os
@@ -200,14 +201,14 @@ def walk_source_tree(top, arg=None):
 
 def random_new_directory_name(prefix="tmp_dir_", number_of_hex_code_digits=8):
   from libtbx.utils import random_hex_code
-  for i_trial in xrange(10**6):
+  for i_trial in range(10**6):
     name = prefix + random_hex_code(number_of_digits=number_of_hex_code_digits)
     if (not op.exists(name)):
       return name
   else:
     raise AssertionError
 
-def makedirs (path) :
+def makedirs(path):
   """
   Wrapper for os.makedirs that catches OSError and re-raises as Sorry.
   """
@@ -225,7 +226,7 @@ def makedirs_race(
   if (path is None):
     path = random_new_directory_name()
   import time
-  for i_trial in xrange(max_trials):
+  for i_trial in range(max_trials):
     if (op.exists(path)):
       if (delay_if_exists is not None):
         # in case the OS needs time to finalize makedirs from another process
@@ -401,39 +402,39 @@ class relocatable_path(path_mixin):
   def __hash__(self):
     return hash((self._anchor, self.relocatable))
 
-class clean_out_directory (object) :
+class clean_out_directory(object):
   """
   Utility for cleaning out Phenix (etc.) project folders, which tend to
   accumulate large amounts of temporary files and other large objects (CCP4
   maps, .geo files, etc.) which we may not want to keep around forever.
   """
-  def __init__ (self,
+  def __init__(self,
       path_name,
       delete_kin_files=True,
       delete_geo_files=True,
       delete_map_files=True,
       delete_temp_dirs=True,
-      delete_probe_files=True) :
+      delete_probe_files=True):
     self.path_name = path_name
     self.n_files = self.n_dirs = self.n_bytes = 0
     self.file_paths = []
     self.dir_paths = []
-    for dirname, dirnames, filenames in os.walk(path_name) :
+    for dirname, dirnames, filenames in os.walk(path_name):
       base_dir = os.path.basename(dirname)
       base_dir_name = base_dir.split("_")[0]
       # phenix-specific stuff
       if (base_dir_name in ["AutoSol","AutoBuild","AutoMR","LigandFit",
-                            "StructureComparison",]) :
+                            "StructureComparison",]):
         if ("TEMP0" in dirnames) and delete_temp_dirs :
           dirnames.remove("TEMP0")
           full_path = os.path.join(dirname, "TEMP0")
           self.delete_directory(full_path)
-      elif (base_dir_name in ["Refine"]) :
+      elif (base_dir_name in ["Refine"]):
         if (".comm" in dirnames) and delete_temp_dirs and delete_probe_files :
           dirnames.remove(".comm")
           full_path = os.path.join(dirname, ".comm")
           self.delete_directory(full_path)
-      elif (base_dir_name in ["FFT", "SuperposeMaps"]) :
+      elif (base_dir_name in ["FFT", "SuperposeMaps"]):
         continue
       for file_name in filenames :
         full_path = os.path.join(dirname, file_name)
@@ -441,25 +442,25 @@ class clean_out_directory (object) :
             (file_name.endswith(".geo") and delete_geo_files) or
             (file_name.endswith(".ccp4") and delete_map_files) or
             (file_name.endswith(".xplor") and delete_map_files) or
-            (file_name == "probe.txt" and delete_probe_files)) :
+            (file_name == "probe.txt" and delete_probe_files)):
           self.delete_file(full_path)
 
-  def delete_file (self, file_name) :
+  def delete_file(self, file_name):
     if not os.path.isfile(file_name) : return
     self.n_bytes += os.path.getsize(file_name)
     self.file_paths.append(file_name)
     self.n_files += 1
 
-  def delete_directory (self, dir_name) :
+  def delete_directory(self, dir_name):
     self.n_bytes += directory_size(dir_name)
     self.dir_paths.append(dir_name)
     self.n_dirs += 1
 
   @property
-  def n_total (self) :
+  def n_total(self):
     return self.n_dirs + self.n_files
 
-  def run (self, out=sys.stdout) :
+  def run(self, out=sys.stdout):
     self.show(out=out)
     print("Deleting all selected files and directories...", file=out)
     for file_name in self.file_paths :
@@ -467,26 +468,26 @@ class clean_out_directory (object) :
     for dir_name in self.dir_paths :
       shutil.rmtree(dir_name)
 
-  def get_freed_space (self) :
+  def get_freed_space(self):
     locale.setlocale(locale.LC_ALL, 'C')
     n_kb = self.n_bytes / 1000
-    if (n_kb > 10000) :
+    if (n_kb > 10000):
       return locale.format("%.1f", n_kb / 1000, grouping=True) + " MB"
     else :
       return locale.format("%.1f", n_kb, grouping=True) + " KB"
 
-  def show (self, out=sys.stdout) :
-    if (self.n_dirs > 0) :
+  def show(self, out=sys.stdout):
+    if (self.n_dirs > 0):
       print("The following %d directories will deleted:" % \
         self.n_dirs, file=out)
-      for dir_name in sorted(self.dir_paths) :
+      for dir_name in sorted(self.dir_paths):
         print("  %s" % dir_name, file=out)
-    if (self.n_files > 0) :
+    if (self.n_files > 0):
       print("The following %d files will be deleted:" % \
         self.n_files, file=out)
-      for file_name in sorted(self.file_paths) :
+      for file_name in sorted(self.file_paths):
         print("  %s" % file_name, file=out)
-    if (self.n_bytes > 0) :
+    if (self.n_bytes > 0):
       print("%s of disk space will be freed." % self.get_freed_space(), file=out)
 
 # http://stackoverflow.com/questions/1392413/calculating-a-directory-size-using-python

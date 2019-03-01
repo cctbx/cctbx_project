@@ -1,6 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 op = os.path
+
+from functools import cmp_to_key
+from past.builtins import cmp
 
 def inspect(py_lines):
   imports_to_ignore = set([
@@ -73,6 +76,8 @@ def inspect(py_lines):
         i = j+1
   idc = "_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
   imported_names = set(imported_names_dict.keys())
+  if "(" in imported_names:
+    imported_names.remove("(")
   used_names = set()
   for l in non_import_lines:
     filtered = []
@@ -85,15 +90,15 @@ def inspect(py_lines):
   unused_names = list(imported_names - used_names)
   def cmp_input_order(a, b):
     return cmp(*(imported_names_dict[a], imported_names_dict[b]))
-  unused_names.sort(cmp_input_order)
+  unused_names.sort(key=cmp_to_key(cmp_input_order))  # keeps import order
   return unused_names
 
 def show_unused_imports(file_name):
   unused_imports = inspect(
     py_lines=open(file_name).read().splitlines())
   if (len(unused_imports) != 0):
-    print "%s: %s" % (file_name, ", ".join(unused_imports))
-    print
+    print("%s: %s" % (file_name, ", ".join(unused_imports)))
+    print()
   return unused_imports
 
 def walk_func(counter, dirname, names):
@@ -111,18 +116,19 @@ def run(args):
   counter = [0]
   for arg in args:
     if (op.isdir(arg)):
-      op.walk(arg, walk_func, counter)
+      for root, dirs, files in os.walk(arg):
+        walk_func(counter, root, files)
     elif (op.isfile(arg)):
       if (len(show_unused_imports(file_name=arg)) != 0):
         counter[0] += 1
   if (counter[0] != 0):
-    print """\
+    print("""\
 HINT:
   To suppress flagging of unused imports follow these examples:
     import scitbx.array_family.flex # import dependency
     import something.related # implicit import
     import wingdbstub # special import
-"""
+""")
     return (1)
   return (0)
 

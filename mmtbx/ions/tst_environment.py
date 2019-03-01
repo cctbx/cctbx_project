@@ -16,7 +16,7 @@ import os
 import sys
 
 
-def exercise () :
+def exercise():
   if not libtbx.env.has_module("phenix_regression"):
     print "Skipping {}".format(os.path.split(__file__)[1])
     return

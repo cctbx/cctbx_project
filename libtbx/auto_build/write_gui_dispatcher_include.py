@@ -1,12 +1,12 @@
 #!/usr/bin/python
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import os.path
 import sys
 from optparse import OptionParser
 
-def run (args, prologue=None, epilogue=None, out=sys.stdout) :
+def run(args, prologue=None, epilogue=None, out=sys.stdout):
   parser = OptionParser(
     description="Generate the dispatcher include file for using "+
       "locally installed GUI (and related) libraries.  (Used in Phenix "+
@@ -24,20 +24,22 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
   parser.add_option("--ignore_missing_dirs", dest="ignore_missing_dirs",
     action="store_true", help="Don't raise error if GTK paths don't exist")
   parser.add_option("--quiet", action="store_true")
+  parser.add_option("--use_conda", dest="use_conda", action="store_true",
+    help="Use conda dependencies")
   # this is detached in case we need to upgrade GTK - setting GTK_PATH is
   # essential for the themes to be used correctly
   parser.add_option("--gtk_version", dest="gtk_version", action="store",
     help="Version number (major.minor.rev) for GTK+", default="2.10.0")
   options, args = parser.parse_args(args)
   build_path = options.build_dir
-  if (not os.path.isdir(build_path)) :
+  if (not os.path.isdir(build_path)):
     raise OSError("The specified build directory (%s) does not exist." %
       build_path)
   build_path = os.path.abspath(build_path)
   base_path = options.base_dir
-  if (base_path is None) :
+  if (base_path is None):
     base_path = os.path.join(build_path, "base")
-  if (not os.path.isdir(base_path)) :
+  if (not os.path.isdir(base_path)):
     raise OSError("%s does not exist." % base_path)
   base_path = os.path.abspath(base_path)
   ld_library_paths = [ os.path.join(base_path, "lib"), ]
@@ -45,18 +47,20 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
     lib64_path = os.path.join(base_path, "lib64")
     if (os.path.isdir(lib64_path)):
       ld_library_paths.append(lib64_path)
-  dyld_library_paths = ld_library_paths + [
+  dyld_library_paths = ld_library_paths
+  if not options.use_conda and sys.platform == "darwin":
+    dyld_library_paths += [
     os.path.join(base_path,"Python.framework","Versions","Current","lib"), ]
   check_libs = ld_library_paths
   if (sys.platform == "darwin") : check_libs = dyld_library_paths
   if sys.platform != "win32":
     for lib_dir in check_libs :
-      if (not os.path.isdir(lib_dir)) :
+      if (not os.path.isdir(lib_dir)):
         raise OSError("%s does not exist." % lib_dir)
   gtk_path = os.path.join(base_path, "lib", "gtk-2.0", options.gtk_version)
   if ((sys.platform.startswith("linux")) and
       (not os.path.isdir(gtk_path)) and
-      (not options.ignore_missing_dirs)) :
+      (not options.ignore_missing_dirs)):
     raise OSError("The path for the specified version of GTK+ does not "+
       "exist (%s)." % gtk_path)
   dispatcher = os.path.join(build_path, "dispatcher_include_%s.sh" %
@@ -65,15 +69,15 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
     dispatcher = os.path.join(build_path, "dispatcher_include_%s.bat" %
       options.suffix)
   f = open(dispatcher, "w")
-  if (prologue is not None) :
+  if (prologue is not None):
     f.write(prologue + "\n")
-  if (options.prologue is not None) :
+  if (options.prologue is not None):
     if not os.path.exists(options.prologue) and options.prologue.find("\n")>-1:
       f.write("%s\n" % options.prologue)
     else:
       f.write(open(options.prologue).read() + "\n")
-  if sys.platform != "win32":
-    print >> f, """\
+  if sys.platform != "win32" and not options.use_conda:
+    print("""\
 # include at start
 if [ "$LIBTBX_DISPATCHER_NAME" != "libtbx.scons" ] && \
    [ -z "$PHENIX_TRUST_OTHER_ENV" ]; then
@@ -129,28 +133,48 @@ if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
     export PATH
   fi
 fi
-""" % (base_path, ":".join(ld_library_paths), ":".join(ld_library_paths), options.gtk_version)
+""" % (base_path, ":".join(ld_library_paths), ":".join(ld_library_paths), options.gtk_version), file=f)
+  # restore some variables for conda
+  if sys.platform != "win32" and options.use_conda:
+    print("""
+# include at start
+if [ "$LIBTBX_DISPATCHER_NAME" != "libtbx.scons" ] && \
+   [ -z "$PHENIX_TRUST_OTHER_ENV" ]; then
+  # work around broken library environments
+  LD_LIBRARY_PATH=""
+  DYLD_LIBRARY_PATH=""
+  DYLD_FALLBACK_LIBRARY_PATH=""
+  PYTHONPATH=""
+fi
+# include before command
+if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
+  if [ -z "$DISABLE_PHENIX_GUI" ]; then
+    export BOOST_ADAPTBX_FPE_DEFAULT=1
+    export BOOST_ADAPTBX_SIGNALS_DEFAULT=1
+  fi
+fi
+""", file=f)
   # QBio DivCon paths
   if sys.platform != "win32":
-    print >> f, """
- if [ ! -z "$QB_PYTHONPATH" ]; then
-   export PYTHONPATH=$PYTHONPATH:$QB_PYTHONPATH
- fi
- if [ ! -z "$QB_LD_LIBRARY_PATH" ]; then
-   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$QB_LD_LIBRARY_PATH
- fi
- if [ ! -z "$QB_DYLD_LIBRARY_PATH" ]; then
-   export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$QB_DYLD_LIBRARY_PATH
- fi
-"""
-  if (epilogue is not None) :
+    print("""
+if [ ! -z "$QB_PYTHONPATH" ]; then
+  export PYTHONPATH=$PYTHONPATH:$QB_PYTHONPATH
+fi
+if [ ! -z "$QB_LD_LIBRARY_PATH" ]; then
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$QB_LD_LIBRARY_PATH
+fi
+if [ ! -z "$QB_DYLD_LIBRARY_PATH" ]; then
+  export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$QB_DYLD_LIBRARY_PATH
+fi
+""", file=f)
+  if (epilogue is not None):
     f.write(epilogue + "\n")
-  if (options.epilogue is not None) :
+  if (options.epilogue is not None):
     f.write(open(options.epilogue).read() + "\n")
   f.close()
-  if (not options.quiet) :
-    print >> out, "Wrote %s" % dispatcher
-    print >> out, "You should now run libtbx.refresh to regenerate dispatchers."
+  if (not options.quiet):
+    print("Wrote %s" % dispatcher, file=out)
+    print("You should now run libtbx.refresh to regenerate dispatchers.", file=out)
 
 # obsolete???
 pymol_paths = """
@@ -161,5 +185,5 @@ pymol_paths = """
  fi
 """
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

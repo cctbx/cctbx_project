@@ -43,7 +43,7 @@ def rotation_scattering(reflections, UB_mat, rotation_vector,
                                    (H1[2] * H1[2]))
 
                 if math.fabs(len_H1 - 1.0 / wavelength) > 0.0001:
-                    raise RuntimeError, 'length error for %d %d %d' % hkl
+                    raise RuntimeError('length error for %d %d %d' % hkl)
 
 def scattering_prediction(reflections, UB_mat, rotation_vector,
                           wavelength, resolution,
@@ -86,7 +86,7 @@ def scattering_prediction(reflections, UB_mat, rotation_vector,
                                    (H1[2] * H1[2]))
 
                 if math.fabs(len_H1 - 1.0 / wavelength) > 0.0001:
-                    raise RuntimeError, 'length error for %d %d %d' % hkl
+                    raise RuntimeError('length error for %d %d %d' % hkl)
 
                 if rp(hkl, omegas[omegaidx]):
                     x, y = rp.get_prediction()

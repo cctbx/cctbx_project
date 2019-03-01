@@ -32,11 +32,11 @@ reindex
     .style = bold
 }""")
 
-def run (args=(), params=None, out=None) :
-  if (out is None) :
+def run(args=(), params=None, out=None):
+  if (out is None):
     out = sys.stdout
-  if (params is None) :
-    if (len(args) == 0) :
+  if (params is None):
+    if (len(args) == 0):
       raise Usage("""
 phenix.reindex data.mtz change_of_basis=<operator>
 
@@ -64,21 +64,21 @@ Change-of-basis operator: h,k,l or x,y,z or
     new_arrays.append(array)
   mtz_out = new_arrays[0].as_mtz_dataset(
     column_root_label="A")
-  for i, array in enumerate(new_arrays[1:]) :
+  for i, array in enumerate(new_arrays[1:]):
     mtz_out.add_miller_array(
       miller_array=array,
       column_root_label="%s" % string.uppercase[i+1])
   mtz_obj = mtz_out.mtz_object()
-  for i, column in enumerate(mtz_obj.columns()) :
+  for i, column in enumerate(mtz_obj.columns()):
     column.set_label(labels[i])
-  if (params.reindex.output_file is None) :
+  if (params.reindex.output_file is None):
     base,ext = os.path.splitext(params.reindex.hkl_file)
     params.reindex.output_file = base + "_reindex.mtz"
   mtz_obj.write(file_name=params.reindex.output_file)
   print >> out, "Reindex reflections written to %s" % params.reindex.output_file
   return params.reindex.output_file
 
-def convert_operator (change_of_basis) :
+def convert_operator(change_of_basis):
   from cctbx import sgtbx
   try :
     c_o_b = sgtbx.change_of_basis_op(change_of_basis)
@@ -87,14 +87,14 @@ def convert_operator (change_of_basis) :
   else :
     return c_o_b
 
-def validate_params (params) :
-  if (params.reindex.hkl_file is None) :
+def validate_params(params):
+  if (params.reindex.hkl_file is None):
     raise Sorry("Please specify a reflections file.")
-  if (params.reindex.change_of_basis is None) :
+  if (params.reindex.change_of_basis is None):
     raise Sorry("Please specify a change-of-basis operator.")
   else :
     convert_operator(params.reindex.change_of_basis)
   return True
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(args=sys.argv[1:])

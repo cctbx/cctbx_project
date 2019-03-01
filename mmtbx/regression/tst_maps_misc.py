@@ -2,7 +2,7 @@
 from __future__ import division
 from libtbx.utils import null_out
 
-def exercise_anomalous_maps_misc () :
+def exercise_anomalous_maps_misc():
   from mmtbx.regression.make_fake_anomalous_data import generate_cd_cl_inputs
   import mmtbx.utils
   from iotbx import file_reader
@@ -11,8 +11,8 @@ def exercise_anomalous_maps_misc () :
   pdb_in = file_reader.any_file(pdb_file)
   hierarchy = pdb_in.file_object.hierarchy
   xrs = pdb_in.file_object.xray_structure_simple()
-  for s in xrs.scatterers() :
-    if (s.scattering_type == "Cd2+") :
+  for s in xrs.scatterers():
+    if (s.scattering_type == "Cd2+"):
       s.fp = -0.29
       s.fdp = 2.676
       s.flags.set_use_fp_fdp(True)
@@ -31,10 +31,10 @@ def exercise_anomalous_maps_misc () :
     exclude_free_r_reflections=True)
   map_anom = map_coeffs.fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
-  for s in xrs.scatterers() :
-    if (s.scattering_type == "Cd2+") :
+  for s in xrs.scatterers():
+    if (s.scattering_type == "Cd2+"):
       assert (map_anom.eight_point_interpolation(s.site) < 0)
-    elif (s.scattering_type == 'Cl1-') :
+    elif (s.scattering_type == 'Cl1-'):
       assert (map_anom.eight_point_interpolation(s.site) > 10)
   # this simply checks whether anomalous data will cause problems when
   # mixed with other options (i.e. array size errors)
@@ -42,7 +42,7 @@ def exercise_anomalous_maps_misc () :
     map_type="2mFo-DFc",
     exclude_free_r_reflections=True)
 
-def exercise_omit_atom_selection () :
+def exercise_omit_atom_selection():
   # combine an omit selection with a CCP4 map selection - this used to crash
   from mmtbx.regression.make_fake_anomalous_data import generate_calcium_inputs
   import mmtbx.command_line.maps
@@ -66,7 +66,7 @@ def exercise_omit_atom_selection () :
     "prefix=tst_mmtbx_maps_misc2",
   ], log=null_out())
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_anomalous_maps_misc()
   exercise_omit_atom_selection()
   print "OK"

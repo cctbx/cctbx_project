@@ -51,7 +51,7 @@ ATOM    593  NH2 ARG A  74      45.477  29.726  29.763  0.45 41.93           N
 END
 """
 
-def exercise_clashscore_old ():
+def exercise_clashscore_old():
   if (not libtbx.env.has_module(name="probe")):
     print "Skipping exercise_clashscore(): probe not configured"
     return
@@ -60,7 +60,7 @@ def exercise_clashscore_old ():
   pdb_hierarchy = pdb_io.construct_hierarchy()
   cs = clashscore.clashscore(pdb_hierarchy=pdb_hierarchy, out=null_out())
   for unpickle in [False, True] :
-    if (unpickle) :
+    if (unpickle):
       cs = loads(dumps(cs))
     c_score = cs.get_clashscore()
     assert approx_equal(c_score, 35.29, eps=0.01)
@@ -73,7 +73,7 @@ def exercise_clashscore_old ():
   #test nuclear distances
   cs = clashscore.clashscore(pdb_hierarchy=pdb_hierarchy, nuclear=True)
   for unpickle in [False, True] :
-    if (unpickle) :
+    if (unpickle):
       cs = loads(dumps(cs))
     c_score = cs.get_clashscore()
     assert approx_equal(c_score, 58.82, eps=0.01)
@@ -88,7 +88,7 @@ def exercise_clashscore_old ():
   #test B factor cutoff
   cs = clashscore.clashscore(pdb_hierarchy=pdb_hierarchy, b_factor_cutoff=40)
   for unpickle in [False, True] :
-    if (unpickle) :
+    if (unpickle):
       cs = loads(dumps(cs))
     c_score = cs.get_clashscore()
     assert approx_equal(c_score, 35.29, eps=0.01)
@@ -100,7 +100,7 @@ def exercise_clashscore_old ():
        ' A  72  ARG  CG   A  72  ARG  O   :0.465',
        ' A  71  LEU  HA   A  71  LEU HD12 :0.446'])
 
-def exercise_clashscore ():
+def exercise_clashscore():
   if (not libtbx.env.has_module(name="probe")):
     print "Skipping exercise_clashscore(): probe not configured"
     return
@@ -130,7 +130,7 @@ def exercise_clashscore ():
       condensed_probe=True,
       nuclear=True)
   for unpickle in [False, True] :
-    if (unpickle) :
+    if (unpickle):
       cs = loads(dumps(cs))
     c_score = cs.get_clashscore()
     assert approx_equal(c_score, 58.82, eps=0.01)
@@ -149,7 +149,7 @@ def exercise_clashscore ():
       condensed_probe=True,
       b_factor_cutoff=40)
   for unpickle in [False, True] :
-    if (unpickle) :
+    if (unpickle):
       cs = loads(dumps(cs))
     c_score = cs.get_clashscore()
     assert approx_equal(c_score, 35.29, eps=0.01)
@@ -162,7 +162,7 @@ def exercise_clashscore ():
       ' A  72  ARG  CG   A  72  ARG  O   :0.720']), [ c.format_old() for c in bad_clashes_list ]
 
 # TODO
-def exercise_full_validation () :
+def exercise_full_validation():
   from phenix.validation import analyze_all
   import iotbx.phil
   open("tmp_validation_neutron.pdb", "w").write(pdb_str_1)

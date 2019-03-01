@@ -70,7 +70,7 @@ def defaults(log, silent):
 def run(args,
         out = None,
         log = sys.stdout):
-  if(len(args)==0) or (args == ["--help"]) :
+  if(len(args)==0) or (args == ["--help"]):
     print >> log, msg
     defaults(log=log, silent=False)
     return
@@ -98,7 +98,7 @@ def run(args,
     parameters.labels = params.f_obs_label
   if(params.r_free_flags_label is not None):
     parameters.r_free_flags.label = params.r_free_flags_label
-  if (params.high_resolution is not None) :
+  if (params.high_resolution is not None):
     parameters.high_resolution = params.high_resolution
   determine_data_and_flags_result = utils.determine_data_and_flags(
     reflection_file_server  = rfs,
@@ -197,7 +197,7 @@ def run(args,
   print >> log, "  sigma_cutoff    : %-s"%format_value("%s",pub_sigma)
   print >> log, "  matthews_coeff  : %-s"%format_value("%s",pub_matthews)
   print >> log, "  solvent_cont    : %-s"%format_value("%s",pub_solv_cont)
-  if(exptl_method is not None) :
+  if(exptl_method is not None):
     print >> log, "  exptl_method    : %-s"%format_value("%s", exptl_method)
   #
   # Recompute R-factors using published cutoffs

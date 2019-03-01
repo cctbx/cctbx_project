@@ -44,40 +44,40 @@ french_wilson {
 }
 """, process_includes=True)
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   from cctbx import french_wilson
   from iotbx import file_reader
   hkl_file = None
   sources = []
   interpreter = master_phil.command_line_argument_interpreter()
   for arg in args :
-    if os.path.isfile(arg) :
+    if os.path.isfile(arg):
       input_file = file_reader.any_file(arg)
-      if (input_file.file_type == "hkl") :
+      if (input_file.file_type == "hkl"):
         hkl_file = input_file
         sources.append(interpreter.process(arg="file_name=\"%s\"" % arg))
-      elif (input_file.file_type == "phil") :
+      elif (input_file.file_type == "phil"):
         sources.append(input_file.file_object)
     else :
       arg_phil = interpreter.process(arg=arg)
       sources.append(arg_phil)
   work_phil = master_phil.fetch(sources=sources)
   work_params = work_phil.extract()
-  if (work_params.french_wilson.file_name is None) :
-    if (hkl_file is None) :
+  if (work_params.french_wilson.file_name is None):
+    if (hkl_file is None):
       raise Usage("phenix.french_wilson data.mtz [params.eff] [options ...]")
     else :
       work_params.french_wilson.file_name = hkl_file.file_name
-  elif (hkl_file is None) :
+  elif (hkl_file is None):
     hkl_file = file_reader.any_file(work_params.french_wilson.file_name)
   params = work_params.french_wilson
   xray_data_server = hkl_file.file_server
   crystal_symmetry = xray_data_server.miller_arrays[0].crystal_symmetry()
-  if (crystal_symmetry is None) :
+  if (crystal_symmetry is None):
     raise Sorry("No crystal symmetry found.  This program requires an input "+
       "format with complete symmetry information.")
   unit_cell = xray_data_server.miller_arrays[0].unit_cell()
-  if (unit_cell is None) :
+  if (unit_cell is None):
     raise Sorry("No unit cell found.  This program requires an input "+
       "format with complete unit cell information.")
   i_obs = None
@@ -98,18 +98,18 @@ def run (args, out=sys.stdout) :
       parameter_scope = "french_wilson.r_free_flags")
   except Sorry, e :
     r_free_flags = None
-  if (i_obs is None) :
+  if (i_obs is None):
     raise Sorry("Couldn't find intensities!")
   wavelength = params.wavelength
-  if (wavelength is None) :
+  if (wavelength is None):
     info = i_obs.info()
-    if (info is not None) :
+    if (info is not None):
       wavelength = info.wavelength
-      if (wavelength is not None) :
+      if (wavelength is not None):
         print >> out, "Using wavelength=%g from input file" % wavelength
   sigma_iobs_rejection_criterion = work_params.french_wilson.\
     sigma_iobs_rejection_criterion
-  if (not i_obs.is_unique_set_under_symmetry()) :
+  if (not i_obs.is_unique_set_under_symmetry()):
     print >> out, "Merging symmetry-equivalent reflections"
     i_obs = i_obs.merge_equivalents().array()
   f_obs = french_wilson.french_wilson_scale(miller_array=i_obs,
@@ -138,21 +138,21 @@ def run (args, out=sys.stdout) :
   print >> out, "Wrote %s" % output_file
   return output_file
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher(runtime_utils.target_with_save_result):
+  def run(self):
     return run(args=list(self.args), out=sys.stdout)
 
-def validate_params (params) :
-  if (params.french_wilson.file_name is None) :
+def validate_params(params):
+  if (params.french_wilson.file_name is None):
     raise Sorry("Please specify a reflections file.")
-  elif (params.french_wilson.intensity_labels is None) :
+  elif (params.french_wilson.intensity_labels is None):
     raise Sorry("No intensity labels selected; are you sure the input file "+
       "contains appropriate data?")
   return True
 
-def finish_job (result) :
+def finish_job(result):
   output_files = []
-  if (result is not None) :
+  if (result is not None):
     output_files.append((result, "Corrected amplitudes"))
   return (output_files, [])
 

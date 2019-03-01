@@ -6,6 +6,8 @@ from libtbx import slots_getstate_setstate
 import numpy
 import os, sys
 
+from mmtbx.conformation_dependent_library import generate_protein_fragments
+
 ################################################################################
 # omegalyze.py
 # This is a class to assess the omega (peptide bond) dihedral in protein
@@ -122,7 +124,8 @@ class omega_result(residue):
     "prev_resseq",
     "prev_icode",
     "prev_resname",
-    "prev_altloc"
+    "prev_altloc",
+    "model_id"
   ]
   __slots__ = residue.__slots__ + __omega_attr__
 
@@ -313,113 +316,63 @@ class omegalyze(validation):
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
 
-    prev_rezes, next_rezes = None, None
-    prev_resid = None
-    cur_resseq = None
-    next_resseq = None
-    for model in pdb_hierarchy.models():
-      for chain in model.chains():
-        prev_rezes, next_rezes = None, None
-        prev_resid = None
-        cur_resseq = None
-        next_resseq = None
-        if use_segids:
-          chain_id = utils.get_segid_as_chainid(chain=chain)
-        else:
-          chain_id = chain.id
-        residues = list(chain.residue_groups())
-        for i, residue_group in enumerate(residues):
-          # The reason I pass lists of atom_groups to get_phi and get_psi is to
-          # deal with the particular issue where some residues have an A alt
-          # conf that needs some atoms from a "" alt conf to get calculated
-          # correctly.  See 1jxt.pdb for examples.  This way I can search both
-          # the alt conf atoms and the "" atoms if necessary.
-          prev_atom_list, next_atom_list, atom_list = None, None, None
-          if cur_resseq is not None:
-            prev_rezes = rezes
-            prev_resseq = cur_resseq
-          rezes = construct_residues(residues[i])
-          cur_resseq = residue_group.resseq_as_int()
-          cur_icode = residue_group.icode.strip()
-          if (i > 0):
-            #check for insertion codes
-            if (cur_resseq == residues[i-1].resseq_as_int()) :
-              if (cur_icode == '') and (residues[i-1].icode.strip() == '') :
-                continue
-            elif (cur_resseq != (residues[i-1].resseq_as_int())+1):
-              continue
-          for atom_group in residue_group.atom_groups():
-            alt_conf = atom_group.altloc
-            if rezes is not None:
-              atom_list = rezes.get(alt_conf)
-            if prev_rezes is not None:
-              prev_atom_list = prev_rezes.get(alt_conf)
-              if (prev_atom_list is None):
-                prev_keys = sorted(prev_rezes.keys())
-                prev_atom_list = prev_rezes.get(prev_keys[0])
-            omega=get_omega(prev_atom_list, atom_list)
-            highest_mc_b = get_highest_mc_b(prev_atom_list, atom_list)
-            if omega is not None:
-              resname = atom_group.resname[0:3]
-              coords = get_center(atom_group)
-              if resname == "PRO":
-                res_type = OMEGA_PRO
-              else:
-                res_type = OMEGA_GENERAL
-              self.residue_count[res_type] += 1
-              omega_type = find_omega_type(omega)
-              is_nontrans = False
-              if omega_type == OMEGALYZE_CIS or omega_type == OMEGALYZE_TWISTED:
-                self.n_outliers += 1
-                is_nontrans = True
-              self.omega_count[res_type][omega_type] += 1
-              markup_atoms = [None, None, None, None] #for kinemage markup
-              if is_nontrans:
-                for a in prev_atom_list:
-                  if a is None: continue
-                  a_ = atom(pdb_atom=a)
-                  if a.name.strip() == "CA":
-                    markup_atoms[0] = kin_atom(
-                      id_str=a_.atom_group_id_str(),xyz=a_.xyz)
-                  elif a.name.strip() == "C":
-                    markup_atoms[1] = kin_atom(
-                      id_str=a_.atom_group_id_str(),xyz=a_.xyz)
-                for a in atom_list:
-                  if a is None: continue
-                  a_ = atom(pdb_atom=a)
-                  if a.name.strip() == "N":
-                    markup_atoms[2] = kin_atom(
-                      id_str=a_.atom_group_id_str(),xyz=a_.xyz)
-                  elif a.name.strip() == "CA":
-                    markup_atoms[3] = kin_atom(
-                      id_str=a_.atom_group_id_str(),xyz=a_.xyz)
-                #------------
-              #prevres=residues[i-1]
-              #find prev res identities for printing
-              prev_alts = []
-              prev_resnames = {}
-              for ag in residues[i-1].atom_groups():
-                prev_alts.append(ag.altloc)
-                prev_resnames[ag.altloc] = ag.resname
-              if alt_conf in prev_alts:
-                prev_altloc = alt_conf
-              else:
-                if len(prev_alts) > 1:
-                  prev_altloc = prev_alts[1]
-                else:
-                  prev_altloc = prev_alts[0]
-              prev_resname = prev_resnames[prev_altloc]
-              #done finding prev res identities
-              result = omega_result(
+    first_conf_altloc = None
+    prev_chain_id = None
+    for twores in generate_protein_fragments(
+        pdb_hierarchy,
+        length=2,
+        geometry=None,
+        include_non_standard_peptides=True):
+      main_residue = twores[1] #this is the relevant residue for id-ing cis-Pro
+      conf_altloc = get_conformer_altloc(twores)
+      prevres_altloc, mainres_altloc = get_local_omega_altlocs(twores)
+      twores_altloc = prevres_altloc or mainres_altloc #default '' evals False
+
+      chain = main_residue.parent().parent()
+      if use_segids:
+        chain_id = utils.get_segid_as_chainid(chain=chain)
+      else:
+        chain_id = chain.id
+
+      if chain_id != prev_chain_id: #if we've moved to a new chain...
+        first_conf_altloc = conf_altloc #...reset reference altloc
+        prev_chain_id = chain_id
+      if (conf_altloc != first_conf_altloc) and twores_altloc == '':
+        #skip non-alternate residues unless this is the first time thru a chain
+        continue
+      omega_atoms = get_omega_atoms(twores)
+      #omega_atoms is the list [CA1 C1 N2 CA2], with None for missing atoms
+      if None in omega_atoms:
+        continue
+      omega = get_omega(omega_atoms)
+      if omega is None: continue
+      omega_type = find_omega_type(omega)
+      if omega_type == OMEGALYZE_TRANS:
+        is_nontrans = False
+      else:
+        is_nontrans = True
+        self.n_outliers += 1
+      if main_residue.resname == "PRO": res_type = OMEGA_PRO
+      else:                             res_type = OMEGA_GENERAL
+      self.residue_count[res_type] += 1
+      self.omega_count[res_type][omega_type] += 1
+      highest_mc_b = get_highest_mc_b(twores[0].atoms(),twores[1].atoms())
+      coords = get_center(main_residue)
+      markup_atoms = []
+      for omega_atom in omega_atoms:
+        markup_atoms.append(kin_atom(omega_atom.parent().id_str(), omega_atom.xyz))
+
+      result = omega_result(
+                model_id=twores[0].parent().parent().parent().id,
                 chain_id=chain_id,
-                resseq=residue_group.resseq,
-                icode=residue_group.icode,
-                resname=atom_group.resname,
-                altloc=atom_group.altloc,
-                prev_resseq=residues[i-1].resseq,
-                prev_icode=residues[i-1].icode,
-                prev_resname=prev_resname,
-                prev_altloc=prev_altloc,
+                resseq=main_residue.resseq,
+                icode=main_residue.icode,
+                resname=main_residue.resname,
+                altloc=mainres_altloc,
+                prev_resseq=twores[0].resseq,
+                prev_icode=twores[0].icode,
+                prev_resname=twores[0].resname,
+                prev_altloc=prevres_altloc,
                 segid=None,
                 omega=omega,
                 omega_type=omega_type,
@@ -429,12 +382,14 @@ class omegalyze(validation):
                 highest_mc_b=highest_mc_b,
                 xyz=coords,
                 markup_atoms=markup_atoms)
-              if is_nontrans or not nontrans_only: #(not nontrans_only or is_nontrans)
-                self.results.append(result)
-              if is_nontrans:
-                i_seqs = atom_group.atoms().extract_i_seq()
-                assert (not i_seqs.all_eq(0)) #This assert copied from ramalyze
-                self._outlier_i_seqs.extend(i_seqs)
+
+      if is_nontrans or not nontrans_only: #(not nontrans_only or is_nontrans)
+        self.results.append(result)
+      if is_nontrans:
+        i_seqs = main_residue.atoms().extract_i_seq()
+        assert (not i_seqs.all_eq(0)) #This assert copied from ramalyze
+        self._outlier_i_seqs.extend(i_seqs)
+      self.results.sort(key=lambda x: x.model_id+':'+x.id_str())
 
   def _get_count_and_fraction(self, res_type, omega_type):
     total = self.residue_count[res_type]
@@ -566,55 +521,12 @@ def find_omega_type(omega):
   else: omega_type = OMEGALYZE_TWISTED
   return omega_type
 
-#construct_residues was adpated from ramalyze.construct_complete_residues
-#main change invloved accepting incomplete residues, since complete ones were
-#  not necessary for calculation of omega
-#This required checks against None-valued atoms elsewhere in the code, but
-#  allows assessment of all models omega dihedrals
-def construct_residues(res_group):
-  if (res_group is not None):
-    complete_dict = {}
-    nit, ca, co, oxy = None, None, None, None
-    atom_groups = res_group.atom_groups()
-    reordered = []
-    # XXX always process blank-altloc atom group first
-    for ag in atom_groups :
-      if (ag.altloc == '') :
-        reordered.insert(0, ag)
-      else :
-        reordered.append(ag)
-    for ag in reordered :
-      changed = False
-      for atom in ag.atoms():
-        if (atom.name == " N  "): nit = atom
-        if (atom.name == " CA "): ca = atom
-        if (atom.name == " C  "): co = atom
-        if (atom.name == " O  "): oxy = atom
-        if (atom.name in [" N  ", " CA ", " C  ", " O  "]) :
-          changed = True
-      if (changed):
-        complete_dict[ag.altloc] = [nit, ca, co, oxy]
-    if len(complete_dict) > 0:
-      return complete_dict
-  return None
-
-def get_omega(prev_atoms, atoms):
-  import mmtbx.rotamer
-  prevCA, prevC, thisN, thisCA = None, None, None, None
-  if (prev_atoms is not None):
-    for atom in prev_atoms:
-      if atom is not None:
-        if (atom.name == " CA "): prevCA = atom
-        if (atom.name == " C  "): prevC = atom
-  if (atoms is not None):
-    for atom in atoms:
-      if atom is not None:
-        if (atom.name == " N  "): thisN = atom
-        if (atom.name == " CA "): thisCA = atom
-  if (prevCA is not None and prevC is not None and thisN is not None and thisCA is not None):
-    return mmtbx.rotamer.omega_from_atoms(prevCA, prevC, thisN, thisCA)
-  else:
+def get_omega(omega_atoms):
+  #omega_atoms = [CA1 C1 N2 CA2]
+  if None in omega_atoms:
     return None
+  import mmtbx.rotamer
+  return mmtbx.rotamer.omega_from_atoms(omega_atoms[0], omega_atoms[1], omega_atoms[2], omega_atoms[3])
 
 def get_highest_mc_b(prev_atoms, atoms):
   highest_mc_b = 0
@@ -636,14 +548,56 @@ def get_center(ag):
       return atom.xyz
   return ag.atoms().extract_xyz().mean()
 
-def run (args, out=sys.stdout, quiet=False) :
+def get_conformer_altloc(twores):
+  return twores[0].parent().altloc #go to conformer level
+
+def get_local_omega_altlocs(twores):
+  #in conformer world, where threes come from, altlocs are most accurately
+  #  stored at the atom level, in the .id_str()
+  #look at all atoms in the main residues, plus the atoms used in calculations
+  #  from adjacent residues to find if any have altlocs
+  prevres_alt = ''
+  mainres_alt = ''
+  for atom in twores[1].atoms():
+    if atom.name not in [" N  ", " CA "]:
+      continue
+    altchar = atom.id_str()[9:10]
+    if altchar != ' ':
+      mainres_alt = altchar
+      break
+  for atom in twores[0].atoms():
+    if atom.name not in [" CA "," C  "]:
+      continue
+    altchar = atom.id_str()[9:10]
+    if altchar != ' ':
+      prevres_alt = altchar
+      break
+  return prevres_alt, mainres_alt
+
+def get_omega_atoms(twores):
+  #atomlist = [CA1 C1 N2 CA2]
+  atomlist = [None, None, None, None]
+  for atom in twores[0].atoms():
+    if atom.name == " CA ":
+      atomlist[0] = atom
+    elif atom.name == " C  ":
+      atomlist[1] = atom
+  for atom in twores[1].atoms():
+    if atom.name == " N  ":
+      atomlist[2] = atom
+    elif atom.name == " CA ":
+      atomlist[3] = atom
+  return atomlist
+
+
+def run(args, out=sys.stdout, quiet=False):
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil=get_master_phil(),
     pdb_file_def="model",
     usage_string=usage_string)
   params = cmdline.work.extract()
-  #if (params.model is None or params.help) :
+  #if (params.model is None or params.help):
     #help printing is handled in iotbx.phil.process_command_line_with_files()
   pdb_in = cmdline.get_file(params.model, force_type="pdb")
   hierarchy = pdb_in.file_object.hierarchy
@@ -660,5 +614,5 @@ def run (args, out=sys.stdout, quiet=False) :
   elif params.text:
     result.show_old_output(out=out, verbose=True)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

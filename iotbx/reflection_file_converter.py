@@ -354,9 +354,7 @@ def run(
     if (not processed_array.is_xray_intensity_array()):
       processed_array = processed_array.average_bijvoet_mates()
     else:
-      processed_array = processed_array.f_sq_as_f()
       processed_array = processed_array.average_bijvoet_mates()
-      processed_array = processed_array.f_as_f_sq()
       processed_array.set_observation_type_xray_intensity()
   if (r_free_flags is not None
       and r_free_flags.anomalous_flag()
@@ -456,9 +454,9 @@ def run(
       use_lattice_symmetry=co.use_lattice_symmetry_in_r_free_flag_generation,
       format=co.r_free_flags_format)
     test_flag_value = True
-    if (co.r_free_flags_format == "ccp4") :
+    if (co.r_free_flags_format == "ccp4"):
       test_flag_value = 0
-    elif (co.r_free_flags_format == "shelx") :
+    elif (co.r_free_flags_format == "shelx"):
       test_flag_value = -1
     r_free_as_bool = r_free_flags.customized_copy(
       data=r_free_flags.data()==test_flag_value)
@@ -473,10 +471,10 @@ def run(
       r_free_as_bool.data().count(True))
     r_free_info_str = StringIO()
     r_free_as_bool.show_r_free_flags_info(prefix="  ", out=r_free_info_str)
-    if (co.r_free_flags_format == "ccp4") :
+    if (co.r_free_flags_format == "ccp4"):
       r_free_info.append("  convention: CCP4 (test=0, work=1-%d)" %
         flex.max(r_free_flags.data()))
-    elif (co.r_free_flags_format == "shelx") :
+    elif (co.r_free_flags_format == "shelx"):
       r_free_info.append("  convention: SHELXL (test=-1, work=1)")
     else :
       r_free_info.append("  convention: CNS/X-PLOR (test=1, work=0)")

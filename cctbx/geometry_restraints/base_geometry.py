@@ -60,6 +60,13 @@ class Base_geometry(object):
     Given selection return manager only with selected atoms and restraints
     """
     raise NotImplementedError
+  def shift_sites_cart(self, shift):
+    """
+    Sometimes coordinates of the model are shifted (e.g. in boxing with map).
+    In case any element of restraints cares, do what is appropriate here.
+    """
+    raise NotImplementedError
+
   def discard_symmetry(self, new_unit_cell):
     return self
   def add_angles_in_place(self, additional_angle_proxies):
@@ -204,7 +211,7 @@ class Base_geometry(object):
     # requires modification of pair_proxies and as complicated as addition
     # of bond restraint.
     raise NotImplementedError
-  def set_external_energy_function (self, energy_function) :
+  def set_external_energy_function(self, energy_function):
     pass
   def _get_n_bond_proxies_origin(self, origin_id):
     return 0
@@ -313,10 +320,10 @@ class Base_geometry(object):
     """
     raise NotImplementedError
 
-  def update_atom_nonbonded_type (self,
+  def update_atom_nonbonded_type(self,
         i_seq,
         nonbonded_type,
-        charge=0) :
+        charge=0):
     pass
 
   def write_geo_file(self,

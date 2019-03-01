@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import detect_binary_file
 from libtbx.path import walk_source_tree
 from libtbx.option_parser import option_parser
@@ -7,8 +7,8 @@ import sys, os
 
 def show_status(path, text, binary, quote):
   def show():
-    if (quote): print show_string(path)
-    else: print path
+    if (quote): print(show_string(path))
+    else: print(path)
   if (text and binary):
     show()
   else:
@@ -46,7 +46,7 @@ def run(args, command_name="libtbx.list_files"):
   if (len(paths) == 0): paths = ["."]
   for path in paths:
     if (not os.path.exists(path)):
-      print >> sys.stderr, "No such file or directory:", path
+      print("No such file or directory:", path, file=sys.stderr)
     elif (os.path.isfile(path)):
       show_status(path=path, text=text, binary=binary, quote=quote)
     else:

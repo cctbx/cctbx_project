@@ -165,7 +165,7 @@ class electron_density_map(object):
                        pdb_hierarchy=None, # XXX required for map_type=llg
                        merge_anomalous=None,
                        use_shelx_weight=False,
-                       shelx_weight_parameter=1.5) :
+                       shelx_weight_parameter=1.5):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
     # Special case #1: anomalous map
     if(map_name_manager.anomalous):
@@ -176,18 +176,18 @@ class electron_density_map(object):
                             data       = self.anom_diff.data()/(2j))
       else: return None
     # Special case #2: anomalous residual map
-    elif (map_name_manager.anomalous_residual) :
-      if (self.anom_diff is not None) :
+    elif (map_name_manager.anomalous_residual):
+      if (self.anom_diff is not None):
         return anomalous_residual_map_coefficients(
           fmodel=self.fmodel,
           exclude_free_r_reflections=exclude_free_r_reflections)
       else : return None
     # Special case #3: Phaser SAD LLG map
-    elif (map_name_manager.phaser_sad_llg) :
-      if (pdb_hierarchy is None) :
+    elif (map_name_manager.phaser_sad_llg):
+      if (pdb_hierarchy is None):
         raise RuntimeError("pdb_hierarchy must not be None when a Phaser SAD "+
           "LLG map is requested.")
-      if (self.anom_diff is not None) :
+      if (self.anom_diff is not None):
         return get_phaser_sad_llg_map_coefficients(
           fmodel=self.fmodel,
           pdb_hierarchy=pdb_hierarchy)
@@ -224,11 +224,11 @@ class electron_density_map(object):
     # calculated and processed now to avoid array size errors
     scale_default = 1. / (self.fmodel.k_isotropic()*self.fmodel.k_anisotropic())
     scale_array = coeffs.customized_copy(data=scale_default)
-    if (exclude_free_r_reflections) :
-      if (coeffs.anomalous_flag()) :
+    if (exclude_free_r_reflections):
+      if (coeffs.anomalous_flag()):
         coeffs = coeffs.average_bijvoet_mates()
       r_free_flags = self.fmodel.r_free_flags()
-      if (r_free_flags.anomalous_flag()) :
+      if (r_free_flags.anomalous_flag()):
         r_free_flags = r_free_flags.average_bijvoet_mates()
         scale_array = scale_array.average_bijvoet_mates()
       coeffs = coeffs.select(~r_free_flags.data())
@@ -236,7 +236,7 @@ class electron_density_map(object):
     scale=None
     if(isotropize):
       if(scale is None):
-        if (scale_array.anomalous_flag()) and (not coeffs.anomalous_flag()) :
+        if (scale_array.anomalous_flag()) and (not coeffs.anomalous_flag()):
           scale_array = scale_array.average_bijvoet_mates()
         scale = scale_array.data()
       coeffs = coeffs.customized_copy(data = coeffs.data()*scale)
@@ -254,7 +254,7 @@ class electron_density_map(object):
         adptbx.u_as_b(1))/2
       k_sharp = 1./flex.exp(-ss * b)
       coeffs = coeffs.customized_copy(data = coeffs.data()*k_sharp)
-    if (merge_anomalous) and (coeffs.anomalous_flag()) :
+    if (merge_anomalous) and (coeffs.anomalous_flag()):
       return coeffs.average_bijvoet_mates()
     return coeffs
 
@@ -552,17 +552,17 @@ def sharp_map(sites_frac, map_coeffs, ss = None, b_sharp=None, b_min = -150,
     b_sharp_best = b_sharp
   return map_coeffs_best, b_sharp_best
 
-def get_phaser_sad_llg_map_coefficients (
+def get_phaser_sad_llg_map_coefficients(
     fmodel,
     pdb_hierarchy,
     log=None,
-    verbose=False) :
+    verbose=False):
   """
   Calculates an anomalous log-likelihood gradient (LLG) map using the SAD
   target in Phaser.  This is essentially similar to an anomalous difference-
   difference map, but more sensitive.
   """
-  if (not libtbx.env.has_module("phaser")) :
+  if (not libtbx.env.has_module("phaser")):
     raise Sorry("Phaser not available - required for SAD LLG maps.")
   from phaser.phenix_adaptors import sad_target
   assert (fmodel.f_model().anomalous_flag())
@@ -572,7 +572,7 @@ def get_phaser_sad_llg_map_coefficients (
     f_obs=f_obs,
     r_free_flags=r_free_flags,
     verbose=True)
-  if (verbose) and (log is not None) :
+  if (verbose) and (log is not None):
     data.output.setPackagePhenix(log)
   else :
     data.output.setPackagePhenix(null_out())
@@ -584,8 +584,8 @@ def get_phaser_sad_llg_map_coefficients (
   map_coeffs = t.llg_map_coeffs()
   return map_coeffs
 
-def anomalous_residual_map_coefficients (fmodel, weighted=False,
-    exclude_free_r_reflections=True) :
+def anomalous_residual_map_coefficients(fmodel, weighted=False,
+    exclude_free_r_reflections=True):
   """
   EXPERIMENTAL
 
@@ -596,7 +596,7 @@ def anomalous_residual_map_coefficients (fmodel, weighted=False,
   assert (fmodel.f_obs().anomalous_flag())
   f_obs_anom = fmodel.f_obs().anomalous_differences()
   f_model_anom = abs(fmodel.f_model()).anomalous_differences()
-  if (weighted) :
+  if (weighted):
     mch = fmodel.map_calculation_helper()
     fom = fmodel.f_obs().customized_copy(
       data=mch.fom, sigmas=None).average_bijvoet_mates()
@@ -621,7 +621,7 @@ def anomalous_residual_map_coefficients (fmodel, weighted=False,
   map_coeffs = miller.array(
     miller_set=anom_diff_diff_common,
     data = anom_diff_diff_common.data() * phases_tmp.data())
-  if (exclude_free_r_reflections) :
+  if (exclude_free_r_reflections):
     r_free_flags = fmodel.r_free_flags().average_bijvoet_mates()
     r_free_flags, map_coeffs = r_free_flags.common_sets(map_coeffs)
     map_coeffs = map_coeffs.select(~(r_free_flags.data()))

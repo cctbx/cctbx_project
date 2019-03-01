@@ -632,7 +632,7 @@ class torsion_ncs(object):
     #  target_map_data, residual_map_data = self.prepare_map(
     #                                         fmodel=self.fmodel)
     #rama_outliers = None
-    #rama_outlier_list = []
+    rama_outlier_list = []
     omega_outlier_list = []
     if self.filter_phi_psi_outliers:
       rama_outlier_list = \
@@ -775,7 +775,7 @@ class torsion_ncs(object):
           torsion_counter += 1
 
     if len(self.ncs_dihedral_proxies) == 0:
-      if (not self.params.silence_warnings) :
+      if (not self.params.silence_warnings):
         print >> log, \
           "** WARNING: No torsion NCS found!!" + \
           "  Please check parameters. **"
@@ -1122,7 +1122,7 @@ class torsion_ncs(object):
     sites_cart_moving = xray_structure.sites_cart()
     for model in pdb_hierarchy.models():
       for chain in model.chains():
-        if not utils.is_protein_chain(chain=chain):
+        if not chain.is_protein():
           continue
         for residue_group in chain.residue_groups():
           all_dict = \
@@ -1186,7 +1186,7 @@ class torsion_ncs(object):
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         #only works with protein sidechains
-        if not utils.is_protein_chain(chain=chain):
+        if not chain.is_protein():
           continue
         for residue_group in chain.residue_groups():
           all_dict = rotalyze.construct_complete_sidechain(residue_group)
@@ -1287,7 +1287,7 @@ class torsion_ncs(object):
 
     for model in pdb_hierarchy.models():
       for chain in model.chains():
-        if not utils.is_protein_chain(chain=chain):
+        if not chain.is_protein():
           continue
         for residue_group in chain.residue_groups():
           all_dict = rotalyze.construct_complete_sidechain(residue_group)
@@ -1445,7 +1445,7 @@ class torsion_ncs(object):
       delta_sq_sum += ( abs(delta)**2 )
     return math.sqrt(delta_sq_sum / len(deltas))
 
-  def proxy_select (self, nseq, iselection) :
+  def proxy_select(self, nseq, iselection):
     #
     # This is still not proper manager selection. A lot of stuff remains old.
     # It still works because it is being updated every macro-cycle via
@@ -1487,11 +1487,11 @@ class torsion_ncs(object):
           gradient_array=gradient_array)
 
 # XXX wrapper for running in Phenix GUI
-class _run_iotbx_ncs_input (object) :
-  def __init__ (self, params, pdb_hierarchy) :
+class _run_iotbx_ncs_input(object):
+  def __init__(self, params, pdb_hierarchy):
     self.params = params
     self.pdb_hierarchy = pdb_hierarchy
 
-  def __call__ (self, *args, **kwds) :
+  def __call__(self, *args, **kwds):
     return iotbx.ncs.input(hierarchy=self.pdb_hierarchy).\
       print_ncs_phil_param()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # This code is based on:
 #   http://lists.wxwidgets.org/archive/wxPython-users/msg11078.html
@@ -14,7 +15,7 @@ import scitbx.math
 from scitbx import matrix
 try:
   import wx
-except ImportError, e:
+except ImportError:
   exit() # To pass through the "make" step (dials.geometry_viewer), for graphics-free HPC build
 import wx.glcanvas
 import math
@@ -45,8 +46,8 @@ def v3distsq(a, b):
   return result
 
 VIEWER_UPDATE_ID = wx.NewId()
-class ViewerUpdateEvent (wx.PyEvent) :
-  def __init__ (self, data=None, recenter=False) :
+class ViewerUpdateEvent(wx.PyEvent):
+  def __init__(self, data=None, recenter=False):
     wx.PyEvent.__init__(self)
     self.data = data
     self.recenter = recenter
@@ -88,7 +89,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
     if hasattr(wx.glcanvas, 'WX_GL_DOUBLEBUFFER'):
       try:
-        if self.IsDisplaySupported(wx.glcanvas.WX_GL_DOUBLEBUFFER):
+        if self.IsDisplaySupported([wx.glcanvas.WX_GL_DOUBLEBUFFER]):
           kw['attribList'].append(wx.glcanvas.WX_GL_DOUBLEBUFFER)
       except AttributeError:
         # IsDisplaySupported may not be present for wxPython < 2.9
@@ -131,7 +132,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.spintimer = wx.Timer(self, self.spintimer_id)
     self.spintimer.Start(1000 / self.spintimer_maxfps)
 
-    self.w, self.h = self.GetClientSizeTuple()
+    self.w, self.h = self.GetClientSize()
 
     self.field_of_view_y = 10.0
     self.min_near = 1
@@ -169,10 +170,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     pass # Do nothing, to avoid flashing on MSW.
 
   def OnSize(self, event=None):
-    self.w, self.h = self.GetClientSizeTuple()
-    if (self.GetParent().IsShown()) :
-      if (self.context is not None) :
-        if wx.VERSION[0] < 3:
+    self.w, self.h = self.GetClientSize()
+    if (self.GetParent().IsShown()):
+      if (self.context is not None):
+        if wx.VERSION[0] != 3:
           self.SetCurrent(self.context)
         else:
           self.SetCurrent()
@@ -199,10 +200,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.snap_back_rotation()
     elif (key == ord('s')):
       self.autospin_allowed = not self.autospin_allowed
-    elif (key == ord('l')) :
+    elif (key == ord('l')):
       self.flag_show_labels = not self.flag_show_labels
       self.OnRedraw()
-    elif (key == ord('S')) :
+    elif (key == ord('S')):
       self.save_screen_shot()
     elif (key == ord('V')):
       gltbx.util.show_versions()
@@ -211,7 +212,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     elif (key == ord('\t')):
       callback = getattr(self, "tab_callback", None)
       if (callback is None):
-        print "Tab callback not available."
+        print("Tab callback not available.")
       else:
         kwargs = {"shift_down": event.ShiftDown() }
         if (event.ControlDown()): kwargs["control_down"] = True
@@ -219,10 +220,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     else:
       callback = getattr(self, "process_key_stroke", None)
       if (callback is None):
-        print "No action for this key stroke."
+        print("No action for this key stroke.")
       else:
         if (callback(key=key) == False):
-          print "No action for this key stroke."
+          print("No action for this key stroke.")
     self.autospin = False
 
   def OnMouseWheel(self, event):
@@ -303,7 +304,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.set_lights()
     self.setup_fog()
 
-  def get_clipping_distances (self) :
+  def get_clipping_distances(self):
     slab = self.far - self.near
     clip = (1.0 - self.slab_scale) * (slab / 2.0)
     near = self.near + clip
@@ -314,7 +315,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       near = self.min_near
     return (near, far)
 
-  def setup_lighting (self) :
+  def setup_lighting(self):
     if self.flag_use_lights :
       glEnable(GL_LIGHTING)
       glEnable(GL_LIGHT0)
@@ -326,7 +327,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       glLightfv(GL_LIGHT0, GL_DIFFUSE, [1, 1, 1, 1])
       glLightfv(GL_LIGHT0, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
 
-  def set_lights (self) :
+  def set_lights(self):
     if self.flag_use_lights :
       glMatrixMode(GL_MODELVIEW)
       glPushMatrix()
@@ -336,7 +337,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       glLightfv(GL_LIGHT0, GL_POSITION, self.light0_position)
       glPopMatrix()
 
-  def setup_fog (self) :
+  def setup_fog(self):
     if self.flag_show_fog :
       near, far = self.get_clipping_distances()
       fog_start = near + self.fog_scale_factor*(far - near)
@@ -475,8 +476,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.OnRecordMouse(event)
 
   def OnScale(self, scale):
-    if (abs(scale) > self.scale_max) :
-      if (scale < 0) :
+    if (abs(scale) > self.scale_max):
+      if (scale < 0):
         scale = -self.scale_max
       else :
         scale = self.scale_max
@@ -512,14 +513,14 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.yspin, self.xspin, 0, 0)
     self.OnRedraw()
 
-  def rotate_view (self, x1, y1, x2, y2, shift_down=False, scale=0.5) :
+  def rotate_view(self, x1, y1, x2, y2, shift_down=False, scale=0.5):
     rc = self.rotation_center
-    if (not shift_down) :
+    if (not shift_down):
       gltbx.util.rotate_object_about_eye_x_and_y(
         scale, rc[0], rc[1], rc[2],
         x2, y2, x1, y1)
     else:
-      sz = self.GetClientSizeTuple()
+      sz = self.GetClientSize()
       sz = (sz[0]/2, sz[1]/2)
       dy = (y1-y2)
       dx = (x1-x2)
@@ -532,7 +533,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
         angle=angle)
     self.OnRedraw()
 
-  def adjust_slab (self, delta) :
+  def adjust_slab(self, delta):
     self.slab_scale += delta
     if self.slab_scale > 1.0 :
       self.slab_scale = 1.0
@@ -595,7 +596,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnPaint(self, event=None):
     wx.PaintDC(self)
-    if (self.context is not None) :
+    if (self.context is not None):
       self.SetCurrent(self.context)
     else :
       self.SetCurrent()
@@ -607,18 +608,18 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnRedraw(self, event=None):
     wx.ClientDC(self)
-    if (self.context is not None) :
+    if (self.context is not None):
       self.SetCurrent(self.context)
     else :
       self.SetCurrent()
     self.OnRedrawGL(event)
 
-  def setup_distances (self) :
+  def setup_distances(self):
     s = self.minimum_covering_sphere
     r = self.buffer_factor*s.radius()
     #z = -gltbx.util.object_as_eye_coordinates(s.center())[2]
     z = -gltbx.util.object_as_eye_coordinates(self.rotation_center)[2]
-    if (z < self.z_min) :
+    if (z < self.z_min):
       z = self.z_min
     self.near = max(self.min_near, z-r)
     self.far = max(self.near+1, z+r)
@@ -637,23 +638,23 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.SwapBuffers()
     if (event is not None): event.Skip()
 
-  def show_stack_sizes (self) :
+  def show_stack_sizes(self):
     mv_depth = [0]
     pr_depth = [0]
     tx_depth = [0]
     glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, mv_depth)
     glGetIntegerv(GL_PROJECTION_STACK_DEPTH, pr_depth)
     glGetIntegerv(GL_TEXTURE_STACK_DEPTH, tx_depth)
-    print "Modelview: %d  Projection: %d  Texture: %d" % (mv_depth[0],
-      pr_depth[0], tx_depth[0])
+    print("Modelview: %d  Projection: %d  Texture: %d" % (mv_depth[0],
+      pr_depth[0], tx_depth[0]))
 
-  def OnUpdate (self, event=None) :
+  def OnUpdate(self, event=None):
     pass
 
-  def force_update (self, recenter=False) :
+  def force_update(self, recenter=False):
     wx.PostEvent(self, ViewerUpdateEvent(data=None, recenter=recenter))
 
-  def edit_opengl_settings (self, event=None) :
+  def edit_opengl_settings(self, event=None):
     if self._settings_widget is None :
       self._settings_widget = OpenGLSettingsToolbox(self)
       self._settings_widget.Show()
@@ -667,11 +668,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     pil_image = gltbx.viewer_utils.read_pixels_to_pil_image(
       x=0, y=0, width=self.w, height=self.h)
     if (pil_image is None):
-      print \
-        "Cannot save screen shot to file:" \
-        " Python Imaging Library (PIL) not available."
+      print("Cannot save screen shot to file:" \
+        " Python Imaging Library (PIL) not available.")
       return 0
-    print "Screen shot width x height: %d x %d" % (self.w, self.h)
+    print("Screen shot width x height: %d x %d" % (self.w, self.h))
     save = pil_image.save
     def try_save(file_name_ext):
       try: save(file_name_ext)
@@ -680,17 +680,17 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       return True
     for ext in extensions:
       if (file_name.endswith("."+ext)):
-        print "Writing file: %s" % show_string(os.path.abspath(file_name))
+        print("Writing file: %s" % show_string(os.path.abspath(file_name)))
         if (not try_save(file_name_ext=file_name)):
-          print "Failure saving screen shot as %s file." % ext.upper()
+          print("Failure saving screen shot as %s file." % ext.upper())
         return 1
     n_written = 0
     for ext in extensions:
       file_name_ext = file_name + "."+ext
       if (not try_save(file_name_ext=file_name_ext)):
-        print "Image output format not available: %s" % ext.upper()
+        print("Image output format not available: %s" % ext.upper())
       else:
-        print "Wrote file: %s" % show_string(os.path.abspath(file_name_ext))
+        print("Wrote file: %s" % show_string(os.path.abspath(file_name_ext)))
         n_written += 1
     return n_written
 
@@ -698,19 +698,19 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     from libtbx.str_utils import show_string
     gl2ps = gltbx.util.gl2ps_interface
     if (not gl2ps(file_name=None, draw_background=False, callback=None)):
-      print "PDF output via gl2ps not available: cannot write file %s" \
-        % file_name
+      print("PDF output via gl2ps not available: cannot write file %s" \
+        % file_name)
       return 0
     try:
       # preempt potential error in C++, for better reporting here
       open(file_name, "wb")
     except KeyboardInterrupt: raise
     except Exception:
-      print "Error opening file for writing: %s" % \
-        show_string(os.path.abspath(file_name))
+      print("Error opening file for writing: %s" % \
+        show_string(os.path.abspath(file_name)))
       return 0
     gl2ps(file_name=file_name, draw_background=False, callback=self.OnRedraw)
-    print "Wrote file: %s" % show_string(os.path.abspath(file_name))
+    print("Wrote file: %s" % show_string(os.path.abspath(file_name)))
     return 1
 
   def save_screen_shot(self,
@@ -737,7 +737,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
         "Cannot save screen shot in any of the formats specified.")
     return n_written
 
-  def OnClose (self, event=None):
+  def OnClose(self, event=None):
     self.spintimer.Stop()
 
 class show_points_and_lines_mixin(wxGLWindow):
@@ -847,7 +847,8 @@ class show_points_and_lines_mixin(wxGLWindow):
       self.labels_display_list.end()
     self.labels_display_list.call()
 
-  def draw_cross_at(self, (x,y,z), color=(1,1,1), f=0.1):
+  def draw_cross_at(self, position_tuple, color=(1,1,1), f=0.1):
+    (x,y,z) = position_tuple
     glBegin(GL_LINES)
     glColor3f(*color)
     glVertex3f(x-f,y,z)
@@ -908,11 +909,11 @@ class show_points_and_lines_mixin(wxGLWindow):
       else:
         lbl = "index %d" % i_point_closest
       txt = "pick point: %s" % lbl
-      print txt
+      print(txt)
       self.parent.SetStatusText(txt)
 
-class OpenGLSettingsToolbox (wx.MiniFrame) :
-  def __init__ (self, parent) :
+class OpenGLSettingsToolbox(wx.MiniFrame):
+  def __init__(self, parent):
     wx.MiniFrame.__init__(self, parent, -1, title="OpenGL settings",
       pos=(100,100), style=wx.CAPTION|wx.CLOSE_BOX|wx.RAISED_BORDER)
     self.parent = parent
@@ -944,14 +945,14 @@ class OpenGLSettingsToolbox (wx.MiniFrame) :
     self.Bind(wx.EVT_CHECKBOX, self.OnUpdate)
     self.Bind(wx.EVT_CLOSE, self.OnClose)
 
-  def OnUpdate (self, event=None) :
-    for setting_name, widget in self.widgets.iteritems() :
+  def OnUpdate(self, event=None):
+    for setting_name, widget in self.widgets.iteritems():
       new_value = float(widget.GetValue()) / 100.0
       setattr(self.parent, setting_name, new_value)
     self.parent.flag_show_fog = self.fog_box.GetValue()
     self.parent.OnRedrawGL()
 
-  def OnClose (self, event=None):
+  def OnClose(self, event=None):
     self.Destroy()
     self.parent._settings_widget = None
 

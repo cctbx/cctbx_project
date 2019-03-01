@@ -32,14 +32,17 @@ max_time = 180
   .type = float(value_min=0)
   .help = "Print warning and timing for all tests that take longer"
           "than max_time (in seconds) to run."
+slow_tests = False
+  .type = bool
+  .help = "If True, also run any tests marked as slow, if any"
 """)
 
-def run (args, return_list_of_tests=None) :
-  if (len(args) == 0) :
+def run(args, return_list_of_tests=None):
+  if (len(args) == 0):
     raise Usage("""libtbx.run_tests_parallel [module=NAME] [directory=path]""")
   user_phil = []
   for arg in args :
-    if os.path.isdir(arg) :
+    if os.path.isdir(arg):
       user_phil.append(libtbx.phil.parse("directory=%s" % arg))
     else :
       try :
@@ -60,9 +63,9 @@ def run (args, return_list_of_tests=None) :
   else:
     cwd = os.getcwd()
     cwd_files = os.listdir(cwd)
-    if (len(cwd_files) > 0) :
+    if (len(cwd_files) > 0):
       raise Sorry("Please run this program in an empty directory.")
-  if (len(params.directory) == 0) and (len(params.module) == 0) :
+  if (len(params.directory) == 0) and (len(params.module) == 0):
     raise Sorry("Please specify modules and/or directories to test.")
   all_tests = []
   all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script))
@@ -74,15 +77,15 @@ def run (args, return_list_of_tests=None) :
     dir_tests = libtbx.test_utils.parallel.find_tests(dir_name)
     all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests))
   for module_name in params.module :
-    module_tests = libtbx.test_utils.parallel.get_module_tests(module_name)
+    module_tests = libtbx.test_utils.parallel.get_module_tests(module_name, slow_tests = params.slow_tests)
     all_tests.extend(module_tests)
   if return_list_of_tests:
     return all_tests
-  if (len(all_tests) == 0) :
+  if (len(all_tests) == 0):
     raise Sorry("No test scripts found in %s." % params.directory)
-  if (params.shuffle) :
+  if (params.shuffle):
     random.shuffle(all_tests)
-  if (params.quiet) :
+  if (params.quiet):
     params.verbosity = 0
   with open("run_tests_parallel_zlog", "w") as log:
     result = libtbx.test_utils.parallel.run_command_list(
@@ -92,7 +95,7 @@ def run (args, return_list_of_tests=None) :
       verbosity=params.verbosity,
       max_time=params.max_time)
   print("\nSee run_tests_parallel_zlog for full output.\n")
-  if (result.failure > 0) :
+  if (result.failure > 0):
     print("")
     print("*" * 80)
     print("ERROR: %d TEST FAILURES.  PLEASE FIX BEFORE COMMITTING CODE." % \
@@ -101,6 +104,6 @@ def run (args, return_list_of_tests=None) :
     print("")
   return result.failure
 
-if (__name__ == "__main__") :
-  if (run(sys.argv[1:]) > 0) :
+if (__name__ == "__main__"):
+  if (run(sys.argv[1:]) > 0):
     sys.exit(1)

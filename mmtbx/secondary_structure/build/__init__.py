@@ -852,6 +852,7 @@ def substitute_ss(
   # print >> log, "Running GM               : %.4f" % (t11-t10)
   # print_hbond_proxies(grm.geometry,real_h)
   grm.geometry.remove_reference_coordinate_restraints_in_place()
+  grm.geometry.remove_chi_torsion_restraints_in_place(nonss_for_tors_selection)
   return grm.geometry.get_chi_torsion_proxies()
 
 
@@ -861,16 +862,16 @@ def beta():
   pdb_hierarchy.write_pdb_file(file_name = "o_beta_seq.pdb")
 
 def alpha_310():
-  pdb_hierarchy = secondary_structure_from_sequence(alpha310_pdb_str,
+  pdb_hierarchy = secondary_structure_from_sequence(a310_helix_str,
       "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_helix310_seq.pdb")
 
 def alpha_pi():
-  pdb_hierarchy = secondary_structure_from_sequence(alpha_pi_pdb_str,
+  pdb_hierarchy = secondary_structure_from_sequence(pi_helix_str,
       "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_helix_pi_seq.pdb")
 
 def alpha():
-  pdb_hierarchy = secondary_structure_from_sequence(alpha_pdb_str,
+  pdb_hierarchy = secondary_structure_from_sequence(alpha_helix_str,
       "ACEDGFIHKMLNQPSRTWVY")
   pdb_hierarchy.write_pdb_file(file_name = "o_helix_seq.pdb")

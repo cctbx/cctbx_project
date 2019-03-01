@@ -17,7 +17,7 @@ from cStringIO import StringIO
 import random
 import os.path
 
-def exercise_simple () :
+def exercise_simple():
   pdb_str="""
 ATOM     47  N   TYR A   7       8.292   1.817   6.147  1.00 14.70           N
 ATOM     48  CA  TYR A   7       9.159   2.144   7.299  1.00 15.18           C
@@ -121,7 +121,7 @@ ATOM     59  UNK UNL A   7       0.000   0.000   0.000  1.00 20.00           X
     create_log_buffer=True,
     remove_unknown_scatterers=True)
 
-def exercise_combine_symmetry () :
+def exercise_combine_symmetry():
   """
   Test the extraction of symmetry from both a PDB file and an MTZ file.
   """
@@ -197,7 +197,7 @@ def exercise_combine_symmetry () :
   else :
     raise Exception_expected
 
-def exercise_example () :
+def exercise_example():
   from mmtbx.regression import make_fake_anomalous_data
   pdb_file, mtz_file = make_fake_anomalous_data.generate_cd_cl_inputs(
     file_base="tst_cmdline_example")
@@ -214,7 +214,7 @@ def exercise_example () :
   result = easy_run.fully_buffered(" ".join(args)).raise_if_errors()
   assert ("""CC(obs-calc): 0.999""" in result.stdout_lines)
 
-def exercise_cns_input () :
+def exercise_cns_input():
   from mmtbx.regression import make_fake_anomalous_data
   pdb_file, mtz_file = make_fake_anomalous_data.generate_cd_cl_inputs(
     file_base="tst_cmdline_cns")
@@ -228,8 +228,8 @@ def exercise_cns_input () :
     file_object=out,
     r_free_flags=flags)
   # get rid of embedded symmetry
-  for line in out.getvalue().splitlines() :
-    if (not "{" in line) :
+  for line in out.getvalue().splitlines():
+    if (not "{" in line):
       f.write("%s\n" % line)
   f.close()
   cmdline = mmtbx.command_line.load_model_and_data(
@@ -246,7 +246,7 @@ Space group: P 1 (No. 1)
 """), out.getvalue()
 
 # XXX this is essentially identical to tst_cc_star_space_group.py
-def exercise_load_unmerged () :
+def exercise_load_unmerged():
   flex.set_random_seed(123456)
   random.seed(123456)
   base = "tst_load_unmerged"
@@ -358,7 +358,7 @@ def exercise_load_unmerged () :
   else :
     raise Exception_expected
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_simple()
   exercise_cns_input()
   exercise_load_unmerged()

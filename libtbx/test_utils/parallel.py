@@ -28,7 +28,7 @@ QUIET = 0
 DEFAULT_VERBOSITY = 1
 EXTRA_VERBOSE = 2 # for nightly builds
 
-def get_module_tests(module_name, valgrind=False):
+def get_module_tests(module_name, valgrind=False, slow_tests=False):
   dist_path = libtbx.env.dist_path(module_name)
   if dist_path is None:
     raise Sorry("'%s' is not a valid CCTBX module." % module_name)
@@ -42,6 +42,23 @@ def get_module_tests(module_name, valgrind=False):
     target_must_be="",
     where_str="").object
   assert (isinstance(tst_list, tuple) or isinstance(tst_list, list))
+  if slow_tests:
+    try:
+      tst_list_slow = import_python_object(
+        import_path="%s.run_tests.tst_list_slow" % module_name,
+        error_prefix="",
+        target_must_be="",
+        where_str="").object
+    except AttributeError:
+      pass
+    else:
+      assert (isinstance(tst_list_slow, tuple) or isinstance(tst_list_slow, list))
+      if isinstance(tst_list, tuple):
+        tst_list = list(tst_list)
+        tst.list.extend(tst_list_slow)
+        tst_list = tuple(tst_list)
+      else:
+        tst_list.extend(tst_list_slow)
   build_path = libtbx.env.under_build(module_name)
   assert (build_path is not None) and (dist_path is not None)
   commands = []
@@ -53,7 +70,7 @@ def get_module_tests(module_name, valgrind=False):
       co=co,
       build_dir=build_path,
       dist_dir=dist_path,
-      tst_list=tst_list) :
+      tst_list=tst_list):
     commands.append(cmd)
   return commands
 
@@ -64,13 +81,12 @@ def find_tests(dir_name):
   for root, dirnames, filenames in os.walk(dir_name):
     for file_name in filenames :
       base, ext = os.path.splitext(file_name)
-      if (file_name.startswith("tst")) and (ext in [".py", ".csh", ".sh"]) :
+      if (file_name.startswith("tst")) and (ext in [".py", ".csh", ".sh"]):
         all_tests.append(os.path.join(root, file_name))
   return all_tests
 
 def run_command(command,
-                verbosity=DEFAULT_VERBOSITY,
-                out=None):
+                verbosity=DEFAULT_VERBOSITY):
   try:
     t0=time.time()
     cmd_result = easy_run.fully_buffered(
@@ -179,13 +195,13 @@ def write_JUnit_XML(results, output_filename="output.xml"):
     ts.to_file(f, [ts], prettyprint=True, encoding="utf-8")
 
 class run_command_list(object):
-  def __init__ (self,
+  def __init__(self,
                 cmd_list,
                 nprocs=1,
                 out=sys.stdout,
                 log=None,
                 verbosity=DEFAULT_VERBOSITY,
-                max_time=180) :
+                max_time=180):
     if (log is None) : log = null_out()
     self.out = multi_out()
     self.log = log
@@ -199,18 +215,18 @@ class run_command_list(object):
     # Filter cmd list for duplicates.
     self.cmd_list = []
     for cmd in cmd_list :
-      if (not cmd in self.cmd_list) :
+      if (not cmd in self.cmd_list):
         self.cmd_list.append(cmd)
       else :
         print("Test %s repeated, skipping"%cmd, file=self.out)
 
     # Set number of processors.
-    if (nprocs is Auto) :
+    if (nprocs is Auto):
       nprocs = cpu_count()
     nprocs = min(nprocs, len(self.cmd_list))
 
     # Starting summary.
-    if (self.verbosity > 0) :
+    if (self.verbosity > 0):
       print("Running %d tests on %s processors:"%(len(self.cmd_list), nprocs), file=self.out)
       for cmd in self.cmd_list:
         print("  %s"%cmd, file=self.out)
@@ -227,7 +243,7 @@ class run_command_list(object):
       for command in self.cmd_list:
         self.pool.apply_async(
           run_command,
-          [command, verbosity, out],
+          [command, verbosity],
           callback=self.save_result)
       try:
         self.pool.close()
@@ -242,7 +258,7 @@ class run_command_list(object):
     else:
       # Run tests serially.
       for command in self.cmd_list:
-        rc = run_command(command, verbosity=verbosity, out=out)
+        rc = run_command(command, verbosity=verbosity)
         if self.save_result(rc) == False:
           break
 
@@ -266,7 +282,7 @@ class run_command_list(object):
     write_JUnit_XML(self.results, "output.xml")
 
     # Run time distribution.
-    if (libtbx.env.has_module("scitbx")) :
+    if (libtbx.env.has_module("scitbx")):
       try:
         from scitbx.array_family import flex
         print("Distribution of test runtimes:", file=self.out)
@@ -312,7 +328,7 @@ class run_command_list(object):
     print("  Failures                     :",self.failure, file=self.out)
     print("  Warnings (possible failures) :",self.warning, file=self.out)
     print("  Stderr output (discouraged)  :",extra_stderr, file=self.out)
-    if (self.finished != len(self.cmd_list)) :
+    if (self.finished != len(self.cmd_list)):
       print("*" * 80, file=self.out)
       print("  WARNING: NOT ALL TESTS FINISHED!", file=self.out)
       print("*" * 80, file=self.out)
@@ -336,7 +352,7 @@ class run_command_list(object):
       alert = Status.FAIL
     return alert
 
-  def save_result (self, result) :
+  def save_result(self, result):
     if result is None:
       print("ERROR: job returned None, assuming CTRL+C pressed", file=self.out)
       if self.pool: self.pool.terminate()
@@ -382,7 +398,7 @@ class run_command_list(object):
       **kw
     )
 
-  def display_result (self, result, alert, out=None, log_return=True, log_stderr=True, log_stdout=False) :
+  def display_result(self, result, alert, out=None, log_return=True, log_stderr=True, log_stdout=False):
     status = {Status.OK: 'OK', Status.WARNING: 'WARNING', Status.FAIL: 'FAIL'}
     if out:
       print("%s [%s] %.1fs"%(result.command, status[alert], result.wall_time), file=out)
@@ -392,16 +408,16 @@ class run_command_list(object):
       print("  Return code: %s"%result.return_code, file=log_return)
       print("  OKs:", len([x for x in result.stdout_lines if 'OK' in x]), file=log_return)
       log_return.flush()
-    if log_stdout and (len(result.stdout_lines) > 0) :
+    if log_stdout and (len(result.stdout_lines) > 0):
       print("  Standard out:", file=log_stdout)
       print("    "+"\n    ".join(result.stdout_lines), file=log_stdout)
       log_stdout.flush()
-    if log_stderr and (len(result.stderr_lines) > 0) :
+    if log_stderr and (len(result.stderr_lines) > 0):
       print("  Standard error:", file=sys.stderr)
       print("    "+"\n    ".join(result.stderr_lines), file=sys.stderr)
       sys.stderr.flush()
 
-def make_commands (files) :
+def make_commands(files):
   commands = []
   non_executable = []
   unrecognized = []
@@ -420,7 +436,7 @@ def make_commands (files) :
     # cmd = '%s "%s"'%(interpreter, file_name)
     if cmd not in commands:
       commands.append(cmd)
-  if (len(unrecognized) > 0) :
+  if (len(unrecognized) > 0):
     raise RuntimeError("""\
 The following files could not be recognized as programs:
 
@@ -428,7 +444,7 @@ The following files could not be recognized as programs:
 
 Please use the extensions .py, .sh, or .csh for all tests.  Shell scripts will
 also need to be made executable.""" % "\n  ".join(unrecognized))
-  if (len(non_executable) > 0) :
+  if (len(non_executable) > 0):
     raise RuntimeError("""\
 The following shell scripts are not executable:
 
@@ -437,7 +453,7 @@ The following shell scripts are not executable:
 Please enable execution of these to continue.""" % "\n  ".join(non_executable))
   return commands
 
-def exercise () :
+def exercise():
   log=file("test_utils_parallel_zlog", "wb")
   f0 = open("test_parallel.csh", "wb")
   f0.write("""\
@@ -475,6 +491,6 @@ print "OK"
   assert ("  Failures                     : 1" in out.getvalue())
   assert ("  Warnings (possible failures) : 0" in out.getvalue())
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print("OK")

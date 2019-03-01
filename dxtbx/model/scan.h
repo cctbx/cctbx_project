@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <map>
 #include <scitbx/vec2.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/simple_io.h>
@@ -25,6 +26,8 @@ namespace dxtbx { namespace model {
   using scitbx::vec2;
   using scitbx::rad_as_deg;
   using scitbx::constants::pi;
+
+  typedef std::map<std::string, scitbx::af::shared<vec2<int> > > ExpImgRangeMap;
 
   /** A scan base class */
   class ScanBase {};
@@ -102,6 +105,7 @@ namespace dxtbx { namespace model {
     /** Copy */
     Scan(const Scan &rhs)
       : image_range_(rhs.image_range_),
+        valid_image_ranges_(rhs.valid_image_ranges_),
         oscillation_(rhs.oscillation_),
         num_images_(rhs.num_images_),
         batch_offset_(rhs.batch_offset_),
@@ -119,6 +123,35 @@ namespace dxtbx { namespace model {
     /** Get the image range */
     vec2 <int> get_image_range() const {
       return image_range_;
+    }
+
+    /** Get the map, not exported to python **/
+    ExpImgRangeMap get_valid_image_ranges_map() const {
+      return valid_image_ranges_;
+    }
+
+    /** Get the element for a given key if it exists, else return empty array**/
+    scitbx::af::shared<vec2<int> > get_valid_image_ranges_key(std::string i) const {
+      typedef ExpImgRangeMap::const_iterator iterator;
+      for (iterator it = valid_image_ranges_.begin(); it != valid_image_ranges_.end(); ++it){
+        if (it->first == i){
+          return it->second;
+        }
+      }
+      scitbx::af::shared<vec2<int> > empty;
+      return empty;
+    }
+
+    void set_valid_image_ranges_array(std::string i, scitbx::af::shared<vec2<int> > values){
+      /** Set a list of valid image range tuples for experiment identifier 'i'**/
+      for (std::size_t j = 0; j < values.size(); ++j) {
+        vec2<int> pair = values[j];
+        DXTBX_ASSERT(pair[0] >= image_range_[0]);
+        DXTBX_ASSERT(pair[0] <= image_range_[1]);
+        DXTBX_ASSERT(pair[1] >= image_range_[0]);
+        DXTBX_ASSERT(pair[1] <= image_range_[1]);
+      }
+      valid_image_ranges_[i] = values;
     }
 
     /** Get the batch offset */
@@ -435,6 +468,7 @@ namespace dxtbx { namespace model {
   private:
 
     vec2 <int> image_range_;
+    ExpImgRangeMap valid_image_ranges_; /** initialised as an empty map **/
     vec2 <double> oscillation_;
     int num_images_;
     int batch_offset_;

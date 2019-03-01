@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
+from libtbx.utils import null_out
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of hydrogen atoms for nucleic acids
@@ -15,7 +16,8 @@ def exercise():
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = True)
+    build_grm   = True,
+    log         = null_out())
 
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
@@ -337,5 +339,5 @@ type_list_known = ['2tetra', '2tetra', '3neigbs', '3neigbs', '2tetra',
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))
 

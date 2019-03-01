@@ -10,81 +10,81 @@ import libtbx.phil
 import wx
 import sys
 
-class StrCtrl (ValidatedTextCtrl) :
-  def __init__ (self, *args, **kwds) :
+class StrCtrl(ValidatedTextCtrl):
+  def __init__(self, *args, **kwds):
     kwds = dict(kwds)
-    if (kwds.get("size", wx.DefaultSize) == wx.DefaultSize) :
+    if (kwds.get("size", wx.DefaultSize) == wx.DefaultSize):
       kwds['size'] = (200,-1)
     super(StrCtrl, self).__init__(*args, **kwds)
     self._min_len = 0
     self._max_len = sys.maxint
 
-  def CreateValidator (self) :
+  def CreateValidator(self):
     return StrValidator()
 
-  def SetValue (self, value) :
-    if (value in [None, Auto]) :
+  def SetValue(self, value):
+    if (value in [None, Auto]):
       ValidatedTextCtrl.SetValue(self, "")
     else :
-      if isinstance(value, str) :
-        if wxtbx.is_unicode_build() :
+      if isinstance(value, str):
+        if wxtbx.is_unicode_build():
           ValidatedTextCtrl.SetValue(self, to_unicode(value))
         else :
           ValidatedTextCtrl.SetValue(self, value)
       else :
-        if (not isinstance(value, unicode)) :
+        if (not isinstance(value, unicode)):
           raise RuntimeError("Improper value (type: %s) for control %s" %
             (type(value).__name__, self.GetName()))
         ValidatedTextCtrl.SetValue(self, value)
 
-  def GetPhilValue (self) :
+  def GetPhilValue(self):
     self.Validate()
     val_str = self.GetValue().strip()
-    if (val_str in ["", "none", "None"]) :
+    if (val_str in ["", "none", "None"]):
       return self.ReturnNoneIfOptional()
     return val_str
 
-  def GetStringValue (self) :
+  def GetStringValue(self):
     value = self.GetPhilValue()
-    if (value is None) :
+    if (value is None):
       return "None"
     else :
       return parse_str(value)
 
-  def FormatValue (self, value) :
-    if wxtbx.is_unicode_build() :
+  def FormatValue(self, value):
+    if wxtbx.is_unicode_build():
       return to_str(value)
     else :
       return value
 
-  def SetMinLength (self, n) :
+  def SetMinLength(self, n):
     assert (n >= 0)
     self._min_len = n
 
-  def SetMaxLength (self, n) :
+  def SetMaxLength(self, n):
     assert (n >= 1)
     self._max_len = n
 
-  def GetMinLength (self) :
+  def GetMinLength(self):
     return self._min_len
 
-  def GetMaxLength (self) :
+  def GetMaxLength(self):
     return self._max_len
 
-class StrValidator (TextCtrlValidator) :
-  def CheckFormat (self, value) :
+class StrValidator(TextCtrlValidator):
+  def CheckFormat(self, value):
     window = self.GetWindow()
-    if ("$" in value) :
+    if ("$" in value):
       raise ValueError("The dollar symbol ($) may not be used here.")
-    elif (len(value) > window.GetMaxLength()) :
+    elif (len(value) > window.GetMaxLength()):
       raise ValueError("Value must be %d characters or less." %
         window.GetMaxLength())
-    elif (len(value) < window.GetMinLength()) :
+    elif (len(value) < window.GetMinLength()):
       raise ValueError("Value must be at least %d characters." %
         window.GetMinLength())
     return value # XXX does anything else need to be done here?
 
-def parse_str (value) :
+def parse_str(value):
   #value = value.decode("utf-8")
   try :
     word = tokenizer.word(value, quote_token='"""')
@@ -94,7 +94,7 @@ def parse_str (value) :
   else :
     return phil_string
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   app = wx.App(0)
   frame = wx.Frame(None, -1, "String parameter test")
   panel = wx.Panel(frame, -1, size=(720,400))
@@ -112,7 +112,7 @@ if (__name__ == "__main__") :
       .type = str
     prefix = None
       .type = str""")
-  def OnOkay (evt) :
+  def OnOkay(evt):
     print """title = %s""" % ctrl1.GetStringValue()
     title_phil = libtbx.phil.parse("""title = %s""" % ctrl1.GetStringValue())
     prefix_phil = libtbx.phil.parse("""prefix = %s""" % ctrl2.GetStringValue())
@@ -134,9 +134,9 @@ if (__name__ == "__main__") :
   assert (p.title == inp_str)
   assert (ctrl2.GetPhilValue() == "refine")
   assert (ctrl2.GetStringValue() == '"""refine"""')
-  def OnChange (evt) :
+  def OnChange(evt):
     pass
-  def OnToggle (evt) :
+  def OnToggle(evt):
     if (ctrl1.IsEnabled()) : ctrl1.Enable(False)
     else : ctrl1.Enable()
   frame.Bind(wx.EVT_BUTTON, OnOkay, btn)

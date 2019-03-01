@@ -707,8 +707,8 @@ class ResidualsPlotter(object):
     detector = experiments.detectors()[0]
 
     if params.repredict_input_reflections:
-      from dials.algorithms.refinement.prediction import ExperimentsPredictor
-      ref_predictor = ExperimentsPredictor(experiments, force_stills=experiments.all_stills())
+      from dials.algorithms.refinement.prediction.managed_predictors import ExperimentsPredictorFactory
+      ref_predictor = ExperimentsPredictorFactory.from_experiments(experiments, force_stills=experiments.all_stills())
       reflections = ref_predictor(reflections)
 
     if params.verbose: print "N reflections total:", len(reflections)

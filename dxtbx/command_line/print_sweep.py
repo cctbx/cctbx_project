@@ -3,39 +3,43 @@ from __future__ import absolute_import, division, print_function
 
 def print_sweep(list_of_images):
 
-  from dxtbx.imageset import ImageSetFactory
-  sweeps = ImageSetFactory.new(list_of_images)
+    from dxtbx.imageset import ImageSetFactory
 
-  for sweep in sweeps:
-    print(sweep.get_detector())
-    print(sweep.get_beam())
-    print(sweep.get_goniometer())
-    print(sweep.get_scan())
+    sweeps = ImageSetFactory.new(list_of_images)
 
-    # compute the beam centre... in mm... w.r.t. fast, slow axis
+    for sweep in sweeps:
+        print(sweep.get_detector())
+        print(sweep.get_beam())
+        print(sweep.get_goniometer())
+        print(sweep.get_scan())
 
-    print('Derived quantities:')
+        # compute the beam centre... in mm... w.r.t. fast, slow axis
 
-    from scitbx import matrix
+        print("Derived quantities:")
 
-    d = sweep.get_detector()[0]
-    b = sweep.get_beam()
+        from scitbx import matrix
 
-    o = matrix.col(d.get_origin())
-    f = matrix.col(d.get_fast_axis())
-    s = matrix.col(d.get_slow_axis())
-    s0 = matrix.col(b.get_direction())
+        d = sweep.get_detector()[0]
+        b = sweep.get_beam()
 
-    n = f.cross(s)
+        o = matrix.col(d.get_origin())
+        f = matrix.col(d.get_fast_axis())
+        s = matrix.col(d.get_slow_axis())
+        s0 = matrix.col(b.get_direction())
 
-    beam_offset = o - o.dot(s0) * s0
-    print('    beam centre (mm, fast, slow): %.2f %.2f' % (- beam_offset.dot(f),
-                                                            - beam_offset.dot(s)))
+        n = f.cross(s)
 
-if __name__ == '__main__':
-  import sys
+        beam_offset = o - o.dot(s0) * s0
+        print(
+            "    beam centre (mm, fast, slow): %.2f %.2f"
+            % (-beam_offset.dot(f), -beam_offset.dot(s))
+        )
 
-  if len(sys.argv) == 2:
-    print_sweep(sys.argv[1])
-  else:
-    print_sweep(sys.argv[1:])
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) == 2:
+        print_sweep(sys.argv[1])
+    else:
+        print_sweep(sys.argv[1:])

@@ -43,8 +43,8 @@ class coordinate_frame_converter:
                 configuration_file)
 
         else:
-            raise RuntimeError, 'unknown configuration file %s' % \
-                  configuration_file
+            raise RuntimeError(
+            'unknown configuration file %s'%configuration_file)
 
         return
 
@@ -78,8 +78,8 @@ class coordinate_frame_converter:
             R = self._coordinate_frame_information.R_to_Mosflm()
             return R * parameter_value
         else:
-            raise RuntimeError, 'convention %s not currently supported' % \
-                  convention
+            raise RuntimeError(
+            'convention %s not currently supported'%convention)
 
         return
 
@@ -109,8 +109,8 @@ class coordinate_frame_converter:
             R = self._coordinate_frame_information.R_to_Mosflm()
             return R * vector
         else:
-            raise RuntimeError, 'convention %s not currently supported' % \
-                  convention
+            raise RuntimeError(
+            'convention %s not currently supported'%convention)
 
         return
 
@@ -121,7 +121,7 @@ class coordinate_frame_converter:
 
         if not cfi.get_real_space_a() or not cfi.get_real_space_b() or \
            not cfi.get_real_space_c():
-            raise RuntimeError, 'orientation matrix information missing'
+            raise RuntimeError('orientation matrix information missing')
 
         axis_a = cfi.get_real_space_a()
         axis_b = cfi.get_real_space_b()
@@ -150,8 +150,8 @@ class coordinate_frame_converter:
         elif convention == coordinate_frame_converter.MOSFLM:
             R = cfi.R_to_Mosflm()
         else:
-            raise RuntimeError, 'convention %s not currently supported' % \
-                  convention
+            raise RuntimeError(
+            'convention %s not currently supported'%convention)
 
         return R * U, B
 
@@ -162,7 +162,7 @@ class coordinate_frame_converter:
 
         if not cfi.get_real_space_a() or not cfi.get_real_space_b() or \
            not cfi.get_real_space_c():
-            raise RuntimeError, 'orientation matrix information missing'
+            raise RuntimeError('orientation matrix information missing')
 
         axis_a = cfi.get_real_space_a()
         axis_b = cfi.get_real_space_b()
@@ -198,7 +198,7 @@ class coordinate_frame_converter:
         detector_normal = detector_fast.cross(detector_slow)
 
         if not sample_to_source.dot(detector_normal):
-            raise RuntimeError, 'beam parallel to detector'
+            raise RuntimeError('beam parallel to detector')
 
         distance = detector_origin.dot(detector_normal)
 
@@ -258,7 +258,7 @@ class coordinate_frame_converter:
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
-        raise RuntimeError, '%s configuration-file mosflm-matrix' % sys.argv[0]
+        raise RuntimeError('%s configuration-file mosflm-matrix' % sys.argv[0])
 
     configuration_file = sys.argv[1]
 

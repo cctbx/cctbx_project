@@ -16,9 +16,9 @@ import sys
 url_base = "http://www.rcsb.org/pdb/rest"
 url_search = url_base + "/search"
 
-def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
+def post_query(query_xml, xray_only=True, d_max=None, d_min=None,
     protein_only=False, data_only=False, identity_cutoff=None, log=None,
-    sort_by_resolution=False) :
+    sort_by_resolution=False):
   """
   Generate the full XML for a multi-part query with generic search options,
   starting from the basic query passed by another function, post it to the
@@ -38,47 +38,47 @@ def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
   log : file, optional
   sort_by_resolution : bool, optional
   """
-  if (log is None) :
+  if (log is None):
     log = libtbx.utils.null_out()
   queries = []
-  if (query_xml is not None) :
+  if (query_xml is not None):
     queries.append(query_xml)
   print >> log, "Setting up RCSB server query:"
-  if (xray_only) :
+  if (xray_only):
     print >> log, "  limiting to X-ray structures"
     xray_query = "<queryType>org.pdb.query.simple.ExpTypeQuery</queryType>\n"+\
       "<mvStructure.expMethod.value>X-RAY</mvStructure.expMethod.value>"
-    if (data_only) :
+    if (data_only):
       xray_query += "\n<mvStructure.hasExperimentalData.value>Y</mvStructure.hasExperimentalData.value>"
     queries.append(xray_query)
-  if (d_max is not None) or (d_min is not None) :
+  if (d_max is not None) or (d_min is not None):
     base_clause = "<queryType>org.pdb.query.simple.ResolutionQuery</queryType>"
     base_clause += "\n<refine.ls_d_res_high.comparator>between" + \
       "</refine.ls_d_res_high.comparator>"
-    if (d_min is not None) :
+    if (d_min is not None):
       assert (d_min >= 0)
       print >> log, "  applying resolution cutoff d_min > %f" % d_min
       base_clause += \
         "\n<refine.ls_d_res_high.min>%f</refine.ls_d_res_high.min>" % d_min
-    if (d_max is not None) :
+    if (d_max is not None):
       assert (d_max >= 0)
       print >> log, "  applying resolution cutoff d_min < %f" % d_max
       base_clause += \
         "\n<refine.ls_d_res_high.max>%f</refine.ls_d_res_high.max>" % d_max
     queries.append(base_clause)
-  if (protein_only) :
+  if (protein_only):
     print >> log, "  excluding non-protein models"
     queries.append(
       "<queryType>org.pdb.query.simple.ChainTypeQuery</queryType>\n" +
       "<containsProtein>Y</containsProtein>")
-  if (identity_cutoff is not None) :
+  if (identity_cutoff is not None):
     print >> log, "  filtering based on sequence identity < %d %%" % \
       int(identity_cutoff)
     assert (identity_cutoff > 0) and (identity_cutoff <= 100)
     queries.append(
       "<queryType>org.pdb.query.simple.HomologueReductionQuery</queryType>\n"+
       "<identityCutoff>%d</identityCutoff>" % int(identity_cutoff))
-  if (len(queries) == 0) :
+  if (len(queries) == 0):
     raise RuntimeError("No queries specified!")
   queries_string = ""
   k = 0
@@ -99,18 +99,18 @@ def post_query (query_xml, xray_only=True, d_max=None, d_min=None,
 """ % (queries_string)
   parsed = parseString(query_str)
   url_final = url_search
-  if (sort_by_resolution) :
+  if (sort_by_resolution):
     url_final += "/?sortfield=Resolution"
     print >> log, "  will sort by resolution"
   print >> log, "  executing HTTP request..."
   result = libtbx.utils.urlopen(url_final, query_str).read()
   return result.splitlines()
 
-def sequence_search (sequence, **kwds) :
+def sequence_search(sequence, **kwds):
   search_type = kwds.pop("search_type", "blast")
   expect = kwds.pop("expect", 0.01)
   min_identity = kwds.pop("min_identity", 0.0)
-  if (min_identity <= 1) :
+  if (min_identity <= 1):
     min_identity *= 100
   """
   Homology search for an amino acid sequence.  The advantage of using this
@@ -128,7 +128,7 @@ def sequence_search (sequence, **kwds) :
       min_identity, search_type)
   return post_query(query_str, **kwds)
 
-def chemical_id_search (resname, **kwds) :
+def chemical_id_search(resname, **kwds):
   """
   Find all entry IDs with the specified chemical ID.
 
@@ -155,8 +155,8 @@ def chemical_id_search (resname, **kwds) :
     %s""" % (resname, resname, polymer_limit)
   return post_query(query_str, **kwds)
 
-def get_custom_report_table (pdb_ids, columns, log=sys.stdout,
-    prefix="dimStructure", check_for_missing=True) :
+def get_custom_report_table(pdb_ids, columns, log=sys.stdout,
+    prefix="dimStructure", check_for_missing=True):
   """Given a list of PDB IDs and a list of attribute identifiers, returns a
   Python list of lists for the IDs and attributes."""
   assert (len(columns) > 0)
@@ -195,20 +195,20 @@ def get_custom_report_table (pdb_ids, columns, log=sys.stdout,
       assert (len(row_col) == 1)
       row.append(row_col[0].childNodes[0].data)
     table.append(row)
-  if (check_for_missing) :
+  if (check_for_missing):
     missing_ids = set(pdb_ids) - report_ids
-    if (len(missing_ids) > 0) :
+    if (len(missing_ids) > 0):
       print >> log, "WARNING: missing report info for %d IDs:"%len(missing_ids)
       print >> log, "  %s" % " ".join(sorted(list(missing_ids)))
   return table
 
-def get_high_resolution_for_structures (pdb_ids) :
+def get_high_resolution_for_structures(pdb_ids):
   return get_custom_report_table(pdb_ids, columns=["highResolutionLimit"])
 
 def get_high_resolution_and_residue_count_for_structures(pdb_ids):
   return get_custom_report_table(pdb_ids, columns=["highResolutionLimit", 'residueCount'])
 
-def get_ligand_info_for_structures (pdb_ids) :
+def get_ligand_info_for_structures(pdb_ids):
   """Return a list of ligands in the specified structure(s), including the
   SMILES strings."""
   return get_custom_report_table(pdb_ids,

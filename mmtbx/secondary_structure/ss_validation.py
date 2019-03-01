@@ -147,7 +147,7 @@ class validate(object):
     try:
       ss_annot = self.model.get_ss_annotation(log=ss_log)
     except Sorry as e:
-      print >> out, " Syntax error in SS: %s" % e.message
+      print >> self.log, " Syntax error in SS: %s" % e.message
       return
     ss_log_cont = ss_log.getvalue()
     n_bad_helices = ss_log_cont.count("Bad HELIX")

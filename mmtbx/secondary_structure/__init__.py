@@ -163,8 +163,8 @@ master_phil_str = sec_str_master_phil_str # for docs
 sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
 default_params = sec_str_master_phil.fetch().extract()
 
-class manager (object) :
-  def __init__ (self,
+class manager(object):
+  def __init__(self,
                 pdb_hierarchy,
                 atom_selection_cache=None,
                 geometry_restraints_manager=None,
@@ -192,7 +192,7 @@ class manager (object) :
 
     atoms = pdb_hierarchy.atoms()
     i_seqs = atoms.extract_i_seq()
-    if (i_seqs.all_eq(0)) :
+    if (i_seqs.all_eq(0)):
       atoms.reset_i_seq()
       i_seqs = atoms.extract_i_seq()
     self.n_atoms = atoms.size()
@@ -203,7 +203,7 @@ class manager (object) :
     self.pdb_atoms = atoms
     self.initialize()
 
-  def as_phil_str (self, master_phil=sec_str_master_phil) :
+  def as_phil_str(self, master_phil=sec_str_master_phil):
     # used in secondary_structure_restraints...
     return master_phil.format(python_object=self.params)
 
@@ -368,7 +368,7 @@ class manager (object) :
       return iotbx.pdb.secondary_structure.annotation.from_records()
 
 
-  def find_approximate_helices (self, log=sys.stdout) :
+  def find_approximate_helices(self, log=sys.stdout):
     print >> log, "  Looking for approximately helical regions. . ."
     print >> log, "    warning: experimental, results not guaranteed to work!"
     find_helices = proteins.find_helices_simple(self.pdb_hierarchy)
@@ -376,7 +376,7 @@ class manager (object) :
     restraint_groups = find_helices.as_restraint_groups()
     return restraint_groups
 
-  def find_base_pairs (self, log=sys.stdout, use_segid=False, segids=None):
+  def find_base_pairs(self, log=sys.stdout, use_segid=False, segids=None):
     if not use_segid:
       base_pairs = ""
       stacking_pairs = ""
@@ -422,9 +422,9 @@ class manager (object) :
               log=log,
               add_segid=segid,
               verbose = self.verbose)
-          if (base_pairs is not None) :
+          if (base_pairs is not None):
             annotations.append(base_pairs)
-          if (stacking_pairs is not None) :
+          if (stacking_pairs is not None):
             annotations.append(stacking_pairs)
       return "\n".join(annotations)
 
@@ -454,7 +454,7 @@ class manager (object) :
         pdb_hierarchy=self.pdb_hierarchy,
         atom_selection_cache=self.selection_cache)
 
-  def create_protein_hbond_proxies (self,
+  def create_protein_hbond_proxies(self,
                             annotation=None,
                             log=sys.stdout):
     # assert as_regular_bond_proxies=True
@@ -468,7 +468,7 @@ class manager (object) :
 
     distance_ideal = self.params.secondary_structure.protein.distance_ideal_n_o
     distance_cut = self.params.secondary_structure.protein.distance_cut_n_o
-    if (distance_cut is None) :
+    if (distance_cut is None):
       distance_cut = -1
     generated_proxies = geometry_restraints.shared_bond_simple_proxy()
     hb_angle_proxies = []
@@ -487,13 +487,13 @@ class manager (object) :
               remove_outliers=remove_outliers,
               restrain_hbond_angles=self.params.secondary_structure.protein.restrain_hbond_angles,
               log=log)
-          if (proxies.size() == 0) :
+          if (proxies.size() == 0):
             print >> log, "      No H-bonds generated for '%s'" % helix.selection
             continue
           else:
             generated_proxies.extend(proxies)
             hb_angle_proxies += angle_proxies
-      for k, sheet in enumerate(self.params.secondary_structure.protein.sheet) :
+      for k, sheet in enumerate(self.params.secondary_structure.protein.sheet):
         print >> log, "    Processing sheet with id=%s, first strand: %s" % (
             sheet.sheet_id, sheet.first_strand)
         if sheet.first_strand is not None:
@@ -508,7 +508,7 @@ class manager (object) :
             remove_outliers=remove_outliers,
             restrain_hbond_angles=self.params.secondary_structure.protein.restrain_hbond_angles,
             log=log)
-          if (proxies.size() == 0) :
+          if (proxies.size() == 0):
             print >> log, \
                 "  No H-bonds generated for sheet with id=%s" % sheet.sheet_id
             continue
@@ -518,7 +518,7 @@ class manager (object) :
 
     n_proxies = generated_proxies.size()
     print >> log, ""
-    if (n_proxies == 0) :
+    if (n_proxies == 0):
       print >> log, "    No hydrogen bonds defined for protein."
     else :
       print >> log, "    %d hydrogen bonds defined for protein." % n_proxies
@@ -578,13 +578,13 @@ class manager (object) :
         all_angle,
         planarity_bp_proxies, parallelity_bp_proxies+stacking_proxies)
 
-  def get_simple_bonds (self, selection_phil=None) :
+  def get_simple_bonds(self, selection_phil=None):
     # assert 0 # used in GUI to draw bonds
     # this function wants
     # shared.stl_set_unsigned([(i_seq, j_seq),(i_seq, j_seq)])
     desired_annotation = None
-    if (selection_phil is not None) :
-      if isinstance(selection_phil, str) :
+    if (selection_phil is not None):
+      if isinstance(selection_phil, str):
         selection_phil = iotbx.phil.parse(selection_phil)
       params = sec_str_master_phil.fetch(source=selection_phil).extract()
       desired_annotation = iotbx.pdb.secondary_structure.annotation.from_phil(
@@ -602,7 +602,7 @@ class manager (object) :
       simple_bonds.append(p.i_seqs)
     return shared.stl_set_unsigned(simple_bonds)
 
-  def calculate_structure_content (self) :
+  def calculate_structure_content(self):
     isel = self.selection_cache.iselection
     calpha = isel("name N and (altloc ' ' or altloc 'A')")
     alpha_sele = self.alpha_selection(limit="name N", main_conf_only=True)
@@ -613,7 +613,7 @@ class manager (object) :
       return (0.0, 0.0)
     return (n_alpha / calpha.size(), n_beta / calpha.size())
 
-  def show_summary (self, log=None) :
+  def show_summary(self, log=None):
     if log is None:
       log = self.log
     (frac_alpha, frac_beta) = self.calculate_structure_content()
@@ -638,16 +638,16 @@ class manager (object) :
     print >> log, "      %.1f%% alpha, %.1f%% beta" %(frac_alpha*100,frac_beta*100)
     print >> log, "      %d base pairs and %d stacking pairs defined." % (n_base_pairs,n_stacking_pairs)
 
-  def helix_selections (self, limit=None, main_conf_only=False,
-      alpha_only=False) :
+  def helix_selections(self, limit=None, main_conf_only=False,
+      alpha_only=False):
     sele = self.selection_cache.selection
     all_selections = []
     for helix in self.params.secondary_structure.protein.helix :
-      if (helix.selection is not None) :
-        if (alpha_only) and (helix.helix_type != "alpha") :
+      if (helix.selection is not None):
+        if (alpha_only) and (helix.helix_type != "alpha"):
           continue
         clauses = [ "(%s)" % helix.selection ]
-        if (limit is not None) :
+        if (limit is not None):
           assert isinstance(limit, str)
           clauses.append("(%s)" % limit)
         if main_conf_only :
@@ -656,29 +656,29 @@ class manager (object) :
         all_selections.append(helix_sel)
     return all_selections
 
-  def get_helix_types (self) :
+  def get_helix_types(self):
     return [ helix.helix_type for helix in self.params.secondary_structure.protein.helix ]
 
-  def helix_selection (self, **kwds) :
+  def helix_selection(self, **kwds):
     whole_selection = flex.bool(self.n_atoms)
-    for helix in self.helix_selections(**kwds) :
+    for helix in self.helix_selections(**kwds):
       whole_selection |= helix
     return whole_selection
 
   # FIXME backwards compatibility
-  def alpha_selection (self, **kwds) :
+  def alpha_selection(self, **kwds):
     return self.helix_selection(**kwds)
 
-  def alpha_selections (self, **kwds) :
+  def alpha_selections(self, **kwds):
     return self.helix_selections(**kwds)
 
-  def beta_selections (self, limit=None, main_conf_only=False) :
+  def beta_selections(self, limit=None, main_conf_only=False):
     sele = self.selection_cache.selection
     all_selections = []
     for sheet in self.params.secondary_structure.protein.sheet :
       sheet_selection = flex.bool(self.n_atoms)
       clauses = []
-      if (limit is not None) :
+      if (limit is not None):
         assert isinstance(limit, str)
         clauses.append("(%s)" % limit)
       if main_conf_only :
@@ -693,20 +693,20 @@ class manager (object) :
       all_selections.append(sheet_selection)
     return all_selections
 
-  def beta_selection (self, **kwds) :
+  def beta_selection(self, **kwds):
     whole_selection = flex.bool(self.n_atoms)
-    for sheet in self.beta_selections(**kwds) :
+    for sheet in self.beta_selections(**kwds):
       whole_selection |= sheet
     return whole_selection
 
-  def base_pair_selections (self, limit=None, main_conf_only=False) :
+  def base_pair_selections(self, limit=None, main_conf_only=False):
     # assert 0, "Probably shouldn't be used"
     sele = self.selection_cache.selection
     all_selections = []
     for bp in self.params.secondary_structure.nucleic_acid.base_pair :
-      if (bp.base1 is not None) and (bp.base2 is not None) :
+      if (bp.base1 is not None) and (bp.base2 is not None):
         clauses = [ "((%s) or (%s))" % (bp.base1, bp.base2) ]
-        if (limit is not None) :
+        if (limit is not None):
           clauses.append("(%s)" % limit)
         if main_conf_only :
           clauses.append("(altloc ' ' or altloc 'A')")
@@ -714,15 +714,15 @@ class manager (object) :
         all_selections.append(bp_sele)
     return all_selections
 
-  def base_pair_selection (self, **kwds) :
+  def base_pair_selection(self, **kwds):
     # assert 0, "Probably shouldn't be used",
     # used in mmtbx/command_line/find_tls_groups.py
     whole_selection = flex.bool(self.n_atoms)
-    for sheet in self.base_pair_selections(**kwds) :
+    for sheet in self.base_pair_selections(**kwds):
       whole_selection |= sheet
     return whole_selection
 
-  def selections_as_ints (self) :
+  def selections_as_ints(self):
     assert 0, "Anybody using this?"
     sec_str = flex.int(self.n_atoms, 0)
     all_alpha = flex.int(self.n_atoms, 1)
@@ -733,7 +733,7 @@ class manager (object) :
     sec_str.set_selected(sheets, all_beta.select(sheets))
     return sec_str
 
-  def apply_params (self, params) :
+  def apply_params(self, params):
     assert 0, "Not used anywhere?"
     self.params.helix = params.helix
     self.params.sheet = params.sheet
@@ -742,7 +742,7 @@ class manager (object) :
 # General functions
 # =============================================================================
 
-def sec_str_from_phil (phil_str) :
+def sec_str_from_phil(phil_str):
   # Used in wxGUI2/Programs/SecondaryStructure.py line 564, in update_from_strand_list
   ss_phil = iotbx.phil.parse(phil_str)
   ss_phil_fetched = sec_str_master_phil.fetch(source=ss_phil)
@@ -759,8 +759,8 @@ def get_ksdssp_exe_path():
     raise RuntimeError("ksdssp executable is not available")
   return exe_path
 
-def run_ksdssp (file_name, log=sys.stdout) :
-  if not os.path.isfile(file_name) :
+def run_ksdssp(file_name, log=sys.stdout):
+  if not os.path.isfile(file_name):
     raise RuntimeError("File %s not found.")
   exe_path = get_ksdssp_exe_path()
   print >> log, "  Running KSDSSP to generate HELIX and SHEET records"
@@ -769,7 +769,7 @@ def run_ksdssp (file_name, log=sys.stdout) :
 #    print >> log, "\n".join(ksdssp_out.stderr_lines)
   return ksdssp_out.stdout_lines
 
-def run_ksdssp_direct(pdb_str) :
+def run_ksdssp_direct(pdb_str):
   exe_path = get_ksdssp_exe_path()
   ksdssp_out = easy_run.fully_buffered(command=exe_path, stdin_lines=pdb_str)
   return ( ksdssp_out.stdout_lines, ksdssp_out.stderr_lines )
@@ -781,24 +781,24 @@ def run_ksdssp_direct(pdb_str) :
 # Unused functions...
 # =============================================================================
 
-def _get_distances (bonds, sites_cart) :
+def _get_distances(bonds, sites_cart):
   assert 0, "Hopefully is not used"
   distances = flex.double(bonds.size(), -1)
-  for k, (i_seq, j_seq) in enumerate(bonds) :
+  for k, (i_seq, j_seq) in enumerate(bonds):
     (x1, y1, z1) = sites_cart[i_seq]
     (x2, y2, z2) = sites_cart[j_seq]
     dist = sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
     distances[k] = dist
   return distances
 
-def get_pdb_hierarchy (file_names) :
+def get_pdb_hierarchy(file_names):
   assert 0, "Hopefully is not used"
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=file_names)
   pdb_structure = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
   return pdb_structure.construct_hierarchy()
 
-def analyze_distances (self, params, pdb_hierarchy=None, log=sys.stdout) :
+def analyze_distances(self, params, pdb_hierarchy=None, log=sys.stdout):
   assert 0 # Not used anywhere?
   atoms = None
   if params.verbose :
@@ -812,7 +812,7 @@ def analyze_distances (self, params, pdb_hierarchy=None, log=sys.stdout) :
   print >> log, ""
   if not remove_outliers :
     return False
-  for i, distance in enumerate(self.bond_lengths) :
+  for i, distance in enumerate(self.bond_lengths):
     if distance > distance_max :
       self.flag_use_bond[i] = False
       if params.verbose :
@@ -828,16 +828,7 @@ def analyze_distances (self, params, pdb_hierarchy=None, log=sys.stdout) :
   print >> log, ""
   return True
 
-def find_nucleic_acids (pdb_hierarchy) :
-  assert 0, "Anybody using this?"
-  for model in pdb_hierarchy.models() :
-    for chain in model.chains() :
-      for conformer in chain.conformers() :
-        if conformer.is_na() :
-          return True
-  return False
-
-def manager_from_pdb_file (pdb_file) :
+def manager_from_pdb_file(pdb_file):
   assert 0, "will not work"
   from iotbx import file_reader
   assert os.path.isfile(pdb_file)
@@ -847,7 +838,7 @@ def manager_from_pdb_file (pdb_file) :
   ss_manager  = manager(pdb_hierarchy=pdb_hierarchy)
   return ss_manager
 
-def calculate_structure_content (pdb_file) :
+def calculate_structure_content(pdb_file):
   assert 0, "will not work"
   ss_manager = manager_from_pdb_file(pdb_file)
   ss_manager.find_automatically()

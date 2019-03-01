@@ -7,7 +7,7 @@ tst_list = (
     "$D/nanoBragg/tst_gaussian_mosaicity.py",
     )
 
-def run () :
+def run():
   build_dir = libtbx.env.under_build("simtbx")
   dist_dir = libtbx.env.dist_path("simtbx")
   test_utils.run_tests(build_dir, dist_dir, tst_list)

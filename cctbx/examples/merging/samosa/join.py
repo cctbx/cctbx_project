@@ -21,7 +21,7 @@ from xfel.command_line.cxi_merge import get_observations
 from xfel.command_line.cxi_merge import frame_data, null_data
 from xfel.command_line.cxi_merge import consistent_set_and_model
 
-class unit_cell_distribution (object) :
+class unit_cell_distribution(object):
   """
   Container for collecting unit cell edge length statistics - for frames
   included in the final dataset.
@@ -29,32 +29,32 @@ class unit_cell_distribution (object) :
   """
   # TODO make this more general - currently assumes that angles are fixed,
   # which is true for the systems studied so far
-  def __init__ (self) :
+  def __init__(self):
     self.all_uc_a_values = flex.double()
     self.all_uc_b_values = flex.double()
     self.all_uc_c_values = flex.double()
 
-  def add_cell (self, unit_cell, rejected=False) :
-    if (unit_cell is None) :
+  def add_cell(self, unit_cell, rejected=False):
+    if (unit_cell is None):
       return
     (a,b,c,alpha,beta,gamma) = unit_cell.parameters()
     self.all_uc_a_values.append(a)
     self.all_uc_b_values.append(b)
     self.all_uc_c_values.append(c)
 
-  def add_cells(self, uc) :
+  def add_cells(self, uc):
     """Addition operation for unit cell statistics."""
     self.all_uc_a_values.extend(uc.all_uc_a_values)
     self.all_uc_b_values.extend(uc.all_uc_b_values)
     self.all_uc_c_values.extend(uc.all_uc_c_values)
 
-  def show_histograms (self, reference, out, n_slots=20) :
+  def show_histograms(self, reference, out, n_slots=20):
     [a0,b0,c0,alpha0,beta0,gamma0] = reference.parameters()
     print >> out, ""
     labels = ["a","b","c"]
     ref_edges = [a0,b0,c0]
-    def _show_each (edges) :
-      for edge, ref_edge, label in zip(edges, ref_edges, labels) :
+    def _show_each(edges):
+      for edge, ref_edge, label in zip(edges, ref_edges, labels):
         h = flex.histogram(edge, n_slots=n_slots)
         smin, smax = flex.min(edge), flex.max(edge)
         stats = flex.mean_and_variance(edge)
@@ -70,7 +70,7 @@ class unit_cell_distribution (object) :
       "Unit cell length distribution (all frames with compatible indexing):"
     _show_each(edges)
 
-  def get_average_cell_dimensions (self) :
+  def get_average_cell_dimensions(self):
     a = flex.mean(self.all_uc_a_values)
     b = flex.mean(self.all_uc_b_values)
     c = flex.mean(self.all_uc_c_values)
@@ -78,11 +78,11 @@ class unit_cell_distribution (object) :
 
 #-----------------------------------------------------------------------
 from xfel.command_line.cxi_merge import scaling_manager as scaling_manager_base
-class scaling_manager (scaling_manager_base) :
-  def __init__ (self, miller_set, i_model, params, log=None) :
+class scaling_manager(scaling_manager_base):
+  def __init__(self, miller_set, i_model, params, log=None):
     scaling_manager_base.__init__(self, miller_set, i_model, params, log)
 
-  def reset (self) :
+  def reset(self):
     self.n_processed = 0
     self.n_accepted = 0
     self.n_file_error = 0
@@ -97,7 +97,7 @@ class scaling_manager (scaling_manager_base) :
     self.wavelength = flex.double()
     self.initialize()
 
-  def scale_all (self, file_names) :
+  def scale_all(self, file_names):
     t1 = time.time()
     if self.params.backend == 'MySQL':
       from xfel.merging.database.merging_database import manager
@@ -177,12 +177,12 @@ class scaling_manager (scaling_manager_base) :
 
     self.join_obs = pickled_data
 
-  def _scale_all_parallel (self, file_names, db_mgr) :
+  def _scale_all_parallel(self, file_names, db_mgr):
     import multiprocessing
     import libtbx.introspection
 
     nproc = self.params.nproc
-    if (nproc is None) or (nproc is Auto) :
+    if (nproc is None) or (nproc is Auto):
       nproc = libtbx.introspection.number_of_processors()
 
     # Input files are supplied to the scaling processes on demand by
@@ -200,7 +200,7 @@ class scaling_manager (scaling_manager_base) :
     # Each process accumulates its own statistics in serial, and the
     # grand total is eventually collected by the main process'
     # _add_all_frames() function.
-    for i in range(nproc) :
+    for i in range(nproc):
       sm = scaling_manager(self.miller_set, self.i_model, self.params)
       pool.apply_async(
         func=sm,
@@ -213,45 +213,45 @@ class scaling_manager (scaling_manager_base) :
     input_queue.join()
 
 
-  def _scale_all_serial (self, file_names, db_mgr) :
+  def _scale_all_serial(self, file_names, db_mgr):
     """
     Scale frames sequentially (single-process).  The return value is
     picked up by the callback.
     """
     for file_name in file_names :
       scaled = self.scale_frame(file_name, db_mgr)
-      if (scaled is not None) :
+      if (scaled is not None):
         self.add_frame(scaled)
     return (self)
 
-  def add_frame (self, data) :
+  def add_frame(self, data):
     """
     Combine the scaled data from a frame with the current overall dataset.
     Also accepts None or null_data objects, when data are unusable but we
     want to record the file as processed.
     """
     self.n_processed += 1
-    if (data is None) :
+    if (data is None):
       return None
     #data.show_log_out(self.log)
     #self.log.flush()
-    if (isinstance(data, null_data)) :
-      if (data.file_error) :
+    if (isinstance(data, null_data)):
+      if (data.file_error):
         self.n_file_error += 1
-      elif (data.low_signal) :
+      elif (data.low_signal):
         self.n_low_signal += 1
-      elif (data.wrong_bravais) :
+      elif (data.wrong_bravais):
         self.n_wrong_bravais += 1
-      elif (data.wrong_cell) :
+      elif (data.wrong_cell):
         self.n_wrong_cell += 1
       return
-    if (data.accept) :
+    if (data.accept):
       self.n_accepted    += 1
       self.completeness  += data.completeness
       self.summed_N      += data.summed_N
       self.summed_weight += data.summed_weight
       self.summed_wt_I   += data.summed_wt_I
-      for index, isigi in data.ISIGI.iteritems() :
+      for index, isigi in data.ISIGI.iteritems():
         if (index in self.ISIGI):
           self.ISIGI[index] += isigi
         else:
@@ -260,14 +260,14 @@ class scaling_manager (scaling_manager_base) :
     self.uc_values.add_cell(data.indexed_cell,
       rejected=(not data.accept))
     self.observations.append(data.n_obs)
-    if (data.n_obs > 0) :
+    if (data.n_obs > 0):
       frac_rejected = data.n_rejected / data.n_obs
       self.rejected_fractions.append(frac_rejected)
       self.d_min_values.append(data.d_min)
     self.corr_values.append(data.corr)
     self.wavelength.append(data.wavelength)
 
-  def _add_all_frames (self, data) :
+  def _add_all_frames(self, data):
     """The _add_all_frames() function collects the statistics accumulated
     in @p data by the individual scaling processes in the process
     pool.  This callback function is run in serial, so it does not
@@ -280,7 +280,7 @@ class scaling_manager (scaling_manager_base) :
     self.n_wrong_bravais += data.n_wrong_bravais
     self.n_wrong_cell += data.n_wrong_cell
 
-    for index, isigi in data.ISIGI.iteritems() :
+    for index, isigi in data.ISIGI.iteritems():
       if (index in self.ISIGI):
         self.ISIGI[index] += isigi
       else:
@@ -299,7 +299,7 @@ class scaling_manager (scaling_manager_base) :
 
     self.uc_values.add_cells(data.uc_values)
 
-  def get_plot_statistics (self) :
+  def get_plot_statistics(self):
     return plot_statistics(
       prefix=self.params.output.prefix,
       unit_cell_statistics=self.uc_values,
@@ -543,7 +543,7 @@ class scaling_manager (scaling_manager_base) :
 
     data.accept = True
     for pair in matches.pairs():
-      if not self.params.include_negatives and (observations.data()[pair[1]] <= 0) :
+      if not self.params.include_negatives and (observations.data()[pair[1]] <= 0):
         continue
       Intensity = observations.data()[pair[1]]
       # Super-rare exception. If saved sigmas instead of I/sigmas in the ISIGI dict, this wouldn't be needed.
@@ -578,19 +578,19 @@ def run(args):
   from xfel.merging.phil_validation import application,samosa
   application(work_params)
   samosa(work_params)
-  if ("--help" in args) :
+  if ("--help" in args):
     libtbx.phil.parse(master_phil.show())
     return
 
   if ((work_params.d_min is None) or
-      (work_params.data is None) ) :
+      (work_params.data is None) ):
     command_name = os.environ["LIBTBX_DISPATCHER_NAME"]
     raise Usage(command_name + " "
                 "d_min=4.0 "
                 "data=~/scratch/r0220/006/strong/ "
                 "model=3bz1_3bz2_core.pdb")
   if ((work_params.rescale_with_average_cell) and
-      (not work_params.set_average_unit_cell)) :
+      (not work_params.set_average_unit_cell)):
     raise Usage("If rescale_with_average_cell=True, you must also specify "+
       "set_average_unit_cell=True.")
   if work_params.raw_data.sdfac_auto and work_params.raw_data.sdfac_refine:
@@ -628,7 +628,7 @@ def run(args):
   if scaler.n_accepted == 0:
     return None
   scaler.show_unit_cell_histograms()
-  if (work_params.rescale_with_average_cell) :
+  if (work_params.rescale_with_average_cell):
     average_cell_abc = scaler.uc_values.get_average_cell_dimensions()
     average_cell = uctbx.unit_cell(list(average_cell_abc) +
       list(work_params.target_unit_cell.parameters()[3:]))
@@ -642,7 +642,7 @@ def run(args):
     scaler.reset()
     scaler.scale_all(frame_files)
     scaler.show_unit_cell_histograms()
-  if False : #(work_params.output.show_plots) :
+  if False : #(work_params.output.show_plots):
     try :
       plot_overall_completeness(completeness)
     except Exception as e :
@@ -653,7 +653,7 @@ def run(args):
   # Sum the observations of I and I/sig(I) for each reflection.
   sum_I = flex.double(miller_set.size(), 0.)
   sum_I_SIGI = flex.double(miller_set.size(), 0.)
-  for i in range(miller_set.size()) :
+  for i in range(miller_set.size()):
     index = miller_set.indices()[i]
     if index in scaler.ISIGI :
       for t in scaler.ISIGI[index]:
@@ -718,7 +718,7 @@ def run(args):
 
 from xfel.command_line.cxi_merge import show_overall_observations
 
-class scaling_result (group_args) :
+class scaling_result(group_args):
   """
   Container for any objects that might need to be saved for future use (e.g.
   in a GUI).  Must be pickle-able!
@@ -735,22 +735,22 @@ def plot_overall_completeness(completeness):
   plt.show()
 
 from xfel.command_line.cxi_merge import plot_statistics as plot_base
-class plot_statistics (plot_base) :
+class plot_statistics(plot_base):
   """
   Container for assorted histograms of frame statistics.  The resolution bin
   plots are stored separately, since they can be displayed using the loggraph
   viewer.
   """
-  def __init__ (self,
+  def __init__(self,
                 prefix,
                 unit_cell_statistics,
                 reference_cell,
                 correlations,
                 rejected_fractions,
-                frame_d_min) :
+                frame_d_min):
     adopt_init_args(self, locals())
 
-  def show_all_pyplot (self, n_slots=20) :
+  def show_all_pyplot(self, n_slots=20):
     """
     Display histograms using pyplot.  For use in a wxPython GUI the figure
     should be created separately in a wx.Frame.
@@ -772,9 +772,9 @@ class plot_statistics (plot_base) :
       n_slots=n_slots)
     plt.show()
 
-  def plot_statistics_histograms (self,
+  def plot_statistics_histograms(self,
       figure,
-      n_slots=20) :
+      n_slots=20):
     ax3 = figure.add_axes([0.1, 0.7, 0.8, 0.25])
     ax3.hist(self.frame_d_min, n_slots, color=[0.0,0.5,1.0])
     ax3.set_xlabel("Integrated resolution limit")
@@ -782,13 +782,13 @@ class plot_statistics (plot_base) :
 
 if (__name__ == "__main__"):
   show_plots = False
-  if ("--plots" in sys.argv) :
+  if ("--plots" in sys.argv):
     sys.argv.remove("--plots")
     show_plots = True
   result = run(args=sys.argv[1:])
   if result is None:
     sys.exit(1)
-  if (show_plots) :
+  if (show_plots):
     result.plots.show_all_pyplot()
     from wxtbx.command_line import loggraph
     loggraph.run([result.loggraph_file])

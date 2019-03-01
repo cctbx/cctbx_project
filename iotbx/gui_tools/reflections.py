@@ -5,17 +5,17 @@ from iotbx import file_reader
 from libtbx.utils import Sorry
 import os
 
-def space_group_as_str (space_group) :
+def space_group_as_str(space_group):
   from cctbx import sgtbx
   if space_group is None :
     return ""
-  elif isinstance(space_group, sgtbx.space_group_info) :
+  elif isinstance(space_group, sgtbx.space_group_info):
     return str(space_group)
   else :
     sg_info = sgtbx.space_group_info(group=space_group)
     return str(sg_info)
 
-def unit_cell_as_str (unit_cell, separator=" ") :
+def unit_cell_as_str(unit_cell, separator=" "):
   assert isinstance(separator, str) and separator != ""
   if unit_cell is not None :
     format = separator.join([ "%g" for i in range(6) ])
@@ -23,15 +23,15 @@ def unit_cell_as_str (unit_cell, separator=" ") :
   else :
     return ""
 
-class reflections_handler (iotbx.gui_tools.manager) :
+class reflections_handler(iotbx.gui_tools.manager):
   file_type = "hkl"
   file_type_label = "Reflections"
-  def __init__ (self,
+  def __init__(self,
                 allowed_param_names=None,
                 allowed_multiple_params=None,
                 debug=False,
                 minimum_data_score=4,
-                prefer_amplitudes=False) :
+                prefer_amplitudes=False):
     iotbx.gui_tools.manager.__init__(self,
       allowed_param_names=allowed_param_names,
       allowed_multiple_params=allowed_multiple_params,
@@ -39,47 +39,47 @@ class reflections_handler (iotbx.gui_tools.manager) :
     self.minimum_data_score = minimum_data_score
     self.prefer_amplitudes = prefer_amplitudes
 
-  def get_miller_array (self, labels, file_name=None, file_param_name=None) :
+  def get_miller_array(self, labels, file_name=None, file_param_name=None):
     hkl_file = self.get_file(file_name=file_name,
       file_param_name=file_param_name)
-    if (hkl_file is None) :
+    if (hkl_file is None):
       return None
     for array in hkl_file.file_server.miller_arrays :
       array_label_string = array.info().label_string()
       array_labels = array.info().labels
       if ((array_label_string == labels) or
           (array_labels == labels) or
-          (",".join(array_labels) == labels)) :
+          (",".join(array_labels) == labels)):
         return array
     return None
 
-  def get_wavelength (self, *args, **kwds) :
+  def get_wavelength(self, *args, **kwds):
     array = self.get_miller_array(*args, **kwds)
-    if (array is not None) :
+    if (array is not None):
       info = array.info()
-      if (info is not None) :
+      if (info is not None):
         return info.wavelength
     return None
 
-  def check_symmetry (self, *args, **kwds) :
+  def check_symmetry(self, *args, **kwds):
     hkl_file = self.get_file(*args, **kwds)
     hkl_server = hkl_file.file_server
     ma = hkl_server.miller_arrays[0]
-    if (ma.space_group() is None) or (ma.unit_cell() is None) :
+    if (ma.space_group() is None) or (ma.unit_cell() is None):
       raise Sorry("Incomplete symmetry for this reflections file.  Please "+
         "use a format that includes both space group and unit cell, such as "+
         "an MTZ or merged Scalepack file.")
     return True
 
-  def get_file_type_label (self, file_name=None, input_file=None) :
-    if (input_file is not None) :
+  def get_file_type_label(self, file_name=None, input_file=None):
+    if (input_file is not None):
       return input_file.file_object.file_type()
 
-  def get_all_labels (self, *args, **kwds) :
+  def get_all_labels(self, *args, **kwds):
     hkl_file = self.get_file(*args, **kwds)
     if hkl_file is None :
       labels = []
-      for (file_name, hkl_file) in self.input_files() :
+      for (file_name, hkl_file) in self.input_files():
         miller_arrays = hkl_file.file_server.miller_arrays
         labels.extend([ a.info().label_string() for a in miller_arrays ])
     else :
@@ -87,7 +87,7 @@ class reflections_handler (iotbx.gui_tools.manager) :
       labels = [ a.info().label_string() for a in miller_arrays ]
     return labels
 
-  def get_rfree_labels (self, *args, **kwds) :
+  def get_rfree_labels(self, *args, **kwds):
     prefer_neutron = kwds.pop("neutron", None)
     hkl_file = self.get_file(*args, **kwds)
     labels = []
@@ -101,36 +101,36 @@ class reflections_handler (iotbx.gui_tools.manager) :
         parameter_scope          = "",
         return_all_valid_arrays  = True,
         minimum_score            = 1)
-      if (prefer_neutron is not None) :
+      if (prefer_neutron is not None):
         xray_arrays = []
         neutron_arrays = []
         other_arrays = []
         for array_and_flag_value in arrays_and_flags :
           array = array_and_flag_value[0]
           label = array.info().label_string().lower()
-          if ("neutron" in label) :
+          if ("neutron" in label):
             neutron_arrays.append(array_and_flag_value)
-          elif ("xray" in label) :
+          elif ("xray" in label):
             xray_arrays.append(array_and_flag_value)
           else :
             other_arrays.append(array_and_flag_value)
-        if (prefer_neutron) and (len(neutron_arrays) > 0) :
+        if (prefer_neutron) and (len(neutron_arrays) > 0):
           arrays_and_flags = neutron_arrays + other_arrays
-        elif (not prefer_neutron) and (len(xray_arrays) > 0) :
+        elif (not prefer_neutron) and (len(xray_arrays) > 0):
           arrays_and_flags = xray_arrays + other_arrays
       if len(arrays_and_flags) > 0 :
         labels = [ a.info().label_string() for a, fl in arrays_and_flags ]
     return labels
 
-  def has_rfree (self, *args, **kwds) :
+  def has_rfree(self, *args, **kwds):
     return len(self.get_rfree_labels(*args, **kwds)) > 0
 
-  def has_neutron_rfree (self, *args, **kwds) :
+  def has_neutron_rfree(self, *args, **kwds):
     kwds['neutron'] = True
     labels = self.get_rfree_labels(*args, **kwds)
     return ([ "neutron" in l.lower() for l in labels ].count(True) > 0)
 
-  def get_rfree_flag_value (self, array_name, *args, **kwds) :
+  def get_rfree_flag_value(self, array_name, *args, **kwds):
     hkl_file = self.get_file(*args, **kwds)
     flag = None
     if hkl_file is not None :
@@ -150,7 +150,7 @@ class reflections_handler (iotbx.gui_tools.manager) :
           break
     return flag
 
-  def get_experimental_phase_labels (self, *args, **kwds) :
+  def get_experimental_phase_labels(self, *args, **kwds):
     hkl_file = self.get_file(*args, **kwds)
     labels = []
     if hkl_file is not None :
@@ -165,10 +165,10 @@ class reflections_handler (iotbx.gui_tools.manager) :
       labels = [ array.info().label_string() for array in miller_arrays ]
     return labels
 
-  def has_phases (self, *args, **kwds) :
+  def has_phases(self, *args, **kwds):
     return len(self.get_experimental_phase_labels(*args, **kwds)) > 0
 
-  def get_phase_arrays (self, *args, **kwds) :
+  def get_phase_arrays(self, *args, **kwds):
     hkl_file = self.get_file(*args, **kwds)
     labels = []
     if hkl_file is not None :
@@ -185,7 +185,7 @@ class reflections_handler (iotbx.gui_tools.manager) :
       return miller_arrays
     return []
 
-  def get_phase_deg_labels (self, *args, **kwds) :
+  def get_phase_deg_labels(self, *args, **kwds):
     miller_arrays = self.get_phase_arrays(*args, **kwds)
     labels = []
     for array in miller_arrays :
@@ -194,17 +194,17 @@ class reflections_handler (iotbx.gui_tools.manager) :
       labels.append(labels_str)
     return labels
 
-  def get_phase_column_labels (self, *args, **kwds) :
+  def get_phase_column_labels(self, *args, **kwds):
     labels = []
     miller_arrays = self.get_phase_arrays(*args, **kwds)
     for array in miller_arrays :
       for label in array.info().labels :
-        if label.upper().startswith("PH") :
+        if label.upper().startswith("PH"):
           labels.append(label)
           break
     return labels
 
-  def get_data_arrays (self, *args, **kwds) :
+  def get_data_arrays(self, *args, **kwds):
     prefer_neutron = kwds.pop("neutron", None)
     hkl_file = self.get_file(*args, **kwds)
     if hkl_file is not None :
@@ -220,34 +220,34 @@ class reflections_handler (iotbx.gui_tools.manager) :
         f_arrays = []
         other_arrays = []
         for array in miller_arrays :
-          if array.is_xray_amplitude_array() :
+          if array.is_xray_amplitude_array():
             f_arrays.append(array)
           else :
             other_arrays.append(array)
         miller_arrays = f_arrays + other_arrays
-      elif (prefer_neutron is not None) :
+      elif (prefer_neutron is not None):
         xray_arrays = []
         neutron_arrays = []
         other_arrays = []
         for array in miller_arrays :
           label = array.info().label_string().lower()
-          if ("neutron" in label) :
+          if ("neutron" in label):
             neutron_arrays.append(array)
-          elif ("xray" in label) :
+          elif ("xray" in label):
             xray_arrays.append(array)
           else :
             other_arrays.append(array)
-        if (prefer_neutron) and (len(neutron_arrays) > 0) :
+        if (prefer_neutron) and (len(neutron_arrays) > 0):
           miller_arrays = neutron_arrays + other_arrays
-        elif (not prefer_neutron) and (len(xray_arrays) > 0) :
+        elif (not prefer_neutron) and (len(xray_arrays) > 0):
           miller_arrays = xray_arrays + other_arrays
       return miller_arrays
     return []
 
-  def get_data_labels (self, *args, **kwds) :
+  def get_data_labels(self, *args, **kwds):
     return extract_labels(self.get_data_arrays(*args, **kwds))
 
-  def get_amplitude_arrays (self, *args, **kwds) :
+  def get_amplitude_arrays(self, *args, **kwds):
     allow_conversion = kwds.pop('allow_conversion', False)
     hkl_file = self.get_file(*args, **kwds)
     if hkl_file is not None :
@@ -264,10 +264,10 @@ class reflections_handler (iotbx.gui_tools.manager) :
       return miller_arrays
     return []
 
-  def get_amplitude_labels (self, *args, **kwds) :
+  def get_amplitude_labels(self, *args, **kwds):
     return extract_labels(self.get_amplitude_arrays(*args, **kwds))
 
-  def get_amplitude_column_labels (self, *args, **kwds) :
+  def get_amplitude_column_labels(self, *args, **kwds):
     miller_arrays = self.get_amplitude_arrays(*args, **kwds)
     labels = []
     for array in miller_arrays :
@@ -275,32 +275,32 @@ class reflections_handler (iotbx.gui_tools.manager) :
       labels.extend(array.info().labels[0])
     return labels
 
-  def get_intensity_arrays (self, *args, **kwds) :
+  def get_intensity_arrays(self, *args, **kwds):
     miller_arrays = self.get_data_arrays(*args, **kwds)
     i_arrays = []
     for array in miller_arrays :
-      if array.is_xray_intensity_array() :
+      if array.is_xray_intensity_array():
         i_arrays.append(array)
     return i_arrays
 
-  def get_intensity_labels (self, *args, **kwds) :
+  def get_intensity_labels(self, *args, **kwds):
     return extract_labels(self.get_intensity_arrays(*args, **kwds))
 
   # space-separated, column labels only
-  def get_data_labels_for_wizard (self, *args, **kwds) :
+  def get_data_labels_for_wizard(self, *args, **kwds):
     miller_arrays = self.get_data_arrays(*args, **kwds)
     labels = [ " ".join(array.info().labels) for array in miller_arrays ]
     return labels
 
-  def has_data (self, *args, **kwds) :
+  def has_data(self, *args, **kwds):
     return len(self.get_data_labels(*args, **kwds)) > 0
 
-  def has_neutron_data (self, *args, **kwds) :
+  def has_neutron_data(self, *args, **kwds):
     kwds['neutron'] = True
     labels = self.get_data_labels(*args, **kwds)
     return ([ "neutron" in l.lower() for l in labels ].count(True) > 0)
 
-  def get_anomalous_data_labels (self, *args, **kwds) :
+  def get_anomalous_data_labels(self, *args, **kwds):
     kwds = dict(kwds) # XXX gross...
     allow_dano = kwds.pop("allow_reconstructed_amplitudes", True)
     hkl_file = self.get_file(*args, **kwds)
@@ -315,51 +315,51 @@ class reflections_handler (iotbx.gui_tools.manager) :
         return_all_valid_arrays = True,
         minimum_score           = self.minimum_data_score)
       for array in miller_arrays :
-        if (array.anomalous_flag()) :
+        if (array.anomalous_flag()):
           if ((array.is_xray_reconstructed_amplitude_array()) and
-              (not allow_dano)) :
+              (not allow_dano)):
             continue
           labels.append(array.info().label_string())
     return labels
 
-  def has_anomalous_data (self, *args, **kwds) :
+  def has_anomalous_data(self, *args, **kwds):
     return (len(self.get_anomalous_data_labels(*args, **kwds)) > 0)
 
-  def get_phaser_map_fc_labels (self, *args, **kwds) :
+  def get_phaser_map_fc_labels(self, *args, **kwds):
     labels = self.get_fmodel_labels(*args, **kwds)
     first_column_only = kwds.pop('first_column_only', False)
     hkl_file = self.get_file(*args, **kwds)
-    if (hkl_file is not None) :
+    if (hkl_file is not None):
       for miller_array in hkl_file.file_server.miller_arrays :
-        if (miller_array.is_complex_array()) :
+        if (miller_array.is_complex_array()):
           labels_str = miller_array.info().label_string()
-          if labels_str.startswith("FWT") :
+          if labels_str.startswith("FWT"):
             labels.append(miller_array.info().labels[0])
     return labels
 
-  def get_fmodel_labels (self, *args, **kwds) :
+  def get_fmodel_labels(self, *args, **kwds):
     first_column_only = kwds.pop('first_column_only', False)
     hkl_file = self.get_file(*args, **kwds)
     labels_list = []
-    if (hkl_file is not None) :
+    if (hkl_file is not None):
       for miller_array in hkl_file.file_server.miller_arrays :
-        if (miller_array.is_complex_array()) :
+        if (miller_array.is_complex_array()):
           labels = miller_array.info().label_string()
           if (labels.startswith("F-model") or
               labels.upper().startswith("FMODEL") or
-              labels.upper().startswith("FC")) :
-            if (first_column_only) :
+              labels.upper().startswith("FC")):
+            if (first_column_only):
               labels_list.append(miller_array.info().labels[0])
             else :
               labels_list.append(labels)
     return labels_list
 
-  def get_map_coeff_labels (self, *args, **kwds) :
+  def get_map_coeff_labels(self, *args, **kwds):
     # FIXME this is just gross...
     kwds_basic = {}
     kwds_maps = {}
-    for kwd in dict(kwds) :
-      if (kwd in ["file_name", "file_param_name"]) :
+    for kwd in dict(kwds):
+      if (kwd in ["file_name", "file_param_name"]):
         kwds_basic[kwd] = kwds[kwd]
       else :
         kwds_maps[kwd] = kwds[kwd]
@@ -368,46 +368,46 @@ class reflections_handler (iotbx.gui_tools.manager) :
       return get_map_coeff_labels(hkl_file.file_server, **kwds_maps)
     return []
 
-  def get_map_coeff_labels_for_build (self, *args, **kwds) :
+  def get_map_coeff_labels_for_build(self, *args, **kwds):
     hkl_file = self.get_file(*args, **kwds)
     if hkl_file is not None :
       return get_map_coeffs_for_build(hkl_file.file_server)
     return []
 
-  def get_map_coeff_labels_for_fft (self, *args, **kwds) :
+  def get_map_coeff_labels_for_fft(self, *args, **kwds):
     hkl_file = self.get_file(*args, **kwds)
     labels_list = []
     if hkl_file is not None :
       all_labels = get_map_coeff_labels(hkl_file.file_server,
         keep_array_labels=True)
       for labels in all_labels :
-        if isinstance(labels, str) :
+        if isinstance(labels, str):
           labels_list.append(labels)
         else :
           labels_list.append(" ".join(labels))
     return labels_list
 
-  def get_two_fofc_map_labels (self, *args, **kwds) :
+  def get_two_fofc_map_labels(self, *args, **kwds):
     hkl_file = self.get_file(*args, **kwds)
     labels_list = []
-    if (hkl_file is not None) :
+    if (hkl_file is not None):
       for array in hkl_file.file_server.miller_arrays :
         labels = array.info().label_string()
-        if (labels.startswith("FWT") or labels.startswith("2FOFC")) :
+        if (labels.startswith("FWT") or labels.startswith("2FOFC")):
           labels_list.append(labels)
     return labels_list
 
-  def get_fofc_map_labels (self, *args, **kwds) :
+  def get_fofc_map_labels(self, *args, **kwds):
     hkl_file = self.get_file(*args, **kwds)
     labels_list = []
-    if (hkl_file is not None) :
+    if (hkl_file is not None):
       for array in hkl_file.file_server.miller_arrays :
         labels = array.info().label_string()
-        if (labels.startswith("DELFWT") or labels.startswith("FOFC")) :
+        if (labels.startswith("DELFWT") or labels.startswith("FOFC")):
           labels_list.append(labels)
     return labels_list
 
-  def get_amplitude_column_labels (self, *args, **kwds) :
+  def get_amplitude_column_labels(self, *args, **kwds):
     miller_arrays = self.get_amplitude_arrays(*args, **kwds)
     labels = []
     for array in miller_arrays :
@@ -415,74 +415,74 @@ class reflections_handler (iotbx.gui_tools.manager) :
       labels.extend(array.info().labels[0])
     return labels
 
-  def d_max_min (self, file_name=None, file_param_name=None,
-      array_name=None, array_names=None) :
+  def d_max_min(self, file_name=None, file_param_name=None,
+      array_name=None, array_names=None):
     from iotbx.reflection_file_editor import get_best_resolution
     miller_arrays = []
-    if (file_name is None) and (file_param_name is None) :
-      for phil_name, file_name in self._param_files.iteritems() :
+    if (file_name is None) and (file_param_name is None):
+      for phil_name, file_name in self._param_files.iteritems():
         input_file = self.get_file(file_name)
-        if (input_file is not None) :
+        if (input_file is not None):
           miller_arrays.extend(input_file.file_server.miller_arrays)
     else :
       hkl_file = self.get_file(file_name, file_param_name)
-      if (hkl_file is None) :
+      if (hkl_file is None):
         return (None, None)
       for miller_array in hkl_file.file_server.miller_arrays :
         label = miller_array.info().label_string()
-        if (array_name is not None) :
-          if (label == array_name) :
+        if (array_name is not None):
+          if (label == array_name):
             miller_arrays = [miller_array]
             break
-        elif (array_names is not None) :
-          if (label in array_names) :
+        elif (array_names is not None):
+          if (label in array_names):
             miller_arrays.append(miller_array)
         else :
           miller_arrays.append(miller_array)
     (d_max, d_min) = get_best_resolution(miller_arrays)
     return (d_max, d_min)
 
-  def get_resolution_range (self, *args, **kwds) :
+  def get_resolution_range(self, *args, **kwds):
     (d_max, d_min) = self.d_max_min(*args, **kwds)
-    if (d_max is None) :
+    if (d_max is None):
       return ""
     else :
       return "(%.3f - %.3f)" % (d_max, d_min)
 
-  def get_resolution_limits (self, *args, **kwds) :
+  def get_resolution_limits(self, *args, **kwds):
     (d_max, d_min) = self.d_max_min(*args, **kwds)
     (d_max_str, d_min_str) = ("", "")
-    if (d_max is not None) :
+    if (d_max is not None):
       d_max_str = "(%.3f)" % d_max
-    if (d_min is not None) :
+    if (d_min is not None):
       d_min_str = "(%.3f)" % d_min
     return (d_max_str, d_min_str)
 
-  def space_group (self, *args, **kwds) :
+  def space_group(self, *args, **kwds):
     symm = self.crystal_symmetry(*args, **kwds)
     if symm is not None :
       return symm.space_group()
     return None
 
-  def space_group_as_str (self, *args, **kwds) :
+  def space_group_as_str(self, *args, **kwds):
     space_group = self.space_group(*args, **kwds)
     return space_group_as_str(space_group)
 
-  def unit_cell (self, *args, **kwds) :
+  def unit_cell(self, *args, **kwds):
     symm = self.crystal_symmetry(*args, **kwds)
     if symm is not None :
       return symm.unit_cell()
     return None
 
-  def unit_cell_as_str (self, file_name=None, file_param_name=None,
-      separator=" ") :
+  def unit_cell_as_str(self, file_name=None, file_param_name=None,
+      separator=" "):
     unit_cell = self.unit_cell(file_name, file_param_name)
     return unit_cell_as_str(unit_cell, separator)
 
-  def crystal_symmetry (self, file_name=None, file_param_name=None) :
+  def crystal_symmetry(self, file_name=None, file_param_name=None):
     final_symm = None
     if file_name is None and file_param_name is None :
-      for param_name, file_name in self._param_files.iteritems() :
+      for param_name, file_name in self._param_files.iteritems():
         input_file = self.get_file(file_name)
         miller_arrays = input_file.file_server.miller_arrays
         for array in miller_arrays :
@@ -498,13 +498,13 @@ class reflections_handler (iotbx.gui_tools.manager) :
           final_symm = miller_arrays[0].crystal_symmetry()
     return final_symm
 
-  def check_symmetry_consistency (self) :
+  def check_symmetry_consistency(self):
     pass
 
-def extract_labels (miller_arrays) :
+def extract_labels(miller_arrays):
   return [ array.info().label_string() for array in miller_arrays ]
 
-def get_fp_fpp_from_sasaki (guess_ha,wavelength):
+def get_fp_fpp_from_sasaki(guess_ha,wavelength):
   from cctbx.eltbx import sasaki
   from decimal import Decimal, ROUND_HALF_UP
   if wavelength is None or guess_ha is None :
@@ -520,7 +520,7 @@ def get_fp_fpp_from_sasaki (guess_ha,wavelength):
   fpp = Decimal(f_double_prime).quantize(Decimal('0.01'), ROUND_HALF_UP)
   return fp, fpp
 
-def get_high_resolution (server) :
+def get_high_resolution(server):
   d_min = None #999.99
   for miller_array in server.miller_arrays :
     try :
@@ -531,24 +531,24 @@ def get_high_resolution (server) :
       pass
   return d_min
 
-def get_miller_array_symmetry (miller_array) :
+def get_miller_array_symmetry(miller_array):
   from cctbx import sgtbx
   symm = miller_array.crystal_symmetry()
   if symm is None :
     return (None, None)
   unit_cell = symm.unit_cell()
-  if (unit_cell is not None) :
+  if (unit_cell is not None):
     uc = unit_cell_as_str(unit_cell)
   else :
     uc = None
   space_group = symm.space_group()
-  if (space_group is not None) :
+  if (space_group is not None):
     sg = str(sgtbx.space_group_info(group=space_group))
   else :
     sg = None
   return (sg, uc)
 
-def get_array_description (miller_array) :
+def get_array_description(miller_array):
   from iotbx import reflection_file_utils
   info = miller_array.info()
   labels = info.label_string()
@@ -557,7 +557,7 @@ def get_array_description (miller_array) :
   if labels in ["FOM", "FOMM"] :
     return "Weights"
   if ((miller_array.is_integer_array() or miller_array.is_bool_array()) and
-      reflection_file_utils.looks_like_r_free_flags_info(info)) :
+      reflection_file_utils.looks_like_r_free_flags_info(info)):
     return "R-free flag"
   methods_and_meanings = [ ("is_complex_array", "Map coeffs"),
                            ("is_xray_amplitude_array", "Amplitude"),
@@ -568,11 +568,11 @@ def get_array_description (miller_array) :
                            ("is_real_array", "Floating-point"), ]
   for method, desc in methods_and_meanings :
     test = getattr(miller_array, method)
-    if test() :
+    if test():
       return desc
   return "Unknown"
 
-def get_mtz_label_prefix (input_file=None, file_name=None) :
+def get_mtz_label_prefix(input_file=None, file_name=None):
   if input_file is None :
     input_file = file_reader.any_file(file_name)
   assert (input_file.file_type == "hkl" and
@@ -583,24 +583,24 @@ def get_mtz_label_prefix (input_file=None, file_name=None) :
   dataset = last_crystal.datasets()[-1].name()
   return "/%s/%s" % (crystal, dataset)
 
-def extract_map_coeffs (miller_arrays, f_lab, phi_lab, fom_lab) :
+def extract_map_coeffs(miller_arrays, f_lab, phi_lab, fom_lab):
   f_array = None
   phi_array = None
   fom_array = None
   #print f_lab, phi_lab, fom_lab
   for miller_array in miller_arrays :
     labels = miller_array.info().label_string()
-    if (labels == f_lab) :
+    if (labels == f_lab):
       f_array = miller_array
-    elif (labels == phi_lab) :
+    elif (labels == phi_lab):
       phi_array = miller_array
-    elif (labels == fom_lab) :
+    elif (labels == fom_lab):
       fom_array = miller_array
   return (f_array, phi_array, fom_array)
 
-def map_coeffs_from_mtz_file (mtz_file, f_label="FP", phi_label="PHIM",
-    fom_label="FOMM") :
-  if not os.path.isfile(mtz_file) :
+def map_coeffs_from_mtz_file(mtz_file, f_label="FP", phi_label="PHIM",
+    fom_label="FOMM"):
+  if not os.path.isfile(mtz_file):
     raise Sorry(
       "No map coefficients are available for conversion.")
   mtz_in = file_reader.any_file(mtz_file)
@@ -608,10 +608,10 @@ def map_coeffs_from_mtz_file (mtz_file, f_label="FP", phi_label="PHIM",
   miller_arrays = mtz_in.file_server.miller_arrays
   (f_array, phi_array, fom_array) = extract_map_coeffs(miller_arrays,
     f_label, phi_label, fom_label)
-  if (f_array is not None) and (f_array.is_complex_array()) :
+  if (f_array is not None) and (f_array.is_complex_array()):
     map_coeffs = f_array
   else :
-    if (f_array is None) or (phi_array is None) :
+    if (f_array is None) or (phi_array is None):
       raise Sorry("One or more of the columns %s and %s was not found." %
         (f_label, phi_label))
     if fom_array is not None :
@@ -621,9 +621,9 @@ def map_coeffs_from_mtz_file (mtz_file, f_label="FP", phi_label="PHIM",
     map_coeffs = weighted_f.phase_transfer(phi_array, deg=True)
   return map_coeffs
 
-def extract_phenix_refine_map_coeffs (mtz_file, limit_arrays=None) :
+def extract_phenix_refine_map_coeffs(mtz_file, limit_arrays=None):
   assert (limit_arrays is None) or (isinstance(limit_arrays, list))
-  if not os.path.isfile(mtz_file) :
+  if not os.path.isfile(mtz_file):
     raise Sorry("No map coefficients are available for conversion.")
   mtz_in = file_reader.any_file(mtz_file)
   mtz_in.assert_file_type("hkl")
@@ -635,11 +635,11 @@ def extract_phenix_refine_map_coeffs (mtz_file, limit_arrays=None) :
                "FOFCWT_no_fill" : "mFo-DFc_no_fill"}
   output_arrays = []
   for miller_array in miller_arrays :
-    if miller_array.is_complex_array() :
+    if miller_array.is_complex_array():
       labels = miller_array.info().label_string()
-      if labels.startswith("F-model") :
+      if labels.startswith("F-model"):
         continue
-      if (limit_arrays is not None) and (not labels in limit_arrays) :
+      if (limit_arrays is not None) and (not labels in limit_arrays):
         continue
       f_label = miller_array.info().labels[0]
       map_name = map_names.get(f_label)
@@ -648,12 +648,12 @@ def extract_phenix_refine_map_coeffs (mtz_file, limit_arrays=None) :
       output_arrays.append((miller_array, map_name))
   return output_arrays
 
-def get_map_coeff_labels (server,
+def get_map_coeff_labels(server,
     build_only=False,
     include_fom=True,
     exclude_anomalous=False,
     exclude_fmodel=False,
-    keep_array_labels=False) :
+    keep_array_labels=False):
   all_labels = []
   phi_labels = []
   fom_labels = []
@@ -665,24 +665,24 @@ def get_map_coeff_labels (server,
                                        True, 3)
   for miller_array in phase_arrays :
     labels = miller_array.info().label_string()
-    if miller_array.is_hendrickson_lattman_array() :
+    if miller_array.is_hendrickson_lattman_array():
       continue
-    elif miller_array.is_complex_array() :
+    elif miller_array.is_complex_array():
       if ((labels.startswith("F-model") or labels.startswith("FMODEL") or
-           labels.startswith("FC")) and (exclude_fmodel)) :
+           labels.startswith("FC")) and (exclude_fmodel)):
         continue
-      elif (labels.upper().startswith("ANOM")) and (exclude_anomalous) :
+      elif (labels.upper().startswith("ANOM")) and (exclude_anomalous):
         continue
       if build_only :
-        if (not labels[0:4] in ["FOFC", "DELF", "ANOM"]) :
+        if (not labels[0:4] in ["FOFC", "DELF", "ANOM"]):
           # list these first
-          if (labels in ["FWT,PHWT", "2FOFCWT,PH2FOFCWT"]) :
+          if (labels in ["FWT,PHWT", "2FOFCWT,PH2FOFCWT"]):
             all_labels.insert(0, labels)
           else :
             all_labels.append(labels)
       else :
         all_labels.append(labels)
-    elif miller_array.info().labels[0].startswith("PHI") :
+    elif miller_array.info().labels[0].startswith("PHI"):
       phi_labels.append(labels)
   amp_arrays = server.get_amplitudes(
     file_name               = None,
@@ -718,13 +718,13 @@ def get_map_coeff_labels (server,
             all_labels.append(hybrid_label)
   return all_labels
 
-def get_map_coeffs_for_build (server) :
+def get_map_coeffs_for_build(server):
   return get_map_coeff_labels(server, build_only=True)
 
-def format_map_coeffs_for_resolve (f_label, phi_label, fom_label) :
+def format_map_coeffs_for_resolve(f_label, phi_label, fom_label):
   return "FP=%s PHIB=%s FOM=%s" % (f_label, phi_label, fom_label)
 
-def decode_resolve_map_coeffs (labels) :
+def decode_resolve_map_coeffs(labels):
   fields = labels.strip().split()
   f_label = None
   phi_label = None

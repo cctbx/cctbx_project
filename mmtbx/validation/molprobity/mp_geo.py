@@ -129,14 +129,14 @@ def run(args):
     #get chain types
     chain_types = {}
     for chain in processed_pdb_file.all_chain_proxies.\
-                   pdb_hierarchy.models()[0].chains() :
+                   pdb_hierarchy.models()[0].chains():
       if use_segids:
         chain_id = utils.get_segid_as_chainid(chain=chain)
       else:
         chain_id = chain.id
       main_conf = chain.conformers()[0]
       if chain_types.get(chain_id) not in ["NA", "PROTEIN"]:
-        if (main_conf.is_na()) :
+        if (main_conf.is_na()):
           chain_types[chain_id] = "NA"
         elif (main_conf.is_protein()):
           chain_types[chain_id] = "PROTEIN"

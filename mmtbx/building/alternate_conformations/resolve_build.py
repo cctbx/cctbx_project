@@ -17,8 +17,8 @@ anneal = False
   .type = bool
 """
 
-class resolve_builder (building.box_build_refine_base) :
-  def __init__ (self, params, *args, **kwds) :
+class resolve_builder(building.box_build_refine_base):
+  def __init__(self, params, *args, **kwds):
     self.params = params
     building.box_build_refine_base.__init__(self, *args, **kwds)
     self.box_map_coeffs = self.box.box_map_coefficients(
@@ -28,7 +28,7 @@ class resolve_builder (building.box_build_refine_base) :
     self.box.write_ccp4_map()
     self.run_resolve()
 
-  def run_resolve (self) :
+  def run_resolve(self):
     from solve_resolve.resolve_python import resolve_in_memory
     from iotbx import pdb
     from scitbx.array_family import flex
@@ -82,7 +82,7 @@ class resolve_builder (building.box_build_refine_base) :
         "group_length 2",
       ])
     out = null_out()
-    if (self.debug) :
+    if (self.debug):
       out = self.out
     cmn = resolve_in_memory.run(
       map_coeffs=self.box_map_coeffs,
@@ -100,9 +100,9 @@ class resolve_builder (building.box_build_refine_base) :
     new_hierarchy.write_pdb_file("resolve.pdb")
     selection_moved = flex.size_t()
     sites_new = flex.vec3_double()
-    for atom in new_hierarchy.atoms() :
+    for atom in new_hierarchy.atoms():
       id_str = atom.id_str()
-      if (not id_str in self.atom_id_mapping) :
+      if (not id_str in self.atom_id_mapping):
         raise KeyError("Atom ID %s not recognized in RESOLVE model." % id_str)
       i_seq = self.atom_id_mapping[id_str]
       selection_moved.append(i_seq)
@@ -121,7 +121,7 @@ class resolve_builder (building.box_build_refine_base) :
       self.selection_in_box, True).set_selected(selection_rebuilt, False)
     # atoms present in the selection but not in the RESOLVE model (usually
     # hydrogen atoms) need to be minimized to follow the rebuilt sites
-    if (minimize_sel.count(True) > 0) :
+    if (minimize_sel.count(True) > 0):
       print >> self.out, "  Performing geometry minimzation on unbuilt sites"
       self.geometry_minimization(
         selection=minimize_sel,
@@ -132,7 +132,7 @@ class resolve_builder (building.box_build_refine_base) :
     self.restrain_atoms(
       selection=self.others_in_box,
       reference_sigma=0.02)
-    if (self.params.anneal) :
+    if (self.params.anneal):
       self.anneal(start_temperature=2500)
     else :
       self.real_space_refine(selection=self.selection_all_box)

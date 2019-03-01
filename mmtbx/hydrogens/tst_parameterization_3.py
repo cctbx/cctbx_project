@@ -1,7 +1,8 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
+from libtbx.utils import null_out
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of hydrogen atoms for planar X-H2 groups
@@ -12,7 +13,8 @@ def exercise(pdb_str):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    build_grm   = True)
+    build_grm   = True,
+    log         = null_out())
 
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
@@ -205,4 +207,4 @@ def run():
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

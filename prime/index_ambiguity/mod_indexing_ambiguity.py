@@ -1,26 +1,26 @@
 from __future__ import division
-import cPickle as pickle
+from six.moves import cPickle as pickle
 from prime.postrefine import postref_handler
 from .mod_lbfgs import lbfgs_handler
 import numpy as np
 from cctbx import sgtbx
 import random
 from cctbx.array_family import flex
+from prime.postrefine.mod_input import read_frame
 
 class indamb_handler(object):
   """
   handle indexing ambiguity main
   """
-  def __init__(self, max_delta=3.0):
+  def __init__(self):
     """
     Constructor
     """
-    self.max_delta = max_delta
 
   def generate_twin_operators(self, obs_in, flag_all=False):
     #generate only true merohedral twin operators
     from mmtbx.scaling.twin_analyses import twin_laws
-    TL = twin_laws(miller_array=obs_in, lattice_symmetry_max_delta=self.max_delta)
+    TL = twin_laws(miller_array=obs_in)
     operators = []
     if flag_all:
       operators = TL.operators
@@ -47,7 +47,7 @@ class indamb_handler(object):
     return alternates
 
   def get_observations(self, pickle_filename, iparams):
-    main_obs_pickle = pickle.load(open(pickle_filename,"rb"))
+    main_obs_pickle = read_frame(pickle_filename)
     prh = postref_handler()
     avg_mode = 'average'
     try:

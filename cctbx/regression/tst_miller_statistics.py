@@ -9,11 +9,11 @@ from libtbx.test_utils import approx_equal
 from cStringIO import StringIO
 import os.path
 
-def exercise () :
+def exercise():
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_examples/p9-sad/p9.sca",
     test=os.path.isfile)
-  if (hkl_file is None) :
+  if (hkl_file is None):
     print "phenix_examples/p9-sad/p9.sca not available, skipping test"
     return
   # XXX very hard to avoid cross-imports here if we want to test on actual
@@ -53,7 +53,7 @@ unused:  1.7443 -         [   0/0   ]
   # TODO lots more stuff - eventually most of the functions used in Xtriage
   # should be tested here
 
-def exercise_unmerged () :
+def exercise_unmerged():
   quartz_structure = xray.structure(
     special_position_settings=crystal.special_position_settings(
       crystal_symmetry=crystal.symmetry(
@@ -110,7 +110,7 @@ def exercise_unmerged () :
   assert i_mrg.r_meas() < 0.1
   assert i_mrg.r_pim() < 0.05
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   exercise_unmerged()
   print "OK"

@@ -1,8 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys, os
 
 def create_autorun(bundle_prefix, single_dir=False):
-  if (not single_dir) :
+  if (not single_dir):
     return """\
 $AUTORUN$>.\\%(bundle_prefix)s_install_script.bat
 .
@@ -18,7 +18,7 @@ def run(args):
   if (no_unzipsfx):
     args = args[1:]
   single_dir = (len(args) > 0 and args[0] == "--single_directory")
-  if (single_dir) :
+  if (single_dir):
     args = args[1:]
   if (len(args) < 2):
     from libtbx.utils import Usage
@@ -36,14 +36,14 @@ def run(args):
   if (path_zip is None):
     raise RuntimeError("Fatal: zip executable not found.")
   bundle_prefix = args[0]
-  if (single_dir) and (not os.path.isdir(bundle_prefix)) :
+  if (single_dir) and (not os.path.isdir(bundle_prefix)):
     from libtbx.utils import Sorry
     raise Sorry("%s does not exist or is not a directory." % bundle_prefix)
   platform_string = args[1]
   addl_files = args[2:]
   zip_file_name = "%(bundle_prefix)s_%(platform_string)s.zip" % vars()
   open("autorun", "w").write(create_autorun(bundle_prefix, single_dir))
-  if (single_dir) :
+  if (single_dir):
     cmd = ("\"%(path_zip)s\" -q -r -z %(zip_file_name)s"
         + " %(bundle_prefix)s") % vars()
   else :
@@ -54,7 +54,7 @@ def run(args):
   for addl in addl_files:
     cmd += " " + addl
   cmd += " < autorun"
-  print cmd
+  print(cmd)
   from libtbx import easy_run
   easy_run.fully_buffered(command=cmd).raise_if_errors().show_stdout()
   if (not no_unzipsfx):

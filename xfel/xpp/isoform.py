@@ -71,8 +71,8 @@ class application(manager):
 
     indices = mset.indices()
 
-    import cStringIO
-    query = cStringIO.StringIO()
+    from six.moves import cStringIO as StringIO
+    query = StringIO()
     query.write("INSERT INTO `%s_hkls` (h,k,l,isoforms_isoform_id) VALUES "%self.params.experiment_tag)
     firstcomma = ""
     for item in indices:

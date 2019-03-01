@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from builtins import range
 from libtbx.utils import Sorry
 from libtbx.queuing_system_utils import chunk_manager
 import copy
@@ -55,7 +56,7 @@ class processed_options(object):
       if (self.chunk.n == 1):
         from libtbx.utils import escape_sh_double_quoted
         cmds = []
-        for i in xrange(n):
+        for i in range(n):
           cmd = command_call \
               + self.options_and_args \
               + ["--chunk=%d,%d" % (n,i)]
@@ -146,7 +147,7 @@ class option_parser(OptionParser):
     self.multiprocessing_is_enabled = True
     return self
 
-  def enable_dry_run (self) :
+  def enable_dry_run(self):
     self.add_option(make_option(None, "--dry_run",
       action="store_true",
       default=False,

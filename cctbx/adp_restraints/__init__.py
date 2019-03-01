@@ -126,7 +126,7 @@ class adp_aniso_restraints(object):
       use_hd=use_hd)
     self.target = result.target
     self.number_of_restraints = result.number_of_restraints
-    if (n_grad_u_iso == 0) :
+    if (n_grad_u_iso == 0):
       self.gradients_iso = None
     else :
       self.gradients_iso = result.gradients_iso()

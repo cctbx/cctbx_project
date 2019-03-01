@@ -147,7 +147,7 @@ class legacy_rs(object):
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
     # in samosa, handle this at a higher level, but handle it somehow.
     if fat_count < 3:
-      raise ValueError, "< 3 near-fulls after refinement"
+      raise ValueError("< 3 near-fulls after refinement")
     print >> self.out, "On total %5d the fat selection is %5d"%(
       len(self.observations_pair1_selected.indices()), fat_count)
     observations_original_index = \

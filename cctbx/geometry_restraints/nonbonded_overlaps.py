@@ -528,6 +528,10 @@ class info(object):
     out_str = '{:>16}|{:>16}|{:^7}|{:^7}|  {:>6.3f}   |{:^10}|'
     out_list.append(lbl_str.format(*labels))
     out_list.append('-'*73)
+    argmented_counts = [0,0]
+    def _adjust_count(d):
+      d=(abs(d)-0.4)*10
+      return d+1
     for data in nbo_proxies:
       # clean and order info for output string
       d = list(data)
@@ -536,9 +540,14 @@ class info(object):
       rec_list.extend(d[1:3])
       rec_list.append(d[3]-d[4])
       rec_list.append('1'*bool(d[5]) + ' '*(not bool(d[5])))
+      print rec_list
+      ptr = 0
+      if rec_list[5].strip(): ptr=1
+      argmented_counts[ptr] += _adjust_count(rec_list[4])
       out_list.append(out_str.format(*rec_list))
     out_string = '\n'.join(out_list)
     print >> log,out_string
+    print argmented_counts
     return out_string
 
 def get_macro_mol_sel(pdb_processed_file,selection='protein or dna or rna'):
@@ -601,7 +610,7 @@ def create_cif_file_using_ready_set(
     open(file_name,'w').write(pdb_hierarchy.as_pdb_string(cryst_sym))
   cmd = "phenix.ready_set {} --silent".format(file_name)
   out = easy_run.fully_buffered(cmd)
-  if (out.return_code != 0) :
+  if (out.return_code != 0):
     msg_str = "ready_set crashed - dumping stderr:\n%s"
     raise RuntimeError(msg_str % ( "\n".join(out.stderr_lines)))
   fn_pdb = file_name.replace('.pdb','.updated.pdb')

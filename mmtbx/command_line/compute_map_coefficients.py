@@ -25,13 +25,13 @@ map_type_labels = {
   "llg" : "LLG",
 }
 
-def master_phil () :
+def master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     phil_string=master_phil_str,
     enable_automatic_twin_detection=True)
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   master_params = master_phil()
   usage_string = """\
 mmtbx.compute_map_coefficients model.pdb data.mtz map_type=MAP_TYPE [options]
@@ -57,8 +57,8 @@ Utility to compute a single set of map coefficients with minimal input.
     map_type=params.map_type,
     exclude_free_r_reflections=params.exclude_free_r_reflections,
     fill_missing=params.fill_missing_f_obs)
-  if (params.b_sharp is not None) :
-    if (params.b_sharp is Auto) :
+  if (params.b_sharp is not None):
+    if (params.b_sharp is Auto):
       params.b_sharp = - map_coeffs.d_min() * 10
     map_coeffs = map_tools.sharp_map(
       sites_frac=None,
@@ -68,12 +68,12 @@ Utility to compute a single set of map coefficients with minimal input.
   mtz_dataset = map_coeffs.as_mtz_dataset(
     column_root_label=map_type_labels[params.map_type],
     label_decorator=dec)
-  if (params.output_file is Auto) :
+  if (params.output_file is Auto):
     pdb_file = os.path.basename(params.input.pdb.file_name[0])
     params.output_file = os.path.splitext(pdb_file)[0] + "_%s.mtz" % \
       params.map_type
   mtz_dataset.mtz_object().write(params.output_file)
   print >> out, "Wrote %s" % params.output_file
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -64,5 +64,5 @@ def exercise():
   # print "="*20
   # print extra_in_cif
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

@@ -17,6 +17,12 @@ class Run(db_proxy):
     assert name != "tags"
     super(Run, self).__setattr__(name, value)
 
+  def __str__(self):
+    try:
+      return str(int(self.run))
+    except ValueError:
+      return "%d: %s"%(self.id, self.run)
+
   def add_tag(self, tag):
     query = "INSERT INTO `%s_run_tag` (run_id, tag_id) VALUES (%d, %d)" % (
       self.app.params.experiment_tag, self.id, tag.id)
@@ -31,11 +37,11 @@ class Run(db_proxy):
    from xfel.ui.db.rungroup import Rungroup
    tag = self.app.params.experiment_tag
    query = """SELECT rg.id FROM `%s_rungroup` rg
-              WHERE (%d >= rg.startrun) AND (%d <= rg.endrun OR rg.endrun is NULL) AND rg.active=True
-              """ %(tag, self.run, self.run)
+              JOIN `%s_rungroup_run` rgr on rg.id = rgr.rungroup_id
+              WHERE rgr.run_id = %d AND rg.active=True
+              """ %(tag, tag, self.id)
    cursor = self.app.execute_query(query)
    rungroup_ids = ["%d"%i[0] for i in cursor.fetchall()]
    if len(rungroup_ids) == 0:
      return []
    return self.app.get_all_x(Rungroup, "rungroup", where = "WHERE rungroup.id IN (%s)"%",".join(rungroup_ids))
-

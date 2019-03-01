@@ -14,7 +14,7 @@ if(1):
   random.seed(0)
   flex.set_random_seed(0)
 
-def simple_pdb () :
+def simple_pdb():
   import iotbx.pdb
   pdb_in = iotbx.pdb.input(source_info=None, lines="""\
 CRYST1   36.670   40.710   66.290  90.00  90.00  90.00 P 21 21 21    4
@@ -352,7 +352,7 @@ def exercise_3():
   #     site_labels=[atom.id_str() for atom in pdb2.atoms()])
   assert grm.get_n_chi_torsion_proixes() == 12, grm.get_n_chi_torsion_proixes()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_1()
   exercise_2()
   exercise_3()

@@ -782,7 +782,7 @@ END
   #
   assert f>77 and f<100, f # was getting 79.16 on anaconda t96
 
-def exercise_change_of_basis () :
+def exercise_change_of_basis():
   open("tmp_pdbtools_cb_op.pdb", "w").write("""\
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
 ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
@@ -793,7 +793,7 @@ ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O  
   run_command(command=cmd, verbose=False)
   lines = open("tmp_pdbtools_cb_op.pdb_modified.pdb").readlines()
   for line in lines :
-    if line.startswith("CRYST1") :
+    if line.startswith("CRYST1"):
       assert (line.strip() ==
         """CRYST1   21.937   23.477    4.866  90.00  90.00 107.08 P 1 1 21""")
       break
@@ -913,7 +913,7 @@ ATOM     20  C   GLY A   6      15.257   5.112   3.511  1.00 29.00           C
       "  _atom_site.label_atom_id\n"]:
     assert l in cif_l, "%s not in cif file!" % l
 
-def exercise_move_waters () :
+def exercise_move_waters():
   pdb_in = """\
 ATOM     16  O  AHOH A   2       5.131   5.251   5.823  0.60 10.00           O
 ATOM     60  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
@@ -967,7 +967,7 @@ END
   pdb_new = open("tst_pdbtools_move_waters.pdb_modified.pdb").read()
   assert pdb_new == pdb_out, pdb_new
 
-def exercise_stop_for_unknowns () :
+def exercise_stop_for_unknowns():
   pdb_in = """\
 HETATM   16  O   UNK B   2      47.616  10.724 150.212  1.00 46.48       B   O
 HETATM   17  O   UNK B   3      46.408  16.672 146.066  0.50 12.81       B   O

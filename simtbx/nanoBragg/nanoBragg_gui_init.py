@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/12/2017
-Last Changed: 12/12/2017
+Last Changed: 10/30/2018
 Description : SIMTBX (nanoBragg) GUI Initialization module
 '''
 
@@ -22,7 +22,7 @@ class MainWindow(wx.Frame):
   ''' Frame housing the entire app; all windows open from this one '''
 
   def __init__(self, parent, id, title):
-    wx.Frame.__init__(self, parent, id, title, size=(800, 800))
+    wx.Frame.__init__(self, parent, id, title)
     self.parent = parent
     self.simtbx_phil = inp.generate_simtbx_phil()
     self.sparams = self.simtbx_phil.extract()

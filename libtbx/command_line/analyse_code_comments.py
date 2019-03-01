@@ -1,11 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import code_analysis
 from libtbx.option_parser import option_parser
 
 def run(args, debug=False):
   comments = code_analysis.comments(args, debug=debug)
-  print comments.commented_lines, comments.lines,\
-        round(comments.commented_lines/comments.lines * 100, 1)
+  print(comments.commented_lines, comments.lines,\
+        round(comments.commented_lines/comments.lines * 100, 1))
 
 if __name__ == '__main__':
   import sys

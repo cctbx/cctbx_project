@@ -607,7 +607,7 @@ class find_peak_at_bond(object):
       self.status = False
 
 def set_status(iass, params):
-  if (params.build_ias_types is None) :
+  if (params.build_ias_types is None):
     raise Sorry("build_ias_types must be specified.")
   for ias in iass:
     if(ias.status is not False and ias.type in ["B", "BH"] and
@@ -661,6 +661,7 @@ class manager(object):
      self.ias_selection = None
      if(log is None): self.log = sys.stdout
      if(self.params is None): self.params = ias_master_params.extract()
+     self.geometry.pair_proxies(xray_structure.sites_cart())
      bond_proxies_simple, asu = self.geometry.get_covalent_bond_proxies()
      print >> self.log, \
                   "Total number of covalent bonds = ", len(bond_proxies_simple)

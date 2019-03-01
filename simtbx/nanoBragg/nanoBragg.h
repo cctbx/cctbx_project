@@ -446,14 +446,13 @@ class nanoBragg {
     /* misseting angles, applied after any provided A and U matrices */
     double misset[4];
 
-
     /* special options */
 //    bool calculate_noise; // = 1;
 //    bool write_pgm; // = 1;
 //    bool binary_spots; // = 0; no inter-Bragg spots, flat-top spots inside FWHM of sinc function instead
 
     /* the constructor that takes a DXTBX detector and beam model */
-    nanoBragg(const dxtbx::model::Detector&, const dxtbx::model::Beam& beam, int verbose);
+    nanoBragg(const dxtbx::model::Detector&, const dxtbx::model::Beam& beam, int verbose, int panel_id = 0);
 
     /* the default constructor */
 //    nanoBragg();
@@ -571,6 +570,9 @@ class nanoBragg {
     /* member function for triggering spot simulation over region of interest */
     void add_nanoBragg_spots();
     void add_nanoBragg_spots_nks(boost_adaptbx::python::streambuf &);
+#ifdef NANOBRAGG_HAVE_CUDA
+    void add_nanoBragg_spots_cuda();
+#endif
 
     /* member function for triggering background simulation */
     void add_background(int oversample, int source);

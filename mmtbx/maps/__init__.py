@@ -267,7 +267,7 @@ class write_xplor_map_file(object):
       show_string(os.path.dirname(self.params.file_name)))
     title_lines.append("REMARK %s" % date_and_time())
     assert self.params.region in ["selection", "cell"]
-    if(self.params.region == "selection" and xray_structure is not None) :
+    if(self.params.region == "selection" and xray_structure is not None):
       map_iselection = None
       if atom_selection_manager is not None :
         map_iselection = self.atom_iselection()
@@ -367,7 +367,7 @@ def map_coefficients_from_fmodel(
   mnm = mmtbx.map_names(map_name_string = params.map_type)
   if(mnm.k==0 and abs(mnm.n)==1):
     # FIXME Fcalc maps require that fmodel is not None!
-    if (fmodel is None) :
+    if (fmodel is None):
       fmodel = map_calculation_server.fmodel
     return compute_f_calc(fmodel, params)
   if(fmodel is not None and
@@ -398,12 +398,12 @@ def map_coefficients_from_fmodel(
       map_coeffs = coeffs,
       b_sharp    = params.sharpening_b_factor)
   # XXX need to figure out why this happens
-  if (coeffs is None) :
+  if (coeffs is None):
     raise RuntimeError(("Map coefficient generation failed (map_type=%s, "
       "sharpening=%s, isotropize=%s, anomalous=%s.") %
         (params.map_type, params.sharpening, params.isotropize,
          fmodel.f_obs().anomalous_flag()))
-  if(coeffs.anomalous_flag()) :
+  if(coeffs.anomalous_flag()):
     coeffs = coeffs.average_bijvoet_mates()
   return coeffs
 
@@ -414,7 +414,7 @@ def compute_xplor_maps(
     file_name_prefix=None,
     file_name_base=None,
     post_processing_callback=None,
-    pdb_hierarchy=None) :
+    pdb_hierarchy=None):
   assert ((post_processing_callback is None) or
           (hasattr(post_processing_callback, "__call__")))
   output_files = []
@@ -424,7 +424,7 @@ def compute_xplor_maps(
         params = mp,
         post_processing_callback=post_processing_callback,
         pdb_hierarchy=pdb_hierarchy)
-      if (coeffs is None) :
+      if (coeffs is None):
         raise Sorry("Couldn't generate map type '%s'." % mp.map_type)
       if(mp.file_name is None):
         output_file_name = ""
@@ -463,7 +463,7 @@ class compute_map_coefficients(object):
     self.map_coeffs = []
     for mcp in params:
       if(mcp.map_type is not None):
-        if(fmodel.is_twin_fmodel_manager()) and (mcp.isotropize) :
+        if(fmodel.is_twin_fmodel_manager()) and (mcp.isotropize):
           mcp.isotropize = False
         coeffs = map_coefficients_from_fmodel(
           map_calculation_server   = map_calculation_server,
@@ -471,7 +471,7 @@ class compute_map_coefficients(object):
           post_processing_callback = post_processing_callback,
           pdb_hierarchy            = pdb_hierarchy)
         if("mtz" in mcp.format and coeffs is not None):
-          if coeffs.anomalous_flag() :
+          if coeffs.anomalous_flag():
             coeffs = coeffs.average_bijvoet_mates()
           lbl_mgr = map_coeffs_mtz_label_manager(map_params = mcp)
           if(self.mtz_dataset is None):
@@ -484,9 +484,9 @@ class compute_map_coefficients(object):
               column_root_label = lbl_mgr.amplitudes(),
               label_decorator   = lbl_mgr)
           self.map_coeffs.append(coeffs)
-        elif (coeffs is None) :
+        elif (coeffs is None):
           if ((mcp.map_type == "anomalous") and
-              (not fmodel.f_obs().anomalous_flag())) :
+              (not fmodel.f_obs().anomalous_flag())):
             # since anomalous map is included in the defaults, even if the
             # data are merged, no warning is issued here
             pass
@@ -500,7 +500,7 @@ class compute_map_coefficients(object):
       r_free_flags=None):
     from cctbx.array_family import flex
     if(self.mtz_dataset is not None):
-      if (r_free_flags is not None) :
+      if (r_free_flags is not None):
         self.mtz_dataset.add_miller_array(r_free_flags,
           column_root_label="FreeR_flag")
       if(mtz_history_buffer is None):

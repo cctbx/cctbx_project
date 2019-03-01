@@ -1,15 +1,17 @@
-IOTA v1.2.002 - UI update
-
-Bugfixes:
+IOTA v1.3.003 - tweaks and bugfixes
 
 
-Features:
-- Removed param requirement for the PRIME Plotter module
-- Removed user / icon definition in PRIME Threads module
-- Added stand-alone image object finder module in utils
+BUGFIXES:
+    - Replaced a .exists check for new output subfolders with a try block to
+      handle concurrency problems
+    - Fixed bug that arises upon an attempt to update a non-existent dictionary
+      entry in runtime analysis
+    - Input path(s) provided in command line when launching GUI are populated in
+      the input widget
+    - Fixed Live PRIME key error
 
-
-Known issues:
-- UI remains really slow when using XDisplay
-- Clustering reporting needs touch-up in IOTA log file
-
+TWEAKS:
+    - GUI attempts to reconstruct initial input folder paths from args
+     (automatically globbed by argparse)
+    - If > 10 input paths, input is written into a list file, which is then used
+      as then input path.

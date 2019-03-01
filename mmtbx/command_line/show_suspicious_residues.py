@@ -5,7 +5,7 @@ from libtbx import Auto
 import sys
 import os
 
-def master_phil () :
+def master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     enable_automatic_twin_detection=True,
@@ -36,7 +36,7 @@ common_xtal_mols = [
   "SO4", "GOL", "EDO", "PEG", "ACT", "BME",
 ]
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   usage_string = """\
 mmtbx.show_suspicious_residues [model] [data] [options...]
 
@@ -53,7 +53,7 @@ records will be inspected.
     usage_string=usage_string)
   params = cmdline.params
   ignore_list = []
-  if (params.skip_xtal_solution_mols) :
+  if (params.skip_xtal_solution_mols):
     ignore_list = common_xtal_mols
   outliers = real_space_correlation.find_suspicious_residues(
     fmodel=cmdline.fmodel,
@@ -68,12 +68,12 @@ records will be inspected.
     log=out)
   map_file = None
   if ((params.write_maps == True) or
-      ((len(outliers) > 0) and (params.write_maps in [Auto, True]))) :
+      ((len(outliers) > 0) and (params.write_maps in [Auto, True]))):
     import mmtbx.maps.utils
     import iotbx.map_tools
     f_map, diff_map = mmtbx.maps.utils.get_maps_from_fmodel(cmdline.fmodel)
     anom_map = None
-    if (cmdline.fmodel.f_obs().anomalous_flag()) :
+    if (cmdline.fmodel.f_obs().anomalous_flag()):
       anom_map = mmtbx.maps.utils.get_anomalous_map(cmdline.fmodel)
     base_name = os.path.basename(
       os.path.splitext(params.input.xray_data.file_name)[0])
@@ -84,7 +84,7 @@ records will be inspected.
       file_name=map_file,
       anom_coeffs=anom_map)
     print "Wrote maps to %s" % map_file
-  if (len(outliers) > 0) and (params.write_coot_script) :
+  if (len(outliers) > 0) and (params.write_coot_script):
     zoom_list_base = libtbx.env.find_in_repositories(
       relative_path="cctbx_project/cootbx/simple_zoom_list.py",
       test=os.path.isfile)
@@ -93,7 +93,7 @@ records will be inspected.
     script.write("\n")
     for file_name in params.input.pdb.file_name :
       script.write("""read_pdb("%s")\n""" % file_name)
-    if (map_file is not None) :
+    if (map_file is not None):
       script.write("auto_read_make_and_draw_maps(\"%s\")\n" % map_file)
     script.write("""
 draw_simple_zoom_list(
@@ -103,5 +103,5 @@ draw_simple_zoom_list(
     script.close()
     print "Coot script is coot_bad_residues.py"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os, sys
 import libtbx.load_env
 from libtbx import easy_run
@@ -47,17 +47,17 @@ def extract_tests_from_run_tests_dot_py(file_name, full_path):
   return result
 
 def find_mismatch(from_run_tests, from_dirs, full_path, force_stop=False):
-  print "  Number of tests in:"
-  print "    run_tests.py         :", len(from_run_tests)
-  print "    actual in folder-tree:", len(from_dirs)
+  print("  Number of tests in:")
+  print("    run_tests.py         :", len(from_run_tests))
+  print("    actual in folder-tree:", len(from_dirs))
   if(len(from_run_tests)!=len(from_dirs)):
-    print "  Tests listed below are never executed:"
+    print("  Tests listed below are never executed:")
   for f1 in from_dirs:
     if(not f1 in from_run_tests):
       rc = ''
       if find_blame:
         rc = find_majority_blame(f1)
-      if(1): print "    '%s' %s" % (rc, f1)
+      if(1): print("    '%s' %s" % (rc, f1))
       if(force_stop):
         raise Sorry("Add test to run_tests.py first.")
 
@@ -74,7 +74,7 @@ def run(args):
     full_path = "/".join([root_dir,subdir])
     if(subdir in include):
       assert os.path.isdir(full_path)
-      print full_path
+      print(full_path)
       run_tests_file = "/".join([full_path, "run_tests.py"])
       assert os.path.isfile(run_tests_file)
       #

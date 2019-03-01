@@ -11,14 +11,14 @@ stat_formats = { "r_work" : "%.4f",
                  "adp_mean_all" : "%.1f" }
 
 # XXX: not pickle-able - run this in GUI thread
-def convert_histogram_data (polygon_result) :
+def convert_histogram_data(polygon_result):
   histograms = {}
   for (stat, data) in polygon_result :
     histograms[stat] = polygon.convert_to_histogram(data=data,
                                                     n_slots=10)
   return histograms
 
-def get_stats_and_histogram_data (mvd_object, params, debug=False) :
+def get_stats_and_histogram_data(mvd_object, params, debug=False):
   pdb_file = mvd_object.pdb_file
   mvd_results = model_vs_data.summarize_results(mvd_object)
   fmodel = mvd_object.fmodel
@@ -42,7 +42,7 @@ def get_stats_and_histogram_data (mvd_object, params, debug=False) :
                                extract_gui_data=True)
   return stats, histograms
 
-def get_basic_histogram_data (d_min) :
+def get_basic_histogram_data(d_min):
   params = polygon.master_params.fetch().extract()
   params.polygon.keys_to_show = ["r_work", "r_free",
     "bond_rmsd", "angle_rmsd", "adp_mean_all", "clashscore"]
@@ -52,20 +52,20 @@ def get_basic_histogram_data (d_min) :
                                extract_gui_data=True)
   return histograms
 
-class renderer (object) :
+class renderer(object):
   ratio_cutoffs = [ 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
 
-  def __init__ (self, histogram_data, structure_stats, histogram_length=0.30,
-      center=(0.5, 0.5), center_offset=0.025) :
+  def __init__(self, histogram_data, structure_stats, histogram_length=0.30,
+      center=(0.5, 0.5), center_offset=0.025):
     self.units = 1
     histograms = convert_histogram_data(histogram_data)
     self.stats = structure_stats
     self.n_pdb = 0
     max = - sys.maxint
     self.slot_avg = None
-    for stat_key, histogram in histograms.iteritems() :
+    for stat_key, histogram in histograms.iteritems():
       n_pdb = 0
-      for slot in histogram.slots() :
+      for slot in histogram.slots():
         n_pdb += slot
         if slot > max :
           max = slot
@@ -78,7 +78,7 @@ class renderer (object) :
     i = 0
     n_stats = len(histograms)
     interval = 2.0 * pi / float(n_stats)
-    for stat_key, histogram in histograms.iteritems() :
+    for stat_key, histogram in histograms.iteritems():
       angle = initial_angle + ((i - 0.5) * interval)
       layout = histogram_layout(stat_key, histogram, angle,
         histogram_length, center, center_offset)
@@ -88,11 +88,11 @@ class renderer (object) :
     self.set_color_model("rainbow")
     self.relative_scale_colors = False #True
 
-  def resize (self, size) :
+  def resize(self, size):
     self.w, self.h = size
     self.units = min([self.w, self.h])
 
-  def set_color_model (self, model_name, relative_scaling=True) :
+  def set_color_model(self, model_name, relative_scaling=True):
     self.relative_scale_colors = relative_scaling
     self.color_model = model_name
     if model_name == "original" :
@@ -111,7 +111,7 @@ class renderer (object) :
     if model_name != "gray" :
       self.line_color = (0, 0, 0)
 
-  def get_color_key (self) :
+  def get_color_key(self):
     if self.relative_scale_colors :
       return (self.colors.ratio_gradient, self.colors.ratio_cutoffs)
     else :
@@ -120,14 +120,14 @@ class renderer (object) :
       colors = [ self.colors.get_bin_color(x) for x in levels ]
       return (colors, cutoffs)
 
-  def draw (self, out) :
+  def draw(self, out):
     colors = self.colors.get_histogram_colors(
       histograms=self._histograms,
       max=self.max,
       mean=self.slot_avg,
       relative_scaling=self.relative_scale_colors)
-    for i, histogram in enumerate(self._histograms) :
-      for j, (start,end) in enumerate(histogram.lines) :
+    for i, histogram in enumerate(self._histograms):
+      for j, (start,end) in enumerate(histogram.lines):
         dx = sin(histogram.angle) * 0.01
         dy = - cos(histogram.angle) * 0.01
         points = [
@@ -143,15 +143,15 @@ class renderer (object) :
       anchor = (histogram.text_anchor[0] * self.units,
                 histogram.text_anchor[1] * self.units)
       stat_key = histogram.name
-      if (stat_key == "angles_rmsd") :
+      if (stat_key == "angles_rmsd"):
         stat_key = "angle_rmsd"
-      elif (stat_key == "bonds_rmsd") :
+      elif (stat_key == "bonds_rmsd"):
         stat_key = "bond_rmsd"
-      elif (stat_key == "adp_mean") :
+      elif (stat_key == "adp_mean"):
         stat_key = "adp_mean_all"
-      elif (stat_key == "r_work_re_computed") :
+      elif (stat_key == "r_work_re_computed"):
         stat_key = "r_work"
-      elif (stat_key == "r_free_re_computed") :
+      elif (stat_key == "r_free_re_computed"):
         stat_key = "r_free"
       self.draw_labels(
         out=out,
@@ -161,32 +161,32 @@ class renderer (object) :
         value=self.format_value(self.stats[stat_key], histogram.name),
         pos=anchor,
         angle=histogram.angle)
-    for (start, end, dashed) in self._polygon.get_line_segments(self.units) :
+    for (start, end, dashed) in self._polygon.get_line_segments(self.units):
       if dashed :
         self.draw_dashed_line(out, start, end, self.line_color)
       else :
         self.draw_solid_line(out, start, end, self.line_color)
 
-  def draw_box (self, out, points, color) :
+  def draw_box(self, out, points, color):
     raise NotImplementedError()
 
-  def draw_solid_line (self, out, start, end, color) :
+  def draw_solid_line(self, out, start, end, color):
     raise NotImplementedError()
 
-  def draw_dashed_line (self, out, start, end, color) :
+  def draw_dashed_line(self, out, start, end, color):
     raise NotImplementedError()
 
-  def draw_labels (self, out, label, min, max, value, pos, angle) :
+  def draw_labels(self, out, label, min, max, value, pos, angle):
     raise NotImplementedError()
 
-  def format_value (self, value, stat_name) :
+  def format_value(self, value, stat_name):
     if stat_name in stat_formats :
       return stat_formats[stat_name] % value
     else :
       return "%.3f" % value
 
-class histogram_layout (object) :
-  def __init__ (self, name, histogram, angle, length, center, center_offset) :
+class histogram_layout(object):
+  def __init__(self, name, histogram, angle, length, center, center_offset):
     self.name = name
     if name in stat_names :
       self.label = stat_names[name]
@@ -203,7 +203,7 @@ class histogram_layout (object) :
     self.lines = []
     self.text_anchor = (x_start + (cos(angle) * (length + 0.01)),
                         y_start - (sin(angle) * (length + 0.01)))
-    for i, bin in enumerate(bins) :
+    for i, bin in enumerate(bins):
       start_frac = length * (float(i) / float(n_bins))
       end_frac = length * (float(i + 1) / float(n_bins))
       (line_x_start, line_y_start) = (x_start + (cos(angle) * start_frac),
@@ -221,32 +221,32 @@ class histogram_layout (object) :
     self.x_start = x_start
     self.y_start = y_start
 
-  def set_colors (self, bin_colors) :
+  def set_colors(self, bin_colors):
     self.bin_colors = bin_colors
 
-  def get_polygon_intersection (self, stat) :
+  def get_polygon_intersection(self, stat):
     point_on_histogram = True
     hist_x = (stat - self.min) / (self.max - self.min)
     if hist_x > 1.0 :
       hist_x = 1.00
       point_on_histogram = False
-    elif (hist_x < 0.0) :
+    elif (hist_x < 0.0):
       hist_x = 0.0
       point_on_histogram = False
     poly_x = self.x_start + (cos(self.angle) * self.length * hist_x)
     poly_y = self.y_start - (sin(self.angle) * self.length * hist_x)
     return (poly_x, poly_y), point_on_histogram
 
-  def get_absolute_label_position (self, units) :
+  def get_absolute_label_position(self, units):
     angle = self.angle
     x,y = self.text_anchor
-    if angle >= radians(60) and angle < radians(120) :
+    if angle >= radians(60) and angle < radians(120):
       text_x = x - (w/2) - 5
       text_y = y - h - 15
-    elif angle >= radians(120) and angle < radians(240) :
+    elif angle >= radians(120) and angle < radians(240):
       text_x = x - w - 15
       text_y = y - (h/2)
-    elif angle >= radians(240) and angle < radians(300) :
+    elif angle >= radians(240) and angle < radians(300):
       text_x = x - (w/2)
       text_y = y
     else : # 300 =< angle < 420
@@ -254,40 +254,40 @@ class histogram_layout (object) :
       text_y = y - (h/2)
     return (text_x, text_y)
 
-class polygon_layout (object) :
-  def __init__ (self, stats, histogram_layouts) :
+class polygon_layout(object):
+  def __init__(self, stats, histogram_layouts):
     intersections = []
     on_histogram = []
     for histogram in histogram_layouts :
-      if (not histogram.name in stats) :
+      if (not histogram.name in stats):
         continue
       stat = stats[histogram.name]
-      if (isinstance(stat, list)) :
+      if (isinstance(stat, list)):
         raise RuntimeError(("Invalid type 'list' for POLYGON statistic '%s' "+
           "(values: %s).") % (histogram.name, str(stat)))
       (x, y), point_on_histogram = histogram.get_polygon_intersection(stat)
       intersections.append((x,y))
       on_histogram.append(point_on_histogram)
     self.intersections = intersections
-    for i, (x, y) in enumerate(intersections) :
+    for i, (x, y) in enumerate(intersections):
       if on_histogram[i] :
         pass # TODO: dashed line segments for outliers
 
-  def get_line_segments (self, units=1.0) :
-    for i, _end in enumerate(self.intersections) :
+  def get_line_segments(self, units=1.0):
+    for i, _end in enumerate(self.intersections):
       _start = self.intersections[i - 1]
       start = (_start[0] * units, _start[1] * units)
       end = (_end[0] * units, _end[1] * units)
       yield (start, end, False)
 
 #-----------------------------------------------------------------------
-class color_model (object) :
-  def __init__ (self) :
+class color_model(object):
+  def __init__(self):
     self.ratio_cutoffs = []
     self.ratio_gradient = []
 
-  def get_histogram_colors (self, histograms, max, mean,
-      relative_scaling=True) :
+  def get_histogram_colors(self, histograms, max, mean,
+      relative_scaling=True):
     assert len(self.ratio_gradient) == len(self.ratio_cutoffs) + 1
     colors = []
     ratio_cutoffs = self.ratio_cutoffs
@@ -297,7 +297,7 @@ class color_model (object) :
         for bin in histogram.bins :
           val = bin / mean
           c = None
-          for i, cutoff in enumerate(ratio_cutoffs) :
+          for i, cutoff in enumerate(ratio_cutoffs):
             if cutoff >= val :
               c = self.ratio_gradient[i]
               break
@@ -311,11 +311,11 @@ class color_model (object) :
       colors.append(bin_colors)
     return colors
 
-  def get_bin_color (self, value) :
+  def get_bin_color(self, value):
     return (0, 0, 0)
 
-class original_color_model (color_model) :
-  def __init__ (self) :
+class original_color_model(color_model):
+  def __init__(self):
     self.ratio_cutoffs = [ 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
     self.ratio_gradient = [ (240, 240, 240),  # off-white
                             (255,   0,   0),  # red
@@ -327,39 +327,39 @@ class original_color_model (color_model) :
                             (130,   0, 255) ] # purple
 
 # these two only work on the original scale
-class blue_color_model (original_color_model) :
-  def get_bin_color (self, value) :
+class blue_color_model(original_color_model):
+  def get_bin_color(self, value):
     return hsv2rgb(240, value, 1)
 
-class red_color_model (original_color_model) :
-  def get_bin_color (self, value) :
+class red_color_model(original_color_model):
+  def get_bin_color(self, value):
     return hsv2rgb(0, value, 1)
 
-class grayscale_color_model (original_color_model) :
-  def get_bin_color (self, value) :
+class grayscale_color_model(original_color_model):
+  def get_bin_color(self, value):
     return hsv2rgb(0, 0, 1-value)
 
-class rainbow_color_model (color_model) :
-  def __init__ (self) :
+class rainbow_color_model(color_model):
+  def __init__(self):
     self.ratio_cutoffs = [ 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
     self.ratio_gradient = [ hsv2rgb(240.0-(240.0*x), 1, 1) for x in
                             [ float(x) / 7.0 for x in range(8) ] ]
 
-  def get_bin_color (self, value) :
+  def get_bin_color(self, value):
     color = hsv2rgb(240.0 - (240.0 * value), 1, 1)
     return color
 
-class rmb_color_model (color_model) :
-  def __init__ (self) :
+class rmb_color_model(color_model):
+  def __init__(self):
     self.ratio_cutoffs = [ 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
     self.ratio_gradient = [ hsv2rgb(240.0+(120.0*x), 1, 1) for x in
                             [ float(x) / 7.0 for x in range(8) ] ]
 
-  def get_bin_color (self, value) :
+  def get_bin_color(self, value):
     color = hsv2rgb(240.0 + (120.0 * value), 1, 1)
     return color
 
-def hsv2rgb (h, s, v) :
+def hsv2rgb(h, s, v):
   if h >= 360 :
     h -= 360
   h /= 60

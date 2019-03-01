@@ -10,7 +10,7 @@ import os, sys
 OUTLIER_THRESHOLD = 0.003
 ALLOWED_THRESHOLD = 0.02
 
-class rotamer (residue) :
+class rotamer(residue):
   """
   Result class for protein sidechain rotamer analysis (molprobity.rotalyze).
   """
@@ -24,35 +24,35 @@ class rotamer (residue) :
   __slots__ = residue.__slots__ + __rotamer_attr__
 
   @staticmethod
-  def header () :
+  def header():
     return "%-20s %8s %6s   %-20s" % ("Residue", "Rotamer", "Score",
       "Chi angles")
 
-  def get_chi1_chi2 (self) :
-    if (len(self.chi_angles) < 2) :
+  def get_chi1_chi2(self):
+    if (len(self.chi_angles) < 2):
       raise ValueError("Less than 2 chi angles for this residue (%s)" %
         self.id_str())
     return self.chi_angles[0], self.chi_angles[1]
 
-  def as_string (self) :
+  def as_string(self):
     return "%-20s %8s %6.2f   %-20s" % (self.id_str(), self.rotamer_name,
       self.score, self.format_chi_angles())
 
   # Backwards compatibility for scripts that expect old rotalyze output
-  def id_str_old (self) :
+  def id_str_old(self):
     return "%s%4s%1s %s" % (self.chain_id, self.resseq, self.icode,
       self.altloc + self.resname.strip())
 
-  def format_chi_angles (self, pad=False, sep=",") :
+  def format_chi_angles(self, pad=False, sep=","):
     formatted = []
     for chi in self.chi_angles :
-      if pad or (chi is not None) :
+      if pad or (chi is not None):
         formatted.append(format_value("%.1f", chi,
           replace_none_with="").strip())
     return sep.join(formatted)
 
   # Old output
-  def format_old (self) :
+  def format_old(self):
     s_occ = format_value("%.2f", self.occupancy)
     s_score = format_value("%.1f", self.score)
     chis = list(self.chi_angles)
@@ -61,32 +61,32 @@ class rotamer (residue) :
       self.evaluation,self.rotamer_name)
 
   # GUI output
-  def as_table_row_phenix (self) :
+  def as_table_row_phenix(self):
     return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname,self.resid),
              self.score ] + self.format_chi_angles(pad=True).split(",")#list(self.chi_angles)
 
-class rotamer_ensemble (residue) :
+class rotamer_ensemble(residue):
   """Container for validation results for an ensemble of residues."""
   __slots__ = rotamer.__slots__
-  def __init__ (self, all_results) :
+  def __init__(self, all_results):
     self._copy_constructor(all_results[0])
     self.score = [ r.score for r in all_results ]
     self.rotamer_name = [ r.rotamer_name for r in all_results ]
     self.chi_angles = [ r.chi_angles for r in all_results ]
 
-  def rotamer_frequencies (self) :
+  def rotamer_frequencies(self):
     rotamers = []
-    for rot_id in set(self.rotamer_name) :
+    for rot_id in set(self.rotamer_name):
       n_rotamer = self.rotamer_name.count(rot_id)
       rotamers.append((rot_id, n_rotamer))
     return sorted(rotamers, lambda a,b: cmp(b[1], a[1]))
 
-  def as_string (self) :
+  def as_string(self):
     rotamers = self.rotamer_frequencies()
     rot_out = [ "%s (%d)" % (rid, n_rot) for (rid, n_rot) in rotamers ]
     return "%-20s %s" % (self.id_str(), ", ".join(rot_out))
 
-class rotalyze (validation) :
+class rotalyze(validation):
   __slots__ = validation.__slots__ + ["n_allowed", "n_favored", "out_percent",
         "outlier_threshold", "data_version"]
   program_description = "Analyze protein sidechain rotamers"
@@ -96,14 +96,14 @@ class rotalyze (validation) :
   gui_formats = ["%s", "%s", "%.2f", "%.1f", "%.1f", "%.1f", "%.1f"]
   wx_column_widths = [75, 120, 100, 100, 100, 100, 100]
 
-  def get_result_class (self) : return rotamer
+  def get_result_class(self) : return rotamer
 
-  def __init__ (self, pdb_hierarchy,
+  def __init__(self, pdb_hierarchy,
       data_version="8000",
       outliers_only=False,
       show_errors=False,
       out=sys.stdout,
-      quiet=False) :
+      quiet=False):
     validation.__init__(self)
     self.n_allowed = 0
     self.n_favored = 0
@@ -131,7 +131,7 @@ class rotalyze (validation) :
           chain_id = chain.id
         for rg in chain.residue_groups():
           all_dict = construct_complete_sidechain(rg)
-          for atom_group in rg.atom_groups() :
+          for atom_group in rg.atom_groups():
             coords = get_center(atom_group)
             resname = atom_group.resname
             occupancy = get_occupancy(atom_group)
@@ -184,16 +184,16 @@ class rotalyze (validation) :
                   #deal with unclassified rotamers
                   if kwargs['rotamer_name'] == '':
                     kwargs['rotamer_name'] = "UNCLASSIFIED"
-                while (len(wrap_chis) < 4) :
+                while (len(wrap_chis) < 4):
                   wrap_chis.append(None)
                 kwargs['chi_angles'] = wrap_chis
                 result = rotamer(**kwargs)
-                if (result.is_outlier()) or (not outliers_only) :
+                if (result.is_outlier()) or (not outliers_only):
                   self.results.append(result)
     out_count, out_percent = self.get_outliers_count_and_fraction()
     self.out_percent = out_percent * 100.0
 
-  def evaluateScore(self, value) :
+  def evaluateScore(self, value):
     if value >= ALLOWED_THRESHOLD :
       self.n_favored += 1
       return "Favored"
@@ -204,7 +204,7 @@ class rotalyze (validation) :
       self.n_outliers += 1
       return "OUTLIER"
 
-  def show_summary (self, out=sys.stdout, prefix="") :
+  def show_summary(self, out=sys.stdout, prefix=""):
     print >> out, prefix + 'SUMMARY: %.2f%% outliers (Goal: %s)' % \
       (self.out_percent, self.get_outliers_goal())
 
@@ -216,33 +216,33 @@ class rotalyze (validation) :
   def get_favored_goal(self):
     return "> 98%"
 
-  def coot_todo (self):
+  def coot_todo(self):
     return ""
 
-  def get_plot_data (self, residue_name, point_type) :
+  def get_plot_data(self, residue_name, point_type):
     assert (point_type in ["All", "None", "Outlier"])
     points = []
     coords = []
-    for i, residue in enumerate(self.results) :
-      if (residue.resname == residue_name) :
-        if ((point_type == "All") or (residue.is_outlier())) :
+    for i, residue in enumerate(self.results):
+      if (residue.resname == residue_name):
+        if ((point_type == "All") or (residue.is_outlier())):
           chi1, chi2 = residue.get_chi1_chi2()
           points.append((chi1, chi2, residue.simple_id(), residue.is_outlier()))
           coords.append(residue.xyz)
     return (points, coords)
 
-  def display_wx_plots (self, parent=None,
-      title="MolProbity - Sidechain Chi1/Chi2 plots") :
+  def display_wx_plots(self, parent=None,
+      title="MolProbity - Sidechain Chi1/Chi2 plots"):
     import wxtbx.plots.molprobity
     frame = wxtbx.plots.molprobity.rotalyze_frame(
       parent=parent, title=title, validation=self)
     frame.Show()
     return frame
 
-  def as_coot_data (self) :
+  def as_coot_data(self):
     data = []
     for result in self.results :
-      if result.is_outlier() :
+      if result.is_outlier():
         data.append((result.chain_id, result.resid, result.resname,
           result.score, result.xyz))
     return data
@@ -254,7 +254,7 @@ def evaluate_rotamer(
     rotamer_id,
     all_dict,
     outlier_threshold=0.003,
-    sites_cart=None) :
+    sites_cart=None):
   atom_dict = all_dict.get(atom_group.altloc)
   resname = atom_group.resname
   try:
@@ -301,7 +301,7 @@ def get_residue_key(atom_group):
         key = cur_label[4:]
     else:
       if altloc == cur_altloc:
-        if (key != cur_label[4:]) :
+        if (key != cur_label[4:]):
           if os.getenv('CCP4'):
             outl = 'a model editor'
           else:
@@ -343,15 +343,15 @@ def evaluate_residue(
     else:
       return is_outlier, value
 
-class residue_evaluator (object) :
-  def __init__ (self) :
+class residue_evaluator(object):
+  def __init__(self):
     from mmtbx.rotamer.sidechain_angles import SidechainAngles
     from mmtbx.rotamer import rotamer_eval
     self.sa = SidechainAngles(False)
     self.data_version = "8000"
     self.r = rotamer_eval.RotamerEval(data_version=self.data_version)
 
-  def evaluate_residue (self, residue_group) :
+  def evaluate_residue(self, residue_group):
     all_dict = construct_complete_sidechain(residue_group)
     return evaluate_residue(
       residue_group=residue_group,
@@ -360,10 +360,10 @@ class residue_evaluator (object) :
       all_dict=all_dict,
       data_version=self.data_version)
 
-  def __call__ (self, *args, **kwds) :
+  def __call__(self, *args, **kwds):
     return self.evaluate_residue(*args, **kwds)
 
-def get_center (residue):
+def get_center(residue):
   for atom in residue.atoms():
     if atom.name == " CA ":
       return atom.xyz
@@ -398,37 +398,36 @@ def construct_complete_sidechain(residue_group):
   return {}
 
 # XXX does this need to be smarter?
-def get_occupancy (atom_group) :
+def get_occupancy(atom_group):
   max_partial_occ = 0.
-  for atom in atom_group.atoms() :
-    if (atom.occ > max_partial_occ) and (atom.occ < 1) :
+  for atom in atom_group.atoms():
+    if (atom.occ > max_partial_occ) and (atom.occ < 1):
       max_partial_occ = atom.occ
-  if (max_partial_occ == 0.) :
+  if (max_partial_occ == 0.):
     return max([ atom.occ for atom in atom_group.atoms() ])
   else :
     return max_partial_occ
 
 #-----------------------------------------------------------------------
 # GRAPHICS
-class rotamer_plot_mixin (graphics.rotarama_plot_mixin) :
-  def set_labels (self, y_marks=(60,180,300)) :
-    axes = self.plot.get_axes()
-    axes.set_xlabel("Chi1")
-    axes.set_xticks([60,180,300])
-    axes.set_ylabel("Chi2")
-    axes.set_yticks(list(y_marks))
-    axes.grid(True, color="0.75")
+class rotamer_plot_mixin(graphics.rotarama_plot_mixin):
+  def set_labels(self, y_marks=(60,180,300)):
+    self.plot.set_xlabel("Chi1")
+    self.plot.set_xticks([60,180,300])
+    self.plot.set_ylabel("Chi2")
+    self.plot.set_yticks(list(y_marks))
+    self.plot.grid(True, color="0.75")
 
-class rotamer_plot (data_plots.simple_matplotlib_plot, rotamer_plot_mixin) :
-  def __init__ (self, *args, **kwds) :
+class rotamer_plot(data_plots.simple_matplotlib_plot, rotamer_plot_mixin):
+  def __init__(self, *args, **kwds):
     data_plots.simple_matplotlib_plot.__init__(self, *args, **kwds)
     rotamer_plot_mixin.__init__(self, *args, **kwds)
 
-def draw_rotamer_plot (rotalyze_data,
+def draw_rotamer_plot(rotalyze_data,
                        rotarama_data,
                        residue_name,
                        file_name,
-                       show_labels=True) :
+                       show_labels=True):
   points, coords = get_residue_rotamer_data(
     rotalyze_data=rotalyze_data,
     residue_name=residue_name,

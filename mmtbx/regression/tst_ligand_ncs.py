@@ -12,7 +12,7 @@ from cStringIO import StringIO
 import os.path as op
 import os
 
-def make_inputs (prefix="tst_ligand_ncs") :
+def make_inputs(prefix="tst_ligand_ncs"):
   pdb_raw = """\
 CRYST1   25.000   10.000   25.477  90.00 107.08  90.00 P 1
 ATOM      1  N   GLY A   1       9.010   0.535  -6.096  1.00 16.23           N
@@ -175,7 +175,7 @@ END
     ).raise_if_errors().return_code == 0)
   return pdb_in, mtz_in
 
-def exercise () :
+def exercise():
   #
   # Test command-line program
   #
@@ -183,11 +183,11 @@ def exercise () :
   pdb_file = file_reader.any_file(pdb_in, force_type="pdb")
   hierarchy = pdb_file.file_object.hierarchy
   old_ligand = None
-  for chain in hierarchy.only_model().chains() :
+  for chain in hierarchy.only_model().chains():
     if (chain.id != "B") : continue
-    for residue_group in chain.residue_groups() :
+    for residue_group in chain.residue_groups():
       atom_group = residue_group.only_atom_group()
-      if (atom_group.resname == "ACT") :
+      if (atom_group.resname == "ACT"):
         old_ligand = atom_group.detached_copy()
         residue_group.remove_atom_group(atom_group)
         break
@@ -200,7 +200,7 @@ def exercise () :
     "ligand_code=ACT",
   ]
   from mmtbx.command_line import apply_ncs_to_ligand
-  if op.isfile("ncs_ligands.pdb") :
+  if op.isfile("ncs_ligands.pdb"):
     os.remove("ncs_ligands.pdb")
   result = apply_ncs_to_ligand.run(args=args, out=null_out())
   assert result.n_ligands_new == 1
@@ -208,11 +208,11 @@ def exercise () :
   pdb_out = file_reader.any_file("ncs_ligands.pdb", force_type="pdb")
   hierarchy_new = pdb_out.file_object.hierarchy
   new_ligand = None
-  for chain in hierarchy_new.only_model().chains() :
+  for chain in hierarchy_new.only_model().chains():
     if (chain.id != "B") : continue
-    for residue_group in chain.residue_groups() :
+    for residue_group in chain.residue_groups():
       atom_group = residue_group.only_atom_group()
-      if (atom_group.resname == "ACT") :
+      if (atom_group.resname == "ACT"):
         new_ligand = atom_group.detached_copy()
   assert new_ligand is not None
   rmsd = old_ligand.atoms().extract_xyz().rms_difference(
@@ -233,6 +233,6 @@ def exercise () :
     g_op.show_summary(out=out, prefix=" ")
     assert out.getvalue().count("Rotation:") == 1
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

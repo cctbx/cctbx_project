@@ -15,7 +15,7 @@ import random
 import mmtbx.maps.fem
 import mmtbx.masks
 
-def get_master_phil () :
+def get_master_phil():
   return mmtbx.command_line.generate_master_phil_with_inputs(
     phil_string="""
 random_seed=2679941
@@ -106,13 +106,13 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
     orig_label         = "2mFo-DFc")
   return os.path.abspath(mtz_file_name)
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher(runtime_utils.target_with_save_result):
+  def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
     return run(args=self.args, log=sys.stdout)
 
-def validate_params (params) :
+def validate_params(params):
   return mmtbx.command_line.validate_input_params(params)
 
 if(__name__ == "__main__"):

@@ -824,7 +824,7 @@ def adjust_energy_and_gradients(result,
 
   return result
 
-def adjusted_phenix_g_norm (geometry,
+def adjusted_phenix_g_norm(geometry,
                             restraints_manager,
                             sites_cart,
                             hd_selection,

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 08/30/2018
+Last Changed: 10/21/2018
 Description : PRIME GUI frames module
 '''
 
@@ -22,15 +22,16 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-import iota.components.iota_misc as misc
-import iota.components.iota_controls as ct
-from iota.components.iota_utils import InputFinder
+import iota.components.iota_utils as util
+import iota.components.iota_ui_controls as ct
+from iota.components.iota_ui_base import IOTABasePanel, IOTABaseFrame
 
 import prime.postrefine.mod_gui_dialogs as dlg
 import prime.postrefine.mod_threads as thr
 from prime.postrefine.mod_input import master_phil
+from prime.postrefine.mod_plotter import Plotter, PlotWindow
 
-ginp = InputFinder()
+ginp = util.InputFinder()
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -55,7 +56,7 @@ elif (wx.Platform == '__WXMSW__'):
 user = os.getlogin()
 icons = os.path.join(os.path.dirname(os.path.abspath(ct.__file__)), 'icons/')
 
-f = misc.WxFlags()
+f = util.WxFlags()
 
 def str_split(string, delimiters=(' ', ','), maxsplit=0):
   import re
@@ -63,20 +64,13 @@ def str_split(string, delimiters=(' ', ','), maxsplit=0):
   return re.split(rexp, string, maxsplit)
 
 
-class BasePanel(wx.Panel):
-  def __init__(self, parent):
-    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=(800, 500))
-
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.SetSizer(self.main_sizer)
-
 # -------------------------------  Main Window ------------------------------  #
 
-class PRIMEInputWindow(BasePanel):
+class PRIMEInputWindow(IOTABasePanel):
   ''' Main PRIME Window panel '''
 
   def __init__(self, parent, phil=None):
-    BasePanel.__init__(self, parent=parent)
+    IOTABasePanel.__init__(self, parent=parent)
 
     self.regenerate_params(phil)
 
@@ -165,7 +159,7 @@ class PRIMEInputWindow(BasePanel):
         self.pparams.hklrefin = reference
 
     self.out_dir = self.out_box.ctr.GetValue()
-    self.pparams.run_no = misc.set_base_dir(out_dir=self.out_dir)               # Need to change
+    self.pparams.run_no = util.set_base_dir(out_dir=self.out_dir)  # Need to change
     self.pparams.title = self.project_title.ctr.GetValue()
     self.pparams.n_residues = self.opt_spc_nres.ctr.GetValue()
     self.pparams.n_processors = self.opt_spc_nproc.ctr.GetValue()
@@ -198,7 +192,7 @@ class PRIMEInputWindow(BasePanel):
     self.pparams = self.prime_phil.extract()
 
   def generate_phil_string(self, current_phil):
-    with misc.Capturing() as txt_output:
+    with util.Capturing() as txt_output:
       current_phil.show()
     self.phil_string = ''
     for one_output in txt_output:
@@ -286,7 +280,7 @@ class RuntimeTab(wx.Panel):
 
     # Plot mean CC1/2
     meanCC = info['total_cc12']
-    cycles = list(range(len(meanCC)))
+    cycles = range(len(meanCC))
     self.cc_axes.clear()
     self.cc_axes.set_xlim(0, total_cycles)
     self.cc_axes.set_ylim(0, 100)
@@ -296,7 +290,7 @@ class RuntimeTab(wx.Panel):
     # Plot mean completeness and multiplicity
     mean_comp = info['total_completeness']
     mean_mult = info['total_n_obs']
-    cycles = list(range(len(mean_comp)))
+    cycles = range(len(mean_comp))
     self.comp_axes.clear()
     self.mult_axes.clear()
     self.comp_axes.set_xlim(0, total_cycles)
@@ -386,17 +380,20 @@ class SummaryTab(wx.Panel):
                info):
     wx.Panel.__init__(self, parent)
 
-    from prime.postrefine.mod_plotter import Plotter
-
     self.info = info
     self.pparams = pparams
-    self.plot = Plotter(info=self.info,
+
+    self.plot_window = PlotWindow(None, -1, title='PRIME Statistics')
+    self.plot = Plotter(self.plot_window, info=self.info,
                         anomalous_flag=self.pparams.target_anomalous_flag)
+    self.plot_window.plot_panel = self.plot
 
     self.summary_sizer = wx.BoxSizer(wx.VERTICAL)
 
-    sfont = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
-    bfont = wx.Font(norm_font_size, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+    sfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                    wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+    bfont = wx.Font(norm_font_size, wx.FONTFAMILY_DEFAULT,
+                    wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
     self.SetFont(bfont)
 
     # Run information
@@ -433,26 +430,31 @@ class SummaryTab(wx.Panel):
     btn_box_sizer = wx.BoxSizer(wx.VERTICAL)
     line_bmp = bitmaps.fetch_custom_icon_bitmap('line_graph24')
     self.btn_stats = ct.GradButton(self,
-                                  bmp=line_bmp,
-                                  label=' Statistical charts', size=(250, -1))
+                                   bmp=line_bmp,
+                                   label=' Statistical charts', size=(250, -1))
     txt_bmp = bitmaps.fetch_icon_bitmap('mimetypes', 'txt', scale=(24, 24))
     self.btn_table1 = ct.GradButton(self,
-                                  bmp=txt_bmp,
-                                  label=' Output Table 1', size=(250, -1))
-    btn_box_sizer.Add(self.btn_stats)
-    self.Bind(wx.EVT_BUTTON, self.onPlotStats, self.btn_stats)
-    btn_box_sizer.Add(self.btn_table1, flag=wx.TOP, border=5)
-    self.Bind(wx.EVT_BUTTON, self.onWriteTableOne, self.btn_table1)
+                                    bmp=txt_bmp,
+                                    label=' Output Table 1', size=(250, -1))
 
+    btn_box_sizer.Add(self.btn_stats)
+    btn_box_sizer.Add(self.btn_table1, flag=wx.TOP, border=5)
     tb1_box_sizer.Add(self.tb1, flag=wx.EXPAND | wx.ALL, border=10)
     tb1_box_sizer.AddStretchSpacer()
     tb1_box_sizer.Add(btn_box_sizer, flag=wx.ALIGN_RIGHT | wx.ALL, border=10)
     self.summary_sizer.Add(tb1_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
+    # Button bindings
+    self.Bind(wx.EVT_BUTTON, self.onPlotStats, self.btn_stats)
+    self.Bind(wx.EVT_BUTTON, self.onWriteTableOne, self.btn_table1)
+
     self.SetSizer(self.summary_sizer)
 
   def onPlotStats(self, e):
+    self.plot.initialize_figure(figsize=(9, 9))
     self.plot.stat_charts()
+    self.plot_window.plot()
+    self.plot_window.Show(True)
 
   def onWriteTableOne(self, e):
     ''' Write Table 1 to a file '''
@@ -471,13 +473,16 @@ class SummaryTab(wx.Panel):
                                            self.tb1_data[i][0])
           tb1_file.write(to_str(line))
 
-class PRIMERunWindow(wx.Frame):
+class PRIMERunWindow(IOTABaseFrame):
   ''' New frame that will show processing info '''
 
   def __init__(self, parent, id, title, params,
                prime_file, mp_method='python', command=None, recover=False):
-    wx.Frame.__init__(self, parent, id, title, size=(800, 900),
-                      style= wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER)
+    IOTABaseFrame.__init__(self, parent, id, title, size=(800, 900),
+                           style=wx.SYSTEM_MENU |
+                                 wx.CAPTION |
+                                 wx.CLOSE_BOX |
+                                 wx.RESIZE_BORDER)
 
     self.logtext = ''
     self.pparams = params
@@ -490,19 +495,15 @@ class PRIMERunWindow(wx.Frame):
     self.mp_method = mp_method
     self.current_cycle = -1
 
-    self.main_panel = wx.Panel(self)
-    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-
     # Toolbar
-    self.prime_toolbar = self.CreateToolBar(wx.TB_TEXT)
-    abort_bmp = bitmaps.fetch_icon_bitmap('actions', 'stop')
-    self.tb_btn_abort = self.prime_toolbar.AddLabelTool(wx.ID_ANY, label='Abort',
-                                                        bitmap=abort_bmp,
-                                                        shortHelp='Abort')
-    self.prime_toolbar.Realize()
+    self.initialize_toolbar()
+    self.tb_btn_abort = self.add_tool(label='Abort',
+                                      bitmap=('actions', 'stop'),
+                                      shortHelp='Abort')
+    self.realize_toolbar()
 
     # Status box
-    self.status_panel = wx.Panel(self.main_panel)
+    self.status_panel = wx.Panel(self)
     self.status_sizer = wx.BoxSizer(wx.VERTICAL)
     self.status_box = wx.StaticBox(self.status_panel, label='Status')
     self.status_box_sizer = wx.StaticBoxSizer(self.status_box, wx.HORIZONTAL)
@@ -514,7 +515,7 @@ class PRIMERunWindow(wx.Frame):
     self.status_panel.SetSizer(self.status_sizer)
 
     # Tabbed output window(s)
-    self.prime_panel = wx.Panel(self.main_panel)
+    self.prime_panel = wx.Panel(self)
     self.prime_nb = wx.Notebook(self.prime_panel, style=0)
     self.log_tab = LogTab(self.prime_nb)
     self.graph_tab = RuntimeTab(self.prime_nb, params=self.pparams)
@@ -527,7 +528,6 @@ class PRIMERunWindow(wx.Frame):
 
     self.main_sizer.Add(self.status_panel, flag=wx.EXPAND | wx.ALL, border=3)
     self.main_sizer.Add(self.prime_panel, 1, flag=wx.EXPAND | wx.ALL, border=3)
-    self.main_panel.SetSizer(self.main_sizer)
 
     #Processing status bar
     self.sb = self.CreateStatusBar()
@@ -564,7 +564,7 @@ class PRIMERunWindow(wx.Frame):
   def onAbort(self, e):
     self.status_txt.SetForegroundColour('red')
     self.status_txt.SetLabel('Aborting...')
-    self.prime_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
+    self.toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
 
     if self.mp_method == 'python':
       self.pids = easy_run.fully_buffered('pgrep -u {} {}'
@@ -667,10 +667,13 @@ class PRIMERunWindow(wx.Frame):
     # If not done yet, write settings file for this run
     settings_file = os.path.join(self.pparams.run_no, 'settings.phil')
     if not os.path.isfile(settings_file):
-      with open(self.prime_file, 'r') as pf:
-        settings = pf.read()
-      with open(settings_file, 'w') as sf:
-        sf.write(settings)
+      try:
+        with open(self.prime_file, 'r') as pf:
+          settings = pf.read()
+        with open(settings_file, 'w') as sf:
+          sf.write(settings)
+      except Exception:
+        pass
 
     # Inspect output and update gauge
     self.gauge_prime.Show()
@@ -704,7 +707,7 @@ class PRIMERunWindow(wx.Frame):
 
   def final_step(self):
     font = self.status_txt.GetFont()
-    font.SetWeight(wx.BOLD)
+    font.SetWeight(wx.FONTWEIGHT_BOLD)
 
     # Check for aborted run
     if self.aborted:
@@ -722,10 +725,33 @@ class PRIMERunWindow(wx.Frame):
       self.plot_runtime_results()
       self.plot_final_results()
 
+      # Copy final results to special folder
+      import shutil
+
+      # Make the folder
+      fin_folder = "merged_dataset_{}".format(os.path.basename(self.pparams.run_no))
+      dst_dir = os.path.abspath(os.path.join(os.curdir, fin_folder))
+      os.makedirs(dst_dir)
+
+      # Copy files
+      run_no = int(os.path.basename(self.pparams.run_no))
+      src_dir = os.path.abspath(self.pparams.run_no)
+      src_mtz = 'postref_cycle_{}_merge.mtz'.format(self.current_cycle)
+      dst_mtz = 'run_{:03d}_final_merged.mtz'.format(run_no)
+      shutil.copyfile(src=os.path.join(src_dir, src_mtz),
+                      dst=os.path.join(dst_dir, dst_mtz))
+      src_hkl = 'postref_cycle_{}_merge.hkl'.format(self.current_cycle)
+      dst_hkl = 'run_{:03d}_final_merged.hkl'.format(run_no)
+      shutil.copyfile(src=os.path.join(src_dir, src_hkl),
+                      dst=os.path.join(dst_dir, dst_hkl))
+      dst_log = 'run_{}_log.txt'.format(run_no)
+      shutil.copyfile(src=os.path.join(src_dir, 'log.txt'),
+                      dst=os.path.join(dst_dir, dst_log))
+
     # Finish up
     self.display_log()
     self.gauge_prime.Hide()
-    self.prime_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
+    self.toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
     self.timer.Stop()
 
 
@@ -790,7 +816,8 @@ class FileListCtrl(ct.CustomListCtrl):
                              defaultDir=os.curdir,
                              defaultFile="*",
                              wildcard="*",
-                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST)
+                             style=wx.FD_OPEN |
+                                   wx.FD_FILE_MUST_EXIST)
     if file_dlg.ShowModal() == wx.ID_OK:
       self.add_item(file_dlg.GetPaths()[0])
     file_dlg.Destroy()

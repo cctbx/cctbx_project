@@ -1,12 +1,10 @@
-from __future__ import absolute_import, division, print_function
-
-import sys
-
-from fable import simple_compilation
-
+from __future__ import division, print_function
 def run(args):
-  if args not in (["--with-quotes"], ["--no-quotes"]):
-    sys.exit("fable.fem_include_search_paths --with-quotes|--no-quotes")
+  if (args not in [["--with-quotes"], ["--no-quotes"]]):
+    from libtbx.utils import Usage
+    import libtbx.load_env
+    raise Usage("%s --with-quotes|--no-quotes" % libtbx.env.dispatcher_name)
+  from fable import simple_compilation
   comp_env = simple_compilation.environment()
   print(comp_env.assemble_include_search_paths(
     no_quotes=(args[0]=="--no-quotes")))

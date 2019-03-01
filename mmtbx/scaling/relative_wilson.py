@@ -17,7 +17,7 @@ mean_coefs = flex.double([-0.43300151026105321, 0.33427752644857256, -0.36429668
 
 std_coefs = flex.double([0.22609807236783072, -0.051083004382385722, 0.10050223345603099, -0.059797469000968342, 0.078452075293119358, -0.061376061912225756, 0.046001019180730129, -0.046818252753277688, 0.037535878728343949, -0.031883497361025873, 0.031132854775465228, -0.026248228833806508, 0.025229855893282804, -0.022987539515026915, 0.018603638709078982, -0.020688685663116515, 0.021490882895477355, -0.019155463126466928, 0.018694555361791723, -0.017919220545523508, 0.01688432732243788, -0.016177982330096936, 0.013523772618558827, -0.011497460798395623, 0.010090183879313928, -0.0077311745570573494, 0.0069765868372828593, -0.0085904927919333608, 0.0079389398144072369, -0.0063106616713442193, 0.0072030470015979342, -0.0082688707324504833, 0.0075456582719407002, -0.0078122483377159966, 0.007131121698384397, -0.004898714984268495, 0.0045473543279292298, -0.0055478491205527948, 0.0041818036356804219, -0.0032442174724577502, 0.0035282617908206485, -0.0026738719276938735, 0.0012942832126333331, -0.001864418991069073, 0.001979588643470585, -0.001413729012970848, 0.00074827896319899767, -0.00089235624086152622, 0.00061639083311362331, -0.0007922443411235876])
 
-class relative_wilson (mmtbx.scaling.xtriage_analysis) :
+class relative_wilson(mmtbx.scaling.xtriage_analysis):
   def __init__(self,
       miller_obs,
       miller_calc,
@@ -26,9 +26,9 @@ class relative_wilson (mmtbx.scaling.xtriage_analysis) :
       n_points=2000,
       level=6.0):
     assert miller_obs.indices().all_eq(miller_calc.indices())
-    if (miller_obs.is_xray_amplitude_array()) :
+    if (miller_obs.is_xray_amplitude_array()):
       miller_obs = miller_obs.f_as_f_sq()
-    if (miller_calc.is_xray_amplitude_array()) :
+    if (miller_calc.is_xray_amplitude_array()):
       miller_calc = miller_calc.f_as_f_sq()
     self.obs  = miller_obs.deep_copy()
     self.calc = miller_calc.deep_copy()
@@ -88,7 +88,7 @@ class relative_wilson (mmtbx.scaling.xtriage_analysis) :
 
     self.low_lim_for_scaling = 1.0/(4.0*4.0) #0.0625
     selection = (self.calc_d_star_sq > self.low_lim_for_scaling)
-    if (selection.count(True) == 0) :
+    if (selection.count(True) == 0):
       raise Sorry("No reflections within required resolution range after "+
         "filtering.")
     self.weight_array = selection.as_double() / (2.0 * self.var_obs)
@@ -111,7 +111,7 @@ class relative_wilson (mmtbx.scaling.xtriage_analysis) :
 
     self.modify_weights()
     self.all_bad_z_scores = self.weight_array.all_eq(0.0)
-    if (not self.all_bad_z_scores) :
+    if (not self.all_bad_z_scores):
       s = 1.0/(flex.sum(self.weight_array*self.mean_calc) /
                flex.sum(self.weight_array*self.mean_obs))
       b = 0.0
@@ -120,7 +120,7 @@ class relative_wilson (mmtbx.scaling.xtriage_analysis) :
       self.opti = simplex.simplex_opt( 2, self.sart_simplex, self)
     #self.mean_calc = self.mean_calc*self.scale*flex.exp(self.calc_d_star_sq*self.b_value)
 
-  def summary (self) :
+  def summary(self):
     i_scaled = flex.exp( self.calc_d_star_sq*self.b_value ) * \
                 self.mean_calc * self.scale
     sel = (self.mean_obs > 0).iselection()
@@ -170,12 +170,12 @@ class relative_wilson (mmtbx.scaling.xtriage_analysis) :
     ratio  = i_scaled / self.mean_obs
     curve = self.curve( self.calc_d_star_sq )
     result = ratio - flex.exp(curve)
-    if (flex.max(result) > math.sqrt(sys.float_info.max)) :
+    if (flex.max(result) > math.sqrt(sys.float_info.max)):
       raise OverflowError("Result array exceeds floating-point limit.")
     result = result*result
     wmax = flex.max(self.weight_array)
     assert (wmax != 0)
-    if (wmax > 1) and (flex.max(result) > sys.float_info.max / wmax) :
+    if (wmax > 1) and (flex.max(result) > sys.float_info.max / wmax):
       raise OverflowError("Weighted result array will exceed floating-point "+
         "limit: %e" % flex.max(result))
     result = result*self.weight_array
@@ -190,14 +190,14 @@ class relative_wilson (mmtbx.scaling.xtriage_analysis) :
     result = self.std_ratio_engine.f( d_star_sq )
     return result
 
-  def show_summary (self, out) :
+  def show_summary(self, out):
     return self.summary().show(out=out)
 
-class summary (mmtbx.scaling.xtriage_analysis) :
-  def __init__ (self,
+class summary(mmtbx.scaling.xtriage_analysis):
+  def __init__(self,
       all_curves,
       level=6.0,
-      all_bad_z_scores=False) :
+      all_bad_z_scores=False):
     self.table = data_plots.table_data(
       title="Relative Wilson plot",
       column_labels=["Max. resolution", "log(I_exp/I_obs)", "Reference curve",
@@ -210,15 +210,15 @@ class summary (mmtbx.scaling.xtriage_analysis) :
     self.cutoff = level
     self.all_bad_z_scores = all_bad_z_scores
 
-  def n_outliers (self) :
+  def n_outliers(self):
     ss,rr,ii,zz = self.data_as_flex_arrays()
     flagged = zz > self.cutoff
     return flagged.count(True)
 
-  def data_as_flex_arrays (self) :
+  def data_as_flex_arrays(self):
     return [ flex.double(column) for column in self.table.data ]
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     ss,rr,ii,zz = self.data_as_flex_arrays()
     flagged = zz > self.cutoff
     sel_ss = ss.select(flagged)
@@ -239,7 +239,7 @@ more linear because the influence of favored distances between atoms, caused
 by bonding and secondary structure, is cancelled out.
 """)
     out.show_plot(self.table)
-    if (self.all_bad_z_scores) :
+    if (self.all_bad_z_scores):
       out.warn("""\
 All resolution shells have Z-scores above %4.2f sigma.  This is indicative of
 severe problems with the input data, including processing errors or ice rings.

@@ -7,7 +7,7 @@ Description : Plot stats by post-refinement cycles.
 '''
 import matplotlib.pyplot as plt
 import sys
-import cPickle as pickle
+from six.moves import cPickle as pickle
 
 if len(sys.argv)==1:
   print 'Use prime.plotstats to view different stats along post-refinement cycles.'

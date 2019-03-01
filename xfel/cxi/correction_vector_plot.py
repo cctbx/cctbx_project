@@ -30,8 +30,8 @@ class manage_sql:
     for table in new_tables:
       cursor.execute("DROP TABLE IF EXISTS %s;"%table[0])
       cursor.execute("CREATE TABLE %s "%table[0]+table[1].replace("\n"," ")+" ;")
-    import cStringIO
-    self.query = cStringIO.StringIO()
+    from six.moves import cStringIO as StringIO
+    self.query = StringIO()
     self.query.write("INSERT INTO %s_spotfinder VALUES "%self.params.mysql.runtag)
     self.firstcomma = ""
 
@@ -74,7 +74,7 @@ class lines(correction_vector_store):
       path = self.params.outdir_template
       stream = open(path,"r")
       print path
-      for line in stream.xreadlines():
+      for line in stream:
         if line.find("XFEL processing:") == 0:
            tokens = line.strip().split("/")
            picklefile = line.strip().split()[2]
@@ -100,7 +100,7 @@ class lines(correction_vector_store):
           path = os.path.join(templ,item)
           stream = open(path,"r")
           print path
-          for line in stream.xreadlines():
+          for line in stream:
             if line.find("CV OBSCENTER")==0:
               potential_tokens = line.strip().split()
               if len(potential_tokens)==22 and \

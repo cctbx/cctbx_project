@@ -166,7 +166,7 @@ class rs_hybrid(updated_rs):
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
     # in samosa, handle this at a higher level, but handle it somehow.
     if fat_count < 3:
-      raise ValueError, "< 3 near-fulls after refinement"
+      raise ValueError("< 3 near-fulls after refinement")
     print >> self.out, "On total %5d the fat selection is %5d"%(
       len(self.observations_pair1_selected.indices()), fat_count)
     observations_original_index = \
@@ -187,6 +187,7 @@ class rs_hybrid(updated_rs):
     I_weight.set_selected(I_invalid,0.)
     SWC = simple_weighted_correlation(I_weight, I_reference, observations.data())
     print >> self.out, "CORR: NEW correlation is", SWC.corr
+    print >> self.out, "ASTAR_FILE",file_name,tuple(self.nave1_refinery.get_eff_Astar(values))
     self.final_corr = SWC.corr
     #another range assertion
     assert self.final_corr > 0.1,"correlation coefficient out of range (<= 0.1) after LevMar refinement"

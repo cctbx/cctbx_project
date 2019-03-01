@@ -93,23 +93,23 @@ remove_hetatm_ter_records = True
 include scope libtbx.phil.interface.tracking_params
 """ % sorting_params_str
 
-def master_phil () :
+def master_phil():
   return libtbx.phil.parse(master_params)
 
-def sort_hetatms (
+def sort_hetatms(
     pdb_hierarchy,
     xray_structure,
     params=None,
     verbose=False,
     return_pdb_hierarchy=True,
-    log=null_out()) :
+    log=null_out()):
   """
   Rearrange a PDB hierarchy so that heteroatoms are grouped with the closest
   macromolecule, accounting for symmetry.  Assorted ligands will be arranged
   first in each new chain, followed by waters.  See the PHIL block
   sorting_params_str for options.
   """
-  if (params is None) :
+  if (params is None):
     import iotbx.phil
     params = iotbx.phil.parse(sorting_params_str).fetch().extract()
   from iotbx import pdb
@@ -134,25 +134,25 @@ def sort_hetatms (
   asu_table = pair_asu_table.table()
   mm_chains = []
   hetatm_chains = []
-  if (params.ignore_selection is not None) :
+  if (params.ignore_selection is not None):
     sel_cache = pdb_hierarchy.atom_selection_cache()
     ignore_selection = sel_cache.selection(params.ignore_selection)
   assert (len(pdb_hierarchy.models()) == 1)
-  for chain in pdb_hierarchy.only_model().chains() :
+  for chain in pdb_hierarchy.only_model().chains():
     chain_atoms = chain.atoms()
     het_sel = chain_atoms.extract_hetero()
-    if (het_sel.size() == chain_atoms.size()) :
+    if (het_sel.size() == chain_atoms.size()):
       hetatm_chains.append(chain)
     elif ((chain.is_protein(ignore_water=False)) or
-          (chain.is_na(ignore_water=False))) :
+          (chain.is_na(ignore_water=False))):
       mm_chains.append(chain)
       i_seqs = chain_atoms.extract_tmp_as_size_t()
       mm_selection.set_selected(i_seqs, True)
     else :
       hetatm_chains.append(chain)
-  if (len(hetatm_chains) == 0) :
+  if (len(hetatm_chains) == 0):
     print >> log, "No heteroatoms - hierarchy will not be modified."
-    if (return_pdb_hierarchy) :
+    if (return_pdb_hierarchy):
       return pdb_hierarchy
     else :
       return sort_hetatms_result(
@@ -171,10 +171,10 @@ def sort_hetatms (
     new_chain_i_seqs.append(flex.size_t(chain.atoms().extract_tmp_as_size_t()))
     new_model.append_chain(chain.detached_copy())
     new_hetatm_chains.append(pdb.hierarchy.chain(id=chain.id))
-    if (params.preserve_chain_id) and (chain.id in new_hetatm_chain_ids) :
+    if (params.preserve_chain_id) and (chain.id in new_hetatm_chain_ids):
       print >> log, "Warning: chain ID '%s' is duplicated"
     new_hetatm_chain_ids.append(chain.id)
-    if (params.sequential_numbering) :
+    if (params.sequential_numbering):
       last_resseq = chain.residue_groups()[-1].resseq_as_int()
       new_start_resseq.append(last_resseq + 1)
     else :
@@ -182,16 +182,16 @@ def sort_hetatms (
   hetatm_residue_groups = []
   hetatm_residue_chain_ids = []
   loose_chain_id = params.loose_chain_id
-  if (loose_chain_id is None) :
+  if (loose_chain_id is None):
     loose_chain_id = " "
   loose_residues = pdb.hierarchy.chain(id=loose_chain_id)
   preserve_chains = []
   for chain in hetatm_chains :
     chain_id = chain.id
-    for rg in chain.residue_groups() :
+    for rg in chain.residue_groups():
       n_het_residues += 1
-      if (params.preserve_chain_id) :
-        if (chain_id in new_hetatm_chain_ids) :
+      if (params.preserve_chain_id):
+        if (chain_id in new_hetatm_chain_ids):
           i_chain = new_hetatm_chain_ids.index(chain_id)
           new_hetatm_chains[i_chain].append_residue_group(rg.detached_copy())
         else :
@@ -206,31 +206,31 @@ def sort_hetatms (
       i_seqs = rg_atoms.extract_tmp_as_size_t()
       atom_groups = rg.atom_groups()
       if ((params.waters_only) and
-          (not atom_groups[0].resname in ["HOH","WAT"])) :
+          (not atom_groups[0].resname in ["HOH","WAT"])):
         keep_residue_group = True
       else :
         for i_seq in i_seqs :
-          if (ignore_selection[i_seq]) :
+          if (ignore_selection[i_seq]):
             keep_residue_group = True
             break
-      if (not keep_residue_group) :
+      if (not keep_residue_group):
         rg_copy = rg.detached_copy()
-        for new_atom, old_atom in zip(rg_copy.atoms(), rg_atoms) :
+        for new_atom, old_atom in zip(rg_copy.atoms(), rg_atoms):
           new_atom.tmp = old_atom.tmp # detached_copy() doesn't preserve tmp
         hetatm_residue_groups.append(rg_copy)
         hetatm_residue_chain_ids.append(chain_id)
         chain.remove_residue_group(rg)
-    if (len(chain.residue_groups()) > 0) :
+    if (len(chain.residue_groups()) > 0):
       preserve_chains.append(chain.detached_copy())
   for chain in preserve_chains :
     new_model.append_chain(chain)
   unit_cell = xray_structure.unit_cell()
   n_deleted = 0
-  if (not params.preserve_chain_id) :
-    for k, rg in enumerate(hetatm_residue_groups) :
+  if (not params.preserve_chain_id):
+    for k, rg in enumerate(hetatm_residue_groups):
       chain_id = hetatm_residue_chain_ids[k]
       atom_groups = rg.atom_groups()
-      if (len(atom_groups) == 0) :
+      if (len(atom_groups) == 0):
         continue
       is_water = (atom_groups[0].resname in ["HOH", "WAT", "DOD"])
       rg_atoms = rg.atoms()
@@ -238,16 +238,16 @@ def sort_hetatms (
       closest_distance = sys.maxint
       closest_i_seq = None
       closest_rt_mx = None
-      for i_seq, atom in zip(i_seqs, rg_atoms) :
-        if (params.set_hetatm_record) :
+      for i_seq, atom in zip(i_seqs, rg_atoms):
+        if (params.set_hetatm_record):
           atom.hetero = True
-        if (hd_selection[i_seq]) :
+        if (hd_selection[i_seq]):
           continue
         site_i = sites_frac[i_seq]
         asu_dict = asu_table[i_seq]
         rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
-        for j_seq, j_sym_groups in asu_dict.items() :
-          if (hd_selection[j_seq]) or (not mm_selection[j_seq]) :
+        for j_seq, j_sym_groups in asu_dict.items():
+          if (hd_selection[j_seq]) or (not mm_selection[j_seq]):
             continue
           site_j = sites_frac[j_seq]
           for j_sym_group in j_sym_groups:
@@ -255,14 +255,14 @@ def sort_hetatms (
               j_sym_group[0]))
             site_ji = rt_mx * site_j
             dxyz = unit_cell.distance(site_i, site_ji)
-            if (dxyz < closest_distance) :
+            if (dxyz < closest_distance):
               closest_distance = dxyz
               closest_rt_mx = rt_mx.inverse() # XXX I hope this is right...
               closest_i_seq = j_seq
-      if (closest_i_seq is None) :
+      if (closest_i_seq is None):
         # XXX possible bug: what about waters H-bonded to ligands, but still
         # outside radius of macromolecule?
-        if (is_water and params.remove_waters_outside_radius) :
+        if (is_water and params.remove_waters_outside_radius):
           print >> log, "Water %s is not near any polymer chain, will delete" \
             % rg.id_str()
           n_deleted += len(rg.atoms())
@@ -276,10 +276,10 @@ def sort_hetatms (
             (chain_id, rg.resid())
           loose_residues.append_residue_group(rg)
       else :
-        for j_seqs, hetatm_chain in zip(new_chain_i_seqs, new_hetatm_chains) :
-          if (closest_i_seq in j_seqs) :
-            if (verbose) :
-              if (closest_rt_mx.is_unit_mx()) :
+        for j_seqs, hetatm_chain in zip(new_chain_i_seqs, new_hetatm_chains):
+          if (closest_i_seq in j_seqs):
+            if (verbose):
+              if (closest_rt_mx.is_unit_mx()):
                 print >> log, \
                   "Residue group %s added to chain %s (distance = %.3f)" % \
                   (rg.atoms()[0].id_str(), hetatm_chain.id, closest_distance)
@@ -289,10 +289,10 @@ def sort_hetatms (
                    "(distance = %.3f, symop = %s)") % \
                   (rg.atoms()[0].id_str(), hetatm_chain.id, closest_distance,
                    str(closest_rt_mx))
-            if (not closest_rt_mx.is_unit_mx()) :
+            if (not closest_rt_mx.is_unit_mx()):
               # closest macromolecule is in another ASU, so map the hetatms to
               # be near the copy in the current ASU
-              for atom in rg.atoms() :
+              for atom in rg.atoms():
                 site_frac = unit_cell.fractionalize(site_cart=atom.xyz)
                 new_site_frac = closest_rt_mx * site_frac
                 atom.xyz = unit_cell.orthogonalize(site_frac=new_site_frac)
@@ -303,37 +303,37 @@ def sort_hetatms (
   # even if waters aren't sorted, we still want them to come last
   for chain in new_hetatm_chains :
     waters_and_b_iso = []
-    for rg in chain.residue_groups() :
+    for rg in chain.residue_groups():
       ags = rg.atom_groups()
-      if (ags[0].resname in ["WAT","HOH"]) :
+      if (ags[0].resname in ["WAT","HOH"]):
         b_iso = flex.mean(rg.atoms().extract_b())
         waters_and_b_iso.append((rg, b_iso))
         chain.remove_residue_group(rg)
-    if (len(waters_and_b_iso) > 0) :
-      if (params.sort_waters_by != "none") :
+    if (len(waters_and_b_iso) > 0):
+      if (params.sort_waters_by != "none"):
         waters_and_b_iso.sort(lambda x,y: cmp(x[1], y[1]))
       for water, b_iso in waters_and_b_iso :
         chain.append_residue_group(water)
-  if (params.renumber) :
-    for chain, start_resseq in zip(new_hetatm_chains, new_start_resseq) :
+  if (params.renumber):
+    for chain, start_resseq in zip(new_hetatm_chains, new_start_resseq):
       resseq = start_resseq
-      for rg in chain.residue_groups() :
+      for rg in chain.residue_groups():
         rg.resseq = resseq
         resseq += 1
   for chain in new_hetatm_chains :
-    for residue_group in chain.residue_groups() :
+    for residue_group in chain.residue_groups():
       residue_group.link_to_previous = True # suppress BREAK records
     new_model.append_chain(chain)
-  if (len(loose_residues.residue_groups()) > 0) :
+  if (len(loose_residues.residue_groups()) > 0):
     new_model.append_chain(loose_residues)
   n_atoms_new = len(new_hierarchy.atoms())
-  if (n_atoms_new != n_atoms - n_deleted) :
+  if (n_atoms_new != n_atoms - n_deleted):
     raise RuntimeError("Atom counts do not match: %d --> %d" % (n_atoms,
       n_atoms_new))
-  if (n_deleted > 0) :
+  if (n_deleted > 0):
     print >> log, "WARNING: %d atoms removed from model" % n_deleted
     print >> log, "  You must refine this model again before deposition!"
-  if (return_pdb_hierarchy) :
+  if (return_pdb_hierarchy):
     return new_hierarchy
   else :
     return sort_hetatms_result(
@@ -341,9 +341,9 @@ def sort_hetatms (
       n_mm_chains=len(mm_chains),
       n_het_residues=n_het_residues)
 
-def run (args, out=sys.stdout, sorting_params=None) :
+def run(args, out=sys.stdout, sorting_params=None):
   import iotbx.phil
-  if (len(args) == 0) or ("--help" in args) :
+  if (len(args) == 0) or ("--help" in args):
     raise Usage("""\
 mmtbx.sort_hetatms model.pdb [options]
 
@@ -368,24 +368,24 @@ Full parameters:
   pdb_symm = pdb_in.crystal_symmetry()
   space_group = params.space_group
   unit_cell = params.unit_cell
-  if (pdb_symm is None) and (not params.ignore_symmetry) :
-    if (space_group is None) or (unit_cell is None) :
+  if (pdb_symm is None) and (not params.ignore_symmetry):
+    if (space_group is None) or (unit_cell is None):
       raise Sorry("Crystal symmetry information is required; please specify "+
         "the space_group and unit_cell parameters.")
   else :
-    if (space_group is None) and (pdb_symm is not None) :
+    if (space_group is None) and (pdb_symm is not None):
       space_group = pdb_symm.space_group_info()
-    if (unit_cell is None) and (pdb_symm is not None) :
+    if (unit_cell is None) and (pdb_symm is not None):
       unit_cell = pdb_symm.unit_cell()
   final_symm = None
-  if (not params.ignore_symmetry) :
+  if (not params.ignore_symmetry):
     final_symm = crystal.symmetry(
       space_group_info=space_group,
       unit_cell=unit_cell)
   pdb_hierarchy = pdb_in.file_object.hierarchy
   xray_structure = pdb_in.file_object.xray_structure_simple(
     crystal_symmetry=final_symm)
-  if (sorting_params is None) :
+  if (sorting_params is None):
     sorting_params = params
   result = sort_hetatms(
     pdb_hierarchy=pdb_hierarchy,
@@ -394,27 +394,27 @@ Full parameters:
     verbose=params.verbose,
     return_pdb_hierarchy=False,
     log=out)
-  if (params.output_file is None) :
+  if (params.output_file is None):
     params.output_file = os.path.splitext(
       os.path.basename(params.file_name))[0] + "_sorted.pdb"
   f = open(params.output_file, "w")
-  if (params.preserve_remarks) :
+  if (params.preserve_remarks):
     remarks = pdb_in.file_object.input.remark_section()
-    if (len(remarks) > 0) :
+    if (len(remarks) > 0):
       f.write("\n".join(remarks))
       f.write("\n")
   pdb_str = result.pdb_hierarchy.as_pdb_string(crystal_symmetry=final_symm)
-  if (params.remove_hetatm_ter_records) :
+  if (params.remove_hetatm_ter_records):
     n_hetatm = n_atom = 0
-    for line in pdb_str.splitlines() :
-      if (line[0:3] == "TER") :
-        if (n_atom != 0) :
+    for line in pdb_str.splitlines():
+      if (line[0:3] == "TER"):
+        if (n_atom != 0):
           f.write("%s\n" % line)
         n_atom = n_hetatm = 0
         continue
-      elif (line.startswith("HETATM")) :
+      elif (line.startswith("HETATM")):
         n_hetatm += 1
-      elif (line.startswith("ATOM")) :
+      elif (line.startswith("ATOM")):
         n_atom += 1
       f.write("%s\n" % line)
   else :
@@ -428,26 +428,26 @@ Full parameters:
     n_mm_chains=result.n_mm_chains,
     n_het_residues=result.n_het_residues)
 
-class sort_hetatms_result (object) :
-  def __init__ (self, n_mm_chains, n_het_residues, pdb_hierarchy=None,
-      file_name=None) :
+class sort_hetatms_result(object):
+  def __init__(self, n_mm_chains, n_het_residues, pdb_hierarchy=None,
+      file_name=None):
     adopt_init_args(self, locals())
     assert ([pdb_hierarchy, file_name].count(None) == 1)
 
-  def finish_job (self) :
+  def finish_job(self):
     return ([(self.file_name, "Modified model")],
             [("Number of macromolecule chains", self.n_mm_chains),
              ("Number of heteroatom residues", self.n_het_residues)])
 
-def validate_params (params) :
-  if (params.file_name is None) :
+def validate_params(params):
+  if (params.file_name is None):
     raise Sorry("Model file (file_name) not specified.")
   return True
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher(runtime_utils.target_with_save_result):
+  def run(self):
     return run(args=list(self.args), out=sys.stdout)
 
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

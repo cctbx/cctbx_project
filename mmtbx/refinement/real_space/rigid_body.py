@@ -217,7 +217,7 @@ class refine_mz(object):
     n_ref_lowest = 0
     d_spacing = self.complete_set.d_spacings().sort().data()
     if(d_spacing.size()<500): return ( self.complete_set.d_min(), )
-    d_0 = min(d_spacing[500], 15)
+    d_0 = min(d_spacing[499], 15)
     if(d_0>8.0): d_1 = 8.0
     else:
       return d_0, self.d_min

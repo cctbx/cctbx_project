@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import dlite
 from libtbx.utils import null_out
 import time
@@ -27,25 +27,25 @@ def exercise(args, mtime_resolution=2):
     out = null_out()
   if (os.path.exists("tmp_dlite")):
     os.remove("tmp_dlite")
-  print >> open("tmp_source", "w"), "a"
+  print("a", file=open("tmp_source", "w"))
   assert update_target(out=out)
   assert not update_target(out=out)
-  print >> open("tmp_source", "w"), "b"
+  print("b", file=open("tmp_source", "w"))
   assert update_target(out=out)
   assert not update_target(out=out)
   time.sleep(mtime_resolution)
   assert not update_target(out=out)
-  print >> open("tmp_source", "w"), "b"
+  print("b", file=open("tmp_source", "w"))
   assert not update_target(out=out)
-  print >> open("tmp_target", "w"), "B"
+  print("B", file=open("tmp_target", "w"))
   assert not update_target(out=out)
-  print >> open("tmp_target", "w"), "C"
+  print("C", file=open("tmp_target", "w"))
   assert update_target(out=out)
   assert not update_target(out=out)
   os.remove("tmp_target")
   assert update_target(out=out)
   assert not update_target(out=out)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(args=sys.argv[1:])

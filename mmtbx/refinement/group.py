@@ -297,8 +297,9 @@ class group_minimizer(object):
     del self.x
     self.tested = 0
     if(run_finite_differences_test):
-      for a,f in zip(self.buffer_ana, self.buffer_fin):
-        print a, f
+      # For debugging only
+      #for a,f in zip(self.buffer_ana, self.buffer_fin):
+      #  print a, f
       diff = flex.abs(self.buffer_ana - self.buffer_fin)
       s = diff < 1.e-3
       if(s.size()>0 and s.count(True)*100./s.size()>50):

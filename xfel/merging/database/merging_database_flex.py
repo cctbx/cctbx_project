@@ -126,7 +126,7 @@ class manager:
       original_K =         flex.int   (data_dict["K_proxy"].get_obj()[:nrows]),
       original_L =         flex.int   (data_dict["L_proxy"].get_obj()[:nrows]),
     )
-    import cPickle as pickle
+    from six.moves import cPickle as pickle
     pickle.dump(kwargs, open(self.params.output.prefix+"_observation.pickle","wb"),
                 pickle.HIGHEST_PROTOCOL)
     pickle.dump(self.miller, open(self.params.output.prefix+"_miller.pickle","wb"),
@@ -153,7 +153,7 @@ order_dict = {'wavelength': 0,
                   'unique_file_name': 15}
 class read_experiments(object):
   def __init__(self,params):
-    import cPickle as pickle
+    from six.moves import cPickle as pickle
     from dxtbx.model import BeamFactory
     from dxtbx.model import DetectorFactory
     from dxtbx.model.crystal import CrystalFactory

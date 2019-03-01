@@ -55,5 +55,5 @@ def run(args):
   with open(out_fn, 'w') as f:
     f.write(txt)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -1,5 +1,5 @@
 "light-weight, simple source_path, target_path dependency management"
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from libtbx import easy_pickle
 import hashlib
@@ -104,6 +104,6 @@ class target_db(object):
     for pair_info in self.pair_infos.values():
       for attr in ["source", "target"]:
         node = getattr(pair_info, attr)
-        print >> out, attr+":", node.path, "mtime:", node.mtime,\
-                                           "md5:", node.md5
-      print >> out, "-"*79
+        print(attr+":", node.path, "mtime:", node.mtime,\
+                                           "md5:", node.md5, file=out)
+      print("-"*79, file=out)

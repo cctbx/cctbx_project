@@ -116,10 +116,13 @@ class lbfgs(object):
         selection_variable_real_space=None,
         geometry_restraints_manager=None,
         energies_sites_flags=None,
+        gradient_only=False,
+        line_search=True,
         real_space_target_weight=1,
         real_space_gradients_delta=None,
         local_standard_deviations_radius=None,
         weight_map_scale_factor=None,
+        lbfgs_core_params=None,
         lbfgs_termination_params=None,
         lbfgs_exception_handling_params=None,
         states_collector=None):
@@ -131,9 +134,12 @@ class lbfgs(object):
       assert selection_variable_real_space.size() == sites_cart.size()
     else:
       selection_variable_real_space = flex.bool(sites_cart.size(), True)
+    O.lbfgs_core_params = lbfgs_core_params
     O.gradients_method = gradients_method
     O.x_previous = None
     O.states_collector = states_collector
+    O.gradient_only=gradient_only
+    O.line_search=line_search
     O.density_map = density_map
     O.weight_map = weight_map
     O.unit_cell = unit_cell
@@ -161,6 +167,9 @@ class lbfgs(object):
     O.f_start, O.g_start = O.compute_functional_and_gradients()
     O.minimizer = scitbx.lbfgs.run(
       target_evaluator=O,
+      gradient_only=O.gradient_only,
+      line_search=O.line_search,
+      core_params=O.lbfgs_core_params,
       termination_params=lbfgs_termination_params,
       exception_handling_params=lbfgs_exception_handling_params)
     O.f_final, O.g_final = O.compute_functional_and_gradients()

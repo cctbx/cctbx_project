@@ -246,7 +246,13 @@ class geometry(object):
       self.cached_result.cablam.gui_table      = None
     return self.cached_result
 
-  def show(self, log=None, prefix="", lowercase=False):
+  def show_short(self):
+    r = self.result()
+    f="bond: %6.3f angle: %6.2f clash: %5.1f rota: %5.2f rama_f: %6.2f rama_o: %6.2f cb: %6.2f"
+    return f%(r.bond.mean, r.angle.mean, r.clash.score, r.rotamer.outliers,
+      r.ramachandran.favored, r.ramachandran.outliers, r.c_beta.outliers)
+
+  def show(self, log=None, prefix="", uppercase=True):
     if(log is None): log = sys.stdout
     def fmt(f1,f2,d1):
       fmt_str= "%6.3f %7.3f %6d"
@@ -260,14 +266,14 @@ class geometry(object):
       res.planarity, res.nonbonded
     result = "%s" % prefix
     result += """
-%sGEOMETRY RESTRAINTS LIBRARY: %s
-%sDEVIATIONS FROM IDEAL VALUES.
-%s  BOND      : %s
-%s  ANGLE     : %s
-%s  CHIRALITY : %s
-%s  PLANARITY : %s
-%s  DIHEDRAL  : %s
-%s  MIN NONBONDED DISTANCE : %s
+%sGeometry Restraints Library: %s
+%sDeviations from Ideal Values.
+%s  Bond      : %s
+%s  Angle     : %s
+%s  Chirality : %s
+%s  Planarity : %s
+%s  Dihedral  : %s
+%s  Min Nonbonded Distance : %s
 %s"""%(prefix,
        self.restraints_source,
        prefix,
@@ -276,38 +282,37 @@ class geometry(object):
        prefix, fmt(c.mean, c.max, c.n),
        prefix, fmt(p.mean, p.max, p.n),
        prefix, fmt(d.mean, d.max, d.n),
-       prefix, fmt2(n.min),
+       prefix, fmt2(n.min).strip(),
        prefix)
-    result += "%s" % prefix
     result += """
-%sMOLPROBITY STATISTICS.
-%s  ALL-ATOM CLASHSCORE : %s
-%s  RAMACHANDRAN PLOT:
-%s    OUTLIERS : %-5.2f %s
-%s    ALLOWED  : %-5.2f %s
-%s    FAVORED  : %-5.2f %s
-%s  ROTAMER OUTLIERS : %s %s
-%s  CBETA DEVIATIONS : %-d
-%s  PEPTIDE PLANE:
-%s    CIS-PROLINE     : %s
-%s    CIS-GENERAL     : %s
-%s    TWISTED PROLINE : %s
-%s    TWISTED GENERAL : %s"""%(
+%sMolprobity Statistics.
+%s  All-atom Clashscore : %s
+%s  Ramachandran Plot:
+%s    Outliers : %5.2f %%
+%s    Allowed  : %5.2f %%
+%s    Favored  : %5.2f %%
+%s  Rotamer Outliers : %5.2f %%
+%s  Cbeta Deviations : %5.2f %%
+%s  Peptide Plane:
+%s    Cis-proline     : %s %%
+%s    Cis-general     : %s %%
+%s    Twisted Proline : %s %%
+%s    Twisted General : %s %%"""%(
         prefix,
-        prefix, format_value("%-6.2f", res.clash.score).strip(),
+        prefix, format_value("%5.2f", res.clash.score).strip(),
         prefix,
-        prefix, res.ramachandran.outliers, "%",
-        prefix, res.ramachandran.allowed, "%",
-        prefix, res.ramachandran.favored, "%",
-        prefix, str("%6.2f"%(res.rotamer.outliers)).strip(),"%",
+        prefix, res.ramachandran.outliers,
+        prefix, res.ramachandran.allowed,
+        prefix, res.ramachandran.favored,
+        prefix, res.rotamer.outliers,
         prefix, res.c_beta.outliers,
         prefix,
-        prefix, str(res.omega.cis_proline),
-        prefix, str(res.omega.cis_general),
-        prefix, str(res.omega.twisted_proline),
-        prefix, str(res.omega.twisted_general))
-    if(lowercase):
-      result = result.swapcase()
+        prefix, format_value("%5.2f", res.omega.cis_proline).strip(),
+        prefix, format_value("%5.2f", res.omega.cis_general).strip(),
+        prefix, format_value("%5.2f", res.omega.twisted_proline).strip(),
+        prefix, format_value("%5.2f", res.omega.twisted_general).strip())
+    if( uppercase ):
+      result = result.upper()
     print >> log, result
 
   def as_cif_block(self, cif_block=None, pdbx_refine_id=''):
@@ -493,16 +498,17 @@ class adp(object):
   def as_cif_block(self, cif_block=None):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
-    cif_block["_refine.B_iso_mean"] = \
-      round_2_for_cif(self._result.overall.mean)
+    if self._result.overall is not None:
+      cif_block["_refine.B_iso_mean"] = round_2_for_cif(self._result.overall.mean)
+    else:
+      cif_block["_refine.B_iso_mean"] = '?'
     return cif_block
 
 class info(object):
   def __init__(self, model,
                      fmodel_x          = None,
                      fmodel_n          = None,
-                     refinement_params = None,
-                     use_molprobity    = True):
+                     refinement_params = None):
     ref_par = refinement_params
     self.wilson_b = None
     self.model = model
@@ -552,16 +558,18 @@ class info(object):
   def as_cif_block(self, cif_block=None):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
+    pdbx_refine_id = ''
     if self.data_x is not None:
-      cif_block = self.data_x.as_cif_block(cif_block=cif_block)
+      pdbx_refine_id = 'X-RAY DIFFRACTION'
+    if self.data_n is not None:
+      # !!! Warning: "X-ray+Neutron" is not compliant with mmCIF dictionary:
+      # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_exptl.method.html
+      pdbx_refine_id = 'NEUTRON DIFFRACTION' if self.data_x is None else 'X-ray+Neutron'
+    if self.data_x is not None:
+      cif_block = self.data_x.as_cif_block(cif_block=cif_block, scattering_type=pdbx_refine_id)
     # XXX Neutron data?
 
     if self.geometry is not None:
-      pdbx_refine_id = ''
-      if self.data_x is not None:
-        pdbx_refine_id = 'X-ray'
-      if self.data_n is not None:
-        pdbx_refine_id = 'Neutron' if self.data_x is None else 'X-ray+Neutron'
       cif_block = self.geometry.as_cif_block(cif_block=cif_block, pdbx_refine_id=pdbx_refine_id)
     if self.adp is not None:
       cif_block = self.adp.as_cif_block(cif_block=cif_block)

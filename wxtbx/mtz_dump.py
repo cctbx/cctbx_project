@@ -10,8 +10,8 @@ column_widths = [ 60, 100, 80, 80, 100, 100, 100 ]
 
 aln_flags = wx.ALL|wx.ALIGN_CENTER_VERTICAL
 
-class MtzInspectionFrame (wx.Frame) :
-  def __init__ (self, *args, **kwds) :
+class MtzInspectionFrame(wx.Frame):
+  def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.sizer)
@@ -20,22 +20,22 @@ class MtzInspectionFrame (wx.Frame) :
     self.sizer.Fit(self.panel)
     self.Fit()
 
-  def SetMtzFile (self, *args, **kwds) :
+  def SetMtzFile(self, *args, **kwds):
     self.panel.SetMtzFile(*args, **kwds)
     self.sizer.Fit(self.panel)
     self.Fit()
 
-  def OnOpen (self, event) :
+  def OnOpen(self, event):
     from wxtbx import path_dialogs
     file_name = path_dialogs.manager().select_file(
       parent=self,
       message="Choose an MTZ file to view",
       wildcard="MTZ files (*.mtz)|*.mtz")
-    if (file_name is not None) :
+    if (file_name is not None):
       self.SetMtzFile(file_name)
 
-class MtzContentsPanel (wx.Panel) :
-  def __init__ (self, *args, **kwds) :
+class MtzContentsPanel(wx.Panel):
+  def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.sizer)
@@ -63,7 +63,7 @@ class MtzContentsPanel (wx.Panel) :
     self._dataset_labels = []
     self._mtz_obj = None
 
-  def SetMtzFile (self, file_name) :
+  def SetMtzFile(self, file_name):
     from iotbx import mtz
     try :
       self._mtz_obj = mtz.object(file_name=file_name)
@@ -76,10 +76,10 @@ class MtzContentsPanel (wx.Panel) :
       self._mtz_obj.max_min_resolution())
     self._dataset_labels = []
     self._crystals_and_datasets = []
-    for i_crystal, crystal in enumerate(self._mtz_obj.crystals()) :
-      if (crystal.name() == "HKL_base") :
+    for i_crystal, crystal in enumerate(self._mtz_obj.crystals()):
+      if (crystal.name() == "HKL_base"):
         continue
-      for i_dataset, dataset in enumerate(crystal.datasets()) :
+      for i_dataset, dataset in enumerate(crystal.datasets()):
         label = "/%s/%s" % (crystal.name(), dataset.name())
         self._crystals_and_datasets.append((crystal, dataset))
         self._dataset_labels.append(label)
@@ -87,11 +87,11 @@ class MtzContentsPanel (wx.Panel) :
     p = MtzDatasetPanel(self, style=wx.RAISED_BORDER)
     self._dataset_panels.append(p)
     self.sizer.Add(p, 1, wx.ALL|wx.EXPAND, 0)
-    if (len(self._dataset_labels) > 0) :
+    if (len(self._dataset_labels) > 0):
       self.dataset_chooser.SetSelection(0)
       self.OnChooseDataset(None)
 
-  def OnChooseDataset (self, event) :
+  def OnChooseDataset(self, event):
     if (len(self._dataset_panels) == 0) : return
     sel = self.dataset_chooser.GetSelection()
     crystal, dataset = self._crystals_and_datasets[sel]
@@ -104,8 +104,8 @@ class MtzContentsPanel (wx.Panel) :
     self.sizer.Fit(self)
     self.Fit()
 
-class MtzDatasetPanel (wx.Panel) :
-  def __init__ (self, *args, **kwds) :
+class MtzDatasetPanel(wx.Panel):
+  def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     self.sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.sizer)
@@ -124,7 +124,7 @@ class MtzDatasetPanel (wx.Panel) :
     #self.sizer.Fit(self)
     self.Fit()
 
-  def SetMtzDataset (self, crystal, dataset, n_refl) :
+  def SetMtzDataset(self, crystal, dataset, n_refl):
     self.lc.DeleteAllItems()
     self.lc.SetNReflections(n_refl)
     self.uc_txt.SetLabel("%g %g %g %g %g %g" % crystal.unit_cell().parameters())
@@ -133,39 +133,39 @@ class MtzDatasetPanel (wx.Panel) :
     self.Layout()
     self.Refresh()
 
-class MtzColumnList (wx.ListCtrl) :
-  def __init__ (self, *args, **kwds) :
+class MtzColumnList(wx.ListCtrl):
+  def __init__(self, *args, **kwds):
     style = kwds.get('style', 0)
-    if (not style & wx.LC_REPORT) :
+    if (not style & wx.LC_REPORT):
       style &= wx.LC_REPORT
     kwds['style'] = style
     wx.ListCtrl.__init__(self, *args, **kwds)
     self.n_refl = None
-    for i, label in enumerate(columns) :
+    for i, label in enumerate(columns):
       self.InsertColumn(i, label)
       self.SetColumnWidth(i, column_widths[i])
 
-  def SetNReflections (self, n_refl) :
+  def SetNReflections(self, n_refl):
     self.n_refl = n_refl
 
-  def AddMtzColumn (self, fields) :
+  def AddMtzColumn(self, fields):
     assert (len(fields) == len(columns))
     n = self.GetItemCount() + 1
     item = self.InsertStringItem(sys.maxint, str(n))
-    for i, field in enumerate(fields[:-2]) :
+    for i, field in enumerate(fields[:-2]):
       self.SetStringItem(item, i+1, field)
     self.SetStringItem(item, len(fields)-1, "%s %s" % (fields[-2], fields[-1]))
 
-  def AddMtzDataset (self, dataset) :
+  def AddMtzDataset(self, dataset):
     assert (self.n_refl is not None)
-    for i_col, column in enumerate(dataset.columns()) :
+    for i_col, column in enumerate(dataset.columns()):
       fields = column.format_fields_for_mtz_dump(self.n_refl)
       self.AddMtzColumn(fields)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   app = wxtbx.app.CCTBXApp(0)
   frame = MtzInspectionFrame(None, title="Inspect MTZ file contents")
-  if (len(sys.argv) == 0) :
+  if (len(sys.argv) == 0):
     frame.OnOpen(None)
   else :
     frame.SetMtzFile(sys.argv[1])

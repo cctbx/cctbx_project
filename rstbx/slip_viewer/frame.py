@@ -6,6 +6,8 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 from six.moves import range
 
 import os
@@ -15,6 +17,8 @@ from rstbx.viewer.frame import EVT_EXTERNAL_UPDATE
 from rstbx.viewer.frame import XrayFrame as XFBaseClass
 from rstbx.viewer import settings as rv_settings, image as rv_image
 from wxtbx import bitmaps
+
+from .slip_display import AppFrame
 
 class chooser_wrapper(object):
   def __init__(self, image_set, index):
@@ -50,24 +54,22 @@ class chooser_wrapper(object):
   def show_header(self):
     return self.image_set.get_detectorbase(self.index).show_header()
 
-from rstbx.slip_viewer.slip_display import AppFrame
-class XrayFrame (AppFrame,XFBaseClass) :
-  def __init__ (self, *args, **kwds) :
+class XrayFrame(AppFrame,XFBaseClass):
+  def __init__(self, *args, **kwds):
     self.params = kwds.get("params", None)
     if "params" in kwds:
       del kwds["params"] #otherwise wx complains
 
     ### Collect any plugins
-    import libtbx.load_env
     import imp
-    slip_viewer_dir = os.path.join(libtbx.env.dist_path("rstbx"), "slip_viewer")
+    slip_viewer_dir = os.path.join(os.path.dirname(__file__))
     contents = os.listdir(slip_viewer_dir)
     plugin_names = [f.split(".py")[0] for f in contents if f.endswith("_frame_plugin.py")]
     self.plugins = {}
     for name in plugin_names:
       self.plugins[name] = imp.load_source(name, os.path.join(slip_viewer_dir, name + ".py"))
     if len(plugin_names) > 0:
-      print "Loaded plugins: " + ", ".join(plugin_names)
+      print("Loaded plugins: " + ", ".join(plugin_names))
 
     wx.Frame.__init__(self,*args,**kwds)
     self.settings = rv_settings()
@@ -140,7 +142,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     super(XrayFrame,self).Show()
     self.Raise()
 
-  def setup_toolbar(self) :
+  def setup_toolbar(self):
     XFBaseClass.setup_toolbar(self)
 
     btn = self.toolbar.AddLabelTool(id=wx.ID_SAVEAS,
@@ -165,7 +167,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
     # build the GUI
     self.make_gui(self.viewer)
 
-    from rstbx.slip_viewer import pyslip
+    from . import pyslip
+
     # finally, bind events to handlers
     self.pyslip.Bind(pyslip.EVT_PYSLIP_SELECT, self.handle_select_event)
     self.pyslip.Bind(pyslip.EVT_PYSLIP_POSITION, self.handle_position_event)
@@ -177,7 +180,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
       self.pyslip.tiles.get_initial_instrument_centering_within_picture_as_lon_lat()
     )
 
-  def setup_menus (self) :
+  def setup_menus(self):
     file_menu = wx.Menu()
     self.mb.Append(file_menu, "File")
     item = file_menu.Append(-1, "Open integration results...")
@@ -226,7 +229,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     d = self.pyslip.tiles.raw_image.get_detector()
     return len(d) > 1 and len(d.hierarchy()) == 4
 
-  def add_file_name_or_data (self, file_name_or_data) :
+  def add_file_name_or_data(self, file_name_or_data):
       """The add_file_name_or_data() function appends @p
       file_name_or_data to the image chooser, unless it is already
       present.  For file-backed images, the base name is displayed in
@@ -238,13 +241,13 @@ class XrayFrame (AppFrame,XFBaseClass) :
       """
 
       key = self.get_key(file_name_or_data)
-      for i in range(self.image_chooser.GetCount()) :
-        if (key == str(self.image_chooser.GetClientData(i))) :
+      for i in range(self.image_chooser.GetCount()):
+        if (key == str(self.image_chooser.GetClientData(i))):
           return i
-      if (self.image_chooser.GetCount() >= self.CHOOSER_SIZE) :
+      if (self.image_chooser.GetCount() >= self.CHOOSER_SIZE):
         self.image_chooser.Delete(0)
       i = self.image_chooser.GetCount()
-      if (type(file_name_or_data) is dict) :
+      if (type(file_name_or_data) is dict):
         self.image_chooser.Insert(key, i, None)
       elif (isinstance(file_name_or_data, chooser_wrapper)):
         self.image_chooser.Insert(key, i, file_name_or_data)
@@ -302,7 +305,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
     return panel_id, beam_pixel_fast, beam_pixel_slow
 
-  def load_image (self, file_name_or_data, get_raw_data=None, show_untrusted=False) :
+  def load_image(self, file_name_or_data, get_raw_data=None, show_untrusted=False):
     """The load_image() function displays the image from @p
     file_name_or_data.  The chooser is updated appropriately.
     """
@@ -419,7 +422,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
   def get_beam(self):
     return self.pyslip.tiles.raw_image.get_beam()
 
-  def get_key (self, file_name_or_data) :
+  def get_key(self, file_name_or_data):
       """This overridden get_key() function returns the key of @p file_name_or_data
       if it's an DetectorImageBase object.  Otherwise it returns the super class's
       key
@@ -431,7 +434,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
         return str(file_name_or_data)
       else: return super(XrayFrame, self).get_key(file_name_or_data)
 
-  def update_settings (self, layout=True) :
+  def update_settings(self, layout=True):
     # XXX The zoom level from the settings panel are not taken into
     # account here.
 
@@ -501,7 +504,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
 
   def OnRing(self, event):
-    from rstbx.slip_viewer.ring_frame import RingSettingsFrame
+    from .ring_frame import RingSettingsFrame
 
     if not self._ring_frame:
       self._ring_frame = RingSettingsFrame(
@@ -513,7 +516,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
       self._ring_frame.Destroy()
 
   def OnUC(self, event):
-    from rstbx.slip_viewer.uc_frame import UCSettingsFrame
+    from .uc_frame import UCSettingsFrame
 
     if not self._uc_frame:
       self._uc_frame = UCSettingsFrame(
@@ -525,7 +528,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
       self._uc_frame.Destroy()
 
   def OnScore(self, event):
-    from rstbx.slip_viewer.score_frame import ScoreSettingsFrame
+    from .score_frame import ScoreSettingsFrame
 
     if not self._score_frame:
       self._score_frame = ScoreSettingsFrame(
@@ -617,7 +620,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     return OnUpdateUIPlugin
 
 
-  def OnSaveAs (self, event) :
+  def OnSaveAs(self, event):
     ### XXX TODO: Save overlays
     ### XXX TODO: Fix bug where multi-asic images are slightly cropped due to tranformation error'
 
@@ -641,7 +644,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
     self.update_statusbar("Writing " + file_name + "...")
     if dialog.GetFilterIndex() == 0:
-        from cStringIO import StringIO
+        from six.moves import cStringIO as StringIO
 
         # XXX Copied from tile_generation.py; all its disclaimers
         # apply.
@@ -895,7 +898,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
                  radius, colour, textcolour, fontname, fontsize,
                  offset_x, offset_y, data) in layer.data:
               if placement != 'cc':
-                print Warning("Only centered placement available when drawing text on pdf")
+                print(Warning("Only centered placement available when drawing text on pdf"))
               if layer.map_rel:
                 fs = self.pyslip.tiles.map_relative_to_picture_fast_slow(
                   lon, lat)

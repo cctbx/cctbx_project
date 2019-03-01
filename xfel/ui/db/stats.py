@@ -73,7 +73,7 @@ class Stats(object):
 
     if self.isigi_cutoff is not None and self.isigi_cutoff >= 0:
       query += " AND cell_bin.avg_i_sigi >= %f"%self.isigi_cutoff
-    query += " GROUP BY bin.id"
+    query += " GROUP BY cell.id, bin.id"
 
     results = self.app.execute_query(query).fetchall()
     if len(results) == 0:
@@ -163,8 +163,11 @@ class HitrateStats(object):
           d_min = float(d_min)
         except ValueError:
           d_min = None
-        rts = reverse_timestamp(ts)
-        rts = rts[0] + (rts[1]/1000)
+        try:
+          rts = reverse_timestamp(ts)
+          rts = rts[0] + (rts[1]/1000)
+        except ValueError:
+          rts = float(ts)
         sample += 1
         if sample % self.sampling != 0:
           continue
@@ -186,8 +189,12 @@ class HitrateStats(object):
     cursor = self.app.execute_query(query)
     for row in cursor.fetchall():
       ts, n_s, tt_low, tt_high = row
-      rts = reverse_timestamp(ts)
-      timestamps.append(rts[0] + (rts[1]/1000))
+      try:
+        rts = reverse_timestamp(ts)
+        timestamps.append(rts[0] + (rts[1]/1000))
+      except ValueError:
+        rts = float(ts)
+        timestamps.append(rts)
       n_strong.append(n_s)
       two_theta_low.append(tt_low or -1)
       two_theta_high.append(tt_high or -1)
@@ -259,8 +266,11 @@ class SpotfinderStats(object):
       sample = -1
       for row in cursor.fetchall():
         b_id, xtal_id, ts, n_s = row
-        rts = reverse_timestamp(ts)
-        rts = rts[0] + (rts[1]/1000)
+        try:
+          rts = reverse_timestamp(ts)
+          rts = rts[0] + (rts[1]/1000)
+        except ValueError:
+          rts = float(ts)
         if xtal_id not in xtal_ids:
           sample += 1
           if sample % self.sampling != 0:
@@ -280,8 +290,12 @@ class SpotfinderStats(object):
     cursor = self.app.execute_query(query)
     for row in cursor.fetchall():
       ts, n_s = row
-      rts = reverse_timestamp(ts)
-      timestamps.append(rts[0] + (rts[1]/1000))
+      try:
+        rts = reverse_timestamp(ts)
+        timestamps.append(rts[0] + (rts[1]/1000))
+      except ValueError:
+        rts = float(ts)
+        timestamps.append(rts)
       n_strong.append(n_s)
 
     order = flex.sort_permutation(timestamps)

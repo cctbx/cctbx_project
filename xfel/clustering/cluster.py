@@ -1000,7 +1000,7 @@ class Cluster:
     :param cluster: a cluster object.
     :param inputfile: a Prime .inp file.
     """
-    from prime.api import refine_many
+    from api import refine_many
     miller_fullies = refine_many(self.members, inputfile)
     for mil, sf in zip(miller_fullies, self.members):
       sf.miller_fullies = mil

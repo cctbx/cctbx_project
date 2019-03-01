@@ -79,7 +79,7 @@ def parse_pickle(filename, out=sys.stdout):
   ringer_things = easy_pickle.load(filename)
   return process_raw_results(ringer_things, out=out)
 
-def process_raw_results (ringer_result, out=sys.stdout) :
+def process_raw_results(ringer_result, out=sys.stdout):
   """
   All processes that require reading the pickle. Involves reading out the
   angles and calculating the thresholds.
@@ -136,25 +136,25 @@ def calc_ratio(count_list, sampling_angle=5):
   zscore=(rotamer_count-mean)/(stdev+0.000000000000000000001)
   return rotamer_ratio, zscore
 
-class main (object) :
-  def __init__ (self,
+class main(object):
+  def __init__(self,
       file_name,
       ringer_result=None,
       sampling_angle=5,
       out_dir=None,
       out=sys.stdout,
-      quiet=False) :
+      quiet=False):
     self.threshold = waves = None
-    if (ringer_result is not None) :
+    if (ringer_result is not None):
       waves, self.thresholds = process_raw_results(ringer_result, out=out)
     else :
       assert (file_name is not None)
       waves, self.thresholds = parse_pickle(file_name, out=out)
     if not quiet:
       assert (out_dir is None) or os.path.isdir(out_dir)
-      if (out_dir is None) and (not quiet) :
+      if (out_dir is None) and (not quiet):
         out_dir = file_name + ".output"
-        if (not os.path.isdir(out_dir)) :
+        if (not os.path.isdir(out_dir)):
           os.makedirs(file_name+'.output')
     Weird_residues=OrderedDict()
     self.peak_count={}
@@ -174,7 +174,7 @@ class main (object) :
     self.peaks=OrderedDict()
         # calculate peaks and histogram
     for threshold in self.thresholds:
-      if (not quiet) :
+      if (not quiet):
         print >>out, ""
         print >>out, "===== Calculating Statistics for Threshold %.3f =====" %\
           threshold
@@ -204,7 +204,7 @@ class main (object) :
       self.non_zero_thresholds.append(threshold)
       self.zscores.append(zscore_n)
       self.rotamer_ratios.append(rotamer_ratio_n)
-      if (not quiet) :
+      if (not quiet):
         print >> out, "===== Plotting Histogram for Threshold %.3f =====" % \
           threshold
         out_file = os.path.join(out_dir, "%.3f.histogram.png" % threshold)
@@ -221,7 +221,7 @@ class main (object) :
     if len(self.zscores) == 0:
       raise Sorry("""No scores could be calculated at any threshold for this map. This could be because the
        map is not sufficiently featured, or because of data corruption in the map.""")
-    if (not quiet) :
+    if (not quiet):
       print >> out, ""
       print >> out, "===== Plotting Statistics Across Thresholds ====="
       out_file = os.path.join(out_dir, "Total.threshold_scan.png")
@@ -251,23 +251,23 @@ class main (object) :
     self._zscore_max_index = self.zscores.index(self.zscore_max)
 
   @property
-  def all_scores (self) :
+  def all_scores(self):
     return [ 10*z/math.sqrt(self.length) for z in self.zscores ]
 
   @property
-  def optimal_threshold (self) :
+  def optimal_threshold(self):
     return self.non_zero_thresholds[self._zscore_max_index]
 
   @property
-  def rotamer_ratio (self) :
+  def rotamer_ratio(self):
     return self.rotamer_ratios[self._zscore_max_index]
 
   @property
-  def score (self) :
+  def score(self):
     """Overall EM-Ringer score"""
     return (10 * self.zscore_max / math.sqrt(self.length))
 
-  def show_summary (self, out=sys.stdout) :
+  def show_summary(self, out=sys.stdout):
     print >> out, ""
     print >> out, "=====Final Statistics for Model/Map Pair====="
     print >> out, "Optimal Threshold: %.3f" % self.optimal_threshold
@@ -278,7 +278,7 @@ class main (object) :
     print >> out, "EMRinger Score: %8f" % self.score
     return self
 
-  def draw_wx_peaks_plot (self, plot, i_threshold) :
+  def draw_wx_peaks_plot(self, plot, i_threshold):
     threshold = self.thresholds[i_threshold]
     plot.figure.clear()
     _plot_peaks(
@@ -288,7 +288,7 @@ class main (object) :
       first=60,
       title=RMSD_statistic(self.peaks[threshold].peaks))
 
-  def draw_wx_progression_plot (self, plot) :
+  def draw_wx_progression_plot(self, plot):
     plot.figure.clear()
     _plot_progression(
       fig=plot.figure,
@@ -299,7 +299,7 @@ class main (object) :
 ########################################################################
 # GUI and Output
 
-def _plot_rotamers (fig, binned_output, threshold, first) :
+def _plot_rotamers(fig, binned_output, threshold, first):
   """Binned histogram"""
   colors=['blue','red']*3
   angles = range(6)
@@ -307,14 +307,14 @@ def _plot_rotamers (fig, binned_output, threshold, first) :
   ax = fig.add_subplot(111)
   ax.bar(bin_angles, binned_output, align='center', color=colors, width=60)
 
-def plot_rotamers (binned_output, threshold, first):
+def plot_rotamers(binned_output, threshold, first):
   import matplotlib.pyplot as plt
   fig = plt.figure(1)
   _plot_rotamers(fig, binned_output, filename, threshold, first)
   plt.savefig('%s.output/%.3f.Phenixed_Histogram.png' % (filename,threshold))
   plt.close()
 
-def _plot_peaks (fig, peak_count, threshold, first, title=0, n_angles=72):
+def _plot_peaks(fig, peak_count, threshold, first, title=0, n_angles=72):
   # rcParams.update({'figure.autolayout': True})
   colors = ['#F15854']*6+['#5DA5DA']*13+['#F15854']*11+['#5DA5DA']*13+['#F15854']*11+['#5DA5DA']*13+['#F15854']*5
   ax = fig.add_subplot(111)
@@ -332,7 +332,7 @@ def _plot_peaks (fig, peak_count, threshold, first, title=0, n_angles=72):
   ax.set_xlabel(r'Chi1 Angle ($\degree$)', labelpad=10)
   ax.set_ylabel("Peak Count", labelpad=10)
 
-def plot_peaks (peak_count, file_name, threshold, first, title=0, n_angles=72) :
+def plot_peaks(peak_count, file_name, threshold, first, title=0, n_angles=72):
   import matplotlib.pyplot as plt
   fig = plt.figure(2, figsize=(5,4))
   _plot_peaks(fig, peak_count, threshold, first, title, n_angles=n_angles)

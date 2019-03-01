@@ -110,8 +110,8 @@ cut_short_at = None
 
     if work_params.plot==True:
       #private interface to get the very strong diffraction images
-      import StringIO
-      G = StringIO.StringIO()
+      from six.moves import StringIO
+      G = StringIO()
       show_observations(result,out=G)
       for line in G.getvalue().split("\n"):
         tokens = line.split()

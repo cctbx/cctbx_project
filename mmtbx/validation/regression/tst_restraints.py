@@ -4,7 +4,7 @@ from libtbx.utils import null_out
 from libtbx import easy_pickle
 from cStringIO import StringIO
 
-def run_validation (pdb_file, ignore_hd=True) :
+def run_validation(pdb_file, ignore_hd=True):
   from mmtbx.validation import restraints
   import mmtbx.command_line
   cmdline = mmtbx.command_line.load_model_and_data(
@@ -20,7 +20,7 @@ def run_validation (pdb_file, ignore_hd=True) :
     ignore_hd=ignore_hd)
   return validation
 
-def exercise_simple () :
+def exercise_simple():
   # extracted from 1lyz, with hydrogens from reduce
   pdb_in = """
 ATOM      1  N   LYS A   1       3.296   9.888  10.739  1.00  7.00           N
@@ -110,6 +110,6 @@ ATOM      8  CA  ALA A  13      -7.313  -1.820 -14.420  1.00141.04           C
   open(pdb_file, "w").write(pdb_raw)
   v1 = run_validation(pdb_file, ignore_hd=True)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_simple()
   print "OK"

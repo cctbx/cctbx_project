@@ -4,24 +4,24 @@ from wxtbx import phil_controls
 import wx
 import re
 
-class ChoiceCtrl (wx.Choice, phil_controls.PhilCtrl) :
-  def __init__ (self, *args, **kwds) :
+class ChoiceCtrl(wx.Choice, phil_controls.PhilCtrl):
+  def __init__(self, *args, **kwds):
     super(ChoiceCtrl, self).__init__(*args, **kwds)
     self._options = None
     self.Bind(wx.EVT_CHOICE, lambda evt: self.DoSendEvent(), self)
 
-  def SetChoices (self, choices, captions=None, allow_none=True) :
+  def SetChoices(self, choices, captions=None, allow_none=True):
     selection = None
     is_selected = [ ("*" in choice) for choice in choices ]
-    if (True in is_selected) :
+    if (True in is_selected):
       selection = is_selected.index(True)
     choices = [ re.sub("\*", "", choice) for choice in choices ]
-    if (captions is None) :
+    if (captions is None):
       captions = list(choices) # XXX force copy
-    if (len(captions) != len(choices)) :
+    if (len(captions) != len(choices)):
       raise RuntimeError("Wrong number of caption items for '%s':\n%s\n%s" %
         (self.GetName(), ";".join(choices), ";".join(captions)))
-    if (selection is None) and (allow_none) :
+    if (selection is None) and (allow_none):
       captions.insert(0, "---")
       choices.insert(0, None)
       selection = 0
@@ -33,31 +33,31 @@ class ChoiceCtrl (wx.Choice, phil_controls.PhilCtrl) :
     self.SetItems(captions)
     self.SetSelection(selection)
 
-  def SetValue (self, value) :
+  def SetValue(self, value):
     selection = self._options.index(value)
     self.SetSelection(selection)
 
-  def GetValue (self) :
+  def GetValue(self):
     raise NotImplementedError("Please use GetPhilValue()")
 
-  def GetPhilValue (self) :
+  def GetPhilValue(self):
     """Returns a single string."""
     return self._options[self.GetSelection()]
 
-  def GetStringValue (self) :
+  def GetStringValue(self):
     """Returns the long format (all choices, '*' denotes selected)."""
     selection = self.GetSelection()
     choices_out = []
-    for i, choice in enumerate(self._options) :
-      if (choice is None) :
+    for i, choice in enumerate(self._options):
+      if (choice is None):
         continue
-      elif (i == selection) :
+      elif (i == selection):
         choices_out.append("*" + choice)
       else :
         choices_out.append(choice)
     return " ".join(choices_out)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   app = wx.App(0)
   frame = wx.Frame(None, -1, "Choice test")
   panel = wx.Panel(frame, -1, size=(720,480))

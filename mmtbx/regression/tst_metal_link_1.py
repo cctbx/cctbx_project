@@ -1,7 +1,5 @@
 from __future__ import division
 import mmtbx.model
-from mmtbx import monomer_library
-import mmtbx.monomer_library.pdb_interpretation
 import iotbx.pdb
 import time
 from libtbx.utils import null_out
@@ -99,8 +97,8 @@ def run():
   Check metal linking (make sure CE1 is not included).
   """
   pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
-  params = monomer_library.pdb_interpretation.master_params.extract()
-  params.automatic_linking.link_metals=True
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.automatic_linking.link_metals=True
   m = mmtbx.model.manager(
     model_input               = pdb_inp,
     build_grm                 = True,

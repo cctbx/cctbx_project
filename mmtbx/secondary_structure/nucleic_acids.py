@@ -184,8 +184,8 @@ def get_phil_stacking_pairs(pdb_hierarchy, skip_gendron_check=False,
   pairs = []
   for model in pdb_hierarchy.models():
     for chain in model.chains():
-      for conformer in chain.conformers():
-        if conformer.is_na():
+      if chain.is_na():
+        for conformer in chain.conformers():
           prev_res = None
           cur_res = None
           for i_residue, residue in enumerate(conformer.residues()):

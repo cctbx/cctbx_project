@@ -3,8 +3,6 @@ from cctbx.array_family import flex
 import os
 import mmtbx.model
 import libtbx.load_env
-from mmtbx import monomer_library
-import mmtbx.monomer_library.pdb_interpretation
 from cStringIO import StringIO
 from libtbx.utils import format_cpu_times, null_out
 from libtbx.test_utils import approx_equal, show_diff
@@ -976,9 +974,9 @@ def exercise():
 def exercise_2():
   pdb_file = libtbx.env.find_in_repositories(
                    relative_path="phenix_regression/pdb/adp_out_stat.pdb", test=os.path.isfile)
-  params = monomer_library.pdb_interpretation.master_params.extract()
-  params.nonbonded_weight = 16
-  params.clash_guard.nonbonded_distance_threshold = None # disable clash_guard
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.nonbonded_weight = 16
+  params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None # disable clash_guard
   mol = mmtbx.model.manager(
       model_input = iotbx.pdb.input(file_name=pdb_file),
       pdb_interpretation_params = params,
@@ -991,8 +989,8 @@ def exercise_3():
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/arg_h_hohh1_sh.pdb",
     test=os.path.isfile)
-  params = monomer_library.pdb_interpretation.master_params.extract()
-  params.nonbonded_weight = 16
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.nonbonded_weight = 16
   mol = mmtbx.model.manager(
     model_input               = iotbx.pdb.input(file_name=pdb_file),
     pdb_interpretation_params = params,
@@ -1025,7 +1023,7 @@ def exercise_4():
   solvent_sel = mol.solvent_selection()
   assert solvent_sel.count(True)+1 == result.count(True)
 
-def exercise_convert_atom() :
+def exercise_convert_atom():
   from iotbx.pdb import hierarchy
   from cctbx import crystal
   from cctbx.xray import anomalous_scatterer_group
@@ -1036,7 +1034,7 @@ def exercise_convert_atom() :
   chain = hierarchy.chain(id="S")
   root.append_model(model)
   model.append_chain(chain)
-  for k, xyz in enumerate(coords) :
+  for k, xyz in enumerate(coords):
     rg = hierarchy.residue_group(resseq=str(k+1))
     ag = hierarchy.atom_group(resname="HOH")
     atom = hierarchy.atom()
@@ -1083,7 +1081,7 @@ def exercise_convert_atom() :
   mol.set_sites_cart_from_hierarchy()
   # if the nonbonded type is set correctly, the nonbonded restraints should
   # not push the
-  for atom in mol.get_hierarchy(sync_with_xray_structure=True).atoms() :
+  for atom in mol.get_hierarchy(sync_with_xray_structure=True).atoms():
     xyz_max = max([ abs(n) for n in atom.xyz])
     assert (xyz_max < 2.5)
   mol = mol.select(flex.size_t([1,2,3,4,5,6]))
@@ -1237,6 +1235,96 @@ def exercise_from_hierarchy():
   m22 = m2.select(sel)
   check_consistency(m11, m22)
 
+def exercise_7():
+  lines = """
+CRYST1   43.974   32.795   33.672  90.00  90.00  90.00 P 1
+ATOM     56  N   ARG A  10      27.185  16.460  17.483  1.00  2.08           N
+ATOM     57  CA  ARG A  10      26.022  16.782  18.294  1.00  2.02           C
+ATOM     58  C   ARG A  10      25.096  17.774  17.594  1.00  2.02           C
+ATOM     59  O   ARG A  10      23.865  17.608  17.611  1.00  2.22           O
+ATOM     60  CB  ARG A  10      26.464  17.332  19.652  1.00  2.22           C
+ATOM     61  CG  ARG A  10      25.307  17.788  20.546  1.00  2.51           C
+ATOM     62  CD  ARG A  10      24.394  16.657  21.045  1.00  2.89           C
+ATOM     63  NE  ARG A  10      25.123  15.776  21.930  1.00  3.18           N
+ATOM     64  CZ  ARG A  10      24.571  14.673  22.470  1.00  4.37           C
+ATOM     65  NH1 ARG A  10      23.310  14.331  22.245  1.00  6.14           N
+ATOM     66  NH2 ARG A  10      25.349  13.908  23.244  1.00  5.58           N
+ATOM     67  H   ARG A  10      28.082  16.725  17.890  1.00  2.08           H
+ATOM     68  HA  ARG A  10      25.458  15.861  18.445  1.00  2.02           H
+ATOM     69  HB2 ARG A  10      27.033  16.564  20.176  1.00  2.22           H
+ATOM     70  HB3 ARG A  10      27.138  18.173  19.490  1.00  2.22           H
+ATOM     71  HG2 ARG A  10      25.718  18.312  21.409  1.00  2.51           H
+ATOM     72  HG3 ARG A  10      24.702  18.508  19.995  1.00  2.51           H
+ATOM     73  HD2 ARG A  10      23.535  17.078  21.567  1.00  2.89           H
+ATOM     74  HD3 ARG A  10      24.007  16.092  20.197  1.00  2.89           H
+ATOM     75  HE  ARG A  10      26.093  15.999  22.154  1.00  3.18           H
+ATOM     76 HH11 ARG A  10      22.723  14.911  21.645  1.00  6.14           H
+ATOM     77 HH12 ARG A  10      22.926  13.488  22.672  1.00  6.14           H
+ATOM     78 HH21 ARG A  10      26.322  14.169  23.406  1.00  5.58           H
+ATOM     79 HH22 ARG A  10      24.970  13.064  23.672  1.00  5.58           H
+TER
+END
+"""
+  for use_neutron_distances in [True, False]:
+    params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    params.pdb_interpretation.use_neutron_distances=use_neutron_distances
+    model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(source_info=None, lines=lines),
+      build_grm = True,
+      log = null_out(),
+      pdb_interpretation_params = params)
+    gs = model.geometry_statistics(use_hydrogens = True).result()
+    if(use_neutron_distances):
+      assert approx_equal(gs.bond.mean, 0.0072, 0.0001)
+    else:
+      assert approx_equal(gs.bond.mean, 0.1054, 0.0001)
+    bps, asu = model.get_restraints_manager().geometry.get_all_bond_proxies(
+      sites_cart = model.get_sites_cart())
+    elems = model.get_hierarchy().atoms().extract_element()
+    cntr=0
+    for p in bps:
+      i, j = p.i_seqs
+      if([elems[i], elems[j]].count("H")):
+        if(use_neutron_distances): assert p.distance_ideal > 1.0
+        else:                      assert p.distance_ideal < 1.0
+        cntr+=1
+    assert cntr==13
+
+def exercise_8():
+  """
+  Indirectly make sure new model from model.selection() does not inherit
+  pdb_interpretation object as it becomes obsolete as result of selection.
+  """
+  pdb_str = """
+CRYST1   17.862   33.032   12.451  90.00  90.00  90.00 P 21 21 21    0
+HETATM    1  O   MPR A   5      -3.288   3.784  12.142  1.00  0.05           O
+HETATM    2  C1  MPR A   5      -2.721   3.156  13.026  1.00  0.04           C
+HETATM    3  C2  MPR A   5      -3.033   3.296  14.510  1.00  0.05           C
+HETATM    4  C3  MPR A   5      -3.588   4.658  14.899  1.00  0.05           C
+HETATM    5  S3  MPR A   5      -2.358   5.908  15.321  1.00  0.06           S
+HETATM    0  H32 MPR A   5      -4.126   4.992  14.165  1.00  0.05           H
+HETATM    0  H31 MPR A   5      -4.182   4.543  15.657  1.00  0.05           H
+HETATM    0  H22 MPR A   5      -3.673   2.612  14.763  1.00  0.05           H
+HETATM    0  H21 MPR A   5      -2.224   3.129  15.018  1.00  0.05           H
+ATOM     10  N   CYS A   6      -1.838   2.168  12.744  1.00  0.05           N
+ATOM     11  CA  CYS A   6      -1.501   1.856  11.357  1.00  0.04           C
+ATOM     12  C   CYS A   6      -2.711   1.429  10.499  1.00  0.04           C
+ATOM     13  O   CYS A   6      -2.700   1.672   9.296  1.00  0.04           O
+ATOM     14  CB  CYS A   6      -0.431   0.750  11.269  1.00  0.05           C
+ATOM     15  SG  CYS A   6       1.221   1.279  11.825  1.00  0.06           S
+ATOM      0  HA  CYS A   6      -1.159   2.690  10.998  1.00  0.04           H
+ATOM      0  HB2 CYS A   6      -0.716  -0.007  11.804  1.00  0.05           H
+ATOM      0  HB3 CYS A   6      -0.371   0.442  10.351  1.00  0.05           H
+  """
+  pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    build_grm   = True,
+    log         = null_out())
+  sel = model.selection(string = "element H and not protein")
+  model = model.select(~sel)
+  sel = model.selection(string="protein")
+  assert model.size() == sel.size(), [model.size(), sel.size()]
 
 def run():
   exercise_00()
@@ -1248,6 +1336,8 @@ def run():
   exercise_h_counts()
   exercise_5()
   exercise_6()
+  exercise_7()
+  exercise_8()
   exercise_from_hierarchy()
   print format_cpu_times()
 

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import socket
 import random
 import os, sys
@@ -27,7 +27,7 @@ def GetSocket(HOST=""):
     if i > 5:
       HOST = 'localhost'
     if i > 10:
-      print 'Port assignment failed.', HOST, portnumber
+      print('Port assignment failed.', HOST, portnumber)
       sys.exit()
 
     i += 1

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 from mmtbx_hydrogens_ext import *
 
@@ -121,4 +121,4 @@ if (__name__ == "__main__"):
   exercise1()
   exercise2()
   exercise3()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

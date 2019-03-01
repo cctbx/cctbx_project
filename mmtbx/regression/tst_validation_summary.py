@@ -6,9 +6,9 @@ import libtbx.load_env
 from cStringIO import StringIO
 import os
 
-def exercise () :
+def exercise():
   for module in ["reduce", "probe", "phenix_regression"] :
-    if (not libtbx.env.has_module(module)) :
+    if (not libtbx.env.has_module(module)):
       print "%s not available, skipping" % module
       return
   from mmtbx.command_line import validation_summary
@@ -30,7 +30,7 @@ def exercise () :
   pdb_in = file_reader.any_file(regression_pdb)
   hierarchy = pdb_in.file_object.hierarchy
   new_hierarchy = iotbx.pdb.hierarchy.root()
-  for i in range(5) :
+  for i in range(5):
     model = hierarchy.only_model().detached_copy()
     model.id = str(i+1)
     new_hierarchy.append_model(model)
@@ -41,5 +41,5 @@ def exercise () :
   assert (type(summary).__name__ == 'ensemble')
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

@@ -104,7 +104,7 @@ def scale_k1(x,y):
   return flex.sum(x*y)/den
 
 def write_ccp4_map(map_data, unit_cell, space_group, file_name):
-  iotbx.ccp4_map.write_ccp4_map(
+  iotbx.mrcfile.write_ccp4_map(
     file_name      = file_name,
     unit_cell      = unit_cell,
     space_group    = space_group,

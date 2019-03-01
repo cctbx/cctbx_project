@@ -1,7 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
+
 def id_conversion(path):
-  return path.replace('/', '-')
+    return path.replace("/", "-")
+
 
 smv_images = [
     "image_examples/ALS_501/als501_q4_1_001.img",
@@ -82,7 +84,5 @@ cbf_multitile_images = [
 ]
 cbf_multitile_image_ids = list(map(id_conversion, cbf_multitile_images))
 
-hdf5_images = [
-    "image_examples/putative_imgCIF_HDF5_mapping/minicbf.h5",
-]
+hdf5_images = ["image_examples/putative_imgCIF_HDF5_mapping/minicbf.h5"]
 hdf5_image_ids = list(map(id_conversion, hdf5_images))

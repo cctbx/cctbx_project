@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os
 
 def run():
@@ -11,7 +11,7 @@ def run():
     if (not os.access(directory, os.X_OK)): continue
     for file_name in os.listdir(directory):
       if (file_name.lower().startswith("libtbx.find_clutter")):
-        print directory
+        print(directory)
         break
 
 if (__name__ == "__main__"):

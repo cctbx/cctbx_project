@@ -33,15 +33,15 @@ nproc = 1
   .style = renderer:draw_nproc_widget
 """
 
-class ringer_chi (object) :
+class ringer_chi(object):
   """
   Sampling results for a single sidechain Chi angle.
   """
-  def __init__ (self, id, angle_current, densities, sampling,
-      fofc_densities=None) :
+  def __init__(self, id, angle_current, densities, sampling,
+      fofc_densities=None):
     adopt_init_args(self, locals())
     assert len(densities) > 0
-    if (angle_current < 0) :
+    if (angle_current < 0):
       self.angle_current = 360 + angle_current
     self.peak_chi, self.peak_rho = self.find_peaks(densities)
     self.deviation = self.deviate(self.peak_chi)
@@ -49,13 +49,13 @@ class ringer_chi (object) :
     # Add a tiny number to avoid dividing by 0 (which shouldn't happen anyway)
     self.rho_rel = self.peak_rho/(self.rho_mean+.000000000000000001)
 
-  def format_csv (self, fofc=False) :
+  def format_csv(self, fofc=False):
     densities = [ "%.3f" % x for x in self.densities ]
-    if (fofc) and (self.fofc_densities is not None) :
+    if (fofc) and (self.fofc_densities is not None):
       densities = [ "%.3f" % x for x in self.fofc_densities ]
     return "chi%d,%.1f,%s" % (self.id, self.angle_current, ",".join(densities))
 
-  def find_peaks (self, densities) :
+  def find_peaks(self, densities):
     rho_max = max(densities)
     for i, rho in enumerate(densities):
       if rho == max(densities):
@@ -68,51 +68,51 @@ class ringer_chi (object) :
   def deviate(self, chi):
     return min(abs(chi-i) for i in [60, 180, 300])
 
-class ringer_residue (object) :
+class ringer_residue(object):
   """
   Container of sampling results for a single residue with at least one Chi
   angle.
   """
-  def __init__ (self, resname, chain_id, resid, altloc, n_chi, xyz=None) :
+  def __init__(self, resname, chain_id, resid, altloc, n_chi, xyz=None):
     adopt_init_args(self, locals())
     self._angles = {}
 
-  def format (self) :
-    if (self.altloc == "") :
+  def format(self):
+    if (self.altloc == ""):
       return "%s%2s%s" % (self.resname, self.chain_id, self.resid)
     else :
       return "%s%2s%s (conformer %s)" % (self.resname, self.chain_id,
         self.resid, self.altloc)
 
-  def format_csv (self, include_map_label=True) :
-    if (self.altloc == "") :
+  def format_csv(self, include_map_label=True):
+    if (self.altloc == ""):
       prefix = "%s%2s%s," % (self.resname, self.chain_id, self.resid)
     else :
       prefix = "%s%2s%s %s," % (self.resname, self.chain_id, self.resid,
         self.altloc)
     lines = []
-    for i in range(1, self.n_chi+1) :
+    for i in range(1, self.n_chi+1):
       chi = self.get_angle(i)
-      if (chi is not None) :
+      if (chi is not None):
         if include_map_label :
           lines.append(prefix + "2mFo-DFc," + chi.format_csv())
         else :
           lines.append(prefix + chi.format_csv())
-        if (chi.fofc_densities is not None) :
+        if (chi.fofc_densities is not None):
           if include_map_label :
             lines.append(prefix + "mFo-DFc," + chi.format_csv(fofc=True))
           else :
             lines.append(prefix + chi.format_csv(fofc=True))
     return "\n".join(lines)
 
-  def add_angle (self, **kwds) :
+  def add_angle(self, **kwds):
     chi = ringer_chi(**kwds)
     self._angles[chi.id] = chi
 
-  def get_angle (self, id) :
+  def get_angle(self, id):
     return self._angles.get(id, None)
 
-def sample_angle (
+def sample_angle(
     i_seqs,
     sites_cart,
     map_coeffs,
@@ -122,7 +122,7 @@ def sample_angle (
     angle_start,
     params,
     sampling_method="linear",
-    unit_cell=None) :
+    unit_cell=None):
   """
   Given a set of four sites defining a rotatable dihedral angle, sample the
   density at the fourth site in small angular increments.
@@ -131,7 +131,7 @@ def sample_angle (
            the primary map and optional difference map.
   """
   frac_matrix = None
-  if (unit_cell is None) :
+  if (unit_cell is None):
     assert (map_coeffs is not None)
     unit_cell = map_coeffs.unit_cell()
   frac_matrix = unit_cell.fractionalization_matrix()
@@ -149,7 +149,7 @@ def sample_angle (
   n_degrees = 0
   densities = []
   difference_densities = []
-  while (n_degrees < 360) :
+  while (n_degrees < 360):
     point = rotate_point_around_axis(
       axis_point_1=sites_cart[1],
       axis_point_2=sites_cart[2],
@@ -158,12 +158,12 @@ def sample_angle (
       deg=True)
     point_frac = unit_cell.fractionalize(site_cart=point)
     rho = rho_fofc = None
-    if (sampling_method == "spline") and (map_coeffs is not None) :
+    if (sampling_method == "spline") and (map_coeffs is not None):
       rho = real_map.tricubic_interpolation(point_frac)
-      if (difference_map is not None) :
+      if (difference_map is not None):
         rho_fofc = difference_map.tricubic_interpolation(point_frac)
-    elif (sampling_method == "linear") or (map_coeffs is None) :
-      if (map_coeffs is None) :
+    elif (sampling_method == "linear") or (map_coeffs is None):
+      if (map_coeffs is None):
         rho = maptbx.non_crystallographic_eight_point_interpolation(
           map=real_map,
           gridding_matrix=frac_matrix,
@@ -171,20 +171,20 @@ def sample_angle (
           #allow_out_of_bounds=True)
       else :
         rho = real_map.eight_point_interpolation(point_frac)
-        if (difference_map is not None) :
+        if (difference_map is not None):
           rho_fofc = difference_map.eight_point_interpolation(point_frac)
     else :
       rho = map_coeffs.direct_summation_at_point(
         site_frac=point_frac,
         sigma=sigma).real
     densities.append(rho)
-    if (rho_fofc is not None) :
+    if (rho_fofc is not None):
       difference_densities.append(rho_fofc)
     n_degrees += params.sampling_angle
   #print densities
   return densities, difference_densities
 
-class iterate_over_residues (object) :
+class iterate_over_residues(object):
   """
   Given a PDB hierarchy and electron density, run Ringer analysis for all
   applicable amino acid residues in the model.  Defaults to examining all chi
@@ -192,7 +192,7 @@ class iterate_over_residues (object) :
   parallelization, but the instantiated object can be discarded after the
   'results' attribute is retrieved.
   """
-  def __init__ (self,
+  def __init__(self,
                 pdb_hierarchy,
                 params,
                 map_coeffs=None,
@@ -202,22 +202,22 @@ class iterate_over_residues (object) :
                 grid_spacing=0.2,
                 sampling_method="linear",
                 n_chi_max=4,
-                log=None) :
+                log=None):
     if (log is None) : log = sys.stdout
     adopt_init_args(self, locals())
     models = pdb_hierarchy.models()
-    if (len(models) > 1) :
+    if (len(models) > 1):
       raise Sorry("Multi-model PDB files not supported.")
     self.sigma = self.real_map = self.difference_map = None
-    if (map_coeffs is not None) :
+    if (map_coeffs is not None):
       self.unit_cell = map_coeffs.unit_cell()
-      if (params.sampling_method == "direct") :
+      if (params.sampling_method == "direct"):
         self.map_coeffs = self.map_coeffs.expand_to_p1()
-        if (not map_coeffs.anomalous_flag()) :
+        if (not map_coeffs.anomalous_flag()):
           self.map_coeffs = self.map_coeffs.generate_bijvoet_mates()
-      if (sampling_method != "direct") or (params.scaling == "sigma") :
+      if (sampling_method != "direct") or (params.scaling == "sigma"):
         fft_map = self.map_coeffs.fft_map(resolution_factor=grid_spacing)
-        if (params.scaling == "sigma") :
+        if (params.scaling == "sigma"):
           self.sigma = fft_map.statistics().sigma()
           fft_map.apply_sigma_scaling()
         else :
@@ -258,16 +258,16 @@ class iterate_over_residues (object) :
       # XXX the unit cell that we need for the non-crystallographic
       # interpolation is not what comes out of the map - it's the
       #self.unit_cell = ccp4_map.grid_unit_cell()
-    if (difference_map_coeffs is not None) :
-      if (sampling_method == "direct") :
+    if (difference_map_coeffs is not None):
+      if (sampling_method == "direct"):
         self.difference_map_coeffs = self.difference_map_coeffs.expand_to_p1()
-        if (not difference_map_coeffs.anomalous_flag()) :
+        if (not difference_map_coeffs.anomalous_flag()):
           self.difference_map_coeffs = \
             self.difference_map_coeffs.generate_bijvoet_mates()
-      if (sampling_method != "direct") or (params.scaling == "sigma") :
+      if (sampling_method != "direct") or (params.scaling == "sigma"):
         fft_map = self.difference_map_coeffs.fft_map(
           resolution_factor=params.grid_spacing)
-        if (params.scaling == "sigma") :
+        if (params.scaling == "sigma"):
           fft_map.apply_sigma_scaling()
         else :
           fft_map.apply_volume_scaling()
@@ -277,9 +277,9 @@ class iterate_over_residues (object) :
     self.angle_lookup = sidechain_angles.SidechainAngles(False)
     self.sites_cart = pdb_hierarchy.atoms().extract_xyz()
     self.residue_groups = []
-    for chain in models[0].chains() :
+    for chain in models[0].chains():
       self.residue_groups.extend(chain.residue_groups())
-    if (params.nproc in [None,Auto]) or (params.nproc > 1) :
+    if (params.nproc in [None,Auto]) or (params.nproc > 1):
       # this will be a list of lists
       results_ = easy_mp.pool_map(
         processes=params.nproc,
@@ -290,7 +290,7 @@ class iterate_over_residues (object) :
       for result_list in results_ : self.results.extend(result_list)
     else :
       self.results = []
-      for i_res in range(len(self.residue_groups)) :
+      for i_res in range(len(self.residue_groups)):
         self.results.extend(self.__sample_density(i_res, verbose=True))
     if len(self.results) == 0:
       raise Sorry("""No residues could be scanned by EMRinger, so scores cannot be generated.
@@ -299,22 +299,22 @@ class iterate_over_residues (object) :
       and model grid, or corrupted map density values. These problems can often
       be assessed with molecular graphics tools such as pymol or coot.""")
 
-  def __sample_density (self, i_res, verbose=False) :
+  def __sample_density(self, i_res, verbose=False):
     import iotbx.pdb
     get_class = iotbx.pdb.common_residue_names_get_class
     residue_group = self.residue_groups[i_res]
     conformers = residue_group.conformers()
     results = []
-    for i_conf, conformer in enumerate(residue_group.conformers()) :
-      if (i_conf > 0) and (self.params.skip_alt_confs) :
+    for i_conf, conformer in enumerate(residue_group.conformers()):
+      if (i_conf > 0) and (self.params.skip_alt_confs):
         continue
       residue = conformer.only_residue()
-      if (get_class(residue.resname) == "common_amino_acid") :
+      if (get_class(residue.resname) == "common_amino_acid"):
         n_chi = int(self.angle_lookup.chisPerAA.get(residue.resname.lower(),0))
         if (n_chi == 0) : continue
         xyz = None
-        for atom in residue.atoms() :
-          if (atom.name.strip() == "CA") :
+        for atom in residue.atoms():
+          if (atom.name.strip() == "CA"):
             xyz = atom.xyz
             break
         res_out = ringer_residue(
@@ -325,9 +325,9 @@ class iterate_over_residues (object) :
           altloc=conformer.altloc,
           n_chi=n_chi,
           xyz=xyz)
-        if (verbose) :
+        if (verbose):
           print >> self.log, "  %s:" % residue.id_str()
-        for i in range(1, min(self.n_chi_max+1, n_chi+1)) :
+        for i in range(1, min(self.n_chi_max+1, n_chi+1)):
           try :
             atoms = self.angle_lookup.extract_chi_atoms("chi%d" % i, residue)
           except AttributeError as e :
@@ -335,7 +335,7 @@ class iterate_over_residues (object) :
             pass
           else :
             try :
-              if (atoms is None) :
+              if (atoms is None):
                 print >> self.log, "Warning: No side chain atoms detected in model"
                 break
               i_seqs = [ atom.i_seq for atom in atoms ]
@@ -345,7 +345,7 @@ class iterate_over_residues (object) :
                 sites=sites_chi,
                 angle_ideal=0,
                 weight=0)
-              if (verbose) :
+              if (verbose):
                 print >> self.log, "    chi%d = %.1f" % (i, chi.angle_model)
               densities, fofc_densities = sample_angle(
                 i_seqs=i_seqs,
@@ -358,7 +358,7 @@ class iterate_over_residues (object) :
                 sigma=self.sigma,
                 params=self.params,
                 sampling_method=self.sampling_method)
-              if (len(fofc_densities) == 0) :
+              if (len(fofc_densities) == 0):
                 fofc_densities = None
               else :
                 assert (len(fofc_densities) == len(densities))
@@ -375,7 +375,7 @@ class iterate_over_residues (object) :
           results.append(res_out)
     return results
 
-class Peak (object) :
+class Peak(object):
   """
   Container for information about the sampling angle where density is at the
   global maximum for the given Chi angle.  Used for EMRinger.
@@ -388,7 +388,7 @@ class Peak (object) :
   def __repr__(self):
     return "\n%s\t%s\t%s\t%s\t%d\t%f" % (self.resname,self.resid,self.chain_id,self.n_chi,self.chi_value*5,self.rho_value)
 
-class Peaklist (object) :
+class Peaklist(object):
   # Right now this is just a slightly specialized list. I may add functionality
   # later, however.
   def __init__(self):

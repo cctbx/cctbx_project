@@ -58,7 +58,7 @@ class NCS_restraint_group(object):
       copies (list): list of NCS_copy objects
     """
     self.master_iselection = master_iselection
-    self.master_str_selection = None
+    self.master_str_selection = str_selection
     self.copies = []
 
   def __eq__(self, other):
@@ -415,19 +415,21 @@ class class_ncs_restraints_group_list(list):
       new_list = ncs_restraints_group_list
     return new_list
 
-  def _show(self, hierarchy=None):
+  def _show(self, hierarchy=None, brief=True):
     """
     For debugging
     """
     print "debugging output of ncs_restraints_group_list"
     for group in self:
       print "Master str selection:", group.master_str_selection
-      print list(group.master_iselection)
+      if not brief:
+        print list(group.master_iselection)
       if hierarchy is not None:
         print hierarchy.select(group.master_iselection).as_pdb_string()
       for c in group.copies:
         print "Copy str selection:", c.str_selection
-        print list(c.iselection)
+        if not brief:
+          print list(c.iselection)
         # print "rot", list(c.r)
         # print "tran", list(c.t)
         if hierarchy is not None:

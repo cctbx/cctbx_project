@@ -13,14 +13,14 @@ import sys
 # actually be file paths + chain IDs.  to ensure that MUSCLE doesn't choke
 # on these, the option is given to substitute numerical sequence names
 # internally, while still allowing retrieval using the original names.
-class align_pdb_residues (object) :
+class align_pdb_residues(object):
   """
   Provides mapping between original residue numbers or IDs and a reference
   numbering, via multiple sequence alignment.  Depending on whether or not
   the insertion code was used in the original PDB files, it can use either
   the resseq or the resid as the lookup key.
   """
-  def __init__ (self,
+  def __init__(self,
                 pdb_sequences,
                 pdb_names,
                 pdb_offsets=None,
@@ -31,12 +31,12 @@ class align_pdb_residues (object) :
                 reference_sequence_resids=None,
                 reference_index=None,
                 substitute_names=False,
-                out=None) :
+                out=None):
     adopt_init_args(self, locals())
     n_models = len(pdb_sequences)
     assert (pdb_resids is not None) or (pdb_offsets is not None)
     assert ((n_models >= 1) and (n_models==len(pdb_names)))
-    if (pdb_offsets is not None) :
+    if (pdb_offsets is not None):
       assert (pdb_resids is None)
       assert (len(pdb_names) == len(pdb_offsets))
       assert (reference_sequence is None) or (reference_sequence_resids is None)
@@ -50,28 +50,28 @@ class align_pdb_residues (object) :
     self.build_lookup_table()
     self.out = None # XXX required for pickling
 
-  def run_alignment (self, out=None) :
+  def run_alignment(self, out=None):
     use_pdb_sequence = False
     # build index of sequence names given to MUSCLE
     if self.substitute_names :
       self._name_lookup = {}
-      for i, name in enumerate(self.pdb_names) :
+      for i, name in enumerate(self.pdb_names):
         self._name_lookup[name] = str(i)
         self.fasta_names.append(str(i))
     else :
       self.fasta_names = self.pdb_names
     # determine sequence for reference numbering
-    if (self.reference_sequence is not None) :
+    if (self.reference_sequence is not None):
       assert (self.reference_index is None)
       assert ((self.reference_sequence_resids is not None) or
               (self.reference_sequence_offset is not None))
     else :
       i_ref = self.reference_index
       use_pdb_sequence = True
-      if (i_ref is None) :
+      if (i_ref is None):
         i_ref = self.reference_index = 0
       self.reference_sequence = self.pdb_sequences[i_ref]
-      if (self.pdb_offsets is not None) :
+      if (self.pdb_offsets is not None):
         self.reference_sequence_offset = self.pdb_offsets[i_ref]
       else :
         self.reference_sequence_resids = self.pdb_resids[i_ref]
@@ -81,7 +81,7 @@ class align_pdb_residues (object) :
         self.reference_sequence_name = self.pdb_names[i_ref]
     fasta = "\n".join([ ">%s\n%s" % (n,s) for n,s in zip(self.fasta_names,
                         self.pdb_sequences) ])
-    if (not use_pdb_sequence) :
+    if (not use_pdb_sequence):
       ref_seq_fasta = ">%s\n%s" % (self.reference_sequence_name,
         self.reference_sequence)
       fasta = ref_seq_fasta + "\n" + fasta
@@ -89,7 +89,7 @@ class align_pdb_residues (object) :
     assert (self.muscle_aln is not None)
 
   # I am not proud of this.
-  def build_lookup_table (self) :
+  def build_lookup_table(self):
     # find sequences and determine equivalent numbering
     self._lookup_table = {}
     self._indices = {}
@@ -97,17 +97,17 @@ class align_pdb_residues (object) :
     i_ref = self.muscle_aln.names.index(self.reference_sequence_name)
     self._reference_alignment = self.muscle_aln.alignments[i_ref]
     assert (i_ref is not None)
-    for i, name in enumerate(self.muscle_aln.names) :
-      if (i == i_ref) :
+    for i, name in enumerate(self.muscle_aln.names):
+      if (i == i_ref):
         self._lookup_table[name] = None
-        if (self.pdb_offsets is None) :
+        if (self.pdb_offsets is None):
           indices = {}
           resids_padded = [None] * self.get_alignment_size()
           h = k = 0
           for resi in self._reference_alignment :
-            if (resi != '-') :
+            if (resi != '-'):
               resid = self.reference_sequence_resids[k]
-              if (resid is not None) :
+              if (resid is not None):
                 resid = resid.strip()
                 indices[resid] = h
                 resids_padded[h] = resid
@@ -120,15 +120,15 @@ class align_pdb_residues (object) :
         aln = self.muscle_aln.alignments[i]
         h = j = k = 0
         # case 1: index by resseq
-        if (self.pdb_offsets is not None) :
+        if (self.pdb_offsets is not None):
           new_resseqs = []
-          for res1, res2 in zip(aln, self._reference_alignment) :
-            if (res2 != '-') :
+          for res1, res2 in zip(aln, self._reference_alignment):
+            if (res2 != '-'):
               k += 1
-            if (res1 == '-') :
+            if (res1 == '-'):
               continue
             else :
-              if (res2 == '-') :
+              if (res2 == '-'):
                 new_resseqs.append(None)
               else :
                 new_resseqs.append(k - self.reference_sequence_offset)
@@ -140,16 +140,16 @@ class align_pdb_residues (object) :
           new_resids = {}
           indices = {}
           resids_padded = [None] * self.get_alignment_size()
-          for res1, res2 in zip(aln, self._reference_alignment) :
+          for res1, res2 in zip(aln, self._reference_alignment):
             resid1 = resid2 = None
-            if (res2 != '-') :
+            if (res2 != '-'):
               resid2 = self.reference_sequence_resids[k]
-              if (resid2 is not None) :
+              if (resid2 is not None):
                 resid2 = resid2.strip()
               k += 1
-            if (res1 != '-') :
+            if (res1 != '-'):
               resid1 = self.pdb_resids[i_pdb][j]
-              if (resid1 is not None) :
+              if (resid1 is not None):
                 resid1 = resid1.strip()
                 new_resids[resid1] = resid2
                 indices[resid1] = h
@@ -162,53 +162,53 @@ class align_pdb_residues (object) :
           self._indices[name] = indices
           self._resids_padded[name] = resids_padded
 
-  def get_alignment_size (self) :
+  def get_alignment_size(self):
     return len(getattr(self, "_reference_alignment", []))
 
-  def write_file (self, file_name) :
+  def write_file(self, file_name):
     f = open(file_name, "w")
     f.write(str(self.muscle_aln))
     f.close()
 
-  def get_name_index (self, pdb_name) :
-    if (self._name_lookup is not None) :
+  def get_name_index(self, pdb_name):
+    if (self._name_lookup is not None):
       return self._name_lookup[pdb_name]
     else :
       return pdb_name
       #return self.pdb_names.index(pdb_name)
 
-  def get_residue_position (self, pdb_name, resseq=None, resid=None) :
-    if (resseq is not None) :
+  def get_residue_position(self, pdb_name, resseq=None, resid=None):
+    if (resseq is not None):
       assert (resid is None)
       return self.convert_residue_number(pdb_name, resseq)
     else :
       assert (resid is not None)
       return self.convert_resid(pdb_name, resid)
 
-  def get_resid_array_index (self, pdb_name, resid) :
+  def get_resid_array_index(self, pdb_name, resid):
     assert (resid is not None)
     seq_name = self.get_name_index(pdb_name)
     indices = self._indices[seq_name]
     return indices[resid]
 
-  def get_all_resids_at_index (self, index) :
+  def get_all_resids_at_index(self, index):
     resids = []
-    for name in self.fasta_names : #self._resids_padded.keys() :
+    for name in self.fasta_names : #self._resids_padded.keys():
       resids.append(self._resids_padded[name][index])
     return resids
 
-  def get_reference_resid (self, index) :
-    if (self.pdb_offsets is None) :
+  def get_reference_resid(self, index):
+    if (self.pdb_offsets is None):
       resids = self._resids_padded[self.reference_sequence_name]
       return resids[index]
     else :
       return index + 1
 
-  def convert_resid (self, pdb_name, resid) :
+  def convert_resid(self, pdb_name, resid):
     assert (self.pdb_resids is not None)
     assert (isinstance(resid, str))
     seq_name = self.get_name_index(pdb_name)
-    if (self._lookup_table[seq_name] is None) :
+    if (self._lookup_table[seq_name] is None):
       return resid
     try :
       return self._lookup_table[seq_name][resid.strip()]
@@ -224,11 +224,11 @@ Dump of full alignment:
   %s
 """ % (pdb_name, resseq, seq_name, self.muscle_aln))
 
-  def convert_residue_number (self, pdb_name, resseq) :
+  def convert_residue_number(self, pdb_name, resseq):
     assert (self.pdb_offsets is not None)
     seq_name = self.get_name_index(pdb_name)
     assert isinstance(resseq, int)
-    if (self._lookup_table[seq_name] is None) :
+    if (self._lookup_table[seq_name] is None):
       return resseq
     i_pdb = self.pdb_names.index(pdb_name)
     offset = self.pdb_offsets[i_pdb]
@@ -248,11 +248,11 @@ Dump of full alignment:
   %s
 """ % (pdb_name, resseq, seq_name, i_res, self.muscle_aln))
 
-def align_pdb_hierarchies (hierarchies,
+def align_pdb_hierarchies(hierarchies,
                            hierarchy_names,
                            reference_hierarchy=None,
                            substitute_names=True,
-                           log=None) :
+                           log=None):
   """
   Convenience function: takes a collection of *single-model, single-chain* PDB
   hierarchies, plus optional reference hierarchy, extracts sequences and
@@ -261,30 +261,30 @@ def align_pdb_hierarchies (hierarchies,
   will be used automatically.
   """
   #assert (reference_hierarchy is None)
-  if (log is None) :
+  if (log is None):
     log = sys.stdout
   pdb_resids = []
   i = 0
   reference_index = None
   pdb_sequences = []
-  def strip (string_or_none) :
-    if (string_or_none is None) :
+  def strip(string_or_none):
+    if (string_or_none is None):
       return None
     return string_or_none.strip()
-  for hierarchy, name in zip(hierarchies, hierarchy_names) :
+  for hierarchy, name in zip(hierarchies, hierarchy_names):
     assert (hierarchy.overall_counts().n_chains == 1)
     chain = hierarchy.only_model().only_chain()
     chain_seq = chain.as_padded_sequence(skip_insertions=False)
     pdb_sequences.append(chain_seq)
     resids = chain.get_residue_ids(skip_insertions=False)
     pdb_resids.append([ strip(resid) for resid in resids ])
-    if (hierarchy is reference_hierarchy) :
+    if (hierarchy is reference_hierarchy):
       reference_index = i
       print >> log, "  Using %s for sequence numbering" % name
-    elif (reference_hierarchy is None) and (reference_index is None) :
+    elif (reference_hierarchy is None) and (reference_index is None):
       reference_index = i
       print >> log, "  Using %s for sequence numbering" % name
-  if (reference_index is not None) :
+  if (reference_index is not None):
     pdb_names = hierarchy_names
     msa_manager = align_pdb_residues(
       pdb_sequences=pdb_sequences,
@@ -310,14 +310,14 @@ def align_pdb_hierarchies (hierarchies,
       out=log)
   return msa_manager
 
-def run_muscle (fasta_sequences, group_sequences=True) :
+def run_muscle(fasta_sequences, group_sequences=True):
   assert group_sequences # XXX this isn't actually optional!
-  if not libtbx.env.has_module(name="muscle") :
+  if not libtbx.env.has_module(name="muscle"):
     raise RuntimeError("MUSCLE not available or not configured.")
   exe_path = libtbx.env.under_build("muscle/exe/muscle")
-  if (os.name == "nt") :
+  if (os.name == "nt"):
     exe_path += ".exe"
-  if (not os.path.isfile(exe_path)) :
+  if (not os.path.isfile(exe_path)):
     raise RuntimeError("muscle executable is not available.")
   assert isinstance(fasta_sequences, str)
   cmd = "%s -quiet -clw" % exe_path
@@ -329,11 +329,11 @@ def run_muscle (fasta_sequences, group_sequences=True) :
     stdin_lines=fasta_sequences)
   return muscle_out.stdout_lines, muscle_out.stderr_lines
 
-def get_muscle_alignment (fasta_sequences, group_sequences=True, out=None) :
+def get_muscle_alignment(fasta_sequences, group_sequences=True, out=None):
   muscle_out, errors = run_muscle(fasta_sequences, group_sequences)
   from iotbx.bioinformatics import clustal_alignment_parse
   alignment, null = clustal_alignment_parse("\n".join(muscle_out))
-  if (out is not None) :
+  if (out is not None):
     print >> out, "\n".join(muscle_out)
   return alignment, errors
 
@@ -407,30 +407,30 @@ muscle
     .short_caption = Open alignment in text editor when complete
 }""")
 
-def run (args=(), params=None, out=sys.stdout) :
+def run(args=(), params=None, out=sys.stdout):
   assert (params is not None)
   seq_files = params.muscle.seq_file
   output_file = params.muscle.output_file
-  if (output_file is None) or (output_file == "") :
+  if (output_file is None) or (output_file == ""):
     output_file = os.path.join(os.getcwd(), "muscle.aln")
   from iotbx import file_reader
   from iotbx.bioinformatics import any_sequence_format, sequence
   seqs = []
   for file_name in seq_files :
     if (file_name.endswith(".pdb") or file_name.endswith(".ent") or
-        file_name.endswith(".pdb.gz") or file_name.endswith(".ent.gz")) :
+        file_name.endswith(".pdb.gz") or file_name.endswith(".ent.gz")):
       pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
       hierarchy = pdb_in.hierarchy
       first_model = hierarchy.models()[0]
       found_protein = False
-      for chain in first_model.chains() :
-        if chain.is_protein() :
+      for chain in first_model.chains():
+        if chain.is_protein():
           chain_seq = chain.as_padded_sequence()
           base_name = os.path.basename(file_name)
           seq_name = "%s_%s" % (os.path.splitext(base_name)[0], chain.id)
           seqs.append(sequence(chain_seq, seq_name))
           found_protein = True
-      if (not found_protein) :
+      if (not found_protein):
         raise Sorry(("The PDB file %s does not contain any recognizable "+
           "protein chains.") % file_name)
     else :
@@ -441,7 +441,7 @@ def run (args=(), params=None, out=sys.stdout) :
       except Exception, e :
         raise Sorry(("Error parsing '%s' - not a recognizable sequence "+
           "format.  (Original message: %s)") % (file_name, str(e)))
-  if (len(seqs) < 2) :
+  if (len(seqs) < 2):
     raise Sorry("Need at least two valid sequences to run MUSCLE.")
 
   alignment = get_muscle_alignment_ordered( sequences = seqs )
@@ -453,6 +453,6 @@ def run (args=(), params=None, out=sys.stdout) :
 
   return ( output_file, alistr )
 
-def validate_params (params) :
-  if (len(params.muscle.seq_file) == 0) :
+def validate_params(params):
+  if (len(params.muscle.seq_file) == 0):
     raise Sorry("No sequence files provided!")

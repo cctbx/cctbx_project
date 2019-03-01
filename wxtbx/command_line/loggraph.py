@@ -7,7 +7,7 @@ from wxtbx import plots
 import wx
 import sys
 
-def run (args) :
+def run(args):
   logfile = args[0]
   app = wx.App(0)
   frame = plots.loggraph(parent=None,

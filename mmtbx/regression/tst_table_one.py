@@ -7,7 +7,7 @@ from scitbx.array_family import flex
 from libtbx.utils import null_out
 import random
 
-def exercise () :
+def exercise():
   flex.set_random_seed(123456)
   random.seed(123456)
   base = "tst_table_one"
@@ -78,6 +78,6 @@ def exercise () :
 #  table_one.run(args=args, out=null_out(),
 #    use_current_directory_if_not_specified=True)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

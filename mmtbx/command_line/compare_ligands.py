@@ -17,8 +17,8 @@ master_phil = """
     .type = bool
 """
 
-def run (args, out=sys.stdout) :
-  if (len(args) == 0) or ("--help" in args) :
+def run(args, out=sys.stdout):
+  if (len(args) == 0) or ("--help" in args):
     raise Usage("""\
 mmtbx.compare_ligands model1.pdb model2.pdb ligand_code=LIG
 
@@ -27,18 +27,18 @@ ligand in each model and calculates RMSDs between them.  Used for validating
 ligand fitting tools in Phenix.""")
 
   import iotbx.phil
-  class _cmdline (iotbx.phil.process_command_line_with_files) :
-    def process_other (self, arg) :
-      if (len(arg) <= 3) and (arg.isalnum()) :
+  class _cmdline(iotbx.phil.process_command_line_with_files):
+    def process_other(self, arg):
+      if (len(arg) <= 3) and (arg.isalnum()):
         return iotbx.phil.parse("""ligand_code=%s""" % arg)
   cmdline = _cmdline(
     args=args,
     master_phil_string=master_phil,
     pdb_file_def="pdb_file")
   params = cmdline.work.extract()
-  if (len(params.pdb_file) != 2) :
+  if (len(params.pdb_file) != 2):
     raise Sorry("Exactly two PDB files required as input.")
-  if (params.ligand_code is None) :
+  if (params.ligand_code is None):
     raise Sorry("Must specify ligand ID (ligand_code=LIG)")
   from mmtbx.validation import ligands
   rmsds, pbss = ligands.compare_ligands(
@@ -48,8 +48,8 @@ ligand fitting tools in Phenix.""")
     exclude_hydrogens=params.exclude_hydrogens,
     verbose=params.verbose,
     out=out)
-  if (len(rmsds) == 0) :
+  if (len(rmsds) == 0):
     raise Sorry("No matching ligands found!")
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(args=sys.argv[1:])

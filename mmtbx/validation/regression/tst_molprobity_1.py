@@ -8,7 +8,7 @@ from libtbx.utils import null_out
 from cStringIO import StringIO
 
 # test for corner cases (synthetic data okay)
-def exercise_synthetic () :
+def exercise_synthetic():
   from mmtbx.regression import tst_build_alt_confs
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=tst_build_alt_confs.pdb_raw)
   xrs = pdb_in.input.xray_structure_simple()
@@ -77,7 +77,7 @@ def exercise_synthetic () :
     out=null_out()).validation
   result.show(outliers_only=False, out=out)
 
-def exercise_cdl () :
+def exercise_cdl():
   pdb_raw = """
 ATOM   1270  N   LEU A 199       6.903  55.119  -0.416  1.00 25.48           N
 ATOM   1271  CA  LEU A 199       7.726  56.192  -0.941  1.00 25.93           C
@@ -117,7 +117,7 @@ REMARK   3    GEOSTD + MON.LIB. + CDL v1.2
   open("tst_molprobity_cdl_2.pdb", "w").write(pdb_raw_2)
   files = ["tst_molprobity_cdl_1.pdb","tst_molprobity_cdl_2.pdb"]
   rmsds = [0.9019, 0.8769]
-  for file_name, rmsd, cdl_expected in zip(files, rmsds, [False, True]) :
+  for file_name, rmsd, cdl_expected in zip(files, rmsds, [False, True]):
     result = molprobity.run(args=[file_name, "flags.clashscore=False"],
       ignore_missing_modules=True,
       out=null_out()).validation
@@ -131,7 +131,7 @@ REMARK   3    GEOSTD + MON.LIB. + CDL v1.2
       result.show(out=out)
       assert ("conformation-dependent library" not in out.getvalue())
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_cdl()
   exercise_synthetic()
   print "OK"

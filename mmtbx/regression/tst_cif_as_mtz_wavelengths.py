@@ -2,7 +2,7 @@
 from __future__ import division
 from libtbx import easy_run
 
-def exercise () :
+def exercise():
   from mmtbx.command_line import cif_as_mtz
   from iotbx import file_reader
   cif_in = """\
@@ -200,6 +200,6 @@ _refln.intensity_sigma
     ('I2(+),SIGI2(+),I2(-),SIGI2(-)', '0.9797')
   ])
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()
   print "OK"

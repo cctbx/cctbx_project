@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from builtins import range
 def exercise_specific():
   from libtbx.topological_sort import stable
   from libtbx.topological_sort import strongly_connected_components as scc
@@ -46,12 +47,12 @@ def exercise_specific():
 def exercise_random(rng, n_nodes):
   # meant to discover endless loops or similar bugs
   connections = []
-  for i_node in xrange(n_nodes):
+  for i_node in range(n_nodes):
     if (rng.randrange(10) > 7):
       continue
     n_del = max(int(n_nodes*0.6), rng.randrange(n_nodes))
-    deps = range(n_nodes)
-    for i_del in xrange(n_del):
+    deps = list(range(n_nodes))
+    for i_del in range(n_del):
       i = rng.randrange(len(deps))
       del deps[i]
     connections.append((i_node, deps))
@@ -73,9 +74,9 @@ def run(args):
   exercise_specific()
   import random
   random.seed(0)
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     exercise_random(rng=random, n_nodes=10)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

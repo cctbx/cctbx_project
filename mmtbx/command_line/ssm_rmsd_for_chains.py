@@ -17,25 +17,13 @@ def run(args):
 
   for model in pdb1.models():
     for i, chain_i in enumerate(model.chains()):
-      found_conformer = False
-      for conformer in chain_i.conformers():
-        if not conformer.is_protein() and not conformer.is_na():
-          continue
-        else:
-          found_conformer = True
-      if not found_conformer:
+      if not chain_i.is_protein() and not chain_i.is_na():
         continue
       chains1.append(chain_i)
 
   for model in pdb2.models():
     for i, chain_i in enumerate(model.chains()):
-      found_conformer = False
-      for conformer in chain_i.conformers():
-        if not conformer.is_protein() and not conformer.is_na():
-          continue
-        else:
-          found_conformer = True
-      if not found_conformer:
+      if not chain_i.is_protein() and not chain_i.is_na():
         continue
       chains2.append(chain_i)
 

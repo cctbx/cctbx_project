@@ -96,14 +96,14 @@ class SidechainAngles:
           key = aa+"."+rotamer
           self.anglesForRot[key] = f.properties[key].split(" ")
 
-  def get_rotamers (self, residue_name) :
+  def get_rotamers(self, residue_name):
     rotamers = {}
     aa = residue_name.lower()
-    if (not aa in self.rotamersForAA) :
+    if (not aa in self.rotamersForAA):
       return None
     rotamer_list = self.rotamersForAA.get(aa)
     for rotamer in rotamer_list :
-      if (rotamer != "") :
+      if (rotamer != ""):
         key = aa + "." + rotamer
         rotamers[rotamer] = [ float(x) for x in self.anglesForRot[key] ]
     return rotamers
@@ -176,7 +176,7 @@ class SidechainAngles:
     return scitbx.math.dihedral_angle(
       sites=sites, deg=True)
 
-  def extract_chi_atoms (self, angleName, res, atom_dict=None) :
+  def extract_chi_atoms(self, angleName, res, atom_dict=None):
     atomNamesMap = None
     if (atom_dict is None):
       atomNamesMap = makeAtomDict(res)
@@ -191,7 +191,7 @@ class SidechainAngles:
       while (testAtom == None and j < len(namelist)):
         testAtom = atomNamesMap.get(namelist[j])
         j += 1
-      if (testAtom != None) :
+      if (testAtom != None):
         angleAtoms.append(atomNamesMap.get(testAtom.name))
       else:
         return None
@@ -203,7 +203,7 @@ def makeAtomDict(res):
     atomNamesMap[atom.name] = atom
   return atomNamesMap
 
-def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
+def collect_sidechain_chi_angles(pdb_hierarchy, atom_selection=None):
 
   angle_lookup = SidechainAngles(False)
   residue_chis = []
@@ -216,10 +216,10 @@ def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
   if atom_selection is None:
     actual_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
 
-  for model in pdb_hierarchy.models() :
-    for chain in model.chains() :
-      for conformer in chain.conformers() :
-        for residue in conformer.residues() :
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for conformer in chain.conformers():
+        for residue in conformer.residues():
           n_chi = angle_lookup.chisPerAA.get(residue.resname.lower(), 0)
           try :
             n_chi = int(n_chi)
@@ -228,7 +228,7 @@ def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
           chis = []
           altloc = residue.atoms()[0].fetch_labels().altloc
           i_seqs = []
-          for i in range(1, n_chi+1) :
+          for i in range(1, n_chi+1):
             atoms = angle_lookup.extract_chi_atoms("chi%d" % i, residue)
             if atoms is None:
               pass
@@ -250,9 +250,9 @@ def collect_sidechain_chi_angles (pdb_hierarchy, atom_selection=None) :
             residue_chis.append(residue_info)
   return residue_chis
 
-def collect_residue_torsion_angles (pdb_hierarchy,
+def collect_residue_torsion_angles(pdb_hierarchy,
                                     atom_selection=None,
-                                    chi_angles_only=False) :
+                                    chi_angles_only=False):
   get_class = iotbx.pdb.common_residue_names_get_class
   residue_torsions = []
 
@@ -276,10 +276,10 @@ def collect_residue_torsion_angles (pdb_hierarchy,
     actual_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
   previous_residue = None
   next_residue = None
-  for model in pdb_hierarchy.models() :
-    for chain in model.chains() :
-      for conformer in chain.conformers() :
-        for i_res, residue in enumerate(conformer.residues()) :
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for conformer in chain.conformers():
+        for i_res, residue in enumerate(conformer.residues()):
           if (get_class(residue.resname) != "common_amino_acid"):
             continue
           if i_res < (len(conformer.residues())-1):

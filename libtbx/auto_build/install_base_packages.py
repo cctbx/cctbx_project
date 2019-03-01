@@ -7,7 +7,7 @@ function.  In the future this will be used as the core of the CCI nightly build
 system and the Phenix installer.
 """
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import os
 import os.path as op
@@ -36,18 +36,18 @@ python_dependencies = {"_ssl" : "Secure Socket Library",
 os.environ['PYTHONNOUSERSITE'] = '1'
 
 
-class installer (object) :
-  def __init__ (self, args=None, packages=None, log=sys.stdout) :
+class installer(object):
+  def __init__(self, args=None, packages=None, log=sys.stdout):
     #assert (sys.platform in ["linux2", "linux3", "darwin"])
     # Check python version >= 2.7 or >= 3.4
     check_python_version()
     self.log = log
-    print >> log, """
+    print("""
   ****************************************************************************
                  Automated CCTBX dependencies build script
                  report problems to cctbx-dev@cci.lbl.gov
   ****************************************************************************
-"""
+""", file=log)
     dist_dir = op.dirname(op.dirname(op.dirname(__file__)))
     parser = OptionParser()
     # Basic options
@@ -68,7 +68,10 @@ class installer (object) :
       help="Use only local packages (no downloads)", default=False)
     parser.add_option("--download-only", dest="download_only", action="store_true",
       help="Only download missing packages, do not compile", default=False)
-    parser.add_option("--skip-base", dest="skip_base", action="store",default="")
+    parser.add_option("--skip-base", dest="skip_base", action="store",
+      help="Comma-separated list of packages to skip", default="")
+    parser.add_option("--continue-from", dest="continue_from", action="store",
+      help="Skip all packages preceeding this one", default="")
     parser.add_option("--python-shared", dest="python_shared",
       action="store_true", default=False,
       help="Compile Python as shared library (Linux only)")
@@ -142,12 +145,12 @@ class installer (object) :
     self.base_dir = op.join(self.build_dir, "base")
     self.prefix = "--prefix=\"%s\""%self.base_dir
     if options.skip_if_exists and os.path.exists(self.base_dir) and os.listdir(self.base_dir):
-      print >> log, "Base directory already exists and --skip-if-exists set; exiting."
+      print("Base directory already exists and --skip-if-exists set; exiting.", file=log)
       return
-    print >> log, "Setting up directories..."
+    print("Setting up directories...", file=log)
     for dir_name in [self.tmp_dir,self.build_dir,self.base_dir]:
-      if (not op.isdir(dir_name)) :
-        print >> log, "  creating %s" % dir_name
+      if (not op.isdir(dir_name)):
+        print("  creating %s" % dir_name, file=log)
         os.makedirs(dir_name)
     self.check_python_dependencies()
 
@@ -174,7 +177,7 @@ class installer (object) :
       winpython = zipfile.ZipFile(os.path.join(self.tmp_dir, winpythonpkg), 'r')
       members = winpython.namelist()
       for zipinfo in members:
-        print >> self.log, "extracting", zipinfo
+        print("extracting", zipinfo, file=self.log)
         winpython.extract(zipinfo, path=os.path.join(self.base_dir,'bin'))
       winpython.close()
 
@@ -182,7 +185,7 @@ class installer (object) :
       winhdf5 = zipfile.ZipFile(os.path.join(self.tmp_dir, hdf5pkg), 'r')
       members = winhdf5.namelist()
       for zipinfo in members:
-        print >> self.log, "extracting", zipinfo
+        print("extracting", zipinfo, file=self.log)
         winhdf5.extract(zipinfo, path=self.base_dir)
       winhdf5.close()
 
@@ -190,7 +193,7 @@ class installer (object) :
       winlibtiff = zipfile.ZipFile(os.path.join(self.tmp_dir, libtiff), 'r')
       members = winlibtiff.namelist()
       for zipinfo in members:
-        print >> self.log, "extracting", zipinfo
+        print("extracting", zipinfo, file=self.log)
         winlibtiff.extract(zipinfo, path=self.base_dir)
       winlibtiff.close()
 
@@ -215,11 +218,11 @@ class installer (object) :
       self.python_exe = sys.executable
 
     if self.python_exe:
-      print >> log, "Using Python interpreter: %s" % self.python_exe
+      print("Using Python interpreter: %s" % self.python_exe, file=log)
 
     if not self.python_exe and 'SuSE' in platform.platform():
       if 'CONFIG_SITE' in os.environ:
-        print >> log, 'SuSE detected; clobbering CONFIG_SITE in environ'
+        print('SuSE detected; clobbering CONFIG_SITE in environ', file=log)
         try:
           del(os.environ['CONFIG_SITE'])
         except: # intentional
@@ -250,7 +253,7 @@ class installer (object) :
     # are actually symlinks to absolute paths inside the Python.framework, so
     # we replace them with symlinks to relative paths.
     if self.flag_is_mac and not self.options.download_only:
-      print >> log, "Regenerating symlinks with relative paths..."
+      print("Regenerating symlinks with relative paths...", file=log)
       regenerate_relative_symlinks(op.join(self.base_dir, "bin"), log=log)
 
   def configure_packages(self, options):
@@ -259,7 +262,7 @@ class installer (object) :
     if options.molprobity:
       options.build_gui = False
       options.build_all = False
-      packages += ['tiff']
+      packages += ['tiff', 'psutil', 'mrcfile']
     if options.cctbx:
       options.build_gui = True
       options.build_all = True
@@ -270,7 +273,7 @@ class installer (object) :
     if options.dials:
       options.build_gui = True
       options.build_all = True
-      packages += ['pillow', 'jinja2', 'orderedset', 'procrunner', 'scipy', 'scikit_learn']
+      packages += ['pillow', 'jinja2', 'orderedset', 'procrunner', 'scipy', 'scikit_learn', 'tqdm', 'msgpack']
     if options.xia2:
       options.build_gui = True
       options.build_all = True
@@ -294,7 +297,7 @@ class installer (object) :
     packages += ['cython', 'hdf5', 'h5py', 'numpy', 'pythonextra', 'docutils']
     packages += ['libsvm', 'lz4_plugin']
     # Development and testing packages.
-    packages += ['pytest', 'junitxml']
+    packages += ['pytest']
     # GUI packages.
     if options.build_gui or options.build_all or options.download_only:
       packages += [
@@ -303,6 +306,7 @@ class installer (object) :
         'pillow',
         'freetype',
         'matplotlib',
+        'msgpack',
         'pyopengl',
         'wxpython',
       ]
@@ -323,7 +327,7 @@ class installer (object) :
 
     # Additional recommended dependencies.
     if options.build_all:
-      packages += ['biopython', 'misc', 'sphinx']
+      packages += ['biopython', 'misc', 'sphinx', 'psutil', 'mrcfile']
 
     # Non-all packages.
     # Scipy
@@ -344,57 +348,57 @@ class installer (object) :
 
     return set(packages)
 
-  def call (self, args, log=None, **kwargs) :
+  def call(self, args, log=None, **kwargs):
     if (log is None) : log = self.log
     return call(args, log=log, verbose=self.verbose, **kwargs)
 
-  def chdir (self, dir_name, log=None) :
+  def chdir(self, dir_name, log=None):
     if (log is None) : log = self.log
-    print >> log, "cd \"%s\"" % dir_name
+    print("cd \"%s\"" % dir_name, file=log)
     os.chdir(dir_name)
 
-  def touch_file (self, file_name) :
+  def touch_file(self, file_name):
     f = open(file_name, "w")
     f.write("")
     f.close()
     assert op.isfile(file_name)
 
-  def print_sep (self, char="-") :
-    print >> self.log, ""
-    print >> self.log, char*80
-    print >> self.log, ""
+  def print_sep(self, char="-"):
+    print("", file=self.log)
+    print(char*80, file=self.log)
+    print("", file=self.log)
 
   def start_building_package(self, pkg_name, pkg_info=None, pkg_qualifier=''):
     os.chdir(self.tmp_dir)
     install_log = op.join(self.tmp_dir, pkg_name + "_install_log")
-    print >> self.log, "Installing %s%s..." % (pkg_name, pkg_qualifier)
+    print("Installing %s%s..." % (pkg_name, pkg_qualifier), file=self.log)
     if pkg_info:
-      print >> self.log, pkg_info
-    print >> self.log, "  log file is %s" % install_log
+      print(pkg_info, file=self.log)
+    print("  log file is %s" % install_log, file=self.log)
     return open(install_log, "w")
 
   def check_download_only(self, pkg_name=None):
     if pkg_name is not None:
       if self.options.download_only:
-        print >> self.log, "  skipping installation of %s (--download-only)" % pkg_name
+        print("  skipping installation of %s (--download-only)" % pkg_name, file=self.log)
       else:
-        print >> self.log, "  installing %s..." % pkg_name
+        print("  installing %s..." % pkg_name, file=self.log)
     return self.options.download_only
 
   @staticmethod
   def patch_src(src_file, target, replace_with, output_file=None):
     from shutil import copymode
-    if isinstance(target, str) :
+    if isinstance(target, str):
       assert isinstance(replace_with, str)
       target = [ target ]
       replace_with = [ replace_with ]
     assert len(target) == len(replace_with)
     in_file = src_file
-    if (output_file is None) :
+    if (output_file is None):
       in_file += ".dist"
       os.rename(src_file, in_file)
     src_in = open(in_file)
-    if (output_file is None) :
+    if (output_file is None):
       output_file = src_file
     src_out = open(output_file, "w")
     for line in src_in.readlines():
@@ -405,7 +409,7 @@ class installer (object) :
     src_out.close()
     copymode(in_file, output_file)
 
-  def untar_and_chdir (self, pkg, log=None) :
+  def untar_and_chdir(self, pkg, log=None):
     if (log is None) : log = self.log
     pkg_dir = untar(pkg, log=log)
     os.chdir(pkg_dir)
@@ -418,34 +422,34 @@ class installer (object) :
         'import sys; print("%d:%d:%d:%s" % (sys.version_info[0], sys.version_info[1], sys.hexversion, sys.version))',
         ])
     except (OSError, RuntimeError):
-      print >> self.log, """
+      print("""
 Error: Could not determine version of Python installed at:
   %s
 Error: Python 2.7 or Python 3.4 or higher required. Python3 only supported for development purposes.
 Found Python version:
   %s
-""" % self.python_exe
+""" % self.python_exe, file=self.log)
       sys.exit(1)
     python_version = python_version.strip().split('\n')[0].split(':', 3)
     if (int(python_version[0]) == 2 and int(python_version[1]) < 7) or \
        (int(python_version[0]) > 2 and int(python_version[2]) < 0x03040000):
-      print >> self.log, "Error: Python 2.7 or 3.4+ required.\nFound Python version: %s" % python_version[3]
+      print("Error: Python 2.7 or 3.4+ required.\nFound Python version: %s" % python_version[3], file=self.log)
       sys.exit(1)
 
   def check_python_dependencies(self):
     for module, desc in python_dependencies.items():
       try:
         self.verify_python_module(module, module)
-      except RuntimeError, e:
-        print '\n\n\n%s\n\nThis python does not have %s installed\n\n%s\n\n\n' % (
+      except RuntimeError:
+        print('\n\n\n%s\n\nThis python does not have %s installed\n\n%s\n\n\n' % (
           "*"*80,
           "%s - %s" % (module, desc),
           "*"*80,
-        )
-        raise e
+        ))
+        raise
 
   def set_python(self, python_exe):
-    print >> self.log, "Using Python: %s"%python_exe
+    print("Using Python: %s"%python_exe, file=self.log)
     self.python_exe = python_exe
     # Just an arbitrary import (with .so)
     self.verify_python_module("Python", "socket")
@@ -460,16 +464,16 @@ Found Python version:
     import tempfile
     site_packages = check_output([self.python_exe, '-c', 'from distutils.sysconfig import get_python_lib; print(get_python_lib())'])
     site_packages = site_packages.strip()
-    print >> self.log,  "Checking for write permissions:", site_packages
+    print("Checking for write permissions:", site_packages, file=self.log)
     try:
       f = tempfile.TemporaryFile(dir=site_packages)
     except (OSError, RuntimeError):
-      print >> self.log, """
+      print("""
 Error: You don't appear to have write access to
 the Python site-packages directory:
   %s
 Installation of Python packages may fail.
-      """%site_packages
+      """%site_packages, file=self.log)
       raise e
     # Update paths.
     self.update_paths()
@@ -478,11 +482,11 @@ Installation of Python packages may fail.
     os.environ["PATH"] = ("%s/bin:" % self.base_dir) + os.environ['PATH']
     lib_paths = [ op.join(self.base_dir, "lib") ]
     if self.flag_is_linux:
-      if ("LD_LIBRARY_PATH" in os.environ) :
+      if ("LD_LIBRARY_PATH" in os.environ):
         lib_paths.append(os.environ["LD_LIBRARY_PATH"])
       os.environ['LD_LIBRARY_PATH'] = ":".join(lib_paths)
     inc_dir = op.join(self.base_dir, "include")
-    if (not op.isdir(inc_dir)) :
+    if (not op.isdir(inc_dir)):
       os.mkdir(inc_dir)
     self.include_dirs.append(inc_dir)
     self.lib_dirs.append(lib_paths[0])
@@ -495,7 +499,7 @@ Installation of Python packages may fail.
     os.environ['CPPFLAGS'] = "%s %s"%(" ".join(inc_paths), self.cppflags_start)
     os.environ['LDFLAGS'] = "%s %s"%(" ".join(lib_paths), self.ldflags_start)
 
-  def verify_python_module (self, pkg_name_label, module_name) :
+  def verify_python_module(self, pkg_name_label, module_name):
     os.chdir(self.tmp_dir) # very important for import to work!
     if hasattr(self, "python_exe"): python_exe = self.python_exe
     else:
@@ -508,7 +512,7 @@ Installation of Python packages may fail.
       self.call('%s -c "import %s"' % (python_exe, module_name))
     else:
       self.call("%s -c 'import %s'" % (python_exe, module_name))
-    print >> self.log, " OK"
+    print(" OK", file=self.log)
 
   def workarounds(self):
     '''Look at the directory I am in at the moment and the platform I am
@@ -548,7 +552,7 @@ Installation of Python packages may fail.
 
     return
 
-  def configure_and_build(self, config_args=(), log=None, make_args=(), limit_nproc=None) :
+  def configure_and_build(self, config_args=(), log=None, make_args=(), limit_nproc=None):
     # case sensitive file system workaround
     configure = filter(os.path.exists, ('config', 'configure', 'Configure'))
     working_configure = False
@@ -579,14 +583,14 @@ Installation of Python packages may fail.
       config_args += extra_config_args
     self.configure_and_build(config_args=config_args, log=pkg_log)
 
-  def build_python_module_simple (self,
+  def build_python_module_simple(self,
       pkg_url,
       pkg_name,
       pkg_name_label,
       pkg_local_file=None,
       callback_before_build=None,
       callback_after_build=None,
-      confirm_import_module=None) :
+      confirm_import_module=None):
     pkg_log = self.start_building_package(pkg_name_label)
     if pkg_local_file is None:
       pkg_local_file, size = self.fetch_package(pkg_name=pkg_name,
@@ -594,18 +598,18 @@ Installation of Python packages may fail.
                                    return_file_and_status=True)
     if self.check_download_only(pkg_name): return
     self.untar_and_chdir(pkg=pkg_local_file, log=pkg_log)
-    if (callback_before_build is not None) :
+    if (callback_before_build is not None):
       assert callback_before_build(pkg_log), pkg_name
     debug_flag = ""
-    if (self.options.debug) :
+    if (self.options.debug):
       debug_flag = "--debug"
     self.call("%s setup.py build %s" % (self.python_exe, debug_flag),
       log=pkg_log)
     self.call("%s setup.py install" % self.python_exe, log=pkg_log)
-    if (callback_after_build is not None) :
+    if (callback_after_build is not None):
       assert callback_after_build(pkg_log), pkg_name
     os.chdir(self.tmp_dir)
-    if (confirm_import_module is not None) :
+    if (confirm_import_module is not None):
       self.verify_python_module(pkg_name_label, confirm_import_module)
 
   def build_python_module_pip(self, package_name, package_version=None, download_only=None,
@@ -635,13 +639,13 @@ Installation of Python packages may fail.
       try:
         import pip
       except ImportError:
-        print "Skipping download of python package %s %s" % \
-              (pkg_info['name'], pkg_info['version'])
-        print "Your current python environment does not include 'pip',"
-        print "which is required to download prerequisites."
-        print "Please see https://pip.pypa.io/en/stable/installing/ for " \
-              "more information."
-        print "*" * 75
+        print("Skipping download of python package %s %s" % \
+              (pkg_info['name'], pkg_info['version']))
+        print("Your current python environment does not include 'pip',")
+        print("which is required to download prerequisites.")
+        print("Please see https://pip.pypa.io/en/stable/installing/ for " \
+              "more information.")
+        print("*" * 75)
         return
     log = self.start_building_package(package_name,
              pkg_info=pkg_info['summary'],
@@ -659,7 +663,7 @@ Installation of Python packages may fail.
       else:
         pip_call = pip.main
       os.environ['PIP_REQ_TRACKER'] = pkg_info['cachedir']
-      print "  Running with pip:", pip_cmd
+      print("  Running with pip:", pip_cmd)
       assert pip_call(pip_cmd) == 0, 'pip download failed'
       return
     if extra_options:
@@ -705,7 +709,6 @@ Installation of Python packages may fail.
       'libsvm',
       'pytest',
       'pythonextra',
-      'junitxml',
       'hdf5',
       'h5py',
       'biopython',
@@ -722,10 +725,14 @@ Installation of Python packages may fail.
       'jinja2',
       'orderedset',
       'procrunner',
+      'tqdm',
       'tabulate',
+      'psutil',
+      'mrcfile',
       # ...
       'freetype',
       'matplotlib',
+      'msgpack',
       'pillow',
       'reportlab',
       # START GUI PACKAGES
@@ -749,12 +756,14 @@ Installation of Python packages may fail.
       if i in packages:
         if i in self.options.skip_base: continue
         packages_order.append(i)
+    if self.options.continue_from and self.options.continue_from in packages_order:
+      packages_order = packages_order[packages_order.index(self.options.continue_from):]
 
     if self.options.download_only:
-      print >> self.log, "Downloading dependencies: %s"%(" ".join(packages_order))
+      print("Downloading dependencies: %s"%(" ".join(packages_order)), file=self.log)
       action = "download"
     else:
-      print >> self.log, "Building dependencies: %s"%(" ".join(packages_order))
+      print("Building dependencies: %s"%(" ".join(packages_order)), file=self.log)
       action = "install"
 
     os.chdir(self.tmp_dir)
@@ -763,16 +772,16 @@ Installation of Python packages may fail.
       self.print_sep()
       t0=time.time()
       getattr(self, 'build_%s'%i)()
-      print >> self.log, "  package %s took %0.1fs to %s" % (
+      print("  package %s took %0.1fs to %s" % (
         i,
         time.time()-t0,
         action
-        )
+        ), file=self.log)
 
     if self.options.download_only:
-      print >> self.log, "Dependencies finished downloading."
+      print("Dependencies finished downloading.", file=self.log)
     else:
-      print >> self.log, "Dependencies finished building."
+      print("Dependencies finished building.", file=self.log)
 
   #######################################################
   ##### Build Individual Packages #######################
@@ -783,7 +792,7 @@ Installation of Python packages may fail.
       return self.build_python3()
 
     if self.flag_is_mac and not op.exists('/usr/include/zlib.h'):
-      print >> self.log, "zlib.h missing -- try running 'xcode-select --install' first"
+      print("zlib.h missing -- try running 'xcode-select --install' first", file=self.log)
       sys.exit(1)
     log = self.start_building_package("Python")
     os.chdir(self.tmp_dir)
@@ -877,8 +886,8 @@ _replace_sysconfig_paths(build_time_vars)
 """ % self.base_dir)
         fh.close()
     except Exception as e:
-      print >> log, "Could not make python relocatable:"
-      print >> log, e
+      print("Could not make python relocatable:", file=log)
+      print(e, file=log)
 
     # On macOS, base/Python.framework/Versions/2.7/Python (aka
     # libpython2.7.dylib) may be read-only. This affects the create-installer
@@ -894,7 +903,7 @@ _replace_sysconfig_paths(build_time_vars)
 
   def build_python3(self):
     if self.flag_is_mac and not op.exists('/usr/include/zlib.h'):
-      print >> self.log, "zlib.h missing -- try running 'xcode-select --install' first"
+      print("zlib.h missing -- try running 'xcode-select --install' first", file=self.log)
       sys.exit(1)
     log = self.start_building_package("Python3")
     os.chdir(self.tmp_dir)
@@ -946,8 +955,8 @@ def _replace_sysconfig_paths(d):
 _replace_sysconfig_paths(build_time_vars)
 """ % self.base_dir)
 #   except Exception, e:
-      print >> log, "Could not make python relocatable:"
-      print >> log, e
+      print("Could not make python relocatable:", file=log)
+      print(e, file=log)
     log.close()
 
   def build_python_compatibility(self):
@@ -964,9 +973,9 @@ _replace_sysconfig_paths(build_time_vars)
     python_extra_dir = 'python_extra'
     python_extra_full_path = os.path.join(self.tmp_dir, python_extra_dir)
     if os.path.exists(python_extra_full_path):
-      print >> self.log, "Installing further python packages...\n"
+      print("Installing further python packages...\n", file=self.log)
     else:
-      print >> self.log, "No further python packages to install."
+      print("No further python packages to install.", file=self.log)
       return True
 
     files = [ f for f in os.listdir(python_extra_full_path) if f.endswith(".tar.gz") ]
@@ -1018,10 +1027,6 @@ _replace_sysconfig_paths(build_time_vars)
       confirm_import_module="docutils",
     )
 
-  def build_junitxml(self):
-    self.build_python_module_pip(
-      'junit-xml', package_version=JUNIT_XML_VERSION)
-
   def build_pytest(self):
     self.build_python_module_pip(
       'mock', package_version=MOCK_VERSION)
@@ -1037,18 +1042,18 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name_label="biopython",
       confirm_import_module="Bio")
 
-  def build_lz4_plugin (self, patch_src=True):
+  def build_lz4_plugin(self, patch_src=True):
     log = self.start_building_package("lz4_plugin")
     repos = ["hdf5_lz4", "bitshuffle"]
     for repo in repos:
       fetch_remote_package(repo, log=log, use_ssh=self.options.git_ssh)
     if self.check_download_only("lz4 plugin"): return
-    if (patch_src) :
-      print >> log, "Patching hdf5_lz4/Makefile"
+    if (patch_src):
+      print("Patching hdf5_lz4/Makefile", file=log)
       self.patch_src(src_file="hdf5_lz4/Makefile",
                      target="HDF5_INSTALL = /home/det/hdf5-1.8.11/hdf5/",
                      replace_with="HDF5_INSTALL = %s"%self.base_dir)
-      print >> log, "Patching bitshuffle/setup.py"
+      print("Patching bitshuffle/setup.py", file=log)
       self.patch_src(src_file="bitshuffle/setup.py",
                      target=["COMPILE_FLAGS = ['-O3', '-ffast-math', '-march=native', '-std=c99']",
                              'raise ValueError("pkg-config must be installed")',
@@ -1069,10 +1074,10 @@ _replace_sysconfig_paths(build_time_vars)
     site_file = open("setup.cfg", "w")
     site_file.write("[build_ext]\nomp = 0\n")
     site_file.close()
-    self.call("%s setup.py build"%self.python_exe,log=log)
-    self.call("%s setup.py install --h5plugin --h5plugin-dir=../hdf5_lz4"%(self.python_exe),log=log)
+    self.call("CFLAGS='-std=c99' %s setup.py build"%self.python_exe,log=log)
+    self.call("CFLAGS='-std=c99' %s setup.py install --h5plugin --h5plugin-dir=../hdf5_lz4"%(self.python_exe),log=log)
     self.chdir("../hdf5_lz4",log=log)
-    print >> log, "Copying new libraries to base/lib/plugins folder"
+    print("Copying new libraries to base/lib/plugins folder", file=log)
     hdf5_plugin_dir = os.path.join(self.base_dir, "lib", "plugins")
     if not os.path.exists(hdf5_plugin_dir):
       os.mkdir(hdf5_plugin_dir)
@@ -1097,10 +1102,9 @@ _replace_sysconfig_paths(build_time_vars)
       confirm_import_module="mpi4py")
 
   def build_py2app(self):
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=PY2APP_PKG,
-      pkg_name_label="py2app",
+    self.build_python_module_pip(
+      package_name='py2app',
+      package_version=PY2APP_VERSION,
       confirm_import_module="py2app")
 
   def build_reportlab(self):
@@ -1109,6 +1113,21 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name=REPORTLAB_PKG,
       pkg_name_label="reportlab",
       confirm_import_module="reportlab")
+
+  def build_msgpack(self):
+    self.build_python_module_pip(
+      package_name='msgpack',
+      package_version=MSGPACK_VERSION,
+      confirm_import_module="msgpack",
+    )
+    # can't guarantee that platforms we distribute to have AVX2 support
+    # RHEL/CentOS 6 gcc does not support AVX2
+    os.environ["DISABLE_BLOSC_AVX2"] = "1"
+    self.build_python_module_pip(
+      package_name='blosc',
+      package_version=BLOSC_VERSION,
+      confirm_import_module="blosc",
+    )
 
   def build_pillow(self):
     self.build_python_module_pip(
@@ -1157,17 +1176,30 @@ _replace_sysconfig_paths(build_time_vars)
       'procrunner', package_version=PROCRUNNER_VERSION,
       confirm_import_module='procrunner')
 
+  def build_tqdm(self):
+    self.build_python_module_pip('tqdm', package_version=TQDM_VERSION)
+
   def build_tabulate(self):
     self.build_python_module_pip(
       'tabulate', package_version=TABULATE_VERSION,
       confirm_import_module='tabulate')
+
+  def build_psutil(self):
+    self.build_python_module_pip(
+      'psutil', package_version=PSUTIL_VERSION,
+      confirm_import_module='psutil')
+
+  def build_mrcfile(self):
+    self.build_python_module_pip(
+      'mrcfile', package_version=MRCFILE_VERSION,
+      confirm_import_module='mrcfile')
 
   def build_hdf5(self):
     pkg_log = self.start_building_package("HDF5")
     hdf5pkg = self.fetch_package(pkg_name=HDF5_PKG, pkg_url=BASE_HDF5_PKG_URL)
     if self.check_download_only(HDF5_PKG): return
     self.untar_and_chdir(pkg=hdf5pkg, log=pkg_log)
-    print >> pkg_log, "Building base HDF5 library..."
+    print("Building base HDF5 library...", file=pkg_log)
     make_args = []
     # XXX the HDF5 library uses '//' for comments, which will break if the
     # compiler doesn't support C99 by default.  for some bizarre reason this
@@ -1185,7 +1217,7 @@ _replace_sysconfig_paths(build_time_vars)
       'h5py', package_version=H5PY_VERSION,
       confirm_import_module='h5py', extra_options=["--no-binary=h5py"])
 
-  def build_openssl(self) :
+  def build_openssl(self):
     # https://wiki.openssl.org/index.php/Compilation_and_Installation#Configure_.26_Config
     # http://stackoverflow.com/a/20740964
 
@@ -1219,8 +1251,8 @@ _replace_sysconfig_paths(build_time_vars)
                               'import certifi; print(certifi.where())'])
     cert_file = cert_file.strip()
     os.environ['SSL_CERT_FILE'] = cert_file
-    print >> self.log, 'SSL_CERT_FILE environment variable set to %s' % \
-      cert_file
+    print('SSL_CERT_FILE environment variable set to %s' % \
+      cert_file, file=self.log)
 
   def build_freetype(self):
     self.build_compiled_package_simple(
@@ -1263,7 +1295,7 @@ _replace_sysconfig_paths(build_time_vars)
     if self.check_download_only(GLIB_PKG): return
 
     # Mock executables.
-    if (not op.isdir(op.join(self.base_dir, "bin"))) :
+    if (not op.isdir(op.join(self.base_dir, "bin"))):
       os.makedirs(op.join(self.base_dir, "bin"))
     msgfmt_bin = op.join(self.base_dir, "bin", "msgfmt")
     gettext_bin = op.join(self.base_dir, "bin", "xgettext")
@@ -1296,9 +1328,9 @@ _replace_sysconfig_paths(build_time_vars)
     if self.check_download_only(FONTCONFIG_PKG): return
     self.untar_and_chdir(pkg=pkg, log=pkg_log)
     # Create font directories.
-    if (not op.isdir(op.join(self.base_dir, "share", "fonts"))) :
+    if (not op.isdir(op.join(self.base_dir, "share", "fonts"))):
       os.makedirs(op.join(self.base_dir, "share", "fonts"))
-    if (not op.isdir(op.join(self.base_dir,"etc","fonts"))) :
+    if (not op.isdir(op.join(self.base_dir,"etc","fonts"))):
       os.makedirs(op.join(self.base_dir,"etc","fonts"))
     fc_config_args = [ self.prefix,
       "--disable-docs",
@@ -1317,18 +1349,18 @@ _replace_sysconfig_paths(build_time_vars)
     actual_directory = op.join(self.base_dir, 'share', 'fontconfig',
                                'conf.avail')
     actual_files = os.listdir(actual_directory)
-    print >> self.log, '\n  Fixing symbolic links in %s' % link_directory
+    print('\n  Fixing symbolic links in %s' % link_directory, file=self.log)
     for link in link_files:
       if ('conf' in link):     # ignore README
         link_file = op.join(link_directory, link)
         actual_file = op.join(actual_directory, link)
-        print >> self.log, '    ', link
+        print('    ', link, file=self.log)
         self.call('rm -f %s' % link_file)
         if (op.isfile(actual_file)):
           self.call('cp %s %s' % (actual_file, link_file))
 
     # remove hard-coded cache directory from base/etc/fonts/fonts.conf
-    print >> self.log, '\n  Removing hard-coded cache directory from fonts.conf'
+    print('\n  Removing hard-coded cache directory from fonts.conf', file=self.log)
     cache_directory = op.join(self.base_dir, 'var', 'cache', 'fontconfig')
     fonts_directory = op.join(self.base_dir, 'etc', 'fonts')
     old_conf = open(op.join(fonts_directory, 'fonts.conf'), 'r')
@@ -1375,7 +1407,7 @@ _replace_sysconfig_paths(build_time_vars)
       old_cflags = os.environ.get('CXXFLAGS', '')
       os.environ['CXXFLAGS'] = old_cflags + ' -march=i686'
 
-    for pkg, name in zip([CAIRO_PKG, HARFBUZZ_PKG],["cairo", "harfbuzz"]) :
+    for pkg, name in zip([CAIRO_PKG, HARFBUZZ_PKG],["cairo", "harfbuzz"]):
       self.build_compiled_package_simple(pkg_name=pkg, pkg_name_label=name)
     self.build_compiled_package_simple(
       pkg_name=PANGO_PKG, pkg_name_label="pango",
@@ -1423,23 +1455,17 @@ _replace_sysconfig_paths(build_time_vars)
     if self.check_download_only("fonts"): return
 
     share_dir = op.join(self.base_dir, "share")
-    if (not op.isdir(share_dir)) :
+    if (not op.isdir(share_dir)):
       os.makedirs(share_dir)
     os.chdir(share_dir)
     untar(pkg, log=fonts_log, verbose=True)
     os.chdir(self.tmp_dir)
 
   def build_wxpython(self):
-    if self.wxpython4:
-      print "Building wxPython4 is currently not supported and will most " \
-            "likely fail until wxPython 4.0.2 is released"
-      # 4.0.2 will contain the fix for https://github.com/wxWidgets/Phoenix/issues/780
+    if self.wxpython4 or self.python3:
       self.build_python_module_pip(
-        'wxPython', package_version="4.0.1",
+        'wxPython', package_version="4.0.3",
         confirm_import_module='wx')
-      return
-    if self.python3:
-      print "Skipping installation of wxPython3 - no point doing this on Python3"
       return
 
     pkg_log = self.start_building_package("wxPython")
@@ -1460,18 +1486,18 @@ _replace_sysconfig_paths(build_time_vars)
                                  " /usr/lib/i386-linux-gnu" +
                                  " /usr/lib/x86_64-linux-gnu", ))
 
-    if (self.flag_is_mac and get_os_version() in ("10.10", "10.11", "10.12", "10.13")) :
+    if self.flag_is_mac and get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 10:
       # Workaround wxwidgets 3.0.2 compilation error on Yosemite
       # This will be fixed in 3.0.3.
       # See:
       #   http://trac.wxwidgets.org/ticket/16329
       #   http://goharsha.com/blog/compiling-wxwidgets-3-0-2-mac-os-x-yosemite/
-      print >> self.log, "  patching src/osx/webview_webkit.mm"
+      print("  patching src/osx/webview_webkit.mm", file=self.log)
       self.patch_src(src_file="src/osx/webview_webkit.mm",
                      target=("#include <WebKit/WebKit.h>",),
                      replace_with=("#include <WebKit/WebKitLegacy.h>",))
 
-    if (self.flag_is_mac and get_os_version() in ("10.12", "10.13")) :
+    if self.flag_is_mac and get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 12:
       # Workaround wxwidgets 3.0.2 compilation error on Sierra
       # QuickTime Framework deprecated in OS X v10.9
       # See:
@@ -1479,7 +1505,7 @@ _replace_sysconfig_paths(build_time_vars)
       #   http://trac.wxwidgets.org/changeset/f6a2d1caef5c6d412c84aa900cb0d3990b350938/git-wxWidgets
       #   https://developer.apple.com/library/content/documentation/MacOSX/Conceptual/OSX_Technology_Overview/SystemFrameworks/SystemFrameworks.html
       for src_file in ("src/osx/core/bitmap.cpp", "src/osx/carbon/dataobj.cpp"):
-        print >> self.log, "  patching %s" %src_file
+        print("  patching %s" %src_file, file=self.log)
         self.patch_src(src_file=src_file,
                        target=("#include <QuickTime/QuickTime.h>",),
                        replace_with=("",))
@@ -1494,17 +1520,17 @@ _replace_sysconfig_paths(build_time_vars)
       "--with-libjpeg=builtin", # Prevents system version, https://github.com/dials/dials/issues/523
     ]
 
-    if (self.options.debug) :
+    if (self.options.debug):
       config_opts.extend(["--disable-optimize",
                           "--enable-debug"])
-      if (self.flag_is_linux) :
+      if (self.flag_is_linux):
         config_opts.append("--disable-debug_gdb")
     else :
       config_opts.extend(["--enable-optimize",
                           "--disable-debugreport"])
 
-    # if (cocoa) :
-    if (self.flag_is_mac) :
+    # if (cocoa):
+    if (self.flag_is_mac):
       config_opts.extend([
         "--with-osx_cocoa",
         "--with-macosx-version-min=%s" % self.min_macos_version,
@@ -1512,14 +1538,14 @@ _replace_sysconfig_paths(build_time_vars)
         "--enable-monolithic",
         "--disable-mediactrl"
       ])
-      if (get_os_version() in ('10.12', '10.13')):
+      if get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 12:
         # See https://trac.wxwidgets.org/ticket/17929 fixed for wxWidgets 3.0.4
         # Does not affect 10.12, but using macro does not hurt
         # Also, -stdlib flag breaks things on Xcode 9, so leave it out.
         config_opts.append('CPPFLAGS="-D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1 %s"' % self.min_macos_version_flag)
         config_opts.append('LDFLAGS="%s"' % self.min_macos_version_flag)
 
-    elif (self.flag_is_linux) :
+    elif (self.flag_is_linux):
       config_opts.extend([
         "--with-gtk",
         "--with-gtk-prefix=\"%s\"" % self.base_dir,
@@ -1531,9 +1557,9 @@ _replace_sysconfig_paths(build_time_vars)
       ])
 
     install_gizmos = False #True
-    print >> self.log, "  building wxWidgets with options:"
+    print("  building wxWidgets with options:", file=self.log)
     for opt in config_opts :
-      print >> self.log, "    %s" % opt
+      print("    %s" % opt, file=self.log)
     self.call("./configure %s" % " ".join(config_opts), log=pkg_log)
     self.call("make -j %d" % self.nproc, log=pkg_log)
     self.call("make install", log=pkg_log)
@@ -1551,7 +1577,7 @@ _replace_sysconfig_paths(build_time_vars)
       wxpy_build_opts.extend(["BUILD_STC=1",
                               "WXPORT=osx_cocoa"])
       # Xcode 9 fails with -stdlib flag
-      if (get_os_version() in ('10.12', '10.13')):
+      if get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 12:
         os.environ['CPPFLAGS'] = self.min_macos_version_flag
         os.environ['LDFLAGS'] = self.min_macos_version_flag
     else :
@@ -1560,11 +1586,11 @@ _replace_sysconfig_paths(build_time_vars)
                               "WX_CONFIG=%s/bin/wx-config" %self.base_dir])
     self.chdir("wxPython", log=pkg_log)
     debug_flag = ""
-    if (self.options.debug) :
+    if (self.options.debug):
       debug_flag = "--debug"
-    print >> self.log, "  building wxPython with options:"
+    print("  building wxPython with options:", file=self.log)
     for opt in wxpy_build_opts :
-      print >> self.log, "    %s" % opt
+      print("    %s" % opt, file=self.log)
     self.call("%s setup.py %s build_ext %s" % (self.python_exe,
       " ".join(wxpy_build_opts), debug_flag), log=pkg_log)
     self.call("%s setup.py %s install" % (self.python_exe,
@@ -1572,8 +1598,8 @@ _replace_sysconfig_paths(build_time_vars)
     self.verify_python_module("wxPython", "wx")
 
   def build_matplotlib(self):
-    def patch_matplotlib_src (out) :
-      print >> out, "  patching setup.cfg"
+    def patch_matplotlib_src(out):
+      print("  patching setup.cfg", file=out)
       self.patch_src(src_file="setup.cfg.template",
                      output_file="setup.cfg",
                      target=("#backend = Agg", "#basedirlist = /usr"),
@@ -1599,7 +1625,7 @@ _replace_sysconfig_paths(build_time_vars)
       callback_before_build=patch_matplotlib_src,
       confirm_import_module="matplotlib")
 
-  def build_misc (self) :
+  def build_misc(self):
     if not self.python3: # This module will never be Python3 compatible
      self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
@@ -1615,10 +1641,10 @@ _replace_sysconfig_paths(build_time_vars)
       )#confirm_import_module="send2trash")
 
   # TODO
-  def write_dispatcher_include (self) :
+  def write_dispatcher_include(self):
     raise NotImplementedError()
 
-def check_wxpython_build_dependencies (log=sys.stderr) :
+def check_wxpython_build_dependencies(log=sys.stderr):
   try :
     call(["pkg-config", "--version"], log=log)
   except RuntimeError :
@@ -1637,7 +1663,7 @@ Please install bash to compile these components, or use the --no-gui option
 to disable GUI compilation.
 """
   if (not op.exists("/usr/include/X11/X.h") and
-      not op.exists("/usr/X11R6/include/X11/X.h")) :
+      not op.exists("/usr/X11R6/include/X11/X.h")):
     return """
 ERROR: The X-windows headers appear to be missing
 Please install the X11 development packages to compile the GUI components,

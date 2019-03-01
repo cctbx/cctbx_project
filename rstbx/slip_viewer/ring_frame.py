@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # $Id$
@@ -7,7 +8,7 @@ import wx
 
 
 class RingSettingsFrame(wx.MiniFrame):
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     super(RingSettingsFrame, self).__init__(*args, **kwds)
     szr = wx.BoxSizer(wx.VERTICAL)
     panel = RingSettingsPanel(self)
@@ -21,7 +22,7 @@ class RingSettingsFrame(wx.MiniFrame):
 
 
 class RingSettingsPanel(wx.Panel):
-  def __init__ (self, *args, **kwds) :
+  def __init__(self, *args, **kwds):
     # XXX Support several rings.  Plot radial distribution somewhere
     # (not here), but maybe distribution along ring.  Drop-down menu
     # for ring center, and button to reset to beam center.
@@ -184,8 +185,8 @@ class RingSettingsPanel(wx.Panel):
             best = total
             bestc = [self._center[0]+i,self._center[1]+j]
             bestr = self._radius+r
-          print "r: % 3.1f, i: % 3.1f, j: % 3.1f, best: %f"%(r, i, j, best)
-    print "DONE", bestc, bestr
+          print("r: % 3.1f, i: % 3.1f, j: % 3.1f, best: %f"%(r, i, j, best))
+    print("DONE", bestc, bestr)
     self._radius = bestr
     self._center = bestc
 

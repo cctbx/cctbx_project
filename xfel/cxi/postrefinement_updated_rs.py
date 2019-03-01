@@ -168,7 +168,7 @@ class updated_rs(legacy_rs):
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
     # in samosa, handle this at a higher level, but handle it somehow.
     if fat_count < 3:
-      raise ValueError, "< 3 near-fulls after refinement"
+      raise ValueError("< 3 near-fulls after refinement")
     print >> self.out, "On total %5d the fat selection is %5d"%(
       len(self.observations_pair1_selected.indices()), fat_count)
     observations_original_index = \
@@ -189,6 +189,7 @@ class updated_rs(legacy_rs):
     I_weight.set_selected(I_invalid,0.)
     SWC = simple_weighted_correlation(I_weight, I_reference, observations.data())
     print >> self.out, "CORR: NEW correlation is", SWC.corr
+    print >> self.out, "ASTAR_FILE",file_name,tuple(self.refinery.get_eff_Astar(values))
     self.final_corr = SWC.corr
     self.refined_mini = self.MINI
     #another range assertion

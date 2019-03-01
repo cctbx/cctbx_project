@@ -52,7 +52,7 @@ standard_file_extensions = {
   'aln'  : ["aln", "ali", "clustal"],
   'hhr'  : ["hhr"],
   'ncs'  : ["ncs","ncs_spec"],
-  'img'  : ["img", "osc", "mccd", "cbf"],
+  'img'  : ["img", "osc", "mccd", "cbf", "nxs", "h5", "hdf5"],
   # XXX these are not supported by this module, but are used in Phenix, so we
   # need to be able to include them in GUI tools in wxtbx.
   'smi' : ['smi'],
@@ -90,83 +90,83 @@ binary_types = ["hkl","ccp4_map","img","pkl"]
 ascii_types = ["hkl","xplor_map","pdb","cif","phil","hhr", "ncs", "aln",
    "seq", "xml", "txt"]
 
-def get_wildcard_string (format) :
+def get_wildcard_string(format):
   assert (format in standard_file_extensions), format
   wildcards = [ "*.%s" % ext for ext in standard_file_extensions[format] ]
   wildcard_str = "%s file (%s)|%s" % (standard_file_descriptions[format],
     ", ".join(wildcards), ";".join(wildcards))
   return wildcard_str
 
-def get_wildcard_strings (formats, include_any=True) :
+def get_wildcard_strings(formats, include_any=True):
   wildcards = [ get_wildcard_string(format) for format in formats ]
-  if (include_any) :
-    if (sys.platform != "darwin") :
+  if (include_any):
+    if (sys.platform != "darwin"):
       wildcards.insert(0, "All files (*.*)|*.*")
     else :
       wildcards.append("All files (*.*)|*.*")
   wildcards_str = "|".join(wildcards)
   return wildcards_str
 
-class FormatError (Sorry) :
+class FormatError(Sorry):
   pass
 
-def strip_shelx_format_extension (file_name) :
+def strip_shelx_format_extension(file_name):
   if (file_name.endswith("=hklf3") or file_name.endswith("=hklf4") or
-      file_name.endswith("=amplitudes") or file_name.endswith("=intensities")) :
+      file_name.endswith("=amplitudes") or file_name.endswith("=intensities")):
     file_name = "".join(file_name.split("=")[:-1])
   return file_name
 
-def splitext (file_name) :
+def splitext(file_name):
   # XXX The same function name exists ~100 lines below. This one is not
   # used because the latter overwrites it.
   file_name = strip_shelx_format_extension(file_name)
   base, ext = os.path.splitext(file_name)
-  if (ext == ".gz") :
+  if (ext == ".gz"):
     base, ext = os.path.splitext(base)
   return base, ext
 
-def guess_file_type (file_name, extensions=standard_file_extensions) :
+def guess_file_type(file_name, extensions=standard_file_extensions):
   base, ext = splitext(file_name)
-  if (ext == "") :
+  if (ext == ""):
     return None
   if (ext == ".mtz") : # XXX gross
     return "hkl"
-  for known_type, known_extensions in extensions.iteritems() :
+  for known_type, known_extensions in extensions.iteritems():
     if ext[1:] in known_extensions :
       return known_type
   return None
 
-def sort_by_file_type (file_names, sort_order=None) :
-  if (sort_order is None) :
+def sort_by_file_type(file_names, sort_order=None):
+  if (sort_order is None):
     sort_order = standard_file_types
-  def _score_extension (ext) :
-    for n, format in enumerate(sort_order) :
+  def _score_extension(ext):
+    for n, format in enumerate(sort_order):
       extensions = standard_file_extensions.get(format, [])
-      if (ext[1:] in extensions) :
+      if (ext[1:] in extensions):
         return len(sort_order) - n
     return 0
-  def _sort (f1, f2) :
+  def _sort(f1, f2):
     base1, ext1 = splitext(f1)
     base2, ext2 = splitext(f2)
     s1 = _score_extension(ext1)
     s2 = _score_extension(ext2)
-    if (s1 > s2) :
+    if (s1 > s2):
       return -1
-    elif (s2 > s1) :
+    elif (s2 > s1):
       return 1
     else :
       return 0
   file_names.sort(_sort)
   return file_names
 
-def any_file (file_name,
+def any_file(file_name,
               get_processed_file=False,
               valid_types=supported_file_types,
               allow_directories=False,
               force_type=None,
               input_class=None,
               raise_sorry_if_errors=False,
-              raise_sorry_if_not_expected_format=False) :
+              raise_sorry_if_not_expected_format=False):
   """
   Main input method, wrapper for any_file_input class.
 
@@ -185,16 +185,16 @@ def any_file (file_name,
   """
   file_name_raw = file_name
   file_name = strip_shelx_format_extension(file_name)
-  if (file_name != file_name_raw) and (force_type is None) :
+  if (file_name != file_name_raw) and (force_type is None):
     force_type = "hkl"
-  if not os.path.exists(file_name) :
+  if not os.path.exists(file_name):
     raise Sorry("Couldn't find the file %s" % file_name)
-  elif os.path.isdir(file_name) :
+  elif os.path.isdir(file_name):
     if not allow_directories :
       raise Sorry("This application does not support folders as input.")
     else :
       return directory_input(file_name)
-  elif not os.path.isfile(file_name) :
+  elif not os.path.isfile(file_name):
     raise Sorry("%s is not a valid file.")
   else :
     if input_class is None :
@@ -206,17 +206,17 @@ def any_file (file_name,
       raise_sorry_if_errors=raise_sorry_if_errors,
       raise_sorry_if_not_expected_format=raise_sorry_if_not_expected_format)
 
-def splitext (file_name) :
+def splitext(file_name):
   # The same function name exists ~100 lines before.
   # This one is actually used.
   (file_base, file_ext) = os.path.splitext(file_name)
   if file_ext in [".gz"] : # XXX: does this work for anything other than pdb?
     (base2, ext2) = os.path.splitext(file_base)
-    if (ext2 in [".pdb", ".ent", ".cif"]) :
+    if (ext2 in [".pdb", ".ent", ".cif"]):
       file_ext = ext2
   return (file_base, file_ext)
 
-class any_file_input (object) :
+class any_file_input(object):
   """
   Container for file data of any supported type.  Usually obtained via the
   any_file() function rather than being instantiated directly.
@@ -225,7 +225,7 @@ class any_file_input (object) :
   __extensions__ = standard_file_extensions
   __descriptions__ = standard_file_descriptions
 
-  def __init__ (self,
+  def __init__(self,
       file_name,
       get_processed_file,
       valid_types,
@@ -246,13 +246,13 @@ class any_file_input (object) :
     self.get_processed_file = get_processed_file
     (file_base, file_ext) = splitext(file_name)
     file_ext = file_ext.lower()
-    if (force_type not in [None, "None"]) :
+    if (force_type not in [None, "None"]):
       read_method = getattr(self, "_try_as_%s" % force_type, None)
-      if (read_method is None) :
+      if (read_method is None):
         raise Sorry("Couldn't force file type to '%s' - unrecognized format." %
                     force_type)
       else :
-        if (raise_sorry_if_errors) :
+        if (raise_sorry_if_errors):
           try :
             read_method()
           except Exception, e :
@@ -266,7 +266,7 @@ class any_file_input (object) :
       # isntead of trying the limited set of parsers which won't work.
       for file_type in valid_types :
         if ((file_ext[1:] in self.__extensions__[file_type]) and
-            (not file_ext in [".txt"])) :
+            (not file_ext in [".txt"])):
           read_method = getattr(self, "_try_as_%s" % file_type)
           self._tried_types.append(file_type)
           try :
@@ -279,7 +279,7 @@ class any_file_input (object) :
             # XXX we need to be a little careful about what extensions we
             # do this for - they are not necessarily all unambiguous!
             if ((raise_sorry_if_not_expected_format) and
-                (file_ext in [".pdb",".mtz",".cif",".sca",".xml",".phil"])) :
+                (file_ext in [".pdb",".mtz",".cif",".sca",".xml",".phil"])):
               raise Sorry("File format error:\n" + str(e))
             self._errors[file_type] = str(e)
             self._file_type = None
@@ -292,11 +292,11 @@ class any_file_input (object) :
       self.file_description = self.__descriptions__[self.file_type]
 
   @property
-  def file_name (self) :
+  def file_name(self):
     return self._file_name
 
   @property
-  def file_type (self) :
+  def file_type(self):
     """
     Return a string representing the generic data type, for example 'pdb' or
     'hkl'.  Note that this is not necessarily the same as the underlying
@@ -305,21 +305,21 @@ class any_file_input (object) :
     """
     return self._file_type
 
-  def set_file_type (self, file_type) :
+  def set_file_type(self, file_type):
     self._file_type = file_type
 
   @property
-  def file_object (self) :
+  def file_object(self):
     """Synonym for file_content()"""
     return self._file_object
 
   @property
-  def file_content (self) :
+  def file_content(self):
     """Return the underlying format-specific object containing file data."""
     return self._file_object
 
   @property
-  def file_server (self) :
+  def file_server(self):
     """
     For reflection files only, returns an
     :py:class:`iotbx.reflection_file_utils.reflection_file_server` object
@@ -327,8 +327,8 @@ class any_file_input (object) :
     merge any non-unique observations.
     """
     from iotbx.reflection_file_utils import reflection_file_server
-    if (self._file_server is None) :
-      if (self._file_type == "hkl") :
+    if (self._file_server is None):
+      if (self._file_type == "hkl"):
         self._file_server = reflection_file_server(
           crystal_symmetry=None,
           force_symmetry=True,
@@ -336,7 +336,7 @@ class any_file_input (object) :
           err=sys.stderr)
     return self._file_server
 
-  def _try_as_pdb (self) :
+  def _try_as_pdb(self):
     """
     PDB parser, actually tries both 'classic' PDB and mmCIF formats.
     """
@@ -345,12 +345,12 @@ class any_file_input (object) :
       pdb_inp = iotbx.pdb.hierarchy.input(self.file_name)
     except ValueError, e :
       raise Sorry(str(e))
-    if (pdb_inp.hierarchy.models_size() == 0) :
+    if (pdb_inp.hierarchy.models_size() == 0):
       raise ValueError("No ATOM or HETATM records found in %s."%self.file_name)
     self._file_type = "pdb"
     self._file_object = pdb_inp
 
-  def _try_as_hkl (self) :
+  def _try_as_hkl(self):
     from iotbx.reflection_file_reader import any_reflection_file
     # XXX this is unfortunate, but unicode breaks Boost.Python extensions
     hkl_file = any_reflection_file(str(self.file_name))
@@ -358,7 +358,7 @@ class any_file_input (object) :
     self._file_type = "hkl"
     self._file_object = hkl_file
 
-  def _try_as_cif (self) :
+  def _try_as_cif(self):
     # XXX hack to avoid choking on CCP4 maps and images
     file_ext = os.path.splitext(self.file_name)[1]
     assert (not file_ext in [".ccp4", ".img", ".osc", ".mccd"])
@@ -375,19 +375,23 @@ class any_file_input (object) :
         cif_in = cif_input(file_name=self.file_name)
         self._file_object = input_hierarchy_pair(cif_in, cif_in.hierarchy)
         self._file_type = "pdb"
-      except Exception, e:
-        self._file_object = iotbx.cif.reader(file_path=self.file_name,
-          strict=False)
-        self._file_type = "cif"
+      except Exception as e:
+        if (str(e).startswith("Space group is incompatible") or
+            str(e).startswith("The space group") ):
+          raise
+        else:
+          self._file_object = iotbx.cif.reader(file_path=self.file_name,
+            strict=False)
+          self._file_type = "cif"
 
-  def _try_as_phil (self) :
+  def _try_as_phil(self):
     from iotbx.phil import parse as parse_phil
     phil_object = parse_phil(file_name=self.file_name, process_includes=True)
     assert (len(phil_object.objects) > 0), "Empty parameter file."
     self._file_type = "phil"
     self._file_object = phil_object
 
-  def _try_as_seq (self) :
+  def _try_as_seq(self):
     # XXX hack to avoid choking on CCP4 maps
     assert (not self.file_name.endswith(".ccp4"))
     # XXX hack to avoid choking on NCS files:
@@ -403,7 +407,7 @@ class any_file_input (object) :
     self._file_object = objects
 #    self._try_as_txt()
 #    assert len(self._file_object) != 0
-#    for _line in self._file_object.splitlines() :
+#    for _line in self._file_object.splitlines():
 #      assert not _line.startswith(" ")
 #      line = re.sub(" ", "", _line)
 #      assert ((len(line) == 0) or
@@ -413,56 +417,56 @@ class any_file_input (object) :
 #              line.isalpha())
     self._file_type = "seq"
 
-  def _try_as_hhr (self) :
+  def _try_as_hhr(self):
     from iotbx.bioinformatics import any_hh_file
     hh_object = any_hh_file(self.file_name)
     assert (not hh_object.query in ["", None])
     self._file_object = hh_object
     self._file_type = "hhr"
 
-  def _try_as_aln (self) :
+  def _try_as_aln(self):
     from iotbx.bioinformatics import any_alignment_file
     aln_object = any_alignment_file(self.file_name)
     self._file_object = aln_object
     self._file_type = "aln"
 
-  def _try_as_xplor_map (self) :
+  def _try_as_xplor_map(self):
     import iotbx.xplor.map
     map_object = iotbx.xplor.map.reader(file_name=str(self.file_name))
     self._file_type = "xplor_map"
     self._file_object = map_object
 
-  def _try_as_ccp4_map (self) :
-    import iotbx.ccp4_map
-    map_object = iotbx.ccp4_map.map_reader(file_name=str(self.file_name))
+  def _try_as_ccp4_map(self):
+    import iotbx.mrcfile
+    map_object = iotbx.mrcfile.map_reader(file_name=str(self.file_name))
     self._file_type = "ccp4_map"
     self._file_object = map_object
 
-  def _try_as_pkl (self) :
+  def _try_as_pkl(self):
     pkl_object = cPickle.load(open(self.file_name, "rb"))
     self._file_type = "pkl"
     self._file_object = pkl_object
 
-  def _try_as_txt (self) :
+  def _try_as_txt(self):
     file_as_string = open(self.file_name).read()
     file_as_ascii = to_str(file_as_string)
     self._file_type = "txt"
     self._file_object = file_as_string
 
-  def _try_as_xml (self) :
+  def _try_as_xml(self):
     import xml.dom.minidom
     xml_in = xml.dom.minidom.parse(self.file_name)
     self._file_type = "xml"
     self._file_object = xml_in
 
-  def _try_as_img (self) :
+  def _try_as_img(self):
     from iotbx.detectors import ImageFactory
     img = ImageFactory(self.file_name)
     img.read()
     self._file_type = "img"
     self._file_object = img
 
-  def _try_as_ncs (self) :
+  def _try_as_ncs(self):
     from mmtbx.ncs.ncs import ncs
     from libtbx.utils import null_out
     ncs_object=ncs()
@@ -476,7 +480,7 @@ class any_file_input (object) :
     self._file_object = ncs_object
     self._file_type = "ncs"
 
-  def try_all_types (self) :
+  def try_all_types(self):
     for filetype in self.valid_types :
       if (filetype in self._tried_types) : continue
       read_method = getattr(self, "_try_as_%s" % filetype)
@@ -485,6 +489,9 @@ class any_file_input (object) :
       except KeyboardInterrupt :
         raise
       except Exception, e :
+        if (str(e).startswith("Space group is incompatible") or
+            str(e).startswith("The space group") ):
+          raise
         self._errors[filetype] = str(e)
         self._file_type = None
         self._file_object = None
@@ -511,7 +518,7 @@ class any_file_input (object) :
     else:
       raise NotImplementedError()
 
-  def file_info (self, show_file_size=True) :
+  def file_info(self, show_file_size=True):
     """
     Format a string containing the file type and size.
     """
@@ -534,33 +541,33 @@ class any_file_input (object) :
       return "%s%s" % (self.__descriptions__[self._file_type],
         file_size_str)
 
-  def assert_file_type (self, expected_type) :
+  def assert_file_type(self, expected_type):
     """
     Verify that the automatically determined file type is the expected format.
     """
-    if (expected_type is None) :
+    if (expected_type is None):
       return self
-    elif (self._file_type == expected_type) :
+    elif (self._file_type == expected_type):
       return self
     else :
       raise Sorry(("Expected file type '%s' for %s, got '%s'.  This is " +
         "almost certainly a bug; please contact the developers.") %
         (expected_type, str(self.file_name), str(self._file_type)))
 
-  def check_file_type (self, expected_type=None, multiple_formats=()) :
+  def check_file_type(self, expected_type=None, multiple_formats=()):
     """
     Verify that the automatically determined file type is the expected format,
     with the option to consider multiple formats.
     """
-    if (expected_type is not None) :
-      if (self._file_type != expected_type) :
+    if (expected_type is not None):
+      if (self._file_type != expected_type):
         raise Sorry(("This file format ('%s') is not supported as input for "+
           "this field; only files of type '%s' are allowed.") % (
           standard_file_descriptions.get(self._file_type, "Unknown"),
           standard_file_descriptions.get(expected_type, "Unknown")))
     else :
       assert (len(multiple_formats) > 0)
-      if (not self._file_type in multiple_formats) :
+      if (not self._file_type in multiple_formats):
         raise Sorry(("This file format ('%s') is not supported as input for "+
           "this field; only the following types are supported:\n  %s") % (
           standard_file_descriptions.get(self._file_type, "Unknown"),
@@ -568,49 +575,49 @@ class any_file_input (object) :
                         for f in multiple_formats ])))
     return self
 
-  def show_summary (self, out=sys.stdout) :
+  def show_summary(self, out=sys.stdout):
     """
     Print out some basic information about the file.
     """
-    if (self._file_type is None) :
+    if (self._file_type is None):
       print >> out, "File type could not be determined."
     else :
       print >> out, "File name: %s" % self.file_name
       print >> out, "Format: %s (%s)" % (self._file_type,
         standard_file_descriptions.get(self._file_type, "unknown"))
-    if (self._file_type == "pdb") :
+    if (self._file_type == "pdb"):
       print >> out, "Atoms in file: %d" % (len(self._file_object.input.atoms()))
       title = "\n".join(self._file_object.input.title_section())
-      if (title != "") :
+      if (title != ""):
         print >> out, "Title section:"
         print >> out, title
-    elif (self._file_type == "hkl") :
+    elif (self._file_type == "hkl"):
       for array in self.file_server.miller_arrays :
         print >> out, ""
         array.show_comprehensive_summary(f=out)
-    elif (self._file_type == "ccp4_map") :
+    elif (self._file_type == "ccp4_map"):
       self._file_object.show_summary(out)
 
-def any_file_fast (file_name,
+def any_file_fast(file_name,
               get_processed_file=False,
               valid_types=supported_file_types,
               allow_directories=False,
               force_type=None,
-              input_class=None) :
+              input_class=None):
   """
   mimics any_file, but without parsing - will instead guess the file type from
   the extension.  for most output files produced by cctbx/phenix this is
   relatively safe; for files of unknown provenance it is less effective.
   """
   assert (not get_processed_file) and (force_type is None)
-  if not os.path.exists(file_name) :
+  if not os.path.exists(file_name):
     raise Sorry("Couldn't find the file %s" % file_name)
-  elif os.path.isdir(file_name) :
+  elif os.path.isdir(file_name):
     if not allow_directories :
       raise Sorry("This application does not support folders as input.")
     else :
       return directory_input(file_name)
-  elif not os.path.isfile(file_name) :
+  elif not os.path.isfile(file_name):
     raise Sorry("%s is not a valid file.")
   else :
     if input_class is None :
@@ -618,10 +625,10 @@ def any_file_fast (file_name,
     return input_class(file_name=file_name,
       valid_types=valid_types)
 
-class any_file_fast_input (object) :
+class any_file_fast_input(object):
   __extensions__ = standard_file_extensions
   __descriptions__ = standard_file_descriptions
-  def __init__ (self, file_name, valid_types) :
+  def __init__(self, file_name, valid_types):
     self.valid_types = valid_types
     self.file_name = file_name
     self.file_object = None
@@ -637,32 +644,32 @@ class any_file_fast_input (object) :
     # XXX this is a huge hole in this method - for reflection files, the
     # PHENIX GUI displays the specific format, which requires actually reading
     # in the file.  the stub class below will work for obvious formats.
-    if (self.file_type == "hkl") :
-      class fake_data_object (object) :
-        def __init__ (self, ext) :
+    if (self.file_type == "hkl"):
+      class fake_data_object(object):
+        def __init__(self, ext):
           self.ext = ext
-        def file_type (self) :
+        def file_type(self):
           if (self.ext == ".mtz") : return "CCP4 MTZ"
           elif (self.ext == ".sca") : return "Scalepack"
           else : return "Data (other)"
       self.file_object = fake_data_object(file_ext)
 
-class directory_input (object) :
-  def __init__ (self, dir_name) :
+class directory_input(object):
+  def __init__(self, dir_name):
     self.file_name = dir_name
     self.file_object = dircache.listdir(dir_name)
     self.file_server = None
     self.file_type = "dir"
     self.file_size = os.path.getsize(dir_name)
 
-  def file_info (self, show_file_size=False) :
+  def file_info(self, show_file_size=False):
     return "Folder"
 
-class group_files (object) :
-  def __init__ (self,
+class group_files(object):
+  def __init__(self,
                 file_names,
                 template_format="pdb",
-                group_by_directory=True) :
+                group_by_directory=True):
     import iotbx.pdb
     self.file_names = file_names
     self.grouped_files = []
@@ -673,26 +680,26 @@ class group_files (object) :
     template_dirs = []
     for file_name in file_names :
       file_type = guess_file_type(file_name)
-      if (file_type == template_format) :
+      if (file_type == template_format):
         base, ext = splitext(file_name)
         templates.append(base)
         template_dirs.append(os.path.dirname(file_name))
         self.grouped_files.append([file_name])
       else :
         other_files.append(file_name)
-    if (len(templates) == 0) :
+    if (len(templates) == 0):
       raise Sorry("Can't find any files of the expected format ('%s')." %
         template_format)
-    if (len(set(templates)) != len(templates)) :
+    if (len(set(templates)) != len(templates)):
       raise Sorry("Multiple files with identical root names.")
     for file_name in other_files :
       group_name = find_closest_base_name(
         file_name=file_name,
         base_name=splitext(file_name)[0],
         templates=templates)
-      if (group_name == "") :
+      if (group_name == ""):
         self.ambiguous_files.append(file_name)
-      elif (group_name is not None) :
+      elif (group_name is not None):
         i = templates.index(group_name)
         self.grouped_files[i].append(file_name)
       else :
@@ -702,9 +709,9 @@ class group_files (object) :
             file_name=dir_name,
             base_name=dir_name,
             templates=template_dirs)
-          if (group_name == "") :
+          if (group_name == ""):
             self.ambiguous_files.append(file_name)
-          elif (group_name is not None) :
+          elif (group_name is not None):
             i = template_dirs.index(group_name)
             self.grouped_files[i].append(file_name)
           else :
@@ -712,19 +719,19 @@ class group_files (object) :
         else :
           self.ungrouped_files.append(file_name)
 
-def find_closest_base_name (file_name, base_name, templates) :
+def find_closest_base_name(file_name, base_name, templates):
   groups = []
   for base in templates :
-    if file_name.startswith(base) or base.startswith(base_name) :
+    if file_name.startswith(base) or base.startswith(base_name):
       groups.append(base)
-  if (len(groups) == 1) :
+  if (len(groups) == 1):
 #    print file_name, groups[0]
     return groups[0]
-  elif (len(groups) > 1) :
+  elif (len(groups) > 1):
 #    print file_name, groups
     prefix_len = [ os.path.commonprefix([g, file_name]) for g in groups ]
     max_common_prefix = max(prefix_len)
-    if (prefix_len.count(max_common_prefix) > 1) :
+    if (prefix_len.count(max_common_prefix) > 1):
       return ""
     else :
       return groups[ prefix_len.index(max_common_prefix) ]

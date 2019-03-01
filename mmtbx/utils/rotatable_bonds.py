@@ -62,13 +62,13 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
     external_clusters  = external_clusters,
     return_none_if_unexpected_degrees_of_freedom = True)
   # FIXME atom_group objects have no id_str
-  def format_atom_group_id_str (residue) :
+  def format_atom_group_id_str(residue):
     assert (type(residue).__name__ == "atom_group")
     return '"%3s %s%4s%s"' % (residue.resname, residue.parent().parent().id,
       residue.parent().resseq, residue.parent().icode)
   if(tardy_model is None):
     mes = "TARDY: cannot create tardy model for: %s (corrupted residue). Skipping it."
-    if (hasattr(residue, "id_str")) :
+    if (hasattr(residue, "id_str")):
       print >> log, mes%residue.id_str(suppress_segid=1)[-12:]
     else :
       print >> log, mes%format_atom_group_id_str(residue)
@@ -76,7 +76,7 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
   joint_dofs = tardy_model.degrees_of_freedom_each_joint()
   if(joint_dofs[0] != 0 or not joint_dofs[1:].all_eq(1)):
     mes = "TARDY error: unexpected degrees of freedom for %s. Skipping it."
-    if (hasattr(residue, "id_str")) :
+    if (hasattr(residue, "id_str")):
       print >> log, mes%residue.id_str(suppress_segid=1)[-12:]
     else :
       print >> log, mes%format_atom_group_id_str(residue)

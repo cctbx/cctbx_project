@@ -33,7 +33,7 @@ from xfel.ui.db.xfel_db import xfel_db_application
 
 from prime.postrefine.mod_gui_frames import PRIMEInputWindow, PRIMERunWindow
 from prime.postrefine.mod_input import master_phil
-from iota.components import iota_misc as misc
+from iota.components import iota_utils as util
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 user = os.getlogin()
@@ -78,6 +78,10 @@ class RunSentinel(Thread):
     self.parent = parent
     self.active = active
 
+    if self.parent.params.facility.name == 'standalone':
+      from xfel.ui.db.xfel_db import cheetah_run_finder
+      self.finder = cheetah_run_finder(self.parent.params)
+
   def post_refresh(self):
     evt = RefreshRuns(tp_EVT_RUN_REFRESH, -1)
     wx.PostEvent(self.parent.run_window.runs_tab, evt)
@@ -91,19 +95,33 @@ class RunSentinel(Thread):
     while self.active:
       # Find the delta
       known_runs = [r.run for r in db.get_all_runs()]
-      unknown_runs = [run['run'] for run in db.list_lcls_runs() if
-                      run['run'] not in known_runs]
+      if self.parent.params.facility.name == 'lcls':
+        unknown_run_runs = [str(run['run']) for run in db.list_lcls_runs() if
+                            str(run['run']) not in known_runs]
+        unknown_run_paths = [''] * len(unknown_run_runs)
+      elif self.parent.params.facility.name == 'standalone':
+        standalone_runs = [run for run in self.finder.list_standalone_runs() if
+                           run[0] not in known_runs]
+        unknown_run_runs = [r[0] for r in standalone_runs]
+        unknown_run_paths = [r[1] for r in standalone_runs]
 
-      if len(unknown_runs) > 0:
-        for run_number in unknown_runs:
-          db.create_run(run = run_number)
-        new_runs = [r for r in db.get_all_runs() if int(r.run) in unknown_runs]
+      if len(unknown_run_runs) > 0:
+        for run_run, run_path in zip(unknown_run_runs, unknown_run_paths):
+          db.create_run(run = run_run, path = run_path)
+        new_runs = [r for r in db.get_all_runs() if r.run in unknown_run_runs]
         if len(self.parent.run_window.runs_tab.persistent_tags) > 0:
           tags = [t for t in db.get_all_tags() if t.name in self.parent.run_window.runs_tab.persistent_tags]
           for r in new_runs:
             for t in tags:
               r.add_tag(t)
-        print "%d new runs" % len(unknown_runs)
+        # Sync new runs to rungroups
+        for rungroup in db.get_all_rungroups(only_active=True):
+          first_run, last_run = rungroup.get_first_and_last_runs()
+          if first_run is not None: first_run = first_run.id
+          if last_run is not None: last_run = last_run.id
+          rungroup.sync_runs(first_run, last_run)
+
+        print "%d new runs" % len(unknown_run_runs)
         self.post_refresh()
       time.sleep(10)
 
@@ -138,13 +156,13 @@ class JobMonitor(Thread):
     wx.PostEvent(self.parent.run_window.jobs_tab, evt)
 
   def run(self):
-    from xfel.ui.components.submission_tracker import SubmissionTracker
+    from xfel.ui.components.submission_tracker import TrackerFactory
 
     # one time post for an initial update
     self.post_refresh()
 
     db = xfel_db_application(self.parent.params)
-    tracker = SubmissionTracker(self.parent.params)
+    tracker = TrackerFactory.from_params(self.parent.params)
 
     while self.active:
       self.parent.run_window.jmn_light.change_status('idle')
@@ -460,9 +478,13 @@ class RunStatsSentinel(Thread):
 
   def get_xtc_process_params_for_run(self, trial, rg, run):
     params = {}
-    params['experiment'] = str(self.parent.db.params.experiment)
-    params['output_dir'] = os.path.join(str(self.parent.db.params.output_folder),
-      "r%04d"%(run.run), "%03d_rg%03d"%(trial.trial, rg.rungroup_id), "all")
+    params['experiment'] = str(self.parent.db.params.facility.lcls.experiment)
+    try:
+      params['output_dir'] = os.path.join(str(self.parent.db.params.output_folder),
+        "r%04d"%(int(run.run)), "%03d_rg%03d"%(trial.trial, rg.rungroup_id), "all")
+    except ValueError:
+      params['output_dir'] = os.path.join(str(self.parent.db.params.output_folder),
+        "r%s"%(run.run), "%03d_rg%03d"%(trial.trial, rg.rungroup_id), "all")
     params['run'] = run.run
     params['address'] = rg.detector_address
     params['format'] = rg.format
@@ -1123,8 +1145,11 @@ class MainWindow(wx.Frame):
 
     if (settings_dlg.ShowModal() == wx.ID_OK):
       self.params = settings_dlg.params
-      self.title = 'CCTBX.XFEL | {} | {}'.format(self.params.experiment_tag,
-                                                 self.params.experiment)
+      if self.params.facility.name == 'lcls':
+        self.title = 'CCTBX.XFEL | {} | {}'.format(self.params.experiment_tag,
+                                                   self.params.facility.lcls.experiment)
+      else:
+        self.title = 'CCTBX.XFEL | {}'.format(self.params.experiment_tag)
 
   def onZoom(self, e):
     self.high_vis = not self.high_vis
@@ -1357,11 +1382,18 @@ class RunTab(BaseTab):
     mptag_dlg.Destroy()
 
   def refresh_rows(self, all=False):
-
     # Get new runs
     old_run_numbers = [run.run for run in self.all_runs]
     all_runs = self.main.db.get_all_runs()
     new_runs = [run for run in all_runs if run.run not in old_run_numbers]
+
+    font = self.GetFont()
+    dc = wx.ScreenDC()
+    dc.SetFont(font)
+    if len(all_runs) > 0:
+      max_width = max([dc.GetTextExtent(str(run))[0] for run in all_runs])
+    else:
+      max_width = None
 
     # Update either all or only new runs
     if all:
@@ -1369,7 +1401,9 @@ class RunTab(BaseTab):
     else:
       runs = new_runs
     for run in runs:
-      self.add_row(run)
+      run_row = RunEntry(self.run_panel, run=run, params=self.main.params, label_width = max_width)
+      self.all_tag_buttons.append(run_row.tag_button)
+      self.run_sizer.Add(run_row, flag=wx.ALL | wx.EXPAND, border=0)
 
     self.all_runs = all_runs
 
@@ -1381,13 +1415,6 @@ class RunTab(BaseTab):
 
     self.run_panel.SetupScrolling(scrollToTop=False)
     self.run_panel.Refresh()
-
-  def add_row(self, run):
-    ''' Adds run row to table, matching colname_sizer '''
-    run_row = RunEntry(self.run_panel, run=run, params=self.main.params)
-    self.all_tag_buttons.append(run_row.tag_button)
-    self.run_sizer.Add(run_row, flag=wx.ALL | wx.EXPAND, border=0)
-
 
 class TrialsTab(BaseTab):
   def __init__(self, parent, main):
@@ -1629,7 +1656,10 @@ class JobsTab(BaseTab):
           elif short_status == "SUBMITTED":
             short_status = "SUBMIT"
           t = "t%03d" % job.trial.trial
-          r = "r%04d" % job.run.run
+          try:
+            r = "r%04d" % int(job.run.run)
+          except ValueError:
+            r = "r%s" % job.run.run
           rg = "rg%03d" % job.rungroup.id
           sid = str(job.submission_id)
           s = short_status
@@ -1794,7 +1824,7 @@ class SpotfinderTab(BaseTab):
   def onRunChoice(self, e):
     self.tag_last_five = False
     self.entire_expt = False
-    run_numbers_selected = map(int, self.run_numbers.ctr.GetCheckedStrings())
+    run_numbers_selected = self.run_numbers.ctr.GetCheckedStrings()
     if self.trial is not None:
       self.selected_runs = [r.run for r in self.trial.runs if r.run in run_numbers_selected]
       self.main.run_window.spotfinder_light.change_status('idle')
@@ -2103,7 +2133,7 @@ class RunStatsTab(SpotfinderTab):
   def onRunChoice(self, e):
     self.tag_last_five = False
     self.entire_expt = False
-    run_numbers_selected = map(int, self.run_numbers.ctr.GetCheckedStrings())
+    run_numbers_selected = self.run_numbers.ctr.GetCheckedStrings()
     if self.trial is not None:
       self.selected_runs = [r.run for r in self.trial.runs if r.run in run_numbers_selected]
       self.main.run_window.runstats_light.change_status('idle')
@@ -2218,7 +2248,7 @@ class RunStatsTab(SpotfinderTab):
     if not os.path.isdir(params['output_dir']):
       os.makedirs(params['output_dir'])
     command = ('cctbx.xfel.xtc_dump input.experiment=%s '%params['experiment'])+\
-    ('input.run_num=%d input.address=%s '%(params['run'], params['address']))+\
+    ('input.run_num=%s input.address=%s '%(str(params['run']), params['address']))+\
     ('format.file_format=%s '%params['format'])+\
     ('output.output_dir=%s '%params['output_dir'])
     if params['format'] == 'cbf':
@@ -2749,7 +2779,7 @@ class MergeTab(BaseTab):
 
     # Generate text of params
     final_phil = master_phil.format(python_object=self.pparams)
-    with misc.Capturing() as txt_output:
+    with util.Capturing() as txt_output:
       final_phil.show()
     txt_out = ''
     for one_output in txt_output:
@@ -2797,7 +2827,7 @@ class MergeTab(BaseTab):
 
     self.pparams = self.prime_panel.pparams
     self.pparams.data = [self.pickle_path_file]
-    self.pparams.run_no = misc.set_base_dir(out_dir=self.working_dir)
+    self.pparams.run_no = util.set_base_dir(out_dir=self.working_dir)
     self.out_dir = self.prime_panel.out_box.ctr.GetValue()
     self.pparams.title = self.prime_panel.title_box.ctr.GetValue()
     if str(self.prime_panel.ref_box.ctr.GetValue()).lower() != '':
@@ -2825,7 +2855,7 @@ class MergeTab(BaseTab):
     self.init_settings()
     prime_phil = master_phil.format(python_object=self.pparams)
 
-    with misc.Capturing() as output:
+    with util.Capturing() as output:
       prime_phil.show()
 
     txt_out = ''
@@ -2851,7 +2881,7 @@ class MergeTab(BaseTab):
                                              title='PRIME Output',
                                              params=self.pparams,
                                              prime_file=prime_file,
-                                             out_file=out_file,
+                                             # out_file=out_file,
                                              mp_method=params.mp.method,
                                              command=command)
       self.prime_run_window.prev_pids = easy_run.fully_buffered('pgrep -u {} {}'
@@ -2981,15 +3011,16 @@ class TrialPanel(wx.Panel):
 
 class RunEntry(wx.Panel):
   ''' Adds run row to table, with average and view buttons'''
-  def __init__(self, parent, run, params):
+  def __init__(self, parent, run, params, label_width = None):
     self.run = run
     self.params = params
 
     wx.Panel.__init__(self, parent=parent)
+    if label_width is None: label_width = 60
 
     self.sizer = wx.FlexGridSizer(1, 4, 0, 10)
-    run_no = wx.StaticText(self, label=str(run.run),
-                           size=(60, -1))
+    run_no = wx.StaticText(self, label=str(run),
+                           size=(label_width, -1))
     self.tag_button = gctr.TagButton(self, run=run)
     self.avg_button = wx.Button(self, label='Average')
     self.view_button = wx.Button(self, label='View')

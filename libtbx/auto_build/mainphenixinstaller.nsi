@@ -128,6 +128,32 @@ var ICONS_GROUP
 ; MUI end ------
 
 
+Section "VC++ 2008 Redistributable" SEC03
+  SetOutPath "\\?\$INSTDIR\${SOURCEDIR}"
+
+  !if ${BITNESS} > 32
+  !define VCREDIST "vcredist_x64.exe"
+  !else
+  !define VCREDIST "vcredist_x86.exe"
+  !endIf
+
+; VCredist may have to be installed. Wait until it is done.
+  File "${COPYDIR}\${SOURCEDIR}\${VCREDIST}"
+; hack for ExecWait not being able to launch programs requiring UAC elevation.
+; Use start from a cmd script file to that effect.
+  FileOpen $0 "redistwait.cmd" "w"
+  FileWrite $0 "start /wait $INSTDIR\${SOURCEDIR}\${VCREDIST}"
+  FileClose $0
+; Use non-UNC path to not confuse cmd.exe
+  SetOutPath "$INSTDIR\${SOURCEDIR}"
+  ExecWait '"redistwait.cmd"'
+  
+  SetAutoClose false
+; Shortcuts
+  !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+  !insertmacro MUI_STARTMENU_WRITE_END
+SectionEnd
+
 Section "Basic components" SEC01
   SetOutPath "\\?\$INSTDIR"
   SetOverwrite off
@@ -151,24 +177,6 @@ Section "Source code" SEC02
   File /nonfatal /r ${COPYDIR}\*.cpp
   File /nonfatal /r ${COPYDIR}\*.cc
   File /nonfatal /r ${COPYDIR}\*.h
-  SetAutoClose false
-; Shortcuts
-  !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-  !insertmacro MUI_STARTMENU_WRITE_END
-SectionEnd
-
-Section "VC++ 2008 Redistributable" SEC03
-  SetOutPath "\\?\$INSTDIR\${SOURCEDIR}"
-
-  !if ${BITNESS} > 32
-  !define VCREDIST "vcredist_x64.exe"
-  !else
-  !define VCREDIST "vcredist_x86.exe"
-  !endIf
-
-  File "${COPYDIR}\${SOURCEDIR}\${VCREDIST}"
-  ExecShell "" '"$INSTDIR\${SOURCEDIR}\${VCREDIST}"'
-
   SetAutoClose false
 ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application

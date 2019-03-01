@@ -12,7 +12,7 @@ class div_probe(object):
   def __div__(O, other): return "floor"
   def __truediv__(O, other): return "true"
 
-def run (out=None, omit_unicode_experiment=False):
+def run(out=None, omit_unicode_experiment=False):
   if (out is None): out = sys.stdout
   out.write(boost.python.platform_info)
   tag = libtbx.env.under_dist("boost", "TAG")

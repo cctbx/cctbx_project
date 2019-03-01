@@ -7,7 +7,7 @@ tested more thoroughly elsewhere.
 from __future__ import division
 from iotbx import reflection_file_reader
 
-def exercise_sigma_filtering () :
+def exercise_sigma_filtering():
   xds_raw = """\
 !FORMAT=XDS_ASCII    MERGE=FALSE    FRIEDEL'S_LAW=FALSE
 !OUTPUT_FILE=XDS_ASCII.HKL        DATE=23-Jan-2014
@@ -70,6 +70,6 @@ def exercise_sigma_filtering () :
   assert (ma[0].size() == 3)
 
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_sigma_filtering()
   print "OK"

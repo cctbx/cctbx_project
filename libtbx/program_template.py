@@ -1,4 +1,3 @@
-from __future__ import division, print_function
 '''
 Standard Program Template for CCTBX Programs
 
@@ -26,6 +25,7 @@ task, but the above functions define a consistent interface.
 
 More documentation to come
 '''
+from __future__ import absolute_import, division, print_function
 
 import libtbx.phil
 

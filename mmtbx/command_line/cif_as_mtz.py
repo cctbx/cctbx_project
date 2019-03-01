@@ -112,7 +112,7 @@ def run(args, command_name = "phenix.cif_as_mtz", out=sys.stdout,
     raise Sorry("File is not found: %s"%file_name)
   output_r_free_label = command_line.options.output_r_free_label
   if ((not output_r_free_label[0] in string.uppercase) or
-      (re.search("[^a-zA-Z0-9_\-]", output_r_free_label))) :
+      (re.search("[^a-zA-Z0-9_\-]", output_r_free_label))):
     raise Sorry(("%s is not a suitable column label.  MTZ format requires "+
       "an uppercase letter as the first character, and only alphanumeric "+
       "characters or hyphens in the rest of the string.")% output_r_free_label)
@@ -135,7 +135,7 @@ def run(args, command_name = "phenix.cif_as_mtz", out=sys.stdout,
   if return_as_miller_arrays:
     return result
 
-def process_files (file_name,
+def process_files(file_name,
                    crystal_symmetry,
                    output_file_name,
                    wavelength_id,
@@ -149,7 +149,7 @@ def process_files (file_name,
                    ignore_bad_sigmas=False,
                    return_as_miller_arrays=False,
                    extend_flags=False,
-                   log=sys.stdout) :
+                   log=sys.stdout):
   mtz_object = extract(
     file_name                       = file_name,
     crystal_symmetry                = crystal_symmetry,
@@ -179,6 +179,54 @@ def process_files (file_name,
     mtz_object.write(file_name = output_file_name)
     return mtz_object.n_reflections()
 
+def get_label(miller_array, output_r_free_label):
+  label = None
+  for l in miller_array.info().labels:
+    if ('_meas' in l):
+      if miller_array.is_xray_amplitude_array():
+        label = "FOBS"
+      elif miller_array.is_xray_intensity_array():
+        label = "IOBS"
+      elif l.endswith(".phase_meas"):
+        label = "PHIM"
+      break
+    elif ("_calc" in l):
+      if miller_array.is_xray_amplitude_array():
+        label = "FC"
+      elif miller_array.is_xray_intensity_array():
+        label = "ICALC"
+      elif l.endswith(".F_calc"):
+        label = "FC"
+      elif l.endswith(".phase_calc"):
+        label = "PHIC"
+      break
+    elif miller_array.anomalous_flag():
+      if miller_array.is_xray_amplitude_array():
+        label = "F"
+      elif miller_array.is_xray_intensity_array():
+        label = "I"
+      break
+    elif 'status' in l or '_free' in l:
+      label = output_r_free_label
+      break
+    elif miller_array.is_hendrickson_lattman_array():
+      label = "HL"
+    elif (miller_array.is_complex_array()):
+      if (l.endswith("DELFWT")):
+        label = "DELFWT"
+        break
+      elif (l.endswith("FWT")):
+        label = "FWT"
+        break
+    elif (miller_array.is_real_array()):
+      if ("pdbx_anom_difference" in l):
+        label = "DANO"
+        break
+      elif (l.endswith(".fom")):
+        label = "FOM"
+        break
+  return label
+
 def extract(file_name,
             crystal_symmetry,
             wavelength_id,
@@ -199,61 +247,13 @@ def extract(file_name,
     crystal_symmetry_from_file=crystal_symmetry)
   all_miller_arrays = iotbx.cif.reader(file_path=file_name).build_miller_arrays(
     base_array_info=base_array_info)
-  if (len(all_miller_arrays) == 0) :
+  if (len(all_miller_arrays) == 0):
     raise Sorry("No data arrays were found in this CIF file.  Please make "+
       "sure that the file contains reflection data, rather than the refined "+
       "model.")
   column_labels = set()
-  if (extend_flags) :
+  if (extend_flags):
     map_to_asu = True
-  def get_label(miller_array):
-    label = None
-    for l in miller_array.info().labels:
-      if ('_meas' in l) :
-        if miller_array.is_xray_amplitude_array():
-          label = "FOBS"
-        elif miller_array.is_xray_intensity_array():
-          label = "IOBS"
-        elif l.endswith(".phase_meas") :
-          label = "PHIM"
-        break
-      elif ("_calc" in l) :
-        if miller_array.is_xray_amplitude_array():
-          label = "FC"
-        elif miller_array.is_xray_intensity_array():
-          label = "ICALC"
-        elif l.endswith(".F_calc") :
-          label = "FC"
-        elif l.endswith(".phase_calc") :
-          label = "PHIC"
-        break
-      elif miller_array.anomalous_flag() :
-        if miller_array.is_xray_amplitude_array():
-          label = "F"
-        elif miller_array.is_xray_intensity_array():
-          label = "I"
-        break
-      elif 'status' in l or '_free' in l:
-        label = output_r_free_label
-        break
-      elif miller_array.is_hendrickson_lattman_array():
-        label = "HL"
-      elif (miller_array.is_complex_array()) :
-        if (l.endswith("DELFWT")) :
-          label = "DELFWT"
-          break
-        elif (l.endswith("FWT")) :
-          label = "FWT"
-          break
-      elif (miller_array.is_real_array()) :
-        if ("pdbx_anom_difference" in l) :
-          label = "DANO"
-          break
-        elif (l.endswith(".fom")) :
-          label = "FOM"
-          break
-    return label
-
   for (data_name, miller_arrays) in all_miller_arrays.iteritems():
     for ma in miller_arrays.values():
       other_symmetry = crystal_symmetry
@@ -286,8 +286,8 @@ def extract(file_name,
   # generate list of all reflections (for checking R-free flags)
   from iotbx.reflection_file_utils import make_joined_set
   all_arrays = []
-  for (data_name, miller_arrays) in all_miller_arrays.iteritems() :
-    for ma in miller_arrays.values() :
+  for (data_name, miller_arrays) in all_miller_arrays.iteritems():
+    for ma in miller_arrays.values():
       all_arrays.append(ma)
   complete_set = make_joined_set(all_arrays)
   if return_as_miller_arrays:
@@ -297,7 +297,7 @@ def extract(file_name,
       ma = ma.customized_copy(
         crystal_symmetry=crystal_symmetry).set_info(ma.info())
       labels = ma.info().labels
-      label = get_label(ma)
+      label = get_label(miller_array=ma, output_r_free_label=output_r_free_label)
       if label is None:
         print >> log, "Can't determine output label for %s - skipping." % \
           ma.info().label_string()
@@ -336,12 +336,12 @@ def extract(file_name,
       if wavelength_id is not None and w_id > 0 and w_id != wavelength_id:
         continue
       if w_id > 1 and wavelength_id is None:
-        if (label in column_labels) :
+        if (label in column_labels):
           label += "%i" %w_id
         #print "label is", label
       if w_id not in datasets:
         wavelength = ma.info().wavelength
-        if (wavelength is None) :
+        if (wavelength is None):
           wavelength = 0
         datasets[w_id] = crystal.add_dataset(
           name="dataset",
@@ -400,10 +400,10 @@ def extract(file_name,
         ma = ma.map_to_asu().set_info(ma.info())
       if(remove_systematic_absences):
         ma = ma.remove_systematic_absences()
-      if (label.startswith(output_r_free_label) and complete_set is not None) :
+      if (label.startswith(output_r_free_label) and complete_set is not None):
         n_missing = len(complete_set.lone_set(other=ma).indices())
-        if (n_missing > 0) :
-          if (extend_flags) :
+        if (n_missing > 0):
+          if (extend_flags):
             from cctbx import r_free_utils
             # determine flag values
             fvals = list(set(ma.data()))
@@ -451,14 +451,14 @@ def extract(file_name,
         continue  # don't make a dataset
 
       dec = None
-      if ("FWT" in label) :
+      if ("FWT" in label):
         dec = iotbx.mtz.ccp4_label_decorator()
       # XXX what about DANO,SIGDANO?
       column_types = None
-      if ("PHI" in label) and (ma.is_real_array()) :
+      if ("PHI" in label) and (ma.is_real_array()):
         column_types = "P"
-      elif (label.startswith("DANO") and ma.is_real_array()) :
-        if (ma.sigmas() is not None) :
+      elif (label.startswith("DANO") and ma.is_real_array()):
+        if (ma.sigmas() is not None):
           column_types = "DQ"
         else :
           column_types = "D"
@@ -560,10 +560,10 @@ options {
 #
 # XXX this is still a little unsophisticated with respect to extracting
 # crystal symmetry, but it's meant to be run from the Phenix GUI right now.
-def run2 (args,
+def run2(args,
           log=sys.stdout,
           check_params=True,
-          params=None) :
+          params=None):
   import mmtbx.command_line.fetch_pdb
   libtbx.call_back.set_warning_log(sys.stderr)
   parameter_interpreter = master_phil.command_line_argument_interpreter(
@@ -572,10 +572,10 @@ def run2 (args,
   cif_file = None
   sources = []
   for arg in args :
-    if os.path.isfile(arg) :
-      if iotbx.pdb.is_pdb_file(arg) :
+    if os.path.isfile(arg):
+      if iotbx.pdb.is_pdb_file(arg):
         pdb_files = os.path.abspath(arg)
-      elif arg.endswith(".cif") or arg.endswith(".cif.txt") :
+      elif arg.endswith(".cif") or arg.endswith(".cif.txt"):
         cif_file = os.path.abspath(arg)
       else :
         try :
@@ -585,17 +585,17 @@ def run2 (args,
         else :
           sources.append(user_phil)
     else :
-      if arg.startswith("--") :
+      if arg.startswith("--"):
         arg = arg[2:] + "=True"
       try :
         user_phil = parameter_interpreter.process(arg=arg)
         sources.append(user_phil)
       except RuntimeError :
         print "Unrecognizable parameter %s" % arg
-  if (params is None) :
+  if (params is None):
     params = master_phil.fetch(sources=sources).extract()
   symm = None
-  if (params.input.pdb_id is not None) :
+  if (params.input.pdb_id is not None):
     params.input.pdb_file = mmtbx.command_line.fetch_pdb.run2(
       args=[params.input.pdb_id],
       log=log)
@@ -634,11 +634,11 @@ def run2 (args,
     extend_flags=params.options.extend_flags)
   return (params.output_file_name, n_refl)
 
-def validate_params (params) :
-  if (params.input.cif_file is None) and (params.input.pdb_id is None) :
+def validate_params(params):
+  if (params.input.cif_file is None) and (params.input.pdb_id is None):
     raise Sorry("No CIF file provided!")
-  if (params.input.pdb_id is not None) :
-    if (params.input.cif_file is not None) :
+  if (params.input.pdb_id is not None):
+    if (params.input.cif_file is not None):
       raise Sorry("Please specify either a PDB ID or a CIF file, not both.")
     import iotbx.pdb.fetch
     try :
@@ -647,25 +647,25 @@ def validate_params (params) :
       raise Sorry(str(e))
   else :
     if ((params.crystal_symmetry.space_group is None) or
-        (params.crystal_symmetry.unit_cell is None)) :
+        (params.crystal_symmetry.unit_cell is None)):
       raise Sorry("Crystal symmetry missing or incomplete.")
-  if (params.output_file_name is not None) :
+  if (params.output_file_name is not None):
     output_dir = os.path.dirname(params.output_file_name)
-    if (not os.path.isdir(output_dir)) :
+    if (not os.path.isdir(output_dir)):
       raise Sorry(("The output directory %s does not exist or is not a "+
         "directory.") % output_dir)
   return True
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher(runtime_utils.target_with_save_result):
+  def run(self):
     os.chdir(self.output_dir)
     return run2(args=list(self.args), log=sys.stdout)
 
-def finish_job (results) :
+def finish_job(results):
   (mtz_file, n_refl) = results
   if n_refl is None :
     n_refl = 0
-  if (mtz_file is not None) and os.path.isfile(mtz_file) :
+  if (mtz_file is not None) and os.path.isfile(mtz_file):
     return ([("MTZ file", mtz_file)], [("Number of reflections", n_refl)])
   return ([], [])
 

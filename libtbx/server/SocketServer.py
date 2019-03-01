@@ -99,7 +99,7 @@ XXX Open problems:
 - What to do with out-of-band data?
 
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 
 __version__ = "0.2"
@@ -193,7 +193,7 @@ class TCPServer:
 
     def serve_forever(self):
         """Handle one request at a time until doomsday."""
-        while 1:
+        while True:
             self.handle_request()
 
     # The distinction between handling, getting, processing and
@@ -250,12 +250,12 @@ class TCPServer:
         The default is to print a traceback and continue.
 
         """
-        print '-'*40
-        print 'Exception happened during processing of request from',
-        print client_address
+        print('-'*40)
+        print('Exception happened during processing of request from', end=' ')
+        print(client_address)
         import traceback
         traceback.print_exc()
-        print '-'*40
+        print('-'*40)
 
 
 class UDPServer(TCPServer):
@@ -413,10 +413,10 @@ class DatagramRequestHandler(BaseRequestHandler):
     """Define self.rfile and self.wfile for datagram sockets."""
 
     def setup(self):
-        import StringIO
+        from six.moves import cStringIO as StringIO
         self.packet, self.socket = self.request
-        self.rfile = StringIO.StringIO(self.packet)
-        self.wfile = StringIO.StringIO(self.packet)
+        self.rfile = StringIO(self.packet)
+        self.wfile = StringIO(self.packet)
 
     def finish(self):
         self.socket.sendto(self.wfile.getvalue(), self.client_address)

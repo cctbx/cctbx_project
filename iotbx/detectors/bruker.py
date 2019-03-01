@@ -3,7 +3,7 @@ import math
 from iotbx.detectors import Bruker_base
 from iotbx.detectors.detectorbase import DetectorImageBase
 
-class BrukerImage (DetectorImageBase):
+class BrukerImage(DetectorImageBase):
   def __init__(self,filename):
     self.filename=filename
     self.bruker = Bruker_base(filename)

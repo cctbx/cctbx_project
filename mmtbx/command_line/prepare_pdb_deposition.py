@@ -57,7 +57,7 @@ include scope mmtbx.validation.sequence.master_phil
 
 def old_run(args, out=None):
   import iotbx.phil
-  if (out is None) :
+  if (out is None):
     out = sys.stdout
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,

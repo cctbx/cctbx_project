@@ -5,7 +5,7 @@ import wxtbx.xtriage
 import wxtbx.app
 import sys
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   from mmtbx.command_line import plan_sad_experiment
   result = plan_sad_experiment.run(args=sys.argv[1:])
   app = wxtbx.app.CCTBXApp(0)

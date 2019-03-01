@@ -18,7 +18,7 @@ def exercise_1():
   mtz_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/1yjp.mtz",
     test=os.path.isfile)
-  if (None in [pdb_file, mtz_file]) :
+  if (None in [pdb_file, mtz_file]):
     print "phenix_regression not found, skipping test"
     return False
   pdb_in = file_reader.any_file(pdb_file)
@@ -66,7 +66,7 @@ def exercise_1():
   return True
 
 # test with synthetic twinned data
-def exercise_2 () :
+def exercise_2():
   pdb_str = """\
 CRYST1   12.000    8.000   12.000  90.02  89.96  90.05 P 1           1
 ATOM     39  N   ASN A   6       5.514   2.664   4.856  1.00 11.99           N
@@ -144,7 +144,7 @@ END
     atom_selection=sel,
     fmodel=fmodel)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_1()
   exercise_2()
   print "OK"

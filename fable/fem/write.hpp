@@ -15,6 +15,12 @@
 # define FEM_WRITE_CRLF false
 #endif
 
+#if __cplusplus >= 201103L                // If using C++11 or a later version
+#define NOEXCEPT_FALSE noexcept(false)
+#else
+#define NOEXCEPT_FALSE
+#endif
+
 namespace fem {
 
   struct write_loop_base
@@ -659,7 +665,7 @@ namespace fem {
         return *this;
       }
 
-      ~write_loop()
+      ~write_loop() NOEXCEPT_FALSE
       {
         if (out.get() == 0) return;
         if (internal_file_len < 0) {

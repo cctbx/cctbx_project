@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 # this is Scons tool definition for 'crossmingw' copied from
 # http://www.scons.org/wiki/CrossCompilingMingw (2011-11-25)
 
@@ -53,7 +53,7 @@ def shlib_emitter(target, source, env):
   no_import_lib = env.get('no_import_lib', 0)
 
   if not dll:
-    raise SCons.Errors.UserError, "A shared library should have exactly one target with the suffix: %s" % env.subst("$SHLIBSUFFIX")
+    raise SCons.Errors.UserError("A shared library should have exactly one target with the suffix: %s" % env.subst("$SHLIBSUFFIX"))
 
   if not no_import_lib and \
      not env.FindIxes(target, 'LIBPREFIX', 'LIBSUFFIX'):

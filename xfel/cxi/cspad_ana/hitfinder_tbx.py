@@ -101,7 +101,7 @@ class distl_hitfinder(object):
     else: self.correction = 1.0
     return active_data
 
-  def set_up_hitfinder(self):
+  def set_up_hitfinder(self, env):
     # See r17537 of mod_average.py.
     device = cspad_tbx.address_split(self.address)[2]
     if device == 'Cspad':
@@ -111,7 +111,7 @@ class distl_hitfinder(object):
       img_dim = (4500, 4500)
       pixel_size = 0.079346
     elif device == 'Rayonix':
-      img_dim = rayonix_tbx.get_rayonix_detector_dimensions(self.bin_size)
+      img_dim = rayonix_tbx.get_rayonix_detector_dimensions(env)
       pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.bin_size)
     else:
       raise RuntimeError("Unsupported device %s" % self.address)

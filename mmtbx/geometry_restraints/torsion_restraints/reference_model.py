@@ -183,6 +183,7 @@ class reference_model(object):
         mon_lib_srv=self.mon_lib_srv,
         ener_lib=self.ener_lib,
         restraint_objects=model.get_restraint_objects(),
+        monomer_parameters=model.get_monomer_parameters(),
         log=log)
     self.i_seq_name_hash = utils.build_name_hash(
                              pdb_hierarchy=self.pdb_hierarchy)
@@ -192,7 +193,6 @@ class reference_model(object):
     self.i_seq_name_hash_ref = {}
     self.reference_dihedral_hash = {}
     self.reference_file_list = reference_file_list
-
     #triage reference model files
     for file, hierarchy in zip(reference_file_list,
                                reference_hierarchy_list):

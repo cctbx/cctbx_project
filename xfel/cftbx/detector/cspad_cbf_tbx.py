@@ -15,43 +15,60 @@ asic_gap = 3
 pixel_size = 0.10992
 from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value, cspad_min_trusted_value
 
-def get_psana_corrected_data(psana_det, evt, use_default = False, dark = True, common_mode = None, apply_gain_mask = True, gain_mask_value = None, per_pixel_gain = False):
+def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, common_mode=None, apply_gain_mask=True,
+                             gain_mask_value=None, per_pixel_gain=False, gain_mask=None):
   """
   Given a psana Detector object, apply corrections as appropriate and return the data from the event
   @param psana_det psana Detector object
   @param evt psana event
   @param use_default If true, apply the default calibration only, using the psana algorithms. Otherise, use the corrections
   specified by the rest of the flags and values passed in.
-  @param dark Whether to apply the detector dark
+  @param dark Whether to apply the detector dark, bool or numpy array
   @param common_mode Which common mode algorithm to apply. None: apply no algorithm. Default: use the algorithm specified
   in the calib folder. Otherwise should be a list as specified by the psana documentation for common mode customization
   @param apply_gain_mask Whether to apply the common mode gain mask correction
   @param gain_mask_value Multiplier to apply to the pixels, according to the gain mask
   @param per_pixel_gain If available, use the per pixel gain deployed to the calibration folder
+  @param, gain_mask, gain mask showing which pixels to apply gain mask value
   @return Numpy array corrected as specified.
   """
   # order is pedestals, then common mode, then gain mask, then per pixel gain
+  import numpy as np
   run = evt.run()
+
   if use_default:
-    return psana_det.calib(evt) # applies psana's complex run-dependent calibrations
+    return psana_det.calib(evt)  # applies psana's complex run-dependent calibrations
   data = psana_det.raw_data(evt)
   if data is None:
     return
 
-  import numpy as np
   data = data.astype(np.float64)
+  if isinstance(dark, bool):
+    if dark:
+      data -= psana_det.pedestals(run)
+  elif isinstance( dark, np.ndarray ):
+    data -= dark
 
-  if dark:
-    data -= psana_det.pedestals(run)
-  if common_mode:
-    if common_mode == 'default':
-      common_mode = None
-    psana_det.common_mode_apply(run, data, common_mode)
+  if common_mode is not None and common_mode != "default":
+    if common_mode == 'cspad_default':
+      common_mode = (1,25,25,100,1)  # default parameters for CSPAD images
+      psana_det.common_mode_apply(run, data, common_mode)
+    elif common_mode == 'unbonded':
+      common_mode = (5,0,0,0,0)  # unbonded pixels used for correction
+      psana_det.common_mode_apply(run, data, common_mode)
+    else:  # this is how it was before.. Though I think common_mode would need to be a tuple..
+      psana_det.common_mode_apply(run, data, common_mode)
   if apply_gain_mask:
+    if gain_mask is None:  # TODO: consider try/except here
+      gain_mask = psana_det.gain_mask(run) == 1
     if gain_mask_value is None:
-      gain_mask_value = 6.85
-    data *= psana_det.gain_mask(run, gain=gain_mask_value)
-  if per_pixel_gain:
+      try:
+        gain_mask_value = psana_det._gain_mask_factor
+      except AttributeError:
+        print("No gain set for psana detector, using gain value of 1, consider disabling gain in your phil file")
+        gain_mask_value = 1
+    data[gain_mask] = data[gain_mask]*gain_mask_value
+  if per_pixel_gain: # TODO: test this
     data *= psana_det.gain(run)
   return data
 
@@ -285,7 +302,7 @@ def get_calib_file_path(env, address, run):
   try:
     # try to get it from the detector interface
     psana_det = Detector(address, run.env())
-    return psana_det.pyda.geoaccess(run).path
+    return psana_det.pyda.geoaccess(run.run()).path
   except Exception as e:
     pass
 
@@ -313,7 +330,7 @@ def env_dxtbx_from_slac_metrology(run, address):
     try:
       # try to load the geometry from the detector interface
       psana_det = Detector(address, run.env())
-      geometry = psana_det.pyda.geoaccess(run)
+      geometry = psana_det.pyda.geoaccess(run.run())
     except Exception as e:
       geometry = None
 

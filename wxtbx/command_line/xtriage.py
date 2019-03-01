@@ -7,7 +7,7 @@ import wxtbx.xtriage
 import wxtbx.app
 import sys
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   from mmtbx.scaling import xtriage
   result = xtriage.run(args=sys.argv[1:],
     data_file_name="xtriage_data.pkl")

@@ -10,8 +10,8 @@ from iotbx import reflection_file_reader
 import libtbx.load_env
 
 def ccp4_map(crystal_symmetry, file_name, map_data):
-  from iotbx import ccp4_map
-  ccp4_map.write_ccp4_map(
+  from iotbx import mrcfile
+  mrcfile.write_ccp4_map(
       file_name=file_name,
       unit_cell=crystal_symmetry.unit_cell(),
       space_group=crystal_symmetry.space_group(),

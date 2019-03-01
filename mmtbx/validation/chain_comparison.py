@@ -403,7 +403,7 @@ def extract_representative_chains_from_hierarchy(ph,
         target_seq=chain.as_padded_sequence()  # has XXX for missing residues
         target_seq.replace("X","")
         chain_length=len(target_seq)
-      except Exception, e:
+      except Exception as e:
         chain_length=0
       if chain_length and (longest_chain is None or chain_length>longest_chain):
         longest_chain=chain_length
@@ -441,7 +441,7 @@ def extract_copies_identical_to_target_from_hierarchy(ph,
         target_seq=chain.as_padded_sequence()  # has XXX for missing residues
         target_seq.replace("X","")
         break
-      except Exception, e:
+      except Exception as e:
         pass
   if not target_seq:
      raise Sorry("No sequence found in target sequence for "+
@@ -453,7 +453,7 @@ def extract_copies_identical_to_target_from_hierarchy(ph,
       try:
         seq=chain.as_padded_sequence()  # has XXX for missing residues
         seq=seq.replace("X","")
-      except Exception, e:
+      except Exception as e:
         seq=""
       similar_seq=seq_it_is_similar_to(
          seq=seq,unique_sequences=[target_seq],
@@ -609,7 +609,7 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
         seq=seq.replace("X","")
         sequences.append(seq)
         chains.append(chain)
-      except Exception, e:
+      except Exception as e:
         pass
   copies_in_unique,base_copies,unique_sequence_dict=\
         extract_unique_part_of_sequences(
@@ -773,7 +773,7 @@ def run_all(params=None,
         min_similarity=min_similarity,
       )
 
-    except Exception,e:
+    except Exception as e:
       if str(e).find("CifParserError"):
         print >>out,"NOTE: skipping %s as it is not a valid model file" %(
            file_name)
@@ -958,7 +958,7 @@ def apply_ncs_to_hierarchy(ncs_obj=None,
     return hierarchy
   try:
     from phenix.command_line.apply_ncs import apply_ncs as apply_ncs_to_atoms
-  except exception, e:
+  except Exception as e:
     print "Need phenix for applying NCS"
     return hierarchy
 

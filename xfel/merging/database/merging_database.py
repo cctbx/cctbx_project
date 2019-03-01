@@ -138,8 +138,8 @@ class manager (manager_base):
     for table in new_tables:
       cursor.execute("DROP TABLE IF EXISTS %s;"%table[0])
       cursor.execute("CREATE TABLE %s "%table[0]+table[1].replace("\n"," ")+" ;")
-    import cStringIO
-    query = cStringIO.StringIO()
+    from six.moves import cStringIO as StringIO
+    query = StringIO()
     query.write("INSERT INTO `%s_miller` (h,k,l) VALUES "%self.params.mysql.runtag)
     firstcomma = ""
     for item in indices:

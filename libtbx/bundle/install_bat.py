@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 
 def create_script(bundle, top_modules, single_dir=False):
@@ -14,7 +14,7 @@ set PYTHONUNBUFFERED=
 set PYTHONVERBOSE=
 set PYTHONCASEOK=1
 """
-  if (single_dir) :
+  if (single_dir):
     script += r"""
 cd %(bundle)s
 """

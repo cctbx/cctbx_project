@@ -1,387 +1,320 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/05/2018
-Description : Reads command line arguments. Initializes all IOTA starting
-              parameters. Starts main log.
+Last Changed: 01/30/2019
+Description : Interprets command line arguments. Initializes all IOTA starting
+              parameters. Starts main log. Options for a variety of running
+              modes, including resuming an aborted run.
 '''
 
 import os
-import sys
-import argparse
 import time
+assert time
+from contextlib import contextmanager
+
+import dials.util.command_line as cmd
 
 import iota.components.iota_input as inp
-import iota.components.iota_cmd as cmd
-import iota.components.iota_misc as misc
-from iota.components.iota_utils import InputFinder
-
-ginp = InputFinder()
-pid = os.getpid()
-
-try:
-  user = os.getlogin()
-except OSError:
-  user = 'iota'
-
-# --------------------------- Initialize IOTA -------------------------------- #
+from iota.components import iota_utils as util
+from iota.components.iota_base import ProcInfo
 
 
-def parse_command_args(iver, help_message):
-  """ Parses command line arguments (only options for now) """
-  parser = argparse.ArgumentParser(prog = 'iota.run',
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            description=(help_message),
-            epilog=('\n{:-^70}\n'.format('')))
-  parser.add_argument('path', type=str, nargs = '*', default = None,
-            help = 'Path to data or file with IOTA parameters')
-  parser.add_argument('--version', action = 'version',
-            version = 'IOTA {}'.format(iver),
-            help = 'Prints version info of IOTA')
-  parser.add_argument('-l', '--list', action = 'store_true',
-            help = 'Output a file (input.lst) with input image paths and stop')
-  parser.add_argument('-w', '--watch', action = 'store_true',
-            help = 'Run IOTA in watch mode - check for new images')
-  parser.add_argument('-c', '--convert', action = 'store_true',
-            help = 'Convert raw images to pickles and stop')
-  parser.add_argument('-f', '--full', action = 'store_true',
-            help = 'Run IOTA in "full-processing" mode (advanced)')
-  parser.add_argument('-d', '--default', action = 'store_true',
-            help = 'Generate default settings files and stop')
-  parser.add_argument('-p', '--prefix', type=str, default="Auto",
-            help = 'Specify custom prefix for converted pickles')
-  parser.add_argument('-s', '--select', action = 'store_true',
-            help = 'Selection only, no grid search')
-  parser.add_argument('-r', type=int, nargs=1, default=0, dest='random',
-            help = 'Run IOTA with a random subset of images, e.g. "-r 5"')
-  parser.add_argument('-n', type=int, nargs=1, default=0, dest='nproc',
-            help = 'Specify a number of cores for a multiprocessor run"')
-  parser.add_argument('--mpi', type=str, nargs='?', const=None, default=None,
-            help = 'Specify stage of process - for MPI only')
-  parser.add_argument('--analyze', type=str, nargs='?', const=None, default=None,
-            help = 'Use for analysis only; specify run number or folder')
-  return parser
+@contextmanager    # Will print start / stop messages around some processes
+def prog_message(msg, mode='xterm'):
+  if mode == 'xterm':
+    cmd.Command.start(msg)
+    yield
+    cmd.Command.end('{} -- DONE'.format(msg))
+  elif mode == 'verbose':
+    print ('IOTA: {}'.format(msg))
+    yield
+    print ('IOTA: {} -- DONE'.format(msg))
+  else:
+    yield
 
-class InitAll(object):
-  """ Class to initialize current IOTA run
+def initialize_interface(args, phil_args=None, gui=False):
+  """ Read and process input, create PHIL """
 
-      help_message = description (hard-coded)
+  msg = []
+  input_dict = util.ginp.process_mixed_input(args.path)
+  if input_dict and not gui and not input_dict['imagefiles']:
+      return None, None, "IOTA_INIT_ERROR: No readable image files in path(s)!"
 
-  """
+  # Move args that were included in paths and not processed into phil_args,
+  # to try and interpret them as PHIL args
+  if input_dict['badpaths']:
+    phil_args.extend(input_dict['badpaths'])
 
-  def __init__(self, help_message):
-    self.iver = misc.iota_version
-    self.user_id = user
-    self.now = misc.now
-    self.logo = "\n\n"\
-   "     IIIIII            OOOOOOO        TTTTTTTTTT          A                 \n"\
-   "       II             O       O           TT             A A                \n"\
-   "       II             O       O           TT            A   A               \n"\
-   ">------INTEGRATION----OPTIMIZATION--------TRIAGE-------ANALYSIS------------>\n"\
-   "       II             O       O           TT          A       A             \n"\
-   "       II             O       O           TT         A         A            \n"\
-   "     IIIIII            OOOOOOO            TT        A           A   v{}     \n"\
-   "".format(self.iver)
-    self.help_message = self.logo + help_message
-    self.input_base = None
-    self.conv_base = None
-    self.obj_base = None
-    self.int_base = None
+  # Read in parameters, make IOTA PHIL
+  iota_phil, bad_args = inp.process_input(args=args,
+                                          phil_args=phil_args,
+                                          paramfile=input_dict['paramfile'],
+                                          gui=gui)
 
-  def make_input_list(self):
-    """ Reads input directory or directory tree and makes lists of input images.
-        Optional selection of a random subset
-    """
+  # Check if any PHIL args not read into the PHIL were in fact bad paths
+  if bad_args:
+    input_dict['badpaths'] = [a for a in bad_args if a in input_dict['badpaths']]
+    if input_dict['badpaths']:
+      msg.append('Files or directories not found:')
+      for badpath in input_dict['badpaths']:
+        msg += '\n{}'.format(badpath)
+    bad_args = [a for a in bad_args if a not in input_dict['badpaths']]
+    if bad_args:
+      msg += '\nThese arguments could not be interpreted: '
+      for arg in bad_args:
+        msg += '\n{}'.format(arg)
 
-    # Read input from provided folder(s) or file(s)
-    cmd.Command.start("Reading input files")
-    input_entries = [i for i in self.params.input if i != None]
-    input_list = ginp.make_input_list(input_entries, filter=True,
-                                      filter_type='image')
-    cmd.Command.end("Reading input files -- DONE")
+  return input_dict, iota_phil, msg
 
-    if len(input_list) == 0:
-      print "\nERROR: No data found!"
-      sys.exit()
+def initialize_new_run(phil, input_dict=None, target_phil=None):
+  ''' Create base integration folder; safe phil, input, and info to file '''
+  try:
+    params = phil.extract()
+    int_base, run_no = util.set_base_dir(dirname='integration',
+                                         out_dir=params.output,
+                                         get_run_no=True)
+    if not os.path.isdir(int_base):
+      os.makedirs(int_base)
 
-    # Pick a randomized subset of images
-    if self.params.advanced.random_sample.flag_on and \
-       self.params.advanced.random_sample.number < len(input_list):
-      inp_list = self.select_random_subset(input_list)
-    else:
-      inp_list = input_list
-
-    return inp_list
-
-
-  def select_random_subset(self, input_list):
-    """ Selects random subset of input entries """
-    import random
-
-    random_inp_list = []
-    if self.params.advanced.random_sample.number == 0:
-      if len(input_list) <= 5:
-        random_sample_number = len(input_list)
-      elif len(input_list) <= 50:
-        random_sample_number = 5
+    # Create input list file and populate param input line
+    if input_dict:
+      if len(input_dict['imagepaths']) >= 10:
+        input_list_file = os.path.join(int_base, 'input.lst')
+        with open(input_list_file, 'w') as lf:
+          for f in input_dict['imagefiles']:
+            lf.write('{}\n'.format(f))
+          params.input = [input_list_file]
       else:
-        random_sample_number = int(len(input_list) * 0.1)
+        input_list_file = None
+        params.input = input_dict['imagepaths']
     else:
-      random_sample_number = self.params.advanced.random_sample.number
+      input_list_file = None
 
-    cmd.Command.start("Selecting {} random images out of {} found".format(random_sample_number, len(input_list)))
-    for i in range(random_sample_number):
-      random_number = random.randrange(0, len(input_list))
-      if input_list[random_number] in random_inp_list:
-        while input_list[random_number] in random_inp_list:
-          random_number = random.randrange(0, len(input_list))
-        random_inp_list.append(input_list[random_number])
+    # Generate default backend PHIL, write to file, and update params
+    target_fp = os.path.join(int_base,'target.phil')
+    if target_phil:
+      target_phil = inp.write_phil(phil_str=target_phil,
+                                   dest_file=target_fp,
+                                   write_target_file=True)
+    else:
+      if params.cctbx_xfel.target:
+        target_phil = inp.write_phil(phil_file=params.cctbx_xfel.target,
+                                     dest_file=target_fp,
+                                     write_target_file=True)
       else:
-        random_inp_list.append(input_list[random_number])
-    cmd.Command.end("Selecting {} random images out of {} found -- DONE ".format(random_sample_number, len(input_list)))
+        method = params.advanced.processing_backend
+        target_phil, _ = inp.write_defaults(method=method, write_target_file=True,
+                                            write_param_file=False,
+                                            filepath=target_fp)
+    params.cctbx_xfel.target = target_fp
 
-    return random_inp_list
-
-
-  def make_int_object_list(self):
-    """ Generates list of image objects from previous grid search """
-    from libtbx import easy_pickle as ep
-
-    if self.params.cctbx.selection.select_only.grid_search_path == None:
-      int_dir = misc.set_base_dir('integration', True)
-    else:
-      int_dir = self.params.cctbx.selection.select_only.grid_search_path
-
-    img_objects = []
-
-    cmd.Command.start("Importing saved grid search results")
-    for root, dirs, files in os.walk(int_dir):
-      for filename in files:
-        found_file = os.path.join(root, filename)
-        if found_file.endswith(('int')):
-          obj = ep.load(found_file)
-          img_objects.append(obj)
-    cmd.Command.end("Importing saved grid search results -- DONE")
-
-    # Pick a randomized subset of images
-    if self.params.advanced.random_sample.flag_on and \
-       self.params.advanced.random_sample.number < len(img_objects):
-      gs_img_objects = self.select_random_subset(img_objects)
-    else:
-      gs_img_objects = img_objects
-
-    return gs_img_objects
-
-
-  def analyze_prior_results(self, analysis_source):
-    """ Runs analysis of previous grid search / integration results, used in an
-        analyze-only mode """
-
-    from iota.components.iota_analysis import Analyzer
-    from libtbx import easy_pickle as ep
-
-    if os.path.isdir(analysis_source):
-      int_folder = os.path.abspath(analysis_source)
-    else:
-      try:
-        int_folder = os.path.abspath(os.path.join(os.curdir,
-                     'integration/{}/image_objects'.format(analysis_source)))
-      except ValueError:
-        print 'Run #{} not found'.format(analysis_source)
-
-    if os.path.isdir(int_folder):
-
-      cmd.Command.start("Analyzing results in {}".format(int_folder))
-      int_list = [os.path.join(int_folder, i) for i in os.listdir(int_folder)]
-      img_objects = [ep.load(i) for i in int_list if i.endswith('.int')]
-      cmd.Command.end("Analyzing results -- DONE")
-
-      self.logfile = os.path.abspath(os.path.join(int_folder, 'iota.log'))
-      self.viz_base = os.path.join('/'.join(int_folder.split('/')),
-                                   'vizualization')
-
-      self.params.analysis.cluster_write_files=False
-
-      analysis = Analyzer(self, img_objects, self.iver)
-      analysis.print_results()
-      analysis.unit_cell_analysis()
-      analysis.print_summary(write_files=False)
-    else:
-      print 'No results found in {}'.format(int_folder)
-
-
-  def run(self):
-
-    self.args, self.phil_args = parse_command_args(self.iver,
-                              self.help_message).parse_known_args()
-
-    # Check for type of input
-    if len(self.args.path) == 0 or self.args.path is None:  # No input
-      parse_command_args(self.iver, self.help_message).print_help()
-      if self.args.default:                      # Write out default params and exit
-        help_out, txt_out = inp.print_params()
-        print '\n{:-^70}\n'.format('IOTA Parameters')
-        print help_out
-        inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
-      misc.iota_exit()
-    elif len(self.args.path) > 1:  # If multiple paths / wildcards
-      file_list = ginp.make_input_list(self.args.path)
-      list_file = os.path.join(os.path.abspath(os.path.curdir), 'input.lst')
-      with open(list_file, 'w') as lf:
-        lf.write('\n'.join(file_list))
-      msg = "\nIOTA will run in AUTO mode using wildcard datapath:\n" \
-            "{} files found, compiled in {}\n".format(len(file_list), list_file)
-      self.params, self.txt_out = inp.process_input(self.args,
-                                                    self.phil_args,
-                                                    list_file,
-                                                    'auto',
-                                                    self.now)
-    else:                                   # If single path, check type
-      carg = os.path.abspath(self.args.path[0])
-      if os.path.exists(carg):
-
-        # If user provided a parameter file
-        if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
-          msg = ''
-          self.params, self.txt_out = inp.process_input(self.args,
-                                                        self.phil_args,
-                                                        carg, 'file')
-
-        # If user provided a list of input files
-        elif os.path.isfile(carg) and os.path.basename(carg).endswith('.lst'):
-          msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
-          self.params, self.txt_out = inp.process_input(self.args,
-                                                        self.phil_args,
-                                                        carg, 'auto', self.now)
-
-        # If user provided a single filepath
-        elif os.path.isfile(carg) and not os.path.basename(carg).endswith('.lst'):
-          msg = "\nIOTA will run in SINGLE-FILE mode using {}:\n".format(carg)
-          self.params, self.txt_out = inp.process_input(self.args,
-                                                        self.phil_args,
-                                                        carg, 'auto', self.now)
-
-        # If user provided a data folder
-        elif os.path.isdir(carg):
-          msg = "\nIOTA will run in AUTO mode using {}:\n".format(carg)
-          self.params, self.txt_out = inp.process_input(self.args,
-                                                        self.phil_args,
-                                                        carg, 'auto', self.now)
-      # If user provided gibberish
-      else:
-        print self.logo
-        print "ERROR: Invalid input! Need parameter filename or data folder."
-        misc.iota_exit()
-
-    # Identify indexing / integration program
-    if self.params.advanced.integrate_with == 'cctbx':
-      prg = "                                                             with CCTBX.XFEL\n"
-    elif self.params.advanced.integrate_with == 'dials':
-      prg = "                                                                  with DIALS\n"
-
-    self.logo += prg
-    print self.logo
-    print '\n{}\n'.format(self.now)
-    if msg != '':
-      print msg
-
-    if self.args.analyze != None:
-      print 'ANALYSIS ONLY will be performed (analyzing run #{})'.format(
-        self.args.analyze)
-      self.analyze_prior_results('{:003d}'.format(int(self.args.analyze)))
-      misc.iota_exit()
-
-    if self.params.mp_method == 'mpi':
-      rank, size = misc.get_mpi_rank_and_size()
-      self.master_process = rank == 0
-    else:
-      self.master_process = True
-
-    # Call function to read input folder structure (or input file) and
-    # generate list of image file paths
-    if self.params.cctbx.selection.select_only.flag_on:
-      self.gs_img_objects = self.make_int_object_list()
-      self.input_list = [i.conv_img for i in self.gs_img_objects]
-    else:
-      self.input_list = self.make_input_list()
-
-    # Check for -l option, output list of input files and exit
-    if self.args.list:
-      list_file = os.path.abspath("{}/input.lst".format(os.curdir))
-
-      # Check if other files of this name exist under the current folder
-      list_folder = os.path.dirname(list_file)
-      list_files = [i for i in os.listdir(list_folder) if i.endswith(".lst")]
-      if len(list_files) > 0:
-        list_file = os.path.join(list_folder,
-                                 "input_{}.lst".format(len(list_files)))
-
-      print '\nINPUT LIST ONLY option selected'
-      print 'Input list in {} \n\n'.format(list_file)
-      with open(list_file, "w") as lf:
-        for i, input_file in enumerate(self.input_list, 1):
-          lf.write('{}\n'.format(input_file))
-          print "{}: {}".format(i, input_file)
-          lf.write('{}\n'.format(input_file))
-      print '\nExiting...\n\n'
-      misc.iota_exit()
-
-    # If fewer images than requested processors are supplied, set the number of
-    # processors to the number of images
-    if self.params.n_processors > len(self.input_list):
-      self.params.n_processors = len(self.input_list)
-
-    # Generate base folder paths
-    self.conv_base = misc.set_base_dir('converted_pickles', out_dir = self.params.output)
-    self.int_base = misc.set_base_dir('integration', out_dir = self.params.output)
-    self.obj_base = os.path.join(self.int_base, 'image_objects')
-    self.fin_base = os.path.join(self.int_base, 'final')
-    self.log_base = os.path.join(self.int_base, 'logs')
-    self.viz_base = os.path.join(self.int_base, 'visualization')
-    self.tmp_base = os.path.join('/tmp', '{}_{}'.format(os.getlogin(), time.time()))
-
-    # Generate base folders
-    os.makedirs(self.int_base)
-    os.makedirs(self.obj_base)
-    os.makedirs(self.fin_base)
-    os.makedirs(self.log_base)
-    os.makedirs(self.tmp_base)
-
-    # Determine input base
-    self.input_base = os.path.abspath(os.path.dirname(os.path.commonprefix(self.input_list)))
+    # Save PHIL for this run in base integration folder
+    paramfile = os.path.join(int_base, 'iota_r{}.param'.format(run_no))
+    phil = phil.format(python_object=params)
+    with open(paramfile, 'w') as philf:
+      philf.write(phil.as_str())
 
     # Initialize main log
-    self.logfile = os.path.abspath(os.path.join(self.int_base, 'iota.log'))
+    logfile = os.path.abspath(os.path.join(int_base, 'iota.log'))
 
-    # Log starting info
-    misc.main_log(self.logfile, '{:=^80} \n'.format(' IOTA MAIN LOG '))
-    misc.main_log(self.logfile, '{:-^80} \n'.format(' SETTINGS FOR THIS RUN '))
-    misc.main_log(self.logfile, self.txt_out)
-
-    if self.params.advanced.integrate_with == 'cctbx':
-      target_file = self.params.cctbx.target
-    elif self.params.advanced.integrate_with == 'dials':
-      target_file = self.params.dials.target
-    misc.main_log(self.logfile, '{:-^80} \n\n'
-                                ''.format(' TARGET FILE ({}) CONTENTS '
-                                ''.format(target_file)))
-    with open(target_file, 'r') as phil_file:
-      phil_file_contents = phil_file.read()
-    misc.main_log(self.logfile, phil_file_contents)
-
-    # Write target file and record its location in params
-    local_target_file = os.path.join(self.int_base, 'target.phil')
-    with open(local_target_file, 'w') as tf:
-      tf.write(phil_file_contents)
+    # Initialize proc.info object and save to file
+    info = ProcInfo.from_args(iota_phil=phil.as_str(),
+                              target_phil=target_phil.as_str(),
+                              int_base=int_base,
+                              input_list_file=input_list_file,
+                              info_file=os.path.join(int_base, 'proc.info'),
+                              cluster_info_file=os.path.join(int_base, 'cluster.info'),
+                              paramfile=paramfile,
+                              logfile=logfile,
+                              run_number=run_no,
+                              status='initialized',
+                              init_proc=False)
+    info.export_json()
+    return True, info, 'IOTA_XTERM_INIT: Initialization complete!'
+  except Exception as e:
+    msg = 'IOTA_INIT_ERROR: Could not initialize run! {}'.format(e)
+    return False, None, msg
 
 
-# ============================================================================ #
-if __name__ == "__main__":
+def initialize_processing(paramfile, run_no):
+  ''' Initialize processing for a set of images
+  :param paramfile: text file with IOTA parameters
+  :param run_no: number of the processing run
+  :return: info: INFO object
+           params: IOTA params
+  '''
+  try:
+    phil, _ = inp.get_input_phil(paramfile=paramfile)
+  except Exception as e:
+    msg = 'IOTA_PROC_ERROR: Cannot import IOTA parameters! {}'.format(e)
+    return False, msg
+  else:
+    params = phil.extract()
 
-  iota_version = '1.0.001G'
-  help_message = ""
+  # Reconstruct integration base path and get info object
+  int_base = os.path.join(params.output, 'integration/{:03d}'.format(run_no))
+  try:
+    info_file = os.path.join(int_base, 'proc.info')
+    info = ProcInfo.from_json(filepath=info_file)
+  except Exception as e:
+    msg = 'IOTA_PROC_ERROR: Cannot import INFO object! {}'.format(e)
+    return False, msg
 
-  initialize = InitAll(iota_version, help_message)
-  initialize.run()
+  # Generate input list and input base
+  if not hasattr(info, 'input_list'):
+    info.generate_input_list(params=params)
+  common_pfx = os.path.abspath(
+    os.path.dirname(os.path.commonprefix(info.input_list)))
+
+  input_base = common_pfx
+  if os.path.isdir(os.path.abspath(params.input[0])):
+    new_common_pfx = os.path.commonprefix([os.path.abspath(params.input[0]), common_pfx])
+    if new_common_pfx not in ('', '.'):
+      input_base = new_common_pfx
+
+  # Generate subfolder paths
+  paths = dict(obj_base=os.path.join(int_base, 'image_objects'),
+               fin_base=os.path.join(int_base, 'final'),
+               log_base=os.path.join(int_base, 'logs'),
+               viz_base=os.path.join(int_base, 'visualization'),
+               tmp_base=os.path.join(int_base, 'tmp'),
+               input_base=input_base)
+  for bkey, bvalue in paths.items()[:-1]:
+    if not os.path.isdir(bvalue):
+      os.makedirs(bvalue)
+  info.update(paths)
+
+  # Generate filepaths for various info files
+  info_files = dict(
+    obj_list_file=os.path.join(info.tmp_base, 'finished_objects.lst'),
+    idx_file=os.path.join(info.int_base, 'observations.pickle')
+  )
+  info.update(info_files)
+
+  # Initialize stat containers
+  info = generate_stat_containers(info=info, params=params)
+
+    # Initialize main log
+  util.main_log(info.logfile, '{:*^80} \n'.format(' IOTA MAIN LOG '))
+  util.main_log(info.logfile, '{:-^80} \n'.format(' SETTINGS FOR THIS RUN '))
+  util.main_log(info.logfile, info.iota_phil)
+  util.main_log(info.logfile, '{:-^80} \n'.format('BACKEND SETTINGS'))
+  util.main_log(info.logfile, info.target_phil)
+
+  info.export_json()
+
+  return info, params
+
+def resume_processing(info):
+  ''' Initialize run parameters for an existing run (e.g. for resuming a
+      terminated run or re-submitting with new images)
+  :param info: INFO object
+  :return: info: Updated INFO object
+           params: IOTA params
+  '''
+
+  if not info.init_proc:
+    return initialize_processing(info.paramfile, info.run_number)
+  else:
+    try:
+      phil, _ = inp.get_input_phil(paramfile=info.paramfile)
+    except Exception as e:
+      return None, None
+    else:
+      info.status = 'processing'
+      return info, phil.extract()
+
+def initialize_single_image(img, paramfile, output_file=None, output_dir=None,
+                            min_bragg=10):
+
+  phil, _ = inp.get_input_phil(paramfile=paramfile)
+  params = phil.extract()
+
+  params.input = [img]
+  params.mp.n_processors = 1
+  params.image_import.minimum_Bragg_peaks = min_bragg
+
+  info = ProcInfo.from_args(iota_phil=phil.as_str(),
+                            paramfile=paramfile)
+
+  # Initialize output
+  if output_file is not None:
+    if output_dir is not None:
+      output = os.path.join(os.path.abspath(output_dir), output_file)
+    else:
+      output = os.path.abspath(output_file)
+  else:
+    output = None
+  info.obj_list_file = output
+
+  info.generate_input_list(params=params)
+  info = generate_stat_containers(info=info, params=params)
+
+  return info, params
+
+def generate_stat_containers(info, params):
+  # Generate containers for processing information
+  info.update(
+    bookmark=0,
+    merged_indices={},
+    b_factors=[],
+    final_objects=[],
+    finished_objects=[],
+    status_summary={
+      'nonzero': [],
+      'names': [],
+      'patches': []
+    },
+    cluster_iterable=[],
+    clusters=[],
+    prime_info=[],
+    user_sg='P1',
+    best_pg=None,
+    best_uc=None,
+    msg='',
+    categories=dict(
+      total=(info.input_list, 'images read in', 'full_input.lst', None),
+      have_diffraction=([], 'have diffraction', 'have_diffraction.lst', None),
+      failed_triage=([], 'failed triage', 'failed_triage.lst', '#d73027'),
+      failed_spotfinding=([], 'failed spotfinding', 'failed_spotfinding.lst', '#f46d43'),
+      failed_indexing=([], 'failed indexing', 'failed_indexing.lst', '#fdae61'),
+      failed_grid_search=([], 'failed grid search', 'failed_integration.lst', '#fee090'),
+      failed_integration=([], 'failed integration', 'failed_integration.lst', '#fee090'),
+      failed_filter=([], 'failed filter', 'failed_filter.lst', '#ffffbf'),
+      integrated=([], 'integrated', 'integrated.lst', '#4575b4'),
+      not_processed=(info.input_list, 'not processed', 'not_processed.lst', '#e0f3f8')),
+    stats={},
+    pixel_size=None,
+    status='processing',
+    init_proc=True
+  )
+
+  # Grid search stats dictionary (HA14 - deprecated)
+  if params.advanced.processing_backend == 'ha14':
+    gs_stat_keys = [('s', 'signal height', 'Signal Height'),
+                    ('h', 'spot height', 'Spot Height'),
+                    ('a', 'spot area', 'Spot Area')]
+    info.gs_stats = {}
+    for key in gs_stat_keys:
+      k = key[0]
+      l = key[2]
+      info.stats[k] = dict(lst=[], mean=0, std=0, max=0, min=0, cons=0, label=l)
+
+  # Statistics dictionary
+  stat_keys = [('res', 'Resolution'),
+               ('lres', 'Low Resolution'),
+               ('strong', 'Number of spots'),
+               ('mos', 'Mosaicity'),
+               ('wavelength', 'X-ray Wavelength'),
+               ('distance', 'Detector Distance'),
+               ('beamX', 'BeamX (mm)'),
+               ('beamY', 'BeamY (mm)')]
+  for key in stat_keys:
+    k = key[0]
+    l = key[1]
+    info.stats[k] = dict(lst=[], median=0, mean=0, std=0,
+                         max=0, min=0, cons=0, label=l)
+
+  return info

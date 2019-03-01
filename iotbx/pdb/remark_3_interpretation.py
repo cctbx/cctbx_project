@@ -150,11 +150,11 @@ class extract_tls_parameters(object):
         group_number = None
         try:
           fields = record.split()
-          if (len(fields) >= 6) :
+          if (len(fields) >= 6):
             group_number = int(fields[5])
           else :
             fields = record.split(":")
-            if (len(fields) >= 2) :
+            if (len(fields) >= 2):
               group_number = int(fields[1].strip())
             else :
               raise ValueError()

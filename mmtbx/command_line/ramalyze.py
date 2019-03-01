@@ -9,6 +9,8 @@ from libtbx.utils import Usage, Sorry
 import os.path
 import os, sys
 
+# Pavel's style:
+# plot=True show_labels=False markerfacecolor=yellow markeredgecolor=red
 def get_master_phil():
   return iotbx.phil.parse(input_string="""
     include scope mmtbx.validation.molprobity_cmdline_phil_str
@@ -23,12 +25,27 @@ def get_master_phil():
       .help = choose style of points, use matplotlib format from e.g. here: \
         https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.plot.html \
         very small is ',', little bigger is '.'
+    markersize=3
+      .type=int
+    markerfacecolor = white
+      .type = str
+    markeredgecolor="black"
+      .type = str
+    show_filling = True
+      .type = bool
+    show_contours = True
+      .type = bool
+    dpi=100
+      .type=int
     wxplot = False
       .type = bool
       .help = Display interactive plots (requires wxPython and Matplotlib)
     model_list = None
       .type = str
       .help = Comma separated file list to accumulate onto one plot
+    output_prefix = None
+      .type = str
+      .help = prefix for outputted plots (if plot=True)
 """, process_includes=True)
 prog = os.getenv('LIBTBX_DISPATCHER_NAME')
 usage_string = """
@@ -46,14 +63,14 @@ Example:
   %(prog)s model=1ubq.pdb outliers_only=True
 """ % locals()
 
-def run (args, out=sys.stdout, quiet=False) :
+def run(args, out=sys.stdout, quiet=False):
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil=get_master_phil(),
     pdb_file_def="model",
     usage_string=usage_string)
   params = cmdline.work.extract()
-  if (params.model is None and params.model_list is None) :
+  if (params.model is None and params.model_list is None):
     raise Usage(usage_string)
   if params.model:
     models = [params.model]
@@ -91,12 +108,20 @@ def run (args, out=sys.stdout, quiet=False) :
   if params.verbose:
     result.show_old_output(out=out, verbose=True)
   if params.plot :
-    plot_file_base = os.path.splitext(os.path.basename(params.model))[0]
+    plot_file_base = params.output_prefix
+    if plot_file_base is None:
+      plot_file_base = os.path.splitext(os.path.basename(params.model))[0]
     result.write_plots(
         plot_file_base=plot_file_base,
         out=out,
         show_labels=params.show_labels,
-        point_style=params.point_style)
+        point_style=params.point_style,
+        markerfacecolor=params.markerfacecolor,
+        show_filling=params.show_filling,
+        show_contours=params.show_contours,
+        dpi=params.dpi,
+        markeredgecolor=params.markeredgecolor,
+        markersize=params.markersize)
   if params.wxplot :
     try :
       import wxtbx.app
@@ -107,5 +132,5 @@ def run (args, out=sys.stdout, quiet=False) :
       result.display_wx_plots()
       app.MainLoop()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

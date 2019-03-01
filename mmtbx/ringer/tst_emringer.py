@@ -131,7 +131,7 @@ if __name__=='__main__':
     print("Required cctbx irrelevant dependencies are missing, skipping test.")
     keep_going=False
   tstdir = libtbx.env.find_in_repositories("phenix_regression/mmtbx/em_ringer")
-  if (tstdir is None) :
+  if (tstdir is None):
     warnings.warn("phenix_regression not available, skipping test")
   else :
     if(keep_going):

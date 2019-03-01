@@ -1,5 +1,5 @@
-from __future__ import division, absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
+from builtins import range
 from libtbx.option_parser import option_parser
 from libtbx.utils import Sorry
 from libtbx.str_utils import show_string
@@ -13,6 +13,7 @@ import sys
 import time
 import types
 
+import six
 try:
   import threading
 except ImportError:
@@ -64,13 +65,13 @@ Exception_not_expected = RuntimeError("Exception not expected.")
 
 class Default: pass
 
-def test_usage (cmd) :
+def test_usage(cmd):
   result = easy_run.fully_buffered(cmd)
-  if (result.return_code == 0) :
+  if (result.return_code == 0):
     return True
   else :
-    if (len(result.stderr_lines) > 0) :
-      if ("Usage" in result.stdout_lines[0]) :
+    if (len(result.stderr_lines) > 0):
+      if ("Usage" in result.stdout_lines[0]):
         return True
       else :
         raise Sorry("Bad stderr output from %s:\n%s" % (cmd,
@@ -122,7 +123,7 @@ def run_tests(build_dir, dist_dir, tst_list, display_times=False):
     threads_pool = []
     log_queue = queue.Queue()
     interrupted = threading.Event()
-    for i in xrange(co.threads):
+    for i in range(co.threads):
       working_dir = os.tempnam()
       os.mkdir(working_dir)
       t = threading.Thread(
@@ -230,14 +231,14 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
     yield cmd
 
 def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
-  if isinstance(a1, str) or isinstance(a1, unicode):
+  if isinstance(a1, (six.text_type, six.binary_type)):
     return a1 == a2
   if hasattr(a1, "__len__"): # traverse list
     if (len(a1) != len(a2)):
       raise AssertionError(
         "approx_equal ERROR: len(a1) != len(a2): %d != %d" % (
           len(a1), len(a2)))
-    for i in xrange(len(a1)):
+    for i in range(len(a1)):
       if not approx_equal_core(
                 a1[i], a2[i], eps, multiplier, out, prefix+"  "):
         return False
@@ -303,7 +304,7 @@ def not_approx_equal(a1, a2, eps=1.e-6, multiplier=1.e10):
 def eps_eq_core(a1, a2, eps, out, prefix):
   if (hasattr(a1, "__len__")): # traverse list
     assert len(a1) == len(a2)
-    for i in xrange(len(a1)):
+    for i in range(len(a1)):
       if (not eps_eq_core(a1[i], a2[i], eps, out, prefix+"  ")):
         return False
     return True
@@ -399,7 +400,7 @@ def precision_approx_equal(self,other,precision=24):
   if precision > 52: raise ValueError()
   if self==other:
     return True
-  if (self > 0.) != (other > 0.) :
+  if (self > 0.) != (other > 0.):
     return False
   #compute the exponent
   import math
@@ -413,7 +414,7 @@ def precision_approx_equal(self,other,precision=24):
 def show_diff(a, b, out=sys.stdout,
     selections=None, expected_number_of_lines=None,
     strip_trailing_whitespace=False):
-  if (not isinstance(a, str)):
+  if (not isinstance(a, (str,bytes))):
     a = "\n".join(a)+"\n"
   if (selections is None):
     assert expected_number_of_lines is None
@@ -701,7 +702,8 @@ approx_equal multiplier: 10000000000.0
   assert not approx_equal(0, 1.e-5, out=out)
   assert approx_equal(0, 1.e-6)
   out = StringIO()
-  assert not approx_equal([[0,1],[2j,3]],[[0,1],[-2j,3]], out=out, prefix="$%")
+  assert not approx_equal([[0,1],[2j,3]],[[0,1],[complex(0,-2),3]], out=out,
+                          prefix="$%")
   assert not show_diff(out.getvalue().replace("1e-006", "1e-06"), """\
 $%approx_equal eps: 1e-06
 $%approx_equal multiplier: 10000000000.0
@@ -745,7 +747,8 @@ eps_eq eps: 1e-06
   assert not eps_eq(0, 1.e-5, out=out)
   assert eps_eq(0, 1.e-6)
   out = StringIO()
-  assert not eps_eq([[0,1],[2j,3]],[[0,1],[-2j,3]], out=out, prefix="$%")
+  assert not eps_eq([[0,1],[2j,3]],[[0,1],[complex(0,-2),3]], out=out,
+                    prefix="$%")
   assert not show_diff(out.getvalue().replace("1e-006", "1e-06"), """\
 $%eps_eq eps: 1e-06
 $%    0

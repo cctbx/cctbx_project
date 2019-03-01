@@ -509,7 +509,7 @@ def tst_sublattice():
   # compare results to table 2, Acta Cryst A36, 242-248, (1980) Billiet, Rolley Le-Coz
   i = [2, 3,  4,  5,  6,  7,  8,   9,   10 ]
   N = [7, 13, 35, 31, 91, 57, 155, 130, 217]
-  for ii, iN in zip(i,N) :
+  for ii, iN in zip(i,N):
     tmp = generate_matrix( ii )
     assert ( len(tmp) == iN )
 

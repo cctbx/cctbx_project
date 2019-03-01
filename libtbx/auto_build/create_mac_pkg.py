@@ -4,7 +4,7 @@ Create a graphical Mac installer for a complete installation of CCTBX or
 Phenix (or any other derived software).
 """
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import os
 import os.path as op
@@ -17,12 +17,12 @@ from .installer_utils import *
 
 # XXX HACK
 libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
-if (not libtbx_path in sys.path) :
+if (not libtbx_path in sys.path):
   sys.path.append(libtbx_path)
 
-def run (args, out=sys.stdout) :
-  if (sys.platform != "darwin") :
-    print "ERROR: this program can only be run on Macintosh systems."
+def run(args, out=sys.stdout):
+  if (sys.platform != "darwin"):
+    print("ERROR: this program can only be run on Macintosh systems.")
     return False
   # XXX this prevents tar on OS X from including resource fork files, which
   # break the object relocation.  thanks to Francis Reyes for pointing this out.
@@ -53,26 +53,26 @@ def run (args, out=sys.stdout) :
   options, args = parser.parse_args(args)
   arch_type = os.uname()[-1]
   system_type = "64-bit Intel Macs"
-  if (arch_type != "x86_64") :
+  if (arch_type != "x86_64"):
     system_type = "Intel Macs"
   system_type += " (OS %s or later)" % get_os_version()
-  if (len(args) != 1) :
-    print "Usage: create_mac_pkg [options] PROGRAM_DIR"
+  if (len(args) != 1):
+    print("Usage: create_mac_pkg [options] PROGRAM_DIR")
     return False
   program_dir = args[0]
-  if (not program_dir.startswith("/")) :
-    print "ERROR: absolute path required"
+  if (not program_dir.startswith("/")):
+    print("ERROR: absolute path required")
     return False
-  if (not op.isdir(program_dir)) :
-    print "ERROR: '%s' is not a directory" % program_dir
+  if (not op.isdir(program_dir)):
+    print("ERROR: '%s' is not a directory" % program_dir)
     return False
   dest_name = op.dirname(program_dir)
-  if (dest_name == "/Applications") :
+  if (dest_name == "/Applications"):
     dest_name = "the Applications folder"
   pkg_root = "pkg_root"
-  if (op.exists(pkg_root)) :
-    if (not options.overwrite) :
-      print "ERROR: pkg_root already exists - run with --overwrite to ignore"
+  if (op.exists(pkg_root)):
+    if (not options.overwrite):
+      print("ERROR: pkg_root already exists - run with --overwrite to ignore")
       return False
     shutil.rmtree(pkg_root)
   os.mkdir(pkg_root)
@@ -94,8 +94,8 @@ our website).""" % { "package" : options.package_name,
                      "dest_name" : dest_name })
   # identify .app bundles in top-level directory
   app_bundle_xml = []
-  for file_name in os.listdir(program_dir) :
-    if (file_name.endswith(".app")) :
+  for file_name in os.listdir(program_dir):
+    if (file_name.endswith(".app")):
       full_path = op.join(program_dir, file_name)
       if (not op.isdir(full_path)) : continue
       app_bundle_xml.append("""\
@@ -134,8 +134,8 @@ our website).""" % { "package" : options.package_name,
   shutil.move(program_dir, pkg_path)
   # write out distribution.xml
   misc_files = []
-  if (options.background is not None) :
-    if (options.background.endswith(".jpg")) :
+  if (options.background is not None):
+    if (options.background.endswith(".jpg")):
       shutil.copyfile(options.background, "resources/background.jpg")
       misc_files.append(
         """<background file="background.jpg" mime-type="image/jpeg" """+
@@ -146,7 +146,7 @@ our website).""" % { "package" : options.package_name,
       misc_files.append(
         """<background file="background.png" mime-type="image/png" """+
         """alignment="topleft" scaling="proportional"/>""")
-  if (options.license_file is not None) :
+  if (options.license_file is not None):
     shutil.copyfile(options.license_file, "resources/license.txt")
     misc_files.append(
       """<license    file="license.txt"    mime-type="text/plain" />""")
@@ -184,7 +184,7 @@ our website).""" % { "package" : options.package_name,
         "misc_files" : "\n".join(misc_files) })
   distfile.close()
 
-  print >> out, "Fixing package permissions:", pkg_root
+  print("Fixing package permissions:", pkg_root, file=out)
   call(['chmod','-R','0755',pkg_root])
 
   # Run packaging commands
@@ -196,7 +196,7 @@ our website).""" % { "package" : options.package_name,
     "--component-plist", plist_file,
     base_pkg,
   ]
-  print >> out, "Calling pkgbuild:", pkg_args
+  print("Calling pkgbuild:", pkg_args, file=out)
   call(pkg_args, out)
   product_args = [
     "productbuild",
@@ -206,11 +206,11 @@ our website).""" % { "package" : options.package_name,
     "--version", options.version,
     pkg_name,
   ]
-  print >> out, "Calling productbuild:", product_args
+  print("Calling productbuild:", product_args, file=out)
   call(product_args, out)
   assert op.exists(pkg_name)
   return True
 
-if (__name__ == "__main__") :
-  if (not run(sys.argv[1:])) :
+if (__name__ == "__main__"):
+  if (not run(sys.argv[1:])):
     sys.exit(1)

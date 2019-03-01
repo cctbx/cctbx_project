@@ -12,15 +12,15 @@ import os
 external_energy_params_str = ""
 
 amber_installed = False
-if libtbx.env.has_module("amber_adaptbx") :
+if libtbx.env.has_module("amber_adaptbx"):
   build_dir = libtbx.env.under_build("amber_adaptbx")
   try: import sander
   except ImportError, e: sander = False
   if sander:
-  #if (build_dir is not None) and (os.path.isdir(build_dir)) :
+  #if (build_dir is not None) and (os.path.isdir(build_dir)):
     amber_installed = True
 
-if (amber_installed) :
+if (amber_installed):
   external_energy_params_str += """
     amber
       .help = Parameters for using Amber in refinement.
@@ -32,7 +32,7 @@ if (amber_installed) :
 
 qb_installed = os.environ.get("QBHOME", False)
 if qb_installed: qb_installed = os.path.isdir(qb_installed)
-if (qb_installed) :
+if (qb_installed):
   external_energy_params_str += """
     qbio
       .short_caption = QuantumBio refinement plugin
@@ -43,11 +43,11 @@ if (qb_installed) :
 
 #afitt
 afitt_installed=False
-if os.environ.get("OE_EXE", None) :
+if os.environ.get("OE_EXE", None):
   if os.path.exists(os.environ["OE_EXE"]):
     afitt_installed = True
 
-if (afitt_installed) :
+if (afitt_installed):
   external_energy_params_str += """
     afitt
       .help = Parameters for using AFITT ligand gradients.
@@ -59,27 +59,26 @@ if (afitt_installed) :
 
 # Schrodinger
 schrodinger_installed = False
-if os.environ.get("SCHRODINGER", None):
+if os.environ.get("SCHRODINGER", False):
   if os.path.exists(os.environ["SCHRODINGER"]):
     schrodinger_installed = True
 
 if schrodinger_installed:
-  external_energy_params_str += """
+  from glob import glob
+  paths = glob(os.path.join(
+      os.environ["SCHRODINGER"], 'psp-v*', 'data', 'phenix'))
+  if len(paths) == 1:
+    import sys
+    sys.path.append(paths[0])
+  try:
+    import phenix_schrodinger
+    external_energy_params_str += """
     schrodinger
       .help = Parameters for using Schrodinger's force fields.
       .expert_level = 3
     {
-      use_schrodinger = False
-        .help = Use Schrodinger supported force field.
-        .type = bool
-      ligand_selection = None
-        .help = Use force field parameters only for selected ligands.
-        .type = atom_selection
-      forcefield = OPLS3e* None
-        .help = Force field to use during refinement.
-        .type = choice
-      maestro_file = None
-        .help = Schrodinger Maestro file containing structure.
-        .type = path
+      include scope phenix_schrodinger.master_phil_str
     }
 """
+  except ImportError:
+    schrodinger_installed = False

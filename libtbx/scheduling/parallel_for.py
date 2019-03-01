@@ -1,5 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
+from builtins import object, range
 from collections import deque
 
 class single_pooler(object):
@@ -48,7 +49,7 @@ class pooled_run(object):
       try:
         value = target( *args, **kwargs )
 
-      except Exception, e:
+      except Exception as e:
         results.append( result.error( exception = e ) )
 
       else:
@@ -72,7 +73,7 @@ class multi_pooler(object):
 
   def submit_one_job(self, calcsiter, manager):
 
-    calculations = [ c for ( i, c ) in zip( range( self.size ), calcsiter ) ]
+    calculations = [ c for ( i, c ) in zip( range( self.size), calcsiter ) ]
 
     if not calculations:
       raise StopIteration
@@ -238,7 +239,7 @@ class iterator(object):
     return self
 
 
-  def next(self):
+  def __next__(self):
 
     while not self.resiter:
       self.process_next_one()

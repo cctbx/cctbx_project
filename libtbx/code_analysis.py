@@ -1,5 +1,5 @@
 """ Tools to statically analyse source code in various languages """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import os
 import re
@@ -33,7 +33,7 @@ class comments(object):
       self.lines += 1
       if self.fortran_start_of_line.search(line):
         n += 1
-        if self.debug: print self.lines, line
+        if self.debug: print(self.lines, line)
         continue
       bang = line.rfind('!')
       if bang < 0: continue
@@ -48,5 +48,5 @@ class comments(object):
         if quote < bang: continue
       if self.fortran_bang_anywhere.search(line, pos=bang):
         n += 1
-        if self.debug: print self.lines, line
+        if self.debug: print(self.lines, line)
     self.commented_lines += n

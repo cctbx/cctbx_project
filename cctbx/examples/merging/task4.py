@@ -2,10 +2,7 @@ from __future__ import division
 from six.moves import range
 from cctbx.array_family import flex
 from cctbx.uctbx import unit_cell
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import cPickle as pickle
 
 from cctbx.examples.merging import intensity_data
 def prepare_simulation_with_noise(sim, transmittance,
@@ -117,7 +114,7 @@ def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
 
 if __name__=="__main__":
 
-  import cPickle as pickle
+  from six.moves import cPickle as pickle
   ordered_intensities = pickle.load(open("intensities.pickle","rb"))
   frames = pickle.load(open("frames.pickle","rb"))
   case = 1000

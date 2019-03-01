@@ -1,5 +1,4 @@
 from __future__ import division
-from six.moves import range
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Usage
 from libtbx import easy_run
@@ -239,7 +238,7 @@ def build_run(
     utimes.append(utime)
     print "sample utime: %.2f" % utime
     sys.stdout.flush()
-  for _ in range(8):
+  for _ in xrange(8):
     run_once()
   return min(utimes)
 

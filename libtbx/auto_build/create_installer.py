@@ -11,7 +11,7 @@ probably need to perform additional modifications to the installer tree
 before it can be tarred.
 """
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import imp
 import os
@@ -39,8 +39,6 @@ if [ -z "$PYTHON_EXE" ]; then
     PYTHON_EXE='/usr/bin/python2.7'
   elif [ -f "/usr/bin/python2.6" ]; then
     PYTHON_EXE='/usr/bin/python2.6'
-  elif [ -f "/usr/bin/python2.5" ]; then
-    PYTHON_EXE='/usr/bin/python2.5'
   elif [ -f "/usr/bin/python2" ]; then
     PYTHON_EXE='/usr/bin/python2'
   fi
@@ -75,16 +73,16 @@ def makedirs(path):
   try:
     os.makedirs(path)
   except Exception:
-    print "Directory already exists: %s"%path
+    print("Directory already exists: %s"%path)
 
 def archive(source, destination, tarfile=None):
   if source == destination:
-    print "Source and destination are the same, skipping: %s"%source
+    print("Source and destination are the same, skipping: %s"%source)
     return
   assert not os.path.exists(destination), "File exists: %s"%destination
-  print "Copying: %s -> %s"%(source, destination)
+  print("Copying: %s -> %s"%(source, destination))
   if not os.path.exists(source):
-    print "Warning: source does not exist! Skipping: %s"%source
+    print("Warning: source does not exist! Skipping: %s"%source)
     return
   try:
     if os.path.basename(source) != 'build': # don't delete lib files from python or modules
@@ -103,7 +101,7 @@ def archive(source, destination, tarfile=None):
         )
   except Exception as err:
     # workaround for possible very long path problem on Windows
-    if sys.platform == "win32" and type(err)==shutil.Error:
+    if sys.platform == "win32" and isinstance(err, shutil.Error):
       for e in err[0]:
         if len(e)==3: # if not then it's some other error
           (src, dst, errstr) = e
@@ -113,13 +111,13 @@ def archive(source, destination, tarfile=None):
             ultddst = "\\\\?\\" + dst
             shutil.copy(ultdsrc, ultddst)
     else:
-      raise Exception, err
+      raise Exception(err)
 
 
 
 def tar(source, tarfile, cwd=None):
   assert not os.path.exists(tarfile), "File exists: %s"%tarfile
-  print "Archiving: %s -> %s"%(source, tarfile)
+  print("Archiving: %s -> %s"%(source, tarfile))
   # TODO: replace system call to tar with platform independent python tarfile module
   #mytar = tarfile.open(tarfile, mode="r:gz")
   #mytar.add(source, arcname=tarfile)
@@ -159,9 +157,14 @@ class SetupInstaller(object):
     installer_module = imp.load_source('install_script', self.install_script)
     self.installer = installer_module.installer()
 
+    # check for conda
+    self.base_dir = 'base'
+    if os.path.isdir(os.path.join(self.root_dir, 'conda_base')):
+      self.base_dir = 'conda_base'
+
   def run(self):
     # Setup directory structure
-    print "Installer will be %s"%self.dest_dir
+    print("Installer will be %s"%self.dest_dir)
     assert not os.path.exists(self.dest_dir), "Installer dir exists: %s"%self.dest_dir
     makedirs(self.dest_dir)
     for i in ['bin', 'lib']:
@@ -180,13 +183,18 @@ class SetupInstaller(object):
     if self.binary and sys.platform == "darwin":
       self.make_dist_pkg()
     if self.binary and sys.platform == "win32":
-      vcredist = "vcredist_x64.exe"
-      import platform
-      if int(platform.architecture()[0][0:2]) < 64:
-        vcredist = "vcredist_x86.exe"
-      shutil.copyfile( os.path.join(self.root_dir, 'base_tmp', vcredist),
-                       os.path.join(self.dest_dir, vcredist)
-      )
+      if self.base_dir == 'base':
+        vcredist = "vcredist_x64.exe"
+        import platform
+        if int(platform.architecture()[0][0:2]) < 64:
+          vcredist = "vcredist_x86.exe"
+        shutil.copyfile( os.path.join(self.root_dir, 'base_tmp', vcredist),
+                        os.path.join(self.dest_dir, vcredist)
+        )
+      else:
+        vcredist = "vcredist_x64.exe"
+        shutil.copyfile(os.path.join(self.root_dir, 'conda_base', vcredist),
+                        os.path.join(self.dest_dir, vcredist))
       self.make_windows_installer()
 
   def copy_info(self):
@@ -225,10 +233,13 @@ class SetupInstaller(object):
   def copy_dependencies(self):
     # Copy dependencies
     archive(
-      os.path.join(self.root_dir, 'base'),
-      os.path.join(self.dest_dir, 'base')
+      os.path.join(self.root_dir, self.base_dir),
+      os.path.join(self.dest_dir, self.base_dir)
     )
-    libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root_dir, 'base'), os.path.join(self.dest_dir, 'base')])
+    if self.base_dir == 'base':
+      libtbx.auto_build.rpath.run(
+        ['--otherroot', os.path.join(self.root_dir, 'base'),
+         os.path.join(self.dest_dir, 'base')])
 
   def copy_build(self):
     # Copy the entire build directory, minus .o files.
@@ -236,7 +247,7 @@ class SetupInstaller(object):
       os.path.join(self.root_dir, 'build'),
       os.path.join(self.dest_dir, 'build')
     )
-    libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root_dir, 'base'), os.path.join(self.dest_dir, 'build')])
+    libtbx.auto_build.rpath.run(['--otherroot', os.path.join(self.root_dir, self.base_dir), os.path.join(self.dest_dir, 'build')])
 
   def copy_modules(self):
     # Source modules #
@@ -270,7 +281,10 @@ class SetupInstaller(object):
     """Generate shell scripts in the top-level installation directory."""
     if sys.platform == "win32":
       return
-    print "Generating %s environment setup scripts..."%self.installer.product_name
+    if self.install_script:
+      print("Not generating environment setup scripts as installer is provided")
+      return
+    print("Generating %s environment setup scripts..."%self.installer.product_name)
     fmt = {'env_prefix':self.installer.product_name.upper(), 'version':self.version}
     # bash
     with open(os.path.join(self.dest_dir, '%s_env.sh'%self.installer.product_name.lower()), 'w') as f:
@@ -285,11 +299,15 @@ class SetupInstaller(object):
 # Bake version number into the dispatchers and the help files and create rotarama db
 # This is done during installation on other platforms
       from libtbx.auto_build import installer_utils
-      arg = [os.path.join(self.dest_dir,'base','bin','python','python.exe'),
+      python_exe = os.path.join(self.dest_dir,'base','bin','python','python.exe')
+      # check for conda
+      if self.base_dir == 'conda_base':
+        python_exe = os.path.join(self.dest_dir, self.base_dir, 'python.exe')
+      arg = [python_exe,
              os.path.join(self.dest_dir,'bin','install.py'), '--nopycompile']
       installer_utils.call(arg, cwd=self.dest_dir)
 
-      print "Creating zip archive of distribution"
+      print("Creating zip archive of distribution")
       fname = os.path.join(self.dist_dir, '%s.zip'%os.path.basename(self.dest_dir))
       myzip = zipfile.ZipFile(fname, 'w', zipfile.ZIP_DEFLATED, allowZip64=True )
       for dirpath,dirs,files in os.walk(self.dest_dir):
@@ -304,7 +322,7 @@ class SetupInstaller(object):
           myzip.write(filename=fname, arcname=relfname)
       myzip.close()
     else:
-      print "Creating tar archive of distribution"
+      print("Creating tar archive of distribution")
       tar(
         os.path.basename(self.dest_dir),
         os.path.join(self.dist_dir, '%s.tar.gz'%os.path.basename(self.dest_dir)),
@@ -312,8 +330,8 @@ class SetupInstaller(object):
       )
 
   def make_dist_pkg(self):
-    if (not os.access("/Applications", os.W_OK|os.X_OK)) :
-      print "Can't access /Applications - skipping .pkg build"
+    if (not os.access("/Applications", os.W_OK|os.X_OK)):
+      print("Can't access /Applications - skipping .pkg build")
       return
 
     # This has to match other conventions...
@@ -338,10 +356,13 @@ class SetupInstaller(object):
       from libtbx.auto_build.install_base_packages import installer
       file_list = os.listdir(os.path.join(app_root_dir, 'build', 'bin'))
       for filename in file_list:
+        patch = '"$LIBTBX_BUILD/../base/Python.framework/Versions/2.7/lib/python2.7/site-packages/certifi/cacert.pem"'
+        if self.base_dir == 'conda_base':
+          patch = '"$LIBTBX_BUILD/../conda_base/lib/python2.7/site-packages/certifi/cacert.pem"'
         installer.patch_src(
           os.path.join(app_root_dir,'build', 'bin', filename),
           '"%s"' % certifi.where(),
-          '"$LIBTBX_BUILD/../base/Python.framework/Versions/2.7/lib/python2.7/site-packages/certifi/cacert.pem"'
+          patch
         )
     except ImportError:
       pass
@@ -410,5 +431,5 @@ def run(args):
   setup.run()
 
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   sys.exit(run(sys.argv[1:]))

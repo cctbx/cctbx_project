@@ -735,14 +735,14 @@ def exercise_bond():
     weight=400,
     limit=0.6,
     top_out=True)
-  for i in range(200) :
+  for i in range(200):
     sites[1][0] = 1.5 + 0.01 * (i - 100)
     sites_cart = flex.vec3_double(sites) # XXX why isn't this automatic?
     bond1 = geometry_restraints.bond(sites_cart, proxy1)
     bond2 = geometry_restraints.bond(sites_cart, proxy2)
     res1 = bond1.residual()
     res2 = bond2.residual()
-    if (i <= 100) :
+    if (i <= 100):
       assert (res1 == res2)
     else :
       assert (res2 < res1)
@@ -2444,7 +2444,6 @@ def exercise_proxy_show():
     f=sio)
   assert not show_diff(sio.getvalue(), """\
 Bond restraints: 0
-Sorted by residual:
 """)
   sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
     pair_asu_table=pair_asu_table)
@@ -2671,11 +2670,19 @@ Dihedral angle restraints: 0
     by_value="residual",
     sites_cart=sites_cart,
     f=sio,
-    max_items=0)
+    max_items=1)
   assert not show_diff(sio.getvalue(), """\
 Dihedral angle restraints: 2
   sinusoidal: 0
     harmonic: 2
+Sorted by residual:
+dihedral 3
+         2
+         0
+         5
+    ideal   model   delta  harmonic     sigma   weight residual
+    99.00   16.67   82.33    -1      3.54e-01 8.00e+00 5.42e+04
+... (remaining 1 not shown)
 """)
   #
   proxies = geometry_restraints.shared_chirality_proxy()
@@ -2755,7 +2762,8 @@ Chirality restraints: 2
     by_value="residual",
     sites_cart=flex.vec3_double(),
     f=sio)
-  assert not show_diff(sio.getvalue(), """\
+  if 0: # n=0 restraints removed
+    assert not show_diff(sio.getvalue(), """\
 Planarity restraints: 0
 """)
   proxies = geometry_restraints.shared_planarity_proxy([
@@ -2810,9 +2818,16 @@ Planarity restraints: 0
     by_value="residual",
     sites_cart=sites_cart,
     f=sio,
-    max_items=0)
+    max_items=1)
   assert not show_diff(sio.getvalue(), """\
 Planarity restraints: 2
+Sorted by residual:
+           delta    sigma   weight rms_deltas residual
+plane 0    0.004 1.80e+00 3.10e-01   1.46e-01 2.52e-02
+      2   -0.196 2.24e+00 2.00e-01
+      4   -0.115 1.80e+00 3.10e-01
+      1    0.184 1.58e+00 4.00e-01
+... (remaining 1 not shown)
 """)
   #
   unit_cell = uctbx.unit_cell([15,11.5,16.25,90,99.5,90])

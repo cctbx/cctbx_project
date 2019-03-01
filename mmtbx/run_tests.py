@@ -22,7 +22,7 @@ general_tests = [
   "$D/regression/tls/tst_tls.py",
   "$D/regression/tls/tst_tls_analysis.py",
   "$D/regression/tls/tst_get_t_scheme.py",
-  "$D/regression/tls/tst_tls_refinement_fft.py",
+  "$D/regression/tls/tst_tls_refinement_fft.py --comprehensive --random_seed=2679941",
   "$D/regression/tls/tst_u_tls_vs_u_ens_00.py",
   "$D/regression/tls/tst_u_tls_vs_u_ens_01.py",
   "$D/regression/tls/tst_u_tls_vs_u_ens_02.py",
@@ -115,6 +115,8 @@ general_tests = [
   "$D/regression/tst_altloc_remediate.py",
   "$D/hydrogens/build_hydrogens.py",
   "$D/hydrogens/tst.py",
+  "$D/hydrogens/tst_add_hydrogen.py",
+  "$D/hydrogens/tst_add_hydrogen_2.py",
   "$D/hydrogens/tst_validate_H.py",
   "$D/hydrogens/tst_connectivity.py",
   "$D/hydrogens/tst_riding_coefficients.py",
@@ -230,7 +232,6 @@ general_tests = [
   "$D/validation/regression/tst_rotalyze.py",
   "$D/validation/regression/tst_ramalyze.py",
   "$D/validation/regression/tst_ramalyze2.py",
-  "$D/validation/regression/tst_cbetadev.py",
   "$D/validation/regression/tst_clashscore.py",
   "$D/validation/regression/tst_restraints.py",
   "$D/validation/regression/tst_omegalyze.py",
@@ -241,13 +242,13 @@ general_tests = [
   "$D/validation/regression/tst_hydrogen_addition_clashscore.py",
   "$D/validation/regression/tst_symmetry_SS.py",
   "$D/validation/regression/tst_do_flips_clashscore.py",
+  "$D/validation/regression/tst_find_region_max_value.py",
   #
   "$D/refinement/tst_select_best_starting_model.py",
   "$D/regression/tst_refine_anomalous_substructure.py",
   "$D/regression/tst_helix_sheet_recs_as_pdb_files.py",
   "$D/regression/tst_command_line_input.py",
   "$D/regression/tst_cif_as_mtz_wavelengths.py",
-  "$D/regression/tst_cif_as_mtz_neutron.py",
   "$D/building/tst_extend_sidechains.py",
   "$D/building/tst_extend_sidechains_2.py",
   # alt confs
@@ -310,6 +311,8 @@ general_tests = [
   "$D/regression/tst_map_model_cc.py",
   "$D/regression/tst_model_map.py",
   #
+  "$D/regression/tst_validate_ligands.py",
+  #
   "$D/regression/tst_cis_trans_peptide_link.py",
   "$D/regression/tst_apply_cif_restraints.py",
   "$D/regression/tst_multi_residue_class.py",
@@ -357,11 +360,14 @@ general_tests = [
   ]
 
 probe_tests = [
+  "$D/regression/tst_add_arrows_on_plot.py",
   "$D/regression/model/tst_model.py",
   "$D/regression/tst_reduce_timeout.py",
   "$D/regression/tst_altloc_chain_break.py",
   "$D/regression/ncs/tst_geometry_minimization_ncs_constraints.py",
   "$D/regression/tst_clashes.py",
+  "$D/validation/regression/tst_cbetadev.py",
+  "$D/regression/tst_statistics_output.py",
   "$D/regression/tst_geo_min_restraints_phil.py",
   "$D/regression/tst_model_vs_map.py",
   # validation/molprobity

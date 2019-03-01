@@ -89,7 +89,7 @@ def exercise_rotalyze():
      " B 377  GLU:1.00:15.0:311.7:166.2:160.1::Favored:mt-10",
      " B 378  THR:1.00:17.0:309.4::::Favored:m",
     ]
-    for idx, val in zip(line_indices, line_values) :
+    for idx, val in zip(line_indices, line_values):
       assert (output_lines[idx] == val), (idx, output_lines[idx])
 
   regression_pdb = libtbx.env.find_in_repositories(
@@ -171,7 +171,7 @@ def exercise_rotalyze():
  A  46  ASN:1.00:38.7:301.6:117.9:::Favored:m110
 """)
 
-def exercise_2 () :
+def exercise_2():
   pdb_str = """\
 ATOM   2527  N   LEU A 261     -31.022 -24.808 107.479  1.00 28.22           N
 ATOM   2528  CA  LEU A 261     -30.054 -23.719 107.237  1.00 21.77           C
@@ -288,7 +288,7 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
         results.append(cur_rot)
   assert results == ['Cg_exo', 'OUTLIER', 'OUTLIER']
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_rotalyze()
   exercise_2()
   print "OK"

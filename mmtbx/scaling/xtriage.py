@@ -407,13 +407,13 @@ Example usage:
 
 """ % vars()
 
-class merging_statistics (mmtbx.scaling.xtriage_analysis,
-                          iotbx.merging_statistics.dataset_statistics) :
+class merging_statistics(mmtbx.scaling.xtriage_analysis,
+                          iotbx.merging_statistics.dataset_statistics):
   """
   Subclass of iotbx merging statistics class to override the show() method
   and use the Xtriage output style.
   """
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     # overall statistics
     out.show_header("Statistics for data merging")
     out.show_sub_header("Overall statistics")
@@ -435,23 +435,23 @@ lower than shown here.
     self.overall.show_summary(out=tmp_out, prefix="    ")
     out.show_lines(tmp_out.getvalue())
     is_p1 = self.crystal_symmetry.space_group_info().type().number() == 1
-    if (self.overall.r_merge > 0.2) :
-      if (not is_p1) :
+    if (self.overall.r_merge > 0.2):
+      if (not is_p1):
         out.warn("""\
 The overall R-merge is greater than 0.2, suggesting that the choice of space
 group may be incorrect.  We suggest that you try merging in lower symmetry
 to see if this improves the statistics.""")
-    elif (self.cc_one_half_outer > CC_ONE_HALF_OUTER_HIGH) :
+    elif (self.cc_one_half_outer > CC_ONE_HALF_OUTER_HIGH):
       out.warn("""\
 The correlation of half-datasets (CC1/2)in the outer resolution shell suggests
 that the useful resolution range extends significantly beyond the cutoff used
 in the input data.""")
-    elif (self.cc_one_half_outer > CC_ONE_HALF_OUTER_MED) :
+    elif (self.cc_one_half_outer > CC_ONE_HALF_OUTER_MED):
       out.warn("""\
 The correlation of half-datasets (CC1/2)in the outer resolution shell suggests
 that the useful resolution range may extend beyond the cutoff used in the input
 data.""")
-    elif (self.cc_one_half_outer < CC_ONE_HALF_OUTER_POOR) :
+    elif (self.cc_one_half_outer < CC_ONE_HALF_OUTER_POOR):
       out.warn("""\
 The correlation of half-datasets (CC1/2)in the outer resolution shell suggests
 that the useful resolution range may be lower than that of the input data.""")
@@ -463,23 +463,23 @@ that the useful resolution range may be lower than that of the input data.""")
     out.show_lines("References:\n"+iotbx.merging_statistics.citations_str)
 
   @property
-  def cc_one_half_outer (self) :
+  def cc_one_half_outer(self):
     return self.bins[-1].cc_one_half
 
-  def summarize_issues (self) :
-    if (self.overall.r_merge > 0.2) :
+  def summarize_issues(self):
+    if (self.overall.r_merge > 0.2):
       is_p1 = self.crystal_symmetry.space_group_info().type().number() == 1
-      if (not is_p1) :
+      if (not is_p1):
         return [ (2, "The merging statistics indicate that the data may "+
           "be assigned to the wrong space group.", "Dataset consistency") ]
       else :
         return [ (2, "The merging statistics are unusually poor, but the "+
           "space group is P1, suggesting problems with data processing.",
           "Dataset consistency") ]
-    if (self.cc_one_half_outer > CC_ONE_HALF_OUTER_MED) :
+    if (self.cc_one_half_outer > CC_ONE_HALF_OUTER_MED):
       return [ (1, "The resolution of the data may be useful to higher "+
         "resolution than the given resolution.", "Dataset consistency") ]
-    elif (self.cc_one_half_outer < CC_ONE_HALF_OUTER_POOR) :
+    elif (self.cc_one_half_outer < CC_ONE_HALF_OUTER_POOR):
       return [ (1, "The resolution of the data may be lower than the given "+
         "resolution.", "Dataset consistency") ]
     else :
@@ -487,11 +487,11 @@ that the useful resolution range may be lower than that of the input data.""")
         "Dataset consistency") ]
     return []
 
-class data_summary (mmtbx.scaling.xtriage_analysis) :
+class data_summary(mmtbx.scaling.xtriage_analysis):
   """
   Basic info about the input data (somewhat redundant at the moment).
   """
-  def __init__ (self, miller_array, was_merged=False) :
+  def __init__(self, miller_array, was_merged=False):
     self.info = miller_array.info()
     self.space_group = miller_array.space_group_info()
     self.unit_cell = miller_array.unit_cell().parameters()
@@ -504,16 +504,16 @@ class data_summary (mmtbx.scaling.xtriage_analysis) :
     self.d_max_min = miller_array.d_max_min()
     self.anomalous_completeness = None
     non_anom = miller_array.average_bijvoet_mates()
-    if (self.anomalous_flag) :
+    if (self.anomalous_flag):
       self.n_indices_merged = non_anom.size()
       self.completeness_merged = non_anom.completeness(
         as_non_anomalous_array=False)
       self.anomalous_completeness = miller_array.anomalous_completeness()
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_header("Input data")
     out.show_sub_header("Summary")
-    if (self.was_merged) :
+    if (self.was_merged):
       out.show_text("""\
 The original dataset contained unmerged intensities; the statistics below
 are for the merged data.""")
@@ -531,7 +531,7 @@ are for the merged data.""")
       ("Resolution:", "%g - %g" % self.d_max_min),
       ("Anomalous:", str(self.anomalous_flag)),
     ]
-    if (self.anomalous_flag) :
+    if (self.anomalous_flag):
       lines.extend([
         ("Number of reflections (non-anomalous):", str(self.n_indices_merged)),
         ("Completeness (non-anomalous):", "%.2f%%" %
@@ -548,7 +548,7 @@ are for the merged data.""")
       ])
     out.show_text_columns(lines, indent=2)
     # description of completeness values
-    if (self.anomalous_flag) :
+    if (self.anomalous_flag):
       out.show_text("""
   Completeness (non-anomalous) is the completeness of the data after merging
   Friedel pairs.
@@ -584,9 +584,9 @@ are for the merged data.""")
     issues = []
     if (self.anomalous_flag):
       message = 'The non-anomalous completeness is %.2f%%.'%(100.0*self.completeness_merged)
-      if (self.completeness_merged < 0.75) :
+      if (self.completeness_merged < 0.75):
         issues.append((2, message, 'Summary'))
-      elif (self.completeness_merged < 0.90) :
+      elif (self.completeness_merged < 0.90):
         issues.append((1, message, 'Summary'))
       else :
         issues.append((0, message, 'Summary'))
@@ -599,15 +599,15 @@ are for the merged data.""")
         issues.append((0,message,'Summary'))
     else:
       message = 'The completeness is %.2f%%.'%(100.0*self.completeness)
-      if (self.completeness < 0.75) :
+      if (self.completeness < 0.75):
         issues.append((2, message, 'Summary'))
-      elif (self.completeness < 0.90) :
+      elif (self.completeness < 0.90):
         issues.append((1, message, 'Summary'))
       else :
         issues.append((0, message, 'Summary'))
     return issues
 
-class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
+class xtriage_analyses(mmtbx.scaling.xtriage_analysis):
   """
   Run all Xtriage analyses for experimental data, with optional Fcalc or
   reference datasets.
@@ -633,9 +633,9 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     assert (miller_obs is not None)
 
 
-    if miller_obs.is_unmerged_intensity_array() :
+    if miller_obs.is_unmerged_intensity_array():
       unmerged_obs = miller_obs.deep_copy()
-    def process_input_array (miller_array) :
+    def process_input_array(miller_array):
       if (miller_array is None) : return None
       info = miller_array.info()
       miller_array = miller_array.merge_equivalents().array()
@@ -653,7 +653,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
 
     self.completeness_as_non_anomalous=\
        params.scaling.input.xray_data.completeness_as_non_anomalous
-    if (not params.scaling.input.xray_data.skip_sanity_checks) :
+    if (not params.scaling.input.xray_data.skip_sanity_checks):
       check_for_pathological_input_data(miller_obs,
         completeness_as_non_anomalous=
           self.completeness_as_non_anomalous)
@@ -661,7 +661,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     ###
     self.merging_stats = None
     if ((unmerged_obs is not None) and
-        (unmerged_obs.is_xray_intensity_array())) :
+        (unmerged_obs.is_xray_intensity_array())):
       try :
         self.merging_stats = merging_statistics(
           i_obs=unmerged_obs,
@@ -682,7 +682,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
 
     self.plan_sad_experiment_stats= None
     if ((unmerged_obs is not None) and
-        (unmerged_obs.is_xray_intensity_array())) :
+        (unmerged_obs.is_xray_intensity_array())):
       try :
         from phenix.command_line.anomalous_signal import anomalous_signal
         self.plan_sad_experiment_stats= anomalous_signal(
@@ -701,17 +701,17 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     n_copies_solc = 1.0
     nres_known = False
     if (params.scaling.input.asu_contents.n_residues is not None or
-        params.scaling.input.asu_contents.n_bases is not None) :
+        params.scaling.input.asu_contents.n_bases is not None):
       nres_known = True
-      if (params.scaling.input.asu_contents.sequence_file is not None) :
+      if (params.scaling.input.asu_contents.sequence_file is not None):
         print >> text_out, "  warning: ignoring sequence file"
-    elif (params.scaling.input.asu_contents.sequence_file is not None) :
+    elif (params.scaling.input.asu_contents.sequence_file is not None):
       print >> text_out, "  determining composition from sequence file %s" % \
         params.scaling.input.asu_contents.sequence_file
       seq_comp = iotbx.bioinformatics.composition_from_sequence_file(
         file_name=params.scaling.input.asu_contents.sequence_file,
         log=text_out)
-      if (seq_comp is not None) :
+      if (seq_comp is not None):
         params.scaling.input.asu_contents.n_residues = seq_comp.n_residues
         params.scaling.input.asu_contents.n_bases = seq_comp.n_bases
         nres_known = True
@@ -742,7 +742,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     self.data_summary.show(out=text_out)
     # Anomalous signal
     self.anomalous_info = None
-    if miller_obs.anomalous_flag() :
+    if miller_obs.anomalous_flag():
       self.anomalous_info = data_statistics.anomalous(
         miller_array=miller_obs,
         merging_stats=self.merging_stats,
@@ -764,7 +764,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     # This will now raise Sorry instead and the program will be allowed to
     # continue, but should probably be fixed.  Should we simply be using a more
     # stringent resolution cutoff?
-    if (miller_calc is not None) and (miller_calc.d_min() < 4.0) :
+    if (miller_calc is not None) and (miller_calc.d_min() < 4.0):
       try :
         self.relative_wilson = relative_wilson.relative_wilson(
           miller_obs=miller_obs,
@@ -783,7 +783,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     text_out.flush()
     # outliers are removed, make a new copy
     twin_params = params.scaling.input.parameters.misc_twin_parameters
-    if (twin_params.twin_test_cuts.high_resolution is None) :
+    if (twin_params.twin_test_cuts.high_resolution is None):
       twin_params.twin_test_cuts.high_resolution = \
         self.data_strength_and_completeness.high_resolution_for_twin_tests()
     if twin_params.apply_basic_filters_prior_to_twin_analysis:
@@ -814,7 +814,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     self.twin_results = None
     acentrics = miller_obs.select_acentric()
     n_acentrics = acentrics.size()
-    if (n_acentrics > 0) :
+    if (n_acentrics > 0):
       make_big_header("Twinning and symmetry analyses", out=text_out)
       self.twin_results = twin_analyses.twin_analyses(
         miller_array=miller_obs,
@@ -842,48 +842,48 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
         miller_obs,
         file_name=params.scaling.input.xray_data.file_name)
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     self.data_summary.show(out)
-    if (self.merging_stats is not None) :
+    if (self.merging_stats is not None):
       self.merging_stats.show(out)
-    if isinstance(out, mmtbx.scaling.printed_output) :
+    if isinstance(out, mmtbx.scaling.printed_output):
       make_big_header("Basic analyses", out=out)
     self.matthews.show(out)
     self.data_strength_and_completeness.show(out)
     self.wilson_scaling.show(out)
-    if (self.relative_wilson is not None) :
+    if (self.relative_wilson is not None):
       self.relative_wilson.show(out)
-    if (self.anomalous_info is not None) :
+    if (self.anomalous_info is not None):
       self.anomalous_info.show(out)
-    if (self.twin_results is not None) :
-      if isinstance(out, mmtbx.scaling.printed_output) :
+    if (self.twin_results is not None):
+      if isinstance(out, mmtbx.scaling.printed_output):
         make_big_header("Twinning and symmetry", out=out)
       self.twin_results.show(out)
     summary = self.summarize_issues()
     summary.show(out)
 
-  def matthews_n_copies (self) :
+  def matthews_n_copies(self):
     """
     Convenience method for retrieving the number of copies.
     """
     return self.matthews.n_copies
 
-  def resolution_cut (self) :
+  def resolution_cut(self):
     """
     Convenience method for retrieving a conservative resolution cutoff.
     """
     ds = self.data_strength_and_completeness
     return getattr(ds.data_strength, "completeness_cut", None)
 
-  def is_twinned (self) :
+  def is_twinned(self):
     """
     Convenience method for indicating whether the data are likely twinned.
     """
-    if (self.twin_results is not None) :
+    if (self.twin_results is not None):
       return self.twin_results.twin_summary.has_twinning()
     return False
 
-  def resolution_limit_of_anomalous_signal (self) :
+  def resolution_limit_of_anomalous_signal(self):
     """
     Convenience method for retrieving the recommended resolution cutoff for
     anomalous substructures search.  Used in AutoSol.
@@ -891,25 +891,25 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     return getattr(self.anomalous_info, "low_d_cut", None)
 
   @property
-  def overall_i_sig_i(self) :
+  def overall_i_sig_i(self):
     return self.data_strength_and_completeness.overall_i_sig_i
 
   @property
-  def i_over_sigma_outer_shell (self) :
+  def i_over_sigma_outer_shell(self):
     return self.data_strength_and_completeness.i_over_sigma_outer_shell()
 
   @property
-  def iso_b_wilson (self) :
+  def iso_b_wilson(self):
     """Convenience method for isotropic Wilson B-factor"""
     return self.wilson_scaling.iso_b_wilson
 
   @property
-  def low_d_cut (self) :
+  def low_d_cut(self):
     """Shortcut to resolution_limit_of_anomalous_signal()."""
     return self.resolution_limit_of_anomalous_signal()
 
   @property
-  def aniso_b_min (self) :
+  def aniso_b_min(self):
     """
     Convenience method for retrieving the minimum anisotropic B_cart tensor.
     Used in AutoSol.
@@ -918,7 +918,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     return min(b_cart[0:3])
 
   @property
-  def aniso_range_of_b (self) :
+  def aniso_range_of_b(self):
     """
     Convenience method for retrieving the range of anisotropic B_cart tensors.
     Used in AutoSol.
@@ -927,7 +927,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     return max(b_cart[0:3]) - min(b_cart[0:3])
 
   @property
-  def aniso_b_ratio (self) :
+  def aniso_b_ratio(self):
     """
     Ratio of the maximum difference between anisotropic B_cart tensors to the
     mean of the tensors.  Used in PDB validation server.
@@ -936,7 +936,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     return (max(b_cart[0:3]) - min(b_cart[0:3])) / (sum(b_cart[0:3]) / 3)
 
   @property
-  def number_of_wilson_outliers (self) :
+  def number_of_wilson_outliers(self):
     """
     Number of centric and acentric outliers flagged by Wilson plot analysis.
     Used in PDB validation server.
@@ -944,7 +944,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     return self.wilson_scaling.outliers.n_outliers()
 
   @property
-  def l_test_mean_l (self) :
+  def l_test_mean_l(self):
     """
     <|L|> from the L test for abnormal intensity distributions.  Used in PDB
     validation server.
@@ -952,7 +952,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     return self.twin_results.l_test.mean_l
 
   @property
-  def l_test_mean_l_squared (self) :
+  def l_test_mean_l_squared(self):
     """
     <L^2> from the L test for abnormal intensity distributions.  Used in PDB
     validation server.
@@ -962,7 +962,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
   # FIXME this uses the Britton test, but the PDB validation server appears to
   # use the H test.  Which is correct?
   @property
-  def max_estimated_twin_fraction (self) :
+  def max_estimated_twin_fraction(self):
     """
     Estimated twin fraction from the most worrysome twin law.  Used by PDB
     validation server.
@@ -970,56 +970,56 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     return self.twin_results.twin_summary.max_twin_fraction()
 
   @property
-  def patterson_verdict (self) :
+  def patterson_verdict(self):
     """
     Plain-English explanation of Patterson analysis for TNCS detection.  Used
     by PDB validation server.
     """
     return self.twin_results.twin_summary.patterson_verdict()
 
-  def estimate_d_min (self, **kwds) :
+  def estimate_d_min(self, **kwds):
     """
     Suggest resolution cutoffs based on selected statistics (if merging was
     included in analyses).  See
     :py:class:`iotbx.merging_statistics.dataset_statistics` for underlying
     function documentation.
     """
-    if (self.merging_stats is not None) :
+    if (self.merging_stats is not None):
       return self.merging_stats.estimate_d_min(**kwds)
     return None
 
-  def summarize_issues (self) :
+  def summarize_issues(self):
     issues = []
-    if (self.twin_results is not None) :
+    if (self.twin_results is not None):
       issues.extend(self.twin_results.twin_summary.summarize_issues())
     issues.extend(self.wilson_scaling.summarize_issues())
-    if (self.merging_stats is not None) :
+    if (self.merging_stats is not None):
       issues.extend(self.merging_stats.summarize_issues())
     issues.extend(self.data_strength_and_completeness.summarize_issues())
     issues.extend(self.data_summary.summarize_issues())
-    if (self.anomalous_info is not None) :
+    if (self.anomalous_info is not None):
       if (hasattr(self.anomalous_info, 'summarize_issues')):
         issues.extend(self.anomalous_info.summarize_issues())
     return summary(issues)
 
-class summary (mmtbx.scaling.xtriage_analysis) :
-  def __init__ (self, issues, sort=True) :
+class summary(mmtbx.scaling.xtriage_analysis):
+  def __init__(self, issues, sort=True):
     self._issues = issues
-    if (sort) :
+    if (sort):
       self._issues.sort(lambda a,b: cmp(b[0], a[0]))
 
   @property
-  def n_problems (self) :
+  def n_problems(self):
     return len(self._issues)
 
-  def _show_impl (self, out) :
+  def _show_impl(self, out):
     out.show_header("Xtriage summary")
     some_problems = False
     have_problems = False
-    if (self.n_problems > 0) :
+    if (self.n_problems > 0):
       if hasattr(out, "show_issues") : # XXX GUI hack
         for severity, message, linkto in self._issues :
-          if (severity == 2) :
+          if (severity == 2):
             have_problems = True
             break
           elif ( (severity < 2) and (severity >= 1) ):
@@ -1028,7 +1028,7 @@ class summary (mmtbx.scaling.xtriage_analysis) :
         out.show_issues(self._issues)
       else :
         for severity, message, linkto in self._issues :
-          if (severity == 2) :
+          if (severity == 2):
             have_problems = True
             out.warn(message)
           elif ( (severity < 2) and (severity >= 1) ):
@@ -1050,33 +1050,33 @@ No obvious problems were found with this dataset.  However, we recommend that
 you inspect the individual results closely, as it is difficult to automatically
 detect all issues.""")
 
-def check_for_pathological_input_data (miller_array,
-   completeness_as_non_anomalous=None) :
+def check_for_pathological_input_data(miller_array,
+   completeness_as_non_anomalous=None):
   acentrics = miller_array.select_acentric()
   n_acentrics = acentrics.size()
-  if (n_acentrics == 0) and (not miller_array.space_group().is_centric()) :
+  if (n_acentrics == 0) and (not miller_array.space_group().is_centric()):
     raise Sorry(("No acentric reflections present in the data.  Since the "+
       "space group %s is not centric, this is probably an error in "+
       "the input file.  Please check your data processing and/or file "+
       "conversion.") % (str(miller_array.space_group_info())))
-  elif (n_acentrics < MIN_ACENTRICS) :
+  elif (n_acentrics < MIN_ACENTRICS):
     raise Sorry(("Only %d acentric reflections are present in these data; "+
       "this usually indicates a corrupted input file.") % n_acentrics)
   cmpl = miller_array.completeness(
     as_non_anomalous_array=completeness_as_non_anomalous)
-  if (cmpl < 0.1) :
+  if (cmpl < 0.1):
     raise Sorry(("Data are unusually incomplete (%.1f%%); this usually "+
       "indicates a corrupted input file or data processing errors.") %
       (cmpl * 100))
   min_mi, max_mi = miller_array.min_max_indices()
   if ((min_mi[0] == max_mi[0]) or (min_mi[1] == max_mi[1]) or
-      (min_mi[2] == max_mi[2])) :
+      (min_mi[2] == max_mi[2])):
     raise Sorry("These data appear to be limited to a single plane of "+
       "reciprocal space (max/min Miller indices: %s, %s)." % (min_mi, max_mi))
 
 def run(args, command_name="phenix.xtriage", return_result=False,
     out=None, data_file_name=None):
-  if (out is None) :
+  if (out is None):
     out = sys.stdout
   log = multi_out()
   log.register(label="stdout", file_object=out)
@@ -1095,7 +1095,7 @@ def run(args, command_name="phenix.xtriage", return_result=False,
     usage_string="phenix.xtriage [options] reflection_file parameters [...]")
   effective_params = cmdline.work
   params = effective_params.extract()
-  if (params.scaling.input.xray_data.file_name is None) :
+  if (params.scaling.input.xray_data.file_name is None):
     raise Sorry("No reflection file in input.")
   reference_params = params.scaling.input.xray_data.reference
   verbose = params.scaling.input.parameters.reporting.verbose
@@ -1115,15 +1115,15 @@ def run(args, command_name="phenix.xtriage", return_result=False,
   ## Check for unit cell and spacegroup definitions
   crystal_symmetry = crystal_symmetry_from_any.extract_from(
       file_name=params.scaling.input.xray_data.file_name)
-  if (crystal_symmetry is not None) :
+  if (crystal_symmetry is not None):
     space_group = crystal_symmetry.space_group_info()
     unit_cell = crystal_symmetry.unit_cell()
   else :
     space_group = params.scaling.input.xray_data.space_group
     unit_cell = params.scaling.input.xray_data.unit_cell
-  if (None in [crystal_symmetry, space_group, unit_cell]) :
+  if (None in [crystal_symmetry, space_group, unit_cell]):
     print >> log, "Cell and/or symmetry not specified in reflection file"
-    if (reference_params.structure.file_name is not None) :
+    if (reference_params.structure.file_name is not None):
       print >> out, "Using reference PDB file"
       crystal_symmetry = crystal_symmetry_from_any.extract_from(
         file_name=reference_params.structure.file_name)
@@ -1136,7 +1136,7 @@ def run(args, command_name="phenix.xtriage", return_result=False,
       raise Sorry("""No space group info available.
 Use keyword 'xray_data.space_group' to specify space group""" )
 
-    if (params.scaling.input.xray_data.unit_cell is None) :
+    if (params.scaling.input.xray_data.unit_cell is None):
       raise Sorry("""
 No unit cell info available.
 Use keyword 'xray_data.unit_cell' to specify unit_cell
@@ -1148,14 +1148,14 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         raise Sorry("""No unit cell info available.
   Use keyword 'xray_data.unit_cell' to specify unit_cell""" )
       else: pass
-    if (crystal_symmetry.space_group() is None) :
+    if (crystal_symmetry.space_group() is None):
       if params.scaling.input.xray_data.space_group is None:
         raise Sorry("""No space group info available.
   Use keyword 'xray_data.space_group' to specify space_group""" )
 
-  if (params.scaling.input.xray_data.unit_cell is None) :
+  if (params.scaling.input.xray_data.unit_cell is None):
     params.scaling.input.xray_data.unit_cell = crystal_symmetry.unit_cell()
-  if (params.scaling.input.xray_data.space_group is None) :
+  if (params.scaling.input.xray_data.space_group is None):
     params.scaling.input.xray_data.space_group = \
       crystal_symmetry.space_group_info()
 
@@ -1172,7 +1172,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     space_group_symbol = str(params.scaling.input.xray_data.space_group) )
 
   ## Please check if we have a acentric space group
-  if crystal_symmetry.space_group().is_centric() :
+  if crystal_symmetry.space_group().is_centric():
     libtbx.warn(("The specificed space group (%s) is centric; Xtriage will "+
       "still run, but many analyses will be skipped.") %
       str(crystal_symmetry.space_group_info()))
@@ -1197,7 +1197,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
   # If the input data were unmerged intensities, read them in again without
   # merging - this array will be used to calcluate merging statistics
   info = miller_array.info()
-  if (info.merged) and (miller_array.is_xray_intensity_array()) :
+  if (info.merged) and (miller_array.is_xray_intensity_array()):
     hkl_in_raw = reflection_file_reader.any_reflection_file(
       file_name=params.scaling.input.xray_data.file_name)
     assert (hkl_in_raw.file_type() is not None)
@@ -1205,8 +1205,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       crystal_symmetry=miller_array,
       merge_equivalents=False)
     for array in raw_arrays :
-      if (array.info().labels == info.labels) :
-        if (array.is_unmerged_intensity_array()) :
+      if (array.info().labels == info.labels):
+        if (array.is_unmerged_intensity_array()):
           unmerged_array = array
           print >> log, ""
           print >> log, "Also reading unmerged data as %s" % \
@@ -1254,7 +1254,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
   f_calc_miller_complex = None
   reference_structure = None
   reference_params = params.scaling.input.xray_data.reference
-  if (params.scaling.input.xray_data.calc_labels is not None) :
+  if (params.scaling.input.xray_data.calc_labels is not None):
     f_calc_miller = xray_data_server.get_amplitudes(
       file_name = params.scaling.input.xray_data.file_name,
       labels = params.scaling.input.xray_data.calc_labels,
@@ -1265,20 +1265,20 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       f_calc_miller = f_calc_miller.customized_copy(
         data = flex.abs( f_calc_miller.data() ) ).set_observation_type(
           f_calc_miller)
-    if (f_calc_miller.is_xray_intensity_array()) :
+    if (f_calc_miller.is_xray_intensity_array()):
       print >> log, "Converting %s to amplitudes" % \
         (params.scaling.input.xray_data.calc_labels)
       f_calc_miller = f_calc_miller.f_sq_as_f()
     f_calc_miller = f_calc_miller.eliminate_sys_absent(integral_only=True,
       log=log)
-    if (miller_array.anomalous_flag()) :
-      if (not f_calc_miller.anomalous_flag()) :
+    if (miller_array.anomalous_flag()):
+      if (not f_calc_miller.anomalous_flag()):
         f_calc_miller = f_calc_miller.generate_bijvoet_mates()
-    elif (f_calc_miller.anomalous_flag()) :
+    elif (f_calc_miller.anomalous_flag()):
       f_calc_miller = f_calc_miller.average_bijvoet_mates()
     f_calc_miller.set_observation_type_xray_amplitude()
   elif (reference_params.structure.file_name is not None):
-    if (not os.path.isfile(reference_params.structure.file_name)) :
+    if (not os.path.isfile(reference_params.structure.file_name)):
       raise Sorry("Can't open reference structure - not a valid file.")
     assert f_calc_miller is None
     pdb_in = iotbx.pdb.input(
@@ -1288,7 +1288,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     reference_structure = pdb_in.xray_structure_simple(
         crystal_symmetry = miller_array.crystal_symmetry())
     miller_tmp = miller_array
-    if (not miller_tmp.is_unique_set_under_symmetry()) :
+    if (not miller_tmp.is_unique_set_under_symmetry()):
       miller_tmp = miller_tmp.merge_equivalents().array()
     tmp_obj = mmtbx.utils.fmodel_from_xray_structure(
       xray_structure = reference_structure,
@@ -1310,7 +1310,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     if params.scaling.input.xray_data.reference.data.space_group is not None:
       user_group = params.scaling.input.xray_data.reference.data.space_group
     reference_symmetry = None
-    if (user_cell is not None) and (user_group is not None) :
+    if (user_cell is not None) and (user_group is not None):
       reference_symmetry= crystal.symmetry(
         unit_cell=user_cell,
         space_group=user_group.group())
@@ -1375,7 +1375,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     output_file = open( params.scaling.input.parameters.reporting.log  ,'w')
     output_file.write(string_buffer.getvalue())
 
-  if (params.scaling.input.optional.hklout is not None) :
+  if (params.scaling.input.optional.hklout is not None):
     # FIXME DEPRECATED, replace with mmtbx.command_line.massage_data
     from mmtbx.scaling import massage_twin_detwin_data
     massaged_obs = massage_twin_detwin_data.massage_data(
@@ -1389,16 +1389,16 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       label_extension=params2.label_extension)
 
 
-  if (data_file_name is not None) :
+  if (data_file_name is not None):
     from libtbx import easy_pickle
     easy_pickle.dump(data_file_name, raw_data)
-  if (params.scaling.input.parameters.reporting.loggraphs) :
+  if (params.scaling.input.parameters.reporting.loggraphs):
     graph_out = mmtbx.scaling.loggraph_output(output_file)
     xtriage_results.show(out=graph_out)
   return xtriage_results
 
-def change_symmetry (miller_array, space_group_symbol, file_name=None,
-    log=sys.stdout) :
+def change_symmetry(miller_array, space_group_symbol, file_name=None,
+    log=sys.stdout):
   """
   Encapsulates all operations required to convert the original data to a
   different symmetry as suggested by Xtriage.
@@ -1406,109 +1406,109 @@ def change_symmetry (miller_array, space_group_symbol, file_name=None,
   miller_array = miller_array.change_symmetry(
     space_group_symbol=space_group_symbol,
     log=log)
-  if (file_name is not None) :
+  if (file_name is not None):
     column_root_label = None
-    if (miller_array.is_xray_amplitude_array()) :
+    if (miller_array.is_xray_amplitude_array()):
       column_root_label = "F"
-    elif (miller_array.is_xray_intensity_array()) :
+    elif (miller_array.is_xray_intensity_array()):
       column_root_label = "I"
-    if (column_root_label is None) :
+    if (column_root_label is None):
       raise RuntimeError("Only amplitudes and intensites supported.")
     miller_array.as_mtz_dataset(
       column_root_label=column_root_label).mtz_object().write(file_name)
   return miller_array
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher(runtime_utils.target_with_save_result):
+  def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
     return run(args=list(self.args),
       data_file_name="xtriage_data.pkl")
 
-def finish_job (result) :
+def finish_job(result):
   output_files = []
   stats = []
-  if (result is not None) :
-    if (result.log_file_name is not None) :
+  if (result is not None):
+    if (result.log_file_name is not None):
       output_files.append((result.log_file_name, "Log file and graphs"))
-    if (result.low_d_cut is not None) :
+    if (result.low_d_cut is not None):
       stats.append(("Limit of useful anomalous signal",
         "%.2f" % result.low_d_cut))
-    if (result.iso_b_wilson is not None) :
+    if (result.iso_b_wilson is not None):
       stats.append(("Wilson B", "%.2f" % result.iso_b_wilson))
   return (output_files, stats)
 
-def validate_params (params, callback=None) :
-  if (params.scaling.input.xray_data.file_name is None) :
+def validate_params(params, callback=None):
+  if (params.scaling.input.xray_data.file_name is None):
     raise Sorry("You must supply a reflection file first!")
-  if (params.scaling.input.xray_data.obs_labels is None) :
+  if (params.scaling.input.xray_data.obs_labels is None):
     raise Sorry("Please select labels for input data.")
   elif (params.scaling.input.xray_data.obs_labels ==
-        params.scaling.input.xray_data.calc_labels) :
+        params.scaling.input.xray_data.calc_labels):
     raise Sorry("You may not select the same array labels for both the "+
       "experimental data and F(calc).  (It is okay to run Xtriage without "+
       "F(calc) data if it is not available - most analyses do not require "+
       "this information.)")
   d_min = params.scaling.input.xray_data.high_resolution
   d_max = params.scaling.input.xray_data.low_resolution
-  if (d_min is not None) and (d_max is not None) :
+  if (d_min is not None) and (d_max is not None):
     if d_min > d_max :
       raise Sorry(("The specified high-resolution cutoff (%.3f) is greater "+
         "than the low-resolution cutoff (%.3f)!") % (d_min, d_max))
   if ((params.scaling.input.xray_data.space_group is None) or
-      (params.scaling.input.xray_data.unit_cell is None)) :
+      (params.scaling.input.xray_data.unit_cell is None)):
     raise Sorry("Missing or incomplete symmetry information.")
   space_group = params.scaling.input.xray_data.space_group.group()
   unit_cell = params.scaling.input.xray_data.unit_cell
-  if (not space_group.is_compatible_unit_cell(unit_cell)) :
+  if (not space_group.is_compatible_unit_cell(unit_cell)):
     raise Sorry("Unit cell parameters are not consistent with the "+
         "currently set space group.  Please make sure that the symmetry "+
         "information is entered correctly.")
   ref_structure = params.scaling.input.xray_data.reference.structure.file_name
-  if (ref_structure is not None) and (not os.path.isfile(ref_structure)) :
+  if (ref_structure is not None) and (not os.path.isfile(ref_structure)):
     raise Sorry(("A path was defined for the reference PDB file (%s), but it "+
       "could not be recognized as a file or does not exist.") % ref_structure)
-  if (params.scaling.input.asu_contents.sequence_file is not None) :
+  if (params.scaling.input.asu_contents.sequence_file is not None):
     # XXX this won't actually crash (xtriage will just ignore the sequence
     # file) but it might be better to avoid user confusion
     if ((params.scaling.input.asu_contents.n_residues is not None) or
-        (params.scaling.input.asu_contents.n_bases is not None)) :
+        (params.scaling.input.asu_contents.n_bases is not None)):
       raise Sorry("Please leave the number of residues and bases blank when "+
         "providing a sequence file.")
-  if (params.scaling.gui.output_dir is None) :
+  if (params.scaling.gui.output_dir is None):
     raise Sorry("Please specify an output directory.")
   twin_params = params.scaling.input.optional.symmetry.twinning_parameters
-  if (twin_params.fraction is not None) and (twin_params.fraction >= 0.5) :
+  if (twin_params.fraction is not None) and (twin_params.fraction >= 0.5):
     raise Sorry("The twin fraction (if defined) must be less than 0.5.")
   return True
 
 ########################################################################
 # XXX BACKWARDS COMPATIBILITY
-class xtriage_summary (object) :
+class xtriage_summary(object):
   """
   Old result class, minus initialization.  Provides backwards compatibility
   with pickle files from Phenix 1.9 and earlier.
   """
   new_format = False
-  def get_relative_wilson (self) :
-    if hasattr(self, "rel_wilson_caption") :
+  def get_relative_wilson(self):
+    if hasattr(self, "rel_wilson_caption"):
       return (self.rel_wilson_caption, self.rel_wilson_plot)
     else :
       return (None, None)
 
-  def get_merging_statistics (self) :
+  def get_merging_statistics(self):
     return getattr(self, "merging_stats", None)
 
-  def get_data_file (self) :
+  def get_data_file(self):
     return getattr(self, "data_file", None)
 
-  def original_intensities_flag (self) :
+  def original_intensities_flag(self):
     return getattr(self, "original_is_intensity_array", None)
 
-  def get_completeness (self) :
+  def get_completeness(self):
     overall = getattr(self, "completeness_overall", None)
     binned = getattr(self, "completeness_binned", None)
     return (overall, binned)
 
-  def is_centric (self) :
+  def is_centric(self):
     return getattr(self, "centric_flag", None)

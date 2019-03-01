@@ -11,8 +11,7 @@ probably need to perform additional modifications to the installer tree
 before it can be tarred.
 """
 
-from __future__ import division
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 from optparse import OptionParser
 import os.path as op
 import shutil
@@ -22,12 +21,12 @@ import os
 import sys
 # XXX HACK
 libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
-if (not libtbx_path in sys.path) :
+if (not libtbx_path in sys.path):
   sys.path.append(libtbx_path)
 from .installer_utils import *
 from .package_defs import *
 
-def run (args) :
+def run(args):
   parser = OptionParser()
   parser.add_option("--version", dest="version", action="store",
     help="Package version", default=time.strftime("%Y_%m_%d",time.localtime()))
@@ -66,9 +65,9 @@ def run (args) :
   options, args_ = parser.parse_args(args=args)
   assert len(args_) == 1
   package_name = args_[-1]
-  if (options.product_name is None) :
+  if (options.product_name is None):
     options.product_name = package_name
-  if (options.install_script is not None) :
+  if (options.install_script is not None):
     assert op.isfile(options.install_script)
     options.install_script = op.abspath(options.install_script)
   module_list = options.modules
@@ -77,19 +76,19 @@ def run (args) :
 
   # setup directory structure
   installer_dir = "%s-installer-%s" % (package_name, options.version)
-  print "Installer will be %s" % installer_dir
+  print("Installer will be %s" % installer_dir)
   os.mkdir(installer_dir)
   os.chdir(installer_dir)
   os.mkdir("bin")
   os.mkdir("lib")
-  if (not options.binary) :
+  if (not options.binary):
     os.mkdir("source")
     os.mkdir("dependencies")
 
   # copy 'binary' programs if defined
   if options.bin_dir :
     assert op.isdir(options.bin_dir)
-    for file_name in os.listdir(options.bin_dir) :
+    for file_name in os.listdir(options.bin_dir):
       if (file_name == ".svn") : continue
       full_path = op.join(options.bin_dir, file_name)
       copy_file(full_path, op.join("bin", file_name))
@@ -104,32 +103,32 @@ def run (args) :
   open("VERSION", "w").write(options.version)
   if options.readme :
     for file_name in options.readme :
-      if op.isfile(file_name) :
+      if op.isfile(file_name):
         base_name = op.basename(file_name)
-        print "copying %s" % base_name
+        print("copying %s" % base_name)
         open(base_name, "w").write(open(file_name).read())
   else : # fallback to CCTBX copyright
     file_name = op.join(libtbx_path, "COPYRIGHT_2_0.txt")
     open("README", "w").write(open(file_name).read())
-  if op.isfile(options.license) :
+  if op.isfile(options.license):
     open("LICENSE", "w").write(open(options.license).read())
   os.chdir(op.join(options.dest, installer_dir))
 
   # actual Python installer script
-  if (options.install_script is not None) :
+  if (options.install_script is not None):
     assert op.isfile(options.install_script)
     open("bin/install.py", "w").write(open(options.install_script).read())
   else :
-    print "WARNING: using default installation script"
+    print("WARNING: using default installation script")
     # default stub.  this is pretty minimal but it will work for simple
     # packages.
     modules_list = []
-    if (options.modules is not None) :
+    if (options.modules is not None):
       modules_list = options.modules.split(",")
     base_package_options = []
-    if (options.gui or options.all) :
+    if (options.gui or options.all):
       base_package_options.append("--gui")
-    if (options.dials or options.all or options.xia2) :
+    if (options.dials or options.all or options.xia2):
       base_package_options.append("--dials")
     f = open("bin/install.py", "w")
     f.write("""\
@@ -137,11 +136,11 @@ import os.path
 import sys
 libtbx_path = os.path.join(
   os.path.abspath(os.path.dirname(os.path.dirname(__file__))), "lib")
-if (not libtbx_path in sys.path) :
+if (not libtbx_path in sys.path):
   sys.path.append(libtbx_path)
 from libtbx.auto_build import install_distribution
 
-class installer (install_distribution.installer) :
+class installer(install_distribution.installer):
   product_name = "%(product)s"
   dest_dir_prefix = "%(pkg)s"
   make_apps = []
@@ -153,7 +152,7 @@ class installer (install_distribution.installer) :
 
   installer_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   installer(sys.argv[1:])
 """ % { "pkg" : package_name, "product" : options.product_name,
         "modules" : modules_list, "baseopts" : base_package_options,
@@ -174,8 +173,6 @@ if [ -z "$PYTHON_EXE" ]; then
     PYTHON_EXE='/usr/bin/python2.7'
   elif [ -f "/usr/bin/python2.6" ]; then
     PYTHON_EXE='/usr/bin/python2.6'
-  elif [ -f "/usr/bin/python2.5" ]; then
-    PYTHON_EXE='/usr/bin/python2.5'
   elif [ -f "/usr/bin/python2" ]; then
     PYTHON_EXE='/usr/bin/python2'
   fi
@@ -188,26 +185,26 @@ $PYTHON_EXE ./bin/install.py $@
 
   #
   have_modules = []
-  def get_module (module_name) :
+  def get_module(module_name):
     for pkg_dir in options.pkg_dirs :
       dist_dir = op.join(pkg_dir, module_name)
       tarfile = op.join(pkg_dir, module_name + "_hot.tar.gz")
-      if op.exists(tarfile) :
-        print "using module '%s' from %s" % (module_name, tarfile)
+      if op.exists(tarfile):
+        print("using module '%s' from %s" % (module_name, tarfile))
         copy_file(tarfile, module_name + ".tar.gz")
         have_modules.append(module_name)
         break
-      elif op.isdir(dist_dir) :
-        print "using module '%s' from %s" % (module_name, dist_dir)
+      elif op.isdir(dist_dir):
+        print("using module '%s' from %s" % (module_name, dist_dir))
         archive_dist(dist_dir)
         assert op.isfile(module_name + ".tar.gz")
         have_modules.append(module_name)
         break
 
-  if (not options.binary) :
-    print ""
-    print "********** FETCHING DEPENDENCIES **********"
-    print ""
+  if (not options.binary):
+    print("")
+    print("********** FETCHING DEPENDENCIES **********")
+    print("")
     fetch_all_dependencies(
       dest_dir=op.join(options.dest, installer_dir, "dependencies"),
       log=sys.stdout,
@@ -221,7 +218,7 @@ $PYTHON_EXE ./bin/install.py $@
       pkg_dirs=options.pkg_dirs,
       copy_files=True)
     os.chdir(op.join(options.dest, installer_dir, "source"))
-    if (options.cctbx_bundle is None) :
+    if (options.cctbx_bundle is None):
       fetch_package(
         pkg_name="cctbx_bundle_for_installer.tar.gz",
         pkg_url="http://cci.lbl.gov/build/results/current")
@@ -229,24 +226,24 @@ $PYTHON_EXE ./bin/install.py $@
     else :
       assert op.isfile(options.cctbx_bundle)
       copy_file(options.cctbx_bundle, "cctbx_bundle.tar.gz")
-    if (module_list is not None) :
-      print ""
-      print "********** FETCHING MODULES **********"
-      print ""
+    if (module_list is not None):
+      print("")
+      print("********** FETCHING MODULES **********")
+      print("")
       module_list = re.sub(",", " ", module_list)
-      for module_name in module_list.split() :
+      for module_name in module_list.split():
         get_module(module_name)
 
   # Additional modules that are included in both the source and the binary
   # installer - in Phenix this includes restraints, examples, documentation,
   # and regression tests
-  if (base_module_list is not None) :
+  if (base_module_list is not None):
     base_module_dir = op.join(options.dest, installer_dir, "base")
     os.makedirs(base_module_dir)
     os.chdir(base_module_dir)
     base_module_list = re.sub(",", " ", base_module_list)
-    for module_name in base_module_list.split() :
+    for module_name in base_module_list.split():
       get_module(module_name)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

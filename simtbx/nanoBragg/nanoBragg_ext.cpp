@@ -1065,6 +1065,48 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
 
 
+  /* rotate a vector using a 9-element unitary matrix */
+  vec3 rotate_umat_nks(const double *v, const double umat[9]) {
+
+    double uxx,uxy,uxz,uyx,uyy,uyz,uzx,uzy,uzz;
+
+    /* for clarity, assign matrix x-y coordinate */
+    uxx = umat[0];
+    uxy = umat[1];
+    uxz = umat[2];
+    uyx = umat[3];
+    uyy = umat[4];
+    uyz = umat[5];
+    uzx = umat[6];
+    uzy = umat[7];
+    uzz = umat[8];
+
+    /* rotate the vector (x=1,y=2,z=3) */
+    return vec3 (uxx*v[1] + uxy*v[2] + uxz*v[3],
+                 uyx*v[1] + uyy*v[2] + uyz*v[3],
+                 uzx*v[1] + uzy*v[2] + uzz*v[3]);
+  }
+  static af::shared<mat3> get_mosaic_domains_abc_phi_0(nanoBragg const& X){
+
+    /* return individual mosaic domain orientations */
+    /* only defined (NKS) for the phi==0 case */
+    SCITBX_ASSERT(X.mosaic_spread > 0 || X.mosaic_domains==1);
+    af::shared<mat3> result = af::shared<mat3>();
+    vec3 a,b,c;                  // cell vectors in meters
+    for(int mos_tic=0;mos_tic<X.mosaic_domains;++mos_tic) {
+                                /* apply mosaic rotation with zero phi rotation */
+                                if( X.mosaic_spread > 0.0 )
+                                {
+                                    a = rotate_umat_nks(X.a0,&X.mosaic_umats[mos_tic*9]);
+                                    b = rotate_umat_nks(X.b0,&X.mosaic_umats[mos_tic*9]);
+                                    c = rotate_umat_nks(X.c0,&X.mosaic_umats[mos_tic*9]);
+                                }
+      result.push_back(
+        mat3(1e10*a[0],1e10*a[1],1e10*a[2],1e10*b[0],1e10*b[1],1e10*b[2],1e10*c[0],1e10*c[1],1e10*c[2])
+      );
+    }
+    return result;
+  }
 
   /* spindle starting angle phi, in deg */
   static double get_phi_deg(nanoBragg const& nanoBragg) {
@@ -1239,10 +1281,11 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       /* constructor that takes a dxtbx detector and beam model */
       .def(init<const dxtbx::model::Detector&,
                 const dxtbx::model::Beam&,
-                int>(
+                int, int>(
         (arg_("detector"),
          arg_("beam"),
-         arg_("verbose")=0),
+         arg_("verbose")=0,
+         arg_("panel_id")=0),
         "nanoBragg simulation initialized from dxtbx detector and beam objects"))
 
        /* constructor that takes any and all parameters with sensible defaults */
@@ -1640,6 +1683,8 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      make_function(&get_mosaic_domains,rbv()),
                      make_function(&set_mosaic_domains,dcp()),
                      "number of discrete mosaic domains to generate, speed is inversely proportional to this")
+      .def          ("get_mosaic_domains_abc_phi_0",&get_mosaic_domains_abc_phi_0,
+                     "get an array of 3x3 matrices giving the a,b,c vectors of each mosaic domain at phi 0")
       .def          ("show_mosaic_blocks",
                      &nanoBragg::show_mosaic_blocks,
                      "print out individual mosaic domain orientations")
@@ -1811,6 +1856,12 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       /* actual run of the spot simulation, restricted implementation plus OpenMP */
       .def("add_nanoBragg_spots_nks",&nanoBragg::add_nanoBragg_spots_nks,
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, restricted options, plus OpenMP")
+
+#ifdef NANOBRAGG_HAVE_CUDA
+      /* actual run of the spot simulation, CUDA version */
+      .def("add_nanoBragg_spots_cuda",&nanoBragg::add_nanoBragg_spots_cuda,
+       "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, CUDA version")
+#endif
 
       /* actual run of the background simulation */
       .def("add_background",&nanoBragg::add_background,

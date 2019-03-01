@@ -1,5 +1,4 @@
-from __future__ import division
-# -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
+from __future__ import absolute_import, division, print_function
 
 import libtbx.phil
 from libtbx.phil import experimental
@@ -124,4 +123,4 @@ first_scope {
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

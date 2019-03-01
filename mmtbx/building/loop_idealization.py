@@ -143,7 +143,7 @@ class loop_idealization():
     self.number_of_ccd_trials = 0
     # print "logic expr outcome:", (self.number_of_ccd_trials < 10 and self.berkeley_p_before_minimization_rama_outliers > 0.001)
     # print self.number_of_ccd_trials < 10
-    # print "berkeley before rama out:", self.berkeley_p_before_minimization_rama_outliers
+    print >> self.log, "Rama outliers before idealization:", berkeley_count, self.berkeley_p_before_minimization_rama_outliers
     if (self.berkeley_p_before_minimization_rama_outliers <= 0.001 and
         (n_bad_omegas<1 and self.params.make_all_trans)):
       print >> self.log, "No ramachandran outliers, skipping CCD step."
@@ -247,6 +247,10 @@ class loop_idealization():
           model.set_sites_cart(
               sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
               update_grm = True)
+        if self.params.debug:
+          self.model.get_hierarchy().write_pdb_file(
+              file_name="%d%s_all_not_minized.pdb" % (self.number_of_ccd_trials,
+                  self.params.output_prefix))
         if self.reference_map is None:
           minimize_wrapper_for_ramachandran(
               model = self.model,
@@ -880,6 +884,7 @@ def place_side_chains(hierarchy, original_h, original_h_asc,
   # ideal_res_dict = idealized_aa.residue_dict()
   # asc = original_h.atom_selection_cache()
   gly_atom_names = set([" N  ", " CA ", " C  ", " O  "])
+  n_ca_c_present = [False, False, False]
   for rg in hierarchy.residue_groups():
     if rg.resseq in placing_range:
       # cut extra atoms
@@ -887,6 +892,15 @@ def place_side_chains(hierarchy, original_h, original_h_asc,
       for atom in ag.atoms():
         if (atom.name not in gly_atom_names):
           ag.remove_atom(atom=atom)
+        if atom.name == " N  ":
+          n_ca_c_present[0] = True
+        elif atom.name == " CA ":
+          n_ca_c_present[1] = True
+        elif atom.name == " C  ":
+          n_ca_c_present[2] = True
+      if n_ca_c_present.count(True) < 3:
+        # Not all essential atoms present for placing side-chain.
+        continue
       # get ag from original hierarchy
       orig_ag = original_h.select(original_h_asc.selection("resseq %s" % rg.resseq)
           ).models()[0].chains()[0].residue_groups()[0].atom_groups()[0]

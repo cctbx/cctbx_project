@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import os, fnmatch
 from libtbx import python_code_parsing
 
@@ -25,9 +25,9 @@ def run(args):
       ignore_imports_flagged_by_comments=('# import dependency',
                                           '# implicit import'))
     if unused:
-      print 'In file %s:' % filename
-      print unused
-      print
+      print('In file %s:' % filename)
+      print(unused)
+      print()
 
 
 if __name__ == '__main__':

@@ -145,6 +145,13 @@ compiler = libtbx.env.build_options.compiler
 if (sys.platform == "win32"):
   if (compiler == "default"):
     env_etc.compiler = "win32_cl"
+    cl_exe = full_command_path("cl.exe")
+    mingw_exe = full_command_path("gcc.exe")
+    if (cl_exe is None) and mingw_exe:
+      # hack to detect mingw compiler on windows
+      if "mingw" in mingw_exe:
+        env_etc.compiler = "win32_mingw"
+        libtbx.env.build_options.static_exe = True
   else:
     env_etc.compiler = "win32_"+compiler
     compiler = None
@@ -340,12 +347,12 @@ if (sys.platform == "win32" or
       env_etc.msvc_version = 12
     elif visual_studio_version == "19.00":
       env_base = Environment(
-        ENV=os.environ, MSVC_VERSION="14.0", TARGET_ARCH=target_arch)
+        ENV=os.environ, MSVC_VERSION="14.0", TARGET_ARCH=target_arch, tools=['msvc','mslink', 'mslib'])
       env_etc.have_manifest_tool = True
       env_etc.msvc_version = 14
     elif visual_studio_version.startswith("19.1"):
       env_base = Environment(
-        ENV=os.environ, MSVC_VERSION="14.1", TARGET_ARCH=target_arch)
+        ENV=os.environ, MSVC_VERSION="14.1", TARGET_ARCH=target_arch, tools=['msvc','mslink', 'mslib'])
       env_etc.have_manifest_tool = True
       env_etc.msvc_version = 15
     else:
@@ -481,7 +488,7 @@ libtbx.scons: Warning: compiling with /MDd:
         "Cross-compiler gcc not found. How is it prefixed? (see crossmingw.py)"
     # the options here are mostly copied from unix_gcc
     env_etc.libm = ["m"]
-    env_etc.static_libraries = 0
+    env_etc.static_libraries = 1
     env_etc.static_bpl = 0
     env_etc.gcc_version = libtbx.env_config.get_gcc_version(
                                                  command_name=env_base['CC'])
@@ -489,8 +496,9 @@ libtbx.scons: Warning: compiling with /MDd:
     env_etc.c_link = env_base['CC']
     env_etc.ccflags_base = [
       "-fPIC",
-      "-fno-strict-aliasing"]
-    env_etc.cxxflags_base = []
+      "-fno-strict-aliasing",
+      "-DMS_WIN64"]
+    env_etc.cxxflags_base = ["-DMS_WIN64"]
     # XXX feature duplication, see env.build_options.enable_cxx11
     if (env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")
@@ -839,7 +847,8 @@ int main() {
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
 
-    base_macos_flags = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
+    min_macos = 10.7
+    base_macos_flags = ['-stdlib=libc++', '-mmacosx-version-min=%s' % min_macos]
 
     link_flags = ["-w"] # suppress "source/lib does not exist" warning
     link_flags.extend(base_macos_flags)
@@ -949,6 +958,32 @@ if( libtbx.env.build_options.use_environment_flags ):
     env_etc.shlinkflags = flg
   env_base.Append(LINKFLAGS=flg)
 
+# conda header and library paths
+if (libtbx.env.build_options.use_conda):
+  env_etc.conda_prefix = libtbx.env_config.get_conda_prefix()
+  env_etc.conda_cpppath = [os.path.join(env_etc.conda_prefix, 'include')]
+  env_etc.conda_libpath = [os.path.join(env_etc.conda_prefix, 'lib')]
+  if (sys.platform == 'win32'):
+    env_etc.conda_cpppath.append(
+      os.path.join(env_etc.conda_prefix, 'Library', 'include'))
+    env_etc.conda_libpath.extend([os.path.join(env_etc.conda_prefix, 'libs'),
+                                  os.path.join(env_etc.conda_prefix, 'Library', 'lib')])
+  if (sys.platform == 'darwin'):
+    env_etc.conda_shlinkflags = ['-headerpad_max_install_names']
+    env_etc.conda_rpath = [
+      os.path.join(env_etc.conda_prefix, 'lib'),
+      os.path.join(abs(libtbx.env.build_path), 'lib')
+    ]
+    env_base.Append(SHLINKFLAGS=env_etc.conda_shlinkflags)
+  if ("CPPPATH" not in env_base):
+    env_base["CPPPATH"] = env_etc.conda_cpppath
+  else:
+    env_base.Prepend(CPPPATH, env_etc.conda_cpppath)
+  if ("LIBPATH" not in env_base):
+    env_base["LIBPATH"] = env_etc.conda_libpath
+  else:
+    env_base.Append(LIBPATH, env_etc.conda_libpath)
+
 # C++11 flags for any compiler
 # XXX feautre duplication, see determine_cpp0x_flag
 if libtbx.env.build_options.enable_cxx11:
@@ -963,9 +998,11 @@ if libtbx.env.build_options.enable_cxx11:
     return t
   if env_etc.compiler=='darwin_c++' and ver(env_etc.clang_version)>=ver((4,1)):
     # version numbers are inconsisternt between Apple clang and original clang
-    cxx11_flags = ["-std=c++11", "-stdlib=libc++", "-mmacosx-version-min=10.7"]
+    cxx11_flags = ["-std=c++11", "-stdlib=libc++",
+                   "-mmacosx-version-min=%s" % min_macos]
   elif ver(env_etc.clang_version)>=ver((3,1)):
-    cxx11_flags = ["-std=c++11", "-stdlib=libc++", "-mmacosx-version-min=10.7"]
+    cxx11_flags = ["-std=c++11", "-stdlib=libc++",
+                   "-mmacosx-version-min=%s" % min_macos]
   elif ver(env_etc.gcc_version) >= ver((4,7)):
     cxx11_flags = ["-std=c++11"]
   elif ver(env_etc.gcc_version) >= ver((4,4)):
@@ -1209,7 +1246,7 @@ def enable_cuda_if_possible():
           'Not implemented: wrapping of linker flags with'
           ' embedded spaces: %s' % flag)
     linker_flags = ' '.join(linker_flags)
-    env_base['NVCCSHLINKFLAGS'] = ['-shared','--linker-options',linker_flags]
+    env_base['NVCCSHLINKFLAGS'] = ['-shared'] #,'--linker-options',linker_flags]
 
     cc_flags = env_base['CCFLAGS']
     for flag in cc_flags:
@@ -1218,7 +1255,7 @@ def enable_cuda_if_possible():
           'Not implemented: wrapping of compiler flags with'
           ' embedded spaces: %s' % flag)
     cc_flags = ' '.join(cc_flags)
-    env_base['NVCCFLAGS'] = ['-arch=compute_20','-use_fast_math','--shared',
+    env_base['NVCCFLAGS'] = ['-arch=compute_70','-use_fast_math','--shared',
                              '--compiler-options',cc_flags]
 
     shared_object_builder =\

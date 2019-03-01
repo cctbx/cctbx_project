@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 def run(args):
   if (len(args) == 0):
     folders = ["."]
@@ -22,11 +22,11 @@ def run(args):
           mod_count += 1
         mod_lines.append(line)
       if (mod_count != 0):
-        print >> open(path, "w"), "\n".join(mod_lines)
+        print("\n".join(mod_lines), file=open(path, "w"))
         mod_count_total += mod_count
         mod_file_count += 1
-  print "Number of modifications: %d in %d files" % (
-    mod_count_total, mod_file_count)
+  print("Number of modifications: %d in %d files" % (
+    mod_count_total, mod_file_count))
 
 if (__name__ == "__main__"):
   import sys

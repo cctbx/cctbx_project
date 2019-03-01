@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys, os
 import libtbx.load_env
 
@@ -32,13 +32,13 @@ def run():
 
 
 def help():
-  print "usage: libtbx.dtrace dtrace_script [ param=value ...] ",
-  print "python_script [args ...]"
-  print
-  print "       dtrace_script can be either the path of a dtrace script"
-  print "       or if there is no file at that path, a dtrace script"
-  print "       in libtbx/dtrace. In the latter case, the extension .d can"
-  print "       omitted on the command line."
+  print("usage: libtbx.dtrace dtrace_script [ param=value ...] ", end=' ')
+  print("python_script [args ...]")
+  print()
+  print("       dtrace_script can be either the path of a dtrace script")
+  print("       or if there is no file at that path, a dtrace script")
+  print("       in libtbx/dtrace. In the latter case, the extension .d can")
+  print("       omitted on the command line.")
   sys.exit(1)
 
 if __name__ == '__main__':

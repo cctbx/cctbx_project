@@ -1,7 +1,7 @@
 
 from __future__ import division
 
-def run () :
+def run():
   from mmtbx.monomer_library import server
   from libtbx.utils import Sorry
   try :
@@ -16,5 +16,5 @@ def run () :
   else :
     print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run()

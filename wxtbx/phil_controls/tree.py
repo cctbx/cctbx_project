@@ -5,8 +5,8 @@ import wx
 from libtbx.utils import Sorry
 import re
 
-class PhilTreeCtrl (customtreectrl.CustomTreeCtrl) :
-  def __init__ (self, *args, **kwds) :
+class PhilTreeCtrl(customtreectrl.CustomTreeCtrl):
+  def __init__(self, *args, **kwds):
     kwds = dict(kwds)
     kwds['agwStyle'] = wx.TR_HAS_VARIABLE_ROW_HEIGHT|wx.TR_HAS_BUTTONS| \
       wx.TR_TWIST_BUTTONS|wx.TR_HIDE_ROOT|wx.TR_SINGLE
@@ -20,38 +20,38 @@ class PhilTreeCtrl (customtreectrl.CustomTreeCtrl) :
     self._node_names_ordered = []
     self.ClearSearch()
 
-  def DeleteAllItems (self) :
+  def DeleteAllItems(self):
     customtreectrl.CustomTreeCtrl.DeleteAllItems(self)
     self._nodes_lookup_short = {}
     self._nodes_lookup_full = {}
     self._node_names_ordered = []
 
-  def ClearSearch (self) :
+  def ClearSearch(self):
     self._search_results = []
     self._current_search_text = None
     self._current_search_item = -1
 
-  def SaveNode (self, node, phil_object) :
+  def SaveNode(self, node, phil_object):
     name = phil_object.name
     full_path = phil_object.full_path
     self._node_names_ordered.append((name, full_path))
     node.SetData(phil_object)
-    if (name in self._nodes_lookup_short) :
+    if (name in self._nodes_lookup_short):
       self._nodes_lookup_short[name].append(node)
     else :
       self._nodes_lookup_short[name] = [node]
-    if (full_path in self._nodes_lookup_full) :
+    if (full_path in self._nodes_lookup_full):
       self._nodes_lookup_full[full_path].append(node)
     else :
       self._nodes_lookup_full[full_path] = [node]
 
-  def DrawPhilObject (self, phil_root) :
+  def DrawPhilObject(self, phil_root):
     assert (phil_root.name == "")
     for phil_object in phil_root.objects :
       self._DrawPhilObject(phil_object, self.GetRootItem())
 
-  def _DrawPhilObject (self, phil_object, current_node) :
-    if (phil_object.is_definition) :
+  def _DrawPhilObject(self, phil_object, current_node):
+    if (phil_object.is_definition):
       node = self.AppendItem(current_node, phil_object.as_str().strip())
       self.SaveNode(node, phil_object)
     else :
@@ -61,89 +61,89 @@ class PhilTreeCtrl (customtreectrl.CustomTreeCtrl) :
         self._DrawPhilObject(object_, new_node)
       self.Expand(new_node)
 
-  def SearchItems (self, search_text, partial=False) :
-    if (search_text != self._current_search_text) :
+  def SearchItems(self, search_text, partial=False):
+    if (search_text != self._current_search_text):
       results = []
-      if ("." in search_text) :
+      if ("." in search_text):
         for name, path in self._node_names_ordered :
-          if (partial and (search_text in path)) or (path == search_text) :
+          if (partial and (search_text in path)) or (path == search_text):
             results.extend(self._nodes_lookup_full[path])
       else :
         for name, path in self._node_names_ordered :
-          if (partial and (search_text in name)) or (name == search_text) :
+          if (partial and (search_text in name)) or (name == search_text):
             results.extend(self._nodes_lookup_short[name])
       self._search_results = results
     self.OnNext(None)
     return len(self._search_results)
 
-  def OnNext (self, event) :
-    if (len(self._search_results) == 0) :
+  def OnNext(self, event):
+    if (len(self._search_results) == 0):
       return
     self._current_search_item += 1
-    if (self._current_search_item == len(self._search_results)) :
+    if (self._current_search_item == len(self._search_results)):
       self._current_search_item = 0
     node = self._search_results[self._current_search_item]
     self.SelectItem(node)
     self.ScrollTo(node)
 
-  def OnPrevious (self, event) :
-    if (len(self._search_results) == 0) :
+  def OnPrevious(self, event):
+    if (len(self._search_results) == 0):
       return
     self._current_search_item -= 1
-    if (self._current_search_item < 0) :
+    if (self._current_search_item < 0):
       self._current_search_item = len(self._search_results) - 1
     node = self._search_results[self._current_search_item]
     self.SelectItem(node)
     self.ScrollTo(node)
 
-  def OnChar (self, event) :
+  def OnChar(self, event):
     key = event.GetKeyCode()
-    if (key == wx.WXK_DOWN) :
-      if (self._current_search_text is not None) :
+    if (key == wx.WXK_DOWN):
+      if (self._current_search_text is not None):
         self.OnPrevious(None)
       else :
         current_item = self.GetSelection()
-        if (current_item is None) :
+        if (current_item is None):
           current_item = self.GetFirstVisibleItem()
         item = self.GetNextVisible(current_item)
-        if (item is not None) :
+        if (item is not None):
           self.SelectItem(item)
           self.ScrollTo(item)
-    elif (key == wx.WXK_UP) :
-      if (self._current_search_text is not None) :
+    elif (key == wx.WXK_UP):
+      if (self._current_search_text is not None):
         self.OnNext(None)
       else :
         current_item = self.GetSelection()
-        if (current_item is None) :
+        if (current_item is None):
           item = self.GetFirstVisibleItem()
         else :
           item = self.GetPrevVisible(current_item)
-        if (item is not None) :
+        if (item is not None):
           self.SelectItem(item)
           self.ScrollTo(item)
-    elif (key == wx.WXK_RETURN) :
+    elif (key == wx.WXK_RETURN):
       item = self.GetSelection()
       self.EditNode(item)
 
-  def OnRightClick (self, event) :
+  def OnRightClick(self, event):
     item = event.GetItem()
     self.EditNode(item)
 
-  def OnDoubleClick (self, event) :
+  def OnDoubleClick(self, event):
     item = self.GetSelection()
-    if (item is not None) :
+    if (item is not None):
       self.EditNode(item)
 
-  def EditNode (self, item) :
-    if (item is not None) :
+  def EditNode(self, item):
+    if (item is not None):
       phil_object = item.GetData()
       phil_object.show()
 
 valid_text = re.compile("^[a-zA-Z]{1,}[a-zA-z0-9_]*$")
 valid_text_partial = re.compile("^[a-zA-Z0-9_]*$")
 
-class PhilTreeFrame (wx.Frame) :
-  def __init__ (self, *args, **kwds) :
+class PhilTreeFrame(wx.Frame):
+  def __init__(self, *args, **kwds):
     wx.Frame.__init__(self, *args, **kwds)
     self.panel = wx.Panel(self)
     szr = wx.BoxSizer(wx.VERTICAL)
@@ -174,33 +174,33 @@ class PhilTreeFrame (wx.Frame) :
     self.Fit()
     self.SetMinSize((480,320))
 
-  def DrawPhilTree (self, phil_object) :
+  def DrawPhilTree(self, phil_object):
     self.tree.DrawPhilObject(phil_object)
     self.Refresh()
 
-  def OnSearch (self, event) :
+  def OnSearch(self, event):
     search_text = event.GetEventObject().GetValue()
     partial = self.partial_box.GetValue()
     if ((partial and (not valid_text_partial.match(search_text))) or
-        (not partial and (not valid_text.match(search_text)))) :
+        (not partial and (not valid_text.match(search_text)))):
       self.search_result.SetLabel("Invalid search text!")
       self.search_result.SetForegroundColour((200,0,0))
       raise Sorry("Invalid search text - only alphanumeric characters ("+
         "including) underscore are allowed.  If partial matches are not "+
         "included, the search text must also begin with a letter.")
     n_items = self.tree.SearchItems(search_text, partial)
-    if (n_items == 0) :
+    if (n_items == 0):
       self.search_result.SetForegroundColour((200,0,0))
     else :
       self.search_result.SetForegroundColour((0,0,0))
     self.search_result.SetLabel("%d items found" % n_items)
     self.panel.Layout()
 
-  def OnCancel (self, event) :
+  def OnCancel(self, event):
     event.GetEventObject().Clear()
     self.tree.ClearSearch()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   from mmtbx.command_line import fmodel
   app = wx.App(0)
   frame  = PhilTreeFrame(None, -1, "Phenix settings")

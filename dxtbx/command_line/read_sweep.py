@@ -7,25 +7,27 @@ from __future__ import absolute_import, division, print_function
 
 def read_sweep(list_of_images):
 
-  from dxtbx.imageset import ImageSetFactory
-  sweeps = ImageSetFactory.new(list_of_images)
+    from dxtbx.imageset import ImageSetFactory
 
-  for sweep in sweeps:
-    print(sweep.get_detector())
-    print(sweep.get_scan())
+    sweeps = ImageSetFactory.new(list_of_images)
 
-    import time
+    for sweep in sweeps:
+        print(sweep.get_detector())
+        print(sweep.get_scan())
 
-    indices = sweep.indices()
+        import time
 
-    t0 = time.time()
-    for i in indices:
-      data = sweep.get_raw_data(i)
-    t1 = time.time()
+        indices = sweep.indices()
 
-    print('Reading %d frames took %.2fs' % (len(indices), t1 - t0))
+        t0 = time.time()
+        for i in indices:
+            data = sweep.get_raw_data(i)
+        t1 = time.time()
 
-if __name__ == '__main__':
-  import sys
+        print("Reading %d frames took %.2fs" % (len(indices), t1 - t0))
 
-  read_sweep(sys.argv[1:])
+
+if __name__ == "__main__":
+    import sys
+
+    read_sweep(sys.argv[1:])

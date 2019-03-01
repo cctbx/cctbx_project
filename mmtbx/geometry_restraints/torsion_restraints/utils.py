@@ -1,7 +1,7 @@
 from __future__ import division
 from libtbx.utils import Sorry, null_out
 from iotbx.pdb import common_residue_names_get_class
-from iotbx.pdb import amino_acid_codes, input
+from iotbx.pdb import input
 from cctbx.array_family import flex
 import math
 import sys
@@ -31,6 +31,7 @@ def get_reference_dihedral_proxies(
       ener_lib=None,
       crystal_symmetry=None,
       restraint_objects=None,
+      monomer_parameters=None,
       log=None):
   from mmtbx.monomer_library import server
   if log is None:
@@ -48,6 +49,7 @@ def get_reference_dihedral_proxies(
                          ener_lib=ener_lib,
                          crystal_symmetry=crystal_symmetry,
                          restraint_objects=restraint_objects,
+                         monomer_parameters=monomer_parameters,
                          log=log)
     reference_dihedral_proxies[file_name]=dihedral_proxies
   return reference_dihedral_proxies
@@ -84,6 +86,7 @@ def get_complete_dihedral_proxies(
       ener_lib=None,
       crystal_symmetry=None,
       restraint_objects=None,
+      monomer_parameters=None,
       log=None):
   #
   # This function is called only for reference files, that were not processed
@@ -116,6 +119,7 @@ def get_complete_dihedral_proxies(
       build_grm = True,
       pdb_interpretation_params=work_params,
       restraint_objects=restraint_objects,
+      monomer_parameters=monomer_parameters,
       log=null_out())
   return get_dihedrals_and_phi_psi(model)
 
@@ -197,20 +201,20 @@ def build_i_seq_hash(pdb_hierarchy):
     name_i_seq_hash[key]=atom.i_seq
   return name_i_seq_hash
 
-def id_str (chain_id,
+def id_str(chain_id,
             resseq,
             resname,
             icode,
             altloc,
             segid=None,
-            ignore_altloc=False) :
+            ignore_altloc=False):
   base = "%2s%4s%1s" % (chain_id, resseq, icode)
-  if (not ignore_altloc) :
+  if (not ignore_altloc):
     base += "%1s" % altloc
   else :
     base += " "
   base += "%3s" % resname
-  if (segid is not None) :
+  if (segid is not None):
     base += " segid='%4s'" % segid
   return base
 
@@ -313,60 +317,6 @@ def get_angle_average(angles):
   average = sum / n_angles
   return average
 
-def chain_from_selection(chain, selection):
-  from iotbx.pdb.hierarchy import new_hierarchy_from_chain
-  new_hierarchy = new_hierarchy_from_chain(chain=chain).select(selection)
-
-def hierarchy_from_selection(pdb_hierarchy, selection, log):
-  import iotbx.pdb.hierarchy
-  temp_hierarchy = pdb_hierarchy.select(selection)
-  altloc = None
-  hierarchy = iotbx.pdb.hierarchy.root()
-  model = iotbx.pdb.hierarchy.model()
-  for chain in temp_hierarchy.chains():
-    for conformer in chain.conformers():
-      if not conformer.is_protein() and not conformer.is_na():
-        continue
-      elif altloc is None or conformer.altloc == altloc:
-        model.append_chain(chain.detached_copy())
-        altloc = conformer.altloc
-      else:
-        print >> log, \
-        "* Multiple alternate conformations found, using altid %s *" \
-        % altloc
-        continue
-  if len(model.chains()) != 1:
-    raise Sorry("more than one chain in selection")
-  hierarchy.append_model(model)
-  return hierarchy
-
-def is_residue_in_selection(i_seqs, selection):
-  assert isinstance(selection, flex.bool)
-  for i_seq in i_seqs:
-    if not selection[i_seq]:
-      return False
-  return True
-
-def get_nucleic_acid_one_letter_code(resname):
-  olc=amino_acid_codes.one_letter_given_three_letter.get(resname,"X")
-  if olc != "X":
-    return "X"
-  if resname[0:2] == "  ":
-    return resname[2]
-  elif resname[0] == " " and (resname[1] == "D" or resname[1] == "d"):
-    return resname[2]
-  else:
-    return resname[0]
-
-def get_unique_segid(chain):
-  segid = None
-  for atom in chain.atoms():
-    if segid is None:
-      segid = atom.segid
-    elif segid != atom.segid:
-      return None
-  return segid
-
 def check_for_internal_chain_ter_records(
       pdb_hierarchy,
       ter_indices):
@@ -376,13 +326,7 @@ def check_for_internal_chain_ter_records(
   chain_ter_matches = {}
   chain_ranges = {}
   for chain in chains:
-    found_conformer = False
-    for conformer in chain.conformers():
-      if not conformer.is_protein() and not conformer.is_na():
-        continue
-      else:
-        found_conformer = True
-    if not found_conformer:
+    if not chain.is_protein() and not chain.is_na():
       continue
     min = None
     max = None
@@ -525,19 +469,13 @@ def get_c_alpha_hinges(pdb_hierarchy,
       c_alpha_hinges[current[0].i_seq] = [nodes, moving]
   return c_alpha_hinges
 
-def check_residues_are_connected (ca_1, ca_2, max_sep=4.0, min_sep=0.) :
+def check_residues_are_connected(ca_1, ca_2, max_sep=4.0, min_sep=0.):
   from scitbx import matrix
   ca_1_mat = matrix.col(ca_1.xyz)
   ca_2_mat = matrix.col(ca_2.xyz)
   dist = (ca_1_mat - ca_2_mat).length()
-  if (dist > max_sep) or (dist < min_sep) :
+  if (dist > max_sep) or (dist < min_sep):
     return False
-  return True
-
-def is_protein_chain(chain):
-  for conformer in chain.conformers():
-    if not conformer.is_protein():
-      return False
   return True
 
 def prepare_map(

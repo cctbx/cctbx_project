@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
 import iotbx.phil
 from mmtbx.hydrogens import connectivity
+from libtbx.utils import null_out
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 
 
@@ -26,7 +27,6 @@ ATOM      5  CB  CYS D  37       8.857  18.048  13.112  1.00144.61      D    C
 ANISOU    5  CB  CYS D  37    26841  17595  10509  -3672   2948    608  D    C
 ATOM      6  SG  CYS D  37       7.159  17.517  12.843  1.00142.64      D    S
 ANISOU    6  SG  CYS D  37    26553  17390  10253  -3704   3086    716  D    S
-ATOM      7  H   CYS D  37       7.635  19.325  14.885  1.00172.08      D    H
 ATOM      8  HA  CYS D  37       9.365  17.282  14.934  1.00171.95      D    H
 ATOM      9  HB2 CYS D  37       8.970  18.910  12.683  1.00173.69      D    H
 ATOM     10  HB3 CYS D  37       9.442  17.394  12.699  1.00173.69      D    H
@@ -42,7 +42,6 @@ ATOM     15  CB  CYS D  40      13.921  15.279  16.208  1.00140.80      D    C
 ANISOU   15  CB  CYS D  40    26653  17143   9703  -3698   2398    729  D    C
 ATOM     16  SG  CYS D  40      13.262  14.779  17.830  1.00136.64      D    S
 ANISOU   16  SG  CYS D  40    26211  16771   8936  -3714   2439    794  D    S
-ATOM     17  H   CYS D  40      13.032  17.777  16.218  1.00185.45      D    H
 ATOM     18  HA  CYS D  40      15.432  16.588  16.680  1.00179.29      D    H
 ATOM     19  HB2 CYS D  40      13.174  15.295  15.590  1.00169.12      D    H
 ATOM     20  HB3 CYS D  40      14.548  14.592  15.932  1.00169.12      D    H
@@ -236,7 +235,8 @@ geometry_restraints.edits {
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     build_grm   = True,
-    pdb_interpretation_params = params)
+    pdb_interpretation_params = params,
+    log         = null_out())
 
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
@@ -258,12 +258,12 @@ geometry_restraints.edits {
 
   for rc in h_para:
     if rc:
-      assert(rc.ih != 63), 'Wrong atom not recognized.'
+      assert(rc.ih != 61), 'Wrong atom not recognized.'
 
 # Test if number of paramterized H atoms is correct
   assert (number_h == number_h_para + 1), 'Not all H atoms are parameterized'
 
-  type_list_known = ['alg1b', '3neigbs', '2tetra', '2tetra', 'alg1b', '3neigbs',
+  type_list_known = ['3neigbs', '2tetra', '2tetra', '3neigbs',
     '2tetra', '2tetra', '3neigbs', 'flat_2neigbs', 'flat_2neigbs',
     'flat_2neigbs', 'flat_2neigbs', '2tetra', '2tetra', '2tetra', '2tetra',
     '2tetra', '2tetra', 'prop', 'prop', 'prop', 'prop', 'prop', 'prop',
@@ -272,7 +272,7 @@ geometry_restraints.edits {
 
   for ih in h_distances:
     # One H atom is expected to be far (HAC)
-    if (ih == 64):
+    if (ih == 62):
       continue
     labels = atoms[ih].fetch_labels()
     if (h_distances[ih] > 0.1):
@@ -347,7 +347,8 @@ geometry_restraints.edits {
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     build_grm   = True,
-    pdb_interpretation_params = params)
+    pdb_interpretation_params = params,
+    log         = null_out())
 
   pdb_hierarchy = model.get_hierarchy()
   sites_cart = model.get_sites_cart()
@@ -391,4 +392,4 @@ if (__name__ == "__main__"):
   t0 = time.time()
   exercise1()
   exercise2()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

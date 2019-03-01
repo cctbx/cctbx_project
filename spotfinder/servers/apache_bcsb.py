@@ -1,6 +1,6 @@
 from __future__ import division
 from six.moves import range
-import StringIO
+from six.moves import StringIO
 
 def run(args, verbose=False):
   from libtbx.utils import Sorry
@@ -17,7 +17,7 @@ def run(args, verbose=False):
   from spotfinder.servers.apache_utils import LongLineSimpleNode as SimpleNode
   from spotfinder.applications import signal_strength
 
-  logger = StringIO.StringIO()
+  logger = StringIO()
   top = SimpleNode("spotfinder")
 
   try:

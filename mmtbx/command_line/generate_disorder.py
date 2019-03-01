@@ -9,7 +9,7 @@ import random
 import time
 import sys
 
-def get_master_phil () :
+def get_master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     enable_twin_law=True,
@@ -71,7 +71,7 @@ simulated_annealing {
 }
 """)
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   from mmtbx.building import alternate_conformations
   import mmtbx.command_line
   import mmtbx.building
@@ -96,7 +96,7 @@ and experimentation only.
   make_header("Generating disorder", out=out)
   a_c_p = cmdline.processed_pdb_file.all_chain_proxies
   selection = a_c_p.selection(params.selection)
-  if (params.whole_residues) :
+  if (params.whole_residues):
     selection = iotbx.pdb.atom_selection.expand_selection_to_entire_atom_groups(
       selection=selection,
       pdb_atoms=pdb_hierarchy.atoms())
@@ -104,7 +104,7 @@ and experimentation only.
   assert (n_sel > 0)
   print >> out, "%d atoms selected" % n_sel
   selection_delete = None
-  if (params.selection_delete is not None) :
+  if (params.selection_delete is not None):
     selection_delete = a_c_p.selection(params.selection_delete)
   two_fofc_map, fofc_map = alternate_conformations.get_partial_omit_map(
     fmodel=fmodel.deep_copy(),
@@ -115,7 +115,7 @@ and experimentation only.
     partial_occupancy=params.occ,
     resolution_factor=params.resolution_factor)
   target_map = fofc_map
-  if (params.target_map == "2mFo-DFc") :
+  if (params.target_map == "2mFo-DFc"):
     target_map = two_fofc_map
   annealer = annealing_manager(
     xray_structure=fmodel.xray_structure,
@@ -135,10 +135,10 @@ and experimentation only.
     iterable=range(params.n_confs),
     processes=params.nproc)
   ensemble = iotbx.pdb.hierarchy.root()
-  if (params.output.include_starting_model) :
+  if (params.output.include_starting_model):
     sites_all.insert(0, sites_ref)
   rmsds = []
-  for i_conf, sites_new in enumerate(sites_all) :
+  for i_conf, sites_new in enumerate(sites_all):
     assert (sites_new is not None)
     model = pdb_hierarchy.only_model().detached_copy()
     model.atoms().set_xyz(sites_new)
@@ -155,8 +155,8 @@ and experimentation only.
   print >> out, "Wrote ensemble model to %s" % params.output.file_name
   return rmsds
 
-class annealing_manager (object) :
-  def __init__ (self,
+class annealing_manager(object):
+  def __init__(self,
       xray_structure,
       pdb_hierarchy,
       processed_pdb_file,
@@ -167,14 +167,14 @@ class annealing_manager (object) :
       params,
       selection,
       debug=False,
-      out=None) :
+      out=None):
     adopt_init_args(self, locals())
 
-  def __call__ (self, i_proc) :
+  def __call__(self, i_proc):
     import mmtbx.building
     from scitbx.array_family import flex
     seed = self.params.random_seed
-    if (seed is None) :
+    if (seed is None):
       seed = int(time.time() / os.getpid())
     random.seed(seed)
     flex.set_random_seed(seed)
@@ -195,9 +195,9 @@ class annealing_manager (object) :
       debug=self.debug)
     return sites_new
 
-def validate_params (params) :
-  if (params.selection is None) :
+def validate_params(params):
+  if (params.selection is None):
     raise Sorry("You must specificy an atom selection to anneal.")
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

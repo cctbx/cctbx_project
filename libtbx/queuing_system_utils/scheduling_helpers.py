@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import threading
 import multiprocessing
@@ -15,7 +15,7 @@ class Thread(threading.Thread):
     try:
       super( Thread, self ).run()
 
-    except Exception, e:
+    except Exception as e:
       #import traceback
       #print traceback.format_exc()
       self.exitcode = 1
@@ -145,8 +145,8 @@ class QQFactory(object):
   @staticmethod
   def create():
 
-    import Queue
-    return Queue.Queue()
+    from six.moves import queue
+    return queue.Queue()
 
 
   @staticmethod

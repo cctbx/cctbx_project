@@ -1,8 +1,9 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
 import iotbx.cif
+from libtbx.utils import null_out
 
 def prepare_inputs(pdb_str, cif_str):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
@@ -14,7 +15,8 @@ def prepare_inputs(pdb_str, cif_str):
   model = mmtbx.model.manager(
     model_input=pdb_inp,
     build_grm   = True,
-    restraint_objects = cif_objects)
+    restraint_objects = cif_objects,
+    log = null_out())
 
   model.setup_riding_h_manager()
   riding_h_manager = model.get_riding_h_manager()
@@ -22,9 +24,9 @@ def prepare_inputs(pdb_str, cif_str):
   return model
 
 #-----------------------------------------------------------------------------
-# This test makes sure that H are corrected according to angle restraint
+# For this ligand, three H cannot be parameterized
 # NH2 group is planar, but there are no dihedral restraints
-# Input model has wrong NH2 configuration --> idealize can correct it.
+# no dihedral restraint for H11
 #-----------------------------------------------------------------------------
 
 def exercise1(pdb_str, cif_str):
@@ -44,7 +46,7 @@ def exercise1(pdb_str, cif_str):
   number_h = model.get_hd_selection().count(True)
   number_h_para = len(h_para) - h_para.count(None)
 
-  assert (number_h_para == number_h), 'Not all H atoms are parameterized'
+  assert (number_h_para == number_h-3), 'Not all H atoms are parameterized'
 
   for ih in h_distances:
     # One atom is expected to be moved
@@ -265,8 +267,9 @@ _chem_comp_plane_atom.dist_esd
 3HA plan-3  C2     0.020
 """
 
-type_list_known1 = ['flat_2neigbs', 'alg1b', 'flat_2neigbs', 'flat_2neigbs',
-  'alg1a', 'alg1a']
+#type_list_known1 = ['flat_2neigbs', 'alg1b', 'flat_2neigbs', 'flat_2neigbs',
+#  'alg1a', 'alg1a']
+type_list_known1 = ['flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs']
 
 # Zundelion ( [H2O -- H -- OH2]+)
 
@@ -351,4 +354,4 @@ if (__name__ == "__main__"):
   t0 = time.time()
   exercise1(pdb_str1, cif_str1)
   exercise2(pdb_str2, cif_str2)
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

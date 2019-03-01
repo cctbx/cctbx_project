@@ -23,7 +23,7 @@ def get_cif_filename(code):
   if (data_dir is None): return ""
   if (not code): return ""
   code=code.strip()
-  if (len(code) == 0) :
+  if (len(code) == 0):
     raise Sorry("Residue code is blank.")
   return os.path.join(
     data_dir, "%s" % code[0].lower(), "data_%s.cif" % code.upper())

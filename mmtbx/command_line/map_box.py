@@ -7,7 +7,7 @@ from mmtbx.refinement import print_statistics
 import iotbx.pdb
 import libtbx.phil
 from libtbx.utils import Sorry
-import os, sys
+import os, sys, time
 from iotbx import reflection_file_utils
 from iotbx.file_reader import any_file
 from cctbx import maptbx
@@ -17,8 +17,8 @@ master_phil = libtbx.phil.parse("""
   include scope libtbx.phil.interface.tracking_params
   pdb_file = None
     .type = path
-    .help = Model file
-    .short_caption = Model file
+    .help = Optional model file used to define region to be cut out
+    .short_caption = Model file (optional)
     .style = file_type:pdb bold input_file
   map_coefficients_file = None
     .type = path
@@ -37,7 +37,7 @@ master_phil = libtbx.phil.parse("""
   selection = all
     .type = str
     .help = Atom selection to be applied to input PDB file
-    .short_caption = Atom selection
+    .short_caption = Atom selection (optional)
     .input_size = 400
   selection_radius = 3.0
     .type = float
@@ -70,6 +70,10 @@ master_phil = libtbx.phil.parse("""
     .type = float
     .help = Resolution factor for calculation of map coefficients
     .short_caption = Resolution factor
+  map_scale_factor = None
+    .type = float
+    .help = Scale factor to apply to map
+    .short_caption = Map scale factor
   scale_max = 99999
     .type = float
     .help = Maximum value of amplitudes for output mtz file. If None, apply\
@@ -113,7 +117,8 @@ master_phil = libtbx.phil.parse("""
   symmetry = None
     .type = str
     .help = Optional symmetry (e.g., D7, I, C2) to be used if extract_unique\
-            is set.  Alternative to symmetry_file.
+            is set.  Alternative to symmetry_file.  To find symmetry \
+            automatically specify symmetry=ALL.
     .short_caption = Symmetry
   symmetry_file = None
     .type = path
@@ -127,14 +132,14 @@ master_phil = libtbx.phil.parse("""
     .type = path
     .help = Sequence file (any standard format). Can be unique part or \
             all copies.  Used in identification of unique part of map.
-    .short_caption = Sequence file
+    .short_caption = Sequence file (optional)
 
   molecular_mass = None
     .type = float
     .help = Molecular mass of object in map in Da (i.e., 33000 for 33 Kd).\
               Used in identification \
             of unique part of map.
-    .short_caption = Molecular mass
+    .short_caption = Molecular mass (optional)
 
   solvent_content = None
     .type = float
@@ -150,6 +155,22 @@ master_phil = libtbx.phil.parse("""
             either sequence file or molecular mass to be supplied. If chain \
             type is not protein it should be set as well.
     .short_caption = Extract unique
+
+  box_buffer = 5
+    .type = int
+    .help = Padding around unique region
+    .short_caption = Padding around unique region
+
+  soft_mask_extract_unique = True
+    .type = bool
+    .help = Create soft mask at edges of extract_unique box (feather map into \
+               edge of box). Uses resolution as mask_radius
+      .short_caption = Soft mask in extract unique
+
+  mask_expand_ratio = 1
+      .type = int
+      .help = Mask expansion relative to resolution for extract_unique
+      .short_caption = Mask expand ratio
 
   regions_to_keep = None
     .type = int
@@ -170,7 +191,7 @@ master_phil = libtbx.phil.parse("""
             Use None if there is a mixture.
     .short_caption = Chain type
 
-  soft_mask=False
+  soft_mask = False
     .type=bool
     .help = Use Gaussian mask in mask_atoms
     .short_caption = Soft mask
@@ -247,6 +268,18 @@ master_phil = libtbx.phil.parse("""
     .short_caption = Output origin
     .expert_level = 3
 
+  output_origin_match_this_file = None
+    .type = path
+    .help = As output_origin_grid_units, but use origin from this file
+    .short_caption = File with origin info
+
+  output_external_origin = None
+    .type = floats
+    .help = Write ORIGIN record to map file (this is an external origin \
+            used to specify relationship to external files such as model files.\
+            Three floating point numbers (A).
+    .short_caption = output external origin
+
   restrict_map_size = False
     .type=bool
     .help = Do not go outside original map boundaries
@@ -256,6 +289,22 @@ master_phil = libtbx.phil.parse("""
     .type=bool
     .help = Ignore unit cell from model if it conflicts with the map.
     .short_caption = Ignore symmetry conflicts
+
+  output_ccp4_map_mean = None
+    .type = float
+    .help = Choose mean and SD of output CCP4 map
+    .short_caption = Mean of output CCP4 map
+
+  output_ccp4_map_sd = None
+    .type = float
+    .help = Choose mean and SD of output CCP4 map
+    .short_caption = SD of output CCP4 map
+
+  output_map_labels = None
+    .type = str
+    .multiple = True
+    .help = Add this label to output map
+    .short_caption = Add label
 
   gui
     .help = "GUI-specific parameter required for output directory"
@@ -267,6 +316,13 @@ master_phil = libtbx.phil.parse("""
 """, process_includes=True)
 
 master_params = master_phil
+
+def remove_element(text_list,element=None):
+    new_text_list=[]
+    for x in text_list:
+      if x != element:
+        new_text_list.append(x)
+    return new_text_list
 
 def run(args, crystal_symmetry=None,
      ncs_object=None,
@@ -350,6 +406,10 @@ Parameters:"""%h
       raise Sorry("Please set resolution for extract_unique")
     if (not params.symmetry) and (not params.symmetry_file) and \
         (not ncs_object):
+      raise Sorry(
+        "Please supply a symmetry file or symmetry for extract_unique (you "+
+       "\ncan try symmetry=ALL if you do not know your symmetry or "+
+        "symmetry=C1 if \nthere is none)")
       from mmtbx.ncs.ncs import ncs
       ncs_object=ncs()
       ncs_object.set_unit_ncs()
@@ -364,12 +424,26 @@ Parameters:"""%h
        (params.keep_origin) and (not params.keep_map_size)):
     print "\nNOTE: Skipping write of mtz file as keep_origin=True and \n"+\
        "keep_map_size is False\n"
-    new_output_format=[]
-    for x in params.output_format:
-      if x != 'mtz':
-        new_output_format.append(x)
-    params.output_format=new_output_format
+    params.output_format=remove_element(params.output_format,element='mtz')
 
+  if (write_output_files) and ("mtz" in params.output_format) and (
+       (params.extract_unique)):
+    print "\nNOTE: Skipping write of mtz file as extract_unique=True\n"
+    params.output_format=remove_element(params.output_format,element='mtz')
+
+
+  if params.output_origin_match_this_file:
+
+    af = any_file(params.output_origin_match_this_file)
+    if (af.file_type == 'ccp4_map'):
+      origin=af.file_content.data.origin()
+      params.output_origin_grid_units=origin
+      print "Origin of (%s,%s,%s) taken from %s" %(
+         origin[0],origin[1],origin[2],params.output_origin_match_this_file)
+    if not params.ccp4_map_file:
+      raise Sorry(
+       "Need to specify ccp4_map_file=xxx if you use "+
+           "output_origin_match_this_file=xxxx")
   if params.output_origin_grid_units is not None and params.keep_origin:
     params.keep_origin=False
     print "Setting keep_origin=False as output_origin_grid_units is set"
@@ -386,6 +460,7 @@ Parameters:"""%h
   map_coeff = None
   input_unit_cell_grid=None
   input_unit_cell=None
+  input_map_labels=None
   if (not map_data):
     # read first mtz file
     if ( (len(inputs.reflection_file_names) > 0) or
@@ -422,6 +497,7 @@ Parameters:"""%h
       map_data = ccp4_map.data #map_data()
       input_unit_cell_grid=ccp4_map.unit_cell_grid
       input_unit_cell=ccp4_map.unit_cell_parameters
+      input_map_labels=ccp4_map.get_labels()
 
       if inputs.ccp4_map_file_name.endswith(".ccp4"):
         map_or_map_coeffs_prefix=os.path.basename(
@@ -432,6 +508,10 @@ Parameters:"""%h
   else: # have map_data
     map_or_map_coeffs_prefix=None
 
+  if params.map_scale_factor:
+    print "Applying scale factor of %s to map data on read-in" %(
+       params.map_scale_factor)
+    map_data=map_data*params.map_scale_factor
 
   if params.output_origin_grid_units is not None:
     origin_to_match=tuple(params.output_origin_grid_units)
@@ -571,7 +651,10 @@ Parameters:"""%h
     lower_bounds          = params.lower_bounds,
     upper_bounds          = params.upper_bounds,
     extract_unique        = params.extract_unique,
-    regions_to_keep        = params.regions_to_keep,
+    regions_to_keep       = params.regions_to_keep,
+    box_buffer            = params.box_buffer,
+    soft_mask_extract_unique = params.soft_mask_extract_unique,
+    mask_expand_ratio = params.mask_expand_ratio,
     keep_low_density      = params.keep_low_density,
     chain_type            = params.chain_type,
     sequence              = sequence,
@@ -779,7 +862,7 @@ Parameters:"""%h
        tuple(output_crystal_symmetry.unit_cell().parameters()))
 
   else:
-    output_unit_cell_grid = map_data=output_box.map_box.all()
+    output_unit_cell_grid = output_box.map_box.all()
     output_crystal_symmetry=output_box.xray_structure_box.crystal_symmetry()
   # ==========  Done check/set output unit cell grid and cell parameters =====
 
@@ -811,10 +894,27 @@ Parameters:"""%h
      if(params.output_file_name_prefix is None):
        file_name = "%s_box.ccp4"%output_prefix
      else: file_name = "%s.ccp4"%params.output_file_name_prefix
+     from iotbx.mrcfile import create_output_labels
+     if params.extract_unique:
+       program_name='map_box using extract_unique'
+       limitations=["extract_unique"]
+     else:
+       program_name='map_box'
+       limitations=[]
+     labels=create_output_labels(program_name=program_name,
+       input_file_name=inputs.ccp4_map_file_name,
+       input_labels=input_map_labels,
+       limitations=limitations,
+       output_labels=None)
+
      output_box.write_ccp4_map(file_name=file_name,
        output_crystal_symmetry=output_crystal_symmetry,
+       output_mean=params.output_ccp4_map_mean,
+       output_sd=params.output_ccp4_map_sd,
        output_unit_cell_grid=output_unit_cell_grid,
-       shift_back=shift_back)
+       shift_back=shift_back,
+       output_map_labels=labels,
+       output_external_origin=params.output_external_origin)
      print >> log, "Writing boxed map "+\
           "to CCP4 formatted file:   %s"%file_name
 
@@ -861,8 +961,8 @@ from wxGUI2 import utils
 def validate_params(params):
   return True
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher(runtime_utils.target_with_save_result):
+  def run(self):
     utils.safe_makedirs(self.output_dir)
     os.chdir(self.output_dir)
     result = run(args=self.args, log=sys.stdout)

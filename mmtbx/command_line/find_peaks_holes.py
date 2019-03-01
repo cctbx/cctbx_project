@@ -16,7 +16,7 @@ from iotbx.pdb.hybrid_36 import hy36encode
 import os
 import sys
 
-def get_master_phil () :
+def get_master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     enable_automatic_twin_detection=True,
@@ -72,47 +72,47 @@ include scope libtbx.phil.interface.tracking_params
 master_phil = get_master_phil()
 master_params = master_phil # for phenix GUI
 
-class peaks_holes_container (object) :
-  def __init__ (self, peaks, holes, map_cutoff=3.0, anom_peaks=None,
+class peaks_holes_container(object):
+  def __init__(self, peaks, holes, map_cutoff=3.0, anom_peaks=None,
       anom_map_cutoff=3.0, water_peaks=None, water_anom_peaks=None,
-      non_water_anom_peaks=None) :
+      non_water_anom_peaks=None):
     adopt_init_args(self, locals())
     # XXX pre-sort all lists
     self.peaks.sort(reverse=True)
     self.holes.sort()
-    if (self.anom_peaks is not None) :
+    if (self.anom_peaks is not None):
       self.anom_peaks.sort(reverse=True)
-    if (self.water_peaks is not None) :
+    if (self.water_peaks is not None):
       self.water_peaks = sorted(self.water_peaks,
         lambda x,y: cmp(y.peak_height, x.peak_height))
-    if (self.water_anom_peaks is not None) :
+    if (self.water_anom_peaks is not None):
       self.water_anom_peaks = sorted(self.water_anom_peaks,
         lambda x,y: cmp(y.peak_height, x.peak_height))
     self.pdb_file = None
     self.map_file = None
 
-  def show_summary (self, out=sys.stdout) :
+  def show_summary(self, out=sys.stdout):
     self.get_summary().show(out=out)
 
-  def get_summary (self) :
+  def get_summary(self):
     """
     Returns a simple object for harvesting statistics elsewhere.
     """
     n_anom_peaks = None
-    if (self.anom_peaks is not None) :
+    if (self.anom_peaks is not None):
       n_anom_peaks = len(self.anom_peaks.heights)
     n_water_peaks = n_water_anom_peaks = None
-    if (self.water_peaks is not None) :
+    if (self.water_peaks is not None):
       n_water_peaks = len(self.water_peaks)
-    if (self.water_anom_peaks is not None) :
+    if (self.water_anom_peaks is not None):
       n_water_anom_peaks = len(self.water_anom_peaks)
     hole_max = peak_max = None
-    if (len(self.peaks.heights) > 0) :
+    if (len(self.peaks.heights) > 0):
       peak_max = flex.max(self.peaks.heights)
-    if (len(self.holes.heights) > 0) :
+    if (len(self.holes.heights) > 0):
       hole_max = flex.min(self.holes.heights)
     n_non_water_anom_peaks = None
-    if (getattr(self, "non_water_anom_peaks", None) is not None) :
+    if (getattr(self, "non_water_anom_peaks", None) is not None):
       n_non_water_anom_peaks = len(self.non_water_anom_peaks)
     return summary(
       n_peaks_1=(self.peaks.heights > self.map_cutoff).count(True),
@@ -130,20 +130,20 @@ class peaks_holes_container (object) :
       anom_map_cutoff=self.anom_map_cutoff,
       n_non_water_anom_peaks=n_non_water_anom_peaks)
 
-  def n_peaks_above_cutoff (self, cutoff) :
+  def n_peaks_above_cutoff(self, cutoff):
     assert (cutoff > 0)
     return (self.peaks.heights > cutoff).count(True)
 
-  def n_holes_below_cutoff (self, cutoff) :
+  def n_holes_below_cutoff(self, cutoff):
     assert (cutoff < 0)
     return (self.holes.heights < cutoff).count(True)
 
-  def save_pdb_file (self,
+  def save_pdb_file(self,
       file_name="peaks.pdb",
       include_holes=True,
       include_anom=True,
       include_water=True,
-      log=None) :
+      log=None):
     """
     Write out a PDB file with up to three chains: A for peaks, B for holes,
     C for anomalous peaks.  Atoms are UNK, with the B-factor set to the height
@@ -157,7 +157,7 @@ class peaks_holes_container (object) :
     root.append_model(model)
     peaks_chain = iotbx.pdb.hierarchy.chain(id="A")
     model.append_chain(peaks_chain)
-    def create_atom (xyz, peak, serial) :
+    def create_atom(xyz, peak, serial):
       rg = iotbx.pdb.hierarchy.residue_group(resseq=hy36encode(4, serial))
       ag = iotbx.pdb.hierarchy.atom_group(resname="UNK")
       rg.append_atom_group(ag)
@@ -171,7 +171,7 @@ class peaks_holes_container (object) :
       a.serial = serial
       return rg
     k = 1
-    for peak, xyz in zip(self.peaks.heights, self.peaks.sites) :
+    for peak, xyz in zip(self.peaks.heights, self.peaks.sites):
       rg = create_atom(xyz, peak, k)
       peaks_chain.append_residue_group(rg)
       k += 1
@@ -179,48 +179,48 @@ class peaks_holes_container (object) :
     f.write("REMARK  Interesting sites from mmtbx.find_peaks_holes\n")
     f.write("REMARK  Chain A is difference map peaks (> %g sigma)\n" %
       self.map_cutoff)
-    if (include_holes) :
+    if (include_holes):
       f.write("REMARK  Chain B is difference map holes (< %g sigma)\n" %
         (- self.map_cutoff))
       holes_chain = iotbx.pdb.hierarchy.chain(id="B")
       model.append_chain(holes_chain)
       k = 1
-      for hole, xyz in zip(self.holes.heights, self.holes.sites) :
+      for hole, xyz in zip(self.holes.heights, self.holes.sites):
         rg = create_atom(xyz, hole, k)
         holes_chain.append_residue_group(rg)
         k += 1
-    if (include_anom) and (self.anom_peaks is not None) :
+    if (include_anom) and (self.anom_peaks is not None):
       f.write("REMARK  Chain C is anomalous peaks (> %g sigma)\n" %
         self.anom_map_cutoff)
       anom_chain = iotbx.pdb.hierarchy.chain(id="C")
       model.append_chain(anom_chain)
       k = 1
-      for peak, xyz in zip(self.anom_peaks.heights, self.anom_peaks.sites) :
+      for peak, xyz in zip(self.anom_peaks.heights, self.anom_peaks.sites):
         rg = create_atom(xyz, peak, k)
         anom_chain.append_residue_group(rg)
         k += 1
-    if (include_water) and (self.water_peaks is not None) :
+    if (include_water) and (self.water_peaks is not None):
       f.write("REMARK  Chain D is waters with mFo-DFc peaks (> %g sigma)\n" %
         self.map_cutoff)
       waters_chain = iotbx.pdb.hierarchy.chain(id="D")
       model.append_chain(waters_chain)
-      for k, peak in enumerate(self.water_peaks) :
+      for k, peak in enumerate(self.water_peaks):
         rg = create_atom(peak.xyz, peak.peak_height, k+1)
         waters_chain.append_residue_group(rg)
-      if (include_anom) and (self.water_anom_peaks is not None) :
+      if (include_anom) and (self.water_anom_peaks is not None):
         f.write("REMARK  Chain E is waters with anom. peaks (> %g sigma)\n" %
           self.anom_map_cutoff)
         waters_chain_2 = iotbx.pdb.hierarchy.chain(id="E")
         model.append_chain(waters_chain_2)
-        for k, peak in enumerate(self.water_anom_peaks) :
+        for k, peak in enumerate(self.water_anom_peaks):
           rg = create_atom(peak.xyz, peak.peak_height, k+1)
           waters_chain_2.append_residue_group(rg)
     if ((include_anom) and
-        (getattr(self, "non_water_anom_peaks", None) is not None)) :
+        (getattr(self, "non_water_anom_peaks", None) is not None)):
       f.write("REMARK  Chain F is non-water, non-HD atoms with anom. peaks\n")
       anom_chain_2 = iotbx.pdb.hierarchy.chain(id="F")
       model.append_chain(anom_chain_2)
-      for k, peak in enumerate(self.non_water_anom_peaks) :
+      for k, peak in enumerate(self.non_water_anom_peaks):
         rg = create_atom(peak.xyz, peak.peak_height, k+1)
         anom_chain_2.append_residue_group(rg)
     f.write(root.as_pdb_string())
@@ -228,62 +228,62 @@ class peaks_holes_container (object) :
     print >> log, "Wrote %s" % file_name
     self.pdb_file = file_name
 
-  def get_output_file_info (self) :
+  def get_output_file_info(self):
     output_files = []
-    if (self.pdb_file is not None) :
+    if (self.pdb_file is not None):
       output_files.append((self.pdb_file, "Peaks as PDB atoms"))
-    if (self.map_file is not None) :
+    if (self.map_file is not None):
       output_files.append((self.map_file, "Map coefficients"))
     return output_files
 
-class summary (group_args) :
-  def show (self, out=sys.stdout) :
+class summary(group_args):
+  def show(self, out=sys.stdout):
     print >> out, ""
     print >> out, "SUMMARY OF MAP PEAKS:"
     cutoffs = [self.map_cutoff, self.map_cutoff + 3.0, self.map_cutoff + 6.0]
     peaks = [ self.n_peaks_1, self.n_peaks_2, self.n_peaks_3 ]
     labels = []
     values = []
-    for cutoff, n_peaks in zip(cutoffs, peaks) :
+    for cutoff, n_peaks in zip(cutoffs, peaks):
       labels.append("mFo-DFc >  %-4g" % cutoff)
       values.append("%6d" % n_peaks)
     labels.append("mFo-DFc max")
     values.append(format_value("%6.2f", self.peak_max))
     holes = [ self.n_holes_1, self.n_holes_2, self.n_holes_3 ]
-    for cutoff, n_holes in zip(cutoffs, holes) :
+    for cutoff, n_holes in zip(cutoffs, holes):
       labels.append("mFo-DFc < -%-4g" % cutoff)
       values.append("%6d" % n_holes)
     labels.append("mFo-DFc min")
     values.append(format_value("%6.2f", self.hole_max))
-    if (self.n_anom_peaks is not None) :
+    if (self.n_anom_peaks is not None):
       labels.append("anomalous > %-4g" % self.anom_map_cutoff)
       values.append("%6d" % self.n_anom_peaks)
-    if (self.n_water_peaks is not None) :
+    if (self.n_water_peaks is not None):
       labels.append("suspicious H2O (mFo-DFC > %g)" % self.map_cutoff)
       values.append("%6d" % self.n_water_peaks)
-    if (self.n_water_anom_peaks is not None) :
+    if (self.n_water_anom_peaks is not None):
       labels.append("anomalous H2O (anomalous > %g)" % self.map_cutoff)
       values.append("%6d" % self.n_water_anom_peaks)
-    if (self.n_non_water_anom_peaks is not None) :
+    if (self.n_non_water_anom_peaks is not None):
       labels.append("anomalous non-water atoms")
       values.append("%6d" % self.n_non_water_anom_peaks)
     labels = [ l.strip() + ":" for l in labels ]
     label_len = max([ len(l) for l in labels ])
     format = "%%-%ds" % label_len
-    for label, value in zip(labels, values) :
+    for label, value in zip(labels, values):
       formatted = format % label
       print >> out, "  %s %s" % (formatted, value)
     print >> out, ""
 
-class water_peak (object) :
-  def __init__ (self, id_str, xyz, peak_height, map_type="mFo-DFc") :
+class water_peak(object):
+  def __init__(self, id_str, xyz, peak_height, map_type="mFo-DFc"):
     adopt_init_args(self, locals())
 
-  def show (self, out=sys.stdout) :
+  def show(self, out=sys.stdout):
     print >> out, "  %s  map_type=%s  peak=%g" % (self.id_str,
       self.map_type, self.peak_height)
 
-def find_peaks_holes (
+def find_peaks_holes(
     fmodel,
     pdb_hierarchy,
     params=None,
@@ -293,7 +293,7 @@ def find_peaks_holes (
     use_phaser_if_available=True,
     return_llg_map=False,
     include_peaks_near_model=False,
-    out=None) :
+    out=None):
   """
   Find peaks and holes in mFo-DFc map, plus flag solvent atoms with
   suspiciously high mFo-DFc values, plus anomalous peaks if anomalous data are
@@ -301,16 +301,16 @@ def find_peaks_holes (
   the ability to write out a PDB file with the sites of interest).
   """
   if (out is None) : out = sys.stdout
-  if (params is None) :
+  if (params is None):
     params = master_phil.fetch().extract().find_peaks
-  if (include_peaks_near_model) :
+  if (include_peaks_near_model):
     params.map_next_to_model.min_model_peak_dist = 0
   pdb_atoms = pdb_hierarchy.atoms()
   unit_cell = fmodel.xray_structure.unit_cell()
   from mmtbx import find_peaks
   from cctbx import maptbx
   f_map = None
-  if (filter_peaks_by_2fofc is not None) :
+  if (filter_peaks_by_2fofc is not None):
     f_map_ = fmodel.electron_density_map().fft_map(
       resolution_factor=params.resolution_factor,
       symmetry_flags=maptbx.use_space_group_symmetry,
@@ -328,7 +328,7 @@ def find_peaks_holes (
   peaks_result.peaks_mapped()
   peaks_result.show_mapped(pdb_atoms)
   peaks = peaks_result.peaks()
-  if (filter_peaks_by_2fofc is not None) :
+  if (filter_peaks_by_2fofc is not None):
     n_removed = peaks.filter_by_secondary_map(
       map=f_map,
       min_value=filter_peaks_by_2fofc)
@@ -350,7 +350,7 @@ def find_peaks_holes (
   holes_result.show_mapped(pdb_atoms)
   holes = holes_result.peaks()
   # XXX is this useful?
-  #if (filter_peaks_by_2fofc is not None) :
+  #if (filter_peaks_by_2fofc is not None):
   #  holes.filter_by_secondary_map(
   #    map=f_map,
   #    min_value=filter_peaks_by_2fofc)
@@ -359,11 +359,11 @@ def find_peaks_holes (
   out.flush()
   anom = None
   anom_map_coeffs = None
-  if (fmodel.f_obs().anomalous_flag()) :
+  if (fmodel.f_obs().anomalous_flag()):
     make_header("Anomalous difference map peaks", out=out)
     anom_map_type = "anom_residual"
     if ((use_phaser_if_available) and (libtbx.env.has_module("phaser")) and
-        (not fmodel.twin)) :
+        (not fmodel.twin)):
       import mmtbx.map_tools
       print >> out, "Will use Phaser LLG map"
       anom_map_type = None
@@ -381,7 +381,7 @@ def find_peaks_holes (
     anom_result.peaks_mapped()
     anom_result.show_mapped(pdb_atoms)
     anom = anom_result.peaks()
-    if (filter_peaks_by_2fofc is not None) :
+    if (filter_peaks_by_2fofc is not None):
       anom.filter_by_secondary_map(
         map=f_map,
         min_value=filter_peaks_by_2fofc)
@@ -397,16 +397,16 @@ def find_peaks_holes (
   water_isel = cache.selection(
     "resname HOH and not (element H or element D)").iselection()
   waters_out = [None, None]
-  if (len(water_isel) > 0) :
+  if (len(water_isel) > 0):
     map_types = ["mFo-DFc"]
     map_cutoffs = [ map_cutoff ]
-    if (fmodel.f_obs().anomalous_flag()) :
+    if (fmodel.f_obs().anomalous_flag()):
       map_types.append("anomalous")
       map_cutoffs.append(anom_map_cutoff)
-    for k, map_type in enumerate(map_types) :
+    for k, map_type in enumerate(map_types):
       fft_map = None
       # re-use Phaser LLG map if it was previously calculated
-      if (map_type == "anomalous") and (anom_map_coeffs is not None) :
+      if (map_type == "anomalous") and (anom_map_coeffs is not None):
         fft_map = anom_map_coeffs.fft_map(
           resolution_factor=params.resolution_factor,
           symmetry_flags=maptbx.use_space_group_symmetry)
@@ -422,23 +422,23 @@ def find_peaks_holes (
       for i_seq in water_isel :
         atom = pdb_atoms[i_seq]
         rho = real_map.tricubic_interpolation(sites_frac[i_seq])
-        if (rho >= map_cutoffs[k]) :
+        if (rho >= map_cutoffs[k]):
           peak = water_peak(
             id_str=atom.id_str(),
             xyz=atom.xyz,
             peak_height=rho,
             map_type=map_type)
           suspicious_waters.append(peak)
-      if (len(suspicious_waters) > 0) :
+      if (len(suspicious_waters) > 0):
         make_header("Water molecules with %s peaks" % map_type, out=out)
         for peak in suspicious_waters :
           peak.show(out=out)
         print >> out, ""
         waters_out[k] = suspicious_waters
   non_water_anom_peaks = None
-  if (fmodel.f_obs().anomalous_flag()) :
+  if (fmodel.f_obs().anomalous_flag()):
     non_water_anom_peaks = []
-    if (anom_map is None) :
+    if (anom_map is None):
       fft_map = fmodel.electron_density_map().fft_map(
         resolution_factor=params.resolution_factor,
         symmetry_flags=maptbx.use_space_group_symmetry,
@@ -449,7 +449,7 @@ def find_peaks_holes (
       "not (resname HOH or element H or element D)").iselection()
     for i_seq in non_water_non_H_i_sel :
       rho = anom_map.tricubic_interpolation(sites_frac[i_seq])
-      if (rho >= anom_map_cutoff) :
+      if (rho >= anom_map_cutoff):
         atom = pdb_atoms[i_seq]
         peak = water_peak(
           id_str=atom.id_str(),
@@ -467,11 +467,11 @@ def find_peaks_holes (
     water_anom_peaks=waters_out[1],
     non_water_anom_peaks=non_water_anom_peaks)
   all_results.show_summary(out=out)
-  if (return_llg_map) :
+  if (return_llg_map):
     return all_results, anom_map_coeffs
   return all_results
 
-def run (args, out=None) :
+def run(args, out=None):
   if (out is None) : out = sys.stdout
   import mmtbx.command_line
   usage_string = """\
@@ -490,7 +490,7 @@ mmtbx.find_peaks_holes - difference map analysis
     usage_string=usage_string)
   fmodel = cmdline.fmodel
   params = cmdline.params
-  if (params.wavelength is not None) :
+  if (params.wavelength is not None):
     xrs = fmodel.xray_structure
     xrs.set_inelastic_form_factors(
       photon=params.wavelength,
@@ -509,14 +509,14 @@ mmtbx.find_peaks_holes - difference map analysis
     include_peaks_near_model=params.include_peaks_near_model,
     out=out)
   prefix = cmdline.params.output_file_prefix
-  if (cmdline.params.write_pdb) :
+  if (cmdline.params.write_pdb):
     result.save_pdb_file(file_name="%s.pdb" % prefix, log=out)
-  if (cmdline.params.write_maps) :
+  if (cmdline.params.write_maps):
     import mmtbx.maps.utils
     import iotbx.map_tools
     f_map, diff_map = mmtbx.maps.utils.get_maps_from_fmodel(fmodel)
     anom_map = llg_map # use LLG map for anomalous map if available
-    if (fmodel.f_obs().anomalous_flag()) and (anom_map is None) :
+    if (fmodel.f_obs().anomalous_flag()) and (anom_map is None):
       anom_map = mmtbx.maps.utils.get_anomalous_map(fmodel)
     iotbx.map_tools.write_map_coeffs(
       fwt_coeffs=f_map,
@@ -526,27 +526,27 @@ mmtbx.find_peaks_holes - difference map analysis
     result.map_file = "%s_maps.mtz" % prefix
   return result
 
-def validate_params (params, callback=None) :
+def validate_params(params, callback=None):
   from mmtbx.command_line import validate_input_params
   validate_input_params(params)
-  if (params.find_peaks.map_next_to_model.min_model_peak_dist < 0) :
+  if (params.find_peaks.map_next_to_model.min_model_peak_dist < 0):
     raise Sorry("The parameter 'Minimum distance from model' must be at least"+
       " zero.")
-  if (params.find_peaks.peak_search.min_cross_distance <= 0) :
+  if (params.find_peaks.peak_search.min_cross_distance <= 0):
     raise Sorry("The parameter 'Minimum cross distance' must be greater than "+
       "zero.")
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher(runtime_utils.target_with_save_result):
+  def run(self):
     os.chdir(self.output_dir)
     return run(args=list(self.args), out=sys.stdout)
 
-def finish_job (result) :
+def finish_job(result):
   output_files = []
   stats = []
-  if (result is not None) :
+  if (result is not None):
     output_files = result.get_output_file_info()
   return (output_files, stats)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

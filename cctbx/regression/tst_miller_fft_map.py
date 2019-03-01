@@ -124,7 +124,7 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
   fft_map.apply_volume_scaling()
   real_map = fft_map.real_map_unpadded()
   sum1 = sum2 = 0
-  for scatterer in structure.scatterers() :
+  for scatterer in structure.scatterers():
     v1 = real_map.eight_point_interpolation(scatterer.site)
     v2 = real_map.tricubic_interpolation(scatterer.site)
     v3 = map_coeffs.direct_summation_at_point(scatterer.site)

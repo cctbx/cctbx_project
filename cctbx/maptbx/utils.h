@@ -954,6 +954,46 @@ map_box_average(
   }}}
 }
 
+template <typename FloatType>
+cctbx::cartesian<>
+fit_point_3d_grid_search(
+  cctbx::cartesian<> const& site_cart,
+  af::const_ref<FloatType, af::c_grid<3> > const& map_data,
+  cctbx::uctbx::unit_cell const& unit_cell,
+  FloatType const& amplitude,
+  FloatType const& increment)
+{
+  FloatType x = site_cart[0];
+  FloatType y = site_cart[1];
+  FloatType z = site_cart[2];
+  FloatType map_best = -9999;
+  FloatType x_shift = -amplitude;
+  cctbx::cartesian<> site_cart_result = site_cart;
+  while(x_shift < amplitude) {
+    x_shift += increment;
+    FloatType y_shift = -amplitude;
+    FloatType x_shifted = x+x_shift;
+    while(y_shift < amplitude) {
+      y_shift += increment;
+      FloatType y_shifted = y+y_shift;
+      FloatType z_shift = -amplitude;
+      while(z_shift < amplitude) {
+        z_shift += increment;
+        cctbx::cartesian<> site_cart_ = cctbx::cartesian<>(
+          x_shifted, y_shifted, z+z_shift);
+        cctbx::fractional<> site_frac = unit_cell.fractionalize(site_cart_);
+        FloatType map_value = tricubic_interpolation(map_data, site_frac);
+        if(map_value > map_best) {
+          map_best = map_value;
+          site_cart_result = site_cart_;
+        }}}}
+  if(std::abs(std::abs(site_cart_result[0]-x)-std::abs(amplitude))<1.e-4 ||
+     std::abs(std::abs(site_cart_result[1]-y)-std::abs(amplitude))<1.e-4 ||
+     std::abs(std::abs(site_cart_result[2]-z)-std::abs(amplitude))<1.e-4) {
+    site_cart_result = site_cart;
+  }
+  return site_cart_result;
+}
 
 template <typename DataType>
 void

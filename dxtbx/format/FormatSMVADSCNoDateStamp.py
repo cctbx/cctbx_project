@@ -2,74 +2,80 @@ from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatSMVADSC import FormatSMVADSC
 
+
 class FormatSMVADSCNoDateStamp(FormatSMVADSC):
-  '''A class for reading SMV format ADSC images, with detector serial number'''
+    """A class for reading SMV format ADSC images, with detector serial number"""
 
-  @staticmethod
-  def understand(image_file):
+    @staticmethod
+    def understand(image_file):
 
-    # assert for this that the image file has to be a file not a URL
+        # assert for this that the image file has to be a file not a URL
 
-    import os
-    if not os.path.exists(image_file):
-      return False
+        import os
 
-    size, header = FormatSMVADSC.get_smv_header(image_file)
+        if not os.path.exists(image_file):
+            return False
 
-    wanted_header_items = ['TIME']
+        size, header = FormatSMVADSC.get_smv_header(image_file)
 
-    for header_item in wanted_header_items:
-      if not header_item in header:
-        return False
+        wanted_header_items = ["TIME"]
 
-    unwanted_header_items = ['DATE']
+        for header_item in wanted_header_items:
+            if not header_item in header:
+                return False
 
-    for header_item in unwanted_header_items:
-      if header_item in header:
-        return False
+        unwanted_header_items = ["DATE"]
 
-    return True
+        for header_item in unwanted_header_items:
+            if header_item in header:
+                return False
 
-  def __init__(self, image_file, **kwargs):
-    '''Initialise the image structure from the given file, including a
-    proper model of the experiment.'''
+        return True
 
-    from dxtbx import IncorrectFormatError
-    if not self.understand(image_file):
-      raise IncorrectFormatError(self, image_file)
+    def __init__(self, image_file, **kwargs):
+        """Initialise the image structure from the given file, including a
+        proper model of the experiment."""
 
-    FormatSMVADSC.__init__(self, image_file, **kwargs)
+        from dxtbx import IncorrectFormatError
 
-  def _start(self):
+        if not self.understand(image_file):
+            raise IncorrectFormatError(self, image_file)
 
-    FormatSMVADSC._start(self)
+        FormatSMVADSC.__init__(self, image_file, **kwargs)
 
-  def _scan(self):
-    '''Return the scan information for this image, using the timestamp
-    from the file rather than the header.'''
+    def _start(self):
 
-    format = self._scan_factory.format('SMV')
-    exposure_time = float(self._header_dictionary['TIME'])
+        FormatSMVADSC._start(self)
 
-    import os
-    epoch = float(os.stat(self._image_file)[8])
+    def _scan(self):
+        """Return the scan information for this image, using the timestamp
+        from the file rather than the header."""
 
-    osc_start = float(self._header_dictionary['OSC_START'])
-    osc_range = float(self._header_dictionary['OSC_RANGE'])
+        format = self._scan_factory.format("SMV")
+        exposure_time = float(self._header_dictionary["TIME"])
 
-    return self._scan_factory.single(
-        self._image_file, format, exposure_time,
-        osc_start, osc_range, epoch)
+        import os
 
-  def detectorbase_start(self):
-    from iotbx.detectors.adsc import ADSCImage
-    self.detectorbase = ADSCImage(self._image_file)
-    self.detectorbase.open_file = self.open_file
-    self.detectorbase.readHeader()
+        epoch = float(os.stat(self._image_file)[8])
 
-if __name__ == '__main__':
+        osc_start = float(self._header_dictionary["OSC_START"])
+        osc_range = float(self._header_dictionary["OSC_RANGE"])
 
-  import sys
+        return self._scan_factory.single(
+            self._image_file, format, exposure_time, osc_start, osc_range, epoch
+        )
 
-  for arg in sys.argv[1:]:
-    print(FormatSMVADSCNoDateStamp.understand(arg))
+    def detectorbase_start(self):
+        from iotbx.detectors.adsc import ADSCImage
+
+        self.detectorbase = ADSCImage(self._image_file)
+        self.detectorbase.open_file = self.open_file
+        self.detectorbase.readHeader()
+
+
+if __name__ == "__main__":
+
+    import sys
+
+    for arg in sys.argv[1:]:
+        print(FormatSMVADSCNoDateStamp.understand(arg))

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from libtbx import easy_run
 import time
 from libtbx.test_utils import approx_equal
@@ -180,9 +180,9 @@ def exercise_00(prefix="tst_polder"):
     "k_sol=0.4",
     "b_sol=50",
     "output.file_name=%s.mtz"%prefix,
-    "> %s.log"%prefix
+    "&> %s.log"%prefix
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
   #
   cmd = " ".join([
@@ -192,9 +192,9 @@ def exercise_00(prefix="tst_polder"):
     "sphere_radius=3",
     'solvent_exclusion_mask_selection="chain A" ',
     'debug="True"',
-    "> %s.log" % prefix
+    "&> %s.log" % prefix
   ])
-  print cmd
+  print(cmd)
   assert not easy_run.call(cmd)
   #
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
@@ -228,9 +228,9 @@ def exercise_00(prefix="tst_polder"):
   #
   mmm_mp = mp.min_max_mean().as_tuple()
   mmm_o = mo.min_max_mean().as_tuple()
-  print "Polder map : %7.3f %7.3f %7.3f"%mmm_mp
-  print "Biased map : %7.3f %7.3f %7.3f"%mlo.min_max_mean().as_tuple()
-  print "Omit       : %7.3f %7.3f %7.3f"%mmm_o
+  print("Polder map : %7.3f %7.3f %7.3f"%mmm_mp)
+  print("Biased map : %7.3f %7.3f %7.3f"%mlo.min_max_mean().as_tuple())
+  print("Omit       : %7.3f %7.3f %7.3f"%mmm_o)
   #
   assert approx_equal(mmm_mp, [1.810, 5.869, 4.168], eps=0.1)
   assert approx_equal(mmm_o, [-1.803, 1.568, -0.672], eps=0.1)
@@ -239,4 +239,4 @@ def exercise_00(prefix="tst_polder"):
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_00()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

@@ -13,7 +13,7 @@ import sys
 #-----------------------------------------------------------------------
 # MAP COEFFICIENT MANIPULATION
 
-def create_map_from_pdb_and_mtz (
+def create_map_from_pdb_and_mtz(
     pdb_file,
     mtz_file,
     output_file,
@@ -21,7 +21,7 @@ def create_map_from_pdb_and_mtz (
     out=None,
     llg_map=False,
     remove_unknown_scatterering_type=False,
-    assume_pdb_data=False) :
+    assume_pdb_data=False):
   """
   Convenience function, used by phenix.fetch_pdb.
 
@@ -53,7 +53,7 @@ def create_map_from_pdb_and_mtz (
     fill_maps=fill,
     assume_pdb_data=assume_pdb_data)
 
-class fast_maps_from_hkl_file (object) :
+class fast_maps_from_hkl_file(object):
   """
   Automation wrapper for calculating standard 2mFo-DFc, mFo-DFc, and optional
   anomalous difference map coefficients, starting from an X-ray structure and
@@ -63,7 +63,7 @@ class fast_maps_from_hkl_file (object) :
   The organization of this class is somewhat messy, as it is designed to be
   run in parallel for multiple structures.
   """
-  def __init__ (self,
+  def __init__(self,
                 file_name,
                 xray_structure,
                 scattering_table="wk1995",
@@ -78,7 +78,7 @@ class fast_maps_from_hkl_file (object) :
                 save_fmodel=False,
                 llg_map=False,
                 assume_pdb_data=False, # FIXME should be default, needs testing
-                ) :
+                ):
     adopt_init_args(self, locals())
     from iotbx import file_reader
     from scitbx.array_family import flex
@@ -87,7 +87,7 @@ class fast_maps_from_hkl_file (object) :
         os.path.basename(file_name)
     f_obs = r_free_flags = None
     # FIXME this whole block needs to disappear
-    if (not assume_pdb_data) :
+    if (not assume_pdb_data):
       fallback_f_obs = []
       default_labels = ["F(+),SIGF(+),F(-),SIGF(-)",
         "I(+),SIGI(+),I(-),SIGI(-)",
@@ -99,20 +99,20 @@ class fast_maps_from_hkl_file (object) :
       for miller_array in data_file.file_server.miller_arrays :
         labels = miller_array.info().label_string()
         all_labels.append(labels)
-        if (labels == f_label) :
+        if (labels == f_label):
           f_obs = miller_array
           break
-        elif (f_label is None) and (labels in default_labels) :
+        elif (f_label is None) and (labels in default_labels):
           label_score = default_labels.index(labels)
-          if (label_score < best_label) :
+          if (label_score < best_label):
             f_obs = miller_array
             best_label = label_score
-        elif miller_array.is_xray_amplitude_array() :
+        elif miller_array.is_xray_amplitude_array():
           fallback_f_obs.append(miller_array)
       if f_obs is None :
-        if (len(fallback_f_obs) == 1) and (f_label is None) :
+        if (len(fallback_f_obs) == 1) and (f_label is None):
           for array in fallback_f_obs :
-            if (array.anomalous_flag()) and (self.anomalous_map) :
+            if (array.anomalous_flag()) and (self.anomalous_map):
               f_obs = array
               break
           else :
@@ -121,7 +121,7 @@ class fast_maps_from_hkl_file (object) :
           raise Sorry(("Couldn't find %s in %s.  Please specify valid "+
             "column labels (possible choices: %s)") % (f_label, file_name,
               " ".join(all_labels)))
-      if (f_obs.is_xray_intensity_array()) :
+      if (f_obs.is_xray_intensity_array()):
         f_obs = f_obs.f_sq_as_f()
       sys_abs_flags = f_obs.sys_absent_flags().data()
       f_obs = f_obs.map_to_asu().select(selection=~sys_abs_flags)
@@ -132,7 +132,7 @@ class fast_maps_from_hkl_file (object) :
         parameter_scope=None,
         disable_suitability_test=False,
         return_all_valid_arrays=True)
-      if (len(r_free) == 0) :
+      if (len(r_free) == 0):
         self.f_obs = f_obs
         self.r_free_flags = f_obs.array(
           data=flex.bool(f_obs.data().size(),False))
@@ -140,7 +140,7 @@ class fast_maps_from_hkl_file (object) :
         array, test_flag_value = r_free[0]
         new_flags = array.customized_copy(
           data=array.data() == test_flag_value).map_to_asu()
-        if (f_obs.anomalous_flag()) and (not new_flags.anomalous_flag()) :
+        if (f_obs.anomalous_flag()) and (not new_flags.anomalous_flag()):
           new_flags = new_flags.generate_bijvoet_mates()
         self.r_free_flags = new_flags.common_set(f_obs)
         self.f_obs = f_obs.common_set(self.r_free_flags)
@@ -171,58 +171,58 @@ class fast_maps_from_hkl_file (object) :
       skip_twin_detection=False,
       bulk_solvent_correction=True,
       anisotropic_scaling=True)
-    if (self.save_fmodel) :
+    if (self.save_fmodel):
       self.fmodel = fmodel
     (f_map, df_map) = get_maps_from_fmodel(fmodel)
     anom_map = None
-    if (self.anomalous_map) and (self.f_obs.anomalous_flag()) :
+    if (self.anomalous_map) and (self.f_obs.anomalous_flag()):
       anom_map = get_anomalous_map(fmodel)
     return f_map, df_map, anom_map
 
-  def run (self) :
+  def run(self):
     import iotbx.map_tools
     (f_map, df_map, anom_map) = self.get_maps_from_fmodel()
     if self.map_out is None :
       self.map_out = os.path.splitext(self.file_name)[0] + "_map_coeffs.mtz"
     iotbx.map_tools.write_map_coeffs(f_map, df_map, self.map_out, anom_map)
 
-def get_maps_from_fmodel (fmodel, fill_missing_f_obs=True,
-    exclude_free_r_reflections=False) :
+def get_maps_from_fmodel(fmodel, fill_missing_f_obs=True,
+    exclude_free_r_reflections=False):
   map_manager = fmodel.electron_density_map()
   two_fofc_coeffs = map_manager.map_coefficients(map_type = "2mFo-DFc",
     exclude_free_r_reflections=exclude_free_r_reflections,
     fill_missing=fill_missing_f_obs)
-  if two_fofc_coeffs.anomalous_flag() :
+  if two_fofc_coeffs.anomalous_flag():
     two_fofc_coeffs = two_fofc_coeffs.average_bijvoet_mates()
   fofc_coeffs = map_manager.map_coefficients(map_type = "mFo-DFc",
     exclude_free_r_reflections=exclude_free_r_reflections,
     fill_missing=fill_missing_f_obs)
-  if fofc_coeffs.anomalous_flag() :
+  if fofc_coeffs.anomalous_flag():
     fofc_coeffs = fofc_coeffs.average_bijvoet_mates()
   return (two_fofc_coeffs, fofc_coeffs)
 
-def get_anomalous_map (fmodel) :
+def get_anomalous_map(fmodel):
   map_manager = fmodel.electron_density_map()
   anom_coeffs = map_manager.map_coefficients(map_type="anom")
-  if (anom_coeffs.anomalous_flag()) :
+  if (anom_coeffs.anomalous_flag()):
     anom_coeffs = anom_coeffs.average_bijvoet_mates()
   return anom_coeffs
 
-class generate_water_omit_map (object) :
+class generate_water_omit_map(object):
   """
   Calculate standard map coefficients (with R-free flags omitted, and missing
   reflections filled) with water occupancies set to zero.  Used for ligand
   fitting after refinement.
   """
-  def __init__ (self,
+  def __init__(self,
       fmodel,
       pdb_hierarchy,
       skip_if_no_waters=False,
       exclude_free_r_reflections=False,
       fill_missing_f_obs=False,
       write_f_model=False,
-      log=None) :
-    if (log is None) :
+      log=None):
+    if (log is None):
       log = null_out()
     sel_cache = pdb_hierarchy.atom_selection_cache()
     water_sel = sel_cache.selection("resname HOH")
@@ -231,7 +231,7 @@ class generate_water_omit_map (object) :
     assert (water_sel.size() == xrs.scatterers().size())
     self.n_waters = water_sel.count(True)
     self.two_fofc_map = self.fofc_map = self.anom_map = self.fmodel_map = None
-    if (self.n_waters == 0) and (skip_if_no_waters) :
+    if (self.n_waters == 0) and (skip_if_no_waters):
       print >> log, "  No waters in model, skipping omit map calculation"
       self.pdb_hierarchy_omit = pdb_hierarchy
     else :
@@ -241,7 +241,7 @@ class generate_water_omit_map (object) :
       print >> log, ""
       self.pdb_hierarchy_omit = pdb_hierarchy.select(~water_sel)
       occ = xrs.scatterers().extract_occupancies()
-      if (self.n_waters > 0) :
+      if (self.n_waters > 0):
         xrs.set_occupancies(value=0, selection=water_sel)
       fmodel.update_xray_structure(xrs,
         update_f_calc=True)
@@ -258,16 +258,16 @@ class generate_water_omit_map (object) :
           exclude_free_r_reflections=exclude_free_r_reflections,
           fill_missing=False,
           merge_anomalous=True)
-      if (fmodel.f_obs().anomalous_flag()) :
+      if (fmodel.f_obs().anomalous_flag()):
         self.anom_map = fmodel.electron_density_map(
           ).map_coefficients(
             map_type="anom",
             exclude_free_r_reflections=exclude_free_r_reflections,
             fill_missing=fill_missing_f_obs)
-      if (write_f_model) :
+      if (write_f_model):
         self.fmodel_map = fmodel.f_model().average_bijvoet_mates()
 
-  def write_map_coeffs (self, file_name) :
+  def write_map_coeffs(self, file_name):
     assert (self.two_fofc_map is not None)
     write_map_coeffs(
       fwt_coeffs=self.two_fofc_map,
@@ -276,25 +276,25 @@ class generate_water_omit_map (object) :
       fmodel_coeffs=self.fmodel_map,
       file_name=file_name)
 
-  def write_pdb_file (self, file_name) :
+  def write_pdb_file(self, file_name):
     self.pdb_hierarchy_omit.write_pdb_file(
       file_name=file_name,
       crystal_symmetry=self.crystal_symmetry)
 
-def get_default_map_coefficients_phil (
+def get_default_map_coefficients_phil(
     show_filled=True,
     disable_filled=False,
     exclude_free_r_reflections=False,
     enclosing_scope=None,
-    as_phil_object=True) :
+    as_phil_object=True):
   """
   Generate the map coefficients PHIL string for phenix.maps, phenix.refine,
   and related applications, based on several toggles which control the
   handling of missing reflections and R-free flags.  Used by the Phenix GUI.
   """
   secondary_two_fofc_params = ""
-  if (not disable_filled) :
-    if (show_filled) :
+  if (not disable_filled):
+    if (show_filled):
       secondary_two_fofc_params = """
       map_coefficients {
         mtz_label_amplitudes = 2FOFCWT_no_fill
@@ -337,14 +337,14 @@ def get_default_map_coefficients_phil (
 """ % { "exclude_rfree" : exclude_free_r_reflections,
         "other_two_fofc" : secondary_two_fofc_params,
         "show_filled" : show_filled and not disable_filled, }
-  if (enclosing_scope is not None) :
+  if (enclosing_scope is not None):
     maps_phil = """%s {\n%s\n}""" % (enclosing_scope, maps_phil)
-  if (as_phil_object) :
+  if (as_phil_object):
     return libtbx.phil.parse(maps_phil)
   return maps_phil
 
 # XXX redundant, needs to be eliminated
-def write_map_coeffs (*args, **kwds) :
+def write_map_coeffs(*args, **kwds):
   import iotbx.map_tools
   return iotbx.map_tools.write_map_coeffs(*args, **kwds)
 
@@ -352,7 +352,7 @@ def write_map_coeffs (*args, **kwds) :
 # XPLOR MAP OUTPUT
 
 # TODO: make more modular!
-def write_xplor_map_file (coeffs, frac_min, frac_max, file_base) :
+def write_xplor_map_file(coeffs, frac_min, frac_max, file_base):
   fft_map = coeffs.fft_map(resolution_factor=1/3.0)
   fft_map.apply_sigma_scaling()
   n_real = fft_map.n_real()
@@ -368,7 +368,7 @@ def write_xplor_map_file (coeffs, frac_min, frac_max, file_base) :
   return file_name
 
 def write_xplor_map(sites_cart, unit_cell, map_data, n_real, file_name,
-    buffer=10) :
+    buffer=10):
   import iotbx.xplor.map
   if sites_cart is not None :
     frac_min, frac_max = unit_cell.box_frac_around_sites(
@@ -393,31 +393,31 @@ def write_xplor_map(sites_cart, unit_cell, map_data, n_real, file_name,
 
 # XXX backwards compatibility
 # TODO remove these ASAP once GUI is thoroughly tested
-def extract_map_coeffs (*args, **kwds) :
+def extract_map_coeffs(*args, **kwds):
   import iotbx.gui_tools.reflections
   return iotbx.gui_tools.reflections.extract_map_coeffs(*args, **kwds)
 
-def map_coeffs_from_mtz_file (*args, **kwds) :
+def map_coeffs_from_mtz_file(*args, **kwds):
   import iotbx.gui_tools.reflections
   return iotbx.gui_tools.reflections.map_coeffs_from_mtz_file(*args, **kwds)
 
-def extract_phenix_refine_map_coeffs (*args, **kwds) :
+def extract_phenix_refine_map_coeffs(*args, **kwds):
   import iotbx.gui_tools.reflections
   return iotbx.gui_tools.reflections.extract_phenix_refine_map_coeffs(*args,
     **kwds)
 
-def get_map_coeff_labels (*args, **kwds) :
+def get_map_coeff_labels(*args, **kwds):
   import iotbx.gui_tools.reflections
   return iotbx.gui_tools.reflections.get_map_coeff_labels(*args, **kwds)
 
-def get_map_coeffs_for_build (server) :
+def get_map_coeffs_for_build(server):
   return get_map_coeff_labels(server, build_only=True)
 
-def format_map_coeffs_for_resolve (*args, **kwds) :
+def format_map_coeffs_for_resolve(*args, **kwds):
   import iotbx.gui_tools.reflections
   return iotbx.gui_tools.reflections.format_map_coeffs_for_resolve(*args,
     **kwds)
 
-def decode_resolve_map_coeffs (*args, **kwds) :
+def decode_resolve_map_coeffs(*args, **kwds):
   import iotbx.gui_tools.reflections
   return iotbx.gui_tools.reflections.decode_resolve_map_coeffs(*args, **kwds)

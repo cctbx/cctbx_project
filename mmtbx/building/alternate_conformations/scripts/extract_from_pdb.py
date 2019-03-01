@@ -6,7 +6,7 @@ from __future__ import division
 from libtbx.easy_mp import pool_map
 import os
 
-def run () :
+def run():
   from mmtbx.wwpdb import rcsb_web_services
   assert ("PDB_MIRROR_PDB" in os.environ)
   f = open("pdb_with_alt_confs.txt", "w")
@@ -24,27 +24,27 @@ def run () :
     func=get_nconfs)
   n_alts = 0
   for (pdb_id, n_confs) in all_results :
-    if (n_confs > 1) :
+    if (n_confs > 1):
       n_alts += 1
       f.write(pdb_id + "\n")
   print "n_alts:", n_alts
   f.close()
 
-def get_nconfs (pdb_id) :
+def get_nconfs(pdb_id):
   import iotbx.pdb.fetch
   assert ("PDB_MIRROR_PDB" in os.environ)
   n_confs = 0
   hierarchy, xray_structure = iotbx.pdb.fetch.load_pdb_structure(pdb_id,
     allow_unknowns=True)
-  if (len(hierarchy.models()) > 1) :
+  if (len(hierarchy.models()) > 1):
     n_confs = 0
   else :
-    for chain in hierarchy.only_model().chains() :
-      if (chain.is_protein()) :
+    for chain in hierarchy.only_model().chains():
+      if (chain.is_protein()):
         confs = chain.conformers()
-        if (len(confs) > n_confs) :
+        if (len(confs) > n_confs):
           n_confs = len(confs)
   return (pdb_id, n_confs)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run()

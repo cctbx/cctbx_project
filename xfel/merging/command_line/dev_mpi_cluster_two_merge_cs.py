@@ -29,6 +29,8 @@ class scaling_manager_mpi(scaling_manager_base):
       self.n_wrong_bravais
     print >> self.log, "  %d rejected for unit cell outliers" % \
       self.n_wrong_cell
+    print >> self.log, "  %d rejected for low resolution" % \
+      self.n_low_resolution
     print >> self.log, "  %d rejected for low signal" % \
       self.n_low_signal
     print >> self.log, "  %d rejected due to up-front poor correlation under min_corr parameter" % \
@@ -41,6 +43,7 @@ class scaling_manager_mpi(scaling_manager_base):
     checksum = self.n_accepted  + self.n_file_error \
                + self.n_low_corr + self.n_low_signal \
                + self.n_wrong_bravais + self.n_wrong_cell \
+               + self.n_low_resolution \
                + sum([val for val in self.failure_modes.itervalues()])
     assert checksum == len(self.integration_pickle_names)
 
@@ -143,6 +146,7 @@ class Script(base_Script):
       transmitted_info = None
       if timing: print "~SETUP END RANK=%d TIME=%f;"%(rank,tt())
 
+    comm.Barrier()
     if timing: print "~BROADCAST START RANK=%d TIME=%f;"%(rank,tt())
     transmitted_info = comm.bcast(transmitted_info, root = 0)
     if timing: print "~BROADCAST END RANK=%d TIME=%f;"%(rank,tt())
@@ -160,7 +164,9 @@ class Script(base_Script):
 
     # Use client-server distribution of work to the available MPI ranks.
     # Each free rank requests a TAR ID and proceeds to process it.
-    if scaler_worker.params.mpi.cs==True:
+    comm.Barrier()
+    #FIXME
+    if True: #scaler_worker.params.mpi.cs==True:
       tar_file_names = transmitted_info["file_names"]
       if timing: print "~SCALER_WORKERS START RANK=%d TIME=%f;"%(rank,tt())
       if rank == 0:
@@ -201,7 +207,26 @@ class Script(base_Script):
 
     # gather reports and all add together
     if timing: print "~GATHER START RANK=%d TIME=%f;"%(rank, tt())
-    reports = comm.gather(scaler_worker,root=0)
+    #reports = comm.gather(scaler_worker,root=0)
+
+    comm.Barrier()
+    if rank == 0:
+      # server process
+      print "RANK 0 AWATING DATA"
+      reports=[]
+      for r in xrange(size-1):
+        print "RANK 0 FETCHING  DATASET %d"%r
+
+        #Tag to ensure no other mpi message received but those from scaler_worker
+        reports.append( comm.recv(source=MPI.ANY_SOURCE, tag=9001) )
+      print "LENGTH OF scaler_worker_list=%d"%len(reports)
+
+    else:
+      print "Sending scaler_worker from rank %d"%rank
+      comm.send( scaler_worker, dest=0, tag=9001)
+
+    comm.Barrier()
+
     if timing: print "~GATHER END RANK=%d TIME=%f;"%(rank, tt())
     if rank == 0:
       print "Processing reports from %d ranks"%(len(reports))
@@ -212,6 +237,7 @@ class Script(base_Script):
 
         if timing: print "~SCALER_MASTER_ADD END RANK=%d TIME=%f;"%(rank, tt())
         print "processing %d calls from report %d"%(len(item.finished_db_mgr.sequencer),ireport); ireport += 1
+        sys.stdout.flush()
 
         for call_instance in item.finished_db_mgr.sequencer:
           if call_instance["call"] == "insert_frame":
@@ -237,7 +263,7 @@ if (__name__ == "__main__"):
   rank = comm.Get_rank()
 
   script = Script(scaling_manager_mpi)
-  result = script.run(comm=comm,timing=False)
+  result = script.run(comm=comm,timing=True)
   if rank == 0:
     script.show_plot(result)
   print "DONE"

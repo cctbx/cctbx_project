@@ -578,31 +578,29 @@ namespace lbfgs {
               stp = stpmax/dr_max;
             }
             else if (abs(dr_max*stp) < FloatType(0.0001)) {
-               stp = FloatType(0.0001)/dr_max;
+              stp = FloatType(0.0001)/dr_max;
             }
           }
           //<--- Insertion ends
+          // Set the minimum and maximum steps to correspond
+          // to the present interval of uncertainty.
+          if (brackt) {
+            stmin = std::min(stx, sty);
+            stmax = std::max(stx, sty);
+          }
           else {
-            // Set the minimum and maximum steps to correspond
-            // to the present interval of uncertainty.
-            if (brackt) {
-              stmin = std::min(stx, sty);
-              stmax = std::max(stx, sty);
-            }
-            else {
-              stmin = stx;
-              stmax = stp + FloatType(4) * (stp - stx);
-            }
-            // Force the step to be within the bounds stpmax and stpmin.
-            stp = std::max(stp, stpmin);
-            stp = std::min(stp, stpmax);
-            // If an unusual termination is to occur then let
-            // stp be the lowest point obtained so far.
-            if (   (brackt && (stp <= stmin || stp >= stmax))
-                || nfev >= maxfev - 1 || infoc == 0
-                || (brackt && stmax - stmin <= xtol * stmax)) {
-              stp = stx;
-            }
+            stmin = stx;
+            stmax = stp + FloatType(4) * (stp - stx);
+          }
+          // Force the step to be within the bounds stpmax and stpmin.
+          stp = std::max(stp, stpmin);
+          stp = std::min(stp, stpmax);
+          // If an unusual termination is to occur then let
+          // stp be the lowest point obtained so far.
+          if (   (brackt && (stp <= stmin || stp >= stmax))
+              || nfev >= maxfev - 1 || infoc == 0
+              || (brackt && stmax - stmin <= xtol * stmax)) {
+            stp = stx;
           }
           // Evaluate the function and gradient at stp
           // and compute the directional derivative.

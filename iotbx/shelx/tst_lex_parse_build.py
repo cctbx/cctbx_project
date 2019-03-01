@@ -905,7 +905,7 @@ def run():
   exercise_lexing_bis()
   exercise_instruction_parsing()
   import libtbx.load_env
-  if (not libtbx.env.has_module(name="smtbx")) :
+  if (not libtbx.env.has_module(name="smtbx")):
     print "Skipping some tests: smtbx module is not available."
   else:
     exercise_restraint_parsing()

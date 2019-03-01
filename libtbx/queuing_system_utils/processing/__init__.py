@@ -5,15 +5,14 @@ Provides drop-in replacement classes to those defined in the multiprocessing
 module (Queue and Process), with certain restrictions placed by the pickle
 module
 """
-from __future__ import division
-from __future__ import with_statement
+from __future__ import absolute_import, division, print_function, with_statement
 
-import cPickle as pickle
+from six.moves import cPickle as pickle
 import os
 import time
 import itertools
 import glob
-from Queue import Empty as QueueEmptyException
+from six.moves.queue import Empty as QueueEmptyException
 
 class InstantTimeout(object):
   """
@@ -22,7 +21,7 @@ class InstantTimeout(object):
 
   def delay(self, waittime):
 
-    raise QueueEmptyException, "No data found in queue"
+    raise QueueEmptyException("No data found in queue")
 
 
 class TimedTimeout(object):
@@ -43,7 +42,7 @@ class TimedTimeout(object):
       time.sleep( waittime )
 
     else:
-      raise QueueEmptyException, "No data found in queue within timeout"
+      raise QueueEmptyException("No data found in queue within timeout")
 
 
 class NoTimeout(object):
@@ -162,7 +161,7 @@ class Job(object):
 
 
   @property
-  def jobid (self):
+  def jobid(self):
 
     return getattr( self.status, "jobid", None )
 
@@ -176,7 +175,7 @@ class Job(object):
   def start(self):
 
     if self.status.is_submitted():
-      raise RuntimeError, "start called second time"
+      raise RuntimeError("start called second time")
 
     data = self.qinterface.input(
       name = self.name,
@@ -212,7 +211,7 @@ class Job(object):
     self.status = outcome
 
     if self.status.stdout:
-      print self.status.stdout
+      print(self.status.stdout)
 
     if self.status.stderr and self.qinterface.display_stderr:
       import sys
@@ -247,7 +246,7 @@ class QueueHandler(object):
   """
   SCRIPT = \
 """\
-import cPickle as pickle
+from six.moves import cPickle as pickle
 %s
 target( *args, **kwargs )
 """
@@ -423,7 +422,7 @@ def PBS(
       )
 
   else:
-    raise RuntimeError, "PBS does not support synchronous submission"
+    raise RuntimeError("PBS does not support synchronous submission")
 
   if input is None:
     from libtbx.queuing_system_utils.processing import transfer
@@ -469,7 +468,7 @@ def PBSPro(
       )
 
   else:
-    raise RuntimeError, "Synchronous submission for PBSPro is not supported"
+    raise RuntimeError("Synchronous submission for PBSPro is not supported")
 
   if input is None:
     from libtbx.queuing_system_utils.processing import transfer
@@ -515,7 +514,7 @@ def Condor(
       )
 
   else:
-    raise RuntimeError, "Condor does not support synchronous submission"
+    raise RuntimeError("Condor does not support synchronous submission")
 
   if input is None:
     from libtbx.queuing_system_utils.processing import transfer
@@ -666,7 +665,7 @@ INTERFACE_FOR = {
   "slurm": ( Slurm, slurm_evaluate ),
   }
 
-def qsub (
+def qsub(
   target,
   name="libtbx_python",
   platform="sge",
@@ -677,7 +676,7 @@ def qsub (
   assert hasattr(target, "__call__")
 
   if platform not in INTERFACE_FOR:
-    raise RuntimeError, "Unknown platform: %s" % platform
+    raise RuntimeError("Unknown platform: %s" % platform)
 
   ( factory, poller_factory ) = INTERFACE_FOR[ platform ]
 

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
 from libtbx.file_clutter import gather
 
@@ -25,13 +25,13 @@ def run(args):
       flag_dos_format = False
     elif (arg == "--verbose") or (arg == '-v'):
       verbose = True
-    elif (arg == "--indentation") :
+    elif (arg == "--indentation"):
       flag_indentation = True
-    elif (arg == "--only_whitespace") :
+    elif (arg == "--only_whitespace"):
       only_whitespace = True
-    elif (arg == "--only_dos") :
+    elif (arg == "--only_dos"):
       only_dos = True
-    elif (arg == "--only_future") :
+    elif (arg == "--only_future"):
       only_future = True
     elif (arg == "--absolute_import"):
       flag_absolute_import = True
@@ -72,7 +72,7 @@ def run(args):
       n_missing_from_future_import_print_function += 1
     elif info.n_from_future_import_print_function > 1:
       n_too_many_from_future_import_print_function += 1
-    if (info.bad_indentation is not None) and (flag_indentation) :
+    if (info.bad_indentation is not None) and (flag_indentation):
       n_bad_indentation += 1
     info.show(
       flag_x=flag_x,
@@ -87,17 +87,17 @@ def run(args):
     def _is_whitespace(s):
       if s.find("tabs or trailing")>-1: return True
       return False
-    message_lines = filter(_is_whitespace, message_lines)
+    message_lines = list(filter(_is_whitespace, message_lines))
   elif only_dos:
     def _is_dos(s):
       if s.find("dos format")>-1: return True
       return False
-    message_lines = filter(_is_dos, message_lines)
+    message_lines = list(filter(_is_dos, message_lines))
   elif only_future:
     def _is_future(s):
       if s.find("from __future__")>-1: return True
       return False
-    message_lines = filter(_is_future, message_lines)
+    message_lines = list(filter(_is_future, message_lines))
   else:
     if (n_has_unused_imports != 0):
       please_use.append("libtbx.find_unused_imports_crude")
@@ -116,13 +116,13 @@ def run(args):
         Rarely necessary:
           except: # intentional
   """.splitlines())
-    if (n_bad_indentation != 0) :
+    if (n_bad_indentation != 0):
       message_lines.append("")
       message_lines.append("*** Please fix indentation in a text editor ***")
   if (len(message_lines) != 0):
-    print
-    print "\n".join(message_lines)
-    print
+    print()
+    print("\n".join(message_lines))
+    print()
     return (1)
   return (0)
 

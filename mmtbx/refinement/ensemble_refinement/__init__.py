@@ -317,7 +317,7 @@ class run_ensemble_refinement(object):
                      raw_flags,
                      params,
                      ptls,
-                     run_number=None) :
+                     run_number=None):
     adopt_init_args(self, locals())
 #    self.params = params.extract().ensemble_refinement
 
@@ -339,7 +339,7 @@ class run_ensemble_refinement(object):
     self.cmremove = True
     self.cdp = self.params.cartesian_dynamics
     self.bsp = mmtbx.bulk_solvent.bulk_solvent_and_scaling.master_params.extract()
-    if (self.params.target_name == 'mlhl') :
+    if (self.params.target_name == 'mlhl'):
       self.bsp.target = 'ml'
     else :
       self.bsp.target = self.params.target_name
@@ -759,23 +759,23 @@ class run_ensemble_refinement(object):
 
 ############################## END ER ##########################################
 
-  def write_output_files (self, run_number=None) :
+  def write_output_files(self, run_number=None):
     #PDB output
     prefix = self.params.output_file_prefix
-    if (run_number is not None) :
+    if (run_number is not None):
       prefix += "_%g" % run_number
     pdb_out = prefix + ".pdb"
     cif_out = prefix + ".cif"
-    if (self.params.gzip_final_model) :
+    if (self.params.gzip_final_model):
       pdb_out += ".gz"
       self.write_ensemble_pdb(out = gzip.open(pdb_out, 'wb'))
       # TODO
-      if False :#(self.params.write_cif_file) :
+      if False :#(self.params.write_cif_file):
         self.write_ensemble_mmcif(out=gzip.open(cif_out, 'wb'))
     else :
       self.write_ensemble_pdb(out = open(pdb_out, 'wb'))
       # TODO
-      if False :#(self.params.write_cif_file) :
+      if False :#(self.params.write_cif_file):
         self.write_ensemble_mmcif(out=open(cif_out, 'wb'))
     self.pdb_file = pdb_out
     # Map output
@@ -1241,7 +1241,7 @@ class run_ensemble_refinement(object):
     if self.block_store_cycle_cntr+1 == 1:
       self.block_temp_file_list = []
     prefix = self.params.output_file_prefix
-    if (self.run_number is not None) :
+    if (self.run_number is not None):
       prefix += "_%g" % self.run_number
     filename = str(self.block_store_cycle_cntr+1)+'_block_'+prefix+'_TEMP.pZ'
     self.block_temp_file_list.append(filename)
@@ -1381,7 +1381,7 @@ class run_ensemble_refinement(object):
       print >> out, "ENDMDL"
     print >> out, "END"
 
-  def update_single_hierarchy (self, i_model) :
+  def update_single_hierarchy(self, i_model):
     xrs = self.er_data.xray_structures[i_model]
     scatterers = xrs.scatterers()
     sites_cart = xrs.sites_cart()
@@ -1562,7 +1562,7 @@ def show_model_vs_data(fmodel, log):
     "overall_anisotropic_scale_(b_cart)  : " + format_value("%-s",b_cart)])
   print >> log, "   ", result
 
-def write_mtz_file (fmodel_total, raw_data, raw_flags, prefix, params) :
+def write_mtz_file(fmodel_total, raw_data, raw_flags, prefix, params):
   assert (fmodel_total is not None)
   class labels_decorator:
     def __init__(self, amplitudes_label, phases_label):
@@ -1577,7 +1577,7 @@ def write_mtz_file (fmodel_total, raw_data, raw_flags, prefix, params) :
   f_obs_label = "F-obs"
   i_obs_label = "I-obs"
   flag_label = "R-free-flags"
-  if (raw_data.is_xray_intensity_array()) :
+  if (raw_data.is_xray_intensity_array()):
     column_root_label = i_obs_label
   else:
     column_root_label = f_obs_label
@@ -1622,9 +1622,9 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     usage="%s reflection_file pdb_file [options]" % command_name,
     description='Example: %s data.mtz model.pdb' % command_name
   ).enable_dry_run().enable_show_defaults()).process(args=args)
-  if (out is None) :
+  if (out is None):
     out = sys.stdout
-  if(command_line.expert_level is not None) :
+  if(command_line.expert_level is not None):
     master_params.show(
       expert_level=command_line.expert_level,
       attributes_level=command_line.attributes_level,
@@ -1638,7 +1638,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     process_pdb_file=False)
   working_phil = inputs.working_phil
   params = working_phil.extract()
-  if (params.extra_restraints_file is not None) :
+  if (params.extra_restraints_file is not None):
     # XXX this is a revolting hack...
     print >> out, "Processing custom geometry restraints in file:"
     print >> out, "  %s" % params.extra_restraints_file
@@ -1669,7 +1669,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     label="log_buffer",
     file_object=StringIO(),
     atexit_send_to=None)
-  if (replace_stderr) :
+  if (replace_stderr):
     sys.stderr = log
   log_file = open(er_params.output_file_prefix+'.log', "w")
   log.replace_stringio(
@@ -1698,11 +1698,11 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   # Process PDB file
   cif_objects = inputs.cif_objects
   pdb_file = inputs.pdb_file_names[0]
-  pdb_ip = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
-  pdb_ip.clash_guard.nonbonded_distance_threshold = -1.0
-  pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
-  pdb_ip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
-  pdb_ip.proceed_with_excessive_length_bonds=True
+  pdb_ip = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  pdb_ip.pdb_interpretation.clash_guard.nonbonded_distance_threshold = -1.0
+  pdb_ip.pdb_interpretation.clash_guard.max_number_of_distances_below_threshold = 100000000
+  pdb_ip.pdb_interpretation.clash_guard.max_fraction_of_distances_below_threshold = 1.0
+  pdb_ip.pdb_interpretation.proceed_with_excessive_length_bonds=True
 
   # Model
   pdb_inp = iotbx.pdb.input(file_name=pdb_file)
@@ -1713,10 +1713,13 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     log = log)
   if model.get_number_of_models() > 1:
     raise Sorry("Multiple models not supported.")
-  n_removed_atoms = model.remove_alternative_conformations(
-      always_keep_one_conformer=True)
 
   # Remove alternative conformations if present
+  n_removed_atoms = 0
+  if er_params.remove_alt_conf_from_input_pdb:
+    n_removed_atoms = model.remove_alternative_conformations(
+        always_keep_one_conformer=True)
+
   if n_removed_atoms > 0:
     pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
     print >> log, "\nRemoving alternative conformations"
@@ -1768,7 +1771,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     f_obs.unit_cell().volume()
   f_obs_labels = f_obs.info().label_string()
 
-  if (command_line.options.dry_run) :
+  if (command_line.options.dry_run):
     return None
 
   fmodel = mmtbx.utils.fmodel_simple(
@@ -1788,7 +1791,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     anisotropic_scaling        = True,
     log                        = log)
   hl_coeffs = inputs.hl_coeffs
-  if (hl_coeffs is not None) and (params.input.use_experimental_phases) :
+  if (hl_coeffs is not None) and (params.input.use_experimental_phases):
     print >> log, "Using MLHL target with experimental phases"
     er_params.target_name = "mlhl"
     hl_coeffs = hl_coeffs.common_set(other=fmodel.f_obs())
@@ -1824,7 +1827,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
                      log    = log)
 
   best_trial = None
-  if (len(er_params.ptls) == 1) :
+  if (len(er_params.ptls) == 1):
     best_trial = run_wrapper(
       fmodel               = fmodel,
       model                = model,
@@ -1844,7 +1847,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       raw_flags            = raw_flags,
       log                  = log)
     trials = []
-    if (er_params.nproc in [1, None]) or (sys.platform == "win32") :
+    if (er_params.nproc in [1, None]) or (sys.platform == "win32"):
       for ptls in er_params.ptls :
         make_header("Running with pTLS = %g" % ptls, out=log)
         trial_result = driver(ptls, buffer_output=False, write_log=False)
@@ -1866,18 +1869,18 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     validate=validate,
     log=log)
 
-class run_wrapper (object) :
-  def __init__ (self, model, fmodel, raw_data, raw_flags, er_params, log) :
+class run_wrapper(object):
+  def __init__(self, model, fmodel, raw_data, raw_flags, er_params, log):
     adopt_init_args(self, locals())
 
-  def __call__ (self, ptls, buffer_output=True, write_log=True,
-      append_ptls=True) :
+  def __call__(self, ptls, buffer_output=True, write_log=True,
+      append_ptls=True):
     out = self.log
     log_out = None
-    if (buffer_output) :
+    if (buffer_output):
       out = StringIO()
     run_number = None
-    if (append_ptls) :
+    if (append_ptls):
       run_number = ptls
     ensemble_refinement = run_ensemble_refinement(
       fmodel               = self.fmodel.deep_copy(),
@@ -1888,7 +1891,7 @@ class run_wrapper (object) :
       run_number           = run_number,
       ptls                 = ptls,
       log                  = out)
-    if (buffer_output) :
+    if (buffer_output):
       log_out = out.getvalue()
       if (write_log):
         log_file_name = self.er_params.output_file_prefix + '_ptls-' + \
@@ -1904,17 +1907,17 @@ class run_wrapper (object) :
       log_out=log_out,
       number_of_models=len(ensemble_refinement.er_data.xray_structures))
 
-class trial (slots_getstate_setstate) :
+class trial(slots_getstate_setstate):
   __slots__ = ["r_work", "r_free", "pdb_file", "mtz_file", "number_of_models",
                "log_out", "ptls"]
-  def __init__ (self, **kwds) :
+  def __init__(self, **kwds):
     kwds = dict(kwds)
     for name in self.__slots__ :
       setattr(self, name, kwds[name])
 
-  def save_final (self, prefix) :
+  def save_final(self, prefix):
     pdb_out = prefix + ".pdb"
-    if (self.pdb_file.endswith(".gz")) :
+    if (self.pdb_file.endswith(".gz")):
       pdb_out += ".gz"
     os.rename(self.pdb_file, pdb_out)
     os.rename(self.mtz_file, prefix + ".mtz")
@@ -1923,22 +1926,22 @@ class trial (slots_getstate_setstate) :
 
 ########################################################################
 # Phenix GUI hooks
-class result (slots_getstate_setstate) :
+class result(slots_getstate_setstate):
   __slots__ = [
     "directory", "r_work", "r_free",
     "number_of_models", "pdb_file", "mtz_file","validation", "chi_angles"
   ]
-  def __init__ (self,
+  def __init__(self,
       best_trial,
       prefix,
       log,
-      validate=False) :
+      validate=False):
     for attr in ["r_work", "r_free", "number_of_models", "pdb_file",
                  "mtz_file"] :
       setattr(self, attr, getattr(best_trial, attr))
     self.directory = os.getcwd()
     self.validation = None
-    if (validate) :
+    if (validate):
       from mmtbx.command_line import validation_summary
       self.validation = validation_summary.run(
         args=[self.pdb_file],
@@ -1952,13 +1955,13 @@ class result (slots_getstate_setstate) :
       for model in hierarchy.models():
         self.chi_angles.append(calculate_chi_angles(model))
 
-  def get_result_files (self, output_dir=None) :
-    if (output_dir is None) :
+  def get_result_files(self, output_dir=None):
+    if (output_dir is None):
       output_dir = self.directory
     return (os.path.join(self.directory, self.pdb_file),
             os.path.join(self.directory, self.mtz_file))
 
-  def finish_job (self) :
+  def finish_job(self):
     pdb_file, mtz_file = self.get_result_files()
     return (
       [(pdb_file, "Final ensemble"),
@@ -1968,19 +1971,19 @@ class result (slots_getstate_setstate) :
        ("Models", str(self.number_of_models)),]
     )
 
-class launcher (runtime_utils.target_with_save_result) :
-  def run (self) :
+class launcher(runtime_utils.target_with_save_result):
+  def run(self):
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
     return run(args=list(self.args),
       out=sys.stdout,
       validate=True)
 
-def validate_params (params) :
+def validate_params(params):
   mmtbx.command_line.validate_input_params(params)
-  if (params.ensemble_refinement.ptls is None) :
+  if (params.ensemble_refinement.ptls is None):
     raise Sorry("You must specify a fraction of atoms to use for TLS fitting.")
-  elif (len(params.input.xray_data.labels[0].split(",")) > 2) :
+  elif (len(params.input.xray_data.labels[0].split(",")) > 2):
     raise Sorry("Anomalous data are not allowed in this program.")
 
   # check files

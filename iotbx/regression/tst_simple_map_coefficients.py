@@ -1,7 +1,7 @@
 
 from __future__ import division
 
-def exercise () :
+def exercise():
   from iotbx import file_reader
   from cctbx.array_family import flex
   from cctbx import crystal
@@ -86,5 +86,5 @@ def exercise () :
   assert (result.return_code == 1)
   print "OK"
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise()

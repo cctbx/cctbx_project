@@ -264,6 +264,9 @@ def data_and_flags_master_params(master_scope_name=None):
   else:
     return iotbx.phil.parse(data_and_flags_str, process_includes=True)
 
+###
+# XXX Severe duplicaiton. Remove once transition is over.
+###
 class determine_data_and_flags(object):
   """
   Encapsulates logic for extracting experimental amplitudes and R-free flags
@@ -351,7 +354,7 @@ class determine_data_and_flags(object):
       print >> self.log
       processed = merged.array()
       info = info.customized_copy(merged=True)
-    if (self.force_non_anomalous) :
+    if (self.force_non_anomalous):
       processed = processed.average_bijvoet_mates()
     return processed.set_info(info)
 
@@ -411,13 +414,13 @@ class determine_data_and_flags(object):
            processed = merged.array()
            info = info.customized_copy(merged=True)
            del merged
-        if (self.force_non_anomalous) :
+        if (self.force_non_anomalous):
           processed = processed.average_bijvoet_mates()
         r_free_flags = processed.set_info(info)
     if(r_free_flags is None):
       if ((params.fraction is None) or
           (params.lattice_symmetry_max_delta is None) or
-          (params.use_lattice_symmetry is None)) :
+          (params.use_lattice_symmetry is None)):
         raise Sorry("No R-free flags are available, but one or more "+
           "parameters required to generate new flags is undefined.")
       print >> self.log, "Generating a new array of R-free flags."
@@ -473,16 +476,21 @@ class determine_data_and_flags(object):
     if(f_obs.is_complex_array()): f_obs = abs(f_obs)
     f_obs_fw = None
     if(f_obs.is_xray_intensity_array()):
-      if(self.parameters.french_wilson_scale) :
-        f_obs_fw = french_wilson.french_wilson_scale(
-          miller_array=f_obs,
-          params=self.parameters.french_wilson,
-          sigma_iobs_rejection_criterion=\
-            self.parameters.sigma_iobs_rejection_criterion,
-          log=self.log)
+      if(self.parameters.french_wilson_scale):
+        try:
+          f_obs_fw = french_wilson.french_wilson_scale(
+            miller_array=f_obs,
+            params=self.parameters.french_wilson,
+            sigma_iobs_rejection_criterion=\
+              self.parameters.sigma_iobs_rejection_criterion,
+            log=self.log)
+        except Exception, e:
+          print >> self.log, str(e)
+          print >> self.log, "Using alternative Iobs->Fobs conversion."
+          f_obs_fw = f_obs.f_sq_as_f()
         if f_obs_fw is not None:
           f_obs = f_obs_fw
-      if (not self.parameters.french_wilson_scale or f_obs_fw is None) :
+      if (not self.parameters.french_wilson_scale or f_obs_fw is None):
         selection_by_isigma = self._apply_sigma_cutoff(
           f_obs   = f_obs,
           n       = self.parameters.sigma_iobs_rejection_criterion,
@@ -580,7 +588,7 @@ class determine_data_and_flags(object):
         r_free_flags,
         missing_show_max_lines=10):
     test_flag_value = self.parameters.r_free_flags.test_flag_value
-    if (test_flag_value is None) :
+    if (test_flag_value is None):
       raise Sorry(("PHENIX could not determine an appropriate test flag "+
         "for the data with label(s) '%s'.  This may happen if they are all "+
         "a single value; please check the file to make sure the flags are "+
@@ -712,7 +720,7 @@ will become meaningful only after many cycles of refinement.
       for i in xrange(2): print >> log, "*"*79
       print >> log
       if (not ignore_pdb_hexdigest):
-        if ("PHENIX_GUI_ENVIRONMENT" in os.environ) :
+        if ("PHENIX_GUI_ENVIRONMENT" in os.environ):
           log.flush()
           raise Sorry("This model appears to have previously been refined "+
             "against a different set of R-free flags.  Please resolve the "+
@@ -802,7 +810,7 @@ pdb_params = iotbx.phil.parse("""\
       file_type_default
 """)
 
-def find_overlapping_selections (selections, selection_strings) :
+def find_overlapping_selections(selections, selection_strings):
   """
   Given a list of atom selections (:py:class:`scitbx.array_family.flex.bool`
   arrays) and corresponding selection strings, inspect the selections to
@@ -810,17 +818,17 @@ def find_overlapping_selections (selections, selection_strings) :
   of selection strings found to overlap, or None if all selections are unique.
   """
   assert (len(selections) == len(selection_strings))
-  for i_sel in range(len(selections) - 1) :
+  for i_sel in range(len(selections) - 1):
     selection1 = selections[i_sel]
-    for j_sel in range(i_sel + 1, len(selections)) :
+    for j_sel in range(i_sel + 1, len(selections)):
       selection2 = selections[j_sel]
-      if (isinstance(selection1, flex.bool)) :
+      if (isinstance(selection1, flex.bool)):
         joint_sel = selection1 & selection2
-        if (joint_sel.count(True) > 0) :
+        if (joint_sel.count(True) > 0):
           return (selection_strings[i_sel], selection_strings[j_sel])
       else :
         intersection = selection1.intersection(selection2)
-        if (len(intersection) > 0) :
+        if (len(intersection) > 0):
           return (selection_strings[i_sel], selection_strings[j_sel])
   return None
 
@@ -884,7 +892,7 @@ def get_atom_selections(
         tmp = tmp + tmp_s.as_int()
     if(flex.max(tmp)>1):
       sel1, sel2 = find_overlapping_selections(selections, selection_strings)
-      if (parameter_name is not None) :
+      if (parameter_name is not None):
         raise Sorry("One or more overlapping selections for %s:\n%s\n%s" %
           (parameter_name, sel1, sel2))
       else :
@@ -902,7 +910,7 @@ def get_atom_selections(
       else:
         s0.extend(s)
     selections = s0
-    if (iselection) :
+    if (iselection):
       selections = selections.select(flex.sort_permutation(selections))
   return selections
 
@@ -936,7 +944,7 @@ def set_log(args, out=sys.stdout, replace_stderr=True):
   string_buffer = StringIO()
   string_buffer_plots = StringIO()
   log.register(label="log_buffer", file_object=string_buffer)
-  if (replace_stderr) :
+  if (replace_stderr):
     sys.stderr = log
   return log
 
@@ -1098,7 +1106,7 @@ class process_pdb_file_srv(object):
       ignore_unknown_scattering_types=False,
       ignore_unknown_nonbonded_energy_types=ignore_unknown_nonbonded_energy_types)
     if (msg is not None):
-  #     if (self.stop_for_unknowns is not None) :
+  #     if (self.stop_for_unknowns is not None):
   #       msg += """
   # Alternatively, to continue despite this problem use:
   #   stop_for_unknowns=False"""
@@ -1722,8 +1730,8 @@ class process_command_line_args(object):
       else:
         raise e
 
-  def get_reflection_file_server (self) :
-    if (self.reflection_file_server is None) :
+  def get_reflection_file_server(self):
+    if (self.reflection_file_server is None):
       reflection_file_server = reflection_file_utils.reflection_file_server(
         crystal_symmetry=self.crystal_symmetry,
         force_symmetry=True,
@@ -2049,7 +2057,7 @@ class fmodel_from_xray_structure(object):
       self.f_model._sigmas = sigmas
     if(params.r_free_flags_fraction is not None):
       self.r_free_flags = fmodel.r_free_flags()
-      if merge_r_free_flags and self.r_free_flags.anomalous_flag() :
+      if merge_r_free_flags and self.r_free_flags.anomalous_flag():
         self.r_free_flags = self.r_free_flags.average_bijvoet_mates()
 
   def Sorry_high_resolution_is_not_defined(self):
@@ -2099,7 +2107,7 @@ class fmodel_from_xray_structure(object):
             print >> ofo, " %s= %.6g TEST=%d" % (op.label, values[1],values[2])
     else:
       output_array = self.f_model
-      if (obs_type == "intensities") :
+      if (obs_type == "intensities"):
         output_array = output_array.f_as_f_sq()
         output_array.set_observation_type_xray_intensity()
       mtz_dataset= output_array.as_mtz_dataset(column_root_label="%s"%op.label)
@@ -2363,8 +2371,8 @@ class shift_origin(object):
       crystal_symmetry=self.crystal_symmetry)
 
   def write_map_file(self, file_name):
-    from iotbx import ccp4_map
-    ccp4_map.write_ccp4_map(
+    from iotbx import mrcfile
+    mrcfile.write_ccp4_map(
       file_name=file_name,
       unit_cell=self.crystal_symmetry.unit_cell(),
       space_group=self.crystal_symmetry.space_group(),
@@ -2393,6 +2401,9 @@ class extract_box_around_model_and_map(object):
                upper_bounds=None,
                extract_unique=None,
                regions_to_keep=None,
+               box_buffer=None,
+               soft_mask_extract_unique=None,
+               mask_expand_ratio=None,
                keep_low_density=None,
                sequence=None,
                chain_type=None,
@@ -2583,6 +2594,13 @@ class extract_box_around_model_and_map(object):
     if self.regions_to_keep:
       args.append("regions_to_keep=%s" %(self.regions_to_keep))
       args.append("iterate_with_remainder=False")
+
+    if self.box_buffer:
+      args.append("box_buffer=%s" %(self.box_buffer))
+    if self.soft_mask_extract_unique:
+      args.append("soft_mask=True")
+    if self.mask_expand_ratio is not None:
+      args.append("mask_expand_ratio=%s" %(self.mask_expand_ratio))
 
     # import params from s&s here and set them.  set write_files=false etc.
 
@@ -2818,30 +2836,47 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
 
   def write_ccp4_map(self, file_name="box.ccp4",shift_back=False,
       output_unit_cell_grid=None,
-      output_crystal_symmetry=None):
+      output_sd=None,
+      output_mean=None,
+      output_crystal_symmetry=None,
+      output_external_origin=None,
+      output_map_labels=None):
 
     # If output_unit_cell_grid is specified, then write this out
     #  instead of the size of the actual available map (self.map_box.all())
 
-    from iotbx import ccp4_map
+    from iotbx import mrcfile
     assert tuple(self.map_box.origin())==(0,0,0)
     if shift_back:
       map_data=self.shift_map_back(self.map_box)
     else:
       map_data = self.map_box
 
+    if output_mean is not None or output_sd is not None:
+      mean_value=map_data.as_1d().min_max_mean().mean
+      sd_value=max(1.e-10,map_data.as_1d().standard_deviation_of_the_sample())
+      if output_mean is None: output_mean=mean_value
+      if output_sd is None: output_sd=sd_value
+      map_data = output_mean + (map_data.deep_copy()-mean_value)*\
+          (output_sd/sd_value)
+
     # Adjust the crystal_symmetry to match the output grid as well
     if output_crystal_symmetry is None:
       output_crystal_symmetry=self.xray_structure_box.crystal_symmetry()
     if output_unit_cell_grid is None:
       output_unit_cell_grid=map_data.all()
-    ccp4_map.write_ccp4_map(
+    if output_map_labels:
+      labels=flex.std_string(output_map_labels)
+    else:
+      labels=flex.std_string([" "])
+    mrcfile.write_ccp4_map(
       file_name      = file_name,
       unit_cell      = output_crystal_symmetry.unit_cell(),
       space_group    = output_crystal_symmetry.space_group(),
       unit_cell_grid = output_unit_cell_grid,
       map_data       = map_data,
-      labels=flex.std_string([" "]))
+      labels         = labels,
+      external_origin=output_external_origin)
 
   def box_map_coefficients_as_fft_map(self, d_min, resolution_factor):
     box_map_coeffs = self.box_map_coefficients(d_min = d_min)
@@ -3067,7 +3102,7 @@ def check_and_set_crystal_symmetry(
       maptbx.assert_same_gridding(map_1=m0, map_2=m.map_data())
   return crystal_symmetry
 
-class detect_hydrogen_nomenclature_problem (object) :
+class detect_hydrogen_nomenclature_problem(object):
   """
   This allows us to avoid the following problems:
   1) a bug in automatic linking which deletes the monomer library definition
@@ -3082,7 +3117,7 @@ class detect_hydrogen_nomenclature_problem (object) :
   n_hydrogen: number of hydrogens missing geometry restraints
   n_other: number of non-hydrogen atoms missing geometry restraints
   """
-  def __init__ (self, pdb_file, cif_files=()) :
+  def __init__(self, pdb_file, cif_files=()):
     args = [ pdb_file, ] + list(cif_files)
     import mmtbx.monomer_library.server
     mon_lib_srv = mmtbx.monomer_library.server.server()
@@ -3102,15 +3137,15 @@ class detect_hydrogen_nomenclature_problem (object) :
     self.n_asn_hd22 = 0
     self.n_hydrogen = 0
     self.n_other = 0
-    if (nb_reg.n_unknown_type_symbols() > 0) :
+    if (nb_reg.n_unknown_type_symbols() > 0):
       unknown_atoms = nb_reg.get_unknown_atoms(pdb_atoms)
       for atom in unknown_atoms :
         print atom.quote()
         labels = atom.fetch_labels()
-        if (atom.name == "HD22") and (labels.resname == "ASN") :
+        if (atom.name == "HD22") and (labels.resname == "ASN"):
           self.n_asn_hd22 += 1
           self.bad_hydrogens.append(atom.id_str())
-        elif (atom.element.strip() == "H") :
+        elif (atom.element.strip() == "H"):
           self.n_hydrogen += 1
           self.bad_hydrogens.append(atom.id_str())
         else :
@@ -3166,6 +3201,8 @@ class run_reduce_with_timeout(easy_run.fully_buffered):
       stdout_splitlines=True,
       bufsize=-1):
     assert [stdin_lines, file_name].count(None) == 1
+    if stdin_lines is not None and parameters.split()[-1] != '-':
+      raise Sorry(" - should appear at the end of parameters when using stdin_lines mode.")
 
     size_bytes = len(stdin_lines) if stdin_lines is not None else 0
     command_to_run="molprobity.reduce "

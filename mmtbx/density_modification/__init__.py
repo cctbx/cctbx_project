@@ -302,7 +302,7 @@ class density_modification(object):
         cached=False)
     libtbx.call_back("end_progress_bar", data=None)
 
-  def get_stats (self) :
+  def get_stats(self):
     return self._stats
 
   def next_cycle(self):
@@ -316,7 +316,7 @@ class density_modification(object):
     self.compute_map()
     self.show_cycle_summary()
 
-  def start_and_end_fom (self):
+  def start_and_end_fom(self):
     dm_stats=self._stats
     start_stats = dm_stats._stats[0]
     final_stats = dm_stats._stats[-1]
@@ -582,7 +582,7 @@ class density_modification(object):
     summary = self._stats.format_summary()
     print >> self.log, summary
     self.log.flush()
-    if (not self.as_gui_program) :
+    if (not self.as_gui_program):
       libtbx.call_back(message="summary",
         data=summary,
         accumulate=True)
@@ -666,18 +666,18 @@ class density_modification(object):
     else:
       return self.params.d_min
 
-class dm_stats (object) :
-  def __init__ (self) :
+class dm_stats(object):
+  def __init__(self):
     self._stats = []
 
-  def add_cycle (self, **kwds) :
+  def add_cycle(self, **kwds):
     cycle_stats = group_args(**kwds)
     self._stats.append(cycle_stats)
 
-  def get_cycle_stats (self, i_cycle=-1) :
+  def get_cycle_stats(self, i_cycle=-1):
     return self._stats[i_cycle]
 
-  def extract_loggraph (self) :
+  def extract_loggraph(self):
     table = iotbx.data_plots.table_data(
       title="Density modification statistics by cycle",
       column_names=["cycle","fom","mean_protein_density","mean_solvent_density",
@@ -697,7 +697,7 @@ class dm_stats (object) :
         stats.rms_solvent_density])
     return table
 
-  def format_summary (self, i_cycle=-1) :
+  def format_summary(self, i_cycle=-1):
     stats = self._stats[i_cycle]
     summary = "#"*80 + "\n"
     summary += "Cycle %i\n" %(stats.cycle)
@@ -707,19 +707,19 @@ class dm_stats (object) :
     summary += "Mean solvent density: %.4f\n" % stats.mean_solvent_density
     summary += "Mean protein density: %.4f\n" % stats.mean_protein_density
     summary += "F000/V: %.4f\n" % stats.f000_over_v
-    if (stats.truncate_density) :
+    if (stats.truncate_density):
       summary += "Protein density truncation:\n"
-      if (stats.truncate_min is not None) :
+      if (stats.truncate_min is not None):
         summary += "  min = %7.4f (%.2f%%)\n" %(
           stats.truncate_min, stats.truncate_min_percent)
-      if (stats.truncate_max is not None) :
+      if (stats.truncate_max is not None):
         summary += "  max = %7.4f (%.2f%%)\n" %(
           stats.truncate_max, stats.truncate_max_percent)
     if (stats.ncs_cc is not None):
       summary += "NCS correlation coefficient: %.4f\n" %stats.ncs_cc
-    if (stats.k_flip is not None) :
+    if (stats.k_flip is not None):
       summary += "Solvent flipping factor: %.4f\n" %stats.k_flip
-    if (stats.solvent_add is not None) :
+    if (stats.solvent_add is not None):
       summary += "Solvent level raised by: %.4f\n" % stats.solvent_add
     summary += "RMS solvent density: %.4f\n" % stats.rms_solvent_density
     summary += "RMS protein density: %.4f\n" % stats.rms_protein_density
@@ -741,5 +741,5 @@ class dm_stats (object) :
     summary += "\n"
     return summary
 
-  def get_fom_for_plot (self) :
+  def get_fom_for_plot(self):
     return [ stats.fom for stats in self._stats ]

@@ -8,8 +8,7 @@ where create_windows_installer.py supersedes it to invoke creating a NullSoft se
 # of the rest of CCTBX if necessary, although it will use installed resources
 # if found
 
-from __future__ import division
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 try :
   import libtbx.load_env
   libtbx_env = libtbx.env
@@ -21,14 +20,14 @@ import stat
 import os
 import sys
 
-def run (args, out=sys.stdout) :
-  if (sys.platform != "win32") :
-    print >> out, "This application will only run on Windows systems."
+def run(args, out=sys.stdout):
+  if (sys.platform != "win32"):
+    print("This application will only run on Windows systems.", file=out)
     return 1
   parser = optparse.OptionParser(
     description="Utility for creating an iconified Windows launcher for the specified command, which must be present in %LIBTBX_BUILD%\\bin.")
   bin_path = icns_path = None
-  if (libtbx_env is not None) :
+  if (libtbx_env is not None):
     bin_path = os.path.join(abs(libtbx_env.build_path), "bin")
     ico_path = libtbx_env.find_in_repositories(
       relative_path="gui_resources/icons/custom/WinPhenix.ico",
@@ -47,9 +46,9 @@ def run (args, out=sys.stdout) :
   parser.add_option("--bundle_all", dest="bundle_all", action="store_true",
     help="Bundle Python interpreter, etc. into .exe", default=False)
   options, args = parser.parse_args(args)
-  if (len(args) == 0) :
+  if (len(args) == 0):
     return parser.error("Executable name not specified.")
-  if (options.bin_dir is None) :
+  if (options.bin_dir is None):
     return parser.error("Executables directory not specified.")
   program_name = args[-1]
   bin_dir = options.bin_dir
@@ -57,20 +56,20 @@ def run (args, out=sys.stdout) :
   program_cmd_file = None
   for file_name in bin_files :
     base, ext = os.path.splitext(file_name)
-    if (base == program_name) :
+    if (base == program_name):
       if (ext == ".bat") : # preferred
         program_cmd_file = file_name
         break
-      elif (ext == ".exe") :
+      elif (ext == ".exe"):
         program_cmd_file = file_name
-  if (program_cmd_file is None) :
-    print >> out, "No program named '%s' found in %s." % (program_name,
-      bin_dir)
+  if (program_cmd_file is None):
+    print("No program named '%s' found in %s." % (program_name,
+      bin_dir), file=out)
     return 1
   exe_name = program_name
-  if (options.exe_name is not None) :
+  if (options.exe_name is not None):
     exe_name = options.exe_name
-  if (os.path.isdir("py2exe_tmp")) :
+  if (os.path.isdir("py2exe_tmp")):
     shutil.rmtree("py2exe_tmp")
   os.mkdir("py2exe_tmp")
   os.chdir("py2exe_tmp")
@@ -86,11 +85,11 @@ subprocess.call(r"%s")
   f.close()
   bundle_files = 3
   #zip_file = "'%s.zip'" %
-  if (options.bundle_all) :
+  if (options.bundle_all):
     bundle_files = 1 # won't work on win64
     zip_file = None
   icon_rsrc = ""
-  if (options.icon is not None) :
+  if (options.icon is not None):
     icon_rsrc = "'icon_resources':[(0,r'%s')]," % options.icon
   f2 = open("setup.py", "w")
   f2.write("""
@@ -116,17 +115,17 @@ setup(
   # XXX use sys.executable to avoid -Qnew behavior (crashes py2exe)
   import subprocess
   rc = subprocess.call([sys.executable, "setup.py", "py2exe"])
-  if (rc != 0) :
+  if (rc != 0):
     return rc
   dist_path = os.path.join(os.getcwd(), "dist")
   dist_files = os.listdir(dist_path)
   exe_file = os.path.join(dist_path, "%s.exe" % exe_name)
   assert (os.path.isfile(exe_file))
   os.chdir(options.dest)
-  print >> out, ""
+  print("", file=out)
   for file_name in dist_files :
-    if os.path.exists(file_name) :
-      print >> out, "WARNING: %s already exists" % file_name
+    if os.path.exists(file_name):
+      print("WARNING: %s already exists" % file_name, file=out)
       continue
       # XXX Even for Windows, this is incredibly broken
       #full_path = os.path.join(options.dest, file_name)
@@ -134,10 +133,10 @@ setup(
       #subprocess.call("del /F /Q %s" % os.path.join(os.getcwd(), file_name))
       #os.chmod(full_path, stat.S_IWRITE)
       #os.unlink(full_path)
-    print >> out, "moving %s..." % file_name
+    print("moving %s..." % file_name, file=out)
     shutil.move(os.path.join(dist_path, file_name), os.getcwd())
     os.chmod(file_name, stat.S_IWRITE)
   return 0
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   sys.exit(run(sys.argv[1:]))

@@ -24,7 +24,7 @@ dry_run = False
   .type = bool
 """
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   from mmtbx.building import make_library
   import iotbx.phil
   cmdline = iotbx.phil.process_command_line_with_files(
@@ -36,12 +36,12 @@ def run (args, out=sys.stdout) :
     usage_string="mmtbx.get_related_ensemble [model.pdb] [seq.fa] [...]")
   params = cmdline.work.extract()
   sequence = None
-  if (params.model is None) :
+  if (params.model is None):
     raise Sorry("No model (PDB or mmCIF file) was specified.")
-  if (params.sequence is not None) :
+  if (params.sequence is not None):
     seq_file = cmdline.get_file(params.sequence, force_type="seq")
     n_seqs = len(seq_file.file_object)
-    if (n_seqs > 1) :
+    if (n_seqs > 1):
       print >> out, "%d sequences in file - will only use the first" % n_seqs
     sequence = seq_file.file_object[0].sequence
   pdb_file = cmdline.get_file(params.model, force_type="pdb")
@@ -49,10 +49,10 @@ def run (args, out=sys.stdout) :
   reference_hierarchy = iotbx.pdb.hierarchy.root()
   model = iotbx.pdb.hierarchy.model()
   reference_hierarchy.append_model(model)
-  for chain in hierarchy.models()[0].chains() :
-    if (params.chain_id is None) or (chain.id == params.chain_id) :
-      if (not chain.is_protein()) :
-        if (chain.id == params.chain_id) :
+  for chain in hierarchy.models()[0].chains():
+    if (params.chain_id is None) or (chain.id == params.chain_id):
+      if (not chain.is_protein()):
+        if (chain.id == params.chain_id):
           print >> out, \
             "warning: matching chain '%s' is not protein, skipping" % \
             chain.id
@@ -62,9 +62,9 @@ def run (args, out=sys.stdout) :
         new_chain = iotbx.pdb.hierarchy.chain(id=chain.id)
         model.append_chain(new_chain)
         # get rid of alternate conformations
-        for residue_group in chain.residue_groups() :
+        for residue_group in chain.residue_groups():
           atom_group = residue_group.atom_groups()[0]
-          if (not atom_group.altloc.strip() in ['', 'A']) :
+          if (not atom_group.altloc.strip() in ['', 'A']):
             continue
           new_rg = iotbx.pdb.hierarchy.residue_group(
             resseq=residue_group.resseq,
@@ -73,12 +73,12 @@ def run (args, out=sys.stdout) :
           new_ag.altloc = ''
           new_rg.append_atom_group(new_ag)
           new_chain.append_residue_group(new_rg)
-        if (sequence is None) :
+        if (sequence is None):
           sequence = chain.as_padded_sequence(pad='X')
           print >> out, "Using sequence of chain '%s' (approx. %d residues)" % \
             (chain.id, len(sequence))
         break
-  if (sequence is None) :
+  if (sequence is None):
     raise Sorry("No protein sequence could be extracted based on these inputs.")
   make_sub_header("Finding related models and generating ensemble", out=out)
   ensemble = make_library.extract_and_superpose(
@@ -88,7 +88,7 @@ def run (args, out=sys.stdout) :
     params=params,
     out=out)
   f = null_out()
-  if (params.output_file is not None) :
+  if (params.output_file is not None):
     f = open(params.output_file, "w")
   print >> out, "Assembling moved models:"
   ensemble_hierarchy = ensemble.as_multi_model_hierarchy()
@@ -101,5 +101,5 @@ def run (args, out=sys.stdout) :
   f.close()
   return ensemble_hierarchy
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(args=sys.argv[1:])

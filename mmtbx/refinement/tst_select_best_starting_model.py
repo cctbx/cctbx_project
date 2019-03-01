@@ -4,7 +4,7 @@ from libtbx.test_utils import Exception_expected
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_run
 
-def exercise_main () :
+def exercise_main():
   from mmtbx.refinement import select_best_starting_model
   from iotbx import file_reader
   from cctbx import uctbx
@@ -143,9 +143,9 @@ END
   open("tst_start_model_3.pdb", "w").write(
     hierarchy_out.as_pdb_string(crystal_symmetry=symm3))
   # Model 4: shaken coordinates and ADPs
-  def random_double (size, factor=1) :
+  def random_double(size, factor=1):
     d = flex.double()
-    for x in range(size) :
+    for x in range(size):
       d.append(random.random() * factor)
     return d
   xrs_out = xrs_in.customized_copy()
@@ -189,7 +189,7 @@ END
   # result.show(verbose=True)
   assert (result.best_model_name == "tst_start_model_1.pdb"), result.best_model_name
 
-def exercise_misc () :
+def exercise_misc():
   from mmtbx.refinement import select_best_starting_model
   from iotbx import file_reader
   import iotbx.pdb.hierarchy
@@ -413,7 +413,7 @@ END
   for line in lines :
     assert (not line.startswith("HETATM"))
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise_misc()
   exercise_main()
   print "OK"

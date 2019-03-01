@@ -1,7 +1,7 @@
 """
 http://pypi.python.org/pypi/cluster/1.1.1b3
 """
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 #
 # This is part of "python-cluster". A library to group similar items together.
@@ -20,7 +20,7 @@ from __future__ import division
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #
 
-from types import TupleType
+from builtins import range
 
 class ClusteringError(Exception):
    pass
@@ -31,7 +31,7 @@ def flatten(L):
    Example:
    flatten([a,b,[c,d,[e,f]]]) = [a,b,c,d,e,f]
    """
-   if type(L) != type([]): return [L]
+   if not isinstance(L, type([])): return [L]
    if L == []: return L
    return flatten(L[0]) + flatten(L[1:])
 
@@ -41,8 +41,7 @@ def median(numbers):
    found at: http://mail.python.org/pipermail/python-list/2004-December/253517.html"""
    # Sort the list and take the middle element.
    n = len(numbers)
-   copy = numbers[:] # So that "numbers" keeps its original order
-   copy.sort()
+   copy = sorted(numbers[:]) # So that "numbers" keeps its original order
    if n & 1:         # There is an odd number of elements
       return copy[n // 2]
    else:
@@ -70,7 +69,6 @@ def minkowski_distance(x, y, p=2):
    """
    from math import pow
    assert(len(y)==len(x))
-   assert(x>=1)
    sum = 0
    for i in range(len(x)):
       sum += abs(x[i]-y[i]) ** p
@@ -135,7 +133,7 @@ def printmatrix(list):
    format =  " %%%is |" % maxlen
    format = "|" + format*colcount
    for row in list:
-      print format % tuple(row)
+      print(format % tuple(row))
 
 def magnitude(a):
    "calculates the magnitude of a vecor"
@@ -244,12 +242,12 @@ class Cluster:
       """
       Pretty-prints this cluster. Useful for debuging
       """
-      print depth*"   " + "[level %s]" % self.__level
+      print(depth*"   " + "[level %s]" % self.__level)
       for item in self.__items:
          if isinstance(item, Cluster):
             item.display(depth+1)
          else:
-            print depth*"   "+"%s" % item
+            print(depth*"   "+"%s" % item)
 
    def topology(self):
       """
@@ -434,7 +432,7 @@ class HierarchicalClustering(BaseClusterMethod):
       elif method == 'uclus':
          self.linkage = self.uclusDistance
       else:
-         raise ValueError, 'distance method must be one of single, complete, average of uclus'
+         raise ValueError('distance method must be one of single, complete, average of uclus')
 
    def uclusDistance(self, x, y):
       """
@@ -570,7 +568,9 @@ class HierarchicalClustering(BaseClusterMethod):
             for cell in row:
                # if we are not on the diagonal (which is always 0)
                # and if this cell represents a new minimum...
-               if (rowindex != cellindex) and ( cell < mindistance or smallestpair is None ):
+               if (rowindex != cellindex) and (
+                     (mindistance is not None and cell < mindistance) or
+                     smallestpair is None ):
                   smallestpair = ( rowindex, cellindex )
                   mindistance  = cell
                cellindex += 1
@@ -644,13 +644,13 @@ class KMeansClustering:
       self.__initial_length = len(data)
 
       # test if each item is of same dimensions
-      if len(data) > 1 and isinstance(data[0], TupleType):
+      if len(data) > 1 and isinstance(data[0], tuple):
          control_length = len(data[0])
          for item in data[1:]:
             if len(item) != control_length:
                raise ValueError("Each item in the data list must have the same amount of dimensions. Item", item, "was out of line!")
       # now check if we need and have a distance function
-      if len(data) > 1 and not isinstance(data[0], TupleType) and distance is None:
+      if len(data) > 1 and not isinstance(data[0], tuple) and distance is None:
          raise ValueError("You supplied non-standard items but no distance function! We cannot continue!")
       # we now know that we have tuples, and assume therefore that it's items are numeric
       elif distance is None:
@@ -734,7 +734,7 @@ available. You supplied %d items, and asked for %d clusters.""" %
       """
       # initialise the clusters with empty lists
       self.__clusters = []
-      for x in xrange(clustercount): self.__clusters.append([])
+      for x in range(clustercount): self.__clusters.append([])
 
       # distribute the items into the clusters
       count = 0

@@ -3,6 +3,7 @@
 
 """pySlip demonstration program."""
 from __future__ import division
+from __future__ import print_function
 # Copyright (c) 2010, Ross Wilson (rzzzwilson@gmail.com). All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
@@ -29,8 +30,8 @@ from __future__ import division
 import sys
 import wx
 
-from rstbx.slip_viewer import pyslip
-from rstbx.slip_viewer import tile_generation
+from . import pyslip
+from . import tile_generation
 pyslip._Tiles = tile_generation._Tiles
 
 ######

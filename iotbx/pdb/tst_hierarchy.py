@@ -2836,7 +2836,7 @@ residue groups with multiple resnames using same altloc: 2
   ... 1 remaining instance not shown""")
   else: raise Exception_expected
 
-def exercise_set_i_seq  () :
+def exercise_set_i_seq():
   pdb_str = """\
 HEADER    HYDROLASE                               19-JUL-05   2BWX
 ATOM   2038  N   CYS A 249      68.746  44.381  71.143  0.70 21.04           N
@@ -5626,7 +5626,7 @@ def exercise_hierarchy_input():
   check(h_atoms.select(h_i_perm), i_atoms)
   check(i_atoms.select(i_h_perm), h_atoms)
 
-def exercise_other () :
+def exercise_other():
   # XXX Nat's utility functions
   pdb_inp = pdb.input(source_info=None, lines="""\
 CRYST1    2.000    3.000    4.000  90.00  80.00  90.00 P 2           5
@@ -5780,7 +5780,7 @@ ATOM     13  HH BEOH     1       5.916   2.025  -7.573  1.00  0.00           H
 
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/2hr0.pdb", test=os.path.isfile)
-  if (pdb_file is not None) :
+  if (pdb_file is not None):
     (n_res,n_frag,n_wat)=pdb.hierarchy.get_residue_and_fragment_count(pdb_file)
     assert (n_res == 1548) and (n_frag == 7) and (n_wat == 708)
   #
@@ -6036,7 +6036,7 @@ ATOM      5  O   HOH S   1      -9.523   5.521  11.381  0.10  6.78           O
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/2C30.pdb",
     test=os.path.isfile)
-  if (pdb_file is None) :
+  if (pdb_file is None):
     return
   pdb_in = pdb.input(file_name=pdb_file)
   info = pdb.show_file_summary(pdb_in, out=out)
@@ -6267,7 +6267,7 @@ HETATM 1135 MG   MG  A1002      46.279  95.897 117.018  1.00 40.88          Mg
   #
   h2.adopt_xray_structure(xrs1)
 
-def exercise_substitute_atom_group () :
+def exercise_substitute_atom_group():
   hierarchy1 = pdb.input(source_info=None, lines="""\
 ATOM     39  N   ASN A   6       5.514   2.664   4.856  1.00 11.99           N
 ATOM     40  CA  ASN A   6       6.831   2.310   4.318  1.00 12.30           C

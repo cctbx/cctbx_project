@@ -1,14 +1,14 @@
-from __future__ import division
+from __future__ import division, print_function
 from libtbx import easy_run
 import time
 from libtbx.test_utils import approx_equal
 import iotbx.pdb
+import mmtbx.model
 from iotbx import reflection_file_reader
 from cctbx import miller
 from scitbx.array_family import flex
-from mmtbx.maps.polder_lib import master_params_str
-import mmtbx.maps.polder_lib
-from iotbx import crystal_symmetry_from_any
+from mmtbx.maps.polder import master_params_str
+import mmtbx.maps.polder
 
 pdb_str = """\
 CRYST1   28.992   28.409   27.440  90.00  90.00  90.00 P 1
@@ -185,18 +185,17 @@ def exercise(prefix="tst_polder_3"):
     "output.file_name=%s.mtz" % prefix,
     "> %s.log" % prefix
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
 
   params_line = master_params_str
   params = iotbx.phil.parse(
       input_string=params_line, process_includes=True).extract()
 
-  pdb_input = iotbx.pdb.input(file_name = 'tst_polder_3.pdb')
-  pdb_hierarchy = pdb_input.construct_hierarchy()
-  crystal_symmetry = crystal_symmetry_from_any.extract_from('tst_polder_3.pdb')
-  xray_structure = pdb_hierarchy.extract_xray_structure(
-    crystal_symmetry = crystal_symmetry)
+  pdb_inp = iotbx.pdb.input(file_name = 'tst_polder_3.pdb')
+  model = mmtbx.model.manager(model_input = pdb_inp)
+  pdb_hierarchy = model.get_hierarchy()
+
   selection_bool = pdb_hierarchy.atom_selection_cache().selection(
     string = 'chain A')
 
@@ -217,13 +216,12 @@ def exercise(prefix="tst_polder_3"):
 
   for radius in [3, 5, 7]:
     params.polder.sphere_radius = radius
-    polder_object = mmtbx.maps.polder_lib.compute_polder_map(
-      f_obs             = fobs,
-      r_free_flags      = None,
-      xray_structure    = xray_structure,
-      pdb_hierarchy     = pdb_hierarchy,
-      params            = params.polder,
-      selection_bool    = selection_bool)
+    polder_object = mmtbx.maps.polder.compute_polder_map(
+      f_obs          = fobs,
+      r_free_flags   = None,
+      model          = model,
+      params         = params.polder,
+      selection_bool = selection_bool)
     polder_object.validate()
     polder_object.run()
     results = polder_object.get_results()
@@ -248,11 +246,10 @@ def exercise(prefix="tst_polder_3"):
   for box_buffer in [3, 5, 7]:
     params.polder.box_buffer = box_buffer
     params.polder.compute_box = True
-    polder_object = mmtbx.maps.polder_lib.compute_polder_map(
+    polder_object = mmtbx.maps.polder.compute_polder_map(
       f_obs             = fobs,
       r_free_flags      = None,
-      xray_structure    = xray_structure,
-      pdb_hierarchy     = pdb_hierarchy,
+      model             = model,
       params            = params.polder,
       selection_bool    = selection_bool)
     polder_object.validate()
@@ -270,4 +267,4 @@ def exercise(prefix="tst_polder_3"):
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

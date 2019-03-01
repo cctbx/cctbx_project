@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 
+# Running bootstrap requires a minimum Python version of 2.6.
+
 # To download this file:
 # wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 # or
 # curl https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py > bootstrap.py
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import ntpath
-import optparse
 import os
 import os.path
 import posixpath
@@ -21,11 +22,24 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import textwrap
 import time
 import traceback
 import urllib2
 import urlparse
 import zipfile
+
+try:
+  import argparse
+except ImportError:
+  raise RuntimeError("""
+The argparse module is required. If you are using Python 2.6, you may
+need to install it separately. On CentOS 6, you can run
+
+  yum install python-argpase
+
+with administrative privileges.
+""")
 
 windows_remove_list = []
 
@@ -61,30 +75,8 @@ def tar_extract(workdir, archive, modulename=None):
         if cnt > 5:
           break
     # using tarfile module rather than unix tar command which is not platform independent
-    if sys.hexversion >= 0x02060000:
-      tar = tarfile.open(os.path.join(workdir, archive), errorlevel=2)
-      tar.extractall(path=workdir)
-    else:
-      import copy
-      import operator
-      tar = tarfile.open(os.path.join(workdir, archive))
-      directories = []
-      for tarinfo in tar.getmembers():
-        if tarinfo.isdir():
-          # Extract directories with a safe mode.
-          directories.append(tarinfo)
-          tarinfo = copy.copy(tarinfo)
-          tarinfo.mode = 0700
-        tar.extract(tarinfo, workdir)
-        # Reverse sort directories.
-        directories.sort(key=operator.attrgetter('name'))
-        directories.reverse()
-        # Set correct owner, mtime and filemode on directories.
-        for tarinfo in directories:
-          dirpath = os.path.join(workdir, tarinfo.name)
-          tar.chown(tarinfo, dirpath)
-          tar.utime(tarinfo, dirpath)
-          tar.chmod(tarinfo, dirpath)
+    tar = tarfile.open(os.path.join(workdir, archive), errorlevel=2)
+    tar.extractall(path=workdir)
     tarfoldername = os.path.join(workdir, os.path.commonprefix(tar.getnames()).split('/')[0])
     tar.close()
     # take full permissions on all extracted files
@@ -125,7 +117,10 @@ class ShellCommand(object):
     env = self.kwargs.get('env', None)
     if env:
       for key, item in env.items():
-        env[key] = os.path.abspath(item)
+        if item is None:
+          env[key] = ''
+        else:
+          env[key] = os.path.abspath(item)
       rc = os.environ
       rc.update(env)
       env=rc
@@ -139,9 +134,9 @@ class ShellCommand(object):
     env = self.get_environment()
     if not self.kwargs.get("quiet", False):
       if description:
-        print "===== Running in %s:"%workdir, description
+        print("===== Running in %s:"%workdir, description)
       else:
-        print "===== Running in %s:"%workdir, " ".join(command)
+        print("===== Running in %s:"%workdir, " ".join(command))
     if workdir:
       try:
         os.makedirs(workdir)
@@ -157,16 +152,16 @@ class ShellCommand(object):
       # XXX use shutil rather than rm which is not platform independent
       for directory in command[2:]:
         if os.path.exists(directory):
-          print 'Deleting directory : %s' % directory
+          print('Deleting directory : %s' % directory)
           try: shutil.rmtree(directory)
           except OSError:
-            print "Strangely couldn't delete %s" % directory
+            print("Strangely couldn't delete %s" % directory)
       return 0
     if 0:
-      print 'command',command
-      print 'workdir',workdir
-      print 'env',env
-      print os.environ.get("PATH", None)
+      print('command',command)
+      print('workdir',workdir)
+      print('env',env)
+      print(os.environ.get("PATH", None))
     try:
       #if not os.path.isabs(command[0]):
         # executable path isn't located relative to workdir
@@ -189,19 +184,19 @@ class ShellCommand(object):
           executable = os.path.normpath(os.path.join(workdir, command[0]))
           raise RuntimeError("Could not run %s: File not found" % executable)
       if 'child_traceback' in dir(e):
-        print "Calling subprocess resulted in error; ", e.child_traceback
+        print("Calling subprocess resulted in error; ", e.child_traceback)
       raise e
 
     p.wait()
     if p.returncode != 0 and self.kwargs.get('haltOnFailure'):
-      print "Process failed with return code %s"%(p.returncode)
+      print("Process failed with return code %s"%(p.returncode))
       sys.exit(1)
     if 0:
       if description:
         outl = "%s - %s" % (workdir, description)
       else:
         outl = "%s - %s" % (workdir, " ".join(command))
-      print '===== Time to %s : %0.1f' % (outl, time.time()-t0)
+      print('===== Time to %s : %0.1f' % (outl, time.time()-t0))
     return p.returncode
 
 class Toolbox(object):
@@ -263,13 +258,12 @@ class Toolbox(object):
       url_request = urllib2.Request(url)
       if etag:
         url_request.add_header("If-None-Match", etag)
-      if localcopy and (sys.hexversion >= 0x02060000):
+      if localcopy:
         # Shorten timeout to 7 seconds if a copy of the file is already present
-        # This is only supported in python >=2.6
         socket = urllib2.urlopen(url_request, None, 7)
       else:
         socket = urllib2.urlopen(url_request)
-    except SSLError, e:
+    except SSLError as e:
       # This could be a timeout
       if localcopy:
         # Download failed for some reason, but a valid local copy of
@@ -290,7 +284,7 @@ class Toolbox(object):
         return -2
       # otherwise pass on the error message
       raise
-    except urllib2.URLError, e:
+    except urllib2.URLError as e:
       if localcopy:
         # Download failed for some reason, but a valid local copy of
         # the file exists, so use that one instead.
@@ -348,7 +342,7 @@ class Toolbox(object):
       tmpfile = file + '.tmp'
 
       f = open(tmpfile, 'wb')
-      while 1:
+      while True:
         block = socket.read(block_size)
         received += len(block)
         f.write(block)
@@ -393,9 +387,9 @@ class Toolbox(object):
 
   @staticmethod
   def unzip(archive, directory, trim_directory=0, verbose=False):
-    '''unzip a file into a directory. Requires Python 2.6.'''
+    '''unzip a file into a directory.'''
     if verbose:
-      print "===== Installing %s into %s" % (archive, directory)
+      print("===== Installing %s into %s" % (archive, directory))
     if not zipfile.is_zipfile(archive):
       raise Exception("%s is not a valid .zip file" % archive)
     z = zipfile.ZipFile(archive, 'r')
@@ -422,13 +416,12 @@ class Toolbox(object):
           source.close()
 
           # Preserve executable permission, if set
-          unix_executable = member.external_attr >> 16 & 73
-            # Python 2.5 does not allow octal notation with 0o prefix
-            # rwxrwxrwx => --x--x--x => 0o111 => 73
+          unix_executable = member.external_attr >> 16 & 0o111
+          # rwxrwxrwx => --x--x--x => 0o111
           if unix_executable:
             mode = os.stat(filename).st_mode
-            mode |= (mode & 292) >> 2 # copy R bits to X
-             # r--r--r-- => 0o444 => 292
+            mode |= (mode & 0o444) >> 2 # copy R bits to X
+             # r--r--r-- => 0o444
             os.chmod(filename, mode)
     z.close()
 
@@ -455,7 +448,7 @@ class Toolbox(object):
     if branch and remote and not rebase:
       insertions.insert(0, (n + 1, branch))
     for n, branch in insertions:
-      print "  setting branch %s to rebase" % branch
+      print("  setting branch %s to rebase" % branch)
       cfg.insert(n, '\trebase = true\n')
     with open(config, 'w') as fh:
       fh.write("".join(cfg))
@@ -477,8 +470,8 @@ class Toolbox(object):
     if os.path.exists(destination):
       if git_available and os.path.exists(os.path.join(destination, '.git')):
         if not open(os.path.join(destination, '.git', 'HEAD'), 'r').read().startswith('ref:'):
-          print "WARNING: Can not update existing git repository! You are not on a branch."
-          print "This may be legitimate when run eg. via Jenkins, but be aware that you cannot commit any changes"
+          print("WARNING: Can not update existing git repository! You are not on a branch.")
+          print("This may be legitimate when run eg. via Jenkins, but be aware that you cannot commit any changes")
           return
 
         else:
@@ -490,9 +483,9 @@ class Toolbox(object):
           return ShellCommand(
             command=['git', 'pull', '--rebase'], workdir=destination, silent=False, haltOnFailure=True).run()
 
-      print "Existing non-git directory -- don't know what to do. skipping: %s" % module
+      print("Existing non-git directory -- don't know what to do. skipping: %s" % module)
       if ('cctbx_project.git' in parameters[0]):
-        print '\n' + '=' * 80 + '\nCCTBX moved to git on November 22, 2016.\n\nTo update cctbx_project to the last available subversion revision please run "svn update" while in the cctbx_project directory.\n' + '*'*80 + '\n'
+        print('\n' + '=' * 80 + '\nCCTBX moved to git on November 22, 2016.\n\nTo update cctbx_project to the last available subversion revision please run "svn update" while in the cctbx_project directory.\n' + '*'*80 + '\n')
       return
 
     if isinstance(parameters, basestring):
@@ -541,14 +534,14 @@ class Toolbox(object):
                             urlparse.urlparse(source_candidate)[2].split('/')[-1])
       filename = os.path.join(destpath, filename)
       if verbose:
-        print "===== Downloading %s: " % source_candidate,
+        print("===== Downloading %s: " % source_candidate, end=' ')
       Toolbox.download_to_file(source_candidate, filename)
       Toolbox.unzip(filename, destination, trim_directory=1, verbose=verbose)
       return
 
     error = "Cannot satisfy git dependency for module %s: None of the sources are available." % module
     if not git_available:
-      print error
+      print(error)
       error = "A git installation has not been found."
     raise Exception(error)
 
@@ -568,10 +561,10 @@ class cleanup_ext_class(object):
         os.chdir(self.workdir)
       else:
         return
-    print "\n  removing %s files in %s, walk? %s" % (self.filename_ext,
+    print("\n  removing %s files in %s, walk? %s" % (self.filename_ext,
                                                      os.getcwd(),
                                                      self.walk,
-      )
+      ))
     i=0
     if self.walk:
       for root, dirs, files in os.walk(".", topdown=False):
@@ -585,7 +578,7 @@ class cleanup_ext_class(object):
           os.remove(os.path.join(name))
           i+=1
     os.chdir(cwd)
-    print "  removed %d files" % i
+    print("  removed %d files" % i)
 
   def run(self):
     self.remove_ext_files()
@@ -617,11 +610,11 @@ class cleanup_dirs(object):
 
       # Don't notify the user if we aren't doing anything
       if any(os.path.exists(d) for d in self.dirs):
-        print "===== Removing directories in %s" % (os.getcwd())
+        print("===== Removing directories in %s" % (os.getcwd()))
 
         for d in self.dirs:
           if os.path.exists(d):
-            print "      removing %s" % (os.path.join(os.getcwd(),d))
+            print("      removing %s" % (os.path.join(os.getcwd(),d)))
             shutil.rmtree(d)
     finally:
       # Leave the directory untouched even if we failed
@@ -652,7 +645,7 @@ class SourceModule(object):
   def get_module(self, module):
     if module in self._modules:
       return self._modules[module]
-    raise KeyError, "Unknown module: %s"%module
+    raise KeyError("Unknown module: %s"%module)
 
   def get_url(self, auth=None):
     repo = None
@@ -898,6 +891,12 @@ class phaser_module(SourceModule):
                'git://git.uis.cam.ac.uk/cimr-phaser/phaser.git',
                'https://git.uis.cam.ac.uk/cimr-phaser/phaser.git']
 
+class phaser_tng_module(SourceModule):
+  module = 'phaser_tng'
+  anonymous = ['git',
+               'git://git.uis.cam.ac.uk/cimr-phaser/phaser_tng.git',
+               'https://git.uis.cam.ac.uk/cimr-phaser/phaser_tng.git']
+
 class phaser_regression_module(SourceModule):
   module = 'phaser_regression'
   anonymous = ['git',
@@ -925,6 +924,10 @@ class dials_regression_module(SourceModule):
   authenticated = ['svn',
                    'svn+ssh://%(cciuser)s@cci.lbl.gov/dials_regression/trunk']
 
+class msgpack_module(SourceModule):
+  module = 'msgpack'
+  anonymous = ['curl', "https://gitcdn.link/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz"]
+
 class xfel_regression_module(SourceModule):
   module = 'xfel_regression'
   authenticated = ['svn',
@@ -936,13 +939,6 @@ class xia2_module(SourceModule):
                'git@github.com:xia2/xia2.git',
                'https://github.com/xia2/xia2.git',
                'https://github.com/xia2/xia2/archive/master.zip']
-
-class xia2_regression_module(SourceModule):
-  module = 'xia2_regression'
-  anonymous = ['git',
-               'git@github.com:xia2/xia2_regression.git',
-               'https://github.com/xia2/xia2_regression.git',
-               'https://github.com/xia2/xia2_regression/archive/master.zip']
 
 # Duke repositories
 class probe_module(SourceModule):
@@ -1013,6 +1009,8 @@ class Builder(object):
       mpi_build=False,
       python3=False,
       wxpython4=False,
+      config_flags=[],
+      use_conda=None,
     ):
     if nproc is None:
       self.nproc=1
@@ -1052,11 +1050,17 @@ class Builder(object):
     self.download_only = download_only
     self.skip_base = skip_base
     self.force_base_build = force_base_build
+    # self.config_flags are only from the command line
+    # get_libtbx_configure can still be used to always set flags specific to a
+    # builder
+    self.config_flags = config_flags
+    self.use_conda = use_conda
     self.add_init()
 
     # Cleanup
     if cleanup:
-      self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'base_tmp', 'build'])
+      self.cleanup(['dist', 'tests', 'doc', 'tmp', 'base', 'base_tmp', 'build',
+                    'conda_base'])
     else:
       self.cleanup(['dist', 'tests', 'tmp'])
 
@@ -1220,12 +1224,12 @@ class Builder(object):
     """Add a step."""
     self.steps.append(step)
     if 0:
-      print "commands "*8
+      print("commands "*8)
       for step in self.steps:
-        print step
+        print(step)
         #try:    print " ".join(step.get_command())
         #except: print '????'
-      print "commands "*8
+      print("commands "*8)
 
   def add_module(self, module, workdir=None, module_directory=None):
     action = MODULES.get_module(module)().get_url(auth=self.get_auth())
@@ -1343,7 +1347,7 @@ class Builder(object):
   def _add_download(self, url, to_file):
     class _download(object):
       def run(self):
-        print "===== Downloading %s: " % url,
+        print("===== Downloading %s: " % url, end=' ')
         Toolbox().download_to_file(url, to_file)
     self.add_step(_download())
 
@@ -1362,7 +1366,7 @@ class Builder(object):
   def _add_unzip(self, archive, directory, trim_directory=0):
     class _indirection(object):
       def run(self):
-        print "===== Installing %s into %s" % (archive, directory)
+        print("===== Installing %s into %s" % (archive, directory))
         Toolbox().unzip(archive, directory, trim_directory)
     self.add_step(_indirection())
 
@@ -1388,7 +1392,7 @@ class Builder(object):
           quiet=True,
       ))
     elif os.path.exists(self.opjoin(*[thisworkdir, module])):
-      print "Existing non-svn directory -- don't know what to do. skipping: %s"%module
+      print("Existing non-svn directory -- don't know what to do. skipping: %s"%module)
     else:
       # print "fresh checkout..."
       self.add_step(self.shell(
@@ -1419,6 +1423,110 @@ class Builder(object):
         workdir=['modules'],
         description="Checking Windows prerequisites",
       ))
+
+  def _get_conda_manager(self):
+    """
+    Helper function for determining the location of the conda environment
+    """
+    if __package__ is None:
+      root_path = os.path.dirname(os.path.abspath(__file__))
+      paths = [root_path,
+               os.path.join(root_path, 'modules', 'cctbx_project', 'libtbx',
+                            'auto_build')]
+      for path in paths:
+        if os.path.isfile(os.path.join(path, 'install_conda.py')):
+          if path not in sys.path:
+            sys.path.append(path)
+            break
+      from install_conda import conda_manager
+    else:
+      from .install_conda import conda_manager
+
+    # check for active conda environment
+    conda_env = os.environ.get('CONDA_PREFIX')
+
+    # drop output
+    log = open(os.devnull, 'w')
+
+    # no path provided
+    if self.use_conda == '' and conda_env is None:
+      conda_env = os.path.join('..', 'conda_base')
+      if self.isPlatformWindows():
+        conda_env = os.path.join(os.getcwd(), 'conda_base')
+      # base step is not run yet, so do not check if files exist
+      m = conda_manager(root_dir=os.getcwd(), conda_env=conda_env,
+                        check_file=False, log=log)
+    else:
+      # conda environment is active, overrides any path provided to --use-conda
+      if conda_env is not None:
+        self.use_conda = conda_env
+      # check that directory exists
+      if not os.path.isdir(self.use_conda):
+        raise RuntimeError('The path provided to --use-conda does not exist.')
+      # basic checks for python and conda
+      self.use_conda = os.path.abspath(self.use_conda)
+      m = conda_manager(root_dir=os.getcwd(), conda_env=self.use_conda,
+                        check_file=True, log=log)
+
+    return m
+
+  def _get_conda_python(self):
+    """
+    Helper function for determining the location of Python for the base
+    and build actions.
+    """
+    try:
+      m = self._get_conda_manager()
+      return m.get_conda_python()
+    except ImportError:  # modules directory is not available
+
+      # -----------------------------------------------------------------------
+      # duplicate logic from get_conda_python function in install_conda.py
+      # since install_conda.py may not be available
+      def m_get_conda_python(self):
+        m_conda_python = os.path.join('bin', 'python')
+        if self.isPlatformWindows():
+          m_conda_python = self.op.join('python.exe')
+        elif self.isPlatformMacOSX():
+          m_conda_python = os.path.join('python.app', 'Contents',
+                                        'MacOS', 'python')
+        return m_conda_python
+      # -----------------------------------------------------------------------
+
+      conda_python = None
+
+      # check for active conda environment
+      conda_env = os.environ.get('CONDA_PREFIX')
+
+      # (case 1)
+      if self.use_conda == '' and conda_env is None:
+        conda_python = self.op.join('..', 'conda_base',
+                                    m_get_conda_python(self))
+      # (case 2)
+      # conda environment is active, overrides any path provided to --use-conda
+      elif conda_env is not None:
+        if os.path.isdir(conda_env):
+          conda_python = os.path.join(conda_env, m_get_conda_python(self))
+        else:
+          raise RuntimeError("""
+The path specified by the CONDA_PREFIX environment variable does not
+exist. Please make sure you have a valid conda environment in
+{conda_env}""".format(conda_env=conda_env))
+      # use path provided to --use-conda
+      else:
+        self.use_conda = os.path.abspath(self.use_conda)
+        if os.path.isdir(self.use_conda):
+          conda_python = os.path.join(self.use_conda, m_get_conda_python(self))
+        else:
+          raise RuntimeError("""
+The path specified by the --use-conda flag does not exist. Please make
+sure you have a valid conda environment in
+{conda_env}""".format(conda_env=self.use_conda))
+
+      if conda_python is None:
+        raise RuntimeError('A conda version of python could not be found.')
+
+    return conda_python
 
   def add_command(self, command, name=None, workdir=None, args=None, **kwargs):
     if self.isPlatformWindows():
@@ -1457,16 +1565,19 @@ class Builder(object):
       **kwargs
     )
 
-  def add_test_parallel(self, module=None, nproc=None, **kwargs):
+  def add_test_parallel(self, module=None, nproc=None, slow_tests=False, **kwargs):
     if nproc is None:
       nprocstr = 'nproc=auto'
     else:
       nprocstr = 'nproc=%d'%nproc
+    args=['module=%s'%module, nprocstr, 'verbosity=1']
+    if slow_tests:
+      args.append('slow_tests=True')
     self.add_command(
       'libtbx.run_tests_parallel',
       name='test %s'%module,
       workdir=['tests', module],
-      args=['module=%s'%module, nprocstr, 'verbosity=1'],
+      args=args,
       haltOnFailure=False,
       **kwargs
     )
@@ -1504,8 +1615,42 @@ class Builder(object):
       '--python-shared',
       '--%s'%self.BASE_PACKAGES
     ] + extra_opts
-    print "Installing base packages using:\n  " + " ".join(command)
-    self.add_step(self.shell(name='base', command=command, workdir=['.']))
+
+    # Override base with conda
+    #
+    # The use of conda is focused on 2 main groups
+    #   1) Developers who do not actively use conda
+    #      A basic conda installation will be created at the same level as the
+    #      "modules" and "build" directories. The default environment for the
+    #      builder will be created in the "conda_base" directory at the same
+    #      level.
+    #   2) Developers who do
+    #      A path to a conda environment should be provided. No checks are done
+    #      on the environment. The environment files for the build should be
+    #      used to construct the starting environment and the developer is
+    #      responsible for maintaining it. Also, if a conda environment is
+    #      active, the $CONDA_PREFIX environment variable will be used.
+    if self.use_conda is not None:  # --use-conda flag is set
+      # reset command
+      command = []
+
+      # check for active conda environment
+      conda_env = os.environ.get('CONDA_PREFIX')
+
+      # no path provided (case 1), case 2 handled in _get_conda_python
+      if self.use_conda == '' and conda_env is None:
+        flags = ['--builder={builder}'.format(builder=self.category)]
+        # check for existing miniconda3 installation
+        if not os.path.isdir('miniconda3'):
+          flags.append('--install_conda')
+        command = [
+          'python',
+          self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build',
+                      'install_conda.py',)] + flags
+
+    if len(command) > 0:
+      print("Installing base packages using:\n  " + " ".join(command))
+      self.add_step(self.shell(name='base', command=command, workdir=['.']))
 
   def add_dispatchers(self, product_name="phenix"):
     """Write dispatcher_include file."""
@@ -1531,12 +1676,33 @@ class Builder(object):
     #epilogue = "\n".join(self.product_specific_dispatcher_epilogue())
     dispatcher_opts = [
       "--build_dir=%s" % ".",
-      "--base_dir=%s"  % "../base",
       "--suffix=%s"    % "phenix",
-      "--gtk_version=2.10.0", # XXX this can change!
-      #"--quiet",
     ]
-    #if (not self.flag_build_gui) :
+    if self.use_conda is None:
+      dispatcher_opts += [
+        "--base_dir=%s"  % "../base",
+        "--gtk_version=2.10.0", # XXX this can change!
+        #"--quiet",
+      ]
+    else:
+      # default
+      base_dir = '../conda_base'
+      # use path from --use-conda flag
+      # error-checking done in _get_conda_python function
+      if self.use_conda != '':
+        base_dir = self.use_conda
+      # override with $CONDA_PREFIX
+      # error-checking done in _get_conda_python function
+      conda_env = os.environ.get('CONDA_PREFIX')
+      if conda_env is not None:
+        base_dir = conda_env
+
+      dispatcher_opts += [
+      "--base_dir=%s" % base_dir,
+      "--use_conda",
+      "--ignore_missing_dirs"
+      ]
+    #if (not self.flag_build_gui):
     #  dispatcher_opts.append("--ignore_missing_dirs")
     # FIXME this will happen regardless of whether the GUI modules are being
     # distributed or not - will this be problematic?
@@ -1557,21 +1723,31 @@ class Builder(object):
     ))
 
   def add_configure(self):
-    self.add_step(self.shell(command=[
-        self.python_base, # default to using our python rather than system python
-        self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
-        ] + self.get_libtbx_configure(),
-      workdir=['build'],
-      description="run configure.py",
-    ))
-    # Prepare saving configure.py command to file should user want to manually recompile Phenix
+
+    env = None
+
+    if self.use_conda is not None:
+      if '--use_conda' not in self.config_flags:
+        self.config_flags.append('--use_conda')
+      self.python_base = self._get_conda_python()
+      # conda python prefers no environment customizations
+      # the get_environment function in ShellCommand updates the environment
+      env = {
+        'PYTHONPATH': None,
+        'LD_LIBRARY_PATH': None,
+        'DYLD_LIBRARY_PATH': None
+      }
+
     configcmd =[
         self.python_base, # default to using our python rather than system python
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
-        ] + self.get_libtbx_configure()
+        ] + self.get_libtbx_configure() + self.config_flags
+    self.add_step(self.shell(command=configcmd, workdir=['build'],
+      description="run configure.py", env=env))
+    # Prepare saving configure.py command to file should user want to manually recompile Phenix
     fname = self.opjoin("config_modules.cmd")
     ldlibpath = ''
-    if self.isPlatformLinux():
+    if self.isPlatformLinux() and self.use_conda is None:
       ldlibpath = 'export LD_LIBRARY_PATH=../base/lib\n'
       # because that was the environment when python and base components were built during bootstrap
     confstr = ldlibpath + subprocess.list2cmdline(configcmd)
@@ -1749,13 +1925,14 @@ class PhaserBuilder(CCIBuilder):
       self.skip_base = "hdf5,lz4_plugin,py2app,wxpython,docutils,pyopengl,pillow,tiff," + \
         "cairo,fonts,render,fontconfig,pixman,png,sphinx,freetype,gtk,matplotlib," + \
         "cython,h5py,gettext,numpy,pythonextra,pytest,junitxml,libsvm,pyrtf,six,send2trash," + \
-         "jinja2,orderedset,procrunner,tabulate,scipy,scikit_learn,biopython,expat,glib"
+         "jinja2,orderedset,procrunner,tabulate,scipy,scikit_learn,biopython,expat,glib,mrcfile"
     else:
       self.skip_base = ','.join(self.skip_base.split(',') + ['hdf5','lz4_plugin','py2app',
          'wxpython','docutils','pyopengl','pillow','tiff','cairo','fonts','pyrtf','six','send2trash',
          'fontconfig','render','pixman','png','sphinx','freetype','gtk', 'matplotlib',
          'cython', 'h5py', 'gettext', 'numpy', 'pythonextra', 'pytest', 'junitxml','libsvm',
-         'jinja2', 'orderedset', 'procrunner', 'tabulate', 'scipy', 'scikit_learn', 'biopython', 'expat', 'glib'
+         'jinja2', 'orderedset', 'procrunner', 'tabulate', 'scipy', 'scikit_learn', 'biopython',
+         'expat', 'glib', 'mrcfile'
          ])
     super(PhaserBuilder, self).add_base(
       extra_opts=['--cctbx',
@@ -1773,6 +1950,18 @@ class PhaserBuilder(CCIBuilder):
       configlst.append("--enable_openmp_if_possible=True")
     return configlst
 
+class PhaserTNGBuilder(PhaserBuilder):
+  CODEBASES = PhaserBuilder.CODEBASES + ['phaser_tng']
+  LIBTBX = PhaserBuilder.LIBTBX + ['phaser_tng']
+
+  def add_tests(self):
+    self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
+    self.add_test_command('cctbx_regression.test_nightly')
+
+  def get_libtbx_configure(self):
+    configlst = super(PhaserTNGBuilder, self).get_libtbx_configure()
+    configlst.append('--enable_cxx11')
+    return configlst
 
 class CCTBXLiteBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
@@ -1837,6 +2026,7 @@ class CCTBXBuilder(CCIBuilder):
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'xia2']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
+  HOT_EXTRA = ['msgpack']
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
@@ -1883,6 +2073,7 @@ class XFELBuilder(CCIBuilder):
     'prime',
     'iota'
   ]
+  HOT_EXTRA = ['msgpack']
 
   def add_base(self, extra_opts=[]):
     super(XFELBuilder, self).add_base(
@@ -1925,8 +2116,7 @@ class PhenixBuilder(CCIBuilder):
     'phaser',
     'phaser_regression',
   ]
-  HOT_EXTRA = [
-  ]
+  HOT_EXTRA = ['msgpack']
   LIBTBX_EXTRA = [
     'chem_data',
     'phenix',
@@ -2013,7 +2203,7 @@ class PhenixExternalRegression(PhenixBuilder):
     lt = time.localtime()
     cleaning = ['dist', 'tests', 'doc', 'tmp', 'base_tmp']
     if lt.tm_wday==5: # do a completer build on Saturday night
-      cleaning += ['base', 'base_tmp', 'build']
+      cleaning += ['base', 'base_tmp', 'build', 'conda_base']
     # Preparation
     # AFITT
     if self.subcategory in [None, "afitt"]:
@@ -2253,6 +2443,11 @@ class QRBuilder(PhenixBuilder):
     if self.user=='builder': PhenixBuilder.add_make(self)
     pip_installs = ['ase', 'JPype1','pymongo']
     instructions = []
+    # versioning
+    cmd = [os.path.join('..', self.python_base),
+           os.path.join('utils', 'make_version.py'),
+           ]
+    instructions.append(['Versioning', cmd, ['modules/qrefine']])
     for pi in pip_installs:
       instructions.append(['Q|R pip %s' % pi,
                            [self.python_base,
@@ -2311,9 +2506,44 @@ class QRBuilder(PhenixBuilder):
       environment[env] = os.path.join(*dirs)
     return environment
 
-def run(root=None):
-  usage = """Usage: %prog [options] [actions]
+class PhenixTNGBuilder(PhenixBuilder):
+  '''
+  Phenix with phaser_tng and c++11
+  '''
+  CODEBASES = PhenixBuilder.CODEBASES + ['phaser_tng']
+  LIBTBX = PhenixBuilder.CODEBASES + ['phaser_tng']
 
+  def get_libtbx_configure(self):
+    configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
+    configlst.append('--enable_cxx11')
+    return configlst
+
+def run(root=None):
+  builders = {
+    'cctbxlite': CCTBXLiteBuilder,
+    'cctbx': CCTBXBuilder,
+    'phenix': PhenixBuilder,
+    'phenix_tng': PhenixTNGBuilder,
+    'xfel': XFELBuilder,
+    'labelit': LABELITBuilder,
+    'dials': DIALSBuilder,
+    'external': PhenixExternalRegression,
+    'molprobity':MOLPROBITYBuilder,
+    'qrefine': QRBuilder,
+    'phaser': PhaserBuilder,
+    'phaser_tng': PhaserTNGBuilder
+  }
+
+  wrapper = textwrap.TextWrapper(width=80, initial_indent='  ',
+                                 subsequent_indent='    ')
+  builders_text = ', '.join(sorted(builders.keys()))
+  builders_text = '\n'.join(wrapper.wrap(builders_text))
+
+  prog = os.environ.get('LIBTBX_DISPATCHER_NAME')
+  if prog is None or prog.startswith('python') or prog.endswith('python'):
+    prog = os.path.basename(sys.argv[0])
+
+  description = """
   You may specify one or more actions:
     hot - Update static sources (scons, etc.)
     update - Update source repositories (cctbx, cbflib, etc.)
@@ -2326,7 +2556,7 @@ def run(root=None):
 
   You can specify which package will be downloaded, configured,
   and built with "--builder". Current builders:
-    cctbx, phenix, xfel, dials, labelit
+  {builders}
 
   You can provide your SourceForge username with "--sfuser", and
   your CCI SVN username with "--cciuser". These will checkout
@@ -2344,87 +2574,95 @@ def run(root=None):
   Example:
 
     python bootstrap.py --builder=cctbx --sfuser=metalheadd hot update build tests
+  """.format(builders=builders_text)
 
-  """
-  builders = {
-    'cctbxlite': CCTBXLiteBuilder,
-    'cctbx': CCTBXBuilder,
-    'phenix': PhenixBuilder,
-    'xfel': XFELBuilder,
-    'labelit': LABELITBuilder,
-    'dials': DIALSBuilder,
-    'external': PhenixExternalRegression,
-    'molprobity':MOLPROBITYBuilder,
-    'qrefine': QRBuilder,
-    'phaser': PhaserBuilder,
-  }
-
-  parser = optparse.OptionParser(usage=usage)
-  # parser.add_option("--root", help="Root directory; this will contain base, modules, build, etc.")
-  parser.add_option(
+  parser = argparse.ArgumentParser(
+    prog=prog, description=description,
+    formatter_class=argparse.RawDescriptionHelpFormatter)
+  # parser.add_argument("--root", help="Root directory; this will contain base, modules, build, etc.")
+  parser.add_argument('action', nargs='*', help="Actions for building")
+  parser.add_argument(
     "--builder",
     help="Builder: " + ",".join(builders.keys()),
     default="cctbx")
-  parser.add_option("--cciuser", help="CCI SVN username.")
-  parser.add_option("--sfuser", help="SourceForge SVN username.")
-  parser.add_option("--revert", help="SVN string to revert all SVN trees")
-  parser.add_option("--sfmethod",
+  parser.add_argument("--cciuser", help="CCI SVN username.")
+  parser.add_argument("--sfuser", help="SourceForge SVN username.")
+  parser.add_argument("--revert", help="SVN string to revert all SVN trees")
+  parser.add_argument("--sfmethod",
                     help="SourceForge SVN checkout method.",
                     default="svn+ssh")
-  parser.add_option(
+  parser.add_argument(
     "--git-ssh",
     dest="git_ssh",
     action="store_true",
     help="Use ssh connections for git. This allows you to commit changes without changing remotes and use reference repositories.",
     default=False)
-  parser.add_option(
+  parser.add_argument(
     "--git-reference",
     dest="git_reference",
     help="Path to a directory containing reference copies of repositories for faster checkouts.")
-  parser.add_option("--with-python",
+  parser.add_argument("--with-python",
                     dest="with_python",
                     help="Use specified Python interpreter")
-  parser.add_option("--nproc",
+  parser.add_argument("--nproc",
                     help="number of parallel processes in compile step.")
-  parser.add_option("--download-only",
+  parser.add_argument("--download-only",
                     dest="download_only",
                     action="store_true",
                     help="Do not build, only download prerequisites",
                     default=False)
-  parser.add_option("-v",
+  parser.add_argument("-v",
                     "--verbose",
                     dest="verbose",
                     action="store_true",
                     help="Verbose output",
                     default=False)
-  parser.add_option("--skip-base-packages",
+  parser.add_argument("--skip-base-packages",
                     dest="skip_base",
                     action="store",
                     default="")
-  parser.add_option("--force-base-build",
+  parser.add_argument("--force-base-build",
                     dest="force_base_build",
                     action="store_true",
                     default=False)
-  parser.add_option("--enable-shared",
+  parser.add_argument("--enable-shared",
                     dest="enable_shared",
                     action="store_true",
                     default=False)
-  parser.add_option("--mpi-build",
+  parser.add_argument("--mpi-build",
                     dest="mpi_build",
                     help="Builds software with mpi functionality",
                     action="store_true",
                     default=False)
-  parser.add_option("--python3",
+  parser.add_argument("--python3",
                     dest="python3",
                     help="Install a Python3 interpreter. This is unsupported and purely for development purposes.",
                     action="store_true",
                     default=False)
-  parser.add_option("--wxpython4",
+  parser.add_argument("--wxpython4",
                     dest="wxpython4",
                     help="Install wxpython4 instead of wxpython3. This is unsupported and purely for development purposes.",
                     action="store_true",
                     default=False)
-  options, args = parser.parse_args()
+  parser.add_argument("--config-flags", "--config_flags",
+                    dest="config_flags",
+                    help="""Pass flags to the configuration step. Flags should
+be passed separately with quotes to avoid confusion (e.g
+--config_flags="--build=debug" --config_flags="--enable_cxx11")""",
+                    action="append",
+                    default=[])
+  parser.add_argument("--use-conda", "--use_conda", metavar="ENV_DIRECTORY",
+                    dest="use_conda",
+                    help="""Use conda for dependencies. The directory to an
+existing conda environment can be provided. The build will use that enviroment
+instead of creating a default one for the builder. Also, if a conda environment
+is currently active, $CONDA_PREFIX will be used if ENV_DIRECTORY is not
+provided. Specifying an environment or using $CONDA_PREFIX is for developers
+that maintain their own conda environment.""",
+                    default=None, nargs='?', const='')
+  options = parser.parse_args()
+  args = options.action
+
   # process external
   options.specific_external_builder=None
   if options.builder.lower() in ["afitt",
@@ -2447,7 +2685,7 @@ def run(root=None):
   for arg in allowedargs:
     if arg in args:
       actions.append(arg)
-  print "Performing actions:", " ".join(actions)
+  print("Performing actions:", " ".join(actions))
 
   # Check builder
   if options.builder not in builders:
@@ -2486,8 +2724,10 @@ def run(root=None):
     mpi_build=options.mpi_build,
     python3=options.python3,
     wxpython4=options.wxpython4,
+    config_flags=options.config_flags,
+    use_conda=options.use_conda,
   ).run()
-  print "\nBootstrap success: %s" % ", ".join(actions)
+  print("\nBootstrap success: %s" % ", ".join(actions))
 
 if __name__ == "__main__":
   run()

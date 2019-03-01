@@ -1,5 +1,28 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+from builtins import object, range
 import math
+
+def round2(x, d=0):
+  '''
+  Python 3 defaults to rounding to the nearest even number (round half to even),
+  so this function keeps the Python 2 behavior, which is rounding half away
+  from zero.
+
+  References:
+  https://docs.python.org/3.7/library/functions.html#round
+  https://en.wikipedia.org/wiki/Rounding#Round_half_to_even
+
+  https://docs.python.org/2.7/library/functions.html#round
+  https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero
+
+  Function from:
+  http://python3porting.com/differences.html#rounding-behavior
+  '''
+  p = 10 ** d
+  if x > 0:
+    return float(math.floor((x * p) + 0.5))/p
+  else:
+    return float(math.ceil((x * p) - 0.5))/p
 
 def iround(x):
   if (x < 0): return int(x-0.5)
@@ -31,14 +54,14 @@ class nested_loop(object):
       assert len(begin) == len(end)
     if (not open_range):
       end = list(end)
-      for i in xrange(len(end)):
+      for i in range(len(end)):
         end[i] += 1
-    for i in xrange(len(end)):
+    for i in range(len(end)):
       assert end[i] >= begin[i]
     O.begin = begin
     O.end = end
     O.current = list(begin)
-    for i in xrange(len(end)):
+    for i in range(len(end)):
       if (end[i] > begin[i]):
         O.current[-1] -= 1
         break
@@ -46,7 +69,7 @@ class nested_loop(object):
   def __iter__(O):
     return O
 
-  def next(O):
+  def __next__(O):
     b = O.begin
     e = O.end
     c = O.current
@@ -89,7 +112,7 @@ def next_permutation(seq):
 def random_permutation_in_place(list):
   import random
   n = len(list)
-  for i in xrange(n):
+  for i in range(n):
     j = random.randrange(n)
     list[i], list[j] = list[j], list[i]
 
@@ -113,7 +136,7 @@ def normalize_angle(phi, deg=False, zero_centered=False):
     phi -= period
   return phi
 
-def percentile_based_spread (values, pbs_fraction=0.608) :
+def percentile_based_spread(values, pbs_fraction=0.608):
   """
   See Pozharski (2010) Acta. Cryst. D66, 970-978.  The default value of the
   pbs_fraction parameter is for 3D geometries, and should be adjusted as
@@ -125,7 +148,7 @@ def percentile_based_spread (values, pbs_fraction=0.608) :
   elif (n == 1) : return values[0]
   i_high = min(iceil(n * pbs_fraction),n-1)
   i_low = ifloor(n * pbs_fraction)
-  if (i_high == i_low) :
+  if (i_high == i_low):
     return values[i_high]
   x_high = values[i_high]
   x_low = values[i_low]

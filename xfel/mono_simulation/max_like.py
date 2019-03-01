@@ -3,8 +3,8 @@ from six.moves import range
 from scitbx.array_family import flex
 import math
 from math import exp,pi,log,pow
-import cPickle as pickle
-import cStringIO as StringIO
+from six.moves import cPickle as pickle
+from six.moves import cStringIO as StringIO
 from scitbx.lbfgs import run,termination_parameters,exception_handling_parameters,core_parameters
 
 
@@ -12,7 +12,7 @@ class minimizer:
   def __init__(self, d_i, psi_i, eta_rad, Deff):
     import sys
     self.safelog = -1. + math.log(sys.float_info.max)
-    self.S = StringIO.StringIO()
+    self.S = StringIO()
     pickle.dump([d_i, psi_i, eta_rad, Deff],self.S,0)
     assert len(d_i) == len(psi_i)
     self.d_i = d_i

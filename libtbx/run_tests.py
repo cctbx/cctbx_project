@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import libtbx.load_env
 
@@ -32,12 +32,12 @@ tst_list = (
   "$D/tst_binary_search.py",
   "$D/tst_topological_sort.py",
   "$D/clusterTests.py",
-  "$D/tst_lzw.py",
   "$D/tst_citations.py",
   "$D/tst_python_code_parsing.py",
   "$D/tst_representation.py",
   "$D/tst_runtime_utils.py",
 # "$D/tst_xmlrpc_utils.py", # This test is failing
+  "$D/test_python3_regression.py",
   )
 
 def run():

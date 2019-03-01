@@ -85,7 +85,7 @@ def get_angle_outliers(angle_proxies, chain, sites_cart, hierarchy):
       kin_text += kin
   return kin_text
 
-def angle_outlier_as_kinemage (self) :
+def angle_outlier_as_kinemage(self):
   """
   Represent the angle outlier as a kinemage 'fan'.
   """
@@ -96,7 +96,7 @@ def angle_outlier_as_kinemage (self) :
   angle_key = self.kinemage_key()
   num_sigmas = - self.delta / self.sigma
   angle_key_full = "%s %.3f sigma" % (angle_key, num_sigmas)
-  if (num_sigmas < 0) :
+  if (num_sigmas < 0):
     color = "blue"
   else:
     color = "red"
@@ -156,7 +156,7 @@ def get_bond_outliers(bond_proxies, chain, sites_cart, hierarchy):
       kin_text += kin
   return kin_text
 
-def bond_outlier_as_kinemage (self) :
+def bond_outlier_as_kinemage(self):
   """
   Represent the bond outlier as a kinemage spring.
   """
@@ -165,7 +165,7 @@ def bond_outlier_as_kinemage (self) :
   kin_text = ""
   bond_key = self.kinemage_key()
   num_sigmas = - self.delta / self.sigma
-  if (num_sigmas < 0) :
+  if (num_sigmas < 0):
     color = "blue"
   else:
     color = "red"
@@ -329,11 +329,11 @@ def make_probe_dots(hierarchy, keep_hydrogens=False):
       probe_return += line+'\n'
   return probe_return
 
-def cbeta_dev (outliers, chain_id=None) :
+def cbeta_dev(outliers, chain_id=None):
   cbeta_out = "@subgroup {CB dev} dominant\n"
   cbeta_out += "@balllist {CB dev Ball} color= magenta master= {Cbeta dev}\n"
   for outlier in outliers :
-    if (chain_id is None) or (chain_id == outlier.chain_id) :
+    if (chain_id is None) or (chain_id == outlier.chain_id):
       cbeta_out += outlier.as_kinemage() + "\n"
   if len(cbeta_out.splitlines()) == 2:
     cbeta_out = ""
@@ -422,9 +422,9 @@ def rotamer_outliers(chain, pdbID, rot_outliers):
     if (not outlier.is_outlier()) : continue
     outlier_list.append(outlier.atom_group_id_str())
   for residue_group in chain.residue_groups():
-    for atom_group in residue_group.atom_groups() :
+    for atom_group in residue_group.atom_groups():
       check_key = atom_group.id_str()
-      if (check_key in outlier_list) :
+      if (check_key in outlier_list):
         key_hash = {}
         xyz_hash = {}
         for atom in atom_group.atoms():
@@ -897,7 +897,7 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
                               i_seq_name_hash=i_seq_name_hash,
                               pdbID=pdbID,
                               index=counter)
-      if (chain.is_protein()) :
+      if (chain.is_protein()):
         kin_out += rotamer_outliers(chain=chain, pdbID=pdbID,
           rot_outliers=rot_outliers)
         kin_out += rama_outliers(chain=chain, pdbID=pdbID, ram_outliers=rama)
@@ -910,7 +910,7 @@ def make_multikin(f, processed_pdb_file, pdbID=None, keep_hydrogens=False):
                                    chain=chain,
                                    sites_cart=sites_cart,
                                    hierarchy=hierarchy)
-      if (chain.is_protein()) :
+      if (chain.is_protein()):
         kin_out += cbeta_dev(chain_id=chain.id,
           outliers=cb.results)
       kin_out += pperp_outliers(hierarchy=hierarchy,
@@ -1010,13 +1010,13 @@ def run(args, pdb_interpretation_params=None):
                           keep_hydrogens=work_params.kinemage.keep_hydrogens)
   return outfile
 
-def export_molprobity_result_as_kinemage (
+def export_molprobity_result_as_kinemage(
     result,
     pdb_hierarchy,
     geometry,
     probe_file,
     keep_hydrogens=False,
-    pdbID="PDB") :
+    pdbID="PDB"):
   assert (result.restraints is not None)
   i_seq_name_hash = build_name_hash(pdb_hierarchy=pdb_hierarchy)
   sites_cart = pdb_hierarchy.atoms().extract_xyz()
@@ -1051,7 +1051,7 @@ def export_molprobity_result_as_kinemage (
                               i_seq_name_hash=i_seq_name_hash,
                               pdbID=pdbID,
                               index=counter)
-      if (chain.is_protein()) :
+      if (chain.is_protein()):
         assert (not None in [result.rotalyze, result.ramalyze])
         kin_out += rotamer_outliers(chain=chain,
           pdbID=pdbID,
@@ -1060,7 +1060,7 @@ def export_molprobity_result_as_kinemage (
           pdbID=pdbID,
           ram_outliers=result.ramalyze)
       kin_out += result.restraints.as_kinemage(chain_id=chain.id)
-      if (chain.is_protein()) :
+      if (chain.is_protein()):
         assert (result.cbetadev is not None)
         kin_out += result.cbetadev.as_kinemage(chain_id=chain.id)
       kin_out += pperp_outliers(hierarchy=pdb_hierarchy,

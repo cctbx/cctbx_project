@@ -12,7 +12,7 @@ bibtex = False
   .type = bool
 """
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil_string=master_phil,
@@ -27,10 +27,10 @@ internally in Phenix, or BibText (if bibtex=True or --bibtext specified).
   assert (params.pmid is not None) and (len(params.pmid) > 0)
   for pmid in params.pmid :
     article = pubmed.get_pubmed_xml(pmid)
-    if (params.bibtex) :
+    if (params.bibtex):
       print >> out, article.as_bibtex_citation()
     else :
       print >> out, article.as_phenix_citation()
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

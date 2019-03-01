@@ -1,8 +1,6 @@
 from __future__ import division
 import mmtbx.model
 import libtbx.load_env
-from mmtbx import monomer_library
-import mmtbx.monomer_library.pdb_interpretation
 import iotbx.pdb
 import time
 from libtbx.utils import null_out
@@ -111,14 +109,14 @@ END
 """
 
 def run():
-  if (not libtbx.env.has_module("reduce")) :
+  if (not libtbx.env.has_module("reduce")):
     print "Reduce not installed, needed for model.idealize_h_minimization(). skipping"
     return
   for pdb_str in [pdb_str_1, pdb_str_2]:
     for use_neutron_distances in [True, False]:
       print "use_neutron_distances:", use_neutron_distances, "*"*30
-      params = monomer_library.pdb_interpretation.master_params.extract()
-      params.use_neutron_distances = use_neutron_distances
+      params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+      params.pdb_interpretation.use_neutron_distances = use_neutron_distances
       inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
       m = mmtbx.model.manager(
         model_input               = inp,
@@ -154,16 +152,16 @@ pdb_str_3 = """CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
 SCALE1      0.050000  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.050000  0.000000        0.00000
 SCALE3      0.000000  0.000000  0.050000        0.00000
-ATOM      1 CA   GLY A   1       0.000   0.000   0.000  1.00 30.00           C
-ATOM      2 CA   GLY A   2       1.000   1.000   1.000  1.00 30.00           C
-ATOM      3 CA   GLY A   3       2.000   2.000   2.000  1.00 30.00           C
-ATOM      4 CA   GLY A   4       3.000   3.000   3.000  1.00 30.00           C
-ATOM      5 CA   GLY A   5       4.000   4.000   4.000  1.00 30.00           C
-ATOM      6 CA   GLY A   6       5.000   5.000   5.000  1.00 30.00           C
-ATOM      7 CA   GLY A   7       6.000   6.000   6.000  1.00 30.00           C
-ATOM      8 CA   GLY A   8       7.000   7.000   7.000  1.00 30.00           C
-ATOM      9 CA   GLY A   9       8.000   8.000   8.000  1.00 30.00           C
-ATOM     10 CA   GLY A  10       9.000   9.000   9.000  1.00 30.00           C
+ATOM      1  CA  GLY A   1       0.000   0.000   0.000  1.00 30.00           C
+ATOM      2  CA  GLY A   2       1.000   1.000   1.000  1.00 30.00           C
+ATOM      3  CA  GLY A   3       2.000   2.000   2.000  1.00 30.00           C
+ATOM      4  CA  GLY A   4       3.000   3.000   3.000  1.00 30.00           C
+ATOM      5  CA  GLY A   5       4.000   4.000   4.000  1.00 30.00           C
+ATOM      6  CA  GLY A   6       5.000   5.000   5.000  1.00 30.00           C
+ATOM      7  CA  GLY A   7       6.000   6.000   6.000  1.00 30.00           C
+ATOM      8  CA  GLY A   8       7.000   7.000   7.000  1.00 30.00           C
+ATOM      9  CA  GLY A   9       8.000   8.000   8.000  1.00 30.00           C
+ATOM     10  CA  GLY A  10       9.000   9.000   9.000  1.00 30.00           C
 TER
 END
 """

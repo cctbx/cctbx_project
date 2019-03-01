@@ -1,10 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
-from Queue import Empty
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves.queue import Empty
+from six.moves import cPickle as pickle
 import fcntl
 import tempfile
 import os
@@ -17,7 +14,7 @@ class instant(object):
 
   def __call__(self):
 
-    raise Empty, "No data found in queue"
+    raise Empty("No data found in queue")
 
 
 class timed(object):
@@ -40,7 +37,7 @@ class timed(object):
       time.sleep( waittime )
 
     else:
-      raise Empty, "No data found in queue within timeout"
+      raise Empty("No data found in queue within timeout")
 
 
 class eternal(object):

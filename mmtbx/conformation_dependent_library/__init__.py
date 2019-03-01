@@ -10,6 +10,10 @@ import mmtbx.conformation_dependent_library.cdl_utils
 
 from mmtbx.conformation_dependent_library.multi_residue_class import \
   ThreeProteinResidues, RestraintsRegistry
+from mmtbx.conformation_dependent_library.multi_residue_class import \
+  TwoProteinResidues, FourProteinResidues, FiveProteinResidues
+from mmtbx.conformation_dependent_library.multi_residue_cdl_class import \
+  ThreeProteinResiduesWithCDL
 
 chararcters_36 = letters[:26]+digits
 
@@ -54,22 +58,38 @@ def get_restraint_values(threes, interpolate=False):
     restraint_values = cdl_database[res_type_group][key]
   return restraint_values
 
-def generate_protein_threes(hierarchy,
+def generate_protein_tuples(hierarchy,
                             geometry,
+                            length,
                             include_non_linked=False,
-                            omega_cdl=False,
                             backbone_only=True,
                             include_non_standard_peptides=False,
+                            # CDL specific
+                            cdl_class=False,
+                            omega_cdl=False,
+                            #
+                            retain_selection="name ca or name c or name n or name o or name cb or name h",
                             verbose=False,
                             ):
+  assert length
+  assert length>1
+  assert length<=5
+  if length==3:
+    if cdl_class:
+      ProteinResidues = ThreeProteinResiduesWithCDL
+    else:
+      ProteinResidues = ThreeProteinResidues
+  elif length==2: ProteinResidues = TwoProteinResidues
+  elif length==4: ProteinResidues = FourProteinResidues
+  elif length==5: ProteinResidues = FiveProteinResidues
   peptide_lookup = ['common_amino_acid']
   if include_non_standard_peptides:
     peptide_lookup.append('modified_amino_acid')
   backbone_asc = hierarchy.atom_selection_cache()
-  backbone_sel = backbone_asc.selection("name ca or name c or name n or name o or name cb")
+  backbone_sel = backbone_asc.selection(retain_selection)
   backbone_hierarchy = hierarchy.select(backbone_sel)
   get_class = iotbx.pdb.common_residue_names_get_class
-  threes = ThreeProteinResidues(geometry, registry=registry)
+  threes = ProteinResidues(geometry, registry=registry, length=length)
   loop_hierarchy=hierarchy
   if backbone_only: loop_hierarchy=backbone_hierarchy
   for model in loop_hierarchy.models():
@@ -93,31 +113,87 @@ def generate_protein_threes(hierarchy,
             continue
           if include_non_linked:
             list.append(threes, residue)
-            if len(threes)>3: del threes[0]
+            if len(threes)>length: del threes[0]
           else:
             threes.append(residue)
-          if len(threes)!=3:
+          if len(threes)!=length:
             if omega_cdl:
-              if len(threes)==2:
+              if len(threes)==length-1:
                 threes.insert(0,None)
               else: continue
             else: continue
-          assert len(threes)<=3
-          list_of_threes.append(copy.copy(threes))
+          assert len(threes)<=length
+          #
+          if 0: list_of_threes.append(copy.copy(threes))
+          else:
+            # transfer residues to new class because copy.copy is too deep
+            tmp = ProteinResidues(geometry,
+                                  registry=registry,
+                                  length=length,
+                                  include_non_linked=include_non_linked,
+                                  )
+            for pr in threes: tmp.append(pr)
+            list_of_threes.append(tmp)
+            #
         # per conformer
         for i, threes in enumerate(list_of_threes):
           if i==0:
-            threes.start =  True
+            threes.start = True
           if i==len(list_of_threes)-1:
             threes.end = True
           else:
-            if len(threes)!=3:
+            if len(threes)!=length:
               pass
             elif threes[1] != list_of_threes[i+1][0]:
               threes.end = True
               list_of_threes[i+1].start = True
           yield threes
-      threes = ThreeProteinResidues(geometry, registry=registry)
+      threes = ProteinResidues(geometry,
+                               registry=registry,
+                               length=length,
+                               include_non_linked=include_non_linked,
+                               )
+
+def generate_protein_threes(hierarchy,
+                            geometry,
+                            include_non_linked=False,
+                            backbone_only=True,
+                            include_non_standard_peptides=False,
+                            # CDL specific
+                            cdl_class=False,
+                            omega_cdl=False,
+                            verbose=False,
+                            ):
+  for threes in generate_protein_tuples(
+    hierarchy,
+    geometry,
+    include_non_linked=include_non_linked,
+    backbone_only=backbone_only,
+    include_non_standard_peptides=include_non_standard_peptides,
+    cdl_class=cdl_class,
+    omega_cdl=omega_cdl,
+    length=3,
+    ):
+    yield threes
+
+def generate_protein_fragments(hierarchy,
+                               geometry,
+                               length,
+                               include_non_linked=False,
+                               backbone_only=True,
+                               include_non_standard_peptides=False,
+                               verbose=False,
+                               ):
+  for fragment in generate_protein_tuples(
+    hierarchy,
+    geometry,
+    length,
+    include_non_linked=include_non_linked,
+    backbone_only=backbone_only,
+    include_non_standard_peptides=include_non_standard_peptides,
+    verbose=verbose,
+    ):
+    yield fragment
 
 def update_restraints(hierarchy,
                       geometry, # restraints_manager,
@@ -138,46 +214,26 @@ def update_restraints(hierarchy,
     sites_cart = current_geometry.sites_cart()
   if sites_cart:
     pdb_atoms = hierarchy.atoms()
-    #if atom_lookup:
-    #  for j_seq, scatterer in enumerate(current_geometry.scatterers()):
-    #    pdb_atoms[atom_lookup[scatterer.label]].xyz = sites_cart[j_seq]
-    #else:
     # XXX PDB_TRANSITION VERY SLOW
     for j_seq, atom in enumerate(pdb_atoms):
       atom.xyz = sites_cart[j_seq]
-      #atom_lookup[atom.id_str()] = j_seq
 
   threes = None
   average_updates = 0
   total_updates = 0
   for threes in generate_protein_threes(hierarchy,
                                         geometry, #restraints_manager,
+                                        cdl_class=True,
                                         #verbose=verbose,
                                         ):
     if threes.cis_group():
       continue
 
-    if 0:
-      res_type_group = get_res_type_group(
-        threes[1].resname,
-        threes[2].resname,
-         )
-      if res_type_group is None: continue
-      key = threes.get_cdl_key() #verbose=verbose)
-      restraint_values = cdl_database[res_type_group][key]
-      print restraint_values
-      print len(restraint_values)
-      assert 0
-    else:
-      restraint_values = get_restraint_values(threes, interpolate=interpolate)
-
-    #if 1:
-    #  print threes, threes.are_linked(), res_type_group, key, restraint_values
+    restraint_values = get_restraint_values(threes, interpolate=interpolate)
 
     if restraint_values is None: continue
 
     if restraint_values[0]=="I":
-      #print threes, threes.are_linked(), res_type_group, key, restraint_values[:4]
       average_updates += 1
     else:
       total_updates += 1

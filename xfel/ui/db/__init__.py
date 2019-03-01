@@ -8,7 +8,10 @@ except ImportError as e:
 
 def get_run_path(rootpath, trial, rungroup, run):
   import os
-  return os.path.join(rootpath, "r%04d"%run.run, "%03d_rg%03d"%(trial.trial, rungroup.id))
+  try:
+    return os.path.join(rootpath, "r%04d"%int(run.run), "%03d_rg%03d"%(trial.trial, rungroup.id))
+  except ValueError:
+    return os.path.join(rootpath, run.run, "%03d_rg%03d"%(trial.trial, rungroup.id))
 
 def get_db_connection(params, block=True):
   if params.db.password is None:
@@ -21,7 +24,7 @@ def get_db_connection(params, block=True):
   sleep_time = 0.1
   while retry_count < retry_max:
     try:
-      dbobj=MySQLdb.connect(passwd=password,user=params.db.user,host=params.db.host,db=params.db.name)
+      dbobj=MySQLdb.connect(passwd=password,user=params.db.user,host=params.db.host,db=params.db.name,port=params.db.port)
       return dbobj
     except Exception as e:
       retry_count += 1
@@ -76,7 +79,7 @@ class db_proxy(object):
           keys.append(key)
       assert len(kwargs) == 0
       if len(keys) > 0:
-        query = "SELECT %s FROM %s WHERE id = %d" % (", ".join(keys), table_name, id)
+        query = "SELECT %s FROM `%s` WHERE id = %d" % (", ".join(keys), table_name, id)
         results = app.execute_query(query).fetchall()[0]
         for key, value in zip(keys, results):
           self._db_dict[key] = value
@@ -100,13 +103,13 @@ class db_proxy(object):
       return
 
     if isinstance(value, bool):
-      value = "%s"%int(value)
+      v = "%s"%int(value)
     elif value is None or value == "None" or value == "":
-      value = "NULL"
+      v = "NULL"
     else:
-      value = "'%s'"%value
+      v = "'%s'"%value
 
     query = "UPDATE `%s` SET %s = %s WHERE id = %d"% (
-      self.table_name, key, value, self.id)
+      self.table_name, key, v, self.id)
     self.app.execute_query(query, commit=True)
     self._db_dict[key] = value

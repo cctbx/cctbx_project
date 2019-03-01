@@ -1,15 +1,10 @@
 from __future__ import absolute_import, division, print_function
-
-import functools
-import math
-import os.path
-import operator
-import sys
-
-import fable
+from six.moves import range
+from libtbx.utils import product
 from libtbx import group_args
 from libtbx import mutable
 from libtbx import Auto
+import os.path
 
 fmt_comma_placeholder = chr(255)
 
@@ -71,12 +66,7 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
       ic += 1
   potential_break_points.append((0, nc))
   n = nc - i_start
-
-  def iround(x):
-    if (x < 0): return int(x-0.5)
-    return int(x+.5)
-  def iceil(x):
-    return iround(math.ceil(x))
+  from libtbx.math_utils import iround, iceil
   l = max(min_len, iround(n / iceil(n / (max_len - i_start - 2))))
   b = 0
   f = 0
@@ -276,22 +266,24 @@ def convert_token(vmap, leading, tok, had_str_concat=None):
   tok.raise_not_supported()
 
 class major_types_cache(object):
+
   __slots__ = ["identifiers"]
 
-  def __init__(self):
-    self.identifiers = None
+  def __init__(O):
+    O.identifiers = None
 
-  def __contains__(self, value):
-    if self.identifiers is None:
-      self.identifiers = set()
-      hpp = os.path.join(fable.__path__[0], 'fem', 'major_types.hpp')
+  def __contains__(O, value):
+    if (O.identifiers is None):
+      O.identifiers = set()
+      import libtbx.load_env
+      hpp = libtbx.env.under_dist(
+        module_name="fable", path="fem/major_types.hpp", test=os.path.isfile)
       using_fem = "  using fem::"
-      with open(hpp, 'r') as fh:
-        for line in fh.read().splitlines():
-          if line.startswith(using_fem):
-            assert line.endswith(";")
-            self.identifiers.add(line[len(using_fem):-1])
-    return value in self.identifiers
+      for line in open(hpp).read().splitlines():
+        if (line.startswith(using_fem)):
+          assert line.endswith(";")
+          O.identifiers.add(line[len(using_fem):-1])
+    return value in O.identifiers
 
 major_types = major_types_cache()
 
@@ -355,14 +347,14 @@ class comment_manager(object):
 
   __slots__ = ["sl_list", "index"]
 
-  def __init__(self, fproc):
-    self.sl_list = []
+  def __init__(O, fproc):
+    O.sl_list = []
     for ssl in fproc.body_lines:
       if (ssl is not None):
         for sl in ssl.source_line_cluster:
-          self.sl_list.append(sl)
-    self.sl_list.sort(key=lambda source_line: source_line.global_line_index)
-    self.index = 0
+          O.sl_list.append(sl)
+    O.sl_list.sort(key=lambda source_line: source_line.global_line_index)
+    O.index = 0
 
   def produce(O, callback):
     produce_comment_given_sl(callback=callback, sl=O.sl_list[O.index])
@@ -745,7 +737,7 @@ def convert_data_type_and_dims(conv_info, fdecl, crhs, force_arr=False):
       vals = conv_info.fproc.eval_dimensions_simple(
         dim_tokens=dt, allow_power=False)
       if (vals.count(None) == 0):
-        sz = functools.reduce(operator.mul, vals, 1)
+        sz = product(vals)
         if (sz <= abs(conv_info.arr_nd_size_max)):
           from fable.read import dimensions_are_simple
           if (dimensions_are_simple(dim_tokens=dt)):
@@ -2502,7 +2494,7 @@ def generate_common_report(
       member_registry,
       variant_due_to_equivalence_common_names,
       stringio):
-  from six import StringIO
+  from six.moves import StringIO
   variant_common_names = set()
   if (stringio is None):
     report = StringIO()
@@ -2514,28 +2506,26 @@ def generate_common_report(
       fprocs_by_cpp.setdefault("\n".join(cpp), []).append(fproc)
     if (len(fprocs_by_cpp) != 1):
       variant_common_names.add(common_name)
-      fprocs_by_cpp_items = fprocs_by_cpp.items()
-      def cmp_size(a, b):
-        return cmp(len(b[0]), len(a[0]))
-      fprocs_by_cpp_items.sort(cmp_size)
+      fprocs_by_cpp_items = list(fprocs_by_cpp.items())
+      def size_key(a):
+        return len(a[0])
+      fprocs_by_cpp_items.sort(key=size_key, reverse=True)
       import difflib
       diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
       def show_fprocs(label, cpp_fprocs):
-        print("procedures %s:" % label, \
+        print("procedures %s:" % label,
           " ".join(sorted([fproc.name.value for fproc in cpp_fprocs[1]])), file=report)
       main_cpp_fprocs = fprocs_by_cpp_items[0]
       print("common name:", common_name, file=report)
       print("number of variants:", len(fprocs_by_cpp_items), file=report)
-      print("total number of procedures using the common block:", \
+      print("total number of procedures using the common block:",
         sum([len(fprocs) for cpp,fprocs in fprocs_by_cpp_items]), file=report)
       show_fprocs("first", main_cpp_fprocs)
       for other_cpp_fprocs in fprocs_by_cpp_items[1:]:
         show_fprocs("second", other_cpp_fprocs)
-        for line in diff_function(
+        print(" ".join([line for line in diff_function(
                       (main_cpp_fprocs[0]+"\n").splitlines(1),
-                      (other_cpp_fprocs[0]+"\n").splitlines(1)):
-          print(line, end=' ', file=report)
-        print(file=report)
+                      (other_cpp_fprocs[0]+"\n").splitlines(1))]), file=report)
   #
   need_empty_line = False
   for identifier in sorted(member_registry.keys()):
@@ -2553,11 +2543,16 @@ def generate_common_report(
     size_sums = {}
     for common_name,sizes in common_fdecl_list_sizes.items():
       size_sums[common_name] = sum(sizes)
-    def vv_cmp(a, b):
-      result = cmp(size_sums[b], size_sums[a])
-      if (result == 0): result = cmp(a, b)
-      return result
-    vv.sort(vv_cmp)
+
+    # vv_cmp incompatible with Py3. Create vv_key workaround, revisit later with comprehensive example.
+    #def vv_cmp(a, b):
+    #  result = cmp(size_sums[b], size_sums[a])
+    #  if (result == 0): result = cmp(a, b)
+    #  return result
+    #vv.sort(vv_cmp)
+
+    def vv_key(a): return size_sums.get(a, a)
+    vv.sort(key=vv_key, reverse=True)
     print("  %-20s   procedures    sum of members" % "common name", file=report)
     for common_name in vv:
       print("  %-20s   %8d         %8d" % (
@@ -2591,10 +2586,11 @@ def generate_common_report(
           print(fmt % row, file=report)
   #
   if (len(report.getvalue()) != 0 and stringio is None):
+    import sys
     report_file_name = "fable_cout_common_report"
-    print("Writing file", report_file_name, file=sys.stderr)
-    with open(report_file_name, "w") as fh:
-      fh.write(report.getvalue())
+    from libtbx.str_utils import show_string
+    print("Writing file:", show_string(report_file_name), file=sys.stderr)
+    open(report_file_name, "w").write(report.getvalue())
   #
   return variant_common_names
 
@@ -3046,8 +3042,7 @@ def process(
     common_commons_info = None
   if (separate_cmn_hpp):
     close_namespace(callback=cmn_callback, namespace=namespace, hpp_guard=True)
-    with open("cmn.hpp", "w") as fh:
-      fh.write("\n".join(break_lines(cpp_text=cmn_buffer)))
+    print("\n".join(break_lines(cpp_text=cmn_buffer)), file=open("cmn.hpp", "w"))
   #
   separate_function_buffers = []
   separate_function_buffer_by_function_name = {}
@@ -3178,8 +3173,8 @@ def process(
       callback=buffer.append, namespace=namespace, hpp_guard=False)
     if (write_separate_files_main_namespace == "All"
           or name in write_separate_files_main_namespace):
-      with open(name+".cpp", "w") as fh:
-        fh.write("\n".join(break_lines(cpp_text=buffer)))
+      print("\n".join(
+        break_lines(cpp_text=buffer)), file=open(name+".cpp", "w"))
   #
   for name,identifiers in separate_files_separate_namespace.items():
     buffers = separate_namespaces_buffers[identifiers[0]]
@@ -3189,8 +3184,8 @@ def process(
         callback=buffer.append, namespace=name, hpp_guard=(ext=="hpp"))
       if (write_separate_files_separate_namespace == "All"
             or name in write_separate_files_separate_namespace):
-        with open(name+"."+ext, "w") as fh:
-          fh.write("\n".join(break_lines(cpp_text=buffer)))
+        print("\n".join(
+          break_lines(cpp_text=buffer)), file=open(name+"."+ext, "w"))
   #
   if (function_declarations is not None):
     def write_functions(buffers, serial=None):
@@ -3248,8 +3243,7 @@ def process(
       if (not debug): raise
       show_traceback()
   #
-  if top_cpp_file_name:
-    with open(top_cpp_file_name, "w") as fh:
-      fh.write("\n".join(result))
+  if (top_cpp_file_name is not None):
+    print("\n".join(result), file=open(top_cpp_file_name, "w"))
   #
   return result

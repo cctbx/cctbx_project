@@ -137,7 +137,7 @@ class rsr_model(object):
     gs = self.model.geometry_statistics()
     result = None
     if(gs is not None):
-      gs.show(prefix=prefix, log=log, lowercase=True)
+      gs.show(prefix=prefix, log=log, uppercase=False)
       result = gs.result()
     self.stats_evaluations.append(group_args(
       cc       = self.cc_mask,

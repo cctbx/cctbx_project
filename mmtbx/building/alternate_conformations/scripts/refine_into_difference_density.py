@@ -16,7 +16,7 @@ output_file_name = refined.pdb
 include scope mmtbx.building.alternate_conformations.real_space_annealing.master_params_str
 """, process_includes=True)
 
-def run (args, out=None) :
+def run(args, out=None):
   if (out is None) : out = sys.stdout
   from mmtbx.building.alternate_conformations import real_space_annealing
   import mmtbx.maps.utils
@@ -33,7 +33,7 @@ def run (args, out=None) :
   fmodel = cmdline.fmodel
   hierarchy = cmdline.pdb_hierarchy
   sele_cache = hierarchy.atom_selection_cache()
-  if (params.selection is None) :
+  if (params.selection is None):
     raise Sorry("Please specify the selection parameter.")
   selection = sele_cache.selection(params.selection)
   assert (selection.count(True) > 0)
@@ -49,12 +49,12 @@ def run (args, out=None) :
     out=out).as_pdb_ensemble(log=out)
   t2 = time.time()
   print >> out, "refinement time: %.3fs" % (t2-t1)
-  if (refined_hierarchy is not None) :
+  if (refined_hierarchy is not None):
     refined_hierarchy.write_pdb_file(file_name=params.output_file_name,
       crystal_symmetry = fmodel.xray_structure.crystal_symmetry())
     print "wrote %s" % params.output_file_name
   else :
     raise Sorry("No conformations surviving filtering step!")
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

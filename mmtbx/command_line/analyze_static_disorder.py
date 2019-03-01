@@ -6,7 +6,7 @@ from libtbx import easy_pickle
 import os.path
 import sys
 
-def master_phil () :
+def master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     enable_stop_for_unknowns=False,
@@ -20,7 +20,7 @@ verbose = False
   .type = bool
 """)
 
-def run (args, out=sys.stdout) :
+def run(args, out=sys.stdout):
   from mmtbx.disorder import analyze_model
   import mmtbx.validation.molprobity
   import mmtbx.command_line
@@ -46,7 +46,7 @@ def run (args, out=sys.stdout) :
     nuclear=False)
   segments = []
   make_header("Analyzing model", out=out)
-  if (params.ignore_inconsistent_occupancy) :
+  if (params.ignore_inconsistent_occupancy):
     print >> out, "Discontinuous occupancies will be ignored."
   process = analyze_model.process_pdb_hierarchy(
     pdb_hierarchy=hierarchy,
@@ -56,15 +56,15 @@ def run (args, out=sys.stdout) :
   make_sub_header("MolProbity validation", out=out)
   validation.show_summary(out=out)
   make_sub_header("Disorder analysis", out=out)
-  if (process.n_disordered == 0) :
+  if (process.n_disordered == 0):
     print >> out, "No alternate conformations found."
   else :
     process.show(out=out, verbose=params.verbose)
-  if (params.pickle) :
+  if (params.pickle):
     file_name = os.path.basename(
       os.path.splitext(params.input.pdb.file_name[0])[0]) + ".pkl"
     easy_pickle.dump(file_name, process)
   return process
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

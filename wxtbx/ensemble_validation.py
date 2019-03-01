@@ -13,14 +13,14 @@ from wxGUI2 import AdvancedWidgets, Base
 import wx
 import sys
 
-class ensemble_validation_plot (plots.histogram) :
-  def show_plot (self,
+class ensemble_validation_plot(plots.histogram):
+  def show_plot(self,
       values,
       as_histogram=False,
       n_bins=10,
       reference_value=None,
-      title=None) :
-    if (as_histogram) :
+      title=None):
+    if (as_histogram):
       self.show_histogram(
         data=values,
         n_bins=n_bins,
@@ -33,17 +33,17 @@ class ensemble_validation_plot (plots.histogram) :
       self.figure.clear()
       p = self.figure.add_subplot(111)
       ax = p.plot(x, values, '-^', color=(0.0,0.5,1.0))
-      if (reference_value is not None) :
+      if (reference_value is not None):
         p.axhline(reference_value, color='red')
       p.set_xlabel("Model Number")
       p.set_ylabel("Score")
-      if (title is not None) :
+      if (title is not None):
         p.set_title(title)
       self.canvas.draw()
 
 # =============================================================================
-class ensemble_validation_panel (wx.Panel) :
-  def __init__ (self, *args, **kwds) :
+class ensemble_validation_panel(wx.Panel):
+  def __init__(self, *args, **kwds):
     wx.Panel.__init__(self, *args, **kwds)
     sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(sizer)
@@ -97,11 +97,11 @@ class ensemble_validation_panel (wx.Panel) :
     sizer.Add(self.plot, 1, wx.EXPAND|wx.ALL, 0)
     self.ensemble = None
 
-  def set_ensemble (self, ensemble) :
+  def set_ensemble(self, ensemble):
     assert (type(ensemble).__name__ == 'ensemble')
     self.ensemble = ensemble
 
-  def OnSave (self, event) :
+  def OnSave(self, event):
     filename = path_dialogs.manager().select_file(
       parent=self,
       message='Save statistics as a CSV file',
@@ -121,7 +121,7 @@ class ensemble_validation_panel (wx.Panel) :
                   ', '.join([str(v) for v in values]) + '\n')
       f.close()
 
-  def OnSelectPlot (self, event) :
+  def OnSelectPlot(self, event):
 
     # plot line graph or histogram
     n_bins = 10
@@ -150,7 +150,7 @@ class ensemble_validation_panel (wx.Panel) :
     i_label = validation_summary.molprobity_stat_labels.index(label)
     stat = self.ensemble.__slots__[i_label]
     values = getattr(self.ensemble, stat)
-    if (len(values) == 0) or (values.count(None) == len(values)) :
+    if (len(values) == 0) or (values.count(None) == len(values)):
       self.plot.figure.clear()
       [ ctrl.SetLabel("") for ctrl in self.value_ctrls ]
       return
@@ -423,9 +423,9 @@ class ensemble_chi_panel(wx.Panel):
     sizer.AddSpacer(spacer)
 
 # =============================================================================
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   result = validation_summary.run(sys.argv[1:])
-  if (type(result).__name__ != 'ensemble') :
+  if (type(result).__name__ != 'ensemble'):
     raise Sorry("Not an ensemble, graphics not available.")
   app = app.CCTBXApp(0)
   frame = wx.Frame(None, -1, "Ensemble validation")

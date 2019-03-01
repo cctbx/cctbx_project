@@ -888,7 +888,7 @@ class structure(crystal.special_position_settings):
     return self._scatterers.extract_u_iso_or_u_equiv(
       unit_cell=self.unit_cell())
 
-  def scale_adps (self, scale_factor) :
+  def scale_adps(self, scale_factor):
     return self._scatterers.scale_adps(scale_factor)
 
   def switch_to_neutron_scattering_dictionary(self):
@@ -2384,18 +2384,18 @@ class structure(crystal.special_position_settings):
           "Unable to find unused SHELX-compatible scatterer label.")
     return result
 
-  def intersection_of_scatterers (self, i_seq, j_seq) :
+  def intersection_of_scatterers(self, i_seq, j_seq):
     """
     For a pair of scatterers, calculates their overlap given the coordinates
     and displacement parameters (using adptbx.intersection).
     """
     sc1 = self.scatterers()[i_seq]
     sc2 = self.scatterers()[j_seq]
-    if (sc1.flags.use_u_aniso()) :
+    if (sc1.flags.use_u_aniso()):
       u1 = sc1.u_star
     else :
       u1 = sc1.u_iso
-    if (sc2.flags.use_u_aniso()) :
+    if (sc2.flags.use_u_aniso()):
       u2 = sc2.u_star
     else :
       u2 = sc2.u_iso

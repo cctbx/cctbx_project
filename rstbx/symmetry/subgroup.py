@@ -1,8 +1,5 @@
 from __future__ import division
-try:
-  import cPickle as pickle
-except ImportError:
-  import pickle
+from six.moves import cPickle as pickle
 from libtbx import adopt_init_args
 from cctbx.sgtbx import subgroups
 from scitbx.array_family import flex

@@ -13,7 +13,7 @@ from mmtbx.ions import server
 from scitbx.array_family import flex
 from scitbx.math import gaussian_fit_1d_analytical
 
-def anonymize_ions (pdb_hierarchy, log=sys.stdout):
+def anonymize_ions(pdb_hierarchy, log=sys.stdout):
   """
   Convert any elemental ions in the PDB hierarchy to water, resetting the
   occupancy and scaling the B-factor.  The atom segids will be set to the old
@@ -120,7 +120,7 @@ def collect_ions(pdb_hierarchy):
   return ions
 
 # TODO add test
-def compare_ions (hierarchy, reference_hierarchy, reference_xrs,
+def compare_ions(hierarchy, reference_hierarchy, reference_xrs,
     distance_cutoff=2.0, log=None, ignore_elements=(), only_elements=(),
     sel_str_base="segid ION"):
   """
@@ -307,7 +307,7 @@ def fit_gaussian(unit_cell, site_cart, real_map, radius=1.6):
   else:
     return fit.a, fit.b
 
-def count_coordinating_residues (nearby_atoms, distance_cutoff=3.0):
+def count_coordinating_residues(nearby_atoms, distance_cutoff=3.0):
   """
   Count the number of residues of each type involved in the coordination
   sphere.  This may yield additional clues to the identity of ions, e.g. only

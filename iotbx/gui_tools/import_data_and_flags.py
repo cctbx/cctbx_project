@@ -43,8 +43,8 @@ import_data
 }
 """)
 
-def run (args=(), params=None, out=None) :
-  if (out is None) :
+def run(args=(), params=None, out=None):
+  if (out is None):
     out = sys.stdout
   validate_params(params)
   from iotbx import reflection_file_editor
@@ -59,26 +59,26 @@ def run (args=(), params=None, out=None) :
   warnings = []
   have_r_free = False
   for array in miller_arrays :
-    if (reflection_file_editor.is_rfree_array(array, array.info())) :
+    if (reflection_file_editor.is_rfree_array(array, array.info())):
       have_r_free = True
-      if (params.import_data.flags_file is not None) :
+      if (params.import_data.flags_file is not None):
         raise Sorry("The data file (%s) already contains R-free flags." %
           params.import_data.data_file)
-    if (array.is_xray_reconstructed_amplitude_array()) :
-      if ("F(+)" in labels) :
+    if (array.is_xray_reconstructed_amplitude_array()):
+      if ("F(+)" in labels):
         labels.extend(["F_rec(+)", "SIGF_rec(+)", "F_rec(-)", "SIGF_rec(-)"])
       else :
         labels.extend(["F(+)", "SIGF(+)", "F(-)", "SIGF(-)"])
     else :
       labels.extend(array.info().labels)
     array = array.map_to_asu()
-    if (not array.is_unique_set_under_symmetry()) :
+    if (not array.is_unique_set_under_symmetry()):
       array = array.merge_equivalents().array()
     new_arrays.append(array)
   complete_set = reflection_file_utils.make_joined_set(
     new_arrays).complete_set()
-  if (not have_r_free) :
-    if (params.import_data.flags_file is not None) :
+  if (not have_r_free):
+    if (params.import_data.flags_file is not None):
       flags_in = file_reader.any_file(params.import_data.flags_file,
         force_type="hkl")
       flags_in.check_file_type("hkl")
@@ -89,10 +89,10 @@ def run (args=(), params=None, out=None) :
         disable_suitability_test=False,
         parameter_scope=None,
         return_all_valid_arrays=True)
-      if (len(flags_and_values) == 0) :
+      if (len(flags_and_values) == 0):
         raise Sorry("No R-free flags were found in the file %s." %
           params.import_data.flags_file)
-      elif (len(flags_and_values) > 1) :
+      elif (len(flags_and_values) > 1):
         raise Sorry(("Multiple valid sets of R-free flags were found in the "+
           "file %s.  Please use the reflection file editor to select a "+
           "single set of flags.") % params.import_data.flags_file)
@@ -104,13 +104,13 @@ def run (args=(), params=None, out=None) :
       missing_set = complete_set.lone_set(old_flags)
       n_missing = missing_set.indices().size()
       fraction_free = old_flags.data().count(True) / old_flags.data().size()
-      if (n_missing != 0) :
+      if (n_missing != 0):
         (n_bins, n_free, sse, accu) = reflection_file_editor.get_r_free_stats(
           miller_array=old_flags,
           test_flag_value=True)
         min_bins = int(old_flags.indices().size() * 0.005)
-        if (n_bins < (n_free / 100)) or (sse > 0.005) or (n_bins < min_bins) :
-          if (not params.import_data.ignore_shells) :
+        if (n_bins < (n_free / 100)) or (sse > 0.005) or (n_bins < min_bins):
+          if (not params.import_data.ignore_shells):
             raise Sorry(("The R-free flags in %s appear to have been "+
               "assigned in thin resolution shells.  PHENIX is unable to "+
               "properly extend flags created in this manner.  If you "+
@@ -136,23 +136,23 @@ def run (args=(), params=None, out=None) :
       new_arrays.append(new_flags)
   mtz_out = new_arrays[0].as_mtz_dataset(
     column_root_label="A")
-  for i, array in enumerate(new_arrays[1:]) :
+  for i, array in enumerate(new_arrays[1:]):
     mtz_out.add_miller_array(
       miller_array=array,
       column_root_label="%s" % string.uppercase[i+1])
   mtz_obj = mtz_out.mtz_object()
-  for i, column in enumerate(mtz_obj.columns()) :
+  for i, column in enumerate(mtz_obj.columns()):
     column.set_label(labels[i])
-  if (params.import_data.output_file is None) :
+  if (params.import_data.output_file is None):
     base,ext = os.path.splitext(params.import_data.data_file)
     params.import_data.output_file = base + "_flags.mtz"
   mtz_obj.write(file_name=params.import_data.output_file)
   print >> out, "Data and flags written to %s" % params.import_data.output_file
   return params.import_data.output_file
 
-def validate_params (params) :
-  if (params.import_data.data_file is None) :
+def validate_params(params):
+  if (params.import_data.data_file is None):
     raise Sorry("Please specify a data file.")
-  elif (not os.path.isfile(params.import_data.data_file)) :
+  elif (not os.path.isfile(params.import_data.data_file)):
     raise Sorry("%s is not a recognizable file." %params.import_data.data_file)
   return True

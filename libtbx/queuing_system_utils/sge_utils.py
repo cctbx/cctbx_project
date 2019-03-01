@@ -1,6 +1,8 @@
 "Sun Grid Engine utilities"
 from __future__ import absolute_import, division, print_function
 
+from builtins import range
+
 import sys
 import os
 
@@ -101,7 +103,7 @@ class qstat_items(object):
     f = int(ja_task_id[:m])
     l = int(ja_task_id[m+1:c])
     s = int(ja_task_id[c+1:])
-    return len(xrange(f,l+1,s))
+    return len(range(f,l+1,s))
 
   def oe_name(self, oe):
     ja_task_id = self.ja_task_id
@@ -156,7 +158,7 @@ def qstat_parse():
       ja_task_id=line[i_ja_task_id:].strip()))
   return result
 
-def qsub (file_name, qsub_args, use_default_output_names=False) :
+def qsub(file_name, qsub_args, use_default_output_names=False):
   from libtbx import easy_run
   if not use_default_output_names :
     out_file = os.path.splitext(file_name)[0] + "_out.txt"
@@ -169,12 +171,12 @@ def qsub (file_name, qsub_args, use_default_output_names=False) :
     command=cmd).raise_if_errors().stdout_lines
   job_id = None
   for line in qsub_out :
-    if line.startswith("Your job") :
+    if line.startswith("Your job"):
       job_id = int(line.split()[2])
       break
   return job_id
 
-def qdel (job_id=None, job_ids=None) :
+def qdel(job_id=None, job_ids=None):
   assert (job_id is None) or (job_ids is None)
   assert (job_id is not None) or (isinstance(job_ids, list))
   from libtbx import easy_run

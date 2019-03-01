@@ -136,7 +136,7 @@ def show_overall_observations(Fit_I,Fit_I_stddev,I_visited,ordered,sim,
     cumulative_I      += I_sum
     cumulative_Isigma += I_sigI_sum
 
-  if (title is not None) :
+  if (title is not None):
     print >> out, title
   from libtbx import table_utils
   table_header = ["","","","<asu","<obs",""," #"," %","","",""]
@@ -177,7 +177,7 @@ def show_overall_observations(Fit_I,Fit_I_stddev,I_visited,ordered,sim,
   print >>out,table_utils.format(table_data,has_header=2,justify='center',delim=" ")
 
   # XXX generate table object for displaying plots
-  if (title is None) :
+  if (title is None):
     title = "Data statistics by resolution"
   table = data_plots.table_data(
     title=title,

@@ -41,6 +41,7 @@ namespace dxtbx { namespace model {
     /** Construct the panel with the simple px->mm strategy */
     Panel()
       : gain_(1.0),
+        pedestal_(0.0),
         convert_coord_(new SimplePxMmStrategy()) {}
 
     /** Construct with data but no px/mm strategy */
@@ -61,6 +62,7 @@ namespace dxtbx { namespace model {
           pixel_size, image_size,
                   trusted_range, thickness, material, mu),
         gain_(1.0),
+        pedestal_(0.0),
         convert_coord_(new SimplePxMmStrategy()),
         identifier_(identifier) {}
 
@@ -83,6 +85,7 @@ namespace dxtbx { namespace model {
           pixel_size, image_size,
                   trusted_range, thickness, material, mu),
         gain_(1.0),
+        pedestal_(0.0),
         convert_coord_(convert_coord),
         identifier_(identifier) {}
 
@@ -111,6 +114,16 @@ namespace dxtbx { namespace model {
     /** Get the gain */
     double get_gain() const {
       return gain_;
+    }
+
+    /** Set the pedestal */
+    void set_pedestal(double pedestal) {
+      pedestal_ = pedestal;
+    }
+
+    /** Get the pedestal */
+    double get_pedestal() const {
+      return pedestal_;
     }
 
     /** Get the pixel to millimetre strategy */
@@ -338,6 +351,7 @@ namespace dxtbx { namespace model {
   protected:
 
     double gain_;
+    double pedestal_;
     shared_ptr<PxMmStrategy> convert_coord_;
     std::string identifier_;
   };
@@ -356,6 +370,7 @@ namespace dxtbx { namespace model {
     os << "  material: " << p.get_material() << std::endl;
     os << "  mu: " << p.get_mu() << std::endl;
     os << "  gain: " << p.get_gain() << std::endl;
+    os << "  pedestal: " << p.get_pedestal() << std::endl;
     os << "  fast_axis: " << p.get_fast_axis().const_ref() << std::endl;
     os << "  slow_axis: " << p.get_slow_axis().const_ref() << std::endl;
     os << "  origin: " << p.get_origin().const_ref() << std::endl;

@@ -18,7 +18,7 @@ def get_master_phil():
     }
 """, process_includes=True)
 
-def run (args, out=sys.stdout, quiet=False) :
+def run(args, out=sys.stdout, quiet=False):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
   usage_string = "%s file.pdb [params.eff] [options ...]" % prog
   cmdline = iotbx.phil.process_command_line_with_files(
@@ -27,7 +27,7 @@ def run (args, out=sys.stdout, quiet=False) :
     pdb_file_def="model",
     usage_string=usage_string)
   params = cmdline.work.extract()
-  if (params.model is None) :
+  if (params.model is None):
     raise Usage(usage_string)
   pdb_in = cmdline.get_file(params.model, force_type="pdb")
   hierarchy = pdb_in.file_object.hierarchy
@@ -42,5 +42,5 @@ def run (args, out=sys.stdout, quiet=False) :
     pdb_file_str = os.path.basename(params.model)[:-4]
     result.show_old_output(out=out, prefix=pdb_file_str, verbose=True)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   run(sys.argv[1:])

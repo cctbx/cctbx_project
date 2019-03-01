@@ -7,7 +7,7 @@ Description : Command line for solving indexing ambiguity
 import numpy as np
 from libtbx.easy_mp import parallel_map
 from prime.index_ambiguity.mod_indexing_ambiguity import indamb_handler
-import cPickle as pickle
+from six.moves import cPickle as pickle
 from prime.index_ambiguity.mod_kmeans import kmeans_handler
 from prime.postrefine.mod_mx import mx_handler
 import random

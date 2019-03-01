@@ -4,7 +4,7 @@ import sys
 #from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 
-def exercise (args) :
+def exercise(args):
   if 'verbose' in args:
     out=sys.stdout
   else:
@@ -14,6 +14,6 @@ def exercise (args) :
   from mmtbx.scaling.mean_f_rms_f import test
   test(out=out)
 
-if (__name__ == "__main__") :
+if (__name__ == "__main__"):
   exercise(sys.argv[1:])
   print "OK"

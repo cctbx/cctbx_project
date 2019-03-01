@@ -229,7 +229,7 @@ def build_angle_start_by_tor_id(
       d_sites.append(sites_cart[i])
       atom_ids.append(str(atom_id))
     dihe = scitbx.math.dihedral_angle(sites=d_sites, deg=True)
-    if (dihe is None) :
+    if (dihe is None):
       raise Sorry(("scitbx.math.dihedral_angle returned None!\n"+
         "Atom IDs: %s\nSites: %s\n") % (", ".join(atom_ids),
         ", ".join([ str(xyz) for xyz in d_sites ])))
