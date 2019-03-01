@@ -5,6 +5,8 @@
 from __future__ import division
 from libtbx.math_utils import roundoff
 from cctbx.miller import display
+from websocket_server import WebsocketServer
+
 
 class hklview_3d () :
   def __init__ (self, mysettings) :
@@ -54,6 +56,7 @@ class hklview_3d () :
     h_axis = self.scene.axes[0]
     k_axis = self.scene.axes[1]
     l_axis = self.scene.axes[2]
+    nrefls = self.scene.points.size()
 
     Hstararrowstart = roundoff( [-h_axis[0]*100, -h_axis[1]*100, -h_axis[2]*100] )
     Hstararrowend = roundoff( [h_axis[0]*100, h_axis[1]*100, h_axis[2]*100] )
@@ -79,7 +82,6 @@ class hklview_3d () :
     shape.addText( %s, [ 0, 0, 1 ], 5, 'H');
     shape.addText( %s, [ 0, 1, 0 ], 5, 'K');
     shape.addText( %s, [ 1, 0, 0 ], 5, 'L');
-
     """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, Kstararrowtxt, Lstararrowtxt)
 
@@ -90,8 +92,15 @@ class hklview_3d () :
     hkls = self.scene.indices
     dres = self.scene.work_array.d_spacings().data()
     colstr = self.scene.miller_array.info().label_string()
-    assert (colors.size() == radii.size() == self.scene.points.size())
+    assert (colors.size() == radii.size() == nrefls)
     shapespherestr = ""
+    shapespherestr2 = ""
+    shapespherestr3 = ""
+    shapespherestr4 = ""
+    colours = []
+    positions = []
+    radii2 = []
+    tooltips =[]
     for i, hklstars in enumerate(points) :
       tooltip = "'H,K,L: %s, %s, %s" %(hkls[i][0], hkls[i][1], hkls[i][2])
       tooltip += "\\ndres: %s" %str(roundoff(dres[i])  )
@@ -101,32 +110,160 @@ class hklview_3d () :
       shapespherestr += "shape.addSphere( %s, %s, %s, %s);\n" \
          %(str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
             str(roundoff(radii[i], 2)), tooltip )
+
+      shapespherestr2 += """shape%d = new NGL.Shape('shape');
+shape%d.addSphere( %s, %s, %s, %s);
+shapeComp%d = stage.addComponentFromObject(shape%d);
+sphererepr[%d] = shapeComp%d.addRepresentation('buffer');
+""" %(i, i, str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
+            str(roundoff(radii[i], 2)), tooltip, i, i, i, i )
+      # allows us to individually change colour and alpha values of spheres but with overhead on webgl
+      shapespherestr3 += """shape%d = new NGL.Shape('shape%d');
+spherebufs[%d] = new NGL.SphereBuffer({ position: new Float32Array( %s ),  color: new Float32Array( %s ),  radius: new Float32Array( [ %s ] ),  picking: [ %s ] })
+shape%d.addBuffer(spherebufs[%d])
+shapeComp%d = stage.addComponentFromObject(shape%d);
+sphererepr[%d] = shapeComp%d.addRepresentation('buffer%d');
+""" %(i, i, i, str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
+            str(roundoff(radii[i], 2)), tooltip, i, i, i, i, i, i, i )
+      # using common shape appears to cripple the javascript engine
+      shapespherestr4 += """
+spherebufs[%d] = new NGL.SphereBuffer({ position: new Float32Array( %s ),  color: new Float32Array( %s ),  radius: new Float32Array( [ %s ] ),  picking: [ %s ] })
+shape.addBuffer(spherebufs[%d])
+shapeComp%d = stage.addComponentFromObject(shape);
+sphererepr[%d] = shapeComp%d.addRepresentation('buffer%d');
+""" %(i, str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
+            str(roundoff(radii[i], 2)), tooltip, i, i, i, i, i)
+
+
+
+
+      positions.extend( roundoff(list(hklstars)) )
+      colours.extend( roundoff(list(colors[i]), 2) )
+      radii2.append( roundoff(radii[i], 2) )
+      tooltips.append(tooltip)
+
+    # spherebuffer is likely more efficient but how to attach tooltips to these?
+    spherebufferstr = """
+  tooltips = [ %s ]
+  positions = new Float32Array( %s )
+  colours = new Float32Array( %s )
+  radii = new Float32Array( %s )
+  sphereBuffer = new NGL.SphereBuffer({
+    position: positions,
+    color: colours,
+    radius: radii
+  })
+  shape.addBuffer(sphereBuffer)
+    """ %(str(tooltips), str(positions), str(colours), str(radii2) )
+
+
+
+
     documentstr = """
-    window.addEventListener( 'resize', function( event ){
-        stage.handleResize();
-    }, false );
-
-        var stage;
-
-        document.addEventListener('DOMContentLoaded', function () {
-
-          stage = new NGL.Stage('viewport', { backgroundColor: "grey" });
-          var shape = new NGL.Shape('shape');
-          stage.setParameters( { cameraType: "%s" } );
 
 
-    %s
+var connection = new WebSocket('ws://127.0.0.1:7894/');
 
-    %s
+connection.onopen = function () {
+  connection.send('Waffle'); // Send the message 'Waffle' to the server
+};
 
-    var shapeComp = stage.addComponentFromObject(shape);
-    shapeComp.addRepresentation('buffer');
-    shapeComp.autoView();
+// Log errors
+connection.onerror = function (error) {
+  console.log('WebSocket Error ' + error);
+};
 
-     });
 
-    """ % (self.cameratype, arrowstr, shapespherestr)
-    with open( r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr3.js", "w") as f:
+window.addEventListener( 'resize', function( event ){
+    stage.handleResize();
+}, false );
+
+
+var a=[0,0,0];
+var sphereBuffer;
+var stage;
+var shape;
+var shapeComp;
+var repr;
+var colours = new Float32Array(3)
+var sphererepr = new Array( %d )
+var spherebufs = new Array( %d )
+
+var hklscene = function (b) {
+  shape = new NGL.Shape('shape');
+  stage = new NGL.Stage('viewport', { backgroundColor: "grey" });
+  stage.setParameters( { cameraType: "%s" } );
+
+  %s
+
+  %s
+
+  shapeComp = stage.addComponentFromObject(shape);
+  repr = shapeComp.addRepresentation('buffer');
+  shapeComp.autoView();
+  repr.update()
+}
+
+document.addEventListener('DOMContentLoaded', function() { hklscene(a) }, false );
+
+
+connection.onmessage = function (e) {
+  var retval //= [1,2,-3]
+  //alert('Server: ' + e.data);
+  val = e.data.split(",")
+  //alert("cordinates from server= " + val)
+  //document.removeEventListener('DOMContentLoaded', function() { hklscene(a) }, false );
+  a = [ val[0], val[1], val[2] ]
+  var si = parseInt( val[3] )
+  //hklscene(a)
+  //shapeComp.removeRepresentation('buffer');
+
+  //shapeComp.dispose()
+  //repr.clear()
+  //repr.dispose()
+
+  //stage.removeAllComponents();
+  //buf = shape.getBufferList()
+  //shape._primitiveData.sphereRadius[si] = 2
+  //shape._primitiveData.spherePosition[0] = val[0]
+  //shape._primitiveData.spherePosition[1] = val[1]
+  //shape._primitiveData.spherePosition[2] = val[2]
+  //shape._primitiveData.sphereColor[3*si] = (Math.cos(val[0]) +1.0 )/2.0
+  //shape._primitiveData.sphereColor[3*si + 1] = 1.0
+  //shape._primitiveData.sphereColor[3*si + 2] = 1.0
+  vc1 = shape._primitiveData.sphereColor[3*si]
+  //shapeComp.setPosition( val )
+
+  //shapeComp = stage.addComponentFromObject(shape);
+  //repr = shapeComp.addRepresentation('buffer');
+  //repr.setColor()
+  //repr.updateVisibility()
+  //repr.update({ color: true })
+  //repr.update({ radius: true })
+  //repr.setParameters({ color: true })
+
+  radii[si] = (Math.sin(val[0]) +1.0 )/2.0
+  colours[3*si] = (Math.cos(val[0]) +1.0 )/2.0
+  colours[3*si + 1] = 1.0
+  colours[3*si + 2] = 1.0
+  vc1 = colours[3*si]
+  //shapeComp.setPosition( val )
+  sphereBuffer.setAttributes({ radius: radii })
+  stage.viewer.requestRender()
+  sphereBuffer.setAttributes({ color: colours })
+  stage.viewer.requestRender()
+
+
+  //document.addEventListener('DOMContentLoaded', function() { hklscene(a) }, false );
+  connection.send('sphere ' + si + '. Red colour now: ' + vc1); // Send the message 'Waffle' to the server
+};
+
+
+
+
+    """ % (nrefls, nrefls, self.cameratype, arrowstr, shapespherestr4)
+    #""" % (self.scene.points.size(), self.cameratype, arrowstr, spherebufferstr) #shapespherestr)
+    with open( r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr4.js", "w") as f:
       f.write(documentstr)
 
   #--- user input and settings
@@ -152,6 +289,56 @@ class hklview_3d () :
       #self.GetParent().update_clicked(hkl, d_min, value)
     else :
       self.GetParent().update_clicked(index=None)
+
+
+"""
+# python2 code
+
+from websocket_server import WebsocketServer
+import time
+
+nc = None
+def new_client(client, server):
+  #server.send_message(client, u"Oink!")
+  server.send_message(client, u"1,2,3" )
+  nc = client
+
+def new_message(client, server, message):
+  print message
+
+server = WebsocketServer(7894, host='127.0.0.1')
+server.set_fn_new_client(new_client)
+time.sleep(10)
+server.set_fn_message_received(new_message)
+server.send_message_to_all(u"Oink!")
+server.run_forever()
+
+# python3 code
+
+import asyncio
+import datetime
+import random
+import websockets
+
+async def time(websocket, path):
+  x = 0
+  for i in range(100):
+    x += 0.2
+    msg = str(x) + u", 2, 3, " + str(i)
+    await websocket.send( msg )
+    message = await websocket.recv()
+    print( message)
+    await asyncio.sleep(1)
+
+start_server = websockets.serve(time, '127.0.0.1', 7894)
+asyncio.get_event_loop().run_until_complete(start_server)
+asyncio.get_event_loop().run_forever()
+
+
+
+"""
+
+
 
 
 

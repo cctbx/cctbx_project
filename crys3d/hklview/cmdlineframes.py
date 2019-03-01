@@ -215,6 +215,9 @@ class HKLViewFrame () :
     self.set_miller_array(self.valid_arrays[column_sel])
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
+    print "Miller array %s runs from hkls: %s to %s" \
+     %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
+        self.miller_array.index_span().max() )
     # from cctbx import crystal
     # symm = crystal.symmetry(
     #   space_group_info=space_group_info,
