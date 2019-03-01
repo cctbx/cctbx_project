@@ -14,6 +14,8 @@ import time
 import traceback
 import warnings
 
+from six.moves import cStringIO as StringIO
+
 from libtbx.queuing_system_utils import pbs_utils, sge_utils
 from libtbx.math_utils import round2
 from libtbx.str_utils import show_string
@@ -691,9 +693,6 @@ def kludge_show_to_str(obj):
   ------
   AttrbuteError if object does not have callable show() method
   """
-
-  from cStringIO import StringIO
-  import sys
 
   out = StringIO()
 
