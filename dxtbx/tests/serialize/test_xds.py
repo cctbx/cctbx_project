@@ -8,14 +8,15 @@ from libtbx.test_utils import approx_equal
 from dxtbx.imageset import ImageSetFactory
 from dxtbx.serialize import xds
 
+
 def test_to_xds(dials_regression, tmpdir):
-  tmpdir.chdir()
-  template = os.path.join(dials_regression, 'centroid_test_data', 'centroid_00*.cbf')
-  file_names = glob.glob(template)
-  sweep = ImageSetFactory.new(file_names)[0]
-  to_xds = xds.to_xds(sweep)
-  s1 = to_xds.XDS_INP()
-  expected = '''\
+    tmpdir.chdir()
+    template = os.path.join(dials_regression, "centroid_test_data", "centroid_00*.cbf")
+    file_names = glob.glob(template)
+    sweep = ImageSetFactory.new(file_names)[0]
+    to_xds = xds.to_xds(sweep)
+    s1 = to_xds.XDS_INP()
+    expected = """\
 DETECTOR=PILATUS MINIMUM_VALID_PIXEL_VALUE=0 OVERLOAD=495976
 SENSOR_THICKNESS= 0.320
 !SENSOR_MATERIAL / THICKNESS Si 0.320
@@ -51,30 +52,31 @@ UNTRUSTED_RECTANGLE= 0 2464 2103 2121
 UNTRUSTED_RECTANGLE= 0 2464 2315 2333
 DATA_RANGE= 1 9
 JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT\
-''' % os.path.join(dials_regression, 'centroid_test_data', 'centroid_????.cbf')
-  assert s1 == expected
-  s2 = StringIO()
-  real_space_a = (-5.327642, -39.034747, -4.988286)
-  real_space_b = (-35.253495, 7.596265, -22.127661)
-  real_space_c = (-22.673623, -1.486119, 35.793463)
-  to_xds.xparm_xds(real_space_a, real_space_b, real_space_c, space_group=1, out=s2)
-  # run coordinate frame converter on xparm.xds as a sanity check
-  with open('xparm.xds', mode="wb") as fh:
-    s2.seek(0)
-    fh.writelines(s2.readlines())
-  from rstbx.cftbx import coordinate_frame_helpers
-  converter = coordinate_frame_helpers.import_xds_xparm('xparm.xds')
-  scan = sweep.get_scan()
-  detector = sweep.get_detector()
-  goniometer = sweep.get_goniometer()
-  beam = sweep.get_beam()
-  assert approx_equal(real_space_a, converter.get_real_space_a())
-  assert approx_equal(real_space_b, converter.get_real_space_b())
-  assert approx_equal(real_space_c, converter.get_real_space_c())
-  assert approx_equal(goniometer.get_rotation_axis(),
-                      converter.get_rotation_axis())
-  assert approx_equal(
-    beam.get_direction(), converter.get_sample_to_source().elems)
-  assert approx_equal(detector[0].get_fast_axis(), converter.get_detector_fast())
-  assert approx_equal(detector[0].get_slow_axis(), converter.get_detector_slow())
-  assert approx_equal(detector[0].get_origin(), converter.get_detector_origin())
+""" % os.path.join(
+        dials_regression, "centroid_test_data", "centroid_????.cbf"
+    )
+    assert s1 == expected
+    s2 = StringIO()
+    real_space_a = (-5.327642, -39.034747, -4.988286)
+    real_space_b = (-35.253495, 7.596265, -22.127661)
+    real_space_c = (-22.673623, -1.486119, 35.793463)
+    to_xds.xparm_xds(real_space_a, real_space_b, real_space_c, space_group=1, out=s2)
+    # run coordinate frame converter on xparm.xds as a sanity check
+    with open("xparm.xds", mode="wb") as fh:
+        s2.seek(0)
+        fh.writelines(s2.readlines())
+    from rstbx.cftbx import coordinate_frame_helpers
+
+    converter = coordinate_frame_helpers.import_xds_xparm("xparm.xds")
+    scan = sweep.get_scan()
+    detector = sweep.get_detector()
+    goniometer = sweep.get_goniometer()
+    beam = sweep.get_beam()
+    assert approx_equal(real_space_a, converter.get_real_space_a())
+    assert approx_equal(real_space_b, converter.get_real_space_b())
+    assert approx_equal(real_space_c, converter.get_real_space_c())
+    assert approx_equal(goniometer.get_rotation_axis(), converter.get_rotation_axis())
+    assert approx_equal(beam.get_direction(), converter.get_sample_to_source().elems)
+    assert approx_equal(detector[0].get_fast_axis(), converter.get_detector_fast())
+    assert approx_equal(detector[0].get_slow_axis(), converter.get_detector_slow())
+    assert approx_equal(detector[0].get_origin(), converter.get_detector_origin())

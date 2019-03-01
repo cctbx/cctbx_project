@@ -13,32 +13,33 @@ from __future__ import absolute_import, division
 
 from dxtbx.format.FormatSMVHamamatsu import FormatSMVHamamatsu
 
+
 class FormatSMVHamamatsuSPring8BL32XU(FormatSMVHamamatsu):
+    @staticmethod
+    def understand(image_file):
 
-  @staticmethod
-  def understand(image_file):
+        size, header = FormatSMVHamamatsu.get_smv_header(image_file)
 
-    size, header = FormatSMVHamamatsu.get_smv_header(image_file)
+        wanted_header_items = ["DETECTOR_NAME"]
 
-    wanted_header_items = ['DETECTOR_NAME']
+        for header_item in wanted_header_items:
+            if not header_item in header:
+                return 0
 
-    for header_item in wanted_header_items:
-      if not header_item in header:
-        return 0
+        return header["DETECTOR_NAME"] == "Hamamatsu C10158DK"
 
-    return header["DETECTOR_NAME"] == "Hamamatsu C10158DK"
+    def _start(self):
 
-  def _start(self):
+        FormatSMVHamamatsu._start(self)
 
-    FormatSMVHamamatsu._start(self)
+    def detectorbase_start(self):
+        from iotbx.detectors.hamamatsu import HamamatsuImage
 
-  def detectorbase_start(self):
-    from iotbx.detectors.hamamatsu import HamamatsuImage
-    self.detectorbase = HamamatsuImage(self._image_file)
-    self.detectorbase.open_file = self.open_file
-    self.detectorbase.readHeader()
+        self.detectorbase = HamamatsuImage(self._image_file)
+        self.detectorbase.open_file = self.open_file
+        self.detectorbase.readHeader()
 
-  def _goniometer(self):
-    '''Return a model for a simple single-axis reversed direction goniometer.'''
+    def _goniometer(self):
+        """Return a model for a simple single-axis reversed direction goniometer."""
 
-    return self._goniometer_factory.single_axis_reverse()
+        return self._goniometer_factory.single_axis_reverse()

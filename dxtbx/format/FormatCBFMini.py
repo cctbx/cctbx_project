@@ -17,284 +17,313 @@ from dxtbx.format.FormatCBF import FormatCBF
 from dxtbx.format.FormatCBFMiniPilatusHelpers import get_pilatus_timestamp
 from dxtbx.model import ParallaxCorrectedPxMmStrategy, SimplePxMmStrategy
 
-if 'DXTBX_OVERLOAD_SCALE' in os.environ:
-  dxtbx_overload_scale = float(os.environ['DXTBX_OVERLOAD_SCALE'])
+if "DXTBX_OVERLOAD_SCALE" in os.environ:
+    dxtbx_overload_scale = float(os.environ["DXTBX_OVERLOAD_SCALE"])
 else:
-  dxtbx_overload_scale = 1
+    dxtbx_overload_scale = 1
+
 
 class FormatCBFMini(FormatCBF):
-  '''An image reading class for mini CBF format images i.e. those from
-  Dectris, which will read the header into a dictionary.'''
+    """An image reading class for mini CBF format images i.e. those from
+  Dectris, which will read the header into a dictionary."""
 
-  @staticmethod
-  def understand(image_file):
-    '''Check to see if this looks like an CBF format image, i.e. we can
-    make sense of it.'''
+    @staticmethod
+    def understand(image_file):
+        """Check to see if this looks like an CBF format image, i.e. we can
+    make sense of it."""
 
-    header = FormatCBF.get_cbf_header(image_file)
+        header = FormatCBF.get_cbf_header(image_file)
 
-    if '_diffrn.id' in header and '_diffrn_source' in header:
-      return False
+        if "_diffrn.id" in header and "_diffrn_source" in header:
+            return False
 
-    def one_of_these_in(record):
-      these = ['PILATUS','SLS','SSRL','?','XDS special',
-               'GENERIC_MINI', # intended for simulated PAD data, non-Pilatus array size
-              ]
-      for convention in these:
-        if convention in record: return True
-      return False
-    for record in header.split('\n'):
-      if '_array_data.header_convention' in record and one_of_these_in(record):
-        return True
-      if '# Detector' in record and \
-             'PILATUS' in record:  #CBFlib v0.8.0 allowed
-        return True
-      if '# Detector' in record and \
-             'ADSC' in record and 'HF-4M' in header:
-        return True
+        def one_of_these_in(record):
+            these = [
+                "PILATUS",
+                "SLS",
+                "SSRL",
+                "?",
+                "XDS special",
+                "GENERIC_MINI",  # intended for simulated PAD data, non-Pilatus array size
+            ]
+            for convention in these:
+                if convention in record:
+                    return True
+            return False
 
-    return False
+        for record in header.split("\n"):
+            if "_array_data.header_convention" in record and one_of_these_in(record):
+                return True
+            if "# Detector" in record and "PILATUS" in record:  # CBFlib v0.8.0 allowed
+                return True
+            if "# Detector" in record and "ADSC" in record and "HF-4M" in header:
+                return True
 
-  def __init__(self, image_file, **kwargs):
-    '''Initialise the image structure from the given file.'''
+        return False
 
-    from dxtbx import IncorrectFormatError
-    if not self.understand(image_file):
-      raise IncorrectFormatError(self, image_file)
+    def __init__(self, image_file, **kwargs):
+        """Initialise the image structure from the given file."""
 
-    FormatCBF.__init__(self, image_file, **kwargs)
+        from dxtbx import IncorrectFormatError
 
-    self._raw_data = None
+        if not self.understand(image_file):
+            raise IncorrectFormatError(self, image_file)
 
-    return
+        FormatCBF.__init__(self, image_file, **kwargs)
 
-  def _start(self):
-    '''Open the image file, read the image header, copy it into a
-    dictionary for future reference.'''
+        self._raw_data = None
 
-    FormatCBF._start(self)
+        return
 
-    cif_header = FormatCBF.get_cbf_header(self._image_file)
+    def _start(self):
+        """Open the image file, read the image header, copy it into a
+    dictionary for future reference."""
 
-    self._cif_header_dictionary = { }
+        FormatCBF._start(self)
 
-    for record in cif_header.split('\n'):
-      if not '#' in record[:1]:
-        continue
+        cif_header = FormatCBF.get_cbf_header(self._image_file)
 
-      if len(record[1:].split()) <= 2 and record.count(':') == 2:
-        self._cif_header_dictionary['timestamp'] = record[1:].strip()
-        continue
+        self._cif_header_dictionary = {}
 
-      tokens = record.replace('=', '').replace(':', '').split()[1:]
+        for record in cif_header.split("\n"):
+            if not "#" in record[:1]:
+                continue
 
-      self._cif_header_dictionary[tokens[0]] = ' '.join(tokens[1:])
+            if len(record[1:].split()) <= 2 and record.count(":") == 2:
+                self._cif_header_dictionary["timestamp"] = record[1:].strip()
+                continue
 
-    for record in self._mime_header.split('\n'):
-      if not record.strip():
-        continue
-      token, value = record.split(':')
-      self._cif_header_dictionary[token.strip()] = value.strip()
+            tokens = record.replace("=", "").replace(":", "").split()[1:]
 
-    return
+            self._cif_header_dictionary[tokens[0]] = " ".join(tokens[1:])
 
-  def _detector(self):
-    '''Return a model for a simple detector, presuming no one has
+        for record in self._mime_header.split("\n"):
+            if not record.strip():
+                continue
+            token, value = record.split(":")
+            self._cif_header_dictionary[token.strip()] = value.strip()
+
+        return
+
+    def _detector(self):
+        """Return a model for a simple detector, presuming no one has
     one of these on a two-theta stage. Assert that the beam centre is
-    provided in the Mosflm coordinate frame.'''
+    provided in the Mosflm coordinate frame."""
 
-    distance = float(
-        self._cif_header_dictionary['Detector_distance'].split()[0])
+        distance = float(self._cif_header_dictionary["Detector_distance"].split()[0])
 
-    beam_xy = self._cif_header_dictionary['Beam_xy'].replace(
-        '(', '').replace(')', '').replace(',', '').split()[:2]
+        beam_xy = (
+            self._cif_header_dictionary["Beam_xy"]
+            .replace("(", "")
+            .replace(")", "")
+            .replace(",", "")
+            .split()[:2]
+        )
 
-    wavelength = float(
-        self._cif_header_dictionary['Wavelength'].split()[0])
+        wavelength = float(self._cif_header_dictionary["Wavelength"].split()[0])
 
-    beam_x, beam_y = map(float, beam_xy)
+        beam_x, beam_y = map(float, beam_xy)
 
-    pixel_xy = self._cif_header_dictionary['Pixel_size'].replace(
-        'm', '').replace('x', '').split()
+        pixel_xy = (
+            self._cif_header_dictionary["Pixel_size"]
+            .replace("m", "")
+            .replace("x", "")
+            .split()
+        )
 
-    pixel_x, pixel_y = map(float, pixel_xy)
+        pixel_x, pixel_y = map(float, pixel_xy)
 
-    if 'Silicon' in self._cif_header_dictionary:
-      thickness = float(
-        self._cif_header_dictionary['Silicon'].split()[2]) * 1000.0
-      material = 'Si'
-      sensor = 'PAD'
-    elif 'CdTe' in self._cif_header_dictionary:
-      thickness = float(
-        self._cif_header_dictionary['CdTe'].split()[2]) * 1000.0
-      material = 'CdTe'
-      sensor = 'PAD'
-    elif 'CCD' in self._cif_header_dictionary:
-      thickness = 0
-      material = None
-      sensor = 'CCD'
-    else:
-      thickness = 0
-      material = None
-      sensor = None
+        if "Silicon" in self._cif_header_dictionary:
+            thickness = (
+                float(self._cif_header_dictionary["Silicon"].split()[2]) * 1000.0
+            )
+            material = "Si"
+            sensor = "PAD"
+        elif "CdTe" in self._cif_header_dictionary:
+            thickness = float(self._cif_header_dictionary["CdTe"].split()[2]) * 1000.0
+            material = "CdTe"
+            sensor = "PAD"
+        elif "CCD" in self._cif_header_dictionary:
+            thickness = 0
+            material = None
+            sensor = "CCD"
+        else:
+            thickness = 0
+            material = None
+            sensor = None
 
-    nx = int(
-        self._cif_header_dictionary['X-Binary-Size-Fastest-Dimension'])
-    ny = int(
-        self._cif_header_dictionary['X-Binary-Size-Second-Dimension'])
+        nx = int(self._cif_header_dictionary["X-Binary-Size-Fastest-Dimension"])
+        ny = int(self._cif_header_dictionary["X-Binary-Size-Second-Dimension"])
 
-    overload = dxtbx_overload_scale * int(
-        self._cif_header_dictionary['Count_cutoff'].split()[0])
-    underload = -1
+        overload = dxtbx_overload_scale * int(
+            self._cif_header_dictionary["Count_cutoff"].split()[0]
+        )
+        underload = -1
 
-    if material is not None:
-      # take into consideration here the thickness of the sensor also the
-      # wavelength of the radiation (which we have in the same file...)
-      from cctbx.eltbx import attenuation_coefficient
-      table = attenuation_coefficient.get_table(material)
-      mu = table.mu_at_angstrom(wavelength) / 10.0
-      t0 = thickness
-      px_mm = ParallaxCorrectedPxMmStrategy(mu, t0)
-    else:
-      px_mm = SimplePxMmStrategy()
+        if material is not None:
+            # take into consideration here the thickness of the sensor also the
+            # wavelength of the radiation (which we have in the same file...)
+            from cctbx.eltbx import attenuation_coefficient
 
-    detector = self._detector_factory.simple(
-        sensor, distance * 1000.0, (beam_x * pixel_x * 1000.0,
-                                   beam_y * pixel_y * 1000.0), '+x', '-y',
-        (1000 * pixel_x, 1000 * pixel_y),
-        (nx, ny), (underload, overload), [],
-        px_mm=px_mm)
+            table = attenuation_coefficient.get_table(material)
+            mu = table.mu_at_angstrom(wavelength) / 10.0
+            t0 = thickness
+            px_mm = ParallaxCorrectedPxMmStrategy(mu, t0)
+        else:
+            px_mm = SimplePxMmStrategy()
 
-    if material is not None:
-      detector[0].set_thickness(thickness)
-      detector[0].set_material(material)
-      detector[0].set_mu(mu)
+        detector = self._detector_factory.simple(
+            sensor,
+            distance * 1000.0,
+            (beam_x * pixel_x * 1000.0, beam_y * pixel_y * 1000.0),
+            "+x",
+            "-y",
+            (1000 * pixel_x, 1000 * pixel_y),
+            (nx, ny),
+            (underload, overload),
+            [],
+            px_mm=px_mm,
+        )
 
-    return detector
+        if material is not None:
+            detector[0].set_thickness(thickness)
+            detector[0].set_material(material)
+            detector[0].set_mu(mu)
 
-  def _goniometer(self):
-    '''Return a model for a simple single-axis goniometer. This should
+        return detector
+
+    def _goniometer(self):
+        """Return a model for a simple single-axis goniometer. This should
     probably be checked against the image header, though for miniCBF
-    there are limited options for this.'''
+    there are limited options for this."""
 
-    if 'Phi' in self._cif_header_dictionary:
-      phi_value = float(self._cif_header_dictionary['Phi'].split()[0])
+        if "Phi" in self._cif_header_dictionary:
+            phi_value = float(self._cif_header_dictionary["Phi"].split()[0])
 
-    return self._goniometer_factory.single_axis()
+        return self._goniometer_factory.single_axis()
 
-  def _beam(self):
-    '''Return a simple model for the beam.'''
+    def _beam(self):
+        """Return a simple model for the beam."""
 
-    wavelength = float(
-        self._cif_header_dictionary['Wavelength'].split()[0])
+        wavelength = float(self._cif_header_dictionary["Wavelength"].split()[0])
 
-    beam = self._beam_factory.simple(wavelength)
+        beam = self._beam_factory.simple(wavelength)
 
-    try:
-      flux = float(self._cif_header_dictionary['Flux'].split()[0])
-      beam.set_flux(flux)
-    except KeyError:
-      pass
-    except IndexError:
-      pass
+        try:
+            flux = float(self._cif_header_dictionary["Flux"].split()[0])
+            beam.set_flux(flux)
+        except KeyError:
+            pass
+        except IndexError:
+            pass
 
-    try:
-      transmission = float(self._cif_header_dictionary['Transmission'].split()[0])
-      beam.set_transmission(transmission)
-    except KeyError:
-      pass
-    except IndexError:
-      pass
+        try:
+            transmission = float(self._cif_header_dictionary["Transmission"].split()[0])
+            beam.set_transmission(transmission)
+        except KeyError:
+            pass
+        except IndexError:
+            pass
 
-    return beam
+        return beam
 
-  def _scan(self):
-    format = self._scan_factory.format('CBF')
+    def _scan(self):
+        format = self._scan_factory.format("CBF")
 
-    exposure_time = float(
-        self._cif_header_dictionary['Exposure_period'].split()[0])
-    osc_start = float(
-        self._cif_header_dictionary['Start_angle'].split()[0])
-    osc_range = float(
-        self._cif_header_dictionary['Angle_increment'].split()[0])
+        exposure_time = float(self._cif_header_dictionary["Exposure_period"].split()[0])
+        osc_start = float(self._cif_header_dictionary["Start_angle"].split()[0])
+        osc_range = float(self._cif_header_dictionary["Angle_increment"].split()[0])
 
-    if "timestamp" in self._cif_header_dictionary:
-      timestamp = get_pilatus_timestamp(
-      self._cif_header_dictionary['timestamp'])
-    else:
-      timestamp = 0.0
+        if "timestamp" in self._cif_header_dictionary:
+            timestamp = get_pilatus_timestamp(self._cif_header_dictionary["timestamp"])
+        else:
+            timestamp = 0.0
 
-    return self._scan_factory.single(
-        self._image_file, format, exposure_time,
-        osc_start, osc_range, timestamp)
+        return self._scan_factory.single(
+            self._image_file, format, exposure_time, osc_start, osc_range, timestamp
+        )
 
-  def read_cbf_image(self, cbf_image):
-    from cbflib_adaptbx import uncompress
-    import binascii
+    def read_cbf_image(self, cbf_image):
+        from cbflib_adaptbx import uncompress
+        import binascii
 
-    start_tag = binascii.unhexlify('0c1a04d5')
+        start_tag = binascii.unhexlify("0c1a04d5")
 
-    data = self.open_file(cbf_image, 'rb').read()
-    data_offset = data.find(start_tag) + 4
-    cbf_header = data[:data_offset - 4]
+        data = self.open_file(cbf_image, "rb").read()
+        data_offset = data.find(start_tag) + 4
+        cbf_header = data[: data_offset - 4]
 
-    fast = 0
-    slow = 0
-    length = 0
-    byte_offset = False
-    no_compression = False
+        fast = 0
+        slow = 0
+        length = 0
+        byte_offset = False
+        no_compression = False
 
-    for record in cbf_header.split('\n'):
-      if 'X-Binary-Size-Fastest-Dimension' in record:
-        fast = int(record.split()[-1])
-      elif 'X-Binary-Size-Second-Dimension' in record:
-        slow = int(record.split()[-1])
-      elif 'X-Binary-Number-of-Elements' in record:
-        length = int(record.split()[-1])
-      elif 'X-Binary-Size:' in record:
-        size = int(record.split()[-1])
-      elif 'conversions' in record:
-        if 'x-CBF_BYTE_OFFSET' in record:
-          byte_offset = True
-        elif 'x-CBF_NONE' in record:
-          no_compression = True
+        for record in cbf_header.split("\n"):
+            if "X-Binary-Size-Fastest-Dimension" in record:
+                fast = int(record.split()[-1])
+            elif "X-Binary-Size-Second-Dimension" in record:
+                slow = int(record.split()[-1])
+            elif "X-Binary-Number-of-Elements" in record:
+                length = int(record.split()[-1])
+            elif "X-Binary-Size:" in record:
+                size = int(record.split()[-1])
+            elif "conversions" in record:
+                if "x-CBF_BYTE_OFFSET" in record:
+                    byte_offset = True
+                elif "x-CBF_NONE" in record:
+                    no_compression = True
 
-    assert(length == fast * slow)
+        assert length == fast * slow
 
-    if byte_offset:
-      pixel_values = uncompress(packed = data[data_offset:data_offset + size],
-                                fast = fast, slow = slow)
-    elif no_compression:
-      from boost.python import streambuf
-      from dxtbx import read_int32
-      from scitbx.array_family import flex
-      assert(len(self.get_detector()) == 1)
-      f = self.open_file(self._image_file)
-      f.read(data_offset)
-      pixel_values = read_int32(streambuf(f), int(slow * fast))
-      pixel_values.reshape(flex.grid(slow, fast))
+        if byte_offset:
+            pixel_values = uncompress(
+                packed=data[data_offset : data_offset + size], fast=fast, slow=slow
+            )
+        elif no_compression:
+            from boost.python import streambuf
+            from dxtbx import read_int32
+            from scitbx.array_family import flex
 
-    else:
-      raise ValueError("Uncompression of type other than byte_offset or none is not supported (contact authors)")
+            assert len(self.get_detector()) == 1
+            f = self.open_file(self._image_file)
+            f.read(data_offset)
+            pixel_values = read_int32(streambuf(f), int(slow * fast))
+            pixel_values.reshape(flex.grid(slow, fast))
 
-    return pixel_values
+        else:
+            raise ValueError(
+                "Uncompression of type other than byte_offset or none is not supported (contact authors)"
+            )
 
-  def get_raw_data(self):
-    if self._raw_data is None:
-      data = self.read_cbf_image(self._image_file)
-      self._raw_data = data
+        return pixel_values
 
-    return self._raw_data
+    def get_raw_data(self):
+        if self._raw_data is None:
+            data = self.read_cbf_image(self._image_file)
+            self._raw_data = data
 
-  def detectorbase_start(self):
+        return self._raw_data
 
-    from iotbx.detectors.pilatus_minicbf import PilatusImage
-    self.detectorbase = PilatusImage(self._image_file)
-    self.detectorbase.readHeader() # necessary for LABELIT
+    def detectorbase_start(self):
 
-  @staticmethod
-  def as_file(detector,beam,gonio,scan,data,path,header_convention="GENERIC_MINI",det_type="GENERIC"):
-    """Note to developers: first attempt to write a miniCBF given a dxtbx-style experiment,
+        from iotbx.detectors.pilatus_minicbf import PilatusImage
+
+        self.detectorbase = PilatusImage(self._image_file)
+        self.detectorbase.readHeader()  # necessary for LABELIT
+
+    @staticmethod
+    def as_file(
+        detector,
+        beam,
+        gonio,
+        scan,
+        data,
+        path,
+        header_convention="GENERIC_MINI",
+        det_type="GENERIC",
+    ):
+        """Note to developers: first attempt to write a miniCBF given a dxtbx-style experiment,
        But fields are not filled rigorously as in cbflib/src/cbf_minicbf_header.c
        Present code does not account for:
          Pilatus model number and serial number
@@ -308,69 +337,72 @@ class FormatCBFMini(FormatCBF):
          Auxiliary files (bad pixel mask, flat field, trim, image path)
          Detector not normal to beam
     """
-    import pycbf
-    from dxtbx.format.FormatCBFMultiTile import cbf_wrapper
+        import pycbf
+        from dxtbx.format.FormatCBFMultiTile import cbf_wrapper
 
-    cbf=cbf_wrapper()
-    cbf_root=os.path.splitext(os.path.basename(path))[0]+".cbf"
-    cbf.new_datablock(os.path.splitext(os.path.basename(path))[0])
+        cbf = cbf_wrapper()
+        cbf_root = os.path.splitext(os.path.basename(path))[0] + ".cbf"
+        cbf.new_datablock(os.path.splitext(os.path.basename(path))[0])
 
-    """ Data items in the ARRAY_DATA category are the containers for the array data
+        """ Data items in the ARRAY_DATA category are the containers for the array data
     items described in the category ARRAY_STRUCTURE. """
-    cbf.add_category("array_data",["header_convention","header_contents","data"])
+        cbf.add_category("array_data", ["header_convention", "header_contents", "data"])
 
-    # get pixel info out of detector object
-    panel = detector[0]
-    pixel_xy = panel.get_pixel_size()
-    pixel_x_microns = pixel_xy[0]*1000
-    pixel_y_microns = pixel_xy[1]*1000
+        # get pixel info out of detector object
+        panel = detector[0]
+        pixel_xy = panel.get_pixel_size()
+        pixel_x_microns = pixel_xy[0] * 1000
+        pixel_y_microns = pixel_xy[1] * 1000
 
-    # make sure we get the right units
-    thickness_meters = panel.get_thickness()/1000.0
+        # make sure we get the right units
+        thickness_meters = panel.get_thickness() / 1000.0
 
-    material = panel.get_material()
-    if material == 'Si':
-      sensor = 'Silicon'
-    elif material == 'CdTe':
-      sensor = 'CdTe'
-    elif panel.get_type() == 'SENSOR_CCD':
-      sensor = 'CCD'
+        material = panel.get_material()
+        if material == "Si":
+            sensor = "Silicon"
+        elif material == "CdTe":
+            sensor = "CdTe"
+        elif panel.get_type() == "SENSOR_CCD":
+            sensor = "CCD"
 
-    # maybe someday more people will do this
-    flux = beam.get_flux()
-    transmission = beam.get_transmission()
-    polarization_fraction = beam.get_polarization_fraction()
+        # maybe someday more people will do this
+        flux = beam.get_flux()
+        transmission = beam.get_transmission()
+        polarization_fraction = beam.get_polarization_fraction()
 
-    # get exposure information
-    if scan is None:
-      exposure_period = phi_start = osc = 0
-    else:
-      exposure_period = scan.get_exposure_times()[0]
-      phi_start = scan.get_oscillation()[0]
-      osc = scan.get_oscillation()[1]
+        # get exposure information
+        if scan is None:
+            exposure_period = phi_start = osc = 0
+        else:
+            exposure_period = scan.get_exposure_times()[0]
+            phi_start = scan.get_oscillation()[0]
+            osc = scan.get_oscillation()[1]
 
-    # automatically account for read-out time?
-    # exposure_time = exposure_period-0.00203  # this is apropriate for Pilatus3 S
-    exposure_time = exposure_period  # simulation is a perfect detector
+        # automatically account for read-out time?
+        # exposure_time = exposure_period-0.00203  # this is apropriate for Pilatus3 S
+        exposure_time = exposure_period  # simulation is a perfect detector
 
-    tau = 0 # assume simulation is a perfect detector with no pile-up error
-    trusted_range = detector[0].get_trusted_range()
-    count_cutoff = trusted_range[1]
+        tau = 0  # assume simulation is a perfect detector with no pile-up error
+        trusted_range = detector[0].get_trusted_range()
+        count_cutoff = trusted_range[1]
 
-    wavelength = beam.get_wavelength()  # get the wavelength in the conventional way
-    energy = 12398.4245/wavelength
-    threshold = energy/2  # presume normal data collection convention
+        wavelength = beam.get_wavelength()  # get the wavelength in the conventional way
+        energy = 12398.4245 / wavelength
+        threshold = energy / 2  # presume normal data collection convention
 
-    bad_pixels = 0   # maybe get this from negative pixel values?
+        bad_pixels = 0  # maybe get this from negative pixel values?
 
-    assert len(detector)==1,"only single-panel detectors supported"
-    distance_meters = detector[0].get_distance()/1000
+        assert len(detector) == 1, "only single-panel detectors supported"
+        distance_meters = detector[0].get_distance() / 1000
 
-    # fixed now, no longer backwards
-    beam_center = detector[0].get_beam_centre_px(beam.get_s0())
-    ORGX, ORGY = beam_center
+        # fixed now, no longer backwards
+        beam_center = detector[0].get_beam_centre_px(beam.get_s0())
+        ORGX, ORGY = beam_center
 
-    cbf.add_row([header_convention, """
+        cbf.add_row(
+            [
+                header_convention,
+                """
 # Detector: %(det_type)s, S/N 60-0000
 # 1972-01-01T00:00:00.000
 # Pixel_size %(pixel_x_microns)ge-6 m x %(pixel_x_microns)ge-6 m
@@ -397,40 +429,45 @@ class FormatCBFMini(FormatCBF):
 # Detector_2theta 0.0000 deg.
 # Kappa 0.0000 deg.
 # Phi %(phi_start).4f deg.
-"""%locals()
-])
+"""
+                % locals(),
+            ]
+        )
 
-    binary_id = 1
-    focus = data.focus()
-    data2 = data.copy_to_byte_str()
-    elements = len(data)
-    byteorder = "little_endian"
-    dimfast = focus[1]
-    dimmid = focus[0]
-    dimslow = 1
-    padding = 0
-    elsize = 4
-    elsigned = 1
+        binary_id = 1
+        focus = data.focus()
+        data2 = data.copy_to_byte_str()
+        elements = len(data)
+        byteorder = "little_endian"
+        dimfast = focus[1]
+        dimmid = focus[0]
+        dimslow = 1
+        padding = 0
+        elsize = 4
+        elsigned = 1
 
-    cbf.set_integerarray_wdims_fs(
-        pycbf.CBF_BYTE_OFFSET,
-        binary_id,
-        data2,
-        elsize,
-        elsigned,
-        elements,
-        byteorder,
-        dimfast,
-        dimmid,
-        dimslow,
-        padding)
+        cbf.set_integerarray_wdims_fs(
+            pycbf.CBF_BYTE_OFFSET,
+            binary_id,
+            data2,
+            elsize,
+            elsigned,
+            elements,
+            byteorder,
+            dimfast,
+            dimmid,
+            dimslow,
+            padding,
+        )
 
-    cbf.write_widefile(cbf_root,pycbf.CBF,\
-      pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
+        cbf.write_widefile(
+            cbf_root, pycbf.CBF, pycbf.MIME_HEADERS | pycbf.MSG_DIGEST | pycbf.PAD_4K, 0
+        )
 
-if __name__ == '__main__':
 
-  import sys
+if __name__ == "__main__":
 
-  for arg in sys.argv[1:]:
-    print(FormatCBFMini.understand(arg))
+    import sys
+
+    for arg in sys.argv[1:]:
+        print(FormatCBFMini.understand(arg))

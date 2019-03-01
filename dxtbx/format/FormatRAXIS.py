@@ -79,180 +79,194 @@ import math
 
 from dxtbx.format.Format import Format
 
+
 class FormatRAXIS(Format):
-  '''A class to support the RAXIS detector format from Rigaku.'''
+    """A class to support the RAXIS detector format from Rigaku."""
 
-  @staticmethod
-  def understand(image_file):
-    '''See if this looks like an RAXIS format image - clue is first
-    5 letters of file should be RAXIS.'''
+    @staticmethod
+    def understand(image_file):
+        """See if this looks like an RAXIS format image - clue is first
+    5 letters of file should be RAXIS."""
 
-    if Format.open_file(image_file).read(5) == 'RAXIS':
-      return True
+        if Format.open_file(image_file).read(5) == "RAXIS":
+            return True
 
-    return False
+        return False
 
-  def __init__(self, image_file, **kwargs):
-    from dxtbx import IncorrectFormatError
-    if not self.understand(image_file):
-      raise IncorrectFormatError(self, image_file)
+    def __init__(self, image_file, **kwargs):
+        from dxtbx import IncorrectFormatError
 
-    Format.__init__(self, image_file, **kwargs)
+        if not self.understand(image_file):
+            raise IncorrectFormatError(self, image_file)
 
-    return
+        Format.__init__(self, image_file, **kwargs)
 
-  def _start(self):
-    self._header_bytes = Format.open_file(self._image_file).read(1024)
+        return
 
-    if self._header_bytes[812:822].strip() in ['SGI', 'IRIS']:
-      self._f = '>f'
-      self._i = '>i'
-    else:
-      self._f = '<f'
-      self._i = '<i'
+    def _start(self):
+        self._header_bytes = Format.open_file(self._image_file).read(1024)
 
-  def detectorbase_start(self):
-    from iotbx.detectors.raxis import RAXISImage
-    self.detectorbase = RAXISImage(self._image_file)
-    self.detectorbase.readHeader()
+        if self._header_bytes[812:822].strip() in ["SGI", "IRIS"]:
+            self._f = ">f"
+            self._i = ">i"
+        else:
+            self._f = "<f"
+            self._i = "<i"
 
-  def _goniometer(self):
-    '''Return a model for the goniometer from the values stored in the
+    def detectorbase_start(self):
+        from iotbx.detectors.raxis import RAXISImage
+
+        self.detectorbase = RAXISImage(self._image_file)
+        self.detectorbase.readHeader()
+
+    def _goniometer(self):
+        """Return a model for the goniometer from the values stored in the
     header. Assumes same reference frame as is used for the Saturn
-    instrument.'''
+    instrument."""
 
-    # OK for the moment I am not completely clear on how omega, chi and
-    # phi are defined so for the moment assert (i) that only one rotation
-    # axis has a non-zero offset (ii) that this is the scan axis and
-    # (iii) that this is aligned with (1, 0, 0) in the file... N.B.
-    # with these scanners it is (I believe) always the case that the
-    # (1, 0, 0) direction points downwards from the sample to the
-    # goniometer.
+        # OK for the moment I am not completely clear on how omega, chi and
+        # phi are defined so for the moment assert (i) that only one rotation
+        # axis has a non-zero offset (ii) that this is the scan axis and
+        # (iii) that this is aligned with (1, 0, 0) in the file... N.B.
+        # with these scanners it is (I believe) always the case that the
+        # (1, 0, 0) direction points downwards from the sample to the
+        # goniometer.
 
-    i = self._i
-    f = self._f
-    header = self._header_bytes
+        i = self._i
+        f = self._f
+        header = self._header_bytes
 
-    # check magic number to see if this section is valid
-    if struct.unpack(i, header[852:856]) == 1:
-      n_axes = struct.unpack(i, header[856:860])[0]
-    else:
-      n_axes = 0
-    scan_axis = struct.unpack(i, header[980:984])[0]
+        # check magic number to see if this section is valid
+        if struct.unpack(i, header[852:856]) == 1:
+            n_axes = struct.unpack(i, header[856:860])[0]
+        else:
+            n_axes = 0
+        scan_axis = struct.unpack(i, header[980:984])[0]
 
-    for j in range(n_axes):
+        for j in range(n_axes):
 
-      axis_x = struct.unpack(f, header[860 + j * 12:864 + j * 12])[0]
-      axis_y = struct.unpack(f, header[864 + j * 12:868 + j * 12])[0]
-      axis_z = struct.unpack(f, header[868 + j * 12:872 + j * 12])[0]
+            axis_x = struct.unpack(f, header[860 + j * 12 : 864 + j * 12])[0]
+            axis_y = struct.unpack(f, header[864 + j * 12 : 868 + j * 12])[0]
+            axis_z = struct.unpack(f, header[868 + j * 12 : 872 + j * 12])[0]
 
-      axis_start = struct.unpack(f, header[920 + j * 4:924 + j * 4])[0]
-      axis_end = struct.unpack(f, header[940 + j * 4:944 + j * 4])[0]
-      axis_offset = struct.unpack(f, header[960 + j * 4:964 + j * 4])[0]
+            axis_start = struct.unpack(f, header[920 + j * 4 : 924 + j * 4])[0]
+            axis_end = struct.unpack(f, header[940 + j * 4 : 944 + j * 4])[0]
+            axis_offset = struct.unpack(f, header[960 + j * 4 : 964 + j * 4])[0]
 
-      if j == scan_axis:
-        assert(math.fabs(axis_x - 1) < 0.001)
-        assert(math.fabs(axis_y) < 0.001)
-        assert(math.fabs(axis_z) < 0.001)
-      else:
-        assert(math.fabs(axis_start % 180.0) < 0.001)
-        assert(math.fabs(axis_end % 180.0) < 0.001)
+            if j == scan_axis:
+                assert math.fabs(axis_x - 1) < 0.001
+                assert math.fabs(axis_y) < 0.001
+                assert math.fabs(axis_z) < 0.001
+            else:
+                assert math.fabs(axis_start % 180.0) < 0.001
+                assert math.fabs(axis_end % 180.0) < 0.001
 
-    return self._goniometer_factory.single_axis()
+        return self._goniometer_factory.single_axis()
 
-  def _detector(self):
-    '''Return a model for the detector as defined in the image header,
+    def _detector(self):
+        """Return a model for the detector as defined in the image header,
     with the additional knowledge about how things are arranged i.e. that
-    the principle rotation axis vector points from the sample downwards.'''
+    the principle rotation axis vector points from the sample downwards."""
 
-    # As above will have to make a bunch of assumptions about how the
-    # detector is set up, namely that the rotation axis points downwards,
-    # the fast axis points along and the slow axis points up. These will
-    # (as well as I can understand) be asserted. Also assuming that the
-    # two-theta axis is along (1, 0, 0) which is all that makes sense.
+        # As above will have to make a bunch of assumptions about how the
+        # detector is set up, namely that the rotation axis points downwards,
+        # the fast axis points along and the slow axis points up. These will
+        # (as well as I can understand) be asserted. Also assuming that the
+        # two-theta axis is along (1, 0, 0) which is all that makes sense.
 
-    i = self._i
-    f = self._f
-    header = self._header_bytes
+        i = self._i
+        f = self._f
+        header = self._header_bytes
 
-    det_h = struct.unpack(i, header[832:836])[0]
-    det_v = struct.unpack(i, header[836:840])[0]
-    det_f = struct.unpack(i, header[840:844])[0]
+        det_h = struct.unpack(i, header[832:836])[0]
+        det_v = struct.unpack(i, header[836:840])[0]
+        det_f = struct.unpack(i, header[840:844])[0]
 
-    assert(det_h == 0)
-    assert(det_v == 0)
-    assert(det_f == 0)
+        assert det_h == 0
+        assert det_v == 0
+        assert det_f == 0
 
-    nx = struct.unpack(i, header[768:772])[0]
-    ny = struct.unpack(i, header[772:776])[0]
+        nx = struct.unpack(i, header[768:772])[0]
+        ny = struct.unpack(i, header[772:776])[0]
 
-    dx = struct.unpack(f, header[776:780])[0]
-    dy = struct.unpack(f, header[780:784])[0]
+        dx = struct.unpack(f, header[776:780])[0]
+        dy = struct.unpack(f, header[780:784])[0]
 
-    distance = struct.unpack(f, header[344:348])[0]
-    two_theta = struct.unpack(f, header[556:560])[0]
+        distance = struct.unpack(f, header[344:348])[0]
+        two_theta = struct.unpack(f, header[556:560])[0]
 
-    beam_x = struct.unpack(f, header[540:544])[0]
-    beam_y = struct.unpack(f, header[544:548])[0]
+        beam_x = struct.unpack(f, header[540:544])[0]
+        beam_y = struct.unpack(f, header[544:548])[0]
 
-    beam = (beam_x * dx, beam_y * dy)
+        beam = (beam_x * dx, beam_y * dy)
 
-    return self._detector_factory.two_theta(
-        'IMAGE_PLATE', distance, beam, '+y', '-x', '+x', two_theta,
-        (dx, dy), (nx, ny), (0, 1000000), [])
+        return self._detector_factory.two_theta(
+            "IMAGE_PLATE",
+            distance,
+            beam,
+            "+y",
+            "-x",
+            "+x",
+            two_theta,
+            (dx, dy),
+            (nx, ny),
+            (0, 1000000),
+            [],
+        )
 
-  def _beam(self):
-    '''Return a simple model for the beam. This assumes a laboratory source
-    which has an unpolarized beam.'''
+    def _beam(self):
+        """Return a simple model for the beam. This assumes a laboratory source
+    which has an unpolarized beam."""
 
-    wavelength = struct.unpack(self._f, self._header_bytes[292:296])[0]
+        wavelength = struct.unpack(self._f, self._header_bytes[292:296])[0]
 
-    return self._beam_factory.complex((0.0, 0.0, 1.0), 0.5,
-                                      (0.0, 1.0, 0.0), wavelength)
+        return self._beam_factory.complex(
+            (0.0, 0.0, 1.0), 0.5, (0.0, 1.0, 0.0), wavelength
+        )
 
-  def _scan(self):
-    '''Return the scan information for this image.'''
-    import calendar
-    i = self._i
-    f = self._f
-    header = self._header_bytes
+    def _scan(self):
+        """Return the scan information for this image."""
+        import calendar
 
-    # We expect an invalid goniometer section, indicated by wrong magic number
-    magic_no = struct.unpack(">i", header[852:856])
+        i = self._i
+        f = self._f
+        header = self._header_bytes
 
-    format = self._scan_factory.format('RAXIS')
-    exposure_time = struct.unpack(f, header[536:540])[0]
+        # We expect an invalid goniometer section, indicated by wrong magic number
+        magic_no = struct.unpack(">i", header[852:856])
 
-    y, m, d = map(int, header[256:268].strip().split('-'))
+        format = self._scan_factory.format("RAXIS")
+        exposure_time = struct.unpack(f, header[536:540])[0]
 
-    epoch = calendar.timegm(datetime.datetime(y, m, d, 0, 0, 0).timetuple())
+        y, m, d = map(int, header[256:268].strip().split("-"))
 
-    if magic_no == 1:
-      s = struct.unpack(i, header[980:984])[0]
-      osc_start = struct.unpack(f, header[920 + s * 4:924 + s * 4])[0]
-      osc_end = struct.unpack(f, header[940 + s * 4:944 + s * 4])[0]
+        epoch = calendar.timegm(datetime.datetime(y, m, d, 0, 0, 0).timetuple())
 
-    else:
-      osc_dat = struct.unpack(f, header[520:524])[0]
-      osc_start = osc_dat + struct.unpack(f, header[524:528])[0]
-      osc_end = osc_dat + struct.unpack(f, header[528:532])[0]
+        if magic_no == 1:
+            s = struct.unpack(i, header[980:984])[0]
+            osc_start = struct.unpack(f, header[920 + s * 4 : 924 + s * 4])[0]
+            osc_end = struct.unpack(f, header[940 + s * 4 : 944 + s * 4])[0]
 
-    osc_range = osc_end - osc_start
+        else:
+            osc_dat = struct.unpack(f, header[520:524])[0]
+            osc_start = osc_dat + struct.unpack(f, header[524:528])[0]
+            osc_end = osc_dat + struct.unpack(f, header[528:532])[0]
 
-    return self._scan_factory.single(
-        self._image_file, format, exposure_time,
-        osc_start, osc_range, epoch)
+        osc_range = osc_end - osc_start
 
-  def get_raw_data(self):
-    '''Get the pixel intensities (i.e. read the image and return as a
-    flex array.'''
-    self.detectorbase_start()
-    try:
-      image = self.detectorbase
-      image.read()
-      raw_data = image.get_raw_data()
+        return self._scan_factory.single(
+            self._image_file, format, exposure_time, osc_start, osc_range, epoch
+        )
 
-      return raw_data
-    except Exception:
-      return None
+    def get_raw_data(self):
+        """Get the pixel intensities (i.e. read the image and return as a
+    flex array."""
+        self.detectorbase_start()
+        try:
+            image = self.detectorbase
+            image.read()
+            raw_data = image.get_raw_data()
 
+            return raw_data
+        except Exception:
+            return None

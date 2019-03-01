@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatHDF5 import FormatHDF5
-from dxtbx.model import Beam # import dependency
-from dxtbx.model import Detector # import dependency
-from dxtbx.model import Goniometer # import dependency
-from dxtbx.model import Scan # import dependency
+from dxtbx.model import Beam  # import dependency
+from dxtbx.model import Detector  # import dependency
+from dxtbx.model import Goniometer  # import dependency
+from dxtbx.model import Scan  # import dependency
 from dxtbx.format.nexus import is_nexus_file
 from dxtbx.format.nexus import NXmxReader
 from dxtbx.format.nexus import BeamFactory
@@ -16,176 +16,185 @@ from dxtbx.format.nexus import MaskFactory
 
 
 class FormatNexus(FormatHDF5):
+    def __init__(self, image_file, **kwargs):
+        from dxtbx import IncorrectFormatError
 
-  def __init__(self, image_file, **kwargs):
-    from dxtbx import IncorrectFormatError
-    if not self.understand(image_file):
-      raise IncorrectFormatError(self, image_file)
-    FormatHDF5.__init__(self, image_file, **kwargs)
+        if not self.understand(image_file):
+            raise IncorrectFormatError(self, image_file)
+        FormatHDF5.__init__(self, image_file, **kwargs)
 
-  @staticmethod
-  def understand(image_file):
-    try:
-      is_nexus = is_nexus_file(image_file)
-    except IOError:
-      return False
-    return is_nexus
+    @staticmethod
+    def understand(image_file):
+        try:
+            is_nexus = is_nexus_file(image_file)
+        except IOError:
+            return False
+        return is_nexus
 
-  def _start(self):
+    def _start(self):
 
-    # Read the file structure
-    self._reader = reader = NXmxReader(self._image_file)
+        # Read the file structure
+        self._reader = reader = NXmxReader(self._image_file)
 
-    # Only support 1 set of models at the moment
-    assert len(reader.entries) == 1, \
-      "Currently only supports 1 NXmx entry"
-    assert len(reader.entries[0].data) == 1, \
-      "Currently only supports 1 NXdata"
-    assert len(reader.entries[0].instruments) == 1, \
-      "Currently only supports 1 NXinstrument"
-    assert len(reader.entries[0].samples) == 1, \
-      "Currently only supports 1 NXsample"
-    assert len(reader.entries[0].samples[0].beams) == 1, \
-      "Currently only supports 1 NXbeam"
+        # Only support 1 set of models at the moment
+        assert len(reader.entries) == 1, "Currently only supports 1 NXmx entry"
+        assert len(reader.entries[0].data) == 1, "Currently only supports 1 NXdata"
+        assert (
+            len(reader.entries[0].instruments) == 1
+        ), "Currently only supports 1 NXinstrument"
+        assert len(reader.entries[0].samples) == 1, "Currently only supports 1 NXsample"
+        assert (
+            len(reader.entries[0].samples[0].beams) == 1
+        ), "Currently only supports 1 NXbeam"
 
-    # Get the NXmx model objects
-    entry = reader.entries[0]
-    instrument = entry.instruments[0]
-    detector = instrument.detectors[0]
-    sample = entry.samples[0]
-    beam = sample.beams[0]
-    data = entry.data[0]
+        # Get the NXmx model objects
+        entry = reader.entries[0]
+        instrument = entry.instruments[0]
+        detector = instrument.detectors[0]
+        sample = entry.samples[0]
+        beam = sample.beams[0]
+        data = entry.data[0]
 
-    # Construct the models
-    self._beam_model = BeamFactory(beam).model
+        # Construct the models
+        self._beam_model = BeamFactory(beam).model
 
-    self._setup_gonio_and_scan(sample, detector)
+        self._setup_gonio_and_scan(sample, detector)
 
-    if self._scan_model:
-      array_range = self._scan_model.get_array_range()
-      num_images = array_range[1] - array_range[0]
-    else:
-      num_images = 0
+        if self._scan_model:
+            array_range = self._scan_model.get_array_range()
+            num_images = array_range[1] - array_range[0]
+        else:
+            num_images = 0
 
-    if len(instrument.detector_groups) == 0:
-      assert len(reader.entries[0].instruments[0].detectors) == 1, \
-        "Currently only supports 1 NXdetector unless in a detector group"
-      assert len(reader.entries[0].instruments[0].detectors[0].modules) == 1, \
-        "Currently only supports 1 NXdetector_module unless in a detector group"
+        if len(instrument.detector_groups) == 0:
+            assert (
+                len(reader.entries[0].instruments[0].detectors) == 1
+            ), "Currently only supports 1 NXdetector unless in a detector group"
+            assert (
+                len(reader.entries[0].instruments[0].detectors[0].modules) == 1
+            ), "Currently only supports 1 NXdetector_module unless in a detector group"
 
-      self._detector_model = DetectorFactory(detector, self._beam_model).model
-      self._raw_data = DataFactory(data, max_size=num_images).model
-    else:
-      self._detector_model = DetectorFactoryFromGroup(instrument, self._beam_model).model
-      self._raw_data = DetectorGroupDataFactory(data, instrument).model
+            self._detector_model = DetectorFactory(detector, self._beam_model).model
+            self._raw_data = DataFactory(data, max_size=num_images).model
+        else:
+            self._detector_model = DetectorFactoryFromGroup(
+                instrument, self._beam_model
+            ).model
+            self._raw_data = DetectorGroupDataFactory(data, instrument).model
 
-    self._mask = MaskFactory(instrument.detectors).mask
+        self._mask = MaskFactory(instrument.detectors).mask
 
-  def _setup_gonio_and_scan(self, sample, detector):
-    """ Set up rotation-specific models """
-    self._goniometer_model = GoniometerFactory(sample).model
-    self._scan_model = ScanFactory(sample, detector).model
+    def _setup_gonio_and_scan(self, sample, detector):
+        """ Set up rotation-specific models """
+        self._goniometer_model = GoniometerFactory(sample).model
+        self._scan_model = ScanFactory(sample, detector).model
 
-  def _end(self):
-    return
+    def _end(self):
+        return
 
-  def _goniometer(self):
-    return self._goniometer_model
+    def _goniometer(self):
+        return self._goniometer_model
 
-  def _detector(self):
-    return self._detector_model
+    def _detector(self):
+        return self._detector_model
 
-  def _beam(self, index = None):
-    if index is None:
-      index = 0
+    def _beam(self, index=None):
+        if index is None:
+            index = 0
 
-    entry = self._reader.entries[0]
-    sample = entry.samples[0]
-    beam = sample.beams[0]
+        entry = self._reader.entries[0]
+        sample = entry.samples[0]
+        beam = sample.beams[0]
 
-    self._beam_model = BeamFactory(beam, index).model
-    return self._beam_model
+        self._beam_model = BeamFactory(beam, index).model
+        return self._beam_model
 
-  def _scan(self):
-    return self._scan_model
+    def _scan(self):
+        return self._scan_model
 
-  def get_goniometer(self, index=None):
-    return self._goniometer()
+    def get_goniometer(self, index=None):
+        return self._goniometer()
 
-  def get_detector(self, index=None):
-    return self._detector()
+    def get_detector(self, index=None):
+        return self._detector()
 
-  def get_beam(self, index=None):
-    return self._beam()
+    def get_beam(self, index=None):
+        return self._beam()
 
-  def get_scan(self, index=None):
-    if index is None:
-      return self._scan()
-    scan = self._scan()
-    if scan is not None:
-      return scan[index]
-    return scan
+    def get_scan(self, index=None):
+        if index is None:
+            return self._scan()
+        scan = self._scan()
+        if scan is not None:
+            return scan[index]
+        return scan
 
-  def get_raw_data(self, index):
-    return self._raw_data[index]
+    def get_raw_data(self, index):
+        return self._raw_data[index]
 
-  def get_mask(self, index=None, goniometer=None):
-    return self._mask
+    def get_mask(self, index=None, goniometer=None):
+        return self._mask
 
-  def get_num_images(self):
-    if self._scan() is not None:
-      return self._scan().get_num_images()
-    return len(self._raw_data)
+    def get_num_images(self):
+        if self._scan() is not None:
+            return self._scan().get_num_images()
+        return len(self._raw_data)
 
-  def get_image_file(self, index=None):
-    return self._image_file
+    def get_image_file(self, index=None):
+        return self._image_file
 
-  def get_detectorbase(self, index=None):
-    raise NotImplementedError
+    def get_detectorbase(self, index=None):
+        raise NotImplementedError
+
 
 from dxtbx.format.FormatStill import FormatStill
+
+
 class FormatNexusStill(FormatNexus, FormatStill):
+    @staticmethod
+    def understand(image_file):
+        import h5py
 
-  @staticmethod
-  def understand(image_file):
-    import h5py
-    is_nexus_still = False
-    try:
-      from dxtbx.format.nexus import find_entries, find_class
-      # Get the file handle
-      handle = h5py.File(image_file, 'r')
-      for entry in find_entries(handle, "/"):
-        for sample in find_class(entry, "NXsample"):
-          if 'depends_on' not in sample:
-            is_nexus_still = True
-    except IOError:
-      return False
-    return is_nexus_still
+        is_nexus_still = False
+        try:
+            from dxtbx.format.nexus import find_entries, find_class
 
-  def _setup_gonio_and_scan(self, sample, detector):
-    """ No rotation-specific models for stills """
-    self._goniometer_model = None
-    self._scan_model = None
+            # Get the file handle
+            handle = h5py.File(image_file, "r")
+            for entry in find_entries(handle, "/"):
+                for sample in find_class(entry, "NXsample"):
+                    if "depends_on" not in sample:
+                        is_nexus_still = True
+        except IOError:
+            return False
+        return is_nexus_still
 
-  def get_num_images(self):
-    return len(self._raw_data)
+    def _setup_gonio_and_scan(self, sample, detector):
+        """ No rotation-specific models for stills """
+        self._goniometer_model = None
+        self._scan_model = None
 
-if __name__ == '__main__':
-  import sys
-  for arg in sys.argv[1:]:
-    if FormatNexus.understand(arg):
+    def get_num_images(self):
+        return len(self._raw_data)
 
-      format_instance = FormatNexus(arg)
 
-      beam = format_instance.get_beam()
-      detector = format_instance.get_detector()
-      goniometer = format_instance.get_goniometer()
-      scan = format_instance.get_scan()
+if __name__ == "__main__":
+    import sys
 
-      iset = FormatNexus.get_imageset(arg)
-      print(beam)
-      print(detector)
-      print(goniometer)
-      print(scan)
+    for arg in sys.argv[1:]:
+        if FormatNexus.understand(arg):
 
-      print(len(iset))
+            format_instance = FormatNexus(arg)
+
+            beam = format_instance.get_beam()
+            detector = format_instance.get_detector()
+            goniometer = format_instance.get_goniometer()
+            scan = format_instance.get_scan()
+
+            iset = FormatNexus.get_imageset(arg)
+            print(beam)
+            print(detector)
+            print(goniometer)
+            print(scan)
+
+            print(len(iset))

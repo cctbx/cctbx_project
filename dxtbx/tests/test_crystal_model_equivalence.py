@@ -22,11 +22,14 @@ orientations
 
 from cctbx.uctbx import unit_cell
 from cctbx.crystal import symmetry
-GFC = symmetry(unit_cell = unit_cell((5.876,7.299,29.124,90.00,95.79,90.00)),
-               space_group_symbol = "C 1 2/c 1")
-CB_OP_C_P = GFC.change_of_basis_op_to_primitive_setting() # from C to P
 
-permute = sqr((0,0,1,0,1,0,-1,0,0))
+GFC = symmetry(
+    unit_cell=unit_cell((5.876, 7.299, 29.124, 90.00, 95.79, 90.00)),
+    space_group_symbol="C 1 2/c 1",
+)
+CB_OP_C_P = GFC.change_of_basis_op_to_primitive_setting()  # from C to P
+
+permute = sqr((0, 0, 1, 0, 1, 0, -1, 0, 0))
 
 json_is = """{
   "__id__": "ExperimentList",
@@ -200,57 +203,105 @@ json_is = """{
   ]
 }"""
 
+
 def test_compare_example():
-  experiments = ExperimentListFactory.from_json(json_is, check_format=False)
+    experiments = ExperimentListFactory.from_json(json_is, check_format=False)
 
-  for experiment in experiments:
-    header = {'DIM': '2', 'DENZO_X_BEAM': '97.185', 'RANK': '0', 'PREFIX': 'step5_000009', 'BEAM_CENTER_Y': '97.13', 'BEAM_CENTER_X': '97.13', 'WAVELENGTH': '1.30432', 'OSC_START': '0', 'ADC_OFFSET': '10', 'BYTE_ORDER': 'little_endian', 'DIRECT_SPACE_ABC': '2.7790989649304656,3.721227037283121,0.616256870237976,-4.231398741367156,1.730877297917864,1.0247061633019547,2.9848502901631253,-4.645083818143041,28.595825588147285', 'OSC_RANGE': '0', 'DIALS_ORIGIN': '-97.185,97.185,-50', 'MOSFLM_CENTER_X': '97.13', 'MOSFLM_CENTER_Y': '97.13', 'CLOSE_DISTANCE': '50', 'BEAMLINE': 'fake', 'TWOTHETA': '0', 'ADXV_CENTER_Y': '96.965', 'ADXV_CENTER_X': '97.185', 'HEADER_BYTES': '1024', 'DETECTOR_SN': '000', 'DISTANCE': '50', 'PHI': '0', 'SIZE1': '1765', 'SIZE2': '1765', 'XDS_ORGX': '884', 'XDS_ORGY': '884', 'DENZO_Y_BEAM': '97.185', 'TIME': '1', 'TYPE': 'unsigned_short', 'PIXEL_SIZE': '0.11'}
-    # the header of the simulated image, containing ground truth orientation
+    for experiment in experiments:
+        header = {
+            "DIM": "2",
+            "DENZO_X_BEAM": "97.185",
+            "RANK": "0",
+            "PREFIX": "step5_000009",
+            "BEAM_CENTER_Y": "97.13",
+            "BEAM_CENTER_X": "97.13",
+            "WAVELENGTH": "1.30432",
+            "OSC_START": "0",
+            "ADC_OFFSET": "10",
+            "BYTE_ORDER": "little_endian",
+            "DIRECT_SPACE_ABC": "2.7790989649304656,3.721227037283121,0.616256870237976,-4.231398741367156,1.730877297917864,1.0247061633019547,2.9848502901631253,-4.645083818143041,28.595825588147285",
+            "OSC_RANGE": "0",
+            "DIALS_ORIGIN": "-97.185,97.185,-50",
+            "MOSFLM_CENTER_X": "97.13",
+            "MOSFLM_CENTER_Y": "97.13",
+            "CLOSE_DISTANCE": "50",
+            "BEAMLINE": "fake",
+            "TWOTHETA": "0",
+            "ADXV_CENTER_Y": "96.965",
+            "ADXV_CENTER_X": "97.185",
+            "HEADER_BYTES": "1024",
+            "DETECTOR_SN": "000",
+            "DISTANCE": "50",
+            "PHI": "0",
+            "SIZE1": "1765",
+            "SIZE2": "1765",
+            "XDS_ORGX": "884",
+            "XDS_ORGY": "884",
+            "DENZO_Y_BEAM": "97.185",
+            "TIME": "1",
+            "TYPE": "unsigned_short",
+            "PIXEL_SIZE": "0.11",
+        }
+        # the header of the simulated image, containing ground truth orientation
 
-    rsabc = sqr([float(v) for v in header['DIRECT_SPACE_ABC'].split(',')]) * permute.inverse()
-    rsa = rsabc[0:3]
-    rsb = rsabc[3:6]
-    rsc = rsabc[6:9]
-    header_cryst = Crystal(rsa, rsb, rsc, 'P1').change_basis(CB_OP_C_P.inverse())
-    header_cryst.set_space_group(experiment.crystal.get_space_group())
-    print ('Header crystal')
-    print (header_cryst)
+        rsabc = (
+            sqr([float(v) for v in header["DIRECT_SPACE_ABC"].split(",")])
+            * permute.inverse()
+        )
+        rsa = rsabc[0:3]
+        rsb = rsabc[3:6]
+        rsc = rsabc[6:9]
+        header_cryst = Crystal(rsa, rsb, rsc, "P1").change_basis(CB_OP_C_P.inverse())
+        header_cryst.set_space_group(experiment.crystal.get_space_group())
+        print("Header crystal")
+        print(header_cryst)
 
-    expt_crystal = experiment.crystal
-    print ('Integrated crystal')
-    print (expt_crystal)
+        expt_crystal = experiment.crystal
+        print("Integrated crystal")
+        print(expt_crystal)
 
-    header_ori = crystal_orientation.crystal_orientation(header_cryst.get_A(), crystal_orientation.basis_type.reciprocal)
-    expt_ori = crystal_orientation.crystal_orientation(expt_crystal.get_A(), crystal_orientation.basis_type.reciprocal)
+        header_ori = crystal_orientation.crystal_orientation(
+            header_cryst.get_A(), crystal_orientation.basis_type.reciprocal
+        )
+        expt_ori = crystal_orientation.crystal_orientation(
+            expt_crystal.get_A(), crystal_orientation.basis_type.reciprocal
+        )
 
-    print ('Converted to cctbx')
-    header_ori.show()
-    expt_ori.show()
+        print("Converted to cctbx")
+        header_ori.show()
+        expt_ori.show()
 
-    # assert the equivalence between dxtbx crystal object and the cctbx crystal_orientation object
-    assert approx_equal(header_cryst.get_U(), header_ori.get_U_as_sqr())
-    assert approx_equal(header_cryst.get_A(), header_ori.reciprocal_matrix())
-    assert approx_equal(header_cryst.get_B(), sqr(header_ori.unit_cell().fractionalization_matrix()).transpose())
+        # assert the equivalence between dxtbx crystal object and the cctbx crystal_orientation object
+        assert approx_equal(header_cryst.get_U(), header_ori.get_U_as_sqr())
+        assert approx_equal(header_cryst.get_A(), header_ori.reciprocal_matrix())
+        assert approx_equal(
+            header_cryst.get_B(),
+            sqr(header_ori.unit_cell().fractionalization_matrix()).transpose(),
+        )
 
-    assert approx_equal(expt_crystal.get_U(), expt_ori.get_U_as_sqr())
-    assert approx_equal(expt_crystal.get_A(), expt_ori.reciprocal_matrix())
-    assert approx_equal(expt_crystal.get_B(), sqr(expt_ori.unit_cell().fractionalization_matrix()).transpose())
+        assert approx_equal(expt_crystal.get_U(), expt_ori.get_U_as_sqr())
+        assert approx_equal(expt_crystal.get_A(), expt_ori.reciprocal_matrix())
+        assert approx_equal(
+            expt_crystal.get_B(),
+            sqr(expt_ori.unit_cell().fractionalization_matrix()).transpose(),
+        )
 
-    cb_op_align = sqr(expt_ori.best_similarity_transformation(header_ori,50,1))
+        cb_op_align = sqr(expt_ori.best_similarity_transformation(header_ori, 50, 1))
 
-    print ('XYZ angles', cb_op_align.r3_rotation_matrix_as_x_y_z_angles(deg=True))
-    aligned_ori = expt_ori.change_basis(cb_op_align)
+        print("XYZ angles", cb_op_align.r3_rotation_matrix_as_x_y_z_angles(deg=True))
+        aligned_ori = expt_ori.change_basis(cb_op_align)
 
-    U_integrated = aligned_ori.get_U_as_sqr()
-    U_ground_truth = header_ori.get_U_as_sqr()
+        U_integrated = aligned_ori.get_U_as_sqr()
+        U_ground_truth = header_ori.get_U_as_sqr()
 
-    missetting_rot = U_integrated * U_ground_truth.inverse()
-    print("determinant",missetting_rot.determinant())
-    assert approx_equal(missetting_rot.determinant(),1.0)
-    assert missetting_rot.is_r3_rotation_matrix()
+        missetting_rot = U_integrated * U_ground_truth.inverse()
+        print("determinant", missetting_rot.determinant())
+        assert approx_equal(missetting_rot.determinant(), 1.0)
+        assert missetting_rot.is_r3_rotation_matrix()
 
-    angle,axis = missetting_rot.r3_rotation_matrix_as_unit_quaternion().unit_quaternion_as_axis_and_angle(deg=True)
-    print ("Angular offset is %13.10f deg."%(angle))
+        angle, axis = missetting_rot.r3_rotation_matrix_as_unit_quaternion().unit_quaternion_as_axis_and_angle(
+            deg=True
+        )
+        print("Angular offset is %13.10f deg." % (angle))
 
-    assert approx_equal(angle, 0.2609472065)
-
+        assert approx_equal(angle, 0.2609472065)

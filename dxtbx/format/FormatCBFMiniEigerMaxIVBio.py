@@ -11,34 +11,35 @@ from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatCBFMiniEiger import FormatCBFMiniEiger
 
+
 class FormatCBFMiniEigerMaxIVBio(FormatCBFMiniEiger):
-  '''A class for reading mini CBF format Eiger16M images for S/N E-32-105 MaxIV BioMAX,
-  which has a vertical goniometer axis.'''
+    """A class for reading mini CBF format Eiger16M images for S/N E-32-105 MaxIV BioMAX,
+  which has a vertical goniometer axis."""
 
-  @staticmethod
-  def understand(image_file):
-    '''Check to see if this looks like an Eiger mini CBF format image,
-    i.e. we can make sense of it.'''
+    @staticmethod
+    def understand(image_file):
+        """Check to see if this looks like an Eiger mini CBF format image,
+    i.e. we can make sense of it."""
 
-    header = FormatCBFMiniEiger.get_cbf_header(image_file)
+        header = FormatCBFMiniEiger.get_cbf_header(image_file)
 
-    for record in header.split('\n'):
-      if 'Detector: Dectris Eiger 16M, S/N E-32-0105' in record:
-        return True
+        for record in header.split("\n"):
+            if "Detector: Dectris Eiger 16M, S/N E-32-0105" in record:
+                return True
 
-    return False
+        return False
 
-  def _goniometer(self):
-    '''Return a model for a simple single-axis goniometer. This should
+    def _goniometer(self):
+        """Return a model for a simple single-axis goniometer. This should
     probably be checked against the image header, though for miniCBF
-    there are limited options for this.'''
+    there are limited options for this."""
 
-    return self._goniometer_factory.known_axis((0, 1, 0))
+        return self._goniometer_factory.known_axis((0, 1, 0))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
-  import sys
+    import sys
 
-  for arg in sys.argv[1:]:
-    print(FormatCBFMiniEigerMaxIVBio.understand(arg))
+    for arg in sys.argv[1:]:
+        print(FormatCBFMiniEigerMaxIVBio.understand(arg))

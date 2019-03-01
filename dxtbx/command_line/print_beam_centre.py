@@ -17,17 +17,20 @@ import sys
 
 
 def run(file_names):
-  if len(file_names) == 1 and file_names[0].endswith('json'):
-    from dxtbx.serialize import load
-    datablock = load.datablock(file_names[0])
-    assert(len(datablock) == 1)
-    sweep = datablock[0].extract_sweeps()[0]
-  else:
-    from dxtbx.imageset import ImageSetFactory
-    sweep = ImageSetFactory.new(file_names)[0]
-  detector = sweep.get_detector()
-  beam = sweep.get_beam()
-  print(detector.get_ray_intersection(beam.get_s0())[1])
+    if len(file_names) == 1 and file_names[0].endswith("json"):
+        from dxtbx.serialize import load
 
-if __name__ == '__main__':
-  run(sys.argv[1:])
+        datablock = load.datablock(file_names[0])
+        assert len(datablock) == 1
+        sweep = datablock[0].extract_sweeps()[0]
+    else:
+        from dxtbx.imageset import ImageSetFactory
+
+        sweep = ImageSetFactory.new(file_names)[0]
+    detector = sweep.get_detector()
+    beam = sweep.get_beam()
+    print(detector.get_ray_intersection(beam.get_s0())[1])
+
+
+if __name__ == "__main__":
+    run(sys.argv[1:])

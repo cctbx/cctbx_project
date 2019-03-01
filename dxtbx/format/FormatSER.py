@@ -18,176 +18,189 @@ import struct
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatMultiImage import FormatMultiImage
 
+
 class FormatSER(FormatMultiImage, Format):
+    def __init__(self, image_file, **kwargs):
 
-  def __init__(self, image_file, **kwargs):
+        from dxtbx import IncorrectFormatError
 
-    from dxtbx import IncorrectFormatError
-    if not self.understand(image_file):
-      raise IncorrectFormatError(self, image_file)
-    FormatMultiImage.__init__(self, **kwargs)
-    Format.__init__(self, image_file, **kwargs)
+        if not self.understand(image_file):
+            raise IncorrectFormatError(self, image_file)
+        FormatMultiImage.__init__(self, **kwargs)
+        Format.__init__(self, image_file, **kwargs)
 
-  @staticmethod
-  def understand(image_file):
+    @staticmethod
+    def understand(image_file):
 
-    try:
-      tag = FormatSER.open_file(image_file, 'rb').read(14)
-    except IOError:
-      return False
+        try:
+            tag = FormatSER.open_file(image_file, "rb").read(14)
+        except IOError:
+            return False
 
-    # File should be little endian
-    if not tag [0:2] == 'II': return False
+        # File should be little endian
+        if not tag[0:2] == "II":
+            return False
 
-    # SeriesID: 0x0197 indicates ES Vision Series Data File
-    if not struct.unpack('<H', tag[2:4])[0] == 407: return False
+        # SeriesID: 0x0197 indicates ES Vision Series Data File
+        if not struct.unpack("<H", tag[2:4])[0] == 407:
+            return False
 
-    # SeriesVersion: 0x0210 or 0x220
-    if not struct.unpack('<H', tag[4:6])[0] in [528, 544]: return False
+        # SeriesVersion: 0x0210 or 0x220
+        if not struct.unpack("<H", tag[4:6])[0] in [528, 544]:
+            return False
 
-    # DataTypeID: 0x4122 if elements are 2D arrays
-    if not struct.unpack('<I', tag[6:10])[0] == 16674: return False
+        # DataTypeID: 0x4122 if elements are 2D arrays
+        if not struct.unpack("<I", tag[6:10])[0] == 16674:
+            return False
 
-    # TagTypeID: 0x4142 or 0x4152
-    if not struct.unpack('<I', tag[10:])[0] in [16706, 16722]: return False
+        # TagTypeID: 0x4142 or 0x4152
+        if not struct.unpack("<I", tag[10:])[0] in [16706, 16722]:
+            return False
 
-    return True
+        return True
 
-  @staticmethod
-  def _read_metadata(image_file):
+    @staticmethod
+    def _read_metadata(image_file):
 
-    hd = {}
-    with FormatSER.open_file(image_file, 'rb') as f:
-      f.seek(4)
-      version = struct.unpack('<H', f.read(2))[0]
+        hd = {}
+        with FormatSER.open_file(image_file, "rb") as f:
+            f.seek(4)
+            version = struct.unpack("<H", f.read(2))[0]
 
-      # version specific details
-      if version == 528:
-        size = 4
-        int_fmt = 'I'
-      else:
-        size = 8
-        int_fmt = 'Q'
+            # version specific details
+            if version == 528:
+                size = 4
+                int_fmt = "I"
+            else:
+                size = 8
+                int_fmt = "Q"
 
-      f.seek(14)
-      hd['TotalNumberElements'] = struct.unpack('<I', f.read(4))[0]
-      hd['ValidNumberElements'] = struct.unpack('<I', f.read(4))[0]
-      hd['OffsetArrayOffset'] = struct.unpack('<' + int_fmt, f.read(size))[0]
-      hd['NumberDimensions'] = struct.unpack('<I', f.read(4))[0]
+            f.seek(14)
+            hd["TotalNumberElements"] = struct.unpack("<I", f.read(4))[0]
+            hd["ValidNumberElements"] = struct.unpack("<I", f.read(4))[0]
+            hd["OffsetArrayOffset"] = struct.unpack("<" + int_fmt, f.read(size))[0]
+            hd["NumberDimensions"] = struct.unpack("<I", f.read(4))[0]
 
-      dimension_array = []
-      for i in range(hd['NumberDimensions']):
-        d = {}
-        d['DimensionSize'] = struct.unpack('<I', f.read(4))[0]
-        d['CalibrationOffset'] = struct.unpack('<d', f.read(8))[0]
-        d['CalibrationDelta'] = struct.unpack('<d', f.read(8))[0]
-        d['CalibrationElement'] = struct.unpack('<I', f.read(4))[0]
-        d['DescriptionLength'] = struct.unpack('<I', f.read(4))[0]
-        d['Description'] = f.read(d['DescriptionLength'])
-        d['UnitsLength'] = struct.unpack('<I', f.read(4))[0]
-        d['Units'] = f.read(d['UnitsLength'])
-        dimension_array.append(d)
-      hd['DimensionArray'] = dimension_array
+            dimension_array = []
+            for i in range(hd["NumberDimensions"]):
+                d = {}
+                d["DimensionSize"] = struct.unpack("<I", f.read(4))[0]
+                d["CalibrationOffset"] = struct.unpack("<d", f.read(8))[0]
+                d["CalibrationDelta"] = struct.unpack("<d", f.read(8))[0]
+                d["CalibrationElement"] = struct.unpack("<I", f.read(4))[0]
+                d["DescriptionLength"] = struct.unpack("<I", f.read(4))[0]
+                d["Description"] = f.read(d["DescriptionLength"])
+                d["UnitsLength"] = struct.unpack("<I", f.read(4))[0]
+                d["Units"] = f.read(d["UnitsLength"])
+                dimension_array.append(d)
+            hd["DimensionArray"] = dimension_array
 
-      f.seek(hd['OffsetArrayOffset'])
-      hd['DataOffsetArray'] = struct.unpack('<' + int_fmt * hd['TotalNumberElements'],
-          f.read(size * hd['TotalNumberElements']))
-      hd['TagOffsetArray'] = struct.unpack('<' + int_fmt * hd['TotalNumberElements'],
-          f.read(size * hd['TotalNumberElements']))
+            f.seek(hd["OffsetArrayOffset"])
+            hd["DataOffsetArray"] = struct.unpack(
+                "<" + int_fmt * hd["TotalNumberElements"],
+                f.read(size * hd["TotalNumberElements"]),
+            )
+            hd["TagOffsetArray"] = struct.unpack(
+                "<" + int_fmt * hd["TotalNumberElements"],
+                f.read(size * hd["TotalNumberElements"]),
+            )
 
-      # get expected image size by reading metadata for the first image
-      f.seek(hd['DataOffsetArray'][0] + 42)
-      hd['ArraySizeX'] = struct.unpack('<I', f.read(4))[0]
-      hd['ArraySizeY'] = struct.unpack('<I', f.read(4))[0]
+            # get expected image size by reading metadata for the first image
+            f.seek(hd["DataOffsetArray"][0] + 42)
+            hd["ArraySizeX"] = struct.unpack("<I", f.read(4))[0]
+            hd["ArraySizeY"] = struct.unpack("<I", f.read(4))[0]
 
-    return hd
+        return hd
 
-  def _start(self):
-    '''Open the image file, read useful metadata into an internal dictionary
-    self._header_dictionary'''
+    def _start(self):
+        """Open the image file, read useful metadata into an internal dictionary
+    self._header_dictionary"""
 
-    self._header_dictionary = self._read_metadata(
-        self._image_file)
+        self._header_dictionary = self._read_metadata(self._image_file)
 
-    return
+        return
 
-  def get_num_images(self):
-    return self._header_dictionary['ValidNumberElements']
+    def get_num_images(self):
+        return self._header_dictionary["ValidNumberElements"]
 
-  # This is still required for dials_regression/test.py
-  def get_detectorbase(self):
-    pass
+    # This is still required for dials_regression/test.py
+    def get_detectorbase(self):
+        pass
 
-  def get_goniometer(self, index=None):
-    return Format.get_goniometer(self)
+    def get_goniometer(self, index=None):
+        return Format.get_goniometer(self)
 
-  def get_detector(self, index=None):
-    return Format.get_detector(self)
+    def get_detector(self, index=None):
+        return Format.get_detector(self)
 
-  def get_beam(self, index=None):
-    return Format.get_beam(self)
+    def get_beam(self, index=None):
+        return Format.get_beam(self)
 
-  def get_scan(self, index=None):
-    if index == None:
-      return Format.get_scan(self)
-    else:
-      scan = Format.get_scan(self)
-      return scan[index]
+    def get_scan(self, index=None):
+        if index == None:
+            return Format.get_scan(self)
+        else:
+            scan = Format.get_scan(self)
+            return scan[index]
 
-  def get_image_file(self, index=None):
-    return Format.get_image_file(self)
+    def get_image_file(self, index=None):
+        return Format.get_image_file(self)
 
-  def get_raw_data(self, index):
+    def get_raw_data(self, index):
 
-    from boost.python import streambuf
-    from scitbx.array_family import flex
+        from boost.python import streambuf
+        from scitbx.array_family import flex
 
-    data_offset = self._header_dictionary['DataOffsetArray'][index]
-    with FormatSER.open_file(self._image_file, 'rb') as f:
-      f.seek(data_offset)
-      d = {}
-      d['CalibrationOffsetX'] = struct.unpack('<d', f.read(8))[0]
-      d['CalibrationDeltaX'] = struct.unpack('<d', f.read(8))[0]
-      d['CalibrationElementX'] = struct.unpack('<I', f.read(4))[0]
-      d['CalibrationOffsetY'] = struct.unpack('<d', f.read(8))[0]
-      d['CalibrationDeltaY'] = struct.unpack('<d', f.read(8))[0]
-      d['CalibrationElementY'] = struct.unpack('<I', f.read(4))[0]
-      d['DataType'] = struct.unpack('<H', f.read(2))[0]
+        data_offset = self._header_dictionary["DataOffsetArray"][index]
+        with FormatSER.open_file(self._image_file, "rb") as f:
+            f.seek(data_offset)
+            d = {}
+            d["CalibrationOffsetX"] = struct.unpack("<d", f.read(8))[0]
+            d["CalibrationDeltaX"] = struct.unpack("<d", f.read(8))[0]
+            d["CalibrationElementX"] = struct.unpack("<I", f.read(4))[0]
+            d["CalibrationOffsetY"] = struct.unpack("<d", f.read(8))[0]
+            d["CalibrationDeltaY"] = struct.unpack("<d", f.read(8))[0]
+            d["CalibrationElementY"] = struct.unpack("<I", f.read(4))[0]
+            d["DataType"] = struct.unpack("<H", f.read(2))[0]
 
-      if d['DataType'] == 6:
-        from dxtbx import read_int32 as read_pixel
-      elif d['DataType'] == 5:
-        from dxtbx import read_int16 as read_pixel
-      elif d['DataType'] == 3:
-        from dxtbx import read_uint32 as read_pixel
-      elif d['DataType'] == 2:
-        from dxtbx import read_uint16 as read_pixel
-      elif d['DataType'] == 1:
-        from dxtbx import read_uint8 as read_pixel
-      else:
-        raise RuntimeError(
-            'Image {0} data is of an unsupported type'.format(index + 1))
+            if d["DataType"] == 6:
+                from dxtbx import read_int32 as read_pixel
+            elif d["DataType"] == 5:
+                from dxtbx import read_int16 as read_pixel
+            elif d["DataType"] == 3:
+                from dxtbx import read_uint32 as read_pixel
+            elif d["DataType"] == 2:
+                from dxtbx import read_uint16 as read_pixel
+            elif d["DataType"] == 1:
+                from dxtbx import read_uint8 as read_pixel
+            else:
+                raise RuntimeError(
+                    "Image {0} data is of an unsupported type".format(index + 1)
+                )
 
-      d['ArraySizeX'] = struct.unpack('<I', f.read(4))[0]
-      d['ArraySizeY'] = struct.unpack('<I', f.read(4))[0]
-      nelts = d['ArraySizeX'] * d['ArraySizeY']
-      raw_data = read_pixel(streambuf(f), nelts)
+            d["ArraySizeX"] = struct.unpack("<I", f.read(4))[0]
+            d["ArraySizeY"] = struct.unpack("<I", f.read(4))[0]
+            nelts = d["ArraySizeX"] * d["ArraySizeY"]
+            raw_data = read_pixel(streambuf(f), nelts)
 
-    # Check image size is as expected (same as the first image)
-    if d['ArraySizeX'] != self._header_dictionary['ArraySizeX']:
-      raise RuntimeError(
-          'Image {0} has an unexpected array size in X'.format(index + 1))
-    if d['ArraySizeY'] != self._header_dictionary['ArraySizeY']:
-      raise RuntimeError(
-          'Image {0} has an unexpected array size in Y'.format(index + 1))
+        # Check image size is as expected (same as the first image)
+        if d["ArraySizeX"] != self._header_dictionary["ArraySizeX"]:
+            raise RuntimeError(
+                "Image {0} has an unexpected array size in X".format(index + 1)
+            )
+        if d["ArraySizeY"] != self._header_dictionary["ArraySizeY"]:
+            raise RuntimeError(
+                "Image {0} has an unexpected array size in Y".format(index + 1)
+            )
 
-    image_size = (d['ArraySizeX'], d['ArraySizeY'])
-    raw_data.reshape(flex.grid(image_size[1], image_size[0]))
+        image_size = (d["ArraySizeX"], d["ArraySizeY"])
+        raw_data.reshape(flex.grid(image_size[1], image_size[0]))
 
-    return raw_data
+        return raw_data
 
 
-if __name__ == '__main__':
-  import sys
-  for arg in sys.argv[1:]:
-    print(FormatSER.understand(arg))
+if __name__ == "__main__":
+    import sys
+
+    for arg in sys.argv[1:]:
+        print(FormatSER.understand(arg))

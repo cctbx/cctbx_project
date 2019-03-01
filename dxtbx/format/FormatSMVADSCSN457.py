@@ -13,42 +13,45 @@ from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
+
 class FormatSMVADSCSNSN457(FormatSMVADSCSN):
-  '''A class for reading SMV format ADSC images, and correctly constructing
-  a model for the experiment from this, for instrument number 457.'''
+    """A class for reading SMV format ADSC images, and correctly constructing
+  a model for the experiment from this, for instrument number 457."""
 
-  @staticmethod
-  def understand(image_file):
-    '''Check to see if this is ADSC SN 457.'''
+    @staticmethod
+    def understand(image_file):
+        """Check to see if this is ADSC SN 457."""
 
-    # check this is detector serial number 457
+        # check this is detector serial number 457
 
-    size, header = FormatSMVADSCSN.get_smv_header(image_file)
+        size, header = FormatSMVADSCSN.get_smv_header(image_file)
 
-    if int(header['DETECTOR_SN']) != 457:
-      return False
+        if int(header["DETECTOR_SN"]) != 457:
+            return False
 
-    return True
+        return True
 
-  def __init__(self, image_file, **kwargs):
-    '''Initialise the image structure from the given file, including a
-    proper model of the experiment.'''
+    def __init__(self, image_file, **kwargs):
+        """Initialise the image structure from the given file, including a
+    proper model of the experiment."""
 
-    from dxtbx import IncorrectFormatError
-    if not self.understand(image_file):
-      raise IncorrectFormatError(self, image_file)
+        from dxtbx import IncorrectFormatError
 
-    FormatSMVADSCSN.__init__(self, image_file, **kwargs)
+        if not self.understand(image_file):
+            raise IncorrectFormatError(self, image_file)
 
-  def _goniometer(self):
-    '''Return a model for a simple single-axis goniometer. This should
-    probably be checked against the image header.'''
+        FormatSMVADSCSN.__init__(self, image_file, **kwargs)
 
-    return self._goniometer_factory.single_axis_reverse()
+    def _goniometer(self):
+        """Return a model for a simple single-axis goniometer. This should
+    probably be checked against the image header."""
 
-if __name__ == '__main__':
+        return self._goniometer_factory.single_axis_reverse()
 
-  import sys
 
-  for arg in sys.argv[1:]:
-    print(FormatSMVADSC.understand(arg))
+if __name__ == "__main__":
+
+    import sys
+
+    for arg in sys.argv[1:]:
+        print(FormatSMVADSC.understand(arg))

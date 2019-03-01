@@ -8,13 +8,14 @@ from libtbx import easy_run
 from dxtbx.serialize import dump
 from dxtbx.imageset import ImageSetFactory
 
+
 def test_to_xds(dials_regression, tmpdir):
-  tmpdir.chdir()
+    tmpdir.chdir()
 
-  template = os.path.join(dials_regression, 'centroid_test_data', "centroid_*.cbf")
-  file_names = glob.glob(template)
+    template = os.path.join(dials_regression, "centroid_test_data", "centroid_*.cbf")
+    file_names = glob.glob(template)
 
-  expected_output = """\
+    expected_output = """\
 DETECTOR=PILATUS MINIMUM_VALID_PIXEL_VALUE=0 OVERLOAD=495976
 SENSOR_THICKNESS= 0.320
 DIRECTION_OF_DETECTOR_X-AXIS= 1.00000 0.00000 0.00000
@@ -48,22 +49,24 @@ UNTRUSTED_RECTANGLE= 0 2464 2103 2121
 UNTRUSTED_RECTANGLE= 0 2464 2315 2333
 DATA_RANGE= 1 9
 JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT\
-""" %(template.replace("*", "????"))
+""" % (
+        template.replace("*", "????")
+    )
 
-  cmd = " ".join(["dxtbx.to_xds"] + file_names)
-  result = easy_run.fully_buffered(cmd)
-  # allow extra lines to have been added (these may be comments)
-  for record in expected_output.split('\n'):
-    assert record.strip() in "\n".join(result.stdout_lines), record
+    cmd = " ".join(["dxtbx.to_xds"] + file_names)
+    result = easy_run.fully_buffered(cmd)
+    # allow extra lines to have been added (these may be comments)
+    for record in expected_output.split("\n"):
+        assert record.strip() in "\n".join(result.stdout_lines), record
 
-  # now test reading from a json file
-  sweep = ImageSetFactory.new(file_names)[0]
-  with open("sweep.json", mode="wb") as fh:
-    dump.imageset(sweep, fh)
-  cmd = " ".join(["dxtbx.to_xds", "sweep.json"])
-  print(cmd)
-  result = easy_run.fully_buffered(cmd)
+    # now test reading from a json file
+    sweep = ImageSetFactory.new(file_names)[0]
+    with open("sweep.json", mode="wb") as fh:
+        dump.imageset(sweep, fh)
+    cmd = " ".join(["dxtbx.to_xds", "sweep.json"])
+    print(cmd)
+    result = easy_run.fully_buffered(cmd)
 
-  # allow extra lines to have been added (these may be comments)
-  for record in expected_output.split('\n'):
-    assert record.strip() in "\n".join(result.stdout_lines), record
+    # allow extra lines to have been added (these may be comments)
+    for record in expected_output.split("\n"):
+        assert record.strip() in "\n".join(result.stdout_lines), record
