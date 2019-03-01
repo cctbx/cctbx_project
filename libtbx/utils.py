@@ -676,6 +676,42 @@ class Failure(Sorry):
   """
   __module__ = Exception.__module__
 
+def kludge_show_to_repr(obj):
+  """
+  Take an object which has a show method which we shall assume will by default
+  write it's output to stdout - capture this with cStringIO and return the
+  string. Allows objects which have show() but not __repr__ or __str__ methods
+  to add without much code changes.
+
+  Returns
+  -------
+  str - output
+
+  Raises
+  ------
+  AttrbuteError if object does not have callable show() method
+  """
+
+  if not hasattr(obj, "show"):
+    raise AttributeError("object has no show() method")
+
+  from cStringIO import StringIO
+  import sys
+
+  out = StringIO()
+
+  stdout = sys.stdout
+  sys.stdout = out
+
+  try:
+    obj.show()
+  except Exception as e:
+    sys.stdout = stdout
+    raise
+
+  sys.stdout = stdout
+  return out.getvalue()[:-1] # because the last character will be '\n'
+
 def detect_multiprocessing_problem():
   """
   Checks python and library versions and availability to diagnose why
