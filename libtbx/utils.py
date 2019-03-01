@@ -705,12 +705,10 @@ def kludge_show_to_repr(obj):
 
   try:
     obj.show()
-  except Exception as e:
+  finally:
     sys.stdout = stdout
-    raise
 
-  sys.stdout = stdout
-  return out.getvalue()[:-1] # because the last character will be '\n'
+  return out.getvalue().rstrip()
 
 def detect_multiprocessing_problem():
   """
