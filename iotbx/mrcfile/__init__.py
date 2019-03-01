@@ -451,14 +451,14 @@ def create_output_labels(
        limitation,str(STANDARD_LIMITATIONS_DICT.keys()))
       assert limitation in STANDARD_LIMITATIONS_DICT.keys()
       output_map_labels.append(limitation)
- 
+
   # any specific labels given
   if output_labels:
     output_map_labels+=output_labels
 
   # any input labels to pass on
   if input_labels:
-    output_map_labels+=input_labels 
+    output_map_labels+=input_labels
 
   # Now write out up to 10 unique labels
   final_labels=[]

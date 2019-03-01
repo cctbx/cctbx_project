@@ -6,9 +6,9 @@ Created     : 04/14/2014
 Last Changed: 11/05/2018
 Description : wxPython 3-4 compatibility tools
 
-The context managers, classes, and other tools below can be used to make the 
-GUI code compatible with wxPython 3 and 4. Mostly, the tools convert the 
-functions, enumerations, and classes which have been renamed in wxPython 4; 
+The context managers, classes, and other tools below can be used to make the
+GUI code compatible with wxPython 3 and 4. Mostly, the tools convert the
+functions, enumerations, and classes which have been renamed in wxPython 4;
 the name mismatches result in exceptions.
 
 Use case 1: subclassing wx.PyControl or wx.Control:
@@ -18,7 +18,7 @@ WxCtrl = wx4c.get_wx_mod(wx, wx.Control)
 class MyCustomControl(WxCtrl): ...
 
 
-Use case 2: brush style (NOTE: you can do that with fonts as well, but it 
+Use case 2: brush style (NOTE: you can do that with fonts as well, but it
 doesn't seem to be necessary):
 
 from wxtbx import wx4_compatibility as wx4c
@@ -33,7 +33,7 @@ from wxtbx import wx4_compatibility as wx4c, bitmaps
 class MyFrame(wx.Frame):
   def __init__(self, parent, id, title, *args, **kwargs):
     wx.Frame.__init__(self, parent, id, title, *args, **kwargs)
-  
+
     self.toolbar = wx4c.ToolBar(self, style=wx.TB_3DBUTTONS | wx.TB_TEXT)
     self.quit_button = self.toolbar.AddTool(toolId=wx.ID_ANY,
                                              label='Quit',

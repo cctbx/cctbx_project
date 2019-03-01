@@ -10321,7 +10321,7 @@ def run_auto_sharpen(
       # ------ END OF SET UP FOR RUN ----------
 
       """
- 
+
       local_map_and_b=apply_sharpening(
             f_array=f_array,phases=phases,
             sharpening_info_obj=lsi,
