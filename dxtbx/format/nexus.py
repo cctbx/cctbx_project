@@ -12,8 +12,8 @@ except ImportError:
 
 class check_dtype(object):
     """
-  A class to check whether the dataset data type matches the expected
-  """
+    A class to check whether the dataset data type matches the expected
+    """
 
     def __init__(self, dtype):
         self.dtype = dtype
@@ -31,8 +31,8 @@ class check_dtype(object):
 
 class check_dims(object):
     """
-  A class to check whether the dataset dimensions matches the expected
-  """
+    A class to check whether the dataset dimensions matches the expected
+    """
 
     def __init__(self, dims):
         self.dims = dims
@@ -49,8 +49,8 @@ class check_dims(object):
 
 class check_shape(object):
     """
-  A class to check whether the dataset shape matches the expected
-  """
+    A class to check whether the dataset shape matches the expected
+    """
 
     def __init__(self, shape):
         self.shape = shape
@@ -68,8 +68,8 @@ class check_shape(object):
 
 class check_is_scalar(object):
     """
-  A class to check whether the dataset is scalar or not
-  """
+    A class to check whether the dataset is scalar or not
+    """
 
     def __init__(self, is_scalar):
         self.is_scalar = is_scalar
@@ -90,17 +90,17 @@ class check_is_scalar(object):
 
 class check_dset(object):
     """
-  Check properties of a dataset
-  """
+    Check properties of a dataset
+    """
 
     def __init__(self, dtype=None, dims=None, shape=None, is_scalar=None):
         """
-    Set stuff to check
-    :param dtype:         The datatype
-    :param dims:          The number of dimensions
-    :param shape:         The shape of the dataset
+        Set stuff to check
+        :param dtype:         The datatype
+        :param dims:          The number of dimensions
+        :param shape:         The shape of the dataset
 
-    """
+        """
         self.checks = []
         if dtype is not None:
             if not isinstance(dtype, list) and not isinstance(dtype, tuple):
@@ -122,16 +122,16 @@ class check_dset(object):
 
 class check_attr(object):
     """
-  Check some properties of an attribute
-  """
+    Check some properties of an attribute
+    """
 
     def __init__(self, name, value=None, dtype=None):
         """
-    Set stuff to check
-    :param name:  The name of the attribute
-    :param value: The value of the attribute
-    :param tests: A list of tests to run
-    """
+        Set stuff to check
+        :param name:  The name of the attribute
+        :param value: The value of the attribute
+        :param tests: A list of tests to run
+        """
         self.name = name
         self.value = value
         self.dtype = dtype
@@ -157,8 +157,8 @@ class check_attr(object):
 
 def find_entries(nx_file, entry):
     """
-  Find NXmx entries
-  """
+    Find NXmx entries
+    """
     hits = []
 
     def visitor(name, obj):
@@ -175,8 +175,8 @@ def find_entries(nx_file, entry):
 
 def find_class(nx_file, nx_class):
     """
-  Find a given NXclass
-  """
+    Find a given NXclass
+    """
     hits = []
 
     def visitor(name, obj):
@@ -190,8 +190,8 @@ def find_class(nx_file, nx_class):
 
 def convert_units(value, input_units, output_units):
     """
-  Hacky utility function to convert units
-  """
+    Hacky utility function to convert units
+    """
     converters = {
         "m": {
             "mm": lambda x: x * 1e3,
@@ -229,8 +229,8 @@ def convert_units(value, input_units, output_units):
 
 def visit_dependencies(nx_file, item, visitor=None):
     """
-  Walk the dependency chain and call a visitor function
-  """
+    Walk the dependency chain and call a visitor function
+    """
     dependency_chain = []
     if os.path.basename(item) == "depends_on":
         depends_on = nx_file[item][()]
@@ -254,8 +254,8 @@ def visit_dependencies(nx_file, item, visitor=None):
 
 def construct_vector(nx_file, item, vector=None):
     """
-  Walk the dependency chain and create the absolute vector
-  """
+    Walk the dependency chain and create the absolute vector
+    """
     from scitbx import matrix
 
     class TransformVisitor(object):
@@ -320,8 +320,8 @@ def construct_vector(nx_file, item, vector=None):
 
 def construct_axes(nx_file, item, vector=None):
     """
-  Walk the dependency chain and create the absolute vector
-  """
+    Walk the dependency chain and create the absolute vector
+    """
     from scitbx import matrix
     from scitbx.array_family import flex
 
@@ -409,8 +409,8 @@ def construct_axes(nx_file, item, vector=None):
 
 def run_checks(handle, items):
     """
-  Run checks for datasets
-  """
+    Run checks for datasets
+    """
     for item, detail in items.iteritems():
         min_occurs = detail["minOccurs"]
         checks = detail["checks"]
@@ -430,8 +430,8 @@ def run_checks(handle, items):
 
 class NXdetector_module(object):
     """
-  A class to hold a handle to NXdetector_module
-  """
+    A class to hold a handle to NXdetector_module
+    """
 
     def __init__(self, handle, errors=None):
 
@@ -496,8 +496,8 @@ class NXdetector_module(object):
 
 class NXdetector_group(object):
     """
-  A class to hold a handle to NXdetector_group
-  """
+    A class to hold a handle to NXdetector_group
+    """
 
     def __init__(self, handle, errors=None):
 
@@ -536,8 +536,8 @@ class NXdetector_group(object):
 
 class NXdetector(object):
     """
-  A class to handle a handle to NXdetector
-  """
+    A class to handle a handle to NXdetector
+    """
 
     def __init__(self, handle, errors=None):
 
@@ -666,8 +666,8 @@ class NXdetector(object):
 
 class NXinstrument(object):
     """
-  A class to hold a handle to NXinstrument
-  """
+    A class to hold a handle to NXinstrument
+    """
 
     def __init__(self, handle, errors=None):
 
@@ -698,8 +698,8 @@ class NXinstrument(object):
 
 class NXbeam(object):
     """
-  A class to hold a handle to NXbeam
-  """
+    A class to hold a handle to NXbeam
+    """
 
     def __init__(self, handle, errors=None):
 
@@ -726,8 +726,8 @@ class NXbeam(object):
 
 class NXsample(object):
     """
-  A class to hold a handle to NXsample
-  """
+    A class to hold a handle to NXsample
+    """
 
     def __init__(self, handle, errors=None):
 
@@ -772,8 +772,8 @@ class NXsample(object):
 
 class NXdata(object):
     """
-  A class to hold a handle to NXdata
-  """
+    A class to hold a handle to NXdata
+    """
 
     def __init__(self, handle, errors=None):
 
@@ -782,8 +782,8 @@ class NXdata(object):
 
 class NXmxEntry(object):
     """
-  A class to hold a handle to NXmx entries
-  """
+    A class to hold a handle to NXmx entries
+    """
 
     def __init__(self, handle, errors=None):
 
@@ -835,9 +835,9 @@ class NXmxEntry(object):
 
 class NXmxReader(object):
     """
-  A hacky class to read an NXmx file
+    A hacky class to read an NXmx file
 
-  """
+    """
 
     def __init__(self, filename=None, handle=None):
         import h5py
@@ -873,9 +873,9 @@ class NXmxReader(object):
 
     def print_errors(self):
         """
-    Print any errors that occurred
+        Print any errors that occurred
 
-    """
+        """
         if len(self.errors) > 0:
             print("")
             print("*" * 80)
@@ -886,9 +886,9 @@ class NXmxReader(object):
 
     def print_description(self):
         """
-    Print a description of the NXmx file
+        Print a description of the NXmx file
 
-    """
+        """
         print(" > Found %d NXmx entries" % len(self.entries))
         for entry in self.entries:
             handle = entry.handle
@@ -917,9 +917,9 @@ class NXmxReader(object):
 
 def is_nexus_file(filename):
     """
-  A hacky function to check if this is a nexus file
+    A hacky function to check if this is a nexus file
 
-  """
+    """
     import h5py
 
     # Get the file handle
@@ -934,9 +934,9 @@ def is_nexus_file(filename):
 
 class BeamFactory(object):
     """
-  A class to create a beam model from NXmx stuff
+    A class to create a beam model from NXmx stuff
 
-  """
+    """
 
     def __init__(self, obj, index=None):
         from dxtbx.model import Beam
@@ -964,9 +964,9 @@ class BeamFactory(object):
 
 def get_change_of_basis(transformation):
     """
-  Get the 4x4 homogenous coordinate matrix for a given NXtransformation.
+    Get the 4x4 homogenous coordinate matrix for a given NXtransformation.
 
-  """
+    """
     from scitbx.matrix import col, sqr
 
     # Change of basis to convert from NeXus to IUCr/ImageCIF convention
@@ -1050,12 +1050,12 @@ def get_change_of_basis(transformation):
 
 def get_depends_on_chain_using_equipment_components(transformation):
     """
-  Given an NXtransformation, find the list of dependencies that transformation
-  has.  If there are multiple dependencies in a single 'level', as indicated
-  by grouping them using equipment_component, then the dependency chain will
-  skip the intermediate dependencies, listing only the first at each level.
+    Given an NXtransformation, find the list of dependencies that transformation
+    has.  If there are multiple dependencies in a single 'level', as indicated
+    by grouping them using equipment_component, then the dependency chain will
+    skip the intermediate dependencies, listing only the first at each level.
 
-  """
+    """
     chain = []
     current = transformation
 
@@ -1077,14 +1077,14 @@ def get_depends_on_chain_using_equipment_components(transformation):
 
 
 def get_cummulative_change_of_basis(transformation):
-    """ Get the 4x4 homogenous coordinate matrix for a given NXtransformation,
-  combining it with the change of basis matrices of parent transformations
-  with the same equipment component as the given transformation.
-  Returns (parent, change of basis matrix), where parent is None if the
-  transformation's depends_on is ".".  Parent is the tranformation that the
-  top level transformation in this chain of transformations depends on.
+    """Get the 4x4 homogenous coordinate matrix for a given NXtransformation,
+    combining it with the change of basis matrices of parent transformations
+    with the same equipment component as the given transformation.
+    Returns (parent, change of basis matrix), where parent is None if the
+    transformation's depends_on is ".".  Parent is the tranformation that the
+    top level transformation in this chain of transformations depends on.
 
-  """
+    """
 
     cob = get_change_of_basis(transformation)
 
@@ -1106,9 +1106,9 @@ def get_cummulative_change_of_basis(transformation):
 
 class DetectorFactoryFromGroup(object):
     """
-  A class to create a detector model from a NXdetector_group
+    A class to create a detector model from a NXdetector_group
 
-  """
+    """
 
     def __init__(self, instrument, beam, idx=None):
         from dxtbx.model import Detector, Panel
@@ -1151,8 +1151,8 @@ class DetectorFactoryFromGroup(object):
         root = None
 
         def set_frame(pg, transformation):
-            """ Function to set the local frame of a panel/panel group given an
-      NXtransformation """
+            """Function to set the local frame of a panel/panel group given an
+            NXtransformation"""
             parent, cob = get_cummulative_change_of_basis(transformation)
             # set up the dxtbx d matrix.  Note use of homogenous coordinates.
             origin = matrix.col((cob * matrix.col((0, 0, 0, 1)))[0:3])
@@ -1316,9 +1316,9 @@ class DetectorFactoryFromGroup(object):
 
 class DetectorFactory(object):
     """
-  A class to create a detector model from NXmx stuff
+    A class to create a detector model from NXmx stuff
 
-  """
+    """
 
     def __init__(self, obj, beam):
         from dxtbx.model import Detector, Panel
@@ -1432,9 +1432,9 @@ class DetectorFactory(object):
 
 class GoniometerFactory(object):
     """
-  A class to create a goniometer model from NXmx stuff
+    A class to create a goniometer model from NXmx stuff
 
-  """
+    """
 
     def __init__(self, obj):
         from dxtbx.model import GoniometerFactory
@@ -1469,9 +1469,9 @@ def find_goniometer_rotation(obj):
 
 class ScanFactory(object):
     """
-  A class to create a scan model from NXmx stuff
+    A class to create a scan model from NXmx stuff
 
-  """
+    """
 
     def __init__(self, obj, detector_obj):
         from dxtbx.model import Scan
@@ -1530,9 +1530,9 @@ class ScanFactory(object):
 
 class CrystalFactory(object):
     """
-  A class to create a crystal model from NXmx stuff
+    A class to create a crystal model from NXmx stuff
 
-  """
+    """
 
     def __init__(self, obj):
         from dxtbx.model import Crystal
@@ -1562,10 +1562,10 @@ class CrystalFactory(object):
 
 class DataList(object):
     """
-  A class to make it easier to access the data from multiple datasets.
-  FIXME The file should be fixed and this should be removed
+    A class to make it easier to access the data from multiple datasets.
+    FIXME The file should be fixed and this should be removed
 
-  """
+    """
 
     def __init__(self, obj, max_size=0):
         self.datasets = obj
@@ -1607,10 +1607,10 @@ class DataList(object):
 
 class DetectorGroupDataList(object):
     """
-  A class to make it easier to access the data from multiple datasets.
-  This version brings in all the panels from a detector group with several detectors.
+    A class to make it easier to access the data from multiple datasets.
+    This version brings in all the panels from a detector group with several detectors.
 
-  """
+    """
 
     def __init__(self, datalists):
         self.datalists = datalists
@@ -1632,12 +1632,12 @@ class DetectorGroupDataList(object):
 
 def get_detector_module_slices(detector):
     """
-  Helper function to read data_origin and data_size from the NXdetector_modules in a
-  NXdetector.  Returns a list of lists, where each sublist is a list of slices in
-  slow to fast order.
-  Assumes slices are stored in NeXus in fast to slow order.
+    Helper function to read data_origin and data_size from the NXdetector_modules in a
+    NXdetector.  Returns a list of lists, where each sublist is a list of slices in
+    slow to fast order.
+    Assumes slices are stored in NeXus in fast to slow order.
 
-  """
+    """
     # get the set of leaf modules (handles nested modules)
     modules = []
     for nx_detector_module in detector.modules:
@@ -1663,10 +1663,10 @@ def get_detector_module_slices(detector):
 
 class MultiPanelDataList(object):
     """
-  A class to make it easier to access the data from multiple datasets.
-  Also handles multi-panel data as described in a series of NXdetector_modules
+    A class to make it easier to access the data from multiple datasets.
+    Also handles multi-panel data as described in a series of NXdetector_modules
 
-  """
+    """
 
     def __init__(self, datasets, detector):
         self.datasets = datasets
@@ -1774,9 +1774,9 @@ class DetectorGroupDataFactory(DataFactory):
 
 class MaskFactory(object):
     """
-  A class to create an object to hold the pixel mask data
+    A class to create an object to hold the pixel mask data
 
-  """
+    """
 
     def __init__(self, objects):
         def make_mask(dset):

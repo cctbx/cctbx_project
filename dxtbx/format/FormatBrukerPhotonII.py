@@ -34,8 +34,8 @@ class FormatBrukerPhotonII(FormatBruker):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment. Easy from Rigaku Saturn images as
-    they contain everything pretty much we need..."""
+        proper model of the experiment. Easy from Rigaku Saturn images as
+        they contain everything pretty much we need..."""
 
         from dxtbx import IncorrectFormatError
 
@@ -89,18 +89,18 @@ class FormatBrukerPhotonII(FormatBruker):
     @staticmethod
     def _estimate_gain(wavelength):
         """Estimate the detector gain based on values provided by Bruker. Each ADU
-    corresponds to 36.6 electrons. The X-ray conversion results in deposited
-    charge according to the following table for typical home sources:
+        corresponds to 36.6 electrons. The X-ray conversion results in deposited
+        charge according to the following table for typical home sources:
 
-    In (0.5136 A): 359.6893 e/X-ray
-    Ag (0.5609 A): 329.3748 e/X-ray
-    Mo (0.7107 A): 259.9139 e/X-ray
-    Ga (1.3414 A): 137.6781 e/X-ray
-    Cu (1.5418 A): 119.8156 e/X-ray
+        In (0.5136 A): 359.6893 e/X-ray
+        Ag (0.5609 A): 329.3748 e/X-ray
+        Mo (0.7107 A): 259.9139 e/X-ray
+        Ga (1.3414 A): 137.6781 e/X-ray
+        Cu (1.5418 A): 119.8156 e/X-ray
 
-    This fits the linear model (1/G) = -0.0000193358 + 0.1981607255 * wavelength
-    extremely well.
-    """
+        This fits the linear model (1/G) = -0.0000193358 + 0.1981607255 * wavelength
+        extremely well.
+        """
         inv_gain = -0.0000193358 + 0.1981607255 * wavelength
         assert inv_gain > 0.1
         return 1.0 / inv_gain
@@ -171,7 +171,7 @@ class FormatBrukerPhotonII(FormatBruker):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array of integers.)"""
+        flex array of integers.)"""
 
         # It is better to catch FORMAT 86 here and fail with a sensible error msg
         # as soon as something is attempted with the image data rather than in

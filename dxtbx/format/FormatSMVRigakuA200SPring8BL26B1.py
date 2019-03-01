@@ -18,13 +18,13 @@ from dxtbx.format.FormatSMVRigakuA200 import FormatSMVRigakuA200
 
 class FormatSMVRigakuA200SPring8BL26B1(FormatSMVRigakuA200):
     """A class for reading SMV format Rigaku A200 images written by a detector
-  usually at SPring-8 BL26B1, which requires a reversed axis goniometer"""
+    usually at SPring-8 BL26B1, which requires a reversed axis goniometer"""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like a Rigaku A200 SMV format image,
-    i.e. we can make sense of it. Essentially that will be if it contains
-    all of the keys we are looking for."""
+        i.e. we can make sense of it. Essentially that will be if it contains
+        all of the keys we are looking for."""
 
         size, header = FormatSMVRigakuA200SPring8BL26B1.get_smv_header(image_file)
 
@@ -46,8 +46,8 @@ class FormatSMVRigakuA200SPring8BL26B1(FormatSMVRigakuA200):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment. Easy from Rigaku A200 images as
-    they contain everything pretty much we need..."""
+        proper model of the experiment. Easy from Rigaku A200 images as
+        they contain everything pretty much we need..."""
 
         from dxtbx import IncorrectFormatError
 
@@ -68,8 +68,8 @@ class FormatSMVRigakuA200SPring8BL26B1(FormatSMVRigakuA200):
 
     def _goniometer(self):
         """Initialize the structure for the goniometer. Although ROTATION_VECTOR
-    is written into the header, this might (?) always be 1. 1. 0. for this
-    detector, and we want a reversed axis goniometer """
+        is written into the header, this might (?) always be 1. 1. 0. for this
+        detector, and we want a reversed axis goniometer"""
 
         # axis = tuple(map(float, self._header_dictionary[
         #    'ROTATION_VECTOR'].split()))

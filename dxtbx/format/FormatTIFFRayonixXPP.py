@@ -38,7 +38,7 @@ def check(l):
 
 class FormatTIFFRayonixXPP(FormatTIFFRayonix):
     """A class for reading TIFF format Rayonix images, and correctly
-  constructing a model for the experiment from this."""
+    constructing a model for the experiment from this."""
 
     @staticmethod
     def understand(image_file):
@@ -62,7 +62,7 @@ class FormatTIFFRayonixXPP(FormatTIFFRayonix):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -85,9 +85,9 @@ class FormatTIFFRayonixXPP(FormatTIFFRayonix):
 
     def _get_rayonix_beam_xy(self):
         """Get the beam x, y positions which are defined in the standard
-    to be in pixels. X and Y are not defined by the documentation, so
-    taking as a given that these are horizontal and vertical. N.B.
-    the documentation states that the horizontal direction is fast."""
+        to be in pixels. X and Y are not defined by the documentation, so
+        taking as a given that these are horizontal and vertical. N.B.
+        the documentation states that the horizontal direction is fast."""
 
         beam_x, beam_y = struct.unpack(self._ii, self._tiff_header_bytes[1668:1676])[:2]
         pixel_x, pixel_y = struct.unpack(self._ii, self._tiff_header_bytes[1796:1804])[

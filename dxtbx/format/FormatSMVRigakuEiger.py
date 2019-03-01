@@ -21,8 +21,8 @@ class FormatSMVRigakuEiger(FormatSMVRigaku):
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like a Rigaku d*TREK SMVRigaku format image,
-    i.e. we can make sense of it. Essentially that will be if it contains
-    all of the keys we are looking for."""
+        i.e. we can make sense of it. Essentially that will be if it contains
+        all of the keys we are looking for."""
 
         size, header = FormatSMVRigaku.get_smv_header(image_file)
 
@@ -38,7 +38,7 @@ class FormatSMVRigakuEiger(FormatSMVRigaku):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -99,7 +99,7 @@ class FormatSMVRigakuEiger(FormatSMVRigaku):
 
     def _detector(self):
         """Return a model for the detector, allowing for two-theta offsets
-    and the detector position. This will be rather more complex..."""
+        and the detector position. This will be rather more complex..."""
 
         detector_name = self._header_dictionary["DETECTOR_NAMES"].split()[0].strip()
 
@@ -258,7 +258,7 @@ class FormatSMVRigakuEiger(FormatSMVRigaku):
 
     def get_raw_data(self):
         """Read the data - assuming it is streaming 4-byte unsigned ints following the
-    header..."""
+        header..."""
 
         from boost.python import streambuf
         from dxtbx import read_int32

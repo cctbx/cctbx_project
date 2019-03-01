@@ -28,15 +28,15 @@ def filename_or_none(filename):
 
 
 def basic_imageset_to_dict(imageset):
-    """ Convert an imageset to a dictionary
+    """Convert an imageset to a dictionary
 
-  Params:
-      imageset The imageset
+    Params:
+        imageset The imageset
 
-  Returns:
-      A dictionary of the parameters
+    Returns:
+        A dictionary of the parameters
 
-  """
+    """
     from libtbx.containers import OrderedDict
 
     # Return the dictionary representation
@@ -54,15 +54,15 @@ def basic_imageset_to_dict(imageset):
 
 
 def imagesweep_to_dict(sweep):
-    """ Convert a sweep to a dictionary
+    """Convert a sweep to a dictionary
 
-  Params:
-      sweep The sweep
+    Params:
+        sweep The sweep
 
-  Returns:
-      A dictionary of the parameters
+    Returns:
+        A dictionary of the parameters
 
-  """
+    """
     from libtbx.containers import OrderedDict
 
     # Return the dictionary representation
@@ -82,15 +82,15 @@ def imagesweep_to_dict(sweep):
 
 
 def imageset_to_dict(imageset):
-    """ Convert the imageset to a dictionary
+    """Convert the imageset to a dictionary
 
-  Params:
-      imageset The imageset
+    Params:
+        imageset The imageset
 
-  Returns:
-      A dictionary of the parameters
+    Returns:
+        A dictionary of the parameters
 
-  """
+    """
     from dxtbx.imageset import ImageSet, ImageSweep
     from dxtbx.format.image import ImageBool, ImageDouble
 
@@ -211,15 +211,15 @@ def imagesweep_from_dict(d, check_format=True, directory=None):
 
 
 def imageset_from_dict(d, check_format=True, directory=None):
-    """ Convert the dictionary to a sweep
+    """Convert the dictionary to a sweep
 
-  Params:
-      d The dictionary of parameters
+    Params:
+        d The dictionary of parameters
 
-  Returns:
-      The sweep
+    Returns:
+        The sweep
 
-  """
+    """
     # Check the input
     if d == None:
         return None

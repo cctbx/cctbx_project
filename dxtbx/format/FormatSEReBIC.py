@@ -43,7 +43,7 @@ class FormatSEReBIC(FormatSER):
 
     def _goniometer(self):
         """Dummy goniometer, 'vertical' as the images are viewed. Not completely
-    sure about the handedness yet"""
+        sure about the handedness yet"""
 
         return self._goniometer_factory.known_axis((0, -1, 0))
 

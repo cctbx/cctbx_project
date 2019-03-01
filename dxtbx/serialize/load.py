@@ -43,15 +43,15 @@ def _decode_dict(data):
 
 
 def imageset_from_string(string, directory=None):
-    """ Load the string and return the models.
+    """Load the string and return the models.
 
-  Params:
-      string The JSON string to load
+    Params:
+        string The JSON string to load
 
-  Returns:
-      The models
+    Returns:
+        The models
 
-  """
+    """
     import json
     from dxtbx.serialize.imageset import imageset_from_dict
 
@@ -61,15 +61,15 @@ def imageset_from_string(string, directory=None):
 
 
 def imageset(filename):
-    """ Load the given JSON file.
+    """Load the given JSON file.
 
-  Params:
-      infile The input filename
+    Params:
+        infile The input filename
 
-  Returns:
-      The models
+    Returns:
+        The models
 
-  """
+    """
     from os.path import abspath, dirname
 
     # If the input is a string then open and read from that file
@@ -80,30 +80,30 @@ def imageset(filename):
 
 
 def datablock(filename, check_format=True):
-    """ Load a given JSON or pickle file.
+    """Load a given JSON or pickle file.
 
-  Params:
-    filename The input filename
+    Params:
+      filename The input filename
 
-  Returns:
-    The datablock
+    Returns:
+      The datablock
 
-  """
+    """
     from dxtbx.datablock import DataBlockFactory
 
     return DataBlockFactory.from_serialized_format(filename, check_format=check_format)
 
 
 def crystal(infile):
-    """ Load the given JSON file.
+    """Load the given JSON file.
 
-  Params:
-      infile The input filename or file object
+    Params:
+        infile The input filename or file object
 
-  Returns:
-      The models
+    Returns:
+        The models
 
-  """
+    """
     import json
     from dxtbx.model.crystal import CrystalFactory
 

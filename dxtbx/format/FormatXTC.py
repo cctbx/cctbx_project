@@ -63,10 +63,10 @@ class FormatXTC(FormatMultiImageLazy, FormatStill, Format):
 
     @staticmethod
     def understand(image_file):
-        """ Extracts the datasource and detector_address from the image_file and then feeds it to PSANA
+        """Extracts the datasource and detector_address from the image_file and then feeds it to PSANA
         If PSANA fails to read it, then input may not be an xtc/smd file. If success, then OK.
         If detector_address is not provided, a command line promp will try to get the address
-        from the user """
+        from the user"""
         try:
             import psana
         except ImportError:
@@ -105,18 +105,18 @@ class FormatXTC(FormatMultiImageLazy, FormatStill, Format):
     @classmethod
     def get_reader(Class):
         """
-    Return a reader class
+        Return a reader class
 
-    """
+        """
         obj = XtcReader
         # Note, need to set this on the parent class since it's a scoped global variable
         Reader._format_class_ = Class
         return obj
 
     def populate_events(self):
-        """ Read the timestamps from the XTC stream.  Assumes the psana idx mode of reading data.
+        """Read the timestamps from the XTC stream.  Assumes the psana idx mode of reading data.
         Handles multiple LCLS runs by concatenating the timestamps from multiple runs together
-        in a single list and creating a mapping. """
+        in a single list and creating a mapping."""
         if hasattr(self, "times") and len(self.times) > 0:
             return
 
@@ -145,8 +145,8 @@ class FormatXTC(FormatMultiImageLazy, FormatStill, Format):
         raise IndexError("Index is not within bounds")
 
     def _get_event(self, index):
-        """ Retrieve a psana event given and index. This is the slow step for reading XTC streams,
-        so implement a cache for the last read event. """
+        """Retrieve a psana event given and index. This is the slow step for reading XTC streams,
+        so implement a cache for the last read event."""
         if index == self.current_index:
             return self.current_event
         else:
@@ -181,10 +181,10 @@ class FormatXTC(FormatMultiImageLazy, FormatStill, Format):
     @staticmethod
     def _get_psana_runs(datasource):
         """
-    Extracts the runs,
-    These can only be extracted once,
-    only call this method after datasource is set
-    """
+        Extracts the runs,
+        These can only be extracted once,
+        only call this method after datasource is set
+        """
         # this is key,value = run_integer, psana.Run, e.g. {62: <psana.Run(@0x7fbd0e23c990)>}
         psana_runs = {r.run(): r for r in datasource.runs()}
         return psana_runs

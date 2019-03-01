@@ -3,16 +3,16 @@ import os
 
 
 def load_path(path, directory=None):
-    """ Load a filename from a JSON file.
+    """Load a filename from a JSON file.
 
-  First expand any environment and user variables. Then create the absolute path
-  from the current directory (i.e. the directory in which the JSON file is
-  located.
+    First expand any environment and user variables. Then create the absolute path
+    from the current directory (i.e. the directory in which the JSON file is
+    located.
 
-  Params:
-    path The path to the file.
+    Params:
+      path The path to the file.
 
-  """
+    """
     if not path:
         return ""
     path = os.path.expanduser(os.path.expandvars(path))

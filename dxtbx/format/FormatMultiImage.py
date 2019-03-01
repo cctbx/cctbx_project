@@ -118,9 +118,9 @@ class FormatMultiImage(object):
     @classmethod
     def get_reader(Class):
         """
-    Return a reader class
+        Return a reader class
 
-    """
+        """
         obj = Reader
         obj._format_class_ = Class
         return obj
@@ -128,9 +128,9 @@ class FormatMultiImage(object):
     @classmethod
     def get_masker(Class):
         """
-    Return a reader class
+        Return a reader class
 
-    """
+        """
         obj = Masker
         obj._format_class_ = Class
         return obj
@@ -152,9 +152,9 @@ class FormatMultiImage(object):
         lazy=False,
     ):
         """
-    Factory method to create an imageset
+        Factory method to create an imageset
 
-    """
+        """
         from dxtbx.imageset import ImageSetData
         from dxtbx.imageset import ImageSweep
         from os.path import abspath

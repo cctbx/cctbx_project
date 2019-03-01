@@ -19,8 +19,8 @@ class FormatSMVRigaku(FormatSMV):
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like a Rigaku d*TREK SMV format image,
-    i.e. we can make sense of it. Essentially that will be if it contains
-    all of the keys we are looking for."""
+        i.e. we can make sense of it. Essentially that will be if it contains
+        all of the keys we are looking for."""
 
         size, header = FormatSMV.get_smv_header(image_file)
 
@@ -61,7 +61,7 @@ class FormatSMVRigaku(FormatSMV):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -72,31 +72,31 @@ class FormatSMVRigaku(FormatSMV):
 
     def _goniometer(self):
         """Overload this method to read the image file however you like so
-    long as the result is an goniometer."""
+        long as the result is an goniometer."""
 
         raise NotImplementedError("overload me")
 
     def _detector(self):
         """Overload this method to read the image file however you like so
-    long as the result is an detector."""
+        long as the result is an detector."""
 
         raise NotImplementedError("overload me")
 
     def _beam(self):
         """Overload this method to read the image file however you like so
-    long as the result is an beam."""
+        long as the result is an beam."""
 
         raise NotImplementedError("overload me")
 
     def _scan(self):
         """Overload this method to read the image file however you like so
-    long as the result is an scan."""
+        long as the result is an scan."""
 
         raise NotImplementedError("overload me")
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array of integers.)"""
+        flex array of integers.)"""
 
         from boost.python import streambuf
         from dxtbx import read_uint16, read_uint16_bs, is_big_endian

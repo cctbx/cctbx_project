@@ -238,7 +238,7 @@ class lazy_file_cache:
 
     def pass_read(self, start=0, maxbytes=None):
         """Read from position start up to maxbytes bytes from file.
-       If maxbytes is not set, read the entire file."""
+        If maxbytes is not set, read the entire file."""
         self._check_not_closed()
 
         # Do we need to pass the read request to the underlying file object?

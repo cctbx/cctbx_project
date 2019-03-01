@@ -9,14 +9,14 @@ from dxtbx.model.detector_helpers_types import detector_helpers_types
 def to_imageset(input_filename, extra_filename=None):
     """Get an image set from the xds input filename plus an extra filename
 
-  Params:
-      input_filename The XDS.INP file
-      extra_filename A (G)XPARM.XDS, INTGRATE.HKL or XDS_ASCII.HKL file
+    Params:
+        input_filename The XDS.INP file
+        extra_filename A (G)XPARM.XDS, INTGRATE.HKL or XDS_ASCII.HKL file
 
-  Returns:
-      The imageset
+    Returns:
+        The imageset
 
-  """
+    """
     from iotbx.xds import xds_inp
     from dxtbx.imageset import ImageSetFactory
     import dxtbx
@@ -86,15 +86,15 @@ def to_imageset(input_filename, extra_filename=None):
 
 
 def to_crystal(filename):
-    """ Get the crystal model from the xparm file
+    """Get the crystal model from the xparm file
 
-  Params:
-      filename The xparm/or integrate filename
+    Params:
+        filename The xparm/or integrate filename
 
-  Return:
-      The crystal model
+    Return:
+        The crystal model
 
-  """
+    """
     from rstbx.cftbx.coordinate_frame_converter import coordinate_frame_converter
     from cctbx.sgtbx import space_group, space_group_symbols
 
@@ -132,7 +132,7 @@ def to_crystal(filename):
 
 def xds_detector_name(dxtbx_name):
     """Translate from a xia2 name from the detector library to an XDS detector
-  name."""
+    name."""
     # http://xds.mpimf-heidelberg.mpg.de/html_doc/xds_parameters.html#DETECTOR=
 
     if "pilatus" in dxtbx_name:

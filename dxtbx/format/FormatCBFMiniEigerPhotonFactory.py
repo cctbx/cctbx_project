@@ -19,15 +19,15 @@ from dxtbx.format.FormatCBFMini import FormatCBFMini
 
 class FormatCBFMiniEigerPhotonFactory(FormatCBFMini):
     """A class for reading mini CBF format Eiger images, and correctly
-  constructing a model for the experiment from this.
+    constructing a model for the experiment from this.
 
-  Specific for 2-Eiger setup at Photon Factory based on images sent by
-  Yusuke Yamada. Geometry currently hard-coded as no geometry information in
-  image headers. Assumes image filenames contain the string '_upper_' or
-  '_lower_' to distinguish the two detectors.
+    Specific for 2-Eiger setup at Photon Factory based on images sent by
+    Yusuke Yamada. Geometry currently hard-coded as no geometry information in
+    image headers. Assumes image filenames contain the string '_upper_' or
+    '_lower_' to distinguish the two detectors.
 
-  Only works if environment variable ENABLE_PHOTON_FACTORY_TWO_EIGER is set.
-  """
+    Only works if environment variable ENABLE_PHOTON_FACTORY_TWO_EIGER is set.
+    """
 
     @staticmethod
     def understand(image_file):
@@ -39,7 +39,7 @@ class FormatCBFMiniEigerPhotonFactory(FormatCBFMini):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 

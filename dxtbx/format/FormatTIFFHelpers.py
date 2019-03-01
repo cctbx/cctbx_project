@@ -13,7 +13,7 @@ BIG_ENDIAN = 4321
 
 def tiff_byte_order(filename):
     """Determine the byte order for the file from the magic numbers at the
-  very start of the file."""
+    very start of the file."""
 
     four_bytes = Format.open_file(filename, "rb").read(4)
 
@@ -29,7 +29,7 @@ def tiff_byte_order(filename):
 
 def read_basic_tiff_header(filename):
     """Read the TIFF header (assuming for the moment a 4k header...) and
-  return ... something."""
+    return ... something."""
 
     # things we hope to learn from the vanilla TIFF header
 

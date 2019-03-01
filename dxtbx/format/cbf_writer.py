@@ -33,10 +33,10 @@ class FullCBFWriter(object):
         self.imageset = imageset
 
     def get_metrology_dict(self, index=None):
-        """ Build a metrology dictionary.  This dictionary maps hierarchy keys to basis
+        """Build a metrology dictionary.  This dictionary maps hierarchy keys to basis
         objects. A hierarchy key looks like this (0,1,2), where the entries are
         levels in a hierarchy and the numbers refer to a panel or group within that
-        level """
+        level"""
         from xfel.cftbx.detector.cspad_cbf_tbx import basis
 
         metro = {}
@@ -442,8 +442,8 @@ class FullCBFWriter(object):
 
     def add_data_to_cbf(self, cbf, index=None, data=None, verbose=False):
         """
-    Given a cbf handle, add the raw data and the necessary tables to support it
-    """
+        Given a cbf handle, add the raw data and the necessary tables to support it
+        """
         import pycbf
 
         if data is None:

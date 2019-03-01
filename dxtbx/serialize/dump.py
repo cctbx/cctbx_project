@@ -13,16 +13,16 @@ from __future__ import absolute_import, division
 
 
 def compact_simple_list(match):
-    """ Callback function. Given a simple list match, compact it and ensure
-  that it wraps around by 80 characters.
+    """Callback function. Given a simple list match, compact it and ensure
+    that it wraps around by 80 characters.
 
-  Params:
-      match The regular expression match
+    Params:
+        match The regular expression match
 
-  Returns:
-      The string to replace the expression with
+    Returns:
+        The string to replace the expression with
 
-  """
+    """
     import textwrap
 
     # Calculate the initial indent as the length of the first match group
@@ -55,31 +55,31 @@ def compact_simple_list(match):
 
 
 def compact_simple_lists(string):
-    """ Find simple lists in the string and compact.
+    """Find simple lists in the string and compact.
 
-  Params:
-      string The input JSON string
+    Params:
+        string The input JSON string
 
-  Returns:
-      The output JSON string
+    Returns:
+        The output JSON string
 
-  """
+    """
     import re
 
     return re.sub(r'(.*"\w+".*:.*)(\[[^\{\}\[\]]*\])', compact_simple_list, string)
 
 
 def imageset_to_string(obj, compact=False):
-    """ Dump the given object to string.
+    """Dump the given object to string.
 
-  Params:
-      obj The imageset
-      compact Write in compact representation
+    Params:
+        obj The imageset
+        compact Write in compact representation
 
-  Returns:
-      The JSON string
+    Returns:
+        The JSON string
 
-  """
+    """
     import json
     import textwrap
     from dxtbx.serialize.imageset import imageset_to_dict
@@ -101,14 +101,14 @@ def imageset_to_string(obj, compact=False):
 
 
 def imageset(obj, outfile, compact=False):
-    """ Dump the given object to file.
+    """Dump the given object to file.
 
-  Params:
-      obj The imageset to dump
-      outfile The output file name or file object
-      compact Write in compact representation
+    Params:
+        obj The imageset to dump
+        outfile The output file name or file object
+        compact Write in compact representation
 
-  """
+    """
     # If the input is a string then open and write to that file
     if isinstance(outfile, str):
         with open(outfile, "w") as outfile:
@@ -128,14 +128,14 @@ def datablock(obj, outfile, **kwargs):
 
 
 def crystal(obj, outfile, compact=False):
-    """ Dump the given object to file.
+    """Dump the given object to file.
 
-  Params:
-      obj The crystal to dump
-      outfile The output file name or file object
-      compact Write in compact representation
+    Params:
+        obj The crystal to dump
+        outfile The output file name or file object
+        compact Write in compact representation
 
-  """
+    """
     from dxtbx.serialize.crystal import to_string
 
     # If the input is a string then open and write to that file

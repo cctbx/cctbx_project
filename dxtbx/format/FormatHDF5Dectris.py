@@ -5,10 +5,10 @@ from dxtbx.format.FormatHDF5 import FormatHDF5
 
 
 class FormatHDF5Dectris(FormatHDF5):
-    """ This is a placeholder implementation only.  Open example dataset
-      provided by Dectris Ltd, Jan 2013.  Read the first image only.
-      Later replace this with a sweep-oriented implementation that
-      reads the whole dataset."""
+    """This is a placeholder implementation only.  Open example dataset
+    provided by Dectris Ltd, Jan 2013.  Read the first image only.
+    Later replace this with a sweep-oriented implementation that
+    reads the whole dataset."""
 
     @staticmethod
     def understand(image_file):
@@ -61,7 +61,7 @@ class FormatHDF5Dectris(FormatHDF5):
 
     def _scan(self):
         """Replace this with true values later
-       when HDF5 sweep support is implemented."""
+        when HDF5 sweep support is implemented."""
 
         return self._scan_factory.make_scan(
             image_range=(1, 1),

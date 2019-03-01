@@ -14,7 +14,7 @@ from __future__ import absolute_import, division, print_function
 
 def resolution_corners(frame):
     """Compute the resolution limit corresponding to the corners of the detector
-  surface."""
+    surface."""
 
     import math
     from scitbx import matrix

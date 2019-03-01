@@ -21,9 +21,9 @@ from dxtbx.format.FormatTIFFHelpers import BIG_ENDIAN
 
 class FormatTIFF(Format):
     """An image reading class for TIFF format images i.e. those from Dectris
-  and Rayonix, which start with a standard TIFF header (which is what is
-  handled here) and have their own custom header following, which must
-  be handled by the inheriting subclasses."""
+    and Rayonix, which start with a standard TIFF header (which is what is
+    handled here) and have their own custom header following, which must
+    be handled by the inheriting subclasses."""
 
     LITTLE_ENDIAN = LITTLE_ENDIAN
     BIG_ENDIAN = BIG_ENDIAN
@@ -31,7 +31,7 @@ class FormatTIFF(Format):
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an TIFF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
 
         try:
             width, height, depth, header, order = read_basic_tiff_header(image_file)
@@ -64,7 +64,7 @@ class FormatTIFF(Format):
 
     def _start(self):
         """Open the image file, read the image header, copy it into memory
-    for future inspection."""
+        for future inspection."""
 
         width, height, depth, header, order = read_basic_tiff_header(self._image_file)
 

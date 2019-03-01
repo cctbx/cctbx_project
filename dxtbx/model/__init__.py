@@ -147,15 +147,15 @@ class CrystalAux(boost.python.injector, Crystal):
 
     @staticmethod
     def _to_dict(crystal):
-        """ Convert the crystal model to a dictionary
+        """Convert the crystal model to a dictionary
 
-    Params:
-        crystal The crystal model
+        Params:
+            crystal The crystal model
 
-    Returns:
-        A dictionary of the parameters
+        Returns:
+            A dictionary of the parameters
 
-    """
+        """
         from collections import OrderedDict
         from scitbx import matrix
 
@@ -220,15 +220,15 @@ class CrystalAux(boost.python.injector, Crystal):
 
     @staticmethod
     def from_dict(d):
-        """ Convert the dictionary to a crystal model
+        """Convert the dictionary to a crystal model
 
-    Params:
-        d The dictionary of parameters
+        Params:
+            d The dictionary of parameters
 
-    Returns:
-        The crystal model
+        Returns:
+            The crystal model
 
-    """
+        """
         from dxtbx.model import Crystal
 
         # If None, return None
@@ -303,15 +303,15 @@ class MosaicCrystalKabsch2010Aux(CrystalAux, MosaicCrystalKabsch2010):
         return s.getvalue()
 
     def to_dict(crystal):
-        """ Convert the crystal model to a dictionary
+        """Convert the crystal model to a dictionary
 
-    Params:
-        crystal The crystal model
+        Params:
+            crystal The crystal model
 
-    Returns:
-        A dictionary of the parameters
+        Returns:
+            A dictionary of the parameters
 
-    """
+        """
         xl_dict = CrystalAux._to_dict(crystal)
 
         # Get the mosaicity
@@ -322,15 +322,15 @@ class MosaicCrystalKabsch2010Aux(CrystalAux, MosaicCrystalKabsch2010):
 
     @staticmethod
     def from_dict(d):
-        """ Convert the dictionary to a crystal model
+        """Convert the dictionary to a crystal model
 
-    Params:
-        d The dictionary of parameters
+        Params:
+            d The dictionary of parameters
 
-    Returns:
-        The crystal model
+        Returns:
+            The crystal model
 
-    """
+        """
         xl = MosaicCrystalKabsch2010(CrystalAux.from_dict(d))
 
         # This parameter doesn't survive the Crystal copy constructor so has to be re-set.
@@ -383,15 +383,15 @@ class MosaicCrystalSauter2014Aux(CrystalAux, MosaicCrystalSauter2014):
         return s.getvalue()
 
     def to_dict(crystal):
-        """ Convert the crystal model to a dictionary
+        """Convert the crystal model to a dictionary
 
-    Params:
-        crystal The crystal model
+        Params:
+            crystal The crystal model
 
-    Returns:
-        A dictionary of the parameters
+        Returns:
+            A dictionary of the parameters
 
-    """
+        """
         xl_dict = CrystalAux._to_dict(crystal)
 
         # Get the mosaic parameters
@@ -405,15 +405,15 @@ class MosaicCrystalSauter2014Aux(CrystalAux, MosaicCrystalSauter2014):
 
     @staticmethod
     def from_dict(d):
-        """ Convert the dictionary to a crystal model
+        """Convert the dictionary to a crystal model
 
-    Params:
-        d The dictionary of parameters
+        Params:
+            d The dictionary of parameters
 
-    Returns:
-        The crystal model
+        Returns:
+            The crystal model
 
-    """
+        """
         xl = MosaicCrystalSauter2014(CrystalAux.from_dict(d))
 
         # Parameters for maximum likelihood values
@@ -466,10 +466,10 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
         return list(OrderedSet(e.scaling_model for e in self))
 
     def imagesets(self):
-        """ Get a list of the unique imagesets (includes None).
+        """Get a list of the unique imagesets (includes None).
 
-    This returns unique complete sets rather than partial.
-    """
+        This returns unique complete sets rather than partial.
+        """
         return list(OrderedSet([e.imageset for e in self if e.imageset is not None]))
         # temp = OrderedDict([(e.imageset.reader(), i)
         #   for i, e in enumerate(self) if e.imageset is not None])
@@ -629,8 +629,8 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
         return result
 
     def to_datablocks(self):
-        """ Return the experiment list as a datablock list.
-    This assumes that the experiment contains 1 datablock."""
+        """Return the experiment list as a datablock list.
+        This assumes that the experiment contains 1 datablock."""
         from dxtbx.datablock import DataBlockFactory
 
         # Convert the experiment list to dict
@@ -658,11 +658,11 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
 
     def nullify_all_single_file_reader_format_instances(self):
         """
-    Parallel reading of HDF5 from the same handle is not allowed. Python
-    multiprocessing is a bit messed up and used fork on linux so need to
-    close and reopen file.
+        Parallel reading of HDF5 from the same handle is not allowed. Python
+        multiprocessing is a bit messed up and used fork on linux so need to
+        close and reopen file.
 
-    """
+        """
         for experiment in self:
             if experiment.imageset.reader().is_single_file_reader():
                 experiment.imageset.reader().nullify_format_instance()

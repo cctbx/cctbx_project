@@ -10,21 +10,21 @@ from cctbx.crystal_orientation import crystal_orientation
 class crystal_model_old(object):
     """Simple model for the crystal lattice geometry and symmetry
 
-  A crystal is initialised from the elements of its real space axes
-  a, b, and c. Space group information must also be provided, either
-  in the form of a symbol, or an existing
-  cctbx.sgtbx.space_group object. If space_group_symbol is provided,
-  it is passed to the cctbx.sgtbx.space_group_symbols constructor.
-  This accepts either extended Hermann Mauguin format, or Hall format
-  with the prefix 'Hall:'. E.g.
+    A crystal is initialised from the elements of its real space axes
+    a, b, and c. Space group information must also be provided, either
+    in the form of a symbol, or an existing
+    cctbx.sgtbx.space_group object. If space_group_symbol is provided,
+    it is passed to the cctbx.sgtbx.space_group_symbols constructor.
+    This accepts either extended Hermann Mauguin format, or Hall format
+    with the prefix 'Hall:'. E.g.
 
-  space_group_symbol = "P b a n:1"
-      or
-  space_group_symbol = "Hall:P 2 2 -1ab"
+    space_group_symbol = "P b a n:1"
+        or
+    space_group_symbol = "Hall:P 2 2 -1ab"
 
-  Optionally the crystal mosaicity value may be set, with the deg
-  parameter controlling whether this value is treated as being an
-  angle in degrees or radians."""
+    Optionally the crystal mosaicity value may be set, with the deg
+    parameter controlling whether this value is treated as being an
+    angle in degrees or radians."""
 
     def __init__(
         self,
@@ -207,11 +207,11 @@ class crystal_model_old(object):
 
     def get_B_covariance(self):
         """Return the 9*9 covariance matrix of elements of B, if available,
-    otherwise None. The order of elements of this matrix are determined by
-    'flattening' B to form a 1D vector using row major ordering.
+        otherwise None. The order of elements of this matrix are determined by
+        'flattening' B to form a 1D vector using row major ordering.
 
-    :rtype: :py:class:`scitbx.matrix.sqr`
-    """
+        :rtype: :py:class:`scitbx.matrix.sqr`
+        """
         return self._cov_B
 
     def set_B_covariance(self, cov):
@@ -474,10 +474,10 @@ class crystal_model_old(object):
 
     def get_cell_parameter_sd(self):
         """Return the estimated standard deviations of unit cell parameters in
-    units of Angstroms and degrees, if available, otherwise None.
+        units of Angstroms and degrees, if available, otherwise None.
 
-    :rtype: :py:class:`tuple`
-    """
+        :rtype: :py:class:`tuple`
+        """
         if self._cov_B is None:
             return None
         if self._cell_sd is not None:
@@ -490,10 +490,10 @@ class crystal_model_old(object):
 
     def get_cell_volume_sd(self):
         """Return the estimated standard deviation of the unit cell volume in
-    units of Angstroms^3, if available, otherwise None.
+        units of Angstroms^3, if available, otherwise None.
 
-    :rtype: :py:class:`tuple`
-    """
+        :rtype: :py:class:`tuple`
+        """
         if self._cov_B is None:
             return None
         if self._cell_volume_sd is not None:
@@ -514,17 +514,17 @@ class crystal_model_old(object):
 
     def set_A_at_scan_points(self, A_list):
         """Set the setting matrix A at a series of checkpoints within a rotation
-    scan. There would typically be n+1 points, where n is the number of images
-    in the scan. The first point is the state at the beginning of the rotation
-    scan. The final point is the state at the end of the rotation scan.
-    Intervening points give the state at the start of the rotation at the 2nd
-    to the nth image.
+        scan. There would typically be n+1 points, where n is the number of images
+        in the scan. The first point is the state at the beginning of the rotation
+        scan. The final point is the state at the end of the rotation scan.
+        Intervening points give the state at the start of the rotation at the 2nd
+        to the nth image.
 
-    This data is held separately from the 'static' U and B because per-image
-    setting matrices may be refined whilst restraining to a previously
-    determined best-fit static UB. The values will be reset if any changes are
-    made to the static U and B matrices.
-    """
+        This data is held separately from the 'static' U and B because per-image
+        setting matrices may be refined whilst restraining to a previously
+        determined best-fit static UB. The values will be reset if any changes are
+        made to the static U and B matrices.
+        """
 
         self._A_at_scan_points = [matrix.sqr(e) for e in A_list]
         self._num_scan_points = len(A_list)
@@ -532,27 +532,27 @@ class crystal_model_old(object):
     def get_A_at_scan_point(self, t):
         """Return the setting matrix with index t.
 
-    This will typically have been
-    set with reference to a particular scan, such that it equals the UB matrix
-    appropriate at the start of the rotation for the image with array index t
+        This will typically have been
+        set with reference to a particular scan, such that it equals the UB matrix
+        appropriate at the start of the rotation for the image with array index t
 
-    :param t: index into the list of scan points.
+        :param t: index into the list of scan points.
 
-    :returns: The A matrix at index t
-    :rtype: :py:class:`scitbx.matrix.sqr`
-    """
+        :returns: The A matrix at index t
+        :rtype: :py:class:`scitbx.matrix.sqr`
+        """
 
         return self._A_at_scan_points[t]
 
     def get_U_at_scan_point(self, t):
         """
-    Return orientation matrix with index t.
+        Return orientation matrix with index t.
 
-    :param t: index into the list of scan points.
+        :param t: index into the list of scan points.
 
-    :returns: The U matrix at index t
-    :rtype: :py:class:`scitbx.matrix.sqr`
-    """
+        :returns: The U matrix at index t
+        :rtype: :py:class:`scitbx.matrix.sqr`
+        """
 
         Bt = self.get_B_at_scan_point(t)
         At = self._A_at_scan_points[t]
@@ -561,13 +561,13 @@ class crystal_model_old(object):
 
     def get_B_at_scan_point(self, t):
         """
-    Return orthogonalisation matrix with index t.
+        Return orthogonalisation matrix with index t.
 
-    :param t: index into the list of scan points.
+        :param t: index into the list of scan points.
 
-    :returns: The B matrix at index t
-    :rtype: :py:class:`scitbx.matrix.sqr`
-    """
+        :returns: The B matrix at index t
+        :rtype: :py:class:`scitbx.matrix.sqr`
+        """
 
         At = self._A_at_scan_points[t]
         uc = unit_cell(orthogonalization_matrix=At.transpose().inverse())
@@ -576,14 +576,14 @@ class crystal_model_old(object):
 
     def get_unit_cell_at_scan_point(self, t):
         """
-    Return unit cell with index t.
+        Return unit cell with index t.
 
-    :param t: index into the list of scan points.
-    :type t: int
+        :param t: index into the list of scan points.
+        :type t: int
 
-    :returns: The unit cell at index t
-    :rtype: :py:class:`cctbx.uctbx.unit_cell`
-    """
+        :returns: The unit cell at index t
+        :rtype: :py:class:`cctbx.uctbx.unit_cell`
+        """
 
         At = self._A_at_scan_points[t]
         uc = unit_cell(orthogonalization_matrix=At.transpose().inverse())
@@ -601,35 +601,35 @@ class crystal_model_old(object):
 
     def get_unit_cell(self):
         """
-    :returns: The unit cell
-    :rtype: :py:class:`cctbx.uctbx.unit_cell`
-    """
+        :returns: The unit cell
+        :rtype: :py:class:`cctbx.uctbx.unit_cell`
+        """
         return self._uc
 
     def set_space_group(self, space_group):
         """
-    :param space_group:
-    :type space_group: cctbx.sgtbx.space_group
-    """
+        :param space_group:
+        :type space_group: cctbx.sgtbx.space_group
+        """
         self._sg = space_group
 
     def get_space_group(self):
         """
-    :returns: The current space group
-    :rtype: :py:class:`cctbx.sgtbx.space_group`
-    """
+        :returns: The current space group
+        :rtype: :py:class:`cctbx.sgtbx.space_group`
+        """
         return self._sg
 
     def get_mosaicity(self, deg=True):
         """
-    Get the current value of the mosaicity.
+        Get the current value of the mosaicity.
 
-    :param deg: If True, return the mosaicity in degrees, else return the
-                mosaicity in radians.
-    :type deg: bool
-    :returns: The mosaicity
-    :rtype: float or None
-    """
+        :param deg: If True, return the mosaicity in degrees, else return the
+                    mosaicity in radians.
+        :type deg: bool
+        :returns: The mosaicity
+        :rtype: float or None
+        """
         from math import pi
 
         if deg == True:
@@ -639,16 +639,16 @@ class crystal_model_old(object):
 
     def set_mosaicity(self, mosaicity, deg=True):
         """
-    Update the value of the mosaicity.
+        Update the value of the mosaicity.
 
-    :param mosaicity: The mosaicity
-    :type mosaicity: float
-    :param deg: If True, assume the mosaicity is given in degrees, else
-                assume it is given in radians.
-    :type deg: bool
-    :returns: The mosaicity
-    :rtype: float or None
-    """
+        :param mosaicity: The mosaicity
+        :type mosaicity: float
+        :param deg: If True, assume the mosaicity is given in degrees, else
+                    assume it is given in radians.
+        :type deg: bool
+        :returns: The mosaicity
+        :rtype: float or None
+        """
         from math import pi
 
         if deg == True:
@@ -689,24 +689,24 @@ class crystal_model_old(object):
         uc_abs_angle_tolerance=1.0,
     ):
         """
-    Test similarity of this to another crystal model
+        Test similarity of this to another crystal model
 
-    :param other: the crystal model to test against
-    :type other: crystal_model
-    :param angle_tolerance: maximum tolerated orientation difference in degrees
-    :type angle_tolerance: float
-    :param mosaicity_tolerance: minimum tolerated fraction of the larger
-            mosaicity for the smaller mosaicity to retain similarity
-    :type mosaicity_tolerance:float
-    :param uc_rel_length_tolerance: relative length tolerance to pass to
-            unit_cell.is_similar_to
-    :type uc_rel_length_tolerance: float
-    :param uc_abs_angle_tolerance: absolute angle tolerance to pass to
-            unit_cell.is_similar_to
-    :type uc_abs_angle_tolerance: float
-    :returns: Whether the other crystal model is similar to this
-    :rtype: bool
-    """
+        :param other: the crystal model to test against
+        :type other: crystal_model
+        :param angle_tolerance: maximum tolerated orientation difference in degrees
+        :type angle_tolerance: float
+        :param mosaicity_tolerance: minimum tolerated fraction of the larger
+                mosaicity for the smaller mosaicity to retain similarity
+        :type mosaicity_tolerance:float
+        :param uc_rel_length_tolerance: relative length tolerance to pass to
+                unit_cell.is_similar_to
+        :type uc_rel_length_tolerance: float
+        :param uc_abs_angle_tolerance: absolute angle tolerance to pass to
+                unit_cell.is_similar_to
+        :type uc_abs_angle_tolerance: float
+        :returns: Whether the other crystal model is similar to this
+        :rtype: bool
+        """
 
         # space group test
         if self.get_space_group() != other.get_space_group():
@@ -768,24 +768,24 @@ class crystal_model_old(object):
 
     def get_real_space_vectors(self):
         """
-    Get the real space unit cell basis vectors.
+        Get the real space unit cell basis vectors.
 
-    :returns: Real space unit cell basis vectors
-    :rtype: list of :py:class:`scitbx.matrix.col`
-    """
+        :returns: Real space unit cell basis vectors
+        :rtype: list of :py:class:`scitbx.matrix.col`
+        """
         A_inv = self.get_A().inverse()
         return (matrix.col(A_inv[:3]), matrix.col(A_inv[3:6]), matrix.col(A_inv[6:9]))
 
     def change_basis(self, change_of_basis_op):
         """
-    Returns a copy of the current crystal model transformed by the given
-    change of basis operator to the new basis.
+        Returns a copy of the current crystal model transformed by the given
+        change of basis operator to the new basis.
 
-    :param change_of_basis_op: The change of basis operator.
-    :type cctbx.sgtbx.change_of_basis_op:
-    :returns: The crystal model transformed to the new basis.
-    :rtype: :py:class:`crystal_model`
-    """
+        :param change_of_basis_op: The change of basis operator.
+        :type cctbx.sgtbx.change_of_basis_op:
+        :returns: The crystal model transformed to the new basis.
+        :rtype: :py:class:`crystal_model`
+        """
         # cctbx change of basis matrices and those Giacovazzo are related by
         # inverse and transpose, i.e. Giacovazzo's "M" is related to the cctbx
         # cb_op as follows:
@@ -829,11 +829,11 @@ class crystal_model_old(object):
 
     def update(self, other):
         """
-    Update the current crystal model such that self == other.
+        Update the current crystal model such that self == other.
 
-    :param other: A crystal model to update self with.
-    :type other: crystal_model
-    """
+        :param other: A crystal model to update self with.
+        :type other: crystal_model
+        """
         self._U = other._U
         self._B = other._B
         self._A_at_scan_points = other._A_at_scan_points
@@ -844,13 +844,13 @@ class crystal_model_old(object):
 
     def rotate_around_origin(self, axis, angle, deg=True):
         """
-    Rotate the model around an axis and angle
+        Rotate the model around an axis and angle
 
-    :param axis: The axis to rotate around
-    :param angle: The angle to rotate around
-    :param deg: Degrees or radians
+        :param axis: The axis to rotate around
+        :param angle: The angle to rotate around
+        :param deg: Degrees or radians
 
-    """
+        """
         from scitbx import matrix
 
         # Compute the matrix

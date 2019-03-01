@@ -12,12 +12,11 @@ from dxtbx.format.FormatMultiImage import FormatMultiImage
 
 class FormatGatanDM4(FormatMultiImage, Format):
     """An image reading class for images in Gatan Digital Micrograph DM4
-  format, which may be multi image stacks.
+    format, which may be multi image stacks.
 
-  The header does not contain useful information about the geometry, therefore
-  we will construct dummy objects and expect to override on import using
-  site.phil.
-"""
+    The header does not contain useful information about the geometry, therefore
+    we will construct dummy objects and expect to override on import using
+    site.phil."""
 
     # set up tag data types and lengths
     _tag_data_type = {
@@ -87,7 +86,7 @@ class FormatGatanDM4(FormatMultiImage, Format):
     @staticmethod
     def _read_header(image_file):
         """read the minimal header metadata and structure of the root tag
-    directory"""
+        directory"""
 
         hd = {}
 
@@ -117,7 +116,7 @@ class FormatGatanDM4(FormatMultiImage, Format):
 
     def _read_tag_directory(self, f):
         """read a tag directory from an open file. The first byte that identifies
-    the tag directory is expected to have been read already"""
+        the tag directory is expected to have been read already"""
 
         tag_dir = {}
 
@@ -139,7 +138,7 @@ class FormatGatanDM4(FormatMultiImage, Format):
 
     def _read_tag(self, f):
         """read a tag from an open file, omitting tag data for groups and arrays
-    (to be fulfilled later as needed)"""
+        (to be fulfilled later as needed)"""
 
         tag = {}
         tag_type = struct.unpack("B", f.read(1))[0]
@@ -179,7 +178,7 @@ class FormatGatanDM4(FormatMultiImage, Format):
 
     def _start(self):
         """Open the image file, read useful metadata into an internal dictionary
-    and read the tags to discover where the image data are and how to read it"""
+        and read the tags to discover where the image data are and how to read it"""
 
         self._header_dictionary = self._read_header(self._image_file)
 
@@ -304,7 +303,7 @@ class FormatGatanDM4(FormatMultiImage, Format):
 
     def _detector(self):
         """Dummy detector. It may be possible to extract some of the required
-    details from the image metadata, but not sure how consistent they are."""
+        details from the image metadata, but not sure how consistent they are."""
 
         # Assuming Gatan OneView camera, with 15um pixels, but trusted range is
         # (probably) wrong.

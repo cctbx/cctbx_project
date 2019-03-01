@@ -9,9 +9,9 @@ import imp
 
 def LoadFormatClasses():
     """Look for files named Format(something).py in the sensible
-  places (i.e. in the xia2 distribution and in the users home area)
-  and import the corresponding modules using their fully qualified
-  names."""
+    places (i.e. in the xia2 distribution and in the users home area)
+    and import the corresponding modules using their fully qualified
+    names."""
 
     import dxtbx.format
 
@@ -44,11 +44,11 @@ def LoadFormatClasses():
 
 def _LoadFormatModule(name, fqname, path):
     """Load a format class module, which will trigger the automated
-  self-registration.  This module will therefore not need to publish
-  anything as the module will self-publish.  The idea being that
-  these format classes were found by the search procedure above.  On
-  success, the function returns the loaded module, otherwise it
-  returns None."""
+    self-registration.  This module will therefore not need to publish
+    anything as the module will self-publish.  The idea being that
+    these format classes were found by the search procedure above.  On
+    success, the function returns the loaded module, otherwise it
+    returns None."""
 
     # Early return if module already imported.
     try:

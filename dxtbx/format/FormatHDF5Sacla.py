@@ -6,14 +6,14 @@ from dxtbx.format.FormatStill import FormatStill
 
 class FormatHDF5Sacla(FormatHDF5, FormatStill):
     """
-  Class for reading SACLA images created by the DataConvert SACLA
-  script (this script lives on the SACLA hpc).
+    Class for reading SACLA images created by the DataConvert SACLA
+    script (this script lives on the SACLA hpc).
 
-  This assumes the argument -reconstr was passed to
-  DataConvert in order to Reconstruct the image.
+    This assumes the argument -reconstr was passed to
+    DataConvert in order to Reconstruct the image.
 
-  Also, this processes only a single run's worth of data in the hdf5
-  """
+    Also, this processes only a single run's worth of data in the hdf5
+    """
 
     @staticmethod
     def understand(image_file):

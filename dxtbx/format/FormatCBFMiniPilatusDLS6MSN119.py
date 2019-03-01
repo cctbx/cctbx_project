@@ -54,7 +54,7 @@ class FormatCBFMiniPilatusDLS6MSN119(FormatCBFMiniPilatus):
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an Pilatus mini CBF format image,
-    i.e. we can make sense of it."""
+        i.e. we can make sense of it."""
 
         header = FormatCBFMiniPilatus.get_cbf_header(image_file)
 
@@ -83,7 +83,7 @@ class FormatCBFMiniPilatusDLS6MSN119(FormatCBFMiniPilatus):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -98,8 +98,8 @@ class FormatCBFMiniPilatusDLS6MSN119(FormatCBFMiniPilatus):
 
     def _goniometer(self):
         """Return a model for a simple single-axis goniometer. This should
-    probably be checked against the image header, though for miniCBF
-    there are limited options for this."""
+        probably be checked against the image header, though for miniCBF
+        there are limited options for this."""
 
         # FIXME this is currently a mess and needs properly sorting :(
 

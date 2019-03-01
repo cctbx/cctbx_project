@@ -18,8 +18,8 @@ class FormatSMVCMOS1(FormatSMV):
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like a CMOS1 d*TREK SMV format image,
-    i.e. we can make sense of it. Essentially that will be if it contains
-    all of the keys we are looking for."""
+        i.e. we can make sense of it. Essentially that will be if it contains
+        all of the keys we are looking for."""
 
         size, header = FormatSMV.get_smv_header(image_file)
 
@@ -66,7 +66,7 @@ class FormatSMVCMOS1(FormatSMV):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -211,7 +211,7 @@ class FormatSMVCMOS1(FormatSMV):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-       flex array of integers.)"""
+        flex array of integers.)"""
 
         # currently have no non-little-endian machines...
 

@@ -305,8 +305,8 @@ class DataBlock(object):
 
 
 class FormatChecker(object):
-    """ A helper class to find the image format by first checking
-  the last format that was used. """
+    """A helper class to find the image format by first checking
+    the last format that was used."""
 
     def __init__(self, verbose=False):
         """ Set the format class to none. """
@@ -314,8 +314,8 @@ class FormatChecker(object):
         self._verbose = verbose
 
     def check_child_formats(self, filename):
-        """ If a child format understands the file better than return that,
-    otherwise return the current format. """
+        """If a child format understands the file better than return that,
+        otherwise return the current format."""
         fmt = self._format_class
         for child in self._format_class._children:
             if child.understand(filename):
@@ -323,15 +323,15 @@ class FormatChecker(object):
         return fmt
 
     def understand(self, filename):
-        """ Check if the data block format understands the given file. This
-    function checks the method resolution order for the format class and
-    calls the understand methods of each parent down to the bottom level.
-    Just calling the format class understand method directly can result
-    in problems. This is really a workaround for a bug in the way that
-    the format understand method works. Furthermore, the FormatStill
-    class does not have an understand method so we have to check that
-    the "understand" method is present in the class dictionary before
-    we actually do the call. """
+        """Check if the data block format understands the given file. This
+        function checks the method resolution order for the format class and
+        calls the understand methods of each parent down to the bottom level.
+        Just calling the format class understand method directly can result
+        in problems. This is really a workaround for a bug in the way that
+        the format understand method works. Furthermore, the FormatStill
+        class does not have an understand method so we have to check that
+        the "understand" method is present in the class dictionary before
+        we actually do the call."""
         from dxtbx.format.Format import Format
 
         mro = self._format_class.mro()[::-1]
@@ -735,12 +735,12 @@ class DataBlockFilenameImporter(object):
 
 class InvalidDataBlockError(RuntimeError):
     """
-  Indicates an error whilst validating the experiment list.
+    Indicates an error whilst validating the experiment list.
 
-  This means that there is some structural problem that prevents the given data
-  from representing a well-formed experiment list. This doesn't indicate e.g.
-  some problem with the data or model consistency.
-  """
+    This means that there is some structural problem that prevents the given data
+    from representing a well-formed experiment list. This doesn't indicate e.g.
+    some problem with the data or model consistency.
+    """
 
 
 class DataBlockDictImporter(object):
@@ -1256,9 +1256,9 @@ class DataBlockDumper(object):
 
 class BeamComparison(object):
     """
-  A class to provide simple beam comparison
+    A class to provide simple beam comparison
 
-  """
+    """
 
     def __init__(
         self,
@@ -1286,9 +1286,9 @@ class BeamComparison(object):
 
 class DetectorComparison(object):
     """
-  A class to provide simple detector comparison
+    A class to provide simple detector comparison
 
-  """
+    """
 
     def __init__(
         self, fast_axis_tolerance=1e-6, slow_axis_tolerance=1e-6, origin_tolerance=1e-6
@@ -1310,9 +1310,9 @@ class DetectorComparison(object):
 
 class GoniometerComparison(object):
     """
-  A class to provide simple goniometer comparison
+    A class to provide simple goniometer comparison
 
-  """
+    """
 
     def __init__(
         self,
@@ -1347,9 +1347,9 @@ def all_approx_equal(a, b, tol):
 
 class BeamDiff(object):
     """
-  A class to provide simple beam comparison
+    A class to provide simple beam comparison
 
-  """
+    """
 
     def __init__(
         self,
@@ -1390,9 +1390,9 @@ class BeamDiff(object):
 
 class DetectorDiff(object):
     """
-  A class to provide simple detector comparison
+    A class to provide simple detector comparison
 
-  """
+    """
 
     def __init__(
         self, fast_axis_tolerance=1e-6, slow_axis_tolerance=1e-6, origin_tolerance=1e-6
@@ -1444,9 +1444,9 @@ class DetectorDiff(object):
 
 class GoniometerDiff(object):
     """
-  A class to provide simple goniometer comparison
+    A class to provide simple goniometer comparison
 
-  """
+    """
 
     def __init__(
         self,
@@ -1481,9 +1481,9 @@ class GoniometerDiff(object):
 
 class ScanDiff(object):
     """
-  A class to provide scan comparison
+    A class to provide scan comparison
 
-  """
+    """
 
     def __init__(self, scan_tolerance=1e-6):
         self.scan_tolerance = scan_tolerance

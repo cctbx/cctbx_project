@@ -18,11 +18,11 @@ from dxtbx.format.Format import Format
 
 class FormatRAXISIVSPring8(Format):
     """Format class for R-AXIS4 images. Currently the only example we have is
-  from SPring-8, which requires a reverse axis goniometer. It is not clear how
-  to distinguish this detector from others that produce 'R-AXIS4' images that we
-  may come across in future. This will be a problem if other detectors do not
-  also require reverse axis.
-  """
+    from SPring-8, which requires a reverse axis goniometer. It is not clear how
+    to distinguish this detector from others that produce 'R-AXIS4' images that we
+    may come across in future. This will be a problem if other detectors do not
+    also require reverse axis.
+    """
 
     @staticmethod
     def understand(image_file):
@@ -75,8 +75,8 @@ class FormatRAXISIVSPring8(Format):
 
     def _detector(self):
         """Return a model for the detector as defined in the image header,
-    with the additional knowledge about how things are arranged i.e. that
-    the principle rotation axis vector points from the sample downwards."""
+        with the additional knowledge about how things are arranged i.e. that
+        the principle rotation axis vector points from the sample downwards."""
 
         i = self._i
         f = self._f
@@ -154,7 +154,7 @@ class FormatRAXISIVSPring8(Format):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array."""
+        flex array."""
         self.detectorbase_start()
         try:
             image = self.detectorbase

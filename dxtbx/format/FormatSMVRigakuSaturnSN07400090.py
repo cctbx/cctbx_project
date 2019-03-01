@@ -18,15 +18,15 @@ from scitbx import matrix
 
 class FormatSMVRigakuSaturnSN07400090(FormatSMVRigakuSaturn):
     """A class for reading SMV format Rigaku Saturn images, and correctly
-  constructing a model for the experiment from this. This is the custom
-  version for instrument with serial number 07400090 on Diamond Light Source
-  beamline I19."""
+    constructing a model for the experiment from this. This is the custom
+    version for instrument with serial number 07400090 on Diamond Light Source
+    beamline I19."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like a Rigaku Saturn SMV format image,
-    i.e. we can make sense of it. Essentially that will be if it contains
-    all of the keys we are looking for. Also checks the serial number."""
+        i.e. we can make sense of it. Essentially that will be if it contains
+        all of the keys we are looking for. Also checks the serial number."""
 
         size, header = FormatSMVRigakuSaturn.get_smv_header(image_file)
 
@@ -47,9 +47,9 @@ class FormatSMVRigakuSaturnSN07400090(FormatSMVRigakuSaturn):
 
     def _detector(self):
         """Return a model for the detector, allowing for two-theta offsets
-    and the detector position. This will be rather more complex... and
-    overloads the definition for the general Rigaku Saturn detector by
-    rotating the detector by -90 degrees about the beam."""
+        and the detector position. This will be rather more complex... and
+        overloads the definition for the general Rigaku Saturn detector by
+        rotating the detector by -90 degrees about the beam."""
 
         detector_name = self._header_dictionary["DETECTOR_NAMES"].split()[0].strip()
 

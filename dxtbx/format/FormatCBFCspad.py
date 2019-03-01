@@ -21,7 +21,7 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchyStill):
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an CSPD CBF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
 
         cbf_handle = pycbf.cbf_handle_struct()
         cbf_handle.read_widefile(image_file, pycbf.MSG_DIGEST)
@@ -61,8 +61,8 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchyStill):
         return d
 
     def sync_detector_to_cbf(self, detector=None):
-        """ If the dectector object has been changed, due to refinment or manual repositioning
-    in a gui, call this function to synchronize these changes to the underlying CBF handle"""
+        """If the dectector object has been changed, due to refinment or manual repositioning
+        in a gui, call this function to synchronize these changes to the underlying CBF handle"""
 
         def recursive_sync(cbf, group, cbf_detectors=None, root=False):
             """ Walks the hierarchy and synchronizes the dxtbx matrices to the CBF axes."""
@@ -178,11 +178,11 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchyStill):
         cbf = self._get_cbf_handle()
         if cbf.has_sections():
             """
-      when using sections, the order of the panels in the detector object doesn't match the
-      order returned by cbflib's construct_detector.  The mapping between them is found
-      in the table array_structure list, which maps an array_section_id to axis_set_id,
-      which can then be matchedup with the axes of the object returned by construct_detector
-      """
+            when using sections, the order of the panels in the detector object doesn't match the
+            order returned by cbflib's construct_detector.  The mapping between them is found
+            in the table array_structure list, which maps an array_section_id to axis_set_id,
+            which can then be matchedup with the axes of the object returned by construct_detector
+            """
             all_cbfdetectors = [
                 cbf.construct_detector(i) for i in xrange(len(detector))
             ]
@@ -211,16 +211,16 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchyStill):
 
 
 class FormatCBFFullStillInMemory(FormatCBFFullStill):
-    """ Overrides the Format object's init method to accept a cbf handle instead
-      of a file name. Used with XFELs when it is desirable to never write
-      a file to disk, but to process it only in memory.
-  """
+    """Overrides the Format object's init method to accept a cbf handle instead
+    of a file name. Used with XFELs when it is desirable to never write
+    a file to disk, but to process it only in memory.
+    """
 
     @staticmethod
     def understand(image_file):
-        """ This class shouldn't be found by the dxtbx Registry. Instead it should
+        """This class shouldn't be found by the dxtbx Registry. Instead it should
         be instantiated directly as needed
-    """
+        """
         return False
 
     def __init__(self, cbf_handle, **kwargs):

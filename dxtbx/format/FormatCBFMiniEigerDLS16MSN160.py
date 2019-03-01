@@ -9,14 +9,14 @@ class FormatCBFMiniEigerDLS16MSN160(FormatCBFMiniEiger):
     def understand(image_file):
         """Check to see if this format class can understand the image file.
 
-    Args:
-      image_file (str): The file path of the image file to check.
+        Args:
+          image_file (str): The file path of the image file to check.
 
-    Returns:
-      bool: Returns ``True`` if the image_file is understood by this format class,
-      else returns ``False``.
+        Returns:
+          bool: Returns ``True`` if the image_file is understood by this format class,
+          else returns ``False``.
 
-    """
+        """
 
         # this depends on DIALS for the goniometer shadow model; if missing
         # simply return False
@@ -62,14 +62,14 @@ class FormatCBFMiniEigerDLS16MSN160(FormatCBFMiniEiger):
     def _goniometer(self):
         """Return a model for a multi-axis goniometer.
 
-    This should be checked against the image header, though for miniCBF
-    there are limited options for this.
+        This should be checked against the image header, though for miniCBF
+        there are limited options for this.
 
-    Returns:
-      dxtbx.model.Goniometer.MultiAxisGoniometer: The goniometer model for
-      this detector.
+        Returns:
+          dxtbx.model.Goniometer.MultiAxisGoniometer: The goniometer model for
+          this detector.
 
-    """
+        """
 
         if "Phi" in self._cif_header_dictionary:
             phi = float(self._cif_header_dictionary["Phi"].split()[0])

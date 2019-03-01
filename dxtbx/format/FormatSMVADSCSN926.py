@@ -17,7 +17,7 @@ from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
 class FormatSMVADSCSN926(FormatSMVADSCSN):
     """A class for reading SMV format ADSC images, and correctly constructing
-  a model for the experiment from this, for instrument number 926."""
+    a model for the experiment from this, for instrument number 926."""
 
     @staticmethod
     def understand(image_file):
@@ -34,7 +34,7 @@ class FormatSMVADSCSN926(FormatSMVADSCSN):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -45,8 +45,8 @@ class FormatSMVADSCSN926(FormatSMVADSCSN):
 
     def _detector(self):
         """Return a model for a simple detector, allowing for the installation
-    on on a two-theta stage. Assert that the beam centre is provided in
-    the Mosflm coordinate frame."""
+        on on a two-theta stage. Assert that the beam centre is provided in
+        the Mosflm coordinate frame."""
 
         import math
 

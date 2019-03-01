@@ -39,8 +39,8 @@ def cbf_gonio_to_effective_axis_fixed(cbf_gonio):
 
 def cbf_gonio_to_effective_axis_fixed_old(cbf_gonio):
     """Given a cbf goniometer handle, first determine the real rotation
-  axis, then determine the fixed component of rotation which is rotated
-  about this axis."""
+    axis, then determine the fixed component of rotation which is rotated
+    about this axis."""
 
     # First construct the real rotation axis, as the difference in rotating
     # the identity matrix at the end of the scan and the beginning.

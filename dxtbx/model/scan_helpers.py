@@ -22,7 +22,7 @@ compiled_patterns = [re.compile(pattern) for pattern in patterns]
 
 def template_regex(filename):
     """Try a bunch of templates to work out the most sensible. N.B. assumes
-  that the image index will be the last digits found in the file name."""
+    that the image index will be the last digits found in the file name."""
 
     rfilename = filename[::-1]
 
@@ -78,7 +78,7 @@ def image2template_directory(filename):
 
 def find_matching_images(template, directory):
     """Find images which match the input template in the directory
-  provided."""
+    provided."""
 
     files = os.listdir(directory)
 
@@ -109,7 +109,7 @@ def find_matching_images(template, directory):
 
 def template_directory_number2image(template, directory, number):
     """Construct the full path to an image from the template, directory
-  and image number."""
+    and image number."""
 
     # FIXME why does this duplicate code shown below??
 
@@ -149,9 +149,9 @@ def template_number2image(template, number):
 
 class scan_helper_image_files:
     """A helper class which handles things like image names, making templates,
-  finding matching images and so on. Currently this just provides aliases
-  to existing functions elsewhere, but ultimately it would be good if they
-  were all encapsulated herein."""
+    finding matching images and so on. Currently this just provides aliases
+    to existing functions elsewhere, but ultimately it would be good if they
+    were all encapsulated herein."""
 
     @staticmethod
     def image_to_template(filename):
@@ -161,25 +161,25 @@ class scan_helper_image_files:
     @staticmethod
     def image_to_index(filename):
         """From an image name, determine the index within the scan for this
-    image, complementary to the image_to_template method above."""
+        image, complementary to the image_to_template method above."""
         return image2image(filename)
 
     @staticmethod
     def image_to_template_directory(filename):
         """From a full path to an image, return the filename template and
-    directory."""
+        directory."""
         return image2template_directory(filename)
 
     @staticmethod
     def template_directory_to_indices(template, directory):
         """For a given template and directory, return a list of image indices
-    which match. Also complementary with image_to_template_directory."""
+        which match. Also complementary with image_to_template_directory."""
         return find_matching_images(template, directory)
 
     @staticmethod
     def template_directory_index_to_image(template, directory, index):
         """Construct the full image name from the template, directory and
-    file index."""
+        file index."""
         return template_directory_number2image(template, directory, index)
 
     @staticmethod
@@ -190,8 +190,8 @@ class scan_helper_image_files:
 
 class scan_helper_image_formats:
     """A helper class which enxapsulates the allowed and supported image
-  formats namely CBF, TIFF, SMV, RAXIS, MAR. N.B. there will be some
-  crosstalk between this class and the _image_format classes."""
+    formats namely CBF, TIFF, SMV, RAXIS, MAR. N.B. there will be some
+    crosstalk between this class and the _image_format classes."""
 
     FORMAT_CBF = "FORMAT_CBF"
     FORMAT_TIFF = "FORMAT_TIFF"

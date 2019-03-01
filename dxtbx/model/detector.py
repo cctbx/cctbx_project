@@ -186,10 +186,10 @@ detector_phil_scope = libtbx.phil.parse(
 
 class DetectorFactory:
     """A factory class for detector objects, which will encapsulate standard
-  detector designs to make it a little easier to get started with these. In
-  cases where a CBF image is provided a full description can be used, in
-  other cases assumptions will be made about the experiment configuration.
-  In all cases information is provided in the CBF coordinate frame."""
+    detector designs to make it a little easier to get started with these. In
+    cases where a CBF image is provided a full description can be used, in
+    other cases assumptions will be made about the experiment configuration.
+    In all cases information is provided in the CBF coordinate frame."""
 
     def __init__(self):
         pass
@@ -197,9 +197,9 @@ class DetectorFactory:
     @staticmethod
     def generate_from_phil(params, beam=None):
         """
-    Create a new detector model from phil parameters
+        Create a new detector model from phil parameters
 
-    """
+        """
         from cctbx.eltbx import attenuation_coefficient
 
         detector = Detector()
@@ -309,9 +309,9 @@ class DetectorFactory:
     @staticmethod
     def overwrite_from_phil(params, detector, beam=None):
         """
-    Overwrite from phil parameters
+        Overwrite from phil parameters
 
-    """
+        """
         from cctbx.eltbx import attenuation_coefficient
 
         # Override any panel parameters
@@ -419,9 +419,9 @@ class DetectorFactory:
     @staticmethod
     def from_phil(params, reference=None, beam=None):
         """
-    Convert phil parameters into detector model
+        Convert phil parameters into detector model
 
-    """
+        """
         from dxtbx.model.detector_helpers import set_detector_distance
         from dxtbx.model.detector_helpers import set_mosflm_beam_centre
         from dxtbx.model.detector_helpers import set_slow_fast_beam_centre_mm
@@ -466,16 +466,16 @@ class DetectorFactory:
 
     @staticmethod
     def from_dict(d, t=None):
-        """ Convert the dictionary to a detector model
+        """Convert the dictionary to a detector model
 
-    Params:
-        d The dictionary of parameters
-        t The template dictionary to use
+        Params:
+            d The dictionary of parameters
+            t The template dictionary to use
 
-    Returns:
-        The detector model
+        Returns:
+            The detector model
 
-    """
+        """
         from dxtbx.model import Detector
 
         # If None, return None
@@ -558,12 +558,12 @@ class DetectorFactory:
         identifier="",
     ):
         """Construct a simple detector at a given distance from the sample
-    along the direct beam presumed to be aligned with -z, offset by the
-    beam centre - the directions of which are given by the fast and slow
-    directions, which are themselves given as +x, +y, -x, -y. The pixel
-    size is given in mm in the fast and slow directions and the image size
-    is given in pixels in the same order. Everything else is the same as
-    for the main reference frame."""
+        along the direct beam presumed to be aligned with -z, offset by the
+        beam centre - the directions of which are given by the fast and slow
+        directions, which are themselves given as +x, +y, -x, -y. The pixel
+        size is given in mm in the fast and slow directions and the image size
+        is given in pixels in the same order. Everything else is the same as
+        for the main reference frame."""
 
         assert fast_direction in ["-x", "+y", "+x", "-y"]
         assert slow_direction in ["-x", "+y", "+x", "-y"]
@@ -623,14 +623,14 @@ class DetectorFactory:
         identifier="",
     ):
         """Construct a simple detector at a given distance from the sample
-    along the direct beam presumed to be aligned with -z, offset by the
-    beam centre - the directions of which are given by the fast and slow
-    directions, which are themselves given as +x, +y, -x, -y. The pixel
-    size is given in mm in the fast and slow directions and the image size
-    is given in pixels in the same order. Everything else is the same as
-    for the main reference frame. Also given are the direction of the
-    two-theta axis and the angle in degrees by which the detector is
-    moved."""
+        along the direct beam presumed to be aligned with -z, offset by the
+        beam centre - the directions of which are given by the fast and slow
+        directions, which are themselves given as +x, +y, -x, -y. The pixel
+        size is given in mm in the fast and slow directions and the image size
+        is given in pixels in the same order. Everything else is the same as
+        for the main reference frame. Also given are the direction of the
+        two-theta axis and the angle in degrees by which the detector is
+        moved."""
 
         assert fast_direction in ["-x", "+y", "+x", "-y"]
         assert slow_direction in ["-x", "+y", "+x", "-y"]
@@ -693,10 +693,10 @@ class DetectorFactory:
         identifier="",
     ):
         """A complex detector model, where you know exactly where everything
-    is. This is useful for implementation of the Rigaku Saturn header
-    format, as that is exactly what is in there. Origin, fast and slow are
-    vectors in the CBF reference frame, pixel is the dimensions as a tuple
-    as is size."""
+        is. This is useful for implementation of the Rigaku Saturn header
+        format, as that is exactly what is in there. Origin, fast and slow are
+        vectors in the CBF reference frame, pixel is the dimensions as a tuple
+        as is size."""
 
         assert len(origin) == 3
         assert len(fast) == 3
@@ -733,7 +733,7 @@ class DetectorFactory:
     @staticmethod
     def imgCIF_H(cbf_handle, sensor):
         """Initialize a detector model from an imgCIF file handle, where it
-    is assumed that the file has already been read."""
+        is assumed that the file has already been read."""
 
         cbf_detector = cbf_handle.construct_detector(0)
 
@@ -771,12 +771,12 @@ class DetectorFactory:
     def sensor(name):
         """Return the correct sensor token for a given name, for example:
 
-    ccd, CCD
-    image_plate, IMAGE_PLATE
-    pad, PAD
+        ccd, CCD
+        image_plate, IMAGE_PLATE
+        pad, PAD
 
-    to the appropriate static token which will be used as a handle
-    everywhere else in this. Also allow existing token to be passed in."""
+        to the appropriate static token which will be used as a handle
+        everywhere else in this. Also allow existing token to be passed in."""
 
         if detector_helper_sensors.check_sensor(name):
             return name

@@ -18,12 +18,12 @@ from dxtbx.format.FormatStill import FormatStill
 
 class FormatCBFFull(FormatCBF):
     """An image reading class for full CBF format images i.e. those from
-  a variety of cameras which support this format."""
+    a variety of cameras which support this format."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an CBF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
 
         header = FormatCBF.get_cbf_header(image_file)
 
@@ -50,7 +50,7 @@ class FormatCBFFull(FormatCBF):
 
     def _start(self):
         """Open the image file as a cbf file handle, and keep this somewhere
-    safe."""
+        safe."""
 
         FormatCBF._start(self)
 
@@ -90,7 +90,7 @@ class FormatCBFFull(FormatCBF):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array."""
+        flex array."""
         if self._raw_data is not None:
             return self._raw_data
 
@@ -107,13 +107,13 @@ class FormatCBFFull(FormatCBF):
 
 class FormatCBFFullStill(FormatStill, FormatCBFFull):
     """An image reading class for full CBF format images i.e. those from
-  a variety of cameras which support this format. Custom derived from
-  the FormatStill to handle images without a gonimeter or scan"""
+    a variety of cameras which support this format. Custom derived from
+    the FormatStill to handle images without a gonimeter or scan"""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an CBF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
 
         header = FormatCBF.get_cbf_header(image_file)
 
@@ -145,7 +145,7 @@ class FormatCBFFullStill(FormatStill, FormatCBFFull):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array."""
+        flex array."""
         if self._raw_data is not None:
             return self._raw_data
 

@@ -18,15 +18,15 @@ from dxtbx.format.FormatTIFFRayonix import FormatTIFFRayonix
 
 class FormatTIFFRayonixSPring8(FormatTIFFRayonix):
     """A class for reading TIFF format Rayonix images, and correctly
-  constructing a model for the experiment from this, for SPring-8 beamlines
-  with a reversed phi axis."""
+    constructing a model for the experiment from this, for SPring-8 beamlines
+    with a reversed phi axis."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an Rayonix TIFF format image,
-    i.e. we can make sense of it. This simply checks that records which
-    describe the size of the image match with the TIFF records which do
-    the same."""
+        i.e. we can make sense of it. This simply checks that records which
+        describe the size of the image match with the TIFF records which do
+        the same."""
 
         width, height, depth, order, bytes = FormatTIFFRayonix.get_tiff_header(
             image_file
@@ -79,7 +79,7 @@ class FormatTIFFRayonixSPring8(FormatTIFFRayonix):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -91,7 +91,7 @@ class FormatTIFFRayonixSPring8(FormatTIFFRayonix):
 
     def _detector(self):
         """Return a model for a simple detector, which at the moment insists
-    that the offsets and rotations are all 0.0."""
+        that the offsets and rotations are all 0.0."""
 
         starts, ends, offset, width = self._get_rayonix_scan_angles()
         rotations = self._get_rayonix_detector_rotations()
@@ -146,8 +146,8 @@ class FormatTIFFRayonixSPring8(FormatTIFFRayonix):
 
     def _goniometer(self):
         """Return a model for goniometer corresponding to the values stored
-    in the image header. In the first instance assume this is a single
-    axis and raise exception otherwise."""
+        in the image header. In the first instance assume this is a single
+        axis and raise exception otherwise."""
 
         starts, ends, offset, width = self._get_rayonix_scan_angles()
 

@@ -31,18 +31,18 @@ class simple_controller:
 
     def __del__(self):
         """Garbage collection.
-       Since only a cache controller can run .open() on lazy cache objects,
-       the lazy cache object can be told to close as soon as possible.
-       File handles can still be open legitimately."""
+        Since only a cache controller can run .open() on lazy cache objects,
+        the lazy cache object can be told to close as soon as possible.
+        File handles can still be open legitimately."""
         if self._cache is not None and self._pid == os.getpid():
             self._cache.close()
 
     def check(self, tag, open_method):
         """The main cache controller access method. Checks if an object with name
-       "tag" is cached. If so, returns a (pseudo-, ie. cached) file handle to
-       this object.
-       Otherwise, create a cache first, using the passed open_method()
-       function, which returns a (true) file handle."""
+        "tag" is cached. If so, returns a (pseudo-, ie. cached) file handle to
+        this object.
+        Otherwise, create a cache first, using the passed open_method()
+        function, which returns a (true) file handle."""
         with self._lock:
             currentpid = os.getpid()
             if currentpid != self._pid:

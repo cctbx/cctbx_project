@@ -18,13 +18,13 @@ from scitbx import matrix
 
 class FormatSMVRigakuSaturn(FormatSMVRigaku):
     """A class for reading SMV format Rigaku Saturn images, and correctly
-  constructing a model for the experiment from this."""
+    constructing a model for the experiment from this."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like a Rigaku Saturn SMV format image,
-    i.e. we can make sense of it. Essentially that will be if it contains
-    all of the keys we are looking for."""
+        i.e. we can make sense of it. Essentially that will be if it contains
+        all of the keys we are looking for."""
 
         size, header = FormatSMVRigaku.get_smv_header(image_file)
 
@@ -79,8 +79,8 @@ class FormatSMVRigakuSaturn(FormatSMVRigaku):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment. Easy from Rigaku Saturn images as
-    they contain everything pretty much we need..."""
+        proper model of the experiment. Easy from Rigaku Saturn images as
+        they contain everything pretty much we need..."""
 
         from dxtbx import IncorrectFormatError
 
@@ -104,10 +104,10 @@ class FormatSMVRigakuSaturn(FormatSMVRigaku):
 
     def _goniometer(self):
         """Initialize the structure for the goniometer - this will need to
-    correctly compose the axes given in the image header. In this case
-    this is made rather straightforward as the image header has the
-    calculated rotation axis stored in it. We could work from the
-    rest of the header and construct a goniometer model."""
+        correctly compose the axes given in the image header. In this case
+        this is made rather straightforward as the image header has the
+        calculated rotation axis stored in it. We could work from the
+        rest of the header and construct a goniometer model."""
 
         axis = tuple(map(float, self._header_dictionary["ROTATION_VECTOR"].split()))
 
@@ -115,7 +115,7 @@ class FormatSMVRigakuSaturn(FormatSMVRigaku):
 
     def _detector(self):
         """Return a model for the detector, allowing for two-theta offsets
-    and the detector position. This will be rather more complex..."""
+        and the detector position. This will be rather more complex..."""
 
         detector_name = self._header_dictionary["DETECTOR_NAMES"].split()[0].strip()
 

@@ -18,7 +18,7 @@ class FormatCBFMiniPilatusDLS6MSN114DMM(FormatCBFMiniPilatus, FormatStill):
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an Pilatus mini CBF format image,
-    i.e. we can make sense of it."""
+        i.e. we can make sense of it."""
 
         import os
 
@@ -39,7 +39,7 @@ class FormatCBFMiniPilatusDLS6MSN114DMM(FormatCBFMiniPilatus, FormatStill):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 

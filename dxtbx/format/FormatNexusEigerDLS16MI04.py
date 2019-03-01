@@ -9,14 +9,14 @@ class FormatNexusEigerDLS16MI04(FormatNexus):
     def understand(image_file):
         """Check to see if this format class can understand the image file.
 
-    Args:
-      image_file (str): The file path of the image file to check.
+        Args:
+          image_file (str): The file path of the image file to check.
 
-    Returns:
-      bool: Returns ``True`` if the image_file is understood by this format class,
-      else returns ``False``.
+        Returns:
+          bool: Returns ``True`` if the image_file is understood by this format class,
+          else returns ``False``.
 
-    """
+        """
 
         # this depends on DIALS for the goniometer shadow model; if missing
         # simply return False

@@ -53,7 +53,7 @@ class FormatCBFMiniADSCHF4M(FormatCBFMini):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -69,8 +69,8 @@ class FormatCBFMiniADSCHF4M(FormatCBFMini):
 
     def _goniometer(self):
         """Return a model for a simple single-axis goniometer. This should
-    probably be checked against the image header, though for miniCBF
-    there are limited options for this."""
+        probably be checked against the image header, though for miniCBF
+        there are limited options for this."""
 
         if "Phi" in self._cif_header_dictionary:
             phi_value = float(self._cif_header_dictionary["Phi"].split()[0])
@@ -79,8 +79,8 @@ class FormatCBFMiniADSCHF4M(FormatCBFMini):
 
     def _detector(self):
         """Return a model for a simple detector, presuming no one has
-    one of these on a two-theta stage. Assert that the beam centre is
-    provided in the Mosflm coordinate frame."""
+        one of these on a two-theta stage. Assert that the beam centre is
+        provided in the Mosflm coordinate frame."""
 
         distance = float(self._cif_header_dictionary["Detector_distance"].split()[0])
 

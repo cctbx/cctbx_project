@@ -15,13 +15,13 @@ from dxtbx.format.Format import Format
 
 class FormatCBF(Format):
     """An image reading class for CBF format images i.e. those from Dectris
-  amongst others. This is just a first base class which will be used to
-  determine whether this is really a CBF file."""
+    amongst others. This is just a first base class which will be used to
+    determine whether this is really a CBF file."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an CBF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
 
         if "###CBF" in FormatCBF.open_file(image_file, "rb").read(6):
             return True
@@ -31,8 +31,8 @@ class FormatCBF(Format):
     @staticmethod
     def get_cbf_header(image_file):
         """Obtain the text section of the header, which is assumed to be
-    everything before --CIF-BINARY-FORMAT-SECTION-- - N.B. for reasons
-    of simplicity will read the file in 4k chunks."""
+        everything before --CIF-BINARY-FORMAT-SECTION-- - N.B. for reasons
+        of simplicity will read the file in 4k chunks."""
 
         fin = FormatCBF.open_file(image_file, "rb")
 
@@ -61,7 +61,7 @@ class FormatCBF(Format):
 
     def _start(self):
         """Open the image file, read the image header, copy it into memory
-    for future inspection."""
+        for future inspection."""
 
         Format._start(self)
 

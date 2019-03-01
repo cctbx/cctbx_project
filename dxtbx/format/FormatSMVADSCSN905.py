@@ -16,7 +16,7 @@ from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
 class FormatSMVADSCSN905(FormatSMVADSCSN):
     """A class for reading SMV format ADSC images, and correctly constructing
-  a model for the experiment from this, for instrument number 905."""
+    a model for the experiment from this, for instrument number 905."""
 
     @staticmethod
     def understand(image_file):
@@ -33,7 +33,7 @@ class FormatSMVADSCSN905(FormatSMVADSCSN):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -44,8 +44,8 @@ class FormatSMVADSCSN905(FormatSMVADSCSN):
 
     def _detector(self):
         """Return a model for a simple detector, presuming no one has
-    one of these on a two-theta stage. Assert that the beam centre is
-    provided in the Mosflm coordinate frame."""
+        one of these on a two-theta stage. Assert that the beam centre is
+        provided in the Mosflm coordinate frame."""
 
         distance = float(self._header_dictionary["DISTANCE"])
         if (
@@ -83,7 +83,7 @@ class FormatSMVADSCSN905(FormatSMVADSCSN):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array of integers.)"""
+        flex array of integers.)"""
 
         from boost.python import streambuf
         from dxtbx import read_uint16, read_uint16_bs, is_big_endian

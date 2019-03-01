@@ -5,24 +5,24 @@ from dxtbx.format.Format import Format
 
 class FormatBruker(Format):
     """cctbx has no authoritative sources describing the Bruker format.
-  Positive identification:  when listing the header out in 16-byte chunks,
-  there are numerous chunks of the form
-  KEYNAME:xxxxxxxx
-  KEYNAME:xxxxxxxx
-  ...in other words a 7-upper case character (or space) keyname followed by
-  a colon, starting at the beginning of every fifth chunk.
-  Here we will take a series of 12 of these in the first 1024 characters
-  as a positive fingerprint of Bruker format.
-  """
+    Positive identification:  when listing the header out in 16-byte chunks,
+    there are numerous chunks of the form
+    KEYNAME:xxxxxxxx
+    KEYNAME:xxxxxxxx
+    ...in other words a 7-upper case character (or space) keyname followed by
+    a colon, starting at the beginning of every fifth chunk.
+    Here we will take a series of 12 of these in the first 1024 characters
+    as a positive fingerprint of Bruker format.
+    """
 
     @staticmethod
     def read_header_lines(image_path, max_bytes=512 * 50):
         """Attempt to read the whole Bruker header into a list of lines of 80 char
-    length. Finish reading lines when either the amount of data determined by
-    HDRBLKS is consumed, or if max_bytes is reached, or a line contains a
-    non-ASCII character. HDRBLKS is interpreted as being an integer number
-    of 512 byte blocks. HDRBLKS must be divisible by 5, so that the total
-    number of bytes in the header is divisible by 80."""
+        length. Finish reading lines when either the amount of data determined by
+        HDRBLKS is consumed, or if max_bytes is reached, or a line contains a
+        non-ASCII character. HDRBLKS is interpreted as being an integer number
+        of 512 byte blocks. HDRBLKS must be divisible by 5, so that the total
+        number of bytes in the header is divisible by 80."""
 
         hdr_lines = []
         max_bytes = (max_bytes // 80) * 80
@@ -100,8 +100,8 @@ class FormatBruker(Format):
 
     def _start(self):
         """Open the image file, read the image header, copy the key / value
-    pairs into an internal dictionary self._header_dictionary along with
-    the length of the header in bytes self._header_size."""
+        pairs into an internal dictionary self._header_dictionary along with
+        the length of the header in bytes self._header_size."""
         from iotbx.detectors.bruker import BrukerImage
 
         self.detectorbase = BrukerImage(self._image_file)

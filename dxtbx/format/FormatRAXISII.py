@@ -70,7 +70,7 @@ class FormatRAXISII(Format):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array."""
+        flex array."""
         self.detectorbase_start()
         try:
             image = self.detectorbase

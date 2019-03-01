@@ -20,9 +20,9 @@ from dxtbx.model import Scan  # import dependency
 
 def find_entries(nx_file):
     """
-  Find NXmx entries
+    Find NXmx entries
 
-  """
+    """
     if "entry" in nx_file:
         entry = nx_file["entry"]
         if "NX_class" in entry.attrs.keys():
@@ -34,9 +34,9 @@ def find_entries(nx_file):
 
 def is_nexus_external_data_file(filename):
     """
-  A hacky function to check if this is a nexus file
+    A hacky function to check if this is a nexus file
 
-  """
+    """
     import h5py
 
     # Get the file handle

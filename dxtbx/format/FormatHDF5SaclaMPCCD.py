@@ -14,16 +14,16 @@ from dxtbx.format.FormatStill import FormatStill
 
 class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
     """
-  Class to handle multi-event HDF5 files from MPCCD
-  preprocessed by Cheetah SFX pipeline at SACLA.
-  To handle reassembled images from "DataConvert3 -reconst"
-  (old pipeline), use FormatHDF5Sacla.
-  To override metrology, use the following environmental variables.
-     MPCCD_GEOMETRY, MPCCD_DISTANCE
-     MPCCD_RECONST_MODE
+    Class to handle multi-event HDF5 files from MPCCD
+    preprocessed by Cheetah SFX pipeline at SACLA.
+    To handle reassembled images from "DataConvert3 -reconst"
+    (old pipeline), use FormatHDF5Sacla.
+    To override metrology, use the following environmental variables.
+       MPCCD_GEOMETRY, MPCCD_DISTANCE
+       MPCCD_RECONST_MODE
 
-  You can also specify reference_geometry in dials.stills_process.
-  """
+    You can also specify reference_geometry in dials.stills_process.
+    """
 
     @staticmethod
     def understand(image_file):

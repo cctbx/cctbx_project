@@ -20,7 +20,7 @@ from dxtbx.model.detector_helpers_types import detector_helpers_types
 
 def xds_detector_name(xia2_name):
     """Translate from a xia2 name from the detector library to an XDS detector
-  name."""
+    name."""
 
     if "pilatus" in xia2_name:
         return "PILATUS"

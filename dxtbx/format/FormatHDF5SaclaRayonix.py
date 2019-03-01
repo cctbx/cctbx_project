@@ -5,9 +5,9 @@ from dxtbx.format.FormatStill import FormatStill
 
 class FormatHDF5SaclaRayonix(FormatHDF5, FormatStill):
     """
-  Class to handle multi-event HDF5 files from Rayonix detector (MX300-HS)
-  preprocessed by Cheetah SFX pipeline at SACLA.
-  """
+    Class to handle multi-event HDF5 files from Rayonix detector (MX300-HS)
+    preprocessed by Cheetah SFX pipeline at SACLA.
+    """
 
     @staticmethod
     def understand(image_file):

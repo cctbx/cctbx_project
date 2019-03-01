@@ -25,12 +25,12 @@ else:
 
 class FormatCBFMini(FormatCBF):
     """An image reading class for mini CBF format images i.e. those from
-  Dectris, which will read the header into a dictionary."""
+    Dectris, which will read the header into a dictionary."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an CBF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
 
         header = FormatCBF.get_cbf_header(image_file)
 
@@ -77,7 +77,7 @@ class FormatCBFMini(FormatCBF):
 
     def _start(self):
         """Open the image file, read the image header, copy it into a
-    dictionary for future reference."""
+        dictionary for future reference."""
 
         FormatCBF._start(self)
 
@@ -107,8 +107,8 @@ class FormatCBFMini(FormatCBF):
 
     def _detector(self):
         """Return a model for a simple detector, presuming no one has
-    one of these on a two-theta stage. Assert that the beam centre is
-    provided in the Mosflm coordinate frame."""
+        one of these on a two-theta stage. Assert that the beam centre is
+        provided in the Mosflm coordinate frame."""
 
         distance = float(self._cif_header_dictionary["Detector_distance"].split()[0])
 
@@ -194,8 +194,8 @@ class FormatCBFMini(FormatCBF):
 
     def _goniometer(self):
         """Return a model for a simple single-axis goniometer. This should
-    probably be checked against the image header, though for miniCBF
-    there are limited options for this."""
+        probably be checked against the image header, though for miniCBF
+        there are limited options for this."""
 
         if "Phi" in self._cif_header_dictionary:
             phi_value = float(self._cif_header_dictionary["Phi"].split()[0])
@@ -324,19 +324,19 @@ class FormatCBFMini(FormatCBF):
         det_type="GENERIC",
     ):
         """Note to developers: first attempt to write a miniCBF given a dxtbx-style experiment,
-       But fields are not filled rigorously as in cbflib/src/cbf_minicbf_header.c
-       Present code does not account for:
-         Pilatus model number and serial number
-         Data collection date and time
-         Sensor material
-         Dead time (exposure time - exposure period)
-         Highest trusted value
-         Energy threshold for photon counting
-         Gain
-         Bad pixels
-         Auxiliary files (bad pixel mask, flat field, trim, image path)
-         Detector not normal to beam
-    """
+        But fields are not filled rigorously as in cbflib/src/cbf_minicbf_header.c
+        Present code does not account for:
+          Pilatus model number and serial number
+          Data collection date and time
+          Sensor material
+          Dead time (exposure time - exposure period)
+          Highest trusted value
+          Energy threshold for photon counting
+          Gain
+          Bad pixels
+          Auxiliary files (bad pixel mask, flat field, trim, image path)
+          Detector not normal to beam
+        """
         import pycbf
         from dxtbx.format.FormatCBFMultiTile import cbf_wrapper
 

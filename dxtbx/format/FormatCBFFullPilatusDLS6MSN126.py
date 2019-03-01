@@ -18,12 +18,12 @@ from dxtbx.format.FormatCBFFullPilatus import FormatCBFFullPilatus
 
 class FormatCBFFullPilatusDLS6MSN126(FormatCBFFullPilatus):
     """An image reading class for full CBF format images from Pilatus
-  detectors."""
+    detectors."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an CBF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
 
         # this depends on DIALS for the goniometer shadow model; if missing
         # simply return False

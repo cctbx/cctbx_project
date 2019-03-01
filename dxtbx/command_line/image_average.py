@@ -18,12 +18,12 @@ Average images of any dxtbx-supported format. Handles many individual images or 
 
 
 def splitit(l, n):
-    """ Utitlity funciton to evenly split a list. Handles edge cases.
-  There is probably a 1-liner list comprehension to do this, but it would be super gnarly.
-  @param l list to split (not a generator)
-  @param n number of chunks to split the list into
-  @return list of n lists
-  """
+    """Utitlity funciton to evenly split a list. Handles edge cases.
+    There is probably a 1-liner list comprehension to do this, but it would be super gnarly.
+    @param l list to split (not a generator)
+    @param n number of chunks to split the list into
+    @return list of n lists
+    """
     # if list is shorter then n, split into a list of lists, each with one entry
     if len(l) < n:
         n = len(l)
@@ -157,12 +157,12 @@ class single_image_worker(image_worker):
 
 def run(argv=None):
     """Compute mean, standard deviation, and maximum projection images
-  from a set of images given on the command line.
+    from a set of images given on the command line.
 
-  @param argv Command line argument list
-  @return     @c 0 on successful termination, @c 1 on error, and @c 2
-              for command line syntax errors
-  """
+    @param argv Command line argument list
+    @return     @c 0 on successful termination, @c 1 on error, and @c 2
+                for command line syntax errors
+    """
     import libtbx.load_env
 
     from libtbx import option_parser

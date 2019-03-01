@@ -12,9 +12,9 @@ from .Format import Format
 class SorryIOError(IOError, Sorry):
     """Fusion of Sorry and IO Errors.
 
-  This is so we can send a better user-error, but still allow the simplicity
-  of just catching an IOError in any parent scopes.
-  """
+    This is so we can send a better user-error, but still allow the simplicity
+    of just catching an IOError in any parent scopes.
+    """
 
     def __init__(self, ioerror):
         self.errno = ioerror.errno
@@ -30,12 +30,12 @@ class SorryIOError(IOError, Sorry):
 
 class _Registry:
     """A class to handle all of the recognised image formats within xia2
-  working towards the generalization project in #1555 and specifically
-  to address the requirements in #1573."""
+    working towards the generalization project in #1555 and specifically
+    to address the requirements in #1573."""
 
     def __init__(self):
         """Set myself up - N.B. this could trigger a directory search for
-    different Format classes to auto-register them."""
+        different Format classes to auto-register them."""
 
         self._formats = []
 
@@ -43,8 +43,8 @@ class _Registry:
 
     def setup(self):
         """Look to import format defining modules from around the place -
-    this will look in dxtbx/format and $HOME/.xia2/ for files starting
-    with Format and ending in .py to allow user extensibility."""
+        this will look in dxtbx/format and $HOME/.xia2/ for files starting
+        with Format and ending in .py to allow user extensibility."""
 
         if self._setup:
             return
@@ -55,7 +55,7 @@ class _Registry:
 
     def add(self, format):
         """Register a new image format with the registry. N.B. to work
-    this object must be inherited from the base Format class."""
+        this object must be inherited from the base Format class."""
 
         from dxtbx.format.Format import Format
 
@@ -72,7 +72,7 @@ class _Registry:
 
     def find(self, image_file):
         """More useful - find the best format handler in the registry for your
-    image file. N.B. this is in principle a factory function."""
+        image file. N.B. this is in principle a factory function."""
 
         self.setup()
 
@@ -103,8 +103,8 @@ class _Registry:
 
 class Registry:
     """A class to turn the registry above into a singleton, so that we
-  can work around some of the more knotty dependency loops which come
-  out of things like this. This is something of a boiler plate."""
+    can work around some of the more knotty dependency loops which come
+    out of things like this. This is something of a boiler plate."""
 
     __instance = None
 

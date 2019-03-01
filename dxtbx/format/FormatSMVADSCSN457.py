@@ -16,7 +16,7 @@ from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
 class FormatSMVADSCSNSN457(FormatSMVADSCSN):
     """A class for reading SMV format ADSC images, and correctly constructing
-  a model for the experiment from this, for instrument number 457."""
+    a model for the experiment from this, for instrument number 457."""
 
     @staticmethod
     def understand(image_file):
@@ -33,7 +33,7 @@ class FormatSMVADSCSNSN457(FormatSMVADSCSN):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -44,7 +44,7 @@ class FormatSMVADSCSNSN457(FormatSMVADSCSN):
 
     def _goniometer(self):
         """Return a model for a simple single-axis goniometer. This should
-    probably be checked against the image header."""
+        probably be checked against the image header."""
 
         return self._goniometer_factory.single_axis_reverse()
 

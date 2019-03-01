@@ -6,10 +6,10 @@ from dxtbx.format.FormatPYunspecified import FormatPYunspecified
 class FormatPYCXI71(FormatPYunspecified):
 
     """PREFERENCE FILE.
-     Treats any Pickle-format file lacking a DETECTOR_FORMAT_VERSION key
-     automatically as format CXI 7.1.
-     Rename this file to FormatPYCXI71.py and put in dxtbx/format path.
-  """
+    Treats any Pickle-format file lacking a DETECTOR_FORMAT_VERSION key
+    automatically as format CXI 7.1.
+    Rename this file to FormatPYCXI71.py and put in dxtbx/format path.
+    """
 
     def _start(self):
 

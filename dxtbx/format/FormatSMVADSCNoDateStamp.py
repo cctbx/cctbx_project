@@ -34,7 +34,7 @@ class FormatSMVADSCNoDateStamp(FormatSMVADSC):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -49,7 +49,7 @@ class FormatSMVADSCNoDateStamp(FormatSMVADSC):
 
     def _scan(self):
         """Return the scan information for this image, using the timestamp
-    from the file rather than the header."""
+        from the file rather than the header."""
 
         format = self._scan_factory.format("SMV")
         exposure_time = float(self._header_dictionary["TIME"])

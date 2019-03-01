@@ -71,10 +71,10 @@ goniometer_phil_scope = libtbx.phil.parse(
 
 class GoniometerFactory:
     """A factory class for goniometer objects, which will encapsulate
-  some standard goniometer designs to make it a little easier to get
-  started with all of this - for cases when we are not using a CBF.
-  When we have a CBF just use that factory method and everything will be
-  peachy."""
+    some standard goniometer designs to make it a little easier to get
+    started with all of this - for cases when we are not using a CBF.
+    When we have a CBF just use that factory method and everything will be
+    peachy."""
 
     def __init__(self):
         pass
@@ -82,9 +82,9 @@ class GoniometerFactory:
     @staticmethod
     def single_axis_goniometer_from_phil(params, reference=None):
         """
-    Generate or overwrite a single axis goniometer
+        Generate or overwrite a single axis goniometer
 
-    """
+        """
 
         # Check the axes parameter
         if params.goniometer.axes is not None and len(params.goniometer.axes) != 3:
@@ -229,9 +229,9 @@ class GoniometerFactory:
     @staticmethod
     def from_phil(params, reference=None):
         """
-    Convert the phil parameters into a beam model
+        Convert the phil parameters into a beam model
 
-    """
+        """
         if reference is not None:
             if isinstance(reference, MultiAxisGoniometer):
                 goniometer = GoniometerFactory.multi_axis_goniometer_from_phil(
@@ -252,16 +252,16 @@ class GoniometerFactory:
 
     @staticmethod
     def from_dict(d, t=None):
-        """ Convert the dictionary to a goniometer model
+        """Convert the dictionary to a goniometer model
 
-    Params:
-        d The dictionary of parameters
-        t The template dictionary to use
+        Params:
+            d The dictionary of parameters
+            t The template dictionary to use
 
-    Returns:
-        The goniometer model
+        Returns:
+            The goniometer model
 
-    """
+        """
         from dxtbx.model import Goniometer, MultiAxisGoniometer
 
         # If None, return None
@@ -325,7 +325,7 @@ class GoniometerFactory:
     @staticmethod
     def single_axis():
         """Construct a single axis goniometer which is canonical in the
-    CBF reference frame."""
+        CBF reference frame."""
 
         axis = (1, 0, 0)
         fixed = (1, 0, 0, 0, 1, 0, 0, 0, 1)
@@ -335,7 +335,7 @@ class GoniometerFactory:
     @staticmethod
     def single_axis_reverse():
         """Construct a single axis goniometer which is canonical in the
-    CBF reference frame, but reversed in rotation."""
+        CBF reference frame, but reversed in rotation."""
 
         axis = (-1, 0, 0)
         fixed = (1, 0, 0, 0, 1, 0, 0, 0, 1)
@@ -345,7 +345,7 @@ class GoniometerFactory:
     @staticmethod
     def known_axis(axis):
         """Return an goniometer instance for a known rotation axis, assuming
-    that nothing is known about the fixed element of the rotation axis."""
+        that nothing is known about the fixed element of the rotation axis."""
 
         assert len(axis) == 3
 
@@ -356,14 +356,14 @@ class GoniometerFactory:
     @staticmethod
     def kappa(alpha, omega, kappa, phi, direction, scan_axis):
         """Return a kappa goniometer where omega is the primary axis (i,e.
-    aligned with X in the CBF coordinate frame) and has the kappa arm
-    with angle alpha attached to it, aligned with -z, +y, +z or -y at
-    omega = 0, that being the direction, which in turn has phi fixed to it
-    which should initially be coincident with omega. We also need to know
-    which axis is being used for the scan i.e. phi or omega. All angles
-    should be given in degrees. This will work by first constructing the
-    rotation axes and then composing them to the scan axis and fixed
-    component of the rotation."""
+        aligned with X in the CBF coordinate frame) and has the kappa arm
+        with angle alpha attached to it, aligned with -z, +y, +z or -y at
+        omega = 0, that being the direction, which in turn has phi fixed to it
+        which should initially be coincident with omega. We also need to know
+        which axis is being used for the scan i.e. phi or omega. All angles
+        should be given in degrees. This will work by first constructing the
+        rotation axes and then composing them to the scan axis and fixed
+        component of the rotation."""
 
         return GoniometerFactory.make_kappa_goniometer(
             alpha, omega, kappa, phi, direction, scan_axis
@@ -371,8 +371,7 @@ class GoniometerFactory:
 
     @staticmethod
     def multi_axis(axes, angles, names, scan_axis):
-        """
-    """
+        """"""
 
         return GoniometerFactory.make_multi_axis_goniometer(
             axes, angles, names, scan_axis
@@ -392,7 +391,7 @@ class GoniometerFactory:
     @staticmethod
     def imgCIF_H(cbf_handle):
         """Initialize a goniometer model from an imgCIF file handle, where
-    it is assumed that the file has already been read."""
+        it is assumed that the file has already been read."""
 
         # find the goniometer axes and dependencies
         from scitbx.array_family import flex

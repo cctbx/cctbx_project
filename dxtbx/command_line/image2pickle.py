@@ -18,11 +18,11 @@ def crop_image_pickle(
     data, preserve_active_areas_even_though_cropping_would_invalidate_them=False
 ):
     """
-  Given an image pickle dictionary, crop the pixels such that the beam center is as close
-  as possile to the image center.  Then adjust SIZE1/SIZE2, ACTIVE_AREAS and the beam
-  center accordingly.
-  @param data The image dictionary of interest
-  """
+    Given an image pickle dictionary, crop the pixels such that the beam center is as close
+    as possile to the image center.  Then adjust SIZE1/SIZE2, ACTIVE_AREAS and the beam
+    center accordingly.
+    @param data The image dictionary of interest
+    """
     # only one active area is allowed, and it should be the size of the image.
     from scitbx.array_family import flex
 

@@ -7,16 +7,16 @@ from cctbx.sgtbx import space_group as SG
 class CrystalFactory(object):
     @staticmethod
     def from_dict(d, t=None):
-        """ Convert the dictionary to a crystal model
+        """Convert the dictionary to a crystal model
 
-    Params:
-        d The dictionary of parameters
-        t The template dictionary to use
+        Params:
+            d The dictionary of parameters
+            t The template dictionary to use
 
-    Returns:
-        The crystal model
+        Returns:
+            The crystal model
 
-    """
+        """
         # If None, return None
         if d == None:
             if t == None:
@@ -56,44 +56,44 @@ class CrystalFactory(object):
         mosflm_A_matrix, unit_cell=None, wavelength=None, space_group=None
     ):
         """
-    Create a crystal_model from a Mosflm A matrix (a*, b*, c*); N.B. assumes
-    the mosflm coordinate frame::
+        Create a crystal_model from a Mosflm A matrix (a*, b*, c*); N.B. assumes
+        the mosflm coordinate frame::
 
-                                                     /!
-                        Y-axis                      / !
-                          ^                        /  !
-                          !                       /   !
-                          !                      /    !
-                          !   /                 /  Xd !
-                          !  /                 / * ^  !
-                          ! /                  ! 3 !  !
-                          !/      X-ray beam   !   !  !
-                          /------------------------/--!---->X-axis
-                         /                     !  / *1!
-                      <-/-                     ! /    !
-                       /  \+ve phi             ! Yd  /
-                      /   /                    ! 2  /
-                     /                         ! * /
-                    Z-axis                  Ys ^ _/
-                  Rotation                     ! /| Xs
-                   axis                        !/
-                                               O
+                                                         /!
+                            Y-axis                      / !
+                              ^                        /  !
+                              !                       /   !
+                              !                      /    !
+                              !   /                 /  Xd !
+                              !  /                 / * ^  !
+                              ! /                  ! 3 !  !
+                              !/      X-ray beam   !   !  !
+                              /------------------------/--!---->X-axis
+                             /                     !  / *1!
+                          <-/-                     ! /    !
+                           /  \+ve phi             ! Yd  /
+                          /   /                    ! 2  /
+                         /                         ! * /
+                        Z-axis                  Ys ^ _/
+                      Rotation                     ! /| Xs
+                       axis                        !/
+                                                   O
 
-    Also assume that the mosaic spread is 0.
+        Also assume that the mosaic spread is 0.
 
-    :param mosflm_A_matrix: The A matrix in Mosflm convention.
-    :type mosflm_A_matrix: tuple of floats
-    :param unit_cell: The unit cell parameters which are used to determine the
-                      wavelength from the Mosflm A matrix.
-    :type unit_cell: cctbx.uctbx.unit_cell
-    :param wavelength: The wavelength to scale the A matrix
-    :type wavelength: float
-    :param space_group: If the space group is None then the space_group will
-                        be assigned as P1
-    :type space_group: cctbx.sgtbx.space_group
-    :returns: A crystal model derived from the given Mosflm A matrix
-    :rtype: :py:class:`crystal_model`
-    """
+        :param mosflm_A_matrix: The A matrix in Mosflm convention.
+        :type mosflm_A_matrix: tuple of floats
+        :param unit_cell: The unit cell parameters which are used to determine the
+                          wavelength from the Mosflm A matrix.
+        :type unit_cell: cctbx.uctbx.unit_cell
+        :param wavelength: The wavelength to scale the A matrix
+        :type wavelength: float
+        :param space_group: If the space group is None then the space_group will
+                            be assigned as P1
+        :type space_group: cctbx.sgtbx.space_group
+        :returns: A crystal model derived from the given Mosflm A matrix
+        :rtype: :py:class:`crystal_model`
+        """
         from dxtbx.model import Crystal
 
         if not space_group:

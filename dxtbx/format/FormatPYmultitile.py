@@ -69,15 +69,15 @@ class FormatPYmultitile(FormatPY):
 
     def _detector(self):
         """The _detector() function returns a model for a CSPAD detector as
-    used at LCLS's CXI and XPP endstations.  It converts the
-    metrology information in the pure Python object extracted from
-    the image pickle to DXTBX-style transformation vectors.  Only
-    ASIC:s are considered, since DXTBX metrology is not concerned
-    with hierarchies.
+        used at LCLS's CXI and XPP endstations.  It converts the
+        metrology information in the pure Python object extracted from
+        the image pickle to DXTBX-style transformation vectors.  Only
+        ASIC:s are considered, since DXTBX metrology is not concerned
+        with hierarchies.
 
-    Merged from xfel.cftbx.detector.cspad_detector.readHeader() and
-    xfel.cftbx.detector.metrology.metrology_as_dxtbx_vectors().
-    """
+        Merged from xfel.cftbx.detector.cspad_detector.readHeader() and
+        xfel.cftbx.detector.metrology.metrology_as_dxtbx_vectors().
+        """
 
         from dxtbx.model import SimplePxMmStrategy
         from dxtbx.model import Detector

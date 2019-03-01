@@ -7,8 +7,8 @@ from dxtbx.format.Format import Format
 
 class FormatEDFALS733(Format):
     """EDF is the ESRF data format.
-  In present context, ALS 7.3.3 uses this format for its single-tile Pilatus
-  """
+    In present context, ALS 7.3.3 uses this format for its single-tile Pilatus
+    """
 
     @staticmethod
     def understand(image_file):
@@ -34,8 +34,8 @@ class FormatEDFALS733(Format):
 
     def _start(self):
         """Open the image file, read the image header, copy the key / value
-    pairs into an internal dictionary self._header_dictionary along with
-    the length of the header in bytes self._header_size."""
+        pairs into an internal dictionary self._header_dictionary along with
+        the length of the header in bytes self._header_size."""
         from iotbx.detectors import EDFWrapper
 
         self.detectorbase = EDFWrapper(self._image_file)

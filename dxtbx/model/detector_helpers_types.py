@@ -14,7 +14,7 @@ from dxtbx.model.detector import DetectorFactory
 
 class detector_helpers_types:
     """A singleton class to help with identifying specific detectors used for
-  macromolecular crystallography."""
+    macromolecular crystallography."""
 
     def __init__(self):
         detector_lib = os.path.join(
@@ -48,10 +48,10 @@ class detector_helpers_types:
 
     def get(self, sensor, fast, slow, df, ds):
         """Look up a name for a detector with this sensor type (listed in
-    detector_helpers) these image dimensions in the fast and slow
-    directions, these corresponding pixel sizes, in microns (integers).
-    If the sensor is unknown, all sensor types will be tested - be warned
-    if there are duplicates."""
+        detector_helpers) these image dimensions in the fast and slow
+        directions, these corresponding pixel sizes, in microns (integers).
+        If the sensor is unknown, all sensor types will be tested - be warned
+        if there are duplicates."""
 
         sensor = DetectorFactory.sensor(sensor)
 

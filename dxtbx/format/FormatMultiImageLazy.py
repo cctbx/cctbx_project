@@ -5,10 +5,10 @@ from dxtbx.format.FormatMultiImage import FormatMultiImage
 class FormatMultiImageLazy(FormatMultiImage):
 
     """
-  Lazy version of FormatMultiImage that does not instantiate the models ahead of time.
-  It creates an ImageSetLazy class and returns it. Saves time when image file contains
-  too many images to setup before processing.
-  """
+    Lazy version of FormatMultiImage that does not instantiate the models ahead of time.
+    It creates an ImageSetLazy class and returns it. Saves time when image file contains
+    too many images to setup before processing.
+    """
 
     @classmethod
     def get_imageset(

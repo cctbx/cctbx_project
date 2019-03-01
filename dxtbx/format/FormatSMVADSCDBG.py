@@ -44,8 +44,8 @@ class FormatSMVADSCDBG(FormatSMVADSC):
 
     def _detector(self):
         """Return a model for a simple detector, presuming no one has
-    one of these on a two-theta stage. Assert that the beam centre is
-    provided in the Mosflm coordinate frame."""
+        one of these on a two-theta stage. Assert that the beam centre is
+        provided in the Mosflm coordinate frame."""
 
         distance = float(self._header_dictionary["DISTANCE"])
         beam_x = float(self._header_dictionary["BEAM_CENTER_X"])

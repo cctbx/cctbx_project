@@ -16,8 +16,8 @@ from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
 class FormatSMVADSCSNAPSID19(FormatSMVADSCSN):
     """A class for reading SMV format ADSC images, and correctly constructing
-  a model for the experiment from this, for instrument numbers 458 and 914
-  from the APS ID19 beamline."""
+    a model for the experiment from this, for instrument numbers 458 and 914
+    from the APS ID19 beamline."""
 
     @staticmethod
     def understand(image_file):
@@ -34,7 +34,7 @@ class FormatSMVADSCSNAPSID19(FormatSMVADSCSN):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -45,8 +45,8 @@ class FormatSMVADSCSNAPSID19(FormatSMVADSCSN):
 
     def _detector(self):
         """Return a model for a simple detector, presuming no one has
-    one of these on a two-theta stage. Assert that the beam centre is
-    provided in the Mosflm coordinate frame."""
+        one of these on a two-theta stage. Assert that the beam centre is
+        provided in the Mosflm coordinate frame."""
 
         distance = float(self._header_dictionary["DISTANCE"])
         pixel_size = float(self._header_dictionary["PIXEL_SIZE"])
@@ -80,13 +80,13 @@ class FormatSMVADSCSNAPSID19(FormatSMVADSCSN):
 
     def _goniometer(self):
         """Return a model for a simple single-axis goniometer. This should
-    probably be checked against the image header."""
+        probably be checked against the image header."""
 
         return self._goniometer_factory.single_axis_reverse()
 
     def _scan(self):
         """Return the scan information for this image. There may be
-    no timestamps in there..."""
+        no timestamps in there..."""
 
         format = self._scan_factory.format("SMV")
         exposure_time = float(self._header_dictionary["TIME"])

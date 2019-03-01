@@ -9,10 +9,10 @@ class FormatPYunspecifiedStill(FormatStill, FormatPYunspecified):
     @staticmethod
     def understand(image_file):
         """Seems like the static method wastes a lot of effort here; it's not possible to
-    just read the first few bytes; instead understand() reads the entire first data
-    item in the file; an entire binary image.  This data is then read again in the
-    _start() method and again in the detectorbase constructor.
-    """
+        just read the first few bytes; instead understand() reads the entire first data
+        item in the file; an entire binary image.  This data is then read again in the
+        _start() method and again in the detectorbase constructor.
+        """
 
         try:
             stream = FormatPYunspecified.open_file(image_file, "rb")
@@ -39,10 +39,10 @@ class FormatPYunspecifiedStill(FormatStill, FormatPYunspecified):
 
 
 class FormatPYunspecifiedStillInMemory(FormatStill, FormatPYunspecifiedInMemory):
-    """ Overrides the Format object's init method to accept an image dictionary
-      instead of a file name. Used with XFELs when it is desirable to never write
-      a file to disk, but to process it only in memory.
-  """
+    """Overrides the Format object's init method to accept an image dictionary
+    instead of a file name. Used with XFELs when it is desirable to never write
+    a file to disk, but to process it only in memory.
+    """
 
     @staticmethod
     def understand(image_file):

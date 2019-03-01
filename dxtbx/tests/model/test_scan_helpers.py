@@ -9,8 +9,8 @@ from dxtbx.model import get_mod2pi_angles_in_range
 
 def test_is_angle_in_range():
     """Test that for a range of angles and angular ranges, the
-  is_angle_in_range function correctly calculates if the angle
-  is in the range."""
+    is_angle_in_range function correctly calculates if the angle
+    is in the range."""
     from random import random
 
     # Some helper lambda functions

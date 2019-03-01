@@ -54,7 +54,7 @@ class FormatCBFMiniPilatusDLS6MSN100F(FormatCBFMiniPilatus):
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an Pilatus mini CBF format image,
-    i.e. we can make sense of it."""
+        i.e. we can make sense of it."""
 
         return False
 
@@ -72,7 +72,7 @@ class FormatCBFMiniPilatusDLS6MSN100F(FormatCBFMiniPilatus):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -90,7 +90,7 @@ class FormatCBFMiniPilatusDLS6MSN100F(FormatCBFMiniPilatus):
 
     def _detector(self):
         """Detector model, allowing for small offsets in the positions of 60
-    detector modules"""
+        detector modules"""
 
         # Module positional offsets in x, y, in pixels - for the moment ignoring the
         # rotational offsets as these are not well defined. To be honest these

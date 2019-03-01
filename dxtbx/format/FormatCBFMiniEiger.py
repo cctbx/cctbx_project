@@ -73,12 +73,12 @@ def determine_eiger_mask(xdetector):
 
 class FormatCBFMiniEiger(FormatCBFMini):
     """A class for reading mini CBF format Eiger images, and correctly
-  constructing a model for the experiment from this."""
+    constructing a model for the experiment from this."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an Eiger mini CBF format image,
-    i.e. we can make sense of it."""
+        i.e. we can make sense of it."""
 
         header = FormatCBFMini.get_cbf_header(image_file)
 
@@ -90,7 +90,7 @@ class FormatCBFMiniEiger(FormatCBFMini):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 

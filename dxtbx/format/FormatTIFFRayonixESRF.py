@@ -18,13 +18,13 @@ from dxtbx.format.FormatTIFFRayonix import FormatTIFFRayonix
 
 class FormatTIFFRayonixESRF(FormatTIFFRayonix):
     """A class for reading TIFF format Rayonix images, and correctly
-  constructing a model for the experiment from this."""
+    constructing a model for the experiment from this."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an Rayonix TIFF format image,
-    i.e. we can make sense of it.  Returns true if the beam center is specified
-    in pixels."""
+        i.e. we can make sense of it.  Returns true if the beam center is specified
+        in pixels."""
 
         width, height, depth, order, bytes = FormatTIFFRayonix.get_tiff_header(
             image_file
@@ -60,7 +60,7 @@ class FormatTIFFRayonixESRF(FormatTIFFRayonix):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -72,8 +72,8 @@ class FormatTIFFRayonixESRF(FormatTIFFRayonix):
 
     def _goniometer(self):
         """Return a model for goniometer corresponding to the values stored
-    in the image header. In the first instance assume this is a single
-    axis annd raise exception otherwise."""
+        in the image header. In the first instance assume this is a single
+        axis annd raise exception otherwise."""
 
         starts, ends, offset, width = self._get_rayonix_scan_angles()
 
@@ -91,9 +91,9 @@ class FormatTIFFRayonixESRF(FormatTIFFRayonix):
 
     def _get_rayonix_beam_xy(self):
         """Get the beam x, y positions which are defined in the standard
-    to be in pixels. X and Y are not defined by the documentation, so
-    taking as a given that these are horizontal and vertical. N.B.
-    the documentation states that the horizontal direction is fast."""
+        to be in pixels. X and Y are not defined by the documentation, so
+        taking as a given that these are horizontal and vertical. N.B.
+        the documentation states that the horizontal direction is fast."""
 
         beam_x, beam_y = struct.unpack(self._ii, self._tiff_header_bytes[1668:1676])[:2]
         pixel_x, pixel_y = struct.unpack(self._ii, self._tiff_header_bytes[1796:1804])[

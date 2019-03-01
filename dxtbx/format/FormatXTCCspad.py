@@ -62,8 +62,8 @@ class FormatXTCCspad(FormatXTC):
 
     def _cache_psana_gain(self):
         """
-    checks if user wants gain applied and caches a gain map per run
-    """
+        checks if user wants gain applied and caches a gain map per run
+        """
         run_numbers = self._psana_runs.keys()
         self._gain_masks = {}
         for r in run_numbers:

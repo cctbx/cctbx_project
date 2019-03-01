@@ -17,14 +17,14 @@ from dxtbx.format.FormatSMV import FormatSMV
 
 class FormatSMVADSC(FormatSMV):
     """A class for reading SMV format ADSC images, and correctly constructing
-  a model for the experiment from this."""
+    a model for the experiment from this."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an ADSC SMV format image, i.e. we
-    can make sense of it. Essentially that will be if it contains all of
-    the keys we are looking for and not some we are not (i.e. that belong
-    to a Rigaku Saturn.)"""
+        can make sense of it. Essentially that will be if it contains all of
+        the keys we are looking for and not some we are not (i.e. that belong
+        to a Rigaku Saturn.)"""
 
         size, header = FormatSMV.get_smv_header(image_file)
 
@@ -64,7 +64,7 @@ class FormatSMVADSC(FormatSMV):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -87,7 +87,7 @@ class FormatSMVADSC(FormatSMV):
 
     def _goniometer(self):
         """Return a model for a simple single-axis goniometer. Invert the axis if
-    the rotation range is negative."""
+        the rotation range is negative."""
 
         if float(self._header_dictionary["OSC_RANGE"]) > 0:
             return self._goniometer_factory.single_axis()
@@ -96,8 +96,8 @@ class FormatSMVADSC(FormatSMV):
 
     def _adsc_module_gain(self, model=None):
         """Return an appropriate gain value in ADU per captured X-ray for an
-    ADSC CCD module. If the model is None (unknown) then make a guess based
-    on header details"""
+        ADSC CCD module. If the model is None (unknown) then make a guess based
+        on header details"""
 
         # Values are based on a combination of manufacturer datasheets,
         # James Holton's list at http://bl831.als.lbl.gov/xtalsize.html and
@@ -166,8 +166,8 @@ class FormatSMVADSC(FormatSMV):
 
     def _detector(self):
         """Return a model for a simple detector, presuming no one has
-    one of these on a two-theta stage. Assert that the beam centre is
-    provided in the Mosflm coordinate frame."""
+        one of these on a two-theta stage. Assert that the beam centre is
+        provided in the Mosflm coordinate frame."""
 
         distance = float(self._header_dictionary["DISTANCE"])
         beam_x = float(self._header_dictionary["BEAM_CENTER_X"])
@@ -238,7 +238,7 @@ class FormatSMVADSC(FormatSMV):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array of integers.)"""
+        flex array of integers.)"""
 
         from boost.python import streambuf
         from dxtbx import read_uint16, read_uint16_bs, is_big_endian

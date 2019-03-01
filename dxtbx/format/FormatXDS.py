@@ -18,7 +18,7 @@ class FormatXDS(Format):
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an CBF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
         from rstbx.cftbx.coordinate_frame_helpers import is_recognized_file
 
         return is_recognized_file(image_file)
@@ -36,19 +36,19 @@ class FormatXDS(Format):
 
     def _start(self):
         """Open the image file as a cbf file handle, and keep this somewhere
-    safe."""
+        safe."""
 
         # Convert the parameters to cbf conventions
         self._convert_to_cbf_convention(self._image_file)
 
     def _convert_to_cbf_convention(self, xparm_filename):
         """Get the parameters from the XPARM file and convert them to CBF
-    conventions.
+        conventions.
 
-    Params:
-        xparm_handle The handle to the xparm file.
+        Params:
+            xparm_handle The handle to the xparm file.
 
-    """
+        """
         from rstbx.cftbx.coordinate_frame_converter import coordinate_frame_converter
         from scitbx import matrix
 

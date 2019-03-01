@@ -27,8 +27,8 @@ class FormatBrukerFixedChi(FormatBruker):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment. Easy from Rigaku Saturn images as
-    they contain everything pretty much we need..."""
+        proper model of the experiment. Easy from Rigaku Saturn images as
+        they contain everything pretty much we need..."""
         from dxtbx import IncorrectFormatError
 
         if not self.understand(image_file):

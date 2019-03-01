@@ -20,13 +20,13 @@ import scitbx.matrix
 
 def _dials_regression():
     """
-  Duplicate of dials_regression search logic, outside of fixture.
+    Duplicate of dials_regression search logic, outside of fixture.
 
-  It is currently not possible to use a fixture value to generate a
-  parametrization for tests. Using the dials_regression fixture directly
-  has issues with a) safely importing and b) skipping outside of tests
-  is prohibited. The downside of this is that the logic is duplicated
-  """
+    It is currently not possible to use a fixture value to generate a
+    parametrization for tests. Using the dials_regression fixture directly
+    has issues with a) safely importing and b) skipping outside of tests
+    is prohibited. The downside of this is that the logic is duplicated
+    """
     try:
         import dials_regression as dr
     except ImportError:
@@ -37,17 +37,17 @@ def _dials_regression():
 def _generate_all_test_images():
     """Internal convenience function to generates a list of test images.
 
-  Along with a custom LBL-only file, iterates over all contents of
-  dials_regression/image_examples and yields data for each file, for
-  converting to a fixture.
+    Along with a custom LBL-only file, iterates over all contents of
+    dials_regression/image_examples and yields data for each file, for
+    converting to a fixture.
 
-  Do not use this function directly for tests - instead use the
-  test_image fixture.
+    Do not use this function directly for tests - instead use the
+    test_image fixture.
 
-  Generates (path, name) where:
-    path could be a pytest-marked value - and could be a skipped dummy
-    name is intended as a short test-parameter name
-  """
+    Generates (path, name) where:
+      path could be a pytest-marked value - and could be a skipped dummy
+      name is intended as a short test-parameter name
+    """
 
     # Handle the special berkeley-only h5 file
     special_h5 = "/net/viper/raid1/dectris/eiger16MNov2015/2015_11_10/insu6_1_master.h5"
@@ -222,9 +222,9 @@ def test_read_image(test_image_for_reading):
 
 
 def test_no_multiple_format_understanding(test_image):
-    """ for a given image file, walks the whole tree of Format objects.
-  If the file can be understood by multiple Format objects at the same
-  inheiritance level, it will return False, otherwise True."""
+    """for a given image file, walks the whole tree of Format objects.
+    If the file can be understood by multiple Format objects at the same
+    inheiritance level, it will return False, otherwise True."""
 
     Registry.setup()
 

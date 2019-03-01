@@ -86,7 +86,7 @@ class FormatRAXIS(Format):
     @staticmethod
     def understand(image_file):
         """See if this looks like an RAXIS format image - clue is first
-    5 letters of file should be RAXIS."""
+        5 letters of file should be RAXIS."""
 
         if Format.open_file(image_file).read(5) == "RAXIS":
             return True
@@ -121,8 +121,8 @@ class FormatRAXIS(Format):
 
     def _goniometer(self):
         """Return a model for the goniometer from the values stored in the
-    header. Assumes same reference frame as is used for the Saturn
-    instrument."""
+        header. Assumes same reference frame as is used for the Saturn
+        instrument."""
 
         # OK for the moment I am not completely clear on how omega, chi and
         # phi are defined so for the moment assert (i) that only one rotation
@@ -165,8 +165,8 @@ class FormatRAXIS(Format):
 
     def _detector(self):
         """Return a model for the detector as defined in the image header,
-    with the additional knowledge about how things are arranged i.e. that
-    the principle rotation axis vector points from the sample downwards."""
+        with the additional knowledge about how things are arranged i.e. that
+        the principle rotation axis vector points from the sample downwards."""
 
         # As above will have to make a bunch of assumptions about how the
         # detector is set up, namely that the rotation axis points downwards,
@@ -216,7 +216,7 @@ class FormatRAXIS(Format):
 
     def _beam(self):
         """Return a simple model for the beam. This assumes a laboratory source
-    which has an unpolarized beam."""
+        which has an unpolarized beam."""
 
         wavelength = struct.unpack(self._f, self._header_bytes[292:296])[0]
 
@@ -260,7 +260,7 @@ class FormatRAXIS(Format):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array."""
+        flex array."""
         self.detectorbase_start()
         try:
             image = self.detectorbase

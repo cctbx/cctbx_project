@@ -11,12 +11,12 @@ from dxtbx.model.detector import Detector
 
 class FormatSMVTimePix_SU(FormatSMV):
     """Base format class to specifically recognise images from a Timepix-based
-  detector, installed on a JEOL-2100 electron microscope at Stockholm
-  University, which have been preprocessed by Wei Wan's RED software,
-  to produce SMV files. See https://doi.org/10.1107/S0021889813027714 for RED.
-  The detector itself has a 2x2 array of Timepix modules. Derived classes will
-  either treat these separately as a multi-panel model, or as a single panel
-  model."""
+    detector, installed on a JEOL-2100 electron microscope at Stockholm
+    University, which have been preprocessed by Wei Wan's RED software,
+    to produce SMV files. See https://doi.org/10.1107/S0021889813027714 for RED.
+    The detector itself has a 2x2 array of Timepix modules. Derived classes will
+    either treat these separately as a multi-panel model, or as a single panel
+    model."""
 
     @staticmethod
     def understand(image_file):
@@ -50,7 +50,7 @@ class FormatSMVTimePix_SU(FormatSMV):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -73,8 +73,8 @@ class FormatSMVTimePix_SU(FormatSMV):
 
     def _goniometer(self):
         """Return a model for a simple single-axis goniometer. For this beamline
-    this should be close to the provided values and neither aligned with the
-    detector slow or fast axes."""
+        this should be close to the provided values and neither aligned with the
+        detector slow or fast axes."""
 
         return self._goniometer_factory.known_axis((-0.755, -0.656, 0.0))
 
@@ -124,10 +124,10 @@ class FormatSMVTimePix_SU(FormatSMV):
 
 class FormatSMVTimePix_SU_512x512(FormatSMVTimePix_SU):
     """Implementation of a format class to specifically recognise images from a
-  Timepix-based detector, installed on a JEOL-2100 electron microscope at
-  Stockholm University, which have been preprocessed by Wei Wan's RED software,
-  to produce SMV files. See https://doi.org/10.1107/S0021889813027714 for RED.
-  The detector itself has a 2x2 array of Timepix modules."""
+    Timepix-based detector, installed on a JEOL-2100 electron microscope at
+    Stockholm University, which have been preprocessed by Wei Wan's RED software,
+    to produce SMV files. See https://doi.org/10.1107/S0021889813027714 for RED.
+    The detector itself has a 2x2 array of Timepix modules."""
 
     @staticmethod
     def understand(image_file):
@@ -148,7 +148,7 @@ class FormatSMVTimePix_SU_512x512(FormatSMVTimePix_SU):
 
     def _detector(self):
         """4 panel detector, 55 micron pixels except for pixels at the outer
-    edge of each chip, which are 165 microns wide."""
+        edge of each chip, which are 165 microns wide."""
         from scitbx import matrix
 
         # expect 55 mu pixels here, but make it general anyway
@@ -314,7 +314,7 @@ class FormatSMVTimePix_SU_512x512(FormatSMVTimePix_SU):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array of integers.)"""
+        flex array of integers.)"""
 
         from boost.python import streambuf
         from dxtbx import read_uint16, read_uint16_bs, is_big_endian
@@ -348,8 +348,8 @@ class FormatSMVTimePix_SU_512x512(FormatSMVTimePix_SU):
 
 class FormatSMVTimePix_SU_516x516(FormatSMVTimePix_SU):
     """A class for reading SMV format images for the Timepix-based electron
-  detector where the wider edge pixels have been split into three normal-sized
-  pixels. The whole 516*516 detector can then be described as a single panel"""
+    detector where the wider edge pixels have been split into three normal-sized
+    pixels. The whole 516*516 detector can then be described as a single panel"""
 
     @staticmethod
     def understand(image_file):
@@ -366,8 +366,8 @@ class FormatSMVTimePix_SU_516x516(FormatSMVTimePix_SU):
 
     def _goniometer(self):
         """Return a model for a simple single-axis goniometer. For this beamline
-    this should be close to the provided values and neither aligned with the
-    detector slow or fast axes."""
+        this should be close to the provided values and neither aligned with the
+        detector slow or fast axes."""
 
         # import numpy as np
         # angle = np.radians(-40) #-0.672  # radians
@@ -379,8 +379,8 @@ class FormatSMVTimePix_SU_516x516(FormatSMVTimePix_SU):
 
     def _detector(self):
         """Return a model for a simple detector, presuming no one has
-    one of these on a two-theta stage. Assert that the beam centre is
-    provided in the Mosflm coordinate frame."""
+        one of these on a two-theta stage. Assert that the beam centre is
+        provided in the Mosflm coordinate frame."""
 
         distance = float(self._header_dictionary["DISTANCE"])  # mm
 
@@ -418,7 +418,7 @@ class FormatSMVTimePix_SU_516x516(FormatSMVTimePix_SU):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array of integers.)"""
+        flex array of integers.)"""
 
         from boost.python import streambuf
         from dxtbx import read_uint16, read_uint16_bs, is_big_endian

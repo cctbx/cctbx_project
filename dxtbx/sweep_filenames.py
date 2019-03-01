@@ -9,23 +9,23 @@ import re
 def template_regex(filename):
     """Works out a template from a filename.
 
-  Tries a bunch of templates to work out the most sensible. N.B. assumes
-  that the image index will be the last digits found in the file name.
+    Tries a bunch of templates to work out the most sensible. N.B. assumes
+    that the image index will be the last digits found in the file name.
 
-  Arguments:
-    filename (str): The filename to template-ize
+    Arguments:
+      filename (str): The filename to template-ize
 
-  Returns:
-      Tuple[str or None, int]:
-          Where the tuple parts are:
+    Returns:
+        Tuple[str or None, int]:
+            Where the tuple parts are:
 
-          template:
-              The template based on the filename, or None if no template
-              could be found for the filename.
-          index:
-              The template index of the filename, or zero if there
-              was no template filename.
-  """
+            template:
+                The template based on the filename, or None if no template
+                could be found for the filename.
+            index:
+                The template index of the filename, or zero if there
+                was no template filename.
+    """
 
     # filename template code stolen from xia2...
 
@@ -81,25 +81,25 @@ def template_regex(filename):
 def template_regex_from_list(filenames):
     """Compute the template for a list of filenames
 
-  Arguments:
-      filenames (List[str]):
-          List of filenames. *Must* be longer than len(1), or a
-          TypeError will be raised.
+    Arguments:
+        filenames (List[str]):
+            List of filenames. *Must* be longer than len(1), or a
+            TypeError will be raised.
 
-  Returns:
-      Tuple[str, List[int]]:
-          Where the tuple parts are:
+    Returns:
+        Tuple[str, List[int]]:
+            Where the tuple parts are:
 
-          template: The template describing all entries
-          indices:  The template indices present in the collection
+            template: The template describing all entries
+            indices:  The template indices present in the collection
 
-  Raises:
-      AssertionError:
-          If not all filenames resolve to the same regex
-      TypeError:
-          If none of the filenames resolve to a template, or
-          len(filenames) == 1.
-  """
+    Raises:
+        AssertionError:
+            If not all filenames resolve to the same regex
+        TypeError:
+            If none of the filenames resolve to a template, or
+            len(filenames) == 1.
+    """
 
     common_prefix = os.path.commonprefix(filenames)
     templates, indices = zip(
@@ -113,12 +113,12 @@ def template_regex_from_list(filenames):
 def group_files_by_imageset(filenames):
     """Group filenames by supposed imageset.
 
-  Get the template for each file in the list. Then add to a dictionary
-  indexed by template containing a list of indices within that template.
-  For files that do not match a template, these are added by filename
-  instead.
+    Get the template for each file in the list. Then add to a dictionary
+    indexed by template containing a list of indices within that template.
+    For files that do not match a template, these are added by filename
+    instead.
 
-  """
+    """
 
     # Calculate the template for each image. If the template is None
     # (i.e. there are no numbers to identify the filename, add the
@@ -143,7 +143,7 @@ def group_files_by_imageset(filenames):
 
 def find_matching_images(image_name):
     """Search in the directory in which this image is for images which share
-  the same template: return this list."""
+    the same template: return this list."""
 
     directory, filename = os.path.split(image_name)
     if directory is None or directory == "":

@@ -13,17 +13,17 @@ from dxtbx.datablock import SweepDiff
 
 class InvalidExperimentListError(RuntimeError):
     """
-  Indicates an error whilst validating the experiment list.
+    Indicates an error whilst validating the experiment list.
 
-  This means that there is some structural problem that prevents the given data
-  from representing a well-formed experiment list. This doesn't indicate e.g.
-  some problem with the data or model consistency.
-  """
+    This means that there is some structural problem that prevents the given data
+    from representing a well-formed experiment list. This doesn't indicate e.g.
+    some problem with the data or model consistency.
+    """
 
 
 class ExperimentListDict(object):
-    """ A helper class for serializing the experiment list to dictionary (needed
-  to save the experiment list to JSON format. """
+    """A helper class for serializing the experiment list to dictionary (needed
+    to save the experiment list to JSON format."""
 
     def __init__(self, obj, check_format=True, directory=None):
         """ Initialise. Copy the dictionary. """

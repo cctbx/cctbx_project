@@ -49,8 +49,8 @@ beam_phil_scope = libtbx.phil.parse(
 
 class BeamFactory:
     """A factory class for beam objects, which encapsulate standard beam
-  models. In cases where a full cbf description is available this
-  will be used, otherwise simplified descriptions can be applied."""
+    models. In cases where a full cbf description is available this
+    will be used, otherwise simplified descriptions can be applied."""
 
     def __init__(self):
         pass
@@ -58,9 +58,9 @@ class BeamFactory:
     @staticmethod
     def from_phil(params, reference=None):
         """
-    Convert the phil parameters into a beam model
+        Convert the phil parameters into a beam model
 
-    """
+        """
         # Check the input
         if reference is None:
             beam = Beam()
@@ -86,16 +86,16 @@ class BeamFactory:
 
     @staticmethod
     def from_dict(d, t=None):
-        """ Convert the dictionary to a beam model
+        """Convert the dictionary to a beam model
 
-    Params:
-        d The dictionary of parameters
-        t The template dictionary to use
+        Params:
+            d The dictionary of parameters
+            t The template dictionary to use
 
-    Returns:
-        The beam model
+        Returns:
+            The beam model
 
-    """
+        """
         from dxtbx.model import Beam
 
         # If None, return None
@@ -209,8 +209,8 @@ class BeamFactory:
     @staticmethod
     def simple(wavelength):
         """Construct a beam object on the principle that the beam is aligned
-    with the +z axis, as is quite normal. Also assume the beam has
-    polarization fraction 0.999 and is polarized in the x-z plane."""
+        with the +z axis, as is quite normal. Also assume the beam has
+        polarization fraction 0.999 and is polarized in the x-z plane."""
 
         return BeamFactory.make_beam(
             sample_to_source=(0.0, 0.0, 1.0), wavelength=wavelength
@@ -229,7 +229,7 @@ class BeamFactory:
         sample_to_source, polarization_fraction, polarization_plane_normal, wavelength
     ):
         """Full access to the constructor for cases where we do know everything
-    that we need..."""
+        that we need..."""
 
         return BeamFactory.make_polarized_beam(
             sample_to_source=sample_to_source,
@@ -241,9 +241,9 @@ class BeamFactory:
     @staticmethod
     def imgCIF(cif_file):
         """Initialize a detector model from an imgCIF file. N.B. the
-    definition of the polarization plane is not completely helpful
-    in this - it is the angle between the polarization plane and the
-    +Y laboratory frame vector."""
+        definition of the polarization plane is not completely helpful
+        in this - it is the angle between the polarization plane and the
+        +Y laboratory frame vector."""
 
         d2r = math.pi / 180.0
 
@@ -291,10 +291,10 @@ class BeamFactory:
     @staticmethod
     def imgCIF_H(cbf_handle):
         """Initialize a detector model from an imgCIF file. N.B. the
-    definition of the polarization plane is not completely helpful
-    in this - it is the angle between the polarization plane and the
-    +Y laboratory frame vector. This example works from a cbf_handle,
-    which is already configured."""
+        definition of the polarization plane is not completely helpful
+        in this - it is the angle between the polarization plane and the
+        +Y laboratory frame vector. This example works from a cbf_handle,
+        which is already configured."""
 
         d2r = math.pi / 180.0
 

@@ -19,12 +19,12 @@ from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
 class FormatCBFMiniPilatus(FormatCBFMini):
     """A class for reading mini CBF format Pilatus images, and correctly
-  constructing a model for the experiment from this."""
+    constructing a model for the experiment from this."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an Pilatus mini CBF format image,
-    i.e. we can make sense of it."""
+        i.e. we can make sense of it."""
 
         if "ENABLE_PHOTON_FACTORY_TWO_EIGER" in os.environ:
             return False
@@ -52,7 +52,7 @@ class FormatCBFMiniPilatus(FormatCBFMini):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -68,8 +68,8 @@ class FormatCBFMiniPilatus(FormatCBFMini):
 
     def _detector(self):
         """Return a model for a simple detector, presuming no one has
-    one of these on a two-theta stage. Assert that the beam centre is
-    provided in the Mosflm coordinate frame."""
+        one of these on a two-theta stage. Assert that the beam centre is
+        provided in the Mosflm coordinate frame."""
         detector = FormatCBFMini._detector(self)
 
         for f0, f1, s0, s1 in determine_pilatus_mask(detector):

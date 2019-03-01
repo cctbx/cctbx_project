@@ -17,8 +17,8 @@ logging.getLogger("dxtbx").addHandler(logging.NullHandler())
 
 class IncorrectFormatError(RuntimeError):
     """
-  An exception class for an incorrect format error
-  """
+    An exception class for an incorrect format error
+    """
 
     def __init__(self, format_instance, filename):
         super(IncorrectFormatError, self).__init__(
@@ -29,11 +29,11 @@ class IncorrectFormatError(RuntimeError):
 def load(filename):
     """Use DXTBX to load the input filename.
 
-  :param filename:  The input filename
-  :type  filename:  os.PathLike or str or bytes
-  :returns:         A dxtbx Format-subclass instance for the file type
-  :raises IOError:  if the file format could not be determined
-  """
+    :param filename:  The input filename
+    :type  filename:  os.PathLike or str or bytes
+    :returns:         A dxtbx Format-subclass instance for the file type
+    :raises IOError:  if the file format could not be determined
+    """
     from dxtbx.format.Registry import Registry
 
     # Unwrap PEP-519-style objects. This covers py.path, pathlib, ...

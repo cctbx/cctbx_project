@@ -15,12 +15,12 @@ from dxtbx.format.FormatCBFMiniEiger import FormatCBFMiniEiger
 
 class FormatCBFMiniEigerPetraP14(FormatCBFMiniEiger):
     """A class for reading mini CBF format Eiger images, and correctly
-  constructing a model for the experiment from this. This tuned for Petra P14"""
+    constructing a model for the experiment from this. This tuned for Petra P14"""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an Eiger mini CBF format image,
-    i.e. we can make sense of it."""
+        i.e. we can make sense of it."""
 
         header = FormatCBFMiniEiger.get_cbf_header(image_file)
 
@@ -36,7 +36,7 @@ class FormatCBFMiniEigerPetraP14(FormatCBFMiniEiger):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 

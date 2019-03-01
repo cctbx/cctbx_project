@@ -18,12 +18,12 @@ from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 
 class FormatCBFMiniPilatusDESY6MSN115(FormatCBFMiniPilatus):
     """A class for reading mini CBF format Pilatus images for 6M SN 115 @ DESY,
-  which has a vertical goniometer axis."""
+    which has a vertical goniometer axis."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an Pilatus mini CBF format image,
-    i.e. we can make sense of it."""
+        i.e. we can make sense of it."""
 
         header = FormatCBFMiniPilatus.get_cbf_header(image_file)
 
@@ -35,8 +35,8 @@ class FormatCBFMiniPilatusDESY6MSN115(FormatCBFMiniPilatus):
 
     def _goniometer(self):
         """Return a model for a simple single-axis goniometer. This should
-    probably be checked against the image header, though for miniCBF
-    there are limited options for this."""
+        probably be checked against the image header, though for miniCBF
+        there are limited options for this."""
 
         return self._goniometer_factory.known_axis((0, 1, 0))
 

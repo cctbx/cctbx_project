@@ -20,9 +20,9 @@ class cbf_wrapper(pycbf.cbf_handle_struct):
             self.new_column(column)
 
     def add_row(self, data):
-        """ Add a row to the current category.  If data contains more entries than
-      there are columns in this category, then the remainder is truncated
-      Use '.' for an empty value in a row. """
+        """Add a row to the current category.  If data contains more entries than
+        there are columns in this category, then the remainder is truncated
+        Use '.' for an empty value in a row."""
         self.new_row()
         self.rewind_column()
         for item in data:
@@ -36,8 +36,8 @@ class cbf_wrapper(pycbf.cbf_handle_struct):
 
     def has_sections(self):
         """True if the cbf has the array_structure_list_section table, which
-       changes how its data is stored in the binary sections
-    """
+        changes how its data is stored in the binary sections
+        """
         try:
             self.find_category("array_structure_list_section")
         except Exception as e:
@@ -53,7 +53,7 @@ class FormatCBFMultiTile(FormatCBFFull):
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an CBF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
 
         try:
             cbf_handle = pycbf.cbf_handle_struct()
@@ -82,7 +82,7 @@ class FormatCBFMultiTile(FormatCBFFull):
 
     def _start(self):
         """Open the image file as a cbf file handle, and keep this somewhere
-    safe."""
+        safe."""
         from dxtbx.format.FormatCBF import FormatCBF
 
         FormatCBF._start(self)  # Note, skip up an inhieritance level
@@ -206,13 +206,13 @@ class FormatCBFMultiTile(FormatCBFFull):
 
 class FormatCBFMultiTileStill(FormatStill, FormatCBFMultiTile):
     """An image reading class for full CBF format images i.e. those from
-  a variety of cameras which support this format. Custom derived from
-  the FormatStill to handle images without a gonimeter or scan"""
+    a variety of cameras which support this format. Custom derived from
+    the FormatStill to handle images without a gonimeter or scan"""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an CBF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
 
         header = FormatCBFMultiTile.get_cbf_header(image_file)
 

@@ -19,8 +19,8 @@ class FormatSMVRigakuPilatus(FormatSMVRigaku):
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like a Rigaku d*TREK SMVRigaku format image,
-    i.e. we can make sense of it. Essentially that will be if it contains
-    all of the keys we are looking for."""
+        i.e. we can make sense of it. Essentially that will be if it contains
+        all of the keys we are looking for."""
 
         size, header = FormatSMVRigaku.get_smv_header(image_file)
 
@@ -34,7 +34,7 @@ class FormatSMVRigakuPilatus(FormatSMVRigaku):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -49,10 +49,10 @@ class FormatSMVRigakuPilatus(FormatSMVRigaku):
 
     def _goniometer(self):
         """Initialize the structure for the goniometer - this will need to
-    correctly compose the axes given in the image header. In this case
-    this is made rather straightforward as the image header has the
-    calculated rotation axis stored in it. We could work from the
-    rest of the header and construct a goniometer model."""
+        correctly compose the axes given in the image header. In this case
+        this is made rather straightforward as the image header has the
+        calculated rotation axis stored in it. We could work from the
+        rest of the header and construct a goniometer model."""
 
         axis = tuple(map(float, self._header_dictionary["ROTATION_VECTOR"].split()))
 
@@ -60,7 +60,7 @@ class FormatSMVRigakuPilatus(FormatSMVRigaku):
 
     def _detector(self):
         """Return a model for the detector, allowing for two-theta offsets
-    and the detector position. This will be rather more complex..."""
+        and the detector position. This will be rather more complex..."""
 
         from scitbx import matrix
 
@@ -203,7 +203,7 @@ class FormatSMVRigakuPilatus(FormatSMVRigaku):
 
     def get_raw_data(self):
         """Read the data - assuming it is streaming 4-byte unsigned ints following the
-    header..."""
+        header..."""
 
         from boost.python import streambuf
         from dxtbx import read_int32

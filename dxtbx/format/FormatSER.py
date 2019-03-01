@@ -114,7 +114,7 @@ class FormatSER(FormatMultiImage, Format):
 
     def _start(self):
         """Open the image file, read useful metadata into an internal dictionary
-    self._header_dictionary"""
+        self._header_dictionary"""
 
         self._header_dictionary = self._read_metadata(self._image_file)
 

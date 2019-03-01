@@ -24,7 +24,7 @@ class FormatSMVADSCSN(FormatSMVADSC):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 

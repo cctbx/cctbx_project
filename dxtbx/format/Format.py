@@ -45,7 +45,7 @@ from dxtbx.model.scan import Scan, ScanFactory
 
 class _MetaFormat(type):
     """A metaclass for the Format base class (and hence all format classes)
-  to allow autoregistration of the class implementations."""
+    to allow autoregistration of the class implementations."""
 
     def __init__(self, name, bases, attributes):
         super(_MetaFormat, self).__init__(name, bases, attributes)
@@ -145,30 +145,30 @@ class Masker(object):
 
 class Format(object):
     """A base class for the representation and interrogation of diffraction
-  image formats, from which all classes for reading the header should be
-  inherited. This includes: autoregistration of implementation classes,
-  stubs which need to be overridden and links to static factory methods
-  which will prove to be useful in other implementations."""
+    image formats, from which all classes for reading the header should be
+    inherited. This includes: autoregistration of implementation classes,
+    stubs which need to be overridden and links to static factory methods
+    which will prove to be useful in other implementations."""
 
     __metaclass__ = _MetaFormat
 
     @staticmethod
     def understand(image_file):
         """Overload this to publish whether this class instance
-    understands a given file.  N.B. to say that we understand it,
-    return True.  If a subclass also understands the image
-    (because, for example, its detector serial number takes a
-    certain value), it will by definition understand it better
-    than its superclass.  Thus, the preferred class will be the
-    deepest subclass in the inheritance hierarchy.  Finally, if
-    you are writing this subclass for a given instrument and you
-    are given a different example return False.
+        understands a given file.  N.B. to say that we understand it,
+        return True.  If a subclass also understands the image
+        (because, for example, its detector serial number takes a
+        certain value), it will by definition understand it better
+        than its superclass.  Thus, the preferred class will be the
+        deepest subclass in the inheritance hierarchy.  Finally, if
+        you are writing this subclass for a given instrument and you
+        are given a different example return False.
 
-    Implementing understand() in a subclass, one can safely assume
-    that the superclasss understand() function returned True.
-    The understand() function of two different classes directly
-    derived from the same base should never both return True for
-    the same input image."""
+        Implementing understand() in a subclass, one can safely assume
+        that the superclasss understand() function returned True.
+        The understand() function of two different classes directly
+        derived from the same base should never both return True for
+        the same input image."""
 
         return False
 
@@ -204,11 +204,11 @@ class Format(object):
 
     def setup(self):
         """Read the image file, construct the information which we will be
-    wanting about the experiment from this. N.B. in your implementation
-    of this you will probably want to make use of the static methods
-    below and probably add some format parsing code too. Please also keep
-    in mind that your implementation may be further subclassed by
-    someone else."""
+        wanting about the experiment from this. N.B. in your implementation
+        of this you will probably want to make use of the static methods
+        below and probably add some format parsing code too. Please also keep
+        in mind that your implementation may be further subclassed by
+        someone else."""
 
         self._start()
 
@@ -233,31 +233,31 @@ class Format(object):
 
     def get_goniometer(self):
         """Get the standard goniometer instance which was derived from the
-    image headers."""
+        image headers."""
 
         return self._goniometer_instance
 
     def get_detector(self):
         """Get the standard detector instance which was derived from the
-    image headers."""
+        image headers."""
 
         return self._detector_instance
 
     def get_beam(self):
         """Get the standard beam instance which was derived from the image
-    headers."""
+        headers."""
 
         return self._beam_instance
 
     def get_scan(self):
         """Get the standard scan instance which was derived from the image
-    headers."""
+        headers."""
 
         return self._scan_instance
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array."""
+        flex array."""
         try:
             image = self.detectorbase
             image.read()
@@ -318,8 +318,8 @@ class Format(object):
     @classmethod
     def get_reader(Class):
         """
-    Return a reader class
-    """
+        Return a reader class
+        """
         obj = Reader
         obj._format_class_ = Class
         return obj
@@ -327,8 +327,8 @@ class Format(object):
     @classmethod
     def get_masker(Class):
         """
-    Return a masker class
-    """
+        Return a masker class
+        """
         obj = Masker
         obj._format_class_ = Class
         return obj
@@ -349,9 +349,9 @@ class Format(object):
         check_format=True,
     ):
         """
-    Factory method to create an imageset
+        Factory method to create an imageset
 
-    """
+        """
         from dxtbx.imageset import ImageSetData
         from dxtbx.imageset import ImageSet
         from dxtbx.imageset import ImageSweep
@@ -507,47 +507,47 @@ class Format(object):
 
     def _start(self):
         """Start code for handling this image file, which may open a link
-    to it once, say, and pass this around within the implementation.
-    How you use this is up to you, though you probably want to overload
-    it..."""
+        to it once, say, and pass this around within the implementation.
+        How you use this is up to you, though you probably want to overload
+        it..."""
 
         return
 
     def _end(self):
         """Clean up things - keeping in mind that this should run even in the
-    case of an exception being raised."""
+        case of an exception being raised."""
 
         return
 
     def _goniometer(self):
         """Overload this method to read the image file however you like so
-    long as the result is an goniometer."""
+        long as the result is an goniometer."""
         return None
 
     def _detector(self):
         """Overload this method to read the image file however you like so
-    long as the result is an detector."""
+        long as the result is an detector."""
         return None
 
     def _beam(self):
         """Overload this method to read the image file however you like so
-    long as the result is an beam."""
+        long as the result is an beam."""
         return None
 
     def _scan(self):
         """Overload this method to read the image file however you like so
-    long as the result is an scan."""
+        long as the result is an scan."""
         return None
 
     def get_mask(self, index=None, goniometer=None):
         """Overload this method to provide dynamic masks to be used during
-    spotfinding or integration."""
+        spotfinding or integration."""
 
         return None
 
     def get_goniometer_shadow_masker(self, goniometer=None):
         """Overload this method to allow generation of dynamic goniometer shadow
-    masks to be used during spotfinding or integration."""
+        masks to be used during spotfinding or integration."""
 
         return None
 
@@ -596,7 +596,7 @@ class Format(object):
     @classmethod
     def open_file(cls, filename, mode="rb", url=False):
         """Open file for reading, decompressing silently if necessary,
-       caching transparently if possible."""
+        caching transparently if possible."""
 
         if url and Format.is_url(filename):
             import urllib2

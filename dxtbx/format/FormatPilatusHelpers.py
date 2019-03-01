@@ -57,7 +57,7 @@ def pilatus_300K_mask():
 
 def sensor_active_areas(xdetector):
     """Return the sensitive areas on the detector for pixel array detectors
-     yes, does include hard coded magic numbers; returns [(x0, y0 x1, x1)]"""
+    yes, does include hard coded magic numbers; returns [(x0, y0 x1, x1)]"""
 
     assert xdetector[0].get_type() == "SENSOR_PAD"
     assert len(xdetector) == 1

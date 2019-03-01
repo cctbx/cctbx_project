@@ -7,10 +7,10 @@ from dxtbx.format.Format import Format
 
 class FormatPY(Format):
     """Let's take an educated guess as to how to recognize a Python
-  pickle file containing a dictionary.  Not easy because there are
-  three pickle protocols in Python 2.7.  Dangerous because the lowest
-  pickle format only gives us two unique bytes by which to recognize
-  a dictionary.  Could possibly conflict with other image formats."""
+    pickle file containing a dictionary.  Not easy because there are
+    three pickle protocols in Python 2.7.  Dangerous because the lowest
+    pickle format only gives us two unique bytes by which to recognize
+    a dictionary.  Could possibly conflict with other image formats."""
 
     @staticmethod
     def understand(image_file):

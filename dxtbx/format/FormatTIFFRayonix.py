@@ -19,14 +19,14 @@ from dxtbx.format.FormatTIFF import FormatTIFF
 
 class FormatTIFFRayonix(FormatTIFF):
     """A class for reading TIFF format Rayonix images, and correctly
-  constructing a model for the experiment from this."""
+    constructing a model for the experiment from this."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an Rayonix TIFF format image,
-    i.e. we can make sense of it. This simply checks that records which
-    describe the size of the image match with the TIFF records which do
-    the same."""
+        i.e. we can make sense of it. This simply checks that records which
+        describe the size of the image match with the TIFF records which do
+        the same."""
 
         width, height, depth, order, bytes = FormatTIFF.get_tiff_header(image_file)
 
@@ -64,7 +64,7 @@ class FormatTIFFRayonix(FormatTIFF):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -105,8 +105,8 @@ class FormatTIFFRayonix(FormatTIFF):
 
     def _goniometer(self):
         """Return a model for goniometer corresponding to the values stored
-    in the image header. In the first instance assume this is a single
-    axis and raise exception otherwise."""
+        in the image header. In the first instance assume this is a single
+        axis and raise exception otherwise."""
 
         starts, ends, offset, width = self._get_rayonix_scan_angles()
 
@@ -118,7 +118,7 @@ class FormatTIFFRayonix(FormatTIFF):
 
     def _detector(self):
         """Return a model for a simple detector, which at the moment [NKS does not] insist
-    that the offsets and rotations are all 0.0."""
+        that the offsets and rotations are all 0.0."""
 
         starts, ends, offset, width = self._get_rayonix_scan_angles()
         rotations = self._get_rayonix_detector_rotations()
@@ -195,7 +195,7 @@ class FormatTIFFRayonix(FormatTIFF):
 
     def _get_rayonix_distance(self):
         """Look in the usual places for the detector distance, return this
-    as a float in mm."""
+        as a float in mm."""
 
         distance = struct.unpack(self._i, self._tiff_header_bytes[1664:1668])[0]
 
@@ -211,9 +211,9 @@ class FormatTIFFRayonix(FormatTIFF):
 
     def _get_rayonix_beam_xy(self):
         """Get the beam x, y positions which are defined in the standard
-    to be in pixels. X and Y are not defined by the documentation, so
-    taking as a given that these are horizontal and vertical. N.B.
-    the documentation states that the horizontal direction is fast."""
+        to be in pixels. X and Y are not defined by the documentation, so
+        taking as a given that these are horizontal and vertical. N.B.
+        the documentation states that the horizontal direction is fast."""
 
         beam_x, beam_y = struct.unpack(self._ii, self._tiff_header_bytes[1668:1676])[:2]
 
@@ -252,11 +252,11 @@ class FormatTIFFRayonix(FormatTIFF):
 
     def _get_rayonix_scan_angles(self):
         """Get the scan angles for: twotheta, omega, chi, kappa, phi, delta,
-    gamma. The exact definitions for these are somewhat poorly defined,
-    though I presume that they will come from some kind of standard
-    goniometer definition... Also returns the scan axis offset and
-    the apparent oscillation width, as these are sometimes not properly
-    recorded elsewhere."""
+        gamma. The exact definitions for these are somewhat poorly defined,
+        though I presume that they will come from some kind of standard
+        goniometer definition... Also returns the scan axis offset and
+        the apparent oscillation width, as these are sometimes not properly
+        recorded elsewhere."""
 
         if self._tiff_byte_order == FormatTIFF.LITTLE_ENDIAN:
             iiiiiii = "<iiiiiii"
@@ -278,7 +278,7 @@ class FormatTIFFRayonix(FormatTIFF):
 
     def _get_rayonix_detector_rotations(self):
         """Get the recorded rotx, roty, rotz of the detector - which in most
-    cases will probably all be 0.0."""
+        cases will probably all be 0.0."""
 
         if self._tiff_byte_order == FormatTIFF.LITTLE_ENDIAN:
             iii = "<iii"
@@ -300,8 +300,8 @@ class FormatTIFFRayonix(FormatTIFF):
 
     def _get_rayonix_gain(self, model=None):
         """Return an appropriate gain value in ADU per captured X-ray for a
-    Rayonix CCD module. If the model is None (unknown) then make a guess based
-    on header details"""
+        Rayonix CCD module. If the model is None (unknown) then make a guess based
+        on header details"""
 
         # Values are based on a combination of manufacturer datasheets,
         # James Holton's list at http://bl831.als.lbl.gov/xtalsize.html and
@@ -350,7 +350,7 @@ class FormatTIFFRayonix(FormatTIFF):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-       flex array of integers.)"""
+        flex array of integers.)"""
 
         # currently have no non-little-endian machines...
 

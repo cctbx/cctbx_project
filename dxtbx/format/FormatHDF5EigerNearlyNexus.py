@@ -28,9 +28,9 @@ from dxtbx.format.nexus import MaskFactory
 
 def find_entries(nx_file):
     """
-  Find NXmx entries
+    Find NXmx entries
 
-  """
+    """
     if "entry" in nx_file:
         entry = nx_file["entry"]
         if "NX_class" in entry.attrs.keys():
@@ -42,9 +42,9 @@ def find_entries(nx_file):
 
 def is_eiger_nearly_nexus_file(filename):
     """
-  A hacky function to check if this is an EIGER-flavoured nexus file
+    A hacky function to check if this is an EIGER-flavoured nexus file
 
-  """
+    """
     import h5py
 
     # Get the file handle
@@ -62,9 +62,9 @@ def is_eiger_nearly_nexus_file(filename):
 
 class EigerNXmxFixer(object):
     """
-  A hacky class to read an NXmx file
+    A hacky class to read an NXmx file
 
-  """
+    """
 
     def __init__(self, input_filename, memory_mapped_name):
         import h5py

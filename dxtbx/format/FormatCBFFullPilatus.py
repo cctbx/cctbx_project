@@ -15,12 +15,12 @@ from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
 class FormatCBFFullPilatus(FormatCBFFull):
     """An image reading class for full CBF format images from Pilatus
-  detectors."""
+    detectors."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an CBF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
 
         header = FormatCBFFull.get_cbf_header(image_file)
 
@@ -46,7 +46,7 @@ class FormatCBFFullPilatus(FormatCBFFull):
 
     def _start(self):
         """Open the image file as a cbf file handle, and keep this somewhere
-    safe."""
+        safe."""
 
         FormatCBFFull._start(self)
 

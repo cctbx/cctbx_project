@@ -15,7 +15,7 @@ from scitbx import matrix
 
 def read_xds_xparm(xds_xparm_file):
     """Parse the XDS XPARM file, which contains a description of the detector
-  and experimental geometry, to a dictionary."""
+    and experimental geometry, to a dictionary."""
 
     data = map(float, open(xds_xparm_file, "r").read().split())
 
@@ -71,8 +71,8 @@ def read_xds_xparm(xds_xparm_file):
 
 def compute_frame_rotation(original, final):
     """Compute reference frame rotation to rotate from the original frame
-  given by original = (x, y, z) to the to reference frame given by
-  final = (_x, _y, _z). Returns M where M.x = _x etc."""
+    given by original = (x, y, z) to the to reference frame given by
+    final = (_x, _y, _z). Returns M where M.x = _x etc."""
 
     x, y, z = original
     _x, _y, _z = final
@@ -123,8 +123,8 @@ def find_undefined_value(cbf_handle):
 
 class detector_helper_sensors:
     """A helper class which allows enumeration of detector sensor technologies
-  which should help in identifying specific detectors when needed. These are
-  currently limited to IMAGE_PLATE CCD PAD."""
+    which should help in identifying specific detectors when needed. These are
+    currently limited to IMAGE_PLATE CCD PAD."""
 
     SENSOR_CCD = "SENSOR_CCD"
     SENSOR_PAD = "SENSOR_PAD"
@@ -152,11 +152,11 @@ class detector_helper_sensors:
 
 
 def set_slow_fast_beam_centre_mm(detector, beam, beam_centre, panel_id=None):
-    """ detector and beam are dxtbx objects,
-      beam_centre is a tuple of (slow, fast) mm coordinates.
-      supports 2-theta offset detectors, assumes correct centre provided
-      for 2-theta=0
-  """
+    """detector and beam are dxtbx objects,
+    beam_centre is a tuple of (slow, fast) mm coordinates.
+    supports 2-theta offset detectors, assumes correct centre provided
+    for 2-theta=0
+    """
     beam_s, beam_f = beam_centre
 
     # Ensure panel_id is set
@@ -262,19 +262,19 @@ def set_slow_fast_beam_centre_mm(detector, beam, beam_centre, panel_id=None):
 
 
 def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
-    """ detector and beam are dxtbx objects,
-      mosflm_beam_centre is a tuple of mm coordinates.
-      supports 2-theta offset detectors, assumes correct centre provided
-      for 2-theta=0
-  """
+    """detector and beam are dxtbx objects,
+    mosflm_beam_centre is a tuple of mm coordinates.
+    supports 2-theta offset detectors, assumes correct centre provided
+    for 2-theta=0
+    """
     return set_slow_fast_beam_centre_mm(detector, beam, mosflm_beam_centre)
 
 
 def set_detector_distance(detector, distance):
     """
-  Set detector origin from distance along normal
+    Set detector origin from distance along normal
 
-  """
+    """
     from scitbx import matrix
 
     assert len(detector) == 1

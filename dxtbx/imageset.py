@@ -62,24 +62,24 @@ class MemMasker(object):
 
 class ImageSetAux(boost.python.injector, ImageSet):
     """
-  A class to inject additional methods into the imageset class
-
-  """
-
-    def __getitem__(self, item):
-        """ Get an item from the image set stream.
-
-    If the item is an index, read and return the image at the given index.
-    Otherwise, if the item is a slice, then create a new ImageSet object
-    with the given number of array indices from the slice.
-
-    Params:
-        item The index or slice
-
-    Returns:
-        An image or new ImageSet object
+    A class to inject additional methods into the imageset class
 
     """
+
+    def __getitem__(self, item):
+        """Get an item from the image set stream.
+
+        If the item is an index, read and return the image at the given index.
+        Otherwise, if the item is a slice, then create a new ImageSet object
+        with the given number of array indices from the slice.
+
+        Params:
+            item The index or slice
+
+        Returns:
+            An image or new ImageSet object
+
+        """
         if isinstance(item, slice):
             if item.start is None:
                 start = 0
@@ -114,9 +114,9 @@ class ImageSetAux(boost.python.injector, ImageSet):
 
     def get_detectorbase(self, index):
         """
-    A function to be injected into the imageset to get the detectorbase instance
+        A function to be injected into the imageset to get the detectorbase instance
 
-    """
+        """
         kwargs = self.params()
         if self.data().has_single_file_reader():
             format_instance = self.get_format_class().get_instance(
@@ -131,33 +131,33 @@ class ImageSetAux(boost.python.injector, ImageSet):
 
     def reader(self):
         """
-    Return the reader
+        Return the reader
 
-    """
+        """
         return self.data().reader()
 
     def masker(self):
         """
-    Return the masker
+        Return the masker
 
-    """
+        """
         return self.data().masker()
 
     def paths(self):
         """
-    Return the list of paths
+        Return the list of paths
 
-    """
+        """
         return [self.get_path(i) for i in range(len(self))]
 
 
 class ImageSetLazy(ImageSet):
 
     """
-  Lazy ImageSet class that doesn't necessitate setting the models ahead of time.
-  Only when a particular model (like detector or beam) for an image is requested,
-  it sets the model using the format class and then returns the model
-  """
+    Lazy ImageSet class that doesn't necessitate setting the models ahead of time.
+    Only when a particular model (like detector or beam) for an image is requested,
+    it sets the model using the format class and then returns the model
+    """
 
     def get_detector(self, index=None):
         if index is None:
@@ -249,19 +249,19 @@ class ImageSetLazy(ImageSet):
 
 class ImageSweepAux(boost.python.injector, ImageSweep):
     def __getitem__(self, item):
-        """ Get an item from the sweep stream.
+        """Get an item from the sweep stream.
 
-    If the item is an index, read and return the image at the given index.
-    Otherwise, if the item is a slice, then create a new Sweep object
-    with the given number of array indices from the slice.
+        If the item is an index, read and return the image at the given index.
+        Otherwise, if the item is a slice, then create a new Sweep object
+        with the given number of array indices from the slice.
 
-    Params:
-        item The index or slice
+        Params:
+            item The index or slice
 
-    Returns:
-        An image or new Sweep object
+        Returns:
+            An image or new Sweep object
 
-    """
+        """
         if isinstance(item, slice):
             if item.start is None:
                 start = 0
@@ -292,13 +292,13 @@ class FilenameAnalyser(object):
     def __call__(self, filenames):
         """Group the filenames by imageset.
 
-    Params:
-        filenames The list of filenames
+        Params:
+            filenames The list of filenames
 
-    Returns:
-        A list of (template, [indices], is_sweep)
+        Returns:
+            A list of (template, [indices], is_sweep)
 
-    """
+        """
         from dxtbx.sweep_filenames import group_files_by_imageset
 
         # Analyse filenames to figure out how many imagesets we have
@@ -318,13 +318,13 @@ class FilenameAnalyser(object):
         return file_groups
 
     def _is_imageset_a_sweep(self, template, indices):
-        """ Return True/False if the imageset is a sweep or not.
+        """Return True/False if the imageset is a sweep or not.
 
-    Where more than 1 image that follow sequential numbers are given
-    the images are catagorised as belonging to a sweep, otherwise they
-    belong to an image set.
+        Where more than 1 image that follow sequential numbers are given
+        the images are catagorised as belonging to a sweep, otherwise they
+        belong to an image set.
 
-    """
+        """
         if len(indices) <= 1:
             return False
         else:
@@ -353,17 +353,17 @@ class ImageSetFactory(object):
 
     @staticmethod
     def new(filenames, check_headers=False, ignore_unknown=False):
-        """ Create an imageset or sweep
+        """Create an imageset or sweep
 
-    Params:
-        filenames A list of filenames
-        check_headers Check the headers to ensure all images are valid
-        ignore_unknown Ignore unknown formats
+        Params:
+            filenames A list of filenames
+            check_headers Check the headers to ensure all images are valid
+            ignore_unknown Ignore unknown formats
 
-    Returns:
-        A list of imagesets
+        Returns:
+            A list of imagesets
 
-    """
+        """
         # Ensure we have enough images
         if isinstance(filenames, list):
             assert len(filenames) > 0
@@ -407,15 +407,15 @@ class ImageSetFactory(object):
     ):
         """Create a new sweep from a template.
 
-    Params:
-        template The template argument
-        image_range The image range
-        check_headers Check the headers to ensure all images are valid
+        Params:
+            template The template argument
+            image_range The image range
+            check_headers Check the headers to ensure all images are valid
 
-    Returns:
-        A list of sweeps
+        Returns:
+            A list of sweeps
 
-    """
+        """
         import os
         from dxtbx.format.Registry import Registry
         from dxtbx.sweep_filenames import template_image_range

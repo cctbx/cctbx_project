@@ -17,7 +17,7 @@ from dxtbx.format.FormatSMV import FormatSMV
 
 class FormatSMVJHSim(FormatSMV):
     """A class for reading SMV format JHSim images, and correctly constructing
-  a model for the experiment from this."""
+    a model for the experiment from this."""
 
     # all ADSC detectors generate images with an ADC offset of 40
     # for Mar/Rayonix it is 10
@@ -28,9 +28,9 @@ class FormatSMVJHSim(FormatSMV):
 
     @staticmethod
     def understand(image_file):
-        '''Check to see if this looks like an JHSim SMV format image, i.e. we can
-    make sense of it. From JH: "The best way to identify images from any of my
-    simulators is to look for BEAMLINE=fake in the header."'''
+        """Check to see if this looks like an JHSim SMV format image, i.e. we can
+        make sense of it. From JH: 'The best way to identify images from any of my
+        simulators is to look for BEAMLINE=fake in the header.'"""
 
         size, header = FormatSMV.get_smv_header(image_file)
 
@@ -41,7 +41,7 @@ class FormatSMVJHSim(FormatSMV):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -66,14 +66,14 @@ class FormatSMVJHSim(FormatSMV):
 
     def _goniometer(self):
         """Return a model for a simple single-axis goniometer. This should
-    probably be checked against the image header."""
+        probably be checked against the image header."""
 
         return self._goniometer_factory.single_axis()
 
     def _detector(self):
         """Return a model for a simple detector, presuming no one has
-    one of these on a two-theta stage. Assert that the beam centre is
-    provided in the Mosflm coordinate frame."""
+        one of these on a two-theta stage. Assert that the beam centre is
+        provided in the Mosflm coordinate frame."""
 
         distance = float(self._header_dictionary["DISTANCE"])
         beam_x = float(self._header_dictionary["BEAM_CENTER_X"])
@@ -167,7 +167,7 @@ class FormatSMVJHSim(FormatSMV):
 
     def get_raw_data(self):
         """Get the pixel intensities (i.e. read the image and return as a
-    flex array of integers.)"""
+        flex array of integers.)"""
 
         from boost.python import streambuf
         from dxtbx import read_uint16, read_uint16_bs, is_big_endian

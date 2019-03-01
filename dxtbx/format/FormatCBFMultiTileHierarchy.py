@@ -23,7 +23,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an CBF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
 
         cbf_handle = pycbf.cbf_handle_struct()
         cbf_handle.read_widefile(image_file, pycbf.MSG_DIGEST)
@@ -54,13 +54,13 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
     def _start(self):
         """Parent class will open the image file as a cbf file handle, and keep
-    the handle somewhere safe."""
+        the handle somewhere safe."""
         FormatCBFMultiTile._start(self)
 
     def _get_change_of_basis(self, axis_id):
-        """ Get the 4x4 homogenous coordinate matrix for a given axis.  Assumes
-    the cbf handle has been intialized
-    @param axis_id axis name of basis to get """
+        """Get the 4x4 homogenous coordinate matrix for a given axis.  Assumes
+        the cbf handle has been intialized
+        @param axis_id axis name of basis to get"""
         cbf = self._get_cbf_handle()
         axis_type = cbf.get_axis_type(axis_id)
 
@@ -123,13 +123,13 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
         return cob
 
     def _get_cummulative_change_of_basis(self, axis_id):
-        """ Get the 4x4 homogenous coordinate matrix for a given axis, combining it with the change of
-    basis matrices of parent axes with the same equipment component as the given axis. Assumes
-    the cbf handle has been intialized
-    @param axis_id axis name of basis to get
-    @return (parent, change of basis matrix), where parent is None if the parent in the cbf file
-    is ".".  Parent is the axis that the top level axis in this chain of dependent axis depends on
-    """
+        """Get the 4x4 homogenous coordinate matrix for a given axis, combining it with the change of
+        basis matrices of parent axes with the same equipment component as the given axis. Assumes
+        the cbf handle has been intialized
+        @param axis_id axis name of basis to get
+        @return (parent, change of basis matrix), where parent is None if the parent in the cbf file
+        is ".".  Parent is the axis that the top level axis in this chain of dependent axis depends on
+        """
 
         cbf = self._get_cbf_handle()
         cob = self._get_change_of_basis(axis_id)
@@ -150,12 +150,12 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
         return parent_id, cob
 
     def _add_panel_group(self, group_id, d):
-        """ Adds a panel group to the detector d.  If the group's parent hasn't been
-    added yet, recursively add parents to the detector until the detector itself
-    is reached.
-    @param group_id name of a cbf axis
-    @param d detector object
-    """
+        """Adds a panel group to the detector d.  If the group's parent hasn't been
+        added yet, recursively add parents to the detector until the detector itself
+        is reached.
+        @param group_id name of a cbf axis
+        @param d detector object
+        """
 
         # group_id will only be "." if the panel being worked on has the same equipment_component name as the
         # last axis in the hierarchy, which isn't really sensible
@@ -406,13 +406,13 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
 class FormatCBFMultiTileHierarchyStill(FormatStill, FormatCBFMultiTileHierarchy):
     """An image reading class for full CBF format images i.e. those from
-  a variety of cameras which support this format. Custom derived from
-  the FormatStill to handle images without a gonimeter or scan"""
+    a variety of cameras which support this format. Custom derived from
+    the FormatStill to handle images without a gonimeter or scan"""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an CBF format image, i.e. we can
-    make sense of it."""
+        make sense of it."""
 
         header = FormatCBFMultiTileHierarchy.get_cbf_header(image_file)
 

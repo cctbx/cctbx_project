@@ -6,14 +6,14 @@ import pkg_resources
 
 class ProfileModelFactory(object):
     """
-  A factory to create a profile model
-  """
+    A factory to create a profile model
+    """
 
     @staticmethod
     def from_dict(obj):
         """
-    Given a dictionary, convert to a profile model
-    """
+        Given a dictionary, convert to a profile model
+        """
         if obj is None:
             return None
         for entry_point in pkg_resources.iter_entry_points("dxtbx.profile_model"):

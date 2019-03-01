@@ -15,8 +15,8 @@ injected_data = {}
 
 class FormatEigerStream(FormatMultiImage, Format):
     """
-  A format class to understand an EIGER stream
-  """
+    A format class to understand an EIGER stream
+    """
 
     @staticmethod
     def understand(image_file):
@@ -50,8 +50,8 @@ class FormatEigerStream(FormatMultiImage, Format):
 
     def _detector(self):
         """
-    Create the detector model
-    """
+        Create the detector model
+        """
         from scitbx import matrix
         from dxtbx.model.detector import DetectorFactory
 
@@ -107,8 +107,8 @@ class FormatEigerStream(FormatMultiImage, Format):
 
     def _beam(self):
         """
-    Create the beam model
-    """
+        Create the beam model
+        """
         from dxtbx.model.beam import BeamFactory
 
         configuration = self.header["configuration"]
@@ -116,16 +116,16 @@ class FormatEigerStream(FormatMultiImage, Format):
 
     def _goniometer(self):
         """
-    Create the goniometer model
-    """
+        Create the goniometer model
+        """
         from dxtbx.model.goniometer import GoniometerFactory
 
         return GoniometerFactory.single_axis()
 
     def _scan(self):
         """
-    Create the scan object
-    """
+        Create the scan object
+        """
         from dxtbx.model.scan import ScanFactory
 
         configuration = self.header["configuration"]
@@ -156,8 +156,8 @@ class FormatEigerStream(FormatMultiImage, Format):
 
     def get_raw_data(self, index):
         """
-    Get the raw data from the image
-    """
+        Get the raw data from the image
+        """
         #   if hasattr(self, 'raw_data_cache'):
         #     return self.raw_data_cache
         import numpy as np
@@ -194,8 +194,8 @@ class FormatEigerStream(FormatMultiImage, Format):
 
     def readBSLZ4(self, data, shape, dtype, size):
         """
-    Unpack bitshuffle-lz4 compressed frame and return np array image data
-    """
+        Unpack bitshuffle-lz4 compressed frame and return np array image data
+        """
         import numpy as np
         import bitshuffle
 
@@ -209,8 +209,8 @@ class FormatEigerStream(FormatMultiImage, Format):
 
     def readBS16LZ4(self, data, shape, dtype, size):
         """
-    Unpack bitshuffle-lz4 compressed 16 bit frame and return np array image data
-    """
+        Unpack bitshuffle-lz4 compressed 16 bit frame and return np array image data
+        """
         import bitshuffle
         import numpy
 
@@ -219,8 +219,8 @@ class FormatEigerStream(FormatMultiImage, Format):
 
     def readLZ4(self, data, shape, dtype, size):
         """
-    Unpack lz4 compressed frame and return np array image data
-    """
+        Unpack lz4 compressed frame and return np array image data
+        """
         import numpy as np
         import lz4
 

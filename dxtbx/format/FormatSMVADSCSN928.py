@@ -9,7 +9,7 @@ from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
 class FormatSMVADSCSN928(FormatSMVADSCSN):
     """A class for reading SMV format ADSC images, and correctly constructing
-  a model for the experiment from this, for instrument number 928."""
+    a model for the experiment from this, for instrument number 928."""
 
     @staticmethod
     def understand(image_file):
@@ -25,7 +25,7 @@ class FormatSMVADSCSN928(FormatSMVADSCSN):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
@@ -36,13 +36,13 @@ class FormatSMVADSCSN928(FormatSMVADSCSN):
 
     def _goniometer(self):
         """Return a model for a simple single-axis goniometer. This should
-    probably be checked against the image header."""
+        probably be checked against the image header."""
 
         return self._goniometer_factory.single_axis_reverse()
 
     def _scan(self):
         """Return the scan information for this image. There may be
-    no timestamps in there..."""
+        no timestamps in there..."""
 
         format = self._scan_factory.format("SMV")
         exposure_time = float(self._header_dictionary["TIME"])

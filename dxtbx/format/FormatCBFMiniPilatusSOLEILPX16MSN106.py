@@ -50,12 +50,12 @@ def read_cbf_image_as_double(cbf_image):
 
 class FormatCBFMiniPilatusSOLEILPX16MSN106(FormatCBFMiniPilatus):
     """A class for reading mini CBF format Pilatus images for 6M SN 106 @
-  Synchrotrol Soleil PX1."""
+    Synchrotrol Soleil PX1."""
 
     @staticmethod
     def understand(image_file):
         """Check to see if this looks like an Pilatus mini CBF format image,
-    i.e. we can make sense of it."""
+        i.e. we can make sense of it."""
 
         header = FormatCBFMiniPilatus.get_cbf_header(image_file)
 
@@ -71,7 +71,7 @@ class FormatCBFMiniPilatusSOLEILPX16MSN106(FormatCBFMiniPilatus):
 
     def __init__(self, image_file, **kwargs):
         """Initialise the image structure from the given file, including a
-    proper model of the experiment."""
+        proper model of the experiment."""
 
         from dxtbx import IncorrectFormatError
 
