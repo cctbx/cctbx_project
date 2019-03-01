@@ -333,9 +333,9 @@ class _(boost.python.injector, ext.histogram):
       self.slots(),
       self.n_out_of_slot_range())
 
-  def __repr__(self):
-    from libtbx.utils import kludge_show_to_repr
-    return kludge_show_to_repr(self)
+  def __str__(self):
+    from libtbx.utils import kludge_show_to_str
+    return kludge_show_to_str(self)
 
   def slot_infos(self):
     low_cutoff = self.data_min()

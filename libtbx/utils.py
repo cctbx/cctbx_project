@@ -676,7 +676,7 @@ class Failure(Sorry):
   """
   __module__ = Exception.__module__
 
-def kludge_show_to_repr(obj):
+def kludge_show_to_str(obj):
   """
   Take an object which has a show method which we shall assume will by default
   write it's output to stdout - capture this with cStringIO and return the
@@ -691,9 +691,6 @@ def kludge_show_to_repr(obj):
   ------
   AttrbuteError if object does not have callable show() method
   """
-
-  if not hasattr(obj, "show"):
-    raise AttributeError("object has no show() method")
 
   from cStringIO import StringIO
   import sys
