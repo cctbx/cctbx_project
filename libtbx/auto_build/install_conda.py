@@ -511,7 +511,8 @@ common compilers provided by conda. Please update your version with
     return install_dir
 
   # ---------------------------------------------------------------------------
-  def create_environment(self, builder='cctbx', filename=None, copy=False):
+  def create_environment(self, builder='cctbx', filename=None, copy=False,
+    offline=False):
     """
     Create the environment based on the builder and file. The
     environment name is "conda_base".
@@ -527,6 +528,8 @@ common compilers provided by conda. Please update your version with
       relative path to the "modules" directory.
     copy: bool
       If set to True, the --copy flag is passed to conda
+    offline: bool
+      If set to True, the --offline flag is passed to conda
     """
 
     # handles check for choices in case parser is not available
@@ -556,9 +559,9 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       prefix = os.path.join(self.root_dir, name)
     # or use the existing one
     else:
-      prefix = self.conda_env
+      prefix = os.path.abspath(self.conda_env)
 
-    # install a new one environment or update and existing one
+    # install a new environment or update and existing one
     if prefix in self.environments:
       command = 'install'
       text_messages = ['Updating', 'update of']
@@ -567,11 +570,13 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       text_messages = ['Installing', 'installation into']
     command_list = [self.conda_exe, command, '--prefix', prefix,
                     '--file', filename]
-    if copy:
-      command_list.append('--copy')
     if self.system == 'Windows':
       command_list = [os.path.join(self.conda_base, 'Scripts', 'activate'),
                       'base', '&&'] + command_list
+    if copy:
+      command_list.append('--copy')
+    if offline:
+      command_list.append('--offline')
     # RuntimeError is raised on failure
     print('{text} {builder} environment with:\n  {filename}'.format(
           text=text_messages[0], builder=builder, filename=filename),
@@ -670,6 +675,10 @@ Example usage:
     help="""When set, the new environment has copies, not links to files. This
       should only be used when building installers.""")
   parser.add_argument(
+    '--offline', action='store_true', default=False,
+    help="""When set, the network will not be accessed for installing packages.
+      This should only be used if the packages are already cached.""")
+  parser.add_argument(
     '--verbose', action='store_true', default=False,
     help="""When set, output from conda is displayed. """)
 
@@ -701,7 +710,7 @@ Example usage:
 
   if builder is not None:
     m.create_environment(builder=builder, filename=filename,
-                         copy=namespace.copy)
+                         copy=namespace.copy, offline=namespace.offline)
 
 # =============================================================================
 if __name__ == '__main__':
