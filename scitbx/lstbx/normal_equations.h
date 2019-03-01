@@ -137,8 +137,9 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       using scitbx::matrix::cholesky::u_transpose_u_decomposition_in_place;
       u_transpose_u_decomposition_in_place<scalar_t> cholesky(normal_matrix_);
       if(cholesky.failure) {
-        std::ostringstream buffer;  
-        buffer << "SCITBX_ASSERT(!cholesky.failure) failure in index: " << cholesky.failure.index; 
+        std::ostringstream buffer;
+        buffer << "SCITBX_ASSERT(!cholesky.failure) failure in index: "
+          << cholesky.failure.index;
         throw SCITBX_ERROR(buffer.str());
       }
       SCITBX_ASSERT(!cholesky.failure);

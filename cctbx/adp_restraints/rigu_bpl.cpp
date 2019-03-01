@@ -69,7 +69,9 @@ namespace {
         .def("gradients33", &w_t::gradients33)
         .def("gradients13", &w_t::gradients13)
         .def("gradients23", &w_t::gradients23)
-      ;
+        .def("RM", &w_t::getRM)
+        .def("test_gradients", &w_t::test_gradients)
+        ;
     }
   };
 

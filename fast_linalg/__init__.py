@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 import boost.python
 ext = boost.python.import_ext('fast_linalg_ext')
@@ -14,7 +15,7 @@ if not env.initialised:
       print(env.build_config)
     else:
       print("Located OpenBlas but could not initialise")
-  except:
+  except Exception:
     if sys.platform[:3] == "win":
       import os
       try:

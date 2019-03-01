@@ -634,12 +634,43 @@ Rigid bond restraints: 0
 ||... (remaining 2 not shown)
 """)
 
+def exercise_rigu():
+  ins = """
+CELL 0.71073 7.772741 8.721603 10.863736 90 102.9832 90
+ZERR 2 0.000944 0.001056 0.001068 0 0.0107 0
+LATT -1
+SYMM -X,0.5+Y,-Z
+SFAC C H O
+UNIT 24 44 22
+RIGU 0.0001 0.0001 O4 C C12
+
+C12   1    -0.12812  0.06329 -0.17592  11.00000  0.01467  0.02689  0.02780 =
+ -0.00379  0.00441 -0.00377
+O4    3     0.08910  0.02721  0.02186  11.00000  0.02001  0.03168  0.03125 =
+ -0.00504  0.00144 -0.00274
+C     1    -0.05545 -0.04221 -0.06528  11.00000  0.01560  0.02699  0.02581 =
+ -0.00481  0.00597 -0.00068
+HKLF 4
+END
+  """
+  sio = StringIO(ins)
+  import iotbx.shelx as shelx
+  model = shelx.parse_smtbx_refinement_model(file=sio)
+  sites_cart = model.structure.sites_cart()
+  u_cart = model.structure.scatterers().extract_u_cart(model.structure.unit_cell())
+  arp = adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart)
+  for rp in model._proxies['rigu']:
+    rr = adp_restraints.rigu(arp, rp)
+    U = u_cart[rp.i_seqs[0]]
+    rr.test_gradients(U)
+
 def exercise():
   exercise_proxy_show()
   exercise_adp_similarity()
   exercise_isotropic_adp()
   exercise_rigid_bond()
   exercise_rigid_bond_test()
+  exercise_rigu()
   print "OK"
 
 if (__name__ == "__main__"):

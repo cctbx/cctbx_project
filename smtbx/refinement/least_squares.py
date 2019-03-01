@@ -27,7 +27,7 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
           base_class = normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_3
         else:
           base_class = normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2
-      except:
+      except Exception:
         base_class = normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2
     #print("Chosen: " + str(base_class))
     return base_class

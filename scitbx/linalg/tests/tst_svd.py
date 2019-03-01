@@ -37,8 +37,8 @@ def exercise_svd_basic(klass):
     try:
       svd.u
       raise Exception_expected
-    except:
-      pass  
+    except Exception:
+      pass
   try:
     svd.reconstruct()
     raise Exception_expected

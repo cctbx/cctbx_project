@@ -34,7 +34,7 @@ class occupancy_affine_constraint(object):
     for idx,i in enumerate(self.scatterer_indices[1:]):
       reparametrisation.shared_occupancies[i] = dependees[idx]
     self.value = param
-    
+
 class occupancy_pair_affine_constraint(object):
   """ Constraint a0 occ0 + a1 occ1 == b """
 
