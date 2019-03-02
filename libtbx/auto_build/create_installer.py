@@ -41,6 +41,8 @@ if [ -z "$PYTHON_EXE" ]; then
     PYTHON_EXE='/usr/bin/python2.6'
   elif [ -f "/usr/bin/python2" ]; then
     PYTHON_EXE='/usr/bin/python2'
+  elif [ -f "./conda_base/bin/python" ]; then
+    PYTHON_EXE='./conda_base/bin/python'
   fi
 fi
 $PYTHON_EXE ./bin/install.py $@
