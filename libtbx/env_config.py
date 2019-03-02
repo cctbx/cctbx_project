@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import libtbx.path
 from libtbx.auto_build import regenerate_module_files
+from libtbx.auto_build.installer_utils import call
 from libtbx.path import relocatable_path, absolute_path
 from libtbx.str_utils import show_string
 from libtbx.utils import detect_binary_file
@@ -1106,6 +1107,23 @@ Wait for the command to finish, then try again.""" % vars())
       print('FONTCONFIG_PATH="$LIBTBX_BUILD/../base/etc/fonts"', file=f)
       print('export FONTCONFIG_PATH', file=f)
 
+    # set paths for fontconfig and gdk-pixbuf due to gtk2
+    # checks the location of the conda environment
+    if self.build_options.use_conda and sys.platform.startswith('linux'):
+      fontconfig_path = '{conda_base}/etc/fonts'
+      fontconfig_file = '$FONTCONFIG_PATH/fonts.conf'
+      gdk_pixbuf_module_file = '{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache'
+      conda_base = get_conda_prefix()
+      if conda_base == abs(self.build_path / '..' / 'conda_base'):
+        conda_base = '$LIBTBX_BUILD/../conda_base'
+      if os.path.isdir(fontconfig_path.format(conda_base=conda_base)):
+        print('export FONTCONFIG_PATH=' +
+              fontconfig_path.format(conda_base=conda_base), file=f)
+        print('export FONTCONFIG_FILE=' + fontconfig_file, file=f)
+      if os.path.isfile(gdk_pixbuf_module_file.format(conda_base=conda_base)):
+        print('export GDK_PIXBUF_MODULE_FILE=' +
+              gdk_pixbuf_module_file.format(conda_base=conda_base), file=f)
+
     for n,v in essentials:
       if (len(v) == 0): continue
       v = ":".join([p.sh_value() for p in v])
@@ -1819,7 +1837,16 @@ selfx:
     if (os.name != "nt"):     # LD_LIBRARY_PATH for dependencies
       os.environ[self.ld_library_path_var_name()] = ":".join(
         [abs(p) for p in self.ld_library_path_additions()])
-    if not self.build_options.use_conda:
+    if self.build_options.use_conda:
+      # refresh loaders.cache for gdk-pixbuf on linux due to gtk2
+      if sys.platform.startswith("linux"):
+        conda_base = get_conda_prefix()
+        command = "{conda_base}/bin/gdk-pixbuf-query-loaders"
+        loaders = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.so"
+        cache = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
+        command = command + " " + loaders + " > " + cache
+        call(command.format(conda_base=conda_base))
+    else:
       regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
     self.pickle()
     print("libtbx_refresh_is_completed", file=completed_file_name.open("w"))
