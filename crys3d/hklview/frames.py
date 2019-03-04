@@ -34,9 +34,12 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self.GetParent().viewer.OnChar(event)
 
   def add_controls (self) :
+    '''
+    All the buttoms on the lef hand panel is defined here
+    '''
     self._index_span = None
     self._last_sg_sel = None
-    # d_min control
+    # # d_min control
     self.d_min_ctrl = floatspin.FloatSpin(parent=self, increment=0.05, digits=2)
     self.d_min_ctrl.Bind(wx.EVT_SET_FOCUS, lambda evt: None)
     if (wx.VERSION >= (2,9)) : # XXX FloatSpin bug in 2.9.2/wxOSX_Cocoa
@@ -47,21 +50,70 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     box.Add(label, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     box.Add(self.d_min_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     self.Bind(floatspin.EVT_FLOATSPIN, self.OnChangeResolution, self.d_min_ctrl)
-    # scale control
+
+##Kau added start
+    self.column_ctrl = oop.null()
+    self.column_ctrl = wx.Choice(self.panel, -1,
+        # choices=["jinga","manga","linga","some lable", "ranga"],
+        choices=[],
+        size=(160,-1))
+    # self.Bind(wx.EVT_CHOICE, self.OnChangeSpaceGroup, self.array_ctrl)
+    self.Bind(wx.EVT_CHOICE, self.OnChangeColumn, self.column_ctrl)
+    # example_file=os.path.join("combine_4zg3.mtz")
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.panel_sizer.Add(box)
-    label = wx.StaticText(self, -1, "Scale:")
+    box.Add(wx.StaticText(self.panel, -1, "labels :"), 0, wx.ALL, 5)
+    box.Add(self.column_ctrl, 0, wx.ALL, 5)
+
+
+##This is to include I/SigI column details
+    self.IoverSigI_ctrl = floatspin.FloatSpin(parent=self, increment=0.25, digits=2)
+    self.IoverSigI_ctrl.Bind(wx.EVT_SET_FOCUS, lambda evt: None)
+    if (wx.VERSION >= (2,9)) : # XXX FloatSpin bug in 2.9.2/wxOSX_Cocoa
+      self.IoverSigI_ctrl.SetBackgroundColour(self.GetBackgroundColour())
+    box = wx.BoxSizer(wx.HORIZONTAL)
+    self.panel_sizer.Add(box)
+    label = wx.StaticText(self,-1,"I/SigI:")
     box.Add(label, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    self.scale_ctrl = wx.Slider(self, size=(120,-1), style=wx.SL_AUTOTICKS)
-    self.scale_ctrl.SetMin(0)
-    self.scale_ctrl.SetMax(16)
-    self.scale_ctrl.SetTickFreq(4, 1)
-    self.Bind(wx.EVT_SLIDER, self.OnSetScale, self.scale_ctrl)
-    for x in [0, 4, 8, 12, 16] :
-      self.scale_ctrl.SetTick(x)
-    self.scale_ctrl.SetValue((self.settings.scale * 4) - 4)
-    box.Add(self.scale_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
-    #
+    box.Add(self.IoverSigI_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.Bind(floatspin.EVT_FLOATSPIN, self.OnChangeIoverSigI, self.IoverSigI_ctrl)
+##Kau added ends
+
+
+    # # scale control
+    # box = wx.BoxSizer(wx.HORIZONTAL)
+    # self.panel_sizer.Add(box)
+    # label = wx.StaticText(self, -1, "Scale:")
+    # box.Add(label, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    # self.scale_ctrl = wx.Slider(self, size=(120,-1), style=wx.SL_AUTOTICKS)
+    # self.scale_ctrl.SetMin(0)
+    # self.scale_ctrl.SetMax(16)
+    # self.scale_ctrl.SetTickFreq(4, 1)
+    # self.Bind(wx.EVT_SLIDER, self.OnSetScale, self.scale_ctrl)
+    # for x in [0, 4, 8, 12, 16] :
+    #   self.scale_ctrl.SetTick(x)
+    # self.scale_ctrl.SetValue((self.settings.scale * 4) - 4)
+    # box.Add(self.scale_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    # #
+
+###Kau added starts here
+    # # information control
+    # box = wx.BoxSizer(wx.HORIZONTAL)
+    # self.panel_sizer.Add(box)
+    # label = wx.StaticText(self, -1, "Information content:")
+    # box.Add(label, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    # self.scale_ctrl = wx.Slider(self, size=(120,-1), style=wx.SL_AUTOTICKS)
+    # self.scale_ctrl.SetMin(0)
+    # self.scale_ctrl.SetMax(16)
+    # self.scale_ctrl.SetTickFreq(4, 1)
+    # self.Bind(wx.EVT_SLIDER, self.OnSetScale, self.scale_ctrl)
+    # for x in [0, 4, 8, 12, 16] :
+    #   self.scale_ctrl.SetTick(x)
+    # self.scale_ctrl.SetValue((self.settings.scale * 4) - 4)
+    # box.Add(self.scale_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    # #
+###Kau added ends here
+
     ctrls = self.create_controls(
       setting="black_background",
       label="Black background")
@@ -70,24 +122,24 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       setting="show_axes",
       label="Show h,k,l axes")
     self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
-    ctrls = self.create_controls(
-      setting="show_data_over_sigma",
-      label="Use I or F over sigma")
-    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+    # ctrls = self.create_controls(
+    #   setting="show_data_over_sigma",
+    #   label="Use I or F over sigma")
+    # self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
     if (not self.is_3d_view) :
-      ctrls = self.create_controls(
-        setting="uniform_size",
-        label="Use same radius for all points")
-      self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
-    ctrls = self.create_controls(
-      setting="sqrt_scale_radii",
-      label="Scale radii to sqrt(value)")
-    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
-    ctrls = self.create_controls(
-      setting="sqrt_scale_colors",
-      label="Scale colors to sqrt(value)")
-    self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
-    self.sg_ctrl = oop.null()
+    #   ctrls = self.create_controls(
+    #     setting="uniform_size",
+    #     label="Use same radius for all points")
+    #   self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+    # ctrls = self.create_controls(
+    #   setting="sqrt_scale_radii",
+    #   label="Scale radii to sqrt(value)")
+    # self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+    # ctrls = self.create_controls(
+    #   setting="sqrt_scale_colors",
+    #   label="Scale colors to sqrt(value)")
+    # self.panel_sizer.Add(ctrls[0], 0, wx.ALL, 5)
+        self.sg_ctrl = oop.null()
     if (self.is_3d_view) :
       self.sg_ctrl = wx.Choice(self.panel, -1,
         choices=[],
@@ -97,6 +149,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       self.panel_sizer.Add(box)
       box.Add(wx.StaticText(self.panel, -1, "Space group:"), 0, wx.ALL, 5)
       box.Add(self.sg_ctrl, 0, wx.ALL, 5)
+
       ctrls = self.create_controls(
         setting="expand_to_p1",
         label="Expand data to P1")
@@ -114,6 +167,21 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       self.spheres_ctrl = ctrls[0]
     else :
       self.spheres_ctrl = oop.null()
+
+    ###Kau added start
+        # d_min control
+      # self.d_min_ctrl = floatspin.FloatSpin(parent=self, increment=0.05, digits=2)
+      # self.d_min_ctrl.Bind(wx.EVT_SET_FOCUS, lambda evt: None)
+      # if (wx.VERSION >= (2,9)) : # XXX FloatSpin bug in 2.9.2/wxOSX_Cocoa
+      #   self.d_min_ctrl.SetBackgroundColour(self.GetBackgroundColour())
+      # box = wx.BoxSizer(wx.HORIZONTAL)
+      # self.panel_sizer.Add(box)
+      # label = wx.StaticText(self,-1,"High resolution:")
+      # box.Add(label, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      # box.Add(self.d_min_ctrl, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+      # self.Bind(floatspin.EVT_FLOATSPIN, self.OnChangeResolution, self.d_min_ctrl)
+##kau added end
+
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.panel_sizer.Add(box)
     txt = wx.StaticText(self.panel, -1, "Color scheme:")
@@ -234,6 +302,26 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self.sg_ctrl.SetSelection(current)
     self._last_sg_sel = str(sg_info)
 
+# XXXXXXXXXXXXXXXXXXXXXX
+# Kau added starts here
+
+  # def update_column_choices (self, array_info,valid_arrays,sel) :
+
+  def update_column_choices (self,array_info,arrays,sel) :
+    choices=[]
+        # print("Kau printing array_info from within function", array_info)
+    for labels in array_info:
+        choices.append(str(labels))
+    self.column_ctrl.SetItems(choices)
+    # for f in valid_arrays:
+    #     print("Kau last array selected is ", valid_arrays)
+    current=sel
+    self.column_ctrl.SetItems(choices)
+    self.column_ctrl.SetSelection(current)
+    self._last_column_sel = str(sel)
+
+# Kau added ends here
+# XXXXXXXXXXXXXXXXXXXXXX
   def OnSetSlice (self, event) :
     if (self._index_span is None) :
       self.slice_index.SetValue(0)
@@ -263,9 +351,24 @@ class settings_window (wxtbx.utils.SettingsPanel) :
       sg_info = sgtbx.space_group_info(sg_sel)
       self.parent.set_space_group(sg_info)
 
+####Kau added starts here
+  def OnChangeColumn (self, event) :
+    column_sel = self.column_ctrl.GetSelection()
+    if (column_sel != self._last_column_sel) :
+        self.parent.set_column(column_sel)
+# ####Kau added ends here
+
   def OnChangeResolution (self, event) :
     self.settings.d_min = self.d_min_ctrl.GetValue()
     self.parent.update_settings()
+
+
+####Kau added starts here
+  def OnChangeIoverSigI (self, event) :
+    i_on_sig_i = self.IoverSigI_ctrl.GetValue()
+    self.settings.d_min = self.parent.miller_array.sigma_filter(i_on_sig_i).d_min()
+    self.parent.update_settings()
+# ####Kau added ends here
 
   def OnChangeColor (self, event) :
     self.settings.color_scheme = str(self.color_ctrl.GetStringSelection())
@@ -274,6 +377,12 @@ class settings_window (wxtbx.utils.SettingsPanel) :
   def OnSetScale (self, event) :
     self.settings.scale = (self.scale_ctrl.GetValue() + 4) / 4
     self.parent.update_settings()
+
+##kau added starts here
+  # def OnInformationColorChange(self,event):
+  #   self.settings.color_scheme = (self.color_ctrl.GetValue()+4) / 4
+  #   set.parent.update_settings()
+##Kau added ends here
 
 class HKLViewFrame (wx.Frame) :
   def __init__ (self, *args, **kwds) :
@@ -365,6 +474,7 @@ class HKLViewFrame (wx.Frame) :
 
   def create_settings_panel (self) :
     self.settings_panel = settings_window(self, -1, style=wx.RAISED_BORDER)
+    # print("I am printing type", type(self.settings_panel))
 
   def add_view_specific_functions (self) :
     item = wx.MenuItem(self.file_menu, -1, "Show 2D view")
@@ -478,8 +588,16 @@ class HKLViewFrame (wx.Frame) :
           array_info.uc))
     self.settings_panel.d_min_ctrl.SetValue(array.d_min())
     self.settings_panel.d_min_ctrl.SetRange(array.d_min(), 20.0)
+##kau added starts
+    # self.settings_panel.IoverSigI_ctrl.SetValue(array.sigma_filter(0.0).d_min())
+    # self.settings_panel.IoverSigI_ctrl.SetRange(array.sigma_filter(0.5).d_min(), 100.0)
+    self.settings_panel.IoverSigI_ctrl.SetValue(0.0)
+    self.settings_panel.IoverSigI_ctrl.SetRange(0.0, 100.0)
+
+##Kau added ends
     self.settings_panel.set_index_span(array.index_span())
     self.settings_panel.update_space_group_choices(array)
+    # self.settings_panel.update_column_choices(array) # kau added
     if (type(self).__name__ == "HKLViewFrame") :
       if (array.indices().size() > 100000) :
         if (self.settings.spheres) :
@@ -492,6 +610,7 @@ class HKLViewFrame (wx.Frame) :
             self.settings.spheres = False
             self.settings_panel.spheres_ctrl.SetValue(False)
     self.miller_array = array
+    # print("kau this is array ",type(array))
     self.viewer.set_miller_array(array, zoom=True, merge=array_info.merge)
     self.viewer.Refresh()
     if (self.view_2d is not None) :
@@ -503,6 +622,7 @@ class HKLViewFrame (wx.Frame) :
     self.viewer.update_settings(*args, **kwds)
 
   def set_space_group (self, space_group_info) :
+    # print("kau printing space_group_info ", space_group_info)
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
     from cctbx import crystal
@@ -515,6 +635,27 @@ class HKLViewFrame (wx.Frame) :
     array = array.merge_equivalents().array().set_info(self.miller_array.info())
     self.viewer.set_miller_array(array, zoom=False)
     self.viewer.Refresh()
+
+#kau added starts here
+  def set_column (self, column_sel) :
+    # print("kau printing column_sel ", column_sel)
+    self.set_miller_array(self.valid_arrays[column_sel])
+    if (self.miller_array is None) :
+      raise Sorry("No data loaded!")
+    # from cctbx import crystal
+    # symm = crystal.symmetry(
+    #   space_group_info=space_group_info,
+    #   unit_cell=self.miller_array.unit_cell())
+    # array = self.miller_array.expand_to_p1().customized_copy(
+    #   crystal_symmetry=symm)
+    # print "MERGING 2"
+    # array = array.merge_equivalents().array().set_info(self.miller_array.info())
+    # array=self.miller_array.column_root_label(column_sel)
+    # print("Kau this is array from set_column ", array)
+    # settings_panel.array_storage()
+    # self.viewer.set_miller_array(array[column_sel], zoom=False)
+    self.viewer.Refresh()
+##kau added ends here
 
   def delete_miller_index (self, hkl) :
     if (self.miller_array is None) :
@@ -549,6 +690,7 @@ class HKLViewFrame (wx.Frame) :
         desc = get_array_description(array)
         array_info.append("%s (%s)" % (labels, desc))
         valid_arrays.append(array)
+      self.valid_arrays = valid_arrays
       if (len(valid_arrays) == 0) :
         msg = "No arrays of the supported types in this file."
         raise Sorry(msg)
@@ -562,13 +704,19 @@ class HKLViewFrame (wx.Frame) :
           message="Please select the data you wish to view:",
           caption="Select data",
           choices=array_info)
+        # print("kau labels info is", array_info) #Kau added
+        # print("Kau printing array_info from calling ", array_info)
+
         if (dlg.ShowModal() == wx.ID_OK) :
           sel = dlg.GetSelection()
           if (set_array) :
             self.set_miller_array(valid_arrays[sel])
           wx.CallAfter(dlg.Destroy)
+          self.settings_panel.update_column_choices(array_info, valid_arrays,sel) # kau added
+          # self.settings_panel.update_column_choices(array_info,valid_arrays,sel) # kau added
           return valid_arrays[sel]
         wx.CallAfter(dlg.Destroy)
+
     raise Abort()
 
   def OnLoadFile (self, evt) :

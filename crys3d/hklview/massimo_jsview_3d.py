@@ -113,37 +113,11 @@ class hklview_3d () :
       spbufttip += "\ndres: %s" %str(roundoff(dres[i])  )
       spbufttip += "\n%s: %s" %(colstr, str(roundoff(data[i]) ) )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+
       shapespherestr += "shape.addSphere( %s, %s, %s, %s);\n" \
          %(str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
             str(roundoff(radii[i], 2)), tooltip )
 
-      shapespherestr2 += """shape%d = new NGL.Shape('shape');
-shape%d.addSphere( %s, %s, %s, %s);
-shapeComp%d = stage.addComponentFromObject(shape%d);
-sphererepr[%d] = shapeComp%d.addRepresentation('buffer');
-""" %(i, i, str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
-            str(roundoff(radii[i], 2)), tooltip, i, i, i, i )
-      # allows us to individually change colour and alpha values of spheres but with overhead on webgl
-      shapespherestr3 += """shape%d = new NGL.Shape('shape%d');
-spherebufs[%d] = new NGL.SphereBuffer({ position: new Float32Array( %s ),  color: new Float32Array( %s ),  radius: new Float32Array( [ %s ] ),  picking: [ %s ] })
-shape%d.addBuffer(spherebufs[%d])
-shapeComp%d = stage.addComponentFromObject(shape%d);
-sphererepr[%d] = shapeComp%d.addRepresentation('buffer%d');
-""" %(i, i, i, str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
-            str(roundoff(radii[i], 2)), tooltip, i, i, i, i, i, i, i )
-      # using common shape appears to cripple the javascript engine
-      shapespherestr4 += """
-spherebufs[%d] = new NGL.SphereBuffer({ position: new Float32Array( %s ),  color: new Float32Array( %s ),  radius: new Float32Array( [ %s ] ),  picking: [ %s ] })
-shape.addBuffer(spherebufs[%d])
-shapeComp%d = stage.addComponentFromObject(shape);
-sphererepr[%d] = shapeComp%d.addRepresentation('buffer%d');
-""" %(i, str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
-            str(roundoff(radii[i], 2)), tooltip, i, i, i, i, i)
-
-      shapespherestr5 += """spherebufs[%d] = new NGL.SphereBuffer({ position: new Float32Array( %s ),  color: new Float32Array( %s ),  radius: new Float32Array( [ %s ] ),  picking: [ %s ] })
-shape.addBuffer(spherebufs[%d])
-""" %(i, str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
-            str(roundoff(radii[i], 2)), tooltip, i)
 
       positions.extend( roundoff(list(hklstars)) )
       colours.extend( roundoff(list(colors[i]), 2) )
@@ -229,7 +203,7 @@ var spherebufs = new Array( %d )
 
 var hklscene = function (b) {
   shape = new NGL.Shape('shape');
-  stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false });
+  stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:true });
   stage.setParameters( { cameraType: "%s" } );
 
   %s
@@ -298,7 +272,8 @@ connection.onmessage = function (e) {
 
 
 
-    """ % (nrefls, nrefls, self.cameratype, arrowstr, spherebufferstr) #shapespherestr)
+    """ % (nrefls, nrefls, self.cameratype, arrowstr, shapespherestr)
+    #""" % (nrefls, nrefls, self.cameratype, arrowstr, spherebufferstr)
     #""" % (nrefls, nrefls, self.cameratype, arrowstr, shapespherestr3)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:

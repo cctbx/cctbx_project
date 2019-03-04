@@ -10,22 +10,26 @@ from __future__ import division
 r""" usage:
 
 from crys3d.hklview import cmdlineframes
-myHKLview = cmdlineframes.HKLViewFrame()
+
+# optionally supply output filename for the composed javascript for NGL
+myHKLview = cmdlineframes.HKLViewFrame(r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js")
 
 myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.tncs.mtz")
-
 myHKLview.set_column(3)
+myHKLview.ExpandToP1(True)
 
-myHKLview.settings.expand_anomalous=True
-myHKLview.update_settings()
+myHKLview.ShowSlice(True, "l", 17)
+# get the composed javascript for NGL
+myHKLview.GetNGLstring()
 
+myHKLview.ShowSlice(False)
+myHKLview.ExpandAnomalous(True)
+
+myHKLview.ShowMissing(True)
 myHKLview.set_space_group_choice(3)
 
-myHKLview.viewer.settings.show_missing=True
-myHKLview.update_settings()
-
 myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Phenix\dev-2814-working\modules\phenix_examples\lysozyme-MRSAD\lyso2001_scala1.mtz")
-myHKLview.SetCameraType("perspect")
+myHKLview.SetCameraType("persp")
 
 myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Experiments\CRLF3\DLS20151206CRLF3\5840-F11-X1-Hg-SAD-ONsoak\5840-F11-X1_pk_5_5_1_\xia2\dials-run\DataFiles\mx11235v49_x5840F11X1pk551_free.mtz")
 myHKLview.set_column(4)
@@ -36,7 +40,7 @@ myHKLview.ShowSlice(True, "h", 20)
 
 
 
-from crys3d.hklview import jsview_3d
+from crys3d.hklview import massimo_jsview_3d as view_3d
 from cctbx.miller import display
 
 from libtbx import object_oriented_patterns as oop
@@ -89,11 +93,13 @@ class settings_window () :
 
 
 class HKLViewFrame () :
-  def __init__ (self, *args, **kwds) :
+  def __init__ (self, jscriptfname=""):
+  #def __init__ (self, *args, **kwds) :
     self.miller_array = None
     self.spacegroup_choices = None
     self.settings = display.settings()
-    self.viewer = jsview_3d.hklview_3d(self.settings)
+    self.viewer = view_3d.hklview_3d(self.settings)
+    self.viewer.jscriptfname = jscriptfname
     self.viewer.set_miller_array(self.viewer.miller_array)
 
 
@@ -277,39 +283,42 @@ class HKLViewFrame () :
           self.set_miller_array(valid_arrays[0])
         return valid_arrays[0]
 
-  def SetCameraType(self, camtype="ortho"):
+
+  def GetNGLstring(self):
+    return self.viewer.NGLscriptstr
+
+  def SetCameraType(self, camtype):
     if camtype.lower() in "orthographic":
       self.viewer.cameratype = "orthographic"
     if camtype.lower() in "perspective":
       self.viewer.cameratype = "perspective"
     self.viewer.DrawNGLJavaScript()
 
-
-  def ExpandToP1(self, val=False):
+  def ExpandToP1(self, val):
     self.settings.expand_to_p1 = val
     self.update_settings()
 
-  def ExpandAnomalous(self, val=False):
+  def ExpandAnomalous(self, val):
     self.settings.expand_anomalous = val
     self.update_settings()
 
-  def ShowOnlyMissing(self, val=False):
+  def ShowOnlyMissing(self, val):
     self.settings.show_only_missing = val
     self.update_settings()
 
-  def ShowMissing(self, val=False):
+  def ShowMissing(self, val):
     self.settings.show_missing = val
     self.update_settings()
 
-  def ShowDataOverSigma(self, val=False):
+  def ShowDataOverSigma(self, val):
     self.settings.show_data_over_sigma = val
     self.update_settings()
 
-  def ShowSystematicAbsences(self, val=False):
+  def ShowSystematicAbsences(self, val):
     self.settings.show_systematic_absences = val
     self.update_settings()
 
-  def ShowSlice(self, val=False, axis="h", index=0):
+  def ShowSlice(self, val, axis="h", index=0):
     self.settings.slice_mode = val
     self.settings.slice_axis = axis.lower()
     self.settings.slice_index = index
