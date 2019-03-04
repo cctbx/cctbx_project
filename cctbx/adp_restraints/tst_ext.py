@@ -5,11 +5,13 @@ from cctbx import adptbx
 from cctbx import uctbx
 from cctbx import adp_restraints
 from cctbx.adp_restraints import adp_restraint_params
+import scitbx
 from scitbx import matrix
 import libtbx.load_env
 import math, os, sys
 from cStringIO import StringIO
 import cctbx.xray
+from libtbx.test_utils import approx_equal
 
 def finite_difference_gradients(restraint_type,
                                 proxy,
@@ -634,6 +636,25 @@ Rigid bond restraints: 0
 ||... (remaining 2 not shown)
 """)
 
+def rigu_func(R, U):
+  return R * U * R.transpose()
+
+def rigu_finite_diff(R, U):
+  #we operate on quadratic values
+  epsilon = 2*math.sqrt(scitbx.math.double_numeric_limits.epsilon)
+  rv = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
+  for idx in xrange(0,6):
+    step = [0]*6
+    step[idx] = epsilon
+    U1 = rigu_func(R, U + matrix.sym(sym_mat3=step))
+    U2 = rigu_func(R, U - matrix.sym(sym_mat3=step))
+    dU = U1 - U2
+    dUdUidx = dU / (2*epsilon) 
+    rv[0][idx] = dUdUidx[8] #U33
+    rv[1][idx] = (dUdUidx[2] + dUdUidx[2])/2 #U13
+    rv[2][idx] = (dUdUidx[5] + dUdUidx[7])/2  #U23
+  return rv 
+
 def exercise_rigu():
   ins = """
 CELL 0.71073 7.772741 8.721603 10.863736 90 102.9832 90
@@ -661,8 +682,35 @@ END
   arp = adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart)
   for rp in model._proxies['rigu']:
     rr = adp_restraints.rigu(arp, rp)
-    U = u_cart[rp.i_seqs[0]]
-    rr.test_gradients(U)
+    U1 = matrix.sym(sym_mat3=u_cart[rp.i_seqs[0]])
+    U2 = matrix.sym(sym_mat3=u_cart[rp.i_seqs[1]])
+    vz = matrix.col(sites_cart[rp.i_seqs[1]]) - matrix.col(sites_cart[rp.i_seqs[0]])
+    vy = vz.ortho()
+    vx = vy.cross(vz)
+    R = matrix.rec(vx.normalize().elems +
+                   vy.normalize().elems +
+                   vz.normalize().elems, (3,3))
+    # with this matrix we can only test Z component as X and Y will differ
+    dU = ((R*U1)*R.transpose() - (R*U2)*R.transpose()).as_sym_mat3()
+    assert approx_equal(dU[2], rr.delta_33())
+    #with the original matrix all components should match
+    R1 = matrix.rec(rr.RM(), (3,3))
+    dU = ((R1*U1)*R1.transpose() - (R1*U2)*R1.transpose()).as_sym_mat3()
+    assert approx_equal(dU[2], rr.delta_33())
+    assert approx_equal(dU[4]*2, rr.delta_13())
+    assert approx_equal(dU[5]*2, rr.delta_23())
+    # check the raw gradients against the reference implementation
+    for x,y in zip(rr.reference_gradients(R1), rr.raw_gradients()):
+      for idx in xrange(0, 6):
+        assert approx_equal(x[idx], y[idx])
+    for x,y in zip(rigu_finite_diff(R1, U1), rr.raw_gradients()):
+      print x
+      print y
+      print "\n"
+      for idx in xrange(0, 6):
+        assert approx_equal(x[idx], y[idx])
+    
+    #rr.test_gradients(U)
 
 def exercise():
   exercise_proxy_show()

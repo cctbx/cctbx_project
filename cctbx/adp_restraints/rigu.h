@@ -6,9 +6,6 @@
 #include <cctbx/adptbx.h>
 #include <cctbx/adp_restraints/adp_restraints.h>
 #include <scitbx/matrix/matrix_vector_operations.h>
-#include <iostream>
-#include <boost/multi_array.hpp>
-#include <fstream>
 
 namespace cctbx { namespace adp_restraints {
 
@@ -48,6 +45,7 @@ namespace cctbx { namespace adp_restraints {
       af::tiny<sym_mat3d, 2> const& u_cart,
       double weight_)
     :
+      dRUcart(3),
       weight(weight_)
     {
       init_delta(sites, u_cart);
@@ -59,6 +57,7 @@ namespace cctbx { namespace adp_restraints {
       adp_restraint_params<double> const &params,
       rigu_proxy const& proxy)
     :
+      dRUcart(3),
       weight(proxy.weight)
     {
       CCTBX_ASSERT(params.sites_cart.size() == params.u_cart.size());
@@ -168,37 +167,27 @@ namespace cctbx { namespace adp_restraints {
           }
           for (std::size_t j = 0; j < 6; j++) {
             linearised_eqns.design_matrix(row_i, ids_i.u_aniso+j)
-              = grad_u_star[j];
+              = grad_u_star[j] * (j < 3 ? 1 : 2);
           }
           linearised_eqns.weights[row_i] = weight;
           linearised_eqns.deltas[row_i] = deltas[k];
         }
       }
-
     }
 
+    // for testing
     mat3d getRM() const {
       return RM;
     }
-
-    void test_gradients(sym_mat3d const &u_cart) {
-      test_gradients_1();
-      for (int i = 0; i < 3; i++) {
-        for (int j = 0; j <= i; j++) {
-          mat3d r = calc_d(u_cart, i, j);
-          CCTBX_ASSERT(std::abs(dRUcart[0](i, j) - r(2, 2)) < 0.1);
-          CCTBX_ASSERT(std::abs(dRUcart[1](i, j) - r(0, 2)) < 0.1);
-          CCTBX_ASSERT(std::abs(dRUcart[2](i, j) - r(1, 2)) < 0.1);
-        }
-      }
+    // for testing
+    af::shared<sym_mat3d> raw_gradients() const {
+      return dRUcart;
     }
 
-    double delta_33() { return delta_33_; }
-    double delta_13() { return delta_13_; }
-    double delta_23() { return delta_23_; }
-    double delta() { return delta_33_+delta_13_+delta_23_; }
-
-    double weight;
+    double delta_33() const { return delta_33_; }
+    double delta_13() const { return delta_13_; }
+    double delta_23() const { return delta_23_; }
+    double delta() const { return delta_33_+delta_13_+delta_23_; }
 
   protected:
     void init_delta(af::tiny<vec3d, 2> const &sites,
@@ -247,86 +236,6 @@ namespace cctbx { namespace adp_restraints {
       weight = weightfinal(weight, p, d, UeqA, UeqB);
     }
 
-    // original function for tests only
-    //! Calculate all the partial derivatives of the adp
-    //! in the local cartesian coordinate system.
-    void test_gradients_1() const {
-      /** See Parois, et. al. (2018). J. Appl. Cryst. 51, 1059-1068.
-       *  for the detail on how it works
-       *
-       *  The U tensors are vectorized as 9 elements vectors
-       *  column by column to simplify the calculations.
-       *  Operations like V = A U B translate then to vec(V) =
-       *  (B^t @ A) U with @ the kronecker product
-       */
-
-      /** dUcart contains the 6 partial derivatives dU_cart/dUij_cart
-       *  writen as vectors.
-       *  The 6 columns vectors are then stacked column wise to form dUcart
-       */
-      const int dUcart[9][6] = {
-        //dU11 dU22 dU33 dU12 dU13 dU23
-        { 1,   0,   0,   0,   0,   0}, // U11
-        { 0,   0,   0,   1,   0,   0}, // U21
-        { 0,   0,   0,   0,   1,   0}, // U23
-        { 0,   0,   0,   1,   0,   0}, // U21
-        { 0,   1,   0,   0,   0,   0}, // U22
-        { 0,   0,   0,   0,   0,   1}, // U23
-        { 0,   0,   0,   0,   1,   0}, // U31
-        { 0,   0,   0,   0,   0,   1}, // U32
-        { 0,   0,   1,   0,   0,   0}, // U33
-      };
-
-      boost::multi_array<double, 2> kron(boost::extents[9][9]);
-
-      //! calulating the kronecker product
-      for(int i = 0; i < 3; i++){
-        for(int j = 0; j < 3; j++){
-          int startRow = i*3;
-          int startCol = j*3;
-          for(int k = 0; k < 3; k++){
-            for(int l = 0; l < 3; l++){
-              kron[startRow+k][startCol+l] = RM(i,j)*RM(k,l);
-            }
-          }
-        }
-      }
-
-      /** vec(dRUcart) = kron vec(dUcart).
-       *  Derivatives of (RUcart = RM Ucart RM^t)
-       */
-      boost::multi_array<double, 2> dRUcart_(boost::extents[9][6]);
-      std::fill(dRUcart_.data(), dRUcart_.data() + dRUcart_.num_elements(), 0);
-      for (int i = 0; i < 9; i++) {
-        for (int j = 0; j < 6; j++) {
-          for (int k = 0; k < 9; k++) {
-            dRUcart_[i][j] += kron[i][k] * dUcart[k][j];
-          }
-        }
-      }
-      for (int i = 0; i < 3; i++) {
-        int r_idx[3] = {8, 6, 7};
-        for (int j = 0; j < 6; j++) {
-          CCTBX_ASSERT(std::abs(dRUcart[i][j] - dRUcart_[r_idx[i]][j]) < 1e-6);
-        }
-      }
-    }
-
-    mat3d calc_f(const sym_mat3d &U, const mat3d &R, const mat3d &Rt) {
-      return (R*U)*Rt;
-    }
-
-    mat3d calc_d(const sym_mat3d &U, int i, int j) {
-      mat3d Rt = RM.transpose();
-      const double du = 2.2e-16;
-      sym_mat3d x = U;
-      x(i, j) += du;
-      mat3d m1 = calc_f(x, RM, Rt);
-      x(i, j) -= 2*du;
-      mat3d m2 = calc_f(x, RM, Rt);
-      return (m1 - m2) / (2*du);
-    }
-
     void calc_gradients() {
       for (int i = 0; i < 3; i++) {
         for (int j = 0; j <= i; j++) {
@@ -355,7 +264,9 @@ namespace cctbx { namespace adp_restraints {
     double delta_13_;
     double delta_23_;
     mat3d RM;
-    sym_mat3d dRUcart[3];
+    af::shared<sym_mat3d> dRUcart;
+  public:
+    double weight;
   };
 
 }} // namespace cctbx::adp_restraints
