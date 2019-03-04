@@ -51,7 +51,7 @@ def get_pypi_package_information(package, version=None, information_only=False):
 DEPENDENCIES_BASE = "https://gitcdn.link/repo/dials/dependencies/master/"
 OPENSSL_PKG = "openssl-1.0.2q.tar.gz"    # OpenSSL
 PYTHON3_PKG = "Python-3.7.2.tgz"
-PYTHON_PKG = "Python-2.7.15.tgz"
+PYTHON_PKG = "Python-2.7.16.tgz"
 
 # from CCI
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
@@ -75,7 +75,7 @@ MPI4PY_VERSION = "3.0.0"
 NUMPY_VERSION="1.13.3"
 ORDEREDSET_VERSION = "2.0.1"
 PILLOW_VERSION = "4.2.1"
-PROCRUNNER_VERSION = "0.9.0"
+PROCRUNNER_VERSION = "0.9.1"
 PY2APP_VERSION="0.7.3"
 PYTEST_VERSION = "3.10.1"
 PYTEST_XDIST_VERSION = "1.26.1"
