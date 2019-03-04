@@ -649,11 +649,11 @@ def rigu_finite_diff(R, U):
     U1 = rigu_func(R, U + matrix.sym(sym_mat3=step))
     U2 = rigu_func(R, U - matrix.sym(sym_mat3=step))
     dU = U1 - U2
-    dUdUidx = dU / (2*epsilon) 
+    dUdUidx = dU / (2*epsilon)
     rv[0][idx] = dUdUidx[8] #U33
     rv[1][idx] = (dUdUidx[2] + dUdUidx[2])/2 #U13
     rv[2][idx] = (dUdUidx[5] + dUdUidx[7])/2  #U23
-  return rv 
+  return rv
 
 def exercise_rigu():
   ins = """
@@ -709,7 +709,7 @@ END
       print "\n"
       for idx in xrange(0, 6):
         assert approx_equal(x[idx], y[idx])
-    
+
     #rr.test_gradients(U)
 
 def exercise():

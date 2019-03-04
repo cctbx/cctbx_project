@@ -222,8 +222,8 @@ namespace cctbx { namespace adp_restraints {
 
       //! calculating the 3 deltas involved
       delta_33_ = RUcart1(2,2) - RUcart2(2,2);
-      delta_13_ = 2*(RUcart1(0,2) - RUcart2(0,2));
-      delta_23_ = 2*(RUcart1(1,2) - RUcart2(1,2));
+      delta_13_ = RUcart1(0,2) - RUcart2(0,2);
+      delta_23_ = RUcart1(1,2) - RUcart2(1,2);
 
       /** Update weight see
        *  Thorn, A., et. al. (2012). Acta Cryst. A68, 448-451

@@ -125,7 +125,7 @@ struct rigu_wrappers {
         rigu_proxy const&>(
         (arg("params"),
           arg("proxy"))))
-      .add_property("weight", make_getter(&w_t::weight, rbv()))
+      .def_readonly("weight", &w_t::weight)
       .def("delta_33", &w_t::delta_33)
       .def("delta_13", &w_t::delta_13)
       .def("delta_23", &w_t::delta_23)
