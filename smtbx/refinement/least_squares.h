@@ -73,7 +73,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   (f_mask.size())(reflections.size());
       reflections.update_prime_fraction();
       if(may_parallelise_) {
-        int thread_count = boost::thread::physical_concurrency();
+        int thread_count = get_available_threads();
         int equi_chunk_size = reflections.size()/thread_count;
         int number_of_threads_doing_one_more = reflections.size() % thread_count;
         boost::thread_group pool;
@@ -125,8 +125,21 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     af::shared<FloatType> weights() { return weights_; }
 
-    int available_threads() const {
-      return boost::thread::physical_concurrency();
+    static int get_available_threads() {
+      int &available = available_threads_var();
+      if (available == -1) {
+        available = std::max(1,
+          static_cast<int>(boost::thread::physical_concurrency()));
+      }
+      return available;
+    }
+
+    static void set_available_threads(int thread_count) {
+      // limit to the logical cores count
+      available_threads_var() =
+        std::max(1, std::min(
+          static_cast<int>(boost::thread::hardware_concurrency()),
+          thread_count));
     }
 
   protected:
@@ -273,6 +286,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
     af::shared<std::complex<FloatType> > f_calc_;
     af::shared<FloatType> observables_;
     af::shared<FloatType> weights_;
+
+    static int& available_threads_var() {
+      static int available = -1;
+      return available;
+    }
   protected:
     af::versa<FloatType, af::c_grid<2> > design_matrix_;
   };

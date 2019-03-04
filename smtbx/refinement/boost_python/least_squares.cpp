@@ -71,8 +71,10 @@ namespace smtbx { namespace refinement { namespace least_squares {
           .def("observables", &wt::observables)
           .def("f_calc", &wt::f_calc)
           .def("weights", &wt::weights)
-          .add_property("available_threads", &wt::available_threads)
-          ;
+          .add_static_property("available_threads",
+            &wt::get_available_threads,
+            &wt::set_available_threads)
+            ;
       }
     };
 
@@ -87,7 +89,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
           .def("observables", &wt::observables)
           .def("f_calc", &wt::f_calc)
           .def("weights", &wt::weights)
-          .add_property("available_threads", &wt::available_threads)
+          .add_static_property("available_threads",
+            &wt::get_available_threads,
+            &wt::set_available_threads)
           .def("design_matrix", &wt::design_matrix)
           ;
       }
