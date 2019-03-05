@@ -44,7 +44,9 @@ def exercise_linear_normal_equations():
 non_linear_ls_with_separable_scale_factor__impls = (
   normal_eqns.non_linear_ls_with_separable_scale_factor__level_2_blas_impl,
 )
-if libtbx.env.has_module('fast_linalg'):
+
+from fast_linalg import env
+if env.initialised:
   non_linear_ls_with_separable_scale_factor__impls += (
     normal_eqns.non_linear_ls_with_separable_scale_factor__level_3_blas_impl,
   )

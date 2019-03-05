@@ -23,10 +23,9 @@ import re
 tested_ls_engines = (
   least_squares.normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2,
 )
-try:
+from fast_linalg import env
+if env.initialised:
   tested_ls_engines += (  least_squares.normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_3,)
-except Exception:
-  pass
 # we use a wrapper to make sure non_linear_ls_with_separable_scale_factor
 # is not an argument with a default value, so as to protect ourself from
 # forgetting to specify that argument in the tests, which would result

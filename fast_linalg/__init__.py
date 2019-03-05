@@ -1,9 +1,16 @@
 from __future__ import division
 import sys
 import boost.python
-ext = boost.python.import_ext('fast_linalg_ext')
-env = ext.env
-if not env.initialised:
+try:
+  ext = boost.python.import_ext('fast_linalg_ext')
+  env = ext.env
+  try_to_initialise = True
+except ImportError:
+  env = lambda: None
+  env.initialised = False
+  try_to_initialise = False
+
+if not env.initialised and try_to_initialise:
   if sys.platform[:3] == "win":
     lib_path = "openblas.dll"
   else:
