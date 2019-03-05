@@ -8,11 +8,8 @@ from cctbx.miller import display
 
 
 class hklview_3d () :
-  def __init__ (self, mysettings) :
-    # FIXME orthographic is definitely best for this application, but it isn't
-    # working properly right now
-    #self.orthographic = True
-    self.settings = mysettings
+  def __init__ (self, *args, **kwds) :
+    self.settings = kwds.get("settings")
     self.buffer_factor = 2.0
     self.min_slab = 4
     self.min_viewport_use_fraction = 0.1
@@ -27,6 +24,9 @@ class hklview_3d () :
     self.jscriptfname = ""
     self.NGLscriptstr = ""
     self.cameratype = "orthographic"
+    self.colbinname = ""
+    self.binvals = []
+
 
   def set_miller_array (self, miller_array, merge=None, details="") :
     if (miller_array is None) : return
@@ -38,7 +38,6 @@ class hklview_3d () :
     print "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
       % (array_info.label_string(), details, miller_array.indices().size(),
           miller_array.space_group_info(), uc)
-
     self.construct_reciprocal_space(merge=merge)
 
 
@@ -102,8 +101,9 @@ class hklview_3d () :
     colours = []
     positions = []
     radii2 = []
-    tooltips =[]
     spbufttips = []
+    tooltips =[]
+
     for i, hklstars in enumerate(points) :
       tooltip = "'H,K,L: %s, %s, %s" %(hkls[i][0], hkls[i][1], hkls[i][2])
       tooltip += "\\ndres: %s" %str(roundoff(dres[i])  )
@@ -150,7 +150,8 @@ shape.addBuffer(spherebufs[%d])
       radii2.append( roundoff(radii[i], 2) )
       spbufttips.append(spbufttip)
 
-    # spherebuffer is likely more efficient but how to change alpha values on individual spheres?
+
+
     spherebufferstr = """
   ttips = %s
   positions = new Float32Array( %s )
@@ -199,6 +200,9 @@ shape.addBuffer(spherebufs[%d])
 
     self.NGLscriptstr = """
 
+// Microsoft Edge users follow instructions on
+// https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
+// to enable websocket connection
 
 var connection = new WebSocket('ws://127.0.0.1:7894/');
 
@@ -223,7 +227,7 @@ var stage;
 var shape;
 var shapeComp;
 var repr;
-var colours = new Float32Array(3)
+var colours // = new Float32Array(3)
 var sphererepr = new Array( %d )
 var spherebufs = new Array( %d )
 
@@ -281,12 +285,12 @@ connection.onmessage = function (e) {
   //repr.setParameters({ color: true })
 
   var opi = (Math.sin(val[0]) +1.0 )/2.0
-  colours[0] = (Math.cos(val[0]) +1.0 )/2.0
-  colours[1] = 1.0
-  colours[2] = 1.0
-  var vc1 = colours[0]
+  colours[3*si] = (Math.cos(val[0]) +1.0 )/2.0
+  colours[3*si + 1] = 1.0
+  colours[3*si + 2] = 1.0
+  vc1 = colours[3*si]
 
-  spherebufs[si].setAttributes({ color: colours })
+  sphereBuffer.setAttributes({ color: colours })
   //sphererepr[si].setParameters({opacity: opi})
   stage.viewer.requestRender()
 
@@ -308,6 +312,8 @@ connection.onmessage = function (e) {
   def update_settings (self) :
     self.construct_reciprocal_space(merge=self.merge)
     self.DrawNGLJavaScript()
+    msg = "Rendered %d reflections" % self.scene.points.size()
+    return msg
 
   def process_pick_points (self) :
     self.closest_point_i_seq = None

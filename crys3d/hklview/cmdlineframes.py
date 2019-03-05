@@ -40,7 +40,7 @@ myHKLview.ShowSlice(True, "h", 20)
 
 
 
-from crys3d.hklview import massimo_jsview_3d as view_3d
+from crys3d.hklview import jsview_3d as view_3d
 from cctbx.miller import display
 
 from libtbx import object_oriented_patterns as oop
@@ -98,7 +98,8 @@ class HKLViewFrame () :
     self.miller_array = None
     self.spacegroup_choices = None
     self.settings = display.settings()
-    self.viewer = view_3d.hklview_3d(self.settings)
+
+    self.viewer = view_3d.hklview_3d( settings=self.settings )
     self.viewer.jscriptfname = jscriptfname
     self.viewer.set_miller_array(self.viewer.miller_array)
 
@@ -181,7 +182,8 @@ class HKLViewFrame () :
     if (self.miller_array is None) :
       print "No miller array has been selected"
       return False
-    self.viewer.update_settings(*args, **kwds)
+    msg = self.viewer.update_settings(*args, **kwds)
+    print msg
 
   def update_space_group_choices (self) :
     from cctbx.sgtbx.subgroups import subgroups
@@ -287,6 +289,10 @@ class HKLViewFrame () :
   def GetNGLstring(self):
     return self.viewer.NGLscriptstr
 
+  def SetSphereScale(self, nscale):
+    self.settings.scale = nscale
+    self.update_settings()
+
   def SetCameraType(self, camtype):
     if camtype.lower() in "orthographic":
       self.viewer.cameratype = "orthographic"
@@ -323,6 +329,10 @@ class HKLViewFrame () :
     self.settings.slice_axis = axis.lower()
     self.settings.slice_index = index
     self.update_settings()
+
+  def SetColumnBinThresholds(self, colbinname, binvals):
+    self.viewer.colbinname = colbinname
+    self.viewer.binvals = binvals
 
 
 
