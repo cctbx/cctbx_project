@@ -333,6 +333,7 @@ class HKLViewFrame () :
   def SetColumnBinThresholds(self, colbinname, binvals):
     self.viewer.colbinname = colbinname
     self.viewer.binvals = binvals
+    self.update_settings()
 
 
 

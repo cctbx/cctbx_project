@@ -26,6 +26,8 @@ class hklview_3d () :
     self.cameratype = "orthographic"
     self.colbinname = ""
     self.binvals = []
+    self.maxdata = 0.0
+    self.mindata = 0.0
 
 
   def set_miller_array (self, miller_array, merge=None, details="") :
@@ -46,6 +48,9 @@ class hklview_3d () :
       merge=merge,
       settings=self.settings)
     self.rotation_center = (0,0,0)
+    self.maxdata = max(self.scene.data)
+    self.mindata = min(self.scene.data)
+    print "Min, max values: %f, %f" %(self.mindata , self.maxdata)
 
 
   def DrawNGLJavaScript(self):
@@ -102,69 +107,63 @@ class hklview_3d () :
     positions = []
     radii2 = []
     spbufttips = []
-    tooltips =[]
+
+    if len(self.binvals) <1:
+      self.binvals.append(min(data))
+      self.binvals.append(max(data))
+    nbin = len(self.binvals)
+
+    for ibin in range(nbin):
+      colours.append([])
+      positions.append([])
+      radii2.append([])
+      spbufttips.append([])
+
+    def data2bin(d):
+      for ibin, binval in enumerate(self.binvals):
+        if (ibin+1) == len(self.binvals):
+          return ibin
+        if d > binval and d <= self.binvals[ibin+1]:
+          return ibin
+      raise("should never get here")
 
     for i, hklstars in enumerate(points) :
-      tooltip = "'H,K,L: %s, %s, %s" %(hkls[i][0], hkls[i][1], hkls[i][2])
-      tooltip += "\\ndres: %s" %str(roundoff(dres[i])  )
-      tooltip += "\\n%s: %s" %(colstr, str(roundoff(data[i]) ) )
-      tooltip += "'"
+      ibin = data2bin( data[i] )
+      #print i, ibin
       spbufttip = "H,K,L: %s, %s, %s" %(hkls[i][0], hkls[i][1], hkls[i][2])
       spbufttip += "\ndres: %s" %str(roundoff(dres[i])  )
       spbufttip += "\n%s: %s" %(colstr, str(roundoff(data[i]) ) )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      shapespherestr += "shape.addSphere( %s, %s, %s, %s);\n" \
-         %(str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
-            str(roundoff(radii[i], 2)), tooltip )
 
-      shapespherestr2 += """shape%d = new NGL.Shape('shape');
-shape%d.addSphere( %s, %s, %s, %s);
-shapeComp%d = stage.addComponentFromObject(shape%d);
-sphererepr[%d] = shapeComp%d.addRepresentation('buffer');
-""" %(i, i, str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
-            str(roundoff(radii[i], 2)), tooltip, i, i, i, i )
-      # allows us to individually change colour and alpha values of spheres but with overhead on webgl
-      shapespherestr3 += """shape%d = new NGL.Shape('shape%d');
-spherebufs[%d] = new NGL.SphereBuffer({ position: new Float32Array( %s ),  color: new Float32Array( %s ),  radius: new Float32Array( [ %s ] ),  picking: [ %s ] })
-shape%d.addBuffer(spherebufs[%d])
-shapeComp%d = stage.addComponentFromObject(shape%d);
-sphererepr[%d] = shapeComp%d.addRepresentation('buffer%d');
-""" %(i, i, i, str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
-            str(roundoff(radii[i], 2)), tooltip, i, i, i, i, i, i, i )
-      # using common shape appears to cripple the javascript engine
-      shapespherestr4 += """
-spherebufs[%d] = new NGL.SphereBuffer({ position: new Float32Array( %s ),  color: new Float32Array( %s ),  radius: new Float32Array( [ %s ] ),  picking: [ %s ] })
-shape.addBuffer(spherebufs[%d])
-shapeComp%d = stage.addComponentFromObject(shape);
-sphererepr[%d] = shapeComp%d.addRepresentation('buffer%d');
-""" %(i, str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
-            str(roundoff(radii[i], 2)), tooltip, i, i, i, i, i)
+      positions[ibin].extend( roundoff(list(hklstars)) )
+      colours[ibin].extend( roundoff(list(colors[i]), 2) )
+      radii2[ibin].append( roundoff(radii[i], 2) )
+      spbufttips[ibin].append(spbufttip)
 
-      shapespherestr5 += """spherebufs[%d] = new NGL.SphereBuffer({ position: new Float32Array( %s ),  color: new Float32Array( %s ),  radius: new Float32Array( [ %s ] ),  picking: [ %s ] })
-shape.addBuffer(spherebufs[%d])
-""" %(i, str(roundoff(list(hklstars))), str(roundoff(list(colors[i]), 2)),
-            str(roundoff(radii[i], 2)), tooltip, i)
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    spherebufferstr = ""
 
-      positions.extend( roundoff(list(hklstars)) )
-      colours.extend( roundoff(list(colors[i]), 2) )
-      radii2.append( roundoff(radii[i], 2) )
-      spbufttips.append(spbufttip)
-
-
-
-    spherebufferstr = """
-  ttips = %s
-  positions = new Float32Array( %s )
-  colours = new Float32Array( %s )
-  radii = new Float32Array( %s )
-  sphereBuffer = new NGL.SphereBuffer({
-    position: positions,
-    color: colours,
-    radius: radii,
-    picking: ttips,
+    for ibin in range(nbin):
+      nreflsinbin = len(radii2[ibin])
+      if nreflsinbin > 0:
+        spherebufferstr += """
+  ttips%d = %s
+  positions%d = new Float32Array( %s )
+  colours%d = new Float32Array( %s )
+  radii%d = new Float32Array( %s )
+  sphereBuffer%d = new NGL.SphereBuffer({
+    position: positions%d,
+    color: colours%d,
+    radius: radii%d,
+    picking: ttips%d,
   })
-  shape.addBuffer(sphereBuffer)
+  shape.addBuffer(sphereBuffer%d)
+      """ %(nreflsinbin, str(spbufttips[ibin]), nreflsinbin, str(positions[ibin]),
+      nreflsinbin, str(colours[ibin]), nreflsinbin, str(radii2[ibin]),
+      nreflsinbin, nreflsinbin, nreflsinbin, nreflsinbin, nreflsinbin, nreflsinbin )
 
+
+    spherebufferstr += """
 // create tooltip element and add to the viewer canvas
   tooltip = document.createElement("div");
   Object.assign(tooltip.style, {
@@ -181,10 +180,10 @@ shape.addBuffer(spherebufs[%d])
   stage.viewer.container.appendChild(tooltip);
   // listen to `hovered` signal to move tooltip around and change its text
   stage.signals.hovered.add(function (pickingProxy) {
-    if (pickingProxy && (pickingProxy.picker == ttips )){
+    if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  )){
       var sphere = pickingProxy.sphere;
       var cp = pickingProxy.canvasPosition;
-      tooltip.innerText = ttips[pickingProxy.pid];
+      tooltip.innerText = pickingProxy.picker[pickingProxy.pid];
       tooltip.style.bottom = cp.y + 3 + "px";
       tooltip.style.left = cp.x + 3 + "px";
       tooltip.style.display = "block";
@@ -193,7 +192,7 @@ shape.addBuffer(spherebufs[%d])
     }
   });
 
-    """ %(str(spbufttips), str(positions), str(colours), str(radii2) )
+    """
 
 
 
