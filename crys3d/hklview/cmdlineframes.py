@@ -16,7 +16,11 @@ myHKLview = cmdlineframes.HKLViewFrame(r"C:\Users\oeffner\Buser\NGL_HKLviewer\my
 
 myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.tncs.mtz")
 myHKLview.set_column(3)
+myHKLview.SetSphereScale(3)
+myHKLview.SetColumnBinThresholds("asdf", [0, 0.1, 1, 10])
 myHKLview.ExpandToP1(True)
+myHKLview.SetOpacity(2, 0.1)
+
 
 myHKLview.ShowSlice(True, "l", 17)
 # get the composed javascript for NGL
@@ -335,5 +339,7 @@ class HKLViewFrame () :
     self.viewer.binvals = binvals
     self.update_settings()
 
+  def SetOpacity(self, bin, alpha):
+    self.viewer.SetOpacity(bin, alpha)
 
 

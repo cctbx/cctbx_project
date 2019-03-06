@@ -6,6 +6,10 @@ from __future__ import division
 from libtbx.math_utils import roundoff
 from cctbx.miller import display
 
+from websocket_server import WebsocketServer
+import threading, math
+from time import sleep
+
 
 class hklview_3d () :
   def __init__ (self, *args, **kwds) :
@@ -28,7 +32,8 @@ class hklview_3d () :
     self.binvals = []
     self.maxdata = 0.0
     self.mindata = 0.0
-
+    self.nbin = 0
+    self.StartWebsocket()
 
   def set_miller_array (self, miller_array, merge=None, details="") :
     if (miller_array is None) : return
@@ -111,9 +116,9 @@ class hklview_3d () :
     if len(self.binvals) <1:
       self.binvals.append(min(data))
       self.binvals.append(max(data))
-    nbin = len(self.binvals)
+    self.nbin = len(self.binvals)
 
-    for ibin in range(nbin):
+    for ibin in range(self.nbin):
       colours.append([])
       positions.append([])
       radii2.append([])
@@ -121,7 +126,7 @@ class hklview_3d () :
 
     def data2bin(d):
       for ibin, binval in enumerate(self.binvals):
-        if (ibin+1) == nbin:
+        if (ibin+1) == self.nbin:
           return ibin
         if d > binval and d <= self.binvals[ibin+1]:
           return ibin
@@ -147,12 +152,13 @@ class hklview_3d () :
   colours = new Array(%d)
   radii = new Array(%d)
   spherebufs = new Array(%d)
-    """ %(nbin, nbin, nbin, nbin, nbin)
+    """ %(self.nbin, self.nbin, self.nbin, self.nbin, self.nbin)
 
-    for ibin in range(nbin):
+    for ibin in range(self.nbin):
       nreflsinbin = len(radii2[ibin])
-      if (ibin+1) < nbin:
-        print "%d reflections within ]%2.2f; %2.2f]" %(nreflsinbin, self.binvals[ibin], self.binvals[ibin+1])
+      if (ibin+1) < self.nbin:
+        print "%d reflections with %s in ]%2.2f; %2.2f]" %(nreflsinbin, colstr,
+                                        self.binvals[ibin], self.binvals[ibin+1])
       if nreflsinbin > 0:
         spherebufferstr += """
   // %d spheres
@@ -207,7 +213,6 @@ class hklview_3d () :
 
 
     self.NGLscriptstr = """
-
 // Microsoft Edge users follow instructions on
 // https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
 // to enable websocket connection
@@ -215,7 +220,7 @@ class hklview_3d () :
 var connection = new WebSocket('ws://127.0.0.1:7894/');
 
 connection.onopen = function () {
-  connection.send('Waffle'); // Send the message 'Waffle' to the server
+  connection.send('%s now connected via websocket');
 };
 
 // Log errors
@@ -229,15 +234,10 @@ window.addEventListener( 'resize', function( event ){
 }, false );
 
 
-var a=[0,0,0];
-var sphereBuffer;
 var stage;
 var shape;
 var shapeComp;
 var repr;
-var colours // = new Float32Array(3)
-var sphererepr = new Array( %d )
-var spherebufs = new Array( %d )
 
 var hklscene = function (b) {
   shape = new NGL.Shape('shape');
@@ -254,14 +254,15 @@ var hklscene = function (b) {
   repr.update()
 }
 
-document.addEventListener('DOMContentLoaded', function() { hklscene(a) }, false );
+document.addEventListener('DOMContentLoaded', function() { hklscene() }, false );
 
 
 connection.onmessage = function (e) {
-  alert('Server: ' + e.data);
+  //alert('Server: ' + e.data);
   var c
   var alpha
   var si
+  connection.send('got ' + e.data ); // tell server what it sent us
   val = e.data.split(",")
   var ibin = parseInt(val[1])
 
@@ -279,16 +280,13 @@ connection.onmessage = function (e) {
   }
 
   stage.viewer.requestRender()
-
   //connection.send('alpha ' + alpha + '. Colour now: ' + val[4]);
-  connection.send('got ' + val ); // tell the server what it sent us
 };
 
 
 
 
-    """ % (nrefls, nrefls, self.cameratype, arrowstr, spherebufferstr) #shapespherestr)
-    #""" % (nrefls, nrefls, self.cameratype, arrowstr, shapespherestr3)
+    """ % (self.__module__, self.cameratype, arrowstr, spherebufferstr)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
@@ -320,30 +318,77 @@ connection.onmessage = function (e) {
       self.GetParent().update_clicked(index=None)
 
 
+  def new_client(self, client, server):
+    nc = client
+    print "got a new client:", nc
+
+  def on_message(self, client, server, message):
+    print message
+
+  def StartWebsocket(self):
+    self.server = WebsocketServer(7894, host='127.0.0.1')
+    self.server.set_fn_new_client(self.new_client)
+    self.server.set_fn_message_received(self.on_message)
+    self.wst = threading.Thread(target=self.server.run_forever)
+    self.wst.daemon = True
+    self.wst.start()
+
+  def SetOpacity(self, bin, alpha):
+    if bin > self.nbin:
+      print "There are only %d bins of data present" %self.nbin
+      return
+    msg = u"alpha, %d, %f" %(bin, alpha)
+    self.server.send_message(self.server.clients[0], msg )
+
+
 """
 # python2 code
 
 from websocket_server import WebsocketServer
-import time
+import threading, math
+from time import sleep
 
-nc = None
+nc = {}
 def new_client(client, server):
-  #server.send_message(client, u"Oink!")
-  server.send_message(client, u"1,2,3" )
   nc = client
+  print "got a new client:", nc
 
-def new_message(client, server, message):
-  print message
+def on_message(client, server, message):
+    print message
 
+websocket.enableTrace(True)
 server = WebsocketServer(7894, host='127.0.0.1')
 server.set_fn_new_client(new_client)
-time.sleep(10)
-server.set_fn_message_received(new_message)
-server.send_message_to_all(u"Oink!")
-server.run_forever()
+server.set_fn_message_received(on_message)
+
+wst = threading.Thread(target=server.run_forever)
+wst.daemon = True
+wst.start()
+
+def LoopSendMessages():
+  x = 0.0
+  i=0
+  while server.clients:
+    nc = server.clients[0]
+    x += 0.2
+    alpha =  (math.cos(x) +1.0 )/2.0
+    msg = u"alpha, 2, %f" %alpha
+    server.send_message(server.clients[0], msg )
+    r = (math.cos(x) +1.0 )/2.0
+    g = (math.cos(x+1) +1.0 )/2.0
+    b = (math.cos(x+2) +1.0 )/2.0
+    msg = u"colour, 1, %d, %f, %f, %f" %(i,r,g,b)
+    server.send_message(server.clients[0], msg )
+    sleep(0.2)
+
+
+
+"""
+
+
+"""
 
 # python3 code
-
 
 
 import asyncio
