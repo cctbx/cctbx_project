@@ -90,7 +90,7 @@ map_2
 }
 pdb_file_name = None
   .type = str
-  .help = PDB file name.
+  .help = PDB/mmCIF file name.
 reflection_file_name = None
   .type = str
   .help = File with experimental data (most of formats: CNS, SHELX, MTZ, etc).
@@ -161,12 +161,16 @@ def compute_map_from_model(high_resolution, low_resolution, xray_structure,
 
 def extract_input_pdb(pdb_file, params):
   fn1, fn2 = None,None
-  if(pdb_file is not None and iotbx.pdb.is_pdb_file(pdb_file.file_name)):
+  if(pdb_file is not None and (
+      iotbx.pdb.is_pdb_file(pdb_file.file_name) or
+      iotbx.pdb.is_pdb_mmcif_file(pdb_file.file_name))):
     fn1 = pdb_file.file_name
-  if(params.pdb_file_name is not None and iotbx.pdb.is_pdb_file(params.pdb_file_name)):
+  if(params.pdb_file_name is not None and (
+      iotbx.pdb.is_pdb_file(params.pdb_file_name) or
+      iotbx.pdb.is_pdb_mmcif_file(params.pdb_file_name))):
     fn2 = params.pdb_file_name
   if([fn1, fn2].count(None)!=1):
-    raise Sorry("PDB file must be provided.")
+    raise Sorry("PDB/mmCIF file must be provided.")
   result = None
   if(fn1 is not None): result = fn1
   else: result = fn2
