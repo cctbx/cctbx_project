@@ -729,45 +729,18 @@ class ExperimentListFactory(object):
     @staticmethod
     def from_stills_and_crystal(imageset, crystal):
         """ Create an experiment list from stills and crystal. """
-        from itertools import groupby
-
-        # Get a list of models for each image
-        beam, detector, gonio, scan = ([], [], [], [])
-        for i in xrange(len(imageset)):
-            try:
-                beam.append(imageset.get_beam(i))
-            except Exception:
-                beam.append(None)
-            try:
-                detector.append(imageset.get_detector(i))
-            except Exception:
-                detector.append(None)
-            try:
-                gonio.append(imageset.get_goniometer(i))
-            except Exception:
-                gonio.append(None)
-            try:
-                scan.append(imageset.get_scan(i))
-            except Exception:
-                scan.append(None)
-        models = zip(beam, detector, gonio, scan)
-
-        # Find subsets where all the models are the same
         experiments = ExperimentList()
-        for m, indices in groupby(xrange(len(models)), lambda i: models[i]):
-            indices = list(indices)
+        for i in range(len(imageset)):
             experiments.append(
                 Experiment(
-                    imageset=imageset[indices[0] : indices[-1] + 1],
-                    beam=m[0],
-                    detector=m[1],
-                    goniometer=m[2],
-                    scan=m[3],
+                    imageset=imageset[i:i+1],
+                    beam=imageset.get_beam(i),
+                    detector=imageset.get_detector(i),
+                    goniometer=imageset.get_goniometer(i),
+                    scan=imageset.get_scan(i),
                     crystal=crystal,
                 )
             )
-
-        # Return experiments
         return experiments
 
     @staticmethod
