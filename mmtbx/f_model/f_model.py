@@ -1530,6 +1530,8 @@ class manager(manager_mixin):
 
   def set_target_name(self, target_name):
     if (target_name == "ls"): target_name = "ls_wunit_k1"
+    if(target_name=="mlhl" and self._hl_coeffs is None):
+      raise Sorry("Using MLHL target requires HL present: no HL provided.")
     self._target_name = target_name
 
   def determine_n_bins(self,
