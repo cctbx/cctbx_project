@@ -125,9 +125,9 @@ class hklview_3d () :
           return ibin
         if d > binval and d <= self.binvals[ibin+1]:
           return ibin
-      raise("should never get here")
+      raise Sorry("Should never get here")
 
-    for i, hklstars in enumerate(points) :
+    for i, hklstars in enumerate(points):
       ibin = data2bin( data[i] )
       #print i, ibin
       spbufttip = "H,K,L: %s, %s, %s" %(hkls[i][0], hkls[i][1], hkls[i][2])
@@ -151,8 +151,11 @@ class hklview_3d () :
 
     for ibin in range(nbin):
       nreflsinbin = len(radii2[ibin])
+      if (ibin+1) < nbin:
+        print "%d reflections within ]%2.2f; %2.2f]" %(nreflsinbin, self.binvals[ibin], self.binvals[ibin+1])
       if nreflsinbin > 0:
         spherebufferstr += """
+  // %d spheres
   ttips[%d] = %s
   positions[%d] = new Float32Array( %s )
   colours[%d] = new Float32Array( %s )
@@ -164,7 +167,7 @@ class hklview_3d () :
     picking: ttips[%d],
   })
   shape.addBuffer(spherebufs[%d])
-      """ %(ibin, str(spbufttips[ibin]), ibin, str(positions[ibin]),
+      """ %(nreflsinbin, ibin, str(spbufttips[ibin]), ibin, str(positions[ibin]),
       ibin, str(colours[ibin]), ibin, str(radii2[ibin]),
       ibin, ibin, ibin, ibin, ibin, ibin )
 
@@ -259,16 +262,15 @@ connection.onmessage = function (e) {
   var c
   var alpha
   var si
-  var ibin
   val = e.data.split(",")
+  var ibin = parseInt(val[1])
+
   if (val[0] === "alpha") {
-    var ibin = parseInt(val[1])
     alpha = parseFloat(val[2])
     spherebufs[ibin].setParameters({opacity: alpha})
   }
 
   if (val[0] === "colour") {
-    ibin = parseInt(val[1])
     si =  parseInt(val[2])
     colours[ibin][3*si] = parseFloat(val[3])
     colours[ibin][3*si+1] = parseFloat(val[4])
@@ -278,9 +280,8 @@ connection.onmessage = function (e) {
 
   stage.viewer.requestRender()
 
-
-  //document.addEventListener('DOMContentLoaded', function() { hklscene(a) }, false );
-  connection.send('alpha ' + alpha + '. Colour now: ' + val[4]); // Send the message 'Waffle' to the server
+  //connection.send('alpha ' + alpha + '. Colour now: ' + val[4]);
+  connection.send('got ' + val ); // tell the server what it sent us
 };
 
 
@@ -296,7 +297,7 @@ connection.onmessage = function (e) {
   def update_settings (self) :
     self.construct_reciprocal_space(merge=self.merge)
     self.DrawNGLJavaScript()
-    msg = "Rendered %d reflections" % self.scene.points.size()
+    msg = "Rendered %d reflections\n" % self.scene.points.size()
     return msg
 
   def process_pick_points (self) :
@@ -343,6 +344,8 @@ server.run_forever()
 
 # python3 code
 
+
+
 import asyncio
 import datetime
 import math
@@ -350,19 +353,19 @@ import websockets
 
 async def time(websocket, path):
   x = 0
-  for i in range(100):
+  for i in range(1000):
     x += 0.2
     alpha =  (math.cos(x) +1.0 )/2.0
-    msg = u"alpha, 1, %f" %alpha
+    msg = u"alpha, 2, %f" %alpha
     await websocket.send( msg )
     r = (math.cos(x) +1.0 )/2.0
     g = (math.cos(x+1) +1.0 )/2.0
     b = (math.cos(x+2) +1.0 )/2.0
-    msg = u"colour, 2, %d, %f, %f, %f" %(i,r,g,b)
+    msg = u"colour, 1, %d, %f, %f, %f" %(i,r,g,b)
     await websocket.send( msg )
     message = await websocket.recv()
     print( message)
-    await asyncio.sleep(1)
+    await asyncio.sleep(0.2)
 
 start_server = websockets.serve(time, '127.0.0.1', 7894)
 asyncio.get_event_loop().run_until_complete(start_server)
