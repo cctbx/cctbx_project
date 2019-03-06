@@ -192,10 +192,6 @@ class naive_iterations_with_damping(iterations):
       self.n_iterations += 1
       if do_last or step_too_small: break
 
-  def do_damping(self, value):
-    a = self.non_linear_ls.normal_matrix_packed_u()
-    a.matrix_packed_u_diagonal_add_in_place(value*a.matrix_packed_u_diagonal())
-
   def __str__(self):
     return "pure Gauss-Newton with damping"
 
@@ -221,18 +217,6 @@ class naive_iterations_with_damping_and_shift_limit(
       self.non_linear_ls.step_forward()
       self.n_iterations += 1
       if do_last or step_too_small: break
-
-  def do_scale_shifts(self, max_shift_over_esd):
-    x = self.non_linear_ls.step()
-    esd = self.non_linear_ls.covariance_matrix().matrix_packed_u_diagonal()
-    x_over_esd = flex.abs(x/flex.sqrt(esd))
-    max_val = flex.max(x_over_esd)
-    if max_val < self.convergence_as_shift_over_esd:
-      return True
-    if max_val > max_shift_over_esd:
-      shift_scale = max_shift_over_esd/max_val
-      x *= shift_scale
-    return False
 
   def __str__(self):
     return "pure Gauss-Newton with damping and shift scaling"
