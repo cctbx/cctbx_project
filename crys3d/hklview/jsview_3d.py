@@ -121,7 +121,7 @@ class hklview_3d () :
 
     def data2bin(d):
       for ibin, binval in enumerate(self.binvals):
-        if (ibin+1) == len(self.binvals):
+        if (ibin+1) == nbin:
           return ibin
         if d > binval and d <= self.binvals[ibin+1]:
           return ibin
@@ -141,26 +141,32 @@ class hklview_3d () :
       spbufttips[ibin].append(spbufttip)
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    spherebufferstr = ""
+    spherebufferstr = """
+  ttips = new Array(%d)
+  positions = new Array(%d)
+  colours = new Array(%d)
+  radii = new Array(%d)
+  spherebufs = new Array(%d)
+    """ %(nbin, nbin, nbin, nbin, nbin)
 
     for ibin in range(nbin):
       nreflsinbin = len(radii2[ibin])
       if nreflsinbin > 0:
         spherebufferstr += """
-  ttips%d = %s
-  positions%d = new Float32Array( %s )
-  colours%d = new Float32Array( %s )
-  radii%d = new Float32Array( %s )
-  sphereBuffer%d = new NGL.SphereBuffer({
-    position: positions%d,
-    color: colours%d,
-    radius: radii%d,
-    picking: ttips%d,
+  ttips[%d] = %s
+  positions[%d] = new Float32Array( %s )
+  colours[%d] = new Float32Array( %s )
+  radii[%d] = new Float32Array( %s )
+  spherebufs[%d] = new NGL.SphereBuffer({
+    position: positions[%d],
+    color: colours[%d],
+    radius: radii[%d],
+    picking: ttips[%d],
   })
-  shape.addBuffer(sphereBuffer%d)
-      """ %(nreflsinbin, str(spbufttips[ibin]), nreflsinbin, str(positions[ibin]),
-      nreflsinbin, str(colours[ibin]), nreflsinbin, str(radii2[ibin]),
-      nreflsinbin, nreflsinbin, nreflsinbin, nreflsinbin, nreflsinbin, nreflsinbin )
+  shape.addBuffer(spherebufs[%d])
+      """ %(ibin, str(spbufttips[ibin]), ibin, str(positions[ibin]),
+      ibin, str(colours[ibin]), ibin, str(radii2[ibin]),
+      ibin, ibin, ibin, ibin, ibin, ibin )
 
 
     spherebufferstr += """
@@ -249,53 +255,32 @@ document.addEventListener('DOMContentLoaded', function() { hklscene(a) }, false 
 
 
 connection.onmessage = function (e) {
-  var retval //= [1,2,-3]
-  //alert('Server: ' + e.data);
+  alert('Server: ' + e.data);
+  var c
+  var alpha
+  var si
+  var ibin
   val = e.data.split(",")
-  //alert("cordinates from server= " + val)
-  //document.removeEventListener('DOMContentLoaded', function() { hklscene(a) }, false );
-  a = [ val[0], val[1], val[2] ]
-  var si = parseInt( val[3] )
-  //hklscene(a)
-  //shapeComp.removeRepresentation('buffer');
+  if (val[0] === "alpha") {
+    var ibin = parseInt(val[1])
+    alpha = parseFloat(val[2])
+    spherebufs[ibin].setParameters({opacity: alpha})
+  }
 
-  //shapeComp.dispose()
-  //repr.clear()
-  //repr.dispose()
+  if (val[0] === "colour") {
+    ibin = parseInt(val[1])
+    si =  parseInt(val[2])
+    colours[ibin][3*si] = parseFloat(val[3])
+    colours[ibin][3*si+1] = parseFloat(val[4])
+    colours[ibin][3*si+2] = parseFloat(val[5])
+    spherebufs[ibin].setAttributes({ color: colours[ibin] })
+  }
 
-  //stage.removeAllComponents();
-  //buf = shape.getBufferList()
-  //shape._primitiveData.sphereRadius[si] = 2
-  //shape._primitiveData.spherePosition[0] = val[0]
-  //shape._primitiveData.spherePosition[1] = val[1]
-  //shape._primitiveData.spherePosition[2] = val[2]
-  //shape._primitiveData.sphereColor[3*si] = (Math.cos(val[0]) +1.0 )/2.0
-  //shape._primitiveData.sphereColor[3*si + 1] = 1.0
-  //shape._primitiveData.sphereColor[3*si + 2] = 1.0
-  //vc1 = shape._primitiveData.sphereColor[3*si]
-  //shapeComp.setPosition( val )
-
-  //shapeComp = stage.addComponentFromObject(shape);
-  //repr = shapeComp.addRepresentation('buffer');
-  //repr.setColor()
-  //repr.updateVisibility()
-  //repr.update({ color: true })
-  //repr.update({ radius: true })
-  //repr.setParameters({ color: true })
-
-  var opi = (Math.sin(val[0]) +1.0 )/2.0
-  colours[3*si] = (Math.cos(val[0]) +1.0 )/2.0
-  colours[3*si + 1] = 1.0
-  colours[3*si + 2] = 1.0
-  vc1 = colours[3*si]
-
-  sphereBuffer.setAttributes({ color: colours })
-  //sphererepr[si].setParameters({opacity: opi})
   stage.viewer.requestRender()
 
 
   //document.addEventListener('DOMContentLoaded', function() { hklscene(a) }, false );
-  connection.send('sphere ' + si + '. Red colour now: ' + vc1); // Send the message 'Waffle' to the server
+  connection.send('alpha ' + alpha + '. Colour now: ' + val[4]); // Send the message 'Waffle' to the server
 };
 
 
@@ -360,14 +345,20 @@ server.run_forever()
 
 import asyncio
 import datetime
-import random
+import math
 import websockets
 
 async def time(websocket, path):
   x = 0
   for i in range(100):
     x += 0.2
-    msg = str(x) + u", 2, 3, " + str(i)
+    alpha =  (math.cos(x) +1.0 )/2.0
+    msg = u"alpha, 1, %f" %alpha
+    await websocket.send( msg )
+    r = (math.cos(x) +1.0 )/2.0
+    g = (math.cos(x+1) +1.0 )/2.0
+    b = (math.cos(x+2) +1.0 )/2.0
+    msg = u"colour, 2, %d, %f, %f, %f" %(i,r,g,b)
     await websocket.send( msg )
     message = await websocket.recv()
     print( message)
