@@ -55,11 +55,11 @@ PYTHON_PKG = "Python-2.7.15.tgz"
 
 # from CCI
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
-REPORTLAB_PKG = "reportlab-2.6.tar.gz"   # for labelit
-ZLIB_PKG = "zlib-1.2.8.tar.gz"
+REPORTLAB_PKG = "reportlab-3.5.12.tar.gz"   # for labelit
+ZLIB_PKG = "zlib-1.2.11.tar.gz"
 PYRTF_PKG = "PyRTF-0.45.tar.gz"          # for phenix.table_one, etc.
-BIOPYTHON_PKG = "biopython-1.68.tar.gz"  # used in iotbx
-IPYTHON_PKG = "ipython-3.2.1.tar.gz"     # IPython
+BIOPYTHON_PKG = "biopython-1.73.tar.gz"  # used in iotbx
+IPYTHON_PKG = "ipython-5.8.0.tar.gz"     # IPython
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
@@ -72,28 +72,28 @@ JINJA2_VERSION = "2.10"
 MOCK_VERSION = "2.0.0"
 MSGPACK_VERSION = "0.6.1"
 MPI4PY_VERSION = "3.0.0"
-NUMPY_VERSION="1.13.3"
+NUMPY_VERSION="1.15.4"
 ORDEREDSET_VERSION = "2.0.1"
-PILLOW_VERSION = "4.2.1"
+PILLOW_VERSION = "5.4.1"
 PROCRUNNER_VERSION = "0.9.0"
 PY2APP_VERSION="0.7.3"
 PYTEST_VERSION = "3.10.1"
 PYTEST_XDIST_VERSION = "1.26.1"
-SCIPY_VERSION = "1.0.0"
-SCIKIT_LEARN_VERSION = "0.19.1"
+SCIPY_VERSION = "1.2.1"
+SCIKIT_LEARN_VERSION = "0.20.2"
 SIX_VERSION = "1.12.0"
-SPHINX_VERSION = "1.7.7" # for documentation
-TABULATE_VERSION = "0.8.2"
+SPHINX_VERSION = "1.8.4" # for documentation
+TABULATE_VERSION = "0.8.3"
 TQDM_VERSION = "4.23.4"
-PSUTIL_VERSION = "5.4.8"
-MRCFILE_VERSION = "1.1.0"
+PSUTIL_VERSION = "5.5.1"
+MRCFILE_VERSION = "1.1.2"
 
 # HDF5
 BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.4/src/"
 HDF5_PKG = "hdf5-1.10.4.tar.bz2"
 
 # GUI dependencies
-LIBPNG_PKG = "libpng-1.5.26.tar.gz"
+LIBPNG_PKG = "libpng-1.6.36.tar.gz"
 FREETYPE_PKG = "freetype-2.6.3.tar.gz"
 
 # Linux-only
@@ -114,14 +114,14 @@ HARFBUZZ_PKG = "harfbuzz-1.1.3.tar.gz"
 GDK_PIXBUF_PKG = "gdk-pixbuf-2.32.3.tar.gz"
 PANGO_PKG = "pango-1.38.1.tar.gz"
 ATK_PKG = "atk-2.18.0.tar.gz"
-TIFF_PKG = "tiff-4.0.6.tar.gz"
+TIFF_PKG = "tiff-4.0.10.tar.gz"
 GTK_PKG = "gtk+-2.24.29.tar.gz"
 GTK_ENGINE_PKG = "clearlooks-0.6.2.tar.gz"
 GTK_THEME_PKG = "gtk_themes.tar.gz"
 # end Linux-only
 FONT_PKG = "fonts.tar.gz"
 
-MATPLOTLIB_PKG = "matplotlib-2.0.0.tar.gz"
+MATPLOTLIB_PKG = "matplotlib-2.2.3.tar.gz"
 # CentOS 5 glibc too old to support matplotlib-2.0.0 dependency (subprocess32)
 # will be fixed in subprocess32 3.5+, https://github.com/google/python-subprocess32/blob/master/ChangeLog
 if (sys.platform.startswith("linux")):
@@ -131,7 +131,7 @@ if (sys.platform.startswith("linux")):
 
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
 # https://pypi.python.org/pypi/Send2Trash
-SEND2TRASH_PKG = "Send2Trash-1.3.0.tar.gz"
+SEND2TRASH_PKG = "Send2Trash-1.5.0.tar.gz"
 
 # Windows precompiled compiled base packages
 WIN64PYTHON_PKG = "Python2.7.15_x86_64_plus_relocatable.zip"
