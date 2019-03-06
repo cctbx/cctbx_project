@@ -3,6 +3,7 @@ from libtbx import easy_mp
 from libtbx import str_utils
 import libtbx.phil
 from libtbx.utils import Sorry
+from libtbx.test_utils import approx_equal_core
 from libtbx import adopt_init_args, Auto
 import sys
 
@@ -378,21 +379,26 @@ class validation(object):
     best_seq_id = None
     best_identity = self.minimum_identity
     best_width = sys.maxint
+    best_length = sys.maxint
     for i_seq, seq_object in enumerate(self.sequences):
       alignment = mmtbx.alignment.align(
         seq_a=chain.sequence,
         seq_b=seq_object.sequence).extract_alignment()
       identity = alignment.calculate_sequence_identity(skip_chars=['X'])
       # if the identities of two alignments are equal, then we prefer the
-      # alignment that has the narrowest range for the match
+      # alignment that has the narrowest range for the match and the
+      # shortest sequence
       width = alignment.match_codes.rfind('m') - alignment.match_codes.find('m')
+      length = len(seq_object.sequence)
       if ((identity > best_identity) or
-          (identity == best_identity and width < best_width)):
+          (approx_equal_core(identity, best_identity, 1.e-6, 1.e10, None, "")
+           and width <= best_width and length < best_length)):
         best_identity = identity
         best_alignment = alignment
         best_sequence = seq_object.name
         best_seq_id = i_seq
         best_width = width
+        best_length = length
     return best_alignment, best_sequence, best_seq_id
 
   def get_table_data(self):
