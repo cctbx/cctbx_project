@@ -144,8 +144,8 @@ scatterers O2
            C2
    delta_z    sigma   weight residual
   1.27e-03 6.36e-03 2.47e+04 4.01e-02
-  9.08e-03 6.36e-03 2.47e+04 2.04e+00
-  9.08e-03 6.36e-03 2.47e+04 2.40e+00
+ -9.08e-03 6.36e-03 2.47e+04 2.04e+00
+ -9.08e-03 6.36e-03 2.47e+04 2.40e+00
 ... (remaining 59 not shown)
 
 Isotropic ADP restraints: 22

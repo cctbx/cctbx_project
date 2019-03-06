@@ -697,20 +697,15 @@ END
     R1 = matrix.rec(rr.RM(), (3,3))
     dU = ((R1*U1)*R1.transpose() - (R1*U2)*R1.transpose()).as_sym_mat3()
     assert approx_equal(dU[2], rr.delta_33())
-    assert approx_equal(dU[4]*2, rr.delta_13())
-    assert approx_equal(dU[5]*2, rr.delta_23())
+    assert approx_equal(dU[4], rr.delta_13())
+    assert approx_equal(dU[5], rr.delta_23())
     # check the raw gradients against the reference implementation
     for x,y in zip(rr.reference_gradients(R1), rr.raw_gradients()):
       for idx in xrange(0, 6):
         assert approx_equal(x[idx], y[idx])
     for x,y in zip(rigu_finite_diff(R1, U1), rr.raw_gradients()):
-      print x
-      print y
-      print "\n"
       for idx in xrange(0, 6):
         assert approx_equal(x[idx], y[idx])
-
-    #rr.test_gradients(U)
 
 def exercise():
   exercise_proxy_show()
