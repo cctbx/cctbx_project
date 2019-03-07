@@ -12,7 +12,7 @@ r""" usage:
 from crys3d.hklview import cmdlineframes
 
 # optionally supply output filename for the composed javascript for NGL
-myHKLview = cmdlineframes.HKLViewFrame(r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js")
+myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js")
 
 myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.tncs.mtz")
 myHKLview.set_column(3)
@@ -57,6 +57,7 @@ import copy
 import os, sys
 
 
+
 argn = 1
 argc = len(sys.argv)
 
@@ -79,6 +80,7 @@ class settings_window () :
   def set_index_span (self, index_span) :
     self._index_span = index_span
 
+
   def update_reflection_info (self, hkl, d_min, value) :
     print hkl, value
     if (hkl is None) :
@@ -92,19 +94,21 @@ class settings_window () :
       value_str = format_value("%.3g", value, replace_none_with="---")
       self.value_info.SetValue(value_str)
 
+
   def clear_reflection_info (self) :
     self.update_reflection_info(None, None, None)
 
 
 class HKLViewFrame () :
-  def __init__ (self, jscriptfname=""):
-  #def __init__ (self, *args, **kwds) :
+  #def __init__ (self, jscriptfname=""):
+  def __init__ (self, *args, **kwds) :
     self.miller_array = None
     self.spacegroup_choices = None
     self.settings = display.settings()
 
     self.viewer = view_3d.hklview_3d( settings=self.settings )
-    self.viewer.jscriptfname = jscriptfname
+    if kwds.has_key('jscriptfname'):
+      self.viewer.jscriptfname = kwds['jscriptfname']
     self.viewer.set_miller_array(self.viewer.miller_array)
 
 
@@ -114,6 +118,7 @@ class HKLViewFrame () :
     else :
       hkl, d_min, value = self.viewer.scene.get_reflection_info(index)
       self.settings_panel.update_reflection_info(hkl, d_min, value)
+
 
   def process_miller_array (self, array) :
     if (array is None) : return
@@ -174,6 +179,7 @@ class HKLViewFrame () :
       uc=uc)
     return array, array_info
 
+
   def set_miller_array (self, array) :
     if (array is None) : return
     array, array_info = self.process_miller_array(array)
@@ -182,12 +188,14 @@ class HKLViewFrame () :
     self.viewer.set_miller_array(array, merge=array_info.merge,
        details=array_info.details_str)
 
+
   def update_settings (self, *args, **kwds) :
     if (self.miller_array is None) :
       print "No miller array has been selected"
       return False
     msg = self.viewer.update_settings(*args, **kwds)
     print msg
+
 
   def update_space_group_choices (self) :
     from cctbx.sgtbx.subgroups import subgroups
@@ -221,29 +229,6 @@ class HKLViewFrame () :
     self.viewer.set_miller_array(array)
     self.viewer.DrawNGLJavaScript()
 
-#kau added starts here
-  def set_column (self, column_sel) :
-    # print("kau printing column_sel ", column_sel)
-    self.set_miller_array(self.valid_arrays[column_sel])
-    if (self.miller_array is None) :
-      raise Sorry("No data loaded!")
-    print "Miller array %s runs from hkls: %s to %s" \
-     %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
-        self.miller_array.index_span().max() )
-    # from cctbx import crystal
-    # symm = crystal.symmetry(
-    #   space_group_info=space_group_info,
-    #   unit_cell=self.miller_array.unit_cell())
-    # array = self.miller_array.expand_to_p1().customized_copy(
-    #   crystal_symmetry=symm)
-    # print "MERGING 2"
-    # array = array.merge_equivalents().array().set_info(self.miller_array.info())
-    # array=self.miller_array.column_root_label(column_sel)
-    # print("Kau this is array from set_column ", array)
-    # settings_panel.array_storage()
-    # self.viewer.set_miller_array(array[column_sel], zoom=False)
-    self.viewer.DrawNGLJavaScript()
-##kau added ends here
 
   def delete_miller_index (self, hkl) :
     if (self.miller_array is None) :
@@ -252,6 +237,7 @@ class HKLViewFrame () :
     self.miller_array = self.miller_array.delete_index(hkl).set_info(info)
     self.viewer.set_miller_array(self.miller_array)
     self.viewer.DrawNGLJavaScript()
+
 
   def load_reflections_file (self, file_name, set_array=True,
       data_only=False) :
@@ -293,9 +279,11 @@ class HKLViewFrame () :
   def GetNGLstring(self):
     return self.viewer.NGLscriptstr
 
+
   def SetSphereScale(self, nscale):
     self.settings.scale = nscale
     self.update_settings()
+
 
   def SetCameraType(self, camtype):
     if camtype.lower() in "orthographic":
@@ -304,29 +292,36 @@ class HKLViewFrame () :
       self.viewer.cameratype = "perspective"
     self.viewer.DrawNGLJavaScript()
 
+
   def ExpandToP1(self, val):
     self.settings.expand_to_p1 = val
     self.update_settings()
+
 
   def ExpandAnomalous(self, val):
     self.settings.expand_anomalous = val
     self.update_settings()
 
+
   def ShowOnlyMissing(self, val):
     self.settings.show_only_missing = val
     self.update_settings()
+
 
   def ShowMissing(self, val):
     self.settings.show_missing = val
     self.update_settings()
 
+
   def ShowDataOverSigma(self, val):
     self.settings.show_data_over_sigma = val
     self.update_settings()
 
+
   def ShowSystematicAbsences(self, val):
     self.settings.show_systematic_absences = val
     self.update_settings()
+
 
   def ShowSlice(self, val, axis="h", index=0):
     self.settings.slice_mode = val
@@ -334,12 +329,25 @@ class HKLViewFrame () :
     self.settings.slice_index = index
     self.update_settings()
 
+
   def SetColumnBinThresholds(self, colbinname, binvals):
     self.viewer.colbinname = colbinname
     self.viewer.binvals = binvals
     self.update_settings()
 
+
   def SetOpacity(self, bin, alpha):
     self.viewer.SetOpacity(bin, alpha)
 
+
+  def SetColumn (self, column_sel) :
+    # print("kau printing column_sel ", column_sel)
+    self.set_miller_array(self.valid_arrays[column_sel])
+    if (self.miller_array is None) :
+      raise Sorry("No data loaded!")
+    print "Miller array %s runs from hkls: %s to %s" \
+     %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
+        self.miller_array.index_span().max() )
+    self.viewer.binvals = []
+    self.viewer.DrawNGLJavaScript()
 

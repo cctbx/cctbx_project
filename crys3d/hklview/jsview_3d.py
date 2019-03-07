@@ -5,7 +5,6 @@
 from __future__ import division
 from libtbx.math_utils import roundoff
 from cctbx.miller import display
-
 from websocket_server import WebsocketServer
 import threading, math
 from time import sleep
@@ -33,7 +32,9 @@ class hklview_3d () :
     self.maxdata = 0.0
     self.mindata = 0.0
     self.nbin = 0
+    self.websockclient = None
     self.StartWebsocket()
+
 
   def set_miller_array (self, miller_array, merge=None, details="") :
     if (miller_array is None) : return
@@ -80,8 +81,7 @@ class hklview_3d () :
 
     arrowstr = """
     // xyz arrows
-    var a=[0,0,0];
-    shape.addSphere( a , [ 1, 1, 1 ], 0.3, 'Origo');
+    shape.addSphere( [0,0,0] , [ 1, 1, 1 ], 0.3, 'Origo');
     //blue-x
     shape.addArrow( %s, %s , [ 0, 0, 1 ], 0.1);
     //green-y
@@ -134,7 +134,6 @@ class hklview_3d () :
 
     for i, hklstars in enumerate(points):
       ibin = data2bin( data[i] )
-      #print i, ibin
       spbufttip = "H,K,L: %s, %s, %s" %(hkls[i][0], hkls[i][1], hkls[i][2])
       spbufttip += "\ndres: %s" %str(roundoff(dres[i])  )
       spbufttip += "\n%s: %s" %(colstr, str(roundoff(data[i]) ) )
@@ -145,7 +144,6 @@ class hklview_3d () :
       radii2[ibin].append( roundoff(radii[i], 2) )
       spbufttips[ibin].append(spbufttip)
 
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     spherebufferstr = """
   ttips = new Array(%d)
   positions = new Array(%d)
@@ -176,7 +174,6 @@ class hklview_3d () :
       """ %(nreflsinbin, ibin, str(spbufttips[ibin]), ibin, str(positions[ibin]),
       ibin, str(colours[ibin]), ibin, str(radii2[ibin]),
       ibin, ibin, ibin, ibin, ibin, ibin )
-
 
     spherebufferstr += """
 // create tooltip element and add to the viewer canvas
@@ -209,22 +206,19 @@ class hklview_3d () :
 
     """
 
-
-
-
     self.NGLscriptstr = """
 // Microsoft Edge users follow instructions on
 // https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
 // to enable websocket connection
 
-var connection = new WebSocket('ws://127.0.0.1:7894/');
+var mysocket = new WebSocket('ws://127.0.0.1:7894/');
 
-connection.onopen = function () {
-  connection.send('%s now connected via websocket');
+mysocket.onopen = function () {
+  mysocket.send('%s now connected via websocket');
 };
 
-// Log errors
-connection.onerror = function (error) {
+// Log errors to debugger of your browser
+mysocket.onerror = function (error) {
   console.log('WebSocket Error ' + error);
 };
 
@@ -257,30 +251,44 @@ var hklscene = function (b) {
 document.addEventListener('DOMContentLoaded', function() { hklscene() }, false );
 
 
-connection.onmessage = function (e) {
+mysocket.onmessage = function (e) {
   //alert('Server: ' + e.data);
   var c
   var alpha
   var si
-  connection.send('got ' + e.data ); // tell server what it sent us
-  val = e.data.split(",")
-  var ibin = parseInt(val[1])
+  mysocket.send('got ' + e.data ); // tell server what it sent us
+  try {
+    val = e.data.split(",")
+    var ibin = parseInt(val[1])
 
-  if (val[0] === "alpha") {
-    alpha = parseFloat(val[2])
-    spherebufs[ibin].setParameters({opacity: alpha})
+    if (val[0] === "alpha") {
+      alpha = parseFloat(val[2])
+      spherebufs[ibin].setParameters({opacity: alpha})
+      stage.viewer.requestRender()
+    }
+
+    if (val[0] === "colour") {
+      si =  parseInt(val[2])
+      colours[ibin][3*si] = parseFloat(val[3])
+      colours[ibin][3*si+1] = parseFloat(val[4])
+      colours[ibin][3*si+2] = parseFloat(val[5])
+      spherebufs[ibin].setAttributes({ color: colours[ibin] })
+      stage.viewer.requestRender()
+    }
+
+    if (val[0] === "Redraw") {
+      stage.viewer.requestRender()
+    }
+
+    if (val[0] === "Reload") {
+    // refresh browser with the javascript file
+      window.location.reload(true);
+    }
+
   }
-
-  if (val[0] === "colour") {
-    si =  parseInt(val[2])
-    colours[ibin][3*si] = parseFloat(val[3])
-    colours[ibin][3*si+1] = parseFloat(val[4])
-    colours[ibin][3*si+2] = parseFloat(val[5])
-    spherebufs[ibin].setAttributes({ color: colours[ibin] })
+  catch(err) {
+    mysocket.send('error: ' + err );
   }
-
-  stage.viewer.requestRender()
-  //connection.send('alpha ' + alpha + '. Colour now: ' + val[4]);
 };
 
 
@@ -290,6 +298,8 @@ connection.onmessage = function (e) {
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
+    self.ReloadNGL()
+
 
   #--- user input and settings
   def update_settings (self) :
@@ -297,6 +307,7 @@ connection.onmessage = function (e) {
     self.DrawNGLJavaScript()
     msg = "Rendered %d reflections\n" % self.scene.points.size()
     return msg
+
 
   def process_pick_points (self) :
     self.closest_point_i_seq = None
@@ -318,27 +329,44 @@ connection.onmessage = function (e) {
       self.GetParent().update_clicked(index=None)
 
 
-  def new_client(self, client, server):
-    nc = client
-    print "got a new client:", nc
+  def OnConnectWebsocketClient(self, client, server):
+    self.websockclient = client
+    print "got a new client:", self.websockclient
 
-  def on_message(self, client, server, message):
+
+  def OnWebsocketClientMessage(self, client, server, message):
     print message
+
 
   def StartWebsocket(self):
     self.server = WebsocketServer(7894, host='127.0.0.1')
-    self.server.set_fn_new_client(self.new_client)
-    self.server.set_fn_message_received(self.on_message)
+    self.server.set_fn_new_client(self.OnConnectWebsocketClient)
+    self.server.set_fn_message_received(self.OnWebsocketClientMessage)
     self.wst = threading.Thread(target=self.server.run_forever)
     self.wst.daemon = True
     self.wst.start()
+
+
+  def SendWebSockMsg(self, msg):
+    if self.websockclient:
+      self.server.send_message(self.websockclient, msg )
+    else:
+      print "Not connected to any websocket client yet"
+
 
   def SetOpacity(self, bin, alpha):
     if bin > self.nbin:
       print "There are only %d bins of data present" %self.nbin
       return
     msg = u"alpha, %d, %f" %(bin, alpha)
-    self.server.send_message(self.server.clients[0], msg )
+    self.SendWebSockMsg(msg)
+
+  def RedrawNGL(self):
+    self.SendWebSockMsg( u"Redraw, NGL" )
+
+  def ReloadNGL(self): # expensive as javascript typically is several Mbytes large
+    self.SendWebSockMsg( u"Reload, NGL" )
+
 
 
 """
