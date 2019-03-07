@@ -69,9 +69,16 @@ class Script(object):
     import importlib
 
     workers = []
-    for step in ['input', 'modify', 'edit', 'filter', 'scale', 'postrefine', 'group', 'error_model', 'statistics', 'merge']:
-      factory = importlib.import_module('xfel.merging.application.'+ step +'.factory')
-      workers.extend(factory.factory.from_parameters(self.params))
+    for step in ['input', 'model', 'modify', 'edit', 'filter', 'scale', 'postrefine', 'statistics experiment', 'group', 'errors', 'statistics intensity', 'merge']:
+
+      step_factory_name = step
+      step_additional_info = None
+      if ' ' in step:
+        step_factory_name = step[0:step.find(' ')]        # e.g. 'statistics'
+        step_additional_info = step[step.find(' ') + 1:]  # e.g. 'experiment'
+
+      factory = importlib.import_module('xfel.merging.application.'+ step_factory_name +'.factory')
+      workers.extend(factory.factory.from_parameters(self.params, step_additional_info))
 
     # Perform phil validation up front
     for worker in workers:
@@ -81,6 +88,7 @@ class Script(object):
     experiments = reflections = None
     while(workers):
       worker = workers.pop(0)
+      #print (type(worker).__name__)
       experiments, reflections = worker.run(experiments, reflections)
 
     self.mpi_logger.log_step_time("TOTAL", True)

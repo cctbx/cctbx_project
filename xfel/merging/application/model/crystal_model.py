@@ -1,6 +1,5 @@
 from __future__ import division
-from xfel.merging.application.mpi_helper import mpi_helper
-from xfel.merging.application.mpi_logger import mpi_logger
+from xfel.merging.application.worker import worker
 import mmtbx.command_line.fmodel
 import mmtbx.utils
 from iotbx import file_reader
@@ -8,16 +7,11 @@ import libtbx.phil.command_line
 from cctbx import miller
 from cctbx.crystal import symmetry
 
-class model_creator(object):
-  def __init__(self, params):
-    self.params = params
-    self.logger = mpi_logger(self.params)
-    self.mpi_helper = mpi_helper()
+class crystal_model(worker):
 
-  def create_model(self):
-
-    self.logger.log_step_time("CREATE_MODEL")
-
+  def run(self, experiments, reflections):
+    '''Create a model for the crystal'''
+    self.logger.log_step_time("CREATE_CRYSTAL_MODEL")
     # Generate the reference, or model, intensities from the input parameters
     # This will save the space group and unit cell into the input parameters
     if self.params.scaling.model.endswith(".mtz"):
@@ -25,10 +19,10 @@ class model_creator(object):
     elif self.params.scaling.model.endswith(".pdb"):
       i_model = self.create_model_from_pdb()
 
-    # Generate a full miller set consistent with the model
+    # Generate a full miller set consistent with the crystal model
     miller_set, i_model = self.consistent_set_and_model(i_model=i_model)
 
-    # Save i_model and miller_set into the input parameters
+    # Save i_model and miller_set to the parameters
     self.params.scaling.__inject__('i_model', i_model)
     self.params.scaling.__inject__('miller_set', miller_set)
 
@@ -37,7 +31,9 @@ class model_creator(object):
       self.logger.main_log("Space group: " + str(self.params.scaling.space_group))
       self.logger.main_log("Unit cell: " + str(self.params.scaling.unit_cell))
 
-    self.logger.log_step_time("CREATE_MODEL", True)
+    self.logger.log_step_time("CREATE_CRYSTAL_MODEL", True)
+
+    return experiments, reflections
 
   def create_model_from_pdb(self):
 

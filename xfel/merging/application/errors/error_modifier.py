@@ -1,18 +1,18 @@
 from __future__ import division
-from six.moves import range
-from xfel.merging.application.worker import worker
 from dials.array_family import flex
+from xfel.merging.application.worker import worker
+from xfel.merging.application.reflection_table_utils import reflection_table_utils
 
-class error_model(worker):
+class error_modifier(worker):
 
   def run(self, experiments, reflections):
-
-    self.logger.log_step_time("ERROR_MODEL")
+    '''Modify intensity errors according to an error model'''
+    self.logger.log_step_time("ERROR_MODIFIER")
     if len(reflections) > 0:
       self.logger.log("Modifying intensity errors...")
       if self.params.merging.error.model == "errors_from_sample_residuals":
         reflections = self.modify_errors_from_residuals(reflections)
-    self.logger.log_step_time("ERROR_MODEL", True)
+    self.logger.log_step_time("ERROR_MODIFIER", True)
 
     return experiments, reflections
 
@@ -21,7 +21,7 @@ class error_model(worker):
     new_reflections = flex.reflection_table()
     number_of_hkls = 0
     number_of_multiply_measured_hkls = 0
-    for refls in self.get_next_hkl_reflection_table(reflections):
+    for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
       number_of_hkls += 1
       number_of_measurements = len(refls)
       assert number_of_measurements > 0
@@ -35,16 +35,3 @@ class error_model(worker):
 
     return new_reflections
 
-  def get_next_hkl_reflection_table(self, reflections):
-    '''Generate asu hkl slices from an asu hkl-sorted reflection table'''
-    i_begin = 0
-    hkl_ref = reflections[0].get('miller_index_asymmetric')
-    for i in range(len(reflections)):
-      hkl = reflections[i].get('miller_index_asymmetric')
-      if hkl == hkl_ref:
-        continue
-      else:
-        yield reflections[i_begin:i]
-        i_begin = i
-        hkl_ref = hkl
-    yield reflections[i_begin:i+1]

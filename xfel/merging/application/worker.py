@@ -30,7 +30,7 @@ class factory(object):
   """ Constructs worker objects """
 
   @staticmethod
-  def from_parameters(param):
+  def from_parameters(param, additional_info=None):
     """ Construct a list of workers given the params object. The list contains all workers
         that comprise a single step, in the order that they will be executed """
     pass

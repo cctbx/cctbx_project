@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 from dials.array_family import flex
 from xfel.merging.application.worker import worker
-from six.moves import range
+from xfel.merging.application.reflection_table_utils import reflection_table_utils
 
 try:
   import resource
@@ -48,22 +48,6 @@ class merger(worker):
             'rmsd'          : rmsd,
             'multiplicity'  : multiplicity}
 
-  def get_next_hkl_reflection_table(self, reflections):
-    '''Generate asu hkl slices from an asu hkl-sorted reflection table'''
-    i_begin = 0
-    hkl_ref = reflections[0].get('miller_index_asymmetric')
-
-    for i in range(len(reflections)):
-      hkl = reflections[i].get('miller_index_asymmetric')
-      if hkl == hkl_ref:
-        continue
-      else:
-        yield reflections[i_begin:i]
-        i_begin = i
-        hkl_ref = hkl
-
-    yield reflections[i_begin:i+1]
-
   def output_merged_reflections(self, reflections):
     merged_reflections_file_path = self.params.output.output_dir + '/merge.out'
     merged_file = open(merged_reflections_file_path, 'w')
@@ -81,7 +65,7 @@ class merger(worker):
     all_rank_merged_reflections = self.merging_reflection_table()
 
     if len(reflections) > 0:
-      for hkl_reflection_table in self.get_next_hkl_reflection_table(reflections):
+      for hkl_reflection_table in reflection_table_utils.get_next_hkl_reflection_table(reflections):
         intensity_stats = self.calc_reflection_intensity_stats(reflections=hkl_reflection_table)
         intensity_stats['miller_index'] = hkl_reflection_table[0].get('miller_index_asymmetric')
         all_rank_merged_reflections.append(intensity_stats)

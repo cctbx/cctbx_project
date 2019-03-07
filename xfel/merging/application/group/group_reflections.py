@@ -158,6 +158,7 @@ class hkl_group(worker):
 
     return result_reflections
 
+  @staticmethod
   def get_next_reflection_table_slice(self, reflections, n_slices):
     '''Generate an exact number of slices from a reflection table. Make slices as even as possible. If not enough reflections, generate empty tables'''
     assert n_slices >= 0

@@ -52,7 +52,6 @@ class file_lister(object):
 
 from xfel.merging.application.worker import worker
 from xfel.merging.application.input.data_counter import data_counter
-from xfel.merging.application.input.model_creator import model_creator
 
 class simple_file_loader(worker):
   '''A class for running the script.'''
@@ -128,9 +127,6 @@ class simple_file_loader(worker):
 
     # Do statistics on the loaded data
     data_counter(self.params).count(all_experiments, all_reflections)
-
-    # Create a model based on the input parameters
-    model_creator(self.params).create_model()
 
     return all_experiments, all_reflections
 

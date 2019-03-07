@@ -13,7 +13,7 @@ class experiment_filter(worker):
     is_ok = experiment_unit_cell.is_similar_to(self.params.filter.unit_cell.value.target_unit_cell,
                                                self.params.filter.unit_cell.value.relative_length_tolerance,
                                                self.params.filter.unit_cell.value.absolute_angle_tolerance)
-    return is_ok;
+    return is_ok
 
   def check_space_group(self, experiment):
 
@@ -32,7 +32,7 @@ class experiment_filter(worker):
 
     is_ok = (target_patterson_group_sn == experiment_patterson_group_sn)
 
-    return is_ok;
+    return is_ok
 
   @staticmethod
   def remove_experiments(experiments, reflections, remove_experiment_ids):

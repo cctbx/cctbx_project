@@ -31,3 +31,6 @@ class mpi_helper(object):
           cumulative[i] += all_data[j][i]
 
     return cumulative
+
+  def sum(self, data):
+    return self.comm.reduce(data, self.MPI.SUM, 0)

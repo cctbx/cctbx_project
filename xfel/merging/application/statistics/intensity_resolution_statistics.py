@@ -6,6 +6,7 @@ import math
 from libtbx import adopt_init_args
 from libtbx.str_utils import format_value
 from libtbx import table_utils
+from xfel.merging.application.reflection_table_utils import reflection_table_utils
 
 class intensity_table_bin(object):
   '''Storage class for parameters of a resolution bin used by the hkl intensity statistics table'''
@@ -28,7 +29,7 @@ class intensity_table_bin(object):
     adopt_init_args(self, locals())
 
 class intensity_table(object):
-  '''Represents a table of hkl intensity statistics sampled over resolution bins'''
+  '''Represents a table of hkl intensity statistics for resolution bins'''
   def __init__(self):
     self.table = []
     self.cumulative_theor_asu_count = 0
@@ -105,27 +106,29 @@ class intensity_table(object):
     ])
     table_data = table_utils.manage_columns(table_data, include_columns)
 
-    return ("\n                   Intensity Statistics\n" + table_utils.format(table_data, has_header = 2, justify ='center', delim = " "))
+    return ("\n                                     Intensity Statistics\n" + table_utils.format(table_data, has_header = 2, justify ='center', delim = " "))
 
-class intensity_statistics(worker):
-  '''Calculates hkl intensity statistics sampled over resolution bins'''
+class intensity_resolution_statistics(worker):
+  '''Calculates hkl intensity statistics for resolution bins'''
   def run(self, experiments, reflections):
     self.logger.log_step_time("INTENSITY_STATISTICS")
 
-    # Every rank must set up the resolution bins and initialize statistics arrays, even if the rank doesn't have any reflections.
-    # That is necessary to be able to mpi-reduce all statistics from all ranks in a general way
-    self.setup_resolution_bins()
-    n_res_bins = self.resolution_binner.n_bins_all() # (self.params.statistics.n_bins + 2), 2 - to account for the hkls outside of the binner resolution range
+    # Get pre-created resolution binning objects from the parameters
+    self.resolution_binner = self.params.statistics.resolution_binner
+    self.hkl_resolution_bins = self.params.statistics.hkl_resolution_bins
 
-    self.I_sum      = flex.double(n_res_bins, 0.0) # a sum of the weighted mean intensities from all asu hkl's
-    self.Isig_sum   = flex.double(n_res_bins, 0.0) # a sum of I/sigma from all asu hkl's
-    self.n_sum      = flex.int(n_res_bins, 0) # number of theoretically prediced asu hkls
-    self.m_sum      = flex.int(n_res_bins, 0) # number of observed asu hkls
-    self.mm_sum     = flex.int(n_res_bins, 0) # number of observed asu hkls with multiplicity > 1
+    # How many bins do we have?
+    n_bins = self.resolution_binner.n_bins_all() # (self.params.statistics.n_bins + 2), 2 - to account for the hkls outside of the binner resolution range
 
-    # Calculate statistics for the rank itself
+    # To enable MPI all-rank reduction, every rank must initialize statistics array(s), even if the rank doesn't have any reflections.
+    self.I_sum      = flex.double(n_bins, 0.0) # a sum of the weighted mean intensities from all asu hkl's
+    self.Isig_sum   = flex.double(n_bins, 0.0) # a sum of I/sigma from all asu hkl's
+    self.n_sum      = flex.int(n_bins, 0) # number of theoretically prediced asu hkls
+    self.m_sum      = flex.int(n_bins, 0) # number of observed asu hkls
+    self.mm_sum     = flex.int(n_bins, 0) # number of observed asu hkls with multiplicity > 1
+
+    # Calculate, format and output statistics for each rank
     if reflections.size() > 0:
-      self.assign_hkls_to_resolution_bins()
       self.calculate_intensity_statistics(reflections)
       Intensity_Table = self.build_intensity_table(I_sum = self.I_sum,
                                                   Isig_sum = self.Isig_sum,
@@ -141,7 +144,7 @@ class intensity_statistics(worker):
     all_ranks_m_sum       = self.mpi_helper.cumulative_flex(self.m_sum, flex.int)
     all_ranks_mm_sum      = self.mpi_helper.cumulative_flex(self.mm_sum, flex.int)
 
-    # Calculate all-rank cumulative statistics
+    # Calculate, format and output all-rank total statistics
     if self.mpi_helper.rank == 0:
       Intensity_Table = self.build_intensity_table(I_sum    = all_ranks_I_sum,
                                                   Isig_sum  = all_ranks_Isig_sum,
@@ -155,42 +158,22 @@ class intensity_statistics(worker):
     return experiments, reflections
 
   def calculate_intensity_statistics(self, reflections):
-    '''Calculate statistics of hkl intensities sampled over resolution bins'''
-    for refls in self.get_next_hkl_reflection_table(reflections=reflections):
+    '''Calculate statistics for hkl intensities distributed over resolution bins'''
+    for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
       assert refls.size() > 0
       hkl = refls[0]['miller_index_asymmetric']
       if hkl in self.hkl_resolution_bins:
-        i_res_bin = self.hkl_resolution_bins[hkl]
+        i_bin = self.hkl_resolution_bins[hkl]
         multiplicity = refls.size()
-        self.n_sum[i_res_bin] += 1
-        self.m_sum[i_res_bin] += multiplicity
+        self.n_sum[i_bin] += 1
+        self.m_sum[i_bin] += multiplicity
         if multiplicity > 1:
-          self.mm_sum[i_res_bin] += 1
+          self.mm_sum[i_bin] += 1
           weighted_intensity_array = refls['intensity.sum.value'] / refls['intensity.sum.variance']
           weights_array = flex.double(refls.size(), 1.0) / refls['intensity.sum.variance']
-          self.I_sum[i_res_bin]     += flex.sum(weighted_intensity_array) / flex.sum(weights_array)
-          self.Isig_sum[i_res_bin]  += flex.sum(weighted_intensity_array) / math.sqrt(flex.sum(weights_array))
-          #self.Isig_sum[i_res_bin]  += self.I_sum[i_res_bin] / math.sqrt(refls[0]['intensity.sum.variance'])
-
-  def setup_resolution_bins(self):
-    '''Set up a list of resolution bins for calculating hkl intensity statistics'''
-    full_miller_set = self.params.scaling.miller_set
-    full_miller_set.setup_binner(d_max=100000, d_min=self.params.merging.d_min, n_bins=self.params.statistics.n_bins)
-    self.resolution_binner = full_miller_set.binner()
-
-  def assign_hkls_to_resolution_bins(self):
-    '''Provide a resolution bin number for each asu hkl'''
-    full_miller_set = self.params.scaling.miller_set
-    self.hkl_resolution_bins = {} # HKL vs resolution bin number
-    hkls_with_assigned_bin = 0
-    for i_bin in self.resolution_binner.range_used():
-      bin_hkl_selection = self.resolution_binner.selection(i_bin)
-      bin_hkls = full_miller_set.select(bin_hkl_selection)
-      for hkl in bin_hkls.indices():
-        assert not hkl in self.hkl_resolution_bins # each hkl should be assigned a bin number only once
-        self.hkl_resolution_bins[hkl] = i_bin
-        hkls_with_assigned_bin += 1
-    self.logger.log("Provided resolution bin number for %d asu hkls"%(hkls_with_assigned_bin))
+          self.I_sum[i_bin]     += flex.sum(weighted_intensity_array) / flex.sum(weights_array)
+          self.Isig_sum[i_bin]  += flex.sum(weighted_intensity_array) / math.sqrt(flex.sum(weights_array))
+          #self.Isig_sum[i_bin]  += self.I_sum[i_bin] / math.sqrt(refls[0]['intensity.sum.variance'])
 
   def build_intensity_table(self,
                             n_sum,
@@ -198,7 +181,7 @@ class intensity_statistics(worker):
                             mm_sum,
                             I_sum,
                             Isig_sum):
-    '''Produce a table with hkl intensity statistics sampled over resolution bins'''
+    '''Produce a table with hkl intensity statistics for resolution bins'''
     Intensity_Table = intensity_table()
 
     for i_bin in self.resolution_binner.range_used():
@@ -245,17 +228,3 @@ class intensity_statistics(worker):
         cumulative_pred   += redundancy_to_edge
       '''
     return Intensity_Table
-
-  def get_next_hkl_reflection_table(self, reflections):
-    '''Generate asu hkl slices from an asu hkl-sorted reflection table'''
-    i_begin = 0
-    hkl_ref = reflections[0].get('miller_index_asymmetric')
-    for i in range(len(reflections)):
-      hkl = reflections[i].get('miller_index_asymmetric')
-      if hkl == hkl_ref:
-        continue
-      else:
-        yield reflections[i_begin:i]
-        i_begin = i
-        hkl_ref = hkl
-    yield reflections[i_begin:i+1]

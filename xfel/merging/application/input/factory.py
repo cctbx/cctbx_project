@@ -6,6 +6,6 @@ from xfel.merging.application.worker import factory as factory_base
 
 class factory(factory_base):
   @staticmethod
-  def from_parameters(params):
+  def from_parameters(params, additional_info=None):
     """ Only one kind of loading supported at present, so construct a simple file loader """
     return [simple_file_loader(params)]
