@@ -7,6 +7,7 @@
 #include <scitbx/matrix/matrix_vector_operations.h>
 #include <scitbx/matrix/vector_operations.h>
 #include <scitbx/array_family/simple_io.h>
+#include <fast_linalg/lapacke.h>
 
 namespace scitbx { namespace matrix {
 
@@ -60,9 +61,6 @@ namespace scitbx { namespace matrix {
       return a;
     }
   };
-
-
-#include <fast_linalg/lapacke.h>
 
   /// Symmetric rank-N update \f$A^T A\f$, specified row by row
   /// but computed at BLAS 3 speed
