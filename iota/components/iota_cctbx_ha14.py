@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/30/2018
+Last Changed: 03/06/2018
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
@@ -1164,7 +1164,7 @@ class ImageImporter(ImageImporterBase):
     self.img_object, error = self.import_image(input_entry)
 
     # Triage image and generate grid search parameters
-    if self.img_object.datablock:
+    if self.img_object.experiments:
       if self.params.image_import.image_triage:
         hmed, amed = self.image_triage()
       else:

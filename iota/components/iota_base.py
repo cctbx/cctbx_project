@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/18/2018
-Last Changed: 01/30/2018
+Last Changed: 03/06/2019
 Description : IOTA base classes
 '''
 
@@ -15,7 +15,7 @@ try:  # for Py3 compatibility
 except ImportError:
     pass
 
-from dxtbx import datablock as db
+from dxtbx.model import experiment_list as exp
 from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
 
@@ -36,7 +36,7 @@ class SingleImageBase(object):
     self.int_file = None
     self.viz_path = None
     self.int_log = None
-    self.datablock = None
+    self.experiments = None
 
     if idx:
       self.img_index = idx
@@ -76,7 +76,7 @@ class ImageImporterBase():
   ''' Base class for image importer, which will:
         1. read an image file and extract data and info
         2. apply any modifications if requested / necessary
-        3. output a datablock or file for processing
+        3. output an experiment list or file for processing
   '''
 
   def __init__(self, init=None, info=None, write_output=True):
@@ -98,23 +98,25 @@ class ImageImporterBase():
     self.img_object = SingleImageBase(imgpath=filepath, idx=idx)
 
   def load_image_file(self, filepath):
-    ''' Loads datablock and populates image information dictionary (can
+    ''' Loads experiment list and populates image information dictionary (can
     override to load images for old-timey HA14 processing)
 
     :param filepath: path to raw diffraction image (or pickle!)
-    :return: datablock, error message (if any)
+    :return: experiment list, error message (if any)
     '''
-    # Create datablock from file
+    # Create experiment list from file
     try:
-      datablock = db.DataBlockFactory.from_filenames(filenames=[filepath])[0]
+      experiments = exp.ExperimentListFactory.from_filenames(filenames=[filepath])
     except Exception as e:
       error = 'IOTA IMPORTER ERROR: Import failed! {}'.format(e)
       print (error)
       return None, error
 
-    # Load image infromation from datablock
+    # Load image information from experiment list
     try:
-      imgset = datablock.extract_imagesets()[0]
+      print ('DEBUG: ', filepath, experiments)
+
+      imgset = experiments.imagesets()[0]
       beam = imgset.get_beam()
       s0 = beam.get_s0()
       detector = imgset.get_detector()[0]
@@ -130,21 +132,21 @@ class ImageImporterBase():
     except Exception as e:
       error = 'IOTA IMPORTER ERROR: Information extraction failed! {}'.format(e)
       print (error)
-      return datablock, error
+      return experiments, error
 
-    return datablock, None
+    return experiments, None
 
   def modify_image(self, data=None):
     ''' Override for specific backend needs (i.e. convert, mask, and/or square
     images and output pickles for HA14'''
     return data, None
 
-  def calculate_parameters(self, datablock=None):
+  def calculate_parameters(self, experiments=None):
     ''' Override to perform calculations of image-specific parameters
-    :param datablock: Datablock with image info
-    :return: datablock, error message
+    :param experiments: Experiment list with image info
+    :return: experiment list, error message
     '''
-    return datablock, None
+    return experiments, None
 
   def update_log(self, data=None, status='imported', msg=None):
     if not data:
@@ -215,8 +217,8 @@ class ImageImporterBase():
     self.img_object.final['img'] = self.img_object.img_path
 
   def import_image(self, input_entry):
-    ''' Image importing: read file, modify if requested, make datablock
-    :return: An image object with info and datablock
+    ''' Image importing: read file, modify if requested, make experiment list
+    :return: An image object with info and experiment list
     '''
 
     # Interpret input
@@ -237,33 +239,34 @@ class ImageImporterBase():
     if self.write_output:
       self.prep_output()
 
-    # Load image (default is datablock, override for HA14-style pickling)
-    self.datablock, error = self.load_image_file(filepath=filepath)
+    # Load image (default is experiment list, override for HA14-style pickling)
+    self.experiments, error = self.load_image_file(filepath=filepath)
 
     # Log initial image information
     self.img_object.log_info.append('\n{:-^100}\n'.format(filepath))
-    self.update_log(data=self.datablock, msg=error)
+    self.update_log(data=self.experiments, msg=error)
 
     # Stop there if data did not load
-    if not self.datablock:
+    if not self.experiments:
       return self.img_object, error
 
     # Modify image as per backend (or not)
     if self.modify:
-      self.datablock, error = self.modify_image(data=self.datablock)
-      if not self.datablock:
+      self.experiments, error = self.modify_image(data=self.experiments)
+      if not self.experiments:
         self.update_log(data=None, msg=error)
         return self.img_object, error
       else:
-        self.update_log(data=self.datablock, msg=error, status='converted')
+        self.update_log(data=self.experiments, msg=error, status='converted')
 
     # Calculate image-specific parameters (work in progress)
-    self.datablock, error = self.calculate_parameters(datablock=self.datablock)
+    self.experiments, error = self.calculate_parameters(
+      experiments=self.experiments)
     if error:
-      self.update_log(data=self.datablock, msg=error)
+      self.update_log(data=self.experiments, msg=error)
 
     # Finalize and output
-    self.img_object.datablock = self.datablock
+    self.img_object.experiments = self.experiments
     self.img_object.status = 'imported'
     return self.img_object, None
 

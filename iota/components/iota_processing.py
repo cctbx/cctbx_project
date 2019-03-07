@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/30/2019
+Last Changed: 03/06/2019
 Description : Runs spotfinding, indexing, refinement and integration using
               subclassed DIALS Stills Processor module. Selector class
               applies filters based on unit cell, space group, etc.
@@ -142,7 +142,7 @@ class IOTAImageProcessor(Processor):
 
     # IOTA-specific settings from here
     # Turn off all peripheral output
-    self.params.output.datablock_filename = None
+    self.params.output.experiments_filename = None
     self.params.output.indexed_filename = None
     self.params.output.strong_filename = None
     self.params.output.refined_experiments_filename = None
@@ -326,9 +326,9 @@ class IOTAImageProcessor(Processor):
       if not os.path.isdir(img_object.int_path):
         os.makedirs(img_object.int_path)
 
-    if not img_object.datablock:
-      from dxtbx.datablock import DataBlockFactory as db
-      img_object.datablock = db.from_filenames([img_object.img_path])[0]
+    if not img_object.experiments:
+      from dxtbx.model.experiment_list import ExperimentListFactory as exp
+      img_object.experiments = exp.from_filenames([img_object.img_path])[0]
 
     # Auto-set threshold and gain (not saved for target.phil)
     if self.iparams.cctbx_xfel.auto_threshold:
@@ -343,7 +343,7 @@ class IOTAImageProcessor(Processor):
     with util.Capturing() as output:
       try:
         print ("{:-^100}\n".format(" SPOTFINDING: "))
-        observed = self.find_spots(img_object.datablock)
+        observed = self.find_spots(img_object.experiments)
         img_object.final['spots'] = len(observed)
       except Exception as e:
         return self.error_handler(e, 'spotfinding', img_object, output)
@@ -363,8 +363,8 @@ class IOTAImageProcessor(Processor):
 
     # Finish if spotfinding is the last processing stage
     if 'spotfind' in self.last_stage:
-      detector = img_object.datablock.unique_detectors()[0]
-      beam = img_object.datablock.unique_beams()[0]
+      detector = img_object.experiments.unique_detectors()[0]
+      beam = img_object.experiments.unique_beams()[0]
 
       s1 = flex.vec3_double()
       for i in xrange(len(observed)):
@@ -380,7 +380,7 @@ class IOTAImageProcessor(Processor):
     with util.Capturing() as output:
       try:
         print ("{:-^100}\n".format(" INDEXING "))
-        experiments, indexed = self.index(img_object.datablock, observed)
+        experiments, indexed = self.index(img_object.experiments, observed)
       except Exception, e:
         return self.error_handler(e, 'indexing', img_object, output)
       else:

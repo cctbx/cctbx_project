@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/30/2019
+Last Changed: 03/06/2019
 Description : Subclasses image object and image importer from base classes.
 '''
 
@@ -35,12 +35,12 @@ class ImageImporter(ImageImporterBase):
     '''
     self.img_object = SingleImage(imgpath=filepath, idx=idx)
 
-  def calculate_parameters(self, datablock=None):
+  def calculate_parameters(self, experiments=None):
     ''' Image modification for current cctbx.xfel '''
 
-    if not datablock:
+    if not experiments:
       # If data are given, apply modifications as specified below
-      error = 'IOTA IMPORT ERROR: Datablock not found!'
+      error = 'IOTA IMPORT ERROR: Experiment list not found!'
       return None, error
     else:
       error = []
@@ -66,8 +66,8 @@ class ImageImporter(ImageImporterBase):
       if self.estimate_gain:
         with util.Capturing() as junk_output:
           try:
-            assert self.img_object.datablock   # Must have datablock here
-            imageset = self.img_object.datablock.extract_imagesets()[0]
+            assert self.img_object.experiments   # Must have experiments here
+            imageset = self.img_object.experiments.extract_imagesets()[0]
             self.img_object.gain = estimate_gain(imageset)
           except Exception as e:
             error.append('IOTA IMPORT ERROR: Estimate gain failed! '.format(e))
@@ -78,7 +78,7 @@ class ImageImporter(ImageImporterBase):
       else:
         error_message = None
 
-      return datablock, error_message
+      return experiments, error_message
 
 
 # **************************************************************************** #

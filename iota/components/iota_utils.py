@@ -4,7 +4,7 @@ from past.builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 02/15/2019
+Last Changed: 03/06/2019
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -737,20 +737,20 @@ gobj = ObjectFinder()
 # ---------------------------------- Other ----------------------------------- #
 
 class RadAverageCalculator(object):
-  def __init__(self, image=None, datablock=None):
-    if (image is None and datablock is None):
-      print ('ERROR: Need image or datablock for Radial Average Calculator')
+  def __init__(self, image=None, experiments=None):
+    if (image is None and experiments is None):
+      print ('ERROR: Need image or experiments for Radial Average Calculator')
       return
-    if datablock is None:
-      from dxtbx.datablock import DataBlockFactory
-      self.datablock = DataBlockFactory.from_filenames([image])[0]
+    if experiments is None:
+      from dxtbx.model.experiment_list import ExperimentListFactory
+      self.experiments = ExperimentListFactory.from_filenames([image])[0]
     else:
-      self.datablock = datablock
+      self.experiments = experiments
 
   def make_radial_average(self, num_bins=None, hires=None, lowres=None):
     from dials.algorithms.background import RadialAverage
 
-    imageset = self.datablock.extract_imagesets()[0]
+    imageset = self.experiments.extract_imagesets()[0]
     beam = imageset.get_beam()
     detector = imageset.get_detector()
     scan_range = (0, len(imageset))
