@@ -5,6 +5,7 @@ namespace cctbx { namespace adp_restraints { namespace boost_python {
 
   void wrap_isotropic_adp();
   void wrap_rigid_bond();
+  void wrap_rigu();
   void wrap_adp_similarity();
   void wrap_aniso_restraints();
   void wrap_fixed_u_eq_adp();
@@ -17,6 +18,7 @@ namespace {
     wrap_adp_restraint_base();
     wrap_isotropic_adp();
     wrap_rigid_bond();
+    wrap_rigu();
     wrap_adp_similarity();
     wrap_aniso_restraints();
     wrap_fixed_u_eq_adp();

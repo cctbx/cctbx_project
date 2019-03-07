@@ -2272,7 +2272,7 @@ class structure(crystal.special_position_settings):
           row = [sc.label] + [fmt%u_cif[i] for i in range(6)]
         aniso_loop.add_row(row)
       cs_cif_block.add_loop(aniso_loop)
-      cs_cif_block.add_loop(atom_type_cif_loop(self))
+      cs_cif_block.add_loop(atom_type_cif_loop(self, format=format))
     return cs_cif_block
 
   def as_pdb_file(self,

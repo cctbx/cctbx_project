@@ -5,11 +5,13 @@ from cctbx import adptbx
 from cctbx import uctbx
 from cctbx import adp_restraints
 from cctbx.adp_restraints import adp_restraint_params
+import scitbx
 from scitbx import matrix
 import libtbx.load_env
 import math, os, sys
 from cStringIO import StringIO
 import cctbx.xray
+from libtbx.test_utils import approx_equal
 
 def finite_difference_gradients(restraint_type,
                                 proxy,
@@ -634,12 +636,84 @@ Rigid bond restraints: 0
 ||... (remaining 2 not shown)
 """)
 
+def rigu_func(R, U):
+  return R * U * R.transpose()
+
+def rigu_finite_diff(R, U):
+  #we operate on quadratic values
+  epsilon = 2*math.sqrt(scitbx.math.double_numeric_limits.epsilon)
+  rv = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
+  for idx in xrange(0,6):
+    step = [0]*6
+    step[idx] = epsilon
+    U1 = rigu_func(R, U + matrix.sym(sym_mat3=step))
+    U2 = rigu_func(R, U - matrix.sym(sym_mat3=step))
+    dU = U1 - U2
+    dUdUidx = dU / (2*epsilon)
+    rv[0][idx] = dUdUidx[8] #U33
+    rv[1][idx] = (dUdUidx[2] + dUdUidx[2])/2 #U13
+    rv[2][idx] = (dUdUidx[5] + dUdUidx[7])/2  #U23
+  return rv
+
+def exercise_rigu():
+  ins = """
+CELL 0.71073 7.772741 8.721603 10.863736 90 102.9832 90
+ZERR 2 0.000944 0.001056 0.001068 0 0.0107 0
+LATT -1
+SYMM -X,0.5+Y,-Z
+SFAC C H O
+UNIT 24 44 22
+RIGU 0.0001 0.0001 O4 C C12
+
+C12   1    -0.12812  0.06329 -0.17592  11.00000  0.01467  0.02689  0.02780 =
+ -0.00379  0.00441 -0.00377
+O4    3     0.08910  0.02721  0.02186  11.00000  0.02001  0.03168  0.03125 =
+ -0.00504  0.00144 -0.00274
+C     1    -0.05545 -0.04221 -0.06528  11.00000  0.01560  0.02699  0.02581 =
+ -0.00481  0.00597 -0.00068
+HKLF 4
+END
+  """
+  sio = StringIO(ins)
+  import iotbx.shelx as shelx
+  model = shelx.parse_smtbx_refinement_model(file=sio)
+  sites_cart = model.structure.sites_cart()
+  u_cart = model.structure.scatterers().extract_u_cart(model.structure.unit_cell())
+  arp = adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart)
+  for rp in model._proxies['rigu']:
+    rr = adp_restraints.rigu(arp, rp)
+    U1 = matrix.sym(sym_mat3=u_cart[rp.i_seqs[0]])
+    U2 = matrix.sym(sym_mat3=u_cart[rp.i_seqs[1]])
+    vz = matrix.col(sites_cart[rp.i_seqs[1]]) - matrix.col(sites_cart[rp.i_seqs[0]])
+    vy = vz.ortho()
+    vx = vy.cross(vz)
+    R = matrix.rec(vx.normalize().elems +
+                   vy.normalize().elems +
+                   vz.normalize().elems, (3,3))
+    # with this matrix we can only test Z component as X and Y will differ
+    dU = ((R*U1)*R.transpose() - (R*U2)*R.transpose()).as_sym_mat3()
+    assert approx_equal(dU[2], rr.delta_33())
+    #with the original matrix all components should match
+    R1 = matrix.rec(rr.RM(), (3,3))
+    dU = ((R1*U1)*R1.transpose() - (R1*U2)*R1.transpose()).as_sym_mat3()
+    assert approx_equal(dU[2], rr.delta_33())
+    assert approx_equal(dU[4], rr.delta_13())
+    assert approx_equal(dU[5], rr.delta_23())
+    # check the raw gradients against the reference implementation
+    for x,y in zip(rr.reference_gradients(R1), rr.raw_gradients()):
+      for idx in xrange(0, 6):
+        assert approx_equal(x[idx], y[idx])
+    for x,y in zip(rigu_finite_diff(R1, U1), rr.raw_gradients()):
+      for idx in xrange(0, 6):
+        assert approx_equal(x[idx], y[idx])
+
 def exercise():
   exercise_proxy_show()
   exercise_adp_similarity()
   exercise_isotropic_adp()
   exercise_rigid_bond()
   exercise_rigid_bond_test()
+  exercise_rigu()
   print "OK"
 
 if (__name__ == "__main__"):

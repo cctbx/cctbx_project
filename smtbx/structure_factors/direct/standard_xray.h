@@ -10,6 +10,7 @@
 #include <smtbx/import_cctbx.h>
 #include <smtbx/import_scitbx_af.h>
 
+#include <boost/shared_ptr.hpp>
 #include <iostream>
 
 namespace smtbx { namespace structure_factors { namespace direct {
@@ -80,7 +81,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
        for that type of chemical element at the miller index at hand.
        */
       void compute(scatterer_type const &scatterer,
-                   float_type f0,
+                   complex_type f,
                    bool compute_grad)
       {
         Heir &heir = static_cast<Heir &> (*this);
@@ -92,13 +93,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
         }
 
         heir.compute_anisotropic_part(scatterer, compute_grad);
-        if (scatterer.flags.use_fp_fdp()) {
-          complex_type ff(f0 + scatterer.fp, scatterer.fdp);
-          heir.multiply_by_isotropic_part(scatterer, ff, compute_grad);
-        }
-        else {
-          heir.multiply_by_isotropic_part(scatterer, f0, compute_grad);
-        }
+        heir.multiply_by_isotropic_part(scatterer, f, compute_grad);
       }
     };
 
@@ -430,11 +425,90 @@ namespace smtbx { namespace structure_factors { namespace direct {
       }
     };
 
+    /** Abstract class to deal with various implementation of scattering
+    form factors etc
+    */
+    template <typename FloatType>
+    class scatterer_contribution {
+    public:
+      typedef FloatType float_type;
+      typedef std::complex<float_type> complex_type;
+      virtual ~scatterer_contribution() {}
+      /* calculates the contribution of a particular scatterer into Fc
+      */
+      virtual complex_type get(std::size_t scatterer_idx,
+        miller::index<> const &h) const = 0;
+      /* for isotropic scatterers could implement some optimisation. The
+      returned object should live at least until the next function call
+      */
+      virtual scatterer_contribution &at_d_star_sq(
+        float_type d_star_sq) = 0;
+
+      virtual scatterer_contribution *raw_fork() const = 0;
+    };
+
+    template <typename FloatType>
+    class isotropic_scatterer_contribution
+      : public scatterer_contribution<FloatType>
+    {
+    public:
+      typedef FloatType float_type;
+      typedef std::complex<float_type> complex_type;
+    private:
+      af::ref_owning_shared< xray::scatterer<float_type> > scatterers;
+      xray::scattering_type_registry const &scattering_type_registry;
+      af::shared<std::size_t> scattering_type_indices;
+      af::shared<float_type> elastic_form_factors_at_d_start_sq;
+    protected:
+    public:
+      // Copy constructor
+      isotropic_scatterer_contribution(
+        const isotropic_scatterer_contribution &isc)
+        :
+        scatterers(isc.scatterers),
+        scattering_type_registry(isc.scattering_type_registry),
+        scattering_type_indices(isc.scattering_type_indices)
+      {}
+
+      isotropic_scatterer_contribution(
+        af::shared< xray::scatterer<float_type> > const &scatterers,
+        xray::scattering_type_registry const &scattering_type_registry)
+        :
+        scatterers(scatterers),
+        scattering_type_registry(scattering_type_registry),
+        scattering_type_indices(
+          scattering_type_registry.unique_indices(scatterers.const_ref()))
+      {}
+
+      virtual complex_type get(std::size_t scatterer_idx,
+          miller::index<> const &h) const
+      {
+        float_type f0 = elastic_form_factors_at_d_start_sq[
+          scattering_type_indices[scatterer_idx]];
+        xray::scatterer<> const &sc = scatterers[scatterer_idx];
+        if (sc.flags.use_fp_fdp()) {
+          return complex_type(f0 + sc.fp, sc.fdp);
+        }
+        else {
+          return complex_type(f0);
+        }
+      }
+
+      virtual scatterer_contribution &at_d_star_sq(float_type d_star_sq) {
+        elastic_form_factors_at_d_start_sq = scattering_type_registry
+          .unique_form_factors_at_d_star_sq(d_star_sq);
+        return *this;
+      }
+
+      virtual scatterer_contribution *raw_fork() const {
+        return new isotropic_scatterer_contribution(*this);
+      }
+    };
+
   } // namespace one_scatterer_one_h
 
 
   namespace one_h {
-
     /** @brief Evaluation or linearisation of \f$F_c(h)\f$
         and of a derived observable, for any miller index h,
         as functions of crystallographic parameters.
@@ -453,8 +527,11 @@ namespace smtbx { namespace structure_factors { namespace direct {
         array of xray::scatterer passed to the constructor.
 
         This class is a CRTP: class Heir should be a heir of this class
-        and provide a member exp_i_2pi of type ExpI2PiFunctor to compute
-        \f$\exp i2\pi x\f$.
+        and provide
+
+        - a member exp_i_2pi of type ExpI2PiFunctor to compute
+          \f$\exp i2\pi x\f$;
+        - a member function raw_fork to implement member function fork.
      */
     template <typename FloatType,
               template<typename> class ObservableType,
@@ -467,19 +544,21 @@ namespace smtbx { namespace structure_factors { namespace direct {
       typedef std::complex<float_type> complex_type;
       typedef ObservableType<float_type> observable_type;
       typedef ExpI2PiFunctor<float_type> exp_i_2pi_functor;
-
+      typedef boost::shared_ptr<Heir> pointer_type;
+      typedef one_scatterer_one_h::scatterer_contribution<float_type>
+        scatterer_contribution_type;
     protected:
       cctbx::xray::scatterer_grad_flags_counts grad_flags_counts;
       uctbx::unit_cell const &unit_cell;
       sgtbx::space_group const &space_group;
       bool origin_centric_case;
       af::ref_owning_shared< xray::scatterer<float_type> > scatterers;
-      xray::scattering_type_registry const &scattering_type_registry;
-      af::shared<std::size_t> scattering_type_indices;
 
       complex_type *grad_f_calc_cursor;
       bool has_computed_grad;
 
+      scatterer_contribution_type *h_scatterer_contribution;
+      bool own_scatterer_contribution;
     public:
       complex_type f_calc;
       af::ref_owning_shared<complex_type> grad_f_calc;
@@ -504,23 +583,40 @@ namespace smtbx { namespace structure_factors { namespace direct {
       base(uctbx::unit_cell const &unit_cell,
            sgtbx::space_group const &space_group,
            af::shared< xray::scatterer<float_type> > const &scatterers,
-           xray::scattering_type_registry const &scattering_type_registry)
+           scatterer_contribution_type *h_scatterer_contribution,
+           bool own_scatterer_contribution)
 
         : grad_flags_counts(scatterers.const_ref()),
           unit_cell(unit_cell),
           space_group(space_group),
           origin_centric_case( space_group.is_origin_centric() ),
           scatterers(scatterers),
-          scattering_type_registry(scattering_type_registry),
-          scattering_type_indices(
-            scattering_type_registry.unique_indices(this->scatterers) ),
           grad_f_calc(grad_flags_counts.n_parameters(),
                       af::init_functor_null<complex_type>()),
           grad_observable(grad_flags_counts.n_parameters(),
                           af::init_functor_null<float_type>()),
-          has_computed_grad(false)
+          has_computed_grad(false),
+          h_scatterer_contribution(h_scatterer_contribution),
+          own_scatterer_contribution(own_scatterer_contribution)
       {}
 
+      ~base() {
+        if (own_scatterer_contribution) {
+          delete h_scatterer_contribution;
+        }
+      }
+
+      /// A functor able to independently perform the same crystallographic
+      /// computation as this
+      /** That is to say that it shares with this the same unit cell,
+          space group, scatterers and scattering factors but it has its own
+          storage for f_calc and its gradients, as well as the observable and
+          its gradients.
+       */
+      pointer_type fork() {
+        Heir &heir = static_cast<Heir &>(*this);
+        return pointer_type(heir.raw_fork());
+      }
       /// Evaluate the structure factors
       void evaluate(miller::index<> const &h,
                     boost::optional<complex_type> const &f_mask=boost::none)
@@ -548,9 +644,6 @@ namespace smtbx { namespace structure_factors { namespace direct {
                    bool compute_grad=true)
       {
         float_type d_star_sq = unit_cell.d_star_sq(h);
-        af::shared<float_type> elastic_form_factors
-          = scattering_type_registry.unique_form_factors_at_d_star_sq(d_star_sq);
-
         Heir &heir = static_cast<Heir &>(*this);
 
         typedef one_scatterer_one_h::in_generic_space_group<
@@ -562,20 +655,25 @@ namespace smtbx { namespace structure_factors { namespace direct {
                 origin_centric_linearisation_t;
 
         if (!origin_centric_case) {
-           generic_linearisation_t lin_for_h(space_group, h, d_star_sq,
+          generic_linearisation_t lin_for_h(space_group, h, d_star_sq,
                                              heir.exp_i_2pi);
-          compute(elastic_form_factors.ref(), lin_for_h, f_mask, compute_grad);
+          compute(h,
+            h_scatterer_contribution->at_d_star_sq(d_star_sq),
+            lin_for_h, f_mask, compute_grad);
         }
         else {
           origin_centric_linearisation_t lin_for_h(space_group, h, d_star_sq,
                                                    heir.exp_i_2pi);
-          compute(elastic_form_factors.ref(), lin_for_h, f_mask, compute_grad);
+          compute(h,
+            h_scatterer_contribution->at_d_star_sq(d_star_sq),
+            lin_for_h, f_mask, compute_grad);
         }
       }
 
     private:
       template <class LinearisationForMillerIndex>
-      void compute(af::const_ref<float_type> const &elastic_form_factors,
+      void compute(miller::index<> const &h,
+                   scatterer_contribution_type const&scatter_contrib,
                    LinearisationForMillerIndex &l,
                    boost::optional<complex_type> const &f_mask,
                    bool compute_grad)
@@ -585,8 +683,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         for (int j=0; j < scatterers.size(); ++j) {
           xray::scatterer<> const &sc = scatterers[j];
-          float_type f0 = elastic_form_factors[ scattering_type_indices[j] ];
-          l.compute(sc, f0, compute_grad);
+          complex_type f = scatter_contrib.get(j, h);
+          l.compute(sc, f, compute_grad);
 
           f_calc += l.structure_factor;
 
@@ -634,20 +732,33 @@ namespace smtbx { namespace structure_factors { namespace direct {
                    custom_trigonometry<
                      FloatType, ObservableType, ExpI2PiFunctor> >
               base_t;
-
+      typedef one_scatterer_one_h::scatterer_contribution<float_type>
+        scatterer_contribution_type;
       typedef FloatType float_type;
+
       ExpI2PiFunctor<float_type> const &exp_i_2pi;
 
       custom_trigonometry(
         uctbx::unit_cell const &unit_cell,
         sgtbx::space_group const &space_group,
         af::shared< xray::scatterer<float_type> > const &scatterers,
-        xray::scattering_type_registry const &scattering_type_registry,
-        ExpI2PiFunctor<float_type> const &exp_i_2pi)
+        ExpI2PiFunctor<float_type> const &exp_i_2pi,
+        scatterer_contribution_type *h_scatterer_contribution,
+        bool own_scatterer_contribution)
 
-        : base_t(unit_cell, space_group, scatterers, scattering_type_registry),
+        : base_t(unit_cell, space_group, scatterers, h_scatterer_contribution,
+            own_scatterer_contribution),
           exp_i_2pi(exp_i_2pi)
       {}
+
+      custom_trigonometry *raw_fork() {
+        return new custom_trigonometry(this->unit_cell,
+                                       this->space_group,
+                                       this->scatterers.array(),
+                                       exp_i_2pi,
+                                       this->h_scatterer_contribution->raw_fork(),
+                                       true);
+      }
     };
 
 
@@ -666,19 +777,31 @@ namespace smtbx { namespace structure_factors { namespace direct {
                    std_trigonometry<FloatType, ObservableType> >
               base_t;
 
+      typedef one_scatterer_one_h::scatterer_contribution<float_type>
+        scatterer_contribution_type;
       typedef FloatType float_type;
+
       cctbx::math::cos_sin_exact<float_type> exp_i_2pi;
 
       std_trigonometry(
         uctbx::unit_cell const &unit_cell,
         sgtbx::space_group const &space_group,
         af::shared< xray::scatterer<float_type> > const &scatterers,
-        xray::scattering_type_registry const &scattering_type_registry)
+        scatterer_contribution_type *h_scatterer_contribution,
+        bool own_scatterer_contribution)
 
-        : base_t(unit_cell, space_group, scatterers, scattering_type_registry)
+        : base_t(unit_cell, space_group, scatterers, h_scatterer_contribution,
+          own_scatterer_contribution)
       {}
-    };
 
+      std_trigonometry *raw_fork() {
+        return new std_trigonometry(this->unit_cell,
+                                    this->space_group,
+                                    this->scatterers.array(),
+                                    this->h_scatterer_contribution->raw_fork(),
+                                    true);
+      }
+    };
 
     template <typename FloatType>
     struct modulus_squared

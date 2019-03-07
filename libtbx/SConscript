@@ -38,6 +38,12 @@ class empty(object):
     return locals()
   cflags_base = property(**_())
 
+  def enable_fast_linalg(self, env):
+    """ Provide a null default for the method added on env_etc
+        in fast_linalg/SConscript iff module fast_linalg is configured.
+    """
+    pass
+
 
 def set_python_include_and_libs(env_etc):
   env_etc.python_include = libtbx.env_config.python_include_path()

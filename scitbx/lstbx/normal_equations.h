@@ -12,6 +12,7 @@
 #include <scitbx/matrix/symmetric_rank_1_update.h>
 #include <scitbx/sparse/matrix.h>
 #include <scitbx/sparse/triangular.h>
+#include <sstream>
 
 namespace scitbx { namespace lstbx { namespace normal_equations {
 
@@ -102,7 +103,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
                     && b.size()   == w.size())(a.n_rows())(b.size())(w.size());
       SCITBX_ASSERT(a.n_cols() == n_parameters());
       sparse::matrix<scalar_t>
-      at_w_a = a.this_transpose_times_diagonal_times_this(w);
+      at_w_a = a.transpose().this_times_diagonal_times_this_transpose(w);
       vector_t a_t_w_b = a.transpose_times((w * b).const_ref());
       normal_matrix_ += sparse::upper_diagonal_of(at_w_a);
       if (negate_right_hand_side) right_hand_side_ -= a_t_w_b.const_ref();
@@ -135,6 +136,12 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     void solve() {
       using scitbx::matrix::cholesky::u_transpose_u_decomposition_in_place;
       u_transpose_u_decomposition_in_place<scalar_t> cholesky(normal_matrix_);
+      if(cholesky.failure) {
+        std::ostringstream buffer;
+        buffer << "SCITBX_ASSERT(!cholesky.failure) failure in index: "
+          << cholesky.failure.index;
+        throw SCITBX_ERROR(buffer.str());
+      }
       SCITBX_ASSERT(!cholesky.failure);
       cholesky.solve_in_place(right_hand_side_);
       solved_ = true;
@@ -423,6 +430,28 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       for (int i=0; i<yc.size(); ++i) {
         add_equation(yc[i], &jacobian_yc(i, 0), yo[i], w.size() ? w[i] : 1);
       }
+    }
+
+    /// Addition in the sense of the L.S. objective functions
+    /**
+     *  The overall factor for this objective and other's objective are the same.
+     *  In term of normal equations, this appends other's equations to this.
+     */
+
+    non_linear_ls_with_separable_scale_factor
+    &operator+=(non_linear_ls_with_separable_scale_factor const &other) {
+      SCITBX_ASSERT(!finalised());
+      SCITBX_ASSERT(!other.finalised());
+      n_data += other.n_data;
+      yo_sq += other.yo_sq;
+      yo_dot_yc += other.yo_dot_yc;
+      yc_sq += other.yc_sq;
+
+      grad_yc_dot_grad_yc += other.grad_yc_dot_grad_yc;
+      yo_dot_grad_yc += other.yo_dot_grad_yc;
+      yc_dot_grad_yc += other.yc_dot_grad_yc;
+
+      return *this;
     }
 
     /// \f$\sum w y_o^2\f$

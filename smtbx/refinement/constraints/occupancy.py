@@ -2,7 +2,38 @@ from __future__ import division
 from __future__ import absolute_import, print_function
 import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint
+from scitbx.array_family import flex
 import itertools
+
+class occupancy_affine_constraint(object):
+  """ Constraint a0 occ0 + a1 occ1 +... == b """
+
+  def __init__(self, scatterer_indices, a, b):
+    self.a = []
+    self.scatterer_indices = []
+    for i in xrange(len(a)):
+      if(a[i]!=0.0):
+        self.a += [a[i]]
+        self.scatterer_indices += [scatterer_indices[i]]
+    self.a = flex.double(self.a)
+    self.b = b
+
+  @property
+  def constrained_parameters(self):
+    return ((self.scatterer_indices[0], 'occupancy'),)
+
+  def add_to(self, reparametrisation):
+    sc = reparametrisation.structure.scatterers()
+    dependees = [reparametrisation.add_new_occupancy_parameter(i)\
+      for i in self.scatterer_indices[1:]]
+    sidx = self.scatterer_indices[0]
+    param = reparametrisation.add(_.affine_asu_occupancy_parameter,
+                                  dependees=dependees, a=-1.0*self.a[1:]/(self.a[0]), b=self.b/(self.a[0]),
+                                  scatterer=sc[sidx])
+    reparametrisation.asu_scatterer_parameters[sidx].occupancy = param
+    for idx,i in enumerate(self.scatterer_indices[1:]):
+      reparametrisation.shared_occupancies[i] = dependees[idx]
+    self.value = param
 
 class occupancy_pair_affine_constraint(object):
   """ Constraint a0 occ0 + a1 occ1 == b """

@@ -7,10 +7,14 @@ class constructed_with_xray_structure(object):
 
   def __init__(self, xray_structure, *args, **kwds):
     xs = xray_structure
+    self.sccattere_contribution = ext.isotropic_scatterer_contribution(
+      xs.scatterers(),
+      xs.scattering_type_registry())
+
     args = (xs.unit_cell(),
             xs.space_group(),
             xs.scatterers(),
-            xs.scattering_type_registry()) + args
+            self.sccattere_contribution) + args
     super(constructed_with_xray_structure, self).__init__(*args, **kwds)
     self.xray_structure = xray_structure
 

@@ -26,6 +26,9 @@ def test_manager():
   rigid_bond_proxies = \
     adp_restraints.rigid_bond_restraints(
       pair_sym_table=pair_sym_table).proxies
+  rigu_proxies = \
+    adp_restraints.rigu_restraints(
+      pair_sym_table=pair_sym_table).proxies
   isotropic_adp_proxies = \
     adp_restraints.isotropic_adp_restraints(
       xray_structure=xray_structure,
@@ -56,6 +59,13 @@ def test_manager():
       i_seqs=((14,36),(12,38)),
       weights=(10,10),
       sym_ops=(sgtbx.rt_mx(),sgtbx.rt_mx())))
+  chirality_proxies=cctbx.geometry_restraints.shared_chirality_proxy()
+  chirality_proxies.append(
+    cctbx.geometry_restraints.chirality_proxy(
+      i_seqs=(14,36,12,38),
+      weight=10**4,
+      volume_ideal=1.2,
+      both_signs=False))
   # setup restraints manager
   manager = restraints.manager(
     bond_proxies=bond_proxies,
@@ -63,7 +73,9 @@ def test_manager():
     bond_similarity_proxies=bond_similarity_proxies,
     adp_similarity_proxies=adp_similarity_proxies,
     rigid_bond_proxies=rigid_bond_proxies,
-    isotropic_adp_proxies=isotropic_adp_proxies)
+    rigu_proxies=rigu_proxies,
+    isotropic_adp_proxies=isotropic_adp_proxies,
+    chirality_proxies=chirality_proxies)
   sio = StringIO()
   manager.show_sorted(xray_structure, max_items=1, f=sio)
   if sys.platform.startswith("win") and sys.version_info[:2] < (2,6):
@@ -90,6 +102,15 @@ angle C3
    110.00  108.00    2.00 7.07e-01 2.00e+00 8.03e+00
 ... (remaining 2 not shown)
 
+Chirality restraints: 1
+Sorted by residual:
+chirality O9
+          C9
+          O8
+          C10
+  both_signs  ideal   model   delta    sigma   weight residual
+    False      1.20    2.52   -1.32 1.00e-02 1.00e+04 1.75e+04
+
 Bond similarity restraints: 1
 Sorted by residual:
                delta    sigma   weight rms_deltas residual sym.op.
@@ -115,6 +136,16 @@ scatterers O7
            C12
    delta_z    sigma   weight residual
  -6.42e-01 1.00e-02 1.00e+04 4.12e+03
+... (remaining 59 not shown)
+
+Rigu bond restraints: 60
+Sorted by residual:
+scatterers O2
+           C2
+   delta_z    sigma   weight residual
+  1.27e-03 6.36e-03 2.47e+04 4.01e-02
+ -9.08e-03 6.36e-03 2.47e+04 2.04e+00
+ -9.08e-03 6.36e-03 2.47e+04 2.40e+00
 ... (remaining 59 not shown)
 
 Isotropic ADP restraints: 22

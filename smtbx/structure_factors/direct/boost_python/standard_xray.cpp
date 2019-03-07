@@ -4,6 +4,7 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/with_custodian_and_ward.hpp>
+#include <boost/python/return_internal_reference.hpp>
 
 namespace smtbx { namespace structure_factors { namespace direct {
   namespace boost_python {
@@ -80,7 +81,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
     {
       typedef FloatType float_type;
       typedef ExpI2PiFunctor<float_type> exp_i_2pi_functor;
-
+      typedef one_scatterer_one_h::scatterer_contribution<float_type>
+        scatterer_contribution_type;
       static void wrap_custom_trigo(char const *core_name) {
         using namespace boost::python;
         typedef one_h::custom_trigonometry<FloatType,
@@ -93,13 +95,15 @@ namespace smtbx { namespace structure_factors { namespace direct {
           .def(init<uctbx::unit_cell const &,
                     sgtbx::space_group const &,
                     af::shared< xray::scatterer<float_type> > const &,
-                    xray::scattering_type_registry const &,
-                    exp_i_2pi_functor const &>
+                    exp_i_2pi_functor const &,
+                    scatterer_contribution_type *,
+                    bool>
                ((arg("unit_cell"),
                  arg("space_group"),
                  arg("scatterers"),
-                 arg("scattering_type_registry"),
-                 arg("exp_i_2pi_functor")))
+                 arg("exp_i_2pi_functor"),
+                 arg("scatter_contribution"),
+                 arg("own_scatterer_contribution") = false))
                 [with_custodian_and_ward<1, 2,
                  with_custodian_and_ward<1, 3,
                  with_custodian_and_ward<1, 4,
@@ -119,11 +123,13 @@ namespace smtbx { namespace structure_factors { namespace direct {
           .def(init<uctbx::unit_cell const &,
                     sgtbx::space_group const &,
                     af::shared< xray::scatterer<float_type> > const &,
-                    xray::scattering_type_registry const &>
+                    scatterer_contribution_type *,
+                    bool>
                ((arg("unit_cell"),
                  arg("space_group"),
                  arg("scatterers"),
-                 arg("scattering_type_registry")))
+                 arg("scatter_contribution"),
+                 arg("own_scatterer_contribution") = false))
                 [with_custodian_and_ward<1, 2,
                  with_custodian_and_ward<1, 3,
                  with_custodian_and_ward<1, 4,
@@ -139,6 +145,41 @@ namespace smtbx { namespace structure_factors { namespace direct {
       }
     };
 
+    template <typename FloatType>
+    struct scatterer_contribution_wrapper {
+      typedef one_scatterer_one_h::scatterer_contribution<FloatType> wt;
+
+      static void wrap() {
+        using namespace boost::python;
+        class_<wt, boost::noncopyable>("scatterer_contribution", no_init)
+          .def("get", &wt::get,
+            (arg("scatterer_index"),
+             arg("h")))
+          .def("at_d_star_sq", &wt::at_d_star_sq,
+            (arg("d_start_sq")), return_internal_reference<>())
+          ;
+      }
+    };
+
+    template <typename FloatType>
+    struct isotropic_scatterer_contribution_wrapper {
+      typedef one_scatterer_one_h::isotropic_scatterer_contribution<FloatType>
+        wt;
+      typedef one_scatterer_one_h::scatterer_contribution<FloatType>
+        scatterer_contribution_type;
+
+      static void wrap() {
+        using namespace boost::python;
+        class_<wt,
+          bases<scatterer_contribution_type> >
+          ("isotropic_scatterer_contribution", no_init)
+          .def(init<af::shared< xray::scatterer<FloatType> > const &,
+            xray::scattering_type_registry const &>(
+            (arg("scatterers"),
+             arg("scattering_type_registry"))))
+          ;
+      }
+    };
 
     void wrap_standard_xray() {
       fc_for_one_h_wrapper<double, one_h::modulus_squared,
@@ -146,6 +187,9 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
       fc_for_one_h_wrapper<double, one_h::modulus,
                            cctbx::math::cos_sin_table>::wrap();
+
+      scatterer_contribution_wrapper<double>::wrap();
+      isotropic_scatterer_contribution_wrapper<double>::wrap();
     }
   }
 }}}

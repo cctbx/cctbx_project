@@ -371,6 +371,46 @@ class _(boost.python.injector, shared_rigid_bond_proxy):
         site_labels=site_labels, f=f, prefix=prefix,
         max_items=max_items)
 
+class _(boost.python.injector, rigu):
+
+  def _show_sorted_item(self, f, prefix):
+    print >> f, \
+      "%s   delta_z    sigma   weight residual" % (prefix)
+    print >> f, "%s %9.2e %6.2e %6.2e %6.2e" % (
+      prefix, self.delta_33(), weight_as_sigma(weight=self.weight),
+      self.weight, self.residual33())
+    print >> f, "%s %9.2e %6.2e %6.2e %6.2e" % (
+      prefix, self.delta_13(), weight_as_sigma(weight=self.weight),
+      self.weight, self.residual13())
+    print >> f, "%s %9.2e %6.2e %6.2e %6.2e" % (
+      prefix, self.delta_13(), weight_as_sigma(weight=self.weight),
+      self.weight, self.residual23())
+
+class _(boost.python.injector, shared_rigu_proxy):
+
+  def deltas(self, params):
+    return rigu_deltas(params=params, proxies=self)
+
+  def residuals(self, params):
+    return rigu_residuals(params=params, proxies=self)
+
+  def show_sorted(self,
+        by_value,
+        sites_cart,
+        u_cart,
+        site_labels=None,
+        f=None,
+        prefix="",
+        max_items=None):
+    _show_sorted_impl(self=self,
+        proxy_type=rigu,
+        proxy_label="Rigu bond",
+        item_label="scatterers",
+        by_value=by_value, u_cart=u_cart, u_iso=None,
+        use_u_aniso=None, sites_cart=sites_cart,
+        site_labels=site_labels, f=f, prefix=prefix,
+        max_items=max_items)
+
 def _show_sorted_impl(self,
       proxy_type,
       proxy_label,
@@ -401,7 +441,7 @@ def _show_sorted_impl(self,
     sites_cart=sites_cart, u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso)
   if (by_value == "residual"):
     if proxy_type in (adp_similarity, adp_u_eq_similarity, adp_volume_similarity,\
-                      isotropic_adp, fixed_u_eq_adp, rigid_bond):
+                      isotropic_adp, fixed_u_eq_adp, rigid_bond, rigu):
       data_to_sort = self.residuals(params=params)
     else:
       raise AssertionError
@@ -412,7 +452,7 @@ def _show_sorted_impl(self,
     else:
       raise AssertionError
   elif (by_value == "delta"):
-    if proxy_type is rigid_bond:
+    if proxy_type in (rigid_bond, rigu):
       data_to_sort = flex.abs(self.deltas(params=params))
     else:
       raise AssertionError
@@ -451,7 +491,7 @@ def _show_sorted_impl(self,
         print >> f, "%s%s %s" % (prefix, s, l)
         s = item_label_blank
     if proxy_type in (adp_similarity, isotropic_adp, fixed_u_eq_adp,\
-                      rigid_bond):
+                      rigid_bond, rigu):
       restraint = proxy_type(params=params, proxy=proxy)
       restraint._show_sorted_item(f=f, prefix=prefix)
     elif proxy_type in dynamic_proxy_types:
