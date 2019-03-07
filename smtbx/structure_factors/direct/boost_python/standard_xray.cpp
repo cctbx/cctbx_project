@@ -6,7 +6,6 @@
 #include <boost/python/class.hpp>
 #include <boost/python/with_custodian_and_ward.hpp>
 #include <boost/python/return_internal_reference.hpp>
-#include <boost/python/manage_new_object.hpp>
 
 namespace smtbx { namespace structure_factors { namespace direct {
   namespace boost_python {
@@ -179,42 +178,6 @@ namespace smtbx { namespace structure_factors { namespace direct {
             xray::scattering_type_registry const &>(
             (arg("scatterers"),
              arg("scattering_type_registry"))))
-          .def(init<af::shared< xray::scatterer<FloatType> > const &,
-            xray::scattering_type_registry const &,
-            uctbx::unit_cell const &,
-            cctbx::xray::observations<FloatType> const &>(
-            (arg("scatterers"),
-              arg("scattering_type_registry"),
-              arg("unit_cell"),
-              arg("reflections"))))
-          ;
-      }
-    };
-
-    template <typename FloatType>
-    struct table_based_wrapper {
-      typedef table_based::builder<FloatType> wt;
-      typedef one_scatterer_one_h::scatterer_contribution<FloatType>
-        scatterer_contribution_type;
-
-      static void wrap() {
-        using namespace boost::python;
-        class_<wt, boost::noncopyable>("table_based_scatterer_contribution", no_init)
-          .def("build", &wt::build,
-            (arg("scatterers"),
-              arg("file_name"),
-              arg("space_group"),
-              arg("anomalous_flag")),
-            return_value_policy<manage_new_object>())
-          .staticmethod("build")
-          .def("build_lookup_based_for_tests", &wt::build_lookup_based_for_tests,
-          (arg("unit_cell"),
-            arg("space_group"),
-            arg("scatterers"),
-            arg("scattering_type_registry"),
-            arg("indices")),
-            return_value_policy<manage_new_object>())
-          .staticmethod("build_lookup_based_for_tests")
           ;
       }
     };
@@ -228,7 +191,6 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
       scatterer_contribution_wrapper<double>::wrap();
       isotropic_scatterer_contribution_wrapper<double>::wrap();
-      table_based_wrapper<double>::wrap();
     }
   }
 }}}

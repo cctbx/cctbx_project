@@ -7,37 +7,14 @@ class constructed_with_xray_structure(object):
   def __init__(self, xray_structure, table_file_name=None, reflections=None,
                *args, **kwds):
     xs = xray_structure
-    if not table_file_name:
-      if reflections:
-          self.scatterer_contribution = ext.isotropic_scatterer_contribution(
-            xs.scatterers(),
-            xs.scattering_type_registry(),
-            unit_cell=xs.unit_cell(),
-            reflections=reflections)
-      else:
-          self.scatterer_contribution = ext.isotropic_scatterer_contribution(
-            xs.scatterers(),
-            xs.scattering_type_registry())
-    else:
-      if "__test__" == table_file_name:
-        assert reflections
-        self.scatterer_contribution = ext.table_based_scatterer_contribution.\
-          build_lookup_based_for_tests(
-          xs.unit_cell(),
-          xs.space_group(),
-          xs.scatterers(),
-          xs.scattering_type_registry(),
-          reflections.indices())
-      else:
-        self.scatterer_contribution = ext.table_based_scatterer_contribution.build(
-          xs.scatterers(),
-          table_file_name,
-          xs.space_group(),
-          not xs.space_group().is_origin_centric())
+    self.sccattere_contribution = ext.isotropic_scatterer_contribution(
+      xs.scatterers(),
+      xs.scattering_type_registry())
 
     args = (xs.unit_cell(),
             xs.space_group(),
-            xs.scatterers()) + args + (self.scatterer_contribution,)
+            xs.scatterers(),
+            self.sccattere_contribution) + args
     super(constructed_with_xray_structure, self).__init__(*args, **kwds)
     self.xray_structure = xray_structure
 

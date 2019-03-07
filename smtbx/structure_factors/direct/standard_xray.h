@@ -86,8 +86,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
        for that type of chemical element at the miller index at hand.
        */
       void compute(scatterer_type const &scatterer,
-        complex_type f,
-        bool compute_grad)
+                   complex_type f,
+                   bool compute_grad)
       {
         Heir &heir = static_cast<Heir &> (*this);
 
@@ -104,27 +104,6 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         heir.compute_anisotropic_part(scatterer, compute_grad);
         heir.multiply_by_isotropic_part(scatterer, f, compute_grad);
-      }
-
-      void compute_full(scatterer_type const &scatterer,
-        std::vector<complex_type> const &ff,
-        bool compute_grad)
-      {
-        Heir &heir = static_cast<Heir &> (*this);
-
-        this->structure_factor = 0;
-        if (compute_grad) {
-          this->grad_site = grad_site_type(0, 0, 0);
-          this->grad_u_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
-          if (scatterer.anharmonic_adp) {
-            this->grad_anharmonic_adp.resize(25);
-          }
-          this->grad_fp = 0;
-          this->grad_fdp = 0;
-        }
-
-        heir.compute_anisotropic_part_full(scatterer, ff, compute_grad);
-        heir.multiply_by_isotropic_part_full(scatterer, compute_grad);
       }
     };
 
@@ -960,6 +939,86 @@ namespace smtbx { namespace structure_factors { namespace direct {
       }
     };
 
+    /** Abstract class to deal with various implementation of scattering
+    form factors etc
+    */
+    template <typename FloatType>
+    class scatterer_contribution {
+    public:
+      typedef FloatType float_type;
+      typedef std::complex<float_type> complex_type;
+      virtual ~scatterer_contribution() {}
+      /* calculates the contribution of a particular scatterer into Fc
+      */
+      virtual complex_type get(std::size_t scatterer_idx,
+        miller::index<> const &h) const = 0;
+      /* for isotropic scatterers could implement some optimisation. The
+      returned object should live at least until the next function call
+      */
+      virtual scatterer_contribution &at_d_star_sq(
+        float_type d_star_sq) = 0;
+
+      virtual scatterer_contribution *raw_fork() const = 0;
+    };
+
+    template <typename FloatType>
+    class isotropic_scatterer_contribution
+      : public scatterer_contribution<FloatType>
+    {
+    public:
+      typedef FloatType float_type;
+      typedef std::complex<float_type> complex_type;
+    private:
+      af::ref_owning_shared< xray::scatterer<float_type> > scatterers;
+      xray::scattering_type_registry const &scattering_type_registry;
+      af::shared<std::size_t> scattering_type_indices;
+      af::shared<float_type> elastic_form_factors_at_d_start_sq;
+    protected:
+    public:
+      // Copy constructor
+      isotropic_scatterer_contribution(
+        const isotropic_scatterer_contribution &isc)
+        :
+        scatterers(isc.scatterers),
+        scattering_type_registry(isc.scattering_type_registry),
+        scattering_type_indices(isc.scattering_type_indices)
+      {}
+
+      isotropic_scatterer_contribution(
+        af::shared< xray::scatterer<float_type> > const &scatterers,
+        xray::scattering_type_registry const &scattering_type_registry)
+        :
+        scatterers(scatterers),
+        scattering_type_registry(scattering_type_registry),
+        scattering_type_indices(
+          scattering_type_registry.unique_indices(scatterers.const_ref()))
+      {}
+
+      virtual complex_type get(std::size_t scatterer_idx,
+          miller::index<> const &h) const
+      {
+        float_type f0 = elastic_form_factors_at_d_start_sq[
+          scattering_type_indices[scatterer_idx]];
+        xray::scatterer<> const &sc = scatterers[scatterer_idx];
+        if (sc.flags.use_fp_fdp()) {
+          return complex_type(f0 + sc.fp, sc.fdp);
+        }
+        else {
+          return complex_type(f0);
+        }
+      }
+
+      virtual scatterer_contribution &at_d_star_sq(float_type d_star_sq) {
+        elastic_form_factors_at_d_start_sq = scattering_type_registry
+          .unique_form_factors_at_d_star_sq(d_star_sq);
+        return *this;
+      }
+
+      virtual scatterer_contribution *raw_fork() const {
+        return new isotropic_scatterer_contribution(*this);
+      }
+    };
+
   } // namespace one_scatterer_one_h
 
 
@@ -1138,14 +1197,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         for (int j=0; j < scatterers.size(); ++j) {
           xray::scatterer<> const &sc = scatterers[j];
-          if (scatter_contrib.is_spherical()) {
-            complex_type f = scatter_contrib.get(j, h);
-            l.compute(sc, f, compute_grad);
-          }
-          else {
-            std::vector<complex_type> const &ff = scatter_contrib.get_full(j, h);
-            l.compute_full(sc, ff, compute_grad);
-          }
+          complex_type f = scatter_contrib.get(j, h);
+          l.compute(sc, f, compute_grad);
 
           f_calc += l.structure_factor;
 
@@ -1206,9 +1259,9 @@ namespace smtbx { namespace structure_factors { namespace direct {
                    custom_trigonometry<
                      FloatType, ObservableType, ExpI2PiFunctor> >
               base_t;
-      typedef FloatType float_type;
       typedef one_scatterer_one_h::scatterer_contribution<float_type>
         scatterer_contribution_type;
+      typedef FloatType float_type;
 
       ExpI2PiFunctor<float_type> const &exp_i_2pi;
 
@@ -1251,9 +1304,9 @@ namespace smtbx { namespace structure_factors { namespace direct {
                    std_trigonometry<FloatType, ObservableType> >
               base_t;
 
-      typedef FloatType float_type;
       typedef one_scatterer_one_h::scatterer_contribution<float_type>
         scatterer_contribution_type;
+      typedef FloatType float_type;
 
       cctbx::math::cos_sin_exact<float_type> exp_i_2pi;
 
