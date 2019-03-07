@@ -12,11 +12,13 @@ class mpiCommEmulator(object):
     pass
   def bcast(self, transmitted, root):
     return transmitted
-  def reduce(self, value, operation, root):
+  def reduce(self, data, operation, root):
     if operation == mpiEmulator.SUM or operation == mpiEmulator.MAX or operation == mpiEmulator.MIN:
-      return value
+      return data
     else:
       assert False, "Unsupported MPI reduce operation %s"%(operation)
+  def allreduce(self, data, operation, root):
+    return self.reduce(data, operation, root)
   def alltoall(self, items):
     return items
   def gather(self, item, root):
