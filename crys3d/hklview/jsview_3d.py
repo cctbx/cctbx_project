@@ -9,30 +9,12 @@ from websocket_server import WebsocketServer
 import threading, math
 from time import sleep
 import os.path
-
-
-hklhtml = """
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-
-<html>
-<head>
-<meta charset="utf-8" />
-</head>
-
-<body>
-<script src="ngl.js" type="text/javascript"></script>
-<script src="myjstr.js" type="text/javascript"></script>
-
-<div id="viewport" style="width:100%; height:100%;"></div>
-
-</body></html>
-
-"""
+import libtbx
+import webbrowser, tempfile
 
 
 
-
-class hklview_3d () :
+class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
     self.buffer_factor = 2.0
@@ -46,7 +28,6 @@ class hklview_3d () :
     self.d_min = None
     self.scene = None
     self.animation_time = 0
-    self.jscriptfname = ""
     self.NGLscriptstr = ""
     self.cameratype = "orthographic"
     self.colbinname = ""
@@ -56,6 +37,39 @@ class hklview_3d () :
     self.nbin = 0
     self.websockclient = None
     self.StartWebsocket()
+    tempdir = tempfile.gettempdir()
+    self.hklfname = os.path.join(tempdir, "hkl.htm" )
+    if os.path.isfile(self.hklfname):
+      os.remove(self.hklfname)
+    self.jscriptfname = os.path.join(tempdir, "hkljstr.js")
+    if os.path.isfile(self.jscriptfname):
+      os.remove(self.jscriptfname)
+    self.hklhtml = r"""
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<html>
+<head>
+<meta charset="utf-8" />
+</head>
+
+<body>
+<script src="%s" type="text/javascript"></script>
+
+<script src="%s" type="text/javascript"></script>
+    """
+    self.htmldiv = """
+<div id="viewport" style="width:100\%; height:100\%;"></div>
+
+</body></html>
+
+    """
+
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    # not called unless instantiated with a "with hklview_3d ... " statement
+    self.server.shutdown()
+    if os.path.isfile(self.hklfname):
+      os.remove(self.hklfname)
 
 
   def set_miller_array (self, miller_array, merge=None, details="") :
@@ -380,19 +394,8 @@ mysocket.onmessage = function (e) {
     if self.websockclient:
       self.server.send_message(self.websockclient, msg )
     else:
-      print "Not connected to any websocket client yet"
-      """
-      import webbrowser, tempfile
-      tempdir = tempfile.gettempdir()
-      hklfname = os.path.join(tempdir, "hkl.htm" )
+      self.OpenBrowser()
 
-      if not os.path.isfile(hklfname):
-        with open(hklfname, "w") as f:
-          f.write( hklhtml )
-
-        url = "file:///" + hklfname
-        webbrowser.open(url)
-      """
 
   def SetOpacity(self, bin, alpha):
     if bin > self.nbin:
@@ -401,11 +404,25 @@ mysocket.onmessage = function (e) {
     msg = u"alpha, %d, %f" %(bin, alpha)
     self.SendWebSockMsg(msg)
 
+
   def RedrawNGL(self):
     self.SendWebSockMsg( u"Redraw, NGL" )
 
+
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
     self.SendWebSockMsg( u"Reload, NGL" )
+
+
+  def OpenBrowser(self):
+    NGLlibpath = os.path.join( libtbx.env.under_dist("crys3d", "hklview"), "ngl.js")
+    htmlstr = self.hklhtml %(NGLlibpath, self.jscriptfname)
+    htmlstr += self.htmldiv
+    with open(self.hklfname, "w") as f:
+      f.write( htmlstr )
+    url = "file:///" + self.hklfname
+    print "Writing %s and connecting to its websocket client" %self.hklfname
+    webbrowser.open(url, new=1)
+
 
 
 
