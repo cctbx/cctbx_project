@@ -22,7 +22,7 @@ general_tests = [
   "$D/regression/tls/tst_tls.py",
   "$D/regression/tls/tst_tls_analysis.py",
   "$D/regression/tls/tst_get_t_scheme.py",
-  "$D/regression/tls/tst_tls_refinement_fft.py --comprehensive --random_seed=2679941",
+  ["$D/regression/tls/tst_tls_refinement_fft.py", "--comprehensive", "--random_seed=2679941"],
   "$D/regression/tls/tst_u_tls_vs_u_ens_00.py",
   "$D/regression/tls/tst_u_tls_vs_u_ens_01.py",
   "$D/regression/tls/tst_u_tls_vs_u_ens_02.py",
