@@ -8,6 +8,28 @@ from cctbx.miller import display
 from websocket_server import WebsocketServer
 import threading, math
 from time import sleep
+import os.path
+
+
+hklhtml = """
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<html>
+<head>
+<meta charset="utf-8" />
+</head>
+
+<body>
+<script src="ngl.js" type="text/javascript"></script>
+<script src="myjstr.js" type="text/javascript"></script>
+
+<div id="viewport" style="width:100%; height:100%;"></div>
+
+</body></html>
+
+"""
+
+
 
 
 class hklview_3d () :
@@ -138,7 +160,6 @@ class hklview_3d () :
       spbufttip += "\ndres: %s" %str(roundoff(dres[i])  )
       spbufttip += "\n%s: %s" %(colstr, str(roundoff(data[i]) ) )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-
       positions[ibin].extend( roundoff(list(hklstars)) )
       colours[ibin].extend( roundoff(list(colors[i]), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
@@ -202,6 +223,13 @@ class hklview_3d () :
     }else{
       tooltip.style.display = "none";
     }
+  });
+
+  stage.signals.clicked.add(function (pickingProxy) {
+  if (pickingProxy && (Object.prototype.toString.call(pickingProxy.picker) === '[object Array]'  )){
+    var innerText = pickingProxy.picker[pickingProxy.pid];
+    mysocket.send( innerText);
+  }
   });
 
     """
@@ -335,7 +363,8 @@ mysocket.onmessage = function (e) {
 
 
   def OnWebsocketClientMessage(self, client, server, message):
-    print message
+    if message != "":
+      print message
 
 
   def StartWebsocket(self):
@@ -352,7 +381,18 @@ mysocket.onmessage = function (e) {
       self.server.send_message(self.websockclient, msg )
     else:
       print "Not connected to any websocket client yet"
+      """
+      import webbrowser, tempfile
+      tempdir = tempfile.gettempdir()
+      hklfname = os.path.join(tempdir, "hkl.htm" )
 
+      if not os.path.isfile(hklfname):
+        with open(hklfname, "w") as f:
+          f.write( hklhtml )
+
+        url = "file:///" + hklfname
+        webbrowser.open(url)
+      """
 
   def SetOpacity(self, bin, alpha):
     if bin > self.nbin:
@@ -364,7 +404,7 @@ mysocket.onmessage = function (e) {
   def RedrawNGL(self):
     self.SendWebSockMsg( u"Redraw, NGL" )
 
-  def ReloadNGL(self): # expensive as javascript typically is several Mbytes large
+  def ReloadNGL(self): # expensive as javascript may be several Mbytes large
     self.SendWebSockMsg( u"Reload, NGL" )
 
 

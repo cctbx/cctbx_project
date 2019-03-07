@@ -7,15 +7,18 @@ from __future__ import division
 
 
 
-r""" usage:
+r"""
+Load mtz file for viewing reflections in a webbrowser using NGL.
+Webbrowser input is a javascript file that together with ngl.js displays reflections
+in a browser window. Usage:
 
 from crys3d.hklview import cmdlineframes
 
 # optionally supply output filename for the composed javascript for NGL
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js")
 
-myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.tncs.mtz")
-myHKLview.set_column(3)
+myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.tncs.mtz")
+myHKLview.SetColumn(3)
 myHKLview.SetSphereScale(3)
 myHKLview.SetColumnBinThresholds("asdf", [0, 0.1, 1, 10])
 myHKLview.ExpandToP1(True)
@@ -30,13 +33,13 @@ myHKLview.ShowSlice(False)
 myHKLview.ExpandAnomalous(True)
 
 myHKLview.ShowMissing(True)
-myHKLview.set_space_group_choice(3)
+myHKLview.SetSpaceGroupChoice(3)
 
 myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Phenix\dev-2814-working\modules\phenix_examples\lysozyme-MRSAD\lyso2001_scala1.mtz")
 myHKLview.SetCameraType("persp")
 
 myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Experiments\CRLF3\DLS20151206CRLF3\5840-F11-X1-Hg-SAD-ONsoak\5840-F11-X1_pk_5_5_1_\xia2\dials-run\DataFiles\mx11235v49_x5840F11X1pk551_free.mtz")
-myHKLview.set_column(4)
+myHKLview.SetColumn(4)
 myHKLview.ShowSlice(True, "h", 20)
 
 
@@ -76,7 +79,6 @@ def Inputarg(varname):
 
 
 class settings_window () :
-
   def set_index_span (self, index_span) :
     self._index_span = index_span
 
@@ -100,7 +102,6 @@ class settings_window () :
 
 
 class HKLViewFrame () :
-  #def __init__ (self, jscriptfname=""):
   def __init__ (self, *args, **kwds) :
     self.miller_array = None
     self.spacegroup_choices = None
@@ -131,7 +132,6 @@ class HKLViewFrame () :
       labels = info.label_string()
     if (array.unit_cell() is None) or (array.space_group() is None) :
       raise Sorry("No space group info is present in data")
-
     details = []
     merge = None
     if (not array.is_unique_set_under_symmetry()) :
@@ -214,7 +214,7 @@ class HKLViewFrame () :
       self.current_spacegroup = sg_info
 
 
-  def set_space_group_choice (self, n) :
+  def SetSpaceGroupChoice (self, n) :
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
     self.current_spacegroup = self.spacegroup_choices[n]
@@ -239,7 +239,7 @@ class HKLViewFrame () :
     self.viewer.DrawNGLJavaScript()
 
 
-  def load_reflections_file (self, file_name, set_array=True,
+  def LoadReflectionsFile (self, file_name, set_array=True,
       data_only=False) :
     file_name = to_str(file_name)
     if (file_name != "") :
