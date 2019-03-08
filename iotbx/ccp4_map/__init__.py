@@ -20,6 +20,18 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
     print >> out, prefix + "space group number:  ", self.space_group_number
     print >> out, prefix + "map origin:", self.data.origin()
     print >> out, prefix + "map grid:  ", self.data.all()
+    print >> out, prefix + "pixel size: (%.4f, %.4f, %.4f) " %(
+      self.pixel_sizes())
+
+  def pixel_sizes(self):
+    # Return tuple with pixel size in each direction (normally all the same)
+    cs=self.crystal_symmetry()
+    cell_params=cs.unit_cell().parameters()[:3]
+    map_all=self.data.all()
+    pa=cell_params[0]/map_all[0]
+    pb=cell_params[1]/map_all[1]
+    pc=cell_params[2]/map_all[2]
+    return (pa,pb,pc)
 
   def crystal_symmetry(self,sorry_message_if_incompatible=None):
     # This is "crystal_symmetry" of a box the size of the map that is present

@@ -47,6 +47,7 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
   assert m.space_group_number == 5
   assert m.data.origin() == (0, 0, 0)
   assert m.data.all() == (16, 8, 16)
+  assert approx_equal(m.pixel_sizes(),(5.130937576293945, 4.6817498207092285, 4.352250099182129))
   assert not m.data.is_padded()
   out = StringIO()
   m.show_summary(out=out)
