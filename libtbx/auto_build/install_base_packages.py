@@ -1632,13 +1632,12 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name=PYRTF_PKG,
       pkg_name_label="PyRTF",
       confirm_import_module="PyRTF")
-    # TODO we are patching the source to force it to use the correct backend.
-    # I'm not sure if this is truly necessary or if there's a cleaner way...
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=SEND2TRASH_PKG,
-      pkg_name_label="send2trash",
-      )#confirm_import_module="send2trash")
+      # TODO we are patching the source to force it to use the correct backend.
+      # I'm not sure if this is truly necessary or if there's a cleaner way...
+
+    self.build_python_module_pip(
+      "send2trash", package_version=SEND2TRASH_VERSION,
+    )
 
   # TODO
   def write_dispatcher_include(self):

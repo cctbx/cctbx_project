@@ -81,6 +81,7 @@ PYTEST_VERSION = "3.10.1"
 PYTEST_XDIST_VERSION = "1.26.1"
 SCIPY_VERSION = "1.2.1"
 SCIKIT_LEARN_VERSION = "0.20.2"
+SEND2TRASH_VERSION = "1.5.0"
 SIX_VERSION = "1.12.0"
 SPHINX_VERSION = "1.8.4" # for documentation
 TABULATE_VERSION = "0.8.3"
@@ -130,8 +131,6 @@ if (sys.platform.startswith("linux")):
     MATPLOTLIB_PKG = "matplotlib-1.5.1.tar.gz"
 
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
-# https://pypi.python.org/pypi/Send2Trash
-SEND2TRASH_PKG = "Send2Trash-1.5.0.tar.gz"
 
 # Windows precompiled compiled base packages
 WIN64PYTHON_PKG = "Python2.7.15_x86_64_plus_relocatable.zip"
