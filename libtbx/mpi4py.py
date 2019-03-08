@@ -17,8 +17,8 @@ class mpiCommEmulator(object):
       return data
     else:
       assert False, "Unsupported MPI reduce operation %s"%(operation)
-  def allreduce(self, data, operation, root):
-    return self.reduce(data, operation, root)
+  def allreduce(self, data, operation):
+    return self.reduce(data, operation, 0)
   def alltoall(self, items):
     return items
   def gather(self, item, root):

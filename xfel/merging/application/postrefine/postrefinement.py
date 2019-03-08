@@ -209,7 +209,7 @@ class postrefinement(worker):
     MPI = self.mpi_helper.MPI
 
     # Collect all rejection reasons from all ranks. Use allreduce to let each rank have all reasons.
-    all_reasons  = comm.allreduce(all_reasons, MPI.SUM, 0)
+    all_reasons  = comm.allreduce(all_reasons, MPI.SUM)
     all_reasons = set(all_reasons)
 
     # Now that each rank has all reasons from all ranks, we can treat the reasons in a uniform way.
