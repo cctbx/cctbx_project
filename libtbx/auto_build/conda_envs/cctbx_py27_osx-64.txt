@@ -22,7 +22,7 @@ https://conda.anaconda.org/conda-forge/osx-64/libtiff-4.0.10-h79f4b77_1001.tar.b
 https://conda.anaconda.org/conda-forge/osx-64/msgpack-c-3.1.1-h372acbd_1000.tar.bz2#48df0efe79d9a52da1409c67433bfec3
 https://conda.anaconda.org/conda-forge/osx-64/ncurses-6.1-h0a44026_1002.tar.bz2#ae7e7c80e52fc72adc0113369a4ebc62
 https://conda.anaconda.org/conda-forge/osx-64/openblas-0.3.3-hdc02c5d_1001.tar.bz2#077de966f4b3151011d6ba765a2acbf2
-https://conda.anaconda.org/conda-forge/osx-64/openssl-1.0.2q-h1de35cc_0.tar.bz2#2338990ecae9fead6236c41ccd145081
+https://conda.anaconda.org/conda-forge/osx-64/openssl-1.0.2r-h1de35cc_0.tar.bz2#c2c06e3d61b56cb379ec286555b3f7e8
 https://conda.anaconda.org/conda-forge/osx-64/tk-8.6.9-ha441bb4_1000.tar.bz2#6220d30d09a68259d1980b06a733c325
 https://conda.anaconda.org/conda-forge/osx-64/blas-1.1-openblas.tar.bz2#794dbf30b6f568889ba6b04a50fd7989
 https://conda.anaconda.org/conda-forge/osx-64/freetype-2.9.1-h597ad8a_1005.tar.bz2#1a3a4b07481ace672e06326b4095f298
@@ -39,7 +39,7 @@ https://conda.anaconda.org/conda-forge/noarch/backports-1.0-py_2.tar.bz2#0da16b2
 https://conda.anaconda.org/conda-forge/noarch/backports_abc-0.5-py_1.tar.bz2#6ac8cc52b55791b066dc43469bbaf8f2
 https://conda.anaconda.org/conda-forge/osx-64/certifi-2018.11.29-py27_1000.tar.bz2#fc3c6685746db34163126846abd449aa
 https://conda.anaconda.org/conda-forge/osx-64/chardet-3.0.4-py27_1003.tar.bz2#1e99943b16677662d46061081cbfee6f
-https://conda.anaconda.org/conda-forge/osx-64/cython-0.29.5-py27h0a44026_0.tar.bz2#7f2b745b5d09a3db9abf1ef8a748341c
+https://conda.anaconda.org/cctbx/osx-64/cython-0.28.6-py27h0a44026_0.tar.bz2#eb0a96699e991831184fe1022523638a
 https://conda.anaconda.org/conda-forge/noarch/decorator-4.3.2-py_0.tar.bz2#fb879b2b55fccc7d86d00700a722a936
 https://conda.anaconda.org/conda-forge/osx-64/docutils-0.14-py27_1001.tar.bz2#b40a0d92892eba5ecf91e9fce740fb74
 https://conda.anaconda.org/conda-forge/osx-64/enum34-1.1.6-py27_1001.tar.bz2#66b9d9e195edc11b6aa1d8a225bbba1f

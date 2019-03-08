@@ -12,7 +12,7 @@ https://repo.anaconda.com/pkgs/main/win-64/mkl-2019.1-144.tar.bz2#429418273137ee
 https://conda.anaconda.org/conda-forge/win-64/vc-9-0.tar.bz2#a914b67a66d15adde2f00cc47a9d454d
 https://conda.anaconda.org/conda-forge/win-64/blosc-1.15.1-hc56fc5f_1002.tar.bz2#7627853f1fda2e9b9883a8270353b71c
 https://conda.anaconda.org/conda-forge/win-64/jpeg-9c-h0c8e037_1001.tar.bz2#6fda01fefb6ea9de2db6332c5faeb763
-https://conda.anaconda.org/conda-forge/win-64/openssl-1.0.2q-h0c8e037_0.tar.bz2#87421a66d3882dcf82deba1a1394a6ef
+https://conda.anaconda.org/conda-forge/win-64/openssl-1.0.2r-h0c8e037_0.tar.bz2#c1d5060d9094e261df2ce560f90a9b66
 https://conda.anaconda.org/conda-forge/win-64/python-2.7.15-h2880e7c_1006.tar.bz2#df0056ce188a4e94dfd30e9261b532af
 https://conda.anaconda.org/conda-forge/win-64/tk-8.6.9-h0c8e037_1000.tar.bz2#b297bb0c5118a9ce7b4fb9d34b45f902
 https://conda.anaconda.org/conda-forge/win-64/zlib-1.2.11-h3cc03e0_1004.tar.bz2#7a4fd840544bafe992955ab18975056b
@@ -26,7 +26,7 @@ https://conda.anaconda.org/conda-forge/noarch/backports_abc-0.5-py_1.tar.bz2#6ac
 https://conda.anaconda.org/conda-forge/win-64/certifi-2018.11.29-py27_1000.tar.bz2#d9ac60fc0c48105c16e4f0c72478b8bd
 https://conda.anaconda.org/conda-forge/win-64/chardet-3.0.4-py27_1003.tar.bz2#2024a5efb80af50607b0c935794c9f08
 https://conda.anaconda.org/conda-forge/noarch/colorama-0.4.1-py_0.tar.bz2#0251cf75b9e1d570453fdb1d5e7e890a
-https://conda.anaconda.org/conda-forge/win-64/cython-0.29.5-py27hc56fc5f_0.tar.bz2#dcb576065ef4cd3ba5c6411543b60e0c
+https://conda.anaconda.org/cctbx/win-64/cython-0.28.6-py27hc56fc5f_0.tar.bz2#b9aff17794d47292e6ad7a60ebb8edf7
 https://conda.anaconda.org/conda-forge/noarch/decorator-4.3.2-py_0.tar.bz2#fb879b2b55fccc7d86d00700a722a936
 https://conda.anaconda.org/conda-forge/win-64/docutils-0.14-py27_1001.tar.bz2#1137dd14b874a0c62c695880ddd36d8b
 https://conda.anaconda.org/conda-forge/win-64/enum34-1.1.6-py27_1001.tar.bz2#f81b1259e54675210fb7b9e503a1fcb3
