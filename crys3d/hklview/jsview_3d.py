@@ -44,6 +44,8 @@ class hklview_3d:
     self.jscriptfname = os.path.join(tempdir, "hkljstr.js")
     if os.path.isfile(self.jscriptfname):
       os.remove(self.jscriptfname)
+    if kwds.has_key('jscriptfname'):
+      self.jscriptfname = kwds['jscriptfname']
     self.hklhtml = r"""
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 
@@ -373,7 +375,7 @@ mysocket.onmessage = function (e) {
 
   def OnConnectWebsocketClient(self, client, server):
     self.websockclient = client
-    print "got a new client:", self.websockclient
+    #print "got a new client:", self.websockclient
 
 
   def OnWebsocketClientMessage(self, client, server, message):

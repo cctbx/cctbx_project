@@ -10,7 +10,7 @@ from __future__ import division
 r"""
 Load mtz file for viewing reflections in a webbrowser using NGL.
 Webbrowser input is a javascript file that together with ngl.js displays reflections
-in a browser window. Usage:
+positioned in reciprocal space using a webbrowser. Usage:
 
 from crys3d.hklview import cmdlineframes
 
@@ -106,10 +106,7 @@ class HKLViewFrame () :
     self.miller_array = None
     self.spacegroup_choices = None
     self.settings = display.settings()
-
-    self.viewer = view_3d.hklview_3d( settings=self.settings )
-    if kwds.has_key('jscriptfname'):
-      self.viewer.jscriptfname = kwds['jscriptfname']
+    self.viewer = view_3d.hklview_3d( settings=self.settings, kwds=kwds )
     self.viewer.set_miller_array(self.viewer.miller_array)
 
 
