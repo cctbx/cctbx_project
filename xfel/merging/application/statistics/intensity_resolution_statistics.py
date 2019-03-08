@@ -110,6 +110,10 @@ class intensity_table(object):
 
 class intensity_resolution_statistics(worker):
   '''Calculates hkl intensity statistics for resolution bins'''
+
+  def __repr__(self):
+    return 'Intensity resolution statistics'
+
   def run(self, experiments, reflections):
     self.logger.log_step_time("INTENSITY_STATISTICS")
 

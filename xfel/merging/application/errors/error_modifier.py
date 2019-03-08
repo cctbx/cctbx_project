@@ -5,6 +5,9 @@ from xfel.merging.application.reflection_table_utils import reflection_table_uti
 
 class error_modifier(worker):
 
+  def __repr__(self):
+    return 'Adjust intensity errors'
+
   def run(self, experiments, reflections):
     '''Modify intensity errors according to an error model'''
     self.logger.log_step_time("ERROR_MODIFIER")

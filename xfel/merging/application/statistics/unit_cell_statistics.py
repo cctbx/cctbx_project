@@ -5,6 +5,9 @@ from six.moves import cStringIO as StringIO
 
 class unit_cell_statistics(worker):
 
+  def __repr__(self):
+    return 'Unit cell statistics'
+
   def run(self, experiments, reflections):
     self.logger.log_step_time("UNIT_CELL_STATISTICS")
 

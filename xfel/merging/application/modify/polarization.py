@@ -10,6 +10,10 @@ class polarization(worker):
   Modifies the intensity.sum.value and intensity.sum.variance columns
   in place.
   """
+
+  def __repr__(self):
+    return 'Apply polarization correction'
+
   def run(self, experiments, reflections):
 
     self.logger.log_step_time("POLARIZATION_CORRECTION")

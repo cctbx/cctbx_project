@@ -19,6 +19,9 @@ except ImportError:
 class hkl_group(worker):
   '''For each asu hkl, gather all of its measurements from all ranks at a single rank, while trying to evenly distribute asu hkl's over the ranks.'''
 
+  def __repr__(self):
+    return "Group symmetry-reduced hkl's"
+
   def distribute_reflection_table(self):
     '''Create a reflection table for storing reflections distributed over hkl chunks'''
     table = flex.reflection_table()

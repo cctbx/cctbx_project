@@ -18,6 +18,9 @@ class worker(object):
     # create MPI helper
     self.mpi_helper = mpi_helper()
 
+  def __repr__(self):
+    return 'Unknown'
+
   def validate(self):
     """ Override to perform any validation of the input parameters """
     pass

@@ -3,6 +3,9 @@ from xfel.merging.application.worker import worker
 
 class resolution_binner(worker):
 
+  def __repr__(self):
+    return 'Set up resolution bins'
+
   def run(self, experiments, reflections):
     '''Set up resolution bins; assign bin number to each hkl in the full miller set'''
 

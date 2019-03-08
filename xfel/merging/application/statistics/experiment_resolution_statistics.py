@@ -7,6 +7,10 @@ from xfel.merging.application.reflection_table_utils import reflection_table_uti
 
 class experiment_resolution_statistics(worker):
   '''Calculates experiments accepted vs resolution bins'''
+
+  def __repr__(self):
+    return 'Lattices resolution'
+
   def run(self, experiments, reflections):
 
     self.logger.log_step_time("EXPERIMENT_RESOLUTION_STATS")
@@ -43,7 +47,7 @@ class experiment_resolution_statistics(worker):
   def get_formatted_table(self, experiment_count_per_bin, total_experiment_count):
     '''Produce a table with experiment count over resolution bins'''
 
-    table_data = [["Bin", "Resolution Range", "# images", "%accept"]]
+    table_data = [["Bin", "Resolution Range", "Lattices", "Accepted (%)"]]
 
     for i_bin in self.resolution_binner.range_used():
       col_legend = '%-13s' % self.resolution_binner.bin_legend(

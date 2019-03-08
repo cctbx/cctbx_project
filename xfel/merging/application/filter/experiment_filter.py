@@ -6,6 +6,9 @@ from dxtbx.model.experiment_list import ExperimentList
 class experiment_filter(worker):
   '''Reject experiments based on various criteria'''
 
+  def __repr__(self):
+    return 'Filter experiments'
+
   def check_unit_cell(self, experiment):
 
     experiment_unit_cell = experiment.crystal.get_unit_cell()

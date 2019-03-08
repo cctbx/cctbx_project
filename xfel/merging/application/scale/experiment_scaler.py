@@ -22,6 +22,9 @@ class scaling_result(object):
 class experiment_scaler(worker):
   '''Scales experiment reflection intensities to the reference, or model, intensities'''
 
+  def __repr__(self):
+    return 'Scaling'
+
   def run(self, experiments, reflections):
 
     self.logger.log_step_time("SCALE_FRAMES")

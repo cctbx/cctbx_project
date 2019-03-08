@@ -14,6 +14,9 @@ from six.moves import cStringIO as StringIO
 
 class postrefinement(worker):
 
+  def __repr__(self):
+    return 'Postrefinement'
+
   def run(self, experiments, reflections):
 
     self.logger.log_step_time("POSTREFINEMENT")

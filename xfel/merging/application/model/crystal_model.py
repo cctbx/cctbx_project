@@ -9,6 +9,9 @@ from cctbx.crystal import symmetry
 
 class crystal_model(worker):
 
+  def __repr__(self):
+    return 'Build crystal model'
+
   def run(self, experiments, reflections):
     '''Create a model for the crystal'''
     self.logger.log_step_time("CREATE_CRYSTAL_MODEL")

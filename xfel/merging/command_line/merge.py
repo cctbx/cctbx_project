@@ -86,9 +86,23 @@ class Script(object):
 
     # Do the work
     experiments = reflections = None
+    step = 0
     while(workers):
       worker = workers.pop(0)
-      #print (type(worker).__name__)
+
+      # Log worker name, i.e. execution step name
+      step += 1
+      if step > 1:
+        self.mpi_logger.log('')
+      step_desc = "STEP %d: %s"%(step, worker)
+      self.mpi_logger.log(step_desc)
+
+      if self.mpi_helper.rank == 0:
+        if step > 1:
+          self.mpi_logger.main_log('')
+        self.mpi_logger.main_log(step_desc)
+
+      # Execute worker
       experiments, reflections = worker.run(experiments, reflections)
 
     self.mpi_logger.log_step_time("TOTAL", True)

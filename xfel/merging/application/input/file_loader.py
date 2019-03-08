@@ -56,6 +56,9 @@ from xfel.merging.application.input.data_counter import data_counter
 class simple_file_loader(worker):
   '''A class for running the script.'''
 
+  def __repr__(self):
+    return 'Read experiments and data'
+
   def get_list(self):
     """ Read the list of json/reflection table pickle pairs """
     lister = file_lister(self.params)

@@ -5,6 +5,8 @@ class reflection_table_editor(worker):
   """
   Add and/or remove columns in the reflection table
   """
+  def __repr__(self):
+    return 'Add/remove columns in reflection table'
 
   def add_asu_miller_indices_column(self, experiments, reflections):
     '''Add a "symmetry-reduced hkl" column to the reflection table'''
@@ -51,3 +53,4 @@ class reflection_table_editor(worker):
     self.logger.log_step_time("PRUNE_COLUMNS", True)
 
     return experiments, reflections
+

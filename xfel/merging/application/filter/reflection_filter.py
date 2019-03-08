@@ -11,6 +11,9 @@ from six.moves import cStringIO as StringIO
 class reflection_filter(worker):
   '''Reject individual reflections based on various criteria'''
 
+  def __repr__(self):
+    return 'Filter reflections'
+
   def run(self, experiments, reflections):
     if 'significance_filter' in self.params.select.algorithm:
       experiments, reflections = self.apply_significance_filter(experiments, reflections)

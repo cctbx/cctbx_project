@@ -21,6 +21,9 @@ class merger(worker):
   Merges multiple measurements of symmetry-reduced hkl's.
   """
 
+  def __repr__(self):
+    return "Merge multiple measurements of symmetry-reduced hkl's"
+
   def merging_reflection_table(self):
     '''Create a reflection table for storing merged hkl's'''
     table = flex.reflection_table()

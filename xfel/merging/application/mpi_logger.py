@@ -14,7 +14,7 @@ class mpi_logger(object):
       self.rank_log_file_path = None
       self.timing_file_path = None
 
-    self.log_buffer = ''
+    self.log_buffer = self.main_log_buffer = '' # the buffer is needed to store the output while the file path isn't known yet
 
     self.timing_table = dict()
 
@@ -36,13 +36,12 @@ class mpi_logger(object):
   def log(self, message):
     '''Log a rank message'''
 
-    # prepend the message with the rank index - helpful for grep-ping
-    rank_message = "\nRank %d: %s"%(self.mpi_helper.rank, message)
-
+    # Prepend the message with the rank index - helpful for grep-ping
+    rank_message = "Rank %d: %s\n"%(self.mpi_helper.rank, message)
     self.log_buffer += rank_message
 
     if self.rank_log_file_path == None:
-      return
+      return # the file path hasn't been parsed yet, so just keep the output in the buffer
 
     log_file_handle = open(self.rank_log_file_path, 'a')
     log_file_handle.write(self.log_buffer)
@@ -52,14 +51,14 @@ class mpi_logger(object):
   def main_log(self, message):
     '''Log a message to the main log file'''
 
+    self.main_log_buffer += (message + '\n')
+
     if self.main_log_file_path == None:
       return
 
-    self.log_buffer = "\n" + message
-
     log_file_handle = open(self.main_log_file_path, 'a')
-    log_file_handle.write(self.log_buffer)
-    self.log_buffer = ''
+    log_file_handle.write(self.main_log_buffer)
+    self.main_log_buffer = ''
     log_file_handle.close()
 
   def log_step_time(self, step, step_finished=False):
