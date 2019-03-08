@@ -26,6 +26,7 @@ namespace {
       getinitargs(w_t const& self)
     {
       return boost::python::make_tuple(self.i_seqs,
+        self.sym_ops,
         self.volume_ideal,
         self.both_signs,
         self.weight,
@@ -39,6 +40,16 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("chirality_proxy", no_init)
+        .def(init<af::tiny<unsigned, 4> const&,
+          optional_container<af::shared<sgtbx::rt_mx> > const&,
+          double, bool, double,
+          unsigned char>((
+          arg("i_seqs"),
+          arg("sym_ops"),
+          arg("volume_ideal"),
+          arg("both_signs"),
+          arg("weight"),
+          arg("origin_id")=0)))
         .def(init<af::tiny<unsigned, 4> const&, double, bool, double,
           unsigned char>((
           arg("i_seqs"),
@@ -52,6 +63,7 @@ namespace {
         .def("scale_weight", &w_t::scale_weight, (arg("factor")))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
+        .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
         .def_readonly("volume_ideal", &w_t::volume_ideal)
         .def_readonly("both_signs", &w_t::both_signs)
         .def_readwrite("weight", &w_t::weight)
@@ -119,10 +131,15 @@ namespace {
            arg("volume_ideal"),
            arg("both_signs"),
            arg("weight"))))
+        .def(init<uctbx::unit_cell const&,
+            af::const_ref<scitbx::vec3<double> > const&,
+            chirality_proxy const&>((
+            arg("unit_cell"), arg("sites_cart"), arg("proxy"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   chirality_proxy const&>(
           (arg("sites_cart"), arg("proxy"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
+        .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
         .def_readonly("volume_ideal", &w_t::volume_ideal)
         .def_readonly("both_signs", &w_t::both_signs)
         .def_readonly("weight", &w_t::weight)
@@ -142,12 +159,47 @@ namespace {
     using namespace boost::python;
     chirality_proxy_wrappers::wrap();
     chirality_wrappers::wrap();
-    def("chirality_deltas", chirality_deltas,
+    def("chirality_deltas",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<chirality_proxy> const&))
+        chirality_deltas,
       (arg("sites_cart"), arg("proxies")));
-    def("chirality_residuals", chirality_residuals,
+    def("chirality_residuals",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<chirality_proxy> const&))
+        chirality_residuals,
       (arg("sites_cart"), arg("proxies")));
-    def("chirality_residual_sum", chirality_residual_sum,
+    def("chirality_residual_sum",
+      (double(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<chirality_proxy> const&,
+        af::ref<scitbx::vec3<double> > const&))
+        chirality_residual_sum,
       (arg("sites_cart"), arg("proxies"), arg("gradient_array")));
+    def("chirality_deltas",
+      (af::shared<double>(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<chirality_proxy> const&))
+        chirality_deltas,
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
+    def("chirality_residuals",
+      (af::shared<double>(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<chirality_proxy> const&))
+        chirality_residuals,
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies")));
+    def("chirality_residual_sum",
+      (double(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<chirality_proxy> const&,
+        af::ref<scitbx::vec3<double> > const&))
+        chirality_residual_sum,
+      (arg("unit_cell"), arg("sites_cart"), arg("proxies"), arg("gradient_array")));
   }
 
 } // namespace <anonymous>

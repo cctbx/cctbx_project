@@ -31,8 +31,8 @@ public:
     affine_scalar_parameter(u_0, a_0, u_1, a_1, b)
   {}
 
-  affine_asu_occupancy_parameter(af::const_ref<scalar_parameter *> const &u,
-                                 af::const_ref<double> const &a,
+  affine_asu_occupancy_parameter(af::shared<scalar_parameter *> const &u,
+                                 af::shared<double> const &a,
                                  double b,
                                  scatterer_type *scatterer)
   : parameter(u.size()),

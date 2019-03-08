@@ -44,5 +44,7 @@ if (op.isfile(lapack_for_a)):
 for src in fem_source:
   shared_obj.extend(env_fem.SharedObject(source=src))
 
+env_etc.enable_fast_linalg(env)
+
 # TODO env_etc.enable_more_warnings(env=env)
 env.SharedLibrary(target="#lib/scitbx_linalg_ext", source=shared_obj)

@@ -1334,11 +1334,17 @@ class _(boost.python.injector, chirality):
 
 class _(boost.python.injector, shared_chirality_proxy):
 
-  def deltas(self, sites_cart):
-    return chirality_deltas(sites_cart=sites_cart, proxies=self)
+  def deltas(self, sites_cart, unit_cell=None):
+    if unit_cell is None:
+      return chirality_deltas(sites_cart=sites_cart, proxies=self)
+    else:
+      return chirality_deltas(unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
 
-  def residuals(self, sites_cart):
-    return chirality_residuals(sites_cart=sites_cart, proxies=self)
+  def residuals(self, sites_cart, unit_cell=None):
+    if unit_cell is None:
+      return chirality_residuals(sites_cart=sites_cart, proxies=self)
+    else:
+      return chirality_residuals(unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
 
   def show_histogram_of_deltas(self,
         sites_cart,
@@ -1356,6 +1362,7 @@ class _(boost.python.injector, shared_chirality_proxy):
         by_value,
         sites_cart,
         site_labels=None,
+        unit_cell=None,
         proxy_label="Chirality",
         f=None,
         prefix="",
@@ -1365,7 +1372,7 @@ class _(boost.python.injector, shared_chirality_proxy):
         proxy_type=chirality,
         proxy_label=proxy_label,
         item_label="chirality",
-        by_value=by_value, unit_cell=None, sites_cart=sites_cart,
+        by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
         origin_id=origin_id)
 

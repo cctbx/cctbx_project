@@ -109,9 +109,6 @@ class iterations(object):
   n_max_iterations = 100
   gradient_threshold = None
   step_threshold = None
-  damping_value = 0.0007
-  max_shift_over_esd = 15
-  convergence_as_shift_over_esd = 1e-5
   verbose_iterations = False
 
   def __init__(self, non_linear_ls, **kwds):
@@ -179,6 +176,8 @@ class naive_iterations(iterations):
 
 class naive_iterations_with_damping(iterations):
 
+  damping_value = 0.0007
+
   def do(self):
     self.n_iterations = 0
     do_last = False
@@ -197,7 +196,11 @@ class naive_iterations_with_damping(iterations):
     return "pure Gauss-Newton with damping"
 
 
-class naive_iterations_with_damping_and_shift_limit(iterations):
+class naive_iterations_with_damping_and_shift_limit(
+  naive_iterations_with_damping):
+
+  max_shift_over_esd = 15
+  convergence_as_shift_over_esd = 1e-5
 
   def do(self):
     self.n_iterations = 0

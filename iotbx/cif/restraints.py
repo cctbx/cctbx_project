@@ -12,8 +12,10 @@ def add_to_cif_block(cif_block, xray_structure,
                      bond_proxies=None,
                      angle_proxies=None,
                      dihedral_proxies=None,
+                     chirality_proxies=None,
                      bond_similarity_proxies=None,
                      rigid_bond_proxies=None,
+                     rigu_proxies=None,
                      adp_similarity_proxies=None,
                      isotropic_adp_proxies=None,
                      adp_u_eq_similarity_proxies=None,
@@ -25,11 +27,15 @@ def add_to_cif_block(cif_block, xray_structure,
     cif_block.add_loop(angles_as_cif_loop(xray_structure, angle_proxies))
   if dihedral_proxies is not None:
     cif_block.add_loop(dihedrals_as_cif_loop(xray_structure, dihedral_proxies))
+  if chirality_proxies is not None:
+    cif_block.add_loop(chirality_as_cif_loop(xray_structure, chirality_proxies))
   if bond_similarity_proxies is not None:
     loops = bond_similarity_as_cif_loops(xray_structure, bond_similarity_proxies)
     for loop in loops: cif_block.add_loop(loop)
   if rigid_bond_proxies is not None:
     cif_block.add_loop(rigid_bond_as_cif_loop(xray_structure, rigid_bond_proxies))
+  if rigu_proxies is not None:
+    cif_block.add_loop(rigu_as_cif_loop(xray_structure, rigu_proxies))
   if adp_similarity_proxies is not None:
     cif_block.add_loop(
       adp_similarity_as_cif_loop(xray_structure, adp_similarity_proxies))
@@ -156,6 +162,47 @@ def dihedrals_as_cif_loop(xray_structure, proxies):
                   fmt % restraint.delta))
   return loop
 
+def chirality_as_cif_loop(xray_structure, proxies):
+  space_group_info = sgtbx.space_group_info(group=xray_structure.space_group())
+  unit_cell = xray_structure.unit_cell()
+  sites_cart = xray_structure.sites_cart()
+  site_labels = xray_structure.scatterers().extract_labels()
+  fmt = "%.4f"
+  loop = model.loop(header=(
+    "_restr_chirality_atom_site_label_1",
+    "_restr_chirality_atom_site_label_2",
+    "_restr_chirality_atom_site_label_3",
+    "_restr_chirality_atom_site_label_4",
+    "_restr_chirality_site_symmetry_1",
+    "_restr_chirality_site_symmetry_2",
+    "_restr_chirality_site_symmetry_3",
+    "_restr_chirality_site_symmetry_4",
+    "_restr_chirality_volume_target",
+    "_restr_chirality_weight_param",
+    "_restr_chirality_diff",
+  ))
+  unit_mxs = [sgtbx.rt_mx()]*4
+  for proxy in proxies:
+    restraint = geometry_restraints.chirality(
+      unit_cell=unit_cell,
+      sites_cart=sites_cart,
+      proxy=proxy)
+    sym_ops = proxy.sym_ops
+    if sym_ops is None: sym_ops = unit_mxs
+    i_seqs = proxy.i_seqs
+    loop.add_row((site_labels[i_seqs[0]],
+                  site_labels[i_seqs[1]],
+                  site_labels[i_seqs[2]],
+                  site_labels[i_seqs[3]],
+                  space_group_info.cif_symmetry_code(sym_ops[0]),
+                  space_group_info.cif_symmetry_code(sym_ops[1]),
+                  space_group_info.cif_symmetry_code(sym_ops[2]),
+                  space_group_info.cif_symmetry_code(sym_ops[3]),
+                  fmt % restraint.volume_ideal,
+                  fmt % math.sqrt(1/restraint.weight),
+                  fmt % restraint.delta))
+  return loop
+
 def bond_similarity_as_cif_loops(xray_structure, proxies):
   space_group_info = sgtbx.space_group_info(group=xray_structure.space_group())
   unit_cell = xray_structure.unit_cell()
@@ -223,6 +270,33 @@ def rigid_bond_as_cif_loop(xray_structure, proxies):
                   fmt % math.sqrt(1/proxy.weight),
                   fmt % (0.5*(restraint.z_12()+restraint.z_21())),
                   fmt % restraint.delta_z()))
+  return loop
+
+def rigu_as_cif_loop(xray_structure, proxies):
+  unit_cell = xray_structure.unit_cell()
+  sites_cart = xray_structure.sites_cart()
+  u_cart = xray_structure.scatterers().extract_u_cart(unit_cell)
+  site_labels = xray_structure.scatterers().extract_labels()
+  fmt = "%.6f"
+  loop = model.loop(header=(
+    "_restr_RIGU_atom_site_label_1",
+    "_restr_RIGU_atom_site_label_2",
+    "_restr_RIGU_target_weight_param",
+    "_restr_RIGU_U13_diff",
+    "_restr_RIGU_U23_diff",
+    "_restr_RIGU_U33_diff"
+  ))
+  for proxy in proxies:
+    restraint = adp_restraints.rigu(
+      adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart),
+      proxy=proxy)
+    loop.add_row((site_labels[proxy.i_seqs[0]],
+                  site_labels[proxy.i_seqs[1]],
+                  fmt % math.sqrt(1/proxy.weight),
+                  fmt % restraint.delta_13(),
+                  fmt % restraint.delta_23(),
+                  fmt % restraint.delta_33()
+                 ))
   return loop
 
 def adp_similarity_as_cif_loop(xray_structure, proxies):
@@ -351,4 +425,3 @@ def adp_volume_similarity_as_cif_loops(xray_structure, proxies):
                     fmt % restraint.deltas()[i],
                     class_id))
   return class_loop, loop
-
