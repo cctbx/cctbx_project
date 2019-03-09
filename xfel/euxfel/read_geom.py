@@ -70,7 +70,7 @@ def read_geom(geom_file):
   # example of mapping entry: mapping['p0a0'] = {'asics': ('p0', 8), 'quadrants': ('q0', 32)}
   parents = {}
   for panel in panels:
-    parents[panel] = [mapping[panel][k][0] for k in sorted(mapping['p0a0'], key = lambda x: x[1], reverse = True)]
+    parents[panel] = [mapping[panel][k][0] for k in sorted(mapping[panel], key = lambda x: x[1], reverse = True)]
   # example of parents entry:  parents['p0a0'] = ['q0', 'p0']
   # IE parents are listed in reverse order of immediacy (p0 is the parent of p0a0 and q0 is the parent of p0)
 
@@ -155,18 +155,26 @@ def run(args):
 
   hierarchy = read_geom(params.geom_file)
 
-# Plot the detector model highlighting the hierarchical structure of the AGIPD detector
-  def plot_node(cummulative, node):
+  # Plot the detector model highlighting the hierarchical structure of the detector
+  def plot_node(cummulative, node, name):
     if isinstance(node, panel_group):
       plt.arrow(cummulative[0],cummulative[1],node.local_origin[0],node.local_origin[1])
-      for child in node.values():
-        plot_node(cummulative+node.local_origin, child)
+      for childname, child in node.iteritems():
+        plot_node(cummulative+node.local_origin, child, childname)
     else:
       plt.arrow(cummulative[0],cummulative[1],node['local_origin'][0],node['local_origin'][1])
 
+      ori = node['origin']
+      fast_at_zero = node['fast'] * node['pixel_size'] * (int(node['max_fs']) - int(node['min_fs']) + 1)
+      slow_at_zero = node['slow'] * node['pixel_size'] * (int(node['max_ss']) - int(node['min_ss']) + 1)
+      plt.arrow(ori[0], ori[1], fast_at_zero[0], fast_at_zero[1], color='blue')
+      plt.arrow(ori[0], ori[1], slow_at_zero[0], slow_at_zero[1], color='red')
+
+      plt.text(ori[0], ori[1], name)
+
   if params.show_plot:
     from matplotlib import pyplot as plt
-    plot_node(col((0,0,0)), hierarchy)
+    plot_node(col((0,0,0)), hierarchy, 'root')
     plt.xlim(-200,200)
     plt.ylim(200,-200)
 
