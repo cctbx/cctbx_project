@@ -2,7 +2,6 @@
 #include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/object.hpp>
-#include <boost/filesystem.hpp>
 
 #include <fast_linalg/environment.h>
 #include <fast_linalg/lapacke.h>
