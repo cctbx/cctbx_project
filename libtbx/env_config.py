@@ -17,9 +17,6 @@ import re
 import site
 import sys
 import sysconfig
-
-import libtbx.pkg_utils
-
 op = os.path
 
 if os.environ.get('LIBTBX_WINGIDE_DEBUG'):
@@ -1831,8 +1828,12 @@ selfx:
       module.process_command_line_directories()
       # Reload the libtbx_config in case dependencies have changed
       module.process_libtbx_config()
+
     # Resolve python dependencies in advance of potential use in refresh scripts
-    libtbx.pkg_utils.resolve_module_python_dependencies(self.module_list)
+    # Lazy-load the import here as we might not have an environment before this
+    from . import pkg_utils
+    pkg_utils.resolve_module_python_dependencies(self.module_list)
+
     for path in self.pythonpath:
       sys.path.insert(0, abs(path))
     for module in self.module_list:
