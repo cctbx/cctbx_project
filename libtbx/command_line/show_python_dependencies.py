@@ -214,7 +214,7 @@ if __name__ == "__main__":
             to_action.append(requirement)
 
     # Decide how to do output
-    if normal_output:
+    if normal_output and rows:
         _print_table(rows)
 
         if to_action:
@@ -227,6 +227,8 @@ if __name__ == "__main__":
                     + [_shell_quote_requirement(req) for req in to_action]
                 )
             )
+    elif normal_output and not rows:
+        print("No dependencies found.")
     elif args.all:
         print(" ".join(_shell_quote_requirement(x) for x in requirements))
     elif args.actions:
