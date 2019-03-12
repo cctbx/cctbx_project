@@ -885,7 +885,19 @@ class manager(object):
       output_cs = True,
       additional_blocks = None,
       align_columns = False,
+      origin_shift_cart = None,
       do_not_shift_back = False):
+
+    if origin_shift_cart:
+      return self.shift_origin(
+        origin_shift_cart=origin_shift_cart).model_as_mmcif(
+        cif_block_name=cif_block_name,
+        output_cs=output_cs,
+        additional_blocks=additional_blocks,
+        align_columns=align_columns,
+        do_not_shift_back=do_not_shift_back,
+        origin_shift_cart=None)
+
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
