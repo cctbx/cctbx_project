@@ -759,13 +759,32 @@ class manager(object):
     return hierarchy_to_output
 
 
+  def shift_origin(self, origin_shift_cart=None):
+    if not origin_shift_cart or origin_shift_cart==(0,0,0):
+      return self.deep_copy()
+    else:
+      new_model=self.deep_copy()
+      sites_cart=new_model.get_hierarchy().atoms().extract_xyz()
+      sites_cart+=origin_shift_cart
+      new_model.set_sites_cart(sites_cart)
+      return new_model
+
   def model_as_pdb(self,
       output_cs = True,
       atoms_reset_serial_first_value=None,
-      do_not_shift_back = False):
+      do_not_shift_back = False,
+      origin_shift_cart=None):
     """
     move all the writing here later.
     """
+
+    if origin_shift_cart:
+      return self.shift_origin(
+        origin_shift_cart=origin_shift_cart).model_as_pdb(output_cs=output_cs,
+        atoms_reset_serial_first_value=atoms_reset_serial_first_value,
+        do_not_shift_back=do_not_shift_back,
+        origin_shift_cart=None)
+
     if do_not_shift_back and self._shift_manager is None:
       do_not_shift_back = False
     cs_to_output = self._figure_out_cs_to_output(

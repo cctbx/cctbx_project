@@ -245,7 +245,7 @@ class write_ccp4_map:
       gridding_first=None,
       gridding_last=None,
       unit_cell_grid=None,
-      origin_shift=None,  # origin shift (grid units) to be applied
+      origin_shift_grid_units=None,  # origin shift (grid units) to be applied
       external_origin=None, # Do not use this unless required
       output_axis_order=INTERNAL_STANDARD_ORDER,
       internal_standard_order=INTERNAL_STANDARD_ORDER,
@@ -347,7 +347,7 @@ class write_ccp4_map:
       # Allows writing just a part of a map to a file, but retaining
       #   information on size of whole map if unit_cell_grid is supplied.
       # Takes origin and size of map from the map_data array
-      # Optionally shifts origin based on input "origin_shift"
+      # Optionally shifts origin based on input "origin_shift_grid_units"
 
       assert gridding_first is None and gridding_last is None
 
@@ -360,10 +360,10 @@ class write_ccp4_map:
         assert len(unit_cell_grid)==3
         # Assumes unit_cell_grid is the entire unit cell
 
-      if origin_shift:  # Supplied non-zero origin. Input map must be
-        #   at (0,0,0).  Use supplied origin_shift as origin
+      if origin_shift_grid_units:  # Supplied non-zero origin. Input map must be
+        #   at (0,0,0).  Use supplied origin_shift_grid_units as origin
         assert map_data.origin()==(0,0,0)
-        nxyz_start=origin_shift
+        nxyz_start=origin_shift_grid_units
         new_map_data=map_data
       else:
         nxyz_start=map_data.origin()

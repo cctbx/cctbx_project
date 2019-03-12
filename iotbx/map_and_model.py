@@ -111,6 +111,8 @@ class input(object):
       map_data         = self._map_data,
       sites_cart       = sites_cart,
       crystal_symmetry = crystal_symmetry)
+    self._original_origin_cart=self.soin.original_origin_cart
+    self._original_origin_grid_units=self.soin.original_origin_grid_units
     self.box = None
     self._map_data = self.soin.map_data
     if(self._model is not None):
@@ -145,6 +147,12 @@ class input(object):
       self._model.set_xray_structure(xray_structure = self.box.xray_structure_box)
       self._crystal_symmetry = self._model.crystal_symmetry()
       self._map_data = self.box.map_box
+
+  def original_origin_cart(self):
+    return self._original_origin_cart
+
+  def original_origin_grid_units(self):
+    return self._original_origin_grid_units
 
   def counts(self): return self._counts
 

@@ -190,7 +190,7 @@ def exercise_read_write_defaults(use_mrcfile=True):
   iotbx.mrcfile.write_ccp4_map(
     file_name="offset.mrc",
     crystal_symmetry=crystal_symmetry,
-    origin_shift=origin_shift,
+    origin_shift_grid_units=origin_shift,
     map_data=real_map_data)
   input_real_map = iotbx.mrcfile.map_reader(file_name="offset.mrc")
   map_data=input_real_map.map_data()
