@@ -149,9 +149,11 @@ class input(object):
       self._map_data = self.box.map_box
 
   def original_origin_cart(self):
+    assert self._original_origin_cart is not None
     return self._original_origin_cart
 
   def original_origin_grid_units(self):
+    assert self._original_origin_grid_units is not None
     return self._original_origin_grid_units
 
   def counts(self): return self._counts

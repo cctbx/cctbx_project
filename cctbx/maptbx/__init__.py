@@ -140,18 +140,22 @@ def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None,
     original_origin_grid_units=O
     map_data = map_data.shift_origin()
     original_origin_cart=(0,0,0)
-    if(not crystal_symmetry.space_group().type().number() in [0,1]):
-      raise Sorry("Space groups other than P1 are not supported.")
-    a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
-    fm = crystal_symmetry.unit_cell().fractionalization_matrix()
-    sx,sy,sz = O[0]/N[0],O[1]/N[1], O[2]/N[2]
-    shift_frac = [-sx,-sy,-sz]
-    shift_cart = crystal_symmetry.unit_cell().orthogonalize(shift_frac)
-    original_origin_cart=tuple(-matrix.col(shift_cart))
-    if(sites_cart is not None):
-      sites_cart = sites_cart + flex.vec3_double(sites_cart.size(), shift_cart)
-    if ncs_object:
-      ncs_object=ncs_object.deep_copy(coordinate_offset=shift_cart)
+    if crystal_symmetry:
+      if(not crystal_symmetry.space_group().type().number() in [0,1]):
+        raise Sorry("Space groups other than P1 are not supported.")
+      a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
+      fm = crystal_symmetry.unit_cell().fractionalization_matrix()
+      sx,sy,sz = O[0]/N[0],O[1]/N[1], O[2]/N[2]
+      shift_frac = [-sx,-sy,-sz]
+      shift_cart = crystal_symmetry.unit_cell().orthogonalize(shift_frac)
+      original_origin_cart=tuple(-matrix.col(shift_cart))
+      if(sites_cart is not None):
+        sites_cart = sites_cart + flex.vec3_double(sites_cart.size(), shift_cart)
+      if ncs_object:
+        ncs_object=ncs_object.deep_copy(coordinate_offset=shift_cart)
+    else:
+      original_origin_grid_units=None
+      original_origin_cart=None
   else:
     original_origin_grid_units=(0,0,0)
     original_origin_cart=(0,0,0)
