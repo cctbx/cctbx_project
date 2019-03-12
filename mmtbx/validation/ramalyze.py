@@ -695,7 +695,7 @@ def find_region_max_value(rama_key, phi, psi, allow_outside=False):
         values.append(fav_tables[rama_key][normalize(ph+i)+180][normalize(ps+j)+180])
     for e in Counter(values).elements():
       if e != 0:
-        return e
+        return peaks[e-1]
   if allow_outside:
     # do more comprehensive search, basically looking for the nearest
     # favorite region
