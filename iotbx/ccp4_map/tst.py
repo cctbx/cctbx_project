@@ -162,6 +162,40 @@ def exercise(args,use_mrcfile=None):
       assert approx_equal(map_stats.sigma(), m.header_rms)
     print
 
+def exercise_read_write_defaults(use_mrcfile=True):
+  if not use_mrcfile: return
+
+  from cctbx import uctbx, sgtbx, crystal
+  from scitbx.array_family import flex
+  mt = flex.mersenne_twister(0)
+  nxyz = (4,5,6,)
+  grid = flex.grid(nxyz)
+  real_map_data = mt.random_double(size=grid.size_1d())
+  real_map_data.reshape(grid)
+  unit_cell=uctbx.unit_cell((10,10,10,90,90,90))
+  space_group=sgtbx.space_group_info("P1").group()
+  crystal_symmetry=crystal.symmetry(unit_cell=unit_cell,space_group=space_group)
+  iotbx.mrcfile.write_ccp4_map(
+    file_name="simple.mrc",
+    crystal_symmetry=crystal_symmetry,
+    map_data=real_map_data)
+  input_real_map = iotbx.mrcfile.map_reader(file_name="simple.mrc")
+
+  # check unit cell and space group:
+  cs=input_real_map.crystal_symmetry()
+  assert cs.is_similar_symmetry(crystal_symmetry)
+
+  # Check writing map with offset
+  origin_shift=(5,6,7)
+  iotbx.mrcfile.write_ccp4_map(
+    file_name="offset.mrc",
+    crystal_symmetry=crystal_symmetry,
+    origin_shift=origin_shift,
+    map_data=real_map_data)
+  input_real_map = iotbx.mrcfile.map_reader(file_name="offset.mrc")
+  map_data=input_real_map.map_data()
+  assert map_data.origin()==origin_shift
+
 def exercise_writer(use_mrcfile=None,output_axis_order=[3,2,1]):
   from cctbx import uctbx, sgtbx
   from scitbx.array_family import flex
@@ -293,13 +327,13 @@ def exercise_writer(use_mrcfile=None,output_axis_order=[3,2,1]):
 
 def run(args):
   import iotbx.ccp4_map
+  exercise_read_write_defaults()  # only for mrcfile
   for use_mrcfile in [True,False]:
     exercise(args=args,use_mrcfile=use_mrcfile)
     exercise_writer(use_mrcfile=use_mrcfile)
     if use_mrcfile:
       exercise_writer(use_mrcfile=use_mrcfile,output_axis_order=[1,2,3],)
       exercise_writer(use_mrcfile=use_mrcfile,output_axis_order=[2,3,1],)
-
 
     exercise_crystal_symmetry_from_ccp4_map(use_mrcfile=use_mrcfile)
   print format_cpu_times()
