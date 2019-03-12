@@ -559,7 +559,9 @@ class manager(object):
           mon_lib_srv=self.mon_lib_srv,
           plane_cache=plane_cache,
           hbond_distance_cutoff=self.params.secondary_structure.\
-            nucleic_acid.hbond_distance_cutoff)
+            nucleic_acid.hbond_distance_cutoff,
+          scale_bonds_sigma=self.params.secondary_structure.\
+            nucleic_acid.scale_bonds_sigma)
     t4 = time.time()
     # print >> log, "    Time for creating basepair proxies (hbond, angle, planarity):%f" % (t4-t2)
     self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,

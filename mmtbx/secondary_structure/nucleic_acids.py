@@ -23,6 +23,12 @@ angle_between_bond_and_nucleobase_cutoff = 35.0
   .help = If angle between supposed hydrogen bond and \
     basepair plane (defined by C4, C5, C6 atoms) is less than this \
     value (in degrees), the bond will not be established.
+scale_bonds_sigma = 1.
+  .type = float
+  .short_caption = Scale h-bond sigma
+  .help = All sigmas for h-bond length will be multiplied \
+    by this number. The smaller number is tighter restraints.
+  .expert_level = 3
 
 base_pair
   .multiple = True
@@ -630,7 +636,8 @@ def get_basepair_proxies(
     grm,
     mon_lib_srv,
     plane_cache,
-    hbond_distance_cutoff=3.4):
+    hbond_distance_cutoff=3.4,
+    scale_bonds_sigma=1.):
   assert pdb_hierarchy is not None
   bond_proxies_result = []
   angle_proxies_result = []
@@ -657,7 +664,7 @@ def get_basepair_proxies(
       a2 = pdb_atoms[selected_atoms_2[0]]
       # get hbonds
       bp_proxies, ap_proxies = get_bp_hbond_proxies(
-          a1, a2, base_pair, hbond_distance_cutoff)
+          a1, a2, base_pair, hbond_distance_cutoff, scale_bonds_sigma)
       bond_proxies_result += bp_proxies
       angle_proxies_result += ap_proxies
       # get planarity/parallelity
@@ -667,7 +674,8 @@ def get_basepair_proxies(
       result_parallelities += parr_p
   return bond_proxies_result, angle_proxies_result, result_planarities, result_parallelities
 
-def get_bp_hbond_proxies(a1, a2, base_pair, hbond_distance_cutoff):
+def get_bp_hbond_proxies(a1, a2, base_pair, hbond_distance_cutoff,
+    scale_bonds_sigma):
   bp_result = []
   ap_result = []
   if base_pair.saenger_class == 0:
@@ -687,7 +695,7 @@ def get_bp_hbond_proxies(a1, a2, base_pair, hbond_distance_cutoff):
         p = geometry_restraints.bond_simple_proxy(
           i_seqs=[hb[0].i_seq, hb[1].i_seq],
           distance_ideal=hb_target,
-          weight=1.0/hb_sigma**2,
+          weight=1.0/(hb_sigma*scale_bonds_sigma)**2,
           slack=0,
           top_out=False,
           limit=1,
