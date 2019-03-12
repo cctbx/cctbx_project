@@ -8,7 +8,7 @@ from cctbx.miller import display
 from websocket_server import WebsocketServer
 import threading, math
 from time import sleep
-import os.path
+import os.path, time
 import libtbx
 import webbrowser, tempfile
 
@@ -28,6 +28,9 @@ class hklview_3d:
     self.d_min = None
     self.scene = None
     self.animation_time = 0
+    self.verbose = True
+    if kwds.has_key('verbose'):
+      self.verbose = kwds['verbose']
     self.NGLscriptstr = ""
     self.cameratype = "orthographic"
     self.colbinname = ""
@@ -36,6 +39,7 @@ class hklview_3d:
     self.mindata = 0.0
     self.nbin = 0
     self.websockclient = None
+    self.lastmsg = ""
     self.StartWebsocket()
     tempdir = tempfile.gettempdir()
     self.hklfname = os.path.join(tempdir, "hkl.htm" )
@@ -46,6 +50,7 @@ class hklview_3d:
       os.remove(self.jscriptfname)
     if kwds.has_key('jscriptfname'):
       self.jscriptfname = kwds['jscriptfname']
+
     self.hklhtml = r"""
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 
@@ -65,7 +70,9 @@ class hklview_3d:
 </body></html>
 
     """
-
+  def mprint(self, m, verbose=False):
+    if self.verbose or verbose:
+      print m
 
   def __exit__(self, exc_type, exc_value, traceback):
     # not called unless instantiated with a "with hklview_3d ... " statement
@@ -81,9 +88,9 @@ class hklview_3d:
     self.d_min = miller_array.d_min()
     array_info = miller_array.info()
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % miller_array.unit_cell().parameters()
-    print "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
-      % (array_info.label_string(), details, miller_array.indices().size(),
-          miller_array.space_group_info(), uc)
+    self.mprint( "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
+      % (array_info.label_string(), details, miller_array.indices().size(), \
+          miller_array.space_group_info(), uc) )
     self.construct_reciprocal_space(merge=merge)
 
 
@@ -94,12 +101,12 @@ class hklview_3d:
     self.rotation_center = (0,0,0)
     self.maxdata = max(self.scene.data)
     self.mindata = min(self.scene.data)
-    print "Min, max values: %f, %f" %(self.mindata , self.maxdata)
+    self.mprint( "Min, max values: %f, %f" %(self.mindata , self.maxdata) )
 
 
   def DrawNGLJavaScript(self):
     if self.miller_array is None :
-      print "A miller array must be selected for drawing"
+      self.mprint( "A miller array must be selected for drawing" )
       return
 
     h_axis = self.scene.axes[0]
@@ -192,8 +199,8 @@ class hklview_3d:
     for ibin in range(self.nbin):
       nreflsinbin = len(radii2[ibin])
       if (ibin+1) < self.nbin:
-        print "%d reflections with %s in ]%2.2f; %2.2f]" %(nreflsinbin, colstr,
-                                        self.binvals[ibin], self.binvals[ibin+1])
+        self.mprint( "%d reflections with %s in ]%2.2f; %2.2f]" %(nreflsinbin, colstr,
+                                        self.binvals[ibin], self.binvals[ibin+1]), verbose=True )
       if nreflsinbin > 0:
         spherebufferstr += """
   // %d spheres
@@ -255,10 +262,15 @@ class hklview_3d:
 // https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
 // to enable websocket connection
 
+var pagename = location.pathname.substring(1);
 var mysocket = new WebSocket('ws://127.0.0.1:7894/');
 
-mysocket.onopen = function () {
-  mysocket.send('%s now connected via websocket');
+mysocket.onopen = function (e) {
+  mysocket.send('%s now connected via websocket to ' + pagename + '\\n');
+};
+
+mysocket.onclose = function (e) {
+  mysocket.send('%s now disconnecting from websocket ' + pagename + '\\n');
 };
 
 // Log errors to debugger of your browser
@@ -272,12 +284,14 @@ window.addEventListener( 'resize', function( event ){
 }, false );
 
 
+
+
 var stage;
 var shape;
 var shapeComp;
 var repr;
 
-var hklscene = function (b) {
+var hklscene = function () {
   shape = new NGL.Shape('shape');
   stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false });
   stage.setParameters( { cameraType: "%s" } );
@@ -326,6 +340,7 @@ mysocket.onmessage = function (e) {
 
     if (val[0] === "Reload") {
     // refresh browser with the javascript file
+      mysocket.send( 'Refreshing ' + pagename );
       window.location.reload(true);
     }
 
@@ -338,7 +353,7 @@ mysocket.onmessage = function (e) {
 
 
 
-    """ % (self.__module__, self.cameratype, arrowstr, spherebufferstr)
+    """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
@@ -375,12 +390,13 @@ mysocket.onmessage = function (e) {
 
   def OnConnectWebsocketClient(self, client, server):
     self.websockclient = client
-    #print "got a new client:", self.websockclient
+    self.mprint( "got a new client:" + str( self.websockclient ) )
 
 
   def OnWebsocketClientMessage(self, client, server, message):
     if message != "":
-      print message
+      self.mprint( message)
+    self.lastmsg = message
 
 
   def StartWebsocket(self):
@@ -393,7 +409,12 @@ mysocket.onmessage = function (e) {
 
 
   def SendWebSockMsg(self, msg):
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #print "self.server.clients: ", self.server.clients
+    #print "self.websockclient: ",
     if self.websockclient:
+      while "Refreshing" in self.lastmsg:
+        sleep(0.5)
       self.server.send_message(self.websockclient, msg )
     else:
       self.OpenBrowser()
@@ -401,28 +422,29 @@ mysocket.onmessage = function (e) {
 
   def SetOpacity(self, bin, alpha):
     if bin > self.nbin:
-      print "There are only %d bins of data present" %self.nbin
+      self.mprint( "There are only %d bins of data present" %self.nbin )
       return
     msg = u"alpha, %d, %f" %(bin, alpha)
     self.SendWebSockMsg(msg)
 
 
   def RedrawNGL(self):
-    self.SendWebSockMsg( u"Redraw, NGL" )
+    self.SendWebSockMsg( u"Redraw, NGL\n" )
 
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
-    self.SendWebSockMsg( u"Reload, NGL" )
+    #time.sleep(5)
+    self.SendWebSockMsg( u"Reload, NGL\n" )
 
 
   def OpenBrowser(self):
     NGLlibpath = os.path.join( libtbx.env.under_dist("crys3d", "hklview"), "ngl.js")
-    htmlstr = self.hklhtml %(NGLlibpath, self.jscriptfname)
+    htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
     htmlstr += self.htmldiv
     with open(self.hklfname, "w") as f:
       f.write( htmlstr )
     url = "file:///" + self.hklfname
-    print "Writing %s and connecting to its websocket client" %self.hklfname
+    self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname )
     webbrowser.open(url, new=1)
 
 

@@ -106,7 +106,8 @@ class HKLViewFrame () :
     self.miller_array = None
     self.spacegroup_choices = None
     self.settings = display.settings()
-    self.viewer = view_3d.hklview_3d( settings=self.settings, kwds=kwds )
+    kwds['settings'] =self.settings
+    self.viewer = view_3d.hklview_3d( **kwds )
     self.viewer.set_miller_array(self.viewer.miller_array)
 
 
