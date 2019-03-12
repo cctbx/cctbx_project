@@ -352,9 +352,9 @@ class write_ccp4_map:
       assert gridding_first is None and gridding_last is None
 
       if unit_cell_grid is None:
-        # Assumes entire map is the entire unit cell
-        assert map_data.origin()==(0,0,0)
+        # Assumes map_data.all() is the entire unit cell
         unit_cell_grid=map_data.all()
+        # Note: if map_data.origin()!=(0,0,0) this grid may not make sense
       else:
         assert len(unit_cell_grid)==3
         # Assumes unit_cell_grid is the entire unit cell
