@@ -101,12 +101,15 @@ namespace smtbx { namespace refinement { namespace least_squares {
         }
         pool.join_all();
         for(int thread_idx=0; thread_idx<thread_count; thread_idx++) {
+          if (accumulators[thread_idx]->exception_ != 0) {
+            throw *accumulators[thread_idx]->exception_;
+          }
           normal_equations += accumulators[thread_idx]->normal_equations;
         }
         normal_equations.finalise(objective_only);
       }
       else {
-        accumulate_reflection_chunk_t(
+        accumulate_reflection_chunk_t job(
           0, reflections.size(),
           normal_equations_ptr_t(&normal_equations, null_deleter()),
           reflections, f_mask, weighting_scheme, scale_factor,
@@ -114,7 +117,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
           jacobian_transpose_matching_grad_fc,
           exti, objective_only,
           f_calc_.ref(), observables_.ref(), weights_.ref(),
-          design_matrix_)();
+          design_matrix_);
+        job();
+        if (job.exception_ != 0) {
+          throw *job.exception_;
+        }
         normal_equations.finalise(objective_only);
       }
     }
@@ -150,6 +157,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       template<typename> class WeightingScheme,
       class OneMillerIndexFcalc>
     struct accumulate_reflection_chunk {
+      smtbx::error *exception_;
       int begin, end;
       boost::shared_ptr<NormalEquations> normal_equations_ptr;
       NormalEquations &normal_equations;
@@ -183,7 +191,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
         af::ref<FloatType> observables,
         af::ref<FloatType> weights,
         af::versa<FloatType, af::c_grid<2> > &design_matrix)
-      : begin(begin), end(end),
+      : exception_(0),
+        begin(begin), end(end),
         normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
         reflections(reflections), f_mask(f_mask), weighting_scheme(weighting_scheme),
         scale_factor(scale_factor),
@@ -195,53 +204,64 @@ namespace smtbx { namespace refinement { namespace least_squares {
         design_matrix(design_matrix)
       {}
 
-      void operator()() {
-        af::shared<FloatType> gradients;
-        if (compute_grad) {
-          gradients.resize(jacobian_transpose_matching_grad_fc.n_rows());
+      ~accumulate_reflection_chunk() {
+        if (exception_ != 0) {
+          delete exception_;
         }
-        for (int i_h=begin; i_h<end; ++i_h) {
-          miller::index<> const &h = reflections.index(i_h);
-          if (f_mask.size()) {
-            f_calc_function.compute(h, f_mask[i_h], compute_grad);
-          }
-          else {
-            f_calc_function.compute(h, boost::none, compute_grad);
-          }
-          if (compute_grad) {
-            gradients =
-              jacobian_transpose_matching_grad_fc*f_calc_function.grad_observable;
-          }
-          // sort out twinning
-          FloatType observable =
-            process_twinning(i_h, gradients);
-          // extinction correction
-          af::tiny<FloatType,2> exti_k = exti.compute(h, observable, compute_grad);
-          observable *= exti_k[0];
-          f_calc[i_h] = f_calc_function.f_calc*std::sqrt(exti_k[0]);
-          observables[i_h] = observable;
+      }
 
-          FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
-            reflections.sig(i_h), observable, scale_factor);
-          weights[i_h] = weight;
-          if (objective_only) {
-            normal_equations.add_residual(observable,
-              reflections.fo_sq(i_h), weight);
+      void operator()() {
+        try {
+          af::shared<FloatType> gradients;
+          if (compute_grad) {
+            gradients.resize(jacobian_transpose_matching_grad_fc.n_rows());
           }
-          else {
-            if (exti.grad_value()) {
-              int grad_index = exti.get_grad_index();
-              SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
-              gradients[grad_index] += exti_k[1];
+          for (int i_h = begin; i_h < end; ++i_h) {
+            miller::index<> const &h = reflections.index(i_h);
+            if (f_mask.size()) {
+              f_calc_function.compute(h, f_mask[i_h], compute_grad);
             }
-            normal_equations.add_equation(observable,
-              gradients.ref(), reflections.fo_sq(i_h), weight);
-          }
-          if (build_design_matrix) {
-            for (int i_g = 0; i_g < gradients.size(); i_g++) {
-              design_matrix(i_h, i_g) = gradients[i_g];
+            else {
+              f_calc_function.compute(h, boost::none, compute_grad);
+            }
+            if (compute_grad) {
+              gradients =
+                jacobian_transpose_matching_grad_fc*f_calc_function.grad_observable;
+            }
+            // sort out twinning
+            FloatType observable =
+              process_twinning(i_h, gradients);
+            // extinction correction
+            af::tiny<FloatType, 2> exti_k = exti.compute(h, observable, compute_grad);
+            observable *= exti_k[0];
+            f_calc[i_h] = f_calc_function.f_calc*std::sqrt(exti_k[0]);
+            observables[i_h] = observable;
+
+            FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
+              reflections.sig(i_h), observable, scale_factor);
+            weights[i_h] = weight;
+            if (objective_only) {
+              normal_equations.add_residual(observable,
+                reflections.fo_sq(i_h), weight);
+            }
+            else {
+              if (exti.grad_value()) {
+                int grad_index = exti.get_grad_index();
+                SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
+                gradients[grad_index] += exti_k[1];
+              }
+              normal_equations.add_equation(observable,
+                gradients.ref(), reflections.fo_sq(i_h), weight);
+            }
+            if (build_design_matrix) {
+              for (int i_g = 0; i_g < gradients.size(); i_g++) {
+                design_matrix(i_h, i_g) = gradients[i_g];
+              }
             }
           }
+        }
+        catch (smtbx::error const &exc) {
+          exception_ = new smtbx::error(exc);
         }
       }
 

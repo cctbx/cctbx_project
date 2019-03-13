@@ -452,6 +452,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       : public scatterer_contribution<FloatType>
     {
     public:
+      typedef scatterer_contribution<FloatType> base_type;
       typedef FloatType float_type;
       typedef std::complex<float_type> complex_type;
     private:
@@ -494,13 +495,13 @@ namespace smtbx { namespace structure_factors { namespace direct {
         }
       }
 
-      virtual scatterer_contribution &at_d_star_sq(float_type d_star_sq) {
+      virtual base_type &at_d_star_sq(float_type d_star_sq) {
         elastic_form_factors_at_d_start_sq = scattering_type_registry
           .unique_form_factors_at_d_star_sq(d_star_sq);
         return *this;
       }
 
-      virtual scatterer_contribution *raw_fork() const {
+      virtual base_type *raw_fork() const {
         return new isotropic_scatterer_contribution(*this);
       }
     };
@@ -732,9 +733,9 @@ namespace smtbx { namespace structure_factors { namespace direct {
                    custom_trigonometry<
                      FloatType, ObservableType, ExpI2PiFunctor> >
               base_t;
+      typedef FloatType float_type;
       typedef one_scatterer_one_h::scatterer_contribution<float_type>
         scatterer_contribution_type;
-      typedef FloatType float_type;
 
       ExpI2PiFunctor<float_type> const &exp_i_2pi;
 
@@ -777,9 +778,9 @@ namespace smtbx { namespace structure_factors { namespace direct {
                    std_trigonometry<FloatType, ObservableType> >
               base_t;
 
+      typedef FloatType float_type;
       typedef one_scatterer_one_h::scatterer_contribution<float_type>
         scatterer_contribution_type;
-      typedef FloatType float_type;
 
       cctbx::math::cos_sin_exact<float_type> exp_i_2pi;
 
