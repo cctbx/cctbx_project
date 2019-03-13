@@ -37,6 +37,8 @@ class hklview_3d:
     self.binvals = []
     self.maxdata = 0.0
     self.mindata = 0.0
+    self.valid_arrays = []
+    self.otherscenes = []
     self.nbin = 0
     self.websockclient = None
     self.lastmsg = ""
@@ -81,9 +83,10 @@ class hklview_3d:
       os.remove(self.hklfname)
 
 
-  def set_miller_array (self, miller_array, merge=None, details="") :
+  def set_miller_array (self, miller_array, merge=None, details="", valid_arrays=[]) :
     if (miller_array is None) : return
     self.miller_array = miller_array
+    self.valid_arrays = valid_arrays
     self.merge = merge
     self.d_min = miller_array.d_min()
     array_info = miller_array.info()
@@ -101,6 +104,13 @@ class hklview_3d:
     self.rotation_center = (0,0,0)
     self.maxdata = max(self.scene.data)
     self.mindata = min(self.scene.data)
+    self.otherscenes = []
+    for validarray in self.valid_arrays:
+      print "Additional processing of ", validarray.info().label_string()
+      self.otherscenes.append(
+        display.scene(miller_array=validarray,  merge=merge, settings=self.settings)
+      )
+
     self.mprint( "Min, max values: %f, %f" %(self.mindata , self.maxdata) )
 
 
@@ -143,10 +153,10 @@ class hklview_3d:
     colors = self.scene.colors
     radii = self.scene.radii * self.settings.scale
     points = self.scene.points
-    data = self.scene.data
     hkls = self.scene.indices
     dres = self.scene.work_array.d_spacings().data()
     colstr = self.scene.miller_array.info().label_string()
+    data = self.scene.data
     assert (colors.size() == radii.size() == nrefls)
     shapespherestr = ""
     shapespherestr2 = ""
@@ -181,8 +191,15 @@ class hklview_3d:
       ibin = data2bin( data[i] )
       spbufttip = "H,K,L: %s, %s, %s" %(hkls[i][0], hkls[i][1], hkls[i][2])
       spbufttip += "\ndres: %s" %str(roundoff(dres[i])  )
-      spbufttip += "\n%s: %s" %(colstr, str(roundoff(data[i]) ) )
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      #spbufttip += "\n%s: %s" %(colstr, str(roundoff(data[i]) ) )
+      for otherscene in self.otherscenes:
+        ocolstr = otherscene.miller_array.info().label_string()
+        odata = otherscene.data
+        od =" "
+        if i < len(odata): # some data might not have been processed if considered outlier
+          od = str(roundoff(odata[i]) )
+        spbufttip += "\n%s: %s" %(ocolstr, od )
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       positions[ibin].extend( roundoff(list(hklstars)) )
       colours[ibin].extend( roundoff(list(colors[i]), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )

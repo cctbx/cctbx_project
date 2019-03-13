@@ -184,7 +184,7 @@ class HKLViewFrame () :
     self.miller_array = array
     self.update_space_group_choices()
     self.viewer.set_miller_array(array, merge=array_info.merge,
-       details=array_info.details_str)
+       details=array_info.details_str, valid_arrays=self.valid_arrays)
 
 
   def update_settings (self, *args, **kwds) :
