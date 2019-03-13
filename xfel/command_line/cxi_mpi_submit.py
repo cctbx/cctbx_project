@@ -349,8 +349,8 @@ class Script(object):
         data_str = "input.trial=%s input.run_num=%s" % ( # pass along for logging
           params.input.trial, params.input.run_num)
     else:
-      data_str = "input.experiment=%s input.run_num=%s" % (
-        params.input.experiment, params.input.run_num)
+      data_str = "input.trial=%s input.experiment=%s input.run_num=%s" % (
+        params.input.trial, params.input.experiment, params.input.run_num)
 
     for arg in dispatcher_args:
       extra_str += " %s" % arg
