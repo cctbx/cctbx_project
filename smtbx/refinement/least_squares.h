@@ -105,8 +105,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
         }
         pool.join_all();
         for(int thread_idx=0; thread_idx<thread_count; thread_idx++) {
-          if (accumulators[thread_idx]->exception_) {
-            throw *accumulators[thread_idx]->exception_.get();
+          if (accumulators[thread_idx]->exception_ != 0) {
+            throw *accumulators[thread_idx]->exception_;
           }
           normal_equations += accumulators[thread_idx]->normal_equations;
         }
@@ -123,8 +123,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
           f_calc_.ref(), observables_.ref(), weights_.ref(),
           design_matrix_);
         job();
-        if (job.exception_) {
-          throw *job.exception_.get();
+        if (job.exception_ != 0) {
+          throw *job.exception_;
         }
         normal_equations.finalise(objective_only);
       }
@@ -161,7 +161,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       template<typename> class WeightingScheme,
       class OneMillerIndexFcalc>
     struct accumulate_reflection_chunk {
-      boost::scoped_ptr<smtbx::error> exception_;
+      smtbx::error *exception_;
       int begin, end;
       boost::shared_ptr<NormalEquations> normal_equations_ptr;
       NormalEquations &normal_equations;
@@ -195,7 +195,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
         af::ref<FloatType> observables,
         af::ref<FloatType> weights,
         af::versa<FloatType, af::c_grid<2> > &design_matrix)
-      : begin(begin), end(end),
+      : exception_(0),
+        begin(begin), end(end),
         normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
         reflections(reflections), f_mask(f_mask), weighting_scheme(weighting_scheme),
         scale_factor(scale_factor),
@@ -206,6 +207,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
         f_calc(f_calc), observables(observables), weights(weights),
         design_matrix(design_matrix)
       {}
+
+      ~accumulate_reflection_chunk() {
+        if (exception_ != 0) {
+          delete exception_;
+        }
+      }
 
       void operator()() {
         try {
@@ -221,7 +228,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
             else {
               f_calc_function.compute(h, boost::none, compute_grad);
             }
-            f_calc[i_h] = f_calc_function.f_calc;
             if (compute_grad) {
               gradients =
                 jacobian_transpose_matching_grad_fc*f_calc_function.grad_observable;
@@ -232,7 +238,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             // extinction correction
             af::tiny<FloatType, 2> exti_k = exti.compute(h, observable, compute_grad);
             observable *= exti_k[0];
-            f_calc[i_h] *= std::sqrt(exti_k[0]);
+            f_calc[i_h] = f_calc_function.f_calc*std::sqrt(exti_k[0]);
             observables[i_h] = observable;
 
             FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
@@ -258,11 +264,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
             }
           }
         }
-        catch (smtbx::error const &e) {
-          exception_.reset(new smtbx::error(e));
-        }
-        catch (std::exception const &e) {
-          exception_.reset(new smtbx::error(e.what()));
+        catch (smtbx::error const &exc) {
+          exception_ = new smtbx::error(exc);
         }
       }
 
