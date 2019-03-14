@@ -72,11 +72,6 @@ Example:
   def run(self):
     results = []
     for model_name in self.data_manager.get_model_names():
-      # tst geometry restraints manager
-      model = self.data_manager.get_model(model_name)
-      grm = model.get_restraints_manager()
-      print(grm)
-      # end tst
       hierarchy = self.data_manager.get_model(model_name).get_hierarchy()
       hierarchy.atoms().reset_i_seq()
       result = ramalyze(
