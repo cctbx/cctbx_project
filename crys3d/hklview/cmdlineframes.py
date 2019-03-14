@@ -212,22 +212,6 @@ class HKLViewFrame () :
       self.current_spacegroup = sg_info
 
 
-  def SetSpaceGroupChoice (self, n) :
-    if (self.miller_array is None) :
-      raise Sorry("No data loaded!")
-    self.current_spacegroup = self.spacegroup_choices[n]
-    from cctbx import crystal
-    symm = crystal.symmetry(
-      space_group_info= self.current_spacegroup,
-      unit_cell=self.miller_array.unit_cell())
-    array = self.miller_array.expand_to_p1().customized_copy(
-      crystal_symmetry=symm)
-    print "MERGING 2"
-    array = array.merge_equivalents().array().set_info(self.miller_array.info())
-    self.viewer.set_miller_array(array)
-    self.viewer.DrawNGLJavaScript()
-
-
   def delete_miller_index (self, hkl) :
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
@@ -347,5 +331,27 @@ class HKLViewFrame () :
      %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
         self.miller_array.index_span().max() )
     self.viewer.binvals = []
+    self.viewer.DrawNGLJavaScript()
+
+
+  def SetSpaceGroupChoice(self, n) :
+    if (self.miller_array is None) :
+      raise Sorry("No data loaded!")
+    self.current_spacegroup = self.spacegroup_choices[n]
+    from cctbx import crystal
+    symm = crystal.symmetry(
+      space_group_info= self.current_spacegroup,
+      unit_cell=self.miller_array.unit_cell())
+    array = self.miller_array.expand_to_p1().customized_copy(
+      crystal_symmetry=symm)
+    array = array.merge_equivalents().array().set_info(self.miller_array.info())
+    othervalidarrays = []
+    for validarray in self.valid_arrays:
+      print "Space group casting ", validarray.info().label_string()
+      arr = validarray.expand_to_p1().customized_copy(crystal_symmetry=symm)
+      arr = arr.merge_equivalents().array().set_info(validarray.info())
+      othervalidarrays.append( arr  )
+    print "MERGING 2"
+    self.viewer.set_miller_array(array, valid_arrays=othervalidarrays)
     self.viewer.DrawNGLJavaScript()
 

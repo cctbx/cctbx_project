@@ -84,7 +84,8 @@ class hklview_3d:
 
 
   def set_miller_array (self, miller_array, merge=None, details="", valid_arrays=[]) :
-    if (miller_array is None) : return
+    if (miller_array is None):
+      return
     self.miller_array = miller_array
     self.valid_arrays = valid_arrays
     self.merge = merge
@@ -104,11 +105,13 @@ class hklview_3d:
     self.rotation_center = (0,0,0)
     self.maxdata = max(self.scene.data)
     self.mindata = min(self.scene.data)
+    print "in construct_reciprocal_space"
     self.otherscenes = []
     for validarray in self.valid_arrays:
-      print "Additional processing of ", validarray.info().label_string()
+      print "Processing Miller array", validarray.info().label_string()
       self.otherscenes.append(
-        display.scene(miller_array=validarray,  merge=merge, settings=self.settings)
+        display.scene(miller_array=validarray,  merge=merge,
+        settings=self.settings)
       )
 
     self.mprint( "Min, max values: %f, %f" %(self.mindata , self.maxdata) )
