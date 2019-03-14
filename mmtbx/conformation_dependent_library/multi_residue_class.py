@@ -27,7 +27,7 @@ class RestraintsRegistry(dict):
     else:
       dict.__setitem__(self, key, item)
 
-class ProteinResidues(list):
+class LinkedResidues(list):
   def __init__(self,
                geometry,
                length=3, # CDL & other psi/phi apps
@@ -54,6 +54,66 @@ class ProteinResidues(list):
       outl += '%s ' % residue.resname
     return '"%s"\n' % outl
 
+  def show(self): assert 0
+
+  def show_detailed(self): assert 0
+
+  def atoms(self):
+    for residue in self:
+      for atom in residue.atoms():
+        yield atom
+
+  def is_pure_main_conf(self):
+    tmp = [rg.is_pure_main_conf for rg in self]
+    return len(filter(None, tmp))==self.length
+
+  def are_linked(self, *args, **kwds): assert 0
+
+  def append(self, residue):
+    list.append(self, residue)
+    while len(self)>self.length:
+      del self[0]
+    if self.include_non_linked: return
+    if len(self)>=self.length-1:
+      while not self.are_linked():
+        del self[0]
+        if len(self)==0: break
+
+  def get_i_seqs(self): assert 0
+
+  def get_resnames(self):
+    rc = []
+    for residue in self: rc.append(residue.resname)
+    return rc
+
+  def is_pure_main_conf(self):
+    for one in self:
+      if not one.is_pure_main_conf: return False
+    return True
+
+  def altloc(self):
+    if self.is_pure_main_conf(): return ' '
+    rc=[]
+    for one in self:
+      rc.append(self[0].parent().altloc)
+    rc = filter(None,rc)
+    assert rc
+    return rc[0]
+
+class ProteinResidues(LinkedResidues):
+  def __init__(self,
+               geometry,
+               length=3, # CDL & other psi/phi apps
+               registry=None,
+               include_non_linked=False,
+              ):
+    LinkedResidues.__init__(self,
+                            geometry,
+                            length=3,
+                            registry=registry,
+                            include_non_linked=include_non_linked,
+                            )
+
   def show(self):
     outl = "%sProteinResidues" % self.length
     for residue in self:
@@ -71,11 +131,6 @@ class ProteinResidues(list):
       for atom in residue.atoms():
         outl += "\n%s" % atom.format_atom_record()
     return outl
-
-  def atoms(self):
-    for residue in self:
-      for atom in residue.atoms():
-        yield atom
 
   def get_omega_value(self): assert 0
 
@@ -115,15 +170,19 @@ class ProteinResidues(list):
       return self._define_omega_a_la_duke_using_limit(angle, limit=limit)
     return map(_is_cis_trans_twisted, omegas)
 
-  def is_pure_main_conf(self):
-    tmp = [rg.is_pure_main_conf for rg in self]
-    return len(filter(None, tmp))==self.length
-
   def are_linked(self,
                  return_value=False,
                  use_distance_always=False,
                  bond_cut_off=3., # Same as link_distance_cutoff of pdb_interpretation
+                 allow_poly_ca=False,
+                 poly_ca_cut_off=4.,
                  verbose=True):
+    '''
+    Need to add poly-Calpha chains
+      CA-CA 4.5 is use in CaBLAM, maybe shorter
+    '''
+    if allow_poly_ca:
+      assert 0
     d2 = None
     bond_cut_off *= bond_cut_off
     for i, residue in enumerate(self):
@@ -161,38 +220,7 @@ class ProteinResidues(list):
     if return_value: return d2
     return False
 
-  def append(self, residue):
-    list.append(self, residue)
-    while len(self)>self.length:
-      del self[0]
-    if self.include_non_linked: return
-    if len(self)>=self.length-1:
-      while not self.are_linked():
-        del self[0]
-        if len(self)==0: break
-
-  def get_i_seqs(self): assert 0
-
-  def get_resnames(self):
-    rc = []
-    for residue in self: rc.append(residue.resname)
-    return rc
-
   def get_phi_psi_angles(self): assert 0
-
-  def is_pure_main_conf(self):
-    for one in self:
-      if not one.is_pure_main_conf: return False
-    return True
-
-  def altloc(self):
-    if self.is_pure_main_conf(): return ' '
-    rc=[]
-    for one in self:
-      rc.append(self[0].parent().altloc)
-    rc = filter(None,rc)
-    assert rc
-    return rc[0]
 
   def get_omega_values(self, verbose=False):
     rc=[]
