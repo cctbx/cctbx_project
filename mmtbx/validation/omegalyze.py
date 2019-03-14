@@ -1,6 +1,5 @@
 from __future__ import division
 from mmtbx.validation import residue, validation, atom
-import iotbx.phil
 import os.path
 from libtbx import slots_getstate_setstate
 import numpy
@@ -21,66 +20,6 @@ from mmtbx.conformation_dependent_library import generate_protein_fragments
 # parallel to interfacing with ramalyze code.
 #
 ################################################################################
-
-def get_master_phil():
-  return iotbx.phil.parse(input_string="""
-    model = None
-      .type = path
-      .help = "Model file (PDB or mmCIF)"
-    nontrans_only = True
-      .type = bool
-      .help = "Controls whether trans peptides are stored and printed"
-    text = True
-      .type = bool
-      .help = "Prints verbose, colon-delimited text output and summary"
-    kinemage = False
-      .type = bool
-      .help = "Prints kinemage markup for cis-peptides"
-    oneline = False
-      .type = bool
-      .help = "Prints oneline-style summary statistics"
-    help = False
-      .type = bool
-      .help = "Prints this help message if true"
-""", process_includes=True)
-prog = os.getenv('LIBTBX_DISPATCHER_NAME')
-usage_string = """
-%(prog)s file.pdb [params.eff] [options ...]
-
-Options:
-
-  model=input_file      input PDB or mmCIF file
-  nontrans_only=True    only print nontrans residues (does not affect kinemage)
-  text=True          verbose colon-delimited text output (default)
-  kinemage=False        Create kinemage markup (overrides text output)
-  help = False          Prints this help message if true
-
-  text output is colon-delimited and follows the format:
-    residue:type:omega:conformation
-      'residue' is a unique residue identifier
-      'type' is either proline or general case
-      'omega' is the calculated omega dihedral for the peptide between this
-        residue and the preceeding residue
-      'conformation' is: cis for omega within 30 degrees of planar cis
-                         trans for omega within 30 degrees of planar trans
-                         twisted for omega not within 30 degrees of planar
-
-  SUMMARY statistics provide:
-    counts of cis prolines and twisted prolines relative to total prolines with
-      measurable omega dihedrals across all chains
-    counts of non-proline cis and twisted peptides relative to total non-proline
-      peptides with measurable omega dihedrals across all chains
-
-  Cis Prolines occur in ~5%% of prolines (1 in 20) at high resolution
-  Non-Proline Cis residues occur in ~0.05%% of residues (1 in 2000) and require
-    clear support from experimental data or homology.
-  Twisted peptides are even less frequent and are highly suspect without
-    high-resolution data.
-
-Example:
-
-  %(prog)s model=1ubq.pdb kinemage=True
-""" % locals()
 
 #{{{ XXX Use these constants internally, not the strings
 OMEGA_GENERAL = 0
@@ -588,31 +527,3 @@ def get_omega_atoms(twores):
     elif atom.name == " CA ":
       atomlist[3] = atom
   return atomlist
-
-
-def run(args, out=sys.stdout, quiet=False):
-  cmdline = iotbx.phil.process_command_line_with_files(
-    args=args,
-    master_phil=get_master_phil(),
-    pdb_file_def="model",
-    usage_string=usage_string)
-  params = cmdline.work.extract()
-  #if (params.model is None or params.help):
-    #help printing is handled in iotbx.phil.process_command_line_with_files()
-  pdb_in = cmdline.get_file(params.model, force_type="pdb")
-  hierarchy = pdb_in.file_object.hierarchy
-  hierarchy.atoms().reset_i_seq()
-  result = omegalyze(
-    pdb_hierarchy=hierarchy,
-    nontrans_only=params.nontrans_only,
-    out=out,
-    quiet=quiet)
-  if params.kinemage:
-    print >> out, result.as_kinemage()
-  elif params.oneline:
-    result.summary_only(out=out, pdbid=params.model)
-  elif params.text:
-    result.show_old_output(out=out, verbose=True)
-
-if (__name__ == "__main__"):
-  run(sys.argv[1:])
