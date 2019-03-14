@@ -437,6 +437,12 @@ class MosaicCrystalSauter2014Aux(CrystalAux, MosaicCrystalSauter2014):
 
 
 class ExperimentListAux(boost.python.injector, ExperimentList):
+    def __repr__(self):
+        if len(self):
+            return "ExperimentList([{}])".format(", ".join(repr(x) for x in self))
+        else:
+            return "ExperimentList()"
+
     def beams(self):
         """ Get a list of the unique beams (includes None). """
         return list(OrderedSet(e.beam for e in self))
