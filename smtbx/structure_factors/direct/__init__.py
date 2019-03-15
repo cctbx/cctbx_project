@@ -63,3 +63,24 @@ def f_calc_modulus(xray_structure,
   else:
     return f_calc_modulus_with_custom_trigonometry(xray_structure,
                                                    exp_i_2pi_functor)
+#for tests
+def generate_isc_table_file(file_name,
+                            xray_structure,
+                            indices):
+  xs = xray_structure
+  isc = ext.isotropic_scatterer_contribution(
+    xs.scatterers(),
+    xs.scattering_type_registry())
+  with open(file_name, "w") as out:
+    out.write("Title: generated from isotropic AFF")
+    out.write("Scatterers:")
+    for sc in xs.scatterers():
+      out.write(" %s" %sc.label)
+    out.write("\nAD accounted: true")
+    for idx in indices:
+      d_star_sq = xs.unit_cell().d_star_sq(idx)
+      isc.at_d_star_sq(d_star_sq)
+      out.write("\n%s %s %s" %(idx[0], idx[1], idx[2]))
+      for sci in xrange(xs.scatterers().size()):
+        val = isc.get(sci, idx)
+        out.write(" %.6f,%.6f" %(val.real, val.imag))
