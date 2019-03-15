@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <vector>
 #include <boost/shared_ptr.hpp>
+#include <boost/smart_ptr/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 
 
@@ -101,8 +102,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
         }
         pool.join_all();
         for(int thread_idx=0; thread_idx<thread_count; thread_idx++) {
-          if (accumulators[thread_idx]->exception_ != 0) {
-            throw *accumulators[thread_idx]->exception_;
+          if (accumulators[thread_idx]->exception_) {
+            throw *accumulators[thread_idx]->exception_.get();
           }
           normal_equations += accumulators[thread_idx]->normal_equations;
         }
@@ -119,8 +120,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
           f_calc_.ref(), observables_.ref(), weights_.ref(),
           design_matrix_);
         job();
-        if (job.exception_ != 0) {
-          throw *job.exception_;
+        if (job.exception_) {
+          throw *job.exception_.get();
         }
         normal_equations.finalise(objective_only);
       }
@@ -157,7 +158,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       template<typename> class WeightingScheme,
       class OneMillerIndexFcalc>
     struct accumulate_reflection_chunk {
-      smtbx::error *exception_;
+      boost::scoped_ptr<smtbx::error> exception_;
       int begin, end;
       boost::shared_ptr<NormalEquations> normal_equations_ptr;
       NormalEquations &normal_equations;
@@ -191,8 +192,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         af::ref<FloatType> observables,
         af::ref<FloatType> weights,
         af::versa<FloatType, af::c_grid<2> > &design_matrix)
-      : exception_(0),
-        begin(begin), end(end),
+      : begin(begin), end(end),
         normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
         reflections(reflections), f_mask(f_mask), weighting_scheme(weighting_scheme),
         scale_factor(scale_factor),
@@ -203,12 +203,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
         f_calc(f_calc), observables(observables), weights(weights),
         design_matrix(design_matrix)
       {}
-
-      ~accumulate_reflection_chunk() {
-        if (exception_ != 0) {
-          delete exception_;
-        }
-      }
 
       void operator()() {
         try {
@@ -260,8 +254,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
             }
           }
         }
-        catch (smtbx::error const &exc) {
-          exception_ = new smtbx::error(exc);
+        catch (smtbx::error const &e) {
+          exception_.reset(new smtbx::error(e));
+        }
+        catch (std::exception const &e) {
+          exception_.reset(new smtbx::error(e.what()));
         }
       }
 
