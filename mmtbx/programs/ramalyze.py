@@ -26,6 +26,8 @@ Example:
   %(prog)s model=1ubq.pdb outliers_only=True
 """ % locals()
 
+  # Pavel's style:
+  # plot=True show_labels=False markerfacecolor=yellow markeredgecolor=red
   master_phil_str = """
     plot = False
       .type = bool
