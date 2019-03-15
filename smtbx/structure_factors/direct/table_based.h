@@ -54,31 +54,33 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       vector<size_t> sc_indices(scatterers.size());
       af::shared<cctbx::miller::index<> > miller_indices;
       while (std::getline(in_file, line)) {
+        lc++;
         boost::trim(line);
         if (line.empty()) {
           break;
         }
         toks.clear();
         // is header?
-        if (lc < 3) {
+        if (lc <= 3) {
           boost::split(toks, line, boost::is_any_of(":"));
           SMTBX_ASSERT(toks.size() == 2);
           if (boost::iequals(toks[0], "scatterers")) {
             std::vector<std::string> stoks;
+            boost::trim(toks[1]);
             boost::split(stoks, toks[1], boost::is_any_of(" "));
-            SMTBX_ASSERT(toks.size() == scatterers.size());
+            SMTBX_ASSERT(stoks.size() == scatterers.size());
             map<string, size_t> sc_map;
-            map<string, size_t>::iterator fsci;
             for (size_t sci = 0; sci < scatterers.size(); sci++) {
               sc_map[scatterers[sci].label] = sci;
             }
             for (size_t sci = 0; sci < scatterers.size(); sci++) {
-              fsci = sc_map.find(scatterers[sci].label);
+              map<string, size_t>::iterator fsci = sc_map.find(stoks[sci]);
               SMTBX_ASSERT(fsci != sc_map.end());
               sc_indices[sci] = fsci->second;
             }
           }
           else if (boost::iequals(toks[0], "AD accounted")) {
+            boost::trim(toks[1]);
             use_ad = boost::iequals(toks[1], "false");
           }
         }

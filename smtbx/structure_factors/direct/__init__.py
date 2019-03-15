@@ -66,27 +66,20 @@ def f_calc_modulus(xray_structure,
 def generate_isc_table_file(file_name,
                             xray_structure,
                             indices):
-  xs = xray_structure.deep_copy_scatterers()
-  for sc in xs.scatterers():
-    sc.flags.set_use_fp_fdp(False)
+  xs = xray_structure
   isc = ext.isotropic_scatterer_contribution(
     xs.scatterers(),
     xs.scattering_type_registry())
   with open(file_name, "w") as out:
     out.write("Title: generated from isotropic AFF")
-    out.write("\nScatterers:")
+    out.write("Scatterers:")
     for sc in xs.scatterers():
       out.write(" %s" %sc.label)
-    out.write("\nSymm: expanded")
-    sg = xs.space_group()
-    ml = list(sg.smx())
-    out.write("\nData:")
-    for idx_ in indices:
-      d_star_sq = xs.unit_cell().d_star_sq(idx_)
+    out.write("\nAD accounted: true")
+    for idx in indices:
+      d_star_sq = xs.unit_cell().d_star_sq(idx)
       isc.at_d_star_sq(d_star_sq)
-      for m in ml:
-        idx = [int(x) for x in (m.r() * idx_)]
-        out.write("\n%s %s %s" %(idx[0], idx[1], idx[2]))
-        for sci in range(xs.scatterers().size()):
-          val = isc.get(sci, idx_)
-          out.write(" %.6f,%.6f" %(val.real, val.imag))
+      out.write("\n%s %s %s" %(idx[0], idx[1], idx[2]))
+      for sci in xrange(xs.scatterers().size()):
+        val = isc.get(sci, idx)
+        out.write(" %.6f,%.6f" %(val.real, val.imag))
