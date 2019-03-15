@@ -73,7 +73,7 @@ def generate_isc_table_file(file_name,
     xs.scattering_type_registry())
   with open(file_name, "w") as out:
     out.write("Title: generated from isotropic AFF")
-    out.write("Scatterers:")
+    out.write("\nScatterers:")
     for sc in xs.scatterers():
       out.write(" %s" %sc.label)
     out.write("\nAD accounted: true")
