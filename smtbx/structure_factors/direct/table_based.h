@@ -71,9 +71,10 @@ namespace smtbx { namespace structure_factors { namespace table_based {
             SMTBX_ASSERT(stoks.size() == scatterers.size());
             map<string, size_t> sc_map;
             for (size_t sci = 0; sci < scatterers.size(); sci++) {
-              sc_map[scatterers[sci].label] = sci;
+              sc_map[boost::to_upper_copy(scatterers[sci].label)] = sci;
             }
             for (size_t sci = 0; sci < scatterers.size(); sci++) {
+              boost::to_upper(stoks[sci]);
               map<string, size_t>::iterator fsci = sc_map.find(stoks[sci]);
               SMTBX_ASSERT(fsci != sc_map.end());
               sc_indices[sci] = fsci->second;
