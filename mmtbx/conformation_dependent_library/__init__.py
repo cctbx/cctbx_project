@@ -58,12 +58,13 @@ def get_restraint_values(threes, interpolate=False):
     restraint_values = cdl_database[res_type_group][key]
   return restraint_values
 
-def generate_protein_tuples(hierarchy,
+def generate_residue_tuples(hierarchy,
                             geometry,
                             length,
+                            dna_rna_residues=False,
                             include_non_linked=False,
                             backbone_only=True,
-                            include_non_standard_peptides=False,
+                            include_non_standard_residues=False,
                             # CDL specific
                             cdl_class=False,
                             omega_cdl=False,
@@ -73,23 +74,27 @@ def generate_protein_tuples(hierarchy,
                             ):
   assert length
   assert length>1
-  assert length<=5
-  if length==3:
-    if cdl_class:
-      ProteinResidues = ThreeProteinResiduesWithCDL
-    else:
-      ProteinResidues = ThreeProteinResidues
-  elif length==2: ProteinResidues = TwoProteinResidues
-  elif length==4: ProteinResidues = FourProteinResidues
-  elif length==5: ProteinResidues = FiveProteinResidues
-  peptide_lookup = ['common_amino_acid']
-  if include_non_standard_peptides:
-    peptide_lookup.append('modified_amino_acid')
+  if dna_rna_residues:
+    assert length<=2
+    LinkedResidues = TwoNucleicResidues
+  else:
+    assert length<=5
+    if length==3:
+      if cdl_class:
+        LinkedResidues = ThreeProteinResiduesWithCDL
+      else:
+        LinkedResidues = ThreeProteinResidues
+    elif length==2: LinkedResidues = TwoProteinResidues
+    elif length==4: LinkedResidues = FourProteinResidues
+    elif length==5: LinkedResidues = FiveProteinResidues
+    peptide_lookup = ['common_amino_acid']
+    if include_non_standard_peptides:
+      peptide_lookup.append('modified_amino_acid')
   backbone_asc = hierarchy.atom_selection_cache()
   backbone_sel = backbone_asc.selection(retain_selection)
   backbone_hierarchy = hierarchy.select(backbone_sel)
   get_class = iotbx.pdb.common_residue_names_get_class
-  threes = ProteinResidues(geometry, registry=registry, length=length)
+  threes = LinkedResidues(geometry, registry=registry, length=length)
   loop_hierarchy=hierarchy
   if backbone_only: loop_hierarchy=backbone_hierarchy
   for model in loop_hierarchy.models():
@@ -127,11 +132,11 @@ def generate_protein_tuples(hierarchy,
           if 0: list_of_threes.append(copy.copy(threes))
           else:
             # transfer residues to new class because copy.copy is too deep
-            tmp = ProteinResidues(geometry,
-                                  registry=registry,
-                                  length=length,
-                                  include_non_linked=include_non_linked,
-                                  )
+            tmp = LinkedResidues(geometry,
+                                 registry=registry,
+                                 length=length,
+                                 include_non_linked=include_non_linked,
+                                 )
             for pr in threes: tmp.append(pr)
             list_of_threes.append(tmp)
             #
@@ -148,11 +153,12 @@ def generate_protein_tuples(hierarchy,
               threes.end = True
               list_of_threes[i+1].start = True
           yield threes
-      threes = ProteinResidues(geometry,
-                               registry=registry,
-                               length=length,
-                               include_non_linked=include_non_linked,
-                               )
+      threes = LinkedResidues(geometry,
+                              registry=registry,
+                              length=length,
+                              include_non_linked=include_non_linked,
+                              )
+
 def generate_protein_tuples(hierarchy,
                             geometry,
                             length,
@@ -169,18 +175,18 @@ def generate_protein_tuples(hierarchy,
   for item in generate_residue_tuples(hierarchy,
                                       geometry,
                                       length,
-                                      include_non_linked=False,
-                                      backbone_only=True,
-                                      include_non_standard_peptides=False,
+                                      include_non_linked=include_non_linked,
+                                      backbone_only=backbone_only,
+                                      include_non_standard_residues=include_non_standard_peptides,
                                       # CDL specific
-                                      cdl_class=False,
-                                      omega_cdl=False,
+                                      cdl_class=cdl_class,
+                                      omega_cdl=omega_cdl,
                                       #
-                                      retain_selection="name ca or name c or name n or name o or name cb or name h",
-                                      verbose=False,
-                                      ):
+                                      retain_selection=retain_selection,
+                                      verbose=verbose,
+                                      )
 
-
+# retained for backwards compatibility
 def generate_protein_threes(hierarchy,
                             geometry,
                             include_non_linked=False,
@@ -211,7 +217,7 @@ def generate_protein_fragments(hierarchy,
                                include_non_standard_peptides=False,
                                verbose=False,
                                ):
-  for fragment in generate_protein_tuples(
+  for fragment in generate_residue_tuples(
     hierarchy,
     geometry,
     length,
