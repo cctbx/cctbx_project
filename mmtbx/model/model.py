@@ -3281,10 +3281,20 @@ class manager(object):
       minimum_identity=minimum_identity
     )
 
-  def sequence_as_cif_block(self):
+  def sequence_as_cif_block(self, custom_residues=[]):
     """
     Export sequence information as mmCIF block
     Version 5.0 of mmCIF/PDBx dictionary
+
+    Parameters
+    ----------
+    custom_residues: list of str
+      List of custom 3-letter residues to keep in pdbx_one_letter_sequence
+      The 3-letter residue must exist in the model
+
+    Returns
+    -------
+    cif_block: iotbx.cif.model.block
     """
 
     dna = set(['DA', 'DT', 'DC', 'DG', 'DI'])
@@ -3359,7 +3369,8 @@ class manager(object):
           resname = chain.resnames[i_a].strip()
           # check for modified residues
           if (resname in modified_aa_names.lookup or
-              resname in modified_rna_dna_names.lookup):
+              resname in modified_rna_dna_names.lookup or
+              resname in custom_residues):
             letter = '({resname})'.format(resname=resname)
             nstd_monomer[entity_id] = 'yes'
           elif resname in three_letter_l_given_three_letter_d:
