@@ -178,6 +178,14 @@ namespace smtbx { namespace structure_factors { namespace direct {
             xray::scattering_type_registry const &>(
             (arg("scatterers"),
              arg("scattering_type_registry"))))
+          .def(init<af::shared< xray::scatterer<FloatType> > const &,
+            xray::scattering_type_registry const &,
+            uctbx::unit_cell const &,
+            af::const_ref<miller::index<> > >(
+            (arg("scatterers"),
+              arg("scattering_type_registry"),
+              arg("unit_cell"),
+              arg("indices"))))
           ;
       }
     };
