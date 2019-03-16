@@ -1,6 +1,7 @@
 #ifndef SMTBX_STRUCTURE_FACTORS_DIRECT_STANDARD_XRAY_H
 #define SMTBX_STRUCTURE_FACTORS_DIRECT_STANDARD_XRAY_H
 
+#include <smtbx/error.h>
 #include <scitbx/math/imaginary.h>
 #include <scitbx/math/copysign.h>
 #include <scitbx/array_family/owning_ref.h>
@@ -455,37 +456,66 @@ namespace smtbx { namespace structure_factors { namespace direct {
       typedef scatterer_contribution<FloatType> base_type;
       typedef FloatType float_type;
       typedef std::complex<float_type> complex_type;
+      typedef std::map<double, af::shared<float_type> > cache_t;
     private:
       af::ref_owning_shared< xray::scatterer<float_type> > scatterers;
       xray::scattering_type_registry const &scattering_type_registry;
       af::shared<std::size_t> scattering_type_indices;
-      af::shared<float_type> elastic_form_factors_at_d_start_sq;
+      af::shared<float_type> at_d_start_sq;
+      af::const_ref<float_type> at_d_start_sq_;
+      boost::shared_ptr<cache_t> cache;
     protected:
     public:
       // Copy constructor
       isotropic_scatterer_contribution(
         const isotropic_scatterer_contribution &isc)
-        :
-        scatterers(isc.scatterers),
+        : scatterers(isc.scatterers),
         scattering_type_registry(isc.scattering_type_registry),
-        scattering_type_indices(isc.scattering_type_indices)
+        scattering_type_indices(isc.scattering_type_indices),
+        cache(isc.cache)
       {}
 
       isotropic_scatterer_contribution(
         af::shared< xray::scatterer<float_type> > const &scatterers,
         xray::scattering_type_registry const &scattering_type_registry)
-        :
-        scatterers(scatterers),
+        : scatterers(scatterers),
         scattering_type_registry(scattering_type_registry),
         scattering_type_indices(
           scattering_type_registry.unique_indices(scatterers.const_ref()))
       {}
 
+      // cache results for the given indices
+      isotropic_scatterer_contribution(
+        af::shared<xray::scatterer<float_type> > const &scatterers,
+        xray::scattering_type_registry const &scattering_type_registry,
+        uctbx::unit_cell const &unit_cell,
+        af::const_ref<miller::index<> > indices)
+        : scatterers(scatterers),
+        scattering_type_registry(scattering_type_registry),
+        scattering_type_indices(
+          scattering_type_registry.unique_indices(scatterers.const_ref())),
+        cache(new cache_t)
+      {
+        for (std::size_t i = 0; i < indices.size(); i++) {
+          float_type d_star_sq = unit_cell.d_star_sq(indices[i]);
+          cache_t::iterator itr = cache->find(d_star_sq);
+          if (itr == cache->end()) {
+            (*cache)[d_star_sq] = scattering_type_registry
+              .unique_form_factors_at_d_star_sq(d_star_sq);
+          }
+        }
+      }
+
       virtual complex_type get(std::size_t scatterer_idx,
           miller::index<> const &h) const
       {
-        float_type f0 = elastic_form_factors_at_d_start_sq[
-          scattering_type_indices[scatterer_idx]];
+        float_type f0;
+        if (cache) {
+          f0 = at_d_start_sq_[scattering_type_indices[scatterer_idx]];
+        }
+        else {
+          f0 = at_d_start_sq[scattering_type_indices[scatterer_idx]];
+        }
         xray::scatterer<> const &sc = scatterers[scatterer_idx];
         if (sc.flags.use_fp_fdp()) {
           return complex_type(f0 + sc.fp, sc.fdp);
@@ -496,8 +526,15 @@ namespace smtbx { namespace structure_factors { namespace direct {
       }
 
       virtual base_type &at_d_star_sq(float_type d_star_sq) {
-        elastic_form_factors_at_d_start_sq = scattering_type_registry
-          .unique_form_factors_at_d_star_sq(d_star_sq);
+        if (cache) {
+          cache_t::iterator itr = cache->find(d_star_sq);
+          SMTBX_ASSERT(itr != cache->end());
+          at_d_start_sq_ = itr->second.const_ref();
+        }
+        else {
+          at_d_start_sq = scattering_type_registry
+            .unique_form_factors_at_d_star_sq(d_star_sq);
+        }
         return *this;
       }
 

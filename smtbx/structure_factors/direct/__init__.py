@@ -5,12 +5,20 @@ ext = boost.python.import_ext("smtbx_structure_factors_direct_ext")
 
 class constructed_with_xray_structure(object):
 
-  def __init__(self, xray_structure, table_file_name=None, *args, **kwds):
+  def __init__(self, xray_structure, table_file_name=None, indices=None,
+               *args, **kwds):
     xs = xray_structure
     if not table_file_name:
-      self.scatterer_contribution = ext.isotropic_scatterer_contribution(
-        xs.scatterers(),
-        xs.scattering_type_registry())
+      if indices:
+          self.scatterer_contribution = ext.isotropic_scatterer_contribution(
+            xs.scatterers(),
+            xs.scattering_type_registry(),
+            unit_cell=xs.unit_cell(),
+            indices=indices)
+      else:
+          self.scatterer_contribution = ext.isotropic_scatterer_contribution(
+            xs.scatterers(),
+            xs.scattering_type_registry())
     else:
       self.scatterer_contribution = ext.table_based_scatterer_contribution(
         xs.scatterers())
@@ -48,14 +56,17 @@ class f_calc_modulus_with_custom_trigonometry(
 
 def f_calc_modulus_squared(xray_structure,
                            table_file_name=None,
+                           indices=None,
                            exp_i_2pi_functor=None):
   if exp_i_2pi_functor is None:
     return f_calc_modulus_squared_with_std_trigonometry(xray_structure,
-                                                        table_file_name)
+                                                        table_file_name=table_file_name,
+                                                        indices=indices)
   else:
     return f_calc_modulus_squared_with_custom_trigonometry(xray_structure,
-                                                           table_file_name,
-                                                           exp_i_2pi_functor)
+                                                           exp_i_2pi_functor,
+                                                           table_file_name=table_file_name,
+                                                           indices=indices)
 def f_calc_modulus(xray_structure,
                    exp_i_2pi_functor=None):
   if exp_i_2pi_functor is None:
