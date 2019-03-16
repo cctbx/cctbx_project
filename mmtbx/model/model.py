@@ -15,7 +15,8 @@ from libtbx import group_args, str_utils
 import iotbx.pdb
 import iotbx.cif.model
 import iotbx.ncs
-from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
+from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter, \
+    three_letter_l_given_three_letter_d
 from iotbx.pdb.atom_selection import AtomSelectionError
 from iotbx.pdb.misc_records_output import link_record_output
 from iotbx.cif import category_sort_function
@@ -48,6 +49,11 @@ from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
+
+from iotbx.bioinformatics import sequence
+from mmtbx.validation.sequence import master_phil as sequence_master_phil
+from mmtbx.validation.sequence import validation as sequence_validation
+from iotbx.pdb import modified_aa_names, modified_rna_dna_names
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
@@ -241,6 +247,9 @@ class manager(object):
     self._original_model_format = None
     self._ss_manager = None
     self._site_symmetry_table = None
+
+    # sequence data objects
+    self._sequence_validation = None
 
     # here we start to extract and fill appropriate field one by one
     # depending on what's available.
@@ -936,6 +945,10 @@ class manager(object):
       ss_cif_loops = ss_ann.as_cif_loops()
     for loop in ss_cif_loops:
       cif_block.add_loop(loop)
+
+    # add sequence information
+    if self._sequence_validation is not None:
+      cif_block.update(self.sequence_as_cif_block())
 
     # self.get_model_statistics_info()
     if self.model_statistics_info is not None:
@@ -3223,3 +3236,267 @@ class manager(object):
     if not self._biomt_mtrix_container_is_good(biomt_records_container):
       return
     self._expand_symm_helper(biomt_records_container)
+
+  def set_sequences(self, sequences=None, similarity_matrix=None,
+                    min_allowable_identity=None, minimum_identity=0.5):
+    """
+    Set the canonical sequence for the model. This should be all the
+    protein and nucleic acid residues expected in the crystal, not just
+    the ones in the modeled structure.
+
+    Parameters
+    ----------
+    sequences: list of sequences
+      list of iotbx.bioinformatics.sequence objects. The output from the
+      get_sequence function of the DataManager will work.
+    similarity_matrix: blosum50 dayhoff *identity
+      choice from mmtbx.validation.sequence.master_phil
+    min_allowable_identity: float
+      parameter from mmtbx.validation.sequence.master_phil
+    minimum_identity: float
+      parameter from mmtbx.validation.sequence.validation
+      minimum identity to match
+
+    Returns
+    -------
+    Nothing
+    """
+    if isinstance(sequences, sequence):
+      sequences = [sequences]
+    for seq in sequences:
+      if not isinstance(seq, sequence):
+        raise Sorry("A non-sequence object was found.")
+
+    # match sequence with chain
+    params = sequence_master_phil.extract()
+    if similarity_matrix is not None:
+      params.similarity_matrix = similarity_matrix
+    if min_allowable_identity is not None:
+      params.min_allowable_identity = min_allowable_identity
+    self._sequence_validation = sequence_validation(
+      pdb_hierarchy=self._pdb_hierarchy,
+      sequences=sequences,
+      params=params,
+      log=self.log,
+      minimum_identity=minimum_identity
+    )
+
+  def sequence_as_cif_block(self):
+    """
+    Export sequence information as mmCIF block
+    Version 5.0 of mmCIF/PDBx dictionary
+    """
+
+    dna = set(['DA', 'DT', 'DC', 'DG', 'DI'])
+    rna = set(['A', 'U', 'C', 'G'])
+    modified_dna = set()
+    modified_rna = set()
+    for key in modified_rna_dna_names.lookup.keys():
+      value = modified_rna_dna_names.lookup[key]
+      if value in dna:
+        modified_dna.add(key)
+      elif value in rna:
+        modified_rna.add(key)
+
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/entity_poly.html
+    entity_poly_loop = iotbx.cif.model.loop(header=(
+      '_entity_poly.entity_id',
+      '_entity_poly.nstd_linkage',
+      '_entity_poly.nstd_monomer',
+      '_entity_poly.pdbx_seq_one_letter_code',
+      '_entity_poly.pdbx_seq_one_letter_code_can',
+      '_entity_poly.pdbx_strand_id',
+      '_entity_poly.pdbx_target_identifier',
+      '_entity_poly.type',
+    ))
+    entity_id = 0
+    sequence_to_entity_id = dict()
+    nstd_linkage = dict()
+    nstd_monomer = dict()
+    seq_one_letter_code = dict()
+    seq_one_letter_code_can = dict()
+    strand_id = dict()
+    target_identifier = dict()
+    sequence_type = dict()
+    for chain in self._sequence_validation.chains:
+      seq_can = chain.alignment.b
+      # entity_id
+      if seq_can not in sequence_to_entity_id:
+        entity_id += 1
+        sequence_to_entity_id[seq_can] = entity_id
+      else:
+        # subsequent matches just add strand_id
+        entity_id = sequence_to_entity_id[seq_can]
+        strand_id[entity_id].append(chain.chain_id[0])
+        continue
+      # nstd_linkage (work in progress)
+      if entity_id not in nstd_linkage:
+        nstd_linkage[entity_id] = 'no'
+      # nstd_monomer
+      if entity_id not in nstd_monomer:
+        nstd_monomer[entity_id] = 'no'
+      # pdbx_seq_one_letter_code
+      if entity_id not in seq_one_letter_code:
+        seq_one_letter_code[entity_id] = list()
+      # type (work in progress)
+      if entity_id not in sequence_type:
+        sequence_type[entity_id] = '?'
+      has_protein = False
+      has_rna = False
+      has_dna = False
+      has_sugar = False
+      is_d = False
+      # chain.alignment.a is the model
+      # chain.alignment.b is the sequence
+      for i_a, i_b in zip(chain.alignment.i_seqs_a, chain.alignment.i_seqs_b):
+      #for resname in chain.resnames:
+        # sequence does not have residue in model
+        if i_b is None:
+          continue
+        # model does not have residue in sequence
+        if i_a is None or chain.resnames[i_a] is None:
+          letter = seq_can[i_b]
+        else:
+          resname = chain.resnames[i_a].strip()
+          # check for modified residues
+          if (resname in modified_aa_names.lookup or
+              resname in modified_rna_dna_names.lookup):
+            letter = '({resname})'.format(resname=resname)
+            nstd_monomer[entity_id] = 'yes'
+          elif resname in three_letter_l_given_three_letter_d:
+            letter = '({resname})'.format(resname=resname)
+            nstd_monomer[entity_id] = 'yes'
+          # check for nucleic acid
+          elif resname in dna:
+            letter = '({resname})'.format(resname=resname)
+          elif resname in rna:
+            letter = resname
+          # regular protein
+          else:
+            letter = one_letter_given_three_letter.get(resname)
+            if letter is None:
+              letter = 'X'
+
+          # check for protein
+          if (resname in one_letter_given_three_letter and
+              resname != 'MSE' and resname != 'UNK'):
+            has_protein = True
+          # check for DNA
+          # hybrid protein/DNA/RNA chains are not allowed
+          if resname in dna or resname in modified_dna:
+            has_dna = True
+            has_protein = False
+          # check for RNA
+          # does not handle hybrid DNA/RNA chains
+          if resname in rna or resname in modified_rna:
+            has_rna = True
+            has_dna = False
+            has_protein = False
+          # check chirality
+          # hybrid D/L handed chains are not allowed
+          if resname in three_letter_l_given_three_letter_d:
+            is_d = True
+        # pdbx_seq_one_letter_code
+        seq_one_letter_code[entity_id].append(letter)
+
+      # pdbx_seq_one_letter_code_can
+      seq_one_letter_code_can[entity_id] = seq_can.replace('-', '')
+      # strand_id
+      if entity_id not in strand_id:
+        strand_id[entity_id] = list()
+      strand_id[entity_id].append(chain.chain_id[0])
+      # target_identifier (work in progress)
+      if entity_id not in target_identifier:
+        target_identifier[entity_id] = '?'
+      # type (work in progress)
+      #   polypeptide(L)
+      #   polypeptide(D)
+      #   polydeoxyribonucleotide,
+      #   polyribonucleotide
+      # missing
+      #   cyclic-psuedo-peptide
+      #   other
+      #   peptide nucleic acid
+      #   polydeoxyribonucleotide/polyribonucleotide
+      #   polysaccharide(D)
+      #   polysaccahride(L)
+      if has_protein:
+        choice = 'polypeptide'
+        if is_d:
+          choice += '(D)'
+        else:
+          choice += '(L)'
+      if has_dna:
+        choice = 'polydeoxyribonucleotide'
+      if has_rna:
+        choice = 'polyribonucleotide'
+      sequence_type[entity_id] = choice
+
+    # construct entity_poly loop
+    ids = sequence_to_entity_id.values()
+    ids.sort()
+    for entity_id in ids:
+      if len(strand_id[entity_id]) == 1:
+        chains = strand_id[entity_id][0]
+      else:
+        chains = strand_id[entity_id]
+        chains.sort()
+        chains = ','.join(chains)
+      entity_poly_loop.add_row((
+        entity_id,
+        nstd_linkage[entity_id],
+        nstd_monomer[entity_id],
+        ';' + ''.join(seq_one_letter_code[entity_id]) + '\n;',
+        ';' + seq_one_letter_code_can[entity_id] + '\n;',
+        chains,
+        target_identifier[entity_id],
+        sequence_type[entity_id]
+      ))
+
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/entity_poly_seq.html
+    entity_poly_seq_loop = iotbx.cif.model.loop(header=(
+      '_entity_poly_seq.entity_id',
+      '_entity_poly_seq.mon_id',
+      '_entity_poly_seq.num',
+      '_entity_poly_seq.hetero',
+    ))
+
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ref.html
+    struct_ref_loop = iotbx.cif.model.loop(header=(
+      '_struct_ref.id',
+      '_struct_ref.db_code',
+      '_struct_ref.db_name',
+      '_struct_ref.entity_id',
+      '_struct_ref.pdbx_align_begin',
+      '_struct_ref.pdbx_db_accession',
+      '_struct_ref.pdbx_db_isoform',
+      '_struct_ref.pdbx_seq_one_letter_code',
+    ))
+
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ref_seq.html
+    struct_ref_seq_loop = iotbx.cif.model.loop(header=(
+      '_struct_ref_seq.align_id',
+      '_struct_ref_seq.db_align_beg',
+      '_struct_ref_seq.db_align_end',
+      '_struct_ref_seq.pdbx_PDB_id_code',
+      '_struct_ref_seq.pdbx_auth_seq_align_beg',
+      '_struct_ref_seq.pdbx_auth_seq_align_end',
+      '_struct_ref_seq.pdbx_db_accession',
+      '_struct_ref_seq.pdbx_db_align_beg_ins_code',
+      '_struct_ref_seq.pdbx_db_align_end_ins_code',
+      '_struct_ref_seq.pdbx_seq_align_beg_ins_code',
+      '_struct_ref_seq.pdbx_seq_align_end_ins_code',
+      '_struct_ref_seq.pdbx_strand_id',
+      '_struct_ref_seq.ref_id',
+      '_struct_ref_seq.seq_align_beg',
+      '_struct_ref_seq.seq_align_end',
+    ))
+
+    # construct block
+    cif_block = iotbx.cif.model.block()
+    cif_block.add_loop(entity_poly_loop)
+    cif_block.add_loop(entity_poly_seq_loop)
+    cif_block.add_loop(struct_ref_loop)
+    cif_block.add_loop(struct_ref_seq_loop)
+
+    return cif_block
