@@ -228,6 +228,29 @@ def generate_protein_fragments(hierarchy,
     ):
     yield fragment
 
+def generate_dna_rna_fragments(hierarchy,
+                               geometry,
+                               length,
+                               include_non_linked=False,
+                               backbone_only=False,
+                               include_non_standard_bases=False,
+                               verbose=False,
+                               ):
+  for item in generate_residue_tuples(hierarchy,
+                                      geometry,
+                                      length,
+                                      include_non_linked=include_non_linked,
+                                      backbone_only=backbone_only,
+                                      include_non_standard_residues=include_non_standard_peptides,
+                                      # CDL specific
+                                      cdl_class=cdl_class,
+                                      omega_cdl=omega_cdl,
+                                      #
+                                      retain_selection=retain_selection,
+                                      verbose=verbose,
+                                      )
+
+
 def update_restraints(hierarchy,
                       geometry, # restraints_manager,
                       current_geometry=None, # xray_structure!!
