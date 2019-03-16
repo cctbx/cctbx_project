@@ -3349,7 +3349,6 @@ class manager(object):
       # chain.alignment.a is the model
       # chain.alignment.b is the sequence
       for i_a, i_b in zip(chain.alignment.i_seqs_a, chain.alignment.i_seqs_b):
-      #for resname in chain.resnames:
         # sequence does not have residue in model
         if i_b is None:
           continue
@@ -3378,8 +3377,8 @@ class manager(object):
               letter = 'X'
 
           # check for protein
-          if (resname in one_letter_given_three_letter and
-              resname != 'MSE' and resname != 'UNK'):
+          if (resname in one_letter_given_three_letter or
+              resname in modified_aa_names.lookup):
             has_protein = True
           # check for DNA
           # hybrid protein/DNA/RNA chains are not allowed
