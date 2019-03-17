@@ -3330,6 +3330,18 @@ class manager(object):
       '_entity_poly_seq.hetero',
     ))
 
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ref.html
+    struct_ref_loop = iotbx.cif.model.loop(header=(
+      '_struct_ref.id',
+      '_struct_ref.db_code',
+      '_struct_ref.db_name',
+      '_struct_ref.entity_id',
+      '_struct_ref.pdbx_align_begin',
+      '_struct_ref.pdbx_db_accession',
+      '_struct_ref.pdbx_db_isoform',
+      '_struct_ref.pdbx_seq_one_letter_code',
+    ))
+
     entity_id = 0
     # entity_poly
     sequence_to_entity_id = dict()
@@ -3344,7 +3356,15 @@ class manager(object):
     num = dict()
     mon_id = dict()
     hetero = dict()
-    for chain in self._sequence_validation.chains:
+    # struct_ref (work in progress)
+    chain_id = dict()
+    db_code = '?'
+    db_name = '?'
+    align_begin = '?'
+    db_accession = '?'
+    db_isoform = '?'
+
+    for i_chain, chain in enumerate(self._sequence_validation.chains):
       seq_can = chain.alignment.b
       # entity_id
       if seq_can not in sequence_to_entity_id:
@@ -3468,6 +3488,10 @@ class manager(object):
       if entity_id not in hetero:
         hetero[entity_id] = list()
 
+      # struct_ref items
+      if entity_id not in chain_id:
+        chain_id[entity_id] = i_chain + 1
+
       for i_a, i_b in zip(chain.alignment.i_seqs_a, chain.alignment.i_seqs_b):
         # sequence does not have residue in model
         if i_b is None:
@@ -3517,27 +3541,26 @@ class manager(object):
       ))
 
       # construct entity_poly_seq loop
-      for entity_id in ids:
-        chain_length = len(mon_id[entity_id])
-        for i in range(chain_length):
-          entity_poly_seq_loop.add_row((
-            entity_id,
-            num[entity_id][i],
-            mon_id[entity_id][i],
-            hetero[entity_id][i]
-          ))
+      chain_length = len(mon_id[entity_id])
+      for i in range(chain_length):
+        entity_poly_seq_loop.add_row((
+          entity_id,
+          num[entity_id][i],
+          mon_id[entity_id][i],
+          hetero[entity_id][i]
+        ))
 
-    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ref.html
-    struct_ref_loop = iotbx.cif.model.loop(header=(
-      '_struct_ref.id',
-      '_struct_ref.db_code',
-      '_struct_ref.db_name',
-      '_struct_ref.entity_id',
-      '_struct_ref.pdbx_align_begin',
-      '_struct_ref.pdbx_db_accession',
-      '_struct_ref.pdbx_db_isoform',
-      '_struct_ref.pdbx_seq_one_letter_code',
-    ))
+      # construct struct_ref loop
+      struct_ref_loop.add_row((
+        chain_id[entity_id],
+        db_code,
+        db_name,
+        entity_id,
+        align_begin,
+        db_accession,
+        db_isoform,
+        ';' + seq_one_letter_code_can[entity_id] + '\n;'
+      ))
 
     # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ref_seq.html
     struct_ref_seq_loop = iotbx.cif.model.loop(header=(
