@@ -3342,6 +3342,25 @@ class manager(object):
       '_struct_ref.pdbx_seq_one_letter_code',
     ))
 
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ref_seq.html
+    struct_ref_seq_loop = iotbx.cif.model.loop(header=(
+      '_struct_ref_seq.align_id',
+      '_struct_ref_seq.db_align_beg',
+      '_struct_ref_seq.db_align_end',
+      '_struct_ref_seq.pdbx_PDB_id_code',
+      '_struct_ref_seq.pdbx_auth_seq_align_beg',
+      '_struct_ref_seq.pdbx_auth_seq_align_end',
+      '_struct_ref_seq.pdbx_db_accession',
+      '_struct_ref_seq.pdbx_db_align_beg_ins_code',
+      '_struct_ref_seq.pdbx_db_align_end_ins_code',
+      '_struct_ref_seq.pdbx_seq_align_beg_ins_code',
+      '_struct_ref_seq.pdbx_seq_align_end_ins_code',
+      '_struct_ref_seq.pdbx_strand_id',
+      '_struct_ref_seq.ref_id',
+      '_struct_ref_seq.seq_align_beg',
+      '_struct_ref_seq.seq_align_end',
+    ))
+
     entity_id = 0
     # entity_poly
     sequence_to_entity_id = dict()
@@ -3363,6 +3382,12 @@ class manager(object):
     align_begin = '?'
     db_accession = '?'
     db_isoform = '?'
+    # struct_ref_seq (work in progress)
+    db_align_beg = '?'
+    db_align_end = '?'
+    PDB_id_code = '?'
+    align_beg_ins_code = '?'
+    align_end_ins_code = '?'
 
     for i_chain, chain in enumerate(self._sequence_validation.chains):
       seq_can = chain.alignment.b
@@ -3521,6 +3546,7 @@ class manager(object):
     # build loops
     ids = sequence_to_entity_id.values()
     ids.sort()
+    align_id = 1
     for entity_id in ids:
       # construct entity_poly loop
       if len(strand_id[entity_id]) == 1:
@@ -3562,24 +3588,25 @@ class manager(object):
         ';' + seq_one_letter_code_can[entity_id] + '\n;'
       ))
 
-    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ref_seq.html
-    struct_ref_seq_loop = iotbx.cif.model.loop(header=(
-      '_struct_ref_seq.align_id',
-      '_struct_ref_seq.db_align_beg',
-      '_struct_ref_seq.db_align_end',
-      '_struct_ref_seq.pdbx_PDB_id_code',
-      '_struct_ref_seq.pdbx_auth_seq_align_beg',
-      '_struct_ref_seq.pdbx_auth_seq_align_end',
-      '_struct_ref_seq.pdbx_db_accession',
-      '_struct_ref_seq.pdbx_db_align_beg_ins_code',
-      '_struct_ref_seq.pdbx_db_align_end_ins_code',
-      '_struct_ref_seq.pdbx_seq_align_beg_ins_code',
-      '_struct_ref_seq.pdbx_seq_align_end_ins_code',
-      '_struct_ref_seq.pdbx_strand_id',
-      '_struct_ref_seq.ref_id',
-      '_struct_ref_seq.seq_align_beg',
-      '_struct_ref_seq.seq_align_end',
-    ))
+      # construct struct_ref_seq loop
+      for chain in strand_id[entity_id]:
+        struct_ref_seq_loop.add_row((
+          align_id,
+          db_align_beg,
+          db_align_end,
+          PDB_id_code,
+          '1',
+          len(seq_one_letter_code_can[entity_id]) - 1,
+          db_accession,
+          align_beg_ins_code,
+          align_end_ins_code,
+          align_beg_ins_code,
+          align_end_ins_code,
+          chain,
+          chain_id[entity_id],
+          '1',
+          len(seq_one_letter_code_can[entity_id]) - 1
+        ))
 
     # construct block
     cif_block = iotbx.cif.model.block()
