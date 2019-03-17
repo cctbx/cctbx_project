@@ -16,7 +16,7 @@ import iotbx.pdb
 import iotbx.cif.model
 import iotbx.ncs
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter, \
-    three_letter_l_given_three_letter_d
+    three_letter_l_given_three_letter_d, three_letter_given_one_letter
 from iotbx.pdb.atom_selection import AtomSelectionError
 from iotbx.pdb.misc_records_output import link_record_output
 from iotbx.cif import category_sort_function
@@ -3299,6 +3299,8 @@ class manager(object):
 
     dna = set(['DA', 'DT', 'DC', 'DG', 'DI'])
     rna = set(['A', 'U', 'C', 'G'])
+    rna_to_dna = {'A': 'DA', 'U': 'DT', 'T': 'DT', 'C': 'DC', 'G': 'DG',
+                  'I': 'DI'}
     modified_dna = set()
     modified_rna = set()
     for key in modified_rna_dna_names.lookup.keys():
@@ -3319,7 +3321,17 @@ class manager(object):
       '_entity_poly.pdbx_target_identifier',
       '_entity_poly.type',
     ))
+
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/entity_poly_seq.html
+    entity_poly_seq_loop = iotbx.cif.model.loop(header=(
+      '_entity_poly_seq.entity_id',
+      '_entity_poly_seq.num',
+      '_entity_poly_seq.mon_id',
+      '_entity_poly_seq.hetero',
+    ))
+
     entity_id = 0
+    # entity_poly
     sequence_to_entity_id = dict()
     nstd_linkage = dict()
     nstd_monomer = dict()
@@ -3328,6 +3340,10 @@ class manager(object):
     strand_id = dict()
     target_identifier = dict()
     sequence_type = dict()
+    # entity_poly_seq
+    num = dict()
+    mon_id = dict()
+    hetero = dict()
     for chain in self._sequence_validation.chains:
       seq_can = chain.alignment.b
       # entity_id
@@ -3339,6 +3355,8 @@ class manager(object):
         entity_id = sequence_to_entity_id[seq_can]
         strand_id[entity_id].append(chain.chain_id[0])
         continue
+
+      # entity_poly items
       # nstd_linkage (work in progress)
       if entity_id not in nstd_linkage:
         nstd_linkage[entity_id] = 'no'
@@ -3418,7 +3436,7 @@ class manager(object):
       # target_identifier (work in progress)
       if entity_id not in target_identifier:
         target_identifier[entity_id] = '?'
-      # type (work in progress)
+      # type
       #   polypeptide(L)
       #   polypeptide(D)
       #   polydeoxyribonucleotide,
@@ -3442,10 +3460,45 @@ class manager(object):
         choice = 'polyribonucleotide'
       sequence_type[entity_id] = choice
 
-    # construct entity_poly loop
+      # entity_poly_seq items
+      if entity_id not in mon_id:
+        mon_id[entity_id] = list()
+      if entity_id not in num:
+        num[entity_id] = list()
+      if entity_id not in hetero:
+        hetero[entity_id] = list()
+
+      for i_a, i_b in zip(chain.alignment.i_seqs_a, chain.alignment.i_seqs_b):
+        # sequence does not have residue in model
+        if i_b is None:
+          continue
+        seq_resname = None
+        if has_protein:
+          seq_resname = three_letter_given_one_letter.get(seq_can[i_b])
+        if has_dna:
+          seq_resname = rna_to_dna.get(seq_can[i_b])
+        if has_rna:
+          seq_resname = seq_can[i_b]
+        if seq_resname is None:
+          seq_resname = 'UNK'
+        # model does not have residue in sequence
+        if i_a is None or chain.resnames[i_a] is None:
+          resname = seq_resname
+        else:
+          resname = chain.resnames[i_a]
+        if resname == seq_resname:
+          mon_id[entity_id].append(resname.strip())
+        if len(num[entity_id]) == 0:
+          num[entity_id].append(1)
+        else:
+          num[entity_id].append(num[entity_id][-1] + 1)
+        hetero[entity_id].append('no')
+
+    # build loops
     ids = sequence_to_entity_id.values()
     ids.sort()
     for entity_id in ids:
+      # construct entity_poly loop
       if len(strand_id[entity_id]) == 1:
         chains = strand_id[entity_id][0]
       else:
@@ -3463,13 +3516,16 @@ class manager(object):
         sequence_type[entity_id]
       ))
 
-    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/entity_poly_seq.html
-    entity_poly_seq_loop = iotbx.cif.model.loop(header=(
-      '_entity_poly_seq.entity_id',
-      '_entity_poly_seq.mon_id',
-      '_entity_poly_seq.num',
-      '_entity_poly_seq.hetero',
-    ))
+      # construct entity_poly_seq loop
+      for entity_id in ids:
+        chain_length = len(mon_id[entity_id])
+        for i in range(chain_length):
+          entity_poly_seq_loop.add_row((
+            entity_id,
+            num[entity_id][i],
+            mon_id[entity_id][i],
+            hetero[entity_id][i]
+          ))
 
     # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ref.html
     struct_ref_loop = iotbx.cif.model.loop(header=(
