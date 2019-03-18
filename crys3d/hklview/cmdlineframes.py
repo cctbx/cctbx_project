@@ -312,8 +312,8 @@ class HKLViewFrame () :
     self.update_settings()
 
 
-  def SetColumnBinThresholds(self, colbinname, binvals):
-    self.viewer.colbinname = colbinname
+  def SetColumnBinThresholds(self, iarray, binvals):
+    self.viewer.iarray = iarray
     self.viewer.binvals = binvals
     self.update_settings()
 
@@ -331,7 +331,20 @@ class HKLViewFrame () :
      %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
         self.miller_array.index_span().max() )
     self.viewer.binvals = []
+    self.viewer.iarray = column_sel
+    self.viewer.icolourcol = column_sel
+    self.viewer.iradiicol = column_sel
     self.viewer.DrawNGLJavaScript()
+
+
+  def SetColourColumn(self, colourcol):
+    self.viewer.icolourcol = colourcol
+    self.update_settings()
+
+
+  def SetRadiusColumn(self, radiuscol):
+    self.viewer.iradiicol = radiuscol
+    self.update_settings()
 
 
   def SetSpaceGroupChoice(self, n) :
@@ -347,7 +360,7 @@ class HKLViewFrame () :
     array = array.merge_equivalents().array().set_info(self.miller_array.info())
     othervalidarrays = []
     for validarray in self.valid_arrays:
-      print "Space group casting ", validarray.info().label_string()
+      #print "Space group casting ", validarray.info().label_string()
       arr = validarray.expand_to_p1().customized_copy(crystal_symmetry=symm)
       arr = arr.merge_equivalents().array().set_info(validarray.info())
       othervalidarrays.append( arr  )

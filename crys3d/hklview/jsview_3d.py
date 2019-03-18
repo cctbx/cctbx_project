@@ -5,6 +5,7 @@
 from __future__ import division
 from libtbx.math_utils import roundoff
 from cctbx.miller import display
+from cctbx import miller
 from websocket_server import WebsocketServer
 import threading, math
 from time import sleep
@@ -33,12 +34,16 @@ class hklview_3d:
       self.verbose = kwds['verbose']
     self.NGLscriptstr = ""
     self.cameratype = "orthographic"
-    self.colbinname = ""
+    self.iarray = 0
+    self.icolourcol = 0
+    self.iradiicol = 0
     self.binvals = []
     self.maxdata = 0.0
     self.mindata = 0.0
     self.valid_arrays = []
     self.otherscenes = []
+    self.othermaxdata = []
+    self.othermindata = []
     self.nbin = 0
     self.websockclient = None
     self.lastmsg = ""
@@ -99,29 +104,63 @@ class hklview_3d:
 
 
   def construct_reciprocal_space (self, merge=None) :
-    self.scene = display.scene(miller_array=self.miller_array,
+    matchcolourindices = miller.match_indices(self.miller_array.indices(),
+       self.valid_arrays[self.icolourcol].indices() )
+    matchcolourarray = self.miller_array.select( matchcolourindices.pairs().column(1) )
+
+    matchradiiindices = miller.match_indices(self.miller_array.indices(),
+       self.valid_arrays[self.iradiicol ].indices() )
+    matchadiiarray = self.miller_array.select( matchradiiindices.pairs().column(1) )
+
+    matchcolourradiiindices = miller.match_indices(self.valid_arrays[self.icolourcol].indices(),
+       self.valid_arrays[self.iradiicol ].indices() )
+    #matchcolourradiiindices = miller.match_indices(matchcolourarray.indices(),
+    #                                               matchadiiarray.indices() )
+    matchcolouradiiarray = self.miller_array.select( matchcolourradiiindices.pairs().column(1) )
+
+    commonindices = miller.match_indices(self.miller_array.indices(),
+       matchcolouradiiarray.indices() )
+    commonarray = self.miller_array.select( commonindices.pairs().column(1) )
+
+    import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #commonarray.size(), matchcolouradiiarray.size(), matchadiiarray.size(), matchcolourarray.size()
+    commonarray.set_info(self.miller_array.info() )
+
+    #self.scene = display.scene(miller_array=self.miller_array,
+    self.scene = display.scene(miller_array = commonarray,
       merge=merge,
       settings=self.settings)
     self.rotation_center = (0,0,0)
     self.maxdata = max(self.scene.data)
     self.mindata = min(self.scene.data)
-    print "in construct_reciprocal_space"
     self.otherscenes = []
-    for validarray in self.valid_arrays:
-      print "Processing Miller array", validarray.info().label_string()
-      self.otherscenes.append(
-        display.scene(miller_array=validarray,  merge=merge,
+    self.othermaxdata = []
+    self.othermindata = []
+    for i,validarray in enumerate(self.valid_arrays):
+      # first match indices in currently selected miller array with indices in the other miller arrays
+      matchindices = miller.match_indices(matchcolouradiiarray.indices(), validarray.indices() )
+      #matchindices = miller.match_indices(self.miller_array.indices(), validarray.indices() )
+      #matchindices = miller.match_indices( commonarray.indices(), validarray.indices() )
+      print validarray.info().label_string()
+      match_valarray = validarray.select( matchindices.pairs().column(1) )
+      otherscene = display.scene(miller_array=match_valarray,  merge=merge,
         settings=self.settings)
-      )
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
-    self.mprint( "Min, max values: %f, %f" %(self.mindata , self.maxdata) )
+      maxdata =max( otherscene.data)
+      mindata =min( otherscene.data)
+      self.othermaxdata.append( maxdata )
+      self.othermindata.append( mindata )
+      self.otherscenes.append( otherscene)
+      self.mprint( "%d, %s, min, max values: %f, %f" \
+          %(i, validarray.info().label_string(), mindata , maxdata) )
 
 
   def DrawNGLJavaScript(self):
     if self.miller_array is None :
       self.mprint( "A miller array must be selected for drawing" )
       return
-
+    self.mprint("Composing NGL JavaScript...")
     h_axis = self.scene.axes[0]
     k_axis = self.scene.axes[1]
     l_axis = self.scene.axes[2]
@@ -153,27 +192,25 @@ class hklview_3d:
     """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, Kstararrowtxt, Lstararrowtxt)
 
-    colors = self.scene.colors
-    radii = self.scene.radii * self.settings.scale
+    colors = self.otherscenes[self.icolourcol].colors
+    radii = self.otherscenes[self.iradiicol].radii * self.settings.scale
+    #colors = self.scene.colors
+    #radii = self.scene.radii * self.settings.scale
     points = self.scene.points
     hkls = self.scene.indices
     dres = self.scene.work_array.d_spacings().data()
     colstr = self.scene.miller_array.info().label_string()
     data = self.scene.data
+    import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
-    shapespherestr = ""
-    shapespherestr2 = ""
-    shapespherestr3 = ""
-    shapespherestr4 = ""
-    shapespherestr5 = ""
     colours = []
     positions = []
     radii2 = []
     spbufttips = []
 
     if len(self.binvals) <1:
-      self.binvals.append(min(data))
-      self.binvals.append(max(data))
+      self.binvals.append( self.othermindata[self.iarray] )
+      self.binvals.append( self.othermaxdata[self.iarray] )
     self.nbin = len(self.binvals)
 
     for ibin in range(self.nbin):
@@ -191,20 +228,22 @@ class hklview_3d:
       raise Sorry("Should never get here")
 
     for i, hklstars in enumerate(points):
-      ibin = data2bin( data[i] )
+      # bin currently displayed data according to the values of another miller array
+      ibin = data2bin( self.otherscenes[self.iarray].data[i] )
       spbufttip = "H,K,L: %s, %s, %s" %(hkls[i][0], hkls[i][1], hkls[i][2])
       spbufttip += "\ndres: %s" %str(roundoff(dres[i])  )
-      #spbufttip += "\n%s: %s" %(colstr, str(roundoff(data[i]) ) )
-      for otherscene in self.otherscenes:
-        ocolstr = otherscene.miller_array.info().label_string()
+      for j,otherscene in enumerate(self.otherscenes):
+        ocolstr = self.valid_arrays[j].info().label_string()
+        #ocolstr = otherscene.miller_array.info().label_string()
         odata = otherscene.data
         od =" "
-        if i < len(odata): # some data might not have been processed if considered outlier
+        if i < len(odata): # some data might not have been processed if considered as outliers
           od = str(roundoff(odata[i]) )
         spbufttip += "\n%s: %s" %(ocolstr, od )
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       positions[ibin].extend( roundoff(list(hklstars)) )
-      colours[ibin].extend( roundoff(list(colors[i]), 2) )
+      #colours[ibin].extend( roundoff(list(colors[i]), 2) )
+      colours[ibin].extend( roundoff(list( colors  [i]  ), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
       spbufttips[ibin].append(spbufttip)
 
@@ -220,7 +259,7 @@ class hklview_3d:
       nreflsinbin = len(radii2[ibin])
       if (ibin+1) < self.nbin:
         self.mprint( "%d reflections with %s in ]%2.2f; %2.2f]" %(nreflsinbin, colstr,
-                                        self.binvals[ibin], self.binvals[ibin+1]), verbose=True )
+                      self.binvals[ibin], self.binvals[ibin+1]), verbose=True )
       if nreflsinbin > 0:
         spherebufferstr += """
   // %d spheres
@@ -453,7 +492,7 @@ mysocket.onmessage = function (e) {
 
 
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
-    #time.sleep(5)
+    self.mprint("Rendering NGL JavaScript...")
     self.SendWebSockMsg( u"Reload, NGL\n" )
 
 
