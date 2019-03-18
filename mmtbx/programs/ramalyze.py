@@ -95,7 +95,7 @@ Example:
     if self.params.plot :
       plot_file_base = self.params.output_prefix
       if plot_file_base is None:
-        plot_file_base = os.path.splitext(os.path.basename(self.data_mananger.get_model_names()[0]))[0]
+        plot_file_base = os.path.splitext(os.path.basename(self.data_manager.get_model_names()[0]))[0]
       result.write_plots(
           plot_file_base=plot_file_base,
           out=self.logger,
