@@ -363,6 +363,66 @@ class FiveProteinResidues(FourProteinResidues):
   def get_cablam_info(self):
     assert 0
 
+class TwoNucleicResidues(LinkedResidues):
+  def show(self):
+    outl = "%sNucleicResidues" % self.length
+    for residue in self:
+      if residue is not None: outl += " %s(%s)" % (residue.resname, residue.resseq)
+      else: outl += ' "%s"' % residue
+    outl += " %s" % self.are_linked(return_value=True)
+    if self.start is not None: outl += " start=T"
+    if self.end is not None: outl += " end=T"
+    return outl
+
+  @staticmethod
+  def get_o3prime_p(residue, return_subset=False):
+    rc = get_c_ca_n(residue, atom_name_list=[' O3', ' P  '], return_subset=return_subset)
+    if rc[0] is None:
+      rc = get_c_ca_n(residue, atom_name_list=[' O3*', ' P  '], return_subset=return_subset)
+    return rc
+
+  def are_linked(self,
+                 return_value=False,
+                 use_distance_always=False,
+                 bond_cut_off=3.5, # Same as link_distance_cutoff of pdb_interpretation
+                 verbose=True,
+                 ):
+    bond_cut_off *= bond_cut_off
+    for i, residue in enumerate(self):
+      if i==0: continue
+      op1, outl1 = self.get_o3prime_p(residue, return_subset=False)
+      # if self[i-1] is None: # place holder for omega CDL
+      #   return False
+      op2, outl2 = self.get_o3prime_p(self[i-1], return_subset=False)
+      # if ccn1 is None:
+      #   for line in outl1:
+      #     if line not in self.errors:
+      #       self.errors.append(line)
+      #   break
+      # if ccn2 is None:
+      #   for line in outl2:
+      #     if line not in self.errors:
+      #       self.errors.append(line)
+      #   break
+      p = op1[1]
+      o3prime = op2[0]
+      if p is None or o3prime is None: return False
+      if self.bond_params_table is None:
+        d2 = distance2(p,o3prime)
+        if d2<bond_cut_off: bond=True
+        else: bond=False
+      else:
+        bond=self.bond_params_table.lookup(p.i_seq, o3prime.i_seq)
+        if not bond and use_distance_always:
+          # needed for situations where atoms are added and the i_seq is updated
+          if distance2(p,o3prime)<bond_cut_off: bond=True
+      if not bond:
+        break
+    else:
+      return True
+    if return_value: return d2
+    return False
+
 if __name__=="__main__":
   import sys
   from iotbx import pdb

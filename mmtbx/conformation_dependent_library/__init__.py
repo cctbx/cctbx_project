@@ -15,6 +15,9 @@ from mmtbx.conformation_dependent_library.multi_residue_class import \
 from mmtbx.conformation_dependent_library.multi_residue_cdl_class import \
   ThreeProteinResiduesWithCDL
 
+from mmtbx.conformation_dependent_library.multi_residue_class import \
+  TwoNucleicResidues
+
 chararcters_36 = letters[:26]+digits
 
 registry = RestraintsRegistry()
@@ -77,6 +80,8 @@ def generate_residue_tuples(hierarchy,
   if dna_rna_residues:
     assert length<=2
     LinkedResidues = TwoNucleicResidues
+    residue_lookup = ['common_rna_dna']
+    assert not include_non_standard_residues
   else:
     assert length<=5
     if length==3:
@@ -87,12 +92,13 @@ def generate_residue_tuples(hierarchy,
     elif length==2: LinkedResidues = TwoProteinResidues
     elif length==4: LinkedResidues = FourProteinResidues
     elif length==5: LinkedResidues = FiveProteinResidues
-    peptide_lookup = ['common_amino_acid']
-    if include_non_standard_peptides:
-      peptide_lookup.append('modified_amino_acid')
-  backbone_asc = hierarchy.atom_selection_cache()
-  backbone_sel = backbone_asc.selection(retain_selection)
-  backbone_hierarchy = hierarchy.select(backbone_sel)
+    residue_lookup = ['common_amino_acid']
+    if include_non_standard_residues:
+      residue_lookup.append('modified_amino_acid')
+  if backbone_only:
+    backbone_asc = hierarchy.atom_selection_cache()
+    backbone_sel = backbone_asc.selection(retain_selection)
+    backbone_hierarchy = hierarchy.select(backbone_sel)
   get_class = iotbx.pdb.common_residue_names_get_class
   threes = LinkedResidues(geometry, registry=registry, length=length)
   loop_hierarchy=hierarchy
@@ -114,7 +120,7 @@ def generate_residue_tuples(hierarchy,
               print '    residue: resname="%s" resid="%s"' % (
                 residue.resname, residue.resid())
           if verbose: print '      residue class : %s' % get_class(residue.resname)
-          if get_class(residue.resname) not in peptide_lookup:
+          if get_class(residue.resname) not in residue_lookup:
             continue
           if include_non_linked:
             list.append(threes, residue)
@@ -159,32 +165,33 @@ def generate_residue_tuples(hierarchy,
                               include_non_linked=include_non_linked,
                               )
 
-def generate_protein_tuples(hierarchy,
-                            geometry,
-                            length,
-                            include_non_linked=False,
-                            backbone_only=True,
-                            include_non_standard_peptides=False,
-                            # CDL specific
-                            cdl_class=False,
-                            omega_cdl=False,
-                            #
-                            retain_selection="name ca or name c or name n or name o or name cb or name h",
-                            verbose=False,
-                            ):
-  for item in generate_residue_tuples(hierarchy,
-                                      geometry,
-                                      length,
-                                      include_non_linked=include_non_linked,
-                                      backbone_only=backbone_only,
-                                      include_non_standard_residues=include_non_standard_peptides,
-                                      # CDL specific
-                                      cdl_class=cdl_class,
-                                      omega_cdl=omega_cdl,
-                                      #
-                                      retain_selection=retain_selection,
-                                      verbose=verbose,
-                                      )
+# def generate_protein_tuples(hierarchy,
+#                             geometry,
+#                             length,
+#                             include_non_linked=False,
+#                             backbone_only=True,
+#                             include_non_standard_peptides=False,
+#                             # CDL specific
+#                             cdl_class=False,
+#                             omega_cdl=False,
+#                             #
+#                             retain_selection="name ca or name c or name n or name o or name cb or name h",
+#                             verbose=False,
+#                             ):
+#   for item in generate_residue_tuples(hierarchy,
+#                                       geometry,
+#                                       length,
+#                                       include_non_linked=include_non_linked,
+#                                       backbone_only=backbone_only,
+#                                       include_non_standard_residues=include_non_standard_peptides,
+#                                       # CDL specific
+#                                       cdl_class=cdl_class,
+#                                       omega_cdl=omega_cdl,
+#                                       #
+#                                       retain_selection=retain_selection,
+#                                       verbose=verbose,
+#                                       ):
+#     yield item
 
 # retained for backwards compatibility
 def generate_protein_threes(hierarchy,
@@ -223,7 +230,7 @@ def generate_protein_fragments(hierarchy,
     length,
     include_non_linked=include_non_linked,
     backbone_only=backbone_only,
-    include_non_standard_peptides=include_non_standard_peptides,
+    include_non_standard_residues=include_non_standard_peptides,
     verbose=verbose,
     ):
     yield fragment
@@ -234,22 +241,21 @@ def generate_dna_rna_fragments(hierarchy,
                                include_non_linked=False,
                                backbone_only=False,
                                include_non_standard_bases=False,
+                               retain_selection='all',
                                verbose=False,
                                ):
+  assert not backbone_only, 'backbone_only not available with DNA/RNA'
   for item in generate_residue_tuples(hierarchy,
                                       geometry,
                                       length,
+                                      dna_rna_residues=True,
                                       include_non_linked=include_non_linked,
-                                      backbone_only=backbone_only,
-                                      include_non_standard_residues=include_non_standard_peptides,
-                                      # CDL specific
-                                      cdl_class=cdl_class,
-                                      omega_cdl=omega_cdl,
-                                      #
-                                      retain_selection=retain_selection,
+                                      backbone_only=False,
+                                      include_non_standard_residues=include_non_standard_bases,
+                                      #retain_selection=retain_selection,
                                       verbose=verbose,
-                                      )
-
+                                      ):
+    yield item
 
 def update_restraints(hierarchy,
                       geometry, # restraints_manager,

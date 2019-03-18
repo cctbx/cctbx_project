@@ -10,11 +10,13 @@ def distance2(a,b):
     d2 += (a.xyz[i]-b.xyz[i])**2
   return d2
 
-def get_c_ca_n(atom_group, return_subset=False):
+def get_c_ca_n(atom_group,
+               atom_name_list=[" C  ", " CA ", " N  "],
+               return_subset=False):
   assert atom_group
   tmp = []
   outl = []
-  for name in [" C  ", " CA ", " N  "]:
+  for name in atom_name_list:
     atom = atom_group.find_atom_by(name=name)
     if atom:
       tmp.append(atom)
