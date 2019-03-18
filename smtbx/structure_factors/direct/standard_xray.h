@@ -498,7 +498,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       {
         for (std::size_t i = 0; i < indices.size(); i++) {
           float_type d_star_sq = unit_cell.d_star_sq(indices[i]);
-          cache_t::iterator itr = cache->find(d_star_sq);
+          typename cache_t::iterator itr = cache->find(d_star_sq);
           if (itr == cache->end()) {
             (*cache)[d_star_sq] = scattering_type_registry
               .unique_form_factors_at_d_star_sq(d_star_sq);
@@ -527,7 +527,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
       virtual base_type &at_d_star_sq(float_type d_star_sq) {
         if (cache) {
-          cache_t::iterator itr = cache->find(d_star_sq);
+          typename cache_t::iterator itr = cache->find(d_star_sq);
           SMTBX_ASSERT(itr != cache->end());
           at_d_start_sq_ = itr->second.const_ref();
         }
