@@ -755,7 +755,7 @@ class DetectorFactory:
             trusted_range = (0.0, 0.0)
 
         cbf_detector.__swig_destroy__(cbf_detector)
-        del (cbf_detector)
+        del cbf_detector
 
         return DetectorFactory.make_detector(
             DetectorFactory.sensor(sensor),

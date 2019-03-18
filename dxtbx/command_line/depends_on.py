@@ -36,7 +36,7 @@ def depends_on(in_name):
             delete.append(d)
 
     for d in delete:
-        del (depends[d])
+        del depends[d]
 
     # invert for printing
 

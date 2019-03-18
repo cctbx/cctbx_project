@@ -733,7 +733,7 @@ class ExperimentListFactory(object):
         for i in range(len(imageset)):
             experiments.append(
                 Experiment(
-                    imageset=imageset[i:i+1],
+                    imageset=imageset[i : i + 1],
                     beam=imageset.get_beam(i),
                     detector=imageset.get_detector(i),
                     goniometer=imageset.get_goniometer(i),

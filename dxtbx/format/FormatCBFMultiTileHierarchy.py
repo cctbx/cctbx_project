@@ -303,7 +303,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
             # p.set_px_mm_strategy(px_mm) FIXME
 
             cbf_detector.__swig_destroy__(cbf_detector)
-            del (cbf_detector)
+            del cbf_detector
 
         return d
 

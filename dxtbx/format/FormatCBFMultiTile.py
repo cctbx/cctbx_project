@@ -140,7 +140,7 @@ class FormatCBFMultiTile(FormatCBFFull):
                 trusted_range = (0.0, 0.0)
 
             cbf_detector.__swig_destroy__(cbf_detector)
-            del (cbf_detector)
+            del cbf_detector
 
             p.set_local_frame(fast, slow, origin)
 

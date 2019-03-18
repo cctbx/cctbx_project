@@ -141,7 +141,7 @@ class EigerNXmxFixer(object):
                 delete.append("/entry/data/%s" % k)
 
         for d in delete:
-            del (handle[d])
+            del handle[d]
 
         # Add fast_pixel_size dataset
         # print "Using /entry/instrument/detector/geometry/orientation/value as fast/slow pixel directions"
@@ -244,7 +244,7 @@ class EigerNXmxFixer(object):
             try:
                 data = group["omega"][()]
             except AttributeError:
-                del (group["omega"])
+                del group["omega"]
 
         if "omega" not in group:
             # In here assume goniometer axis is 1,0,0 unless (i) specified somewhere
