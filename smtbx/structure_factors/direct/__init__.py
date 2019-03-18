@@ -5,16 +5,16 @@ ext = boost.python.import_ext("smtbx_structure_factors_direct_ext")
 
 class constructed_with_xray_structure(object):
 
-  def __init__(self, xray_structure, table_file_name=None, indices=None,
+  def __init__(self, xray_structure, table_file_name=None, reflections=None,
                *args, **kwds):
     xs = xray_structure
     if not table_file_name:
-      if indices:
+      if reflections:
           self.scatterer_contribution = ext.isotropic_scatterer_contribution(
             xs.scatterers(),
             xs.scattering_type_registry(),
             unit_cell=xs.unit_cell(),
-            indices=indices)
+            reflections=reflections)
       else:
           self.scatterer_contribution = ext.isotropic_scatterer_contribution(
             xs.scatterers(),
@@ -56,12 +56,12 @@ class f_calc_modulus_with_custom_trigonometry(
 
 def f_calc_modulus_squared(xray_structure,
                            table_file_name=None,
-                           indices=None,
+                           reflections=None,
                            exp_i_2pi_functor=None):
   if exp_i_2pi_functor is None:
     return f_calc_modulus_squared_with_std_trigonometry(xray_structure,
                                                         table_file_name=table_file_name,
-                                                        indices=indices)
+                                                        reflections=reflections)
   else:
     return f_calc_modulus_squared_with_custom_trigonometry(xray_structure,
                                                            exp_i_2pi_functor,

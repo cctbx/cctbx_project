@@ -8,6 +8,7 @@
 #include <cctbx/math/cos_sin_table.h>
 #include <cctbx/xray/scattering_type_registry.h>
 #include <cctbx/xray/hr_ht_cache.h>
+#include <cctbx/xray/observations.h>
 #include <smtbx/import_cctbx.h>
 #include <smtbx/import_scitbx_af.h>
 
@@ -456,7 +457,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
       typedef scatterer_contribution<FloatType> base_type;
       typedef FloatType float_type;
       typedef std::complex<float_type> complex_type;
-      typedef std::map<double, af::shared<float_type> > cache_t;
+      typedef unsigned long long cache_key_t;
+      typedef std::map<cache_key_t, af::shared<float_type> > cache_t;
     private:
       af::ref_owning_shared< xray::scatterer<float_type> > scatterers;
       xray::scattering_type_registry const &scattering_type_registry;
@@ -464,7 +466,21 @@ namespace smtbx { namespace structure_factors { namespace direct {
       af::shared<float_type> at_d_start_sq;
       af::const_ref<float_type> at_d_start_sq_;
       boost::shared_ptr<cache_t> cache;
+      static const cache_key_t cache_key_mult = 100000000;
     protected:
+      void cache_index(miller::index<> const &h,
+        uctbx::unit_cell const &unit_cell)
+      {
+        float_type d_star_sq = unit_cell.d_star_sq(h);
+        cache_key_t d_star_sq_i = static_cast<cache_key_t>(
+          d_star_sq*cache_key_mult);
+        typename cache_t::iterator itr = cache->find(d_star_sq_i);
+        if (itr == cache->end()) {
+          (*cache)[d_star_sq_i] = scattering_type_registry
+            .unique_form_factors_at_d_star_sq(d_star_sq);
+        }
+
+      }
     public:
       // Copy constructor
       isotropic_scatterer_contribution(
@@ -484,24 +500,28 @@ namespace smtbx { namespace structure_factors { namespace direct {
           scattering_type_registry.unique_indices(scatterers.const_ref()))
       {}
 
-      // cache results for the given indices
+      // cache results for the given observations
       isotropic_scatterer_contribution(
         af::shared<xray::scatterer<float_type> > const &scatterers,
         xray::scattering_type_registry const &scattering_type_registry,
         uctbx::unit_cell const &unit_cell,
-        af::const_ref<miller::index<> > indices)
+        cctbx::xray::observations<float_type> const &reflections)
         : scatterers(scatterers),
         scattering_type_registry(scattering_type_registry),
         scattering_type_indices(
           scattering_type_registry.unique_indices(scatterers.const_ref())),
         cache(new cache_t)
       {
-        for (std::size_t i = 0; i < indices.size(); i++) {
-          float_type d_star_sq = unit_cell.d_star_sq(indices[i]);
-          typename cache_t::iterator itr = cache->find(d_star_sq);
-          if (itr == cache->end()) {
-            (*cache)[d_star_sq] = scattering_type_registry
-              .unique_form_factors_at_d_star_sq(d_star_sq);
+        typedef typename cctbx::xray::observations<FloatType>::iterator_holder itr_t;
+        for (std::size_t i = 0; i < reflections.size(); i++) {
+          cache_index(reflections.index(i), unit_cell);
+          if (reflections.has_twin_components()) {
+            itr_t itr = reflections.iterator(i);
+            while (itr.has_next()) {
+              typename cctbx::xray::observations<float_type>::index_twin_component
+                twc = itr.next();
+              cache_index(twc.h, unit_cell);
+            }
           }
         }
       }
@@ -527,7 +547,9 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
       virtual base_type &at_d_star_sq(float_type d_star_sq) {
         if (cache) {
-          typename cache_t::iterator itr = cache->find(d_star_sq);
+          cache_key_t d_star_sq_i = static_cast<cache_key_t>(
+            d_star_sq*cache_key_mult);
+          typename cache_t::iterator itr = cache->find(d_star_sq_i);
           SMTBX_ASSERT(itr != cache->end());
           at_d_start_sq_ = itr->second.const_ref();
         }
