@@ -19,7 +19,7 @@ def run(args):
 
   parser = CCTBXParser(
     program_class=ramalyze.Program,
-    logger=logger2)
+    logger=logger)
   namespace = parser.parse_args(sys.argv[1:])
 
   # start program
