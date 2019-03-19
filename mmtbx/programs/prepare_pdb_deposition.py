@@ -1,49 +1,16 @@
-# -*- coding: utf-8 -*-
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 
 from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
 
-# just for testing
-import libtbx.phil
-program_citations = libtbx.phil.parse('''
-citation {
-  article_id = hhpred
-  authors = Söding J
-  title = Protein homology detection by HMM-HMM comparison.
-  journal = Bioinformatics
-  volume = 21
-  pages = 951-60
-  year = 2005
-  doi_id = "10.1093/bioinformatics/bti125"
-  pmid = 15531603
-  external = True
-}
-
-citation {
-  article_id = erraser
-  authors = Chou FC, Sripakdeevong P, Dibrov SM, Hermann T, Das R
-  title = Correcting pervasive errors in RNA crystallography through enumerative structure prediction.
-  journal = Nat Methods
-  volume = 10
-  pages = 74-6
-  year = 2012
-  doi_id = "10.1038/nmeth.2262"
-  pmid = 23202432
-  external = True
-}
-
-''')
-# end testing
-
 # =============================================================================
 class Program(ProgramTemplate):
 
   description = '''
-Program for preparing model and data files for depostion into the Proten Data
-Bank\n
+Program for preparing model and data files for depostion into the Proten
+Data Bank.
 
 Minimum required data:
   Model file
@@ -52,7 +19,18 @@ Minimum required data:
 The sequence file should have a sequence for each chain in the model file.
 
 Currently, this program only combines the model and sequence into a single
-mmCIF file. More functionality is planned.
+mmCIF file. If the input model is in mmCIF format, extra information will
+in the file will be kept.
+
+Adding sequences will populate the entity_poly, entity_poly_seq,
+struct_ref, and struct_ref_seq loops. The struct_ref and struct_ref_seq
+loops are works in progress and will require external information. Also,
+the canonical sequence containing all residues for the structure should
+be provided. If there are non-standard residues in the model, they will
+be automatically changed to the 3 letter residue name surrounded by
+parentheses.
+
+More functionality is planned.
 '''
 
   datatypes = ['model', 'phil', 'sequence']
@@ -61,54 +39,54 @@ mmCIF file. More functionality is planned.
 mmtbx.validation.sequence.sequence_alignment {
   include scope mmtbx.validation.sequence.master_phil
 }
+keep_original_loops = True
+  .type = bool
+  .help = Preserves mmCIF data from the input model file (if available) that \
+    is not overwritten by other input
 output {
   output_suffix = '.deposit.cif'
     .type = str
 }
 '''
-
-  # just for testing
-  citations = program_citations
-  known_article_ids = ['phenix', 'phenix.polder']
-  # end testing
-
   # ---------------------------------------------------------------------------
   def validate(self):
-    print('Validating inputs', file=self.logger)
-    self.data_manager.has_models(raise_sorry=True)
+    self.data_manager.has_models(expected_n=1, exact_count=True, raise_sorry=True)
     self.data_manager.has_sequences(raise_sorry=True)
 
   # ---------------------------------------------------------------------------
   def run(self):
-    print('Using model: %s' % self.data_manager.get_default_model_name())
-    print('Using sequence: %s' % self.data_manager.get_default_sequence_name())
+    print('Using model: {model_name}'.format(
+      model_name=self.data_manager.get_default_model_name()))
+    print('Using sequence(s): {sequence_names}'.format(
+      sequence_names=', '.join(self.data_manager.get_sequence_names())))
 
     model = self.data_manager.get_model()
-    sequence = self.data_manager.get_sequence()
+    model.set_log(self.logger)
+    sequences = list()
+    for sequence_name in self.data_manager.get_sequence_names():
+      sequences.extend(self.data_manager.get_sequence(sequence_name))
 
-    self.cif_blocks = list()
+    # match input sequences with model chains
+    print(file=self.logger)
+    print('Matching sequences to chains', file=self.logger)
+    print('----------------------------', file=self.logger)
+    # No error trapping
+    model.set_sequences(
+      sequences,
+      similarity_matrix=self.params.mmtbx.validation.sequence.sequence_alignment.similarity_matrix,
+      min_allowable_identity=self.params.mmtbx.validation.sequence.sequence_alignment.min_allowable_identity)
+    model._sequence_validation.show(out=self.logger)
+    print(file=self.logger)
 
-    # sequence block
-    print ('Creating mmCIF block for sequence', file=self.logger)
-    hierarchy = model.get_hierarchy()
-    # Sequence output should be incorporated into mmtbx.model or sequence obj
-    # should be able to present itself in mmCIF and PDB formats.
-    seq_block = hierarchy.as_cif_block_with_sequence(
-      sequence, crystal_symmetry=model.crystal_symmetry(),
-      alignment_params=self.params.mmtbx.validation.sequence.sequence_alignment)
-    self.cif_blocks.append(seq_block)
-
-    # create additional cif blocks?
-
-    # add cif blocks together
-    print ('Creating complete mmCIF', file=self.logger)
-    self.cif_model = model.model_as_mmcif(additional_blocks=self.cif_blocks)
+    self.cif_model = model.model_as_mmcif(
+      keep_original_loops=self.params.keep_original_loops)
 
     # write output file
     self.output_file = os.path.splitext(
       self.data_manager.get_default_model_name())[0] + \
       self.params.output.output_suffix
-    print ('Writing mmCIF', file=self.logger)
+    print('Writing mmCIF', file=self.logger)
+    print('-------------', file=self.logger)
     print ('  Output file = %s' % self.output_file, file=self.logger)
     self.data_manager.write_model_file(
       self.output_file, self.cif_model, self.params.output.overwrite)
