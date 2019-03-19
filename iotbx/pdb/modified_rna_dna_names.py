@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Mon Feb 11 07:14:29 2019
+The date of file generation: Tue Mar 19 14:34:48 2019
 """
 
 lookup = {
@@ -228,9 +228,9 @@ lookup = {
   "DFG" : "DG",
   "DG8" : "DG",
   "DGI" : "DG",
-  "DGP" : "DG",
   "EHG" : "DG",
   "F4Q" : "DG",
+  "F74" : "DG",
   "F7K" : "DG",
   "FDG" : "DG",
   "FMG" : "DG",
