@@ -363,6 +363,54 @@ class FiveProteinResidues(FourProteinResidues):
   def get_cablam_info(self):
     assert 0
 
+def _get_atoms(atom_group, atom_names):
+  atoms, outl = get_c_ca_n(atom_group, atom_names)
+  if atoms is None:
+    for i in range(len(atom_names)):
+      atom_names[i] = atom_names[i].replace("'", '*')
+    atoms, outl = get_c_ca_n(atom_group, atom_names)
+  return atoms
+
+def calc_pseudorotation(t0,t1,t2,t3,t4):
+  import math
+  if t0 > 180.0: t0 = t0 - 360.0
+  if t1 > 180.0: t1 = t1 - 360.0
+  if t2 > 180.0: t2 = t2 - 360.0
+#JC hack
+  if t2 == 0.0: t2 = 0.1
+#/JC
+  if t3 > 180.0: t3 = t3 - 360.0
+  if t4 > 180.0: t4 = t4 - 360.0
+
+  taus = [t0, t1, t2, t3, t4]
+
+  tanP = ((taus[4] + taus[1]) - (taus[3] + taus[0]))/(2 * taus[2] * (math.sin(36.0*math.pi/180.0) + math.sin(72.0*math.pi/180.0)))
+
+  P = math.atan(tanP)*180.0/math.pi
+  if taus[2] < 0: P = P + 180.0
+  elif tanP < 0: P = P + 360.0
+  #P = "%.1f" % P
+  return P
+
+def get_distance(ag1, ag2, an1, an2):
+  atoms = _get_atoms(ag1, an1) + _get_atoms(ag2, an2)
+  # for atom in atoms: print atom.quote()
+  return atoms[0].distance(atoms[1])
+
+def get_torsion(ag1, ag2, an1, an2, limits='-180-180'):
+  from scitbx.math import dihedral_angle
+  atoms = _get_atoms(ag1, an1) + _get_atoms(ag2, an2)
+  omega = dihedral_angle(sites=[atom.xyz for atom in atoms], deg=True)
+  if limits=='-180-180':
+    if omega>180:
+      print omega, limits
+      assert 0
+  elif limits=='0-360':
+    if omega<0:
+      omega+=360
+  # for atom in atoms: print atom.quote()
+  return omega
+
 class TwoNucleicResidues(LinkedResidues):
   def show(self):
     outl = "%sNucleicResidues" % self.length
@@ -422,6 +470,77 @@ class TwoNucleicResidues(LinkedResidues):
       return True
     if return_value: return d2
     return False
+
+  def get_base_types(self):
+    rc = []
+    for base in self:
+      for atom in base.atoms():
+        if atom.name==' N9 ':
+          rc.append('R')
+          break
+      else:
+        rc.append('Y')
+    return rc
+
+  def get_id(self):
+    outl = []
+    outl.append(self[0].parent().parent().id)
+    outl.append(self[0].resname.strip())
+    outl.append(self[0].resseq.strip())
+    assert not self[0].parent().altloc
+    outl.append(self[1].resname.strip())
+    outl.append(self[1].resseq.strip())
+    assert not self[1].parent().altloc
+    return '_'.join(outl)
+
+  def get_ntc_angles(self):
+    angles = {
+      'd' :[[" C5'", " C4'", " C3'", " O3'"],[]], # delta0
+      'e' :[[" C4'", " C3'", " O3'" ],       [" P  "]], # epsilon
+      'z' :[[" C3'", " O3'"],                [" P  ", " O5'"]], # zeta
+      'a1':[[" O3'"],                        [" P  ", " O5'", " C5'"]], # alpha
+      'b1':[[],                              [" P  ", " O5'", " C5'", " C4'"]], # beta
+      'g1':[[],                              [" O5'", " C5'", " C4'", " C3'"]], # gamma
+      'd1':[[],                              [" C5'", " C4'", " C3'", " O3'"]], # delta1
+    }
+    types = self.get_base_types()
+    if types[0]=='R':
+      angles['ch'] = [[" O4'", " C1'", " N9 ", " C4 "],[]] # chi0
+      N0 = ' N9 '
+    else:
+      angles['ch'] = [[" O4'", " C1'", " N1 ", " C2 "],[]] # chi0
+      N0 = ' N1 '
+    if types[1]=='R':
+      angles['ch1'] = [[], [" O4'", " C1'", " N9 ", " C4 "]] # chi1
+      N1 = ' N9 '
+    else:
+      angles['ch1'] = [[], [" O4'", " C1'", " N1 ", " C2 "]] # chi1
+      N1 = ' N1 '
+    angles['NCCN'] = [[N0, " C1'"], [" C1'", N1]]
+    rc = {}
+    for angle, atom_names in angles.items():
+      rc[angle] = get_torsion(self[0], self[1], atom_names[0], atom_names[1], limits='0-360')
+    rc['NN'] = get_distance(self[0], self[1], [N0], [N1])
+    rc['CC'] = get_distance(self[0], self[1], [" C1'"], [" C1'"])
+    # tau
+    args1 = []
+    args2 = []
+    for atom_names in [
+      [" C4'", " O4'", " C1'", " C2'"],
+      [" O4'", " C1'", " C2'", " C3'"],
+      [" C1'", " C2'", " C3'", " C4'"],
+      [" C2'", " C3'", " C4'", " O4'"],
+      [" C3'", " C4'", " O4'", " C1'"],
+      ]:
+      args1.append(get_torsion(self[0], self[1], atom_names, []))
+      args2.append(get_torsion(self[0], self[1], [], atom_names))
+    rc['P'] = calc_pseudorotation(*tuple(args1))
+    rc['P1'] = calc_pseudorotation(*tuple(args2))
+    for label, item in rc.items():
+      # print '  %s : %0.2f' % (label, item)
+      rc[label] = '%0.1f' % item
+    rc['step_id'] = self.get_id()
+    return rc
 
 if __name__=="__main__":
   import sys

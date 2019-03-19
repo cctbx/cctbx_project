@@ -165,33 +165,33 @@ def generate_residue_tuples(hierarchy,
                               include_non_linked=include_non_linked,
                               )
 
-# def generate_protein_tuples(hierarchy,
-#                             geometry,
-#                             length,
-#                             include_non_linked=False,
-#                             backbone_only=True,
-#                             include_non_standard_peptides=False,
-#                             # CDL specific
-#                             cdl_class=False,
-#                             omega_cdl=False,
-#                             #
-#                             retain_selection="name ca or name c or name n or name o or name cb or name h",
-#                             verbose=False,
-#                             ):
-#   for item in generate_residue_tuples(hierarchy,
-#                                       geometry,
-#                                       length,
-#                                       include_non_linked=include_non_linked,
-#                                       backbone_only=backbone_only,
-#                                       include_non_standard_residues=include_non_standard_peptides,
-#                                       # CDL specific
-#                                       cdl_class=cdl_class,
-#                                       omega_cdl=omega_cdl,
-#                                       #
-#                                       retain_selection=retain_selection,
-#                                       verbose=verbose,
-#                                       ):
-#     yield item
+def generate_protein_tuples(hierarchy,
+                            geometry,
+                            length,
+                            include_non_linked=False,
+                            backbone_only=True,
+                            include_non_standard_peptides=False,
+                            # CDL specific
+                            cdl_class=False,
+                            omega_cdl=False,
+                            #
+                            retain_selection="name ca or name c or name n or name o or name cb or name h",
+                            verbose=False,
+                            ):
+  for item in generate_residue_tuples(hierarchy,
+                                      geometry,
+                                      length,
+                                      include_non_linked=include_non_linked,
+                                      backbone_only=backbone_only,
+                                      include_non_standard_residues=include_non_standard_peptides,
+                                      # CDL specific
+                                      cdl_class=cdl_class,
+                                      omega_cdl=omega_cdl,
+                                      #
+                                      retain_selection=retain_selection,
+                                      verbose=verbose,
+                                      ):
+    yield item
 
 # retained for backwards compatibility
 def generate_protein_threes(hierarchy,

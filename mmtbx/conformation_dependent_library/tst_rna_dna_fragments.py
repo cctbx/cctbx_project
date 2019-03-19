@@ -147,6 +147,8 @@ def main():
       #verbose=True,
       )):
       print k,j,threes
+      print threes.get_base_types()
+      print threes.get_ntc_angles()
 
 if __name__ == '__main__':
   main()
