@@ -19,8 +19,8 @@ Minimum required data:
 The sequence file should have a sequence for each chain in the model file.
 
 Currently, this program only combines the model and sequence into a single
-mmCIF file. If the input model is in mmCIF format, extra information will
-in the file will be kept.
+mmCIF file. If the input model is in mmCIF format, extra loops in the
+file that are not modified will be kept.
 
 Adding sequences will populate the entity_poly, entity_poly_seq,
 struct_ref, and struct_ref_seq loops. The struct_ref and struct_ref_seq
