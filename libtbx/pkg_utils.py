@@ -147,7 +147,11 @@ def require(pkgname, version=None):
     return False
 
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
-  exit_code = pip_main(['install', '-v', requirestring])
+  has_req_tracker = os.environ.get('PIP_REQ_TRACKER')
+  exit_code = pip_main(['install', requirestring])
+  if not has_req_tracker:
+    # clean up environment after pip call for next invocation
+    del os.environ['PIP_REQ_TRACKER']
   if exit_code == 0:
     print("{action} successful".format(action=action))
     return True
