@@ -895,7 +895,8 @@ class manager(object):
       additional_blocks = None,
       align_columns = False,
       origin_shift_cart = None,
-      do_not_shift_back = False):
+      do_not_shift_back = False,
+      keep_original_loops = False):
 
     if origin_shift_cart:
       return self.shift_origin(
@@ -905,7 +906,8 @@ class manager(object):
         additional_blocks=additional_blocks,
         align_columns=align_columns,
         do_not_shift_back=do_not_shift_back,
-        origin_shift_cart=None)
+        origin_shift_cart=None,
+        keep_original_loops=keep_original_loops)
 
     out = StringIO()
     cif = iotbx.cif.model.cif()
@@ -965,6 +967,17 @@ class manager(object):
     if self.restraints_manager_available():
       links = grm_geometry.get_cif_link_entries(self.get_mon_lib_srv())
       cif.update(links)
+
+    # preserve original loops if available
+    if keep_original_loops:
+      if hasattr(self._model_input, 'cif_model'):
+        original_cif_model = self._model_input.cif_model.values()[0]
+        for key in original_cif_model.loop_keys():
+          if key not in cif_block.loop_keys():
+            loop = original_cif_model.get_loop(key)
+            if loop is not None:
+              cif_block.add_loop(loop)
+      cif_block.sort(key=category_sort_function)
 
     cif.show(out=out, align_columns=align_columns)
     return out.getvalue()
@@ -3237,7 +3250,7 @@ class manager(object):
       return
     self._expand_symm_helper(biomt_records_container)
 
-  def set_sequences(self, sequences=None, similarity_matrix=None,
+  def set_sequences(self, sequences, similarity_matrix=None,
                     min_allowable_identity=None, minimum_identity=0.5):
     """
     Set the canonical sequence for the model. This should be all the
