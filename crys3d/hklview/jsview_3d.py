@@ -5,6 +5,7 @@
 from __future__ import division
 from libtbx.math_utils import roundoff
 from cctbx.miller import display
+from cctbx.array_family import flex
 from cctbx import miller
 from websocket_server import WebsocketServer
 import threading, math
@@ -110,26 +111,27 @@ class hklview_3d:
 
     matchradiiindices = miller.match_indices(self.miller_array.indices(),
        self.valid_arrays[self.iradiicol ].indices() )
-    matchadiiarray = self.miller_array.select( matchradiiindices.pairs().column(1) )
+    matchradiiarray = self.miller_array.select( matchradiiindices.pairs().column(1) )
 
     matchcolourradiiindices = miller.match_indices(self.valid_arrays[self.icolourcol].indices(),
        self.valid_arrays[self.iradiicol ].indices() )
     #matchcolourradiiindices = miller.match_indices(matchcolourarray.indices(),
-    #                                               matchadiiarray.indices() )
-    matchcolouradiiarray = self.miller_array.select( matchcolourradiiindices.pairs().column(1) )
+    #                                               matchradiiarray.indices() )
+    matchcolourradiiarray = self.miller_array.select( matchcolourradiiindices.pairs().column(1) )
 
     commonindices = miller.match_indices(self.miller_array.indices(),
-       matchcolouradiiarray.indices() )
+       matchcolourradiiarray.indices() )
     commonarray = self.miller_array.select( commonindices.pairs().column(1) )
 
-    import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    #commonarray.size(), matchcolouradiiarray.size(), matchadiiarray.size(), matchcolourarray.size()
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #commonarray.size(), matchcolourradiiarray.size(), matchradiiarray.size(), matchcolourarray.size()
     commonarray.set_info(self.miller_array.info() )
 
     #self.scene = display.scene(miller_array=self.miller_array,
     self.scene = display.scene(miller_array = commonarray,
       merge=merge,
       settings=self.settings)
+
     self.rotation_center = (0,0,0)
     self.maxdata = max(self.scene.data)
     self.mindata = min(self.scene.data)
@@ -138,14 +140,27 @@ class hklview_3d:
     self.othermindata = []
     for i,validarray in enumerate(self.valid_arrays):
       # first match indices in currently selected miller array with indices in the other miller arrays
-      matchindices = miller.match_indices(matchcolouradiiarray.indices(), validarray.indices() )
+      #matchindices = miller.match_indices(matchcolourradiiarray.indices(), validarray.indices() )
       #matchindices = miller.match_indices(self.miller_array.indices(), validarray.indices() )
-      #matchindices = miller.match_indices( commonarray.indices(), validarray.indices() )
+      matchindices = miller.match_indices( commonarray.indices(), validarray.indices() )
       print validarray.info().label_string()
-      match_valarray = validarray.select( matchindices.pairs().column(1) )
+
+      valarray = validarray.select( matchindices.pairs().column(1) )
+
+      missing = self.miller_array.lone_set( validarray )
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+
+      if valarray.is_integer_array():
+        valarray._data.extend( flex.int(missing.size(), -42) )
+      if valarray.is_real_array():
+        valarray._data.extend( flex.double(missing.size(), -42.424242) )
+
+      valarray._indices.extend( missing.indices() )
+      match_valarray = valarray.select( commonarray.match_indices( valarray ).pairs().column(1) )
+
       otherscene = display.scene(miller_array=match_valarray,  merge=merge,
         settings=self.settings)
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      # match_valarray.size(), otherscene.radii.size(), otherscene.colors.size(), otherscene.points.size()
 
       maxdata =max( otherscene.data)
       mindata =min( otherscene.data)
@@ -201,7 +216,7 @@ class hklview_3d:
     dres = self.scene.work_array.d_spacings().data()
     colstr = self.scene.miller_array.info().label_string()
     data = self.scene.data
-    import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
     colours = []
     positions = []

@@ -13,11 +13,14 @@ Webbrowser input is a javascript file that together with ngl.js displays reflect
 positioned in reciprocal space using a webbrowser. Usage:
 
 from crys3d.hklview import cmdlineframes
-
-# optionally supply output filename for the composed javascript for NGL
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js")
 
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.tncs.mtz")
+myHKLview.SetColumn(0)
+myHKLview.SetSphereScale(3)
+myHKLview.SetColourColumn(3)
+myHKLview.SetRadiusColumn(5)
+
 myHKLview.SetColumn(3)
 myHKLview.SetSphereScale(3)
 myHKLview.SetColumnBinThresholds("asdf", [0, 0.1, 1, 10])
