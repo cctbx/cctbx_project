@@ -147,7 +147,7 @@ def require(pkgname, version=None):
     return False
 
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
-  exit_code = pip_main(['install', requirestring])
+  exit_code = pip_main(['install', '-v', requirestring])
   if exit_code == 0:
     print("{action} successful".format(action=action))
     return True
