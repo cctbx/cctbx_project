@@ -51,8 +51,8 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         if not self.understand(image_file):
             raise IncorrectFormatError(self, image_file)
 
-        # if multi_panel == False, then interpret data as 24 panels, where each row
-        # of 5 panels is grouped as one "panel"
+        # if multi_panel == False, then interpret data as 24 panels, where each
+        # row of 5 panels is grouped as one "panel"
         # elif multi_panel == True, then interpret data as 120 panels,
         # 24 rows * 5 columns
         self._dynamic_shadowing = self.has_dynamic_shadowing(**kwargs)
