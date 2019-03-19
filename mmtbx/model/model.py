@@ -3323,6 +3323,12 @@ class manager(object):
       elif value in rna:
         modified_rna.add(key)
 
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/entity.html
+    entity_loop = iotbx.cif.model.loop(header=(
+      '_entity.id',
+      '_entity.pdbx_description'
+    ))
+
     # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/entity_poly.html
     entity_poly_loop = iotbx.cif.model.loop(header=(
       '_entity_poly.entity_id',
@@ -3579,6 +3585,12 @@ class manager(object):
         sequence_type[entity_id]
       ))
 
+      # construct entity loop
+      entity_loop.add_row((
+        entity_id,
+        'Chains: ' + chains
+      ))
+
       # construct entity_poly_seq loop
       chain_length = len(mon_id[entity_id])
       for i in range(chain_length):
@@ -3623,6 +3635,7 @@ class manager(object):
 
     # construct block
     cif_block = iotbx.cif.model.block()
+    cif_block.add_loop(entity_loop)
     cif_block.add_loop(entity_poly_loop)
     cif_block.add_loop(entity_poly_seq_loop)
     cif_block.add_loop(struct_ref_loop)
