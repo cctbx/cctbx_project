@@ -18,7 +18,7 @@ def dials_regression():
         import dials_regression as dr
     except ImportError:
         pytest.skip("dials_regression required for this test")
-    return os.path.dirname(dr.__file__)
+    return os.path.abspath(os.path.dirname(dr.__file__))
 
 
 def pytest_addoption(parser):
