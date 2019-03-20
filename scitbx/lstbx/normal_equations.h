@@ -93,17 +93,28 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /// Add the equations A x = b with the given weights
     /** w[i] weights the i-th equation, i.e. the row \f$ A_{i.} \f$.
         If negate_right_hand_side, then the equation is A x + b = 0 instead
+        Optimise_for_sparse can be used to control the method used to calculate
+        A^T W A, which may vary significantly in performance depending on the
+        shape and sparsity of the problem. Simple testing suggests that this
+        variable should be set to true for a highly sparse case, but it is
+        recommended that a developer assesses the best option for their problem.
+        See github pull request #295 for further discussion on this topic.
      */
     void add_equations(af::const_ref<scalar_t> const &b,
                        sparse::matrix<scalar_t> const &a,
                        af::const_ref<scalar_t> const &w,
-                       bool negate_right_hand_side=false)
+                       bool negate_right_hand_side=false,
+                       bool optimise_for_sparse=true)
     {
       SCITBX_ASSERT(   a.n_rows() == b.size()
                     && b.size()   == w.size())(a.n_rows())(b.size())(w.size());
       SCITBX_ASSERT(a.n_cols() == n_parameters());
-      sparse::matrix<scalar_t>
-      at_w_a = a.transpose().this_times_diagonal_times_this_transpose(w);
+      sparse::matrix<scalar_t> at_w_a;
+      if (optimise_for_sparse) {
+        at_w_a = a.transpose().this_times_diagonal_times_this_transpose(w);
+      } else {
+        at_w_a = a.this_transpose_times_diagonal_times_this(w);
+      }
       vector_t a_t_w_b = a.transpose_times((w * b).const_ref());
       normal_matrix_ += sparse::upper_diagonal_of(at_w_a);
       if (negate_right_hand_side) right_hand_side_ -= a_t_w_b.const_ref();
@@ -249,7 +260,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /// Add the linearisation of the equations \f$r(x) = 0\f$ all at once
     /** The Jacobian is that of \f$x \mapto r(x)\f$.
      */
-    void add_equations(af::const_ref<scalar_t> const &r,
+    void add_equations_dense(af::const_ref<scalar_t> const &r,
                        af::const_ref<scalar_t, af::mat_grid> const &jacobian,
                        af::const_ref<scalar_t> const &w)
     {
@@ -263,9 +274,11 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       }
     }
 
-    void add_equations(af::const_ref<scalar_t> const &r,
+    void add_equations_sparse(af::const_ref<scalar_t> const &r,
                        sparse::matrix<scalar_t> const &jacobian,
-                       af::const_ref<scalar_t> const &w)
+                       af::const_ref<scalar_t> const &w,
+                       bool negate_right_hand_side=true,
+                       bool optimise_for_sparse=true)
     {
       SCITBX_ASSERT(   r.size() == jacobian.n_rows()
                     && (!w.size() || r.size() == w.size()))
@@ -273,7 +286,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       SCITBX_ASSERT(jacobian.n_cols() == n_parameters())
                    (jacobian.n_cols())(n_parameters());
       add_residuals(r, w);
-      linearised.add_equations(r, jacobian, w, /*negate_right_hand_side=*/true);
+      linearised.add_equations(r, jacobian, w, negate_right_hand_side, optimise_for_sparse);
     }
 
     /// Objective value \f$L(x)\f$ for the current value of the unknowns
