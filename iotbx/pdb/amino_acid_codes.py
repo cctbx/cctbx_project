@@ -16,6 +16,8 @@ one_letter_given_three_letter = {
 "MSE": "M",
 "PHE": "F",
 "PRO": "P",
+'PYL': 'O',
+'SEC': 'U',
 "SER": "S",
 "THR": "T",
 "TRP": "W",
@@ -34,8 +36,8 @@ one_letter_given_three_letter_modified_aa  = {
 "TPO" : "T", # phosphothreonine
 "TYS" : "Y", # sulfonated tyrosine
 # XXX https://lists.sdsc.edu/pipermail/pdb-l/2014-January/005899.html
-"PYL" : "O", # pyrrolysine
-"SEC" : "U", # selenocysteine
+#"PYL" : "O", # pyrrolysine
+#"SEC" : "U", # selenocysteine
 }
 
 three_letter_given_one_letter = {
@@ -51,11 +53,13 @@ three_letter_given_one_letter = {
 "L": "LEU",
 "M": "MET",
 "N": "ASN",
+'O': 'PYL',
 "P": "PRO",
 "Q": "GLN",
 "R": "ARG",
 "S": "SER",
 "T": "THR",
+'U': 'SEC',
 "V": "VAL",
 "W": "TRP",
 "Y": "TYR",
