@@ -260,7 +260,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     /// Add the linearisation of the equations \f$r(x) = 0\f$ all at once
     /** The Jacobian is that of \f$x \mapto r(x)\f$.
      */
-    void add_equations_dense(af::const_ref<scalar_t> const &r,
+    void add_equations(af::const_ref<scalar_t> const &r,
                        af::const_ref<scalar_t, af::mat_grid> const &jacobian,
                        af::const_ref<scalar_t> const &w)
     {
@@ -274,7 +274,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       }
     }
 
-    void add_equations_sparse(af::const_ref<scalar_t> const &r,
+    void add_equations(af::const_ref<scalar_t> const &r,
                        sparse::matrix<scalar_t> const &jacobian,
                        af::const_ref<scalar_t> const &w,
                        bool negate_right_hand_side=true,
