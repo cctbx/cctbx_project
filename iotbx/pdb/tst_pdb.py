@@ -45,10 +45,10 @@ def exercise_validate_sequence():
   test_sequence = 'abcdefghijklmnopqrstuvwxyz'
   a = validate_sequence(test_sequence,protein=True,strict_protein=True,
                         nucleic_acid=False)
-  assert (len(a) == 6)
+  assert (len(a) == 3)
   a = validate_sequence(test_sequence,protein=True,strict_protein=False,
                         nucleic_acid=False)
-  assert (len(a) == 2)
+  assert (len(a) == 1)
   a = validate_sequence(test_sequence,
                         nucleic_acid=True,strict_nucleic_acid=True,
                         protein=False)
@@ -60,7 +60,7 @@ def exercise_validate_sequence():
   a = validate_sequence(test_sequence,
                         protein=True,strict_protein=True,
                         nucleic_acid=True,strict_nucleic_acid=True)
-  assert (len(a) == 5)
+  assert (len(a) == 3)
 
 def exercise_records():
   r = pdb.records.header(pdb_str="""\
