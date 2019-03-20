@@ -151,7 +151,7 @@ def require(pkgname, version=None):
   exit_code = pip_main(['install', requirestring])
   if not has_req_tracker:
     # clean up environment after pip call for next invocation
-    del os.environ['PIP_REQ_TRACKER']
+    os.environ.pop('PIP_REQ_TRACKER', None)
   if exit_code == 0:
     print("{action} successful".format(action=action))
     return True
