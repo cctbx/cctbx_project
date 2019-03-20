@@ -1,30 +1,8 @@
 from __future__ import division
 import os, sys
 
-protein_sequence_to_three = {
-  "B" : "ACE",
-  "A" : "ALA",
-  "C" : "CYS",
-  "D" : "ASP",
-  "E" : "GLU",
-  "F" : "PHE",
-  "G" : "GLY",
-  "H" : "HIS",
-  "I" : "ILE",
-  "K" : "LYS",
-  "L" : "LEU",
-  "M" : "MET",
-  "N" : "ASN",
-  "P" : "PRO",
-  "Q" : "GLN",
-  "R" : "ARG",
-  "S" : "SER",
-  "T" : "THR",
-  "V" : "VAL",
-  "W" : "TRP",
-  "Y" : "TYR",
-  "Z" : "NME",
-  }
+from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as \
+  protein_sequence_to_three
 
 dna_rna_sequence_to_three = {
   "A" : "ADE",

@@ -21,7 +21,7 @@ one_letter_given_three_letter = {
 "TRP": "W",
 "TYR": "Y",
 "VAL": "V",
-"UNK": "U", # Not described in standard (pdb does not define one letter code)
+"UNK": "X", # Not described in standard (pdb does not define one letter code)
 }
 
 one_letter_given_three_letter_modified_aa  = {
@@ -59,7 +59,7 @@ three_letter_given_one_letter = {
 "V": "VAL",
 "W": "TRP",
 "Y": "TYR",
-"U": "UNK", # Not described in standard (pdb does not define one letter code)
+"X": "UNK", # Not described in standard (pdb does not define one letter code)
 }
 
 three_letter_l_given_three_letter_d = {
@@ -142,7 +142,7 @@ def validate_sequence(sequence=None,
   if (protein):
     fasta_format = fasta_format.union(
       set(three_letter_given_one_letter.keys()))
-    fasta_format.remove('U')     # non-standard letter
+    #fasta_format.remove('U')     # non-standard letter
     if (not strict_protein):
       fasta_format = fasta_format.union(set(['B', 'U', 'Z', 'X', '*', '-']))
   if (nucleic_acid):
