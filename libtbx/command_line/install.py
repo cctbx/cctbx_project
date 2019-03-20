@@ -15,13 +15,23 @@ from libtbx.auto_build.bootstrap import Toolbox
 
 # Basically 'pip' for selected libtbx/cctbx modules.
 
+class EpilogParser(OptionParser):
+  """Simple, small OptionParser subclass to not strip epilog"""
+  def format_epilog(self, formatter):
+    """Don't strip newlines from this"""
+    return self.epilog
 
 def is_source_repository(path):
   return (path / '.git').isdir() or (path / '.svn').isdir()
 
 def run(args):
-  parser = OptionParser(usage="libtbx.install [package]",
-                        description="Installs an additional cctbx package")
+  # Generate an epilog message
+  possible_installs = "\nAvailable Packages:\n    " + "\n    ".join(
+    x for x in sorted(warehouse.keys())
+  ) + "\n"
+  parser = EpilogParser(usage="libtbx.install [package]",
+                        description="Installs an additional cctbx package.",
+                        epilog=possible_installs)
   parser.add_option("-?", action="help", help=SUPPRESS_HELP)
   options, args = parser.parse_args(args)
 
