@@ -67,12 +67,12 @@ namespace boost_python {
       void (wt::*add_dense_eqns)(af::const_ref<scalar_t> const &,
                                  af::const_ref<scalar_t, af::mat_grid> const &,
                                  af::const_ref<scalar_t> const &)
-        = &wt::add_equations_dense;
+        = &wt::add_equations;
       void (wt::*add_sparse_eqns)(af::const_ref<scalar_t> const &,
                                   sparse::matrix<scalar_t> const &,
                                   af::const_ref<scalar_t> const &,
                                   bool, bool)
-        = &wt::add_equations_sparse;
+        = &wt::add_equations;
 
       class_<wt>(name, no_init)
         .def(init<int>(arg("n_parameters")))
