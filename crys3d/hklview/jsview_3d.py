@@ -123,10 +123,11 @@ class hklview_3d:
        matchcolourradiiarray.indices() )
     commonarray = self.miller_array.select( commonindices.pairs().column(1) )
 
+    commonarray.set_info(self.miller_array.info() )
+    commonarray.sort(by_value="packed_indices")
+
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #commonarray.size(), matchcolourradiiarray.size(), matchradiiarray.size(), matchcolourarray.size()
-    commonarray.set_info(self.miller_array.info() )
-
     #self.scene = display.scene(miller_array=self.miller_array,
     self.scene = display.scene(miller_array = commonarray,
       merge=merge,
@@ -157,6 +158,7 @@ class hklview_3d:
 
       valarray._indices.extend( missing.indices() )
       match_valarray = valarray.select( commonarray.match_indices( valarray ).pairs().column(1) )
+      match_valarray.sort(by_value="packed_indices")
 
       otherscene = display.scene(miller_array=match_valarray,  merge=merge,
         settings=self.settings)
@@ -245,8 +247,9 @@ class hklview_3d:
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
       ibin = data2bin( self.otherscenes[self.iarray].data[i] )
-      spbufttip = "H,K,L: %s, %s, %s" %(hkls[i][0], hkls[i][1], hkls[i][2])
-      spbufttip += "\ndres: %s" %str(roundoff(dres[i])  )
+      spbufttip = 'H,K,L: %s, %s, %s' %(hkls[i][0], hkls[i][1], hkls[i][2])
+      spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
+      spbufttip += '\' + AA + \''
       for j,otherscene in enumerate(self.otherscenes):
         ocolstr = self.valid_arrays[j].info().label_string()
         #ocolstr = otherscene.miller_array.info().label_string()
@@ -289,7 +292,7 @@ class hklview_3d:
     picking: ttips[%d],
   })
   shape.addBuffer(spherebufs[%d])
-      """ %(nreflsinbin, ibin, str(spbufttips[ibin]), ibin, str(positions[ibin]),
+      """ %(nreflsinbin, ibin, str(spbufttips[ibin]).replace('\"', '\''), ibin, str(positions[ibin]),
       ibin, str(colours[ibin]), ibin, str(radii2[ibin]),
       ibin, ibin, ibin, ibin, ibin, ibin )
 
@@ -301,9 +304,9 @@ class hklview_3d:
     position: "absolute",
     zIndex: 10,
     pointerEvents: "none",
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    color: "lightgrey",
-    padding: "0.5em",
+    backgroundColor: "rgba(255, 255, 255, 0.75)",
+    color: "black",
+    padding: "0.1em",
     fontFamily: "sans-serif"
   });
 
@@ -314,8 +317,9 @@ class hklview_3d:
       var sphere = pickingProxy.sphere;
       var cp = pickingProxy.canvasPosition;
       tooltip.innerText = pickingProxy.picker[pickingProxy.pid];
-      tooltip.style.bottom = cp.y + 3 + "px";
-      tooltip.style.left = cp.x + 3 + "px";
+      tooltip.style.bottom = cp.y + 7 + "px";
+      tooltip.style.left = cp.x + 8 + "px";
+      tooltip.style.fontSize = "smaller";
       tooltip.style.display = "block";
     }else{
       tooltip.style.display = "none";
@@ -364,6 +368,7 @@ var stage;
 var shape;
 var shapeComp;
 var repr;
+var AA = String.fromCharCode(197); // short for angstrom
 
 var hklscene = function () {
   shape = new NGL.Shape('shape');

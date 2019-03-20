@@ -12,6 +12,7 @@ Load mtz file for viewing reflections in a webbrowser using NGL.
 Webbrowser input is a javascript file that together with ngl.js displays reflections
 positioned in reciprocal space using a webbrowser. Usage:
 
+
 from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js")
 
@@ -19,7 +20,7 @@ myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.t
 myHKLview.SetColumn(0)
 myHKLview.SetSphereScale(3)
 myHKLview.SetColourColumn(3)
-myHKLview.SetRadiusColumn(5)
+myHKLview.SetRadiusColumn(7)
 
 myHKLview.SetColumn(3)
 myHKLview.SetSphereScale(3)
@@ -44,6 +45,56 @@ myHKLview.SetCameraType("persp")
 myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Experiments\CRLF3\DLS20151206CRLF3\5840-F11-X1-Hg-SAD-ONsoak\5840-F11-X1_pk_5_5_1_\xia2\dials-run\DataFiles\mx11235v49_x5840F11X1pk551_free.mtz")
 myHKLview.SetColumn(4)
 myHKLview.ShowSlice(True, "h", 20)
+
+
+
+
+
+
+
+
+from cctbx.xray import observation_types
+from cctbx.array_family import flex
+from cctbx import miller
+from cctbx import crystal
+
+xs = crystal.symmetry(unit_cell=(50,50,40, 90,90,120), space_group_symbol="P3 1")
+mi = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
+                        (1, 0, 2), (-1, 1, -2), (2, -2, -2),
+                        (-2, 1, 0) , (1, 0, -2), (0, 0, 2) ]
+)
+
+ma = miller.array( miller.set(xs, mi) )
+
+ma1 = miller.array( miller.set(xs, mi), data=flex.double( [11.205, 6.353, 26.167, 14.94, 2.42, 24.921, 16.185, 11.798, 21.183, 4.98] ),
+                   sigmas=flex.double( [13.695, 6.353, 24.921, 6.225, 11.193, 26.167, 8.715, 4.538, 27.413, 21.165] )
+                   ).set_observation_type( observation_types.intensity() )
+
+mi2 = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
+                        (1, 0, 2), (-1, 1, -2), (2, -2, -2),
+                        (-2, 1, 0) , (0, 0, 2) ]
+                        )
+
+ma2 = miller.array(miller.set(xs, mi2), flex.complex_double( [ -18.691 +7.47j,
+                                             14.94 + 1.21j, -24.921 - 4.98j,
+                                             -20.572 + 19.937j, 21.183 - 8.715j,
+                                             9.378 + 26.167j, -11.205 + 14.824j,
+                                             22.429 - 4.98j, -8.471 + 27.413j
+                                            ] )
+                   )
+mi3 = flex.miller_index([ (1,-2,3), (0,0,-4), (0, 1, 2),
+                        (1, 0, 2), (-1, 1, -2),
+                        (-2, 1, 0) , (1, 0, -2), (0, 0, 2) ]
+                        )
+
+ma3 = miller.array(miller.set(xs, mi3), data=flex.double( [22.429, 28.635, 3.328, 3.738, 24.9, 14.521, 3.738, 19.92] ) )
+
+mi4 = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
+                        (1, 0, 2), (-1, 1, -2),   (0, 0, 2) ]
+                        )
+
+ma4 = miller.array(miller.set(xs, mi4), data=flex.double( [19.937, 12.45, 11.496, 23.675, 4.98, 1.21, 28.659] ) )
+
 
 
 """
