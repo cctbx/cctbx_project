@@ -35,7 +35,7 @@ action {
     pass
 
   @staticmethod
-  def get_validation(query):
+  def get_validation_via_angles(query):
     query1 = {'ch': '271.6',
              'g1': '44.6',
              'CC': '5.0',
@@ -55,6 +55,29 @@ action {
     r2 = requests.post(dnatco_nearest_cgi, json=query)
     return r1,r2
 
+  @staticmethod
+  def get_validation_via_coordinates(query):
+    import json
+    dnatco_cgi = "https://www.dnatco.org/cgi-bin/assign_from_coords_34.py"
+
+    if 1:
+      query = json.dumps(query)
+
+    try:
+      r = requests.post(dnatco_cgi, json=json.loads(query))
+      jsonres = r.json()
+    except Exception, e:
+      print(repr(e))
+      sys.exit()
+
+    if 1:
+      if (jsonres["error"] == ""):
+        #print(jsonres["result"]["NtC"], jsonres["result"].get("confal", None))
+        print(jsonres)
+      else:
+        print(jsonres["error"])
+    return r,r
+
   def print_validation(self, r1, r2):
     jsonres = r1.json()
     if (jsonres["error"] == ""):
@@ -67,9 +90,12 @@ action {
     if (jsonres["error"] == ""):
       for ntc in jsonres["result"]:
   #     nearest.append( [str(ntc), float(jsonres["result"][ntc]["confalH"]), float(jsonres["result"][ntc]["confalA"]), float(jsonres["result"][ntc]["confalG"]), float(jsonres["result"][ntc]["bb_rmsd"]) ] + [float(i) for i in jsonres["result"][ntc]["confals"]] + [float(d) for d in ["%.2f" % float(i) for i in jsonres["result"][ntc]["distances"]]] )
-        nearest.append( [ str(ntc),
+        try:
+          nearest.append( [ str(ntc),
                           float(jsonres["result"][ntc]["confalH"]),
                           float(jsonres["result"][ntc]["bb_rmsd"]) ])
+        except:
+          pass
   #     nearest.sort(key = itemgetter(2), reverse=True)
       nearest.sort(key = itemgetter(2), reverse=False)
       for record in nearest:
@@ -92,6 +118,12 @@ action {
     from libtbx import easy_mp
     from libtbx import Auto
 
+    validation_function = self.get_validation_via_angles
+    query_attr = 'get_ntc_angles'
+    if 0:
+      validation_function = self.get_validation_via_coordinates
+      query_attr = 'get_ntc_coordinates'
+
     t0=time.time()
 
     if self.params.nproc==Auto:
@@ -105,13 +137,14 @@ action {
       length=2,
       ):
       print(dna_rna_pairs)
-      query = dna_rna_pairs.get_ntc_angles()
+      query_function = getattr(dna_rna_pairs, query_attr)
+      query = query_function()
       #print(query)
       argss.append([query])
       self.results[query['step_id']] = None
 
     print('\nUsing %d nprocs for %s suites\n' % (nproc, len(argss)))
-    for args, res, err_str in easy_mp.multi_core_run(self.get_validation,
+    for args, res, err_str in easy_mp.multi_core_run(validation_function,
                                                      argss,
                                                      nproc,
                                                      ):
@@ -121,14 +154,17 @@ action {
                                                 ),
       )
       if err_str:
-        print('Error output from %s' % args)
+        print('Error output from %s' % args[0]['step_id'])
         print(err_str)
         print('_'*80)
       self.results[args[0]['step_id']] = [args, res, err_str]
 
     for step_id, (query, res, err_str) in self.results.items():
       print('-'*80)
-      self.print_validation(res[0], res[1])
+      if res:
+        self.print_validation(res[0], res[1])
+      else:
+        print('no results')
 
     return self.results
 

@@ -542,6 +542,47 @@ class TwoNucleicResidues(LinkedResidues):
     rc['step_id'] = self.get_id()
     return rc
 
+  def get_ntc_coordinates(self):
+    query = {}
+    for atom_key in ['C5pa',
+                     'C4pa',
+                     'O4pa',
+                     'C3pa',
+                     'O3pa',
+                     'C2pa',
+                     'C1pa',
+                     'N19a',
+                     'C24a',
+                     'Pb',
+                     'O5pb',
+                     'C5pb',
+                     'C4pb',
+                     'O4pb',
+                     'C3pb',
+                     'O3pb',
+                     'C2pb',
+                     'C1pb',
+                     'N19b',
+                     'C24b',
+      ]:
+      if atom_key[-1]=='a': atom_group = self[0]
+      elif atom_key[-1]=='b': atom_group = self[1]
+      else: assert 0
+      if atom_key.find('P')>-1: names = [' P  ']
+      elif atom_key.find('N19')>-1: names = [' N1 ', ' N9 ']
+      elif atom_key.find('C24')>-1: names = [' C2 ', ' C4 ']
+      else: names = ['%4s' % atom_key[:-1].replace('p',"'")]
+      for name in names:
+        atom = atom_group.find_atom_by(name=name)
+        if atom is None:
+          atom = atom_group.find_atom_by(name=name.replace("'", '*'))
+        if atom: break
+      else:
+        assert atom
+      query[atom_key]= ['%s'%atom.xyz[0], '%s'%atom.xyz[1], '%s'%atom.xyz[2]]
+    query['step_id'] = self.get_id()
+    return query
+
 if __name__=="__main__":
   import sys
   from iotbx import pdb
