@@ -22,12 +22,16 @@ Minimum required inputs:
   datatypes = ['model', 'phil']
 
   master_phil_str = '''
-nproc = Auto
-  .type = int
+input {
+  nproc = Auto
+    .type = int
+}
 action {
+  query_type = *angles xyz
+    .type = choice(multi=False)
   outliers_only = False
     .type = bool
-    .help = Print only the outliers in the detailed view
+    .help = Print only the outliers
 }
 '''
 
@@ -57,11 +61,30 @@ action {
 
   @staticmethod
   def get_validation_via_coordinates(query):
+    query1 = {"step_id":"102d_A_DC_1_DG_2",
+              "C5pa":["18.939","34.713","89.428"],
+              "C4pa":["20.086","33.755","89.286"],
+              "O4pa":["19.617","32.539","89.905"],
+              "C3pa":["20.434","33.382","87.819"],
+              "O3pa":["21.831","32.949","87.719"],
+              "C2pa":["19.488","32.196","87.629"],
+              "C1pa":["19.521","31.485","88.974"],
+              "N19a":["18.313","30.732","89.375"],
+              "C24a":["18.488","29.453","89.907"],
+              "Pb":["22.636","32.521","86.331"],
+              "O5pb":["22.776","30.956","86.326"],
+              "C5pb":["23.239","30.276","87.446"],
+              "C4pb":["23.441","28.853","87.109"],
+              "O4pb":["22.221","28.177","87.390"],
+              "C3pb":["23.649","28.619","85.571"],
+              "O3pb":["24.497","27.474","85.326"],
+              "C2pb":["22.244","28.333","85.091"],
+              "C1pb":["21.634","27.584","86.246"],
+              "N19b":["20.190","27.715","86.370"],
+              "C24b":["19.318","26.753","86.864"]}
     import json
     dnatco_cgi = "https://www.dnatco.org/cgi-bin/assign_from_coords_34.py"
-
-    if 1:
-      query = json.dumps(query)
+    query = json.dumps(query)
 
     try:
       r = requests.post(dnatco_cgi, json=json.loads(query))
@@ -118,16 +141,19 @@ action {
     from libtbx import easy_mp
     from libtbx import Auto
 
-    validation_function = self.get_validation_via_angles
-    query_attr = 'get_ntc_angles'
-    if 0:
+    if self.params.action.query_type=='angles':
+      validation_function = self.get_validation_via_angles
+      query_attr = 'get_ntc_angles'
+    elif self.params.action.query_type=='xyz':
       validation_function = self.get_validation_via_coordinates
       query_attr = 'get_ntc_coordinates'
+    else:
+      assert 0
 
     t0=time.time()
 
-    if self.params.nproc==Auto:
-      nproc=psutil.cpu_count()
+    if self.params.input.nproc==Auto:
+      self.params.input.nproc=psutil.cpu_count()
     from collections import OrderedDict
     self.results = OrderedDict()
     argss = []
@@ -143,10 +169,11 @@ action {
       argss.append([query])
       self.results[query['step_id']] = None
 
-    print('\nUsing %d nprocs for %s suites\n' % (nproc, len(argss)))
+    print('\nUsing %d nprocs for %s suites\n' % (self.params.input.nproc,
+                                                 len(argss)))
     for args, res, err_str in easy_mp.multi_core_run(validation_function,
                                                      argss,
-                                                     nproc,
+                                                     self.params.input.nproc,
                                                      ):
       print('%sTotal time: %6.2f (s) for %s' % (' '*7,
                                                 time.time()-t0,
