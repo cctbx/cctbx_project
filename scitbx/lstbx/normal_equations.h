@@ -116,6 +116,13 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
         at_w_a = a.this_transpose_times_diagonal_times_this(w);
       }
       vector_t a_t_w_b = a.transpose_times((w * b).const_ref());
+      update_matrix(at_w_a, a_t_w_b, negate_right_hand_side);
+    }
+
+    // Add directly to the normal matrix equation
+    void update_matrix(sparse::matrix<scalar_t> const &at_w_a,
+                       vector_t const &a_t_w_b,
+                       bool negate_right_hand_side){
       normal_matrix_ += sparse::upper_diagonal_of(at_w_a);
       if (negate_right_hand_side) right_hand_side_ -= a_t_w_b.const_ref();
       else                        right_hand_side_ += a_t_w_b.const_ref();
