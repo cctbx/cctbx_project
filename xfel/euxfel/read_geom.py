@@ -89,8 +89,13 @@ def read_geom(geom_file):
   # hierarchy['q0']['p0']['p0a0'] = full panel dictionary
 
   def parse_vector(vector):
-    x, y, z = vector.split(" ")
-    return col((float(x.rstrip('x')),float(y.rstrip('y')), float(z.rstrip('z'))))
+    try:
+      x, y, z = vector.split(" ")
+    except ValueError:
+      x, y = vector.split(" ")
+      return col((float(x.rstrip('x')),float(y.rstrip('y')), 0.0))
+    else:
+      return col((float(x.rstrip('x')),float(y.rstrip('y')), float(z.rstrip('z'))))
 
   # set up panel vectors in lab space
   for panel in panels:
