@@ -200,7 +200,7 @@ def compare_dihedrals(
       file_name_extension,
       verbose):
   for resname in amino_acid_resnames:
-    if (resname in ["PRO"]):
+    if (resname in ["PRO", 'PYL', 'SEC']):
       # compatible semi emp files not available (not important enough to
       # warrant extra effort)
       continue
@@ -300,7 +300,7 @@ def run(args):
     iotbx.pdb.amino_acid_codes.one_letter_given_three_letter.keys())
   for resname in amino_acid_resnames:
     if (verbose): print "resname:", resname
-    if resname == "UNK":
+    if resname in ["UNK", 'PYL', 'SEC']:
       # skipping UNK residue because there is no rotamers available for it
       continue
     pdb_inp = iotbx.pdb.input(
