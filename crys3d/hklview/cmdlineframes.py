@@ -51,12 +51,14 @@ myHKLview.ShowSlice(True, "h", 20)
 
 
 
-
+# Create a small mtz file with 10 reflections and 3 miller arrays. Then load into NGL_HKL viewer
 
 from cctbx.xray import observation_types
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import crystal
+from crys3d.hklview import cmdlineframes
+
 
 xs = crystal.symmetry(unit_cell=(50,50,40, 90,90,120), space_group_symbol="P3 1")
 mi = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
@@ -69,6 +71,7 @@ ma = miller.array( miller.set(xs, mi) )
 ma1 = miller.array( miller.set(xs, mi), data=flex.double( [11.205, 6.353, 26.167, 14.94, 2.42, 24.921, 16.185, 11.798, 21.183, 4.98] ),
                    sigmas=flex.double( [13.695, 6.353, 24.921, 6.225, 11.193, 26.167, 8.715, 4.538, 27.413, 21.165] )
                    ).set_observation_type( observation_types.intensity() )
+ma1.set_info(miller.array_info(source="artificial file", labels=["MyI", "SigMyI"]))
 
 mi2 = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
                         (1, 0, 2), (-1, 1, -2), (2, -2, -2),
@@ -80,22 +83,33 @@ ma2 = miller.array(miller.set(xs, mi2), flex.complex_double( [ -18.691 +7.47j,
                                              -20.572 + 19.937j, 21.183 - 8.715j,
                                              9.378 + 26.167j, -11.205 + 14.824j,
                                              22.429 - 4.98j, -8.471 + 27.413j
-                                            ] )
-                   )
-mi3 = flex.miller_index([ (1,-2,3), (0,0,-4), (0, 1, 2),
-                        (1, 0, 2), (-1, 1, -2),
-                        (-2, 1, 0) , (1, 0, -2), (0, 0, 2) ]
-                        )
+                                            ] ) )
 
+ma2.set_info(miller.array_info(source="artificial file", labels=["MyMap", "PhiMyMap"]))
+
+mi3 = flex.miller_index([ (1,-2,3), (0,0,-4), (0, 1, 2), (1, 0, 2), (-1, 1, -2), (-2, 1, 0) , (1, 0, -2), (0, 0, 2) ] )
 ma3 = miller.array(miller.set(xs, mi3), data=flex.double( [22.429, 28.635, 3.328, 3.738, 24.9, 14.521, 3.738, 19.92] ) )
+ma3.set_info(miller.array_info(source="artificial file", labels=["Foo"]))
 
-mi4 = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
-                        (1, 0, 2), (-1, 1, -2),   (0, 0, 2) ]
-                        )
-
+mi4 = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2), (1, 0, 2), (-1, 1, -2),   (0, 0, 2) ] )
 ma4 = miller.array(miller.set(xs, mi4), data=flex.double( [19.937, 12.45, 11.496, 23.675, 4.98, 1.21, 28.659] ) )
+ma3.set_info(miller.array_info(source="artificial file", labels=["Bar"]))
 
+mtz1 = ma1.as_mtz_dataset(column_root_label="I")
+mtz1.add_miller_array(ma2, column_root_label="MyMap")
+mtz1.add_miller_array(ma3, column_root_label="Oink")
+mtz1.add_miller_array(ma4, column_root_label="blip")
+mtz1.set_wavelength(1.2)
+mtz1.set_name("MyTestData")
+mtz1.mtz_object().write("mymtz.mtz")
 
+myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js")
+myHKLview.LoadReflectionsFile("mymtz.mtz")
+myHKLview.SetColumn(0)
+
+myHKLview.SetColourColumn(2)
+myHKLview.SetRadiusColumn(3)
+myHKLview.SetColumn(1)
 
 """
 

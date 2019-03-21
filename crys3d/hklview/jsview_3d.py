@@ -105,23 +105,27 @@ class hklview_3d:
 
 
   def construct_reciprocal_space (self, merge=None) :
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     matchcolourindices = miller.match_indices(self.miller_array.indices(),
        self.valid_arrays[self.icolourcol].indices() )
-    matchcolourarray = self.miller_array.select( matchcolourindices.pairs().column(1) )
+    matchcolourarray = self.miller_array.select( matchcolourindices.pairs().column(0) )
 
     matchradiiindices = miller.match_indices(self.miller_array.indices(),
        self.valid_arrays[self.iradiicol ].indices() )
-    matchradiiarray = self.miller_array.select( matchradiiindices.pairs().column(1) )
+    matchradiiarray = self.miller_array.select( matchradiiindices.pairs().column(0) )
 
     matchcolourradiiindices = miller.match_indices(self.valid_arrays[self.icolourcol].indices(),
        self.valid_arrays[self.iradiicol ].indices() )
     #matchcolourradiiindices = miller.match_indices(matchcolourarray.indices(),
     #                                               matchradiiarray.indices() )
-    matchcolourradiiarray = self.miller_array.select( matchcolourradiiindices.pairs().column(1) )
+    import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #matchcolourradiiarray = self.miller_array.select( matchcolourradiiindices.pairs().column(0) )
 
+    #commonindices = miller.match_indices(self.miller_array.indices(),
+    #   matchcolourradiiarray.indices() )
     commonindices = miller.match_indices(self.miller_array.indices(),
-       matchcolourradiiarray.indices() )
-    commonarray = self.miller_array.select( commonindices.pairs().column(1) )
+       matchcolourradiiindices.paired_miller_indices(0) )
+    commonarray = self.miller_array.select( commonindices.pairs().column(0) )
 
     commonarray.set_info(self.miller_array.info() )
     commonarray.sort(by_value="packed_indices")
@@ -144,19 +148,23 @@ class hklview_3d:
       #matchindices = miller.match_indices(matchcolourradiiarray.indices(), validarray.indices() )
       #matchindices = miller.match_indices(self.miller_array.indices(), validarray.indices() )
       matchindices = miller.match_indices( commonarray.indices(), validarray.indices() )
-      print validarray.info().label_string()
+      #print validarray.info().label_string()
 
       valarray = validarray.select( matchindices.pairs().column(1) )
 
       missing = self.miller_array.lone_set( validarray )
+      omitval = -99999999
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
       if valarray.is_integer_array():
-        valarray._data.extend( flex.int(missing.size(), -42) )
+        valarray._data.extend( flex.int(missing.size(), omitval) )
       if valarray.is_real_array():
-        valarray._data.extend( flex.double(missing.size(), -42.424242) )
+        valarray._data.extend( flex.double(missing.size(), omitval) )
+      if valarray.is_complex_array():
+        valarray._data.extend( flex.complex_double(missing.size(), omitval) )
 
       valarray._indices.extend( missing.indices() )
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       match_valarray = valarray.select( commonarray.match_indices( valarray ).pairs().column(1) )
       match_valarray.sort(by_value="packed_indices")
 
