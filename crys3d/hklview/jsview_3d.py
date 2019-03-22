@@ -12,6 +12,7 @@ import threading, math
 from time import sleep
 import os.path, time
 import libtbx
+import numpy as np
 import webbrowser, tempfile
 
 
@@ -118,7 +119,7 @@ class hklview_3d:
        self.valid_arrays[self.iradiicol ].indices() )
     #matchcolourradiiindices = miller.match_indices(matchcolourarray.indices(),
     #                                               matchradiiarray.indices() )
-    import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #matchcolourradiiarray = self.miller_array.select( matchcolourradiiindices.pairs().column(0) )
 
     #commonindices = miller.match_indices(self.miller_array.indices(),
@@ -132,8 +133,8 @@ class hklview_3d:
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #commonarray.size(), matchcolourradiiarray.size(), matchradiiarray.size(), matchcolourarray.size()
-    #self.scene = display.scene(miller_array=self.miller_array,
-    self.scene = display.scene(miller_array = commonarray,
+    self.scene = display.scene(miller_array=self.miller_array,
+    #self.scene = display.scene(miller_array = commonarray,
       merge=merge,
       settings=self.settings)
 
@@ -146,31 +147,41 @@ class hklview_3d:
     for i,validarray in enumerate(self.valid_arrays):
       # first match indices in currently selected miller array with indices in the other miller arrays
       #matchindices = miller.match_indices(matchcolourradiiarray.indices(), validarray.indices() )
-      #matchindices = miller.match_indices(self.miller_array.indices(), validarray.indices() )
-      matchindices = miller.match_indices( commonarray.indices(), validarray.indices() )
+      matchindices = miller.match_indices(self.miller_array.indices(), validarray.indices() )
+      #matchindices = miller.match_indices( commonarray.indices(), validarray.indices() )
       #print validarray.info().label_string()
 
       valarray = validarray.select( matchindices.pairs().column(1) )
 
       missing = self.miller_array.lone_set( validarray )
-      omitval = -99999999
+      # insert NAN values for reflections in self.miller_array not found in validarray
+      nanval = float('nan')
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
       if valarray.is_integer_array():
-        valarray._data.extend( flex.int(missing.size(), omitval) )
+        valarray._data.extend( flex.int(missing.size(), nanval) )
       if valarray.is_real_array():
-        valarray._data.extend( flex.double(missing.size(), omitval) )
+        valarray._data.extend( flex.double(missing.size(), nanval) )
       if valarray.is_complex_array():
-        valarray._data.extend( flex.complex_double(missing.size(), omitval) )
+        valarray._data.extend( flex.complex_double(missing.size(), nanval) )
 
       valarray._indices.extend( missing.indices() )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      match_valarray = valarray.select( commonarray.match_indices( valarray ).pairs().column(1) )
+      #match_valarray = valarray.select( commonarray.match_indices( valarray ).pairs().column(1) )
+      match_valindices = miller.match_indices(self.miller_array.indices(), valarray.indices() )
+      match_valarray = valarray.select( match_valindices.pairs().column(1) )
       match_valarray.sort(by_value="packed_indices")
 
       otherscene = display.scene(miller_array=match_valarray,  merge=merge,
         settings=self.settings)
-      # match_valarray.size(), otherscene.radii.size(), otherscene.colors.size(), otherscene.points.size()
+
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      nplst = np.array( list(otherscene.radii) )
+      nplst[np.isnan( nplst) ] = -1
+      otherscene.radii = flex.double( list(nplst) )
+
+      print match_valarray.size(), otherscene.radii.size(), otherscene.colors.size(), otherscene.points.size()
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
       maxdata =max( otherscene.data)
       mindata =min( otherscene.data)
@@ -178,7 +189,7 @@ class hklview_3d:
       self.othermindata.append( mindata )
       self.otherscenes.append( otherscene)
       self.mprint( "%d, %s, min, max values: %f, %f" \
-          %(i, validarray.info().label_string(), mindata , maxdata) )
+        %(i, validarray.info().label_string(), mindata , maxdata) )
 
 
   def DrawNGLJavaScript(self):
@@ -219,6 +230,8 @@ class hklview_3d:
 
     colors = self.otherscenes[self.icolourcol].colors
     radii = self.otherscenes[self.iradiicol].radii * self.settings.scale
+
+
     #colors = self.scene.colors
     #radii = self.scene.radii * self.settings.scale
     points = self.scene.points
@@ -239,7 +252,7 @@ class hklview_3d:
     self.nbin = len(self.binvals)
 
     for ibin in range(self.nbin):
-      colours.append([])
+      colours.append([]) # colours and positions are 3 x size of data()
       positions.append([])
       radii2.append([])
       spbufttips.append([])
@@ -269,10 +282,9 @@ class hklview_3d:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       positions[ibin].extend( roundoff(list(hklstars)) )
       #colours[ibin].extend( roundoff(list(colors[i]), 2) )
-      colours[ibin].extend( roundoff(list( colors  [i]  ), 2) )
+      colours[ibin].extend( roundoff(list( colors[i] ), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
       spbufttips[ibin].append(spbufttip)
-
     spherebufferstr = """
   ttips = new Array(%d)
   positions = new Array(%d)
@@ -282,6 +294,15 @@ class hklview_3d:
     """ %(self.nbin, self.nbin, self.nbin, self.nbin, self.nbin)
 
     for ibin in range(self.nbin):
+      # cast any NAN values to -1 of the colours and radii arrays before writing javascript
+      nplst = np.array( list( radii2[ibin] ) )
+      nplst[np.isnan( nplst) ] = -1
+      radii2[ibin] = list(nplst)
+
+      nplst = np.array( list( colours[ibin] ) )
+      nplst[np.isnan( nplst) ] = -1
+      colours[ibin] = list(nplst)
+
       nreflsinbin = len(radii2[ibin])
       if (ibin+1) < self.nbin:
         self.mprint( "%d reflections with %s in ]%2.2f; %2.2f]" %(nreflsinbin, colstr,

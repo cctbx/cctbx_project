@@ -57,7 +57,6 @@ from cctbx.xray import observation_types
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import crystal
-from crys3d.hklview import cmdlineframes
 
 
 xs = crystal.symmetry(unit_cell=(50,50,40, 90,90,120), space_group_symbol="P3 1")
@@ -102,6 +101,9 @@ mtz1.add_miller_array(ma4, column_root_label="blip")
 mtz1.set_wavelength(1.2)
 mtz1.set_name("MyTestData")
 mtz1.mtz_object().write("mymtz.mtz")
+
+
+from crys3d.hklview import cmdlineframes
 
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js")
 myHKLview.LoadReflectionsFile("mymtz.mtz")
@@ -173,10 +175,11 @@ class HKLViewFrame () :
   def __init__ (self, *args, **kwds) :
     self.miller_array = None
     self.spacegroup_choices = None
+    self.procarrays = []
     self.settings = display.settings()
     kwds['settings'] =self.settings
     self.viewer = view_3d.hklview_3d( **kwds )
-    self.viewer.set_miller_array(self.viewer.miller_array)
+    #self.viewer.set_miller_array(self.viewer.miller_array)
 
 
   def update_clicked (self, index) :#hkl, d_min=None, value=None) :
@@ -187,7 +190,7 @@ class HKLViewFrame () :
       self.settings_panel.update_reflection_info(hkl, d_min, value)
 
 
-  def process_miller_array (self, array) :
+  def process_miller_array (self, array, merge_answer=[None]) :
     if (array is None) : return
     if (array.is_hendrickson_lattman_array()) :
       raise Sorry("Hendrickson-Lattman coefficients are not supported.")
@@ -200,8 +203,8 @@ class HKLViewFrame () :
       raise Sorry("No space group info is present in data")
     details = []
     merge = None
-    if (not array.is_unique_set_under_symmetry()) :
-      merge = Inputarg("The data in the selected array are not symmetry-"+
+    if (not array.is_unique_set_under_symmetry() and not merge_answer[0]) :
+      merge_answer[0] = Inputarg("The data in the selected array are not symmetry-"+
         "unique, which usually means they are unmerged (but could also be due "+
         "to different indexing conventions).  Do you want to merge equivalent "+
         "observations (preserving anomalous data if present), or view the "+
@@ -209,7 +212,7 @@ class HKLViewFrame () :
         "options to expand to P1 or generate Friedel pairs will be be disabled"+
         ", and the 2D view will only show indices present in the file, rather "+
         "than a full pseudo-precession view.). yes/no?\n")
-      if (merge.lower()[0] == "y") :
+      if (merge_answer[0].lower()[0] == "y") :
         merge = True
         #array = array.merge_equivalents().array().set_info(info)
         details.append("merged")
@@ -246,9 +249,25 @@ class HKLViewFrame () :
     return array, array_info
 
 
+  def process_all_miller_arrays(self, array):
+    self.procarrays = []
+    merge_answer = [None]
+    for arr in self.valid_arrays:
+      procarray, procarray_info = self.process_miller_array(arr, merge_answer=merge_answer)
+      self.procarrays.append(procarray)
+      if arr==array:
+        array_info = procarray_info
+        self.miller_array = procarray
+        self.update_space_group_choices()
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    self.viewer.set_miller_array(self.miller_array, merge=array_info.merge,
+       details=array_info.details_str, valid_arrays=self.procarrays)
+    return self.miller_array, array_info
+
+
   def set_miller_array (self, array) :
     if (array is None) : return
-    array, array_info = self.process_miller_array(array)
+    array, array_info = self.process_all_miller_arrays(array)
     self.miller_array = array
     self.update_space_group_choices()
     self.viewer.set_miller_array(array, merge=array_info.merge,
@@ -392,16 +411,16 @@ class HKLViewFrame () :
 
   def SetColumn (self, column_sel) :
     # print("kau printing column_sel ", column_sel)
+    self.viewer.binvals = []
+    self.viewer.iarray = column_sel
+    self.viewer.icolourcol = column_sel
+    self.viewer.iradiicol = column_sel
     self.set_miller_array(self.valid_arrays[column_sel])
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
     print "Miller array %s runs from hkls: %s to %s" \
      %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
         self.miller_array.index_span().max() )
-    self.viewer.binvals = []
-    self.viewer.iarray = column_sel
-    self.viewer.icolourcol = column_sel
-    self.viewer.iradiicol = column_sel
     self.viewer.DrawNGLJavaScript()
 
 
