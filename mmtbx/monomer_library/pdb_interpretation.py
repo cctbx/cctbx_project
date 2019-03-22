@@ -562,7 +562,7 @@ dihedral
     .type = float
   sigma = None
     .type = float
-  periodicity = None
+  periodicity = 1
     .type = int
 }
 planarity

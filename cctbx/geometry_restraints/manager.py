@@ -500,11 +500,13 @@ class manager(Base_geometry):
           origin_id=specific_origin_id)
     angles = self.angle_proxies.proxy_select(
       origin_id=specific_origin_id)
+    dihedrals = self.dihedral_proxies.proxy_select(
+      origin_id=specific_origin_id)
     planarity = self.planarity_proxies.proxy_select(
       origin_id=specific_origin_id)
     parallelity = self.parallelity_proxies.proxy_select(
       origin_id=specific_origin_id)
-    return bonds_simpe, bonds_asu, angles, planarity, parallelity
+    return bonds_simpe, bonds_asu, angles, dihedrals, planarity, parallelity
 
   def remove_user_supplied_restraints_in_place(self):
     """
@@ -532,6 +534,12 @@ class manager(Base_geometry):
     specific_origin_id = origin_ids.get_origin_id('edits')
     if self.angle_proxies is not None:
       return self.angle_proxies.proxy_remove(origin_id=specific_origin_id)
+    return None
+
+  def get_dihedral_proxies_without_user_supplied(self):
+    specific_origin_id = origin_ids.get_origin_id('edits')
+    if self.dihedral_proxies is not None:
+      return self.dihedral_proxies.proxy_remove(origin_id=specific_origin_id)
     return None
 
   def get_planarity_proxies_without_user_supplied(self):

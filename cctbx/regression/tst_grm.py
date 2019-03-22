@@ -70,6 +70,16 @@ def exercise_user_edits(mon_lib_srv, ener_lib):
       angle_ideal = 120
       sigma = 3
     }
+    dihedral {
+      action = *add delete change
+      atom_selection_1 = name C
+      atom_selection_2 = name CA
+      atom_selection_3 = name CB
+      atom_selection_4 = name CG
+      angle_ideal = 90
+      sigma = 10
+      periodicity = 1
+    }
     planarity {
       action = *add delete change
       atom_selection = name CB or name CD or name CE
@@ -97,19 +107,23 @@ def exercise_user_edits(mon_lib_srv, ener_lib):
   assert geometry.pair_proxies().bond_proxies.simple.size() == 9
   assert geometry.pair_proxies().bond_proxies.asu.size() == 0
   assert geometry.angle_proxies.size() == 9
+  assert geometry.dihedral_proxies.size() == 7
   assert geometry.planarity_proxies.size() == 1
   assert geometry.parallelity_proxies.size() == 1
 
-  ubonds_simpe, ubonds_asu, uangles, uplanarity, uparallelity = geometry.get_user_supplied_restraints()
+  ubonds_simpe, ubonds_asu, uangles, udihedrals, uplanarity, uparallelity = \
+      geometry.get_user_supplied_restraints()
   assert ubonds_simpe.size() == 1
   assert ubonds_asu.size() == 0
   assert uangles.size() == 1
+  assert udihedrals.size() == 1
   assert uplanarity.size() == 1
   assert uparallelity.size() == 1
   # make sure geometry stays the same
   assert geometry.pair_proxies().bond_proxies.simple.size() == 9
   assert geometry.pair_proxies().bond_proxies.asu.size() == 0
   assert geometry.angle_proxies.size() == 9
+  assert geometry.dihedral_proxies.size() == 7
   assert geometry.planarity_proxies.size() == 1
   assert geometry.parallelity_proxies.size() == 1
   # test functions one by one
@@ -118,6 +132,8 @@ def exercise_user_edits(mon_lib_srv, ener_lib):
   assert asu.size() == 0
   angle = geometry.get_angle_proxies_without_user_supplied()
   assert angle.size() == 8
+  dihed = geometry.get_dihedral_proxies_without_user_supplied()
+  assert dihed.size() == 6
   plan = geometry.get_planarity_proxies_without_user_supplied()
   assert plan.size() == 0
   par = geometry.get_parallelity_proxies_without_user_supplied()
