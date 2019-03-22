@@ -3098,7 +3098,7 @@ def get_ncs_from_map(params=None,
   if len(results_list)==1:
     # check for C1
     score,cc_avg,ncs_obj,symmetry=results_list[0]
-    if symmetry.strip()=='C1':
+    if symmetry and symmetry.strip()=='C1':
       score=1.
       cc_avg=1.
       results_list=[[score,cc_avg,ncs_obj,symmetry],]
