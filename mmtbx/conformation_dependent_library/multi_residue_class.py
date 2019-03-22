@@ -38,7 +38,7 @@ class ProteinResidues(LinkedResidues):
               ):
     LinkedResidues.__init__(self,
                             geometry,
-                            length=3,
+                            length=length,
                             registry=registry,
                             include_non_linked=include_non_linked,
                             )
