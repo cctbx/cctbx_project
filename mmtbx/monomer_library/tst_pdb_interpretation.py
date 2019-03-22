@@ -2332,7 +2332,8 @@ refinement.geometry_restraints.edits {
   assert user_defined.size() == 1
   udp = user_defined[0]
   assert list(udp.i_seqs) == [5,6,7]
-  # assert approx_equal(udp.angle_ideal, 100, eps=1e-4)
+  assert approx_equal(udp.angle_ideal, 100, eps=1e-4)
+  assert approx_equal(udp.weight, 0.04, eps=1e-4)
 
   from libtbx.test_utils import open_tmp_file
   from libtbx import easy_run

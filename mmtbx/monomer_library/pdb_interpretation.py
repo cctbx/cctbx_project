@@ -4399,6 +4399,7 @@ class build_all_chain_proxies(linking_mixins):
         i_proxy = self.geometry_proxy_registries.angle.lookup_i_proxy(i_seqs)
         a_proxy = self.geometry_proxy_registries.angle.proxies[i_proxy]
         a_proxy.angle_ideal=angle.angle_ideal
+        a_proxy.weight = geometry_restraints.sigma_as_weight(sigma=angle.sigma)
         a_proxy.origin_id=origin_ids.get_origin_id('edits')
       elif (angle.action != "add"):
         raise Sorry("%s = %s not implemented." %
