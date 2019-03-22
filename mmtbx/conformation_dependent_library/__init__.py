@@ -15,7 +15,7 @@ from mmtbx.conformation_dependent_library.multi_residue_class import \
 from mmtbx.conformation_dependent_library.multi_residue_cdl_class import \
   ThreeProteinResiduesWithCDL
 
-from mmtbx.conformation_dependent_library.multi_residue_class import \
+from mmtbx.conformation_dependent_library.multi_base_class import \
   TwoNucleicResidues
 
 chararcters_36 = letters[:26]+digits
