@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, print_function
-# LIBTBX_SET_DISPATCHER_NAME phenix.development.ntc_validation
+# LIBTBX_SET_DISPATCHER_NAME cctbx.development.ntc_validation
 
 import os, sys
 
