@@ -104,16 +104,16 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
                        sparse::matrix<scalar_t> const &a,
                        af::const_ref<scalar_t> const &w,
                        bool negate_right_hand_side=false,
-                       bool optimise_for_sparse=true)
+                       bool optimise_for_tall_matrix=true)
     {
       SCITBX_ASSERT(   a.n_rows() == b.size()
                     && b.size()   == w.size())(a.n_rows())(b.size())(w.size());
       SCITBX_ASSERT(a.n_cols() == n_parameters());
       sparse::matrix<scalar_t> at_w_a;
-      if (optimise_for_sparse) {
-        at_w_a = a.transpose().this_times_diagonal_times_this_transpose(w);
-      } else {
+      if (optimise_for_tall_matrix) {
         at_w_a = a.this_transpose_times_diagonal_times_this(w);
+      } else {
+        at_w_a = a.transpose().this_times_diagonal_times_this_transpose(w);
       }
       vector_t a_t_w_b = a.transpose_times((w * b).const_ref());
       update_matrix(at_w_a, a_t_w_b, negate_right_hand_side);
@@ -285,7 +285,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
                        sparse::matrix<scalar_t> const &jacobian,
                        af::const_ref<scalar_t> const &w,
                        bool negate_right_hand_side=true,
-                       bool optimise_for_sparse=true)
+                       bool optimise_for_tall_matrix=true)
     {
       SCITBX_ASSERT(   r.size() == jacobian.n_rows()
                     && (!w.size() || r.size() == w.size()))
@@ -293,7 +293,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
       SCITBX_ASSERT(jacobian.n_cols() == n_parameters())
                    (jacobian.n_cols())(n_parameters());
       add_residuals(r, w);
-      linearised.add_equations(r, jacobian, w, negate_right_hand_side, optimise_for_sparse);
+      linearised.add_equations(r, jacobian, w, negate_right_hand_side, optimise_for_tall_matrix);
     }
 
     /// Objective value \f$L(x)\f$ for the current value of the unknowns
