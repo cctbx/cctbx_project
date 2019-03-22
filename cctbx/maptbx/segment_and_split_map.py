@@ -3098,7 +3098,7 @@ def get_ncs_from_map(params=None,
   if len(results_list)==1:
     # check for C1
     score,cc_avg,ncs_obj,symmetry=results_list[0]
-    if symmetry and symmetry.strip()=='C1':
+    if symmetry.strip()=='C1':
       score=1.
       cc_avg=1.
       results_list=[[score,cc_avg,ncs_obj,symmetry],]
@@ -3206,7 +3206,6 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
       else:
         ncs_obj=None
         score,cc_avg=None,None
-
       if best_score is None or score>best_score:
         best_cc_avg=cc_avg
         best_score=score
@@ -3279,8 +3278,6 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
         #  operator that maps each point on to all others the best, then save
   #  that list of values
 
-  # XXX must never be here because return is only one item below??
-
   identify_ncs_id_list=list(xrange(ncs_group.n_ncs_oper()))+[None]
 
   all_value_lists=[]
@@ -3341,8 +3338,8 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
   new_all_values_lists=[]
   for i in xrange(len(all_value_lists[0])):
     new_all_values_lists.append(values_by_site_dict[i])
-  cc=get_cc_among_value_lists(new_all_values_lists)
-  return cc
+  score,cc=get_cc_among_value_lists(new_all_values_lists)
+  return score,cc
 
 def get_points_in_map(map_data,n=None,
       minimum_fraction_of_max=0.,
@@ -9606,6 +9603,7 @@ def run_local_sharpening(si=None,
       local_si.remove_aniso=si.local_aniso_in_local_sharpening
       local_si.max_box_fraction=999 # just bigger than 1
       local_si.density_select_max_box_fraction=999
+      local_si.nproc=1
       print >>out,80*"+"
       print >>out,"Getting local sharpening for box %s" %(i)
       print >>out,80*"+"
@@ -10548,7 +10546,7 @@ def run_auto_sharpen(
 
       kw_list=[]
       first=True
-      if return_bsi: assert local_si.nproc==1  #
+      if return_bsi: assert local_si.nproc==1
 
       results_list=[]
       for i in xrange(b_n):
