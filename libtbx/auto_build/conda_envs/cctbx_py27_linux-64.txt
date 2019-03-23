@@ -3,9 +3,9 @@
 # platform: linux-64
 @EXPLICIT
 https://conda.anaconda.org/conda-forge/linux-64/ca-certificates-2018.11.29-ha4d7672_0.tar.bz2#c360ffa6521570483bfdc24caa2b1ae6
-https://conda.anaconda.org/conda-forge/linux-64/libgcc-ng-7.3.0-hdf63c60_0.tar.bz2#f5e8a0e4b1ed4de1eac31dab66a6d2f2
-https://conda.anaconda.org/conda-forge/linux-64/libgfortran-ng-7.2.0-hdf63c60_3.tar.bz2#249575a07286c1500173c6afb0567825
-https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-ng-7.3.0-hdf63c60_0.tar.bz2#c6908d0cfda60fcb8db54fb8c48af10a
+https://repo.anaconda.com/pkgs/main/linux-64/libgcc-ng-7.3.0-hdf63c60_0.tar.bz2#f5e8a0e4b1ed4de1eac31dab66a6d2f2
+https://repo.anaconda.com/pkgs/main/linux-64/libgfortran-ng-7.3.0-hdf63c60_0.tar.bz2#6003e09e8cef9aca91b954abfdd0f39c
+https://repo.anaconda.com/pkgs/main/linux-64/libstdcxx-ng-7.3.0-hdf63c60_0.tar.bz2#c6908d0cfda60fcb8db54fb8c48af10a
 https://conda.anaconda.org/conda-forge/linux-64/libsvm-323-0.tar.bz2#f5849cbafea13890fd746cdf95d9a608
 https://conda.anaconda.org/conda-forge/linux-64/lz4-c-1.8.1.2-0.tar.bz2#61aaf0dbcc58eb0a3030d78f6d2c6b15
 https://repo.anaconda.com/pkgs/main/linux-64/nomkl-3.0-0.tar.bz2#dd8bdca858ba54245790a3cab33cec32
