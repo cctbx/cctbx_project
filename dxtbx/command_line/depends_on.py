@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 import h5py
-import shutil
 
 sample = None
 

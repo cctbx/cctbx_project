@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import sys
 from scitbx import matrix
 from rstbx.cftbx.coordinate_frame_helpers import align_reference_frame
 from dxtbx.model.detector_helpers_types import detector_helpers_types

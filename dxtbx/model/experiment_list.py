@@ -4,11 +4,7 @@ import pkg_resources
 
 from dxtbx.model import Experiment, ExperimentList
 from dxtbx.datablock import AutoEncoder
-from dxtbx.datablock import BeamComparison
-from dxtbx.datablock import DetectorComparison
-from dxtbx.datablock import GoniometerComparison
 from dxtbx.datablock import DataBlockFactory
-from dxtbx.datablock import SweepDiff
 
 
 class InvalidExperimentListError(RuntimeError):
@@ -485,7 +481,6 @@ class ExperimentListDict(object):
         from dxtbx.serialize.load import _decode_dict
         from dxtbx.serialize.filename import load_path
         import json
-        from os.path import dirname
 
         filename = load_path(filename, directory=directory)
         try:
@@ -645,7 +640,6 @@ class ExperimentListFactory(object):
     @staticmethod
     def from_args(args, verbose=False, unhandled=None):
         """ Try to load experiment from any recognised format. """
-        from dxtbx.datablock import DataBlockFactory
 
         # Create a list for unhandled arguments
         if unhandled is None:
@@ -835,7 +829,6 @@ class ExperimentListFactory(object):
     def from_xds(xds_inp, xds_other):
         """ Generate an experiment list from XDS files. """
         from dxtbx.serialize import xds
-        from dxtbx.datablock import DataBlockFactory
 
         # Get the sweep from the XDS files
         sweep = xds.to_imageset(xds_inp, xds_other)
