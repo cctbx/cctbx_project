@@ -360,6 +360,7 @@ general_tests = [
   ]
 
 probe_tests = [
+  "$D/regression/pdb_interpretation/tst_edits.py",
   "$D/regression/tst_add_arrows_on_plot.py",
   "$D/regression/model/tst_model.py",
   "$D/regression/tst_reduce_timeout.py",

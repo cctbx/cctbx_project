@@ -2269,94 +2269,6 @@ pdb_interpretation.geometry_restraints {
   assert approx_equal(udp.distance_ideal, 3, eps=1e-4)
   assert approx_equal(udp.weight, 100, eps=1e-4)
 
-def exercise_angle_edits_change(mon_lib_srv, ener_lib):
-  from cctbx.geometry_restraints.linking_class import linking_class
-  origin_ids = linking_class()
-
-  raw_records = """\
-CRYST1   17.963   15.643   19.171  90.00  90.00  90.00 P 1
-SCALE1      0.055670  0.000000  0.000000        0.00000
-SCALE2      0.000000  0.063926  0.000000        0.00000
-SCALE3      0.000000  0.000000  0.052162        0.00000
-HETATM    1  N   ALA A   1      12.431   5.924  12.511  1.00 20.00      A    N
-HETATM    2  CA  ALA A   1      11.018   6.145  12.230  1.00 20.00      A    C
-HETATM    3  C   ALA A   1      10.790   7.554  11.693  1.00 20.00      A    C
-HETATM    4  O   ALA A   1      11.665   8.411  11.803  1.00 20.00      A    O
-HETATM    5  CB  ALA A   1      10.187   5.914  13.482  1.00 20.00      A    C
-HETATM   13  N   ALA A   2       9.597   7.776  11.142  1.00 20.00      A    N
-HETATM   14  CA  ALA A   2       9.208   9.039  10.514  1.00 20.00      A    C
-HETATM   15  C   ALA A   2       8.148   8.584   9.515  1.00 20.00      A    C
-HETATM   16  O   ALA A   2       7.467   7.584   9.741  1.00 20.00      A    O
-HETATM   17  CB  ALA A   2      10.376   9.748   9.832  1.00 20.00      A    C
-HETATM   23  N   ALA A   3       8.007   9.313   8.411  1.00 20.00      A    N
-HETATM   24  CA  ALA A   3       7.032   8.963   7.385  1.00 20.00      A    C
-HETATM   25  C   ALA A   3       7.369   9.651   6.067  1.00 20.00      A    C
-HETATM   26  O   ALA A   3       8.098  10.643   6.037  1.00 20.00      A    O
-HETATM   27  CB  ALA A   3       5.630   9.338   7.836  1.00 20.00      A    C
-HETATM   28  OXT ALA A   3       6.921   9.231   5.000  1.00 20.00      A    O1-
-""".splitlines()
-  edits = """\
-refinement.geometry_restraints.edits {
-  n_2_selection = chain A and resname ALA and resid 2 and name N
-  ca_2_selection = chain A and resname ALA and resid 2 and name CA
-  c_2_selection = chain A and resname ALA and resid 2 and name C
-  angle {
-    action = *change
-    atom_selection_1 = $n_2_selection
-    atom_selection_2 = $ca_2_selection
-    atom_selection_3 = $c_2_selection
-    angle_ideal = 100.00
-    sigma = 5
-  }
-}"""
-  gm_phil = iotbx.phil.parse(
-      monomer_library.pdb_interpretation.grand_master_phil_str,
-      process_includes=True)
-  edits_phil = iotbx.phil.parse(edits)
-  working_phil = gm_phil.fetch(edits_phil)
-  params = working_phil.extract()
-  # print params.geometry_restraints.edits.parallelity[0].atom_selection_1
-  assert params.geometry_restraints.edits.angle[0].atom_selection_1.find("name N")
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      file_name=None,
-      raw_records=raw_records,
-      params = params.pdb_interpretation,
-      log=None)
-  grm = processed_pdb_file.geometry_restraints_manager(
-      params_edits=params.geometry_restraints.edits,
-      params_remove=params.geometry_restraints.remove)
-  assert grm.angle_proxies.size() == 20
-  user_defined = grm.angle_proxies.proxy_select(origin_id=origin_ids.get_origin_id('edits'))
-  assert user_defined.size() == 1
-  udp = user_defined[0]
-  assert list(udp.i_seqs) == [5,6,7]
-  assert approx_equal(udp.angle_ideal, 100, eps=1e-4)
-  assert approx_equal(udp.weight, 0.04, eps=1e-4)
-
-  from libtbx.test_utils import open_tmp_file
-  from libtbx import easy_run
-  pdb_file = open_tmp_file(suffix="aaa.pdb")
-  pdb_file.write('\n'.join(raw_records))
-  pdb_file.close()
-  edits_file = open_tmp_file(suffix="tau.edits")
-  edits_file.write(edits)
-  edits_file.close()
-  cmd = "phenix.pdb_interpretation \"%s\" \"%s\" write_geo_files=True" %(
-    pdb_file.name, edits_file.name)
-  result = easy_run.fully_buffered(cmd).raise_if_errors()
-  geo_file = open(pdb_file.name+'.geo', "rb")
-  # geo_file = open(pdb_file.name.replace(".pdb", '_minimized.geo'), "rb")
-  geo_file_str = geo_file.read()
-  assert '''User supplied angle restraints: 1
-Sorted by residual:
-angle pdb=" N   ALA A   2 " segid="A   "
-      pdb=" CA  ALA A   2 " segid="A   "
-      pdb=" C   ALA A   2 " segid="A   "
-    ideal   model   delta    sigma   weight residual
-   100.00''' in geo_file_str
-
 def exercise_bad_custom_bonds(mon_lib_srv, ener_lib):
   raw_records = """
 CRYST1   21.213   24.878   21.468  90.00  90.00  90.00 P 1
@@ -2528,7 +2440,6 @@ def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
-  exercise_angle_edits_change(mon_lib_srv, ener_lib)
   exercise_bad_custom_bonds(mon_lib_srv, ener_lib)
   exercise_bad_water(mon_lib_srv, ener_lib)
   exercise_unk_and_cys(mon_lib_srv, ener_lib)
