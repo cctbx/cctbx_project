@@ -392,7 +392,7 @@ class to_xds(object):
         if len(self.panel_x_axis) > 1:
             for panel_id, panel_x_axis in enumerate(self.panel_x_axis):
 
-                result.append(file=out)
+                result.append("")
                 result.append("!")
                 result.append("! SEGMENT %d" % (panel_id + 1))
                 result.append("!")

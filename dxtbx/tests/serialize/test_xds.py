@@ -80,3 +80,34 @@ JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT\
     assert approx_equal(detector[0].get_fast_axis(), converter.get_detector_fast())
     assert approx_equal(detector[0].get_slow_axis(), converter.get_detector_slow())
     assert approx_equal(detector[0].get_origin(), converter.get_detector_origin())
+
+
+def test_to_xds_multi_panel_i23(dials_regression, tmpdir):
+    tmpdir.chdir()
+    file_name = os.path.join(
+        dials_regression, "image_examples", "DLS_I23", "germ_13KeV_0001.cbf"
+    )
+    sweep = ImageSetFactory.new([file_name])[0]
+    to_xds = xds.to_xds(sweep)
+    s1 = to_xds.XDS_INP()
+    for expected_substr in (
+        """\
+!
+! SEGMENT 1
+!
+SEGMENT= 1 2463 1 195
+DIRECTION_OF_SEGMENT_X-AXIS= 1.00000 0.00000 0.00000
+DIRECTION_OF_SEGMENT_Y-AXIS= 0.00000 -0.14347 0.98966
+SEGMENT_DISTANCE= 250.000
+SEGMENT_ORGX= 1075.00 SEGMENT_ORGY= 97.67""",
+        """\
+!
+! SEGMENT 24
+!
+SEGMENT= 1 2463 4877 5071
+DIRECTION_OF_SEGMENT_X-AXIS= 1.00000 0.00000 0.00000
+DIRECTION_OF_SEGMENT_Y-AXIS= 0.00000 -0.06390 -0.99796
+SEGMENT_DISTANCE= 250.000
+SEGMENT_ORGX= 1075.00 SEGMENT_ORGY= 4973.67""",
+    ):
+        assert expected_substr in s1
