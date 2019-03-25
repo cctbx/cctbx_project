@@ -41,7 +41,7 @@ class FormatHDF5Lambda(FormatHDF5):
             h5_handle.close()
             return False
 
-        if "Lambda" in desc.value[0]:
+        if "Lambda" in desc[()][0]:
             h5_handle.close()
             return True
 
