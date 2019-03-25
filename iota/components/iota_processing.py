@@ -3,7 +3,7 @@ from __future__ import division, print_function, absolute_import
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 03/06/2019
+Last Changed: 03/25/2019
 Description : Runs spotfinding, indexing, refinement and integration using
               subclassed DIALS Stills Processor module. Selector class
               applies filters based on unit cell, space group, etc.
@@ -315,6 +315,15 @@ class IOTAImageProcessor(Processor):
     return img_object
 
   def process(self, img_object):
+
+    # write out DIALS info
+    pfx = os.path.splitext(img_object.obj_file)[0]
+    self.params.output.experiments_filename = pfx + '_experiments.json'
+    self.params.output.indexed_filename = pfx + '_indexed.pickle'
+    self.params.output.strong_filename = pfx + '_strong.pickle'
+    self.params.output.refined_experiments_filename = pfx + '_refined_experiments.json'
+    self.params.output.integrated_experiments_filename = pfx + '_integrated_experiments.json'
+    self.params.output.integrated_filename = pfx + '_integrated.pickle'
 
     # Set up integration pickle path and logfile
     self.params.verbosity = 10
