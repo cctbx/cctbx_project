@@ -335,6 +335,12 @@ class _mtriage(object):
   def _compute_radius(self):
     if(not self.params.mask_maps): return
     if(self.xray_structure is None): return
+    if(self.xray_structure is not None and
+       [self.radius_smooth, self.resolution].count(None)==2):
+      f_map = miller.structure_factor_box_from_map(
+        map              = self.map_data,
+        crystal_symmetry = self.crystal_symmetry)
+      self.radius_smooth = maptbx.d99(f_map = f_map).result.d99
     self.radius_smooth = get_atom_radius(
       xray_structure   = self.xray_structure,
       radius           = self.radius_smooth,
