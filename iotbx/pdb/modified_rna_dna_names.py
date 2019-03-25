@@ -9,6 +9,7 @@ procedure:
 This file is intended to be generated monthly.
 The date of file generation: Tue Mar 19 14:34:48 2019
 """
+from __future__ import division
 
 lookup = {
   "12A" : "A",

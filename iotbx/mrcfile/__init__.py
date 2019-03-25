@@ -1,6 +1,6 @@
 from __future__ import division
 import cctbx.array_family.flex as flex# import dependency
-import os,sys,time
+import os,time
 from libtbx.utils import Sorry
 from iotbx.ccp4_map import utils  # utilities in common with ccp4_map
 import mrcfile

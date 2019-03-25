@@ -1,3 +1,4 @@
+from __future__ import division
 from mmtbx.conformation_dependent_library.LinkedResidues import LinkedResidues
 from mmtbx.conformation_dependent_library.cdl_utils import \
   get_c_ca_n

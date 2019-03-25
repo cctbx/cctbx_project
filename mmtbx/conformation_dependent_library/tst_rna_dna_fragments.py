@@ -1,4 +1,4 @@
-import os, sys
+from __future__ import division
 from iotbx import pdb
 from test_rdl import get_geometry_restraints_manager
 

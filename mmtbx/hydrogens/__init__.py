@@ -6,11 +6,9 @@ from cctbx import maptbx
 import iotbx.pdb
 import mmtbx.model
 from libtbx.utils import null_out
-import sys
 
 import boost.python
 ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
-
 
 def mon_lib_query(residue, mon_lib_srv):
     get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)

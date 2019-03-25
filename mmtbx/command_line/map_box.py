@@ -7,7 +7,7 @@ from mmtbx.refinement import print_statistics
 import iotbx.pdb
 import libtbx.phil
 from libtbx.utils import Sorry
-import os, sys, time
+import os, sys
 from iotbx import reflection_file_utils
 from iotbx.file_reader import any_file
 from cctbx import maptbx

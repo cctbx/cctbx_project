@@ -1,3 +1,4 @@
+from __future__ import division
 class LinkedResidues(list):
   def __init__(self,
                geometry,

@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 #
-import os, sys
 import requests #, json
 from operator import itemgetter
 from phenix.program_template import ProgramTemplate
@@ -117,7 +116,7 @@ action {
           nearest.append( [ str(ntc),
                           float(jsonres["result"][ntc]["confalH"]),
                           float(jsonres["result"][ntc]["bb_rmsd"]) ])
-        except:
+        except Exception, e:
           pass
   #     nearest.sort(key = itemgetter(2), reverse=True)
       nearest.sort(key = itemgetter(2), reverse=False)
