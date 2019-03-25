@@ -43,6 +43,8 @@ if (env_etc.enable_cuda):
     env=env_bpl,
     paths=[env_etc.simtbx_include]
   )
+  env_bpl.Prepend(CPPPATH=[env_etc.boost_adaptbx_include,
+    env_etc.boost_include])
   cuda_lib = env_bpl.cudaSharedLibrary(
     target = "#lib/libsimtbx_nanoBraggCUDA",
     source = cuda_src + ["nanoBragg_cuda.cpp"])
