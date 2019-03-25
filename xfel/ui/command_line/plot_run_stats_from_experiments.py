@@ -104,7 +104,7 @@ def run(args):
       root = os.path.dirname(path)
       filename = os.path.basename(path)
       split_fn = filename.split('_')
-      if len(split_fn) <= 0 or split_fn[-1] != "datablock.json":
+      if len(split_fn) <= 0 or split_fn[-1] != "strong.pickle":
         continue
       base = os.path.join(root, "_".join(split_fn[:-1]))
       print filename
