@@ -5,6 +5,7 @@ import h5py
 import numpy as np
 from read_geom import read_geom
 from libtbx.phil import parse
+from libtbx.utils import Sorry
 
 phil_scope = parse("""
   cxi_file = None
@@ -16,6 +17,9 @@ phil_scope = parse("""
   detector_distance = None
     .type = float
     .help = AGIPD Detector distance
+  wavelength = None
+    .type = float
+    .help = AGIPD wavelength override
 """)
 
 
@@ -87,8 +91,11 @@ class agipd_cxigeom2nexus(object):
     sample.attrs['NX_class'] = 'NXsample'
     beam = sample.create_group('beam')
     beam.attrs['NX_class'] = 'NXbeam'
-    wavelengths = h5py.File(self.params.cxi_file, 'r')['instrument/photon_wavelength_A']
-    beam.create_dataset('incident_wavelength', (1,), data=np.mean(wavelengths),dtype='f8')
+    if self.params.wavelength is None:
+      wavelengths = h5py.File(self.params.cxi_file, 'r')['instrument/photon_wavelength_A']
+      beam.create_dataset('incident_wavelength', (1,), data=np.mean(wavelengths),dtype='f8')
+    else:
+      beam.create_dataset('incident_wavelength', (1,), data=self.params.wavelength,dtype='f8') # 9150
     beam['incident_wavelength'].attrs['units'] = 'angstrom'
     # --> instrument
     instrument = entry.create_group('instrument')
@@ -131,6 +138,9 @@ class agipd_cxigeom2nexus(object):
 
     detector = instrument.create_group('ELE_D0')
     detector.attrs['NX_class']  = 'NXdetector'
+    if 'mask' in h5py.File(self.params.cxi_file, 'r')['entry_1/data_1']:
+      detector.create_dataset('pixel_mask_applied', (1,), data=[True], dtype='uint32')
+      detector['pixel_mask'] = h5py.ExternalLink(self.params.cxi_file, "entry_1/data_1/mask")
     array_name = 'ARRAY_D0'
 
     alias = 'data'
