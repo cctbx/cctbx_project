@@ -272,7 +272,7 @@ def generate_protein_fragments(hierarchy,
     backbone_only=backbone_only,
     include_non_standard_residues=include_non_standard_peptides,
     # include_non_protein_linked=include_non_protein_linked,
-#    include_linked_via_restraints_manager=include_linked_via_restraints_manager,
+    include_linked_via_restraints_manager=include_linked_via_restraints_manager,
     verbose=verbose,
     ):
     yield fragment
