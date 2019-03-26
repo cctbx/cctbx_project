@@ -4,10 +4,10 @@ import pkg_resources
 
 from dxtbx.model import Experiment, ExperimentList
 from dxtbx.datablock import AutoEncoder
-from dxtbx.datablock import BeamComparison # import dependency
-from dxtbx.datablock import DetectorComparison # import dependency
-from dxtbx.datablock import GoniometerComparison # import dependency
+from dxtbx.datablock import BeamComparison  # noqa: F401, exported symbol
 from dxtbx.datablock import DataBlockFactory
+from dxtbx.datablock import DetectorComparison  # noqa: F401, exported symbol
+from dxtbx.datablock import GoniometerComparison  # noqa: F401, exported symbol
 
 
 class InvalidExperimentListError(RuntimeError):
