@@ -79,6 +79,10 @@ class hklview_3d:
 </body></html>
 
     """
+    self.nanval = float('nan')
+    self.inanval = -424242
+
+
   def mprint(self, m, verbose=False):
     if self.verbose or verbose:
       print m
@@ -155,15 +159,16 @@ class hklview_3d:
 
       missing = self.miller_array.lone_set( validarray )
       # insert NAN values for reflections in self.miller_array not found in validarray
-      nanval = float('nan')
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
       if valarray.is_integer_array():
-        valarray._data.extend( flex.int(missing.size(), nanval) )
+        valarray._data.extend( flex.int(missing.size(), self.inanval) )
       if valarray.is_real_array():
-        valarray._data.extend( flex.double(missing.size(), nanval) )
+        valarray._data.extend( flex.double(missing.size(), self.nanval) )
+        if valarray.sigmas() is not None:
+          valarray._sigmas.extend( flex.double(missing.size(), self.nanval) )
       if valarray.is_complex_array():
-        valarray._data.extend( flex.complex_double(missing.size(), nanval) )
+        valarray._data.extend( flex.complex_double(missing.size(), self.nanval) )
 
       valarray._indices.extend( missing.indices() )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -176,15 +181,40 @@ class hklview_3d:
         settings=self.settings)
 
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      nplst = np.array( list(otherscene.radii) )
-      nplst[np.isnan( nplst) ] = -1
-      otherscene.radii = flex.double( list(nplst) )
+      #nplst = np.array( list(otherscene.radii) )
+      #nplst[np.isnan( nplst) ] = -1
+      #otherscene.radii = flex.double( list(nplst) )
 
-      print match_valarray.size(), otherscene.radii.size(), otherscene.colors.size(), otherscene.points.size()
+      # cast any NAN values to -1 of the colours and radii arrays before writing javascript
+      nplst = np.array( list( otherscene.data ) )
+      mask = np.isnan(nplst)
+      maskrow = mask.reshape( mask.shape[0], 1 )
+
+
+      npcolour = np.array( list(otherscene.colors))
+      npcolourcol = npcolour.reshape( len(otherscene.data), 3 )
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      npcolourcol[mask] = -1
+
+      otherscene.colors = flex.vec3_double()
+      otherscene.colors.extend( flex.vec3_double( npcolourcol.tolist()) )
+
+      npradii = np.array( list(otherscene.radii))
+      npradiicol = npradii.reshape( len(otherscene.data), 1 )
+      npradiicol[mask] = 0.2
+      otherscene.radii = flex.double( npradiicol.flatten().tolist())
+
+      #print match_valarray.size(), otherscene.radii.size(), otherscene.colors.size(), otherscene.points.size()
+      #print list(otherscene.radii)
+      #print list(otherscene.colors)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
-      maxdata =max( otherscene.data)
-      mindata =min( otherscene.data)
+      d = otherscene.data
+      if (isinstance(d, flex.int)):
+        d = [e for e in self.scene.data if e!= self.inanval]
+      maxdata =max( d )
+      mindata =min( d )
+
       self.othermaxdata.append( maxdata )
       self.othermindata.append( mindata )
       self.otherscenes.append( otherscene)
@@ -247,7 +277,7 @@ class hklview_3d:
     spbufttips = []
 
     if len(self.binvals) <1:
-      self.binvals.append( self.othermindata[self.iarray] )
+      #self.binvals.append( self.othermindata[self.iarray] )
       self.binvals.append( self.othermaxdata[self.iarray] )
     self.nbin = len(self.binvals)
 
@@ -276,12 +306,13 @@ class hklview_3d:
         #ocolstr = otherscene.miller_array.info().label_string()
         odata = otherscene.data
         od =" "
-        if i < len(odata): # some data might not have been processed if considered as outliers
-          od = str(roundoff(odata[i]) )
+        #if i < len(odata): # some data might not have been processed if considered as outliers
+        od = str(roundoff(odata[i]) )
+        if math.isnan( odata[i] ) or odata[i] == self.inanval:
+          od = "??"
         spbufttip += "\n%s: %s" %(ocolstr, od )
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       positions[ibin].extend( roundoff(list(hklstars)) )
-      #colours[ibin].extend( roundoff(list(colors[i]), 2) )
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
       spbufttips[ibin].append(spbufttip)
@@ -294,15 +325,6 @@ class hklview_3d:
     """ %(self.nbin, self.nbin, self.nbin, self.nbin, self.nbin)
 
     for ibin in range(self.nbin):
-      # cast any NAN values to -1 of the colours and radii arrays before writing javascript
-      nplst = np.array( list( radii2[ibin] ) )
-      nplst[np.isnan( nplst) ] = -1
-      radii2[ibin] = list(nplst)
-
-      nplst = np.array( list( colours[ibin] ) )
-      nplst[np.isnan( nplst) ] = -1
-      colours[ibin] = list(nplst)
-
       nreflsinbin = len(radii2[ibin])
       if (ibin+1) < self.nbin:
         self.mprint( "%d reflections with %s in ]%2.2f; %2.2f]" %(nreflsinbin, colstr,
