@@ -211,10 +211,11 @@ warehouse = {
     'configure': False,
     'force-configure': True,
   },
-  'i19': {
-    'git-auth': 'git@github.com:/xia2/i19',
-    'git-anon': 'https://github.com/xia2/i19.git',
-    'http-zip': { 'url': 'https://github.com/xia2/i19/archive/master.zip', 'trim': 1 },
+  'screen19': {
+    'pip-auth': 'git@github.com:/xia2/screen19',
+    'pip-anon': 'https://github.com/xia2/screen19.git',
+    'configure': False,
+    'force-configure': True,
   },
   'msgpack': {
     'http-tgz': { 'url': 'https://gitcdn.link/repo/dials/dependencies/dials-1.13/msgpack-3.1.1.tar.gz', 'trim': 1 },
