@@ -66,7 +66,7 @@ def f_calc_modulus_squared(xray_structure,
     return f_calc_modulus_squared_with_custom_trigonometry(xray_structure,
                                                            exp_i_2pi_functor,
                                                            table_file_name=table_file_name,
-                                                           indices=indices)
+                                                           reflections=reflections)
 def f_calc_modulus(xray_structure,
                    exp_i_2pi_functor=None):
   if exp_i_2pi_functor is None:
