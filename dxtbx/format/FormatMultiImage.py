@@ -87,7 +87,8 @@ class Masker(object):
         return Masker(filenames)
 
 
-class FormatMultiImage(object):
+from dxtbx.format.Format import Format
+class FormatMultiImage(Format):
     def __init__(self, **kwargs):
         pass
 

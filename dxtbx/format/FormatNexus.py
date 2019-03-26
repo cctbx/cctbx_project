@@ -148,9 +148,9 @@ class FormatNexus(FormatHDF5):
 
 
 from dxtbx.format.FormatStill import FormatStill
+from dxtbx.format.FormatMultiImageLazy import FormatMultiImageLazy
 
-
-class FormatNexusStill(FormatNexus, FormatStill):
+class FormatNexusStill(FormatMultiImageLazy, FormatNexus, FormatStill):
     @staticmethod
     def understand(image_file):
         import h5py
