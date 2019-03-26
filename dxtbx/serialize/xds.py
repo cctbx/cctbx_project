@@ -199,9 +199,8 @@ class to_xds(object):
         N = F.cross(S)
         self.detector_normal = N.elems
 
-        self.pixel_size = self.get_detector()[
-            0
-        ].get_pixel_size()  # assume all panels same pixel size
+        # assume all panels same pixel size
+        self.pixel_size = self.get_detector()[0].get_pixel_size()
 
         centre = -(origin - origin.dot(N) * N)
         x = centre.dot(F)
