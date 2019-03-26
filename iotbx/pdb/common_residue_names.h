@@ -148,6 +148,18 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     0
   };
 
+  static const char* common_saccharide[] = {
+    "NAG",
+    "NDG",
+    "MAN",
+    "BMA",
+    "FUC",
+    "FUL",
+    "BGC",
+    "GLC",
+    0
+  };
+
   /* Survey of PDB as of 2006/05/25.
 
      The following element names appear as HETATM residue names, but do
@@ -438,6 +450,15 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
 
   inline
   const std::set<str3>&
+  saccharide_set()
+  {
+    static std::set<str3> result;
+    initialize_set(result, common_saccharide);
+    return result;
+  }
+
+  inline
+  const std::set<str3>&
   element_set()
   {
     static std::set<str3> result;
@@ -457,6 +478,7 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     static const std::set<str3>& ml_na_set = ccp4_mon_lib_rna_dna_set();
     static const std::set<str3>& w_set = water_set();
     static const std::set<str3>& sm_set = small_molecule_set();
+    static const std::set<str3>& s_set = saccharide_set();
     static const std::set<str3>& e_set = element_set();
     static const std::string common_amino_acid("common_amino_acid");
     static const std::string d_amino_acid("d_amino_acid");
@@ -466,6 +488,7 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     static const std::string ccp4_mon_lib_rna_dna("ccp4_mon_lib_rna_dna");
     static const std::string common_water("common_water");
     static const std::string common_small_molecule("common_small_molecule");
+    static const std::string common_saccharide("common_saccharide");
     static const std::string common_element("common_element");
     static const std::string other("other");
     if (aa_set.find(name) != aa_set.end()) {
@@ -492,6 +515,9 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     }
     if (sm_set.find(name) != sm_set.end()) {
       return common_small_molecule;
+    }
+    if (s_set.find(name) != s_set.end()) {
+      return common_saccharide;
     }
     if (e_set.find(name) != e_set.end()) {
       return common_element;
