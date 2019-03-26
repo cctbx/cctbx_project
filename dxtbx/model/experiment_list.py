@@ -8,6 +8,7 @@ from dxtbx.datablock import BeamComparison  # noqa: F401, exported symbol
 from dxtbx.datablock import DataBlockFactory
 from dxtbx.datablock import DetectorComparison  # noqa: F401, exported symbol
 from dxtbx.datablock import GoniometerComparison  # noqa: F401, exported symbol
+from dxtbx.datablock import SweepDiff  # noqa: F401, exported symbol
 
 
 class InvalidExperimentListError(RuntimeError):
