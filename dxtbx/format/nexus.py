@@ -39,10 +39,10 @@ class check_dims(object):
 
     def __call__(self, dset):
         dims = len(dset.shape)
-        if not dims == self.dims:
+        if not dims in self.dims:
             return (
                 False,
-                "%s has dims %s, expected %s" % (dset.name, str(dims), str(self.dims)),
+                "%s has dims %s, expected %s" % (dset.name, str(dims), " or ".join([str(d) for d in self.dims])),
             )
         return True, ""
 
@@ -545,7 +545,7 @@ class NXdetector(object):
 
         # The items to validate
         items = {
-            "data": {"minOccurs": 0, "checks": [check_dset(dims=3)]},
+            "data": {"minOccurs": 0, "checks": [check_dset(dims=[3,4])]},
             "description": {"minOccurs": 0, "checks": []},
             "time_per_channel": {"minOccurs": 0, "checks": []},
             "distance": {
@@ -739,7 +739,7 @@ class NXsample(object):
             "chemical_formula": {"minOccurs": 0, "checks": []},
             "unit_cell": {
                 "minOccurs": 0,
-                "checks": [check_dset(dtype="float64", dims=2)],
+                "checks": [check_dset(dtype="float64", dims=[2])],
             },
             "unit_cell_class": {"minOccurs": 0, "checks": []},
             "unit_cell_group": {"minOccurs": 0, "checks": []},
@@ -749,7 +749,7 @@ class NXsample(object):
             },
             "orientation_matrix": {
                 "minOccurs": 0,
-                "checks": [check_dset(dtype="float64", dims=3)],
+                "checks": [check_dset(dtype="float64", dims=[3])],
             },
             "temperature": {"minOccurs": 0, "checks": []},
         }
@@ -1405,7 +1405,7 @@ class DetectorFactory(object):
 
         # Construct the detector model
         pixel_size = (fast_pixel_direction_value, slow_pixel_direction_value)
-        image_size = tuple(map(int, nx_module["data_size"]))
+        image_size = tuple(map(int, nx_module["data_size"][0:2]))
 
         self.model = Detector()
         self.model.add_panel(
