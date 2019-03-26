@@ -248,6 +248,7 @@ geometry_restraints.edits {
     atom_selection_3 = resid 2 and name N
     atom_selection_4 = resid 2 and name CA
     angle_ideal = 100.00
+    alt_angle_ideals = 90,110
     sigma = 2
     periodicity = 2
   }
@@ -284,7 +285,7 @@ geometry_restraints.edits {
   assert dih2.size() == 1
   dp2 = dih2[0]
   assert approx_equal(dp2.angle_ideal, 100)
-  assert dp2.alt_angle_ideals == None
+  assert dp2.alt_angle_ideals == (90,110)
   assert dp2.origin_id == origin_ids.get_origin_id('edits')
   assert dp2.periodicity == 2
   assert dp2.slack == 0

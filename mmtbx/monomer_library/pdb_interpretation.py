@@ -560,6 +560,8 @@ dihedral
     .input_size = 400
   angle_ideal = None
     .type = float
+  alt_angle_ideals = None
+    .type = floats
   sigma = None
     .type = float
   periodicity = 1
@@ -4472,6 +4474,7 @@ class build_all_chain_proxies(linking_mixins):
         a_proxy.angle_ideal=dihedral.angle_ideal
         a_proxy.weight = geometry_restraints.sigma_as_weight(sigma=dihedral.sigma)
         a_proxy.periodicity = dihedral.periodicity
+        a_proxy.alt_angle_ideals = dihedral.alt_angle_ideals
         a_proxy.origin_id=origin_ids.get_origin_id('edits')
       elif (dihedral.action != "add"):
         raise Sorry("%s = %s not implemented." %
@@ -4482,6 +4485,7 @@ class build_all_chain_proxies(linking_mixins):
         p = geometry_restraints.dihedral_proxy(
           i_seqs=i_seqs,
           angle_ideal=dihedral.angle_ideal,
+          alt_angle_ideals=dihedral.alt_angle_ideals,
           weight=geometry_restraints.sigma_as_weight(sigma=dihedral.sigma),
           origin_id=origin_ids.get_origin_id('edits'),
           periodicity=dihedral.periodicity,
