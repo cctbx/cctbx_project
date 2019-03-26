@@ -20,6 +20,11 @@ phil_scope = parse("""
   wavelength = None
     .type = float
     .help = AGIPD wavelength override
+  mode = vds cxi
+    .type = choice
+    .optional = False
+    .help = Input data file format. VDS: virtual data set. CXI: \
+            Cheetah file format.
 """)
 
 
@@ -129,12 +134,20 @@ class agipd_cxigeom2nexus(object):
     pixel_size = panels[0]['pixel_size']
     assert [pixel_size == panels[i+1]['pixel_size'] for i in range(len(panels)-1)].count(False) == 0
 
-    quad_fast = fast
-    quad_slow = slow // self.n_quads
-    module_fast = quad_fast
-    module_slow = quad_slow // self.n_modules
-    asic_fast = module_fast
-    asic_slow = module_slow // self.n_asics
+    if self.params.mode == 'vds':
+      quad_fast = fast
+      quad_slow = slow * self.n_quads
+      module_fast = quad_fast
+      module_slow = quad_slow // self.n_quads
+      asic_fast = module_fast
+      asic_slow = module_slow // self.n_asics
+    elif self.params.mode == 'cxi':
+      quad_fast = fast
+      quad_slow = slow // self.n_quads
+      module_fast = quad_fast
+      module_slow = quad_slow // self.n_modules
+      asic_fast = module_fast
+      asic_slow = module_slow // self.n_asics
 
     detector = instrument.create_group('ELE_D0')
     detector.attrs['NX_class']  = 'NXdetector'
@@ -166,10 +179,13 @@ class agipd_cxigeom2nexus(object):
 
           asicmodule = detector.create_group(array_name+'Q%dM%dA%d'%(quad,module_num,asic_num))
           asicmodule.attrs['NX_class'] = 'NXdetector_module'
-          asicmodule.create_dataset('data_origin', (2,), data=[0,
-                                                               asic_slow*((quad*self.n_modules*self.n_asics) + (module_num*self.n_asics) + asic_num)],
-                                                           dtype='i')
-          asicmodule.create_dataset('data_size', (2,), data=[asic_fast, asic_slow], dtype='i')
+          if self.params.mode == 'vds':
+            asicmodule.create_dataset('data_origin', (3,), data=[0, asic_slow*asic_num, (quad*self.n_modules)+module_num], dtype='i')
+            asicmodule.create_dataset('data_size', (3,), data=[asic_fast, asic_slow, 1], dtype='i')
+          elif self.params.mode == 'cxi':
+            asicmodule.create_dataset('data_origin', (2,), data=[0, asic_slow*((quad*self.n_modules*self.n_asics) + (module_num*self.n_asics) + asic_num)],
+                                                             dtype='i')
+            asicmodule.create_dataset('data_size', (2,), data=[asic_fast, asic_slow], dtype='i')
 
           fast = self.hierarchy[q_key][m_key][a_key]['local_fast'].elems
           slow = self.hierarchy[q_key][m_key][a_key]['local_slow'].elems
