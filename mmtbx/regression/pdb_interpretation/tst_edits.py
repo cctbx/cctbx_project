@@ -2,10 +2,15 @@ from __future__ import division
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
+import mmtbx.model
 from cctbx import geometry_restraints
+from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import iotbx
 import sys
+from cctbx.geometry_restraints.linking_class import linking_class
+origin_ids = linking_class()
+
 
 raw_records1 = """\
 CRYST1   60.800   60.800   97.000  90.00  90.00 120.00 P 32 2 1      6
@@ -146,11 +151,7 @@ def exercise_user_edits(mon_lib_srv, ener_lib):
   assert geometry.planarity_proxies.size() == 1
   assert geometry.parallelity_proxies.size() == 1
 
-def exercise_angle_edits_change(mon_lib_srv, ener_lib):
-  from cctbx.geometry_restraints.linking_class import linking_class
-  origin_ids = linking_class()
-
-  raw_records = """\
+raw_records2 = """\
 CRYST1   17.963   15.643   19.171  90.00  90.00  90.00 P 1
 SCALE1      0.055670  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.063926  0.000000        0.00000
@@ -172,6 +173,9 @@ HETATM   26  O   ALA A   3       8.098  10.643   6.037  1.00 20.00      A    O
 HETATM   27  CB  ALA A   3       5.630   9.338   7.836  1.00 20.00      A    C
 HETATM   28  OXT ALA A   3       6.921   9.231   5.000  1.00 20.00      A    O1-
 """.splitlines()
+
+def exercise_angle_edits_change(mon_lib_srv, ener_lib):
+
   edits = """\
 refinement.geometry_restraints.edits {
   n_2_selection = chain A and resname ALA and resid 2 and name N
@@ -198,7 +202,7 @@ refinement.geometry_restraints.edits {
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
       file_name=None,
-      raw_records=raw_records,
+      raw_records=raw_records2,
       params = params.pdb_interpretation,
       log=None)
   grm = processed_pdb_file.geometry_restraints_manager(
@@ -215,7 +219,7 @@ refinement.geometry_restraints.edits {
   from libtbx.test_utils import open_tmp_file
   from libtbx import easy_run
   pdb_file = open_tmp_file(suffix="aaa.pdb")
-  pdb_file.write('\n'.join(raw_records))
+  pdb_file.write('\n'.join(raw_records2))
   pdb_file.close()
   edits_file = open_tmp_file(suffix="tau.edits")
   edits_file.write(edits)
@@ -234,6 +238,59 @@ angle pdb=" N   ALA A   2 " segid="A   "
     ideal   model   delta    sigma   weight residual
    100.00''' in geo_file_str
 
+def exercise_dihedral_edits_change():
+  edits = """\
+geometry_restraints.edits {
+  dihedral {
+    action = *change
+    atom_selection_1 = resid 1 and name CA
+    atom_selection_2 = resid 1 and name C
+    atom_selection_3 = resid 2 and name N
+    atom_selection_4 = resid 2 and name CA
+    angle_ideal = 100.00
+    sigma = 2
+    periodicity = 2
+  }
+}"""
+  def_params = mmtbx.model.manager.get_default_pdb_interpretation_scope()
+  edits_phil = iotbx.phil.parse(edits)
+  working_phil = def_params.fetch(edits_phil)
+  params = working_phil.extract()
+  inp = iotbx.pdb.input(lines=raw_records2, source_info=None)
+  model = mmtbx.model.manager(model_input = inp)
+  grm = model.get_restraints_manager().geometry
+  assert grm.dihedral_proxies.size() == 9
+  dih1 = grm.dihedral_proxies.proxy_select(
+      n_seq=model.get_number_of_atoms(),
+      iselection=flex.size_t([1,2,5,6]))
+  assert dih1.size() == 1
+  dp1 = dih1[0]
+  assert approx_equal(dp1.angle_ideal, 180)
+  assert dp1.alt_angle_ideals == None
+  assert dp1.origin_id == 0
+  assert dp1.periodicity == 0
+  assert dp1.slack == 0
+  assert not dp1.top_out
+  assert approx_equal(dp1.weight, 0.04)
+
+  # Now with modifications
+  model2 = mmtbx.model.manager(model_input = inp,
+      pdb_interpretation_params=params)
+  grm2 = model2.get_restraints_manager().geometry
+  assert grm2.dihedral_proxies.size() == 9
+  dih2 = grm2.dihedral_proxies.proxy_select(
+      n_seq=model2.get_number_of_atoms(),
+      iselection=flex.size_t([1,2,5,6]))
+  assert dih2.size() == 1
+  dp2 = dih2[0]
+  assert approx_equal(dp2.angle_ideal, 100)
+  assert dp2.alt_angle_ideals == None
+  assert dp2.origin_id == origin_ids.get_origin_id('edits')
+  assert dp2.periodicity == 2
+  assert dp2.slack == 0
+  assert not dp2.top_out
+  assert approx_equal(dp2.weight, 0.25)
+
 def exercise():
   mon_lib_srv = None
   ener_lib = None
@@ -245,6 +302,7 @@ def exercise():
   if mon_lib_srv is not None and ener_lib is not None:
     exercise_user_edits(mon_lib_srv, ener_lib)
     exercise_angle_edits_change(mon_lib_srv, ener_lib)
+    exercise_dihedral_edits_change()
 
 if (__name__ == "__main__"):
   exercise()

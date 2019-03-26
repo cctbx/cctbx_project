@@ -4464,6 +4464,15 @@ class build_all_chain_proxies(linking_mixins):
         show_atom_selections()
         print >> log, "      angle_ideal = %.6g" % dihedral.angle_ideal
         print >> log, "      sigma = %.6g" % dihedral.sigma
+      elif dihedral.action == "change":
+        i_seqs = self.phil_atom_selections_as_i_seqs(
+          cache=sel_cache, scope_extract=dihedral, sel_attrs=sel_attrs)
+        i_proxy = self.geometry_proxy_registries.dihedral.lookup_i_proxy(i_seqs)[0]
+        a_proxy = self.geometry_proxy_registries.dihedral.proxies[i_proxy]
+        a_proxy.angle_ideal=dihedral.angle_ideal
+        a_proxy.weight = geometry_restraints.sigma_as_weight(sigma=dihedral.sigma)
+        a_proxy.periodicity = dihedral.periodicity
+        a_proxy.origin_id=origin_ids.get_origin_id('edits')
       elif (dihedral.action != "add"):
         raise Sorry("%s = %s not implemented." %
           dihedral.__phil_path_and_value__("action"))
