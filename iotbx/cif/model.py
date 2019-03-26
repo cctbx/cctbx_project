@@ -159,6 +159,9 @@ class block_base(DictMixin):
     if key in self._items:
       del self._items[key]
       self._set.discard(key)
+    elif key in self.loops:
+      del self.loops[key]
+      self._set.discard(key)
     elif key in self.keys():
       # must be a looped item
       for k, loop in self.loops.iteritems():
@@ -170,9 +173,6 @@ class block_base(DictMixin):
             del loop[key]
           return
       raise KeyError(key)
-    elif key in self.loops:
-      del self.loops[key]
-      self._set.discard(key)
     else:
       raise KeyError
 

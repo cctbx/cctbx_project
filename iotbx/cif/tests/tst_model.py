@@ -6,11 +6,10 @@ from libtbx.containers import OrderedDict
 from cStringIO import StringIO
 import copy
 
+import iotbx.cif
+from iotbx.cif import model
 
 def exercise_cif_model():
-  import iotbx.cif
-  from iotbx.cif import model
-
   loop = model.loop()
   loop["_loop_a"] = flex.double((1,2,3))
   loop.add_columns({'_loop_c': [4,5,6],
@@ -549,6 +548,19 @@ A 2 MET A
     assert list(r['_test_row.data3']) == ['3']
     assert list(r['_test_row.data4']) == ['4','4']
 
+def test_301():
+  cif_model = iotbx.cif.reader(input_string="""\
+data_test
+loop_
+  _symmetry_symop_operation_xyz
+ x,y,z
+ -x,y+1/2,-z
+""").model()
+  del cif_model["test"]["_symmetry_symop_operation_xyz"]
+  s = str(cif_model)
+  assert s.strip() == 'data_test'
+
 if __name__ == '__main__':
   exercise_cif_model()
+  test_301()
   print "OK"
