@@ -4,6 +4,9 @@ import pkg_resources
 
 from dxtbx.model import Experiment, ExperimentList
 from dxtbx.datablock import AutoEncoder
+from dxtbx.datablock import BeamComparison # import dependency
+from dxtbx.datablock import DetectorComparison # import dependency
+from dxtbx.datablock import GoniometerComparison # import dependency
 from dxtbx.datablock import DataBlockFactory
 
 
