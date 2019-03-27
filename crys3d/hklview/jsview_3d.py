@@ -191,6 +191,10 @@ class hklview_3d:
       maskrow = mask.reshape( mask.shape[0], 1 )
 
 
+      # need to deal with displaying sigmas or phases
+
+
+
       npcolour = np.array( list(otherscene.colors))
       npcolourcol = npcolour.reshape( len(otherscene.data), 3 )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -305,12 +309,17 @@ class hklview_3d:
         ocolstr = self.valid_arrays[j].info().label_string()
         #ocolstr = otherscene.miller_array.info().label_string()
         odata = otherscene.data
+        ophisig = ""
+        if self.valid_arrays[j].is_complex_array():
+          ophisig = ", " + str(roundoff(otherscene.phase[i]))
+        if self.valid_arrays[j].sigmas() is not None:
+          ophisig = ", " + str(roundoff(otherscene.sigmas[i]))
         od =" "
         #if i < len(odata): # some data might not have been processed if considered as outliers
         od = str(roundoff(odata[i]) )
         if math.isnan( odata[i] ) or odata[i] == self.inanval:
           od = "??"
-        spbufttip += "\n%s: %s" %(ocolstr, od )
+        spbufttip += "\n%s: %s%s" %(ocolstr, od, ophisig )
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       positions[ibin].extend( roundoff(list(hklstars)) )
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )

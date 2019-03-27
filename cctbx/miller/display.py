@@ -85,6 +85,7 @@ class scene(object):
     assert (self.missing_flags.size() == n_points)
     assert (self.sys_absent_flags.size() == n_points)
     assert (self.data.size() == n_points)
+    assert (self.phase.size() == n_points)
     self.clear_labels()
 
   def process_input_array(self):
@@ -152,6 +153,8 @@ class scene(object):
             crystal_symmetry=original_symmetry)
     data = array.data()
     self.r_free_mode = False
+    self.phase = flex.double(data.size(), float('nan'))
+    self.sigmas = flex.double(data.size(), float('nan'))
     if isinstance(data, flex.bool):
       self.r_free_mode = True
       data_as_float = flex.double(data.size(), 0.0)
@@ -163,6 +166,7 @@ class scene(object):
         self.data = data.deep_copy()
       elif isinstance(data, flex.complex_double):
         self.data = flex.abs(data)
+        self.phase = flex.arg(data)
       elif hasattr(array.data(), "as_double"):
         self.data = array.data().as_double()
       else:
@@ -177,6 +181,8 @@ class scene(object):
         self.data = array.data()
         if (multiplicities is not None):
           multiplicities = multiplicities.select(non_zero_sel)
+      if array.sigmas() is not None:
+        self.sigmas = array.sigmas()
     self.work_array = array
     self.multiplicities = multiplicities
 
