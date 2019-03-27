@@ -513,9 +513,11 @@ class CCTBXParser(ParserBase):
     '''
     paths = list()
     if (phil_scope.is_definition):
-      if (phil_scope.type.phil_type == 'path' and
-          'new_file' not in phil_scope.style):
-        paths.append(phil_scope.extract())
+      if (phil_scope.type.phil_type == 'path'):
+        if phil_scope.style is not None and 'new_file' in phil_scope.style:
+          pass
+        else:
+          paths.append(phil_scope.extract())
     elif (phil_scope.is_scope):
       for phil_object in phil_scope.objects:
         paths.extend(self.check_phil_for_paths(phil_object))
