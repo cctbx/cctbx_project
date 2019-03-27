@@ -2,6 +2,7 @@ from __future__ import division
 import copy
 
 from scitbx.math import dihedral_angle
+from libtbx.utils import Sorry
 from mmtbx.conformation_dependent_library.multi_residue_class import \
   ThreeProteinResidues
 from mmtbx.conformation_dependent_library.cdl_utils import \

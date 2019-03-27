@@ -9,7 +9,6 @@ from mmtbx.conformation_dependent_library.cdl_utils import \
   get_ca_dihedrals
 from mmtbx.conformation_dependent_library.LinkedResidues import LinkedResidues
 
-
 class RestraintsRegistry(dict):
   def __init__(self):
     self.n = {}
