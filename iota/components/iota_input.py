@@ -138,6 +138,11 @@ advanced
       .type = int
       .help = Number of images in random sample
   }
+  reference_geometry = None
+    .type = path
+    .help = Detector geometry from ensemble refinement
+    .alias = Reference Geometry
+    .expert_level = 1
 }
 mp
   .help = Multiprocessing options

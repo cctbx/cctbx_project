@@ -1,5 +1,5 @@
-IOTA v1.3.004 - updated for experiment list changes
+IOTA v1.3.006 - added reference geometry
 
-- Replaced references to datablock with appropriate references to experiments,
-DataBlockFactory to ExperimentListFactory, and DataBlockDumper to
-ExperimentListDumper
+Added the option to include a reference geometry path to apply the results of
+ensemble refinement of detector geometry to processing (per Brewster, et al.
+Acta Crystallogr D Struct Biol. 2018 Sep 1;74(Pt 9):877-894)

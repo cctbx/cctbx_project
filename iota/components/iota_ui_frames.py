@@ -1719,9 +1719,14 @@ class SummaryTab(d.ScrolledPanel):
       lres = self.info.stats['lres']['mean']
       hres = self.info.stats['res']['mean']
       res = to_unicode(u'{:.2f} - {:.2f} {}'.format(lres, hres, u'\u212B'))
-      a, b, c, alpha, beta, gamma = self.info.best_uc
-      uc = '{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}' \
-           ''.format(a, b, c, alpha, beta, gamma)
+
+      if type(self.info.best_uc) in (list, tuple):
+        a, b, c, alpha, beta, gamma = self.info.best_uc
+        uc = '{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}' \
+             ''.format(a, b, c, alpha, beta, gamma)
+      else:
+        uc = str(self.info.best_uc)
+
       beamxy = 'X = {:.2f}, Y = {:.2f}'.format(self.info.stats['beamX']['mean'],
                                                self.info.stats['beamY']['mean'])
       rlabels = ['Bravais lattice: ', 'Unit cell: ', 'Resolution: ',

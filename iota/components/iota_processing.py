@@ -179,6 +179,32 @@ class IOTAImageProcessor(Processor):
       self.params.significance_filter.isigi_cutoff = sigma
 
 
+    # Load reference geometry
+    self.reference_detector = None
+    if self.iparams.advanced.reference_geometry:
+
+      from dxtbx.model.experiment_list import ExperimentListFactory
+      try:
+        ref_experiments = ExperimentListFactory.from_json_file(
+          str(self.iparams.advanced.reference_geometry), check_format=False
+        )
+      except Exception as e:
+        print ('DEBUG: Could not make exp. list because: ', e)
+        try:
+          import dxtbx
+          img = dxtbx.load(str(self.iparams.advanced.reference_geometry))
+        except Exception:
+          print(
+            "DEBUG: Couldn't load geometry file {}"
+            "".format(self.iparams.advanced.reference_geometry)
+          )
+        else:
+          self.reference_detector = img.get_detector()
+      else:
+        assert len(ref_experiments.detectors()) == 1
+        self.reference_detector = ref_experiments.detectors()[0]
+
+
   def refine_bravais_settings(self, reflections, experiments):
     proc_scope = phil_scope.format(python_object=self.params)
     sgparams = sg_scope.fetch(proc_scope).extract()
@@ -345,6 +371,32 @@ class IOTAImageProcessor(Processor):
       self.params.spotfinder.threshold.dispersion.global_threshold = threshold
     if self.iparams.image_import.estimate_gain:
       self.params.spotfinder.threshold.dispersion.gain = img_object.gain
+
+    # Update geometry if reference geometry was applied
+    from dials.command_line.dials_import import ManualGeometryUpdater
+    update_geometry = ManualGeometryUpdater(self.params)
+    try:
+      imagesets = img_object.experiments.imagesets()
+      update_geometry(imagesets[0])
+      experiment = img_object.experiments[0]
+      experiment.beam = imagesets[0].get_beam()
+      experiment.detector = imagesets[0].get_detector()
+    except RuntimeError as e:
+      print("DEBUG: Error updating geometry on {}, {}".format(
+        img_object.img_path, e))
+
+    # Set detector if reference geometry was applied
+    if self.reference_detector is not None:
+      try:
+        from dxtbx.model import Detector
+        imageset = img_object.experiments[0].imageset
+        imageset.set_detector(
+          Detector.from_dict(self.reference_detector.to_dict())
+        )
+        img_object.experiments[0].detector = imageset.get_detector()
+      except Exception as e:
+        print ('DEBUG: cannot set detector! ', e)
+
 
     proc_output = []
 
