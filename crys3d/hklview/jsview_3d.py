@@ -6,6 +6,7 @@ from __future__ import division
 from libtbx.math_utils import roundoff
 from cctbx.miller import display
 from cctbx.array_family import flex
+from scitbx import graphics_utils
 from cctbx import miller
 from websocket_server import WebsocketServer
 import threading, math
@@ -276,6 +277,28 @@ class hklview_3d:
     """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, Kstararrowtxt, Lstararrowtxt)
 
+    # make colour gradient array
+    mincolour = self.othermindata[self.icolourcol]
+    maxcolour = self.othermaxdata[self.icolourcol]
+    if self.settings.sigma_color:
+      mincolour = self.otherminsigmas[self.icolourcol]
+      maxcolour = self.othermaxsigmas[self.icolourcol]
+    span = maxcolour - mincolour
+    ln = 50
+    incr = span/ln
+    colourarray =[]
+    thiscolour = mincolour
+    for j,sc in enumerate(range(ln)):
+      thiscolour += incr
+      colourarray.append(thiscolour )
+
+    colourgradarray = graphics_utils.color_by_property(
+      properties= flex.double(colourarray),
+      selection=flex.bool( len(colourarray), True),
+      color_all=False,
+      gradient_type= self.settings.color_scheme)
+
+
     colors = self.otherscenes[self.icolourcol].colors
     radii = self.otherscenes[self.iradiicol].radii * self.settings.scale
     points = self.scene.points
@@ -283,7 +306,7 @@ class hklview_3d:
     dres = self.scene.work_array.d_spacings().data()
     colstr = self.scene.miller_array.info().label_string()
     data = self.scene.data
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
     colours = []
     positions = []
@@ -469,7 +492,7 @@ var hklscene = function () {
   shapeComp.autoView();
   repr.update()
 
-  var mybox = document.createElement("div");
+  mybox = document.createElement("div");
   Object.assign(mybox.style, {
     display: "block",
     position: "absolute",
