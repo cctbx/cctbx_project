@@ -46,6 +46,8 @@ class hklview_3d:
     self.otherscenes = []
     self.othermaxdata = []
     self.othermindata = []
+    self.othermaxsigmas = []
+    self.otherminsigmas = []
     self.nbin = 0
     self.websockclient = None
     self.lastmsg = ""
@@ -213,18 +215,29 @@ class hklview_3d:
       d = otherscene.data
       if (isinstance(d, flex.int)):
         d = [e for e in self.scene.data if e!= self.inanval]
-
       if valarray.is_complex_array():
         d = flex.abs(otherscene.data)
-
       maxdata =max( d )
       mindata =min( d )
-
       self.othermaxdata.append( maxdata )
       self.othermindata.append( mindata )
+
+      maxsigmas = minsigmas = self.nanval
+      if otherscene.sigmas is not None:
+        d = otherscene.sigmas
+        maxsigmas =max( d )
+        minsigmas =min( d )
+
+      self.othermaxsigmas.append(maxsigmas)
+      self.otherminsigmas.append(minsigmas)
       self.otherscenes.append( otherscene)
-      self.mprint( "%d, %s, min, max values: %f, %f" \
-        %(i, validarray.info().label_string(), mindata , maxdata) )
+
+      if otherscene.sigmas is not None:
+        self.mprint( "%d, %s, min,max: [%s; %s], minsig,maxsig:  [%s; %s]" \
+          %(i, validarray.info().label_string(), roundoff(mindata), roundoff(maxdata), roundoff(minsigmas), roundoff(maxsigmas)) )
+      else:
+        self.mprint( "%d, %s, min,max: [%s; %s]" \
+          %(i, validarray.info().label_string(), roundoff(mindata), roundoff(maxdata)) )
 
 
   def DrawNGLJavaScript(self):
@@ -265,10 +278,6 @@ class hklview_3d:
 
     colors = self.otherscenes[self.icolourcol].colors
     radii = self.otherscenes[self.iradiicol].radii * self.settings.scale
-
-
-    #colors = self.scene.colors
-    #radii = self.scene.radii * self.settings.scale
     points = self.scene.points
     hkls = self.scene.indices
     dres = self.scene.work_array.d_spacings().data()
@@ -308,19 +317,17 @@ class hklview_3d:
       spbufttip += '\' + AA + \''
       for j,otherscene in enumerate(self.otherscenes):
         ocolstr = self.valid_arrays[j].info().label_string()
-        #ocolstr = otherscene.miller_array.info().label_string()
         odata = otherscene.data
-        ophisig = ""
+        od =""
         if self.valid_arrays[j].is_complex_array():
-          ophisig = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phase[i]))
-        if self.valid_arrays[j].sigmas() is not None:
-          ophisig = ", " + str(roundoff(otherscene.sigmas[i]))
-        od =" "
-        #if i < len(odata): # some data might not have been processed if considered as outliers
-        od = str(roundoff(odata[i]) )
+          od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phase[i]))
+        elif self.valid_arrays[j].sigmas() is not None:
+          od = str(roundoff(odata[i]) ) + ", " + str(roundoff(otherscene.sigmas[i]))
+        else:
+          od = str(roundoff(odata[i]) )
         if math.isnan( abs(odata[i]) ) or odata[i] == self.inanval:
           od = "??"
-        spbufttip += "\n%s: %s%s" %(ocolstr, od, ophisig )
+        spbufttip += "\n%s: %s" %(ocolstr, od)
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       positions[ibin].extend( roundoff(list(hklstars)) )
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )

@@ -104,15 +104,17 @@ mtz1.mtz_object().write("mymtz.mtz")
 
 
 from crys3d.hklview import cmdlineframes
-
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js")
 myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetColumn(0)
+myHKLview.SetSqrtScaleRadii(False)
 
 myHKLview.SetColourColumn(2)
 myHKLview.SetRadiusColumn(3)
 myHKLview.SetColumn(1)
 
+myHKLview.SetColumn(0)
+myHKLview.SetRadiiToSigmas(True)
 
 from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame()
@@ -443,8 +445,23 @@ class HKLViewFrame () :
     self.update_settings()
 
 
+  def SetRadiiToSigmas(self, val):
+    self.settings.sigma_radius = val
+    self.update_settings()
+
+
   def SetColoursToSigmas(self, val):
     self.settings.sigma_color = val
+    self.update_settings()
+
+
+  def SetSqrtScaleRadii(self, val):
+    self.settings.sqrt_scale_radii = val
+    self.update_settings()
+
+
+  def SetSqrtScaleColours(self, val):
+    self.settings.sqrt_scale_colors = val
     self.update_settings()
 
 

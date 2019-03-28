@@ -28,6 +28,7 @@ def generate_systematic_absences(array,
       #niggli_cell().expand_to_p1()
   return absence_array
 
+
 class scene(object):
   """
   Data for visualizing a Miller array graphically, either as a 3D view or
@@ -88,6 +89,7 @@ class scene(object):
     assert (self.phase.size() == n_points)
     assert (self.ampl.size() == n_points)
     self.clear_labels()
+
 
   def process_input_array(self):
     from cctbx.array_family import flex
@@ -156,7 +158,7 @@ class scene(object):
     self.r_free_mode = False
     self.phase = flex.double(data.size(), float('nan'))
     self.ampl = flex.double(data.size(), float('nan'))
-    self.sigmas = flex.double(data.size(), float('nan'))
+    #self.sigmas = flex.double(data.size(), float('nan'))
     if isinstance(data, flex.bool):
       self.r_free_mode = True
       data_as_float = flex.double(data.size(), 0.0)
@@ -186,6 +188,8 @@ class scene(object):
           multiplicities = multiplicities.select(non_zero_sel)
       if array.sigmas() is not None:
         self.sigmas = array.sigmas()
+      else:
+        self.sigmas = None
     self.work_array = array
     self.multiplicities = multiplicities
 
@@ -202,34 +206,32 @@ class scene(object):
     if ((self.multiplicities is not None) and
         (settings.scale_colors_multiplicity)):
       data_for_colors = self.multiplicities.data().as_double()
-      if (settings.phase_color) and (isinstance(data, flex.complex_double)):
-        data_for_colors = flex.arg(self.multiplicities.data())
-      if (settings.sigma_color) and sigmas is not None:
-        data_for_colors = self.multiplicities.sigmas().as_double()
-
       assert data_for_colors.size() == data.size()
     elif (settings.sqrt_scale_colors) and (isinstance(data, flex.double)):
       data_for_colors = flex.sqrt(data)
-      if (settings.phase_color) and (isinstance(data, flex.complex_double)):
-        data_for_colors = flex.arg(data)
-      if (settings.sigma_color) and sigmas is not None:
-        data_for_colors = flex.sqrt(sigmas)
+    elif (settings.phase_color) and (isinstance(data, flex.complex_double)):
+      data_for_colors = flex.arg(data)
+    elif (settings.sigma_color) and sigmas is not None:
+      data_for_colors = sigmas.as_double()
     else :
       data_for_colors = flex.abs(data.deep_copy())
-      if (settings.phase_color) and (isinstance(data, flex.complex_double)):
-        data_for_colors = flex.arg(data)
-      if (settings.sigma_color) and sigmas is not None:
-        data_for_colors = sigmas
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
       #data_for_radii = data.deep_copy()
       data_for_radii = self.multiplicities.data().as_double()
+      if (settings.sigma_radius) and sigmas is not None:
+        data_for_radii = sigmas * self.multiplicities.as_double()
+        #print "sigmas: " + self.miller_array.info().label_string()
       assert data_for_radii.size() == data.size()
     elif (settings.sqrt_scale_radii) and (isinstance(data, flex.double)):
       data_for_radii = flex.sqrt(data)
+    elif (settings.sigma_radius) and sigmas is not None:
+      data_for_radii = sigmas.as_double()
+      #print "sigmas: " + self.miller_array.info().label_string()
     else :
       data_for_radii = flex.abs(data.deep_copy())
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if (settings.slice_mode):
       data = data.select(self.slice_selection)
       if (not settings.keep_constant_scale):
@@ -278,6 +280,7 @@ class scene(object):
     self.max_radius = max_radius
     self.colors = colors
 
+
   def generate_missing_reflections(self):
     from cctbx import miller
     from cctbx.array_family import flex
@@ -315,6 +318,7 @@ class scene(object):
       self.indices.extend(missing)
       self.data.extend(flex.double(n_missing, -1.))
       self.sys_absent_flags.extend(flex.bool(n_missing, False))
+
 
   def generate_systematic_absences(self):
     from cctbx import miller
@@ -362,12 +366,15 @@ class scene(object):
         else :
           self.colors.extend(flex.vec3_double(new_indices.size(), (1.,0.5,1.)))
 
+
   def clear_labels(self):
     self.label_points = set([])
+
 
   def get_resolution_at_point(self, k):
     hkl = self.indices[k]
     return self.unit_cell.d(hkl)
+
 
   def get_reflection_info(self, k):
     hkl = self.indices[k]
@@ -378,14 +385,17 @@ class scene(object):
       value = self.data[k]
     return (hkl, d_min, value)
 
+
 class render_2d(object):
   def __init__(self, scene, settings):
     self.scene = scene
     self.settings = settings
     self.setup_colors()
 
+
   def GetSize(self):
     raise NotImplementedError()
+
 
   def get_center_and_radius(self):
     w, h = self.GetSize()
@@ -393,6 +403,7 @@ class render_2d(object):
     center_x = max(w // 2, r + 20)
     center_y = max(h // 2, r + 20)
     return center_x, center_y, r
+
 
   def setup_colors(self):
     if (self.settings.black_background):
@@ -414,8 +425,10 @@ class render_2d(object):
       else :
         self._missing = (0.,0.,0.)
 
+
   def get_scale_factor(self):
     return 100.
+
 
   def render(self, canvas):
     self._points_2d = []
@@ -473,17 +486,22 @@ class render_2d(object):
       else :
         self.draw_filled_circle(canvas, x, y, r_point, self.scene.colors[k])
 
+
   def draw_line(self, canvas, x1, y1, x2, y2):
     raise NotImplementedError()
+
 
   def draw_text(self, canvas, text, x, y):
     raise NotImplementedError()
 
+
   def draw_open_circle(self, canvas, x, y, radius, color=None):
     raise NotImplementedError()
 
+
   def draw_filled_circle(self, canvas, x, y, radius, color):
     raise NotImplementedError()
+
 
 master_phil = libtbx.phil.parse("""
   data = None
@@ -506,6 +524,8 @@ master_phil = libtbx.phil.parse("""
   phase_color = False
     .type = bool
   sigma_color = False
+    .type = bool
+  sigma_radius = False
     .type = bool
   expand_to_p1 = False
     .type = bool
@@ -550,6 +570,7 @@ master_phil = libtbx.phil.parse("""
   show_anomalous_pairs = False
     .type = bool
 """)
+
 
 def settings():
   return master_phil.fetch().extract()
