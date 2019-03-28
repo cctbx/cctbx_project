@@ -2069,11 +2069,13 @@ class LABELITBuilder(CCIBuilder):
 class XFELBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'dials',
+    'dxtbx',
     'labelit',
     'cxi_xdr_xes'
   ]
   LIBTBX_EXTRA = [
     'dials',
+    'dxtbx',
     'labelit',
     'xfel',
     'cxi_xdr_xes',
@@ -2098,6 +2100,7 @@ class XFELBuilder(CCIBuilder):
 class PhenixBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'chem_data',
+    'dxtbx',
     'phenix',
     'phenix_regression',
     'phenix_html',
@@ -2126,6 +2129,7 @@ class PhenixBuilder(CCIBuilder):
   HOT_EXTRA = ['msgpack']
   LIBTBX_EXTRA = [
     'chem_data',
+    'dxtbx',
     'phenix',
     'phenix_regression',
     'phenix_examples',
