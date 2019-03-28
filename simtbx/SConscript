@@ -1,6 +1,5 @@
 import libtbx.load_env
 import os
-op = os.path
 Import("env_base", "env_etc")
 
 env_etc.simtbx_dist = libtbx.env.dist_path("simtbx")
@@ -11,14 +10,15 @@ env_etc.simtbx_common_includes = [
   env_etc.simtbx_include,
   env_etc.boost_adaptbx_include,
   env_etc.boost_include,
-  op.dirname(libtbx.env.find_in_repositories(
-    relative_path="tbxx", optional=False))
+  os.path.dirname(libtbx.env.find_in_repositories(
+    relative_path="tbxx", optional=False)),
+  env_etc.dxtbx_include,
 ]
 
-if (not env_etc.no_boost_python):
+if not env_etc.no_boost_python:
   Import("env_no_includes_boost_python_ext")
   env_simtbx = env_no_includes_boost_python_ext.Clone()
-  
+
   env_etc.include_registry.append(
     env=env_simtbx,
     paths=env_etc.simtbx_common_includes + [env_etc.python_include])
