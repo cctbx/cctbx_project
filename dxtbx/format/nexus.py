@@ -42,7 +42,8 @@ class check_dims(object):
         if not dims in self.dims:
             return (
                 False,
-                "%s has dims %s, expected %s" % (dset.name, str(dims), " or ".join([str(d) for d in self.dims])),
+                "%s has dims %s, expected %s"
+                % (dset.name, str(dims), " or ".join([str(d) for d in self.dims])),
             )
         return True, ""
 
@@ -545,7 +546,7 @@ class NXdetector(object):
 
         # The items to validate
         items = {
-            "data": {"minOccurs": 0, "checks": [check_dset(dims=[3,4])]},
+            "data": {"minOccurs": 0, "checks": [check_dset(dims=[3, 4])]},
             "description": {"minOccurs": 0, "checks": []},
             "time_per_channel": {"minOccurs": 0, "checks": []},
             "distance": {

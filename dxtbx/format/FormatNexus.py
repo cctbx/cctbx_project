@@ -150,6 +150,7 @@ class FormatNexus(FormatHDF5):
 from dxtbx.format.FormatStill import FormatStill
 from dxtbx.format.FormatMultiImageLazy import FormatMultiImageLazy
 
+
 class FormatNexusStill(FormatMultiImageLazy, FormatNexus, FormatStill):
     @staticmethod
     def understand(image_file):
