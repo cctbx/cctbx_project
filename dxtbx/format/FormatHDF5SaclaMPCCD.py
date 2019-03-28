@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from dxtbx.format.FormatHDF5 import FormatHDF5
 from dxtbx.format.FormatStill import FormatStill
+from dxtbx.format.FormatMultiImageLazy import FormatMultiImageLazy
 
 # 151028: deepcopying this class causes crash in h5py
 #         temporary fix by closing the file in every methods(!)
@@ -12,7 +13,7 @@ from dxtbx.format.FormatStill import FormatStill
 # 180724: update 'understand' to exclude Rayonix data
 
 
-class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
+class FormatHDF5SaclaMPCCD(FormatMultiImageLazy, FormatHDF5, FormatStill):
     """
     Class to handle multi-event HDF5 files from MPCCD
     preprocessed by Cheetah SFX pipeline at SACLA.
