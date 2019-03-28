@@ -438,6 +438,23 @@ var shapeComp;
 var repr;
 var AA = String.fromCharCode(197); // short for angstrom
 
+
+function createElement (name, properties, style) {
+  var el = document.createElement(name)
+  Object.assign(el, properties)
+  Object.assign(el.style, style)
+  return el
+}
+
+function addElement (el) {
+  Object.assign(el.style, {
+    position: "absolute",
+    zIndex: 10
+  })
+  stage.viewer.container.appendChild(el)
+}
+
+
 var hklscene = function () {
   shape = new NGL.Shape('shape');
   stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false });
@@ -451,6 +468,25 @@ var hklscene = function () {
   repr = shapeComp.addRepresentation('buffer');
   shapeComp.autoView();
   repr.update()
+
+  var mybox = document.createElement("div");
+  Object.assign(mybox.style, {
+    display: "block",
+    position: "absolute",
+    innerText: "waffle",
+    top: "20px",
+    left: "12px",
+    width: "200px",
+    height: "20px",
+    zIndex: 10,
+    pointerEvents: "none",
+    backgroundColor: "rgba(255, 255, 255, 0.75)",
+    color: "black",
+    padding: "0.1em",
+    fontFamily: "sans-serif"
+  });
+  addElement(mybox)
+
 }
 
 document.addEventListener('DOMContentLoaded', function() { hklscene() }, false );
