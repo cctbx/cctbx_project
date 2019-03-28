@@ -607,7 +607,7 @@ class NXdetector(object):
             },
             "pixel_mask": {
                 "minOccurs": 0,
-                "checks": [check_dset(dtype=["uint32", "int32"])],
+                "checks": [check_dset(dtype=["uint8", "uint16", "uint32", "int32"])],
             },
             "countrate_correction_applied": {
                 "minOccurs": 0,
@@ -1803,14 +1803,23 @@ class MaskFactory(object):
 
     """
 
-    def __init__(self, objects):
-        def make_mask(dset):
+    def __init__(self, objects, index = None):
+        def make_mask(dset, index):
             from scitbx.array_family import flex
-
-            mask_data = flex.int(dset[()]) == 0
+            i = index if index is not None else 0
             mask = []
-            for slices in all_slices:
-                mask.append(mask_data[slices])
+            for module_slices in all_slices:
+                assert len(dset.shape) in [len(module_slices), len(module_slices)+1]
+                if len(dset.shape) == len(module_slices):
+                  slices = [] # single image mask
+                else:
+                  slices = [slice(i, i + 1, 1)] # multi-image mask
+                slices.extend(module_slices)
+                data_as_flex = dataset_as_flex_int(dset.id.id, tuple(slices))
+                data_as_flex.reshape(
+                    flex.grid(data_as_flex.all()[-2:])
+                )  # handle 3 or 4 dimension arrays
+                mask.append(data_as_flex==0)
             return tuple(mask)
 
         self.mask = None
@@ -1821,12 +1830,12 @@ class MaskFactory(object):
                     self.mask = []
                 if "pixel_mask" in handle:
                     all_slices = get_detector_module_slices(obj)
-                    self.mask.extend(list(make_mask(handle["pixel_mask"])))
+                    self.mask.extend(list(make_mask(handle["pixel_mask"], index)))
                 elif "detectorSpecific" in handle:
                     if "pixel_mask" in handle["detectorSpecific"]:
                         all_slices = get_detector_module_slices(obj)
                         self.mask.extend(
-                            list(make_mask(handle["detectorSpecific"]["pixel_mask"]))
+                            list(make_mask(handle["detectorSpecific"]["pixel_mask"], index))
                         )
         if self.mask is not None:
             self.mask = tuple(self.mask)
