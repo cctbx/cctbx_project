@@ -245,48 +245,12 @@ class BeamFactory:
         in this - it is the angle between the polarization plane and the
         +Y laboratory frame vector."""
 
-        d2r = math.pi / 180.0
-
         cbf_handle = pycbf.cbf_handle_struct()
-        cbf_handle.read_file(cif_file, pycbf.MSG_DIGEST)
+        cbf_handle.read_widefile(cif_file, pycbf.MSG_DIGEST)
 
-        cbf_handle.find_category("axis")
+        result = imgCIF_H(cbf_handle)
 
-        # find record with equipment = source
-        cbf_handle.find_column("equipment")
-        cbf_handle.find_row("source")
-
-        # then get the vector and offset from this
-        direction = []
-
-        for j in range(3):
-            cbf_handle.find_column("vector[%d]" % (j + 1))
-            direction.append(cbf_handle.get_doublevalue())
-
-        # and the wavelength
-        wavelength = cbf_handle.get_wavelength()
-
-        # and information about the polarization - FIXME this should probably
-        # be a rotation about the beam not about the Z axis.
-
-        try:
-            polar_fraction, polar_angle = cbf_handle.get_polarization()
-        except Exception:
-            polar_fraction = 0.999
-            polar_angle = 0.0
-
-        polar_plane_normal = (
-            math.sin(polar_angle * d2r),
-            math.cos(polar_angle * d2r),
-            0.0,
-        )
-
-        return BeamFactory.make_polarized_beam(
-            sample_to_source=direction,
-            wavelength=wavelength,
-            polarization=polar_plane_normal,
-            polarization_fraction=polar_fraction,
-        )
+        return result
 
     @staticmethod
     def imgCIF_H(cbf_handle):
