@@ -919,6 +919,13 @@ class dials_module(SourceModule):
                'https://github.com/dials/dials.git',
                'https://github.com/dials/dials/archive/master.zip']
 
+class dxtbx_module(SourceModule):
+  module = 'dxtbx'
+  anonymous = ['git',
+               'git@github.com:cctbx/dxtbx.git',
+               'https://github.com/cctbx/dxtbx.git',
+               'https://github.com/cctbx/dxtbx/archive/master.zip']
+
 class dials_regression_module(SourceModule):
   module = 'dials_regression'
   authenticated = ['svn',
@@ -2024,8 +2031,8 @@ class CCTBXBuilder(CCIBuilder):
     pass
 
 class DIALSBuilder(CCIBuilder):
-  CODEBASES_EXTRA = ['dials', 'xia2']
-  LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
+  CODEBASES_EXTRA = ['dials', 'dxtbx', 'xia2']
+  LIBTBX_EXTRA = ['dials', 'dxtbx', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
   HOT_EXTRA = ['msgpack']
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
