@@ -3636,7 +3636,9 @@ rdl_database = {
   },
 }
 
-def get_rdl_database(apply_unrestrained_dihedrals=False, verbose=False):
+def get_rdl_database(truncate_restaints_to_gamma=False, # chi1 angles & torsions
+                     apply_unrestrained_dihedrals=False,
+                     verbose=False):
   from investigate_rotamer_space import results
   pdbs = []
   if apply_unrestrained_dihedrals:
@@ -3660,6 +3662,17 @@ def get_rdl_database(apply_unrestrained_dihedrals=False, verbose=False):
       for key, values in restraints.items():
         if len(key)!=4: continue
         values[-1]=2
+  if truncate_restaints_to_gamma:
+    for resname, rotamers in rdl_database.items():
+      for rotamer_name, restraints in rotamers.items():
+        if rotamer_name=='default': continue
+        remove=[]
+        for key, values in restraints.items():
+          if not (key[0]=='CA' and key[1]=='CB'):
+            remove.append(key)
+        if remove:
+          for key in remove:
+            del restraints[key]
   return rdl_database
 
 def run(args):
@@ -3667,6 +3680,10 @@ def run(args):
   rdl_database = get_rdl_database()
   print '='*80
   print rdl_database["ARG"]["mtp85"][("N", "CA", "C")]
+  for rotamer, item in rdl_database['TRP'].items():
+    print rotamer
+    #print item
+    print item[ ('CB', 'CG', 'CD1')], item[('CA', 'CB', 'CG', 'CD1')]
   for resname, rotamer, key, period in [
     ["ASP", 'p0',   ("CA", "CB", "CG", "OD1"), 36],
     ["TYR", 'm-10', ("CA", "CB", "CG", "CD1"), 2],
