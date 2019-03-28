@@ -86,6 +86,7 @@ class scene(object):
     assert (self.sys_absent_flags.size() == n_points)
     assert (self.data.size() == n_points)
     assert (self.phase.size() == n_points)
+    assert (self.ampl.size() == n_points)
     self.clear_labels()
 
   def process_input_array(self):
@@ -154,6 +155,7 @@ class scene(object):
     data = array.data()
     self.r_free_mode = False
     self.phase = flex.double(data.size(), float('nan'))
+    self.ampl = flex.double(data.size(), float('nan'))
     self.sigmas = flex.double(data.size(), float('nan'))
     if isinstance(data, flex.bool):
       self.r_free_mode = True
@@ -165,7 +167,8 @@ class scene(object):
       if isinstance(data, flex.double):
         self.data = data.deep_copy()
       elif isinstance(data, flex.complex_double):
-        self.data = flex.abs(data)
+        self.data = data.deep_copy()
+        self.ampl = flex.abs(data)
         self.phase = flex.arg(data)
       elif hasattr(array.data(), "as_double"):
         self.data = array.data().as_double()
@@ -186,22 +189,38 @@ class scene(object):
     self.work_array = array
     self.multiplicities = multiplicities
 
+
   def generate_view_data(self):
     from scitbx.array_family import flex
     from scitbx import graphics_utils
     settings = self.settings
     data_for_colors = data_for_radii = None
     data = self.data #self.work_array.data()
+    sigmas = self.sigmas
     if (isinstance(data, flex.double) and data.all_eq(0)):
       data = flex.double(data.size(), 1)
     if ((self.multiplicities is not None) and
         (settings.scale_colors_multiplicity)):
       data_for_colors = self.multiplicities.data().as_double()
+      if (settings.phase_color) and (isinstance(data, flex.complex_double)):
+        data_for_colors = flex.arg(self.multiplicities.data())
+      if (settings.sigma_color) and sigmas is not None:
+        data_for_colors = self.multiplicities.sigmas().as_double()
+
       assert data_for_colors.size() == data.size()
     elif (settings.sqrt_scale_colors) and (isinstance(data, flex.double)):
       data_for_colors = flex.sqrt(data)
+      if (settings.phase_color) and (isinstance(data, flex.complex_double)):
+        data_for_colors = flex.arg(data)
+      if (settings.sigma_color) and sigmas is not None:
+        data_for_colors = flex.sqrt(sigmas)
     else :
-      data_for_colors = data.deep_copy()
+      data_for_colors = flex.abs(data.deep_copy())
+      if (settings.phase_color) and (isinstance(data, flex.complex_double)):
+        data_for_colors = flex.arg(data)
+      if (settings.sigma_color) and sigmas is not None:
+        data_for_colors = sigmas
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
       #data_for_radii = data.deep_copy()
@@ -210,7 +229,7 @@ class scene(object):
     elif (settings.sqrt_scale_radii) and (isinstance(data, flex.double)):
       data_for_radii = flex.sqrt(data)
     else :
-      data_for_radii = data.deep_copy()
+      data_for_radii = flex.abs(data.deep_copy())
     if (settings.slice_mode):
       data = data.select(self.slice_selection)
       if (not settings.keep_constant_scale):
@@ -483,6 +502,10 @@ master_phil = libtbx.phil.parse("""
   sqrt_scale_radii = True
     .type = bool
   sqrt_scale_colors = False
+    .type = bool
+  phase_color = False
+    .type = bool
+  sigma_color = False
     .type = bool
   expand_to_p1 = False
     .type = bool

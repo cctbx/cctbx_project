@@ -137,14 +137,16 @@ class hklview_3d:
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #commonarray.size(), matchcolourradiiarray.size(), matchradiiarray.size(), matchcolourarray.size()
-    self.scene = display.scene(miller_array=self.miller_array,
-    #self.scene = display.scene(miller_array = commonarray,
-      merge=merge,
-      settings=self.settings)
+    self.scene = display.scene(miller_array=self.miller_array, merge=merge, settings=self.settings)
 
     self.rotation_center = (0,0,0)
-    self.maxdata = max(self.scene.data)
-    self.mindata = min(self.scene.data)
+    if self.miller_array.is_complex_array():
+      ampls = flex.abs(self.scene.data)
+      self.maxdata = max(ampls)
+      self.mindata = min(ampls)
+    else:
+      self.maxdata = max(self.scene.data)
+      self.mindata = min(self.scene.data)
     self.otherscenes = []
     self.othermaxdata = []
     self.othermindata = []
@@ -190,11 +192,6 @@ class hklview_3d:
       mask = np.isnan(nplst)
       maskrow = mask.reshape( mask.shape[0], 1 )
 
-
-      # need to deal with displaying sigmas or phases
-
-
-
       npcolour = np.array( list(otherscene.colors))
       npcolourcol = npcolour.reshape( len(otherscene.data), 3 )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -216,6 +213,10 @@ class hklview_3d:
       d = otherscene.data
       if (isinstance(d, flex.int)):
         d = [e for e in self.scene.data if e!= self.inanval]
+
+      if valarray.is_complex_array():
+        d = flex.abs(otherscene.data)
+
       maxdata =max( d )
       mindata =min( d )
 
@@ -311,13 +312,13 @@ class hklview_3d:
         odata = otherscene.data
         ophisig = ""
         if self.valid_arrays[j].is_complex_array():
-          ophisig = ", " + str(roundoff(otherscene.phase[i]))
+          ophisig = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phase[i]))
         if self.valid_arrays[j].sigmas() is not None:
           ophisig = ", " + str(roundoff(otherscene.sigmas[i]))
         od =" "
         #if i < len(odata): # some data might not have been processed if considered as outliers
         od = str(roundoff(odata[i]) )
-        if math.isnan( odata[i] ) or odata[i] == self.inanval:
+        if math.isnan( abs(odata[i]) ) or odata[i] == self.inanval:
           od = "??"
         spbufttip += "\n%s: %s%s" %(ocolstr, od, ophisig )
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )

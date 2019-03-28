@@ -113,6 +113,15 @@ myHKLview.SetColourColumn(2)
 myHKLview.SetRadiusColumn(3)
 myHKLview.SetColumn(1)
 
+
+from crys3d.hklview import cmdlineframes
+myHKLview = cmdlineframes.HKLViewFrame()
+myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Tests\MRproblem\MRproblem_15.1.mtz")
+
+myHKLview.SetColumn(2)
+myHKLview.SetColoursToPhases(True)
+
+
 """
 
 
@@ -225,9 +234,9 @@ class HKLViewFrame () :
         self.settings.expand_anomalous = False
     #else :
       #self.update_settings_for_merged()
-    if array.is_complex_array() :
-      array = array.amplitudes().set_info(info)
-      details.append("as amplitudes")
+    #if array.is_complex_array() :
+    #  array = array.amplitudes().set_info(info)
+    #  details.append("as amplitudes")
     from iotbx.reflection_file_utils import looks_like_r_free_flags_info
     if (array.is_integer_array()) and (looks_like_r_free_flags_info(info)) :
       from iotbx.reflection_file_utils import get_r_free_flags_scores
@@ -259,7 +268,7 @@ class HKLViewFrame () :
         array_info = procarray_info
         self.miller_array = procarray
         self.update_space_group_choices()
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.viewer.set_miller_array(self.miller_array, merge=array_info.merge,
        details=array_info.details_str, valid_arrays=self.procarrays)
     return self.miller_array, array_info
@@ -431,6 +440,16 @@ class HKLViewFrame () :
 
   def SetRadiusColumn(self, radiuscol):
     self.viewer.iradiicol = radiuscol
+    self.update_settings()
+
+
+  def SetColoursToSigmas(self, val):
+    self.settings.sigma_color = val
+    self.update_settings()
+
+
+  def SetColoursToPhases(self, val):
+    self.settings.phase_color = val
     self.update_settings()
 
 
