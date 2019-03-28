@@ -265,21 +265,28 @@ class BeamFactory:
         cbf_handle.find_category("axis")
 
         # find record with equipment = source
-        cbf_handle.find_column("equipment")
-        cbf_handle.find_row("source")
 
-        # then get the vector and offset from this
-        direction = []
+        try:
+            cbf_handle.find_column("equipment")
+            cbf_handle.find_row("source")
 
-        for j in range(3):
-            cbf_handle.find_column("vector[%d]" % (j + 1))
-            direction.append(cbf_handle.get_doublevalue())
+            # then get the vector and offset from this
+            direction = []
+
+            for j in range(3):
+                cbf_handle.find_column("vector[%d]" % (j + 1))
+                direction.append(cbf_handle.get_doublevalue())
+        except Exception as e:
+            if str(e).split()[-1] != "CBF_NOTFOUND":
+                raise
+            direction = [0, 0, 1]
 
         # and the wavelength
         wavelength = cbf_handle.get_wavelength()
 
         # and information about the polarization - FIXME this should probably
-        # be a rotation about the beam not about the Z axis.
+        # be a rotation about the beam not about the Z axis. Should also check
+        # to see if this is Cu K-alpha wavelength (i.e. lab source...)
 
         try:
             polar_fraction, polar_angle = cbf_handle.get_polarization()
