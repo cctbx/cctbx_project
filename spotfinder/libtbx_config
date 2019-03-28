@@ -1,4 +1,4 @@
 {
   "modules_required_for_use": ["iotbx","annlib"],
-  "modules_required_for_build": [],
+  "modules_required_for_build": ["dxtbx"],
 }
