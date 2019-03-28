@@ -49,7 +49,7 @@ class FormatNexus(FormatHDF5):
 
         # Get the NXmx model objects
         entry = reader.entries[0]
-        instrument = entry.instruments[0]
+        self.instrument = instrument = entry.instruments[0]
         detector = instrument.detectors[0]
         sample = entry.samples[0]
         beam = sample.beams[0]
@@ -81,8 +81,6 @@ class FormatNexus(FormatHDF5):
                 instrument, self._beam_model
             ).model
             self._raw_data = DetectorGroupDataFactory(data, instrument).model
-
-        self._mask = MaskFactory(instrument.detectors).mask
 
     def _setup_gonio_and_scan(self, sample, detector):
         """ Set up rotation-specific models """
@@ -133,7 +131,7 @@ class FormatNexus(FormatHDF5):
         return self._raw_data[index]
 
     def get_mask(self, index=None, goniometer=None):
-        return self._mask
+        return MaskFactory(self.instrument.detectors, index).mask
 
     def get_num_images(self):
         if self._scan() is not None:
