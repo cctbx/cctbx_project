@@ -503,7 +503,7 @@ class DetectorFactory:
         origin,
         pixel_size,
         image_size,
-        trusted_range=(0.0, 0.0),
+        trusted_range=(0.0, 1.0e6),
         px_mm=None,
         name="Panel",
         thickness=0.0,
@@ -752,7 +752,7 @@ class DetectorFactory:
             overload = cbf_handle.get_overload(0)
             trusted_range = (underload, overload * dxtbx_overload_scale)
         except Exception:
-            trusted_range = (0.0, 0.0)
+            trusted_range = (0.0, 1.0e6)
 
         cbf_detector.__swig_destroy__(cbf_detector)
         del cbf_detector
