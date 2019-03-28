@@ -30,7 +30,10 @@ class CBFImage(MARIPImage):
       self.adaptor = NullAdaptor()
     self.vendortype = "CBF"
     self.readHeader()
-    self.vendor_specific_null_value = int(self.adaptor.undefined_value())
+    try:
+      self.vendor_specific_null_value = int(self.adaptor.undefined_value())
+    except RuntimeError as e:
+      self.vendor_specific_null_value = 0
 
   def beam_center_slow(self):
     return self.adaptor.beam_index_slow*self.adaptor.pixel_size()
