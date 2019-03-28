@@ -180,12 +180,12 @@ class agipd_cxigeom2nexus(object):
           asicmodule = detector.create_group(array_name+'Q%dM%dA%d'%(quad,module_num,asic_num))
           asicmodule.attrs['NX_class'] = 'NXdetector_module'
           if self.params.mode == 'vds':
-            asicmodule.create_dataset('data_origin', (3,), data=[0, asic_slow*asic_num, (quad*self.n_modules)+module_num], dtype='i')
-            asicmodule.create_dataset('data_size', (3,), data=[asic_fast, asic_slow, 1], dtype='i')
+            asicmodule.create_dataset('data_origin', (3,), data=[(quad*self.n_modules)+module_num, asic_slow*asic_num, 0], dtype='i')
+            asicmodule.create_dataset('data_size', (3,), data=[1, asic_slow, asic_fast], dtype='i')
           elif self.params.mode == 'cxi':
-            asicmodule.create_dataset('data_origin', (2,), data=[0, asic_slow*((quad*self.n_modules*self.n_asics) + (module_num*self.n_asics) + asic_num)],
+            asicmodule.create_dataset('data_origin', (2,), data=[asic_slow*((quad*self.n_modules*self.n_asics) + (module_num*self.n_asics) + asic_num), 0],
                                                              dtype='i')
-            asicmodule.create_dataset('data_size', (2,), data=[asic_fast, asic_slow], dtype='i')
+            asicmodule.create_dataset('data_size', (2,), data=[asic_slow, asic_fast], dtype='i')
 
           fast = self.hierarchy[q_key][m_key][a_key]['local_fast'].elems
           slow = self.hierarchy[q_key][m_key][a_key]['local_slow'].elems

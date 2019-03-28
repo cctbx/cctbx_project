@@ -1186,8 +1186,8 @@ class DetectorFactoryFromGroup(object):
             for module_number, nx_detector_module in enumerate(modules):
                 # Get the depends_on starting point for this module and for this image
                 panel_name = str(os.path.basename(nx_detector_module.handle.name))
-                px_fast = int(nx_detector_module.handle["data_size"][0])
-                px_slow = int(nx_detector_module.handle["data_size"][1])
+                px_fast = int(nx_detector_module.handle["data_size"][-1])
+                px_slow = int(nx_detector_module.handle["data_size"][-2])
                 image_size = px_fast, px_slow
 
                 # Get the trusted range of pixel values
@@ -1406,7 +1406,7 @@ class DetectorFactory(object):
 
         # Construct the detector model
         pixel_size = (fast_pixel_direction_value, slow_pixel_direction_value)
-        image_size = tuple(map(int, nx_module["data_size"][0:2]))
+        image_size = tuple(map(int, nx_module["data_size"][-2:]))
 
         self.model = Detector()
         self.model.add_panel(
@@ -1636,7 +1636,7 @@ def get_detector_module_slices(detector):
     Helper function to read data_origin and data_size from the NXdetector_modules in a
     NXdetector.  Returns a list of lists, where each sublist is a list of slices in
     slow to fast order.
-    Assumes slices are stored in NeXus in fast to slow order.
+    Assumes slices are stored in NeXus in slow to fast order.
 
     """
     # get the set of leaf modules (handles nested modules)
@@ -1650,14 +1650,10 @@ def get_detector_module_slices(detector):
         data_origin = module.handle["data_origin"]
         data_size = module.handle["data_size"]
         all_slices.append(
-            list(
-                reversed(
                     [
                         slice(int(start), int(start + step), 1)
                         for start, step in zip(data_origin, data_size)
                     ]
-                )
-            )
         )
     return all_slices
 
