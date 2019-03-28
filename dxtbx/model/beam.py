@@ -248,7 +248,7 @@ class BeamFactory:
         cbf_handle = pycbf.cbf_handle_struct()
         cbf_handle.read_widefile(cif_file, pycbf.MSG_DIGEST)
 
-        result = imgCIF_H(cbf_handle)
+        result = BeamFactory.imgCIF_H(cbf_handle)
 
         return result
 
