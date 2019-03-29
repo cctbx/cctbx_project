@@ -1186,9 +1186,8 @@ class DetectorFactoryFromGroup(object):
             for module_number, nx_detector_module in enumerate(modules):
                 # Get the depends_on starting point for this module and for this image
                 panel_name = str(os.path.basename(nx_detector_module.handle.name))
-                px_fast = int(nx_detector_module.handle["data_size"][-1])
-                px_slow = int(nx_detector_module.handle["data_size"][-2])
-                image_size = px_fast, px_slow
+                # image size stored slow to fast but dxtbx needs fast to slow
+                image_size = tuple(reversed(map(int, nx_detector_module.handle["data_size"][-2:])))
 
                 # Get the trusted range of pixel values
                 underload = (
@@ -1406,7 +1405,11 @@ class DetectorFactory(object):
 
         # Construct the detector model
         pixel_size = (fast_pixel_direction_value, slow_pixel_direction_value)
-        image_size = tuple(map(int, nx_module["data_size"][-2:]))
+        # image size stored slow to fast but dxtbx needs fast to slow
+        image_size = tuple(reversed(map(int, nx_module["data_size"][-2:])))
+
+        if image_size == (4362,4148):              # special case for Eiger data which records
+          image_size = tuple(reversed(image_size)) # image size backwards from NeXus spec
 
         self.model = Detector()
         self.model.add_panel(
