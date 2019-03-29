@@ -18,7 +18,10 @@ phil_scope = parse("""
     .help = Detector distance
   wavelength = None
     .type = float
-    .help = If not provided, try to find wavelength in unassembled file
+    .help = If not provided, try to find wavelength in unassembled file.
+  mask_file = None
+    .type = str
+    .help = Path to file with external bad pixel mask.
 """)
 
 
@@ -134,6 +137,12 @@ class jf16m_cxigeom2nexus(object):
     detector = instrument.create_group('ELE_D0')
     detector.attrs['NX_class']  = 'NXdetector'
     array_name = 'ARRAY_D0'
+
+    if self.params.mask_file is not None:
+      detector.create_dataset('pixel_mask_applied', (1,), data=[True], dtype='uint32')
+      #detector['pixel_mask'] = h5py.ExternalLink(self.params.mask_file, "mask") # If mask was formatted right, could use this
+      mask = h5py.File(self.params.mask_file, 'r')['mask'][()].astype(np.int32)
+      detector.create_dataset('pixel_mask', mask.shape, data=mask==0, dtype=mask.dtype)
 
     alias = 'data'
     data_name = 'data'
