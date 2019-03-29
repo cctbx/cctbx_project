@@ -727,18 +727,28 @@ class ExperimentListFactory(object):
     @staticmethod
     def from_stills_and_crystal(imageset, crystal):
         """ Create an experiment list from stills and crystal. """
+        from dxtbx.imageset import ImageSetLazy
         experiments = ExperimentList()
-        for i in range(len(imageset)):
-            experiments.append(
-                Experiment(
-                    imageset=imageset[i : i + 1],
-                    beam=imageset.get_beam(i),
-                    detector=imageset.get_detector(i),
-                    goniometer=imageset.get_goniometer(i),
-                    scan=imageset.get_scan(i),
-                    crystal=crystal,
+        if isinstance(imageset, ImageSetLazy):
+            for i in range(len(imageset)):
+                experiments.append(Experiment(
+                        imageset=imageset[i : i + 1],
+                        crystal=crystal,
+                        lazy=True,
+                    )
                 )
-            )
+        else:
+            for i in range(len(imageset)):
+                experiments.append(
+                    Experiment(
+                        imageset=imageset[i : i + 1],
+                        beam=imageset.get_beam(i),
+                        detector=imageset.get_detector(i),
+                        goniometer=imageset.get_goniometer(i),
+                        scan=imageset.get_scan(i),
+                        crystal=crystal,
+                    )
+                )
         return experiments
 
     @staticmethod

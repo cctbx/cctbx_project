@@ -23,7 +23,7 @@ namespace dxtbx { namespace model { namespace boost_python {
 
   struct ExperimentPickleSuite : boost::python::pickle_suite {
     static
-    boost::python::tuple getinitargs(const Experiment &obj) {
+    boost::python::tuple getinitargs(Experiment &obj) {
       return boost::python::make_tuple(
         obj.get_beam(),
         obj.get_detector(),
@@ -87,7 +87,8 @@ namespace dxtbx { namespace model { namespace boost_python {
           boost::python::object,
           boost::python::object,
           boost::python::object,
-          std::string>((
+          std::string,
+          bool>((
               arg("beam") = boost::shared_ptr<BeamBase>(),
               arg("detector") = boost::shared_ptr<Detector>(),
               arg("goniometer") = boost::shared_ptr<Goniometer>(),
@@ -96,7 +97,8 @@ namespace dxtbx { namespace model { namespace boost_python {
               arg("profile") = boost::python::object(),
               arg("imageset") = boost::python::object(),
               arg("scaling_model") = boost::python::object(),
-              arg("identifier") = "")))
+              arg("identifier") = "",
+              arg("lazy") = false)))
       .add_property(
           "beam",
           &Experiment::get_beam,

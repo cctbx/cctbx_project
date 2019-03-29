@@ -47,7 +47,8 @@ namespace dxtbx { namespace model {
   class Experiment {
   public:
 
-    Experiment() {}
+    Experiment()
+      : lazy_(false) {}
 
     /**
      * Initialise the experiment with models
@@ -61,7 +62,8 @@ namespace dxtbx { namespace model {
           boost::python::object profile,
           boost::python::object imageset,
           boost::python::object scaling_model,
-          std::string identifier)
+          std::string identifier,
+          bool lazy)
       : beam_(beam),
         detector_(detector),
         goniometer_(goniometer),
@@ -70,7 +72,8 @@ namespace dxtbx { namespace model {
         profile_(profile),
         imageset_(imageset),
         scaling_model_(scaling_model),
-        identifier_(identifier) {}
+        identifier_(identifier),
+        lazy_(lazy) {}
 
     /**
      * Check if the beam model is the same.
@@ -152,6 +155,20 @@ namespace dxtbx { namespace model {
     }
 
     /**
+     * Load models from the python imageset. Used for lazy loading.
+     * Need to use the python imageset methods as for lazy image sets, these
+     * methods use the python format objects to read the models, since they
+     * are not otherwise set by the lazy imageset when it is created.
+     */
+    void load_models() {
+      detector_   = boost::python::extract< boost::shared_ptr<Detector> >  (imageset_.attr("get_detector")());
+      beam_       = boost::python::extract< boost::shared_ptr<BeamBase> >  (imageset_.attr("get_beam")());
+      goniometer_ = boost::python::extract< boost::shared_ptr<Goniometer> >(imageset_.attr("get_goniometer")());
+      scan_       = boost::python::extract< boost::shared_ptr<Scan> >      (imageset_.attr("get_scan")());
+      lazy_ = false;
+    }
+
+    /**
      * Set the beam model
      */
     void set_beam(boost::shared_ptr<BeamBase> beam) {
@@ -161,7 +178,8 @@ namespace dxtbx { namespace model {
     /**
      * Get the beam model
      */
-    boost::shared_ptr<BeamBase> get_beam() const {
+    boost::shared_ptr<BeamBase> get_beam() {
+      if (lazy_) load_models();
       return beam_;
     }
 
@@ -175,7 +193,8 @@ namespace dxtbx { namespace model {
     /**
      * Get the detector model
      */
-    boost::shared_ptr<Detector> get_detector() const {
+    boost::shared_ptr<Detector> get_detector() {
+      if (lazy_) load_models();
       return detector_;
     }
 
@@ -189,7 +208,8 @@ namespace dxtbx { namespace model {
     /**
      * Get the goniometer model
      */
-    boost::shared_ptr<Goniometer> get_goniometer() const {
+    boost::shared_ptr<Goniometer> get_goniometer() {
+      if (lazy_) load_models();
       return goniometer_;
     }
 
@@ -203,7 +223,8 @@ namespace dxtbx { namespace model {
     /**
      * Get the scan model
      */
-    boost::shared_ptr<Scan> get_scan() const {
+    boost::shared_ptr<Scan> get_scan() {
+      if (lazy_) load_models();
       return scan_;
     }
 
@@ -288,6 +309,7 @@ namespace dxtbx { namespace model {
     boost::python::object imageset_;
     boost::python::object scaling_model_;
     std::string identifier_;
+    bool lazy_;
 
   };
 

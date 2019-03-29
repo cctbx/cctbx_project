@@ -396,7 +396,7 @@ namespace dxtbx { namespace model {
     /**
      * Get indices which have this model
      */
-    scitbx::af::shared<std::size_t> indices(const boost::shared_ptr<BeamBase> &obj) const {
+    scitbx::af::shared<std::size_t> indices(const boost::shared_ptr<BeamBase> &obj) {
       scitbx::af::shared<std::size_t> result;
       for (std::size_t i = 0; i < size(); ++i) {
          if (data_[i].get_beam() == obj) {
@@ -409,7 +409,7 @@ namespace dxtbx { namespace model {
     /**
      * Get indices which have this model
      */
-    scitbx::af::shared<std::size_t> indices(const boost::shared_ptr<Detector> &obj) const {
+    scitbx::af::shared<std::size_t> indices(const boost::shared_ptr<Detector> &obj) {
       scitbx::af::shared<std::size_t> result;
       for (std::size_t i = 0; i < size(); ++i) {
          if (data_[i].get_detector() == obj) {
@@ -422,7 +422,7 @@ namespace dxtbx { namespace model {
     /**
      * Get indices which have this model
      */
-    scitbx::af::shared<std::size_t> indices(const boost::shared_ptr<Goniometer> &obj) const {
+    scitbx::af::shared<std::size_t> indices(const boost::shared_ptr<Goniometer> &obj) {
       scitbx::af::shared<std::size_t> result;
       for (std::size_t i = 0; i < size(); ++i) {
          if (data_[i].get_goniometer() == obj) {
@@ -435,7 +435,7 @@ namespace dxtbx { namespace model {
     /**
      * Get indices which have this model
      */
-    scitbx::af::shared<std::size_t> indices(const boost::shared_ptr<Scan> &obj) const {
+    scitbx::af::shared<std::size_t> indices(const boost::shared_ptr<Scan> &obj) {
       scitbx::af::shared<std::size_t> result;
       for (std::size_t i = 0; i < size(); ++i) {
          if (data_[i].get_scan() == obj) {
@@ -461,7 +461,7 @@ namespace dxtbx { namespace model {
     /**
      * Get indices which have this model
      */
-    scitbx::af::shared<std::size_t> indices(boost::python::object obj) const {
+    scitbx::af::shared<std::size_t> indices(boost::python::object obj) {
       boost::python::extract< boost::shared_ptr<BeamBase> > get_beam(obj);
       boost::python::extract< boost::shared_ptr<Detector> > get_detector(obj);
       boost::python::extract< boost::shared_ptr<Goniometer> > get_goniometer(obj);
@@ -500,7 +500,7 @@ namespace dxtbx { namespace model {
         boost::shared_ptr<CrystalBase> crystal,
         boost::python::object profile,
         boost::python::object imageset,
-        boost::python::object scaling_model) const {
+        boost::python::object scaling_model) {
       scitbx::af::shared<std::size_t> result;
       for (std::size_t i = 0; i < size(); ++i) {
         if (beam && data_[i].get_beam() != beam) {

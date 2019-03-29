@@ -142,17 +142,17 @@ namespace dxtbx { namespace model { namespace boost_python {
   struct experiment_list_indices_pointers {
 
     typedef scitbx::af::shared<std::size_t> (ExperimentList::*beam_type)(
-        const boost::shared_ptr<BeamBase>&)const;
+        const boost::shared_ptr<BeamBase>&);
     typedef scitbx::af::shared<std::size_t> (ExperimentList::*detector_type)(
-        const boost::shared_ptr<Detector>&)const;
+        const boost::shared_ptr<Detector>&);
     typedef scitbx::af::shared<std::size_t> (ExperimentList::*goniometer_type)(
-        const boost::shared_ptr<Goniometer>&)const;
+        const boost::shared_ptr<Goniometer>&);
     typedef scitbx::af::shared<std::size_t> (ExperimentList::*scan_type)(
-        const boost::shared_ptr<Scan>&)const;
+        const boost::shared_ptr<Scan>&);
     typedef scitbx::af::shared<std::size_t> (ExperimentList::*crystal_type)(
         const boost::shared_ptr<CrystalBase>&)const;
     typedef scitbx::af::shared<std::size_t> (ExperimentList::*object_type)(
-        boost::python::object)const;
+        boost::python::object);
 
     static beam_type beam() {
       return &ExperimentList::indices;
