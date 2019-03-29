@@ -1412,7 +1412,8 @@ class DetectorFactory(object):
         # 4148,4362: Eiger @ DLS
         # 4150,4371: Eiger @ Spring8
         # 2068,2162: VMXi
-        if image_size in [(4362,4148), (4371,4150), (2162,2068)]:
+        # 3110,3269: Eiger 9M Proxima2A beamline, SOLEIL
+        if image_size in [(4362,4148), (4371,4150), (2162,2068), (3269,3110)]:
           image_size = tuple(reversed(image_size))
 
         self.model = Detector()
