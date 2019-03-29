@@ -37,8 +37,8 @@ tst_list = (
   "$D/tst_representation.py",
   "$D/tst_runtime_utils.py",
 # "$D/tst_xmlrpc_utils.py", # This test is failing
-  "$D/test_python3_regression.py",
-  "$D/test_find_unused_imports.py",
+  "$D/tst_python3_regression.py",
+  "$D/tst_find_unused_imports.py",
   )
 
 def run():
