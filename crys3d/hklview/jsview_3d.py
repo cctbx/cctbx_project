@@ -9,7 +9,7 @@ from cctbx.array_family import flex
 from scitbx import graphics_utils
 from cctbx import miller
 from websocket_server import WebsocketServer
-import threading, math
+import threading, math, sys
 from time import sleep
 import os.path, time
 import libtbx
@@ -83,7 +83,8 @@ class hklview_3d:
 
     """
     self.nanval = float('nan')
-    self.inanval = -424242
+    self.inanval = -42424242 # TODO: find a more robust way of indicating missing data
+    self.colourgradientvalues = []
 
 
   def mprint(self, m, verbose=False):
@@ -278,26 +279,31 @@ class hklview_3d:
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, Kstararrowtxt, Lstararrowtxt)
 
     # make colour gradient array
-    mincolour = self.othermindata[self.icolourcol]
-    maxcolour = self.othermaxdata[self.icolourcol]
+    mincolourscalar = self.othermindata[self.icolourcol]
+    maxcolourscalar = self.othermaxdata[self.icolourcol]
     if self.settings.sigma_color:
-      mincolour = self.otherminsigmas[self.icolourcol]
-      maxcolour = self.othermaxsigmas[self.icolourcol]
-    span = maxcolour - mincolour
-    ln = 50
+      mincolourscalar = self.otherminsigmas[self.icolourcol]
+      maxcolourscalar = self.othermaxsigmas[self.icolourcol]
+    span = maxcolourscalar - mincolourscalar
+    ln = 51
     incr = span/ln
-    colourarray =[]
-    thiscolour = mincolour
+    colourscalararray =[]
+    val = mincolourscalar
     for j,sc in enumerate(range(ln)):
-      thiscolour += incr
-      colourarray.append(thiscolour )
+      val += incr
+      colourscalararray.append( val )
 
     colourgradarray = graphics_utils.color_by_property(
-      properties= flex.double(colourarray),
-      selection=flex.bool( len(colourarray), True),
+      properties= flex.double(colourscalararray),
+      selection=flex.bool( len(colourscalararray), True),
       color_all=False,
       gradient_type= self.settings.color_scheme)
+    colourgradarray = colourgradarray * 255.0
 
+    self.colourgradientvalues = []
+    for j,e in enumerate(colourgradarray):
+      self.colourgradientvalues.append( [colourscalararray[j], e] )
+    self.colourgradientvalues = roundoff(self.colourgradientvalues)
 
     colors = self.otherscenes[self.icolourcol].colors
     radii = self.otherscenes[self.iradiicol].radii * self.settings.scale
@@ -306,7 +312,7 @@ class hklview_3d:
     dres = self.scene.work_array.d_spacings().data()
     colstr = self.scene.miller_array.info().label_string()
     data = self.scene.data
-    import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
     colours = []
     positions = []
@@ -314,7 +320,6 @@ class hklview_3d:
     spbufttips = []
 
     if len(self.binvals) <1:
-      #self.binvals.append( self.othermindata[self.iarray] )
       self.binvals.append( self.othermaxdata[self.iarray] )
     self.nbin = len(self.binvals)
 
@@ -426,6 +431,18 @@ class hklview_3d:
 
     """
 
+
+    colourgradstr = []
+    for j,val in enumerate(self.colourgradientvalues):
+      vstr = ""
+      alpha = 1.0
+      gradval = "rgba(%s, %s, %s, %s)" %(val[1][0], val[1][1], val[1][2], alpha)
+      if j%10 == 0:
+        vstr = str(val[0])
+      colourgradstr.append([vstr , gradval])
+    colourgradstr = str(colourgradstr)
+
+
     self.NGLscriptstr = """
 // Microsoft Edge users follow instructions on
 // https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
@@ -466,8 +483,17 @@ function createElement (name, properties, style) {
   var el = document.createElement(name)
   Object.assign(el, properties)
   Object.assign(el.style, style)
+  Object.assign(el.style, {
+      display: "block",
+      position: "absolute",
+      color: "black",
+      fontFamily: "sans-serif",
+      fontSize: "smaller",
+    }
+  )
   return el
 }
+
 
 function addElement (el) {
   Object.assign(el.style, {
@@ -492,23 +518,66 @@ var hklscene = function () {
   shapeComp.autoView();
   repr.update()
 
-  mybox = document.createElement("div");
-  Object.assign(mybox.style, {
-    display: "block",
-    position: "absolute",
-    innerText: "waffle",
+
+
+  colourgradvalarray = %s
+
+  var j;
+  var ih = 3;
+
+  totalheight = ih*colourgradvalarray.length + 10
+  // make a white box on top of which boxes with transparent background are placed
+  // containing the colour values at regular intervals
+  whitebox = createElement("div",
+  {
+    innerText: ''
+  },
+  {
+    backgroundColor: 'rgba(255.0, 255.0, 255.0, 1.0)',
+    color:  'rgba(0.0, 0.0, 0.0, 1.0)',
     top: "20px",
-    left: "12px",
-    width: "200px",
-    height: "20px",
-    zIndex: 10,
-    pointerEvents: "none",
-    backgroundColor: "rgba(255, 255, 255, 0.75)",
-    color: "black",
-    padding: "0.1em",
-    fontFamily: "sans-serif"
-  });
-  addElement(mybox)
+    left: "20px",
+    width: "40px",
+    height: totalheight.toString() + "px",
+  }
+  );
+  addElement(whitebox)
+
+
+  for (j = 0; j < colourgradvalarray.length; j++) {
+    rgbcol = colourgradvalarray[j][1];
+    val = colourgradvalarray[j][0]
+    topv = j*ih + 20
+
+    mybox = createElement("div",
+    {
+      innerText: ''
+    },
+    {
+      backgroundColor: rgbcol,
+      top: topv.toString() + "px",
+      left: "60px",
+      width: "15px",
+      height: ih.toString() + "px",
+    }
+    );
+    addElement(mybox)
+
+    txtbox = createElement("div",
+    {
+      innerText: val
+    },
+    {
+      backgroundColor: 'rgba(255.0, 255.0, 255.0, 0.0)',
+      color:  'rgba(0.0, 0.0, 0.0, 1.0)',
+      top: topv.toString() + "px",
+      left: "20px",
+      width: "40px",
+      height: ih.toString() + "px",
+    }
+    );
+    addElement(txtbox)
+  }
 
 }
 
@@ -559,7 +628,7 @@ mysocket.onmessage = function (e) {
 
 
 
-    """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr)
+    """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr, colourgradstr)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
