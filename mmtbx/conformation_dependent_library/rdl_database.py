@@ -3685,7 +3685,7 @@ def run(args):
     #print item
     print item[ ('CB', 'CG', 'CD1')], item[('CA', 'CB', 'CG', 'CD1')]
   for resname, rotamer, key, period in [
-    ["ASP", 'p0',   ("CA", "CB", "CG", "OD1"), 36],
+    #["ASP", 'p0',   ("CA", "CB", "CG", "OD1"), 36],
     ["TYR", 'm-10', ("CA", "CB", "CG", "CD1"), 2],
     ["TYR", 'm-80', ("CA", "CB", "CG", "CD1"), 1],
     ["GLN", 'mp10', ("CB", "CG", "CD", "OE1"), 1],
