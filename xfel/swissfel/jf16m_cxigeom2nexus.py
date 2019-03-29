@@ -152,10 +152,9 @@ class jf16m_cxigeom2nexus(object):
 
         modulemodule = detector.create_group(array_name+'Q%dM%d'%(quad,module_num))
         modulemodule.attrs['NX_class'] = 'NXdetector_module'
-        modulemodule.create_dataset('data_origin', (2,), data=[0,
-                                                             module_slow * module_num],
+        modulemodule.create_dataset('data_origin', (2,), data=[module_slow * module_num, 0],
                                                          dtype='i')
-        modulemodule.create_dataset('data_size', (2,), data=[module_fast, module_slow], dtype='i')
+        modulemodule.create_dataset('data_size', (2,), data=[module_slow, module_fast], dtype='i')
 
         fast = self.hierarchy[q_key][m_key]['local_fast'].elems
         slow = self.hierarchy[q_key][m_key]['local_slow'].elems
