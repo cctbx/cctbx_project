@@ -1408,8 +1408,12 @@ class DetectorFactory(object):
         # image size stored slow to fast but dxtbx needs fast to slow
         image_size = tuple(reversed(map(int, nx_module["data_size"][-2:])))
 
-        if image_size == (4362,4148):              # special case for Eiger data which records
-          image_size = tuple(reversed(image_size)) # image size backwards from NeXus spec
+        # special cases for known data where image size is backwards from NeXus spec
+        # 4148,4362: Eiger @ DLS
+        # 4150,4371: Eiger @ Spring8
+        # 2068,2162: VMXi
+        if image_size in [(4362,4148), (4371,4150), (2162,2068)]:
+          image_size = tuple(reversed(image_size))
 
         self.model = Detector()
         self.model.add_panel(
