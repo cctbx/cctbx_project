@@ -1409,8 +1409,8 @@ class DetectorFactory(object):
         image_size = tuple(reversed(map(int, nx_module["data_size"][-2:])))
 
         # special cases for known data where image size is backwards from NeXus spec
-        # 4148,4362: Eiger @ DLS
-        # 4150,4371: Eiger @ Spring8
+        # 4148,4362: Eiger 2X 16M @ DLS
+        # 4150,4371: Eiger 16M @ Spring8
         # 2068,2162: VMXi
         # 3110,3269: Eiger 9M Proxima2A beamline, SOLEIL
         if image_size in [(4362,4148), (4371,4150), (2162,2068), (3269,3110)]:
