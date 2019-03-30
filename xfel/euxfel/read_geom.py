@@ -101,6 +101,8 @@ def read_geom(geom_file):
   for panel in panels:
     panels[panel]['origin'] = col((float(panels[panel]['corner_x'])*pixel_size,
                                    float(panels[panel]['corner_y'])*pixel_size, 0.0))
+    if 'coffset' in panels[panel]:
+      panels[panel]['origin'] += col((0,0,1000*float(panels[panel]['coffset'])))
     panels[panel]['fast'] = panels[panel]['local_fast'] = parse_vector(panels[panel]['fs']).normalize()
     panels[panel]['slow'] = panels[panel]['local_slow'] = parse_vector(panels[panel]['ss']).normalize()
     center_fast = panels[panel]['fast'] * pixel_size * (int(panels[panel]['max_fs'])-int(panels[panel]['min_fs'])+1)/2.0
