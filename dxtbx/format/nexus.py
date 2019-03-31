@@ -1187,7 +1187,9 @@ class DetectorFactoryFromGroup(object):
                 # Get the depends_on starting point for this module and for this image
                 panel_name = str(os.path.basename(nx_detector_module.handle.name))
                 # image size stored slow to fast but dxtbx needs fast to slow
-                image_size = tuple(reversed(map(int, nx_detector_module.handle["data_size"][-2:])))
+                image_size = tuple(
+                    reversed(map(int, nx_detector_module.handle["data_size"][-2:]))
+                )
 
                 # Get the trusted range of pixel values
                 underload = (
@@ -1413,8 +1415,8 @@ class DetectorFactory(object):
         # 4150,4371: Eiger 16M @ Spring8
         # 2068,2162: VMXi
         # 3110,3269: Eiger 9M Proxima2A beamline, SOLEIL
-        if image_size in [(4362,4148), (4371,4150), (2162,2068), (3269,3110)]:
-          image_size = tuple(reversed(image_size))
+        if image_size in [(4362, 4148), (4371, 4150), (2162, 2068), (3269, 3110)]:
+            image_size = tuple(reversed(image_size))
 
         self.model = Detector()
         self.model.add_panel(
@@ -1658,10 +1660,10 @@ def get_detector_module_slices(detector):
         data_origin = module.handle["data_origin"]
         data_size = module.handle["data_size"]
         all_slices.append(
-                    [
-                        slice(int(start), int(start + step), 1)
-                        for start, step in zip(data_origin, data_size)
-                    ]
+            [
+                slice(int(start), int(start + step), 1)
+                for start, step in zip(data_origin, data_size)
+            ]
         )
     return all_slices
 
