@@ -14,13 +14,17 @@ positioned in reciprocal space using a webbrowser. Usage:
 
 
 from crys3d.hklview import cmdlineframes
-myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js")
+myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js", htmlfname = "C:\Users\oeffner\Buser\NGL_HKLviewer\myhkl.html")
 
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.tncs.mtz")
+myHKLview.GetColumnInfo()
 myHKLview.SetColumn(0)
+
 myHKLview.SetSphereScale(3)
 myHKLview.SetColourColumn(3)
 myHKLview.SetRadiusColumn(7)
+
+myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", htmlfname = "myhkl.html", UseOSBrowser= False)
 
 myHKLview.SetColumn(3)
 myHKLview.SetSphereScale(3)
@@ -28,21 +32,18 @@ myHKLview.SetColumnBinThresholds("asdf", [0, 0.1, 1, 10])
 myHKLview.ExpandToP1(True)
 myHKLview.SetOpacity(2, 0.1)
 
-
 myHKLview.ShowSlice(True, "l", 17)
-# get the composed javascript for NGL
 myHKLview.GetNGLstring()
-
 myHKLview.ShowSlice(False)
 myHKLview.ExpandAnomalous(True)
-
 myHKLview.ShowMissing(True)
+myHKLview.GetSpaceGroupChoices()
 myHKLview.SetSpaceGroupChoice(3)
 
-myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Phenix\dev-2814-working\modules\phenix_examples\lysozyme-MRSAD\lyso2001_scala1.mtz")
+myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Phenix\dev-2814-working\modules\phenix_examples\lysozyme-MRSAD\lyso2001_scala1.mtz")
 myHKLview.SetCameraType("persp")
 
-myHKLview.load_reflections_file(r"C:\Users\oeffner\Buser\Experiments\CRLF3\DLS20151206CRLF3\5840-F11-X1-Hg-SAD-ONsoak\5840-F11-X1_pk_5_5_1_\xia2\dials-run\DataFiles\mx11235v49_x5840F11X1pk551_free.mtz")
+myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Experiments\CRLF3\DLS20151206CRLF3\5840-F11-X1-Hg-SAD-ONsoak\5840-F11-X1_pk_5_5_1_\xia2\dials-run\DataFiles\mx11235v49_x5840F11X1pk551_free.mtz")
 myHKLview.SetColumn(4)
 myHKLview.ShowSlice(True, "h", 20)
 
@@ -117,7 +118,7 @@ myHKLview.SetColumn(0)
 myHKLview.SetRadiiToSigmas(True)
 
 from crys3d.hklview import cmdlineframes
-myHKLview = cmdlineframes.HKLViewFrame()
+myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", htmlfname = "myhkl.html")
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Tests\MRproblem\MRproblem_15.1.mtz")
 
 myHKLview.SetColumn(2)
@@ -185,12 +186,12 @@ class settings_window () :
 class HKLViewFrame () :
   def __init__ (self, *args, **kwds) :
     self.miller_array = None
-    self.spacegroup_choices = None
+    self.spacegroup_choices = []
     self.procarrays = []
+    self.array_info = []
     self.settings = display.settings()
     kwds['settings'] =self.settings
     self.viewer = view_3d.hklview_3d( **kwds )
-    #self.viewer.set_miller_array(self.viewer.miller_array)
 
 
   def update_clicked (self, index) :#hkl, d_min=None, value=None) :
@@ -270,7 +271,7 @@ class HKLViewFrame () :
         array_info = procarray_info
         self.miller_array = procarray
         self.update_space_group_choices()
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.viewer.set_miller_array(self.miller_array, merge=array_info.merge,
        details=array_info.details_str, valid_arrays=self.procarrays)
     return self.miller_array, array_info
@@ -333,7 +334,7 @@ class HKLViewFrame () :
         )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)
       #arrays = f.file_server.miller_arrays
       valid_arrays = []
-      array_info = []
+      self.array_info = []
       for array in arrays :
         if array.is_hendrickson_lattman_array() :
           continue
@@ -342,10 +343,11 @@ class HKLViewFrame () :
             continue
         labels = array.info().label_string()
         desc = get_array_description(array)
-        array_info.append("%s (%s)" % (labels, desc))
+        self.array_info.append("%s (%s), HKLs: %s to %s" % (labels, desc, array.index_span().min(), array.index_span().max()) )
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
-      for i,e in enumerate(array_info):
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      for i,e in enumerate(self.array_info):
         print i, e
       if (len(valid_arrays) == 0) :
         msg = "No arrays of the supported types in this file."
@@ -359,6 +361,8 @@ class HKLViewFrame () :
   def GetNGLstring(self):
     return self.viewer.NGLscriptstr
 
+  def GetColumnInfo(self):
+    return self.array_info
 
   def SetSphereScale(self, nscale):
     self.settings.scale = nscale
@@ -421,7 +425,6 @@ class HKLViewFrame () :
 
 
   def SetColumn (self, column_sel) :
-    # print("kau printing column_sel ", column_sel)
     self.viewer.binvals = []
     self.viewer.iarray = column_sel
     self.viewer.icolourcol = column_sel
@@ -468,6 +471,12 @@ class HKLViewFrame () :
   def SetColoursToPhases(self, val):
     self.settings.phase_color = val
     self.update_settings()
+
+
+  def GetSpaceGroupChoices(self):
+    if self.spacegroup_choices:
+      return [e.symbol_and_number() for e in self.spacegroup_choices]
+    return []
 
 
   def SetSpaceGroupChoice(self, n) :

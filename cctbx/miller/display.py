@@ -7,6 +7,7 @@ from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import object_oriented_patterns as oop
 from math import sqrt
+import math
 
 def generate_systematic_absences(array,
                                   expand_to_p1=False,
@@ -158,6 +159,7 @@ class scene(object):
     self.r_free_mode = False
     self.phase = flex.double(data.size(), float('nan'))
     self.ampl = flex.double(data.size(), float('nan'))
+    self.sigmas = None
     #self.sigmas = flex.double(data.size(), float('nan'))
     if isinstance(data, flex.bool):
       self.r_free_mode = True
@@ -171,7 +173,7 @@ class scene(object):
       elif isinstance(data, flex.complex_double):
         self.data = data.deep_copy()
         self.ampl = flex.abs(data)
-        self.phase = flex.arg(data)
+        self.phase = flex.arg(data) * 180.0/math.pi
       elif hasattr(array.data(), "as_double"):
         self.data = array.data().as_double()
       else:
@@ -209,7 +211,8 @@ class scene(object):
       assert data_for_colors.size() == data.size()
     elif (settings.sqrt_scale_colors) and (isinstance(data, flex.double)):
       data_for_colors = flex.sqrt(data)
-    elif (settings.phase_color) and (isinstance(data, flex.complex_double)):
+    #elif (settings.phase_color) and (isinstance(data, flex.complex_double)):
+    elif isinstance(data, flex.complex_double):
       data_for_colors = flex.arg(data)
     elif (settings.sigma_color) and sigmas is not None:
       data_for_colors = sigmas.as_double()
@@ -237,6 +240,15 @@ class scene(object):
       if (not settings.keep_constant_scale):
         data_for_radii = data_for_radii.select(self.slice_selection)
         data_for_colors = data_for_colors.select(self.slice_selection)
+    """
+    if isinstance(data, flex.complex_double):
+      colors = graphics_utils.color_by_property(
+        properties=data_for_colors,
+        selection=flex.bool(data_for_colors.size(), True),
+        color_all=False,
+        gradient_type="HSV")
+    elif (settings.color_scheme in ["rainbow", "heatmap", "redblue"]):
+    """
     if (settings.color_scheme in ["rainbow", "heatmap", "redblue"]):
       colors = graphics_utils.color_by_property(
         properties=data_for_colors,

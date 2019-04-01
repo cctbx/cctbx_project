@@ -57,12 +57,13 @@ class hklview_3d:
     self.hklfname = os.path.join(tempdir, "hkl.htm" )
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
+    if kwds.has_key('htmlfname'):
+      self.hklfname = kwds['htmlfname']
     self.jscriptfname = os.path.join(tempdir, "hkljstr.js")
     if os.path.isfile(self.jscriptfname):
       os.remove(self.jscriptfname)
     if kwds.has_key('jscriptfname'):
       self.jscriptfname = kwds['jscriptfname']
-
     self.hklhtml = r"""
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 
@@ -85,6 +86,9 @@ class hklview_3d:
     self.nanval = float('nan')
     self.inanval = -42424242 # TODO: find a more robust way of indicating missing data
     self.colourgradientvalues = []
+    self.UseOSBrowser = True
+    if kwds.has_key('UseOSBrowser'):
+      self.UseOSBrowser = kwds['UseOSBrowser']
 
 
   def mprint(self, m, verbose=False):
@@ -163,9 +167,11 @@ class hklview_3d:
 
       valarray = validarray.select( matchindices.pairs().column(1) )
 
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      if not validarray.anomalous_flag() == self.miller_array.anomalous_flag():
+        continue
       missing = self.miller_array.lone_set( validarray )
       # insert NAN values for reflections in self.miller_array not found in validarray
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
       if valarray.is_integer_array():
         valarray._data.extend( flex.int(missing.size(), self.inanval) )
@@ -232,6 +238,7 @@ class hklview_3d:
 
       self.othermaxsigmas.append(maxsigmas)
       self.otherminsigmas.append(minsigmas)
+      # TODO: tag array according to which otherscene is included
       self.otherscenes.append( otherscene)
 
       if otherscene.sigmas is not None:
@@ -477,6 +484,7 @@ var shape;
 var shapeComp;
 var repr;
 var AA = String.fromCharCode(197); // short for angstrom
+var DGR = String.fromCharCode(176); // short for degree symbol
 
 
 function createElement (name, properties, style) {
@@ -718,9 +726,10 @@ mysocket.onmessage = function (e) {
     htmlstr += self.htmldiv
     with open(self.hklfname, "w") as f:
       f.write( htmlstr )
-    url = "file:///" + self.hklfname
+    url = "file:///" + os.path.abspath( self.hklfname )
     self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname )
-    webbrowser.open(url, new=1)
+    if self.UseOSBrowser:
+      webbrowser.open(url, new=1)
 
 
 
