@@ -23,7 +23,7 @@ from dxtbx.datablock import DataBlockFactory
 from dxtbx.model.experiment_list import ExperimentListFactory
 
 phil_scope = parse(
-    """
+  """
   show_origin_vectors = True
     .type = bool
     .help = If true, draw origin vectors as arrows
@@ -36,6 +36,9 @@ phil_scope = parse(
   pdf_file = None
     .type = path
     .help = If not None, save the result as a pdf figure.
+  plot_all_detectors = True
+    .type = bool
+    .help = If False, plot only the first detector model found
 """
 )
 
@@ -132,14 +135,25 @@ def run(args):
         try:
             datablocks = DataBlockFactory.from_json_file(file_name, check_format=False)
         except Exception:
-            experiments = ExperimentListFactory.from_json_file(
-                file_name, check_format=False
-            )
-            detectors = experiments.detectors()
+            try:
+              experiments = ExperimentListFactory.from_json_file(
+                  file_name, check_format=False
+              )
+              detectors = experiments.detectors()
+            except ValueError:
+              experiments = ExperimentListFactory.from_filenames(
+                  [file_name]
+              )
+            if params.plot_all_detectors:
+                detectors = experiments.detectors()
+            else:
+                detectors = experiments.detectors()[0:1]
         else:
             detectors = []
             for datablock in datablocks:
                 detectors.extend(datablock.unique_detectors())
+            if not params.plot_all_detectors:
+              detectors = detectors[0:1]
         for detector in detectors:
             # plot the hierarchy
             if params.orthographic:
