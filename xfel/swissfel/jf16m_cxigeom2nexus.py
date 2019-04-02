@@ -22,6 +22,10 @@ phil_scope = parse("""
   mask_file = None
     .type = str
     .help = Path to file with external bad pixel mask.
+  split_modules_into_asics = True
+    .type = bool
+    .help = Whether to split the 4x2 modules into indivdual asics \
+            accounting for borders and gaps.
 """)
 
 
@@ -134,6 +138,12 @@ class jf16m_cxigeom2nexus(object):
     module_fast = quad_fast
     module_slow = quad_slow // self.n_modules
 
+    if self.params.split_modules_into_asics:
+      n_fast_asics = 4; n_slow_asics = 2
+      border = 1; gap = 2
+      asic_fast = (module_fast - (n_fast_asics-1)*gap) / n_fast_asics # includes border but not gap
+      asic_slow = (module_slow - (n_slow_asics-1)*gap) / n_slow_asics # includes border but not gap
+
     detector = instrument.create_group('ELE_D0')
     detector.attrs['NX_class']  = 'NXdetector'
     array_name = 'ARRAY_D0'
@@ -156,20 +166,63 @@ class jf16m_cxigeom2nexus(object):
       for m_key in sorted(self.hierarchy[q_key].keys()):
         module_num = int(m_key.lstrip('m'))
         m_name = 'AXIS_D0Q%dM%d'%(quad, module_num)
-        module_vector = self.hierarchy[q_key][m_key]['local_origin'].elems
-        self.create_vector(transformations, m_name, 0.0, depends_on=q_name, equipment='detector', equipment_component='detector_module',transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = module_vector, offset_units = 'mm')
+        module_vector = self.hierarchy[q_key][m_key]['local_origin']
+        fast = self.hierarchy[q_key][m_key]['local_fast']
+        slow = self.hierarchy[q_key][m_key]['local_slow']
+        if self.params.split_modules_into_asics:
+          # module_vector points to the corner of the module. Instead, point to the center of it.
+          offset = (module_fast/2 * pixel_size * fast) + (module_slow/2 * pixel_size * slow)
+          module_vector = module_vector + offset
+          self.create_vector(transformations, m_name, 0.0, depends_on=q_name, equipment='detector', equipment_component='detector_module',transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = module_vector.elems, offset_units = 'mm')
 
-        modulemodule = detector.create_group(array_name+'Q%dM%d'%(quad,module_num))
-        modulemodule.attrs['NX_class'] = 'NXdetector_module'
-        modulemodule.create_dataset('data_origin', (2,), data=[module_slow * module_num, 0],
-                                                         dtype='i')
-        modulemodule.create_dataset('data_size', (2,), data=[module_slow, module_fast], dtype='i')
+          for asic_fast_number in range(n_fast_asics):
+            for asic_slow_number in range(n_slow_asics):
+              asic_num = asic_fast_number + (asic_slow_number * n_fast_asics)
+              a_name = 'AXIS_D0Q%dM%dA%d'%(quad, module_num, asic_num)
+              # Modules look like this:
+              # bbbbbggbbbbb Assuming a 3x3 asic (X), a 1 pixel border (b) and a 2 pixel gap (g).
+              # bXXXbggbXXXb This is as if there were only two asics in a module
+              # bXXXbggbXXXb The math below skips past the borders and gaps to the first real pixel.
+              # bXXXbggbXXXb
+              # bbbbbggbbbbb
+              asic_vector = -offset + (fast * pixel_size * (asic_fast * asic_fast_number + border + (asic_fast_number * gap))) + \
+                                      (slow * pixel_size * (asic_slow * asic_slow_number + border + (asic_slow_number * gap)))
+              self.create_vector(transformations, a_name, 0.0, depends_on=m_name, equipment='detector', equipment_component='detector_asic',
+                                 transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = asic_vector.elems, offset_units = 'mm')
 
-        fast = self.hierarchy[q_key][m_key]['local_fast'].elems
-        slow = self.hierarchy[q_key][m_key]['local_slow'].elems
-        self.create_vector(modulemodule, 'fast_pixel_direction',pixel_size, depends_on=transformations.name+'/AXIS_D0Q%dM%d'%(quad,module_num),transformation_type='translation', units='mm', vector=fast, offset=(0. ,0., 0.))
-        self.create_vector(modulemodule, 'slow_pixel_direction',pixel_size, depends_on=transformations.name+'/AXIS_D0Q%dM%d'%(quad,module_num),transformation_type='translation', units='mm', vector=slow, offset=(0., 0., 0.))
+              asicmodule = detector.create_group(array_name+'Q%dM%dA%d'%(quad,module_num,asic_num))
+              asicmodule.attrs['NX_class'] = 'NXdetector_module'
+              asicmodule.create_dataset('data_origin', (2,), data=[module_slow * module_num + asic_slow * asic_slow_number + border + gap*asic_slow_number,
+                                                                                              asic_fast * asic_fast_number + border + gap*asic_fast_number], dtype='i')
+              asicmodule.create_dataset('data_size', (2,), data=[asic_slow - border*2, asic_fast - border*2], dtype='i')
 
+              self.create_vector(asicmodule, 'fast_pixel_direction',pixel_size,
+                                 depends_on=transformations.name+'/AXIS_D0Q%dM%dA%d'%(quad,module_num,asic_num),
+                                 transformation_type='translation', units='mm', vector=fast.elems, offset=(0. ,0., 0.))
+              self.create_vector(asicmodule, 'slow_pixel_direction',pixel_size,
+                                 depends_on=transformations.name+'/AXIS_D0Q%dM%dA%d'%(quad,module_num,asic_num),
+                                 transformation_type='translation', units='mm', vector=slow.elems, offset=(0., 0., 0.))
+        else:
+          module_vector = self.hierarchy[q_key][m_key]['local_origin'].elems
+          self.create_vector(transformations, m_name, 0.0, depends_on=q_name,
+                             equipment='detector', equipment_component='detector_module',
+                             transformation_type='rotation', units='degrees', vector=(0. ,0., -1.),
+                             offset = module_vector, offset_units = 'mm')
+
+          modulemodule = detector.create_group(array_name+'Q%dM%d'%(quad,module_num))
+          modulemodule.attrs['NX_class'] = 'NXdetector_module'
+          modulemodule.create_dataset('data_origin', (2,), data=[module_slow * module_num, 0],
+                                                           dtype='i')
+          modulemodule.create_dataset('data_size', (2,), data=[module_slow, module_fast], dtype='i')
+
+          fast = self.hierarchy[q_key][m_key]['local_fast'].elems
+          slow = self.hierarchy[q_key][m_key]['local_slow'].elems
+          self.create_vector(modulemodule, 'fast_pixel_direction',pixel_size,
+                             depends_on=transformations.name+'/AXIS_D0Q%dM%d'%(quad,module_num),
+                             transformation_type='translation', units='mm', vector=fast, offset=(0. ,0., 0.))
+          self.create_vector(modulemodule, 'slow_pixel_direction',pixel_size,
+                             depends_on=transformations.name+'/AXIS_D0Q%dM%d'%(quad,module_num),
+                             transformation_type='translation', units='mm', vector=slow, offset=(0., 0., 0.))
     f.close()
 
 if __name__ == '__main__':
