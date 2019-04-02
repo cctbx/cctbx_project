@@ -680,6 +680,7 @@ class ExperimentListFactory(object):
         compare_goniometer=None,
         scan_tolerance=None,
         format_kwargs=None,
+        load_models=True,
     ):
         """ Create a list of data blocks from a list of directory or file names. """
         experiments = ExperimentList()
@@ -694,55 +695,74 @@ class ExperimentListFactory(object):
             format_kwargs=format_kwargs,
         ):
             experiments.extend(
-                ExperimentListFactory.from_datablock_and_crystal(db, None)
+                ExperimentListFactory.from_datablock_and_crystal(db, None, load_models)
             )
         return experiments
 
     @staticmethod
-    def from_imageset_and_crystal(imageset, crystal):
+    def from_imageset_and_crystal(imageset, crystal, load_models = True):
         """ Load an experiment list from an imageset and crystal. """
         from dxtbx.imageset import ImageSweep
 
         if isinstance(imageset, ImageSweep):
-            return ExperimentListFactory.from_sweep_and_crystal(imageset, crystal)
+            return ExperimentListFactory.from_sweep_and_crystal(imageset, crystal, load_models)
         else:
-            return ExperimentListFactory.from_stills_and_crystal(imageset, crystal)
+            return ExperimentListFactory.from_stills_and_crystal(imageset, crystal, load_models)
 
     @staticmethod
-    def from_sweep_and_crystal(imageset, crystal):
+    def from_sweep_and_crystal(imageset, crystal, load_models = True):
         """ Create an experiment list from sweep and crystal. """
-        return ExperimentList(
-            [
-                Experiment(
-                    imageset=imageset,
-                    beam=imageset.get_beam(),
-                    detector=imageset.get_detector(),
-                    goniometer=imageset.get_goniometer(),
-                    scan=imageset.get_scan(),
-                    crystal=crystal,
-                )
-            ]
-        )
+        if load_models:
+            return ExperimentList(
+                [
+                    Experiment(
+                        imageset=imageset,
+                        beam=imageset.get_beam(),
+                        detector=imageset.get_detector(),
+                        goniometer=imageset.get_goniometer(),
+                        scan=imageset.get_scan(),
+                        crystal=crystal,
+                    )
+                ]
+            )
+        else:
+            return ExperimentList(
+                [
+                    Experiment(
+                        imageset=imageset,
+                        crystal=crystal,
+                    )
+                ]
+            )
 
     @staticmethod
-    def from_stills_and_crystal(imageset, crystal):
+    def from_stills_and_crystal(imageset, crystal, load_models = True):
         """ Create an experiment list from stills and crystal. """
         experiments = ExperimentList()
-        for i in range(len(imageset)):
-            experiments.append(
-                Experiment(
-                    imageset=imageset[i : i + 1],
-                    beam=imageset.get_beam(i),
-                    detector=imageset.get_detector(i),
-                    goniometer=imageset.get_goniometer(i),
-                    scan=imageset.get_scan(i),
-                    crystal=crystal,
+        if load_models:
+            for i in range(len(imageset)):
+                experiments.append(
+                    Experiment(
+                        imageset=imageset[i : i + 1],
+                        beam=imageset.get_beam(i),
+                        detector=imageset.get_detector(i),
+                        goniometer=imageset.get_goniometer(i),
+                        scan=imageset.get_scan(i),
+                        crystal=crystal,
+                    )
                 )
-            )
+        else:
+            for i in range(len(imageset)):
+                experiments.append(
+                        Experiment(
+                        imageset=imageset[i : i + 1],
+                        crystal=crystal,
+                    )
+                )
         return experiments
 
     @staticmethod
-    def from_datablock_and_crystal(datablock, crystal):
+    def from_datablock_and_crystal(datablock, crystal, load_models = True):
         """ Load an experiment list from a datablock. """
 
         # Initialise the experiment list
@@ -752,14 +772,14 @@ class ExperimentListFactory(object):
         if isinstance(datablock, list):
             for db in datablock:
                 experiments.extend(
-                    ExperimentListFactory.from_datablock_and_crystal(db, crystal)
+                    ExperimentListFactory.from_datablock_and_crystal(db, crystal, load_models)
                 )
             return experiments
 
         # Add all the imagesets
         for imageset in datablock.extract_imagesets():
             experiments.extend(
-                ExperimentListFactory.from_imageset_and_crystal(imageset, crystal)
+                ExperimentListFactory.from_imageset_and_crystal(imageset, crystal, load_models)
             )
 
         # Check the list is consistent
