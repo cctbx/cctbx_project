@@ -20,7 +20,7 @@ master_phil = iotbx.phil.parse("""
       .multiple = True
       .help = Input PDB file (enter target first and then query)\
               query_dir is set)
-      .short_caption = Target model or Query model
+      .short_caption = Target/query model
       .style = file_type:pdb input_file
 
     unique_query_only = False
