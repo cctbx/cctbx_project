@@ -435,6 +435,14 @@ class MosaicCrystalSauter2014Aux(CrystalAux, MosaicCrystalSauter2014):
 
         return xl
 
+class ExperimentAux(boost.python.injector, Experiment):
+    def load_models(self, index = None):
+        """ Load the models from the imageset """
+        if index is None: index = 0
+        self.beam       = self.imageset.get_beam(index)
+        self.detector   = self.imageset.get_detector(index)
+        self.goniometer = self.imageset.get_goniometer(index)
+        self.scan       = self.imageset.get_scan(index)
 
 class ExperimentListAux(boost.python.injector, ExperimentList):
     def __repr__(self):
