@@ -15,8 +15,7 @@ from libtbx import group_args, str_utils
 import iotbx.pdb
 import iotbx.cif.model
 import iotbx.ncs
-from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter, \
-    three_letter_l_given_three_letter_d, three_letter_given_one_letter
+from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 from iotbx.pdb.atom_selection import AtomSelectionError
 from iotbx.pdb.misc_records_output import link_record_output
 from iotbx.cif import category_sort_function
@@ -53,7 +52,6 @@ import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 from iotbx.bioinformatics import sequence
 from mmtbx.validation.sequence import master_phil as sequence_master_phil
 from mmtbx.validation.sequence import validation as sequence_validation
-from iotbx.pdb import modified_aa_names, modified_rna_dna_names
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
@@ -954,7 +952,7 @@ class manager(object):
 
     # add sequence information
     if self._sequence_validation is not None:
-      cif_block.update(self.sequence_as_cif_block())
+      cif_block.update(self._sequence_validation.sequence_as_cif_block())
 
     if self.model_statistics_info is not None:
       cif_block.update(self.model_statistics_info.as_cif_block())
@@ -3263,8 +3261,9 @@ class manager(object):
       return
     self._expand_symm_helper(biomt_records_container)
 
-  def set_sequences(self, sequences, similarity_matrix=None,
-                    min_allowable_identity=None, minimum_identity=0.5):
+  def set_sequences(self, sequences, custom_residues=None,
+                    similarity_matrix=None, min_allowable_identity=None,
+                    minimum_identity=0.5):
     """
     Set the canonical sequence for the model. This should be all the
     protein and nucleic acid residues expected in the crystal, not just
@@ -3275,6 +3274,9 @@ class manager(object):
     sequences: list of sequences
       list of iotbx.bioinformatics.sequence objects. The output from the
       get_sequence function of the DataManager will work.
+    custom_residues: list of str
+      List of custom 3-letter residues to keep in pdbx_one_letter_sequence
+      The 3-letter residue must exist in the model
     similarity_matrix: blosum50 dayhoff *identity
       choice from mmtbx.validation.sequence.master_phil
     min_allowable_identity: float
@@ -3302,356 +3304,8 @@ class manager(object):
     self._sequence_validation = sequence_validation(
       pdb_hierarchy=self._pdb_hierarchy,
       sequences=sequences,
+      custom_residues=custom_residues,
       params=params,
       log=self.log,
       minimum_identity=minimum_identity
     )
-
-  def sequence_as_cif_block(self, custom_residues=[]):
-    """
-    Export sequence information as mmCIF block
-    Version 5.0 of mmCIF/PDBx dictionary
-
-    Parameters
-    ----------
-    custom_residues: list of str
-      List of custom 3-letter residues to keep in pdbx_one_letter_sequence
-      The 3-letter residue must exist in the model
-
-    Returns
-    -------
-    cif_block: iotbx.cif.model.block
-    """
-
-    dna = set(['DA', 'DT', 'DC', 'DG', 'DI'])
-    rna = set(['A', 'U', 'C', 'G'])
-    rna_to_dna = {'A': 'DA', 'U': 'DT', 'T': 'DT', 'C': 'DC', 'G': 'DG',
-                  'I': 'DI'}
-    modified_dna = set()
-    modified_rna = set()
-    for key in modified_rna_dna_names.lookup.keys():
-      value = modified_rna_dna_names.lookup[key]
-      if value in dna:
-        modified_dna.add(key)
-      elif value in rna:
-        modified_rna.add(key)
-
-    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/entity.html
-    entity_loop = iotbx.cif.model.loop(header=(
-      '_entity.id',
-      '_entity.pdbx_description'
-    ))
-
-    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/entity_poly.html
-    entity_poly_loop = iotbx.cif.model.loop(header=(
-      '_entity_poly.entity_id',
-      '_entity_poly.nstd_linkage',
-      '_entity_poly.nstd_monomer',
-      '_entity_poly.pdbx_seq_one_letter_code',
-      '_entity_poly.pdbx_seq_one_letter_code_can',
-      '_entity_poly.pdbx_strand_id',
-      '_entity_poly.pdbx_target_identifier',
-      '_entity_poly.type',
-    ))
-
-    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/entity_poly_seq.html
-    entity_poly_seq_loop = iotbx.cif.model.loop(header=(
-      '_entity_poly_seq.entity_id',
-      '_entity_poly_seq.num',
-      '_entity_poly_seq.mon_id',
-      '_entity_poly_seq.hetero',
-    ))
-
-    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ref.html
-    struct_ref_loop = iotbx.cif.model.loop(header=(
-      '_struct_ref.id',
-      '_struct_ref.db_code',
-      '_struct_ref.db_name',
-      '_struct_ref.entity_id',
-      '_struct_ref.pdbx_align_begin',
-      '_struct_ref.pdbx_db_accession',
-      '_struct_ref.pdbx_db_isoform',
-      '_struct_ref.pdbx_seq_one_letter_code',
-    ))
-
-    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/struct_ref_seq.html
-    struct_ref_seq_loop = iotbx.cif.model.loop(header=(
-      '_struct_ref_seq.align_id',
-      '_struct_ref_seq.db_align_beg',
-      '_struct_ref_seq.db_align_end',
-      '_struct_ref_seq.pdbx_PDB_id_code',
-      '_struct_ref_seq.pdbx_auth_seq_align_beg',
-      '_struct_ref_seq.pdbx_auth_seq_align_end',
-      '_struct_ref_seq.pdbx_db_accession',
-      '_struct_ref_seq.pdbx_db_align_beg_ins_code',
-      '_struct_ref_seq.pdbx_db_align_end_ins_code',
-      '_struct_ref_seq.pdbx_seq_align_beg_ins_code',
-      '_struct_ref_seq.pdbx_seq_align_end_ins_code',
-      '_struct_ref_seq.pdbx_strand_id',
-      '_struct_ref_seq.ref_id',
-      '_struct_ref_seq.seq_align_beg',
-      '_struct_ref_seq.seq_align_end',
-    ))
-
-    entity_id = 0
-    # entity_poly
-    sequence_to_entity_id = dict()
-    nstd_linkage = dict()
-    nstd_monomer = dict()
-    seq_one_letter_code = dict()
-    seq_one_letter_code_can = dict()
-    strand_id = dict()
-    target_identifier = dict()
-    sequence_type = dict()
-    # entity_poly_seq
-    num = dict()
-    mon_id = dict()
-    hetero = dict()
-    # struct_ref (work in progress)
-    chain_id = dict()
-    db_code = '?'
-    db_name = '?'
-    align_begin = '?'
-    db_accession = '?'
-    db_isoform = '?'
-    # struct_ref_seq (work in progress)
-    db_align_beg = '?'
-    db_align_end = '?'
-    PDB_id_code = '?'
-    align_beg_ins_code = '?'
-    align_end_ins_code = '?'
-
-    for i_chain, chain in enumerate(self._sequence_validation.chains):
-      seq_can = chain.alignment.b
-      # entity_id
-      if seq_can not in sequence_to_entity_id:
-        entity_id += 1
-        sequence_to_entity_id[seq_can] = entity_id
-      else:
-        # subsequent matches just add strand_id
-        entity_id = sequence_to_entity_id[seq_can]
-        strand_id[entity_id].append(chain.chain_id)
-        continue
-
-      # entity_poly items
-      # nstd_linkage (work in progress)
-      if entity_id not in nstd_linkage:
-        nstd_linkage[entity_id] = 'no'
-      # nstd_monomer
-      if entity_id not in nstd_monomer:
-        nstd_monomer[entity_id] = 'no'
-      # pdbx_seq_one_letter_code
-      if entity_id not in seq_one_letter_code:
-        seq_one_letter_code[entity_id] = list()
-      # type (work in progress)
-      if entity_id not in sequence_type:
-        sequence_type[entity_id] = '?'
-      has_protein = False
-      has_rna = False
-      has_dna = False
-      has_sugar = False
-      is_d = False
-      # chain.alignment.a is the model
-      # chain.alignment.b is the sequence
-      for i_a, i_b in zip(chain.alignment.i_seqs_a, chain.alignment.i_seqs_b):
-        # sequence does not have residue in model
-        if i_b is None:
-          continue
-        # model does not have residue in sequence
-        if i_a is None or chain.resnames[i_a] is None:
-          letter = seq_can[i_b]
-        else:
-          resname = chain.resnames[i_a].strip()
-          # check for modified residues
-          if (resname in modified_aa_names.lookup or
-              resname in modified_rna_dna_names.lookup or
-              resname in custom_residues):
-            letter = '({resname})'.format(resname=resname)
-            nstd_monomer[entity_id] = 'yes'
-          elif resname in three_letter_l_given_three_letter_d:
-            letter = '({resname})'.format(resname=resname)
-            nstd_monomer[entity_id] = 'yes'
-          # check for nucleic acid
-          elif resname in dna:
-            letter = '({resname})'.format(resname=resname)
-          elif resname in rna:
-            letter = resname
-          # regular protein
-          else:
-            letter = one_letter_given_three_letter.get(resname)
-            if letter is None:
-              letter = 'X'
-
-          # check for protein
-          if (resname in one_letter_given_three_letter or
-              resname in modified_aa_names.lookup):
-            has_protein = True
-          # check for DNA
-          # hybrid protein/DNA/RNA chains are not allowed
-          if resname in dna or resname in modified_dna:
-            has_dna = True
-            has_protein = False
-          # check for RNA
-          # does not handle hybrid DNA/RNA chains
-          if resname in rna or resname in modified_rna:
-            has_rna = True
-            has_dna = False
-            has_protein = False
-          # check chirality
-          # hybrid D/L handed chains are not allowed
-          if resname in three_letter_l_given_three_letter_d:
-            is_d = True
-        # pdbx_seq_one_letter_code
-        seq_one_letter_code[entity_id].append(letter)
-
-      # pdbx_seq_one_letter_code_can
-      seq_one_letter_code_can[entity_id] = seq_can.replace('-', '')
-      # strand_id
-      if entity_id not in strand_id:
-        strand_id[entity_id] = list()
-      strand_id[entity_id].append(chain.chain_id)
-      # target_identifier (work in progress)
-      if entity_id not in target_identifier:
-        target_identifier[entity_id] = '?'
-      # type
-      #   polypeptide(L)
-      #   polypeptide(D)
-      #   polydeoxyribonucleotide,
-      #   polyribonucleotide
-      # missing
-      #   cyclic-psuedo-peptide
-      #   other
-      #   peptide nucleic acid
-      #   polydeoxyribonucleotide/polyribonucleotide
-      #   polysaccharide(D)
-      #   polysaccahride(L)
-      if has_protein:
-        choice = 'polypeptide'
-        if is_d:
-          choice += '(D)'
-        else:
-          choice += '(L)'
-      if has_dna:
-        choice = 'polydeoxyribonucleotide'
-      if has_rna:
-        choice = 'polyribonucleotide'
-      sequence_type[entity_id] = choice
-
-      # entity_poly_seq items
-      if entity_id not in mon_id:
-        mon_id[entity_id] = list()
-      if entity_id not in num:
-        num[entity_id] = list()
-      if entity_id not in hetero:
-        hetero[entity_id] = list()
-
-      # struct_ref items
-      if entity_id not in chain_id:
-        chain_id[entity_id] = i_chain + 1
-
-      for i_a, i_b in zip(chain.alignment.i_seqs_a, chain.alignment.i_seqs_b):
-        # sequence does not have residue in model
-        if i_b is None:
-          continue
-        seq_resname = None
-        if has_protein:
-          seq_resname = three_letter_given_one_letter.get(seq_can[i_b])
-        if has_dna:
-          seq_resname = rna_to_dna.get(seq_can[i_b])
-        if has_rna:
-          seq_resname = seq_can[i_b]
-        if seq_resname is None:
-          seq_resname = 'UNK'
-        # model does not have residue in sequence
-        if i_a is None or chain.resnames[i_a] is None:
-          resname = seq_resname
-        else:
-          resname = chain.resnames[i_a]
-        if resname == seq_resname:
-          mon_id[entity_id].append(resname.strip())
-        if len(num[entity_id]) == 0:
-          num[entity_id].append(1)
-        else:
-          num[entity_id].append(num[entity_id][-1] + 1)
-        hetero[entity_id].append('no')
-
-    # build loops
-    ids = sequence_to_entity_id.values()
-    ids.sort()
-    align_id = 1
-    for entity_id in ids:
-      # construct entity_poly loop
-      if len(strand_id[entity_id]) == 1:
-        chains = strand_id[entity_id][0]
-      else:
-        chains = strand_id[entity_id]
-        #chains.sort()
-        chains = ','.join(chains)
-      entity_poly_loop.add_row((
-        entity_id,
-        nstd_linkage[entity_id],
-        nstd_monomer[entity_id],
-        ';' + ''.join(seq_one_letter_code[entity_id]) + '\n;',
-        ';' + seq_one_letter_code_can[entity_id] + '\n;',
-        chains,
-        target_identifier[entity_id],
-        sequence_type[entity_id]
-      ))
-
-      # construct entity loop
-      entity_loop.add_row((
-        entity_id,
-        'Chains: ' + chains
-      ))
-
-      # construct entity_poly_seq loop
-      chain_length = len(mon_id[entity_id])
-      for i in range(chain_length):
-        entity_poly_seq_loop.add_row((
-          entity_id,
-          num[entity_id][i],
-          mon_id[entity_id][i],
-          hetero[entity_id][i]
-        ))
-
-      # construct struct_ref loop
-      struct_ref_loop.add_row((
-        chain_id[entity_id],
-        db_code,
-        db_name,
-        entity_id,
-        align_begin,
-        db_accession,
-        db_isoform,
-        ';' + seq_one_letter_code_can[entity_id] + '\n;'
-      ))
-
-      # construct struct_ref_seq loop
-      for chain in strand_id[entity_id]:
-        struct_ref_seq_loop.add_row((
-          align_id,
-          db_align_beg,
-          db_align_end,
-          PDB_id_code,
-          '1',
-          len(seq_one_letter_code_can[entity_id]) - 1,
-          db_accession,
-          align_beg_ins_code,
-          align_end_ins_code,
-          align_beg_ins_code,
-          align_end_ins_code,
-          chain,
-          chain_id[entity_id],
-          '1',
-          len(seq_one_letter_code_can[entity_id]) - 1
-        ))
-
-    # construct block
-    cif_block = iotbx.cif.model.block()
-    cif_block.add_loop(entity_loop)
-    cif_block.add_loop(entity_poly_loop)
-    cif_block.add_loop(entity_poly_seq_loop)
-    cif_block.add_loop(struct_ref_loop)
-    cif_block.add_loop(struct_ref_seq_loop)
-
-    return cif_block

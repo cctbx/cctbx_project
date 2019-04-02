@@ -39,6 +39,11 @@ More functionality is planned.
 mmtbx.validation.sequence.sequence_alignment {
   include scope mmtbx.validation.sequence.master_phil
 }
+custom_residues = None
+  .type = strings
+  .help = Space-separated list of three letter codes to be included in \
+    the entity_poly.pdbx_one_letter_code mmCIF loop \
+    (e.g. custom_residues='SUI PYL')
 keep_original_loops = True
   .type = bool
   .help = Preserves mmCIF data from the input model file (if available) that \
@@ -73,6 +78,7 @@ output {
     # No error trapping
     model.set_sequences(
       sequences,
+      custom_residues=self.params.custom_residues,
       similarity_matrix=self.params.mmtbx.validation.sequence.sequence_alignment.similarity_matrix,
       min_allowable_identity=self.params.mmtbx.validation.sequence.sequence_alignment.min_allowable_identity)
     model._sequence_validation.show(out=self.logger)
