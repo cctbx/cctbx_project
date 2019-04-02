@@ -750,6 +750,59 @@ def test_experimentlist_with_identifiers():
     experiments.remove_on_experiment_identifiers(["spam", "jam"])
     assert list(experiments.identifiers()) == ["bacon", "ham"]
 
+def test_load_models(dials_regression):
+    import dxtbx
+
+    filename = os.path.join(
+        dials_regression,
+        "image_examples",
+        "SACLA_MPCCD_Cheetah",
+        "run266702-0-subset.h5",
+    )
+
+    # Test different ways of loading the data
+    waves1, waves2, waves3, waves4, waves5 = [], [], [], [], []
+    oris1, oris2, oris3, oris4, oris5 = [], [], [], [], []
+
+    img = dxtbx.load(filename)
+
+    # Test using dxtbx directly
+    for i in xrange(img.get_num_images()):
+        waves1.append(img.get_beam(i).get_wavelength())
+        oris1.append(img.get_detector(i)[0].get_origin())
+
+    # Test using the imageset clases
+    imageset = img.get_imageset(filename)
+    for i in xrange(len(imageset)):
+        waves2.append(imageset.get_beam(i).get_wavelength())
+        oris2.append(imageset.get_detector(i)[0].get_origin())
+
+    # Test using imageset subsets
+    imageset = img.get_imageset(filename)
+    for i in xrange(len(imageset)):
+        subset = imageset[i:i+1]
+        waves3.append(subset.get_beam(0).get_wavelength())
+        oris3.append(subset.get_detector(0)[0].get_origin())
+
+    # Test using pre-loaded experiments
+    experiments = ExperimentListFactory.from_filenames([filename])
+    for experiment in experiments:
+        waves4.append(experiment.beam.get_wavelength())
+        oris4.append(experiment.detector[0].get_origin())
+
+    # Test using post-loaded experiments
+    experiments = ExperimentListFactory.from_filenames([filename], load_models = False)
+    for experiment in experiments:
+        assert experiment.beam is None and experiment.detector is None
+        experiment.load_models()
+        waves5.append(experiment.beam.get_wavelength())
+        oris5.append(experiment.detector[0].get_origin())
+
+    for w1, w2, w3, w4, w5 in zip(waves1, waves2, waves3, waves4, waves5):
+        assert w1 == w2 == w3 == w4 == w5
+
+    for o1, o2, o3, o4, o5 in zip(oris1, oris2, oris3, oris4, oris5):
+        assert o1 == o2 == o3 == o4 == o5
 
 def check(el1, el2):
     # All the experiment lists should be the same length
