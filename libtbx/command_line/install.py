@@ -8,7 +8,15 @@ import shutil
 import sys
 from optparse import SUPPRESS_HELP, OptionParser
 
-import procrunner
+try:
+  import procrunner
+except ImportError:
+  try:
+    import libtbx.pkg_utils
+    libtbx.pkg_utils.require("procrunner")
+    import procrunner
+  except Exception:
+    sys.exit("libtbx.install requires procrunner. Please run: libtbx.python -m pip install procrunner")
 
 import libtbx.load_env
 from libtbx.auto_build.bootstrap import Toolbox
