@@ -6,7 +6,7 @@ import os
 def setup_hdf5_plugin_path():
     import os, libtbx.load_env
 
-    plugin_path = libtbx.env.under_base("lib/plugins")
+    plugin_path = libtbx.env.under_base(os.path.join("lib","plugins"))
     try:
         os.environ["HDF5_PLUGIN_PATH"] = (
             plugin_path + os.pathsep + os.environ["HDF5_PLUGIN_PATH"]
