@@ -767,19 +767,19 @@ def test_load_models(dials_regression):
     img = dxtbx.load(filename)
 
     # Test using dxtbx directly
-    for i in xrange(img.get_num_images()):
+    for i in range(img.get_num_images()):
         waves1.append(img.get_beam(i).get_wavelength())
         oris1.append(img.get_detector(i)[0].get_origin())
 
     # Test using the imageset clases
     imageset = img.get_imageset(filename)
-    for i in xrange(len(imageset)):
+    for i in range(len(imageset)):
         waves2.append(imageset.get_beam(i).get_wavelength())
         oris2.append(imageset.get_detector(i)[0].get_origin())
 
     # Test using imageset subsets
     imageset = img.get_imageset(filename)
-    for i in xrange(len(imageset)):
+    for i in range(len(imageset)):
         subset = imageset[i:i+1]
         waves3.append(subset.get_beam(0).get_wavelength())
         oris3.append(subset.get_detector(0)[0].get_origin())
