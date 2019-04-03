@@ -17,7 +17,7 @@ from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js", htmlfname = "C:\Users\oeffner\Buser\NGL_HKLviewer\myhkl.html")
 
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.tncs.mtz")
-myHKLview.GetColumnInfo()
+myHKLview.GetArrayInfo()
 myHKLview.SetColumn(0)
 
 myHKLview.SetSphereScale(3)
@@ -202,6 +202,18 @@ class HKLViewFrame () :
       self.settings_panel.update_reflection_info(hkl, d_min, value)
 
 
+  def detect_Rfree(self, array):
+    from iotbx.reflection_file_utils import looks_like_r_free_flags_info
+    info = array.info()
+    if (array.is_integer_array()) and (looks_like_r_free_flags_info(info)) :
+      from iotbx.reflection_file_utils import get_r_free_flags_scores
+      score_array = get_r_free_flags_scores([array], None)
+      test_flag_value = score_array.test_flag_values[0]
+      array = array.customized_copy(data=(array.data() == test_flag_value))
+      array.set_info(info)
+    return array
+
+
   def process_miller_array (self, array, merge_answer=[None]) :
     if (array is None) : return
     if (array.is_hendrickson_lattman_array()) :
@@ -240,13 +252,7 @@ class HKLViewFrame () :
     #if array.is_complex_array() :
     #  array = array.amplitudes().set_info(info)
     #  details.append("as amplitudes")
-    from iotbx.reflection_file_utils import looks_like_r_free_flags_info
-    if (array.is_integer_array()) and (looks_like_r_free_flags_info(info)) :
-      from iotbx.reflection_file_utils import get_r_free_flags_scores
-      score_array = get_r_free_flags_scores([array], None)
-      test_flag_value = score_array.test_flag_values[0]
-      array = array.customized_copy(data=(array.data() == test_flag_value))
-      array.set_info(info)
+    array = self.detect_Rfree(array)
     sg = "%s" % array.space_group_info()
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % array.unit_cell().parameters()
     details_str = ""
@@ -281,7 +287,7 @@ class HKLViewFrame () :
     if (array is None) : return
     array, array_info = self.process_all_miller_arrays(array)
     self.miller_array = array
-    self.update_space_group_choices()
+    #self.update_space_group_choices()
     #self.viewer.set_miller_array(array, merge=array_info.merge,
     #   details=array_info.details_str, valid_arrays=self.valid_arrays)
 
@@ -311,12 +317,26 @@ class HKLViewFrame () :
       self.current_spacegroup = sg_info
 
 
-  def delete_miller_index (self, hkl) :
+  def SetSpaceGroupChoice(self, n) :
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
-    info = self.miller_array.info()
-    self.miller_array = self.miller_array.delete_index(hkl).set_info(info)
-    self.viewer.set_miller_array(self.miller_array)
+    self.current_spacegroup = self.spacegroup_choices[n]
+    from cctbx import crystal
+    symm = crystal.symmetry(
+      space_group_info= self.current_spacegroup,
+      unit_cell=self.miller_array.unit_cell())
+    array = self.miller_array.expand_to_p1().customized_copy(
+      crystal_symmetry=symm)
+    array = array.merge_equivalents().array().set_info(self.miller_array.info())
+    othervalidarrays = []
+    for validarray in self.valid_arrays:
+      #print "Space group casting ", validarray.info().label_string()
+      arr = validarray.expand_to_p1().customized_copy(crystal_symmetry=symm)
+      arr = arr.merge_equivalents().array().set_info(validarray.info())
+      arr = self.detect_Rfree(arr)
+      othervalidarrays.append( arr )
+    print "MERGING 2"
+    self.viewer.set_miller_array(array, valid_arrays=othervalidarrays)
     self.viewer.DrawNGLJavaScript()
 
 
@@ -468,6 +488,9 @@ class HKLViewFrame () :
 
 
   def GetSpaceGroupChoices(self):
+    """
+    return array of strings with available subgroups of the space group
+    """
     if self.spacegroup_choices:
       return [e.symbol_and_number() for e in self.spacegroup_choices]
     return []
@@ -480,30 +503,17 @@ class HKLViewFrame () :
     return self.viewer.NGLscriptstr
 
   def GetArrayInfo(self):
+    """
+    return array of strings with information on each miller array
+    """
     return self.array_info
 
   def GetMatchingArrayInfo(self):
+    """
+    return array of strings with information on each processed miller array
+    which may have been expanded with anomalous reflections or truncated to non-anomalous reflections
+    as to match the currently selected miller array
+    """
     return self.viewer.matchingarrayinfo
 
-
-  def SetSpaceGroupChoice(self, n) :
-    if (self.miller_array is None) :
-      raise Sorry("No data loaded!")
-    self.current_spacegroup = self.spacegroup_choices[n]
-    from cctbx import crystal
-    symm = crystal.symmetry(
-      space_group_info= self.current_spacegroup,
-      unit_cell=self.miller_array.unit_cell())
-    array = self.miller_array.expand_to_p1().customized_copy(
-      crystal_symmetry=symm)
-    array = array.merge_equivalents().array().set_info(self.miller_array.info())
-    othervalidarrays = []
-    for validarray in self.valid_arrays:
-      #print "Space group casting ", validarray.info().label_string()
-      arr = validarray.expand_to_p1().customized_copy(crystal_symmetry=symm)
-      arr = arr.merge_equivalents().array().set_info(validarray.info())
-      othervalidarrays.append( arr  )
-    print "MERGING 2"
-    self.viewer.set_miller_array(array, valid_arrays=othervalidarrays)
-    self.viewer.DrawNGLJavaScript()
 
