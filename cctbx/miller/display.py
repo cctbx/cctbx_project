@@ -193,6 +193,7 @@ class scene(object):
       else:
         self.sigmas = None
     self.work_array = array
+    self.work_array.set_info(self.miller_array.info() )
     self.multiplicities = multiplicities
 
 

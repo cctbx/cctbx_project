@@ -129,9 +129,9 @@ myHKLview.SetColoursToPhases(True)
 
 
 
-from crys3d.hklview import jsview_3d as view_3d
 from cctbx.miller import display
-
+from crys3d.hklview import jsview_3d as view_3d
+from crys3d.hklview.jsview_3d import ArrayInfo
 from libtbx import object_oriented_patterns as oop
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry, Abort, to_str
@@ -282,8 +282,8 @@ class HKLViewFrame () :
     array, array_info = self.process_all_miller_arrays(array)
     self.miller_array = array
     self.update_space_group_choices()
-    self.viewer.set_miller_array(array, merge=array_info.merge,
-       details=array_info.details_str, valid_arrays=self.valid_arrays)
+    #self.viewer.set_miller_array(array, merge=array_info.merge,
+    #   details=array_info.details_str, valid_arrays=self.valid_arrays)
 
 
   def update_settings (self, *args, **kwds) :
@@ -341,9 +341,8 @@ class HKLViewFrame () :
         elif (data_only) :
           if (not array.is_real_array()) and (not array.is_complex_array()) :
             continue
-        labels = array.info().label_string()
-        desc = get_array_description(array)
-        self.array_info.append("%s (%s), HKLs: %s to %s" % (labels, desc, array.index_span().min(), array.index_span().max()) )
+        self.array_info.append( ArrayInfo(array).infostr )
+
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -358,11 +357,6 @@ class HKLViewFrame () :
         return valid_arrays[0]
 
 
-  def GetNGLstring(self):
-    return self.viewer.NGLscriptstr
-
-  def GetColumnInfo(self):
-    return self.array_info
 
   def SetSphereScale(self, nscale):
     self.settings.scale = nscale
@@ -477,6 +471,19 @@ class HKLViewFrame () :
     if self.spacegroup_choices:
       return [e.symbol_and_number() for e in self.spacegroup_choices]
     return []
+
+
+  def GetHtmlURL(self):
+    return self.viewer.url
+
+  def GetNGLstring(self):
+    return self.viewer.NGLscriptstr
+
+  def GetArrayInfo(self):
+    return self.array_info
+
+  def GetMatchingArrayInfo(self):
+    return self.viewer.matchingarrayinfo
 
 
   def SetSpaceGroupChoice(self, n) :

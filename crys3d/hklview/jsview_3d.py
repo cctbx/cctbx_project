@@ -18,6 +18,44 @@ import webbrowser, tempfile
 
 
 
+nanval = float('nan')
+inanval = -42424242 # TODO: find a more robust way of indicating missing data
+
+
+
+class ArrayInfo:
+  def __init__(self, millarr):
+    from iotbx.gui_tools.reflections import get_array_description
+    data = millarr.data()
+    if (isinstance(data, flex.int)):
+      data = [e for e in data if e!= inanval]
+    if millarr.is_complex_array():
+      data = flex.abs(millarr.data())
+    self.maxdata =max( data )
+    self.mindata =min( data )
+    self.maxsigmas = self.minsigmas = nanval
+    if millarr.sigmas() is not None:
+      data = millarr.sigmas()
+      self.maxsigmas =max( data )
+      self.minsigmas =min( data )
+      self.minmaxstr = "MinMaxValues:[%s; %s], MinMaxSigmaValues:[%s; %s]" \
+        %(roundoff(self.mindata), roundoff(self.maxdata), \
+            roundoff(self.minsigmas), roundoff(self.maxsigmas))
+    else:
+      self.minmaxstr = "MinMaxValues:[%s; %s]" %(roundoff(self.mindata), roundoff(self.maxdata))
+    self.labels = self.desc = ""
+    if millarr.info():
+      self.labels = millarr.info().label_string()
+      self.desc = get_array_description(millarr)
+    self.span = "HKLs: %s to %s" % \
+      ( millarr.index_span().min(), millarr.index_span().max())
+    self.infostr = "%s (%s), %s %s, %s" % \
+      (self.labels, self.desc, millarr.size(), self.span, self.minmaxstr)
+
+
+
+
+
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
@@ -37,18 +75,18 @@ class hklview_3d:
       self.verbose = kwds['verbose']
     self.NGLscriptstr = ""
     self.cameratype = "orthographic"
+    self.url = ""
     self.iarray = 0
     self.icolourcol = 0
     self.iradiicol = 0
     self.binvals = []
-    self.maxdata = 0.0
-    self.mindata = 0.0
     self.valid_arrays = []
     self.otherscenes = []
     self.othermaxdata = []
     self.othermindata = []
     self.othermaxsigmas = []
     self.otherminsigmas = []
+    self.matchingarrayinfo = []
     self.nbin = 0
     self.websockclient = None
     self.lastmsg = ""
@@ -59,6 +97,7 @@ class hklview_3d:
       os.remove(self.hklfname)
     if kwds.has_key('htmlfname'):
       self.hklfname = kwds['htmlfname']
+    self.hklfname = os.path.abspath( self.hklfname )
     self.jscriptfname = os.path.join(tempdir, "hkljstr.js")
     if os.path.isfile(self.jscriptfname):
       os.remove(self.jscriptfname)
@@ -78,13 +117,11 @@ class hklview_3d:
 <script src="%s" type="text/javascript"></script>
     """
     self.htmldiv = """
-<div id="viewport" style="width:100\%; height:100\%;"></div>
+<div id="viewport" style="width:100%; height:100%;"></div>
 
 </body></html>
 
     """
-    self.nanval = float('nan')
-    self.inanval = -42424242 # TODO: find a more robust way of indicating missing data
     self.colourgradientvalues = []
     self.UseOSBrowser = True
     if kwds.has_key('UseOSBrowser'):
@@ -110,6 +147,7 @@ class hklview_3d:
     self.merge = merge
     self.d_min = miller_array.d_min()
     array_info = miller_array.info()
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % miller_array.unit_cell().parameters()
     self.mprint( "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
       % (array_info.label_string(), details, miller_array.indices().size(), \
@@ -148,16 +186,11 @@ class hklview_3d:
     self.scene = display.scene(miller_array=self.miller_array, merge=merge, settings=self.settings)
 
     self.rotation_center = (0,0,0)
-    if self.miller_array.is_complex_array():
-      ampls = flex.abs(self.scene.data)
-      self.maxdata = max(ampls)
-      self.mindata = min(ampls)
-    else:
-      self.maxdata = max(self.scene.data)
-      self.mindata = min(self.scene.data)
+
     self.otherscenes = []
     self.othermaxdata = []
     self.othermindata = []
+    self.matchingarrayinfo = []
     for i,validarray in enumerate(self.valid_arrays):
       # first match indices in currently selected miller array with indices in the other miller arrays
       #matchindices = miller.match_indices(matchcolourradiiarray.indices(), validarray.indices() )
@@ -168,19 +201,28 @@ class hklview_3d:
       valarray = validarray.select( matchindices.pairs().column(1) )
 
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      if not validarray.anomalous_flag() == self.miller_array.anomalous_flag():
-        continue
-      missing = self.miller_array.lone_set( validarray )
-      # insert NAN values for reflections in self.miller_array not found in validarray
+      if valarray.anomalous_flag() and not self.miller_array.anomalous_flag():
+        # valarray gets its anomalous_flag from validarray. But it cannot have more HKLs than self.miller_array
+        # so set its anomalous_flag to False if self.miller_array is nto anomalous
+        valarray._anomalous_flag = False
+      if not valarray.anomalous_flag() and self.miller_array.anomalous_flag():
+        # temporary expand other arrays to anomalous if self.miller_array is anomalous
+        valarray = valarray.generate_bijvoet_mates()
 
+      missing = self.miller_array.lone_set( valarray )
+      # insert NAN values for reflections in self.miller_array not found in validarray
+      if valarray.is_bool_array():
+        valarray._data.extend( flex.bool(missing.size(), False) )
+      if valarray.is_hendrickson_lattman_array():
+        valarray._data.extend( flex.hendrickson_lattman(missing.size(), (nanval, nanval, nanval, nanval)) )
       if valarray.is_integer_array():
-        valarray._data.extend( flex.int(missing.size(), self.inanval) )
+        valarray._data.extend( flex.int(missing.size(), inanval) )
       if valarray.is_real_array():
-        valarray._data.extend( flex.double(missing.size(), self.nanval) )
+        valarray._data.extend( flex.double(missing.size(), nanval) )
         if valarray.sigmas() is not None:
-          valarray._sigmas.extend( flex.double(missing.size(), self.nanval) )
+          valarray._sigmas.extend( flex.double(missing.size(), nanval) )
       if valarray.is_complex_array():
-        valarray._data.extend( flex.complex_double(missing.size(), self.nanval) )
+        valarray._data.extend( flex.complex_double(missing.size(), nanval) )
 
       valarray._indices.extend( missing.indices() )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -188,15 +230,12 @@ class hklview_3d:
       match_valindices = miller.match_indices(self.miller_array.indices(), valarray.indices() )
       match_valarray = valarray.select( match_valindices.pairs().column(1) )
       match_valarray.sort(by_value="packed_indices")
+      match_valarray.set_info(validarray.info() )
 
       otherscene = display.scene(miller_array=match_valarray,  merge=merge,
         settings=self.settings)
 
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      #nplst = np.array( list(otherscene.radii) )
-      #nplst[np.isnan( nplst) ] = -1
-      #otherscene.radii = flex.double( list(nplst) )
-
       # cast any NAN values to -1 of the colours and radii arrays before writing javascript
       nplst = np.array( list( otherscene.data ) )
       mask = np.isnan(nplst)
@@ -204,9 +243,7 @@ class hklview_3d:
 
       npcolour = np.array( list(otherscene.colors))
       npcolourcol = npcolour.reshape( len(otherscene.data), 3 )
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       npcolourcol[mask] = -1
-
       otherscene.colors = flex.vec3_double()
       otherscene.colors.extend( flex.vec3_double( npcolourcol.tolist()) )
 
@@ -214,11 +251,6 @@ class hklview_3d:
       npradiicol = npradii.reshape( len(otherscene.data), 1 )
       npradiicol[mask] = 0.2
       otherscene.radii = flex.double( npradiicol.flatten().tolist())
-
-      #print match_valarray.size(), otherscene.radii.size(), otherscene.colors.size(), otherscene.points.size()
-      #print list(otherscene.radii)
-      #print list(otherscene.colors)
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
       d = otherscene.data
       if (isinstance(d, flex.int)):
@@ -230,7 +262,7 @@ class hklview_3d:
       self.othermaxdata.append( maxdata )
       self.othermindata.append( mindata )
 
-      maxsigmas = minsigmas = self.nanval
+      maxsigmas = minsigmas = nanval
       if otherscene.sigmas is not None:
         d = otherscene.sigmas
         maxsigmas =max( d )
@@ -241,12 +273,17 @@ class hklview_3d:
       # TODO: tag array according to which otherscene is included
       self.otherscenes.append( otherscene)
 
+      infostr = ArrayInfo(otherscene.work_array).infostr
+      self.mprint( infostr)
+      self.matchingarrayinfo.append(infostr)
+      """
       if otherscene.sigmas is not None:
         self.mprint( "%d, %s, min,max: [%s; %s], minsig,maxsig:  [%s; %s]" \
           %(i, validarray.info().label_string(), roundoff(mindata), roundoff(maxdata), roundoff(minsigmas), roundoff(maxsigmas)) )
       else:
         self.mprint( "%d, %s, min,max: [%s; %s]" \
           %(i, validarray.info().label_string(), roundoff(mindata), roundoff(maxdata)) )
+      """
 
 
   def DrawNGLJavaScript(self):
@@ -286,6 +323,7 @@ class hklview_3d:
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, Kstararrowtxt, Lstararrowtxt)
 
     # make colour gradient array
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     mincolourscalar = self.othermindata[self.icolourcol]
     maxcolourscalar = self.othermaxdata[self.icolourcol]
     if self.settings.sigma_color:
@@ -360,7 +398,7 @@ class hklview_3d:
           od = str(roundoff(odata[i]) ) + ", " + str(roundoff(otherscene.sigmas[i]))
         else:
           od = str(roundoff(odata[i]) )
-        if math.isnan( abs(odata[i]) ) or odata[i] == self.inanval:
+        if math.isnan( abs(odata[i]) ) or odata[i] == inanval:
           od = "??"
         spbufttip += "\n%s: %s" %(ocolstr, od)
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -721,15 +759,16 @@ mysocket.onmessage = function (e) {
 
 
   def OpenBrowser(self):
-    NGLlibpath = os.path.join( libtbx.env.under_dist("crys3d", "hklview"), "ngl.js")
+    #NGLlibpath = os.path.join( libtbx.env.under_dist("crys3d", "hklview"), "ngl.js")
+    NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
     htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
     htmlstr += self.htmldiv
     with open(self.hklfname, "w") as f:
       f.write( htmlstr )
-    url = "file:///" + os.path.abspath( self.hklfname )
+    self.url = "file://" + os.path.abspath( self.hklfname )
     self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname )
     if self.UseOSBrowser:
-      webbrowser.open(url, new=1)
+      webbrowser.open(self.url, new=1)
 
 
 
