@@ -69,7 +69,7 @@ class FormatNexusEigerDLS16MI04(FormatNexus):
                 for panel in self.get_detector()
             )
             panel = self.get_detector()[0]
-        if self._dynamic_shadowing:
+        if self._dynamic_shadowing and self.get_scan():
             gonio_masker = self.get_goniometer_shadow_masker(goniometer=goniometer)
             scan = self.get_scan()
             detector = self.get_detector()
