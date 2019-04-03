@@ -1315,6 +1315,17 @@ class DetectorFactoryFromGroup(object):
                         ParallaxCorrectedPxMmStrategy(mu, thickness_value)
                     )
 
+def known_backwards(image_size):
+    """
+    Tests for special cases for known data where image size is backwards from NeXus spec
+
+    image_size is in dxtbx image size order (fast, slow)
+    """
+    # 4148,4362: Eiger 2X 16M @ DLS
+    # 4150,4371: Eiger 16M @ Spring8
+    # 2068,2162: VMXi
+    # 3110,3269: Eiger 9M Proxima2A beamline, SOLEIL
+    return image_size in [(4362, 4148), (4371, 4150), (2162, 2068), (3269, 3110)]
 
 class DetectorFactory(object):
     """
@@ -1410,12 +1421,7 @@ class DetectorFactory(object):
         # image size stored slow to fast but dxtbx needs fast to slow
         image_size = tuple(reversed(map(int, nx_module["data_size"][-2:])))
 
-        # special cases for known data where image size is backwards from NeXus spec
-        # 4148,4362: Eiger 2X 16M @ DLS
-        # 4150,4371: Eiger 16M @ Spring8
-        # 2068,2162: VMXi
-        # 3110,3269: Eiger 9M Proxima2A beamline, SOLEIL
-        if image_size in [(4362, 4148), (4371, 4150), (2162, 2068), (3269, 3110)]:
+        if known_backwards(image_size):
             image_size = tuple(reversed(image_size))
 
         self.model = Detector()
@@ -1659,12 +1665,24 @@ def get_detector_module_slices(detector):
     for module in modules:
         data_origin = module.handle["data_origin"]
         data_size = module.handle["data_size"]
-        all_slices.append(
-            [
-                slice(int(start), int(start + step), 1)
-                for start, step in zip(data_origin, data_size)
-            ]
-        )
+        if known_backwards((data_size[-1], data_size[-2])):
+            all_slices.append(
+                list(
+                    reversed(
+                        [
+                            slice(int(start), int(start + step), 1)
+                            for start, step in zip(data_origin, data_size)
+                        ]
+                    )
+                )
+            )
+        else:
+            all_slices.append(
+                [
+                    slice(int(start), int(start + step), 1)
+                    for start, step in zip(data_origin, data_size)
+                ]
+            )
     return all_slices
 
 
