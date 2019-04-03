@@ -36,7 +36,7 @@ https://conda.anaconda.org/conda-forge/linux-64/xz-5.2.4-h14c3975_1001.tar.bz2#a
 https://conda.anaconda.org/conda-forge/linux-64/zlib-1.2.11-h14c3975_1004.tar.bz2#1784c46ef493804cef0739301e166ff6
 https://conda.anaconda.org/conda-forge/linux-64/blas-1.1-openblas.tar.bz2#c259e7a3ea775c6dcba191072cab3adb
 https://conda.anaconda.org/conda-forge/linux-64/gettext-0.19.8.1-h9745a5d_1001.tar.bz2#cd738f4cc0e0f73163c2bbaa5d141107
-https://conda.anaconda.org/conda-forge/linux-64/hdf5-1.10.4-nompi_h11e915b_1105.tar.bz2#08a81bbe21d0ee91a725ca29a0df6f96
+https://conda.anaconda.org/conda-forge/linux-64/hdf5-1.10.4-nompi_h3c11f04_1106.tar.bz2#3839809cfac5b3a880a4fde18e7b993a
 https://conda.anaconda.org/conda-forge/linux-64/libpng-1.6.36-h84994c4_1000.tar.bz2#a690035c54280c8dba66bbdcd8ee7125
 https://conda.anaconda.org/conda-forge/linux-64/libtiff-4.0.10-h648cc4a_1001.tar.bz2#3a75111bd0b59b554a9aed14c60d1183
 https://conda.anaconda.org/conda-forge/linux-64/libxcb-1.13-h14c3975_1002.tar.bz2#ca4eb860b5528d5c6de8d97021d9ef78

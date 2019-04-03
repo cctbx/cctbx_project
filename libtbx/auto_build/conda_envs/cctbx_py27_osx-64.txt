@@ -14,7 +14,7 @@ https://repo.anaconda.com/pkgs/main/osx-64/nomkl-3.0-0.tar.bz2#d6fab0c8315628f75
 https://conda.anaconda.org/conda-forge/osx-64/xz-5.2.4-h1de35cc_1001.tar.bz2#dc8b7a1b9693da71d74823233757c527
 https://conda.anaconda.org/conda-forge/osx-64/zlib-1.2.11-h1de35cc_1004.tar.bz2#a675e7ae21f9b77f2afd15f78cd21b7a
 https://conda.anaconda.org/conda-forge/osx-64/blosc-1.15.1-h0a44026_1002.tar.bz2#5a8388da01aac3d8e768ccc353107a92
-https://conda.anaconda.org/conda-forge/osx-64/hdf5-1.10.4-nompi_h646315f_1105.tar.bz2#fdc21f4540d3c1053810604b7da01552
+https://conda.anaconda.org/conda-forge/osx-64/hdf5-1.10.4-nompi_h0cbb7df_1106.tar.bz2#9494518b97298433cc1f37a964e18ed6
 https://conda.anaconda.org/conda-forge/osx-64/icu-58.2-h0a44026_1000.tar.bz2#2556f93480a4301688bd4f0e24310e99
 https://conda.anaconda.org/conda-forge/osx-64/libffi-3.2.1-h0a44026_1005.tar.bz2#403003f7025d137629c9c603601371cd
 https://conda.anaconda.org/conda-forge/osx-64/libpng-1.6.36-ha441bb4_1000.tar.bz2#0c4906c3e232af4024d2362bf9fb5911

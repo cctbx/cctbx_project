@@ -23,7 +23,7 @@ https://conda.anaconda.org/conda-forge/osx-64/blas-1.1-openblas.tar.bz2#794dbf30
 https://conda.anaconda.org/conda-forge/osx-64/blosc-1.15.1-h0a44026_1002.tar.bz2#5a8388da01aac3d8e768ccc353107a92
 https://conda.anaconda.org/conda-forge/osx-64/expat-2.2.5-h0a44026_1002.tar.bz2#0ab8942e29a51a69a93552647f210f03
 https://conda.anaconda.org/conda-forge/osx-64/freetype-2.9.1-h597ad8a_1005.tar.bz2#1a3a4b07481ace672e06326b4095f298
-https://conda.anaconda.org/conda-forge/osx-64/hdf5-1.10.4-nompi_h646315f_1105.tar.bz2#fdc21f4540d3c1053810604b7da01552
+https://conda.anaconda.org/conda-forge/osx-64/hdf5-1.10.4-nompi_h0cbb7df_1106.tar.bz2#9494518b97298433cc1f37a964e18ed6
 https://conda.anaconda.org/conda-forge/osx-64/icu-58.2-h0a44026_1000.tar.bz2#2556f93480a4301688bd4f0e24310e99
 https://conda.anaconda.org/conda-forge/osx-64/libffi-3.2.1-h0a44026_1005.tar.bz2#403003f7025d137629c9c603601371cd
 https://conda.anaconda.org/conda-forge/osx-64/libtiff-4.0.10-h79f4b77_1001.tar.bz2#43c81a57456c899f353a7054363b05dd
