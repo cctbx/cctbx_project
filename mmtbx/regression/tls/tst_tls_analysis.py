@@ -3,6 +3,7 @@ from mmtbx.tls import analysis
 import os
 import libtbx.load_env
 from scitbx import matrix
+from libtbx.test_utils import approx_equal
 
 def extract(file_name):
   of = open(file_name, "r")
@@ -88,7 +89,36 @@ def run():
         test=os.path.isfile)
       of = open("phenix_"+fn, "w")
       T, L, S = extract(fn_)
-      r = analysis.run(T=T, L=L, S=S, log=of)
+      # test python implementation
+      r = analysis.run(T=T, L=L, S=S, log=of, implementation='python')
+      # test c++ implementation
+      r2 = analysis.run(T=T, L=L, S=S, log=of, implementation='c++')
+      # test equivalence
+      assert approx_equal(r.result.dx, r2.result.dx, 1e-4)
+      assert approx_equal(r.result.dy, r2.result.dy, 1e-4)
+      assert approx_equal(r.result.dz, r2.result.dz, 1e-4)
+      assert approx_equal(r.result.l_x, r2.result.l_x, 1e-4)
+      assert approx_equal(r.result.l_y, r2.result.l_y, 1e-4)
+      assert approx_equal(r.result.l_z, r2.result.l_z, 1e-4)
+      assert approx_equal(r.result.sx, r2.result.sx, 1e-4)
+      assert approx_equal(r.result.sy, r2.result.sy, 1e-4)
+      assert approx_equal(r.result.sz, r2.result.sz, 1e-4)
+      assert approx_equal(r.result.tx, r2.result.tx, 1e-4)
+      assert approx_equal(r.result.ty, r2.result.ty, 1e-4)
+      assert approx_equal(r.result.tz, r2.result.tz, 1e-4)
+      assert approx_equal(r.result.v_x, r2.result.v_x, 1e-4)
+      assert approx_equal(r.result.v_x_M, r2.result.v_x_M, 1e-4)
+      assert approx_equal(r.result.v_y, r2.result.v_y, 1e-4)
+      assert approx_equal(r.result.v_y_M, r2.result.v_y_M, 1e-4)
+      assert approx_equal(r.result.v_z, r2.result.v_z, 1e-4)
+      assert approx_equal(r.result.v_z_M, r2.result.v_z_M, 1e-4)
+      assert approx_equal(r.result.w_L_lx, r2.result.w_L_lx, 1e-4)
+      assert approx_equal(r.result.w_L_ly, r2.result.w_L_ly, 1e-4)
+      assert approx_equal(r.result.w_L_lz, r2.result.w_L_lz, 1e-4)
+      assert approx_equal(r.result.w_M_lx, r2.result.w_M_lx, 1e-4)
+      assert approx_equal(r.result.w_M_ly, r2.result.w_M_ly, 1e-4)
+      assert approx_equal(r.result.w_M_lz, r2.result.w_M_lz, 1e-4)
+
       of.close()
       print fn, "OK"
     except Exception, e:
