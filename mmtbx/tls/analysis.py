@@ -10,6 +10,7 @@ from libtbx.utils import Sorry
 import sys, os
 from copy import deepcopy
 import mmtbx.tls.tools
+from mmtbx.tls.decompose import decompose_tls_matrices
 from libtbx.utils import multi_out
 from libtbx import adopt_init_args
 
@@ -101,7 +102,7 @@ def show_number(x, title, prefix="  ", log=None):
 
 class run(object):
   def __init__(self, T, L, S, log=sys.stdout, eps=1.e-6, self_check_eps=1.e-5,
-               force_t_S=None, find_t_S_using_formula="11"):
+               force_t_S=None, find_t_S_using_formula="11", implementation='python'):
     """
     Decompose TLS matrices into physically iterpretable components.
     """
@@ -109,6 +110,7 @@ class run(object):
     self.ff = "%12.9f"
     self.eps = eps
     self.self_check_eps = self_check_eps
+    assert implementation in ['python', 'c++']
     # Choose how to deal with t_S START
     self.force_t_S = force_t_S
     self.find_t_S_using_formula = find_t_S_using_formula
@@ -147,11 +149,20 @@ class run(object):
     self.v_x, self.v_y, self.v_z = None, None, None
     self.v_x_M, self.v_y_M, self.v_z_M = None, None, None # formula (40)
     self.tx, self.ty, self.tz = None, None, None
-    # all steps
-    self.step_A()
-    self.step_B()
-    self.step_C()
-    self.step_D()
+
+    # Run in-object using python implementation
+    if implementation == 'python':
+        # all steps
+        self.step_A()
+        self.step_B()
+        self.step_C()
+        self.step_D()
+    # Create c++ analysis object and unpack results
+    elif implementation == 'c++':
+        self.run_cplusplus()
+    else:
+        raise Sorry('Invalid implementation: {}'.format(implementation))
+
     # compose result-object
     self.result = self.finalize()
     self.show_summary()
@@ -484,6 +495,63 @@ class run(object):
       [self.v_x_M[0], self.v_y_M[0], self.v_z_M[0],
        self.v_x_M[1], self.v_y_M[1], self.v_z_M[1],
        self.v_x_M[2], self.v_y_M[2], self.v_z_M[2]])
+
+  def run_cplusplus(self):
+
+    decomp = decompose_tls_matrices(
+            T=self.T_M.as_sym_mat3(),
+            L=self.L_M.as_sym_mat3(),
+            S=self.S_M.as_mat3(),
+            l_and_s_in_degrees=False,
+            verbose=False,
+            tol=self.eps, # This is used through the code to determine when something is non-zero
+            eps=1e-08,    # This is currently hardcoded in the truncate function as a separate value
+            t_S_formula=(self.find_t_S_using_formula if self.find_t_S_using_formula is not None else 'Force'),
+            t_S_value=(self.force_t_S if self.force_t_S is not None else 0.0),
+            )
+
+    # Check result
+    if not decomp.is_valid():
+        raise Sorry(decomp.error())
+
+    # Unpack results required for finalise object
+
+    # Invert the rotation matrices from the c++ implementation as R_ML defined differently
+    self.R_ML = matrix.sqr(decomp.R_ML).transpose()
+    self.R_MV = matrix.sqr(decomp.R_MV).transpose()
+
+    R_MtoL = self.R_ML.transpose()
+
+    # Libration rms around L-axes
+    self.Lxx = decomp.l_amplitudes[0] ** 2
+    self.Lyy = decomp.l_amplitudes[1] ** 2
+    self.Lzz = decomp.l_amplitudes[2] ** 2
+    # Unit vectors defining three Libration axes
+    self.l_x = matrix.rec(decomp.l_axis_directions[0], (3,1))
+    self.l_y = matrix.rec(decomp.l_axis_directions[1], (3,1))
+    self.l_z = matrix.rec(decomp.l_axis_directions[2], (3,1))
+    # Rotation axes pass through the points in the L base
+    self.w = group_args(
+      w_lx = R_MtoL * decomp.l_axis_intersections[0], # Transform output to L frame
+      w_ly = R_MtoL * decomp.l_axis_intersections[1],
+      w_lz = R_MtoL * decomp.l_axis_intersections[2],
+      )
+    # Correlation shifts sx,sy,sz for libration
+    self.sx = decomp.s_amplitudes[0]
+    self.sy = decomp.s_amplitudes[1]
+    self.sz = decomp.s_amplitudes[2]
+    # Vectors defining three Vibration axes
+    self.v_x_M = matrix.rec(decomp.v_axis_directions[0], (3,1))
+    self.v_y_M = matrix.rec(decomp.v_axis_directions[1], (3,1))
+    self.v_z_M = matrix.rec(decomp.v_axis_directions[2], (3,1))
+    # Vibrational axes in the M basis
+    self.v_x = R_MtoL * decomp.v_axis_directions[0]
+    self.v_y = R_MtoL * decomp.v_axis_directions[1]
+    self.v_z = R_MtoL * decomp.v_axis_directions[2]
+    # Vibration rms along V-axes
+    self.tx = decomp.v_amplitudes[0]
+    self.ty = decomp.v_amplitudes[1]
+    self.tz = decomp.v_amplitudes[2]
 
   def check_33_34_35(self, a_s, b_s, c_s):
     if(not ((a_s<0 or self.is_zero(a_s)) and
