@@ -487,7 +487,7 @@ class run(object):
 
   def check_33_34_35(self, a_s, b_s, c_s):
     if(not ((a_s<0 or self.is_zero(a_s)) and
-            (b_s>0 or self.is_zero(a_s)) and
+            (b_s>0 or self.is_zero(b_s)) and
             (c_s<0 or self.is_zero(c_s)))):
       raise Sorry("Step C (right branch): Conditions 33-35 failed.")
 
