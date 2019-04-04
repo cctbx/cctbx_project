@@ -70,15 +70,13 @@ class hklview_3d:
     self.d_min = None
     self.scene = None
     self.animation_time = 0
-    self.verbose = True
-    if kwds.has_key('verbose'):
-      self.verbose = kwds['verbose']
     self.NGLscriptstr = ""
     self.cameratype = "orthographic"
     self.url = ""
     self.iarray = 0
     self.icolourcol = 0
     self.iradiicol = 0
+    self.has_negative_radii = False
     self.binvals = []
     self.valid_arrays = []
     self.otherscenes = []
@@ -87,6 +85,9 @@ class hklview_3d:
     self.othermaxsigmas = []
     self.otherminsigmas = []
     self.matchingarrayinfo = []
+    self.mprint = sys.stdout.write
+    if kwds.has_key('mprint'):
+      self.mprint = kwds['mprint']
     self.nbin = 0
     self.websockclient = None
     self.lastmsg = ""
@@ -128,9 +129,9 @@ class hklview_3d:
       self.UseOSBrowser = kwds['UseOSBrowser']
 
 
-  def mprint(self, m, verbose=False):
-    if self.verbose or verbose:
-      print m
+  #def mprint(self, m, verbose=False):
+  #  if self.verbose or verbose:
+  #    print m
 
   def __exit__(self, exc_type, exc_value, traceback):
     # not called unless instantiated with a "with hklview_3d ... " statement
@@ -239,13 +240,15 @@ class hklview_3d:
       # cast any NAN values to -1 of the colours and radii arrays before writing javascript
       nplst = np.array( list( otherscene.data ) )
       mask = np.isnan(nplst)
-      maskrow = mask.reshape( mask.shape[0], 1 )
 
       npcolour = np.array( list(otherscene.colors))
       npcolourcol = npcolour.reshape( len(otherscene.data), 3 )
       npcolourcol[mask] = -1
       otherscene.colors = flex.vec3_double()
       otherscene.colors.extend( flex.vec3_double( npcolourcol.tolist()) )
+
+      nplst = np.array( list( otherscene.radii ) )
+      mask = np.isnan(nplst)
 
       npradii = np.array( list(otherscene.radii))
       npradiicol = npradii.reshape( len(otherscene.data), 1 )
@@ -274,7 +277,7 @@ class hklview_3d:
       self.otherscenes.append( otherscene)
 
       infostr = ArrayInfo(otherscene.work_array).infostr
-      self.mprint( infostr)
+      self.mprint("%d, %s" %(i, infostr) )
       self.matchingarrayinfo.append(infostr)
       """
       if otherscene.sigmas is not None:
@@ -284,6 +287,7 @@ class hklview_3d:
         self.mprint( "%d, %s, min,max: [%s; %s]" \
           %(i, validarray.info().label_string(), roundoff(mindata), roundoff(maxdata)) )
       """
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
   def DrawNGLJavaScript(self):
@@ -366,6 +370,15 @@ class hklview_3d:
 
     if len(self.binvals) <1:
       self.binvals.append( self.othermaxdata[self.iarray] )
+
+    self.has_negative_radii = False
+
+    if self.iarray==self.iradiicol and self.othermindata[self.iradiicol] < 0.0:
+      self.binvals.insert(0, self.othermindata[self.iarray])
+      self.binvals.insert(1, 0.0)
+      self.has_negative_radii = True
+
+
     self.nbin = len(self.binvals)
 
     for ibin in range(self.nbin):
@@ -487,6 +500,10 @@ class hklview_3d:
       colourgradstr.append([vstr , gradval])
     colourgradstr = str(colourgradstr)
 
+    negativeradiistr = ""
+    if self.has_negative_radii:
+      negativeradiistr = "spherebufs[0].setParameters({metalness: 1})"
+
 
     self.NGLscriptstr = """
 // Microsoft Edge users follow instructions on
@@ -564,7 +581,8 @@ var hklscene = function () {
   shapeComp.autoView();
   repr.update()
 
-
+  // if some radii are negative then indicate with metallic colour
+  %s
 
   colourgradvalarray = %s
 
@@ -674,7 +692,8 @@ mysocket.onmessage = function (e) {
 
 
 
-    """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr, colourgradstr)
+    """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr, \
+            negativeradiistr, colourgradstr)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )

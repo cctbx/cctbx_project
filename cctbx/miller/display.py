@@ -211,7 +211,7 @@ class scene(object):
       data_for_colors = self.multiplicities.data().as_double()
       assert data_for_colors.size() == data.size()
     elif (settings.sqrt_scale_colors) and (isinstance(data, flex.double)):
-      data_for_colors = flex.sqrt(data)
+      data_for_colors = flex.sqrt(flex.abs(data))
     #elif (settings.phase_color) and (isinstance(data, flex.complex_double)):
     elif isinstance(data, flex.complex_double):
       data_for_colors = flex.arg(data)
@@ -229,7 +229,8 @@ class scene(object):
         #print "sigmas: " + self.miller_array.info().label_string()
       assert data_for_radii.size() == data.size()
     elif (settings.sqrt_scale_radii) and (isinstance(data, flex.double)):
-      data_for_radii = flex.sqrt(data)
+      data_for_radii = flex.sqrt(flex.abs(data))
+      #data_for_radii = flex.sqrt(data)
     elif (settings.sigma_radius) and sigmas is not None:
       data_for_radii = sigmas.as_double()
       #print "sigmas: " + self.miller_array.info().label_string()
@@ -277,7 +278,8 @@ class scene(object):
     min_radius = 0.20 * min_dist
     max_radius = 40 * min_dist
     if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
-      data_for_radii = flex.sqrt(data_for_radii)
+      data_for_radii = flex.sqrt(flex.abs(data_for_radii))
+      #data_for_radii = flex.sqrt(data_for_radii)
     if len(data_for_radii):
       max_value = flex.max(data_for_radii)
       scale = max_radius / max_value

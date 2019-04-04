@@ -44,7 +44,11 @@ myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Phenix\dev-2814-working\m
 myHKLview.SetCameraType("persp")
 
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Experiments\CRLF3\DLS20151206CRLF3\5840-F11-X1-Hg-SAD-ONsoak\5840-F11-X1_pk_5_5_1_\xia2\dials-run\DataFiles\mx11235v49_x5840F11X1pk551_free.mtz")
-myHKLview.SetColumn(4)
+myHKLview.SetColumn(0)
+myHKLview.SetColumn(1)
+myHKLview.SetColumnBinThresholds(1, [-20, 30, 300, 3000])
+
+
 myHKLview.ShowSlice(True, "h", 20)
 
 
@@ -190,8 +194,17 @@ class HKLViewFrame () :
     self.procarrays = []
     self.array_info = []
     self.settings = display.settings()
+    self.verbose = True
+    if kwds.has_key('verbose'):
+      self.verbose = kwds['verbose']
     kwds['settings'] =self.settings
+    kwds['mprint'] = self.mprint
     self.viewer = view_3d.hklview_3d( **kwds )
+
+
+  def mprint(self, m, verbose=False):
+    if self.verbose or verbose:
+      print m
 
 
   def update_clicked (self, index) :#hkl, d_min=None, value=None) :
@@ -294,10 +307,10 @@ class HKLViewFrame () :
 
   def update_settings (self, *args, **kwds) :
     if (self.miller_array is None) :
-      print "No miller array has been selected"
+      self.mprint( "No miller array has been selected")
       return False
     msg = self.viewer.update_settings(*args, **kwds)
-    print msg
+    self.mprint( msg)
 
 
   def update_space_group_choices (self) :
@@ -309,7 +322,7 @@ class HKLViewFrame () :
     for i,subgroup in enumerate(subgrs) :
       subgroup_info = sgtbx.space_group_info(group=subgroup)
       self.spacegroup_choices.append(subgroup_info)
-      print i, subgroup_info.symbol_and_number()
+      self.mprint("%d, %s" %(i, subgroup_info.symbol_and_number()) )
     if (sg_info in self.spacegroup_choices) :
       self.current_spacegroup = self.spacegroup_choices.index(sg_info)
     else :
@@ -335,7 +348,7 @@ class HKLViewFrame () :
       arr = arr.merge_equivalents().array().set_info(validarray.info())
       arr = self.detect_Rfree(arr)
       othervalidarrays.append( arr )
-    print "MERGING 2"
+    self.mprint( "MERGING 2")
     self.viewer.set_miller_array(array, valid_arrays=othervalidarrays)
     self.viewer.DrawNGLJavaScript()
 
@@ -367,7 +380,7 @@ class HKLViewFrame () :
       self.valid_arrays = valid_arrays
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       for i,e in enumerate(self.array_info):
-        print i, e
+        self.mprint("%d, %s" %(i, e))
       if (len(valid_arrays) == 0) :
         msg = "No arrays of the supported types in this file."
         raise Sorry(msg)
@@ -446,9 +459,9 @@ class HKLViewFrame () :
     self.set_miller_array(self.valid_arrays[column_sel])
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
-    print "Miller array %s runs from hkls: %s to %s" \
+    self.mprint( "Miller array %s runs from hkls: %s to %s" \
      %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
-        self.miller_array.index_span().max() )
+        self.miller_array.index_span().max() ) )
     self.viewer.DrawNGLJavaScript()
 
 
