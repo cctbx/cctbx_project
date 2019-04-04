@@ -405,8 +405,8 @@ if (__name__ == "__main__"):
       r = exercise_00(pdb_str=pdb_str, formula=formula)
       print "  ", i, r
       if(formula=="10"):
-        if(i==0): r<0.04
-        if(i==1): r>0.08
+        if(i==0): assert r<0.04
+        if(i==1): assert r>0.08
       if(formula=="11"):
-        if(i==0): r<0.02
-        if(i==1): r<0.02
+        if(i==0): assert r<0.02
+        if(i==1): assert r<0.02
