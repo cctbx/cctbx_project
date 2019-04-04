@@ -26,3 +26,13 @@ if (not env_etc.no_boost_python):
   env_bpl.SharedLibrary(
     target="#lib/mmtbx_tls_decompose_ext",
     source=["decompose.cpp", "decompose_ext.cpp"])
+ 
+  # add library to be imported in mmtbx/tls/utils.py (adapted from above)
+  env_bpl = env_cctbx_boost_python_ext.Clone()
+  env_etc.include_registry.append(
+    env=env_bpl,
+    paths=env_etc.mmtbx_common_includes)
+  env_bpl.Prepend(LIBS=["cctbx"])
+  env_bpl.SharedLibrary(
+    target="#lib/mmtbx_tls_utils_ext",
+    source=["utils_ext.cpp", "decompose.o", "decompose_ext.o"])
