@@ -548,6 +548,9 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
         plist = self.profiles()
         scalelist = self.scaling_models()
 
+        # Lookup table for imageset index
+        imageset_index = {imset: i for i, imset in enumerate(ilist)}
+
         # Create the output dictionary
         result = OrderedDict()
         result["__id__"] = "ExperimentList"
@@ -580,9 +583,7 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
             if e.scaling_model is not None:
                 obj["scaling_model"] = find_index(scalelist, e.scaling_model)
             if e.imageset is not None:
-                same = [e.imageset is imset for imset in ilist]
-                assert same.count(True) == 1
-                obj["imageset"] = same.index(True)
+                obj["imageset"] = imageset_index[e.imageset]
                 if e.scan is None and not isinstance(e.imageset, ImageSweep):
                     if len(e.imageset) != len(e.imageset.complete_set()):
                         obj["imageset"] = obj["imageset"]
