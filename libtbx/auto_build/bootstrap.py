@@ -1812,6 +1812,7 @@ class CCIBuilder(Builder):
     'boost',
     'cbflib',
     'cctbx_project',
+    'dxtbx',
     'gui_resources',
     'ccp4io_adaptbx',
     'annlib_adaptbx',
@@ -1832,12 +1833,12 @@ class CCIBuilder(Builder):
   LIBTBX = [
     'cctbx',
     'cbflib',
+    'dxtbx',
     'scitbx',
     'libtbx',
     'iotbx',
     'mmtbx',
     'smtbx',
-    'dxtbx',
     'gltbx',
     'wxtbx',
   ]
@@ -2031,8 +2032,8 @@ class CCTBXBuilder(CCIBuilder):
     pass
 
 class DIALSBuilder(CCIBuilder):
-  CODEBASES_EXTRA = ['dials', 'dxtbx', 'xia2']
-  LIBTBX_EXTRA = ['dials', 'dxtbx', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
+  CODEBASES_EXTRA = ['dials', 'xia2']
+  LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
   HOT_EXTRA = ['msgpack']
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
@@ -2069,13 +2070,11 @@ class LABELITBuilder(CCIBuilder):
 class XFELBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'dials',
-    'dxtbx',
     'labelit',
     'cxi_xdr_xes'
   ]
   LIBTBX_EXTRA = [
     'dials',
-    'dxtbx',
     'labelit',
     'xfel',
     'cxi_xdr_xes',
@@ -2100,7 +2099,6 @@ class XFELBuilder(CCIBuilder):
 class PhenixBuilder(CCIBuilder):
   CODEBASES_EXTRA = [
     'chem_data',
-    'dxtbx',
     'phenix',
     'phenix_regression',
     'phenix_html',
@@ -2129,7 +2127,6 @@ class PhenixBuilder(CCIBuilder):
   HOT_EXTRA = ['msgpack']
   LIBTBX_EXTRA = [
     'chem_data',
-    'dxtbx',
     'phenix',
     'phenix_regression',
     'phenix_examples',
