@@ -190,6 +190,7 @@ class settings_window () :
 class HKLViewFrame () :
   def __init__ (self, *args, **kwds) :
     self.miller_array = None
+    self.valid_arrays = []
     self.spacegroup_choices = []
     self.procarrays = []
     self.array_info = []

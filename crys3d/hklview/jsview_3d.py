@@ -22,6 +22,19 @@ nanval = float('nan')
 inanval = -42424242 # TODO: find a more robust way of indicating missing data
 
 
+class MyMsgQueue:
+  def __init__(self, thisview):
+    self.thisview = thisview
+
+  def EmptyMsgQueue(self, thisview):
+    while True:
+        sleep(1)
+        if hasattr(self.thisview, "pendingmessage") and self.thisview.pendingmessage:
+          self.thisview.SendWebSockMsg(self.thisview.pendingmessage)
+          self.thisview.pendingmessage = None
+
+
+
 
 class ArrayInfo:
   def __init__(self, millarr):
@@ -51,9 +64,6 @@ class ArrayInfo:
       ( millarr.index_span().min(), millarr.index_span().max())
     self.infostr = "%s (%s), %s %s, %s" % \
       (self.labels, self.desc, millarr.size(), self.span, self.minmaxstr)
-
-
-
 
 
 class hklview_3d:
@@ -127,11 +137,10 @@ class hklview_3d:
     self.UseOSBrowser = True
     if kwds.has_key('UseOSBrowser'):
       self.UseOSBrowser = kwds['UseOSBrowser']
+    self.viewmtrxelms = None
+    self.pendingmessage = None
 
 
-  #def mprint(self, m, verbose=False):
-  #  if self.verbose or verbose:
-  #    print m
 
   def __exit__(self, exc_type, exc_value, traceback):
     # not called unless instantiated with a "with hklview_3d ... " statement
@@ -290,6 +299,34 @@ class hklview_3d:
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
+  #--- user input and settings
+  def update_settings (self) :
+    self.construct_reciprocal_space(merge=self.merge)
+    self.DrawNGLJavaScript()
+    msg = "Rendered %d reflections\n" % self.scene.points.size()
+    return msg
+
+
+  def process_pick_points (self) :
+    self.closest_point_i_seq = None
+    if (self.pick_points is not None) and (self.scene is not None) :
+      closest_point_i_seq = gltbx.viewer_utils.closest_visible_point(
+        points=self.scene.points,
+        atoms_visible=self.scene.visible_points,
+        point0=self.pick_points[0],
+        point1=self.pick_points[1])
+      if (closest_point_i_seq is not None) :
+        self.closest_point_i_seq = closest_point_i_seq
+    if (self.closest_point_i_seq is not None) :
+      self.scene.label_points.add(self.closest_point_i_seq)
+      self.GetParent().update_clicked(index=self.closest_point_i_seq)
+      #hkl, d_min, value = self.scene.get_reflection_info(
+      #  self.closest_point_i_seq)
+      #self.GetParent().update_clicked(hkl, d_min, value)
+    else :
+      self.GetParent().update_clicked(index=None)
+
+
   def DrawNGLJavaScript(self):
     if self.miller_array is None :
       self.mprint( "A miller array must be selected for drawing" )
@@ -444,7 +481,8 @@ class hklview_3d:
     color: colours[%d],
     radius: radii[%d],
     picking: ttips[%d],
-  })
+  }, { disableImpostor: true }) // disableimposter allows wireframe spheres
+
   shape.addBuffer(spherebufs[%d])
       """ %(nreflsinbin, ibin, str(spbufttips[ibin]).replace('\"', '\''), ibin, str(positions[ibin]),
       ibin, str(colours[ibin]), ibin, str(radii2[ibin]),
@@ -581,7 +619,7 @@ var hklscene = function () {
   shapeComp.autoView();
   repr.update()
 
-  // if some radii are negative then indicate with metallic colour
+  // if some radii are negative draw them with wireframe
   %s
 
   colourgradvalarray = %s
@@ -656,15 +694,16 @@ mysocket.onmessage = function (e) {
   mysocket.send('got ' + e.data ); // tell server what it sent us
   try {
     val = e.data.split(",")
-    var ibin = parseInt(val[1])
 
     if (val[0] === "alpha") {
+      ibin = parseInt(val[1])
       alpha = parseFloat(val[2])
       spherebufs[ibin].setParameters({opacity: alpha})
       stage.viewer.requestRender()
     }
 
     if (val[0] === "colour") {
+      ibin = parseInt(val[1])
       si =  parseInt(val[2])
       colours[ibin][3*si] = parseFloat(val[3])
       colours[ibin][3*si+1] = parseFloat(val[4])
@@ -677,8 +716,24 @@ mysocket.onmessage = function (e) {
       stage.viewer.requestRender()
     }
 
+    if (val[0] === "ReOrient") {
+      mysocket.send( 'Reorienting ' + pagename );
+      sm = new Float32Array(16);
+      for (j=0; j<16; j++)
+        sm[j] = parseFloat(val[j + 2]) // first 2 are "ReOrient", "NGL\\n"
+
+      var m = new NGL.Matrix4();
+      m.fromArray(sm);
+      stage.viewerControls.orient(m);
+      stage.viewer.requestRender();
+    }
+
     if (val[0] === "Reload") {
     // refresh browser with the javascript file
+      cvorient = stage.viewerControls.getOrientation().elements
+      msg = String(cvorient)
+      mysocket.send('Current vieworientation:\\n, ' + msg );
+
       mysocket.send( 'Refreshing ' + pagename );
       window.location.reload(true);
     }
@@ -700,43 +755,23 @@ mysocket.onmessage = function (e) {
     self.ReloadNGL()
 
 
-  #--- user input and settings
-  def update_settings (self) :
-    self.construct_reciprocal_space(merge=self.merge)
-    self.DrawNGLJavaScript()
-    msg = "Rendered %d reflections\n" % self.scene.points.size()
-    return msg
-
-
-  def process_pick_points (self) :
-    self.closest_point_i_seq = None
-    if (self.pick_points is not None) and (self.scene is not None) :
-      closest_point_i_seq = gltbx.viewer_utils.closest_visible_point(
-        points=self.scene.points,
-        atoms_visible=self.scene.visible_points,
-        point0=self.pick_points[0],
-        point1=self.pick_points[1])
-      if (closest_point_i_seq is not None) :
-        self.closest_point_i_seq = closest_point_i_seq
-    if (self.closest_point_i_seq is not None) :
-      self.scene.label_points.add(self.closest_point_i_seq)
-      self.GetParent().update_clicked(index=self.closest_point_i_seq)
-      #hkl, d_min, value = self.scene.get_reflection_info(
-      #  self.closest_point_i_seq)
-      #self.GetParent().update_clicked(hkl, d_min, value)
-    else :
-      self.GetParent().update_clicked(index=None)
-
-
   def OnConnectWebsocketClient(self, client, server):
     self.websockclient = client
-    self.mprint( "got a new client:" + str( self.websockclient ) )
+    self.mprint( "New client:" + str( self.websockclient ) )
 
 
   def OnWebsocketClientMessage(self, client, server, message):
     if message != "":
       self.mprint( message)
     self.lastmsg = message
+    if "Current vieworientation:" in message:
+      # The NGL.Matrix4 with the orientation is a list of floats.
+      self.viewmtrxelms = message[ message.find("\n") : ]
+      #sleep(2.0)
+      self.mprint( "Reorienting client after refresh:" + str( self.websockclient ) )
+      self.pendingmessage = u"ReOrient, NGL" + self.viewmtrxelms
+      #self.viewmtrxelms = None
+
 
 
   def StartWebsocket(self):
@@ -747,6 +782,12 @@ mysocket.onmessage = function (e) {
     self.wst.daemon = True
     self.wst.start()
 
+    self.myqueue = MyMsgQueue(self)
+    self.msgqueuethrd = threading.Thread(target = self.myqueue.EmptyMsgQueue, args = (self,) )
+    self.msgqueuethrd.daemon = True
+    self.msgqueuethrd.start()
+
+
 
   def SendWebSockMsg(self, msg):
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -755,6 +796,7 @@ mysocket.onmessage = function (e) {
     if self.websockclient:
       while "Refreshing" in self.lastmsg:
         sleep(0.5)
+        self.lastmsg = ""
       self.server.send_message(self.websockclient, msg )
     else:
       self.OpenBrowser()
@@ -768,6 +810,7 @@ mysocket.onmessage = function (e) {
     self.SendWebSockMsg(msg)
 
 
+
   def RedrawNGL(self):
     self.SendWebSockMsg( u"Redraw, NGL\n" )
 
@@ -777,8 +820,8 @@ mysocket.onmessage = function (e) {
     self.SendWebSockMsg( u"Reload, NGL\n" )
 
 
+
   def OpenBrowser(self):
-    #NGLlibpath = os.path.join( libtbx.env.under_dist("crys3d", "hklview"), "ngl.js")
     NGLlibpath = libtbx.env.under_root(os.path.join("modules","cctbx_project","crys3d","hklview","ngl.js") )
     htmlstr = self.hklhtml %(NGLlibpath, os.path.abspath( self.jscriptfname))
     htmlstr += self.htmldiv
