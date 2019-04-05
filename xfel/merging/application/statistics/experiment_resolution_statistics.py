@@ -86,7 +86,7 @@ class experiment_resolution_statistics(worker):
       if hkl in self.hkl_resolution_bins:
         i_bin = self.hkl_resolution_bins[hkl]
         for refl in refls:
-          experiments_per_resolution_bins[i_bin].add(refl['id'])
+          experiments_per_resolution_bins[i_bin].add(refl['exp_id'])
 
     # For each bin, reduce the sets of unique experiment ids to their count
     for i_bin in range(self.resolution_binner.n_bins_all()):

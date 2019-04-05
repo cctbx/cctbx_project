@@ -23,7 +23,6 @@ namespace sx_merging {
                           const scitbx::af::shared<miller_index_t>& hkl_list,
                           const scitbx::af::shared<int>& chunk_id_list,
                           boost::python::list hkl_chunks_cpp){
-
     // set up a map hkl:chunk_id
     std::map<miller_index_t, size_t> chunk_lookup;
     for(size_t i = 0UL; i < hkl_list.size(); ++i){
@@ -33,15 +32,17 @@ namespace sx_merging {
     SCITBX_ASSERT(reflections.contains("miller_index_asymmetric"));
     SCITBX_ASSERT(reflections.contains("intensity.sum.value"));
     SCITBX_ASSERT(reflections.contains("intensity.sum.variance"));
+    SCITBX_ASSERT(reflections.contains("exp_id"));
 
-    scitbx::af::ref<miller_index_t> miller_index = reflections["miller_index_asymmetric"];
-    scitbx::af::ref<double> intensity = reflections["intensity.sum.value"];
-    scitbx::af::ref<double> variance = reflections["intensity.sum.variance"];
+    scitbx::af::ref<miller_index_t> miller_index    = reflections["miller_index_asymmetric"];
+    scitbx::af::ref<double> intensity               = reflections["intensity.sum.value"];
+    scitbx::af::ref<double> variance                = reflections["intensity.sum.variance"];
+    scitbx::af::ref<std::string> experiment_id      = reflections["exp_id"];
 
-    miller_index_t* mi_ptr = miller_index.begin();
-    double* intensity_ptr = intensity.begin();
-    double* variance_ptr = variance.begin();
-
+    miller_index_t* mi_ptr          = miller_index.begin();
+    double* intensity_ptr           = intensity.begin();
+    double* variance_ptr            = variance.begin();
+    std::string* experiment_id_ptr  = experiment_id.begin();
 
     int n_chunks = boost::python::len(hkl_chunks_cpp);
     std::vector<dials::af::reflection_table> tables;
@@ -54,11 +55,13 @@ namespace sx_merging {
     std::vector<scitbx::af::shared<miller_index_t> >  mi_cols;
     std::vector<scitbx::af::shared<double> >          intensity_cols;
     std::vector<scitbx::af::shared<double> >          variance_cols;
+    std::vector<scitbx::af::shared<std::string> >     experiment_id_cols;
 
     for(size_t i=0UL; i < n_chunks; ++i){
       mi_cols.push_back(tables[i]["miller_index_asymmetric"]);
       intensity_cols.push_back(tables[i]["intensity.sum.value"]);
       variance_cols.push_back(tables[i]["intensity.sum.variance"]);
+      experiment_id_cols.push_back(tables[i]["exp_id"]);
     }
 
     // distribute reflections over chunks
@@ -66,6 +69,7 @@ namespace sx_merging {
       miller_index_t  hkl       = *mi_ptr++;
       double          intensity = *intensity_ptr++;
       double          variance  = *variance_ptr++;
+      std::string     experiment_id = *experiment_id_ptr++;
 
       if( 0 != chunk_lookup.count(hkl) )
       {
@@ -73,6 +77,7 @@ namespace sx_merging {
           mi_cols[chunk_id].push_back(hkl);
           intensity_cols[chunk_id].push_back(intensity);
           variance_cols[chunk_id].push_back(variance);
+          experiment_id_cols[chunk_id].push_back(experiment_id);
        }
     }
   }

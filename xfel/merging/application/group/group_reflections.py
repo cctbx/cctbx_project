@@ -28,6 +28,7 @@ class hkl_group(worker):
     table['miller_index_asymmetric']  = flex.miller_index()
     table['intensity.sum.value']      = flex.double()
     table['intensity.sum.variance']   = flex.double()
+    table['exp_id']                   = flex.std_string()
     return table
 
   def run(self, experiments, reflections):
@@ -89,6 +90,7 @@ class hkl_group(worker):
 
       # distribute reflections over hkl chunks
       from xfel.merging import get_hkl_chunks_cpp
+
       get_hkl_chunks_cpp(reflections, hkl_list, chunk_id_list, self.hkl_chunks)
 
       for i in range(len(self.hkl_chunks)):

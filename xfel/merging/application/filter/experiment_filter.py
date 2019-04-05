@@ -38,22 +38,18 @@ class experiment_filter(worker):
     return is_ok
 
   @staticmethod
-  def remove_experiments(experiments, reflections, remove_experiment_ids):
+  def remove_experiments(experiments, reflections, experiment_ids_to_remove):
     '''Remove specified experiments from the experiment list. Remove corresponding reflections from the reflection table'''
 
     new_experiments = ExperimentList()
     new_reflections = flex.reflection_table()
 
-    for expt_id, experiment in enumerate(experiments):
-      if expt_id in remove_experiment_ids:
+    for experiment in experiments:
+      if experiment.identifier in experiment_ids_to_remove:
         continue
       new_experiments.append(experiment)
-      refls = reflections.select(reflections['id'] == expt_id)
-      refls['id'] = flex.int(len(refls), len(new_experiments)-1)
+      refls = reflections.select(reflections['exp_id'] == experiment.identifier)
       new_reflections.extend(refls)
-
-    if len(new_reflections) > 0:
-      assert max(new_reflections['id']) == len(new_experiments) - 1
 
     return new_experiments, new_reflections
 
@@ -61,19 +57,19 @@ class experiment_filter(worker):
 
     self.logger.log_step_time("FILTER_EXPERIMENTS")
 
-    remove_experiment_ids = []
+    experiment_ids_to_remove = []
 
     removed_for_unit_cell = 0
     removed_for_space_group = 0
-    for experiment_id, experiment in enumerate(experiments):
+    for experiment in experiments:
       if not self.check_space_group(experiment):
-        remove_experiment_ids.append(experiment_id)
+        experiment_ids_to_remove.append(experiment.identifier)
         removed_for_space_group += 1
       elif not self.check_unit_cell(experiment):
-        remove_experiment_ids.append(experiment_id)
+        experiment_ids_to_remove.append(experiment.identifier)
         removed_for_unit_cell += 1
 
-    new_experiments, new_reflections = experiment_filter.remove_experiments(experiments, reflections, remove_experiment_ids)
+    new_experiments, new_reflections = experiment_filter.remove_experiments(experiments, reflections, experiment_ids_to_remove)
 
     removed_reflections = len(reflections) - len(new_reflections)
     assert removed_for_space_group + removed_for_unit_cell == len(experiments) - len(new_experiments)

@@ -31,8 +31,8 @@ class reflection_filter(worker):
     new_experiments = ExperimentList()
     new_reflections = flex.reflection_table()
 
-    for exp_id, experiment in enumerate(experiments):
-      exp_reflections = reflections.select(reflections['id'] == exp_id)
+    for experiment in experiments:
+      exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
 
       N_obs_pre_filter = exp_reflections.size()
 
@@ -78,7 +78,6 @@ class reflection_filter(worker):
 
         if new_exp_reflections.size() > 0:
           new_experiments.append(experiment)
-          new_exp_reflections['id'] = flex.int(len(new_exp_reflections), len(new_experiments)-1)
           new_reflections.extend(new_exp_reflections)
 
         #self.logger.log("N acceptable bins %d"%N_acceptable_bins)

@@ -106,7 +106,7 @@ class intensity_table(object):
     ])
     table_data = table_utils.manage_columns(table_data, include_columns)
 
-    return ("\n                                     Intensity Statistics\n" + table_utils.format(table_data, has_header = 2, justify ='center', delim = " "))
+    return table_utils.format(table_data, has_header = 2, justify ='center', delim = " ")
 
 class intensity_resolution_statistics(worker):
   '''Calculates hkl intensity statistics for resolution bins'''
@@ -116,6 +116,32 @@ class intensity_resolution_statistics(worker):
 
   def run(self, experiments, reflections):
     self.logger.log_step_time("INTENSITY_STATISTICS")
+
+    title = "\n                     Intensity Statistics (all accepted experiments)\n"
+    self.logger.log(title, rank_prepend=False)
+    if self.mpi_helper.rank == 0:
+      self.logger.main_log(title)
+    self.run_detail(reflections)
+
+    title = "\n                     Intensity Statistics (odd accepted experiments)\n"
+    self.logger.log(title, rank_prepend=False)
+    if self.mpi_helper.rank == 0:
+      self.logger.main_log(title)
+    reflections_odd = reflection_table_utils.select_odd_experiment_reflections(reflections)
+    self.run_detail(reflections_odd)
+
+    title = "\n                     Intensity Statistics (even accepted experiments)\n"
+    self.logger.log(title, rank_prepend=False)
+    if self.mpi_helper.rank == 0:
+      self.logger.main_log(title)
+    reflections_even = reflection_table_utils.select_even_experiment_reflections(reflections)
+    self.run_detail(reflections_even)
+
+    self.logger.log_step_time("INTENSITY_STATISTICS", True)
+
+    return experiments, reflections
+
+  def run_detail(self, reflections):
 
     # Get pre-created resolution binning objects from the parameters
     self.resolution_binner = self.params.statistics.resolution_binner
@@ -134,12 +160,15 @@ class intensity_resolution_statistics(worker):
     # Calculate, format and output statistics for each rank
     if reflections.size() > 0:
       self.calculate_intensity_statistics(reflections)
-      Intensity_Table = self.build_intensity_table(I_sum = self.I_sum,
+
+      Intensity_Table = self.build_intensity_table(
+                                                  I_sum = self.I_sum,
                                                   Isig_sum = self.Isig_sum,
                                                   n_sum = self.n_sum,
                                                   m_sum = self.m_sum,
                                                   mm_sum = self.mm_sum)
-      self.logger.log(Intensity_Table.get_table_text())
+
+      self.logger.log(Intensity_Table.get_table_text(), rank_prepend=False)
 
     # Accumulate statistics from all ranks
     all_ranks_I_sum       = self.mpi_helper.cumulative_flex(self.I_sum, flex.double)
@@ -150,16 +179,13 @@ class intensity_resolution_statistics(worker):
 
     # Calculate, format and output all-rank total statistics
     if self.mpi_helper.rank == 0:
-      Intensity_Table = self.build_intensity_table(I_sum    = all_ranks_I_sum,
+      Intensity_Table = self.build_intensity_table(
+                                                  I_sum    = all_ranks_I_sum,
                                                   Isig_sum  = all_ranks_Isig_sum,
                                                   n_sum     = all_ranks_n_sum,
                                                   m_sum     = all_ranks_m_sum,
                                                   mm_sum    = all_ranks_mm_sum)
       self.logger.main_log(Intensity_Table.get_table_text())
-
-    self.logger.log_step_time("INTENSITY_STATISTICS", True)
-
-    return experiments, reflections
 
   def calculate_intensity_statistics(self, reflections):
     '''Calculate statistics for hkl intensities distributed over resolution bins'''

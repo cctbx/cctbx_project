@@ -39,7 +39,7 @@ class reflection_table_editor(worker):
       all_keys.append(key)
 
     for key in all_keys:
-      if not key in ['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', 'id']:
+      if not key in ['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', 'exp_id', 'odd_frame']:
         del reflections[key]
 
   def run(self, experiments, reflections):

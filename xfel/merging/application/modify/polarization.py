@@ -20,8 +20,8 @@ class polarization(worker):
 
     result = flex.reflection_table()
 
-    for expt_id, experiment in enumerate(experiments):
-      refls = reflections.select(reflections['id'] == expt_id)
+    for experiment in experiments:
+      refls = reflections.select(reflections['exp_id'] == experiment.identifier)
       beam = experiment.beam
       # Remove the need for pixel size within cxi.merge.  Allows multipanel detector with dissimilar panels.
       # Relies on new frame extractor code called by dials.stills_process that writes s0, s1 and polarization normal

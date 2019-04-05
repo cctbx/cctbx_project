@@ -33,11 +33,14 @@ class mpi_logger(object):
     else:
       self.timing_file_path = None
 
-  def log(self, message):
+  def log(self, message, rank_prepend=True):
     '''Log a rank message'''
 
     # Prepend the message with the rank index - helpful for grep-ping
-    rank_message = "Rank %d: %s\n"%(self.mpi_helper.rank, message)
+    if rank_prepend:
+      rank_message = "Rank %d: %s\n"%(self.mpi_helper.rank, message)
+    else:
+      rank_message = message + "\n"
     self.log_buffer += rank_message
 
     if self.rank_log_file_path == None:

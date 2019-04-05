@@ -21,6 +21,12 @@ class postrefinement(worker):
 
     self.logger.log_step_time("POSTREFINEMENT")
 
+    if not self.params.postrefinement.enable:
+      self.logger.log("Postrefinement was not done")
+      if self.mpi_helper.rank == 0:
+        self.logger.main_log("Postrefinement was not done")
+      return experiments, reflections
+
     target_symm = symmetry(unit_cell = self.params.scaling.unit_cell, space_group_info = self.params.scaling.space_group)
     i_model = self.params.scaling.i_model
     miller_set = self.params.scaling.miller_set
@@ -40,9 +46,9 @@ class postrefinement(worker):
 
     experiments_rejected_by_reason = {} # reason:how_many_rejected
 
-    for exp_id, experiment in enumerate(experiments):
+    for experiment in experiments:
 
-      exp_reflections = reflections.select(reflections['id'] == exp_id)
+      exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
 
       # Build a miller array for the experiment reflections with original miller indexes
       exp_miller_indices_original = miller.set(target_symm, exp_reflections['miller_index'], True)
@@ -188,12 +194,12 @@ class postrefinement(worker):
         new_exp_reflections['miller_index_asymmetric']  = flex.miller_index(result_observations.indices())
         new_exp_reflections['intensity.sum.value']      = flex.double(result_observations.data())
         new_exp_reflections['intensity.sum.variance']   = flex.double(flex.pow(result_observations.sigmas(),2))
-        new_exp_reflections['id']                       = flex.int(len(new_exp_reflections), len(new_experiments)-1)
+        new_exp_reflections['exp_id']                   = flex.std_string(len(new_exp_reflections), experiment.identifier)
         new_reflections.extend(new_exp_reflections)
       '''
       # debugging
       elif reason.startswith("ValueError"):
-        self.logger.log("Rejected b/c of value error exp id: %d; unit cell: %s"%(exp_id, str(experiment.crystal.get_unit_cell())) )
+        self.logger.log("Rejected b/c of value error exp id: %s; unit cell: %s"%(exp_id, str(experiment.crystal.get_unit_cell())) )
       '''
 
     # report rejected experiments, reflections
