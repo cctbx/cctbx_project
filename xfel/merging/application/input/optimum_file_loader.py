@@ -24,7 +24,7 @@ class file_load_calculator(object):
   def calculate_file_load(self):
     if self.params.file_load == simple:
       return self.calculate_file_load_simple()
-    else
+    else:
       return self.calculate_file_load_smart()
 
   # distribute files over input number of ranks. Return a dictionary {rank:file_list}
