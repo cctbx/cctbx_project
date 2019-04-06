@@ -1,7 +1,0 @@
-{
-  "modules_required_for_use" : [ "iotbx", "cbflib_adaptbx" ],
-  "python_required": [
-    "mock>=2.0",
-    "pytest>=3.1"
-  ],
-}
