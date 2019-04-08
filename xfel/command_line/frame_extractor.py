@@ -22,7 +22,7 @@ phil_scope = iotbx.phil.parse("""
       .help = path to an experiments.json file
     reflections = None
       .type = path
-      .help = path to a reflection table (integrated.pickle) file
+      .help = path to a reflection table (integrated.mpack) file
   }
   output {
     filename = None

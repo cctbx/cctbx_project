@@ -281,15 +281,15 @@ class construct_reflection_table_and_experiment_list(object):
     self.refl_kapton_correction_maker()
     self.refl_s1_maker() # depends on successful completion of refl_xyz_obs_maker
 
-  def reflections_to_pickle(self, path_name=None):
+  def reflections_to_msgpack_file(self, path_name=None):
     if path_name is None:
       loc = os.path.dirname(self.pickle)
     else:
       loc = path_name
     name = os.path.basename(self.pickle).split(".pickle")[0]
-    refl_name = int_pickle_to_filename(name, "idx-", "_integrated.pickle")
+    refl_name = int_pickle_to_filename(name, "idx-", "_integrated.mpack")
     reflections = os.path.join(loc, refl_name)
-    self.reflections.as_pickle(reflections)
+    self.reflections.as_msgpack_file(reflections)
 
 if __name__ == "__main__":
   master_phil_scope = iotbx.phil.parse("""
@@ -324,7 +324,7 @@ if __name__ == "__main__":
       result.assemble_experiments()
       result.assemble_reflections()
       result.experiments_to_json(params.json_location)
-      result.reflections_to_pickle(params.refl_location)
+      result.reflections_to_msgpack_file(params.refl_location)
     else:
       print "Skipping unreadable pickle file at", pickle_path
-  print 'Generated experiments.json and integrated.pickle files.'
+  print 'Generated experiments.json and integrated.mpack files.'
