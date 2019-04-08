@@ -34,7 +34,7 @@ https://conda.anaconda.org/conda-forge/noarch/funcsigs-1.0.2-py_3.tar.bz2#0b5d88
 https://conda.anaconda.org/conda-forge/noarch/functools32-3.2.3.2-py_3.tar.bz2#de00994d4b9b843598b117e4bd3cb034
 https://conda.anaconda.org/conda-forge/win-64/future-0.17.1-py27_1000.tar.bz2#ea6c7c63c47db8b72b8c3bd50651aa45
 https://conda.anaconda.org/conda-forge/win-64/futures-3.2.0-py27_1000.tar.bz2#810a8a7d0d0eb994fd24d60f3157206a
-https://conda.anaconda.org/conda-forge/win-64/hdf5-1.10.4-nompi_hcc15c50_1106.tar.bz2#8eaf2a08642884d181c8b9a476f636ce
+https://conda.anaconda.org/conda-forge/win-64/hdf5-1.10.4-nompi_hb8085ad_1106.tar.bz2#ae7fae1dedacfbb09d549f437d414f76
 https://conda.anaconda.org/conda-forge/win-64/idna-2.8-py27_1000.tar.bz2#50dc03f146f548ecbd983a3f21d5677c
 https://conda.anaconda.org/conda-forge/noarch/imagesize-1.1.0-py_0.tar.bz2#6b1a5989b9313f2c6e17b5359143b46d
 https://conda.anaconda.org/conda-forge/noarch/ipaddress-1.0.22-py_1.tar.bz2#6f2f5f4eab2ae49842b75fc82fa01783

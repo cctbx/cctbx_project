@@ -33,7 +33,7 @@ https://conda.anaconda.org/conda-forge/win-64/cython-0.29.5-py36h6538335_0.tar.b
 https://conda.anaconda.org/conda-forge/noarch/decorator-4.3.2-py_0.tar.bz2#fb879b2b55fccc7d86d00700a722a936
 https://conda.anaconda.org/conda-forge/win-64/docutils-0.14-py36_1001.tar.bz2#f54cee9ef9319a5ba26f03823605669f
 https://conda.anaconda.org/conda-forge/win-64/future-0.17.1-py36_1000.tar.bz2#f8d67aa71c7be2c068e3b5e71946c24e
-https://conda.anaconda.org/conda-forge/win-64/hdf5-1.10.4-nompi_hcc15c50_1106.tar.bz2#8eaf2a08642884d181c8b9a476f636ce
+https://conda.anaconda.org/conda-forge/win-64/hdf5-1.10.4-nompi_hb8085ad_1106.tar.bz2#ae7fae1dedacfbb09d549f437d414f76
 https://conda.anaconda.org/conda-forge/win-64/idna-2.8-py36_1000.tar.bz2#8a0de0902020323c8afd89b13375c3f0
 https://conda.anaconda.org/conda-forge/noarch/imagesize-1.1.0-py_0.tar.bz2#6b1a5989b9313f2c6e17b5359143b46d
 https://conda.anaconda.org/conda-forge/noarch/ipython_genutils-0.2.0-py_1.tar.bz2#5071c982548b3a20caf70462f04f5287
