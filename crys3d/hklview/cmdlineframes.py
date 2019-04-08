@@ -28,7 +28,7 @@ myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", htmlfname = "
 
 myHKLview.SetColumn(3)
 myHKLview.SetSphereScale(3)
-myHKLview.SetColumnBinThresholds("asdf", [0, 0.1, 1, 10])
+myHKLview.SetColumnBinThresholds(3, [0, 0.1, 1, 10])
 myHKLview.ExpandToP1(True)
 myHKLview.SetOpacity(2, 0.1)
 
@@ -444,7 +444,7 @@ class HKLViewFrame () :
 
   def SetColumnBinThresholds(self, iarray, binvals):
     self.viewer.iarray = iarray
-    self.viewer.binvals = binvals
+    self.viewer.UpdateBinValues( binvals )
     self.update_settings()
 
 
@@ -529,5 +529,19 @@ class HKLViewFrame () :
     as to match the currently selected miller array
     """
     return self.viewer.matchingarrayinfo
+
+
+  def GetBinInfo(self):
+    """
+    return array of number of hkls and bin boundaries of the bins the current miller array data has been sorted into.
+    Useful when deciding which bin of reflections to make transparent
+    """
+    return self.viewer.binstrs
+
+
+
+
+
+
 
 

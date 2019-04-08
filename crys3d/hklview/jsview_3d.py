@@ -8,6 +8,7 @@ from cctbx.miller import display
 from cctbx.array_family import flex
 from scitbx import graphics_utils
 from cctbx import miller
+from libtbx.utils import Sorry
 from websocket_server import WebsocketServer
 import threading, math, sys
 from time import sleep
@@ -86,8 +87,8 @@ class hklview_3d:
     self.iarray = 0
     self.icolourcol = 0
     self.iradiicol = 0
-    self.has_negative_radii = False
     self.binvals = []
+    self.workingbinvals = []
     self.valid_arrays = []
     self.otherscenes = []
     self.othermaxdata = []
@@ -95,6 +96,7 @@ class hklview_3d:
     self.othermaxsigmas = []
     self.otherminsigmas = []
     self.matchingarrayinfo = []
+    self.binstrs = []
     self.mprint = sys.stdout.write
     if kwds.has_key('mprint'):
       self.mprint = kwds['mprint']
@@ -201,6 +203,9 @@ class hklview_3d:
     self.othermaxdata = []
     self.othermindata = []
     self.matchingarrayinfo = []
+    # loop over all miller arrays to find the subsets of hkls common between currently selected
+    # miler array and the other arrays. hkls found in the currently selected miller array but
+    # missing in the subsets are populated populated with NaN values
     for i,validarray in enumerate(self.valid_arrays):
       # first match indices in currently selected miller array with indices in the other miller arrays
       #matchindices = miller.match_indices(matchcolourradiiarray.indices(), validarray.indices() )
@@ -213,7 +218,7 @@ class hklview_3d:
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if valarray.anomalous_flag() and not self.miller_array.anomalous_flag():
         # valarray gets its anomalous_flag from validarray. But it cannot have more HKLs than self.miller_array
-        # so set its anomalous_flag to False if self.miller_array is nto anomalous
+        # so set its anomalous_flag to False if self.miller_array is not anomalous data
         valarray._anomalous_flag = False
       if not valarray.anomalous_flag() and self.miller_array.anomalous_flag():
         # temporary expand other arrays to anomalous if self.miller_array is anomalous
@@ -236,7 +241,6 @@ class hklview_3d:
 
       valarray._indices.extend( missing.indices() )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      #match_valarray = valarray.select( commonarray.match_indices( valarray ).pairs().column(1) )
       match_valindices = miller.match_indices(self.miller_array.indices(), valarray.indices() )
       match_valarray = valarray.select( match_valindices.pairs().column(1) )
       match_valarray.sort(by_value="packed_indices")
@@ -249,7 +253,6 @@ class hklview_3d:
       # cast any NAN values to -1 of the colours and radii arrays before writing javascript
       nplst = np.array( list( otherscene.data ) )
       mask = np.isnan(nplst)
-
       npcolour = np.array( list(otherscene.colors))
       npcolourcol = npcolour.reshape( len(otherscene.data), 3 )
       npcolourcol[mask] = -1
@@ -258,7 +261,6 @@ class hklview_3d:
 
       nplst = np.array( list( otherscene.radii ) )
       mask = np.isnan(nplst)
-
       npradii = np.array( list(otherscene.radii))
       npradiicol = npradii.reshape( len(otherscene.data), 1 )
       npradiicol[mask] = 0.2
@@ -288,15 +290,7 @@ class hklview_3d:
       infostr = ArrayInfo(otherscene.work_array).infostr
       self.mprint("%d, %s" %(i, infostr) )
       self.matchingarrayinfo.append(infostr)
-      """
-      if otherscene.sigmas is not None:
-        self.mprint( "%d, %s, min,max: [%s; %s], minsig,maxsig:  [%s; %s]" \
-          %(i, validarray.info().label_string(), roundoff(mindata), roundoff(maxdata), roundoff(minsigmas), roundoff(maxsigmas)) )
-      else:
-        self.mprint( "%d, %s, min,max: [%s; %s]" \
-          %(i, validarray.info().label_string(), roundoff(mindata), roundoff(maxdata)) )
-      """
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
   #--- user input and settings
@@ -325,6 +319,10 @@ class hklview_3d:
       #self.GetParent().update_clicked(hkl, d_min, value)
     else :
       self.GetParent().update_clicked(index=None)
+
+
+  def UpdateBinValues(self, binvals = [] ):
+    self.binvals = binvals
 
 
   def DrawNGLJavaScript(self):
@@ -405,18 +403,14 @@ class hklview_3d:
     radii2 = []
     spbufttips = []
 
-    if len(self.binvals) <1:
-      self.binvals.append( self.othermaxdata[self.iarray] )
-
-    self.has_negative_radii = False
-
-    if self.iarray==self.iradiicol and self.othermindata[self.iradiicol] < 0.0:
-      self.binvals.insert(0, self.othermindata[self.iarray])
-      self.binvals.insert(1, 0.0)
-      self.has_negative_radii = True
-
-
-    self.nbin = len(self.binvals)
+    self.workingbinvals = []
+    self.workingbinvals = [ self.othermindata[self.iarray] - 0.1 , self.othermaxdata[self.iarray] + 0.1 ]
+    self.workingbinvals.extend( self.binvals )
+    self.workingbinvals.sort()
+    if self.workingbinvals[0] < 0.0:
+       self.workingbinvals.append(0.0)
+       self.workingbinvals.sort()
+    self.nbin = len(self.workingbinvals)
 
     for ibin in range(self.nbin):
       colours.append([]) # colours and positions are 3 x size of data()
@@ -425,13 +419,14 @@ class hklview_3d:
       spbufttips.append([])
 
     def data2bin(d):
-      for ibin, binval in enumerate(self.binvals):
+      for ibin, binval in enumerate(self.workingbinvals):
         if (ibin+1) == self.nbin:
           return ibin
-        if d > binval and d <= self.binvals[ibin+1]:
+        if d > binval and d <= self.workingbinvals[ibin+1]:
           return ibin
       raise Sorry("Should never get here")
 
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
       ibin = data2bin( self.otherscenes[self.iarray].data[i] )
@@ -464,14 +459,19 @@ class hklview_3d:
   spherebufs = new Array(%d)
     """ %(self.nbin, self.nbin, self.nbin, self.nbin, self.nbin)
 
+    negativeradiistr = ""
+    cntbin = 0
+    self.binstrs = []
     for ibin in range(self.nbin):
+      mstr =""
       nreflsinbin = len(radii2[ibin])
-      if (ibin+1) < self.nbin:
-        self.mprint( "%d reflections with %s in ]%2.2f; %2.2f]" %(nreflsinbin, colstr,
-                      self.binvals[ibin], self.binvals[ibin+1]), verbose=True )
-      if nreflsinbin > 0:
+      if (ibin+1) < self.nbin and nreflsinbin > 0:
+        mstr= "%d reflections with %s in ]%2.2f; %2.2f]" %(nreflsinbin, colstr, \
+                      self.workingbinvals[ibin], self.workingbinvals[ibin+1])
+        self.binstrs.append(mstr)
+        self.mprint(mstr, verbose=True)
         spherebufferstr += """
-  // %d spheres
+  // %s
   ttips[%d] = %s
   positions[%d] = new Float32Array( %s )
   colours[%d] = new Float32Array( %s )
@@ -484,9 +484,13 @@ class hklview_3d:
   }, { disableImpostor: true }) // disableimposter allows wireframe spheres
 
   shape.addBuffer(spherebufs[%d])
-      """ %(nreflsinbin, ibin, str(spbufttips[ibin]).replace('\"', '\''), ibin, str(positions[ibin]),
-      ibin, str(colours[ibin]), ibin, str(radii2[ibin]),
-      ibin, ibin, ibin, ibin, ibin, ibin )
+      """ %(mstr, cntbin, str(spbufttips[ibin]).replace('\"', '\''), \
+         cntbin, str(positions[ibin]), cntbin, str(colours[ibin]), \
+         cntbin, str(radii2[ibin]), cntbin, cntbin, cntbin, cntbin, cntbin, cntbin )
+
+        if self.workingbinvals[ibin] < 0.0:
+          negativeradiistr += "spherebufs[%d].setParameters({metalness: 1})\n" %cntbin
+        cntbin += 1
 
     spherebufferstr += """
 // create tooltip element and add to the viewer canvas
@@ -538,9 +542,11 @@ class hklview_3d:
       colourgradstr.append([vstr , gradval])
     colourgradstr = str(colourgradstr)
 
-    negativeradiistr = ""
-    if self.has_negative_radii:
-      negativeradiistr = "spherebufs[0].setParameters({metalness: 1})"
+    #negativeradiistr = ""
+    #for ibin in range(self.nbin):
+    #  if self.workingbinvals[ibin] < 0.0:
+    #    negativeradiistr += "spherebufs[%d].setParameters({metalness: 1})\n" %ibin
+
 
 
     self.NGLscriptstr = """

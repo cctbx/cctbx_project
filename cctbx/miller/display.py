@@ -123,8 +123,8 @@ class scene(object):
     settings = self.settings
     data = array.data()
     self.missing_set = oop.null()
-    if (array.is_xray_intensity_array()):
-      data.set_selected(data < 0, flex.double(data.size(), 0.))
+    #if (array.is_xray_intensity_array()):
+    #  data.set_selected(data < 0, flex.double(data.size(), 0.))
     if (array.is_unique_set_under_symmetry()) and (settings.map_to_asu):
       array = array.map_to_asu()
       if (multiplicities is not None):
