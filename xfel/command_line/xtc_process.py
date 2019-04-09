@@ -907,7 +907,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         from dxtbx.model.experiment_list import ExperimentListFactory
 
         combined_experiments = ExperimentListFactory.from_json_file(combined_experiments_file, check_format=False)
-        combined_reflections = flex.reflection_table.from_msgpack_file(combined_reflections_file)
+        combined_reflections = flex.reflection_table.from_file(combined_reflections_file)
 
         from dials.algorithms.refinement import RefinerFactory
 

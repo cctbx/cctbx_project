@@ -67,7 +67,7 @@ phil_scope = parse("""
     .type = choice
     .help = Algorithm to be used for choosing the n_subset images/experiments for \
             refinement.  n_refl chooses the set with the largest numbers of reflections \
-            listed in the mpack files, thus giving maximal coverage of the detector tiles \
+            listed in the reflection table files, thus giving maximal coverage of the detector tiles \
             with the fewest refineable parameters. Significance_filter chooses the subset of \
             images with maximum reflections above an I/sigI cutoff
   n_refl_panel_list = None
