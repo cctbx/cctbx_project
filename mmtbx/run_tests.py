@@ -3,7 +3,6 @@ from libtbx import test_utils
 import libtbx.load_env
 from libtbx import easy_run
 import libtbx.load_env
-from libtbx.test_utils.pytest import discover
 
 general_tests = [
   # ions SVM
@@ -22,6 +21,8 @@ general_tests = [
   # TLS
   "$D/regression/tls/tst_tls.py",
   "$D/regression/tls/tst_tls_analysis.py",
+  "$D/regression/tls/tst_tls_utils.py",
+  "$D/regression/tls/tst_tls_optimise_amplitudes.py",
   "$D/regression/tls/tst_get_t_scheme.py",
   ["$D/regression/tls/tst_tls_refinement_fft.py", "--comprehensive", "--random_seed=2679941"],
   "$D/regression/tls/tst_u_tls_vs_u_ens_00.py",
@@ -358,7 +359,7 @@ general_tests = [
   "$D/regression/fix_cablam/tst_insertion_codes.py",
   #
   "$D/regression/tst_scattering_type_registry.py"
-  ] + discover()
+  ]
 
 probe_tests = [
   "$D/regression/pdb_interpretation/tst_edits.py",

@@ -3,9 +3,9 @@ from __future__ import division
 import math
 import numpy
 from mmtbx.tls.utils import *
-from pytest import approx, raises
-
 from scitbx.array_family import flex
+from libtbx.test_utils import approx_equal, not_approx_equal
+from pytest import raises
 
 rran = numpy.random.random
 iran = numpy.random.choice
@@ -49,16 +49,16 @@ INVALID_TLS_MATRICES = [
 def get_TLS_values():
   vals = rran(21)
   obj = TLSMatrices(values=vals)
-  assert obj.get("TLS") == approx(vals, abs=MAT_RND_TOL)
+  assert approx_equal(obj.get("TLS"), vals, MAT_RND_TOL)
   return obj, vals
 
 def get_TLS_amplitudes(n):
   vals = rran(n)
   obj = TLSAmplitudes(values=vals)
-  assert obj.values == approx(vals, abs=AMP_RND_TOL)
+  assert approx_equal(obj.values, vals, AMP_RND_TOL)
   return obj, vals
 
-def test_set_precision():
+def tst_set_precision():
   for cl in [TLSMatrices, TLSAmplitudes]:
     initial = cl.get_precision()
     for i in range(5):
@@ -75,7 +75,9 @@ def test_set_precision():
     cl.set_precision(initial)
     assert cl.get_precision() == initial
 
-def test_set_tolerance():
+  print 'OK'
+
+def tst_set_tolerance():
   for cl in [TLSMatrices, TLSAmplitudes]:
     initial = cl.get_tolerance()
     for i in range(6):
@@ -92,7 +94,9 @@ def test_set_tolerance():
     cl.set_tolerance(initial)
     assert cl.get_tolerance() == initial
 
-def test_TLSMatrices():
+  print 'OK'
+
+def tst_TLSMatrices():
   """Check classes operating as expected (copying where should be copying rather than referencing...)"""
 
   for _ in range(5):
@@ -122,63 +126,63 @@ def test_TLSMatrices():
     d_vals = (5.0*a_vals.round(a.get_precision()))
 
     # Check vals stored and extracted properly
-    assert a.T+a.L+a.S  == approx(a_vals, abs=MAT_RND_TOL) # matrices are returned as tuples
-    assert a.get("TLS") == approx(a_vals, abs=MAT_RND_TOL)
-    assert a.get("T") == approx(a_vals[0:6], abs=MAT_RND_TOL)
-    assert a.get("L") == approx(a_vals[6:12], abs=MAT_RND_TOL)
-    assert a.get("S") == approx(a_vals[12:21], abs=MAT_RND_TOL)
-    assert b.get("TLS") == approx(b_vals, abs=MAT_RND_TOL)
-    assert b.get("T") == approx(b_vals[0:6], abs=MAT_RND_TOL)
-    assert b.get("L") == approx(b_vals[6:12], abs=MAT_RND_TOL)
-    assert b.get("S") == approx(b_vals[12:21], abs=MAT_RND_TOL)
+    assert approx_equal(a.T+a.L+a.S, a_vals, MAT_RND_TOL) # matrices are returned as tuples
+    assert approx_equal(a.get("TLS"), a_vals, MAT_RND_TOL)
+    assert approx_equal(a.get("T"), a_vals[0:6], MAT_RND_TOL)
+    assert approx_equal(a.get("L"), a_vals[6:12], MAT_RND_TOL)
+    assert approx_equal(a.get("S"), a_vals[12:21], MAT_RND_TOL)
+    assert approx_equal(b.get("TLS"), b_vals, MAT_RND_TOL)
+    assert approx_equal(b.get("T"), b_vals[0:6], MAT_RND_TOL)
+    assert approx_equal(b.get("L"), b_vals[6:12], MAT_RND_TOL)
+    assert approx_equal(b.get("S"), b_vals[12:21], MAT_RND_TOL)
     # Check initialisation from matrices
-    assert b2.get("TLS") == approx(b_vals, abs=MAT_RND_TOL)
+    assert approx_equal(b2.get("TLS"), b_vals, MAT_RND_TOL)
     # Checks addition (needs greater tolerance)
-    assert c.get("TLS") == approx(c_vals, abs=MAT_RND_TOL)
-    assert c.get("T") == approx(c_vals[0:6], abs=MAT_RND_TOL)
-    assert c.get("L") == approx(c_vals[6:12], abs=MAT_RND_TOL)
-    assert c.get("S") == approx(c_vals[12:21], abs=MAT_RND_TOL)
+    assert approx_equal(c.get("TLS"), c_vals, MAT_RND_TOL)
+    assert approx_equal(c.get("T"), c_vals[0:6], MAT_RND_TOL)
+    assert approx_equal(c.get("L"), c_vals[6:12], MAT_RND_TOL)
+    assert approx_equal(c.get("S"), c_vals[12:21], MAT_RND_TOL)
     # Checks multiplication by scalar (need greater tolerance)
-    assert d.get("TLS") == approx(d_vals, abs=MAT_RND_TOL)
-    assert d.get("T") == approx(d_vals[0:6], abs=MAT_RND_TOL)
-    assert d.get("L") == approx(d_vals[6:12], abs=MAT_RND_TOL)
-    assert d.get("S") == approx(d_vals[12:21], abs=MAT_RND_TOL)
+    assert approx_equal(d.get("TLS"), d_vals, MAT_RND_TOL)
+    assert approx_equal(d.get("T"), d_vals[0:6], MAT_RND_TOL)
+    assert approx_equal(d.get("L"), d_vals[6:12], MAT_RND_TOL)
+    assert approx_equal(d.get("S"), d_vals[12:21], MAT_RND_TOL)
 
     # Check values are not being added/multiplied in place
     for _ in range(5):
       # Check addition
-      assert (a+a).get() == approx((a+a).get(), abs=0.0)
+      assert approx_equal((a+a).get(), (a+a).get(), 0.0)
       # Check left- and right-multiplication
-      assert (5.0*a).get() == approx((5.0*a).get(), abs=0.0)
-      assert (a*5.0).get() == approx((a*5.0).get(), abs=0.0)
+      assert approx_equal((5.0*a).get(), (5.0*a).get(), 0.0)
+      assert approx_equal((a*5.0).get(), (a*5.0).get(), 0.0)
       # Check commutativity
-      assert (5.0*a).get() == approx((a*5.0).get(), abs=0.0)
-    assert a.get("TLS") == approx(a_vals, abs=MAT_RND_TOL)
+      assert approx_equal((5.0*a).get(), (a*5.0).get(), 0.0)
+    assert approx_equal(a.get("TLS"), a_vals, MAT_RND_TOL)
 
     # Check copies - reset
     a_copy = a.copy()
     a_copy.reset()
-    assert a.get() == approx(a_vals, abs=MAT_RND_TOL)
+    assert approx_equal(a.get(), a_vals, MAT_RND_TOL)
     # Check copies - set
     a_copy = a.copy()
     a_copy.set(range(21))
-    assert a.get() == approx(a_vals, abs=MAT_RND_TOL)
+    assert approx_equal(a.get(), a_vals, MAT_RND_TOL)
     # Check initialisation from other does not affect original
     a_copy = TLSMatrices(a)
-    assert a_copy.get() == approx(a_vals, abs=MAT_RND_TOL)
+    assert approx_equal(a_copy.get(), a_vals, MAT_RND_TOL)
     a_copy.reset()
-    assert a.get() == approx(a_vals, abs=MAT_RND_TOL)
+    assert approx_equal(a.get(), a_vals, MAT_RND_TOL)
 
     # Check addition in place
     a.add(b)
-    assert a.get() == approx(c_vals, abs=MAT_RND_TOL)
-    assert b.get() == approx(b_vals, abs=MAT_RND_TOL) # Check b unchanged
+    assert approx_equal(a.get(), c_vals, MAT_RND_TOL)
+    assert approx_equal(b.get(), b_vals, MAT_RND_TOL) # Check b unchanged
     # Check multiplication in place
     a.multiply(10.0)
-    assert a.get() == approx(10.0*c_vals, abs=MAT_RND_TOL)
+    assert approx_equal(a.get(), 10.0*c_vals, MAT_RND_TOL)
     # set back to original values
     a.set(a_vals, "TLS")
-    assert a.get() == approx(a_vals, abs=MAT_RND_TOL)
+    assert approx_equal(a.get(), a_vals, MAT_RND_TOL)
 
     # Order of the letters should not matter (always returns T-L-S)
     assert a.get("TL") == a.get("LT")
@@ -191,38 +195,40 @@ def test_TLSMatrices():
     assert a.get("TLS") == a.get("SLT")
 
     # Check values can be replaced correctly
-    assert a.get() == approx(a_vals, abs=MAT_RND_TOL) # Check values are correct at start
+    assert approx_equal(a.get(), a_vals, MAT_RND_TOL) # Check values are correct at start
     # T
     new_t = rran(6).tolist()
     a.set(values=new_t, component_string="T")
-    assert a.get("T") == approx(new_t, abs=MAT_RND_TOL)
+    assert approx_equal(a.get("T"), new_t, MAT_RND_TOL)
     # L
     new_l = rran(6).tolist()
     a.set(values=new_l, component_string="L")
-    assert a.get("L") == approx(new_l, abs=MAT_RND_TOL)
+    assert approx_equal(a.get("L"), new_l, MAT_RND_TOL)
     # S but not Szz
     new_s = rran(8).tolist()
     a.set(new_s, "S", include_szz=False)
     new_s_all = new_s + [-(round(new_s[0], a.get_precision()) + round(new_s[4], a.get_precision()))]
     assert len(new_s_all) == 9
-    assert a.get("S") == approx(new_s_all, abs=MAT_RND_TOL)
-    assert a.get("S")[8] == approx(new_s_all[8]) # This number is pre-rounded so should be "exact""
+    assert approx_equal(a.get("S"), new_s_all, MAT_RND_TOL)
+    assert approx_equal(a.get("S")[8], new_s_all[8]) # This number is pre-rounded so should be "exact""
     # S
     new_s = rran(9).tolist()
     a.set(new_s, "S", include_szz=True)
-    assert a.get("S") == approx(new_s, abs=MAT_RND_TOL)
+    assert approx_equal(a.get("S"), new_s, MAT_RND_TOL)
     # all
-    assert a.get() == approx(new_t+new_l+new_s, abs=MAT_RND_TOL)
-    assert a.get("TLS") == approx(new_t+new_l+new_s, abs=MAT_RND_TOL)
+    assert approx_equal(a.get(), new_t+new_l+new_s, MAT_RND_TOL)
+    assert approx_equal(a.get("TLS"), new_t+new_l+new_s, MAT_RND_TOL)
     # set all values except Szz
     a.set(a_vals[:-1], "TLS", include_szz=False)
-    assert a.get() == approx(a2_vals, abs=MAT_RND_TOL)
-    assert a.get()[20] == approx(a2_vals[20]) # This number is pre-rounded in a2_vals
+    assert approx_equal(a.get(), a2_vals, MAT_RND_TOL)
+    assert approx_equal(a.get()[20], a2_vals[20]) # This number is pre-rounded in a2_vals
     # set back to original values
     a.set(a_vals, "TLS", include_szz=True)
-    assert a.get() == approx(a_vals, abs=MAT_RND_TOL)
+    assert approx_equal(a.get(), a_vals, MAT_RND_TOL)
 
-def test_TLSMatrices_counts():
+  print 'OK'
+
+def tst_TLSMatrices_counts():
   """Test that number of non-zero parameters are identifed correctly, etc"""
 
   letter_combinations = ["T","L","S","TL","LS","TS","TLS"]
@@ -234,7 +240,7 @@ def test_TLSMatrices_counts():
     assert (a_vals!=0.0).all()
     # Test reset function
     a.reset()
-    assert a.get() == approx([0.0]*21, abs=0.0)
+    assert approx_equal(a.get(), [0.0]*21, 0.0)
 
     # Test setting values to zero
     for letts in [""]+letter_combinations:
@@ -307,7 +313,9 @@ def test_TLSMatrices_counts():
       assert a.n_params(free=False, non_zero=False) == 21
       assert a.n_params(free=True, non_zero=False) == 20
 
-def test_TLSMatrices_fails():
+  print 'OK'
+
+def tst_TLSMatrices_fails():
   """Check that exceptions are raised where expected"""
 
   # Tolerances & Precision
@@ -422,7 +430,9 @@ def test_TLSMatrices_fails():
     a.normalise([(1,2,3)],(0,0,0),-1.0)
   assert msg == str(e.value)
 
-def test_TLSMatrices_uijs():
+  print 'OK'
+
+def tst_TLSMatrices_uijs():
   """Check that uijs are generated from coordinates as expected"""
 
   from mmtbx.tls import tlso, uaniso_from_tls_one_group
@@ -450,7 +460,7 @@ def test_TLSMatrices_uijs():
     uij_test_np = numpy.array(uij_test)
 
     # Compare (should be identical because class calls the uaniso function)
-    assert uij_ref_np.flatten() == approx(uij_test_np.flatten(), abs=0.0)
+    assert approx_equal(uij_ref_np.flatten(), uij_test_np.flatten(), 0.0)
 
     # Calculate average eigenvalue of output uijs
     eigs = [real_symmetric(u).values() for u in uij_test]
@@ -461,19 +471,21 @@ def test_TLSMatrices_uijs():
       b = a.copy()
       # Normalise
       mult = b.normalise(coords, origin, target=target)
-      assert orig_mean_eig == approx(target*mult, abs=LAST_DP_TOL)
+      assert approx_equal(orig_mean_eig, target*mult, LAST_DP_TOL)
       # Extract normalised uijs
       uij_norm = b.uijs(coords, origin)
       uij_norm_np = numpy.array(uij_norm)
       # Check average eigenvalue
       eigs = [real_symmetric(u).values() for u in uij_norm]
       mean_eig_norm = numpy.mean(eigs)
-      assert mean_eig_norm == approx(target, abs=LAST_DP_TOL)
+      assert approx_equal(mean_eig_norm, target, LAST_DP_TOL)
       # Check that normalised values related to original values by multiplier
       uij_comp_np = mult*uij_norm_np
-      assert uij_comp_np.flatten() == approx(uij_test_np.flatten(), abs=LAST_DP_TOL)
+      assert approx_equal(uij_comp_np.flatten(), uij_test_np.flatten(), LAST_DP_TOL)
 
-def test_TLSAmplitudes():
+  print 'OK'
+
+def tst_TLSAmplitudes():
   """Exercise the TLSAmplitudes class"""
 
   for length in TEST_LENGTHS:
@@ -485,11 +497,11 @@ def test_TLSAmplitudes():
     b = TLSAmplitudes(length)
     assert b.size() == length
     # Check values intialised to 1
-    assert b.values == approx([1.0]*length, abs=0.0)
+    assert approx_equal(b.values, [1.0]*length, 0.0)
     # Set values using set function
     b_vals = rran(length)
     b.set(b_vals)
-    assert b.values == approx(b_vals, abs=AMP_RND_TOL)
+    assert approx_equal(b.values, b_vals, AMP_RND_TOL)
 
     # Addition of another instance
     c = a + b
@@ -503,12 +515,12 @@ def test_TLSAmplitudes():
     e = TLSAmplitudes(a)
 
     # Check initial values
-    assert a.values == approx(a_vals, abs=AMP_RND_TOL)
-    assert b.values == approx(b_vals, abs=AMP_RND_TOL)
-    assert c.values == approx(c_vals, abs=AMP_RND_TOL)
-    assert d.values == approx(d_vals, abs=AMP_RND_TOL)
-    assert e.values == approx(a_vals, abs=AMP_RND_TOL)
-    assert e.values == approx(a.values, abs=0.0)
+    assert approx_equal(a.values, a_vals, AMP_RND_TOL)
+    assert approx_equal(b.values, b_vals, AMP_RND_TOL)
+    assert approx_equal(c.values, c_vals, AMP_RND_TOL)
+    assert approx_equal(d.values, d_vals, AMP_RND_TOL)
+    assert approx_equal(e.values, a_vals, AMP_RND_TOL)
+    assert approx_equal(e.values, a.values, 0.0)
 
     assert a.any()
     assert b.any()
@@ -529,61 +541,61 @@ def test_TLSAmplitudes():
     assert e.size() == length
 
     # Check get
-    assert a.values == approx(a.get(range(a.size())), abs=0.0)
-    assert b.values == approx(b.get(range(b.size())), abs=0.0)
-    assert c.values == approx(c.get(range(c.size())), abs=0.0)
-    assert d.values == approx(d.get(range(d.size())), abs=0.0)
-    assert e.values == approx(e.get(range(e.size())), abs=0.0)
+    assert approx_equal(a.values, a.get(range(a.size())), 0.0)
+    assert approx_equal(b.values, b.get(range(b.size())), 0.0)
+    assert approx_equal(c.values, c.get(range(c.size())), 0.0)
+    assert approx_equal(d.values, d.get(range(d.size())), 0.0)
+    assert approx_equal(e.values, e.get(range(e.size())), 0.0)
 
     # Check reset works
     e.reset()
-    assert e.values == approx([1.0]*e.size(), abs=0.0)
+    assert approx_equal(e.values, [1.0]*e.size(), 0.0)
     assert e.any()
     # Check that a is unchanged by e.reset())
-    assert a.values == approx(a_vals, abs=AMP_RND_TOL)
+    assert approx_equal(a.values, a_vals, AMP_RND_TOL)
 
     # Check values are not being added/multiplied in place
     for _ in range(5):
       # Check addition
-      assert (a+a).values == approx((a+a).values, abs=0.0)
+      assert approx_equal((a+a).values, (a+a).values, 0.0)
       # Check left- and right-multiplication
-      assert (5.0*a).values == approx((5.0*a).values, abs=0.0)
-      assert (a*5.0).values == approx((a*5.0).values, abs=0.0)
+      assert approx_equal((5.0*a).values, (5.0*a).values, 0.0)
+      assert approx_equal((a*5.0).values, (a*5.0).values, 0.0)
       # Check commutativity
-      assert (5.0*a).values == approx((a*5.0).values, abs=0.0)
+      assert approx_equal((5.0*a).values, (a*5.0).values, 0.0)
     # Final check against initial values
-    assert a.values == approx(a_vals, abs=AMP_RND_TOL)
+    assert approx_equal(a.values, a_vals, AMP_RND_TOL)
 
     # Check indexing
     for i in range(a.size()):
-      assert a[i] == approx(a_vals[i], abs=AMP_RND_TOL)
+      assert approx_equal(a[i], a_vals[i], AMP_RND_TOL)
 
     # Check addition in place
     a.add(b)
-    assert a.values == approx(c_vals, abs=AMP_RND_TOL)
-    assert b.values == approx(b_vals, abs=AMP_RND_TOL) # Check b unchanged
+    assert approx_equal(a.values, c_vals, AMP_RND_TOL)
+    assert approx_equal(b.values, b_vals, AMP_RND_TOL) # Check b unchanged
     # Check multiplication in place
     mult = 10.0
     a.multiply(mult)
-    assert a.values == approx(mult*c_vals, abs=AMP_RND_TOL)
+    assert approx_equal(a.values, mult*c_vals, AMP_RND_TOL)
     # set back to original values
     a.set(a_vals)
-    assert a.values == approx(a_vals, abs=AMP_RND_TOL)
-    assert b.values == approx(b_vals, abs=AMP_RND_TOL)
+    assert approx_equal(a.values, a_vals, AMP_RND_TOL)
+    assert approx_equal(b.values, b_vals, AMP_RND_TOL)
 
     # Test setting subset of values
     selection = iran(a.size(), size=min(3,a.size()), replace=False)
     new_vals = rran(len(selection)).tolist()
     chg_a_vals = a_vals.copy()
-    assert a_vals == approx(chg_a_vals, abs=0.0)
+    assert approx_equal(a_vals, chg_a_vals, 0.0)
     for new_idx, chg_idx in enumerate(selection):
       assert chg_a_vals[chg_idx] != new_vals[new_idx] # Check that new values are different!
       chg_a_vals[chg_idx] = new_vals[new_idx]
-    assert chg_a_vals[selection] == approx(new_vals, abs=AMP_RND_TOL) # Check that values are set correctly
+    assert approx_equal(chg_a_vals[selection], new_vals, AMP_RND_TOL) # Check that values are set correctly
     a_chg = a.copy()
-    assert a_chg.values == approx(a_vals, abs=AMP_RND_TOL)
+    assert approx_equal(a_chg.values, a_vals, AMP_RND_TOL)
     a_chg.set(new_vals, selection)
-    assert a_chg.values == approx(chg_a_vals, abs=AMP_RND_TOL)
+    assert approx_equal(a_chg.values, chg_a_vals, AMP_RND_TOL)
 
     # Test reset and n_params
     for _ in range(5):
@@ -591,14 +603,14 @@ def test_TLSAmplitudes():
       # All non-zero
       assert a_vals.all()
       assert a.any()
-      assert a.values == approx(a_vals, abs=AMP_RND_TOL)
+      assert approx_equal(a.values, a_vals, AMP_RND_TOL)
       assert a.n_params(non_zero=True) == a.size()
       assert a.n_params(non_zero=False) == a.size()
 
       # Set all values to one
       a.reset()
       assert a.any()
-      assert a.values == approx([1.0]*a.size(), abs=0.0)
+      assert approx_equal(a.values, [1.0]*a.size(), 0.0)
       assert a.n_params(non_zero=True) == a.size()
       assert a.n_params(non_zero=False) == a.size()
       # Set some values to non-one
@@ -607,7 +619,7 @@ def test_TLSAmplitudes():
       a.set(new_vals, selection)
       for i, v in enumerate(a.values):
         if i in selection:
-          assert v == approx(new_vals[selection.index(i)], abs=AMP_RND_TOL)
+          assert approx_equal(v, new_vals[selection.index(i)], AMP_RND_TOL)
         else:
           assert v == 1.0
       assert a.n_params(non_zero=True) == a.size() - new_vals.count(0.0)
@@ -616,7 +628,7 @@ def test_TLSAmplitudes():
       # Set all values to zero
       a.zero_values()
       assert not a.any()
-      assert a.values == approx([0.0]*a.size(), abs=0.0)
+      assert approx_equal(a.values, [0.0]*a.size(), 0.0)
       assert a.n_params(non_zero=True) == 0
       assert a.n_params(non_zero=False) == a.size()
       # Set some values to non-zero
@@ -625,7 +637,7 @@ def test_TLSAmplitudes():
       a.set(new_vals, selection)
       for i, v in enumerate(a.values):
         if i in selection:
-          assert v == approx(new_vals[selection.index(i)], abs=AMP_RND_TOL)
+          assert approx_equal(v, new_vals[selection.index(i)], AMP_RND_TOL)
         else:
           assert v == 0.0
       assert a.n_params(non_zero=True) == len(new_vals) - new_vals.count(0.0)
@@ -634,7 +646,7 @@ def test_TLSAmplitudes():
 
       # Set all values to original
       a.set(a_vals.tolist(), range(a.size())) # set all values by selection, just to mix things up
-      assert a.values == approx(a_vals, abs=AMP_RND_TOL)
+      assert approx_equal(a.values, a_vals, AMP_RND_TOL)
       assert a.n_params(non_zero=True) == a.size()
       assert a.n_params(non_zero=False) == a.size()
       # Set some values to zero
@@ -644,15 +656,15 @@ def test_TLSAmplitudes():
       a.set(new_vals, selection)
       for i, v in enumerate(a.values):
         if i in selection:
-          assert v == approx(new_vals[selection.index(i)], abs=AMP_RND_TOL)
+          assert approx_equal(v, new_vals[selection.index(i)], AMP_RND_TOL)
         else:
-          assert v == approx(a_vals[i], abs=AMP_RND_TOL)
+          assert approx_equal(v, a_vals[i], AMP_RND_TOL)
       assert a.n_params(non_zero=True) == a.size() - numpy.round(new_vals, a.get_precision()).tolist().count(0.0)
       assert a.n_params(non_zero=False) == a.size()
 
       # Set all values to original
       a.set(a_vals.tolist(), range(a.size())) # set all values by selection, just to mix things up
-      assert a.values == approx(a_vals, abs=AMP_RND_TOL)
+      assert approx_equal(a.values, a_vals, AMP_RND_TOL)
       assert a.n_params(non_zero=True) == a.size()
       assert a.n_params(non_zero=False) == a.size()
       # Set some values to negative
@@ -661,9 +673,9 @@ def test_TLSAmplitudes():
       a.set(new_vals, selection)
       for i, v in enumerate(a.values):
         if i in selection:
-          assert v == approx(-a_vals[i], abs=AMP_RND_TOL)
+          assert approx_equal(v, -a_vals[i], AMP_RND_TOL)
         else:
-          assert v == approx(a_vals[i], abs=AMP_RND_TOL)
+          assert approx_equal(v, a_vals[i], AMP_RND_TOL)
       assert a.n_params(non_zero=True) == a.size()
       assert a.n_params(non_zero=False) == a.size()
       # Zero negative values and test they are zero
@@ -672,17 +684,19 @@ def test_TLSAmplitudes():
         if i in selection:
           assert v == 0.0
         else:
-          assert v == approx(a_vals[i], abs=AMP_RND_TOL)
+          assert approx_equal(v, a_vals[i], AMP_RND_TOL)
       assert a.n_params(non_zero=True) == a.size() - len(selection)
       assert a.n_params(non_zero=False) == a.size()
 
       # Reset for next loop, etc
       a.set(a_vals.tolist(), range(a.size())) # set all values by selection, just to mix things up
-      assert a.values == approx(a_vals, abs=AMP_RND_TOL)
+      assert approx_equal(a.values, a_vals, AMP_RND_TOL)
       assert a.n_params(non_zero=True) == a.size()
       assert a.n_params(non_zero=False) == a.size()
 
-def test_TLSAmplitudes_fails():
+  print 'OK'
+
+def tst_TLSAmplitudes_fails():
   """Check that exceptions are raised where expected"""
 
   # Tolerances & Precision
@@ -767,7 +781,9 @@ def test_TLSAmplitudes_fails():
     a.normalise(-1.0)
   assert msg == str(e.value)
 
-def test_TLSMatricesAndAmplitudes():
+  print 'OK'
+
+def tst_TLSMatricesAndAmplitudes():
   """Exercise the TLSMatricesAndAmplitudes class"""
 
   for length in TEST_LENGTHS:
@@ -781,23 +797,23 @@ def test_TLSMatricesAndAmplitudes():
       a = TLSMatricesAndAmplitudes(a_m, a_a)
 
       # Check values passed through
-      assert a.matrices.get("TLS") == approx(a_mats, abs=MAT_RND_TOL)
-      assert a.amplitudes.values      == approx(a_amps, abs=AMP_RND_TOL)
+      assert approx_equal(a.matrices.get("TLS"), a_mats, MAT_RND_TOL)
+      assert approx_equal(a.amplitudes.values     , a_amps, AMP_RND_TOL)
       # Double check that values are the same
-      assert a_m.T == approx(a.matrices.T, abs=0.0)
-      assert a_m.L == approx(a.matrices.L, abs=0.0)
-      assert a_m.S == approx(a.matrices.S, abs=0.0)
-      assert a_a.values == approx(a.amplitudes.values, abs=0.0)
+      assert approx_equal(a_m.T, a.matrices.T, 0.0)
+      assert approx_equal(a_m.L, a.matrices.L, 0.0)
+      assert approx_equal(a_m.S, a.matrices.S, 0.0)
+      assert approx_equal(a_a.values, a.amplitudes.values, 0.0)
 
       # Initialise from other
       b = TLSMatricesAndAmplitudes(a)
-      assert b.matrices.get("TLS") == approx(a.matrices.get("TLS"), abs=0.0)
-      assert b.amplitudes.values   == approx(a.amplitudes.values, abs=0.0)
+      assert approx_equal(b.matrices.get("TLS"), a.matrices.get("TLS"), 0.0)
+      assert approx_equal(b.amplitudes.values  , a.amplitudes.values, 0.0)
 
       # Initialise from copy
       c = a.copy()
-      assert c.matrices.get("TLS") == approx(a.matrices.get("TLS"), abs=0.0)
-      assert c.amplitudes.values   == approx(a.amplitudes.values, abs=0.0)
+      assert approx_equal(c.matrices.get("TLS"), a.matrices.get("TLS"), 0.0)
+      assert approx_equal(c.amplitudes.values  , a.amplitudes.values, 0.0)
 
       # Initialise from length
       d = TLSMatricesAndAmplitudes(length)
@@ -807,32 +823,34 @@ def test_TLSMatricesAndAmplitudes():
 
       # Check that a is using objects by reference, and that b & c are initialised by values from a
       a.reset()
-      assert a.matrices.get("TLS") == approx([0.0]*21, abs=0.0)
-      assert a.amplitudes.values   == approx([1.0]*length, abs=0.0)
+      assert approx_equal(a.matrices.get("TLS"), [0.0]*21, 0.0)
+      assert approx_equal(a.amplitudes.values  , [1.0]*length, 0.0)
       # Original objects should also be affected (same object)
-      assert a_m.get("TLS")      == approx([0.0]*21, abs=0.0)
-      assert a_a.values           == approx([1.0]*length, abs=0.0)
+      assert approx_equal(a_m.get("TLS")     , [0.0]*21, 0.0)
+      assert approx_equal(a_a.values          , [1.0]*length, 0.0)
       # Check b & c are not reset (copied by reference)
-      assert b.matrices.get("TLS") == approx(a_mats, abs=MAT_RND_TOL)
-      assert b.amplitudes.values   == approx(a_amps, abs=AMP_RND_TOL)
-      assert c.matrices.get("TLS") == approx(a_mats, abs=MAT_RND_TOL)
-      assert c.amplitudes.values   == approx(a_amps, abs=AMP_RND_TOL)
+      assert approx_equal(b.matrices.get("TLS"), a_mats, MAT_RND_TOL)
+      assert approx_equal(b.amplitudes.values  , a_amps, AMP_RND_TOL)
+      assert approx_equal(c.matrices.get("TLS"), a_mats, MAT_RND_TOL)
+      assert approx_equal(c.amplitudes.values  , a_amps, AMP_RND_TOL)
       # Reset b and check c unaffected
       b.reset()
-      assert b.matrices.get("TLS") == approx([0.0]*21, abs=0.0)
-      assert b.amplitudes.values   == approx([1.0]*length, abs=0.0)
-      assert c.matrices.get("TLS") == approx(a_mats, abs=MAT_RND_TOL)
-      assert c.amplitudes.values   == approx(a_amps, abs=AMP_RND_TOL)
+      assert approx_equal(b.matrices.get("TLS"), [0.0]*21, 0.0)
+      assert approx_equal(b.amplitudes.values  , [1.0]*length, 0.0)
+      assert approx_equal(c.matrices.get("TLS"), a_mats, MAT_RND_TOL)
+      assert approx_equal(c.amplitudes.values  , a_amps, AMP_RND_TOL)
 
       # Check d that defaults are intialised as expected
-      assert d.matrices.get("TLS") == approx([0.0]*21, abs=0.0)
-      assert d.amplitudes.values   == approx([1.0]*length, abs=0.0)
+      assert approx_equal(d.matrices.get("TLS"), [0.0]*21, 0.0)
+      assert approx_equal(d.amplitudes.values  , [1.0]*length, 0.0)
 
       # Check e is initialised correctly
-      assert e.matrices.get("TLS") == approx(a_mats, abs=MAT_RND_TOL)
-      assert e.amplitudes.values   == approx(a_amps, abs=AMP_RND_TOL)
+      assert approx_equal(e.matrices.get("TLS"), a_mats, MAT_RND_TOL)
+      assert approx_equal(e.amplitudes.values  , a_amps, AMP_RND_TOL)
 
-def test_TLSMatricesAndAmplitudes_counts():
+  print 'OK'
+
+def tst_TLSMatricesAndAmplitudes_counts():
   """Test that number of non-zero parameters are identifed correctly, etc"""
 
   for length in TEST_LENGTHS:
@@ -841,8 +859,8 @@ def test_TLSMatricesAndAmplitudes_counts():
     for a_mats in TLSMATRICES:
       a_amps = rran(length)
       a = TLSMatricesAndAmplitudes(a_mats, a_amps.tolist())
-      assert a.matrices.get("TLS") == approx(a_mats, abs=MAT_RND_TOL)
-      assert a.amplitudes.values      == approx(a_amps, abs=AMP_RND_TOL)
+      assert approx_equal(a.matrices.get("TLS"), a_mats, MAT_RND_TOL)
+      assert approx_equal(a.amplitudes.values     , a_amps, AMP_RND_TOL)
 
       # Check tolerances
       assert not a.is_null()
@@ -894,11 +912,13 @@ def test_TLSMatricesAndAmplitudes_counts():
 
       # Reset to original values
       a.amplitudes.set(a_amps)
-      assert a.matrices.get("TLS") == approx(a_mats, abs=MAT_RND_TOL)
-      assert a.amplitudes.values      == approx(a_amps, abs=AMP_RND_TOL)
+      assert approx_equal(a.matrices.get("TLS"), a_mats, MAT_RND_TOL)
+      assert approx_equal(a.amplitudes.values     , a_amps, AMP_RND_TOL)
       assert not a.is_null()
 
-def test_TLSMatricesAndAmplitudes_fails():
+  print 'OK'
+
+def tst_TLSMatricesAndAmplitudes_fails():
   """Check that exceptions are raised where expected"""
 
   m=TLSMatrices()
@@ -1056,7 +1076,9 @@ def test_TLSMatricesAndAmplitudes_fails():
     ma.uijs(new_sites, new_origins, sel)
   assert "Selection indices out of range of TLSAmplitudes" == str(e.value)
 
-def test_TLSMatricesAndAmplitudes_valid():
+  print 'OK'
+
+def tst_TLSMatricesAndAmplitudes_valid():
   """Check that whole object is valid/invalid based on components"""
 
   length = 10
@@ -1084,7 +1106,9 @@ def test_TLSMatricesAndAmplitudes_valid():
         assert a.expand()[i].is_valid(tol)
         assert a.is_valid(flex.size_t([i]), tol)
 
-def test_TLSMatricesAndAmplitudes_uijs():
+  print 'OK'
+
+def tst_TLSMatricesAndAmplitudes_uijs():
   """Test uijs generated correctly"""
 
   for length in TEST_LENGTHS:
@@ -1093,8 +1117,8 @@ def test_TLSMatricesAndAmplitudes_uijs():
     for a_mats in TLSMATRICES:
       a_amps = rran(length)
       a = TLSMatricesAndAmplitudes(a_mats, a_amps.tolist())
-      assert a.matrices.get("TLS") == approx(a_mats, abs=MAT_RND_TOL)
-      assert a.amplitudes.values == approx(a_amps, abs=AMP_RND_TOL)
+      assert approx_equal(a.matrices.get("TLS"), a_mats, MAT_RND_TOL)
+      assert approx_equal(a.amplitudes.values, a_amps, AMP_RND_TOL)
 
       # Get a set of random coordinates
       n_atm = 5
@@ -1116,11 +1140,11 @@ def test_TLSMatricesAndAmplitudes_uijs():
         # Check expanded matrices have correct values
         exp_amp = round(a_amps[i], a.amplitudes.get_precision())
         exp_mat = numpy.round(a_mats, a.matrices.get_precision())
-        assert m.get("TLS") == approx(exp_amp*exp_mat, abs=LAST_DP_TOL)
+        assert approx_equal(m.get("TLS"), exp_amp*exp_mat, LAST_DP_TOL)
 
         # Check that uij from this class equals that expected from the container class
         this_uij = m.uijs(coords[i].tolist(), origns[i].tolist())
-        assert numpy.array(this_uij).flatten() == approx(all_uijs_np[i].flatten())
+        assert approx_equal(numpy.array(this_uij).flatten(), all_uijs_np[i].flatten())
 
       # Reshape to 1d and round for convenience
       all_uijs_np = all_uijs_np.reshape(length*n_atm,6)
@@ -1136,12 +1160,12 @@ def test_TLSMatricesAndAmplitudes_uijs():
 
         # Average amplitude should now be target
         mean_amp = numpy.mean(new_a.amplitudes.values)
-        assert mean_amp == approx(target, LAST_DP_TOL)
+        assert approx_equal(mean_amp, target, LAST_DP_TOL)
 
         # Check expanded matrices are the same
         new_exp = new_a.expand()
         for new, orig in zip(new_exp, exp):
-          assert new.get("TLS") == approx(orig.get("TLS"))
+          assert approx_equal(new.get("TLS"), orig.get("TLS"))
 
       # Test normalise by matrices
       from scitbx.linalg.eigensystem import real_symmetric
@@ -1157,19 +1181,21 @@ def test_TLSMatricesAndAmplitudes_uijs():
         uijs = [new_a.matrices.uijs(coords[i], origns[i]) for i in xrange(length)]
         eigenvalues = [[real_symmetric(u).values() for u in uijs[i]] for i in xrange(length)]
         mean_eig = numpy.mean(eigenvalues)
-        assert mean_eig == approx(target, LAST_DP_TOL)
+        assert approx_equal(mean_eig, target, LAST_DP_TOL)
 
         # Check expanded matrices are the same
         new_exp = new_a.expand()
         for new, orig in zip(new_exp, exp):
-          assert new.get("TLS") == approx(orig.get("TLS"))
+          assert approx_equal(new.get("TLS"), orig.get("TLS"))
 
         # Output uijs should still be the same
         new_uijs = new_a.uijs(sites, origns)
         new_uijs_np = numpy.array(new_uijs)
-        assert new_uijs_np.flatten() == approx(all_uijs_np.flatten(), abs=LAST_DP_TOL)
+        assert approx_equal(new_uijs_np.flatten(), all_uijs_np.flatten(), LAST_DP_TOL)
 
-def test_TLSMatricesAndAmplitudesList():
+  print 'OK'
+
+def tst_TLSMatricesAndAmplitudesList():
   """Exercise the TLSMatricesAndAmplitudesList class"""
 
   for length in [1,2,3]:
@@ -1190,8 +1216,8 @@ def test_TLSMatricesAndAmplitudesList():
         for j in range(length):
           if i==j: continue
           ma2 = mal.get(j)
-          assert not (list(ma.amplitudes.values) == approx(list(ma2.amplitudes.values)))
-          assert not (list(ma.matrices.get("TLS")) == approx(list(ma2.matrices.get("TLS"))))
+          assert not_approx_equal(list(ma.amplitudes.values), list(ma2.amplitudes.values))
+          assert not_approx_equal(list(ma.matrices.get("TLS")), list(ma2.matrices.get("TLS")))
         assert mal.n_params(free=False, non_zero=False) == (21 + n_dst) * length
         assert mal.n_params(free=True, non_zero=False) == (20 + n_dst) * length
         assert mal.n_params(free=False, non_zero=True) == 21*(i+1) + (n_dst) * length
@@ -1217,7 +1243,7 @@ def test_TLSMatricesAndAmplitudesList():
       assert mal.is_null()
       for ma in mal:
         assert not ma.matrices.any("TLS")
-        assert ma.amplitudes.values == approx([1.0]*n_dst)
+        assert approx_equal(ma.amplitudes.values, [1.0]*n_dst)
         assert ma.is_null()
       assert mal.n_params(free=False, non_zero=False) == (21 + n_dst) * length
       assert mal.n_params(free=True, non_zero=False) == (20 + n_dst) * length
@@ -1259,10 +1285,11 @@ def test_TLSMatricesAndAmplitudesList():
       for i, ma in enumerate(mal):
         if i in sel:
           exp = True
+          assert approx_equal(ma.amplitudes.values, [1.0]*n_dst)
         else:
           exp = False
+          assert not_approx_equal(ma.amplitudes.values, [1.0]*n_dst)
         assert exp == (not ma.matrices.any("TLS"))
-        assert exp == (ma.amplitudes.values == approx([1.0]*n_dst))
         assert exp == ma.is_null()
       assert mal.n_params(free=False, non_zero=False) == (21 + n_dst) * length
       assert mal.n_params(free=True, non_zero=False) == (20 + n_dst) * length
@@ -1289,10 +1316,11 @@ def test_TLSMatricesAndAmplitudesList():
       for i, ma in enumerate(mal):
         if i in sel:
           exp = True
+          assert approx_equal(ma.amplitudes.values, [1.0]*n_dst)
         else:
           exp = False
+          assert not_approx_equal(ma.amplitudes.values, [1.0]*n_dst)
         assert exp == (not ma.matrices.any("TLS"))
-        assert exp == (ma.amplitudes.values == approx([1.0]*n_dst))
         assert exp == ma.is_null()
       assert mal.n_params(free=False, non_zero=False) == (21 + n_dst) * length
       assert mal.n_params(free=True, non_zero=False) == (20 + n_dst) * length
@@ -1338,9 +1366,8 @@ def test_TLSMatricesAndAmplitudesList():
   mal = TLSMatricesAndAmplitudesList(mats, amps)
   assert not mal.is_null()
   for i, m in enumerate(mal):
-    assert m.matrices.get() == approx(mats[21*i:21*(i+1)])
-    assert m.amplitudes.get() == approx(amps[10*i:10*(i+1)])
-  print dir(mats)
+    assert approx_equal(m.matrices.get(), mats[21*i:21*(i+1)])
+    assert approx_equal(m.amplitudes.get(), amps[10*i:10*(i+1)])
   mats.set_selected(flex.bool(flex.grid(mats.all()), True), 0.0)
   amps.set_selected(flex.bool(flex.grid(amps.all()), True), 0.0)
   assert mats.all_eq(0.0)
@@ -1376,7 +1403,7 @@ def test_TLSMatricesAndAmplitudesList():
     new_uijs = ma.uijs(sites, origins)
     assert new_uijs.all() == (n_dst, n_atm)
     sum_uijs = sum_uijs + new_uijs
-  assert numpy.array(all_uijs).flatten() == approx(numpy.array(sum_uijs).flatten())
+  assert approx_equal(numpy.array(all_uijs).flatten(), numpy.array(sum_uijs).flatten())
   # And from an amplitudes selection
   n_tmp = max(1,n_dst-2)
   sel = iran(n_dst, size=n_tmp, replace=False)
@@ -1390,7 +1417,7 @@ def test_TLSMatricesAndAmplitudesList():
     new_uijs = ma.uijs(sites, origins, sel)
     assert new_uijs.all() == (n_tmp, n_atm)
     sum_uijs = sum_uijs + new_uijs
-  assert numpy.array(all_uijs).flatten() == approx(numpy.array(sum_uijs).flatten())
+  assert approx_equal(numpy.array(all_uijs).flatten(), numpy.array(sum_uijs).flatten())
 
   # Check copy creates separate object
   mal = TLSMatricesAndAmplitudesList(length=n_mod, n_amplitudes=n_dst)
@@ -1399,15 +1426,17 @@ def test_TLSMatricesAndAmplitudesList():
     ma.amplitudes.set(rran(n_dst))
   mal_c = mal.copy()
   for i in range(n_mod):
-    assert list(mal[i].matrices.get("TLS")) == approx(list(mal_c[i].matrices.get("TLS")))
-    assert list(mal[i].amplitudes.values) == approx(list(mal_c[i].amplitudes.values))
+    assert approx_equal(list(mal[i].matrices.get("TLS")), list(mal_c[i].matrices.get("TLS")))
+    assert approx_equal(list(mal[i].amplitudes.values), list(mal_c[i].amplitudes.values))
   mal_c.reset_matrices()
   for i in range(n_mod):
     assert mal[i].matrices.any()
     assert not mal_c[i].matrices.any()
-    assert list(mal[i].amplitudes.values) == approx(list(mal_c[i].amplitudes.values))
+    assert approx_equal(list(mal[i].amplitudes.values), list(mal_c[i].amplitudes.values))
 
-def test_TLSMatricesAndAmplitudesList_fails():
+  print 'OK'
+
+def tst_TLSMatricesAndAmplitudesList_fails():
   """Check that exceptions are raised where expected"""
 
   n_mod = 4
@@ -1506,3 +1535,21 @@ def test_TLSMatricesAndAmplitudesList_fails():
     mal.uijs(new_sites, new_origins, sel)
   assert "Selection indices out of range of TLSAmplitudes" == str(e.value)
 
+  print 'OK'
+
+if __name__ == "__main__":
+  tst_set_precision()
+  tst_set_tolerance()
+  tst_TLSMatrices()
+  tst_TLSMatrices_counts()
+  tst_TLSMatrices_fails()
+  tst_TLSMatrices_uijs()
+  tst_TLSAmplitudes()
+  tst_TLSAmplitudes_fails()
+  tst_TLSMatricesAndAmplitudes()
+  tst_TLSMatricesAndAmplitudes_counts()
+  tst_TLSMatricesAndAmplitudes_fails()
+  tst_TLSMatricesAndAmplitudes_valid()
+  tst_TLSMatricesAndAmplitudes_uijs()
+  tst_TLSMatricesAndAmplitudesList()
+  tst_TLSMatricesAndAmplitudesList_fails()
