@@ -165,6 +165,8 @@ master_params_str = """\
     .type = bool
     .short_caption = Disable check of unit cell volume to be compatible with the \
                      number of atoms
+  allow_polymer_cross_special_position = False
+    .type = bool
   correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
@@ -5806,6 +5808,21 @@ class process(object):
       self._xray_structure = self.all_chain_proxies.extract_xray_structure()
       self._xray_structure.scattering_type_registry(
         types_without_a_scattering_contribution=["?"])
+      # Stop if polymer crosses symmetry element
+      get_class = iotbx.pdb.common_residue_names_get_class
+      lines = []
+      for i_sp in self._xray_structure.special_position_indices():
+        atom = self.all_chain_proxies.pdb_hierarchy.atoms()[i_sp]
+        resname = atom.parent().resname
+        if(get_class(name=resname) == "common_amino_acid" or
+           get_class(name=resname) == "common_rna_dna"):
+          lines.append(atom.format_atom_record())
+      if(len(lines)>0 and not
+         self.all_chain_proxies.params.allow_polymer_cross_special_position):
+        msg="Polymer crosses special position element:\n%s"%("\n".join(lines))
+        msg+="\nUse 'allow_polymer_cross_special_position=True' to keep going."
+        raise Sorry(msg)
+      #
       if (log is not None and show_summary):
         self._xray_structure.show_summary(f = log, prefix="  ")
         self._xray_structure.show_special_position_shifts(

@@ -2436,10 +2436,66 @@ pdb_interpretation.geometry_restraints.edits {
     if(e in log): found += 1
   assert found > 39, found
 
+def exercise_allow_polymer_cross_special_position(mon_lib_srv, ener_lib):
+  raw_records = """\
+CRYST1  257.160  257.160  125.289  90.00  90.00  90.00 P 42 21 2
+ATOM   6125  N   GLU B 219       2.256  -0.004  52.800  1.00556.70      B    N
+ATOM   6126  CA  GLU B 219       2.976  -0.009  54.101  1.00553.07      B    C
+ATOM   6127  C   GLU B 219       2.020  -0.291  55.269  1.00548.53      B    C
+ATOM   6128  O   GLU B 219       2.412  -1.087  56.152  1.00563.96      B    O
+ATOM   6129  CB  GLU B 219       3.635   1.353  54.312  1.00549.67      B    C
+ATOM   6130  N   VAL B 220       0.817   0.295  55.291  1.00579.40      B    N
+ATOM   6131  CA  VAL B 220      -0.101  -0.076  56.415  1.00536.12      B    C
+ATOM   6132  C   VAL B 220      -0.931  -1.312  56.040  1.00595.15      B    C
+ATOM   6133  O   VAL B 220      -1.615  -1.845  56.941  1.00560.98      B    O
+ATOM   6134  CB  VAL B 220      -0.969   1.109  56.872  1.00506.94      B    C
+ATOM   6135  CG1 VAL B 220      -1.904   0.713  58.004  1.00516.72      B    C
+ATOM   6136  CG2 VAL B 220      -0.110   2.296  57.278  1.00493.38      B    C
+ATOM   6137  N   GLN B 221      -0.855  -1.759  54.781  1.00618.59      B    N
+ATOM   6138  CA  GLN B 221      -1.583  -2.967  54.295  1.00643.31      B    C
+ATOM   6139  C   GLN B 221      -0.837  -4.237  54.735  1.00659.80      B    C
+ATOM   6140  O   GLN B 221      -1.504  -5.170  55.254  1.00664.86      B    O
+ATOM   6141  CB  GLN B 221      -1.633  -2.914  52.766  1.00632.59      B    C
+ATOM   6142  CG  GLN B 221      -2.226  -4.158  52.118  1.00628.14      B    C
+ATOM   6143  CD  GLN B 221      -3.524  -3.878  51.400  1.00607.81      B    C
+ATOM   6144  OE1 GLN B 221      -3.819  -2.746  51.025  1.00587.02      B    O
+ATOM   6145  NE2 GLN B 221      -4.309  -4.921  51.188  1.00611.94      B    N
+END
+  """.splitlines()
+  params = iotbx.phil.parse(
+    monomer_library.pdb_interpretation.grand_master_phil_str,
+    process_includes=True).extract()
+  exp_lines = [
+    "Polymer crosses special position element:",
+    "ATOM      7  CA  VAL B 220       0.000  -0.000  56.415  1.00536.12      B    C",
+    "Use 'allow_polymer_cross_special_position=True' to keep going."]
+  try:
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      file_name=None,
+      raw_records=raw_records,
+      params = params.pdb_interpretation,
+      log=None).xray_structure()
+  except KeyboardInterrupt: raise
+  except Exception, e:
+    for line in str(e).splitlines():
+      assert line.strip() in exp_lines
+  #
+  params.pdb_interpretation.allow_polymer_cross_special_position=True
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    params = params.pdb_interpretation,
+    log=None).xray_structure()
+
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
+  exercise_allow_polymer_cross_special_position(mon_lib_srv, ener_lib)
   exercise_bad_custom_bonds(mon_lib_srv, ener_lib)
   exercise_bad_water(mon_lib_srv, ener_lib)
   exercise_unk_and_cys(mon_lib_srv, ener_lib)
