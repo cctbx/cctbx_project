@@ -286,7 +286,16 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
       CNCA = _get_angle_proxy(_get_i_seqs(["C_minus_1", "N_i", "CA_i"]))
       CNH = _get_angle_proxy(_get_i_seqs(["C_minus_1", "N_i", "H_i"]))
       CANH = _get_angle_proxy(_get_i_seqs(["CA_i", "N_i", "H_i"]))
-      assert CNH and CANH, 'CNH or CANH not found'
+      if not (CNH and CANH):
+        raise Sorry('''
+  Certain angles in the protein chain (C-N-H or CA-N-H) have not been found
+  in the restraints by the Conformational Dependent Library. This usually
+  means that the protein backbone is traversing a special position.
+
+  This is unlikely.
+
+  However, to persist, set cdl=False.
+                    ''')
       total = CNCA.angle_ideal + CNH.angle_ideal + CANH.angle_ideal
       diff = (total-360)/2
       CNH.angle_ideal-=diff
