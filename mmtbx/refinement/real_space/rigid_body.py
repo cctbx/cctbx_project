@@ -256,13 +256,24 @@ class refine_mz(object):
       y=self._get_map().as_1d()).coefficient()
 
   def _get_map_at_d_min(self, d_min):
-    # +0.1 to avoid "cctbx Error: Miller index not in structure factor map."
-    f_obs_cmpl = self.complete_set.resolution_filter(
-      d_min=d_min+0.1).structure_factors_from_map(
-        map            = self.map_data,
-        use_scale      = True,
-        anomalous_flag = False,
-        use_sg         = True)
+    done = False
+    cntr = 0
+    while not done:
+      if(cntr>5):
+        raise RuntimeError("Number of trial resolution increments exceeded.")
+      try:
+        f_obs_cmpl = self.complete_set.resolution_filter(
+          d_min=d_min).structure_factors_from_map(
+            map            = self.map_data,
+            use_scale      = True,
+            anomalous_flag = False,
+            use_sg         = True)
+        done = True
+      except KeyboardInterrupt: raise
+      except Exception, e:
+        if(str(e)=="cctbx Error: Miller index not in structure factor map."):
+          d_min += 0.1
+      cntr+=1
     fft_map = miller.fft_map(
       crystal_gridding     = self.crystal_gridding,
       fourier_coefficients = f_obs_cmpl)
