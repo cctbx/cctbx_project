@@ -9,6 +9,6 @@ ext = boost.python.import_ext("mmtbx_tls_utils_ext")
 from mmtbx_tls_utils_ext import *
 
 def _indexing__iter__(self):
-    return (self[i] for i in range(self.size()))
+  return (self[i] for i in range(self.size()))
 TLSAmplitudes.__iter__ = _indexing__iter__
 TLSMatricesAndAmplitudesList.__iter__ = _indexing__iter__

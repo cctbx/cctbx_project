@@ -20,10 +20,10 @@
 
 typedef enum
 {
-    TLSBlankString = 0,
-    TLSTranslation = 1 << 0,
-    TLSLibration   = 1 << 1,
-    TLSScrew       = 1 << 2,
+  TLSBlankString = 0,
+  TLSTranslation = 1 << 0,
+  TLSLibration   = 1 << 1,
+  TLSScrew       = 1 << 2,
 } TLSComponent;
 inline TLSComponent operator|(TLSComponent a, TLSComponent b)
 {
@@ -33,12 +33,12 @@ inline TLSComponent operator|(TLSComponent a, TLSComponent b)
 // Replace all instances of a substring in a string with another string
 std::string find_and_replace(std::string source, std::string const& find, std::string const& replace)
 {
-    for(std::string::size_type i = 0; (i = source.find(find, i)) != std::string::npos;)
-    {
-        source.replace(i, find.length(), replace);
-        i += replace.length();
-    }
-    return source;
+  for(std::string::size_type i = 0; (i = source.find(find, i)) != std::string::npos;)
+  {
+    source.replace(i, find.length(), replace);
+    i += replace.length();
+  }
+  return source;
 }
 
 namespace mmtbx { namespace tls { namespace utils {
@@ -892,8 +892,8 @@ class TLSAmplitudes {
 
     void zeroValues()
     {
-        dblArr1d zeros(size(), 0.0);
-        setValues(zeros);
+      dblArr1d zeros(size(), 0.0);
+      setValues(zeros);
     }
 
     void zeroNegativeValues()

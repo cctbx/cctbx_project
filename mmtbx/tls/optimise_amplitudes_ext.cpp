@@ -37,24 +37,24 @@ namespace {
                  arg("base_atom_indices"),
                  arg("dataset_hash"),
                  arg("residual_uijs"))
+                )
               )
-        )
-        .def("set_current_amplitudes", &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::setCurrentAmplitudes)
-        .def("get_current_amplitudes", &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::getCurrentAmplitudes)
-        .def("print_current_amplitudes", &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::printCurrentAmplitudes)
-        .add_property("x",
-            &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::getCurrentAmplitudes,
-            &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::setCurrentAmplitudes
-            )
-        .def("set_residual_mask",
-            &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::setResidualMask,
-            ( args("mask") ),
-            "Select which datasets are used to optimise the residual levels (if any)"
-            )
-        .def("compute_functional_and_gradients",
-            &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::computeFunctionalAndGradients
-            //return_value_policy<manage_new_object>()
-            )
+      .def("set_current_amplitudes", &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::setCurrentAmplitudes)
+      .def("get_current_amplitudes", &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::getCurrentAmplitudes)
+      .def("print_current_amplitudes", &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::printCurrentAmplitudes)
+      .add_property("x",
+          &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::getCurrentAmplitudes,
+          &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::setCurrentAmplitudes
+          )
+      .def("set_residual_mask",
+          &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::setResidualMask,
+          ( args("mask") ),
+          "Select which datasets are used to optimise the residual levels (if any)"
+          )
+      .def("compute_functional_and_gradients",
+          &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::computeFunctionalAndGradients
+          //return_value_policy<manage_new_object>()
+          )
     ;
   }
 
