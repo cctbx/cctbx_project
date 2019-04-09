@@ -16,6 +16,7 @@ import mmtbx.model
 import iotbx.pdb
 import unittest
 import os
+import iotbx.phil
 
 '''
 Test non-bonded overlaps
@@ -585,8 +586,14 @@ class test_nonbonded_overlaps(unittest.TestCase):
     '''
     nb = compute
     # process pdb data
+    params = iotbx.phil.parse(
+    monomer_library.pdb_interpretation.grand_master_phil_str,
+    process_includes=True).extract()
+    params.pdb_interpretation.allow_polymer_cross_special_position=True
+    params = params.pdb_interpretation
     pdb_processed_file = pdb_inter.process(
       file_name=None,
+      params=params,
       raw_records=raw_records0.splitlines(),
       substitute_non_crystallographic_unit_cell_if_necessary=True,
       mon_lib_srv=mon_lib_srv,
@@ -642,10 +649,16 @@ class test_nonbonded_overlaps(unittest.TestCase):
     Test that working correctly when atom is removed
     '''
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
+    params = iotbx.phil.parse(
+    monomer_library.pdb_interpretation.grand_master_phil_str,
+    process_includes=True).extract()
+    params.pdb_interpretation.allow_polymer_cross_special_position=True
+    params = params.pdb_interpretation
     processed_pdb_file = pdb_inter.process(
       mon_lib_srv    = mon_lib_srv,
       ener_lib       = ener_lib,
       raw_records    = raw_records3,
+      params         = params,
       force_symmetry = True)
     grm = processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
@@ -726,9 +739,15 @@ class test_nonbonded_overlaps(unittest.TestCase):
       refine_occupancies     = False,
       refine_adp             = "isotropic")
     pdb_str = mol.model_as_pdb()
+    params = iotbx.phil.parse(
+    monomer_library.pdb_interpretation.grand_master_phil_str,
+    process_includes=True).extract()
+    params.pdb_interpretation.allow_polymer_cross_special_position=True
+    params = params.pdb_interpretation
     processed_pdb_file = pdb_inter.process(
       mon_lib_srv    = mon_lib_srv,
       ener_lib       = ener_lib,
+      params         = params,
       raw_records    = pdb_str,
       force_symmetry = True)
     macro_mol_sel = nbo.get_macro_mol_sel(processed_pdb_file)
@@ -746,10 +765,16 @@ class test_nonbonded_overlaps(unittest.TestCase):
     msg = outstring.format('Selection related overlaps', expected, result)
     self.assertEqual(result, expected, msg=msg)
     # Test the modified pdb data with scatterers lables
+    params = iotbx.phil.parse(
+    monomer_library.pdb_interpretation.grand_master_phil_str,
+    process_includes=True).extract()
+    params.pdb_interpretation.allow_polymer_cross_special_position=True
+    params = params.pdb_interpretation
     processed_pdb_file = pdb_inter.process(
       mon_lib_srv    = mon_lib_srv,
       ener_lib       = ener_lib,
       raw_records    = raw_records4,
+      params         = params,
       force_symmetry = True)
     geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
@@ -830,7 +855,13 @@ class test_nonbonded_overlaps(unittest.TestCase):
 
   def test_info(self):
     """ Test that there are no error when collecting non-bonded overlaps info"""
+    params = iotbx.phil.parse(
+    monomer_library.pdb_interpretation.grand_master_phil_str,
+    process_includes=True).extract()
+    params.pdb_interpretation.allow_polymer_cross_special_position=True
+    params = params.pdb_interpretation
     pdb_processed_file = pdb_inter.run(
+      params=params,
       args=[self.file_name2],
       assume_hydrogens_all_missing=False,
       substitute_non_crystallographic_unit_cell_if_necessary=True,
@@ -990,11 +1021,17 @@ class test_nonbonded_overlaps(unittest.TestCase):
     open(fn,'w').write(raw_records8)
     self.file_to_delete.append(fn)
     #
+    params = iotbx.phil.parse(
+    monomer_library.pdb_interpretation.grand_master_phil_str,
+    process_includes=True).extract()
+    params.pdb_interpretation.allow_polymer_cross_special_position=True
+    params = params.pdb_interpretation
     pdb_processed_file = pdb_inter.process(
       file_name=fn,
       substitute_non_crystallographic_unit_cell_if_necessary=False,
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
+      params=params,
       log= StringIO())
     #
     s = pdb_processed_file.all_chain_proxies.special_position_settings
@@ -1014,8 +1051,14 @@ class test_nonbonded_overlaps(unittest.TestCase):
 def process_overlaps_count(file_name,return_n_atoms=False,cif_file_name=None):
   files = [file_name]
   if cif_file_name: files.append(cif_file_name)
+  params = iotbx.phil.parse(
+  monomer_library.pdb_interpretation.grand_master_phil_str,
+  process_includes=True).extract()
+  params.pdb_interpretation.allow_polymer_cross_special_position=True
+  params = params.pdb_interpretation
   pdb_processed_file = pdb_inter.run(
       args=files,
+      params=params,
       assume_hydrogens_all_missing=False,
       substitute_non_crystallographic_unit_cell_if_necessary=True,
       log=null_out())
@@ -1063,9 +1106,15 @@ def process_raw_records(
   # create a geometry_restraints_manager (grm)
   log = StringIO()
   # process pdb data
+  params = iotbx.phil.parse(
+    monomer_library.pdb_interpretation.grand_master_phil_str,
+    process_includes=True).extract()
+  params.pdb_interpretation.allow_polymer_cross_special_position=True
+  params = params.pdb_interpretation
   pdb_processed_file = pdb_inter.process(
     file_name=None,
     raw_records=records,
+    params = params,
     substitute_non_crystallographic_unit_cell_if_necessary=True,
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,

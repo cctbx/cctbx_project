@@ -372,8 +372,11 @@ type_list_known3 = ['3neigbs', '2tetra', '2tetra', '2tetra', '2tetra',
 
 def exercise3(pdb_str, type_list_known):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  params = mmtbx.model.manager.get_default_pdb_interpretation_scope().extract()
+  params.pdb_interpretation.allow_polymer_cross_special_position=True
   model = mmtbx.model.manager(
     model_input = pdb_inp,
+    pdb_interpretation_params = params,
     build_grm   = True,
     log         = null_out())
 
