@@ -152,16 +152,16 @@ class run(object):
 
     # Run in-object using python implementation
     if implementation == 'python':
-        # all steps
-        self.step_A()
-        self.step_B()
-        self.step_C()
-        self.step_D()
+      # all steps
+      self.step_A()
+      self.step_B()
+      self.step_C()
+      self.step_D()
     # Create c++ analysis object and unpack results
     elif implementation == 'c++':
-        self.run_cplusplus()
+      self.run_cplusplus()
     else:
-        raise Sorry('Invalid implementation: {}'.format(implementation))
+      raise Sorry('Invalid implementation: {}'.format(implementation))
 
     # compose result-object
     self.result = self.finalize()
@@ -512,7 +512,7 @@ class run(object):
 
     # Check result
     if not decomp.is_valid():
-        raise Sorry(decomp.error())
+      raise Sorry(decomp.error())
 
     # Unpack results required for finalise object
 

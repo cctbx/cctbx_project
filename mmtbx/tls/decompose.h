@@ -131,13 +131,13 @@ class decompose_tls_matrices {
     // --------------------
     // Store information about the position of the libration axes
     struct W {
-        double wy_lx = 0.0;
-        double wz_lx = 0.0;
-        double wz_ly = 0.0;
-        double wx_ly = 0.0;
-        double wx_lz = 0.0;
-        double wy_lz = 0.0;
-        scitbx::vec3<double> w_lx,  w_ly,  w_lz;
+      double wy_lx = 0.0;
+      double wz_lx = 0.0;
+      double wz_ly = 0.0;
+      double wx_ly = 0.0;
+      double wx_lz = 0.0;
+      double wy_lz = 0.0;
+      scitbx::vec3<double> w_lx,  w_ly,  w_lz;
     } w_15, w;
     // Translational components from offset of librational axes from origin
     scitbx::sym_mat3<double> D_WL;

@@ -77,13 +77,13 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
   public:
     //! Main constructor
     MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator(
-            const symArrNd &target_uijs,
-            const dblArrNd &target_weights,
-            const dblArr1d &base_amplitudes,
-            const bp::list &base_uijs,
-            const bp::list &base_atom_indices,
-            const selArr1d &dataset_hash,
-            const symArr1d &residual_uijs ) :
+        const symArrNd &target_uijs,
+        const dblArrNd &target_weights,
+        const dblArr1d &base_amplitudes,
+        const bp::list &base_uijs,
+        const bp::list &base_atom_indices,
+        const selArr1d &dataset_hash,
+        const symArr1d &residual_uijs ) :
       target_uijs(target_uijs),
       target_weights(target_weights),
       dataset_hash(dataset_hash),

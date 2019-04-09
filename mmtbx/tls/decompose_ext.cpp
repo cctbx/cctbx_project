@@ -32,29 +32,29 @@ namespace {
 
   af::shared<scitbx::vec3<double> > get_v_axis_directions(const decompose_tls_matrices& a)
   {
-      af::shared<scitbx::vec3<double> > s(3);
-      s[0] = a.v1_M;
-      s[1] = a.v2_M;
-      s[2] = a.v3_M;
-      return s;
+    af::shared<scitbx::vec3<double> > s(3);
+    s[0] = a.v1_M;
+    s[1] = a.v2_M;
+    s[2] = a.v3_M;
+    return s;
   }
 
   af::shared<scitbx::vec3<double> > get_l_axis_directions(const decompose_tls_matrices& a)
   {
-      af::shared<scitbx::vec3<double> > s(3);
-      s[0] = a.l1_M;
-      s[1] = a.l2_M;
-      s[2] = a.l3_M;
-      return s;
+    af::shared<scitbx::vec3<double> > s(3);
+    s[0] = a.l1_M;
+    s[1] = a.l2_M;
+    s[2] = a.l3_M;
+    return s;
   }
 
   af::shared<scitbx::vec3<double> > get_l_axis_intersections(const decompose_tls_matrices& a)
   {
-      af::shared<scitbx::vec3<double> > s(3);
-      s[0] = a.w1_M;
-      s[1] = a.w2_M;
-      s[2] = a.w3_M;
-      return s;
+    af::shared<scitbx::vec3<double> > s(3);
+    s[0] = a.w1_M;
+    s[1] = a.w2_M;
+    s[2] = a.w3_M;
+    return s;
   }
 
   boost::python::tuple get_R_ML(const decompose_tls_matrices& a)
@@ -68,36 +68,37 @@ namespace {
     using namespace boost::python;
     using boost::python::arg;
 
-    class_<decompose_tls_matrices>("decompose_tls_matrices",
-            init< scitbx::sym_mat3<double> const&,
-                  scitbx::sym_mat3<double> const&,
-                  scitbx::mat3<double> const&,
-                  bool, bool,
-                  double, double,
-                  std::string, double>(
-                      (arg("T"),
-                       arg("L"),
-                       arg("S"),
-                       arg("l_and_s_in_degrees")=true,
-                       arg("verbose")=false,
-                       arg("tol")=1.e-6,
-                       arg("eps")=1.e-8,
-                       arg("t_S_formula")="11",
-                       arg("t_S_value")=0.0)))
+    class_<decompose_tls_matrices>(
+        "decompose_tls_matrices",
+        init< scitbx::sym_mat3<double> const&,
+          scitbx::sym_mat3<double> const&,
+          scitbx::mat3<double> const&,
+          bool, bool,
+          double, double,
+          std::string, double>(
+            (arg("T"),
+             arg("L"),
+             arg("S"),
+             arg("l_and_s_in_degrees")=true,
+             arg("verbose")=false,
+             arg("tol")=1.e-6,
+             arg("eps")=1.e-8,
+             arg("t_S_formula")="11",
+             arg("t_S_value")=0.0)))
 
-        .def("is_valid", &decompose_tls_matrices::is_valid)
-        .def("error", &decompose_tls_matrices::error)
+      .def("is_valid", &decompose_tls_matrices::is_valid)
+      .def("error", &decompose_tls_matrices::error)
 
-        .add_property("v_amplitudes", get_v_amplitudes)
-        .add_property("l_amplitudes", get_l_amplitudes)
-        .add_property("s_amplitudes", get_s_amplitudes)
+      .add_property("v_amplitudes", get_v_amplitudes)
+      .add_property("l_amplitudes", get_l_amplitudes)
+      .add_property("s_amplitudes", get_s_amplitudes)
 
-        .add_property("v_axis_directions",    get_v_axis_directions)
-        .add_property("l_axis_directions",    get_l_axis_directions)
-        .add_property("l_axis_intersections", get_l_axis_intersections)
+      .add_property("v_axis_directions",    get_v_axis_directions)
+      .add_property("l_axis_directions",    get_l_axis_directions)
+      .add_property("l_axis_intersections", get_l_axis_intersections)
 
-        .add_property("R_ML", get_R_ML)
-        .add_property("R_MV", get_R_MV)
+      .add_property("R_ML", get_R_ML)
+      .add_property("R_MV", get_R_MV)
 
     ;
 
