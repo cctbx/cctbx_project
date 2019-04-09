@@ -27,7 +27,7 @@ typedef af::versa<double, af::c_grid<2> >   eigenvectors;
 class decompose_tls_matrices {
 
   public:
-    // Constructor 
+    // Constructor
     decompose_tls_matrices(scitbx::sym_mat3<double> const& T,
                            scitbx::sym_mat3<double> const& L,
                            scitbx::mat3<double> const& S,
@@ -37,7 +37,7 @@ class decompose_tls_matrices {
                            double eps = 1.e-8,
                            std::string const& t_S_formula = "11",
                            double t_S_value = 0.0);
-    
+
     bool is_valid() { return valid_; }
     bool is_verbose() { return verbose_; }
     std::string error() { return error_; }
@@ -45,7 +45,7 @@ class decompose_tls_matrices {
     // Tolerance of the physical parameters
     double precision_tolerance() { return tol; }
     // Tolerance of the numerical parameters
-    double floating_point_limit() { return eps; } 
+    double floating_point_limit() { return eps; }
 
     // --------------------
     // Output variables (set throughout and grouped here for clarity)
@@ -72,16 +72,16 @@ class decompose_tls_matrices {
     // R_ML * a_M = a_L
     scitbx::mat3<double> R_ML;
     scitbx::mat3<double> R_ML_t;
-    // Rotation matrix to transform between original and vibrational coordinate frames 
+    // Rotation matrix to transform between original and vibrational coordinate frames
     // R_MV * a_M = a_V
     scitbx::mat3<double> R_MV;
     scitbx::mat3<double> R_MV_t;
 
   private:
-    
+
     bool verbose_;
 
-    // Response variables 
+    // Response variables
     bool valid_ = true;
     std::string error_ = "none";
 
@@ -110,20 +110,20 @@ class decompose_tls_matrices {
     // --------------------
     // Input variables
     // --------------------
-    // Input matrices 
-    scitbx::sym_mat3<double> T_M; 
+    // Input matrices
+    scitbx::sym_mat3<double> T_M;
     scitbx::sym_mat3<double> L_M;
     scitbx::mat3<double>     S_M;
     // Origin -- only used for manipulating the output axes, does not affect decomposition
     // TODO NOT IMPLEMENTED TODO
     //scitbx::vec3<double> const origin;
 
-    // Matrices at various stages during the decomposition and internal variables 
+    // Matrices at various stages during the decomposition and internal variables
     // --------------------
     // Set at step A
     // --------------------
     // Matrices in the basis of the libration matrix
-    scitbx::sym_mat3<double> T_L; 
+    scitbx::sym_mat3<double> T_L;
     scitbx::sym_mat3<double> L_L;
     scitbx::mat3<double> S_L;
     // --------------------
@@ -132,16 +132,16 @@ class decompose_tls_matrices {
     // Store information about the position of the libration axes
     struct W {
         double wy_lx = 0.0;
-        double wz_lx = 0.0; 
+        double wz_lx = 0.0;
         double wz_ly = 0.0;
         double wx_ly = 0.0;
-        double wx_lz = 0.0; 
+        double wx_lz = 0.0;
         double wy_lz = 0.0;
         scitbx::vec3<double> w_lx,  w_ly,  w_lz;
     } w_15, w;
-    // Translational components from offset of librational axes from origin 
-    scitbx::sym_mat3<double> D_WL; 
-    // Translational components in the L-basis 
+    // Translational components from offset of librational axes from origin
+    scitbx::sym_mat3<double> D_WL;
+    // Translational components in the L-basis
     // T_CL = T_L - D_WL
     scitbx::sym_mat3<double> T_CL;
     // --------------------
@@ -188,7 +188,7 @@ class decompose_tls_matrices {
     void zero_small_values(scitbx::sym_mat3<double>& matrix);
 
     // --------------------
-    // Matrix Helper functions 
+    // Matrix Helper functions
     // --------------------
     // Normal matrices
     // xx, xy, xz      0, 1, 2
@@ -217,14 +217,14 @@ class decompose_tls_matrices {
     double zy(scitbx::sym_mat3<double> const& matrix) { return yz(matrix); }
     double zz(scitbx::sym_mat3<double> const& matrix) { return matrix[2]; }
 
-    // Print matrices 
+    // Print matrices
     void print(std::string const& label, double value);
     void print(std::string const& label, scitbx::mat3<double> const& matrix);
     void print(std::string const& label, scitbx::sym_mat3<double> const& matrix);
     void print(std::string const& label, scitbx::vec3<double> const& vector);
     void print(std::string const& label, af::shared<double> const& vector);
 };
-                            
+
 }}} // close mmtbx/tls/decompose
 
 #endif

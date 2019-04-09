@@ -45,9 +45,9 @@ namespace mmtbx { namespace tls { namespace utils {
 
 // These are used a lot...
 namespace af = scitbx::af;
-namespace dec = mmtbx::tls::decompose; 
+namespace dec = mmtbx::tls::decompose;
 
-// Commonly used types 
+// Commonly used types
 typedef scitbx::vec3<double> vec;
 typedef scitbx::mat3<double> mat;
 typedef scitbx::sym_mat3<double> sym;
@@ -61,10 +61,10 @@ typedef af::versa<double, af::flex_grid<> > dblArrNd;
 typedef af::versa<vec,    af::flex_grid<> > vecArrNd;
 typedef af::versa<sym,    af::flex_grid<> > symArrNd;
 
-vecArrNd uij_eigenvalues(const symArrNd& uijs) 
+vecArrNd uij_eigenvalues(const symArrNd& uijs)
 {
   vecArrNd uij_eig_vals(af::flex_grid<>(uijs.accessor().all()));
-  for (int i = 0; i < uijs.size(); i++) 
+  for (int i = 0; i < uijs.size(); i++)
   {
     sym const *u = &uijs[i];
     dec::Eig es(*u);
@@ -80,14 +80,14 @@ void validateSitesAndOrigins(const vecArrNd& sites_carts, const vecArr1d& origin
 {
   // Check input array is correct dimension
   size_t nd = sites_carts.accessor().nd();
-  if (nd != 2) 
+  if (nd != 2)
   {
     throw std::invalid_argument( "sites_carts must be 2-dimensional array of size (n_dst, n_atm)" );
   }
   // Check that length of origins is same as first dimension of sites_carts
   size_t n_dst = sites_carts.accessor().all()[0];
-  if (origins.size()!=n_dst) 
-  { 
+  if (origins.size()!=n_dst)
+  {
     throw std::invalid_argument( "Mismatch between the size of origins and first dimension of sites_carts" );
   }
 }
@@ -101,9 +101,9 @@ void validateSitesAndOrigins(const vecArrNd& sites_carts, const vecArr1d& origin
  */
 class TLSMatrices {
 
-  public: 
-    //! Constructor from nothing 
-    TLSMatrices() 
+  public:
+    //! Constructor from nothing
+    TLSMatrices()
     {
       reset();
     }
@@ -111,9 +111,9 @@ class TLSMatrices {
     //! Constructor from separate matrices
     TLSMatrices(const sym &T,
                 const sym &L,
-                const mat &S) 
-      : T(T), L(L), S(S) 
-    {  
+                const mat &S)
+      : T(T), L(L), S(S)
+    {
       round();
     }
 
@@ -126,9 +126,9 @@ class TLSMatrices {
     }
 
     //! Constructor from array of 21 values
-    TLSMatrices(const dblArr1d &values) 
+    TLSMatrices(const dblArr1d &values)
     {
-      if (values.size()!=21) 
+      if (values.size()!=21)
       {
         throw std::invalid_argument( "Input values must have length 21" );
       }
@@ -139,40 +139,40 @@ class TLSMatrices {
     }
 
     //! Get number of decimal places for rounding values
-    static int getPrecision() 
-    { 
-      return log10(rnd); 
+    static int getPrecision()
+    {
+      return log10(rnd);
     }
     //! Set number of decimal places for rounding values
-    static void setPrecision(int decimals) 
-    { 
-      rnd = pow(10.0, (double)decimals);  
+    static void setPrecision(int decimals)
+    {
+      rnd = pow(10.0, (double)decimals);
     }
     //! Get default tolerance for determining validity of matrices
-    static double getTolerance() 
-    { 
-      return tol; 
+    static double getTolerance()
+    {
+      return tol;
     }
     //! Set default tolerance for determining validity of matrices
-    static void setTolerance(double tolerance) 
+    static void setTolerance(double tolerance)
     {
       if (tolerance <= 0.0)
       {
         throw std::invalid_argument( "tolerance must be greater than 0.0" );
       }
-      tol = tolerance; 
+      tol = tolerance;
     }
 
     //! Override + operator for adding two classes together.
-    TLSMatrices& operator+(const TLSMatrices &other) const 
-    { 
+    TLSMatrices& operator+(const TLSMatrices &other) const
+    {
       TLSMatrices& c = *copy();
       c.add(other);
       return c;
     }
 
     //! Override * operator for multiplying by a scalar
-    TLSMatrices& operator*(double scalar) const 
+    TLSMatrices& operator*(double scalar) const
     {
       TLSMatrices& c = *copy();
       c.multiply(scalar);
@@ -180,26 +180,26 @@ class TLSMatrices {
     }
 
     //! Add another TLSMatrices object to this one, matrix by matrix.
-    void add(const TLSMatrices &other) 
+    void add(const TLSMatrices &other)
     {
       T += other.T;
       L += other.L;
       S += other.S;
       round();
     }
-    
+
     //! Test if the matrix values of any of the selected components are nonzero
     bool any(
-        const std::string & component_string = "TLS", 
+        const std::string & component_string = "TLS",
         double tolerance = -1)
     {
       sanitiseTolerance(&tolerance);
       TLSComponent components = stringToComponents(component_string);
       return anyByInt(components, tolerance);
     }
-     
-    //! Create a copy of the class 
-    TLSMatrices* copy() const 
+
+    //! Create a copy of the class
+    TLSMatrices* copy() const
     {
       return new TLSMatrices(*this);
     }
@@ -214,27 +214,27 @@ class TLSMatrices {
 
     //! Extract matrix values as an array, given an enum 0-7 which selects combinations of T(1), L(2) & S(4) by bitwise operations.
     dblArr1d getValuesByInt(
-        const TLSComponent &components, 
+        const TLSComponent &components,
         bool include_szz = true) const
     {
       // Output array
       dblArr1d values;
       // Output T values?
-      if (components & TLSTranslation) 
+      if (components & TLSTranslation)
       {
         values.reserve(values.size() + T.size());
         std::copy(T.begin(), T.end(), std::back_inserter(values));
       }
       // Output L values?
-      if (components & TLSLibration) 
+      if (components & TLSLibration)
       {
         values.reserve(values.size() + L.size());
         std::copy(L.begin(), L.end(), std::back_inserter(values));
       }
       // Output S values?
-      if (components & TLSScrew) 
+      if (components & TLSScrew)
       {
-        if (include_szz) 
+        if (include_szz)
         {
           // Copy all elements of the S-matrix
           values.reserve(values.size() + S.size());
@@ -250,24 +250,24 @@ class TLSMatrices {
 
     //! Extract matrix values as an array, given a selection string containing combinations of T,L or S.
     dblArr1d getValuesByString(
-        const std::string & component_string = "TLS", 
+        const std::string & component_string = "TLS",
         bool include_szz = true) const
     {
       TLSComponent components = stringToComponents(component_string);
       return getValuesByInt(components, include_szz=include_szz);
     }
-      
+
     //! Determine whether the TLS matrices are physically valid by decomposition
     bool isValid(double tolerance = -1) const
     {
       dec::decompose_tls_matrices decomp = decompose(tolerance);
       return decomp.is_valid();
-    }  
-    
+    }
+
     //! Scale all matrix values by a scalar
     void multiply(double scalar)
     {
-      if (scalar < 0.0) 
+      if (scalar < 0.0)
       {
         throw std::invalid_argument( "Multiplier must be positive" );
       }
@@ -276,12 +276,12 @@ class TLSMatrices {
     }
 
     //! Scale the TLS matrices so that the generated Uij are on a particular scale.
-    /*! 
-     * On failure, return negative value 
+    /*!
+     * On failure, return negative value
      */
     double normalise(
-        const vecArr1d &sites_cart, 
-        const vec &origin, 
+        const vecArr1d &sites_cart,
+        const vec &origin,
         double target = 1.0,
         double tolerance = -1)
     {
@@ -292,7 +292,7 @@ class TLSMatrices {
         throw std::invalid_argument( "target must be positive" );
       }
       // Error if TLS Matrices are invalid
-      if (!isValid(tolerance)) 
+      if (!isValid(tolerance))
       {
         throw std::runtime_error( "TLS Matrices are invalid -- cannot normalise matrices" );
       }
@@ -300,7 +300,7 @@ class TLSMatrices {
       double mult = 0;
       // Extract the uijs for the provided coordinates
       symArr1d uaniso = uijs(sites_cart, origin);
-      // Sum of the Uij eigenvalues 
+      // Sum of the Uij eigenvalues
       double sum = 0;
       for (int i = 0; i < uaniso.size(); i++)
       {
@@ -325,7 +325,7 @@ class TLSMatrices {
       {
         return -1;
       }
-      // The multiplier to be applied to the matrices is the 
+      // The multiplier to be applied to the matrices is the
       // ratio of the current mean to the target mean
       mult = target / mean ;
       // Apply multiplier and set Szz value
@@ -337,7 +337,7 @@ class TLSMatrices {
 
     //! Determine the number of parameters (total or free)
     int paramCount(
-        bool free = true, 
+        bool free = true,
         bool non_zero = false)
     {
       int remove = free;
@@ -361,37 +361,37 @@ class TLSMatrices {
       memset(&L[0], '\0', sizeof(double) * L.size());
       memset(&S[0], '\0', sizeof(double) * S.size());
     }
-    
+
     //! Set matrices values from an array and a matrix selection enum (0-7)
     void setValuesByInt(
-        const dblArr1d &values, 
-        const TLSComponent &components, 
+        const dblArr1d &values,
+        const TLSComponent &components,
         bool include_szz = true)
     {
       // Validate length of input array
       int subtract_szz = (!include_szz);
-      int req_length = ( (bool)(components & TLSTranslation) * T.size() ) + 
-                       ( (bool)(components & TLSLibration  ) * L.size() ) + 
+      int req_length = ( (bool)(components & TLSTranslation) * T.size() ) +
+                       ( (bool)(components & TLSLibration  ) * L.size() ) +
                        ( (bool)(components & TLSScrew      ) * (S.size() - subtract_szz) );
-      if (req_length != values.size()) 
+      if (req_length != values.size())
       {
         throw std::invalid_argument( "Mismatch between the length of the selected matrices and the length of the input array" );
       }
       // Copy chunks to matrices are required
       size_t current = 0;
-      if (components & TLSTranslation) 
+      if (components & TLSTranslation)
       {
         memcpy(&T[0], &values[current], sizeof(double) * T.size());
         current += T.size();
       }
-      if (components & TLSLibration) 
+      if (components & TLSLibration)
       {
         memcpy(&L[0], &values[current], sizeof(double) * L.size());
         current += L.size();
       }
-      if (components & TLSScrew) 
+      if (components & TLSScrew)
       {
-        if (include_szz) 
+        if (include_szz)
         {
           memcpy(&S[0], &values[current], sizeof(double) * S.size());
           current += S.size();
@@ -403,22 +403,22 @@ class TLSMatrices {
         }
       }
       round();
-      if (current!=values.size()) 
-      { 
+      if (current!=values.size())
+      {
         throw std::runtime_error( "Mismatch between the current index and the length of the input array" );
       }
     }
 
     //! Set matrices vaulues from an array and a matrix selection string (containing combinations of T, L or S)
     void setValuesByString(
-        const dblArr1d &values, 
-        const std::string &component_string = "TLS", 
+        const dblArr1d &values,
+        const std::string &component_string = "TLS",
         bool include_szz = true)
     {
       TLSComponent components = stringToComponents(component_string);
       setValuesByInt(values, components, include_szz=include_szz);
     }
-      
+
     //! Generates summary string for the class
     std::string summary()
     {
@@ -433,7 +433,7 @@ class TLSMatrices {
       buff << find_and_replace(matrix_to_string(S), "\n", "\n"+spacer);
       return buff.str();
     }
-   
+
     //! Convert TLS matrices to Uijs from coordinates and an origin
     symArr1d uijs(
         const vecArr1d &sites_cart,
@@ -442,21 +442,21 @@ class TLSMatrices {
       tlso<double> tls_params = tlso<double>(T, L, S, origin);
       symArr1d uaniso;
       uaniso = uaniso_from_tls_one_group(tls_params, sites_cart, false);
-      return uaniso; 
+      return uaniso;
     }
 
     //! Returns T-matrix
-    sym getT() 
+    sym getT()
     {
       return T;
     }
     //! Returns L-matrix
-    sym getL() 
+    sym getL()
     {
       return L;
     }
     //! Returns S-matrix
-    mat getS() 
+    mat getS()
     {
       return S;
     }
@@ -472,7 +472,7 @@ class TLSMatrices {
 
     //! Test if the matrix values of any of the selected components are nonzero (using enum 0-7)
     bool anyByInt(
-        const TLSComponent &components, 
+        const TLSComponent &components,
         double tolerance = -1)
     {
       sanitiseTolerance(&tolerance);
@@ -486,42 +486,42 @@ class TLSMatrices {
       }
       return false;
     }
-    
+
     //! Format a sym_mat3 matrix neatly to buffer
-    std::string matrix_to_string(const sym &M) 
+    std::string matrix_to_string(const sym &M)
     {
       std::ostringstream buff;
       int dec = (int)log10(rnd);
       int wth = dec + 5;
       buff << std::setprecision(dec)
-           << std::showpos 
-           << std::setw(wth) << M[0] << "  " 
+           << std::showpos
+           << std::setw(wth) << M[0] << "  "
            << std::setw(wth) << M[3] << "  "
-           << std::setw(wth) << M[4] << std::endl 
-           << std::setw(wth) << "--" << "  " 
+           << std::setw(wth) << M[4] << std::endl
+           << std::setw(wth) << "--" << "  "
            << std::setw(wth) << M[1] << "  "
-           << std::setw(wth) << M[5] << std::endl 
-           << std::setw(wth) << "--" << "  " 
+           << std::setw(wth) << M[5] << std::endl
+           << std::setw(wth) << "--" << "  "
            << std::setw(wth) << "--" << "  "
            << std::setw(wth) << M[2];
       return buff.str();
     }
 
     //! Format a mat3 matrix neatly to buffer
-    std::string matrix_to_string(const mat &M) 
+    std::string matrix_to_string(const mat &M)
     {
       std::ostringstream buff;
       int dec = (int)log10(rnd);
       int wth = dec + 5;
       buff << std::setprecision(dec)
-           << std::showpos 
-           << std::setw(wth) << M[0] << "  " 
+           << std::showpos
+           << std::setw(wth) << M[0] << "  "
            << std::setw(wth) << M[1] << "  "
-           << std::setw(wth) << M[2] << std::endl 
-           << std::setw(wth) << M[3] << "  " 
+           << std::setw(wth) << M[2] << std::endl
+           << std::setw(wth) << M[3] << "  "
            << std::setw(wth) << M[4] << "  "
-           << std::setw(wth) << M[5] << std::endl 
-           << std::setw(wth) << M[6] << "  " 
+           << std::setw(wth) << M[5] << std::endl
+           << std::setw(wth) << M[6] << "  "
            << std::setw(wth) << M[7] << "  "
            << std::setw(wth) << M[8] << std::endl;
       return buff.str();
@@ -529,12 +529,12 @@ class TLSMatrices {
 
     //! Round matrix values to the set precision
     void round() {
-      for (int i=0; i<6; i++) 
+      for (int i=0; i<6; i++)
       {
         T[i] = rint(rnd*T[i]) / rnd;
         L[i] = rint(rnd*L[i]) / rnd;
       }
-      for (int i=0; i<9; i++) 
+      for (int i=0; i<9; i++)
       {
         S[i] = rint(rnd*S[i]) / rnd;
       }
@@ -546,7 +546,7 @@ class TLSMatrices {
       if (*tolerance < 0.0)
       {
         // Check that tolerance == -1
-        if (*tolerance != -1) 
+        if (*tolerance != -1)
         {
           throw std::invalid_argument( "Tolerance provided must either be positive or -1" );
         }
@@ -571,7 +571,7 @@ class TLSMatrices {
         comp[i] *= mult;
       }
     }
-    
+
     //! Set the trace of the S-matrix by changing Szz
     void setSzzValueFromSxxAndSyy(double target_trace = 0)
     {
@@ -590,21 +590,21 @@ class TLSMatrices {
       size_t count = 0;
       // Look for T in the component string
       found = component_string.find('T');
-      if (found!=std::string::npos) 
+      if (found!=std::string::npos)
       {
         total = total | TLSTranslation;
         count++;
       }
       // Look for L in the component string
       found = component_string.find('L');
-      if (found!=std::string::npos) 
+      if (found!=std::string::npos)
       {
         total = total | TLSLibration;
         count++;
       }
       // Look for S in the component string
       found = component_string.find('S');
-      if (found!=std::string::npos) 
+      if (found!=std::string::npos)
       {
         total = total | TLSScrew;
         count++;
@@ -627,7 +627,7 @@ class TLSAmplitudes {
 
   public:
     //! Constructor from number of amplitudes
-    TLSAmplitudes(size_t n) 
+    TLSAmplitudes(size_t n)
     {
       if ( n == 0 )
       {
@@ -635,67 +635,67 @@ class TLSAmplitudes {
       }
       // Resize vals array and fill with ones
       vals.reserve(n);
-      for (int i = 0; i < n; i++) 
+      for (int i = 0; i < n; i++)
       {
         vals.push_back(1.0);
       }
     }
 
     //! Constructor from another TLSAmplitudes object
-    TLSAmplitudes(const TLSAmplitudes &other) 
+    TLSAmplitudes(const TLSAmplitudes &other)
     {
       vals = dblArr1d(other.vals.begin(), other.vals.end());
       round();
     }
 
     //! Constructor from array of values
-    TLSAmplitudes(const dblArr1d &values) 
+    TLSAmplitudes(const dblArr1d &values)
     {
       vals = dblArr1d(values.begin(), values.end());
       round();
     }
 
     //! Get the number of decimal places to be used for rounding
-    static int getPrecision() 
-    { 
-      return log10(rnd); 
+    static int getPrecision()
+    {
+      return log10(rnd);
     }
     //! Set the number of decimal places to be used for rounding
-    static void setPrecision(int decimals) 
+    static void setPrecision(int decimals)
     {
-      rnd = pow(10.0, (double)decimals);  
+      rnd = pow(10.0, (double)decimals);
     }
     //! Get default tolerance for determining validity of matrices
-    static double getTolerance() 
-    { 
-      return tol; 
+    static double getTolerance()
+    {
+      return tol;
     }
     //! Set default tolerance for determining validity of matrices
-    static void setTolerance(double tolerance) 
-    { 
+    static void setTolerance(double tolerance)
+    {
       if (tolerance <= 0.0)
       {
         throw std::invalid_argument( "tolerance must be greater than 0.0" );
       }
-      tol = tolerance; 
+      tol = tolerance;
     }
 
     //! Indexing operator returns the i'th element of the amplitudes
-    double operator[] (const int index) 
+    double operator[] (const int index)
     {
       return vals[index];
     }
 
     //! Override + operator for adding two classes together.
-    TLSAmplitudes& operator+(const TLSAmplitudes &other) const 
-    { 
+    TLSAmplitudes& operator+(const TLSAmplitudes &other) const
+    {
       TLSAmplitudes& c = *copy();
       c.add(other);
       return c;
     }
 
     //! Override * operator for multiplying by a scalar
-    TLSAmplitudes& operator*(double scalar) const 
+    TLSAmplitudes& operator*(double scalar) const
     {
       TLSAmplitudes& c = *copy();
       c.multiply(scalar);
@@ -703,9 +703,9 @@ class TLSAmplitudes {
     }
 
     //! Addition of another class
-    void add(const TLSAmplitudes &other) 
+    void add(const TLSAmplitudes &other)
     {
-      if (vals.size()!=other.vals.size()) 
+      if (vals.size()!=other.vals.size())
       {
         throw std::invalid_argument( "TLSAmplitudes must have the same length" );
       }
@@ -728,25 +728,25 @@ class TLSAmplitudes {
     }
 
     //! Create a copy of the class
-    TLSAmplitudes* copy() const 
+    TLSAmplitudes* copy() const
     {
       return new TLSAmplitudes(*this);
     }
 
     //! Description strings of the functions
-    std::string getDescription() 
+    std::string getDescription()
     {
       return description;
     }
-    
+
     //! Get the amplitude values (by value!)
-    dblArr1d getValues() const 
+    dblArr1d getValues() const
     {
       return vals;
     }
 
     //! Get the amplitude values for a selection of indices (by value!)
-    dblArr1d getValuesBySelection(const selArr1d &selection) 
+    dblArr1d getValuesBySelection(const selArr1d &selection)
     {
       // Check this is a valid selection
       validateSelection(selection);
@@ -768,7 +768,7 @@ class TLSAmplitudes {
     }
 
     //! Divide the amplitudes by their average, and return multiplier to be applied to the TLSMatrices
-    double normalise(double target = 1.0) 
+    double normalise(double target = 1.0)
     {
       // Target musr be positive
       if ( target <= 0.0 )
@@ -776,7 +776,7 @@ class TLSAmplitudes {
         throw std::invalid_argument( "target must be positive" );
       }
       double total = 0.0;
-      for (int i = 0; i < vals.size(); i++) 
+      for (int i = 0; i < vals.size(); i++)
       {
         total += vals[i];
       }
@@ -790,12 +790,12 @@ class TLSAmplitudes {
     //! Count the number of (non-zero) parameters
     int paramCount(bool non_zero = false)
     {
-      if (!non_zero) 
-      { 
-        return vals.size(); 
+      if (!non_zero)
+      {
+        return vals.size();
       }
       int result = 0;
-      for (int i = 0; i < vals.size(); i++) 
+      for (int i = 0; i < vals.size(); i++)
       {
         // Perform the comparison exactly, not using tolerance
         if (vals[i]!=0.0) {
@@ -806,9 +806,9 @@ class TLSAmplitudes {
     }
 
     //! Set all amplitudes to 1.0
-    void reset() 
+    void reset()
     {
-      for (int i = 0; i < vals.size(); i++) 
+      for (int i = 0; i < vals.size(); i++)
       {
         vals[i] = 1.0;
       }
@@ -817,7 +817,7 @@ class TLSAmplitudes {
     //! Round all amplitudes to a number of decimal places
     void round()
     {
-      for (int i = 0; i < vals.size(); i++) 
+      for (int i = 0; i < vals.size(); i++)
       {
         vals[i] = rint(rnd*vals[i]) / rnd;
       }
@@ -827,12 +827,12 @@ class TLSAmplitudes {
     void setValues(const dblArr1d &values)
     {
       // Assert values is same length as internal values
-      if (values.size() != vals.size()) 
+      if (values.size() != vals.size())
       {
         throw std::invalid_argument( "Input array must be the same length as TLSAmplitudes" );
       }
       // Copy across selected values
-      for (int i = 0; i < values.size(); i++) 
+      for (int i = 0; i < values.size(); i++)
       {
         // Copy across the i-th values to the index indicated by selection
         vals[i] = values[i];
@@ -842,18 +842,18 @@ class TLSAmplitudes {
 
     //! Set matrices vals from an array and a selection of indices
     void setValuesBySelection(
-        const dblArr1d &values, 
+        const dblArr1d &values,
         const selArr1d &selection)
     {
       // Check this is a valid selection
       validateSelection(selection);
       // Assert values is same length as selection
-      if (values.size() != selection.size()) 
+      if (values.size() != selection.size())
       {
         throw std::invalid_argument( "Input values must be the same length as input selection" );
       }
       // Copy across selected values
-      for (int i = 0; i < selection.size(); i++) 
+      for (int i = 0; i < selection.size(); i++)
       {
         // Copy across the i-th values to the index indicated by selection
         size_t ii = selection[i];
@@ -863,7 +863,7 @@ class TLSAmplitudes {
     }
 
     //! Return the number of amplitudes values
-    int size() const 
+    int size() const
     {
       return vals.size();
     }
@@ -874,33 +874,33 @@ class TLSAmplitudes {
       std::ostringstream buff;
       buff << "> TLS Amplitudes (" << short_description << ")" << std::endl;
 
-      for (int i = 0; i < vals.size(); i++) 
+      for (int i = 0; i < vals.size(); i++)
       {
         buff << std::endl
              << "    Dataset "
-             << std::setw(4) 
-             << std::noshowpos 
-             << i+1 << ": " 
-             << std::setw(10) 
-             << std::showpos 
-             << std::setprecision((int)log10(rnd)) 
-             << vals[i]; 
+             << std::setw(4)
+             << std::noshowpos
+             << i+1 << ": "
+             << std::setw(10)
+             << std::showpos
+             << std::setprecision((int)log10(rnd))
+             << vals[i];
       }
 
       return buff.str();
     }
 
-    void zeroValues() 
+    void zeroValues()
     {
         dblArr1d zeros(size(), 0.0);
         setValues(zeros);
     }
 
-    void zeroNegativeValues() 
+    void zeroNegativeValues()
     {
-      for (int i = 0; i < vals.size(); i++) 
+      for (int i = 0; i < vals.size(); i++)
       {
-        if (vals[i] < 0.0) 
+        if (vals[i] < 0.0)
         {
           vals[i] = 0.0;
         }
@@ -931,7 +931,7 @@ class TLSAmplitudes {
       if (*tolerance < 0.0)
       {
         // Check that tolerance == -1
-        if (*tolerance != -1) 
+        if (*tolerance != -1)
         {
           throw std::invalid_argument( "Tolerance provided must either be positive or -1" );
         }
@@ -940,7 +940,7 @@ class TLSAmplitudes {
       }
     }
 
-    void scale(double multiplier) 
+    void scale(double multiplier)
     {
       vals *= multiplier;
     }
@@ -948,18 +948,18 @@ class TLSAmplitudes {
     void validateSelection(const selArr1d &selection)
     {
       // Throw if no values are passed
-      if (selection.size() == 0) 
-      { 
+      if (selection.size() == 0)
+      {
         throw std::invalid_argument( "No indices given for selection" );
       }
       // Assert values is compatible with vals
-      if (selection.size() > vals.size()) 
+      if (selection.size() > vals.size())
       {
         throw std::invalid_argument( "Selection indices cannot be longer than TLSAmplitudes" );
       }
-      for (int i = 0; i < selection.size(); i++) 
+      for (int i = 0; i < selection.size(); i++)
       {
-        if (selection[i] >= vals.size()) 
+        if (selection[i] >= vals.size())
         {
           throw std::invalid_argument( "Selection indices out of range of TLSAmplitudes" );
         }
@@ -970,31 +970,31 @@ class TLSAmplitudes {
 
 class TLSMatricesAndAmplitudes {
 
-  public : 
+  public :
     //! Constructor from number of amplitudes
-    TLSMatricesAndAmplitudes(size_t n) 
+    TLSMatricesAndAmplitudes(size_t n)
     {
       mats = new TLSMatrices();
-      amps = new TLSAmplitudes(n); 
+      amps = new TLSAmplitudes(n);
     }
 
     //! Constructor from other class
-    TLSMatricesAndAmplitudes(const TLSMatricesAndAmplitudes& other) 
+    TLSMatricesAndAmplitudes(const TLSMatricesAndAmplitudes& other)
     {
       mats = other.getMatricesConst()->copy();
       amps = other.getAmplitudesConst()->copy();
       lbl = other.lbl;
-    } 
-   
+    }
+
     //! Constructor from matrix-amplitude pair
-    TLSMatricesAndAmplitudes(TLSMatrices& matrices, TLSAmplitudes& amplitudes) 
+    TLSMatricesAndAmplitudes(TLSMatrices& matrices, TLSAmplitudes& amplitudes)
     {
-      mats = &matrices; 
+      mats = &matrices;
       amps = &amplitudes;
     }
-    
+
     //! Constructor from matrix and amplitude arrays
-    TLSMatricesAndAmplitudes(const dblArr1d& matrix_values, const dblArr1d& amplitude_values) 
+    TLSMatricesAndAmplitudes(const dblArr1d& matrix_values, const dblArr1d& amplitude_values)
     {
       if ( matrix_values.size() != 21 )
       {
@@ -1004,38 +1004,38 @@ class TLSMatricesAndAmplitudes {
       {
         throw std::invalid_argument( "Amplitude values must have length greater than 0" );
       }
-      mats = new TLSMatrices(matrix_values); 
+      mats = new TLSMatrices(matrix_values);
       amps = new TLSAmplitudes(amplitude_values);
     }
-   
-    //! Create a copy of the class 
-    TLSMatricesAndAmplitudes* copy() const 
+
+    //! Create a copy of the class
+    TLSMatricesAndAmplitudes* copy() const
     {
       return new TLSMatricesAndAmplitudes(*this);
     }
-   
+
     //! Return a reference to the owned matrices class
-    TLSMatrices* getMatrices() 
+    TLSMatrices* getMatrices()
     {
       return mats;
     }
-    const TLSMatrices* getMatricesConst() const 
+    const TLSMatrices* getMatricesConst() const
     {
       return mats;
     }
-   
+
     //! Return a reference to the owned amplitudes class
-    TLSAmplitudes* getAmplitudes() 
+    TLSAmplitudes* getAmplitudes()
     {
       return amps;
     }
-    const TLSAmplitudes* getAmplitudesConst() const 
+    const TLSAmplitudes* getAmplitudesConst() const
     {
       return amps;
     }
 
     //! Return a list of amplitude-multiplied TLSMatrices
-    af::shared<TLSMatrices> expand() 
+    af::shared<TLSMatrices> expand()
     {
       // Dereference internal pointers
       TLSMatrices& m = *mats;
@@ -1043,16 +1043,16 @@ class TLSMatricesAndAmplitudes {
       // Output array
       af::shared<TLSMatrices> results;
       results.reserve(a.size());
-      for (int i = 0; i < a.size(); i++) 
+      for (int i = 0; i < a.size(); i++)
       {
         TLSMatrices mult_mats = m * a[i];
         results.push_back(mult_mats);
       }
       return results;
     }
-    
+
     //! Return a list of amplitude-multiplied TLSMatrices by selection
-    af::shared<TLSMatrices> expand(const selArr1d &selection) 
+    af::shared<TLSMatrices> expand(const selArr1d &selection)
     {
       // Dereference internal pointers
       TLSMatrices& m = *mats;
@@ -1062,7 +1062,7 @@ class TLSMatricesAndAmplitudes {
       // Output array
       af::shared<TLSMatrices> results;
       results.reserve(sel_a.size());
-      for (int i = 0; i < sel_a.size(); i++) 
+      for (int i = 0; i < sel_a.size(); i++)
       {
         TLSMatrices mult_mats = m * sel_a[i];
         results.push_back(mult_mats);
@@ -1073,19 +1073,7 @@ class TLSMatricesAndAmplitudes {
     bool isValid(double tolerance = -1)
     {
       const af::shared<TLSMatrices> expanded = expand();
-      for (int i = 0; i < expanded.size(); i++) 
-      {
-        const TLSMatrices& m = expanded[i];
-        bool valid = m.isValid(tolerance);
-        if (!valid) { return false; }
-      }
-      return true;
-    } 
-
-    bool isValid(const selArr1d &selection, double tolerance = -1)
-    {
-      const af::shared<TLSMatrices> expanded = expand(selection);
-      for (int i = 0; i < expanded.size(); i++) 
+      for (int i = 0; i < expanded.size(); i++)
       {
         const TLSMatrices& m = expanded[i];
         bool valid = m.isValid(tolerance);
@@ -1093,7 +1081,19 @@ class TLSMatricesAndAmplitudes {
       }
       return true;
     }
-    
+
+    bool isValid(const selArr1d &selection, double tolerance = -1)
+    {
+      const af::shared<TLSMatrices> expanded = expand(selection);
+      for (int i = 0; i < expanded.size(); i++)
+      {
+        const TLSMatrices& m = expanded[i];
+        bool valid = m.isValid(tolerance);
+        if (!valid) { return false; }
+      }
+      return true;
+    }
+
     bool isNull(double matricesTolerance = -1, double amplitudesTolerance = -1)
     {
       bool m_any = mats->any("TLS", matricesTolerance);
@@ -1101,27 +1101,27 @@ class TLSMatricesAndAmplitudes {
       return !(m_any and a_any);
     }
 
-    int paramCount(bool free = true, bool non_zero = false) 
+    int paramCount(bool free = true, bool non_zero = false)
     {
       return mats->paramCount(free, non_zero) +
              amps->paramCount(non_zero);
     }
 
     double normaliseByAmplitudes(
-        double target = 1.0) 
+        double target = 1.0)
     {
       double mult = amps->normalise(target);
-      if (mult > 0.0) 
+      if (mult > 0.0)
       {
         mats->multiply(mult);
       }
       return mult;
     }
-    
+
     double normaliseByMatrices(
         const vecArrNd &sites_carts,
-        const vecArr1d &origins, 
-        double target = 1.0) 
+        const vecArr1d &origins,
+        double target = 1.0)
     {
       // Validate input
       validateSitesAndOrigins(sites_carts, origins);
@@ -1130,12 +1130,12 @@ class TLSMatricesAndAmplitudes {
       size_t n_atm = sites_carts.accessor().all()[1];
       // Create a 1-d list of the coordinates (with origins subtracted)
       vecArr1d flattened;
-      for (int i = 0; i < n_dst; i++) 
+      for (int i = 0; i < n_dst; i++)
       {
         // Get the origin for the "current" dataset
         vec current_origin = origins[i];
         // Iterate through each atom and subtract origin
-        for (int j = 0; j < n_atm; j++) 
+        for (int j = 0; j < n_atm; j++)
         {
           vec shifted = sites_carts(i,j) - current_origin;
           flattened.push_back(shifted);
@@ -1145,28 +1145,28 @@ class TLSMatricesAndAmplitudes {
       vec null_origin(0.0, 0.0, 0.0);
       double mult = mats->normalise(flattened, null_origin, target);
       // Apply multiplier to amplitudes
-      if (mult > 0.0) 
+      if (mult > 0.0)
       {
-        amps->multiply(mult); 
+        amps->multiply(mult);
       }
       return mult;
     }
 
-    void reset() 
+    void reset()
     {
       mats->reset();
       amps->reset();
     }
 
-    void setLabel(int label) 
+    void setLabel(int label)
     {
       lbl = label;
     }
-    
-    std::string summary() 
+
+    std::string summary()
     {
       std::ostringstream buff;
-      if (lbl > 0) 
+      if (lbl > 0)
       {
         buff << "> TLS Mode " << lbl << std::endl;
       } else {
@@ -1179,11 +1179,11 @@ class TLSMatricesAndAmplitudes {
 
     symArrNd uijs(
         const vecArrNd &sites_carts,
-        const vecArr1d &origins) 
+        const vecArr1d &origins)
     {
       // Check compatible with the amplitudes of this object
-      if (origins.size() != amps->size()) 
-      { 
+      if (origins.size() != amps->size())
+      {
         throw std::invalid_argument( "Mismatch between the size of TLSAmplitudes and the input arrays" );
       }
       // Extract list of TLSMatrices
@@ -1193,12 +1193,12 @@ class TLSMatricesAndAmplitudes {
 
     symArrNd uijs(
         const vecArrNd &sites_carts,
-        const vecArr1d &origins, 
-        const selArr1d &selection) 
+        const vecArr1d &origins,
+        const selArr1d &selection)
     {
       // Check selection is the correct length
-      if (origins.size()!=selection.size()) 
-      { 
+      if (origins.size()!=selection.size())
+      {
         throw std::invalid_argument( "Mismatch between the size of selection and the input arrays" );
       }
       // Extract list of TLSMatrices
@@ -1208,13 +1208,13 @@ class TLSMatricesAndAmplitudes {
 
     void resetIfNull(double matricesTolerance = -1, double amplitudesTolerance = -1)
     {
-      if ( isNull(matricesTolerance, amplitudesTolerance) ) 
+      if ( isNull(matricesTolerance, amplitudesTolerance) )
       {
         reset();
       }
     }
 
-  private: 
+  private:
     TLSMatrices* mats;
     TLSAmplitudes* amps;
     int lbl = -1;
@@ -1227,15 +1227,15 @@ class TLSMatricesAndAmplitudes {
       // Validate input
       validateSitesAndOrigins(sites_carts, origins);
       // Validate length of input list
-      if (origins.size() != tls_matrices.size()) 
-      { 
+      if (origins.size() != tls_matrices.size())
+      {
         throw std::invalid_argument( "Mismatch between the size of tls_matrices and size of sites_carts/origins" );
       }
       // Check everything is compatible
       size_t n_dst = sites_carts.accessor().all()[0];
       size_t n_atm = sites_carts.accessor().all()[1];
       symArrNd result_uijs(af::flex_grid<>(n_dst, n_atm)); // do not need to initialise to zeros as all elements filled
-      for (int i = 0; i < n_dst; i++) 
+      for (int i = 0; i < n_dst; i++)
       {
         // Extract matrices from list
         const TLSMatrices& curr_mat = tls_matrices[i];
@@ -1248,14 +1248,14 @@ class TLSMatricesAndAmplitudes {
       }
       return result_uijs;
     }
-    
+
 };
 
 class TLSMatricesAndAmplitudesList {
 
-  public: 
+  public:
     //! Constructor from length and number of amplitudes
-    TLSMatricesAndAmplitudesList(size_t length, size_t n_amplitudes) 
+    TLSMatricesAndAmplitudesList(size_t length, size_t n_amplitudes)
     {
       initialiseList(length, n_amplitudes);
     }
@@ -1266,7 +1266,7 @@ class TLSMatricesAndAmplitudesList {
       list.reserve(other.size());
       for (int i = 0; i < other.size(); i++)
       {
-        // copy the object 
+        // copy the object
         TLSMatricesAndAmplitudes* ma = other.list[i]->copy();
         ma->setLabel(i+1);
         list.push_back(ma);
@@ -1280,17 +1280,17 @@ class TLSMatricesAndAmplitudesList {
       if (matrix_values.accessor().nd() != 2)      { throw std::invalid_argument( "matrix_values must be 2-dimensional array of size (n_sets, 21)" ); }
       if (amplitude_values.accessor().nd() != 2)   { throw std::invalid_argument( "amplitude_values must be 2-dimensional array of size (n_sets, n_amplitudes)" ); }
       if (matrix_values.accessor().all()[1] != 21) { throw std::invalid_argument( "The length of the second axis of matrix_values must be 21" ); }
-      
+
       // Get size of arrays (will set size of list, etc)
       size_t n_sets = matrix_values.accessor().all()[0];
       size_t n_amps = amplitude_values.accessor().all()[1];
 
       // Validate against other dimensions that should be the same length
-      if (amplitude_values.accessor().all()[0] != n_sets) 
-      { 
-        throw std::invalid_argument( "The length of the first axis of matrix_values and amplitude_values must match (number of matrix-amplitude pairs)" ); 
+      if (amplitude_values.accessor().all()[0] != n_sets)
+      {
+        throw std::invalid_argument( "The length of the first axis of matrix_values and amplitude_values must match (number of matrix-amplitude pairs)" );
       }
-      
+
       // Initialise the holder list to the right length
       initialiseList(n_sets, n_amps);
       // Set the values manually
@@ -1311,9 +1311,9 @@ class TLSMatricesAndAmplitudesList {
       return get(index);
     }
 
-    TLSMatricesAndAmplitudesList* copy() const 
+    TLSMatricesAndAmplitudesList* copy() const
     {
-      return new TLSMatricesAndAmplitudesList(*this); 
+      return new TLSMatricesAndAmplitudesList(*this);
     }
 
     TLSMatricesAndAmplitudes* get(const int index)
@@ -1321,7 +1321,7 @@ class TLSMatricesAndAmplitudesList {
       validateIndex(index);
       return list[index];
     }
-    
+
     TLSMatricesAndAmplitudes* getConst(const int index) const
     {
       validateIndex(index);
@@ -1330,11 +1330,11 @@ class TLSMatricesAndAmplitudesList {
 
     bool isNull(double matricesTolerance = -1, double amplitudesTolerance = -1)
     {
-      for (int i = 0; i < list.size(); i++) 
+      for (int i = 0; i < list.size(); i++)
       {
         TLSMatricesAndAmplitudes* ma = list[i];
         bool mode_is_null = ma->isNull(matricesTolerance, amplitudesTolerance);
-        if (!mode_is_null) 
+        if (!mode_is_null)
         {
           return false;
         }
@@ -1342,7 +1342,7 @@ class TLSMatricesAndAmplitudesList {
       return true;
     }
 
-    int paramCount(bool free = true, bool non_zero = false) 
+    int paramCount(bool free = true, bool non_zero = false)
     {
       int result = 0;
       for (int i = 0; i < list.size(); i++)
@@ -1354,7 +1354,7 @@ class TLSMatricesAndAmplitudesList {
     }
 
     void normaliseByAmplitudes(
-        double target = 1.0) 
+        double target = 1.0)
     {
       for (int i = 0; i < list.size(); i++)
       {
@@ -1365,8 +1365,8 @@ class TLSMatricesAndAmplitudesList {
 
     void normaliseByMatrices(
         const vecArrNd &sites_carts,
-        const vecArr1d &origins, 
-        double target = 1.0) 
+        const vecArr1d &origins,
+        double target = 1.0)
     {
       for (int i = 0; i < list.size(); i++)
       {
@@ -1375,7 +1375,7 @@ class TLSMatricesAndAmplitudesList {
       }
     }
 
-    void reset() 
+    void reset()
     {
       for (int i = 0; i < list.size(); i++)
       {
@@ -1385,7 +1385,7 @@ class TLSMatricesAndAmplitudesList {
       }
     }
 
-    void resetMatrices() 
+    void resetMatrices()
     {
       for (int i = 0; i < list.size(); i++)
       {
@@ -1408,13 +1408,13 @@ class TLSMatricesAndAmplitudesList {
       return list.size();
     }
 
-    std::string summary() 
+    std::string summary()
     {
       std::ostringstream buff;
       for (int i = 0; i < size(); i++)
       {
         buff << list[i]->summary();
-        if (i>0) 
+        if (i>0)
         {
           buff << "\n";
         }
@@ -1424,7 +1424,7 @@ class TLSMatricesAndAmplitudesList {
 
     symArrNd uijs(
         const vecArrNd &sites_carts,
-        const vecArr1d &origins) 
+        const vecArr1d &origins)
     {
       // Validate input
       validateSitesAndOrigins(sites_carts, origins);
@@ -1438,9 +1438,9 @@ class TLSMatricesAndAmplitudesList {
       {
         TLSMatricesAndAmplitudes* ma = list[i];
         // Save time by skipping null modes
-        if ( ma->isNull() ) 
-        { 
-          continue; 
+        if ( ma->isNull() )
+        {
+          continue;
         }
         // Calculate Uijs for this mode
         symArrNd this_uijs = ma->uijs(sites_carts, origins);
@@ -1456,7 +1456,7 @@ class TLSMatricesAndAmplitudesList {
     symArrNd uijs(
         const vecArrNd &sites_carts,
         const vecArr1d &origins,
-        const selArr1d &selection) 
+        const selArr1d &selection)
     {
       // Validate input
       validateSitesAndOrigins(sites_carts, origins);
@@ -1470,9 +1470,9 @@ class TLSMatricesAndAmplitudesList {
       {
         TLSMatricesAndAmplitudes* ma = list[i];
         // Save time by skipping null modes
-        if ( ma->isNull() ) 
-        { 
-          continue; 
+        if ( ma->isNull() )
+        {
+          continue;
         }
         // Calculate Uijs for this mode
         symArrNd this_uijs = ma->uijs(sites_carts, origins, selection);
@@ -1510,8 +1510,8 @@ class TLSMatricesAndAmplitudesList {
 
   private:
     af::shared<TLSMatricesAndAmplitudes*> list;
-    
-    void initialiseList(size_t length, size_t n_amplitudes) 
+
+    void initialiseList(size_t length, size_t n_amplitudes)
     {
       if ( list.size() > 0 )
       {
@@ -1533,7 +1533,7 @@ class TLSMatricesAndAmplitudesList {
         list.push_back(ma);
       }
     }
-      
+
     void validateIndex(size_t index) const
     {
       if ( index >= list.size() )
@@ -1544,13 +1544,13 @@ class TLSMatricesAndAmplitudesList {
 
     void validateSelection(const selArr1d &selection)
     {
-      if (selection.size() > size()) 
+      if (selection.size() > size())
       {
         throw std::invalid_argument( "Selection indices cannot be longer than TLSMatricesAndAmplitudesList" );
       }
-      for (int i = 0; i < selection.size(); i++) 
+      for (int i = 0; i < selection.size(); i++)
       {
-        if (selection[i] >= size()) 
+        if (selection[i] >= size())
         {
           throw std::invalid_argument( "Selection indices out of range of TLSMatricesAndAmplitudesList" );
         }
@@ -1564,14 +1564,14 @@ double TLSMatrices::rnd = 1e6;    // Precision of log10(val)
 double TLSAmplitudes::tol = 1e-6;
 double TLSAmplitudes::rnd = 1e6;  // Precision of log10(val)
 
-//! Overload that allows left-multiplication of TLSMatrices/TLSAmplitudes 
-TLSMatrices operator*(const double &v, const TLSMatrices &x) 
+//! Overload that allows left-multiplication of TLSMatrices/TLSAmplitudes
+TLSMatrices operator*(const double &v, const TLSMatrices &x)
 {
   TLSMatrices result = x * v;
   return result;
 }
 //! Overload that allows left-multiplication of TLSAmplitudes
-TLSAmplitudes operator*(const double &v, const TLSAmplitudes &x) 
+TLSAmplitudes operator*(const double &v, const TLSAmplitudes &x)
 {
   TLSAmplitudes result = x * v;
   return result;

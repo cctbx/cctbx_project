@@ -18,7 +18,7 @@
 #include <mmtbx/tls/utils.h>
 
 SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(mmtbx::tls::common)
-   
+
 // TLSMatrices Overloads
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(mat_get_overloads, getValuesByString, 0, 2)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(mat_set_overloads, setValuesByString, 1, 3)
@@ -74,7 +74,7 @@ namespace {
       // Iterate through list
       for (int i = 0; i < n_set; i++) {
         TLSMatricesAndAmplitudes* ma = l.getConst(i);
-        // Extract matrices and amplitudes 
+        // Extract matrices and amplitudes
         dblArr1d ma_mats = ma->getMatricesConst()->getValuesByString("TLS", true);
         dblArr1d ma_amps = ma->getAmplitudesConst()->getValues();
         // Copy to output arrays
@@ -93,7 +93,7 @@ namespace {
     // put all the strings inside the python list
     af::shared<TLSMatrices>::iterator it;
     for (it = v.begin(); it != v.end(); ++it){
-      result.append(*it);    
+      result.append(*it);
     }
     return result;
   }
@@ -113,20 +113,20 @@ namespace {
               ( ( arg("T"), arg("L"), arg("S") ) )
         )
         // Other constructors
-        .def( init<> () 
+        .def( init<> ()
         )
         .def( init< TLSMatrices const& >
-            ( ( arg("other") ) ) 
+            ( ( arg("other") ) )
         )
         .def( init< af::shared<double> >
-            ( ( arg("values") ) ) 
+            ( ( arg("values") ) )
         )
 
         // Properties
         .add_property("T", &TLSMatrices::getT, "Return the values of the T-matrix")
         .add_property("L", &TLSMatrices::getL, "Return the values of the L-matrix")
         .add_property("S", &TLSMatrices::getS, "Return the values of the S-matrix")
-        
+
         // Class/static methods
         .def("get_tolerance", &TLSMatrices::getTolerance,
             "Return the current tolerance for which a number is considered to be non-zero."
@@ -148,12 +148,12 @@ namespace {
         .def(self * double())   // l-multiply operator
         .def(double() * self)   // r-multiply operator
 
-        // Instance Methods 
+        // Instance Methods
         .def("add", &TLSMatrices::add,
             ( arg("other") ),
             "Add the matrix values from another TLSMatrix object."
             )
-        .def("any", &TLSMatrices::any, 
+        .def("any", &TLSMatrices::any,
             mat_any_overloads(
               ( arg("component_string"), arg("tolerance") ),
               "Returns True if any of the selected matrix values are non-zero, else False.\n"
@@ -167,19 +167,19 @@ namespace {
             )
         .def("decompose", &TLSMatrices::decompose,
             mat_dec_overloads(
-              ( arg("tolerance") ), 
+              ( arg("tolerance") ),
               "Perform TLS Decomposition into fundamental motions.\n"
               "Returns a TLSDecomposition object.\n"
               "If <tolerance> is not defined, the class tolerance is used."
               )
             )
-        .def("get", &TLSMatrices::getValuesByString, 
+        .def("get", &TLSMatrices::getValuesByString,
             mat_get_overloads(
               ( arg("component_string"), arg("include_szz") ),
               "Get values of selected matrices as a single array. <component_string> must be a string containing letters T, L, S or a combination. Letters must be in the order T-L-S."
               )
             ) // Get internal matrix values
-        .def("is_valid", &TLSMatrices::isValid, 
+        .def("is_valid", &TLSMatrices::isValid,
             mat_val_overloads(
               ( arg("tolerance") ),
               "Returns True if matrices can be decomposed into fundamental motions, and False otherwise.\n"
@@ -190,7 +190,7 @@ namespace {
             ( arg("scalar") ),
             "Multiply all matrix values by a constant."
             )
-        .def("n_params", &TLSMatrices::paramCount, 
+        .def("n_params", &TLSMatrices::paramCount,
             mat_prm_overloads(
               ( args("free"), arg("non_zero") ),
               "Return the number of parameters in the object.\n"
@@ -198,7 +198,7 @@ namespace {
               "Setting non_zero=True returns the number of parameters that are non-zero."
               )
             )
-        .def("normalise", &TLSMatrices::normalise, 
+        .def("normalise", &TLSMatrices::normalise,
             mat_nrm_overloads(
               ( arg("sites_cart"), arg("origin"), arg("target"), arg("tolerance") ),
               "Scale the matrix values so that the average eigenvalue of the generated Uij (from <sites_cart> and <origin>) is <target>.\n"
@@ -232,12 +232,12 @@ namespace {
         )
         // Other constructors
         .def( init< TLSAmplitudes const& >
-            ( ( arg("other") ) ) 
+            ( ( arg("other") ) )
         )
         .def( init< af::shared<double> const& >
-            ( ( arg("values") ) ) 
+            ( ( arg("values") ) )
         )
-        
+
         // Properties
         .add_property("description", &TLSAmplitudes::getDescription,
             "A short description of the intention behind the class"
@@ -268,7 +268,7 @@ namespace {
         .def(double() * self)   // r-multiply operator
 
         // Operators/special methods
-        .def("__getitem__", &TLSAmplitudes::operator[], 
+        .def("__getitem__", &TLSAmplitudes::operator[],
             ( arg( "index" ) )
             )
 
@@ -277,7 +277,7 @@ namespace {
             ( arg("other") ),
             "Add the matrix values from another TLSAmplitudes object of the same size."
             )
-        .def("any", &TLSAmplitudes::any, 
+        .def("any", &TLSAmplitudes::any,
             amp_any_overloads(
               ( arg("tolerance") ),
               "Returns True if any of the amplitude values are non-zero, else False.\n"
@@ -290,23 +290,23 @@ namespace {
             )
         .def("get", &TLSAmplitudes::getValues,
             "Get all amplitude values."
-            ) 
+            )
         .def("get", &TLSAmplitudes::getValuesBySelection,
             ( arg("selection") ),
             "Get selected amplitude values. <selection> is a list of indices for which values to return."
-            ) 
+            )
         .def("multiply", &TLSAmplitudes::multiply,
             ( arg("scalar") ),
             "Multiply all amplitude values by a constant."
             )
-        .def("normalise", &TLSAmplitudes::normalise, 
+        .def("normalise", &TLSAmplitudes::normalise,
             amp_nrm_overloads(
               ( arg("target") ),
               "Scale the amplitude values so that the average amplitudes is <target>\n"
               "Returns the multiplier value required to apply the inverse scaling to the TLSMatrices"
               )
             )
-        .def("n_params", &TLSAmplitudes::paramCount, 
+        .def("n_params", &TLSAmplitudes::paramCount,
             amp_prm_overloads(
               ( arg("non_zero") ),
               "Return the number of parameters in the object.\n"
@@ -337,7 +337,7 @@ namespace {
             "Set any negative values to zero."
             )
     ;
-    
+
     bool (TLSMatricesAndAmplitudes::*MA_is_valid1)
       (double tolerance)
       = &TLSMatricesAndAmplitudes::isValid;
@@ -346,14 +346,14 @@ namespace {
       = &TLSMatricesAndAmplitudes::isValid;
 
     symArrNd (TLSMatricesAndAmplitudes::*MA_uijs1)
-      (const vecArrNd &sites_carts, const vecArr1d &origins) 
+      (const vecArrNd &sites_carts, const vecArr1d &origins)
       = &TLSMatricesAndAmplitudes::uijs;
     symArrNd (TLSMatricesAndAmplitudes::*MA_uijs2)
-      (const vecArrNd &sites_carts, const vecArr1d &origins, const selArr1d &selection) 
+      (const vecArrNd &sites_carts, const vecArr1d &origins, const selArr1d &selection)
       = &TLSMatricesAndAmplitudes::uijs;
 
     class_<TLSMatricesAndAmplitudes>(
-        "TLSMatricesAndAmplitudes",        
+        "TLSMatricesAndAmplitudes",
         init< size_t >
             ( ( arg("n") ) )
         )
@@ -362,15 +362,15 @@ namespace {
             ( ( arg("other") ) )
         )
         .def( init< TLSMatrices &, TLSAmplitudes & >
-            ( ( arg("matrices"), arg("amplitudes") ) ) 
+            ( ( arg("matrices"), arg("amplitudes") ) )
         )
         .def( init< dblArr1d const&, dblArr1d const& >
-            ( ( arg("matrix_values"), arg("amplitude_values") ) ) 
+            ( ( arg("matrix_values"), arg("amplitude_values") ) )
         )
-        
+
         // Properties
         .add_property("amplitudes", bp::make_function( &TLSMatricesAndAmplitudes::getAmplitudes, return_internal_reference<>() ) )
-        .add_property("matrices",   bp::make_function( &TLSMatricesAndAmplitudes::getMatrices,   return_internal_reference<>() ) ) 
+        .add_property("matrices",   bp::make_function( &TLSMatricesAndAmplitudes::getMatrices,   return_internal_reference<>() ) )
 
         // Instance methods
         .def("copy", &TLSMatricesAndAmplitudes::copy,
@@ -384,17 +384,17 @@ namespace {
         .def("is_null", &TLSMatricesAndAmplitudes::isNull,
             maa_nul_overloads(
               ( arg("matrices_tolerance"), arg("amplitudes_tolerance") ),
-              "Returns True if all matrix values are 0.0 OR all amplitudes are 0.0 (i.e. whether this will return non-zero Uijs)"  
+              "Returns True if all matrix values are 0.0 OR all amplitudes are 0.0 (i.e. whether this will return non-zero Uijs)"
               )
             )
-        .def("is_valid", MA_is_valid1, 
+        .def("is_valid", MA_is_valid1,
             maa_iv1_overloads(
               ( arg("tolerance") ),
               "Returns True if (a selection of) the amplitude-multiplied matrices can be decomposed into fundamental motions, and False otherwise.\n"
               "If <tolerance> is not defined, the class tolerance is used."
               )
             )
-        .def("is_valid", MA_is_valid2, 
+        .def("is_valid", MA_is_valid2,
             maa_iv2_overloads(
               ( arg("selection"), arg("tolerance") ),
               "Returns True if (a selection of) the amplitude-multiplied matrices can be decomposed into fundamental motions, and False otherwise.\n"
@@ -431,11 +431,11 @@ namespace {
         .def("summary", &TLSMatricesAndAmplitudes::summary,
             "Return a summary string for the object"
             )
-        .def("uijs", MA_uijs1, 
-            ( arg("sites_carts"), arg("origins") ), 
+        .def("uijs", MA_uijs1,
+            ( arg("sites_carts"), arg("origins") ),
             "Calculate Uijs for all of the contained amplitudes"
             )
-        .def("uijs", MA_uijs2, 
+        .def("uijs", MA_uijs2,
             ( arg("sites_carts"), arg("origins"), arg("selection") ),
             "Calculate Uijs for a selection of the contained amplitudes"
             )
@@ -448,30 +448,30 @@ namespace {
     ;
 
     symArrNd (TLSMatricesAndAmplitudesList::*MAL_uijs1)
-      (const vecArrNd &sites_carts, const vecArr1d &origins) 
+      (const vecArrNd &sites_carts, const vecArr1d &origins)
       = &TLSMatricesAndAmplitudesList::uijs;
     symArrNd (TLSMatricesAndAmplitudesList::*MAL_uijs2)
-      (const vecArrNd &sites_carts, const vecArr1d &origins, const selArr1d &selection) 
+      (const vecArrNd &sites_carts, const vecArr1d &origins, const selArr1d &selection)
       = &TLSMatricesAndAmplitudesList::uijs;
 
     class_<TLSMatricesAndAmplitudesList>(
-        "TLSMatricesAndAmplitudesList",        
+        "TLSMatricesAndAmplitudesList",
         init< size_t, size_t >
             ( ( arg("length"), arg("n_amplitudes") ) )
             )
-        
+
         // Constructor from arrays
         .def( init< dblArrNd const&, dblArrNd const& >
-            ( ( arg("matrix_values"), arg("amplitude_values") ) ) 
+            ( ( arg("matrix_values"), arg("amplitude_values") ) )
         )
 
         // Define pickle
         .def_pickle(tlsmal_pickle_suite())
 
         // Operators/special methods
-        .def("__getitem__", &TLSMatricesAndAmplitudesList::operator[], 
+        .def("__getitem__", &TLSMatricesAndAmplitudesList::operator[],
             ( arg( "index" ) ),
-            return_internal_reference<>() 
+            return_internal_reference<>()
             )
 
         // Instance methods
@@ -482,12 +482,12 @@ namespace {
         .def("get", &TLSMatricesAndAmplitudesList::get,
             ( arg("index") ),
             "Get a TLSMatricesAndAmplitudes object by index",
-            return_internal_reference<>() 
+            return_internal_reference<>()
             )
         .def("is_null", &TLSMatricesAndAmplitudesList::isNull,
             mal_nul_overloads(
               ( arg("matrices_tolerance"), arg("amplitudes_tolerance") ),
-              "Returns True if all matrix values are 0.0 OR all amplitudes are 0.0 (i.e. whether this will return non-zero Uijs) for ALL modes."  
+              "Returns True if all matrix values are 0.0 OR all amplitudes are 0.0 (i.e. whether this will return non-zero Uijs) for ALL modes."
               )
             )
         .def("n_params", &TLSMatricesAndAmplitudesList::paramCount,

@@ -204,7 +204,7 @@ void decompose_tls_matrices::stepA() {
     Eig l_eig(L_M);
     eigenvectors l_eig_vecs = l_eig.vectors();
     eigenvalues  l_eig_vals = l_eig.values();
-    
+
     // Store the eigenvalues and eigenvectors of L
     // Eigenvalues are returned in descending order but swap v1 & v3
     // to convert to ascending order (following convention in paper)

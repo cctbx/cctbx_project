@@ -30,7 +30,7 @@ namespace mmtbx { namespace tls { namespace optimise {
 namespace af = scitbx::af;
 namespace bp = boost::python;
 
-// Commonly used types 
+// Commonly used types
 typedef scitbx::vec3<double> vec;
 typedef scitbx::mat3<double> mat;
 typedef scitbx::sym_mat3<double> sym;
@@ -59,12 +59,12 @@ T find_max(const af::shared<T> &array)
 bool is_zero(const sym s, double tol=1e-12)
 {
   if (
-      (std::abs(s[0])<tol) && 
-      (std::abs(s[1])<tol) && 
-      (std::abs(s[2])<tol) && 
-      (std::abs(s[3])<tol) && 
-      (std::abs(s[4])<tol) && 
-      (std::abs(s[5])<tol) 
+      (std::abs(s[0])<tol) &&
+      (std::abs(s[1])<tol) &&
+      (std::abs(s[2])<tol) &&
+      (std::abs(s[3])<tol) &&
+      (std::abs(s[4])<tol) &&
+      (std::abs(s[5])<tol)
       )
   {
     return true;
@@ -74,7 +74,7 @@ bool is_zero(const sym s, double tol=1e-12)
 
 class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
 
-  public: 
+  public:
     //! Main constructor
     MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator(
             const symArrNd &target_uijs,
@@ -95,27 +95,27 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
     {
       std::ostringstream errMsg;
       // Check target uijs
-      if (target_uijs.accessor().nd() != 2) { 
+      if (target_uijs.accessor().nd() != 2) {
         errMsg << "invalid target_uijs: must be 2-dimensional flex array (currently " << target_uijs.accessor().nd() << ")";
-        throw std::invalid_argument( errMsg.str() ); 
+        throw std::invalid_argument( errMsg.str() );
       }
       // Check weights
-      if (target_uijs.accessor().nd() != target_weights.accessor().nd()) 
-      { 
+      if (target_uijs.accessor().nd() != target_weights.accessor().nd())
+      {
         errMsg << "invalid dimension of target_weights (dimension " << target_weights.accessor().nd() << "): must be same dimension as target_uijs (dimension " << target_uijs.accessor().nd() << ")";
-        throw std::invalid_argument( errMsg.str() ); 
+        throw std::invalid_argument( errMsg.str() );
       }
       for (size_t i=0; i<target_uijs.accessor().nd(); i++)
       {
-        if (target_uijs.accessor().all()[i] != target_weights.accessor().all()[i]) 
+        if (target_uijs.accessor().all()[i] != target_weights.accessor().all()[i])
         {
           errMsg << "incompatible dimension of target_weights (axis " << i << "): must be same size as target_uijs (" << target_weights.accessor().all()[i] << " != " << target_uijs.accessor().all()[i] <<")";
-          throw std::invalid_argument( errMsg.str() ); 
+          throw std::invalid_argument( errMsg.str() );
         }
       }
       // Check base_amplitudes, base_uijs and base_atom_indices (common error message)
       errMsg << "invalid input base components. "
-        << "base_amplitudes (length " << base_amplitudes.size() 
+        << "base_amplitudes (length " << base_amplitudes.size()
         << "), base_uijs (length " << bp::len(base_uijs)
         << ") and base_atom_indices (length " << bp::len(base_atom_indices)
         << ") must all be the same length";
@@ -126,43 +126,43 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
       // Unpack base_uijs and base_atom_indicess
       base_u.reserve(bp::len(base_uijs));
       base_i.reserve(bp::len(base_atom_indices));
-      for (std::size_t i = 0; i < n_base; ++i) 
+      for (std::size_t i = 0; i < n_base; ++i)
       {
         symArr1d* atm_u = new symArr1d(bp::extract<symArr1d>(base_uijs[i]));
         selArr1d* atm_i = new selArr1d(bp::extract<selArr1d>(base_atom_indices[i]));
 
-        if (atm_u->size() != atm_i->size()) 
+        if (atm_u->size() != atm_i->size())
         {
           errMsg << "incompatible pair (element " << i << ") in base_uijs/base_atom_indices: pairwise elements must be the same length (" << atm_u->size() << " and " << atm_i->size() << ")";
-          throw std::invalid_argument( errMsg.str() ); 
+          throw std::invalid_argument( errMsg.str() );
         }
-        if (find_max(*atm_i) >= n_atm) 
+        if (find_max(*atm_i) >= n_atm)
         {
           errMsg << "invalid selection in base_atom_indices (" << find_max(*atm_i) << "): attempting to select atom outside of array (size " << n_atm << ")";
-          throw std::invalid_argument( errMsg.str() ); 
+          throw std::invalid_argument( errMsg.str() );
         }
 
         base_u.push_back(atm_u);
         base_i.push_back(atm_i);
       }
       // Check dataset hash
-      if (dataset_hash.size() != n_base) { 
+      if (dataset_hash.size() != n_base) {
         errMsg << "invalid dataset_hash (length " << dataset_hash.size() << "): must be same length as base_amplitudes, base_uijs & base_atom_indices (length " << base_amplitudes.size() << ")";
-        throw std::invalid_argument( errMsg.str() ); 
+        throw std::invalid_argument( errMsg.str() );
       }
       if (find_max(dataset_hash) >= n_dst)
-      { 
+      {
         errMsg << "invalid value in dataset_hash (" << find_max(dataset_hash) << "): attempts to select element outside range of target_uijs (size " << n_dst << ")";
-        throw std::invalid_argument( errMsg.str() ); 
+        throw std::invalid_argument( errMsg.str() );
       }
       for (size_t i_dst=0; i_dst < n_dst; i_dst++)
       {
         bool found = false;
         for (size_t i_base=0; i_base < n_base; i_base++)
         {
-          if (dataset_hash[i_base] == i_dst) 
-          { 
-            found = true; 
+          if (dataset_hash[i_base] == i_dst)
+          {
+            found = true;
             break;
           }
         }
@@ -173,10 +173,10 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
         }
       }
       // Check residual uijs
-      if (residual_uijs.size() != n_atm) 
-      { 
+      if (residual_uijs.size() != n_atm)
+      {
         errMsg << "invalid size of residual_uijs (" << residual_uijs.size() << "): must match 2nd dimension of target_uijs (" << n_atm << ")";
-        throw std::invalid_argument( errMsg.str() ); 
+        throw std::invalid_argument( errMsg.str() );
       }
 
       // ==========================
@@ -207,7 +207,7 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
 
     void setCurrentAmplitudes(const dblArr1d &values)
     {
-      if (values.size() != current_amplitudes.size()) { 
+      if (values.size() != current_amplitudes.size()) {
         std::ostringstream errMsg;
         errMsg << "Input array (size " << values.size() << ") must be the same length as current_amplitudes (size " << current_amplitudes.size() << ")";
         throw std::invalid_argument( errMsg.str() );
@@ -217,7 +217,7 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
         current_amplitudes[i] = values[i];
       }
     }
-    
+
     void printCurrentAmplitudes()
     {
       for (size_t i=0; i<current_amplitudes.size(); i++)
@@ -245,14 +245,14 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
     {
       // Reset everything
       zero();
-      
+
       n_call++;
 
       double functional = 0.0;
       dblArr1d gradients = dblArr1d(n_total, 0.0);
-      
+
       // Normalisation term (number of datasets)
-      double norm_all = 1. / (double)(n_dst * n_atm); 
+      double norm_all = 1. / (double)(n_dst * n_atm);
 
       // Normalisation term for residual level
       double norm_res;
@@ -263,7 +263,7 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
       } else {
         norm_res = 0.0; // residual level not being optimised
       }
-  
+
       // Set negative amplitudes to zero
       for (size_t i_opt=0; i_opt<current_amplitudes.size(); i_opt++)
       {
@@ -288,7 +288,7 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
         selArr1d &base_i_atom = *(base_i[i_base]);
         i_dst = dataset_hash[i_base];
         i_opt = i_base;
-          
+
         // Iterate through atoms associated with this base element
         for (size_t i_atm_x=0; i_atm_x<base_u_atom.size(); i_atm_x++)
         {
@@ -296,8 +296,8 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
           m = current_amplitudes[i_opt] * base_u_atom[i_atm_x];
           // Skip if null
           if (is_zero(m))
-          { 
-            continue; 
+          {
+            continue;
           }
           // Add to total uijs
           total_uijs(i_dst, base_i_atom[i_atm_x]) += m;
@@ -314,7 +314,7 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
         }
       }
       // ==========================================================
-      
+
       // ==========================================================
       // Calculate functional and gradients
       for (size_t i_dst=0; i_dst<n_dst; i_dst++)
@@ -326,24 +326,24 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
 
         // Calculate difference to target
         symArr1d d_diffs(n_atm); // all elements will be populated
-        for (size_t i_atm=0; i_atm<n_atm; i_atm++) 
-        { 
+        for (size_t i_atm=0; i_atm<n_atm; i_atm++)
+        {
           sym d_diff_i = target_uijs(i_dst,i_atm) - total_uijs(i_dst,i_atm);
-          d_diffs[i_atm] = d_diff_i; 
+          d_diffs[i_atm] = d_diff_i;
 
           // Calculate functional -- least-squares component
           for (size_t i_elem=0; i_elem<6; i_elem++)
           {
             functional += (
-                d_diff_i[i_elem] * 
-                d_diff_i[i_elem] * 
-                d_wgts[i_atm] * 
+                d_diff_i[i_elem] *
+                d_diff_i[i_elem] *
+                d_wgts[i_atm] *
                 norm_all
                 );
           }
         }
-  
-        // Calculate gradients -- BASE TERMS 
+
+        // Calculate gradients -- BASE TERMS
         for (size_t i_base=0; i_base<n_base; i_base++)
         {
           // Only calculte if this base term is related to this dataset
@@ -369,11 +369,11 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
             base_sym = base_u_atom[i_atm_x];
 
             // Skip this atom if the base_uij is zero at this position
-            if (is_zero(base_sym)) 
+            if (is_zero(base_sym))
             {
-              continue; 
+              continue;
             }
-            
+
             // Corresponding u_diff
             diff_sym = d_diffs[i_atm];
 
@@ -382,10 +382,10 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
             for (size_t i_elem=0; i_elem<6; i_elem++)
             {
               gradients[i_opt] += (
-                  -2.0 * 
-                  base_sym[i_elem] * 
-                  diff_sym[i_elem] * 
-                  d_wgts[i_atm] * 
+                  -2.0 *
+                  base_sym[i_elem] *
+                  diff_sym[i_elem] *
+                  d_wgts[i_atm] *
                   norm_all
                   );
             }
@@ -393,7 +393,7 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
         }
 
         // Calculate gradients -- RESIDUAL TERMS
-        if (residual_mask[i_dst]) 
+        if (residual_mask[i_dst])
         {
           for (size_t i_atm=0; i_atm<n_atm; i_atm++)
           {
@@ -403,9 +403,9 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
             base_sym = residual_uijs[i_atm];
 
             // Skip this atom if the base_uij is zero at this position
-            if (is_zero(base_sym)) 
+            if (is_zero(base_sym))
             {
-              continue; 
+              continue;
             }
 
             // Corresponding u_diff
@@ -416,28 +416,28 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
             for (size_t i_elem=0; i_elem<6; i_elem++)
             {
               gradients[i_opt] += (
-                  -2.0 * 
-                  base_sym[i_elem] * 
-                  diff_sym[i_elem] * 
-                  d_wgts[i_atm] * 
+                  -2.0 *
+                  base_sym[i_elem] *
+                  diff_sym[i_elem] *
+                  d_wgts[i_atm] *
                   norm_res
                   );
             }
           }
         }
       }
-    
+
       return bp::make_tuple(functional, gradients);
     }
 
   private:
-      
+
     const symArrNd target_uijs;
     af::shared<symArr1d*> base_u;  // Base Uijs
     af::shared<selArr1d*> base_i;  // Atom indices for base uijs
     const symArr1d residual_uijs;
     const dblArrNd target_weights;
-    
+
     const selArr1d dataset_hash; // maps base elements to datasets
 
     blnArr1d residual_mask;
@@ -447,7 +447,7 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
 
     dblArr1d initial_amplitudes;
     dblArr1d current_amplitudes;
-    
+
     symArrNd total_uijs;
 
     size_t n_call = 0;
