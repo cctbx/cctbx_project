@@ -1,8 +1,8 @@
 from __future__ import division
 
 # Import dependencies
-import scitbx.array_family.flex
-from mmtbx.tls.decompose import decompose_tls_matrices # This needs to be imported so that classes of this can be returned by TLSMatrices
+import scitbx.array_family.flex # import dependency
+from mmtbx.tls.decompose import decompose_tls_matrices # import dependency
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_tls_utils_ext")

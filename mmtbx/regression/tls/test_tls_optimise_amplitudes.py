@@ -1,4 +1,5 @@
-import os,sys
+from __future__ import division
+
 import numpy
 from mmtbx.tls.utils import *
 from pytest import approx, raises
@@ -6,9 +7,7 @@ from pytest import approx, raises
 from scitbx.array_family import flex
 
 from mmtbx.tls.optimise_amplitudes import MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator, OptimiseAmplitudes
-from mmtbx.tls.utils import TLSMatrices, TLSMatricesAndAmplitudes
-
-from IPython import embed
+from mmtbx.tls.utils import TLSMatrices
 
 rran = numpy.random.random
 iran = numpy.random.choice
