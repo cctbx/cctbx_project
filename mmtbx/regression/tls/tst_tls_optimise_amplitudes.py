@@ -1,13 +1,11 @@
 from __future__ import division
 
 import numpy
-from mmtbx.tls.utils import *
-from pytest import approx, raises
-
-from scitbx.array_family import flex
-
-from mmtbx.tls.optimise_amplitudes import MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator, OptimiseAmplitudes
 from mmtbx.tls.utils import TLSMatrices
+from mmtbx.tls.optimise_amplitudes import MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator, OptimiseAmplitudes
+from scitbx.array_family import flex
+from libtbx.test_utils import approx_equal, not_approx_equal
+from pytest import raises
 
 rran = numpy.random.random
 iran = numpy.random.choice
@@ -162,7 +160,7 @@ def calculate_expected_f_and_g(
 
   return functional, gradients
 
-def test_optimise_amplitudes_single_group():
+def tst_optimise_amplitudes_single_group():
   """Check that very basic optimisation reaches expected values regardless of starting values"""
 
   n_grp = 1
@@ -204,10 +202,12 @@ def test_optimise_amplitudes_single_group():
             convergence_tolerance=1e-08,
           ).run()
 
-        assert list(opt.initial) == approx(list(base_amplitudes_start) + list(residual_amplitudes_start), abs=1e-6)
-        assert list(opt.result) == approx(list(real_group_amps) + list(real_residual_amps), abs=1e-6)
+        assert approx_equal(list(opt.initial), list(base_amplitudes_start) + list(residual_amplitudes_start), 1e-6)
+        assert approx_equal(list(opt.result), list(real_group_amps) + list(real_residual_amps), 1e-6)
 
-def test_optimise_amplitudes_multiple_groups_with_residual():
+  print 'OK'
+
+def tst_optimise_amplitudes_multiple_groups_with_residual():
   """Check that multiple partial groups optimise correctly with residual level"""
 
   n_grp = 3
@@ -238,8 +238,8 @@ def test_optimise_amplitudes_multiple_groups_with_residual():
       convergence_tolerance=1e-08,
     ).run()
 
-  assert list(opt.initial) == approx(list(base_amplitudes_start) + list(residual_amplitudes_start), abs=1e-6)
-  assert list(opt.result) == approx(list(real_group_amps) + list(real_residual_amps), abs=1e-6)
+  assert approx_equal(list(opt.initial), list(base_amplitudes_start) + list(residual_amplitudes_start), 1e-6)
+  assert approx_equal(list(opt.result), list(real_group_amps) + list(real_residual_amps), 1e-6)
 
   ########################################################
   # Check that shuffling the input lists has the expected effect
@@ -266,10 +266,12 @@ def test_optimise_amplitudes_multiple_groups_with_residual():
       convergence_tolerance=1e-08,
     ).run()
 
-  assert list(opt.initial) == approx(list(base_amplitudes_start) + list(residual_amplitudes_start), abs=1e-6)
-  assert list(opt.result) == approx(list([real_group_amps[i] for i in i_perm]) + list(real_residual_amps), abs=1e-6)
+  assert approx_equal(list(opt.initial), list(base_amplitudes_start) + list(residual_amplitudes_start), 1e-6)
+  assert approx_equal(list(opt.result), list([real_group_amps[i] for i in i_perm]) + list(real_residual_amps), 1e-6)
 
-def test_optimise_gradients():
+  print 'OK'
+
+def tst_optimise_gradients():
   """Check that the functional and gradients are calculated as expected"""
 
   n_grp = 3
@@ -324,8 +326,8 @@ def test_optimise_gradients():
 
     f, g = f_g_calculator.compute_functional_and_gradients()
 
-    assert f == approx(functional)
-    assert list(g) == approx(list(gradients))
+    assert approx_equal(f, functional)
+    assert approx_equal(list(g), list(gradients))
 
     ########################################################
     # Make some amplitudes negative and recalculate - negative amplitudes should be set to zero
@@ -360,8 +362,8 @@ def test_optimise_gradients():
 
     f, g = f_g_calculator.compute_functional_and_gradients()
 
-    assert f == approx(functional)
-    assert list(g) == approx(list(gradients))
+    assert approx_equal(f, functional)
+    assert approx_equal(list(g), list(gradients))
 
     # Now make some amplitudes negative
     base_amplitudes_start.set_selected(flex.size_t(iran(n_grp*n_dst)), -0.5)
@@ -381,10 +383,12 @@ def test_optimise_gradients():
 
     f, g = f_g_calculator.compute_functional_and_gradients()
 
-    assert f == approx(functional)
-    assert list(g) == approx(list(gradients))
+    assert approx_equal(f, functional)
+    assert approx_equal(list(g), list(gradients))
 
-def test_optimise_gradients_invalid_arguments():
+  print 'OK'
+
+def tst_optimise_gradients_invalid_arguments():
   """Check errors are raised as expected"""
 
   n_grp = 3
@@ -649,3 +653,10 @@ def test_optimise_gradients_invalid_arguments():
     f_g_calculator.set_current_amplitudes(flex.double(n_grp*n_dst+n_atm-1))
   assert msg == str(e.value)
 
+  print 'OK'
+
+if __name__ == "__main__":
+  tst_optimise_amplitudes_single_group()
+  tst_optimise_amplitudes_multiple_groups_with_residual()
+  tst_optimise_gradients()
+  tst_optimise_gradients_invalid_arguments()
