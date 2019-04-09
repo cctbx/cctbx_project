@@ -2469,6 +2469,7 @@ END
     "Polymer crosses special position element:",
     "ATOM      7  CA  VAL B 220       0.000  -0.000  56.415  1.00536.12      B    C",
     "Use 'allow_polymer_cross_special_position=True' to keep going."]
+  cntr=0
   try:
     processed_pdb_file = monomer_library.pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
@@ -2480,7 +2481,9 @@ END
   except KeyboardInterrupt: raise
   except Exception, e:
     for line in str(e).splitlines():
-      assert line.strip() in exp_lines
+      if(line.strip() in exp_lines):
+        cntr+=1
+  assert cntr>=2
   #
   params.pdb_interpretation.allow_polymer_cross_special_position=True
   processed_pdb_file = monomer_library.pdb_interpretation.process(
