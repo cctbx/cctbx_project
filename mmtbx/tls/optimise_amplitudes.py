@@ -26,10 +26,6 @@ class OptimiseAmplitudes:
 
         # Compatibility of parameters is checked in the optimiser so not checking here
 
-        # Mask for residual optimisation
-#        if (residual_mask is not None):
-#            residual_mask = scitbx.array_family.flex.bool(map(bool, residual_mask))
-
         self.target_uijs        = target_uijs
         self.target_weights     = target_weights
         self.base_amplitudes    = base_amplitudes

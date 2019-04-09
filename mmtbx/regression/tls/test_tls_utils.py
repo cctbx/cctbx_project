@@ -1,11 +1,11 @@
-import os,sys,math
+from __future__ import division
+
+import math
 import numpy
 from mmtbx.tls.utils import *
 from pytest import approx, raises
 
 from scitbx.array_family import flex
-
-from IPython import embed
 
 rran = numpy.random.random
 iran = numpy.random.choice
@@ -45,17 +45,6 @@ INVALID_TLS_MATRICES = [
         [1.,1.,-1e-6,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.],
         [0.,0.,0.,0.,0.,0.,LS,LS,-LS*1e-6,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.],
     ]
-
-def print_zip(a,b):
-    for i in range(len(a)):
-        print a[i], b[i], abs(a[i]-b[i])
-
-def print_zip_iter(a,b):
-    for i in range(len(a)):
-        print '----------'
-        print a[i]
-        print b[i]
-        print [abs(a[i][j]-b[i][j]) for j in range(len(a[i]))]
 
 def get_TLS_values():
     vals = rran(21)
@@ -156,7 +145,7 @@ def test_TLSMatrices():
         assert d.get("S")   == approx(d_vals[12:21], abs=MAT_RND_TOL)
 
         # Check values are not being added/multiplied in place
-        for i in range(5):
+        for _ in range(5):
             # Check addition
             assert (a+a).get() == approx((a+a).get(), abs=0.0)
             # Check left- and right-multiplication
@@ -554,7 +543,7 @@ def test_TLSAmplitudes():
         assert a.values == approx(a_vals, abs=AMP_RND_TOL)
 
         # Check values are not being added/multiplied in place
-        for i in range(5):
+        for _ in range(5):
             # Check addition
             assert (a+a).values == approx((a+a).values, abs=0.0)
             # Check left- and right-multiplication
@@ -1348,7 +1337,7 @@ def test_TLSMatricesAndAmplitudesList():
     amps.reshape(flex.grid((3,10)))
     mal = TLSMatricesAndAmplitudesList(mats, amps)
     assert not mal.is_null()
-    for i_m, m in enumerate(mal):
+    for i, m in enumerate(mal):
         assert m.matrices.get() == approx(mats[21*i:21*(i+1)])
         assert m.amplitudes.get() == approx(amps[10*i:10*(i+1)])
     print dir(mats)
