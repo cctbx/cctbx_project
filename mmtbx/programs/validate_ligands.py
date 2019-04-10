@@ -11,6 +11,7 @@ from iotbx import crystal_symmetry_from_any
 from libtbx.str_utils import make_sub_header
 
 
+
 master_phil_str = '''
 ligand_code = None
   .type = str
@@ -97,11 +98,14 @@ electron density values/CC.
 
   def run(self):
 
-    print('Using model file:', self.data_manager.get_default_model_name())
-    print('Using reflection file:', self.data_manager.get_default_miller_array_name())
+    model_fn = self.data_manager.get_default_model_name()
+    print('Using model file:', model_fn, file=self.logger)
+    print('Using reflection file:',
+      self.data_manager.get_default_miller_array_name(), file=self.logger)
 
     cs = self.get_crystal_symmetry()
     model = self.data_manager.get_model()
+    #grm = model.get_restraints_manager()
     ph = model.get_hierarchy()
     xrs = model.get_xray_structure()
 
@@ -125,16 +129,21 @@ electron density values/CC.
     cs.show_summary(f=self.logger)
 
     # This is the new class, currently a stub but will be developed
-    # winter 2018/spring 2019 by DL and NWM
+    # spring 2019 by DL and NWM
     #t0 = time.time()
+    # TODO: Decide if H should be placed here or in the class
+    # if readyset is used, filename is needed
+    # if readyset can be run as class, filename could be avoided
     ligand_manager = validate_ligands.manager(
       model = model,
+      model_fn = model_fn,
       nproc = self.params.nproc,
       log   = self.logger)
     ligand_manager.run()
     ligand_manager.print_ligand_counts()
     ligand_manager.print_ligand_occupancies()
     ligand_manager.print_adps()
+    ligand_manager.print_nonbonded_overlaps()
     #print('time running manager: ', time.time()-t0)
 
     # TODO

@@ -1,21 +1,28 @@
 from __future__ import division, print_function
 
-import time
+import time, os
 import iotbx.pdb
+import mmtbx.model
+import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 from cctbx import adptbx
 from cctbx.array_family import flex
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header
+from libtbx.utils import null_out
+from libtbx import easy_run
+from mmtbx import monomer_library
 
 # =============================================================================
 # Manager class for ALL ligands
 
 class manager(dict):
 
-  def __init__(self, model, nproc=1, log=None):
+  def __init__(self, model, model_fn = None, nproc=1, log=None):
     self.model = model
     self.nproc = nproc
     self.log   = log
+    # TODO:  tidy up once ready set is refactored
+    self.model_fn = model_fn
 
   # ---------------------------------------------------------------------------
 
@@ -33,6 +40,7 @@ class manager(dict):
       id_list.append(altloc)
       lr = ligand_result(
         model = self.model,
+        model_with_H = self.model_with_H,
         isel = conformer_isel,
         id_list = id_list)
       ligand_results.append(lr)
@@ -65,6 +73,8 @@ class manager(dict):
 
   def run(self):
     args = []
+    self.get_model_with_H()
+
     def _generate_ligand_isel():
       #done = []
       ph = self.model.get_hierarchy()
@@ -87,6 +97,45 @@ class manager(dict):
                                                           _generate_ligand_isel()):
       ligand_dict = self.setdefault(id_tuple, {})
       ligand_dict[altloc] = lr
+
+  # ---------------------------------------------------------------------------
+
+  def get_model_with_H(self):
+    if self.model_fn is None:
+      self.model_with_H = None
+      return
+    fn_pdb, fn_cif = self.run_ready_set(file_name = self.model_fn)
+    if fn_cif is not None:
+      cif_object = monomer_library.server.read_cif(file_name=fn_cif)
+      cif_objects = [(fn_cif, cif_object)]
+    else:
+      cif_objects = []
+    pdb_inp = iotbx.pdb.input(file_name=fn_pdb)
+    self.model_with_H = mmtbx.model.manager(
+      model_input = pdb_inp,
+      restraint_objects = cif_objects,
+      build_grm   = True,
+      log         = null_out())
+
+  # ---------------------------------------------------------------------------
+
+  def run_ready_set(self, file_name):
+    print('\nRunning ready_set to get cif_files and get model with H atoms.',
+      file=self.log)
+    import libtbx.load_env
+    has_ready_set = libtbx.env.has_module(name="phenix")
+    if not has_ready_set:
+      raise_sorry('phenix.ready_set could not be detected on your system.')
+    cmd = "phenix.ready_set {} --silent".format(file_name)
+    out = easy_run.fully_buffered(cmd)
+    if (out.return_code != 0):
+      msg_str = "ready_set crashed - dumping stderr:\n%s"
+      raise RuntimeError(msg_str % ( "\n".join(out.stderr_lines)))
+    fn_pdb = file_name.replace('.pdb','.updated.pdb')
+    fn_cif = file_name.replace('.pdb','.ligands.cif')
+    if not (os.path.isfile(fn_cif)):
+      fn_cif = None
+    return fn_pdb, fn_cif
 
   # ---------------------------------------------------------------------------
 
@@ -120,7 +169,7 @@ class manager(dict):
 
   def print_adps(self):
     make_sub_header(' ADPs ', out=self.log)
-    pad1 = ' '*20
+    pad1 = ' '*18
     print(pad1, "min   max    mean   n_iso   n_aniso", file=self.log)
     for id_tuple, ligand_dict in self.items():
       for altloc, lr in ligand_dict.items():
@@ -137,7 +186,8 @@ class manager(dict):
   def print_ligand_occupancies(self):
     make_sub_header(' Occupancies ', out=self.log)
     pad1 = ' '*20
-    print('If three values: min, max, mean, otherwise the same occupancy for entire ligand.', file=self.log)
+    print('If three values: min, max, mean, otherwise the same occupancy for entire ligand.', \
+      file=self.log)
     for id_tuple, ligand_dict in self.items():
       for altloc, lr in ligand_dict.items():
         occs = lr.get_occupancies()
@@ -147,18 +197,63 @@ class manager(dict):
           print(lr.id_str.ljust(16), '%s   %s   %s' %
             (occs.occ_min, occs.occ_max, occs.occ_mean), file = self.log)
 
+  # ---------------------------------------------------------------------------
+
+  def print_nonbonded_overlaps(self):
+    make_sub_header(' Nonbonded overlaps', out=self.log)
+    overlaps_found = False
+    out_str = '{:>16}-{:>16}   {:>6.3f}    {:^10}'
+    for id_tuple, ligand_dict in self.items():
+      for altloc, lr in ligand_dict.items():
+        nbo = lr.get_nonbonded_overlaps()
+        nbo_proxies = nbo.result.nb_overlaps_proxies_all
+        out_list = []
+        argmented_counts = [0,0]
+        def _adjust_count(d):
+          d=(abs(d)-0.4)*10
+          return d+1
+        if (len(nbo_proxies) > 0):
+          overlaps_found = True
+          for data in nbo_proxies:
+            d = list(data)
+            rec_list = [x.replace('pdb=','') for x in d[0]]
+            rec_list = [x.replace('"','') for x in rec_list]
+            #rec_list.extend(d[1:3])
+            rec_list.append(d[3]-d[4])
+            rec_list.append('1'*bool(d[5]) + ' '*(not bool(d[5])))
+            ptr = 0
+            if rec_list[3].strip(): ptr=1
+            #argmented_counts[ptr] += _adjust_count(rec_list[2])
+            out_list.append(out_str.format(*rec_list))
+          out_string = '\n'.join(out_list)
+    if overlaps_found:
+      lbl_str = '{:^33} {:^11} {:<10}'
+      print(lbl_str.format(*["Overlapping residues","model-vdw",
+                     "sym overlap"]), file=self.log)
+      print('-'*73, file=self.log)
+      print(out_string, file=self.log)
+    else:
+      print('No clashes found', file=self.log)
+        #print argmented_counts
+#        nbo.show(
+#          log=self.log,
+#          nbo_type='all',
+#          normalized_nbo=False)
+
 # =============================================================================
 # Class storing info per ligand
 
 class ligand_result(object):
 
-  def __init__(self, model, isel, id_list):
+  def __init__(self, model, model_with_H, isel, id_list):
     self.model = model
     self.isel = isel
+    self.model_with_H = model_with_H
 
     # results
     self._result_attrs = {'_occupancies' : 'get_occupancies',
                           '_adps'        : 'get_adps',
+                          '_nb_overlaps' : 'get_nonbonded_overlaps'
     }
     for attr, func in self._result_attrs.items():
       setattr(self, attr, None)
@@ -167,7 +262,19 @@ class ligand_result(object):
     self._ph = self.model.get_hierarchy()
     self._atoms = self._ph.select(self.isel).atoms()
     self._xrs = self.model.select(isel).get_xray_structure()
+    self._get_id_str(id_list=id_list)
 
+  # ---------------------------------------------------------------------------
+
+  def __repr__(self):
+    outl = 'ligand %s\n' % self.id_str
+    for attr in self._result_attrs:
+      outl += '  %s : %s\n' % (attr, getattr(self, attr))
+    return outl
+
+  # ---------------------------------------------------------------------------
+
+  def _get_id_str(self, id_list):
     rg_ligand = self._ph.select(self.isel).only_residue_group()
     resname = ",".join(rg_ligand.unique_resnames())
     self.id_str = " ".join([id_list[0], id_list[1], resname, id_list[2], id_list[3]])
@@ -178,16 +285,9 @@ class ligand_result(object):
       self.sel_str = " ".join([self.sel_str, 'and altloc', id_list[3]])
     self.id_str = self.id_str.strip()
 
-  def __repr__(self):
-    outl = 'ligand %s\n' % self.id_str
-    for attr in self._result_attrs:
-      outl += '  %s : %s\n' % (attr, getattr(self, attr))
-    return outl
-
   # ---------------------------------------------------------------------------
 
   def get_adps(self):
-    #print('Extracting ADPs', file=self.log)
     if self._adps is None:
       b_isos = self._xrs.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
       n_iso   = self._xrs.use_u_iso().count(True)
@@ -197,7 +297,6 @@ class ligand_result(object):
       n_above_100 = (b_isos > 100).count(True)
       isel_above_100 = (b_isos > 100).iselection()
       b_min, b_max, b_mean = b_isos.min_max_mean().as_tuple()
-      # TODO: Get adp from surrounding residues
 
       #if this selection is used somewhere else, it might be better to do it outside
       within_radius = 3.0 #TODO should this be a parameter?
@@ -225,7 +324,6 @@ class ligand_result(object):
   # ---------------------------------------------------------------------------
 
   def get_occupancies(self):
-    #print('Extracting occupancies', file=self.log)
     if self._occupancies is None:
       eps = 1.e-6
       occ = self._atoms.extract_occ()
@@ -251,3 +349,33 @@ class ligand_result(object):
       )
 
     return self._occupancies
+
+  # ---------------------------------------------------------------------------
+
+  def get_nonbonded_overlaps(self):
+    # this function should use a model with H atoms!!
+    if self.model_with_H is None:
+      return None
+    if self._nb_overlaps is None:
+      # sel_within could be done in __init__?
+      within_radius = 3.0
+      sel_within_str = '%s or (within (%s, %s)) and (protein or water)' \
+        % (self.sel_str, within_radius, self.sel_str)
+      #isel_within = self.model_with_H.iselection(sel_within_str)
+      sel_within = self.model_with_H.selection(sel_within_str)
+      sel_ligand_within = self.model_with_H.select(sel_within).selection(self.sel_str)
+      xrs_within = self.model_with_H.select(sel_within).get_xray_structure()
+      #xrs = self.model.get_xray_structure()
+      geometry = self.model_with_H.get_restraints_manager().select(sel_within).geometry
+
+      #sel = flex.bool([True]*len(sel_within))
+
+      self._nb_overlaps = nbo.info(
+        geometry_restraints_manager=geometry,
+        macro_molecule_selection=~sel_ligand_within, #TODO should be only ligand, not sel_within?
+        sites_cart=xrs_within.sites_cart(),
+        site_labels=xrs_within.scatterers().extract_labels(),
+        hd_sel=xrs_within.hd_selection())
+
+    return self._nb_overlaps
+
