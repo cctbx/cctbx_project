@@ -5,9 +5,11 @@
 from __future__ import division
 import iotbx.cif
 import iotbx.phil
-from iotbx.command_line import cif_as_pdb, pdb_as_cif
+from iotbx.cli_parser import run_program
+from iotbx.command_line import cif_as_pdb
 from iotbx.pdb import pdb_input_from_any
 from libtbx.utils import Sorry
+from mmtbx.programs import pdb_as_cif
 import os.path
 import sys
 
@@ -43,7 +45,7 @@ def run(args=(), params=None, out=sys.stdout):
   output_file = os.path.splitext(os.path.basename(file_name))[0]
   if (model.file_format == "pdb"):
     print >> out, "Converting %s to mmCIF format." % file_name
-    pdb_as_cif.run([file_name])
+    run_program(program_class=pdb_as_cif.Program, args=[file_name])
     output_file += '.cif'
   elif (model.file_format == 'cif'):
     print >> out, "Converting %s to PDB format." % file_name
