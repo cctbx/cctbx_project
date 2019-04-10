@@ -354,12 +354,12 @@ class HKLViewFrame () :
     self.viewer.DrawNGLJavaScript()
 
 
-  def LoadReflectionsFile (self, file_name, set_array=True,
-      data_only=False) :
+  def LoadReflectionsFile (self, file_name, set_array=True, data_only=False):
     file_name = to_str(file_name)
-    if (file_name != "") :
+    if (file_name != ""):
       from iotbx.reflection_file_reader import any_reflection_file
       from iotbx.gui_tools.reflections import get_array_description
+      self.viewer.isnewfile = True
       try :
         hkl_file = any_reflection_file(file_name)
       except Exception, e :
@@ -370,9 +370,10 @@ class HKLViewFrame () :
       valid_arrays = []
       self.array_info = []
       for array in arrays :
-        if array.is_hendrickson_lattman_array() :
-          continue
-        elif (data_only) :
+        #if array.is_hendrickson_lattman_array() :
+        #  continue
+        #elif (data_only) :
+        if (data_only) :
           if (not array.is_real_array()) and (not array.is_complex_array()) :
             continue
         self.array_info.append( ArrayInfo(array).infostr )

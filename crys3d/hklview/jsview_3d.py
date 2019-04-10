@@ -23,19 +23,6 @@ nanval = float('nan')
 inanval = -42424242 # TODO: find a more robust way of indicating missing data
 
 
-class MyMsgQueue:
-  def __init__(self, thisview):
-    self.thisview = thisview
-
-  def EmptyMsgQueue(self, thisview):
-    while True:
-        sleep(1)
-        if hasattr(self.thisview, "pendingmessage") and self.thisview.pendingmessage:
-          self.thisview.SendWebSockMsg(self.thisview.pendingmessage)
-          self.thisview.pendingmessage = None
-
-
-
 
 class ArrayInfo:
   def __init__(self, millarr):
@@ -87,6 +74,7 @@ class hklview_3d:
     self.iarray = 0
     self.icolourcol = 0
     self.iradiicol = 0
+    self.isnewfile = False
     self.binvals = []
     self.workingbinvals = []
     self.valid_arrays = []
@@ -773,11 +761,19 @@ mysocket.onmessage = function (e) {
     if "Current vieworientation:" in message:
       # The NGL.Matrix4 with the orientation is a list of floats.
       self.viewmtrxelms = message[ message.find("\n") : ]
-      #sleep(2.0)
+      sleep(0.2)
       self.mprint( "Reorienting client after refresh:" + str( self.websockclient ) )
-      self.pendingmessage = u"ReOrient, NGL" + self.viewmtrxelms
-      #self.viewmtrxelms = None
+      if not self.isnewfile:
+        self.pendingmessage = u"ReOrient, NGL" + self.viewmtrxelms
+      self.isnewfile = False
 
+
+  def EmptyMsgQueue(self):
+    while True:
+        sleep(1)
+        if hasattr(self, "pendingmessage") and self.pendingmessage:
+          self.SendWebSockMsg(self.pendingmessage)
+          self.pendingmessage = None
 
 
   def StartWebsocket(self):
@@ -787,12 +783,9 @@ mysocket.onmessage = function (e) {
     self.wst = threading.Thread(target=self.server.run_forever)
     self.wst.daemon = True
     self.wst.start()
-
-    self.myqueue = MyMsgQueue(self)
-    self.msgqueuethrd = threading.Thread(target = self.myqueue.EmptyMsgQueue, args = (self,) )
+    self.msgqueuethrd = threading.Thread(target = self.EmptyMsgQueue )
     self.msgqueuethrd.daemon = True
     self.msgqueuethrd.start()
-
 
 
   def SendWebSockMsg(self, msg):
@@ -816,7 +809,6 @@ mysocket.onmessage = function (e) {
     self.SendWebSockMsg(msg)
 
 
-
   def RedrawNGL(self):
     self.SendWebSockMsg( u"Redraw, NGL\n" )
 
@@ -824,7 +816,6 @@ mysocket.onmessage = function (e) {
   def ReloadNGL(self): # expensive as javascript may be several Mbytes large
     self.mprint("Rendering NGL JavaScript...")
     self.SendWebSockMsg( u"Reload, NGL\n" )
-
 
 
   def OpenBrowser(self):
@@ -837,7 +828,7 @@ mysocket.onmessage = function (e) {
     self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname )
     if self.UseOSBrowser:
       webbrowser.open(self.url, new=1)
-
+    self.isnewfile = False
 
 
 
