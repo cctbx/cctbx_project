@@ -198,7 +198,7 @@ class HKLViewFrame () :
     self.verbose = True
     if kwds.has_key('verbose'):
       self.verbose = kwds['verbose']
-    kwds['settings'] =self.settings
+    kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
     self.viewer = view_3d.hklview_3d( **kwds )
 
@@ -360,6 +360,9 @@ class HKLViewFrame () :
       from iotbx.reflection_file_reader import any_reflection_file
       from iotbx.gui_tools.reflections import get_array_description
       self.viewer.isnewfile = True
+      display.reset_settings()
+      self.settings = display.settings()
+      self.viewer.settings = self.settings
       try :
         hkl_file = any_reflection_file(file_name)
       except Exception, e :
@@ -380,7 +383,6 @@ class HKLViewFrame () :
 
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       for i,e in enumerate(self.array_info):
         self.mprint("%d, %s" %(i, e))
       if (len(valid_arrays) == 0) :
@@ -390,7 +392,6 @@ class HKLViewFrame () :
         if (set_array) :
           self.set_miller_array(valid_arrays[0])
         return valid_arrays[0]
-
 
 
   def SetSphereScale(self, nscale):
@@ -465,6 +466,7 @@ class HKLViewFrame () :
      %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
         self.miller_array.index_span().max() ) )
     self.viewer.DrawNGLJavaScript()
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
   def SetColourColumn(self, colourcol):

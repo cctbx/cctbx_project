@@ -518,7 +518,7 @@ class render_2d(object):
     raise NotImplementedError()
 
 
-master_phil = libtbx.phil.parse("""
+philstr = """
   data = None
     .type = path
     .optional = False
@@ -584,8 +584,20 @@ master_phil = libtbx.phil.parse("""
     .type = bool
   show_anomalous_pairs = False
     .type = bool
-""")
+"""
+
+master_phil = libtbx.phil.parse( philstr )
+params = master_phil.fetch().extract()
+
+def reset_settings():
+  global master_phil
+  global philstr
+  global params
+  params = master_phil.fetch(source = libtbx.phil.parse( philstr) ).extract()
 
 
 def settings():
-  return master_phil.fetch().extract()
+  global params
+  return params
+
+
