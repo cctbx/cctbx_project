@@ -6,6 +6,7 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/vec3.h>
 #include <scitbx/error.h>
+#include <scitbx/constants.h>
 
 #include <cmath>
 
@@ -60,6 +61,71 @@ namespace scitbx { namespace graphics_utils {
     }
     return hsv2rgb(h, s, v);
   }
+
+  inline
+  scitbx::vec3<double>
+    get_Phi_FOM_colour(double phi, double fom = 1.0)
+  {
+    /* return circular rainbow colour indicating phase between [0;2pi] but greyed according to fom between [0;1]
+    inspired by python code:
+     def HSV_vivid(h):
+        h %= 1
+        h *= 6
+        c = 1
+        x = 1 - abs((h % 2) - 1)
+        rgb = ()
+        if   h < 1: rgb = (c, x, 0)
+        elif h < 2: rgb = (x, c, 0)
+        elif h < 3: rgb = (0, c, x)
+        elif h < 4: rgb = (0, x, c)
+        elif h < 5: rgb = (x, 0, c)
+        else:       rgb = (c, 0, x)
+        return rgb[0], rgb[1], rgb[2]
+  */
+    double h = fmod(phi, 2.0*scitbx::constants::pi)/(2.0*scitbx::constants::pi);
+    while (h < 0.0)
+      h++;
+    h *= 6;
+    double c = fom;
+    double x = (1.0 - fabs(fmod(h, 2.0) - 1.0)) * fom;
+    double r, g, b;
+    if (h < 1.0) {
+      r = c; g = x; b = 1.0 - fom;
+    }
+    else if (h < 2.0) {
+      r = x; g = c; b = 1.0 - fom;
+    }
+    else if (h < 3.0) {
+      r = 1.0 - fom; g = c; b = x;
+    }
+    else if (h < 4.0) {
+      r = 1.0 - fom; g = x; b = c;
+    }
+    else if (h < 5.0) {
+      r = x; g = 1.0 - fom; b = c;
+    }
+    else {
+      r = c; g = 1.0 - fom; b = x;
+    }
+    return scitbx::vec3<double>(r, g, b);
+  }
+   
+  
+  af::shared< scitbx::vec3<double> >
+  color_by_phi_fom(
+    af::const_ref< double > const& phases,
+    af::const_ref< double > const& foms
+  )
+  {
+    SCITBX_ASSERT(phases.size() == foms.size());
+    af::shared <scitbx::vec3<double> > colors(phases.size());
+
+    for (unsigned i_seq = 0; i_seq < phases.size(); i_seq++)
+      colors[i_seq] = get_Phi_FOM_colour(phases[i_seq], foms[i_seq]);
+
+    return colors;
+  }
+
 
   // this function may be superfluous here, but could be useful elsewhere
   af::shared< scitbx::vec3<double> >
@@ -155,12 +221,12 @@ namespace scitbx { namespace graphics_utils {
       double gradient_ratio = (properties[i_seq]-vmin) / (vmax-vmin);
       if ((! color_all) && (! selection[i_seq])) { // black
         colors[i_seq] = scitbx::vec3<double>(0.0,0.0,0.0);
+      } else if (gradient_type == 0) { // rainbow
+        colors[i_seq] = hsv2rgb(240.0 - (240 * gradient_ratio), 1., 1.);
       } else if (gradient_type == 1) { // red-blue
         colors[i_seq] = hsv2rgb(240.0 + (120 * gradient_ratio), 1., 1.);
       } else if (gradient_type == 2) { // heatmap
         colors[i_seq] = get_heatmap_color(gradient_ratio, min_value);
-      } else { // rainbow
-        colors[i_seq] = hsv2rgb(240.0 - (240 * gradient_ratio), 1., 1.);
       }
     }
     return colors;

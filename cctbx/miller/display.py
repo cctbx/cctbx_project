@@ -37,8 +37,16 @@ class scene(object):
   easily extensible to any other graphics platform (e.g. a PNG embedded in
   a web page).
   """
-  def __init__(self, miller_array, settings, merge=None):
+  def __init__(self, miller_array, settings, merge=None, foms=None):
     self.miller_array = miller_array
+    if self.miller_array.is_complex_array():
+      # want to display map coefficient as circular colours but weighted with FOMS
+      # so copy any provided foms in the empty list of sigmas
+      if foms:
+        assert ( self.miller_array.size() == foms.size() )
+        self.miller_array._sigmas = foms.deep_copy()
+      else:
+        self.miller_array._sigmas = None
     self.settings = settings
     self.merge_equivalents = merge
     from cctbx import miller
@@ -87,8 +95,11 @@ class scene(object):
     assert (self.missing_flags.size() == n_points)
     assert (self.sys_absent_flags.size() == n_points)
     assert (self.data.size() == n_points)
-    assert (self.phase.size() == n_points)
+    assert (self.phases.size() == n_points)
+    assert (self.radians.size() == n_points)
     assert (self.ampl.size() == n_points)
+    if foms:
+      assert (self.foms.size() == n_points)
     self.clear_labels()
 
 
@@ -157,8 +168,10 @@ class scene(object):
             crystal_symmetry=original_symmetry)
     data = array.data()
     self.r_free_mode = False
-    self.phase = flex.double(data.size(), float('nan'))
+    self.phases = flex.double(data.size(), float('nan'))
+    self.radians = flex.double(data.size(), float('nan'))
     self.ampl = flex.double(data.size(), float('nan'))
+    self.foms = flex.double(data.size(), 1.0)
     self.sigmas = None
     #self.sigmas = flex.double(data.size(), float('nan'))
     if isinstance(data, flex.bool):
@@ -173,7 +186,12 @@ class scene(object):
       elif isinstance(data, flex.complex_double):
         self.data = data.deep_copy()
         self.ampl = flex.abs(data)
-        self.phase = flex.arg(data) * 180.0/math.pi
+        self.phases = flex.arg(data) * 180.0/math.pi
+        # cast negative degrees to positive ones
+        #self.phases = flex.double( list( np.array( list(self.phases) ) % 360.0 ) )
+        self.phases = flex.fmod_positive(self.phases, 360.0)
+        self.radians = flex.arg(data)
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       elif hasattr(array.data(), "as_double"):
         self.data = array.data().as_double()
       else:
@@ -212,9 +230,12 @@ class scene(object):
       assert data_for_colors.size() == data.size()
     elif (settings.sqrt_scale_colors) and (isinstance(data, flex.double)):
       data_for_colors = flex.sqrt(flex.abs(data))
-    #elif (settings.phase_color) and (isinstance(data, flex.complex_double)):
     elif isinstance(data, flex.complex_double):
-      data_for_colors = flex.arg(data)
+      data_for_colors = self.radians
+      # when using map coefficients the sigmas are filled with foms if provided
+      if self.sigmas:
+        self.foms = self.sigmas
+      foms_for_colours = self.foms
     elif (settings.sigma_color) and sigmas is not None:
       data_for_colors = sigmas.as_double()
     else :
@@ -236,22 +257,17 @@ class scene(object):
       #print "sigmas: " + self.miller_array.info().label_string()
     else :
       data_for_radii = flex.abs(data.deep_copy())
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if (settings.slice_mode):
       data = data.select(self.slice_selection)
       if (not settings.keep_constant_scale):
         data_for_radii = data_for_radii.select(self.slice_selection)
         data_for_colors = data_for_colors.select(self.slice_selection)
-    """
+        foms_for_colours = foms_for_colours.select(self.slice_selection)
+
     if isinstance(data, flex.complex_double):
-      colors = graphics_utils.color_by_property(
-        properties=data_for_colors,
-        selection=flex.bool(data_for_colors.size(), True),
-        color_all=False,
-        gradient_type="HSV")
+      colors = graphics_utils.colour_by_phi_FOM(data_for_colors, foms_for_colours)
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     elif (settings.color_scheme in ["rainbow", "heatmap", "redblue"]):
-    """
-    if (settings.color_scheme in ["rainbow", "heatmap", "redblue"]):
       colors = graphics_utils.color_by_property(
         properties=data_for_colors,
         selection=flex.bool(data_for_colors.size(), True),
@@ -294,6 +310,8 @@ class scene(object):
     self.radii = radii
     self.max_radius = max_radius
     self.colors = colors
+    if isinstance(data, flex.complex_double):
+      self.foms = foms_for_colours
 
 
   def generate_missing_reflections(self):
@@ -590,6 +608,9 @@ master_phil = libtbx.phil.parse( philstr )
 params = master_phil.fetch().extract()
 
 def reset_settings():
+  """
+  Reset all display settings to their default values as specified in the phil definition string
+  """
   global master_phil
   global philstr
   global params
@@ -597,6 +618,9 @@ def reset_settings():
 
 
 def settings():
+  """
+  Get a global phil parameters object containing the display settings
+  """
   global params
   return params
 

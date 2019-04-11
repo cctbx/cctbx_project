@@ -258,7 +258,7 @@ class hklview_3d:
       if (isinstance(d, flex.int)):
         d = [e for e in self.scene.data if e!= self.inanval]
       if valarray.is_complex_array():
-        d = flex.abs(otherscene.data)
+        d = otherscene.ampl
       maxdata =max( d )
       mindata =min( d )
       self.othermaxdata.append( maxdata )
@@ -267,8 +267,8 @@ class hklview_3d:
       maxsigmas = minsigmas = nanval
       if otherscene.sigmas is not None:
         d = otherscene.sigmas
-        maxsigmas =max( d )
-        minsigmas =min( d )
+        maxsigmas = max( d )
+        minsigmas = min( d )
 
       self.othermaxsigmas.append(maxsigmas)
       self.otherminsigmas.append(minsigmas)
@@ -349,8 +349,8 @@ class hklview_3d:
     """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, Kstararrowtxt, Lstararrowtxt)
 
-    # make colour gradient array
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
+
     mincolourscalar = self.othermindata[self.icolourcol]
     maxcolourscalar = self.othermaxdata[self.icolourcol]
     if self.settings.sigma_color:
@@ -364,18 +364,27 @@ class hklview_3d:
     for j,sc in enumerate(range(ln)):
       val += incr
       colourscalararray.append( val )
-
-    colourgradarray = graphics_utils.color_by_property(
-      properties= flex.double(colourscalararray),
-      selection=flex.bool( len(colourscalararray), True),
-      color_all=False,
-      gradient_type= self.settings.color_scheme)
+    if self.otherscenes[self.icolourcol].miller_array.is_complex_array():
+      incr = 360.0/ln
+      val = 0.0
+      colourscalararray =[]
+      for j,sc in enumerate(range(ln)):
+        val += incr
+        colourscalararray.append( val )
+      colourgradarray = graphics_utils.colour_by_phi_FOM( flex.double(colourscalararray ) * (math.pi/180.0) )
+    else:
+      colourgradarray = graphics_utils.color_by_property(
+        properties= flex.double(colourscalararray),
+        selection=flex.bool( len(colourscalararray), True),
+        color_all=False,
+        gradient_type= self.settings.color_scheme)
     colourgradarray = colourgradarray * 255.0
 
     self.colourgradientvalues = []
     for j,e in enumerate(colourgradarray):
       self.colourgradientvalues.append( [colourscalararray[j], e] )
     self.colourgradientvalues = roundoff(self.colourgradientvalues)
+    # colour gradient values to be used below as a <div> tag for the javascript below
 
     colors = self.otherscenes[self.icolourcol].colors
     radii = self.otherscenes[self.iradiicol].radii * self.settings.scale
@@ -415,9 +424,15 @@ class hklview_3d:
       raise Sorry("Should never get here")
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+
+    realodata = self.otherscenes[self.iarray].data
+    if self.otherscenes[self.iarray].work_array.is_complex_array():
+      realodata = self.otherscenes[self.iarray].ampl
+
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
-      ibin = data2bin( self.otherscenes[self.iarray].data[i] )
+      #ibin = data2bin( self.otherscenes[self.iarray].data[i] )
+      ibin = data2bin( realodata[i] )
       spbufttip = 'H,K,L: %s, %s, %s' %(hkls[i][0], hkls[i][1], hkls[i][2])
       spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
       spbufttip += '\' + AA + \''
@@ -426,7 +441,8 @@ class hklview_3d:
         odata = otherscene.data
         od =""
         if self.valid_arrays[j].is_complex_array():
-          od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phase[i]))
+          od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
+            ", " + str(roundoff(otherscene.foms[i])  )
         elif self.valid_arrays[j].sigmas() is not None:
           od = str(roundoff(odata[i]) ) + ", " + str(roundoff(otherscene.sigmas[i]))
         else:
@@ -573,8 +589,8 @@ var repr;
 var AA = String.fromCharCode(197); // short for angstrom
 var DGR = String.fromCharCode(176); // short for degree symbol
 
-
 function createElement (name, properties, style) {
+// utility function used in for loop over colourgradvalarray
   var el = document.createElement(name)
   Object.assign(el, properties)
   Object.assign(el.style, style)
@@ -591,6 +607,7 @@ function createElement (name, properties, style) {
 
 
 function addElement (el) {
+// utility function used in for loop over colourgradvalarray
   Object.assign(el.style, {
     position: "absolute",
     zIndex: 10

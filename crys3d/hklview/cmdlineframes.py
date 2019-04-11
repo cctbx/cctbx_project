@@ -79,15 +79,21 @@ ma1.set_info(miller.array_info(source="artificial file", labels=["MyI", "SigMyI"
 
 mi2 = flex.miller_index([ (1,-2,3), (0,0,-4), (1, 2, 3), (0, 1, 2),
                         (1, 0, 2), (-1, 1, -2), (2, -2, -2),
-                        (-2, 1, 0) , (0, 0, 2) ]
+                        (-2, 1, 0) , (0, 0, 2),  ]
                         )
 
-ma2 = miller.array(miller.set(xs, mi2), flex.complex_double( [ -18.691 +7.47j,
-                                             14.94 + 1.21j, -24.921 - 4.98j,
-                                             -20.572 + 19.937j, 21.183 - 8.715j,
-                                             9.378 + 26.167j, -11.205 + 14.824j,
-                                             22.429 - 4.98j, -8.471 + 27.413j
-                                            ] ) )
+ma2 = miller.array(miller.set(xs, mi2),
+                    flex.complex_double( [
+                                -1.0 + 0.0j,
+                                 -0.5 + 0.866025j,
+                                 0.0 + 1.0j,
+                                 0.5 + 0.866025j,
+                                 1.0 + 0.0j,
+                                 0.5 - 0.866025j,
+                                 0.0 - 1.0j,
+                                 -0.5 - 0.866025j,
+                                 -0.7071 + 0.7071j
+                                 ] ) )
 
 ma2.set_info(miller.array_info(source="artificial file", labels=["MyMap", "PhiMyMap"]))
 
