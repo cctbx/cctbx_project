@@ -21,7 +21,7 @@ class manager(dict):
     self.model = model
     self.nproc = nproc
     self.log   = log
-    # TODO:  tidy up once ready set is refactored
+    # TODO:  tidy up filename requirement once ready set is refactored
     self.model_fn = model_fn
 
   # ---------------------------------------------------------------------------
@@ -71,6 +71,8 @@ class manager(dict):
         i+=1
     return ligand_results
 
+  # ---------------------------------------------------------------------------
+
   def run(self):
     args = []
     self.get_model_with_H()
@@ -101,9 +103,14 @@ class manager(dict):
   # ---------------------------------------------------------------------------
 
   def get_model_with_H(self):
+    # TODO: user should have possibility to use existing H atoms,
+    # in this case, how to run readyset (because if might be still necessary to get
+    # ligand cif file)
+    # temporary workaround
     if self.model_fn is None:
       self.model_with_H = None
       return
+    # temporary workaround
     fn_pdb, fn_cif = self.run_ready_set(file_name = self.model_fn)
     if fn_cif is not None:
       cif_object = monomer_library.server.read_cif(file_name=fn_cif)
@@ -120,7 +127,7 @@ class manager(dict):
   # ---------------------------------------------------------------------------
 
   def run_ready_set(self, file_name):
-    print('\nRunning ready_set to get cif_files and get model with H atoms.',
+    print('\nRunning ready_set to get cif_files and get model with H atoms...',
       file=self.log)
     import libtbx.load_env
     has_ready_set = libtbx.env.has_module(name="phenix")
@@ -135,6 +142,10 @@ class manager(dict):
     fn_cif = file_name.replace('.pdb','.ligands.cif')
     if not (os.path.isfile(fn_cif)):
       fn_cif = None
+    else:
+      print('Ligand(s) cif file created: ', fn_cif)
+    if (os.path.isfile(fn_pdb)):
+      print('Updated model file: ', fn_pdb)
     return fn_pdb, fn_cif
 
   # ---------------------------------------------------------------------------
@@ -159,7 +170,7 @@ class manager(dict):
 
   # ---------------------------------------------------------------------------
 
-  def print_ligand_counts(self):
+  def show_ligand_counts(self):
     make_sub_header(' Ligands in input model ', out=self.log)
     for id_tuple, ligand_dict in self.items():
       for altloc, lr in ligand_dict.items():
@@ -167,7 +178,7 @@ class manager(dict):
 
   # ---------------------------------------------------------------------------
 
-  def print_adps(self):
+  def show_adps(self):
     make_sub_header(' ADPs ', out=self.log)
     pad1 = ' '*18
     print(pad1, "min   max    mean   n_iso   n_aniso", file=self.log)
@@ -183,7 +194,7 @@ class manager(dict):
 
   # ---------------------------------------------------------------------------
 
-  def print_ligand_occupancies(self):
+  def show_ligand_occupancies(self):
     make_sub_header(' Occupancies ', out=self.log)
     pad1 = ' '*20
     print('If three values: min, max, mean, otherwise the same occupancy for entire ligand.', \
@@ -199,10 +210,10 @@ class manager(dict):
 
   # ---------------------------------------------------------------------------
 
-  def print_nonbonded_overlaps(self):
+  def show_nonbonded_overlaps(self):
     make_sub_header(' Nonbonded overlaps', out=self.log)
     overlaps_found = False
-    out_str = '{:>16}-{:>16}   {:>6.3f}    {:^10}'
+    out_str = '{:>16}-{:>16}     {:>6.3f}       {:>6.3f}   {:^10}'
     for id_tuple, ligand_dict in self.items():
       for altloc, lr in ligand_dict.items():
         nbo = lr.get_nonbonded_overlaps()
@@ -219,16 +230,17 @@ class manager(dict):
             rec_list = [x.replace('pdb=','') for x in d[0]]
             rec_list = [x.replace('"','') for x in rec_list]
             #rec_list.extend(d[1:3])
-            rec_list.append(d[3]-d[4])
+            rec_list.append(d[3])
+            rec_list.append(d[4])
             rec_list.append('1'*bool(d[5]) + ' '*(not bool(d[5])))
             ptr = 0
-            if rec_list[3].strip(): ptr=1
+            if rec_list[4].strip(): ptr=1
             #argmented_counts[ptr] += _adjust_count(rec_list[2])
             out_list.append(out_str.format(*rec_list))
           out_string = '\n'.join(out_list)
     if overlaps_found:
-      lbl_str = '{:^33} {:^11} {:<10}'
-      print(lbl_str.format(*["Overlapping residues","model-vdw",
+      lbl_str = '{:^33} {:^11} {:^11} {:<10}'
+      print(lbl_str.format(*["Overlapping atoms","model distance", "vdW distance",
                      "sym overlap"]), file=self.log)
       print('-'*73, file=self.log)
       print(out_string, file=self.log)

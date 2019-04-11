@@ -1,5 +1,4 @@
 from __future__ import division, print_function
-import time
 try:
   from phenix.program_template import ProgramTemplate
 except ImportError:
@@ -140,10 +139,10 @@ electron density values/CC.
       nproc = self.params.nproc,
       log   = self.logger)
     ligand_manager.run()
-    ligand_manager.print_ligand_counts()
-    ligand_manager.print_ligand_occupancies()
-    ligand_manager.print_adps()
-    ligand_manager.print_nonbonded_overlaps()
+    ligand_manager.show_ligand_counts()
+    ligand_manager.show_ligand_occupancies()
+    ligand_manager.show_adps()
+    ligand_manager.show_nonbonded_overlaps()
     #print('time running manager: ', time.time()-t0)
 
     # TODO

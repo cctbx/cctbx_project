@@ -252,7 +252,17 @@ END
 
 # ---------------------------------------------------------------------------
 
-def tst_find_ligands():
+def tst_get_adps():
+  pass
+
+# ---------------------------------------------------------------------------
+
+def tst_get_nbos():
+  pass
+
+# ---------------------------------------------------------------------------
+
+def tst_get_ligands():
   pdb_inp = iotbx.pdb.input(lines=pdb_str_1.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
 
@@ -299,8 +309,10 @@ def tst_get_occupancies():
 # ---------------------------------------------------------------------------
 
 def run():
-  tst_find_ligands()
+  tst_get_ligands()
   tst_get_occupancies()
+  tst_get_adps()
+  tst_get_nbos()
 
 if (__name__ == "__main__"):
   t0 = time.time()
