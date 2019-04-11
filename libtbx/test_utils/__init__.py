@@ -527,24 +527,28 @@ def contains_lines(lines, expected):
   return contains_substring(
     actual=lines, expected=expected, failure_prefix="contains_lines() ")
 
+def assert_lines_in_text(text, lines,
+    remove_white_spaces=True, remove_newline=True):
+  filtered_lines = lines
+  if remove_white_spaces:
+    text = text.replace(" ", "")
+    filtered_lines = filtered_lines.replace(" ", "")
+  if remove_newline:
+    text = text.replace(os.linesep,"")
+    filtered_lines = filtered_lines.replace(os.linesep,"")
+  assert text.find(filtered_lines) >= 0, \
+      "Lines:\n %s\n are not found" % (lines)
+
 def assert_lines_in_file(file_name, lines,
     remove_white_spaces=True, remove_newline=True):
   """
   lines here is a text, not a list of lines.
   """
-  import os
   f = open(file_name, "r")
   f_lines = f.read()
   f.close()
-  filtered_lines = lines
-  if remove_white_spaces:
-    f_lines = f_lines.replace(" ", "")
-    filtered_lines = filtered_lines.replace(" ", "")
-  if remove_newline:
-    f_lines = f_lines.replace(os.linesep,"")
-    filtered_lines = filtered_lines.replace(os.linesep,"")
-  assert f_lines.find(filtered_lines) >= 0, \
-      "Lines:\n %s\n are not in file %s" % (lines, file_name)
+  assert_lines_in_text(f_lines, lines=lines,
+      remove_white_spaces=remove_white_spaces, remove_newline=remove_newline)
 
 class RunCommandError(RuntimeError): pass
 
