@@ -5,7 +5,7 @@ import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.model
 from cctbx import geometry_restraints
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, assert_lines_in_text
 import iotbx
 import sys
 from cctbx.geometry_restraints.linking_class import linking_class
@@ -175,7 +175,6 @@ HETATM   28  OXT ALA A   3       6.921   9.231   5.000  1.00 20.00      A    O1-
 """.splitlines()
 
 def exercise_angle_edits_change(mon_lib_srv, ener_lib):
-
   edits = """\
 refinement.geometry_restraints.edits {
   n_2_selection = chain A and resname ALA and resid 2 and name N
@@ -237,6 +236,97 @@ angle pdb=" N   ALA A   2 " segid="A   "
       pdb=" C   ALA A   2 " segid="A   "
     ideal   model   delta    sigma   weight residual
    100.00''' in geo_file_str
+
+def exercise_add_when_restraint_is_present():
+  """
+  Trying to 'add' values for existing covalent
+  """
+
+  edits = """
+  geometry_restraints.edits {
+    excessive_bond_distance_limit = 10
+    bond {
+      action = *add delete change
+      atom_selection_1 = name N
+      atom_selection_2 = name CA
+      symmetry_operation = None
+      distance_ideal = 4
+      sigma = 0.5
+      slack = None
+    }
+    angle {
+      action = *add delete change
+      atom_selection_1 = name N
+      atom_selection_2 = name CA
+      atom_selection_3 = name C
+      angle_ideal = 130
+      sigma = 3
+    }
+    dihedral {
+      action = *add delete change
+      atom_selection_1 = name N
+      atom_selection_2 = name CA
+      atom_selection_3 = name CB
+      atom_selection_4 = name CG
+      angle_ideal = 90
+      sigma = 10
+      periodicity = 1
+    }
+  }
+  """
+  def_params = mmtbx.model.manager.get_default_pdb_interpretation_scope()
+  edits_phil = iotbx.phil.parse(edits)
+  working_phil = def_params.fetch(edits_phil)
+  params = working_phil.extract()
+  inp = iotbx.pdb.input(lines=raw_records1, source_info=None)
+  model = mmtbx.model.manager(model_input = inp)
+  geo = model.restraints_as_geo(force=True)
+  print geo
+  assert_lines_in_text(geo, """Bond restraints: 8""")
+  assert_lines_in_text(geo, """bond pdb=" N   LYS A 135 "
+      pdb=" CA  LYS A 135 "
+      ideal  model  delta    sigma   weight residual
+      1.458  1.477 -0.019 1.90e-02 2.77e+03 1.01e+00""")
+  assert_lines_in_text(geo, """angle pdb=" N   LYS A 135 "
+      pdb=" CA  LYS A 135 "
+      pdb=" C   LYS A 135 "
+      ideal   model   delta    sigma   weight residual
+      111.00  107.25    3.75 2.80e+00 1.28e-01 1.79e+00""")
+  assert_lines_in_text(geo, """dihedral pdb=" N   LYS A 135 "
+      pdb=" CA  LYS A 135 "
+      pdb=" CB  LYS A 135 "
+      pdb=" CG  LYS A 135 "
+      ideal   model   delta sinusoidal    sigma   weight residual
+     -60.00  -54.19   -5.81     3      1.50e+01 4.44e-03 2.18e-01""")
+
+  # Now with modifications
+  print "*"*80
+  model2 = mmtbx.model.manager(model_input = inp,
+      pdb_interpretation_params=params)
+  geo2 = model2.restraints_as_geo(force=True)
+  print geo2
+  # !!! Note that bond-restraint was applied: one less standard, one more
+  # nonstandard.
+  assert_lines_in_text(geo2, """Bond restraints: 7""")
+  assert_lines_in_text(geo2, """User supplied restraints: 1
+      Sorted by residual:
+      bond pdb=" N   LYS A 135 "
+           pdb=" CA  LYS A 135 "
+      ideal  model  delta    sigma   weight residual
+      4.000  1.477  2.523 5.00e-01 4.00e+00 2.55e+01""")
+  #
+  # Angles and dihedrals were not changed...
+  assert_lines_in_text(geo2, """angle pdb=" N   LYS A 135 "
+      pdb=" CA  LYS A 135 "
+      pdb=" C   LYS A 135 "
+      ideal   model   delta    sigma   weight residual
+      111.00  107.25    3.75 2.80e+00 1.28e-01 1.79e+00""")
+  assert_lines_in_text(geo2, """dihedral pdb=" N   LYS A 135 "
+      pdb=" CA  LYS A 135 "
+      pdb=" CB  LYS A 135 "
+      pdb=" CG  LYS A 135 "
+      ideal   model   delta sinusoidal    sigma   weight residual
+     -60.00  -54.19   -5.81     3      1.50e+01 4.44e-03 2.18e-01""")
 
 def exercise_dihedral_edits_change():
   edits = """\
@@ -303,6 +393,7 @@ def exercise():
   if mon_lib_srv is not None and ener_lib is not None:
     exercise_user_edits(mon_lib_srv, ener_lib)
     exercise_angle_edits_change(mon_lib_srv, ener_lib)
+    exercise_add_when_restraint_is_present()
     exercise_dihedral_edits_change()
 
 if (__name__ == "__main__"):
