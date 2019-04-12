@@ -187,11 +187,17 @@ class scene(object):
         self.data = data.deep_copy()
         self.ampl = flex.abs(data)
         self.phases = flex.arg(data) * 180.0/math.pi
-        # cast negative degrees to positive ones
-        #self.phases = flex.double( list( np.array( list(self.phases) ) % 360.0 ) )
+        # purge nan values from array to avoid crash in fmod_positive()
+        b = flex.bool([bool(math.isnan(e)) for e in self.phases])
+        # replace the nan values with an arbitrary float value
+        self.phases = self.phases.set_selected(b, 42.4242)
+        # indicate the coresponding phase/radian is completely undetermnined
+        self.foms = self.foms.set_selected(b, 0.0)
+        # Now cast negative degrees to equivalent positive degrees
         self.phases = flex.fmod_positive(self.phases, 360.0)
         self.radians = flex.arg(data)
-        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        # replace the nan values with an arbitrary float value
+        self.radians = self.radians.set_selected(b, 0.424242)
       elif hasattr(array.data(), "as_double"):
         self.data = array.data().as_double()
       else:
@@ -240,7 +246,6 @@ class scene(object):
       data_for_colors = sigmas.as_double()
     else :
       data_for_colors = flex.abs(data.deep_copy())
-
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
       #data_for_radii = data.deep_copy()
@@ -263,10 +268,9 @@ class scene(object):
         data_for_radii = data_for_radii.select(self.slice_selection)
         data_for_colors = data_for_colors.select(self.slice_selection)
         foms_for_colours = foms_for_colours.select(self.slice_selection)
-
     if isinstance(data, flex.complex_double):
-      colors = graphics_utils.colour_by_phi_FOM(data_for_colors, foms_for_colours)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      colors = graphics_utils.colour_by_phi_FOM(data_for_colors, foms_for_colours)
     elif (settings.color_scheme in ["rainbow", "heatmap", "redblue"]):
       colors = graphics_utils.color_by_property(
         properties=data_for_colors,
@@ -293,6 +297,7 @@ class scene(object):
     min_dist = min(uc.reciprocal_space_vector((1,1,1)))
     min_radius = 0.20 * min_dist
     max_radius = 40 * min_dist
+
     if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
       data_for_radii = flex.sqrt(flex.abs(data_for_radii))
       #data_for_radii = flex.sqrt(data_for_radii)

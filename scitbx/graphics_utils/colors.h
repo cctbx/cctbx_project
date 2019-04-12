@@ -9,6 +9,7 @@
 #include <scitbx/constants.h>
 
 #include <cmath>
+#include <boost/math/special_functions/fpclassify.hpp> // provides isfinite()
 
 namespace scitbx { namespace graphics_utils {
 
@@ -82,7 +83,11 @@ namespace scitbx { namespace graphics_utils {
         else:       rgb = (c, 0, x)
         return rgb[0], rgb[1], rgb[2]
   */
+    if (boost::math::isfinite(phi) == false || boost::math::isfinite(fom) == false)
+      return scitbx::vec3<double>(0.5, 0.5, 0.5);
+
     double h = fmod(phi, 2.0*scitbx::constants::pi)/(2.0*scitbx::constants::pi);
+
     while (h < 0.0)
       h++;
     h *= 6;
@@ -110,15 +115,14 @@ namespace scitbx { namespace graphics_utils {
     return scitbx::vec3<double>(r, g, b);
   }
    
-  
   af::shared< scitbx::vec3<double> >
-  color_by_phi_fom(
-    af::const_ref< double > const& phases,
-    af::const_ref< double > const& foms
-  )
-  {
-    SCITBX_ASSERT(phases.size() == foms.size());
-    af::shared <scitbx::vec3<double> > colors(phases.size());
+    color_by_phi_fom(
+      af::const_ref< double > const& phases,
+      af::const_ref< double > const& foms
+    )
+    {
+      SCITBX_ASSERT(phases.size() == foms.size());
+      af::shared <scitbx::vec3<double> > colors(phases.size());
 
     for (unsigned i_seq = 0; i_seq < phases.size(); i_seq++)
       colors[i_seq] = get_Phi_FOM_colour(phases[i_seq], foms[i_seq]);
