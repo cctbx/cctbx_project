@@ -374,6 +374,7 @@ class HKLViewFrame () :
       display.reset_settings()
       self.settings = display.settings()
       self.viewer.settings = self.settings
+      self.viewer.mapcoef_fom_dict = {}
       try :
         hkl_file = any_reflection_file(file_name)
       except Exception, e :
@@ -470,21 +471,20 @@ class HKLViewFrame () :
     self.viewer.iarray = column
     self.viewer.icolourcol = column
     self.viewer.iradiicol = column
-    self.set_miller_array(self.valid_arrays[column])
-    if (self.miller_array is None) :
-      raise Sorry("No data loaded!")
     if self.valid_arrays[column].is_complex_array():
       if fomcolumn:
         self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()] = fomcolumn
       else:
         if self.viewer.mapcoef_fom_dict.get(self.valid_arrays[column].info().label_string()):
           del self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()]
-
-
+    self.set_miller_array(self.valid_arrays[column])
+    if (self.miller_array is None) :
+      raise Sorry("No data loaded!")
     self.mprint( "Miller array %s runs from hkls: %s to %s" \
      %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
         self.miller_array.index_span().max() ) )
     self.viewer.DrawNGLJavaScript()
+    #self.update_settings()
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 

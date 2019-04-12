@@ -77,6 +77,10 @@ class scene(object):
     if (self.slice_selection is not None):
       self.indices = self.work_array.indices().select(self.slice_selection)
       self.data = self.data.select(self.slice_selection)
+      self.phases = self.phases.select(self.slice_selection)
+      self.radians = self.radians.select(self.slice_selection)
+      self.ampl = self.ampl.select(self.slice_selection)
+      self.foms = self.foms.select(self.slice_selection)
     else :
       self.indices = array.indices()
     self.points = uc.reciprocal_space_vector(self.indices) * 100.
@@ -95,6 +99,7 @@ class scene(object):
     assert (self.missing_flags.size() == n_points)
     assert (self.sys_absent_flags.size() == n_points)
     assert (self.data.size() == n_points)
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (self.phases.size() == n_points)
     assert (self.radians.size() == n_points)
     assert (self.ampl.size() == n_points)
@@ -269,7 +274,6 @@ class scene(object):
         data_for_colors = data_for_colors.select(self.slice_selection)
         foms_for_colours = foms_for_colours.select(self.slice_selection)
     if isinstance(data, flex.complex_double):
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       colors = graphics_utils.colour_by_phi_FOM(data_for_colors, foms_for_colours)
     elif (settings.color_scheme in ["rainbow", "heatmap", "redblue"]):
       colors = graphics_utils.color_by_property(

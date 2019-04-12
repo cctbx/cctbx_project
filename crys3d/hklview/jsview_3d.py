@@ -230,14 +230,15 @@ class hklview_3d:
         valarray._data.extend( flex.int(missing.size(), inanval) )
       if valarray.is_real_array():
         valarray._data.extend( flex.double(missing.size(), nanval) )
-        if valarray.sigmas() is not None:
-          valarray._sigmas.extend( flex.double(missing.size(), nanval) )
+      if valarray.sigmas() is not None:
+        valarray._sigmas.extend( flex.double(missing.size(), nanval) )
       if valarray.is_complex_array():
         valarray._data.extend( flex.complex_double(missing.size(), nanval) )
 
       valarray._indices.extend( missing.indices() )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       match_valindices = miller.match_indices(self.miller_array.indices(), valarray.indices() )
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       match_valarray = valarray.select( match_valindices.pairs().column(1) )
       match_valarray.sort(by_value="packed_indices")
       match_valarray.set_info(validarray.info() )
@@ -247,7 +248,7 @@ class hklview_3d:
       foms = None
       if match_valarray.is_complex_array():
         fomcolm = self.mapcoef_fom_dict.get(match_valarray.info().label_string())
-        import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         if fomcolm:
           foms = match_valarrays[fomcolm].data().deep_copy()
       otherscene = display.scene(miller_array=match_valarray,  merge=merge,
