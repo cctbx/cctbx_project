@@ -76,10 +76,10 @@ class pdbaa(object):
     dbname="pdbaa.00"
     outfmt="-m 7" #xml_out
     blastdb=os.path.join(ligand_lib_dir,dbname)
-    
+
     blastrun_seq=" -p blastp -i %s -a 8 -F F -W 3 -G 11 -E 2 \
         -V F -e 1E-3 %s -d %s"%(fasta_path,outfmt, blastdb)
-    
+
     cmds="%s %s"%(blastpath,blastrun_seq)
     #print cmds
     try:
@@ -93,4 +93,3 @@ class pdbaa(object):
         output='myprotein.xml'
         open(output, "w").write("\n".join(result.stdout_lines))
       return result.stdout_lines
-

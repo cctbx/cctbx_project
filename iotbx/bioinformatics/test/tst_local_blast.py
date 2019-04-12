@@ -1,8 +1,10 @@
+from __future__ import division
+
 from iotbx.bioinformatics import local_blast
 
 #Note:
-#I've used "X" to fill gaps and N-term positions to keep resnum consistant with 
-#blast output.  It seems to work fine. If you keep track of your sequences 
+#I've used "X" to fill gaps and N-term positions to keep resnum consistant with
+#blast output.  It seems to work fine. If you keep track of your sequences
 #seperately, you probably can do it differently.   LWH 4/12/19
 
 seq="XXXXNKLHVIDLHKRYGGHEVLKGVSLQARAGDVISIIGSSGSGKSTFLRCINFLEKPSEGAIIVNGQNINLVR\
@@ -16,6 +18,3 @@ if __name__=="__main__":
   hit="1B0U"
   assert hit in xmldata,"XML output not as expected. Pdbaa test failed."
   print "OK"
-
-
-
