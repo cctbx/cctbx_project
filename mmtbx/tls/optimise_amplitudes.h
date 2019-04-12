@@ -14,6 +14,7 @@
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/matrix/eigensystem.h>
 
 #include <boost/python.hpp>
 #include <boost/python/def.hpp>
@@ -23,6 +24,8 @@
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+
+#include <mmtbx/tls/utils.h>
 
 namespace mmtbx { namespace tls { namespace optimise {
 
@@ -248,52 +251,95 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
 
       n_call++;
 
-      double functional = 0.0;
-      dblArr1d gradients = dblArr1d(n_total, 0.0);
+      // Reset negative amplitudes
+      //
+      sanitise_current_amplitudes();
 
-      // Normalisation term (number of datasets)
-      double norm_all = 1. / (double)(n_dst * n_atm);
+      // Apply amplitudes to base uijs
+      //
+      calculate_total_uijs();
 
-      // Normalisation term for residual level
-      double norm_res;
-      if (residual_mask_total > 0)
-      {
-        // Upweights by term n_all/n_calc to simulate being calculated over all datasets
-        norm_res = norm_all * (double)(n_dst) / (double)(residual_mask_total);
-      } else {
-        norm_res = 0.0; // residual level not being optimised
-      }
+      // Calculate least-squares component of target function
+      //
+      calculate_f_g_least_squares();
 
+      // Return as python tuple for optimiser
+      //
+      return bp::make_tuple(functional, gradients);
+    }
+
+  private:
+
+    // Input variables
+    //
+    const symArrNd target_uijs;
+    af::shared<symArr1d*> base_u;  // Base Uijs
+    af::shared<selArr1d*> base_i;  // Atom indices for base uijs
+    const symArr1d residual_uijs;
+    const dblArrNd target_weights;
+    const selArr1d dataset_hash; // maps base elements to datasets
+    blnArr1d residual_mask;
+
+    // Quantities calculated from input variables
+    //
+    const size_t n_dst, n_atm, n_base, n_total;
+    int residual_mask_total = 0; // Number of datasets to use for residual optimisation
+
+    // Internal intermediate variables
+    //
+    dblArr1d initial_amplitudes;
+    dblArr1d current_amplitudes;
+    symArrNd total_uijs;
+
+    // Optimisation/output variables
+    //
+    double functional;
+    dblArr1d gradients;
+
+    size_t n_call = 0;
+
+    void zero()
+    {
+      // Reset functional and gradients
+      functional = 0.0;
+      gradients = dblArr1d(n_total, 0.0);
+
+      // Zero-out the level uijs
+      memset(&total_uijs[0], 0.0, sizeof(sym) * total_uijs.size());
+    }
+
+
+    void sanitise_current_amplitudes()
+    {
       // Set negative amplitudes to zero
       for (size_t i_opt=0; i_opt<current_amplitudes.size(); i_opt++)
       {
         if (current_amplitudes[i_opt] < 0.0)
         {
-          // Constrain the value to be zero (negate any benefit to the functional that could have been gained)
+          // Constrain the value to be zero (and thereby negate any benefit to the functional that could have been gained)
           current_amplitudes[i_opt] = 0.0;
         }
       }
+    }
 
-      // Loop variables
-      size_t i_opt;   // index in the list of current_amplitudes
-      size_t i_dst;   // index of the appropriate dataset
-      sym m;          // Use to store the amplitude-multiplied u
-      sym base_sym, diff_sym;
+    void calculate_total_uijs()
+    {
 
       // ==========================================================
       // Sum over amplitudes to generate totals - !!! BASE TERMS !!!
+      //
       for (size_t i_base=0; i_base<n_base; i_base++)
       {
         symArr1d &base_u_atom = *(base_u[i_base]);
         selArr1d &base_i_atom = *(base_i[i_base]);
-        i_dst = dataset_hash[i_base];
-        i_opt = i_base;
+        size_t i_dst = dataset_hash[i_base];
+        size_t i_opt = i_base;
 
         // Iterate through atoms associated with this base element
         for (size_t i_atm_x=0; i_atm_x<base_u_atom.size(); i_atm_x++)
         {
           // apply multipliers
-          m = current_amplitudes[i_opt] * base_u_atom[i_atm_x];
+          sym m = current_amplitudes[i_opt] * base_u_atom[i_atm_x];
           // Skip if null
           if (is_zero(m))
           {
@@ -303,17 +349,34 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
           total_uijs(i_dst, base_i_atom[i_atm_x]) += m;
         }
       }
+      //
       // Sum over amplitudes to generate totals - !!! RESIDUAL TERMS !!!
+      //
       for (size_t i_atm=0; i_atm<n_atm; i_atm++)
       {
-        i_opt = n_base + i_atm;
-        m = current_amplitudes[i_opt] * residual_uijs[i_atm];
+        size_t i_opt = n_base + i_atm;
+        sym m = current_amplitudes[i_opt] * residual_uijs[i_atm];
         for (size_t i_dst=0; i_dst<n_dst; i_dst++)
         {
           total_uijs(i_dst, i_atm) += m;
         }
       }
       // ==========================================================
+    }
+
+    void calculate_f_g_least_squares()
+    {
+
+      // Normalisation term (number of datasets)
+      double norm_all = 1. / (double)(n_dst * n_atm);
+
+      // Normalisation term for residual level
+      double norm_res = 0.0; // if unchanged, residual level will not be optimised
+      if (residual_mask_total > 0)
+      {
+        // Upweights by term n_all/n_calc to simulate being calculated over all datasets
+        norm_res = norm_all * (double)(n_dst) / (double)(residual_mask_total);
+      }
 
       // ==========================================================
       // Calculate functional and gradients
@@ -353,7 +416,7 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
           }
 
           // i_ relative to full length of amplitudes
-          i_opt = i_base;
+          size_t i_opt = i_base;
 
           // Extract the base elements
           symArr1d &base_u_atom = *(base_u[i_base]);
@@ -366,7 +429,7 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
             size_t i_atm = base_i_atom[i_atm_x];
 
             // Extract the uij for this base element
-            base_sym = base_u_atom[i_atm_x];
+            sym base_sym = base_u_atom[i_atm_x];
 
             // Skip this atom if the base_uij is zero at this position
             if (is_zero(base_sym))
@@ -375,7 +438,7 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
             }
 
             // Corresponding u_diff
-            diff_sym = d_diffs[i_atm];
+            sym diff_sym = d_diffs[i_atm];
 
             // Gradient from least-squares
             // -2*base*diffs*wgts
@@ -397,10 +460,10 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
         {
           for (size_t i_atm=0; i_atm<n_atm; i_atm++)
           {
-            i_opt = n_base + i_atm;
+            size_t i_opt = n_base + i_atm;
 
             // Extract the uij for this base element
-            base_sym = residual_uijs[i_atm];
+            sym base_sym = residual_uijs[i_atm];
 
             // Skip this atom if the base_uij is zero at this position
             if (is_zero(base_sym))
@@ -409,7 +472,7 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
             }
 
             // Corresponding u_diff
-            diff_sym = d_diffs[i_atm];
+            sym diff_sym = d_diffs[i_atm];
 
             // Gradient from least-squares
             // -2*base*diffs*wgts
@@ -426,37 +489,9 @@ class MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator {
           }
         }
       }
-
-      return bp::make_tuple(functional, gradients);
     }
 
-  private:
 
-    const symArrNd target_uijs;
-    af::shared<symArr1d*> base_u;  // Base Uijs
-    af::shared<selArr1d*> base_i;  // Atom indices for base uijs
-    const symArr1d residual_uijs;
-    const dblArrNd target_weights;
-
-    const selArr1d dataset_hash; // maps base elements to datasets
-
-    blnArr1d residual_mask;
-    int residual_mask_total = 0;
-
-    const size_t n_dst, n_atm, n_base, n_total;
-
-    dblArr1d initial_amplitudes;
-    dblArr1d current_amplitudes;
-
-    symArrNd total_uijs;
-
-    size_t n_call = 0;
-
-    void zero()
-    {
-      // Zero-out the level uijs
-      memset(&total_uijs[0], 0.0, sizeof(sym) * total_uijs.size());
-    }
 };
 
 } } } // close namepsace mmtbx/tls/optimise

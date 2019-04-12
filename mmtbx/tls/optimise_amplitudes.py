@@ -8,6 +8,8 @@ import boost.python
 ext = boost.python.import_ext("mmtbx_tls_optimise_amplitudes_ext")
 from mmtbx_tls_optimise_amplitudes_ext import *
 
+from libtbx import adopt_init_args
+
 
 class OptimiseAmplitudes:
 
@@ -26,16 +28,7 @@ class OptimiseAmplitudes:
 
     # Compatibility of parameters is checked in the optimiser so not checking here
 
-    self.target_uijs    = target_uijs
-    self.target_weights   = target_weights
-    self.base_amplitudes  = base_amplitudes
-    self.base_uijs      = base_uijs
-    self.base_atom_indices  = base_atom_indices
-    self.dataset_hash   = dataset_hash
-    self.residual_uijs    = residual_uijs
-    self.residual_amplitudes = residual_amplitudes
-    self.residual_mask    = residual_mask
-    self.convergence_tolerance = convergence_tolerance
+    adopt_init_args(self, locals())
 
     self.initial = None
     self.result = None
@@ -48,13 +41,13 @@ class OptimiseAmplitudes:
 
     # Setup
     self.f_g_calculator = MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator(
-        self.target_uijs,
-        self.target_weights,
-        self.base_amplitudes,
-        self.base_uijs,
-        self.base_atom_indices,
-        self.dataset_hash,
-        self.residual_uijs,
+        target_uijs = self.target_uijs,
+        target_weights = self.target_weights,
+        base_amplitudes = self.base_amplitudes,
+        base_uijs = self.base_uijs,
+        base_atom_indices = self.base_atom_indices,
+        dataset_hash = self.dataset_hash,
+        residual_uijs = self.residual_uijs,
         )
     # Which datasets should be used for residual optimisation
     if self.residual_mask is not None:
