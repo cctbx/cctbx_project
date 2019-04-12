@@ -833,7 +833,12 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
 
   def get_outliers(self, sites_cart, sigma_threshold):
     result = []
-    vals = self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]
+    from cctbx.geometry_restraints.linking_class import linking_class
+    origin_ids = linking_class()
+    vals = self.get_sorted(
+        by_value="delta",
+        sites_cart=sites_cart,
+        origin_id=origin_ids.get_origin_id('covalent geometry'))[0]
     if(vals is None): return result
     for it in vals:
       i,j = it[0],it[1]

@@ -257,11 +257,14 @@ class bonds(restraint_validation):
       sigma_cutoff, outliers_only=True,
       use_segids_in_place_of_chainids=False):
     from scitbx.array_family import flex
+    from cctbx.geometry_restraints.linking_class import linking_class
+    origin_ids = linking_class()
     site_labels = flex.bool(sites_cart.size(), True).iselection()
     sorted_table, not_shown = proxies.get_sorted(
       by_value="residual",
       sites_cart=sites_cart,
-      site_labels=site_labels)
+      site_labels=site_labels,
+      origin_id=origin_ids.get_origin_id('covalent geometry'))
     # this can happen for C-alpha-only models, etc.
     if (sorted_table is None):
       return []
@@ -463,6 +466,9 @@ def _get_sorted(O,
   if (O.size() == 0): return []
   import cctbx.geometry_restraints
   from scitbx.array_family import flex
+  from cctbx.geometry_restraints.linking_class import linking_class
+  origin_ids = linking_class()
+
   deltas = flex.abs(O.deltas(sites_cart=sites_cart))
   residuals = O.residuals(sites_cart=sites_cart)
   if (by_value == "residual"):
@@ -473,6 +479,8 @@ def _get_sorted(O,
   sorted_table = []
   for i_proxy in i_proxies_sorted:
     proxy = O[i_proxy]
+    if proxy.origin_id != origin_ids.get_origin_id('covalent geometry'):
+      continue
     sigma = cctbx.geometry_restraints.weight_as_sigma(proxy.weight)
     score = sqrt(residuals[i_proxy]) / sigma
     proxy_atoms = get_atoms_info(pdb_atoms, iselection=proxy.i_seqs,
