@@ -152,7 +152,7 @@ class installer(object):
     parser.add_option("--try-unsupported", dest="try_unsupported",
       action="store_true", default=False,
       help="Attempt source install on unsupported platform")
-    parser.add_option("--verbose", dest="verbose", action="store_true",
+    parser.add_option("--verbose", "-v", dest="verbose", action="store_true",
       help="Provide more detailed output during installation", default=False)
     # Source only options
     parser.add_option("--no-gui", dest="no_gui", action="store_true",
