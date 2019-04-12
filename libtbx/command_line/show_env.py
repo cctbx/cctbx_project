@@ -6,16 +6,16 @@ previous level will show as "__selfreference__". Relocatable paths are just
 shown as the regular, joined path (from inspection all base off of the build
 path anyway).
 Usage:
-  read_env.py <libtbx_env>
+  libtbx.show_env <libtbx_env>
 """
 
 from __future__ import absolute_import, division, print_function
 
-from six.moves import cPickle as pickle
-from pprint import pprint
-import sys
-from types import ModuleType
 import os
+import sys
+from pprint import pprint
+from six.moves import cPickle as pickle
+from types import ModuleType
 
 def _read_obj(obj, prev=None):
   if prev is None:
@@ -52,11 +52,26 @@ def pathed_prop_object(path):
 
 class relocatable_path(object):
   def __repr__(self):
-    return '"' + os.path.normpath(os.path.join(self._anchor._path,self.relocatable)) + '"'
+    return os.path.normpath(os.path.join(self._anchor._path,self.relocatable))
 
 class absolute_path(object):
   def __repr__(self):
-    return '"{}"'.format(self._path)
+    return self._path
+
+def plainlify(thing):
+  if isinstance(thing, (unicode, str, basestring, int, float, long, complex)):
+    return thing
+  if thing in (None, True, False):
+    return thing
+  if isinstance(thing, tuple):
+    return tuple(map(plainlify, thing))
+  if isinstance(thing, list):
+    return list(map(plainlify, thing))
+  if isinstance(thing, dict):
+    return {plainlify(key): plainlify(value) for key, value in thing.items()}
+  if isinstance(thing, set):
+    return {plainlify(item) for item in thing}
+  return str(thing)
 
 def new_module(name, doc=None):
   """Create a new module and inject it into sys.modules"""
@@ -85,5 +100,5 @@ elif not os.path.isfile(sys.argv[1]):
 else:
   # Load the environment dump and
   env = pickle.load(open(sys.argv[1],"rb"))
-  d = env.to_dict()
+  d = plainlify(env.to_dict())
   pprint(d)
