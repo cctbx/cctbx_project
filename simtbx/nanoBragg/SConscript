@@ -41,7 +41,7 @@ if (env_etc.enable_cuda):
 
   env_etc.include_registry.append(
     env=env_bpl,
-    paths=[env_etc.simtbx_include]
+    paths=[env_etc.simtbx_include, env_etc.dxtbx_include]
   )
   env_bpl.Prepend(CPPPATH=[env_etc.boost_adaptbx_include,
     env_etc.boost_include])
