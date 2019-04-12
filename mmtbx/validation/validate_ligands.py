@@ -5,6 +5,7 @@ import iotbx.pdb
 import mmtbx.model
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 from cctbx import adptbx
+from iotbx import phil
 from cctbx.array_family import flex
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header
@@ -12,15 +13,34 @@ from libtbx.utils import null_out
 from libtbx import easy_run
 from mmtbx import monomer_library
 
+master_params_str = """
+validate_ligands {
+place_hydrogens = True
+  .type = bool
+  .help = Add H atoms with ready_set.
+nproc = 1
+  .type = int
+}
+"""
+
+def master_params():
+  return phil.parse(master_params_str, process_includes = False)
+
 # =============================================================================
 # Manager class for ALL ligands
 
 class manager(dict):
 
-  def __init__(self, model, model_fn = None, nproc=1, log=None):
+  def __init__(self,
+               model,
+               params,
+               model_fn,
+               log=None):
     self.model = model
-    self.nproc = nproc
+    self.params = params
     self.log   = log
+    #
+    self.nproc = params.nproc
     # TODO:  tidy up filename requirement once ready set is refactored
     self.model_fn = model_fn
 
@@ -40,7 +60,7 @@ class manager(dict):
       id_list.append(altloc)
       lr = ligand_result(
         model = self.model,
-        model_with_H = self.model_with_H,
+        readyset_model = self.readyset_model,
         isel = conformer_isel,
         id_list = id_list)
       ligand_results.append(lr)
@@ -75,7 +95,7 @@ class manager(dict):
 
   def run(self):
     args = []
-    self.get_model_with_H()
+    self.get_readyset_model_with_grm()
 
     def _generate_ligand_isel():
       #done = []
@@ -102,50 +122,53 @@ class manager(dict):
 
   # ---------------------------------------------------------------------------
 
-  def get_model_with_H(self):
+  def get_readyset_model_with_grm(self):
     # TODO: user should have possibility to use existing H atoms,
     # in this case, how to run readyset (because if might be still necessary to get
     # ligand cif file)
-    # temporary workaround
-    if self.model_fn is None:
-      self.model_with_H = None
-      return
-    # temporary workaround
+    self.readyset_model = None
     fn_pdb, fn_cif = self.run_ready_set(file_name = self.model_fn)
     if fn_cif is not None:
       cif_object = monomer_library.server.read_cif(file_name=fn_cif)
       cif_objects = [(fn_cif, cif_object)]
     else:
       cif_objects = []
-    pdb_inp = iotbx.pdb.input(file_name=fn_pdb)
-    self.model_with_H = mmtbx.model.manager(
-      model_input = pdb_inp,
-      restraint_objects = cif_objects,
-      build_grm   = True,
-      log         = null_out())
+    if fn_pdb is not None:
+      pdb_inp = iotbx.pdb.input(file_name=fn_pdb)
+      self.readyset_model = mmtbx.model.manager(
+        model_input = pdb_inp,
+        restraint_objects = cif_objects,
+        build_grm   = True,
+        log         = null_out())
 
   # ---------------------------------------------------------------------------
 
   def run_ready_set(self, file_name):
-    print('\nRunning ready_set to get cif_files and get model with H atoms...',
-      file=self.log)
+    print('\nRunning ready_set to get ligand cif_files...')
     import libtbx.load_env
     has_ready_set = libtbx.env.has_module(name="phenix")
     if not has_ready_set:
       raise_sorry('phenix.ready_set could not be detected on your system.')
-    cmd = "phenix.ready_set {} --silent".format(file_name)
+    if (self.params.place_hydrogens):
+      cmd = "phenix.ready_set {} --silent".format(file_name)
+      print('Placing H atoms...')
+    else:
+      cmd = "phenix.ready_set {} hydrogens=False --silent".format(file_name)
+      print('H atoms are NOT added to the model...')
     out = easy_run.fully_buffered(cmd)
     if (out.return_code != 0):
       msg_str = "ready_set crashed - dumping stderr:\n%s"
       raise RuntimeError(msg_str % ( "\n".join(out.stderr_lines)))
     fn_pdb = file_name.replace('.pdb','.updated.pdb')
     fn_cif = file_name.replace('.pdb','.ligands.cif')
-    if not (os.path.isfile(fn_cif)):
-      fn_cif = None
-    else:
+    if (os.path.isfile(fn_cif)):
       print('Ligand(s) cif file created: ', fn_cif)
+    else:
+      fn_cif = None
     if (os.path.isfile(fn_pdb)):
       print('Updated model file: ', fn_pdb)
+    else:
+      fn_pdb = None
     return fn_pdb, fn_cif
 
   # ---------------------------------------------------------------------------
@@ -188,9 +211,10 @@ class manager(dict):
         print(lr.id_str.ljust(14), '%7s%7s%7s%7s%7s' %
           (round(adps.b_min,1), round(adps.b_max,1), round(adps.b_mean,1),
            adps.n_iso, adps.n_aniso), file = self.log)
-        print('neighbors'.ljust(14), '%7s%7s%7s' %
-          (round(adps.b_min_within,1), round(adps.b_max_within,1),
-           round(adps.b_mean_within,1) ), file = self.log)
+        if (adps.b_mean_within is not None):
+          print('neighbors'.ljust(14), '%7s%7s%7s' %
+            (round(adps.b_min_within,1), round(adps.b_max_within,1),
+             round(adps.b_mean_within,1) ), file = self.log)
 
   # ---------------------------------------------------------------------------
 
@@ -257,10 +281,10 @@ class manager(dict):
 
 class ligand_result(object):
 
-  def __init__(self, model, model_with_H, isel, id_list):
+  def __init__(self, model, readyset_model, isel, id_list):
     self.model = model
     self.isel = isel
-    self.model_with_H = model_with_H
+    self.readyset_model = readyset_model
 
     # results
     self._result_attrs = {'_occupancies' : 'get_occupancies',
@@ -366,19 +390,19 @@ class ligand_result(object):
 
   def get_nonbonded_overlaps(self):
     # this function should use a model with H atoms!!
-    if self.model_with_H is None:
+    if self.readyset_model is None:
       return None
     if self._nb_overlaps is None:
       # sel_within could be done in __init__?
       within_radius = 3.0
       sel_within_str = '%s or (within (%s, %s)) and (protein or water)' \
         % (self.sel_str, within_radius, self.sel_str)
-      #isel_within = self.model_with_H.iselection(sel_within_str)
-      sel_within = self.model_with_H.selection(sel_within_str)
-      sel_ligand_within = self.model_with_H.select(sel_within).selection(self.sel_str)
-      xrs_within = self.model_with_H.select(sel_within).get_xray_structure()
+      #isel_within = self.readyset_model.iselection(sel_within_str)
+      sel_within = self.readyset_model.selection(sel_within_str)
+      sel_ligand_within = self.readyset_model.select(sel_within).selection(self.sel_str)
+      xrs_within = self.readyset_model.select(sel_within).get_xray_structure()
       #xrs = self.model.get_xray_structure()
-      geometry = self.model_with_H.get_restraints_manager().select(sel_within).geometry
+      geometry = self.readyset_model.get_restraints_manager().select(sel_within).geometry
 
       #sel = flex.bool([True]*len(sel_within))
 

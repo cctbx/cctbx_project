@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 import time
 from mmtbx.validation import validate_ligands
+from mmtbx.validation.validate_ligands import master_params_str
 import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import null_out
@@ -249,6 +250,18 @@ ANISOU   65  O   HOH A   9      793    561    680     46    -95    -87       O
 END
 '''
 
+filenames = ['tst_get_ligands.pdb', 'tst_get_occupancies.pdb']
+pdb_strings = [pdb_str_1, pdb_str_2]
+
+
+
+# ---------------------------------------------------------------------------
+
+def write_model_files(filenames, pdb_strings):
+  for filename, pdb_str in zip(filenames, pdb_strings):
+    f = open("%s" % filename, "w")
+    f.write(pdb_str)
+    f.close()
 
 # ---------------------------------------------------------------------------
 
@@ -263,10 +276,21 @@ def tst_get_nbos():
 # ---------------------------------------------------------------------------
 
 def tst_get_ligands():
+  """Test if iselection for ligand PG5 (chain A resseq 201) is correct."""
   pdb_inp = iotbx.pdb.input(lines=pdb_str_1.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
 
-  vl_manager = validate_ligands.manager(model = model, log=null_out)
+  params = iotbx.phil.parse(
+    input_string=master_params_str, process_includes=True).extract()
+  params.validate_ligands.place_hydrogens = False
+
+  fn = filenames[0]
+
+  vl_manager = validate_ligands.manager(
+    model = model,
+    model_fn = fn,
+    params = params.validate_ligands,
+    log   = null_out)
   vl_manager.run()
 
   assert (len(vl_manager) == 1)
@@ -278,10 +302,21 @@ def tst_get_ligands():
 # ---------------------------------------------------------------------------
 
 def tst_get_occupancies():
+  """Test if occupancy determination for ligands is correct"""
   pdb_inp = iotbx.pdb.input(lines=pdb_str_2.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
 
-  vl_manager = validate_ligands.manager(model = model, log=null_out)
+  params = iotbx.phil.parse(
+    input_string=master_params_str, process_includes=True).extract()
+
+
+  fn = filenames[1]
+
+  vl_manager = validate_ligands.manager(
+    model = model,
+    model_fn = fn,
+    params = params.validate_ligands,
+    log   = null_out)
   vl_manager.run()
 
   assert (len(vl_manager) == 4)
@@ -309,10 +344,11 @@ def tst_get_occupancies():
 # ---------------------------------------------------------------------------
 
 def run():
+  write_model_files(filenames = filenames, pdb_strings = pdb_strings)
   tst_get_ligands()
   tst_get_occupancies()
-  tst_get_adps()
-  tst_get_nbos()
+  tst_get_adps() # TODO
+  tst_get_nbos() # TODO
 
 if (__name__ == "__main__"):
   t0 = time.time()

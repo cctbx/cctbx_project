@@ -11,7 +11,8 @@ from libtbx.str_utils import make_sub_header
 
 
 
-master_phil_str = '''
+master_phil_str = """
+include scope mmtbx.validation.validate_ligands.master_params
 ligand_code = None
   .type = str
   .multiple = True
@@ -19,13 +20,13 @@ reference_structure = None
   .type = path
 only_segid = None
   .type = str
-nproc = 1
-  .type = int
+
 verbose = False
   .type = bool
 update_scales = True
   .type = bool
-'''
+
+"""
 # TODO update_scales if for development only, delete for production!
 
 # =============================================================================
@@ -136,7 +137,7 @@ electron density values/CC.
     ligand_manager = validate_ligands.manager(
       model = model,
       model_fn = model_fn,
-      nproc = self.params.nproc,
+      params = self.params.validate_ligands,
       log   = self.logger)
     ligand_manager.run()
     ligand_manager.show_ligand_counts()
