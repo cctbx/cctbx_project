@@ -91,26 +91,27 @@ namespace scitbx { namespace graphics_utils {
     while (h < 0.0)
       h++;
     h *= 6;
-    double c = fom;
-    double x = (1.0 - fabs(fmod(h, 2.0) - 1.0)) * fom;
+    double mhfom = 0.5 - 0.5*fom;
+    double c = (1.0 + fom)/2.0;
+    double x = (1.0 - fabs(fmod(h, 2.0) - 1.0)) * fom + mhfom;
     double r, g, b;
     if (h < 1.0) {
-      r = c; g = x; b = 1.0 - fom;
+      r = c; g = x; b = mhfom;
     }
     else if (h < 2.0) {
-      r = x; g = c; b = 1.0 - fom;
+      r = x; g = c; b = mhfom;
     }
     else if (h < 3.0) {
-      r = 1.0 - fom; g = c; b = x;
+      r = mhfom; g = c; b = x;
     }
     else if (h < 4.0) {
-      r = 1.0 - fom; g = x; b = c;
+      r = mhfom; g = x; b = c;
     }
     else if (h < 5.0) {
-      r = x; g = 1.0 - fom; b = c;
+      r = x; g = mhfom; b = c;
     }
     else {
-      r = c; g = 1.0 - fom; b = x;
+      r = c; g = mhfom; b = x;
     }
     return scitbx::vec3<double>(r, g, b);
   }

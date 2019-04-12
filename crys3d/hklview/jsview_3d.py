@@ -458,7 +458,7 @@ class hklview_3d:
         od =""
         if self.valid_arrays[j].is_complex_array():
           od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
-            ", " + str(roundoff(otherscene.foms[i])  )
+            "\' + DGR + \'" +  ", " + str(roundoff(otherscene.foms[i])  )
         elif self.valid_arrays[j].sigmas() is not None:
           od = str(roundoff(odata[i]) ) + ", " + str(roundoff(otherscene.sigmas[i]))
         else:
