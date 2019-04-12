@@ -97,6 +97,10 @@ ma2 = miller.array(miller.set(xs, mi2),
 
 ma2.set_info(miller.array_info(source="artificial file", labels=["MyMap", "PhiMyMap"]))
 
+mafom = miller.array(miller.set(xs, mi2),
+                    flex.double( [0.0, 0.1, 0.25, 0.35, 0.4, 0.5, 0.6, 0.75, 1.0 ] ) )
+mafom.set_info(miller.array_info(source="artificial file", labels=["FOM"]))
+
 mi3 = flex.miller_index([ (1,-2,3), (0,0,-4), (0, 1, 2), (1, 0, 2), (-1, 1, -2), (-2, 1, 0) , (1, 0, -2), (0, 0, 2) ] )
 ma3 = miller.array(miller.set(xs, mi3), data=flex.double( [22.429, 28.635, 3.328, 3.738, 24.9, 14.521, 3.738, 19.92] ) )
 ma3.set_info(miller.array_info(source="artificial file", labels=["Foo"]))
@@ -109,6 +113,7 @@ mtz1 = ma1.as_mtz_dataset(column_root_label="I")
 mtz1.add_miller_array(ma2, column_root_label="MyMap")
 mtz1.add_miller_array(ma3, column_root_label="Oink")
 mtz1.add_miller_array(ma4, column_root_label="blip")
+mtz1.add_miller_array(mafom, column_root_label="FOM")
 mtz1.set_wavelength(1.2)
 mtz1.set_name("MyTestData")
 mtz1.mtz_object().write("mymtz.mtz")
@@ -460,14 +465,22 @@ class HKLViewFrame () :
     self.viewer.SetOpacity(bin, alpha)
 
 
-  def SetColumn (self, column_sel) :
+  def SetColumn(self, column, fomcolumn=None) :
     self.viewer.binvals = []
-    self.viewer.iarray = column_sel
-    self.viewer.icolourcol = column_sel
-    self.viewer.iradiicol = column_sel
-    self.set_miller_array(self.valid_arrays[column_sel])
+    self.viewer.iarray = column
+    self.viewer.icolourcol = column
+    self.viewer.iradiicol = column
+    self.set_miller_array(self.valid_arrays[column])
     if (self.miller_array is None) :
       raise Sorry("No data loaded!")
+    if self.valid_arrays[column].is_complex_array():
+      if fomcolumn:
+        self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()] = fomcolumn
+      else:
+        if self.viewer.mapcoef_fom_dict.get(self.valid_arrays[column].info().label_string()):
+          del self.viewer.mapcoef_fom_dict[self.valid_arrays[column].info().label_string()]
+
+
     self.mprint( "Miller array %s runs from hkls: %s to %s" \
      %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
         self.miller_array.index_span().max() ) )

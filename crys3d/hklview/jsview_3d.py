@@ -85,6 +85,7 @@ class hklview_3d:
     self.otherminsigmas = []
     self.matchingarrayinfo = []
     self.binstrs = []
+    self.mapcoef_fom_dict = {}
     self.mprint = sys.stdout.write
     if kwds.has_key('mprint'):
       self.mprint = kwds['mprint']
@@ -183,7 +184,13 @@ class hklview_3d:
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #commonarray.size(), matchcolourradiiarray.size(), matchradiiarray.size(), matchcolourarray.size()
-    self.scene = display.scene(miller_array=self.miller_array, merge=merge, settings=self.settings)
+    foms = None
+    if self.miller_array.is_complex_array():
+      fomcolm = self.mapcoef_fom_dict.get(self.miller_array.info().label_string())
+      if fomcolm:
+        foms = self.valid_arrays[fomcolm].data().deep_copy()
+    self.scene = display.scene(miller_array=self.miller_array, merge=merge,
+     settings=self.settings, foms=foms)
 
     self.rotation_center = (0,0,0)
 
@@ -191,6 +198,7 @@ class hklview_3d:
     self.othermaxdata = []
     self.othermindata = []
     self.matchingarrayinfo = []
+    match_valarrays = []
     # loop over all miller arrays to find the subsets of hkls common between currently selected
     # miler array and the other arrays. hkls found in the currently selected miller array but
     # missing in the subsets are populated populated with NaN values
@@ -233,10 +241,17 @@ class hklview_3d:
       match_valarray = valarray.select( match_valindices.pairs().column(1) )
       match_valarray.sort(by_value="packed_indices")
       match_valarray.set_info(validarray.info() )
+      match_valarrays.append( match_valarray )
 
+    for i,match_valarray in enumerate(match_valarrays):
+      foms = None
+      if match_valarray.is_complex_array():
+        fomcolm = self.mapcoef_fom_dict.get(match_valarray.info().label_string())
+        import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        if fomcolm:
+          foms = match_valarrays[fomcolm].data().deep_copy()
       otherscene = display.scene(miller_array=match_valarray,  merge=merge,
-        settings=self.settings)
-
+        settings=self.settings, foms=foms)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       # cast any NAN values to -1 of the colours and radii arrays before writing javascript
       nplst = np.array( list( otherscene.data ) )
@@ -257,7 +272,7 @@ class hklview_3d:
       d = otherscene.data
       if (isinstance(d, flex.int)):
         d = [e for e in self.scene.data if e!= self.inanval]
-      if valarray.is_complex_array():
+      if match_valarray.is_complex_array():
         d = otherscene.ampl
       maxdata =max( d )
       mindata =min( d )
