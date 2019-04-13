@@ -155,6 +155,7 @@ class manager(dict):
     else:
       cmd = "phenix.ready_set {} hydrogens=False --silent".format(file_name)
       print('H atoms are NOT added to the model...')
+    print(cmd)
     out = easy_run.fully_buffered(cmd)
     if (out.return_code != 0):
       msg_str = "ready_set crashed - dumping stderr:\n%s"
