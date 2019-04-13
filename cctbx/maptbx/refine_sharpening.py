@@ -367,6 +367,7 @@ def calculate_fsc(si=None,
      scale_using_last=None,
      max_cc_for_rescale=None,
      pseudo_likelihood=False,
+     skip_scale_factor=False,
      verbose=None,
      out=sys.stdout):
 
@@ -514,10 +515,11 @@ def calculate_fsc(si=None,
 
     target_scale_factors.append(scale_on_fo)
 
-  if not pseudo_likelihood: # normalize
+  if not pseudo_likelihood and not skip_scale_factor: # normalize
+    scale_factor=1./target_scale_factors.min_max_mean().max
     target_scale_factors=\
-      target_scale_factors/target_scale_factors.min_max_mean().max
-
+      target_scale_factors*scale_factor
+    print >>out,"Scale factor A: %.5f" %(scale_factor)
   if fraction_complete < min_fraction_complete:
     print >>out,"\nFraction complete (%5.2f) is less than minimum (%5.2f)..." %(
       fraction_complete,min_fraction_complete) + "\nSkipping scaling"
@@ -538,6 +540,7 @@ def calculate_fsc(si=None,
   si.target_scale_factors=target_scale_factors
   si.target_sthol2=target_sthol2
   si.d_min_list=d_min_list
+  si.cc_list=cc_list
 
   return si
 
@@ -661,7 +664,8 @@ def scale_amplitudes(model_map_coeffs=None,
 
 def apply_target_scale_factors(f_array=None,phases=None,
    resolution=None,target_scale_factors=None,
-   n_real=None,out=sys.stdout):
+   n_real=None,
+   return_map_coeffs=None,out=sys.stdout):
     from cctbx.maptbx.segment_and_split_map import get_b_iso
     f_array_b_iso=get_b_iso(f_array,d_min=resolution)
     scale_array=get_scale_factors(f_array,
@@ -672,6 +676,9 @@ def apply_target_scale_factors(f_array=None,phases=None,
       "map: %5.1f A**2     After applying scaling: %5.1f A**2" %(
       f_array_b_iso,scaled_f_array_b_iso)
     new_map_coeffs=scaled_f_array.phase_transfer(phase_source=phases,deg=True)
+    if return_map_coeffs:
+      return new_map_coeffs
+
     map_data=calculate_map(map_coeffs=new_map_coeffs,n_real=n_real)
     return map_and_b_object(map_data=map_data,starting_b_iso=f_array_b_iso,
       final_b_iso=scaled_f_array_b_iso)
