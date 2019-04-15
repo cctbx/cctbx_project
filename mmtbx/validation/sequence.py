@@ -585,7 +585,7 @@ class validation(object):
       else:
         # subsequent matches just add strand_id
         entity_id = sequence_to_entity_id[seq_can]
-        strand_id[entity_id].append(chain.chain_id[0])
+        strand_id[entity_id].append(chain.chain_id)
         continue
 
       # entity_poly items
@@ -664,7 +664,7 @@ class validation(object):
       # strand_id
       if entity_id not in strand_id:
         strand_id[entity_id] = list()
-      strand_id[entity_id].append(chain.chain_id[0])
+      strand_id[entity_id].append(chain.chain_id)
       # target_identifier (work in progress)
       if entity_id not in target_identifier:
         target_identifier[entity_id] = '?'
@@ -740,7 +740,7 @@ class validation(object):
         chains = strand_id[entity_id][0]
       else:
         chains = strand_id[entity_id]
-        chains.sort()
+        #chains.sort()
         chains = ','.join(chains)
       entity_poly_loop.add_row((
         entity_id,
