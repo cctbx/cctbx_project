@@ -3280,7 +3280,7 @@ class build_all_chain_proxies(linking_mixins):
                   if(csa.distance(atom) < params.exclusion_distance_cutoff):
                     cystein_sulphur_atoms_exclude.append(csa)
                     self.disulfide_bond_exclusions_selection.append(csa.i_seq)
-      if(self.disulfide_bond_exclusions_selection.size()>0):
+      if(self.disulfide_bond_exclusions_selection.size()>0 and log is not None):
         print >>log
         print >>log, "List of CYS excluded from plausible disulfide bonds:"
         print >>log, "  (reason: may participate in coordination)"
