@@ -18,7 +18,7 @@ def vector(numerators, denominators):
   else:
     assert len(numerators) == len(denominators)
   result = []
-  for i in xrange(len(numerators)):
+  for i in range(len(numerators)):
     result.append(int(numerators[i], denominators[i]))
   return result
 
