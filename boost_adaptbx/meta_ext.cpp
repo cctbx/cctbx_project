@@ -139,10 +139,14 @@ namespace {
 "                This crash may be due to a problem in any imported\n"
 "                Python module, including modules which are not part\n"
 "                of the cctbx project. To disable the traps leading\n"
-"                to this message, define these environment variables\n"
-"                (e.g. assign the value 1):\n"
-"                    BOOST_ADAPTBX_FPE_DEFAULT\n"
-"                    BOOST_ADAPTBX_SIGNALS_DEFAULT\n"
+"                to this message, undefine these environment variables\n"
+"                (or assign the value ""):\n"
+"                    BOOST_ADAPTBX_TRAP_FPE\n"
+"                    BOOST_ADAPTBX_TRAP_INVALID\n"
+"                    BOOST_ADAPTBX_TRAP_OVERFLOW\n"
+"                To disable the full trace but keep the exception you\n"
+"                can undefine:\n"
+"                    BOOST_ADAPTBX_ENABLE_TRACE\n"
 "                This will NOT solve the problem, just mask it, but\n"
 "                may allow you to proceed in case it is not critical.\n");
     fflush(stderr);
