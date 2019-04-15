@@ -145,7 +145,6 @@ model
         model = mmtbx.model.manager(
           model_input=model_in,
           pdb_interpretation_params=pdb_interpretation_extract,
-          stop_for_unknowns=False,
           log=self.logger)
         self.add_model(filename, model)
 
