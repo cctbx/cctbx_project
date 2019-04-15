@@ -33,7 +33,7 @@ class io_test_case(object):
 
   def run(self):
     m = streambuf.default_buffer_size
-    for n in xrange(50, 0, -1):
+    for n in range(50, 0, -1):
       streambuf.default_buffer_size = n
       self.exercise_read_failure()
       self.exercise_write_failure()
@@ -214,11 +214,11 @@ def run(args):
               .option(None, '--buffer_size', type='int',
                       metavar="INT")
               ).process(args).options
-  for i_trial in xrange(3):
+  for i_trial in range(3):
     stringio_test_case().run()
-  for i_trial in xrange(3):
+  for i_trial in range(3):
     cstringio_test_case().run()
-  for i_trial in xrange(3):
+  for i_trial in range(3):
     mere_file_test_case().run()
   if options.time_on_file:
     time_it(options.time_on_file, options.buffer_size)

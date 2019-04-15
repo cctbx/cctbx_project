@@ -83,9 +83,9 @@ def exercise_int():
   s = rational.int(4,3)
   assert hash(s) == hash(rational.int(4,3))
   assert hash(s) != hash(r)
-  for n in xrange(-100,100):
+  for n in range(-100,100):
     assert hash(n) == hash(rational.int(n))
-    for d in xrange(1,8):
+    for d in range(1,8):
       assert hash(rational.int(n,d)) == hash(rational.int(n,d))
       assert hash(rational.int(n,d)) == hash(rational.int(3*n,3*d))
       assert hash(rational.int(n,d)) == hash(rational.int(-3*n,-3*d))
@@ -94,8 +94,8 @@ def exercise_int():
     assert str(e) == "boost.rational: as_int() conversion error:" \
       " denominator is different from one."
   else: raise Exception_expected
-  for n in xrange(-5,6):
-    for d in xrange(1,10):
+  for n in range(-5,6):
+    for d in range(1,10):
       r = rational.int(n, d)
       p = pickle.dumps(r)
       l = pickle.loads(p)
@@ -131,8 +131,8 @@ def exercise_int():
   check((2,3), (-1,2), (-1,3))
   check((-2,3), (1,2), (1,3))
   check((-2,3), (-1,2), (-1,6))
-  for ln in xrange(-7,7+1):
-    for rn in xrange(-9,9+1):
+  for ln in range(-7,7+1):
+    for rn in range(-9,9+1):
       if (rn == 0): continue
       check((ln,3), (rn,4))
   #

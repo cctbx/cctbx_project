@@ -110,7 +110,7 @@ def plot(n_terms):
   for n,m in [(100,100), (1000, 100), (10000, 100), (100000, 100)]:
     print("                 time      ticks  time/tick")
     reference_result = None
-    for n_python in xrange(0, m+1, m/10):
+    for n_python in range(0, m+1, m/10):
       hy = time_per_python_tick(hybrid(n_python), n, n_terms).report(
         "%6.2f%% Python" % (100.*n_python/n))
       if (reference_result is None):
