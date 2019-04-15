@@ -137,7 +137,7 @@ class hklview_3d (wxGLWindow) :
       self.spheres_display_list = gltbx.gl_managed.display_list()
       self.spheres_display_list.compile()
       colors = self.scene.colors
-      radii = self.scene.radii * self.settings.scale
+      radii = self.scene.radii
       points = self.scene.points
       sphere = self.proto_sphere
       max_radius = self.scene.max_radius

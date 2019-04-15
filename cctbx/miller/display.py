@@ -39,14 +39,16 @@ class scene(object):
   """
   def __init__(self, miller_array, settings, merge=None, foms=None):
     self.miller_array = miller_array
+    self.renderscale = 100.0
+    self.foms = foms
     if self.miller_array.is_complex_array():
       # want to display map coefficient as circular colours but weighted with FOMS
       # so copy any provided foms in the empty list of sigmas
-      if foms:
-        assert ( self.miller_array.size() == foms.size() )
-        self.miller_array._sigmas = foms.deep_copy()
-      else:
-        self.miller_array._sigmas = None
+      if self.foms:
+        assert ( self.miller_array.size() == self.foms.size() )
+        #self.miller_array._sigmas = foms.deep_copy()
+      #else:
+      #  self.miller_array._sigmas = None
     self.settings = settings
     self.merge_equivalents = merge
     from cctbx import miller
@@ -83,7 +85,7 @@ class scene(object):
       self.foms = self.foms.select(self.slice_selection)
     else :
       self.indices = array.indices()
-    self.points = uc.reciprocal_space_vector(self.indices) * 100.
+    self.points = uc.reciprocal_space_vector(self.indices) * self.renderscale
     self.missing_flags = flex.bool(self.radii.size(), False)
     self.sys_absent_flags = flex.bool(self.radii.size(), False)
     if (settings.show_missing):
@@ -162,6 +164,11 @@ class scene(object):
           self.missing_set.centric_flags().data(), negate=True)
     if (settings.expand_to_p1):
       original_symmetry = array.crystal_symmetry()
+      if array.is_complex_array() and self.foms:
+        tmp_millarr = miller.array( miller.set(original_symmetry, array.indices() ),
+                                data=self.foms)
+        self.foms = self.tmp_millarr.expand_to_p1().customized_copy(
+          crystal_symmetry=original_symmetry).data().deep_copy()
       array = array.expand_to_p1().customized_copy(
         crystal_symmetry=original_symmetry)
       #array = array.niggli_cell().expand_to_p1()
@@ -176,7 +183,8 @@ class scene(object):
     self.phases = flex.double(data.size(), float('nan'))
     self.radians = flex.double(data.size(), float('nan'))
     self.ampl = flex.double(data.size(), float('nan'))
-    self.foms = flex.double(data.size(), 1.0)
+    if not self.foms:
+      self.foms = flex.double(data.size(), float('nan'))
     self.sigmas = None
     #self.sigmas = flex.double(data.size(), float('nan'))
     if isinstance(data, flex.bool):
@@ -244,8 +252,8 @@ class scene(object):
     elif isinstance(data, flex.complex_double):
       data_for_colors = self.radians
       # when using map coefficients the sigmas are filled with foms if provided
-      if self.sigmas:
-        self.foms = self.sigmas
+      #if self.sigmas:
+      #  self.foms = self.sigmas
       foms_for_colours = self.foms
     elif (settings.sigma_color) and sigmas is not None:
       data_for_colors = sigmas.as_double()
@@ -255,18 +263,20 @@ class scene(object):
         (settings.scale_radii_multiplicity)):
       #data_for_radii = data.deep_copy()
       data_for_radii = self.multiplicities.data().as_double()
+
       if (settings.sigma_radius) and sigmas is not None:
         data_for_radii = sigmas * self.multiplicities.as_double()
         #print "sigmas: " + self.miller_array.info().label_string()
       assert data_for_radii.size() == data.size()
-    elif (settings.sqrt_scale_radii) and (isinstance(data, flex.double)):
-      data_for_radii = flex.sqrt(flex.abs(data))
-      #data_for_radii = flex.sqrt(data)
+    #elif (settings.sqrt_scale_radii) and (isinstance(data, flex.double)):
+    #  data_for_radii = flex.sqrt(flex.abs(data))
     elif (settings.sigma_radius) and sigmas is not None:
       data_for_radii = sigmas.as_double()
       #print "sigmas: " + self.miller_array.info().label_string()
     else :
-      data_for_radii = flex.abs(data.deep_copy())
+      #data_for_radii = flex.abs(data.deep_copy())
+      data_for_radii = flex.pow(flex.abs(data.deep_copy()), settings.nth_root_scale_radii)
+
     if (settings.slice_mode):
       data = data.select(self.slice_selection)
       if (not settings.keep_constant_scale):
@@ -297,18 +307,17 @@ class scene(object):
       colors = colors.select(self.slice_selection)
       data_for_radii = data_for_radii.select(self.slice_selection)
     uc = self.work_array.unit_cell()
-    abc = uc.parameters()[0:3]
+    #abc = uc.parameters()[0:3]
     min_dist = min(uc.reciprocal_space_vector((1,1,1)))
     min_radius = 0.20 * min_dist
     max_radius = 40 * min_dist
 
-    if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
-      data_for_radii = flex.sqrt(flex.abs(data_for_radii))
-      #data_for_radii = flex.sqrt(data_for_radii)
+    #if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
+    #  data_for_radii = flex.sqrt(flex.abs(data_for_radii))
     if len(data_for_radii):
       max_value = flex.max(data_for_radii)
       scale = max_radius / max_value
-      radii = data_for_radii * scale
+      radii = data_for_radii * (scale * self.settings.scale)
       too_small = radii < min_radius
       if (too_small.count(True) > 0):
         radii.set_selected(too_small, flex.double(radii.size(), min_radius))
@@ -559,8 +568,8 @@ philstr = """
     .type = bool
   show_data_over_sigma = False
     .type = bool
-  sqrt_scale_radii = True
-    .type = bool
+  nth_root_scale_radii = 1.0
+    .type = int
   sqrt_scale_colors = False
     .type = bool
   phase_color = False

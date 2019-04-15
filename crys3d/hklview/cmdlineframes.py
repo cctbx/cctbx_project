@@ -20,14 +20,14 @@ myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.t
 myHKLview.GetArrayInfo()
 myHKLview.SetColumn(0)
 
-myHKLview.SetSphereScale(3)
+myHKLview.SetRadiiScale(3, nth_root_scale=1)
 myHKLview.SetColourColumn(3)
 myHKLview.SetRadiusColumn(7)
 
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", htmlfname = "myhkl.html", UseOSBrowser= False)
 
 myHKLview.SetColumn(3)
-myHKLview.SetSphereScale(3)
+myHKLview.SetRadiiScale(3, nth_root_scale=1)
 myHKLview.SetColumnBinThresholds(3, [0, 0.1, 1, 10])
 myHKLview.ExpandToP1(True)
 myHKLview.SetOpacity(2, 0.1)
@@ -406,11 +406,6 @@ class HKLViewFrame () :
         return valid_arrays[0]
 
 
-  def SetSphereScale(self, nscale):
-    self.settings.scale = nscale
-    self.update_settings()
-
-
   def SetCameraType(self, camtype):
     if camtype.lower() in "orthographic":
       self.viewer.cameratype = "orthographic"
@@ -498,6 +493,15 @@ class HKLViewFrame () :
     self.update_settings()
 
 
+  def SetRadiiScale(self, scale, nth_root_scale = 1.0):
+    """
+    Set size of radii and optionally scale according to
+    """
+    self.settings.scale = scale
+    self.settings.nth_root_scale_radii = nth_root_scale
+    self.update_settings()
+
+
   def SetRadiiToSigmas(self, val):
     self.settings.sigma_radius = val
     self.update_settings()
@@ -505,11 +509,6 @@ class HKLViewFrame () :
 
   def SetColoursToSigmas(self, val):
     self.settings.sigma_color = val
-    self.update_settings()
-
-
-  def SetSqrtScaleRadii(self, val):
-    self.settings.sqrt_scale_radii = val
     self.update_settings()
 
 

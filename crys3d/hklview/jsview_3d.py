@@ -251,6 +251,7 @@ class hklview_3d:
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         if fomcolm:
           foms = match_valarrays[fomcolm].data().deep_copy()
+
       otherscene = display.scene(miller_array=match_valarray,  merge=merge,
         settings=self.settings, foms=foms)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -403,7 +404,7 @@ class hklview_3d:
     # colour gradient values to be used below as a <div> tag for the javascript below
 
     colors = self.otherscenes[self.icolourcol].colors
-    radii = self.otherscenes[self.iradiicol].radii * self.settings.scale
+    radii = self.otherscenes[self.iradiicol].radii
     points = self.scene.points
     hkls = self.scene.indices
     dres = self.scene.work_array.d_spacings().data()
@@ -457,8 +458,12 @@ class hklview_3d:
         odata = otherscene.data
         od =""
         if self.valid_arrays[j].is_complex_array():
-          od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
-            "\' + DGR + \'" +  ", " + str(roundoff(otherscene.foms[i])  )
+          if not math.isnan(otherscene.foms[i]):
+            od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
+              "\' + DGR + \'" +  ", " + str(roundoff(otherscene.foms[i])  )
+          else:
+            od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
+              "\' + DGR + \'"
         elif self.valid_arrays[j].sigmas() is not None:
           od = str(roundoff(odata[i]) ) + ", " + str(roundoff(otherscene.sigmas[i]))
         else:
@@ -634,7 +639,8 @@ function addElement (el) {
 
 var hklscene = function () {
   shape = new NGL.Shape('shape');
-  stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false });
+  stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false,
+                                      fogNear: 100, fogFar: 100 });
   stage.setParameters( { cameraType: "%s" } );
 
   %s
