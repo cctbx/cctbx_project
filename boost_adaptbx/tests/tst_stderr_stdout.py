@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import boost.python
 from boost.python import ostream
 import libtbx.object_oriented_patterns as oop
@@ -22,7 +23,7 @@ def run():
     ostream(without_tell(sys.stderr)), # bug trigger on MacOS X
     ostream(sys.stdout))
   gc.collect()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

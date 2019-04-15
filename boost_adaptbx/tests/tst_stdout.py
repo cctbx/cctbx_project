@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import boost.python
 from boost.python import ostream
 ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
@@ -21,7 +22,7 @@ def write_to_stdout():
 def run(core):
   if not core:
     exercise()
-    print 'OK'
+    print('OK')
   else:
     write_to_stdout()
 

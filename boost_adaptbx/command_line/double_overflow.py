@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME boost_adaptbx.double_overflow
 
 import boost.python
@@ -10,10 +11,10 @@ def run(args):
   assert sizeof_double == 8
   x = 1.e300
   y = 1.e200
-  print "Now multiplying double values %g * %g ..." % (x, y)
+  print("Now multiplying double values %g * %g ..." % (x, y))
   sys.stdout.flush()
   result = boost.python.ext.multiply_doubles(x, y)
-  print "Result:", result
+  print("Result:", result)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import boost.python
 from boost.python import streambuf, ostream
 ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
@@ -192,7 +193,7 @@ class mere_file_test_case(io_test_case):
 def time_it(path, buffer_size):
   if (buffer_size is None):
     buffer_size = streambuf.default_buffer_size
-  print "Buffer is %i bytes" % buffer_size
+  print("Buffer is %i bytes" % buffer_size)
   path = os.path.expanduser(path)
   input = open(path, 'r')
   inp_buf = streambuf(python_file_obj=input, buffer_size=buffer_size)
@@ -222,7 +223,7 @@ def run(args):
   if options.time_on_file:
     time_it(options.time_on_file, options.buffer_size)
 
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   import sys

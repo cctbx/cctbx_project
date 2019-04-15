@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def exercise():
   import boost.python
   csr = boost.python.ext.string_representation
@@ -26,7 +27,7 @@ def run(args):
     exercise()
     if (len(args) == 0):
       break
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

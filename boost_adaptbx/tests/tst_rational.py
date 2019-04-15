@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from boost import rational
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 try:
@@ -217,7 +218,7 @@ def run():
   exercise_int()
   exercise_functions()
   exercise_python_code()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

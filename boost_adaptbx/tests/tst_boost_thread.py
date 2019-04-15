@@ -1,4 +1,5 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
 import boost.python
 ext = boost.python.import_ext("boost_adaptbx_boost_thread_test_ext")
 
@@ -12,7 +13,7 @@ def sanity_test():
 
 def run():
   sanity_test()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

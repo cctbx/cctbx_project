@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import boost.std_pair
 from libtbx.test_utils import Exception_expected
 
@@ -27,7 +28,7 @@ def run():
   else:
     raise Exception_expected
 
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()
