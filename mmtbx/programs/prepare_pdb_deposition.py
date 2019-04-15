@@ -33,7 +33,7 @@ parentheses.
 More functionality is planned.
 '''
 
-  datatypes = ['model', 'phil', 'sequence']
+  datatypes = ['model', 'phil', 'restraint', 'sequence']
 
   master_phil_str = '''
 mmtbx.validation.sequence.sequence_alignment {
@@ -67,6 +67,12 @@ output {
 
     model = self.data_manager.get_model()
     model.set_log(self.logger)
+
+    # add restraints if available
+    if self.data_manager.has_restraints():
+      model.get_restraints_manager()
+
+    # add sequences
     sequences = list()
     for sequence_name in self.data_manager.get_sequence_names():
       sequences.extend(self.data_manager.get_sequence(sequence_name))
