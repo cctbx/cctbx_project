@@ -1458,7 +1458,7 @@ class hhsearch_parser(hhpred_parser):
   HITS = re.compile(
     r"""
     No \s ( \d+) \s* (?: \n | \r\n | \r )
-    >( [\w]{4} ) _  ( [\w]{1,2} ) \s ( [^\n]* )(?: \n | \r\n | \r )
+    >( [\w]{4} ) _  ( [\w]+ ) \s ( [^\n]* )(?: \n | \r\n | \r )
     Probab = ( [+-]? \d+ \. \d* ) \s+
     E-value = ( \d+ \.? \d* )( e[+-]? \d+ )? \s+
     Score = ( [+-]? \d+\.\d+ ) \s+
