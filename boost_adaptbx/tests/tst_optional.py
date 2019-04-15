@@ -14,7 +14,7 @@ def exercise(args):
     assert boost.optional.exercise(1.5) == 4
     try:
       boost.optional.exercise("")
-    except Exception, e:
+    except Exception as e:
       assert str(e).splitlines()[2] == "did not match C++ signature:"
     else:
       raise Exception_expected

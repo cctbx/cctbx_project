@@ -9,21 +9,21 @@ def run():
 
   try:
     boost.std_pair.exercise(1)
-  except Exception, err:
+  except Exception as err:
     assert err.__class__.__name__ == 'ArgumentError'
   else:
     raise Exception_expected
 
   try:
     boost.std_pair.exercise((1,))
-  except Exception, err:
+  except Exception as err:
     assert err.__class__.__name__ == 'ArgumentError'
   else:
     raise Exception_expected
 
   try:
     boost.std_pair.exercise((1,2,3,))
-  except Exception, err:
+  except Exception as err:
     assert err.__class__.__name__ == 'ArgumentError'
   else:
     raise Exception_expected

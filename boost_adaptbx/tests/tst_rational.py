@@ -90,7 +90,7 @@ def exercise_int():
       assert hash(rational.int(n,d)) == hash(rational.int(3*n,3*d))
       assert hash(rational.int(n,d)) == hash(rational.int(-3*n,-3*d))
   try: int(r)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "boost.rational: as_int() conversion error:" \
       " denominator is different from one."
   else: raise Exception_expected
@@ -106,10 +106,10 @@ def exercise_int():
   lhs = ri(1)
   for rhs in [ri(0), 0]:
     try: lhs / rhs
-    except RuntimeError, e: assert not show_diff(str(e), ee)
+    except RuntimeError as e: assert not show_diff(str(e), ee)
     else: raise Exception_expected
     try: lhs % rhs
-    except RuntimeError, e: assert not show_diff(str(e), ee)
+    except RuntimeError as e: assert not show_diff(str(e), ee)
     else: raise Exception_expected
   #
   try:
@@ -173,29 +173,29 @@ def exercise_int():
   check(2. / ri(4,5), 2.5)
   #
   try: ri(3,2) // 4.
-  except TypeError, e:
+  except TypeError as e:
     assert str(e).startswith("unsupported operand type(s)")
   else: raise Exception_expected
   try: 2. // ri(4,5)
-  except TypeError, e:
+  except TypeError as e:
     assert str(e).startswith("unsupported operand type(s)")
   else: raise Exception_expected
   #
   try: ri(3,2) % 4.
-  except TypeError, e:
+  except TypeError as e:
     assert str(e).startswith("unsupported operand type(s)")
   else: raise Exception_expected
   try: 2. % ri(4,5)
-  except TypeError, e:
+  except TypeError as e:
     assert str(e).startswith("unsupported operand type(s)")
   else: raise Exception_expected
   #
   try: ri(1) / 0.
-  except ZeroDivisionError, e:
+  except ZeroDivisionError as e:
     assert not show_diff(str(e), "float division by zero")
   else: raise Exception_expected
   try: 1. / ri(0)
-  except ZeroDivisionError, e:
+  except ZeroDivisionError as e:
     assert not show_diff(str(e), "float division by zero")
   else: raise Exception_expected
 

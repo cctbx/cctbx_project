@@ -150,10 +150,10 @@ class cstringio_test_case(stringio_test_case):
     self.create_file_object(mode='r')
     try:
       ext.test_write(ostream(self.file_object), "write")
-    except ValueError, err:
+    except ValueError as err:
       # That Python file object has no 'write' attribute
       assert str(err).find("write") > -1
-    except RuntimeError, err:
+    except RuntimeError as err:
       # Redhat 8.0: basic_ios::clear(iostate) caused exception
       assert str(err).find("clear") > -1
     else:
@@ -169,7 +169,7 @@ class mere_file_test_case(io_test_case):
     self.create_file_object(mode='r')
     try:
       ext.test_write(streambuf(self.file_object), "write")
-    except IOError, err:
+    except IOError as err:
       pass
     else:
       raise Exception_expected
