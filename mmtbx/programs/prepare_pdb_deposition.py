@@ -67,10 +67,7 @@ output {
 
     model = self.data_manager.get_model()
     model.set_log(self.logger)
-
-    # add restraints if available
-    if self.data_manager.has_restraints():
-      model.get_restraints_manager()
+    model.get_restraints_manager()
 
     # add sequences
     sequences = list()
