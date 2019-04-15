@@ -5,6 +5,7 @@ from mmtbx.validation.validate_ligands import master_params_str
 import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import null_out
+from libtbx.test_utils import approx_equal
 
 pdb_str_1 = """
 CRYST1   26.971   23.398   30.626  90.00  90.00  90.00 P 1
@@ -239,10 +240,8 @@ ANISOU   65  O   HOH A   9      793    561    680     46    -95    -87       O
 END
 '''
 
-filenames = ['tst_get_ligands.pdb', 'tst_get_occupancies.pdb']
+filenames = ['test_1.pdb', 'test_2.pdb']
 pdb_strings = [pdb_str_1, pdb_str_2]
-
-
 
 # ---------------------------------------------------------------------------
 
@@ -257,11 +256,13 @@ def write_model_files(filenames, pdb_strings):
 def tst_get_adps(vl_manager):
   n_iso_answer = (0,0,0,0,0)
   n_aniso_answer = (9,9,5,5,6)
+  #print(vl_manager)
   for id_tuple, ligand_dict in vl_manager.items():
+    #print(ligand_dict)
     for altloc, lr in ligand_dict.items():
       adps = lr.get_adps()
       id_str = lr.id_str
-      if (id_str.strip() == 'A   2' and altloc == 'A'):
+      if (id_str.strip() == 'A BEN    2 A'):
         assert(adps.n_iso == 0)
         assert(adps.n_aniso == 9)
         assert(adps.n_above_100 == 0)
@@ -270,7 +271,7 @@ def tst_get_adps(vl_manager):
         assert(approx_equal(
           [adps.b_min_within, adps.b_max_within, adps.b_mean_within],
           [6.1,12.9,7.8], eps=0.1))
-      if (id_str.strip() == 'A   2' and altloc == 'B'):
+      if (id_str.strip() == 'A BEN    2 B'):
         assert(adps.n_iso == 0)
         assert(adps.n_aniso == 9)
         assert(adps.n_above_100 == 0)
@@ -279,7 +280,7 @@ def tst_get_adps(vl_manager):
         assert(approx_equal(
           [adps.b_min_within, adps.b_max_within, adps.b_mean_within],
           [6.1,12.9,7.8], eps=0.1))
-      if (id_str.strip() == 'A   3'):
+      if (id_str.strip() == 'A SO4    3'):
         assert(adps.n_iso == 5)
         assert(adps.n_aniso == 0)
         assert(adps.n_above_100 == 0)
@@ -288,36 +289,39 @@ def tst_get_adps(vl_manager):
         assert(approx_equal(
           [adps.b_min_within, adps.b_max_within, adps.b_mean_within],
           [6.3, 11.1, 7.8], eps=0.1))
-      if (id_str.strip() == 'A   4'):
+      if (id_str.strip() == 'A SO4    4'):
         assert(adps.n_iso == 0)
         assert(adps.n_aniso == 5)
         assert(adps.b_min_within is None)
         assert(adps.n_above_100 == 0)
         assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
           [10.3,14.6,12.3], eps=0.1)
-      if (id_str.strip() == 'A   5'):
+      if (id_str.strip() == 'A GOL    5'):
         assert(adps.n_iso == 6)
         assert(adps.n_aniso == 0)
         assert(adps.b_min_within is None)
         assert(adps.n_above_100 == 3)
         assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
-          [58.7,114.9,96.6], eps=0.1)
+          [58.7,114.9,96.9], eps=0.1)
 
 # ---------------------------------------------------------------------------
 
-def tst_get_nbos():
-  pass
+def tst_get_nbos(vl_manager):
+  for id_tuple, ligand_dict in vl_manager.items():
+    for altloc, lr in ligand_dict.items():
+      nbo = lr.get_nonbonded_overlaps()
 
 # ---------------------------------------------------------------------------
 
-def tst_get_ligands():
+def run_test1():
   """Test if iselection for ligand PG5 (chain A resseq 201) is correct."""
   pdb_inp = iotbx.pdb.input(lines=pdb_str_1.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
 
   params = iotbx.phil.parse(
     input_string=master_params_str, process_includes=True).extract()
-  params.validate_ligands.place_hydrogens = False
+  # do not place H atoms for this test
+  #params.validate_ligands.place_hydrogens = False
 
   fn = filenames[0]
 
@@ -328,11 +332,46 @@ def tst_get_ligands():
     log   = null_out)
   vl_manager.run()
 
+  tst_get_ligands(vl_manager = vl_manager)
+  tst_get_nbos(vl_manager = vl_manager)
+
+# ---------------------------------------------------------------------------
+
+def tst_get_ligands(vl_manager):
   assert (len(vl_manager) == 1)
+
+  # test iselection
   for id_tuple, ligand_dict in vl_manager.items():
     assert (id_tuple == ('', 'A', ' 201'))
     lr = ligand_dict['']
     assert (list(lr.isel) == [84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95])
+
+# ---------------------------------------------------------------------------
+
+def tst_get_nbos(vl_manager):
+  # test nonbonded overlaps
+  for id_tuple, ligand_dict in vl_manager.items():
+    for altloc, lr in ligand_dict.items():
+      nbo = lr.get_nonbonded_overlaps()
+      nbo_proxies = nbo.result.nb_overlaps_proxies_all
+      assert(len(nbo_proxies) == 3)
+      d = list(nbo_proxies[0])
+      rec_list = [x.replace('pdb=','') for x in d[0]]
+      rec_list = [x.replace('"','') for x in rec_list]
+      assert(rec_list[0] == ' CE  MET A 107 ')
+      assert(rec_list[1] == ' C8  PG5 A 201 ')
+      assert(approx_equal(d[3], 2.95, eps=0.05))
+      assert(approx_equal(d[4], 3.4, eps=0.05))
+#      for data, results in zip(nbo_proxies):
+#        print(data)
+#        d = list(data)
+#        rec_list = [x.replace('pdb=','') for x in d[0]]
+#        rec_list = [x.replace('"','') for x in rec_list]
+#        assert(rec_list[0] == ' CE  MET A 107 ')
+#        assert(rec_list[1] == ' C8  PG5 A 201 ')
+#        assert(approx_equal(data[3], 2.95, eps=0.05))
+#        assert(approx_equal(data[4], 3.4, eps=0.05))
+
 
 # ---------------------------------------------------------------------------
 
@@ -348,21 +387,26 @@ def tst_get_occupancies(vl_manager):
     for altloc, lr in ligand_dict.items():
       occs = lr.get_occupancies()
       id_str = lr.id_str
-      if (id_str.strip() == 'A   2' and altloc == 'A'):
+      if (id_str.strip() == 'A BEN    2 A'):
         assert(occs.occ_mean == 0.56)
-      if (id_str.strip() == 'A   2' and altloc == 'B'):
+      if (id_str.strip() == 'A BEN    2 B'):
         assert(occs.occ_mean == 0.44)
-      if (id_str.strip() == 'A   3'):
+      if (id_str.strip() == 'A SO4    3'):
         assert(occs.occ_mean == 0.65)
-      if (id_str.strip() == 'A   4'):
+      if (id_str.strip() == 'A SO4    4'):
         assert(occs.occ_mean == 0.48)
-      if (id_str.strip() == 'A   5'):
+      if (id_str.strip() == 'A GOL    5'):
         assert(occs.occ_mean == 0.67)
 
 # ---------------------------------------------------------------------------
 
-def run_test():
-  """Test if occupancy determination for ligands is correct"""
+def run_test2():
+  """Test
+  - occupancy determination for ligands
+  - adp determination for ligands and neighbors
+  Tests are combined to decrease computing time (restraints manager is slow).
+  """
+
   pdb_inp = iotbx.pdb.input(lines=pdb_str_2.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input = pdb_inp)
 
@@ -386,10 +430,8 @@ def run_test():
 
 def run():
   write_model_files(filenames = filenames, pdb_strings = pdb_strings)
-  tst_get_ligands()
-  run_test()
-   # TODO
-  tst_get_nbos() # TODO
+  run_test1()
+  run_test2()
 
 if (__name__ == "__main__"):
   t0 = time.time()
