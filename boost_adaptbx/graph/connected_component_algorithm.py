@@ -11,5 +11,5 @@ def connected_components(graph):
   for ( desc, component ) in ext.connected_components( graph = graph ):
     result.setdefault( component, [] ).append( desc )
 
-  return result.values()
+  return list(result.values())
 

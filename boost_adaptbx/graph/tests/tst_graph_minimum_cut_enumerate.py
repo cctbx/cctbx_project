@@ -157,7 +157,7 @@ class TestStirlingAdaptiveEnumeration(unittest.TestCase):
 
     self.assertEqual( len( expected ), len( cuts_with_weight ) )
 
-    for ( weight, cuts ) in cuts_with_weight.iteritems():
+    for ( weight, cuts ) in cuts_with_weight.items():
       self.assertEqual( len( cuts ), expected[ weight ] )
 
 
