@@ -26,6 +26,9 @@ phil_scope = parse("""
     .type = bool
     .help = Whether to split the 4x2 modules into indivdual asics \
             accounting for borders and gaps.
+  trusted_range = None
+    .type = floats(size=2)
+    .help = Set the trusted range
 """)
 
 
@@ -153,6 +156,11 @@ class jf16m_cxigeom2nexus(object):
       #detector['pixel_mask'] = h5py.ExternalLink(self.params.mask_file, "mask") # If mask was formatted right, could use this
       mask = h5py.File(self.params.mask_file, 'r')['mask'][()].astype(np.int32)
       detector.create_dataset('pixel_mask', mask.shape, data=mask==0, dtype=mask.dtype)
+
+    if self.params.trusted_range is not None:
+      underload, overload = self.params.trusted_range
+      # Note, no NXmx definition exists for underload!
+      detector.create_dataset('saturation_value', (1,), data=[overload], dtype='int32')
 
     alias = 'data'
     data_name = 'data'
