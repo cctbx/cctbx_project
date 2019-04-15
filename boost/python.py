@@ -61,27 +61,18 @@ except AttributeError: pass # XXX backward compatibility 2009-11-24
 try: ostream = ext.ostream
 except AttributeError: pass
 
-if ("BOOST_ADAPTBX_SIGNALS_DEFAULT" not in os.environ):
+if os.getenv("BOOST_ADAPTBX_ENABLE_TRACE"):
   ext.enable_signals_backtrace_if_possible()
 
-
 class floating_point_exceptions_type(object):
-
   __shared_state = {'initialised': False}
 
-  def __init__(self, division_by_zero, invalid, overflow):
+  def __init__(self):
     self.__dict__ = self.__shared_state
     if not self.initialised:
-      if "BOOST_ADAPTBX_FPE_DEFAULT" in os.environ:
-        division_by_zero = self.division_by_zero_trapped
-        invalid = self.invalid_trapped
-        overflow = self.overflow_trapped
-      elif "BOOST_ADAPTBX_FE_DIVBYZERO_DEFAULT" in os.environ:
-        division_by_zero = self.division_by_zero_trapped
-      elif "BOOST_ADAPTBX_FE_INVALID_DEFAULT" in os.environ:
-        invalid = self.invalid_trapped
-      elif "BOOST_ADAPTBX_FE_OVERFLOW_DEFAULT" in os.environ:
-        overflow = self.overflow_trapped
+      division_by_zero = bool(os.getenv("BOOST_ADAPTBX_TRAP_FPE", self.division_by_zero_trapped))
+      invalid = bool(os.getenv("BOOST_ADAPTBX_TRAP_INVALID",self.invalid_trapped))
+      overflow = bool(os.getenv("BOOST_ADAPTBX_TRAP_OVERFLOW",self.overflow_trapped))
       ext.trap_exceptions(division_by_zero, invalid, overflow)
       self.initialised = True
 
@@ -118,15 +109,7 @@ class floating_point_exceptions_type(object):
     return locals()
   overflow_trapped = property(**overflow_trapped())
 
-def floating_point_exceptions():
-  import libtbx.load_env
-  if (libtbx.env.is_development_environment()):
-    flag = True
-  else:
-    flag = False
-  return floating_point_exceptions_type(
-    division_by_zero=flag, invalid=False, overflow=flag)
-floating_point_exceptions = floating_point_exceptions()
+floating_point_exceptions = floating_point_exceptions_type()
 
 
 class trapping(object):
