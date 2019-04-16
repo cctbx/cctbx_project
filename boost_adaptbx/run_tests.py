@@ -6,7 +6,6 @@ tst_list = (
   "$B/tests/tst_optional_copy",
   "$D/tests/tst_libc_backtrace.py",
   "$D/tests/tst_rational.py",
-  "$D/tests/tst_rational_truediv.py",
   "$D/tests/tst_optional.py",
   "$D/tests/tst_std_pair.py",
   "$D/tests/tst_tuple.py",
