@@ -144,7 +144,12 @@ Optional output:
       self.params.model_file_name = self.data_manager.get_default_model_name()
 
     if (self.params.solvent_exclusion_mask_selection is None):
-      raise Sorry("Selection for atoms to be omitted is required.")
+      raise Sorry('''Selection for atoms to be omitted is required.
+
+  Try something like
+
+    solvent_exclusion_mask_selection=LIG
+  ''')
     if (self.params.polder.sphere_radius < 3):
       raise Sorry("Sphere radius out of range: must be larger than 3 A")
     if (self.params.polder.box_buffer is not None and

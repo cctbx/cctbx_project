@@ -18,7 +18,7 @@ show_all_params = False
 filter_outliers = True
   .type = bool
   .style = hidden
-format = *phenix phenix_refine phenix_bonds pymol pdb refmac kinemage
+format = *phenix phenix_refine phenix_bonds pymol pdb refmac kinemage csv
   .type = choice
   .style = hidden
 quiet = False
@@ -83,7 +83,7 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
 
   work_params.secondary_structure.enabled=True
   assert work_params.format in ["phenix", "phenix_refine", "phenix_bonds",
-      "pymol", "refmac", "kinemage", "pdb"]
+      "pymol", "refmac", "kinemage", "pdb", 'csv']
   if work_params.quiet :
     out = cStringIO.StringIO()
 
@@ -183,7 +183,7 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
     print >> result_out, m.actual_sec_str.as_pdb_str()
   elif work_params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
-  elif work_params.format in ["pymol", "refmac", "kinemage"] :
+  elif work_params.format in ["pymol", "refmac", "kinemage", 'csv'] :
     m.show_summary(log=out)
     (hb_proxies, hb_angle_proxies, planarity_proxies,
         parallelity_proxies) = m.create_all_new_restraints(
@@ -199,6 +199,9 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
             pdb_hierarchy=pdb_hierarchy)
       elif work_params.format == "kinemage" :
         bonds_in_format = hb_proxies.as_kinemage(
+            pdb_hierarchy=pdb_hierarchy)
+      elif work_params.format == "csv" :
+        bonds_in_format = hb_proxies.as_csv(
             pdb_hierarchy=pdb_hierarchy)
       else :
         bonds_in_format = hb_proxies.as_refmac_restraints(

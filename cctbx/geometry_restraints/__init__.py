@@ -502,15 +502,30 @@ class _(boost.python.injector, shared_bond_asu_proxy):
 
 class _(boost.python.injector, shared_bond_simple_proxy):
 
-  def as_pymol_dashes(self, pdb_hierarchy):
-    # copied from mmtbx/geometry_restraints/hbond.py due to deprecation of
-    # hbond.py
-    result = ""
+  def _generate_proxy_and_atom_labels(self, pdb_hierarchy):
     pdb_atoms = pdb_hierarchy.atoms()
     for proxy in self:
       i_seq, j_seq = proxy.i_seqs
       atom1 = pdb_atoms[i_seq].fetch_labels()
       atom2 = pdb_atoms[j_seq].fetch_labels()
+      yield proxy, atom1, atom2
+
+  def as_csv(self, pdb_hierarchy):
+    # chain1,resname1,resid1,altloc1,name1,chain2,resname2,resid2,altloc2,name2
+    # A,ALA,1," ",O,A,GLY,5," ",N
+    result='chain1,resname1,resid1,name1,chain2,resname2,resid2,name2\n'
+    for proxy, atom1, atom2 in self._generate_proxy_and_atom_labels(pdb_hierarchy):
+      line = [ atom1.chain_id, atom1.resseq, atom1.altloc, atom1.name,
+               atom2.chain_id, atom2.resseq, atom2.altloc, atom2.name,
+               ]
+      result += '%s\n' % ",".join(line)
+    return result
+
+  def as_pymol_dashes(self, pdb_hierarchy):
+    # copied from mmtbx/geometry_restraints/hbond.py due to deprecation of
+    # hbond.py
+    result = ""
+    for proxy, atom1, atom2 in self._generate_proxy_and_atom_labels(pdb_hierarchy):
       base_sele = """chain "%s" and resi %s and name %s and alt '%s'"""
       sele1 = base_sele % (atom1.chain_id.strip(), atom1.resid(), atom1.name, atom1.altloc)
       sele2 = base_sele % (atom2.chain_id.strip(), atom2.resid(), atom2.name, atom2.altloc)
@@ -520,15 +535,11 @@ class _(boost.python.injector, shared_bond_simple_proxy):
   def as_refmac_restraints(self, pdb_hierarchy):
     # copied from mmtbx/geometry_restraints/hbond.py due to deprecation of
     # hbond.py
-    pdb_atoms = pdb_hierarchy.atoms()
     result = ""
-    for proxy in self:
+    for proxy, atom1, atom2 in self._generate_proxy_and_atom_labels(pdb_hierarchy):
       sigma = 0.05
       if proxy.weight > 1e-5:
         sigma = 1.0/(proxy.weight**0.5)
-      i_seq, j_seq = proxy.i_seqs
-      atom1 = pdb_atoms[i_seq].fetch_labels()
-      atom2 = pdb_atoms[j_seq].fetch_labels()
       cmd = (("exte dist first chain %s residue %s atom %s " +
               "second chain %s residue %s atom %s value %.3f sigma %.2f") %
         (atom1.chain_id, atom1.resseq, atom1.name, atom2.chain_id,

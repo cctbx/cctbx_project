@@ -35,7 +35,9 @@ def exercise_00():
       a_z = es.angle_deviations_z()
       print "%5s"%aac_, "bonds     : %5.3f %5.3f %5.3f"%b, \
         "angles     : %5.3f %5.3f %5.3f"%a
-      if aac_ in ['pyl', 'pyl_h']: continue
+      if aac_ in ['pyl', 'pyl_h',
+                  #'sec', 'sec_h'
+                  ]: continue
       assert a[2] < 1.2, a[2]
       assert b[2] < 0.005, b[2]
       print "%5s"%aac_, "bonds rmsZ: %5.3f %5.3f %5.3f"%b_z, \

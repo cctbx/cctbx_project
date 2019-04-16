@@ -3280,20 +3280,21 @@ class build_all_chain_proxies(linking_mixins):
                   if(csa.distance(atom) < params.exclusion_distance_cutoff):
                     cystein_sulphur_atoms_exclude.append(csa)
                     self.disulfide_bond_exclusions_selection.append(csa.i_seq)
-      if(self.disulfide_bond_exclusions_selection.size()>0 and log is not None):
-        print >>log
-        print >>log, "List of CYS excluded from plausible disulfide bonds:"
-        print >>log, "  (reason: may participate in coordination)"
+      if(self.disulfide_bond_exclusions_selection.size()>0):
+        if log is not None:
+          print >>log
+          print >>log, "List of CYS excluded from plausible disulfide bonds:"
+          print >>log, "  (reason: may participate in coordination)"
         for i_seq in self.disulfide_bond_exclusions_selection:
           a = self.pdb_atoms[i_seq]
-          print >> log, "  %s"%a.format_atom_record()
+          if log is not None: print >> log, "  %s"%a.format_atom_record()
           dces = a.determine_chemical_element_simple()
           if dces is None:
             raise Sorry("Atom '%s' has unknown chemical element symbol" % a.format_atom_record())
           e = dces.strip().upper()
           if(e!="S"):
             raise Sorry("disulfide_bond_exclusions_selection_string must select CYS sulfur.")
-        print >>log
+        if log is not None: print >>log
       tmp = flex.size_t()
       for i_seq in self.cystein_sulphur_i_seqs:
         if(not i_seq in self.disulfide_bond_exclusions_selection):
