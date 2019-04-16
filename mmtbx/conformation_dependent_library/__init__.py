@@ -231,7 +231,7 @@ def generate_protein_fragments(hierarchy,
     length,
     include_non_linked=include_non_linked,
     backbone_only=backbone_only,
-    include_non_standard_peptides=include_non_standard_peptides,
+    include_non_standard_residues=include_non_standard_peptides,
     # include_non_protein_linked=include_non_protein_linked,
     verbose=verbose,
     ):
