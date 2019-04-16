@@ -14,7 +14,7 @@ def exercise():
                           stderr=subprocess.PIPE)
   output, error = proc.communicate()
   assert not error, error
-  assert output == "2 times 1.6 equals 3.2", output
+  assert output == b"2 times 1.6 equals 3.2", output
 
 def write_to_stdout():
   ext.test_write(ostream(sys.stdout), "write")
