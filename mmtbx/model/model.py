@@ -936,6 +936,7 @@ class manager(object):
       grm_geometry.pair_proxies(sites_cart)
       struct_conn_loop = grm_geometry.get_struct_conn_mmcif(atoms)
       cif_block.add_loop(struct_conn_loop)
+      self.get_model_statistics_info()
     # outputting HELIX/SHEET records
     ss_cif_loops = []
     ss_ann = None
@@ -952,7 +953,6 @@ class manager(object):
     if self._sequence_validation is not None:
       cif_block.update(self.sequence_as_cif_block())
 
-    # self.get_model_statistics_info()
     if self.model_statistics_info is not None:
       cif_block.update(self.model_statistics_info.as_cif_block())
     if additional_blocks is not None:
