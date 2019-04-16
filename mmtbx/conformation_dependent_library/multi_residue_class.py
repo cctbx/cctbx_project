@@ -259,6 +259,7 @@ class ThreeProteinResidues(ProteinResidues):
       sub_unit = copy.copy(self) # calls append to delete first sub unit
       while not self.are_linked():
         del self[-1]
+      assert 0
       return sub_unit
     return None
 

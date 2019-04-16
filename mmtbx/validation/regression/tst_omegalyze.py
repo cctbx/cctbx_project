@@ -45,7 +45,7 @@ def exercise_omegalyze():
   text_test = omegalyze_test_string()
   outliers = omegalyze.omegalyze(
     pdb_hierarchy=hierarchy,
-    nontrans_only="True",
+    nontrans_only=True,
     out=text_test,
     quiet=False)
   outliers.show_old_output(out=text_test, verbose=True)

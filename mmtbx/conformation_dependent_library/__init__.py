@@ -222,6 +222,7 @@ def generate_protein_fragments(hierarchy,
                                include_non_linked=False,
                                backbone_only=True,
                                include_non_standard_peptides=False,
+                               # include_non_protein_linked=False, # NH2 1KYC
                                verbose=False,
                                ):
   for fragment in generate_residue_tuples(
@@ -230,7 +231,8 @@ def generate_protein_fragments(hierarchy,
     length,
     include_non_linked=include_non_linked,
     backbone_only=backbone_only,
-    include_non_standard_residues=include_non_standard_peptides,
+    include_non_standard_peptides=include_non_standard_peptides,
+    # include_non_protein_linked=include_non_protein_linked,
     verbose=verbose,
     ):
     yield fragment
