@@ -20,7 +20,7 @@ myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Work\ANI_TNCS\4PA9\4pa9.t
 myHKLview.GetArrayInfo()
 myHKLview.SetColumn(0)
 
-myHKLview.SetRadiiScale(3, nth_root_scale=1)
+myHKLview.SetRadiiScale(3, nth_power_scale=1)
 myHKLview.SetColourColumn(3)
 myHKLview.SetRadiusColumn(7)
 
@@ -52,7 +52,8 @@ myHKLview.SetColumnBinThresholds(1, [-20, 30, 300, 3000])
 myHKLview.ShowSlice(True, "h", 20)
 
 
-
+myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Phenix\dev-2814-working\modules\phenix_examples\beta-blip\beta_blip_P3221.mtz")
+myHKLview.SetColumn(0)
 
 
 
@@ -371,6 +372,9 @@ class HKLViewFrame () :
       from iotbx.reflection_file_reader import any_reflection_file
       from iotbx.gui_tools.reflections import get_array_description
       self.viewer.isnewfile = True
+      self.viewer.iarray = 0
+      self.viewer.icolourcol = 0
+      self.viewer.iradiicol = 0
       display.reset_settings()
       self.settings = display.settings()
       self.viewer.settings = self.settings
@@ -493,12 +497,13 @@ class HKLViewFrame () :
     self.update_settings()
 
 
-  def SetRadiiScale(self, scale, nth_root_scale = 1.0):
+  def SetRadiiScale(self, scale, nth_power_scale = 1.0):
     """
-    Set size of radii and optionally scale according to
+    Scale radii. Decrease the contrast between large and small radii with nth_root_scale < 1.0
+    if nth_root_scale=0.0 then all radii will have the same size regardless of data values.
     """
     self.settings.scale = scale
-    self.settings.nth_root_scale_radii = nth_root_scale
+    self.settings.nth_power_scale_radii = nth_power_scale
     self.update_settings()
 
 
@@ -534,14 +539,17 @@ class HKLViewFrame () :
   def GetHtmlURL(self):
     return self.viewer.url
 
+
   def GetNGLstring(self):
     return self.viewer.NGLscriptstr
+
 
   def GetArrayInfo(self):
     """
     return array of strings with information on each miller array
     """
     return self.array_info
+
 
   def GetMatchingArrayInfo(self):
     """

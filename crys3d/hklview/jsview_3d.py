@@ -57,17 +57,9 @@ class ArrayInfo:
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
-    self.buffer_factor = 2.0
-    self.min_slab = 4
-    self.min_viewport_use_fraction = 0.1
-    self.min_dist = 4.0
-    self.flag_show_fog = True
-    self.flag_use_lights = True
-    self.flag_use_quadrics = False
     self.miller_array = None
     self.d_min = None
     self.scene = None
-    self.animation_time = 0
     self.NGLscriptstr = ""
     self.cameratype = "orthographic"
     self.url = ""
@@ -506,7 +498,8 @@ class hklview_3d:
     color: colours[%d],
     radius: radii[%d],
     picking: ttips[%d],
-  }, { disableImpostor: true }) // disableimposter allows wireframe spheres
+  })
+  //}, { disableImpostor: true }) // if true allows wireframe spheres but does not allow resizing spheres
 
   shape.addBuffer(spherebufs[%d])
       """ %(mstr, cntbin, str(spbufttips[ibin]).replace('\"', '\''), \
@@ -771,6 +764,19 @@ mysocket.onmessage = function (e) {
       window.location.reload(true);
     }
 
+    if (val[0] === "Testing") {
+      // test something new
+      mysocket.send( 'Testing something new ' + pagename );
+      var newradii = radii[0].map(function(element) {
+        return element*1.5;
+      });
+
+      spherebufs[0].setAttributes({
+          radius: newradii
+        })
+      stage.viewer.requestRender()
+    }
+
   }
   catch(err) {
     mysocket.send('error: ' + err );
@@ -868,6 +874,10 @@ mysocket.onmessage = function (e) {
     if self.UseOSBrowser:
       webbrowser.open(self.url, new=1)
     self.isnewfile = False
+
+
+  def TestNewFunction(self):
+    self.SendWebSockMsg( u"Testing, NGL\n" )
 
 
 

@@ -4,6 +4,7 @@
 
 from __future__ import division
 from libtbx.utils import Sorry
+from cctbx.array_family import flex
 import libtbx.phil
 from libtbx import object_oriented_patterns as oop
 from math import sqrt
@@ -28,6 +29,11 @@ def generate_systematic_absences(array,
       crystal_symmetry=array.crystal_symmetry())
       #niggli_cell().expand_to_p1()
   return absence_array
+
+
+def nth_power_scale(dataarray, nth_power):
+  datascaled = flex.pow(flex.abs(dataarray), nth_power)
+  return datascaled
 
 
 class scene(object):
@@ -111,7 +117,6 @@ class scene(object):
 
 
   def process_input_array(self):
-    from cctbx.array_family import flex
     array = self.miller_array.deep_copy()
     multiplicities = None
     if self.merge_equivalents :
@@ -275,7 +280,7 @@ class scene(object):
       #print "sigmas: " + self.miller_array.info().label_string()
     else :
       #data_for_radii = flex.abs(data.deep_copy())
-      data_for_radii = flex.pow(flex.abs(data.deep_copy()), settings.nth_root_scale_radii)
+      data_for_radii = nth_power_scale(data.deep_copy(), settings.nth_power_scale_radii)
 
     if (settings.slice_mode):
       data = data.select(self.slice_selection)
@@ -284,7 +289,11 @@ class scene(object):
         data_for_colors = data_for_colors.select(self.slice_selection)
         foms_for_colours = foms_for_colours.select(self.slice_selection)
     if isinstance(data, flex.complex_double):
-      colors = graphics_utils.colour_by_phi_FOM(data_for_colors, foms_for_colours)
+
+      if len([e for e in foms_for_colours if math.isnan(e)]) > 0:
+        colors = graphics_utils.colour_by_phi_FOM(data_for_colors, None)
+      else:
+        colors = graphics_utils.colour_by_phi_FOM(data_for_colors, foms_for_colours)
     elif (settings.color_scheme in ["rainbow", "heatmap", "redblue"]):
       colors = graphics_utils.color_by_property(
         properties=data_for_colors,
@@ -568,7 +577,7 @@ philstr = """
     .type = bool
   show_data_over_sigma = False
     .type = bool
-  nth_root_scale_radii = 1.0
+  nth_power_scale_radii = 1.0
     .type = int
   sqrt_scale_colors = False
     .type = bool
