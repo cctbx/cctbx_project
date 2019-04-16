@@ -244,9 +244,11 @@ def find_files(path, reflections):
   all_ref = []
   for filename in os.listdir(path):
     if reflections in filename:
-      exp_path = os.path.join(path, filename.rstrip("_%s.mpack"%reflections) + "_refined_experiments.json")
+      extension = os.path.splitext(filename)[1]
+      if extension not in ['.pickle', '.mpack']: continue
+      exp_path = os.path.join(path, filename.rstrip("_%s%s"%(reflections, extension)) + "_refined_experiments.json")
       if not os.path.exists(exp_path):
-        exp_path = os.path.join(path, filename.rstrip("_%s.mpack"%reflections) + "_experiments.json")
+        exp_path = os.path.join(path, filename.rstrip("_%s%s"%(reflections, extension)) + "_experiments.json")
         if not os.path.exists(exp_path): continue
       all_exp.append(exp_path)
       all_ref.append(os.path.join(path, filename))
