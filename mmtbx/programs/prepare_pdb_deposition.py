@@ -48,6 +48,9 @@ keep_original_loops = True
   .type = bool
   .help = Preserves mmCIF data from the input model file (if available) that \
     is not overwritten by other input
+include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
+include scope mmtbx.geometry_restraints.torsion_restraints.reference_model.reference_model_str
+include scope mmtbx.geometry_restraints.external.external_energy_params_str
 output {
   output_suffix = '.deposit.cif'
     .type = str
@@ -65,6 +68,11 @@ output {
     print('Using sequence(s): {sequence_names}'.format(
       sequence_names=', '.join(self.data_manager.get_sequence_names())))
 
+    # use pdb_interpretation scope from program
+    self.data_manager.update_pdb_interpretation_for_model(
+      self.data_manager.get_default_model_name(), self.params)
+
+    # get model and set up restraints manager
     model = self.data_manager.get_model()
     model.set_log(self.logger)
     model.get_restraints_manager()
