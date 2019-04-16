@@ -285,10 +285,10 @@ def refine(params, merged_scope, combine_phil):
 
 def refine_hierarchical(params, merged_scope, combine_phil):
   if params.panel_filter is not None:
-    from libtbx import easy_pickle
+    from dials.array_family import flex
     print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in params.panel_filter]))
     combined_path = "%s_combined_reflections.mpack"%params.tag
-    data = easy_pickle.load(combined_path)
+    data = flex.reflection_table.from_file(combined_path)
     sel = None
     for panel_id in params.panel_filter:
       if sel is None:
@@ -296,7 +296,7 @@ def refine_hierarchical(params, merged_scope, combine_phil):
       else:
         sel |= data['panel'] == panel_id
     print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
-    easy_pickle.dump(combined_path, data.select(sel))
+    data.select(sel).as_msgpack_file(combined_path)
 
   for i in range(params.start_at_hierarchy_level, params.refine_to_hierarchy_level+1):
     if params.rmsd_filter.enable:
@@ -378,10 +378,10 @@ def refine_expanding(params, merged_scope, combine_phil):
     input_name = "combined"
   # --------------------------
   if params.panel_filter is not None:
-    from libtbx import easy_pickle
+    from dials.array_family import flex
     print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in params.panel_filter]))
     combined_path = "%s_combined_reflections.mpack"%params.tag
-    data = easy_pickle.load(combined_path)
+    data = flex.reflection_table.from_file(combined_path)
     sel = None
     for panel_id in params.panel_filter:
       if sel is None:
@@ -389,7 +389,7 @@ def refine_expanding(params, merged_scope, combine_phil):
       else:
         sel |= data['panel'] == panel_id
     print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
-    easy_pickle.dump(combined_path, data.select(sel))
+    data.select(sel).as_msgpack_file(combined_path)
   # ----------------------------------
   # this is the order to refine the CSPAD in
   steps = {}
@@ -416,11 +416,11 @@ def refine_expanding(params, merged_scope, combine_phil):
 
   previous_step_and_level = None
   for j in range(8):
-    from libtbx import easy_pickle
+    from dials.array_family import flex
     print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in steps[j]]))
     combined_path = "%s_%s_reflections.mpack"%(params.tag, input_name)
     output_path = "%s_reflections_step%d.mpack"%(params.tag, j)
-    data = easy_pickle.load(combined_path)
+    data = flex.reflection_table.from_file(combined_path)
     sel = None
     for panel_id in steps[j]:
       if sel is None:
@@ -428,7 +428,7 @@ def refine_expanding(params, merged_scope, combine_phil):
       else:
         sel |= data['panel'] == panel_id
     print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
-    easy_pickle.dump(output_path, data.select(sel))
+    data.select(sel).as_msgpack_file(output_path)
 
     for i in levels[j]:
       print "Step", j , "refining at hierarchy level", i
