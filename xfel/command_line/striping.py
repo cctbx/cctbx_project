@@ -264,7 +264,7 @@ def allocate_chunks(results_dir,
                     stripe=False,
                     max_size=1000,
                     integrated=False):
-  refl_ending = "_integrated.mpack" if integrated else "_indexed.mpack"
+  refl_ending = "_integrated" if integrated else "_indexed"
   expt_ending = "_refined_experiments.json"
   trial = "%03d" % trial_no
   print "processing trial %s" % trial
@@ -296,6 +296,7 @@ def allocate_chunks(results_dir,
     batchable = {"all":rgs}
   # for either grouping, iterate over the top level keys in batchable and
   # distribute the events within those "batches" in stripes or chunks
+  extension = None
   for batch, rungroups in batchable.iteritems():
     rg_by_run = {}
     for rungroup, runs in rungroups.iteritems():
@@ -315,6 +316,8 @@ def allocate_chunks(results_dir,
       batch_contents[batch].extend(abs_contents)
       expts = [c for c in contents if c.endswith(expt_ending)]
       n_img += len(expts)
+      if extension is None:
+        extension = ".mpack" if any(c.endswith(".mpack") for c in contents) else ".pickle"
     if n_img == 0:
       print "no images found for %s" % batch
       del batch_contents[batch]
@@ -324,6 +327,7 @@ def allocate_chunks(results_dir,
     batch_chunk_nums_sizes[batch] = (n_chunks, chunk_size)
   if len(batch_contents) == 0:
     raise Sorry("no DIALS integration results found.")
+  refl_ending += extension
   batch_chunks = {}
   for batch, num_size_tuple in batch_chunk_nums_sizes.iteritems():
     num, size = num_size_tuple
