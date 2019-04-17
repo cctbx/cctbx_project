@@ -28,7 +28,11 @@ myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", htmlfname = "
 
 myHKLview.SetColumn(3)
 myHKLview.SetRadiiScale(3, nth_root_scale=1)
-myHKLview.SetColumnBinThresholds(3, [0, 0.1, 1, 10])
+myHKLview.SetColumnBinThresholds([0, 3.4, 3.5, 3.6, 3.8, 4.0, 4.5, 5.0, 6.0, 8, 9,11, 15, 20, 30, 100 ], "Resolution")
+for i in range(13):
+  myHKLview.SetOpacity(i, 0.0)
+
+myHKLview.SetColumnBinThresholds([0, 0.1, 1, 10], 3)
 myHKLview.ExpandToP1(True)
 myHKLview.SetOpacity(2, 0.1)
 
@@ -124,7 +128,7 @@ from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js")
 myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetColumn(0)
-myHKLview.SetSqrtScaleRadii(False)
+myHKLview.SetRadiiScale(3, nth_power_scale=1)
 
 myHKLview.SetColourColumn(2)
 myHKLview.SetRadiusColumn(3)
@@ -206,6 +210,7 @@ class HKLViewFrame () :
     self.spacegroup_choices = []
     self.procarrays = []
     self.array_info = []
+    self.dmin = -1
     self.settings = display.settings()
     self.verbose = True
     if kwds.has_key('verbose'):
@@ -396,7 +401,6 @@ class HKLViewFrame () :
           if (not array.is_real_array()) and (not array.is_complex_array()) :
             continue
         self.array_info.append( ArrayInfo(array).infostr )
-
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays
       for i,e in enumerate(self.array_info):
@@ -455,8 +459,8 @@ class HKLViewFrame () :
     self.update_settings()
 
 
-  def SetColumnBinThresholds(self, iarray, binvals):
-    self.viewer.iarray = iarray
+  def SetColumnBinThresholds(self, binvals, binarray="Resolution"):
+    self.viewer.binarray = binarray
     self.viewer.UpdateBinValues( binvals )
     self.update_settings()
 
@@ -467,7 +471,7 @@ class HKLViewFrame () :
 
   def SetColumn(self, column, fomcolumn=None) :
     self.viewer.binvals = []
-    self.viewer.iarray = column
+    #self.viewer.iarray = column
     self.viewer.icolourcol = column
     self.viewer.iradiicol = column
     if self.valid_arrays[column].is_complex_array():

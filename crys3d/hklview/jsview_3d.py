@@ -50,8 +50,8 @@ class ArrayInfo:
       self.desc = get_array_description(millarr)
     self.span = "HKLs: %s to %s" % \
       ( millarr.index_span().min(), millarr.index_span().max())
-    self.infostr = "%s (%s), %s %s, %s" % \
-      (self.labels, self.desc, millarr.size(), self.span, self.minmaxstr)
+    self.infostr = "%s (%s), %s %s, %s, d_min: %s" % \
+      (self.labels, self.desc, millarr.size(), self.span, self.minmaxstr, roundoff(millarr.d_min()))
 
 
 class hklview_3d:
@@ -63,7 +63,7 @@ class hklview_3d:
     self.NGLscriptstr = ""
     self.cameratype = "orthographic"
     self.url = ""
-    self.iarray = 0
+    self.binarray = "Resolution"
     self.icolourcol = 0
     self.iradiicol = 0
     self.isnewfile = False
@@ -140,6 +140,7 @@ class hklview_3d:
     self.merge = merge
     self.d_min = miller_array.d_min()
     array_info = miller_array.info()
+    self.binvals = [ miller_array.d_max_min()[1], miller_array.d_max_min()[0]  ]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % miller_array.unit_cell().parameters()
     self.mprint( "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
@@ -341,6 +342,8 @@ class hklview_3d:
     Lstararrowstart = roundoff( [-l_axis[0]*100, -l_axis[1]*100, -l_axis[2]*100] )
     Lstararrowend = roundoff( [l_axis[0]*100, l_axis[1]*100, l_axis[2]*100] )
     Lstararrowtxt  = roundoff( [l_axis[0]*102, l_axis[1]*102, l_axis[2]*102] )
+    # make arrow font size roughly proportional to radius of highest resolution shell
+    fontsize = str(1.0 + roundoff(math.pow( max(self.miller_array.index_span().max()), 1.0/3.0)))
 
     arrowstr = """
     // xyz arrows
@@ -352,11 +355,12 @@ class hklview_3d:
     //red-z
     shape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
 
-    shape.addText( %s, [ 0, 0, 1 ], 5, 'H');
-    shape.addText( %s, [ 0, 1, 0 ], 5, 'K');
-    shape.addText( %s, [ 1, 0, 0 ], 5, 'L');
+    shape.addText( %s, [ 0, 0, 1 ], %s, 'H');
+    shape.addText( %s, [ 0, 1, 0 ], %s, 'K');
+    shape.addText( %s, [ 1, 0, 0 ], %s, 'L');
     """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
-          str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, Kstararrowtxt, Lstararrowtxt)
+          str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, fontsize,
+          Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
 
     # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
 
@@ -368,7 +372,8 @@ class hklview_3d:
     span = maxcolourscalar - mincolourscalar
     ln = 51
     incr = span/ln
-    colourscalararray =[]
+    colourscalararray =flex.double()
+    colourgradarrays = []
     val = mincolourscalar
     for j,sc in enumerate(range(ln)):
       val += incr
@@ -376,17 +381,32 @@ class hklview_3d:
     if self.otherscenes[self.icolourcol].miller_array.is_complex_array():
       incr = 360.0/ln
       val = 0.0
-      colourscalararray =[]
-      for j,sc in enumerate(range(ln)):
+      fom = 1.0
+      fomdecr = 1.0/ln
+      colourscalararray =flex.double()
+      for j in enumerate(range(ln)):
         val += incr
         colourscalararray.append( val )
-      colourgradarray = graphics_utils.colour_by_phi_FOM( flex.double(colourscalararray ) * (math.pi/180.0) )
+
+      fomln = 10
+      fom = 1.0
+      fomdecr = 1.0/ln
+      fomarrays =[]
+      # make fomln fom arrays of size ln as to match size of colourscalararray when calling colour_by_phi_FOM
+      for j in range(fomln):
+        fomarrays.append( flex.double(ln,fom) )
+        fom -= fomdecr
+
+      for j in range(fomln):
+        colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0), fomarrays[j] ))
+      colourgradarray = colourgradarrays[0] # hack until fom greying has been fully implemented
     else:
       colourgradarray = graphics_utils.color_by_property(
         properties= flex.double(colourscalararray),
         selection=flex.bool( len(colourscalararray), True),
         color_all=False,
         gradient_type= self.settings.color_scheme)
+
     colourgradarray = colourgradarray * 255.0
 
     self.colourgradientvalues = []
@@ -410,12 +430,16 @@ class hklview_3d:
     spbufttips = []
 
     self.workingbinvals = []
-    self.workingbinvals = [ self.othermindata[self.iarray] - 0.1 , self.othermaxdata[self.iarray] + 0.1 ]
-    self.workingbinvals.extend( self.binvals )
-    self.workingbinvals.sort()
-    if self.workingbinvals[0] < 0.0:
-       self.workingbinvals.append(0.0)
-       self.workingbinvals.sort()
+    if not self.binarray=="Resolution":
+      self.workingbinvals = [ self.othermindata[self.binarray] - 0.1 , self.othermaxdata[self.binarray] + 0.1 ]
+      self.workingbinvals.extend( self.binvals )
+      self.workingbinvals.sort()
+      if self.workingbinvals[0] < 0.0:
+         self.workingbinvals.append(0.0)
+         self.workingbinvals.sort()
+    else:
+      self.workingbinvals = self.binvals
+      colstr = "dres"
     self.nbin = len(self.workingbinvals)
 
     for ibin in range(self.nbin):
@@ -433,15 +457,17 @@ class hklview_3d:
       raise Sorry("Should never get here")
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-
-    realodata = self.otherscenes[self.iarray].data
-    if self.otherscenes[self.iarray].work_array.is_complex_array():
-      realodata = self.otherscenes[self.iarray].ampl
+    if self.binarray=="Resolution":
+      bindata = dres
+    else:
+      bindata = self.otherscenes[self.binarray].data
+      if self.otherscenes[self.binarray].work_array.is_complex_array():
+        bindata = self.otherscenes[self.binarray].ampl
 
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
       #ibin = data2bin( self.otherscenes[self.iarray].data[i] )
-      ibin = data2bin( realodata[i] )
+      ibin = data2bin( bindata[i] )
       spbufttip = 'H,K,L: %s, %s, %s' %(hkls[i][0], hkls[i][1], hkls[i][2])
       spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
       spbufttip += '\' + AA + \''
@@ -483,8 +509,8 @@ class hklview_3d:
       mstr =""
       nreflsinbin = len(radii2[ibin])
       if (ibin+1) < self.nbin and nreflsinbin > 0:
-        mstr= "%d reflections with %s in ]%2.2f; %2.2f]" %(nreflsinbin, colstr, \
-                      self.workingbinvals[ibin], self.workingbinvals[ibin+1])
+        mstr= "bin:%d, %d reflections with %s in ]%2.2f; %2.2f]" %(cntbin, nreflsinbin, \
+                colstr, self.workingbinvals[ibin], self.workingbinvals[ibin+1])
         self.binstrs.append(mstr)
         self.mprint(mstr, verbose=True)
         spherebufferstr += """
