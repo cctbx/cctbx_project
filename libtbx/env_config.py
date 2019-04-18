@@ -1858,9 +1858,9 @@ selfx:
         command = "{conda_base}/bin/gdk-pixbuf-query-loaders"
         loaders = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.so"
         cache = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
-        command = command + " " + loaders + " > " + cache
-        command = command.format(conda_base=conda_base)
-        if os.path.isfile(command):
+        if os.path.isfile(command.format(conda_base=conda_base)):
+          command = command + " " + loaders + " > " + cache
+          command = command.format(conda_base=conda_base)
           call(command)
     else:
       regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
