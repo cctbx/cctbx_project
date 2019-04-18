@@ -35,7 +35,7 @@ between observed and predicted reflections
 
 Example:
 
-  dev.cctbx.xfel.detector_residuals experiment.json reflections.pickle
+  dev.cctbx.xfel.detector_residuals experiment.json reflections.mpack
 '''
 
 # Create the phil parameters

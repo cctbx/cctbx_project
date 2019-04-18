@@ -30,7 +30,7 @@ interquartile range from the third quartile. When x=1.5, this is Tukey's rule.
 
 Example:
 
-  %s combined_experiments.json combined_reflections.pickle
+  %s combined_experiments.json combined_reflections.mpack
 ''' % libtbx.env.dispatcher_name
 
 # Create the phil parameters
@@ -52,7 +52,7 @@ output {
   filtered_experiments = filtered_experiments.json
     .type = str
     .help = Name of output filtered experiments file
-  filtered_reflections = filtered_reflections.pickle
+  filtered_reflections = filtered_reflections.mpack
     .type = str
     .help = Name of output filtered reflections file
 }
@@ -71,7 +71,7 @@ class Script(object):
     import libtbx.load_env
 
     # Create the option parser
-    usage = "usage: %s combined_experiments.json combined_reflections.pickle" % libtbx.env.dispatcher_name
+    usage = "usage: %s combined_experiments.json combined_reflections.mpack" % libtbx.env.dispatcher_name
     self.parser = OptionParser(
       usage=usage,
       sort_options=True,
@@ -200,7 +200,7 @@ class Script(object):
     dump = ExperimentListDumper(filtered_experiments)
     dump.as_json(params.output.filtered_experiments)
 
-    filtered_reflections.as_pickle(params.output.filtered_reflections)
+    filtered_reflections.as_msgpack_file(params.output.filtered_reflections)
 
 if __name__ == '__main__':
   from dials.util import halraiser

@@ -61,7 +61,7 @@ class Script(object):
       raise Usage(self.parser.usage)
 
     level_json = "%s_%d_refined_experiments_level%d.json"
-    level_pickle = "%s_%d_refined_reflections_level%d.pickle"
+    level_pickle = "%s_%d_refined_reflections_level%d.mpack"
 
     command = "cspad.detector_congruence %s %s %s %s hierarchy_level=%d show_plots=False"
 
