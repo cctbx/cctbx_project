@@ -35,7 +35,7 @@ if (not env_etc.no_boost_python):
   env_bpl.Prepend(LIBS=["cctbx"])
   env_bpl.SharedLibrary(
     target="#lib/mmtbx_tls_utils_ext",
-    source=["utils_ext.cpp", "decompose.o", "decompose_ext.o"])
+    source=["utils.cpp", "utils_ext.cpp"])#, "decompose.o", "decompose_ext.o"])
  
   # add library to be imported in mmtbx/tls/optimise_amplitudes.py (adapted from above)
   env_bpl = env_cctbx_boost_python_ext.Clone()
@@ -45,4 +45,4 @@ if (not env_etc.no_boost_python):
   env_bpl.Prepend(LIBS=["cctbx"])
   env_bpl.SharedLibrary(
     target="#lib/mmtbx_tls_optimise_amplitudes_ext",
-    source=["optimise_amplitudes_ext.cpp"])
+    source=["optimise_amplitudes.cpp", "optimise_amplitudes_ext.cpp"])

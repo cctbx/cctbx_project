@@ -1,23 +1,12 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
-#include <scitbx/boost_python/is_polymorphic_workaround.h>
-
 #include <boost/python.hpp>
-#include <boost/python/def.hpp>
-#include <boost/python/args.hpp>
-#include <boost/python/class.hpp>
-#include <boost/python/module.hpp>
-#include <boost/python/return_by_value.hpp>
-#include <boost/python/return_value_policy.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 
-#include <scitbx/array_family/shared.h>
 #include <mmtbx/tls/utils.h>
-
-SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(mmtbx::tls::common)
 
 // TLSMatrices Overloads
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(mat_get_overloads, getValuesByString, 0, 2)

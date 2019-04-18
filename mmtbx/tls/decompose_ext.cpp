@@ -1,19 +1,10 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
-#include <boost/python/module.hpp>
-#include <boost/python/class.hpp>
-#include <boost/python/def.hpp>
-#include <boost/python/args.hpp>
-#include <scitbx/array_family/boost_python/shared_wrapper.h>
-#include <scitbx/boost_python/is_polymorphic_workaround.h>
-#include <boost/python/return_value_policy.hpp>
-#include <boost/python/return_by_value.hpp>
 #include <boost/python.hpp>
-
 #include <scitbx/array_family/shared.h>
-#include <mmtbx/tls/decompose.h>
+#include <scitbx/array_family/boost_python/shared_wrapper.h>
 
-SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(mmtbx::tls::common)
+#include <mmtbx/tls/decompose.h>
 
 namespace mmtbx { namespace tls { namespace decompose {
   namespace bp = boost::python;

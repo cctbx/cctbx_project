@@ -2,7 +2,6 @@
 #define MMTBX_TLS_DECOMPOSE_H
 
 #include <string>
-#include <iostream>
 
 // Basic data types
 #include <scitbx/vec3.h>
@@ -10,7 +9,6 @@
 #include <scitbx/sym_mat3.h>
 
 // Allow arrays of the above
-#include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/matrix/eigensystem.h>
@@ -38,14 +36,14 @@ class decompose_tls_matrices {
                            std::string const& t_S_formula = "11",
                            double t_S_value = 0.0);
 
-    bool is_valid() { return valid_; }
-    bool is_verbose() { return verbose_; }
-    std::string error() { return error_; }
+    bool is_valid();
+    bool is_verbose();
+    std::string error();
 
     // Tolerance of the physical parameters
-    double precision_tolerance() { return tol; }
+    double precision_tolerance();
     // Tolerance of the numerical parameters
-    double floating_point_limit() { return eps; }
+    double floating_point_limit();
 
     // --------------------
     // Output variables (set throughout and grouped here for clarity)
@@ -78,12 +76,11 @@ class decompose_tls_matrices {
     scitbx::mat3<double> R_MV_t;
 
   private:
-
     bool verbose_;
 
     // Response variables
-    bool valid_ = true;
-    std::string error_ = "none";
+    bool valid_;
+    std::string error_;
 
     // Define analysis precision (for determining positive-definiteness, etc).
     double tol;
@@ -96,7 +93,7 @@ class decompose_tls_matrices {
     std::string t_S_formula;
 
     // printing
-    std::string spacer = "   ";
+    static std::string spacer;
 
     // --------------------
     // Decomposition functions
@@ -131,12 +128,12 @@ class decompose_tls_matrices {
     // --------------------
     // Store information about the position of the libration axes
     struct W {
-      double wy_lx = 0.0;
-      double wz_lx = 0.0;
-      double wz_ly = 0.0;
-      double wx_ly = 0.0;
-      double wx_lz = 0.0;
-      double wy_lz = 0.0;
+      double wy_lx;
+      double wz_lx;
+      double wz_ly;
+      double wx_ly;
+      double wx_lz;
+      double wy_lz;
       scitbx::vec3<double> w_lx,  w_ly,  w_lz;
     } w_15, w;
     // Translational components from offset of librational axes from origin
@@ -148,7 +145,7 @@ class decompose_tls_matrices {
     // Set at step C
     // --------------------
     // Amount to subtract from the trace of the S-matrix
-    double t_S = 0.0;
+    double t_S;
     // S-matrix after subtraction of t_S
     // S_C = S_L - diag(t_S)
     scitbx::mat3<double> S_C;
@@ -171,7 +168,8 @@ class decompose_tls_matrices {
     scitbx::vec3<double> as_bs_cs(
             double t,
             double Sxx, double Syy, double Szz,
-            double T11, double T22, double T33, double T12, double T13, double T23);
+            double T11, double T22, double T33, double T12, double T13, double T23
+            );
 
     // --------------------
     // Logic/zero functions
@@ -180,7 +178,6 @@ class decompose_tls_matrices {
     bool is_zero(double value);
     bool is_positive(double value);
     bool is_negative(double value);
-    // Return value or zero
     double zero_filter(double value);
     // Set small values to zero
     void zero_small_values(scitbx::vec3<double>& vector);
@@ -190,32 +187,26 @@ class decompose_tls_matrices {
     // --------------------
     // Matrix Helper functions
     // --------------------
-    // Normal matrices
-    // xx, xy, xz      0, 1, 2
-    // yx, yy, yz  ->  3, 4, 5
-    // zx, zy, zz      6, 7, 8
-    double xx(scitbx::mat3<double> const& matrix) { return matrix[0]; }
-    double xy(scitbx::mat3<double> const& matrix) { return matrix[1]; }
-    double xz(scitbx::mat3<double> const& matrix) { return matrix[2]; }
-    double yx(scitbx::mat3<double> const& matrix) { return matrix[3]; }
-    double yy(scitbx::mat3<double> const& matrix) { return matrix[4]; }
-    double yz(scitbx::mat3<double> const& matrix) { return matrix[5]; }
-    double zx(scitbx::mat3<double> const& matrix) { return matrix[6]; }
-    double zy(scitbx::mat3<double> const& matrix) { return matrix[7]; }
-    double zz(scitbx::mat3<double> const& matrix) { return matrix[8]; }
+    // Regular matrices
+    double xx(scitbx::mat3<double> const& matrix);
+    double xy(scitbx::mat3<double> const& matrix);
+    double xz(scitbx::mat3<double> const& matrix);
+    double yx(scitbx::mat3<double> const& matrix);
+    double yy(scitbx::mat3<double> const& matrix);
+    double yz(scitbx::mat3<double> const& matrix);
+    double zx(scitbx::mat3<double> const& matrix);
+    double zy(scitbx::mat3<double> const& matrix);
+    double zz(scitbx::mat3<double> const& matrix);
     // Symmetric matrices
-    // 0, 3, 4
-    // -, 1, 5
-    // -, -, 2
-    double xx(scitbx::sym_mat3<double> const& matrix) { return matrix[0]; }
-    double xy(scitbx::sym_mat3<double> const& matrix) { return matrix[3]; }
-    double xz(scitbx::sym_mat3<double> const& matrix) { return matrix[4]; }
-    double yx(scitbx::sym_mat3<double> const& matrix) { return xy(matrix); }
-    double yy(scitbx::sym_mat3<double> const& matrix) { return matrix[1]; }
-    double yz(scitbx::sym_mat3<double> const& matrix) { return matrix[5]; }
-    double zx(scitbx::sym_mat3<double> const& matrix) { return xz(matrix); }
-    double zy(scitbx::sym_mat3<double> const& matrix) { return yz(matrix); }
-    double zz(scitbx::sym_mat3<double> const& matrix) { return matrix[2]; }
+    double xx(scitbx::sym_mat3<double> const& matrix);
+    double xy(scitbx::sym_mat3<double> const& matrix);
+    double xz(scitbx::sym_mat3<double> const& matrix);
+    double yx(scitbx::sym_mat3<double> const& matrix);
+    double yy(scitbx::sym_mat3<double> const& matrix);
+    double yz(scitbx::sym_mat3<double> const& matrix);
+    double zx(scitbx::sym_mat3<double> const& matrix);
+    double zy(scitbx::sym_mat3<double> const& matrix);
+    double zz(scitbx::sym_mat3<double> const& matrix);
 
     // Print matrices
     void print(std::string const& label, double value);
@@ -223,6 +214,7 @@ class decompose_tls_matrices {
     void print(std::string const& label, scitbx::sym_mat3<double> const& matrix);
     void print(std::string const& label, scitbx::vec3<double> const& vector);
     void print(std::string const& label, af::shared<double> const& vector);
+
 };
 
 }}} // close mmtbx/tls/decompose

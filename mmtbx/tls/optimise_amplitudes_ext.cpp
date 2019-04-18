@@ -1,15 +1,10 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
-#include <scitbx/boost_python/is_polymorphic_workaround.h>
-
+#include <boost/python.hpp>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 
-#include <scitbx/array_family/shared.h>
-
 #include <mmtbx/tls/optimise_amplitudes.h>
-
-SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(mmtbx::tls::common)
 
 namespace mmtbx { namespace tls { namespace optimise {
   namespace bp = boost::python;
