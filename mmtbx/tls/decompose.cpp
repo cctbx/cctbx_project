@@ -1,6 +1,7 @@
 #include <cmath>
 #include <vector>
 #include <iomanip>
+#include <iostream>
 #include <algorithm>
 
 #include <scitbx/constants.h>
@@ -14,6 +15,8 @@ namespace af = scitbx::af;
 // Template FloatType
 //template <typename FloatType>
 
+std::string decompose_tls_matrices::spacer = "   ";
+
 // Constructor
 
 decompose_tls_matrices::decompose_tls_matrices(
@@ -25,8 +28,33 @@ decompose_tls_matrices::decompose_tls_matrices(
     double tol,
     double eps,
     std::string const& t_S_formula,
-    double t_S_value) : verbose_(verbose), tol(tol), eps(eps), t_S_formula(t_S_formula), t_S_value(t_S_value)
+    double t_S_value)
+  :
+    verbose_(verbose),
+    tol(tol),
+    eps(eps),
+    t_S_formula(t_S_formula),
+    t_S_value(t_S_value),
+    valid_(true),
+    error_("none")
 {
+  // Initialize
+  w_15.wy_lx = 0.0;
+  w_15.wz_lx = 0.0;
+  w_15.wz_ly = 0.0;
+  w_15.wx_ly = 0.0;
+  w_15.wx_lz = 0.0;
+  w_15.wy_lz = 0.0;
+
+  w.wy_lx = 0.0;
+  w.wz_lx = 0.0;
+  w.wz_ly = 0.0;
+  w.wx_ly = 0.0;
+  w.wx_lz = 0.0;
+  w.wy_lz = 0.0;
+
+  t_S = 0.0;
+
   // Validate input arguments
   if (! (t_S_formula=="10" or t_S_formula=="11" or t_S_formula=="Force") ) {
     throw std::invalid_argument("t_S_formula must be 10 or 11 or Force.");
@@ -64,126 +92,33 @@ decompose_tls_matrices::decompose_tls_matrices(
   run();
 }
 
-// linalg functions
+bool decompose_tls_matrices::is_valid() { return valid_; }
+bool decompose_tls_matrices::is_verbose() { return verbose_; }
+std::string decompose_tls_matrices::error() { return error_; }
 
-bool decompose_tls_matrices::is_pd(scitbx::sym_mat3<double> const& matrix) {
-  // Create eigensystem object
-  Eig es(matrix);
-  // Extract eigenvalues
-  eigenvalues ev = es.values();
-  // Check all are positive
-  for (int i=0; i<3; i++) {
-    if (ev[i] < (-1.0*tol)) { return false; }
-  }
-  return true;
-}
-
-scitbx::vec3<double> decompose_tls_matrices::as_bs_cs(
-    double t,
-    double Sxx, double Syy, double Szz,
-    double T11, double T22, double T33,
-    double T12, double T13, double T23) {
-
-  double xx_ = (t-Sxx)*(t-Sxx) - T11;
-  double yy_ = (t-Syy)*(t-Syy) - T22;
-  double zz_ = (t-Szz)*(t-Szz) - T33;
-
-  return scitbx::vec3<double>(
-      xx_ + yy_ + zz_,
-      xx_*yy_ + yy_*zz_ + zz_*xx_ - (T12*T12 + T23*T23 + T13*T13),
-      xx_*yy_*zz_ - T23*T23*xx_ - T13*T13*yy_ - T12*T12*zz_ - 2.0*T12*T23*T13);
-
-}
-
-// check functions
-
-bool decompose_tls_matrices::is_zero(double value) {
-  if (std::abs(value) <= tol) { return true; }
-  return false;
-}
-
-bool decompose_tls_matrices::is_positive(double value) {
-  if ( value > tol ) { return true; }
-  return false;
-}
-
-bool decompose_tls_matrices::is_negative(double value) {
-  if ( value < -tol) { return true; }
-  return false;
-}
-
-double decompose_tls_matrices::zero_filter(double value) {
-  if (std::abs(value) < tol) { return 0.0; }
-  return value;
-}
-
-// print functions
-
-void decompose_tls_matrices::print(std::string const& label, double value) {
-  std::cout << label << ": " << spacer << value << spacer << std::endl;
-}
-
-void decompose_tls_matrices::print(std::string const& label, scitbx::mat3<double> const& matrix) {
-  std::cout << std::setprecision(6) << std::fixed << std::showpos;
-  std::cout << label << ":" << std::endl;
-  std::cout << spacer << matrix[0] << spacer << matrix[1] << spacer << matrix[2] << std::endl;
-  std::cout << spacer << matrix[3] << spacer << matrix[4] << spacer << matrix[5] << std::endl;
-  std::cout << spacer << matrix[6] << spacer << matrix[7] << spacer << matrix[8] << std::endl;
-}
-
-void decompose_tls_matrices::print(std::string const& label, scitbx::sym_mat3<double> const& matrix) {
-  std::cout << std::setprecision(6) << std::fixed << std::showpos;
-  std::cout << label << ":" << std::endl;
-  std::cout << spacer << matrix[0]  << spacer << matrix[3]  << spacer << matrix[4] << std::endl;
-  std::cout << spacer << "+-.------" << spacer << matrix[1]  << spacer << matrix[5] << std::endl;
-  std::cout << spacer << "+-.------" << spacer << "+-.------" << spacer << matrix[2] << std::endl;
-}
-
-void decompose_tls_matrices::print(std::string const& label, scitbx::vec3<double> const& vector) {
-  std::cout << std::setprecision(6) << std::fixed << std::showpos;
-  std::cout << label << ": ";
-  std::cout << spacer << vector[0] << spacer << vector[1] << spacer << vector[2] << std::endl;
-}
-
-void decompose_tls_matrices::print(std::string const& label, af::shared<double> const& vector) {
-  std::cout << std::setprecision(6) << std::fixed << std::showpos;
-  std::cout << label << ": ";
-  for (int i=0; i < vector.size(); i++) {
-    std::cout << spacer << vector[i];
-  }
-  std::cout << std::endl;
-}
-
-// Small-value functions
-
-void decompose_tls_matrices::zero_small_values(scitbx::mat3<double>& matrix) {
-  //Iterate through values
-  for (int i=0; i<9; i++) {
-    if (std::abs(matrix[i]) < eps) { matrix[i] = 0.0; }
-  }
-}
-
-void decompose_tls_matrices::zero_small_values(scitbx::sym_mat3<double>& matrix) {
-  //Iterate through values
-  for (int i=0; i<6; i++) {
-    if (std::abs(matrix[i]) < eps) { matrix[i] = 0.0; }
-  }
-}
-
-void decompose_tls_matrices::zero_small_values(scitbx::vec3<double>& vector) {
-  //Iterate through values
-  for (int i=0; i<3; i++) {
-    if (std::abs(vector[i]) < eps) { vector[i] = 0.0; }
-  }
-}
+double decompose_tls_matrices::precision_tolerance() { return tol; }
+double decompose_tls_matrices::floating_point_limit() { return eps; }
 
 // Main functions
 
-/**
- * Diagonalise the L matrix
-*/
-void decompose_tls_matrices::stepA() {
+void decompose_tls_matrices::run()
+{
+  try
+  {
+    stepA();
+    stepB();
+    stepC();
+    stepD();
+  }
+  catch (std::runtime_error e)
+  {
+    error_ = e.what();
+    valid_ = false;
+  }
+}
 
+void decompose_tls_matrices::stepA()
+{
   if (verbose_) {
     std::cout << std::endl;
     std::cout << " ######################################" << std::endl;
@@ -306,14 +241,10 @@ void decompose_tls_matrices::stepA() {
     print("L[L]", L_L);
     print("S[L]", S_L);
   }
-
 }
 
-/**
- * Find the libration axes in the L-basis
-*/
-void decompose_tls_matrices::stepB() {
-
+void decompose_tls_matrices::stepB()
+{
   if (verbose_) {
     std::cout << std::endl;
     std::cout << " ######################################" << std::endl;
@@ -415,11 +346,10 @@ void decompose_tls_matrices::stepB() {
     std::cout << "--------------------------" << std::endl;
     print("T_C[L]", T_CL);
   }
-
 }
 
-void decompose_tls_matrices::stepC() {
-
+void decompose_tls_matrices::stepC()
+{
   if (verbose_) {
     std::cout << std::endl;
     std::cout << " ######################################" << std::endl;
@@ -746,11 +676,10 @@ void decompose_tls_matrices::stepC() {
   if (! is_pd(V_L)) {
     throw std::runtime_error("Step C: Matrix V[L] is not positive semidefinite.");
   }
-
 }
 
-void decompose_tls_matrices::stepD() {
-
+void decompose_tls_matrices::stepD()
+{
   if (verbose_) {
     std::cout << std::endl;
     std::cout << " ######################################" << std::endl;
@@ -848,20 +777,162 @@ void decompose_tls_matrices::stepD() {
   }
 }
 
-void decompose_tls_matrices::run() {
+// linalg functions
 
-  try
-  {
-    stepA();
-    stepB();
-    stepC();
-    stepD();
+bool decompose_tls_matrices::is_pd(scitbx::sym_mat3<double> const& matrix)
+{
+  // Create eigensystem object
+  Eig es(matrix);
+  // Extract eigenvalues
+  eigenvalues ev = es.values();
+  // Check all are positive
+  for (int i=0; i<3; i++) {
+    if (ev[i] < (-1.0*tol)) { return false; }
   }
-  catch (std::runtime_error e)
-  {
-    error_ = e.what();
-    valid_ = false;
+  return true;
+}
+
+scitbx::vec3<double> decompose_tls_matrices::as_bs_cs(
+    double t,
+    double Sxx, double Syy, double Szz,
+    double T11, double T22, double T33,
+    double T12, double T13, double T23
+    )
+{
+  double xx_ = (t-Sxx)*(t-Sxx) - T11;
+  double yy_ = (t-Syy)*(t-Syy) - T22;
+  double zz_ = (t-Szz)*(t-Szz) - T33;
+
+  return scitbx::vec3<double>(
+      xx_ + yy_ + zz_,
+      xx_*yy_ + yy_*zz_ + zz_*xx_ - (T12*T12 + T23*T23 + T13*T13),
+      xx_*yy_*zz_ - T23*T23*xx_ - T13*T13*yy_ - T12*T12*zz_ - 2.0*T12*T23*T13);
+}
+
+// check functions
+
+bool decompose_tls_matrices::is_zero(double value)
+{
+  if (std::abs(value) <= tol) { return true; }
+  return false;
+}
+
+bool decompose_tls_matrices::is_positive(double value)
+{
+  if ( value > tol ) { return true; }
+  return false;
+}
+
+bool decompose_tls_matrices::is_negative(double value)
+{
+  if ( value < -tol) { return true; }
+  return false;
+}
+
+double decompose_tls_matrices::zero_filter(double value)
+{
+  if (std::abs(value) < tol) { return 0.0; }
+  return value;
+}
+
+// Small-value functions
+
+void decompose_tls_matrices::zero_small_values(scitbx::mat3<double>& matrix)
+{
+  //Iterate through values
+  for (int i=0; i<9; i++) {
+    if (std::abs(matrix[i]) < eps) { matrix[i] = 0.0; }
   }
+}
+
+void decompose_tls_matrices::zero_small_values(scitbx::sym_mat3<double>& matrix)
+{
+  //Iterate through values
+  for (int i=0; i<6; i++) {
+    if (std::abs(matrix[i]) < eps) { matrix[i] = 0.0; }
+  }
+}
+
+void decompose_tls_matrices::zero_small_values(scitbx::vec3<double>& vector)
+{
+  //Iterate through values
+  for (int i=0; i<3; i++) {
+    if (std::abs(vector[i]) < eps) { vector[i] = 0.0; }
+  }
+}
+
+// Matrix helper functions
+//
+// Regular matrices
+// xx, xy, xz      0, 1, 2
+// yx, yy, yz  ->  3, 4, 5
+// zx, zy, zz      6, 7, 8
+//
+double decompose_tls_matrices::xx(scitbx::mat3<double> const& matrix) { return matrix[0]; }
+double decompose_tls_matrices::xy(scitbx::mat3<double> const& matrix) { return matrix[1]; }
+double decompose_tls_matrices::xz(scitbx::mat3<double> const& matrix) { return matrix[2]; }
+double decompose_tls_matrices::yx(scitbx::mat3<double> const& matrix) { return matrix[3]; }
+double decompose_tls_matrices::yy(scitbx::mat3<double> const& matrix) { return matrix[4]; }
+double decompose_tls_matrices::yz(scitbx::mat3<double> const& matrix) { return matrix[5]; }
+double decompose_tls_matrices::zx(scitbx::mat3<double> const& matrix) { return matrix[6]; }
+double decompose_tls_matrices::zy(scitbx::mat3<double> const& matrix) { return matrix[7]; }
+double decompose_tls_matrices::zz(scitbx::mat3<double> const& matrix) { return matrix[8]; }
+//
+// Symmetric matrices
+// 0, 3, 4
+// -, 1, 5
+// -, -, 2
+//
+double decompose_tls_matrices::xx(scitbx::sym_mat3<double> const& matrix) { return matrix[0]; }
+double decompose_tls_matrices::xy(scitbx::sym_mat3<double> const& matrix) { return matrix[3]; }
+double decompose_tls_matrices::xz(scitbx::sym_mat3<double> const& matrix) { return matrix[4]; }
+double decompose_tls_matrices::yx(scitbx::sym_mat3<double> const& matrix) { return xy(matrix); }
+double decompose_tls_matrices::yy(scitbx::sym_mat3<double> const& matrix) { return matrix[1]; }
+double decompose_tls_matrices::yz(scitbx::sym_mat3<double> const& matrix) { return matrix[5]; }
+double decompose_tls_matrices::zx(scitbx::sym_mat3<double> const& matrix) { return xz(matrix); }
+double decompose_tls_matrices::zy(scitbx::sym_mat3<double> const& matrix) { return yz(matrix); }
+double decompose_tls_matrices::zz(scitbx::sym_mat3<double> const& matrix) { return matrix[2]; }
+
+// print functions
+
+void decompose_tls_matrices::print(std::string const& label, double value)
+{
+  std::cout << label << ": " << spacer << value << spacer << std::endl;
+}
+
+void decompose_tls_matrices::print(std::string const& label, scitbx::mat3<double> const& matrix)
+{
+  std::cout << std::setprecision(6) << std::fixed << std::showpos;
+  std::cout << label << ":" << std::endl;
+  std::cout << spacer << matrix[0] << spacer << matrix[1] << spacer << matrix[2] << std::endl;
+  std::cout << spacer << matrix[3] << spacer << matrix[4] << spacer << matrix[5] << std::endl;
+  std::cout << spacer << matrix[6] << spacer << matrix[7] << spacer << matrix[8] << std::endl;
+}
+
+void decompose_tls_matrices::print(std::string const& label, scitbx::sym_mat3<double> const& matrix)
+{
+  std::cout << std::setprecision(6) << std::fixed << std::showpos;
+  std::cout << label << ":" << std::endl;
+  std::cout << spacer << matrix[0]  << spacer << matrix[3]  << spacer << matrix[4] << std::endl;
+  std::cout << spacer << "+-.------" << spacer << matrix[1]  << spacer << matrix[5] << std::endl;
+  std::cout << spacer << "+-.------" << spacer << "+-.------" << spacer << matrix[2] << std::endl;
+}
+
+void decompose_tls_matrices::print(std::string const& label, scitbx::vec3<double> const& vector)
+{
+  std::cout << std::setprecision(6) << std::fixed << std::showpos;
+  std::cout << label << ": ";
+  std::cout << spacer << vector[0] << spacer << vector[1] << spacer << vector[2] << std::endl;
+}
+
+void decompose_tls_matrices::print(std::string const& label, af::shared<double> const& vector)
+{
+  std::cout << std::setprecision(6) << std::fixed << std::showpos;
+  std::cout << label << ": ";
+  for (int i=0; i < vector.size(); i++) {
+    std::cout << spacer << vector[i];
+  }
+  std::cout << std::endl;
 }
 
 }}} // close mmtbx/tls/decompose

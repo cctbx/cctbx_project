@@ -18,6 +18,7 @@
 #include <cctbx/xray/targets.h>
 #include <scitbx/matrix/outer_product.h>
 #include <boost/python/list.hpp>
+#include <boost/python/extract.hpp>
 
 using namespace std;
 namespace mmtbx { namespace tls {
