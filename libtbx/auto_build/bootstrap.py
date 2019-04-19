@@ -2493,6 +2493,10 @@ class QRBuilder(PhenixBuilder):
     return rc
 
   def add_tests(self):
+    self.add_test_command('qr.build_interfaces',
+                          haltOnFailure=False,
+                          env = self.get_environment()
+                          )
     self.add_test_command('qr.test',
                           haltOnFailure=True,
                           env = self.get_environment()
