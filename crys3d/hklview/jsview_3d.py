@@ -19,22 +19,18 @@ import webbrowser, tempfile
 
 
 
-nanval = float('nan')
-inanval = -42424242 # TODO: find a more robust way of indicating missing data
-
-
 
 class ArrayInfo:
   def __init__(self, millarr):
     from iotbx.gui_tools.reflections import get_array_description
     data = millarr.data()
     if (isinstance(data, flex.int)):
-      data = [e for e in data if e!= inanval]
+      data = [e for e in data if e!= display.inanval]
     if millarr.is_complex_array():
       data = flex.abs(millarr.data())
     self.maxdata =max( data )
     self.mindata =min( data )
-    self.maxsigmas = self.minsigmas = nanval
+    self.maxsigmas = self.minsigmas = display.nanval
     if millarr.sigmas() is not None:
       data = millarr.sigmas()
       self.maxsigmas =max( data )
@@ -215,20 +211,8 @@ class hklview_3d:
 
       missing = self.miller_array.lone_set( valarray )
       # insert NAN values for reflections in self.miller_array not found in validarray
-      if valarray.is_bool_array():
-        valarray._data.extend( flex.bool(missing.size(), False) )
-      if valarray.is_hendrickson_lattman_array():
-        valarray._data.extend( flex.hendrickson_lattman(missing.size(), (nanval, nanval, nanval, nanval)) )
-      if valarray.is_integer_array():
-        valarray._data.extend( flex.int(missing.size(), inanval) )
-      if valarray.is_real_array():
-        valarray._data.extend( flex.double(missing.size(), nanval) )
-      if valarray.sigmas() is not None:
-        valarray._sigmas.extend( flex.double(missing.size(), nanval) )
-      if valarray.is_complex_array():
-        valarray._data.extend( flex.complex_double(missing.size(), nanval) )
+      valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices())
 
-      valarray._indices.extend( missing.indices() )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       match_valindices = miller.match_indices(self.miller_array.indices(), valarray.indices() )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -253,20 +237,24 @@ class hklview_3d:
       mask = np.isnan(nplst)
       npcolour = np.array( list(otherscene.colors))
       npcolourcol = npcolour.reshape( len(otherscene.data), 3 )
-      npcolourcol[mask] = -1
+      #npcolourcol[mask] = -1
       otherscene.colors = flex.vec3_double()
       otherscene.colors.extend( flex.vec3_double( npcolourcol.tolist()) )
-
+      """
       nplst = np.array( list( otherscene.radii ) )
       mask = np.isnan(nplst)
       npradii = np.array( list(otherscene.radii))
       npradiicol = npradii.reshape( len(otherscene.data), 1 )
       npradiicol[mask] = 0.2
       otherscene.radii = flex.double( npradiicol.flatten().tolist())
+      """
+      b = flex.bool([bool(math.isnan(e)) for e in otherscene.radii])
+      # replace any nan values with 0.2
+      otherscene.radii = otherscene.radii.set_selected(b, 0.2)
 
       d = otherscene.data
       if (isinstance(d, flex.int)):
-        d = [e for e in self.scene.data if e!= self.inanval]
+        d = [e for e in self.scene.data if e!= display.inanval]
       if match_valarray.is_complex_array():
         d = otherscene.ampl
       maxdata =max( d )
@@ -274,7 +262,7 @@ class hklview_3d:
       self.othermaxdata.append( maxdata )
       self.othermindata.append( mindata )
 
-      maxsigmas = minsigmas = nanval
+      maxsigmas = minsigmas = display.nanval
       if otherscene.sigmas is not None:
         d = otherscene.sigmas
         maxsigmas = max( d )
@@ -285,7 +273,7 @@ class hklview_3d:
       # TODO: tag array according to which otherscene is included
       self.otherscenes.append( otherscene)
 
-      infostr = ArrayInfo(otherscene.work_array).infostr
+      infostr = ArrayInfo(otherscene.miller_array).infostr
       self.mprint("%d, %s" %(i, infostr) )
       self.matchingarrayinfo.append(infostr)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -486,7 +474,7 @@ class hklview_3d:
           od = str(roundoff(odata[i]) ) + ", " + str(roundoff(otherscene.sigmas[i]))
         else:
           od = str(roundoff(odata[i]) )
-        if math.isnan( abs(odata[i]) ) or odata[i] == inanval:
+        if math.isnan( abs(odata[i]) ) or odata[i] == display.inanval:
           od = "??"
         spbufttip += "\n%s: %s" %(ocolstr, od)
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )

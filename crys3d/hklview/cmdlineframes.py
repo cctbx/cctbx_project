@@ -125,7 +125,7 @@ mtz1.mtz_object().write("mymtz.mtz")
 
 
 from crys3d.hklview import cmdlineframes
-myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = r"C:\Users\oeffner\Buser\NGL_HKLviewer\myjstr.js")
+myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js")
 myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetColumn(0)
 myHKLview.SetRadiiScale(3, nth_power_scale=1)
@@ -143,6 +143,16 @@ myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Tests\MRproblem\MRproblem
 
 myHKLview.SetColumn(2)
 myHKLview.SetColoursToPhases(True)
+
+
+from crys3d.hklview import cmdlineframes
+myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js")
+myHKLview.LoadReflectionsFile("3RP2_A.1.mtz")
+myHKLview.SetColumn(1,4)
+myHKLview.SetRadiiScale(1, nth_power_scale=0.0)
+myHKLview.ShowSlice(True, "l", 60)
+myHKLview.ShowMissing(True)
+
 
 
 """

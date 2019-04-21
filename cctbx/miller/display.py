@@ -10,6 +10,13 @@ from libtbx import object_oriented_patterns as oop
 from math import sqrt
 import math
 
+
+
+nanval = float('nan')
+inanval = -42424242 # TODO: find a more robust way of indicating missing flex.int data
+
+
+
 def generate_systematic_absences(array,
                                   expand_to_p1=False,
                                   generate_bijvoet_mates=False):
@@ -34,6 +41,35 @@ def generate_systematic_absences(array,
 def nth_power_scale(dataarray, nth_power):
   datascaled = flex.pow(flex.abs(dataarray), nth_power)
   return datascaled
+
+
+def ExtendMillerArray(miller_array, nsize, indices=None ):
+  millarray = miller_array.deep_copy()
+  if indices:
+    assert (indices.size()==nsize)
+    millarray._indices.extend( indices )
+  if millarray.sigmas() is not None:
+    millarray._sigmas.extend( flex.double(nsize, nanval) )
+  millarray._data = ExtendData(millarray._data, nsize)
+  return millarray
+
+
+def ExtendData(data, nsize):
+  if isinstance(data, flex.bool):
+    data.extend( flex.bool(nsize, False) )
+  # insert NAN values as default values for real and integer values
+  if isinstance(data, flex.hendrickson_lattman):
+    data.extend( flex.hendrickson_lattman(nsize, (nanval, nanval, nanval, nanval)) )
+  if isinstance(data, flex.int) \
+        or isinstance(data, flex.long) \
+        or isinstance(data, flex.size_t):
+    data.extend( flex.int(nsize, inanval) )
+  if isinstance(data, flex.float) \
+        or isinstance(data, flex.double):
+    data.extend( flex.double(nsize, nanval) )
+  if isinstance(data, flex.complex_double):
+    data.extend( flex.complex_double(nsize, nanval) )
+  return data
 
 
 class scene(object):
@@ -264,6 +300,12 @@ class scene(object):
       data_for_colors = sigmas.as_double()
     else :
       data_for_colors = flex.abs(data.deep_copy())
+
+    uc = self.work_array.unit_cell()
+    #abc = uc.parameters()[0:3]
+    min_dist = min(uc.reciprocal_space_vector((1,1,1)))
+    min_radius = 0.20 * min_dist
+    max_radius = 40 * min_dist
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
       #data_for_radii = data.deep_copy()
@@ -281,7 +323,6 @@ class scene(object):
     else :
       #data_for_radii = flex.abs(data.deep_copy())
       data_for_radii = nth_power_scale(data.deep_copy(), settings.nth_power_scale_radii)
-
     if (settings.slice_mode):
       data = data.select(self.slice_selection)
       if (not settings.keep_constant_scale):
@@ -289,7 +330,6 @@ class scene(object):
         data_for_colors = data_for_colors.select(self.slice_selection)
         foms_for_colours = foms_for_colours.select(self.slice_selection)
     if isinstance(data, flex.complex_double):
-
       if len([e for e in foms_for_colours if math.isnan(e)]) > 0:
         colors = graphics_utils.colour_by_phi_FOM(data_for_colors, None)
       else:
@@ -315,11 +355,6 @@ class scene(object):
     if (settings.slice_mode) and (settings.keep_constant_scale):
       colors = colors.select(self.slice_selection)
       data_for_radii = data_for_radii.select(self.slice_selection)
-    uc = self.work_array.unit_cell()
-    #abc = uc.parameters()[0:3]
-    min_dist = min(uc.reciprocal_space_vector((1,1,1)))
-    min_radius = 0.20 * min_dist
-    max_radius = 40 * min_dist
 
     #if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
     #  data_for_radii = flex.sqrt(flex.abs(data_for_radii))
@@ -354,6 +389,10 @@ class scene(object):
       self.missing_flags = flex.bool()
       self.indices = flex.miller_index()
       self.data = flex.double()
+      self.phases = flex.double()
+      self.ampl = flex.double()
+      self.foms = flex.double()
+      self.radians = flex.double()
       self.sys_absent_flags = flex.bool()
     if (settings.slice_mode):
       slice_selection = miller.simple_slice(
@@ -373,10 +412,17 @@ class scene(object):
         self.colors.extend(flex.vec3_double(n_missing, (1.,0,0)))
       else :
         self.colors.extend(flex.vec3_double(n_missing, (1.,1.,1.)))
-      self.radii.extend(flex.double(n_missing, self.max_radius / 2))
+      self.radii.extend(flex.double(n_missing, self.max_radius ))
       self.missing_flags.extend(flex.bool(n_missing, True))
       self.indices.extend(missing)
-      self.data.extend(flex.double(n_missing, -1.))
+      #self.data.extend(flex.double(n_missing, -1.))
+      self.data = ExtendData(self.data, n_missing )
+      self.phases = ExtendData(self.phases, n_missing )
+      self.ampl = ExtendData(self.ampl, n_missing )
+      self.foms = ExtendData(self.foms, n_missing )
+      self.radians = ExtendData(self.radians, n_missing )
+      if self.sigmas:
+        self.sigmas = ExtendData(self.sigmas, n_missing)
       self.sys_absent_flags.extend(flex.bool(n_missing, False))
 
 
