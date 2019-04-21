@@ -24,6 +24,25 @@ def round2(x, d=0):
   else:
     return float(math.ceil((x * p) - 0.5))/p
 
+def roundoff(val, precision=3):
+  '''
+  round off all floats in a list (or tuple) of list (or tuples)
+  recursively using round2() defined above as in:
+  >>> math_utils.roundoff( [12.3454, 7.4843, ["foo", (35.3581, -0.3856, [4.2769, 3.2147] )] ])
+  [12.345, 7.484, ['foo', (35.358, -0.386, [4.277, 3.215])]]
+  '''
+  if isinstance(val, float):
+    return round2(val, precision)
+  if isinstance(val, list):
+    for i,v in enumerate(val):
+      val[i] = roundoff(v, precision)
+  if isinstance(val, tuple):
+    val = list(val)
+    for i,v in enumerate(val):
+      val[i] = roundoff(v, precision)
+    val = tuple(val)
+  return val
+
 def iround(x):
   if (x < 0): return int(x-0.5)
   return int(x+.5)

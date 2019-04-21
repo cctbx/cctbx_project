@@ -20,9 +20,12 @@ namespace {
     def("color_by_property_", color_by_property, (
       arg("properties"),
       arg("selection"),
-      arg("color_all")=true,
-      arg("gradient_type")=0,
-      arg("min_value")=0.1));
+      arg("color_all") = true,
+      arg("gradient_type") = 0,
+      arg("min_value") = 0.1));
+    def("color_by_phi_fom_", color_by_phi_fom, (
+      arg("phases"),
+      arg("foms")));
     def("grayscale_by_property", grayscale_by_property, (
       arg("properties"),
       arg("selection"),
