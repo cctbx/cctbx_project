@@ -149,35 +149,60 @@ class wfc
     af::shared<FloatType>  first_derivative_of_grid_values;
     af::shared<FloatType>  second_derivative_of_grid_values;
     double                 core_cutdens;
-    af::shared<vec3<double> > rr_array;
-    af::shared<double>        r_array;
     double dx;
     int zz;
-
+    af::shared<double> r_array;
+    boost::python::list wfcin_array;
+    af::shared<double> occ_electrons;
 
     wfc() {}
 
-    wfc(af::shared<vec3<int> > const& node_offsets_,
-        af::shared<vec3<int> > const& coefficients_of_first_derivative_,
-        af::shared<vec3<int> > const& coefficients_of_second_derivative_,
-        FloatType              const& prefactor_of_first_derivative_,
-        FloatType              const& prefactor_of_second_derivative_,
-        double                 const& core_cutdens_,
-        af::shared<vec3<double> > const& rr_array_,
+    wfc(int const& ngrid_,
+        double const& zz_,
         af::shared<double>        const& r_array_,
-        int const& ngrid_,
-        double const& zz_
+        boost::python::list const& wfcin_array_,
+        af::shared<double> occ_electrons_
         )
     :
-      node_offsets(node_offsets_),
-      coefficients_of_first_derivative(coefficients_of_first_derivative_),
-      coefficients_of_second_derivative(coefficients_of_second_derivative_),
-      prefactor_of_first_derivative(prefactor_of_first_derivative_),
-      prefactor_of_second_derivative(prefactor_of_second_derivative_),
-      core_cutdens(core_cutdens_), rr_array(rr_array_), r_array(r_array_),
+      prefactor_of_first_derivative(1.0 / 120.0),
+      prefactor_of_second_derivative(2.0 / 120.0),
+      core_cutdens(1E-12),
       ngrid(ngrid_), zz(zz_),
-      dx(0.002) // From current data set (.wfc files)
+      dx(0.002), // From current data set (.wfc files)
+      r_array(r_array_), wfcin_array(wfcin_array_),
+      occ_electrons(occ_electrons_)
     {
+    
+    af::shared<af::shared<double> > wfcin_array_flex;
+    for(std::size_t i=0;i<boost::python::len(wfcin_array);i++) {
+      wfcin_array_flex.push_back( 
+        boost::python::extract<af::shared<double> >(wfcin_array[i])() );
+    }
+    
+    node_offsets = af::shared<vec3<int> >(6);
+    node_offsets[0] = vec3<int>( 0, -2, -5 );
+    node_offsets[1] = vec3<int>( 1, -1, -4 );
+    node_offsets[2] = vec3<int>( 2, 0, -3  );
+    node_offsets[3] = vec3<int>( 3, 1, -2  );
+    node_offsets[4] = vec3<int>( 4, 2, -1  );
+    node_offsets[5] = vec3<int>(5,3,0      );
+    
+    coefficients_of_first_derivative = af::shared<vec3<int> >(6);
+    coefficients_of_first_derivative[0] = vec3<int>( -274, 6, -24 );
+    coefficients_of_first_derivative[1] = vec3<int>( 600, -60, 150 );
+    coefficients_of_first_derivative[2] = vec3<int>( -600, -40, -400 );
+    coefficients_of_first_derivative[3] = vec3<int>( 400, 120, 600 );
+    coefficients_of_first_derivative[4] = vec3<int>( -150, -30, -600 );
+    coefficients_of_first_derivative[5] = vec3<int>(24, 4, 274);
+    
+    coefficients_of_second_derivative = af::shared<vec3<int> >(6);
+    coefficients_of_second_derivative[0] = vec3<int>( 225, -5, -50 );
+    coefficients_of_second_derivative[1] = vec3<int>( -770, 80, 305 );
+    coefficients_of_second_derivative[2] = vec3<int>( 1070, -150, -780);
+    coefficients_of_second_derivative[3] = vec3<int>( -780, 80, 1070 );
+    coefficients_of_second_derivative[4] = vec3<int>( 305, -5, -770 );
+    coefficients_of_second_derivative[5] = vec3<int>( -50, 0, 225 );
+    
     first_derivative_of_grid_values = af::shared<FloatType>(ngrid);
     second_derivative_of_grid_values = af::shared<FloatType>(ngrid);
     grid_values = af::shared<FloatType>(ngrid);
@@ -187,8 +212,21 @@ class wfc
     af::shared<vec3<int> > coef2 = coefficients_of_second_derivative;
     FloatType fac1  = prefactor_of_first_derivative;
     FloatType fac2  = prefactor_of_second_derivative;
-
+    double PI = scitbx::constants::pi;
+    af::shared<vec3<double> > rr_array = af::shared<vec3<double> >(ngrid);
     for(std::size_t i=0; i < ngrid; i++) {
+       af::shared<double> wfcin_array_flex_i = wfcin_array_flex[i];
+       af::shared<double> wfcin_array_flex_i_sq = 
+         wfcin_array_flex_i * wfcin_array_flex_i;
+       for(std::size_t k=0; k < wfcin_array_flex_i.size(); k++) {
+         rr_array[i][0] += wfcin_array_flex_i_sq[k]*occ_electrons[k];
+       }
+       if(rr_array[i][0]/(4.0*PI*(r_array[i]*r_array[i])) < core_cutdens) {
+        ngrid=i+1;
+        break;
+       }
+     }
+    for(std::size_t i=0; i < ngrid; i++) {     
       int ic=1;
       if     (i<=1)       ic=0;
       else if(i>=ngrid-3) ic=2;
@@ -206,20 +244,18 @@ class wfc
       double r4 = r3 * r1;
       double delta = 1.0 / dx;
       double delta2 = delta * delta;
-      double PI = scitbx::constants::pi;
       grid_values[i] = rr_array[i][0] * r2 / (4.0 * PI);
-      first_derivative_of_grid_values[i] = (rr_array[i][1] * delta - 2.0 * rr_array[i][0])* r3 / (4.0 * PI);
-      second_derivative_of_grid_values[i] = (rr_array[i][2] * delta2- 5.0 * rr_array[i][1] * delta + 6.0 * rr_array[i][0])* r4 / (4.0 * PI);
+      first_derivative_of_grid_values[i] = 
+        (rr_array[i][1] * delta - 2.0 * rr_array[i][0])* r3 / (4.0 * PI);
+      second_derivative_of_grid_values[i] = (rr_array[i][2] * delta2- 5.0 * 
+        rr_array[i][1] * delta + 6.0 * rr_array[i][0])* r4 / (4.0 * PI);
     }
-
     grid_positions      = r_array;
     a                   = std::exp(-6.)/zz; // -6 is xmin in .wfc files
     b                   = dx;
     position_max        = r_array[ngrid-1];
     square_position_max = position_max*position_max;
-
   }
-
 };
 
 template <typename FloatType=double>

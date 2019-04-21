@@ -20,8 +20,7 @@ namespace {
   boost::python::tuple
   getinitargs(wfc<> const& self)
   {
-    return boost::python::make_tuple(self.node_offsets,
-      self.coefficients_of_first_derivative, self.coefficients_of_second_derivative);
+    return boost::python::make_tuple(self.ngrid, self.zz, self.r_array, self.wfcin_array, self.occ_electrons);
   }
 
   void init_module()
@@ -32,42 +31,24 @@ namespace {
     typedef default_call_policies dcp;
 
    class_<wfc<> >("wfc")
-     .def(init<af::shared<vec3<int> > const&,
-               af::shared<vec3<int> > const&,
-               af::shared<vec3<int> > const&,
-               double const&,
-               double const&,
-               double const&,
-               af::shared<vec3<double> > const&,
-               af::shared<double> const&,
-               int const&,
-               double const& >(
-                 (arg("node_offsets"),
-                  arg("coefficients_of_first_derivative"),
-                  arg("coefficients_of_second_derivative"),
-                  arg("prefactor_of_first_derivative"),
-                  arg("prefactor_of_second_derivative"),
-                  arg("core_cutdens"),
-                  arg("rr_array"),
+     .def(init<int const&,
+               double const&, 
+               af::shared<double>  const&,
+               boost::python::list const&,
+               af::shared<double>
+               >(
+                 (arg("ngrid"),
+                  arg("zz"),
                   arg("r_array"),
-                  arg("ngrid"),
-                  arg("zz")
+                  arg("wfcin_array"),
+                  arg("occ_electrons")
                   )))
-     .add_property("node_offsets", make_getter(&wfc<>::node_offsets, rbv()), make_setter(&wfc<>::node_offsets, dcp()))
-     .add_property("coefficients_of_first_derivative", make_getter(&wfc<>::coefficients_of_first_derivative, rbv()), make_setter(&wfc<>::coefficients_of_first_derivative, dcp()))
-     .add_property("coefficients_of_second_derivative", make_getter(&wfc<>::coefficients_of_second_derivative, rbv()), make_setter(&wfc<>::coefficients_of_second_derivative, dcp()))
-     .add_property("prefactor_of_first_derivative", make_getter(&wfc<>::prefactor_of_first_derivative, rbv()), make_setter(&wfc<>::prefactor_of_first_derivative, dcp()))
-     .add_property("prefactor_of_second_derivative", make_getter(&wfc<>::prefactor_of_second_derivative, rbv()), make_setter(&wfc<>::prefactor_of_second_derivative, dcp()))
-     .add_property("a", make_getter(&wfc<>::a, rbv()), make_setter(&wfc<>::a, dcp()))
-     .add_property("b", make_getter(&wfc<>::b, rbv()), make_setter(&wfc<>::b, dcp()))
-     .add_property("position_max", make_getter(&wfc<>::position_max, rbv()), make_setter(&wfc<>::position_max, dcp()))
-     .add_property("square_position_max", make_getter(&wfc<>::square_position_max, rbv()), make_setter(&wfc<>::square_position_max, dcp()))
      .add_property("ngrid", make_getter(&wfc<>::ngrid, rbv()), make_setter(&wfc<>::ngrid, dcp()))
-     .add_property("grid_positions", make_getter(&wfc<>::grid_positions, rbv()), make_setter(&wfc<>::grid_positions, dcp()))
-     //.add_property("grid_values", make_getter(&wfc<>::grid_values, rbv()), make_setter(&wfc<>::grid_values, dcp()))
-     //.add_property("first_derivative_of_grid_values", make_getter(&wfc<>::first_derivative_of_grid_values, rbv()), make_setter(&wfc<>::first_derivative_of_grid_values, dcp()))
-     //.add_property("second_derivative_of_grid_values", make_getter(&wfc<>::second_derivative_of_grid_values, rbv()), make_setter(&wfc<>::second_derivative_of_grid_values, dcp()))
-     .add_property("core_cutdens", make_getter(&wfc<>::core_cutdens, rbv()), make_setter(&wfc<>::core_cutdens, dcp()))
+     .add_property("zz", make_getter(&wfc<>::zz, rbv()), make_setter(&wfc<>::zz, dcp()))
+     .add_property("r_array", make_getter(&wfc<>::r_array, rbv()), make_setter(&wfc<>::r_array, dcp()))
+     .add_property("wfcin_array", make_getter(&wfc<>::wfcin_array, rbv()), make_setter(&wfc<>::wfcin_array, dcp()))
+     .add_property("occ_electrons", make_getter(&wfc<>::occ_electrons, rbv()), make_setter(&wfc<>::occ_electrons, dcp()))
+                  
      .enable_pickling()
      .def("__getinitargs__", getinitargs)
    ;

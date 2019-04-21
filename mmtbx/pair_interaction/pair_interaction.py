@@ -7,13 +7,14 @@ import libtbx.load_env
 from scitbx.array_family import flex
 import numpy as np
 from qrefine.super_cell import expand
+from libtbx import easy_pickle
+from libtbx.utils import Sorry
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_pair_interaction_ext")
 
 dat_path = libtbx.env.find_in_repositories("qrefine")
 qr_unit_tests_data = os.path.join(dat_path,"tests","unit","data_files")
-PI=3.141592920
 A2B=1.8897161646320724
 global results
 results=[]
@@ -24,6 +25,17 @@ global wave_functions
 wave_functions = []
 
 def load_wfc(element):
+  folder = libtbx.env.find_in_repositories("mmtbx/pair_interaction")
+  for fn in os.listdir(folder):
+    if(fn.startswith(element) and fn.endswith(".pkl")):
+      fn = "/".join([folder,fn])
+      wfc_obj = easy_pickle.load(fn)
+      return wfc_obj
+  #
+  folder = libtbx.env.find_in_repositories("qrefine/plugin/yoink/dat")
+  if(folder is None):
+    raise Sorry("No _lda.wfc files found.")
+  #
   lines=open(os.path.join(
     dat_path,"./plugin/yoink/dat/"+element+"_lda.wfc")).readlines()
   num_orbitals=int(lines[0].strip().split()[0])
@@ -33,66 +45,32 @@ def load_wfc(element):
     occ_electrons_array[0][i]=int(line_three[i])
   ##TODO check
   occ_electrons=np.array(occ_electrons_array[0])
-  line_four=lines[3].strip().split()
-  xmin=float(line_four[0])
-  zz=float(line_four[1])
-  dx=float(line_four[2])
-  ngrid=int(line_four[3])
-  ##read the grid and build the density
-  temp_rr_array=[]
-  for i in range(ngrid):
-    temp_rr_array.append([0,0,0])
-  temp_r_array=[0]*ngrid
-  wfcin_array=[[0]*num_orbitals]
-  node_offsets=[
-                        [ 0, -2, -5 ],
-                        [ 1, -1, -4],
-                        [ 2, 0, -3 ],
-                        [ 3, 1, -2 ],
-                        [ 4, 2, -1],
-                        [5,3,0]]
-  coefficients_of_first_derivative = [
-                        [ -274, 6, -24 ],
-                        [ 600, -60, 150 ],
-                        [ -600, -40, -400 ],
-                        [ 400, 120, 600 ],
-                        [ -150, -30, -600 ],
-                        [24, 4, 274]]
-  coefficients_of_second_derivative = [
-                        [ 225, -5, -50 ],
-                        [ -770, 80, 305 ],
-                        [ 1070, -150, -780 ],
-                        [ -780, 80, 1070 ],
-                        [ 305, -5, -770 ],
-                        [ -50, 0, 225 ] ]
-  prefactor_of_first_derivative = 1.0 / 120.0
-  prefactor_of_second_derivative = 2.0 / 120.0
-  core_cutdens = 1E-12
-  for j in range(ngrid):
-    line=lines[4+j].strip().split()
-    temp_r_array[j]=float(line[0])
-    for m in range(1,len(line)):
-      wfcin_array[0][m-1]=float(line[m])
-    ##TODO check
-    wfcin=np.array(wfcin_array[0])
-    wfcin_square=np.multiply(wfcin,wfcin)
-    temp_rr_array[j][0]=np.dot(occ_electrons,wfcin_square)
-    if(temp_rr_array[j][0]/(4.0*PI*(temp_r_array[j]**2)) < core_cutdens):
-      ngrid=j+1
-      break
-  rr_array=temp_rr_array[:ngrid]
-  r_array =temp_r_array[:ngrid]
+
+  line_four = lines[3].strip().split()
+  xmin      = float(line_four[0])
+  zz        = float(line_four[1])
+  dx        = float(line_four[2])
+  ngrid     = int(line_four[3])
+
+  r_array = flex.double()
+  wfcin_array  = []
+  for line in lines[4:]:
+    line = line.split()
+    r_array.append(float(line[0]))
+    tmp = []
+    for i in range(1,len(line)):
+      tmp.append(float(line[i]))
+    wfcin_array.append(tmp)
+  assert len(wfcin_array) == ngrid, [len(wfcin_array) , ngrid]
+
   wfc_obj = ext.wfc(
-    node_offsets = node_offsets,
-    coefficients_of_first_derivative = coefficients_of_first_derivative,
-    coefficients_of_second_derivative = coefficients_of_second_derivative,
-    prefactor_of_first_derivative = prefactor_of_first_derivative,
-    prefactor_of_second_derivative = prefactor_of_second_derivative,
-    core_cutdens = core_cutdens,
-    rr_array = rr_array,
-    r_array = r_array,
-    ngrid = ngrid,
-    zz = zz)
+    ngrid         = ngrid,
+    zz            = zz,
+    r_array       = r_array,
+    wfcin_array   = wfcin_array,
+    occ_electrons = occ_electrons)
+
+  easy_pickle.dump("%s_wfc_obj.pkl"%element, wfc_obj)
   return wfc_obj
 
 def run(ph, core=None):
@@ -118,6 +96,11 @@ def run(ph, core=None):
   for element in element_types:
     wfc_obj=load_wfc(element)
     element_wfc_dict[element]=wfc_obj
+    #print element
+    #print dir(wfc_obj)
+    #STOP()
+
+
   # End of stage 1
   if(core is not None):
     core_atoms=[]
