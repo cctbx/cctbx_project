@@ -19,8 +19,10 @@ def run():
 #  print h
 #  print dir(ext)
 
-  o = ext.wfc()
-  print o
+  #o = ext.wfc()
+  #print o
+
+  print list(ext.points_and_pairs(a=1,b=1,c=1))
   STOP()
 
 #  o = ext.wfc(

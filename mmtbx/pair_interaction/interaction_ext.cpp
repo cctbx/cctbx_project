@@ -20,7 +20,7 @@ namespace {
   boost::python::tuple
   getinitargs(wfc<> const& self)
   {
-    return boost::python::make_tuple(self.node_offsets, 
+    return boost::python::make_tuple(self.node_offsets,
       self.coefficients_of_first_derivative, self.coefficients_of_second_derivative);
   }
 
@@ -71,7 +71,7 @@ namespace {
      .enable_pickling()
      .def("__getinitargs__", getinitargs)
    ;
-   
+
    class_<density_props<> >("density_props")
      .def(init<double,
                vec3<double> const&,
@@ -98,7 +98,7 @@ namespace {
        arg("distanceReciprocal"),
        arg("distanceUnitVector"),arg("fac1"),arg("fac2")))
    ;
-   
+
    def("atom_density_props", (density_props<double>(*)(
                      vec3<double> const&,
                      vec3<double> const&,
@@ -107,7 +107,7 @@ namespace {
        arg("a_xyz"),
        arg("wfc_obj")))
    ;
-   
+
    def("has_interaction_at_point", (bool(*)(
                      vec3<double> const&,
                      af::shared<vec3<double> > const&,
@@ -120,6 +120,23 @@ namespace {
        arg("element_flags"),
        arg("wfc_obj")
        ))
+   ;
+
+   def("points_and_pairs", (af::shared<vec3<int> >(*)(
+                     vec3<int> const&,
+                     double const&,
+                     af::shared<vec3<double> > const&,
+                     vec3<double> const&,
+                     af::shared<int> const&,
+                     af::shared<int> const&,
+                     boost::python::list const&)) points_and_pairs, (
+       arg("ngrid"),
+       arg("step_size"),
+       arg("xyz"),
+       arg("xyz_min"),
+       arg("atom_in_residue"),
+       arg("element_flags"),
+       arg("wfc_obj")))
    ;
 
 

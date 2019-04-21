@@ -32,6 +32,7 @@ namespace af=scitbx::af;
 using scitbx::vec3;
 using scitbx::mat3;
 using scitbx::sym_mat3;
+using scitbx::vec2;
 
 
 //af::versa<double, af::c_grid<2> > hessian(vec3<double> const& distanceVector,
@@ -43,14 +44,18 @@ mat3<double> hessian(vec3<double> const& distanceVector,
   {
     //af::versa<double, af::c_grid<2> > hessian_m(af::c_grid<2>(3,3), 0);
     mat3<double> hessian_m = mat3<double>(0,0,0, 0,0,0, 0,0,0);
-    vec3<double> distanceUnitVector2 = distanceUnitVector * distanceUnitVector;
+    vec3<double> distanceUnitVector2 = vec3<double> (
+      distanceUnitVector[0] * distanceUnitVector[0],
+      distanceUnitVector[1] * distanceUnitVector[1],
+      distanceUnitVector[2] * distanceUnitVector[2]);
     double distanceReciprocal2 = distanceReciprocal * distanceReciprocal;
     double fac11 = fac1 * distanceReciprocal;
     double fac3 = fac2 + fac11;
-    
     std::size_t increment = 4;
+    int cntr = 0;
     for(std::size_t j=0; j < 9; j+=increment) {
-      hessian_m[j] = fac3 * distanceUnitVector2[j] - fac11;
+      hessian_m[j] = fac3 * distanceUnitVector2[cntr] - fac11;
+      cntr+=1;
     }
     hessian_m[1]= distanceReciprocal2 * distanceVector[0] * distanceVector[1] * fac3;
     hessian_m[2]= distanceReciprocal2 * distanceVector[0] * distanceVector[2] * fac3;
@@ -58,18 +63,9 @@ mat3<double> hessian(vec3<double> const& distanceVector,
     hessian_m[3]=hessian_m[1];
     hessian_m[6]=hessian_m[2];
     hessian_m[7]=hessian_m[5];
-    
-    //for(std::size_t j=0; j < 3; j++) {
-    //  hessian_m(j,j) = fac3 * distanceUnitVector2[j] - fac11;
-    //  for(std::size_t k=j+1; k < 3; k++) {
-    //    hessian_m(j,k)= distanceReciprocal2 * distanceVector[j] * distanceVector[k] * fac3;
-    //    hessian_m(k,j) = hessian_m(j,k);
-    //  }
-    //}
-    
     return hessian_m;
   }
-  
+
 template <typename FloatType=double>
 class density_props
 {
@@ -78,14 +74,14 @@ class density_props
     FloatType gradient; // XXX it is actually dot product!
     vec3<FloatType> gradient_vector;
     mat3<FloatType> hessian;
-  
-    density_props() 
+
+    density_props()
     :
       density(0),
       gradient_vector(vec3<FloatType>(0,0,0)),
       hessian( mat3<FloatType>(0,0,0, 0,0,0, 0,0,0) )
     {}
-    
+
     density_props(
       FloatType const& density_,
       vec3<FloatType> const& gradient_vector_,
@@ -96,14 +92,14 @@ class density_props
       gradient_vector(gradient_vector_),
       hessian(hessian_)
     {}
-    
+
     void add(density_props<> density_props_obj)
     {
       density += density_props_obj.density;
       gradient_vector += density_props_obj.gradient_vector;
       hessian += density_props_obj.hessian;
     }
-    
+
     FloatType cal_silva()
     {
       FloatType silva = 0;
@@ -120,7 +116,7 @@ class density_props
       }
       return silva;
     }
-    
+
   bool has_silva_interaction()
     {
     if(density<0.0001) return false;
@@ -131,9 +127,9 @@ class density_props
     if(silva>=0.9) return true;
     else           return false;
     }
-    
+
 };
-  
+
 template <typename FloatType=double>
 class wfc
 {
@@ -157,10 +153,10 @@ class wfc
     af::shared<double>        r_array;
     double dx;
     int zz;
-    
-  
+
+
     wfc() {}
-    
+
     wfc(af::shared<vec3<int> > const& node_offsets_,
         af::shared<vec3<int> > const& coefficients_of_first_derivative_,
         af::shared<vec3<int> > const& coefficients_of_second_derivative_,
@@ -185,13 +181,13 @@ class wfc
     first_derivative_of_grid_values = af::shared<FloatType>(ngrid);
     second_derivative_of_grid_values = af::shared<FloatType>(ngrid);
     grid_values = af::shared<FloatType>(ngrid);
-    
+
     af::shared<vec3<int> > noef  = node_offsets;
     af::shared<vec3<int> > coef1 = coefficients_of_first_derivative;
     af::shared<vec3<int> > coef2 = coefficients_of_second_derivative;
     FloatType fac1  = prefactor_of_first_derivative;
     FloatType fac2  = prefactor_of_second_derivative;
-    
+
     for(std::size_t i=0; i < ngrid; i++) {
       int ic=1;
       if     (i<=1)       ic=0;
@@ -215,15 +211,15 @@ class wfc
       first_derivative_of_grid_values[i] = (rr_array[i][1] * delta - 2.0 * rr_array[i][0])* r3 / (4.0 * PI);
       second_derivative_of_grid_values[i] = (rr_array[i][2] * delta2- 5.0 * rr_array[i][1] * delta + 6.0 * rr_array[i][0])* r4 / (4.0 * PI);
     }
-    
+
     grid_positions      = r_array;
     a                   = std::exp(-6.)/zz; // -6 is xmin in .wfc files
     b                   = dx;
     position_max        = r_array[ngrid-1];
     square_position_max = position_max*position_max;
-    
+
   }
-    
+
 };
 
 template <typename FloatType=double>
@@ -279,8 +275,8 @@ density_props<FloatType> atom_density_props(
     }
   }
   return density_props<FloatType>(
-    f, 
-    d_unit_vector*fp, 
+    f,
+    d_unit_vector*fp,
     hessian(d_vector, d_reciprocal,d_unit_vector,-fp,fpp)
     );
 }
@@ -290,8 +286,8 @@ bool has_interaction_at_point(
   af::shared<vec3<double> > const& a_xyz,
   af::shared<int> const&           element_flags,
   boost::python::list const& wfc_obj
-  ) 
-{ 
+  )
+{
   density_props<double> density_props_obj = density_props<double>();
   for(std::size_t i=0; i < a_xyz.size(); i++) {
     vec3<double> d_vector = a_xyz[i] - p;
@@ -303,23 +299,87 @@ bool has_interaction_at_point(
       wfc<double> tmp = boost::python::extract<wfc<double> >(wfc_obj[element_flags[i]])();
       density_props_obj.add(atom_density_props(p, a_xyz[i], tmp));
     }
-  
   }
   density_props_obj.density  = std::max(density_props_obj.density,1.0E-30);
-  double dot = std::inner_product(
-    std::begin(density_props_obj.gradient_vector), 
-    std::end(density_props_obj.gradient_vector),
-    std::begin(density_props_obj.gradient_vector), 0); 
-  
-  std::cout<<density_props_obj.gradient_vector[0]<<" "<<
-  " "<<density_props_obj.gradient_vector[1]<<" "<<
-  density_props_obj.gradient_vector[2]<< std::endl;
-  std::cout<<"dot "<<dot<<std::endl;
-    
+  vec3<double> gv = density_props_obj.gradient_vector;
+  double dot = gv[0]*gv[0]+gv[1]*gv[1]+gv[2]*gv[2];
   density_props_obj.gradient = dot;
-  
   return density_props_obj.has_silva_interaction();
 }
+
+template <typename FloatType=double>
+class point_and_pair
+{
+  public:
+    vec3<double> point;
+    int i;
+    int j;
+
+    point_and_pair() {}
+
+    point_and_pair(vec3<double> const& point_, int const& i_, int const& j_)
+    :
+      point(point_), i(i_), j(j_)
+    {}
+};
+
+//template <typename datatype=int>
+af::shared<vec3<int> > points_and_pairs(
+  vec3<int> const& ngrid,
+  double const& step_size,
+  af::shared<vec3<double> > const& xyz,
+  vec3<double> const& xyz_min,
+  af::shared<int> const& atom_in_residue,
+  af::shared<int> const& element_flags,
+  boost::python::list const& wfc_obj
+  )
+{
+  af::shared<vec3<int> > interacting_pairs;
+  for(std::size_t ix=0; ix < ngrid[0]; ix++) {
+    for(std::size_t iy=0; iy < ngrid[1]; iy++) {
+      for(std::size_t iz=0; iz < ngrid[2]; iz++) {
+        vec3<double> point = vec3<double>(
+          xyz_min[0]+ix*step_size,
+          xyz_min[1]+iy*step_size,
+          xyz_min[2]+iz*step_size);
+        int first  = 999999;
+        int second = 999999;
+        int atom_id_1 = -1;
+        int atom_id_2 = -1;
+        for(std::size_t j=0; j < xyz.size(); j++) {
+          vec3<double> diff = xyz[j] - point;
+          double dist_sq = diff[0]*diff[0] + diff[1]*diff[1] + diff[2]*diff[2];
+          if(dist_sq >= 200) continue;
+          if(dist_sq < first) {
+            second = first;
+            first = dist_sq;
+            atom_id_2 = atom_id_1;
+            atom_id_1 = j;
+          }
+          else if(dist_sq < second and dist_sq != first) {
+            if(atom_id_1 != atom_id_2) {
+              second = dist_sq;
+              atom_id_2 = j;
+            }
+          }
+        }
+        if(atom_id_1 == -1) continue;
+        if(atom_id_2 == -1) continue;
+        if(atom_in_residue[atom_id_1] == atom_in_residue[atom_id_2]) continue;
+        int ia1 = atom_in_residue[atom_id_1];
+        int ia2 = atom_in_residue[atom_id_2];
+        bool has_interaction = has_interaction_at_point(
+          point, xyz, element_flags, wfc_obj);
+        if(has_interaction) {
+          vec3<int> pair;
+          if(ia1<ia2) pair = vec3<int>(ia1, ia2, 0);
+          else        pair = vec3<int>(ia2, ia1, 0);
+          interacting_pairs.push_back(pair);
+        }
+  }}}
+  return interacting_pairs;
+}
+
 
 
 }} // namespace mmtbx::pair_interaction
