@@ -159,7 +159,7 @@ myHKLview.ShowMissing(True)
 
 
 
-from cctbx.miller import display
+from cctbx.miller import display2 as display
 from crys3d.hklview import jsview_3d as view_3d
 from crys3d.hklview.jsview_3d import ArrayInfo
 from libtbx import object_oriented_patterns as oop

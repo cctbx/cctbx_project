@@ -4,7 +4,7 @@
 
 from __future__ import division
 from libtbx.math_utils import roundoff
-from cctbx.miller import display
+from cctbx.miller import display2 as display
 from cctbx.array_family import flex
 from scitbx import graphics_utils
 from cctbx import miller
