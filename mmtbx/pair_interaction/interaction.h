@@ -35,14 +35,12 @@ using scitbx::sym_mat3;
 using scitbx::vec2;
 
 
-//af::versa<double, af::c_grid<2> > hessian(vec3<double> const& distanceVector,
 mat3<double> hessian(vec3<double> const& distanceVector,
                      double distanceReciprocal,
                      vec3<double> const& distanceUnitVector,
                      double fac1,
                      double fac2)
   {
-    //af::versa<double, af::c_grid<2> > hessian_m(af::c_grid<2>(3,3), 0);
     mat3<double> hessian_m = mat3<double>(0,0,0, 0,0,0, 0,0,0);
     vec3<double> distanceUnitVector2 = vec3<double> (
       distanceUnitVector[0] * distanceUnitVector[0],
@@ -130,24 +128,23 @@ class density_props
 
 };
 
-template <typename FloatType=double>
 class wfc
 {
   public:
     af::shared<vec3<int> > node_offsets;
     af::shared<vec3<int> > coefficients_of_first_derivative;
     af::shared<vec3<int> > coefficients_of_second_derivative;
-    FloatType              prefactor_of_first_derivative;
-    FloatType              prefactor_of_second_derivative;
-    FloatType              a;
-    FloatType              b;
-    FloatType              position_max;
-    FloatType              square_position_max;
+    double                 prefactor_of_first_derivative;
+    double                 prefactor_of_second_derivative;
+    double                 a;
+    double                 b;
+    double                 position_max;
+    double                 square_position_max;
     int                    ngrid;
-    af::shared<FloatType>  grid_positions;
-    af::shared<FloatType>  grid_values;
-    af::shared<FloatType>  first_derivative_of_grid_values;
-    af::shared<FloatType>  second_derivative_of_grid_values;
+    af::shared<double>     grid_positions;
+    af::shared<double>     grid_values;
+    af::shared<double>     first_derivative_of_grid_values;
+    af::shared<double>     second_derivative_of_grid_values;
     double                 core_cutdens;
     double dx;
     int zz;
@@ -172,13 +169,13 @@ class wfc
       r_array(r_array_), wfcin_array(wfcin_array_),
       occ_electrons(occ_electrons_)
     {
-    
+
     af::shared<af::shared<double> > wfcin_array_flex;
     for(std::size_t i=0;i<boost::python::len(wfcin_array);i++) {
-      wfcin_array_flex.push_back( 
+      wfcin_array_flex.push_back(
         boost::python::extract<af::shared<double> >(wfcin_array[i])() );
     }
-    
+
     node_offsets = af::shared<vec3<int> >(6);
     node_offsets[0] = vec3<int>( 0, -2, -5 );
     node_offsets[1] = vec3<int>( 1, -1, -4 );
@@ -186,7 +183,7 @@ class wfc
     node_offsets[3] = vec3<int>( 3, 1, -2  );
     node_offsets[4] = vec3<int>( 4, 2, -1  );
     node_offsets[5] = vec3<int>(5,3,0      );
-    
+
     coefficients_of_first_derivative = af::shared<vec3<int> >(6);
     coefficients_of_first_derivative[0] = vec3<int>( -274, 6, -24 );
     coefficients_of_first_derivative[1] = vec3<int>( 600, -60, 150 );
@@ -194,7 +191,7 @@ class wfc
     coefficients_of_first_derivative[3] = vec3<int>( 400, 120, 600 );
     coefficients_of_first_derivative[4] = vec3<int>( -150, -30, -600 );
     coefficients_of_first_derivative[5] = vec3<int>(24, 4, 274);
-    
+
     coefficients_of_second_derivative = af::shared<vec3<int> >(6);
     coefficients_of_second_derivative[0] = vec3<int>( 225, -5, -50 );
     coefficients_of_second_derivative[1] = vec3<int>( -770, 80, 305 );
@@ -202,21 +199,21 @@ class wfc
     coefficients_of_second_derivative[3] = vec3<int>( -780, 80, 1070 );
     coefficients_of_second_derivative[4] = vec3<int>( 305, -5, -770 );
     coefficients_of_second_derivative[5] = vec3<int>( -50, 0, 225 );
-    
-    first_derivative_of_grid_values = af::shared<FloatType>(ngrid);
-    second_derivative_of_grid_values = af::shared<FloatType>(ngrid);
-    grid_values = af::shared<FloatType>(ngrid);
+
+    first_derivative_of_grid_values = af::shared<double>(ngrid);
+    second_derivative_of_grid_values = af::shared<double>(ngrid);
+    grid_values = af::shared<double>(ngrid);
 
     af::shared<vec3<int> > noef  = node_offsets;
     af::shared<vec3<int> > coef1 = coefficients_of_first_derivative;
     af::shared<vec3<int> > coef2 = coefficients_of_second_derivative;
-    FloatType fac1  = prefactor_of_first_derivative;
-    FloatType fac2  = prefactor_of_second_derivative;
+    double fac1  = prefactor_of_first_derivative;
+    double fac2  = prefactor_of_second_derivative;
     double PI = scitbx::constants::pi;
     af::shared<vec3<double> > rr_array = af::shared<vec3<double> >(ngrid);
     for(std::size_t i=0; i < ngrid; i++) {
        af::shared<double> wfcin_array_flex_i = wfcin_array_flex[i];
-       af::shared<double> wfcin_array_flex_i_sq = 
+       af::shared<double> wfcin_array_flex_i_sq =
          wfcin_array_flex_i * wfcin_array_flex_i;
        for(std::size_t k=0; k < wfcin_array_flex_i.size(); k++) {
          rr_array[i][0] += wfcin_array_flex_i_sq[k]*occ_electrons[k];
@@ -226,7 +223,7 @@ class wfc
         break;
        }
      }
-    for(std::size_t i=0; i < ngrid; i++) {     
+    for(std::size_t i=0; i < ngrid; i++) {
       int ic=1;
       if     (i<=1)       ic=0;
       else if(i>=ngrid-3) ic=2;
@@ -245,9 +242,9 @@ class wfc
       double delta = 1.0 / dx;
       double delta2 = delta * delta;
       grid_values[i] = rr_array[i][0] * r2 / (4.0 * PI);
-      first_derivative_of_grid_values[i] = 
+      first_derivative_of_grid_values[i] =
         (rr_array[i][1] * delta - 2.0 * rr_array[i][0])* r3 / (4.0 * PI);
-      second_derivative_of_grid_values[i] = (rr_array[i][2] * delta2- 5.0 * 
+      second_derivative_of_grid_values[i] = (rr_array[i][2] * delta2- 5.0 *
         rr_array[i][1] * delta + 6.0 * rr_array[i][0])* r4 / (4.0 * PI);
     }
     grid_positions      = r_array;
@@ -258,26 +255,25 @@ class wfc
   }
 };
 
-template <typename FloatType=double>
-density_props<FloatType> atom_density_props(
-  vec3<FloatType> const& p,
-  vec3<FloatType> const& a_xyz,
-  wfc<FloatType>  const& wfc_obj)
+density_props<double> atom_density_props(
+  vec3<double> const& p,
+  vec3<double> const& a_xyz,
+  wfc          const& wfc_obj)
 {
-  vec3<FloatType> d_vector = a_xyz - p;
-  FloatType dx = d_vector[0];
-  FloatType dy = d_vector[1];
-  FloatType dz = d_vector[2];
-  FloatType d = std::sqrt(dx*dx + dy*dy + dz*dz); // norm
+  vec3<double> d_vector = a_xyz - p;
+  double dx = d_vector[0];
+  double dy = d_vector[1];
+  double dz = d_vector[2];
+  double d = std::sqrt(dx*dx + dy*dy + dz*dz); // norm
   if(d<1.e-10) d = 1.e-10;
-  FloatType d_reciprocal = 1.0/d;
-  vec3<FloatType> d_unit_vector=d_vector*d_reciprocal;
-  FloatType f  = 0;
-  FloatType fp = 0;
-  FloatType fpp= 0;
+  double d_reciprocal = 1.0/d;
+  vec3<double> d_unit_vector=d_vector*d_reciprocal;
+  double f  = 0;
+  double fp = 0;
+  double fpp= 0;
   if(d<wfc_obj.position_max) {
     int ir=0;
-    FloatType r=0;
+    double r=0;
     if(d<=wfc_obj.grid_positions[0]) {
       ir=1;
       r=wfc_obj.grid_positions[0];
@@ -286,8 +282,8 @@ density_props<FloatType> atom_density_props(
       ir=int(1+std::floor(std::log(d/wfc_obj.a)/wfc_obj.b));
       r=d;
     }
-    af::tiny<FloatType, 4>  rr(0,0,0,0);
-    af::tiny<FloatType, 4> dr1(0,0,0,0);
+    af::tiny<double, 4>  rr(0,0,0,0);
+    af::tiny<double, 4> dr1(0,0,0,0);
     af::versa<double, af::c_grid<2> > x1dr12(af::c_grid<2>(4,4), 0);
     for(std::size_t i=0; i < 4; i++) {
       int ii = std::min(std::max(ir, 2), wfc_obj.ngrid) - 3 + i;
@@ -300,7 +296,7 @@ density_props<FloatType> atom_density_props(
     }
     for(std::size_t i=0; i < 4; i++) {
       int ii = std::min(std::max(ir, 2), wfc_obj.ngrid) - 3 + i;
-      FloatType prod = 1.0;
+      double prod = 1.0;
       for(std::size_t j=0; j < 4; j++) {
         if(i == j) continue;
         prod = prod * dr1[j] * x1dr12(i,j);
@@ -310,7 +306,7 @@ density_props<FloatType> atom_density_props(
       fpp = fpp+wfc_obj.second_derivative_of_grid_values[ii]*prod;
     }
   }
-  return density_props<FloatType>(
+  return density_props<double>(
     f,
     d_unit_vector*fp,
     hessian(d_vector, d_reciprocal,d_unit_vector,-fp,fpp)
@@ -332,7 +328,7 @@ bool has_interaction_at_point(
     double dz = d_vector[2];
     double d = std::sqrt(dx*dx + dy*dy + dz*dz); // norm
     if(d<15) {
-      wfc<double> tmp = boost::python::extract<wfc<double> >(wfc_obj[element_flags[i]])();
+      wfc tmp = boost::python::extract<wfc>(wfc_obj[element_flags[i]])();
       density_props_obj.add(atom_density_props(p, a_xyz[i], tmp));
     }
   }
@@ -359,7 +355,6 @@ class point_and_pair
     {}
 };
 
-//template <typename datatype=int>
 af::shared<vec3<int> > points_and_pairs(
   vec3<int> const& ngrid,
   double const& step_size,
@@ -415,8 +410,6 @@ af::shared<vec3<int> > points_and_pairs(
   }}}
   return interacting_pairs;
 }
-
-
 
 }} // namespace mmtbx::pair_interaction
 
