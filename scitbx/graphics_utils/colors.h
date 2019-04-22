@@ -115,7 +115,7 @@ namespace scitbx { namespace graphics_utils {
     }
     return scitbx::vec3<double>(r, g, b);
   }
-   
+
   af::shared< scitbx::vec3<double> >
     color_by_phi_fom(
       af::const_ref< double > const& phases,

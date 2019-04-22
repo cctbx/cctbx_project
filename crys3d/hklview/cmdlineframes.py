@@ -162,14 +162,10 @@ myHKLview.ShowMissing(True)
 from cctbx.miller import display2 as display
 from crys3d.hklview import jsview_3d as view_3d
 from crys3d.hklview.jsview_3d import ArrayInfo
-from libtbx import object_oriented_patterns as oop
 from libtbx.str_utils import format_value
-from libtbx.utils import Sorry, Abort, to_str
-import libtbx.load_env
+from libtbx.utils import Sorry, to_str
 from libtbx import group_args
-from math import sqrt
-import copy
-import os, sys
+import sys
 
 
 
@@ -385,7 +381,6 @@ class HKLViewFrame () :
     file_name = to_str(file_name)
     if (file_name != ""):
       from iotbx.reflection_file_reader import any_reflection_file
-      from iotbx.gui_tools.reflections import get_array_description
       self.viewer.isnewfile = True
       self.viewer.iarray = 0
       self.viewer.icolourcol = 0
@@ -580,11 +575,3 @@ class HKLViewFrame () :
     Useful when deciding which bin of reflections to make transparent
     """
     return self.viewer.binstrs
-
-
-
-
-
-
-
-

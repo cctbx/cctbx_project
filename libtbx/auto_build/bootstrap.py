@@ -47,10 +47,7 @@ rosetta_version_tar_bundle='rosetta_src_2018.33.60351_bundle'
 rosetta_version_directory=rosetta_version_tar_bundle
 # LICENSE REQUIRED
 afitt_version="AFITT-2.4.0.4-redhat-RHEL7-x64" #binary specific to cci-vm-1
-amber_version='ambertools-18' # same as circle download file
-amber_dir='amber18'
 envs = {
-  "AMBERHOME"           : ["modules", "amber"],
   "PHENIX_ROSETTA_PATH" : ["modules", "rosetta"],
   "OE_EXE"              : ["modules", "openeye", "bin"],
   "OE_LICENSE"          : ["oe_license.txt"], # needed for license
@@ -698,23 +695,6 @@ class scons_module(SourceModule):
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
 
 # external modules
-class amber_module(SourceModule):
-  module = 'amber'
-  # this doesn't work
-  anonymous = ['curl', 'http://cci.lbl.gov/externals/AmberTools15.gz']
-  # this doesn't work
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'AmberTools15.tar.gz', '/net/cci/auto_build/externals']
-  authenticated = [
-    'rsync',
-    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/externals/amber16/',
-    'externals', # not mapped yet!
-    'amber_rsync', # not plumbed ...
-  ]
-  #download downloader
-  authenticated = [
-    'scp',
-    '%(cciuser)s@cci.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/download_circleci_AmberTools.py']
-
 class rosetta_class(SourceModule):
   module = 'rosetta'
   authenticated = [
@@ -2203,7 +2183,6 @@ class PhenixExternalRegression(PhenixBuilder):
   EXTERNAL_CODEBASES = [
     "afitt",
     "rosetta",
-    "amber",
     ]
 
   def cleanup(self, dirs=None):
@@ -2216,15 +2195,9 @@ class PhenixExternalRegression(PhenixBuilder):
     # AFITT
     if self.subcategory in [None, "afitt"]:
       self.add_step(cleanup_dirs(['openeye'], 'modules'))
-    # Amber
-    if self.subcategory in [None, "amber"]:
-      self.add_step(cleanup_dirs(['amber18'], 'modules'))
-      self.add_step(cleanup_dirs(['amber17'], 'modules'))
-      self.add_step(cleanup_dirs(['amber16'], 'modules'))
     PhenixBuilder.cleanup(self, cleaning)
 
   def get_environment(self, add_build_python_to_path=True):
-    #  "AMBERHOME"           : amberhome, # used to trigger Property on slave
     environment = {}
     for env, dirs in envs.items():
       environment[env] = os.path.join(*dirs)
@@ -2277,66 +2250,15 @@ class PhenixExternalRegression(PhenixBuilder):
     # Phenix compile
     PhenixBuilder.add_make(self)
     # need to use the Phenix python for building
-    # Amber
     # Rosetta
     # AFITT
     env = self.get_environment()
     self.write_environment(env)
     # not universal but works because only slave running this is same as master
-    amber_c_comp = "clang"
-    if sys.platform.startswith("linux"):
-      amber_c_comp = "gnu"
     for name, command, workdir in [
         ['AFITT - untar',
          ['tar', 'xvf', '%s.gz' % afitt_version],
          ['modules']],
-        ['Amber pip requests', [self.python_base,
-                                '-m',
-                                'pip',
-                                'install',
-                                'requests',
-                                ],
-         ['modules']],
-        ['Amber download bzip2',
-         [self.python_base, #'python',
-          'download_circleci_AmberTools.py',
-          '--exclude-conda',
-          '--local-file-name',
-          '%s.tar.bz2' % amber_version,
-          ],
-         ['modules'],
-        ],
-        ['Amber bzip2 -d',
-         ['bzip2', '-d', '-f', '%s.tar.bz2' % amber_version],
-         ['modules'],
-          ],
-        ['Amber - untar',
-         ['tar', 'xvf', '%s.tar' % amber_version],
-         ['modules'],
-          ],
-        ['Amber - rm link',
-         # not windows compatible
-         ['rm', '-f', "amber"],
-         ['modules']],
-        ['Amber - link',
-         # not windows compatible
-         ['ln', '-sf', '%s' % amber_dir, "amber"],
-         ['modules']],
-        #['Amber update', ["./update_amber", "--update"], [env["AMBERHOME"]]],
-        #['Amber configure',
-        #  ["./configure",
-        #   "--no-updates",
-        #   "-noX11",
-        #   "-macAccelerate", # ignored if not on Mac
-        #   "-nofftw3", # because compilers on slave are 4.1 not 4.3
-        #   #"-noamber", # this is for the "real" amber
-        #   amber_c_comp,
-        #   ],
-        #  [env["AMBERHOME"]]],
-        #['Amber compile',
-        # ["make", "-j", self.nproc, "install"],
-        # [env["AMBERHOME"]]],
-        #['Amber clean',   ["make", "clean"], [env["AMBERHOME"]]],
         ['Rosetta - untar',
          ['tar', 'xvf', '%s.tgz' % rosetta_version_tar_bundle],
          ['modules']],
@@ -2359,8 +2281,6 @@ class PhenixExternalRegression(PhenixBuilder):
       if self.subcategory:
         if name.lower().find(self.subcategory)==-1: continue
       haltOnFailure=True
-    #  if name.lower().find('amber')>-1:
-    #    haltOnFailure=False
       self.add_step(self.shell(
         name       = name,
         command    = command,
@@ -2371,15 +2291,6 @@ class PhenixExternalRegression(PhenixBuilder):
         ))
 
     self.add_refresh()
-    # Amber
-    if self.subcategory in [None, "amber"]:
-      self.add_command(
-        'phenix.build_amber_interface',
-        name='phenix.build_amber_interface',
-        workdir=['.'],
-        env=env,
-        haltOnFailure=False,
-      )
     # Rosetta
     if self.subcategory in [None, "rosetta"]:
       self.add_command(
@@ -2678,7 +2589,6 @@ that maintain their own conda environment.""",
   # process external
   options.specific_external_builder=None
   if options.builder.lower() in ["afitt",
-                                 "amber",
                                  "rosetta",
                                  ]:
     options.specific_external_builder=options.builder.lower()

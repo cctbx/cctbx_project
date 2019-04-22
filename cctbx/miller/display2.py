@@ -696,5 +696,3 @@ def settings():
   """
   global params
   return params
-
-

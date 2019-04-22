@@ -1,3 +1,4 @@
+from __future__ import division
 import iotbx.pdb
 import pair_interaction
 from libtbx.test_utils import approx_equal
