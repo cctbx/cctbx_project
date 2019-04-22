@@ -173,13 +173,14 @@ class hklview_3d:
 
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     #commonarray.size(), matchcolourradiiarray.size(), matchradiiarray.size(), matchcolourarray.size()
-    foms = None
+    foms_array = None
     if self.miller_array.is_complex_array():
       fomcolm = self.mapcoef_fom_dict.get(self.miller_array.info().label_string())
       if fomcolm:
-        foms = self.valid_arrays[fomcolm].data().deep_copy()
+        #foms = self.valid_arrays[fomcolm].data().deep_copy()
+        foms_array = self.valid_arrays[fomcolm].deep_copy()
     self.scene = display.scene(miller_array=self.miller_array, merge=merge,
-     settings=self.settings, foms=foms)
+     settings=self.settings, foms_array=foms_array)
 
     self.rotation_center = (0,0,0)
 
@@ -227,10 +228,10 @@ class hklview_3d:
         fomcolm = self.mapcoef_fom_dict.get(match_valarray.info().label_string())
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         if fomcolm:
-          foms = match_valarrays[fomcolm].data().deep_copy()
+          foms = match_valarrays[fomcolm]
 
       otherscene = display.scene(miller_array=match_valarray,  merge=merge,
-        settings=self.settings, foms=foms)
+        settings=self.settings, foms_array=foms)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       # cast any NAN values to -1 of the colours and radii arrays before writing javascript
       nplst = np.array( list( otherscene.data ) )

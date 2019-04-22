@@ -150,6 +150,8 @@ myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js")
 myHKLview.LoadReflectionsFile("3RP2_A.1.mtz")
 myHKLview.SetColumn(1,4)
 myHKLview.SetRadiiScale(1, nth_power_scale=0.0)
+myHKLview.ExpandToP1(True)
+myHKLview.ExpandAnomalous(True)
 myHKLview.ShowSlice(True, "l", 60)
 myHKLview.ShowMissing(True)
 

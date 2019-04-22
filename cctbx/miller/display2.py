@@ -4,6 +4,7 @@
 
 from __future__ import division
 from libtbx.utils import Sorry
+from cctbx import miller
 from cctbx.array_family import flex
 import libtbx.phil
 from libtbx import object_oriented_patterns as oop
@@ -79,25 +80,25 @@ class scene(object):
   easily extensible to any other graphics platform (e.g. a PNG embedded in
   a web page).
   """
-  def __init__(self, miller_array, settings, merge=None, foms=None):
+  def __init__(self, miller_array, settings, merge=None, foms_array=None):
     self.miller_array = miller_array
     self.renderscale = 100.0
-    self.foms = foms
-    if self.miller_array.is_complex_array():
-      # want to display map coefficient as circular colours but weighted with FOMS
-      # so copy any provided foms in the empty list of sigmas
-      if self.foms:
-        assert ( self.miller_array.size() == self.foms.size() )
-        #self.miller_array._sigmas = foms.deep_copy()
-      #else:
-      #  self.miller_array._sigmas = None
+    self.foms_workarray = foms_array
+
     self.settings = settings
     self.merge_equivalents = merge
-    from cctbx import miller
     from cctbx import crystal
     from cctbx.array_family import flex
     self.multiplicities = None
-    self.process_input_array()
+    self.foms = flex.double(self.miller_array.size(), float('nan'))
+    if self.miller_array.is_complex_array():
+      # want to display map coefficient as circular colours but weighted with FOMS
+      # so copy any provided foms in the empty list of sigmas
+      if foms_array:
+        assert ( self.miller_array.size() == foms_array.size() )
+        self.foms_workarray, dummy = self.process_input_array(foms_array)
+        self.foms = self.foms_workarray.data().deep_copy()
+    self.work_array, self.multiplicities = self.process_input_array(self.miller_array)
     array = self.work_array
     uc = array.unit_cell()
     self.unit_cell = uc
@@ -147,17 +148,19 @@ class scene(object):
     assert (self.phases.size() == n_points)
     assert (self.radians.size() == n_points)
     assert (self.ampl.size() == n_points)
-    if foms:
+    if foms_array:
       assert (self.foms.size() == n_points)
+    else:
+      self.foms = flex.double(n_points, float('nan'))
     self.clear_labels()
 
 
-  def process_input_array(self):
-    array = self.miller_array.deep_copy()
+  def process_input_array(self, arr):
+    #array = self.miller_array.deep_copy()
+    array = arr.deep_copy()
     multiplicities = None
     if self.merge_equivalents :
       if self.settings.show_anomalous_pairs:
-        from cctbx import miller
         merge = array.merge_equivalents()
         multiplicities = merge.redundancies()
         asu, matches = multiplicities.match_bijvoet_mates()
@@ -196,6 +199,8 @@ class scene(object):
     self.filtered_array = array.deep_copy()
     if (settings.expand_anomalous):
       array = array.generate_bijvoet_mates()
+      original_symmetry = array.crystal_symmetry()
+
       if (multiplicities is not None):
         multiplicities = multiplicities.generate_bijvoet_mates()
     if (self.settings.show_missing):
@@ -205,11 +210,6 @@ class scene(object):
           self.missing_set.centric_flags().data(), negate=True)
     if (settings.expand_to_p1):
       original_symmetry = array.crystal_symmetry()
-      if array.is_complex_array() and self.foms:
-        tmp_millarr = miller.array( miller.set(original_symmetry, array.indices() ),
-                                data=self.foms)
-        self.foms = self.tmp_millarr.expand_to_p1().customized_copy(
-          crystal_symmetry=original_symmetry).data().deep_copy()
       array = array.expand_to_p1().customized_copy(
         crystal_symmetry=original_symmetry)
       #array = array.niggli_cell().expand_to_p1()
@@ -224,8 +224,8 @@ class scene(object):
     self.phases = flex.double(data.size(), float('nan'))
     self.radians = flex.double(data.size(), float('nan'))
     self.ampl = flex.double(data.size(), float('nan'))
-    if not self.foms:
-      self.foms = flex.double(data.size(), float('nan'))
+    #if not self.foms:
+    #  self.foms = flex.double(data.size(), float('nan'))
     self.sigmas = None
     #self.sigmas = flex.double(data.size(), float('nan'))
     if isinstance(data, flex.bool):
@@ -246,7 +246,7 @@ class scene(object):
         # replace the nan values with an arbitrary float value
         self.phases = self.phases.set_selected(b, 42.4242)
         # indicate the coresponding phase/radian is completely undetermnined
-        self.foms = self.foms.set_selected(b, 0.0)
+        #self.foms = self.foms.set_selected(b, 0.0)
         # Now cast negative degrees to equivalent positive degrees
         self.phases = flex.fmod_positive(self.phases, 360.0)
         self.radians = flex.arg(data)
@@ -270,9 +270,10 @@ class scene(object):
         self.sigmas = array.sigmas()
       else:
         self.sigmas = None
-    self.work_array = array
-    self.work_array.set_info(self.miller_array.info() )
-    self.multiplicities = multiplicities
+    work_array = array
+    work_array.set_info(arr.info() )
+    multiplicities = multiplicities
+    return work_array, multiplicities
 
 
   def generate_view_data(self):
