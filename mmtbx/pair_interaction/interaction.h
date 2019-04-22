@@ -387,7 +387,7 @@ af::shared<vec3<int> > points_and_pairs(
             atom_id_2 = atom_id_1;
             atom_id_1 = j;
           }
-          else if(dist_sq < second and dist_sq != first) {
+          else if(dist_sq < second && dist_sq != first) {
             if(atom_id_1 != atom_id_2) {
               second = dist_sq;
               atom_id_2 = j;
