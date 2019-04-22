@@ -18,7 +18,7 @@ namespace mmtbx { namespace pair_interaction {
 namespace {
 
   boost::python::tuple
-  getinitargs(wfc<> const& self)
+  getinitargs(wfc const& self)
   {
     return boost::python::make_tuple(self.ngrid, self.zz, self.r_array, self.wfcin_array, self.occ_electrons);
   }
@@ -30,9 +30,9 @@ namespace {
     typedef return_value_policy<return_by_value> rbv;
     typedef default_call_policies dcp;
 
-   class_<wfc<> >("wfc")
+   class_<wfc>("wfc")
      .def(init<int const&,
-               double const&, 
+               double const&,
                af::shared<double>  const&,
                boost::python::list const&,
                af::shared<double>
@@ -43,12 +43,12 @@ namespace {
                   arg("wfcin_array"),
                   arg("occ_electrons")
                   )))
-     .add_property("ngrid", make_getter(&wfc<>::ngrid, rbv()), make_setter(&wfc<>::ngrid, dcp()))
-     .add_property("zz", make_getter(&wfc<>::zz, rbv()), make_setter(&wfc<>::zz, dcp()))
-     .add_property("r_array", make_getter(&wfc<>::r_array, rbv()), make_setter(&wfc<>::r_array, dcp()))
-     .add_property("wfcin_array", make_getter(&wfc<>::wfcin_array, rbv()), make_setter(&wfc<>::wfcin_array, dcp()))
-     .add_property("occ_electrons", make_getter(&wfc<>::occ_electrons, rbv()), make_setter(&wfc<>::occ_electrons, dcp()))
-                  
+     .add_property("ngrid", make_getter(&wfc::ngrid, rbv()), make_setter(&wfc::ngrid, dcp()))
+     .add_property("zz", make_getter(&wfc::zz, rbv()), make_setter(&wfc::zz, dcp()))
+     .add_property("r_array", make_getter(&wfc::r_array, rbv()), make_setter(&wfc::r_array, dcp()))
+     .add_property("wfcin_array", make_getter(&wfc::wfcin_array, rbv()), make_setter(&wfc::wfcin_array, dcp()))
+     .add_property("occ_electrons", make_getter(&wfc::occ_electrons, rbv()), make_setter(&wfc::occ_electrons, dcp()))
+
      .enable_pickling()
      .def("__getinitargs__", getinitargs)
    ;
@@ -82,18 +82,19 @@ namespace {
 
    def("atom_density_props", (density_props<double>(*)(
                      vec3<double> const&,
-                     vec3<double> const&,
-                     wfc<double>  const&)) atom_density_props, (
+                     vec3<double> const& ,
+                     wfc          const&
+                     )) atom_density_props, (
        arg("p"),
        arg("a_xyz"),
-       arg("wfc_obj")))
+       arg("wfc_obj")
+       ))
    ;
 
    def("has_interaction_at_point", (bool(*)(
                      vec3<double> const&,
                      af::shared<vec3<double> > const&,
                      af::shared<int> const&,
-                     //af::shared<wfc<double> >  const&
                      boost::python::list const&
                      )) has_interaction_at_point, (
        arg("p"),
