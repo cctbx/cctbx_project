@@ -1487,7 +1487,9 @@ class _(boost.python.injector, shared_planarity_proxy):
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if (f is None): f = sys.stdout
     outl = ''
-    if (O.size() == 0): return
+    if (O.size() == 0):
+      print >> f, "%sPlanarity restraints: %d" % (prefix, O.size())
+      return
     if (max_items is not None and max_items <= 0): return
     if (by_value == "residual"):
       if unit_cell is None:
