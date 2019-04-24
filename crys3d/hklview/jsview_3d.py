@@ -47,7 +47,7 @@ class ArrayInfo:
     self.span = "HKLs: %s to %s" % \
       ( millarr.index_span().min(), millarr.index_span().max())
     self.infostr = "%s (%s), %s %s, %s, d_min: %s" % \
-      (self.labels, self.desc, millarr.size(), self.span, self.minmaxstr, roundoff(millarr.d_min()))
+      (self.labels, self.desc, millarr.indices().size(), self.span, self.minmaxstr, roundoff(millarr.d_min()))
 
 
 class hklview_3d:
@@ -264,6 +264,7 @@ class hklview_3d:
 
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       infostr = ArrayInfo(otherscene.work_array).infostr
+      #infostr = ArrayInfo(match_valarray).infostr
       self.mprint("%d, %s" %(i, infostr) )
       self.matchingarrayinfo.append(infostr)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -805,7 +806,7 @@ mysocket.onmessage = function (e) {
 
   def OnWebsocketClientMessage(self, client, server, message):
     if message != "":
-      self.mprint( message)
+      self.mprint( message, verbose=False)
     self.lastmsg = message
     if "Current vieworientation:" in message:
       # The NGL.Matrix4 with the orientation is a list of floats.

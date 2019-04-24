@@ -125,7 +125,7 @@ mtz1.mtz_object().write("mymtz.mtz")
 
 
 from crys3d.hklview import cmdlineframes
-myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js")
+myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js", verbose=False)
 myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetColumn(0)
 yes
@@ -222,6 +222,7 @@ class HKLViewFrame () :
     self.spacegroup_choices = []
     self.procarrays = []
     self.array_info = []
+    self.merge_answer = [None]
     self.dmin = -1
     self.settings = display.settings()
     self.verbose = True
@@ -232,7 +233,7 @@ class HKLViewFrame () :
     self.viewer = view_3d.hklview_3d( **kwds )
 
 
-  def mprint(self, m, verbose=False):
+  def mprint(self, m, verbose=True):
     if self.verbose or verbose:
       print m
 
@@ -270,8 +271,8 @@ class HKLViewFrame () :
       raise Sorry("No space group info is present in data")
     details = []
     merge = None
-    if (not array.is_unique_set_under_symmetry() and not merge_answer[0]) :
-      merge_answer[0] = Inputarg("The data in the selected array are not symmetry-"+
+    if (not array.is_unique_set_under_symmetry() and not self.merge_answer[0]) :
+      self.merge_answer[0] = Inputarg("The data in the selected array are not symmetry-"+
         "unique, which usually means they are unmerged (but could also be due "+
         "to different indexing conventions).  Do you want to merge equivalent "+
         "observations (preserving anomalous data if present), or view the "+
@@ -279,7 +280,7 @@ class HKLViewFrame () :
         "options to expand to P1 or generate Friedel pairs will be be disabled"+
         ", and the 2D view will only show indices present in the file, rather "+
         "than a full pseudo-precession view.). yes/no?\n")
-      if (merge_answer[0].lower()[0] == "y") :
+      if (self.merge_answer[0].lower()[0] == "y") :
         merge = True
         #array = array.merge_equivalents().array().set_info(info)
         details.append("merged")
@@ -312,14 +313,18 @@ class HKLViewFrame () :
 
   def process_all_miller_arrays(self, array):
     self.procarrays = []
-    merge_answer = [None]
+    if not self.merge_answer[0]:
+      self.settings.expand_to_p1 = False
+      self.settings.expand_anomalous = False
     for arr in self.valid_arrays:
-      procarray, procarray_info = self.process_miller_array(arr, merge_answer=merge_answer)
+      procarray, procarray_info = self.process_miller_array(arr,
+                                            merge_answer=self.merge_answer)
       self.procarrays.append(procarray)
       if arr==array:
         array_info = procarray_info
         self.miller_array = procarray
         self.update_space_group_choices()
+    self.merge_answer = [None]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.viewer.set_miller_array(self.miller_array, merge=array_info.merge,
        details=array_info.details_str, valid_arrays=self.procarrays)

@@ -133,10 +133,7 @@ class scene(object):
     self.missing_flags = flex.bool(self.radii.size(), False)
     self.sys_absent_flags = flex.bool(self.radii.size(), False)
     if (settings.show_missing):
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.generate_missing_reflections()
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    #print "label, warrsize: ",miller_array.info().label_string(), self.work_array.size()
     if (settings.show_systematic_absences) and (not settings.show_only_missing):
       self.generate_systematic_absences()
     # XXX hack for process_pick_points
@@ -228,10 +225,7 @@ class scene(object):
     self.phases = flex.double(data.size(), float('nan'))
     self.radians = flex.double(data.size(), float('nan'))
     self.ampl = flex.double(data.size(), float('nan'))
-    #if not self.foms:
-    #  self.foms = flex.double(data.size(), float('nan'))
     self.sigmas = None
-    #self.sigmas = flex.double(data.size(), float('nan'))
     if isinstance(data, flex.bool):
       self.r_free_mode = True
       data_as_float = flex.double(data.size(), 0.0)
@@ -249,9 +243,7 @@ class scene(object):
         b = flex.bool([bool(math.isnan(e)) for e in self.phases])
         # replace the nan values with an arbitrary float value
         self.phases = self.phases.set_selected(b, 42.4242)
-        # indicate the coresponding phase/radian is completely undetermnined
-        #self.foms = self.foms.set_selected(b, 0.0)
-        # Now cast negative degrees to equivalent positive degrees
+        # Cast negative degrees to equivalent positive degrees
         self.phases = flex.fmod_positive(self.phases, 360.0)
         self.radians = flex.arg(data)
         # replace the nan values with an arbitrary float value
@@ -272,7 +264,6 @@ class scene(object):
           multiplicities = multiplicities.select(non_zero_sel)
       if array.sigmas() is not None:
         self.sigmas = array.sigmas()
-        #self.sigmas = array.sigmas().deep_copy()
       else:
         self.sigmas = None
     work_array = array
@@ -368,6 +359,7 @@ class scene(object):
       max_radius = 0
     self.radii = radii
     self.max_radius = max_radius
+    self.min_radius = min_radius
     self.colors = colors
     if isinstance(data, flex.complex_double):
       self.foms = foms_for_colours
@@ -377,7 +369,6 @@ class scene(object):
     from cctbx import miller
     from cctbx.array_family import flex
     settings = self.settings
-    #array = self.work_array.deep_copy()
     array = self.work_array
     uc = array.unit_cell()
     if (settings.show_only_missing):
@@ -410,14 +401,9 @@ class scene(object):
         self.colors.extend(flex.vec3_double(n_missing, (1.,0,0)))
       else :
         self.colors.extend(flex.vec3_double(n_missing, (1.,1.,1.)))
-      self.radii.extend(flex.double(n_missing, self.max_radius ))
+      self.radii.extend(flex.double(n_missing, self.max_radius/2.0 ))
       self.missing_flags.extend(flex.bool(n_missing, True))
-      print "miss arrsize1: ", self.work_array.size()
-      import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.indices.extend(missing)
-      import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      print "miss arrsize2: ", self.work_array.size()
-      #self.data.extend(flex.double(n_missing, -1.))
       self.data = ExtendData(self.data, n_missing )
       self.phases = ExtendData(self.phases, n_missing )
       self.ampl = ExtendData(self.ampl, n_missing )
