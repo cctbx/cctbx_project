@@ -159,7 +159,7 @@ class jf16m_cxigeom2nexus(object):
 
     if self.params.trusted_range is not None:
       underload, overload = self.params.trusted_range
-      # Note, no NXmx definition exists for underload!
+      detector.create_dataset('underload_value', (1,), data=[underload], dtype='int32')
       detector.create_dataset('saturation_value', (1,), data=[overload], dtype='int32')
 
     alias = 'data'
