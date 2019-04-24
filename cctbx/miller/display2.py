@@ -93,11 +93,11 @@ class scene(object):
     self.foms = flex.double(self.miller_array.size(), float('nan'))
     if self.miller_array.is_complex_array():
       # want to display map coefficient as circular colours but weighted with FOMS
-      # so copy any provided foms in the empty list of sigmas
+      # process the foms miller array and store the foms data for later use when computing colours
       if foms_array:
         assert ( self.miller_array.size() == foms_array.size() )
         self.foms_workarray, dummy = self.process_input_array(foms_array)
-        self.foms = self.foms_workarray.data().deep_copy()
+        self.foms = self.foms_workarray.data()
     self.work_array, self.multiplicities = self.process_input_array(self.miller_array)
     array = self.work_array
     uc = array.unit_cell()
@@ -120,19 +120,23 @@ class scene(object):
                   uc.reciprocal_space_vector((0,0,self.hkl_range[2])) ]
     self.generate_view_data()
     if (self.slice_selection is not None):
-      self.indices = self.work_array.indices().select(self.slice_selection)
+      self.indices = self.work_array.indices().select(self.slice_selection).deep_copy()
       self.data = self.data.select(self.slice_selection)
       self.phases = self.phases.select(self.slice_selection)
       self.radians = self.radians.select(self.slice_selection)
       self.ampl = self.ampl.select(self.slice_selection)
-      self.foms = self.foms.select(self.slice_selection)
+      if foms_array:
+        self.foms = self.foms.select(self.slice_selection)
     else :
       self.indices = array.indices()
     self.points = uc.reciprocal_space_vector(self.indices) * self.renderscale
     self.missing_flags = flex.bool(self.radii.size(), False)
     self.sys_absent_flags = flex.bool(self.radii.size(), False)
     if (settings.show_missing):
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.generate_missing_reflections()
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    #print "label, warrsize: ",miller_array.info().label_string(), self.work_array.size()
     if (settings.show_systematic_absences) and (not settings.show_only_missing):
       self.generate_systematic_absences()
     # XXX hack for process_pick_points
@@ -144,10 +148,11 @@ class scene(object):
     assert (self.missing_flags.size() == n_points)
     assert (self.sys_absent_flags.size() == n_points)
     assert (self.data.size() == n_points)
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (self.phases.size() == n_points)
     assert (self.radians.size() == n_points)
     assert (self.ampl.size() == n_points)
+    if self.sigmas:
+      assert (self.sigmas.size() == n_points)
     if foms_array:
       assert (self.foms.size() == n_points)
     else:
@@ -156,7 +161,6 @@ class scene(object):
 
 
   def process_input_array(self, arr):
-    #array = self.miller_array.deep_copy()
     array = arr.deep_copy()
     multiplicities = None
     if self.merge_equivalents :
@@ -268,6 +272,7 @@ class scene(object):
           multiplicities = multiplicities.select(non_zero_sel)
       if array.sigmas() is not None:
         self.sigmas = array.sigmas()
+        #self.sigmas = array.sigmas().deep_copy()
       else:
         self.sigmas = None
     work_array = array
@@ -293,9 +298,6 @@ class scene(object):
       data_for_colors = flex.sqrt(flex.abs(data))
     elif isinstance(data, flex.complex_double):
       data_for_colors = self.radians
-      # when using map coefficients the sigmas are filled with foms if provided
-      #if self.sigmas:
-      #  self.foms = self.sigmas
       foms_for_colours = self.foms
     elif (settings.sigma_color) and sigmas is not None:
       data_for_colors = sigmas.as_double()
@@ -303,27 +305,21 @@ class scene(object):
       data_for_colors = flex.abs(data.deep_copy())
 
     uc = self.work_array.unit_cell()
-    #abc = uc.parameters()[0:3]
     min_dist = min(uc.reciprocal_space_vector((1,1,1)))
     min_radius = 0.20 * min_dist
     max_radius = 40 * min_dist
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
-      #data_for_radii = data.deep_copy()
       data_for_radii = self.multiplicities.data().as_double()
 
       if (settings.sigma_radius) and sigmas is not None:
         data_for_radii = sigmas * self.multiplicities.as_double()
-        #print "sigmas: " + self.miller_array.info().label_string()
       assert data_for_radii.size() == data.size()
-    #elif (settings.sqrt_scale_radii) and (isinstance(data, flex.double)):
-    #  data_for_radii = flex.sqrt(flex.abs(data))
     elif (settings.sigma_radius) and sigmas is not None:
       data_for_radii = sigmas.as_double()
-      #print "sigmas: " + self.miller_array.info().label_string()
     else :
-      #data_for_radii = flex.abs(data.deep_copy())
-      data_for_radii = nth_power_scale(data.deep_copy(), settings.nth_power_scale_radii)
+      data_for_radii = nth_power_scale(flex.abs(data.deep_copy()),
+                                       settings.nth_power_scale_radii)
     if (settings.slice_mode):
       data = data.select(self.slice_selection)
       if (not settings.keep_constant_scale):
@@ -381,6 +377,7 @@ class scene(object):
     from cctbx import miller
     from cctbx.array_family import flex
     settings = self.settings
+    #array = self.work_array.deep_copy()
     array = self.work_array
     uc = array.unit_cell()
     if (settings.show_only_missing):
@@ -415,7 +412,11 @@ class scene(object):
         self.colors.extend(flex.vec3_double(n_missing, (1.,1.,1.)))
       self.radii.extend(flex.double(n_missing, self.max_radius ))
       self.missing_flags.extend(flex.bool(n_missing, True))
+      print "miss arrsize1: ", self.work_array.size()
+      import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.indices.extend(missing)
+      import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      print "miss arrsize2: ", self.work_array.size()
       #self.data.extend(flex.double(n_missing, -1.))
       self.data = ExtendData(self.data, n_missing )
       self.phases = ExtendData(self.phases, n_missing )

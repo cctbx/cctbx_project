@@ -128,7 +128,11 @@ from crys3d.hklview import cmdlineframes
 myHKLview = cmdlineframes.HKLViewFrame(jscriptfname = "myjstr.js")
 myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetColumn(0)
-myHKLview.SetRadiiScale(3, nth_power_scale=1)
+yes
+myHKLview.SetRadiiScale(1, nth_power_scale=0.2)
+myHKLview.ExpandToP1(True)
+myHKLview.ExpandAnomalous(True)
+myHKLview.ShowMissing(True)
 
 myHKLview.SetColourColumn(2)
 myHKLview.SetRadiusColumn(3)
@@ -152,7 +156,7 @@ myHKLview.SetColumn(1,4)
 myHKLview.SetRadiiScale(1, nth_power_scale=0.0)
 myHKLview.ExpandToP1(True)
 myHKLview.ExpandAnomalous(True)
-myHKLview.ShowSlice(True, "l", 60)
+myHKLview.ShowSlice(True, "l", 25)
 myHKLview.ShowMissing(True)
 
 

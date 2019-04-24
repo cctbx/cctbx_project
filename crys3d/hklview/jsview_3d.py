@@ -157,27 +157,17 @@ class hklview_3d:
 
     matchcolourradiiindices = miller.match_indices(self.valid_arrays[self.icolourcol].indices(),
        self.valid_arrays[self.iradiicol ].indices() )
-    #matchcolourradiiindices = miller.match_indices(matchcolourarray.indices(),
-    #                                               matchradiiarray.indices() )
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    #matchcolourradiiarray = self.miller_array.select( matchcolourradiiindices.pairs().column(0) )
 
-    #commonindices = miller.match_indices(self.miller_array.indices(),
-    #   matchcolourradiiarray.indices() )
     commonindices = miller.match_indices(self.miller_array.indices(),
        matchcolourradiiindices.paired_miller_indices(0) )
     commonarray = self.miller_array.select( commonindices.pairs().column(0) )
-
     commonarray.set_info(self.miller_array.info() )
     commonarray.sort(by_value="packed_indices")
 
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    #commonarray.size(), matchcolourradiiarray.size(), matchradiiarray.size(), matchcolourarray.size()
     foms_array = None
     if self.miller_array.is_complex_array():
       fomcolm = self.mapcoef_fom_dict.get(self.miller_array.info().label_string())
       if fomcolm:
-        #foms = self.valid_arrays[fomcolm].data().deep_copy()
         foms_array = self.valid_arrays[fomcolm].deep_copy()
     self.scene = display.scene(miller_array=self.miller_array, merge=merge,
      settings=self.settings, foms_array=foms_array)
@@ -207,14 +197,12 @@ class hklview_3d:
         # so set its anomalous_flag to False if self.miller_array is not anomalous data
         valarray._anomalous_flag = False
       if not valarray.anomalous_flag() and self.miller_array.anomalous_flag():
-        # temporary expand other arrays to anomalous if self.miller_array is anomalous
+        # temporarily expand other arrays to anomalous if self.miller_array is anomalous
         valarray = valarray.generate_bijvoet_mates()
 
       missing = self.miller_array.lone_set( valarray )
       # insert NAN values for reflections in self.miller_array not found in validarray
       valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices())
-
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       match_valindices = miller.match_indices(self.miller_array.indices(), valarray.indices() )
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       match_valarray = valarray.select( match_valindices.pairs().column(1) )
@@ -274,7 +262,8 @@ class hklview_3d:
       # TODO: tag array according to which otherscene is included
       self.otherscenes.append( otherscene)
 
-      infostr = ArrayInfo(otherscene.miller_array).infostr
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      infostr = ArrayInfo(otherscene.work_array).infostr
       self.mprint("%d, %s" %(i, infostr) )
       self.matchingarrayinfo.append(infostr)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -452,7 +441,7 @@ class hklview_3d:
       bindata = self.otherscenes[self.binarray].data
       if self.otherscenes[self.binarray].work_array.is_complex_array():
         bindata = self.otherscenes[self.binarray].ampl
-
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
       #ibin = data2bin( self.otherscenes[self.iarray].data[i] )
