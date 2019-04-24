@@ -243,11 +243,17 @@ class target_functor(object):
     return (self.manager.target_name != "mlhl")
 
   def __call__(self, compute_gradients=False):
-    result = target_result(
-      manager=self.manager,
-      core_result=self.core(
-        f_calc=self.manager.f_model(),
-        compute_gradients=compute_gradients))
+    try:
+      result = target_result(
+        manager=self.manager,
+        core_result=self.core(
+          f_calc=self.manager.f_model(),
+          compute_gradients=compute_gradients))
+    except RuntimeError as e:
+      if str(e) == "mli target is not implemented (yet)!":
+        raise Sorry("mli target is not implemented (yet). Pick another target.")
+      else:
+        raise e
     target_memory = getattr(self.core, "target_memory", None)
     if (target_memory is not None):
       self.manager._target_memory = target_memory()
