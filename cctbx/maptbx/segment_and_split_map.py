@@ -689,7 +689,7 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Last N bins in FSC assumed to be about zero
        .help = If set, assume that the last scale_using_last bins in the FSC \
           for half-map or model sharpening are about zero (corrects for  \
-          errors int the half-map process).
+          errors in the half-map process).
 
      max_box_fraction = 0.5
        .type = float
@@ -5180,13 +5180,15 @@ def get_and_apply_soft_mask_to_maps(
     wang_radius=None, #params.crystal_info.wang_radius
     buffer_radius=None, #params.crystal_info.buffer_radius
     map_data=None,crystal_symmetry=None,
+    rad_smooth=None,
     half_map_data_list=None,
     out=sys.stdout):
   smoothed_mask_data=None
   if not resolution:
     raise Sorry("Need resolution for soft_mask")
 
-  rad_smooth=resolution
+  if not rad_smooth:
+    rad_smooth=resolution
 
   print >>out,"\nApplying soft mask with smoothing radius of %s\n" %(
     rad_smooth)
@@ -5218,6 +5220,7 @@ def get_and_apply_soft_mask_to_maps(
       out=out)
 
     new_half_map_data_list=[]
+    if not half_map_data_list: half_map_data_list=[]
     for half_map in half_map_data_list:
       half_map,smoothed_mask_data=apply_soft_mask(map_data=half_map,
         mask_data=mask_data.as_double(),
@@ -10257,6 +10260,8 @@ def run_auto_sharpen(
 
   # Try various methods for sharpening. # XXX fix this up
 
+  local_si=deepcopy(si).update_with_box_sharpening_info(
+      box_sharpening_info_obj=box_sharpening_info_obj)
   if si.adjust_region_weight and \
       (not si.sharpening_is_defined()) and (not si.is_model_sharpening()) \
      and (not si.is_half_map_sharpening()) and (
