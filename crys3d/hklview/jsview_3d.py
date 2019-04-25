@@ -369,7 +369,7 @@ class hklview_3d:
 
       fomln = 10
       fom = 1.0
-      fomdecr = 1.0/ln
+      fomdecr = 1.0/fomln
       fomarrays =[]
       # make fomln fom arrays of size ln as to match size of colourscalararray when calling colour_by_phi_FOM
       for j in range(fomln):
@@ -377,22 +377,16 @@ class hklview_3d:
         fom -= fomdecr
 
       for j in range(fomln):
-        colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0), fomarrays[j] ))
-      colourgradarray = colourgradarrays[0] # hack until fom greying has been fully implemented
+        colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0), fomarrays[j] ) * 255.0)
+      #colourgradarray = colourgradarrays[0] # hack until fom greying has been fully implemented
     else:
-      colourgradarray = graphics_utils.color_by_property(
+      fomln = 1
+      fomarrays = [1.0]
+      colourgradarrays.append(graphics_utils.color_by_property(
         properties= flex.double(colourscalararray),
         selection=flex.bool( len(colourscalararray), True),
         color_all=False,
-        gradient_type= self.settings.color_scheme)
-
-    colourgradarray = colourgradarray * 255.0
-
-    self.colourgradientvalues = []
-    for j,e in enumerate(colourgradarray):
-      self.colourgradientvalues.append( [colourscalararray[j], e] )
-    self.colourgradientvalues = roundoff(self.colourgradientvalues)
-    # colour gradient values to be used below as a <div> tag for the javascript below
+        gradient_type= self.settings.color_scheme) * 255.0)
 
     colors = self.otherscenes[self.icolourcol].colors
     radii = self.otherscenes[self.iradiicol].radii
@@ -555,17 +549,24 @@ class hklview_3d:
   });
 
     """
+    colourgradstrs = "colourgradvalarray = new Array(%s)\n" %fomln
+    for g,colourgradarray in enumerate(colourgradarrays):
+      self.colourgradientvalues = []
+      for j,e in enumerate(colourgradarray):
+        self.colourgradientvalues.append( [colourscalararray[j], e] )
+      self.colourgradientvalues = roundoff(self.colourgradientvalues)
 
+      fom = fomarrays[g]
+      colourgradstr = []
+      for j,val in enumerate(self.colourgradientvalues):
+        vstr = ""
+        alpha = 1.0
+        gradval = "rgba(%s, %s, %s, %s)" %(val[1][0], val[1][1], val[1][2], alpha)
+        if j%10 == 0:
+          vstr = str(val[0])
+        colourgradstr.append([vstr , gradval])
 
-    colourgradstr = []
-    for j,val in enumerate(self.colourgradientvalues):
-      vstr = ""
-      alpha = 1.0
-      gradval = "rgba(%s, %s, %s, %s)" %(val[1][0], val[1][1], val[1][2], alpha)
-      if j%10 == 0:
-        vstr = str(val[0])
-      colourgradstr.append([vstr , gradval])
-    colourgradstr = str(colourgradstr)
+      colourgradstrs += "  colourgradvalarray[%s] = %s\n" %(g, str(colourgradstr) )
 
     #negativeradiistr = ""
     #for ibin in range(self.nbin):
@@ -655,12 +656,13 @@ var hklscene = function () {
   // if some radii are negative draw them with wireframe
   %s
 
-  colourgradvalarray = %s
+  //colourgradvalarrays
+  %s
 
   var j;
   var ih = 3;
 
-  totalheight = ih*colourgradvalarray.length + 10
+  totalheight = ih*colourgradvalarray[0].length + 10
   // make a white box on top of which boxes with transparent background are placed
   // containing the colour values at regular intervals
   whitebox = createElement("div",
@@ -679,9 +681,9 @@ var hklscene = function () {
   addElement(whitebox)
 
 
-  for (j = 0; j < colourgradvalarray.length; j++) {
-    rgbcol = colourgradvalarray[j][1];
-    val = colourgradvalarray[j][0]
+  for (j = 0; j < colourgradvalarray[0].length; j++) {
+    rgbcol = colourgradvalarray[0][j][1];
+    val = colourgradvalarray[0][j][0]
     topv = j*ih + 20
 
     mybox = createElement("div",
@@ -713,6 +715,32 @@ var hklscene = function () {
     );
     addElement(txtbox)
   }
+
+  var gl = 15
+  for (g = 1; g < colourgradvalarray.length; g++) {
+    leftp = g*gl + 60
+
+    for (j = 0; j < colourgradvalarray[g].length; j++) {
+      rgbcol = colourgradvalarray[g][j][1];
+      val = colourgradvalarray[g][j][0]
+      topv = j*ih + 20
+
+      mybox = createElement("div",
+      {
+        innerText: ''
+      },
+      {
+        backgroundColor: rgbcol,
+        top: topv.toString() + "px",
+        left: leftp.toString() + "px",
+        width: "15px",
+        height: ih.toString() + "px",
+      }
+      );
+      addElement(mybox)
+    }
+  }
+
 
 }
 
@@ -794,7 +822,7 @@ mysocket.onmessage = function (e) {
 
 
     """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr, \
-            negativeradiistr, colourgradstr)
+            negativeradiistr, colourgradstrs)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
