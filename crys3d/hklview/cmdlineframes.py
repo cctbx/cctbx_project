@@ -135,6 +135,7 @@ myHKLview.SetColumnBinThresholds([50, 20, 15, 12, 9])
 myHKLview.ExpandToP1(True)
 myHKLview.ExpandAnomalous(True)
 myHKLview.ShowMissing(True)
+myHKLview.ShowSystematicAbsences(True)
 
 myHKLview.SetColourColumn(2)
 myHKLview.SetRadiusColumn(3)
