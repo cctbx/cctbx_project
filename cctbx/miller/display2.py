@@ -61,12 +61,10 @@ def ExtendData(data, nsize):
   # insert NAN values as default values for real and integer values
   if isinstance(data, flex.hendrickson_lattman):
     data.extend( flex.hendrickson_lattman(nsize, (nanval, nanval, nanval, nanval)) )
-  if isinstance(data, flex.int) \
-        or isinstance(data, flex.long) \
+  if isinstance(data, flex.int) or isinstance(data, flex.long) \
         or isinstance(data, flex.size_t):
     data.extend( flex.int(nsize, inanval) )
-  if isinstance(data, flex.float) \
-        or isinstance(data, flex.double):
+  if isinstance(data, flex.float) or isinstance(data, flex.double):
     data.extend( flex.double(nsize, nanval) )
   if isinstance(data, flex.complex_double):
     data.extend( flex.complex_double(nsize, nanval) )
@@ -154,6 +152,7 @@ class scene(object):
       assert (self.foms.size() == n_points)
     else:
       self.foms = flex.double(n_points, float('nan'))
+    self.dres = uc.d(self.indices )
     self.clear_labels()
 
 
@@ -382,6 +381,8 @@ class scene(object):
       self.ampl = flex.double()
       self.foms = flex.double()
       self.radians = flex.double()
+      if self.sigmas is not None:
+        self.sigmas = flex.double()
       self.sys_absent_flags = flex.bool()
     if (settings.slice_mode):
       slice_selection = miller.simple_slice(
@@ -409,7 +410,7 @@ class scene(object):
       self.ampl = ExtendData(self.ampl, n_missing )
       self.foms = ExtendData(self.foms, n_missing )
       self.radians = ExtendData(self.radians, n_missing )
-      if self.sigmas:
+      if self.sigmas is not None:
         self.sigmas = ExtendData(self.sigmas, n_missing)
       self.sys_absent_flags.extend(flex.bool(n_missing, False))
 

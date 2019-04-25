@@ -136,7 +136,7 @@ class hklview_3d:
     self.merge = merge
     self.d_min = miller_array.d_min()
     array_info = miller_array.info()
-    self.binvals = [ miller_array.d_max_min()[1], miller_array.d_max_min()[0]  ]
+    self.binvals = [ 1.0/miller_array.d_max_min()[0], 1.0/miller_array.d_max_min()[1]  ]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % miller_array.unit_cell().parameters()
     self.mprint( "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
@@ -398,7 +398,7 @@ class hklview_3d:
     radii = self.otherscenes[self.iradiicol].radii
     points = self.scene.points
     hkls = self.scene.indices
-    dres = self.scene.work_array.d_spacings().data()
+    dres = self.scene.dres
     colstr = self.scene.miller_array.info().label_string()
     data = self.scene.data
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -435,9 +435,8 @@ class hklview_3d:
           return ibin
       raise Sorry("Should never get here")
 
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if self.binarray=="Resolution":
-      bindata = dres
+      bindata = 1.0/dres
     else:
       bindata = self.otherscenes[self.binarray].data
       if self.otherscenes[self.binarray].work_array.is_complex_array():
@@ -445,7 +444,6 @@ class hklview_3d:
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
-      #ibin = data2bin( self.otherscenes[self.iarray].data[i] )
       ibin = data2bin( bindata[i] )
       spbufttip = 'H,K,L: %s, %s, %s' %(hkls[i][0], hkls[i][1], hkls[i][2])
       spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
@@ -465,14 +463,13 @@ class hklview_3d:
           od = str(roundoff(odata[i]) ) + ", " + str(roundoff(otherscene.sigmas[i]))
         else:
           od = str(roundoff(odata[i]) )
-        if math.isnan( abs(odata[i]) ) or odata[i] == display.inanval:
-          od = "??"
-        spbufttip += "\n%s: %s" %(ocolstr, od)
-        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        if not (math.isnan( abs(odata[i]) ) or odata[i] == display.inanval):
+          spbufttip += "\n%s: %s" %(ocolstr, od)
       positions[ibin].extend( roundoff(list(hklstars)) )
       colours[ibin].extend( roundoff(list( colors[i] ), 2) )
       radii2[ibin].append( roundoff(radii[i], 2) )
       spbufttips[ibin].append(spbufttip)
+
     spherebufferstr = """
   ttips = new Array(%d)
   positions = new Array(%d)
@@ -488,8 +485,13 @@ class hklview_3d:
       mstr =""
       nreflsinbin = len(radii2[ibin])
       if (ibin+1) < self.nbin and nreflsinbin > 0:
+        bin1= self.workingbinvals[ibin]
+        bin2= self.workingbinvals[ibin+1]
+        if colstr=="dres":
+          bin1= 1.0/self.workingbinvals[ibin]
+          bin2= 1.0/self.workingbinvals[ibin+1]
         mstr= "bin:%d, %d reflections with %s in ]%2.2f; %2.2f]" %(cntbin, nreflsinbin, \
-                colstr, self.workingbinvals[ibin], self.workingbinvals[ibin+1])
+                colstr, bin1, bin2)
         self.binstrs.append(mstr)
         self.mprint(mstr, verbose=True)
         spherebufferstr += """
