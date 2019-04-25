@@ -130,6 +130,8 @@ myHKLview.LoadReflectionsFile("mymtz.mtz")
 myHKLview.SetColumn(0)
 yes
 myHKLview.SetRadiiScale(1, nth_power_scale=0.2)
+myHKLview.SetColumnBinThresholds([50, 20, 15, 12, 9])
+
 myHKLview.ExpandToP1(True)
 myHKLview.ExpandAnomalous(True)
 myHKLview.ShowMissing(True)
@@ -169,6 +171,7 @@ from cctbx.miller import display2 as display
 from crys3d.hklview import jsview_3d as view_3d
 from crys3d.hklview.jsview_3d import ArrayInfo
 from libtbx.str_utils import format_value
+from cctbx.array_family import flex
 from libtbx.utils import Sorry, to_str
 from libtbx import group_args
 import sys
@@ -477,6 +480,9 @@ class HKLViewFrame () :
 
   def SetColumnBinThresholds(self, binvals, binarray="Resolution"):
     self.viewer.binarray = binarray
+    if self.viewer.binarray=="Resolution":
+      binvals = list( 1.0/flex.double(binvals) )
+    binvals.sort()
     self.viewer.UpdateBinValues( binvals )
     self.update_settings()
 
