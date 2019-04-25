@@ -51,11 +51,11 @@ def ExtendMillerArray(miller_array, nsize, indices=None ):
     millarray._indices.extend( indices )
   if millarray.sigmas() is not None:
     millarray._sigmas.extend( flex.double(nsize, nanval) )
-  millarray._data = ExtendData(millarray._data, nsize)
+  millarray._data = ExtendAnyData(millarray._data, nsize)
   return millarray
 
 
-def ExtendData(data, nsize):
+def ExtendAnyData(data, nsize):
   if isinstance(data, flex.bool):
     data.extend( flex.bool(nsize, False) )
   # insert NAN values as default values for real and integer values
@@ -364,6 +364,16 @@ class scene(object):
       self.foms = foms_for_colours
 
 
+  def ExtendData(self, nextent):
+    self.data = ExtendAnyData(self.data, nextent )
+    self.phases = ExtendAnyData(self.phases, nextent )
+    self.ampl = ExtendAnyData(self.ampl, nextent )
+    self.foms = ExtendAnyData(self.foms, nextent )
+    self.radians = ExtendAnyData(self.radians, nextent )
+    if self.sigmas is not None:
+      self.sigmas = ExtendAnyData(self.sigmas, nextent)
+
+
   def generate_missing_reflections(self):
     from cctbx import miller
     from cctbx.array_family import flex
@@ -405,13 +415,7 @@ class scene(object):
       self.radii.extend(flex.double(n_missing, self.max_radius/2.0 ))
       self.missing_flags.extend(flex.bool(n_missing, True))
       self.indices.extend(missing)
-      self.data = ExtendData(self.data, n_missing )
-      self.phases = ExtendData(self.phases, n_missing )
-      self.ampl = ExtendData(self.ampl, n_missing )
-      self.foms = ExtendData(self.foms, n_missing )
-      self.radians = ExtendData(self.radians, n_missing )
-      if self.sigmas is not None:
-        self.sigmas = ExtendData(self.sigmas, n_missing)
+      self.ExtendData(n_missing)
       self.sys_absent_flags.extend(flex.bool(n_missing, False))
 
 
@@ -455,7 +459,7 @@ class scene(object):
         self.indices.extend(new_indices)
         self.missing_flags.extend(flex.bool(new_indices.size(), False))
         self.sys_absent_flags.extend(flex.bool(new_indices.size(), True))
-        self.data.extend(flex.double(n_sys_absent, -1.))
+        self.ExtendData(n_sys_absent)
         if (settings.color_scheme == "redblue"):
           self.colors.extend(flex.vec3_double(new_indices.size(), (1.,1.0,0.)))
         else :
