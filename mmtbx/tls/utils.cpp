@@ -1,4 +1,5 @@
 #include <cmath>
+//#include <math.h>
 #include <iostream>
 #include <iomanip>
 
@@ -7,6 +8,21 @@
 
 #include <mmtbx/tls/tls.h>
 #include <mmtbx/tls/utils.h>
+
+// define rint for Windows
+#if defined(_WIN32)
+double rint(double x)
+{
+  //middle value point test
+  if (ceil(x+0.5) == floor(x+0.5))
+  {
+    int a = (int)ceil(x);
+    if (a%2 == 0) { return ceil(x); }
+    else { return floor(x); }
+  }
+  else { return floor(x+0.5); }
+}
+#endif
 
 namespace mmtbx { namespace tls { namespace utils {
 
@@ -1033,7 +1049,7 @@ bool TLSMatricesAndAmplitudes::isNull(double matricesTolerance, double amplitude
 {
   bool m_any = mats->any("TLS", matricesTolerance);
   bool a_any = amps->any(amplitudesTolerance);
-  return !(m_any and a_any);
+  return !(m_any && a_any);
 }
 
 int TLSMatricesAndAmplitudes::paramCount(bool free, bool non_zero)
