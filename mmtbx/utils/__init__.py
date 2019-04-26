@@ -2680,7 +2680,8 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
 
   def get_range(self, value_list, threshold=None, ignore_ends=True,
      keep_near_ends_frac=0.02, half_height_width=2., get_half_height_width=None,
-     cutoff_ratio=4,ratio_max=0.5):
+     cutoff_ratio=4,ratio_max=0.5): # XXX May need to set cutoff_ratio and
+    #  ratio_max lower.
     # ignore ends allows ignoring the first and last points which may be off
     # if get_half_height_width, find width at half max hieght, go
     #  half_height_width times this width out in either direction, use that as

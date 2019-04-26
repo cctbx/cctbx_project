@@ -111,7 +111,8 @@ master_phil = libtbx.phil.parse("""
 
   get_half_height_width = True
     .type = bool
-    .help = Use 4 times half-width at half-height as estimate of max size
+    .help = Use 4 times half-width at half-height as estimate of max size \
+              in density_select
     .short_caption = Use half-height width
 
   symmetry = None
