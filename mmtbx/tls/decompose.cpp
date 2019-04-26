@@ -12,6 +12,13 @@ namespace mmtbx { namespace tls { namespace decompose {
 
 namespace af = scitbx::af;
 
+// define isnan for Windows
+#if defined(_WIN32)
+#define ISNAN _isnan
+#else
+#define ISNAN std::isnan
+#endif
+
 // Template FloatType
 //template <typename FloatType>
 
@@ -56,10 +63,10 @@ decompose_tls_matrices::decompose_tls_matrices(
   t_S = 0.0;
 
   // Validate input arguments
-  if (! (t_S_formula=="10" or t_S_formula=="11" or t_S_formula=="Force") ) {
+  if (! (t_S_formula=="10" || t_S_formula=="11" || t_S_formula=="Force") ) {
     throw std::invalid_argument("t_S_formula must be 10 or 11 or Force.");
   }
-  if ( (t_S_formula=="Force") and std::isnan(t_S_value) ) {
+  if ( (t_S_formula=="Force") && ISNAN(t_S_value) ) {
     throw std::invalid_argument("t_S_formula is Force but t_S_value is NaN.");
   }
 
@@ -259,7 +266,7 @@ void decompose_tls_matrices::stepB()
   if ( ! is_zero(Lxx) ) {
     w.wz_lx = w_15.wz_lx =   Sxy / Lxx;     // xy is     cyclic permutation >  plus sign
     w.wy_lx = w_15.wy_lx = - Sxz / Lxx;     // xz is anticyclic permutation > minus sign
-  } else if ( ! (is_zero(Sxy) and is_zero(Sxz)) ) {
+  } else if ( ! (is_zero(Sxy) && is_zero(Sxz)) ) {
     throw std::runtime_error("Step B: Non-zero off-diagonal S[L] and zero L[L] elements.");
   }
 
@@ -270,7 +277,7 @@ void decompose_tls_matrices::stepB()
   if ( ! is_zero(Lyy) ) {
     w.wx_ly = w_15.wx_ly =   Syz / Lyy;     // yz is     cyclic permutation >  plus sign
     w.wz_ly = w_15.wz_ly = - Syx / Lyy;     // yx is anticyclic permutation > minus sign
-  } else if ( ! (is_zero(Syz) and is_zero(Syx)) ) {
+  } else if ( ! (is_zero(Syz) && is_zero(Syx)) ) {
     throw std::runtime_error("Step B: Non-zero off-diagonal S[L] and zero L[L] elements.");
   }
 
@@ -281,7 +288,7 @@ void decompose_tls_matrices::stepB()
   if ( ! is_zero(Lzz) ) {
     w.wy_lz = w_15.wy_lz =   Szx / Lzz;     // zx is     cyclic permutation >  plus sign
     w.wx_lz = w_15.wx_lz = - Szy / Lzz;     // zy is anticyclic permutation > minus sign
-  } else if ( ! (is_zero(Szx) and is_zero(Szy)) ) {
+  } else if ( ! (is_zero(Szx) && is_zero(Szy)) ) {
     throw std::runtime_error("Step B: Non-zero off-diagonal S[L] and zero L[L] elements.");
   }
 
@@ -388,11 +395,11 @@ void decompose_tls_matrices::stepC()
     // ===============================================
     // t_S is forced by the user
     // ===============================================
-    if (std::isnan(t_S_value)) {
+    if (ISNAN(t_S_value)) {
       throw std::invalid_argument("t_S_formula == Force but t_S_value is nan.");
     }
     t_S = t_S_value;
-  } else if ( ! (is_zero(Lxx) or is_zero(Lyy) or is_zero(Lzz)) ) {
+  } else if ( ! (is_zero(Lxx) || is_zero(Lyy) || is_zero(Lzz)) ) {
     // ===============================================
     // All diagonal components of L are non-zero
     // ===============================================
@@ -449,7 +456,7 @@ void decompose_tls_matrices::stepC()
     }
 
     // Eigenvalues should be in decreasing order
-    if ( (ev[1] > ev[0]) or (ev[2] > ev[1]) ) {
+    if ( (ev[1] > ev[0]) || (ev[2] > ev[1]) ) {
       if (verbose_) { print("Eig", ev); }
       throw std::logic_error("Eigenvalues are not in descending size order.");
     }
@@ -509,7 +516,7 @@ void decompose_tls_matrices::stepC()
     // Zero-sized interval
     } else if (is_zero(t_min-t_max)) {
       abc = as_bs_cs(t_min, Sxx, Syy, Szz, t11, t22, t33, t12, t13, t23);
-      if ( ! (is_negative(abc[1]) or is_positive(abc[2])) ) {
+      if ( ! (is_negative(abc[1]) || is_positive(abc[2])) ) {
         t_S = t_min;
       } else {
         throw std::runtime_error("Step C (left branch): t_min=t_max gives non-positive semidefinite V.");
@@ -538,7 +545,7 @@ void decompose_tls_matrices::stepC()
           // remark: but I have implemented the original comparison (below),
           // remark: thereby making the analysis more strict. Since this is
           // remark: within the loop, this may be considered an advantage.
-          if ( ! ((abc[1]<0.0) or (abc[2]>0.0)) ) {
+          if ( ! ((abc[1]<0.0) || (abc[2]>0.0)) ) {
             // Store the new values
             target = target_;
             t_S = t_test;
@@ -580,16 +587,16 @@ void decompose_tls_matrices::stepC()
         // Check cauchy conditions
         double cp1 = (S_L[m_j]-t_test)*(S_L[m_j]-t_test) - T_CL[s_j]*L_L[s_j];
         double cp2 = (S_L[m_k]-t_test)*(S_L[m_k]-t_test) - T_CL[s_k]*L_L[s_k];
-        if ( is_positive(cp1) or is_positive(cp2) ) {
+        if ( is_positive(cp1) || is_positive(cp2) ) {
           throw std::runtime_error("Step C (right branch): Cauchy condition failed (23).");
         }
         // Check standard conditions
         abc = as_bs_cs(t_test, Sxx, Syy, Szz, t11, t22, t33, t12, t13, t23);
-        if ( is_positive(abc[0]) or is_negative(abc[1]) or is_positive(abc[2]) ) {
+        if ( is_positive(abc[0]) || is_negative(abc[1]) || is_positive(abc[2]) ) {
           throw std::runtime_error("Step C (right branch): Conditions 33-35 failed.");
         }
         // Checks passed -- does it agree with previous solutions?
-        if ( found_solution and (! is_zero(t_S-t_test)) ) {
+        if ( found_solution && (! is_zero(t_S-t_test)) ) {
           throw std::runtime_error("Step C (right branch): different solutions do not agree (should not happen?)");
         } else {
           // Store the found solution
@@ -609,7 +616,7 @@ void decompose_tls_matrices::stepC()
 
   // Check the final solution
   abc = as_bs_cs(t_S, Sxx, Syy, Szz, t11, t22, t33, t12, t13, t23);
-  if ( is_positive(abc[0]) or is_negative(abc[1]) or is_positive(abc[2]) ) {
+  if ( is_positive(abc[0]) || is_negative(abc[1]) || is_positive(abc[2]) ) {
     throw std::runtime_error("Step C (left/right branch): Final t_S does not give positive semidefinite V.");
   }
 
@@ -936,4 +943,3 @@ void decompose_tls_matrices::print(std::string const& label, af::shared<double> 
 }
 
 }}} // close mmtbx/tls/decompose
-
