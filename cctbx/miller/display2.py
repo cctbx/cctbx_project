@@ -317,10 +317,10 @@ class scene(object):
         data_for_colors = data_for_colors.select(self.slice_selection)
         foms_for_colours = foms_for_colours.select(self.slice_selection)
     if isinstance(data, flex.complex_double):
-      if len([e for e in foms_for_colours if math.isnan(e)]) > 0:
-        colors = graphics_utils.colour_by_phi_FOM(data_for_colors, None)
-      else:
+      if self.isUsingFOMs():
         colors = graphics_utils.colour_by_phi_FOM(data_for_colors, foms_for_colours)
+      else:
+        colors = graphics_utils.colour_by_phi_FOM(data_for_colors, None)
     elif (settings.color_scheme in ["rainbow", "heatmap", "redblue"]):
       colors = graphics_utils.color_by_property(
         properties=data_for_colors,
@@ -362,6 +362,10 @@ class scene(object):
     self.colors = colors
     if isinstance(data, flex.complex_double):
       self.foms = foms_for_colours
+
+
+  def isUsingFOMs(self):
+    return len([e for e in self.foms if math.isnan(e)]) != self.foms.size()
 
 
   def ExtendData(self, nextent):

@@ -342,7 +342,6 @@ class hklview_3d:
           Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
 
     # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
-
     mincolourscalar = self.othermindata[self.icolourcol]
     maxcolourscalar = self.othermaxdata[self.icolourcol]
     if self.settings.sigma_color:
@@ -358,27 +357,30 @@ class hklview_3d:
       val += incr
       colourscalararray.append( val )
     if self.otherscenes[self.icolourcol].miller_array.is_complex_array():
+      # When displaying phases from map coefficients together with fom values
+      # compute colour map chart as a function of fom and phase values (x,y axis)
       incr = 360.0/ln
       val = 0.0
-      fom = 1.0
-      fomdecr = 1.0/ln
       colourscalararray =flex.double()
       for j in enumerate(range(ln)):
         val += incr
         colourscalararray.append( val )
 
-      fomln = 10
-      fom = 1.0
-      fomdecr = 1.0/fomln
-      fomarrays =[]
+      fomarrays = []
+      if self.otherscenes[self.icolourcol].isUsingFOMs():
+        fomln = 20
+        fom = 1.0
+        fomdecr = 1.0/(fomln-1.0)
       # make fomln fom arrays of size ln as to match size of colourscalararray when calling colour_by_phi_FOM
-      for j in range(fomln):
-        fomarrays.append( flex.double(ln,fom) )
-        fom -= fomdecr
-
-      for j in range(fomln):
-        colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0), fomarrays[j] ) * 255.0)
-      #colourgradarray = colourgradarrays[0] # hack until fom greying has been fully implemented
+        for j in range(fomln):
+          fomarrays.append( flex.double(ln,fom) )
+          fom -= fomdecr
+        for j in range(fomln):
+          colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0), fomarrays[j] ) * 255.0)
+      else:
+        fomln =1
+        fomarrays = [1.0]
+        colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0) ) * 255.0)
     else:
       fomln = 1
       fomarrays = [1.0]
@@ -550,11 +552,12 @@ class hklview_3d:
 
     """
     colourgradstrs = "colourgradvalarray = new Array(%s)\n" %fomln
+    # if displaying phases from map coefficients together with fom values then
     for g,colourgradarray in enumerate(colourgradarrays):
       self.colourgradientvalues = []
       for j,e in enumerate(colourgradarray):
         self.colourgradientvalues.append( [colourscalararray[j], e] )
-      self.colourgradientvalues = roundoff(self.colourgradientvalues)
+      self.colourgradientvalues = roundoff( self.colourgradientvalues )
 
       fom = fomarrays[g]
       colourgradstr = []
@@ -716,7 +719,7 @@ var hklscene = function () {
     addElement(txtbox)
   }
 
-  var gl = 15
+  var gl = 8
   for (g = 1; g < colourgradvalarray.length; g++) {
     leftp = g*gl + 60
 
@@ -733,7 +736,7 @@ var hklscene = function () {
         backgroundColor: rgbcol,
         top: topv.toString() + "px",
         left: leftp.toString() + "px",
-        width: "15px",
+        width: gl.toString() + "px",
         height: ih.toString() + "px",
       }
       );
