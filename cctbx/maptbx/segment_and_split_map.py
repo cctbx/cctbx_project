@@ -937,6 +937,11 @@ master_phil = iotbx.phil.parse("""
       .help = Use 4 times half-width at half-height as estimate of max size
       .short_caption = Half-height width estimation
 
+    box_ncs_au = True
+      .type = bool
+      .help = Box the map containing just the au of the map
+      .short_caption = Box NCS au
+
     cell_cutoff_for_solvent_from_mask = 150
       .type = float
       .help = For cells with average edge over this cutoff, use the\
@@ -7467,7 +7472,14 @@ def write_output_files(params,
 
   lower_bounds,upper_bounds=adjust_bounds(params,lower_bounds,upper_bounds,
     map_data=map_data,out=out)
+  box_ncs_au=params.segmentation.box_ncs_au
+  if (not box_ncs_au):
+    print >>out,"Using entire input map (box_ncs_au=False)"
+    lower_bounds=map_data.origin()
+    upper_bounds=tuple(matrix.col(map_data.all())+
+        matrix.col(map_data.origin())-matrix.col((1,1,1)))
 
+ 
   print >>out,\
      "\nMaking two types of maps for AU of NCS mask and map with "+\
       "buffer of %d grid units \nin each direction around AU" %(
@@ -7522,7 +7534,8 @@ def write_output_files(params,
       rad_smooth=tracking_data.params.crystal_info.resolution,
       crystal_symmetry=tracking_data.crystal_symmetry,
       out=out)
-  else:
+  elif (box_ncs_au): # usual.  If box_ncs_au is False, do not mask
+
     map_data_ncs_au=map_data_ncs_au*mask
 
     one_d=map_data_ncs_au.as_1d()

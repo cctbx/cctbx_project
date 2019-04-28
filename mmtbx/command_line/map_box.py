@@ -906,8 +906,7 @@ Parameters:"""%h
        input_file_name=inputs.ccp4_map_file_name,
        input_labels=input_map_labels,
        limitations=limitations,
-       output_labels=None)
-
+       output_labels=params.output_map_labels)
      output_box.write_ccp4_map(file_name=file_name,
        output_crystal_symmetry=output_crystal_symmetry,
        output_mean=params.output_ccp4_map_mean,
