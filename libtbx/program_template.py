@@ -76,6 +76,15 @@ For additional help, you can contact the developers at cctbx@cci.lbl.gov
   # automatically added, so no need to redefine
   output_phil_str = '''
 output {
+  prefix = None
+    .type = str
+    .help = Prefix string added to automatically generated output filenames
+  suffix = None
+    .type = str
+    .help = Suffix string added to automatically generated output filenames
+  serial = 0
+    .type = int
+    .help = Serial number added to automatically generated output filenames
   overwrite = False
     .type = bool
     .help = Overwrite files when set to True
@@ -312,5 +321,30 @@ output {
     '''
     return self.get_data_phil_str(diff=diff) + self.get_program_phil_str(diff=diff)
 
+  # ---------------------------------------------------------------------------
+  def get_default_filename(self):
+    '''
+    Given the output.prefix, output.suffix, and output.serial PHIL parameters,
+    return the default output filename
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    filename: str
+      The default output filename without a file extension
+    '''
+
+    filename = self.params.output.prefix
+    if filename is None:
+      filename = 'cctbx_program'
+    if self.params.output.suffix is not None:
+      filename += '_{suffix}'.format(suffix=self.params.output.suffix)
+    if self.params.output.serial is not None:
+      filename += '_{serial:03d}'.format(serial=self.params.output.serial)
+
+    return filename
 
 # =============================================================================
