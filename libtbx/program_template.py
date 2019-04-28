@@ -194,4 +194,123 @@ output {
     '''
     return None
 
+  # ---------------------------------------------------------------------------
+  def get_program_phil(self, diff=False):
+    '''
+    Function for getting the PHIL extract of the Program
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: libtbx.phil.scope
+    '''
+    working_phil = self.master_phil.format(python_object=self.params)
+    if diff:
+      working_phil = self.master_phil.fetch_diff(working_phil)
+    return working_phil
+
+  # ---------------------------------------------------------------------------
+  def get_data_phil(self, diff=False):
+    '''
+    Function for getting the PHIL scope from the DataManager
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: libtbx.phil.scope
+    '''
+    working_phil = self.data_manager.export_phil_scope()
+    if diff:
+      working_phil = self.data_manager.master_phil.fetch_diff(working_phil)
+    return working_phil
+
+  # ---------------------------------------------------------------------------
+  def get_program_extract(self, diff=False):
+    '''
+    Function for getting the PHIL extract of the Program
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: libtbx.phil.scope_extract
+    '''
+    return self.get_program_phil(diff=diff).extract()
+
+  # ---------------------------------------------------------------------------
+  def get_data_extract(self, diff=False):
+    '''
+    Function for getting the PHIL extract from the DataManager
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: libtbx.phil.scope_extract
+    '''
+    return self.get_data_phil(diff=diff).extract()
+
+  # ---------------------------------------------------------------------------
+  def get_program_phil_str(self, diff=False):
+    '''
+    Function for getting the PHIL string of the Program
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: str
+    '''
+    return self.get_program_phil(diff=diff).as_str()
+
+  # ---------------------------------------------------------------------------
+  def get_data_phil_str(self, diff=False):
+    '''
+    Function for getting the PHIL string from the DataManager
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: str
+    '''
+    return self.get_data_phil(diff=diff).as_str()
+
+  # ---------------------------------------------------------------------------
+  def get_full_phil_str(self, diff=False):
+    '''
+    Function for getting the full PHIL string of the DataManager and Program
+
+    Parameters
+    ----------
+    diff: bool
+      When set to True, only the differences from the master PHIL are returned
+
+    Returns
+    -------
+    params: str
+    '''
+    return self.get_data_phil_str(diff=diff) + self.get_program_phil_str(diff=diff)
+
+
 # =============================================================================
