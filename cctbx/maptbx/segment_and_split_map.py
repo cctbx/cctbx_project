@@ -889,12 +889,12 @@ master_phil = iotbx.phil.parse("""
     select_au_box = None
       .type = bool
       .help = Select box containing at least one representative region of \
-              the map. Also select just symmetry operators relevant to that box. \
+            the map. Also select just symmetry operators relevant to that box. \
               Default is true if number of operators is at least \
               n_ops_to_use_au_box
       .short_caption = select au box
 
-    n_ops_to_use_au_box = 20
+    n_ops_to_use_au_box = 25
       .type = int
       .help = If number of operators is this big or more and \
               select_au_box is None, set it to True.
