@@ -7479,7 +7479,7 @@ def write_output_files(params,
     upper_bounds=tuple(matrix.col(map_data.all())+
         matrix.col(map_data.origin())-matrix.col((1,1,1)))
 
- 
+
   print >>out,\
      "\nMaking two types of maps for AU of NCS mask and map with "+\
       "buffer of %d grid units \nin each direction around AU" %(
