@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import libtbx.load_env
 if (libtbx.env.has_module("ccp4io")):
   from iotbx import mtz
@@ -429,7 +429,7 @@ def exercise_hl_ab_only(anomalous_flag):
   columns[-1].set_type("F")
   try:
     mtz_obj.as_miller_arrays()
-  except RuntimeError, e:
+  except RuntimeError as e:
     if (not anomalous_flag):
       assert str(e) == 'Invalid MTZ column combination' \
         ' (incomplete Hendrickson-Lattman array),' \
@@ -629,7 +629,7 @@ def exercise_change_basis_in_place():
 
 def exercise():
   if (mtz is None):
-    print "Skipping iotbx/mtz/tst.py: ccp4io not available"
+    print("Skipping iotbx/mtz/tst.py: ccp4io not available")
     return
   from cctbx import sgtbx
   exercise_change_basis_in_place()
@@ -645,7 +645,7 @@ def exercise():
 
 def run():
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

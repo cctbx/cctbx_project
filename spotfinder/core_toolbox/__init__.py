@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from six.moves import range
 import spotfinder.array_family.flex # implicit import
 
@@ -57,7 +57,7 @@ class Distl(w_Distl):
     try:
       self.pxlclassify()
     except Exception as e:
-      if str(e).find("cannot distinguish signal")>0: print e
+      if str(e).find("cannot distinguish signal")>0: print(e)
       else: raise e
     self.search_icerings()
     self.search_maximas()

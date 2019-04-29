@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx import french_wilson
 from cctbx.development import random_structure
 from scitbx.array_family import flex
@@ -59,4 +59,4 @@ def exercise_01():
 if (__name__ == "__main__"):
   exercise_00()
   exercise_01()
-  print "OK"
+  print("OK")

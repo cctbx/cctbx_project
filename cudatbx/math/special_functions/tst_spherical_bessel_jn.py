@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 
 from libtbx.test_utils import approx_equal
@@ -68,4 +68,4 @@ if (__name__ == '__main__'):
   if (libtbx.env.build_options.enable_cuda):
     t = spherical_bessel_jn_test()
 
-  print 'Ok'
+  print('Ok')

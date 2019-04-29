@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from scitbx.array_family import flex
 from scitbx.python_utils import command_line
 from scitbx import matrix
@@ -229,18 +229,18 @@ def exercise_flex_constructors():
           else:
             assert m.focus() == (n_rows, n_columns)
           try: flex.double(row_type([column_type([]),column_type([1])]))
-          except RuntimeError, e:
+          except RuntimeError as e:
             assert str(e) == "matrix columns must have identical sizes."
           else: raise Exception_expected
           try: flex.double(row_type([column_type([0]),column_type(["x"])]))
-          except TypeError, e:
+          except TypeError as e:
             assert str(e) in [
               "bad argument type for built-in operation",
               "a float is required"]
           else: raise Exception_expected
   for arg in [[[0],""], ([0],"",)]:
     try: flex.double(arg)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == \
         "argument must be a Python list or tuple of lists or tuples."
     else: raise Exception_expected
@@ -260,15 +260,15 @@ def exercise_flex_constructors():
   assert list(flex.size_t_range(stop=3)) == range(3)
   assert list(flex.size_t_range(start=8, stop=3, step=-1)) == range(8, 3, -1)
   try: flex.int_range(0, 0, 0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "range step argument must not be zero."
   else: raise Exception_expected
   try: flex.size_t_range(-1, 0, 1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "range start argument must not be negative."
   else: raise Exception_expected
   try: flex.size_t_range(0, -1, 1)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "range stop argument must not be negative."
   else: raise Exception_expected
 
@@ -280,14 +280,14 @@ def exercise_numbers_from_string():
   #
   try:
     flex.int(flex.std_string(['']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Empty string (integer value expected).')
   else:
     raise Exception_expected
   try:
     flex.int(flex.std_string(['+-0']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Invalid integer value: "+-0"')
   else:
@@ -295,7 +295,7 @@ def exercise_numbers_from_string():
   s = str(2**1000).replace("L", "")
   try:
     flex.int(flex.std_string([s]))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Invalid integer value: "%s"' % s)
   else:
@@ -318,56 +318,56 @@ def exercise_numbers_from_string():
   #
   try:
     flex.double(flex.std_string(['']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Empty string (floating-point value expected).')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['1.2(']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Missing closing parenthesis: "1.2("')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['1.2(3)4']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Unexpected trailing characters after ")": "1.2(3)4"')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['(3)']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Empty value part: "(3)"')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['5()']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Empty esd part: "5()"')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['6x']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Invalid floating-point value: "6x"')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['7x(8)']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e),
       'Invalid value part: "7x(8)"')
   else:
     raise Exception_expected
   try:
     flex.double(flex.std_string(['1.2','+2e-3(x)']))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), 'Invalid esd part: "+2e-3(x)"')
   else:
     raise Exception_expected
@@ -459,7 +459,7 @@ def exercise_misc():
   assert b.md5().hexdigest() == "bc115dabbd6dc87323302b082152be14"
   #
   try: flex.int([0,0,1,0,2,0,1,0,0,1,1,0,0,0]).as_bool(strict=True)
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == "scitbx.array_family.flex.int.as_bool(strict=True):" \
       " all array elements must be 0 or 1, but value=2 at array index=4."
   else: raise Exception_expected
@@ -489,7 +489,7 @@ def exercise_misc():
   assert flex.double(new_style([3,4,5])).all_eq(flex.double([3,4,5]))
   for s in ["", u""]:
     try: flex.double(s)
-    except Exception, e:
+    except Exception as e:
       assert str(e).startswith("Python argument types in")
     else: raise Exception_expected
   #
@@ -500,7 +500,7 @@ def exercise_misc():
   a.reshape(flex.grid(2,3,2))
   assert a.focus() == (2,3,2)
   try: a.reshape(flex.grid(5,6))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("SCITBX_ASSERT(grid.size_1d() == a.size())") > 0
   else: raise Exception_expected
   #
@@ -621,7 +621,7 @@ def exercise_1d_slicing_core(a):
   assert tuple(a[-1:1:-2]) == (5,3)
   assert tuple(a[-1:2:-2]) == (5,)
   try: tuple(a[3:3:0]) == ()
-  except ValueError, e: assert str(e) == "slice step cannot be zero"
+  except ValueError as e: assert str(e) == "slice step cannot be zero"
 
 def exercise_flex_sum_axis():
   try:
@@ -658,9 +658,9 @@ def exercise_1d_slicing():
   except ImportError:
     pass
   else:
-    print "Testing compatibility with numpy slicing...",
+    print("Testing compatibility with numpy slicing...", end=' ')
     exercise_1d_slicing_core(numpy.array((1,2,3,4,5)))
-    print "OK"
+    print("OK")
   assert list(flex.slice_indices(5, slice(10))) == [0,1,2,3,4]
   assert list(flex.slice_indices(5, slice(0))) == []
   assert list(flex.slice_indices(5, slice(0,10,2))) == [0,2,4]
@@ -742,7 +742,7 @@ def exercise_numpy_slicing_compatibility():
   try:
     import numpy
   except ImportError:
-    print "Skipping exercise_numpy_slicing_compatibility..."
+    print("Skipping exercise_numpy_slicing_compatibility...")
     return
   for j in range(50):
     for n_dim in (3,4,5,6):
@@ -1009,22 +1009,22 @@ def exercise_select():
   #
   fs = flex.size_t
   try: fs([1,1]).intersection(fs([1,2]))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("first") > 0
     assert str(e).find("duplicate") > 0
   else: raise Exception_expected
   try: fs([2,1]).intersection(fs([1,2]))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("first") > 0
     assert str(e).find("sorted") > 0
   else: raise Exception_expected
   try: fs([1,2]).intersection(fs([1,1]))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("second") > 0
     assert str(e).find("duplicate") > 0
   else: raise Exception_expected
   try: fs([1,3]).intersection(fs([2,1]))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("second") > 0
     assert str(e).find("sorted") > 0
   else: raise Exception_expected
@@ -1186,7 +1186,7 @@ def exercise_bool():
   assert not a == None
   assert type(a == None) == type(False)
   try: a == flex.int()
-  except TypeError, e:
+  except TypeError as e:
     assert str(e) \
         == "Type of argument must be a Python bool, flex.bool, or None."
   else: raise Exception_expected
@@ -1195,7 +1195,7 @@ def exercise_bool():
   assert a != None
   assert type(a != None) == type(False)
   try: a != flex.int()
-  except TypeError, e:
+  except TypeError as e:
     assert str(e) \
         == "Type of argument must be a Python bool, flex.bool, or None."
   else: raise Exception_expected
@@ -1217,7 +1217,7 @@ def exercise_bool():
   assert type(f.all_ne(False)) == type(False)
   for mf in [t.all_eq, t.all_ne]:
     try: mf(None)
-    except TypeError, e:
+    except TypeError as e:
       assert str(e) == "Type of argument must be a Python bool or flex.bool."
     else: raise Exception_expected
   assert tuple(~a) == (True, False, True, False)
@@ -1375,7 +1375,7 @@ def exercise_functions():
   assert a.counts().items() == [(1, 3), (2, 2), (3, 1)]
   assert a.counts(max_keys=3).items() == a.counts().items()
   try: a.counts(max_keys=2)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "scitbx::af::counts::limited: max_keys exceeded."
   else: raise Exception_expected
   #
@@ -1577,13 +1577,13 @@ def exercise_random():
       if (j == 0): mt = flex.mersenne_twister()
       else: mt.seed()
       assert tuple(mt.random_size_t(3)) \
-          == (1791095845, 4282876139L, 3093770124L)
+          == (1791095845, 4282876139, 3093770124)
       assert approx_equal(mt.random_double(3),
        (0.9325573593386588, 0.12812444792935673, 0.99904051532414473))
       if (j == 0): mt = flex.mersenne_twister(seed=4357)
       else: mt.seed(value=4357)
       assert tuple(mt.random_size_t(size=3)) \
-          == (2983900864L, 1547366158, 1775641839)
+          == (2983900864, 1547366158, 1775641839)
       assert approx_equal(mt.random_double(size=3),
         (0.10064729869939604, 0.89184217257908471, 0.20721445761797463))
   assert mt.random_size_t(size=3).size() == 3
@@ -1607,7 +1607,7 @@ def exercise_random():
       flex.mean(a*a) - flex.mean(a)*flex.mean(a), 8.25, eps=0.2)
   flex.set_random_seed(value=0)
   assert tuple(flex.random_size_t(3)) \
-      == (1791095845, 4282876139L, 3093770124L)
+      == (1791095845, 4282876139, 3093770124)
   assert approx_equal(flex.random_double(3),
     (0.9325573593386588, 0.12812444792935673, 0.99904051532414473))
   assert list(flex.random_permutation(size=5)) == [2, 1, 4, 0, 3]
@@ -1748,7 +1748,7 @@ def exercise_flex_vec3_double():
   zoz = flex.vec3_double([(0,0,0),(0,1,0),(0,0,0)])
   try:
     zoz.each_normalize()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "flex.vec3_double.each_normalize():" \
       " number of vectors with length zero: 2 of 3"
   else: raise Exception_expected
@@ -2480,14 +2480,14 @@ def exercise_loops():
   for i_trial in xrange(n_trials):
     c = list(nl(begin=[3,-5,8,10,-7], end=[7,0,13,12,-3], open_range=False))
   if (n_trials > 2):
-    print "C++ nested_loop: %.2f s" % (time.time()-t0)
+    print("C++ nested_loop: %.2f s" % (time.time()-t0))
   nl = libtbx.math_utils.nested_loop
   t0 = time.time()
   for i_trial in xrange(n_trials):
     p = [tuple(i) for i in
       nl(begin=[3,-5,8,10,-7], end=[7,0,13,12,-3], open_range=False)]
   if (n_trials > 2):
-    print "Python nested_loop: %.2f s" % (time.time()-t0)
+    print("Python nested_loop: %.2f s" % (time.time()-t0))
   assert p == c
 
 def exercise_extract_attributes():
@@ -2518,20 +2518,20 @@ def exercise_extract_attributes():
 def exercise_exceptions():
   f = flex.double(flex.grid((2,3)))
   try: f.assign(1, 0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Array must be 0-based 1-dimensional."
   else:
-    raise AssertionError, "No exception or wrong exception."
+    raise AssertionError("No exception or wrong exception.")
   try: f.append(0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Array must be 0-based 1-dimensional."
   else:
-    raise AssertionError, "No exception or wrong exception."
+    raise AssertionError("No exception or wrong exception.")
   try: f[(2,0)]
-  except IndexError, e:
+  except IndexError as e:
     assert str(e) == "Index out of range."
   else:
-    raise AssertionError, "No exception or wrong exception."
+    raise AssertionError("No exception or wrong exception.")
 
 def exercise_matrix():
   for ag,bg in [[(0,0),(0,0)],[(0,1),(1,0)],[(1,0),(0,2)]]:
@@ -2707,7 +2707,7 @@ def exercise_matrix():
   lu = flex.double([0,0,0,0,1,0,0,0,1])
   lu.resize(flex.grid(3,3))
   try: lu.matrix_lu_decomposition_in_place()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "lu_decomposition_in_place: singular matrix"
   else: raise Exception_expected
   lu = flex.double([1,0,0,0,1,0,0,0,1])
@@ -2715,7 +2715,7 @@ def exercise_matrix():
   b = flex.double([1,2,3])
   pivot_indices = flex.size_t([0,1,4,0])
   try: lu.matrix_lu_back_substitution(pivot_indices, b)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "lu_back_substitution: pivot_indices[i] out of range"
   else: raise Exception_expected
   lu = flex.double([1,6,4,32,6,2,-1,63,-4,1,4,6,1,0,-13,5])
@@ -2849,13 +2849,13 @@ def exercise_matrix():
       l=p)
   e = flex.double([[1,2,3],[2,4,5],[3,9,6]])
   try: e.matrix_symmetric_as_packed_u()
-  except RuntimeError, err:
+  except RuntimeError as err:
     assert str(err) == "symmetric_as_packed_u(): matrix is not symmetric."
   else: raise Exception_expected
   p = e.matrix_symmetric_as_packed_u(relative_epsilon=1)
   assert approx_equal(p, [1,2,3,4,7,6])
   try: e.matrix_symmetric_as_packed_l()
-  except RuntimeError, err:
+  except RuntimeError as err:
     assert str(err) == "symmetric_as_packed_l(): matrix is not symmetric."
   else: raise Exception_expected
   p = e.matrix_symmetric_as_packed_l(relative_epsilon=1)
@@ -2866,7 +2866,7 @@ def exercise_matrix():
   for method in [p.matrix_packed_u_as_symmetric,
                  p.matrix_packed_l_as_symmetric]:
     try: method()
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e).endswith(
         "SCITBX_ASSERT(n*(n+1)/2 == packed_size) failure.")
     else: raise Exception_expected
@@ -3224,7 +3224,7 @@ def exercise_copy_upper_or_lower_triangle():
         for j in xrange(n):
           if i > j: assert u[i,j] == 0
           else: assert u[i,j] == a[i,j]
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert m < n and str(e).find('SCITBX_ASSERT(m >= n)') > 0
     try:
       l = a.matrix_copy_lower_triangle()
@@ -3233,7 +3233,7 @@ def exercise_copy_upper_or_lower_triangle():
         for j in xrange(m):
           if i < j: assert l[i,j] == 0
           else: assert l[i,j] == a[i,j]
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert m > n and str(e).find('SCITBX_ASSERT(m <= n)') > 0
 
 def exercise_matrix_bidiagonal():
@@ -3328,7 +3328,7 @@ def exercise_matrix_inversion_in_place():
       m_orig = matrix.rec(m, (n,n))
       try:
         m.matrix_inversion_in_place()
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert str(e) == "inversion_in_place: singular matrix"
       else:
         m_inv = matrix.rec(m, (n,n))
@@ -3424,7 +3424,7 @@ def pickle_large_arrays(max_exp, verbose):
           val = -2147483647
         elif (array_type == flex.long):
           val = -9223372036854775807
-          if (type(val) == type(1L)):
+          if (type(val) == type(1)):
             val = -2147483647
         elif (array_type == flex.complex_double):
           val = complex(-1.234567809123456e+20, -1.234567809123456e+20)
@@ -3433,7 +3433,7 @@ def pickle_large_arrays(max_exp, verbose):
         elif (array_type == flex.std_string):
           val = "x" * 10
         else:
-          raise AssertionError, "Unexpected array type."
+          raise AssertionError("Unexpected array type.")
         a = array_type(n, val)
         for pickler in (0, pickle):
           if (pickler == 0):
@@ -3458,7 +3458,7 @@ def pickle_large_arrays(max_exp, verbose):
             tl = time.time() - t0
             f.close()
           if (verbose):
-            print array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl)
+            print(array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl))
           sys.stdout.flush()
   finally:
     try: os.unlink("pickle.tmp")
@@ -3666,4 +3666,4 @@ if (__name__ == "__main__"):
     pickle_large_arrays(max_exp=n, verbose=1)
   else:
     run(n)
-  print "OK"
+  print("OK")

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 def tst_run(args=[]):
   assert len(args) == 0
   import libtbx.load_env
@@ -32,7 +32,7 @@ Number of blocks: 1
     Category name: array_data
 
 """ % cbf)
-  print "OK"
+  print("OK")
 
 tst_list = (
   tst_run,

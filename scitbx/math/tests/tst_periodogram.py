@@ -8,7 +8,7 @@
 #  included in the root directory of this package.
 #
 
-from __future__ import division
+from __future__ import division, print_function
 from scitbx.array_family import flex
 from scitbx.math.periodogram import Periodogram
 from libtbx.test_utils import approx_equal
@@ -139,7 +139,7 @@ def test_raw_even_and_odd_length():
   assert approx_equal(pgram.spec, rspec)
   assert approx_equal(pgram.freq, rfreq)
 
-  print "OK"
+  print("OK")
 
 def test_smoothed_even_and_odd_length():
   """Test smoothed periodogram of even and odd length sequences versus results
@@ -253,11 +253,11 @@ def test_smoothed_even_and_odd_length():
                        2.349620740074152])
 
   assert approx_equal(pgram.spec, rspec)
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
 
   test_raw_even_and_odd_length()
   test_smoothed_even_and_odd_length()
 
-  print "OK"
+  print("OK")

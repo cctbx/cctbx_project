@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
@@ -212,17 +212,17 @@ END
     range(6, 40) + [72, 73, 77, 79, 80]
   #
   try: isel(r"resseq")
-  except pdb.atom_selection.AtomSelectionError, e:
+  except pdb.atom_selection.AtomSelectionError as e:
     assert str(e).find(
       "Missing argument for resseq.") >= 0
   else: raise Exception_expected
   try: isel(r"resseq 3:2")
-  except pdb.atom_selection.AtomSelectionError, e:
+  except pdb.atom_selection.AtomSelectionError as e:
     assert str(e).find(
       "range with first index > last index: resseq 3:2") >= 0
   else: raise Exception_expected
   try: isel(r"resid ' 1K :2'")
-  except pdb.atom_selection.AtomSelectionError, e:
+  except pdb.atom_selection.AtomSelectionError as e:
     assert str(e).find(
       "range with first index > last index: resid  1K :2") >= 0
   else: raise Exception_expected
@@ -237,7 +237,7 @@ END
             "altloc a optional",
             "optional optional altloc a"]:
     try: isel(string=s)
-    except pdb.atom_selection.AtomSelectionError, e:
+    except pdb.atom_selection.AtomSelectionError as e:
       assert str(e).endswith("""\
 Atom selection string leading to error:
   %s""" % s), str(e)
@@ -338,7 +338,7 @@ ATOM     45  CA  CA      6      16.545  29.521  64.086  1.00 19.76
 
   try:
     isel("chain A or (peptyde and name ca)")
-  except pdb.atom_selection.AtomSelectionError, e:
+  except pdb.atom_selection.AtomSelectionError as e:
     assert not show_diff(str(e), """\
 RuntimeError: Atom selection syntax error at word "peptyde".
 Atom selection string leading to error:
@@ -373,7 +373,7 @@ END
   assert (sele.size() == 7)
   try :
     sele = sel_cache.iselection("resid 777 through chain A")
-  except pdb.atom_selection.AtomSelectionError, e :
+  except pdb.atom_selection.AtomSelectionError as e :
     pass
   else : raise Exception_expected
   hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -496,7 +496,7 @@ ATOM     45  CA  CA      8      16.545  29.521  64.086  1.00 19.76
 
 def run():
   exercise_selection()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

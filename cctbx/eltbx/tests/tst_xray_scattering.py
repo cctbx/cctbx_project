@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx.eltbx import xray_scattering
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal
@@ -26,7 +26,7 @@ def exercise_basic():
   try:
     xray_scattering.get_standard_label(label="SI1+",
       exact=True, optional=False)
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == 'Unknown scattering type label: "SI1+"'
   else: raise Exception_expected
   #
@@ -292,7 +292,7 @@ def run():
   exercise_wk1995()
   ensure_common_symbols()
   ensure_correct_element_symbol()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

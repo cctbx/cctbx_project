@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx import crystal
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -367,7 +367,7 @@ def exercise_invalid():
         file=cStringIO.StringIO(ins_invalid_scatt),
         set_grad_flags=set_grad_flags)
       raise Exception_expected
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == "ShelX: illegal argument '0.3.' at line 3"
 
     try:
@@ -375,7 +375,7 @@ def exercise_invalid():
         file=cStringIO.StringIO(ins_invalid_scatt_1),
         set_grad_flags=set_grad_flags)
       raise Exception_expected
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == ("ShelX: wrong number of parameters "
                         "for scatterer at line 3")
 
@@ -384,7 +384,7 @@ def exercise_invalid():
         file=cStringIO.StringIO(ins_missing_sfac),
         set_grad_flags=set_grad_flags)
       raise Exception_expected
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert e.args[0].startswith('ShelX:')
 
   structure = xray.structure.from_shelx(
@@ -516,11 +516,11 @@ def exercise_restraint_parsing():
   # invalid DFIX instructions
   try:
     proxies = parse_restraints(ins_invalid_dfix)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "ShelX: Invalid DFIX instruction at line 3"
   try:
     proxies = parse_restraints(ins_invalid_dfix_2)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "ShelX: Invalid DFIX instruction at line 3"
   # exercise FLAT
   proxies = parse_restraints(ins_flat)
@@ -539,7 +539,7 @@ def exercise_restraint_parsing():
   # invalid FLAT
   try:
     proxies = parse_restraints(ins_invalid_flat)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "ShelX: Invalid FLAT instruction at line 3"
   # SADI simple
   proxies = parse_restraints(ins_sadi)
@@ -906,7 +906,7 @@ def run():
   exercise_instruction_parsing()
   import libtbx.load_env
   if (not libtbx.env.has_module(name="smtbx")):
-    print "Skipping some tests: smtbx module is not available."
+    print("Skipping some tests: smtbx module is not available.")
   else:
     exercise_restraint_parsing()
     exercise_constrained_occupancies()
@@ -915,7 +915,7 @@ def run():
     exercise_residues()
   exercise_xray_structure_parsing()
   exercise_crystal_symmetry_parsing()
-  print 'OK'
+  print('OK')
 
 ins_mundane_tiny = (
 "TITL in Pbca\n"

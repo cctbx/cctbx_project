@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx import miller
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -85,7 +85,7 @@ def exercise_incompatible_flags_replacement():
   ms = miller.set(cs, i)
   ma = miller.array(ms, data=d)
   try: ma.merge_equivalents()
-  except Sorry, e: assert "merge_equivalents_exact: incompatible flags" in str(e)
+  except Sorry as e: assert "merge_equivalents_exact: incompatible flags" in str(e)
   else: raise Exception_expected
   merging = ma.merge_equivalents(incompatible_flags_replacement=0)
   me = merging.array()
@@ -151,7 +151,7 @@ def run():
   exercise_incompatible_flags_replacement()
   exercise_split_unmerged()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

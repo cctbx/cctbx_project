@@ -9,7 +9,7 @@ https://doi.org/10.1107/S0021889811041161
 http://cctbx.sourceforge.net/iotbx_cif
 
 """
-from __future__ import division
+from __future__ import division, print_function
 
 import boost.python
 ext = boost.python.import_ext("iotbx_cif_ext")
@@ -77,9 +77,9 @@ class reader(object):
   def show_errors(self, max_errors=50, out=None):
     if out is None: out = sys.stdout
     for msg in self.parser.lexer_errors()[:max_errors]:
-      print >> out, msg
+      print(msg, file=out)
     for msg in self.parser.parser_errors()[:max_errors]:
-      print >> out, msg
+      print(msg, file=out)
 
   def build_crystal_structures(self, data_block_name=None):
     xray_structures = cctbx_data_structures_from_cif(
@@ -434,6 +434,6 @@ def category_sort_function(key):
   key_category = key.split('.')[0]
   try:
     return category_order.index(key_category)
-  except ValueError, e:
+  except ValueError as e:
     # any categories we don't know about will end up at the end of the file
     return key_category

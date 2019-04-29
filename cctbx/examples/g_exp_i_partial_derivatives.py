@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from libtbx.test_utils import approx_equal
 import cmath
 import math
@@ -45,7 +45,7 @@ def exercise():
       for fdp in xrange(-3,4):
         for alpha_deg in xrange(0,360,15):
           empirical_proof(g, ffp, fdp, alpha_deg*math.pi/180)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

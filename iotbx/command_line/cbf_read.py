@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import iotbx.cif
 import iotbx.cif.validation
 import libtbx.load_env
@@ -23,7 +23,7 @@ def run(args):
     cif = iotbx.cif.fast_reader(input_string=sliced)
     model = cif.model()
     for k, v in model.iteritems():
-      print v["_array_data.data"]
+      print(v["_array_data.data"])
     if (cif_dic is not None):
       model.validate(cif_dic)
 

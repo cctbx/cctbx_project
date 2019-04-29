@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx import crystal, sgtbx, xray
 from cctbx import geometry_restraints
 from cctbx.array_family import flex
@@ -181,7 +181,7 @@ loop_
 def exercise_adp_restraints_as_cif():
   import libtbx.load_env
   if not libtbx.env.has_module("smtbx"):
-    print "Skipping exercise_adp_restraints_as_cif(): smtbx not available"
+    print("Skipping exercise_adp_restraints_as_cif(): smtbx not available")
     return
   from smtbx.refinement.restraints import adp_restraints as smtbx_adp_restraints
   import smtbx.development
@@ -246,7 +246,7 @@ loop_
 def run():
   exercise_adp_restraints_as_cif()
   exercise_geometry_restraints_as_cif()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

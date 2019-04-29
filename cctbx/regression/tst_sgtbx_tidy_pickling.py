@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 from cctbx import xray
 from cctbx import crystal
@@ -46,4 +46,4 @@ def test_spacegroup_tidy_pickling():
 
 if (__name__ == "__main__"):
   test_spacegroup_tidy_pickling()
-  print "OK"
+  print("OK")

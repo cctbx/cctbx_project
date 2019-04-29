@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import boost.python
 ext = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
@@ -28,17 +28,17 @@ def _show_residue_group(rg, out, prefix):
     ch = rg.parent()
     if (ch is None): ch = "  "
     else:            ch = "%s" % ch.id
-    print >> out, prefix+'empty: "%s%s"' % (ch, rg.resid())
+    print(prefix+'empty: "%s%s"' % (ch, rg.resid()), file=out)
   else:
     def show_atom(atom):
-      print >> out, prefix+'"%s"' % atom.format_atom_record(
-        replace_floats_with=".*.")
+      print(prefix+'"%s"' % atom.format_atom_record(
+        replace_floats_with=".*."), file=out)
     if (atoms.size() <= 3):
       for atom in atoms: show_atom(atom)
     else:
       show_atom(atoms[0])
-      print >> out, prefix+'... %d atom%s not shown' % plural_s(
-        atoms.size()-2)
+      print(prefix+'... %d atom%s not shown' % plural_s(
+        atoms.size()-2), file=out)
       show_atom(atoms[-1])
 
 class overall_counts(object):
@@ -59,31 +59,31 @@ class overall_counts(object):
     self._errors = []
     self._warnings = []
     def add_err(msg):
-      if (flag_errors): print >> out, prefix+msg
+      if (flag_errors): print(prefix+msg, file=out)
       self._errors.append(msg.strip())
     def add_warn(msg):
-      if (flag_warnings): print >> out, prefix+msg
+      if (flag_warnings): print(prefix+msg, file=out)
       self._warnings.append(msg.strip())
     fmt = "%%%dd" % len(str(self.n_atoms))
-    print >> out, prefix+"total number of:"
+    print(prefix+"total number of:", file=out)
     if (self.n_duplicate_model_ids != 0):
       add_err("  ### ERROR: duplicate model ids ###")
     if (self.n_empty_models != 0):
       add_warn("  ### WARNING: empty model ###")
-    print >> out, prefix+"  models:    ", fmt % self.n_models,
+    print(prefix+"  models:    ", fmt % self.n_models, end=' ', file=out)
     infos = []
     if (self.n_duplicate_model_ids != 0):
       infos.append("%d with duplicate model id%s" % plural_s(
         self.n_duplicate_model_ids))
     if (self.n_empty_models != 0):
       infos.append("%d empty" % self.n_empty_models)
-    if (len(infos) != 0): print >> out, "(%s)" % "; ".join(infos),
-    print >> out
+    if (len(infos) != 0): print("(%s)" % "; ".join(infos), end=' ', file=out)
+    print(file=out)
     if (self.n_duplicate_chain_ids != 0):
       add_warn("  ### WARNING: duplicate chain ids ###")
     if (self.n_empty_chains != 0):
       add_warn("  ### WARNING: empty chain ###")
-    print >> out, prefix+"  chains:    ", fmt % self.n_chains,
+    print(prefix+"  chains:    ", fmt % self.n_chains, end=' ', file=out)
     infos = []
     if (self.n_duplicate_chain_ids != 0):
       infos.append("%d with duplicate chain id%s" % plural_s(
@@ -93,52 +93,52 @@ class overall_counts(object):
     if (self.n_explicit_chain_breaks != 0):
       infos.append("%d explicit chain break%s" % plural_s(
         self.n_explicit_chain_breaks))
-    if (len(infos) != 0): print >> out, "(%s)" % "; ".join(infos),
-    print >> out
-    print >> out, prefix+"  alt. conf.:", fmt % self.n_alt_conf
-    print >> out, prefix+"  residues:  ", fmt % (
-      self.n_residues + self.n_residue_groups + self.n_empty_residue_groups),
+    if (len(infos) != 0): print("(%s)" % "; ".join(infos), end=' ', file=out)
+    print(file=out)
+    print(prefix+"  alt. conf.:", fmt % self.n_alt_conf, file=out)
+    print(prefix+"  residues:  ", fmt % (
+      self.n_residues + self.n_residue_groups + self.n_empty_residue_groups), end=' ', file=out)
     if (self.n_residue_groups != 0):
-      print >> out, "(%d with mixed residue names)" % self.n_residue_groups,
-    print >> out
+      print("(%d with mixed residue names)" % self.n_residue_groups, end=' ', file=out)
+    print(file=out)
     if (self.n_duplicate_atom_labels != 0):
       add_err("  ### ERROR: duplicate atom labels ###")
-    print >> out, prefix+"  atoms:     ", fmt % self.n_atoms,
+    print(prefix+"  atoms:     ", fmt % self.n_atoms, end=' ', file=out)
     if (self.n_duplicate_atom_labels != 0):
-      print >> out, "(%d with duplicate labels)" %self.n_duplicate_atom_labels,
-    print >> out
-    print >> out, prefix+"  anisou:    ", fmt % self.n_anisou
+      print("(%d with duplicate labels)" %self.n_duplicate_atom_labels, end=' ', file=out)
+    print(file=out)
+    print(prefix+"  anisou:    ", fmt % self.n_anisou, file=out)
     if (self.n_empty_residue_groups != 0):
       add_warn("  ### WARNING: empty residue_group ###")
-      print >> out, prefix+"  empty residue_groups:", \
-        fmt % self.n_empty_residue_groups
+      print(prefix+"  empty residue_groups:", \
+        fmt % self.n_empty_residue_groups, file=out)
     if (self.n_empty_atom_groups != 0):
       add_warn("  ### WARNING: empty atom_group ###")
-      print >> out, prefix+"  empty atom_groups:", \
-        fmt % self.n_empty_atom_groups
+      print(prefix+"  empty atom_groups:", \
+        fmt % self.n_empty_atom_groups, file=out)
     #
     c = self.element_charge_types
-    print >> out, prefix+"number of atom element+charge types:", len(c)
+    print(prefix+"number of atom element+charge types:", len(c), file=out)
     if (len(c) != 0):
-      print >> out, prefix+"histogram of atom element+charge frequency:"
+      print(prefix+"histogram of atom element+charge frequency:", file=out)
       show_sorted_by_counts(c.items(), out=out, prefix=prefix+"  ")
     #
     c = self.resname_classes
-    print >> out, prefix+"residue name classes:",
-    if (len(c) == 0): print >> out, None,
-    print >> out
+    print(prefix+"residue name classes:", end=' ', file=out)
+    if (len(c) == 0): print(None, end=' ', file=out)
+    print(file=out)
     show_sorted_by_counts(c.items(), out=out, prefix=prefix+"  ")
     #
     c = self.chain_ids
-    print >> out, prefix+"number of chain ids: %d" % len(c)
+    print(prefix+"number of chain ids: %d" % len(c), file=out)
     if (len(c) != 0):
-      print >> out, prefix+"histogram of chain id frequency:"
+      print(prefix+"histogram of chain id frequency:", file=out)
       show_sorted_by_counts(c.items(), out=out, prefix=prefix+"  ")
     #
     c = self.alt_conf_ids
-    print >> out, prefix+"number of alt. conf. ids: %d" % len(c)
+    print(prefix+"number of alt. conf. ids: %d" % len(c), file=out)
     if (len(c) != 0):
-      print >> out, prefix+"histogram of alt. conf. id frequency:"
+      print(prefix+"histogram of alt. conf. id frequency:", file=out)
       show_sorted_by_counts(c.items(), out=out, prefix=prefix+"  ")
       #
       fmt = "%%%dd" % len(str(max(
@@ -146,21 +146,21 @@ class overall_counts(object):
         self.n_alt_conf_pure,
         self.n_alt_conf_proper,
         self.n_alt_conf_improper)))
-      print >> out, prefix+"residue alt. conf. situations:"
-      print >> out, prefix+"  pure main conf.:    ", fmt%self.n_alt_conf_none
-      print >> out, prefix+"  pure alt. conf.:    ", fmt%self.n_alt_conf_pure
-      print >> out, prefix+"  proper alt. conf.:  ", fmt%self.n_alt_conf_proper
+      print(prefix+"residue alt. conf. situations:", file=out)
+      print(prefix+"  pure main conf.:    ", fmt%self.n_alt_conf_none, file=out)
+      print(prefix+"  pure alt. conf.:    ", fmt%self.n_alt_conf_pure, file=out)
+      print(prefix+"  proper alt. conf.:  ", fmt%self.n_alt_conf_proper, file=out)
       if (self.n_alt_conf_improper != 0):
         add_err("  ### ERROR: improper alt. conf. ###")
-      print >> out, prefix+"  improper alt. conf.:", \
-        fmt % self.n_alt_conf_improper
+      print(prefix+"  improper alt. conf.:", \
+        fmt % self.n_alt_conf_improper, file=out)
       self.show_chains_with_mix_of_proper_and_improper_alt_conf(
         out=out, prefix=prefix)
     #
     c = self.resnames
-    print >> out, prefix+"number of residue names: %d" % len(c)
+    print(prefix+"number of residue names: %d" % len(c), file=out)
     if (len(c) != 0):
-      print >> out, prefix+"histogram of residue name frequency:"
+      print(prefix+"histogram of residue name frequency:", file=out)
       annotation_appearance = {
         "common_amino_acid": None,
         "modified_amino_acid": "   modified amino acid",
@@ -219,11 +219,11 @@ class overall_counts(object):
     for residue_group,label in [(self.alt_conf_proper, "proper"),
                                 (self.alt_conf_improper, "improper")]:
       if (residue_group is None): continue
-      print >> out, prefix+"residue with %s altloc" % label
+      print(prefix+"residue with %s altloc" % label, file=out)
       for ag in residue_group.atom_groups():
         for atom in ag.atoms():
-          print >> out, prefix+'  "%s"' % atom.format_atom_record(
-            replace_floats_with=".*.")
+          print(prefix+'  "%s"' % atom.format_atom_record(
+            replace_floats_with=".*."), file=out)
 
   def raise_improper_alt_conf_if_necessary(self):
     sio = StringIO()
@@ -236,8 +236,7 @@ class overall_counts(object):
         prefix=""):
     if (out is None): out = sys.stdout
     n = self.n_chains_with_mix_of_proper_and_improper_alt_conf
-    print >> out, \
-      prefix+"chains with mix of proper and improper alt. conf.:", n
+    print(prefix+"chains with mix of proper and improper alt. conf.:", n, file=out)
     if (n != 0): prefix += "  "
     self.show_improper_alt_conf(out=out, prefix=prefix)
 
@@ -255,9 +254,8 @@ class overall_counts(object):
     cons = self.consecutive_residue_groups_with_same_resid
     if (len(cons) == 0): return
     if (out is None): out = sys.stdout
-    print >> out, \
-      prefix+"number of consecutive residue groups with same resid: %d" % \
-        len(cons)
+    print(prefix+"number of consecutive residue groups with same resid: %d" % \
+        len(cons), file=out)
     if (max_show is None): max_show = len(cons)
     elif (max_show <= 0): return
     delim = prefix+"  "+"-"*42
@@ -267,14 +265,14 @@ class overall_counts(object):
         if (    prev_rg is not None
             and prev_rg.memory_id() == rg.memory_id()): continue
         elif (next == "" and prev_rg is not None):
-          print >> out, delim
+          print(delim, file=out)
         prev_rg = rg
-        print >> out, prefix+"  %sresidue group:" % next
+        print(prefix+"  %sresidue group:" % next, file=out)
         _show_residue_group(rg=rg, out=out, prefix=prefix+"    ")
     if (len(cons) > max_show):
-      print >> out, delim
-      print >> out, prefix + "  ... %d remaining instance%s not shown" % \
-        plural_s(len(cons)-max_show)
+      print(delim, file=out)
+      print(prefix + "  ... %d remaining instance%s not shown" % \
+        plural_s(len(cons)-max_show), file=out)
 
   def show_residue_groups_with_multiple_resnames_using_same_altloc(self,
         out=None,
@@ -282,16 +280,16 @@ class overall_counts(object):
         max_show=10):
     rgs = self.residue_groups_with_multiple_resnames_using_same_altloc
     if (len(rgs) == 0): return
-    print >> out, prefix+"residue groups with multiple resnames using" \
-      " same altloc:", len(rgs)
+    print(prefix+"residue groups with multiple resnames using" \
+      " same altloc:", len(rgs), file=out)
     if (max_show is None): max_show = len(cons)
     elif (max_show <= 0): return
     for rg in rgs[:max_show]:
-      print >> out, prefix+"  residue group:"
+      print(prefix+"  residue group:", file=out)
       _show_residue_group(rg=rg, out=out, prefix=prefix+"    ")
     if (len(rgs) > max_show):
-      print >> out, prefix + "  ... %d remaining instance%s not shown" % \
-        plural_s(len(rgs)-max_show)
+      print(prefix + "  ... %d remaining instance%s not shown" % \
+        plural_s(len(rgs)-max_show), file=out)
 
   def \
     raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary(
@@ -307,10 +305,10 @@ class overall_counts(object):
     if (len(dup) == 0): return
     if (out is None): out = sys.stdout
     fmt = "%%%dd" % len(str(self.n_duplicate_atom_labels))
-    print >> out, prefix+"number of groups of duplicate atom labels:", \
-      fmt % len(dup)
-    print >> out, prefix+"  total number of affected atoms:         ", \
-      fmt % self.n_duplicate_atom_labels
+    print(prefix+"number of groups of duplicate atom labels:", \
+      fmt % len(dup), file=out)
+    print(prefix+"  total number of affected atoms:         ", \
+      fmt % self.n_duplicate_atom_labels, file=out)
     if (max_show is None): max_show = len(dup)
     elif (max_show <= 0): return
     for atoms in dup[:max_show]:
@@ -319,11 +317,11 @@ class overall_counts(object):
         atom_str = atom.format_atom_record(replace_floats_with=".*.")
         # replacing atom number with .*.
         a_s = atom_str[:4]+ "    .*." + atom_str[11:]
-        print >> out, prefix+prfx+'"%s"' % a_s
+        print(prefix+prfx+'"%s"' % a_s, file=out)
         prfx = "        "
     if (len(dup) > max_show):
-      print >> out, prefix+"  ... %d remaining group%s not shown" % \
-        plural_s(len(dup)-max_show)
+      print(prefix+"  ... %d remaining group%s not shown" % \
+        plural_s(len(dup)-max_show), file=out)
 
   def raise_duplicate_atom_labels_if_necessary(self, max_show=10):
     sio = StringIO()
@@ -518,7 +516,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       raise level_id_exception('Unknown level_id="%s"' % level_id)
     if (out is None): out = sys.stdout
     if (self.models_size() == 0):
-      print >> out, prefix+'### WARNING: empty hierarchy ###'
+      print(prefix+'### WARNING: empty hierarchy ###', file=out)
     model_ids = dict_with_default_0()
     for model in self.models():
       model_ids[model.id] += 1
@@ -527,11 +525,11 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       if (model_ids[model.id] != 1):
         s = "  ### ERROR: duplicate model id ###"
       else: s = ""
-      print >> out, prefix+'model id="%s"' % model.id, \
-        "#chains=%d%s" % (len(chains), s)
+      print(prefix+'model id="%s"' % model.id, \
+        "#chains=%d%s" % (len(chains), s), file=out)
       if (level_no == 0): continue
       if (model.chains_size() == 0):
-        print >> out, prefix+'  ### WARNING: empty model ###'
+        print(prefix+'  ### WARNING: empty model ###', file=out)
       model_chain_ids = dict_with_default_0()
       for chain in chains:
         model_chain_ids[chain.id] += 1
@@ -540,16 +538,16 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         if (model_chain_ids[chain.id] != 1):
           s = "  ### WARNING: duplicate chain id ###"
         else: s = ""
-        print >> out, prefix+'  chain id="%s"' % chain.id, \
-          "#residue_groups=%d%s" % (len(rgs), s)
+        print(prefix+'  chain id="%s"' % chain.id, \
+          "#residue_groups=%d%s" % (len(rgs), s), file=out)
         if (level_no == 1): continue
         if (chain.residue_groups_size() == 0):
-          print >> out, prefix+'    ### WARNING: empty chain ###'
+          print(prefix+'    ### WARNING: empty chain ###', file=out)
         suppress_chain_break = True
         prev_resid = ""
         for rg in rgs:
           if (not rg.link_to_previous and not suppress_chain_break):
-            print >> out, prefix+"    ### chain break ###"
+            print(prefix+"    ### chain break ###", file=out)
           suppress_chain_break = False
           ags = rg.atom_groups()
           resnames = set()
@@ -562,21 +560,21 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
           prev_resid = resid
           if (len(infos) != 0): s = "  ### Info: %s ###" % "; ".join(infos)
           else: s = ""
-          print >> out, prefix+'    resid="%s"' % resid, \
-            "#atom_groups=%d%s" % (len(ags), s)
+          print(prefix+'    resid="%s"' % resid, \
+            "#atom_groups=%d%s" % (len(ags), s), file=out)
           if (level_no == 2): continue
           if (rg.atom_groups_size() == 0):
-            print >> out, prefix+'      ### WARNING: empty residue_group ###'
+            print(prefix+'      ### WARNING: empty residue_group ###', file=out)
           for ag in ags:
             atoms = ag.atoms()
-            print >> out, prefix+'      altloc="%s"' % ag.altloc, \
+            print(prefix+'      altloc="%s"' % ag.altloc, \
               'resname="%s"' % ag.resname, \
-              "#atoms=%d" % len(atoms)
+              "#atoms=%d" % len(atoms), file=out)
             if (level_no == 3): continue
             if (ag.atoms_size() == 0):
-              print >> out, prefix+'        ### WARNING: empty atom_group ###'
+              print(prefix+'        ### WARNING: empty atom_group ###', file=out)
             for atom in atoms:
-              print >> out, prefix+'        "%s"' % atom.name
+              print(prefix+'        "%s"' % atom.name, file=out)
 
   def as_str(self,
         prefix="",
@@ -628,10 +626,10 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       return_cstringio = True
     if (crystal_symmetry is not None or cryst1_z is not None):
       from iotbx.pdb import format_cryst1_and_scale_records
-      print >> cstringio, format_cryst1_and_scale_records(
+      print(format_cryst1_and_scale_records(
         crystal_symmetry=crystal_symmetry,
         cryst1_z=cryst1_z,
-        write_scale_records=write_scale_records)
+        write_scale_records=write_scale_records), file=cstringio)
     self._as_pdb_string_cstringio(
       cstringio=cstringio,
       append_end=append_end,
@@ -850,16 +848,16 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     if link_records:
       if (open_append): mode = "ab"
       else:             mode = "wb"
-      print >> open(file_name, mode), link_records
+      print(link_records, file=open(file_name, mode))
       open_append = True
     if (crystal_symmetry is not None or cryst1_z is not None):
       from iotbx.pdb import format_cryst1_and_scale_records
       if (open_append): mode = "ab"
       else:             mode = "wb"
-      print >> open(file_name, mode), format_cryst1_and_scale_records(
+      print(format_cryst1_and_scale_records(
         crystal_symmetry=crystal_symmetry,
         cryst1_z=cryst1_z,
-        write_scale_records=write_scale_records)
+        write_scale_records=write_scale_records), file=open(file_name, mode))
       open_append = True
     self._write_pdb_file(
       file_name=file_name,
@@ -1112,7 +1110,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     cif_object[data_block_name] = self.as_cif_block(
       crystal_symmetry=crystal_symmetry)
     f = open(file_name, "wb")
-    print >> f, cif_object
+    print(cif_object, file=f)
     f.close()
 
   def atoms_with_labels(self):
@@ -2409,7 +2407,7 @@ class show_summary(input):
         level_id=None,
         level_id_exception=ValueError):
     input.__init__(self, file_name=file_name, pdb_string=pdb_string)
-    print >> out, prefix+self.input.source_info()
+    print(prefix+self.input.source_info(), file=out)
     self.overall_counts = self.hierarchy.overall_counts()
     self.overall_counts.show(
       out=out,

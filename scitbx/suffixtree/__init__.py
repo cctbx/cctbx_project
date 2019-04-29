@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 import boost.python
 ext = boost.python.import_ext( "scitbx_suffixtree_shared_ext" )
@@ -7,7 +7,7 @@ from scitbx_suffixtree_shared_ext import *
 def dump(root, word):
 
   for ( index, edge ) in enumerate( root.preorder_iteration() ):
-    print "%s: %s" % ( index, label( edge = edge, word = tree.word ) )
+    print("%s: %s" % ( index, label( edge = edge, word = tree.word ) ))
 
 
 def label(edge, word, separator = ""):

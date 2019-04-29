@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx import geometry_restraints
 from cctbx.array_family import flex
 from libtbx import phil
@@ -289,7 +289,7 @@ def exercise_alteration():
     a.action = action
     assert a.action == action
   try: a.action = "chnage"
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Unknown cctbx::geometry_restraints::motif::alteration' \
       '::action_type: "chnage"\n' \
       '  Possible action types are: "", "add", "delete", "change"'
@@ -299,7 +299,7 @@ def exercise_alteration():
     a.operand = operand
     assert a.operand == operand
   try: a.operand = "diehdral"
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Unknown cctbx::geometry_restraints::motif::alteration' \
       '::operand_type: "diehdral"\n' \
       '  Possible operand types are: "", "atom", "bond", "angle",' \
@@ -328,7 +328,7 @@ def exercise_alteration():
   a.set_planarity_atom_actions(["add", "change", "delete"])
   assert a.planarity_atom_actions_as_list() == ["add", "change", "delete"]
   try: a.set_planarity_atom_actions(["add", "chnage", "delete"])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Unknown cctbx::geometry_restraints::motif::alteration' \
       '::action_type: "chnage"\n' \
       '  Possible action types are: "", "add", "delete", "change"'
@@ -683,7 +683,7 @@ def exercise():
   exercise_motif()
   exercise_alteration()
   exercise_manipulation()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise()

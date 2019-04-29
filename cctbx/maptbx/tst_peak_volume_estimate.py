@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 from cctbx_asymmetric_map_ext import *
@@ -38,4 +38,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print result.min_max_mean().as_tuple() # XXX why they are so different ?
+  print(result.min_max_mean().as_tuple()) # XXX why they are so different ?

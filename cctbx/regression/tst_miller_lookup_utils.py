@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx.array_family import flex
 from cctbx import crystal
 from cctbx import miller
@@ -456,7 +456,7 @@ class miller_lookup_utils_tester(object):
     self.tst_find_miller()
     self.tst_local_neighbourhood()
     self.tst_local_area()
-    print "OK"
+    print("OK")
 
 
 def run():

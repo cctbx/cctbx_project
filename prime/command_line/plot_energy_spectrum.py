@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME prime.plot_energy_spectrum
 """
 Author      : Uervirojnangkoorn, M.
@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 if (__name__ == "__main__"):
   if len(sys.argv)==1:
-    print 'Usage: prime.plot_energy_spectrum energy_as_comma_separated.file'
+    print('Usage: prime.plot_energy_spectrum energy_as_comma_separated.file')
     exit()
   energy_file = sys.argv[1]
 

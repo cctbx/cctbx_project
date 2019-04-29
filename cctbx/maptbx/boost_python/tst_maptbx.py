@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx import maptbx
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -517,7 +517,7 @@ def exercise_real_space_gradients_simple(timing):
   tm = time.time() - t0
   msg = "real_space_gradients_simple: %.2f s / %d sites" % (tm, n)
   if (tm >= 0.01): msg += ", %.0f sites / s" % (n / tm)
-  if (timing): print msg
+  if (timing): print(msg)
 
 test_map  = flex.double([
   -0.069785, -0.109740, -0.172220, -0.209010, -0.255220, -0.285670,
@@ -620,7 +620,7 @@ def exercise_non_crystallographic_eight_point_interpolation():
   try:
     val = maptbx.non_crystallographic_eight_point_interpolation(
       map, grid_mat, (5,5,5))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "cctbx Error: non_crystallographic_eight_point_interpolation:" \
       " point required for interpolation is out of bounds."
@@ -731,7 +731,7 @@ def exercise_grid_indices_around_sites():
     maptbx.grid_indices_around_sites(
       unit_cell=unit_cell, fft_n_real=fft_n_real, fft_m_real=fft_m_real,
       sites_cart=sites_cart, site_radii=site_radii)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).startswith("product of fft_m_real")
   else: raise Exception_expected
 
@@ -858,7 +858,7 @@ def exercise_set_box_0():
       map_data_to = b1,
       start       = b1.all(),
       end         = b1.all())
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
   else: raise Exception_expected
   # test 1: transform entire unit cell
@@ -893,7 +893,7 @@ def exercise_set_box_0():
       map_data_to = b1,
       start       = [1,2,3],
       end         = [2,2,3])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
   else: raise Exception_expected
   # test 5: another slice
@@ -904,7 +904,7 @@ def exercise_set_box_0():
       map_data_to = b1,
       start       = [-1,0,2],
       end         = [0,0,3])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
   else: raise Exception_expected
   # test 6: one point changed
@@ -949,7 +949,7 @@ def exercise_set_box_0():
       map_data_to = b1,
       start       = [0,0,0],
       end         = [9,0,0])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
   else: raise Exception_expected
   # test 11: box within unit cell one period apart
@@ -1072,8 +1072,8 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
     for i, t_ in enumerate(points):
       a = to_int(t_)
       As.append(a)
-      if(show): print "%2d: %8.4f %3d"%(i, t_, a)
-    if(show): print list(As)
+      if(show): print("%2d: %8.4f %3d"%(i, t_, a))
+    if(show): print(list(As))
     #
     R  = flex.double([0,]*256)
     Rx = flex.int(xrange(256))
@@ -1089,7 +1089,7 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
     #
     if(show):
       for i, rx in enumerate(R):
-        print "%4d %10.7f"%(i, rx)
+        print("%4d %10.7f"%(i, rx))
     #
     return R
   ### Python prototype END
@@ -1326,7 +1326,7 @@ def run(args):
   exercise_region_density_correlation()
   exercise_hoppe_gassman_modification__and__convert_to_non_negative()
   exercise_sample_all_mask_regions()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

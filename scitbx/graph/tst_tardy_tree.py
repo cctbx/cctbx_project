@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from scitbx.graph.tardy_tree import cluster_manager, find_paths, construct
 from scitbx.graph.utils import construct_edge_sets
 from scitbx import matrix
@@ -506,25 +506,25 @@ test_cases = [
 
 def exercise_test_cases(out):
   for i_tc,tc in enumerate(test_cases):
-    print >> out, "test_case index:", i_tc
-    print >> out, tc.art
+    print("test_case index:", i_tc, file=out)
+    print(tc.art, file=out)
     tc_c1, tc_he1, tc_r1, tc_tid1, tc_le1, tc_leb1, \
     tc_c2, tc_he2, tc_le2, tc_leb2 = \
       tc.clusters1, tc.hinge_edges1, \
       tc.roots1, tc.tree_ids1, tc.loop_edges1, tc.loop_edge_bendings1, \
       tc.clusters1, tc.hinge_edges1, tc.loop_edges1, tc.loop_edge_bendings1
     def assert_same(label, have, expected):
-      print >> out, label, have
+      print(label, have, file=out)
       if (expected is not None):
         if (have != expected):
-          print >> out, "expected:", expected
+          print("expected:", expected, file=out)
         assert have == expected, "Note: --verbose for details"
     #
     tt = construct(n_vertices=tc.n_vertices, edge_list=tc.edge_list)
     cm = tt.cluster_manager
     assert_same("c1:", cm.clusters, tc_c1)
     cm.construct_spanning_trees(edge_sets=tt.edge_sets)
-    print >> out, "c1t:", cm.clusters
+    print("c1t:", cm.clusters, file=out)
     assert_same("he1:", cm.hinge_edges, tc_he1)
     assert_same("le1:", cm.loop_edges, tc_le1)
     r = cm.roots()
@@ -539,7 +539,7 @@ def exercise_test_cases(out):
     cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
     assert_same("c2:", cm.clusters, tc_c2)
     cm.construct_spanning_trees(edge_sets=tt.edge_sets)
-    print >> out, "c2t:", cm.clusters
+    print("c2t:", cm.clusters, file=out)
     assert_same("he2:", cm.hinge_edges, tc_he2)
     assert_same("le2:", cm.loop_edges, tc_le2)
     cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
@@ -549,12 +549,12 @@ def exercise_test_cases(out):
     for iv in xrange(len(tt.edge_sets)):
       fp.search_from(iv=iv)
     #
-    print >> out
+    print(file=out)
 
 def exercise_pdb_test_cases(out):
   from scitbx.graph import test_cases_tardy_pdb
   for i_tc,tc in enumerate(test_cases_tardy_pdb.test_cases):
-    print >> out, "test_cases_tardy_pdb index:", i_tc
+    print("test_cases_tardy_pdb index:", i_tc, file=out)
     tc.tardy_tree_construct()
 
 def exercise_special_case_ZINC03847121():
@@ -744,20 +744,20 @@ def exercise_fixed_vertices(n_trials=10):
     [11], [20]]
   try:
     tc.tardy_tree_construct(fixed_vertex_lists=[[0],[1]])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "connect_clusters(): fixed vertex lists in same connected tree."
   else: raise Exception_expected
   try:
     tc.tardy_tree_construct(fixed_vertex_lists=[[0],[10]])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "determine_weighted_order_for_construct_spanning_tree():" \
       " fixed vertex lists in same connected tree."
   else: raise Exception_expected
   try:
     tc.tardy_tree_construct(fixed_vertex_lists=[[0],[11]])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "construct_spanning_trees():" \
       " fixed vertex lists in same connected tree."
@@ -997,7 +997,7 @@ def run(args):
   exercise_pickle()
   exercise_rmsd_calculation()
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

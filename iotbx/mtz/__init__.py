@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import cctbx.array_family.flex
 
 import boost.python
@@ -318,34 +318,34 @@ class _(boost.python.injector, ext.object):
   def show_summary(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
     p = prefix
-    print >> out, p+"Title:", self.title()
-    print >> out, p+"Space group symbol from file:", self.space_group_name()
-    print >> out, p+"Space group number from file:", self.space_group_number()
+    print(p+"Title:", self.title(), file=out)
+    print(p+"Space group symbol from file:", self.space_group_name(), file=out)
+    print(p+"Space group number from file:", self.space_group_number(), file=out)
     self.space_group_info().show_summary(
       f=out, prefix=p+"Space group from matrices: ")
-    print >> out, p+"Point group symbol from file:", self.point_group_name()
+    print(p+"Point group symbol from file:", self.point_group_name(), file=out)
     if (self.n_batches() > 0):
-      print >> out, p+"Number of batches:", self.n_batches()
-    print >> out, p+"Number of crystals:", self.n_crystals()
-    print >> out, p+"Number of Miller indices:", self.n_reflections()
+      print(p+"Number of batches:", self.n_batches(), file=out)
+    print(p+"Number of crystals:", self.n_crystals(), file=out)
+    print(p+"Number of Miller indices:", self.n_reflections(), file=out)
     if (self.n_crystals() > 0 and self.n_reflections() > 0):
-      print >> out, p+"Resolution range: %.6g %.6g" % self.max_min_resolution()
-    print >> out, p+"History:"
+      print(p+"Resolution range: %.6g %.6g" % self.max_min_resolution(), file=out)
+    print(p+"History:", file=out)
     for line in self.history():
-      print >> out, p+" ", line.rstrip()
+      print(p+" ", line.rstrip(), file=out)
     for i_crystal,crystal in enumerate(self.crystals()):
-      print >> out, p+"Crystal %d:" % (i_crystal+1)
-      print >> out, p+"  Name:", crystal.name()
-      print >> out, p+"  Project:", crystal.project_name()
-      print >> out, p+"  Id:", crystal.id()
+      print(p+"Crystal %d:" % (i_crystal+1), file=out)
+      print(p+"  Name:", crystal.name(), file=out)
+      print(p+"  Project:", crystal.project_name(), file=out)
+      print(p+"  Id:", crystal.id(), file=out)
       crystal.unit_cell().show_parameters(f=out, prefix=p+"  Unit cell: ")
-      print >> out, p+"  Number of datasets:", crystal.n_datasets()
+      print(p+"  Number of datasets:", crystal.n_datasets(), file=out)
       for i_dataset,dataset in enumerate(crystal.datasets()):
-        print >> out, p+"  Dataset %d:" % (i_dataset+1)
-        print >> out, p+"    Name:", dataset.name()
-        print >> out, p+"    Id:", dataset.id()
-        print >> out, p+"    Wavelength: %.6g" % dataset.wavelength()
-        print >> out, p+"    Number of columns:", dataset.n_columns()
+        print(p+"  Dataset %d:" % (i_dataset+1), file=out)
+        print(p+"    Name:", dataset.name(), file=out)
+        print(p+"    Id:", dataset.id(), file=out)
+        print(p+"    Wavelength: %.6g" % dataset.wavelength(), file=out)
+        print(p+"    Number of columns:", dataset.n_columns(), file=out)
         if (dataset.n_columns() > 0):
           fields_list = [[
             "label", "#valid", "%valid", "min", "max", "type", ""]]
@@ -360,7 +360,7 @@ class _(boost.python.injector, ext.object):
           format = "    %%-%ds %%%ds %%%ds %%%ds %%%ds %%%ds %%s" % tuple(
             max_field_lengths[:6])
           for fields in fields_list:
-            print >> out, p+(format % tuple(fields)).rstrip()
+            print(p+(format % tuple(fields)).rstrip(), file=out)
     return self
 
   def _show_column_data_preparation(self):
@@ -384,66 +384,66 @@ class _(boost.python.injector, ext.object):
     h_format = " ".join(["%%%dd" % h_width]*3)
     h_blank = " "*(h_width*3+2)
     def show_labels():
-      print >> out, h_blank,
+      print(h_blank, end=' ', file=out)
       for i,label in enumerate(labels):
         if (i and i % 4 == 0):
-          print >> out
-          print >> out, h_blank,
-        print >> out, "%15s" % label,
-      print >> out
-      print >> out
+          print(file=out)
+          print(h_blank, end=' ', file=out)
+        print("%15s" % label, end=' ', file=out)
+      print(file=out)
+      print(file=out)
     n_data_lines = 0
-    print >> out, "Column data:"
-    print >> out, "-"*79
+    print("Column data:", file=out)
+    print("-"*79, file=out)
     show_labels()
     for iref,h in enumerate(miller_indices):
       if (n_data_lines > 20):
-        print >> out
+        print(file=out)
         show_labels()
         n_data_lines = 0
       h_str = h_format % h
-      print >> out, h_str,
+      print(h_str, end=' ', file=out)
       for i,(data,selection) in enumerate(pairs):
         if (i and i % 4 == 0):
-          print >> out
+          print(file=out)
           n_data_lines += 1
-          print >> out, h_blank,
-        if (selection[iref]): print >> out, "%15.6g" % data[iref],
-        else:                 print >> out, "%15s" % "None",
-      print >> out
+          print(h_blank, end=' ', file=out)
+        if (selection[iref]): print("%15.6g" % data[iref], end=' ', file=out)
+        else:                 print("%15s" % "None", end=' ', file=out)
+      print(file=out)
       n_data_lines += 1
-    print >> out, "-"*79
+    print("-"*79, file=out)
     return self
 
   def show_column_data_machine_readable(self, out=None):
     if (out is None): out = sys.stdout
     miller_indices, labels, pairs = self._show_column_data_preparation()
-    print >> out, "Machine readable colum data:"
-    print >> out, "Number of columns:", len(labels)
-    print >> out, "Column labels (one per line):"
+    print("Machine readable colum data:", file=out)
+    print("Number of columns:", len(labels), file=out)
+    print("Column labels (one per line):", file=out)
     for label in labels:
-      print >> out, label
-    print >> out, "Number of Miller indices:", miller_indices.size()
-    print >> out, "Column data (HKL followed by data):"
+      print(label, file=out)
+    print("Number of Miller indices:", miller_indices.size(), file=out)
+    print("Column data (HKL followed by data):", file=out)
     for iref,h in enumerate(miller_indices):
-      print >> out, " ".join([str(i) for i in h])
+      print(" ".join([str(i) for i in h]), file=out)
       for i,(data,selection) in enumerate(pairs):
-        if (selection[iref]): print >> out, "%.7g" % data[iref]
-        else:                 print >> out, "None"
-    print >> out, "End of column data."
+        if (selection[iref]): print("%.7g" % data[iref], file=out)
+        else:                 print("None", file=out)
+    print("End of column data.", file=out)
     return self
 
   def show_column_data_spreadsheet(self, out=None):
     if (out is None): out = sys.stdout
     miller_indices, labels, pairs = self._show_column_data_preparation()
-    print >> out, ",".join([label.replace(",","_")
-      for label in ["H","K","L"]+labels])
+    print(",".join([label.replace(",","_")
+      for label in ["H","K","L"]+labels]), file=out)
     for iref,h in enumerate(miller_indices):
       row = [str(i) for i in h]
       for i,(data,selection) in enumerate(pairs):
         if (selection[iref]): row.append("%.7g" % data[iref])
         else:                 row.append("")
-      print >> out, ",".join(row)
+      print(",".join(row), file=out)
     return self
 
   def show_column_data(self, out=None, format="human_readable"):
@@ -538,7 +538,7 @@ class _(boost.python.injector, ext.object):
     for crystal in self.crystals():
       try :
         unit_cell = crystal.unit_cell()
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry(str(e))
       crystal_symmetry_from_file = cctbx.crystal.symmetry(
         unit_cell=unit_cell,
@@ -859,7 +859,7 @@ class _(boost.python.injector, ext.crystal):
   def crystal_symmetry(self):
     try :
       unit_cell = self.unit_cell()
-    except ValueError, e :
+    except ValueError as e :
       raise Sorry(str(e))
     return cctbx.crystal.symmetry(
       unit_cell=unit_cell,
@@ -1146,58 +1146,58 @@ class _(boost.python.injector, ext.batch):
 
   def show(self, out=None):
     if (out is None): out = sys.stdout
-    print >> out, "batch number:", self.num()
-    print >> out, "batch title:", self.title().rstrip()
-    print >> out, "names of the three axes:", list(self.gonlab())
-    print >> out, "type of orientation block:", self.iortyp()
-    print >> out, "refinement flags for cell:", list(self.lbcell())
-    print >> out, "number of phixyz used (0, 1, or 2):", self.misflg()
-    print >> out, "reciprocal axis closest to rotation axis:", self.jumpax()
-    print >> out, "crystal number:", self.ncryst()
-    print >> out, "mosaicity model: 0 = isotropic, 1 = anisotropic:", \
-      self.lcrflg()
-    print >> out, "type of data: 2D (1), 3D (2), or Laue (3):", self.ldtype()
-    print >> out, "goniostat scan axis number:", self.jsaxs()
-    print >> out, "number of batch scales & Bfactors (0 if unset):", \
-      self.nbscal()
-    print >> out, "number of goniostat axes:", self.ngonax()
-    print >> out, "flag for type of beam info:", self.lbmflg()
-    print >> out, "  0: for alambd, delamb; 1: also delcor, divhd, divvd"
-    print >> out, "number of detectors (current maximum 2):", self.ndet()
-    print >> out, "dataset id:", self.nbsetid()
-    print >> out, "cell dimensions:", list(self.cell())
-    print >> out, "orientation matrix U:", list(self.umat())
-    print >> out, "  in Fortranic order, i.e. U(1,1), U(2,1) ..."
-    print >> out, "missetting angles at beginning and end of oscillation:", \
-      list(self.phixyz())
-    print >> out, "mosaicity:", list(self.crydat())
-    print >> out, "datum values of goniostat axes:", list(self.datum())
-    print >> out, "start of phi relative to datum:", self.phistt()
-    print >> out, "end of phi relative to datum:", self.phiend()
-    print >> out, "rotation axis in lab frame:", list(self.scanax())
-    print >> out, "start time:", self.time1()
-    print >> out, "stop time:", self.time2()
-    print >> out, "batch scale:", self.bscale()
-    print >> out, "batch temperature factor:", self.bbfac()
-    print >> out, "sd bscale:", self.sdbscale()
-    print >> out, "sd bbfac:", self.sdbfac()
-    print >> out, "phi range:", self.phirange()
-    print >> out, 'vectors ("Cambridge" laboratory axes) defining' \
-      ' ngonax goniostat axes:'
-    print >> out, "  vector 1:", list(self.e1())
-    print >> out, "  vector 2:", list(self.e2())
-    print >> out, "  vector 3:", list(self.e3())
-    print >> out, "idealised source vector:", list(self.source())
-    print >> out, "source vector:", list(self.so())
-    print >> out, "wavelength (A):", self.alambd()
-    print >> out, "dispersion (deltalambda / lambda):", self.delamb()
-    print >> out, "correlated component:", self.delcor()
-    print >> out, "horizontal beam divergence:", self.divhd()
-    print >> out, "vertical beam divergence:", self.divvd()
-    print >> out, "xtal to detector distance:", list(self.dx())
-    print >> out, "detector tilt angle:", list(self.theta())
-    print >> out, "min & max values of detector coords (pixels):", \
-      list(self.detlm())
+    print("batch number:", self.num(), file=out)
+    print("batch title:", self.title().rstrip(), file=out)
+    print("names of the three axes:", list(self.gonlab()), file=out)
+    print("type of orientation block:", self.iortyp(), file=out)
+    print("refinement flags for cell:", list(self.lbcell()), file=out)
+    print("number of phixyz used (0, 1, or 2):", self.misflg(), file=out)
+    print("reciprocal axis closest to rotation axis:", self.jumpax(), file=out)
+    print("crystal number:", self.ncryst(), file=out)
+    print("mosaicity model: 0 = isotropic, 1 = anisotropic:", \
+      self.lcrflg(), file=out)
+    print("type of data: 2D (1), 3D (2), or Laue (3):", self.ldtype(), file=out)
+    print("goniostat scan axis number:", self.jsaxs(), file=out)
+    print("number of batch scales & Bfactors (0 if unset):", \
+      self.nbscal(), file=out)
+    print("number of goniostat axes:", self.ngonax(), file=out)
+    print("flag for type of beam info:", self.lbmflg(), file=out)
+    print("  0: for alambd, delamb; 1: also delcor, divhd, divvd", file=out)
+    print("number of detectors (current maximum 2):", self.ndet(), file=out)
+    print("dataset id:", self.nbsetid(), file=out)
+    print("cell dimensions:", list(self.cell()), file=out)
+    print("orientation matrix U:", list(self.umat()), file=out)
+    print("  in Fortranic order, i.e. U(1,1), U(2,1) ...", file=out)
+    print("missetting angles at beginning and end of oscillation:", \
+      list(self.phixyz()), file=out)
+    print("mosaicity:", list(self.crydat()), file=out)
+    print("datum values of goniostat axes:", list(self.datum()), file=out)
+    print("start of phi relative to datum:", self.phistt(), file=out)
+    print("end of phi relative to datum:", self.phiend(), file=out)
+    print("rotation axis in lab frame:", list(self.scanax()), file=out)
+    print("start time:", self.time1(), file=out)
+    print("stop time:", self.time2(), file=out)
+    print("batch scale:", self.bscale(), file=out)
+    print("batch temperature factor:", self.bbfac(), file=out)
+    print("sd bscale:", self.sdbscale(), file=out)
+    print("sd bbfac:", self.sdbfac(), file=out)
+    print("phi range:", self.phirange(), file=out)
+    print('vectors ("Cambridge" laboratory axes) defining' \
+      ' ngonax goniostat axes:', file=out)
+    print("  vector 1:", list(self.e1()), file=out)
+    print("  vector 2:", list(self.e2()), file=out)
+    print("  vector 3:", list(self.e3()), file=out)
+    print("idealised source vector:", list(self.source()), file=out)
+    print("source vector:", list(self.so()), file=out)
+    print("wavelength (A):", self.alambd(), file=out)
+    print("dispersion (deltalambda / lambda):", self.delamb(), file=out)
+    print("correlated component:", self.delcor(), file=out)
+    print("horizontal beam divergence:", self.divhd(), file=out)
+    print("vertical beam divergence:", self.divvd(), file=out)
+    print("xtal to detector distance:", list(self.dx()), file=out)
+    print("detector tilt angle:", list(self.theta()), file=out)
+    print("min & max values of detector coords (pixels):", \
+      list(self.detlm()), file=out)
 
 def cutoff_data(file_name, d_min_cut):
   """

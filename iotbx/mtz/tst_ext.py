@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import libtbx.load_env
 if (libtbx.env.has_module("ccp4io")):
   from iotbx import mtz
@@ -20,7 +20,7 @@ def exercise_read_corrupt():
       f.write("\0"*(40*i_trial))
     f.close()
     try: mtz.object(file_name="tmp_iotbx_mtz_ext.mtz")
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == "cctbx Error: MTZ file read error: tmp_iotbx_mtz_ext.mtz"
     else: raise Exception_expected
 
@@ -57,7 +57,7 @@ def exercise_basic():
     relative_path="phenix_regression/reflection_files/dano.mtz",
     test=os.path.isfile)
   if (file_name is None):
-    print "Skipping dano.mtz test: input file not available"
+    print("Skipping dano.mtz test: input file not available")
   else:
     mtz_object = mtz.object(file_name=file_name)
     assert mtz_object.title() == "......"
@@ -90,7 +90,7 @@ def exercise_basic():
     assert crystal.set_name("abc") is crystal
     assert crystal.name() == "abc"
     try: crystal.set_name("unknown3")
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == 'mtz::crystal::set_name(new_name="unknown3"):' \
         ' new_name is used already for another crystal.'
     else: raise Exception_expected
@@ -133,7 +133,7 @@ def exercise_basic():
     assert column.set_label(new_label="New") is column
     assert column.label() == "New"
     try: column.set_label("a,b,c")
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == 'mtz::column::set_label(new_label="a,b,c"):' \
         ' new_label must not include commas.'
     else: raise Exception_expected
@@ -141,7 +141,7 @@ def exercise_basic():
     assert column.set_label(new_label="New") is column
     assert column.label() == "New"
     try: column.set_label(new_label="K")
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == 'mtz::column::set_label(new_label="K"):' \
         ' new_label is used already for another column.'
     else: raise Exception_expected
@@ -488,7 +488,7 @@ def walk_callback(arg, top, names):
   for name in names:
     if (not name.lower().endswith(".mtz")): continue
     file_name = os.path.normpath(os.path.join(top, name))
-    print >> out, "Processing:", file_name
+    print("Processing:", file_name, file=out)
     exercise_function(file_name=file_name, out=out)
     exercise_function.raise_if_all_tests_ran_at_least_once()
 
@@ -504,7 +504,7 @@ def exercise_walk(root_dir, full, verbose=False):
   except QuickStop:
     pass
   if (verbose):
-    print exercise_function.counters
+    print(exercise_function.counters)
 
 def exercise_modifiers(verbose=0):
   if (verbose):
@@ -747,7 +747,7 @@ Crystal 3:
   assert dataset_0_0.set_name(new_name="dataset_0") is dataset_0_0
   assert dataset_0_0.name() == "dataset_0"
   try: dataset_0_0.set_name(new_name="dataset_1")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'mtz::dataset::set_name(new_name="dataset_1"):' \
       ' new_name is used already for another dataset.'
   else: raise Exception_expected
@@ -923,7 +923,7 @@ Crystal 3:
       name="crystal_1",
       wavelength=0)
   try: dataset.add_column(label="a,b,c", type="H")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'mtz::dataset::add_column(label="a,b,c", ...):' \
       ' label must not include commas.'
   else: raise Exception_expected
@@ -1343,7 +1343,7 @@ min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.
 
 def exercise():
   if (mtz is None):
-    print "Skipping iotbx/mtz/tst_ext.py: ccp4io not available"
+    print("Skipping iotbx/mtz/tst_ext.py: ccp4io not available")
     return
   command_line = (option_parser()
     .option(None, "--verbose",
@@ -1377,7 +1377,7 @@ def exercise():
 
 def run():
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

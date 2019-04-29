@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from scitbx.stl import set
 try:
   import cPickle as pickle
@@ -44,7 +44,7 @@ def exercise_stl_string():
 def exercise():
   exercise_unsigned()
   exercise_stl_string()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

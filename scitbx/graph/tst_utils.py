@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from scitbx.graph import utils
 import sys
 
@@ -195,7 +195,7 @@ def run(args):
   #
   exercise_tree_marking()
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

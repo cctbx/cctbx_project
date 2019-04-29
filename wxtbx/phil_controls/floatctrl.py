@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 from libtbx.utils import Sorry
@@ -87,8 +87,8 @@ if (__name__ == "__main__"):
   def OnOkay(evt):
     float1 = float_ctrl.GetPhilValue()
     float2 = float_ctrl2.GetPhilValue()
-    print type(float1).__name__, str(float1)
-    print type(float2).__name__, str(float2)
+    print(type(float1).__name__, str(float1))
+    print(type(float2).__name__, str(float2))
   frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
   frame.Fit()
   frame.Show()

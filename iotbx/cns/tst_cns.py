@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import iotbx.cns.xray_structure
 import iotbx.cns.miller_array
 import iotbx.cns.reflection_reader
@@ -74,7 +74,7 @@ def exercise_crystal_symmetry_utils():
     #
     sg_uc = as_inp(crystal_symmetry=cs1)
     sio = StringIO()
-    print >> sio, "\n".join(sg_uc)
+    print("\n".join(sg_uc), file=sio)
     sio = StringIO(sio.getvalue())
     cs2 = iotbx.cns.crystal_symmetry_from_inp.extract_from(file=sio)
     assert cs1.is_similar_symmetry(cs2)
@@ -125,7 +125,7 @@ def exercise_reflection_reader():
   try:
     # just to make sure a bug in handling {} doesn't get reintroduced
     crf(file_handle=StringIO("}{"))
-  except iotbx.cns.reflection_reader.CNS_input_Error, e:
+  except iotbx.cns.reflection_reader.CNS_input_Error as e:
     assert str(e) == "premature end-of-file"
   else:
     raise Exception_expected
@@ -358,7 +358,7 @@ def run():
   exercise_reflection_reader()
   exercise_reflection_file_as_miller_array()
   exercise_miller_array_as_cns_hkl()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

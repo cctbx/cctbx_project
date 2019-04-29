@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 def range_parser( txt ):
   splitter = " "
   if "," in txt:
@@ -128,4 +128,4 @@ def tst_ranges():
 if __name__ == "__main__":
   tst_ranges()
   tst_file_names()
-  print "OK"
+  print("OK")

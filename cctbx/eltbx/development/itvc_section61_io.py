@@ -82,7 +82,7 @@ def read_table6111(file_name):
             sigma_row.append(-1)
           else:
             try: value_row.append(float(value))
-            except ValueError, e: raise ValueError(line)
+            except ValueError as e: raise ValueError(line)
             assert value.count(".") == 1
             sigma = ""
             for c in value.strip():

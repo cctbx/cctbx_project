@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME prime.plotstats
 '''
 Author      : Uervirojnangkoorn, M.
@@ -10,8 +10,8 @@ import sys
 from six.moves import cPickle as pickle
 
 if len(sys.argv)==1:
-  print 'Use prime.plotstats to view different stats along post-refinement cycles.'
-  print 'Usage: prime.plotstats path/to/run/folder'
+  print('Use prime.plotstats to view different stats along post-refinement cycles.')
+  print('Usage: prime.plotstats path/to/run/folder')
   exit()
 run_no = sys.argv[1]
 stat_pickle = pickle.load(open(run_no+"/pickle.stat","rb"))

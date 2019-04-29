@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
@@ -111,7 +111,7 @@ dataset
       param_lines.append(param_line)
 
     except TypeError as e:
-      print i, e
+      print(i, e)
       pass
 
   param_lines.append('}')

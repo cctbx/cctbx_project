@@ -2,7 +2,7 @@
 # TODO:
 #  - cached scenes
 
-from __future__ import division
+from __future__ import division, print_function
 from libtbx.utils import Sorry
 from cctbx import miller
 from cctbx.array_family import flex
@@ -453,7 +453,7 @@ class scene(object):
       absence_array = absence_array.select(slice_selection)
     absence_flags = absence_array.data()
     if (absence_flags.count(True) == 0):
-      print "No systematic absences found!"
+      print("No systematic absences found!")
     else :
       new_indices = flex.miller_index()
       for i_seq in absence_flags.iselection():

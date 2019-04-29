@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import scitbx.rigid_body.essence
 from scitbx.rigid_body.essence import tst_tardy
 from scitbx.graph import test_cases_tardy_pdb
@@ -179,7 +179,7 @@ def compare_essence_and_fast_tardy_models(
   assert approx_equal(e, f)
   try:
     ftm.reset_e_kin(e_kin_target=1, e_kin_epsilon=0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("e_kin_epsilon > 0") > 0
   else: raise Exception_expected
   etm.assign_zero_velocities()
@@ -478,7 +478,7 @@ def run(args):
   exercise_with_test_cases_tardy_pdb()
   exercise_fixed_vertices()
   exercise_pickle()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

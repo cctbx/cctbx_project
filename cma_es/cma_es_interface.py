@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from scitbx.array_family import flex
 from cma_es import cma_es
 
@@ -50,4 +50,4 @@ def tst_it():
 # =============================================================================
 if (__name__ == '__main__'):
   tst_it()
-  print 'Ok'
+  print('Ok')

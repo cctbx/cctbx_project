@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import division, print_function
 from cctbx.r_free_utils import *
 from cctbx import miller
 from cctbx import crystal
@@ -88,4 +88,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

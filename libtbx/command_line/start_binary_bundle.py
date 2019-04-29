@@ -37,7 +37,7 @@ def run(args):
       install_csh.create_script(
         bundle=bundle_name,
         top_modules=top_modules))
-    os.chmod(install_script, 0755)
+    os.chmod(install_script, 0o755)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

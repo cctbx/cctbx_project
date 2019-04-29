@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
@@ -149,7 +149,7 @@ class InitAll(object):
     self.input_list = self.make_input_list()
 
     if self.input_list is not None:
-      for i in self.input_list: print i
+      for i in self.input_list: print(i)
       return True
     else:
       return False

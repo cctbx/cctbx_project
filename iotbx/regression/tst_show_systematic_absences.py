@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import division, print_function
 from iotbx.command_line import show_systematic_absences
 from cctbx.development import random_structure
 from cctbx import sgtbx
@@ -49,4 +49,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

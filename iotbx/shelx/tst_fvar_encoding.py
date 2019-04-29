@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 # Note: some related tests are in
 #       cctbx/regression/tst_sgtbx_special_op_simplifier.py
 
@@ -42,7 +42,7 @@ ER2  Er     4 ( 0.3996 -0.3996  0.1004) 1.00 0.0000 [ - ]
 def run(args):
   assert len(args) == 0
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

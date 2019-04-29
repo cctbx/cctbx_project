@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from libtbx.test_utils import open_tmp_directory
 
 class Test(object):
@@ -56,7 +56,7 @@ class Test(object):
     tmp_dir = open_tmp_directory()
     filename_2 = os.path.join(tmp_dir, 'XDS.INP')
     with open(filename_2, 'wb') as f:
-      print >> f, open(filename_1, 'rb').read()
+      print(open(filename_1, 'rb').read(), file=f)
     handle = xds_inp.reader()
     handle.read_file(filename_2)
     assert handle.corrections is None
@@ -65,7 +65,7 @@ class Test(object):
     assert handle.name_template_of_data_frames[0] == '/blah/xtal1_1_????.cbf'
     assert handle.name_template_of_data_frames[1] == 'CBF'
 
-    print 'OK'
+    print('OK')
 
 if __name__ == '__main__':
 

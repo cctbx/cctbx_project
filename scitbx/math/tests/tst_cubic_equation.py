@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import scitbx.math
 from scitbx.array_family import flex
 import math, time, random
@@ -115,7 +115,7 @@ def run(args):
     exercise4()
     exercise5(n_trials)
   from libtbx.utils import format_cpu_times
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   import sys

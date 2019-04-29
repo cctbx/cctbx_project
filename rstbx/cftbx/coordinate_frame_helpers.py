@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import math
 import random
 from scitbx import matrix
@@ -753,10 +753,10 @@ def test_align_reference_frame_dw():
 
     R = align_reference_frame(pa,pt,sa,st)
 
-    print R * pa
-    print pt
-    print R * sa
-    print st
+    print(R * pa)
+    print(pt)
+    print(R * sa)
+    print(st)
 
 def random_orthogonal_vectors():
     v1 = matrix.col((random.random(), random.random(),
@@ -802,7 +802,7 @@ def find_closest_matrix(moving, target):
 def work():
     import sys
     import_xds_integrate_hkl(sys.argv[1])
-    print 'OK'
+    print('OK')
 
 if __name__ == '__main__':
     work()

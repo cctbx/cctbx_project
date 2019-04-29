@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 """Test case dramatically improves LBFGS multiparameter refinement by
 using curvatures to provide relative weightings for the contributions of
@@ -39,9 +39,9 @@ def lbfgs_run(target_evaluator,
         requests_diag=requests_diag)
       if verbose:
         if (requests_diag):
-          print "x,f,d:", tuple(x), f, tuple(d)
+          print("x,f,d:", tuple(x), f, tuple(d))
         else:
-          print "x,f:", tuple(x), f
+          print("x,f:", tuple(x), f)
       if (use_curvatures):
         from scitbx.array_family import flex
         if (d is None): d = flex.double(x.size())
@@ -69,7 +69,7 @@ def lbfgs_run(target_evaluator,
       if (not have_request): break
       requests_f_and_g = minimizer.requests_f_and_g()
       requests_diag = minimizer.requests_diag()
-  except RuntimeError, e:
+  except RuntimeError as e:
     minimizer.error = str(e)
   minimizer.n_calls = icall
   return minimizer
@@ -141,8 +141,8 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
       max_iterations=1000,
       use_curvatures=use_curvatures)
     if self.verbose:
-      print ["%8.5f"%a for a in self.x[0::2]]
-      print ["%8.5f"%a for a in self.x[1::2]]
+      print(["%8.5f"%a for a in self.x[0::2]])
+      print(["%8.5f"%a for a in self.x[1::2]])
 
   def curvatures(self):
     from scitbx.array_family import flex
@@ -177,7 +177,7 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
       gradients[2*x] = -2. * flex.sum( delx.select(selection) )
       gradients[2*x+1]=-2. * flex.sum( dely.select(selection) )
     if self.verbose:
-      print "Functional ",math.sqrt(flex.mean(delrsq))
+      print("Functional ",math.sqrt(flex.mean(delrsq)))
     self.count_iterations += 1
     return f,gradients
 
@@ -204,8 +204,8 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
       self.known_mean_x.append( flex.mean( self.observed_x.select(selection) ) )
       self.known_mean_y.append( flex.mean( self.observed_y.select(selection) ) )
     if self.verbose:
-      print ["%8.5f"%a for a in self.known_mean_x]
-      print ["%8.5f"%a for a in self.known_mean_y]
+      print(["%8.5f"%a for a in self.known_mean_x])
+      print(["%8.5f"%a for a in self.known_mean_y])
 
 def run(verbose=False):
 
@@ -219,4 +219,4 @@ def run(verbose=False):
 if (__name__ == "__main__"):
 
   result = run(verbose=False)
-  print "OK"
+  print("OK")

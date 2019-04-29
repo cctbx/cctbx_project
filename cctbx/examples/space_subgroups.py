@@ -10,7 +10,7 @@ References:
   Grosse-Kunstleve (1999). Acta Cryst. A55, 383-395.
   Zwart et al. (2008). Acta Cryst. D64, 99-107. Section 2.1
 """
-from __future__ import division
+from __future__ import division, print_function
 
 from cctbx import sgtbx
 from libtbx.utils import Usage
@@ -26,7 +26,7 @@ def loop_over_super_cells(max_index, all_subgroups, subgroup):
         cb_op = sgtbx.change_of_basis_op("x/%d,y/%d,z/%d" % (ia,ib,ic))
         try:
           scsubgroup = subgroup.change_basis(cb_op=cb_op)
-        except RuntimeError, e:
+        except RuntimeError as e:
           if (str(e).endswith(
                 "Unsuitable value for rational rotation matrix.")):
             all_subgroups["incompatible_rotation_denominator"] += 1
@@ -55,20 +55,20 @@ cctbx.python space_subgroups.py max_index space_group_symbol
   Example: cctbx.python space_subgroups.py 2 P41212""")
   #
   max_index = int(args[0])
-  print "max_index:", max_index
+  print("max_index:", max_index)
   assert max_index >= 1
-  print
+  print()
   space_group_t_den = 144
   sginfo = sgtbx.space_group_info(
     symbol=args[1], space_group_t_den=space_group_t_den)
   sginfo.show_summary()
-  print
+  print()
   cb_op_to_p = sginfo.change_of_basis_op_to_primitive_setting()
   sginfo_p = sginfo.change_basis(cb_op=cb_op_to_p)
   if (sginfo_p.group() != sginfo.group()):
-    print "Primitive setting:"
+    print("Primitive setting:")
     sginfo_p.show_summary()
-    print
+    print()
   #
   all_subgroups = dict_with_default_0()
   sg_p = sginfo_p.group()

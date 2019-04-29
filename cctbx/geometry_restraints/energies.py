@@ -1,4 +1,4 @@
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
 from libtbx import adopt_init_args
 from cctbx import geometry_restraints
 from cctbx.array_family import flex
@@ -410,19 +410,19 @@ class energies(scitbx.restraints.energies):
 
   def show(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix+"target: %.6g" % self.target
+    print(prefix+"target: %.6g" % self.target, file=f)
 
     for p_name in ["bond", "nonbonded", "angle", "dihedral",
         "reference_dihedral", "reference_coordinate", "ncs_dihedral",
         "den", "chirality", "planarity", "parallelity", "ramachandran",
         "bond_similarity"]:
       if getattr(self, "n_%s_proxies" % p_name) is not None:
-        print >> f, "%s  %s_residual_sum (n=%d): %.6g" % (
+        print("%s  %s_residual_sum (n=%d): %.6g" % (
             prefix,
             p_name,
             getattr(self, "n_%s_proxies" % p_name),
-            getattr(self, "%s_residual_sum" % p_name))
+            getattr(self, "%s_residual_sum" % p_name)), file=f)
     for extension_obj in self.extension_objects:
       extension_obj.energies_show(energies_obj=self, f=f, prefix=prefix)
     if (self.gradients is not None):
-      print >> f, prefix+"  norm of gradients: %.6g" % self.gradients.norm()
+      print(prefix+"  norm of gradients: %.6g" % self.gradients.norm(), file=f)

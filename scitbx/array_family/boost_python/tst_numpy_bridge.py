@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from scitbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
 
@@ -12,7 +12,7 @@ def exercise_basic(flex_type, verbose):
     na = fa.as_numpy_array()
     assert na is not None
     if (n == 0 and verbose):
-      print "flex.%s -> numpy %s" % (flex_type.__name__, na.dtype)
+      print("flex.%s -> numpy %s" % (flex_type.__name__, na.dtype))
     assert na.shape == (n,)
     fna = flex_type(na)
     assert fna.all_eq(fa)
@@ -60,7 +60,7 @@ def run(args):
     if (flex.int().as_numpy_array(optional=True) is None):
       try:
         flex.int().as_numpy_array()
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert not show_diff(str(e), "numpy API not available")
       else:
         raise Exception_expected
@@ -78,7 +78,7 @@ def run(args):
     if (len(args) == 0):
       break
     verbose = False
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

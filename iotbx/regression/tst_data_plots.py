@@ -1,5 +1,5 @@
 
-from __future__ import division
+from __future__ import division, print_function
 from iotbx import data_plots
 import libtbx.load_env
 import os
@@ -152,4 +152,4 @@ $$
 if __name__ == "__main__" :
   exercise_inline()
   exercise_logfile()
-  print "OK"
+  print("OK")

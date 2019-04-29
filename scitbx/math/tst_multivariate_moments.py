@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from scitbx import math
 from scitbx.array_family import flex
 
@@ -21,4 +21,4 @@ def tst(N=3):
 
 if __name__ == "__main__":
   tst()
-  print "OK"
+  print("OK")

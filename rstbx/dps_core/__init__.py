@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from six.moves import range
 from cctbx.array_family import flex # import dependency
 
@@ -71,9 +71,9 @@ def combocmp(a,b):
   return 1
 
 def directional_show(direction,message):
-  print message,"%.4f %8.2f %8.2f kmax=%2d kval=%5.1f kval2=%5.1f kval3=%5.1f"%(
+  print(message,"%.4f %8.2f %8.2f kmax=%2d kval=%5.1f kval2=%5.1f kval3=%5.1f"%(
     direction.real,180*direction.psi/math.pi, 180.*direction.phi/math.pi,
-    direction.kmax, direction.kval,direction.kval2,direction.kval3)
+    direction.kmax, direction.kval,direction.kval2,direction.kval3))
 
 class _(boost.python.injector, ext.dps_core):
 

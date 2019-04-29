@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 def exercise_rational():
   from scitbx.matrix import row_echelon
   from scitbx import matrix
@@ -96,7 +96,7 @@ def exercise_rational():
 def run(args):
   assert len(args) == 0
   exercise_rational()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

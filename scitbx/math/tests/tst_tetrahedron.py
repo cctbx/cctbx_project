@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from scitbx.math import tetrahedron
 from libtbx.test_utils import approx_equal
 from itertools import permutations
@@ -33,7 +33,7 @@ def exercise_gradients(n_points):
 def run():
   exercise_volume()
   exercise_gradients(n_points=100)
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

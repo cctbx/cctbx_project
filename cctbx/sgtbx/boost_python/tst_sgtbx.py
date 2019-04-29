@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx.sgtbx import subgroups
 from cctbx.array_family import flex
 from cctbx import sgtbx
@@ -75,7 +75,7 @@ def exercise_symbols():
     s = sgtbx.space_group_symbols("%s (z, x, y)" % hm)
     assert s.change_of_basis_symbol() == "z,x,y"
     assert s.universal_hermann_mauguin().endswith(" (z,x,y)")
-    print >> o, s.hall()
+    print(s.hall(), file=o)
   assert not show_diff(o.getvalue(), """\
  P 2yb (z,x,y)
  P 31 2 (z+1/3,x,y)
@@ -131,7 +131,7 @@ def exercise_symbols():
     for short in short_symbols_a] == expected_numbers_a
   symbols_cpp = libtbx.env.under_dist("cctbx", "sgtbx/symbols.cpp")
   if (not os.path.isfile(symbols_cpp)):
-    print "Skipping checks based on %s: file not available" % symbols_cpp
+    print("Skipping checks based on %s: file not available" % symbols_cpp)
   else:
     f = iter(open(symbols_cpp))
     for volume,table_name,short_symbols in [
@@ -154,28 +154,28 @@ def exercise_symbols():
   #
   s = sgtbx.space_group_symbols
   try: s("(x,y,z)")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: Space group symbol not recognized: (x,y,z)"
   else: raise Exception_expected
   try: s("P3:2")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: Space group symbol not recognized: P3:2"
   else: raise Exception_expected
   try: s(300)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: Space group number out of range: 300"
   else: raise Exception_expected
   try: s(space_group_number=1, table_id="x")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: table_id not recognized: x"
   else: raise Exception_expected
   for extension in ["1", ":1"]:
     try: s(space_group_number=75, extension=extension)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == "cctbx Error: Space group symbol not recognized: 75:1"
     else: raise Exception_expected
   try: s(space_group_number=75, extension="x")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: Space group symbol not recognized: 75:x"
   else: raise Exception_expected
   #
@@ -633,47 +633,47 @@ def exercise_rt_mx():
   assert str(rt_mx("-x+y,y,-z")) == "-x+y,y,-z"
   assert str(rt_mx("-h,h+k,-l")) == "-x+y,y,-z"
   try: rt_mx("h,x,z")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: mix of x,y,z and h,k,l notation:
   h,x,z
   __^""")
   else: raise Exception_expected
   try: rt_mx("")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: unexpected end of input:
   \n\
   ^""")
   else: raise Exception_expected
   try: rt_mx("x, ")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: unexpected end of input:
   x, \n\
   ___^""")
   else: raise Exception_expected
   try: rt_mx("x")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: not enough row expressions:
   x
   _^""")
   else: raise Exception_expected
   try: rt_mx("x,y,x,z")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: too many row expressions:
   x,y,x,z
   _____^""")
   try: rt_mx("x++")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: unexpected character:
   x++
   __^""")
   try: rt_mx("a, b, c")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: a,b,c notation not supported in this context:
   a, b, c
@@ -694,7 +694,7 @@ Parse error: a,b,c notation not supported in this context:
   #
   try:
     sgtbx.rt_mx(symbol="h,k,1", r_den=12, t_den=144)
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 h,k,l matrix symbol must not include a translation part:
   input symbol: "h,k,1"
@@ -1056,14 +1056,14 @@ def exercise_space_group():
       assert t == r
   #
   try: space_group("-P 4 2 (p)")
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 Parse error: unexpected character:
   -P 4 2 (p)
   ________^""")
   else: raise Exception_expected
   try: space_group("-P 4 2 (x,x,x)")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), """\
 cctbx Error: Rotation matrix is not invertible.""")
   else: raise Exception_expected
@@ -1081,7 +1081,7 @@ cctbx Error: Rotation matrix is not invertible.""")
   assert s.r().den() == 2
   assert s.t().den() == 12
   try: sg.expand_smx(s)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: sgtbx::space_group::expand_smx():" \
       " rotation-part denominator must be 1 (implementation limitation)."
   else: raise Exception_expected
@@ -1089,7 +1089,7 @@ cctbx Error: Rotation matrix is not invertible.""")
   assert s.r().den() == 1
   assert s.t().den() == 24
   try: sg.expand_smx(s)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: sgtbx::space_group::expand_smx():" \
       " incompatible translation-part denominator."
   else: raise Exception_expected
@@ -2416,7 +2416,7 @@ def exercise_hashing():
   try:
     hash(sg)
     raise Exception_expected
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).find("tidy") != -1
 
 def exercise_fractional_mod():
@@ -2449,7 +2449,7 @@ def run():
   exercise_tensor_rank_2_constraints()
   exercise_hashing()
   exercise_fractional_mod()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

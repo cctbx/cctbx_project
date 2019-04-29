@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from scitbx import lbfgsb
 from scitbx.array_family import flex
 import scitbx.math
@@ -38,7 +38,7 @@ def exercise_minimizer_interface():
     if (not enable_stp_init):
       try:
         minimizer.requests_stp_init()
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert str(e).endswith(": SCITBX_ASSERT(enable_stp_init()) failure.")
       else: raise Exception_expected
     else:
@@ -161,7 +161,7 @@ def driver1(use_fortran_library=False):
 def run():
   exercise_minimizer_interface()
   driver1(use_fortran_library=("--fortran" in sys.argv[1:]))
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

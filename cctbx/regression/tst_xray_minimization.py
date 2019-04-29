@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx import xray
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -47,11 +47,11 @@ def exercise(target_functor, data_type, space_group_info, anomalous_flag,
                                 tan_u_iso  = tan_u_iso,
                                 param      = param)
   if(0):
-    print
+    print()
     for sc in structure_ideal.scatterers():
-      print sc.flags.use_u_iso(),sc.flags.grad_u_iso(),sc.flags.use_u_aniso(),\
+      print(sc.flags.use_u_iso(),sc.flags.grad_u_iso(),sc.flags.use_u_aniso(),\
             sc.flags.grad_u_aniso(),sc.u_iso, sc.u_star,sc.flags.tan_u_iso(),\
-            sc.flags.param, sc.occupancy
+            sc.flags.param, sc.occupancy)
   rnd_f_calc = structure_ideal.structure_factors(
     anomalous_flag=anomalous_flag,
     d_min=d_min,
@@ -65,11 +65,11 @@ def exercise(target_functor, data_type, space_group_info, anomalous_flag,
   else:
     raise "Error: invalid data type: %s" % data_type
   if (0 or verbose):
-    print "structure_ideal:"
+    print("structure_ideal:")
     structure_ideal.show_summary().show_scatterers()
-    print "n_special_positions:", \
-          structure_ideal.special_position_indices().size()
-    print
+    print("n_special_positions:", \
+          structure_ideal.special_position_indices().size())
+    print()
   structure_ideal_cp = structure_ideal.deep_copy_scatterers()
   structure_shake = structure_ideal
   if (gradient_flags.site):
@@ -87,9 +87,9 @@ def exercise(target_functor, data_type, space_group_info, anomalous_flag,
   assert tuple(structure_ideal.special_position_indices()) \
          == tuple(structure_shake.special_position_indices())
   if (0 or verbose):
-    print "structure_shake:"
+    print("structure_shake:")
     structure_shake.show_summary().show_scatterers()
-    print
+    print()
   for i_trial in xrange(10):
     try:
       minimizer = xray.minimization.lbfgs(
@@ -97,7 +97,7 @@ def exercise(target_functor, data_type, space_group_info, anomalous_flag,
         xray_structure=structure_shake,
         occupancy_penalty=occupancy_penalty,
         structure_factor_algorithm="direct")
-    except RuntimeError, e:
+    except RuntimeError as e:
       if (str(e).find("debye_waller_factor_exp: arg_limit exceeded") < 0):
         raise
     else:
@@ -105,14 +105,14 @@ def exercise(target_functor, data_type, space_group_info, anomalous_flag,
   else:
     raise RuntimeError("Too many xray.minimization.lbfgs failures.")
   if (0 or verbose):
-    print "first:", minimizer.first_target_value
-    print "final:", minimizer.final_target_value
-    print
+    print("first:", minimizer.first_target_value)
+    print("final:", minimizer.final_target_value)
+    print()
   assert minimizer.final_target_value < minimizer.first_target_value
   if (0 or verbose):
-    print "minimized structure_shake:"
+    print("minimized structure_shake:")
     structure_shake.show_summary().show_scatterers()
-    print
+    print()
   f_final = y_obs.structure_factors_from_scatterers(
     xray_structure=structure_shake,
     algorithm="direct",
@@ -127,11 +127,11 @@ def exercise(target_functor, data_type, space_group_info, anomalous_flag,
     label = gradient_flags.string_of_true()
     if (anomalous_flag):
       label += ",anomalous"
-    print "correlation: %10.8f" % c.coefficient(), label
-    print
+    print("correlation: %10.8f" % c.coefficient(), label)
+    print()
   c_coefficient = c.coefficient()
   if(c_coefficient <= 0.999):
-    print c_coefficient
+    print(c_coefficient)
   if data_type == 'F':
     assert c_coefficient > 0.999
   elif data_type == 'F^2':
@@ -168,7 +168,7 @@ def run_call_back(flags, space_group_info):
             param = 0
           for occupancy_penalty in occupancy_penalty_types:
             if(0):
-              print fsite,fu_iso,foccupancy,fu_aniso,anomalous_flag,tan_u_iso
+              print(fsite,fu_iso,foccupancy,fu_aniso,anomalous_flag,tan_u_iso)
             do_exercise = lambda: exercise(
               target_functor,
               data_type,
@@ -183,10 +183,10 @@ def run_call_back(flags, space_group_info):
             try:
               do_exercise()
             except AssertionError:
-              print "Test did not pass: ruling out a random fluke..."
+              print("Test did not pass: ruling out a random fluke...")
               do_exercise()
               do_exercise()
-              print "Ruled out!"
+              print("Ruled out!")
 
 def run():
   cmd_args = ['--F', '--F_sq', '--debugging']
@@ -204,8 +204,8 @@ def run():
     if 0:
       extra += ('F_sq',)
   assert not('F' in extra and 'F_sq' in extra)
-  if 'F' in extra: print 'Refinement against F'
-  if 'F_sq' in extra: print 'Refinement against F^2'
+  if 'F' in extra: print('Refinement against F')
+  if 'F_sq' in extra: print('Refinement against F^2')
   debug_utils.parse_options_loop_space_groups(
     args, run_call_back, keywords=extra+debug)
 

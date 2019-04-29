@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
@@ -255,7 +255,7 @@ class TopPanel(BasePanel):
   def onFinishedSimThread(self, e):
     pixels = e.GetValue()
     self.display_image(pixels=pixels)
-    print 'TOTAL TIME = ', time.time() - self.start_timer
+    print('TOTAL TIME = ', time.time() - self.start_timer)
 
   def display_image(self, pixels=None):
     if pixels is None:
@@ -272,8 +272,8 @@ class TopPanel(BasePanel):
     self.img_figure.subplots_adjust(left=0, bottom=0, right=1, top=1)
 
     self.preview_panel.Layout()
-    print 'DEBUG: AVERAGE PIXEL VALUE = ', np.mean(pixels)
-    print 'DONE!'
+    print('DEBUG: AVERAGE PIXEL VALUE = ', np.mean(pixels))
+    print('DONE!')
 
   def on_button_press(self, e):
     if e.button == 1 and e.dblclick:

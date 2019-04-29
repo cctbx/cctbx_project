@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx import euclidean_model_matching as emma
 from iotbx.command_line.emma import get_emma_model_from_pdb
 from cctbx import xray
@@ -202,9 +202,9 @@ def analyze_refined_matches(model1, model2, refined_matches, verbose):
         and analyze_singles(model2, match.singles2)):
       solution_counter += 1
   if (0 or verbose):
-    print "total matches:", len(refined_matches)
-    print "solutions:", solution_counter
-    print
+    print("total matches:", len(refined_matches))
+    print("solutions:", solution_counter)
+    print()
   assert solution_counter != 0
 
 class test_model(emma.model):
@@ -224,7 +224,7 @@ class test_model(emma.model):
            pos("SI3", (-0.8358, 0.7, 0.3431)),
            pos("SI4", (0.4799, 1.836, 0.6598))))
       else:
-        raise RuntimeError, "Unknown model_id: " + model_id
+        raise RuntimeError("Unknown model_id: " + model_id)
     else:
       structure = random_structure.xray_structure(
         model_id,
@@ -404,7 +404,7 @@ P -1
     "StaticModels",))
 
 def tst_pdb_output():
-  print "Testing pdb-output option"
+  print("Testing pdb-output option")
   xray_scatterer = xray.scatterer( scattering_type = 'SE')
   for sg,target_list in zip(
      ['p1','p43212'],
@@ -415,7 +415,7 @@ def tst_pdb_output():
            target_p43212_inverse_half]
      ]
      ):
-    print "Testing group of targets in %s" %(sg)
+    print("Testing group of targets in %s" %(sg))
     for t1 in target_list:
       e1=get_emma_model_from_pdb(pdb_records=t1)
       for t2 in target_list:
@@ -437,7 +437,7 @@ def tst_pdb_output():
            new_match.rt.r,matrix.sqr((1, 0, 0, 0, 1, 0, 0, 0, 1)))
         assert approx_equal(new_match.rt.t.transpose(),matrix.col((0, 0, 0)))
 
-  print "Testing pdb-output option with different-sized entries"
+  print("Testing pdb-output option with different-sized entries")
   e1=get_emma_model_from_pdb(pdb_records=pdb6)
   e2=get_emma_model_from_pdb(pdb_records=pdb5)
   pdb_inp_e2=iotbx.pdb.input(source_info=None, lines=pdb5)
@@ -453,8 +453,8 @@ def tst_pdb_output():
      o=o.strip()
      e=e.strip()
      if o != e:
-       print o
-       print e
+       print(o)
+       print(e)
        assert o==e
 
 if (__name__ == "__main__"):

@@ -4,7 +4,7 @@ Tools for handling plottable data, usually similar to CCP4's loggraph format
 (which may be parsed and output by this module).
 """
 
-from __future__ import division
+from __future__ import division, print_function
 from libtbx import adopt_init_args
 from libtbx.utils import Sorry
 import string
@@ -49,16 +49,16 @@ class plot_data(object):
 
 def plot_data_loggraph(plot_data,output):
   ## First we need to print the header information
-  print >> output
-  print >> output
-  print >> output, '$TABLE: %s:'%(plot_data.plot_title)
-  print >> output, '$GRAPHS'
-  print >> output, ':%s' %(plot_data.comments),
+  print(file=output)
+  print(file=output)
+  print('$TABLE: %s:'%(plot_data.plot_title), file=output)
+  print('$GRAPHS', file=output)
+  print(':%s' %(plot_data.comments), end=' ', file=output)
   index_string = ''
   for ii in range(len(plot_data.y_data)+1):
     index_string += '%d,'%(ii+1)
-  print >> output, ':%s:%s:'%(plot_data.domain_flag,index_string[:-1])
-  print >> output, '$$'
+  print(':%s:%s:'%(plot_data.domain_flag,index_string[:-1]), file=output)
+  print('$$', file=output)
   ## replace spaces for loggraph with underscores
   tmp_legend = plot_data.x_label
   spaces = 0
@@ -75,14 +75,14 @@ def plot_data_loggraph(plot_data,output):
     if spaces>0:
       tmp_legend = tmp_legend.replace(' ','_')
     label_string += '   %s'%( tmp_legend )
-  print >> output, '%s   $$ '%(label_string)
-  print >> output, '$$'
+  print('%s   $$ '%(label_string), file=output)
+  print('$$', file=output)
   for ii in range(len(plot_data.x_data)):
     data_string = '%f'%(plot_data.x_data[ii])
     for jj in range(len(plot_data.y_data)):
       data_string +='   %f'%(plot_data.y_data[jj][ii])
-    print >> output, '%s'%(data_string)
-  print >> output, '$$'
+    print('%s'%(data_string), file=output)
+  print('$$', file=output)
 
 #-----------------------------------------------------------------------
 # Nat's utilities for plottable data
@@ -647,8 +647,8 @@ class simple_matplotlib_plot(object):
       import matplotlib
       import matplotlib.figure
       from matplotlib.backends.backend_agg import FigureCanvasAgg
-    except ImportError, e :
-      print e
+    except ImportError as e :
+      print(e)
       raise Sorry("Plotting requires that matplotlib be installed.")
     self.figure = matplotlib.figure.Figure(figure_size, 72, linewidth=0,
       facecolor=facecolor)

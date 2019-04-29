@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx.array_family import flex
 from iotbx.cif import builders, model, errors
 import libtbx.load_env
@@ -57,7 +57,7 @@ class ErrorHandler:
       for e in errs:
         if str(e) not in printed_messages: # avoid printing duplicates
           printed_messages.add(str(e))
-          print >> out, e
+          print(e, file=out)
 
 
 class ValidationError(Exception):
@@ -209,11 +209,11 @@ class dictionary(model.cif):
             self.look_up_table.setdefault(key, key_)
             return k
         self.report_error(1001, key=key) # item not in dictionary
-        raise KeyError, key
+        raise KeyError(key)
     else:
       if key not in self.values()[0]:
         self.report_error(1001, key=key) # item not in dictionary
-        raise KeyError, key
+        raise KeyError(key)
       else:
         return key
 
@@ -246,7 +246,7 @@ class dictionary(model.cif):
       # only for DDL1
       try:
         builders.float_from_string(value)
-      except Exception, e:
+      except Exception as e:
         # can't interpret as numb
         self.report_error(2001, key=key, value=value, item_type=definition.type)
       else:
@@ -255,7 +255,7 @@ class dictionary(model.cif):
         if type_condition not in ('esd', 'su'):
           try:
             float(value)
-          except Exception, e:
+          except Exception as e:
             # if we have got here, then from the data type checking we can assume
             # that the value is given with an esd, which causes it to be invalid.
             self.report_error(2002, key=key)
@@ -358,7 +358,7 @@ class dictionary(model.cif):
       elif (isinstance(list_category, basestring)
             and definition_category is not None
             and list_category != definition_category):
-        print list_category, list(definition_category)
+        print(list_category, list(definition_category))
         self.report_error(2502, key=key) # multiple categories in loop
       mandatory = definition.mandatory == 'yes'
       references = definition.get('_list_reference')

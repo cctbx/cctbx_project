@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import sys
 from cctbx.array_family import flex
 from libtbx.containers import OrderedDict
@@ -79,7 +79,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       if adps is not None:
         try:
           adps = [flex.double(adp) for adp in adps]
-        except ValueError, e:
+        except ValueError as e:
           raise CifBuilderError("Error interpreting ADPs: " + str(e))
         adps = flex.sym_mat3_double(*adps)
     py_adps = {}
@@ -131,7 +131,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
           or current_model_id != last_model_id):
         try:
           resseq = hy36encode(width=4, value=int(current_residue_id))
-        except ValueError, e:
+        except ValueError as e:
           resseq = current_residue_id
           assert len(resseq)==4
         residue_group = hierarchy.residue_group(
@@ -637,7 +637,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         if error_handle:
           raise Sorry('Rotation matrices are not proper! ')
         else:
-          print Sorry('Rotation matrices are not proper! ')
+          print(Sorry('Rotation matrices are not proper! '))
       ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
       result.add(
         r=r, t=t,
@@ -704,7 +704,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         if error_handle:
           raise Sorry('Rotation matrices are not proper! ')
         else:
-          print Sorry('Rotation matrices are not proper! ')
+          print(Sorry('Rotation matrices are not proper! '))
       ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
       result.add(
         r=r, t=t,
@@ -765,7 +765,7 @@ class _cif_get_r_rfree_sigma_object(object):
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
-    print >> log, self.formatted_string()
+    print(self.formatted_string(), file=log)
 
 
 def extract_f_model_core_constants(cif_block):

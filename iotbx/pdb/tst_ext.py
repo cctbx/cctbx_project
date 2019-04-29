@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from iotbx import pdb
 from iotbx.pdb import hybrid_36
 from cctbx import crystal
@@ -19,18 +19,18 @@ def exercise_hybrid_36():
   hybrid_36.exercise(hy36enc=pdb.hy36encode, hy36dec=pdb.hy36decode)
   for width,s in [(3,"AAA"), (6,"zzzzzz")]:
     try: pdb.hy36encode(width=width, value=0)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == "unsupported width."
     else: raise Exception_expected
     try: pdb.hy36decode(width=width, s=s)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == "unsupported width."
     else: raise Exception_expected
   ups = user_plus_sys_time()
   n_ok = pdb.hy36recode_width_4_all()
   ups = ups.elapsed()
-  print "time hy36recode_width_4_all: %.2f s" \
-    " (%.3f micro s per encode-decode cycle)" % (ups, 1.e6*ups/max(1,n_ok))
+  print("time hy36recode_width_4_all: %.2f s" \
+    " (%.3f micro s per encode-decode cycle)" % (ups, 1.e6*ups/max(1,n_ok)))
   assert n_ok == 999+10000+2*26*36**3
   #
   assert pdb.resseq_decode(s=1234) == 1234
@@ -41,7 +41,7 @@ def exercise_hybrid_36():
   pdb.resseq_encode(value=1234) == "1234"
   #
   try: pdb.resseq_decode(s="18A")
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == 'invalid residue sequence number: " 18A"'
   else: raise Exception_expected
 
@@ -86,8 +86,8 @@ def exercise_base_256_ordinal():
 
 def exercise_columns_73_76_evaluator(pdb_file_names):
   if (pdb_file_names is None):
-    print "Skipping exercise_columns_73_76_evaluator():" \
-          " input files not available"
+    print("Skipping exercise_columns_73_76_evaluator():" \
+          " input files not available")
     return
   known_blank = """\
 occ_3_bad2.pdb
@@ -144,7 +144,7 @@ def exercise_line_info_exceptions():
 HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
 ANISOU    9 2H3  MPR B   5      8+8    848    848      0      0      0
 """))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 some.pdb, line 2:
   ANISOU    9 2H3  MPR B   5      8+8    848    848      0      0      0
@@ -170,7 +170,7 @@ HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
 HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
 ANISOU    9 2H3  MPR B   5      84-    848    848      0      0      0
 """))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 input line 3:
   ANISOU    9 2H3  MPR B   5      84-    848    848      0      0      0
@@ -184,7 +184,7 @@ input line 3:
 HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
 ANISOU    9 2H3  MPR B   5    c        848    848      0      0      0
 """))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 input line 2:
   ANISOU    9 2H3  MPR B   5    c        848    848      0      0      0
@@ -197,7 +197,7 @@ input line 2:
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30    x  0.530  42.610  45.267  1.00 33.84"]))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 some.pdb, line 1:
   ATOM   1045  O   HOH    30    x  0.530  42.610  45.267  1.00 33.84
@@ -209,7 +209,7 @@ some.pdb, line 1:
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30     x 0.530  42.610  45.267  1.00 33.84"]))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 some.pdb, line 1:
   ATOM   1045  O   HOH    30     x 0.530  42.610  45.267  1.00 33.84
@@ -221,7 +221,7 @@ some.pdb, line 1:
       source_info="some.pdb",
       lines=flex.std_string([
         "HETATM 4160  O   HOH S 272         nan   0.000   0.000  1.00 54.72"]))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 some.pdb, line 1:
   HETATM 4160  O   HOH S 272         nan   0.000   0.000  1.00 54.72
@@ -233,7 +233,7 @@ some.pdb, line 1:
       source_info="some.pdb",
       lines=flex.std_string([
         "ATOM   1045  O   HOH    30       0x530  42.610  45.267  1.00 33.84"]))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 some.pdb, line 1:
   ATOM   1045  O   HOH    30       0x530  42.610  45.267  1.00 33.84
@@ -570,7 +570,7 @@ MODEL        1
 ENDMDL
 ATOM
 """))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 input line 3:
   ATOM
@@ -584,7 +584,7 @@ input line 3:
 MODEL        1
 MODEL        2
 """))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 input line 2:
   MODEL        2
@@ -598,7 +598,7 @@ input line 2:
 ATOM
 MODEL        1
 """))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 input line 2:
   MODEL        1
@@ -612,7 +612,7 @@ input line 2:
 ATOM
 ENDMDL
 """))
-  except ValueError, e:
+  except ValueError as e:
     assert not show_diff(str(e), """\
 input line 2:
   ENDMDL
@@ -623,7 +623,7 @@ input line 2:
   for record_name in ["SIGATM", "ANISOU", "SIGUIJ"]:
     try:
       pdb.pdb_input(source_info=None, lines=flex.std_string([record_name]))
-    except ValueError, e:
+    except ValueError as e:
       assert not show_diff(str(e), """\
 input line 1:
   %s
@@ -676,7 +676,7 @@ ATOM      2  CA  LEU     2       1.118  -9.777   0.735  1.00  0.00
 """)
   pdb_inp = pdb.pdb_input(file_name="tmp.pdb")
   try: pdb.pdb_input(file_name="")
-  except IOError, e:
+  except IOError as e:
     assert str(e).startswith('Cannot open file for reading: ""')
   else: raise Exception_expected
   #
@@ -862,7 +862,7 @@ ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89      STUV A
   assert xray_structure.scatterers()[0].scattering_type == "unknown"
   try:
     pdb_inp.xray_structure_simple()
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), """\
 Unknown chemical element type:
   "ATOM      1  N   GLN A   3 .*.STUV A  "
@@ -879,7 +879,7 @@ ATOM      1 1A   GLN A   3      35.299  11.075  99.070  1.00 36.89
   assert xray_structure.scatterers()[0].scattering_type == "unknown"
   try:
     pdb_inp.xray_structure_simple()
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), """\
 Unknown chemical element type:
   "ATOM      1 1A   GLN A   3 .*.        "
@@ -896,7 +896,7 @@ ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89           Bx5
   assert xray_structure.scatterers()[0].scattering_type == "unknown"
   try:
     pdb_inp.xray_structure_simple()
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), '''\
 Unknown charge:
   "ATOM      1  N   GLN A   3 .*.     Bx5"
@@ -923,7 +923,7 @@ Number of scattering types: 1
 """)
   try:
     pdb_inp.xray_structure_simple(scattering_type_exact=True)
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), '''\
 Unknown scattering type:
   "ATOM      1  N   GLN A   3 .*.    Cs3-"
@@ -1133,7 +1133,7 @@ def exercise(args):
     exercise_input_pickling()
     exercise_xray_structure_simple()
     if (not forever): break
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

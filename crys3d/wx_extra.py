@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import wx
 
 import libtbx.object_oriented_patterns as oop
@@ -326,7 +326,7 @@ if __name__ == '__main__':
 
   i1 = Inspector(w, label="Header")
   def f():
-    print "Click in 'Header'"
+    print("Click in 'Header'")
   i1.on_click_in_header = f
   pane = i1.GetPane()
   top = wx.BoxSizer(wx.VERTICAL)
@@ -338,7 +338,7 @@ if __name__ == '__main__':
 
   i2 = Inspector(w, label="Longer header")
   def g():
-    print "Click in 'Longer header'"
+    print("Click in 'Longer header'")
   i2.on_click_in_header = g
   pane = i2.GetPane()
   s = wx.BoxSizer(wx.HORIZONTAL)

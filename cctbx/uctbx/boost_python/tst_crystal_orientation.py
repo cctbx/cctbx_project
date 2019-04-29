@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from math import pi
 try:
   import cPickle as pickle
@@ -124,7 +124,7 @@ def run():
   exercise_compare()
   exercise_pickle()
   exercise_exceptions()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

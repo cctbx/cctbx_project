@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from libtbx.utils import Abort
 from libtbx import group_args
 import cStringIO
@@ -46,7 +46,7 @@ class ebi_pdb_header(object):
     match = cls.regex.search( data )
 
     if not match:
-      raise ValueError, ( cls.format, str( data ) )
+      raise ValueError( cls.format, str( data ))
 
     ( identifier, chain ) = match.groups()
     return cls( identifier = identifier.upper(), chain = chain.upper() )
@@ -241,9 +241,9 @@ class alignment(object):
 
     # The number of names should match the number of alignments
     if len( alignments ) != len( names ):
-      raise ValueError, (
+      raise ValueError((
         "'alignments' and 'names' do not have the same length"
-      )
+      ))
 
     self._set_alignments( alignments = alignments )
 
@@ -334,7 +334,7 @@ class alignment(object):
   def extend(self, sequences):
 
     if len( sequences ) != self.multiplicity():
-      raise ValueError, "Inconsistent extension sequence set"
+      raise ValueError("Inconsistent extension sequence set")
 
     pre_alis = []
     pre_gaps = []
@@ -346,7 +346,7 @@ class alignment(object):
       pos = s.find( partial )
 
       if pos == -1:
-        raise ValueError, "Alignment does not match sequence"
+        raise ValueError("Alignment does not match sequence")
 
       assert 0 <= pos
       pre_alis.append( s[:pos] )
@@ -394,7 +394,7 @@ class alignment(object):
   def assign_as_target(self, index):
 
     if index < 0 or self.multiplicity() <= index:
-      raise IndexError, "Sequence not found in alignment"
+      raise IndexError("Sequence not found in alignment")
 
     self.names = ( [ self.names[ index ] ] + self.names[ : index ]
       + self.names[ index + 1 : ] )
@@ -407,7 +407,7 @@ class alignment(object):
     # All alignments should have the same length
     for o in alignments[1:]:
       if (len( alignments[0] ) != len( o )):
-        raise ValueError, "'alignments' do not have the same length"
+        raise ValueError("'alignments' do not have the same length")
 
     self.alignments = alignments
 
@@ -426,9 +426,9 @@ class fasta_alignment(alignment):
 
     # The number of names, types and description should be equal
     if len( names ) != len( descriptions ):
-      raise ValueError, (
+      raise ValueError((
         "Inconsistent 'alignments' and 'descriptions' attributes"
-        )
+        ))
 
     super( fasta_alignment, self ).__init__( alignments, names, gap )
     self.descriptions = descriptions
@@ -470,9 +470,9 @@ class pir_alignment(alignment):
     # The number of names, types and description should be equal
     if ( len( names ) != len( types )
       or len( names ) != len( descriptions ) ):
-      raise ValueError, (
+      raise ValueError((
         "Inconsistent 'alignments', 'types' and 'descriptions' attributes"
-        )
+        ))
 
     super( pir_alignment, self ).__init__( alignments, names, gap )
     self.types = types
@@ -537,7 +537,7 @@ class clustal_alignment(alignment):
         )
 
     elif len( middle_line ) != self.length():
-      raise ValueError, "Incorrect midline length"
+      raise ValueError("Incorrect midline length")
 
     if number_width is None:
       number_width = self.length_digits()
@@ -710,14 +710,13 @@ def parse_sequence_str(data, format):
 
   for ( groups, ( n_start, n_end, n_data ) ) in partition:
     if n_data.strip():
-      raise ValueError, (
+      raise ValueError(
         "Uninterpretable block from %s to %s:\nExpected: %s\nFound: %s" % (
           n_start,
           n_end,
           format.expected,
           n_data,
-          )
-        )
+          ))
 
     body = "".join( [ c for c in groups[-1] if not c.isspace() ] )
     yield format.create( headers = groups[:-1], body = body )
@@ -896,7 +895,7 @@ def any_sequence_format(file_name, assign_name_if_not_defined=False,
       objects, non_compliant = format_parser.parse(data)
       assert (len(objects) > 0)
       assert (objects[0].sequence != "")
-    except Exception, e :
+    except Exception as e :
       pass
     else :
       if (assign_name_if_not_defined):
@@ -904,7 +903,7 @@ def any_sequence_format(file_name, assign_name_if_not_defined=False,
         for k, seq in enumerate(objects):
           if (seq.name == ""):
             seq.name = "%s_%d" % (base_name, k+1)
-            print seq.name
+            print(seq.name)
       return objects, non_compliant
   for other_parser in [fasta_sequence_parse.parse, pir_sequence_parse.parse,
                        seq_sequence_parse.parse, tf_sequence_parse] :
@@ -913,7 +912,7 @@ def any_sequence_format(file_name, assign_name_if_not_defined=False,
         objects, non_compliant = other_parser(data)
         assert (len(objects) > 0)
         assert (objects[0].sequence != "")
-      except Exception, e :
+      except Exception as e :
         pass
       else :
         if (assign_name_if_not_defined):
@@ -921,7 +920,7 @@ def any_sequence_format(file_name, assign_name_if_not_defined=False,
           for k, seq in enumerate(objects):
             if (seq.name == ""):
               seq.name = "%s_%d" % (base_name, k+1)
-              print seq.name
+              print(seq.name)
         return objects, non_compliant
   # fallback: unformatted
   data = re.sub("\s", "", data)
@@ -1142,7 +1141,7 @@ def read_clustal_block(lines):
 
     else:
       if not CLUSTAL_MIDLINE.search( lines[-1] ):
-        raise ValueError, "Line '%s' does not match expected body or midline formats" % lines[-1]
+        raise ValueError("Line '%s' does not match expected body or midline formats" % lines[-1])
 
     lines.pop()
 
@@ -1246,7 +1245,7 @@ def any_alignment_file(file_name):
       aln = parser1(data)[0]
       assert (len(aln.names) != 0)
     except KeyboardInterrupt : raise
-    except Exception, e : pass
+    except Exception as e : pass
     else :
       return aln
   for parser in [pir_alignment_parse, clustal_alignment_parse,
@@ -1257,7 +1256,7 @@ def any_alignment_file(file_name):
       aln = parser(data)[0]
       assert (len(aln.names) != 0)
     except KeyboardInterrupt : raise
-    except Exception, e : pass
+    except Exception as e : pass
     else :
       return aln
   raise RuntimeError("Not a recognizeable sequence alignment format!")
@@ -1360,7 +1359,7 @@ class hhpred_parser(object):
     res = self.SPLIT.search( output )
 
     if not res:
-      raise ValueError, "Incorrect file format"
+      raise ValueError("Incorrect file format")
 
     ( header, linefeed, summary, hits ) = res.groups()
     self.process_header( header = header )
@@ -1372,7 +1371,7 @@ class hhpred_parser(object):
     res = self.HEADER.search( header )
 
     if not res:
-      raise ValueError, "Incorrect header format"
+      raise ValueError("Incorrect header format")
 
     self.query = res.group( 1 )
     self.match_columns = int( res.group( 2 ) )
@@ -1395,7 +1394,7 @@ class hhpred_parser(object):
         unknown = hits[ start : m.start() ].strip()
 
         if unknown:
-          raise ValueError, "Uninterpretable block: %s" % repr( unknown )
+          raise ValueError("Uninterpretable block: %s" % repr( unknown ))
 
       start = m.end()
 
@@ -1405,7 +1404,7 @@ class hhpred_parser(object):
     remaining = hits[ start: ].strip()
 
     if remaining:
-      raise ValueError, "Uninterpretable tail: %s" % repr( remaining )
+      raise ValueError("Uninterpretable tail: %s" % repr( remaining ))
 
 
   def process_blocks(self, blocks):
@@ -1420,7 +1419,7 @@ class hhpred_parser(object):
         unknown = blocks[ start : match.start() ].strip()
 
         if unknown:
-          raise ValueError, "Uninterpretable: %s" % repr( unknown )
+          raise ValueError("Uninterpretable: %s" % repr( unknown ))
 
       start = match.end()
       matches.append( match.groups() )
@@ -1428,10 +1427,10 @@ class hhpred_parser(object):
     remaining = blocks[ start: ].strip()
 
     if remaining:
-      raise ValueError, "Uninterpretable: %s" % repr( remaining )
+      raise ValueError("Uninterpretable: %s" % repr( remaining ))
 
     if not matches:
-      raise ValueError, "Empty homology block"
+      raise ValueError("Empty homology block")
 
     assert all([len( matches[0] ) == len( a ) for a in matches[1:]])
 
@@ -1442,10 +1441,10 @@ class hhpred_parser(object):
 
     for ( s, e ) in zip( starts[1:], ends[:-1] ):
       if s != e + 1:
-        raise ValueError, "Incorrect sequence indices"
+        raise ValueError("Incorrect sequence indices")
 
       if not all([others[0] == o for o in others[1:]]):
-        raise ValueError, "Incorrect sequence indices"
+        raise ValueError("Incorrect sequence indices")
 
     return ( starts[0], ends[-1], others[0] )
 
@@ -1554,7 +1553,7 @@ class hhsearch_parser(hhpred_parser):
 
     for index in range( len( matches ) ):
       if len( sequences[0][ index ] ) != len( sequences[1][ index ] ):
-        raise ValueError, "Incorrect alignments"
+        raise ValueError("Incorrect alignments")
 
     mergeds = [ "".join( a ) for a in sequences ]
 
@@ -1703,7 +1702,7 @@ class hhalign_parser(hhpred_parser):
       count = len( alis[0] )
 
       if not all([count == len( c ) for c in alis[1:]]):
-        raise ValueError, "Incorrect alignments"
+        raise ValueError("Incorrect alignments")
 
       midlines.append(
         " " * ( count - len( data[10][ index ] ) ) + data[10][ index ]
@@ -1767,7 +1766,7 @@ def any_hh_file(file_name):
     try :
       p = parser(data)
     except KeyboardInterrupt : raise
-    except Exception, e :
+    except Exception as e :
       pass
     else :
       return p
@@ -1780,14 +1779,14 @@ def composition_from_sequence_file(file_name, log=None):
     seq_file, non_compliant = any_sequence_format(file_name)
     if (seq_file is None):
       raise ValueError("Could not parse %s" % file_name)
-  except Exception, e :
-    print >> log, str(e)
+  except Exception as e :
+    print(str(e), file=log)
     return None
   else :
     if (len(non_compliant) > 0):
-      print >> log, "Warning: non-compliant entries in sequence file"
+      print("Warning: non-compliant entries in sequence file", file=log)
       for nc in non_compliant :
-        print >> log, "  " + str(nc)
+        print("  " + str(nc), file=log)
     n_residues = n_bases = 0
     for seq_entry in seq_file :
       (n_res_seq, n_base_seq) = composition_from_sequence(seq_entry.sequence)

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 test_cases = """\
 P 1
@@ -240,7 +240,7 @@ def exercise():
 def run(args):
   assert len(args) == 0
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

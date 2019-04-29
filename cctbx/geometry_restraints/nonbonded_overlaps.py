@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
 from libtbx import easy_run
@@ -93,7 +93,7 @@ class compute(object):
           raise Sorry(e)
         else:
           nbo_list = [[],[]]
-          print e
+          print(e)
       except Sorry as e:
         raise Sorry(e)
       except Exception as e:
@@ -540,14 +540,14 @@ class info(object):
       rec_list.extend(d[1:3])
       rec_list.append(d[3]-d[4])
       rec_list.append('1'*bool(d[5]) + ' '*(not bool(d[5])))
-      print rec_list
+      print(rec_list)
       ptr = 0
       if rec_list[5].strip(): ptr=1
       argmented_counts[ptr] += _adjust_count(rec_list[4])
       out_list.append(out_str.format(*rec_list))
     out_string = '\n'.join(out_list)
-    print >> log,out_string
-    print argmented_counts
+    print(out_string, file=log)
+    print(argmented_counts)
     return out_string
 
 def get_macro_mol_sel(pdb_processed_file,selection='protein or dna or rna'):
@@ -603,7 +603,7 @@ def create_cif_file_using_ready_set(
   if not has_ready_set:
     msg = 'phenix.ready_set could not be detected on your system.\n'
     msg += 'Cannot process PDB file'
-    print >> log,msg
+    print(msg, file=log)
     return [False,False]
   if not file_name:
     file_name = 'input_pdb_file_for_ready_set.pdb'

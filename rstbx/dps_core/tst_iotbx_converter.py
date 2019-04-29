@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from six.moves import cPickle as pickle
 from six.moves import cStringIO as StringIO
 from cctbx import crystal,sgtbx,uctbx
@@ -33,7 +33,7 @@ class subgroup_comparator:
   def show_list(self,any_subgroup_list):
     for subgroup in any_subgroup_list:
       subgroup['best_subsym'].show_summary()
-      print
+      print()
 
   def get_best_subsym_list(self, any_subgroup_list):
     return [subgroup['best_subsym'] for subgroup in any_subgroup_list]
@@ -765,4 +765,4 @@ if __name__=="__main__":
   metric_sym_list = EX.get_string_as_list(metric_sym)
   EX.compare_lists(metric_sym_list, EX.get_best_subsym_list(metric_sym_subgroups))
 
-  print "OK"
+  print("OK")

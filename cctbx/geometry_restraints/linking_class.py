@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx.geometry_restraints.auto_linking_types import origin_ids
 
 class linking_class(dict):
@@ -26,12 +26,12 @@ class linking_class(dict):
   def __getitem__(self, key):
     try:
       return dict.__getitem__(self, key)
-    except KeyError, e:
-      print '''
+    except KeyError as e:
+      print('''
 Look for a key in the list below
 
 %s
-      ''' % self
+      ''' % self)
       raise e
 
   def get_origin_id(self, key):
@@ -94,4 +94,4 @@ Look for a key in the list below
 
 if __name__=='__main__':
   lc = linking_class()
-  print lc
+  print(lc)

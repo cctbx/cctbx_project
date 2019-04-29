@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx.array_family import flex
 from cctbx import crystal, miller, sgtbx, uctbx
 from iotbx import cif
@@ -52,7 +52,7 @@ def exercise_miller_arrays_as_cif_block():
     assert key in mas_as_cif_block.cif_block.keys()
   #
   try: reader(input_string=cif_global)
-  except CifParserError, e: pass
+  except CifParserError as e: pass
   else: raise Exception_expected
   cif_model = reader(input_string=cif_global, strict=False).model()
   assert not show_diff(str(cif_model), """\
@@ -113,7 +113,7 @@ _d                                4
     mas_as_cif_block.add_miller_array(
       array=array.map_to_asu(), column_names=array.info().labels)
   s = StringIO()
-  print >> s, mas_as_cif_block.refln_loop
+  print(mas_as_cif_block.refln_loop, file=s)
   assert not show_diff(s.getvalue(), """\
 loop_
   _refln_index_h
@@ -520,7 +520,7 @@ def exercise_atom_type_loop():
   xs.set_inelastic_form_factors(photon=0.71073, table="henke")
   loop = cif.atom_type_cif_loop(xray_structure=xs, format="mmcif")
   s = StringIO()
-  print >> s, loop
+  print(loop, file=s)
   assert not show_diff(
     "\n".join([li.rstrip() for li in s.getvalue().splitlines()]), """\
 loop_
@@ -576,7 +576,7 @@ def exercise_partial_crystal_symmetry():
   assert str(cs.space_group_info()) == "P 1 21/n 1"
   try:
     get_cs(get_inp(True, False))
-  except CifBuilderError, e:
+  except CifBuilderError as e:
     assert str(e) == "Not all unit cell parameters are given in the cif file"
   else: raise Exception_expected
 
@@ -879,7 +879,7 @@ def exercise_detect_binary():
   binary_string = '\xff\xf8\x00\x00\x00\x00\x00\x00'
   from iotbx.cif import reader
   try: reader(input_string=binary_string)
-  except CifParserError, e: pass
+  except CifParserError as e: pass
   else: raise Exception_expected
 
 def exercise_syntax_errors():
@@ -893,7 +893,7 @@ _b
 3 4
 """
   try: cif.reader(input_string=empty_loop_str)
-  except CifParserError, e: pass
+  except CifParserError as e: pass
   else: raise Exception_expected
   bad_semicolon_text_field = """\
 data_sucrose
@@ -904,7 +904,7 @@ Final HKLF 4 output contains 64446 reflections, Rint = 0.0650
  (47528 with I > 3sig(I), Rint = 0.0624);
 """
   try: cif.reader(input_string=bad_semicolon_text_field)
-  except CifParserError, e: pass
+  except CifParserError as e: pass
   else: raise Exception_expected
 
 def exercise_missing_atom_site_type_symbol():
@@ -1039,4 +1039,4 @@ def exercise():
 
 if __name__ == '__main__':
   exercise()
-  print "OK"
+  print("OK")

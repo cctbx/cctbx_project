@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from six.moves import range
 import struct
 from scitbx.array_family import flex
@@ -74,11 +74,11 @@ if __name__=="__main__":
  P = EDFImage(sys.argv[1])
  P.readHeader()
  P.read()
- print "".join(P.header)
- print P.parameters
+ print("".join(P.header))
+ print(P.parameters)
  count=0
  for ii in range( P.parameters["Dim_2"] ):
    for jj in range( P.parameters["Dim_1"] ):
-      print P.linearintdata[count]
+      print(P.linearintdata[count])
       count += 1
-   print
+   print()

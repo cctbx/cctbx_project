@@ -9,7 +9,7 @@ used only if compactness is not affected. The scitbx/math module
 provides faster C++ alternatives to some algorithms included here.
 """
 
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
 
 _flex_imported = False
 def flex_proxy():
@@ -922,13 +922,14 @@ def sum(iterable):
     result += m
   return result
 
-def cross_product_matrix((v0, v1, v2)):
+def cross_product_matrix(xxx_todo_changeme):
   """\
 Matrix associated with vector cross product:
   a.cross(b) is equivalent to cross_product_matrix(a) * b
 Useful for simplification of equations. Used frequently in
 robotics and classical mechanics literature.
 """
+  (v0, v1, v2) = xxx_todo_changeme
   return sqr((
       0, -v2,  v1,
      v2,   0, -v0,
@@ -1305,7 +1306,7 @@ def exercise_1():
   try:
     from libtbx import test_utils
   except ImportError:
-    print "INFO: libtbx not available: some tests disabled."
+    print("INFO: libtbx not available: some tests disabled.")
     test_utils = None
     def approx_equal(a, b): return True
     Exception_expected = RuntimeError
@@ -1473,18 +1474,18 @@ def exercise_1():
   gt = g * t.elems
   assert gt == g.r * t + g.t
   try: g * col([1])
-  except ValueError, e:
+  except ValueError as e:
     assert str(e).startswith("cannot multiply ")
     assert str(e).endswith(": incompatible number of rows or columns")
   else: raise Exception_expected
   try: g * [1]
-  except ValueError, e:
+  except ValueError as e:
     assert str(e).startswith("cannot multiply ")
     assert str(e).endswith(": incompatible number of elements")
   else: raise Exception_expected
   flex = flex_proxy()
   if (flex is None):
-    print "INFO: scitbx.array_family.flex not available."
+    print("INFO: scitbx.array_family.flex not available.")
   else:
     gv = g * flex.vec3_double([(-1,2,3),(2,-3,4)])
     assert isinstance(gv, flex.vec3_double)
@@ -1881,13 +1882,13 @@ def exercise_1():
   #
   numpy = numpy_proxy()
   if (numpy is None):
-    print "INFO: numpy not available."
+    print("INFO: numpy not available.")
   else:
     m = rec(elems=range(6), n=(2,3))
     n = m.as_numpy_array()
     assert n.tolist() == [[0, 1, 2], [3, 4, 5]]
   #
-  print "OK"
+  print("OK")
 
 def exercise_2():
   points = \

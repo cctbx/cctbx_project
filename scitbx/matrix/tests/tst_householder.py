@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from scitbx import linalg
 import scitbx.linalg.eigensystem
 from scitbx.array_family import flex
@@ -16,7 +16,7 @@ def exercise_random_symmetric_matrix(n_trials):
 
 def run():
   exercise_random_symmetric_matrix(50)
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

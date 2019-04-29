@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import miller
@@ -509,7 +509,7 @@ def exercise_match_multi_indices():
   assert l1 == l2
   try:
     miller.match_multi_indices(h1, h0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     pass
   else:
     raise Exception_expected
@@ -575,7 +575,7 @@ def exercise_merge_equivalents():
   assert tuple(m.redundancies) == (2,3,1)
   d = flex.bool((True,True,False,True,False,True))
   try: m = miller.ext.merge_equivalents_exact_bool(i, d)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: merge_equivalents_exact:"\
       " incompatible flags for hkl = (3, 0, 3)"
   else: raise Exception_expected
@@ -615,7 +615,7 @@ def exercise_phase_transfer():
   a = flex.complex_double((3.6,4.6))
   try:
     miller.phase_transfer(sg, i, a, p)
-  except Exception, e:
+  except Exception as e:
     if (str(e.__class__).find("Boost.Python.ArgumentError") < 0):
       raise RuntimeError("Unexpected exception: %s" % str(e))
   else:
@@ -688,7 +688,7 @@ def run(args):
   exercise_phase_transfer()
   exercise_union_of_indices()
   exercise_slices()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

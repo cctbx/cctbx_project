@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 import rstbx.utils
 from libtbx.math_utils import ifloor, iceil
@@ -273,8 +273,8 @@ class image(screen_params):
   def set_integration_results(self, integration):
     self._integration = integration
     mp = integration['mapped_predictions']
-    print "%d spot predictions loaded" % mp.size()
-    print "max. resolution is %g" % integration['resolution']
+    print("%d spot predictions loaded" % mp.size())
+    print("max. resolution is %g" % integration['resolution'])
 
   def set_spots(self, spots):
     self._spots = spots

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from scitbx import lbfgs as scitbx_lbfgs
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
@@ -6,11 +6,13 @@ import random
 import math
 import sys
 
-def gauss2d0((x,y), s11, s12, s22):
+def gauss2d0(xxx_todo_changeme, s11, s12, s22):
+  (x,y) = xxx_todo_changeme
   return -math.log(1/math.sqrt(4*math.pi**2*(s11*s22-s12**2))
            *math.exp(-(s22*x**2-2*s12*x*y+s11*y**2)/(2*(s11*s22-s12**2))))
 
-def twisted_gauss2d0((x,y), s11, s12, s22, twist):
+def twisted_gauss2d0(xxx_todo_changeme1, s11, s12, s22, twist):
+  (x,y) = xxx_todo_changeme1
   arg = twist*math.sqrt(x**2+y**2)
   c = math.cos(arg)
   s = math.sin(arg)
@@ -23,7 +25,8 @@ Sin = math.sin
 Sqrt = math.sqrt
 Pi = math.pi
 
-def analytic_grad_x((x,y), s11, s12, s22, twist):
+def analytic_grad_x(xxx_todo_changeme2, s11, s12, s22, twist):
+  (x,y) = xxx_todo_changeme2
   if (x == 0 and y == 0): return 0.
   return (
          (-2*s12*(y*Cos(twist*Sqrt(x**2 + y**2)) +
@@ -48,7 +51,8 @@ def analytic_grad_x((x,y), s11, s12, s22, twist):
               (twist*x*y*Sin(twist*Sqrt(x**2 + y**2)))/Sqrt(x**2 + y**2)))/
          (2.*(-s12**2 + s11*s22)))
 
-def analytic_grad_y((x,y), s11, s12, s22, twist):
+def analytic_grad_y(xxx_todo_changeme3, s11, s12, s22, twist):
+  (x,y) = xxx_todo_changeme3
   if (x == 0 and y == 0): return 0.
   return (
          (-2*s12*(y*Cos(twist*Sqrt(x**2 + y**2)) +
@@ -73,7 +77,8 @@ def analytic_grad_y((x,y), s11, s12, s22, twist):
               (twist*y**2*Sin(twist*Sqrt(x**2 + y**2)))/Sqrt(x**2 + y**2)))/
          (2.*(-s12**2 + s11*s22)))
 
-def analytic_curv_xx((x,y), s11, s12, s22, twist):
+def analytic_curv_xx(xxx_todo_changeme4, s11, s12, s22, twist):
+  (x,y) = xxx_todo_changeme4
   if (x == 0 and y == 0): return None
   return (
          (-2*s12*(y*Cos(twist*Sqrt(x**2 + y**2)) +
@@ -126,7 +131,8 @@ def analytic_curv_xx((x,y), s11, s12, s22, twist):
                (twist*x*y*Sin(twist*Sqrt(x**2 + y**2)))/Sqrt(x**2 + y**2))**2)
           /(2.*(-s12**2 + s11*s22)))
 
-def analytic_curv_yy((x,y), s11, s12, s22, twist):
+def analytic_curv_yy(xxx_todo_changeme5, s11, s12, s22, twist):
+  (x,y) = xxx_todo_changeme5
   if (x == 0 and y == 0): return None
   return (
          (-2*s12*(y*Cos(twist*Sqrt(x**2 + y**2)) +
@@ -179,7 +185,8 @@ def analytic_curv_yy((x,y), s11, s12, s22, twist):
                (twist*y**2*Sin(twist*Sqrt(x**2 + y**2)))/Sqrt(x**2 + y**2))**2
            )/(2.*(-s12**2 + s11*s22)))
 
-def analytic_curv_xy((x,y), s11, s12, s22, twist):
+def analytic_curv_xy(xxx_todo_changeme6, s11, s12, s22, twist):
+  (x,y) = xxx_todo_changeme6
   if (x == 0 and y == 0): return None
   return (
          (2*s11*(y*Cos(twist*Sqrt(x**2 + y**2)) +
@@ -246,32 +253,38 @@ def analytic_curv_xy((x,y), s11, s12, s22, twist):
               (twist*y**2*Sin(twist*Sqrt(x**2 + y**2)))/Sqrt(x**2 + y**2)))/
          (2.*(-s12**2 + s11*s22)))
 
-def finite_grad_x((x,y), s11, s12, s22, twist, eps=1.e-6):
+def finite_grad_x(xxx_todo_changeme7, s11, s12, s22, twist, eps=1.e-6):
+  (x,y) = xxx_todo_changeme7
   tm = twisted_gauss2d0((x-eps,y), s11, s12, s22, twist)
   tp = twisted_gauss2d0((x+eps,y), s11, s12, s22, twist)
   return (tp-tm)/(2*eps)
 
-def finite_grad_y((x,y), s11, s12, s22, twist, eps=1.e-6):
+def finite_grad_y(xxx_todo_changeme8, s11, s12, s22, twist, eps=1.e-6):
+  (x,y) = xxx_todo_changeme8
   tm = twisted_gauss2d0((x,y-eps), s11, s12, s22, twist)
   tp = twisted_gauss2d0((x,y+eps), s11, s12, s22, twist)
   return (tp-tm)/(2*eps)
 
-def finite_curv_xx((x,y), s11, s12, s22, twist, eps=1.e-6):
+def finite_curv_xx(xxx_todo_changeme9, s11, s12, s22, twist, eps=1.e-6):
+  (x,y) = xxx_todo_changeme9
   tm = finite_grad_x((x-eps,y), s11, s12, s22, twist, eps)
   tp = finite_grad_x((x+eps,y), s11, s12, s22, twist, eps)
   return (tp-tm)/(2*eps)
 
-def finite_curv_yy((x,y), s11, s12, s22, twist, eps=1.e-6):
+def finite_curv_yy(xxx_todo_changeme10, s11, s12, s22, twist, eps=1.e-6):
+  (x,y) = xxx_todo_changeme10
   tm = finite_grad_y((x,y-eps), s11, s12, s22, twist, eps)
   tp = finite_grad_y((x,y+eps), s11, s12, s22, twist, eps)
   return (tp-tm)/(2*eps)
 
-def finite_curv_xy((x,y), s11, s12, s22, twist, eps=1.e-6):
+def finite_curv_xy(xxx_todo_changeme11, s11, s12, s22, twist, eps=1.e-6):
+  (x,y) = xxx_todo_changeme11
   tm = finite_grad_x((x,y-eps), s11, s12, s22, twist, eps)
   tp = finite_grad_x((x,y+eps), s11, s12, s22, twist, eps)
   return (tp-tm)/(2*eps)
 
-def finite_curv_yx((x,y), s11, s12, s22, twist, eps=1.e-6):
+def finite_curv_yx(xxx_todo_changeme12, s11, s12, s22, twist, eps=1.e-6):
+  (x,y) = xxx_todo_changeme12
   tm = finite_grad_y((x-eps,y), s11, s12, s22, twist, eps)
   tp = finite_grad_y((x+eps,y), s11, s12, s22, twist, eps)
   return (tp-tm)/(2*eps)
@@ -281,16 +294,16 @@ def verify_derivatives(n=5, s11=1, s12=1.2, s22=2, twist=0.5, verbose=0):
     for iy in xrange(-n,n+1):
       xy = [i/float(n) for i in (ix,iy)]
       if (0 or verbose):
-        print "value: %5.3f" % twisted_gauss2d0(xy, s11, s12, s22, twist)
-        print
+        print("value: %5.3f" % twisted_gauss2d0(xy, s11, s12, s22, twist))
+        print()
       for f,a in ((finite_grad_x,analytic_grad_x),
                   (finite_grad_y,analytic_grad_y)):
         fg = f(xy, s11, s12, s22, twist)
         ag = a(xy, s11, s12, s22, twist)
         if (0 or verbose):
-          print "fg:", fg
-          print "ag:", ag
-          print
+          print("fg:", fg)
+          print("ag:", ag)
+          print()
         assert abs(fg-ag) < 1.e-5
       for f,a in ((finite_curv_xx,analytic_curv_xx),
                   (finite_curv_yy,analytic_curv_yy),
@@ -299,9 +312,9 @@ def verify_derivatives(n=5, s11=1, s12=1.2, s22=2, twist=0.5, verbose=0):
         fc = f(xy, s11, s12, s22, twist)
         ac = a(xy, s11, s12, s22, twist)
         if (0 or verbose):
-          print "fc:", fc
-          print "ac:", ac
-          print
+          print("fc:", fc)
+          print("ac:", ac)
+          print()
         if (xy != [0,0]):
           assert abs(fc-ac)/max(1,min(abs(fc),abs(ac))) < 1.e-3
 
@@ -352,13 +365,13 @@ def fortran_lbfgs_run(target_evaluator,
       requests_f_and_g=requests_f_and_g,
       requests_diag=requests_diag)
     if (requests_diag):
-      print "x,f,d:", tuple(x), f, tuple(d)
+      print("x,f,d:", tuple(x), f, tuple(d))
     else:
-      print "x,f:", tuple(x), f
+      print("x,f:", tuple(x), f)
     sys.stdout.flush()
     sys.stderr.flush()
     minimizer(x, f, g, diag=d, diagco=use_curvatures)
-    print "iflag:", minimizer.iflag[0]
+    print("iflag:", minimizer.iflag[0])
     if (minimizer.iflag[0] <= 0): break
     requests_f_and_g = minimizer.iflag[0] == 1
     requests_diag = minimizer.iflag[0] == 2
@@ -392,9 +405,9 @@ def lbfgs_run(target_evaluator,
         requests_f_and_g=requests_f_and_g,
         requests_diag=requests_diag)
       if (requests_diag):
-        print "x,f,d:", tuple(x), f, tuple(d)
+        print("x,f,d:", tuple(x), f, tuple(d))
       else:
-        print "x,f:", tuple(x), f
+        print("x,f:", tuple(x), f)
       if (use_curvatures):
         if (d is None): d = flex.double(x.size())
         have_request = minimizer.run(x, f, g, d)
@@ -419,7 +432,7 @@ def lbfgs_run(target_evaluator,
       if (not have_request): break
       requests_f_and_g = minimizer.requests_f_and_g()
       requests_diag = minimizer.requests_diag()
-  except RuntimeError, e:
+  except RuntimeError as e:
     minimizer.error = str(e)
   minimizer.n_calls = icall
   return minimizer
@@ -464,8 +477,8 @@ class twisted_gaussian_minimizer:
         (finite_curv_xx(self.x, self.s11, self.s12, self.s22, self.twist),
          finite_curv_yy(self.x, self.s11, self.s12, self.s22, self.twist)))
       assert self.d.all_ne(0)
-      print tuple(self.df), "finite"
-      print tuple(self.d), "analytic"
+      print(tuple(self.df), "finite")
+      print(tuple(self.d), "analytic")
       self.d = 1 / self.d
     return self.x, self.f, self.g, self.d
 
@@ -476,26 +489,26 @@ def run(scale=2, twist=0.5):
   use_fortran = "--fortran" in sys.argv[1:]
   for iteration in xrange(100):
     x = [random.random()*scale for i in (0,1)]
-    print x, "start"
+    print(x, "start")
     for use_curvatures in (False, True):
       m = twisted_gaussian_minimizer(x=x, twist=twist).run(
         use_fortran=False,
         use_curvatures=use_curvatures)
-      print x
-      print tuple(m.x), "final"
+      print(x)
+      print(tuple(m.x), "final")
       if (use_fortran):
         mf = twisted_gaussian_minimizer(x=x, twist=twist).run(
           use_fortran=True,
           use_curvatures=use_curvatures)
         assert mf.x.all_eq(m.x)
-        print mf.minimizer.n_calls, m.minimizer.n_calls
+        print(mf.minimizer.n_calls, m.minimizer.n_calls)
         assert mf.minimizer.n_calls+1 == m.minimizer.n_calls
       if (abs(m.x[0]) > 1.e-4 or abs(m.x[1]) > 1.e-4):
-        print tuple(m.x), "failure, use_curvatures="+str(use_curvatures)
-      print "iter,exception:", m.minimizer.iter(), m.minimizer.error
-      print "n_calls:", m.minimizer.n_calls
+        print(tuple(m.x), "failure, use_curvatures="+str(use_curvatures))
+      print("iter,exception:", m.minimizer.iter(), m.minimizer.error)
+      print("n_calls:", m.minimizer.n_calls)
       assert m.minimizer.n_calls == m.minimizer.nfun()
-      print
+      print()
 
 if (__name__ == "__main__"):
   run()

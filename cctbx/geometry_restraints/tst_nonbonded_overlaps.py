@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import mmtbx.monomer_library.pdb_interpretation as pdb_inter
 from cctbx.geometry_restraints.nonbonded_overlaps import compute
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
@@ -949,7 +949,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     fn = 'test_unknown_pairs_in_pdb.pdb'
     self.file_to_delete.append(fn)
     open(fn,'w').write(unknown_pairs_pdb_str)
-    print 'current _dir',os.getcwd()
+    print('current _dir',os.getcwd())
     pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
         file_name=fn,
         allow_multiple_models=False,
@@ -1179,6 +1179,6 @@ if (__name__ == "__main__"):
   # unittest.TextTestRunner().run(run_selected_tests())
 
   if (chem_data is None):
-    print "chem_data not present, skipping"
+    print("chem_data not present, skipping")
   else :
     unittest.main(verbosity=0)

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 def iobs_as_fobs(iobs, isigma):
   import math
   if (iobs >= 0):
@@ -30,13 +30,13 @@ def dtrek_as_cns_hkl(file_object, file_name=None):
     fobs, sigma = iobs_as_fobs(iobs, isigma)
     reflections.append("INDEX %s %s %s FOBS %.6g SIGMA %.6g" % (
       flds[0], flds[1], flds[2], fobs, sigma))
-  if (file_name): print "{ file:", file_name, "}"
-  for line in info: print "{", line, "}"
-  print "NREFlections=%d" % (len(reflections),)
-  print "ANOMalous=FALSe"
-  print "DECLare NAME=FOBS  DOMAin=RECIprocal TYPE=REAL END"
-  print "DECLare NAME=SIGMA DOMAin=RECIprocal TYPE=REAL END"
-  for line in reflections: print line
+  if (file_name): print("{ file:", file_name, "}")
+  for line in info: print("{", line, "}")
+  print("NREFlections=%d" % (len(reflections),))
+  print("ANOMalous=FALSe")
+  print("DECLare NAME=FOBS  DOMAin=RECIprocal TYPE=REAL END")
+  print("DECLare NAME=SIGMA DOMAin=RECIprocal TYPE=REAL END")
+  for line in reflections: print(line)
 
 if (__name__ == "__main__"):
   import sys, os.path
@@ -47,5 +47,5 @@ if (__name__ == "__main__"):
     dtrek_as_cns_hkl(f, os.path.abspath(sys.argv[1]))
     f.close()
   else:
-    raise RuntimeError, (
+    raise RuntimeError(
       "usage: %s [d*trek_file_name]" % (os.path.basename(sys.argv[0]),))

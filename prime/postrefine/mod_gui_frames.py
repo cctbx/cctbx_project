@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 '''
 Author      : Lyubimov, A.Y.
@@ -572,7 +572,7 @@ class PRIMERunWindow(IOTABaseFrame):
       self.pids = [i for i in self.pids if i not in self.prev_pids]
       for i in self.pids:
         easy_run.fully_buffered('kill -9 {}'.format(i))
-        print 'killing PID {}'.format(i)
+        print('killing PID {}'.format(i))
 
     self.aborted = True
 
@@ -805,7 +805,7 @@ class FileListCtrl(ct.CustomListCtrl):
         file_string = ' '.join(file_list)
         easy_run.fully_buffered('cctbx.image_viewer {}'.format(file_string))
       except Exception as e:
-        print e
+        print(e)
 
     else:
       wx.MessageBox('No data found', 'Error', wx.OK | wx.ICON_ERROR)

@@ -175,7 +175,7 @@ def exercise_select_crystal_symmetry():
                                                           from_parameter_file   = None,
                                                           from_coordinate_files = [None],
                                                           from_reflection_files = [None] )
-  except AssertionError ,e :
+  except AssertionError as e :
     assert str(e)=="No unit cell and symmetry information supplied"
   else: raise Exception_expected
 

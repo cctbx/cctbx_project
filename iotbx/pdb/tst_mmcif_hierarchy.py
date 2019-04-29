@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cStringIO import StringIO
 
 from libtbx.test_utils import approx_equal
@@ -133,7 +133,7 @@ ATOM   20  O . THR A 1 2 1.00 3.70
 """
   cif_model = iotbx.cif.reader(input_string=input_missing_mandatory_items).model()
   try: pdb_hierarchy_builder(cif_model["1AB1"])
-  except AssertionError, e: pass
+  except AssertionError as e: pass
   else:
     # TODO: raise a better error here
     raise Exception_expected
@@ -420,7 +420,7 @@ END
   cif_object = iotbx.cif.model.cif()
   cif_object["test"] = cif_block
   s = StringIO()
-  print >> s, cif_object
+  print(cif_object, file=s)
   s.seek(0)
   pdb_in2 = iotbx.pdb.input(lines=s.readlines(), source_info=None)
   pdb_hierarchy2 = pdb_in2.construct_hierarchy()
@@ -893,4 +893,4 @@ def run():
 
 if __name__ == '__main__':
   run()
-  print "OK"
+  print("OK")

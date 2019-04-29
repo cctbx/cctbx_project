@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 from cctbx import sgtbx
 import cctbx.sgtbx.bravais_types
@@ -296,7 +296,7 @@ def exercise_monoclinic_cell_choices_core(space_group_number, verbose):
         s = sgtbx.space_group_symbols(str(refcb))
         q = s.qualifier()
         hm = str(refcb)
-        if (0 or verbose): print hm, q, cb_all.c()
+        if (0 or verbose): print(hm, q, cb_all.c())
         if (i_fl == 0):
           assert q[0] == "bca"[i_rt]
           if (len(q) == 2): assert q[1] == "123"[i_cs]
@@ -311,7 +311,7 @@ def exercise_monoclinic_cell_choices_core(space_group_number, verbose):
         done[hm] += 1
   assert len(done) in [3, 9, 18]
   assert done.values() == [18/len(done)]*len(done)
-  if (0 or verbose): print
+  if (0 or verbose): print()
   return done
 
 def exercise_monoclinic_cell_choices(verbose=0):
@@ -551,7 +551,7 @@ def run(args):
   exercise_space_group_contains()
   exercise_inversion_centring()
   exercise_compare_cb_op_as_hkl()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

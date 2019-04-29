@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx.crystal.find_best_cell import alternative_find_best_cell as fbc
 from cctbx import crystal
 from cctbx import uctbx
@@ -61,6 +61,6 @@ def tst_find_best_cell():
 
 def run():
   tst_find_best_cell()
-  print "OK"
+  print("OK")
 
 run()

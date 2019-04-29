@@ -195,7 +195,7 @@ def random_sites(special_position_settings,
         all_sites.extend(site)
     if (len(all_sites) == len(existing_sites) + n_new):
       return all_sites
-  raise RuntimeError, "Cannot find sites matching all constraints."
+  raise RuntimeError("Cannot find sites matching all constraints.")
 
 def random_modify_site(special_position_settings, site, gauss_sigma,
                        max_distance=0,
@@ -221,7 +221,7 @@ def random_modify_site(special_position_settings, site, gauss_sigma,
     if (modified_site_symmetry.special_op() != site_symmetry.special_op()):
       continue
     return modified_site
-  raise RuntimeError, "Cannot find suitable site."
+  raise RuntimeError("Cannot find suitable site.")
 
 def random_elements(size, choices=["O", "Mg", "Si", "Ca"]):
   return flex.select(
@@ -458,7 +458,7 @@ class xray_structure(xray.structure):
       eigenvalues = adptbx.eigenvalues(u_cart)
       if (min(eigenvalues) > 0.001):
         return modified_u_star
-    raise RuntimeError, "Cannot find suitable u_star."
+    raise RuntimeError("Cannot find suitable u_star.")
 
   def random_modify_occupancy(self, occupancy, gauss_sigma):
     return max(0.1, occupancy - abs(random.gauss(0, gauss_sigma)))

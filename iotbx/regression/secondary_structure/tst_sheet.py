@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import sys
 from iotbx.pdb import secondary_structure as ss
 import StringIO
@@ -29,7 +29,7 @@ def exercise_01():
   restr_groups = StringIO.StringIO()
   try:
     annot = ss.annotation.from_records(records=ann_1.split('\n'))
-  except Sorry, e:
+  except Sorry as e:
     m = str(e)
     assert m.find("should be 1 or -1 for non-first strand") > 0
 
@@ -77,8 +77,8 @@ def exercise(args):
   exercise_01()
   exercise_02()
   exercise_03()
-  print "OK"
-  print format_cpu_times()
+  print("OK")
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

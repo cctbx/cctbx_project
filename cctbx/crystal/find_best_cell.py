@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx import sgtbx
 #from cctbx import crystal
 
@@ -234,12 +234,12 @@ def exercise_alternative():
 
     abest = alternative_find_best_cell( xs.unit_cell(),
                                         sgi.group() )
-    print "Space group : ", sgi
-    print "Unit cell   : ", abest.return_best_cell().parameters()
-    print "cb op       : ", abest.return_change_of_basis_op_to_best_cell().as_xyz()
-    print "N cb op     : ", len( abest.allowed_cb_ops )
-    print
-    print
+    print("Space group : ", sgi)
+    print("Unit cell   : ", abest.return_best_cell().parameters())
+    print("cb op       : ", abest.return_change_of_basis_op_to_best_cell().as_xyz())
+    print("N cb op     : ", len( abest.allowed_cb_ops ))
+    print()
+    print()
 
 
 
@@ -254,10 +254,10 @@ def exercise():
 
     best = find_best_cell(xs,angular_tolerance=3)
     best.symmetry().show_summary()
-    print best.cb_op().as_xyz()
-    print best.cb_op().c()
-    print len(best.all_cells())
-    print
+    print(best.cb_op().as_xyz())
+    print(best.cb_op().c())
+    print(len(best.all_cells()))
+    print()
 
 if (__name__ == "__main__"):
   exercise_alternative()

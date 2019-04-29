@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 from wxtbx import plots
 import wx
@@ -58,7 +58,7 @@ class analyze(object):
       is_na = main_conf.is_na()
       is_protein = main_conf.is_protein()
       if (not is_protein) and (not is_na):
-        print >> out, "Skipping chain '%s' - not protein or DNA/RNA." %chain.id
+        print("Skipping chain '%s' - not protein or DNA/RNA." %chain.id, file=out)
         continue
       self.chains.append(chain.id)
       self.residues.append([])

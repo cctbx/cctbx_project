@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import xray
@@ -82,7 +82,7 @@ def exercise_anomalous_scatterer_group():
   assert approx_equal(group.f_double_prime, 5)
   scatterers[0].fdp = 3
   try: groups[1].extract_from_scatterers_in_place(scatterers=scatterers)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == """\
 Anomalous scatterer group with significantly different f_double_prime:
   Selection: "name S"
@@ -119,7 +119,7 @@ def exercise_structure():
   assert list(xs.by_index_selection([1,])) == [False, True]
   assert list(xs.by_index_selection([0,1])) == [True, True]
   try: sel = xs.by_index_selection([2,])
-  except IndexError, e:
+  except IndexError as e:
     assert str(e) == """\
 Tried to select a scatterer by index with index \
 => of scatterers for this structuture."""
@@ -894,12 +894,12 @@ def exercise_from_scatterers_direct(space_group_info,
     structure.scattering_type_registry()).f_calc()
   if (0 or verbose):
     for i,h in enumerate(f_obs_exact.indices()):
-      print h
-      print f_obs_simple[i]
-      print f_obs_exact.data()[i]
+      print(h)
+      print(f_obs_simple[i])
+      print(f_obs_exact.data()[i])
       if (abs(f_obs_simple[i]-f_obs_exact.data()[i]) >= 1.e-10):
-        print "MISMATCH"
-      print
+        print("MISMATCH")
+      print()
   mismatch = flex.max(flex.abs(f_obs_exact.data() - f_obs_simple))
   assert mismatch < 1.e-10, mismatch
   f_obs_table = f_obs_exact.structure_factors_from_scatterers(
@@ -909,7 +909,7 @@ def exercise_from_scatterers_direct(space_group_info,
   ls = xray.targets_least_squares_residual(
     abs(f_obs_exact).data(), f_obs_table.data(), False, 1)
   if (0 or verbose):
-    print "r-factor:", ls.target()
+    print("r-factor:", ls.target())
   assert ls.target() < 1.e-4
 
 def exercise_f_obs_minus_xray_structure_f_calc(
@@ -936,7 +936,7 @@ def exercise_f_obs_minus_xray_structure_f_calc(
   phase_error = two_f_obs_minus_f_calc.mean_weighted_phase_error(
     phase_source=f_obs_exact)
   if (0 or verbose):
-    print "%.2f" % phase_error
+    print("%.2f" % phase_error)
   assert approx_equal(phase_error, 0)
   two_f_obs_minus_f_calc=abs(f_obs_exact).f_obs_minus_xray_structure_f_calc(
     f_obs_factor=2,
@@ -952,7 +952,7 @@ def exercise_f_obs_minus_xray_structure_f_calc(
     assert min(density_at_sites[:-1]) > 6.9
     assert density_at_sites[-1] > 2.5
   except AssertionError:
-    print "density_at_sites:", density_at_sites
+    print("density_at_sites:", density_at_sites)
     raise
   sites_cart = structure.sites_cart()
   sites_frac = structure.sites_frac()
@@ -962,7 +962,7 @@ def exercise_f_obs_minus_xray_structure_f_calc(
     assert min(density_at_sites_tricubic[:-1]) > 6.9
     assert density_at_sites_tricubic[-1] > 2.5
   except AssertionError:
-    print "density_at_sites_tricubic:", density_at_sites_tricubic
+    print("density_at_sites_tricubic:", density_at_sites_tricubic)
     raise
 
 def exercise_n_gaussian(space_group_info, verbose=0):
@@ -1003,7 +1003,7 @@ def exercise_n_gaussian(space_group_info, verbose=0):
     ls = xray.targets_least_squares_residual(
       abs(f_calc_5g).data(), f_calc_ng.data(), False, 1)
     if (0 or verbose):
-      print "%d-gaussian r-factor:" % n, ls.target()
+      print("%d-gaussian r-factor:" % n, ls.target())
     if (n == 2):
       assert ls.target() < 0.002
     else:
@@ -1120,7 +1120,7 @@ Number of scattering types: 4
     xs1.scattering_type_registry(custom_dict = custom_gaussians)
     xs.concatenate_inplace(other = xs1)
     xs.scattering_type_registry().show()
-  except Exception, e: pass
+  except Exception as e: pass
   assert str(e) == "Cannot concatenate: conflicting scatterers"
   sys.stdout = out
   #
@@ -1389,7 +1389,7 @@ def exercise_discard_scattering_type_registry():
   failed = False
   try:
     fc_oss = xs_os.structure_factors(d_min=1, algorithm="direct").f_calc()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == """scattering_type "S" not in scattering_type_registry."""
     failed = True
   assert failed

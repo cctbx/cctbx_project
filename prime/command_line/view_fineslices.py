@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME prime.view_fineslices
 """
 Author      : Uervirojnangkoorn, M.
@@ -24,7 +24,7 @@ def read_input(args):
       elif pair[0]=='data_sweep':
         data_sweep = pair[1]
   if len(data) == 0:
-    print "Please input all parameters"
+    print("Please input all parameters")
     exit()
   return data, data_sweep
 
@@ -43,10 +43,10 @@ if (__name__ == "__main__"):
     obs_fine = pickle_fine["observations"][0]
     obs_fine = obs_fine.select(obs_fine.data() > 0)
     if len(obs_fine.data())> 5:
-      print frame
+      print(frame)
       for index, d, I, sigI in zip(obs_fine.indices(), obs_fine.d_spacings().data(),\
                                    obs_fine.data(), obs_fine.sigmas()):
-        print index, d, I, sigI
+        print(index, d, I, sigI)
       obs_fine_sample = obs_fine.deep_copy()
       #break
     sample_no += 1
