@@ -118,7 +118,7 @@ class triangulation_test_case(object):
         for edge in degenerates:
           if i in edge: break
         else:
-          raise "zero normal not on a vertex at the end of a degenerate edge"
+          raise RuntimeError("zero normal not on a vertex at the end of a degenerate edge")
       else:
         assert abs(abs(n) - 1) < 1e-12
         outward = v + 0.05*n

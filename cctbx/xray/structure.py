@@ -1148,8 +1148,8 @@ class structure(crystal.special_position_settings):
     try:
       result.set_selected(flex.size_t(selected_scatterers), True)
     except(RuntimeError):
-      raise(IndexError("Tried to select a scatterer by index with index => "+\
-            "of scatterers for this structuture."))
+      raise IndexError("Tried to select a scatterer by index with index => "+\
+            "of scatterers for this structuture.")
     return result
 
   def apply_rigid_body_shift(self, rot, trans, selection = None,

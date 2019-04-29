@@ -474,8 +474,8 @@ def exercise_match_indices():
   p = miller.match_indices(h0, h1).permutation()
   assert tuple(p) == (2,4,1,0,3)
   assert tuple(h1.select(p)) == tuple(h0)
-  cd0 = [ complex(a,b) for (a,b) in (1,1),(2,0),(3.5,-1.5),(5, -3),(-8,5.4) ]
-  cd1 = [ complex(a,b) for (a,b) in (1,-1),(2,1),(0.5,1.5),(-1, -8),(10,0) ]
+  cd0 = [ complex(a,b) for (a,b) in ((1,1),(2,0),(3.5,-1.5),(5, -3),(-8,5.4)) ]
+  cd1 = [ complex(a,b) for (a,b) in ((1,-1),(2,1),(0.5,1.5),(-1, -8),(10,0)) ]
   cd2 = flex.complex_double(cd0)
   cd3 = flex.complex_double(cd1)
   mi = miller.match_indices(h0, h0)

@@ -208,7 +208,7 @@ def _set_ref_flags(inputstring, freeparams=[]):
             varcount += 1
           ret = __replace_match(ret, m , param_to_var[m.group(0)])
       else:
-        raise(ValueError("unknown parameter type: '{0}'".format(param)))
+        raise ValueError("unknown parameter type: '{0}'".format(param))
   # fix all still unhandled flags
   for m in re.finditer('##_.*?_##', ret):
     ret = ret[:m.start()] + "0.00".rjust(len(m.group(0))) + ret[m.end():]
