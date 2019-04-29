@@ -485,9 +485,9 @@ def _bond_show_sorted_impl(self,
         prefix, l, sym_op_j), file=f)
       print("%s  %5.3f %6.3f%s %6.3f %6.2e %6.2e %6.2e" % (
         prefix, distance_ideal, distance_model, v, delta,
-        sigma, weight, residual), end=' ', file=f)
+        sigma, weight, residual), end='', file=f)
       if (rt_mx is not None):
-        print(rt_mx, end=' ', file=f)
+        print(" " + str(rt_mx), end='', file=f)
       print(file=f)
   if (n_not_shown != 0):
     print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)
@@ -1109,9 +1109,9 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
         print("%s%9s %s" % (prefix, s, l), file=f)
         s = ""
       print("%s   model   vdw%s" % (prefix, sym_op_j), file=f)
-      print("%s  %6.3f %5.3f" % (prefix, delta, vdw_distance), end=' ', file=f)
+      print("%s  %6.3f %5.3f" % (prefix, delta, vdw_distance), end='', file=f)
       if (rt_mx is not None):
-        print(rt_mx, end=' ', file=f)
+        print(" " + str(rt_mx), end='', file=f)
       print(file=f)
     if (n_not_shown != 0):
       print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)

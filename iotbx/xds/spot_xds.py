@@ -58,7 +58,7 @@ class writer(object):
         print("%.2f" %self.intensities[i], end=' ', file=f)
         if self.miller_indices is not None:
           print(" %i"*3 %self.miller_indices[i], end=' ', file=f)
-        print("\n", end=' ', file=f)
+        print("\n", end='', file=f)
 
 if __name__ == '__main__':
   import sys

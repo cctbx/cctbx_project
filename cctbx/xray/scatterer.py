@@ -159,22 +159,22 @@ class _(boost.python.injector, ext.scatterer):
     print("%-4s" % self.scattering_type, end=' ', file=f)
     print("%3d" % self.multiplicity(), end=' ', file=f)
     print("(%7.4f %7.4f %7.4f)" % self.site, end=' ', file=f)
-    print("%4.2f" % self.occupancy, end=' ', file=f)
+    print("%4.2f" % self.occupancy, end='', file=f)
     if self.flags.use_u_iso():
-      print("%6.4f" % self.u_iso, end=' ', file=f)
+      print(" %6.4f" % self.u_iso, end='', file=f)
     else:
-      print('[ - ]', end=' ', file=f)
+      print(' [ - ]', end='', file=f)
     if self.flags.use_u_aniso():
       assert unit_cell is not None
       u_cart = adptbx.u_star_as_u_cart(unit_cell, self.u_star)
-      print("%6.4f" % adptbx.u_cart_as_u_iso(u_cart), file=f)
-      print("     u_cart =", ("%6.3f " * 5 + "%6.3f") % u_cart, end=' ', file=f)
+      print(" %6.4f" % adptbx.u_cart_as_u_iso(u_cart), file=f)
+      print("     u_cart =", ("%6.3f " * 5 + "%6.3f") % u_cart, end='', file=f)
     else:
-      print('[ - ]', end=' ', file=f)
+      print(' [ - ]', end='', file=f)
     if (self.fp != 0 or self.fdp != 0):
       print("\n     fp,fdp = %6.4f,%6.4f" % (
         self.fp,
-        self.fdp), end=' ', file=f)
+        self.fdp), end='', file=f)
     print(file=f)
 
 class anomalous_scatterer_group:

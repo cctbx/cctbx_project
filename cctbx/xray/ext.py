@@ -33,6 +33,7 @@ class _(boost.python.injector, scattering_type_registry):
     if (out is None): out = sys.stdout
     unique_gaussians = self.unique_gaussians_as_list()
     unique_counts = list(self.unique_counts)
+    parts = []
     for t,i in self.sorted_type_index_pairs():
       gaussian = unique_gaussians[i]
       if (gaussian is None):
@@ -41,9 +42,9 @@ class _(boost.python.injector, scattering_type_registry):
         gn = str(gaussian.n_terms())
         if (gaussian.c() != 0):
           gn += "+c"
-      print("%s%s:%s*%d" % (prefix, t, gn, unique_counts[i]), end=' ', file=out)
+      parts.append("%s%s:%s*%d" % (prefix, t, gn, unique_counts[i]))
       prefix = ""
-    print(file=out)
+    print(" ".join(parts), file=out)
 
   def warning_if_any(self,std_lbl):
     if( self.last_table()=="neutron" ):

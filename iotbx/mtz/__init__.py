@@ -384,13 +384,8 @@ class _(boost.python.injector, ext.object):
     h_format = " ".join(["%%%dd" % h_width]*3)
     h_blank = " "*(h_width*3+2)
     def show_labels():
-      print(h_blank, end=' ', file=out)
-      for i,label in enumerate(labels):
-        if (i and i % 4 == 0):
-          print(file=out)
-          print(h_blank, end=' ', file=out)
-        print("%15s" % label, end=' ', file=out)
-      print(file=out)
+      for i in range(0, len(labels), 4):
+        print(" ".join([h_blank] + ["%15s"%x for x in labels[i:i+4]]), file=out)
       print(file=out)
     n_data_lines = 0
     print("Column data:", file=out)
@@ -403,14 +398,15 @@ class _(boost.python.injector, ext.object):
         n_data_lines = 0
       h_str = h_format % h
       print(h_str, end=' ', file=out)
-      for i,(data,selection) in enumerate(pairs):
-        if (i and i % 4 == 0):
-          print(file=out)
-          n_data_lines += 1
-          print(h_blank, end=' ', file=out)
-        if (selection[iref]): print("%15.6g" % data[iref], end=' ', file=out)
-        else:                 print("%15s" % "None", end=' ', file=out)
-      print(file=out)
+      # Group columns by 4
+      for i in range(0, len(pairs), 4):
+        # Only indent if not the first line (it has miller index)
+        table_data = [h_blank] if i else []
+        table_data += [
+          "%15.6g" % data[iref] if selection[iref] else "%15s" % "None"
+          for data, selection in pairs[i : i + 4]
+        ]
+        print(" ".join(table_data), file=out)
       n_data_lines += 1
     print("-"*79, file=out)
     return self

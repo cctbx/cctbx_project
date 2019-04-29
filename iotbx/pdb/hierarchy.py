@@ -70,20 +70,20 @@ class overall_counts(object):
       add_err("  ### ERROR: duplicate model ids ###")
     if (self.n_empty_models != 0):
       add_warn("  ### WARNING: empty model ###")
-    print(prefix+"  models:    ", fmt % self.n_models, end=' ', file=out)
+    print(prefix+"  models:    ", fmt % self.n_models, end='', file=out)
     infos = []
     if (self.n_duplicate_model_ids != 0):
       infos.append("%d with duplicate model id%s" % plural_s(
         self.n_duplicate_model_ids))
     if (self.n_empty_models != 0):
       infos.append("%d empty" % self.n_empty_models)
-    if (len(infos) != 0): print("(%s)" % "; ".join(infos), end=' ', file=out)
+    if (len(infos) != 0): print(" (%s)" % "; ".join(infos), end='', file=out)
     print(file=out)
     if (self.n_duplicate_chain_ids != 0):
       add_warn("  ### WARNING: duplicate chain ids ###")
     if (self.n_empty_chains != 0):
       add_warn("  ### WARNING: empty chain ###")
-    print(prefix+"  chains:    ", fmt % self.n_chains, end=' ', file=out)
+    print(prefix+"  chains:    ", fmt % self.n_chains, end='', file=out)
     infos = []
     if (self.n_duplicate_chain_ids != 0):
       infos.append("%d with duplicate chain id%s" % plural_s(
@@ -93,19 +93,19 @@ class overall_counts(object):
     if (self.n_explicit_chain_breaks != 0):
       infos.append("%d explicit chain break%s" % plural_s(
         self.n_explicit_chain_breaks))
-    if (len(infos) != 0): print("(%s)" % "; ".join(infos), end=' ', file=out)
+    if (len(infos) != 0): print(" (%s)" % "; ".join(infos), end='', file=out)
     print(file=out)
     print(prefix+"  alt. conf.:", fmt % self.n_alt_conf, file=out)
     print(prefix+"  residues:  ", fmt % (
-      self.n_residues + self.n_residue_groups + self.n_empty_residue_groups), end=' ', file=out)
+      self.n_residues + self.n_residue_groups + self.n_empty_residue_groups), end='', file=out)
     if (self.n_residue_groups != 0):
-      print("(%d with mixed residue names)" % self.n_residue_groups, end=' ', file=out)
+      print(" (%d with mixed residue names)" % self.n_residue_groups, end='', file=out)
     print(file=out)
     if (self.n_duplicate_atom_labels != 0):
       add_err("  ### ERROR: duplicate atom labels ###")
-    print(prefix+"  atoms:     ", fmt % self.n_atoms, end=' ', file=out)
+    print(prefix+"  atoms:     ", fmt % self.n_atoms, end='', file=out)
     if (self.n_duplicate_atom_labels != 0):
-      print("(%d with duplicate labels)" %self.n_duplicate_atom_labels, end=' ', file=out)
+      print(" (%d with duplicate labels)" %self.n_duplicate_atom_labels, end='', file=out)
     print(file=out)
     print(prefix+"  anisou:    ", fmt % self.n_anisou, file=out)
     if (self.n_empty_residue_groups != 0):
@@ -124,8 +124,8 @@ class overall_counts(object):
       show_sorted_by_counts(c.items(), out=out, prefix=prefix+"  ")
     #
     c = self.resname_classes
-    print(prefix+"residue name classes:", end=' ', file=out)
-    if (len(c) == 0): print(None, end=' ', file=out)
+    print(prefix+"residue name classes:", end='', file=out)
+    if (len(c) == 0): print(" None", end='', file=out)
     print(file=out)
     show_sorted_by_counts(c.items(), out=out, prefix=prefix+"  ")
     #

@@ -41,12 +41,8 @@ class vdw_radii:
     if log is None: log = sys.stdout
     symbols = self.table.keys()
     symbols.sort()
-    for symbol in symbols:
-      print("%5s" %symbol, end=' ', file=log)
-    print(file=log)
-    for symbol in symbols:
-      print("%5.2f" %self.table[symbol], end=' ', file=log)
-    print(file=log)
+    print(" ".join("%5s" %symbol for symbol in symbols), file=log)
+    print(" ".join("%5.2f" %self.table[symbol] for symbol in symbols), file=log)
 
 
 class _(boost.python.injector, flood_fill):

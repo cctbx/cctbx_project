@@ -233,16 +233,16 @@ class binner(ext.binner):
         show_counts=show_counts,
         bin_range_as=bin_range_as,
         wavelength=wavelength)
-      print(prefix + legend, end=' ', file=f)
+      parts = [prefix + legend]
       if (data[i_bin] is not None):
         if (isinstance(data[i_bin], str) or data_fmt is None):
-          print(data[i_bin], end=' ', file=f)
+          parts.append(str(data[i_bin]))
         elif (isinstance(data_fmt, str)):
-          print(data_fmt % data[i_bin], end=' ', file=f)
+          parts.append(data_fmt % data[i_bin])
         else:
           s = data_fmt(binner=self, i_bin=i_bin, data=data)
-          if (s is not None and len(s) > 0): print(s, end=' ', file=f)
-      print(file=f)
+          if (s is not None and len(s) > 0): parts.append(str(s))
+      print(" ".join(parts), file=f)
     if (legend is not None): return len(legend)
     return None
 
