@@ -22,9 +22,9 @@ class pcr_parser(object):
       print(line) # for debugging
     if not self.lines[1].startswith("!"):
       if self.enforce_valid_comments:
-        raise(ValueError("""\
+        raise ValueError("""\
         This function only works with correctly commented FullProf files!
-        Please run fp2k on your input file first."""))
+        Please run fp2k on your input file first.""")
       else:
         for line in self.lines.copy():
           if line.startswith("!"):
@@ -60,8 +60,8 @@ class pcr_parser(object):
       self.LO += 1
       line = self.lines[self.LO]
       if not line.startswith(expected_comment):
-        raise(ValueError("Expected to find comment '{comm}',\
-                         but found '{line}'".format(expected_comment, line)))
+        raise ValueError("Expected to find comment '{comm}',\
+                         but found '{line}'".format(expected_comment, line))
 
   def extract_structures(self):
     structures = {}
@@ -114,7 +114,7 @@ class pcr_parser(object):
       'JOBTYP, NPROF, NPHASE, NBCKGD, NEXCRG, NSCAT, NORI, IDUM, IWGT,\
       ILOR, IASG, IRESO, ISTEP, NRELL, ICRYG, IXUNIT, ICORR', "i")
     if self.cfg['IRESO'] != 0:
-      raise(ValueError("IRESO<>0 not supported (yet)! IRESO={}".format(self.cfg['IRESO'])))
+      raise ValueError("IRESO<>0 not supported (yet)! IRESO={}".format(self.cfg['IRESO']))
     check_comment("!")
     check_comment("!Ipr ")
     parse_line(self.cfg,
