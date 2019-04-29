@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import gcd
 from boost.rational import lcm
 import sys

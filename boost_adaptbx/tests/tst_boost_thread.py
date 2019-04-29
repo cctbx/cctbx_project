@@ -1,5 +1,5 @@
-from __future__ import division, absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
+
 import boost.python
 ext = boost.python.import_ext("boost_adaptbx_boost_thread_test_ext")
 

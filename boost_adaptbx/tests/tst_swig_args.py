@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import example
 import boost_python_swig_args_ext
 import sys

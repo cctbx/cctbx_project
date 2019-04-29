@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from boost_adaptbx.graph import min_cut_max_flow
 from boost_adaptbx.graph import utility

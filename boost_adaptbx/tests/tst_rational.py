@@ -1,5 +1,5 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
+
 from boost import rational
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 try:
