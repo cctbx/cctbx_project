@@ -11162,7 +11162,6 @@ def run(args,
         sharpening_target_pdb_inp=sharpening_target_pdb_inp,
         out=out)
 
-    print target_hierarchy.as_pdb_string()
     if target_hierarchy:
       target_xyz=target_hierarchy.atoms().extract_xyz()
       del target_hierarchy
