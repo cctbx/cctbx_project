@@ -11162,13 +11162,15 @@ def run(args,
         sharpening_target_pdb_inp=sharpening_target_pdb_inp,
         out=out)
 
+    print target_hierarchy.as_pdb_string()
     if target_hierarchy:
       target_xyz=target_hierarchy.atoms().extract_xyz()
       del target_hierarchy
 
     # We can use params.input_files.target_ncs_au_file here to define ncs au
     if target_xyz and not target_scattered_points:
-       target_scattered_points=target_xyz
+       target_scattered_points=flex.vec3_double()
+       target_scattered_points.append(target_xyz.mean())
 
     # get the chain types and therefore (using ncs_copies) volume fraction
     tracking_data=get_solvent_fraction(params,
