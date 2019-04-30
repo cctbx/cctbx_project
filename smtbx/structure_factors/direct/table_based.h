@@ -95,19 +95,17 @@ namespace smtbx { namespace structure_factors { namespace table_based {
             boost::lexical_cast<double>(toks[2]));
           miller_indices.push_back(mi);
           vector<complex_type> row;
-          row.reserve(scatterers.size());
+          row.resize(scatterers.size());
           for (size_t sci = 3; sci < toks.size(); sci++) {
             size_t ci = toks[sci].find(',');
             if (ci != string::npos) {
-              row.push_back(
-                complex_type(
-                  boost::lexical_cast<double>(toks[sci].substr(0, ci)),
-                  boost::lexical_cast<double>(toks[sci].substr(ci+1))));
+              row[sc_indices[sci-3]] = complex_type(
+                boost::lexical_cast<double>(toks[sci].substr(0, ci)),
+                boost::lexical_cast<double>(toks[sci].substr(ci+1)));
             }
             else {
-              row.push_back(
-                complex_type(
-                  boost::lexical_cast<double>(toks[sci])));
+              row[sc_indices[sci-3]] = complex_type(
+                boost::lexical_cast<double>(toks[sci]));
             }
           }
           data.push_back(row);
