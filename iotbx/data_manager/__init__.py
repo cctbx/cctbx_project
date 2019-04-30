@@ -10,6 +10,7 @@ from collections import OrderedDict
 import libtbx.phil
 
 from iotbx.file_reader import any_file
+from libtbx import Auto
 from libtbx.utils import multi_out, Sorry
 
 # =============================================================================
@@ -147,6 +148,14 @@ class DataManagerBase(object):
 
     # dynamically construct master PHIL string
     self.master_phil_str = 'data_manager {\n'
+    self.master_phil_str += """
+default_output_filename = None
+  .type = str
+  .help = The default filename for output files (without file extension).
+overwrite = False
+  .type = bool
+  .help = The default setting for overwriting files with the same name.
+"""
     for datatype in self.datatypes:
 
       # check if a datatype has a custom PHIL str
@@ -193,6 +202,10 @@ class DataManagerBase(object):
     self._output_files = list()
     self._output_types = list()
 
+    # set defaults
+    self._default_output_filename = None
+    self._overwrite = False
+
     # load information from phil
     if (phil is not None):
       self.load_phil_scope(phil)
@@ -212,6 +225,8 @@ class DataManagerBase(object):
     This assumes that the key names in the data structures are valid filenames.
     '''
     phil_extract = self.master_phil.extract()
+    phil_extract.data_manager.default_output_filename = self._default_output_filename
+    phil_extract.data_manager.overwrite = self._overwrite
     for datatype in self.datatypes:
       if (hasattr(self, self.export_custom_phil_extract % datatype)):
         setattr(phil_extract.data_manager, '%s' % datatype,
@@ -257,6 +272,12 @@ class DataManagerBase(object):
           # checks if file is already in DataManager
           getattr(self, 'process_%s_file' % datatype)(filename)
 
+    # other options
+    self._default_output_filename = getattr(
+      phil_extract.data_manager, 'default_output_filename', None)
+    self._overwrite = getattr(
+      phil_extract.data_manager, 'overwrite', False)
+
   # ---------------------------------------------------------------------------
   def supports(self, datatype):
     '''
@@ -264,6 +285,20 @@ class DataManagerBase(object):
     datatype
     '''
     return (datatype in self.datatypes)
+
+  # ---------------------------------------------------------------------------
+  def set_default_output_filename(self, filename):
+    self._default_output_filename = filename
+
+  def get_default_output_filename(self, filename):
+    return self._default_output_filename
+
+  # ---------------------------------------------------------------------------
+  def set_overwrite(self, overwrite):
+    self._overwrite = overwrite
+
+  def get_overwrite(self, overwrite):
+    return self._overwrite
 
   # ---------------------------------------------------------------------------
   # Generic functions for manipulating data
@@ -371,10 +406,18 @@ class DataManagerBase(object):
       else:
         self._add(datatype, filename, a.file_object)
 
-  def _write_text(self, datatype, filename, text_str, overwrite=False):
+  def _write_text(self, datatype, text_str, filename=Auto, overwrite=Auto):
     '''
     Convenience function for writing text to file
     '''
+
+    # default options
+    if (filename is Auto):
+      filename = self._default_output_filename
+    if (overwrite is Auto):
+      overwrite = self._overwrite
+
+    # check arguments
     if (os.path.isfile(filename) and (not overwrite)):
       raise Sorry('%s already exists and overwrite is set to %s.' %
                   (filename, overwrite))

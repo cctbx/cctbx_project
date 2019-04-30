@@ -587,7 +587,8 @@ class CCTBXParser(ParserBase):
     if (self.namespace.write_data):
       if (data_is_different):
         self.data_manager.write_phil_file(
-          self.data_filename, self.data_manager.export_phil_scope().as_str(),
+          self.data_manager.export_phil_scope().as_str(),
+          filename=self.data_filename,
           overwrite=overwrite)
         print('  Input file PHIL written to %s.' % self.data_filename,
               file=self.logger)
@@ -598,7 +599,7 @@ class CCTBXParser(ParserBase):
     if (self.namespace.write_modified):
       if (phil_is_different):
         self.data_manager.write_phil_file(
-          self.modified_filename, phil_diff.as_str(),
+          phil_diff.as_str(), filename=self.modified_filename,
           overwrite=overwrite)
         print('  Modified PHIL parameters written to %s.' %
               self.modified_filename, file=self.logger)
@@ -610,7 +611,7 @@ class CCTBXParser(ParserBase):
       all_phil = self.data_manager.export_phil_scope().as_str()
       all_phil += self.working_phil.as_str(expert_level=3)
       self.data_manager.write_phil_file(
-        self.all_filename, all_phil, overwrite=overwrite)
+        all_phil, filename=self.all_filename, overwrite=overwrite)
       print('  All PHIL parameters written to %s.' % self.all_filename,
             file=self.logger)
 

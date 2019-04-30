@@ -9,6 +9,7 @@ import iotbx.phil
 from cctbx import crystal
 from iotbx.data_manager import DataManagerBase
 from iotbx.reflection_file_utils import reflection_file_server
+from libtbx import Auto
 from libtbx.utils import Sorry
 
 # =============================================================================
@@ -121,7 +122,7 @@ class MillerArrayDataManager(DataManagerBase):
       self._miller_array_types[filename][label] = self._default_miller_array_type
     self._miller_array_labels[filename] = labels
 
-  def write_miller_array_file(self, filename, miller_arrays, overwrite=False):
+  def write_miller_array_file(self, miller_arrays, filename=Auto, overwrite=Auto):
     raise NotImplementedError
 
   def get_reflection_file_server(self, filenames=None, labels=None,

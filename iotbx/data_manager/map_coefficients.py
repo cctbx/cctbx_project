@@ -5,6 +5,7 @@ from __future__ import division, print_function
 from iotbx.data_manager.miller_array import MillerArrayDataManager
 from iotbx.cif_mtz_data_labels import mtz_map_coefficient_labels, \
   cif_map_coefficient_labels
+from libtbx import Auto
 
 # =============================================================================
 class MapCoefficientsDataManager(MillerArrayDataManager):
@@ -109,9 +110,9 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
       MapCoefficientsDataManager.datatype, filename, known_labels)
 
   def write_map_coefficients_file(
-      self, filename, miller_arrays, overwrite=False):
+      self, miller_arrays, filename=Auto, overwrite=Auto):
     self.write_miller_array_file(
-      filename=filename, miller_arrays=miller_arrays, overwrite=overwrite)
+      miller_arrays, filename=filename, overwrite=overwrite)
 
 # =============================================================================
 # end

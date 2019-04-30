@@ -7,6 +7,7 @@ import mmtbx.model
 
 from iotbx.file_reader import any_file
 from iotbx.data_manager import DataManagerBase
+from libtbx import Auto
 from libtbx.utils import Sorry
 
 # =============================================================================
@@ -155,9 +156,9 @@ model
       log=self.logger)
     self.add_model(label, model)
 
-  def write_model_file(self, filename, model_str, overwrite=False):
-    self._write_text(ModelDataManager.datatype, filename,
-                     model_str, overwrite=overwrite)
+  def write_model_file(self, model_str, filename=Auto, overwrite=Auto):
+    self._write_text(ModelDataManager.datatype, model_str,
+                     filename=filename, overwrite=overwrite)
 
   def update_pdb_interpretation_for_model(
     self, filename, pdb_interpretation_extract):

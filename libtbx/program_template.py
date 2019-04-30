@@ -148,6 +148,10 @@ output {
 
     self.custom_init()
 
+    # set DataManager defaults
+    self.data_manager.set_default_output_filename(self.get_default_filename())
+    self.data_manager.set_overwrite(self.params.output.overwrite)
+
   def header(self, text):
     print("-"*79, file=self.logger)
     print(text, file=self.logger)

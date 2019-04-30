@@ -97,7 +97,7 @@ data_manager {
   a.add_sequence('e','f')
 
   a.write_model_file('a.dat', a.get_model(), overwrite=True)
-  a.write_phil_file('c.dat', a.get_phil(), overwrite=True)
+  a.write_phil_file(a.get_phil(), filename='c.dat', overwrite=True)
   a.write_sequence_file('e.dat', a.get_sequence(), overwrite=True)
 
   with open('a.dat', 'r') as f:
@@ -434,7 +434,7 @@ def test_miller_array_datatype():
   assert(label == new_label)
 
   # test custom PHIL
-  dm.write_phil_file('test.phil', dm.export_phil_scope().as_str(), True)
+  dm.write_phil_file(dm.export_phil_scope().as_str(), 'test.phil', True)
   loaded_phil = iotbx.phil.parse(file_name='test.phil')
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)
@@ -449,7 +449,7 @@ def test_miller_array_datatype():
   label = labels[3]
   dm.set_miller_array_type(data_mtz, label, 'electron')
   assert(dm.get_miller_array_type(label=label) == 'electron')
-  dm.write_phil_file('test_phil', dm.export_phil_scope().as_str(), True)
+  dm.write_phil_file(dm.export_phil_scope().as_str(), 'test_phil', True)
   loaded_phil = iotbx.phil.parse(file_name='test_phil')
   new_dm.load_phil_scope(loaded_phil)
   assert(new_dm.get_miller_array_type(label=label) == 'electron')
@@ -506,7 +506,7 @@ def test_miller_array_datatype():
   dm._miller_array_labels[data_mtz] = label_subset
   dm.set_miller_array_type(label=label_subset[2], array_type='electron')
   assert(dm.get_miller_array_type(label=label_subset[2]) == 'electron')
-  dm.write_phil_file('test.phil', dm.export_phil_scope().as_str(), True)
+  dm.write_phil_file(dm.export_phil_scope().as_str(), 'test.phil', True)
   loaded_phil = iotbx.phil.parse(file_name='test.phil')
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)
@@ -521,7 +521,7 @@ def test_miller_array_datatype():
   dm = DataManager(['miller_array',  'phil'])
   dm.process_miller_array_file(data_mtz)
   dm._miller_array_labels[data_mtz] = label_subset
-  dm.write_phil_file('test.phil', dm.export_phil_scope().as_str(), True)
+  dm.write_phil_file(dm.export_phil_scope().as_str(), 'test.phil', True)
   loaded_phil = iotbx.phil.parse(file_name='test.phil')
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)

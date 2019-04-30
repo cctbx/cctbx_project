@@ -3,6 +3,7 @@ from __future__ import division, print_function
 '''
 
 from iotbx.data_manager import DataManagerBase
+from libtbx import Auto
 
 # =============================================================================
 class PhilDataManager(DataManagerBase):
@@ -36,10 +37,10 @@ class PhilDataManager(DataManagerBase):
   def process_phil_file(self, filename):
     return self._process_file(PhilDataManager.datatype, filename)
 
-  def write_phil_file(self, filename, phil_str, overwrite=False):
+  def write_phil_file(self, phil_str, filename=Auto, overwrite=Auto):
     # use this instead of libtbx.phil.scope.show for consistent error messages
-    self._write_text(PhilDataManager.datatype, filename,
-                     phil_str, overwrite=overwrite)
+    self._write_text(PhilDataManager.datatype, phil_str,
+                     filename=filename, overwrite=overwrite)
 
 # =============================================================================
 # end
