@@ -48,7 +48,9 @@ myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Phenix\dev-2814-working\m
 myHKLview.SetCameraType("persp")
 
 myHKLview.LoadReflectionsFile(r"C:\Users\oeffner\Buser\Experiments\CRLF3\DLS20151206CRLF3\5840-F11-X1-Hg-SAD-ONsoak\5840-F11-X1_pk_5_5_1_\xia2\dials-run\DataFiles\mx11235v49_x5840F11X1pk551_free.mtz")
+
 myHKLview.SetColumn(0)
+myHKLview.SetRadiiScale(1, nth_power_scale=0.2)
 myHKLview.SetColumn(1)
 myHKLview.SetColumnBinThresholds(1, [-20, 30, 300, 3000])
 
