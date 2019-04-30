@@ -7,9 +7,8 @@ from libtbx.phil import parse
 from libtbx.utils import Sorry
 from xfel.ui.components.run_stats_plotter import plot_multirun_stats
 import sys, os
-from scitbx.array_family import flex
+from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentListFactory
-from libtbx import easy_pickle
 from dials.algorithms.integration.stills_significance_filter import SignificanceFilter, phil_scope as sf_scope
 
 """
@@ -103,18 +102,19 @@ def run(args):
     for i, path in enumerate(sorted(files)):
       root = os.path.dirname(path)
       filename = os.path.basename(path)
+      extension = os.path.splitext(filename)[1]
       split_fn = filename.split('_')
-      if len(split_fn) <= 0 or split_fn[-1] != "strong.pickle":
+      if extension not in ['.pickle', '.mpack'] or len(split_fn) <= 0 or not split_fn[-1].startswith('strong'):
         continue
       base = os.path.join(root, "_".join(split_fn[:-1]))
       print filename
-      strong_name = base + "_strong.pickle"
+      strong_name = base + "_strong%s"%extension
       if not os.path.exists(strong_name):
-        print "Couldn't log %s, strong pickle not found"%filename
+        print "Couldn't log %s, strong%s not found"%(filename, exension)
         continue
 
       # Read the spotfinding results
-      strong = easy_pickle.load(strong_name)
+      strong = flex.reflection_table.from_file(strong_name)
       print "N strong reflections: %d"%len(strong)
 
       timestamps.append(i)
@@ -124,7 +124,7 @@ def run(args):
 
       # Read indexing results if possible
       experiments_name = base + "_integrated_experiments.json"
-      indexed_name = base + "_integrated.pickle"
+      indexed_name = base + "_integrated%s"%extension
       if not os.path.exists(experiments_name) or not os.path.exists(indexed_name):
         print "Frame didn't index"
         resolutions.append(0)
@@ -133,7 +133,7 @@ def run(args):
 
       experiments = ExperimentListFactory.from_json_file(experiments_name, check_format=False)
       n_lattices.append(len(experiments))
-      reflections = easy_pickle.load(indexed_name)
+      reflections = flex.reflection_table.from_file(indexed_name)
       reflections = reflections.select(reflections['intensity.sum.value'] > 0) # positive reflections only
       best_d_min = None
       for expt_id, experiment in enumerate(experiments):
