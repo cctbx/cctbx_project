@@ -102,7 +102,7 @@ def run(args):
           msg += ": " + show_string(fn)
         raise RuntimeError(msg)
       try:
-        arg = arg_iter.next()
+        arg = next(arg_iter)
       except StopIteration:
         raise_bad_file("Missing")
       if (not arg.endswith(tuple(expected_exts))):

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from __future__ import absolute_import
 import featherstone
 import body_lib
 import joint_lib

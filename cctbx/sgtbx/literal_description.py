@@ -65,4 +65,4 @@ class literal_description:
           self.long_form())
 
   def select(self,format):
-    return apply(literal_description.__dict__[format],[self])
+    return literal_description.__dict__[format](*[self])

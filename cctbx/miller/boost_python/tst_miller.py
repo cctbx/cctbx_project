@@ -369,7 +369,7 @@ def exercise_index_generator():
     assert mig.space_group_type().group() == sg_type.group()
     assert mig.anomalous_flag() == anomalous_flag
     assert mig.asu().reference_as_string() == "h>=k and k>=0 and (k>0 or l>=0)"
-    assert mig.next() == (0,0,1)
+    assert next(mig) == (0,0,1)
     if (not anomalous_flag):
       assert tuple(mig.to_array()) == ((1, 0, 0),)
     else:

@@ -530,10 +530,10 @@ def exercise_golay():
   weights = [0]*25
   gg = golay_24_12_generator()
   while not gg.at_end():
-    weights[list(gg.next()).count(1)] += 1
+    weights[list(next(gg)).count(1)] += 1
   assert weights == [1,0,0,0,0,0,0,0,759,0,0,0,2576,0,0,0,759,0,0,0,0,0,0,0,1]
   try:
-    gg.next()
+    next(gg)
   except StopIteration as e:
     assert str(e) == "golay_24_12_generator is exhausted."
   else:
@@ -1761,7 +1761,7 @@ def exercise_unimodular_generator(forever):
   assert not g.at_end()
   n = 0
   while (not g.at_end()):
-    assert matrix.rec(g.next(), (3,3)).determinant() == 1
+    assert matrix.rec(next(g), (3,3)).determinant() == 1
     n += 1
   assert n == 3480
   assert ug(range=0).count() == 0

@@ -7,9 +7,10 @@
 #   Class to read the GAIN.CBF files used in XDS
 #
 from __future__ import division
+from __future__ import absolute_import
 
 from builtins import range
-import xds_cbf
+from . import xds_cbf
 
 class reader(xds_cbf.reader):
   """A class to read the GAIN.CBF files used in XDS"""

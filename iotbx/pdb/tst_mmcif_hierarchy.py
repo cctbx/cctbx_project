@@ -235,7 +235,7 @@ model id="" #chains=2
   hierarchy_recycled.show(out=s1)
   assert not show_diff(s.getvalue(), s1.getvalue())
   for hierarchy in (hierarchy, hierarchy_recycled):
-    residue_group = hierarchy.residue_groups().next()
+    residue_group = next(hierarchy.residue_groups())
     assert residue_group.resseq == ' 108'
     assert residue_group.resseq_as_int() == 108
     atoms = hierarchy.atoms()

@@ -79,7 +79,7 @@ class add_oxygen(object):
           bond_center = (site_frac_i + site_frac_ji) / 2
           i_seq_o = self.structure.scatterers().size()
           self.structure.add_scatterer(xray.scatterer(
-            label="O%d"%i_oxygen.next(),
+            label="O%d"%next(i_oxygen),
             site=bond_center))
           bond_sym_table[i_seq].setdefault(i_seq_o).append(
             sgtbx.rt_mx(1,1))

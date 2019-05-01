@@ -847,8 +847,8 @@ class dataset_statistics(object):
   def estimate_d_min(self,
       min_i_over_sigma=0,
       min_cc_one_half=0,
-      max_r_merge=sys.maxint,
-      max_r_meas=sys.maxint,
+      max_r_merge=sys.maxsize,
+      max_r_meas=sys.maxsize,
       min_cc_anom=-1,
       min_completeness=0):
     """

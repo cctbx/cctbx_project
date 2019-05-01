@@ -30,7 +30,7 @@ def exercise_image_simple():
           spot_intensity_factors = flex.double([spot_intensity_factor])
         for apply_proximity_factor in [False, True]:
           if (star == "*"):
-            expected_sum_image_pixels = expected_sum_image_pixels_iter.next()
+            expected_sum_image_pixels = next(expected_sum_image_pixels_iter)
           for code in range(16):
             store_miller_index_i_seqs = bool(code & 0x1)
             store_spots = bool(code & 0x2)

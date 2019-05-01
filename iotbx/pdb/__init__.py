@@ -1057,7 +1057,7 @@ class pdb_input_mixin(object):
     special_position_settings = crystal_symmetry.special_position_settings(
       min_distance_sym_equiv=min_distance_sym_equiv)
     try :
-      while (loop.next()):
+      while (next(loop)):
         result.append(xray.structure(
           special_position_settings=special_position_settings,
           scatterers=loop.scatterers,

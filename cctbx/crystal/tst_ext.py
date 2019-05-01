@@ -439,7 +439,7 @@ def check_pair_asu_table(asu_table, expected_asu_pairs):
           if (0 or "--verbose" in sys.argv[1:] or expected_asu_pairs is None):
             print(str([i_seq, j_seq, j_sym]) + ",")
           if (expected_asu_pairs is not None):
-            assert [i_seq, j_seq, j_sym] == expected_asu_pairs[ip.next()]
+            assert [i_seq, j_seq, j_sym] == expected_asu_pairs[next(ip)]
 
 def exercise_pair_tables():
   d = crystal.pair_sym_dict()
@@ -718,7 +718,7 @@ Si(2)
       for j_seq,rt_mx_list in sym_dict.items():
         for rt_mx in rt_mx_list:
           while 1:
-            expected = expected_sym_pairs[ip.next()]
+            expected = expected_sym_pairs[next(ip)]
             if (not (skip_j_seq_less_than_i_seq and expected[1]<expected[0])):
               break
           if (0 or "--verbose" in sys.argv[1:]):
@@ -1232,7 +1232,7 @@ def exercise_fix_for_missed_interaction_inside_asu():
   gen = crystal.neighbors_fast_pair_generator(asu_mappings,
                                               distance_cutoff=3.5,
                                               minimal=True)
-  pair = gen.next()
+  pair = next(gen)
   pair_asu_table.add_pair(pair)
   pair_sym_table = pair_asu_table.extract_pair_sym_table()
   result = []
@@ -1270,7 +1270,7 @@ def exercise_all_bonds_from_inside_asu():
   for i_seq, sym_dict in enumerate(sym_table):
     for j_seq, rt_mx_list in sym_dict.items():
       for rt_mx in rt_mx_list:
-        expected = expected_sym_pairs[ip.next()]
+        expected = expected_sym_pairs[next(ip)]
         assert [i_seq, j_seq, str(rt_mx)] == expected
 
   xs = xray.structure(
@@ -1291,7 +1291,7 @@ def exercise_all_bonds_from_inside_asu():
   gen = crystal.neighbors_fast_pair_generator(asu_mappings,
                                               distance_cutoff=3.5,
                                               minimal=True)
-  pair = gen.next()
+  pair = next(gen)
   pair_asu_table.add_pair(pair)
 
   pair_sym_table = pair_asu_table.extract_pair_sym_table(

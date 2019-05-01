@@ -51,4 +51,4 @@ class _(boost.python.injector, ext.line_search_more_thuente_1994):
 class _(boost.python.injector, ext.unimodular_generator):
 
   def all(self):
-    while (not self.at_end()): yield self.next()
+    while (not self.at_end()): yield next(self)

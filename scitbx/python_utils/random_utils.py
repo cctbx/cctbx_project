@@ -75,7 +75,7 @@ if (__name__ == "__main__"):
     r = weighted_choice(weights)
     hist = [0 for i in range(len(weights))]
     for i in range(10000):
-      hist[r.next()] += 1
+      hist[next(r)] += 1
     hist = [int(round(s/1000.)) for s in hist]
     assert hist == weights, (hist, weights)
   print("OK")

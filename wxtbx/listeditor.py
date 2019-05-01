@@ -93,7 +93,7 @@ class ListEditor(wx.Panel):
     return btn
 
   def AddItem(self, item):
-    return self.list.InsertStringItem(sys.maxint, item)
+    return self.list.InsertStringItem(sys.maxsize, item)
 
   def OnAdd(self, event):
     i = self.AddItem(self._default_label)

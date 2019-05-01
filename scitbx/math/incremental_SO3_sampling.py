@@ -50,7 +50,7 @@ class sample_orientations(object):
 def tst():
   so3 = sample_orientations()
   for ii in range(10000):
-    q = flex.double(so3.next())
+    q = flex.double(next(so3))
     q = q*q
     assert abs(1-q)<1e-5
 

@@ -9,8 +9,8 @@ import sys
 class FloatCtrl(ValidatedTextCtrl):
   def __init__(self, *args, **kwds):
     super(FloatCtrl, self).__init__(*args, **kwds)
-    self.min = float(-sys.maxint)
-    self.max = float(sys.maxint)
+    self.min = float(-sys.maxsize)
+    self.max = float(sys.maxsize)
 
   def SetMin(self, min):
     assert isinstance(min, float) or isinstance(min, int)

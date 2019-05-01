@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from __future__ import absolute_import
 from builtins import range
 from rigidity import \
   gcd, \

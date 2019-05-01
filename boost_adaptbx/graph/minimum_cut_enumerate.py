@@ -4,6 +4,7 @@ from boost_adaptbx.graph import min_cut_max_flow
 from boost_adaptbx.graph import utility
 
 import operator
+from functools import reduce
 
 
 def no_heap_element_limit(heap):

@@ -780,7 +780,7 @@ class peak_cluster_analysis(object):
 
   def __iter__(self):
     while 1:
-      site_info = self.next()
+      site_info = next(self)
       if site_info is None: break
       yield site_info
 

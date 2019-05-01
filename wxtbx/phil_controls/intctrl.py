@@ -12,8 +12,8 @@ import sys
 class IntCtrl(ValidatedTextCtrl):
   def __init__(self, *args, **kwds):
     super(IntCtrl, self).__init__(*args, **kwds)
-    self.min = -sys.maxint
-    self.max = sys.maxint
+    self.min = -sys.maxsize
+    self.max = sys.maxsize
     self._spinner = None
 
   def AttachSpinner(self, spinner):

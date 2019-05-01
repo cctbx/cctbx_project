@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import absolute_import
 
 from gltbx import gl
 
@@ -73,7 +74,7 @@ class material_model(object):
     self.specular_focus = specular_focus
 
   def execute(self, specular=True):
-    from gl import glMaterialfv, glMaterialf
+    from .gl import glMaterialfv, glMaterialf
     glMaterialfv(gl.GL_BACK, gl.GL_AMBIENT, self.ambient_back_colour)
     glMaterialfv(gl.GL_FRONT, gl.GL_AMBIENT, self.ambient_front_colour)
     glMaterialfv(gl.GL_BACK, gl.GL_DIFFUSE, self.diffuse_back_colour)

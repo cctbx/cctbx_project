@@ -7,6 +7,7 @@ from scitbx.linalg import eigensystem
 
 import operator
 import math
+from functools import reduce
 
 # Exceptions
 class MultipleSuperpositionError(Exception):

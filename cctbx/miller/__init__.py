@@ -39,7 +39,7 @@ fp_eps_double = scitbx.math.floating_point_epsilon_double_get()
 generate_r_free_params_str = r_free_utils.generate_r_free_params_str
 
 def _slice_or_none(array, slice_object):
-  assert type(slice_object) == types.SliceType
+  assert type(slice_object) == slice
   if (array is None): return None
   return array.__getitem__(slice_object)
 
@@ -443,7 +443,7 @@ class set(crystal.symmetry):
     return array(miller_set=self, data=data, sigmas=sigmas)
 
   def __getitem__(self, slice_object):
-    assert type(slice_object) == types.SliceType
+    assert type(slice_object) == slice
     assert self.indices() is not None
     return set(
       crystal_symmetry=self,

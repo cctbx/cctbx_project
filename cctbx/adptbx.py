@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import absolute_import
 from builtins import range
 from cctbx.array_family import flex # for tuple mappings
 
@@ -60,7 +61,7 @@ def intersection(u_1, u_2, site_1, site_2, unit_cell):
   """
   from scitbx.matrix import col
   if (site_1 == site_2):
-    return sys.maxint
+    return sys.maxsize
   if isinstance(u_1, float):
     u_1 = u_iso_as_u_star(unit_cell, u_1)
   if isinstance(u_2, float):

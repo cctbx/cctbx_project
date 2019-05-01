@@ -283,7 +283,7 @@ class RestraintsListBase(wx.ListCtrl):
     self._params = []
 
   def AddRestraint(self):
-    item = self.InsertStringItem(sys.maxint, "---")
+    item = self.InsertStringItem(sys.maxsize, "---")
     for i in range(self.n_columns - 1):
       self.SetStringItem(item, i+1, "---")
     new_params = self._index.get_template_copy(self.GetPhilPath()).extract()
@@ -336,7 +336,7 @@ class BondRestraintsList(RestraintsListBase):
     for bond in self._params :
       selections = [bond.atom_selection_1, bond.atom_selection_2]
       sele_str = "; ".join([ fv("%s", s) for s in selections ])
-      item = self.InsertStringItem(sys.maxint, sele_str)
+      item = self.InsertStringItem(sys.maxsize, sele_str)
       self.SetStringItem(item, 1, fv("%g", bond.distance_ideal))
       self.SetStringItem(item, 2, fv("%g", bond.sigma))
       self.SetStringItem(item, 3, fv("%g", bond.slack))
@@ -448,7 +448,7 @@ class AngleRestraintsList(RestraintsListBase):
         sele_str = "---"
       else :
         sele_str = "; ".join([ str(s) for s in selections ])
-      item = self.InsertStringItem(sys.maxint, sele_str)
+      item = self.InsertStringItem(sys.maxsize, sele_str)
       self.SetStringItem(item, 1, fv("%g", angle.angle_ideal))
       self.SetStringItem(item, 2, fv("%g", angle.sigma))
 
@@ -516,7 +516,7 @@ class PlanarityRestraintsList(RestraintsListBase):
 
   def PopulateList(self):
     for plane in self._params :
-      item = self.InsertStringItem(sys.maxint, fv("%s", plane.atom_selection))
+      item = self.InsertStringItem(sys.maxsize, fv("%s", plane.atom_selection))
       self.SetStringItem(item, 1, fv("%g", plane.sigma))
 
   def GetSelections(self):

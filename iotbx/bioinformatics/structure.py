@@ -67,7 +67,7 @@ def summarize_blast_output(blast_out=None, blast_file=None,
     assert os.path.isfile(blast_file)
     blast_in = open(blast_file)
   parsed = NCBIXML.parse(blast_in)
-  blast = parsed.next()
+  blast = next(parsed)
   if (len(blast.alignments) == 0):
     raise Sorry("No matching sequences!")
   results = []

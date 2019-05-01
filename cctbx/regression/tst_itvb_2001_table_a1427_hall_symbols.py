@@ -30,7 +30,7 @@ def get_and_check_file():
     if (hall_sgtbx[0] == "_"): hall_sgtbx = hall_sgtbx[1:]
     assert hm_sgtbx == hm
     assert hall_sgtbx == hall
-    symbols_i = space_group_symbol_iterator.next()
+    symbols_i = next(space_group_symbol_iterator)
     assert symbols_i.universal_hermann_mauguin() \
         == symbols.universal_hermann_mauguin()
 

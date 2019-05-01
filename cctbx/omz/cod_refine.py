@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from __future__ import absolute_import
 from builtins import range
 from cctbx import omz
 import cctbx.omz.dev
@@ -553,7 +554,7 @@ def process_continue(params, cod_id, c_obs, i_obs, f_obs, structure_prep):
     f_obs = f_obs.apply_scaling(factor=s)
   def show(obs):
     obs.show_comprehensive_summary()
-    from cif_refine import \
+    from .cif_refine import \
       report_fraction_of_negative_observations_if_any as _
     _(cod_id, obs)
   if (c_obs.is_xray_intensity_array()):

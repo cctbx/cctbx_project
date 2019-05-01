@@ -16,7 +16,7 @@ def dtrek_as_cns_hkl(file_object, file_name=None):
   info = []
   reflections = []
   mode = 0
-  for line in file_object.xreadlines():
+  for line in file_object:
     if (line == ""): break
     if (mode == 0):
       if (line.startswith("CRYSTAL_")):

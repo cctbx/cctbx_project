@@ -140,7 +140,7 @@ def recolor_grid_points(gridding, colored_grid_points, redundancies, verbose):
     colored_point_dict = {}
     for colored_point in colored_grid_points:
       colored_point_dict[colored_point.site] = colored_point
-    colors = color_srv.next()
+    colors = next(color_srv)
     for pair in pairs:
       for point,color in zip(pair, colors):
         frac = tuple(rational.vector(point, gridding))

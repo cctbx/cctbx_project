@@ -302,7 +302,7 @@ def exercise(verbose=0):
         assert minimized.final_target_result.nonbonded_residual_sum < 0.1
       assert minimized.final_target_result.angle_residual_sum < 1.e-3
       if (0 or verbose):
-        pdb_file_name = "minimized_%d.pdb" % i_pdb.next()
+        pdb_file_name = "minimized_%d.pdb" % next(i_pdb)
         print("Writing file:", pdb_file_name)
         dump_pdb(file_name=pdb_file_name, sites_cart=sites_cart)
       if (manager.site_symmetry_table is None):

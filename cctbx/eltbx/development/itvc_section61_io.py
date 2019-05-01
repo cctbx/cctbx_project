@@ -49,25 +49,25 @@ def read_table6111(file_name):
   tab = table6111(file_name)
   lf = line_feeder(open(file_name))
   while 1:
-    line = lf.next()
+    line = next(lf)
     if (lf.eof): break
     if (line.startswith("Element")):
       elements = line.split()[1:]
-      line = lf.next()
+      line = next(lf)
       assert line.lstrip().startswith("Z"), line
       atomic_numbers = [int(z) for z in line.split()[1:]]
       assert len(atomic_numbers) == len(elements), line
-      line = lf.next()
+      line = next(lf)
       assert line.startswith("Method"), line
       methods = line.split()[1:]
       assert len(methods) == len(elements), line
-      line = lf.next()
+      line = next(lf)
       assert line.find("sin") > 0, line
       stols = flex.double()
       value_rows = []
       sigma_rows = []
       while 1:
-        line = lf.next()
+        line = next(lf)
         assert not lf.eof
         if (len(line.strip()) == 0): continue
         raw_value_row = line.rstrip().split("\t")

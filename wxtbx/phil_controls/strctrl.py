@@ -17,7 +17,7 @@ class StrCtrl(ValidatedTextCtrl):
       kwds['size'] = (200,-1)
     super(StrCtrl, self).__init__(*args, **kwds)
     self._min_len = 0
-    self._max_len = sys.maxint
+    self._max_len = sys.maxsize
 
   def CreateValidator(self):
     return StrValidator()
