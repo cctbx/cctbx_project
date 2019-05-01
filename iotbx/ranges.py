@@ -5,8 +5,8 @@ def range_parser( txt ):
     splitter = ","
   txt_ranges = txt.split(splitter)
   ranges = []
-  for range in txt_ranges:
-    tmp = range.split("-")
+  for range_ in txt_ranges:
+    tmp = range_.split("-")
     assert len(tmp)<=2
     if len(tmp)==2:
       ranges.append( [int(tmp[0]),int(tmp[1])]  )
@@ -14,9 +14,9 @@ def range_parser( txt ):
       ranges.append( [ int(tmp[0]) ] )
   return ranges
 
-def range_to_list(range):
+def range_to_list(range_):
   result = []
-  for item in range:
+  for item in range_:
     if len(item)==1:
       result.append( item[0] )
     if len(item)==2:
