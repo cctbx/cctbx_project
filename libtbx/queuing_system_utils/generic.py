@@ -366,7 +366,7 @@ class SGEJob(Job):
 class queue_interface(object):
   COMMAND = None
   def __init__(self, command, asynchronous=False):
-    self.async = asynchronous
+    self.async_ = asynchronous
     if command is None:
       assert (self.COMMAND is not None)
       self.command = [ self.COMMAND, ]
@@ -387,7 +387,7 @@ class sge_interface(queue_interface):
 
     cmd = self.command + [ "-S", "/bin/sh", "-cwd", "-N", name, "-o", out,
       "-e", err ]
-    if (not self.async):
+    if (not self.async_):
       cmd.extend(["-sync", "y"])
     return cmd
 
@@ -402,7 +402,7 @@ class lsf_interface(queue_interface):
   def __call__(self, name, out, err):
 
     cmd = self.command +  [ "-J", name, "-o", out, "-e", err ]
-    if (not self.async):
+    if (not self.async_):
       cmd.append("-K")
     return cmd
 
