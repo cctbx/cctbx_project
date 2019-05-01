@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 # Simple example for the use of the adptbx.
 
+from builtins import range
 from cctbx import crystal
 from cctbx import adptbx # anisotropic displacement parameter toolbox
 
@@ -33,7 +34,7 @@ def run():
 
   print("Eigenvectors and values:")
   eigensystem = adptbx.eigensystem(u_cart)
-  for i in xrange(3):
+  for i in range(3):
     print("  v=(%.5f %.5f %.5f) " % eigensystem.vectors(i), end=' ')
     print("lambda=%.4f" % (eigensystem.values()[i],))
 

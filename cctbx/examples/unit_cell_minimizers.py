@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import uctbx
 from cctbx.eltbx import wavelengths
 from cctbx.array_family import flex
@@ -17,7 +18,7 @@ def residual(
 def gradients(
       two_thetas_obs, miller_indices, wavelength, unit_cell, eps=1.e-6):
   result = flex.double()
-  for i in xrange(6):
+  for i in range(6):
     rs = []
     for signed_eps in [eps, -eps]:
       params_eps = list(unit_cell.parameters())
@@ -32,7 +33,7 @@ def gradients(
 def hessian(
       two_thetas_obs, miller_indices, wavelength, unit_cell, eps=1.e-6):
   result = flex.double()
-  for i in xrange(6):
+  for i in range(6):
     rs = []
     for signed_eps in [eps, -eps]:
       params_eps = list(unit_cell.parameters())
@@ -284,7 +285,7 @@ def run(args):
     else:
       modes = [eval(arg)]
   else:
-    modes = range(8)
+    modes = list(range(8))
   print("modes:", modes)
   print()
   for mode in modes:

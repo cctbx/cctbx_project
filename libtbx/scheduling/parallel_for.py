@@ -73,7 +73,7 @@ class multi_pooler(object):
 
   def submit_one_job(self, calcsiter, manager):
 
-    calculations = [ c for ( i, c ) in zip( range( self.size), calcsiter ) ]
+    calculations = [ c for ( i, c ) in zip( list(range( self.size)), calcsiter ) ]
 
     if not calculations:
       raise StopIteration

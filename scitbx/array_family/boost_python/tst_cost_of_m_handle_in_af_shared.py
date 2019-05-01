@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.array_family import flex
 import time
 
@@ -10,7 +11,7 @@ def exercise(data_size, n_repeats):
   cost(n_repeats=0, test_id=0)
   t1 = time.time()
   t_overhead = t1 - t0
-  for test_id in xrange(3):
+  for test_id in range(3):
     t0 = time.time()
     label = cost(n_repeats=n_repeats, test_id=test_id)
     t1 = time.time()

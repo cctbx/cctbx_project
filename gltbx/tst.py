@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from gltbx import gl
 from gltbx import glu
 from libtbx.test_utils import Exception_expected, show_diff
@@ -8,11 +9,11 @@ def exercise_converter():
   textures = []
   gl.glGenTextures(3, textures)
   assert textures == [0,0,0]
-  for i in xrange(10000):
+  for i in range(10000):
     textures = []
     gl.glGenTextures(3, textures)
     assert textures == [0,0,0]
-  for i in xrange(10000):
+  for i in range(10000):
     textures = [9,3,5]
     gl.glGenTextures(3, textures)
     assert textures == [9,3,5]

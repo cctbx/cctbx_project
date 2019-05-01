@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from cctbx import sgtbx
 import libtbx.load_env
 import os.path as op
@@ -71,7 +72,7 @@ def search_symop_lib_for_ccp4_symbol(space_group_info, file_iter):
     space_group_number = int(flds[0][-3:])
     order_z = int(flds[1])
     if (space_group_number != given_space_group_number):
-      for i in xrange(order_z):
+      for i in range(order_z):
         file_iter.next()
     else:
       result = flds[3]
@@ -82,14 +83,14 @@ def search_symop_lib_for_ccp4_symbol(space_group_info, file_iter):
 
 def collect_symops(file_iter, order_z):
   result = sgtbx.space_group()
-  for i in xrange(order_z):
+  for i in range(order_z):
     line = file_iter.next().strip()
     result.expand_smx(sgtbx.rt_mx(line))
   return result
 
 def build_syminfo_lib_cache(lib_path):
   _syminfo_lib_cache.append(None)
-  for number in xrange(230):
+  for number in range(230):
     _syminfo_lib_cache.append([])
   file_iter = open(lib_path)
   for line in file_iter:

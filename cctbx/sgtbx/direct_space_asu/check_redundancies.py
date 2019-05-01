@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.web.asu_gallery import jv_asu
 from cctbx import sgtbx
@@ -18,21 +19,21 @@ class colored_grid_point(object):
 def sample_asu(asu, n=(12,12,12), shape=False, is_stripped_asu=False):
   n_redundancies = 0
   u_grid=[]
-  for i in xrange(n[0]):
+  for i in range(n[0]):
      b = []
-     for j in xrange(n[1]):
+     for j in range(n[1]):
         c = []
-        for k in xrange(n[2]):
+        for k in range(n[2]):
            c.append(0)
         b.append(c)
      u_grid.append(b)
   r_grid = []
   colored_grid_points = []
-  for i in xrange(-n[0]//2, n[0]+1):
+  for i in range(-n[0]//2, n[0]+1):
     b = []
-    for j in xrange(-n[1]//2, n[1]+1):
+    for j in range(-n[1]//2, n[1]+1):
       c = []
-      for k in xrange(-n[2]//2, n[2]+1):
+      for k in range(-n[2]//2, n[2]+1):
         frac = rational.vector((i,j,k), n)
         f = asu.is_inside(frac)
         fv = asu.is_inside(frac, shape_only=True)
@@ -90,9 +91,9 @@ def check_asu(group_type_number, asu, n, is_stripped_asu, soft_mode):
     asu, n, is_stripped_asu=is_stripped_asu)
   n_redundancies = 0
   redundancies = {}
-  for i in xrange(n[0]):
-    for j in xrange(n[1]):
-      for k in xrange(n[2]):
+  for i in range(n[0]):
+    for j in range(n[1]):
+      for k in range(n[2]):
         n_redundancies += grid_asu(
           ops=ops, n=n, u_grid=u_grid, r_grid=r_grid, i=i,j=j,k=k,
           sampling_n_redundancies=sampling_n_redundancies,
@@ -156,13 +157,13 @@ def rt_plus_unit_shifts(rt, unit_shifts):
   return sgtbx.rt_mx(rt.r(), rt.t().plus(sgtbx.tr_vec(unit_shifts, 1)))
 
 def rt_times_grid_point(rt, i_grid, n):
-  grid_point = matrix.col([i_grid[i]/float(n[i]) for i in xrange(3)])
+  grid_point = matrix.col([i_grid[i]/float(n[i]) for i in range(3)])
   rotat = matrix.sqr(rt.r().as_double())
   trans = matrix.col(rt.t().as_double())
   eq_pt = rotat*grid_point+trans
   eq_gpt = [0,0,0]
   unit_shifts = [0,0,0]
-  for i in xrange(3):
+  for i in range(3):
     eg = iround(eq_pt.elems[i]*n[i])
     eq_gpt[i] = eg % n[i]
     u = float(eq_gpt[i] - eg) / n[i]
@@ -323,9 +324,9 @@ def check_multiplicities(asu, n):
       bit *= 2
     return result
   mults_by_code = {}
-  for i in xrange(-n[0]//2, n[0]+1):
-    for j in xrange(-n[1]//2, n[1]+1):
-      for k in xrange(-n[2]//2, n[2]+1):
+  for i in range(-n[0]//2, n[0]+1):
+    for j in range(-n[1]//2, n[1]+1):
+      for k in range(-n[2]//2, n[2]+1):
         point = rational.vector((i,j,k), n)
         if (asu.is_inside(point)):
           code = get_code(point)
@@ -348,7 +349,7 @@ def check_multiplicities(asu, n):
     print("Number of cut intersection codes:", len(tab_codes))
 
 def test_all(n):
-  for space_group_number in xrange(1, 231):
+  for space_group_number in range(1, 231):
     cmd = "cctbx.python %s" % sys.argv[0] \
         + " %d,%d,%d " % n +str(space_group_number)
     print(cmd)
@@ -389,7 +390,7 @@ if (__name__=="__main__"):
       numbers = [int(n) for n in arg.split('-')]
       assert len(numbers) in (1,2)
       if (len(numbers) == 1): numbers *= 2
-      for group_type_number in xrange(numbers[0], numbers[1]+1):
+      for group_type_number in range(numbers[0], numbers[1]+1):
         if (not flags.plane_group):
           asu_original = reference_table.get_asu(group_type_number)
           assert sgtbx.space_group(asu_original.hall_symbol) \

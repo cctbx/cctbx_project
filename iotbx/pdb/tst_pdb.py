@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from iotbx import pdb
 import iotbx.pdb.cryst1_interpretation
 import iotbx.pdb.remark_290_interpretation
@@ -653,7 +654,7 @@ def dump_pdb(file_name, sites_cart, crystal_symmetry=None):
   f.close()
 
 def write_icosahedron():
-  for level in xrange(3):
+  for level in range(3):
     icosahedron = scitbx.math.icosahedron(level=level)
     scale = 1.5/icosahedron.next_neighbors_distance()
     dump_pdb(

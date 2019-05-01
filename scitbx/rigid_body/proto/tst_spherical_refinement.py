@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto import test_utils
 from scitbx.rigid_body.proto.utils import center_of_mass_from_sites
@@ -200,7 +201,7 @@ class body_with_spherical_joint(object):
     if (J is None): J = O.J
     result = []
     q = J.qE
-    for i in xrange(len(q)):
+    for i in range(len(q)):
       fs = []
       for signed_eps in [eps, -eps]:
         q_eps = list(q)
@@ -293,7 +294,7 @@ def run(args):
     nfun_accu[str(ti)] = flex.size_t()
     n_failed[str(ti)] = 0
   mersenne_twister = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     sites = [matrix.col(s) for s in flex.vec3_double(
       mersenne_twister.random_double(size=n_sites*3)*2-1)]
     c = center_of_mass_from_sites(sites)

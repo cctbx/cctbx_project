@@ -1,6 +1,7 @@
 
 from __future__ import division, print_function
 
+from builtins import range
 def tst_glm():
   from scitbx.glmtbx import glm
   from scitbx.array_family import flex

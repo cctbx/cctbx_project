@@ -1,6 +1,7 @@
 "http://cms.mpi.univie.ac.at/vasp/vasp/POSCAR_file.html"
 from __future__ import division
 
+from builtins import range
 from libtbx import slots_getstate_setstate
 
 class reader(slots_getstate_setstate):
@@ -53,7 +54,7 @@ class reader(slots_getstate_setstate):
     n_sites = sum(O.type_counts)
     assert len(lines) >= i_type_counts+2+n_sites
     O.sites = []
-    for i in xrange(i_type_counts+2, i_type_counts+2+n_sites):
+    for i in range(i_type_counts+2, i_type_counts+2+n_sites):
       site_str = lines[i].split()
       assert len(site_str) >= 3
       site = [float(_) for _ in site_str[:3]]
@@ -63,7 +64,7 @@ class reader(slots_getstate_setstate):
     from scitbx import matrix
     vecs = [matrix.col(_) for _ in O.lattice_vectors]
     params = [_.length() for _ in vecs]
-    for i in xrange(3):
+    for i in range(3):
       params.append(vecs[(i+1)%3].angle(vecs[(i+2)%3], deg=True))
     from cctbx import uctbx
     return uctbx.unit_cell(params)
@@ -80,7 +81,7 @@ class reader(slots_getstate_setstate):
     result = flex.xray_scatterer()
     sites = iter(O.sites)
     for type,count in zip(O.types, O.type_counts):
-      for _ in xrange(count):
+      for _ in range(count):
         result.append(xray.scatterer(
           label="%s%d"%(type, len(result)+1),
           scattering_type=type,

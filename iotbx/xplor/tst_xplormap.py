@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import iotbx.xplor.map
 from cctbx import maptbx
 from cctbx import sgtbx
@@ -179,7 +180,7 @@ def exercise_fft_map_as_xplor_map(space_group_info, n_elements=10, d_min=3):
     assert eps_eq(read.data[first], real_map[first_p1], eps=1.e-4)
     last_p1 = [i%n for i,n in zip(last, fft_map.n_real())]
     assert eps_eq(read.data[last], real_map[last_p1], eps=1.e-4)
-    for x in xrange(1,10):
+    for x in range(1,10):
       point = [iround(f+(l-f)*x/10.) for f,l in zip(first,last)]
       point_p1 = [i%n for i,n in zip(point, fft_map.n_real())]
       assert eps_eq(read.data[point], real_map[point_p1], eps=1.e-4)

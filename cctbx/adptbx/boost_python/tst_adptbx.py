@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import uctbx
 from cctbx import adptbx
 from cctbx.array_family import flex
@@ -91,7 +92,7 @@ def exercise_interface():
   up = (0.534, 0.812, 0.613, 0.0166, 0.134, -0.0124)
   s = adptbx.eigensystem(up)
   assert approx_equal(s.values(), (0.813132, 0.713201, 0.432668))
-  for i in xrange(3):
+  for i in range(3):
     check_eigenvector(up, s.values()[i], s.vectors(i))
   c = (1,2,3, 3,-4,5, 4,5,6)
   v = (198,18,1020,116,447,269)
@@ -130,7 +131,7 @@ def u_star_minus_u_iso_ralf(unit_cell, u_star):
   return adptbx.u_cart_as_u_star(unit_cell, u_cart_minus_u_iso)
 
 def exercise_factor_u_star_u_iso():
-  for i_trial in xrange(100):
+  for i_trial in range(100):
     a = flex.random_double(size=9, factor=3)
     a.resize(flex.grid(3,3))
     u = a.matrix_transpose().matrix_multiply(a) # always positive-definite
@@ -207,20 +208,20 @@ def exercise_eigen_core(diag):
   ev = list(adptbx.eigenvalues(u))
   diag.sort()
   ev.sort()
-  for i in xrange(3):
+  for i in range(3):
     check_eigenvalue(u, ev[i])
-  for i in xrange(3):
+  for i in range(3):
     assert abs(diag[i] - ev[i]) < 1.e-4
   if (adptbx.is_positive_definite(ev)):
     es = adptbx.eigensystem(u)
     ev = list(es.values())
     ev.sort()
-    for i in xrange(3):
+    for i in range(3):
       check_eigenvalue(u, ev[i])
-    for i in xrange(3):
+    for i in range(3):
       assert abs(diag[i] - ev[i]) < 1.e-4
     evec = []
-    for i in xrange(3):
+    for i in range(3):
       check_eigenvector(u, es.values()[i], es.vectors(i))
       evec.extend(es.vectors(i))
     return # XXX following tests disabled for the moment
@@ -246,10 +247,10 @@ def exercise_eigen_core(diag):
 
 def exercise_eigen(n_trials=100):
   exercise_eigen_core([0,0,0])
-  for n_equal in xrange(3):
-    for i_trial in xrange(n_trials):
+  for n_equal in range(3):
+    for i_trial in range(n_trials):
       if (n_equal == 0):
-        diag = [random.random() for i in xrange(3)]
+        diag = [random.random() for i in range(3)]
       if (n_equal == 1):
         i = random.randrange(3)
         diag[i] = random.random()

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 def exercise_impl(svd_impl_name, use_fortran):
   import scitbx.linalg
   svd_impl = getattr(scitbx.linalg, "lapack_%s" % svd_impl_name)
@@ -7,9 +8,9 @@ def exercise_impl(svd_impl_name, use_fortran):
   from libtbx.test_utils import approx_equal
   #
   for diag in [0, 1]:
-    for n in xrange(1, 11):
+    for n in range(1, 11):
       a = flex.double(flex.grid(n,n), 0)
-      for i in xrange(n):
+      for i in range(n):
         a[(i,i)] = diag
       a_inp = a.deep_copy()
       svd = svd_impl(a=a, use_fortran=use_fortran)
@@ -23,8 +24,8 @@ def exercise_impl(svd_impl_name, use_fortran):
       assert svd.vt.all() == (n,n)
 
   mt = flex.mersenne_twister(seed=0)
-  for m in xrange(1,11):
-    for n in xrange(1,11):
+  for m in range(1,11):
+    for n in range(1,11):
       a = matrix.rec(elems=tuple(mt.random_double(m*n)*4-2), n=(m,n))
       svd = svd_impl(
         a=a.transpose().as_flex_double_matrix(), use_fortran=use_fortran)
@@ -72,7 +73,7 @@ def compare_times(
         samples.append((m, n))
   else:
     if comprehensive == "timing-1":
-      dims = range(100, 600, 100)
+      dims = list(range(100, 600, 100))
       for m in dims:
         for n in dims:
           samples.append((m, n))

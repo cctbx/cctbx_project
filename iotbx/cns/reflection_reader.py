@@ -1,6 +1,7 @@
 "Transfer of CNS reflection files to flex arrays."
 from __future__ import division, print_function
 
+from builtins import range
 from iotbx.cns.crystal_symmetry_utils import \
   re_sg_uc, re_uc_sg, crystal_symmetry_from_re_match
 from cctbx import crystal
@@ -256,7 +257,7 @@ class CNS_xray_reflection_Reader(CNS_input):
         if (word == "INDE"):
           self.level = self.level + 1
           h = [None] * 3
-          for i in xrange(3):
+          for i in range(3):
             word = gNW()
             try:
               h[i] = int(word)
@@ -282,7 +283,7 @@ class CNS_xray_reflection_Reader(CNS_input):
           name = word
           n = 1
           if (type == "complex"): n = 2
-          for i in xrange(n):
+          for i in range(n):
             word = gNW()
             if (type == "integer"):
               try:
@@ -399,9 +400,9 @@ class cns_reflection_file(object):
 
   def optimize(self):
     rsos = self.reciprocal_space_objects.values()
-    for i in xrange(len(rsos)-1):
+    for i in range(len(rsos)-1):
       h_i = rsos[i].indices
-      for j in xrange(i+1, len(rsos)):
+      for j in range(i+1, len(rsos)):
         h_j = rsos[j].indices
         if (flex.order(h_i, h_j) == 0):
           rsos[j].indices = h_i
@@ -426,9 +427,9 @@ class cns_reflection_file(object):
       assert not match.have_singles()
       matches.append(match)
     hl = flex.hendrickson_lattman()
-    for ih in xrange(miller_indices.size()):
+    for ih in range(miller_indices.size()):
       coeff = []
-      for ic in xrange(4):
+      for ic in range(4):
         ih0, ih1 = matches[ic].pairs()[ih]
         assert ih0 == ih
         coeff.append(rsos[ic].data[ih1])
@@ -468,7 +469,7 @@ class cns_reflection_file(object):
       base_array_info = miller.array_info(source_type="cns_reflection_file")
     result = []
     done = set()
-    for group_index in xrange(len(self.groups)):
+    for group_index in range(len(self.groups)):
       names, miller_indices, hl = self.join_hl_group(group_index)
       result.append(self._as_miller_array(
         crystal_symmetry, miller_indices, hl).set_info(

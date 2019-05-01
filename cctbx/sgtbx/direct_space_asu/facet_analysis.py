@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.sgtbx.direct_space_asu import cut_plane
 from cctbx.array_family import flex
 from scitbx import matrix
@@ -39,8 +40,8 @@ def eliminate_outside_vertices(other_cuts, vertices):
 def polygon_vertices(pivot, other_cuts):
   result = {}
   n = len(other_cuts)
-  for i in xrange(n-1):
-    for j in xrange(i+1,n):
+  for i in range(n-1):
+    for j in range(i+1,n):
       vertex = intersection(cuts=(pivot, other_cuts[i], other_cuts[j]))
       if (vertex is not None):
         result.setdefault(vertex, []).append((i,j))
@@ -132,7 +133,7 @@ def face_polygons(asu, i_pivot):
 
 def asu_polygons(asu):
   result = []
-  for i_pivot in xrange(len(asu.cuts)):
+  for i_pivot in range(len(asu.cuts)):
     result.append(face_polygons(asu=asu, i_pivot=i_pivot))
   verify_asu_polygons(asu=asu, list_of_polygons=result)
   return result
@@ -149,16 +150,16 @@ def shape_vertices(asu):
   return extract_polygon_vertices(asu_polygons(asu.shape_only()))
 
 def line_sample_point(a, b, f, gridding):
-  return [a[i]+rational.int(f,gridding)*(b[i]-a[i]) for i in xrange(3)]
+  return [a[i]+rational.int(f,gridding)*(b[i]-a[i]) for i in range(3)]
 
 def verify_asu_polygons(asu, list_of_polygons, gridding=13):
   for polygons in list_of_polygons:
     for polygon,inclusive_flag in polygons:
       n = len(polygon)
-      for i in xrange(n-1):
-        for j in xrange(i+2,min(n,n+i-1)):
+      for i in range(n-1):
+        for j in range(i+2,min(n,n+i-1)):
           a, b = polygon[i][0], polygon[j][0]
-          for f in xrange(1, gridding):
+          for f in range(1, gridding):
             x = line_sample_point(a, b, f, gridding)
             assert asu.is_inside(x) == inclusive_flag
 
@@ -201,7 +202,7 @@ def get_edge_vertices(list_of_polygons):
   for polygons in list_of_polygons:
     for polygon,inclusive_flag in polygons:
       n = len(polygon)
-      for i in xrange(n):
+      for i in range(n):
         j = (i+1) % n
         v1 = polygon[i][0]
         v2 = polygon[j][0]
@@ -216,7 +217,7 @@ def edge_position(edge_end_points, other_point):
   b = edge_end_points[1]
   x = other_point
   f = None
-  for i in xrange(3):
+  for i in range(3):
     d_i = b[i] - a[i]
     if (f is None):
       if (d_i != 0):
@@ -305,7 +306,7 @@ class consolidated_edges_with_cut_points(object):
     self.list = [ec.sort_cut_points() for ec in self.list]
 
   def add(self, edge, addl_cut_points):
-    for i in xrange(len(self.list)):
+    for i in range(len(self.list)):
       linear_dependent, self.list[i] = self.list[i].join_edge(edge)
       if (linear_dependent): return
     edge_and_cuts = edge_with_cut_points(edge, ())
@@ -319,7 +320,7 @@ class consolidated_edges_with_cut_points(object):
   def get_segments(self, edge_and_cuts):
     points = edge_and_cuts.all_points()
     result = []
-    for i in xrange(len(points)-1):
+    for i in range(len(points)-1):
       vertices = (points[i], points[i+1])
       mid_point = (
         (matrix.col(vertices[0]) + matrix.col(vertices[1])) / 2).elems
@@ -342,11 +343,11 @@ class consolidated_edges_with_cut_points(object):
 
   def verify_edge_segments(self, all_edge_segments, gridding=13):
     for edge_segments in all_edge_segments:
-      for i_segment in xrange(len(edge_segments)-1):
+      for i_segment in range(len(edge_segments)-1):
         a = edge_segments[i_segment].vertex
         b = edge_segments[i_segment+1].vertex
         is_inside = None
-        for f in xrange(1, gridding):
+        for f in range(1, gridding):
           x = line_sample_point(a, b, f, gridding)
           if (is_inside is None):
             is_inside = self.asu.is_inside(x)

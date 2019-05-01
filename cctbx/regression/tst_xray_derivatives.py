@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import xray
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -13,9 +14,9 @@ def finite_differences_site(cartesian_flag, target_ftor, structure,
   unit_cell = structure.unit_cell()
   abc = unit_cell.parameters()[:3]
   derivatives = flex.vec3_double()
-  for i_scatterer in xrange(structure.scatterers().size()):
+  for i_scatterer in range(structure.scatterers().size()):
     d_target_d_site = [0,0,0]
-    for ix in xrange(3):
+    for ix in range(3):
       target_values = []
       for d_sign in (-1, 1):
         modified_structure = structure.deep_copy_scatterers()
@@ -42,10 +43,10 @@ def finite_differences_site(cartesian_flag, target_ftor, structure,
 def finite_differences_u_star(target_ftor, structure,
                               delta=0.000001):
   derivatives = flex.sym_mat3_double()
-  for i_scatterer in xrange(structure.scatterers().size()):
+  for i_scatterer in range(structure.scatterers().size()):
     d_target_d_u_star = [0,0,0,0,0,0]
     if(structure.scatterers()[i_scatterer].flags.use_u_aniso()):
-       for iu in xrange(6):
+       for iu in range(6):
          target_values = []
          for d_sign in (-1, 1):
            modified_structure = structure.deep_copy_scatterers()
@@ -68,7 +69,7 @@ def finite_differences_u_star(target_ftor, structure,
 def finite_differences_scalar(parameter_name, target_ftor, structure,
                               delta=0.00001):
   derivatives = flex.double()
-  for i_scatterer in xrange(structure.scatterers().size()):
+  for i_scatterer in range(structure.scatterers().size()):
     target_values = []
     for d_sign in (-1, 1):
       modified_structure = structure.deep_copy_scatterers()

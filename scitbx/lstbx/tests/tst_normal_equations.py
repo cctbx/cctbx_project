@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import libtbx.load_env
 from scitbx.array_family import flex
 from scitbx import sparse
@@ -27,7 +28,7 @@ def exercise_linear_normal_equations():
   for i, (b_, a_, w_) in enumerate(py_eqs):
     b.append(b_)
     w.append(w_)
-    for j in xrange(3):
+    for j in range(3):
       if a_[j]: a[i, j] = a_[j]
   eqs_1.add_equations(right_hand_side=b, design_matrix=a, weights=w)
 

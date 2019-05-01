@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import cctbx.eltbx.xray_scattering
 from cctbx import adptbx
 from cctbx import eltbx
@@ -55,14 +56,14 @@ def coordinates(scatterers, xyz_only=False):
     gaussian = eltbx.xray_scattering.it1992(scatterer.scattering_type).fetch()
     fp = scatterer.fp
     fdp = scatterer.fdp
-    for i in xrange(3):
+    for i in range(3):
       a("do (%s=%.12g) (resid=%d)" % ("xyz"[i], x[i], resid))
     if (not xyz_only):
       a("do (q=%.12g) (resid=%d)" % (q, resid))
       a("do (b=%.12g) (resid=%d)" % (b, resid))
       a("xray")
       a("  scatter (chemical=%s)" % scatterer.label.replace(" ","")[-4:])
-      for i in xrange(4):
+      for i in range(4):
         a("    %.6g %.6g" %
           (gaussian.array_of_a()[i], gaussian.array_of_b()[i]))
       a("    %.6g" % (gaussian.c(),))

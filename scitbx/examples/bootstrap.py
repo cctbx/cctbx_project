@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import scitbx.lbfgs
 import scitbx.math
 from scitbx.array_family import flex
@@ -120,7 +121,7 @@ class fake_data(object):
 
     ## Make a permuation reference, this allows one to
     ## do non parametric resampling of multidimensional data
-    self.permutation_reference = flex.double( range( x_data.size() ) )
+    self.permutation_reference = flex.double( list(range( x_data.size())) )
 
     self.non_para_bootstrap = scitbx.math.non_parametric_bootstrap(
       self.permutation_reference, 0 )
@@ -138,7 +139,7 @@ class fake_data(object):
 
 
 def example():
-  x_obs = flex.double( range(20) )
+  x_obs = flex.double( list(range(20)) )
   a = flex.double([1,2,3])
   w_obs = flex.double(20,100.0)
   y_ideal = a[0] + a[1]*x_obs + a[2]*x_obs*x_obs

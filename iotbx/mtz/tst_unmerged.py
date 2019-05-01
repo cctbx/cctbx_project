@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import os
 from iotbx import mtz
 import libtbx.load_env
@@ -15,5 +16,5 @@ if (__name__ == "__main__"):
   j = m.extract_original_index_miller_indices()
   misym = m.extract_integers("M_ISYM")
 
-  for idx in xrange(len(h)):
+  for idx in range(len(h)):
     print("asu:%17s    orig:%17s    M/ISYM:%4d"%(h[idx],j[idx],misym.data[idx]))

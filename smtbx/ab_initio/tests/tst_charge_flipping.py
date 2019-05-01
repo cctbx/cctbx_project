@@ -2,6 +2,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+from builtins import range
 import sys
 import random
 
@@ -211,7 +212,7 @@ def exercise(flags, space_group_info):
     print("asu content: C%i O%i N%i" % (n_C, n_O, n_N))
     print("on %s's with %s" % (flags.on, flags.algo))
   flipping_type = eval("charge_flipping.%s_iterator" % flags.algo)
-  for i in xrange(int(flags.repeats)):
+  for i in range(int(flags.repeats)):
     randomly_exercise(
       flipping_type=flipping_type,
       space_group_info=space_group_info,

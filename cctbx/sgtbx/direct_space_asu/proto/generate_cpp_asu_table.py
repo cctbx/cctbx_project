@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.source_generators.utils import join_open
 import cctbx
 from cctbx.sgtbx.direct_space_asu import reference_table
@@ -122,7 +123,7 @@ def run(dr):
   print(head2, file=f)
   table = "asu_func asu_table[230] = {"
   i = 0
-  for sg in xrange(1,231):
+  for sg in range(1,231):
     if( i%8 == 0 ):
       table += "\n "
     func = show_cpp(sg, f)

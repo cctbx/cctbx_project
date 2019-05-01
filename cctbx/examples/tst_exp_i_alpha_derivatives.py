@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.examples.exp_i_alpha_derivatives \
   import least_squares, exp_i_alpha_sum
 from libtbx.test_utils import approx_equal
@@ -11,7 +12,7 @@ random.seed(0)
 
 def d_target_d_alphas_finite(obs, alphas, eps=1.e-8):
   result = []
-  for i_alpha in xrange(len(alphas)):
+  for i_alpha in range(len(alphas)):
     alphas_eps = list(alphas)
     ts = []
     for signed_eps in [eps, -eps]:
@@ -24,7 +25,7 @@ def d_target_d_alphas_finite(obs, alphas, eps=1.e-8):
 
 def d2_target_d_alphas_finite(obs, alphas, eps=1.e-8):
   result = []
-  for i_alpha in xrange(len(alphas)):
+  for i_alpha in range(len(alphas)):
     alphas_eps = list(alphas)
     gs = []
     for signed_eps in [eps, -eps]:
@@ -57,9 +58,9 @@ def exercise(args):
     out = StringIO()
   else:
     out = sys.stdout
-  for n_alphas in xrange(2,5):
-    for i_trial in xrange(5):
-      alphas = [2*math.pi*random.random() for i in xrange(n_alphas)]
+  for n_alphas in range(2,5):
+    for i_trial in range(5):
+      alphas = [2*math.pi*random.random() for i in range(n_alphas)]
       exp_sum = exp_i_alpha_sum(alphas=alphas)
       obs = abs(exp_sum.f())
       compare_analytical_and_finite(

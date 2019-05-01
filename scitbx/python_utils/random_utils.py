@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import random
 import os
 import time
@@ -32,7 +33,7 @@ def random_selection(n_candidates, n_keep):
   return selection
 
 def _random_selection_core(selection, target_set_size, flag):
-   set = range(len(selection))
+   set = list(range(len(selection)))
    while (len(set) > target_set_size):
      i = random.randrange(len(set))
      selection[set[i]] = flag
@@ -56,11 +57,11 @@ class weighted_choice(object):
 
 if (__name__ == "__main__"):
   seed()
-  print(random_subset(range(5), 0))
-  print(random_subset(range(5), 5))
-  print(random_subset(range(5), 2))
-  print(random_subset(range(5), 3))
-  for i in xrange(10):
+  print(random_subset(list(range(5)), 0))
+  print(random_subset(list(range(5)), 5))
+  print(random_subset(list(range(5)), 2))
+  print(random_subset(list(range(5)), 3))
+  for i in range(10):
     assert random_selection(0, 0).size() == 0
     assert random_selection(5, 0).size() == 5
     assert random_selection(3, 0).count(True) == 0
@@ -72,8 +73,8 @@ if (__name__ == "__main__"):
     assert random_selection(4, 3).count(True) == 3
   for weights in ([5,5], [4,3,2,1]):
     r = weighted_choice(weights)
-    hist = [0 for i in xrange(len(weights))]
-    for i in xrange(10000):
+    hist = [0 for i in range(len(weights))]
+    for i in range(10000):
       hist[r.next()] += 1
     hist = [int(round(s/1000.)) for s in hist]
     assert hist == weights, (hist, weights)

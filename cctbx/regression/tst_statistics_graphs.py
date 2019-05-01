@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import statistics
 from cctbx import miller
 from cctbx import crystal
@@ -101,7 +102,7 @@ class cumulative_intensity_distribution_python(object):
     self.y = [y/n_reflections for x, y in xy_data]
 
   def _get_mean_f_obs_sq(self, d_spacing):
-    for n_bin in xrange(0,self.n_bins):
+    for n_bin in range(0,self.n_bins):
       if d_spacing >= self.mean_f_obs_sq.binner.bin_d_range(n_bin)[1]:
         break
     return self.mean_f_obs_sq.data[n_bin]

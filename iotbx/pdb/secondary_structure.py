@@ -47,6 +47,7 @@ from __future__ import division, print_function
 #    of code.
 #
 
+from builtins import range
 from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import adopt_init_args
@@ -930,7 +931,7 @@ class annotation(structure_base):
     new_sheets = []
     new_h_serial = 0
     new_sheet_id = 0
-    for n_copy in xrange(n_copies):
+    for n_copy in range(n_copies):
       for helix in self.helices:
         new_helix = copy.deepcopy(helix)
         new_helix.erase_hbond_list()
@@ -2736,7 +2737,7 @@ class pdb_sheet(structure_base):
     result['_pdbx_struct_sheet_hbond.range_2_label_seq_id'] = []
     result['_pdbx_struct_sheet_hbond.range_2_PDB_ins_code'] = []
 
-    for i, strand, registration in zip(range(self.n_strands), self.strands, self.registrations):
+    for i, strand, registration in zip(list(range(self.n_strands)), self.strands, self.registrations):
       # _struct_sheet_order
       if i != 0:
         result['_struct_sheet_order.sheet_id'].append(sheet_id_to_output)

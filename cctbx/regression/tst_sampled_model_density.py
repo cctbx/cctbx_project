@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import xray
 from cctbx import maptbx
 from cctbx import crystal
@@ -210,7 +211,7 @@ def exercise_negative_parameters(verbose=0):
     scatterers=flex.xray_scatterer([
       xray.scatterer(label="C", site=(0,0,0), u=0.25)]))
   negative_gaussian = eltbx.xray_scattering.gaussian((1,2), (2,3), -4)
-  for i_trial in xrange(7):
+  for i_trial in range(7):
     structure = structure_default.deep_copy_scatterers()
     scatterer = structure.scatterers()[0]
     if (i_trial == 1):

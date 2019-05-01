@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import miller
 from cctbx import adptbx
 from cctbx.development import debug_utils
@@ -63,7 +64,7 @@ def d2_dw_d_u_star_d_u_star_analytical(h, u_star):
 
 def d_dw_d_u_star_finite(h, u_star, eps=1.e-6):
   result = flex.double()
-  for ip in xrange(len(u_star)):
+  for ip in range(len(u_star)):
     vs = []
     for signed_eps in [eps,-eps]:
       u_star_eps = list(u_star)
@@ -74,7 +75,7 @@ def d_dw_d_u_star_finite(h, u_star, eps=1.e-6):
 
 def d2_dw_d_u_star_d_u_star_finite(h, u_star, eps=1.e-6):
   result = flex.double()
-  for ip in xrange(len(u_star)):
+  for ip in range(len(u_star)):
     vs = []
     for signed_eps in [eps,-eps]:
       u_star_eps = list(u_star)
@@ -86,7 +87,7 @@ def d2_dw_d_u_star_d_u_star_finite(h, u_star, eps=1.e-6):
 
 def d_dw_d_u_indep_finite(adp_constraints, h, u_indep, eps=1.e-6):
   result = flex.double()
-  for i_indep in xrange(len(u_indep)):
+  for i_indep in range(len(u_indep)):
     vs = []
     for signed_eps in [eps,-eps]:
       u_indep_eps = list(u_indep)
@@ -98,7 +99,7 @@ def d_dw_d_u_indep_finite(adp_constraints, h, u_indep, eps=1.e-6):
 
 def d2_dw_d_u_indep_d_u_indep_finite(adp_constraints, h, u_indep, eps=1.e-6):
   result = flex.double()
-  for i_indep in xrange(len(u_indep)):
+  for i_indep in range(len(u_indep)):
     vs = []
     for signed_eps in [eps,-eps]:
       u_indep_eps = list(u_indep)

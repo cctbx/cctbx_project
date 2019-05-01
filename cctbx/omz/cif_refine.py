@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 def report_fraction_of_negative_observations_if_any(id_code, obs):
   d = obs.data()
   n_neg = (d < 0).count(True)
@@ -104,7 +105,7 @@ class extract_from_cif_files(object):
   def process_geom_bond(O, model_cif):
     xs = O.xray_structure
     scs = xs.scatterers()
-    i_seq_by_lbl = dict(zip(scs.extract_labels(), range(scs.size())))
+    i_seq_by_lbl = dict(zip(scs.extract_labels(), list(range(scs.size()))))
     if (len(i_seq_by_lbl) != scs.size()):
       return None
     edge_set = set()

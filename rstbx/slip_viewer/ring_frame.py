@@ -4,6 +4,7 @@ from __future__ import print_function
 #
 # $Id$
 
+from builtins import range
 import wx
 
 

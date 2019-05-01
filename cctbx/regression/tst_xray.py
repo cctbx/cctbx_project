@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import xray
@@ -162,12 +163,12 @@ Tried to select a scatterer by index with index \
   assert approx_equal(sx.scatterers()[1].site, (-0.19700, 0.19700, -0.833333))
   p1 = xs.asymmetric_unit_in_p1()
   assert p1.scatterers().size() == 2
-  for i in xrange(2):
+  for i in range(2):
     assert p1.scatterers()[i].weight() == xs.scatterers()[i].weight()
   assert str(p1.space_group_info()) == "P 1"
   p1 = xs.expand_to_p1()
   assert p1.scatterers().size() == 9
-  for i in xrange(2):
+  for i in range(2):
     assert p1.scatterers()[i].weight() != xs.scatterers()[i].weight()
   p1mp = xs.expand_to_p1(sites_mod_positive=True)
   def count_outside_unit_cell(xs):
@@ -186,7 +187,7 @@ Tried to select a scatterer by index with index \
   assert sl.scatterers()[0].label == sh.scatterers()[0].label
   sl = sh[1:4]
   assert sl.scatterers().size() == 3
-  for i in xrange(3):
+  for i in range(3):
     assert sl.scatterers()[i].label == sh.scatterers()[i+1].label
   xs.scatterers().set_occupancies(flex.double((0.5,0.2)))
   s = xs.sort(by_value="occupancy")
@@ -589,12 +590,12 @@ Si*5  O     Si*6   146.93
         if(sc.u_iso != 0.0):
           assert approx_equal(sc_dc.u_iso / sc.u_iso, 2.0)
       if(sc.flags.use_u_aniso()):
-        for i in xrange(6):
+        for i in range(6):
           if(sc.u_star[i] != 0.0):
             assert approx_equal(sc_dc.u_star[i] / sc.u_star[i], 2.0)
 
 ### shake_sites
-  selection_ = flex.bool([random.choice((False,True)) for i in xrange(500)])
+  selection_ = flex.bool([random.choice((False,True)) for i in range(500)])
   xs = random_structure.xray_structure(
     space_group_info = sgtbx.space_group_info("P1"),
     elements         = ["N"]*500,
@@ -622,7 +623,7 @@ Si*5  O     Si*6   146.93
                      sites_cart_xs_shaked.select(~selection)).dot()))
         assert approx_equal(mean_err_fixed, 0.0)
   ### random remove sites
-  for fraction in xrange(1, 99+1, 10):
+  for fraction in range(1, 99+1, 10):
     fraction /= 100.
     selection = xs.random_remove_sites_selection(fraction = fraction)
     deleted = selection.count(False) / float(selection.size())
@@ -636,7 +637,7 @@ Si*5  O     Si*6   146.93
   assert approx_equal(xs.scatterers()[0].weight(), 1.0)
 # apply_rigid_body_shift
   selection_=flex.bool([random.choice((False,True))
-    for i in xrange(100)]).iselection()
+    for i in range(100)]).iselection()
   xs = random_structure.xray_structure(
     space_group_info = sgtbx.space_group_info("P1"),
     elements         = ["N"]*100,
@@ -651,7 +652,7 @@ Si*5  O     Si*6   146.93
       d = math.sqrt(r[0]**2+r[1]**2+r[2]**2)
       assert approx_equal(
         d, xs.mean_distance(other = xs_mod, selection = selection))
-  selection_=flex.bool([random.choice((False,True)) for i in xrange(100)])
+  selection_=flex.bool([random.choice((False,True)) for i in range(100)])
   xs_mod = xs.deep_copy_scatterers()
   xs_mod.apply_rigid_body_shift(
     rot=(0.999,-0.017,0.035,0.019,0.998,-0.052,-0.033,0.052,0.998),
@@ -1190,8 +1191,8 @@ def exercise_add_scatterer_insert():
   scatterer = xray.scatterer("zn", site=(0,0,0))
   ls = [sc.label for sc in xs.scatterers()]
   ss = [str(xs.site_symmetry_table().get(i_seq).special_op())
-    for i_seq in xrange(n_sites)]
-  for i_seq in xrange(n_sites+1):
+    for i_seq in range(n_sites)]
+  for i_seq in range(n_sites+1):
     xsw = xs.deep_copy_scatterers()
     xsw.add_scatterer(scatterer=scatterer, insert_at_index=i_seq)
     lsw = list(ls)
@@ -1200,7 +1201,7 @@ def exercise_add_scatterer_insert():
     ssw = list(ss)
     ssw.insert(i_seq, "0,y,0")
     assert ssw == [str(xsw.site_symmetry_table().get(i_seq).special_op())
-      for i_seq in xrange(n_sites+1)]
+      for i_seq in range(n_sites+1)]
 
 def exercise_select_on_name_or_chemical_element():
   cs = crystal.symmetry((5,7,9, 90, 120, 90), 'P2')
@@ -1245,7 +1246,7 @@ def exercise_chemical_formula():
 def exercise_parameter_map():
   cs = crystal.symmetry((8,9,10, 85, 95, 105), "P1")
   xs = xray.structure(cs.special_position_settings())
-  for i in xrange(5): xs.add_scatterer(xray.scatterer("C%i" % i))
+  for i in range(5): xs.add_scatterer(xray.scatterer("C%i" % i))
   grad_site      = (True , False, False, True , False)
   grad_u_iso     = (False, True , True , False, True )
   grad_u_aniso   = (True , False, False, True , True )
@@ -1366,7 +1367,7 @@ def exercise_delta_sites_cart_measure():
     for sc in xs1.scatterers():
       x, y, z = continuously_shift(*sc.site)
       dx, dy, dz = [ random.uniform(-rnd_delta, rnd_delta)
-                     for i in xrange(3) ]
+                     for i in range(3) ]
       delta.append((dx, dy, dz))
       sc.site = (x + dx, y + dy, z + dz)
     delta = flex.vec3_double([ xs0.unit_cell().orthogonalize(d)
@@ -1418,7 +1419,7 @@ def exercise_guess_scattering_type_neutron():
 
 def exercise_truncate_at_pdb_format_precision(d_min=2, n_repeats=1,
       algorithm = "direct"):
-  for i in xrange(n_repeats):
+  for i in range(n_repeats):
     xrs = random_structure.xray_structure(
       space_group_info = sgtbx.space_group_info("P1"),
       elements=["H", "C", "O", "U", "Ca", "N", "Mg"]*50,

@@ -7,6 +7,7 @@ from __future__ import division, print_function
 # by means of computing a correlaton coefficient between the two sets of
 # positions.
 
+from builtins import range
 import math
 import sys
 import random

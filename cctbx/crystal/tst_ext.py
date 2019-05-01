@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences
 from cctbx import sgtbx, xray
@@ -108,7 +109,7 @@ def exercise_direct_space_asu():
     cuts=[])
   assert asu.shape_vertices().size() == 0
   cuts = []
-  for i in xrange(3):
+  for i in range(3):
     n = [0,0,0]
     n[i] = -1
     cuts.append(crystal.direct_space_asu.float_cut_plane(n=n, c=i+1))
@@ -117,7 +118,7 @@ def exercise_direct_space_asu():
     cuts=cuts,
     is_inside_epsilon=1.e-6)
   assert asu.unit_cell().is_similar_to(unit_cell)
-  for i in xrange(3):
+  for i in range(3):
     n = [0,0,0]
     n[i] = -1
     assert approx_equal(asu.cuts()[i].n, n)
@@ -198,7 +199,7 @@ def exercise_direct_space_asu():
   o = matrix.sqr(asu_mappings.unit_cell().orthogonalization_matrix())
   f = matrix.sqr(asu_mappings.unit_cell().fractionalization_matrix())
   for i_seq,m_i_seq in enumerate(asu_mappings.mappings()):
-    for i_sym in xrange(len(m_i_seq)):
+    for i_sym in range(len(m_i_seq)):
       rt_mx = asu_mappings.get_rt_mx(i_seq, i_sym)
       assert asu_mappings.get_rt_mx(asu_mappings.mappings()[i_seq][i_sym]) \
           == rt_mx
@@ -392,7 +393,7 @@ def exercise_direct_space_asu():
   assert pair.is_active(minimal=False)
   assert not pair.is_active(minimal=True)
   for i_seq,m in enumerate(asu_mappings.mappings()):
-    for i_sym in xrange(len(m)):
+    for i_sym in range(len(m)):
       rt_mx = asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=i_sym)
       i_sym_found = asu_mappings.find_i_sym(i_seq=i_seq, rt_mx=rt_mx)
       assert i_sym_found == i_sym
@@ -771,7 +772,7 @@ Si(2)
         assert energies.u_i.size() == 0
         assert energies.u_j.size() == 0
         assert energies.r_ij.size() == 0
-    for i_trial in xrange(5):
+    for i_trial in range(5):
       u_isos = u_isos.select(flex.random_permutation(size=u_isos.size()))
       for distance_power in [0.3, 0.8, 1, 1.7]:
         for average_power in [0.4, 0.9, 1, 1.5]:
@@ -1109,7 +1110,7 @@ i_seq: 4
     -x,-y+1,z
 """
   out = StringIO()
-  for i_seq in xrange(5):
+  for i_seq in range(5):
     sym_table.proxy_select(flex.size_t([i_seq])).show(f=out)
   assert out.getvalue() == """\
 i_seq: 0
@@ -1166,7 +1167,7 @@ i_seq: 2
   sym_table = crystal.pair_sym_table(5)
   sym_table[0].setdefault(2)
   sym_table[3].setdefault(3)
-  assert [sym_table.is_paired(i_seq=i_seq) for i_seq in xrange(5)] \
+  assert [sym_table.is_paired(i_seq=i_seq) for i_seq in range(5)] \
       == [True, False, True, True, False]
   #
   asu_mappings = structure.asu_mappings(buffer_thickness=2*3.5)
@@ -1354,7 +1355,7 @@ class adp_iso_local_sphere_restraints_energies_functor(object):
         average_power=0.5,
         eps=1.e-6):
     gs = flex.double()
-    for i_u in xrange(u_isos.size()):
+    for i_u in range(u_isos.size()):
       rs = []
       for signed_eps in [eps,-eps]:
         u_isos_eps = u_isos.deep_copy()
@@ -1478,7 +1479,7 @@ i_seq: 1
   assert incremental_pairs.cubicle_size_counts().items() == [(0,239), (1,6)]
   site_symmetry_table = incremental_pairs.asu_mappings().site_symmetry_table()
   sites_cart = sps.unit_cell().orthogonalize(sites_frac=sites_frac)
-  for i_pass in xrange(4):
+  for i_pass in range(4):
     ipv = sps.incremental_pairs(distance_cutoff=2)
     if   (i_pass == 0):
       ipv.process_sites_frac(original_sites=sites_frac)
@@ -1516,7 +1517,7 @@ i_seq: 1
   assert am.site_symmetry_table().indices().size() == 1
   #
   site = (0.7,0.3,0.1)
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     assert site_cluster_analysis.process_site_frac(original_site=site)
     assert am.mappings().size() == 2
     assert am.site_symmetry_table().indices().size() == 2

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.array_family import shared
 from libtbx.test_utils import approx_equal
 try:
@@ -104,9 +105,9 @@ def exercise_mat3_int():
   from scitbx.array_family import flex
   a = shared.mat3_int()
   assert a.size() == 0
-  a = shared.mat3_int([range(9)])
+  a = shared.mat3_int([list(range(9))])
   assert a.size() == 1
-  assert list(a[0]) == range(9)
+  assert list(a[0]) == list(range(9))
 
 def exercise():
   exercise_stl_vector_unsigned()

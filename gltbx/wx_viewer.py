@@ -4,6 +4,7 @@ from __future__ import print_function
 # This code is based on:
 #   http://lists.wxwidgets.org/archive/wxPython-users/msg11078.html
 
+from builtins import range
 import gltbx.util
 from gltbx.gl import *
 from gltbx.glu import *
@@ -794,7 +795,7 @@ class show_points_and_lines_mixin(wxGLWindow):
       gray = 0.3
       glColor3f(gray,gray,gray)
       glBegin(GL_POLYGON)
-      for i in xrange(360):
+      for i in range(360):
         a = i * math.pi / 180
         rs = r * math.sin(a)
         rc = r * math.cos(a)

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from six.moves import range
 import libtbx
 import sys
@@ -89,7 +90,7 @@ class stats_manager(libtbx.slots_getstate_setstate):
       ax = fig.add_subplot(1, 1, 1)
       _ = O.completeness_history
       nx = _.size()
-      ax.plot(range(nx), _, "r-")
+      ax.plot(list(range(nx)), _, "r-")
       ax.axis([0, nx, 0, 1])
       pyplot.show()
     elif (plot == "redundancy"):
@@ -97,7 +98,7 @@ class stats_manager(libtbx.slots_getstate_setstate):
       fig = pyplot.figure()
       ax = fig.add_subplot(1, 1, 1)
       _ = counts_sorted_by_resolution
-      ax.plot(range(len(_)), _, "r-")
+      ax.plot(list(range(len(_))), _, "r-")
       ax.axis([-_.size()*0.05, _.size()*1.05, 0, None])
       pyplot.show()
     elif (plot is not None):
@@ -241,7 +242,7 @@ def simulate(work_params, i_calc):
       sys.stdout.flush()
       while (not stop):
         next_i_img = i_img + pool.processes
-        args = range(i_img, next_i_img)
+        args = list(range(i_img, next_i_img))
         mp_results = pool.map_fixed_func(iterable=args)
         i_img = next_i_img
         for miller_index_i_seqs in mp_results:

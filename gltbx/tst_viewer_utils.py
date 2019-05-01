@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import range
 from scitbx.array_family import flex, shared
 import gltbx.viewer_utils
 
@@ -39,7 +40,7 @@ def exercise():
     []
   ])
 
-  atoms_drawable = flex.bool([True for i in xrange(0, 10) ])
+  atoms_drawable = flex.bool([True for i in range(0, 10) ])
   atoms_drawable_non_h = flex.bool(
     [True, True, False, False, False, True, False, False, False, True]
   )

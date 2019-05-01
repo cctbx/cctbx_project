@@ -9,6 +9,7 @@
 #
 
 from __future__ import division, print_function
+from builtins import range
 from scitbx.array_family import flex
 from scitbx.math.periodogram import Periodogram
 from libtbx.test_utils import approx_equal
@@ -79,7 +80,7 @@ def test_raw_even_and_odd_length():
                        0.5826957996969294,
                        0.10068673474008037])
 
-  rfreq = flex.double(0.01 * e for e in (range(1,51)))
+  rfreq = flex.double(0.01 * e for e in (list(range(1,51))))
   assert approx_equal(pgram.spec, rspec)
   assert approx_equal(pgram.freq, rfreq)
 
@@ -135,7 +136,7 @@ def test_raw_even_and_odd_length():
                        1.2239788162354133,
                        0.3633295633047963,
                        0.24463991145416633])
-  rfreq = flex.double(1/99 * e for e in (range(1,50)))
+  rfreq = flex.double(1/99 * e for e in (list(range(1,50))))
   assert approx_equal(pgram.spec, rspec)
   assert approx_equal(pgram.freq, rfreq)
 

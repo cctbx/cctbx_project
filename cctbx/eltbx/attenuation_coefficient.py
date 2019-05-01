@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from scitbx.array_family import flex # import dependency
 import boost.python
 ext = boost.python.import_ext("cctbx_eltbx_attenuation_coefficient_ext")
@@ -33,7 +34,7 @@ class nist_elements(object):
 
   def atomic_number_list(self):
     ''' Return a list of atomic numbers. '''
-    return range(1, len(self._elements))
+    return list(range(1, len(self._elements)))
 
   def atomic_number(self, symbol):
     ''' Get the atomic number from the symbol.

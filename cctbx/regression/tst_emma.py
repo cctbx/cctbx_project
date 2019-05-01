@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import euclidean_model_matching as emma
 from iotbx.command_line.emma import get_emma_model_from_pdb
 from cctbx import xray
@@ -260,7 +261,7 @@ class test_model(emma.model):
       use_k2l=True, use_l2n=(not models_are_diffraction_index_equivalent))
     i = random.randrange(match_symmetry.rt_mx.order_z())
     eucl_symop = match_symmetry.rt_mx(i)
-    shift = [0.5 - random.random() for i in xrange(3)]
+    shift = [0.5 - random.random() for i in range(3)]
     allowed_shift = matrix.col(match_symmetry.filter_shift(shift, selector=1))
     new_positions = []
     for pos in self.positions():
@@ -376,7 +377,7 @@ def run_call_back(flags, space_group_info):
       singles = model_matches.refined_matches[0].singles1
     for i_site2 in singles:
       site2 = m2_t.positions()[i_site2].site
-      for i_site1 in xrange(len(model1.positions())):
+      for i_site1 in range(len(model1.positions())):
         site1 = m1.positions()[i_site1].site
         equiv_sites1 = sgtbx.sym_equiv_sites(m1.site_symmetry(site1))
         dist_info = sgtbx.min_sym_equiv_distance_info(equiv_sites1, site2)

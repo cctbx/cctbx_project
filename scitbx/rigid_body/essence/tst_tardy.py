@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.rigid_body.essence import tardy
 from scitbx.graph import tardy_tree
 from scitbx.graph import test_cases_tardy_pdb
@@ -21,7 +22,7 @@ class tardy_model(tardy.model):
       gs = []
       j_orig = body.joint
       q_orig = list(j_orig.get_q())
-      for iq in xrange(j_orig.q_size):
+      for iq in range(j_orig.q_size):
         fs = []
         for signed_eps in [eps, -eps]:
           q_eps = list(q_orig)
@@ -101,7 +102,7 @@ def exercise_qd_e_kin_scales(tardy_model):
       bj0 = body.joint
       qd0 = body.joint.qd_zero
       qd = list(qd0)
-      for iqd in xrange(len(qd)):
+      for iqd in range(len(qd)):
         qd[iqd] = qd0[iqd] + 1
         body.qd = matrix.col(qd)
         qd[iqd] = qd0[iqd]
@@ -133,8 +134,8 @@ def exercise_random_velocities(tardy_model):
 
 def exercise_accumulate_in_each_tree():
   def check(n_vertices, edge_list, clusters, nosiet, somiet):
-    sites = matrix.col_list([(i,i%2,0) for i in xrange(n_vertices)])
-    labels = [str(i) for i in xrange(n_vertices)]
+    sites = matrix.col_list([(i,i%2,0) for i in range(n_vertices)])
+    labels = [str(i) for i in range(n_vertices)]
     masses = [13, 7, 23, 19, 29, 11, 17][:n_vertices]
     assert len(masses) == n_vertices
     tt = tardy_tree.construct(sites=sites, edge_list=edge_list)
@@ -194,7 +195,7 @@ def exercise_near_singular_hinges():
   for i,j in edge_list:
     assert approx_equal(abs(sites[i]-sites[j]), 1)
   sites = build_sites(eps=1e-5)
-  labels = [str(i) for i in xrange(len(sites))]
+  labels = [str(i) for i in range(len(sites))]
   masses = [1] * len(sites)
   tt = tardy_tree.construct(n_vertices=len(sites), edge_list=edge_list)
   tt.build_tree()
@@ -278,7 +279,7 @@ def exercise_fixed_vertices_special_cases():
   edge_list = [(0,1),(1,2)]
   for i,j in edge_list:
     assert approx_equal(abs(sites[i]-sites[j]), 1)
-  labels = [str(i) for i in xrange(len(sites))]
+  labels = [str(i) for i in range(len(sites))]
   masses = [1] * len(sites)
   #
   tt = tardy_tree.construct(
@@ -345,7 +346,7 @@ def exercise_tardy_model(out, n_dynamics_steps, delta_t, tardy_model):
   tardy_model.check_d_e_pot_d_q()
   e_pots = flex.double([tardy_model.e_pot()])
   e_kins = flex.double([tardy_model.e_kin()])
-  for i_step in xrange(n_dynamics_steps):
+  for i_step in range(n_dynamics_steps):
     tardy_model.dynamics_step(delta_t=delta_t)
     e_pots.append(tardy_model.e_pot())
     e_kins.append(tardy_model.e_kin())
@@ -464,7 +465,7 @@ def run(args):
   exercise_fixed_vertices_special_cases()
   #
   if (1):
-    for i in xrange(n_test_models):
+    for i in range(n_test_models):
       print("test model index:", i, file=out)
       tardy_model = get_test_model_by_index(i=i)
       exercise_with_tardy_model(

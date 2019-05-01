@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 from cctbx_asymmetric_map_ext import *
@@ -33,7 +34,7 @@ def run_group(symbol):
   result.append(r)
 
 def run():
-  for i in xrange(1,231):
+  for i in range(1,231):
     run_group(i);
 
 if (__name__ == "__main__"):

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from libtbx.test_utils import approx_equal
 from cctbx import uctbx
 from cctbx.array_family import flex
@@ -51,7 +52,7 @@ def exercise_flex_hendrickson_lattman():
   assert approx_equal(a, [(2.2684820912654264, -3.1758749277715967, 0, 0),
                           (-0.3295836866004328, 0.43944491546724396, 0, 0)])
   assert approx_equal(
-    [a.slice(i) for i in xrange(4)],
+    [a.slice(i) for i in range(4)],
     [[2.2684820912654264, -0.3295836866004328],
      [-3.1758749277715967, 0.43944491546724396],
      [0.0, 0.0],

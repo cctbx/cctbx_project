@@ -2022,7 +2022,7 @@ class Pooler(object):
     identifiers = [
       Identifier( target = target, args = args, kwargs = kwargs )
       for ( index, ( target, args, kwargs ) )
-      in zip( range(self.size), calcsiter )
+      in zip( list(range(self.size)), calcsiter )
       ]
 
     if not identifiers:

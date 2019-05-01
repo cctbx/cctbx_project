@@ -1,5 +1,6 @@
 from __future__ import division, print_function
 #!/usr/bin/env python
+from builtins import range
 import math
 
 from cctbx.uctbx import unit_cell

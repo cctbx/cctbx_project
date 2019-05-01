@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import scitbx.math as sm
@@ -10,7 +11,7 @@ def twod_integrator( cub, n_points ):
   x = flex.double()
   y = flex.double()
   w = flex.double()
-  for ii in xrange(n_points):
+  for ii in range(n_points):
     x.append( cub.coord(ii)[0] )
     y.append( cub.coord(ii)[1] )
     w.append( cub.weight(ii) )
@@ -88,7 +89,7 @@ def examples():
   # The true answer is Exp[0.25] Sqrt[Pi]
   #
   f_theory = math.exp(0.25)*math.sqrt( math.pi )
-  for ii in xrange(6,10):
+  for ii in range(6,10):
     ghq = sm.gauss_hermite_engine(ii)
     w = ghq.w()
     x = ghq.x()
@@ -98,7 +99,7 @@ def examples():
   # an example of Gauss-Legendre integration
   # we integrate exp(-x) between -1 and 1
   f_theory = math.exp(1) - math.exp(-1)
-  for ii in xrange(5,90):
+  for ii in range(5,90):
     glq = sm.gauss_legendre_engine(ii)
     w = glq.w()
     x = glq.x()

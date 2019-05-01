@@ -13,6 +13,7 @@ show_fft()
 """
 from __future__ import division, print_function
 
+from builtins import range
 print("Loading module:", __name__)
 
 # cctbx imports
@@ -29,7 +30,7 @@ def show_map(unit_cell, map_covering_unit_cell, label, level):
   print("map_grid:", map_grid)
   ucell_params = unit_cell.parameters()
   first = [0,0,0]
-  last = [map_grid[i] + 1 for i in xrange(3)]
+  last = [map_grid[i] + 1 for i in range(3)]
   c_obj_map = maptbx.as_CObjectZYX(
     map_unit_cell=map_covering_unit_cell,
     first=first,

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.eltbx import e_scattering
 import sys
 
@@ -17,7 +18,7 @@ def run(args):
     def one_curv(g, code):
       x = flex.double()
       y = flex.double()
-      for i_stol in xrange(n_samples+1):
+      for i_stol in range(n_samples+1):
         stol = 6 * i_stol / n_samples
         x.append(stol)
         y.append(g.at_stol(stol))

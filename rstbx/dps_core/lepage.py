@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from six.moves import range
 import scitbx.math
 from scitbx import matrix

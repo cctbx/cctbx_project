@@ -8,6 +8,7 @@
 from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
+from builtins import range
 from six.moves import range
 
 import os
@@ -696,14 +697,14 @@ class XrayFrame(AppFrame,XFBaseClass):
             start_x_tile = int(math.floor(x_offset / self.pyslip.tile_size_x))
             stop_x_tile = ((x2 + self.pyslip.tile_size_x - 1)/ self.pyslip.tile_size_x)
             stop_x_tile = int(stop_x_tile)
-            col_list = range(start_x_tile, stop_x_tile)
+            col_list = list(range(start_x_tile, stop_x_tile))
             x_pix = start_x_tile * self.pyslip.tile_size_y - x_offset
 
             y_offset = y1
             start_y_tile = int(math.floor(y_offset / self.pyslip.tile_size_y))
             stop_y_tile = ((y2 + self.pyslip.tile_size_y - 1) / self.pyslip.tile_size_y)
             stop_y_tile = int(stop_y_tile)
-            row_list = range(start_y_tile, stop_y_tile)
+            row_list = list(range(start_y_tile, stop_y_tile))
             y_pix_start = start_y_tile * self.pyslip.tile_size_y - y_offset
 
             bitmap = wx.EmptyBitmap(x2-x1, y2-y1)

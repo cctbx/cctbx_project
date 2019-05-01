@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 def number_from_string(s):
   flds = s.split("/")
   if (len(flds) == 2):
@@ -84,12 +85,12 @@ def fmt_nums(nums):
   return tuple(result)
 
 def display_r(r):
-  for ir in xrange(3):
+  for ir in range(3):
     print("  (%9s %9s %9s)" % fmt_nums((r(ir,0), r(ir,1), r(ir,2))))
 
 def display_rt(rt):
   r, t = rt.r, rt.t.elems
-  for ir in xrange(3):
+  for ir in range(3):
     print("  (%9s %9s %9s | %9s)" % fmt_nums((r(ir,0), r(ir,1), r(ir,2), t[ir])))
 
 def interpret_form_data(form):

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import math,sys
 
 # breakpoint.py
@@ -163,9 +164,9 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=1,
   best_score=None
   best_xm=None
   best_ym=None
-  for i in xrange(nx):
+  for i in range(nx):
     xm=x_midway+(i-nx/2)*delta_x
-    for j in xrange(ny):
+    for j in range(ny):
       ym=y_midway+(j-ny/2)*delta_y
       score=score_breakpoint(value_dict=value_dict,x_midway=xm,y_midway=ym,min_x=min_x,max_x=max_x)
       if score is None: continue

@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from scitbx import matrix
 import iotbx.pdb
 from libtbx.utils import Sorry
@@ -176,7 +177,7 @@ def format_MTRIX_pdb_string(rotation_matrices, translation_vectors,
   MTRIX3   2 -0.010221  0.666588  0.745356        0.00000
   '''
   assert len(rotation_matrices) == len(translation_vectors)
-  if(serial_numbers is None): serial_numbers = range(0, len(rotation_matrices))
+  if(serial_numbers is None): serial_numbers = list(range(0, len(rotation_matrices)))
   if(coordinates_present_flags is None):
     coordinates_present_flags = [False]*len(rotation_matrices)
   lines = []

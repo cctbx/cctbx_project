@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from six.moves import range
 
 from rstbx.dials_core.integration_core import show_observations
@@ -726,7 +727,7 @@ class scaling_result(group_args):
 #-----------------------------------------------------------------------
 # graphical goodies
 def plot_overall_completeness(completeness):
-  completeness_range = range(-1,flex.max(completeness)+1)
+  completeness_range = list(range(-1,flex.max(completeness)+1))
   completeness_counts = [completeness.count(n) for n in completeness_range]
   from matplotlib import pyplot as plt
   plt.plot(completeness_range,completeness_counts,"r+")

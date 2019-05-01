@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.reflection_statistics
 
+from builtins import range
 from iotbx import reflection_file_reader
 from iotbx.option_parser import option_parser
 from cctbx import maptbx
@@ -161,7 +162,7 @@ class array_cache(object):
       space_group=patterson_map.space_group(),
       original_site=(0,0,0))
     print("      Fractional coordinates     Height  Distance from origin")
-    for i_peak in xrange(peak_list.size()):
+    for i_peak in range(peak_list.size()):
       height = peak_list.heights()[i_peak]
       if (height < max_height * min_relative_peak_height
           and i_peak > show_at_least): break

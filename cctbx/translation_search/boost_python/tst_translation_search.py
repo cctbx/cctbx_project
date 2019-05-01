@@ -1,10 +1,11 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import translation_search
 from cctbx import sgtbx
 from cctbx.array_family import flex
 
 def exercise_symmetry_flags():
-  for i_flags in xrange(4):
+  for i_flags in range(4):
     is_isotropic_search_model = (i_flags % 2 != 0)
     have_f_part = ((i_flags//2) % 2 != 0)
     f = translation_search.symmetry_flags(

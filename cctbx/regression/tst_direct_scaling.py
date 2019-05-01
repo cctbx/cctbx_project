@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import random
 random.seed(0)
 from scitbx.array_family import flex
@@ -63,7 +64,7 @@ def exercise_direct(space_group_info,
 
   direct_reference = True
 
-  for x in xrange(1,7):
+  for x in range(1,7):
     print("There are %d scatterers"%len(elements))
     number_of_reflections = pow(10.,x)
     Volume = number_of_reflections *  reciprocal_volume * 2. #2 P1 asymmetric units
@@ -130,9 +131,9 @@ def exercise_direct(space_group_info,
   show_times_vs_complexity(times, header="run time vs. # reflections")
 
 def run_scattering_type_tests():
-  for C in xrange(35):
-    for N in xrange(35):
-      for total in xrange(93,99):
+  for C in range(35):
+    for N in range(35):
+      for total in range(93,99):
         elements = ['C']*C + ['N']*N + ['O']*(total-N-C)
         print("".join(elements))
         exercise_direct(sgtbx.space_group_info("P1"),elements)
@@ -146,7 +147,7 @@ def run(args,multiplier):
   allelements = elements*multiplier
 
   if 0:
-    for sn in xrange(1,231):
+    for sn in range(1,231):
       try:
         sgi = sgtbx.space_group_info(sn)
         print("Space group",sgi,"number",sn)

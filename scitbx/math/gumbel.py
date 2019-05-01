@@ -21,6 +21,7 @@ from __future__ import division, print_function
 
 # for small values, calculate directly
 
+from builtins import range
 def p_of_none_greater(z,n):
   from scitbx.math import erf
   x=z/(2**0.5)
@@ -68,7 +69,7 @@ def exercise():
     print("\nN=",n," expected maximum Z:",bn)
     last_pdf_u=None
     sum=0
-    for i in xrange(1000000):
+    for i in range(1000000):
       x=i/10000
       pdf_u=pdf_of_x(x,an,bn)
       sum+=pdf_u*0.0001
@@ -95,8 +96,8 @@ def exercise_1():
   from scitbx.array_family import flex
   a=flex.double()
   b=flex.double()
-  for i in xrange(1,100):
-    for xx in xrange(1,1000):
+  for i in range(1,100):
+    for xx in range(1,1000):
       x=xx/10
       n=10**i
       if p_of_none_greater(x,n)> 0.001 and p_of_none_greater(x,n)< 0.999:

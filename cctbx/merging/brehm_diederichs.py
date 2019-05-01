@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import sgtbx
 
 from cctbx.array_family import flex
@@ -34,7 +35,7 @@ class algorithm2:
 
     # construct a lookup for the separate lattices
     last_id = -1; self.lattices = flex.int()
-    for n in xrange(len(self.lattice_id)):
+    for n in range(len(self.lattice_id)):
       if self.lattice_id[n] != last_id:
         last_id = self.lattice_id[n]
         self.lattices.append(n)
@@ -64,9 +65,9 @@ class algorithm2:
     if nproc<4:
       return [self.lattices>-1]
     result = []
-    for n in xrange(nproc):
+    for n in range(nproc):
       array = flex.bool()
-      for LL in xrange(len(self.lattices)):
+      for LL in range(len(self.lattices)):
         array.append((LL-n)%nproc < 3)
       result.append(array)
     return result
@@ -98,21 +99,21 @@ class algorithm2:
     for coset in ['h,k,l']+alternates.keys():
       slices[coset] = {}
       twin_data = alternates.get(coset, self.data) # i.e., for 'h,k,l' the twin data is self.data
-      for itr in xrange(NN):
+      for itr in range(NN):
         slices[coset][itr] = self.one_lattice_slice(indices = twin_data.indices(), lattice_id=index_selected[itr])
 
     for twin_law in alternates.keys():
       twin_data = alternates[twin_law]
       rij_ = flex.double(flex.grid(NN,NN),0.)
       wij_ = flex.double(flex.grid(NN,NN),0.)
-      for i in xrange(NN):
+      for i in range(NN):
         wij_[(i,i)] = 0.0
         indices_i     = slices["h,k,l"][i]
         indices_i_rev = slices[twin_law][i]
         i_start = self.lattices[index_selected[i]]
 
         # this would be a good compromise point for a detail call to C++ to speed things up XXX
-        for j in xrange(i+1,NN):
+        for j in range(i+1,NN):
           indices_j = slices["h,k,l"][j]
           j_start = self.lattices[index_selected[j]]
 
@@ -301,7 +302,7 @@ class minimize_divide(lbfgs_with_curvatures_mix_in):
     from scitbx.matrix import col
     self.center_of_mass = col((flex.mean(self.xcoord), flex.mean(self.ycoord)))
 
-    grid = [ self.functional_only(t*math.pi/180.) for t in xrange(0,180,5) ]
+    grid = [ self.functional_only(t*math.pi/180.) for t in range(0,180,5) ]
 
     minvalue = min(grid)
     self.x = flex.double([5*grid.index(minvalue)*math.pi/180.])
@@ -318,7 +319,7 @@ class minimize_divide(lbfgs_with_curvatures_mix_in):
     from scitbx.matrix import col
     Bvec = col((math.cos(theta), math.sin(theta)))
     func = 0.
-    for p in xrange(len(self.xcoord)):
+    for p in range(len(self.xcoord)):
       Avec = col((self.xcoord[p], self.ycoord[p]))-self.center_of_mass
       AdotB = Avec.dot(Bvec)
       Pvec = Avec - AdotB*Bvec # distance vector to dividing line
@@ -331,7 +332,7 @@ class minimize_divide(lbfgs_with_curvatures_mix_in):
     Bvec = col((math.cos(self.x[0]), math.sin(self.x[0])))
     func = 0.
     grad = 0.
-    for p in xrange(len(self.xcoord)):
+    for p in range(len(self.xcoord)):
       Avec = col((self.xcoord[p], self.ycoord[p]))-self.center_of_mass
       AdotB = Avec.dot(Bvec)
       Pvec = Avec - AdotB*Bvec # distance vector to dividing line
@@ -347,7 +348,7 @@ class minimize_divide(lbfgs_with_curvatures_mix_in):
     result = flex.bool()
     Bvec = col((math.cos(self.x[0]), math.sin(self.x[0]))) # dividing plane
     Nvec = Bvec.rotate_2d(90.,deg=True)
-    for p in xrange(len(self.xcoord)):
+    for p in range(len(self.xcoord)):
       Avec = (col((self.xcoord[p], self.ycoord[p]))-self.center_of_mass).normalize()
       theta = math.acos(Nvec.dot(Avec))
       result.append(theta>=math.pi/2.)
@@ -356,7 +357,7 @@ class minimize_divide(lbfgs_with_curvatures_mix_in):
 def reassemble(patchwork,verbose=False):
   resorted = [patchwork[0]]
   refkeys = resorted[0].keys()
-  for ip in xrange(1,len(patchwork)):
+  for ip in range(1,len(patchwork)):
     reference = resorted[-1]
     refkeys = reference.keys()
     test = patchwork[ip]
@@ -435,7 +436,7 @@ def run_multiprocess(L, asymmetric=3, nproc=20, verbose=False, show_plot=True,
   # Each process accumulates its own statistics in serial, and the
   # grand total is eventually collected by the main process'
   #  _mpcallback
-  for i in xrange(nproc-1):
+  for i in range(nproc-1):
     pool.apply_async(
       func=algo2,
       args=[input_queue, alternates, True],

@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from builtins import range
 from libtbx.utils import write_this_is_auto_generated
 from libtbx.str_utils import line_breaker
 import libtbx.load_env

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.rigid_body.proto.tst_joint_lib import exercise_sim
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto.test_simulation import simulation
@@ -65,8 +66,8 @@ class revolute_body(object):
 
 def exercise_six_dof(out, n_trials, n_dynamics_steps, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
-  for n_sites in xrange(1,4):
-    for i_trial in xrange(n_trials):
+  for n_sites in range(1,4):
+    for i_trial in range(n_trials):
       body = six_dof_body(mersenne_twister=mersenne_twister, n_sites=n_sites)
       body.parent = -1
       sim = simulation(bodies=[body])
@@ -78,8 +79,8 @@ def exercise_six_dof(out, n_trials, n_dynamics_steps, delta_t=0.001):
 
 def exercise_six_dof2(out, n_trials, n_dynamics_steps, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=1)
-  for n_sites in xrange(1,4):
-    for i_trial in xrange(n_trials):
+  for n_sites in range(1,4):
+    for i_trial in range(n_trials):
       body1 = six_dof_body(mersenne_twister=mersenne_twister, n_sites=n_sites)
       body1.parent = -1
       body2 = six_dof_body(mersenne_twister=mersenne_twister, n_sites=n_sites)
@@ -93,7 +94,7 @@ def exercise_six_dof2(out, n_trials, n_dynamics_steps, delta_t=0.001):
 
 def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     body = revolute_body(mersenne_twister=mersenne_twister)
     body.parent = -1
     sim = simulation(bodies=[body])
@@ -105,7 +106,7 @@ def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001):
 
 def exercise_revolute2(out, n_trials, n_dynamics_steps, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     body1 = revolute_body(mersenne_twister=mersenne_twister)
     body1.parent = -1
     body2 = revolute_body(mersenne_twister=mersenne_twister, prev=body1)
@@ -119,8 +120,8 @@ def exercise_revolute2(out, n_trials, n_dynamics_steps, delta_t=0.001):
 
 def exercise_spherical(out, n_trials, n_dynamics_steps, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
-  for n_sites in xrange(1,3):
-    for i_trial in xrange(n_trials):
+  for n_sites in range(1,3):
+    for i_trial in range(n_trials):
       body = spherical_body(mersenne_twister=mersenne_twister, n_sites=n_sites)
       body.parent = -1
       sim = simulation(bodies=[body])

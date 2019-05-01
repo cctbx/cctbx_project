@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import translation_search
 from cctbx import crystal
 from cctbx import miller
@@ -23,7 +24,7 @@ def run_fast_terms(structure_fixed, structure_p1,
   else:
     f_part = f_calc_fixed.data()
   m = flex.double()
-  for i in xrange(f_obs.indices().size()):
+  for i in range(f_obs.indices().size()):
     m.append(random.random())
   assert f_obs.anomalous_flag() == f_calc_p1.anomalous_flag()
   fast_terms = translation_search.fast_terms(
@@ -45,7 +46,7 @@ def run_fast_terms(structure_fixed, structure_p1,
     grid_tags.build(f_obs.space_group_info().type(), symmetry_flags)
     assert grid_tags.n_grid_misses() == 0
     assert grid_tags.verify(map)
-    for i_sample in xrange(n_sample_grid_points):
+    for i_sample in range(n_sample_grid_points):
       run_away_counter = 0
       while 1:
         run_away_counter += 1
@@ -328,7 +329,7 @@ def run_call_back(flags, space_group_info):
         test_molecule(space_group_info, use_primitive_setting, flag_f_part,
                       verbose=flags.Verbose)
   if flags.Shift:
-    for i in xrange(1):
+    for i in range(1):
       test_shift(space_group_info, verbose=flags.Verbose)
 
 def run():

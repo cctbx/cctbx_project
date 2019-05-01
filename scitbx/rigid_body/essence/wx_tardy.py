@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.rigid_body.essence import tst_tardy
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex
@@ -141,7 +142,7 @@ scitbx.python wx_tardy.py [options] model_index
     tardy_model = tst_tardy.get_test_model_by_index(
       i=self.model_index, fixed_vertex_lists=self.fixed_vertex_lists)
     if (self.i_seq_labels):
-      tardy_model.labels = [str(i) for i in xrange(len(tardy_model.labels))]
+      tardy_model.labels = [str(i) for i in range(len(tardy_model.labels))]
     self.view_objects.set_points_and_lines(
       tardy_model=tardy_model,
       velocity_scaling=self.velocity_scaling,

@@ -29,6 +29,7 @@ That is:
 """
 from __future__ import division, print_function
 
+from builtins import range
 import iotbx.xplor.ext as ext
 from cctbx import miller
 from cctbx import maptbx
@@ -79,17 +80,17 @@ class reader(object):
     self.title_lines = []
     ntitle = int(f.readline().strip().split("!")[0])
     self.title_lines=[]
-    for x in xrange(ntitle):
+    for x in range(ntitle):
       line = f.readline().rstrip()
       self.title_lines.append(line)
     line = f.readline()
-    values = [int(line[i:i+8]) for i in xrange(0,72,8)]
+    values = [int(line[i:i+8]) for i in range(0,72,8)]
     self.gridding = gridding(
-      n     = [values[i] for i in xrange(0,9,3)],
-      first = [values[i] for i in xrange(1,9,3)],
-      last  = [values[i] for i in xrange(2,9,3)])
+      n     = [values[i] for i in range(0,9,3)],
+      first = [values[i] for i in range(1,9,3)],
+      last  = [values[i] for i in range(2,9,3)])
     line = f.readline()
-    params = [float(line[i:i+12]) for i in xrange(0,72,12)]
+    params = [float(line[i:i+12]) for i in range(0,72,12)]
     self.unit_cell = uctbx.unit_cell(params)
     order = f.readline().strip()
     assert order == "ZYX"

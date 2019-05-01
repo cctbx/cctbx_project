@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from libtbx.math_utils import iceil
 from libtbx.utils import null_out, Sorry
 from itertools import count
@@ -71,7 +72,7 @@ def assign_r_free_flags_by_shells(n_refl, fraction_free, n_bins):
   n_free_per_bin = n_per_bin - 2*half_n_work_per_bin
   flags = flex.bool()
   flags.reserve(n_refl)
-  for i_bin in xrange(n_bins):
+  for i_bin in range(n_bins):
     flags.resize(min(n_refl, flags.size()+half_n_work_per_bin), False)
     flags.resize(min(n_refl, flags.size()+n_free_per_bin), True)
     flags.resize(min(n_refl, flags.size()+half_n_work_per_bin), False)

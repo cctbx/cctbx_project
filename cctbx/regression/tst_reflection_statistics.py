@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -119,8 +120,8 @@ def exercise(space_group_info, anomalous_flag, verbose):
             print("   ", ri.type(), ri.sense(), ri.ev())
       raise RuntimeError("max(repetitions) > 1")
   #
-  for i in xrange(len(coset_decompositions)):
-    for j in xrange(len(coset_decompositions)):
+  for i in range(len(coset_decompositions)):
+    for j in range(len(coset_decompositions)):
       exercise_double_coset_decomposition(
         crystal_symmetry_ri,
         lattice_group,

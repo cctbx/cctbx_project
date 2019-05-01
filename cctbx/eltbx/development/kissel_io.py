@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.eltbx import xray_scattering
 from cctbx.eltbx import tiny_pse
 from cctbx.array_family import flex
@@ -19,7 +20,7 @@ class table(object):
     xk = self.x
     selection = flex.bool(xk.size(), False)
     i_kissel = 0
-    for i_itvc in xrange(xi.size()):
+    for i_itvc in range(xi.size()):
       while (xk[i_kissel] < xi[i_itvc]):
         i_kissel += 1
       if (xk[i_kissel] == xi[i_itvc]):

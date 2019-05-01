@@ -6,6 +6,7 @@
 """
 from __future__ import division, print_function
 
+from builtins import range
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
@@ -38,7 +39,7 @@ def skewness_calculation(space_group_info, n_test_points=10,
     d_min=d_min, anomalous_flag=False).f_calc()
   f_calc.show_summary()
   print()
-  for i_fudge_factor in xrange(n_test_points+1):
+  for i_fudge_factor in range(n_test_points+1):
     fudge_factor = i_fudge_factor/float(n_test_points)
     randomized_f_calc = randomize_phases(f_calc, fudge_factor)
     mwpe = f_calc.mean_weighted_phase_error(randomized_f_calc)

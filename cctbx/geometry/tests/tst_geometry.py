@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.array_family import flex
 from cctbx import covariance, crystal, geometry, sgtbx, uctbx, xray
 from libtbx.test_utils import approx_equal, show_diff

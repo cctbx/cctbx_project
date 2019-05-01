@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 import libtbx.utils
 from libtbx.test_utils import approx_equal
 import scitbx.random
@@ -23,7 +24,7 @@ def exercise_variate_generators():
   from scitbx.random \
        import variate, normal_distribution, bernoulli_distribution, \
               gamma_distribution, poisson_distribution
-  for i in xrange(10):
+  for i in range(10):
     scitbx.random.set_random_seed(0)
     g = variate(normal_distribution())
     if (boost_version < 105600):

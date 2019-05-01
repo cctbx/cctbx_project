@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx import xray_scattering
 import scitbx.math.gaussian_fit
@@ -31,7 +32,7 @@ def run(file_name, table_of_gaussians, cutoff,
     sel = stols > 2
     stols = stols.select(sel)
     assert stols.size() == 6
-  range_62 = flex.size_t(xrange(62))
+  range_62 = flex.size_t(range(62))
   labels = flex.std_string()
   errors = []
   correlations = flex.double()

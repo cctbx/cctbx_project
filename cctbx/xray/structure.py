@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
+from builtins import range
 from cctbx.xray import ext
 from cctbx.xray import structure_factors
 from cctbx import miller
@@ -230,7 +231,7 @@ class structure(crystal.special_position_settings):
     selection = None
     l = max(fraction - 0.05, 0.0)
     r = min(fraction + 0.05, 1.0)
-    for i in xrange(5):
+    for i in range(5):
       while l <= r:
         arr = flex.random_double(scatterers_size)-l
         sel = arr > 0.0
@@ -412,7 +413,7 @@ class structure(crystal.special_position_settings):
           sc.u_iso = sc.u_iso * factor
         if(sc.flags.use_u_aniso()):
           result = []
-          for i in xrange(6): result.append(sc.u_star[i] * factor)
+          for i in range(6): result.append(sc.u_star[i] * factor)
           sc.u_star = result
 
   def shake_adp(self, b_max=None, b_min=None, spread=10.0, aniso_spread=0.1,
@@ -438,7 +439,7 @@ class structure(crystal.special_position_settings):
           sc.u_iso=adptbx.b_as_u(r)
         if(sc.flags.use_u_aniso() and not keep_anisotropic):
           result = []
-          for i in xrange(6):
+          for i in range(6):
             result.append(sc.u_star[i]+sc.u_star[i]*random.choice(
                                              (-aniso_spread,aniso_spread)))
           if(is_special_position(i_seq=i_seq)):
@@ -738,7 +739,7 @@ class structure(crystal.special_position_settings):
         def find_3():
           sl = shift_length
           while (sl != 0):
-            for i_trial in xrange(10):
+            for i_trial in range(10):
               shift_frac = col(frac(
                 col(mersenne_twister.random_double_point_on_sphere()) * sl))
               site_mod = site_frac + shift_frac
@@ -760,9 +761,9 @@ class structure(crystal.special_position_settings):
         assert len(plane_vectors) == 9
         axis = None
         axis_length = None
-        for i in xrange(8):
+        for i in range(8):
           vi = plane_vectors[i]
-          for j in xrange(i+1,9):
+          for j in range(i+1,9):
             vj = plane_vectors[j]
             cross = vi.cross(vj)
             length = cross.length()
@@ -2343,7 +2344,7 @@ class structure(crystal.special_position_settings):
         reset(label=lbl)
       else:
         def find_tail_replacement(fmt, n):
-          for i in xrange(1,n):
+          for i in range(1,n):
             s = fmt % i
             trial = lbl[:4-len(s)]+s
             if (trial not in lbl_set):
@@ -2360,7 +2361,7 @@ class structure(crystal.special_position_settings):
           if (len(e) == 1): fmt, n = "%03d", 1000
           else:             fmt, n = "%02d", 100
           e = e.upper()
-          for i in xrange(1,n):
+          for i in range(1,n):
             trial = e + fmt % i
             if (trial not in lbl_set):
               reset(label=trial)
@@ -2368,7 +2369,7 @@ class structure(crystal.special_position_settings):
           return False
         def find_complete_replacement():
           for c in upper:
-            for i in xrange(1,1000):
+            for i in range(1,1000):
               trial = c + "%03d" % i
               if (trial not in lbl_set):
                 reset(label=trial)

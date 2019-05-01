@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+from builtins import range
 from cctbx import uctbx, xray, crystal
 from cctbx.array_family import flex
 import math
@@ -72,7 +73,7 @@ digraph dependencies {
   jt0 = sparse.matrix(q, q + 2*3*n) # + rigid_group + constrained site proxies
   assert jt.n_rows == jt0.n_rows
   assert jt.n_cols == jt0.n_cols
-  for i, j in zip(range(q, q+3*n), range(q+3*n, jt0.n_cols)):
+  for i, j in zip(list(range(q, q+3*n)), list(range(q+3*n, jt0.n_cols))):
     assert jt.col(i) == jt.col(j)
 
 def test_rigid_pivoted_rotatable():
@@ -198,7 +199,7 @@ def test_rotatable_rotation(rr):
                   0, 0, 1))
   R = rx_m*ry_m*rz_m #comulative rotation matrix
   shift = col(rr.sites[0])-col(mat.row(col(rr.sites[0])-rr.center)*R)
-  for i in xrange(1,4):
+  for i in range(1,4):
     calc_site = col(mat.row(col(rr.sites[i])-rr.center)*R) + shift
     assert rr.uc.distance(calc_site, col(sc[i].site)) == pytest.approx(0, abs=1e-14)
 

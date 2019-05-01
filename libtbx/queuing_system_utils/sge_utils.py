@@ -103,7 +103,7 @@ class qstat_items(object):
     f = int(ja_task_id[:m])
     l = int(ja_task_id[m+1:c])
     s = int(ja_task_id[c+1:])
-    return len(range(f,l+1,s))
+    return len(list(range(f,l+1,s)))
 
   def oe_name(self, oe):
     ja_task_id = self.ja_task_id

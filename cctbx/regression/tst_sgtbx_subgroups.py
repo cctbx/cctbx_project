@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.sgtbx import subgroups
 from cctbx import sgtbx
 
@@ -30,8 +31,8 @@ def run():
                              "Fm-3m"):
     centric_info = sgtbx.space_group_info(space_group_symbol)
     non_centric = sgtbx.space_group()
-    for i_ltr in xrange(centric_info.group().n_ltr()):
-      for i_smx in xrange(centric_info.group().n_smx()):
+    for i_ltr in range(centric_info.group().n_ltr()):
+      for i_smx in range(centric_info.group().n_smx()):
         s = centric_info.group()(i_ltr,0,i_smx)
         non_centric.expand_smx(s)
     assert non_centric.f_inv() == 1

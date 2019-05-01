@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.eltbx import xray_scattering
 import sys
 
@@ -81,7 +82,7 @@ def run(args):
   print("&")
   n_samples = 1000
   for g in [sds_it, sds_wk, sds_ng, iso_it, iso_wk, iso_ng]:
-    for i_stol in xrange(n_samples+1):
+    for i_stol in range(n_samples+1):
       stol = 6 * i_stol / n_samples
       print(stol, g.at_stol(stol))
     print("&")

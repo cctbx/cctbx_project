@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import time, random
 from cctbx import maptbx
 from scitbx.array_family import flex
@@ -36,11 +37,11 @@ def set_map(f, n, box=10.):
   n_real = (n,n,n)
   step = box/n
   map_data  = flex.double(flex.grid([n,n,n]))
-  for i in xrange(n):
+  for i in range(n):
     x  = i*step
-    for j in xrange(n):
+    for j in range(n):
       y  = j*step
-      for k in xrange(n):
+      for k in range(n):
         z = k*step
         map_data[i,j,k] = func(f, x=x,y=y,z=z)
   return group_args(
@@ -58,7 +59,7 @@ def exercise(f,gx,gy,gz,function_type, eps = 1.e-6):
     gxl, gxq, gxt = 0,0,0
     gyl, gyq, gyt = 0,0,0
     gzl, gzq, gzt = 0,0,0
-    for trial in xrange(n_trials):
+    for trial in range(n_trials):
       sx = random.randrange(1,30)/10.*random.choice([-1,0,1])
       sy = random.randrange(1,30)/10.*random.choice([-1,0,1])
       sz = random.randrange(1,30)/10.*random.choice([-1,0,1])

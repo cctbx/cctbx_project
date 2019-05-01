@@ -1,6 +1,7 @@
 from __future__ import division
 from __future__ import print_function
 
+from builtins import range
 class pcr_parser(object):
 
   def __init__(self, inputstring=None, pcrfile=None, enforce_valid_comments=True):

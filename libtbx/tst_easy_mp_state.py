@@ -40,7 +40,7 @@ def exercise_multiprocessing(mp_nproc=1, mp_threads=1, mp_method="multiprocessin
 
   # Call the state-changing function in parallel
   easy_mp.parallel_map(
-    iterable=range(tasks),
+    iterable=list(range(tasks)),
     func=change_stored_state,
     processes=mp_nproc,
     method=mp_method)

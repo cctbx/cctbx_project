@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.flags
 import cctbx.geometry_restraints.manager
@@ -100,11 +101,11 @@ def make_o_si_o_sym_table(si_o_structure, si_o_bond_sym_table):
       if (scatterers[j_seq].scattering_type != "O"): continue
       for rt_mx_ji in sym_ops:
         jr_list.append((j_seq,rt_mx_ji))
-    for i_jj1 in xrange(0,len(jr_list)-1):
+    for i_jj1 in range(0,len(jr_list)-1):
       jr1 = jr_list[i_jj1]
       i_seq = jr1[0]
       rt_mx_jr1_inv = jr1[1].inverse()
-      for i_jj2 in xrange(i_jj1+1,len(jr_list)):
+      for i_jj2 in range(i_jj1+1,len(jr_list)):
         jr2 = jr_list[i_jj2]
         j_seq = jr2[0]
         rt_mx_jr21 = rt_mx_jr1_inv.multiply(jr2[1])
@@ -222,8 +223,8 @@ class distance_and_repulsion_least_squares:
       nonbonded_buffer=nonbonded_buffer,
       max_reasonable_bond_distance=100)
     minimized = None
-    for i_trial in xrange(n_trials):
-      for i_exceptions_handled in xrange(max_exceptions_handled+1):
+    for i_trial in range(n_trials):
+      for i_exceptions_handled in range(max_exceptions_handled+1):
         trial_structure = si_o.structure.deep_copy_scatterers()
         if (i_trial > 0):
           n_scatterers = trial_structure.scatterers().size()
@@ -232,7 +233,7 @@ class distance_and_repulsion_least_squares:
           trial_structure.apply_symmetry_sites()
         trial_minimized = []
         trial_sites_cart = None
-        for i_macro_cycle in xrange(n_macro_cycles):
+        for i_macro_cycle in range(n_macro_cycles):
           if (trial_sites_cart is not None):
             trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
             trial_structure = trial_structure.random_shift_sites(

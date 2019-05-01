@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cStringIO import StringIO
 
 from libtbx.test_utils import approx_equal
@@ -512,7 +513,7 @@ ATOM   2463 C CA  . LYS B 1 24  ? 22.588  1.723   -13.713 1.00 30.22  ? ? ? ? ? 
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence
   assert cif_block['_entity_poly.pdbx_strand_id'] == 'A,B'
-  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), range(1, 25))
+  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), list(range(1, 25)))
   assert cif_block['_entity_poly_seq.entity_id'].all_eq('1')
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     three_letter_given_one_letter.get(i) for i in sequence_4ehz.sequence]
@@ -538,7 +539,7 @@ ATOM   1473 C  CA  . SER A 1 185 ? -6.795  -21.356 10.148  1.00 91.03  ? ? ? ? ?
     ';NVS(PTR)ICSR\n;'
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == \
     ';' + sequence_3zdi.sequence + '\n;'
-  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), range(1, 9))
+  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), list(range(1, 9)))
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'ASN', 'VAL', 'SER', 'PTR', 'ILE', 'CYS', 'SER', 'ARG']
   #
@@ -577,7 +578,11 @@ HETATM 2796 O O   . HOH G 3 .   ? 11.197  11.667 36.108  1.00 17.00 ? ? ? ? ? ? 
   cif_block = model._sequence_validation.sequence_as_cif_block()
   assert list(cif_block['_entity.id']) == ['1', '2']
   assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']),
+<<<<<<< HEAD
                      range(1, 11)+range(1, 10))
+=======
+                      list(range(1, 11))+list(range(1, 10)))
+>>>>>>> futurize -f xrange_with_import -wn .
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'DTH', 'DTY', 'DLY', 'DLE', 'DIL', 'DLE', 'DSG', 'GLY', 'DLY', 'DTH',
     'GLY', 'GLN', 'ASN', 'HIS', 'HIS', 'GLU', 'VAL', 'VAL', 'LYS']

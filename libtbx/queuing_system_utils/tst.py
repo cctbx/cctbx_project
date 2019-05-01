@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 # XXX this is intended to be a simple template for debugging queueing system
 # support issues, not a full regression test.
 
+from builtins import range
 class target(object):
   def __init__(self, x):
     self.x = x

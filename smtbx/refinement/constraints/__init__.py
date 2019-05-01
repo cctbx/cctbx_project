@@ -1,6 +1,7 @@
 from __future__ import division
 from __future__ import absolute_import, print_function
 
+from builtins import range
 import warnings
 
 import boost.python
@@ -44,7 +45,7 @@ class _(boost.python.injector, ext.parameter):
 
   def arguments(self):
     """ An iterator over its arguments """
-    for i in xrange(self.n_arguments):
+    for i in range(self.n_arguments):
       yield self.argument(i)
 
   def __str__(self):
@@ -180,7 +181,7 @@ class reparametrisation(ext.reparametrisation):
         self.constrained_parameters |= uniques
         constraint.add_to(self)
 
-    for i_sc in xrange(len(self.asu_scatterer_parameters)):
+    for i_sc in range(len(self.asu_scatterer_parameters)):
       self.add_new_site_parameter(i_sc)
       self.add_new_thermal_displacement_parameter(i_sc)
       self.add_new_occupancy_parameter(i_sc)

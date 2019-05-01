@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 def run(args):
   if (len(args) == 0): args = ["--help"]
   from libtbx.option_parser import libtbx_option_parser
@@ -16,7 +17,7 @@ def run(args):
   from cctbx import sgtbx
   args = command_line.args
   if (args == ["all"]):
-    args = [str(no) for no in xrange(1,230+1)]
+    args = [str(no) for no in range(1,230+1)]
   for symbol in args:
     sgi = sgtbx.space_group_info(symbol=symbol)
     if (co.primitive):

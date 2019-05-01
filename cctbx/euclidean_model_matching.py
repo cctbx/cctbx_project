@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
@@ -209,7 +210,7 @@ class model(crystal.special_position_settings):
 
 def filter_shift(continuous_shift_flags, shift, selector=1):
   filtered_shift = [0,0,0]
-  for i in xrange(3):
+  for i in range(3):
     if (continuous_shift_flags[i] == selector):
       filtered_shift[i] = shift[i]
   return filtered_shift
@@ -242,7 +243,7 @@ class euclidean_match_symmetry(object):
     print(self.continuous_shifts, file=f)
 
 def generate_singles(n, i):
-  singles = range(n)
+  singles = list(range(n))
   del singles[i]
   return singles
 
@@ -421,7 +422,7 @@ class match_refine(object):
       model2=self.ref_model2.as_xray_structure(xray_scatterer)
       from cctbx.array_family import flex
       new_coords=flex.vec3_double()
-      for i_model2 in xrange(self.ref_model2.size()):
+      for i_model2 in range(self.ref_model2.size()):
         c2 = matrix.col(self.eucl_symop * self.ref_model2[i_model2].site)
         c2 += self.adjusted_shift
         c2=inside_zero_one(c2)
@@ -466,20 +467,20 @@ def weed_refined_matches(space_group_number, refined_matches,
   best_rms = refined_matches[0].rms
   best_n_pairs = len(refined_matches[0].pairs)
   is_redundant = [0] * n_matches
-  for i in xrange(n_matches-1):
+  for i in range(n_matches-1):
     match_i = refined_matches[i]
     if (is_redundant[i]): continue
     if (match_i.rms < best_rms):
       best_rms = match_i.rms
       best_n_pairs = len(match_i.pairs)
-    for j in xrange(i+1, n_matches):
+    for j in range(i+1, n_matches):
       match_j = refined_matches[j]
       if (   match_i.pairs == match_j.pairs
           or (    rms_penalty_per_site
               and match_j.rms > best_rms * (1 - rms_penalty_per_site * (
                     best_n_pairs - len(match_j.pairs))))):
         is_redundant[j] = 1
-  for i in xrange(n_matches-1, -1, -1):
+  for i in range(n_matches-1, -1, -1):
     if (is_redundant[i]):
       del refined_matches[i]
   if (space_group_number == 1 and n_matches > 0):
@@ -521,8 +522,8 @@ def compute_refined_matches(ref_model1, ref_model2,
     ref_model2_sites)
   accumulated_match_refine_times = match_refine_times()
   refined_matches = []
-  for i_pivot1 in xrange(ref_model1.size()):
-    for i_pivot2 in xrange(ref_model2.size()):
+  for i_pivot1 in range(ref_model1.size()):
+    for i_pivot2 in range(ref_model2.size()):
       for eucl_symop in match_symmetry.rt_mx:
         c2 = eucl_symop * ref_model2[i_pivot2].site
         dist_info = sgtbx.min_sym_equiv_distance_info(

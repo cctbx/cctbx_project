@@ -8,6 +8,7 @@ from __future__ import division, print_function
 #   iotbx.python direct_methods_light.py vj1132Isup2.hkl vj1132sup1.cif
 #
 
+from builtins import range
 def run():
   import sys
   reflection_file_name = sys.argv[1]
@@ -57,7 +58,7 @@ def run():
   input_phases = large_e_values \
     .random_phases_compatible_with_phase_restrictions()
   tangent_formula_phases = input_phases.data()
-  for i in xrange(10):
+  for i in range(10):
     tangent_formula_phases = triplets.apply_tangent_formula(
       amplitudes=large_e_values.data(),
       phases_rad=tangent_formula_phases,

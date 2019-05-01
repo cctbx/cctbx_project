@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import scitbx.linalg
 from scitbx.linalg import eigensystem, time_eigensystem_real_symmetric
 from scitbx.array_family import flex
@@ -19,18 +20,18 @@ def exercise_eigensystem():
   m = u.matrix_packed_u_as_symmetric()
   assert m.all() == (0,0)
   #
-  for n in xrange(1,10):
+  for n in range(1,10):
     m = flex.double(flex.grid(n,n))
     s = eigensystem.real_symmetric(m)
     assert approx_equal(tuple(s.values()), [0]*n)
     v = s.vectors()
-    for i in xrange(n):
-      for j in xrange(n):
+    for i in range(n):
+      for j in range(n):
         x = 0
         if (i == j): x = 1
         assert approx_equal(v[(i,j)], x)
     v = []
-    for i in xrange(n):
+    for i in range(n):
       j = (i*13+17) % n
       v.append(j)
       m[i*(n+1)] = j
@@ -46,9 +47,9 @@ def exercise_eigensystem():
       assert approx_equal(flex.min(s.vectors()), 0)
     assert approx_equal(flex.max(s.vectors()), 1)
     assert approx_equal(flex.sum(s.vectors()), n)
-    for t in xrange(10):
-      for i in xrange(n):
-        for j in xrange(i,n):
+    for t in range(10):
+      for i in range(n):
+        for j in range(i,n):
           m[i*n+j] = random.random() - 0.5
           if (i != j):
             m[j*n+i] = m[i*n+j]
@@ -61,7 +62,7 @@ def exercise_eigensystem():
       v.sort()
       v.reverse()
       assert list(s.values()) == v
-      for i in xrange(n):
+      for i in range(n):
         l = s.values()[i]
         x = s.vectors()[i*n:i*n+n]
         mx = matrix_mul(m, n, n, x, n, 1)
@@ -112,7 +113,7 @@ def compare_times(max_n_power=8):
   mt = flex.mersenne_twister(seed=0)
   show_tab_header = True
   tfmt = "%5.2f"
-  for n_power in xrange(5,max_n_power+1):
+  for n_power in range(5,max_n_power+1):
     n = 2**n_power
     l = mt.random_double(size=n*(n+1)//2) * 2 - 1
     a = l.matrix_packed_l_as_symmetric()

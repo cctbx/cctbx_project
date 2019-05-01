@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import time
 from iotbx.pdb.secondary_structure import annotation, pdb_helix, pdb_strand
 import iotbx
@@ -1759,7 +1760,7 @@ SHEET    2 AA2 4 MET A  92  THR A  99  0
 
   # 11 sheets
   ann = annotation.from_records(ann_str.split("\n"))
-  for x in xrange(10):
+  for x in range(10):
     ann.sheets.append(ann.sheets[0].deep_copy())
   assert ann.get_n_sheets() == 11
   ann.reset_sheet_ids()
@@ -1768,7 +1769,7 @@ SHEET    2 AA2 4 MET A  92  THR A  99  0
 
   # 51 sheets
   ann = annotation.from_records(ann_str.split("\n"))
-  for x in xrange(50):
+  for x in range(50):
     ann.sheets.append(ann.sheets[0].deep_copy())
   assert ann.get_n_sheets() == 51
   ann.reset_sheet_ids()

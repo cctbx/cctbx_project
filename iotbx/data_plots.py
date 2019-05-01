@@ -5,6 +5,7 @@ Tools for handling plottable data, usually similar to CCP4's loggraph format
 """
 
 from __future__ import division, print_function
+from builtins import range
 from libtbx import adopt_init_args
 from libtbx.utils import Sorry
 import string
@@ -213,7 +214,7 @@ class table_data(object):
     if self.column_labels[0] in ("1/d^2", "1/d**2", "1/resol^2"):
       self.x_is_inverse_d_min = True
 
-    self.data = [[] for x in xrange(data_width)]
+    self.data = [[] for x in range(data_width)]
 
     # Now load the data
     data = re.sub('\s+', ' ', data).split(' ')
@@ -310,7 +311,7 @@ class table_data(object):
     out += trailing_spaces.sub("", labels)
     nrows = len(data[0])
     f1 = "%s-%ds" % (r'%', column_width)
-    for j in xrange(nrows):
+    for j in range(nrows):
       row = [ col[j] for col in data ]
       frow = self._format_num_row(row, column_width, precision)
       frows = " ".join([ f1 % cv for cv in frow ])
@@ -336,11 +337,11 @@ class table_data(object):
     if (self.first_two_columns_are_resolution):
       column_labels = ["Res. range"] + column_labels[2:]
     formatted_rows = [ column_labels ]
-    for j in xrange(self.n_rows):
+    for j in range(self.n_rows):
       row = [ col[j] for col in data ]
       formatted_rows.append(self._format_num_row(row, precision=precision))
     column_widths = []
-    for j in xrange(len(column_labels)):
+    for j in range(len(column_labels)):
       column_widths.append(max([ len(r[j]) for r in formatted_rows ]))
     if (equal_widths):
       # if the first column is the resolution range, we allow that to be
@@ -365,7 +366,7 @@ class table_data(object):
     out += "|" + sep_line[1:-1] + "|"
     out += "| " + column_headers + " |"
     out += "|" + sep_line[1:-1] + "|"
-    for j in xrange(self.n_rows):
+    for j in range(self.n_rows):
       frow = []
       for cw, cv in zip(column_widths, formatted_rows[j+1]):
         f1 = "%s-%ds" % (r'%', cw)
@@ -407,7 +408,7 @@ class table_data(object):
     out += "%s $$\n" % "  ".join([ f2 % lab for lab in labels ])
     out += "$$\n"
     trailing_spaces = re.compile("\ *$")
-    for j in xrange(len(data[0])):
+    for j in range(len(data[0])):
       row = [ col[j] for col in data ]
       frow = self._format_num_row(row, column_width, precision)
       frow = [ f2 % cv for cv in frow ]
@@ -441,7 +442,7 @@ class table_data(object):
     if (self.first_two_columns_are_resolution):
       column_labels = ["Res. range"] + column_labels[2:]
     formatted_rows = [ column_labels ]
-    for j in xrange(self.n_rows):
+    for j in range(self.n_rows):
       row = [ col[j] for col in self.data ]
       formatted_rows.append(self._format_num_row(row, precision=precision))
     return formatted_rows
@@ -544,20 +545,20 @@ class graph_data(object):
     self.type = type
     if data_labels is None or len(data_labels) == 0 :
       self.x_label = "X"
-      self.y_labels = [ "Y" for i in xrange(1, len(data)) ]
+      self.y_labels = [ "Y" for i in range(1, len(data)) ]
     else :
       self.x_label = data_labels[0]
-      self.y_labels = [ data_labels[i] for i in xrange(1, len(data)) ]
+      self.y_labels = [ data_labels[i] for i in range(1, len(data)) ]
     self.x_axis_label = x_axis
     self.y_axis_label = y_axis
 
   def get_plots(self, fill_in_missing_y=None):
     plots = []
     data = self.data
-    for i in xrange(1, len(data)):
+    for i in range(1, len(data)):
       plot_x = []
       plot_y = []
-      for j in xrange(0, len(data[i])):
+      for j in range(0, len(data[i])):
         if data[0][j] is not None :
           if data[i][j] is not None :
             plot_x.append(data[0][j])

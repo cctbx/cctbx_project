@@ -1,5 +1,6 @@
 from __future__ import division, print_function
 
+from builtins import range
 import sys,os
 from libtbx.utils import Sorry
 from cctbx.array_family import flex
@@ -265,7 +266,7 @@ def fit_cc(cc_list=None,sthol_list=None,
 
   best_scale=None
   best_rms=None
-  for i in xrange(n_tries):
+  for i in range(n_tries):
     scale=scale_min+(scale_max-scale_min)*i/n_tries
     fit=cc_fit(sthol_list=sthol_list,scale=scale,value_zero=cc_list[0],
        scale_using_last=scale_using_last)
@@ -947,7 +948,7 @@ class refinery:
   def gradients(self,b):
 
     result = flex.double()
-    for i in xrange(len(list(b))):
+    for i in range(len(list(b))):
       rs = []
       for signed_eps in [self.eps, -self.eps]:
         params_eps = deepcopy(b)

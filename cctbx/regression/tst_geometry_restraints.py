@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from iotbx.pdb.tst_pdb import dump_pdb
 from cctbx import geometry_restraints
 from iotbx.pymol import pml_stick, pml_write
@@ -30,7 +31,7 @@ def finite_differences(sites, residual_obj, eps=1.e-6):
   gradients = []
   for i_site,site in enumerate(sites):
     grad = []
-    for i_x in xrange(3):
+    for i_x in range(3):
       t = []
       for signed_eps in [eps, -eps]:
         add = [0]*3
@@ -44,7 +45,7 @@ def finite_differences(sites, residual_obj, eps=1.e-6):
   return gradients
 
 def exercise_bond():
-  for i_trial in xrange(5):
+  for i_trial in range(5):
     sites = random_sites(n_sites=2)
     b = geometry_restraints.bond(sites=sites, distance_ideal=0, weight=0)
     distance_ideal = b.distance_model
@@ -54,13 +55,13 @@ def exercise_bond():
       restraint_type=geometry_restraints.bond,
       distance_ideal=distance_ideal,
       weight=weight)
-    for i_pert in xrange(5):
+    for i_pert in range(5):
       if (i_pert == 0):
         sites_mod = sites
       else:
         sites_mod = []
         for site in sites:
-          shift = col([random.uniform(-3,3)*sigma for i in xrange(3)])
+          shift = col([random.uniform(-3,3)*sigma for i in range(3)])
           sites_mod.append(site+shift)
       b = geometry_restraints.bond(
         sites=sites_mod, distance_ideal=distance_ideal, weight=weight)
@@ -70,7 +71,7 @@ def exercise_bond():
         assert approx_equal(analytical, finite)
 
 def exercise_nonbonded(nonbonded_type, repulsion_function):
-  for i_trial in xrange(5):
+  for i_trial in range(5):
     sites = random_sites(n_sites=2)
     r = nonbonded_type(
       sites=sites,
@@ -81,14 +82,14 @@ def exercise_nonbonded(nonbonded_type, repulsion_function):
       restraint_type=nonbonded_type,
       vdw_distance=vdw_distance,
       function=repulsion_function)
-    for i_pert in xrange(5):
+    for i_pert in range(5):
       if (i_pert == 0):
         sites_mod = sites
       else:
         sites_mod = []
         for site in sites:
           shift = col([random.uniform(-1,1)*vdw_distance*0.05
-            for i in xrange(3)])
+            for i in range(3)])
           sites_mod.append(site+shift)
       r = nonbonded_type(
         sites=sites_mod,
@@ -104,7 +105,7 @@ def exercise_nonbonded(nonbonded_type, repulsion_function):
         assert approx_equal(ag/scale, fg/scale, eps=1.e-2)
   sites = [[0,0,0], [0,0,0]]
   vdw_distance = 1.8
-  for i_step in xrange(1,100):
+  for i_step in range(1,100):
     delta = i_step/50.
     sites[1][0] = delta
     r = nonbonded_type(
@@ -116,7 +117,7 @@ def exercise_nonbonded(nonbonded_type, repulsion_function):
 def exercise_angle():
   eps = 1
   n_trials = 20
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     if (i_trial < -99):
       if (i_trial == n_trials-1):
         eps = 0
@@ -137,13 +138,13 @@ def exercise_angle():
       restraint_type=geometry_restraints.angle,
       angle_ideal=angle_ideal,
       weight=weight)
-    for i_pert in xrange(5):
+    for i_pert in range(5):
       if (i_pert == 0):
         sites_mod = sites
       else:
         sites_mod = []
         for site in sites:
-          shift = col([random.uniform(3,3)*sigma for i in xrange(3)])
+          shift = col([random.uniform(3,3)*sigma for i in range(3)])
           sites_mod.append(site+shift)
       a = geometry_restraints.angle(
         sites=sites_mod, angle_ideal=angle_ideal, weight=weight)
@@ -171,7 +172,7 @@ def exercise_angle():
 
 def random_site(max_coordinate):
   return col([random.uniform(-max_coordinate, max_coordinate)
-    for i in xrange(3)])
+    for i in range(3)])
 
 def random_sites(n_sites, max_coordinate=10, min_distance=0.5,
                  max_trials=1000):
@@ -219,7 +220,7 @@ def exercise_dihedral():
   sites = [col(site) for site in [
     (1,0,0), (0,0,0), (0,1,0), (1,0,1)]]
   angle_ideal = -45
-  for flip in xrange(2):
+  for flip in range(2):
     if (flip != 0):
       sites = [sites[i] for i in [0,2,1,3]]
       angle_ideal *= -1
@@ -230,10 +231,10 @@ def exercise_dihedral():
     assert approx_equal(dih.angle_ideal, angle_ideal)
     assert approx_equal(dih.angle_model, angle_ideal)
     assert approx_equal(dih.delta, 0)
-    for i_trial in xrange(20):
+    for i_trial in range(20):
       sites_mod = []
       for site in sites:
-        shift = col([random.uniform(-.1,.1) for i in xrange(3)])
+        shift = col([random.uniform(-.1,.1) for i in range(3)])
         sites_mod.append(site+shift)
       exercise_dihedral_core(
         sites_mod, angle_ideal, angle_esd=1, periodicity=1, angle_model=None)
@@ -271,12 +272,12 @@ def exercise_chirality(verbose=0):
     print("volume_model:", chir.volume_model)
     print("angle_ideal:", dih.angle_ideal)
     print("angle model:", dih.angle_model)
-  for i_trial in xrange(50):
+  for i_trial in range(50):
     volume_ideal = chir.volume_ideal
     for both_signs in [False, True]:
       sites_mod = []
       for site in sites:
-        shift = col([random.uniform(-.5,.5) for i in xrange(3)])
+        shift = col([random.uniform(-.5,.5) for i in range(3)])
         sites_mod.append(site+shift)
       if (both_signs): volume_ideal = abs(volume_ideal)
       c = geometry_restraints.chirality(
@@ -334,15 +335,15 @@ def exercise_planarity():
                       ([(1,1,-1), (-1,-1,1), (-1,1,-1), (1,-1,1)], (0,1,1))]:
     norm = col(norm)
     norm /= abs(norm)
-    for i_trial in xrange(5):
-      for i_pert in xrange(5):
+    for i_trial in range(5):
+      for i_pert in range(5):
         if (i_trial == 0 and i_pert == 0):
           sites = [col(v) for v in points]
           rot_norm = norm
         else:
-          shift = col([random.uniform(-10,10) for i in xrange(3)])
+          shift = col([random.uniform(-10,10) for i in range(3)])
           rot = sqr(euler_angles_as_matrix(
-            [random.uniform(0,360) for i in xrange(3)]))
+            [random.uniform(0,360) for i in range(3)]))
           rot_norm = rot * norm
           if (i_pert == 0):
             sites = [rot*col(v)+shift for v in points]
@@ -350,7 +351,7 @@ def exercise_planarity():
             sites = []
             for v in points:
               f = 0.1
-              pert = col([(random.random()-0.5)*f for i in xrange(3)])
+              pert = col([(random.random()-0.5)*f for i in range(3)])
               sites.append(rot*col(v)+shift+pert)
         pl = geometry_restraints.planarity(sites=sites, weights=weights)
         n = col(pl.normal())

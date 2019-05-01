@@ -14,6 +14,7 @@ in radians for comparison.
 """
 from __future__ import division, print_function
 
+from builtins import range
 from cctbx import sgtbx
 from cctbx import uctbx
 from scitbx import matrix
@@ -187,14 +188,14 @@ def run():
     else:
       break
     s = []
-    for i in xrange(3):
+    for i in range(3):
       s.extend([float(v) for v in lines.next().split()])
     for line in lines:
       if (line.rstrip() == "M:"): break
     else:
       raise RuntimeError("S: found but not M:")
     m = []
-    for i in xrange(3):
+    for i in range(3):
       m.extend([int(v) for v in lines.next().split()])
     for line in lines:
       if (line.rstrip() == "Score:"): break

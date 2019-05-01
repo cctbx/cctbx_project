@@ -28,6 +28,7 @@ Revision history:
 """
 from __future__ import division, print_function
 
+from builtins import range
 import math, types
 
 class matrix33(object):
@@ -186,8 +187,8 @@ def amore_kappa_l_m_n_from_matrix(matrix, tolerance = 1.e-6):
   if (ck < -1.): ck = -1.
   kappa = math.acos(ck)
   sk = math.sin(kappa)
-  c = [(matrix(i,i) - ck) / (1.-ck) for i in xrange(3)]
-  for i in xrange(3):
+  c = [(matrix(i,i) - ck) / (1.-ck) for i in range(3)]
+  for i in range(3):
     if (c[i] < -tolerance):
       raise ValueError("Corrupt matrix.")
     if (c[i] <= 0.): c[i] = 0.
@@ -204,7 +205,7 @@ def amore_kappa_l_m_n_from_matrix(matrix, tolerance = 1.e-6):
   for f[0] in (1,-1):
     for f[1] in (1,-1):
       for f[2] in (1,-1):
-        fc = [f[i] * c[i] for i in xrange(3)]
+        fc = [f[i] * c[i] for i in range(3)]
         ok = 1
         sum_d2 = 0
         for i,j,k in ((0,1,2), (1,2,0), (2,0,1)):
@@ -460,7 +461,7 @@ if (__name__ == "__main__"):
     print("end")
 
   def compare_lists(list1, list2):
-    for i in xrange(len(list1)):
+    for i in range(len(list1)):
       if (abs(list1[i] - list2[i]) > 1.e-5):
         print((" %.5f %.5f %.5f\n" * 3) % tuple(list1))
         print((" %.5f %.5f %.5f\n" * 3) % tuple(list2))
@@ -480,9 +481,9 @@ if (__name__ == "__main__"):
     compare_lists(rot0.matrix.elems, rot2.matrix.elems)
 
   def check_45deg_incr(conv):
-    for a1 in xrange(0, 361, 45):
-      for a2 in xrange(0, 361, 45):
-        for a3 in xrange(0, 361, 45):
+    for a1 in range(0, 361, 45):
+      for a2 in range(0, 361, 45):
+        for a3 in range(0, 361, 45):
           if ("-v" in sys.argv[1:]):
             print("Angles:", a1, a2, a3)
           matrix = cns_theta1_theta2_theta3(params = (a1, a2, a3)).matrix
@@ -496,13 +497,13 @@ if (__name__ == "__main__"):
   def random_angles():
     import random
     rng = random.random
-    return [rng() * 180 for i in xrange(3)]
+    return [rng() * 180 for i in range(3)]
 
   def run():
     for conv in get_converters():
       if (not "--CNS" in sys.argv[1:]):
         print(conv.__doc__)
-      for trial in xrange(10):
+      for trial in range(10):
         matrix = cns_theta1_theta2_theta3(params = random_angles()).matrix
         check_conversion(conv, matrix)
       if (not "--RandomOnly" in sys.argv[1:]):

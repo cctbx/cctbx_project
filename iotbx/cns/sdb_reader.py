@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from iotbx.cns.crystal_symmetry_utils import \
   re_sg_uc, crystal_symmetry_from_re_match
 from cctbx import crystal
@@ -106,7 +107,7 @@ class raw_parameters(object):
     assert len(self.q) == len(self.action)
     assert len(self.g) == len(self.action)
     sites = []
-    for i in xrange(len(self.x)):
+    for i in range(len(self.x)):
       sites.append(sdb_site(
         self.action[i], self.segid[i], self.type[i],
         self.x[i], self.y[i], self.z[i],

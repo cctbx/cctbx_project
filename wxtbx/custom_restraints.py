@@ -7,6 +7,7 @@ they could theoretically be used in other programs.
 """
 from __future__ import division
 
+from builtins import range
 import wxtbx.bitmaps
 from wxtbx import metallicbutton
 from wxtbx.phil_controls import simple_dialogs

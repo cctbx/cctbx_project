@@ -1,5 +1,6 @@
 from __future__ import division, print_function
 
+from builtins import range
 """Test case dramatically improves LBFGS multiparameter refinement by
 using curvatures to provide relative weightings for the contributions of
 each parameter to the target functional.
@@ -147,7 +148,7 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
   def curvatures(self):
     from scitbx.array_family import flex
     curvs = flex.double([0.]*12)
-    for x in xrange(6):
+    for x in range(6):
       selection = (self.master_groups==x)
       curvs[2*x] = 2. * selection.count(True)
       curvs[2*x+1]=2. * selection.count(True)
@@ -160,7 +161,7 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
     self.model_mean_x = flex.double(len(self.observed_x))
     self.model_mean_y = flex.double(len(self.observed_x))
 
-    for x in xrange(6):
+    for x in range(6):
       selection = (self.master_groups==x)
       self.model_mean_x.set_selected(selection, self.x[2*x])
       self.model_mean_y.set_selected(selection, self.x[2*x+1])
@@ -172,7 +173,7 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
     f = flex.sum(delrsq)
 
     gradients = flex.double([0.]*12)
-    for x in xrange(6):
+    for x in range(6):
       selection = (self.master_groups==x)
       gradients[2*x] = -2. * flex.sum( delx.select(selection) )
       gradients[2*x+1]=-2. * flex.sum( dely.select(selection) )
@@ -191,7 +192,7 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
     random.seed(0.0)
 
     for group_N in [30000, 25000, 20000, 10000, 2000, 5]:  # six data groups of different sizes
-      for x in xrange(group_N):
+      for x in range(group_N):
         self.observed_x.append( random.gauss(0.,1.) )
         self.observed_y.append( random.gauss(0.,1.) )
         self.master_groups.append(igroup)
@@ -199,7 +200,7 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
 
     self.known_mean_x = flex.double()
     self.known_mean_y = flex.double()
-    for x in xrange(6):
+    for x in range(6):
       selection = (self.master_groups==x)
       self.known_mean_x.append( flex.mean( self.observed_x.select(selection) ) )
       self.known_mean_y.append( flex.mean( self.observed_y.select(selection) ) )

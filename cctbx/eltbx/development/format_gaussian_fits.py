@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.eltbx import xray_scattering
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.development import kissel_io
@@ -40,7 +41,7 @@ def expected_labels(kissel_dir):
     for wk in xray_scattering.wk1995_iterator():
       result.append(wk.label())
   else:
-    for atomic_number in xrange(1,100):
+    for atomic_number in range(1,100):
       result.append(tiny_pse.table(atomic_number).symbol())
   return result
 

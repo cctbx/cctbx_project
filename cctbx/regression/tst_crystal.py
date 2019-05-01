@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
@@ -287,7 +288,7 @@ def exercise_site_symmetry(space_group_info):
     min_distance_sym_equiv
       =special_position_settings.min_distance_sym_equiv()*0.99)
   wyckoff_table = space_group_info.wyckoff_table()
-  for i_position in xrange(wyckoff_table.size()):
+  for i_position in range(wyckoff_table.size()):
     site_symmetry = wyckoff_table.random_site_symmetry(
       special_position_settings=special_position_settings,
       i_position=i_position)

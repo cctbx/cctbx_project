@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.web.asu_gallery import web_links
 from cctbx.web.asu_gallery import html_head_title
 from cctbx import sgtbx
@@ -9,9 +10,9 @@ def table_format_html(table, f, n_columns, serial_fmt="%03d"):
   n_symbols = len(table)
   n_rows = n_symbols // n_columns
   if (n_rows * n_columns < n_symbols): n_rows += 1
-  for i_row in xrange(n_rows):
+  for i_row in range(n_rows):
     print("<tr>", file=f)
-    for i_column in xrange(n_columns):
+    for i_column in range(n_columns):
       i = i_column * n_rows + i_row
       if (i < len(table)):
         symbols = table[i]
@@ -82,7 +83,7 @@ class crystal_system_table(object):
     self.point_group_tables = []
     previous_crystal_system = None
     previous_point_group_type = None
-    for space_group_number in xrange(1,231):
+    for space_group_number in range(1,231):
       space_group_symbols = sgtbx.space_group_symbols(space_group_number)
       space_group = sgtbx.space_group(space_group_symbols)
       crystal_system = space_group.crystal_system()

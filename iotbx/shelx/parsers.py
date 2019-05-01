@@ -2,6 +2,7 @@
 
 from __future__ import division
 
+from builtins import range
 import itertools
 from boost import rational
 
@@ -211,7 +212,7 @@ class wavelength_parser(parser):
  constant_times_independent_scalar_parameter        , # c*x
                                                       # where c: constant
                                                       # and   x: parameter
- constant_times_u_eq) = xrange(5)
+ constant_times_u_eq) = range(5)
 
 def decode_variables(
       free_variable,
@@ -452,7 +453,7 @@ class atom_parser(parser, variable_decoder):
         # parameter
         continue
       else:
-        for i in xrange(len(affine_occupancies) - 1):
+        for i in range(len(affine_occupancies) - 1):
           (a, b, i), (a1, b1, i1) = affine_occupancies[i:i+2]
           # occ(i) = a(u + b) and occ(i+1) = a'(u + b')
           # where u is the free variable of index free_var_idx
@@ -611,7 +612,7 @@ class restraint_parser(parser):
       if atom.name == 'LAST':
         # XXX need better way to handle > and < ranges
         i_seqs.extend(
-          xrange(i_seqs[-1] + 1,
+          range(i_seqs[-1] + 1,
                  max(self.builder.index_of_scatterer_named.values()) + 1))
         continue
       atom_resnum = atom.residue_number

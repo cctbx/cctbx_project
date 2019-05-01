@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.rigid_body.proto.free_motion_reference_impl import simulation
 from gltbx import wx_viewer
 from scitbx.math import minimum_covering_sphere, sphere_3d
@@ -25,7 +26,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     n = len(self.sim_as.sites_cart_F1)
     offs = 0
     for prefix,color in [("S",(1,0,0)),("C",(0,0,1)),("W",(0,1,0))]:
-      for i in xrange(n):
+      for i in range(n):
         add_line(offs+i, offs+(i+1)%n, color)
         self.labels.append(prefix+str(i))
       offs += n
@@ -50,7 +51,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     ip = 0
     for sim in [self.sim_as, self.sim_ac]:
       use_classical_accel = (sim is self.sim_ac)
-      for ids in xrange(self.steps_per_tab):
+      for ids in range(self.steps_per_tab):
         sim.dynamics_step(
           delta_t=0.01,
           use_classical_accel=use_classical_accel)

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from libtbx.containers import OrderedDict, OrderedSet
 from libtbx.utils import Sorry
 import sys
@@ -603,7 +604,7 @@ class loop(DictMixin):
     for k in self.keys():
       print(indent + k, file=out)
     values = self._columns.values()
-    range_len_values = range(len(values))
+    range_len_values = list(range(len(values)))
     if fmt_str is not None:
       # Pretty printing:
       #   The user is responsible for providing a valid format string.
@@ -659,7 +660,7 @@ class loop(DictMixin):
     """ Warning! Still super-slow! """
     keys = self.keys()
     s_values = self.values()
-    range_len_self = range(len(self))
+    range_len_self = list(range(len(self)))
     # range is 1% faster than xrange in this particular place.
     # tuple (s_values...) is slightly faster than list
     for j in range(self.size()):
@@ -671,7 +672,7 @@ class loop(DictMixin):
       assert k in self_keys
     result = []
     s_values = self.values()
-    range_len_self = range(len(self))
+    range_len_self = list(range(len(self)))
     for i in range(self.size()):
       goodrow = True
       for k, v in kv_dict.iteritems():
@@ -734,11 +735,11 @@ def LCSubstr_set(S, T):
   http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Longest_common_substring#Python"""
 
   m = len(S); n = len(T)
-  L = [[0] * (n+1) for i in xrange(m+1)]
+  L = [[0] * (n+1) for i in range(m+1)]
   LCS = set()
   longest = 0
-  for i in xrange(m):
-    for j in xrange(n):
+  for i in range(m):
+    for j in range(n):
       if S[i] == T[j]:
         v = L[i][j] + 1
         L[i+1][j+1] = v

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx import miller
@@ -34,7 +35,7 @@ def as_normalised_array(miller_array,
   normalised_f_obs = flex.double()
   space_group = miller_array.space_group()
   tau = space_group.n_ltr()
-  for i in xrange(0,miller_array.size()):
+  for i in range(0,miller_array.size()):
     s_sq = stol_sq.data()[i]
     f_sq = math.pow(miller_array.data()[i], 2)
     epsilon = epsilons.data()[i]

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import itertools
 from smtbx.development import random_xray_structure
 import smtbx.utils
@@ -47,7 +48,7 @@ def benchmark(observations, model, may_parallelise, blas):
   n_trials = max(int(5e9/(0.5*m*n**2)), 1)
   building = 0
   solving = 0
-  for i in xrange(n_trials):
+  for i in range(n_trials):
     t0 = time()
     ls.build_up()
     t1 = time()
@@ -92,7 +93,7 @@ if __name__ == '__main__':
     start, stop = parsed[:2] if len(parsed) >= 2 else parsed*2
     step = parsed[2] if len(parsed) == 3 else 1
     if atype == int:
-      for i in xrange(start, stop, step):
+      for i in range(start, stop, step):
         yield i
       yield stop
     elif atype == float:

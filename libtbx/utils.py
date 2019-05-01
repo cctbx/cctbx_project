@@ -732,7 +732,7 @@ def detect_multiprocessing_problem():
     try:
       import multiprocessing
       pool = multiprocessing.Pool(processes=2)
-      pool.map(func=abs, iterable=range(2), chunksize=1)
+      pool.map(func=abs, iterable=list(range(2)), chunksize=1)
     except ImportError as e:
       if (not str(e).startswith(sem_open_msg)):
         raise

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import adptbx
 from cctbx import eltbx
 import cctbx.eltbx.xray_scattering
@@ -146,7 +147,7 @@ def check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose):
         xray_structure.unit_cell(), xray_structure.scatterers()[i].u_star)
       mismatch = 0
       s = ""
-      for i in xrange(6):
+      for i in range(6):
         u_shelx = int(u[i*7:(i+1)*7])
         u_adptbx = int(round(u_cart[i] * 1.e+4,))
         s += "%7d" % u_adptbx

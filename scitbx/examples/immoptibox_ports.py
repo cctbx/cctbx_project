@@ -3,6 +3,7 @@ http://www2.imm.dtu.dk/~hbn/immoptibox/
 """
 
 from __future__ import division, print_function
+from builtins import range
 import scitbx.math
 import scitbx.linalg
 from scitbx import matrix
@@ -28,16 +29,16 @@ def cholesky_decomposition(a, relative_eps=1.e-15):
   n = a.focus()[0]
   eps = relative_eps * flex.max(flex.abs(a))
   c = flex.double(a.accessor(), 0)
-  for k in xrange(n):
+  for k in range(n):
     sum = 0
-    for j in xrange(k):
+    for j in range(k):
       sum += c[(k,j)]**2
     d = a[(k,k)] - sum
     if (d <= eps): return None
     c[(k,k)] = math.sqrt(d)
-    for i in xrange(k+1,n):
+    for i in range(k+1,n):
       sum = 0
-      for j in xrange(k):
+      for j in range(k):
         sum += c[(i,j)] * c[(k,j)]
       c[(i,k)] = (a[(i,k)] - sum) / c[(k,k)]
   return c
@@ -48,15 +49,15 @@ def cholesky_solve(c, b):
   assert b.size() == c.focus()[0]
   n = c.focus()[0]
   z = flex.double(n, 0)
-  for k in xrange(n):
+  for k in range(n):
     sum = 0
-    for j in xrange(k):
+    for j in range(k):
       sum += c[(k,j)] * z[j]
     z[k] = (b[k] - sum) / c[(k,k)]
   x = flex.double(n, 0)
-  for k in xrange(n-1,-1,-1):
+  for k in range(n-1,-1,-1):
     sum = 0
-    for j in xrange(k+1,n):
+    for j in range(k+1,n):
       sum += c[(j,k)] * x[j]
     x[k] = (z[k] - sum) / c[(k,k)]
   return x
@@ -407,7 +408,7 @@ class test_function:
   def jacobian_finite(self, x, relative_eps=1.e-8):
     x0 = x
     result = flex.double()
-    for i in xrange(self.n):
+    for i in range(self.n):
       eps = max(1, abs(x0[i])) * relative_eps
       fs = []
       for signed_eps in [eps, -eps]:
@@ -429,7 +430,7 @@ class test_function:
   def gradients_finite(self, x, relative_eps=1.e-7):
     x0 = x
     result = flex.double()
-    for i in xrange(self.n):
+    for i in range(self.n):
       eps = max(1, abs(x0[i])) * relative_eps
       fs = []
       for signed_eps in [eps, -eps]:
@@ -456,7 +457,7 @@ class test_function:
   def hessian_finite(self, x, relative_eps=1.e-8):
     x0 = x
     result = flex.double()
-    for i in xrange(self.n):
+    for i in range(self.n):
       eps = max(1, abs(x0[i])) * relative_eps
       gs = []
       for signed_eps in [eps, -eps]:
@@ -577,8 +578,8 @@ class linear_function_rank_1(linear_function_full_rank):
   def initialization(self):
     m = self.m
     n = self.n
-    self.a = flex.double(xrange(1,m+1)).matrix_outer_product(
-             flex.double(xrange(1,n+1)))
+    self.a = flex.double(range(1,m+1)).matrix_outer_product(
+             flex.double(range(1,n+1)))
     self.x0 = flex.double(n, 1)
     self.tau0 = 1.e-8
     self.delta0 = 10
@@ -587,7 +588,7 @@ class linear_function_rank_1(linear_function_full_rank):
 
   def check_minimized_x_star(self, x_star):
     assert approx_equal(
-      flex.double(xrange(1,self.n+1)).dot(x_star),
+      flex.double(range(1,self.n+1)).dot(x_star),
       3/(2*self.m+1))
 
 class linear_function_rank_1_with_zero_columns_and_rows(
@@ -596,8 +597,8 @@ class linear_function_rank_1_with_zero_columns_and_rows(
   def initialization(self):
     m = self.m
     n = self.n
-    self.a = flex.double([0]+range(1,m-2+1)+[0]).matrix_outer_product(
-             flex.double([0]+range(2,n-1+1)+[0]))
+    self.a = flex.double([0]+list(range(1,m-2+1))+[0]).matrix_outer_product(
+             flex.double([0]+list(range(2,n-1+1))+[0]))
     self.x0 = flex.double(n, 1)
     self.tau0 = 1.e-8
     self.delta0 = 10
@@ -606,7 +607,7 @@ class linear_function_rank_1_with_zero_columns_and_rows(
 
   def check_minimized_x_star(self, x_star):
     assert approx_equal(
-      flex.double([0]+range(2,self.n-1+1)+[0]).dot(x_star),
+      flex.double([0]+list(range(2,self.n-1+1))+[0]).dot(x_star),
       3/(2*self.m-3))
 
 class rosenbrock_function(test_function):
@@ -775,7 +776,7 @@ class bard_function(test_function):
   def f(self, x):
     x1,x2,x3 = x
     result = flex.double()
-    for i,yi in zip(range(1,15+1),bard_function.ys):
+    for i,yi in zip(list(range(1,15+1)),bard_function.ys):
       ui = i
       vi = 16-i
       wi = min(ui, vi)
@@ -787,7 +788,7 @@ class bard_function(test_function):
   def jacobian_analytical(self, x):
     x1,x2,x3 = x
     result = flex.double()
-    for i in xrange(1,15+1):
+    for i in range(1,15+1):
       ui = i
       vi = 16-i
       wi = min(ui, vi)
@@ -801,7 +802,7 @@ class bard_function(test_function):
     x1,x2,x3 = x
     j = self.jacobian_analytical(x=x)
     result = j.matrix_transpose().matrix_multiply(j)
-    for i,fi in zip(xrange(1,15+1), self.f(x=x)):
+    for i,fi in zip(range(1,15+1), self.f(x=x)):
       ui = i
       vi = 16-i
       wi = min(ui, vi)
@@ -878,8 +879,8 @@ class kowalik_and_osborne_function(test_function):
       result[(2,2)] -= fi*2*ui**3*x1*(ui+x2)/denominator_cu
       result[(2,3)] -= fi*2*ui**2*x1*(ui+x2)/denominator_cu
       result[(3,3)] -= fi*2*ui*x1*(ui+x2)/denominator_cu
-    for i in xrange(0,4):
-      for j in xrange(i+1,4):
+    for i in range(0,4):
+      for j in range(i+1,4):
         result[(j,i)] = result[(i,j)]
     return result
 
@@ -887,7 +888,7 @@ class meyer_function(test_function):
 
   ys = [34780, 28610, 23650, 19630, 16370, 13720, 11540, 9744,
         8261, 7030, 6005, 5147, 4427, 3820, 3307, 2872]
-  ts = [45+5*i for i in xrange(1,16+1)]
+  ts = [45+5*i for i in range(1,16+1)]
 
   def initialization(self):
     assert self.m == 16
@@ -959,8 +960,8 @@ class meyer_function(test_function):
       result[(1,2)] -= -x1*x2*term/denominator_cu - x1*term/denominator_sq
       result[(2,2)] -= x1*x2**2*term/denominator_qa \
                      + 2*x1*x2*term/denominator_cu
-    for i in xrange(0,3):
-      for j in xrange(i+1,3):
+    for i in range(0,3):
+      for j in range(i+1,3):
         result[(j,i)] = result[(i,j)]
     j = self.jacobian_analytical(x=x)
     result += j.matrix_transpose().matrix_multiply(j)
@@ -968,10 +969,10 @@ class meyer_function(test_function):
 
 def exercise_cholesky():
   mt = flex.mersenne_twister(seed=0)
-  for n in xrange(1,10):
+  for n in range(1,10):
     a = flex.double(n*n,0)
     a.resize(flex.grid(n, n))
-    for i in xrange(n): a[(i,i)] = 1
+    for i in range(n): a[(i,i)] = 1
     c = cholesky_decomposition(a)
     assert c is not None
     assert approx_equal(c.matrix_multiply(c.matrix_transpose()), a)
@@ -979,7 +980,7 @@ def exercise_cholesky():
     x = cholesky_solve(c, b)
     assert approx_equal(a.matrix_multiply(x), b)
     d = flex.random_size_t(size=n, modulus=10)
-    for i in xrange(n): a[(i,i)] = d[i]+1
+    for i in range(n): a[(i,i)] = d[i]+1
     c = cholesky_decomposition(a)
     assert c is not None
     assert approx_equal(c.matrix_multiply(c.matrix_transpose()), a)
@@ -998,7 +999,7 @@ def exercise_cholesky():
          0.,        -0.9428090418,   2.666666667])
   #
   a0 = matrix.sym(sym_mat3=[3,5,7,1,2,-1])
-  for i_trial in xrange(100):
+  for i_trial in range(100):
     r = scitbx.math.euler_angles_as_matrix(
       mt.random_double(size=3,factor=360), deg=True)
     a = flex.double(r * a0 * r.transpose())
@@ -1011,8 +1012,8 @@ def exercise_cholesky():
       x = cholesky_solve(c, b)
       assert approx_equal(a.matrix_multiply(x), b)
   #
-  for n in xrange(1,10):
-    for i in xrange(10):
+  for n in range(1,10):
+    for i in range(10):
       r = mt.random_double(size=n*n, factor=10)-5
       r.resize(flex.grid(n,n))
       a = r.matrix_multiply(r.matrix_transpose())
@@ -1030,16 +1031,16 @@ def exercise():
   exercise_cholesky()
   default_flag = True
   if (0 or default_flag):
-    for m in xrange(1,5+1):
-      for n in xrange(1,m+1):
+    for m in range(1,5+1):
+      for n in range(1,m+1):
         linear_function_full_rank(m=m, n=n, verbose=verbose)
   if (0 or default_flag):
-    for m in xrange(1,5+1):
-      for n in xrange(1,m+1):
+    for m in range(1,5+1):
+      for n in range(1,m+1):
         linear_function_rank_1(m=m, n=n, verbose=verbose)
   if (0 or default_flag):
-    for m in xrange(3,7+1):
-      for n in xrange(3,m+1):
+    for m in range(3,7+1):
+      for n in range(3,m+1):
         linear_function_rank_1_with_zero_columns_and_rows(
           m=m, n=n, verbose=verbose)
   if (0 or default_flag):

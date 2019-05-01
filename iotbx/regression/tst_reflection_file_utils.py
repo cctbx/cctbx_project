@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import libtbx.load_env
 if (libtbx.env.has_module("ccp4io")):
   from iotbx import reflection_file_reader
@@ -455,7 +456,7 @@ def exercise_get_r_free_flags():
   exercise_flag_arrays = []
   exercise_flag_arrays.append(
     flex.int(list(flex.random_permutation(size=n)%10)))
-  exercise_flag_arrays.append(flex.int(xrange(n)))
+  exercise_flag_arrays.append(flex.int(range(n)))
   exercise_flag_arrays.append(flex.int(n, 0))
   for style in ["ccp4", "cns", "shelx", "bool"]:
     for i_exercise,exercise_flag_array in enumerate(exercise_flag_arrays):

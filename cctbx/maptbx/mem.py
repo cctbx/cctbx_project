@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import math
 from scitbx.array_family import flex
 from cctbx import miller
@@ -251,7 +252,7 @@ class run(object):
         def max_change_so_far(x):
           result = flex.double()
           if(self.cc_to_answer.size()):
-            for i in xrange(self.cc_to_answer.size()):
+            for i in range(self.cc_to_answer.size()):
               if(i>0):
                 result.append(self.cc_to_answer[i]-self.cc_to_answer[i-1])
           return flex.max(result)

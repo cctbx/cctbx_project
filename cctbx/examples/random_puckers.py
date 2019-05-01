@@ -5,6 +5,7 @@ random coordinates, how many configurations are found?
 """
 
 from __future__ import division, print_function
+from builtins import range
 import cctbx.geometry_restraints.manager
 import cctbx.geometry_restraints.lbfgs
 from cctbx.array_family import flex
@@ -21,7 +22,7 @@ def pentagon_sites_cart(start_vector=(0,1.5,0), normal=(0,0,1)):
   start_vector = matrix.col(start_vector)
   prev_point = matrix.col((0,0,0))
   axis = matrix.col(normal)
-  for i in xrange(4):
+  for i in range(4):
     r = axis.axis_and_angle_as_r3_rotation_matrix(angle=72*i, deg=True)
     point = prev_point + r * start_vector
     result.append(point)
@@ -95,7 +96,7 @@ def run(args):
   geo_manager.show_sorted(
     site_labels=atom_names, sites_cart=sites_cart, f=cout)
   def lbfgs(sites_cart):
-    for i_lbfgs_restart in xrange(3):
+    for i_lbfgs_restart in range(3):
       minimized = cctbx.geometry_restraints.lbfgs.lbfgs(
         sites_cart=sites_cart,
         geometry_restraints_manager=geo_manager)
@@ -106,9 +107,9 @@ def run(args):
   conformer_counts = [0] * 4
   sites_cart = sites_cart.deep_copy()
   mt = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(20):
+  for i_trial in range(20):
     while True:
-      for i in xrange(sites_cart.size()):
+      for i in range(sites_cart.size()):
         sites_cart[i] = mt.random_double_point_on_sphere()
       try:
         lbfgs(sites_cart=sites_cart)

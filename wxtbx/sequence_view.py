@@ -10,6 +10,7 @@
 # TODO: show existing CCTBX atom selection?
 
 from __future__ import division, print_function
+from builtins import range
 import wx
 import wx.lib.scrolledpanel
 import math, sys, os

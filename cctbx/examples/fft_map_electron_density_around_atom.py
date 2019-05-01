@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import xray
 from cctbx import miller
 from cctbx import crystal
@@ -83,7 +84,7 @@ def rho_stats(
     nxh = nx//2
     x = []
     y = []
-    for ix in xrange(-nxh,nxh+1):
+    for ix in range(-nxh,nxh+1):
       x.append(a*ix/nx)
       y.append(rho[(ix%nx,0,0)])
     densities_along_x.append((x,y))

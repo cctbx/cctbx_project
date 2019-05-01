@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.array_family import flex
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
@@ -7,7 +8,7 @@ from cStringIO import StringIO
 
 
 def example():
-  x_obs = (flex.double(range(100))+1.0)/101.0
+  x_obs = (flex.double(list(range(100)))+1.0)/101.0
   y_ideal = flex.sin(x_obs*6.0*3.1415) + flex.exp(x_obs)
   y_obs = y_ideal + (flex.random_double(size=x_obs.size())-0.5)*0.5
   w_obs = flex.double(x_obs.size(),1)
@@ -77,7 +78,7 @@ def example():
 
 
 def another_example(np=41,nt=5):
-  x = flex.double( range(np) )/(np-1)
+  x = flex.double( list(range(np)) )/(np-1)
   y = 0.99*flex.exp(-x*x*0.5)
   y = -flex.log(1.0/y-1)
   w = y*y/1.0
@@ -107,7 +108,7 @@ def another_example(np=41,nt=5):
   assert flex.max( flex.abs(fit_nw.coefs-fit_w.coefs) ) > 0
 
 def runge_phenomenon(self,n=41,nt=35,print_it=False):
-  x_e = 2.0*(flex.double( xrange(n) )/float(n-1)-0.5)
+  x_e = 2.0*(flex.double( range(n) )/float(n-1)-0.5)
   y_e = 1/(1+x_e*x_e*25)
   fit_e = chebyshev_lsq_fit.chebyshev_lsq_fit(nt,
                                               x_e,
@@ -127,7 +128,7 @@ def runge_phenomenon(self,n=41,nt=35,print_it=False):
     nt, fit_c.low_limit, fit_c.high_limit, fit_c.coefs)
 
 
-  x_plot = 2.0*(flex.double( xrange(3*n) )/float(3*n-1)-0.5)
+  x_plot = 2.0*(flex.double( range(3*n) )/float(3*n-1)-0.5)
   y_plot_e = fit_e.f( x_plot )
   y_plot_c = fit_c.f( x_plot )
   y_id =  1/(1+x_plot*x_plot*25)

@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from builtins import range
 from scitbx.array_family import flex
 from scitbx.lbfgs import have_lbfgs_fem, fortran, raw_reference, raw
 from libtbx.utils import show_times
@@ -17,15 +18,15 @@ def exercise(lbfgs_impl, n=100, m=5, iprint=[1, 0]):
   diagco = 0
   eps = 1.0e-5
   xtol = 1.0e-16
-  for j in xrange(0, n, 2):
+  for j in range(0, n, 2):
     x[j] = -1.2
     x[j+1] = 1.
   size_w = n*(2*m+1)+2*m
   w = flex.double(size_w)
   iflag = 0
-  for icall in xrange(2000):
+  for icall in range(2000):
     f = 0.
-    for j in xrange(0, n, 2):
+    for j in range(0, n, 2):
       t1 = 1.e0 - x[j]
       t2 = 1.e1 * (x[j+1] - x[j] * x[j])
       g[j+1] = 2.e1 * t2

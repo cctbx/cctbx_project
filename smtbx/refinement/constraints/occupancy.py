@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import absolute_import, print_function
+from builtins import range
 import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint
 from scitbx.array_family import flex
@@ -11,7 +12,7 @@ class occupancy_affine_constraint(object):
   def __init__(self, scatterer_indices, a, b):
     self.a = []
     self.scatterer_indices = []
-    for i in xrange(len(a)):
+    for i in range(len(a)):
       if(a[i]!=0.0):
         self.a += [a[i]]
         self.scatterer_indices += [scatterer_indices[i]]

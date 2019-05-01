@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.examples.structure_factor_derivatives \
   import parameters, gradients, pack_gradients, structure_factor
 from cctbx.examples.exp_i_alpha_derivatives import least_squares
@@ -13,9 +14,9 @@ random.seed(0)
 def d_target_d_params_finite(obs, hkl, d_star_sq, params, eps=1.e-8):
   result = []
   params_eps = copy.deepcopy(params)
-  for i_param in xrange(len(params)):
+  for i_param in range(len(params)):
     dx = []
-    for ix in xrange(7):
+    for ix in range(7):
       ts = []
       for signed_eps in [eps, -eps]:
         pi_eps = params[i_param].as_list()
@@ -32,8 +33,8 @@ def d_target_d_params_finite(obs, hkl, d_star_sq, params, eps=1.e-8):
 def d2_target_d_params_finite(obs, hkl, d_star_sq, params, eps=1.e-8):
   result = []
   params_eps = copy.deepcopy(params)
-  for i_param in xrange(len(params)):
-    for ix in xrange(7):
+  for i_param in range(len(params)):
+    for ix in range(7):
       gs = []
       for signed_eps in [eps, -eps]:
         pi_eps = params[i_param].as_list()
@@ -72,12 +73,12 @@ def exercise(args):
     out = sys.stdout
   hkl = (1,2,3)
   d_star_sq = 1e-3
-  for n_params in xrange(2,5):
-    for i_trial in xrange(5):
+  for n_params in range(2,5):
+    for i_trial in range(5):
       params = []
-      for i in xrange(n_params):
+      for i in range(n_params):
         params.append(parameters(
-          xyz=[random.random() for i in xrange(3)],
+          xyz=[random.random() for i in range(3)],
           u=random.random()*0.1,
           w=random.random(),
           fp=(random.random()-0.5)*2,

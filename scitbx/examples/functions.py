@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import math as m
 
 def Function(name):
@@ -139,8 +140,8 @@ if __name__ == "__main__":
              'rastrigin',
              'easom']
 
-    x = range(-40,41)
-    y = range(-40,41)
+    x = list(range(-40,41))
+    y = list(range(-40,41))
     for xx in x:
       for yy in y:
         tmp = [xx/10.0,yy/10.0]

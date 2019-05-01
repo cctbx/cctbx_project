@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.uctbx import reduction_base
 from cctbx.uctbx import krivy_gruber_1976
 from cctbx.uctbx import gruber_1973
@@ -370,13 +371,13 @@ def exercise_gruber_types(n_trials_per_type, dump=0, verbose=0):
   type_conditions = gruber_1973_table_1.get_type_conditions()
   random_unimodular = random_unimodular_integer_matrix_generator()
   have_errors = False
-  for k in xrange(1,29):
+  for k in range(1,29):
     set = mk2_sets[k]
     tc = type_conditions[k]
     if (0 or verbose):
       print(" ", tc.ck_types, tc.defks)
     n_errors = 0
-    for i_trial in xrange(n_trials_per_type):
+    for i_trial in range(n_trials_per_type):
       gruber_matrix = random_gruber_matrix(tc)
       type_cell = ucgmx(gruber_matrix)
       if (0 or verbose):

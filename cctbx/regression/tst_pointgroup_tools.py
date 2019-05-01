@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import sys
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -215,8 +216,8 @@ def test_reference_setting_choices():
         xs_new = best_cell_finder.return_best_xs()
         tmp_array.append(xs_new)
       count = 0
-      for tmp_xs1 in xrange(len(tmp_array)):
-        for tmp_xs2 in xrange(len(tmp_array)):
+      for tmp_xs1 in range(len(tmp_array)):
+        for tmp_xs2 in range(len(tmp_array)):
 
           if (tmp_xs1 != tmp_xs2):
             assert (tmp_array[tmp_xs1].space_group()

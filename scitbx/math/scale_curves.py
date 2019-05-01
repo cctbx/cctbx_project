@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx import differential_evolution as de
 from scitbx.array_family import flex
 import sys
@@ -9,7 +10,7 @@ class curve_interpolator(object):
     self.start    = start
     self.stop     = stop
     self.n_points = n_points
-    self.target_x = flex.double( range(n_points) )/float(n_points-1)
+    self.target_x = flex.double( list(range(n_points)) )/float(n_points-1)
     self.target_x = self.target_x*(self.stop-self.start)+self.start
     self.delta    = self.target_x[1]-self.target_x[0]
 
@@ -114,7 +115,7 @@ class linear_scaler(object):
     """ ii: datset number ; result[ii]=associated scale_factor index """
     result = []
     count = 0
-    for ii in xrange(self.n_sets):
+    for ii in range(self.n_sets):
       if ii != self.ref:
         result.append( count )
         count += 1
@@ -139,7 +140,7 @@ class linear_scaler(object):
   def get_scales_offsets(self,vector):
     scales = []
     offsets = []
-    for scale in xrange(self.n_sets):
+    for scale in range(self.n_sets):
       tmp_scale = 1.0
       tmp_offset = 0.0
       if scale != self.ref:
@@ -155,7 +156,7 @@ class linear_scaler(object):
     scales, offsets = self.get_scales_offsets(vector)
     dr = self.get_mean(scales,offsets)
     result = 0
-    for jj in xrange(self.n_sets):
+    for jj in range(self.n_sets):
       dj =  scales[jj]*(self.means[jj]+offsets[jj])
       vj =  self.vars[jj]*scales[jj]*scales[jj]
       t  =  flex.pow((dj-dr),2)/( 1e-13 + vj )
@@ -189,7 +190,7 @@ def scale_it_pairwise(m,v,ref_id=0,factor=10,show_progress=False,add=True):
   n = len(m)
   scales = []
   ofsets = []
-  for ii in xrange(n):
+  for ii in range(n):
     if ii != ref_id:
       ms = [ m[ref_id],m[ii] ]
       vs = [ m[ref_id],m[ii] ]
@@ -204,7 +205,7 @@ def scale_it_pairwise(m,v,ref_id=0,factor=10,show_progress=False,add=True):
 
 def test_curve_scaler():
    flex.set_random_seed( 12345 )
-   x = flex.double( range(10) )/10.0
+   x = flex.double( list(range(10)) )/10.0
    y = flex.exp( -x )
    y0 = y
    y1 = y*100+50
@@ -229,7 +230,7 @@ def test_curve_scaler():
 
 
 def tst_curve_interpolator():
-  x = flex.double( range(25) )/24.0
+  x = flex.double( list(range(25)) )/24.0
   y = x*x
   ip = curve_interpolator(0,2.0,200)
   x_target = ip.target_x
@@ -250,7 +251,7 @@ def tst_curve_interpolator():
   assert b[1] in (99,100)
 
 
-  x = flex.double( range(5,23) )/24.0
+  x = flex.double( list(range(5,23)) )/24.0
   y = x*x
   ip = curve_interpolator(0,2.0,200)
   nx,ny,a,b = ip.interpolate(x,y)

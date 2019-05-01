@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from builtins import range
 from scitbx.array_family import flex
 import random
 import scitbx.direct_search_simulated_annealing

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import cctbx.sgtbx
 
 import boost.python
@@ -72,11 +73,11 @@ def smooth_map(map, crystal_symmetry, rad_smooth, method="exp"):
     mmin = flex.min(map)
     assert mmin<1.e-6 and mmin>=0.0
     map_smooth = map.deep_copy()
-    for i in xrange(3):
+    for i in range(3):
       maptbx.map_box_average(
         map_data      = map_smooth,
         index_span    = 1)
-    for i in xrange(3):
+    for i in range(3):
       maptbx.map_box_average(
         map_data      = map_smooth,
         cutoff        = 0.99,
@@ -541,7 +542,7 @@ class boxes_by_dimension(object):
       maxe = be[len(be)-1][1]
       step = int(maxe/len(be))
       result = []
-      for i in xrange(len(be)):
+      for i in range(len(be)):
         if(i==0):
           l = 0
           r = step
@@ -572,7 +573,7 @@ class boxes_by_dimension(object):
     for i in range(0, n_real_1d, step): limits.append(i)
     limits.append(n_real_1d)
     box_1d = []
-    for i in xrange(len(limits)):
+    for i in range(len(limits)):
       if(i==0):               box_1d.append([limits[0],  limits[1]])
       elif(i!=len(limits)-1): box_1d.append([limits[i],limits[i+1]])
     return box_1d
@@ -612,7 +613,7 @@ class boxes(object):
       maxe = be[len(be)-1][1]
       step = int(maxe/len(be))
       result = []
-      for i in xrange(len(be)):
+      for i in range(len(be)):
         if(i==0):
           l = 0
           r = step
@@ -643,7 +644,7 @@ class boxes(object):
     for i in range(0, n_real_1d, step): limits.append(i)
     limits.append(n_real_1d)
     box_1d = []
-    for i in xrange(len(limits)):
+    for i in range(len(limits)):
       if(i==0):               box_1d.append([limits[0],  limits[1]])
       elif(i!=len(limits)-1): box_1d.append([limits[i],limits[i+1]])
     return box_1d
@@ -928,7 +929,7 @@ class peak_cluster_analysis(object):
     sum_w_sites = matrix.col(orth(site)) * height
     sum_w = height
     height_cutoff = height * self._cluster_height_fraction
-    for i in xrange(self._peak_list_index, self._peak_list.size()):
+    for i in range(self._peak_list_index, self._peak_list.size()):
       if (self._is_processed[i]): continue
       other_height = self._peak_list.heights()[i]
       if (other_height < height_cutoff): break
@@ -977,7 +978,7 @@ def region_density_correlation(
   small_origin_in_large_grid = [0,0,0]
   small_abc = [0,0,0]
   sites_frac_shift = [0,0,0]
-  for i in xrange(3):
+  for i in range(3):
     grid_step = large_ucp[i] / large_n_real[i]
     buffer = large_d_min / grid_step
     grid_min = ifloor(large_frac_min[i] * large_n_real[i] - buffer)
@@ -1203,8 +1204,8 @@ def map_peak_3d_as_2d(
     r = r/100.
     dist.append(r)
     rho = flex.double()
-    for s in xrange(0,360,s_angle_sampling_step):
-      for t in xrange(0,360,t_angle_sampling_step):
+    for s in range(0,360,s_angle_sampling_step):
+      for t in range(0,360,t_angle_sampling_step):
         xc,yc,zc = scitbx.math.point_on_sphere(r=r, s_deg=s, t_deg=t,
           center=center_cart)
         xf,yf,zf = unit_cell.fractionalize([xc,yc,zc])
@@ -1233,7 +1234,7 @@ class positivity_constrained_density_modification(object):
         max_prime               = 5,
         assert_shannon_sampling = True)
     self.f_mod = self.f.deep_copy()
-    for i in xrange(n_cycles):
+    for i in range(n_cycles):
       fft_map = miller.fft_map(
         crystal_gridding     = self.crystal_gridding,
         fourier_coefficients = self.f_mod,
@@ -1418,7 +1419,7 @@ Fourier image of specified resolution, etc.
     first_inflection_point=None
     size = image_values.size()
     second_derivatives = flex.double()
-    for i in xrange(size):
+    for i in range(size):
       if(i>0 and i<size-1):
         dxx = image_values[i-1]+image_values[i+1]-2*image_values[i]
       elif(i==0):
@@ -1609,7 +1610,7 @@ def loc_res(map,
       scale=20
       low_value=int(b_range_low/scale)
       high_value=max(low_value+1,int(b_range_high/scale))
-      for b_iso in  [ i*scale for i in xrange(low_value,high_value)]:
+      for b_iso in  [ i*scale for i in range(low_value,high_value)]:
         d_min, cc = maptbx.cc_complex_complex(
         f_1        = fc.data(), # note swapped from rscc f_1 is fixed
         f_2        = fo.data(),

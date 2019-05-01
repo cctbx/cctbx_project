@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -68,7 +69,7 @@ def list_6_as_miller_arrays(file_name):
             if not li: break
             space_group.expand_smx(li[1:-1])
         else:
-          for i in xrange(6): fcf.next()
+          for i in range(6): fcf.next()
           for li in fcf:
             items = li.split()
             if not items: break

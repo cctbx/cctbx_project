@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import miller
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -30,7 +31,7 @@ def exercise(space_group_info, anomalous_flag,
         assert flex.linear_correlation(
           j.sigmas(), a.sigmas()).coefficient() > 1-1.e-6
   redundancies = flex.size_t()
-  for i in xrange(fs.indices().size()):
+  for i in range(fs.indices().size()):
     redundancies.append(random.randrange(5)+1)
   space_group = space_group_info.group()
   r_indices = flex.miller_index()
@@ -39,7 +40,7 @@ def exercise(space_group_info, anomalous_flag,
   for i,n in enumerate(redundancies):
     h = fs.indices()[i]
     h_eq = miller.sym_equiv_indices(space_group, h).indices()
-    for j in xrange(n):
+    for j in range(n):
       r_indices.append(h_eq[random.randrange(len(h_eq))].h())
       r_data.append(fs.data()[i])
       r_sigmas.append(fs.sigmas()[i])

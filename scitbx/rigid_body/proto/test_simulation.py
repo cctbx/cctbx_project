@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.rigid_body.proto import featherstone
 from scitbx.rigid_body.proto import test_utils
 from scitbx.rigid_body.proto.utils import \
@@ -95,7 +96,7 @@ class simulation(object):
       gs = []
       J_orig = B.J
       q_orig = list(J_orig.get_q())
-      for iq in xrange(J_orig.q_size):
+      for iq in range(J_orig.q_size):
         fs = []
         for signed_eps in [eps, -eps]:
           q_eps = list(q_orig)

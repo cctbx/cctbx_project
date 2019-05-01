@@ -6,6 +6,7 @@ from __future__ import division, print_function
 # See also:
 #   http://cctbx.sourceforge.net/iotbx_cif
 #
+from builtins import range
 import os
 
 

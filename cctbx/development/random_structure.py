@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from cctbx import sgtbx
 from cctbx import crystal
 from cctbx import adptbx
@@ -137,7 +138,7 @@ def random_site(special_position_settings,
                 grid=None,
                 t_centre_of_inversion=None,
                 max_trials=100):
-  for trial in xrange(max_trials):
+  for trial in range(max_trials):
     if (grid is None):
       site = (random.random(), random.random(), random.random())
     else:
@@ -177,9 +178,9 @@ def random_sites(special_position_settings,
   if (t_centre_of_inversion is not None):
     assert n_new % 2 == 0
     n_loop /= 2
-  for i_back_track in xrange(max_back_track):
+  for i_back_track in range(max_back_track):
     all_sites = existing_sites[:]
-    for i_new in xrange(n_loop):
+    for i_new in range(n_loop):
       site = random_site(special_position_settings,
                          all_sites,
                          min_hetero_distance,
@@ -205,7 +206,7 @@ def random_modify_site(special_position_settings, site, gauss_sigma,
   assert site_symmetry.distance_moved() < 1.e-5
   unit_cell = special_position_settings.unit_cell()
   site_cart = list(unit_cell.orthogonalize(site))
-  for trial in xrange(max_trials):
+  for trial in range(max_trials):
     if (vary_z_only):
       modified_site_cart = site_cart[:2] \
                          + [random.gauss(site_cart[2], gauss_sigma)]
@@ -443,9 +444,9 @@ class xray_structure(xray.structure):
   def random_modify_u_star(self, u_star, gauss_sigma,
                                  max_relative_difference=1./3,
                                  max_trials=100):
-    for trial in xrange(max_trials):
+    for trial in range(max_trials):
       modified_u_star = []
-      for i in xrange(len(u_star)):
+      for i in range(len(u_star)):
         u = u_star[i]
         max_diff = u * max_relative_difference
         modified_u = random.gauss(u, gauss_sigma)
@@ -515,13 +516,13 @@ class wyckoff_pair_generator(object):
     self.wyckoff_table = space_group_info.wyckoff_table()
 
   def loop(self):
-    for i_position in xrange(self.wyckoff_table.size()):
+    for i_position in range(self.wyckoff_table.size()):
       site_symmetry_i = self.wyckoff_table.random_site_symmetry(
         special_position_settings=self.special_position_settings,
         i_position=i_position)
       equiv_sites_i = sgtbx.sym_equiv_sites(site_symmetry_i)
-      for j_position in xrange(self.wyckoff_table.size()):
-        for n_trial in xrange(self.max_trials_per_position):
+      for j_position in range(self.wyckoff_table.size()):
+        for n_trial in range(self.max_trials_per_position):
           site_j = self.wyckoff_table.random_site_symmetry(
             special_position_settings=self.special_position_settings,
             i_position=j_position).exact_site()

@@ -1,5 +1,6 @@
 from __future__ import division, print_function
 
+from builtins import range
 if (__name__ == "__main__"):
 
   # ---- line 197 -------------------------------------------------------------
@@ -457,5 +458,5 @@ if (__name__ == "__main__"):
     }
     """)
 
-  for attributes_level in xrange(4):
+  for attributes_level in range(4):
     master_phil.show(attributes_level=attributes_level)

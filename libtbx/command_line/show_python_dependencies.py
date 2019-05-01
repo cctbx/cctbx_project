@@ -6,6 +6,7 @@ Lists the module python dependencies and the state of install.
 
 from __future__ import absolute_import, division, print_function
 
+from builtins import range
 import argparse
 import copy
 import re

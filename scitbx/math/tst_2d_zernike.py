@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from builtins import range
 import scitbx.math
 from scitbx import differential_evolution as de
 from scitbx import simplex
@@ -138,7 +139,7 @@ def tst_2d_poly(n,l):
 def tst_2d_zm(n,l):
   nmax=max(n,20)
   np=100
-  points=flex.double(range(-np,np+1))/np
+  points=flex.double(list(range(-np,np+1)))/np
   grid = scitbx.math.two_d_grid(np, nmax)
   zm2d = scitbx.math.two_d_zernike_moments(grid, nmax)
   image = flex.vec3_double()
@@ -332,8 +333,8 @@ class inm_refine(object):
     self.n = self.ndim
     self.domain =[(-1.0,1.0)]*self.ndim
     self.target_data=flex.double()
-    self.n_list=range(self.m,nmax+1,2)
-    self.n_indx_list=range(self.ndim)
+    self.n_list=list(range(self.m,nmax+1,2))
+    self.n_indx_list=list(range(self.ndim))
     for nn in self.n_list:
       self.target_data.append( self.Cnm.get_coef(nn,self.m) )
 #    self.solution=flex.random_double(self.n)*2-1

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from iotbx import reflection_file_reader
 from cctbx import miller
 from cctbx.array_family import flex
@@ -92,7 +93,7 @@ class label_table(object):
     assert label is not None
     scores = self.scores(label=label)
     selected_array = None
-    for high_score in xrange(max(scores),0,-1):
+    for high_score in range(max(scores),0,-1):
       if (scores.count(high_score) > 0):
         if (scores.count(high_score) > 1):
           print(file=f)
@@ -319,7 +320,7 @@ class get_r_free_flags_scores(object):
               c_keys_min = min(c_keys)
               c_keys_max = max(c_keys)
               if (((c_keys_max - c_keys_min) < data.size()) and
-                  (c_keys == range(c_keys_min, c_keys_max+1))):
+                  (c_keys == list(range(c_keys_min, c_keys_max+1)))):
                 # XXX 0.55 may be too close a margin - the routine to export
                 # R-free flags for CCP4 seems to get this wrong frequently.
                 if (min(c_values) > max(c_values)*0.55):

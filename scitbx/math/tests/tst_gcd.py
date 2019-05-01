@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import scitbx.math
 import boost.rational
 import time
@@ -8,9 +9,9 @@ def compare_with_boost_rational_gcd(label):
   other_gcd = getattr(scitbx.math, label, None)
   if (other_gcd is None): return
   print("compare_with_boost_rational_gcd(%s)" % label)
-  samples = range(-100,101) \
-          + range(-100000-10,-100000+11) \
-          + range( 100000-10, 100000+11)
+  samples = list(range(-100,101)) \
+          + list(range(-100000-10,-100000+11)) \
+          + list(range( 100000-10, 100000+11))
   for a in samples:
     for b in samples:
       r = boost.rational.gcd(a, b)

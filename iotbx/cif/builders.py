@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from cctbx import adptbx, crystal, miller, sgtbx, uctbx, xray
 from cctbx.array_family import flex
 import iotbx.cif

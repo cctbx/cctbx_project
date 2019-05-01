@@ -8,6 +8,7 @@
 #
 from __future__ import division
 
+from builtins import range
 import xds_cbf
 
 class reader(xds_cbf.reader):
@@ -26,8 +27,8 @@ class reader(xds_cbf.reader):
     nx = int(ceil(dim[1] / sampled_gain.shape[1]))
 
     # Resize the gain image
-    i1 = numpy.array([range(dim[1])] * dim[0], dtype=numpy.int32)
-    j1 = numpy.array([range(dim[0])] * dim[1], dtype=numpy.int32).transpose()
+    i1 = numpy.array([list(range(dim[1]))] * dim[0], dtype=numpy.int32)
+    j1 = numpy.array([list(range(dim[0]))] * dim[1], dtype=numpy.int32).transpose()
     i2 = numpy.divide(i1, nx)
     j2 = numpy.divide(j1, ny)
     gain = numpy.zeros(dim, dtype=numpy.float64)

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from libtbx.utils import Abort
 from libtbx import group_args
 import cStringIO
@@ -2063,7 +2064,7 @@ def random_sequence(n_residues=None,residue_basket=None):
   import random
   s=""
   nn=len(residue_basket)-1
-  for i in xrange(n_residues):
+  for i in range(n_residues):
     id=random.randint(0,nn)
     s+=residue_basket[id]
   return s

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from libtbx.test_utils import approx_equal
 import cmath
 import math
@@ -40,10 +41,10 @@ def empirical_proof(g, ffp, fdp, alpha):
   assert approx_equal(d_b_d_fdp, d_c_d_fdp.imag)
 
 def exercise():
-  for g in xrange(-3,4):
-    for ffp in xrange(-3,4):
-      for fdp in xrange(-3,4):
-        for alpha_deg in xrange(0,360,15):
+  for g in range(-3,4):
+    for ffp in range(-3,4):
+      for fdp in range(-3,4):
+        for alpha_deg in range(0,360,15):
           empirical_proof(g, ffp, fdp, alpha_deg*math.pi/180)
   print("OK")
 

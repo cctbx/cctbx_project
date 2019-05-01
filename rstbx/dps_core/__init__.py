@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from six.moves import range
 from cctbx.array_family import flex # import dependency
 
@@ -84,7 +85,7 @@ class _(boost.python.injector, ext.dps_core):
     comfortable increasing this parameter if needed to index a difficult case"""
     nc = self.n_candidates()
     MAXINDEX=basis
-    bases = range(min(MAXINDEX,nc))
+    bases = list(range(min(MAXINDEX,nc)))
     comb=[]
     for pp in range(len(bases)-2):
       for qq in range(pp+1,len(bases)-1):

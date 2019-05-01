@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints.distance_least_squares \
   import distance_and_repulsion_least_squares
@@ -83,7 +84,7 @@ def exercise_with_zeolite(verbose):
 0^  3.071  3.216 -0.145 2.08e+00 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
 0^... (remaining 20 not shown)
 """,
-    selections=[range(6), range(-5,0)])
+    selections=[list(range(6)), list(range(-5,0))])
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
     by_value="delta",
@@ -104,7 +105,7 @@ def exercise_with_zeolite(verbose):
 ...
 0^... (remaining 20 not shown)
 """,
-    selections=[range(6), [-1]])
+    selections=[list(range(6)), [-1]])
   site_labels_long = ["abc"+label+"def" for label in site_labels]
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
@@ -130,7 +131,7 @@ def exercise_with_zeolite(verbose):
 ^0  3.071  3.216 -0.145 2.08e+00 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
 ^0... (remaining 20 not shown)
 """,
-    selections=[range(6), range(-5,0)])
+    selections=[list(range(6)), list(range(-5,0))])
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
     by_value="residual",
@@ -154,7 +155,7 @@ def exercise_with_zeolite(verbose):
 .=  3.071  3.216 -0.145 2.08e+00 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
 .=... (remaining 20 not shown)
 """,
-    selections=[range(6), range(-5,0)])
+    selections=[list(range(6)), list(range(-5,0))])
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
     by_value="residual",
@@ -227,7 +228,7 @@ d%          SI1
 d%   model   vdw sym.op.
 d%   3.216 3.000 -x+1/2,-y+1/2,-z+1
 """,
-      selections=[range(2), range(10,14), range(26,30)])
+      selections=[list(range(2)), list(range(10,14)), list(range(26,30))])
     out = StringIO()
     sorted_asu_proxies.show_sorted(
       by_value="delta",
@@ -251,7 +252,7 @@ d%   3.216 3.000 -x+1/2,-y+1/2,-z+1
 *j   3.130 3.000 -x+1,y,-z+1
 *j... (remaining 2 not shown)
 """,
-      selections=[range(2), range(-9,0)])
+      selections=[list(range(2)), list(range(-9,0))])
     out = StringIO()
     sorted_asu_proxies.show_sorted(
       by_value="delta",

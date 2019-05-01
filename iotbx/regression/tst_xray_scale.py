@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import iotbx.pdb
 from cctbx import crystal
 from libtbx.test_utils import approx_equal

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
 from cctbx import crystal
@@ -24,9 +25,9 @@ def finite_difference_gradients(restraint_type, sites_cart, proxy, unit_cell=Non
         sites_cart=sites_cart,
         proxy=proxy).residual()
   result = []
-  for i in xrange(len(sites_cart)):
+  for i in range(len(sites_cart)):
     result_i = []
-    for j in xrange(3):
+    for j in range(3):
       h = [0,0,0]
       h[j] = eps
       h = matrix.col(h)
@@ -647,7 +648,7 @@ def exercise_bond():
     return 1
   mt = flex.mersenne_twister(seed=0)
   for slack in [0, 1/3., 2/3., 1]:
-    for ish in xrange(9):
+    for ish in range(9):
       sh = ish / 2.
       site1 = matrix.col((1,2,3)) \
             + sh * matrix.col(mt.random_double_point_on_sphere())
@@ -661,7 +662,7 @@ def exercise_bond():
         b.delta_slack,
         sign(b.delta) * max(0, (abs(b.delta) - b.slack)))
       #
-      for i in xrange(3):
+      for i in range(3):
         rs = []
         eps = 1.e-6
         for signed_eps in [eps, -eps]:
@@ -786,7 +787,7 @@ def nb_cos_finite_difference_gradients(nbf, proxy, sites_cart, eps=1.e-6):
   result = []
   for i in proxy.i_seqs:
     sc = list(sites_cart[i])
-    for c in xrange(3):
+    for c in range(3):
       scc0 = sc[c]
       rs = []
       for signed_eps in [eps, -eps]:
@@ -830,7 +831,7 @@ def exercise_nonbonded_cos(verbose=0):
     sc0 = matrix.col(sites_cart[0])
     v01 = matrix.col(sites_cart[1]) - sc0
     v01 *= 1/abs(v01)
-    for i in xrange(21,-1,-1):
+    for i in range(21,-1,-1):
       for eps in [0, 1.e-3, -1.e-3]:
         d = i/10 + eps
         sites_cart[1] = sc0 + d * v01
@@ -1777,7 +1778,7 @@ def exercise_dihedral():
     (41.818, -0.984, 10.006)))
   r_orig = geometry_restraints.dihedral(
     sites=list(sites_cart), angle_ideal=0, weight=1)
-  perm = flex.size_t(xrange(4))
+  perm = flex.size_t(range(4))
   n_perms = 0
   n_equiv = 0
   n_equiv_direct = 0
@@ -1885,10 +1886,10 @@ def exercise_dihedral():
     assert approx_equal(v, 0)
     return d
   #
-  for periodicity in xrange(1,6):
+  for periodicity in range(1,6):
     f = open("plot_geo_restr_dihedral_periodicity_%d.xy" % periodicity, "w")
     for signed_periodicity in [periodicity, -periodicity]:
-      for angle_model in xrange(0, 720+1, 1):
+      for angle_model in range(0, 720+1, 1):
         d = get_d(
           angle_ideal=70,
           angle_model=angle_model,
@@ -1898,8 +1899,8 @@ def exercise_dihedral():
     f.close()
   #
   intersection_angle = 120
-  for angle_ideal in xrange(0, 720+5, 5):
-    for periodicity in xrange(1,6):
+  for angle_ideal in range(0, 720+5, 5):
+    for periodicity in range(1,6):
       for signed_periodicity in [periodicity, -periodicity]:
         residuals = []
         for offset in [0, intersection_angle, -intersection_angle]:
@@ -2200,7 +2201,7 @@ def exercise_planarity():
   p = p.sort_i_seqs()
   assert tuple(p.i_seqs) == (0,1,2,3)
   assert approx_equal(p.weights, weights)
-  for i_constructor in xrange(2):
+  for i_constructor in range(2):
     if (i_constructor == 0):
       l = geometry_restraints.planarity(
         sites=sites_cart,
@@ -2278,10 +2279,10 @@ def exercise_planarity():
   check(selected[1], i_seqs=[2,3,0,4], weights=[4,5,6,7], origin_id=1)
   #
   for i_remove in range(10,15):
-    sel = flex.size_t(range(10,i_remove)+range(i_remove+1,15))
+    sel = flex.size_t(list(range(10,i_remove))+list(range(i_remove+1,15)))
     pp = geometry_restraints.planarity_proxy(
       i_seqs=flex.size_t([10, 11, 12, 13, 14]),
-      weights=flex.double(range(5))+13)
+      weights=flex.double(list(range(5)))+13)
     pps = geometry_restraints.shared_planarity_proxy()
     pps.append(pp)
     selected = pps.proxy_select(20, sel)
@@ -3077,10 +3078,10 @@ x,y,z
     gradient_array=grads_ana)
   eps = 1e-6
   grads_fin = flex.vec3_double()
-  for i_site in xrange(sites_cart.size()):
+  for i_site in range(sites_cart.size()):
     sori = sites_cart[i_site]
     gs = []
-    for ix in xrange(3):
+    for ix in range(3):
       fs = []
       for signed_eps in [eps, -eps]:
         seps = list(sori)

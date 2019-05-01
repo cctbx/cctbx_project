@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx import lbfgs as scitbx_lbfgs
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
@@ -290,8 +291,8 @@ def finite_curv_yx(xxx_todo_changeme12, s11, s12, s22, twist, eps=1.e-6):
   return (tp-tm)/(2*eps)
 
 def verify_derivatives(n=5, s11=1, s12=1.2, s22=2, twist=0.5, verbose=0):
-  for ix in xrange(-n,n+1):
-    for iy in xrange(-n,n+1):
+  for ix in range(-n,n+1):
+    for iy in range(-n,n+1):
       xy = [i/float(n) for i in (ix,iy)]
       if (0 or verbose):
         print("value: %5.3f" % twisted_gauss2d0(xy, s11, s12, s22, twist))
@@ -487,7 +488,7 @@ def run(scale=2, twist=0.5):
   if ("--verify" in sys.argv[1:]):
     verify_derivatives()
   use_fortran = "--fortran" in sys.argv[1:]
-  for iteration in xrange(100):
+  for iteration in range(100):
     x = [random.random()*scale for i in (0,1)]
     print(x, "start")
     for use_curvatures in (False, True):

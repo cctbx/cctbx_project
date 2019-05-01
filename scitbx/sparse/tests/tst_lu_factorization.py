@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx import sparse
 from libtbx.test_utils import approx_equal
 
@@ -30,7 +31,7 @@ def exercise_gilbert_peierls_lu_factorization():
   a = sparse.matrix(8,8)
   for j,c in enumerate(a.cols()):
     j += 1
-    for i in xrange(a.n_rows):
+    for i in range(a.n_rows):
       i += 1
       if i == 3:
           c[i-1] = 1.5 - j/5.

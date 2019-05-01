@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.sgtbx import subgroups
 from cctbx.array_family import flex
 from cctbx import sgtbx
@@ -313,7 +314,7 @@ def exercise_rot_mx():
   assert r.den() == 12
   assert r.num() == (36,0,0,0,36,0,0,0,36)
   assert r.determinant() == 27
-  r = rot_mx(range(9), 2).transpose()
+  r = rot_mx(list(range(9)), 2).transpose()
   assert r.num() == (0, 3, 6, 1, 4, 7, 2, 5, 8)
   assert r.den() == 2
   assert rot_mx().inverse().num() == rot_mx().num()
@@ -753,7 +754,7 @@ def exercise_change_of_basis_op():
   c = change_of_basis_op("z,x,y")
   assert str(c.apply(rt_mx("-x,-y,z"))) == "x,-y,-z"
   xf = c((0.1,0.2,0.3))
-  for i in xrange(3): assert approx_equal(xf[i], (0.3,0.1,0.2)[i])
+  for i in range(3): assert approx_equal(xf[i], (0.3,0.1,0.2)[i])
   c.update(change_of_basis_op("z,x,y"))
   assert str(c.c()) == "y,z,x"
   assert (c * c.inverse()).is_identity_op()
@@ -892,9 +893,9 @@ def exercise_space_group():
   assert g.order_p() == 8
   assert g.order_z() == 32
   j = 0
-  for i_ltr in xrange(g.n_ltr()):
-    for i_inv in xrange(g.f_inv()):
-      for i_smx in xrange(g.n_smx()):
+  for i_ltr in range(g.n_ltr()):
+    for i_inv in range(g.f_inv()):
+      for i_smx in range(g.n_smx()):
         assert g(i_ltr, i_inv, i_smx) == g(j)
         assert g[j] == g(j)
         j += 1
@@ -973,7 +974,7 @@ def exercise_space_group():
   u = uctbx.unit_cell((95.2939, 95.2939, 98.4232, 94.3158, 115.226, 118.822))
   g = space_group("C 2y (x+y,-x+y+z,z)")
   assert g.is_compatible_unit_cell(u)
-  assert approx_equal(g.average_u_star(u_star=range(6,0,-1)),
+  assert approx_equal(g.average_u_star(u_star=list(range(6,0,-1))),
     (6.5, 5.5, 4.0, 3.5, 2.5, 1.5))
   g = space_group("C 2 -2c")
   h = g.build_derived_reflection_intensity_group(anomalous_flag=True)
@@ -1317,7 +1318,7 @@ def exercise_phase_info():
   assert approx_equal(p.nearest_valid_phase(phi+math.pi/2+1.e-6), phi+math.pi)
   assert approx_equal(p.nearest_valid_phase(phi+math.pi+1.e-15), phi+math.pi)
   assert approx_equal(p.nearest_valid_phase(phi+math.pi-1.e-15), phi+math.pi)
-  for i in xrange(-3, 4):
+  for i in range(-3, 4):
     phi = p.ht_angle() + i * math.pi
     assert p.is_valid_phase(phi)
     assert p.is_valid_phase(phi*180/math.pi, True)
@@ -1338,7 +1339,7 @@ def exercise_phase_info():
     assert p.is_valid_phase(p.nearest_valid_phase(phi-1.e-15, True), True)
     assert p.is_valid_phase(p.nearest_valid_phase(phi+180+1.e-15, True), True)
     assert p.is_valid_phase(p.nearest_valid_phase(phi+180-1.e-15, True), True)
-  for i in xrange(-3, 4):
+  for i in range(-3, 4):
     phi = p.ht_angle() + i * math.pi
     f = complex_math.polar((1, phi))
     assert approx_equal(f, p.valid_structure_factor(f))
@@ -1484,7 +1485,7 @@ def exercise_site_symmetry():
   assert t.get(2).n_matrices() == 4
   assert t.get(3).n_matrices() == 12
   assert t.get(4).n_matrices() == 1
-  for i in xrange(5):
+  for i in range(5):
     assert t.get(i).n_matrices() * t.get(i).multiplicity() == g.order_z()
   assert not t.get(0).is_point_group_1()
   assert t.get(4).is_point_group_1()
@@ -1521,7 +1522,7 @@ def exercise_site_symmetry():
   assert ts.get(3).special_op() == tc.get(5).special_op()
   ts = tc.select(selection=flex.size_t())
   assert ts.indices().size() == 0
-  for i in xrange(tc.indices().size()):
+  for i in range(tc.indices().size()):
     s = tc.get(i)
     p = pickle.dumps(s)
     l = pickle.loads(p)
@@ -1735,7 +1736,7 @@ def exercise_wyckoff():
   assert w.position("n").special_op() == w.position(13).special_op()
   assert w.lookup_index("@") == 0
   assert w.lookup_index("k") == 16
-  for i in xrange(w.size()):
+  for i in range(w.size()):
     assert w.lookup_index(w.position(i).letter()) == i
   p = w.position("t")
   assert p.multiplicity() == 2
@@ -1833,14 +1834,14 @@ def exercise_sym_equiv_sites():
                (-1./5, -1./4, -1./3),
                (1./4, 1./20, -1./3),
                (-1./20, 1./5, -1./3))
-        for i in xrange(6):
+        for i in range(6):
           assert approx_equal(c[i], vfy[i])
       assert tuple(e.sym_op_indices()) == sym_i
       assert e.is_special_position() \
           == (len(e.coordinates()) < e.space_group().order_z())
-      for i in xrange(e.coordinates().size()):
+      for i in range(e.coordinates().size()):
         assert e.sym_op(i) == g(sym_i[i])
-    for i in xrange(2):
+    for i in range(2):
       if (i == 0):
         e = sym_equiv_sites(g, x)
       if (i == 1):
@@ -1858,7 +1859,7 @@ def exercise_sym_equiv_sites():
     assert e.special_op() == ss.special_op()
     assert e.max_accepted_tolerance() < 0
     assert e.coordinates().size() == mult
-    for i in xrange(4):
+    for i in range(4):
       if (i == 0):
         e = sym_equiv_sites(
           unit_cell=u,
@@ -1895,7 +1896,7 @@ def exercise_sym_equiv_sites():
       assert e.coordinates().size() == mult
     e = sym_equiv_sites(u, g, x, 100, 50)
     assert e.coordinates().size() == 1
-    for i in xrange(6):
+    for i in range(6):
       if (i == 0):
         e = sym_equiv_sites(
           site_symmetry=ss)
@@ -2381,7 +2382,7 @@ def exercise_tensor_rank_2_constraints():
     s = [3+1/3.,3+1/3.,3,-3-1/3.,0,0]
     assert approx_equal(c.independent_gradients(all_gradients=a), [3,10])
     assert approx_equal(c.independent_gradients(all_gradients=s), [3,10])
-    a = flex.double(xrange(1,22))
+    a = flex.double(range(1,22))
     assert approx_equal(c.independent_curvatures(all_curvatures=a),[12,35,116])
 
 def exercise_hashing():

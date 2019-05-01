@@ -1,5 +1,6 @@
 from __future__ import division, print_function
 
+from builtins import range
 from cctbx import miller
 from cctbx.development import debug_utils, random_structure
 from cctbx import translation_search
@@ -34,7 +35,7 @@ def exercise_value(f_c_in_p1, f_o, flags, n_sampled):
   def sampled_indices():
     from random import randrange
     yield (0,0,0)
-    for i in xrange(n_sampled - 1):
+    for i in range(n_sampled - 1):
       yield randrange(0, n[0]), randrange(0, n[1]), randrange(0, n[2])
   f_o_sq = f_o.as_intensity_array()
   for i,j,k in sampled_indices():
@@ -50,7 +51,7 @@ def exercise_gradient(f_c_in_p1, f_o, flags, n_sampled):
   from random import random
   from scitbx.math import approx_equal_relatively
   f_o_sq = f_o.as_intensity_array()
-  for i in xrange(n_sampled):
+  for i in range(n_sampled):
     x = mat.col((random(), random(), random()))
     gos = symmetrised_shifted_structure_factors(
       f_o_sq, f_c_in_p1, x, compute_gradient=True).misfit(f_o_sq)
@@ -80,7 +81,7 @@ def exercise(flags, space_group_info, n_sampled):
   n = int(flags.repeats)
   if n == 0: n = 1
   progress = progress_displayed_as_fraction(n)
-  for i in xrange(n):
+  for i in range(n):
     xs = random_structure.xray_structure(
       space_group_info=space_group_info,
       elements=['C']*5 + ['O']*2 + ['N'],

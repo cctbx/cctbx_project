@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from scitbx.rigid_body.proto import featherstone
 from scitbx import matrix
 
@@ -71,7 +72,7 @@ class featherstone_system_model(object):
 def spatial_velocities_from_model(model, q, qd):
   result = [None] * model.NB
   Xup = [None] * model.NB
-  for i in xrange(model.NB):
+  for i in range(model.NB):
     XJ, S = featherstone.jcalc( model.pitch[i], q[i] )
     if (S is None):
       vJ = qd[i]

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from iotbx.pdb.tst_pdb import dump_pdb
 from iotbx.pymol import pml_stick, pml_write
 from cctbx import geometry_restraints
@@ -232,7 +233,7 @@ def exercise(verbose=0):
 >,   3.414 3.600
 >,... (remaining 134 not shown)
 """,
-    selections=[range(6), range(-5,0)])
+    selections=[list(range(6)), list(range(-5,0))])
   vdw_1_sticks = []
   vdw_2_sticks = []
   for proxy in pair_proxies.nonbonded_proxies.simple:
@@ -351,7 +352,7 @@ def exercise(verbose=0):
   for wilson_b in [None, 10, 100]:
     finite_difference_gradients = flex.double()
     eps = 1.e-6
-    for i_scatterer in xrange(xray_structure.scatterers().size()):
+    for i_scatterer in range(xray_structure.scatterers().size()):
       rs = []
       for signed_eps in [eps, -eps]:
         xray_structure_eps = xray_structure.deep_copy_scatterers()

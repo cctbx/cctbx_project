@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.rigid_body.proto.tst_joint_lib import exercise_sim
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto.test_simulation import simulation
@@ -63,7 +64,7 @@ def simulation_zigzag(NB=5):
   vr = matrix.col((0,1,0))
   v = vu
   pivot = matrix.col((0,0,0))
-  for ib in xrange(1,NB):
+  for ib in range(1,NB):
     body = revolute_body(
       labels=[str(ib)],
       sites=[pivot + v*0.5],

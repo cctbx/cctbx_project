@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.rigid_body.proto.tst_joint_lib import revolute_simulation
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex
@@ -34,7 +35,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       self.line_colors[line] = color
     self.labels = []
     p,n,s = 0,1,2
-    for ib in xrange(NB):
+    for ib in range(NB):
       self.labels.extend(["p%d"%ib, "n%d"%ib, "s%d"%ib])
       add_line(p, n, (1,0,0))
       add_line(p, s, (0,1,0))

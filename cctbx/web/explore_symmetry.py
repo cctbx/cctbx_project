@@ -2,6 +2,7 @@ from __future__ import division, print_function
 # This script reports a number of space group properties given a space
 # group symbol or symmetry matrices, or a combination of the two.
 
+from builtins import range
 from cctbx import sgtbx
 from cctbx.sgtbx import harker
 from cctbx.web import io_utils
@@ -245,7 +246,7 @@ def run(server_info, inp, status):
   print("<th>Site symmetry<br>point group type")
   print("<th>Representative special position operator")
   print("</tr>")
-  for i_position in xrange(wyckoff_table.size()):
+  for i_position in range(wyckoff_table.size()):
     position = wyckoff_table.position(i_position)
     print("<tr>")
     print("<td>%s<td>%d<td>%s<td><tt>%s</tt>" % (

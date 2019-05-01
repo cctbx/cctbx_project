@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 import string
 from itertools import product
 
@@ -14,7 +15,7 @@ def all_chain_ids():
     pool = tuple(iterable)
     n = len(pool)
     r = n if r is None else r
-    for indices in product(range(n), repeat=r):
+    for indices in product(list(range(n)), repeat=r):
       if(len(indices) == r):
         yield tuple(pool[i] for i in indices)
   both_char_upper = permutations(iterable = chars, r = 2)

@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from builtins import range
 from scitbx.array_family import flex
 from scitbx.math import correlation
 from scitbx.stdlib import math
@@ -17,7 +18,7 @@ class align(object):
     self.nmax = nmax
     self.fixed = fixed
     self.moving = moving
-    self.beta = math.pi*2.0/float(n_beta-1)*flex.double( range(n_beta) )
+    self.beta = math.pi*2.0/float(n_beta-1)*flex.double( list(range(n_beta)) )
     self.nb = n_beta
     self.pad = max(0, (ngrid-1)//2 - nmax )
     self.ngrid = (self.pad+nmax) * 2 + 1

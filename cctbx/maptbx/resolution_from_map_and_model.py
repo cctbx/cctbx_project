@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.array_family import flex
 from cctbx import maptbx
 from libtbx import group_args

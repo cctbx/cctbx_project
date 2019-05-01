@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx import matrix
 from scitbx.array_family import flex
 from scitbx.math import tensor_rank_2_gradient_transform_matrix
@@ -60,7 +61,7 @@ class debye_waller:
 def d_debye_waller_d_u_finite(u, ops, hkl, eps=1.e-8):
   result = flex.double()
   u_eps = list(u)
-  for ip in xrange(6):
+  for ip in range(6):
     vs = []
     for signed_eps in [eps, -eps]:
       u_eps[ip] = u[ip] + signed_eps
@@ -73,7 +74,7 @@ def d_debye_waller_d_u_finite(u, ops, hkl, eps=1.e-8):
 def d2_debye_waller_d_u_finite(u, ops, hkl, eps=1.e-8):
   result = flex.double()
   u_eps = list(u)
-  for ip in xrange(6):
+  for ip in range(6):
     vs = []
     for signed_eps in [eps, -eps]:
       u_eps[ip] = u[ip] + signed_eps
@@ -93,9 +94,9 @@ def exercise(args):
     out = StringIO()
   else:
     out = sys.stdout
-  for i_trial in xrange(100):
+  for i_trial in range(100):
     ops = []
-    for i in xrange(3):
+    for i in range(3):
       ops.append(matrix.sqr(flex.random_double(size=9, factor=4)-2))
     u = matrix.col((flex.random_double(size=6, factor=2)-1)*1.e-3)
     hkl = matrix.row(flex.random_double(size=3, factor=4)-2)

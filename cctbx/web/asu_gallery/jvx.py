@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import sys
 
 def head(f=None):
@@ -218,9 +219,9 @@ def run():
   head()
   g = geometry("domino")
   p = g.points
-  for i in xrange(-1,2):
-    for j in xrange(-1,2):
-      for k in xrange(-1,2):
+  for i in range(-1,2):
+    for j in range(-1,2):
+      for k in range(-1,2):
         if ((i,j,k) != (0,0,0)):
           p.append(point((i,j,k)))
   point_group = sgtbx.space_group_info("P 2 3").group()

@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import cctbx.array_family.flex as flex# import dependency
 import os,time
 from libtbx.utils import Sorry
@@ -120,7 +121,7 @@ class map_reader(utils):
 
     # Labels
     self.labels=[]
-    for i in xrange(mrc.header.nlabl):
+    for i in range(mrc.header.nlabl):
       text=mrc.header.label[i].strip()
       if text:
         self.labels.append(mrc.header.label[i])
@@ -404,7 +405,7 @@ class write_ccp4_map:
     output_labels=select_output_labels(labels)
 
     mrc.header.nlabl=len(output_labels)
-    for i in xrange(min(10,len(output_labels))):
+    for i in range(min(10,len(output_labels))):
       mrc.header.label[i]=output_labels[i]
     mrc.update_header_from_data() # don't move this later as we overwrite values
 
@@ -613,7 +614,7 @@ def get_standard_order(mapc,mapr,maps,internal_standard_order=None,
 
   if not reverse:
     assert i_order.count(None)==0
-    for i in xrange(3):
+    for i in range(3):
       assert i_order.count(i)==1
     return i_order
   else:
@@ -621,10 +622,10 @@ def get_standard_order(mapc,mapr,maps,internal_standard_order=None,
     #   if standard is: input axis 0 -> output 2 :i0=2
     #   then reversed:  input 2 -> output 0      :i2=0
     i_order_reverse=[None,None,None]
-    for i in xrange(3):
+    for i in range(3):
       i_order_reverse[i_order[i]]=i
     assert i_order_reverse.count(None)==0
-    for i in xrange(3):
+    for i in range(3):
       assert i_order_reverse.count(i)==1
     return i_order_reverse
 
@@ -648,7 +649,7 @@ def origin_as_crs(origin=None,mapc=None,mapr=None,maps=None):
   #   is the origin along Z
 
   nxstart_nystart_nzstart=[None,None,None]
-  for i in xrange(3):
+  for i in range(3):
     nxstart_nystart_nzstart[order[i]]=origin[i]
   return nxstart_nystart_nzstart
 
@@ -672,7 +673,7 @@ def origin_as_xyz(nxstart_nystart_nzstart=None,mapc=None,mapr=None,maps=None):
   #   is the origin along Z
 
   origin=[None,None,None]
-  for i in xrange(3):
+  for i in range(3):
     origin[order[i]]=nxstart_nystart_nzstart[i]
   return origin
 

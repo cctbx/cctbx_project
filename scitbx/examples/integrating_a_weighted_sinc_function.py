@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx.array_family import flex
 from scitbx.math import chebyshev_polynome
 import scitbx.math
@@ -11,7 +12,7 @@ class function(object):
     self.m = m
     self.k = k
     self.d_max=d_max
-    self.x = 1.0-2.0*(flex.double(range(m+1))/m)
+    self.x = 1.0-2.0*(flex.double(list(range(m+1)))/m)
     self.r = 0.5*(1+self.x)*self.d_max
     self.r[0] = 1e-8
 
@@ -64,7 +65,7 @@ def example():
   for q in q_trials:
     ref_integrals.append( f.integrate(q,90) )
 
-  for q, jj in zip(q_trials, range(len(q_trials))):
+  for q, jj in zip(q_trials, list(range(len(q_trials)))):
     print(q,jj, end=' ')
     for ii in range(2,90):
       print(100.0*abs(f.integrate(q,ii)-ref_integrals[jj])/abs(ref_integrals[jj]+1e-13), end=' ')

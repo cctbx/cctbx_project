@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 import boost.python
 import boost.optional # import dependency
 # Indeed Boost.Python binding needs boost::optional
@@ -12,7 +13,7 @@ scitbx.random.variate.register_module(ext)
 class _(boost.python.injector, matrix):
 
   def cols(self):
-    for j in xrange(self.n_cols): yield self.col(j)
+    for j in range(self.n_cols): yield self.col(j)
 
   def as_dense_matrix(self):
     result = flex.double(flex.grid(self.n_rows, self.n_cols))

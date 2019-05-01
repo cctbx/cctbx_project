@@ -1,5 +1,6 @@
 from __future__ import division, print_function
 
+from builtins import range
 def exercise_real_to_complex_3d(benchmark=True):
   sizes_1 = [((32,32,32), 16, 0.0000001),
              ((64,64,64), 8, 0.000001),
@@ -97,7 +98,7 @@ def exercise_complex_to_complex_3d():
     d0.reshape(flex.grid(n_complex))
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
     overhead = time.time()-t0
     print("    overhead: %.2f seconds" % overhead)
@@ -108,7 +109,7 @@ def exercise_complex_to_complex_3d():
     cufft.complex_to_complex_3d(n_complex).backward(d)
     # benchmarking run
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
       cufft.complex_to_complex_3d(n_complex).forward(d)
       cufft.complex_to_complex_3d(n_complex).backward(d)
@@ -116,7 +117,7 @@ def exercise_complex_to_complex_3d():
     rw = d / np
     #
     t0 = time.time()
-    for i_trial in xrange(n_repeats):
+    for i_trial in range(n_repeats):
       d = d0.deep_copy()
       fftpack.complex_to_complex_3d(n_complex).forward(d)
       fftpack.complex_to_complex_3d(n_complex).backward(d)

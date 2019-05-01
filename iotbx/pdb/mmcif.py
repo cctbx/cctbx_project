@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 import sys
 from cctbx.array_family import flex
 from libtbx.containers import OrderedDict
@@ -92,7 +93,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     current_residue_id = None
     current_ins_code = None
 
-    for i_atom in xrange(atom_labels.size()):
+    for i_atom in range(atom_labels.size()):
       # model(s)
       last_model_id = current_model_id
       current_model_id = model_ids[i_atom]

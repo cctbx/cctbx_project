@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import sgtbx
 #from cctbx import crystal
 
@@ -182,7 +183,7 @@ class alternative_find_best_cell(object):
       assert fixed >= 0
       assert fixed <= 2
       tmp_abc = []
-      for ii in xrange(3):
+      for ii in range(3):
         if ii != fixed:
           tmp_abc.append( abc[ ii ] )
       if tmp_abc[0] <= tmp_abc[1]:
@@ -198,7 +199,7 @@ class alternative_find_best_cell(object):
       best_index = self.order_check_array.index( True )
     else: # there is more then one possible solution, use the first solution one encounters
       for order, ii in zip( self.order_check_array,
-                            range(len(self.order_check_array)) ):
+                            list(range(len(self.order_check_array))) ):
         if order:
           best_index = ii
           break
@@ -246,7 +247,7 @@ def exercise_alternative():
 def exercise():
   from cctbx import crystal
   cb_op = sgtbx.change_of_basis_op("y,z,x")
-  for space_group_number in [1] + range(3,73):
+  for space_group_number in [1] + list(range(3,73)):
     sgi = sgtbx.space_group_info(symbol=space_group_number)
     uc = sgi.any_compatible_unit_cell(volume=1000)
 

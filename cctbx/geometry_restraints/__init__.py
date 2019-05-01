@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from builtins import range
 import cctbx.crystal.direct_space_asu # import dependency
 from cctbx.array_family import flex
 import scitbx.array_family.shared # import dependency
@@ -118,7 +119,7 @@ class bond_simple_proxy_registry(proxy_registry_base):
 
   def initialize_table(self):
     proxy_registry_base.initialize_table(self)
-    self.table = [{} for i in xrange(self.n_seq)]
+    self.table = [{} for i in range(self.n_seq)]
 
   def is_proxy_set(self, i_seqs):
     if (i_seqs[1] not in self.table[i_seqs[0]]):

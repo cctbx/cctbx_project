@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
@@ -46,7 +47,7 @@ class cos_alpha:
 def d_cos_alpha_d_site_finite(site, ops, hkl, eps=1.e-6):
   result = flex.double()
   site_eps = list(site)
-  for ip in xrange(3):
+  for ip in range(3):
     vs = []
     for signed_eps in [eps, -eps]:
       site_eps[ip] = site[ip] + signed_eps
@@ -59,7 +60,7 @@ def d_cos_alpha_d_site_finite(site, ops, hkl, eps=1.e-6):
 def d2_cos_alpha_d_site_finite(site, ops, hkl, eps=1.e-6):
   result = flex.double()
   site_eps = list(site)
-  for ip in xrange(3):
+  for ip in range(3):
     vs = []
     for signed_eps in [eps, -eps]:
       site_eps[ip] = site[ip] + signed_eps
@@ -75,9 +76,9 @@ def exercise(args):
     out = StringIO()
   else:
     out = sys.stdout
-  for i_trial in xrange(100):
+  for i_trial in range(100):
     ops = []
-    for i in xrange(3):
+    for i in range(3):
       ops.append(matrix.sqr(flex.random_double(size=9, factor=4)-2))
     site = matrix.col(flex.random_double(size=3, factor=4)-2)
     hkl = matrix.row(flex.random_double(size=3, factor=4)-2)

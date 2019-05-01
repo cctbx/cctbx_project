@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 def LATT_SYMM(s, space_group, decimal=False):
   Z = space_group.conventional_centring_type_symbol()
   Z_dict = {
@@ -24,7 +25,7 @@ def LATT_SYMM(s, space_group, decimal=False):
     LATT_N = -LATT_N;
   print("LATT", LATT_N, file=s)
   # The operator x,y,z is always assumed, so MUST NOT be input.
-  for i in xrange(1, space_group.n_smx()):
+  for i in range(1, space_group.n_smx()):
     print("SYMM", space_group(i).as_xyz(
       decimal=decimal,
       t_first=False,

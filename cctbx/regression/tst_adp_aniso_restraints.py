@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.array_family import flex
 from cStringIO import StringIO
 import cctbx.adp_restraints
@@ -41,7 +42,7 @@ def fd(xray_structure, restraints_manager, eps=1.e-2):
         #print "scatterer :", i_seq, fl.use_u_iso(), fl.grad_u_iso(), \
         #                     fl.use_u_aniso(), fl.grad_u_aniso()
         if(fl.use_u_aniso()):
-           for i_ind in xrange(6):
+           for i_ind in range(6):
                xrs1 = xray_structure.deep_copy_scatterers()
                xrs2 = xray_structure.deep_copy_scatterers()
                sc1  = xrs1.scatterers()

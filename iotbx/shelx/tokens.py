@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import range
 (atom_tok,
  element_tok,
  forward_range_tok,
@@ -8,7 +9,7 @@ from __future__ import division
  residue_number_tok,
  all_residues_tok,
  plus_tok,
- minus_tok) = xrange(9)
+ minus_tok) = range(9)
 
 
 class atomname_token(object):

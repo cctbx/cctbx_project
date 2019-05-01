@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+from builtins import range
 from boost_python_hybrid_times_ext import run_c_plus_plus
 import sys, os
 

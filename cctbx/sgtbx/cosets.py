@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import sgtbx
 from scitbx.array_family import flex
 import sys
@@ -7,7 +8,7 @@ class partition_t(list): pass
 
 class left_decomposition(object):
   def __init__(self, g, h):
-    g_lattice_translations = [ g(i,0,0).mod_short() for i in xrange(g.n_ltr())]
+    g_lattice_translations = [ g(i,0,0).mod_short() for i in range(g.n_ltr())]
 
     if self.is_subgroup(g,h):
       self.h_name = str( sgtbx.space_group_info( group = h ) )
@@ -24,7 +25,7 @@ class left_decomposition(object):
         partition = partition_t([gi])
         for hj in h[1:]:
           gihj = gi.multiply(hj)
-          for k in xrange(i+1,len(g)):
+          for k in range(i+1,len(g)):
             if (self.partition_indices[k] != -1): continue
             gk = g[k]
             tmp_g = gk.inverse().multiply( gihj ).mod_short()
@@ -130,7 +131,7 @@ class left_decomposition_point_groups_only(object):
       partition = [gi]
       for hj in h[1:]:
         gihj = gi.multiply(hj)
-        for k in xrange(i+1,len(g)):
+        for k in range(i+1,len(g)):
           if (self.partition_indices[k] != -1): continue
           gk = g[k]
           if (gk.r().num() == gihj.r().num()):
@@ -274,9 +275,9 @@ class double_cosets(object):
 
   def have_duplicates(self):
     n_cosets = len(self.double_cosets)
-    for ics in xrange(n_cosets):
+    for ics in range(n_cosets):
       tmp_cs = self.double_cosets[ics]
-      for jcs in xrange(n_cosets):
+      for jcs in range(n_cosets):
         if ics != jcs :
           tmp_cs_2 = self.double_cosets[jcs]
           # now check each element of tmp_cs
@@ -295,7 +296,7 @@ class double_cosets(object):
 
 def test_double_coset_decomposition():
   from  cctbx.sgtbx import subgroups
-  for space_group_number in xrange(17,44):
+  for space_group_number in range(17,44):
     parent_group_info = sgtbx.space_group_info(space_group_number)
     subgrs = subgroups.subgroups(parent_group_info).groups_parent_setting()
     g = parent_group_info.group()
@@ -436,7 +437,7 @@ def test_lattice_translation_aware_left_decomposition():
       assert element in C.partitions[0]
 
     # make sure each coset is equal to the product of the coset representative and the subgroup
-    for x in xrange(1,len(C.partitions)):
+    for x in range(1,len(C.partitions)):
       part = C.partitions[x]
       coset_representative = part[0]
       for element in case['subgroup'].space_group():

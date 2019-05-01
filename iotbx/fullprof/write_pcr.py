@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from builtins import range
 from cctbx.eltbx import wavelengths
 
 def _make_phase_block(phase, number=1, name="", scale_down=1.0):

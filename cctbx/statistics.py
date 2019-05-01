@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import range
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex

@@ -2,6 +2,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+from builtins import range
 from cctbx.array_family import flex
 from cctbx import sgtbx, xray, crystal, miller, eltbx
 import cctbx.eltbx.wavelengths
@@ -219,7 +220,7 @@ def exercise_trigonometric_ff():
   cs = sgi.any_compatible_crystal_symmetry(volume=1000)
   miller_set = miller.build_set(cs, anomalous_flag=False, d_min=1)
   miller_set = miller_set.select(flex.random_double(miller_set.size()) < 0.2)
-  for i in xrange(5):
+  for i in range(5):
     sites = flex.random_double(9)
     x1, x2, x3 = (matrix.col(sites[:3]),
                   matrix.col(sites[3:6]),

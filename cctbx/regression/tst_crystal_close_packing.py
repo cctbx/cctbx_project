@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from iotbx.pdb.tst_pdb import dump_pdb
 from cctbx.crystal import close_packing
 from cctbx import crystal
@@ -72,7 +73,7 @@ def hcp_fill_box(cb_op_original_to_sampling, float_asu, continuous_shift_flags,
     vertices_cart=float_asu_buffer.shape_vertices(cartesian=True))
   box_lower = []
   box_upper = []
-  for i in xrange(3):
+  for i in range(3):
     if (continuous_shift_flags[i]):
       box_lower.append(0)
       box_upper.append(0)

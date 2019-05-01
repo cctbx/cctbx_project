@@ -2,6 +2,7 @@
 # TODO: confirm old_test_flag_value if ambiguous
 
 from __future__ import division, print_function
+from builtins import range
 import iotbx.phil
 from libtbx.utils import Sorry, null_out, check_if_output_directory_exists
 from libtbx import adopt_init_args, slots_getstate_setstate

@@ -1,5 +1,6 @@
 from __future__ import division, absolute_import
 from __future__ import print_function
+from builtins import range
 from libtbx import object_oriented_patterns as oop
 from scitbx.linalg import eigensystem, svd
 from scitbx import matrix
@@ -54,7 +55,7 @@ class refinement_test(object):
       self.do_run()
     else:
       print("%s in %s" % (self.purpose, self.hall))
-      for n in xrange(self.ls_cycle_repeats):
+      for n in range(self.ls_cycle_repeats):
         self.do_run()
         print('.', end=' ')
         sys.stdout.flush()
@@ -594,7 +595,7 @@ def exercise_normal_equations(ls_engine, parallelise):
   for klass in (adp_refinement_in_p1_test,
                 adp_refinement_in_pm_test,
                 adp_refinement_in_p2_test):
-    for i in xrange(4):
+    for i in range(4):
       try:
         klass(ls_engine, parallelise).run()
         break
@@ -669,7 +670,7 @@ class special_positions_test(object):
   def run(self):
     if self.n_runs > 1:
       print('small inorganic refinement with many special positions')
-      for i in xrange(self.n_runs):
+      for i in range(self.n_runs):
         print('.', end=' ')
         self.exercise()
       print()
@@ -840,7 +841,7 @@ def exercise_floating_origin_dynamic_weighting(ls_engine,
       xs.parameter_map())
   site_esds = var_site_cart.matrix_packed_u_diagonal()
   indicators = flex.double()
-  for i in xrange(0, len(site_esds), 3):
+  for i in range(0, len(site_esds), 3):
     stats = scitbx.math.basic_statistics(site_esds[i:i+3])
     indicators.append(stats.bias_corrected_standard_deviation/stats.mean)
   assert indicators.all_lt(2)
@@ -1184,7 +1185,7 @@ def exercise_floating_origin_dynamic_weighting(ls_engine,
         xs.parameter_map())
     site_esds = var_site_cart.matrix_packed_u_diagonal()
     indicators = flex.double()
-    for i in xrange(0, len(site_esds), 3):
+    for i in range(0, len(site_esds), 3):
       stats = scitbx.math.basic_statistics(site_esds[i:i+3])
       indicators.append(stats.bias_corrected_standard_deviation/stats.mean)
     assert indicators.all_lt(1)

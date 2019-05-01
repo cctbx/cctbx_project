@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx.array_family import flex
 from cctbx import sgtbx
 from cctbx.crystal.find_best_cell import alternative_find_best_cell
@@ -498,7 +499,7 @@ class find_compatible_space_groups(object):
 
   def get_space_groups_compatible_with_likely_point_group(self):
     # loop over all standard sg's
-    for space_group_number in xrange(1,231):
+    for space_group_number in range(1,231):
       trial_group = sgtbx.space_group_info(space_group_number).group()
 
       if trial_group.build_derived_group(False,False) \

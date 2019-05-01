@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+from builtins import range
 import hashlib
 import six
 import sys
@@ -68,7 +69,7 @@ def rows(a):
   assert a.is_0_based()
   assert not a.is_padded()
   nr,nc = a.focus()
-  for ir in xrange(nr):
+  for ir in range(nr):
     yield a[ir*nc:(ir+1)*nc]
 
 def upper_bidiagonal(d, f):
@@ -132,7 +133,7 @@ def to_list(array):
   """Workaround for C++ exception handling bugs
      (list(array) involves C++ exceptions)"""
   result = []
-  for i in xrange(array.size()):
+  for i in range(array.size()):
     result.append(array[i])
   return result
 
@@ -267,12 +268,12 @@ class py_object(object):
     assert [value, values, value_factory].count(None) >= 2
     self._accessor = accessor
     if (value_factory is not None):
-      self._data = [value_factory() for i in xrange(accessor.size_1d())]
+      self._data = [value_factory() for i in range(accessor.size_1d())]
     elif (values is not None):
       assert len(values) == accessor.size_1d()
       self._data = values[:]
     else:
-      self._data = [value for i in xrange(accessor.size_1d())]
+      self._data = [value for i in range(accessor.size_1d())]
 
   def accessor(self):
     return self._accessor
@@ -417,7 +418,7 @@ class _(boost.python.injector, ext.weighted_histogram):
       print(fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n), file=f)
 
 def permutation_generator(size):
-  result = size_t(xrange(size))
+  result = size_t(range(size))
   yield result
   while (result.next_permutation()): yield result
 

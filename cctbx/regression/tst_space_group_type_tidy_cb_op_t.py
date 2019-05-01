@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from builtins import range
 from cctbx import sgtbx
 import scitbx.math
 from libtbx.utils import format_cpu_times
@@ -15,7 +16,7 @@ special = {
 
 def run(args):
   if ("--full" in args):
-    to_do = range(1,230+1)
+    to_do = list(range(1,230+1))
   elif ("--special" in args):
     to_do = sorted(special.keys())
   else:
