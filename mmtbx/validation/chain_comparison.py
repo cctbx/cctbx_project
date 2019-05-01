@@ -576,10 +576,46 @@ def get_sorted_matching_chains(
     sorted_distances.append(dist)
   return sorted_chains,sorted_distances
 
+def split_chains_with_unique_four_char_id(ph,params=None):
+  from mmtbx.secondary_structure.find_ss_from_ca import split_model,model_info,\
+    merge_hierarchies_from_models, make_four_char_unique_chain_id
+  chain_model=model_info(hierarchy=ph)
+  assert params.crystal_info.chain_type
+  if params.crystal_info.chain_type=="PROTEIN":
+    distance_cutoff=5.
+  else:
+    distance_cutoff=15.
+  chain_models=split_model(model=chain_model,distance_cutoff=distance_cutoff)
+  new_hierarchy=iotbx.pdb.input(
+         source_info="Model", lines=flex.split_lines("")).construct_hierarchy()
+  new_model=iotbx.pdb.hierarchy.model()
+  new_hierarchy.append_model(new_model)
+  used_chain_ids=[]
+  for mi in chain_models:
+    for mm in mi.hierarchy.models()[:1]:
+      for cc in mm.chains():
+        cc1=cc.detached_copy()
+        cc1.id,used_chain_ids=make_four_char_unique_chain_id(cc1.id,
+              used_chain_ids=used_chain_ids)
+        new_model.append_chain(cc1)
+  return model_info(new_hierarchy)
+
 def extract_unique_part_of_hierarchy(ph,target_ph=None,
     allow_mismatch_in_number_of_copies=True,
     allow_extensions=False,
+    keep_chain_as_unit=True,
+    params=None,
     min_similarity=1.0,out=sys.stdout):
+
+  starting_chain_id_list=[]
+
+  from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
+  if (not keep_chain_as_unit):
+    for model in ph.models()[:1]:
+      for chain in model.chains():
+        starting_chain_id_list.append(chain.id)
+    assert params is not None and params.crystal_info.chain_type is not None
+    ph=split_chains_with_unique_four_char_id(ph,params=params).hierarchy
 
   # Container for unique chains:
 
@@ -652,6 +688,19 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
       print >>out, "Adding chain %s: %s (%s): %7.2f" %(
          chain.id,unique_seq,str(chain.atoms().extract_xyz()[0]),
          dist)
+
+  if (not keep_chain_as_unit): # Remove X and 3rd/4th characters from chain ID
+    for model in new_hierarchy.models():
+      for chain in model.chains():
+        two_char_id=chain.id[:2]
+        if (not two_char_id in starting_chain_id_list): # not ok
+          one_char_id=two_char_id.replace("X","")
+          if one_char_id in starting_chain_id_list:
+            chain.id=one_char_id
+          else:
+            raise Sorry(
+             "Unable to find the chain ID %s in starting list of %s"%(
+               one_char_id,str(starting_chain_id_list)))
   return new_hierarchy
 
 def run_test_unique_part_of_target_only(params=None,
