@@ -481,11 +481,12 @@ class HKLViewFrame () :
     self.update_settings()
 
 
-  def SetColumnBinThresholds(self, binvals, binarray="Resolution"):
+  def SetColumnBinThresholds(self, binvals=[], binarray="Resolution"):
     self.viewer.binarray = binarray
-    if self.viewer.binarray=="Resolution":
-      binvals = list( 1.0/flex.double(binvals) )
-    binvals.sort()
+    if binvals:
+      if self.viewer.binarray=="Resolution":
+        binvals = list( 1.0/flex.double(binvals) )
+      binvals.sort()
     self.viewer.UpdateBinValues( binvals )
     self.update_settings()
 
@@ -560,6 +561,8 @@ class HKLViewFrame () :
     """
     return array of strings with available subgroups of the space group
     """
+    if (self.miller_array is None) :
+      self.mprint( "No miller array has been selected")
     if self.spacegroup_choices:
       return [e.symbol_and_number() for e in self.spacegroup_choices]
     return []

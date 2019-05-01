@@ -111,6 +111,7 @@ class scene(object):
       #if (self.slice_selection.count(True) == 0):
         #raise ValueError("No data selected!")
     index_span = array.index_span()
+    self.colourlabel = self.miller_array.info().labels[0]
     self.d_min = array.d_min()
     self.hkl_range = index_span.abs_range()
     self.axes = [ uc.reciprocal_space_vector((self.hkl_range[0],0,0)),
@@ -289,8 +290,10 @@ class scene(object):
     elif isinstance(data, flex.complex_double):
       data_for_colors = self.radians
       foms_for_colours = self.foms
+      self.colourlabel = self.miller_array.info().labels[1]
     elif (settings.sigma_color) and sigmas is not None:
       data_for_colors = sigmas.as_double()
+      self.colourlabel = self.miller_array.info().labels[1]
     else :
       data_for_colors = flex.abs(data.deep_copy())
 
