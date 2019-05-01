@@ -286,6 +286,7 @@ class nanoBragg {
     /* use these to remember "user" inputs */
     bool user_beam; //=false;
     bool user_distance; //=false;
+    bool user_mosdomains; //=false;
 
     /* scattering vectors */
     double incident[4];

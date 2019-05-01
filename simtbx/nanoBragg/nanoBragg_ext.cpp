@@ -1047,9 +1047,9 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
   static void   set_mosaic_spread_deg(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.mosaic_spread = value/RTD;
       /* need to re-create mosaic domain table */
-      //nanoBragg.init_mosaicity();
-      //nanoBragg.init_steps();
-      //nanoBragg.show_mosaic_blocks();
+      nanoBragg.init_mosaicity();
+      nanoBragg.init_steps();
+      nanoBragg.show_mosaic_blocks();
   }
   /* number of discrete mosaic domains, default: 1 or 2 ; you will want more */
   static int get_mosaic_domains(nanoBragg const& nanoBragg) {
@@ -1058,9 +1058,9 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
   static void   set_mosaic_domains(nanoBragg& nanoBragg, int const& value) {
       nanoBragg.mosaic_domains = value;
       /* need to re-create mosaic domain table */
-      //nanoBragg.init_mosaicity();
-      //nanoBragg.init_steps();
-      //nanoBragg.show_mosaic_blocks();
+      nanoBragg.init_mosaicity();
+      nanoBragg.init_steps();
+      nanoBragg.show_mosaic_blocks();
   }
 
 
