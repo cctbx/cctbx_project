@@ -383,6 +383,7 @@ nanoBragg::init_defaults()
     /* use these to remember "user" inputs */
     user_beam = false;
     user_distance =false;
+    user_mosdomains = false;
 
     /* scattering vectors */
 //    double incident[4] = {0,0,0,0};
@@ -2230,6 +2231,9 @@ nanoBragg::init_mosaicity()
     /* temporary local seed */
     long mseed;
 
+    /* catch nks initialized values here? */
+    if(user_mosdomains) return;
+
     /* free any previous allocations */
     if(mosaic_umats!=NULL) free(mosaic_umats);
 
@@ -2305,12 +2309,15 @@ nanoBragg::set_mosaic_blocks(af::shared<mat3> umat_in) {
     /* free any previous allocations */
     if(mosaic_umats!=NULL) free(mosaic_umats);
 
+    /* flag to avoid over-writing with automatic random domains */
+    user_mosdomains=true;
+
     /* allocate enough space */
     mosaic_domains = umat_in.size();
     if(verbose>6) printf("allocating enough space for %d mosaic domain orientation matrices\n",mosaic_domains);
     mosaic_umats = (double *) calloc(mosaic_domains+10,9*sizeof(double));
 
-    /* now actually create the orientation of each domain */
+    /* now actually import the orientation of each domain */
     for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic) {
       int offset = 9 * mos_tic;
       mat3& domain = umat_in[mos_tic];
@@ -2319,9 +2326,9 @@ nanoBragg::set_mosaic_blocks(af::shared<mat3> umat_in) {
       mosaic_umats[6+offset]=domain[6];mosaic_umats[7+offset]=domain[7];mosaic_umats[8+offset]=domain[8];
    }
 
-    if(verbose) printf("  created a total of %d mosaic domains\n",mosaic_domains);
+    if(verbose) printf("  imported a total of %d mosaic domains\n",mosaic_domains);
 }
-// end of init_mosaicity()
+// end of set_mosaic_blocks()
 
 
 /* reconcile different conventions of beam center input and detector position */
