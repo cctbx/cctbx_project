@@ -16,7 +16,7 @@ def reverse_dict( dict ):
   for item in dict:
     for value in dict[item]:
       if value is not None:
-        if new_dict.has_key( value ):
+        if value in new_dict:
           tmp = new_dict[ value ]
           tmp.append( item )
           new_dict.update( {value:tmp} )
@@ -26,7 +26,7 @@ def reverse_dict( dict ):
 
 def get_maximal_subgroup( sg_name, reverse_graph ):
   subgroups = []
-  if reverse_graph.has_key( sg_name ):
+  if sg_name in reverse_graph:
     subgroups = reverse_graph[ sg_name ]
 
   maximal = {}
@@ -35,7 +35,7 @@ def get_maximal_subgroup( sg_name, reverse_graph ):
   result = []
   for trial_sg in subgroups:
     tmp = {}
-    if reverse_graph.has_key( trial_sg ):
+    if trial_sg in reverse_graph:
       tmp = reverse_graph[ trial_sg ]
     is_trial_sg_a_subgroup_of_items_in_subgroups=False
     for item in tmp:

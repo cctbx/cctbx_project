@@ -25,14 +25,14 @@ def exercise_stl_string_double():
   assert m.size() == 0
   assert len(m) == 0
   assert not "a" in m
-  assert not m.has_key("a")
+  assert "a" not in m
   assert m.get("a", -1) == -1
   assert m.size() == 0
   assert m.setdefault("a", -2) == -2
   assert m.size() == 1
   assert len(m) == 1
   assert "a" in m
-  assert m.has_key("a")
+  assert "a" in m
   assert m["a"] == -2
   assert m.setdefault("a", -3) == -2
   assert m.size() == 1

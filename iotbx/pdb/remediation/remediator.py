@@ -88,8 +88,8 @@ def pre_screen_file(filename, atom_exch, alt_atom_exch):
         res_count += 1
       entry = line[12:20]
       clean_entry = entry[0:4] + " " + entry[5:8]
-      if atom_exch.has_key(clean_entry):
-        if alt_atom_exch.has_key(clean_entry):
+      if clean_entry in atom_exch:
+        if clean_entry in alt_atom_exch:
           pass
         else:
           count += 1
@@ -193,7 +193,7 @@ def remediate(filename, atom_exch, remediated_out, remark4, f=None):
       previous = current
       current = line[18:26]
       clean_entry = entry[0:4] + " " + entry[5:8]
-      if atom_exch.has_key(clean_entry):
+      if clean_entry in atom_exch:
         line = line.replace(clean_entry[0:4],atom_exch[clean_entry][0:4],1)
     elif (remark_flag == False) and (remark_block == True): #deal with non-remark lines stuck in the top before main record types
       print_line += remark4 + "\n"

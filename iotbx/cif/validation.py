@@ -140,7 +140,7 @@ class dictionary(model.cif):
     self.item_type_list = {}
     self.child_parent_relations = {}
     self.look_up_table = {} # cached definitions for each data name
-    if self.has_key('on_this_dictionary'):
+    if 'on_this_dictionary' in self:
       self.DDL_version = 1
       for key, value in self.blocks.iteritems():
         self[key] = DDL1_definition(value)

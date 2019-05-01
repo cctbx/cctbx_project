@@ -121,7 +121,7 @@ class bond_simple_proxy_registry(proxy_registry_base):
     self.table = [{} for i in xrange(self.n_seq)]
 
   def is_proxy_set(self, i_seqs):
-    if (not self.table[i_seqs[0]].has_key(i_seqs[1])):
+    if (i_seqs[1] not in self.table[i_seqs[0]]):
       return None
     else:
       return True
@@ -138,7 +138,7 @@ class bond_simple_proxy_registry(proxy_registry_base):
   def process(self, source_info, proxy, tolerance=1.e-6):
     result = proxy_registry_process_result()
     proxy = proxy.sort_i_seqs()
-    if (not self.table[proxy.i_seqs[0]].has_key(proxy.i_seqs[1])):
+    if (proxy.i_seqs[1] not in self.table[proxy.i_seqs[0]]):
       self.table[proxy.i_seqs[0]][proxy.i_seqs[1]] = self.proxies.size()
       self._append_proxy(
         source_info=source_info,
@@ -172,7 +172,7 @@ class angle_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_1 = self.table.setdefault(proxy.i_seqs[1], {})
     i_seqs_0_2 = (proxy.i_seqs[0], proxy.i_seqs[2])
-    if (not tab_i_seq_1.has_key(i_seqs_0_2)):
+    if (i_seqs_0_2 not in tab_i_seq_1):
       tab_i_seq_1[i_seqs_0_2] = self.proxies.size()
       self.proxies.append(proxy)
       self.counts.append(1)
@@ -184,7 +184,7 @@ class angle_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_1 = self.table.setdefault(proxy.i_seqs[1], {})
     i_seqs_0_2 = (proxy.i_seqs[0], proxy.i_seqs[2])
-    if (not tab_i_seq_1.has_key(i_seqs_0_2)):
+    if (i_seqs_0_2 not in tab_i_seq_1):
       tab_i_seq_1[i_seqs_0_2] = self.proxies.size()
       self._append_proxy(
         source_info=source_info,
@@ -228,7 +228,7 @@ class dihedral_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
     i_seqs_1_2_3 = (proxy.i_seqs[1], proxy.i_seqs[2], proxy.i_seqs[3])
-    if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
+    if (i_seqs_1_2_3 not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self.proxies.append(proxy)
       self.counts.append(1)
@@ -240,7 +240,7 @@ class dihedral_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
     i_seqs_1_2_3 = (proxy.i_seqs[1], proxy.i_seqs[2], proxy.i_seqs[3])
-    if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
+    if (i_seqs_1_2_3 not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self._append_proxy(
         source_info=source_info,
@@ -290,7 +290,7 @@ class chirality_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
     i_seqs_1_2_3 = (proxy.i_seqs[1], proxy.i_seqs[2], proxy.i_seqs[3])
-    if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
+    if (i_seqs_1_2_3 not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self.proxies.append(proxy)
       self.counts.append(1)
@@ -303,7 +303,7 @@ class chirality_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
     i_seqs_1_2_3 = (proxy.i_seqs[1], proxy.i_seqs[2], proxy.i_seqs[3])
-    if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
+    if (i_seqs_1_2_3 not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self._append_proxy(
         source_info=source_info,
@@ -337,7 +337,7 @@ class planarity_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
     i_seqs_1_up = tuple(proxy.i_seqs[1:])
-    if (not tab_i_seq_0.has_key(i_seqs_1_up)):
+    if (i_seqs_1_up not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_up] = self.proxies.size()
       # saving proxy number in list
       self.proxies.append(proxy)
@@ -351,7 +351,7 @@ class planarity_proxy_registry(proxy_registry_base):
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
     i_seqs_1_up = tuple(proxy.i_seqs[1:])
-    if (not tab_i_seq_0.has_key(i_seqs_1_up)):
+    if (i_seqs_1_up not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_up] = self.proxies.size()
       self._append_proxy(
         source_info=source_info,

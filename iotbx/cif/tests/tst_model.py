@@ -117,13 +117,13 @@ def exercise_cif_model():
   cm = cif_model.deepcopy()
   l = cm["fred"]["_loop"]
   del cm["Fred"]["_loop_B"]
-  assert not cm["fred"].has_key("_loop_b")
-  assert not l.has_key("_loop_b")
-  assert cm["fred"].loops.has_key("_loop")
+  assert "_loop_b" not in cm["fred"]
+  assert "_loop_b" not in l
+  assert "_loop" in cm["fred"].loops
   del cm["fred"]["_loop_a"]
-  assert not cm["fred"].loops.has_key("_loop")
+  assert "_loop" not in cm["fred"].loops
   del cm["fred"]["_loop2"]
-  assert not cm["fred"].loops.has_key("_loop2")
+  assert "_loop2" not in cm["fred"].loops
   s = StringIO()
   print(cm, file=s)
   assert not show_diff(s.getvalue(),

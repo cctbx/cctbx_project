@@ -191,7 +191,7 @@ class CNS_xray_reflection_Reader(CNS_input):
           self.raiseError("unrecognized keyword")
         self.level = self.level - 1
       elif (word == "END"):
-        if (xray_objects.has_key(name)):
+        if (name in xray_objects):
           self.raiseError("duplicate declaration of NAME=" + name)
         if (domain != "reciprocal"):
           self.raiseError("real space objects are not supported")
@@ -215,7 +215,7 @@ class CNS_xray_reflection_Reader(CNS_input):
       elif (word == "OBJE"):
         self.level = self.level + 1
         name = self.getNextWord()
-        if (not xray_objects.has_key(name)):
+        if (name not in xray_objects):
           self.raiseError("reciprocal space object " + name
                           + " does not exist")
         if (xray_objects[name].type != "real"):

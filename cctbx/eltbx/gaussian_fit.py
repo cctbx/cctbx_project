@@ -53,7 +53,7 @@ def show_literature_fits(label, n_terms, null_fit, n_points, e_other=None):
         lib_source = "IT1992"
       except Exception:
         lib_gaussian = None
-    elif (lib.table.has_key(label)):
+    elif (label in lib.table):
       lib_gaussian = lib.table[label]
       lib_source = lib.source_short
     else:

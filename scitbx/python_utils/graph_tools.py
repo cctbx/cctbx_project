@@ -22,14 +22,14 @@ class graph(object):
                edge_object,
                node_object=None):
 
-    if self.node_objects.has_key( name ):
+    if name in self.node_objects:
       if self.node_objects[ name ] == []: # only allow an update if it was blanco
         self.node_objects.update( {name:node_object} )
     else:
       self.node_objects.update( {name:node_object} )
 
     # The edge objects are stored a s adouble dictionairy
-    if not self.edge_objects.has_key( name  ):
+    if name not in self.edge_objects:
       # edge object is not there, place it fully!
       self.edge_objects.update( {name: {} } )
       self.o.update( {name : []} )
@@ -41,7 +41,7 @@ class graph(object):
       # edge object is there
       tmp_edges = self.edge_objects[ name ]
       for item in edge_object:
-        if self.edge_objects[ name ].has_key( item ):
+        if item in self.edge_objects[ name ]:
           if self.edge_objects[ name ][ item ] is None:
             self.edge_objects[ name ].update( {item :  edge_object[item] } )
         else:
@@ -52,17 +52,17 @@ class graph(object):
 
   def remove_node(self,name):
     # remove it from the object list please
-    if self.node_objects.has_key( name ):
+    if name in self.node_objects:
       del self.node_objects[name]
     # take care of outgoing and incomming
-    if self.o.has_key( name ):
+    if name in self.o:
       del self.o[name]
 
-    if self.edge_objects.has_key( name ):
+    if name in self.edge_objects:
       del self.edge_objects[name]
 
     for item in self.edge_objects:
-      if self.edge_objects[item].has_key( name ):
+      if name in self.edge_objects[item]:
         del self.edge_objects[item][name]
 
     for item in self.o:
@@ -74,10 +74,10 @@ class graph(object):
     # check if the dictionairy have the same items
     clean=True
     for item in self.node_objects:
-      if not self.o.has_key( item ):
+      if item not in self.o:
         clean = False
     for item in self.o:
-      if not self.node_objects.has_key( item ):
+      if item not in self.node_objects:
         clean = False
 
     if not clean:
@@ -90,11 +90,11 @@ class graph(object):
 
     for item in self.node_objects:
       clean = True
-      if self.edge_objects.has_key( item ):
+      if item in self.edge_objects:
         con_list = self.o[ item ]
         if len(con_list) > 0:
           for trial_node in con_list:
-            if not self.node_objects.has_key( trial_node ):
+            if trial_node not in self.node_objects:
               clean=False
       else:
         clean=False
@@ -143,7 +143,7 @@ class graph(object):
     path = path + [start]
     if start == end:
       return [path]
-    if not self.o.has_key(start):
+    if start not in self.o:
       return []
     paths = []
     for node in self.o[start]:
@@ -160,7 +160,7 @@ class graph(object):
     path = path + [start]
     if len(path)==length:
       return [path]
-    if not self.o.has_key(start):
+    if start not in self.o:
       return []
     paths = []
     for node in self.o[start]:
@@ -185,7 +185,7 @@ class graph(object):
     path = path + [start]
     if start == end:
       return path
-    if not self.o.has_key(start):
+    if start not in self.o:
       return None
     shortest = None
     for node in self.o[start]:

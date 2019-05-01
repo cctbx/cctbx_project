@@ -390,20 +390,20 @@ def exercise_bond_sorted_asu_proxies(
     assert proxies_1.asu.size() == proxies_2.asu.size()
     ctrl = {}
     for proxy in proxies_1.simple:
-      assert not ctrl.has_key(proxy.i_seqs)
+      assert proxy.i_seqs not in ctrl
       ctrl[proxy.i_seqs] = 0
     for proxy in proxies_2.simple:
-      assert ctrl.has_key(proxy.i_seqs)
+      assert proxy.i_seqs in ctrl
       ctrl[proxy.i_seqs] += 1
     assert ctrl.values() == [1]*len(ctrl)
     ctrl = {}
     for proxy in proxies_1.asu:
       key = proxy.i_seq,proxy.j_seq,proxy.j_sym
-      assert not ctrl.has_key(key)
+      assert key not in ctrl
       ctrl[key] = 0
     for proxy in proxies_2.asu:
       key = proxy.i_seq,proxy.j_seq,proxy.j_sym
-      assert ctrl.has_key(key)
+      assert key in ctrl
       ctrl[key] += 1
     assert ctrl.values() == [1]*len(ctrl)
   compare_proxies(proxies_1=proxies_fast, proxies_2=proxies_conservative)

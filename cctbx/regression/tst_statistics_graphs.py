@@ -90,7 +90,7 @@ class cumulative_intensity_distribution_python(object):
         rounded_i_over_mean_i += 0.01
       for i in range(n_bins_used,int(rounded_i_over_mean_i*n_bins_used)-1,-1):
         key = "%.2f" %(i/n_bins_used)
-        if data.has_key(key):
+        if key in data:
           data[key] += 1
         else:
           continue

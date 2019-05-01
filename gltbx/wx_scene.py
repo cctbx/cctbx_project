@@ -192,7 +192,7 @@ class wxAdvancedGLWindow(wxGLWindow):
   events, and keypresses. You might want to override some of these
   functions if you need more sophisticated control"""
   def __init__(self, parent,*args,**kw):
-    if kw.has_key('autospin_allowed'):
+    if 'autospin_allowed' in kw:
       # Is the widget allowed to autospin?
       self.autospin_allowed = kw['autospin_allowed']
       del kw['autospin_allowed']

@@ -42,7 +42,7 @@ def tst_pgtools():
   pgtree.remove_point_group_and_its_super_groups_from_graph(
     str(sgtbx.space_group_info(16)))
   assert len(pgtree.graph.node_objects)==1
-  assert pgtree.graph.node_objects.has_key ( 'P 1 2 1' )
+  assert 'P 1 2 1' in pgtree.graph.node_objects
 
 
 def tst_sg_tools():
@@ -95,7 +95,7 @@ def tst_sg_tools():
   for xs in p222:
     comp_string = (str(xs[0].unit_cell().parameters())
                    + " " + str(xs[0].space_group_info()))
-    assert p222_dict.has_key(comp_string)
+    assert comp_string in p222_dict
 
 
 

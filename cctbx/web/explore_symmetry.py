@@ -13,7 +13,7 @@ def interpret_form_data(form):
      ("convention", "")))
   inp.shelx_latt = []
   inp.symxyz = []
-  if (form.has_key("symxyz")):
+  if ("symxyz" in form):
     lines = form["symxyz"].value.split("\015\012")
     for l in lines:
       # Treat SHELX LATT & SYMM cards

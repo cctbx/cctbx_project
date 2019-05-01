@@ -59,7 +59,7 @@ class planes_fractional(object):
       p = s.t().mod_positive()
       assert p.den() == space_group.t_den()
       c = -dot3(n, p.num())
-      if (not nc_dict.has_key((n,c))):
+      if ((n,c) not in nc_dict):
         nc_dict[(n,c)] = 0
         self.list.append(
           plane_fractional(s=s, n=n, p=p, c=rational.int(c,p.den())))

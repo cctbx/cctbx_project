@@ -45,7 +45,7 @@ def expand_indices(space_group, asu_indices):
     for h_e in equiv:
       h_s = h_e.h()
       assert h_s == h_e.hr()
-      assert not result.has_key(h_s)
+      assert h_s not in result
       result[h_s] = 0
   return flex.miller_index(result.keys())
 

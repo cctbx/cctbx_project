@@ -44,7 +44,7 @@ def setup_bond_params_table(structure, bond_sym_table):
         params = restraint_parameters_o_si_o
       else:
         raise AssertionError("Unknown scattering type pair.")
-      if (not t[i_seq].has_key(j_seq)):
+      if (j_seq not in t[i_seq]):
         t[i_seq][j_seq] = geometry_restraints.bond_params(
           distance_ideal=params.distance_ideal,
           weight=params.weight)

@@ -187,7 +187,7 @@ unit cell are sought that match the other.""")
                           "R":"Rombohedral",
                           "F":"Face centered"}
   if command_line.options.centring_type is not None:
-    if not allowed_centring_types.has_key( command_line.options.centring_type ):
+    if command_line.options.centring_type not in allowed_centring_types:
       print("Sorry, the centring type %s is not known."%(command_line.options.centring_type), file=log)
       print("Choose from P,A,B,C,I,R,F ", file=log)
       return

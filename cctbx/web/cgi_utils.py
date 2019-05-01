@@ -40,7 +40,7 @@ class server_info:
 def inp_from_form(form, keys):
   inp = empty()
   for key in keys:
-    if (form.has_key(key[0])):
+    if (key[0] in form):
       #v = cgi.escape(form[key[0]].value,True).strip()
       v = form[key[0]].value.strip()
       if (v == ""): v = key[1]
@@ -54,7 +54,7 @@ def coordinates_from_form(form, suffix=None):
   for key_root in ("coordinates", "coor_file"):
     if (suffix is None): key = key_root
     else:                key = key_root + "_" + suffix
-    if (form.has_key(key)):
+    if (key in form):
       lines = cgi.escape(form[key].value,True).replace("\015", "\012").split("\012")
       for l in lines:
         s = l.strip()

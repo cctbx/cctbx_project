@@ -369,7 +369,7 @@ class point_group_graph(object):
       for item in self.graph.o:
         for value in self.graph.o[item]:
           if value is not None:
-            if new_dict.has_key(value):
+            if value in new_dict:
               tmp = new_dict[value]
               tmp.append(item)
               new_dict[value] = tmp
@@ -380,7 +380,7 @@ class point_group_graph(object):
   def get_maximal_subgroup(self, sg_name):
       subgroups = []
       reverse_graph = self.reverse_dict()
-      if reverse_graph.has_key(sg_name):
+      if sg_name in reverse_graph:
         subgroups = reverse_graph[sg_name]
       maximal = {}
       for sg in subgroups:
@@ -388,7 +388,7 @@ class point_group_graph(object):
       result = []
       for trial_sg in subgroups:
         tmp = {}
-        if reverse_graph.has_key(trial_sg):
+        if trial_sg in reverse_graph:
           tmp = reverse_graph[trial_sg]
         is_trial_sg_a_subgroup_of_items_in_subgroups=False
         for item in tmp:

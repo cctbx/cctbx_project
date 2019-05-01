@@ -206,7 +206,7 @@ def get_edge_vertices(list_of_polygons):
         v1 = polygon[i][0]
         v2 = polygon[j][0]
         key = (v1,v2)
-        if (not result.has_key(key)):
+        if (key not in result):
           key = (v2,v1)
         result[key] = 1
   return result.keys()
@@ -361,7 +361,7 @@ def get_all_vertices(all_edge_segments):
   result = {}
   for edge_segments in all_edge_segments:
     for segment in edge_segments:
-      if (result.has_key(segment.vertex)):
+      if (segment.vertex in result):
         assert result[segment.vertex] == segment.vertex_inclusive_flag
       else:
         result[segment.vertex] = segment.vertex_inclusive_flag
