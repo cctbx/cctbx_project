@@ -25,7 +25,7 @@ Recompute mosaic parameters for a set of experiments and apply outlier rejection
 
 Example:
 
-  %s refined_experiments.json refined_reflections.mpack
+  %s refined_experiments.json refined_reflections.pickle
 ''' % libtbx.env.dispatcher_name
 
 # Create the phil parameters
@@ -37,7 +37,7 @@ output {
   experiments = refined_experiments.json
     .type = str
     .help = Name of output  experiments file
-  reflections = refined_reflections.mpack
+  reflections = refined_reflections.pickle
     .type = str
     .help = Name of output reflections file
 }
@@ -52,7 +52,7 @@ class Script(object):
     import libtbx.load_env
 
     # Create the option parser
-    usage = "usage: %s refined_experiments.json refined_reflections.mpack" % libtbx.env.dispatcher_name
+    usage = "usage: %s refined_experiments.json refined_reflections.pickle" % libtbx.env.dispatcher_name
     self.parser = OptionParser(
       usage=usage,
       sort_options=True,
@@ -96,7 +96,7 @@ class Script(object):
 
     print "Removed %d out of %d reflections as outliers"%(len(reflections) - len(filtered_reflections), len(reflections))
     print "Saving filtered reflections as %s"%params.output.experiments
-    filtered_reflections.as_msgpack_file(params.output.reflections)
+    filtered_reflections.as_pickle(params.output.reflections)
 
     if params.plot_changes:
       from matplotlib import pyplot as plt

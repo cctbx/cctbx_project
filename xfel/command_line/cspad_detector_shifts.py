@@ -25,7 +25,7 @@ help_message = '''
 This program is used to show differences between a reference and a moving set of detectors
 Example:
 
-  %s experiment1.json experiment2.json reflections1.mpack reflections2.mpack
+  %s experiment1.json experiment2.json reflections1.pickle reflections2.pickle
 ''' % libtbx.env.dispatcher_name
 
 # Create the phil parameters
@@ -47,7 +47,7 @@ class Script(ParentScript):
     import libtbx.load_env
 
     # Create the option parser
-    usage = "usage: %s experiment1.json experiment2.json reflections1.mpack reflections2.mpack" % libtbx.env.dispatcher_name
+    usage = "usage: %s experiment1.json experiment2.json reflections1.pickle reflections2.pickle" % libtbx.env.dispatcher_name
     self.parser = OptionParser(
       usage=usage,
       sort_options=True,

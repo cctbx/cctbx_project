@@ -1100,7 +1100,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
 
         refls.set_flags(flex.bool(len(refls), True), refls.flags.indexed)
         if write_output:
-          refls.as_msgpack_file(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated.mpack")
+          refls.as_pickle(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated.pickle")
 
         print "cctbx.small_cell: integrated %d spots."%len(results),
         integrated_count = len(results)
