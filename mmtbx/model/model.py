@@ -1367,7 +1367,7 @@ class manager(object):
       print >> self.log, "No NCS restraint groups specified."
       print >> self.log
 
-  def get_vdw_radii(self):
+  def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
     Return van-der-Waals radii for known atom names.
     """
@@ -1378,7 +1378,13 @@ class manager(object):
     for k0,v0 in zip(m.comp_comp_id_dict.keys(), m.comp_comp_id_dict.values()):
       for k1,v1 in zip(v0.atom_dict().keys(), v0.atom_dict().values()):
         if(v1.type_energy in e_lib_atom_keys):
-          result[k1]=e.lib_atom[v1.type_energy].vdw_radius
+          vdw_radius = e.lib_atom[v1.type_energy].vdw_radius
+          if(vdw_radius is None):
+            vdw_radius = vdw_radius_default
+            if(self.log is not None):
+              msg = "WARNING: vdw radius undefined for: (%s %s); setting to: %s"
+              print >> self.log, msg%(k1, v1.type_energy, vdw_radius_default)
+          result[k1] = vdw_radius
     return result
 
   def get_n_excessive_site_distances_cartesian_ncs(self, excessive_distance_limit=1.5):
