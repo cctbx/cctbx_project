@@ -237,11 +237,11 @@ def exercise_sim(out, n_dynamics_steps, delta_t, sim):
   print("start e_tot:", e_tots[0], file=out)
   print("final e_tot:", e_tots[-1], file=out)
   ave = flex.sum(e_tots) / e_tots.size()
-  range = flex.max(e_tots) - flex.min(e_tots)
+  range_ = flex.max(e_tots) - flex.min(e_tots)
   if (ave == 0): relative_range = 0
-  else:          relative_range = range / ave
+  else:          relative_range = range_ / ave
   print("ave:", ave, file=out)
-  print("range:", range, file=out)
+  print("range:", range_, file=out)
   print("relative range:", relative_range, file=out)
   print(file=out)
   out.flush()
