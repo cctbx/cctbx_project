@@ -22,8 +22,8 @@ op = os.path
 
 def eval_ending (file_name):
   ordered_endings_mapping = [
-    ("refined_experiments.json", "integrated.mpack"),
-    ("experiments.json", "integrated.mpack"),
+    ("refined_experiments.json", "integrated.pickle"),
+    ("experiments.json", "integrated.pickle"),
     ]
   dir_name = os.path.dirname(file_name)
   basename = os.path.basename(file_name)
@@ -62,7 +62,7 @@ def load_result (file_name,
                  params,
                  reindex_op,
                  out) :
-  # Pull relevant information from integrated.mpack and refined_experiments.json
+  # Pull relevant information from integrated.pickle and refined_experiments.json
   # files to construct the equivalent of a single integration pickle (frame).
   try:
     frame = frame_extractor.ConstructFrameFromFiles(eval_ending(file_name)[2], eval_ending(file_name)[1]).make_frame()

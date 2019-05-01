@@ -268,7 +268,7 @@ def write_combine_phil(params, all_exp, all_ref):
 
 def refine(params, merged_scope, combine_phil):
   print "Combining experiments..."
-  command = "dials.combine_experiments reference_from_experiment.average_detector=True reference_from_experiment.average_hierarchy_level=0 output.experiments_filename=%s_combined_experiments.json output.reflections_filename=%s_combined_reflections.mpack %s"%(params.tag, params.tag, combine_phil)
+  command = "dials.combine_experiments reference_from_experiment.average_detector=True reference_from_experiment.average_hierarchy_level=0 output.experiments_filename=%s_combined_experiments.json output.reflections_filename=%s_combined_reflections.pickle %s"%(params.tag, params.tag, combine_phil)
   if params.n_subset is not None:
     command += " n_subset=%d n_subset_method=%s"%(params.n_subset, params.n_subset_method)
     if params.n_refl_panel_list is not None:
@@ -287,10 +287,10 @@ def refine(params, merged_scope, combine_phil):
 
 def refine_hierarchical(params, merged_scope, combine_phil):
   if params.panel_filter is not None:
-    from dials.array_family import flex
+    from libtbx import easy_pickle
     print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in params.panel_filter]))
-    combined_path = "%s_combined_reflections.mpack"%params.tag
-    data = flex.reflection_table.from_file(combined_path)
+    combined_path = "%s_combined_reflections.pickle"%params.tag
+    data = easy_pickle.load(combined_path)
     sel = None
     for panel_id in params.panel_filter:
       if sel is None:
@@ -298,7 +298,7 @@ def refine_hierarchical(params, merged_scope, combine_phil):
       else:
         sel |= data['panel'] == panel_id
     print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
-    data.select(sel).as_msgpack_file(combined_path)
+    easy_pickle.dump(combined_path, data.select(sel))
 
   for i in range(params.start_at_hierarchy_level, params.refine_to_hierarchy_level+1):
     if params.rmsd_filter.enable:
@@ -312,11 +312,11 @@ def refine_hierarchical(params, merged_scope, combine_phil):
     if params.rmsd_filter.enable:
       command = "cctbx.xfel.filter_experiments_by_rmsd %s %s output.filtered_experiments=%s output.filtered_reflections=%s"
       if i == params.start_at_hierarchy_level:
-        command = command%("%s_combined_experiments.json"%params.tag, "%s_combined_reflections.mpack"%params.tag,
-                           "%s_filtered_experiments.json"%params.tag, "%s_filtered_reflections.mpack"%params.tag)
+        command = command%("%s_combined_experiments.json"%params.tag, "%s_combined_reflections.pickle"%params.tag,
+                           "%s_filtered_experiments.json"%params.tag, "%s_filtered_reflections.pickle"%params.tag)
       else:
-        command = command%("%s_refined_experiments_level%d.json"%(params.tag, i-1), "%s_refined_reflections_level%d.mpack"%(params.tag, i-1),
-                           "%s_filtered_experiments_level%d.json"%(params.tag, i-1), "%s_filtered_reflections_level%d.mpack"%(params.tag, i-1))
+        command = command%("%s_refined_experiments_level%d.json"%(params.tag, i-1), "%s_refined_reflections_level%d.pickle"%(params.tag, i-1),
+                           "%s_filtered_experiments_level%d.json"%(params.tag, i-1), "%s_filtered_reflections_level%d.pickle"%(params.tag, i-1))
       command += " iqr_multiplier=%f"%params.rmsd_filter.iqr_multiplier
       print command
       result = easy_run.fully_buffered(command=command).raise_if_errors()
@@ -345,13 +345,13 @@ def refine_hierarchical(params, merged_scope, combine_phil):
         diff_phil = "refinement.parameterisation.detector.fix_list=Group1Tau1\n" # refine almost everything
 
     if i == params.start_at_hierarchy_level:
-      command = "dials.refine %s %s_%s_experiments.json %s_%s_reflections.mpack"%(refine_phil_file, params.tag, input_name, params.tag, input_name)
+      command = "dials.refine %s %s_%s_experiments.json %s_%s_reflections.pickle"%(refine_phil_file, params.tag, input_name, params.tag, input_name)
     else:
-      command = "dials.refine %s %s_%s_experiments_level%d.json %s_%s_reflections_level%d.mpack"%(refine_phil_file, params.tag, input_name, i-1, params.tag, input_name, i-1)
+      command = "dials.refine %s %s_%s_experiments_level%d.json %s_%s_reflections_level%d.pickle"%(refine_phil_file, params.tag, input_name, i-1, params.tag, input_name, i-1)
 
     diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
 
-    command += " output.experiments=%s_refined_experiments_level%d.json output.reflections=%s_refined_reflections_level%d.mpack"%( \
+    command += " output.experiments=%s_refined_experiments_level%d.json output.reflections=%s_refined_reflections_level%d.pickle"%( \
       params.tag, i, params.tag, i)
 
     scope = merged_scope.fetch(parse(diff_phil))
@@ -370,8 +370,8 @@ def refine_expanding(params, merged_scope, combine_phil):
   if params.rmsd_filter.enable:
     input_name = "filtered"
     command = "cctbx.xfel.filter_experiments_by_rmsd %s %s output.filtered_experiments=%s output.filtered_reflections=%s"
-    command = command%("%s_combined_experiments.json"%params.tag, "%s_combined_reflections.mpack"%params.tag,
-                       "%s_filtered_experiments.json"%params.tag, "%s_filtered_reflections.mpack"%params.tag)
+    command = command%("%s_combined_experiments.json"%params.tag, "%s_combined_reflections.pickle"%params.tag,
+                       "%s_filtered_experiments.json"%params.tag, "%s_filtered_reflections.pickle"%params.tag)
     command += " iqr_multiplier=%f"%params.rmsd_filter.iqr_multiplier
     print command
     result = easy_run.fully_buffered(command=command).raise_if_errors()
@@ -380,10 +380,10 @@ def refine_expanding(params, merged_scope, combine_phil):
     input_name = "combined"
   # --------------------------
   if params.panel_filter is not None:
-    from dials.array_family import flex
+    from libtbx import easy_pickle
     print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in params.panel_filter]))
-    combined_path = "%s_combined_reflections.mpack"%params.tag
-    data = flex.reflection_table.from_file(combined_path)
+    combined_path = "%s_combined_reflections.pickle"%params.tag
+    data = easy_pickle.load(combined_path)
     sel = None
     for panel_id in params.panel_filter:
       if sel is None:
@@ -391,7 +391,7 @@ def refine_expanding(params, merged_scope, combine_phil):
       else:
         sel |= data['panel'] == panel_id
     print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
-    data.select(sel).as_msgpack_file(combined_path)
+    easy_pickle.dump(combined_path, data.select(sel))
   # ----------------------------------
   # this is the order to refine the CSPAD in
   steps = {}
@@ -418,11 +418,11 @@ def refine_expanding(params, merged_scope, combine_phil):
 
   previous_step_and_level = None
   for j in range(8):
-    from dials.array_family import flex
+    from libtbx import easy_pickle
     print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in steps[j]]))
-    combined_path = "%s_%s_reflections.mpack"%(params.tag, input_name)
-    output_path = "%s_reflections_step%d.mpack"%(params.tag, j)
-    data = flex.reflection_table.from_file(combined_path)
+    combined_path = "%s_%s_reflections.pickle"%(params.tag, input_name)
+    output_path = "%s_reflections_step%d.pickle"%(params.tag, j)
+    data = easy_pickle.load(combined_path)
     sel = None
     for panel_id in steps[j]:
       if sel is None:
@@ -430,7 +430,7 @@ def refine_expanding(params, merged_scope, combine_phil):
       else:
         sel |= data['panel'] == panel_id
     print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
-    data.select(sel).as_msgpack_file(output_path)
+    easy_pickle.dump(output_path, data.select(sel))
 
     for i in levels[j]:
       print "Step", j , "refining at hierarchy level", i
@@ -456,22 +456,22 @@ def refine_expanding(params, merged_scope, combine_phil):
           diff_phil = "refinement.parameterisation.detector.fix_list=Group1Tau1\n" # refine almost everything
 
       if previous_step_and_level is None:
-        command = "dials.refine %s %s_%s_experiments.json %s_reflections_step%d.mpack"%( \
+        command = "dials.refine %s %s_%s_experiments.json %s_reflections_step%d.pickle"%( \
           refine_phil_file, params.tag, input_name, params.tag, j)
       else:
         p_step, p_level = previous_step_and_level
         if p_step == j:
-          command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_refined_reflections_step%d_level%d.mpack"%( \
+          command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_refined_reflections_step%d_level%d.pickle"%( \
             refine_phil_file, params.tag, p_step, p_level, params.tag, p_step, p_level)
         else:
-          command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_reflections_step%d.mpack"%( \
+          command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_reflections_step%d.pickle"%( \
             refine_phil_file, params.tag, p_step, p_level, params.tag, j)
 
 
       diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
 
       output_experiments = "%s_refined_experiments_step%d_level%d.json"%(params.tag, j, i)
-      command += " output.experiments=%s output.reflections=%s_refined_reflections_step%d_level%d.mpack"%( \
+      command += " output.experiments=%s output.reflections=%s_refined_reflections_step%d_level%d.pickle"%( \
         output_experiments, params.tag, j, i)
 
       scope = merged_scope.fetch(parse(diff_phil))

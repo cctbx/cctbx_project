@@ -289,16 +289,16 @@ xtc_phil_str = '''
     experiments_filename = %s_experiments.json
       .type = str
       .help = The filename for output experiment list
-    strong_filename = %s_strong.mpack
+    strong_filename = %s_strong.pickle
       .type = str
       .help = The filename for strong reflections from spot finder output.
-    indexed_filename = %s_indexed.mpack
+    indexed_filename = %s_indexed.pickle
       .type = str
       .help = The filename for indexed reflections.
     refined_experiments_filename = %s_refined_experiments.json
       .type = str
       .help = The filename for saving refined experimental models
-    integrated_filename = %s_integrated.mpack
+    integrated_filename = %s_integrated.pickle
       .type = str
       .help = The filename for final experimental modls
     integrated_experiments_filename = %s_integrated_experiments.json
@@ -874,14 +874,14 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         experiment_jsons = []
         indexed_tables = []
         for filename in os.listdir(params.output.output_dir):
-          if not filename.endswith("_indexed.mpack"):
+          if not filename.endswith("_indexed.pickle"):
             continue
-          experiment_jsons.append(os.path.join(params.output.output_dir, filename.split("_indexed.mpack")[0] + "_refined_experiments.json"))
+          experiment_jsons.append(os.path.join(params.output.output_dir, filename.split("_indexed.pickle")[0] + "_refined_experiments.json"))
           indexed_tables.append(os.path.join(params.output.output_dir, filename))
           if params.format.file_format == "cbf":
-            images.append(os.path.join(params.output.output_dir, filename.split("_indexed.mpack")[0] + ".cbf"))
+            images.append(os.path.join(params.output.output_dir, filename.split("_indexed.pickle")[0] + ".cbf"))
           elif params.format.file_format == "pickle":
-            images.append(os.path.join(params.output.output_dir, filename.split("_indexed.mpack")[0] + ".pickle"))
+            images.append(os.path.join(params.output.output_dir, filename.split("_indexed.pickle")[0] + ".pickle"))
 
         if len(images) < params.joint_reintegration.minimum_results:
           pass # print and return
@@ -897,7 +897,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         f.close()
 
         combined_experiments_file = os.path.join(reint_dir, "combined_experiments.json")
-        combined_reflections_file = os.path.join(reint_dir, "combined_reflections.mpack")
+        combined_reflections_file = os.path.join(reint_dir, "combined_reflections.pickle")
         command = "dials.combine_experiments reference_from_experiment.average_detector=True %s output.reflections=%s output.experiments=%s"% \
           (combo_input, combined_reflections_file, combined_experiments_file)
         print command
@@ -922,14 +922,14 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         from dxtbx.model import ExperimentList
         dump = ExperimentListDumper(experiments)
         dump.as_json(os.path.join(reint_dir, "refined_experiments.json"))
-        reflections.as_msgpack_file(os.path.join(reint_dir, "refined_reflections.mpack"))
+        reflections.as_pickle(os.path.join(reint_dir, "refined_reflections.pickle"))
 
         for expt_id, (expt, img_file) in enumerate(zip(experiments, images)):
           try:
             refls = reflections.select(reflections['id'] == expt_id)
             refls['id'] = flex.int(len(refls), 0)
             base_name = os.path.splitext(os.path.basename(img_file))[0]
-            self.params.output.integrated_filename = os.path.join(reint_dir, base_name + "_integrated.mpack")
+            self.params.output.integrated_filename = os.path.join(reint_dir, base_name + "_integrated.pickle")
 
             expts = ExperimentList([expt])
             self.integrate(expts, refls)
@@ -1186,7 +1186,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         from dials.util.command_line import Command
         Command.start('Saving {0} reflections to {1}'.format(
             len(observed), os.path.basename(strong_filename)))
-        observed.as_msgpack_file(strong_filename)
+        observed.as_pickle(strong_filename)
         Command.end('Saved {0} observed to {1}'.format(
             len(observed), os.path.basename(strong_filename)))
 

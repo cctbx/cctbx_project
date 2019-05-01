@@ -63,9 +63,9 @@ combine_experiments {
     }
   keep_integrated = False
     .type = bool
-    .help = "Combine refined_experiments.json and integrated.mpack files."
-    .help = "If False, ignore integrated.mpack files in favor of"
-    .help = "indexed.mpack files in preparation for reintegrating."
+    .help = "Combine refined_experiments.json and integrated.pickle files."
+    .help = "If False, ignore integrated.pickle files in favor of"
+    .help = "indexed.pickle files in preparation for reintegrating."
   include scope dials.command_line.combine_experiments.phil_scope
 }
 '''
@@ -74,7 +74,7 @@ combining_override_str = '''
 combine_experiments {
   output {
     experiments_filename = FILENAME_combined_experiments.json
-    reflections_filename = FILENAME_combined_reflections.mpack
+    reflections_filename = FILENAME_combined_reflections.pickle
     delete_shoeboxes = False
   }
   reference_from_experiment {
@@ -107,7 +107,7 @@ refinement_override_str = '''
 refinement {
   output {
     experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.mpack
+    reflections = FILENAME_refined_reflections_CLUSTER.pickle
     include_unused_reflections = False
     log = FILENAME_refine_CLUSTER.log
     debug_log = FILENAME_refine_CLUSTER.debug.log
@@ -135,7 +135,7 @@ refinement {
   }
   input {
     experiments = FILENAME_combined_experiments_CLUSTER.json
-    reflections = FILENAME_combined_reflections_CLUSTER.mpack
+    reflections = FILENAME_combined_reflections_CLUSTER.pickle
   }
 }
 '''
@@ -154,11 +154,11 @@ recompute_mosaicity_override_str = '''
 recompute_mosaicity {
   input {
     experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.mpack
+    reflections = FILENAME_refined_reflections_CLUSTER.pickle
   }
   output {
     experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.mpack
+    reflections = FILENAME_refined_reflections_CLUSTER.pickle
   }
 }
 '''
@@ -180,7 +180,7 @@ reintegration_override_str = '''
 reintegration{
   output {
     experiments = FILENAME_reintegrated_experiments_CLUSTER.json
-    reflections = FILENAME_reintegrated_reflections_CLUSTER.mpack
+    reflections = FILENAME_reintegrated_reflections_CLUSTER.pickle
     log = FILENAME_reintegrate_CLUSTER.log
     debug_log = FILENAME_reintegrate_CLUSTER.debug.log
   }
@@ -210,7 +210,7 @@ reintegration{
   }
   input {
     experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.mpack
+    reflections = FILENAME_refined_reflections_CLUSTER.pickle
   }
 }
 '''
@@ -227,10 +227,10 @@ postprocessing_override_str = """
 postprocessing {
   input {
     experiments = FILENAME_reintegrated_experiments_CLUSTER.json
-    reflections = FILENAME_reintegrated_reflections_CLUSTER.mpack
+    reflections = FILENAME_reintegrated_reflections_CLUSTER.pickle
   }
   output {
-    filename = FILENAME_CLUSTER_ITER_extracted.mpack
+    filename = FILENAME_CLUSTER_ITER_extracted.pickle
     dirname = %s
   }
 }
@@ -264,7 +264,7 @@ def allocate_chunks(results_dir,
                     stripe=False,
                     max_size=1000,
                     integrated=False):
-  refl_ending = "_integrated" if integrated else "_indexed"
+  refl_ending = "_integrated.pickle" if integrated else "_indexed.pickle"
   expt_ending = "_refined_experiments.json"
   trial = "%03d" % trial_no
   print "processing trial %s" % trial
@@ -379,8 +379,8 @@ def script_to_expand_over_clusters(clustered_json_name,
   """
   Write a bash script to find results of a clustering step and produce customized
   phils and commands to run with each of them. For example, run the command
-  dials.refine ...cluster8.json ...cluster8.mpack ...cluster8.phil followed by
-  dials.refine ...cluster9.json ...cluster9.mpack ...cluster9.phil.
+  dials.refine ...cluster8.json ...cluster8.pickle ...cluster8.phil followed by
+  dials.refine ...cluster9.json ...cluster9.pickle ...cluster9.phil.
   clustered_json_name, clustered_refl_name and phil_template_name must each
   contain an asterisk, and substitution in phil_template itself will occur at
   each instance of CLUSTER.
