@@ -602,8 +602,8 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
     keep_chain_as_unit=True,
     min_similarity=1.0,out=sys.stdout):
 
-  starting_chain_id_list=[]
   from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
+  starting_chain_id_list=get_chain_ids(ph)
   if (not keep_chain_as_unit):
     ph=split_chains_with_unique_four_char_id(ph).hierarchy
 
