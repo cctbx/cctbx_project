@@ -576,15 +576,11 @@ def get_sorted_matching_chains(
     sorted_distances.append(dist)
   return sorted_chains,sorted_distances
 
-def split_chains_with_unique_four_char_id(ph,params=None):
+def split_chains_with_unique_four_char_id(ph):
   from mmtbx.secondary_structure.find_ss_from_ca import split_model,model_info,\
     merge_hierarchies_from_models, make_four_char_unique_chain_id
   chain_model=model_info(hierarchy=ph)
-  assert params.crystal_info.chain_type
-  if params.crystal_info.chain_type=="PROTEIN":
-    distance_cutoff=5.
-  else:
-    distance_cutoff=15.
+  distance_cutoff=15. # basically use sequence jumps to ID breaks
   chain_models=split_model(model=chain_model,distance_cutoff=distance_cutoff)
   new_hierarchy=iotbx.pdb.input(
          source_info="Model", lines=flex.split_lines("")).construct_hierarchy()
@@ -604,7 +600,6 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
     allow_mismatch_in_number_of_copies=True,
     allow_extensions=False,
     keep_chain_as_unit=True,
-    params=None,
     min_similarity=1.0,out=sys.stdout):
 
   starting_chain_id_list=[]
@@ -613,8 +608,7 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
     for model in ph.models()[:1]:
       for chain in model.chains():
         starting_chain_id_list.append(chain.id)
-    assert params is not None and params.crystal_info.chain_type is not None
-    ph=split_chains_with_unique_four_char_id(ph,params=params).hierarchy
+    ph=split_chains_with_unique_four_char_id(ph).hierarchy
 
   # Container for unique chains:
 
