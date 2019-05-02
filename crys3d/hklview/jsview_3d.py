@@ -340,9 +340,9 @@ class hklview_3d:
     //red-z
     shape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
 
-    shape.addText( %s, [ 0, 0, 1 ], %s, 'H');
-    shape.addText( %s, [ 0, 1, 0 ], %s, 'K');
-    shape.addText( %s, [ 1, 0, 0 ], %s, 'L');
+    shape.addText( %s, [ 0, 0, 1 ], %s, 'h');
+    shape.addText( %s, [ 0, 1, 0 ], %s, 'k');
+    shape.addText( %s, [ 1, 0, 0 ], %s, 'l');
     """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, fontsize,
           Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
@@ -406,6 +406,7 @@ class hklview_3d:
     colstr = self.scene.miller_array.info().label_string()
     data = self.scene.data
     colourlabel = self.otherscenes[self.icolourcol].colourlabel
+    fomlabel = self.otherscenes[self.icolourcol].fomlabel
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
     colours = []
@@ -650,6 +651,24 @@ function addElement (el) {
 }
 
 
+function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)') {
+  divbox = createElement("div",
+  {
+    innerText: txt
+  },
+  {
+    backgroundColor: bgcolour,
+    color:  'rgba(0.0, 0.0, 0.0, 1.0)',
+    top: t.toString() + "px",
+    left: l.toString() + "px",
+    width: w.toString() + "px",
+    height: h.toString() + "px",
+  }
+  );
+  addElement(divbox)
+}
+
+
 var hklscene = function () {
   shape = new NGL.Shape('shape');
   stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false,
@@ -679,95 +698,64 @@ var hklscene = function () {
   var lp2 = lp + wp
   var gl = 3
   var wp2 = gl
+  var fomlabelheight = 25
   if (colourgradvalarray.length === 1) {
     wp2 = 15
+    fomlabelheight = 0
   }
 
   var wp3 = wp + colourgradvalarray.length * wp2 + 2
 
-  totalheight = ih*colourgradvalarray[0].length + 40
+  totalheight = ih*colourgradvalarray[0].length + 35 + fomlabelheight
   // make a white box on top of which boxes with transparent background are placed
-  // containing the colour values at regular intervals
-  whitebox = createElement("div",
-  {
-    innerText: ''
-  },
-  {
-    backgroundColor: 'rgba(255.0, 255.0, 255.0, 1.0)',
-    color:  'rgba(0.0, 0.0, 0.0, 1.0)',
-    top: topr2.toString() + "px",
-    left: lp.toString() + "px",
-    width: wp3.toString() + "px",
-    height: totalheight.toString() + "px",
-  }
-  );
-  addElement(whitebox)
+  // containing the colour values at regular intervals as well as label legend of
+  // the displayed miller array
+  addDivBox("", topr2, lp, wp3, totalheight, 'rgba(255.0, 255.0, 255.0, 1.0)');
 
   // print label of the miller array used for colouring
-  txtbox = createElement("div",
-  {
-    innerText: "%s"
-  },
-  {
-    backgroundColor: 'rgba(255.0, 255.0, 255.0, 0.0)',
-    color:  'rgba(0.0, 0.0, 0.0, 1.0)',
-    top: topr2.toString() + "px",
-    left: lp.toString() + "px",
-    width: wp.toString() + "px",
-    height: "20px",
+  addDivBox("%s", topr2, lp, wp, 20);
+
+  if (colourgradvalarray.length > 1) {
+    // print FOM label, 1, 0.5 and 0.0 values below colour chart
+    fomtop = topr2 + totalheight - 18
+    fomlp = lp + wp
+    fomwp = wp3
+    fomtop2 = fomtop - 13
+    // print the FOM label
+    addDivBox("%s", fomtop, fomlp, fomwp, 20);
+
+    // print the 3 numbers
+    addDivBox("1", fomtop2, fomlp, fomwp, 20)
+
+    leftp = fomlp + 0.48 * gl * colourgradvalarray.length
+    addDivBox("0.5", fomtop2, leftp, fomwp, 20)
+
+    leftp = fomlp + 0.96 * gl * colourgradvalarray.length
+    addDivBox("0", fomtop2, leftp, fomwp, 20)
   }
-  );
-  addElement(txtbox)
 
   for (j = 0; j < colourgradvalarray[0].length; j++) {
     rgbcol = colourgradvalarray[0][j][1];
     val = colourgradvalarray[0][j][0]
     topv = j*ih + topr
     toptxt = topv - 5
-
     // print value of miller array if present in colourgradvalarray[0][j][0]
-    txtbox = createElement("div",
-    {
-      innerText: val
-    },
-    {
-      backgroundColor: 'rgba(255.0, 255.0, 255.0, 0.0)',
-      color:  'rgba(0.0, 0.0, 0.0, 1.0)',
-      top: toptxt.toString() + "px",
-      left: lp.toString() + "px",
-      width: wp.toString() + "px",
-      height: ih.toString() + "px",
-    }
-    );
-    addElement(txtbox)
+    addDivBox(val, toptxt, lp, wp, ih);
   }
 
   // draw the colour gradient
   for (g = 0; g < colourgradvalarray.length; g++) {
     leftp = g*gl + lp + wp
 
-    // draw colour gradients with decreasing saturation if FOM values are supplied
+    // if FOM values are supplied draw colour gradients with decreasing
+    // saturation values as stored in the colourgradvalarray[g] arrays
     for (j = 0; j < colourgradvalarray[g].length; j++) {
       rgbcol = colourgradvalarray[g][j][1];
       val = colourgradvalarray[g][j][0]
       topv = j*ih + topr
-
-      mybox = createElement("div",
-      {
-        innerText: ''
-      },
-      {
-        backgroundColor: rgbcol,
-        top: topv.toString() + "px",
-        left: leftp.toString() + "px",
-        width: wp2.toString() + "px",
-        height: ih.toString() + "px",
-      }
-      );
-      addElement(mybox)
+      addDivBox("", topv, leftp, wp2, ih, rgbcol);
     }
   }
-
 
 }
 
@@ -849,7 +837,7 @@ mysocket.onmessage = function (e) {
 
 
     """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr, \
-            negativeradiistr, colourgradstrs, colourlabel)
+            negativeradiistr, colourgradstrs, colourlabel, fomlabel)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )

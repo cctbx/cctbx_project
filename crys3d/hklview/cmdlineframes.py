@@ -419,9 +419,11 @@ class HKLViewFrame () :
         #if array.is_hendrickson_lattman_array() :
         #  continue
         #elif (data_only) :
-        if (data_only) :
-          if (not array.is_real_array()) and (not array.is_complex_array()) :
-            continue
+        if (not array.is_real_array()) and (not array.is_complex_array()) \
+         and (not array.is_integer_array()) and (not array.is_bool_array()) :
+          self.mprint('Ignoring miller array \"%s\" of %s' \
+            %(array.info().label_string(), type(array.data()[0]) ) )
+          continue
         self.array_info.append( ArrayInfo(array).infostr )
         valid_arrays.append(array)
       self.valid_arrays = valid_arrays

@@ -88,6 +88,7 @@ class scene(object):
     from cctbx import crystal
     from cctbx.array_family import flex
     self.multiplicities = None
+    self.fomlabel = ""
     self.foms = flex.double(self.miller_array.size(), float('nan'))
     if self.miller_array.is_complex_array():
       # want to display map coefficient as circular colours but weighted with FOMS
@@ -96,6 +97,7 @@ class scene(object):
         assert ( self.miller_array.size() == foms_array.size() )
         self.foms_workarray, dummy = self.process_input_array(foms_array)
         self.foms = self.foms_workarray.data()
+        self.fomlabel = foms_array.info().label_string()
     self.work_array, self.multiplicities = self.process_input_array(self.miller_array)
     array = self.work_array
     uc = array.unit_cell()
