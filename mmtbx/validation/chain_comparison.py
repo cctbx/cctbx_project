@@ -609,7 +609,6 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
 
   starting_chain_id_list=[]
 
-  from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
   if (not keep_chain_as_unit):
     for model in ph.models()[:1]:
       for chain in model.chains():
