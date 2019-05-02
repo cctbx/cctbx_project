@@ -4,7 +4,7 @@ import numpy
 from mmtbx.tls.utils import TLSMatrices
 from mmtbx.tls.optimise_amplitudes import MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator, OptimiseAmplitudes
 from scitbx.array_family import flex
-from libtbx.test_utils import approx_equal, not_approx_equal
+from libtbx.test_utils import approx_equal
 from pytest import raises
 
 rran = numpy.random.random
