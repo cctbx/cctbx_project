@@ -257,6 +257,31 @@ def is_close_to(r,last_r,distance_cutoff=None,use_default_distance_cutoff=True):
   else:
     return False
 
+def make_four_char_unique_chain_id(id,used_chain_ids=None):
+  # Make a unique chain id that looks like id but has extra characters as
+  #  necessary.  Use first 2 chars as input part, last 2 chars of 4 as unique
+  original_id=id
+  id=id.strip()
+  if len(id)<1:
+    id="XX"
+  elif len(id)<2:
+    id="%sX" %(id)
+  elif len(id)==2:
+    pass # already good
+  else:
+    raise Sorry(
+      "Cannot use longer-than-2 chain ids in make_four_char_unique_chain_id")
+  new_chars=" abcdefghijklmnopqrstuvwxyz"
+  new_chars+="abcdefghijklmnopqrstuvwxyz".upper()
+  new_chars+="0123456789"
+  for a in new_chars[1:]:
+    for b in new_chars:
+      new_id=id+a+b.strip()
+      if not new_id in used_chain_ids:
+        used_chain_ids.append(new_id)
+        return new_id,used_chain_ids
+  raise Sorry("Unable to generate a new unique chain ID for %s" %(original_id))
+
 def split_model(model=None,hierarchy=None,verbose=False,info=None,
      only_first_model=None,distance_cutoff=None,
      use_default_distance_cutoff=True,
@@ -265,7 +290,6 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
   # The routine extract_segment below assumes that the residues in an individual
   #  model are sequential (no insertion codes)
   # if CA-CA or P-P distance is > distance-cutoff then split there
-
   model_list=[]
   if hierarchy:
     if not info: info={}
@@ -277,8 +301,8 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
 
   if not hierarchy or hierarchy.overall_counts().n_residues<1:
     return [] # nothing to do
-
   total_models=0
+  base_chain_ids=[]
   for m in hierarchy.models():
     total_models+=1
     if total_models>1:
@@ -466,13 +490,14 @@ def get_average_direction(diffs=None, i=None,j=None):
     average_direction/=nn
     return average_direction.normalize()
 
-def get_chain_ids(hierarchy):
+def get_chain_ids(hierarchy,unique_only=None):
   chain_ids=[]
   if not hierarchy:
     return chain_ids
   for model in hierarchy.models():
     for chain in model.chains():
-      chain_ids.append(chain.id)
+      if (not unique_only) or (not chain.id in chain_ids):
+        chain_ids.append(chain.id)
   return chain_ids
 
 def get_chain_id(hierarchy):

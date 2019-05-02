@@ -294,7 +294,7 @@ class FiveProteinResidues(FourProteinResidues):
 if __name__=="__main__":
   import sys
   from iotbx import pdb
-  from test_rdl import get_geometry_restraints_manager
+  from tst_rdl import get_geometry_restraints_manager
   filename=sys.argv[1]
   pdb_inp = pdb.input(filename)
   pdb_hierarchy = pdb_inp.construct_hierarchy()

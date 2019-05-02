@@ -8,7 +8,7 @@ from mmtbx.conformation_dependent_library import cdl_utils
 from mmtbx.conformation_dependent_library.omega_database import omega_database
 from mmtbx.conformation_dependent_library import omega
 
-from test_cdl import output_filenames, filenames, get_managers
+from tst_cdl import output_filenames, filenames, get_managers
 
 '''
  A   2  VAL:33.01:-99.29:113.00:Favored:Isoleucine or valine

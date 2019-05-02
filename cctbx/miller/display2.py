@@ -88,6 +88,7 @@ class scene(object):
     from cctbx import crystal
     from cctbx.array_family import flex
     self.multiplicities = None
+    self.fomlabel = ""
     self.foms = flex.double(self.miller_array.size(), float('nan'))
     if self.miller_array.is_complex_array():
       # want to display map coefficient as circular colours but weighted with FOMS
@@ -96,6 +97,7 @@ class scene(object):
         assert ( self.miller_array.size() == foms_array.size() )
         self.foms_workarray, dummy = self.process_input_array(foms_array)
         self.foms = self.foms_workarray.data()
+        self.fomlabel = foms_array.info().label_string()
     self.work_array, self.multiplicities = self.process_input_array(self.miller_array)
     array = self.work_array
     uc = array.unit_cell()
@@ -111,6 +113,7 @@ class scene(object):
       #if (self.slice_selection.count(True) == 0):
         #raise ValueError("No data selected!")
     index_span = array.index_span()
+    self.colourlabel = self.miller_array.info().labels[0]
     self.d_min = array.d_min()
     self.hkl_range = index_span.abs_range()
     self.axes = [ uc.reciprocal_space_vector((self.hkl_range[0],0,0)),
@@ -289,8 +292,10 @@ class scene(object):
     elif isinstance(data, flex.complex_double):
       data_for_colors = self.radians
       foms_for_colours = self.foms
+      self.colourlabel = self.miller_array.info().labels[1]
     elif (settings.sigma_color) and sigmas is not None:
       data_for_colors = sigmas.as_double()
+      self.colourlabel = self.miller_array.info().labels[1]
     else :
       data_for_colors = flex.abs(data.deep_copy())
 

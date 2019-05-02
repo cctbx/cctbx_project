@@ -277,5 +277,5 @@ if (__name__ == "__main__"):
     print "formula:", formula
     r = exercise_00(pdb_str=pdb_str, formula=formula)
     print "  ", r
-    if(formula=="10"): r>0.55
-    if(formula=="11"): r<0.06
+    if(formula=="10"): assert r>0.55
+    if(formula=="11"): assert r<0.06

@@ -4,13 +4,38 @@ env_etc.include_registry.append(
   env=env,
   paths=env_etc.mmtbx_common_includes)
 
+builder = env.SharedLibrary
+if env_etc.static_libraries:
+  builder = env.StaticLibrary
+builder(
+  target="#lib/mmtbx_tls",
+  source=["decompose.cpp"]
+)
+
 if (not env_etc.no_boost_python):
   Import("env_cctbx_boost_python_ext")
+
+  # original library imported in mmtbx/tls/__init__.py
   env_bpl = env_cctbx_boost_python_ext.Clone()
   env_etc.include_registry.append(
     env=env_bpl,
     paths=env_etc.mmtbx_common_includes)
-  env_bpl.Prepend(LIBS=["cctbx"])
+  env_bpl.Prepend(LIBS=["mmtbx_tls", "cctbx"])
   env_bpl.SharedLibrary(
     target="#lib/mmtbx_tls_ext",
     source=["tls_ext.cpp"])
+
+  # add library to be imported in mmtbx/tls/decompose.py (adapted from above)
+  env_bpl.SharedLibrary(
+    target="#lib/mmtbx_tls_decompose_ext",
+    source=["decompose_ext.cpp"])
+
+  # add library to be imported in mmtbx/tls/utils.py (adapted from above)
+  env_bpl.SharedLibrary(
+    target="#lib/mmtbx_tls_utils_ext",
+    source=["utils.cpp", "utils_ext.cpp"])
+
+  # add library to be imported in mmtbx/tls/optimise_amplitudes.py (adapted from above)
+  env_bpl.SharedLibrary(
+    target="#lib/mmtbx_tls_optimise_amplitudes_ext",
+    source=["optimise_amplitudes.cpp", "optimise_amplitudes_ext.cpp"])

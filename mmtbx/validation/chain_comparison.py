@@ -576,10 +576,36 @@ def get_sorted_matching_chains(
     sorted_distances.append(dist)
   return sorted_chains,sorted_distances
 
+def split_chains_with_unique_four_char_id(ph):
+  from mmtbx.secondary_structure.find_ss_from_ca import split_model,model_info,\
+    merge_hierarchies_from_models, make_four_char_unique_chain_id
+  chain_model=model_info(hierarchy=ph)
+  distance_cutoff=15. # basically use sequence jumps to ID breaks
+  chain_models=split_model(model=chain_model,distance_cutoff=distance_cutoff)
+  new_hierarchy=iotbx.pdb.input(
+         source_info="Model", lines=flex.split_lines("")).construct_hierarchy()
+  new_model=iotbx.pdb.hierarchy.model()
+  new_hierarchy.append_model(new_model)
+  used_chain_ids=[]
+  for mi in chain_models:
+    for mm in mi.hierarchy.models()[:1]:
+      for cc in mm.chains():
+        cc1=cc.detached_copy()
+        cc1.id,used_chain_ids=make_four_char_unique_chain_id(cc1.id,
+              used_chain_ids=used_chain_ids)
+        new_model.append_chain(cc1)
+  return model_info(new_hierarchy)
+
 def extract_unique_part_of_hierarchy(ph,target_ph=None,
     allow_mismatch_in_number_of_copies=True,
     allow_extensions=False,
+    keep_chain_as_unit=True,
     min_similarity=1.0,out=sys.stdout):
+
+  from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
+  starting_chain_id_list=get_chain_ids(ph)
+  if (not keep_chain_as_unit):
+    ph=split_chains_with_unique_four_char_id(ph).hierarchy
 
   # Container for unique chains:
 
@@ -636,6 +662,7 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
   print >>out,"Unique set of sequences. Copies of the unique set: %s" %(
       base_copies)
   print >>out,"Copies in unique set ID  sequence"
+  chains_unique=[]
   for unique_seq in copies_in_unique.keys():
     matching_ids,matching_chains=get_matching_ids(
       unique_seq=unique_seq,sequences=sequences,chains=chains,
@@ -648,11 +675,75 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
     for chain,dist in zip(
         sorted_matching_chains[:copies_in_unique[unique_seq]],
         sorted_matching_distances[:copies_in_unique[unique_seq]]):
-      mm.append_chain(chain.detached_copy())
       print >>out, "Adding chain %s: %s (%s): %7.2f" %(
          chain.id,unique_seq,str(chain.atoms().extract_xyz()[0]),
          dist)
+      cc=chain.detached_copy()
+      if (not keep_chain_as_unit):
+        # Remove X and 3rd/4th characters from chain ID
+        cc.id=get_two_char_id_from_four(cc.id,
+           starting_chain_id_list=starting_chain_id_list)
+      chains_unique.append(cc)
+
+  # Sort the chains on chain id and then on starting residue number
+  chains_unique=sort_chains(chains_unique)
+
+  # Put them in the new_hierarchy now
+  for chain in chains_unique:
+    mm.append_chain(chain.detached_copy())
   return new_hierarchy
+
+def get_chains_with_id(chains,id=None):
+  new_chains=[]
+  for chain in chains:
+    if chain.id==id:
+      new_chains.append(chain)
+  return new_chains
+
+def sort_chains_on_start(chains):
+  sort_list=[]
+  for chain in chains:
+    start=get_first_resno_of_chain(chain)
+    sort_list.append([start,chain])
+  sort_list.sort()
+  new_chains=[]
+  for start,chain in sort_list:
+    new_chains.append(chain)
+  return new_chains
+
+def get_first_resno_of_chain(chain):
+  for rg in chain.residue_groups():
+     return rg.resseq_as_int()
+
+def get_ids_from_chain_list(chains_unique):
+  id_list=[]
+  for chain in chains_unique:
+    if not chain.id in id_list:
+      id_list.append(chain.id)
+  return id_list
+
+def sort_chains(chains_unique):
+  unique_id_list=get_ids_from_chain_list(chains_unique)
+  new_chains=[]
+  for chain_id in unique_id_list:
+    chains=get_chains_with_id(chains_unique,id=chain_id)
+    chains=sort_chains_on_start(chains)
+    new_chains+=chains
+  return new_chains
+
+def get_two_char_id_from_four(id,starting_chain_id_list=None):
+  two_char_id=id[:2]
+  if (not two_char_id in starting_chain_id_list): # not ok
+    one_char_id=two_char_id.replace("X","")
+    if one_char_id in starting_chain_id_list:
+      new_id=one_char_id
+    else:
+      raise Sorry(
+       "Unable to find the chain ID %s in starting list of %s"%(
+         one_char_id,str(starting_chain_id_list)))
+  else: # ok
+    new_id=two_char_id
+  return new_id
 
 def run_test_unique_part_of_target_only(params=None,
        out=sys.stdout,

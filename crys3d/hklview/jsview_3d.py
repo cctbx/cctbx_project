@@ -46,8 +46,11 @@ class ArrayInfo:
       self.desc = get_array_description(millarr)
     self.span = "HKLs: %s to %s" % \
       ( millarr.index_span().min(), millarr.index_span().max())
-    self.infostr = "%s (%s), %s %s, %s, d_min: %s" % \
-      (self.labels, self.desc, millarr.indices().size(), self.span, self.minmaxstr, roundoff(millarr.d_min()))
+    dmin = millarr.d_max_min()[1]
+    dmax = millarr.d_max_min()[0]
+    self.infostr = "%s (%s), %s %s, %s, d_min_max: %s, %s" % \
+      (self.labels, self.desc, millarr.indices().size(), self.span,
+       self.minmaxstr, roundoff(dmin), roundoff(dmax) )
 
 
 class hklview_3d:
@@ -128,7 +131,7 @@ class hklview_3d:
       os.remove(self.hklfname)
 
 
-  def set_miller_array (self, miller_array, merge=None, details="", valid_arrays=[]) :
+  def set_miller_array(self, miller_array, merge=None, details="", valid_arrays=[]) :
     if (miller_array is None):
       return
     self.miller_array = miller_array
@@ -299,7 +302,10 @@ class hklview_3d:
 
 
   def UpdateBinValues(self, binvals = [] ):
-    self.binvals = binvals
+    if binvals:
+      self.binvals = binvals
+    else:
+      self.binvals = [ 1.0/self.miller_array.d_max_min()[0], 1.0/self.miller_array.d_max_min()[1] ]
 
 
   def DrawNGLJavaScript(self):
@@ -334,9 +340,9 @@ class hklview_3d:
     //red-z
     shape.addArrow( %s, %s , [ 1, 0, 0 ], 0.1);
 
-    shape.addText( %s, [ 0, 0, 1 ], %s, 'H');
-    shape.addText( %s, [ 0, 1, 0 ], %s, 'K');
-    shape.addText( %s, [ 1, 0, 0 ], %s, 'L');
+    shape.addText( %s, [ 0, 0, 1 ], %s, 'h');
+    shape.addText( %s, [ 0, 1, 0 ], %s, 'k');
+    shape.addText( %s, [ 1, 0, 0 ], %s, 'l');
     """ %(str(Hstararrowstart), str(Hstararrowend), str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend), Hstararrowtxt, fontsize,
           Kstararrowtxt, fontsize, Lstararrowtxt, fontsize)
@@ -348,11 +354,12 @@ class hklview_3d:
       mincolourscalar = self.otherminsigmas[self.icolourcol]
       maxcolourscalar = self.othermaxsigmas[self.icolourcol]
     span = maxcolourscalar - mincolourscalar
-    ln = 51
+    ln = 60
     incr = span/ln
-    colourscalararray =flex.double()
     colourgradarrays = []
     val = mincolourscalar
+    colourscalararray =flex.double()
+    colourscalararray.append( val )
     for j,sc in enumerate(range(ln)):
       val += incr
       colourscalararray.append( val )
@@ -361,19 +368,20 @@ class hklview_3d:
       # compute colour map chart as a function of fom and phase values (x,y axis)
       incr = 360.0/ln
       val = 0.0
-      colourscalararray =flex.double()
+      colourscalararray = flex.double()
+      colourscalararray.append( val )
       for j in enumerate(range(ln)):
         val += incr
         colourscalararray.append( val )
 
       fomarrays = []
       if self.otherscenes[self.icolourcol].isUsingFOMs():
-        fomln = 20
+        fomln = 50
         fom = 1.0
         fomdecr = 1.0/(fomln-1.0)
-      # make fomln fom arrays of size ln as to match size of colourscalararray when calling colour_by_phi_FOM
+      # make fomln fom arrays of size len(colourscalararray) when calling colour_by_phi_FOM
         for j in range(fomln):
-          fomarrays.append( flex.double(ln,fom) )
+          fomarrays.append( flex.double(len(colourscalararray), fom) )
           fom -= fomdecr
         for j in range(fomln):
           colourgradarrays.append( graphics_utils.colour_by_phi_FOM( colourscalararray*(math.pi/180.0), fomarrays[j] ) * 255.0)
@@ -397,6 +405,8 @@ class hklview_3d:
     dres = self.scene.dres
     colstr = self.scene.miller_array.info().label_string()
     data = self.scene.data
+    colourlabel = self.otherscenes[self.icolourcol].colourlabel
+    fomlabel = self.otherscenes[self.icolourcol].fomlabel
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
     colours = []
@@ -565,8 +575,8 @@ class hklview_3d:
         vstr = ""
         alpha = 1.0
         gradval = "rgba(%s, %s, %s, %s)" %(val[1][0], val[1][1], val[1][2], alpha)
-        if j%10 == 0:
-          vstr = str(val[0])
+        if j%10 == 0 or j==len(self.colourgradientvalues)-1 :
+          vstr = str( roundoff(val[0], 2) )
         colourgradstr.append([vstr , gradval])
 
       colourgradstrs += "  colourgradvalarray[%s] = %s\n" %(g, str(colourgradstr) )
@@ -641,6 +651,24 @@ function addElement (el) {
 }
 
 
+function addDivBox(txt, t, l, w, h, bgcolour='rgba(255.0, 255.0, 255.0, 0.0)') {
+  divbox = createElement("div",
+  {
+    innerText: txt
+  },
+  {
+    backgroundColor: bgcolour,
+    color:  'rgba(0.0, 0.0, 0.0, 1.0)',
+    top: t.toString() + "px",
+    left: l.toString() + "px",
+    width: w.toString() + "px",
+    height: h.toString() + "px",
+  }
+  );
+  addElement(divbox)
+}
+
+
 var hklscene = function () {
   shape = new NGL.Shape('shape');
   stage = new NGL.Stage('viewport', { backgroundColor: "grey", tooltip:false,
@@ -662,88 +690,72 @@ var hklscene = function () {
   //colourgradvalarrays
   %s
 
-  var j;
   var ih = 3;
-
-  totalheight = ih*colourgradvalarray[0].length + 10
-  // make a white box on top of which boxes with transparent background are placed
-  // containing the colour values at regular intervals
-  whitebox = createElement("div",
-  {
-    innerText: ''
-  },
-  {
-    backgroundColor: 'rgba(255.0, 255.0, 255.0, 1.0)',
-    color:  'rgba(0.0, 0.0, 0.0, 1.0)',
-    top: "20px",
-    left: "20px",
-    width: "40px",
-    height: totalheight.toString() + "px",
+  var topr = 35
+  var topr2 = 10
+  var lp = 10
+  var wp = 40
+  var lp2 = lp + wp
+  var gl = 3
+  var wp2 = gl
+  var fomlabelheight = 25
+  if (colourgradvalarray.length === 1) {
+    wp2 = 15
+    fomlabelheight = 0
   }
-  );
-  addElement(whitebox)
 
+  var wp3 = wp + colourgradvalarray.length * wp2 + 2
+
+  totalheight = ih*colourgradvalarray[0].length + 35 + fomlabelheight
+  // make a white box on top of which boxes with transparent background are placed
+  // containing the colour values at regular intervals as well as label legend of
+  // the displayed miller array
+  addDivBox("", topr2, lp, wp3, totalheight, 'rgba(255.0, 255.0, 255.0, 1.0)');
+
+  // print label of the miller array used for colouring
+  addDivBox("%s", topr2, lp, wp, 20);
+
+  if (colourgradvalarray.length > 1) {
+    // print FOM label, 1, 0.5 and 0.0 values below colour chart
+    fomtop = topr2 + totalheight - 18
+    fomlp = lp + wp
+    fomwp = wp3
+    fomtop2 = fomtop - 13
+    // print the FOM label
+    addDivBox("%s", fomtop, fomlp, fomwp, 20);
+
+    // print the 3 numbers
+    addDivBox("1", fomtop2, fomlp, fomwp, 20)
+
+    leftp = fomlp + 0.48 * gl * colourgradvalarray.length
+    addDivBox("0.5", fomtop2, leftp, fomwp, 20)
+
+    leftp = fomlp + 0.96 * gl * colourgradvalarray.length
+    addDivBox("0", fomtop2, leftp, fomwp, 20)
+  }
 
   for (j = 0; j < colourgradvalarray[0].length; j++) {
     rgbcol = colourgradvalarray[0][j][1];
     val = colourgradvalarray[0][j][0]
-    topv = j*ih + 20
-
-    mybox = createElement("div",
-    {
-      innerText: ''
-    },
-    {
-      backgroundColor: rgbcol,
-      top: topv.toString() + "px",
-      left: "60px",
-      width: "15px",
-      height: ih.toString() + "px",
-    }
-    );
-    addElement(mybox)
-
-    txtbox = createElement("div",
-    {
-      innerText: val
-    },
-    {
-      backgroundColor: 'rgba(255.0, 255.0, 255.0, 0.0)',
-      color:  'rgba(0.0, 0.0, 0.0, 1.0)',
-      top: topv.toString() + "px",
-      left: "20px",
-      width: "40px",
-      height: ih.toString() + "px",
-    }
-    );
-    addElement(txtbox)
+    topv = j*ih + topr
+    toptxt = topv - 5
+    // print value of miller array if present in colourgradvalarray[0][j][0]
+    addDivBox(val, toptxt, lp, wp, ih);
   }
 
-  var gl = 8
-  for (g = 1; g < colourgradvalarray.length; g++) {
-    leftp = g*gl + 60
+  // draw the colour gradient
+  for (g = 0; g < colourgradvalarray.length; g++) {
+    leftp = g*gl + lp + wp
 
+    // if FOM values are supplied draw colour gradients with decreasing
+    // saturation values as stored in the colourgradvalarray[g] arrays
     for (j = 0; j < colourgradvalarray[g].length; j++) {
       rgbcol = colourgradvalarray[g][j][1];
       val = colourgradvalarray[g][j][0]
-      topv = j*ih + 20
-
-      mybox = createElement("div",
-      {
-        innerText: ''
-      },
-      {
-        backgroundColor: rgbcol,
-        top: topv.toString() + "px",
-        left: leftp.toString() + "px",
-        width: gl.toString() + "px",
-        height: ih.toString() + "px",
-      }
-      );
-      addElement(mybox)
+      topv = j*ih + topr
+      addDivBox("", topv, leftp, wp2, ih, rgbcol);
     }
   }
-
 
 }
 
@@ -825,7 +837,7 @@ mysocket.onmessage = function (e) {
 
 
     """ % (self.__module__, self.__module__, self.cameratype, arrowstr, spherebufferstr, \
-            negativeradiistr, colourgradstrs)
+            negativeradiistr, colourgradstrs, colourlabel, fomlabel)
     if self.jscriptfname:
       with open( self.jscriptfname, "w") as f:
         f.write( self.NGLscriptstr )
