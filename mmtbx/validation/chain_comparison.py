@@ -603,11 +603,8 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
     min_similarity=1.0,out=sys.stdout):
 
   starting_chain_id_list=[]
-
+  from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
   if (not keep_chain_as_unit):
-    for model in ph.models()[:1]:
-      for chain in model.chains():
-        starting_chain_id_list.append(chain.id)
     ph=split_chains_with_unique_four_char_id(ph).hierarchy
 
   # Container for unique chains:
@@ -694,6 +691,8 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
             raise Sorry(
              "Unable to find the chain ID %s in starting list of %s"%(
                one_char_id,str(starting_chain_id_list)))
+        else: # ok
+          chain.id=two_char_id
   return new_hierarchy
 
 def run_test_unique_part_of_target_only(params=None,
