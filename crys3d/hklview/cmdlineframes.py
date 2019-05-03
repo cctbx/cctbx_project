@@ -435,7 +435,7 @@ class HKLViewFrame () :
       elif (len(valid_arrays) == 1) :
         if (set_array) :
           self.set_miller_array(valid_arrays[0])
-        return valid_arrays[0]
+        #return valid_arrays[0]
 
 
   def SetCameraType(self, camtype):
@@ -529,10 +529,12 @@ class HKLViewFrame () :
     self.update_settings()
 
 
-  def SetRadiiScale(self, scale, nth_power_scale = 1.0):
+  def SetRadiiScale(self, scale, nth_power_scale = -1.0):
     """
     Scale radii. Decrease the contrast between large and small radii with nth_root_scale < 1.0
-    if nth_root_scale=0.0 then all radii will have the same size regardless of data values.
+    If nth_power_scale=0.0 then all radii will have the same size regardless of data values.
+    If nth_power_scale < 0.0 an automatic power will be computed ensuring the smallest radius
+    is 0.25 the maximum radius
     """
     self.settings.scale = scale
     self.settings.nth_power_scale_radii = nth_power_scale

@@ -40,7 +40,18 @@ def generate_systematic_absences(array,
 
 
 def nth_power_scale(dataarray, nth_power):
-  datascaled = flex.pow(flex.abs(dataarray), nth_power)
+  """
+  set nth_power to appropriate number between 0 and 1 for dampening the
+  difference between the smallest and the largest values.
+  If nth_power < 0 then an automatic value is computed that maps the smallest
+  values to 1/4 of the largest values
+  """
+  absdat = flex.abs(dataarray)
+  if nth_power < 0.0 and not isinstance(absdat, flex.int): # amounts to automatic scale
+    maxdat = flex.max(absdat)
+    mindat = max(1e-10*maxdat, flex.min(absdat) ) # make sure mindat is strictly bigger than 0
+    nth_power = math.log(0.25)/(math.log(mindat) - math.log(maxdat))
+  datascaled = flex.pow(absdat, nth_power)
   return datascaled
 
 
@@ -301,8 +312,8 @@ class scene(object):
 
     uc = self.work_array.unit_cell()
     min_dist = min(uc.reciprocal_space_vector((1,1,1)))
-    min_radius = 0.20 * min_dist
-    max_radius = 40 * min_dist
+    min_radius = 0.5 * min_dist
+    max_radius = 80 * min_dist
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
       data_for_radii = self.multiplicities.data().as_double()
@@ -347,16 +358,11 @@ class scene(object):
     if (settings.slice_mode) and (settings.keep_constant_scale):
       colors = colors.select(self.slice_selection)
       data_for_radii = data_for_radii.select(self.slice_selection)
-
     #if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
     #  data_for_radii = flex.sqrt(flex.abs(data_for_radii))
     if len(data_for_radii):
-      max_value = flex.max(data_for_radii)
-      scale = max_radius / max_value
-      radii = data_for_radii * (scale * self.settings.scale)
-      too_small = radii < min_radius
-      if (too_small.count(True) > 0):
-        radii.set_selected(too_small, flex.double(radii.size(), min_radius))
+      scale = 0.3/flex.max(data_for_radii)
+      radii = data_for_radii * (self.settings.scale * scale)
       assert radii.size() == colors.size()
     else:
       radii = flex.double()
@@ -367,6 +373,7 @@ class scene(object):
     self.colors = colors
     if isinstance(data, flex.complex_double):
       self.foms = foms_for_colours
+    #print min_dist, min_radius, max_radius, flex.min(data_for_radii), flex.max(data_for_radii), scale
 
 
   def isUsingFOMs(self):
@@ -625,7 +632,7 @@ philstr = """
     .type = bool
   show_data_over_sigma = False
     .type = bool
-  nth_power_scale_radii = 1.0
+  nth_power_scale_radii = -1.0
     .type = int
   sqrt_scale_colors = False
     .type = bool
