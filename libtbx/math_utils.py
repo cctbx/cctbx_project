@@ -32,6 +32,8 @@ def roundoff(val, precision=3):
   [12.345, 7.484, ['foo', (35.358, -0.386, [4.277, 3.215])]]
   '''
   if isinstance(val, float):
+    if math.isnan(val):
+      return float("nan")
     return round2(val, precision)
   if isinstance(val, list):
     for i,v in enumerate(val):
