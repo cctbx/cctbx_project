@@ -313,6 +313,7 @@ class detached_process_client(detached_base):
       self.callback_abort()
     elif os.path.exists(self.result_file):
       try :
+        time.sleep(1)
         result = easy_pickle.load(self.result_file)
       except EOFError :
         print("EOFError trying to load result file '%s'" %(self.result_file))
