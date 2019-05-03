@@ -518,6 +518,9 @@ class manager(object):
   def get_sites_cart(self):
     return self.get_xray_structure().sites_cart()
 
+  def get_sites_frac(self):
+    return self.get_xray_structure().sites_frac()
+
   def get_atom_selection_cache(self):
     if self._atom_selection_cache is None:
       self._update_atom_selection_cache()
