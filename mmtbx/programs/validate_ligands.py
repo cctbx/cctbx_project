@@ -109,6 +109,7 @@ electron density values/CC.
     ph = model.get_hierarchy()
     xrs = model.get_xray_structure()
 
+    fmodel = None
     if self.data_manager.get_default_miller_array_name():
       f_obs, r_free_flags = self.get_fobs_rfree(crystal_symmetry = cs)
       print('\nInput data...', file=self.logger)
@@ -121,9 +122,12 @@ electron density values/CC.
        f_obs          = f_obs,
        r_free_flags   = r_free_flags,
        xray_structure = xrs)
+      print('\n', file = self.logger)
+      fmodel.show(log=self.logger, show_header=False)
       # TODO: delete this keyword for production
-      if self.params.update_scales:
-        fmodel.update_all_scales()
+      #if self.params.update_scales:
+      fmodel.update_all_scales()
+      fmodel.show(log=self.logger, show_header=False)
 
     print('\nWorking crystal symmetry after inspecting all inputs:', file=self.logger)
     cs.show_summary(f=self.logger)
@@ -137,12 +141,14 @@ electron density values/CC.
     ligand_manager = validate_ligands.manager(
       model = model,
       model_fn = model_fn,
+      fmodel = fmodel,
       params = self.params.validate_ligands,
       log   = self.logger)
     ligand_manager.run()
     ligand_manager.show_ligand_counts()
     ligand_manager.show_ligand_occupancies()
     ligand_manager.show_adps()
+    ligand_manager.show_ccs()
     ligand_manager.show_nonbonded_overlaps()
     #print('time running manager: ', time.time()-t0)
 

@@ -328,6 +328,7 @@ def run_test1():
   vl_manager = validate_ligands.manager(
     model = model,
     model_fn = fn,
+    fmodel = None,
     params = params.validate_ligands,
     log   = null_out)
   vl_manager.run()
@@ -354,7 +355,7 @@ def tst_get_nbos(vl_manager):
     for altloc, lr in ligand_dict.items():
       nbo = lr.get_nonbonded_overlaps()
       nbo_proxies = nbo.result.nb_overlaps_proxies_all
-      print(nbo_proxies)
+      #print(nbo_proxies)
       assert(len(nbo_proxies) == 3)
       d = list(nbo_proxies[0])
       rec_list = [x.replace('pdb=','') for x in d[0]]
@@ -428,6 +429,7 @@ def run_test2():
   vl_manager = validate_ligands.manager(
     model = model,
     model_fn = fn,
+    fmodel = None,
     params = params.validate_ligands,
     log   = null_out)
   vl_manager.run()

@@ -11,7 +11,10 @@ from libtbx import group_args
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
 from libtbx import easy_run
+from cctbx import miller
 from mmtbx import monomer_library
+from mmtbx import real_space_correlation
+from mmtbx import map_tools
 
 master_params_str = """
 validate_ligands {
@@ -33,16 +36,35 @@ class manager(dict):
 
   def __init__(self,
                model,
+               fmodel,
                params,
                model_fn,
                log=None):
     self.model = model
     self.params = params
     self.log   = log
+    self.fmodel = fmodel
     #
     self.nproc = params.nproc
     # TODO:  tidy up filename requirement once ready set is refactored
     self.model_fn = model_fn
+    if fmodel is not None:
+      self.two_fofc_map = fmodel.map_coefficients(map_type="2mFo-DFc",
+        fill_missing=False,
+        merge_anomalous=True).fft_map(
+          resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+      self.fofc_map = fmodel.map_coefficients(map_type="mFo-DFc",
+        fill_missing=False,
+        merge_anomalous=True).fft_map(
+          resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+      self.fmodel_map = fmodel.map_coefficients(map_type="Fmodel",
+        fill_missing=False,
+        merge_anomalous=True).fft_map(
+          resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
+    else:
+      self.two_fofc_map = None
+      self.fofc_map = None
+      self.fmodel_map = None
 
   # ---------------------------------------------------------------------------
 
@@ -60,7 +82,11 @@ class manager(dict):
       id_list.append(altloc)
       lr = ligand_result(
         model = self.model,
+        fmodel = self.fmodel,
         readyset_model = self.readyset_model,
+        two_fofc_map = self.two_fofc_map,
+        fofc_map = self.fofc_map,
+        fmodel_map = self.fmodel_map,
         isel = conformer_isel,
         id_list = id_list)
       ligand_results.append(lr)
@@ -235,6 +261,21 @@ class manager(dict):
 
   # ---------------------------------------------------------------------------
 
+  def show_ccs(self):
+    if self.fmodel is None: return
+    make_sub_header(' Correlation coefficients ', out=self.log)
+    for id_tuple, ligand_dict in self.items():
+      for altloc, lr in ligand_dict.items():
+        ccs = lr.get_ccs()
+        cc_two_fofc = round(ccs.cc_two_fofc, 2)
+        cc_fofc = round(ccs.cc_fofc, 2)
+        fofc_min  = round(ccs.fofc_min, 2)
+        fofc_max  = round(ccs.fofc_max, 2)
+        fofc_mean = round(ccs.fofc_mean, 2)
+        print(lr.id_str.ljust(16), cc_two_fofc, cc_fofc, fofc_min, fofc_max, fofc_mean, file = self.log)
+
+  # ---------------------------------------------------------------------------
+
   def show_nonbonded_overlaps(self):
     make_sub_header(' Nonbonded overlaps', out=self.log)
     overlaps_found = False
@@ -244,10 +285,10 @@ class manager(dict):
         nbo = lr.get_nonbonded_overlaps()
         nbo_proxies = nbo.result.nb_overlaps_proxies_all
         out_list = []
-        argmented_counts = [0,0]
-        def _adjust_count(d):
-          d=(abs(d)-0.4)*10
-          return d+1
+        #argmented_counts = [0,0]
+        #def _adjust_count(d):
+        #  d=(abs(d)-0.4)*10
+        #  return d+1
         if (len(nbo_proxies) > 0):
           overlaps_found = True
           for data in nbo_proxies:
@@ -282,15 +323,28 @@ class manager(dict):
 
 class ligand_result(object):
 
-  def __init__(self, model, readyset_model, isel, id_list):
+  def __init__(self,
+               model,
+               fmodel,
+               readyset_model,
+               two_fofc_map,
+               fofc_map,
+               fmodel_map,
+               isel,
+               id_list):
     self.model = model
+    self.fmodel = fmodel
     self.isel = isel
     self.readyset_model = readyset_model
+    self.two_fofc_map = two_fofc_map
+    self.fofc_map = fofc_map
+    self.fmodel_map = fmodel_map
 
     # results
     self._result_attrs = {'_occupancies' : 'get_occupancies',
                           '_adps'        : 'get_adps',
-                          '_nb_overlaps' : 'get_nonbonded_overlaps'
+                          '_nb_overlaps' : 'get_nonbonded_overlaps',
+                          '_ccs'         : 'get_ccs'
     }
     for attr, func in self._result_attrs.items():
       setattr(self, attr, None)
@@ -298,7 +352,8 @@ class ligand_result(object):
     # to be used internally
     self._ph = self.model.get_hierarchy()
     self._atoms = self._ph.select(self.isel).atoms()
-    self._xrs = self.model.select(isel).get_xray_structure()
+    self._xrs = self.model.get_xray_structure()
+    self._xrs_ligand = self.model.select(isel).get_xray_structure()
     self._get_id_str(id_list=id_list)
 
   # ---------------------------------------------------------------------------
@@ -324,12 +379,93 @@ class ligand_result(object):
 
   # ---------------------------------------------------------------------------
 
+  def get_ccs(self):
+    # still a stub
+    if self.fmodel is None: return
+    manager = real_space_correlation.selection_map_statistics_manager(
+      atom_selection    = self.isel,
+      xray_structure    = self._xrs,
+      fft_m_real        = self.two_fofc_map.all(),
+      fft_n_real        = self.two_fofc_map.focus(),
+      exclude_hydrogens = True)
+    stats_two_fofc = manager.analyze_map(
+      map       = self.two_fofc_map,
+      model_map = self.fmodel_map,
+      min       = 1.5)
+    stats_fofc = manager.analyze_map(
+      map       = self.fofc_map,
+      model_map = self.fmodel_map,
+      min       = -3.0)
+
+#    params = real_space_correlation.master_params().extract()
+#
+#    results = real_space_correlation.simple(
+#      fmodel        = self.fmodel,
+#      pdb_hierarchy = self._ph.select(self.isel),
+#      params        = None,
+#      show_results  = True,
+#      log           = None)
+#    params.map_2.type = 'mFobs-DFc'
+#    sel_bool = self._ph.atom_selection_cache().selection(
+#      string = self.sel_str)
+#    self.fmodel.update_xray_structure(
+#      xray_structure      = self._xrs.select(~sel_bool),
+#      update_f_calc       = True,
+#      update_f_mask       = True,
+#      force_update_f_mask = True)
+#    fmodel = mmtbx.f_model.manager(
+#     f_obs          = self.fmodel.f_obs(),
+#     r_free_flags   = self.fmodel.r_free_flags(),
+#     xray_structure = self._xrs.select(~sel_bool))
+#
+#    fmodel.update_all_scales()
+#    results_fofc = real_space_correlation.simple(
+#      fmodel        = fmodel,
+#      pdb_hierarchy = self._ph.select(self.isel),
+#      params        = params,
+#      show_results  = True,
+#      log           = None)
+
+#    mc_diff = map_tools.electron_density_map(
+#      fmodel = self.fmodel).map_coefficients(
+#        map_type         = "mFo-DFc",
+#        isotropize       = True,
+#        fill_missing     = False)
+#    crystal_gridding =
+#    fft_map = miller.fft_map(
+#      crystal_gridding     = crystal_gridding,
+#      fourier_coefficients = mc_diff)
+#    fft_map.apply_sigma_scaling()
+#    map_data = fft_map.real_map_unpadded()
+#    box = mmtbx.utils.extract_box_around_model_and_map(
+#      xray_structure = self._xrs.select(self.isel),
+#      map_data       = map_data,
+#      box_cushion    = 2.1)
+
+    self._ccs = group_args(
+      cc_two_fofc = stats_two_fofc.cc,
+      cc_fofc = stats_fofc.cc,
+      two_fofc_min = stats_two_fofc.min,
+      two_fofc_max = stats_two_fofc.max,
+      two_fofc_mean = stats_two_fofc.mean,
+      fofc_min = stats_fofc.min,
+      fofc_max = stats_fofc.max,
+      fofc_mean = stats_fofc.mean,
+      n_below_two_fofc_cutoff = stats_two_fofc.n_below_min,
+      n_below_fofc_cutoff = stats_fofc.n_below_min
+      )
+    return self._ccs
+
+
+
+  # ---------------------------------------------------------------------------
+
   def get_adps(self):
     if self._adps is None:
-      b_isos = self._xrs.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
-      n_iso   = self._xrs.use_u_iso().count(True)
-      n_aniso = self._xrs.use_u_aniso().count(True)
-      n_zero = (b_isos < 0.01).count(True)
+      b_isos  = self._xrs_ligand.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
+      n_iso   = self._xrs_ligand.use_u_iso().count(True)
+      n_aniso = self._xrs_ligand.use_u_aniso().count(True)
+      n_zero  = (b_isos < 0.01).count(True)
       # TODO: what number as cutoff?
       n_above_100 = (b_isos > 100).count(True)
       isel_above_100 = (b_isos > 100).iselection()
@@ -339,7 +475,8 @@ class ligand_result(object):
       within_radius = 3.0 #TODO should this be a parameter?
       sel_within_str = '(within (%s, %s)) and (protein or water)' % (within_radius, self.sel_str)
       isel_within = self.model.iselection(sel_within_str)
-      xrs_within = self.model.select(isel_within).get_xray_structure()
+      #xrs_within = self.model.select(isel_within).get_xray_structure()
+      xrs_within = self._xrs.select(isel_within)
       b_isos_within = xrs_within.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
       b_min_within, b_max_within, b_mean_within = b_isos_within.min_max_mean().as_tuple()
 
@@ -390,7 +527,7 @@ class ligand_result(object):
   # ---------------------------------------------------------------------------
 
   def get_nonbonded_overlaps(self):
-    # this function should use a model with H atoms!!
+    # TODO this function should use a model with H atoms!!
     if self.readyset_model is None:
       return None
     if self._nb_overlaps is None:
@@ -404,9 +541,7 @@ class ligand_result(object):
       xrs_within = self.readyset_model.select(sel_within).get_xray_structure()
       #xrs = self.model.get_xray_structure()
       geometry = self.readyset_model.get_restraints_manager().select(sel_within).geometry
-
       #sel = flex.bool([True]*len(sel_within))
-
       self._nb_overlaps = nbo.info(
         geometry_restraints_manager=geometry,
         macro_molecule_selection=~sel_ligand_within, #TODO should be only ligand, not sel_within?
