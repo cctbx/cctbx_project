@@ -7,7 +7,7 @@ from libtbx.test_utils import show_diff
 
 import iotbx.cif
 from iotbx.pdb.mmcif import pdb_hierarchy_builder
-
+import mmtbx.model
 
 def exercise_pdb_hierachy_builder():
   input_1ab1 = """\
@@ -505,15 +505,12 @@ ATOM   2463 C CA  . LYS B 1 24  ? 22.588  1.723   -13.713 1.00 30.22  ? ? ? ? ? 
   pdb_in = iotbx.pdb.input(
     lines=(pdb_atom_site_loop_header+input_4ehz).splitlines(),
     source_info=None)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
-    sequences=[sequence_4ehz],
-    crystal_symmetry=pdb_in.crystal_symmetry())
-  assert cif_block['_entity.id'][0] == '1'
-  assert cif_block['_entity.type'][0] == 'polymer'
-  assert cif_block['_entity.pdbx_number_of_molecules'][0] == '2'
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence_4ehz.sequence
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence_4ehz.sequence
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_4ehz])
+  cif_block = model._sequence_validation.sequence_as_cif_block()
+  sequence = ';' + sequence_4ehz.sequence + '\n;'
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence
   assert cif_block['_entity_poly.pdbx_strand_id'] == 'A,B'
   assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), range(1, 25))
   assert cif_block['_entity_poly_seq.entity_id'].all_eq('1')
@@ -534,12 +531,13 @@ ATOM   1473 C  CA  . SER A 1 185 ? -6.795  -21.356 10.148  1.00 91.03  ? ? ? ? ?
   pdb_in = iotbx.pdb.input(
     lines=(pdb_atom_site_loop_header+input_3zdi).splitlines(),
     source_info=None)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
-    sequences=[sequence_3zdi],
-    crystal_symmetry=pdb_in.crystal_symmetry())
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == 'NVS(PTR)ICSR'
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence_3zdi.sequence
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_3zdi])
+  cif_block = model._sequence_validation.sequence_as_cif_block()
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == \
+    ';NVS(PTR)ICSR\n;'
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == \
+    ';' + sequence_3zdi.sequence + '\n;'
   assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), range(1, 9))
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'ASN', 'VAL', 'SER', 'PTR', 'ILE', 'CYS', 'SER', 'ARG']
@@ -574,26 +572,21 @@ HETATM 2796 O O   . HOH G 3 .   ? 11.197  11.667 36.108  1.00 17.00 ? ? ? ? ? ? 
   pdb_in = iotbx.pdb.input(
     lines=(pdb_atom_site_loop_header+input_4gln).splitlines(),
     source_info=None)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
-    sequences=sequence_4gln,
-    crystal_symmetry=pdb_in.crystal_symmetry())
-  assert list(cif_block['_entity.id']) == ['1', '2', '3']
-  assert list(cif_block['_entity.type']) == ['polymer', 'polymer', 'water']
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences(sequence_4gln)
+  cif_block = model._sequence_validation.sequence_as_cif_block()
+  assert list(cif_block['_entity.id']) == ['1', '2']
   assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']),
-                      range(1, 11)+range(1, 10))
+                     range(1, 11)+range(1, 10))
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'DTH', 'DTY', 'DLY', 'DLE', 'DIL', 'DLE', 'DSG', 'GLY', 'DLY', 'DTH',
     'GLY', 'GLN', 'ASN', 'HIS', 'HIS', 'GLU', 'VAL', 'VAL', 'LYS']
   assert list(cif_block['_entity_poly.pdbx_seq_one_letter_code']) == [
-    '(DTH)(DTY)(DLY)(DLE)(DIL)(DLE)(DSG)G(DLY)(DTH)', sequence_4gln[1].sequence]
+    ';(DTH)(DTY)(DLY)(DLE)(DIL)(DLE)(DSG)G(DLY)(DTH)\n;',
+    ';' + sequence_4gln[1].sequence + '\n;']
   assert list(cif_block['_entity_poly.pdbx_seq_one_letter_code_can']) == [
-    sequence_4gln[0].sequence, sequence_4gln[1].sequence]
-  assert approx_equal(flex.int(cif_block['_atom_site.label_entity_id']),
-                      [1]*11 + [2]*4 + [3]*6)
-  assert list(cif_block['_atom_site.label_seq_id']) == [
-    '1', '2', '3', '4', '5', '6', '7', '7', '8', '9', '10', '6', '7', '8', '9',
-     '.', '.', '.', '.', '.', '.']
+    ';' + sequence_4gln[0].sequence + '\n;',
+    ';' + sequence_4gln[1].sequence + '\n;']
   #
   input_1ezu = """\
 ATOM   3971 C  CA  . VAL D 2 16  ? 24.971  -4.493  -3.652  1.00 33.12  ? ? ? ? ? ? 731 VAL D CA  1
@@ -608,17 +601,16 @@ ATOM   4010 C  CA  . TYR D 2 22  ? 33.903  0.885   4.483   1.00 54.81  ? ? ? ? ?
   pdb_in = iotbx.pdb.input(
     lines=(pdb_atom_site_loop_header+input_1ezu).splitlines(),
     source_info=None)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
-    sequences=[sequence_1ezu])
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_1ezu])
+  cif_block = model._sequence_validation.sequence_as_cif_block()
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'VAL', 'SER', 'LEU', 'ASN', 'SER', 'GLY', 'TYR']
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence_1ezu.sequence
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence_1ezu.sequence
-  assert list(cif_block['_atom_site.auth_seq_id']) == [
-    '731', '732', '733', '734', '737', '738', '739']
-  assert list(cif_block['_atom_site.label_seq_id']) == [
-    '1', '2', '3', '4', '5', '6', '7']
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == \
+    ';' + sequence_1ezu.sequence + '\n;'
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == \
+    ';' + sequence_1ezu.sequence + '\n;'
+
   input_2hok = """\
 ATOM   301  P  P     . C   A 1 15 ? 15.802 44.045 80.094 1.00 59.36 ? ? ? ? ? ? 23  C   A P     1
 ATOM   321  P  P     . C   A 1 16 ? 12.286 47.301 82.617 1.00 68.27 ? ? ? ? ? ? 24  C   A P     1
@@ -631,17 +623,15 @@ ATOM   404  P  P     . G   A 1 23 ? 7.477  40.933 88.377 1.00 81.65 ? ? ? ? ? ? 
   pdb_in = iotbx.pdb.input(
     lines=(pdb_atom_site_loop_header+input_2hok).splitlines(),
     source_info=None)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
-    sequences=[sequence_2hok])
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_2hok])
+  cif_block = model._sequence_validation.sequence_as_cif_block()
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'C', 'C', 'U', 'U', 'C', 'U', 'G', 'C', 'G']
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence_2hok.sequence
-  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence_2hok.sequence
-  assert list(cif_block['_atom_site.auth_seq_id']) == [
-    '23', '24', '25', '29', '30', '31']
-  assert list(cif_block['_atom_site.label_seq_id']) == [
-    '1', '2', '3', '7', '8', '9']
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == \
+    ';' + sequence_2hok.sequence + '\n;'
+  assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == \
+    ';' + sequence_2hok.sequence + '\n;'
   #
   input_3tpy = """\
 ATOM      2  CA  GLN A  24       2.586  40.220  34.036  1.00 41.54           C
@@ -662,15 +652,11 @@ HETATM  910  O   HOH A 156     -10.293  62.567  35.648  1.00 19.43           O
 """
   sequence_3tpy = iotbx.bioinformatics.sequence("QKQPIS")
   pdb_in = iotbx.pdb.input(lines=(input_3tpy).splitlines(), source_info=None)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
-    sequences=[sequence_3tpy])
-  assert list(cif_block["_entity.type"]) == [
-    'polymer', 'non-polymer', 'non-polymer', 'non-polymer', 'non-polymer', 'water']
-  assert list(cif_block["_atom_site.label_entity_id"]) == [
-    '1', '1', '1', '1', '1', '1', '2', '3', '4', '4', '4', '5', '6', '6']
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_3tpy])
+  cif_block = model.get_hierarchy().as_cif_block()
   assert list(cif_block["_atom_site.label_seq_id"]) == [
-    '1', '2', '3', '4', '5', '6', '.', '.', '.', '.', '.', '.', '.', '.']
+    '1', '2', '3', '4', '5', '6', '7', '8', '9', '9', '9', '10', '11', '12']
   #
   input_3tgr = """\
 ATOM   2449  CA  GLY A 459     -17.536  10.137  41.979  1.00181.52           C
@@ -681,16 +667,11 @@ ATOM   2478  CA  THR A 465     -20.893   2.988  49.198  1.00 91.96           C
 """
   sequence_3tgr = iotbx.bioinformatics.sequence("DGGQSNETNDTET")
   pdb_in = iotbx.pdb.input(lines=(input_3tgr).splitlines(), source_info=None)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
-    sequences=[sequence_3tgr])
-  assert list(cif_block["_entity_poly_seq.mon_id"]) == [
-    'ASP', 'GLY', 'GLY', 'GLN', 'SER', 'ASN', 'GLU', 'THR', 'ASN', 'ASP', 'THR',
-    'GLU', 'THR']
-  assert list(cif_block["_atom_site.label_comp_id"]) == [
-    'GLY', 'GLN', 'ASN', 'ASP', 'THR']
-  assert list(cif_block["_atom_site.label_seq_id"]) == ['3', '4', '9', '10', '11']
-  assert cif_block["_entity_poly.pdbx_seq_one_letter_code"][0] == 'DGGQSNETNDTET'
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_3tgr])
+  cif_block = model._sequence_validation.sequence_as_cif_block()
+  assert cif_block["_entity_poly.pdbx_seq_one_letter_code"][0] == \
+    ';DGGQSNETNDNET\n;'
   input_2im9 = """\
 ATOM   2423  CA  PRO A 345       2.114  16.158   0.161  1.00 29.14           C
 ATOM   2430  CA  VAL A 346      -1.223  17.837   0.938  1.00 31.05           C
@@ -701,16 +682,13 @@ ATOM   2460  CA  PHE A 352      -5.220   9.172   4.620  0.50 31.95           C
 """
   sequence_2im9 = iotbx.bioinformatics.sequence("SSPTIKGINIQVVLPEKPVSNGCQLFDIR")
   pdb_in = iotbx.pdb.input(lines=(input_2im9).splitlines(), source_info=None)
-  pdb_hierarchy = pdb_in.construct_hierarchy()
-  cif_block = pdb_hierarchy.as_cif_block_with_sequence(
-    sequences=[sequence_2im9])
+  model = mmtbx.model.manager(pdb_in)
+  model.set_sequences([sequence_2im9])
+  cif_block = model._sequence_validation.sequence_as_cif_block()
   assert list(cif_block["_entity_poly_seq.mon_id"]) == [
     'SER', 'SER', 'PRO', 'THR', 'ILE', 'LYS', 'GLY', 'ILE', 'ASN', 'ILE', 'GLN',
     'VAL', 'VAL', 'LEU', 'PRO', 'GLU', 'LYS', 'PRO', 'VAL', 'SER', 'ASN', 'GLY',
-    'CYS', 'GLN', 'LEU', 'PHE', 'ASP', 'ILE', 'ARG']
-  assert list(cif_block["_atom_site.label_seq_id"]) == [
-    '18', '19', '23', '24', '25', '26']
-
+    'CYS', 'CYS', 'GLN', 'LEU', 'ASP', 'ILE', 'ARG']
 
 def exercise_fp_fdp():
   input_anom = """\
