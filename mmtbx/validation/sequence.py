@@ -722,8 +722,7 @@ class validation(object):
           resname = seq_resname
         else:
           resname = chain.resnames[i_a]
-        if resname == seq_resname:
-          mon_id[entity_id].append(resname.strip())
+        mon_id[entity_id].append(resname.strip())
         if len(num[entity_id]) == 0:
           num[entity_id].append(1)
         else:
