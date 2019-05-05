@@ -203,7 +203,7 @@ overwrite = False
     self._output_types = list()
 
     # set defaults
-    self._default_output_filename = None
+    self._default_output_filename = 'cctbx_program'
     self._overwrite = False
 
     # load information from phil

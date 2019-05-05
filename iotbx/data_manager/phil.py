@@ -37,8 +37,16 @@ class PhilDataManager(DataManagerBase):
   def process_phil_file(self, filename):
     return self._process_file(PhilDataManager.datatype, filename)
 
+  def get_default_output_phil_filename(self):
+    filename = self.get_default_output_filename()
+    if not filename.endswith('.eff'):
+      filename += '.eff'
+    return filename
+
   def write_phil_file(self, phil_str, filename=Auto, overwrite=Auto):
     # use this instead of libtbx.phil.scope.show for consistent error messages
+    if filename is Auto:
+      filename = self.get_default_output_phil_filename()
     self._write_text(PhilDataManager.datatype, phil_str,
                      filename=filename, overwrite=overwrite)
 

@@ -537,12 +537,23 @@ def test_miller_array_datatype():
   os.remove('test.phil')
 
 # -----------------------------------------------------------------------------
+def test_default_filenames():
+  datatypes = ['model', 'ncs_spec', 'phil', 'real_map', 'restraint', 'sequence']
+  extensions = ['cif', 'ncs_spec', 'eff', 'mrc', 'cif', 'seq']
+  dm = DataManager(datatypes)
+  for datatype, extension in zip(datatypes, extensions):
+    filename = getattr(dm, 'get_default_output_{datatype}_filename'.
+                       format(datatype=datatype))()
+    assert filename == 'cctbx_program.' + extension
+
+# -----------------------------------------------------------------------------
 if (__name__ == '__main__'):
 
   test_data_manager()
   test_model_datatype()
   test_sequence_datatype()
   test_miller_array_datatype()
+  test_default_filenames()
 
   if (libtbx.env.find_in_repositories(relative_path='chem_data') is not None):
     test_model_and_restraint()

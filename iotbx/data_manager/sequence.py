@@ -49,7 +49,15 @@ class SequenceDataManager(DataManagerBase):
   def process_sequence_file(self, filename):
     return self._process_file(SequenceDataManager.datatype, filename)
 
+  def get_default_output_sequence_filename(self):
+    filename = self.get_default_output_filename()
+    if not filename.endswith('.seq'):
+      filename += '.seq'
+    return filename
+
   def write_sequence_file(self, sequence_str, filename=Auto, overwrite=Auto):
+    if filename is Auto:
+      filename = self.get_default_output_sequence_filename()
     self._write_text(SequenceDataManager.datatype, sequence_str,
                      filename=filename, overwrite=overwrite)
 

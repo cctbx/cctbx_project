@@ -40,6 +40,12 @@ class RealMapDataManager(DataManagerBase):
   def process_real_map_file(self, filename):
     return self._process_file(RealMapDataManager.datatype, filename)
 
+  def get_default_output_real_map_filename(self):
+    filename = self.get_default_output_filename()
+    if not filename.endswith('.mrc'):
+      filename += '.mrc'
+    return filename
+
   def write_real_map_file(self, unit_cell, space_group, map_data, labels,
                           filename=Auto, overwrite=Auto):
     # WAS: wrapper for iotbx.ccp4_map.write_ccp4_map
@@ -47,7 +53,7 @@ class RealMapDataManager(DataManagerBase):
 
     # default options
     if (filename is Auto):
-      filename = self._default_output_filename
+      filename = self.get_default_output_real_map_filename()
     if (overwrite is Auto):
       overwrite = self._overwrite
 

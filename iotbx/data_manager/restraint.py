@@ -43,7 +43,15 @@ class RestraintDataManager(DataManagerBase):
       else:
         self.add_restraint(filename, a.file_object.model())
 
+  def get_default_output_restraint_filename(self):
+    filename = self.get_default_output_filename()
+    if not filename.endswith('.cif'):
+      filename += '.cif'
+    return filename
+
   def write_restraint_file(self, restraint_str, filename=Auto, overwrite=Auto):
+    if filename is Auto:
+      filename = self.get_default_output_restraint_filename()
     self._write_text(RestraintDataManager.datatype, restraint_str,
                      filename=filename, overwrite=overwrite)
 
