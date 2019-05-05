@@ -1,8 +1,8 @@
 from __future__ import division
 # test that mosaic spread is working
-from scitbx.array_family import flex
+#from scitbx.array_family import flex
 from simtbx.nanoBragg import shapetype
-from simtbx.nanoBragg import convention
+#from simtbx.nanoBragg import convention
 from simtbx.nanoBragg import nanoBragg
 
 # create the simulation object, all parameters have sensible defaults
@@ -29,6 +29,7 @@ SIM.distance_mm = 1000
 SIM.beam_center_mm = (1,7)
 #print SIM.XDS_ORGXY
 #print SIM.dials_origin_mm
+print SIM.beamcenter_convention
 
 # default orientation is with a axis down the beam, lets rotate it a bit
 # tilt to Bragg angle
