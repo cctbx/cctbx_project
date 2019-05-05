@@ -39,11 +39,11 @@ def test_phil():
   assert('parameter_c' in test_program.get_program_phil_str())
   assert('parameter_c' not in test_program.get_program_phil_str(True))
 
-  assert(test_program.get_default_filename() == 'cctbx_program_000')
+  assert(test_program.get_default_output_filename() == 'cctbx_program_000')
   test_program.params.output.prefix = 'prefix'
   test_program.params.output.suffix = 'suffix'
   test_program.params.output.serial = 7
-  assert(test_program.get_default_filename() == 'prefix_suffix_007')
+  assert(test_program.get_default_output_filename() == 'prefixsuffix_007')
 
 # =============================================================================
 if __name__ == '__main__':

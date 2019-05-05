@@ -150,7 +150,8 @@ output {
 
     # set DataManager defaults
     if self.data_manager is not None:
-      self.data_manager.set_default_output_filename(self.get_default_filename())
+      self.data_manager.set_default_output_filename(
+        self.get_default_output_filename())
       self.data_manager.set_overwrite(self.params.output.overwrite)
 
   def header(self, text):
@@ -329,7 +330,7 @@ output {
     return self.get_data_phil_str(diff=diff) + self.get_program_phil_str(diff=diff)
 
   # ---------------------------------------------------------------------------
-  def get_default_filename(self):
+  def get_default_output_filename(self):
     '''
     Given the output.prefix, output.suffix, and output.serial PHIL parameters,
     return the default output filename
@@ -348,7 +349,7 @@ output {
     if filename is None:
       filename = 'cctbx_program'
     if self.params.output.suffix is not None:
-      filename += '_{suffix}'.format(suffix=self.params.output.suffix)
+      filename += '{suffix}'.format(suffix=self.params.output.suffix)
     if self.params.output.serial is not None:
       filename += '_{serial:03d}'.format(serial=self.params.output.serial)
 

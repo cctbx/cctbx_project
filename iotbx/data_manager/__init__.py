@@ -290,7 +290,7 @@ overwrite = False
   def set_default_output_filename(self, filename):
     self._default_output_filename = filename
 
-  def get_default_output_filename(self, filename):
+  def get_default_output_filename(self):
     return self._default_output_filename
 
   # ---------------------------------------------------------------------------

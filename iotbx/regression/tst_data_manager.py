@@ -96,9 +96,9 @@ data_manager {
   a.add_phil('c','d')
   a.add_sequence('e','f')
 
-  a.write_model_file('a.dat', a.get_model(), overwrite=True)
+  a.write_model_file(a.get_model(), filename='a.dat', overwrite=True)
   a.write_phil_file(a.get_phil(), filename='c.dat', overwrite=True)
-  a.write_sequence_file('e.dat', a.get_sequence(), overwrite=True)
+  a.write_sequence_file(a.get_sequence(), filename='e.dat', overwrite=True)
 
   with open('a.dat', 'r') as f:
     lines = f.readlines()
@@ -202,7 +202,7 @@ END
   test_eff = 'model.eff'
   dm = DataManager(['model'])
   dm.process_model_str(test_filename, model_str)
-  dm.write_model_file(test_filename, model_str, True)
+  dm.write_model_file(model_str, filename=test_filename, overwrite=True)
   assert(test_filename in dm.get_model_names())
 
   # test type
@@ -235,8 +235,8 @@ END
 
   # test reading/writing CIF
   test_filename = 'test_model_datatype.cif'
-  dm.write_model_file(test_filename,
-                      dm.get_model().model_as_mmcif(), overwrite=True)
+  dm.write_model_file(dm.get_model().model_as_mmcif(),
+                      filename=test_filename, overwrite=True)
   dm.process_model_file(test_filename)
   os.remove(test_filename)
   assert(test_filename in dm.get_model_names())
@@ -366,8 +366,9 @@ URE plan-1  HN22   0.020
   restraint_filename = 'ure.cif'
 
   dm = DataManager(['model', 'restraint'])
-  dm.write_model_file(model_filename, model_str, overwrite=True)
-  dm.write_restraint_file(restraint_filename, restraint_str, overwrite=True)
+  dm.write_model_file(model_str, filename=model_filename, overwrite=True)
+  dm.write_restraint_file(restraint_str, filename=restraint_filename,
+                          overwrite=True)
 
   # fails because no restraints are loaded
   dm.process_model_file(model_filename)
@@ -434,7 +435,8 @@ def test_miller_array_datatype():
   assert(label == new_label)
 
   # test custom PHIL
-  dm.write_phil_file(dm.export_phil_scope().as_str(), 'test.phil', True)
+  dm.write_phil_file(dm.export_phil_scope().as_str(),
+                     filename='test.phil', overwrite=True)
   loaded_phil = iotbx.phil.parse(file_name='test.phil')
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)
@@ -449,7 +451,8 @@ def test_miller_array_datatype():
   label = labels[3]
   dm.set_miller_array_type(data_mtz, label, 'electron')
   assert(dm.get_miller_array_type(label=label) == 'electron')
-  dm.write_phil_file(dm.export_phil_scope().as_str(), 'test_phil', True)
+  dm.write_phil_file(dm.export_phil_scope().as_str(),
+                     filename='test_phil', overwrite=True)
   loaded_phil = iotbx.phil.parse(file_name='test_phil')
   new_dm.load_phil_scope(loaded_phil)
   assert(new_dm.get_miller_array_type(label=label) == 'electron')
@@ -506,7 +509,8 @@ def test_miller_array_datatype():
   dm._miller_array_labels[data_mtz] = label_subset
   dm.set_miller_array_type(label=label_subset[2], array_type='electron')
   assert(dm.get_miller_array_type(label=label_subset[2]) == 'electron')
-  dm.write_phil_file(dm.export_phil_scope().as_str(), 'test.phil', True)
+  dm.write_phil_file(dm.export_phil_scope().as_str(), filename='test.phil',
+                     overwrite=True)
   loaded_phil = iotbx.phil.parse(file_name='test.phil')
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)
@@ -521,7 +525,8 @@ def test_miller_array_datatype():
   dm = DataManager(['miller_array',  'phil'])
   dm.process_miller_array_file(data_mtz)
   dm._miller_array_labels[data_mtz] = label_subset
-  dm.write_phil_file(dm.export_phil_scope().as_str(), 'test.phil', True)
+  dm.write_phil_file(dm.export_phil_scope().as_str(), filename='test.phil',
+                     overwrite=True)
   loaded_phil = iotbx.phil.parse(file_name='test.phil')
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)

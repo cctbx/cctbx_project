@@ -52,10 +52,15 @@ include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 include scope mmtbx.geometry_restraints.torsion_restraints.reference_model.reference_model_str
 include scope mmtbx.geometry_restraints.external.external_energy_params_str
 output {
-  output_suffix = '.deposit.cif'
+  suffix = '.deposit'
     .type = str
+    .help = Suffix string added to automatically generated output filenames
 }
 '''
+  # ---------------------------------------------------------------------------
+  def custom_init(self):
+    self.output_file = None
+
   # ---------------------------------------------------------------------------
   def validate(self):
     self.data_manager.has_models(expected_n=1, exact_count=True, raise_sorry=True)
@@ -99,14 +104,16 @@ output {
       keep_original_loops=self.params.keep_original_loops)
 
     # write output file
-    self.output_file = os.path.splitext(
-      self.data_manager.get_default_model_name())[0] + \
-      self.params.output.output_suffix
+    if self.params.output.prefix is None:
+      self.params.output.prefix = os.path.splitext(
+        self.data_manager.get_default_model_name())[0]
+    self.data_manager.set_default_output_filename(
+      self.get_default_output_filename())
+    self.output_file = self.data_manager.get_default_output_model_filename()
     print('Writing mmCIF', file=self.logger)
     print('-------------', file=self.logger)
     print ('  Output file = %s' % self.output_file, file=self.logger)
-    self.data_manager.write_model_file(
-      self.output_file, self.cif_model, self.params.output.overwrite)
+    self.data_manager.write_model_file(self.cif_model)
 
   # ---------------------------------------------------------------------------
   def get_results(self):
