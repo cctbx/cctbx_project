@@ -149,8 +149,9 @@ output {
     self.custom_init()
 
     # set DataManager defaults
-    self.data_manager.set_default_output_filename(self.get_default_filename())
-    self.data_manager.set_overwrite(self.params.output.overwrite)
+    if self.data_manager is not None:
+      self.data_manager.set_default_output_filename(self.get_default_filename())
+      self.data_manager.set_overwrite(self.params.output.overwrite)
 
   def header(self, text):
     print("-"*79, file=self.logger)
@@ -240,6 +241,8 @@ output {
     -------
     params: libtbx.phil.scope
     '''
+    if self.data_manager is None:
+      return libtbx.phil.parse('')
     working_phil = self.data_manager.export_phil_scope()
     if diff:
       working_phil = self.data_manager.master_phil.fetch_diff(working_phil)
