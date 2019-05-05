@@ -126,12 +126,6 @@ def core(pdb_str, suffix):
 def exercise_00():
   r1 = core(pdb_str=pdb_str_00, suffix=1)
   r2 = core(pdb_str=pdb_str_01, suffix=2)
-  assert len(r1) == len(r2)
-  for r in r1:
-    print r
-  print
-  for r in r2:
-    print r
 
 if __name__ == '__main__':
   t0 = time.time()
