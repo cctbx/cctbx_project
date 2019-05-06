@@ -4665,7 +4665,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
 
   # PDB file
   if params.input_files.pdb_file:
-    print >>out,"\nInput PDB file to be shifted only: %s\n" %(
+    print >>out,\
+        "\nInput PDB file to be used to identify region to work with: %s\n" %(
        params.input_files.pdb_file)
     pdb_inp = iotbx.pdb.input(file_name=params.input_files.pdb_file)
     pdb_hierarchy = pdb_inp.construct_hierarchy()
@@ -8339,6 +8340,9 @@ def get_overall_mask(
     print >>out,"Cutoff for mask will be input threshold"
     threshold=mask_threshold
   else:  # guess based on solvent_fraction
+    if solvent_fraction is None:
+       print >>out,"Guessing solvent fraction of 0.9"
+       solvent_fraction=0.9 # just guess
     threshold=find_threshold_in_map(target_points=int(
       (1.-solvent_fraction)*sd_map.size()),
       map_data=sd_map)

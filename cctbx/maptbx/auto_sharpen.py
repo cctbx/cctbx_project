@@ -797,15 +797,14 @@ def get_map_and_model(params=None,
        (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
         map_data.is_0_based())
     if(shift_needed):
-      map_data = map_data.shift_origin()
       origin_shift=(
         map_data.origin()[0]/map_data.all()[0],
         map_data.origin()[1]/map_data.all()[1],
         map_data.origin()[2]/map_data.all()[2])
       origin_frac=origin_shift  # NOTE: fraction of NEW cell
+      map_data = map_data.shift_origin()
     else:
       origin_frac=(0.,0.,0.)
-
 
   elif params.input_files.map_file:
     print >>out,"\nReading map from %s\n" %( params.input_files.map_file)
@@ -876,6 +875,7 @@ def get_map_and_model(params=None,
     if not os.path.isfile(model_file):
       raise Sorry("Missing the model file: %s" %(model_file))
     pdb_inp=iotbx.pdb.input(file_name=model_file)
+  if pdb_inp: # XXX added 2019-05-05
     if origin_frac != (0,0,0):
       print >>out,"Shifting model by %s" %(str(origin_frac))
       from cctbx.maptbx.segment_and_split_map import \
