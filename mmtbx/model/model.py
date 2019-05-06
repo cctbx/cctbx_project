@@ -1321,7 +1321,8 @@ class manager(object):
       if filter_groups:
         # set up new groups for refinements
         self._ncs_groups = self._ncs_groups.filter_ncs_restraints_group_list(
-            self.get_hierarchy())
+            whole_h=self.get_hierarchy(),
+            ncs_obj=self.get_ncs_obj())
       self.get_ncs_obj().set_ncs_restraints_group_list(self._ncs_groups)
     self._update_master_sel()
 
