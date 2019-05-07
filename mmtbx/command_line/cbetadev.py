@@ -1,46 +1,45 @@
+from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.cbetadev
 # LIBTBX_SET_DISPATCHER_NAME molprobity.cbetadev
+# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 
-from __future__ import division
-import mmtbx.validation.cbetadev
-import iotbx.phil
-from libtbx.utils import Usage
-import os.path
-import os, sys
+import sys
 
-def get_master_phil():
-  return iotbx.phil.parse(input_string="""
-    include scope mmtbx.validation.molprobity_cmdline_phil_str
-    cbetadev {
-      output = *text kin
-      .type = choice
-      .help = '''choose output type'''
-    }
-""", process_includes=True)
+from iotbx.cli_parser import CCTBXParser
+from libtbx.utils import multi_out, show_total_time, null_out
+from mmtbx.programs import cbetadev
 
-def run(args, out=sys.stdout, quiet=False):
-  prog = os.getenv('LIBTBX_DISPATCHER_NAME')
-  usage_string = "%s file.pdb [params.eff] [options ...]" % prog
-  cmdline = iotbx.phil.process_command_line_with_files(
-    args=args,
-    master_phil=get_master_phil(),
-    pdb_file_def="model",
-    usage_string=usage_string)
-  params = cmdline.work.extract()
-  if (params.model is None):
-    raise Usage(usage_string)
-  pdb_in = cmdline.get_file(params.model, force_type="pdb")
-  hierarchy = pdb_in.file_object.hierarchy
-  result = mmtbx.validation.cbetadev.cbetadev(
-    pdb_hierarchy=hierarchy,
-    outliers_only=params.outliers_only,
-    out=out,
-    quiet=quiet)
-  if params.cbetadev.output == "kin":
-    out.write(result.as_kinemage())
-  elif params.verbose:
-    pdb_file_str = os.path.basename(params.model)[:-4]
-    result.show_old_output(out=out, prefix=pdb_file_str, verbose=True)
+#=============================================================================
+def run(args):
 
-if (__name__ == "__main__"):
+  # create parser
+  logger = null_out()
+  logger2 = multi_out()
+  logger2.register('stdout', sys.stdout)
+
+  parser = CCTBXParser(
+    program_class=cbetadev.Program,
+    logger=logger)
+  namespace = parser.parse_args(sys.argv[1:])
+
+  # start program
+  print('Starting job', file=logger)
+  print('='*79, file=logger)
+  task = cbetadev.Program(
+    parser.data_manager, parser.working_phil.extract(), logger=logger2)
+
+  # validate inputs
+  task.validate()
+
+  # run program
+  task.run()
+
+  # stop timer
+  print('', file=logger)
+  print('='*79, file=logger)
+  print('Job complete', file=logger)
+  show_total_time(out=logger)
+
+# =============================================================================
+if __name__ == '__main__':
   run(sys.argv[1:])
