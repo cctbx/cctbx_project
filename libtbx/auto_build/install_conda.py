@@ -318,9 +318,11 @@ value."""
       for env in self.environments:
         consistency_check.append(env in conda_info['envs'])
       if False in consistency_check:
-        raise RuntimeError("""
+        raise RuntimeWarning("""
 There is a mismatch between the conda settings in your home directory
-and what "conda info" is reporting.
+and what "conda info" is reporting. This is not a fatal error, but if
+an error is encountered, please check that your conda installation and
+environments exist and are working.
 """)
       if conda_info['conda_version'] < '4.4':
         raise RuntimeError("""
