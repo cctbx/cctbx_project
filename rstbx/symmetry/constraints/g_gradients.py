@@ -1,6 +1,5 @@
 from __future__ import division
 from builtins import range
-from six.moves import range
 from math import sqrt,cos,sin
 from cctbx.array_family import flex
 

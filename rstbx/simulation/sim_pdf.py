@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 from builtins import range
-from six.moves import range
 from scitbx.array_family import flex
 page_origin = (20.,220.)
 boxedge = 500.

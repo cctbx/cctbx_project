@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 from builtins import range
-from six.moves import range
 from rstbx_ext import SpotClass
 from scitbx.array_family import flex
 from rstbx.indexing_api import outlier_detection

@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 from builtins import range
-from six.moves import range
 import math
 from scitbx.matrix import col,sqr
 from scitbx.math import unimodular_generator

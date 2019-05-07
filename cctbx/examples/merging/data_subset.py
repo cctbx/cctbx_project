@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 from builtins import range
-from six.moves import range
 from scitbx.array_family import flex
 
 """The mapper_unmapper class solves the problem of selecting a subset of the data

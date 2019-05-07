@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 from builtins import range
-from six.moves import range
 
 from rstbx.dials_core.integration_core import show_observations
 import iotbx.phil

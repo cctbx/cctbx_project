@@ -1,6 +1,5 @@
 from __future__ import division
 from builtins import range
-from six.moves import range
 import exceptions
 from scitbx import lbfgs
 from libtbx import adopt_init_args

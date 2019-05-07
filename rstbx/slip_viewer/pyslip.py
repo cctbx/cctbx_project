@@ -23,7 +23,6 @@ difficulty for most uses is to generate the map tiles.
 """
 from __future__ import division
 from builtins import range
-from six.moves import range
 
 
 # Copyright (c) 2010, Ross Wilson (rzzzwilson@gmail.com). All rights reserved.

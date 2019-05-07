@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 from builtins import range
-from six.moves import range
 import math,os
 from six.moves import cStringIO as StringIO
 from six.moves import cPickle as pickle

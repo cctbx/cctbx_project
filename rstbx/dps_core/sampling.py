@@ -1,6 +1,5 @@
 from __future__ import division
 from builtins import range
-from six.moves import range
 import math
 from rstbx.array_family import flex
 from rstbx.dps_core import Direction, directional_show, SimpleSamplerTool

@@ -22,7 +22,6 @@ This module provides a function, convert_beam_instrument_to_imageblock() to give
 """
 from __future__ import division, print_function
 from builtins import range
-from six.moves import range
 
 class beam_center_convention_definitions:
   def __init__(self,beam_center_convention):
