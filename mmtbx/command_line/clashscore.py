@@ -1,104 +1,45 @@
+from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.clashscore
 # LIBTBX_SET_DISPATCHER_NAME molprobity.clashscore
+# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 
-from __future__ import division
-from mmtbx.validation.clashscore import clashscore
-from libtbx.utils import Usage
-import iotbx.phil
-import os, sys
+import sys
 
-master_phil_str = """
-  model = None
-    .type = path
-    .optional = False
-    .help = '''input PDB file'''
+from iotbx.cli_parser import CCTBXParser
+from libtbx.utils import multi_out, show_total_time, null_out
+from mmtbx.programs import clashscore
 
-  fast = False
-    .type = bool
-    .help = ''' Produce only clashscore number, without anything else'''
+#=============================================================================
+def run(args):
 
-  condensed_probe = False
-    .type = bool
-    .help = ''' Run probe with -CON parameter '''
+  # create parser
+  logger = null_out()
+  logger2 = multi_out()
+  logger2.register('stdout', sys.stdout)
 
-  verbose = True
-    .type = bool
+  parser = CCTBXParser(
+    program_class=clashscore.Program,
+    logger=logger)
+  namespace = parser.parse_args(sys.argv[1:])
 
-  keep_hydrogens = False
-    .type = bool
-    .help = '''Keep hydrogens in input file'''
+  # start program
+  print('Starting job', file=logger)
+  print('='*79, file=logger)
+  task = clashscore.Program(
+    parser.data_manager, parser.working_phil.extract(), logger=logger2)
 
-  do_flips = False
-    .type = bool
-    .help = '''Do flips when adding Hsi, overides keep_hydrogens=True'''
+  # validate inputs
+  task.validate()
 
-  nuclear = False
-    .type = bool
-    .help = '''Use nuclear hydrogen positions'''
+  # run program
+  task.run()
 
-  time_limit = 120
-    .type = int
-    .help = '''Time limit (sec) for Reduce optimization'''
+  # stop timer
+  print('', file=logger)
+  print('='*79, file=logger)
+  print('Job complete', file=logger)
+  show_total_time(out=logger)
 
-  b_factor_cutoff = None
-    .type = int
-    .help = '''B factor cutoff for use with MolProbity'''
-"""
-prog=os.getenv('LIBTBX_DISPATCHER_NAME')
-usage_string = """\
-%(prog)s file.pdb [params.eff] [options ...]
-
-Options:
-
-  model=input_file          input PDB file
-  fast = False              Produce only clashscore number, without anything else
-  condensed_probe=False     Run probe with -CON parameter
-  keep_hydrogens=False      keep input hydrogen atoms if True, regenerate if False
-  nuclear=False             use nuclear x-H distances and vdW radii
-  verbose=True              verbose text output
-  b_factor_cutoff=40        B factor cutoff for clash analysis
-  do_flips=False            Do flips when adding Hs, overides keep_hydrogens
-
-Example:
-
-  %(prog)s model=1ubq.pdb keep_hydrogens=True
-""" % locals()
-
-def run(args, out=sys.stdout, quiet=None):
-  """
-  Calculates nonbonded clashscore using MolProbity (PROBE)
-
-  Returns:
-    When verbose=True the function print detailed results to log
-    When verbose=False it will print clashscore
-  """
-  cmdline = iotbx.phil.process_command_line_with_files(
-    args=args,
-    master_phil_string=master_phil_str,
-    pdb_file_def="model",
-    usage_string=usage_string)
-  params = cmdline.work.extract()
-  if (params.model is None):
-    raise Usage(usage_string)
-  # if do_flips, make keep_hydrogens false
-  if params.do_flips : params.keep_hydrogens = False
-
-  pdb_in = cmdline.get_file(params.model, force_type="pdb")
-  hierarchy = pdb_in.file_object.hierarchy
-  result = clashscore(
-    pdb_hierarchy=hierarchy,
-    fast = params.fast,
-    condensed_probe = params.condensed_probe,
-    keep_hydrogens=params.keep_hydrogens,
-    nuclear=params.nuclear,
-    out=out,
-    verbose=params.verbose and not quiet,
-    b_factor_cutoff=params.b_factor_cutoff,
-    do_flips=params.do_flips)
-  if params.verbose:
-    result.show_old_output(out=out)
-  else:
-    print >> out,round(result.get_clashscore(),2)
-
-if (__name__ == "__main__"):
+# =============================================================================
+if __name__ == '__main__':
   run(sys.argv[1:])
