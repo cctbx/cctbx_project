@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import time
 from iotbx.pdb.secondary_structure import annotation, pdb_helix, pdb_strand
 import iotbx

@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx.eltbx import xray_scattering
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.development import kissel_io

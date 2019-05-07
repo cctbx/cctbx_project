@@ -3,7 +3,7 @@ http://www2.imm.dtu.dk/~hbn/immoptibox/
 """
 
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import scitbx.math
 import scitbx.linalg
 from scitbx import matrix

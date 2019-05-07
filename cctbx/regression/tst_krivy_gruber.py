@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx.uctbx import reduction_base
 from cctbx.uctbx import krivy_gruber_1976
 from cctbx.uctbx import gruber_1973

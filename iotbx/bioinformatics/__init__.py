@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from libtbx.utils import Abort
 from libtbx import group_args
 import cStringIO

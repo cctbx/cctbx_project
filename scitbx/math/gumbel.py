@@ -21,7 +21,7 @@ from __future__ import division, print_function
 
 # for small values, calculate directly
 
-from builtins import range
+from six.moves import range
 def p_of_none_greater(z,n):
   from scitbx.math import erf
   x=z/(2**0.5)

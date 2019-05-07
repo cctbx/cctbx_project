@@ -19,7 +19,7 @@ Shabana (2005):
 """
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 try:
   from scitbx import matrix
 except ImportError:

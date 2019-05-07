@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 from wxtbx.phil_controls import intctrl, floatctrl, symop, strctrl, ints, choice
 from wxtbx.utils import std_sizer_flags, add_ok_cancel_buttons
 from libtbx.utils import Abort

@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from iotbx.pdb.tst_pdb import dump_pdb
 from cctbx.crystal import close_packing
 from cctbx import crystal

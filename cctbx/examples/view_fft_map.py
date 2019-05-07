@@ -13,7 +13,7 @@ show_fft()
 """
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 print("Loading module:", __name__)
 
 # cctbx imports

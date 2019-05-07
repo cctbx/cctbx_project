@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
-from builtins import range
+from six.moves import range
 from cctbx.xray import ext
 from cctbx.xray import structure_factors
 from cctbx import miller

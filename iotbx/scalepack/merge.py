@@ -10,7 +10,7 @@ from __future__ import division, print_function
 #
 # Format: (3I4, 4F8.1)
 
-from builtins import range
+from six.moves import range
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import crystal

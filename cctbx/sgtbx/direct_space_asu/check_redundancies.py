@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.web.asu_gallery import jv_asu
 from cctbx import sgtbx

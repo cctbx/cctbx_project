@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences
 from cctbx import sgtbx, xray

@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx.array_family import flex
 from cbflib_adaptbx import uncompress,compress,assert_equal
 from libtbx.development.timers import Profiler

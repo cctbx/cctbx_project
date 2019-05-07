@@ -3,7 +3,7 @@ from __future__ import division, print_function
 # Copyright 2010, University of California
 # License: LGPL
 
-from builtins import range
+from six.moves import range
 from wx.lib.embeddedimage import PyEmbeddedImage
 import wx
 import sys

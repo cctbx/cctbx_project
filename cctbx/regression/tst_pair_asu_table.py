@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from iotbx.kriber import strudat
 from cctbx import geometry_restraints
 from cctbx import crystal

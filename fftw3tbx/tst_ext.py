@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import fftw3tbx
 import omptbx # initializes OpenMP environment
 from scitbx import fftpack

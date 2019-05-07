@@ -37,7 +37,7 @@ from __future__ import division, generators
 from __future__ import print_function
 from __future__ import absolute_import
 
-from builtins import range
+from six.moves import range
 from libtbx import object_oriented_patterns as oop
 from libtbx import adopt_optional_init_args
 

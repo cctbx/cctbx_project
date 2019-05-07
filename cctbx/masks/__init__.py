@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import boost.python
 from functools import reduce
 ext = boost.python.import_ext("cctbx_masks_ext")

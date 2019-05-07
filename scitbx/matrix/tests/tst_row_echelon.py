@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 def exercise_rational():
   from scitbx.matrix import row_echelon
   from scitbx import matrix

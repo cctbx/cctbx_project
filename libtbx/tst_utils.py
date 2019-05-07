@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
+from six.moves import range
 from libtbx import utils
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from six.moves import cStringIO as StringIO

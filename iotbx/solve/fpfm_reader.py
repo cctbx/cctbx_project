@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex

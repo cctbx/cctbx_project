@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from gltbx import gl
 from gltbx import glu
 from libtbx.test_utils import Exception_expected, show_diff

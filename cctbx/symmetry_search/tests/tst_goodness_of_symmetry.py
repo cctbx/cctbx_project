@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 from cctbx import miller
 from cctbx.development import debug_utils, random_structure
 from cctbx import translation_search

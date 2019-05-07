@@ -14,7 +14,7 @@ in radians for comparison.
 """
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 from cctbx import uctbx
 from scitbx import matrix

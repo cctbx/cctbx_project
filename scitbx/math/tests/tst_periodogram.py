@@ -9,7 +9,7 @@
 #
 
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx.array_family import flex
 from scitbx.math.periodogram import Periodogram
 from libtbx.test_utils import approx_equal

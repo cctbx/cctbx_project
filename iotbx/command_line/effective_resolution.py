@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.resolution
 
-from builtins import range
+from six.moves import range
 from iotbx import reflection_file_reader
 from cctbx import maptbx
 from cctbx.array_family import flex

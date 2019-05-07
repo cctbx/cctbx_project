@@ -1,6 +1,6 @@
 from __future__ import division
 from __future__ import absolute_import, print_function
-from builtins import range
+from six.moves import range
 import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint
 import math

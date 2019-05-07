@@ -1,6 +1,6 @@
 from __future__ import division
 
-from builtins import range
+from six.moves import range
 from scitbx import suffixtree
 from scitbx.suffixtree import single
 

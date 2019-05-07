@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx.examples.exp_i_alpha_derivatives import least_squares
 from scitbx import matrix
 from scitbx.array_family import flex

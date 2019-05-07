@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import cctbx.sgtbx
 
 import boost.python

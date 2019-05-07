@@ -6,7 +6,7 @@ from __future__ import division, print_function
 # Validate reflection data from test integration code against data from XDS,
 # by means of computing a correlaton coefficient between the two.
 
-from builtins import range
+from six.moves import range
 import math
 import sys
 import random

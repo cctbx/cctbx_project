@@ -5,7 +5,7 @@ random coordinates, how many configurations are found?
 """
 
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import cctbx.geometry_restraints.manager
 import cctbx.geometry_restraints.lbfgs
 from cctbx.array_family import flex

@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from libtbx.containers import OrderedDict, OrderedSet
 from libtbx.utils import Sorry
 import sys

@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
+from six.moves import range
 from libtbx import binary_search
 import random
 import sys

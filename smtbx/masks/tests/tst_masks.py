@@ -1,7 +1,7 @@
 from __future__ import division
 from __future__ import absolute_import, print_function
 
-from builtins import range
+from six.moves import range
 from scitbx.lstbx import normal_eqns_solving
 from cctbx import miller
 from cctbx import euclidean_model_matching as emma

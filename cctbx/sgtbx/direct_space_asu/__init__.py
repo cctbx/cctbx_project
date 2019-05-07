@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 from cctbx.sgtbx.direct_space_asu import cut_plane
 from cctbx.sgtbx.direct_space_asu.short_cuts import r1

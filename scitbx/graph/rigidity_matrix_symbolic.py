@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import sys
 
 if (getattr(sys, "api_version", 0) >= 1013):

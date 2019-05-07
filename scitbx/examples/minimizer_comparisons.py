@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 from __future__ import absolute_import
-from builtins import range
+from six.moves import range
 from functions import Function
 
 from scitbx import simplex

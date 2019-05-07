@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 #!/usr/bin/env cctbx.python
 #
 # Biostruct-X Data Reduction Use Case 1.2:

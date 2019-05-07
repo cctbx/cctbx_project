@@ -1,6 +1,6 @@
 from __future__ import division
 from __future__ import absolute_import, print_function
-from builtins import range
+from six.moves import range
 from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
 import libtbx.utils

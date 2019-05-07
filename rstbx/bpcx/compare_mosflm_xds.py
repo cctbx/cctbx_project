@@ -24,7 +24,7 @@ from __future__ import division, print_function
 # and degrees (perhaps small differences in postrefinement are affecting
 # things?)
 
-from builtins import range
+from six.moves import range
 import sys
 import math
 from iotbx import mtz

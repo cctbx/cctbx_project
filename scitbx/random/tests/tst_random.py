@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 import libtbx.utils
 from libtbx.test_utils import approx_equal
 import scitbx.random

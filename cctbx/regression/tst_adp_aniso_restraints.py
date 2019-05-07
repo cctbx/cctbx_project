@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx.array_family import flex
 from cStringIO import StringIO
 import cctbx.adp_restraints

@@ -47,7 +47,7 @@ from __future__ import division, print_function
 #    of code.
 #
 
-from builtins import range
+from six.moves import range
 from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import adopt_init_args

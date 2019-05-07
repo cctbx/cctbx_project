@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 def level(space_group_info):
   """\
 Determine the level of confidence in a given space group symbol. Often

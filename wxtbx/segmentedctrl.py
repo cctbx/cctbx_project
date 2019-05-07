@@ -12,7 +12,7 @@ from __future__ import division, print_function
 #   - Windows bugs
 #   - additional styles?
 
-from builtins import range
+from six.moves import range
 import wx
 
 SEGBTN_ROUNDED_CORNERS = 1

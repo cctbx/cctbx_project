@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 test_cases = """\
 P 1
 -0.13463, 0.5133, 0.41428

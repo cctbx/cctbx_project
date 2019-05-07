@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 from libtbx import slots_getstate_setstate
 from scitbx import matrix
 from boost import rational

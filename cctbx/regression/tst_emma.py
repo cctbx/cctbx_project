@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx import euclidean_model_matching as emma
 from iotbx.command_line.emma import get_emma_model_from_pdb
 from cctbx import xray

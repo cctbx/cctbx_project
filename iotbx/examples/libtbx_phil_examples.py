@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 if (__name__ == "__main__"):
 
   # ---- line 197 -------------------------------------------------------------

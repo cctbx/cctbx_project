@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
+from six.moves import range
 import cctbx.crystal.direct_space_asu # import dependency
 from cctbx.array_family import flex
 import scitbx.array_family.shared # import dependency

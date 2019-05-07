@@ -4,7 +4,7 @@
 
 from __future__ import division
 from __future__ import print_function
-from builtins import range
+from six.moves import range
 
 import wx
 from scitbx.matrix import col

@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import copy,re
 from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors import ImageException

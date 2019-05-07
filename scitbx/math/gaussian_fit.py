@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import scitbx.math.gaussian
 from scitbx.math import golay_24_12_generator
 from scitbx import lbfgs

@@ -4,7 +4,7 @@ from __future__ import division, print_function
 #
 # usage: python make_settings.py > settings.py
 
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 
 def run():

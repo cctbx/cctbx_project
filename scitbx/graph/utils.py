@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 from libtbx import slots_getstate_setstate
 
 def construct_edge_sets(n_vertices, edge_list, assert_i_lt_j=True):

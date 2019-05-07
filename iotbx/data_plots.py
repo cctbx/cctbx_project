@@ -5,7 +5,7 @@ Tools for handling plottable data, usually similar to CCP4's loggraph format
 """
 
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from libtbx import adopt_init_args
 from libtbx.utils import Sorry
 import string

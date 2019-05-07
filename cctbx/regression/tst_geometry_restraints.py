@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from iotbx.pdb.tst_pdb import dump_pdb
 from cctbx import geometry_restraints
 from iotbx.pymol import pml_stick, pml_write

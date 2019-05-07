@@ -1,6 +1,6 @@
 from __future__ import division
 from __future__ import absolute_import
-from builtins import range
+from six.moves import range
 from cctbx.array_family import flex # for tuple mappings
 
 import boost.python

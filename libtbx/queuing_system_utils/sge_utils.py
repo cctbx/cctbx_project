@@ -1,7 +1,7 @@
 "Sun Grid Engine utilities"
 from __future__ import absolute_import, division, print_function
 
-from builtins import range
+from six.moves import range
 
 import sys
 import os

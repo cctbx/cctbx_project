@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx import adptbx, sgtbx
 from cctbx.development import debug_utils
 from scitbx.math import row_echelon_full_pivoting

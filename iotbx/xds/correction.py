@@ -8,7 +8,7 @@
 #
 from __future__ import division
 
-from builtins import range
+from six.moves import range
 class reader:
   """A class to read the X/Y-CORRECTIONS.CBF files used in XDS"""
   def __init__(self):

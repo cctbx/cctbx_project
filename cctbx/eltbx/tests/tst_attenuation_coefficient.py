@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 def tst_for_z(z):
   from cctbx.eltbx import attenuation_coefficient
 

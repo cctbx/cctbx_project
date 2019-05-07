@@ -12,7 +12,7 @@ References:
 """
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 from libtbx.utils import Usage
 from libtbx.str_utils import show_sorted_by_counts

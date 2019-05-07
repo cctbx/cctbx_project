@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 from cctbx import adp_restraints, geometry_restraints
 from cctbx.adp_restraints import adp_restraint_params

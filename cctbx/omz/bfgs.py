@@ -1,6 +1,6 @@
 from __future__ import division
 
-from builtins import range
+from six.moves import range
 def h0_scaling(sk, yk):
   "Nocedal & Wright (1999) Eq. 8.20; same as Eq. 9.6"
   yty = yk.dot(yk)

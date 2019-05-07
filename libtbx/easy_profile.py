@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
+from six.moves import range
 class easy_profile(object):
   """ cProfile.Profile easy-to-use wrapper """
 

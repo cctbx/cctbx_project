@@ -5,7 +5,7 @@ symmetry operations possible for reduced cells.
 """
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex

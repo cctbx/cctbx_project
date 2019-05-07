@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints.distance_least_squares \
   import distance_and_repulsion_least_squares

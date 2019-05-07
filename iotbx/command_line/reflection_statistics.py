@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.reflection_statistics
 
-from builtins import range
+from six.moves import range
 from iotbx import reflection_file_reader
 from iotbx.option_parser import option_parser
 from cctbx import maptbx

@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx import math
 
 def tst_sph_zeroes(l,n):

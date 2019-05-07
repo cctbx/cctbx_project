@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import scitbx.math
 import boost.rational
 from scitbx.math import line_given_points

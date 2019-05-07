@@ -5,7 +5,7 @@ files, used in GUI for phenix.ensemble_refinement.
 """
 
 from __future__ import division
-from builtins import range
+from six.moves import range
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
 from wxtbx import app, path_dialogs, plots

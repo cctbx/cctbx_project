@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 def run(args):
   if (len(args) == 0):
     from libtbx.utils import Usage

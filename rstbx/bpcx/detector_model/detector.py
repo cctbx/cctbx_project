@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 #!/usr/bin/env python
 
-from builtins import range
+from six.moves import range
 from scitbx import matrix
 from rstbx.bpcx import sensor
 

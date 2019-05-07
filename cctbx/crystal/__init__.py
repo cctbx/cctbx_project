@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 # -*- coding: utf-8 -*-
-from builtins import range
+from six.moves import range
 from cctbx.array_family import flex
 import boost.python
 ext = boost.python.import_ext("cctbx_crystal_ext")

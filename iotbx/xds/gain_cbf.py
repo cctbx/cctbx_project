@@ -9,7 +9,7 @@
 from __future__ import division
 from __future__ import absolute_import
 
-from builtins import range
+from six.moves import range
 from . import xds_cbf
 
 class reader(xds_cbf.reader):

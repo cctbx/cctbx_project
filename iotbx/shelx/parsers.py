@@ -2,7 +2,7 @@
 
 from __future__ import division
 
-from builtins import range
+from six.moves import range
 import itertools
 from boost import rational
 

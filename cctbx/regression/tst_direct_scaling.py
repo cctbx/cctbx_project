@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import random
 random.seed(0)
 from scitbx.array_family import flex

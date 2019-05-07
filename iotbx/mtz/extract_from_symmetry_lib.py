@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 import libtbx.load_env
 import os.path as op

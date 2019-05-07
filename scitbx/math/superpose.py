@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
+from six.moves import range
 from scitbx.linalg import eigensystem
 from scitbx.math import superpose_kearsley_rotation
 from scitbx import matrix

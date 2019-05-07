@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx.graph.tardy_tree import cluster_manager, find_paths, construct
 from scitbx.graph.utils import construct_edge_sets
 from scitbx import matrix

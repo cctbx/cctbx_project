@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 # -*- coding: utf-8 -*-
-from builtins import range
+from six.moves import range
 import copy,math
 from scitbx.array_family import flex
 from cctbx.xray import ext

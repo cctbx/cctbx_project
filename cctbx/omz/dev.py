@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx.omz import bfgs
 from cctbx import xray
 import cctbx.xray.targets

@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from iotbx.mtz import extract_from_symmetry_lib
 from cctbx import sgtbx
 from libtbx.utils import format_cpu_times

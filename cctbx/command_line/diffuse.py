@@ -2,7 +2,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.diffuse
 
 from __future__ import division
-from builtins import range
+from six.moves import range
 import sys
 import iotbx.pdb
 import math

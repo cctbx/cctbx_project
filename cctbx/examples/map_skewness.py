@@ -6,7 +6,7 @@
 """
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex

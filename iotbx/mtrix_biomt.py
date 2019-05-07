@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 from scitbx import matrix
 import iotbx.pdb
 from libtbx.utils import Sorry

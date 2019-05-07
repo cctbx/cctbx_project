@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 from cctbx import adp_restraints, uctbx, adptbx, sgtbx
 import scitbx.random
 from scitbx import linalg, matrix

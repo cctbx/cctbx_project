@@ -9,7 +9,7 @@
 #  included in the root directory of this package.
 
 from __future__ import division
-from builtins import range
+from six.moves import range
 from scitbx.array_family import flex
 
 def matrix_inverse_error_propagation(mat, cov_mat):

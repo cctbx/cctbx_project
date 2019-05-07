@@ -5,7 +5,7 @@ a simple keyword syntax and boolean operators.
 """
 
 from __future__ import division
-from builtins import range
+from six.moves import range
 from iotbx import simple_parser
 from iotbx import wildcard
 from cctbx import crystal

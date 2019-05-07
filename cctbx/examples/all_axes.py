@@ -11,7 +11,7 @@ from __future__ import division, print_function
 # XXX     (e.g. list only 3(1), not both 3(1) and 3(2)).
 # XXX See also: comment regarding shift_range below.
 
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 import sys
 

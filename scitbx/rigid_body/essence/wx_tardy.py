@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx.rigid_body.essence import tst_tardy
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex

@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from builtins import range
+from six.moves import range
 from scitbx.stdlib import math, random
 from libtbx.utils import frange
 from libtbx.test_utils import approx_equal, is_below_limit

@@ -1,6 +1,6 @@
 
 from __future__ import division
-from builtins import range
+from six.moves import range
 import wxtbx.plots
 from wxtbx.phil_controls import strctrl, floatctrl
 from libtbx.utils import Sorry

@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from iotbx import reflection_file_reader
 from cctbx import miller
 from cctbx.array_family import flex

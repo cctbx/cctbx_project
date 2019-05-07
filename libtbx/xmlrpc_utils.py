@@ -54,7 +54,7 @@ from __future__ import absolute_import, division, print_function
 # OF THIS SOFTWARE.
 # --------------------------------------------------------------------
 
-from builtins import range
+from six.moves import range
 from libtbx import adopt_init_args
 from libtbx.utils import to_str
 import xmlrpclib

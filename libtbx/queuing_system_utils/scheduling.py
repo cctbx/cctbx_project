@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from builtins import range
+from six.moves import range
 from six.moves.queue import Empty, Full
 from libtbx.scheduling import result
 

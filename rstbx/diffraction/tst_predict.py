@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from rstbx.diffraction import rotation_angles
 from cctbx.crystal_orientation import crystal_orientation,basis_type
 from libtbx.test_utils import approx_equal

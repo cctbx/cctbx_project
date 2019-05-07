@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx.eltbx.neutron import neutron_news_1992_table
 from cctbx import miller
 from cctbx import crystal

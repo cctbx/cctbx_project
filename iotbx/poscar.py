@@ -1,7 +1,7 @@
 "http://cms.mpi.univie.ac.at/vasp/vasp/POSCAR_file.html"
 from __future__ import division
 
-from builtins import range
+from six.moves import range
 from libtbx import slots_getstate_setstate
 
 class reader(slots_getstate_setstate):

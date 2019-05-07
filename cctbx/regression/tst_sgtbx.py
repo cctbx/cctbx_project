@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 import cctbx.sgtbx.bravais_types
 from cctbx.array_family import flex

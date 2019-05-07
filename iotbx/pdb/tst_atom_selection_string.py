@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from iotbx.pdb.atom_selection import selection_string_from_selection
 from iotbx.pdb.atom_selection import get_clean_selection_string
 from mmtbx.ncs.ncs_search import get_chains_info

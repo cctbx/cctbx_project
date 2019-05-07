@@ -8,7 +8,7 @@ from __future__ import division, print_function
 #   iotbx.python direct_methods_light.py vj1132Isup2.hkl vj1132sup1.cif
 #
 
-from builtins import range
+from six.moves import range
 def run():
   import sys
   reflection_file_name = sys.argv[1]

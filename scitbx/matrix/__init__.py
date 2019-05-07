@@ -11,7 +11,7 @@ provides faster C++ alternatives to some algorithms included here.
 
 from __future__ import absolute_import, division, print_function
 
-from builtins import range
+from six.moves import range
 _flex_imported = False
 def flex_proxy():
   global _flex_imported

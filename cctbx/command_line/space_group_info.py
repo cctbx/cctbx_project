@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 def run(args):
   if (len(args) == 0): args = ["--help"]
   from libtbx.option_parser import libtbx_option_parser

@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from builtins import range
+from six.moves import range
 from cctbx import miller, sgtbx, uctbx, xray
 from iotbx import reflection_file_utils, reflection_file_reader
 from iotbx import shelx

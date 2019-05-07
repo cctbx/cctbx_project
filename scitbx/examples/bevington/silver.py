@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import scitbx.lbfgs
 from scitbx.array_family import flex
 from math import exp,sqrt

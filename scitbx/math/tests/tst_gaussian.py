@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx.examples import immoptibox_ports
 from scitbx.math import gaussian
 from scitbx.array_family import flex

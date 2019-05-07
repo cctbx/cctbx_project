@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx.array_family import flex
 from simtbx.nanoBragg import nanoBragg, shapetype, convention, pivot, testuple
 #from simtbx.nanoBragg import shapetype

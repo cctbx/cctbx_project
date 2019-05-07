@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 # Simple example for the use of the adptbx.
 
-from builtins import range
+from six.moves import range
 from cctbx import crystal
 from cctbx import adptbx # anisotropic displacement parameter toolbox
 

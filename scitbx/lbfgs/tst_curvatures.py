@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 """Test case dramatically improves LBFGS multiparameter refinement by
 using curvatures to provide relative weightings for the contributions of
 each parameter to the target functional.

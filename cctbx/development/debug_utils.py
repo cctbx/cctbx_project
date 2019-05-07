@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 from scitbx.python_utils.command_line import parse_options
 from libtbx.utils import format_cpu_times

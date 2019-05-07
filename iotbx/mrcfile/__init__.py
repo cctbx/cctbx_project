@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import cctbx.array_family.flex as flex# import dependency
 import os,time
 from libtbx.utils import Sorry

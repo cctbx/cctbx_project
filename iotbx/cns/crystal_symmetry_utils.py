@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 from iotbx.cns.space_group_symbols import cns_format
 from cctbx import crystal
 

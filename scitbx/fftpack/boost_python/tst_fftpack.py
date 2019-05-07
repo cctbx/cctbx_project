@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx import fftpack
 from scitbx.array_family import flex
 import omptbx # initializes OpenMP environment

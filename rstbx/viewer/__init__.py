@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 import rstbx.utils
 from libtbx.math_utils import ifloor, iceil
 from libtbx.str_utils import format_value

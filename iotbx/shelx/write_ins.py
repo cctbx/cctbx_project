@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 def LATT_SYMM(s, space_group, decimal=False):
   Z = space_group.conventional_centring_type_symbol()
   Z_dict = {

@@ -1,6 +1,6 @@
 from __future__ import division
 
-from builtins import range
+from six.moves import range
 from smtbx.refinement import constraints, least_squares
 import smtbx.refinement.constraints.adp
 import smtbx.refinement.constraints.geometrical.all

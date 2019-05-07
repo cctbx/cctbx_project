@@ -10,7 +10,7 @@
 # well tested except to the extent it is used daily in the Phenix GUI
 
 from __future__ import absolute_import, division, print_function
-from builtins import range
+from six.moves import range
 from six.moves import cStringIO as StringIO
 from libtbx.utils import Sorry, Abort, multi_out, host_and_user
 from libtbx import easy_pickle

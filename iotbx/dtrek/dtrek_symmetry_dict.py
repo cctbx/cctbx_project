@@ -5,7 +5,7 @@
 """
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 from libtbx.str_utils import line_feeder
 from cctbx import sgtbx
 import sys

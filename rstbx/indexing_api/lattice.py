@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from rstbx.array_family import flex
 from rstbx.indexing_api import dps_extended
 from rstbx.indexing_api.sampling import hemisphere_shortcut

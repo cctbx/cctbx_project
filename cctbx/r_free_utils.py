@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from libtbx.math_utils import iceil
 from libtbx.utils import null_out, Sorry
 from itertools import count

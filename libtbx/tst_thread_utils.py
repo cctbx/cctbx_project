@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 
 from six.moves import cStringIO as StringIO
 
-from builtins import range
+from six.moves import range
 from libtbx.thread_utils import thread_with_callback_and_wait
 from libtbx.thread_utils import process_with_callbacks
 from libtbx.utils import Sorry, Abort

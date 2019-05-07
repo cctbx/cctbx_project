@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx import differential_evolution as de
 from scitbx.array_family import flex
 import sys

@@ -5,7 +5,7 @@ Example:
 """
 from __future__ import division, print_function
 
-from builtins import range
+from six.moves import range
 from gltbx import wx_viewer
 from libtbx.thread_utils import thread_with_callback_and_wait
 from scitbx.rigid_body.proto.free_motion_reference_impl import \

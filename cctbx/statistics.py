@@ -1,7 +1,7 @@
 from __future__ import division
 from __future__ import absolute_import
 
-from builtins import range
+from six.moves import range
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex

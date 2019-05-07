@@ -18,7 +18,7 @@ crystal.symmetry(
 """
 from __future__ import division
 
-from builtins import range
+from six.moves import range
 from cctbx import crystal
 
 def extract_from(file_name=None, file=None, max_characters=1000000):

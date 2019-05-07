@@ -2,7 +2,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from builtins import range
+from six.moves import range
 import warnings
 
 from cctbx import uctbx, xray, sgtbx, crystal

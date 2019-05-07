@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx.array_family import flex
 from scitbx.python_utils import robust_statistics as rs
 

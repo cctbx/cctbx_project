@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 from __future__ import absolute_import
-from builtins import range
+from six.moves import range
 from rigidity import \
   gcd, \
   float_row_echelon_form_back_substitution, \

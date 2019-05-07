@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 import boost.python
 import boost.optional # import dependency
 # Indeed Boost.Python binding needs boost::optional

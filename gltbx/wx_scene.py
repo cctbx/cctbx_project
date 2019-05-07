@@ -8,7 +8,7 @@ from __future__ import division, print_function
 # ported to wxPython by greg Landrum
 # modified by Y. Wong
 
-from builtins import range
+from six.moves import range
 from wxPython.wx import *
 from wxPython.glcanvas import *
 import gltbx.util

@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 def run(args):
   assert len(args) == 0
   n_trials = 100

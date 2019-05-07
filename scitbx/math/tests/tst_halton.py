@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import scitbx.math as sm
 import math
 from libtbx.test_utils import approx_equal

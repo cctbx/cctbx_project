@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
 

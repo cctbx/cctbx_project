@@ -4,7 +4,7 @@ from __future__ import print_function
 #
 # $Id$
 
-from builtins import range
+from six.moves import range
 import wx
 
 

@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 from scitbx.rigid_body.essence import featherstone
 from scitbx.rigid_body.essence import body_lib
 import scitbx.lbfgs

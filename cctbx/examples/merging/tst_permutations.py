@@ -2,7 +2,7 @@
 matrix is and how it is applied in practice.
 """
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx.array_family import flex
 from scitbx.matrix import sqr,col
 def stuff_about_permutations():

@@ -2,7 +2,7 @@ from __future__ import division, print_function
 # This script reports a number of space group properties given a space
 # group symbol or symmetry matrices, or a combination of the two.
 
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 from cctbx.sgtbx import harker
 from cctbx.web import io_utils

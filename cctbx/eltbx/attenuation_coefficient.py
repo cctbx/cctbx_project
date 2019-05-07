@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 from scitbx.array_family import flex # import dependency
 import boost.python
 ext = boost.python.import_ext("cctbx_eltbx_attenuation_coefficient_ext")

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from builtins import range
+from six.moves import range
 def run(args):
   import libtbx.load_env
   remaining_args = []

@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 def form_rational(m, t=None):
   free_vars = []
   n_rows = len(m)

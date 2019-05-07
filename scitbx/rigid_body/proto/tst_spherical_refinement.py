@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto import test_utils
 from scitbx.rigid_body.proto.utils import center_of_mass_from_sites

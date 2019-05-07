@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 import math,copy
 from scitbx.array_family import flex
 from iotbx.detectors import low_pass_filter

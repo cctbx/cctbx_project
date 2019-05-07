@@ -2,7 +2,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from builtins import range
+from six.moves import range
 from cctbx.array_family import flex
 from cctbx import sgtbx, xray, crystal, miller, eltbx
 import cctbx.eltbx.wavelengths

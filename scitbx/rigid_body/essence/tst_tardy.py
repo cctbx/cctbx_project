@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from builtins import range
+from six.moves import range
 from scitbx.rigid_body.essence import tardy
 from scitbx.graph import tardy_tree
 from scitbx.graph import test_cases_tardy_pdb

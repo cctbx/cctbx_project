@@ -1,6 +1,6 @@
 
 from __future__ import division
-from builtins import range
+from six.moves import range
 from mmtbx.validation import ramalyze
 from mmtbx.validation import rotalyze
 from mmtbx.validation import graphics

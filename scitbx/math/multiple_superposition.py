@@ -1,6 +1,6 @@
 from __future__ import division
 
-from builtins import range
+from six.moves import range
 from scitbx.array_family import flex
 from scitbx import matrix
 from scitbx.linalg import eigensystem

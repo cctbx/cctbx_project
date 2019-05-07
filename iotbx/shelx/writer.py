@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import range
+from six.moves import range
 from cctbx.array_family import flex # import dependency
 from cctbx.eltbx import wavelengths, tiny_pse
 from cctbx import adptbx

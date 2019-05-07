@@ -8,7 +8,7 @@ from __future__ import division, print_function
 #
 # usage: convert_ccp4_symop_lib < symop.lib
 
-from builtins import range
+from six.moves import range
 from cctbx import sgtbx
 import sys
 
