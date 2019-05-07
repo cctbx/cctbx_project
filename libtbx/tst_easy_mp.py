@@ -57,7 +57,7 @@ def eval_parallel(
   if (not exercise_out_of_range):
     assert mp_results == list(range(3, size+3))
   else:
-    assert mp_results[:size] == list(zip([""]*size, list(range(3, size+3))))
+    assert mp_results[:size] == list(zip([""]*size, range(3, size+3)))
     assert mp_results[size][0].startswith("CAUGHT EXCEPTION:")
     assert mp_results[size][0].find("IndexError: ") > 0
     assert mp_results[size][1] is None

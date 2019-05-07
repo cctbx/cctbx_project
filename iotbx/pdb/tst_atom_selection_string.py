@@ -639,7 +639,7 @@ def test_3():
   """
   pdb_h = iotbx.pdb.input(
       source_info=None, lines=test_pdb_6).construct_hierarchy()
-  for i, answ in zip(list(range(20)), [
+  for i, answ in zip(range(20), [
       "(chain 'H' and (resid 48 and (name N )))",
       "(chain 'H' and (resid 48 and (name CA )))",
       "(chain 'H' and (resid 48 and (name C )))",
@@ -670,7 +670,7 @@ def test_4():
   """
   pdb_h = iotbx.pdb.input(
       source_info=None, lines=test_pdb_6).construct_hierarchy()
-  for i, answ in zip(list(range(0,20,2)), [
+  for i, answ in zip(range(0,20,2), [
       "(chain 'H' and (resid 48 and (name N or name CA )))",
       "(chain 'H' and (resid 48 and (name C or name O )))",
       "(chain 'H' and (resid 49 and (name N or name CA )))",
@@ -685,7 +685,7 @@ def test_4():
     tsel = selection_string_from_selection(pdb_h, isel)
     assert tsel == answ, "%s != %s" % (tsel, answ)
   # and now odd:
-  for i, answ in zip(list(range(1,19,2)), [
+  for i, answ in zip(range(1,19,2), [
       "(chain 'H' and (resid 48 and (name CA or name C )))",
       "(chain 'H' and ((resid 48 and (name O )) or (resid 49 and (name N ))))",
       "(chain 'H' and (resid 49 and (name CA or name C )))",

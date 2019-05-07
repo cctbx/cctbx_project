@@ -87,8 +87,8 @@ from __future__ import division, print_function
 from builtins import range
 digits_upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 digits_lower = digits_upper.lower()
-digits_upper_values = dict([pair for pair in zip(digits_upper, list(range(36)))])
-digits_lower_values = dict([pair for pair in zip(digits_lower, list(range(36)))])
+digits_upper_values = dict([pair for pair in zip(digits_upper, range(36))])
+digits_lower_values = dict([pair for pair in zip(digits_lower, range(36))])
 
 def encode_pure(digits, value):
   "encodes value using the given digits"

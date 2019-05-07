@@ -447,7 +447,7 @@ def exercise_match_indices():
   d1 = flex.double((10,20,30,40))
   mi = miller.match_indices(h0, h0)
   assert mi.have_singles() == 0
-  assert list(mi.pairs()) == zip(list(range(5)), list(range(5)))
+  assert list(mi.pairs()) == zip(range(5), range(5))
   mi = miller.match_indices(h0, h1)
   assert tuple(mi.singles(0)) == (4,)
   assert tuple(mi.singles(1)) == ()
@@ -490,7 +490,7 @@ def exercise_match_multi_indices():
   d1 = flex.double((10,20,30,40))
   mi = miller.match_multi_indices(h0, h0)
   assert mi.have_singles() == 0
-  assert list(mi.pairs()) == zip(list(range(5)), list(range(5)))
+  assert list(mi.pairs()) == zip(range(5), range(5))
   mi = miller.match_multi_indices(h0, h1)
   assert tuple(mi.singles(0)) == (1,4,)
   assert tuple(mi.singles(1)) == ()

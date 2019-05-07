@@ -65,7 +65,7 @@ def example():
   for q in q_trials:
     ref_integrals.append( f.integrate(q,90) )
 
-  for q, jj in zip(q_trials, list(range(len(q_trials)))):
+  for q, jj in zip(q_trials, range(len(q_trials))):
     print(q,jj, end=' ')
     for ii in range(2,90):
       print(100.0*abs(f.integrate(q,ii)-ref_integrals[jj])/abs(ref_integrals[jj]+1e-13), end=' ')

@@ -776,7 +776,7 @@ class bard_function(test_function):
   def f(self, x):
     x1,x2,x3 = x
     result = flex.double()
-    for i,yi in zip(list(range(1,15+1)),bard_function.ys):
+    for i,yi in zip(range(1,15+1),bard_function.ys):
       ui = i
       vi = 16-i
       wi = min(ui, vi)

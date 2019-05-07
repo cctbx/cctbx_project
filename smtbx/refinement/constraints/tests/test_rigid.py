@@ -73,7 +73,7 @@ digraph dependencies {
   jt0 = sparse.matrix(q, q + 2*3*n) # + rigid_group + constrained site proxies
   assert jt.n_rows == jt0.n_rows
   assert jt.n_cols == jt0.n_cols
-  for i, j in zip(list(range(q, q+3*n)), list(range(q+3*n, jt0.n_cols))):
+  for i, j in zip(range(q, q+3*n), range(q+3*n, jt0.n_cols)):
     assert jt.col(i) == jt.col(j)
 
 def test_rigid_pivoted_rotatable():

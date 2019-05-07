@@ -2737,7 +2737,7 @@ class pdb_sheet(structure_base):
     result['_pdbx_struct_sheet_hbond.range_2_label_seq_id'] = []
     result['_pdbx_struct_sheet_hbond.range_2_PDB_ins_code'] = []
 
-    for i, strand, registration in zip(list(range(self.n_strands)), self.strands, self.registrations):
+    for i, strand, registration in zip(range(self.n_strands), self.strands, self.registrations):
       # _struct_sheet_order
       if i != 0:
         result['_struct_sheet_order.sheet_id'].append(sheet_id_to_output)
