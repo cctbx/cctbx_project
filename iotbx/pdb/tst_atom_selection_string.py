@@ -756,7 +756,7 @@ def test_11():
   """
   pdb_h = iotbx.pdb.input(
       source_info=None, lines=test_pdb_11).construct_hierarchy()
-  isel = flex.size_t(range(5)+[6])
+  isel = flex.size_t(list(range(5))+[6])
   tsel = selection_string_from_selection(pdb_h, isel)
   assert tsel == "(chain 'A' and (resid 480 through 482 or (resid 483 through 484 and (name CA ))))", tsel
 
