@@ -47,7 +47,7 @@ def tst_zernike_radial():
     for l in range(n):
       if (n-l)%2==0:
         rzfa = math.zernike_radial(n,l, lfg)
-        r = flex.double( flex.double(list(range(100000)))/99999.0)
+        r = flex.double( flex.double(range(100000))/99999.0)
         a = rzfa.f( r )
         tmp = a*a*r*r
         tmp = flex.sum( tmp )/100000.0
@@ -169,8 +169,8 @@ def tst_nss_spherical_harmonics():
 
   lm=[ (0,0), (3,3), (4,1) ]
 
-  theta = flex.double(list(range(100)))*3.14/100.0
-  phi = flex.double(list(range(100)))*6.28/100.0
+  theta = flex.double(range(100))*3.14/100.0
+  phi = flex.double(range(100))*6.28/100.0
   for tt in theta:
     for pp in phi:
       r  = nsssphe.spherical_harmonic(20,10,tt,pp)

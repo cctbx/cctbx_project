@@ -204,7 +204,7 @@ class find_outliers:
       self.fraction_spot_indices.append(self.sorted_observed_spots[dr])
 
     # generate points for fitted distributions
-    rayleigh_cdf_x = flex.double(list(range(500)))
+    rayleigh_cdf_x = flex.double(range(500))
     rayleigh_cdf_x /= float(len(rayleigh_cdf_x))
     rayleigh_cdf = fitted_rayleigh.distribution.cdf(x=rayleigh_cdf_x)
 

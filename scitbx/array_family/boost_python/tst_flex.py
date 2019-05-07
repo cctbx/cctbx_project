@@ -539,7 +539,7 @@ def exercise_misc():
       assert list(f) == list(a_slice)
   #
   for n in range(10):
-    a = flex.size_t(list(range(n))).as_int()
+    a = flex.size_t(range(n)).as_int()
     assert list(a) == list(range(n))
     s = a.as_rgb_scale_string(
       rgb_scales_low=(1,1,1),
@@ -674,20 +674,20 @@ def exercise_nd_slicing():
   for flex_t in (flex.int, flex.double):
     for n in range(0,3):
       for nd in range(1,11): # flex grid supports up to 10-d
-        a = flex_t(list(range(n**nd)))
+        a = flex_t(range(n**nd))
         a.resize(flex.grid(tuple([n]*nd)))
         slices = [slice(None) for i in range(nd)]
         b = a[slices]
         assert approx_equal(b, a)
         assert a is not b
 
-    a = flex_t(list(range(60)))
+    a = flex_t(range(60))
     a.resize(flex.grid(3,4,5))
     slices = [slice(1,3),slice(2,4),slice(3,5)]
     assert approx_equal(a[slices], [33,34,38,39,53,54,58,59])
     slices = [slice(1,3),slice(2,-1),slice(3,5)]
     assert approx_equal
-    a = flex_t(list(range(5**3)))
+    a = flex_t(range(5**3))
     a.resize(flex.grid(5,5,5))
     assert approx_equal(a, a[:,:,:])
     assert a is not a[:,:,:]
@@ -705,7 +705,7 @@ def exercise_nd_slicing():
     slices = [slice(1,3),slice(1,4),slice(3,5)]
     assert approx_equal(a[slices], [33,34,38,39,43,44,58,59,63,64,68,69])
 
-    a = flex_t(list(range(5**2)))
+    a = flex_t(range(5**2))
     a.resize(flex.grid(5,5))
     assert approx_equal(a, a[:,:])
     b = a[:2,:2]
@@ -724,7 +724,7 @@ def exercise_set_nd_slicing():
       for nd in range(1,11): # flex grid supports up to 10-d
         a = flex_t(n**nd, 0)
         a.resize(flex.grid(tuple([n]*nd)))
-        b = flex_t(list(range(n**nd)))
+        b = flex_t(range(n**nd))
         b.resize(flex.grid(tuple([n]*nd)))
         slices = tuple([slice(None) for i in range(nd)])
         a[slices] = b
@@ -732,7 +732,7 @@ def exercise_set_nd_slicing():
         assert a is not b
 
     a = flex_t(flex.grid(5,6,7), 0)
-    b = flex_t(list(range(4*5)))
+    b = flex_t(range(4*5))
     b.resize(flex.grid(1, 4, 5))
     a[2:3,1:5,1:6] = b
     c = a[2:3,1:5,1:6]
@@ -1030,12 +1030,12 @@ def exercise_select():
     assert str(e).find("sorted") > 0
   else: raise Exception_expected
   #
-  a = flex.double(list(range(3,12)))
+  a = flex.double(range(3,12))
   for stl_iterable in [stl.vector.unsigned, stl.set.unsigned]:
     assert a.select(selection=stl_iterable()).size() == 0
     assert approx_equal(a.select(selection=stl_iterable([2,3,7])), [5,6,10])
   #
-  a = flex.int(list(range(7, 22)))
+  a = flex.int(range(7, 22))
   a.reshape(flex.grid((3,5)).set_focus((3,4)))
   assert a.origin() == (0,0)
   assert a.focus() == (3,4)
@@ -2552,9 +2552,9 @@ def exercise_matrix():
       n = m.focus()[1]
       assert mtm.size() == n*(n+1)//2
       assert mtm.all_eq(0)
-  a = flex.double(list(range(1,7)))
+  a = flex.double(range(1,7))
   a.resize(flex.grid(3,2))
-  b = flex.double(list(range(1,7)))
+  b = flex.double(range(1,7))
   b.resize(flex.grid(2,3))
   for c in [a.matrix_multiply(b),
             a.matrix_transpose().matrix_transpose_multiply(b),
@@ -2691,7 +2691,7 @@ def exercise_matrix():
       mc = m.deep_copy()
       mc.matrix_diagonal_set_in_place(value=3)
       assert approx_equal(mc.matrix_diagonal(), [3]*rank)
-      mc.matrix_diagonal_set_in_place(diagonal=flex.double(list(range(1,1+rank))))
+      mc.matrix_diagonal_set_in_place(diagonal=flex.double(range(1,1+rank)))
       assert approx_equal(mc.matrix_diagonal(), list(range(1,1+rank)))
       mc.matrix_diagonal_add_in_place(value=-5)
       assert approx_equal(mc.matrix_diagonal(), list(range(1-5,1-5+rank)))
@@ -2890,7 +2890,7 @@ def exercise_matrix():
   assert n_not_symmetric > 0 # could fail if random number generator is changed
 
 def exercise_matrix_int():
-  a = flex.int(list(range(1,7)))
+  a = flex.int(range(1,7))
   a.resize(flex.grid(3,2))
   assert list(a)==[1, 2, 3, 4, 5, 6]
   assert a.focus()==(3,2)

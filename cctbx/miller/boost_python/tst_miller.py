@@ -254,7 +254,7 @@ def exercise_bins():
     binning1.bin_d_min(n_bins))
   binner2 = miller.ext.binner(binning2, m)
   assert tuple(binner1.counts())[1:-1] == tuple(binner2.counts())
-  array_indices = flex.size_t(list(range(m.size())))
+  array_indices = flex.size_t(range(m.size()))
   perm_array_indices1 = flex.size_t()
   perm_array_indices2 = flex.size_t()
   for i_bin in binner1.range_all():

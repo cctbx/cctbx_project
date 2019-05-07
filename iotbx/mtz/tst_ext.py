@@ -1124,7 +1124,7 @@ Crystal 2:
     assert batch.set_iortyp(value=next(values_in)) is batch
     assert batch.iortyp() == next(values_out)
     assert list(batch.lbcell()) == [0, 0, 0, 0, 0, 0]
-    assert batch.set_lbcell(flex.int(list(range(3,9)))) is batch
+    assert batch.set_lbcell(flex.int(range(3,9))) is batch
     assert list(batch.lbcell()) == list(range(3,9))
     assert batch.misflg() == 0
     assert batch.set_misflg(value=next(values_in)) is batch
@@ -1160,19 +1160,19 @@ Crystal 2:
     assert batch.set_nbsetid(value=next(values_in)) is batch
     assert batch.nbsetid() == next(values_out)
     assert list(batch.cell()) == [0]*6
-    assert batch.set_cell(flex.float(list(range(18,24)))) is batch
+    assert batch.set_cell(flex.float(range(18,24))) is batch
     assert list(batch.cell()) == list(range(18,24))
     assert list(batch.umat()) == [0]*9
-    assert batch.set_umat(flex.float(list(range(16,25)))) is batch
+    assert batch.set_umat(flex.float(range(16,25))) is batch
     assert list(batch.umat()) == list(range(16,25))
     assert list(batch.phixyz()) == [0]*6
-    assert batch.set_phixyz(flex.float(list(range(28,34)))) is batch
+    assert batch.set_phixyz(flex.float(range(28,34))) is batch
     assert list(batch.phixyz()) == list(range(28,34))
     assert list(batch.crydat()) == [0]*12
-    assert batch.set_crydat(flex.float(list(range(26,38)))) is batch
+    assert batch.set_crydat(flex.float(range(26,38))) is batch
     assert list(batch.crydat()) == list(range(26,38))
     assert list(batch.datum()) == [0]*3
-    assert batch.set_datum(flex.float(list(range(26,29)))) is batch
+    assert batch.set_datum(flex.float(range(26,29))) is batch
     assert list(batch.datum()) == list(range(26,29))
     assert batch.phistt() == 0
     assert batch.set_phistt(value=next(values_in)) is batch
@@ -1181,7 +1181,7 @@ Crystal 2:
     assert batch.set_phiend(value=next(values_in)) is batch
     assert batch.phiend() == next(values_out)
     assert list(batch.scanax()) == [0]*3
-    assert batch.set_scanax(flex.float(list(range(62,65)))) is batch
+    assert batch.set_scanax(flex.float(range(62,65))) is batch
     assert list(batch.scanax()) == list(range(62,65))
     assert batch.time1() == 0
     assert batch.set_time1(value=next(values_in)) is batch
@@ -1205,19 +1205,19 @@ Crystal 2:
     assert batch.set_phirange(value=next(values_in)) is batch
     assert batch.phirange() == next(values_out)
     assert list(batch.e1()) == [0]*3
-    assert batch.set_e1(flex.float(list(range(71,74)))) is batch
+    assert batch.set_e1(flex.float(range(71,74))) is batch
     assert list(batch.e1()) == list(range(71,74))
     assert list(batch.e2()) == [0]*3
-    assert batch.set_e2(flex.float(list(range(72,75)))) is batch
+    assert batch.set_e2(flex.float(range(72,75))) is batch
     assert list(batch.e2()) == list(range(72,75))
     assert list(batch.e3()) == [0]*3
-    assert batch.set_e3(flex.float(list(range(73,76)))) is batch
+    assert batch.set_e3(flex.float(range(73,76))) is batch
     assert list(batch.e3()) == list(range(73,76))
     assert list(batch.source()) == [0]*3
-    assert batch.set_source(flex.float(list(range(74,77)))) is batch
+    assert batch.set_source(flex.float(range(74,77))) is batch
     assert list(batch.source()) == list(range(74,77))
     assert list(batch.so()) == [0]*3
-    assert batch.set_so(flex.float(list(range(75,78)))) is batch
+    assert batch.set_so(flex.float(range(75,78))) is batch
     assert list(batch.so()) == list(range(75,78))
     assert batch.alambd() == 0
     assert batch.set_alambd(value=next(values_in)) is batch
@@ -1235,13 +1235,13 @@ Crystal 2:
     assert batch.set_divvd(value=next(values_in)) is batch
     assert batch.divvd() == next(values_out)
     assert list(batch.dx()) == [0]*2
-    assert batch.set_dx(flex.float(list(range(84,86)))) is batch
+    assert batch.set_dx(flex.float(range(84,86))) is batch
     assert list(batch.dx()) == list(range(84,86))
     assert list(batch.theta()) == [0]*2
-    assert batch.set_theta(flex.float(list(range(85,87)))) is batch
+    assert batch.set_theta(flex.float(range(85,87))) is batch
     assert list(batch.theta()) == list(range(85,87))
     assert list(batch.detlm()) == [0]*8
-    assert batch.set_detlm(flex.float(list(range(86,94)))) is batch
+    assert batch.set_detlm(flex.float(range(86,94))) is batch
     assert list(batch.detlm()) == list(range(86,94))
     if (not verbose): out = StringIO()
     batch.show(out=out)

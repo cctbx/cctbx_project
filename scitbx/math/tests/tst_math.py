@@ -371,7 +371,7 @@ def exercise_random_cheb_polynome(n_terms,
                              low_limit,
                              high_limit,
                              h=0.00001):
-  x = flex.double(list(range(100)))/101.0
+  x = flex.double(range(100))/101.0
   x = x*(high_limit-low_limit) + low_limit
   coefs = flex.random_double(n_terms)
   cheb = chebyshev_polynome(n_terms,
@@ -389,7 +389,7 @@ def exercise_cheb_fitter(n_terms,
                     low_limit,
                     high_limit,
                     h=0.0000001):
-  x = flex.double(list(range(100)))/101.0
+  x = flex.double(range(100))/101.0
   x = x*(high_limit-low_limit) + low_limit
   coefs = flex.random_double(n_terms)
   cheb_fitter = chebyshev_fitter(n_terms,

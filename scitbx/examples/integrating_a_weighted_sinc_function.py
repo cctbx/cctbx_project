@@ -12,7 +12,7 @@ class function(object):
     self.m = m
     self.k = k
     self.d_max=d_max
-    self.x = 1.0-2.0*(flex.double(list(range(m+1)))/m)
+    self.x = 1.0-2.0*(flex.double(range(m+1))/m)
     self.r = 0.5*(1+self.x)*self.d_max
     self.r[0] = 1e-8
 

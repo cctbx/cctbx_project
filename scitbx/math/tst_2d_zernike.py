@@ -139,7 +139,7 @@ def tst_2d_poly(n,l):
 def tst_2d_zm(n,l):
   nmax=max(n,20)
   np=100
-  points=flex.double(list(range(-np,np+1)))/np
+  points=flex.double(range(-np,np+1))/np
   grid = scitbx.math.two_d_grid(np, nmax)
   zm2d = scitbx.math.two_d_zernike_moments(grid, nmax)
   image = flex.vec3_double()

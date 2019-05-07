@@ -173,7 +173,7 @@ def mpi_split_evaluator_run(target_evaluator,
 
 class simple_quadratic(object):
   def __init__(self):
-    self.datax = flex.double(list(range(-15,17)))
+    self.datax = flex.double(range(-15,17))
     self.datay = flex.double([20,15,18,12,10, 10,5,5,1,2, -3,-1,-4,-5,-4,
                           -6,-4,-6,-4,-4,  -4,-5,-1,0,-1,  1,5,4,9,10, 13,15])
     abc = 0.1,-0.3,-5.0 # The expected parameters, y = a*x*x + b*x +  c

@@ -131,7 +131,7 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
       #plt.plot(delx,dely,"r.")
       #plt.show()
       plt.plot(list(range(len(tt))),obs_tt_sort,"r.")
-      plt.plot(flex.double(list(range(len(pred_two_theta_rad_best)))),pred_two_theta_rad_best,"g.")
+      plt.plot(flex.double(range(len(pred_two_theta_rad_best))),pred_two_theta_rad_best,"g.")
       #plt.plot(flex.double(range(len(pred_full_set_best))),pred_full_set_best,"b.")
       plt.plot(cccx, ccc,"b.")
       plt.plot(scaled_modified_pred_x, modified_pred_y,"b.")

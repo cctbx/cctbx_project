@@ -2282,7 +2282,7 @@ def exercise_planarity():
     sel = flex.size_t(list(range(10,i_remove))+list(range(i_remove+1,15)))
     pp = geometry_restraints.planarity_proxy(
       i_seqs=flex.size_t([10, 11, 12, 13, 14]),
-      weights=flex.double(list(range(5)))+13)
+      weights=flex.double(range(5))+13)
     pps = geometry_restraints.shared_planarity_proxy()
     pps.append(pp)
     selected = pps.proxy_select(20, sel)

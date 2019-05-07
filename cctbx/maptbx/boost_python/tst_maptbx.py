@@ -81,7 +81,7 @@ def exercise_copy():
         for n2 in range(4):
           for d2 in range(3):
             g = flex.grid((n0,n1,n2+d2)).set_focus((n0,n1,n2))
-            map1 = flex_type(list(range(1,1+g.size_1d())))
+            map1 = flex_type(range(1,1+g.size_1d()))
             map1.resize(g)
             map2 = map1.deep_copy()
             maptbx.unpad_in_place(map=map2)
@@ -92,7 +92,7 @@ def exercise_copy():
                 assert map2[i] == map1[i]
     n0,n1,n2,d2 = 2,3,4,1
     g = flex.grid((n0,n1,n2+d2)).set_focus((n0,n1,n2))
-    map1 = flex_type(list(range(1,1+g.size_1d())))
+    map1 = flex_type(range(1,1+g.size_1d()))
     map1.resize(g)
     map2 = map1.deep_copy()
     maptbx.unpad_in_place(map=map2)
@@ -429,7 +429,7 @@ def exercise_eight_point_interpolation():
     assert approx_equal(map.eight_point_interpolation(x_frac), 10)
     assert approx_equal(
       map.eight_point_interpolation_with_gradients(x_frac,[1,1,1])[0], 10)
-  map = flex.double(list(range(30)))
+  map = flex.double(range(30))
   map.resize(flex.grid(2,3,5))
   for shift in [0,1,-1]:
     v = 0

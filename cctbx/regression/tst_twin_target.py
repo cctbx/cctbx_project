@@ -59,7 +59,7 @@ def tst_ls_on_i():
     assert approx_equal( cmplx.real, da, eps=1e-5)
     assert approx_equal( cmplx.imag, db, eps=1e-5)
 
-  for alpha in flex.double(list(range(50)))/100.0:
+  for alpha in flex.double(range(50))/100.0:
     #----------------------------------------------------------------
     # use fin diffs to check the derivatives to a and b
     old_target_evaluator = xray.least_squares_hemihedral_twinning_on_i(
@@ -175,7 +175,7 @@ def tst_ls_on_f():
     assert approx_equal( cmplx.real, da, eps=1e-5)
     assert approx_equal( cmplx.imag, -db, eps=1e-5)
 
-  for alpha in flex.double(list(range(50)))/100.0:
+  for alpha in flex.double(range(50))/100.0:
     #----------------------------------------------------------------
     # use fin diffs to check the derivatives to a and b
     old_target_evaluator = xray.least_squares_hemihedral_twinning_on_f(

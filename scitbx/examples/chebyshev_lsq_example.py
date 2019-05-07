@@ -8,7 +8,7 @@ from cStringIO import StringIO
 
 
 def example():
-  x_obs = (flex.double(list(range(100)))+1.0)/101.0
+  x_obs = (flex.double(range(100))+1.0)/101.0
   y_ideal = flex.sin(x_obs*6.0*3.1415) + flex.exp(x_obs)
   y_obs = y_ideal + (flex.random_double(size=x_obs.size())-0.5)*0.5
   w_obs = flex.double(x_obs.size(),1)
