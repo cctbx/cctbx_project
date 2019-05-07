@@ -44,13 +44,14 @@ def nth_power_scale(dataarray, nth_power):
   set nth_power to appropriate number between 0 and 1 for dampening the
   difference between the smallest and the largest values.
   If nth_power < 0 then an automatic value is computed that maps the smallest
-  values to 1/4 of the largest values
+  values to 0.1 of the largest values
   """
   absdat = flex.abs(dataarray)
-  if nth_power < 0.0 and not isinstance(absdat, flex.int): # amounts to automatic scale
-    maxdat = flex.max(absdat)
-    mindat = max(1e-10*maxdat, flex.min(absdat) ) # make sure mindat is strictly bigger than 0
-    nth_power = math.log(0.25)/(math.log(mindat) - math.log(maxdat))
+  maxdat = flex.max(absdat)
+  mindat = max(1e-10*maxdat, flex.min(absdat) )
+  # only autoscale for sensible values of maxdat and mindat
+  if nth_power < 0.0 and maxdat > mindat : # amounts to automatic scale
+    nth_power = math.log(0.2)/(math.log(mindat) - math.log(maxdat))
   datascaled = flex.pow(absdat, nth_power)
   return datascaled
 
@@ -137,6 +138,8 @@ class scene(object):
       self.phases = self.phases.select(self.slice_selection)
       self.radians = self.radians.select(self.slice_selection)
       self.ampl = self.ampl.select(self.slice_selection)
+      if self.sigmas:
+        self.sigmas = self.sigmas.select(self.slice_selection)
       if foms_array:
         self.foms = self.foms.select(self.slice_selection)
     else :
@@ -313,7 +316,7 @@ class scene(object):
     uc = self.work_array.unit_cell()
     min_dist = min(uc.reciprocal_space_vector((1,1,1)))
     min_radius = 0.5 * min_dist
-    max_radius = 80 * min_dist
+    max_radius = 45 * min_dist
     if ((self.multiplicities is not None) and
         (settings.scale_radii_multiplicity)):
       data_for_radii = self.multiplicities.data().as_double()
@@ -361,7 +364,7 @@ class scene(object):
     #if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
     #  data_for_radii = flex.sqrt(flex.abs(data_for_radii))
     if len(data_for_radii):
-      scale = 0.3/flex.max(data_for_radii)
+      scale = max_radius/flex.max(data_for_radii)
       radii = data_for_radii * (self.settings.scale * scale)
       assert radii.size() == colors.size()
     else:

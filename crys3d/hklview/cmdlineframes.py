@@ -534,7 +534,7 @@ class HKLViewFrame () :
     Scale radii. Decrease the contrast between large and small radii with nth_root_scale < 1.0
     If nth_power_scale=0.0 then all radii will have the same size regardless of data values.
     If nth_power_scale < 0.0 an automatic power will be computed ensuring the smallest radius
-    is 0.25 the maximum radius
+    is 0.1 the maximum radius
     """
     self.settings.scale = scale
     self.settings.nth_power_scale_radii = nth_power_scale

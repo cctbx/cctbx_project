@@ -52,13 +52,10 @@ myHKLview.SetColourColumn(2)
 # scale the size of spheres according to  values of the 4th miller array
 myHKLview.SetRadiusColumn(3)
 
-
+# displaying amplitudes or intensities with associated sigmas makes it possible to:
 myHKLview.SetColoursToSigmas(True)
-
 myHKLview.SetColoursToSigmas(False)
-
 myHKLview.SetRadiiToSigmas(True)
-
 myHKLview.SetRadiiToSigmas(False)
 
 

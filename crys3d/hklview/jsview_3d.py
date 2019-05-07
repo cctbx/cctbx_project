@@ -96,6 +96,8 @@ class hklview_3d:
       os.remove(self.jscriptfname)
     if kwds.has_key('jscriptfname'):
       self.jscriptfname = kwds['jscriptfname']
+    self.mprint('Output will be written to \"%s\"\n' \
+      'including reference to NGL JavaScript \"%s\"' %(self.hklfname, self.jscriptfname))
     self.hklhtml = r"""
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 
