@@ -38,6 +38,14 @@ helix
     .type = float
   top_out = False
     .type = bool
+  angle_sigma_scale = 1
+    .type = float
+    .help = Multiply sigmas for h-bond angles by this value. Original sigmas \
+      range from 5 to 10.
+  angle_sigma_set = None
+    .type = float
+    .help = Use this parameter to set sigmas for h-bond angles to a particular \
+      value
   hbond
     .multiple = True
     .optional = True
@@ -87,6 +95,14 @@ sheet
     .type = float
   top_out = False
     .type = bool
+  angle_sigma_scale = 1
+    .type = float
+    .help = Multiply sigmas for h-bond angles by this value. Original sigmas \
+      range from 5 to 10.
+  angle_sigma_set = None
+    .type = float
+    .help = Use this parameter to set sigmas for h-bond angles to a particular \
+      value
   hbond
     .multiple = True
     .optional = True
@@ -129,6 +145,8 @@ def _create_hbond_angles_proxies(
     O_atom,
     prev_atoms,
     angle_restraint_type=0, # 0-No restraint, 1-outside, 2-inside, 3-beta
+    angle_sigma_scale=1.,
+    angle_sigma_set=None,
     ):
   result = []
   if angle_restraint_type == 0:
@@ -157,24 +175,36 @@ def _create_hbond_angles_proxies(
       # print "    ",atom.id_str()
   # building angle restraints
   for C_atom in C_atoms:
+    if angle_sigma_set is not None:
+      sigma = angle_sigma_set
+    else:
+      sigma = angle_restraints_values[angle_restraint_type-1]["C"][1] * angle_sigma_scale
     p = geometry_restraints.angle_proxy(
         i_seqs=[C_atom.i_seq, O_atom.i_seq, N_atom.i_seq],
         angle_ideal=angle_restraints_values[angle_restraint_type-1]["C"][0],
-        weight=1./angle_restraints_values[angle_restraint_type-1]["C"][1]**2,
+        weight=1./sigma**2,
         origin_id=origin_ids.get_origin_id('hydrogen bonds'))
     result.append(p)
   for CA_atom in CA_atoms:
+    if angle_sigma_set is not None:
+      sigma = angle_sigma_set
+    else:
+      sigma = angle_restraints_values[angle_restraint_type-1]["CA"][1] * angle_sigma_scale
     p = geometry_restraints.angle_proxy(
         i_seqs=[CA_atom.i_seq, N_atom.i_seq, O_atom.i_seq],
         angle_ideal=angle_restraints_values[angle_restraint_type-1]["CA"][0],
-        weight=1./angle_restraints_values[angle_restraint_type-1]["CA"][1]**2,
+        weight=1./sigma**2,
         origin_id=origin_ids.get_origin_id('hydrogen bonds'))
     result.append(p)
   for C_1_atom in C_1_atoms:
+    if angle_sigma_set is not None:
+      sigma = angle_sigma_set
+    else:
+      sigma = angle_restraints_values[angle_restraint_type-1]["C-1"][1] * angle_sigma_scale
     p = geometry_restraints.angle_proxy(
         i_seqs=[C_1_atom.i_seq, N_atom.i_seq, O_atom.i_seq],
         angle_ideal=angle_restraints_values[angle_restraint_type-1]["C-1"][0],
-        weight=1./angle_restraints_values[angle_restraint_type-1]["C-1"][1]**2,
+        weight=1./sigma**2,
         origin_id=origin_ids.get_origin_id('hydrogen bonds'))
     result.append(p)
   return result
@@ -191,6 +221,8 @@ def _create_hbond_proxy(
     weight=1.0,
     sigma=None,
     slack=None,
+    angle_sigma_scale=1.,
+    angle_sigma_set=None,
     top_out=False,
     log=sys.stdout):
   assert sigma is not None
@@ -255,7 +287,10 @@ def _create_hbond_proxy(
             N_atom=donor,
             O_atom=acceptor,
             prev_atoms=prev_atoms,
-            angle_restraint_type=angle_restraint_type)
+            angle_restraint_type=angle_restraint_type,
+            angle_sigma_scale=angle_sigma_scale,
+            angle_sigma_set=angle_sigma_set,
+            )
         angle_proxies += ap
     return result, angle_proxies
   else :
@@ -321,6 +356,8 @@ def create_helix_hydrogen_bond_proxies(
       weight=weight,
       sigma=params.sigma,
       slack=params.slack,
+      angle_sigma_scale=params.angle_sigma_scale,
+      angle_sigma_set=params.angle_sigma_set,
       log=log)
     for proxy in proxies:
       generated_proxies.append(proxy)
@@ -435,6 +472,8 @@ the .pdb file was edited without updating SHEET records.""" \
                     sigma=sheet_params.sigma,
                     slack=sheet_params.slack,
                     top_out=sheet_params.top_out,
+                    angle_sigma_scale=sheet_params.angle_sigma_scale,
+                    angle_sigma_set=sheet_params.angle_sigma_set,
                     log=log)
                 for proxy in proxies:
                   generated_proxies.append(proxy)
@@ -458,6 +497,8 @@ the .pdb file was edited without updating SHEET records.""" \
                   sigma=sheet_params.sigma,
                   slack=sheet_params.slack,
                   top_out=sheet_params.top_out,
+                  angle_sigma_scale=sheet_params.angle_sigma_scale,
+                  angle_sigma_set=sheet_params.angle_sigma_set,
                   log=log)
                 for proxy in proxies:
                   generated_proxies.append(proxy)
@@ -480,6 +521,8 @@ the .pdb file was edited without updating SHEET records.""" \
                   sigma=sheet_params.sigma,
                   slack=sheet_params.slack,
                   top_out=sheet_params.top_out,
+                  angle_sigma_scale=sheet_params.angle_sigma_scale,
+                  angle_sigma_set=sheet_params.angle_sigma_set,
                   log=log)
                 for proxy in proxies:
                   generated_proxies.append(proxy)
