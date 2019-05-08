@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 # test that mosaic spread is working
 #from scitbx.array_family import flex
 from simtbx.nanoBragg import shapetype
@@ -29,7 +29,7 @@ SIM.distance_mm = 1000
 SIM.beam_center_mm = (1,7)
 #print SIM.XDS_ORGXY
 #print SIM.dials_origin_mm
-print SIM.beamcenter_convention
+print(SIM.beamcenter_convention)
 
 # default orientation is with a axis down the beam, lets rotate it a bit
 # tilt to Bragg angle
@@ -80,8 +80,8 @@ test = ( test1 and test2 and test3 )
 #SIM.to_smv_format(fileout="10deg_mosaic_spread.img")
 
 if not test:
-  print "test failed"
+  print("test failed")
 
 if test:
-  print "OK"
+  print("OK")
 
