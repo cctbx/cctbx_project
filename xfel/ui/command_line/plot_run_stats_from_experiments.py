@@ -89,7 +89,8 @@ def run(args):
   runs = []
 
   # iterate through grouped file paths and look for processing results
-  for run, files in files_dict.iteritems():
+  for run in sorted(files_dict):
+    files = files_dict[run]
     if len(files) == 0: continue
     runs.append(run)
     timestamps = flex.double()
