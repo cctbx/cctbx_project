@@ -578,11 +578,7 @@ HETATM 2796 O O   . HOH G 3 .   ? 11.197  11.667 36.108  1.00 17.00 ? ? ? ? ? ? 
   cif_block = model._sequence_validation.sequence_as_cif_block()
   assert list(cif_block['_entity.id']) == ['1', '2']
   assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']),
-<<<<<<< HEAD
-                     range(1, 11)+range(1, 10))
-=======
                       list(range(1, 11))+list(range(1, 10)))
->>>>>>> futurize -f xrange_with_import -wn .
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'DTH', 'DTY', 'DLY', 'DLE', 'DIL', 'DLE', 'DSG', 'GLY', 'DLY', 'DTH',
     'GLY', 'GLN', 'ASN', 'HIS', 'HIS', 'GLU', 'VAL', 'VAL', 'LYS']
