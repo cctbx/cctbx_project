@@ -23,9 +23,10 @@ class SmallCellProcessorWithLogging(DialsProcessorWithLogging, SmallCellProcesso
 
 from dials.command_line.stills_process import dials_phil_str, program_defaults_phil_str, Script as DialsScript, control_phil_str as dials_control_phil_str
 from xfel.ui import db_phil_str
+from xfel.small_cell.command_line.small_cell_process import program_defaults_phil_str as small_cell_program_defaults_phil_str
 
 phil_scope = parse(dials_control_phil_str + control_phil_str + dials_phil_str + db_phil_str + radial_average_phil_str + small_cell_phil_str,
-                   process_includes=True).fetch(parse(program_defaults_phil_str))
+                   process_includes=True).fetch(parse(program_defaults_phil_str + small_cell_program_defaults_phil_str))
 phil_scope = phil_scope.fetch(parse(delete_shoeboxes_override_str))
 
 class Script(DialsScript):

@@ -16,6 +16,16 @@ from xfel.small_cell.command_line.small_cell_index import small_cell_phil_str
 from iotbx.phil import parse
 phil_scope.adopt_scope(parse(small_cell_phil_str))
 
+# Use the center of mass (com) for the centroid definition for small cell.
+program_defaults_phil_str = """
+profile {
+  gaussian_rs {
+    centroid_definition = *com s1
+  }
+}
+"""
+phil_scope = phil_scope.fetch(parse(program_defaults_phil_str))
+
 class Processor(BaseProcessor):
   def index(self, experiments, reflections):
     from time import time
@@ -39,6 +49,7 @@ class Processor(BaseProcessor):
 if __name__ == '__main__':
   from dials.command_line import stills_process
   stills_process.Processor = Processor
+  stills_process.phil_scope = phil_scope
 
   from dials.util import halraiser
   try:
