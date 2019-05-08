@@ -106,7 +106,7 @@ known_dials_dispatchers = {
   'cctbx.xfel.xtc_process': 'xfel.command_line.xtc_process',
   'cctbx.xfel.process': 'xfel.command_line.xfel_process',
   'dials.stills_process': 'dials.command_line.stills_process',
-  'cctbx.xfel.small_cell_process': 'xfel.small_cell.command_line.small_cell_process',
+  'cctbx.xfel.small_cell_process': 'xfel.small_cell.command_line.xfel_small_cell_process',
 }
 
 def load_phil_scope_from_dispatcher(dispatcher):
