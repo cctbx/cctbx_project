@@ -24,14 +24,20 @@ namespace {
               bp::list const&,
               bp::list const&,
               selArr1d const&,
-              symArr1d const& >(
+              symArr1d const&,
+              double,
+              double,
+              double >(
                 (arg("target_uijs"),
                  arg("target_weights"),
                  arg("base_amplitudes"),
                  arg("base_uijs"),
                  arg("base_atom_indices"),
-                 arg("dataset_hash"),
-                 arg("residual_uijs"))
+                 arg("base_dataset_hash"),
+                 arg("atomic_uijs"),
+                 arg("weight_sum_of_amplitudes"),
+                 arg("weight_sum_of_squared_amplitudes"),
+                 arg("weight_sum_of_amplitudes_squared"))
                 )
               )
       .def("set_current_amplitudes", &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::setCurrentAmplitudes)
@@ -41,10 +47,10 @@ namespace {
           &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::getCurrentAmplitudes,
           &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::setCurrentAmplitudes
           )
-      .def("set_residual_mask",
-          &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::setResidualMask,
+      .def("set_atomic_optimisation_mask",
+          &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::setAtomicOptimisationMask,
           ( args("mask") ),
-          "Select which datasets are used to optimise the residual levels (if any)"
+          "Select which datasets are used to optimise the atomic level"
           )
       .def("compute_functional_and_gradients",
           &MultiGroupMultiDatasetUijAmplitudeFunctionalAndGradientCalculator::computeFunctionalAndGradients
