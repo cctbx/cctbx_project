@@ -26,7 +26,9 @@ class MainApp(wx.App):
 
     # select primary display and center on that
     self.frame.SetSize((800, -1))
-    self.frame.SetMinSize(self.frame.GetEffectiveMinSize())
+    minx, miny = self.frame.GetEffectiveMinSize()
+    dispx, dispy =  wx.GetDisplaySize()
+    self.frame.SetMinSize((min(minx, dispx), min(miny, dispy)))
     self.frame.Center()
 
     # Start with login dialog before opening main window
