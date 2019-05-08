@@ -1,0 +1,23 @@
+language: python
+python:
+  - "2.7"
+
+jobs:
+  include:
+    - name: "Syntax validation - Python 2.7"
+      addons: false
+      cache: false
+      before_cache: false
+      script:
+         - python -m compileall -q *
+
+    - name: "Syntax validation - Python 3.7"
+      python: 3.7
+      # This will track the most recent released Python3 version to include
+      # any new keywords
+      addons: false
+      cache: false
+      before_cache: false
+      dist: xenial
+      script:
+         - python3 -m compileall -q !("fable"|"mmtbx"|"xfel")
