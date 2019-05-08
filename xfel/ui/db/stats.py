@@ -136,7 +136,7 @@ class HitrateStats(object):
     two_theta_low = flex.double()
     two_theta_high = flex.double()
     tag = self.app.params.experiment_tag
-    timestamps = flex.double()
+    timestamps, timestamps_s = flex.double(), []
     n_strong = flex.int()
     n_lattices = flex.int()
     if len(high_res_bin_ids) > 0:
@@ -158,6 +158,9 @@ class HitrateStats(object):
       cursor = self.app.execute_query(query)
       sample = -1
       for row in cursor.fetchall():
+        sample += 1
+        if sample % self.sampling != 0:
+          continue
         ts, n_s, d_min, tt_low, tt_high, n_xtal = row
         try:
           d_min = float(d_min)
@@ -165,18 +168,21 @@ class HitrateStats(object):
           d_min = None
         try:
           rts = reverse_timestamp(ts)
-          rts = rts[0] + (rts[1]/1000)
+          timestamps.append(rts[0] + (rts[1]/1000))
         except ValueError:
-          rts = float(ts)
-        sample += 1
-        if sample % self.sampling != 0:
-          continue
-        timestamps.append(rts)
+          try:
+            timestamps.append(float(ts))
+          except ValueError:
+            timestamps_s.append(ts)
         n_strong.append(n_s)
         two_theta_low.append(tt_low or -1)
         two_theta_high.append(tt_high or -1)
         resolutions.append(d_min or 0)
         n_lattices.append(n_xtal or 0)
+
+    assert [len(timestamps), len(timestamps_s)].count(0) == 1
+    if len(timestamps_s) > 0:
+      timestamps = flex.double([i[0] for i in sorted(enumerate(timestamps_s), key=lambda x:x[1])])
 
     # This left join query finds the events with no imageset, meaning they failed to index
     query = """SELECT event.timestamp, event.n_strong, event.two_theta_low, event.two_theta_high
@@ -187,19 +193,27 @@ class HitrateStats(object):
             """ % (tag, tag, self.trial.id, self.run.id, self.rungroup.id)
 
     cursor = self.app.execute_query(query)
+    timestamps_s = []
     for row in cursor.fetchall():
       ts, n_s, tt_low, tt_high = row
       try:
         rts = reverse_timestamp(ts)
         timestamps.append(rts[0] + (rts[1]/1000))
       except ValueError:
-        rts = float(ts)
-        timestamps.append(rts)
+        try:
+          rts = float(ts)
+          timestamps.append(rts)
+        except ValueError:
+          timestamps_s.append(ts)
       n_strong.append(n_s)
       two_theta_low.append(tt_low or -1)
       two_theta_high.append(tt_high or -1)
       resolutions.append(0)
       n_lattices.append(0)
+
+    if len(timestamps_s) > 0:
+      n_so_far = len(timestamps)
+      timestamps.extend(flex.double([n_so_far+i[0] for i in sorted(enumerate(timestamps_s), key=lambda x:x[1])]))
 
     order = flex.sort_permutation(timestamps)
     timestamps = timestamps.select(order)

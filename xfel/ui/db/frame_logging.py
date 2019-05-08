@@ -33,7 +33,7 @@ class DialsProcessorWithLogging(Processor):
       return run.run(), timestamp
     except AttributeError: # General version
       run = self.params.input.run_num
-      timestamp = str(imageset.indices()[0])
+      timestamp = self.tag
       return run, timestamp
 
   def pre_process(self, experiments):
