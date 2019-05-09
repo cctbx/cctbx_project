@@ -1,7 +1,7 @@
 from __future__ import division
 import glob, os
 from dxtbx.model.experiment_list import ExperimentListFactory
-from libtbx import easy_pickle
+from dials.array_family import flex
 
 try:
   import resource
@@ -146,7 +146,7 @@ class simple_file_loader(worker):
     self.logger.log_step_time("LOAD")
     for experiments_filename, reflections_filename in new_file_list:
       experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
-      reflections = easy_pickle.load(reflections_filename)
+      reflections = flex.reflection_table.from_file(reflections_filename)
 
       for experiment_id, experiment in enumerate(experiments):
         experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
