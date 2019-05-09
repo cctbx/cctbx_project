@@ -20,9 +20,9 @@ class constructed_with_xray_structure(object):
             xs.scatterers(),
             xs.scattering_type_registry())
     else:
-      self.scatterer_contribution = ext.table_based_scatterer_contribution(
-        xs.scatterers())
-      self.scatterer_contribution.read_table(table_file_name,
+      self.scatterer_contribution = ext.table_based_scatterer_contribution.build(
+        xs.scatterers(),
+        table_file_name,
         xs.space_group(),
         xs.space_group().is_origin_centric())
 
@@ -88,6 +88,7 @@ def generate_isc_table_file(file_name,
     for sc in xs.scatterers():
       out.write(" %s" %sc.label)
     out.write("\nAD accounted: true")
+    out.write("\nSymm:")
     for idx in indices:
       d_star_sq = xs.unit_cell().d_star_sq(idx)
       isc.at_d_star_sq(d_star_sq)

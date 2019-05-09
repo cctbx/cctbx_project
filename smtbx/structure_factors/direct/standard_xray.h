@@ -66,13 +66,13 @@ namespace smtbx { namespace structure_factors { namespace direct {
        The functor exp_i_2pi_functor will be used to compute exp( i 2pi h.x ).
        */
       base(sgtbx::space_group const &space_group,
-           miller::index<> const &h,
-           float_type d_star_sq,
-           ExpI2PiFunctor const &exp_i_2pi_functor)
+        miller::index<> const &h,
+        float_type d_star_sq,
+        ExpI2PiFunctor const &exp_i_2pi_functor)
 
         : hr_ht(exp_i_2pi_functor, space_group, h),
-          d_star_sq(d_star_sq),
-          exp_i_2pi(exp_i_2pi_functor)
+        d_star_sq(d_star_sq),
+        exp_i_2pi(exp_i_2pi_functor)
       {}
 
       /** Compute the structure factor of the given scatterer
@@ -83,8 +83,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
        for that type of chemical element at the miller index at hand.
        */
       void compute(scatterer_type const &scatterer,
-                   complex_type f,
-                   bool compute_grad)
+        complex_type f,
+        bool compute_grad)
       {
         Heir &heir = static_cast<Heir &> (*this);
 
@@ -96,6 +96,22 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         heir.compute_anisotropic_part(scatterer, compute_grad);
         heir.multiply_by_isotropic_part(scatterer, f, compute_grad);
+      }
+
+      void compute_full(scatterer_type const &scatterer,
+        std::vector<complex_type> const &ff,
+        bool compute_grad)
+      {
+        Heir &heir = static_cast<Heir &> (*this);
+
+        this->structure_factor = 0;
+        if (compute_grad) {
+          this->grad_site = grad_site_type(0, 0, 0);
+          this->grad_u_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
+        }
+
+        heir.compute_anisotropic_part_full(scatterer, ff, compute_grad);
+        heir.multiply_by_isotropic_part_full(scatterer, compute_grad);
       }
     };
 
@@ -225,6 +241,77 @@ namespace smtbx { namespace structure_factors { namespace direct {
       }
         #endif
 
+      void compute_anisotropic_part_full(scatterer_type const &scatterer,
+        std::vector<complex_type> const &ff,
+        bool compute_grad)
+      {
+        using namespace adptbx;
+        using namespace scitbx::constants;
+        scitbx::math::imaginary_unit_t i;
+
+        // Compute S'
+        for (int k = 0; k < hr_ht.groups.size(); ++k) {
+          hr_ht_group<float_type> const &g = hr_ht.groups[k];
+          float_type hrx = g.hr * scatterer.site;
+          complex_type f = ff[k] * this->exp_i_2pi(hrx + g.ht);
+          if (scatterer.flags.use_u_aniso()) {
+            float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
+            f *= dw;
+            if (compute_grad) {
+              if (scatterer.flags.grad_u_aniso()) {
+                scitbx::sym_mat3<float_type> log_grad_u_star
+                  = debye_waller_factor_u_star_gradient_coefficients<
+                  float_type>(g.hr);
+                complex_type grad_u_star_factor = -two_pi_sq * f;
+                for (int j = 0; j < 6; ++j) {
+                  grad_u_star[j] += grad_u_star_factor * log_grad_u_star[j];
+                }
+              }
+            }
+          }
+          structure_factor += f;
+          if (compute_grad && scatterer.flags.grad_site()) {
+            complex_type grad_site_factor = i * two_pi * f;
+            for (int j = 0; j < 3; ++j) {
+              float_type h_j = g.hr[j];
+              grad_site[j] += grad_site_factor * h_j;
+            }
+          }
+        }
+
+        if (hr_ht.is_centric) {
+          // Compute S = S' + conj(S') exp(i 2pi h.t_inv) and its gradients
+          structure_factor += std::conj(structure_factor) * hr_ht.f_h_inv_t;
+          if (compute_grad) {
+            if (scatterer.flags.grad_site()) {
+              for (int j = 0; j < 3; ++j) {
+                grad_site[j] += std::conj(grad_site[j]) * hr_ht.f_h_inv_t;
+              }
+            }
+            if (scatterer.flags.use_u_aniso() && scatterer.flags.grad_u_aniso())
+            {
+              for (int j = 0; j < 6; ++j) {
+                grad_u_star[j] += std::conj(grad_u_star[j]) * hr_ht.f_h_inv_t;
+              }
+            }
+          }
+        }
+
+#if (defined(__linux__) && defined(__GNUC__) \
+             && __GNUC__ == 4 && __GNUC_MINOR__ == 0 && __GNUC_PATCHLEVEL__ == 0)
+        /** Careful analysis with valgrind showed that the compiler seems to
+            generate undefined bits in the array grad_site in this member
+            function.
+            We hypothesised that an overzealous optimiser was at fault, hence
+            the idea of the volatile member. That it solves the problem seems
+            to vindicate our intuition.
+        */
+        foo = grad_site.begin();
+      }
+      complex_type volatile *foo;
+#else
+      }
+#endif
       /** The isotropic factor ff * occupancy * isotropic debye-waller
           is factored out of the sum over equivalent reflections
           and multiplied with the latter.
@@ -261,15 +348,16 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (compute_grad && scatterer.flags.grad_occupancy()) {
           grad_occ = ff * f_iso * structure_factor;
         }
-        f_iso *= scatterer.occupancy;
 
         // Scattering factor
-        FormFactorType ff_iso = ff * f_iso;
+        FormFactorType ff_iso = ff * f_iso * scatterer.occupancy;
 
         // Finish
         structure_factor *= ff_iso;
 
-        if (!compute_grad) return;
+        if (!compute_grad) {
+          return;
+        }
 
         if (scatterer.flags.use_u_iso() && scatterer.flags.grad_u_iso()) {
           grad_u_iso = -two_pi_sq * d_star_sq * structure_factor;
@@ -279,6 +367,45 @@ namespace smtbx { namespace structure_factors { namespace direct {
         }
         if (scatterer.flags.grad_u_aniso()) {
           for (int j=0; j<6; ++j) grad_u_star[j] *= ff_iso;
+        }
+      }
+
+      void multiply_by_isotropic_part_full(scatterer_type const &scatterer,
+        bool compute_grad)
+      {
+        using namespace adptbx;
+        using namespace scitbx::constants;
+
+        // factor from centring translation group X factor from special position
+        float_type f_iso = hr_ht.ltr_factor * scatterer.weight_without_occupancy();
+
+        // isotropic Debye-Waller
+        if (scatterer.flags.use_u_iso()) {
+          float_type dw_iso = debye_waller_factor_u_iso(d_star_sq / 4,
+            scatterer.u_iso);
+          f_iso *= dw_iso;
+        }
+        // occupancy
+        if (compute_grad && scatterer.flags.grad_occupancy()) {
+          grad_occ = f_iso * structure_factor;
+        }
+
+        // Scattering factor
+        float_type ff_iso = f_iso * scatterer.occupancy;
+
+        // Finish
+        structure_factor *= ff_iso;
+        if (!compute_grad) {
+          return;
+        }
+        if (scatterer.flags.use_u_iso() && scatterer.flags.grad_u_iso()) {
+          grad_u_iso = -two_pi_sq * d_star_sq * structure_factor;
+        }
+        if (scatterer.flags.grad_site()) {
+          for (int j = 0; j < 3; ++j) grad_site[j] *= ff_iso;
+        }
+        if (scatterer.flags.grad_u_aniso()) {
+          for (int j = 0; j < 6; ++j) grad_u_star[j] *= ff_iso;
         }
       }
     };
@@ -371,6 +498,53 @@ namespace smtbx { namespace structure_factors { namespace direct {
          */
       }
 
+      void compute_anisotropic_part_full(scatterer_type const &scatterer,
+        const std::vector<complex_type> &ff,
+        bool compute_grad)
+      {
+        using namespace adptbx;
+        using namespace scitbx::constants;
+
+        /* Compute the real part of S' and its gradients
+         We only ever touch the real part of structure_factors and grad_xxx
+         members. So this code should be as efficient as working with
+         real numbers.
+         */
+        for (int k = 0; k < hr_ht.groups.size(); ++k) {
+          hr_ht_group<float_type> const &g = hr_ht.groups[k];
+          float_type hrx = g.hr * scatterer.site;
+          complex_type f = ff[k] * this->exp_i_2pi(hrx + g.ht);
+          float_type fa = f.real(), fb = f.imag();
+          if (scatterer.flags.use_u_aniso()) {
+            float_type dw = debye_waller_factor_u_star(g.hr, scatterer.u_star);
+            fa *= dw;
+            if (compute_grad) {
+              if (scatterer.flags.grad_site()) fb *= dw;
+              if (scatterer.flags.grad_u_aniso()) {
+                scitbx::sym_mat3<float_type> log_grad_u_star
+                  = debye_waller_factor_u_star_gradient_coefficients<
+                  float_type>(g.hr);
+                float_type grad_u_star_factor = -two_pi_sq * fa;
+                for (int j = 0; j < 6; ++j) {
+                  grad_u_star[j] += grad_u_star_factor * log_grad_u_star[j];
+                }
+              }
+            }
+          }
+          structure_factor += fa;
+          float_type grad_site_factor = -two_pi * fb;
+          if (compute_grad && scatterer.flags.grad_site()) {
+            for (int j = 0; j < 3; ++j) {
+              grad_site[j] += grad_site_factor * g.hr[j];
+            }
+          }
+        }
+
+        /* We should now multiply S' and its gradients by 2
+         to get S and its gradients. Postponed to next stage for efficiency.
+         */
+      }
+
       /** \copydoc in_generic_space_group::multiply_by_isotropic_part */
       template <typename FormFactorType>
       void multiply_by_isotropic_part(scatterer_type const &scatterer,
@@ -425,6 +599,59 @@ namespace smtbx { namespace structure_factors { namespace direct {
           }
         }
       }
+
+      void multiply_by_isotropic_part_full(scatterer_type const &scatterer,
+        bool compute_grad)
+      {
+        using namespace adptbx;
+        using namespace scitbx::constants;
+
+        // factor from inversion
+        float_type f_iso = 2.;
+
+        // factor from centring translation group
+        f_iso *= hr_ht.ltr_factor;
+
+        // factor from special position
+        float_type w = scatterer.weight_without_occupancy();
+        if (w != 1) f_iso *= w;
+
+        // isotropic Debye-Waller
+        if (scatterer.flags.use_u_iso()) {
+          float_type dw_iso = debye_waller_factor_u_iso(d_star_sq / 4,
+            scatterer.u_iso);
+          f_iso *= dw_iso;
+        }
+
+        // occupancy
+        if (compute_grad && scatterer.flags.grad_occupancy()) {
+          grad_occ = f_iso * structure_factor.real();
+        }
+
+        // Scattering factor
+        float_type ff_iso = f_iso * scatterer.occupancy;
+
+        // Finish
+        structure_factor = ff_iso * structure_factor.real();
+
+        if (!compute_grad) {
+          return;
+        }
+
+        if (scatterer.flags.use_u_iso() && scatterer.flags.grad_u_iso()) {
+          grad_u_iso = -two_pi_sq * d_star_sq * structure_factor;
+        }
+        if (scatterer.flags.grad_site()) {
+          for (int j = 0; j < 3; ++j) {
+            grad_site[j] = ff_iso * grad_site[j].real();
+          }
+        }
+        if (scatterer.flags.grad_u_aniso()) {
+          for (int j = 0; j < 6; ++j) {
+            grad_u_star[j] = ff_iso * grad_u_star[j].real();
+          }
+        }
+      }
     };
 
     /** Abstract class to deal with various implementation of scattering
@@ -440,11 +667,15 @@ namespace smtbx { namespace structure_factors { namespace direct {
       */
       virtual complex_type get(std::size_t scatterer_idx,
         miller::index<> const &h) const = 0;
+      virtual std::vector<complex_type> const &get_full(std::size_t scatterer_idx,
+        miller::index<> const &h) const = 0;
       /* for isotropic scatterers could implement some optimisation. The
       returned object should live at least until the next function call
       */
       virtual scatterer_contribution &at_d_star_sq(
         float_type d_star_sq) = 0;
+
+      virtual bool is_spherical() const = 0;
 
       virtual scatterer_contribution *raw_fork() const = 0;
     };
@@ -527,7 +758,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
       }
 
       virtual complex_type get(std::size_t scatterer_idx,
-          miller::index<> const &h) const
+        miller::index<> const &h) const
       {
         float_type f0;
         if (cache) {
@@ -545,6 +776,13 @@ namespace smtbx { namespace structure_factors { namespace direct {
         }
       }
 
+      virtual std::vector<complex_type> const &get_full(std::size_t scatterer_idx,
+        miller::index<> const &h) const
+      {
+        SMTBX_NOT_IMPLEMENTED();
+        throw 1;
+      }
+
       virtual base_type &at_d_star_sq(float_type d_star_sq) {
         if (cache) {
           cache_key_t d_star_sq_i = static_cast<cache_key_t>(
@@ -558,6 +796,10 @@ namespace smtbx { namespace structure_factors { namespace direct {
             .unique_form_factors_at_d_star_sq(d_star_sq);
         }
         return *this;
+      }
+
+      virtual bool is_spherical() const {
+        return true;
       }
 
       virtual base_type *raw_fork() const {
@@ -743,8 +985,14 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         for (int j=0; j < scatterers.size(); ++j) {
           xray::scatterer<> const &sc = scatterers[j];
-          complex_type f = scatter_contrib.get(j, h);
-          l.compute(sc, f, compute_grad);
+          if (scatter_contrib.is_spherical()) {
+            complex_type f = scatter_contrib.get(j, h);
+            l.compute(sc, f, compute_grad);
+          }
+          else {
+            std::vector<complex_type> const &ff = scatter_contrib.get_full(j, h);
+            l.compute_full(sc, ff, compute_grad);
+          }
 
           f_calc += l.structure_factor;
 

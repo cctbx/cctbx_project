@@ -6,6 +6,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/with_custodian_and_ward.hpp>
 #include <boost/python/return_internal_reference.hpp>
+#include <boost/python/manage_new_object.hpp>
 
 namespace smtbx { namespace structure_factors { namespace direct {
   namespace boost_python {
@@ -191,23 +192,21 @@ namespace smtbx { namespace structure_factors { namespace direct {
     };
 
     template <typename FloatType>
-    struct table_based_anisotropic_wrapper {
-      typedef table_based::table_based_anisotropic<FloatType>
-        wt;
+    struct table_based_wrapper {
+      typedef table_based::builder<FloatType> wt;
       typedef one_scatterer_one_h::scatterer_contribution<FloatType>
         scatterer_contribution_type;
 
       static void wrap() {
         using namespace boost::python;
-        class_<wt,
-          bases<scatterer_contribution_type> >
-          ("table_based_scatterer_contribution", no_init)
-          .def(init<af::shared< xray::scatterer<FloatType> > const &>(
-          (arg("scatterers"))))
-          .def("read_table", &wt::read_table,
-            (arg("file_name"),
-              arg("unit_cell"),
-              arg("anomalous_flag")))
+        class_<wt, boost::noncopyable>("table_based_scatterer_contribution", no_init)
+          .def("build", &wt::build,
+            (arg("scatterers"),
+              arg("file_name"),
+              arg("space_group"),
+              arg("anomalous_flag")),
+            return_value_policy<manage_new_object>())
+          .staticmethod("build")
           ;
       }
     };
@@ -221,7 +220,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
       scatterer_contribution_wrapper<double>::wrap();
       isotropic_scatterer_contribution_wrapper<double>::wrap();
-      table_based_anisotropic_wrapper<double>::wrap();
+      table_based_wrapper<double>::wrap();
     }
   }
 }}}
