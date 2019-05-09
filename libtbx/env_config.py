@@ -2530,7 +2530,7 @@ class pre_process_args:
 def set_preferred_sys_prefix_and_sys_executable(build_path):
   if (not hasattr(os.path, "samefile")): return
   dirname, basename = op.split(sys.prefix)
-  if (op.samefile(build_path, dirname)):
+  if (dirname and op.samefile(build_path, dirname)):
     new_prefix = op.join(build_path, basename)
     if (op.samefile(new_prefix, sys.prefix)):
       p = op.normpath(op.normcase(sys.prefix))
