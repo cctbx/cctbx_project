@@ -193,3 +193,7 @@ class hkl_group(worker):
       empty_slices = max(0, n_slices - generated_slices)
       for i in range(empty_slices):
         yield self.distribute_reflection_table()
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(hkl_group)

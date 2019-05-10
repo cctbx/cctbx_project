@@ -145,3 +145,7 @@ class merger(worker):
       self.logger.log_step_time("WRITE", True)
 
     return None, None
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(merge)

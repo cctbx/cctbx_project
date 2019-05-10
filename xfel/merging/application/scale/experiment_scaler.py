@@ -236,3 +236,7 @@ class experiment_scaler(worker):
       result.slope = sum_w * sum_xy / DELTA
 
     return result
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(experiment_scaler)

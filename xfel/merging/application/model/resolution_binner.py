@@ -33,3 +33,7 @@ class resolution_binner(worker):
     self.params.statistics.__inject__('hkl_resolution_bins', hkl_resolution_bins)
 
     return experiments, reflections
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(resolution_binner)

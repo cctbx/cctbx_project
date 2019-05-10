@@ -170,3 +170,7 @@ class crystal_model(worker):
 
     return min(vols),max(vols)
   '''
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(crystal_model)

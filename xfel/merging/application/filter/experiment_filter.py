@@ -94,3 +94,7 @@ class experiment_filter(worker):
     self.logger.log_step_time("FILTER_EXPERIMENTS", True)
 
     return new_experiments, new_reflections
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(experiment_filter)

@@ -38,3 +38,6 @@ class error_modifier(worker):
 
     return new_reflections
 
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(error_modifier)

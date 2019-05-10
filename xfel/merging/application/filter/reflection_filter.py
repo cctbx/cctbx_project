@@ -105,3 +105,7 @@ class reflection_filter(worker):
     self.logger.log_step_time("SIGNIFICANCE_FILTER", True)
 
     return new_experiments, new_reflections
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(reflection_filter)

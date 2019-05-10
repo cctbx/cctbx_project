@@ -258,3 +258,7 @@ class intensity_resolution_statistics(worker):
         cumulative_pred   += redundancy_to_edge
       '''
     return Intensity_Table
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(intensity_resolution_statistics)

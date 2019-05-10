@@ -54,3 +54,6 @@ class reflection_table_editor(worker):
 
     return experiments, reflections
 
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(reflection_table_editor)

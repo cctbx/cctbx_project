@@ -75,3 +75,7 @@ class unit_cell_statistics(worker):
 
       edges = [flex.double(total_edge0), flex.double(total_edge1), flex.double(total_edge2)]
       _show_each(edges)
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(unit_cell_statistics)

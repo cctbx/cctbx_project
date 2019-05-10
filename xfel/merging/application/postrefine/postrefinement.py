@@ -477,3 +477,7 @@ class lbfgs_minimizer_base:
     print ("FINALMODEL", file=self.out)
     print ("rms %10.3f; "%math.sqrt(flex.mean(self.func*self.func)), file=self.out, end='')
     values.show(self.out)
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(postrefinement)

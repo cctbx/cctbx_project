@@ -91,3 +91,7 @@ class experiment_resolution_statistics(worker):
     # For each bin, reduce the sets of unique experiment ids to their count
     for i_bin in range(self.resolution_binner.n_bins_all()):
       self.experiment_count_per_resolution_bins[i_bin] = len(experiments_per_resolution_bins[i_bin])
+
+if __name__ == '__main__':
+  from xfel.merging.application.worker import exercise_worker
+  exercise_worker(experiment_resolution_statistics)
