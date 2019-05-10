@@ -57,6 +57,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       vector<std::string> toks;
       size_t lc = 0;
       vector<size_t> sc_indices(scatterers.size());
+      bool header_read = false;
       while (std::getline(in_file, line)) {
         lc++;
         boost::trim(line);
@@ -65,7 +66,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         }
         toks.clear();
         // is header?
-        if (lc <= 4) {
+        if (!header_read) {
           boost::split(toks, line, boost::is_any_of(":"));
           SMTBX_ASSERT(toks.size() == 2);
           if (boost::iequals(toks[0], "scatterers")) {
@@ -106,6 +107,9 @@ namespace smtbx { namespace structure_factors { namespace table_based {
               }
               parent_t::rot_mxs_.push_back(rmx);
             }
+          }
+          else if (boost::iequals(toks[0], "data")) {
+            header_read = true;
           }
         }
         // data
@@ -155,32 +159,41 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     typedef FloatType float_type;
     typedef std::complex<float_type> complex_type;
   private:
-    af::ref_owning_shared< xray::scatterer<float_type> > scatterers;
     miller::lookup_utils::lookup_tensor<float_type> mi_lookup;
-    // rows in order of original hkl index -> scatterer contribution
-    typedef boost::shared_ptr<table_data<float_type> > data_ptr_t;
-    data_ptr_t data;
+    // hkl x scatterer x contribution
+    af::shared <std::vector<complex_type> > data;
   public:
     // Copy constructor
     table_based_isotropic(const table_based_isotropic &tbsc)
       :
-      scatterers(tbsc.scatterers),
       mi_lookup(tbsc.mi_lookup),
       data(tbsc.data)
     {}
 
     table_based_isotropic(
       af::shared< xray::scatterer<float_type> > const &scatterers,
-      boost::shared_ptr<table_reader<FloatType> > const &data,
+      table_reader<FloatType> const &data_,
       sgtbx::space_group const &space_group,
       bool anomalous_flag)
       :
-      scatterers(scatterers),
-      data(data)
+      data(data_.miller_indices().size())
     {
-      SMTBX_ASSERT(data->rot_mxs().size() <= 1);
+      SMTBX_ASSERT(data_.rot_mxs().size() <= 1);
+      for (size_t i = 0; i < data.size(); i++) {
+        data[i].resize(scatterers.size());
+        for (size_t j = 0; j < scatterers.size(); j++) {
+          complex_type v = data_.data()[i][j];
+          if (data_.use_AD()) {
+            xray::scatterer<> const &sc = scatterers[j];
+            if (sc.flags.use_fp_fdp()) {
+              v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
+            }
+          }
+          data[i][j] = v;
+        }
+      }
       mi_lookup = miller::lookup_utils::lookup_tensor<float_type>(
-        data->miller_indices().const_ref(),
+        data_.miller_indices().const_ref(),
         space_group,
         anomalous_flag);
     }
@@ -190,19 +203,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     {
       long h_idx = mi_lookup.find_hkl(h);
       SMTBX_ASSERT(h_idx >= 0);
-      complex_type rv = data->data()[static_cast<size_t>(h_idx)][scatterer_idx];
-      if (data->use_AD()) {
-        xray::scatterer<> const &sc = scatterers[scatterer_idx];
-        if (sc.flags.use_fp_fdp()) {
-          return complex_type(rv.real() + sc.fp, rv.imag() + sc.fdp);
-        }
-        else {
-          return rv;
-        }
-      }
-      else {
-        return rv;
-      }
+      return data[static_cast<size_t>(h_idx)][scatterer_idx];
     }
 
     virtual std::vector<complex_type> const &get_full(std::size_t scatterer_idx,
@@ -211,7 +212,6 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       SMTBX_NOT_IMPLEMENTED();
       throw 1;
     }
-
 
     virtual base_type &at_d_star_sq(
       float_type d_star_sq)
@@ -255,14 +255,14 @@ namespace smtbx { namespace structure_factors { namespace table_based {
 
     table_based_anisotropic(
       af::shared< xray::scatterer<float_type> > const &scatterers,
-      boost::shared_ptr<table_reader<FloatType> > const &data_,
+      table_reader<FloatType> const &data_,
       sgtbx::space_group const &space_group,
       bool anomalous_flag)
       :
       scatterers(scatterers)
     {
-      SMTBX_ASSERT(data_->rot_mxs().size() == space_group.n_smx());
-      SMTBX_ASSERT((data_->data().size() % space_group.n_smx()) == 0);
+      SMTBX_ASSERT(data_.rot_mxs().size() == space_group.n_smx());
+      SMTBX_ASSERT((data_.data().size() % space_group.n_smx()) == 0);
 
       std::vector<size_t> r_map;
       r_map.resize(space_group.n_smx());
@@ -270,7 +270,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         sgtbx::rot_mx const& r = space_group.smx(i).r();
         bool found = false;
         for (size_t mi = 0; mi < space_group.n_smx(); mi++) {
-          if (r == data_->rot_mxs()[mi]) {
+          if (r == data_.rot_mxs()[mi]) {
             r_map[mi] = i;
             found = true;
             break;
@@ -278,7 +278,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         }
         SMTBX_ASSERT(found);
       }
-      data.resize(data_->data().size() / space_group.n_smx());
+      data.resize(data_.data().size() / space_group.n_smx());
       lookup_indices.resize(data.size());
       for (size_t hi = 0; hi < data.size(); hi++) {
         af::shared<std::vector<complex_type> > row(scatterers.size());
@@ -287,8 +287,8 @@ namespace smtbx { namespace structure_factors { namespace table_based {
           h_row.resize(space_group.n_smx());
           for (size_t mi = 0; mi < space_group.n_smx(); mi++) {
             const size_t r_off = data.size() * mi;
-            complex_type v = data_->data()[r_off + hi][sci];
-            if (data_->use_AD()) {
+            complex_type v = data_.data()[r_off + hi][sci];
+            if (data_.use_AD()) {
               xray::scatterer<> const &sc = scatterers[sci];
               if (sc.flags.use_fp_fdp()) {
                 v = complex_type(v.real() + sc.fp, v.imag() + sc.fdp);
@@ -299,7 +299,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
           row[sci] = h_row;
         }
         data[hi] = row;
-        lookup_indices[hi] = data_->miller_indices()[hi];
+        lookup_indices[hi] = data_.miller_indices()[hi];
       }
 
       mi_lookup = miller::lookup_utils::lookup_tensor<float_type>(
@@ -348,9 +348,8 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         sgtbx::space_group const &space_group,
         bool anomalous_flag)
     {
-      boost::shared_ptr<table_reader<FloatType> > data(
-        new table_reader<FloatType>(scatterers, file_name));
-      if (data->rot_mxs().size() <= 1) {
+      table_reader<FloatType> data(scatterers, file_name);
+      if (data.rot_mxs().size() <= 1) {
         return new table_based_isotropic<FloatType>(
           scatterers,
           data,
