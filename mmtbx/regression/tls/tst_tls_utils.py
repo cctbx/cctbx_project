@@ -770,7 +770,8 @@ def tst_TLSAmplitudes_fails():
   # Negative indices
   with raises(Exception) as e:
     a.set([1], [-1])
-  assert "can't convert negative value to unsigned" == str(e.value)
+  assert ("can't convert negative value to unsigned" == str(e.value) or
+          "negative overflow" in str(e.value))
 
   # Negative/zero-value target values!
   msg = "target must be positive"
