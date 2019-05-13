@@ -84,7 +84,7 @@ class reader(slots_getstate_setstate):
         result.append(xray.scatterer(
           label="%s%d"%(type, len(result)+1),
           scattering_type=type,
-          site=sites.next(),
+          site=next(sites),
           u=u_iso))
     assert len(result) == len(O.sites)
     return result

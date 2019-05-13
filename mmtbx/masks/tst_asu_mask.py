@@ -515,7 +515,7 @@ def run():
   elif opts.space_group == "all530":
     it = cctbx.sgtbx.space_group_symbol_iterator()
     while( True ):
-      symbol = it.next()
+      symbol = next(it)
       # TODO: the following  does not work
       #if( symbol.number()==0 ):
       #  break

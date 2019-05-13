@@ -316,10 +316,10 @@ class rotamer_iterator(object):
     return O
 
   def next(O):
-    rotamer = O.__iterates.next()
+    rotamer = next(O.__iterates)
     if O.rotamer_info.fine_sampling == False:
       while(rotamer.frequency_annotation == "for more uniform sampling"):
-        rotamer = O.__iterates.next()
+        rotamer = next(O.__iterates)
     q_packed_work = flex.double(O.tardy_model.q_packed_size, 0)
     for tor_id,angle in zip(O.rotamer_info.tor_ids, rotamer.angles):
       i_q_packed = O.i_q_packed_by_tor_id.get(tor_id)

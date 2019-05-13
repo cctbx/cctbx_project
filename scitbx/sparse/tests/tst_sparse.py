@@ -127,8 +127,8 @@ def exercise_vector():
       sparse.vector_distribution(
         8, density=0.4,
         elements=scitbx.random.uniform_distribution(min=-2, max=2)))
-    u = random_vectors.next()
-    v = random_vectors.next()
+    u = next(random_vectors)
+    v = next(random_vectors)
     w = list(-2*u.as_dense_vector() + 3*v.as_dense_vector())
     yield u, v, w
   for u, v, w in itertools.islice(linear_combination_trial_vectors(), 50):
@@ -255,8 +255,8 @@ def exercise_matrix_x_vector():
         m, n, density=0.3,
         elements=uniform_distribution(min=-2, max=2)))
     for n_test in xrange(50):
-      a = random_matrices.next()
-      x = random_vectors.next()
+      a = next(random_matrices)
+      x = next(random_vectors)
       y = a*x
       aa = a.as_dense_matrix()
       xx = x.as_dense_vector()
@@ -270,7 +270,7 @@ def exercise_matrix_x_vector():
         m, n, density=0.4,
         elements=uniform_distribution(min=-2, max=2)))
     for n_test in xrange(50):
-      a = random_matrices.next()
+      a = next(random_matrices)
       x = flex.random_double(n)
       y = a*x
       aa = a.as_dense_matrix()
@@ -298,7 +298,7 @@ def exercise_a_tr_b_a():
         elements=uniform_distribution(min=-3, max=10)))
     for n_test in xrange(50):
       b = flex.random_double(m*(m+1)//2)
-      a = random_matrices.next()
+      a = next(random_matrices)
       c = a.self_transpose_times_symmetric_times_self(b)
       aa = a.as_dense_matrix()
       bb = b.matrix_packed_u_as_symmetric()
@@ -316,7 +316,7 @@ def exercise_a_b_a_tr():
         elements=uniform_distribution(min=-3, max=10)))
     for n_test in xrange(50):
       b = flex.random_double(n*(n+1)//2)
-      a = random_matrices.next()
+      a = next(random_matrices)
       c = a.self_times_symmetric_times_self_transpose(b)
       aa = a.as_dense_matrix()
       bb = b.matrix_packed_u_as_symmetric()
@@ -363,7 +363,7 @@ def exercise_a_tr_diag_a_and_a_diag_a_tr():
     ww.resize(flex.grid(m,m))
     ww.matrix_diagonal_set_in_place(diagonal=w)
     for n_test in xrange(50):
-      a = random_matrices.next()
+      a = next(random_matrices)
       b = a.self_transpose_times_diagonal_times_self(w)
       aa = a.as_dense_matrix()
       bb = b.as_dense_matrix()

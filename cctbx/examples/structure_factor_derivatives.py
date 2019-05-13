@@ -134,62 +134,62 @@ class structure_factor:
     idt2 = 0
     for dt,di,d2 in zip(dts, ds, d2s):
       # dx. dy. dz.
-      d2ti0 = d2ti.next()
+      d2ti0 = next(d2ti)
       for dxi in di.xyz:
         row = []; ra = row.append
         d2tij = iter(d2ti0)
         for dj in ds:
-          d2t = d2tij.next()
+          d2t = next(d2tij)
           for dxj in dj.xyz:
             ra(d2t * dxi * dxj)
-          d2t = d2tij.next()
+          d2t = next(d2tij)
           ra(d2t * dxi * dj.u)
           ra(d2t * dxi * dj.w)
-          ra(d2tij.next() * dxi)
-          ra(d2tij.next() * dxi)
+          ra(next(d2tij) * dxi)
+          ra(next(d2tij) * dxi)
         result.append(row)
       # d2u.
       row = []; ra = row.append
-      d2ti0 = d2ti.next()
+      d2ti0 = next(d2ti)
       d2tij = iter(d2ti0)
       for dj in ds:
-        d2t = d2tij.next()
+        d2t = next(d2tij)
         for dxj in dj.xyz:
           ra(d2t * dxj * di.u)
-        d2t = d2tij.next()
+        d2t = next(d2tij)
         ra(d2t * di.u * dj.u)
         if (di is dj): row[-1] += dt.g * d2.uu
         ra(d2t * di.u * dj.w)
         if (di is dj): row[-1] += dt.g * d2.uw
-        ra(d2tij.next() * di.u)
-        ra(d2tij.next() * di.u)
+        ra(next(d2tij) * di.u)
+        ra(next(d2tij) * di.u)
       result.append(row)
       # d2w.
       row = []; ra = row.append
       d2tij = iter(d2ti0)
       for dj in ds:
-        d2t = d2tij.next()
+        d2t = next(d2tij)
         for dxj in dj.xyz:
           ra(d2t * dxj * di.w)
-        d2t = d2tij.next()
+        d2t = next(d2tij)
         ra(d2t * di.w * dj.u)
         if (di is dj): row[-1] += dt.g * d2.uw
         ra(d2t * di.w * dj.w)
-        ra(d2tij.next() * di.w)
-        ra(d2tij.next() * di.w)
+        ra(next(d2tij) * di.w)
+        ra(next(d2tij) * di.w)
       result.append(row)
       # d2'. and d2"
       for ip in [0,1]:
         row = []; ra = row.append
-        d2tij = iter(d2ti.next())
+        d2tij = iter(next(d2ti))
         for dj in ds:
-          d2t = d2tij.next()
+          d2t = next(d2tij)
           for dxj in dj.xyz:
             ra(d2t * dxj)
-          d2t = d2tij.next()
+          d2t = next(d2tij)
           ra(d2t * dj.u)
           ra(d2t * dj.w)
-          ra(d2tij.next())
-          ra(d2tij.next())
+          ra(next(d2tij))
+          ra(next(d2tij))
         result.append(row)
     return result

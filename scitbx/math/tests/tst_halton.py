@@ -51,12 +51,12 @@ def test_halton_sequence_2(n_points, high_limit=5.0):
 def test_cube():
   square = sm.square_halton_sampling(0.1, 0.8,  10.0, 80.0)
   start_values= (0.1, 10.0)
-  assert approx_equal( start_values, square.next(), eps=1e-4 )
+  assert approx_equal( start_values, next(square), eps=1e-4 )
   for ii in xrange(24):
-    square.next()
+    next(square)
   assert square.state()==25
   square.set_state(0)
-  assert approx_equal( start_values, square.next(), eps=1e-4 )
+  assert approx_equal( start_values, next(square), eps=1e-4 )
 
 def tst_five_d_cube():
   hcube = sm.halton(5)

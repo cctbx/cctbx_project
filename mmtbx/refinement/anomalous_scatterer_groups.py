@@ -55,8 +55,8 @@ class minimizer(object):
   def unpack(self):
     xi = iter(self.x)
     for group in self.groups:
-      if (group.refine_f_prime): group.f_prime = xi.next()
-      if (group.refine_f_double_prime): group.f_double_prime = xi.next()
+      if (group.refine_f_prime): group.f_prime = next(xi)
+      if (group.refine_f_double_prime): group.f_double_prime = next(xi)
     for group in self.groups:
       group.copy_to_scatterers_in_place(
         scatterers=self.fmodel.xray_structure.scatterers())

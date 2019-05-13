@@ -233,15 +233,15 @@ def exercise_basic():
       for i_dataset,dataset in enumerate(crystal.datasets()):
         assert dataset.mtz_crystal().i_crystal() == i_crystal
         assert dataset.i_dataset() == i_dataset
-        assert dataset.id() == expected_dataset_ids.next()
-        assert dataset.name() == expected_dataset_names.next()
+        assert dataset.id() == next(expected_dataset_ids)
+        assert dataset.name() == next(expected_dataset_names)
         assert dataset.wavelength() == 0
-        assert dataset.n_columns() == expected_n_columns.next()
+        assert dataset.n_columns() == next(expected_n_columns)
         for i_column,column in enumerate(dataset.columns()):
           assert column.mtz_dataset().i_dataset() == i_dataset
           assert column.i_column() == i_column
-          assert column.label() == expected_column_labels.next()
-          assert column.type() == expected_column_types.next()
+          assert column.label() == next(expected_column_labels)
+          assert column.type() == next(expected_column_types)
           assert column.is_active()
           assert column.array_size() == 165
           assert column.array_capacity() == 200
@@ -759,7 +759,7 @@ Crystal 3:
     for i_crystal,crystal in enumerate(mtz_object.crystals()):
       for i_dataset,dataset in enumerate(crystal.datasets()):
         for i_column in xrange((i_crystal+i_dataset) % 3 + 1):
-          i_seq = i_seq_iter.next()
+          i_seq = next(i_seq_iter)
           col_label = "column_%d"%i_seq
           col_type = "FB?"[(i_crystal-i_dataset+i_column) % 3]
           if (stage == 0):
@@ -1108,8 +1108,8 @@ Crystal 2:
   for i_batch in xrange(10):
     batch = mtz_object.add_batch()
     assert batch.num() == i_batch+1
-    assert batch.set_num(value=values_in.next()) is batch
-    assert batch.num() == values_out.next()
+    assert batch.set_num(value=next(values_in)) is batch
+    assert batch.num() == next(values_out)
     assert batch.set_num(value=i_batch+1) is batch
     assert batch.title() == " "
     assert batch.set_title("Hello MTZ") is batch
@@ -1121,44 +1121,44 @@ Crystal 2:
       flex.std_string(["what", "ever", "this_is....."])) is batch
     assert list(batch.gonlab()) == ["what", "ever", "this_is"]
     assert batch.iortyp() == 0
-    assert batch.set_iortyp(value=values_in.next()) is batch
-    assert batch.iortyp() == values_out.next()
+    assert batch.set_iortyp(value=next(values_in)) is batch
+    assert batch.iortyp() == next(values_out)
     assert list(batch.lbcell()) == [0, 0, 0, 0, 0, 0]
     assert batch.set_lbcell(flex.int(range(3,9))) is batch
     assert list(batch.lbcell()) == range(3,9)
     assert batch.misflg() == 0
-    assert batch.set_misflg(value=values_in.next()) is batch
-    assert batch.misflg() == values_out.next()
+    assert batch.set_misflg(value=next(values_in)) is batch
+    assert batch.misflg() == next(values_out)
     assert batch.jumpax() == 0
-    assert batch.set_jumpax(value=values_in.next()) is batch
-    assert batch.jumpax() == values_out.next()
+    assert batch.set_jumpax(value=next(values_in)) is batch
+    assert batch.jumpax() == next(values_out)
     assert batch.ncryst() == 0
-    assert batch.set_ncryst(value=values_in.next()) is batch
-    assert batch.ncryst() == values_out.next()
+    assert batch.set_ncryst(value=next(values_in)) is batch
+    assert batch.ncryst() == next(values_out)
     assert batch.lcrflg() == 0
-    assert batch.set_lcrflg(value=values_in.next()) is batch
-    assert batch.lcrflg() == values_out.next()
+    assert batch.set_lcrflg(value=next(values_in)) is batch
+    assert batch.lcrflg() == next(values_out)
     assert batch.ldtype() == 0
-    assert batch.set_ldtype(value=values_in.next()) is batch
-    assert batch.ldtype() == values_out.next()
+    assert batch.set_ldtype(value=next(values_in)) is batch
+    assert batch.ldtype() == next(values_out)
     assert batch.jsaxs() == 0
-    assert batch.set_jsaxs(value=values_in.next()) is batch
-    assert batch.jsaxs() == values_out.next()
+    assert batch.set_jsaxs(value=next(values_in)) is batch
+    assert batch.jsaxs() == next(values_out)
     assert batch.nbscal() == 0
-    assert batch.set_nbscal(value=values_in.next()) is batch
-    assert batch.nbscal() == values_out.next()
+    assert batch.set_nbscal(value=next(values_in)) is batch
+    assert batch.nbscal() == next(values_out)
     assert batch.ngonax() == 0
-    assert batch.set_ngonax(value=values_in.next()) is batch
-    assert batch.ngonax() == values_out.next()
+    assert batch.set_ngonax(value=next(values_in)) is batch
+    assert batch.ngonax() == next(values_out)
     assert batch.lbmflg() == 0
-    assert batch.set_lbmflg(value=values_in.next()) is batch
-    assert batch.lbmflg() == values_out.next()
+    assert batch.set_lbmflg(value=next(values_in)) is batch
+    assert batch.lbmflg() == next(values_out)
     assert batch.ndet() == 0
-    assert batch.set_ndet(value=values_in.next() % 3) is batch
-    assert batch.ndet() == values_out.next() % 3
+    assert batch.set_ndet(value=next(values_in) % 3) is batch
+    assert batch.ndet() == next(values_out) % 3
     assert batch.nbsetid() == 0
-    assert batch.set_nbsetid(value=values_in.next()) is batch
-    assert batch.nbsetid() == values_out.next()
+    assert batch.set_nbsetid(value=next(values_in)) is batch
+    assert batch.nbsetid() == next(values_out)
     assert list(batch.cell()) == [0]*6
     assert batch.set_cell(flex.float(range(18,24))) is batch
     assert list(batch.cell()) == range(18,24)
@@ -1175,35 +1175,35 @@ Crystal 2:
     assert batch.set_datum(flex.float(range(26,29))) is batch
     assert list(batch.datum()) == range(26,29)
     assert batch.phistt() == 0
-    assert batch.set_phistt(value=values_in.next()) is batch
-    assert batch.phistt() == values_out.next()
+    assert batch.set_phistt(value=next(values_in)) is batch
+    assert batch.phistt() == next(values_out)
     assert batch.phiend() == 0
-    assert batch.set_phiend(value=values_in.next()) is batch
-    assert batch.phiend() == values_out.next()
+    assert batch.set_phiend(value=next(values_in)) is batch
+    assert batch.phiend() == next(values_out)
     assert list(batch.scanax()) == [0]*3
     assert batch.set_scanax(flex.float(range(62,65))) is batch
     assert list(batch.scanax()) == range(62,65)
     assert batch.time1() == 0
-    assert batch.set_time1(value=values_in.next()) is batch
-    assert batch.time1() == values_out.next()
+    assert batch.set_time1(value=next(values_in)) is batch
+    assert batch.time1() == next(values_out)
     assert batch.time2() == 0
-    assert batch.set_time2(value=values_in.next()) is batch
-    assert batch.time2() == values_out.next()
+    assert batch.set_time2(value=next(values_in)) is batch
+    assert batch.time2() == next(values_out)
     assert batch.bscale() == 0
-    assert batch.set_bscale(value=values_in.next()) is batch
-    assert batch.bscale() == values_out.next()
+    assert batch.set_bscale(value=next(values_in)) is batch
+    assert batch.bscale() == next(values_out)
     assert batch.bbfac() == 0
-    assert batch.set_bbfac(value=values_in.next()) is batch
-    assert batch.bbfac() == values_out.next()
+    assert batch.set_bbfac(value=next(values_in)) is batch
+    assert batch.bbfac() == next(values_out)
     assert batch.sdbscale() == 0
-    assert batch.set_sdbscale(value=values_in.next()) is batch
-    assert batch.sdbscale() == values_out.next()
+    assert batch.set_sdbscale(value=next(values_in)) is batch
+    assert batch.sdbscale() == next(values_out)
     assert batch.sdbfac() == 0
-    assert batch.set_sdbfac(value=values_in.next()) is batch
-    assert batch.sdbfac() == values_out.next()
+    assert batch.set_sdbfac(value=next(values_in)) is batch
+    assert batch.sdbfac() == next(values_out)
     assert batch.phirange() == 0
-    assert batch.set_phirange(value=values_in.next()) is batch
-    assert batch.phirange() == values_out.next()
+    assert batch.set_phirange(value=next(values_in)) is batch
+    assert batch.phirange() == next(values_out)
     assert list(batch.e1()) == [0]*3
     assert batch.set_e1(flex.float(range(71,74))) is batch
     assert list(batch.e1()) == range(71,74)
@@ -1220,20 +1220,20 @@ Crystal 2:
     assert batch.set_so(flex.float(range(75,78))) is batch
     assert list(batch.so()) == range(75,78)
     assert batch.alambd() == 0
-    assert batch.set_alambd(value=values_in.next()) is batch
-    assert batch.alambd() == values_out.next()
+    assert batch.set_alambd(value=next(values_in)) is batch
+    assert batch.alambd() == next(values_out)
     assert batch.delamb() == 0
-    assert batch.set_delamb(value=values_in.next()) is batch
-    assert batch.delamb() == values_out.next()
+    assert batch.set_delamb(value=next(values_in)) is batch
+    assert batch.delamb() == next(values_out)
     assert batch.delcor() == 0
-    assert batch.set_delcor(value=values_in.next()) is batch
-    assert batch.delcor() == values_out.next()
+    assert batch.set_delcor(value=next(values_in)) is batch
+    assert batch.delcor() == next(values_out)
     assert batch.divhd() == 0
-    assert batch.set_divhd(value=values_in.next()) is batch
-    assert batch.divhd() == values_out.next()
+    assert batch.set_divhd(value=next(values_in)) is batch
+    assert batch.divhd() == next(values_out)
     assert batch.divvd() == 0
-    assert batch.set_divvd(value=values_in.next()) is batch
-    assert batch.divvd() == values_out.next()
+    assert batch.set_divvd(value=next(values_in)) is batch
+    assert batch.divvd() == next(values_out)
     assert list(batch.dx()) == [0]*2
     assert batch.set_dx(flex.float(range(84,86))) is batch
     assert list(batch.dx()) == range(84,86)

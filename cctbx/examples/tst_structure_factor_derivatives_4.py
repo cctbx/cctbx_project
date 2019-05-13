@@ -252,7 +252,7 @@ def run_call_back(flags,
   else:
     i_structure = count()
     for entry in strudat_entries:
-      if (i_structure.next() % chunk_n != chunk_i): continue
+      if (next(i_structure) % chunk_n != chunk_i): continue
       # XXX Not sure why this stderr output is necessary. Disabling to clean
       # up t96 output.
       # print >> sys.stderr, "strudat tag:", entry.tag

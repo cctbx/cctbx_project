@@ -239,7 +239,7 @@ def compute_c2(argv=None) :
            exprun = dataset_name
 
        ds           = DataSource(dataset_name)
-       run          = ds.runs().next()
+       run          = next(ds.runs())
 
        # Select event generator
        if    (ftype=='smd') or (ftype == 'smd_ffb') or (ftype == 'xtc'):

@@ -15,7 +15,7 @@ class dtrek_symmetry_entry(object):
 
   def __init__(self, lf):
     self.symbol = None
-    l = lf.next()
+    l = next(lf)
     print(l.strip())
     if (lf.eof): return
     no, number, symbol, m = l.split()
@@ -30,7 +30,7 @@ class dtrek_symmetry_entry(object):
     t_den = space_group.t_den()
     matrices = []
     for i in xrange(abs(m)):
-      l = lf.next()
+      l = next(lf)
       assert not lf.eof
       flds = l.split()
       assert len(flds) == 12
