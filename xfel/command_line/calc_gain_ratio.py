@@ -51,7 +51,7 @@ def run(args):
   img = dxtbx.load(params.average)
   dataset_name = "exp=%s:run=%s:idx"%(params.experiment,params.run)
   ds = psana.DataSource(dataset_name)
-  run = ds.runs().next()
+  run = next(ds.runs())
 
   psana_det = psana.Detector(params.address, ds.env())
   psana_gain_mask = psana_det.gain_mask()

@@ -918,7 +918,7 @@ def mutable_zeros(n):
 def sum(iterable):
   """ The sum of the given sequence of matrices """
   sequence = iter(iterable)
-  result = sequence.next()
+  result = next(sequence)
   for m in sequence:
     result += m
   return result

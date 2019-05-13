@@ -843,7 +843,7 @@ class calculate_distances(object):
     self.pair_counts = flex.size_t()
 
   def __iter__(self):
-    return self.next()
+    return next(self)
 
   def next(self):
 
@@ -1015,7 +1015,7 @@ class calculate_angles(object):
     self.pair_counts = flex.size_t()
 
   def __iter__(self):
-    return self.next()
+    return next(self)
 
   def next(self):
 

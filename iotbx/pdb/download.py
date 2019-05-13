@@ -115,7 +115,7 @@ class coupled_stream(object):
 
   def next(self):
 
-    return self.primary.next()
+    return next(self.primary)
 
 
   def __iter__(self):

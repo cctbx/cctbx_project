@@ -40,7 +40,7 @@ def read_table(file_name):
   sigmas = flex.double()
   lf = line_feeder(open(file_name))
   while 1:
-    line = lf.next()
+    line = next(lf)
     if (lf.eof): break
     if (line.startswith("   FORM: ATOMIC NUMBER=")):
       atomic_number = float(line.split("=")[1])
@@ -51,7 +51,7 @@ def read_table(file_name):
     elif (line.startswith("        X (1/A)")):
       assert atomic_number == number_of_electrons
       while 1:
-        line = lf.next()
+        line = next(lf)
         assert not lf.eof
         if (line == " *** END OF DATA ***"):
           lf.eof = True

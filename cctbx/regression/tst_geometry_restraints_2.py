@@ -202,7 +202,7 @@ def exercise_with_zeolite(verbose):
       asu_mappings=asu_mappings)
     while (not pair_generator.at_end()):
       p = geometry_restraints.nonbonded_asu_proxy(
-        pair=pair_generator.next(),
+        pair=next(pair_generator),
         vdw_distance=3)
       sorted_asu_proxies.process(p)
     out = StringIO()

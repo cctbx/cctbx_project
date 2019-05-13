@@ -72,7 +72,7 @@ def search_symop_lib_for_ccp4_symbol(space_group_info, file_iter):
     order_z = int(flds[1])
     if (space_group_number != given_space_group_number):
       for i in xrange(order_z):
-        file_iter.next()
+        next(file_iter)
     else:
       result = flds[3]
       group = collect_symops(file_iter=file_iter, order_z=order_z)

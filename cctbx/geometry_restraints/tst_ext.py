@@ -489,7 +489,7 @@ def exercise_bond():
     asu_mappings=asu_mappings,
     distance_cutoff=5)
   p = geometry_restraints.bond_asu_proxy(
-      pair=pair_generator.next(),
+      pair=next(pair_generator),
       distance_ideal=2,
       weight=10, slack=2, limit=1, top_out=True, origin_id=2)
   p = geometry_restraints.bond_asu_proxy(pair=p, params=p)
@@ -980,7 +980,7 @@ def exercise_nonbonded():
     asu_mappings=asu_mappings,
     distance_cutoff=5)
   p = geometry_restraints.nonbonded_asu_proxy(
-    pair=pair_generator.next(),
+    pair=next(pair_generator),
     vdw_distance=2)
   assert pair_generator.at_end()
   assert p.i_seq == 0
@@ -1114,14 +1114,14 @@ def exercise_nonbonded():
     assert approx_equal(
       f.residual(vdw_distance=3, delta=3), 12*norm_height_at_vdw_distance)
     assert approx_equal(
-      f.residual(vdw_distance=3, delta=2.9), expected_residuals.next())
+      f.residual(vdw_distance=3, delta=2.9), next(expected_residuals))
     r = geometry_restraints.nonbonded_gaussian(
       sites=list(sites_cart),
       vdw_distance=p.vdw_distance,
       function=f)
     assert approx_equal(r.diff_vec, [-1,-1,-1])
     assert approx_equal(r.delta**2, 3)
-    e = expected_gradients.next()
+    e = next(expected_gradients)
     assert approx_equal(r.gradients(), [[e]*3,[-e]*3])
   #
   sorted_asu_proxies = geometry_restraints.nonbonded_sorted_asu_proxies(
@@ -3315,7 +3315,7 @@ def exercise_origin_id_selections_for_bonds():
   pair_generator = crystal.neighbors_fast_pair_generator(
     asu_mappings=asu_mappings,
     distance_cutoff=5)
-  pgn = pair_generator.next()
+  pgn = next(pair_generator)
   p_array = []
   for i in range(10):
     p = geometry_restraints.bond_asu_proxy(

@@ -106,7 +106,7 @@ class trivial_html_tag_filter(object):
 
   def next(self):
     while 1:
-      result = self.f.next()
+      result = next(self.f)
       if (result[0] != "<"):
         return result
 

@@ -147,63 +147,63 @@ class structure_factor:
     d2s = self.d2_g_alpha_d_params()
     for dt,di,d2 in zip(dts, ds, d2s):
       # dx. dy. dz.
-      d2ti0 = d2ti.next()
+      d2ti0 = next(d2ti)
       for dxi in di.site:
         row = []; ra = row.append
         d2tij = iter(d2ti0)
         for dj in ds:
-          d2t = d2tij.next()
+          d2t = next(d2tij)
           for dxj in dj.site:
             ra(d2t * dxi * dxj)
-          d2t = d2tij.next()
+          d2t = next(d2tij)
           ra(d2t * dxi * dj.u_iso)
           ra(d2t * dxi * dj.occupancy)
-          ra(d2tij.next() * dxi)
-          ra(d2tij.next() * dxi)
+          ra(next(d2tij) * dxi)
+          ra(next(d2tij) * dxi)
         result.append(row)
       # d2u.
       row = []; ra = row.append
-      d2ti0 = d2ti.next()
+      d2ti0 = next(d2ti)
       d2tij = iter(d2ti0)
       for dj in ds:
-        d2t = d2tij.next()
+        d2t = next(d2tij)
         for dxj in dj.site:
           ra(d2t * dxj * di.u_iso)
-        d2t = d2tij.next()
+        d2t = next(d2tij)
         ra(d2t * di.u_iso * dj.u_iso)
         if (di is dj): row[-1] += dt.g * d2.uu
         ra(d2t * di.u_iso * dj.occupancy)
         if (di is dj): row[-1] += dt.g * d2.uw
-        ra(d2tij.next() * di.u_iso)
-        ra(d2tij.next() * di.u_iso)
+        ra(next(d2tij) * di.u_iso)
+        ra(next(d2tij) * di.u_iso)
       result.append(row)
       # d2w.
       row = []; ra = row.append
       d2tij = iter(d2ti0)
       for dj in ds:
-        d2t = d2tij.next()
+        d2t = next(d2tij)
         for dxj in dj.site:
           ra(d2t * dxj * di.occupancy)
-        d2t = d2tij.next()
+        d2t = next(d2tij)
         ra(d2t * di.occupancy * dj.u_iso)
         if (di is dj): row[-1] += dt.g * d2.uw
         ra(d2t * di.occupancy * dj.occupancy)
-        ra(d2tij.next() * di.occupancy)
-        ra(d2tij.next() * di.occupancy)
+        ra(next(d2tij) * di.occupancy)
+        ra(next(d2tij) * di.occupancy)
       result.append(row)
       # d2'. and d2"
       for ip in [0,1]:
         row = []; ra = row.append
-        d2tij = iter(d2ti.next())
+        d2tij = iter(next(d2ti))
         for dj in ds:
-          d2t = d2tij.next()
+          d2t = next(d2tij)
           for dxj in dj.site:
             ra(d2t * dxj)
-          d2t = d2tij.next()
+          d2t = next(d2tij)
           ra(d2t * dj.u_iso)
           ra(d2t * dj.occupancy)
-          ra(d2tij.next())
-          ra(d2tij.next())
+          ra(next(d2tij))
+          ra(next(d2tij))
         result.append(row)
     return result
 

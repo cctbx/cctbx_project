@@ -210,7 +210,7 @@ class structure_factor_symmetry(object):
                            wires=True,
                            orthographic=True)
       cc_map_peaks = cc_map.peak_search(self.search_parameters)
-      peak = cc_map_peaks.next()
+      peak = next(cc_map_peaks)
       yield (op.r(), mat.col(peak.site))
 
   def find_space_group(self):

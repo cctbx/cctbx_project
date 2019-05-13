@@ -489,7 +489,7 @@ unused: 10.0715 -         [0/0]
     set2 = set1.select(flex.size_t(xrange(n)))
     for reflections_per_bin in range(1,n+1) + [n+1, n*10]:
       set2.setup_binner_counting_sorted(reflections_per_bin=reflections_per_bin)
-      assert list(set2.binner().counts()) == expected_counts.next()
+      assert list(set2.binner().counts()) == next(expected_counts)
   set1.setup_binner_counting_sorted(
     d_max=16,
     d_min=11,
@@ -509,7 +509,7 @@ unused: 10.0715 -         [0/0]
     set2 = set1.select(flex.size_t(xrange(n)))
     for n_bins in range(n, 0, -1):
       set2.setup_binner_counting_sorted(n_bins=n_bins)
-      assert list(set2.binner().counts()) == expected_counts.next()
+      assert list(set2.binner().counts()) == next(expected_counts)
   set1.setup_binner_counting_sorted(
     d_max=16,
     d_min=11,
