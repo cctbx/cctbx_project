@@ -793,6 +793,8 @@ Installation of Python packages may fail.
 
     if self.flag_is_mac and not op.exists('/usr/include/zlib.h'):
       print("zlib.h missing -- try running 'xcode-select --install' first", file=self.log)
+      if get_os_version().startswith('10.') and int(get_os_version().split('.')[1]) >= 14:
+        print("followed by 'sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -target /", file=self.log)
       sys.exit(1)
     log = self.start_building_package("Python")
     os.chdir(self.tmp_dir)
