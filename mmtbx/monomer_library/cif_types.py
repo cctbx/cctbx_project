@@ -85,9 +85,7 @@ class looped_data(object):
 
   def show_loop_data(self, f=None):
     if (f is None): f = sys.stdout
-    for val in self.generate_loop_data():
-      print(val, end=' ', file=f)
-    print(file=f)
+    print(" ".join([str(val) for val in self.generate_loop_data()]), file=f)
 
   def as_cif_loop(self):
     import iotbx

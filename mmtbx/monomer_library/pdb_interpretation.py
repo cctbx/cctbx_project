@@ -4083,9 +4083,9 @@ class build_all_chain_proxies(linking_mixins):
         print("    %s %s - %s distance=%.2f" % tuple(
           [disulfide_type]
           + [labels[i_seq] for i_seq in sym_pair.i_seqs()]
-          + [distance_model]), end=' ', file=log)
+          + [distance_model]), end='', file=log)
         if (not sym_pair.rt_mx_ji.is_unit_mx()):
-          print(sym_pair.rt_mx_ji, end=' ', file=log)
+          print(" " + str(sym_pair.rt_mx_ji), end='', file=log)
         print(file=log)
     return pair_sym_table, max_distance_model
 
