@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 from cctbx.array_family import flex
 from libtbx import easy_run
@@ -78,7 +79,7 @@ def exercise(prefix="tst_models_to_from_chains"):
   xrs = iotbx.pdb.input(source_info=None, lines=pdb_str).xray_structure_simple()
   input_file_name = "%s.pdb"%prefix
   of = open(input_file_name,"w")
-  print >> of, pdb_str
+  print(pdb_str, file=of)
   of.close()
   mi = flex.miller_index(((0,0,1), ))
   ms = miller.set(xrs.crystal_symmetry(), mi,  anomalous_flag=False)

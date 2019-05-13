@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 from iotbx.option_parser import iotbx_option_parser
 from mmtbx import utils
@@ -123,7 +124,7 @@ class map_cc_funct(object):
       self._result = [None,]*len(residues)
       for i_seq, residue in enumerate(residues):
         residue_sites_cart = sites_cart.select(residue.selection)
-        if 0: print i_seq, list(residue.selection) # DEBUG
+        if 0: print(i_seq, list(residue.selection)) # DEBUG
         sel = maptbx.grid_indices_around_sites(
           unit_cell  = self.xray_structure.unit_cell(),
           fft_n_real = real_map_unpadded.focus(),
@@ -226,10 +227,10 @@ def write_ensemble_pdb(filename,
                        ens_pdb_hierarchy):
     out = open(filename, 'w')
     crystal_symmetry = xrs_list[0].crystal_symmetry()
-    print >> out,  "REMARK   3  TIME-AVERAGED ENSEMBLE REFINEMENT"
-    print >> out,  "REMARK   3  OCCUPANCY = MAP SIGMA LEVEL"
-    print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
-    print >> out, pdb.format_scale_records(unit_cell = crystal_symmetry.unit_cell())
+    print("REMARK   3  TIME-AVERAGED ENSEMBLE REFINEMENT", file=out)
+    print("REMARK   3  OCCUPANCY = MAP SIGMA LEVEL", file=out)
+    print(pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry), file=out)
+    print(pdb.format_scale_records(unit_cell = crystal_symmetry.unit_cell()), file=out)
     atoms_reset_serial = True
 
     for i_model, xrs in enumerate(xrs_list):
@@ -326,7 +327,7 @@ class ensemble_probability(object):
 
     if len(reflection_files) > 0:
       crystal_symmetry = processed_args.crystal_symmetry
-      print >> self.log, 'Reflection file : ', processed_args.reflection_file_names[0]
+      print('Reflection file : ', processed_args.reflection_file_names[0], file=self.log)
       utils.print_header("Model and data statistics", out = self.log)
       rfs = reflection_file_server(
         crystal_symmetry = crystal_symmetry,
@@ -357,7 +358,7 @@ class ensemble_probability(object):
     ens_pdb_hierarchy.atoms().reset_i_seq()
     ens_pdb_xrs_s = pdb_in.input.xray_structures_simple()
     number_structures = len(ens_pdb_xrs_s)
-    print >> self.log, 'Number of structure in ensemble : ', number_structures
+    print('Number of structure in ensemble : ', number_structures, file=self.log)
 
     # Calculate sigmas from input map only
     if self.params.assign_sigma_from_map and self.params.ensemble_sigma_map_input is not None:
@@ -409,7 +410,7 @@ class ensemble_probability(object):
               dummy_dmin = self.params.fcalc_high_resolution
               dummy_dmax = self.params.fcalc_low_resolution
             else:
-              print >> self.log, 'Supplied mtz used to determine high and low resolution cuttoffs'
+              print('Supplied mtz used to determine high and low resolution cuttoffs', file=self.log)
               dummy_dmax, dummy_dmin = f_obs.d_max_min()
             #
             dummy_fobs = abs(ens_pdb_xrs.structure_factors(d_min = dummy_dmin).f_calc())
@@ -434,11 +435,11 @@ class ensemble_probability(object):
                                        update_f_calc   = True,
                                        update_f_mask   = False)
           f_calc_ave_total += fmodel.f_calc().data().deep_copy()
-        print >> self.log, 'Model :', model+1
-        print >> self.log, "\nStructure vs real Fobs (no bulk solvent or scaling)"
-        print >> self.log, 'Rwork          : %5.4f '%fmodel.r_work()
-        print >> self.log, 'Rfree          : %5.4f '%fmodel.r_free()
-        print >> self.log, 'K1             : %5.4f '%fmodel.scale_k1()
+        print('Model :', model+1, file=self.log)
+        print("\nStructure vs real Fobs (no bulk solvent or scaling)", file=self.log)
+        print('Rwork          : %5.4f '%fmodel.r_work(), file=self.log)
+        print('Rfree          : %5.4f '%fmodel.r_free(), file=self.log)
+        print('K1             : %5.4f '%fmodel.scale_k1(), file=self.log)
         fcalc_edm        = fmodel.electron_density_map()
         fcalc_map_coeffs = fcalc_edm.map_coefficients(map_type = 'Fc')
         fcalc_mtz_dataset = fcalc_map_coeffs.as_mtz_dataset(column_root_label ='Fc')
@@ -447,10 +448,10 @@ class ensemble_probability(object):
         model_map_coeffs.append(fcalc_map_coeffs.deep_copy())
 
       fmodel.update(f_calc = f_calc_ave.array(f_calc_ave_total / number_structures))
-      print >> self.log, "\nEnsemble vs real Fobs (no bulk solvent or scaling)"
-      print >> self.log, 'Rwork          : %5.4f '%fmodel.r_work()
-      print >> self.log, 'Rfree          : %5.4f '%fmodel.r_free()
-      print >> self.log, 'K1             : %5.4f '%fmodel.scale_k1()
+      print("\nEnsemble vs real Fobs (no bulk solvent or scaling)", file=self.log)
+      print('Rwork          : %5.4f '%fmodel.r_work(), file=self.log)
+      print('Rfree          : %5.4f '%fmodel.r_free(), file=self.log)
+      print('K1             : %5.4f '%fmodel.scale_k1(), file=self.log)
 
       # Get <Fcalc> map
       fcalc_ave_edm        = fmodel.electron_density_map()
@@ -463,7 +464,7 @@ class ensemble_probability(object):
       fcalc_ave_map_data   = fcalc_ave_map_coeffs.real_map_unpadded()
       fcalc_ave_map_stats  = maptbx.statistics(fcalc_ave_map_data)
 
-      print >> self.log, "<Fcalc> Map Stats :"
+      print("<Fcalc> Map Stats :", file=self.log)
       fcalc_ave_map_stats.show_summary(f = self.log)
       offset = fcalc_ave_map_stats.min()
       model_neg_ll = []
@@ -474,14 +475,14 @@ class ensemble_probability(object):
       xrs_list = []
       for model, ens_pdb_xrs in enumerate(ens_pdb_xrs_s):
         if self.params.verbose:
-          print >> self.log, '\n\nModel                   : ', model+1
+          print('\n\nModel                   : ', model+1, file=self.log)
         # Get model atom sigmas vs Fcalc
         fcalc_map = model_map_coeffs[model].fft_map()
         fcalc_map.apply_volume_scaling()
         fcalc_map_data  = fcalc_map.real_map_unpadded()
         fcalc_map_stats  = maptbx.statistics(fcalc_map_data)
         if self.params.verbose:
-          print >> self.log, "Fcalc map stats         :"
+          print("Fcalc map stats         :", file=self.log)
         fcalc_map_stats.show_summary(f = self.log)
 
         xrs = get_map_sigma(ens_pdb_hierarchy = ens_pdb_hierarchy,
@@ -513,7 +514,7 @@ class ensemble_probability(object):
         # XXX debug option
         if False:
           for n,p in enumerate(prob):
-            print >> self.log, ' {0:5d} {1:5.3f}'.format(n,p)
+            print(' {0:5d} {1:5.3f}'.format(n,p), file=self.log)
         # Set probabilty between 0 and 1
         # XXX Make Histogram / more stats
         prob_lss_zero = flex.bool(prob <= 0)
@@ -525,10 +526,10 @@ class ensemble_probability(object):
         sum_neg_ll = sum(-flex.log(prob))
         model_neg_ll.append((sum_neg_ll, model))
         if self.params.verbose:
-          print >> self.log, 'Model probability stats :'
-          print >> self.log, prob.min_max_mean().show()
-          print >> self.log, '  Count < 0.0 : ', prob_lss_zero.count(True)
-          print >> self.log, '  Count > 1.0 : ', prob_grt_one.count(True)
+          print('Model probability stats :', file=self.log)
+          print(prob.min_max_mean().show(), file=self.log)
+          print('  Count < 0.0 : ', prob_lss_zero.count(True), file=self.log)
+          print('  Count > 1.0 : ', prob_grt_one.count(True), file=self.log)
 
         # For averaging by residue
         number_previous_scatters += ens_pdb_xrs.sites_cart().size()
@@ -558,16 +559,16 @@ class ensemble_probability(object):
             cutoff_nll_occ = flex.double(nll_occ.size(), 1.0).set_selected(cutoff_selections, 0.0)
             #XXX Debug
             if False:
-              print '\nDebug'
+              print('\nDebug')
               for x in xrange(len(cutoff_selections)):
-                print cutoff_selections[x], nll_occ[x], cutoff_nll_occ[x]
-              print percentile
-              print percentile_prob_cutoff
-              print cutoff_selections.count(True)
-              print cutoff_selections.size()
-              print cutoff_nll_occ.count(0.0)
-              print 'Count q = 1           : ', cutoff_nll_occ.count(1.0)
-              print 'Count scatterers size : ', cutoff_nll_occ.size()
+                print(cutoff_selections[x], nll_occ[x], cutoff_nll_occ[x])
+              print(percentile)
+              print(percentile_prob_cutoff)
+              print(cutoff_selections.count(True))
+              print(cutoff_selections.size())
+              print(cutoff_nll_occ.count(0.0))
+              print('Count q = 1           : ', cutoff_nll_occ.count(1.0))
+              print('Count scatterers size : ', cutoff_nll_occ.size())
 
             xrs.set_occupancies(cutoff_nll_occ)
             fmodel.update_xray_structure(xray_structure  = xrs,
@@ -598,18 +599,18 @@ class ensemble_probability(object):
               print_list.append([cntr, i_neg_ll[0], i_neg_ll[1], fmodel.r_work(), fmodel.r_free()])
 
           # Order models by nll and print summary
-          print >> self.log, '\nModels ranked by nll <Fcalc> R-factors recalculated'
-          print >> self.log, 'Percentile cutoff : {0:5.3f}'.format(percentile)
+          print('\nModels ranked by nll <Fcalc> R-factors recalculated', file=self.log)
+          print('Percentile cutoff : {0:5.3f}'.format(percentile), file=self.log)
           xrs_list_sorted_nll = []
-          print >> self.log, '      |      NLL     <Rw>     <Rf>    Ens Model'
+          print('      |      NLL     <Rw>     <Rf>    Ens Model', file=self.log)
           for info in print_list:
-            print >> self.log, ' {0:4d} | {1:8.1f} {2:8.4f} {3:8.4f} {4:12d}'.format(
+            print(' {0:4d} | {1:8.1f} {2:8.4f} {3:8.4f} {4:12d}'.format(
               info[0],
               info[1],
               info[3],
               info[4],
               info[2]+1,
-              )
+              ), file=self.log)
             xrs_list_sorted_nll.append(xrs_list[info[2]])
 
         # Output nll ordered ensemble

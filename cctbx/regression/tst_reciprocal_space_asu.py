@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx.development import debug_utils
@@ -24,7 +25,7 @@ def filter_asu(space_group_info, indices, verbose):
   asu = space_group_info.reciprocal_space_asu()
   assert asu.is_reference()
   cond = asu.reference_as_string()
-  if (verbose): print cond
+  if (verbose): print(cond)
   cond_dict[cond] = 0
   is_centric = space_group_info.group().is_centric
   result = flex.miller_index()
@@ -52,11 +53,11 @@ def expand_indices(space_group, asu_indices):
 def exercise(space_group_info, verbose=0):
   if (not space_group_info.reciprocal_space_asu().is_reference()): return
   all_indices = get_all_incides(space_group_info.group(), abs_range=4)
-  if (verbose): print "all_indices.size():", all_indices.size()
+  if (verbose): print("all_indices.size():", all_indices.size())
   asu_indices = filter_asu(space_group_info, all_indices, verbose)
-  if (verbose): print "asu_indices.size():", asu_indices.size()
+  if (verbose): print("asu_indices.size():", asu_indices.size())
   exp_indices = expand_indices(space_group_info.group(), asu_indices)
-  if (verbose): print "exp_indices.size():", exp_indices.size()
+  if (verbose): print("exp_indices.size():", exp_indices.size())
   assert all_indices.size() == exp_indices.size()
 
 def run_call_back(flags, space_group_info):
@@ -65,9 +66,9 @@ def run_call_back(flags, space_group_info):
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   if (0):
-    print "len(cond_dict):", len(cond_dict)
+    print("len(cond_dict):", len(cond_dict))
     for k in cond_dict.keys():
-      print k
+      print(k)
 
 if (__name__ == "__main__"):
   run()

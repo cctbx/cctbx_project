@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors.raxisbase import Raxis
 from iotbx.detectors import ReadRAXIS
@@ -52,9 +53,9 @@ if __name__=='__main__':
   i = sys.argv[1]
   a = RAXISImage(i)
   a.read()
-  print a.linearintdata
-  print a.linearintdata.size()
-  print a.linearintdata.accessor()
+  print(a.linearintdata)
+  print(a.linearintdata.size())
+  print(a.linearintdata.accessor())
   #
   #from labelit.dptbx.graphics_support import GenericImageWorker
   #W = GenericImageWorker(i)

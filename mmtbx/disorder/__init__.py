@@ -7,6 +7,7 @@ mmtbx.refinement.ensemble_refinement.
 """
 
 from __future__ import division
+from __future__ import print_function
 import math
 
 def set_ensemble_b_factors_to_xyz_displacement(pdb_hierarchy,
@@ -70,9 +71,9 @@ def set_ensemble_b_factors_to_xyz_displacement(pdb_hierarchy,
       dev_by_atom[atom_key] = rmsf
   all_dev = flex.double(dev_by_atom.values())
   if (method == "mcs"):
-    print >> log, "Distribution of sphere radii:"
+    print("Distribution of sphere radii:", file=log)
   else :
-    print >> log, "Distribution of root-mean-square fluctuation values:"
+    print("Distribution of root-mean-square fluctuation values:", file=log)
   flex.histogram(all_dev, n_slots=20).show(f=log, prefix="  ",
     format_cutoffs="%.2f")
   for model in pdb_hierarchy.models():

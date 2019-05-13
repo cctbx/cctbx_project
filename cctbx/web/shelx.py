@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # Generate SHELX LATT and SYMM cards for a given space group.
 
 from cctbx import sgtbx
@@ -13,11 +14,11 @@ def interpret_form_data(form):
   return inp
 
 def run(server_info, inp, status):
-  print "<pre>"
+  print("<pre>")
   space_group_info = sgtbx.space_group_info(
     symbol=inp.sgsymbol,
     table_id=inp.convention)
   space_group_info.show_summary()
-  print
+  print()
   LATT_SYMM(sys.stdout, space_group_info.group())
-  print "</pre>"
+  print("</pre>")

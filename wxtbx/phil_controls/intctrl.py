@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # XXX this is mostly redundant with wx.IntCtrl, but that control doesn't have
 # a way to deal with None or Auto.
@@ -26,7 +27,7 @@ class IntCtrl(ValidatedTextCtrl):
     try :
       val = self.GetPhilValue()
     except Exception, e :
-      print e
+      print(e)
     else :
       if (not self.GetPhilValue() in [None, Auto]):
         spinner.SetValue(self.GetPhilValue())
@@ -151,12 +152,12 @@ if (__name__ == "__main__"):
     int1 = int_ctrl.GetPhilValue()
     int2 = int_ctrl2.GetPhilValue()
     int3 = int_ctrl3.GetPhilValue()
-    print type(int1).__name__, str(int1)
-    print type(int2).__name__, str(int2)
-    print type(int3).__name__, str(int3)
+    print(type(int1).__name__, str(int1))
+    print(type(int2).__name__, str(int2))
+    print(type(int3).__name__, str(int3))
   frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
   def OnChange(evt):
-    print evt.GetEventObject().GetPhilValue()
+    print(evt.GetEventObject().GetPhilValue())
   from wxtbx.phil_controls import EVT_PHIL_CONTROL
   frame.Bind(EVT_PHIL_CONTROL, OnChange)
   frame.Fit()

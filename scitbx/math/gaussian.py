@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.array_family.flex # for tuple mappings
 
 from scitbx.math.ext import gaussian_term as term # implicit import
@@ -15,9 +16,9 @@ class _(boost.python.injector, sum):
     if (f is None): f = sys.stdout
     if (format is None): format = "%.8g"
     for l,v in (("a:", self.array_of_a()), ("b:", self.array_of_b())):
-      print >> f, l, " ".join([format % x for x in v])
+      print(l, " ".join([format % x for x in v]), file=f)
     if (self.use_c()):
-      print >> f, "c:", format % self.c()
+      print("c:", format % self.c(), file=f)
     return self
 
   def sort(self):
@@ -34,12 +35,12 @@ class _(boost.python.injector, fit):
 
   def show_table(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "stol  table   fitted   delta rel_del"
+    print("stol  table   fitted   delta rel_del", file=f)
     for x,y,v,e in zip(self.table_x(),
                        self.table_y(),
                        self.fitted_values(),
                        self.significant_relative_errors()):
-      print >> f, "%4.2f %7.4f %7.4f %7.4f %7.4f" % (x,y,v,v-y,e)
+      print("%4.2f %7.4f %7.4f %7.4f %7.4f" % (x,y,v,v-y,e), file=f)
 
   def __getinitargs__(self):
     return (self.table_x(), self.table_y(), self.table_sigmas(), sum(self))

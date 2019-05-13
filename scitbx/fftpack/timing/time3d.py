@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 path_random_picks_pickle = (
   "/net/anaconda/scratch1/rwgk/pdbtools/minidb/random_picks.pickle")
 
@@ -52,7 +53,7 @@ def run_one(memlimit, package, iter, type_and_dir):
       os.system("tst3d %s %s %d %d %d %d" % (
        (package, type_and_dir) + tuple(grid) + (iter,)))
       t = time.time() - t0
-      print idCode, ucparams, resolution, grid, memuse, iter, t
+      print(idCode, ucparams, resolution, grid, memuse, iter, t)
       sys.stdout.flush()
 
 def run(type_and_dir, memlimit = 0):
@@ -60,7 +61,7 @@ def run(type_and_dir, memlimit = 0):
     for iter in (0, 1):
       t0 = time.time()
       run_one(memlimit, package, iter, type_and_dir)
-      print "Time %s %d:" % (package, iter), time.time() - t0
+      print("Time %s %d:" % (package, iter), time.time() - t0)
       sys.stdout.flush()
 
 if (__name__ == "__main__"):

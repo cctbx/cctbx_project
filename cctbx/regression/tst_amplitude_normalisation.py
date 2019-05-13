@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx import miller
@@ -106,7 +107,7 @@ def exercise_normalised_amplitudes():
 
 def run():
   exercise_normalised_amplitudes()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

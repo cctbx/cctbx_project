@@ -4,6 +4,7 @@ from __future__ import division
 Utility for matching a dials-format non-image pickle file to an experiment list and producing a cctbx-format dictionary
 from the pair.
 """
+from __future__ import print_function
 
 import os
 from dials.util.options import Importer, flatten_reflections, flatten_experiments
@@ -41,19 +42,19 @@ class read_dials_pickle(object):
       json = find_json(path, pickle_ext, json_ext)
     if json is None:
       importer = Importer([path], read_experiments=False, read_reflections=True, check_format=False)
-      print "unable to find experiment list"
+      print("unable to find experiment list")
       self.experiments = None
     else:
       importer = Importer([path, json], read_experiments=True, read_reflections=True, check_format=False)
       try:
         self.experiments = flatten_experiments(importer.experiments)[0]
       except IndexError:
-        print "unable to read experiment list"
+        print("unable to read experiment list")
         self.experiments = None
     try:
       self.reflections = flatten_reflections(importer.reflections)[0]
     except IndexError:
-      print "unable to read reflection table"
+      print("unable to read reflection table")
       self.reflections = None
   def make_pickle(self):
     if (self.experiments is None) or (self.reflections is None):

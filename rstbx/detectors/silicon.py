@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 crystalline_density = 2.3290 / 1000.# g/(mm^3) #wikipedia
 
@@ -39,6 +40,6 @@ def eV_from_Ang(Ang):
 
 if __name__=="__main__":
   for eV in range(2000, 30500, 500):
-    print eV, "%.2f"%Si_mass_attenuation().from_energy_eV(eV)
-  print Si_mass_attenuation().from_wavelength_Angstrom(1.3)
-  print Si_mass_attenuation().from_wavelength_Angstrom(1.297461)*amorphous_density
+    print(eV, "%.2f"%Si_mass_attenuation().from_energy_eV(eV))
+  print(Si_mass_attenuation().from_wavelength_Angstrom(1.3))
+  print(Si_mass_attenuation().from_wavelength_Angstrom(1.297461)*amorphous_density)

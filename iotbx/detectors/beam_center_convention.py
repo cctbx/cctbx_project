@@ -21,6 +21,7 @@ This module provides a function, convert_beam_instrument_to_imageblock() to give
   defines in which reference frame the beam is expressed.
 """
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 
 class beam_center_convention_definitions:
@@ -128,8 +129,8 @@ if __name__=="__main__":
   for convention in range(8):
     for moduleidx in range(9):
       B = convert_beam_instrument_to_module(input_object,ID,moduleidx,convention)
-      print >>S,"(%.1f,%.1f)"%(B[0],B[1]),
-    print >>S
+      print("(%.1f,%.1f)"%(B[0],B[1]), end=' ', file=S)
+    print(file=S)
   assert not show_diff(S.getvalue(),
 """(154.7,148.5) (154.7,43.4) (154.7,-61.6) (49.6,148.5) (49.6,43.4) (49.6,-61.6) (-55.4,148.5) (-55.4,43.4) (-55.4,-61.6)
 (148.5,154.7) (148.5,49.6) (148.5,-55.4) (43.4,154.7) (43.4,49.6) (43.4,-55.4) (-61.6,154.7) (-61.6,49.6) (-61.6,-55.4)
@@ -140,4 +141,4 @@ if __name__=="__main__":
 (160.0,166.2) (160.0,61.2) (160.0,-43.9) (55.0,166.2) (55.0,61.2) (55.0,-43.9) (-50.1,166.2) (-50.1,61.2) (-50.1,-43.9)
 (166.2,160.0) (166.2,55.0) (166.2,-50.1) (61.2,160.0) (61.2,55.0) (61.2,-50.1) (-43.9,160.0) (-43.9,55.0) (-43.9,-50.1)
 """)
-  print "OK"
+  print("OK")

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -209,9 +210,9 @@ class Script(object):
       argv = sys.argv[1:]
 
     if len(argv) == 0 or "-h" in argv or "--help" in argv or "-c" in argv:
-      print help_str
-      print "Showing phil parameters:"
-      print phil_scope.as_str(attributes_level = 2)
+      print(help_str)
+      print("Showing phil parameters:")
+      print(phil_scope.as_str(attributes_level = 2))
       return
 
     user_phil = []
@@ -236,10 +237,10 @@ class Script(object):
     if params.input.dispatcher in ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
       # processing XTC streams at LCLS -- dispatcher will locate raw data
       assert params.input.experiment is not None or params.input.locator is not None
-      print "Submitting run %d of experiment %s"%(int(params.input.run_num), params.input.experiment)
+      print("Submitting run %d of experiment %s"%(int(params.input.run_num), params.input.experiment))
       rundir = os.path.join(params.output.output_dir, "r%04d"%int(params.input.run_num))
     else:
-      print "Submitting run %s"%(params.input.run_num)
+      print("Submitting run %s"%(params.input.run_num))
       try:
         rundir = os.path.join(params.output.output_dir, "r%04d"%int(params.input.run_num))
       except ValueError:
@@ -272,7 +273,7 @@ class Script(object):
       if os.path.exists(trialdir):
         raise Sorry("Trial %d already in use"%params.input.trial)
 
-    print "Using trial", params.input.trial
+    print("Using trial", params.input.trial)
     os.mkdir(trialdir)
 
     # log file will live here
@@ -381,12 +382,12 @@ class Script(object):
       command = " ".join(parts + [run_command])
     else:
       command = submit_command
-    print command
+    print(command)
 
     if params.dry_run:
-      print "Dry run: job not submitted. Trial directory created here:", trialdir
-      print "Execute this command to submit the job:"
-      print submit_command
+      print("Dry run: job not submitted. Trial directory created here:", trialdir)
+      print("Execute this command to submit the job:")
+      print(submit_command)
     else:
       try:
         result = easy_run.fully_buffered(command=submit_command)
@@ -395,7 +396,7 @@ class Script(object):
         if not "Warning: job being submitted without an AFS token." in str(e):
           raise e
 
-      print "Job submitted.  Output in", trialdir
+      print("Job submitted.  Output in", trialdir)
 
       if params.mp.method == "mpi" or params.mp.method == "lsf":
         submission_id = None
@@ -409,11 +410,11 @@ class Script(object):
             pass
           else:
             submission_id = str(s)
-        print submission_id
+        print(submission_id)
         return submission_id
       elif params.mp.method == 'pbs':
         submission_id = "".join(result.stdout_lines).strip()
-        print submission_id
+        print(submission_id)
         return submission_id
     return None
 

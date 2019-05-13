@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Sorry
 from libtbx import Auto
 import os.path
@@ -67,13 +68,13 @@ def run(args, out=sys.stdout):
   elif (params.space_group is None):
     raise Sorry("Space group needs to be explicitly specified.")
   for i_obs in outputs :
-    print >> out, "Using intensities in %s" % i_obs.info().label_string()
+    print("Using intensities in %s" % i_obs.info().label_string(), file=out)
   if (batch_numbers is not None):
     if (type(batch_numbers).__name__ == "array"):
-      print >> out, "Batch numbers will be taken from %s" % \
-        batch_numbers.info().label_string()
+      print("Batch numbers will be taken from %s" % \
+        batch_numbers.info().label_string(), file=out)
     else :
-      print >> out, "Batch numbers taken from raw input file"
+      print("Batch numbers taken from raw input file", file=out)
   if (params.output.prefix is None):
     params.output.prefix = os.path.splitext(
       os.path.basename(params.file_name))[0]
@@ -119,12 +120,12 @@ def run(args, out=sys.stdout):
           raise Sorry(msg +
             "You can suppress this warning by specifying ignore_batch=True.")
         else :
-          print >> out, msg + "The batch numbers will not be output."
+          print(msg + "The batch numbers will not be output.", file=out)
           tmp_batch_numbers = None
     i_obs.export_as_scalepack_unmerged(
       file_name=file_name,
       batch_numbers=tmp_batch_numbers)
-    print >> out, "Wrote %s" % file_name
+    print("Wrote %s" % file_name, file=out)
   return output_file_names
 
 def validate_params(params):

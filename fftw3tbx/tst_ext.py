@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import fftw3tbx
 import omptbx # initializes OpenMP environment
 from scitbx import fftpack
@@ -11,7 +12,7 @@ try: from cctbx import maptbx
 except ImportError: maptbx = None
 
 def exercise_complex_to_complex():
-  print "complex_to_complex"
+  print("complex_to_complex")
   for n in xrange(1,256+1):
     dp = (flex.random_double(size=n)*2-1) * flex.polar(
       1, flex.random_double(size=n)*2-1)
@@ -24,8 +25,8 @@ def exercise_complex_to_complex():
     fft.backward(dp)
     assert flex.max(flex.abs(dw-dp)) < 1.e-6
   for n,n_repeats in [(1200,500), (9600,250)]:
-    print "  factors of %d:" % n, list(fftpack.complex_to_complex(n).factors())
-    print "  repeats:", n_repeats
+    print("  factors of %d:" % n, list(fftpack.complex_to_complex(n).factors()))
+    print("  repeats:", n_repeats)
     d0 = (flex.random_double(size=n)*2-1) * flex.polar(
       1, flex.random_double(size=n)*2-1)
     #
@@ -33,28 +34,28 @@ def exercise_complex_to_complex():
     for i_trial in xrange(n_repeats):
       d = d0.deep_copy()
     overhead = time.time()-t0
-    print "    overhead: %.2f seconds" % overhead
+    print("    overhead: %.2f seconds" % overhead)
     #
     t0 = time.time()
     for i_trial in xrange(n_repeats):
       d = d0.deep_copy()
       fftw3tbx.complex_to_complex_in_place(data=d, exp_sign=-1)
       fftw3tbx.complex_to_complex_in_place(data=d, exp_sign=+1)
-    print "    fftw:     %.2f seconds" % (time.time()-t0-overhead)
+    print("    fftw:     %.2f seconds" % (time.time()-t0-overhead))
     #
     t0 = time.time()
     for i_trial in xrange(n_repeats):
       d = d0.deep_copy()
       fftpack.complex_to_complex(n).forward(d)
       fftpack.complex_to_complex(n).backward(d)
-    print "    fftpack:  %.2f seconds" % (time.time()-t0-overhead)
+    print("    fftpack:  %.2f seconds" % (time.time()-t0-overhead))
     sys.stdout.flush()
 
 def exercise_complex_to_complex_3d():
-  print "complex_to_complex_3d"
+  print("complex_to_complex_3d")
   for n_complex,n_repeats in [((100,80,90),2), ((200,160,180),1)]:
-    print "  dimensions:", n_complex
-    print "  repeats:", n_repeats
+    print("  dimensions:", n_complex)
+    print("  repeats:", n_repeats)
     np = n_complex[0]*n_complex[1]*n_complex[2]
     d0 = (flex.random_double(size=np)*2-1) * flex.polar(
       1, flex.random_double(size=np)*2-1)
@@ -64,14 +65,14 @@ def exercise_complex_to_complex_3d():
     for i_trial in xrange(n_repeats):
       d = d0.deep_copy()
     overhead = time.time()-t0
-    print "    overhead: %.2f seconds" % overhead
+    print("    overhead: %.2f seconds" % overhead)
     #
     t0 = time.time()
     for i_trial in xrange(n_repeats):
       d = d0.deep_copy()
       fftw3tbx.complex_to_complex_3d_in_place(data=d, exp_sign=-1)
       fftw3tbx.complex_to_complex_3d_in_place(data=d, exp_sign=+1)
-    print "    fftw:     %.2f seconds" % (time.time()-t0-overhead)
+    print("    fftw:     %.2f seconds" % (time.time()-t0-overhead))
     rw = d / np
     #
     t0 = time.time()
@@ -79,14 +80,14 @@ def exercise_complex_to_complex_3d():
       d = d0.deep_copy()
       fftpack.complex_to_complex_3d(n_complex).forward(d)
       fftpack.complex_to_complex_3d(n_complex).backward(d)
-    print "    fftpack:  %.2f seconds" % (time.time()-t0-overhead)
+    print("    fftpack:  %.2f seconds" % (time.time()-t0-overhead))
     sys.stdout.flush()
     rp = d / np
     #
     assert flex.max(flex.abs(rw-rp)) < 1.e-6
 
 def exercise_real_to_complex():
-  print "real_to_complex"
+  print("real_to_complex")
   for n in xrange(1,256+1):
     fft = fftpack.real_to_complex(n)
     dp = flex.random_double(size=n)*2-1
@@ -100,8 +101,8 @@ def exercise_real_to_complex():
     assert flex.max(flex.abs(rw[:n]-rp[:n])) < 1.e-6
   for n,n_repeats in [(2400,500), (19200,250)]:
     fft = fftpack.real_to_complex(n)
-    print "  factors of %d:" % n, list(fft.factors())
-    print "  repeats:", n_repeats
+    print("  factors of %d:" % n, list(fft.factors()))
+    print("  repeats:", n_repeats)
     d0 = flex.random_double(size=n)*2-1
     d0.resize(flex.grid(fft.m_real()).set_focus(n))
     #
@@ -109,30 +110,30 @@ def exercise_real_to_complex():
     for i_trial in xrange(n_repeats):
       d = d0.deep_copy()
     overhead = time.time()-t0
-    print "    overhead: %.2f seconds" % overhead
+    print("    overhead: %.2f seconds" % overhead)
     #
     t0 = time.time()
     for i_trial in xrange(n_repeats):
       d = d0.deep_copy()
       c = fftw3tbx.real_to_complex_in_place(data=d)
       fftw3tbx.complex_to_real_in_place(data=c, n=n)
-    print "    fftw:     %.2f seconds" % (time.time()-t0-overhead)
+    print("    fftw:     %.2f seconds" % (time.time()-t0-overhead))
     #
     t0 = time.time()
     for i_trial in xrange(n_repeats):
       d = d0.deep_copy()
       c = fftpack.real_to_complex(n).forward(d)
       fftpack.real_to_complex(n).backward(c)
-    print "    fftpack:  %.2f seconds" % (time.time()-t0-overhead)
+    print("    fftpack:  %.2f seconds" % (time.time()-t0-overhead))
     sys.stdout.flush()
 
 def exercise_real_to_complex_3d():
-  print "real_to_complex_3d"
+  print("real_to_complex_3d")
   for n_real,n_repeats in [((100,80,90),8),
                            ((200,160,180),2),
                            ((300,240,320),1)]:
-    print "  dimensions:", n_real
-    print "  repeats:", n_repeats
+    print("  dimensions:", n_real)
+    print("  repeats:", n_repeats)
     fft = fftpack.real_to_complex_3d(n_real)
     m_real = fft.m_real()
     np = n_real[0]*n_real[1]*n_real[2]
@@ -144,7 +145,7 @@ def exercise_real_to_complex_3d():
     for i_trial in xrange(n_repeats):
       d = d0.deep_copy()
     overhead = time.time()-t0
-    print "    overhead: %.2f seconds" % overhead
+    print("    overhead: %.2f seconds" % overhead)
     #
     t0 = time.time()
     for i_trial in xrange(n_repeats):
@@ -157,7 +158,7 @@ def exercise_real_to_complex_3d():
       assert r.all() == fft.m_real()
       assert r.focus() == fft.n_real()
       assert r.id() == d.id()
-    print "    fftw:     %.2f seconds" % (time.time()-t0-overhead)
+    print("    fftw:     %.2f seconds" % (time.time()-t0-overhead))
     if (maptbx is not None):
       maptbx.unpad_in_place(map=d)
       rw = d / np
@@ -173,7 +174,7 @@ def exercise_real_to_complex_3d():
       assert r.all() == fft.m_real()
       assert r.focus() == fft.n_real()
       assert r.id() == d.id()
-    print "    fftpack:  %.2f seconds" % (time.time()-t0-overhead)
+    print("    fftpack:  %.2f seconds" % (time.time()-t0-overhead))
     sys.stdout.flush()
     if (maptbx is not None):
       maptbx.unpad_in_place(map=d)
@@ -184,10 +185,10 @@ def exercise_real_to_complex_3d():
 def exercise(args):
   show_times = libtbx.utils.show_times()
   if (fftw3tbx.ext is None):
-    print "Skipping fftw3tbx tests: Python extension not available."
+    print("Skipping fftw3tbx tests: Python extension not available.")
   else:
-    print "fftw_version:", fftw3tbx.fftw_version
-    print "### NOTE: Showing wall-clock times. ###"
+    print("fftw_version:", fftw3tbx.fftw_version)
+    print("### NOTE: Showing wall-clock times. ###")
     sys.stdout.flush()
     exercise_complex_to_complex()
     exercise_complex_to_complex_3d()

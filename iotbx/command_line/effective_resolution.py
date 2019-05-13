@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.resolution
 
 from iotbx import reflection_file_reader
@@ -84,8 +85,8 @@ def compute(miller_array, step_scale=0.0005):
   d_eff_a = compute_d_eff(r=x, rho_2nd=r2x)
   d_eff_b = compute_d_eff(r=y, rho_2nd=r2y)
   d_eff_c = compute_d_eff(r=z, rho_2nd=r2z)
-  print "  Effective resolution along axes a,b,c: %6.3f %6.3f %6.3f"%(
-    d_eff_a, d_eff_b, d_eff_c)
+  print("  Effective resolution along axes a,b,c: %6.3f %6.3f %6.3f"%(
+    d_eff_a, d_eff_b, d_eff_c))
   # all directions
   l = 0.8 * min(d_eff_a/2.5, d_eff_b/2.5, d_eff_c/2.5)
   r = 1.2 * max(d_eff_a/2.5, d_eff_b/2.5, d_eff_c/2.5)
@@ -103,8 +104,8 @@ def compute(miller_array, step_scale=0.0005):
     rho2 = second_derivatives(rho=rho_, delta=step)
     d_eff = compute_d_eff(r=dist, rho_2nd=rho2)
     d_effs.append(d_eff)
-  print "  Effective resolution (min,max): %8.3f%8.3f"%(
-    flex.min(d_effs), flex.max(d_effs))
+  print("  Effective resolution (min,max): %8.3f%8.3f"%(
+    flex.min(d_effs), flex.max(d_effs)))
 
 def run(args):
   if(len(args)!=1):
@@ -118,11 +119,11 @@ def run(args):
     raise Sorry("Warning: unknown file format:", file_name)
   for ma in miller_arrays:
     if(type(ma.data()) == type(flex.double())):
-      print "Processing data array with labels:", ma.info().label_string()
+      print("Processing data array with labels:", ma.info().label_string())
       compute(miller_array=ma)
-      print
+      print()
 
 if (__name__ == "__main__"):
   t0 = time.time()
   run(args=sys.argv[1:])
-  print "Time: %8.3f"%(time.time()-t0)
+  print("Time: %8.3f"%(time.time()-t0))

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 def slip_callback(self,frame):
   #best_params=self.use_case_3_simulated_annealing()
@@ -49,7 +50,7 @@ def slip_callback(self,frame):
         renderer = frame.pyslip.LightweightDrawPointLayer,
         show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
   if normal:
-    print "BLUE: plotting %d integrated spots"%count_integrated
+    print("BLUE: plotting %d integrated spots"%count_integrated)
     self.bmask_layer = frame.pyslip.AddPointLayer(
         bmask_data, color="blue", name="<bmask_layer>",
         radius=1.5,
@@ -57,7 +58,7 @@ def slip_callback(self,frame):
         show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
 
   goodspots_data = []; refinedspots_data = []
-  print "RED: plotting %d spotfinder goodspots"%len(self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"])
+  print("RED: plotting %d spotfinder goodspots"%len(self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"]))
   for spot in self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"]:
     # goodspots: spotfinder spot pixels
     for pxl in spot.bodypixels:
@@ -70,7 +71,7 @@ def slip_callback(self,frame):
     #    frame.pyslip.tiles.picture_fast_slow_to_map_relative(
     #      spot.ctr_mass_y() + 0.5, spot.ctr_mass_x() + 0.5))
 
-  print "YELLOW: plotting %d refinement spots"%len(self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"])
+  print("YELLOW: plotting %d refinement spots"%len(self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"]))
   for spot in self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"]:
     # RED: spotfinder spot pixels
     for pxl in spot.bodypixels:

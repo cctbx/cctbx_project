@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from psana import *
 import numpy as np
@@ -685,7 +686,7 @@ def get_beam(img, msk, r_max, dr = 1, cent0 = None, dx = 0, dy = 0, ang = 45, da
 
        if plot :
 
-          print cent
+          print(cent)
 
           # Generate rings from beam center
 
@@ -967,7 +968,7 @@ def get_detdistance(saxs_data, det_0, det_pix, beam_l, saxs_r = None, radius = N
     """
 
     if (radius is None) and (saxs_theory is None):
-       print "Need to provide calibrant radius or scattering curve"
+       print("Need to provide calibrant radius or scattering curve")
        return
 
     if saxs_r is None:

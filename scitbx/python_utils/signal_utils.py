@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import signal
 import sys
 
@@ -24,16 +25,16 @@ class keyboard_interrupt_handler(object):
     self.n_events += 1
     sys.stdout.flush()
     sys.stderr.flush()
-    print
-    print 'Keyboard interrupt #%d.' % self.n_events
-    print
+    print()
+    print('Keyboard interrupt #%d.' % self.n_events)
+    print()
     if (self.n_events == self.max_n_events):
       self.disable()
       raise KeyboardInterrupt
-    print 'Continuing to next checkpoint. Please wait.'
+    print('Continuing to next checkpoint. Please wait.')
     if (self.max_n_events > 0):
       n_left = self.max_n_events-self.n_events
-      print 'To stop immediately send %d more keyboard interrupt%s.' % (
-        n_left, ["", "s"][max(0,min(n_left-1, 1))])
-    print
+      print('To stop immediately send %d more keyboard interrupt%s.' % (
+        n_left, ["", "s"][max(0,min(n_left-1, 1))]))
+    print()
     sys.stdout.flush()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import glob, os, sys
 import urllib2
 
@@ -24,15 +25,15 @@ class crawl(object):
                             build_xray_structure=build_xray_structure)
 
         except Exception, e:
-          print "error reading %s" %path
-          print e
+          print("error reading %s" %path)
+          print(e)
           error_count += 1
         timer.stop()
-    print
-    print "%i files read (%i with building errors and %i with parsing errors)" %(
-      timer.n, error_count, self.parsing_error_count)
-    print timer.legend
-    print timer.report()
+    print()
+    print("%i files read (%i with building errors and %i with parsing errors)" %(
+      timer.n, error_count, self.parsing_error_count))
+    print(timer.legend)
+    print(timer.report())
     sys.stdout.flush()
 
   def run_once(self, file_path, build_miller_arrays=False,
@@ -86,4 +87,4 @@ def run(args, out=sys.stdout):
 
 if __name__ == '__main__':
   run(sys.argv[1:])
-  print "OK"
+  print("OK")

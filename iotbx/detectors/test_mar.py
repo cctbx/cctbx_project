@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 
 class ImageWorker(object):
@@ -24,6 +25,6 @@ if __name__=='__main__':
   infile = sys.argv[1]
   outfile = "/net/racer/scratch1/ttleese/test2.png"
   I = ImageWorker(infile)
-  print "Finished read"
+  print("Finished read")
   I.output(outfile)
-  print "Finished write"
+  print("Finished write")

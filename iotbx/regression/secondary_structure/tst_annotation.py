@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import time
 from iotbx.pdb.secondary_structure import annotation, pdb_helix, pdb_strand
 import iotbx
@@ -707,7 +708,7 @@ loop_
   out = StringIO()
   helix_loop.show(out)
   v = out.getvalue()
-  print "\"%s\"" % v
+  print("\"%s\"" % v)
   assert not show_diff(out.getvalue(), answer)
 
   # hmmm... when there's only one chain, there is one less 'space'
@@ -1440,13 +1441,13 @@ def tst_concatenate_consecutive_helices2():
   """ Very tight turn between two consecutive helices results in their
   concatenation. """
   if (not libtbx.env.has_module(name="ksdssp")):
-    print "Skipped: required module ksdssp not present"
+    print("Skipped: required module ksdssp not present")
     return
   file_path = libtbx.env.find_in_repositories(
     relative_path="cctbx_project/iotbx/regression/secondary_structure/5a63_chainCp.pdb",
     test=os.path.isfile)
   if (file_path is None):
-    print 'WARNING: Skipping tst_concatenate_consecutive_helices2("%s"): input file not available' % file_path
+    print('WARNING: Skipping tst_concatenate_consecutive_helices2("%s"): input file not available' % file_path)
     return
   inp = iotbx.pdb.input(file_name=file_path)
   original_ann = inp.extract_secondary_structure()
@@ -1473,13 +1474,13 @@ def tst_concatenate_consecutive_helices3():
   by PRO residue, but this is not enough, they should be spreaded like in
   previous test. """
   if (not libtbx.env.has_module(name="ksdssp")):
-    print "Skipped: required module ksdssp not present"
+    print("Skipped: required module ksdssp not present")
     return
   file_path = libtbx.env.find_in_repositories(
     relative_path="cctbx_project/iotbx/regression/secondary_structure/5a63_chainBp.pdb",
     test=os.path.isfile)
   if (file_path is None):
-    print 'WARNING: Skipping tst_concatenate_consecutive_helices2("%s"): input file not available' % file_path
+    print('WARNING: Skipping tst_concatenate_consecutive_helices2("%s"): input file not available' % file_path)
     return
   inp = iotbx.pdb.input(file_name=file_path)
   original_ann = inp.extract_secondary_structure()
@@ -1653,13 +1654,13 @@ SHEET    4 AA1 4 VAL A  34  THR A  39 -1  N  PHE A  35   O  VAL A  81
 def tst_filter_sheets_with_long_hbonds():
   """ Attention. In this case there are 2 almost identical SHEET annotations."""
   if (not libtbx.env.has_module(name="ksdssp")):
-    print "Skipped: required module ksdssp not present"
+    print("Skipped: required module ksdssp not present")
     return
   file_path = libtbx.env.find_in_repositories(
     relative_path="cctbx_project/iotbx/regression/secondary_structure/3jd6_noh.pdb",
     test=os.path.isfile)
   if (file_path is None):
-    print 'WARNING: Skipping tst_filter_sheets_with_long_hbonds("%s"): input file not available' % file_path
+    print('WARNING: Skipping tst_filter_sheets_with_long_hbonds("%s"): input file not available' % file_path)
     return
   inp = iotbx.pdb.input(file_name=file_path)
   original_ann = inp.extract_secondary_structure()
@@ -1678,13 +1679,13 @@ def tst_filter_sheets_with_long_hbonds2():
   A 2 ILE C 384  ARG C 586  1  N  LEU C 385   O  VAL C  97
   correct definition can be provided by any other method in ss_manager. """
   if (not libtbx.env.has_module(name="ksdssp")):
-    print "Skipped: required module ksdssp not present"
+    print("Skipped: required module ksdssp not present")
     return
   file_path = libtbx.env.find_in_repositories(
     relative_path="cctbx_project/iotbx/regression/secondary_structure/4a7h_chainC.pdb",
     test=os.path.isfile)
   if (file_path is None):
-    print 'WARNING: Skipping tst_filter_sheets_with_long_hbonds2("%s"): input file not available' % file_path
+    print('WARNING: Skipping tst_filter_sheets_with_long_hbonds2("%s"): input file not available' % file_path)
     return
   inp = iotbx.pdb.input(file_name=file_path)
   original_ann = inp.extract_secondary_structure()
@@ -1707,13 +1708,13 @@ def tst_filter_sheets_with_long_hbonds2():
 def tst_filter_sheets_with_long_hbonds3():
   """ bug found in 1qmo: want to remove all sheets, but they appear not sorted."""
   if (not libtbx.env.has_module(name="ksdssp")):
-    print "Skipped: required module ksdssp not present"
+    print("Skipped: required module ksdssp not present")
     return
   file_path = libtbx.env.find_in_repositories(
     relative_path="cctbx_project/iotbx/regression/secondary_structure/1ubf_cutted.pdb",
     test=os.path.isfile)
   if (file_path is None):
-    print 'WARNING: Skipping tst_filter_sheets_with_long_hbonds3("%s"): input file not available' % file_path
+    print('WARNING: Skipping tst_filter_sheets_with_long_hbonds3("%s"): input file not available' % file_path)
     return
   inp = iotbx.pdb.input(file_name=file_path)
   original_ann = inp.extract_secondary_structure()
@@ -1722,7 +1723,7 @@ def tst_filter_sheets_with_long_hbonds3():
   h = inp.construct_hierarchy()
   ann = original_ann.deep_copy()
   ann.filter_sheets_with_long_hbonds(hierarchy=h)
-  print ann
+  print(ann)
   assert ann.get_n_helices() == 11, ann.get_n_helices()
   assert ann.get_n_sheets() == 2, ann.get_n_sheets()
 
@@ -1807,4 +1808,4 @@ if (__name__ == "__main__"):
   tst_filter_sheets_with_long_hbonds3()
   tst_reset_sheet_ids()
   tst_simple_elements()
-  print "OK time =%8.3f"%(time.time() - t0)
+  print("OK time =%8.3f"%(time.time() - t0))

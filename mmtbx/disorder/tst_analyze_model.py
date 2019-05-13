@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.disorder import analyze_model
 from mmtbx.validation import molprobity
 import iotbx.pdb.hierarchy
@@ -57,7 +58,7 @@ END
 
 if (__name__ == "__main__"):
   if (not libtbx.env.has_module("probe")):
-    print "Probe not configured, skipping test"
+    print("Probe not configured, skipping test")
   else :
     exercise()
-    print "OK"
+    print("OK")

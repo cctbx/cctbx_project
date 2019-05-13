@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 if (libtbx.env.has_module("ccp4io")):
   from iotbx.examples import mtz_free_flipper
@@ -13,14 +14,13 @@ import os
 
 def exercise():
   if (iotbx_mtz is None):
-    print \
-      "Skipping iotbx/examples/tst_mtz_free_flipper.py: ccp4io not available"
+    print("Skipping iotbx/examples/tst_mtz_free_flipper.py: ccp4io not available")
     return
   input_file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/l.mtz",
     test=os.path.isfile)
   if (input_file_name is None):
-    print "Skipping exercise(): input file not available"
+    print("Skipping exercise(): input file not available")
     return
   label = "R-free-flags(-)"
   mtz_free_flipper.run(args=[input_file_name], label=label)
@@ -51,7 +51,7 @@ def exercise():
 
 def run():
   exercise()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

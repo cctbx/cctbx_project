@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 from iotbx.pdb.mmcif import cif_input
 import inspect
@@ -59,7 +60,7 @@ def exercise():
   extra_in_cif = find_out_extras(cif_member_functions, pdb_member_functions)
   assert extra_in_pdb == [], " %s %s" % (extra_in_pdb, fail_mgs)
   assert extra_in_cif == [], " %s %s" % (extra_in_cif, fail_mgs)
-  print "OK"
+  print("OK")
   # print extra_in_pdb
   # print "="*20
   # print extra_in_cif

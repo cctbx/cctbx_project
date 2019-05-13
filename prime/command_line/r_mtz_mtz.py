@@ -6,6 +6,7 @@ Created     : 6/29/2016
 Description : Scale second mtz to the first (linear scale only) and calculate r-factors.
 Note that all intensity array will be converted to amplitude.
 '''
+from __future__ import print_function
 
 from iotbx import reflection_file_reader
 import sys
@@ -32,7 +33,7 @@ def read_input(args):
     elif pair[0]=='flag_b':
       flag_b = bool(pair[1])
   if hklb == '':
-    print "Please provide input hkl files."
+    print("Please provide input hkl files.")
     exit()
   return hkla, hklb, d_min, d_max, n_bins, flag_b
 
@@ -68,9 +69,9 @@ def get_miller_f_from_reflection_file(hklin):
 if (__name__ == "__main__"):
   #check input
   if len(sys.argv)==1:
-    print 'Use prime.r_mtz_mtz to calculate R-factor between two reflection files.'
-    print 'Only linear scale will be performed. Set flag_b=True to include B-factor scaling.'
-    print 'Usage: prime.r_mtz_mtz hkla=reflection1.mtz hklb=reflection2.mtz d_min=min_resolution d_max=max_resolution n_bins=no_of_bins flag_b=True_or_False.'
+    print('Use prime.r_mtz_mtz to calculate R-factor between two reflection files.')
+    print('Only linear scale will be performed. Set flag_b=True to include B-factor scaling.')
+    print('Usage: prime.r_mtz_mtz hkla=reflection1.mtz hklb=reflection2.mtz d_min=min_resolution d_max=max_resolution n_bins=no_of_bins flag_b=True_or_False.')
     exit()
   #read input parameters and frames (pickle files)
   hkla, hklb, d_min, d_max, n_bins, flag_b = read_input(args = sys.argv[1:])
@@ -83,9 +84,9 @@ if (__name__ == "__main__"):
     miller_array_a = miller_array_a.resolution_filter(d_min=d_min, d_max=d_max)
     miller_array_b = miller_array_b.resolution_filter(d_min=d_min, d_max=d_max)
     #report
-    print 'First reflection file:', hkla
+    print('First reflection file:', hkla)
     miller_array_a.show_summary()
-    print 'Second reflection file:', hklb
+    print('Second reflection file:', hklb)
     miller_array_b.show_summary()
     #scale b to a
     miller_array_b_scaled = miller_array_a.scale(miller_array_b, resolution_dependent=flag_b)
@@ -97,4 +98,4 @@ if (__name__ == "__main__"):
     r1_factor_bin = ma_common_a.r1_factor(ma_common_b, use_binning=True)
     r1_factor_bin.show()
     r1_factor = ma_common_a.r1_factor(ma_common_b, use_binning=False)
-    print 'Overall R-factor:', r1_factor
+    print('Overall R-factor:', r1_factor)

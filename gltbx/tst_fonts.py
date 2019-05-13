@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from gltbx import fonts
 
 def exercise():
@@ -16,7 +17,7 @@ def exercise():
     assert bitmap.height() == height
     assert bitmap.xorig() == xorig
     assert bitmap.yorig() == yorig
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

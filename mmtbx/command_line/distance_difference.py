@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
@@ -104,8 +105,8 @@ def run(args=(), params=None, out=None, display_plot=False):
     except ImportError :
       raise Sorry("matplotlib is not installed - can't generate plot image.")
     except Exception, e :
-      print >> out, "Oops!  Can't display an interactive plot:"
-      print >> out, "  %s" % str(e)
+      print("Oops!  Can't display an interactive plot:", file=out)
+      print("  %s" % str(e), file=out)
   elif (display_plot) : # only if not run from GUI!
     try :
       import matplotlib
@@ -113,7 +114,7 @@ def run(args=(), params=None, out=None, display_plot=False):
       raise Sorry("matplotlib is not installed - can't generate plot image.")
     matplotlib.use('Agg')
     display_plot_pylab(ddm, savefig=True)
-    print "Saved plot as distance_difference.png"
+    print("Saved plot as distance_difference.png")
   return ddm
 
 def calculate_matrix(params, log=None):
@@ -206,8 +207,8 @@ class distance_difference_matrix(object):
         atom_groups = residue_group.atom_groups()
         resid = residue_group.resid()
         if (len(atom_groups) > 1):
-          print >> log, "Warning: multiple conformers in model %d at %s" % (i+1,
-            resid)
+          print("Warning: multiple conformers in model %d at %s" % (i+1,
+            resid), file=log)
         for atom in atom_groups[0].atoms():
           if (atom.name == " CA "):
             resids[i].append(resid)

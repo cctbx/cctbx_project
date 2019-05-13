@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.trial_stats
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -105,7 +106,7 @@ def run (args) :
     else:
       indexingrate = 100*numindexed/numframes
 
-    print "Run: %3d, number of hits: %6d, number of frames: %6d, hitrate: %4.1f%%. Number indexed: %6d (%4.1f%%)"%(run,numhits,numframes,hitrate,numindexed,indexingrate)
+    print("Run: %3d, number of hits: %6d, number of frames: %6d, hitrate: %4.1f%%. Number indexed: %6d (%4.1f%%)"%(run,numhits,numframes,hitrate,numindexed,indexingrate))
     frames_total += numframes
     hits_total += numhits
     indexed_total += numindexed
@@ -119,7 +120,7 @@ def run (args) :
   else:
     indexingrate = 100*indexed_total/frames_total
 
-  print "Totals: frames: %d, hits: %d (%4.1f%%), indexed: %d (%4.1f%%)"%(frames_total,hits_total,hitrate,indexed_total,indexingrate)
+  print("Totals: frames: %d, hits: %d (%4.1f%%), indexed: %d (%4.1f%%)"%(frames_total,hits_total,hitrate,indexed_total,indexingrate))
   dbobj.close()
 
 if (__name__ == "__main__") :

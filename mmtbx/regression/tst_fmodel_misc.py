@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.regression import make_fake_anomalous_data
 from mmtbx.command_line import fmodel
 from iotbx import file_reader
@@ -36,7 +37,7 @@ def exercise():
   result = easy_run.call(
     "mmtbx.fmodel_simple \"%s\" tst_fmodel_anomalous.mtz high_resolution=2.0"
       % pdb_file)
-  print "OK"
+  print("OK")
 
 def exercise_intensity_output():
   if (os.path.isfile("tst_fmodel_anomalous.mtz")):

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.phil
 import sys
 
@@ -383,49 +384,49 @@ least_squares_options{""")
 def run(args):
   okai=True
   if len(args)==0:
-    print "Example parameter files lego-ed together from several phil blocks"
-    print
-    print "specifiy 'expert level' on command line via "
-    print "    python make_param.py <expert_level>      "
+    print("Example parameter files lego-ed together from several phil blocks")
+    print()
+    print("specifiy 'expert level' on command line via ")
+    print("    python make_param.py <expert_level>      ")
     okai=False
 
   if okai:
     tester = phil_lego()
-    print " ---------- SAD ----------"
+    print(" ---------- SAD ----------")
     master_params = iotbx.phil.parse( tester.default_sad() )
     master_params.show(expert_level = int(args[0]) )
-    print " ---------- SIR ----------"
+    print(" ---------- SIR ----------")
     del master_params
     del tester
     tester = phil_lego()
     master_params = iotbx.phil.parse( tester.default_sir() )
     master_params.show(expert_level=int(args[0]))
-    print " ---------- SIRAS ----------"
+    print(" ---------- SIRAS ----------")
     del master_params
     del tester
     tester = phil_lego()
     master_params = iotbx.phil.parse( tester.default_siras() )
     master_params.show(expert_level=int(args[0]))
-    print " ---------- 2WMAD ----------"
+    print(" ---------- 2WMAD ----------")
     del master_params
     del tester
     tester = phil_lego()
     master_params = iotbx.phil.parse( tester.default_2wmad() )
     master_params.show(expert_level=int(args[0]))
-    print " ---------- 3WMAD ----------"
+    print(" ---------- 3WMAD ----------")
     del master_params
     del tester
     tester = phil_lego()
     master_params = iotbx.phil.parse( tester.default_3wmad() )
     master_params.show(expert_level=int(args[0]))
-    print " ---------- 3WMAD ----------"
+    print(" ---------- 3WMAD ----------")
     del master_params
     del tester
     tester = phil_lego()
     master_params = iotbx.phil.parse( tester.default_3wmad() )
     master_params.show(expert_level=int(args[0]))
 
-    print " ---------- RIP ----------"
+    print(" ---------- RIP ----------")
     del master_params
     del tester
     tester = phil_lego()

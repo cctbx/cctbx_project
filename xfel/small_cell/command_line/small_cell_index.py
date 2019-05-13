@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tabwidth: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.small_cell_index
@@ -125,7 +126,7 @@ def run(argv=None):
         if rank == 0:
           myfiles += files[len(files)-len(files)%size:len(files)]
       except ImportError as e:
-        print "MPI not found, multiprocessing disabled"
+        print("MPI not found, multiprocessing disabled")
         myfiles = files
 
       counts = []
@@ -134,13 +135,13 @@ def run(argv=None):
       for file in myfiles:
         if (os.path.splitext(file)[1] == ".pickle" or os.path.splitext(file)[1] == ".edf") and os.path.basename(file)[0:3].lower() != "int" and file != "spotfinder.pickle":
           if command_line.options.skip_processed_files and os.path.exists(file + ".int"):
-            print "Skiping %s as it has already been processed"%file
+            print("Skiping %s as it has already been processed"%file)
             continue
           counts.append(small_cell_index(os.path.join(path,file),horiz_phil))
           if counts[-1] == None: counts[-1] = 0
           processed.append(file)
       for file, count in zip(processed,counts):
-        print "%s %4d spots in max clique"%(file,count)
+        print("%s %4d spots in max clique"%(file,count))
 
     # process a single file
     elif os.path.isfile(path):
@@ -151,7 +152,7 @@ def run(argv=None):
           if os.path.isfile(line.strip()):
             count = small_cell_index(line.strip(),horiz_phil)
             if count != None:
-              print "%s %4d spots in max clique"%(line.strip(),count)
+              print("%s %4d spots in max clique"%(line.strip(),count))
         f.close()
       elif os.path.splitext(path)[1] == ".int":
         # Summarize a .int file, providing completeness and multiplicity statistics
@@ -168,7 +169,7 @@ def run(argv=None):
           if not hkl in hkls_unique:
             hkls_unique.append(hkl)
           hkls_all.append(hkl)
-        print "%d unique hkls from %d orginal files.  Completeness: "%(len(hkls_unique),len(files))
+        print("%d unique hkls from %d orginal files.  Completeness: "%(len(hkls_unique),len(files)))
         from cctbx.crystal import symmetry
         import cctbx.miller
         from cctbx.array_family import flex
@@ -180,24 +181,24 @@ def run(argv=None):
         data = millerset.completeness(True)
         data.show()
         data = millerset.completeness(False)
-        print "Total completeness: %d%%\n"%(data * 100)
+        print("Total completeness: %d%%\n"%(data * 100))
 
-        print "%d measurements total from %d original files. Multiplicity (measurements/expected):"%(len(hkls_all),len(files))
+        print("%d measurements total from %d original files. Multiplicity (measurements/expected):"%(len(hkls_all),len(files)))
         millerset = cctbx.miller.set(sym,flex.miller_index(hkls_all),anomalous_flag=False)
         millerset = millerset.resolution_filter(d_min=horiz_phil.small_cell.high_res_limit)
         millerset.setup_binner(n_bins=10)
         data = millerset.completeness(True)
         data.show()
-        print "Total multiplicty: %.3f"%(len(hkls_all)/len(millerset.complete_set().indices()))
+        print("Total multiplicty: %.3f"%(len(hkls_all)/len(millerset.complete_set().indices())))
 
         f.close()
       else:
         # process a regular image file
         count = small_cell_index(path,horiz_phil)
         if count != None:
-          print "%s %4d spots in max clique"%(path,count)
+          print("%s %4d spots in max clique"%(path,count))
     else:
-      print "Not a file or directory: %s"%path
+      print("Not a file or directory: %s"%path)
 
   if xfel.small_cell.small_cell.app is not None:
     del xfel.small_cell.small_cell.app

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx.python_utils import command_line
 from scitbx import matrix
@@ -658,9 +659,9 @@ def exercise_1d_slicing():
   except ImportError:
     pass
   else:
-    print "Testing compatibility with numpy slicing...",
+    print("Testing compatibility with numpy slicing...", end=' ')
     exercise_1d_slicing_core(numpy.array((1,2,3,4,5)))
-    print "OK"
+    print("OK")
   assert list(flex.slice_indices(5, slice(10))) == [0,1,2,3,4]
   assert list(flex.slice_indices(5, slice(0))) == []
   assert list(flex.slice_indices(5, slice(0,10,2))) == [0,2,4]
@@ -742,7 +743,7 @@ def exercise_numpy_slicing_compatibility():
   try:
     import numpy
   except ImportError:
-    print "Skipping exercise_numpy_slicing_compatibility..."
+    print("Skipping exercise_numpy_slicing_compatibility...")
     return
   for j in range(50):
     for n_dim in (3,4,5,6):
@@ -2480,14 +2481,14 @@ def exercise_loops():
   for i_trial in xrange(n_trials):
     c = list(nl(begin=[3,-5,8,10,-7], end=[7,0,13,12,-3], open_range=False))
   if (n_trials > 2):
-    print "C++ nested_loop: %.2f s" % (time.time()-t0)
+    print("C++ nested_loop: %.2f s" % (time.time()-t0))
   nl = libtbx.math_utils.nested_loop
   t0 = time.time()
   for i_trial in xrange(n_trials):
     p = [tuple(i) for i in
       nl(begin=[3,-5,8,10,-7], end=[7,0,13,12,-3], open_range=False)]
   if (n_trials > 2):
-    print "Python nested_loop: %.2f s" % (time.time()-t0)
+    print("Python nested_loop: %.2f s" % (time.time()-t0))
   assert p == c
 
 def exercise_extract_attributes():
@@ -3458,7 +3459,7 @@ def pickle_large_arrays(max_exp, verbose):
             tl = time.time() - t0
             f.close()
           if (verbose):
-            print array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl)
+            print(array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl))
           sys.stdout.flush()
   finally:
     try: os.unlink("pickle.tmp")
@@ -3666,4 +3667,4 @@ if (__name__ == "__main__"):
     pickle_large_arrays(max_exp=n, verbose=1)
   else:
     run(n)
-  print "OK"
+  print("OK")

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os
 import mmtbx.model
 import libtbx.load_env
@@ -77,4 +78,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print "OK"
+  print("OK")

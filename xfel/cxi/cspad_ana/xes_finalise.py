@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import os
 import glob
@@ -112,7 +113,7 @@ class xes_finalise(object):
     output_spectrum(spectrum_focus, mask_focus=mask_focus,
                     output_dirname=output_dirname)
 
-    print "Total number of images used from %i runs: %i" %(i_run+1, self.nmemb)
+    print("Total number of images used from %i runs: %i" %(i_run+1, self.nmemb))
 
 def filter_outlying_pixels(spectrum_focus, mask_focus):
   for i in range(spectrum_focus.all()[0]):
@@ -128,7 +129,7 @@ def filter_outlying_pixels(spectrum_focus, mask_focus):
             continue
       if len(neighbouring_pixels) == 0: continue
       if spectrum_focus[i, j] > 2 * flex.mean(neighbouring_pixels):
-        print "Bad pixel: (%i, %i)" %(i, j)
+        print("Bad pixel: (%i, %i)" %(i, j))
         spectrum_focus[i, j] = 0
         mask_focus[i,j] = 1
 
@@ -154,8 +155,8 @@ def get_spectrum(spectrum_focus, mask_focus=None):
                 continue
           if len(neighbouring_pixels) == 0: continue
           spectrum[j] += flex.mean(neighbouring_pixels)
-          print "bad pixel at (%i,%i): estimating value from neighbouring pixels: %.0f" %(
-            i,j, flex.mean(neighbouring_pixels))
+          print("bad pixel at (%i,%i): estimating value from neighbouring pixels: %.0f" %(
+            i,j, flex.mean(neighbouring_pixels)))
 
   if 0 and mask_focus is not None:
     # Upweight columns that contain bad pixels based on the
@@ -169,8 +170,8 @@ def get_spectrum(spectrum_focus, mask_focus=None):
         if mask_focus[i,j] == 0:
           sum_column_weights += scales[i]
       if sum_column_weights < 1:
-        print "pixels missing from column %i" %j
-        print sum_column_weights
+        print("pixels missing from column %i" %j)
+        print(sum_column_weights)
         if sum_column_weights > 0:
           spectrum[j] *= (1/sum_column_weights)
 
@@ -216,7 +217,7 @@ def output_spectrum(spectrum_focus, mask_focus=None, output_dirname=".", run=Non
   spec_plot(plot_E,plot_y,spectrum_focus,
             os.path.join(output_dirname, "spectrum_E%s"%runstr)+ ".png")
   f = open(os.path.join(output_dirname, "spectrum%s.txt"%runstr), "wb")
-  print >> f, "\n".join(["%i %f" %(x, y) for x, y in zip(plot_x, plot_y)])
+  print("\n".join(["%i %f" %(x, y) for x, y in zip(plot_x, plot_y)]), file=f)
   f.close()
 
   return plot_x, plot_y
@@ -234,8 +235,8 @@ def output_spectrum(spectrum_focus, mask_focus=None, output_dirname=".", run=Non
 def output_matlab_form(flex_matrix, filename):
   f = open(filename, "wb")
   #print >> f, "%% number of images = %i" %(self.nmemb)
-  print >> f, scitbx.matrix.rec(
-    flex_matrix, flex_matrix.focus()).matlab_form(one_row_per_line=True)
+  print(scitbx.matrix.rec(
+    flex_matrix, flex_matrix.focus()).matlab_form(one_row_per_line=True), file=f)
   f.close()
 
 def output_image(flex_img, filename, invert=False, scale=False):
@@ -276,13 +277,13 @@ class finalise_one_run(object):
       scratch_dir, pickle_dirname, pickle_basename)
     g = glob.glob(path_pattern)
     if len(g) == 0:
-      print "No files found matching pattern: %s" %path_pattern
+      print("No files found matching pattern: %s" %path_pattern)
       return
     for path in g:
       try:
         d = easy_pickle.load(file_name=path)
       except EOFError:
-        print "EOFError: skipping %s:" %path
+        print("EOFError: skipping %s:" %path)
         continue
       if self.sum_img is None:
         self.sum_img = d["sum_img"]
@@ -291,10 +292,10 @@ class finalise_one_run(object):
         self.sum_img += d["sum_img"]
         self.sumsq_img += d["sumsq_img"]
       self.nmemb += d["nmemb"]
-      print "Read %d images from %s" % (d["nmemb"], path)
+      print("Read %d images from %s" % (d["nmemb"], path))
       #print "Si foil length: %s" %(d["sifoil"])
 
-    print "Number of images used: %i" %self.nmemb
+    print("Number of images used: %i" %self.nmemb)
     assert self.nmemb > 0
 
 class first_moment_analysis:

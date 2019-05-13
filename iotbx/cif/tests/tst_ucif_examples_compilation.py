@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os, sys
 import libtbx.load_env
 from libtbx import easy_run
@@ -47,4 +48,4 @@ _b 2
 
 if __name__ == '__main__':
   run(sys.argv[1:])
-  print "OK"
+  print("OK")

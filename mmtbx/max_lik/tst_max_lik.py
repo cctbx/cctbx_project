@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import sys
 from cctbx import xray
@@ -132,7 +133,7 @@ def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back,
     symbols_to_stdout=True, symbols_to_stderr=False)
   test_grid_step()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.fix_rotamer_outliers
 
 import sys
@@ -41,7 +42,7 @@ Usage examples:
 
 Full scope of parameters:
   """
-  print help_msg
+  print(help_msg)
   master_phil.show()
 
 def run(args, params=None, out=sys.stdout, model=None):

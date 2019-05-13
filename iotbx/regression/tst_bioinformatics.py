@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import bioinformatics
 
 import unittest
@@ -1795,7 +1796,7 @@ class test_hhalign_parser(unittest.TestCase):
 def exercise_guess_chain_types():
   from iotbx.bioinformatics import \
      guess_chain_types_from_sequences,text_from_chains_matching_chain_type
-  print "Testing guess_chain_types ...",
+  print("Testing guess_chain_types ...", end=' ')
   text_rna="""
 >4a17.pdb|Chain=2
 AGAAAAUUUUCAACGGUGGAUAUCUAGGUUCCCGUGACGAUGAAGAACGCAGCGAAAUGCGAUACGCAAUGCGAAUUGCA
@@ -1876,18 +1877,18 @@ UGGAGAGUUUGAUCCU
 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
  """
 
-  print "OK"
+  print("OK")
 def exercise_random_sequences():
   import random
   random.seed(71231)
   seq=bioinformatics.random_sequence(n_residues=100,
      residue_basket=residue_basket)
-  print seq
+  print(seq)
   assert seq=="EEEEDCDCCEEECDEADEEEADEEECAEDEDECEEEEEAECCEDEDCAEEEDCDDECDDDEEEDCEEEACEDEADCCEEDCCADECDCDCEAAEEADACE"
 
 
 def exercise_merge_sequences():
-  print "Testing merge_sequences ...",
+  print("Testing merge_sequences ...", end=' ')
   open("tmp_iotbx_bioinfo.fa", "w").write("""\
 > 9zzz
 ARGLYS
@@ -1900,7 +1901,7 @@ PHETYR""")
     sequences=["SERTHR"])
   seq_in, nc = bioinformatics.any_sequence_format(output_file)
   assert (len(seq_in) == 3) and (len(nc) == 0)
-  print "OK"
+  print("OK")
 
 suite_sequence = unittest.TestLoader().loadTestsFromTestCase(
   test_sequence

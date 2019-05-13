@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 
 import boost.python
@@ -142,11 +143,10 @@ class _(boost.python.injector, adp_similarity):
     if self.use_u_aniso == (False, False):
       adp_labels = ["Uiso"]
       deltas = deltas[:1]
-    print >> f, \
-      "%s          delta    sigma   weight" %(prefix),
+    print("%s          delta    sigma   weight" %(prefix), end=' ', file=f)
     if len(adp_labels) == 1:
-      print >> f, "residual"
-    else: print >> f, "rms_deltas residual"
+      print("residual", file=f)
+    else: print("rms_deltas residual", file=f)
     rdr = None
     for adp_label,delta in zip(adp_labels, deltas):
       if (rdr is None):
@@ -154,8 +154,8 @@ class _(boost.python.injector, adp_similarity):
           rdr = " %6.2e" %self.residual()
         else:
           rdr = "   %6.2e %6.2e" % (self.rms_deltas(), self.residual())
-      print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
-        prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr)
+      print("%s %-4s %9.2e %6.2e %6.2e%s" % (
+        prefix, adp_label, delta, weight_as_sigma(weight=self.weight), self.weight, rdr), file=f)
       rdr = ""
 
 class _(boost.python.injector, shared_adp_similarity_proxy):
@@ -187,12 +187,10 @@ class _(boost.python.injector, shared_adp_similarity_proxy):
 class _(boost.python.injector, adp_u_eq_similarity):
 
   def _show_sorted_item(self, f, prefix):
-    print >> f, \
-      "%s Mean Ueq=%6.2e" %(prefix, self.mean_u_eq)
-    print >> f, \
-      "%s weight=%6.2e sigma=%6.2e rms_deltas=%6.2e residual=%6.2e"\
+    print("%s Mean Ueq=%6.2e" %(prefix, self.mean_u_eq), file=f)
+    print("%s weight=%6.2e sigma=%6.2e rms_deltas=%6.2e residual=%6.2e"\
       %(prefix, self.weight, weight_as_sigma(weight=self.weight),
-        self.rms_deltas(), self.residual())
+        self.rms_deltas(), self.residual()), file=f)
 
 class _(boost.python.injector, shared_adp_u_eq_similarity_proxy):
 
@@ -223,12 +221,10 @@ class _(boost.python.injector, shared_adp_u_eq_similarity_proxy):
 class _(boost.python.injector, adp_volume_similarity):
 
   def _show_sorted_item(self, f, prefix):
-    print >> f, \
-      "%s Mean Volume=%6.2e" %(prefix, self.mean_u_volume)
-    print >> f, \
-      "%s weight=%6.2e sigma=%6.2e rms_deltas=%6.2e residual=%6.2e"\
+    print("%s Mean Volume=%6.2e" %(prefix, self.mean_u_volume), file=f)
+    print("%s weight=%6.2e sigma=%6.2e rms_deltas=%6.2e residual=%6.2e"\
       %(prefix, self.weight, weight_as_sigma(weight=self.weight),
-        self.rms_deltas(), self.residual())
+        self.rms_deltas(), self.residual()), file=f)
 
 class _(boost.python.injector, shared_adp_volume_similarity_proxy):
 
@@ -260,15 +256,14 @@ class _(boost.python.injector, isotropic_adp):
 
   def _show_sorted_item(self, f, prefix):
     adp_labels = ("U11","U22","U33","U12","U13","U23")
-    print >> f, \
-      "%s         delta    sigma   weight rms_deltas residual" % (prefix)
+    print("%s         delta    sigma   weight rms_deltas residual" % (prefix), file=f)
     rdr = None
     for adp_label,delta in zip(adp_labels, self.deltas()):
       if (rdr is None):
         rdr = "   %6.2e %6.2e" % (self.rms_deltas(), self.residual())
-      print >> f, "%s %s %9.2e %6.2e %6.2e%s" % (
+      print("%s %s %9.2e %6.2e %6.2e%s" % (
         prefix, adp_label, delta, weight_as_sigma(weight=self.weight),
-        self.weight, rdr)
+        self.weight, rdr), file=f)
       rdr = ""
 
 class _(boost.python.injector, shared_isotropic_adp_proxy):
@@ -302,13 +297,12 @@ class _(boost.python.injector, fixed_u_eq_adp):
 
   def _show_sorted_item(self, f, prefix):
     adp_label = "Ueq"
-    print >> f, \
-      "%s          delta    sigma   weight" %(prefix),
-    print >> f, "residual"
+    print("%s          delta    sigma   weight" %(prefix), end=' ', file=f)
+    print("residual", file=f)
     rdr = " %6.2e" %self.residual()
-    print >> f, "%s %-4s %9.2e %6.2e %6.2e%s" % (
+    print("%s %-4s %9.2e %6.2e %6.2e%s" % (
       prefix, adp_label, self.delta(), weight_as_sigma(weight=self.weight),
-      self.weight, rdr)
+      self.weight, rdr), file=f)
 
 class _(boost.python.injector, shared_fixed_u_eq_adp_proxy):
 
@@ -340,11 +334,10 @@ class _(boost.python.injector, shared_fixed_u_eq_adp_proxy):
 class _(boost.python.injector, rigid_bond):
 
   def _show_sorted_item(self, f, prefix):
-    print >> f, \
-      "%s   delta_z    sigma   weight residual" % (prefix)
-    print >> f, "%s %9.2e %6.2e %6.2e %6.2e" % (
+    print("%s   delta_z    sigma   weight residual" % (prefix), file=f)
+    print("%s %9.2e %6.2e %6.2e %6.2e" % (
       prefix, self.delta_z(), weight_as_sigma(weight=self.weight),
-      self.weight, self.residual())
+      self.weight, self.residual()), file=f)
 
 class _(boost.python.injector, shared_rigid_bond_proxy):
 
@@ -374,17 +367,16 @@ class _(boost.python.injector, shared_rigid_bond_proxy):
 class _(boost.python.injector, rigu):
 
   def _show_sorted_item(self, f, prefix):
-    print >> f, \
-      "%s   delta_z    sigma   weight residual" % (prefix)
-    print >> f, "%s %9.2e %6.2e %6.2e %6.2e" % (
+    print("%s   delta_z    sigma   weight residual" % (prefix), file=f)
+    print("%s %9.2e %6.2e %6.2e %6.2e" % (
       prefix, self.delta_33(), weight_as_sigma(weight=self.weight),
-      self.weight, self.residual33())
-    print >> f, "%s %9.2e %6.2e %6.2e %6.2e" % (
+      self.weight, self.residual33()), file=f)
+    print("%s %9.2e %6.2e %6.2e %6.2e" % (
       prefix, self.delta_13(), weight_as_sigma(weight=self.weight),
-      self.weight, self.residual13())
-    print >> f, "%s %9.2e %6.2e %6.2e %6.2e" % (
+      self.weight, self.residual13()), file=f)
+    print("%s %9.2e %6.2e %6.2e %6.2e" % (
       prefix, self.delta_13(), weight_as_sigma(weight=self.weight),
-      self.weight, self.residual23())
+      self.weight, self.residual23()), file=f)
 
 class _(boost.python.injector, shared_rigu_proxy):
 
@@ -429,7 +421,7 @@ def _show_sorted_impl(self,
   assert sites_cart is None or len(sites_cart) == u_cart.size()
   assert [u_iso, use_u_aniso].count(None) in (0,2)
   if (f is None): f = sys.stdout
-  print >> f, "%s%s restraints: %d" % (prefix, proxy_label, self.size())
+  print("%s%s restraints: %d" % (prefix, proxy_label, self.size()), file=f)
   if (self.size() == 0): return
   if (max_items is not None and max_items <= 0): return
 
@@ -462,7 +454,7 @@ def _show_sorted_impl(self,
   if (max_items is not None):
     i_proxies_sorted = i_proxies_sorted[:max_items]
   item_label_blank = " " * len(item_label)
-  print >> f, "%sSorted by %s:" % (prefix, by_value)
+  print("%sSorted by %s:" % (prefix, by_value), file=f)
   dynamic_proxy_types = (
     adp_u_eq_similarity,
     adp_volume_similarity,
@@ -473,22 +465,21 @@ def _show_sorted_impl(self,
     if proxy_type in (isotropic_adp, fixed_u_eq_adp):
       if (site_labels is None): l = str(proxy.i_seqs[0])
       else:                     l = site_labels[proxy.i_seqs[0]]
-      print >> f, "%s%s %s" % (prefix, s, l)
+      print("%s%s %s" % (prefix, s, l), file=f)
       s = item_label_blank
     elif proxy_type in dynamic_proxy_types:
       restraint = proxy_type(params=params, proxy=proxy)
       restraint._show_sorted_item(f=f, prefix=prefix)
-      print >> f, \
-        "%s         delta" % (prefix)
+      print("%s         delta" % (prefix), file=f)
       for n, i_seq in enumerate(proxy.i_seqs):
         if (site_labels is None): l = str(i_seq)
         else:                     l = site_labels[i_seq]
-        print >> f, "%s %s %9.2e" % (prefix, l, restraint.deltas()[n])
+        print("%s %s %9.2e" % (prefix, l, restraint.deltas()[n]), file=f)
     else:
       for n, i_seq in enumerate(proxy.i_seqs):
         if (site_labels is None): l = str(i_seq)
         else:                     l = site_labels[i_seq]
-        print >> f, "%s%s %s" % (prefix, s, l)
+        print("%s%s %s" % (prefix, s, l), file=f)
         s = item_label_blank
     if proxy_type in (adp_similarity, isotropic_adp, fixed_u_eq_adp,\
                       rigid_bond, rigu):
@@ -500,4 +491,4 @@ def _show_sorted_impl(self,
       raise AssertionError
   n_not_shown = self.size() - i_proxies_sorted.size()
   if (n_not_shown != 0):
-    print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+    print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)

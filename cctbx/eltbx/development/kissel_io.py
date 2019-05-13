@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.eltbx import xray_scattering
 from cctbx.eltbx import tiny_pse
 from cctbx.array_family import flex
@@ -86,12 +87,12 @@ def main():
     errors_abs = flex.abs(wky-tab_y)
     fit = scitbx.math.gaussian.fit(tab_x, tab_y, sigmas, wk)
     errors_rel = fit.significant_relative_errors(1.e-6)
-    print tab.element, tab.atomic_number,
-    print "max error < %.1fA-1 abs, rel: %7.4f %7.4f" % (
-      cutoff, flex.max(errors_abs), flex.max(errors_rel))
+    print(tab.element, tab.atomic_number, end=' ')
+    print("max error < %.1fA-1 abs, rel: %7.4f %7.4f" % (
+      cutoff, flex.max(errors_abs), flex.max(errors_rel)))
     for x,y,f,ea,er in zip(tab_x,tab_y,wky,errors_abs,errors_rel):
-      print "%7.4f %7.4f %7.4f %7.4f %7.4f" % (x, y, f, ea, er)
-    print
+      print("%7.4f %7.4f %7.4f %7.4f %7.4f" % (x, y, f, ea, er))
+    print()
 
 if (__name__ == "__main__"):
   main()

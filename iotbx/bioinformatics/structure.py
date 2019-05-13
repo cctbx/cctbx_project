@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Sorry
 from libtbx import slots_getstate_setstate_default_initializer
 import libtbx.utils
@@ -47,9 +48,9 @@ class blast_hit(slots_getstate_setstate_default_initializer):
 
   def show(self, out=None):
     if (out is None) : out = sys.stdout
-    print >> out, "%3s  %1s   %12g  %6d  %6.2f  %6.2f  %4d" % (self.pdb_id,
+    print("%3s  %1s   %12g  %6d  %6.2f  %6.2f  %4d" % (self.pdb_id,
       self.chain_id, self.evalue, self.length, self.identity, self.positives,
-      len(self.all_ids))
+      len(self.all_ids)), file=out)
 
 def summarize_blast_output(blast_out=None, blast_file=None,
     min_identity=None, expect=None):

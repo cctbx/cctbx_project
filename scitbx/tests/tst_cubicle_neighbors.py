@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def exercise_cubicles_max_memory():
   import scitbx.cubicle_neighbors as cn
   assert cn.cubicles_max_memory_allocation_get() != 0
@@ -69,7 +70,7 @@ def run(args):
         for j_seq,i_seqs_simple in nb_simple.items():
           i_seqs = nb[j_seq]
           assert sorted(i_seqs) == sorted(i_seqs_simple)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #!/usr/bin/python
 # remediator.py - version 1.61.110622 6/22/11
 # Copyright 2007-2011, Jeffrey J. Headd and Robert Immormino
@@ -220,7 +221,7 @@ def remediate(filename, atom_exch, remediated_out, remark4, f=None):
           if re.search('1H   '+res,print_line) or re.search('2H   '+res,print_line):
             print_line = re.sub(' HN2 '+res,'2H   '+res,print_line)
       print_line=print_line.rstrip("\n")
-      print >> f, print_line
+      print(print_line, file=f)
       print_line = line + "\n"
   pdb_file.close()
 
@@ -242,7 +243,7 @@ def remediate(filename, atom_exch, remediated_out, remark4, f=None):
           print_line = re.sub(' HN2 '+res,'2H   '+res,print_line)
 
   print_line=print_line.rstrip("\n")
-  print >> f, print_line
+  print(print_line, file=f)
 #}}}
 
 def remediator(params, log=None):
@@ -281,6 +282,6 @@ def remediator(params, log=None):
       f.close()
   else:
     if remediated_out:
-      print >> log, "All atoms conform to PDB v3.x standard  **skipping**"
+      print("All atoms conform to PDB v3.x standard  **skipping**", file=log)
     else:
-      print >> log, "All atoms conform to PDB v2.3 standard  **skipping**"
+      print("All atoms conform to PDB v2.3 standard  **skipping**", file=log)

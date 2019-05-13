@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def get_spots_high_resolution(work_params, spots):
   from scitbx.array_family import flex
   import math
@@ -18,8 +19,8 @@ def get_spots_high_resolution(work_params, spots):
     return work_params.wavelength / den
   dists_max = flex.max(dists)
   result = resolution(dists_max)
-  print "Highest-resolution of spots: %.3f" % result
-  print
+  print("Highest-resolution of spots: %.3f" % result)
+  print()
   return result
 
 def process(work_params, spots, sampling_resolution_factor=0.5):
@@ -36,7 +37,7 @@ def process(work_params, spots, sampling_resolution_factor=0.5):
   from labelit.preferences import labelit_commands
   labelit_commands.model_refinement_minimum_N = 10
   labelit_commands.target_cell = uc
-  print "labelit_commands.target_cell:", labelit_commands.target_cell
+  print("labelit_commands.target_cell:", labelit_commands.target_cell)
   #
   from scitbx.array_family import flex
   raw_spot_input = flex.vec3_double()
@@ -86,10 +87,10 @@ def report_uc_cr(ai):
   miller_indices = ai.hklobserved()
   good_i_seqs = ai.get_observed_spot_i_seqs_good_only()
   assert miller_indices.size() == good_i_seqs.size()
-  print "Number of spots indexed:", miller_indices.size()
+  print("Number of spots indexed:", miller_indices.size())
   co = ai.getOrientation()
-  print "Recovered unit cell:", co.unit_cell()
-  print "Recovered crystal_rotation_matrix:"
-  print co.crystal_rotation_matrix()
-  print
+  print("Recovered unit cell:", co.unit_cell())
+  print("Recovered crystal_rotation_matrix:")
+  print(co.crystal_rotation_matrix())
+  print()
   return good_i_seqs, miller_indices, co

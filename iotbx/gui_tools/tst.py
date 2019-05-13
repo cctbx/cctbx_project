@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from iotbx.gui_tools import reflections, models
 from iotbx import file_reader
@@ -257,7 +258,7 @@ def exercise_other_reflection_formats():
   hkl_handler = reflections.reflections_handler(allowed_param_names=phil_names)
   # test other file formats (requires phenix_regression)
   if (regression_dir is None):
-    print "phenix_regression not found, skipping exercise_other_reflection_formats()"
+    print("phenix_regression not found, skipping exercise_other_reflection_formats()")
     return
   cns_file = os.path.join(regression_dir, "reflection_files", "enk.hkl")
   hkl_handler.save_file(file_name=cns_file)
@@ -287,7 +288,7 @@ def exercise_other_reflection_formats():
 def exercise_model():
   # FIXME should be possible to run this independently of phenix_regression
   if (regression_dir is None):
-    print "phenix_regression not found, skipping exercise_model()"
+    print("phenix_regression not found, skipping exercise_model()")
     return
   model_handler = models.model_handler(
     allowed_param_names=["refinement.input.pdb.file_name",
@@ -364,4 +365,4 @@ if (__name__ == "__main__"):
   exercise_reflections()
   exercise_other_reflection_formats()
   exercise_model()
-  print "OK"
+  print("OK")

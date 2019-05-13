@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 
 from dials.array_family import flex
@@ -60,7 +61,7 @@ def plot_spotfinder_stats(stats,
   if len(run_statuses) != n_runs:
     run_statuses = [None for i in range(n_runs)]
   if minimalist:
-    print "Minimalist mode activated."
+    print("Minimalist mode activated.")
     f, (ax1, ax2) = plt.subplots(2, sharex=True, sharey=False)
     axset = (ax1, ax2)
   else:

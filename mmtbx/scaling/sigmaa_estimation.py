@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import ext
 from cctbx.array_family import flex
@@ -262,17 +263,17 @@ class sigmaa_estimator(object):
   def show(self, out=None):
     if out is None:
       out = sys.stdout
-    print >> out
-    print >> out, "SigmaA estimation summary"
-    print >> out, "-------------------------"
-    print >> out, "Kernel width d* cubed     :  %.6g" % \
-      self.kernel_width_d_star_cubed
-    print >> out, "Kernel width free refl.   : ", \
-      self.kernel_width_free_reflections
-    print >> out, "Number of sampling points : ", self.h_array.size()
-    print >> out, "Number of Chebyshev terms : ", self.n_chebyshev_terms
-    print >> out
-    print >> out, "1/d^3      d    sum weights  sigmaA   fitted    diff"
+    print(file=out)
+    print("SigmaA estimation summary", file=out)
+    print("-------------------------", file=out)
+    print("Kernel width d* cubed     :  %.6g" % \
+      self.kernel_width_d_star_cubed, file=out)
+    print("Kernel width free refl.   : ", \
+      self.kernel_width_free_reflections, file=out)
+    print("Number of sampling points : ", self.h_array.size(), file=out)
+    print("Number of Chebyshev terms : ", self.n_chebyshev_terms, file=out)
+    print(file=out)
+    print("1/d^3      d    sum weights  sigmaA   fitted    diff", file=out)
     for h,w,sa,saf in zip(
           self.h_array,
           self.sum_weights,
@@ -282,25 +283,25 @@ class sigmaa_estimator(object):
         d = " "*7
       else:
         d = "%7.4f" % (1.0/h)**(1/3)
-      print >> out, "%5.4f  %s  %8.2f   %7.4f  %7.4f  %7.4f" % (
-        h,d,w,sa,saf,saf-sa)
-    print >> out
-    print >> out
+      print("%5.4f  %s  %8.2f   %7.4f  %7.4f  %7.4f" % (
+        h,d,w,sa,saf,saf-sa), file=out)
+    print(file=out)
+    print(file=out)
 
   def show_short(self, out=None, silent=False):
     if(out is None): out = sys.stdout
-    if(not silent): print >> out
-    if(not silent): print >> out, "SigmaA vs Resolution"
-    if(not silent): print >> out, "--------------------"
-    if(not silent): print >> out, "1/d^3      d    sum weights  sigmaA"
+    if(not silent): print(file=out)
+    if(not silent): print("SigmaA vs Resolution", file=out)
+    if(not silent): print("--------------------", file=out)
+    if(not silent): print("1/d^3      d    sum weights  sigmaA", file=out)
     resolution = []
     sigmaa = []
     for h, sa in zip(self.h_array, self.sigmaa_array):
       if(h == 0): d = " "*7
       else: d = "%7.4f" % (1.0/h)**(1/3)
-      if(not silent): print >> out, "%s %7.4f" % (d, sa)
+      if(not silent): print("%s %7.4f" % (d, sa), file=out)
       resolution.append(d)
       sigmaa.append(sa)
-    if(not silent): print >> out
-    if(not silent): print >> out
+    if(not silent): print(file=out)
+    if(not silent): print(file=out)
     return group_args(resolution = resolution, sigmaa = sigmaa)

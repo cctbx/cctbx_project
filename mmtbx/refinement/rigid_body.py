@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import sys
@@ -40,8 +41,8 @@ class rigid_body_shift_accumulator(object):
 
    def show(self, out = None):
      if (out is None): out = sys.stdout
-     print >> out, "|-rigid body shift (total)------------------------------"\
-                   "----------------------|"
+     print("|-rigid body shift (total)------------------------------"\
+                   "----------------------|", file=out)
      print_statistics.show_rigid_body_rotations_and_translations(
        out=out,
        prefix="",
@@ -49,8 +50,8 @@ class rigid_body_shift_accumulator(object):
        euler_angle_convention=self.euler_angle_convention,
        rotations=self.rotations,
        translations=self.translations)
-     print >> out, "|"+"-"*77+"|"
-     print >> out
+     print("|"+"-"*77+"|", file=out)
+     print(file=out)
 
 multiple_zones_params_str = """\
   min_number_of_reflections = 200
@@ -182,30 +183,30 @@ def split_resolution_range(
     final_n_ref_first = min(final_n_ref_first, d_spacings.size())
     degenerate = False
     d_mins.append(d_high)
-  print >> log, "Rigid body refinement:"
-  print >> log, "  Requested number of resolution zones: %d" % number_of_zones
+  print("Rigid body refinement:", file=log)
+  print("  Requested number of resolution zones: %d" % number_of_zones, file=log)
   if (len(d_mins) != 1 or degenerate):
-    print >> log, "  Calculation for first resolution zone:"
-    print >> log, "    Requested number of reflections per body:", n_ref_first
-    print >> log, "    Requested factor per body:", \
-      multi_body_factor_n_ref_first
-    print >> log, "    Number of bodies:", n_bodies
-    print >> log, "    Resulting number of reflections:", m_ref_first
-    print >> log, "    Requested low-resolution limit:", d_low,
+    print("  Calculation for first resolution zone:", file=log)
+    print("    Requested number of reflections per body:", n_ref_first, file=log)
+    print("    Requested factor per body:", \
+      multi_body_factor_n_ref_first, file=log)
+    print("    Number of bodies:", n_bodies, file=log)
+    print("    Resulting number of reflections:", m_ref_first, file=log)
+    print("    Requested low-resolution limit:", d_low, end=' ', file=log)
     if (final_n_ref_first != m_ref_first):
-      print >> log, "(determines final number)",
-    print >> log
-    print >> log, "    Final number of reflections:", final_n_ref_first
-  print >> log, "  Data resolution:                      %6.2f - %6.2f" \
-    " (%d reflections)" % (d_max, d_min, n_refl_data)
-  print >> log, "  Resolution for rigid body refinement: %6.2f - %6.2f" \
-    " (%d reflections)" % (d_max, d_high, d_spacings.size())
+      print("(determines final number)", end=' ', file=log)
+    print(file=log)
+    print("    Final number of reflections:", final_n_ref_first, file=log)
+  print("  Data resolution:                      %6.2f - %6.2f" \
+    " (%d reflections)" % (d_max, d_min, n_refl_data), file=log)
+  print("  Resolution for rigid body refinement: %6.2f - %6.2f" \
+    " (%d reflections)" % (d_max, d_high, d_spacings.size()), file=log)
   if (degenerate):
-    print >> log, """\
+    print("""\
   WARNING: Final number of reflections for first resolution zone is greater
            than the number of available reflections (%d > %d).
   INFO: Number of resolution zones reset to 1.""" % (
-    final_n_ref_first, d_spacings.size())
+    final_n_ref_first, d_spacings.size()), file=log)
   target_names = []
   for d_min in d_mins:
     if (target == "auto"):
@@ -216,16 +217,16 @@ def split_resolution_range(
     else:
       target_names.append(target)
   if (len(d_mins) > 1):
-    print >> log, "  Resolution cutoffs for multiple zones: "
-    print >> log, "                          number of"
-    print >> log, "    zone     resolution  reflections  target"
+    print("  Resolution cutoffs for multiple zones: ", file=log)
+    print("                          number of", file=log)
+    print("    zone     resolution  reflections  target", file=log)
     for i, d_i in enumerate(d_mins):
       n_ref = (d_spacings >= d_i).count(True)
-      print >> log, "    %3d  %6.2f -%6.2f %11d    %s" % (
-        i+1, d_max, d_i, n_ref, target_names[i])
-    print >> log, "    zone number of reflections =" \
+      print("    %3d  %6.2f -%6.2f %11d    %s" % (
+        i+1, d_max, d_i, n_ref, target_names[i]), file=log)
+    print("    zone number of reflections =" \
       " %d + %.6g * (zone-1)**%.6g" % (
-        final_n_ref_first, zone_factor, zone_exponent)
+        final_n_ref_first, zone_factor, zone_exponent), file=log)
   return d_mins, target_names
 
 class manager(object):
@@ -285,7 +286,7 @@ class manager(object):
       number_of_zones               = params.number_of_zones,
       zone_exponent                 = params.zone_exponent,
       log                           = log)
-    print >> log
+    print(file=log)
     if (fmodel.target_name != target_names[0]):
       fmodel.update(target_name=target_names[0])
     self.show(fmodel = fmodel,
@@ -403,13 +404,13 @@ class manager(object):
         remove_outliers      = False,
         optimize_mask        = False,
         refine_hd_scattering = False)
-    print >> log
+    print(file=log)
     self.show(fmodel = fmodel,
               r_mat  = self.total_rotation,
               t_vec  = self.total_translation,
               header = "Rigid body end",
               out    = log)
-    print >> log
+    print(file=log)
     self.evaluate_after_end(fmodel, save_r_work, save_r_free,
       save_xray_structure, log)
     self.fmodel = fmodel
@@ -421,25 +422,25 @@ class manager(object):
     r_work = fmodel.r_work()
     r_free = fmodel.r_free()
     if((r_work > save_r_work and abs(r_work-save_r_work) > 0.01)):
-      print >> log
+      print(file=log)
       if (self.params.disable_final_r_factor_check):
-        print >> log, "Warning: R-factors increased during refinement."
+        print("Warning: R-factors increased during refinement.", file=log)
       else :
-        print >> log, "The model after this rigid-body refinement step is not accepted."
-        print >> log, "Reason: increase in R-factors after refinement."
-      print >> log, "Start/final R-work: %6.4f/%-6.4f"%(save_r_work, r_work)
-      print >> log, "Start/final R-free: %6.4f/%-6.4f"%(save_r_free, r_free)
+        print("The model after this rigid-body refinement step is not accepted.", file=log)
+        print("Reason: increase in R-factors after refinement.", file=log)
+      print("Start/final R-work: %6.4f/%-6.4f"%(save_r_work, r_work), file=log)
+      print("Start/final R-free: %6.4f/%-6.4f"%(save_r_free, r_free), file=log)
       if (self.params.disable_final_r_factor_check):
-        print >> log, "(Revert to previous model is disabled, so accepting result.)"
+        print("(Revert to previous model is disabled, so accepting result.)", file=log)
       else :
-        print >> log, "Return back to the previous model."
-        print >> log
+        print("Return back to the previous model.", file=log)
+        print(file=log)
         fmodel.update_xray_structure(xray_structure = save_xray_structure,
                                      update_f_calc  = True,
                                      update_f_mask  = True)
         fmodel.info().show_rfactors_targets_scales_overall(
           header = "rigid body after step back", out = log)
-      print >> log
+      print(file=log)
 
   def rotation(self):
     return self.total_rotation
@@ -451,11 +452,11 @@ class manager(object):
     if(out is None): out = sys.stdout
     fmodel_info = fmodel.info()
     fmodel_info._header_resolutions_nreflections(header=header, out=out)
-    print >> out, "| "+"  "*38+"|"
+    print("| "+"  "*38+"|", file=out)
     fmodel_info._rfactors_and_bulk_solvent_and_scale_params(out=out)
-    print >> out, "| "+"  "*38+"|"
-    print >> out,"| Rigid body shift (Euler angles %s):"% \
-      self.params.euler_angle_convention+" "*40 +"|"
+    print("| "+"  "*38+"|", file=out)
+    print("| Rigid body shift (Euler angles %s):"% \
+      self.params.euler_angle_convention+" "*40 +"|", file=out)
     print_statistics.show_rigid_body_rotations_and_translations(
       out=out,
       prefix="",
@@ -463,7 +464,7 @@ class manager(object):
       euler_angle_convention= self.params.euler_angle_convention,
       rotations=r_mat,
       translations=t_vec)
-    print >> out, "|" +"-"*77+"|"
+    print("|" +"-"*77+"|", file=out)
 
 class rigid_body_minimizer(object):
   def __init__(self,
@@ -691,10 +692,10 @@ def rigid_groups_from_pdb_chains(
       isel = sel_cache.selection(sele_str).iselection()
       isel_special = isel.intersection(disallowed_i_seqs)
       if (len(isel_special) != 0):
-        print >> log, "  WARNING: selection includes atoms on special positions"
-        print >> log, "    selection: %s" % sele_str
-        print >> log, "    bad atoms:"
+        print("  WARNING: selection includes atoms on special positions", file=log)
+        print("    selection: %s" % sele_str, file=log)
+        print("    bad atoms:", file=log)
         for i_seq in isel_special :
-          print >> log, "    %s" % atom_labels[i_seq].id_str()
+          print("    %s" % atom_labels[i_seq].id_str(), file=log)
         return None
   return selections

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.simplexml import SimpleNode
 
 class LongLineSimpleNode(SimpleNode):
@@ -12,14 +13,14 @@ class LongLineSimpleNode(SimpleNode):
     all_attrs = "".join(attrs)
 
     if self.content!='':
-      print >>channel,"%s<%s%s>%s</%s>"%(' '*indent,self.tag,all_attrs,self.content,self.tag)
+      print("%s<%s%s>%s</%s>"%(' '*indent,self.tag,all_attrs,self.content,self.tag), file=channel)
       return
-    print >>channel,"%s<%s%s>"%(' '*indent,self.tag,all_attrs),
-    print >>channel
+    print("%s<%s%s>"%(' '*indent,self.tag,all_attrs), end=' ', file=channel)
+    print(file=channel)
     for item in self.children:
       item.emit(channel,indent=indent+2)
     if len(self.children)>0:
-      print >>channel,"%s</%s>"%(' '*indent,self.tag)
+      print("%s</%s>"%(' '*indent,self.tag), file=channel)
     else:
       channel.seek(channel.tell()-2)
-      print >>channel,"/>"
+      print("/>", file=channel)

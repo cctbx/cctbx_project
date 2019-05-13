@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import libtbx
 
 class assistant(libtbx.slots_getstate_setstate):
@@ -63,22 +64,22 @@ class assistant(libtbx.slots_getstate_setstate):
     if (out is None):
       import sys
       out = sys.stdout
-    def _(s, sg): print >> out, prefix+s, sg.info().symbol_and_number()
+    def _(s, sg): print(prefix+s, sg.info().symbol_and_number(), file=out)
     _("Lattice symmetry:", O.lattice_group)
     _("Intensity symmetry:", O.intensity_group)
-    print >> out, prefix.rstrip()
+    print(prefix.rstrip(), file=out)
     if (len(O.cb_ops) == 1):
       s = "No indexing ambiguity."
     elif (len(O.cb_ops) == 2):
       s = "Indexing ambiguity:"
     else:
       s = "Indexing ambiguities:"
-    print >> out, prefix+s
+    print(prefix+s, file=out)
     for cb_op, perm in zip(O.cb_ops, O.perms):
       r = cb_op.c().r().new_denominator(1)
       if (not r.is_unit_mx()):
-        print >> out, prefix+"  %-12s  %d-fold    invariants: %4d" % (
+        print(prefix+"  %-12s  %d-fold    invariants: %4d" % (
           r.as_hkl(),
           r.info().type(),
-          (perm.select(perm) == perm).count(True))
+          (perm.select(perm) == perm).count(True)), file=out)
     return O

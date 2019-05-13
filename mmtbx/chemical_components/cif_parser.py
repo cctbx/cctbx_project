@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os, sys
 
 cif_keyword_dictionary = {
@@ -197,9 +198,9 @@ def run(filename):
         for ptr, item in enumerate(smart_split_cif_line(line)):
           if ptr in remove_loop_fields.get(cif_key, []): continue
           if len(loop_list)<=i:
-            print 'Problem with CIF line parsing'
-            print line
-            print loop_list
+            print('Problem with CIF line parsing')
+            print(line)
+            print(loop_list)
             continue
           if loop_list[i]=="comp_id": code = item
           if item not in ["?", "."]:
@@ -227,10 +228,10 @@ def run(filename):
         if item not in ["?", "."]:
           try: item = cif_keyword_dictionary[cif_key][sk](item)
           except Exception:
-            print key
-            print sk
-            print cif_key
-            print cif_keyword_dictionary[cif_key].keys()
+            print(key)
+            print(sk)
+            print(cif_key)
+            print(cif_keyword_dictionary[cif_key].keys())
             raise
         setattr(obj, sk, item)
     if len(obj):
@@ -242,7 +243,7 @@ if __name__=="__main__":
   import os, sys
   cif = run(sys.argv[1])
   for key in cif:
-    print '_'*80
-    print key
+    print('_'*80)
+    print(key)
     for item in cif[key]:
-      print item
+      print(item)

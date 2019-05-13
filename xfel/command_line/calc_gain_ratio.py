@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -38,7 +39,7 @@ phil_scope = phil.parse(phil_str)
 
 def run(args):
   if "-c" in args or "-h" in args or "--help" in args:
-    print help_message
+    print(help_message)
   user_phil = []
   for arg in args :
     try :
@@ -86,16 +87,16 @@ def run(args):
       ratio = panel_sum/panel_count
       ratios.append(ratio)
       counts.append(panel_count)
-      print "Panel", panel_id, "ratio:", ratio, "N pairs", panel_count
+      print("Panel", panel_id, "ratio:", ratio, "N pairs", panel_count)
 
   if len(ratios) <= 1:
     return
-  print "Mean:", flex.mean(ratios)
-  print "Standard deviation", flex.mean_and_variance(ratios).unweighted_sample_standard_deviation()
+  print("Mean:", flex.mean(ratios))
+  print("Standard deviation", flex.mean_and_variance(ratios).unweighted_sample_standard_deviation())
 
   stats = flex.mean_and_variance(ratios, counts.as_double())
-  print "Weighted mean:", stats.mean()
-  print "Weighted standard deviation", stats.gsl_stats_wsd()
+  print("Weighted mean:", stats.mean())
+  print("Weighted standard deviation", stats.gsl_stats_wsd())
 
 if __name__ == "__main__":
   run(sys.argv[1:])

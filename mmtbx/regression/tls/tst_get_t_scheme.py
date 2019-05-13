@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import math, sys, random
 from libtbx.test_utils import approx_equal
@@ -180,17 +181,17 @@ def exercise_branch_2_1(small = 1.e-9):
 
       if (counter >= 10000):
          counter = 0
-         print "."*30
-         print "i= ", i, "out of ", trials
-         print "branch_0       = ", branch_0
-         print "branch_1       = ", branch_1
-         print "branch_1_1     = ", branch_1_1
-         print "branch_1_2     = ", branch_1_2
-         print "branch_1_2_1   = ", branch_1_2_1
-         print "branch_1_2_2   = ", branch_1_2_2
-         print "branch_1_2_3   = ", branch_1_2_3
-         print "branch_1_2_3_1 = ", branch_1_2_3_1
-         print "branch_1_2_3_2 = ", branch_1_2_3_2
+         print("."*30)
+         print("i= ", i, "out of ", trials)
+         print("branch_0       = ", branch_0)
+         print("branch_1       = ", branch_1)
+         print("branch_1_1     = ", branch_1_1)
+         print("branch_1_2     = ", branch_1_2)
+         print("branch_1_2_1   = ", branch_1_2_1)
+         print("branch_1_2_2   = ", branch_1_2_2)
+         print("branch_1_2_3   = ", branch_1_2_3)
+         print("branch_1_2_3_1 = ", branch_1_2_3_1)
+         print("branch_1_2_3_2 = ", branch_1_2_3_2)
          sys.stdout.flush()
 
 
@@ -216,8 +217,8 @@ def exercise(small = 1.e-9):
                                        u_iso             = adptbx.b_as_u(20.0))
       sg = random_xray_structure.space_group()
       uc = random_xray_structure.unit_cell()
-      print symbol, uc
-      print
+      print(symbol, uc)
+      print()
       sys.stdout.flush()
       counter = 0
       trials = 100000
@@ -273,17 +274,17 @@ def exercise(small = 1.e-9):
 
           if (counter >= 10000):
              counter = 0
-             print "."*30, symbol
-             print "i= ", i, "out of ", trials
-             print "branch_0       = ", branch_0
-             print "branch_1       = ", branch_1
-             print "branch_1_1     = ", branch_1_1
-             print "branch_1_2     = ", branch_1_2
-             print "branch_1_2_1   = ", branch_1_2_1
-             print "branch_1_2_2   = ", branch_1_2_2
-             print "branch_1_2_3   = ", branch_1_2_3
-             print "branch_1_2_3_1 = ", branch_1_2_3_1
-             print "branch_1_2_3_2 = ", branch_1_2_3_2
+             print("."*30, symbol)
+             print("i= ", i, "out of ", trials)
+             print("branch_0       = ", branch_0)
+             print("branch_1       = ", branch_1)
+             print("branch_1_1     = ", branch_1_1)
+             print("branch_1_2     = ", branch_1_2)
+             print("branch_1_2_1   = ", branch_1_2_1)
+             print("branch_1_2_2   = ", branch_1_2_2)
+             print("branch_1_2_3   = ", branch_1_2_3)
+             print("branch_1_2_3_1 = ", branch_1_2_3_1)
+             print("branch_1_2_3_2 = ", branch_1_2_3_2)
              sys.stdout.flush()
 
 def exercise_x1():
@@ -299,7 +300,7 @@ def run():
   exercise()
   exercise_branch_2_1()
   exercise_2()
-  print "OK: ",format_cpu_times()
+  print("OK: ",format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.sgtbx import subgroups
 from cctbx import sgtbx
 
@@ -44,7 +45,7 @@ def run():
     assert centric_stats.n_chiral == non_centric_stats.n_chiral
     assert non_centric_stats.n_non_centric == len(non_centric_stats.subgroups)
     assert non_centric_stats.n_non_centric == non_centric_stats.n_chiral
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

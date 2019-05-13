@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import statistics
 from cctbx import miller
 from cctbx import adptbx
@@ -40,9 +41,9 @@ def exercise(space_group_info, anomalous_flag,
     f_obs.use_binner_of(f_calc)
     wp = statistics.wilson_plot(f_obs, asu_contents, e_statistics=True)
     if (0 or verbose):
-      print "wilson_k, wilson_b:", wp.wilson_k, wp.wilson_b
-      print "space group:", space_group_info.group().type().hall_symbol()
-      print "<E^2-1>:", wp.mean_e_sq_minus_1
+      print("wilson_k, wilson_b:", wp.wilson_k, wp.wilson_b)
+      print("space group:", space_group_info.group().type().hall_symbol())
+      print("<E^2-1>:", wp.mean_e_sq_minus_1)
 
     assert 0.8 < wp.wilson_k/k_given < 1.2
     assert 0.64 < wp.wilson_intensity_scale_factor/(k_given*k_given) < 1.44

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from libtbx import easy_run
 
@@ -46,7 +47,7 @@ def run():
   f.close()
   cmd = 'phenix.pdb_interpretation cdl_esd.pdb'
   rc = easy_run.call(cmd)
-  print 'OK'
+  print('OK')
   return rc
 
 if __name__=="__main__":

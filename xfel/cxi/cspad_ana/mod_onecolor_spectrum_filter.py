@@ -3,6 +3,7 @@
 
 ''' Filters shots from FEE spectrometer '''
 from __future__ import division
+from __future__ import print_function
 from libtbx.phil import parse
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
@@ -41,11 +42,11 @@ class mod_onecolor_spectrum_filter(object):
 
     accept = self.filter.filter_event(evt, self.selected_filter)[0]
     if not accept:
-      print "Skipping event", ts, ": didn't pass filter", self.selected_filter
+      print("Skipping event", ts, ": didn't pass filter", self.selected_filter)
       evt.put(skip_event_flag(), "skip_event")
       return
 
-    print "Accepting event", ts, ": passed filter", self.selected_filter
+    print("Accepting event", ts, ": passed filter", self.selected_filter)
     self.n_accepted += 1
 
   def endjob(self, obj1, obj2=None):
@@ -60,4 +61,4 @@ class mod_onecolor_spectrum_filter(object):
       evt = obj1
       env = obj2
 
-    print "Accepted %d of %d shots"%(self.n_accepted, self.n_total)
+    print("Accepted %d of %d shots"%(self.n_accepted, self.n_total))

@@ -2,6 +2,7 @@
 # XXX has phenix dependency (imports inline)
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.building.alternate_conformations import single_residue
 from mmtbx.building.alternate_conformations import sliding_window
 from mmtbx.building import alternate_conformations
@@ -93,22 +94,22 @@ class build_and_refine(object):
     validation = molprobity.molprobity(
       pdb_hierarchy=self.pdb_hierarchy,
       outliers_only=False)
-    print >> self.out, ""
+    print("", file=self.out)
     validation.show_summary(out=self.out, prefix="  ")
     make_sub_header("Analyzing final model", out=out)
     analyze_model.process_pdb_hierarchy(
       pdb_hierarchy=self.pdb_hierarchy,
       validation=validation,
       log=self.out).show(out=out, verbose=self.verbose)
-    print >> self.out, ""
-    print >> self.out, "Start:  r_work=%6.4f  r_free=%6.4f" % \
-      (self.r_work_start, self.r_free_start)
-    print >> self.out, "Final:  r_work=%6.4f  r_free=%6.4f" % \
-      (self.fmodel.r_work(), self.fmodel.r_free())
+    print("", file=self.out)
+    print("Start:  r_work=%6.4f  r_free=%6.4f" % \
+      (self.r_work_start, self.r_free_start), file=self.out)
+    print("Final:  r_work=%6.4f  r_free=%6.4f" % \
+      (self.fmodel.r_work(), self.fmodel.r_free()), file=self.out)
     t_end = time.time()
-    print >> self.out, ""
-    print >> self.out, "Total runtime: %d s" % int(t_end - t_start)
-    print >> self.out, ""
+    print("", file=self.out)
+    print("Total runtime: %d s" % int(t_end - t_start), file=self.out)
+    print("", file=self.out)
 
   def extract_selection(self):
     self.selection = None
@@ -119,7 +120,7 @@ class build_and_refine(object):
 
   def build_residue_conformers(self, stop_if_none=False):
     self.extract_selection()
-    print >> self.out, ""
+    print("", file=self.out)
     #self.fmodel.info().show_targets(out=self.out, text="starting model")
     make_sub_header("Fitting individual residues", out=self.out)
     t1 = time.time()
@@ -141,7 +142,7 @@ class build_and_refine(object):
 
   def build_window_conformers(self, stop_if_none=False):
     self.extract_selection()
-    print >> self.out, ""
+    print("", file=self.out)
     self.fmodel.info().show_targets(out=self.out, text="starting model")
     make_header("Sampling sliding windows", out=self.out)
     t1 = time.time()
@@ -157,7 +158,7 @@ class build_and_refine(object):
       verbose=self.verbose,
       out=self.out)
     t2 = time.time()
-    print >> self.out, "sampling time: %.3fs" % (t2-t1)
+    print("sampling time: %.3fs" % (t2-t1), file=self.out)
     n_ensembles = driver.n_ensembles()
     if (n_ensembles == 0) and (stop_if_none):
       raise Sorry("No new conformations generated.")
@@ -175,7 +176,7 @@ class build_and_refine(object):
       if (self.params.refinement.constrain_correlated_occupancies):
         extra_args.append("constrain_correlated_3d_groups=True")
     else :
-      print >> self.out, "  Correlated occupancies will *not* be constrained"
+      print("  Correlated occupancies will *not* be constrained", file=self.out)
     from phenix.automation import refinement
     refined = refinement.refine_hires_simple(
       pdb_hierarchy=self.pdb_hierarchy,
@@ -187,8 +188,8 @@ class build_and_refine(object):
       extra_args=extra_args,
       out=self.out) # TODO need a verbosity flag
     t2 = time.time()
-    print >> self.out, "  refinement time: %.3fs" % (t2-t1)
-    print >> self.out, ""
+    print("  refinement time: %.3fs" % (t2-t1), file=self.out)
+    print("", file=self.out)
     self.pdb_hierarchy = refined.pdb_hierarchy
     self.fmodel = refined.fmodel
     self.fmodel.info().show_targets(out=self.out, text="refined model")
@@ -226,7 +227,7 @@ class build_and_refine(object):
     self.pdb_hierarchy.write_pdb_file(
       file_name=file_name,
       crystal_symmetry=self.fmodel.xray_structure.crystal_symmetry())
-    print >> self.out, "wrote model to %s" % file_name
+    print("wrote model to %s" % file_name, file=self.out)
 
   def write_map_file(self, file_name):
     import mmtbx.maps.utils
@@ -262,7 +263,7 @@ def run(args, out=None, driver_class=None,
       default_directory_number=params.output.directory_number)
     os.chdir(dir_name)
   log = cmdline.start_log_file("%s.log" % params.output.prefix)
-  print >> log, "Output will be in %s" % dir_name
+  print("Output will be in %s" % dir_name, file=log)
   #working_phil = master_phil.format(python_object=params)
   #make_sub_header("Final input parameters", out=log)
   #master_phil.fetch_diff(source=working_phil).show(out=log)
@@ -273,10 +274,10 @@ def run(args, out=None, driver_class=None,
   if ((len(multi_conf_selection) != 0) and
       require_single_conformer_starting_model):
     atoms = cmdline.pdb_hierarchy.select(multi_conf_selection).atoms()
-    print >> log, "First %d atoms with alternate conformations:" % min(10,
-      len(atoms))
+    print("First %d atoms with alternate conformations:" % min(10,
+      len(atoms)), file=log)
     for atom in atoms[0:10] :
-      print >> log, atom.format_atom_record()
+      print(atom.format_atom_record(), file=log)
     raise Sorry("Existing alternate conformations detected - this program "+
       "can only be run on a single-conformer model at present.")
   driver = driver_class(
@@ -301,6 +302,6 @@ if (__name__ == "__main__"):
   try :
     import phenix.automation.refinement
   except ImportError :
-    print >> sys.stderr, "phenix is required to run this program."
+    print("phenix is required to run this program.", file=sys.stderr)
   else :
     run(sys.argv[1:])

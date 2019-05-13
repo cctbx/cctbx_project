@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import maptbx
 from cctbx import crystal
 from cctbx import sgtbx
@@ -258,8 +259,8 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
       maptbx.statistics(flex.real(under_sampled_real_map)).show_summary()
       maptbx.statistics(flex.imag(under_sampled_real_map)).show_summary()
   if (0 or verbose):
-    print real_map.all(), n_complex
-    print under_sampled_real_map.all(), n_complex_under_sampled
+    print(real_map.all(), n_complex)
+    print(under_sampled_real_map.all(), n_complex_under_sampled)
   if (not anomalous_flag):
     x_source = real_map
     y_source = under_sampled_real_map
@@ -274,8 +275,8 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
         x.append(x_source[(i,j,k)])
   y = maptbx.copy(y_source, flex.grid(y_source.focus())).as_1d()
   if (0 or verbose):
-    print "x:", tuple(x)
-    print "y:", tuple(y)
+    print("x:", tuple(x))
+    print("y:", tuple(y))
   assert flex.max(flex.abs(x-y)) \
       < (flex.max(flex.abs(x))+flex.max(flex.abs(y)))/2*1.e-6
   if (under_sampling == 1):

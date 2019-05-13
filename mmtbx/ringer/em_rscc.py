@@ -11,6 +11,7 @@ Reference:
 """
 
 from __future__ import division
+from __future__ import print_function
 import iotbx.phil
 from cctbx import crystal
 from cctbx import maptbx
@@ -44,21 +45,21 @@ em_rscc.py model.pdb map.ccp4
   assert (not None in [params.model, params.map])
   pdb_in = cmdline.get_file(params.model).file_object
   m = cmdline.get_file(params.map).file_object
-  print >> out, "Input electron density map:"
-  print >> out, "m.all()   :", m.data.all()
-  print >> out, "m.focus() :", m.data.focus()
-  print >> out, "m.origin():", m.data.origin()
-  print >> out, "m.nd()    :", m.data.nd()
-  print >> out, "m.size()  :", m.data.size()
-  print >> out, "m.focus_size_1d():", m.data.focus_size_1d()
-  print >> out, "m.is_0_based()   :", m.data.is_0_based()
-  print >> out, "map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data)
-  print >> out, "unit cell:", m.unit_cell_parameters
+  print("Input electron density map:", file=out)
+  print("m.all()   :", m.data.all(), file=out)
+  print("m.focus() :", m.data.focus(), file=out)
+  print("m.origin():", m.data.origin(), file=out)
+  print("m.nd()    :", m.data.nd(), file=out)
+  print("m.size()  :", m.data.size(), file=out)
+  print("m.focus_size_1d():", m.data.focus_size_1d(), file=out)
+  print("m.is_0_based()   :", m.data.is_0_based(), file=out)
+  print("map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data), file=out)
+  print("unit cell:", m.unit_cell_parameters, file=out)
   symm = crystal.symmetry(
     space_group_symbol="P1",
     unit_cell=m.unit_cell_parameters)
   xrs = pdb_in.input.xray_structure_simple(crystal_symmetry=symm)
-  print >> out, "Setting up electron scattering table (d_min=%g)" % params.d_min
+  print("Setting up electron scattering table (d_min=%g)" % params.d_min, file=out)
   xrs.scattering_type_registry(
     d_min=params.d_min,
     table="electron")
@@ -75,7 +76,7 @@ em_rscc.py model.pdb map.ccp4
   frac_matrix = unit_cell_for_interpolation.fractionalization_matrix()
   sites_cart = xrs.sites_cart()
   sites_frac = xrs.sites_frac()
-  print >> out, "PER-RESIDUE CORRELATION:"
+  print("PER-RESIDUE CORRELATION:", file=out)
   for chain in pdb_in.hierarchy.only_model().chains():
     for residue_group in chain.residue_groups():
       i_seqs = residue_group.atoms().extract_i_seq()
@@ -90,7 +91,7 @@ em_rscc.py model.pdb map.ccp4
         values_em.append(rho_em)
         values_fc.append(rho_fc)
       cc = flex.linear_correlation(x=values_em, y=values_fc).coefficient()
-      print >> out, residue_group.id_str(), cc
+      print(residue_group.id_str(), cc, file=out)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 
 class dict_with_add(dict):
@@ -128,16 +129,16 @@ class matched_atom_names(object):
     result = 0
     if (out is None): out = sys.stdout
     if (len(self.unexpected) != 0):
-      print >> out, prefix+"unexpected atom names:", ", ".join(['"'+name+'"'
-        for name in self.unexpected])
+      print(prefix+"unexpected atom names:", ", ".join(['"'+name+'"'
+        for name in self.unexpected]), file=out)
       result += 1
     for expected_pattern,names in \
           self.expected_patterns_with_multiple_matches().items():
-      print >> out, prefix+"multiple matches: expected pattern=%s  names=%s" \
-        % (expected_pattern, ", ".join(['"'+name+'"' for name in names]))
+      print(prefix+"multiple matches: expected pattern=%s  names=%s" \
+        % (expected_pattern, ", ".join(['"'+name+'"' for name in names])), file=out)
       result += 1
     for pair in self.mutually_exclusive_pairs():
-      print >> out, prefix+"mutually exclusive: %s" % " ".join(pair)
+      print(prefix+"mutually exclusive: %s" % " ".join(pair), file=out)
       result += 1
     return result
 

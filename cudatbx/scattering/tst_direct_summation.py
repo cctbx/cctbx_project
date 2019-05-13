@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import math
 from iotbx import pdb
 from libtbx.test_utils import approx_equal
@@ -103,4 +104,4 @@ if (__name__ == '__main__'):
     test_direct_summation()
     test_saxs()
 
-  print 'Ok'
+  print('Ok')

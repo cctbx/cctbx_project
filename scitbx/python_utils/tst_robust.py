@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx.python_utils import robust_statistics as rs
 
@@ -42,6 +43,6 @@ def run():
   tst_h_spread()
   tst_percentile()
   tst_trimmed_mean()
-  print "OK"
+  print("OK")
 
 run()

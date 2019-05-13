@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # (jEdit options) :folding=explicit:collapseFolds=1:
 from mmtbx.validation import residue, validation, atom
 from cctbx import geometry_restraints
@@ -600,7 +601,7 @@ class cablam_result(residue):
     if not (self.measures.mu_in and self.measures.mu_out and self.measures.nu):
       return
     point_name = "{"+self.mp_id()+"}"
-    print >> out, point_name, "%.2f %.2f %.2f" % (self.measures.mu_in, self.measures.mu_out, self.measures.nu)
+    print(point_name, "%.2f %.2f %.2f" % (self.measures.mu_in, self.measures.mu_out, self.measures.nu), file=out)
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1219,8 +1220,8 @@ class cablamalyze(validation):
   #{{{ as_pointcloud_kinemage
   #-----------------------------------------------------------------------------
   def as_pointcloud_kinemage(self):#, out=self.out):
-    print >> self.out, "@group {cablam-space points} dominant"
-    print >> self.out, "@dotlist (cablam-space points)"
+    print("@group {cablam-space points} dominant", file=self.out)
+    print("@dotlist (cablam-space points)", file=self.out)
     for result in self.results:
       result.as_kinemage_point()
   #-----------------------------------------------------------------------------

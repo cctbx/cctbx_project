@@ -3,6 +3,7 @@ http://www2.imm.dtu.dk/~hbn/immoptibox/
 """
 
 from __future__ import division
+from __future__ import print_function
 import scitbx.math
 import scitbx.linalg
 from scitbx import matrix
@@ -129,18 +130,18 @@ class levenberg_marquardt:
     self.number_of_cholesky_decompositions = number_of_cholesky_decompositions
 
   def show_statistics(self):
-    print "levenberg_marquardt results:"
-    print "  function:", self.function.label()
-    print "  x_star:", list(self.x_star)
-    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
-    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
-    print "  number_of_iterations:", self.number_of_iterations
-    print "  number_of_function_evaluations:", \
-        self.number_of_function_evaluations
-    print "  number_of_jacobian_evaluations:", \
-        self.number_of_jacobian_evaluations
-    print "  number_of_cholesky_decompositions:", \
-      self.number_of_cholesky_decompositions
+    print("levenberg_marquardt results:")
+    print("  function:", self.function.label())
+    print("  x_star:", list(self.x_star))
+    print("  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2)
+    print("  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2)
+    print("  number_of_iterations:", self.number_of_iterations)
+    print("  number_of_function_evaluations:", \
+        self.number_of_function_evaluations)
+    print("  number_of_jacobian_evaluations:", \
+        self.number_of_jacobian_evaluations)
+    print("  number_of_cholesky_decompositions:", \
+      self.number_of_cholesky_decompositions)
 
 class damped_newton:
 
@@ -224,20 +225,20 @@ class damped_newton:
     self.number_of_cholesky_decompositions = number_of_cholesky_decompositions
 
   def show_statistics(self):
-    print "damped_newton results:"
-    print "  function:", self.function.label()
-    print "  x_star:", list(self.x_star)
-    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
-    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
-    print "  number_of_iterations:", self.number_of_iterations
-    print "  number_of_function_evaluations:", \
-        self.number_of_function_evaluations
-    print "  number_of_gradient_evaluations:", \
-        self.number_of_gradient_evaluations
-    print "  number_of_hessian_evaluations:", \
-        self.number_of_hessian_evaluations
-    print "  number_of_cholesky_decompositions:", \
-        self.number_of_cholesky_decompositions
+    print("damped_newton results:")
+    print("  function:", self.function.label())
+    print("  x_star:", list(self.x_star))
+    print("  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2)
+    print("  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2)
+    print("  number_of_iterations:", self.number_of_iterations)
+    print("  number_of_function_evaluations:", \
+        self.number_of_function_evaluations)
+    print("  number_of_gradient_evaluations:", \
+        self.number_of_gradient_evaluations)
+    print("  number_of_hessian_evaluations:", \
+        self.number_of_hessian_evaluations)
+    print("  number_of_cholesky_decompositions:", \
+        self.number_of_cholesky_decompositions)
 
 class minpack_levenberg_marquardt_adaptor:
 
@@ -275,16 +276,16 @@ class minpack_levenberg_marquardt_adaptor:
     self.f_x_star = function.f(x=self.x_star)
 
   def show_statistics(self):
-    print "minpack.levenberg_marquardt results:"
-    print "  function:", self.function.label()
-    print "  x_star:", list(self.x_star)
-    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
-    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
-    print "  number_of_iterations:", self.number_of_iterations
-    print "  number_of_function_evaluations:", \
-        self.number_of_function_evaluations
-    print "  number_of_jacobian_evaluations:", \
-        self.number_of_jacobian_evaluations
+    print("minpack.levenberg_marquardt results:")
+    print("  function:", self.function.label())
+    print("  x_star:", list(self.x_star))
+    print("  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2)
+    print("  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2)
+    print("  number_of_iterations:", self.number_of_iterations)
+    print("  number_of_function_evaluations:", \
+        self.number_of_function_evaluations)
+    print("  number_of_jacobian_evaluations:", \
+        self.number_of_jacobian_evaluations)
 
 class lbfgs_adaptor:
 
@@ -313,16 +314,16 @@ class lbfgs_adaptor:
     return f, g
 
   def show_statistics(self):
-    print "lbfgs results:"
-    print "  function:", self.function.label()
-    print "  x_star:", list(self.x_star)
-    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
-    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
-    print "  number_of_iterations:", self.number_of_iterations
-    print "  number_of_function_evaluations:", \
-        self.number_of_function_evaluations
-    print "  number_of_gradient_evaluations:", \
-        self.number_of_gradient_evaluations
+    print("lbfgs results:")
+    print("  function:", self.function.label())
+    print("  x_star:", list(self.x_star))
+    print("  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2)
+    print("  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2)
+    print("  number_of_iterations:", self.number_of_iterations)
+    print("  number_of_function_evaluations:", \
+        self.number_of_function_evaluations)
+    print("  number_of_gradient_evaluations:", \
+        self.number_of_gradient_evaluations)
 
 class lbfgsb_adaptor:
 
@@ -350,16 +351,16 @@ class lbfgsb_adaptor:
     self.f_x_star = function.f(x=self.x_star)
 
   def show_statistics(self):
-    print "lbfgsb results:"
-    print "  function:", self.function.label()
-    print "  x_star:", list(self.x_star)
-    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
-    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
-    print "  number_of_iterations:", self.number_of_iterations
-    print "  number_of_function_evaluations:", \
-        self.number_of_function_evaluations
-    print "  number_of_gradient_evaluations:", \
-        self.number_of_gradient_evaluations
+    print("lbfgsb results:")
+    print("  function:", self.function.label())
+    print("  x_star:", list(self.x_star))
+    print("  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2)
+    print("  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2)
+    print("  number_of_iterations:", self.number_of_iterations)
+    print("  number_of_function_evaluations:", \
+        self.number_of_function_evaluations)
+    print("  number_of_gradient_evaluations:", \
+        self.number_of_gradient_evaluations)
 
 class MeyerFunctionError(RuntimeError): pass
 
@@ -393,7 +394,7 @@ class test_function:
       try:
         self.exercise_lbfgsb()
       except MeyerFunctionError:
-        print "Skipping: exercise_lbfgsb() with", self.__class__.__name__
+        print("Skipping: exercise_lbfgsb() with", self.__class__.__name__)
     if (1 and knitro_adaptbx is not None):
       self.exercise_knitro_adaptbx()
 
@@ -492,19 +493,19 @@ class test_function:
     minimized = levenberg_marquardt(function=self, x0=self.x0, tau=self.tau0)
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
-    if (self.verbose): print
+    if (self.verbose): print()
 
   def exercise_minpack_levenberg_marquardt(self):
     minimized = minpack_levenberg_marquardt_adaptor(function=self, x0=self.x0)
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
-    if (self.verbose): print
+    if (self.verbose): print()
 
   def exercise_damped_newton(self):
     minimized = damped_newton(function=self, x0=self.x0, tau=self.tau0)
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
-    if (self.verbose): print
+    if (self.verbose): print()
 
   def exercise_scitbx_minimizers_damped_newton(self):
     import scitbx.minimizers
@@ -512,7 +513,7 @@ class test_function:
       function=self, x0=self.x0, tau=self.tau0)
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
-    if (self.verbose): print
+    if (self.verbose): print()
 
   def exercise_scitbx_minimizers_newton_more_thuente_1994(self):
     import scitbx.minimizers
@@ -520,33 +521,33 @@ class test_function:
       function=self, x0=self.x0)
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
-    if (self.verbose): print
+    if (self.verbose): print()
 
   def exercise_lbfgs(self):
     minimized = lbfgs_adaptor(function=self, x0=self.x0)
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
-    if (self.verbose): print
+    if (self.verbose): print()
 
   def exercise_lbfgsb(self):
     minimized = lbfgsb_adaptor(function=self, x0=self.x0)
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
-    if (self.verbose): print
+    if (self.verbose): print()
 
   def exercise_knitro_adaptbx(self):
     minimized = knitro_adaptbx.solve(function=self, x0=self.x0)
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
-    if (self.verbose): print
+    if (self.verbose): print()
     minimized = knitro_adaptbx.solve(function=self, x0=self.x0,hessopt="bfgs")
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
-    if (self.verbose): print
+    if (self.verbose): print()
     minimized = knitro_adaptbx.solve(function=self, x0=self.x0,hessopt="lbfgs")
     if (self.verbose): minimized.show_statistics()
     self.check_minimized(minimized=minimized)
-    if (self.verbose): print
+    if (self.verbose): print()
 
 class linear_function_full_rank(test_function):
 
@@ -903,13 +904,13 @@ class meyer_function(test_function):
 
   def check_minimized_x_star(self, x_star):
     if (self.verbose):
-      print "  expected x_star: %.6g %.6g %.6g" % tuple(self.x_star)
-      print "    actual x_star: %.6g %.6g %.6g" % tuple(x_star)
+      print("  expected x_star: %.6g %.6g %.6g" % tuple(self.x_star))
+      print("    actual x_star: %.6g %.6g %.6g" % tuple(x_star))
 
   def check_minimized_capital_f_x_star(self, f_x_star):
     if (self.verbose):
-      print "  expected 0.5*f_x_star.norm()**2: %.6g" % self.capital_f_x_star
-      print "    actual 0.5*f_x_star.norm()**2: %.6g" % (0.5*f_x_star.norm()**2)
+      print("  expected 0.5*f_x_star.norm()**2: %.6g" % self.capital_f_x_star)
+      print("    actual 0.5*f_x_star.norm()**2: %.6g" % (0.5*f_x_star.norm()**2))
 
   def f(self, x):
     x1,x2,x3 = x
@@ -1056,7 +1057,7 @@ def exercise():
     kowalik_and_osborne_function(m=11, n=4, verbose=verbose)
   if (0 or default_flag):
     meyer_function(m=16, n=3, verbose=verbose)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise()

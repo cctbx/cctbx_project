@@ -2,6 +2,7 @@
 # XXX requires solve_resolve (inline import)
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx import building
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
@@ -55,8 +56,8 @@ class resolve_builder(building.box_build_refine_base):
       assert (n_res >= 3)
       k = 0
       for residue_group in chain.residue_groups()[1:-1] :
-        print >> self.out, "  removing residue group %s %s" % \
-          (chain.id, residue_group.resid())
+        print("  removing residue group %s %s" % \
+          (chain.id, residue_group.resid()), file=self.out)
         chain.remove_residue_group(residue_group)
       resolve_args.extend([
         "loop_only",
@@ -96,7 +97,7 @@ class resolve_builder(building.box_build_refine_base):
       source_info='string',
       lines=flex.split_lines(cmn.atom_db.pdb_out_as_string))
     new_hierarchy = new_pdb_input.construct_hierarchy()
-    print >> self.out, "  %d atoms rebuilt" % len(new_hierarchy.atoms())
+    print("  %d atoms rebuilt" % len(new_hierarchy.atoms()), file=self.out)
     new_hierarchy.write_pdb_file("resolve.pdb")
     selection_moved = flex.size_t()
     sites_new = flex.vec3_double()
@@ -115,14 +116,14 @@ class resolve_builder(building.box_build_refine_base):
     self.box.xray_structure_box.set_sites_cart(sites_cart_box)
     self.box.pdb_hierarchy_box.atoms().set_xyz(sites_cart_box)
     t2 = time.time()
-    print >> self.out, "  RESOLVE time: %.1fs" % (t2-t1)
+    print("  RESOLVE time: %.1fs" % (t2-t1), file=self.out)
     selection_rebuilt = self.selection_in_box.select(selection_moved)
     minimize_sel = flex.bool(self.n_sites_box, False).set_selected(
       self.selection_in_box, True).set_selected(selection_rebuilt, False)
     # atoms present in the selection but not in the RESOLVE model (usually
     # hydrogen atoms) need to be minimized to follow the rebuilt sites
     if (minimize_sel.count(True) > 0):
-      print >> self.out, "  Performing geometry minimzation on unbuilt sites"
+      print("  Performing geometry minimzation on unbuilt sites", file=self.out)
       self.geometry_minimization(
         selection=minimize_sel,
         nonbonded=False)
@@ -140,12 +141,12 @@ class resolve_builder(building.box_build_refine_base):
     self.box.write_ccp4_map()
     mean_density_end = self.mean_density_at_sites()
     cc_end = self.cc_model_map()
-    print >> self.out, "  mean density level: start=%.2fsigma  end=%.2fsigma" \
-      % (mean_density_start, mean_density_end)
-    print >> self.out, "  model-map CC: start=%.3f  end=%.3f" % (cc_start,
-      cc_end)
+    print("  mean density level: start=%.2fsigma  end=%.2fsigma" \
+      % (mean_density_start, mean_density_end), file=self.out)
+    print("  model-map CC: start=%.3f  end=%.3f" % (cc_start,
+      cc_end), file=self.out)
     sites_final = self.get_selected_sites(hydrogens=False)
-    print >> self.out, "  rmsd to starting model: %.3f Angstrom" % \
-      sites_final.rms_difference(sites_start)
+    print("  rmsd to starting model: %.3f Angstrom" % \
+      sites_final.rms_difference(sites_start), file=self.out)
     t3 = time.time()
-    print >> self.out, "  Total build and refine time: %.1fs" % (t3-t1)
+    print("  Total build and refine time: %.1fs" % (t3-t1), file=self.out)

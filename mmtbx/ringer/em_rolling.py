@@ -11,6 +11,7 @@ Reference:
 ########################################################################
 # Package imports
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_pickle
 from collections import defaultdict
 import argparse
@@ -75,17 +76,17 @@ def identify_regions(results,
   import numpy as np
   for chain, chain_out in results.iteritems():
     outliers = []
-    print >> out, "For Chain %s:" % chain
+    print("For Chain %s:" % chain, file=out)
     for k in chain_out:
       if ((np.divide(k[2],k[1]) > thresholded_cutoff) and
           (np.divide(k[3],k[2]) < rotamer_cutoff)):
         for i in range(k[0]-extension, k[0]+extension):
           outliers.append(i)
     if len(outliers) > 0:
-      print >> out, list(ranges(outliers))
-      print >> out, ""
+      print(list(ranges(outliers)), file=out)
+      print("", file=out)
     else:
-      print >> out, "No outliers at this threshold \n"
+      print("No outliers at this threshold \n", file=out)
 
 def make_dir(f):
     if not os.path.exists(f):
@@ -135,7 +136,7 @@ class main(object):
                 if chi.deviation <= 30:
                   n_deviate += 1
         self.results_a[chain].append((i, total_n, threshold_n, n_deviate))
-    print >> out, "====Low-scoring, high-signal regions===="
+    print("====Low-scoring, high-signal regions====", file=out)
     identify_regions(self.results_a, out=out)
     if graph or save:
       plot_results(self.results_a,

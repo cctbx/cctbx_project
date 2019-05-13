@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from iotbx.cif import builders, model, errors
 import libtbx.load_env
@@ -57,7 +58,7 @@ class ErrorHandler:
       for e in errs:
         if str(e) not in printed_messages: # avoid printing duplicates
           printed_messages.add(str(e))
-          print >> out, e
+          print(e, file=out)
 
 
 class ValidationError(Exception):
@@ -358,7 +359,7 @@ class dictionary(model.cif):
       elif (isinstance(list_category, basestring)
             and definition_category is not None
             and list_category != definition_category):
-        print list_category, list(definition_category)
+        print(list_category, list(definition_category))
         self.report_error(2502, key=key) # multiple categories in loop
       mandatory = definition.mandatory == 'yes'
       references = definition.get('_list_reference')

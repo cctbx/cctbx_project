@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 from cStringIO import StringIO
 import sys
 
@@ -118,13 +119,13 @@ def recycle_one_dano(missing, verbose):
   ma.set_observation_type(observation_types.reconstructed_amplitude())
   mtz_obj_reco = ma.as_mtz_dataset(column_root_label="R").mtz_object()
   sio = StringIO()
-  print >> sio, "Resulting mtz from .as_mtz_dataset():"
+  print("Resulting mtz from .as_mtz_dataset():", file=sio)
   mtz_obj_reco.show_column_data_human_readable(out=sio)
-  print >> sio
+  print(file=sio)
   ma_reco = mtz_obj_reco.as_miller_arrays()[0]
-  print >> sio, "mtz_obj_reco.as_miller_arrays result:"
+  print("mtz_obj_reco.as_miller_arrays result:", file=sio)
   ma_reco.show_array(f=sio)
-  print >> sio
+  print(file=sio)
   if (verbose):
     sys.stdout.write(sio.getvalue())
   if (missing is None):
@@ -203,12 +204,12 @@ def run(args):
         test=os.path.isfile,
         optional=False))
     else:
-      print 'Skipping tests on dano.mtz: no phenix_regression'
+      print('Skipping tests on dano.mtz: no phenix_regression')
   for mtz_file_name in mtz_file_names:
     recycle_dano_mtz(mtz_file_name)
   for missing in [None, "+", "-"]:
     recycle_one_dano(missing, verbose)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

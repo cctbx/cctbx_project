@@ -2,6 +2,7 @@
 # TODO more tests
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.command_line import molprobity
 import iotbx.pdb.hierarchy
 from scitbx.array_family import flex
@@ -54,4 +55,4 @@ HETATM 6419  D2  DOD A1001      -4.625   2.741 -13.845  1.00 14.81           D
 
 if (__name__ == "__main__"):
   exercise_01()
-  print "OK"
+  print("OK")

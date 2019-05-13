@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #coding: utf-8
 import random
 from scitbx.array_family import flex
@@ -49,7 +50,7 @@ def run():
   try:
     import gltbx.gl
   except ImportError:
-    print "Skipping gltbx/tst_ellipsoids.py: gltbx.gl module not available."
+    print("Skipping gltbx/tst_ellipsoids.py: gltbx.gl module not available.")
     sys.exit(1)
 
   exercise_ellipsoid()
@@ -64,7 +65,7 @@ def run():
       time_ellipsoid(int(command_line.args[0]))
     else:
       time_ellipsoid()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import math
 
@@ -31,7 +32,7 @@ def miller_array_as_phases_phs(self,
   assert len(" %7.2f" % flex.max(phases)) == 8
   if (figures_of_merit is None):
     for h,a,p in zip(self.indices(),amplitudes,phases):
-      print >> out, "%4d%4d%4d" % h + " %7.2f"%a + " %7.2f"%1 + " %7.2f"%p
+      print("%4d%4d%4d" % h + " %7.2f"%a + " %7.2f"%1 + " %7.2f"%p, file=out)
   else:
     if (hasattr(figures_of_merit, "data")):
       assert figures_of_merit.indices().all_eq(self.indices())
@@ -39,4 +40,4 @@ def miller_array_as_phases_phs(self,
     assert len(" %7.2f" % flex.min(figures_of_merit)) == 8
     assert len(" %7.2f" % flex.max(figures_of_merit)) == 8
     for h,a,p,f in zip(self.indices(),amplitudes,phases,figures_of_merit):
-      print >> out, "%4d%4d%4d" % h + " %7.2f"%a + " %7.2f"%f + " %7.2f"%p
+      print("%4d%4d%4d" % h + " %7.2f"%a + " %7.2f"%f + " %7.2f"%p, file=out)

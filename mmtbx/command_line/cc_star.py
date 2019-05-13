@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.cc_star
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx.utils import Sorry, Usage
 from libtbx import runtime_utils
@@ -110,7 +111,7 @@ Full parameters:
       if (f_model.anomalous_flag()):
         info = f_model.info()
         f_model = f_model.average_bijvoet_mates().set_info(info)
-      print >> out, "F(model):"
+      print("F(model):", file=out)
       f_model.show_summary(f=out, prefix="  ")
     else :
       data_array = hkl_in.file_server.get_xray_data(
@@ -158,9 +159,9 @@ Full parameters:
   if (f_obs.anomalous_flag()):
     info = f_obs.info()
     f_obs = f_obs.average_bijvoet_mates().set_info(info)
-  print >> out, "F(obs):"
+  print("F(obs):", file=out)
   f_obs.show_summary(f=out, prefix="  ")
-  print >> out, ""
+  print("", file=out)
   r_free_flags, test_flag_value = hkl_in.file_server.get_r_free_flags(
     file_name=params.data,
     label=params.r_free_flags.label,
@@ -172,17 +173,17 @@ Full parameters:
     data=r_free_flags.data()==test_flag_value).set_info(info)
   if (r_free_flags.anomalous_flag()):
     r_free_flags = r_free_flags.average_bijvoet_mates().set_info(info)
-  print >> out, "R-free flags:"
+  print("R-free flags:", file=out)
   r_free_flags.show_summary(f=out, prefix="  ")
-  print >> out, ""
+  print("", file=out)
   unmerged_i_obs = mmtbx.command_line.load_and_validate_unmerged_data(
     f_obs=f_obs,
     file_name=params.unmerged_data,
     data_labels=params.unmerged_labels,
     log=out)
-  print >> out, "Unmerged intensities:"
+  print("Unmerged intensities:", file=out)
   unmerged_i_obs.show_summary(f=out, prefix="  ")
-  print >> out, ""
+  print("", file=out)
   if (f_model is None):
     assert (f_obs is not None)
     if (params.model is None):
@@ -235,10 +236,10 @@ Full parameters:
   stats.show_cc_star(out=out)
   if (params.loggraph):
     stats.show_loggraph(out=out)
-  print >> out, ""
-  print >> out, "Reference:"
-  print >> out, "  Karplus PA & Diederichs K (2012) Science 336:1030-3."
-  print >> out, ""
+  print("", file=out)
+  print("Reference:", file=out)
+  print("  Karplus PA & Diederichs K (2012) Science 336:1030-3.", file=out)
+  print("", file=out)
   return stats
 
 def validate_params(params):

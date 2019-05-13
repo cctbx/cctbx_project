@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.xplor.map
 from cctbx import maptbx
 from cctbx import sgtbx
@@ -189,7 +190,7 @@ def run():
   recycle()
   test_file_name = get_test_file_name()
   if (test_file_name is None):
-    print "Skipping original CNS map test: input file not available"
+    print("Skipping original CNS map test: input file not available")
   else:
     map1 = read_xplor(test_file_name)
     write_xplor(map1, "tmp.map")
@@ -197,7 +198,7 @@ def run():
     assert flex.max(flex.abs(map2.data-map1.data)) < 2.e-5
   exercise_fft_map_as_xplor_map(
     space_group_info=sgtbx.space_group_info("P 31"))
-  print "OK"
+  print("OK")
 
 if (__name__=="__main__"):
   run()

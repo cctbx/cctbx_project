@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 import mmtbx.monomer_library.server
 import time
@@ -45,7 +46,7 @@ def get_object(pdb_str, backbone_sample, sort_atoms=True):
     residue         = residue,
     mon_lib_srv     = mon_lib_srv,
     backbone_sample = backbone_sample).clusters
-  print time.time()-t0
+  print(time.time()-t0)
   return result
 
 def exercise_00():
@@ -63,4 +64,4 @@ def exercise_00():
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_00()
-  print "Time: %6.2f" % (time.time()-t0)
+  print("Time: %6.2f" % (time.time()-t0))

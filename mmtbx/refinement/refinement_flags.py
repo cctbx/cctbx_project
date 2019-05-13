@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import sys
 from libtbx import adopt_init_args
@@ -178,25 +179,25 @@ class manager(object):
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
-    print >> log, "Refinement flags and selection counts:"
-    print >> log, "  individual_sites       = %5s (%s atoms)"%(
-      str(self.individual_sites), self.ca(self.sites_individual))
-    print >> log, "  torsion_angles         = %5s (%s atoms)"%(
-      str(self.torsion_angles), self.ca(self.sites_torsion_angles))
-    print >> log, "  rigid_body             = %5s (%s atoms in %s groups)"%(
+    print("Refinement flags and selection counts:", file=log)
+    print("  individual_sites       = %5s (%s atoms)"%(
+      str(self.individual_sites), self.ca(self.sites_individual)), file=log)
+    print("  torsion_angles         = %5s (%s atoms)"%(
+      str(self.torsion_angles), self.ca(self.sites_torsion_angles)), file=log)
+    print("  rigid_body             = %5s (%s atoms in %s groups)"%(
       str(self.rigid_body), self.ca(self.sites_rigid_body),
-      self.szs(self.sites_rigid_body))
-    print >> log, "  individual_adp         = %5s (iso = %s aniso = %s)"%(
+      self.szs(self.sites_rigid_body)), file=log)
+    print("  individual_adp         = %5s (iso = %s aniso = %s)"%(
       str(self.individual_adp), self.ca(self.adp_individual_iso),
-      self.ca(self.adp_individual_aniso))
-    print >> log, "  group_adp              = %5s (%s atoms in %s groups)"%(
-      str(self.group_adp), self.ca(self.adp_group), self.szs(self.adp_group))
-    print >> log, "  tls                    = %5s (%s atoms in %s groups)" % (
-      str(self.tls), self.ca(self.adp_tls), self.szs(self.adp_tls))
+      self.ca(self.adp_individual_aniso)), file=log)
+    print("  group_adp              = %5s (%s atoms in %s groups)"%(
+      str(self.group_adp), self.ca(self.adp_group), self.szs(self.adp_group)), file=log)
+    print("  tls                    = %5s (%s atoms in %s groups)" % (
+      str(self.tls), self.ca(self.adp_tls), self.szs(self.adp_tls)), file=log)
     co_res = self.count_occupancies(self.s_occupancies)
-    print >> log, "  occupancies            = %5s (%s atoms)"%(
-      str(self.occupancies), co_res)
-    print >> log, "  group_anomalous        = %5s"%self.group_anomalous # XXX selections not available
+    print("  occupancies            = %5s (%s atoms)"%(
+      str(self.occupancies), co_res), file=log)
+    print("  group_anomalous        = %5s"%self.group_anomalous, file=log) # XXX selections not available
     log.flush()
 
   def _select(self, x, selection):

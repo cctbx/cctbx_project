@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import os
 from libtbx import easy_run
 import time
@@ -18,13 +19,13 @@ def exercise():
     if "Probable cation: CA+2" in line:
       n_ca += 1
   if (n_ca != 1):
-    print "\n".join(result.stdout_lines)
+    print("\n".join(result.stdout_lines))
     raise RuntimeError("Expected 1 Ca2+, found %d" % n_ca)
   os.remove(pdb_file)
   os.remove(mtz_file)
   os.remove(os.path.splitext(pdb_file)[0][:-4] + ".pdb")
   os.remove(os.path.splitext(pdb_file)[0][:-4] + "_fmodel.eff")
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

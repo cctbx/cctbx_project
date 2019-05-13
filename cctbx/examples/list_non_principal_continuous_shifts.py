@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 from cctbx import sgtbx
 import os
@@ -15,10 +16,10 @@ def run():
     sgi = sgtbx.space_group_info(setting)
     seminvar = sgtbx.structure_seminvariants(sgi.group())
     if seminvar.continuous_shifts_are_principal(): continue
-    print str(sgi)
+    print(str(sgi))
     for vm in seminvar.vectors_and_moduli():
       if vm.m != 0: continue
-      print "\t", vm.v
+      print("\t", vm.v)
 
 if __name__ == '__main__':
   run()

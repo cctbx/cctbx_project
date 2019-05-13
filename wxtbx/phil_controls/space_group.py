@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from wxtbx import phil_controls
 from wxtbx.phil_controls.text_base import TextCtrlValidator
@@ -94,7 +95,7 @@ if (__name__ == "__main__"):
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))
   def OnOkay(evt):
     sg = sg_ctrl.GetPhilValue()
-    print type(sg).__name__, str(sg)
+    print(type(sg).__name__, str(sg))
   frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
   frame.Fit()
   frame.Show()

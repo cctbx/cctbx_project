@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 
 
@@ -96,7 +97,7 @@ def run(args=(), params=None, out=None):
     f.write(new_hierarchy.as_pdb_string())
     f.close()
     outputs.append(output_file)
-    print >> out, "Wrote chain '%s' to %s" % (chain.id, output_file)
+    print("Wrote chain '%s' to %s" % (chain.id, output_file), file=out)
   return outputs
 
 def validate_params(params):

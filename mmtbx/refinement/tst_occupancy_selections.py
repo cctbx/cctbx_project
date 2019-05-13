@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.refinement.occupancies import occupancy_selections
 from mmtbx.command_line import fmodel
@@ -1294,7 +1295,7 @@ def run():
   exercise_29(verbose=verbose)
   exercise_30(verbose=verbose)
   exercise_regroup_3d(verbose=verbose)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

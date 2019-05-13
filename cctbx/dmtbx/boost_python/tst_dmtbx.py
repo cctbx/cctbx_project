@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import dmtbx
 from cctbx import sgtbx
 from cctbx.array_family import flex
@@ -66,7 +67,7 @@ def exercise_triplet_generator():
 
 def run():
   exercise_triplet_generator()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

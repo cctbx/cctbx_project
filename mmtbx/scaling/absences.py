@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import mmtbx.scaling
 from cctbx.array_family import flex
 from cctbx import crystal
@@ -871,7 +872,7 @@ def test():
     print i, "   ", j
   """
 
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   test()

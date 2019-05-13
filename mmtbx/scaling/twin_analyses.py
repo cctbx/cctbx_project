@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.scaling import absolute_scaling
 from mmtbx import scaling
 from iotbx import data_plots
@@ -378,16 +379,15 @@ class detect_pseudo_translations(scaling.xtriage_analysis):
     if work_array.completeness(
       as_non_anomalous_array = completeness_as_non_anomalous) \
          <completeness_cut:
-      print >> out
-      print >> out," WARNING (twin_analysis):"
-      print >> out,\
-        "  The completeness is only %3.2f between %3.1f and %3.1f A."% (
+      print(file=out)
+      print(" WARNING (twin_analysis):", file=out)
+      print("  The completeness is only %3.2f between %3.1f and %3.1f A."% (
         work_array.completeness(
           as_non_anomalous_array = completeness_as_non_anomalous
-          ), low_limit, high_limit)
-      print >> out,"  This might not be enough to obtain a good estimate"
-      print >> out,"  of the presence or absence of pseudo translational"
-      print >> out,"  symmetry."
+          ), low_limit, high_limit), file=out)
+      print("  This might not be enough to obtain a good estimate", file=out)
+      print("  of the presence or absence of pseudo translational", file=out)
+      print("  symmetry.", file=out)
     if work_array.indices().size()==0:
       raise Sorry("No low resolution reflections")
 
@@ -396,13 +396,12 @@ class detect_pseudo_translations(scaling.xtriage_analysis):
         miller_array)
     everything_okay = True
     if (work_array.indices().size()<0):
-      print >> out, \
-         "The number of reflection between %3.1f and %3.1f Angstrom" \
+      print("The number of reflection between %3.1f and %3.1f Angstrom" \
          %( low_limit,
-            high_limit )
-      print >> out, "is equal to %i" %(work_array.indices().size())
-      print >> out, " ##  This is not enough to obtain a reasonable estimate of"
-      print >> out, " ##  the presence of translational NCS"
+            high_limit ), file=out)
+      print("is equal to %i" %(work_array.indices().size()), file=out)
+      print(" ##  This is not enough to obtain a reasonable estimate of", file=out)
+      print(" ##  the presence of translational NCS", file=out)
       everything_okay = False
 
     if everything_okay:
@@ -438,10 +437,10 @@ class detect_pseudo_translations(scaling.xtriage_analysis):
                                           height, p_value,
                                           dist_info.dist()] )
       if len(self.suspected_peaks)==0:
-        print >> out
-        print >> out, "No Patterson vectors with a length larger than"
-        print >> out, "%5.2f found. removing distance constraint"%(distance_cut)
-        print >> out
+        print(file=out)
+        print("No Patterson vectors with a length larger than", file=out)
+        print("%5.2f found. removing distance constraint"%(distance_cut), file=out)
+        print(file=out)
         distance_cut = 1e-3
         for i_peak in range(max_sites):
           height = peak_list.heights()[i_peak]/max_height*100.0
@@ -1151,16 +1150,16 @@ class ml_murray_rust_with_ncs(object):
       calc = calc.f_as_f_sq()
     calc = calc.common_set( other=obs )
     calc.use_binning_of( obs  )
-    print >> out, """
+    print("""
  The correlation of the calculated F^2 should be similar to the estimated
  values.
 
  Observed correlation between twin related, untwinned calculated F^2
  in resolutiuon ranges, as well as ewstimates D_ncs^2 values:
-"""
+""", file=out)
     # now loop over all resolution bins, get twin related intensities and get
     # twin related intensities please
-    print >> out, " Bin    d_max     d_min     CC_obs   D_ncs^2 "
+    print(" Bin    d_max     d_min     CC_obs   D_ncs^2 ", file=out)
     for i_bin in calc.binner().range_used():
       tmp_array = calc.select( calc.binner().bin_indices() == i_bin )
       tmp_r_class = scaling.twin_r( tmp_array.indices(),
@@ -1174,8 +1173,8 @@ class ml_murray_rust_with_ncs(object):
       d_ncs_sq = self.x[i_bin]
       d_ncs_sq = self.d_cap/( 1.0+math.exp(-d_ncs_sq) )
       d_ncs_sq = d_ncs_sq*d_ncs_sq
-      print >> out, "%3i)    %5.4f -- %5.4f :: %6s   %6s" % (i_bin, low,
-        high, self.string_it(d_theory_sq), self.string_it(d_ncs_sq))
+      print("%3i)    %5.4f -- %5.4f :: %6s   %6s" % (i_bin, low,
+        high, self.string_it(d_theory_sq), self.string_it(d_ncs_sq)), file=out)
 
   def compute_functional_and_gradients(self):
     tmp = self.ml_object.p_tot_given_t_and_coeff( self.x[0],
@@ -1186,12 +1185,12 @@ class ml_murray_rust_with_ncs(object):
     self.f=f
     self.cycle+=1
     if self.cycle%5==0:
-      print >> self.out, "%3i "%(self.cycle),
+      print("%3i "%(self.cycle), end=' ', file=self.out)
       #self.print_it()
     else:
-      print >>self.out, ".",
+      print(".", end=' ', file=self.out)
     if self.cycle%30==0:
-      print >>self.out
+      print(file=self.out)
     self.out.flush()
     return f,flex.double(g)
 
@@ -2475,17 +2474,17 @@ def merge_data_and_guess_space_groups(miller_array, txt, xs=None,out=None,
   work_array = normalizer.normalised_miller.deep_copy()
   abs_sg_anal = None
   if tmp_ma.sigmas() is not None and (check_absences):
-    print >> out
-    print >> out
-    print >> out, "-"*len(txt)
-    print >> out, txt
-    print >> out, "-"*len(txt)
-    print >> out
+    print(file=out)
+    print(file=out)
+    print("-"*len(txt), file=out)
+    print(txt, file=out)
+    print("-"*len(txt), file=out)
+    print(file=out)
     merge_obj.show_summary(out=out)
-    print >> out
-    print >> out, "Suggesting various space group choices on the basis of systematic absence analyses"
-    print >> out
-    print >> out
+    print(file=out)
+    print("Suggesting various space group choices on the basis of systematic absence analyses", file=out)
+    print(file=out)
+    print(file=out)
     this_worked=False
     try:
       if miller_array.sigmas() is not None:
@@ -2498,7 +2497,7 @@ def merge_data_and_guess_space_groups(miller_array, txt, xs=None,out=None,
           print_all=False,
           sigma_inflation=sigma_inflation).show(out)
     except Sorry:
-      print >> out, "Systematic absence analyses failed"
+      print("Systematic absence analyses failed", file=out)
   return (merge_obj, abs_sg_anal)
 
 ########################################################################

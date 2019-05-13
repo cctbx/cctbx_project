@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 import mmtbx.utils
 import mmtbx.model
@@ -349,10 +350,10 @@ _chem_comp_tor.period
 
 def run(prefix = "tst_model_get_vdw_radii"):
   fo = open("%s.pdb"%prefix,"w")
-  print >> fo, pdb
+  print(pdb, file=fo)
   fo.close()
   fo = open("%s.cif"%prefix,"w")
-  print >> fo, cif
+  print(cif, file=fo)
   fo.close()
   #
   i = mmtbx.utils.process_command_line_args(args = ["%s.cif"%prefix])

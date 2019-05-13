@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 import mmtbx.refinement.group
 import mmtbx.f_model
@@ -183,7 +184,7 @@ def run(refine, target, residues_per_window = 1, d_min=2):
     f_obs                        = f_obs)
   fmodel.show()
   fmodel.update(target_name=target)
-  print "Initial r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free())
+  print("Initial r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()))
   selections = ph.chunk_selections(residues_per_chunk=residues_per_window)
   rr = mmtbx.refinement.group.manager(
     fmodel                      = fmodel,
@@ -194,8 +195,8 @@ def run(refine, target, residues_per_window = 1, d_min=2):
     run_finite_differences_test = False,
     refine_adp                  = True,
     use_restraints              = True)
-  print "After refinement r_work=%6.4f r_free=%6.4f"%(
-    fmodel.r_work(), fmodel.r_free())
+  print("After refinement r_work=%6.4f r_free=%6.4f"%(
+    fmodel.r_work(), fmodel.r_free()))
   ph.adopt_xray_structure(fmodel.xray_structure)
   ph.write_pdb_file(file_name="reciprocal_space_refined_group_adp.pdb",
     crystal_symmetry = f_obs.crystal_symmetry())

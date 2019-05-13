@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import pdb
 import iotbx.phil
 import iotbx.ncs
@@ -781,10 +782,10 @@ def _show_atom_labels(pdb_atoms, i_seqs, out=None, prefix="", max_lines=None):
   if (out is None): out = sys.stdout
   for i_line,i_seq in enumerate(i_seqs):
     if (i_line == max_lines and len(i_seqs) > max_lines+1):
-      print >> out, prefix + "... (remaining %d not shown)" % (
-        len(i_seqs)-max_lines)
+      print(prefix + "... (remaining %d not shown)" % (
+        len(i_seqs)-max_lines), file=out)
       break
-    print >> out, prefix + pdb_atoms[i_seq].quote()
+    print(prefix + pdb_atoms[i_seq].quote(), file=out)
 
 def format_exception_message(
       m_i,
@@ -795,15 +796,15 @@ def format_exception_message(
       show_residue_names=True,
       lines=[]):
   s = StringIO()
-  print >> s, base_message
+  print(base_message, file=s)
   for line in lines:
-    print >> s, " ", line
+    print(" ", line, file=s)
   if (source_labels is not None):
     for i,label in enumerate(source_labels):
-      print >> s, "  %d. definition from: %s" % (i+1, label)
+      print("  %d. definition from: %s" % (i+1, label), file=s)
   if (show_residue_names):
-    print >> s, "  " + source_info_server(m_i, m_j).labels()
-  print >> s, "  atom%s:" % plural_s(len(i_seqs))[1]
+    print("  " + source_info_server(m_i, m_j).labels(), file=s)
+  print("  atom%s:" % plural_s(len(i_seqs))[1], file=s)
   _show_atom_labels(
     pdb_atoms=m_i.pdb_atoms, i_seqs=i_seqs, out=s, prefix="    ", max_lines=10)
   return s.getvalue()[:-1]
@@ -926,15 +927,15 @@ class type_symbol_registry_base(object):
   def report(self, pdb_atoms, log, prefix, max_lines=10):
     n_unknown = self.n_unknown_type_symbols()
     if (n_unknown > 0):
-      print >> log, "%s%s: %d" % (
-        prefix, self.report_unknown_message(), n_unknown)
+      print("%s%s: %d" % (
+        prefix, self.report_unknown_message(), n_unknown), file=log)
       i_seqs = (self.symbols == "").iselection()
       _show_atom_labels(
         pdb_atoms=pdb_atoms, i_seqs=i_seqs,
         out=log, prefix=prefix+"  ", max_lines=max_lines)
     if (self.n_resolved_conflicts > 0):
-      print >> log, "%sNumber of resolved %s type symbol conflicts: %d" % (
-        prefix, self.type_label, self.n_resolved_conflicts)
+      print("%sNumber of resolved %s type symbol conflicts: %d" % (
+        prefix, self.type_label, self.n_resolved_conflicts), file=log)
 
   def get_unknown_atoms(self, pdb_atoms, return_iseqs=False):
     n_unknown = self.n_unknown_type_symbols()
@@ -1151,7 +1152,7 @@ class monomer_mapping(slots_getstate_setstate):
     if attr == "lib_link":
       if value:
         for plane in value.plane_list:
-          print dir(plane)
+          print(dir(plane))
           plane.show()
     slots_getstate_setstate.__setattr__(self, attr, value)
 
@@ -1707,7 +1708,7 @@ def get_lib_link(mon_lib_srv,
                  verbose=False):
   if (m_i.monomer.is_water() or m_j.monomer.is_water()): return None
   if (m_i.monomer.is_peptide() and m_j.monomer.is_peptide()):
-    if verbose: print 'peptide-peptide'
+    if verbose: print('peptide-peptide')
     return get_lib_link_peptide(mon_lib_srv,
                                 m_i,
                                 m_j,
@@ -1715,9 +1716,9 @@ def get_lib_link(mon_lib_srv,
   elif (    (m_i.is_rna_dna or m_i.monomer.is_rna_dna())
         and (m_j.is_rna_dna or m_j.monomer.is_rna_dna())):
     if (m_i.is_rna2p):
-      if verbose: print 'rna2p'
+      if verbose: print('rna2p')
       return mon_lib_srv.link_link_id_dict["rna2p"]
-    if verbose: print 'rna3p'
+    if verbose: print('rna3p')
     return mon_lib_srv.link_link_id_dict["rna3p"]
   comp_id_1 = m_i.monomer.chem_comp.id
   comp_id_2 = m_j.monomer.chem_comp.id
@@ -1776,8 +1777,8 @@ Corrupt CIF link definition:
   matches.sort()
   best_matches = []
   def _show_match(match):
-    print 'match '*10
-    print match.link_link_id.source_info
+    print('match '*10)
+    print(match.link_link_id.source_info)
     match.link_link_id.chem_link.show()
     for attr in [
       "n_unresolved_bonds",
@@ -1787,8 +1788,8 @@ Corrupt CIF link definition:
       "len_group_match_1",
       "len_group_match_2",
       ]:
-      print attr, getattr(match, attr, None)
-    print '_'*80
+      print(attr, getattr(match, attr, None))
+    print('_'*80)
   for m in matches:
     if verbose: _show_match(m)
     if (cmp(m, matches[0]) != 0): break
@@ -2465,15 +2466,15 @@ class build_chain_proxies(object):
           #print min_i_seq,max_i_seq,list(selection)
           if min_i_seq in selection and max_i_seq in selection:
             if selection.all_eq(residue_i_seqs):
-              print >> log, '%sResidue %s was targeted for' % (' '*8,
+              print('%sResidue %s was targeted for' % (' '*8,
                                                                residue.id_str(),
-                )
-              print >> log, '%srestraints from file: "%s"' % (' '*10,
+                ), file=log)
+              print('%srestraints from file: "%s"' % (' '*10,
                                                               item[1],
-                )
+                ), file=log)
               if len(alt_locs)!=1:
-                print >> log, '%sbut ignored because residue has complex alt. loc.' % (
-                  ' '*10)
+                print('%sbut ignored because residue has complex alt. loc.' % (
+                  ' '*10), file=log)
                 continue
               specific_residue_restraints=item[1]
               apply_restraints_specifications[selection]="OK"
@@ -2750,34 +2751,34 @@ class build_chain_proxies(object):
     # ========================
 
     if (is_unique_model and log is not None):
-      print >> log, "        Number of residues, atoms: %d, %d" % (
+      print("        Number of residues, atoms: %d, %d" % (
         conformer.residues_size(),
-        n_expected_atoms + flex.sum(flex.long(unexpected_atoms.values())))
+        n_expected_atoms + flex.sum(flex.long(unexpected_atoms.values()))), file=log)
       if (len(unknown_residues) > 0):
-        print >> log, "          Unknown residues:", unknown_residues
+        print("          Unknown residues:", unknown_residues, file=log)
       if (len(ad_hoc_single_atom_residues) > 0):
-        print >> log, "          Ad-hoc single atom residues:", \
-          ad_hoc_single_atom_residues
+        print("          Ad-hoc single atom residues:", \
+          ad_hoc_single_atom_residues, file=log)
       if (len(unusual_residues) > 0):
-        print >> log, "          Unusual residues:", unusual_residues
+        print("          Unusual residues:", unusual_residues, file=log)
       if (len(inner_chain_residues_flagged_as_termini) > 0):
-        print >> log, "          Inner-chain residues flagged as termini:", \
-          inner_chain_residues_flagged_as_termini
+        print("          Inner-chain residues flagged as termini:", \
+          inner_chain_residues_flagged_as_termini, file=log)
       if (len(unexpected_atoms) > 0):
-        print >> log, "          Unexpected atoms:", unexpected_atoms
+        print("          Unexpected atoms:", unexpected_atoms, file=log)
       if (len(ignored_atoms) > 0):
-        print >> log, "          Ignored atoms:", ignored_atoms
+        print("          Ignored atoms:", ignored_atoms, file=log)
       if (len(duplicate_atoms) > 0):
-        print >> log, "          Duplicate atoms:", duplicate_atoms
+        print("          Duplicate atoms:", duplicate_atoms, file=log)
       if (len(classifications) > 0):
-        print >> log, "          Classifications:", classifications
+        print("          Classifications:", classifications, file=log)
       if (len(modifications_used) > 0):
-        print >> log, "          Modifications used:", modifications_used
+        print("          Modifications used:", modifications_used, file=log)
       if (len(incomplete_infos) > 0):
-        print >> log, "          Incomplete info:", incomplete_infos
+        print("          Incomplete info:", incomplete_infos, file=log)
     if (log is not None):
       if (len(link_ids) > 0):
-        print >> log, "          Link IDs:", link_ids
+        print("          Link IDs:", link_ids, file=log)
         if (len(link_ids) != 1):
           if (not_linked_show_max is None):
             show_max = len(mm_pairs_not_linked)
@@ -2788,86 +2789,80 @@ class build_chain_proxies(object):
             show_max += 1
             n_not_shown = 0
           for pair in mm_pairs_not_linked[:show_max]:
-            print >> log, "            Not linked:"
+            print("            Not linked:", file=log)
             for mm in pair:
-              print >> log, "              %s" % residue_id_str(mm.pdb_residue)
+              print("              %s" % residue_id_str(mm.pdb_residue), file=log)
           if (n_not_shown != 0):
-            print >> log, \
-              "            ... (remaining %d not shown)" % n_not_shown
+            print("            ... (remaining %d not shown)" % n_not_shown, file=log)
     if (is_unique_model and log is not None):
       if (n_unresolved_chain_links > 0):
-        print >> log, "          Unresolved chain links:", \
-          n_unresolved_chain_links
+        print("          Unresolved chain links:", \
+          n_unresolved_chain_links, file=log)
     if (log is not None):
       if (n_chain_breaks > 0):
-        print >> log, "          Chain breaks:", n_chain_breaks
+        print("          Chain breaks:", n_chain_breaks, file=log)
     if (is_unique_model and log is not None):
       if (n_unresolved_chain_link_angles > 0):
-        print >> log, "          Unresolved chain link angles:", \
-          n_unresolved_chain_link_angles
+        print("          Unresolved chain link angles:", \
+          n_unresolved_chain_link_angles, file=log)
       if (n_unresolved_chain_link_dihedrals > 0):
-        print >> log, "          Unresolved chain link dihedrals:", \
-          n_unresolved_chain_link_dihedrals
+        print("          Unresolved chain link dihedrals:", \
+          n_unresolved_chain_link_dihedrals, file=log)
       if (n_unresolved_chain_link_chiralities > 0):
-        print >> log, "          Unresolved chain link chiralities:", \
-          n_unresolved_chain_link_chiralities
+        print("          Unresolved chain link chiralities:", \
+          n_unresolved_chain_link_chiralities, file=log)
       if (n_unresolved_chain_link_planarities > 0):
-        print >> log, "          Unresolved chain link planarities:", \
-          n_unresolved_chain_link_planarities
+        print("          Unresolved chain link planarities:", \
+          n_unresolved_chain_link_planarities, file=log)
       if (n_unresolved_chain_link_parallelities > 0):
-        print >> log, "          Unresolved chain link parallelities:", \
-          n_unresolved_chain_link_parallelities
+        print("          Unresolved chain link parallelities:", \
+          n_unresolved_chain_link_parallelities, file=log)
       if (len(corrupt_monomer_library_definitions) > 0):
-        print >> log, "          Corrupt monomer library definitions:", \
-          corrupt_monomer_library_definitions
+        print("          Corrupt monomer library definitions:", \
+          corrupt_monomer_library_definitions, file=log)
       if (n_unresolved_non_hydrogen_bonds > 0):
-        print >> log, "          Unresolved non-hydrogen bonds:", \
-          n_unresolved_non_hydrogen_bonds
+        print("          Unresolved non-hydrogen bonds:", \
+          n_unresolved_non_hydrogen_bonds, file=log)
       if (n_unresolved_non_hydrogen_angles > 0):
-        print >> log, "          Unresolved non-hydrogen angles:", \
-          n_unresolved_non_hydrogen_angles
+        print("          Unresolved non-hydrogen angles:", \
+          n_unresolved_non_hydrogen_angles, file=log)
     if (log is not None):
       if (n_angles_discarded_because_of_special_positions > 0):
-        print >> log, \
-          "          Angles discarded because of special positions:", \
-          n_angles_discarded_because_of_special_positions
+        print("          Angles discarded because of special positions:", \
+          n_angles_discarded_because_of_special_positions, file=log)
     if (is_unique_model and log is not None):
       if (n_unresolved_non_hydrogen_dihedrals > 0):
-        print >> log, "          Unresolved non-hydrogen dihedrals:", \
-          n_unresolved_non_hydrogen_dihedrals
+        print("          Unresolved non-hydrogen dihedrals:", \
+          n_unresolved_non_hydrogen_dihedrals, file=log)
     if (log is not None):
       if (n_dihedrals_discarded_because_of_special_positions > 0):
-        print >> log, \
-          "          Dihedrals discarded because of special positions:",\
-          n_dihedrals_discarded_because_of_special_positions
+        print("          Dihedrals discarded because of special positions:",\
+          n_dihedrals_discarded_because_of_special_positions, file=log)
     if (is_unique_model and log is not None):
       if (len(unsupported_chir_volume_sign) > 0):
-        print >> log, "          Unsupported chir.volume_sign:", \
-          unsupported_chir_volume_sign
+        print("          Unsupported chir.volume_sign:", \
+          unsupported_chir_volume_sign, file=log)
       if (n_unresolved_non_hydrogen_chiralities > 0):
-        print >> log, "          Unresolved non-hydrogen chiralities:", \
-          n_unresolved_non_hydrogen_chiralities
+        print("          Unresolved non-hydrogen chiralities:", \
+          n_unresolved_non_hydrogen_chiralities, file=log)
     if (log is not None):
       if (n_chiralities_discarded_because_of_special_positions > 0):
-        print >> log, \
-          "          Chiralities discarded because of special positions:", \
-          n_chiralities_discarded_because_of_special_positions
+        print("          Chiralities discarded because of special positions:", \
+          n_chiralities_discarded_because_of_special_positions, file=log)
     if (is_unique_model and log is not None):
       if (len(planarities_with_less_than_four_sites) > 0):
-        print >> log, "          Planarities with less than four sites:", \
-          planarities_with_less_than_four_sites
+        print("          Planarities with less than four sites:", \
+          planarities_with_less_than_four_sites, file=log)
       if (n_unresolved_non_hydrogen_planarities > 0):
-        print >> log, "          Unresolved non-hydrogen planarities:", \
-          n_unresolved_non_hydrogen_planarities
+        print("          Unresolved non-hydrogen planarities:", \
+          n_unresolved_non_hydrogen_planarities, file=log)
     if (log is not None):
       if (n_planarities_discarded_because_of_special_positions > 0):
-        print >> log, \
-          "          planarities discarded because of special positions:", \
-          n_planarities_discarded_because_of_special_positions
+        print("          planarities discarded because of special positions:", \
+          n_planarities_discarded_because_of_special_positions, file=log)
       if (n_bond_proxies_already_assigned_to_first_conformer > 0):
-        print >> log, \
-          "          bond proxies already assigned to first conformer:", \
-          n_bond_proxies_already_assigned_to_first_conformer
+        print("          bond proxies already assigned to first conformer:", \
+          n_bond_proxies_already_assigned_to_first_conformer, file=log)
 
 class geometry_restraints_proxy_registries(object):
 
@@ -2905,29 +2900,29 @@ class geometry_restraints_proxy_registries(object):
 
   def report(self, prefix, log):
     if (self.bond_simple.n_resolved_conflicts > 0):
-      print >> log, prefix + (
+      print(prefix + (
         "Number of resolved bond restraint conflicts: %d"
-          % self.bond_simple.n_resolved_conflicts)
+          % self.bond_simple.n_resolved_conflicts), file=log)
     if (self.angle.n_resolved_conflicts > 0):
-      print >> log, prefix + (
+      print(prefix + (
         "Number of resolved angle restraint conflicts: %d"
-          % self.angle.n_resolved_conflicts)
+          % self.angle.n_resolved_conflicts), file=log)
     if (self.dihedral.n_resolved_conflicts > 0):
-      print >> log, prefix + (
+      print(prefix + (
         "Number of resolved dihedral restraint conflicts: %d"
-          % self.dihedral.n_resolved_conflicts)
+          % self.dihedral.n_resolved_conflicts), file=log)
     if (self.chirality.n_resolved_conflicts > 0):
-      print >> log, prefix + (
+      print(prefix + (
         "Number of resolved chirality restraint conflicts: %d"
-          % self.chirality.n_resolved_conflicts)
+          % self.chirality.n_resolved_conflicts), file=log)
     if (self.planarity.n_resolved_conflicts > 0):
-      print >> log, prefix + (
+      print(prefix + (
         "Number of resolved planarity restraint conflicts: %d"
-          % self.planarity.n_resolved_conflicts)
+          % self.planarity.n_resolved_conflicts), file=log)
     if (self.parallelity.n_resolved_conflicts > 0):
-      print >> log, prefix + (
+      print(prefix + (
         "Number of resolved parallelity restraint conflicts: %d"
-          % self.planarity.n_resolved_conflicts)
+          % self.planarity.n_resolved_conflicts), file=log)
 
 class cif_output_holder:
   def __init__(self):
@@ -2995,12 +2990,12 @@ class build_all_chain_proxies(linking_mixins):
       info = mcl.superpose_ideal_residue_coordinates(self.pdb_hierarchy,
                                                      resname=residue,
                                                    )
-      if info: print >> log, info
+      if info: print(info, file=log)
     if self.params.flip_symmetric_amino_acids:
       info = self.pdb_hierarchy.flip_symmetric_amino_acids()
       if info:
-        print >> log, "\n  Symmetric amino acids flipped"
-        print >> log, info
+        print("\n  Symmetric amino acids flipped", file=log)
+        print(info, file=log)
     if atom_selection_string is not None:
       sel = self.pdb_hierarchy.atom_selection_cache().selection(atom_selection_string)
       temp_string = self.pdb_hierarchy.select(sel).as_pdb_string()
@@ -3016,9 +3011,9 @@ class build_all_chain_proxies(linking_mixins):
     self.counts.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
     self.counts.raise_duplicate_atom_labels_if_necessary()
     if (log is not None):
-      print >> log, "  Monomer Library directory:"
-      print >> log, "   ", show_string(mon_lib_srv.root_path)
-      print >> log, "  Total number of atoms:", self.pdb_atoms.size()
+      print("  Monomer Library directory:", file=log)
+      print("   ", show_string(mon_lib_srv.root_path), file=log)
+      print("  Total number of atoms:", self.pdb_atoms.size(), file=log)
     selection_cache = self.pdb_hierarchy.atom_selection_cache()
     # cis-trans specifications
     cis_trans_specifications = {}
@@ -3033,15 +3028,15 @@ class build_all_chain_proxies(linking_mixins):
     cis-trans specification selection "%s"
     produced %d atoms. Need to select one C-alpha atom.
     """ % (cis_trans.residue_selection, len(t_selection))
-        print >> log, msg
+        print(msg, file=log)
         raise Sorry(msg)
       cis_trans_specifications[t_selection]=cis_trans.cis_trans_mod
     if cis_trans_specifications:
-      print >> log, "  cis-trans peptide specifications"
+      print("  cis-trans peptide specifications", file=log)
       for cis_trans in self.params.apply_cis_trans_specification:
-        print >> log, '    "%s" - %s' % ( cis_trans.residue_selection,
+        print('    "%s" - %s' % ( cis_trans.residue_selection,
                                           cis_trans.cis_trans_mod.upper(),
-          )
+          ), file=log)
     # apply a specific restraints file to a specific monomer
     apply_restraints_specifications = {}
     for acf in self.params.apply_cif_restraints:
@@ -3053,11 +3048,11 @@ class build_all_chain_proxies(linking_mixins):
         acf.restraints_file_name,
         ]
     if apply_restraints_specifications:
-      print >> log, "  Apply specific restraints filenames to specific monomers"
+      print("  Apply specific restraints filenames to specific monomers", file=log)
       for acf in self.params.apply_cif_restraints:
-        print >> log, '    "%s" - %s' % (acf.residue_selection,
+        print('    "%s" - %s' % (acf.residue_selection,
                                          acf.restraints_file_name,
-          )
+          ), file=log)
     self.special_position_settings = None
     self._site_symmetry_table = None
     self.sites_cart = None
@@ -3066,12 +3061,12 @@ class build_all_chain_proxies(linking_mixins):
     if (max_atoms is not None
         and self.pdb_atoms.size() > max_atoms):
       if (log is not None):
-        print >> log, "  More than %d atoms: no processing." % max_atoms
+        print("  More than %d atoms: no processing." % max_atoms, file=log)
         return
     self.sites_cart = self.pdb_atoms.extract_xyz()
     models = self.pdb_hierarchy.models()
     if (log is not None):
-      print >> log, "  Number of models:", len(models)
+      print("  Number of models:", len(models), file=log)
     n_seq = self.pdb_atoms.size()
     def set_model_indices():
       self.model_indices = flex.size_t(n_seq, n_seq)
@@ -3176,29 +3171,29 @@ class build_all_chain_proxies(linking_mixins):
     n_unique_models = 0
     for i_model,model in enumerate(models):
       if (log is not None):
-        print >> log, '  Model: "%s"' % model.id
+        print('  Model: "%s"' % model.id, file=log)
       is_unique_model = not is_same_model_as_before(
         model_type_indices, i_model, models)
       if (is_unique_model):
         n_unique_models += 1
       elif (log is not None):
-        print >> log, "    Same as model", \
-          models[model_type_indices[i_model]].id
+        print("    Same as model", \
+          models[model_type_indices[i_model]].id, file=log)
       if (is_unique_model and log is not None):
-        print >> log, "    Number of chains:", model.chains_size()
+        print("    Number of chains:", model.chains_size(), file=log)
       self.geometry_proxy_registries.initialize_tables()
       apply_cif_links_mm_pdbres_dict = dict(
         self.empty_apply_cif_links_mm_pdbres_dict)
       for chain in model.chains():
         conformers = chain.conformers()
         if (is_unique_model and log is not None):
-          print >> log, '    Chain: "%s"' % chain.id
-          print >> log, "      Number of atoms:", chain.atoms_size()
-          print >> log, "      Number of conformers:", len(conformers)
+          print('    Chain: "%s"' % chain.id, file=log)
+          print("      Number of atoms:", chain.atoms_size(), file=log)
+          print("      Number of conformers:", len(conformers), file=log)
           flush_log(log)
         for j_conformer,conformer in enumerate(conformers):
           if (is_unique_model and log is not None):
-            print >> log, '      Conformer: "%s"' % conformer.altloc
+            print('      Conformer: "%s"' % conformer.altloc, file=log)
             flush_log(log)
           i_conformer = altloc_i_conformer[conformer.altloc]
           chain_proxies = build_chain_proxies(
@@ -3249,12 +3244,12 @@ class build_all_chain_proxies(linking_mixins):
       if apply_restraints_specifications:
         for selection, item in apply_restraints_specifications.items():
           if item=="OK": continue
-          print >> log, "%sRestraints for '%s'" % (' '*6,
+          print("%sRestraints for '%s'" % (' '*6,
                                                    item[0],
-            )
-          print >> log, '%swere not modified by "%s"' % (' '*8,
+            ), file=log)
+          print('%swere not modified by "%s"' % (' '*8,
                                                          item[1],
-            )
+            ), file=log)
       #
       # Identify disulfide bond exclusions BEGIN
       self.disulfide_bond_exclusions_selection = flex.size_t()
@@ -3282,19 +3277,19 @@ class build_all_chain_proxies(linking_mixins):
                     self.disulfide_bond_exclusions_selection.append(csa.i_seq)
       if(self.disulfide_bond_exclusions_selection.size()>0):
         if log is not None:
-          print >>log
-          print >>log, "List of CYS excluded from plausible disulfide bonds:"
-          print >>log, "  (reason: may participate in coordination)"
+          print(file=log)
+          print("List of CYS excluded from plausible disulfide bonds:", file=log)
+          print("  (reason: may participate in coordination)", file=log)
         for i_seq in self.disulfide_bond_exclusions_selection:
           a = self.pdb_atoms[i_seq]
-          if log is not None: print >> log, "  %s"%a.format_atom_record()
+          if log is not None: print("  %s"%a.format_atom_record(), file=log)
           dces = a.determine_chemical_element_simple()
           if dces is None:
             raise Sorry("Atom '%s' has unknown chemical element symbol" % a.format_atom_record())
           e = dces.strip().upper()
           if(e!="S"):
             raise Sorry("disulfide_bond_exclusions_selection_string must select CYS sulfur.")
-        if log is not None: print >>log
+        if log is not None: print(file=log)
       tmp = flex.size_t()
       for i_seq in self.cystein_sulphur_i_seqs:
         if(not i_seq in self.disulfide_bond_exclusions_selection):
@@ -3310,7 +3305,7 @@ class build_all_chain_proxies(linking_mixins):
       for apply in self.apply_cif_links:
         if (apply.was_used):
           if(apply.automatic):
-            print >> log, '  Automatic links duplication of user input'
+            print('  Automatic links duplication of user input', file=log)
           continue
         mms = []
         for pdbres in apply.pdbres_pair:
@@ -3371,10 +3366,10 @@ class build_all_chain_proxies(linking_mixins):
                   i_seqs=i_seqs,
                   ):
                 if apply.automatic:
-                  print >> log, '%sDuplicate links ignored : %s' % (
+                  print('%sDuplicate links ignored : %s' % (
                     ' '*6,
                     apply.data_link,
-                    )
+                    ), file=log)
                   continue
             link_resolution = add_bond_proxies(
               counters=counters(label="apply_cif_link_bond"),
@@ -3436,25 +3431,20 @@ class build_all_chain_proxies(linking_mixins):
               += link_resolution.counters.unresolved_non_hydrogen
       if (log is not None):
         if (n_unresolved_apply_cif_link_bonds > 0):
-          print >> log, \
-            "          Unresolved apply_cif_link bonds:", \
-            n_unresolved_apply_cif_link_bonds
+          print("          Unresolved apply_cif_link bonds:", \
+            n_unresolved_apply_cif_link_bonds, file=log)
         if (n_unresolved_apply_cif_link_angles > 0):
-          print >> log, \
-            "          Unresolved apply_cif_link angles:", \
-            n_unresolved_apply_cif_link_angles
+          print("          Unresolved apply_cif_link angles:", \
+            n_unresolved_apply_cif_link_angles, file=log)
         if (n_unresolved_apply_cif_link_dihedrals > 0):
-          print >> log, \
-            "          Unresolved apply_cif_link dihedrals:", \
-            n_unresolved_apply_cif_link_dihedrals
+          print("          Unresolved apply_cif_link dihedrals:", \
+            n_unresolved_apply_cif_link_dihedrals, file=log)
         if (n_unresolved_apply_cif_link_chiralities > 0):
-          print >> log, \
-            "          Unresolved apply_cif_link chiralities:", \
-            n_unresolved_apply_cif_link_chiralities
+          print("          Unresolved apply_cif_link chiralities:", \
+            n_unresolved_apply_cif_link_chiralities, file=log)
         if (n_unresolved_apply_cif_link_planarities > 0):
-          print >> log, \
-            "          Unresolved apply_cif_link planarities:", \
-            n_unresolved_apply_cif_link_planarities
+          print("          Unresolved apply_cif_link planarities:", \
+            n_unresolved_apply_cif_link_planarities, file=log)
         flush_log(log)
     for apply in self.apply_cif_links:
       if (not apply.was_used):
@@ -3463,9 +3453,9 @@ class build_all_chain_proxies(linking_mixins):
             apply.data_link, str(apply.pdbres_pair)))
     #
     if carbohydrate_callback:
-      print '\n  Calling carbohydrate callback'
+      print('\n  Calling carbohydrate callback')
       if not hasattr(carbohydrate_callback, "pdb_interpretation_callback"):
-        print '    No PDB interpretation callback found, skipped'
+        print('    No PDB interpretation callback found, skipped')
       else:
         carbohydrate_callback.pdb_interpretation_callback(self)
     #
@@ -3474,11 +3464,10 @@ class build_all_chain_proxies(linking_mixins):
     # self.nonbonded_energy_type_registry.discard_tables()
     if (log is not None):
       if (n_unique_models != 1):
-        print >> log, "  Number of unique models:", n_unique_models
+        print("  Number of unique models:", n_unique_models, file=log)
       if (len(sym_excl_residue_groups) != 0):
-        print >> log, \
-          "  Residues with excluded nonbonded symmetry interactions:", \
-          len(sym_excl_residue_groups)
+        print("  Residues with excluded nonbonded symmetry interactions:", \
+          len(sym_excl_residue_groups), file=log)
         show_residue_groups(
           residue_groups=sym_excl_residue_groups,
           log=log,
@@ -3700,16 +3689,16 @@ class build_all_chain_proxies(linking_mixins):
     sel_cache = None
     for apply in self.params.apply_cif_modification:
       if (apply.data_mod is None): continue
-      print >> log, "  apply_cif_modification:"
-      print >> log, "    data_mod:", apply.data_mod
+      print("  apply_cif_modification:", file=log)
+      print("    data_mod:", apply.data_mod, file=log)
       mod = mon_lib_srv.mod_mod_id_dict.get(apply.data_mod)
       if (mod is None):
-        print >> log
+        print(file=log)
         raise Sorry(
           "Missing CIF modification: data_mod_%s\n" % apply.data_mod
           + "  Please check for spelling errors or specify the file name\n"
           + "  with the modification as an additional argument.")
-      print >> log, "    residue_selection:", apply.residue_selection
+      print("    residue_selection:", apply.residue_selection, file=log)
       if (sel_cache is None):
         sel_cache = self.pdb_hierarchy.atom_selection_cache()
       iselection = self.phil_atom_selection(
@@ -3730,11 +3719,11 @@ class build_all_chain_proxies(linking_mixins):
     sel_cache = None
     for apply in self.params.apply_cif_link:
       if (apply.data_link is None): continue
-      print >> log, "  apply_cif_link:"
-      print >> log, "    data_link:", apply.data_link
+      print("  apply_cif_link:", file=log)
+      print("    data_link:", apply.data_link, file=log)
       link = mon_lib_srv.link_link_id_dict.get(apply.data_link)
       if (link is None):
-        print >> log
+        print(file=log)
         raise Sorry(
           "Missing CIF link: data_link_%s\n" % apply.data_link
           + "  Please check for spelling errors or specify the file name\n"
@@ -3745,10 +3734,10 @@ class build_all_chain_proxies(linking_mixins):
         if (mod_id == ""): mod_id = None
         mod_ids.append(mod_id)
         if (mod_id is not None):
-          print >> log, "      %s:" % mod_attr, mod_id
+          print("      %s:" % mod_attr, mod_id, file=log)
           mod = mon_lib_srv.mod_mod_id_dict.get(mod_id)
           if (mod is None):
-            print >> log
+            print(file=log)
             raise Sorry(
               "Missing CIF modification: data_mod_%s\n" % mod_id
               + "  Please check for spelling errors or specify the file name\n"
@@ -3756,7 +3745,7 @@ class build_all_chain_proxies(linking_mixins):
       sel_attrs = ["residue_selection_"+n for n in ["1", "2"]]
       pdbres_pair = []
       for attr in sel_attrs:
-        print >> log, "    %s:" % attr, getattr(apply, attr)
+        print("    %s:" % attr, getattr(apply, attr), file=log)
         if (sel_cache is None):
           sel_cache = self.pdb_hierarchy.atom_selection_cache()
         iselection = self.phil_atom_selection(
@@ -3818,10 +3807,10 @@ class build_all_chain_proxies(linking_mixins):
         bond.value_dist = sqrt(linking_utils.get_distance2(apply.atom1,
                                                            apply.atom2,
                                                            ))
-        if verbose: print "bond will be maintained"
+        if verbose: print("bond will be maintained")
     bond.value_dist_esd = 0.02
     if verbose:
-      print 'Link created'
+      print('Link created')
       bond.show()
     i_seqs = [apply.atom1.i_seq, apply.atom2.i_seq]
     if self.geometry_proxy_registries.bond_simple.is_proxy_set(
@@ -3891,7 +3880,7 @@ class build_all_chain_proxies(linking_mixins):
         atoms = self.pdb_hierarchy.atoms()
         atom_names = []
         for bond in bonds2:
-          print bond.i_seqs, atoms[bond.i_seqs[0]].quote(), atoms[bond.i_seqs[1]].quote(),bond.distance_ideal
+          print(bond.i_seqs, atoms[bond.i_seqs[0]].quote(), atoms[bond.i_seqs[1]].quote(),bond.distance_ideal)
           other = get_other(bond, apply.atom2)
           if other is None: continue
           if other.element.strip() not in ["H", "D"]: continue
@@ -4017,7 +4006,7 @@ class build_all_chain_proxies(linking_mixins):
         outl += "%s%s: %s\n" % (" "*indent, mod_attr, mod_id)
         mod = mon_lib_srv.mod_mod_id_dict.get(mod_id)
         if (mod is None):
-          print outl
+          print(outl)
           raise Sorry(
             "Missing CIF modification: data_mod_%s\n" % mod_id
             + "  Please check for spelling errors or specify the file name\n"
@@ -4069,8 +4058,8 @@ class build_all_chain_proxies(linking_mixins):
       for sym_pair in pair_sym_table.iterator():
         if (sym_pair.rt_mx_ji.is_unit_mx()): n_simple += 1
         else:                                n_symmetry += 1
-      print >> log, "  Number of disulfides: simple=%d, symmetry=%d" % (
-        n_simple, n_symmetry)
+      print("  Number of disulfides: simple=%d, symmetry=%d" % (
+        n_simple, n_symmetry), file=log)
       if (n_symmetry == 0):
         blanks = ""
       else:
@@ -4091,13 +4080,13 @@ class build_all_chain_proxies(linking_mixins):
           disulfide_type = "Simple disulfide:%s" % blanks
         else:
           disulfide_type = "Symmetry disulfide:"
-        print >> log, "    %s %s - %s distance=%.2f" % tuple(
+        print("    %s %s - %s distance=%.2f" % tuple(
           [disulfide_type]
           + [labels[i_seq] for i_seq in sym_pair.i_seqs()]
-          + [distance_model]),
+          + [distance_model]), end=' ', file=log)
         if (not sym_pair.rt_mx_ji.is_unit_mx()):
-          print >> log, sym_pair.rt_mx_ji,
-        print >> log
+          print(sym_pair.rt_mx_ji, end=' ', file=log)
+        print(file=log)
     return pair_sym_table, max_distance_model
 
   def atom_selection(self, parameter_name, string, cache=None):
@@ -4259,7 +4248,7 @@ class build_all_chain_proxies(linking_mixins):
       return group_args(
         bond_sym_proxies=bond_sym_proxies,
         bond_distance_model_max=bond_distance_model_max)
-    print >> log, "  Custom bonds:"
+    print("  Custom bonds:", file=log)
     atoms = self.pdb_atoms
     unit_cell = self.special_position_settings.unit_cell()
     space_group = self.special_position_settings.space_group()
@@ -4274,28 +4263,28 @@ class build_all_chain_proxies(linking_mixins):
     for bond in params.bond:
       def show_atom_selections():
         for attr in sel_attrs:
-          print >> log, "      %s = %s" % (
-            attr, show_string(getattr(bond, attr, None)))
+          print("      %s = %s" % (
+            attr, show_string(getattr(bond, attr, None))), file=log)
       slack = bond.slack
       if (slack is None or slack < 0):
         slack = 0
       if (bond.distance_ideal is None):
-        print >> log, "    Warning: Ignoring bond with distance_ideal = None:"
+        print("    Warning: Ignoring bond with distance_ideal = None:", file=log)
         show_atom_selections()
       elif (bond.distance_ideal < 0):
-        print >> log, "    Warning: Ignoring bond with distance_ideal < 0:"
+        print("    Warning: Ignoring bond with distance_ideal < 0:", file=log)
         show_atom_selections()
-        print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
+        print("      distance_ideal = %.6g" % bond.distance_ideal, file=log)
       elif (bond.sigma is None):
-        print >> log, "    Warning: Ignoring bond with sigma = None:"
+        print("    Warning: Ignoring bond with sigma = None:", file=log)
         show_atom_selections()
-        print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
+        print("      distance_ideal = %.6g" % bond.distance_ideal, file=log)
       elif (bond.sigma <= 0):
-        print >> log, "    Warning: Ignoring bond with sigma <= 0:"
+        print("    Warning: Ignoring bond with sigma <= 0:", file=log)
         show_atom_selections()
-        print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
-        print >> log, "      sigma = %.6g" % bond.sigma
-        print >> log, "      slack = %.6g" % slack
+        print("      distance_ideal = %.6g" % bond.distance_ideal, file=log)
+        print("      sigma = %.6g" % bond.sigma, file=log)
+        print("      slack = %.6g" % slack, file=log)
       elif (bond.action != "add"):
         raise Sorry("%s = %s not implemented." %
           bond.__phil_path_and_value__(object_name="action"))
@@ -4325,10 +4314,10 @@ class build_all_chain_proxies(linking_mixins):
           unit_cell=unit_cell,
           sites_cart=self.sites_cart,
           proxy=p)
-        print >> log, "    bond:"
+        print("    bond:", file=log)
         for i in [0,1]:
-          print >> log, "      atom %d:" % (i+1), atoms[p.i_seqs[i]].quote()
-        print >> log, "      symmetry operation:", str(p.rt_mx_ji)
+          print("      atom %d:" % (i+1), atoms[p.i_seqs[i]].quote(), file=log)
+        print("      symmetry operation:", str(p.rt_mx_ji), file=log)
         if (not space_group.contains(smx=p.rt_mx_ji)):
           raise Sorry(
             'The bond symmetry operation "%s" is not compatible'
@@ -4336,32 +4325,31 @@ class build_all_chain_proxies(linking_mixins):
               str(p.rt_mx_ji),
               self.special_position_settings.space_group_info()
                 .symbol_and_number()))
-        print >> log, "      distance_model: %7.3f" % b.distance_model
-        print >> log, "      distance_ideal: %7.3f" % b.distance_ideal
-        print >> log, "      ideal - model:  %7.3f" % b.delta
-        print >> log, "      slack:          %7.3f" % b.slack
-        print >> log, "      delta_slack:    %7.3f" % b.delta_slack
-        print >> log, "      sigma:          %8.4f" % \
-          geometry_restraints.weight_as_sigma(weight=b.weight)
+        print("      distance_model: %7.3f" % b.distance_model, file=log)
+        print("      distance_ideal: %7.3f" % b.distance_ideal, file=log)
+        print("      ideal - model:  %7.3f" % b.delta, file=log)
+        print("      slack:          %7.3f" % b.slack, file=log)
+        print("      delta_slack:    %7.3f" % b.delta_slack, file=log)
+        print("      sigma:          %8.4f" % \
+          geometry_restraints.weight_as_sigma(weight=b.weight), file=log)
         if (bond_distance_model_max < b.distance_model):
           bond_distance_model_max = b.distance_model
         if (b.distance_model > max_bond_length):
-          print >> log, "      *** WARNING: EXCESSIVE BOND LENGTH. ***"
+          print("      *** WARNING: EXCESSIVE BOND LENGTH. ***", file=log)
           n_excessive += 1
     if (n_excessive != 0):
       if (max_bond_length == uc_shortest_vector):
-        print >> log, "  Excessive bond length limit at hard upper bound:" \
+        print("  Excessive bond length limit at hard upper bound:" \
           " length of shortest vector between unit cell lattice points: %.6g" \
-            % uc_shortest_vector
+            % uc_shortest_vector, file=log)
       else:
-        print >> log, "  %s = %.6g" % \
-          params.__phil_path_and_value__("excessive_bond_distance_limit")
-        print >> log, \
-          "    Please assign a larger value to this parameter if necessary."
+        print("  %s = %.6g" % \
+          params.__phil_path_and_value__("excessive_bond_distance_limit"), file=log)
+        print("    Please assign a larger value to this parameter if necessary.", file=log)
       raise Sorry(
         "Custom bonds with excessive length: %d\n"
         "  Please check the log file for details." % n_excessive)
-    print >> log, "    Total number of custom bonds:", len(bond_sym_proxies)
+    print("    Total number of custom bonds:", len(bond_sym_proxies), file=log)
     return group_args(
       bond_sym_proxies=bond_sym_proxies,
       bond_distance_model_max=bond_distance_model_max)
@@ -4377,26 +4365,26 @@ class build_all_chain_proxies(linking_mixins):
       special_position_indices = []
     else:
       special_position_indices = self.special_position_indices
-    print >> log, "  Custom angles:"
+    print("  Custom angles:", file=log)
     atoms = self.pdb_atoms
     sel_attrs = ["atom_selection_"+n for n in ["1", "2", "3"]]
     for angle in params.angle:
       def show_atom_selections():
         for attr in sel_attrs:
-          print >> log, "      %s = %s" % (
-            attr, show_string(getattr(angle, attr, None)))
+          print("      %s = %s" % (
+            attr, show_string(getattr(angle, attr, None))), file=log)
       if (angle.angle_ideal is None):
-        print >> log, "    Warning: Ignoring angle with angle_ideal = None:"
+        print("    Warning: Ignoring angle with angle_ideal = None:", file=log)
         show_atom_selections()
       elif (angle.sigma is None):
-        print >> log, "    Warning: Ignoring angle with sigma = None:"
+        print("    Warning: Ignoring angle with sigma = None:", file=log)
         show_atom_selections()
-        print >> log, "      angle_ideal = %.6g" % angle.angle_ideal
+        print("      angle_ideal = %.6g" % angle.angle_ideal, file=log)
       elif (angle.sigma is None or angle.sigma <= 0):
-        print >> log, "    Warning: Ignoring angle with sigma <= 0:"
+        print("    Warning: Ignoring angle with sigma <= 0:", file=log)
         show_atom_selections()
-        print >> log, "      angle_ideal = %.6g" % angle.angle_ideal
-        print >> log, "      sigma = %.6g" % angle.sigma
+        print("      angle_ideal = %.6g" % angle.angle_ideal, file=log)
+        print("      sigma = %.6g" % angle.sigma, file=log)
       elif (angle.action == "change"):
         if not second_pass: pass
         i_seqs = self.phil_atom_selections_as_i_seqs(
@@ -4420,26 +4408,26 @@ class build_all_chain_proxies(linking_mixins):
         a = geometry_restraints.angle(
           sites_cart=self.sites_cart,
           proxy=p)
-        print >> log, "    angle:"
+        print("    angle:", file=log)
         n_special = 0
         for i,i_seq in enumerate(p.i_seqs):
-          print >> log, "      atom %d:" % (i+1), atoms[i_seq].quote(),
+          print("      atom %d:" % (i+1), atoms[i_seq].quote(), end=' ', file=log)
           if (i_seq in special_position_indices):
             n_special += 1
-            print >> log, "# SPECIAL POSITION",
-          print >> log
-        print >> log, "      angle_model: %7.2f" % a.angle_model
-        print >> log, "      angle_ideal: %7.2f" % a.angle_ideal
-        print >> log, "      ideal - model:  %7.2f" % a.delta
-        print >> log, "      sigma: %.6g" % \
-          geometry_restraints.weight_as_sigma(weight=a.weight)
+            print("# SPECIAL POSITION", end=' ', file=log)
+          print(file=log)
+        print("      angle_model: %7.2f" % a.angle_model, file=log)
+        print("      angle_ideal: %7.2f" % a.angle_ideal, file=log)
+        print("      ideal - model:  %7.2f" % a.delta, file=log)
+        print("      sigma: %.6g" % \
+          geometry_restraints.weight_as_sigma(weight=a.weight), file=log)
         if (n_special != 0):
           raise Sorry(
             "Custom angle involves %d special position%s:\n"
             "  Please inspect the output for details."
               % plural_s(n_special))
         result.append(p)
-    print >> log, "    Total number of custom angles:", len(result)
+    print("    Total number of custom angles:", len(result), file=log)
     return result
 
   def process_geometry_restraints_edits_dihedral(self, sel_cache, params, log):
@@ -4449,26 +4437,26 @@ class build_all_chain_proxies(linking_mixins):
       special_position_indices = []
     else:
       special_position_indices = self.special_position_indices
-    print >> log, "  Custom dihedrals:"
+    print("  Custom dihedrals:", file=log)
     atoms = self.pdb_atoms
     sel_attrs = ["atom_selection_"+n for n in ["1", "2", "3", "4"]]
     for dihedral in params.dihedral:
       def show_atom_selections():
         for attr in sel_attrs:
-          print >> log, "      %s = %s" % (
-            attr, show_string(getattr(dihedral, attr, None)))
+          print("      %s = %s" % (
+            attr, show_string(getattr(dihedral, attr, None))), file=log)
       if (dihedral.angle_ideal is None):
-        print >> log, "    Warning: Ignoring dihedral with angle_ideal = None:"
+        print("    Warning: Ignoring dihedral with angle_ideal = None:", file=log)
         show_atom_selections()
       elif (dihedral.sigma is None):
-        print >> log, "    Warning: Ignoring dihedral with sigma = None:"
+        print("    Warning: Ignoring dihedral with sigma = None:", file=log)
         show_atom_selections()
-        print >> log, "      angle_ideal = %.6g" % dihedral.angle_ideal
+        print("      angle_ideal = %.6g" % dihedral.angle_ideal, file=log)
       elif (dihedral.sigma is None or dihedral.sigma <= 0):
-        print >> log, "    Warning: Ignoring dihedral with sigma <= 0:"
+        print("    Warning: Ignoring dihedral with sigma <= 0:", file=log)
         show_atom_selections()
-        print >> log, "      angle_ideal = %.6g" % dihedral.angle_ideal
-        print >> log, "      sigma = %.6g" % dihedral.sigma
+        print("      angle_ideal = %.6g" % dihedral.angle_ideal, file=log)
+        print("      sigma = %.6g" % dihedral.sigma, file=log)
       elif dihedral.action == "change":
         i_seqs = self.phil_atom_selections_as_i_seqs(
           cache=sel_cache, scope_extract=dihedral, sel_attrs=sel_attrs)
@@ -4496,26 +4484,26 @@ class build_all_chain_proxies(linking_mixins):
         a = geometry_restraints.dihedral(
           sites_cart=self.sites_cart,
           proxy=p)
-        print >> log, "    dihedral:"
+        print("    dihedral:", file=log)
         n_special = 0
         for i,i_seq in enumerate(p.i_seqs):
-          print >> log, "      atom %d:" % (i+1), atoms[i_seq].quote(),
+          print("      atom %d:" % (i+1), atoms[i_seq].quote(), end=' ', file=log)
           if (i_seq in special_position_indices):
             n_special += 1
-            print >> log, "# SPECIAL POSITION",
-          print >> log
-        print >> log, "      angle_model: %7.2f" % a.angle_model
-        print >> log, "      angle_ideal: %7.2f" % a.angle_ideal
-        print >> log, "      ideal - model:  %7.2f" % a.delta
-        print >> log, "      sigma: %.6g" % \
-          geometry_restraints.weight_as_sigma(weight=a.weight)
+            print("# SPECIAL POSITION", end=' ', file=log)
+          print(file=log)
+        print("      angle_model: %7.2f" % a.angle_model, file=log)
+        print("      angle_ideal: %7.2f" % a.angle_ideal, file=log)
+        print("      ideal - model:  %7.2f" % a.delta, file=log)
+        print("      sigma: %.6g" % \
+          geometry_restraints.weight_as_sigma(weight=a.weight), file=log)
         if (n_special != 0):
           raise Sorry(
             "Custom dihedral involves %d special position%s:\n"
             "  Please inspect the output for details."
               % plural_s(n_special))
         result.append(p)
-    print >> log, "    Total number of custom dihedrals:", len(result)
+    print("    Total number of custom dihedrals:", len(result), file=log)
     return result
 
   def process_geometry_restraints_edits_planarity(self,
@@ -4529,14 +4517,14 @@ class build_all_chain_proxies(linking_mixins):
     else:
       special_position_indices = self.special_position_indices
     sel_attrs = ["atom_selection"]
-    print >> log, "  Custom planarities:"
+    print("  Custom planarities:", file=log)
     for planarity in params.planarity:
       def show_atom_selections():
-        print >> log, "      %s = %s" % (
-            "atom_selection", planarity.atom_selection)
+        print("      %s = %s" % (
+            "atom_selection", planarity.atom_selection), file=log)
       if (planarity.sigma is None) or (planarity.sigma <= 0):
-        print >> log, "    Warning: Ignoring planarity with with sigma <= 0:"
-        print >> log, show_atom_selections()
+        print("    Warning: Ignoring planarity with with sigma <= 0:", file=log)
+        print(show_atom_selections(), file=log)
         continue
         # raise Sorry("Custom planarity sigma is undefined or zero/negative - "+
         #   "this must be a positive decimal number.")
@@ -4557,7 +4545,7 @@ class build_all_chain_proxies(linking_mixins):
         sites_cart=self.sites_cart,
         proxy=proxy)
       result.append(proxy)
-    print >> log, "    Total number of custom planarities:", len(result)
+    print("    Total number of custom planarities:", len(result), file=log)
     return result
 
   def process_geometry_restraints_edits_parallelity(self,
@@ -4567,11 +4555,11 @@ class build_all_chain_proxies(linking_mixins):
     result = []
     if len(params.parallelity) == 0:
       return result
-    print >> log, "  Custom parallelities:"
+    print("  Custom parallelities:", file=log)
     for parallelity in params.parallelity:
       if (parallelity.atom_selection_1 is None or
           parallelity.atom_selection_2 is None):
-        print >> log, "Warning: Ignoring parallelity with empty atom selection."
+        print("Warning: Ignoring parallelity with empty atom selection.", file=log)
         continue
       if (parallelity.sigma is None) or (parallelity.sigma <= 0):
         raise Sorry("Custom parallelity sigma is undefined or zero/negative - "+
@@ -4599,7 +4587,7 @@ class build_all_chain_proxies(linking_mixins):
         origin_id=origin_ids.get_origin_id('edits'),
         target_angle_deg=target_angle_deg)
       result.append(proxy)
-    print >> log, "    Total number of custom parallelities:", len(result)
+    print("    Total number of custom parallelities:", len(result), file=log)
     return result
 
 
@@ -4620,8 +4608,8 @@ class build_all_chain_proxies(linking_mixins):
     other_selections = []
     other_selection_strs = []
     if (len(params.scale_restraints) > 0):
-      print >> log, "Scaling restraint weights for %d selections" % \
-        len(params.scale_restraints)
+      print("Scaling restraint weights for %d selections" % \
+        len(params.scale_restraints), file=log)
     for scale_params in params.scale_restraints :
       if (scale_params.scale < 0):
         raise Sorry("scale_restraints.scale must be at least zero.")
@@ -4651,12 +4639,11 @@ class build_all_chain_proxies(linking_mixins):
           for i_seq in proxy.i_seqs :
             if (selection[i_seq]):
               if ((k,j) in modified_proxies):
-                print >> log, \
-                  "  skipping %s restraint proxy #%d - already modified" % (
-                    proxy_types[k], j)
-                print >> log, "  atoms involved:"
+                print("  skipping %s restraint proxy #%d - already modified" % (
+                    proxy_types[k], j), file=log)
+                print("  atoms involved:", file=log)
                 for i_seq_2 in proxy.i_seqs :
-                  print >> log, "    %s" % self.pdb_atoms[i_seq_2].id_str()
+                  print("    %s" % self.pdb_atoms[i_seq_2].id_str(), file=log)
                 continue
               proxy.weight *= scale_params.scale
               modified_proxies.append((k,j))
@@ -4681,7 +4668,7 @@ class build_all_chain_proxies(linking_mixins):
     atoms = self.pdb_atoms
     def show_atoms(i_seqs, log):
       for i_seq in i_seqs :
-        print >> log, "     %s" % atoms[i_seq].fetch_labels().quote()
+        print("     %s" % atoms[i_seq].fetch_labels().quote(), file=log)
     unit_cell = self.special_position_settings.unit_cell()
     space_group = self.special_position_settings.space_group()
     uc_shortest_vector = unit_cell.shortest_vector_sq()**0.5
@@ -4695,22 +4682,22 @@ class build_all_chain_proxies(linking_mixins):
       if (slack is None or slack < 0):
         slack = 0
       if (bond.distance_ideal is None):
-        print >> log, "    Warning: Ignoring bond with distance_ideal = None:"
+        print("    Warning: Ignoring bond with distance_ideal = None:", file=log)
         show_atoms(i_seqs, log)
       elif (bond.distance_ideal <= 0):
-        print >> log, "    Warning: Ignoring bond with distance_ideal <= 0:"
+        print("    Warning: Ignoring bond with distance_ideal <= 0:", file=log)
         show_atoms(i_seqs, log)
-        print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
+        print("      distance_ideal = %.6g" % bond.distance_ideal, file=log)
       elif (bond.sigma is None):
-        print >> log, "    Warning: Ignoring bond with sigma = None:"
+        print("    Warning: Ignoring bond with sigma = None:", file=log)
         show_atoms(i_seqs, log)
-        print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
+        print("      distance_ideal = %.6g" % bond.distance_ideal, file=log)
       elif (bond.sigma <= 0):
-        print >> log, "    Warning: Ignoring bond with sigma <= 0:"
+        print("    Warning: Ignoring bond with sigma <= 0:", file=log)
         show_atoms(i_seqs, log)
-        print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
-        print >> log, "      sigma = %.6g" % bond.sigma
-        print >> log, "      slack = %.6g" % slack
+        print("      distance_ideal = %.6g" % bond.distance_ideal, file=log)
+        print("      sigma = %.6g" % bond.sigma, file=log)
+        print("      slack = %.6g" % slack, file=log)
       else:
         rt_mx_ji = sgtbx.rt_mx(symbol="x,y,z", t_den=space_group.t_den())
         p = geometry_restraints.bond_sym_proxy(
@@ -4725,29 +4712,29 @@ class build_all_chain_proxies(linking_mixins):
           sites_cart=self.sites_cart,
           proxy=p)
         if (b.distance_model > max_bond_length):
-          print >> log, "      *** WARNING: EXCESSIVE BOND LENGTH. ***"
+          print("      *** WARNING: EXCESSIVE BOND LENGTH. ***", file=log)
           n_excessive += 1
         if verbose :
-          print >> log, "    hydrogen bond:"
+          print("    hydrogen bond:", file=log)
           for i in [0,1]:
-            print >> log, "      atom %d:" % (i+1), atoms[p.i_seqs[i]].quote()
-          print >> log, "      distance_model: %7.3f" % b.distance_model
-          print >> log, "      distance_ideal: %7.3f" % b.distance_ideal
-          print >> log, "      ideal - model:  %7.3f" % b.delta
-          print >> log, "      slack:          %7.3f" % b.slack
-          print >> log, "      delta_slack:    %7.3f" % b.delta_slack
-          print >> log, "      sigma:          %8.4f" % \
-            geometry_restraints.weight_as_sigma(weight=b.weight)
+            print("      atom %d:" % (i+1), atoms[p.i_seqs[i]].quote(), file=log)
+          print("      distance_model: %7.3f" % b.distance_model, file=log)
+          print("      distance_ideal: %7.3f" % b.distance_ideal, file=log)
+          print("      ideal - model:  %7.3f" % b.delta, file=log)
+          print("      slack:          %7.3f" % b.slack, file=log)
+          print("      delta_slack:    %7.3f" % b.delta_slack, file=log)
+          print("      sigma:          %8.4f" % \
+            geometry_restraints.weight_as_sigma(weight=b.weight), file=log)
         if (bond_distance_model_max < b.distance_model):
           bond_distance_model_max = b.distance_model
     if (n_excessive != 0):
-      print >> log, "  Excessive bond length limit at hard upper bound:" \
+      print("  Excessive bond length limit at hard upper bound:" \
         " length of shortest vector between unit cell lattice points: %.6g" \
-          % uc_shortest_vector
+          % uc_shortest_vector, file=log)
       raise Sorry(
         "Hydrogen bonds with excessive length: %d\n"
         "  Please check the log file for details." % n_excessive)
-    print >> log, "  Total number of hydrogen bonds:", len(bond_sym_proxies)
+    print("  Total number of hydrogen bonds:", len(bond_sym_proxies), file=log)
     return group_args(
       bond_sym_proxies=bond_sym_proxies,
       bond_distance_model_max=bond_distance_model_max)
@@ -4759,18 +4746,18 @@ class build_all_chain_proxies(linking_mixins):
     have_header = False
     for (i_seq, j_seq) in exclude_pair_indices :
       if (verbose) and (not have_header):
-        print >> log
-        print >> log, "  Custom nonbonded exclusions (H-bonds, etc.):"
+        print(file=log)
+        print("  Custom nonbonded exclusions (H-bonds, etc.):", file=log)
         have_header = True
       if (verbose):
-        print >> log, "    %s  %s" % (self.pdb_atoms[i_seq].id_str(),
-                                      self.pdb_atoms[j_seq].id_str())
+        print("    %s  %s" % (self.pdb_atoms[i_seq].id_str(),
+                                      self.pdb_atoms[j_seq].id_str()), file=log)
       try :
         shell_asu_tables[1].add_pair(i_seq, j_seq, rt_mx_ji)
       except RuntimeError, e :
-        print >> log, "    WARNING: could not process nonbonded pair"
-        print >> log, "    Original error:"
-        print >> log, "      %s" % str(e)
+        print("    WARNING: could not process nonbonded pair", file=log)
+        print("    Original error:", file=log)
+        print("      %s" % str(e), file=log)
       #shell_sym_tables[1][i_seq][j_seq].add(rt_mx_ji)
 
   def process_custom_nonbonded_symmetry_exclusions(self,
@@ -4792,41 +4779,40 @@ class build_all_chain_proxies(linking_mixins):
       if (sel is not None):
         isel = sel.iselection()
         if (not have_header):
-          print >> log
-          print >> log, "  Custom nonbonded symmetry exclusions:"
+          print(file=log)
+          print("  Custom nonbonded symmetry exclusions:", file=log)
           have_header = True
-        print >> log, "    Atom selection:", sel_string
-        print >> log, "      Number of atoms selected:", isel.size()
+        print("    Atom selection:", sel_string, file=log)
+        print("      Number of atoms selected:", isel.size(), file=log)
         prev_sym_excl_indices = self.sym_excl_indices.select(isel)
         n_prev = isel.size() - prev_sym_excl_indices.count(0)
         if (n_prev != 0):
           if (n_prev == 1): s = ""
           else:             s = "s"
-          print >> log, \
-            "      WARNING: %d atom%s in previous symmetry exclusion group%s" \
-              % (n_prev, s, s)
+          print("      WARNING: %d atom%s in previous symmetry exclusion group%s" \
+              % (n_prev, s, s), file=log)
           i_seq = isel.select(prev_sym_excl_indices != 0)[0]
-          print >> log, "        Example:", self.pdb_atoms[i_seq].id_str()
+          print("        Example:", self.pdb_atoms[i_seq].id_str(), file=log)
         sel_sel_full_occ = sel_full_occ.select(isel)
         n_full_occ = sel_sel_full_occ.count(True)
         if (n_full_occ != 0):
-          print >> log, "      WARNING: %d atom%s with full occupancy" \
-            % plural_s(n_full_occ)
+          print("      WARNING: %d atom%s with full occupancy" \
+            % plural_s(n_full_occ), file=log)
           i_seq = isel.select(sel_sel_full_occ)[0]
-          print >> log, "        Example:", self.pdb_atoms[i_seq].id_str()
+          print("        Example:", self.pdb_atoms[i_seq].id_str(), file=log)
         sp = sorted(set(self.special_position_indices).intersection(set(isel)))
         if (len(sp) != 0):
           if (len(sp) == 1):
-            print >> log, "      WARNING: one atom at a special position"
+            print("      WARNING: one atom at a special position", file=log)
           else:
-            print >> log, "      WARNING: %d atoms at special positions" \
-              % len(sp)
+            print("      WARNING: %d atoms at special positions" \
+              % len(sp), file=log)
           i_seq = sp[0]
-          print >> log, "        Example:", self.pdb_atoms[i_seq].id_str()
+          print("        Example:", self.pdb_atoms[i_seq].id_str(), file=log)
         curr_sym_excl_index += 1
         self.sym_excl_indices.set_selected(isel, curr_sym_excl_index)
     if (have_header):
-      print >> log
+      print(file=log)
 
   def construct_geometry_restraints_manager(self,
         ener_lib,
@@ -4856,15 +4842,15 @@ class build_all_chain_proxies(linking_mixins):
         if(not self.params.proceed_with_excessive_length_bonds):
           atoms = self.pdb_atoms
           proxies = self.geometry_proxy_registries.bond_simple.proxies
-          print >> log, "  Bonds with excessive lengths:"
+          print("  Bonds with excessive lengths:", file=log)
           for i_proxy in excessive_bonds:
             proxy = proxies[i_proxy]
             bond = geometry_restraints.bond(
               sites_cart=self.sites_cart, proxy=proxy)
-            print >> log, "    Distance model: %.6g (ideal: %.6g)" % (
-              bond.distance_model, bond.distance_ideal)
+            print("    Distance model: %.6g (ideal: %.6g)" % (
+              bond.distance_model, bond.distance_ideal), file=log)
             for i_seq in proxy.i_seqs:
-              print >> log, "      %s" % atoms[i_seq].format_atom_record()
+              print("      %s" % atoms[i_seq].format_atom_record(), file=log)
           raise Sorry("Number of bonds with excessive lengths: %d" %
             excessive_bonds.size())
         else:
@@ -5008,7 +4994,7 @@ class build_all_chain_proxies(linking_mixins):
           self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
           if 0:
             indent=14
-            print >> log, "      Atoms : %s\n%s%s\n%s%s\n%s%s\n%s%s\n%s%s" % (
+            print("      Atoms : %s\n%s%s\n%s%s\n%s%s\n%s%s\n%s%s" % (
               self.pdb_atoms[lookup["1CA"]].quote(),
               ' '*indent,
               self.pdb_atoms[lookup["1CB"]].quote(),
@@ -5020,7 +5006,7 @@ class build_all_chain_proxies(linking_mixins):
               self.pdb_atoms[lookup["2CB"]].quote(),
               ' '*indent,
               self.pdb_atoms[lookup["2CA"]].quote(),
-              )
+              ), file=log)
           for disulfide_torsion in disulfide_torsions:
             assert disulfide_torsion.value_angle is not None
             assert disulfide_torsion.value_angle_esd is not None
@@ -5220,7 +5206,7 @@ class build_all_chain_proxies(linking_mixins):
     if (use_cdl is Auto):
       use_cdl = self.pdb_inp.used_cdl_restraints()
       if (use_cdl):
-        print >> log, "  Switching to conformation-dependent library"
+        print("  Switching to conformation-dependent library", file=log)
     if use_cdl:
       restraints_source += ' + %s' % mmtbx.conformation_dependent_library.cdl_database.version
       from mmtbx.conformation_dependent_library.cdl_setup import setup_restraints
@@ -5237,9 +5223,9 @@ class build_all_chain_proxies(linking_mixins):
         )
       self.use_cdl = True # what is this used for???
       cdl_time = time.time()-t0
-      print >> log, """\
+      print("""\
   Conformation dependent library (CDL) restraints added in %0.1f %sseconds
-  """ % utils.greek_time(cdl_time)
+  """ % utils.greek_time(cdl_time), file=log)
     #
     # need autodetect code
     #
@@ -5247,7 +5233,7 @@ class build_all_chain_proxies(linking_mixins):
     if (use_omega_cdl is Auto):
       use_omega_cdl = self.pdb_inp.used_omega_cdl_restraints()
       if (use_omega_cdl):
-        print >> log, "  Switching to omega-CDL"
+        print("  Switching to omega-CDL", file=log)
     if use_omega_cdl:
       restraints_source += ' + omega-cdl'
       from mmtbx.conformation_dependent_library.omega import setup_restraints
@@ -5264,9 +5250,9 @@ class build_all_chain_proxies(linking_mixins):
         )
       self.use_omega_cdl = True
       cdl_time = time.time()-t0
-      print >> log, """\
+      print("""\
   omega-Conformation dependent library (o-CDL) restraints added in %0.1f %sseconds
-  """ % utils.greek_time(cdl_time)
+  """ % utils.greek_time(cdl_time), file=log)
     #
     if getattr(self.params.restraints_library, "rdl", False):
       from mmtbx.conformation_dependent_library import rotamers
@@ -5283,9 +5269,9 @@ class build_all_chain_proxies(linking_mixins):
         verbose=False,
         )
       rdl_time = time.time()-t0
-      print >> log, """\
+      print("""\
   Rotamer dependent library (RDL) restraints added in %0.1f %sseconds
-  """ % utils.greek_time(rdl_time)
+  """ % utils.greek_time(rdl_time), file=log)
     if getattr(self.params.restraints_library, "hpdl", False):
       from mmtbx.conformation_dependent_library import histidines
       from libtbx import utils
@@ -5297,9 +5283,9 @@ class build_all_chain_proxies(linking_mixins):
         verbose=True,
         )
       hpr_time = time.time()-t0
-      print >> log, """\
+      print("""\
   Histidine protonation dependent restraints added in %0.1f %sseconds
-  """ % utils.greek_time(hpr_time)
+  """ % utils.greek_time(hpr_time), file=log)
     #
     if self.pdb_inp and self.pdb_inp.used_amber_restraints():
       restraints_source = 'Amber'
@@ -5368,24 +5354,24 @@ def show_residue_groups(residue_groups, log, prefix, max_items):
     max_items += 1
   for rg in residue_groups[:max_items]:
     if (rg.unique_resnames().size() == 1):
-      print >> log, prefix+"residue:"
+      print(prefix+"residue:", file=log)
     else:
-      print >> log, prefix+"residue group:"
+      print(prefix+"residue group:", file=log)
     rg_atoms = rg.atoms()
     def show_atom(i):
       a = rg_atoms[i]
-      print >> log, prefix+"  %s occ=%.2f" % (a.id_str(), a.occ)
+      print(prefix+"  %s occ=%.2f" % (a.id_str(), a.occ), file=log)
     show_atom(0)
     n = rg_atoms.size()
     if (n > 3):
-      print >> log, prefix+"  ... (%d atoms not shown)" % (n-2)
+      print(prefix+"  ... (%d atoms not shown)" % (n-2), file=log)
     elif (n == 3):
       show_atom(1)
     if (n > 1):
       show_atom(-1)
   n = len(residue_groups) - max_items
   if (n > 0):
-    print >> log, prefix+"... (remaining %d not shown)" % n
+    print(prefix+"... (remaining %d not shown)" % n, file=log)
 
 class process(object):
 
@@ -5451,11 +5437,10 @@ class process(object):
       restraints_loading_flags=restraints_loading_flags)
     if (log is not None
         and self.all_chain_proxies.time_building_chain_proxies is not None):
-      print >> log, \
-        "  Time building chain proxies: %.2f, per 1000 atoms: %.2f" % (
+      print("  Time building chain proxies: %.2f, per 1000 atoms: %.2f" % (
           self.all_chain_proxies.time_building_chain_proxies,
           self.all_chain_proxies.time_building_chain_proxies * 1000
-            / max(1,self.all_chain_proxies.pdb_atoms.size()))
+            / max(1,self.all_chain_proxies.pdb_atoms.size())), file=log)
 
     self._geometry_restraints_manager = None
     self._xray_structure = None
@@ -5547,7 +5532,7 @@ class process(object):
 
       # C-beta restraints
       if self.all_chain_proxies.params.c_beta_restraints:
-        print >> self.log, "  Adding C-beta torsion restraints..."
+        print("  Adding C-beta torsion restraints...", file=self.log)
         from mmtbx.geometry_restraints import c_beta
         c_beta_torsion_proxies, c_beta_skipped = \
             c_beta.get_c_beta_torsion_proxies(self.all_chain_proxies.pdb_hierarchy)
@@ -5565,10 +5550,10 @@ class process(object):
           for cb_atom in item:
             outl += "        %s\n"% cb_atom.id_str()
         if outl:
-          print >> self.log, "    Skipped\n%s" % outl[:-1]
-        print >> self.log, "  Number of C-beta restraints generated: ",\
-            n_c_beta_restraints
-        print >> self.log
+          print("    Skipped\n%s" % outl[:-1], file=self.log)
+        print("  Number of C-beta restraints generated: ",\
+            n_c_beta_restraints, file=self.log)
+        print(file=self.log)
 
       # Reference coordinate restraints
       if self.all_chain_proxies.params.reference_coordinate_restraints.enabled:
@@ -5584,8 +5569,8 @@ class process(object):
                 top_out=rcr.top_out)
         n_rcr = self._geometry_restraints_manager.\
             get_n_reference_coordinate_proxies()
-        print >> self.log, "  Number of reference coordinate restraints generated:",\
-           n_rcr
+        print("  Number of reference coordinate restraints generated:",\
+           n_rcr, file=self.log)
 
       # DEN manager
       self._geometry_restraints_manager.adopt_den_manager(den_manager)
@@ -5600,7 +5585,7 @@ class process(object):
       if ss_params.enabled:
         from mmtbx.secondary_structure import manager
         t0=time.time()
-        print >> self.log, "  Finding SS restraints..."
+        print("  Finding SS restraints...", file=self.log)
         self.ss_manager = manager(
             pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
             geometry_restraints_manager=self._geometry_restraints_manager,
@@ -5610,8 +5595,8 @@ class process(object):
             verbose=-1,
             log=self.log)
         t1=time.time()
-        print >> self.log, "    Time for finding SS restraints: %.2f" % (t1-t0)
-        print >> self.log, "  Creating SS restraints..."
+        print("    Time for finding SS restraints: %.2f" % (t1-t0), file=self.log)
+        print("  Creating SS restraints...", file=self.log)
 
         self._geometry_restraints_manager.set_secondary_structure_restraints(
             ss_manager=self.ss_manager,
@@ -5619,19 +5604,18 @@ class process(object):
             log=self.log)
 
         t3=time.time()
-        print >> self.log, "  Total time for adding SS restraints: %.2f" % (t3-t1)
-        print >> self.log
+        print("  Total time for adding SS restraints: %.2f" % (t3-t1), file=self.log)
+        print(file=self.log)
       if (self.log is not None):
-        print >> self.log, \
-          "  Time building geometry restraints manager: %.2f seconds" % (
-            self.all_chain_proxies.time_building_geometry_restraints_manager)
-        print >> self.log
+        print("  Time building geometry restraints manager: %.2f seconds" % (
+            self.all_chain_proxies.time_building_geometry_restraints_manager), file=self.log)
+        print(file=self.log)
         def note_geo():
-          print >> self.log, """\
+          print("""\
   NOTE: a complete listing of the restraints can be obtained by requesting
-        output of .geo file."""
+        output of .geo file.""", file=self.log)
         note_geo()
-        print >> self.log
+        print(file=self.log)
         flush_log(self.log)
         site_labels = [atom.id_str()
                        for atom in self.all_chain_proxies.pdb_atoms]
@@ -5660,7 +5644,7 @@ class process(object):
           raise Sorry("""Bond restraint model distance < %.6g:
   Please inspect the output above and correct the input model file.""" % (
             hard_minimum_bond_distance_model))
-        print >> self.log
+        print(file=self.log)
         self._geometry_restraints_manager.angle_proxies \
           .show_histogram_of_deltas(
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
@@ -5679,7 +5663,7 @@ class process(object):
             max_items=params.show_max_items
               .bond_angle_restraints_sorted_by_residual,
             origin_id=origin_ids.get_origin_id('covalent geometry'))
-        print >> self.log
+        print(file=self.log)
         self._geometry_restraints_manager.dihedral_proxies \
           .show_histogram_of_deltas(
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
@@ -5696,7 +5680,7 @@ class process(object):
             prefix="  ",
             max_items=params.show_max_items
               .dihedral_angle_restraints_sorted_by_residual)
-        print >> self.log
+        print(file=self.log)
         self._geometry_restraints_manager.chirality_proxies \
           .show_histogram_of_deltas(
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
@@ -5713,7 +5697,7 @@ class process(object):
             prefix="  ",
             max_items=params.show_max_items
               .chirality_restraints_sorted_by_residual)
-        print >> self.log
+        print(file=self.log)
         self._geometry_restraints_manager.planarity_proxies \
           .show_sorted(
             by_value="residual",
@@ -5723,7 +5707,7 @@ class process(object):
             prefix="  ",
             max_items=params.show_max_items
               .planarity_restraints_sorted_by_residual)
-        print >> self.log
+        print(file=self.log)
         pair_proxies.nonbonded_proxies.show_histogram_of_model_distances(
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
           n_slots=params.show_histogram_slots.nonbonded_interaction_distances,
@@ -5737,18 +5721,18 @@ class process(object):
           prefix="  ",
           max_items=params.show_max_items
             .nonbonded_interactions_sorted_by_model_distance)
-        print >> self.log
+        print(file=self.log)
         note_geo()
         flush_log(self.log)
         if (show_energies):
-          print >> self.log
+          print(file=self.log)
           timer = user_plus_sys_time()
           energies = self._geometry_restraints_manager.energies_sites(
             sites_cart=self.all_chain_proxies.sites_cart_exact())
           energies.show(f=self.log, prefix="  ")
-          print >> self.log, "  Time first energy calculation" \
+          print("  Time first energy calculation" \
                              " (mainly nonbonded setup): %.2f" % (
-            timer.elapsed())
+            timer.elapsed()), file=self.log)
           flush_log(self.log)
     return self._geometry_restraints_manager
 
@@ -5846,8 +5830,8 @@ class process(object):
       hierarchy                   = new_h,
       params                      = self.all_chain_proxies.params.ncs_search,
       log                         = self.log)
-    print >> self.log, "Found NCS groups:"
-    print >> self.log, ncs_obj.print_ncs_phil_param()
+    print("Found NCS groups:", file=self.log)
+    print(ncs_obj.print_ncs_phil_param(), file=self.log)
     return ncs_obj
 
 def run(
@@ -5878,7 +5862,7 @@ def run(
       except Exception:
         raise Sorry("Unknown file format: %s" % show_string(arg))
       else:
-        print >> log, "Processing CIF file: %s" % show_string(arg)
+        print("Processing CIF file: %s" % show_string(arg), file=log)
         for srv in [mon_lib_srv, ener_lib]:
           srv.process_cif_object(cif_object=cif_object, file_name=arg)
   all_processed_pdb_files = []

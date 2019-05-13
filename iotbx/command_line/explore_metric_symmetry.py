@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.explore_metric_symmetry
 
 from cctbx import sgtbx
@@ -27,34 +28,34 @@ def do_pointgroup_tricks(input_uc,
       max_delta)
 
 
-  print >> out, "A summary of the constructed point group graph object is given below"
-  print >> out, "===================================================================="
-  print >> out
-  print >> out, "----------------------"
-  print >> out, "Input crystal symmetry"
-  print >> out, "----------------------"
-  print >> out, "Unit cell: ", input_uc.parameters()
-  print >> out, "Unit cell volume: ", input_uc.volume()
-  print >> out, "Space group: ", sgtbx.space_group_info( group=input_ls )
-  print >> out
-  print >> out
-  print >> out, "--------------------------"
-  print >> out, "Lattice symmetry deduction"
-  print >> out, "--------------------------"
-  print >> out, "Niggli cell: ", sg_explorer.xs_prim_set.unit_cell().parameters()
-  print >> out, "Niggli cell volume: ", sg_explorer.xs_prim_set.unit_cell().volume()
-  print >> out, "Niggli transformed input symmetry: ", sg_explorer.xs_prim_set.space_group_info()
-  print >> out, "Symmetry of Niggli cell: ", sgtbx.space_group_info( group = sg_explorer.pg_high )
-  print >> out
-  print >> out
-  print >> out, "All pointgroups that are both a subgroup of the lattice symmetry and"
-  print >> out, "a supergroup of the Niggli transformed input symmetry wil now be listed,"
-  print >> out, "as well as their minimal supergroups/maximal subgroups and symmetry"
-  print >> out, "operators that generate them."
-  print >> out, "For each pointgroup, a list of compatible spacegroups will be listed."
-  print >> out, "Care is taken that there are no systematic absence violation with the "
-  print >> out, "provided input spacegroup."
-  print >> out
+  print("A summary of the constructed point group graph object is given below", file=out)
+  print("====================================================================", file=out)
+  print(file=out)
+  print("----------------------", file=out)
+  print("Input crystal symmetry", file=out)
+  print("----------------------", file=out)
+  print("Unit cell: ", input_uc.parameters(), file=out)
+  print("Unit cell volume: ", input_uc.volume(), file=out)
+  print("Space group: ", sgtbx.space_group_info( group=input_ls ), file=out)
+  print(file=out)
+  print(file=out)
+  print("--------------------------", file=out)
+  print("Lattice symmetry deduction", file=out)
+  print("--------------------------", file=out)
+  print("Niggli cell: ", sg_explorer.xs_prim_set.unit_cell().parameters(), file=out)
+  print("Niggli cell volume: ", sg_explorer.xs_prim_set.unit_cell().volume(), file=out)
+  print("Niggli transformed input symmetry: ", sg_explorer.xs_prim_set.space_group_info(), file=out)
+  print("Symmetry of Niggli cell: ", sgtbx.space_group_info( group = sg_explorer.pg_high ), file=out)
+  print(file=out)
+  print(file=out)
+  print("All pointgroups that are both a subgroup of the lattice symmetry and", file=out)
+  print("a supergroup of the Niggli transformed input symmetry wil now be listed,", file=out)
+  print("as well as their minimal supergroups/maximal subgroups and symmetry", file=out)
+  print("operators that generate them.", file=out)
+  print("For each pointgroup, a list of compatible spacegroups will be listed.", file=out)
+  print("Care is taken that there are no systematic absence violation with the ", file=out)
+  print("provided input spacegroup.", file=out)
+  print(file=out)
   out.flush()
 
   sg_explorer.show(out=out)
@@ -88,9 +89,9 @@ The program "dot" is not on PATH:
   if (rc.return_code != 0):
     raise RuntimeError("Fatal error running %s:\n%s" % (dot_path,
       "\n".join(rc.stderr_lines)))
-  print >> out, "A file named", show_string(file_name), \
-    "contains a graphical representation "
-  print >> out, "of the point group relations."
+  print("A file named", show_string(file_name), \
+    "contains a graphical representation ", file=out)
+  print("of the point group relations.", file=out)
 
 
 def run(args, command_name="phenix.explore_metric_symmetry"):
@@ -188,8 +189,8 @@ unit cell are sought that match the other.""")
                           "F":"Face centered"}
   if command_line.options.centring_type is not None:
     if not allowed_centring_types.has_key( command_line.options.centring_type ):
-      print >> log, "Sorry, the centring type %s is not known."%(command_line.options.centring_type)
-      print >> log, "Choose from P,A,B,C,I,R,F "
+      print("Sorry, the centring type %s is not known."%(command_line.options.centring_type), file=log)
+      print("Choose from P,A,B,C,I,R,F ", file=log)
       return
 
   xs = None
@@ -200,22 +201,22 @@ unit cell are sought that match the other.""")
     return
 
   if ( command_line.symmetry.unit_cell() == None ):
-    print >> log
-    print >> log, "Sorry: Unit cell not specified."
-    print >> log
+    print(file=log)
+    print("Sorry: Unit cell not specified.", file=log)
+    print(file=log)
     command_line.parser.show_help()
     return
 
   if command_line.options.centring_type is None:
     if ( command_line.symmetry.space_group_info() == None ):
-      print>> log
-      print>> log,  "Sorry: centring type or space group not specified."
-      print>> log
+      print(file=log)
+      print("Sorry: centring type or space group not specified.", file=log)
+      print(file=log)
       command_line.parser.show_help()
       return
   if command_line.symmetry.space_group_info()  is not None:
     if not ( command_line.symmetry.space_group().is_chiral() ):
-      print >> log, "Sorry, Non chiral space groups not yet supported."
+      print("Sorry, Non chiral space groups not yet supported.", file=log)
       return
 
   if command_line.options.centring_type is not None:
@@ -226,7 +227,7 @@ unit cell are sought that match the other.""")
     command_line.symmetry = xs
 
   if command_line.options.niggli:
-    print >> log, "*Unit cell will be niggli reduced and P1 will be assumed*"
+    print("*Unit cell will be niggli reduced and P1 will be assumed*", file=log)
     uc = command_line.symmetry.change_basis(
       command_line.symmetry.change_of_basis_op_to_niggli_cell() ).unit_cell()
     command_line.symmetry = crystal.symmetry( uc, "P 1" )
@@ -263,7 +264,7 @@ unit cell are sought that match the other.""")
   #########################################
 
   if command_line.options.other_unit_cell is not None:
-    print >> log, "A second unit cell has been specified. "
+    print("A second unit cell has been specified. ", file=log)
     other_xs = None
 
     if command_line.options.other_space_group is None:
@@ -285,16 +286,16 @@ unit cell are sought that match the other.""")
                                               command_line.options.max_delta,
                                               log )
     # do the unit cell comparison
-    print >> log
-    print >> log
-    print >> log, "Unit cell comparison"
-    print >> log, "--------------------"
-    print >> log
-    print >> log, "The unit cells will be compared. The smallest niggli cell,"
-    print >> log, "will be used as a (semi-flexible) lego-block to see if it"
-    print >> log, "can construct the larger Niggli cell."
-    print >> log
-    print >> log
+    print(file=log)
+    print(file=log)
+    print("Unit cell comparison", file=log)
+    print("--------------------", file=log)
+    print(file=log)
+    print("The unit cells will be compared. The smallest niggli cell,", file=log)
+    print("will be used as a (semi-flexible) lego-block to see if it", file=log)
+    print("can construct the larger Niggli cell.", file=log)
+    print(file=log)
+    print(file=log)
 
     order = command_line.options.max_order
 
@@ -319,32 +320,32 @@ unit cell are sought that match the other.""")
         modified_xs = slt.make_list_of_target_xs_up_to_order( other_xs, order )
         lego_block = xs
 
-      print >> log
-      print >> log, "Volume change of largest niggli cell requested via keyword --max_order"
-      print >> log
-      print >> log, "Input crystal symmetry is tranformed to niggli setting using the operator:"
-      print >> log,  modified_xs.basic_to_niggli_cb_op.as_xyz()
-      print >> log
-      print >> log, "Comparisons for various sublattices of the target cell are listed"
-      print >> log
+      print(file=log)
+      print("Volume change of largest niggli cell requested via keyword --max_order", file=log)
+      print(file=log)
+      print("Input crystal symmetry is tranformed to niggli setting using the operator:", file=log)
+      print(modified_xs.basic_to_niggli_cb_op.as_xyz(), file=log)
+      print(file=log)
+      print("Comparisons for various sublattices of the target cell are listed", file=log)
+      print(file=log)
 
       for tmp_xs,cb_op,mat in zip(modified_xs.xs_list,
                                   modified_xs.extra_cb_op,
                                   modified_xs.matrices ):
         mat=mat.as_list_of_lists()
-        print >> log, "==================================================================="
-        print >> log, "Niggli cell is expanded using matrix:"
-        print >> log
-        print >> log, "               /%4i %4i %4i  \  "%(mat[0][0],mat[0][1],mat[0][2])
-        print >> log, "          M =  |%4i %4i %4i  |  "%(mat[1][0],mat[1][1],mat[1][2])
-        print >> log, "               \%4i %4i %4i  /  "%(mat[2][0],mat[2][1],mat[2][2])
-        print >> log
-        print >> log, "Change of basis operator to reference setting:"
-        print >> log, "    ", cb_op.as_xyz()
-        print >> log, "resulting crystal symmetry:"
+        print("===================================================================", file=log)
+        print("Niggli cell is expanded using matrix:", file=log)
+        print(file=log)
+        print("               /%4i %4i %4i  \  "%(mat[0][0],mat[0][1],mat[0][2]), file=log)
+        print("          M =  |%4i %4i %4i  |  "%(mat[1][0],mat[1][1],mat[1][2]), file=log)
+        print("               \%4i %4i %4i  /  "%(mat[2][0],mat[2][1],mat[2][2]), file=log)
+        print(file=log)
+        print("Change of basis operator to reference setting:", file=log)
+        print("    ", cb_op.as_xyz(), file=log)
+        print("resulting crystal symmetry:", file=log)
         tmp_xs.show_summary(f=log,prefix="   ")
-        print >> log
-        print >> log
+        print(file=log)
+        print(file=log)
         sl_object =  slt.compare_lattice(xs_a=tmp_xs,
                                          xs_b=lego_block,
                                          max_delta=command_line.options.max_delta,

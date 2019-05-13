@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import pdb
 from cctbx.array_family import flex
 import sys
@@ -71,10 +72,10 @@ def run(args, command_name = "phenix.tls"):
     utils.print_header("TLS tools", out = log)
   if(command_line.options.show_defaults):
     master_params.show(out = log)
-    print >> log
+    print(file=log)
     return
   if(not command_line.options.silent):
-    print >> log, banner
+    print(banner, file=log)
   #
   processed_args = utils.process_command_line_args(args = command_line.args,
     master_params = master_params, log = log)
@@ -127,14 +128,14 @@ def run(args, command_name = "phenix.tls"):
   tls_selections_strings = []
   #
   if(len(tls_groups) == 0 and not command_line.options.silent):
-    print >> log, "No TLS groups found in PDB file header."
+    print("No TLS groups found in PDB file header.", file=log)
   else:
     for i_seq, tls_group in enumerate(tls_groups):
       tls_selections_strings.append(tls_group.selection_string)
       if(not command_line.options.silent):
-        print >> log, "TLS group %d: %s" % (i_seq+1, tls_group.selection_string)
+        print("TLS group %d: %s" % (i_seq+1, tls_group.selection_string), file=log)
         mmtbx.tls.tools.show_tls_one_group(tlso = tls_group, out = log)
-        print >> log
+        print(file=log)
   #
   if(len(tls_selections_strings) > 0 and len(params.selection) > 0):
     raise Sorry("Two TLS selection sources found: PDB file header and parameters.")
@@ -153,23 +154,23 @@ def run(args, command_name = "phenix.tls"):
       model = model,
       selection_strings = tls_selections_strings)
     if(not command_line.options.silent):
-      print >> log, "Number of TLS groups: ", len(selections)
-      print >> log, "Number of atoms: %d" % model.get_number_of_atoms()
+      print("Number of TLS groups: ", len(selections), file=log)
+      print("Number of atoms: %d" % model.get_number_of_atoms(), file=log)
     n_atoms_in_tls = 0
     for sel_a in selections:
       n_atoms_in_tls += sel_a.size()
     if(not command_line.options.silent):
-      print >> log, "Number of atoms in TLS groups: %d" % n_atoms_in_tls
-      print >> log
+      print("Number of atoms in TLS groups: %d" % n_atoms_in_tls, file=log)
+      print(file=log)
     assert len(tls_selections_strings) == len(selections)
     if(not command_line.options.silent):
       for sel_a, sel_s in zip(selections,tls_selections_strings):
-        print >> log, "Selection string:\n%s" % sel_s
-        print >> log, "selects %d atoms." % sel_a.size()
-        print >> log
-      print >> log, "Ready-to-use in phenix.refine:\n"
+        print("Selection string:\n%s" % sel_s, file=log)
+        print("selects %d atoms." % sel_a.size(), file=log)
+        print(file=log)
+      print("Ready-to-use in phenix.refine:\n", file=log)
       for sel_a, sel_s in zip(selections,tls_selections_strings):
-        print >> log, sel_s
+        print(sel_s, file=log)
   #
   ofn = params.output_file_name
   if(ofn is None):
@@ -226,7 +227,7 @@ def run(args, command_name = "phenix.tls"):
     utils.print_header("Combine B_tls with B_residual", out = log)
     mmtbx.tls.tools.combine_tls_and_u_local(xray_structure = model.get_xray_structure(),
       tls_selections = selections, tls_groups = tls_groups)
-    print >> log, "All done."
+    print("All done.", file=log)
   #
   if(ofn is not None):
     utils.print_header("Write output PDB file %s"%ofn, out = log)
@@ -234,4 +235,4 @@ def run(args, command_name = "phenix.tls"):
     pdb_str = model.model_as_pdb()
     ofo.write(pdb_str)
     ofo.close()
-    print >> log, "All done."
+    print("All done.", file=log)

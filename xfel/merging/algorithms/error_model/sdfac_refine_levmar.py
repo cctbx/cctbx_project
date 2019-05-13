@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from xfel.cxi.postrefinement_hybrid_rs import per_frame_helper
 from scitbx.lstbx import normal_eqns_solving
@@ -25,7 +26,7 @@ class sdfac_helper(per_frame_helper):
       # note the minus sign on the jacobian
       pfh.add_equations(residuals, -jacobian, weights=pfh.refinery.weights)
     #print >> pfh.out, "rms %10.3f"%math.sqrt(flex.mean(pfh.refinery.weights*residuals*residuals)),
-    print >> pfh.out, "functional value % 20.3f"%pfh.refinery.functional(residuals),
+    print("functional value % 20.3f"%pfh.refinery.functional(residuals), end=' ', file=pfh.out)
     values.show(pfh.out)
 
 class sdfac_refine_refltable_levmar(sdfac_refine_refltable_lbfgs):

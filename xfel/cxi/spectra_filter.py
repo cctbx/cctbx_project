@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import psana
 import numpy as np
 from libtbx import easy_pickle
@@ -79,9 +80,9 @@ class spectra_filter(object):
   def _filter_event(self, evt, flux_min, flux_max, peak_ratio_min, peak_ratio_max):
     all_data = evt.get(psana.Camera.FrameV1, self.src)
     if all_data is None:
-      print "No data"
+      print("No data")
       return False, None, None, None, None, None
-    print cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)),
+    print(cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)), end=' ')
     data = np.array(all_data.data16().astype(np.int32))
     if self.dark_pickle is None:
       self.dark_pickle = np.zeros(data.shape)
@@ -104,11 +105,11 @@ class spectra_filter(object):
     spectrum = np.sum(data, 0)
     flux = np.sum(spectrum)
     if self.peak_range is None:
-      print "Run", evt.run(), "flux:", flux
+      print("Run", evt.run(), "flux:", flux)
     else:
       peak = spectrum[self.peak_range[0]-xmin:self.peak_range[1]-xmin]
       peak_max = np.sum(peak)
-      print "Run", evt.run(), "peak max:", peak_max, "at", np.argmax(peak)+xmin, "px", "flux:", flux, "m/f:", peak_max/flux
+      print("Run", evt.run(), "peak max:", peak_max, "at", np.argmax(peak)+xmin, "px", "flux:", flux, "m/f:", peak_max/flux)
 
       if flux_min is not None and flux < flux_min: return False, None, None, None, None, None
       if flux_max is not None and flux >= flux_max: return False, None, None, None, None, None

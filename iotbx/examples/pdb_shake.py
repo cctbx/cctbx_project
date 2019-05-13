@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 from cctbx.array_family import flex
 import mmtbx.model
@@ -38,8 +39,8 @@ def run(args):
   # update model manager with this xray structure
   model.set_xray_structure(xrs)
   # output result in PDB format to the screen
-  print model.model_as_pdb()
-  print "END"
+  print(model.model_as_pdb())
+  print("END")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx import sparse
 from libtbx.test_utils import approx_equal
 
@@ -66,7 +67,7 @@ def exercise_gilbert_peierls_lu_factorization():
 
 def run():
   exercise_gilbert_peierls_lu_factorization()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

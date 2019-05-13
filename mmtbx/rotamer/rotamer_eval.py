@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 from mmtbx.rotamer.n_dim_table import NDimTable
 from libtbx import easy_pickle
@@ -355,7 +356,7 @@ Can't seem to find mmtbx/rotamer/ directory.
     try:
       f = open(fileLoc)
     except ImportError, e:
-      print fileLoc+" file not found"
+      print(fileLoc+" file not found")
       sys.exit()
     for line in f:
       if (line.startswith("#") or line == "\n"): continue
@@ -417,7 +418,7 @@ class NamedRot:
 ########################################################################
 def exercise(args):
   if (find_rotarama_data_dir(optional=True) is None):
-    print "Skipping exercise(): rotarama_data directory not available"
+    print("Skipping exercise(): rotarama_data directory not available")
   else:
     from mmtbx.command_line import rebuild_rotarama_cache
     rebuild_rotarama_cache.run()
@@ -518,8 +519,8 @@ def exercise(args):
     ]:
       r_eval = 100*r.evaluate(aminoAcid, chiAngles)
       if (verbose):
-        print aminoAcid, "%4.1f %4.1f %4.1f" % (
-          r_eval, molpValue, r_eval-molpValue)
+        print(aminoAcid, "%4.1f %4.1f %4.1f" % (
+          r_eval, molpValue, r_eval-molpValue))
         #print '      ("%s",' % aminoAcid, chiAngles, ',', "%4.1f)," % r_eval
     # assert approx_equal(r_eval, molpValue, eps=0.9)
     #
@@ -532,7 +533,7 @@ def exercise(args):
     for aa,ndt_weakref in RotamerEval.aaTables.items():
       assert ndt_weakref() is None
     #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
     exercise(sys.argv[1:])

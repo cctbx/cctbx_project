@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.monomer_library import cif_types
 import iotbx.cif
 from iotbx.pdb import residue_name_plus_atom_names_interpreter
@@ -230,11 +231,11 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
       geostd_block = geostd_cif[geostd_block_key]
       mon_lib_block = mon_lib_cif.get(geostd_block_key)
       if verbose:
-        print '+'*80
-        print geostd_block_key
-        print '-'*80
-        print mon_lib_block
-        print '+'*80
+        print('+'*80)
+        print(geostd_block_key)
+        print('-'*80)
+        print(mon_lib_block)
+        print('+'*80)
       replace_block=False
       merge_block=False
       if geostd_block_key.endswith("_list"):
@@ -271,7 +272,7 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
           geostd_loop = geostd_block.get(geostd_loop_key)
           mon_lib_loop = mon_lib_block.get(geostd_loop_key)
           if not mon_lib_loop: continue
-          if verbose: print '''
+          if verbose: print('''
 %s
   Merging rows to CIF
     block "%s"
@@ -282,15 +283,15 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
           geostd_block_key,
           geostd_loop_key,
           "-"*80,
-          )
+          ))
           for row1 in geostd_loop.iterrows():
             if verbose:
               for key in row1:
-                print "    %-20s : %s" % (
+                print("    %-20s : %s" % (
                   key.replace("%s." % geostd_loop_key, ""),
                   row1[key],
-                  )
-              print
+                  ))
+              print()
             for i, row2 in enumerate(mon_lib_loop.iterrows()):
               if _row_match(row1, row2, geostd_loop_key):
                 mon_lib_loop.delete_row(i)
@@ -308,7 +309,7 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
           geostd_loop = geostd_block.get(geostd_loop_key)
           mon_lib_loop = mon_lib_block.get(geostd_loop_key)
           if not mon_lib_loop: continue
-          if verbose: print '''
+          if verbose: print('''
 %s
   Adding rows to CIF
     block "%s"
@@ -319,26 +320,26 @@ def merge_and_overwrite_cifs(geostd_list_cif_obj, list_cif, verbose=False):
           geostd_block_key,
           geostd_loop_key,
           "-"*80,
-          )
+          ))
           for row in geostd_loop.iterrows():
             if verbose:
               for key in row:
-                print "    %-20s : %s" % (
+                print("    %-20s : %s" % (
                   key.replace("%s." % geostd_loop_key, ""),
                   row[key],
-                  )
-              print
+                  ))
+              print()
             mon_lib_loop.add_row(row.values())
       else:
         # add block
         if verbose:
-          print '\n%s\n  Adding/replacing CIF block\n%s' % ("-"*80, "-"*80)
-          print geostd_block
+          print('\n%s\n  Adding/replacing CIF block\n%s' % ("-"*80, "-"*80))
+          print(geostd_block)
         mon_lib_cif[geostd_block_key] = geostd_block
       if verbose:
-        print '+'*80
-        print mon_lib_block
-        print '+'*80
+        print('+'*80)
+        print(mon_lib_block)
+        print('+'*80)
   return list_cif
 
 def print_filtered_cif(cif):
@@ -348,7 +349,7 @@ def print_filtered_cif(cif):
       #outl += "%s\n" % line
       continue
     outl += "%s\n" % line
-  print outl
+  print(outl)
   #assert 0
 
 class process_cif_mixin(object):
@@ -386,9 +387,9 @@ class process_cif_mixin(object):
 
 class id_dict(dict):
   def __setitem__(self, key, item):
-    print "DICT",key, item
+    print("DICT",key, item)
     if key in self:
-      print 'assert 0'
+      print('assert 0')
       assert 0
     dict.__setitem__(self, key, item)
 
@@ -543,11 +544,11 @@ class server(process_cif_mixin):
               cif_name = cif_name.lower()
               for node in os.listdir(dir_name):
                 if (node.lower() != cif_name): continue
-                print 'node',node
-                print 'i_pass'*10,i_pass
-                print dir_name
-                print os.listdir(dir_name)
-                print 'cif_name',cif_name
+                print('node',node)
+                print('i_pass'*10,i_pass)
+                print(dir_name)
+                print(os.listdir(dir_name))
+                print('cif_name',cif_name)
                 assert 0
                 return os.path.join(dir_name, node)
           # check PHENIX Mon Lib

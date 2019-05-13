@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 import libtbx.load_env
 import StringIO
@@ -307,10 +308,10 @@ L1R   C9      C25     C5          119.97 3.000
 
 def run():
   if (not libtbx.env.has_module("phenix")):
-    print "phenix not configured, skipping"
+    print("phenix not configured, skipping")
     return
   elif (not libtbx.env.find_in_repositories("chem_data")):
-    print "chem_data not configured, skipping"
+    print("chem_data not configured, skipping")
     return
   f=file("l1r.pdb", "wb")
   f.write(l1r_pdb)
@@ -323,7 +324,7 @@ def run():
   cmd += " l1r.pdb l1r.cif use_neutron_distances=False"
   cmd += ' selection="element H or element D" write_geo_file=False'
   cmd += ' correct_hydrogens=True'
-  print cmd
+  print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
   err = StringIO.StringIO()
   ero.show_stdout(out=err)
@@ -334,11 +335,11 @@ def run():
   cmd += " l1r.pdb l1r.pdb.mtz l1r.cif"
   cmd += " main.number_of_macro_cycles=1"
   cmd += ' correct_hydrogens=True'
-  print cmd
+  print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
   err = StringIO.StringIO()
   ero.show_stdout(out=err)
-  print "OK"
+  print("OK")
 
 
 if __name__=="__main__":

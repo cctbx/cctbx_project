@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import wx
 import sys
 
@@ -64,10 +65,10 @@ class detector_surface(wx.Window):
     if (px is None):
       return
     if (O.work_params.noise.max == 0):
-      print
-      print "WARNING:"
-      print "  noise.max = 0: spotfinder is likely to crash..."
-      print
+      print()
+      print("WARNING:")
+      print("  noise.max = 0: spotfinder is likely to crash...")
+      print()
       sys.stdout.flush()
     dpx,dpy = O.work_params.detector.pixels
     if (dpx < 100 or dpy < 100):
@@ -92,15 +93,15 @@ class detector_surface(wx.Window):
     if (O.spots is None):
       return
     if (O.spots.size() < 10):
-      print "Insufficient number of spotfinder spots."
-      print
+      print("Insufficient number of spotfinder spots.")
+      print()
       return
     else:
       if (use_original_uc_cr):
-        print
-        print "Using original unit cell and crystal rotation" \
-          " for spot prediction."
-        print
+        print()
+        print("Using original unit cell and crystal rotation" \
+          " for spot prediction.")
+        print()
         uc = O.work_params.unit_cell
         cr = O.work_params.crystal_rotation_matrix
       else:
@@ -108,16 +109,16 @@ class detector_surface(wx.Window):
         try:
           ai = process(work_params=O.work_params, spots=O.spots)
         except Exception as e:
-          print "Indexing exception:", e
-          print
+          print("Indexing exception:", e)
+          print()
           return
-        print "Spots indexed: %d of %d" % (
+        print("Spots indexed: %d of %d" % (
           ai.hklobserved().size(),
-          O.spots.size())
+          O.spots.size()))
         co = ai.getOrientation()
         uc = co.unit_cell()
         cr = co.crystal_rotation_matrix()
-        print "labelit index unit cell:", uc
+        print("labelit index unit cell:", uc)
         from rstbx.simage import refine_uc_cr
         refined = refine_uc_cr.refine(
           work_params=O.work_params,
@@ -128,7 +129,7 @@ class detector_surface(wx.Window):
           crystal_rotation=cr)
         uc = refined.unit_cell
         cr = refined.crystal_rotation
-        print
+        print()
       import cctbx.crystal
       crystal_symmetry = cctbx.crystal.symmetry(
         unit_cell=uc,
@@ -155,8 +156,8 @@ class detector_surface(wx.Window):
         detector_pixels=O.work_params.detector.pixels,
         point_spread=O.work_params.point_spread,
         gaussian_falloff_scale=O.work_params.gaussian_falloff_scale).spots
-      print "Number of predicted spots:", O.predicted_spots.size()
-      print
+      print("Number of predicted spots:", O.predicted_spots.size())
+      print()
     O.Refresh()
 
   def draw_image(O):
@@ -236,7 +237,7 @@ class detector_surface(wx.Window):
         O.predicted_spots = None
         O.Refresh()
     else:
-      print "No action for this key stroke."
+      print("No action for this key stroke.")
 
 class main_panel(wx.Panel):
 

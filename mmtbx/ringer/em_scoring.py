@@ -11,6 +11,7 @@ Reference:
 """
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.ringer import Peak, Peaklist
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
@@ -75,7 +76,7 @@ def calculate_peaks(ringer,threshold):
 
 
 def parse_pickle(filename, out=sys.stdout):
-  print "===== Loading Pickle: %s =====" % filename
+  print("===== Loading Pickle: %s =====" % filename)
   ringer_things = easy_pickle.load(filename)
   return process_raw_results(ringer_things, out=out)
 
@@ -101,8 +102,8 @@ def process_raw_results(ringer_result, out=sys.stdout):
     raise Sorry("""No features could be detected in the density around the model, so EMRinger can't
        proceed. This can be confirmed in pymol or coot. If features are present, raise
        the scale of the map values and try EMRinger again.""")
-  print >> out, "Threshold list: %s" % thresholds
-  print >> out, "===== Pickle Parsed ====="
+  print("Threshold list: %s" % thresholds, file=out)
+  print("===== Pickle Parsed =====", file=out)
   return waves, thresholds
 
 def calculate_binned_counts(peak_count, first=60, binsize=12,n_angles=72):
@@ -175,9 +176,9 @@ class main(object):
         # calculate peaks and histogram
     for threshold in self.thresholds:
       if (not quiet):
-        print >>out, ""
-        print >>out, "===== Calculating Statistics for Threshold %.3f =====" %\
-          threshold
+        print("", file=out)
+        print("===== Calculating Statistics for Threshold %.3f =====" %\
+          threshold, file=out)
       self.peaks[threshold]=Peaklist()
       Weird_residues[threshold]=Peaklist()
       self.peak_count[threshold] = [0]*n_angles
@@ -205,8 +206,8 @@ class main(object):
       self.zscores.append(zscore_n)
       self.rotamer_ratios.append(rotamer_ratio_n)
       if (not quiet):
-        print >> out, "===== Plotting Histogram for Threshold %.3f =====" % \
-          threshold
+        print("===== Plotting Histogram for Threshold %.3f =====" % \
+          threshold, file=out)
         out_file = os.path.join(out_dir, "%.3f.histogram.png" % threshold)
         plot_peaks(
           peak_count=self.peak_count[threshold],
@@ -215,38 +216,38 @@ class main(object):
           first=60,
           title=RMSD_statistic(self.peaks[threshold].peaks),
           n_angles=n_angles)
-        print >> out, "Saved plot to %s" % out_file
+        print("Saved plot to %s" % out_file, file=out)
       # plot_rotamers(binned_peaks[threshold], file, threshold, args.first_rotamer)
     #   print "Outliers at threshold %.2f: %s" % (threshold, str(Weird_residues[threshold]))
     if len(self.zscores) == 0:
       raise Sorry("""No scores could be calculated at any threshold for this map. This could be because the
        map is not sufficiently featured, or because of data corruption in the map.""")
     if (not quiet):
-      print >> out, ""
-      print >> out, "===== Plotting Statistics Across Thresholds ====="
+      print("", file=out)
+      print("===== Plotting Statistics Across Thresholds =====", file=out)
       out_file = os.path.join(out_dir, "Total.threshold_scan.png")
       plot_progression(
         non_zero_thresholds=self.non_zero_thresholds,
         rotamer_ratios=self.rotamer_ratios,
         file_name=out_file,
         zscores=self.all_scores)
-      print >> out, "Saved plot to %s" % out_file
+      print("Saved plot to %s" % out_file, file=out)
     # for i in Residue_codes:
     #   plot_progression(non_zero_thresholds, rotamer_ratios_residues[i], file, zscores_residues[i], i)
-      print >> out, ""
-      print >> out, "===== Writing Pickles Out ====="
+      print("", file=out)
+      print("===== Writing Pickles Out =====", file=out)
       easy_pickle.dump(out_dir + '/Outliers.pkl',Weird_residues)
-      print >> out, 'Wrote ' + out_dir + '/Outliers.pkl'
+      print('Wrote ' + out_dir + '/Outliers.pkl', file=out)
       easy_pickle.dump(out_dir + '/rotamer_ratios.pkl', self.rotamer_ratios)
-      print >> out, 'Wrote ' + out_dir + '/rotamer_ratios.pkl'
+      print('Wrote ' + out_dir + '/rotamer_ratios.pkl', file=out)
       easy_pickle.dump(out_dir + '/zscores.pkl', self.zscores)
-      print >> out, 'Wrote ' + out_dir + '/zscores.pkl'
+      print('Wrote ' + out_dir + '/zscores.pkl', file=out)
       easy_pickle.dump(out_dir + '/emringer_scores.pkl', self.all_scores)
-      print >> out, 'Wrote ' + out_dir + '/emringer_scores.pkl'
+      print('Wrote ' + out_dir + '/emringer_scores.pkl', file=out)
       easy_pickle.dump(out_dir + '/thresholds.pkl', self.thresholds)
-      print >> out, 'Wrote ' + out_dir + '/thresholds.pkl'
+      print('Wrote ' + out_dir + '/thresholds.pkl', file=out)
       easy_pickle.dump(out_dir + '/peak_counts.pkl', self.peak_count)
-      print >> out, 'Wrote ' + out_dir + '/peak_counts.pkl'
+      print('Wrote ' + out_dir + '/peak_counts.pkl', file=out)
     self.zscore_max = max(self.zscores)
     self._zscore_max_index = self.zscores.index(self.zscore_max)
 
@@ -268,14 +269,14 @@ class main(object):
     return (10 * self.zscore_max / math.sqrt(self.length))
 
   def show_summary(self, out=sys.stdout):
-    print >> out, ""
-    print >> out, "=====Final Statistics for Model/Map Pair====="
-    print >> out, "Optimal Threshold: %.3f" % self.optimal_threshold
-    print >> out, "Rotamer-Ratio: %.3f" % self.rotamer_ratio
-    print >> out, "Max Zscore: %.3f" % self.zscore_max
-    print >> out, "Model Length: %d" % self.length
+    print("", file=out)
+    print("=====Final Statistics for Model/Map Pair=====", file=out)
+    print("Optimal Threshold: %.3f" % self.optimal_threshold, file=out)
+    print("Rotamer-Ratio: %.3f" % self.rotamer_ratio, file=out)
+    print("Max Zscore: %.3f" % self.zscore_max, file=out)
+    print("Model Length: %d" % self.length, file=out)
     # print "Z-score/(length): %.8f" % (value/length)
-    print >> out, "EMRinger Score: %8f" % self.score
+    print("EMRinger Score: %8f" % self.score, file=out)
     return self
 
   def draw_wx_peaks_plot(self, plot, i_threshold):

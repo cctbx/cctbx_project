@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx import maptbx
 from cctbx import crystal
@@ -129,28 +130,28 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
   assert approx_equal(all, last)
   assert sampled_density.anomalous_flag() == (anomalous_flag or force_complex)
   if (0 or verbose):
-    print "const_gaussian:", const_gaussian
-    print "negative_gaussian:", negative_gaussian
-    print "number of scatterers passed:", \
-      sampled_density.n_scatterers_passed()
-    print "number of contributing scatterers:", \
-      sampled_density.n_contributing_scatterers()
-    print "number of anomalous scatterers:", \
-      sampled_density.n_anomalous_scatterers()
-    print "wing_cutoff:", sampled_density.wing_cutoff()
-    print "exp_table_one_over_step_size:", \
-      sampled_density.exp_table_one_over_step_size()
-    print "exp_table_size:", sampled_density.exp_table_size()
-    print "max_sampling_box_edges:", sampled_density.max_sampling_box_edges(),
-    print "(%.4f, %.4f, %.4f)" % sampled_density.max_sampling_box_edges_frac()
+    print("const_gaussian:", const_gaussian)
+    print("negative_gaussian:", negative_gaussian)
+    print("number of scatterers passed:", \
+      sampled_density.n_scatterers_passed())
+    print("number of contributing scatterers:", \
+      sampled_density.n_contributing_scatterers())
+    print("number of anomalous scatterers:", \
+      sampled_density.n_anomalous_scatterers())
+    print("wing_cutoff:", sampled_density.wing_cutoff())
+    print("exp_table_one_over_step_size:", \
+      sampled_density.exp_table_one_over_step_size())
+    print("exp_table_size:", sampled_density.exp_table_size())
+    print("max_sampling_box_edges:", sampled_density.max_sampling_box_edges(), end=' ')
+    print("(%.4f, %.4f, %.4f)" % sampled_density.max_sampling_box_edges_frac())
     if (not sampled_density.anomalous_flag()):
-      print "map min:", flex.min(sampled_density.real_map())
-      print "map max:", flex.max(sampled_density.real_map())
+      print("map min:", flex.min(sampled_density.real_map()))
+      print("map max:", flex.max(sampled_density.real_map()))
     else:
-      print "map min:", flex.min(flex.real(sampled_density.complex_map())),
-      print             flex.min(flex.imag(sampled_density.complex_map()))
-      print "map max:", flex.max(flex.real(sampled_density.complex_map())),
-      print             flex.max(flex.imag(sampled_density.complex_map()))
+      print("map min:", flex.min(flex.real(sampled_density.complex_map())), end=' ')
+      print(flex.min(flex.imag(sampled_density.complex_map())))
+      print("map max:", flex.max(flex.real(sampled_density.complex_map())), end=' ')
+      print(flex.max(flex.imag(sampled_density.complex_map())))
   if (not sampled_density.anomalous_flag() and negative_gaussian):
     assert flex.min(sampled_density.real_map()) < 0
     assert flex.max(sampled_density.real_map()) == 0
@@ -250,7 +251,7 @@ def exercise_negative_parameters(verbose=0):
     if (cc < 0.999):
       raise AssertionError("i_trial=%d, correlation=%.6g" % (i_trial, cc))
     elif (0 or verbose):
-      print "correlation=%.6g" % cc
+      print("correlation=%.6g" % cc)
     #
     # very simple test of gradient calculations with negative parameters
     structure_factor_gradients = \

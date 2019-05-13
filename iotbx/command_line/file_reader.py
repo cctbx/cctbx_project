@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from iotbx import file_reader
 import libtbx.phil
@@ -46,8 +47,8 @@ iotbx.file_reader filename [force_type=None]
       try :
         user_phil.append(libtbx.phil.parse(arg))
       except RuntimeError, e :
-        print e
-        print "Unrecognized argument '%s'" % arg
+        print(e)
+        print("Unrecognized argument '%s'" % arg)
   params = master_phil.fetch(sources=user_phil).extract()
   validate_params(params)
   f = file_reader.any_file(

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
 from cctbx import crystal
@@ -815,8 +816,8 @@ def exercise_nonbonded_cos(verbose=0):
       gradient_array=gradient_array)
     fd_grads = nb_cos_finite_difference_gradients(
       nbf=nbf, proxy=proxy, sites_cart=sites_cart)
-    print >> log, list(gradient_array)
-    print >> log, list(fd_grads)
+    print(list(gradient_array), file=log)
+    print(list(fd_grads), file=log)
     assert approx_equal(gradient_array, fd_grads)
     nc = geometry_restraints.nonbonded_cos(
       sites=list(sites_cart),
@@ -824,9 +825,9 @@ def exercise_nonbonded_cos(verbose=0):
       function=geometry_restraints.cos_repulsion_function(
         max_residual=nbf.max_residual, exponent=nbf.exponent))
     assert approx_equal(nc.residual(), r)
-    print >> log, nc.gradients()
+    print(nc.gradients(), file=log)
     assert approx_equal(nc.gradients(), gradient_array)
-    print >> log
+    print(file=log)
     sc0 = matrix.col(sites_cart[0])
     v01 = matrix.col(sites_cart[1]) - sc0
     v01 *= 1/abs(v01)
@@ -839,14 +840,14 @@ def exercise_nonbonded_cos(verbose=0):
           proxy=proxy,
           sites_cart=sites_cart,
           gradient_array=gradient_array)
-        print >> log, "d, r:", d, r
+        print("d, r:", d, r, file=log)
         if (d == 2):
           assert abs(r) <= 1.e-8
         else:
           fd_grads = nb_cos_finite_difference_gradients(
             nbf=nbf, proxy=proxy, sites_cart=sites_cart)
-          print >> log, list(gradient_array)
-          print >> log, list(fd_grads)
+          print(list(gradient_array), file=log)
+          print(list(fd_grads), file=log)
           assert approx_equal(gradient_array, fd_grads)
           nc = geometry_restraints.nonbonded_cos(
             sites=list(sites_cart),
@@ -854,9 +855,9 @@ def exercise_nonbonded_cos(verbose=0):
             function=geometry_restraints.cos_repulsion_function(
               max_residual=nbf.max_residual, exponent=nbf.exponent))
           assert approx_equal(nc.residual(), r)
-          print >> log, nc.gradients()
+          print(nc.gradients(), file=log)
           assert approx_equal(nc.gradients(), gradient_array)
-          print >> log
+          print(file=log)
 
 def exercise_nonbonded():
   params = geometry_restraints.nonbonded_params()
@@ -1893,8 +1894,8 @@ def exercise_dihedral():
           angle_ideal=70,
           angle_model=angle_model,
           periodicity=signed_periodicity)
-        print >> f, angle_model, d.residual()
-      print >> f, "&"
+        print(angle_model, d.residual(), file=f)
+      print("&", file=f)
     f.close()
   #
   intersection_angle = 120
@@ -2380,9 +2381,9 @@ def exercise_planarity_top_out():
     sites_cart=sites_cart,
     proxy=p)
   # manual_gradient(planarity)
-  print "Normal:", planarity.normal()
+  print("Normal:", planarity.normal())
   # print dir(planarity)
-  print "deltas:", list(planarity.deltas())
+  print("deltas:", list(planarity.deltas()))
   # res = planarity.residual()
   # print "residual:",res
   sc1 = sites_cart.deep_copy()
@@ -2414,8 +2415,8 @@ def exercise_planarity_top_out():
     sites_cart=sites_cart,
     proxy=p, eps=1.e-5)
   for g,e in zip(gradient_array, fd_grads):
-    print "grads from proxy:", g
-    print "grads from finit:", e
+    print("grads from proxy:", g)
+    print("grads from finit:", e)
     # assert approx_equal(g, e)
 
 def exercise_proxy_show():
@@ -2423,7 +2424,7 @@ def exercise_proxy_show():
     # This appears to be a windows-specific bug with string formatting
     # for python versions prior to 2.6, where the exponent is printed
     # with 3 digits rather than 2.
-    print "Skipping exercise_proxy_show()"
+    print("Skipping exercise_proxy_show()")
     return
   # zeolite AHT
   crystal_symmetry = crystal.symmetry(
@@ -3356,7 +3357,7 @@ def exercise():
   exercise_proxy_show()
   exercise_parallelity()
   exercise_origin_id_selections_for_bonds()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

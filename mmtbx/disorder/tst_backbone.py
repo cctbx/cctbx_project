@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.disorder import backbone
 import iotbx.pdb.hierarchy
 from cStringIO import StringIO
@@ -115,4 +116,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

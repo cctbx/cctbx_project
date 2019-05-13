@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def run(args):
   from rstbx.simage import create
   from scitbx.array_family import flex
@@ -14,8 +15,8 @@ def run(args):
           image_info.spots,
           image_info.signals):
       h = i_calc.p1_anom.indices()[i_seq]
-      print "%3d %3d %3d" % h, "(%8.2f, %8.2f)" % tuple(x[:2]), "%.6g" % s
-    print
+      print("%3d %3d %3d" % h, "(%8.2f, %8.2f)" % tuple(x[:2]), "%.6g" % s)
+    print()
   else:
     i_calc_2, image_info_2 = create.compute(
       work_params=work_params,
@@ -43,50 +44,50 @@ def run(args):
         dx = tuple([b-a for a,b in zip(x,x2)])
         streak = (dx[0]**2 + dx[1]**2)**0.5
         h = i_calc.p1_anom.indices()[i_seq]
-        print "%3d %3d %3d" % h, " %8.5f" % d_spacings[i_seq], \
-          "(%7.1f, %7.1f)" % x, "%.1f" % s
-        print "                     ", \
-          "(%7.1f, %7.1f)" % x2, "%.1f" % s2, " %.1f" % (s2-s)
-        print "                      (%7.1f, %7.1f)" % dx, " %.1f" % streak
+        print("%3d %3d %3d" % h, " %8.5f" % d_spacings[i_seq], \
+          "(%7.1f, %7.1f)" % x, "%.1f" % s)
+        print("                     ", \
+          "(%7.1f, %7.1f)" % x2, "%.1f" % s2, " %.1f" % (s2-s))
+        print("                      (%7.1f, %7.1f)" % dx, " %.1f" % streak)
         d_array.append(d_spacings[i_seq])
         streak_array.append(streak)
         i_mean_array.append((s+s2)*0.5)
-    print
-    print "Writing file: d_vs_streak.xy"
+    print()
+    print("Writing file: d_vs_streak.xy")
     f = open("d_vs_streak.xy", "w")
     for x,y in zip(d_array, streak_array):
-      print >> f, x, y
+      print(x, y, file=f)
     del f
-    print "Writing file: i_vs_streak.xy"
+    print("Writing file: i_vs_streak.xy")
     perm = flex.sort_permutation(i_mean_array)
     f = open("i_vs_streak.xy", "w")
     for x,y in zip(i_mean_array.select(perm), streak_array.select(perm)):
-      print >> f, x, y
+      print(x, y, file=f)
     del f
   _ = i_calc.p1_anom
   d = _.d_spacings().data()
   i = _.data()
-  print "Writing file: d_vs_i_calc.xy"
+  print("Writing file: d_vs_i_calc.xy")
   f = open("d_vs_i_calc.xy", "w")
   for x,y in zip(d, i):
-    print >> f, x, y
+    print(x, y, file=f)
   del f
-  print "Writing file: i_calc_vs_d.xy"
+  print("Writing file: i_calc_vs_d.xy")
   perm = flex.sort_permutation(i)
   f = open("i_calc_vs_d.xy", "w")
   for x,y in zip(i.select(perm), d.select(perm)):
-    print >> f, x, y
+    print(x, y, file=f)
   del f
-  print
+  print()
   _ = i_calc.p1_anom
   for cutoff in [0.1, 0.05, 0.02, 0.01]:
-    print "Completeness with i_calc >= %.2f:" % cutoff
+    print("Completeness with i_calc >= %.2f:" % cutoff)
     visible = _.select(_.data() >= cutoff)
     a, b = visible.indices().size(), _.indices().size()
-    print "  Overall: %d / %d = %.3f" % (a, b, a/max(1,b))
+    print("  Overall: %d / %d = %.3f" % (a, b, a/max(1,b)))
     visible.setup_binner(n_bins=10)
     visible.completeness(use_binning=True).show(prefix="  ")
-    print
+    print()
 
 if (__name__ == "__main__"):
   import sys

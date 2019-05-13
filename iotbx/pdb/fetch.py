@@ -23,6 +23,7 @@
 # https://pdb-redo.eu/db/1aba/1aba_final.cif
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Sorry, null_out
 from libtbx import smart_open
 from libtbx import Auto
@@ -81,8 +82,8 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
           if (file_id.lower() == id):
             if (guess_file_type(file_name) == "pdb"):
               file_name = os.path.join(local_cache, file_name)
-              print >> log, "Reading from cache directory:"
-              print >> log, "  " + file_name
+              print("Reading from cache directory:", file=log)
+              print("  " + file_name, file=log)
               f = smart_open.for_reading(file_name)
               return f
     # try local mirror for PDB and X-ray data files first, if it exists
@@ -92,8 +93,8 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       if (os.path.isdir(subdir)):
         file_name = os.path.join(subdir, "pdb%s.ent.gz" % id)
         if (os.path.isfile(file_name)):
-          print >> log, "Reading from local mirror:"
-          print >> log, "  " + file_name
+          print("Reading from local mirror:", file=log)
+          print("  " + file_name, file=log)
           f = smart_open.for_reading(file_name)
           return f
     if (data_type == "pdb") and (format == "cif") and \
@@ -102,8 +103,8 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       if (os.path.isdir(subdir)):
         file_name = os.path.join(subdir, "%s.cif.gz" % id)
         if (os.path.isfile(file_name)):
-          print >> log, "Reading from local mirror:"
-          print >> log, "  " + file_name
+          print("Reading from local mirror:", file=log)
+          print("  " + file_name, file=log)
           f = smart_open.for_reading(file_name)
           return f
     if ((data_type == "xray") and
@@ -113,8 +114,8 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       if (os.path.isdir(subdir)):
         file_name = os.path.join(subdir, "r%ssf.ent.gz" % id)
         if (os.path.isfile(file_name)):
-          print >> log, "Reading from local mirror:"
-          print >> log, "  " + file_name
+          print("Reading from local mirror:", file=log)
+          print("  " + file_name, file=log)
           f = smart_open.for_reading(file_name)
           return f
   # No mirror found (or out of date), default to HTTP download
@@ -235,17 +236,17 @@ def get_pdb(id, data_type, mirror, log, quiet=False, format="pdb"):
     file_name = os.path.join(os.getcwd(), "%s-sf.cif" % id)
     open(file_name, "w").write(data.read())
     if not quiet :
-      print >> log, "Structure factors saved to %s" % file_name
+      print("Structure factors saved to %s" % file_name, file=log)
   elif (data_type in ["fasta", "seq"]):
     file_name = os.path.join(os.getcwd(), "%s.fa" % id)
     open(file_name, "w").write(data.read())
     if not quiet :
-      print >> log, "Sequence saved to %s" % file_name
+      print("Sequence saved to %s" % file_name, file=log)
   else :
     file_name = os.path.join(os.getcwd(), "%s.%s" %(id, format))
     open(file_name, "w").write(data.read())
     if not quiet :
-      print >> log, "Model saved to %s" % file_name
+      print("Model saved to %s" % file_name, file=log)
   return file_name
 
 def get_chemical_components_cif(code, return_none_if_already_present=False):

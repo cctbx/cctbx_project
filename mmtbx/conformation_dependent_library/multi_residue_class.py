@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import copy
 
 from mmtbx.conformation_dependent_library.cdl_utils import \
@@ -183,10 +184,10 @@ class ThreeProteinResidues(ProteinResidues):
       backbone_i_minus_1, junk = get_c_ca_n(self[0], return_subset=True)
       assert len(backbone_i_minus_1)==self.length
     backbone_i, junk = get_c_ca_n(self[1], return_subset=True)
-    if verbose: print backbone_i
+    if verbose: print(backbone_i)
     if None in backbone_i: return None
     backbone_i_plus_1, junk = get_c_ca_n(self[2], return_subset=True)
-    if verbose: print backbone_i_plus_1, junk
+    if verbose: print(backbone_i_plus_1, junk)
     if None in backbone_i_plus_1: return None
     assert len(backbone_i)==self.length
     assert len(backbone_i_plus_1)==self.length
@@ -203,7 +204,7 @@ class ThreeProteinResidues(ProteinResidues):
       backbone_i_plus_1[2],
       ]
     atoms = [phi_atoms, psi_atoms]
-    if verbose: print atoms
+    if verbose: print(atoms)
     if not only_psi_phi_pairs:
       if self.start:
         psi_atoms = [
@@ -223,15 +224,15 @@ class ThreeProteinResidues(ProteinResidues):
         atoms.append(phi_atoms)
     if verbose:
       for dihedral in atoms:
-        print '-'*80
+        print('-'*80)
         for atom in dihedral:
-          print atom.quote()
+          print(atom.quote())
     return atoms
 
   def get_phi_psi_angles(self, verbose=False):
     if verbose:
       for residue in self:
-        print residue.id_str()
+        print(residue.id_str())
     return get_phi_psi_angles(self, verbose=verbose)
 
   def get_ramalyze_key(self,
@@ -284,7 +285,7 @@ class FourProteinResidues(ThreeProteinResidues):
   def get_ca_dihedrals(self, verbose=False):
     if verbose:
       for residue in self:
-        print residue.id_str()
+        print(residue.id_str())
     return get_ca_dihedrals(self)
 
 class FiveProteinResidues(FourProteinResidues):
@@ -307,20 +308,20 @@ if __name__=="__main__":
                                              length=i,
                                              #verbose=verbose,
                                              ):
-      print threes
-      try: print '  omega   %5.1f' % threes.get_omega_value()
-      except: print '  omega is not valid' # intentional
-      print '  omegas  %s' % threes.get_omega_values()
-      try: print "  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30))
-      except: print '  cis? is not valid' # intentional
-      try: print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
-      except: print '  tran? is not valid' # intentional
-      print '  cis/trans/twisted? %s' % ' '.join(threes.cis_trans_twisted_list())
-      try: print "  rama    %s" % threes.get_ramalyze_key()
-      except: print '  rama not specified' # intentional
-      print '  conf    %s' % threes.is_pure_main_conf()
-      try: print '  phi/psi %s' % threes.get_phi_psi_angles()
-      except: print '  phi/psi not specified' # intentional
-      try: print '  CA dihedrals %s' % threes.get_ca_dihedrals()
-      except: print '  CA dihedrals not specified' # intentional
-    print "OK",i+2
+      print(threes)
+      try: print('  omega   %5.1f' % threes.get_omega_value())
+      except: print('  omega is not valid') # intentional
+      print('  omegas  %s' % threes.get_omega_values())
+      try: print("  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30)))
+      except: print('  cis? is not valid') # intentional
+      try: print("  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30)))
+      except: print('  tran? is not valid') # intentional
+      print('  cis/trans/twisted? %s' % ' '.join(threes.cis_trans_twisted_list()))
+      try: print("  rama    %s" % threes.get_ramalyze_key())
+      except: print('  rama not specified') # intentional
+      print('  conf    %s' % threes.is_pure_main_conf())
+      try: print('  phi/psi %s' % threes.get_phi_psi_angles())
+      except: print('  phi/psi not specified') # intentional
+      try: print('  CA dihedrals %s' % threes.get_ca_dihedrals())
+      except: print('  CA dihedrals not specified') # intentional
+    print("OK",i+2)

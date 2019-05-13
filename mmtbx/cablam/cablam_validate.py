@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # (jEdit options) :folding=explicit:collapseFolds=1:
 #
 #cablam_validate
@@ -718,21 +719,21 @@ def check_prolines(hierarchy,pdbid='pdbid'):
         translevel = pro_contour['trans'].valueAt(cablam_point)
         if (omega >= -30) and (omega <= 30): #modeled as cis
           if cislevel < cis_cutoff:
-            print "bad CIS at ", pdbid, residue.id_with_resname(), "value:%.3f" %cislevel
+            print("bad CIS at ", pdbid, residue.id_with_resname(), "value:%.3f" %cislevel)
             if translevel >= 0.1:#trans_cutoff:
-              print "  try TRANS. value:%.3f" %translevel
+              print("  try TRANS. value:%.3f" %translevel)
             else:
-              print "  no suggestion. trans value:%.3f" %translevel
+              print("  no suggestion. trans value:%.3f" %translevel)
         elif (omega >=150) or (omega <= -150): #modeled as trans
           if translevel < trans_cutoff:
-            print "bad TRANS at ", pdbid, residue.id_with_resname(), "value:%.3f" %translevel
+            print("bad TRANS at ", pdbid, residue.id_with_resname(), "value:%.3f" %translevel)
             if cislevel >= 0.1:#cis_cutoff:
-              print "  try CIS. value:%.3f" %cislevel
+              print("  try CIS. value:%.3f" %cislevel)
             else:
-              print "  no suggestion. cis value:%.3f" %cislevel
+              print("  no suggestion. cis value:%.3f" %cislevel)
         else: #modeled as twisted
-          print "TWISTED peptide at ", pdbid, residue.id_with_resname()
-          print "  TRANS score: %.3f" %translevel, " CIS score: %.3f" %cislevel
+          print("TWISTED peptide at ", pdbid, residue.id_with_resname())
+          print("  TRANS score: %.3f" %translevel, " CIS score: %.3f" %cislevel)
 #}}}
 
 #{{{ print_helix_sheet_records function

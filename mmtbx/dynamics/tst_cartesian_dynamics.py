@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.dynamics
 from mmtbx.dynamics import constants
 from mmtbx.dynamics import cartesian_dynamics
@@ -72,7 +73,7 @@ def exercise_00(inputs, verbose=0):
   # normal run
   #
   if (inputs.xray_structure is None):
-    print "Skipping exercise_00(): input file not available"
+    print("Skipping exercise_00(): input file not available")
     return
   structure_ = inputs.xray_structure.deep_copy_scatterers()
   if (verbose): log = sys.stdout
@@ -94,32 +95,32 @@ def exercise_00(inputs, verbose=0):
   assert rms1 == rms2
   rms = rms1
   if(verbose):
-    print "rms between structures before and after dynamics = ", rms
+    print("rms between structures before and after dynamics = ", rms)
   array_of_distances_between_each_atom = \
        flex.sqrt(structure_.difference_vectors_cart(
          inputs.xray_structure).dot())
   if(verbose):
-    print
+    print()
     for d in array_of_distances_between_each_atom:
-      print d
+      print(d)
   n_rms = 4.0
   selected_by_rms = (array_of_distances_between_each_atom > n_rms * rms)
   if(n_rms > 1.0):
     assert selected_by_rms.count(True) == 0
   if(verbose):
-    print "number of outliers = ", selected_by_rms.count(True)
+    print("number of outliers = ", selected_by_rms.count(True))
   selected = array_of_distances_between_each_atom.select(selected_by_rms)
   if(verbose):
-    print "list of outliers : "
+    print("list of outliers : ")
     for s in selected:
-      print s
+      print(s)
 
 def exercise_01(inputs, verbose=0):
   #
   # run at T = 0K
   #
   if (inputs.xray_structure is None):
-    print "Skipping exercise_01(): input file not available"
+    print("Skipping exercise_01(): input file not available")
     return
   if (verbose): log = sys.stdout
   else:         log = StringIO()
@@ -147,7 +148,7 @@ def exercise_02(inputs, verbose=0):
   # run at n_step = 0
   #
   if (inputs.xray_structure is None):
-    print "Skipping exercise_02(): input file not available"
+    print("Skipping exercise_02(): input file not available")
     return
   structure_ = inputs.xray_structure.deep_copy_scatterers()
   if (verbose): log = sys.stdout
@@ -176,7 +177,7 @@ def exercise_03(mon_lib_srv, ener_lib, verbose=0):
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/2ERL_noH.pdb", test=os.path.isfile)
   if (pdb_file is None):
-    print "Skipping exercise_03: input file not available"
+    print("Skipping exercise_03: input file not available")
     return
   if (verbose): log = sys.stdout
   else:         log = StringIO()
@@ -209,7 +210,7 @@ def exercise_03(mon_lib_srv, ener_lib, verbose=0):
   assert rms1 == rms2
   rms = rms1
   if(verbose):
-    print "rms between structures before and after dynamics = ", rms
+    print("rms between structures before and after dynamics = ", rms)
   array_of_distances_between_each_atom = \
        flex.sqrt(structure_.difference_vectors_cart(xray_structure).dot())
   if(verbose):
@@ -221,10 +222,10 @@ def exercise_03(mon_lib_srv, ener_lib, verbose=0):
   selected_by_rms = (array_of_distances_between_each_atom > n_rms * rms)
   outlier_sc = xray_structure.scatterers().select(selected_by_rms)
   if (outlier_sc.size() != 0):
-    print "number of rms outliers:", outlier_sc.size()
+    print("number of rms outliers:", outlier_sc.size())
     outlier_d = array_of_distances_between_each_atom.select(selected_by_rms)
     for sc,d in zip(outlier_sc, outlier_d):
-      print sc.label, d
+      print(sc.label, d)
     raise RuntimeError("rms outliers.")
 
 def run():
@@ -238,7 +239,7 @@ def run():
   exercise_01(inputs=inputs, verbose=verbose)
   exercise_03(mon_lib_srv=mon_lib_srv, ener_lib=ener_lib, verbose=verbose)
   exercise_02(inputs=inputs, verbose=verbose)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

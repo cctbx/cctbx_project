@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.rigid_body.proto import tst_molecules
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex
@@ -52,12 +53,12 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.show_key_stroke_help()
 
   def show_key_stroke_help(self):
-    print "Press and hold Tab key to run the simulation."
-    print "Press Shift-Tab to increase speed."
-    print "Press Ctrl-Tab  to decrease speed."
-    print "Press [0-9A-F] for sensitivity test with this many significant" \
-          " digits."
-    print "Press M for minimization."
+    print("Press and hold Tab key to run the simulation.")
+    print("Press Shift-Tab to increase speed.")
+    print("Press Ctrl-Tab  to decrease speed.")
+    print("Press [0-9A-F] for sensitivity test with this many significant" \
+          " digits.")
+    print("Press M for minimization.")
 
   def process_key_stroke(self, key):
     if (key == ord("M")):
@@ -65,7 +66,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     for n,digit in enumerate("0123456789ABCDEF"):
       if (key == ord(digit)):
         return self.sensitivity_test(n_significant_digits=n)
-    print "No action for this key stroke."
+    print("No action for this key stroke.")
     self.show_key_stroke_help()
 
   def tab_callback(self, shift_down=False, control_down=False):
@@ -74,7 +75,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
         self.steps_per_tab = min(256, self.steps_per_tab * 2)
       else:
         self.steps_per_tab = max(1, self.steps_per_tab // 2)
-      print "Steps per Tab:", self.steps_per_tab
+      print("Steps per Tab:", self.steps_per_tab)
       return
     self.sim.dynamics_step(delta_t=0.05)
     self.set_points()
@@ -82,23 +83,23 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
 
   def sensitivity_test(self, n_significant_digits):
     if (n_significant_digits == 0):
-      print "Sensitivity test (full precision):"
+      print("Sensitivity test (full precision):")
       n_significant_digits = None
     else:
-      print "Sensitivity test (%d significant digits):" % n_significant_digits
+      print("Sensitivity test (%d significant digits):" % n_significant_digits)
     qdd = self.sim.sensitivity_test(n_significant_digits=n_significant_digits)
     flex.double(qdd).min_max_mean().show(prefix=" ")
 
   def minimization(self):
-    print "Minimization:"
-    print "  start e_pot:", self.sim.e_pot
+    print("Minimization:")
+    print("  start e_pot:", self.sim.e_pot)
     self.sim.minimization(
       max_iterations=10,
       callback_after_step=self.minimization_callback)
-    print "  final e_pot:", self.sim.e_pot
+    print("  final e_pot:", self.sim.e_pot)
 
   def minimization_callback(self, minimizer):
-    print "        e_pot:", self.sim.e_pot
+    print("        e_pot:", self.sim.e_pot)
     self.set_points()
     self.OnRedraw()
 

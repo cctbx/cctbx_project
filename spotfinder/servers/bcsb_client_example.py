@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import os,time
 import threading
@@ -25,11 +26,11 @@ def single_thread(idx):
     if OUTPUT_FILE is not None:
       output_lock.acquire(blocking=True)
       outfile = open(OUTPUT_FILE,"ab")
-      print >>outfile, do_main_apache(filepath, host, port)
+      print(do_main_apache(filepath, host, port), file=outfile)
       outfile.close()
       output_lock.release()
     else:
-      print do_main_apache(filepath, host, port)
+      print(do_main_apache(filepath, host, port))
 
 def multi_thread():
   from multiprocessing import Pool

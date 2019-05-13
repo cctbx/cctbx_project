@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.validation import residue, validation, atom
 import os.path
 from libtbx import slots_getstate_setstate
@@ -387,18 +388,18 @@ class omegalyze(validation):
     return data
 
   def show_summary(self, out=sys.stdout, prefix=""):
-    print >> out, prefix + 'SUMMARY: %i cis prolines out of %i PRO' % (
+    print(prefix + 'SUMMARY: %i cis prolines out of %i PRO' % (
       self.n_cis_proline(),
-      self.n_proline())
-    print >> out, prefix + 'SUMMARY: %i twisted prolines out of %i PRO' % (
+      self.n_proline()), file=out)
+    print(prefix + 'SUMMARY: %i twisted prolines out of %i PRO' % (
       self.n_twisted_proline(),
-      self.n_proline())
-    print >> out, prefix + 'SUMMARY: %i other cis residues out of %i nonPRO' % (
+      self.n_proline()), file=out)
+    print(prefix + 'SUMMARY: %i other cis residues out of %i nonPRO' % (
       self.n_cis_general(),
-      self.n_general())
-    print >> out, prefix + 'SUMMARY: %i other twisted residues out of %i nonPRO' % (
+      self.n_general()), file=out)
+    print(prefix + 'SUMMARY: %i other twisted residues out of %i nonPRO' % (
       self.n_twisted_general(),
-      self.n_general())
+      self.n_general()), file=out)
 
   def summary_only(self, out=sys.stdout, pdbid="pdbid"):
     out.write(os.path.basename(pdbid) + ":")

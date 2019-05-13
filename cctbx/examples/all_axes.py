@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # List all axes in the unit cell.
 
 # usage:
@@ -43,8 +44,8 @@ def list_all_axes(space_group_symbol=None, space_group_info=None):
   if (space_group_symbol is not None):
     space_group_info = sgtbx.space_group_info(symbol=space_group_symbol)
   space_group_info.show_summary()
-  print
-  print "Rotation type, Axis direction, Intrinsic part, Origin shift"
+  print()
+  print("Rotation type, Axis direction, Intrinsic part, Origin shift")
   axes_dict = {}
   for s in space_group_info.group():
     r = s.r()
@@ -59,8 +60,8 @@ def list_all_axes(space_group_symbol=None, space_group_info=None):
   axes_list = axes_dict.keys()
   axes_list.sort()
   for a in axes_list:
-    print a
-  print
+    print(a)
+  print()
 
 def run():
   if (len(sys.argv) == 1):

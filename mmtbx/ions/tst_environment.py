@@ -1,6 +1,7 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.ions.environment import ChemicalEnvironment
 import mmtbx.ions.identify
 from mmtbx import ions
@@ -18,7 +19,7 @@ import sys
 
 def exercise():
   if not libtbx.env.has_module("phenix_regression"):
-    print "Skipping {}".format(os.path.split(__file__)[1])
+    print("Skipping {}".format(os.path.split(__file__)[1]))
     return
 
   models = OrderedDict([
@@ -203,12 +204,12 @@ def exercise():
         manager
         )
       if env.chemistry != expected_environment:
-        print "Problem detecting chemistry environment in", model, index
-        print "Found:    ", env.chemistry
-        print "Should be:", expected_environment
+        print("Problem detecting chemistry environment in", model, index)
+        print("Found:    ", env.chemistry)
+        print("Should be:", expected_environment)
         sys.exit()
 
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   exercise()

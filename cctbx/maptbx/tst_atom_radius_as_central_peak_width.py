@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 
@@ -12,4 +13,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print "OK"
+  print("OK")

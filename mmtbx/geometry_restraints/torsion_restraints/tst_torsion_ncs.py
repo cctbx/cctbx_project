@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import iotbx.pdb
 from cctbx.array_family import flex
@@ -169,4 +170,4 @@ if (__name__ == "__main__"):
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
   exercise_1(mon_lib_srv, ener_lib)
-  print "OK"
+  print("OK")

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from cctbx import miller
 from cctbx.development import debug_utils, random_structure
@@ -68,15 +69,15 @@ def exercise_gradient(f_c_in_p1, f_o, flags, n_sampled):
 
 def exercise(flags, space_group_info, n_sampled):
   symbol = space_group_info.type().hall_symbol()
-  print symbol,
+  print(symbol, end=' ')
   if flags.fix_seed:
     random.seed(0)
   if not flags.include_high_symmetry:
     if space_group_info.group().order_p() > 8:
-      if len(symbol) > 15: print
-      print "  [ Omitted, rerun with --include_high_symmetry to override ]"
+      if len(symbol) > 15: print()
+      print("  [ Omitted, rerun with --include_high_symmetry to override ]")
       return
-  print
+  print()
   n = int(flags.repeats)
   if n == 0: n = 1
   progress = progress_displayed_as_fraction(n)

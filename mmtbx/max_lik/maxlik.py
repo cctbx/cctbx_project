@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import math
 from cctbx.array_family import flex
 from cctbx.eltbx.xray_scattering import wk1995
@@ -376,8 +377,8 @@ class alpha_beta(object):
       omega_calc_ma_test.use_binning_of(alpha_calc_ma_test)
       omega_est_ma_test.use_binning_of(alpha_calc_ma_test)
 
-      print "    Resolution           Estimated and calculated alpha, beta and model error"
-      print "   d1        d2    nref alpha_e    beta_e    err_e alpha_c   beta_c     err_c"
+      print("    Resolution           Estimated and calculated alpha, beta and model error")
+      print("   d1        d2    nref alpha_e    beta_e    err_e alpha_c   beta_c     err_c")
       for i_bin in alpha_calc_ma_test.binner().range_used():
         sel = alpha_calc_ma_test.binner().selection(i_bin)
         sel_alpha_calc_ma_test = alpha_calc_ma_test.select(sel)
@@ -404,9 +405,9 @@ class alpha_beta(object):
         omega_e = flex.mean(sel_omega_est_ma_test.data())
         d1 = alpha_calc_ma_test.binner().bin_d_range(i_bin)[0]
         d2 = alpha_calc_ma_test.binner().bin_d_range(i_bin)[1]
-        print "%8.4f %8.4f %5d %6.5f %12.3f %5.3f %6.5f %12.3f %5.3f" % \
+        print("%8.4f %8.4f %5d %6.5f %12.3f %5.3f %6.5f %12.3f %5.3f" % \
           (d1,d2,size,v_alpha_est,\
-           v_beta_est,omega_e,alpha_calc,beta_calc,omega_c)
+           v_beta_est,omega_e,alpha_calc,beta_calc,omega_c))
 
   def alpha_beta(self):
     return self.alpha, self.beta

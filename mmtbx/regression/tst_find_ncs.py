@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from cStringIO import StringIO
 from mmtbx.ncs import ncs
@@ -71,9 +72,9 @@ refinement.pdb_interpretation.ncs_group {
 """
 
 def tst_01():
-  print "Read ncs-spec file and write out text...",
+  print("Read ncs-spec file and write out text...", end=' ')
   f=open('ncs.ncs_spec','w')
-  print >>f,text1
+  print(text1, file=f)
   f.close()
 
 
@@ -88,24 +89,24 @@ def tst_01():
 
   if remove_blank(" ".join(found_text.split("source_info")[1:]) ) != \
      remove_blank(" ".join(expected_text.split("source_info")[1:])):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text))
     raise AssertionError, "FAILED"
 
   f=StringIO()
   ncs_object.format_all_for_resolve(out=f)
   found_text=f.getvalue()
   if remove_blank(found_text)!=remove_blank(expected_text_resolve):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text_resolve,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text_resolve,found_text))
     raise AssertionError, "FAILED"
 
   f=StringIO()
   ncs_object.format_all_for_phenix_refine(out=f)
   found_text=f.getvalue()
   if remove_blank(found_text)!=remove_blank(expected_text_refine):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text_refine,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text_refine,found_text))
     raise AssertionError, "FAILED"
 
-  print "OK"
+  print("OK")
 
 text_helical="""
 REMARK 350   BIOMT1   1 -0.982450 -0.186524  0.000000        0.00000
@@ -938,21 +939,21 @@ center_orth    0.0000    0.0000    0.0000
 """
 def tst_02():
 
-  print "Test short helical and point_group symmetry...",
+  print("Test short helical and point_group symmetry...", end=' ')
   from mmtbx.ncs.ncs import ncs
   f=open('helical.ncs_spec','w')
-  print >>f,text_helical_short
+  print(text_helical_short, file=f)
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('helical.ncs_spec',quiet=True)
   assert ncs_object.is_helical_along_z()
   assert not ncs_object.is_point_group_symmetry()
-  print "OK"
+  print("OK")
 
-  print "Test helical and point_group symmetry...",
+  print("Test helical and point_group symmetry...", end=' ')
   from mmtbx.ncs.ncs import ncs
   f=open('helical.ncs_spec','w')
-  print >>f,text_helical
+  print(text_helical, file=f)
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('helical.ncs_spec',quiet=True)
@@ -960,7 +961,7 @@ def tst_02():
   assert not ncs_object.is_point_group_symmetry()
 
   f=open('point_group.ncs_spec','w')
-  print >>f,text_point_group
+  print(text_point_group, file=f)
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('point_group.ncs_spec',quiet=True)
@@ -968,7 +969,7 @@ def tst_02():
   assert ncs_object.is_point_group_symmetry()
 
   f=open('nothing.ncs_spec','w')
-  print >>f,text_nothing
+  print(text_nothing, file=f)
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('nothing.ncs_spec',quiet=True)
@@ -976,7 +977,7 @@ def tst_02():
   assert not ncs_object.is_point_group_symmetry()
 
   f=open('helical_requires_reordering.ncs_spec','w')
-  print >>f,text_helical_requires_reordering
+  print(text_helical_requires_reordering, file=f)
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('helical_requires_reordering.ncs_spec',quiet=True)
@@ -984,18 +985,18 @@ def tst_02():
   assert not ncs_object.is_point_group_symmetry()
 
   f=open('helical_requires_reordering_2.ncs_spec','w')
-  print >>f,text_helical_requires_reordering_2
+  print(text_helical_requires_reordering_2, file=f)
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('helical_requires_reordering_2.ncs_spec',quiet=True)
   assert ncs_object.is_helical_along_z()
   assert not ncs_object.is_point_group_symmetry()
-  print "OK"
+  print("OK")
 
-  print "Test helical extending z_range...",
+  print("Test helical extending z_range...", end=' ')
   from mmtbx.ncs.ncs import ncs
   f=open('helical.ncs_spec','w')
-  print >>f,text_helical_short
+  print(text_helical_short, file=f)
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('helical.ncs_spec',quiet=True)
@@ -1016,34 +1017,34 @@ def tst_02():
   assert ncs_group.n_ncs_oper()==57
   assert ncs_group.is_helical_along_z()
 
-  print "OK"
+  print("OK")
 
 
 def tst_02a():
 
-  print "Test short helical and point_group symmetry with identity at start...",
+  print("Test short helical and point_group symmetry with identity at start...", end=' ')
   from mmtbx.ncs.ncs import ncs
   f=open('helical.ncs_spec','w')
-  print >>f,text_helical_short_a
+  print(text_helical_short_a, file=f)
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('helical.ncs_spec',quiet=True)
   assert ncs_object.is_helical_along_z()
   assert not ncs_object.is_point_group_symmetry()
-  print "OK"
+  print("OK")
 
 def tst_02b():
 
-  print "Test short helical and point_group symmetry with identity at end...",
+  print("Test short helical and point_group symmetry with identity at end...", end=' ')
   from mmtbx.ncs.ncs import ncs
   f=open('helical.ncs_spec','w')
-  print >>f,text_helical_short_b
+  print(text_helical_short_b, file=f)
   f.close()
   ncs_object=ncs()
   ncs_object.read_ncs('helical.ncs_spec',quiet=True)
   assert ncs_object.is_helical_along_z()
   assert not ncs_object.is_point_group_symmetry()
-  print "OK"
+  print("OK")
 
 
 text2="""
@@ -1226,10 +1227,10 @@ tran_orth     0.2120   -1.8372    0.4123
 center_orth   14.7283  -36.3621  -41.5440
 """
 def tst_03():
-  print "Map NCS operators to place them in (0,1)"
+  print("Map NCS operators to place them in (0,1)")
 
   f=open('ncs.ncs_spec','w')
-  print >>f,text2
+  print(text2, file=f)
   f.close()
 
 
@@ -1249,17 +1250,17 @@ def tst_03():
 
   if remove_blank(" ".join(found_text.split("source_info")[1:]) ) != \
      remove_blank(" ".join(expected_text2.split("source_info")[1:])):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text))
     raise AssertionError, "FAILED"
 
 
-  print "OK"
+  print("OK")
 
 def tst_04():
-  print "Offset NCS operators"
+  print("Offset NCS operators")
 
   f=open('ncs.ncs_spec','w')
-  print >>f,text2
+  print(text2, file=f)
   f.close()
 
 
@@ -1277,17 +1278,17 @@ def tst_04():
 
   if remove_blank(" ".join(found_text.split("source_info")[1:]) ) != \
      remove_blank(" ".join(expected_text2b.split("source_info")[1:])):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text))
     raise AssertionError, "FAILED"
 
 
-  print "OK"
+  print("OK")
 
 def tst_05():
-  print "Magnify NCS operators"
+  print("Magnify NCS operators")
 
   f=open('ncs.ncs_spec','w')
-  print >>f,text2
+  print(text2, file=f)
   f.close()
 
 
@@ -1305,11 +1306,11 @@ def tst_05():
 
   if remove_blank(" ".join(found_text.split("source_info")[1:]) ) != \
      remove_blank(" ".join(expected_text2c.split("source_info")[1:])):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text2c,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text2c,found_text))
     raise AssertionError, "FAILED"
 
 
-  print "OK"
+  print("OK")
 
 expected_text6="""
   11.70    22.34   39.00  ::   11.70    22.34   39.00
@@ -1323,7 +1324,7 @@ expected_text6="""
   13.50    47.98   72.33  ::   13.50    47.98   72.33
 """
 def tst_06():
-  print "Convert space group operators to NCS operators"
+  print("Convert space group operators to NCS operators")
 
   from mmtbx.ncs.ncs import crystal_symmetry_to_ncs
   from cctbx import crystal
@@ -1371,19 +1372,19 @@ def tst_06():
   for ncs_xx,cryst_xx in zip(ncs_sites_cart,cryst_sites_cart):
     text= "%7.2f  %7.2f %7.2f  :: %7.2f  %7.2f %7.2f " %(
        tuple(list(ncs_xx)+list(cryst_xx)))
-    print >>f, text
+    print(text, file=f)
     assert "%7.2f  %7.2f %7.2f" %(ncs_xx) == "%7.2f  %7.2f %7.2f" %(cryst_xx)
 
   found_text=f.getvalue()
 
   if remove_blank(found_text) != remove_blank(expected_text6):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text6,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text6,found_text))
     raise AssertionError, "FAILED"
 
-  print "OK"
+  print("OK")
 
 def tst_07():
-  print "Generate operators for point-group symmetries"
+  print("Generate operators for point-group symmetries")
   from mmtbx.ncs.ncs import generate_ncs_ops
   ncs_list=generate_ncs_ops(symmetry="ALL",op_max=3,
     out=sys.stdout)
@@ -1394,7 +1395,7 @@ def tst_07():
 
   name_and_ops_list=[]
   for ncs_obj in ncs_list:
-    print ncs_obj.get_ncs_name(),ncs_obj.max_operators()
+    print(ncs_obj.get_ncs_name(),ncs_obj.max_operators())
     assert ncs_obj.is_helical_along_z() or ncs_obj.is_point_group_symmetry()
     #print ncs_obj.is_helical_along_z() or ncs_obj.is_point_group_symmetry()
     from cStringIO import StringIO
@@ -1404,11 +1405,11 @@ def tst_07():
     #print text
     name_and_ops_list.append([ncs_obj.get_ncs_name(),ncs_obj.max_operators()])
 
-  print name_and_ops_list
+  print(name_and_ops_list)
   assert name_and_ops_list==[['I (b)', 60], ['I (d)', 60], ['I (f)', 60], ['I (a)', 60], ['I (c)', 60], ['I (e)', 60], ['O (a)', 24], ['O (b)', 24], ['T (a)', 12], ['T (b)', 12], ['T (c)', 12], ['C2 ', 2], ['C3 ', 3], ['D2 (a)', 4], ['D2 (b)', 4], ['D3 (a)', 6], ['D3 (b)', 6], ['Helical 23.00 deg    8.00 Z-trans ', 5]]
 
 
-  print "OK"
+  print("OK")
 
 
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences
@@ -25,29 +26,29 @@ def demo():
     crystal_symmetry=crystal_symmetry,
     scatterers=scatterers)
   icsd_structure.show_summary().show_scatterers()
-  print
+  print()
   icsd_pairs = icsd_structure.show_distances(
     distance_cutoff=2.5, keep_pair_asu_table=True)
-  print
+  print()
   primitive_structure = icsd_structure.primitive_setting()
   primitive_structure.show_summary().show_scatterers()
-  print
+  print()
   p1_structure = primitive_structure.expand_to_p1()
   p1_structure.show_summary().show_scatterers()
-  print
+  print()
   p1_pairs = p1_structure.show_distances(
     distance_cutoff=2.5, keep_pair_asu_table=True)
-  print
+  print()
   for label,structure,pairs in [("ICSD", icsd_structure,icsd_pairs),
                                 ("P1", p1_structure,p1_pairs)]:
-    print "Coordination sequences for", label, "structure"
+    print("Coordination sequences for", label, "structure")
     term_table = crystal.coordination_sequences.simple(
       pair_asu_table=pairs.pair_asu_table,
       max_shell=10)
     crystal.coordination_sequences.show_terms(
       structure=structure,
       term_table=term_table)
-    print
+    print()
   icsd_f_calc = icsd_structure.structure_factors(
     d_min=1, algorithm="direct").f_calc()
   icsd_f_calc_in_p1 = icsd_f_calc.primitive_setting().expand_to_p1()
@@ -56,8 +57,8 @@ def demo():
   for h,i,p in zip(icsd_f_calc_in_p1.indices(),
                    icsd_f_calc_in_p1.data(),
                    p1_f_calc.data()):
-    print h, abs(i), abs(p)*3
-  print "OK"
+    print(h, abs(i), abs(p)*3)
+  print("OK")
 
 if (__name__ == "__main__"):
   demo()

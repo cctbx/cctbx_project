@@ -1,5 +1,6 @@
 """ Utilitites for dealing with lists of clusters. """
 from __future__ import division
+from __future__ import print_function
 __author__ = 'zeldin'
 
 def unit_cell_info(sub_clusters):
@@ -39,7 +40,7 @@ def unit_cell_info(sub_clusters):
       sys.stdout = SS
       group['best_subsym'].space_group_info().show_summary()
       sys.stdout=sys.__stdout__
-      print "                       Unit cell:", group['best_subsym'].unit_cell()
+      print("                       Unit cell:", group['best_subsym'].unit_cell())
       uc_params_conv = group['best_subsym'].unit_cell().parameters()
 
       sorted_pg_comp = sorted(cluster.pg_composition.items(),

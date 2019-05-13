@@ -13,6 +13,7 @@ It also shows the Le Page (1982, J. Appl. Cryst. 15, 255-259) deltas
 in radians for comparison.
 """
 from __future__ import division
+from __future__ import print_function
 
 from cctbx import sgtbx
 from cctbx import uctbx
@@ -203,20 +204,20 @@ def run():
     score = float(lines.next().strip())
     s = matrix.sqr(s)
     m = matrix.sqr(m)
-    print s.mathematica_form(label="s", one_row_per_line=True)
-    print m.mathematica_form(label="m", one_row_per_line=True)
+    print(s.mathematica_form(label="s", one_row_per_line=True))
+    print(m.mathematica_form(label="m", one_row_per_line=True))
     r = sgtbx.rot_mx(m, 1)
-    print "rotation type:", r.info().type()
-    print "axis direction:", r.info().ev()
+    print("rotation type:", r.info().type())
+    print("axis direction:", r.info().ev())
     u = uctbx.unit_cell(metrical_matrix=s.as_sym_mat3())
     p = r.lebedev_2005_perturbation(reduced_cell=u)
-    print "score given:     ", score
-    print "score reproduced:", p
+    print("score given:     ", score)
+    print("score reproduced:", p)
     assert abs(p-score) < 1.e-6
     delta = r.le_page_1982_delta(reduced_cell=u)
-    print "Le Page delta:   ", delta
-    print
-  print "OK"
+    print("Le Page delta:   ", delta)
+    print()
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.sgtbx import harker
 from cctbx import crystal
 from cctbx import sgtbx
@@ -49,7 +50,7 @@ def run():
     eq = sgtbx.sym_equiv_sites(ss)
     for x in eq.coordinates():
       assert ae(harker.planes_cartesian(cs).min_distance(x), d)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

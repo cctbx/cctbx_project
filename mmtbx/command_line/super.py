@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.alignment
 import iotbx.pdb
 from iotbx.pdb import amino_acid_codes
@@ -54,15 +55,15 @@ def extract_sequence_and_sites(pdb_input):
 
 def run(args, command_name="mmtbx.super"):
   if (len(args) == 0):
-    print "usage: %s fixed.pdb moving.pdb [parameter=value ...]" % command_name
+    print("usage: %s fixed.pdb moving.pdb [parameter=value ...]" % command_name)
     return
 
-  print "#"
-  print "#                       ", command_name
-  print "#"
-  print "# A lightweight sequence-based structure superposition tool."
-  print "#"
-  print "#"
+  print("#")
+  print("#                       ", command_name)
+  print("#")
+  print("# A lightweight sequence-based structure superposition tool.")
+  print("#")
+  print("#")
 
   phil_objects = []
   argument_interpreter = master_params.command_line_argument_interpreter(
@@ -99,28 +100,28 @@ Missing file name for %(what)s structure:
   else:
     params.super.moving = moving_pdb_file_name
 
-  print "#Parameters used:"
-  print "#phil __ON__"
-  print
+  print("#Parameters used:")
+  print("#phil __ON__")
+  print()
   working_params = master_params.format(python_object=params)
   working_params.show()
-  print
-  print "#phil __OFF__"
-  print
+  print()
+  print("#phil __OFF__")
+  print()
 
-  print "Reading fixed structure:", params.super.fixed
+  print("Reading fixed structure:", params.super.fixed)
   fixed_pdb = iotbx.pdb.input(file_name=params.super.fixed)
-  print
-  print "Reading moving structure:", params.super.moving
+  print()
+  print("Reading moving structure:", params.super.moving)
   moving_pdb = iotbx.pdb.input(file_name=params.super.moving)
-  print
+  print()
 
   fixed_seq, fixed_sites, fixed_site_flags = extract_sequence_and_sites(
     pdb_input=fixed_pdb)
   moving_seq, moving_sites, moving_site_flags = extract_sequence_and_sites(
     pdb_input=moving_pdb)
 
-  print "Computing sequence alignment..."
+  print("Computing sequence alignment...")
   align_obj = mmtbx.alignment.align(
     seq_a=fixed_seq,
     seq_b=moving_seq,
@@ -128,8 +129,8 @@ Missing file name for %(what)s structure:
     gap_extension_penalty=params.super.gap_extension_penalty,
     similarity_function=params.super.similarity_matrix,
     style=params.super.alignment_style)
-  print "done."
-  print
+  print("done.")
+  print()
 
   alignment = align_obj.extract_alignment()
   matches = alignment.matches()
@@ -160,24 +161,24 @@ of the aligned length of the fixed molecule sequence.
       fixed_sites_sel.append(fixed_sites[ia])
       moving_sites_sel.append(moving_sites[ib])
 
-  print "Performing least-squares superposition of C-alpha atom pairs:"
-  print "  Number of C-alpha atoms pairs in matching residues"
-  print "  indicated by | or * above:", fixed_sites_sel.size()
+  print("Performing least-squares superposition of C-alpha atom pairs:")
+  print("  Number of C-alpha atoms pairs in matching residues")
+  print("  indicated by | or * above:", fixed_sites_sel.size())
   if (fixed_sites_sel.size() == 0):
     raise Sorry("No matching C-alpha atoms.")
   lsq_fit = superpose.least_squares_fit(
     reference_sites=fixed_sites_sel,
     other_sites=moving_sites_sel)
   rmsd = fixed_sites_sel.rms_difference(lsq_fit.other_sites_best_fit())
-  print "  RMSD between the aligned C-alpha atoms: %.3f" % rmsd
-  print
+  print("  RMSD between the aligned C-alpha atoms: %.3f" % rmsd)
+  print()
 
-  print "Writing moved pdb to file: %s" % params.super.moved
+  print("Writing moved pdb to file: %s" % params.super.moved)
   pdb_hierarchy = moving_pdb.construct_hierarchy()
   for atom in pdb_hierarchy.atoms():
     atom.xyz = lsq_fit.r * matrix.col(atom.xyz) + lsq_fit.t
   pdb_hierarchy.write_pdb_file(file_name=params.super.moved, append_end=True)
-  print
+  print()
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

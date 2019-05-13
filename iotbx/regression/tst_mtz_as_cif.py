@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os
 import libtbx.load_env
 if (libtbx.env.has_module("ccp4io")):
@@ -15,7 +16,7 @@ def get_array_by_label(miller_arrays, label):
 
 def exercise():
   if mtz is None:
-    print "Skipping iotbx/regression/tst_mtz_as_cif.py: ccp4io not available"
+    print("Skipping iotbx/regression/tst_mtz_as_cif.py: ccp4io not available")
     return
   from iotbx.command_line import mtz_as_cif
 
@@ -23,7 +24,7 @@ def exercise():
     relative_path="phenix_regression/reflection_files/1akg.mtz",
     test=os.path.isfile)
   if file_name is None:
-    print "Skipping 1akg.mtz test: input file not available"
+    print("Skipping 1akg.mtz test: input file not available")
   else:
     mtz_as_cif.run(args=[file_name])
     assert os.path.exists("1akg.reflections.cif")
@@ -46,7 +47,7 @@ def exercise():
     relative_path="phenix_regression/reflection_files/1zff.mtz",
     test=os.path.isfile)
   if file_name is None:
-    print "Skipping 1zff.mtz test: input file not available"
+    print("Skipping 1zff.mtz test: input file not available")
   else:
     mtz_as_cif.run(args=[file_name])
     assert os.path.exists("1zff.reflections.cif")
@@ -76,7 +77,7 @@ def exercise():
     relative_path="phenix_regression/reflection_files/l.mtz",
     test=os.path.isfile)
   if file_name is None:
-    print "Skipping l.mtz test: input file not available"
+    print("Skipping l.mtz test: input file not available")
   else:
     mtz_as_cif.run(args=[file_name])
     assert os.path.exists("l.reflections.cif")
@@ -102,7 +103,7 @@ def exercise():
     relative_path="phenix_regression/reflection_files/outside_4_exptl_fobs_phases_freeR_flags.mtz",
     test=os.path.isfile)
   if file_name is None:
-    print "Skipping outside_4_exptl_fobs_phases_freeR_flags.mtz test: input file not available"
+    print("Skipping outside_4_exptl_fobs_phases_freeR_flags.mtz test: input file not available")
   else:
     mtz_as_cif.run(
       args=[file_name,
@@ -123,7 +124,7 @@ def exercise():
     relative_path="phenix_regression/reflection_files/r1wqzsf.mtz",
     test=os.path.isfile)
   if file_name is None:
-    print "Skipping r1wqzsf.mtz test: input file not available"
+    print("Skipping r1wqzsf.mtz test: input file not available")
   else:
     mtz_as_cif.run(
       args=[file_name])
@@ -143,7 +144,7 @@ def exercise():
     relative_path="phenix_regression/reflection_files/ur0013.sf.mtz",
     test=os.path.isfile)
   if file_name is None:
-    print "Skipping ur0013.sf.mtz test: input file not available"
+    print("Skipping ur0013.sf.mtz test: input file not available")
   else:
     mtz_as_cif.run(
       args=[file_name])
@@ -165,7 +166,7 @@ def exercise():
 
 def run():
   exercise()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

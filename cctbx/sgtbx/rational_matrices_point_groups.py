@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 from cctbx.sgtbx import sub_lattice_tools
 from scitbx import matrix
@@ -69,7 +70,7 @@ class rat_rot_group(object):
       for op in self.ops:
         pno = op*new_op
         if show:
-          print pno, op, new_op
+          print(pno, op, new_op)
         if not self.is_in_group( pno ):
           new_ops.append( pno )
       if len(new_ops)==0:
@@ -94,7 +95,7 @@ class rat_rot_group(object):
 
   def show(self):
     for op in self.ops:
-      print as_hkl( op.transpose() )
+      print(as_hkl( op.transpose() ))
 
 
 def rt_mx_as_rational(rot_mat):
@@ -173,4 +174,4 @@ def run():
 
 if __name__ == "__main__":
   run()
-  print "OK"
+  print("OK")

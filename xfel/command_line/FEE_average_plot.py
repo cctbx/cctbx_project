@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from psana import *
 import numpy as np
@@ -117,13 +118,13 @@ def run(args):
   # chop the list into pieces, depending on rank.  This assigns each process
   # events such that the get every Nth event where N is the number of processes
     mytimes = [times[i] for i in range(nevents) if (i+rank)%size == 0]
-    print len(mytimes)
+    print(len(mytimes))
     #mytimes = mytimes[len(mytimes)-1000:len(mytimes)]
     totals = np.array([0.0])
-    print "initial totals", totals
+    print("initial totals", totals)
 
     for i, t in enumerate(mytimes):
-      print "Event", i, "of", len(mytimes),
+      print("Event", i, "of", len(mytimes), end=' ')
       evt = run.event(t)
       if params.dispatch.events_accepted or params.dispatch.events_all:
         if evt.get("skip_event")==True:
@@ -137,7 +138,7 @@ def run(args):
         src = Source('BldInfo(%s)'%params.input.address)
         data = evt.get(Bld.BldDataSpectrometerV1, src)
       if data is None:
-        print "No data"
+        print("No data")
         continue
       #set default to determine FEE data type
       two_D=False
@@ -163,7 +164,7 @@ def run(args):
         one_D_data = data
 
       totals[0] += 1
-      print "total good:", totals[0]
+      print("total good:", totals[0])
 
       if not 'fee_one_D' in locals():
         fee_one_D = one_D_data
@@ -178,12 +179,12 @@ def run(args):
     acceptedfee1 = np.zeros((fee_one_D.shape))
     if 'fee_two_D' in locals():
       acceptedfee2 = np.zeros((fee_two_D.shape))
-    print "Synchronizing rank", rank
+    print("Synchronizing rank", rank)
   comm.Reduce(fee_one_D,acceptedfee1)
   comm.Reduce(totals,acceptedtotals)
   if 'acceptedfee2' in locals():
     comm.Reduce(fee_two_D,acceptedfee2)
-  print "number averaged", acceptedtotals[0]
+  print("number averaged", acceptedtotals[0])
   if rank == 0:
     if acceptedtotals[0] > 0:
       acceptedfee1 /= acceptedtotals[0]
@@ -216,7 +217,7 @@ def run(args):
       if 'acceptedfee2' in locals():
         easy_pickle.dump(os.path.join(params.output.output_dir,"fee_avg_2_D_"+'r%s'%params.input.run_num+"_rejected.pickle"), acceptedfee2)
         pp2 = PdfPages(os.path.join(params.output.output_dir,"fee_avg_2_D_"+'r%s'%params.input.run_num+"_rejected.pdf"))
-    print "Done"
+    print("Done")
    #plotting result
    # matplotlib needs a different backend when run on the cluster nodes at SLAC
     # these two lines not needed when working interactively at SLAC, or on mac or on viper

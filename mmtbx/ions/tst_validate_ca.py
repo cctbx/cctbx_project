@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import os
 from libtbx import easy_run
 import time
@@ -22,12 +23,12 @@ def exercise():
   assert n_ca == 1 and n_bad == 0
   for ext in [".pdb", ".mtz", "_fmodel.eff"]:
     os.remove(base + ext)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
-  print "WARNING: TEST TOO SLOW. MAKE IT RUN UNDER 300s AND ENABLE BACK."
+  print("WARNING: TEST TOO SLOW. MAKE IT RUN UNDER 300s AND ENABLE BACK.")
   if 0: #XXX FIXME disabled
     t0 = time.time()
     exercise()
-    print "Time: %6.2f"%(time.time()-t0)
-    print "OK"
+    print("Time: %6.2f"%(time.time()-t0))
+    print("OK")

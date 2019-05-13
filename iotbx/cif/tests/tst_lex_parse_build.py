@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import crystal, miller, sgtbx, uctbx
 from iotbx import cif
@@ -113,7 +114,7 @@ _d                                4
     mas_as_cif_block.add_miller_array(
       array=array.map_to_asu(), column_names=array.info().labels)
   s = StringIO()
-  print >> s, mas_as_cif_block.refln_loop
+  print(mas_as_cif_block.refln_loop, file=s)
   assert not show_diff(s.getvalue(), """\
 loop_
   _refln_index_h
@@ -520,7 +521,7 @@ def exercise_atom_type_loop():
   xs.set_inelastic_form_factors(photon=0.71073, table="henke")
   loop = cif.atom_type_cif_loop(xray_structure=xs, format="mmcif")
   s = StringIO()
-  print >> s, loop
+  print(loop, file=s)
   assert not show_diff(
     "\n".join([li.rstrip() for li in s.getvalue().splitlines()]), """\
 loop_
@@ -1039,4 +1040,4 @@ def exercise():
 
 if __name__ == '__main__':
   exercise()
-  print "OK"
+  print("OK")

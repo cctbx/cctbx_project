@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from libtbx.math_utils import ifloor, iceil
 from libtbx import adopt_init_args
@@ -468,9 +469,9 @@ def write_dsn6_map(sites_cart, unit_cell, map_data, n_real, file_name,
     frac_min, frac_max = (0.0, 0.0, 0.0), (1.0, 1.0, 1.0)
   gridding_first = tuple([ifloor(f*n) for f,n in zip(frac_min,n_real)])
   gridding_last = tuple([iceil(f*n) for f,n in zip(frac_max,n_real)])
-  print "n_real:", n_real
-  print "gridding start:", gridding_first
-  print "gridding end:", gridding_last
+  print("n_real:", n_real)
+  print("gridding start:", gridding_first)
+  print("gridding end:", gridding_last)
   iotbx.dsn6.write_dsn6_map(
     file_name=file_name,
     unit_cell=unit_cell,

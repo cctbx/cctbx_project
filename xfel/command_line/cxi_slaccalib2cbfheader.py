@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.slaccalib2cbfheader
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -27,7 +28,7 @@ out = None
 
 def run(args):
   if ("--help" in args or "-h" in args) :
-    print "Write a CBF header from a SLAC metrology file. Parameters:"
+    print("Write a CBF header from a SLAC metrology file. Parameters:")
     master_phil.show(attributes_level=2)
     return
 
@@ -48,7 +49,7 @@ def run(args):
   assert params.plot is not None
   assert params.out is not None
 
-  print params.metrology_file
+  print(params.metrology_file)
 
   metro = read_slac_metrology(params.metrology_file, plot=params.plot)
 

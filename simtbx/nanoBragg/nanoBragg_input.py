@@ -6,6 +6,7 @@ Created     : 10/10/2014
 Last Changed: 11/03/2017
 Description : SIMTBX (nanoBragg) I/O module. Reads PHIL input.
 '''
+from __future__ import print_function
 
 import iotbx.phil as ip
 import inspect
@@ -111,7 +112,7 @@ dataset
       param_lines.append(param_line)
 
     except TypeError as e:
-      print i, e
+      print(i, e)
       pass
 
   param_lines.append('}')

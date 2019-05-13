@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import pdb
 from iotbx.pdb import hybrid_36
 from cctbx import crystal
@@ -29,8 +30,8 @@ def exercise_hybrid_36():
   ups = user_plus_sys_time()
   n_ok = pdb.hy36recode_width_4_all()
   ups = ups.elapsed()
-  print "time hy36recode_width_4_all: %.2f s" \
-    " (%.3f micro s per encode-decode cycle)" % (ups, 1.e6*ups/max(1,n_ok))
+  print("time hy36recode_width_4_all: %.2f s" \
+    " (%.3f micro s per encode-decode cycle)" % (ups, 1.e6*ups/max(1,n_ok)))
   assert n_ok == 999+10000+2*26*36**3
   #
   assert pdb.resseq_decode(s=1234) == 1234
@@ -86,8 +87,8 @@ def exercise_base_256_ordinal():
 
 def exercise_columns_73_76_evaluator(pdb_file_names):
   if (pdb_file_names is None):
-    print "Skipping exercise_columns_73_76_evaluator():" \
-          " input files not available"
+    print("Skipping exercise_columns_73_76_evaluator():" \
+          " input files not available")
     return
   known_blank = """\
 occ_3_bad2.pdb
@@ -1133,7 +1134,7 @@ def exercise(args):
     exercise_input_pickling()
     exercise_xray_structure_simple()
     if (not forever): break
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

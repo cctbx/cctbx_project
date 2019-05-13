@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 
 from cctbx.array_family import flex
@@ -46,7 +47,7 @@ class algorithm2:
       from libtbx.utils import Sorry
       raise Sorry("No twin laws are possible for this crystal lattice.")
     for twin_law in TL.operators:
-      if self.verbose: print twin_law.operator.r().as_hkl()
+      if self.verbose: print(twin_law.operator.r().as_hkl())
     return TL.operators
 
   def generate_reindex_sets(self):
@@ -90,7 +91,7 @@ class algorithm2:
     # construct rij matrix
     NN = group.count(True)
 
-    if self.verbose: print "IN RUN CORE",group, alternates, use_weights, asymmetric,"Group of %d"%NN
+    if self.verbose: print("IN RUN CORE",group, alternates, use_weights, asymmetric,"Group of %d"%NN)
     index_selected = group.iselection()
     rij = []
     wij = []
@@ -158,11 +159,11 @@ class algorithm2:
       focus = wij_.focus()
       flat_wij = wij_.as_1d()
       selection = (flat_wij>1)
-      print "w_ij is a %dx%d matrix with %d/%d >1 elements with average value %4.1f"%(
-        focus[0],focus[1],selection.count(True),len(wij_), flex.mean(flat_wij.select(selection)))
+      print("w_ij is a %dx%d matrix with %d/%d >1 elements with average value %4.1f"%(
+        focus[0],focus[1],selection.count(True),len(wij_), flex.mean(flat_wij.select(selection))))
       rij.append(rij_)
       wij.append(wij_)
-    if self.verbose: print "CONSTRUCTED RIJ"
+    if self.verbose: print("CONSTRUCTED RIJ")
     xcoord = flex.random_double (NN)
     ycoord = flex.random_double (NN)
     M = minimize(xcoord,ycoord,rij[0],wij[0],self.verbose)
@@ -226,7 +227,7 @@ class algorithm2:
         return igroup,result
 
     except Exception, e :
-      print "Exception within __call__",e
+      print("Exception within __call__",e)
       return None
 
   def report(self,millerlookups):
@@ -238,8 +239,8 @@ class algorithm2:
      for key in result:
        result[key].sort()
      if self.verbose:
-       print "REPORT"
-       print result
+       print("REPORT")
+       print(result)
      return result
 
 from scitbx.lbfgs.tst_curvatures import lbfgs_with_curvatures_mix_in
@@ -250,7 +251,7 @@ class minimize(lbfgs_with_curvatures_mix_in):
     self.NN = len(xcoord)
     self.rij_matrix = rij_matrix
     self.wij_matrix = wij_matrix
-    if self.verbose:print len(self.x)
+    if self.verbose:print(len(self.x))
     lbfgs_with_curvatures_mix_in.__init__(self,
       min_iterations=0,
       max_iterations=1000,
@@ -286,7 +287,7 @@ class minimize(lbfgs_with_curvatures_mix_in):
     term_3 = term_3x.concatenate(term_3y)
     grad = -2.* ( term_1 - term_2 - term_3 )
 
-    if self.verbose: print "Functional",f
+    if self.verbose: print("Functional",f)
     #from matplotlib import pyplot as plt
     #plt.plot(coord_x,coord_y,"r.")
     #plt.axes().set_aspect("equal")
@@ -378,7 +379,7 @@ def reassemble(patchwork,verbose=False):
         voted[item][lookup[key]] += 1
   if verbose:
     for key in voted.keys():
-      print "vote",key, voted[key]
+      print("vote",key, voted[key])
   # The votes are tallied, now report them
   result = {}
   for key in refkeys: result[key]=[]
@@ -414,7 +415,7 @@ def run_multiprocess(L, asymmetric=3, nproc=20, verbose=False, show_plot=True,
   try :
       import multiprocessing
   except ImportError, e :
-      print "multiprocessing module not available (requires Python >= 2.6)"; exit()
+      print("multiprocessing module not available (requires Python >= 2.6)"); exit()
   algo2 = algorithm2(data = L[0],lattice_id = L[1], resort=True, verbose = verbose)
   alternates = algo2.generate_reindex_sets()
   #import libtbx.introspection
@@ -423,7 +424,7 @@ def run_multiprocess(L, asymmetric=3, nproc=20, verbose=False, show_plot=True,
   result_sets = []
   def _mpcallback(result_set):
     import libtbx
-    if verbose: print "IN MPCALLBACK with",result_set
+    if verbose: print("IN MPCALLBACK with",result_set)
     if type(result_set)==type(()) and type(result_set[1])==libtbx.group_args:
       #result_sets.append(result_set.reindexing_sets)
       result_sets.append((result_set[0], result_set[1].reindexing_sets))
@@ -458,7 +459,7 @@ def test_reassembly():
   result = reassemble(testdata,verbose=False)
   assert len(result["h,k,l"])==392
   assert len(result["h,-h-k,-l"])==368
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   test_reassembly()

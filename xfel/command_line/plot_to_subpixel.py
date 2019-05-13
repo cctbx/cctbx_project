@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cxi.plotcv_parse
 
@@ -27,27 +28,27 @@ def run (input=None) :
 
   for x in range(8):
     for y in range(8):
-      print "%5.2f,"%delx[order[x*8+y]], "%5.2f,"%dely[order[x*8+y]],
-    print
-  print
+      print("%5.2f,"%delx[order[x*8+y]], "%5.2f,"%dely[order[x*8+y]], end=' ')
+    print()
+  print()
 
   for x in range(8):
     for y in range(8):
-      print "%5.2f,"%dely[order[x*8+y]], "%5.2f,"%delx[order[x*8+y]],
-    print
-  print
+      print("%5.2f,"%dely[order[x*8+y]], "%5.2f,"%delx[order[x*8+y]], end=' ')
+    print()
+  print()
 
   for x in range(8):
     for y in range(8):
-      print "%5.2f,"%-delx[order[x*8+y]], "%5.2f,"%-dely[order[x*8+y]],
-    print
-  print
+      print("%5.2f,"%-delx[order[x*8+y]], "%5.2f,"%-dely[order[x*8+y]], end=' ')
+    print()
+  print()
 
   for x in range(8):
     for y in range(8):
-      print "%5.2f,"%-dely[order[x*8+y]], "%5.2f,"%-delx[order[x*8+y]],
-    print
-  print
+      print("%5.2f,"%-dely[order[x*8+y]], "%5.2f,"%-delx[order[x*8+y]], end=' ')
+    print()
+  print()
 
 if (__name__ == "__main__") :
   run(sys.__stdin__)

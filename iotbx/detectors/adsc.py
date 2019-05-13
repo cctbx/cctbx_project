@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import re
 from iotbx.detectors.detectorbase import DetectorImageBase
 
@@ -90,9 +91,9 @@ if __name__=='__main__':
   i = sys.argv[1]
   a = ADSCImage(i)
   a.read()
-  print a.linearintdata
-  print a.linearintdata.size()
-  print a.linearintdata.accessor().grid()
+  print(a.linearintdata)
+  print(a.linearintdata.size())
+  print(a.linearintdata.accessor().grid())
   from labelit.detectors.jpeg import JPEGImage
   j = JPEGImage(a)
   j.calcimage()

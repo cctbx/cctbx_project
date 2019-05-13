@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 def pretty_filename(spotfinder,key):
   nwildcard = spotfinder.pd['template'].count('#')
@@ -61,7 +62,7 @@ def key_safe_items_webice(image):
   ]
 
 def pretty_image_stats(Spotfinder,key):
-    print
+    print()
     image = Spotfinder.images[key]
 
     canonical_info = [
@@ -74,9 +75,9 @@ def pretty_image_stats(Spotfinder,key):
 
     for item in canonical_info:
       if item[2]==None:
-        print "%25s : None"%item[1]
+        print("%25s : None"%item[1])
       else:
-        print "%25s : %s"%(item[1],item[0]%item[2])
+        print("%25s : %s"%(item[1],item[0]%item[2]))
 
 def webice_image_stats(Spotfinder,key):
     from six.moves import StringIO
@@ -87,20 +88,20 @@ def webice_image_stats(Spotfinder,key):
     g = StringIO()
     for item in canonical_info:
       if item[2]==None:
-        print >>g,"%35s: None"%item[1]
+        print("%35s: None"%item[1], file=g)
       else:
-        print >>g,"%35s: %s"%(item[1],item[0]%item[2])
+        print("%35s: %s"%(item[1],item[0]%item[2]), file=g)
     ibinfac = int(Spotfinder.pd['binning'])
     if ibinfac > 1:
-      print >>g,"\nImage was processed with %1dx%1d pixel binning\n to increase Viewer speed."%(ibinfac,ibinfac)
+      print("\nImage was processed with %1dx%1d pixel binning\n to increase Viewer speed."%(ibinfac,ibinfac), file=g)
     return g.getvalue()
 
 def notes(Spotfinder,key):
-    print
+    print()
     image = Spotfinder.images[key]
     if image.has_extended_key('resolution_divisor'):
-      print "Bin population cutoff for method 2 resolution: %.0f%%"%(
-        100./image['resolution_divisor'])
+      print("Bin population cutoff for method 2 resolution: %.0f%%"%(
+        100./image['resolution_divisor']))
 
 if __name__=='__main__':
   Spotfinder = unpickle_spotfinder()

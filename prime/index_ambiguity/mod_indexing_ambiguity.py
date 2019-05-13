@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import cPickle as pickle
 from prime.postrefine import postref_handler
 from .mod_lbfgs import lbfgs_handler
@@ -54,7 +55,7 @@ class indamb_handler(object):
       inputs, txt_org = prh.organize_input(main_obs_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
       main_obs = inputs[0]
     except Exception:
-      print 'Error reading input pickle.'
+      print('Error reading input pickle.')
       return None
     main_asu = main_obs.map_to_asu().merge_equivalents().array()
     #get other indexing alternatives

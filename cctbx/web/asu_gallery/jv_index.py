@@ -1,28 +1,29 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.web.asu_gallery import web_links
 from cctbx.web.asu_gallery import html_head_title
 from cctbx import sgtbx
 import sys
 
 def table_format_html(table, f, n_columns, serial_fmt="%03d"):
-  print >> f, "<table border=2 cellpadding=2>"
+  print("<table border=2 cellpadding=2>", file=f)
   n_symbols = len(table)
   n_rows = n_symbols // n_columns
   if (n_rows * n_columns < n_symbols): n_rows += 1
   for i_row in xrange(n_rows):
-    print >> f, "<tr>"
+    print("<tr>", file=f)
     for i_column in xrange(n_columns):
       i = i_column * n_rows + i_row
       if (i < len(table)):
         symbols = table[i]
-        print >> f, (
+        print((
           '<td><a href="asu_'+serial_fmt+'.html">%s (%d)</a></td>') % (
             symbols.number(),
             symbols.hermann_mauguin().replace(" ", ""),
-            symbols.number())
-    print >> f, "</tr>"
-  print >> f, "</table>"
-  print >> f, "<p>"
+            symbols.number()), file=f)
+    print("</tr>", file=f)
+  print("</table>", file=f)
+  print("<p>", file=f)
 
 class point_group_symbols(object):
 
@@ -43,7 +44,7 @@ class plane_group_table(object):
       O.table.append(point_group_symbols(i+1, hm.replace("_"," ")))
 
   def format_html(O, f, n_columns):
-    print >> f, "<h3>Plane groups</h3>"
+    print("<h3>Plane groups</h3>", file=f)
     table_format_html(O.table, f, n_columns, serial_fmt="%02d")
 
 class symbol_table(object):
@@ -72,7 +73,7 @@ class point_group_table(object):
     self.current_symbol_table.add(space_group_symbols)
 
   def format_html(self, f, n_columns):
-    print >> f, "<h3>%s</h3>" % self.crystal_system
+    print("<h3>%s</h3>" % self.crystal_system, file=f)
     for symbols in self.symbol_table:
       symbols.format_html(f, n_columns)
 
@@ -100,8 +101,8 @@ class crystal_system_table(object):
     if (f is None): f = sys.stdout
     title = "Gallery of direct-space asymmetric units"
     iucrcompcomm_jul2003 = web_links.iucrcompcomm_jul2003
-    print >> f, html_head_title(title=title)
-    print >> f, """\
+    print(html_head_title(title=title), file=f)
+    print("""\
 <body>
 <hr>
 <h2>%(title)s</h2>
@@ -114,15 +115,15 @@ References:
 <li><a href="%(iucrcompcomm_jul2003)s" target="external"
     >IUCr Computing Commission Newsletter No. 2, July 2003</a>
 </ul>
-<hr>""" % vars()
+<hr>""" % vars(), file=f)
     plane_group_table().format_html(f,n_columns)
     for point_group in self.point_group_tables:
       point_group.format_html(f, n_columns)
-    print >> f, """\
+    print("""\
 <hr>
 <a href="http://cctbx.sourceforge.net/">[cctbx home]</a>
 </body>
-</html>"""
+</html>""", file=f)
 
 def write_html(f=None, n_columns=6):
   cs_table = crystal_system_table()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx import miller
 from cctbx import crystal
@@ -61,19 +62,19 @@ def d2_target_d_params_finite(f_obs, xray_structure, eps=1.e-8):
 def compare_analytical_and_finite(f_obs, xray_structure, out):
   grads_fin = d_target_d_params_finite(
     f_obs=f_obs, xray_structure=xray_structure)
-  print >> out, "grads_fin:", list(grads_fin)
+  print("grads_fin:", list(grads_fin), file=out)
   sf = structure_factors(
     xray_structure=xray_structure, miller_set=f_obs)
   grads_ana = sf.d_target_d_params(f_obs=f_obs, target_type=least_squares)
-  print >> out, "grads_ana:", list(grads_ana)
+  print("grads_ana:", list(grads_ana), file=out)
   assert approx_equal(grads_ana, grads_fin)
   curvs_fin = d2_target_d_params_finite(
     f_obs=f_obs, xray_structure=xray_structure)
-  print >> out, "curvs_fin:", list(curvs_fin)
+  print("curvs_fin:", list(curvs_fin), file=out)
   curvs_ana = sf.d2_target_d_params(f_obs=f_obs, target_type=least_squares)
-  print >> out, "curvs_ana:", list(curvs_ana)
+  print("curvs_ana:", list(curvs_ana), file=out)
   assert approx_equal(curvs_ana, curvs_fin, 1.e-5)
-  print >> out
+  print(file=out)
 
 def exercise(args):
   verbose =  "--verbose" in args
@@ -120,7 +121,7 @@ def exercise(args):
           data=f_obs.data()*(flex.random_double(size=f_obs.size())+0.5)),
         xray_structure=xray_structure,
         out=out)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

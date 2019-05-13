@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def exercise():
   from cctbx.web import change_basis
   from libtbx.utils import Sorry
@@ -47,7 +48,7 @@ def exercise():
 def run(args):
   assert len(args) == 0
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

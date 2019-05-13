@@ -3,6 +3,7 @@
 # in a protein chain.
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.easy_mp import pool_map
 import os
 
@@ -27,7 +28,7 @@ def run():
     if (n_confs > 1):
       n_alts += 1
       f.write(pdb_id + "\n")
-  print "n_alts:", n_alts
+  print("n_alts:", n_alts)
   f.close()
 
 def get_nconfs(pdb_id):

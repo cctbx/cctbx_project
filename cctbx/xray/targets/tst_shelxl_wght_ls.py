@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import cctbx.xray.targets
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
@@ -142,7 +143,7 @@ def run(args):
   mt = flex.mersenne_twister(seed=0)
   for i_trial in xrange(n_trials):
     exercise(mt, n_refl)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

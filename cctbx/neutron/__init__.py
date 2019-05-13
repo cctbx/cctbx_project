@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.eltbx.neutron import neutron_news_1992_table
 from cctbx import miller
 from cctbx import crystal
@@ -110,7 +111,7 @@ class structure(crystal.special_position_settings):
       self.add_scatterer(scatterers[i])
 
   def structure_factors(self, d_min):
-    print "WARNING: RESULTS NOT VERIFIED" # XXX
+    print("WARNING: RESULTS NOT VERIFIED") # XXX
     miller_set = miller.build_set(
       crystal_symmetry=self,
       anomalous_flag=True, # XXX always True?
@@ -148,23 +149,23 @@ class structure(crystal.special_position_settings):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "Number of scatterers:", len(self.scatterers())
-    print >> f, "At special positions:", len(self.special_position_indices())
+    print("Number of scatterers:", len(self.scatterers()), file=f)
+    print("At special positions:", len(self.special_position_indices()), file=f)
     crystal.symmetry.show_summary(self, f)
     return self
 
   def show_scatterers(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "Label  M  Coordinates            Occ  Uiso or Ucart"
+    print("Label  M  Coordinates            Occ  Uiso or Ucart", file=f)
     for scatterer in self.scatterers():
-      print >> f, "%-4s" % (scatterer.label,),
-      print >> f, "%3d" % (scatterer.multiplicity(),),
-      print >> f, "%7.4f %7.4f %7.4f" % scatterer.site,
-      print >> f, "%4.2f" % (scatterer.occupancy,),
+      print("%-4s" % (scatterer.label,), end=' ', file=f)
+      print("%3d" % (scatterer.multiplicity(),), end=' ', file=f)
+      print("%7.4f %7.4f %7.4f" % scatterer.site, end=' ', file=f)
+      print("%4.2f" % (scatterer.occupancy,), end=' ', file=f)
       if (not scatterer.anisotropic_flag):
-        print >> f, "%6.4f" % (scatterer.u_iso,),
+        print("%6.4f" % (scatterer.u_iso,), end=' ', file=f)
       else:
-        print >> f, ("%6.3f " * 5 + "%6.3f") % adptbx.u_star_as_u_cart(
-          self.unit_cell(), scatterer.u_star),
-      print >> f
+        print(("%6.3f " * 5 + "%6.3f") % adptbx.u_star_as_u_cart(
+          self.unit_cell(), scatterer.u_star), end=' ', file=f)
+      print(file=f)
     return self

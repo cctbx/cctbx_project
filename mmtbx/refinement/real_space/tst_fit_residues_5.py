@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import time
 import mmtbx.refinement.real_space.fit_residues
 import mmtbx.refinement.real_space
@@ -97,4 +98,4 @@ if(__name__ == "__main__"):
   t0 = time.time()
   for i_pdb, use_map in enumerate([True, False]):
     exercise(use_map=use_map, i_pdb=i_pdb)
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

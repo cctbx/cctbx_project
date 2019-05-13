@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx import miller
 from cctbx import crystal
@@ -88,8 +89,7 @@ def rho_stats(
       y.append(rho[(ix%nx,0,0)])
     densities_along_x.append((x,y))
   #
-  print \
-    "%3.1f %4.2f %-12s %5d %5d | %6.3f %6.3f | %6.3f %6.3f | %4.2f %5.1f" % (
+  print("%3.1f %4.2f %-12s %5d %5d | %6.3f %6.3f | %6.3f %6.3f | %4.2f %5.1f" % (
       d_min,
       resolution_factor,
       n_real,
@@ -100,7 +100,7 @@ def rho_stats(
       rho_max[0],
       rho_max[1],
       f_calc.data()[0].real,
-      u_as_b(xray_structure.scatterers()[0].u_iso))
+      u_as_b(xray_structure.scatterers()[0].u_iso)))
   #
   return densities_along_x
 
@@ -126,7 +126,7 @@ def build_xray_structure_with_carbon_along_x(a, b_iso, x=[0]):
 def loop_res_fac(b, electron_sum_radius=2, zero_out_f000=False):
   xray_structure = build_xray_structure_with_carbon_along_x(a=10, b_iso=b)
   xray_structure.show_scatterers()
-  print table_header
+  print(table_header)
   for d_min in [4, 3, 2, 1]:
     for resolution_factor in [1/2, 1/3, 1/4]:
       rho_stats(
@@ -140,7 +140,7 @@ def run(args):
   assert len(args) == 0
   for b in [0, 5, 20]:
     loop_res_fac(b=b)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

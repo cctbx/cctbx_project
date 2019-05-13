@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import math, random
 from scitbx import matrix
 from scitbx.array_family import flex
@@ -69,9 +70,9 @@ def test_uniform_rotation_matrix(N=10000,choice=2,verbose=False):
   for i in xrange(len(result)):
     result[i] = point_area * result[i]
     if (verbose):
-      print result[i],
+      print(result[i], end=' ')
   if (verbose):
-    print
+    print()
 
   assert(result[0].real > 0.85)
   assert(result[0].real < 1.15)
@@ -82,4 +83,4 @@ if (__name__ == '__main__'):
   flex.set_random_seed(0)
   for i in xrange(3):
     test_uniform_rotation_matrix(N=1000, choice=i, verbose=False)
-  print 'OK'
+  print('OK')

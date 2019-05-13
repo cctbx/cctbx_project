@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 from mmtbx import polygon, model_vs_data
 from math import pi, cos, sin, radians, degrees, floor
@@ -29,10 +30,10 @@ def get_stats_and_histogram_data(mvd_object, params, debug=False):
   for stat_name in params.polygon.keys_to_show :
     value = getattr(mvd_results, stat_name, None)
     if value is not None :
-      print stat_name, value
+      print(stat_name, value)
       stats[stat_name] = value
     else :
-      print "Error: got 'None' for %s" % stat_name
+      print("Error: got 'None' for %s" % stat_name)
       invalid_stats.append(stat_name)
   for stat_name in invalid_stats :
     params.polygon.keys_to_show.remove(stat_name)

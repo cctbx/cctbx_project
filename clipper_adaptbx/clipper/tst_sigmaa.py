@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import clipper
 from cctbx import xray
 from cctbx import miller
@@ -40,11 +41,11 @@ def exercise_SFweight_spline_core(structure, d_min, verbose=0):
     n_refln=f_obs.indices().size()//10,
     n_param=20)
   if (0 or verbose):
-    print "number_of_spline_parameters:",sfweight.number_of_spline_parameters()
-    print "mean fb: %.8g" % flex.mean(flex.abs(sfweight.fb()))
-    print "mean fd: %.8g" % flex.mean(flex.abs(sfweight.fd()))
-    print "mean phi: %.8g" % flex.mean(sfweight.centroid_phases())
-    print "mean fom: %.8g" % flex.mean(sfweight.figures_of_merit())
+    print("number_of_spline_parameters:",sfweight.number_of_spline_parameters())
+    print("mean fb: %.8g" % flex.mean(flex.abs(sfweight.fb())))
+    print("mean fd: %.8g" % flex.mean(flex.abs(sfweight.fd())))
+    print("mean phi: %.8g" % flex.mean(sfweight.centroid_phases()))
+    print("mean fom: %.8g" % flex.mean(sfweight.figures_of_merit()))
   return sfweight
 
 def exercise_with_fixed_structure():

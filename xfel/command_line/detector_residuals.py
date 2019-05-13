@@ -16,6 +16,7 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 #
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from dials.array_family import flex
 from scitbx.matrix import col
@@ -241,7 +242,7 @@ include scope xfel.command_line.cspad_detector_congruence.phil_scope
 
 def setup_stats(detector, experiments, reflections, two_theta_only = False):
   # Compute a set of radial and transverse displacements for each reflection
-  print "Setting up stats..."
+  print("Setting up stats...")
   tmp = flex.reflection_table()
   # Need to construct a variety of vectors
   for panel_id, panel in enumerate(detector):
@@ -292,8 +293,8 @@ def get_unweighted_rmsd(reflections, verbose=True):
   w_rmsd = math.sqrt( flex.sum( weights*(reflections['difference_vector_norms']**2) )/flex.sum(weights))
 
   if verbose:
-    print "Uweighted RMSD (mm)", un_rmsd
-    print "Weighted RMSD (mm)", w_rmsd
+    print("Uweighted RMSD (mm)", un_rmsd)
+    print("Weighted RMSD (mm)", w_rmsd)
 
   return un_rmsd
 
@@ -302,7 +303,7 @@ def reflection_wavelength_from_pixels(experiments, reflections):
   if 'shoebox' not in reflections:
     return reflections
 
-  print "Computing per-reflection wavelengths from shoeboxes"
+  print("Computing per-reflection wavelengths from shoeboxes")
 
   from dials.algorithms.shoebox import MaskCode
   valid_code = MaskCode.Valid | MaskCode.Foreground
@@ -689,7 +690,7 @@ class ResidualsPlotter(object):
     data_scale_y = data_max_y - data_min_y
 
     if data_scale_x == 0 or data_scale_y == 0:
-      print "WARNING bad scale"
+      print("WARNING bad scale")
       return data
 
     xscale = scale/abs(data_scale_x)
@@ -710,32 +711,32 @@ class ResidualsPlotter(object):
       ref_predictor = ExperimentsPredictorFactory.from_experiments(experiments, force_stills=experiments.all_stills())
       reflections = ref_predictor(reflections)
 
-    if params.verbose: print "N reflections total:", len(reflections)
+    if params.verbose: print("N reflections total:", len(reflections))
     if params.residuals.exclude_outliers_from_refinement:
       reflections = reflections.select(reflections.get_flags(reflections.flags.used_in_refinement))
-      if params.verbose: print "N reflections used in refinement:", len(reflections)
-      if params.verbose: print "Reporting only on those reflections used in refinement"
+      if params.verbose: print("N reflections used in refinement:", len(reflections))
+      if params.verbose: print("Reporting only on those reflections used in refinement")
 
     if params.residuals.recompute_outliers:
-      print "Performing outlier rejection on %d reflections"%len(reflections)
+      print("Performing outlier rejection on %d reflections"%len(reflections))
       from dials.algorithms.refinement.outlier_detection.sauter_poon import SauterPoon
       outlier = SauterPoon(px_sz=experiments[0].detector[0].get_pixel_size(), separate_panels=False)
       rejection_occured = outlier(reflections)
       if rejection_occured:
         reflections = reflections.select(~reflections.get_flags(reflections.flags.centroid_outlier))
-        if params.verbose: print "N reflections after outlier rejection:", len(reflections)
+        if params.verbose: print("N reflections after outlier rejection:", len(reflections))
       else:
-        if params.verbose: print "No rejections found"
+        if params.verbose: print("No rejections found")
 
     if self.params.residuals.i_sigi_cutoff is not None:
       sel = (reflections['intensity.sum.value']/flex.sqrt(reflections['intensity.sum.variance'])) >= self.params.residuals.i_sigi_cutoff
       reflections = reflections.select(sel)
-      if params.verbose: print "After filtering by I/sigi cutoff of %f, there are %d reflections left"%(self.params.residuals.i_sigi_cutoff,len(reflections))
+      if params.verbose: print("After filtering by I/sigi cutoff of %f, there are %d reflections left"%(self.params.residuals.i_sigi_cutoff,len(reflections)))
 
     if 'shoebox' in reflections and (params.repredict.enable or (params.show_plots and params.plots.reflection_energies)):
       reflections = reflection_wavelength_from_pixels(experiments, reflections)
       stats = flex.mean_and_variance(12398.4/reflections['reflection_wavelength_from_pixels'])
-      if params.verbose: print "Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
+      if params.verbose: print("Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation()))
       self.min_energy = stats.mean() - stats.unweighted_sample_standard_deviation()
       self.max_energy = stats.mean() + stats.unweighted_sample_standard_deviation()
 
@@ -773,7 +774,7 @@ class ResidualsPlotter(object):
         if params.repredict.refine_mode == 'per_experiment':
           refined_reflections = flex.reflection_table()
           for expt_id in range(len(experiments)):
-            if params.verbose: print "*"*80, "EXPERIMENT", expt_id
+            if params.verbose: print("*"*80, "EXPERIMENT", expt_id)
             refls = reflections.select(reflections['id']==expt_id)
             refls['id'] = flex.int(len(refls), 0)
             refls = refine_wavelengths(experiments[expt_id:expt_id+1], refls, init_mp, tag, dest,
@@ -788,7 +789,7 @@ class ResidualsPlotter(object):
           reflections = func(experiments, reflections, init_mp)
         reflections = predictions_from_per_reflection_energies(experiments, reflections, tag, dest)
         stats = flex.mean_and_variance(12398.4/reflections[tag])
-        if params.verbose: print "Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
+        if params.verbose: print("Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation()))
         reflections['delpsical.rad'] = reflections['delpsical.rad.%s'%dest]
         reflections['xyzcal.mm'] = reflections['xyzcal.mm.%s'%dest]
         reflections['xyzcal.px'] = reflections['xyzcal.px.%s'%dest]
@@ -797,7 +798,7 @@ class ResidualsPlotter(object):
 
     n = len(reflections)
     rmsd = get_unweighted_rmsd(reflections, params.verbose)
-    print "Dataset RMSD (microns)", rmsd * 1000
+    print("Dataset RMSD (microns)", rmsd * 1000)
 
     if params.tag is None:
       tag = ''
@@ -946,8 +947,8 @@ class ResidualsPlotter(object):
     table_data.append(["Mean", "", "", "", "%8.1f"%flex.mean(pg_refls_count.as_double())])
 
     from libtbx import table_utils
-    if params.verbose: print "Detector statistics.  Angles in degrees, RMSDs in microns"
-    if params.verbose: print table_utils.format(table_data,has_header=2,justify='center',delim=" ")
+    if params.verbose: print("Detector statistics.  Angles in degrees, RMSDs in microns")
+    if params.verbose: print(table_utils.format(table_data,has_header=2,justify='center',delim=" "))
 
     self.histogram(reflections, r"%s$\Delta$XY histogram (mm)"%tag, plots = params.show_plots and params.plots.deltaXY_histogram, verbose = params.verbose)
 
@@ -1045,7 +1046,7 @@ class ResidualsPlotter(object):
 
         # calc the trendline
         z = np.polyfit(a.select(sel), b.select(sel), 1)
-        if params.verbose: print 'y=%.7fx+(%.7f)'%(z[0],z[1])
+        if params.verbose: print('y=%.7fx+(%.7f)'%(z[0],z[1]))
 
       if params.plots.grouped_stats:
         # Plots with single values per panel
@@ -1122,7 +1123,7 @@ class ResidualsPlotter(object):
         else:
           prefix = "%s_"%tag.strip()
         for i in plt.get_fignums():
-          print "Saving figure", i
+          print("Saving figure", i)
           plt.figure(i).savefig("%sfig%02d.png"%(prefix, i))
       else:
         plt.show()
@@ -1230,19 +1231,19 @@ class ResidualsPlotter(object):
     sigma = mode = h.slot_centers()[list(h.slots()).index(flex.max(h.slots()))]
     mean = flex.mean(data)
     median = flex.median(data)
-    if verbose: print "RMSD (microns)", rmsd * 1000
-    if verbose: print "Histogram mode (microns):", mode * 1000
-    if verbose: print "Overall mean (microns):", mean * 1000
-    if verbose: print "Overall median (microns):", median * 1000
+    if verbose: print("RMSD (microns)", rmsd * 1000)
+    if verbose: print("Histogram mode (microns):", mode * 1000)
+    if verbose: print("Overall mean (microns):", mean * 1000)
+    if verbose: print("Overall median (microns):", median * 1000)
     mean2 = math.sqrt(math.pi/2)*sigma
     rmsd2 = math.sqrt(2)*sigma
-    if verbose: print "Rayleigh Mean (microns)", mean2 * 1000
-    if verbose: print "Rayleigh RMSD (microns)", rmsd2 * 1000
+    if verbose: print("Rayleigh Mean (microns)", mean2 * 1000)
+    if verbose: print("Rayleigh RMSD (microns)", rmsd2 * 1000)
 
     r = reflections['radial_displacements']
     t = reflections['transverse_displacements']
-    if verbose: print "Overall radial RMSD (microns)", math.sqrt(flex.sum_sq(r)/len(r)) * 1000
-    if verbose: print "Overall transverse RMSD (microns)", math.sqrt(flex.sum_sq(t)/len(t)) * 1000
+    if verbose: print("Overall radial RMSD (microns)", math.sqrt(flex.sum_sq(r)/len(r)) * 1000)
+    if verbose: print("Overall transverse RMSD (microns)", math.sqrt(flex.sum_sq(t)/len(t)) * 1000)
 
     if not plots: return
 

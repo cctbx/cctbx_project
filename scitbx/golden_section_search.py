@@ -1,20 +1,21 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 import sys
 
 def print_progress_dots(out,ii,n_monitor=10,width=80,offset=5, is_final=False):
   if ii-1 == 0:
-    print >> out," "*offset+"Starting search"
+    print(" "*offset+"Starting search", file=out)
 
   if (ii-1)%width==0:
-    print >>out,"\n"+offset*" ",
+    print("\n"+offset*" ", end=' ', file=out)
   if (ii-1)%n_monitor==0:
-    print >>out, ".",
+    print(".", end=' ', file=out)
     out.flush()
   if is_final:
-    print >> out
-    print >> out
-    print >> out, "    Done after %s iterations"%ii
-    print >> out
+    print(file=out)
+    print(file=out)
+    print("    Done after %s iterations"%ii, file=out)
+    print(file=out)
 
 
 def gss(f,a,b,eps=1e-7,N=1000,out=None,monitor_progress=False,n_monitor=1,offset=5):

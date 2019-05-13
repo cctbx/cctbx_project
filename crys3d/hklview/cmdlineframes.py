@@ -167,6 +167,7 @@ myHKLview.ShowMissing(True)
 
 
 """
+from __future__ import print_function
 
 
 
@@ -193,7 +194,7 @@ def Inputarg(varname):
   if argc > 1 and argn < argc:
     myvar = sys.argv[argn]
     argn = argn + 1
-    print varname + " " + myvar
+    print(varname + " " + myvar)
   else:
     myvar = raw_input(varname)
   return myvar
@@ -206,7 +207,7 @@ class settings_window () :
 
 
   def update_reflection_info (self, hkl, d_min, value) :
-    print hkl, value
+    print(hkl, value)
     if (hkl is None) :
       self.hkl_info.SetValue("")
       self.d_min_info.SetValue("")
@@ -349,7 +350,7 @@ class HKLViewFrame () :
 
   def mprint(self, m, verbose=True):
     if self.verbose or verbose:
-      print m
+      print(m)
 
 
   def update_clicked (self, index) :#hkl, d_min=None, value=None) :

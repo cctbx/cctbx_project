@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #!/usr/bin/env python
 #
 # Biostruct-X Data Reduction Use Case 1.2:
@@ -138,13 +139,13 @@ def validate_predictions(integrate_hkl, uc1_2):
             dzs.append(dz)
             ivalues_o.append(observations[c][2][0])
             ivalues_p.append(predictions[j][2][0])
-            print observations[c][2][0], predictions[j][2][0]
+            print(observations[c][2][0], predictions[j][2][0])
 
     return meansd(dxs), meansd(dys), meansd(dzs), cc(ivalues_o, ivalues_p)
 
 if __name__ == '__main__':
     dx, dy, dz, cc = validate_predictions(sys.argv[1], sys.argv[2])
-    print 'X: %.4f %.4f' % dx
-    print 'Y: %.4f %.4f' % dy
-    print 'Z: %.4f %.4f' % dz
-    print 'CC: %.4f' % cc
+    print('X: %.4f %.4f' % dx)
+    print('Y: %.4f %.4f' % dy)
+    print('Z: %.4f %.4f' % dz)
+    print('CC: %.4f' % cc)

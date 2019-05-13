@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import os,math
 from scitbx import matrix
@@ -73,14 +74,14 @@ class lines(correction_vector_store):
     if self.params.run_numbers is None:
       path = self.params.outdir_template
       stream = open(path,"r")
-      print path
+      print(path)
       for line in stream:
         if line.find("XFEL processing:") == 0:
            tokens = line.strip().split("/")
            picklefile = line.strip().split()[2]
            frame_id = frame_dict.get(picklefile, None)
            if frame_id is not None:
-             print "FETCHED",frame_id
+             print("FETCHED",frame_id)
         if line.find("CV OBSCENTER")==0 and line.find("Traceback")==-1:
           potential_tokens = line.strip().split()
           if len(potential_tokens)==22 and \
@@ -90,7 +91,7 @@ class lines(correction_vector_store):
         if len(self.tiles)==0 and line.find("EFFEC")==0:
           self.tiles = flex.int([int(a) for a in line.strip().split()[2:]])
           assert len(self.tiles)==256
-          print list(self.tiles)
+          print(list(self.tiles))
           self.initialize_per_tile_sums()
       return
     for run in self.params.run_numbers:
@@ -99,7 +100,7 @@ class lines(correction_vector_store):
         for item in items:
           path = os.path.join(templ,item)
           stream = open(path,"r")
-          print path
+          print(path)
           for line in stream:
             if line.find("CV OBSCENTER")==0:
               potential_tokens = line.strip().split()
@@ -110,7 +111,7 @@ class lines(correction_vector_store):
             if len(self.tiles)==0 and line.find("EFFEC")==0:
               self.tiles = flex.int([int(a) for a in line.strip().split()[2:]])
               assert len(self.tiles)==256
-              print list(self.tiles)
+              print(list(self.tiles))
               self.initialize_per_tile_sums()
 
   def vectors(self):
@@ -128,7 +129,7 @@ class lines(correction_vector_store):
         self.database.insert(run,itile,tokens)
       yield "OK"
      except ValueError:
-       print "Valueerror"
+       print("Valueerror")
 
     self.database.send_insert_command()
     for x in range(64):
@@ -185,32 +186,32 @@ def run_correction_vector_plot(working_phil):
   tangen_sigmas = flex.double(64)
   for idx in range(64):
     x = sort_radii[idx]
-    print "Tile %2d: radius %7.2f, %6d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
+    print("Tile %2d: radius %7.2f, %6d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
       x, L.radii[x], L.tilecounts[x], L.mean_cv[x][0], L.mean_cv[x][1],
       L.tile_rmsd[x]
-        ),
+        ), end=' ')
     if L.tilecounts[x] < 3:
-      print
+      print()
       radial = (0,0)
       tangential = (0,0)
       rmean,tmean,rsigma,tsigma=(0,0,1,1)
     else:
       wtaveg = L.weighted_average_angle_deg_from_tile(x)
-      print "Tile rotation %6.2f deg"%wtaveg,
+      print("Tile rotation %6.2f deg"%wtaveg, end=' ')
       radial,tangential,rmean,tmean,rsigma,tsigma = get_radial_tangential_vectors(L,x)
-      print "%6.2f %6.2f"%(rsigma,tsigma)
+      print("%6.2f %6.2f"%(rsigma,tsigma))
     radial_sigmas[x]=rsigma
     tangen_sigmas[x]=tsigma
   rstats = flex.mean_and_variance(radial_sigmas,L.tilecounts.as_double())
   tstats = flex.mean_and_variance(tangen_sigmas,L.tilecounts.as_double())
 
-  print "\nOverall                 %8d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
-      L.overall_N, L.overall_cv[0], L.overall_cv[1], L.overall_rmsd)
-  print "Average tile rmsd %5.2f"%flex.mean(flex.double(L.tile_rmsd))
-  print "Average tile displacement %5.2f"%(flex.mean(
-    flex.double([matrix.col(cv).length() for cv in L.mean_cv])))
-  print "Weighted average radial sigma %6.2f"%rstats.mean()
-  print "Weighted average tangential sigma %6.2f"%tstats.mean()
+  print("\nOverall                 %8d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
+      L.overall_N, L.overall_cv[0], L.overall_cv[1], L.overall_rmsd))
+  print("Average tile rmsd %5.2f"%flex.mean(flex.double(L.tile_rmsd)))
+  print("Average tile displacement %5.2f"%(flex.mean(
+    flex.double([matrix.col(cv).length() for cv in L.mean_cv]))))
+  print("Weighted average radial sigma %6.2f"%rstats.mean())
+  print("Weighted average tangential sigma %6.2f"%tstats.mean())
 
   if working_phil.show_plots is True:
     plt.plot([(L.tiles[4*x+0]+L.tiles[4*x+2])/2. for x in range(64)],[(L.tiles[4*x+1]+L.tiles[4*x+3])/2. for x in range(64)],"go")
@@ -220,20 +221,20 @@ def run_correction_vector_plot(working_phil):
 
     for idx in range(64):
       x = sort_radii[idx]
-      print "Tile %2d: radius %7.2f, %6d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
+      print("Tile %2d: radius %7.2f, %6d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
         x, L.radii[x], L.tilecounts[x], L.mean_cv[x][0], L.mean_cv[x][1],
         L.tile_rmsd[x]
-        ),
+        ), end=' ')
       if L.tilecounts[x] < 3:
-        print
+        print()
         radial = (0,0)
         tangential = (0,0)
         rmean,tmean,rsigma,tsigma=(0,0,1,1)
       else:
         wtaveg = L.weighted_average_angle_deg_from_tile(x)
-        print "Tile rotation %6.2f deg"%wtaveg,
+        print("Tile rotation %6.2f deg"%wtaveg, end=' ')
         radial,tangential,rmean,tmean,rsigma,tsigma = get_radial_tangential_vectors(L,x)
-        print "%6.2f %6.2f"%(rsigma,tsigma)
+        print("%6.2f %6.2f"%(rsigma,tsigma))
 
       if working_phil.colormap:
         from pylab import imshow, axes, colorbar, show

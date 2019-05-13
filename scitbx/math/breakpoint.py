@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import math,sys
 
 # breakpoint.py
@@ -94,10 +95,10 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=1,
   if decreasing:
     min_x=x_high
     max_x=x_low
-  print >>out,"Low,high:",x_low,x_high,":",value_dict[x_low],value_dict[x_high]
+  print("Low,high:",x_low,x_high,":",value_dict[x_low],value_dict[x_high], file=out)
 
   if decreasing and x_low < x_high:
-    print >>out,"Not decreasing"
+    print("Not decreasing", file=out)
     return None # not decreasing
 
   ratio=value_dict[x_high]/max(1,value_dict[x_low])
@@ -109,7 +110,7 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=1,
       raise Sorry("Failed to use exponential (value too large): %s" %(ratio))
 
   if min_ratio and ratio <min_ratio:
-    print >>out,"Ratio too low (min %7.2f  found %7.2f)" %(min_ratio,ratio)
+    print("Ratio too low (min %7.2f  found %7.2f)" %(min_ratio,ratio), file=out)
     return None  # it is not enough to tell
 
   from copy import deepcopy
@@ -130,7 +131,7 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=1,
        lowest_x_keep is None or x > lowest_x_keep):
       lowest_x_keep=x
   if lowest_x_keep is not None:
-    print >>out,"Removing all values of x < %7.2f" %(lowest_x_keep)
+    print("Removing all values of x < %7.2f" %(lowest_x_keep), file=out)
     for x in value_dict.keys():
       if x < lowest_x_keep:
         del value_dict[x]
@@ -144,12 +145,12 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=1,
 
   ratio=value_dict[x_high]/max(1,value_dict[x_low])
   y_midway=value_dict[x_low]*ratio**0.5
-  print >>out,"Low,high:",x_low,x_high,":",value_dict[x_low],value_dict[x_high]
+  print("Low,high:",x_low,x_high,":",value_dict[x_low],value_dict[x_high], file=out)
   x_midway=get_closest_x(value=y_midway,value_dict=value_dict)
 
   y_midway=value_dict[x_midway]
-  print >>out,"Midway:",y_midway," x-midway:",x_midway,\
-    score_breakpoint(value_dict=value_dict,x_midway=x_midway,y_midway=y_midway,min_x=min_x,max_x=max_x)
+  print("Midway:",y_midway," x-midway:",x_midway,\
+    score_breakpoint(value_dict=value_dict,x_midway=x_midway,y_midway=y_midway,min_x=min_x,max_x=max_x), file=out)
 
   keys=value_dict.keys()
   keys.sort()
@@ -176,18 +177,18 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=1,
   if best_score is not None:
     x_midway=best_xm
     y_midway=best_ym
-    print >>out,"\n Best fit: x_midway: %7.2f  y_midway: %7.2f " %(
-        x_midway,y_midway)
+    print("\n Best fit: x_midway: %7.2f  y_midway: %7.2f " %(
+        x_midway,y_midway), file=out)
 
   keys=value_dict.keys()
   keys.sort()
-  print >>out,"\n   X       Y-obs     Y-fit    Delta"
+  print("\n   X       Y-obs     Y-fit    Delta", file=out)
 
   for x in keys:
      delta=get_delta_from_multiple_lines(x=x,y=value_dict[x],
         value_dict=value_dict,x_midway=x_midway,y_midway=y_midway,min_x=min_x,max_x=max_x)
      pred_y=value_dict[x]-delta
-     print >>out,"%7.2f  %7.2f  %7.2f  %7.2f " %(x,value_dict[x],pred_y,delta)
+     print("%7.2f  %7.2f  %7.2f  %7.2f " %(x,value_dict[x],pred_y,delta), file=out)
 
   # And identify value of x where value extrapolated from x<x_midway becomes less than
   #   y_midway minus target_offset (typically 1=1 log unit)
@@ -197,7 +198,7 @@ def find_breakpoint(value_dict=None,decreasing=True,min_ratio=1,
     dxdy=(x_midway-min_x)/(y_midway-value_dict[min_x])
   delta_x=-1.*dxdy*target_offset
   target_x=x_midway+delta_x
-  print >>out,"Target X-value at breakpoint: %7.2f " %(target_x)
+  print("Target X-value at breakpoint: %7.2f " %(target_x), file=out)
   return target_x
 
 def get_value_dict(file_name=None):

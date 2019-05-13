@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 from cctbx.array_family import flex
 
@@ -11,13 +12,13 @@ special_position_settings = crystal_symmetry.special_position_settings(
   min_distance_sym_equiv=0.5)
 
 site_symmetry = special_position_settings.site_symmetry(site=(0.3, 0.31, 0.111))
-print "special position operator:", site_symmetry.special_op()
-print "exact location of special position:", site_symmetry.exact_site()
+print("special position operator:", site_symmetry.special_op())
+print("exact location of special position:", site_symmetry.exact_site())
 
 site_constraints = site_symmetry.site_constraints()
 
 n_indep = site_constraints.n_independent_params()
-print "n_indep:", n_indep
+print("n_indep:", n_indep)
 
 site_indep = site_constraints.independent_params(
   all_params=site_symmetry.exact_site())
@@ -28,7 +29,7 @@ site_indep_shifted[0] += 0.1
 
 site_shifted = site_constraints.all_params(
   independent_params=site_indep_shifted)
-print "site_shifted:", site_shifted
+print("site_shifted:", site_shifted)
 
 site_constraints_2 = special_position_settings.site_symmetry(
   site=(0.5, 0.111, 0.222)).site_constraints()
@@ -41,10 +42,10 @@ u,v = 0.111, 0.888
 h = 1e-12
 df_du = (f(u+h,v) - f(u-h,v))/(2*h)
 df_dv = (f(u,v+h) - f(u,v-h))/(2*h)
-print df_du, df_dv
+print(df_du, df_dv)
 independent_gradients = site_constraints.independent_gradients(
   all_gradients=flex.double((-1,2,3)))
-print "independent_gradients:", independent_gradients
+print("independent_gradients:", independent_gradients)
 
 frac_adp_constraints = site_symmetry.adp_constraints()
 cart_adp_constraints = site_symmetry.cartesian_adp_constraints(

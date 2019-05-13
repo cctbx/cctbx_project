@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
@@ -170,7 +171,7 @@ def make_geo_pickle_unpickle(geometry, xrs, prefix):
   # Fails here:
   energy_from_pickle = grm_from_file.energies_sites(sites_cart=xrs.sites_cart())
   assert approx_equal(energy_original.target, energy_from_pickle.target)
-  print "Time pickling/unpickling: %.4f, %.4f" % (t1-t0, t2-t1)
+  print("Time pickling/unpickling: %.4f, %.4f" % (t1-t0, t2-t1))
   grm_from_file.show_sorted(
       sites_cart=xrs.sites_cart(),
       site_labels=xrs.scatterers().extract_labels(),
@@ -450,11 +451,11 @@ def exercise_all(args):
     mon_lib_srv = monomer_library.server.server()
     ener_lib = monomer_library.server.ener_lib()
   except Exception:
-    print "Can not initialize monomer_library, skipping test."
+    print("Can not initialize monomer_library, skipping test.")
     return 0
   import libtbx.load_env
   if libtbx.env.find_in_repositories(relative_path="chem_data") is None:
-    print "Skipping exercise(): chem_data directory not available"
+    print("Skipping exercise(): chem_data directory not available")
     return
 
   test_simple_protein(mon_lib_srv, ener_lib)

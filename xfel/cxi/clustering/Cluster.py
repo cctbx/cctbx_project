@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os
 import math
 from cctbx.uctbx.determine_unit_cell import NCDist
@@ -135,10 +136,10 @@ class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:
   def ab_cluster(self, threshold=10000, method='distance', linkage_method='single', log=False, plot=False):
     """ Do basic hierarchical clustering using the Andrews-Berstein distance
     on the Niggli cells """
-    print "Hierarchical clustering of unit cells:"
+    print("Hierarchical clustering of unit cells:")
     import scipy.spatial.distance as dist
 
-    print "Using Andrews-Bernstein Distance from Andrews & Bernstein J Appl Cryst 47:346 (2014)."
+    print("Using Andrews-Bernstein Distance from Andrews & Bernstein J Appl Cryst 47:346 (2014).")
 
     def make_g6(uc):
       """ Take a reduced Niggli Cell, and turn it into the G6 representation """
@@ -223,7 +224,7 @@ class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:
       "a", "b", "c",
       "alpha", "beta", "gamma")
     out_str += "".join(singletons)
-    print out_str
+    print(out_str)
 
     if plot:
       import matplotlib.pyplot as plt

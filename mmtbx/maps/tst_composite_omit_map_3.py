@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from cctbx import miller
 from cctbx.development import random_structure
@@ -79,7 +80,7 @@ def run(space_group_info):
     log=False)
   ccs = get_cc(mc1=mc1, mc2=r.map_coefficients(filter_noise=False), xrs=xrs)
   assert flex.mean(ccs) > 0.8
-  print "  CC(min/max,mean)",ccs.min_max_mean().as_tuple()
+  print("  CC(min/max,mean)",ccs.min_max_mean().as_tuple())
 
 def run_call_back(flags, space_group_info):
   run(space_group_info)
@@ -89,4 +90,4 @@ if (__name__ == "__main__"):
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back,
     symbols_to_stdout=True, symbols_to_stderr=False)
   run(sgtbx.space_group_info("R3:R"))
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

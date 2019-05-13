@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
@@ -496,7 +497,7 @@ ATOM     45  CA  CA      8      16.545  29.521  64.086  1.00 19.76
 
 def run():
   exercise_selection()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

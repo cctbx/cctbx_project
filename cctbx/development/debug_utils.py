@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 from scitbx.python_utils.command_line import parse_options
 from libtbx.utils import format_cpu_times
@@ -57,7 +58,7 @@ def loop_space_groups(
   assert chunk_size > 0 and chunk_member < chunk_size
   n_threads = int(flags.Threads)
   if n_threads > 1:
-    print "** Warning: multi-threaded space-group looping disabled **"
+    print("** Warning: multi-threaded space-group looping disabled **")
   if (not flags.RandomSeed): random.seed(0)
   if (len(argv) > 0 + flags.n):
     symbols = argv
@@ -75,10 +76,10 @@ def loop_space_groups(
     space_group_info = sgtbx.space_group_info(symbol)
     sys.stdout.flush()
     if symbols_to_stderr:
-      print >> sys.stderr, space_group_info
+      print(space_group_info, file=sys.stderr)
     sys.stderr.flush()
     if (symbols_to_stdout):
-      print space_group_info
+      print(space_group_info)
       sys.stdout.flush()
     call_back_result = call_back(flags, space_group_info, **kwds)
     sys.stdout.flush()
@@ -89,7 +90,7 @@ def loop_space_groups(
     call_back_results.append(call_back_result)
     if (continue_flag == False): break
   if (show_cpu_times):
-    print format_cpu_times()
+    print(format_cpu_times())
   sys.stdout.flush()
   return call_back_results
 

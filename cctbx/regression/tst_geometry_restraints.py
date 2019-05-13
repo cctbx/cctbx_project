@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.pdb.tst_pdb import dump_pdb
 from cctbx import geometry_restraints
 from iotbx.pymol import pml_stick, pml_write
@@ -152,20 +153,20 @@ def exercise_angle():
       fg = finite_differences(sites_mod, residual_obj)
       if (eps == 0):
         for finite in fg:
-          print finite
-          print
+          print(finite)
+          print()
       else:
         for analytical,finite in zip(ag,fg):
           if (0):
-            print analytical
-            print finite
+            print(analytical)
+            print(finite)
           if (0):
             for x,y in zip(analytical, finite):
-              if (y == 0): print None,
-              else: print x/y,
-            print
+              if (y == 0): print(None, end=' ')
+              else: print(x/y, end=' ')
+            print()
           if (0):
-            print
+            print()
           assert approx_equal(analytical, finite,
                               eps=max(1.e-6,max(analytical)*1.e-6))
 
@@ -267,10 +268,10 @@ def exercise_chirality(verbose=0):
   assert approx_equal(dih.residual(), 9.03402230782)
   if (verbose):
     dump_pdb("sites.pdb", sites)
-    print "volume_ideal:", chir.volume_ideal
-    print "volume_model:", chir.volume_model
-    print "angle_ideal:", dih.angle_ideal
-    print "angle model:", dih.angle_model
+    print("volume_ideal:", chir.volume_ideal)
+    print("volume_model:", chir.volume_model)
+    print("angle_ideal:", dih.angle_ideal)
+    print("angle model:", dih.angle_model)
   for i_trial in xrange(50):
     volume_ideal = chir.volume_ideal
     for both_signs in [False, True]:
@@ -398,7 +399,7 @@ def exercise():
   exercise_dihedral()
   exercise_chirality(verbose="--verbose" in sys.argv[1:])
   exercise_planarity()
-  print "OK"
+  print("OK")
 
 dihedral_test_data = [
 [[ [69.141,9.390,2.567],

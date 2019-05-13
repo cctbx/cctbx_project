@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.monomer_library import server
 from libtbx.test_utils import show_diff
 from cStringIO import StringIO
@@ -473,7 +474,7 @@ def exercise():
     if (verbose): sys.stdout.write(out.getvalue())
     if (mod_mod_id.chem_mod.id == "tst_mod"):
       assert not show_diff(out.getvalue(), expected_out_tst_mod)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

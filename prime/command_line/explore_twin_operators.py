@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME prime.explore_twin_operators
 
 from prime.index_ambiguity.mod_indexing_ambiguity import indamb_handler
@@ -16,7 +17,7 @@ def main(data, only_merohedral):
         obs = intPickle['observations'][0]
         obsList[intFileName] = obs
       except Exception as e:
-        print "Warning:", e
+        print("Warning:", e)
         pass
     for key,value in obsList.iteritems():
       if only_merohedral:
@@ -25,9 +26,9 @@ def main(data, only_merohedral):
         flag_all = True
       ops = indambh.generate_twin_operators(value, flag_all=flag_all)
       if ops:
-        print os.path.basename(key), '%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f'%value.unit_cell().parameters(), ' '.join([op.operator.r().as_hkl() for op in ops])
+        print(os.path.basename(key), '%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f'%value.unit_cell().parameters(), ' '.join([op.operator.r().as_hkl() for op in ops]))
       else:
-        print os.path.basename(key), '%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f'%value.unit_cell().parameters(), 'Twining operators not found'
+        print(os.path.basename(key), '%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f'%value.unit_cell().parameters(), 'Twining operators not found')
 
 
 if __name__ == "__main__":
@@ -44,9 +45,9 @@ if __name__ == "__main__":
                     help='Flag for showing only merohedral twinnings')
   args = parser.parse_args()
   if args.only_merohedral:
-    print "Only showing results with merohedral twinning operators"
+    print("Only showing results with merohedral twinning operators")
   else:
-    print "Showing all possible pseudo- and true-merohedral twinning operators"
+    print("Showing all possible pseudo- and true-merohedral twinning operators")
   args = parser.parse_args()
 
   main(args.integration_pickles, args.only_merohedral)

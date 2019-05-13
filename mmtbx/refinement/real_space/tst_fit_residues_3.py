@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import time
 import mmtbx.refinement.real_space.fit_residues
 import mmtbx.refinement.real_space
@@ -140,4 +141,4 @@ if(__name__ == "__main__"):
     exercise(
       i_pdb       = i_pdb,
       pdb_for_map = pdb_for_map)
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

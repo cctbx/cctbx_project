@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.cns import space_group_symbols
 from cctbx import adptbx
 from cStringIO import StringIO
@@ -7,26 +8,26 @@ def write_header(s, file=None, description=None, comment=None,
                     space_group_info=None, n_rows=None):
   assert n_rows is not None
   if (file is not None):
-    print >> s, "{+ file: %s +}" % str(file)
+    print("{+ file: %s +}" % str(file), file=s)
   if (description is not None):
-    print >> s, "{+ description: %s +}" % str(description)
+    print("{+ description: %s +}" % str(description), file=s)
   if (comment is not None):
-    print >> s, "{+ comment:"
-    for line in comment: print >> s, line
-    print >> s, "+}"
-  print >> s
-  print >> s, "{- begin block parameter definition -} define("
-  print >> s
+    print("{+ comment:", file=s)
+    for line in comment: print(line, file=s)
+    print("+}", file=s)
+  print(file=s)
+  print("{- begin block parameter definition -} define(", file=s)
+  print(file=s)
   if (space_group_info is not None):
-    print >> s, """\
+    print("""\
 {============================ space group ============================}
 
 {* space group *}
 {* use International Table conventions with subscripts substituted
    by parenthesis *}
 {===>} sg="%s";
-""" % space_group_symbols.cns_format(space_group_info)
-  print >> s, """\
+""" % space_group_symbols.cns_format(space_group_info), file=s)
+  print("""\
 {==================== derivative/MAD coordinates =====================}
 
 {+ list: for each site define:
@@ -49,10 +50,10 @@ def write_header(s, file=None, description=None, comment=None,
           cols=9 "action" "derivative name" "chemical type"
                  "x coordinate" "y coordinate" "z coordinate"
                  "B-value" "occupancy" "group" +}
-""" % n_rows
+""" % n_rows, file=s)
 
 def write_tail(s):
-  print >> s, """\
+  print("""\
 {* to appended new entries or merge this file with other
    site database files use sdb_manipulate.inp *}
 
@@ -63,7 +64,7 @@ def write_tail(s):
 {         things below this line do not normally need to be changed         }
 {===========================================================================}
 
-) {- end block parameter definition -}"""
+) {- end block parameter definition -}""", file=s)
 
 def write_scatterer(s, running_index, scatterer,
                        action=None, segid=None, group=None):
@@ -74,7 +75,7 @@ def write_scatterer(s, running_index, scatterer,
   assert scatterer.flags.use_u_iso_only()
   assert action in ("refine", "fix", "ignore")
   i = running_index
-  print >> s, """\
+  print("""\
 {+ choice: "refine" "fix" "ignore" +}
 {===>} site.action_%d="%s";
 {===>} site.segid_%d="%s"; site.type_%d="%s";
@@ -85,7 +86,7 @@ def write_scatterer(s, running_index, scatterer,
        i,scatterer.site[0],
        i,scatterer.site[1],
        i,scatterer.site[2],
-       i,adptbx.u_as_b(scatterer.u_iso), i,scatterer.occupancy, i,group)
+       i,adptbx.u_as_b(scatterer.u_iso), i,scatterer.occupancy, i,group), file=s)
 
 def xray_structure_as_cns_sdb_file(self, file=None,
                                          description=None,

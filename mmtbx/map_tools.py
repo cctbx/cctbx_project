@@ -6,6 +6,7 @@ with the separate mmtbx.maps module.
 """
 
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import maptbx
@@ -545,7 +546,7 @@ def sharp_map(sites_frac, map_coeffs, ss = None, b_sharp=None, b_min = -150,
         t=t_
         b_sharp_best = b_sharp
         map_coeffs_best = map_coeffs_.deep_copy()
-    print "b_sharp:", b_sharp_best, t
+    print("b_sharp:", b_sharp_best, t)
   else:
     scale = flex.exp(b_sharp*ss)
     map_coeffs_best = map_coeffs.customized_copy(data=map_coeffs.data()*scale)

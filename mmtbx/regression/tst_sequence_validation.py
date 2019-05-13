@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_mp
 from libtbx import easy_pickle
 from libtbx.utils import Sorry, null_out
@@ -8,10 +9,10 @@ import os
 def exercise():
   import libtbx.utils
   if (libtbx.utils.detect_multiprocessing_problem() is not None):
-    print "multiprocessing not available, skipping this test"
+    print("multiprocessing not available, skipping this test")
     return
   if (os.name == "nt"):
-    print "easy_mp fixed_func not supported under Windows, skipping this test"
+    print("easy_mp fixed_func not supported under Windows, skipping this test")
     return
   from mmtbx.validation.sequence import validation, get_sequence_n_copies, \
     get_sequence_n_copies_from_files
@@ -525,7 +526,7 @@ END
 
   # all tests below here have additional dependencies
   if (not libtbx.env.has_module("ksdssp")):
-    print "Skipping advanced tests (require ksdssp module)"
+    print("Skipping advanced tests (require ksdssp module)")
     return
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1ywf.pdb",
@@ -652,4 +653,4 @@ END
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

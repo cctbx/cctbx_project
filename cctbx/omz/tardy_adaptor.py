@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 class potential_object(object):
 
   def __init__(O, f_obs, xray_structure):
@@ -31,12 +32,12 @@ class potential_object(object):
 
 def sample_e_pot(id_code, f_obs, xray_structure, edge_list, params):
   if (edge_list is None):
-    print "NO_TARDY: no edge_list"
+    print("NO_TARDY: no edge_list")
     return
   #
   xs = xray_structure
   if (xs.special_position_indices().size() != 0):
-    print "NO_TARDY: special positions"
+    print("NO_TARDY: special positions")
     return
   sites_cart = xs.sites_cart()
   labels = xs.scatterers().extract_labels()
@@ -48,7 +49,7 @@ def sample_e_pot(id_code, f_obs, xray_structure, edge_list, params):
     assert i <= j
     sym_dict = pst[i].get(j)
     if (sym_dict is None):
-      print "NO_TARDY: large distance for edge:", labels[i], labels[j]
+      print("NO_TARDY: large distance for edge:", labels[i], labels[j])
       return
   #
   import scitbx.graph.tardy_tree
@@ -63,17 +64,17 @@ def sample_e_pot(id_code, f_obs, xray_structure, edge_list, params):
     potential_obj=potential_object(f_obs, xs),
     near_singular_hinges_angular_tolerance_deg=5)
   if (tardy_model.number_of_trees != 1):
-    print "NO_TARDY: multiple trees"
+    print("NO_TARDY: multiple trees")
     return
   #
-  print "Single tardy tree:", \
-    id_code, xs.scatterers().size(), xs.space_group_info()
+  print("Single tardy tree:", \
+    id_code, xs.scatterers().size(), xs.space_group_info())
   tt.show_summary(vertex_labels=labels, prefix="  ")
-  print "dof each joint:", list(tardy_model.degrees_of_freedom_each_joint())
-  print "q_size each joint:", list(tardy_model.q_size_each_joint())
+  print("dof each joint:", list(tardy_model.degrees_of_freedom_each_joint()))
+  print("q_size each joint:", list(tardy_model.q_size_each_joint()))
   q_packed = tardy_model.pack_q()
-  print "q_packed.size():", q_packed.size()
-  print "q_packed:", numstr(q_packed)
+  print("q_packed.size():", q_packed.size())
+  print("q_packed:", numstr(q_packed))
   if (params.iq < 0):
     return
   assert params.iq < q_packed.size()

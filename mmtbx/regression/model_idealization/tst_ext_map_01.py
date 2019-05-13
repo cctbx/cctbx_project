@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 import libtbx.load_env
 import os.path
@@ -134,13 +135,13 @@ def exercise_01(prefix="tst_mi_ext_map_test_01"):
       "high_resolution=5",
       # "generate_fake_p1_symmetry=True",
       ])
-  print fmodel_cmd
+  print(fmodel_cmd)
   easy_run.call(fmodel_cmd)
   mtz2map_cmd = " ".join([
     "phenix.mtz2map",
     "%s_start.pdb.mtz" % prefix,
     "include_fmodel=True"])
-  print mtz2map_cmd
+  print(mtz2map_cmd)
   easy_run.call(mtz2map_cmd)
   # STOP()
   cmd = " ".join([
@@ -154,7 +155,7 @@ def exercise_01(prefix="tst_mi_ext_map_test_01"):
       "n_macro=1",
       "debug=True",
       ">%s.log" % prefix])
-  print cmd
+  print(cmd)
   assert not easy_run.call(cmd)
   res_log = open("%s.log" % prefix, "r")
   log_lines = res_log.readlines()
@@ -172,8 +173,8 @@ def exercise_01(prefix="tst_mi_ext_map_test_01"):
 if (__name__ == "__main__"):
   t0 = time.time()
   if (not libtbx.env.has_module(name="probe")):
-    print "Skipping: probe not configured"
+    print("Skipping: probe not configured")
   else:
     exercise_01()
-  print "Time: %.2f" % (time.time() - t0)
-  print "OK"
+  print("Time: %.2f" % (time.time() - t0))
+  print("OK")

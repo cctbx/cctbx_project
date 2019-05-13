@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from wxtbx import phil_controls
 from libtbx import Auto
 import wx
@@ -77,7 +78,7 @@ if (__name__ == "__main__"):
   choice2.SetOptional(False)
   choice2.SetValue(None)
   try :
-    print choice2.GetPhilValue()
+    print(choice2.GetPhilValue())
   except Exception, e :
     assert (str(e) == "Value required for 'choice'.")
   else :

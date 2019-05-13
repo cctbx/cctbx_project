@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import time, random
 from cctbx import maptbx
 from scitbx.array_family import flex
@@ -90,7 +91,7 @@ def exercise(f,gx,gy,gz,function_type, eps = 1.e-6):
     #
     s = "(%10.6f %10.6f %10.6f %10.6f)"
     fmt = " ".join(["%5.3f", s, s, s])
-    print fmt%(O.step[0], tl,gxl,gyl,gzl, tq,gxq,gyq,gzq, tt,gxt,gyt,gzt)
+    print(fmt%(O.step[0], tl,gxl,gyl,gzl, tq,gxq,gyq,gzq, tt,gxt,gyt,gzt))
     #
     cntr=0
     if(function_type=="L"):
@@ -116,9 +117,9 @@ if (__name__ == "__main__"):
   ]
   for it in fgs:
     function_type, f,gx,gy,gz = it
-    print "- using: f=%s, gx=%s, gy=%s, gz=%s"%(f, gx,gy,gz)
-    print " Step                   Linear                                 "\
-          "        Quadratic                              Tricubic"
+    print("- using: f=%s, gx=%s, gy=%s, gz=%s"%(f, gx,gy,gz))
+    print(" Step                   Linear                                 "\
+          "        Quadratic                              Tricubic")
     exercise(f = f, gx = gx, gy = gy, gz = gz, function_type=function_type)
-    print
-  print "Time: %6.2f"%(time.time()-t0)
+    print()
+  print("Time: %6.2f"%(time.time()-t0))

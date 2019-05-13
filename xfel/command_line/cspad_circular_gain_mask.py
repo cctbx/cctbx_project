@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cspad.circular_gain_mask
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -60,14 +61,14 @@ if (__name__ == "__main__") :
 
   if annulus:
     if params.resolution is None:
-      print "Generating annular gain mask between %f and %f angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
-        (params.annulus_inner, params.annulus_outer, params.distance, params.wavelength)
+      print("Generating annular gain mask between %f and %f angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
+        (params.annulus_inner, params.annulus_outer, params.distance, params.wavelength))
     else:
-      print "Generating annular gain mask between %f and %f angstroms, assuming a distance %s mm and wavelength %s angstroms. Also, pixels higher than %f angstroms will be set to low gain." % \
-        (params.annulus_inner, params.annulus_outer, params.distance, params.wavelength, params.resolution)
+      print("Generating annular gain mask between %f and %f angstroms, assuming a distance %s mm and wavelength %s angstroms. Also, pixels higher than %f angstroms will be set to low gain." % \
+        (params.annulus_inner, params.annulus_outer, params.distance, params.wavelength, params.resolution))
   elif params.resolution is not None:
-    print "Generating circular gain mask %s angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
-      (params.resolution, params.distance, params.wavelength)
+    print("Generating circular gain mask %s angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
+      (params.resolution, params.distance, params.wavelength))
 
   from xfel.cftbx.detector.cspad_cbf_tbx import read_slac_metrology, get_cspad_cbf_handle
   from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
@@ -83,15 +84,15 @@ if (__name__ == "__main__") :
   if annulus:
     inner = params.distance * math.tan(2*math.sinh(params.wavelength/(2*params.annulus_inner)))
     outer = params.distance * math.tan(2*math.sinh(params.wavelength/(2*params.annulus_outer)))
-    print "Inner (mm):", inner
-    print "Outer (mm):", outer
+    print("Inner (mm):", inner)
+    print("Outer (mm):", outer)
   if params.resolution is not None:
     radius = params.distance * math.tan(2*math.sinh(params.wavelength/(2*params.resolution)))
-    print "Radius (mm):", radius
+    print("Radius (mm):", radius)
 
-  print "Panel:",; sys.stdout.flush()
+  print("Panel:", end=' '); sys.stdout.flush()
   for p_id, panel in enumerate(img.get_detector()):
-    print p_id,; sys.stdout.flush()
+    print(p_id, end=' '); sys.stdout.flush()
     for y in range(185):
       for x in range(194):
         lx, ly, lz = panel.get_pixel_lab_coord((x,y))
@@ -105,6 +106,6 @@ if (__name__ == "__main__") :
           else:
             if not point_inside_circle(lx,ly,beam_center[0],beam_center[1],radius):
               data[(p_id*185)+y,x] = 1
-  print
-  print "Masked out %d pixels out of %d (%.2f%%)"%(data.size-int(data.sum()), data.size, 100*(data.size-int(data.sum()))/data.size)
+  print()
+  print("Masked out %d pixels out of %d (%.2f%%)"%(data.size-int(data.sum()), data.size, 100*(data.size-int(data.sum()))/data.size))
   numpy.savetxt(params.out, data, fmt="%d")

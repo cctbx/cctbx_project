@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import mmtbx.f_model
 import mmtbx.refinement.targets
@@ -104,7 +105,7 @@ def exercise(space_group_info,
         if (target == "ml_sad"
               and (not anomalous_flag or mmtbx.refinement.targets.phaser is None)):
           continue
-        print "  ",target
+        print("  ",target)
         xray.set_scatterer_grad_flags(
           scatterers = xrs.scatterers(),
           site       = True)
@@ -138,11 +139,11 @@ def exercise(space_group_info,
         gfd = finite_differences_site(target_functor=t_f)
         cc = flex.linear_correlation(gs, gfd).coefficient()
         if (0 or verbose):
-          print "ana:", list(gs)
-          print "fin:", list(gfd)
-          print "rat:", [f/a for a,f in zip(gs,gfd)]
-          print target, "corr:", cc, space_group_info
-          print
+          print("ana:", list(gs))
+          print("fin:", list(gfd))
+          print("rat:", [f/a for a,f in zip(gs,gfd)])
+          print(target, "corr:", cc, space_group_info)
+          print()
         diff = gs - gfd
         diff /= max(1, flex.max(flex.abs(gfd)))
         tolerance = 1.2e-5

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from HTMLParser import HTMLParser
 
@@ -106,10 +107,10 @@ if __name__ == "__main__":
       timeout = float( sys.argv[2] )
 
     except ValueError, e:
-      print "Cannot interpret as number: %s (%s)" % ( sys.argv[2], e )
+      print("Cannot interpret as number: %s (%s)" % ( sys.argv[2], e ))
 
   else:
-    print "Usage: %s PDBFILE <timeout = 600>" % sys.argv[0]
+    print("Usage: %s PDBFILE <timeout = 600>" % sys.argv[0])
     sys.exit( 1 )
 
   pdbstr = open( sys.argv[1] ).read()
@@ -121,11 +122,11 @@ if __name__ == "__main__":
 
   except JobFolderParseError, e:
     sys.stdout.write( "failed\n" )
-    print "Unexpected response: cannot find job folder"
+    print("Unexpected response: cannot find job folder")
     sys.exit( 1 )
 
   sys.stdout.write( "done\n" )
-  print "Job folder:", myjob.job_folder
+  print("Job folder:", myjob.job_folder)
 
   sys.stdout.write( "Waiting for results" )
   sys.stdout.flush()
@@ -154,10 +155,10 @@ if __name__ == "__main__":
 
   import os.path
   output = "proq2-%s" % os.path.basename( sys.argv[1] )
-  print "Output:", output
+  print("Output:", output)
 
   with open( output, "w" ) as ofile:
     ofile.write( result )
     ofile.write( "\n" )
 
-  print "Done!"
+  print("Done!")

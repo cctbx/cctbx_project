@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 from libtbx.str_utils import format_value
 from libtbx import smart_open
@@ -126,7 +127,7 @@ class get_r_rfree_sigma(object):
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
-    print >> log, self.formatted_string()
+    print(self.formatted_string(), file=log)
 
 def extract_remark_2_and_3_records(file_name, file_lines=None):
   result = []

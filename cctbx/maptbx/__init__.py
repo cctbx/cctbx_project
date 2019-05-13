@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import cctbx.sgtbx
 
 import boost.python
@@ -117,7 +118,7 @@ class d99(object):
   def show(self, log):
     fmt = "%12.6f %8.6f"
     for d_min, cc in zip(self.result.d_mins, self.result.ccs):
-      print >> log, fmt%(d_min, cc)
+      print(fmt%(d_min, cc), file=log)
 
 def assert_same_gridding(map_1, map_2,
                          Sorry_message="Maps have different gridding."):
@@ -288,10 +289,10 @@ class _(boost.python.injector, ext.statistics):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix + "max %.6g" % (self.max())
-    print >> f, prefix + "min %.6g" % (self.min())
-    print >> f, prefix + "mean %.6g" % (self.mean())
-    print >> f, prefix + "sigma %.6g" % (self.sigma())
+    print(prefix + "max %.6g" % (self.max()), file=f)
+    print(prefix + "min %.6g" % (self.min()), file=f)
+    print(prefix + "mean %.6g" % (self.mean()), file=f)
+    print(prefix + "sigma %.6g" % (self.sigma()), file=f)
 
 use_space_group_symmetry = sgtbx.search_symmetry_flags(
   use_space_group_symmetry=True)
@@ -603,9 +604,9 @@ class boxes(object):
       i += 1
     assert n_boxes == len(self.starts)
     if(log):
-      print >> log, prefix, "n1,n2,n3 (n_real)  :", n_real
-      print >> log, prefix, "points per box edge:", ba,bb,bc
-      print >> log, prefix, "number of boxes    :", len(self.starts)
+      print(prefix, "n1,n2,n3 (n_real)  :", n_real, file=log)
+      print(prefix, "points per box edge:", ba,bb,bc, file=log)
+      print(prefix, "number of boxes    :", len(self.starts), file=log)
 
   def _generate_boxes(self, ba,bb,bc):
     def regroup(be):
@@ -1108,11 +1109,11 @@ class spherical_variance_around_point(object):
 
   def show(self, out=None, prefix=""):
     if (out is None) : out = sys.stdout
-    print >> out, "%sMap values around point [%g, %g, %g], radius=%g:" % \
+    print("%sMap values around point [%g, %g, %g], radius=%g:" % \
       (prefix, self.site_cart[0], self.site_cart[1], self.site_cart[2],
-       self.radius)
-    print >> out, "%s  min=%.2f  max=%.2f  mean=%.2f  stddev=%.2f" % \
-      (prefix, self.min, self.max, self.mean, self.standard_deviation)
+       self.radius), file=out)
+    print("%s  min=%.2f  max=%.2f  mean=%.2f  stddev=%.2f" % \
+      (prefix, self.min, self.max, self.mean, self.standard_deviation), file=out)
 
 def principal_axes_of_inertia(
     real_map,
@@ -1444,10 +1445,10 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
     xray_structure = xray_structure).f_calc()
   d_fsc_model = fc.d_min_from_fsc(
         other=fo, bin_width=100, fsc_cutoff=0.).d_min
-  print "d_fsc_model:", d_fsc_model
+  print("d_fsc_model:", d_fsc_model)
   #resolution = min(resolution, d_fsc_model)
   #resolution = d_fsc_model
-  print resolution, d_fsc_model
+  print(resolution, d_fsc_model)
   #
   xray_structure = xray_structure.set_b_iso(value=0)
   fc = fo.structure_factors_from_scatterers(
@@ -1466,7 +1467,7 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
       cc = cc_
       d_best = d
     #print "%8.1f %10.6f"%(d, cc_)
-  print "Best d:", d_best
+  print("Best d:", d_best)
   #
   fc1 = xray_structure.structure_factors(d_min=resolution).f_calc()
   fc2 = fc1.resolution_filter(d_min=d_best)
@@ -1489,7 +1490,7 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
       cc = cc_
       b = b_
     #print "%8.0f %10.6f"%(b_, cc_)
-  print "Best B:", b
+  print("Best B:", b)
   #
   fo_sharp = fo.resolution_filter(d_min = resolution)
   ss = 1./flex.pow2(fo_sharp.d_spacings().data()) / 4.
@@ -1627,7 +1628,7 @@ def loc_res(map,
       b_iso=b_best
 
     if verbose:
-      print >>log,"CHUNK d_min %s b %s cc %s" %(d_min,b_iso,cc)
+      print("CHUNK d_min %s b %s cc %s" %(d_min,b_iso,cc), file=log)
     results.append(d_min)
     results_b.append(b_iso)
 
@@ -1638,8 +1639,8 @@ def loc_res(map,
     else:
       bs = bs.set_selected(chunk_sel, d_min)  # d_min in B value
 
-  print >>log,flex.min(results), flex.max(results), flex.mean(results)
-  print >>log,flex.min(bs), flex.max(bs), flex.mean(bs)
+  print(flex.min(results), flex.max(results), flex.mean(results), file=log)
+  print(flex.min(bs), flex.max(bs), flex.mean(bs), file=log)
   pdb_hierarchy.atoms().set_b(bs)
   if (method=="rscc_d_min_b"):
      pdb_hierarchy.atoms().set_occ(occs)

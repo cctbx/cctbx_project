@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.math import superpose
 
 from libtbx.utils import Sorry, null_out
@@ -133,8 +134,8 @@ def print_hbond_proxies(geometry, hierarchy, pymol=False):
   hbondlen=flex.double()
   for hb in geometry.generic_restraints_manager.hbonds_as_simple_bonds():
     hbondlen.append(atoms[hb[0]].distance(atoms[hb[1]]))
-    print (atoms[hb[0]].id_str(), "<====>",atoms[hb[1]].id_str(),
-        atoms[hb[0]].distance(atoms[hb[1]]), hb[0], hb[1])
+    print((atoms[hb[0]].id_str(), "<====>",atoms[hb[1]].id_str(),
+        atoms[hb[0]].distance(atoms[hb[1]]), hb[0], hb[1]))
     if pymol:
       s1 = atoms[hb[0]].id_str()
       s2 = atoms[hb[1]].id_str()
@@ -143,8 +144,8 @@ def print_hbond_proxies(geometry, hierarchy, pymol=False):
       ps = "dist chain \"%s\" and resi %s and name %s, chain \"%s\" and resi %s and name %s\n" % (s1[14:15],
          s1[16:19], s1[5:7], s2[14:15], s2[16:19], s2[5:7])
       dashes.write(ps)
-  print "min, max, mean, sd hbond lenghts", hbondlen.min_max_mean().as_tuple(),\
-    hbondlen.standard_deviation_of_the_sample()
+  print("min, max, mean, sd hbond lenghts", hbondlen.min_max_mean().as_tuple(),\
+    hbondlen.standard_deviation_of_the_sample())
   if pymol:
     dashes.close()
 
@@ -343,7 +344,7 @@ def set_xyz_smart(dest_h, source_h):
     good = True
     for a1, a2 in zip(dest_h.atoms(), source_h.atoms()):
       if a1.id_str() != a2.id_str():
-        print a1.id_str(), a2.id_str()
+        print(a1.id_str(), a2.id_str())
         good = False
         break
     if good:
@@ -487,7 +488,7 @@ def substitute_ss(
 
   ann = ss_annotation
   if model.ncs_constraints_present():
-    print >> log, "Using master NCS to reduce amount of work"
+    print("Using master NCS to reduce amount of work", file=log)
 
   expected_n_hbonds = 0
   for h in ann.helices:
@@ -507,16 +508,16 @@ def substitute_ss(
   if not deleted_annotations.is_empty():
     if processed_params.skip_empty_ss_elements:
       if len(deleted_annotations.helices) > 0:
-        print >> log, "Removing the following helices because there are"
-        print >> log, "no corresponding atoms in the model:"
+        print("Removing the following helices because there are", file=log)
+        print("no corresponding atoms in the model:", file=log)
         for h in deleted_annotations.helices:
-          print >> log, h.as_pdb_str()
+          print(h.as_pdb_str(), file=log)
           error_msg += "  %s\n" % h
       if len(deleted_annotations.sheets) > 0:
-        print >> log, "Removing the following sheets because there are"
-        print >> log, "no corresponding atoms in the model:"
+        print("Removing the following sheets because there are", file=log)
+        print("no corresponding atoms in the model:", file=log)
         for sh in deleted_annotations.sheets:
-          print >> log, sh.as_pdb_str()
+          print(sh.as_pdb_str(), file=log)
           error_msg += "  %s\n" % sh.as_pdb_str(strand_id=st.strand_id)
     else:
       raise Sorry(error_msg)
@@ -631,7 +632,7 @@ def substitute_ss(
   main_chain_selection_prefix = "(name ca or name n or name o or name c) %s"
 
   t4 = time()
-  print >> log, "Preparing selections..."
+  print("Preparing selections...", file=log)
   log.flush()
   # Here we are just preparing selections
   for h in ann.helices:
@@ -702,7 +703,7 @@ def substitute_ss(
   from mmtbx.geometry_restraints import reference
   if reference_map is None:
     if verbose:
-      print >> log, "Adding reference coordinate restraints..."
+      print("Adding reference coordinate restraints...", file=log)
     grm.geometry.append_reference_coordinate_restraints_in_place(
         reference.add_coordinate_restraints(
             sites_cart = model.get_sites_cart().select(helix_selection),
@@ -725,7 +726,7 @@ def substitute_ss(
   # the orientation of side chain thus justifying changing rotamer on it
   # to avoid clashes.
   if processed_params.fix_rotamer_outliers:
-    print >> log, "Fixing/checking rotamers..."
+    print("Fixing/checking rotamers...", file=log)
     # pre_result_h.write_pdb_file(file_name="before_rotamers.pdb")
     br_txt = model.model_as_pdb()
     with open("before_rotamers.pdb", 'w') as f:
@@ -748,7 +749,7 @@ def substitute_ss(
         update_grm = True)
 
   if verbose:
-    print >> log, "Adding chi torsion restraints..."
+    print("Adding chi torsion restraints...", file=log)
   # only backbone
   grm.geometry.add_chi_torsion_restraints_in_place(
           pdb_hierarchy   = model.get_hierarchy(),
@@ -779,15 +780,15 @@ def substitute_ss(
           model.get_atoms().extract_occ() != 1))
   spi = site_symmetry_table.special_position_indices()
   if spi.size() > 0:
-    print >> log, "Moving atoms from special positions:"
+    print("Moving atoms from special positions:", file=log)
     for spi_i in spi:
       if spi_i not in original_spi:
         new_coords = (
             real_h.atoms()[spi_i].xyz[0]+0.2,
             real_h.atoms()[spi_i].xyz[1]+0.2,
             real_h.atoms()[spi_i].xyz[2]+0.2)
-        print >> log, "  ", real_h.atoms()[spi_i].id_str(),
-        print >> log, tuple(real_h.atoms()[spi_i].xyz), "-->", new_coords
+        print("  ", real_h.atoms()[spi_i].id_str(), end=' ', file=log)
+        print(tuple(real_h.atoms()[spi_i].xyz), "-->", new_coords, file=log)
         real_h.atoms()[spi_i].set_xyz(new_coords)
   model.set_sites_cart_from_hierarchy()
 
@@ -797,7 +798,7 @@ def substitute_ss(
     grm.geometry.pair_proxies(sites_cart=model.get_sites_cart())
     grm.geometry.update_ramachandran_restraints_phi_psi_targets(
         hierarchy=model.get_hierarchy())
-    print >> log, "Outputting model before regularization %s" % processed_params.file_name_before_regularization
+    print("Outputting model before regularization %s" % processed_params.file_name_before_regularization, file=log)
 
     m_txt = model.model_as_pdb()
     g_txt = model.restraints_as_geo()
@@ -805,7 +806,7 @@ def substitute_ss(
       f.write(m_txt)
 
     geo_fname = processed_params.file_name_before_regularization[:-4]+'.geo'
-    print >> log, "Outputting geo file for regularization %s" % geo_fname
+    print("Outputting geo file for regularization %s" % geo_fname, file=log)
     with open(geo_fname, 'w') as f:
       f.write(g_txt)
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.array_family.flex
 from scitbx.array_family import flex
 
@@ -120,15 +121,15 @@ class align(ext.align):
   def show_matrix(self, data, label=None, out=None):
     if (out is None): out = sys.stdout
     if (label is not None):
-      print >> out, label
-    for a in '  '+self.seq_b: print >> out, "%5c" % a,
-    print >> out
+      print(label, file=out)
+    for a in '  '+self.seq_b: print("%5c" % a, end=' ', file=out)
+    print(file=out)
     seq = ' '+self.seq_a
     for i in range(self.m):
-      print >> out, "%5c" % seq[i],
+      print("%5c" % seq[i], end=' ', file=out)
       for j in range(self.n):
-        print >> out, "%5.1f" % data[i,j],
-      print >> out
+        print("%5.1f" % data[i,j], end=' ', file=out)
+      print(file=out)
 
   def show_matrices(self, out=None):
     for label, data in [("D", self.D),
@@ -307,13 +308,13 @@ class alignment(object):
         count += 1
         ruler += "%s"%( count%10 )
       ruler+="     "
-    print >> out
-    print >> out
+    print(file=out)
+    print(file=out)
     if comment is not None:
-      print >> out, comment
+      print(comment, file=out)
     if (show_ruler):
-      print >> out, "              "+ruler
-      print >> out
+      print("              "+ruler, file=out)
+      print(file=out)
 
     done=False
     n=len(self.a)
@@ -323,7 +324,7 @@ class alignment(object):
       offset=count*block_size*n_block
 
       # top
-      print >> out, top_str+"     ",
+      print(top_str+"     ", end=' ', file=out)
       for ii in xrange(n_block):
         start=offset+ii*block_size
         stop=offset+(ii+1)*block_size
@@ -331,11 +332,11 @@ class alignment(object):
           stop = n
         if start < n:
           tmp=self.a[start:stop]
-          print >> out, tmp, "   ",
-      print >> out
+          print(tmp, "   ", end=' ', file=out)
+      print(file=out)
 
       #middle
-      print >> out, "             ",
+      print("             ", end=' ', file=out)
       for ii in xrange(n_block):
         start=offset+ii*block_size
         stop=offset+(ii+1)*block_size
@@ -343,12 +344,12 @@ class alignment(object):
           stop = n
         if start < n:
           tmp=matches[start:stop]
-          print >> out, tmp, "   ",
+          print(tmp, "   ", end=' ', file=out)
       count += 1
-      print >> out
+      print(file=out)
 
       # bottom
-      print >> out, bot_str+"     ",
+      print(bot_str+"     ", end=' ', file=out)
       for ii in xrange(n_block):
         start=offset+ii*block_size
         stop=offset+(ii+1)*block_size
@@ -356,9 +357,9 @@ class alignment(object):
           stop = n
         if start < n:
           tmp=self.b[start:stop]
-          print >> out, tmp, "   ",
-      print >> out
-      print >> out
+          print(tmp, "   ", end=' ', file=out)
+      print(file=out)
+      print(file=out)
       if count*block_size*n_block>n:
         done=True
 

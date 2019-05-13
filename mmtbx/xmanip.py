@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx import xmanip_tasks
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
@@ -32,14 +33,14 @@ class quick_rt_mx(object):
   def show(self,out=None):
     if out is None:
       out=sys.stdout
-    print >> out
-    print >> out, "R :"
-    print >> out,  self.r().mathematica_form( one_row_per_line=True, format="%6.3f")
-    print >> out, "T :"
+    print(file=out)
+    print("R :", file=out)
+    print(self.r().mathematica_form( one_row_per_line=True, format="%6.3f"), file=out)
+    print("T :", file=out)
     for item in self.t():
-      print >> out, "%6.3f"%(item),
-    print >> out
-    print >> out
+      print("%6.3f"%(item), end=' ', file=out)
+    print(file=out)
+    print(file=out)
 
 def construct_output_labels(labels, label_appendix, out=None ):
   if out is None:
@@ -114,9 +115,9 @@ def write_as_pdb_file(input_xray_structure = None,
   if xs is None: xs = input_xray_structure
 
   if additional_remark is not None:
-    print >> out, "REMARK %s" % additional_remark
+    print("REMARK %s" % additional_remark, file=out)
   if print_cryst_and_scale:
-    print >> out, "REMARK Space group: %s" % str(xs.space_group_info())
+    print("REMARK Space group: %s" % str(xs.space_group_info()), file=out)
   else:
     xs = None
 
@@ -131,7 +132,7 @@ def write_as_pdb_file(input_xray_structure = None,
   for chain in hierarchy.chains():
     chain.id = chain_name_modifier(chain.id, chain_id_increment)
 
-  print >> out, hierarchy.as_pdb_string(crystal_symmetry=xs)
+  print(hierarchy.as_pdb_string(crystal_symmetry=xs), file=out)
 
 master_params = iotbx.phil.parse("""\
 xmanip{
@@ -247,7 +248,7 @@ xmanip{
 """, process_includes=True)
 
 def print_help(command_name):
-  print """
+  print("""
 #phil __OFF__
 \t\t%s
 
@@ -348,7 +349,7 @@ xmanip {
 
 Further details can be found in the documentation.
 
-  """%(command_name)
+  """%(command_name))
 
 def run(args, command_name="phenix.xmanip"):
   if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
@@ -365,12 +366,12 @@ def run(args, command_name="phenix.xmanip"):
     argument_interpreter = master_params.command_line_argument_interpreter(
       home_scope="map_coefs")
 
-    print >> log, "#phil __OFF__"
-    print >> log, "=========================="
-    print >> log, "          XMANIP          "
-    print >> log, "reindexing and other tasks"
-    print >> log, "=========================="
-    print >> log
+    print("#phil __OFF__", file=log)
+    print("==========================", file=log)
+    print("          XMANIP          ", file=log)
+    print("reindexing and other tasks", file=log)
+    print("==========================", file=log)
+    print(file=log)
 
 
     for arg in args:
@@ -396,10 +397,10 @@ def run(args, command_name="phenix.xmanip"):
         except Exception : pass
 
       if not arg_is_processed:
-        print >> log, "##----------------------------------------------##"
-        print >> log, "## Unknown file or keyword:", arg
-        print >> log, "##----------------------------------------------##"
-        print >> log
+        print("##----------------------------------------------##", file=log)
+        print("## Unknown file or keyword:", arg, file=log)
+        print("##----------------------------------------------##", file=log)
+        print(file=log)
         raise Sorry("Unknown file or keyword: %s" % arg)
 
     effective_params = master_params.fetch(sources=phil_objects)
@@ -431,10 +432,10 @@ def run(args, command_name="phenix.xmanip"):
       params.xmanip.input.space_group = \
         sgtbx.space_group_info( group = combined_xs.space_group() )
 
-    print >> log, "#phil __ON__"
+    print("#phil __ON__", file=log)
     new_params =  master_params.format(python_object=params)
     new_params.show(out=log)
-    print >> log, "#phil __END__"
+    print("#phil __END__", file=log)
 
     if params.xmanip.input.unit_cell is None:
       raise Sorry("unit cell not specified")
@@ -470,13 +471,13 @@ def run(args, command_name="phenix.xmanip"):
           miller_array = read_data(xray_data.file_name,
                                    xray_data.labels,
                                    phil_xs)
-          print >> log
-          print >> log, "Summary info of observed data"
-          print >> log, "============================="
+          print(file=log)
+          print("Summary info of observed data", file=log)
+          print("=============================", file=log)
           if miller_array is None:
             raise Sorry("Failed to read data. see errors above" )
           miller_array.show_summary(f=log)
-          print >> log
+          print(file=log)
 
           miller_arrays.append( miller_array )
           labels.append( miller_array.info().labels )
@@ -501,14 +502,14 @@ def run(args, command_name="phenix.xmanip"):
             if lab_name1==lab_name2:
               test+=1
           if test == 2:
-            print >> log, "\n***** You are trying to import the data with label(s) %s more then one time. ***** \n"%(str(labels[ii]))
+            print("\n***** You are trying to import the data with label(s) %s more then one time. ***** \n"%(str(labels[ii])), file=log)
       for ii in range(len(output_label_root)):
         for jj in range(ii+1,len(output_label_root)):
           if output_label_root[ii]==output_label_root[jj]:
             if write_it[ii]:
               if write_it[jj]:
-                print >> log, "Output label roots:"
-                print >> log, output_label_root
+                print("Output label roots:", file=log)
+                print(output_label_root, file=log)
                 raise Sorry( "Output labels are not unique. Modify input." )
 
 
@@ -522,10 +523,10 @@ def run(args, command_name="phenix.xmanip"):
       pdb_model = iotbx.pdb.input(
         file_name=params.xmanip.input.model.file_name)
       model = pdb_model.xray_structure_simple(crystal_symmetry=phil_xs)
-      print >> log, "Atomic model summary"
-      print >> log, "===================="
+      print("Atomic model summary", file=log)
+      print("====================", file=log)
       model.show_summary(f=log)
-      print >> log
+      print(file=log)
 
 
     write_miller_array = False
@@ -578,11 +579,11 @@ def run(args, command_name="phenix.xmanip"):
       if cb_op is None:
         raise Sorry("No change of basis operation is supplied.")
 
-      print >> log, "Supplied reindexing law:"
-      print >> log, "========================"
-      print >> log, "hkl notation: ", cb_op.as_hkl()
-      print >> log, "xyz notation: ", cb_op.as_xyz()
-      print >> log, "abc notation: ", cb_op.as_abc()
+      print("Supplied reindexing law:", file=log)
+      print("========================", file=log)
+      print("hkl notation: ", cb_op.as_hkl(), file=log)
+      print("xyz notation: ", cb_op.as_xyz(), file=log)
+      print("abc notation: ", cb_op.as_abc(), file=log)
       #----------------------------------------------------------------
       # step 4: do the reindexing
       #
@@ -604,11 +605,11 @@ def run(args, command_name="phenix.xmanip"):
       if len(new_miller_arrays)==0:
         new_miller_arrays = miller_arrays
       #----------------------------------------------------------------
-      print >> log
-      print >> log, "The data has been reindexed/manipulated"
-      print >> log, "--------------------------------------"
-      print >> log
-      print >> log, "Writing output files...."
+      print(file=log)
+      print("The data has been reindexed/manipulated", file=log)
+      print("--------------------------------------", file=log)
+      print(file=log)
+      print("Writing output files....", file=log)
 
       mtz_dataset=None
       if len(new_miller_arrays)>0:
@@ -632,14 +633,14 @@ def run(args, command_name="phenix.xmanip"):
               miller_array = miller_array,
               column_root_label = new_root)
 
-        print >> log, "Writing mtz file with name %s"%(params.xmanip.output.hklout)
+        print("Writing mtz file with name %s"%(params.xmanip.output.hklout), file=log)
         mtz_dataset.mtz_object().write(
           file_name=params.xmanip.output.hklout)
 
       #step 5b: write the new pdb file
       if new_model is not None:
         pdb_file = open( params.xmanip.output.xyzout, 'w')
-        print >> log, "Wring pdb file to: %s"%(params.xmanip.output.xyzout)
+        print("Wring pdb file to: %s"%(params.xmanip.output.xyzout), file=log)
         write_as_pdb_file(
           input_pdb = pdb_model,
           input_xray_structure = new_model,
@@ -649,7 +650,7 @@ def run(args, command_name="phenix.xmanip"):
 
         pdb_file.close()
       if ( [miller_array,new_model]).count(None)==2:
-        print >>log, "No input reflection of coordinate files have been given"
+        print("No input reflection of coordinate files have been given", file=log)
 
     if params.xmanip.parameters.action=="manipulate_pdb":
       if params.xmanip.parameters.manipulate_pdb.task == "apply_operator":
@@ -657,7 +658,7 @@ def run(args, command_name="phenix.xmanip"):
         if params.xmanip.parameters.manipulate_pdb.apply_operator.standard_operators == "user_supplied_operator":
           rt_mx = sgtbx.rt_mx(
             params.xmanip.parameters.manipulate_pdb.apply_operator.user_supplied_operator,t_den=12*8 )
-          print >> log, "Applied operator : ", rt_mx.as_xyz()
+          print("Applied operator : ", rt_mx.as_xyz(), file=log)
         if params.xmanip.parameters.manipulate_pdb.apply_operator.standard_operators == \
              "user_supplied_cartesian_rotation_matrix":
           rt = params.xmanip.parameters.manipulate_pdb.apply_operator.user_supplied_cartesian_rotation_matrix
@@ -683,23 +684,23 @@ def run(args, command_name="phenix.xmanip"):
             raise Sorry("Invalid translational vector. Please check input: %s"%(rt.t) )
           tmp_tmp_t = (tmp_tmp_t)
           rt_mx = quick_rt_mx(tmp_tmp_r, tmp_tmp_t)
-          print >> log, "User supplied cartesian matrix and vector: "
+          print("User supplied cartesian matrix and vector: ", file=log)
           rt_mx.show()
           o = matrix.sqr(model.unit_cell().orthogonalization_matrix())
           tmp_r = o.inverse()*rt_mx.r()*o
           tmp_t = o.inverse()*matrix.col(list(rt_mx.t()))
-          print >> log
-          print >> log, "Operator in fractional coordinates: "
+          print(file=log)
+          print("Operator in fractional coordinates: ", file=log)
           rt_mx = quick_rt_mx(r=tmp_r.as_float(), t=list(tmp_t))
           rt_mx.show(out=log)
-          print >> log
+          print(file=log)
 
 
         if params.xmanip.parameters.manipulate_pdb.apply_operator.invert:
           rt_mx = rt_mx.inverse()
-          print >> log
-          print >> log, "Taking inverse of given operator"
-          print >> log
+          print(file=log)
+          print("Taking inverse of given operator", file=log)
+          print(file=log)
 
         sites = model.sites_frac()
         new_sites = flex.vec3_double()
@@ -712,7 +713,7 @@ def run(args, command_name="phenix.xmanip"):
         new_model.set_sites_frac( new_sites )
         # write the new [pdb file please
         pdb_file = open( params.xmanip.output.xyzout, 'w')
-        print >> log, "Wring pdb file to: %s"%(params.xmanip.output.xyzout)
+        print("Wring pdb file to: %s"%(params.xmanip.output.xyzout), file=log)
         if params.xmanip.parameters.manipulate_pdb.apply_operator.concatenate_model:
           write_as_pdb_file( input_pdb = pdb_model,
                              input_xray_structure = model,
@@ -735,10 +736,10 @@ def run(args, command_name="phenix.xmanip"):
         if params.xmanip.parameters.manipulate_pdb.set_b:
           b_iso = params.xmanip.parameters.manipulate_pdb.b_iso
           new_model = model.set_b_iso( value = b_iso )
-          print >> log
-          print >> log, "All B-values have been set to %5.3f"%(b_iso)
-          print >> log, "Writing PDB file %s"%(params.xmanip.output.xyzout)
-          print >> log
+          print(file=log)
+          print("All B-values have been set to %5.3f"%(b_iso), file=log)
+          print("Writing PDB file %s"%(params.xmanip.output.xyzout), file=log)
+          print(file=log)
 
         pdb_file = open( params.xmanip.output.xyzout, 'w')
         write_as_pdb_file( input_pdb = pdb_model,
@@ -751,6 +752,6 @@ def run(args, command_name="phenix.xmanip"):
 
     #write the logfile
     logger = open( params.xmanip.output.logfile, 'w')
-    print >> log, "Writing log file with name %s  "%(params.xmanip.output.logfile)
-    print >> logger, string_buffer.getvalue()[0:len(string_buffer.getvalue())-1] #avoid a newline at the end ...
+    print("Writing log file with name %s  "%(params.xmanip.output.logfile), file=log)
+    print(string_buffer.getvalue()[0:len(string_buffer.getvalue())-1], file=logger) #avoid a newline at the end ...
     logger.close()

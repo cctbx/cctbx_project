@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os, sys
 import time
 from StringIO import StringIO
@@ -110,7 +111,7 @@ def test_phi_psi_key(hierarchy,
     )
                              ):
     key = threes.get_cdl_key(force_plus_one=True)
-    print key, filenames[filename][1]
+    print(key, filenames[filename][1])
     assert key == filenames[filename][1][i]
 
 def test_cdl_lookup(hierarchy,
@@ -130,9 +131,9 @@ def test_cdl_lookup(hierarchy,
       )
     key = threes.get_cdl_key(force_plus_one=True)
     key = key[-2:]
-    print 'res_type_group',res_type_group,key
+    print('res_type_group',res_type_group,key)
     restraint_values = omega_database[res_type_group][key]
-    print i, key, restraint_values[:4], filenames[filename][2]
+    print(i, key, restraint_values[:4], filenames[filename][2])
     del threes.registry.n
     threes.registry.n = {}
     assert restraint_values[:4] == filenames[filename][2][i]
@@ -150,9 +151,9 @@ def test_average(hierarchy,
     if threes.registry.n:
       atoms = hierarchy.atoms()
       for key in threes.registry.n:
-        print key
+        print(key)
         for atom in key:
-          print atoms[atom].quote()
+          print(atoms[atom].quote())
       #assert threes.registry.n.keys() == filenames[filename][3]
       assert filenames[filename][3][0] in threes.registry.n
 
@@ -175,7 +176,7 @@ def run_apply(filename, testing=False, verbose=False):
     #                       filename,
     #                       restraints_manager,
     #                       )
-    print "OK"
+    print("OK")
 
   sites_cart = processed_pdb_file.all_chain_proxies.sites_cart_exact()
   if True:
@@ -200,9 +201,9 @@ def run_apply(filename, testing=False, verbose=False):
                  filename,
                  restraints_manager,
                  )
-    print 'OK'
+    print('OK')
 
-  print 'Time to update restraints %0.5fs' % (time.time()-t0)
+  print('Time to update restraints %0.5fs' % (time.time()-t0))
   if True:
     lines = StringIO()
     restraints_manager.geometry.show_sorted(sites_cart=sites_cart,
@@ -213,20 +214,20 @@ def run_apply(filename, testing=False, verbose=False):
 
 def run(filename=None):
   if filename:
-    print 'run oCDL on',filename
+    print('run oCDL on',filename)
     run_apply(filename,
               #verbose=True,
               )
   else:
-    print 'Running tests'
+    print('Running tests')
     for filename in sorted(output_filenames):
-      print filename
+      print(filename)
       f=file(filename, "wb")
       f.write(output_filenames[filename])
       f.close()
     for i, filename in enumerate(sorted(filenames)):
       #if filename.find("_7")==-1: continue
-      print ('%s ' % filename)*5
+      print(('%s ' % filename)*5)
       run_apply(filename, testing=True)
       if i: break
 

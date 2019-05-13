@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 import iotbx.pdb.amino_acid_codes
 import sys, os
@@ -31,18 +32,18 @@ def run(args):
                 if (atom.name not in ala_atom_names):
                   ag.remove_atom(atom=atom)
                   n_atoms_removed += 1
-    print "Number of amino acid residues:", n_amino_acid_residues
-    print "Number of other residues:", n_other_residues
-    print "Number of atoms removed:", n_atoms_removed
+    print("Number of amino acid residues:", n_amino_acid_residues)
+    print("Number of other residues:", n_other_residues)
+    print("Number of atoms removed:", n_atoms_removed)
     if (n_atoms_removed != 0):
       output_pdb = "v4_truncated_to_ala_"+os.path.basename(file_name)
       if (output_pdb.endswith(".gz")): output_pdb = output_pdb[:-3]
-      print "Writing file:", output_pdb
+      print("Writing file:", output_pdb)
       pdb_obj.hierarchy.write_pdb_file(
         file_name=output_pdb,
         crystal_symmetry=pdb_obj.input.crystal_symmetry(),
         append_end=True)
-    print
+    print()
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os, sys
 import csv
 
@@ -6,8 +7,8 @@ def run(filename,
         output,
         list_type="csv",
         ):
-  print 'filename',filename
-  print 'list_type',list_type
+  print('filename',filename)
+  print('list_type',list_type)
   if list_type=="csv":
     with open(filename, 'rb') as csvfile:
       data = {}
@@ -99,7 +100,7 @@ if __name__=="__main__":
     print item
   print
 '''
-      print outl
+      print(outl)
       f=file("%s.py" % output, "wb")
       f.write(outl)
       f.close()

@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from wxtbx import bitmaps
 import wxtbx
 import wx
@@ -45,10 +46,10 @@ class plot_container(wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin):
       import matplotlib.figure
       import matplotlib.font_manager
     except ImportError, e :
-      print ""
-      print "Error loading matplotlib module:"
-      print e
-      print ""
+      print("")
+      print("Error loading matplotlib module:")
+      print(e)
+      print("")
       self.disabled = True
       self.canvas = oop.null()
       self.figure = oop.null()

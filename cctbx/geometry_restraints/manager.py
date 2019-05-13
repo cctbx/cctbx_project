@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.flags
 import cctbx.geometry_restraints.energies
@@ -1600,7 +1601,7 @@ class manager(Base_geometry):
       outf_descriptor = file_descriptor
     else:
       outf_descriptor = open(file_name, "w")
-    print >> outf_descriptor, header
+    print(header, file=outf_descriptor)
     self.show_sorted(
       sites_cart=sites_cart,
       site_labels=site_labels,
@@ -1627,7 +1628,7 @@ class manager(Base_geometry):
           site_labels=site_labels,
           f=f,
           origin_id=default_origin_id)
-      print >> f
+      print(file=f)
       for key in origin_ids.get_bond_origin_id_labels():
         origin_id=origin_ids.get_origin_id(key)
         if origin_id==default_origin_id: continue
@@ -1641,7 +1642,7 @@ class manager(Base_geometry):
             prefix="",
             origin_id=origin_id)
         if tempbuffer.getvalue().find(': 0')==-1:
-          print >> f, label, tempbuffer.getvalue()[5:]
+          print(label, tempbuffer.getvalue()[5:], file=f)
 
     for p_label, proxies, internals, i_label, keys, start in [
       ("Bond angle",
@@ -1682,7 +1683,7 @@ class manager(Base_geometry):
           site_labels=site_labels,
           f=f,
           origin_id=default_origin_id)
-        print >> f
+        print(file=f)
         for key in keys: #origin_ids.get_dihedral_origin_id_labels():
           origin_id=origin_ids.get_origin_id(key)
           if origin_id==default_origin_id: continue
@@ -1698,7 +1699,7 @@ class manager(Base_geometry):
               prefix="",
               origin_id=origin_id)
           if len(tempbuffer.getvalue()) and tempbuffer.getvalue().find(': 0')==-1:
-            print >> f, label, tempbuffer.getvalue()[start:]
+            print(label, tempbuffer.getvalue()[start:], file=f)
 
     for p_label, proxies in [
         ("Reference torsion angle", self.reference_dihedral_manager),
@@ -1720,7 +1721,7 @@ class manager(Base_geometry):
         by_value="delta",
         sites_cart=sites_cart, site_labels=site_labels, f=f,
         suppress_model_minus_vdw_greater_than=None)
-      print >> f
+      print(file=f)
 
 # This should be in model class?
 #  def nb_overlaps_info(
@@ -1820,7 +1821,7 @@ class manager(Base_geometry):
         # not writing cif_link for various reasons like programatic links
         pass
       else:
-        print origin_id_info[0]
+        print(origin_id_info[0])
         assert 0
     return links
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import pdb
 from libtbx.str_utils import show_string
 from libtbx import adopt_init_args
@@ -105,14 +106,14 @@ class link_record(object):
 def run(args, command_name="iotbx.pdb.link_as_geometry_restraints_edits"):
   for file_name in args:
     section = pdb.input(file_name=file_name).connectivity_annotation_section()
-    print "refinement.geometry_restraints.edits {"
+    print("refinement.geometry_restraints.edits {")
     for line in section:
       if (not line.startswith("LINK  ")): continue
       link = link_record(line=line)
       assert link.symops[0].strip() == "" # not implemented
       assert link.symops[1].strip() == "" # not implemented
       sys.stdout.write(link.as_geometry_restraints_edits())
-    print "}"
+    print("}")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

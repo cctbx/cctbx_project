@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import miller
 from libtbx.test_utils import approx_equal
 from cctbx import maptbx
@@ -1438,13 +1439,13 @@ def exercise():
     unit_cell=fc_2.unit_cell())
   #-----------------------------------------------------------------------------
   result = []
-  print "Original (sigma-scaled):"
+  print("Original (sigma-scaled):")
   cc = maptbx.ccv(
     centered = True,
     modified = False,
     map_1    = map_data_1,
     map_2    = map_data_2)
-  print "  CC(centered): %7.5f"%cc
+  print("  CC(centered): %7.5f"%cc)
   result.append(cc)
   #
   cc = maptbx.ccv(
@@ -1452,14 +1453,14 @@ def exercise():
     modified = False,
     map_1    = map_data_1,
     map_2    = map_data_2)
-  print "  CC(non-cen):  %7.5f"%cc
+  print("  CC(non-cen):  %7.5f"%cc)
   result.append(cc)
   assert approx_equal(result, [0.81510, 0.81510], 1.e-4)
   assert approx_equal(result[0], result[1], 1.e-6)
   #-----------------------------------------------------------------------------
   result = []
-  print "Percentile:"
-  print "  Centered:"
+  print("Percentile:")
+  print("  Centered:")
   for p in [None, 0.5,0.6,0.7,0.8,0.9,0.95,0.99]:
     cc = maptbx.ccv(
       centered   = True,
@@ -1468,13 +1469,13 @@ def exercise():
       map_1      = map_data_1,
       map_2      = map_data_2)
     result.append(cc)
-    print "    CC%s: %7.5f"%(str(p), cc)
+    print("    CC%s: %7.5f"%(str(p), cc))
   assert approx_equal(result, [0.17736, 0.12442, 0.19184, 0.32817, 0.57918,
     0.89395, 0.87455, 0.65101], 1.e-4)
   #-----------------------------------------------------------------------------
   result = []
-  print "Percentile:"
-  print "  Non-centered:"
+  print("Percentile:")
+  print("  Non-centered:")
   for p in [None, 0.5,0.6,0.7,0.8,0.9,0.95,0.99]:
     cc = maptbx.ccv(
       centered   = False,
@@ -1483,7 +1484,7 @@ def exercise():
       map_1      = map_data_1,
       map_2      = map_data_2)
     result.append(cc)
-    print "    CC%s: %7.5f"%(str(p), cc)
+    print("    CC%s: %7.5f"%(str(p), cc))
   assert approx_equal(result, [0.79293, 0.56875, 0.58151, 0.64248, 0.78119,
     0.95907, 0.95905, 0.86516], 1.e-4)
 

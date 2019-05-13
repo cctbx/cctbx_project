@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.examples import phase_o_phrenia
 from iotbx.cns import sdb_reader
 from cctbx import uctbx
@@ -47,51 +48,51 @@ def inp_as_xray_structures(inp):
     min_distance_sym_equiv)
 
 def run(server_info, inp, status):
-  print "<pre>"
+  print("<pre>")
 
   if (inp.format == "cns_sdb"):
-    print "Minimum distance between symmetrically equivalent sites:",
-    print float(inp.min_distance_sym_equiv)
-    print
+    print("Minimum distance between symmetrically equivalent sites:", end=' ')
+    print(float(inp.min_distance_sym_equiv))
+    print()
     structures = inp_as_xray_structures(inp)
     if (len(structures) == 0):
-      print "No CNS sdb files found!"
-      print
-      print "Note that each file must start with {+ file: some_file_name +}"
-      print "in order to be recognized."
-      print
+      print("No CNS sdb files found!")
+      print()
+      print("Note that each file must start with {+ file: some_file_name +}")
+      print("in order to be recognized.")
+      print()
   else:
     if (inp.ucparams is None): inp.ucparams = ""
     if (inp.sgsymbol is None): inp.sgsymbol = "P1"
     special_position_settings = io_utils.special_position_settings_from_inp(inp)
     special_position_settings.show_summary()
-    print "Minimum distance between symmetrically equivalent sites:",
-    print special_position_settings.min_distance_sym_equiv()
-    print
+    print("Minimum distance between symmetrically equivalent sites:", end=' ')
+    print(special_position_settings.min_distance_sym_equiv())
+    print()
     structures = [io_utils.structure_from_inp(inp, status, special_position_settings)]
 
   d_min = float(inp.d_min)
-  print "Minimum d-spacing:", d_min
+  print("Minimum d-spacing:", d_min)
   if (d_min <= 0.):
     raise ValueError, "d-spacing must be greater than zero."
-  print
+  print()
 
   min_peak_distance = float(inp.min_peak_distance)
-  print "Minimum peak distance:", min_peak_distance
+  print("Minimum peak distance:", min_peak_distance)
   if (min_peak_distance <= 0.):
     raise ValueError, "min_peak_distance must be greater than zero."
-  print
+  print()
 
   max_reduced_peaks = int(inp.max_reduced_peaks)
-  print "Maximum number of peaks:", max_reduced_peaks
+  print("Maximum number of peaks:", max_reduced_peaks)
   if (max_reduced_peaks <= 0):
     raise ValueError, "max_reduced_peaks must be greater than zero."
-  print
+  print()
 
   for structure in structures:
     if (inp.format == "cns_sdb"):
       structure.show_summary().show_scatterers()
-      print
+      print()
     if (structure.scatterers().size() == 0): continue
     reduced_peaks = phase_o_phrenia.calculate_exp_i_two_phi_peaks(
       xray_structure=structure,
@@ -99,17 +100,17 @@ def run(server_info, inp, status):
       min_peak_distance=min_peak_distance,
       max_reduced_peaks=max_reduced_peaks)
 
-    print "Actual number of peaks:", len(reduced_peaks)
-    print
+    print("Actual number of peaks:", len(reduced_peaks))
+    print()
 
     plot_nx = min(len(reduced_peaks), 60)
     if (plot_nx > 0):
       plot_ny = max(10, plot_nx//3)
       if (plot_nx != max_reduced_peaks):
-        print "Number of peaks used for plot:", plot_nx
-        print
-      print "Plot of relative peak heights:"
-      print
+        print("Number of peaks used for plot:", plot_nx)
+        print()
+      print("Plot of relative peak heights:")
+      print()
       plot = flex.bool(flex.grid(plot_nx, plot_ny))
       for i in xrange(plot_nx):
         height = reduced_peaks[i].height
@@ -121,15 +122,15 @@ def run(server_info, inp, status):
         for i in xrange(plot_nx):
           if (plot[(i,j)]): line += "*"
           else:                  line += " "
-        print "    |" + line.rstrip()
-      print   "    -" + "-" * plot_nx
-      print
+        print("    |" + line.rstrip())
+      print("    -" + "-" * plot_nx)
+      print()
 
-      print "Peak list:"
-      print "  Relative"
-      print "   height   Fractional coordinates"
+      print("Peak list:")
+      print("  Relative")
+      print("   height   Fractional coordinates")
       for peak in reduced_peaks:
-        print "    %5.1f" % (peak.height*100), " %8.5f %8.5f %8.5f" % peak.site
-      print
+        print("    %5.1f" % (peak.height*100), " %8.5f %8.5f %8.5f" % peak.site)
+      print()
 
-  print "</pre>"
+  print("</pre>")

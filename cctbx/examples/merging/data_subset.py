@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from scitbx.array_family import flex
 
@@ -73,7 +74,7 @@ def mapper_factory(base_class):
         return result
       self.expanded = help_expand_data(fitted)
       self.expanded_stddev = help_expand_data(fitted_stddev)
-      print "DONE UNMAPPING HERE"
+      print("DONE UNMAPPING HERE")
 
     def e_unpack(self):
       return self.expanded
@@ -131,7 +132,7 @@ def mapper_factory_with_explicit_B(base_class):
         if I_visited[s]:
           self.expanded_I[s]=fitted_I[ forward_map_I[s] ]
 
-      print "DONE UNMAPPING HERE"
+      print("DONE UNMAPPING HERE")
 
     def e_unpack(self): return (self.expanded_I, self.expanded_G,self.expanded_B)
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 pdb = """HETATM    1  N   ALA A   1      -0.424   1.960   3.877  1.00 20.00      A    N+1
 HETATM    2  H   ALA A   1       0.452   1.694   3.861  1.00 20.00      A    H
@@ -43,10 +44,10 @@ def run():
   f.write(pdb)
   f.close()
   cmd = "phenix.geometry_minimization tst_correct_hydrogens.pdb"
-  print cmd
+  print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
   cmd = "phenix.geometry_minimization tst_correct_hydrogens_minimized.pdb"
-  print cmd
+  print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
   std = StringIO.StringIO()
   ero.show_stdout(out=std)
@@ -55,9 +56,9 @@ def run():
     if line.find("chirality_residual_sum")>-1:
       chiral_energy = line
   chiral_energy = chiral_energy.split()[-1]
-  print 'chiral energy',chiral_energy
+  print('chiral energy',chiral_energy)
   assert float(chiral_energy)<0.03, 'chiral energy %0.2f greater than 0.03' % float(chiral_energy)
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   run()

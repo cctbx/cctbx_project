@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # (jEdit options) :folding=explicit:collapseFolds=1:
 ################################################################################
 #
@@ -232,10 +233,10 @@ class AlignCablamMeasures(object):
   # {{{ print_simple_similar_regions
   def print_simple_similar_regions(self, log):
     for i,ar in enumerate(self.simple_similar_region_obj.simple_aligned_regions):
-      print >> log, "similar fragment %i" % i
-      print >> log,  "mean : %.03f, diff : %i" % (ar.mean,abs(ar.aligned_residues[0][0].resnum-ar.aligned_residues[0][1].resnum))
+      print("similar fragment %i" % i, file=log)
+      print("mean : %.03f, diff : %i" % (ar.mean,abs(ar.aligned_residues[0][0].resnum-ar.aligned_residues[0][1].resnum)), file=log)
       for t in ar.aligned_residues :
-        print >> log,  t[0].id_to_str(),t[1].id_to_str()
+        print(t[0].id_to_str(),t[1].id_to_str(), file=log)
   # }}}
 
   # {{{ condense_simple_aligned_regions
@@ -286,11 +287,11 @@ class AlignCablamMeasures(object):
 
   # {{{ print_region
   def print_region(self, region, title, log):
-    print >> log, "*"*77
-    print >> log, "**** %s" % title
-    print >> log, "diff : %i" % abs(region[0][0].resnum-region[0][1].resnum)
+    print("*"*77, file=log)
+    print("**** %s" % title, file=log)
+    print("diff : %i" % abs(region[0][0].resnum-region[0][1].resnum), file=log)
     for t in region :
-      print >> log, t[0].id_to_str(), t[1].id_to_str()
+      print(t[0].id_to_str(), t[1].id_to_str(), file=log)
   # }}}
 
 # }}}

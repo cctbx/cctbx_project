@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from wxtbx.phil_controls import path, ints
 from wxtbx import phil_controls
@@ -81,7 +82,7 @@ class SelectDatasetPanelMixin(object):
       self.stack_ctrl.SetItems(choices)
 
   def OnChooseDataset(self, event):
-    print self.stack_ctrl.GetSelection()
+    print(self.stack_ctrl.GetSelection())
 
 class SelectDatasetDialog(wx.Dialog, SelectDatasetPanelMixin):
   def __init__(self, *args, **kwds):
@@ -129,10 +130,10 @@ if (__name__ == "__main__"):
   dataset, frames = select_dataset(pick_frames=True)
   if (dataset is not None):
     if (frames is not None):
-      print "Selected images:"
+      print("Selected images:")
       for frame in frames :
         file_name = dataset.get_frame_path(frame)
         assert os.path.isfile(file_name)
-        print "  " + file_name
+        print("  " + file_name)
     else :
-      print dataset
+      print(dataset)

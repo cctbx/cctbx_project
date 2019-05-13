@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from libtbx import easy_pickle
 import sys
@@ -10,7 +11,7 @@ def run(args):
       structures = [structures]
     for structure in structures:
       structure.show_summary().show_scatterers()
-      print
+      print()
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

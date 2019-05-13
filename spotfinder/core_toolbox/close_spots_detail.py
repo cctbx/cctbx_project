@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import math
 from spotfinder.array_family import flex
@@ -63,16 +64,16 @@ class NearNeighborVectors:
              self.pmax.append((locx,locy,refval))
 
   def show_maxima(self):
-    print "all maxima:",self.pmax
+    print("all maxima:",self.pmax)
 
   def show_vector_map(self):
      for x in range(-self.deltaxylimit,self.deltaxylimit+1):
       for i,y in enumerate(self.plot[x]):
         if x==0 and i==len(self.plot[x])//2:
-          print "   X",
+          print("   X", end=' ')
         else:
-          print "%4d"%y,
-      print
+          print("%4d"%y, end=' ')
+      print()
 
   def vectors(self):
     return self.pmax

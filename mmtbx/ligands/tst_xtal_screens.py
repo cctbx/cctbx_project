@@ -1,5 +1,6 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
+from __future__ import print_function
 
 def exercise():
   from mmtbx.ligands import xtal_screens
@@ -45,7 +46,7 @@ def exercise():
   assert condition.pH() == None
   assert condition.ligands() == ["CIT", "BTB", "TME", "PEG"]
 
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

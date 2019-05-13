@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import uctbx
 
 import boost.python
@@ -296,7 +297,7 @@ class space_group_info(object):
 
   def show_summary(self, f=None, prefix="Space group: "):
     if (f is None): f = sys.stdout
-    print >> f, "%s%s" % (prefix, self.symbol_and_number())
+    print("%s%s" % (prefix, self.symbol_and_number()), file=f)
 
   def number_of_continuous_allowed_origin_shifts(self):
     return self.structure_seminvariants() \
@@ -500,17 +501,17 @@ class _(boost.python.injector, ext.rt_mx):
     if out is None: out = sys.stdout
     r_info = self.r().info()
     t_info = translation_part_info(self)
-    print >>out, "%s %s" % (r_info, t_info)
+    print("%s %s" % (r_info, t_info), file=out)
 
 class _(boost.python.injector, ext.search_symmetry_flags):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "use_space_group_symmetry:", self.use_space_group_symmetry()
-    print >> f, "use_space_group_ltr:", self.use_space_group_ltr()
-    print >> f, "use_normalizer_k2l:", self.use_normalizer_k2l()
-    print >> f, "use_normalizer_l2n:", self.use_normalizer_l2n()
-    print >> f, "use_seminvariants:", self.use_seminvariants()
+    print("use_space_group_symmetry:", self.use_space_group_symmetry(), file=f)
+    print("use_space_group_ltr:", self.use_space_group_ltr(), file=f)
+    print("use_normalizer_k2l:", self.use_normalizer_k2l(), file=f)
+    print("use_normalizer_l2n:", self.use_normalizer_l2n(), file=f)
+    print("use_seminvariants:", self.use_seminvariants(), file=f)
 
 class special_op_simplified_term(libtbx.slots_getstate_setstate):
 
@@ -645,18 +646,18 @@ class _(boost.python.injector, ext.site_symmetry_table):
     assert [sites_frac_original, sites_cart_original].count(None) == 1
     assert [sites_frac_exact, sites_cart_exact].count(None) == 1
     if (out is None): out = sys.stdout
-    print >> out, prefix + "Number of sites at special positions:", \
-      self.special_position_indices().size()
+    print(prefix + "Number of sites at special positions:", \
+      self.special_position_indices().size(), file=out)
     if (self.special_position_indices().size() > 0):
       label_len = 5
       for i_seq in self.special_position_indices():
         label_len = max(label_len, len(site_labels[i_seq]))
       label_fmt = "%%-%ds"%label_len
-      print >> out, prefix \
+      print(prefix \
         + "  Minimum distance between symmetrically equivalent sites: %.4g" % (
-        special_position_settings.min_distance_sym_equiv())
-      print >> out, prefix + "  " + label_fmt%"Label" \
-        + "   Mult   Shift    Fractional coordinates"
+        special_position_settings.min_distance_sym_equiv()), file=out)
+      print(prefix + "  " + label_fmt%"Label" \
+        + "   Mult   Shift    Fractional coordinates", file=out)
       uc = special_position_settings.unit_cell()
       if (sites_frac_original is None):
         sites_frac_original = uc.fractionalize(sites_cart=sites_cart_original)
@@ -666,15 +667,15 @@ class _(boost.python.injector, ext.site_symmetry_table):
         so = sites_frac_original[i_seq]
         se = sites_frac_exact[i_seq]
         special_ops = self.get(i_seq=i_seq)
-        print >> out, prefix + "  " + label_fmt%site_labels[i_seq] \
+        print(prefix + "  " + label_fmt%site_labels[i_seq] \
           + "  %4d  %7.3f (%8.4f %8.4f %8.4f) original" % (
-          (special_ops.multiplicity(), uc.distance(so, se)) + so)
-        print >> out, prefix + label_fmt%"" \
+          (special_ops.multiplicity(), uc.distance(so, se)) + so), file=out)
+        print(prefix + label_fmt%"" \
           + "   site sym %-6s"%special_position_settings.site_symmetry(se) \
               .point_group_type() \
-          + "(%8.4f %8.4f %8.4f) exact"%se
+          + "(%8.4f %8.4f %8.4f) exact"%se, file=out)
         s = str(special_ops.special_op())
-        print >> out, prefix + label_fmt%"" + " "*(18+max(0,(26-len(s))//2)), s
+        print(prefix + label_fmt%"" + " "*(18+max(0,(26-len(s))//2)), s, file=out)
 
   def discard_symmetry(self):
     assert len(self.table())>0

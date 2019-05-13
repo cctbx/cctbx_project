@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 import cctbx.crystal.direct_space_asu
 from cctbx import xray
@@ -162,7 +163,7 @@ def exercise_asu_mappings(space_group_info, n_elements=10):
 def exercise_neighbors_pair_generators(structure, verbose=0):
   if (0 or verbose):
     structure.show_summary().show_scatterers()
-    print
+    print()
   for buffer_thickness in [1.e-5, 2, 4]:
     asu_mappings = crystal.direct_space_asu.asu_mappings(
       space_group=structure.space_group(),
@@ -328,7 +329,7 @@ def run():
     sys.argv[1:], run_call_back, show_cpu_times=False)
   exercise_is_simple_interaction()
   exercise_non_crystallographic_asu_mappings()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

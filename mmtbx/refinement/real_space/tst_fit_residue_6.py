@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import time
 import mmtbx.refinement.real_space.fit_residues
 import mmtbx.refinement.real_space
@@ -98,4 +99,4 @@ def exercise(d_min = 1.0, resolution_factor = 0.1):
 if(__name__ == "__main__"):
   t0 = time.time()
   exercise()
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

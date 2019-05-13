@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import wildcard
 
 def exercise():
@@ -21,7 +22,7 @@ def exercise():
     r"\*?[^a-z]", r"\\\*\?\[\^\a\-\z\]", escape_char='\\')
   assert not wildcard.is_match(
     r"\*?[^a-z]", r"\\\*\?\[\^\a\-\z\]")
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import fable.equivalence
 
@@ -141,7 +142,7 @@ def run(args):
     n_trials = 10
   else:
     n_trials = int(args[0])
-    print("n_trials:", n_trials)
+    print(("n_trials:", n_trials))
     assert n_trials >= 0
   def exercise_array_alignment(f):
     for n in range(2,6):

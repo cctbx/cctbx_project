@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 import boost.python
@@ -9,7 +10,7 @@ from cctbx import maptbx
 
 def run_group(symbol):
   group = space_group_info(symbol);
-  print "\n=="
+  print("\n==")
   elements = ('C', 'N', 'O', 'H')*11
   struc = random_structure.xray_structure(
     space_group_info = group,
@@ -29,18 +30,18 @@ def run_group(symbol):
   # print "grid_tags:\n", dir(grid_tags)
   # grid_tags.verify(real_map)
 
-  print "FFT grid_size = ", grid_size
+  print("FFT grid_size = ", grid_size)
   amap = asymmetric_map(struc.space_group().type(), fftmap.real_map())
   afc = amap.structure_factors(fc.indices())
   afftmap = amap.map_for_fft()
-  print "whole cell map size: ", afftmap.accessor().focus()
+  print("whole cell map size: ", afftmap.accessor().focus())
   adata = amap.data()
   acc = adata.accessor()
-  print "Asu map size: ", acc.origin(), " ", acc.last(), " ", acc.focus(), \
-      " ", acc.all()
+  print("Asu map size: ", acc.origin(), " ", acc.last(), " ", acc.focus(), \
+      " ", acc.all())
   df = flex.abs(afc - fc.data())
   r1 = flex.sum(df) / flex.sum(flex.abs(fc.data()))
-  print "R1: ", r1
+  print("R1: ", r1)
   assert r1 < 1.e-5
   # just to prove to myself that I can shift origin to 000 and then reshape back
   adata = adata.shift_origin()
@@ -51,7 +52,7 @@ def run_group(symbol):
   afc2 = amap2.structure_factors(fc.indices())
   df2 = flex.abs(afc2*.5-fc.data())
   r12 = flex.sum(df2) / flex.sum(flex.abs(fc.data()))
-  print "R1 again: ", r12
+  print("R1 again: ", r12)
   assert r12 < 1.e-5
 
   p1_map = amap.symmetry_expanded_map()
@@ -68,7 +69,7 @@ def run_group(symbol):
       mean_rel_dif = mean_rel_dif + dif/av
       n = n + 1
   mean_rel_dif = mean_rel_dif / n
-  print "mean rel err: ", mean_rel_dif
+  print("mean rel err: ", mean_rel_dif)
   assert mean_rel_dif < 1.e-6
 
 def run():

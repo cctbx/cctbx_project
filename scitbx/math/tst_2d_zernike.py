@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 import scitbx.math
 from scitbx import differential_evolution as de
 from scitbx import simplex
@@ -44,7 +45,7 @@ def generate_image(n,l, N=100):
         value = value.real
         count = count + 1
       image.append([x+N,y+N,value])
-      print>>original, x+N,y+N, value
+      print(x+N,y+N, value, file=original)
   original.close()
   return image
 
@@ -63,13 +64,13 @@ def tst_2d_zernike_mom(n,l, N=100, filename=None):
   grid_2d.clean_space( image )
   grid_2d.construct_space_sum()
   tt2=time.time()
-  print "time used: ", tt2-tt1
+  print("time used: ", tt2-tt1)
   zernike_2d_mom = scitbx.math.two_d_zernike_moments( grid_2d, nmax )
 
   moments = zernike_2d_mom.moments()
 
   tt2=time.time()
-  print "time used: ", tt2-tt1
+  print("time used: ", tt2-tt1)
 
   coefs = flex.real( moments )
   nl_array = scitbx.math.nl_array( nmax )
@@ -77,14 +78,14 @@ def tst_2d_zernike_mom(n,l, N=100, filename=None):
   nl_array.load_coefs( nls, coefs )
   lfg =  scitbx.math.log_factorial_generator(nmax)
 
-  print nl_array.get_coef(n,l)*2
+  print(nl_array.get_coef(n,l)*2)
 
   for nl, c in zip( nls, moments):
     if(abs(c)<1e-3):
       c=0
-    print nl, c
+    print(nl, c)
 
-  print
+  print()
   reconst=flex.complex_double(NP**2, 0)
   for nl,c in zip( nls, moments):
     n=nl[0]
@@ -112,7 +113,7 @@ def tst_2d_zernike_mom(n,l, N=100, filename=None):
     for y in range(0,NP):
       value=reconst[i].real
       if(value>0):
-        print>>rebuilt, x,y,image[i][2],value
+        print(x,y,image[i][2],value, file=rebuilt)
       i=i+1
 
 
@@ -133,7 +134,7 @@ def tst_2d_poly(n,l):
   zm2d = scitbx.math.two_d_zernike_moments(grid, nmax)
   xy_value=zm2d.zernike_poly(n,l,x,y)
 
-  print rt_value, xy_value, abs(rt_value), abs(xy_value)
+  print(rt_value, xy_value, abs(rt_value), abs(xy_value))
 
 def tst_2d_zm(n,l):
   nmax=max(n,20)
@@ -167,7 +168,7 @@ def tst_2d_zm(n,l):
   for nl, c in zip( nls, moments):
     if(abs(c)<1e-3):
       c=0
-    print nl, c
+    print(nl, c)
 
   NP=np*2+1
   reconst=zernike_2d_mom.zernike_map(nmax, np)
@@ -176,7 +177,7 @@ def tst_2d_zm(n,l):
     for y in range(0,NP):
       value=reconst[i].real
       if(value>0):
-        print>>output, x,y,image[i][2],value
+        print(x,y,image[i][2],value, file=output)
       i=i+1
 
 
@@ -223,7 +224,7 @@ class Bnmk(object):
     for n in range(self.nmax+1):
       for m in range(n,-1,-2):
         for k in range(m,n+1,2):
-          print n,m,k,self.get_coef(n,m,k)
+          print(n,m,k,self.get_coef(n,m,k))
 
 
 def tst_integral_triple_zernike2d(nmax):
@@ -315,7 +316,7 @@ def tst_solving_Inm(nmax):
 #      value = math.sqrt( Cnm_value/coef )
       if(coef != 0):
         value = ( Cnm_value/coef )
-        print n,m,Inm.get_coef(n,m)**2, value
+        print(n,m,Inm.get_coef(n,m)**2, value)
 
 
 class inm_refine(object):
@@ -349,8 +350,8 @@ class inm_refine(object):
       if(score < lowest_score):
         lowest_score=score
         self.best_solution=self.x.deep_copy()
-      print list(self.x), score
-    print lowest_score
+      print(list(self.x), score)
+    print(lowest_score)
 
   def run_lbfgs(self):
     self.h = 0.000001
@@ -444,11 +445,11 @@ def test_solving(nmax, m):
   for nn in range(m,nmax+1,2):
     solution.append( Inm.get_coef(nn,m) )
   for ss,xx in zip(solution, refine_de_obj.best_solution):
-    print ss,xx
-  print "score=",refine_de_obj.target(refine_de_obj.x)
-  print "score=",refine_de_obj.target(solution)
+    print(ss,xx)
+  print("score=",refine_de_obj.target(refine_de_obj.x))
+  print("score=",refine_de_obj.target(solution))
   t2 = time.time()
-  print "nmax=",nmax, "time used:", t2-t1
+  print("nmax=",nmax, "time used:", t2-t1)
 
 
 
@@ -461,7 +462,7 @@ if __name__ == "__main__":
     n2=int(args[2])
     n3=int(args[3])
     Bnmk_obj = Bnmk(max(n1,n2,n3))
-    print integrate_triple_zernike2d(n1,n2,n3,m,Bnmk_obj)
+    print(integrate_triple_zernike2d(n1,n2,n3,m,Bnmk_obj))
     exit()
 
   if(len(args) == 1):
@@ -484,10 +485,10 @@ if __name__ == "__main__":
   t1=time.time()
   tst_2d_zm(41,1)
   t2=time.time()
-  print"xy:  ", t2-t1
+  print("xy:  ", t2-t1)
   tst_2d_zernike_mom(41,1)
   t3=time.time()
-  print"rt:  ", t3-t2
+  print("rt:  ", t3-t2)
   exit()
 
   tst_2d_poly(51,19)
@@ -505,5 +506,5 @@ if __name__ == "__main__":
   tst_2d_zernike_mom(14,12)
   #tst_2d_random(20)
   t2 = time.time()
-  print "time used: ", t2-t1
-  print "OK"
+  print("time used: ", t2-t1)
+  print("OK")

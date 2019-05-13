@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 import os
 
@@ -35,7 +36,7 @@ ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
   #args.append("data_column_label=FMODEL,PHIFMODEL")
   #result = easy_run.fully_buffered(args).raise_if_errors()
   #print result.return_code
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

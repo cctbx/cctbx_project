@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from scitbx.array_family import flex
 class ccp4_model(object):
@@ -30,13 +31,13 @@ class ccp4_model(object):
     delta_I_a = a_data - mean_values
     normal_a = delta_I_a / (a_sigmas)
     stats_a = flex.mean_and_variance(normal_a)
-    print "\nA mean %7.4f std %7.4f"%(stats_a.mean(),stats_a.unweighted_sample_standard_deviation())
+    print("\nA mean %7.4f std %7.4f"%(stats_a.mean(),stats_a.unweighted_sample_standard_deviation()))
     order_a = flex.sort_permutation(normal_a)
 
     delta_I_b = b_data - mean_values
     normal_b = delta_I_b / (b_sigmas)
     stats_b = flex.mean_and_variance(normal_b)
-    print "B mean %7.4f std %7.4f"%(stats_b.mean(),stats_b.unweighted_sample_standard_deviation())
+    print("B mean %7.4f std %7.4f"%(stats_b.mean(),stats_b.unweighted_sample_standard_deviation()))
     order_b = flex.sort_permutation(normal_b)
     # plots for debugging
     from matplotlib import pyplot as plt
@@ -88,7 +89,7 @@ class ccp4_model(object):
   def optimize(a_data, b_data, a_sigmas, b_sigmas):
 
 
-    print """Fit the parameters SDfac, SDB and SDAdd using Nelder-Mead simplex method."""
+    print("""Fit the parameters SDfac, SDB and SDAdd using Nelder-Mead simplex method.""")
 
     from scitbx.simplex import simplex_opt
     class simplex_minimizer(object):
@@ -139,8 +140,8 @@ class ccp4_model(object):
           scattersb[isubsection] = flex.mean_and_variance(valsb).unweighted_sample_variance()
 
         f = flex.sum( flex.pow(1.-scatters, 2) )
-        print "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
+        print("f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd))
         return f
     optimizer = simplex_minimizer()
-    print "new parameters:",list(optimizer.x)
+    print("new parameters:",list(optimizer.x))
     return ccp4_model.apply_sd_error_params(optimizer.x,a_data, b_data, a_sigmas, b_sigmas)

@@ -9,6 +9,7 @@ new runs at 0.1 Hz.
 Example usage:
 xpp.runs_sentinel db.name=xppi6115 db.user=xppi6115 experiment=xppi6115 experiment_tag=debug web.user=<username> web.password=<password>
 """
+from __future__ import print_function
 
 import iotbx.phil
 from libtbx.utils import Usage, Sorry
@@ -89,7 +90,7 @@ def run(args):
     known_runs = [int(entry[0]) for entry in cursor.fetchall()]
     unknown_runs = [run for run in FT.rundict if run not in known_runs]
 
-    print "%d new runs"%len(unknown_runs)
+    print("%d new runs"%len(unknown_runs))
 
     # Enter any new runs into the experiment database
     if len(unknown_runs) > 0:

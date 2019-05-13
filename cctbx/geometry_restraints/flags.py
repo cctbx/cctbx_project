@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import adopt_init_args
 import sys
 
@@ -36,16 +37,16 @@ class flags(object):
 
   def show(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "geometry_restraints.manager.flags:"
-    print >> f, "  bond:", self.bond
-    print >> f, "  nonbonded:", self.nonbonded
-    print >> f, "  angle:", self.angle
-    print >> f, "  dihedral:", self.dihedral
-    print >> f, "  reference coordinate:", self.reference_coordinate
-    print >> f, "  reference dihedral:", self.reference_dihedral
-    print >> f, "  chirality:", self.chirality
-    print >> f, "  planarity:", self.planarity
-    print >> f, "  parallelity:", self.parallelity
-    print >> f, "  bond similarity:", self.bond_similarity
-    print >> f, "  ramachandran:", self.ramachandran_restraints
-    print >> f, "  DEN:", self.den_restraints
+    print("geometry_restraints.manager.flags:", file=f)
+    print("  bond:", self.bond, file=f)
+    print("  nonbonded:", self.nonbonded, file=f)
+    print("  angle:", self.angle, file=f)
+    print("  dihedral:", self.dihedral, file=f)
+    print("  reference coordinate:", self.reference_coordinate, file=f)
+    print("  reference dihedral:", self.reference_dihedral, file=f)
+    print("  chirality:", self.chirality, file=f)
+    print("  planarity:", self.planarity, file=f)
+    print("  parallelity:", self.parallelity, file=f)
+    print("  bond similarity:", self.bond_similarity, file=f)
+    print("  ramachandran:", self.ramachandran_restraints, file=f)
+    print("  DEN:", self.den_restraints, file=f)

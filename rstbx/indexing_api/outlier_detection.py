@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import math
 import scitbx.math
@@ -138,12 +139,12 @@ class find_outliers:
       #print "%10s %6d"%("TOTAL",len(self.observed_spots))
       if status_with_marked_outliers == None:
         # status_with_marked_outliers==None is shorthand for identifying the first run through
-        print """After indexing on a subset of %d spots (from all images), %d were reclassified as
+        print("""After indexing on a subset of %d spots (from all images), %d were reclassified as
       either lying on the spindle, or potential overlapped spots or ice rings."""%(
-      len(self.observed_spots),len(self.observed_spots)-class_counts["GOOD"])
+      len(self.observed_spots),len(self.observed_spots)-class_counts["GOOD"]))
       else:
-        print """Rerefinement on just the well-fit spots followed by spot reclassification
-      leaves %d good spots on which to calculate a triclinic rmsd."""%(class_counts["GOOD"])
+        print("""Rerefinement on just the well-fit spots followed by spot reclassification
+      leaves %d good spots on which to calculate a triclinic rmsd."""%(class_counts["GOOD"]))
 
     # check good spots
     if (self.good is not None):
@@ -151,7 +152,7 @@ class find_outliers:
       for i in range(len(self.observed_spots)):
         if ((current_status[i] == SpotClass.GOOD) and self.good[i]):
           match = match + 1
-      if self.verbose:print "Number of GOOD spots matched with previous model =",match
+      if self.verbose:print("Number of GOOD spots matched with previous model =",match)
 
     # calculate differences for all spots
     self.sorted_observed_spots = {}
@@ -176,9 +177,9 @@ class find_outliers:
         self.dr.append(key)
       else:
         self.not_good_dr.append(key)
-    if verbose: print ", ".join(["=".join([str(i[0]),"%d"%i[1]]) for i in spotclasses.items()]),
+    if verbose: print(", ".join(["=".join([str(i[0]),"%d"%i[1]]) for i in spotclasses.items()]), end=' ')
     totalsp = sum([spotclasses.values()[iidx] for iidx in range(len(spotclasses))])
-    if verbose: print "Total=%d"%(totalsp),"# observed spots",len(self.observed_spots)
+    if verbose: print("Total=%d"%(totalsp),"# observed spots",len(self.observed_spots))
     assert totalsp == len(self.observed_spots), "Some spot pairs have the same predicted-observed distances. Do you have duplicated images?"
 
     self.x = flex.double(len(self.dr))
@@ -219,7 +220,7 @@ class find_outliers:
     # standard deviation for cdf
     sd = math.sqrt((4.0-math.pi)/(2.0)*
                    fitted_rayleigh.x[0]*fitted_rayleigh.x[0])
-    if self.verbose:print 'Standard deviation of Rayleigh fit = %4.3f'%sd
+    if self.verbose:print('Standard deviation of Rayleigh fit = %4.3f'%sd)
     sd_data = None
     radius_outlier_index = None
     limit_outlier = None
@@ -254,7 +255,7 @@ class find_outliers:
       #assert sd_data[0][1] == green.sd_my
       #assert sd_data[1][0] == green.sd_lower_x
       #assert sd_data[1][1] == green.sd_lower_y
-      if self.verbose:print "Width of green bar = %4.3f"%(green.sd_lower_x - green.sd_mx)
+      if self.verbose:print("Width of green bar = %4.3f"%(green.sd_lower_x - green.sd_mx))
       radius_outlier_index = green.radius_outlier_index
       limit_outlier = green.limit_outlier
       sd_data = ((green.sd_mx, green.sd_my), (green.sd_lower_x, green.sd_lower_y))
@@ -311,7 +312,7 @@ class find_outliers:
         if (not ((self.dx[i] > 1.0) or (self.dx[i] < -1.0) or
                  (self.dy[i] > 1.0) or (self.dy[i] < -1.0))):
           dxdy_outliers.append((self.dx[i],self.dy[i]))
-    if verbose: print ", ".join(["=".join([str(i[0]),"%d"%i[1]]) for i in trifold.items()])
+    if verbose: print(", ".join(["=".join([str(i[0]),"%d"%i[1]]) for i in trifold.items()]))
 
     # color code observed fractions
     o_fraction = []
@@ -383,12 +384,12 @@ class find_outliers:
         count_outlier = count_outlier + 1
       elif (current_status[i] == SpotClass.GOOD):
         count_good = count_good + 1
-    if self.verbose:print 'Old GOOD =', len(self.dr),\
+    if self.verbose:print('Old GOOD =', len(self.dr),\
           'OUTLIER =', count_outlier,\
-          'New GOOD =', count_good
+          'New GOOD =', count_good)
     if horizon_phil.indexing.outlier_detection.verbose and status_with_marked_outliers is None:
-      print "\nOf the remaining %d spots, %.1f%% were lattice outliers, leaving %d well-fit spots"%(
-       len(self.dr),100.*count_outlier/len(self.dr), count_good )
+      print("\nOf the remaining %d spots, %.1f%% were lattice outliers, leaving %d well-fit spots"%(
+       len(self.dr),100.*count_outlier/len(self.dr), count_good ))
       if count_outlier==0:return
       #width of green bar is sd
       delta_spread = o_outliers_for_severity[1][1]-o_outliers_for_severity[0][1]
@@ -402,7 +403,7 @@ class find_outliers:
         #print item, expected_delta_r, (delta_r - expected_delta_r) / sd
         severity += ((delta_r - expected_delta_r) / sd)
       severity *= delta_spread
-      print "The outlier severity is %.2f sigma [defined in J Appl Cryst (2010) 43, p.611 sec. 4].\n"%severity
+      print("The outlier severity is %.2f sigma [defined in J Appl Cryst (2010) 43, p.611 sec. 4].\n"%severity)
     return current_status
 
 

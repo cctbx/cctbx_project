@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.monomer_library.server
@@ -146,7 +147,7 @@ def exercise_atom_selections():
   try:
     mon_lib_srv = monomer_library.server.server()
   except monomer_library.server.MonomerLibraryServerError:
-    print "Skipping exercise_atom_selections(): monomer library not available."
+    print("Skipping exercise_atom_selections(): monomer library not available.")
     return
   ener_lib = monomer_library.server.ener_lib()
   processed_pdb = monomer_library.pdb_interpretation.process(
@@ -187,7 +188,7 @@ def exercise_atom_selections():
 
 def exercise():
   exercise_atom_selections()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

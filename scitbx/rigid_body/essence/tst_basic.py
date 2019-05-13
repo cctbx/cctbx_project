@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import featherstone
 import body_lib
 import joint_lib
@@ -9,7 +10,7 @@ if (featherstone.scitbx is not None):
   from libtbx.test_utils import approx_equal
 else:
   def approx_equal(a1, a2): return True
-  print "libtbx.test_utils not available: approx_equal() disabled"
+  print("libtbx.test_utils not available: approx_equal() disabled")
   def sum(l):
     result = 0
     for e in l: result += e
@@ -314,7 +315,7 @@ def run(args):
   exercise_basic()
   exercise_system_model()
   exercise_system_model_with_zero_dof_body()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

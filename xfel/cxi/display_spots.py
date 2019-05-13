@@ -3,6 +3,7 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 
 import os, sys, copy
@@ -22,7 +23,7 @@ def ImageFactory(filename):
     I = FormatPYunspecified(filename).get_detectorbase()
 
   else:
-    print "This is not a file; assume the data are in the defined dictionary format"
+    print("This is not a file; assume the data are in the defined dictionary format")
     I = NpyImage(filename, source_data=parameters.horizons_phil.indexing.data)
   I.readHeader(parameters.horizons_phil)
 

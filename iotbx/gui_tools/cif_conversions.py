@@ -3,6 +3,7 @@
 # functionality
 
 from __future__ import division
+from __future__ import print_function
 import iotbx.cif
 import iotbx.phil
 from iotbx.cli_parser import run_program
@@ -44,11 +45,11 @@ def run(args=(), params=None, out=sys.stdout):
     raise Sorry(error_message)
   output_file = os.path.splitext(os.path.basename(file_name))[0]
   if (model.file_format == "pdb"):
-    print >> out, "Converting %s to mmCIF format." % file_name
+    print("Converting %s to mmCIF format." % file_name, file=out)
     run_program(program_class=pdb_as_cif.Program, args=[file_name])
     output_file += '.cif'
   elif (model.file_format == 'cif'):
-    print >> out, "Converting %s to PDB format." % file_name
+    print("Converting %s to PDB format." % file_name, file=out)
     cif_as_pdb.run([file_name])
     output_file += '.pdb'
   else:

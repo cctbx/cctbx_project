@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.emma
 # LIBTBX_SET_DISPATCHER_NAME iotbx.emma
 
@@ -164,17 +165,17 @@ def run(args, command_name="phenix.emma"):
         force=False)
   output_pdb = command_line.options.output_pdb
   if output_pdb:
-    print "Output pdb:",output_pdb
+    print("Output pdb:",output_pdb)
   tolerance = command_line.options.tolerance
-  print "Tolerance:", tolerance
+  print("Tolerance:", tolerance)
   if (tolerance <= 0.):
     raise ValueError, "Tolerance must be greater than zero."
-  print
+  print()
   diffraction_index_equivalent = \
     command_line.options.diffraction_index_equivalent
   if (diffraction_index_equivalent):
-    print "Models are diffraction index equivalent."
-    print
+    print("Models are diffraction index equivalent.")
+    print()
   second_model_as_pdb_inp=None
   emma_models = []
   for file_name in command_line.args:
@@ -200,15 +201,15 @@ def run(args, command_name="phenix.emma"):
     tolerance=tolerance,
     models_are_diffraction_index_equivalent=diffraction_index_equivalent)
   if (model_matches.n_matches() == 0):
-    print "No matches."
-    print
+    print("No matches.")
+    print()
   else:
     max_n_pairs = None
     first=True
     for match in model_matches.refined_matches:
       if (max_n_pairs is None or len(match.pairs) > max_n_pairs*0.2):
-        print "." * 79
-        print
+        print("." * 79)
+        print()
         match.show()
         if first and output_pdb: # 2013-01-25 tt
           if second_model_as_pdb_inp:
@@ -216,7 +217,7 @@ def run(args, command_name="phenix.emma"):
               template_pdb_inp=second_model_as_pdb_inp,
               f=sys.stdout)
           else:
-            print "No output model as input model was not PDB"
+            print("No output model as input model was not PDB")
         first=False
       if (max_n_pairs is None):
         max_n_pairs = len(match.pairs)

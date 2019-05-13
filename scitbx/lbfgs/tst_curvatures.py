@@ -7,6 +7,7 @@ This implementation is based on code from Ralf Grosse-Kunstleve
 in the module scitbx/lbfgs/dev/twisted_gaussian.py.
 Here, the re-usable part of the code is abstracted to a mix-in class
 that can be used by any other application wishing to use curvatures."""
+from __future__ import print_function
 
 def lbfgs_run(target_evaluator,
               min_iterations=0,
@@ -39,9 +40,9 @@ def lbfgs_run(target_evaluator,
         requests_diag=requests_diag)
       if verbose:
         if (requests_diag):
-          print "x,f,d:", tuple(x), f, tuple(d)
+          print("x,f,d:", tuple(x), f, tuple(d))
         else:
-          print "x,f:", tuple(x), f
+          print("x,f:", tuple(x), f)
       if (use_curvatures):
         from scitbx.array_family import flex
         if (d is None): d = flex.double(x.size())
@@ -141,8 +142,8 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
       max_iterations=1000,
       use_curvatures=use_curvatures)
     if self.verbose:
-      print ["%8.5f"%a for a in self.x[0::2]]
-      print ["%8.5f"%a for a in self.x[1::2]]
+      print(["%8.5f"%a for a in self.x[0::2]])
+      print(["%8.5f"%a for a in self.x[1::2]])
 
   def curvatures(self):
     from scitbx.array_family import flex
@@ -177,7 +178,7 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
       gradients[2*x] = -2. * flex.sum( delx.select(selection) )
       gradients[2*x+1]=-2. * flex.sum( dely.select(selection) )
     if self.verbose:
-      print "Functional ",math.sqrt(flex.mean(delrsq))
+      print("Functional ",math.sqrt(flex.mean(delrsq)))
     self.count_iterations += 1
     return f,gradients
 
@@ -204,8 +205,8 @@ class fit_xy_translation(lbfgs_with_curvatures_mix_in):
       self.known_mean_x.append( flex.mean( self.observed_x.select(selection) ) )
       self.known_mean_y.append( flex.mean( self.observed_y.select(selection) ) )
     if self.verbose:
-      print ["%8.5f"%a for a in self.known_mean_x]
-      print ["%8.5f"%a for a in self.known_mean_y]
+      print(["%8.5f"%a for a in self.known_mean_x])
+      print(["%8.5f"%a for a in self.known_mean_y])
 
 def run(verbose=False):
 
@@ -219,4 +220,4 @@ def run(verbose=False):
 if (__name__ == "__main__"):
 
   result = run(verbose=False)
-  print "OK"
+  print("OK")

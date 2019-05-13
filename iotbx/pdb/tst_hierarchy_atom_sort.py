@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 
 
@@ -957,4 +958,4 @@ if (__name__ == "__main__"):
   exercise_9()
   exercise_10()
   exercise_11()
-  print "OK"
+  print("OK")

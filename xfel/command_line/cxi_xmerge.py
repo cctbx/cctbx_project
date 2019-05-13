@@ -5,6 +5,7 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 
 import iotbx.phil
@@ -47,39 +48,39 @@ class xscaling_manager (scaling_manager) :
       self.n_low_corr = (self.frames["cc"]>self.params.min_corr).count(False)
       self.those_accepted = (self.frames["cc"]>self.params.min_corr)
       statsy = flex.mean_and_variance(self.frames["cc"])
-      print >> self.log, "%5d images, individual image correlation coefficients are %6.3f +/- %5.3f"%(
+      print("%5d images, individual image correlation coefficients are %6.3f +/- %5.3f"%(
                len(self.frames["cc"]),
                statsy.mean(),  statsy.unweighted_sample_standard_deviation(),
-               )
+               ), file=self.log)
     if self.params.scaling.report_ML and "half_mosaicity_deg" in self.frames:
       mosaic = self.frames["half_mosaicity_deg"].select(self.those_accepted)
       Mstat = flex.mean_and_variance(mosaic)
-      print >> self.log, "%5d images, half mosaicity is %6.3f +/- %5.3f degrees"%(
-               len(mosaic), Mstat.mean(), Mstat.unweighted_sample_standard_deviation())
+      print("%5d images, half mosaicity is %6.3f +/- %5.3f degrees"%(
+               len(mosaic), Mstat.mean(), Mstat.unweighted_sample_standard_deviation()), file=self.log)
       domain = self.frames["domain_size_ang"].select(self.those_accepted)
       Dstat = flex.mean_and_variance(domain)
-      print >> self.log, "%5d images, domain size is %6.0f +/- %5.0f Angstroms"%(
-               len(domain), Dstat.mean(), Dstat.unweighted_sample_standard_deviation())
+      print("%5d images, domain size is %6.0f +/- %5.0f Angstroms"%(
+               len(domain), Dstat.mean(), Dstat.unweighted_sample_standard_deviation()), file=self.log)
 
       invdomain = 1./domain
       Dstat = flex.mean_and_variance(invdomain)
-      print >> self.log, "%5d images, inverse domain size is %f +/- %f Angstroms"%(
-               len(domain), Dstat.mean(), Dstat.unweighted_sample_standard_deviation())
-      print >> self.log, "%5d images, domain size is %6.0f +/- %5.0f Angstroms"%(
-               len(domain), 1./Dstat.mean(), 1./Dstat.unweighted_sample_standard_deviation())
+      print("%5d images, inverse domain size is %f +/- %f Angstroms"%(
+               len(domain), Dstat.mean(), Dstat.unweighted_sample_standard_deviation()), file=self.log)
+      print("%5d images, domain size is %6.0f +/- %5.0f Angstroms"%(
+               len(domain), 1./Dstat.mean(), 1./Dstat.unweighted_sample_standard_deviation()), file=self.log)
 
     t2 = time.time()
-    print >> self.log, ""
-    print >> self.log, "#" * 80
-    print >> self.log, "FINISHED MERGING"
-    print >> self.log, "  Elapsed time: %.1fs" % (t2 - t1)
-    print >> self.log, "  %d integration files were accepted" % (
-      self.n_accepted)
-    print >> self.log, "  %d rejected due to poor correlation" % \
-      self.n_low_corr
+    print("", file=self.log)
+    print("#" * 80, file=self.log)
+    print("FINISHED MERGING", file=self.log)
+    print("  Elapsed time: %.1fs" % (t2 - t1), file=self.log)
+    print("  %d integration files were accepted" % (
+      self.n_accepted), file=self.log)
+    print("  %d rejected due to poor correlation" % \
+      self.n_low_corr, file=self.log)
 
   def read_all_mysql(self):
-    print "reading observations from %s database"%(self.params.backend)
+    print("reading observations from %s database"%(self.params.backend))
 
     if self.params.backend == 'MySQL':
       from xfel.merging.database.merging_database import manager
@@ -192,13 +193,13 @@ def run(args):
                   "].  Please set scaling.mtz_column_F to one of [" +
                   ",".join(obs_labels) + "].")
     elif not work_params.merge_anomalous and not array_SR.anomalous_flag():
-      print >> out, "Warning: Preserving anomalous contributors, but %s " \
+      print("Warning: Preserving anomalous contributors, but %s " \
         "has anomalous contributors merged.  Generating identical Bijvoet " \
-        "mates." % work_params.scaling.mtz_file
+        "mates." % work_params.scaling.mtz_file, file=out)
 
   # Read Nat's reference model from an MTZ file.  XXX The observation
   # type is given as F, not I--should they be squared?  Check with Nat!
-  print >> out, "I model"
+  print("I model", file=out)
   if work_params.model is not None:
     from xfel.merging.general_fcalc import run
     i_model = run(work_params)
@@ -208,9 +209,9 @@ def run(args):
   else:
     i_model = None
 
-  print >> out, "Target unit cell and space group:"
-  print >> out, "  ", work_params.target_unit_cell
-  print >> out, "  ", work_params.target_space_group
+  print("Target unit cell and space group:", file=out)
+  print("  ", work_params.target_unit_cell, file=out)
+  print("  ", work_params.target_space_group, file=out)
 
   miller_set, i_model = consistent_set_and_model(work_params,i_model)
 
@@ -240,12 +241,12 @@ def run(args):
     average_cell = uctbx.unit_cell(list(average_cell_abc) +
       list(work_params.target_unit_cell.parameters()[3:]))
     work_params.target_unit_cell = average_cell
-    print >> out, ""
-    print >> out, "#" * 80
-    print >> out, "RESCALING WITH NEW TARGET CELL"
-    print >> out, "  average cell: %g %g %g %g %g %g" % \
-      work_params.target_unit_cell.parameters()
-    print >> out, ""
+    print("", file=out)
+    print("#" * 80, file=out)
+    print("RESCALING WITH NEW TARGET CELL", file=out)
+    print("  average cell: %g %g %g %g %g %g" % \
+      work_params.target_unit_cell.parameters(), file=out)
+    print("", file=out)
     scaler.reset()
     scaler = xscaling_manager(
       miller_set=miller_set,
@@ -267,9 +268,9 @@ def run(args):
     try :
       plot_overall_completeness(completeness)
     except Exception as e :
-      print "ERROR: can't show plots"
-      print "  %s" % str(e)
-  print >> out, "\n"
+      print("ERROR: can't show plots")
+      print("  %s" % str(e))
+  print("\n", file=out)
 
   reserve_prefix = work_params.output.prefix
   for data_subset in [1,2,0]:
@@ -368,12 +369,12 @@ def run(args):
       work_params=work_params)
     if table1 is None:
       raise Exception("table could not be constructed")
-    print >> out, ""
+    print("", file=out)
     if work_params.scaling.algorithm == 'mark0':
       n_refl, corr = scaler.get_overall_correlation(sum_I)
     else:
       n_refl, corr = ((scaler.completeness > 0).count(True), 0)
-    print >> out, "\n"
+    print("\n", file=out)
     table2 = show_overall_observations(
       obs=miller_set_avg,
       redundancy=scaler.summed_N,
@@ -388,7 +389,7 @@ def run(args):
     if table2 is None:
       raise Exception("table could not be constructed")
 
-    print >> out, ""
+    print("", file=out)
     mtz_file, miller_array = scaler.finalize_and_save_data()
 
     loggraph_file = os.path.abspath("%s_graphs.log" % work_params.output.prefix)
@@ -424,7 +425,7 @@ def run(args):
   iselect = 1
   while iselect<work_params.output.n_bins:
     col_count1 = results.count_frames(appropriate_min_corr, miller_set_avg.binner().selection(iselect))
-    print "colcount1",col_count1
+    print("colcount1",col_count1)
     if col_count1>0: break
     iselect +=1
   if col_count1==0: raise Exception("no reflections in any bins")
@@ -440,9 +441,9 @@ def run(args):
 
   table_data.append([""] * len(table_data[0]))
   table_data.append(["All", "", '%8d' % n_frames])
-  print >> out
-  print >> out, table_utils.format(
-    table_data, has_header=1, justify='center', delim=' ')
+  print(file=out)
+  print(table_utils.format(
+    table_data, has_header=1, justify='center', delim=' '), file=out)
 
   reindexing_ops = {"h,k,l":0} # get a list of all reindexing ops for this dataset
   if work_params.merging.reverse_lookup is not None:
@@ -471,7 +472,7 @@ if (__name__ == "__main__"):
       from wxtbx.command_line import loggraph
       loggraph.run([result.loggraph_file])
     except Exception as e :
-      print "Can't display plots"
-      print "You should be able to view them by running this command:"
-      print "  wxtbx.loggraph %s" % result.loggraph_file
+      print("Can't display plots")
+      print("You should be able to view them by running this command:")
+      print("  wxtbx.loggraph %s" % result.loggraph_file)
       raise e

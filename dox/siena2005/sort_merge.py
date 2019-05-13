@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #
 # cctbx sort-merge solution for Siena exercise given by George Sheldrick
 #
@@ -49,16 +50,16 @@ def run(args):
   miller_array = miller_set.array(
     data=data,
     sigmas=sigmas).set_observation_type_xray_intensity()
-  print "Before merging:"
+  print("Before merging:")
   miller_array.show_summary()
-  print
+  print()
   merged = miller_array.merge_equivalents()
   merged.show_summary()
-  print
+  print()
   merged_array = merged.array()
-  print "After merging:"
+  print("After merging:")
   merged_array.show_comprehensive_summary()
-  print
+  print()
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

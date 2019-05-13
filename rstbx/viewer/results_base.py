@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
@@ -99,7 +100,7 @@ def load_integration_results(dir_name, base_name, image_id=1):
     sol_id_, img_id_ = suffix.split("_")
     if (int(img_id_) != image_id):
       continue
-    print "integration file: %s" % file_path
+    print("integration file: %s" % file_path)
     result = easy_pickle.load(file_path)
     results.append(result)
     summary = get_integration_summary(result, int(sol_id_))

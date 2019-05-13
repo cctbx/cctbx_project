@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys, random
 from cctbx.array_family import flex
 from iotbx import pdb
@@ -19,7 +20,7 @@ if(1):
   flex.set_random_seed(0)
 
 def show_header(l, log):
-  print >> log, l, "-"*(79-len(l))
+  print(l, "-"*(79-len(l)), file=log)
 
 def reflection_file_server(crystal_symmetry, reflection_files):
   return reflection_file_utils.reflection_file_server(
@@ -61,17 +62,17 @@ n_bins = 20
 """
 
 def defaults(log, silent):
-  if(not silent): print >> log, "Default params:\n"
+  if(not silent): print("Default params:\n", file=log)
   parsed = iotbx.phil.parse(master_params_str)
   if(not silent): parsed.show(prefix="  ", out=log)
-  if(not silent): print >> log
+  if(not silent): print(file=log)
   return parsed
 
 def run(args,
         out = None,
         log = sys.stdout):
   if(len(args)==0) or (args == ["--help"]):
-    print >> log, msg
+    print(msg, file=log)
     defaults(log=log, silent=False)
     return
   parsed = defaults(log=log, silent=True)
@@ -119,9 +120,9 @@ def run(args,
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=None
-    print >> log, "  not available"
+    print("  not available", file=log)
   else:
-    print >> log, "  flag value:", test_flag_value
+    print("  flag value:", test_flag_value, file=log)
   # Model
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(
     file_names=processed_args.pdb_file_names)
@@ -157,14 +158,14 @@ def run(args,
     twin_law       = params.twin_law)
   fmodel.update_all_scales(update_f_part1=True)
   fmodel.show(log=log, show_header=False, show_approx=False)
-  print >> log, "  r_work: %6.4f"%fmodel.r_work()
+  print("  r_work: %6.4f"%fmodel.r_work(), file=log)
   if(test_flag_value is not None):
-    print >> log, "  r_free: %6.4f"%fmodel.r_free()
+    print("  r_free: %6.4f"%fmodel.r_free(), file=log)
   else:
-    print >> log, "  r_free: None"
-  print >> log
+    print("  r_free: None", file=log)
+  print(file=log)
   n_outl = f_obs.data().size() - fmodel.f_obs().data().size()
-  print >> log, "  Number of F-obs outliers:", n_outl
+  print("  Number of F-obs outliers:", n_outl, file=log)
   #
   # Extract information from PDB file header and output (if any)
   #
@@ -188,17 +189,17 @@ def run(args,
   pub_matthews     = pdb_inp.get_matthews_coeff()
   #
   show_header(l="Information extracted from PDB file header:", log=log)
-  print >> log, "  program_name    : %-s"%format_value("%s",pub_program_name)
-  print >> log, "  year            : %-s"%format_value("%s",pdb_inp.extract_header_year())
-  print >> log, "  r_work          : %-s"%format_value("%s",pub_r_work)
-  print >> log, "  r_free          : %-s"%format_value("%s",pub_r_free)
-  print >> log, "  high_resolution : %-s"%format_value("%s",pub_high)
-  print >> log, "  low_resolution  : %-s"%format_value("%s",pub_low)
-  print >> log, "  sigma_cutoff    : %-s"%format_value("%s",pub_sigma)
-  print >> log, "  matthews_coeff  : %-s"%format_value("%s",pub_matthews)
-  print >> log, "  solvent_cont    : %-s"%format_value("%s",pub_solv_cont)
+  print("  program_name    : %-s"%format_value("%s",pub_program_name), file=log)
+  print("  year            : %-s"%format_value("%s",pdb_inp.extract_header_year()), file=log)
+  print("  r_work          : %-s"%format_value("%s",pub_r_work), file=log)
+  print("  r_free          : %-s"%format_value("%s",pub_r_free), file=log)
+  print("  high_resolution : %-s"%format_value("%s",pub_high), file=log)
+  print("  low_resolution  : %-s"%format_value("%s",pub_low), file=log)
+  print("  sigma_cutoff    : %-s"%format_value("%s",pub_sigma), file=log)
+  print("  matthews_coeff  : %-s"%format_value("%s",pub_matthews), file=log)
+  print("  solvent_cont    : %-s"%format_value("%s",pub_solv_cont), file=log)
   if(exptl_method is not None):
-    print >> log, "  exptl_method    : %-s"%format_value("%s", exptl_method)
+    print("  exptl_method    : %-s"%format_value("%s", exptl_method), file=log)
   #
   # Recompute R-factors using published cutoffs
   fmodel_cut = fmodel
@@ -218,11 +219,11 @@ def run(args,
       twin_law       = params.twin_law)
     fmodel.update_all_scales(update_f_part1=True)
     fmodel.show(log=log, show_header=False, show_approx=False)
-    print >> log, "  r_work: %6.4f"%fmodel.r_work()
+    print("  r_work: %6.4f"%fmodel.r_work(), file=log)
     if(test_flag_value is not None):
-      print >> log, "  r_free: %6.4f"%fmodel.r_free()
+      print("  r_free: %6.4f"%fmodel.r_free(), file=log)
     else:
-      print >> log, "  r_free: None"
-    print >> log
+      print("  r_free: None", file=log)
+    print(file=log)
     n_outl = f_obs.data().size() - fmodel.f_obs().data().size()
-    print >> log, "  Number of F-obs outliers:", n_outl
+    print("  Number of F-obs outliers:", n_outl, file=log)

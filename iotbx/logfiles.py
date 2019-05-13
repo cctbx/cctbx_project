@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import cStringIO
 import sys, os, re
 
@@ -450,7 +451,7 @@ def parse_xscale(lines):
       except ValueError :
         pass
       except Exception, e :
-        print line
+        print(line)
         raise
       else :
         if (d_max_file > d_max):
@@ -537,7 +538,7 @@ def exercise():
     relative_path="phenix_regression/tracking/scalepack.log",
     test=os.path.isfile)
   if (denzo_log is None):
-    print "DENZO log not found, skipping test."
+    print("DENZO log not found, skipping test.")
     return False
   info = parse_all_files([denzo_log, scalepack_log])
   output = info.format_remark_200().splitlines()
@@ -563,4 +564,4 @@ if __name__ == "__main__" :
   #info = parse_all_files(sys.argv[1:])
   #print info.format_remark_200()
   exercise()
-  print "OK"
+  print("OK")

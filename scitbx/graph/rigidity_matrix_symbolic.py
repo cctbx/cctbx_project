@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 
 if (getattr(sys, "api_version", 0) >= 1013):
@@ -177,7 +178,7 @@ def compare_int_symb(n_vertices, edge_list):
   ds = determine_degrees_of_freedom(
     n_dim=3, n_vertices=n_vertices, edge_list=edge_list)
   if (0):
-    print "dof_int:", di, "dof_symb:", ds
+    print("dof_int:", di, "dof_symb:", ds)
   assert ds == di
   if (len(edge_list) > 1):
     for i_delete in xrange(len(edge_list)):
@@ -210,4 +211,4 @@ if (__name__ == "__main__"):
     exercise()
   finally:
     t = os.times()
-    print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
+    print("u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1]))

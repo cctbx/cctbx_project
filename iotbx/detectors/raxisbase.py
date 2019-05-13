@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import struct
 
@@ -82,17 +83,17 @@ class Raxis(object):
         self.F.read(item[1])
       elif item[2]=='s':
         self.head[item[0]]=self.F.read(item[1])[0:item[1]]
-        if verbose:print item[0],self.head[item[0]]
+        if verbose:print(item[0],self.head[item[0]])
       elif len(item[2])>2:
         rawdata = self.F.read(item[1])
         assert len(rawdata)==struct.calcsize(item[2])
         self.head[item[0]] = struct.unpack(item[2],rawdata)
-        if verbose:print item[0],self.head[item[0]]
+        if verbose:print(item[0],self.head[item[0]])
       else:
         rawdata = self.F.read(item[1])
         assert len(rawdata)==struct.calcsize(item[2])
         self.head[item[0]] = struct.unpack(item[2],rawdata)[0]
-        if verbose:print item[0],self.head[item[0]]
+        if verbose:print(item[0],self.head[item[0]])
       seek+=item[1]
 
   def data(self):
@@ -124,9 +125,9 @@ class Raxis(object):
     for x in range(0,len(CharTemp),2):
       unsigned_int = struct.unpack( "!H",self.CharTemp[x:x+2] )[0]
       if unsigned_int <= 32767:
-        print float(unsigned_int)
+        print(float(unsigned_int))
       else:
-        print ( float(unsigned_int)+32768.0 ) * self.head['Ratio']
+        print(( float(unsigned_int)+32768.0 ) * self.head['Ratio'])
 
 if __name__=='__main__':
   R = Raxis('H-x071_0001.osc')

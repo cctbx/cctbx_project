@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from StringIO import StringIO
 from scitbx.math import superpose
 from scitbx.array_family import flex
@@ -355,7 +356,7 @@ class class_ncs_restraints_group_list(list):
         rmsd = copy_xyz.rms_difference(xyz)
         nrgl_ok &= (rmsd <= chain_max_rmsd)
         if (rmsd > chain_max_rmsd):
-          print >>log,'Allowed rmsd : {}, rmsd: {}'.format(chain_max_rmsd,rmsd)
+          print('Allowed rmsd : {}, rmsd: {}'.format(chain_max_rmsd,rmsd), file=log)
     return nrgl_ok
 
   def shift_translation_to_center(self, shifts):
@@ -413,23 +414,23 @@ class class_ncs_restraints_group_list(list):
     """
     For debugging
     """
-    print "debugging output of ncs_restraints_group_list"
+    print("debugging output of ncs_restraints_group_list")
     for group in self:
-      print "Master str selection:", group.master_str_selection
+      print("Master str selection:", group.master_str_selection)
       if not brief:
-        print list(group.master_iselection)
+        print(list(group.master_iselection))
       if hierarchy is not None:
-        print hierarchy.select(group.master_iselection).as_pdb_string()
+        print(hierarchy.select(group.master_iselection).as_pdb_string())
       for c in group.copies:
-        print "Copy str selection:", c.str_selection
+        print("Copy str selection:", c.str_selection)
         if not brief:
-          print list(c.iselection)
+          print(list(c.iselection))
         # print "rot", list(c.r)
         # print "tran", list(c.t)
         if hierarchy is not None:
-          print hierarchy.select(c.iselection).as_pdb_string()
-      print "="*30
-    print "end debugging output of ncs_restraints_group_list"
+          print(hierarchy.select(c.iselection).as_pdb_string())
+      print("="*30)
+    print("end debugging output of ncs_restraints_group_list")
 
 
   def get_ncs_groups_centers(self, sites_cart):

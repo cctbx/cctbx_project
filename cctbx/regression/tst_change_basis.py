@@ -1,4 +1,5 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -54,8 +55,8 @@ def exercise(
   hl_z_rad = hl_z.phase_integrals()
   if (0 or verbose):
     structure_z.show_summary().show_scatterers()
-    print "n_special_positions:", \
-          structure_z.special_position_indices().size()
+    print("n_special_positions:", \
+          structure_z.special_position_indices().size())
   z2p_op = structure_z.space_group().z2p_op()
   z2p_op = sgtbx.change_of_basis_op(
       z2p_op.c()
@@ -68,8 +69,8 @@ def exercise(
     check_site_symmetry_table(structure_z, z2p_op, structure_p)
     if (0 or verbose):
       structure_p.show_summary().show_scatterers()
-      print "n_special_positions:", \
-            structure_p.special_position_indices().size()
+      print("n_special_positions:", \
+            structure_p.special_position_indices().size())
     assert tuple(structure_p.special_position_indices()) \
         == tuple(structure_z.special_position_indices())
     structure_pz = structure_p.change_basis(z2p_op.inverse())
@@ -86,7 +87,7 @@ def exercise(
     c = flex.linear_correlation(f_abs_z.data(), f_abs_pz.data())
     assert c.is_well_defined()
     if (0 or verbose):
-      print "correlation:", c.coefficient()
+      print("correlation:", c.coefficient())
     assert c.coefficient() > 0.999
     f_p_cb = f_z.change_basis(z2p_op)
     f_abs_p_cb = f_abs_z.change_basis(z2p_op)
@@ -139,7 +140,7 @@ def exercise(
     c = flex.linear_correlation(f_abs_p_sf.data(), f_abs_p_cb.data())
     assert c.is_well_defined()
     if (0 or verbose):
-      print "correlation:", c.coefficient()
+      print("correlation:", c.coefficient())
     assert c.coefficient() > 0.999
 
 def run_call_back(flags, space_group_info):

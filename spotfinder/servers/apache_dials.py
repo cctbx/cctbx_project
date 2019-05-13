@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import StringIO
 
 def run(args, verbose=False):
@@ -42,20 +43,20 @@ def run(args, verbose=False):
   if not os.path.isfile(params.file_name):
     return str(Sorry("%s is not a readable file" % params.file_name))
 
-  print "Image: %s\n"%params.file_name
+  print("Image: %s\n"%params.file_name)
 
   try:
     experiments = ExperimentListFactory.from_filenames([params.file_name])
     assert len(experiments) == 1
     if len(experiments[0].imageset) > 0 and params.frame_number is not None:
-      print "Frame number", params.frame_number
+      print("Frame number", params.frame_number)
       experiments[0].imageset = experiments[0].imageset[params.frame_number:params.frame_number+1]
       experiments[0].scan = experiments[0].imageset.get_scan()
     reflections = flex.reflection_table.from_observations(experiments, params)
 
     if params.stats:
       from dials.algorithms.spot_finding.per_image_analysis import  stats_single_image
-      print stats_single_image(experiments[0].imageset, reflections, i=None, resolution_analysis=True, plot=False)
+      print(stats_single_image(experiments[0].imageset, reflections, i=None, resolution_analysis=True, plot=False))
 
   except Exception:
     import traceback
@@ -65,6 +66,6 @@ def run(args, verbose=False):
     traceback.print_exc(file=logger)
     return str(Sorry( logger.getvalue() )) + logfile.getvalue()
 
-  print "Found %d strong reflections"%len(reflections)
+  print("Found %d strong reflections"%len(reflections))
 
   return logfile.getvalue()

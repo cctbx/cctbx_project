@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 ########################################################################
 # (excerpted and paraphrased) email from JH 11-23-11:
@@ -62,13 +63,13 @@ def draw_plot (figure, t, det_z, laser01, laser04, laser04_power, si_foil,
   try :
     ax1.plot(t, det_z, linewidth=1, color=[1.0, 0.0, 0.0])
   except ValueError as e :
-    print "error plotting det_z:", e
-    print len(t), len(det_z)
+    print("error plotting det_z:", e)
+    print(len(t), len(det_z))
   try :
     ax2.plot(t, si_foil, linewidth=1, color=[0.2, 0.4, 0.6])
   except ValueError as e :
-    print "error plotting si_foil:", e
-    print len(t), len(si_foil)
+    print("error plotting si_foil:", e)
+    print(len(t), len(si_foil))
   ax3.plot(t, wavelength, linewidth=1, color=[0.0,1.0,0.5])
   #ax4.bar(t, bragg, facecolor=[0.0,0.5,1.0], edgecolor=[0.0,0.5,1.0])
   #ax4.plot(t, bragg, linewidth=1, color=[0.0,0.5,1.0])
@@ -152,11 +153,11 @@ class StatusFrame (wxtbx.plots.plot_frame) :
     self.SetTitle("CXI experiment status - run %d" % self.run_id)
 
   def OnSaveImage (self, event) :
-    print "StatusFrame.OnSaveImage(event)"
+    print("StatusFrame.OnSaveImage(event)")
     assert (self.run_id is not None)
     file_name = "r%d_status.png" % self.run_id
     self.plot_panel.figure.savefig(file_name, format="png")
-    print "SAVED PLOT: %s" % file_name
+    print("SAVED PLOT: %s" % file_name)
 
 class StatusPlot (wxtbx.plots.plot_container) :
   def show_plot (self, *args, **kwds) :

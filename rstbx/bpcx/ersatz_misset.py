@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 import math
 from scitbx import matrix
@@ -40,7 +41,7 @@ def ersatz_misset(integrate_lp):
 
     for j in range(len(a_s)):
         ub = matrix.sqr(a_s[j].elems + b_s[j].elems + c_s[j].elems).inverse()
-        print '%7.3f %7.3f %7.3f' % tuple(xyz_angles(ub.inverse() * ub0))
+        print('%7.3f %7.3f %7.3f' % tuple(xyz_angles(ub.inverse() * ub0)))
 
     return
 
@@ -144,8 +145,8 @@ def ersatz_misset_predict(xparm_xds, spot_xds):
         ms_y = meansd(ry_s[j])
         ms_z = meansd(rz_s[j])
 
-        print '%4d %6.3f %6.3f %6.3f' % \
-            (j, ms_x[0] - ms_x0, ms_y[0] - ms_y0, ms_z[0] - ms_z0)
+        print('%4d %6.3f %6.3f %6.3f' % \
+            (j, ms_x[0] - ms_x0, ms_y[0] - ms_y0, ms_z[0] - ms_z0))
 
 
 if __name__ == '__main__':

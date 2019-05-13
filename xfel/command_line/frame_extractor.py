@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
@@ -227,7 +228,7 @@ class ConstructFrameFromFiles(ConstructFrame):
     # experiement list
     importer = Importer([refl_name, json_name], read_experiments=True, read_reflections=True, check_format=False)
     if importer.unhandled:
-      print "unable to process:", importer.unhandled
+      print("unable to process:", importer.unhandled)
     reflections_l = flatten_reflections(importer.reflections)
     experiments_l = flatten_experiments(importer.experiments)
     assert len(experiments_l) == 1, "cannot construct a single frame from multiple experiments"
@@ -238,7 +239,7 @@ class ConstructFrameFromFiles(ConstructFrame):
 def construct_frames_from_files(refl_name, json_name, outname=None, outdir=None):
   importer = Importer([refl_name, json_name], read_experiments=True, read_reflections=True, check_format=False)
   if importer.unhandled:
-    print "unable to process:", importer.unhandled
+    print("unable to process:", importer.unhandled)
   reflections_l = flatten_reflections(importer.reflections)[0]
   experiments_l = flatten_experiments(importer.experiments)
   frames = []

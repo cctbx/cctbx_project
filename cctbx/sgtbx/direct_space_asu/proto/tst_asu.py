@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 import StringIO
 import cctbx
@@ -46,8 +47,8 @@ def loop_grid(asu, n, mn, mx, asu2=None):
     mxa[i] += 5*step[i]
     mxa[i] *= grid[i]
     mxa[i] = mxa[i].numerator()//mxa[i].denominator()+1
-  print >>cout, "grid test  step= ", step, "  min= ", mna, "  max= ", mxa, \
-      "   grid=", grid
+  print("grid test  step= ", step, "  min= ", mna, "  max= ", mxa, \
+      "   grid=", grid, file=cout)
   if isinstance(asu, new_asu.direct_space_asu):
     import copy
     # TODO: implement
@@ -91,25 +92,25 @@ def loop_grid(asu, n, mn, mx, asu2=None):
 
 def compare(spgr, n=NSteps, verbose=False):
   if verbose:
-    print cout.getvalue()
+    print(cout.getvalue())
   cout.truncate(0)
   grp = space_group_info(spgr)
-  print >>cout, "Comparing asus for group: ", spgr, "  n-steps= ", n
+  print("Comparing asus for group: ", spgr, "  n-steps= ", n, file=cout)
   asuo = grp.direct_space_asu()
-  print >>cout, "=== Original python asu ==="
+  print("=== Original python asu ===", file=cout)
   asuo.show_comprehensive_summary(cout)
-  print >>cout, ":: raw facets"
+  print(":: raw facets", file=cout)
   as_raw_asu(asuo, cout)
   mxo = tuple( asuo.box_max() )
   mno = tuple( asuo.box_min() )
-  print >>cout, "box  min= ", mno, "   max= ", mxo
+  print("box  min= ", mno, "   max= ", mxo, file=cout)
   ### NEW C++ ASU
   asun = new_asu.direct_space_asu(grp.type())
-  print >>cout, "=== New C++ asu ==="
+  print("=== New C++ asu ===", file=cout)
   asun.show_comprehensive_summary(cout)
   mnn = asun.box_min()
   mxn = asun.box_max()
-  print >>cout, "box  min= ", mnn, "   max= ", mxn
+  print("box  min= ", mnn, "   max= ", mxn, file=cout)
   assert mnn == mno
   assert mxn == mxo
   old_vertices = asuo.shape_vertices()
@@ -119,11 +120,11 @@ def compare(spgr, n=NSteps, verbose=False):
   # as mine in C++
   old_vertices = sorted(old_vertices)
   for a,b in zip(old_vertices,new_vertices):
-    print >>cout, a, " == ", b
+    print(a, " == ", b, file=cout)
     assert a == b, str(a)+" != "+str(b)
   ins,v = loop_grid(asun, n, mnn, mxn, asuo)
-  print >>cout, "N inside = ", ins, "   volume = ", v,  \
-      "   expected volume = ", rint(1,grp.group().order_z())
+  print("N inside = ", ins, "   volume = ", v,  \
+      "   expected volume = ", rint(1,grp.group().order_z()), file=cout)
   ### SHAPE ONLY
   asun.shape_only()
   asuo = asuo.shape_only()
@@ -150,7 +151,7 @@ def compare(spgr, n=NSteps, verbose=False):
   assert ((len(fasun.cuts()) < 200) & (len(fasun.cuts()) > 3)), \
     len(fasun.cuts())
   if verbose:
-    print cout.getvalue()
+    print(cout.getvalue())
   cout.truncate(0)
 
 def compare_groups(groups=SpaceGroups, n=NSteps, verbose=False):
@@ -175,7 +176,7 @@ def as_raw(c ):
 def as_raw_asu(asu, f=None):
   if (f == None): f = sys.stdout
   for cut in asu.cuts:
-    print >>f, "  & ", as_raw(cut)
+    print("  & ", as_raw(cut), file=f)
 
 
 def run():
@@ -217,10 +218,10 @@ def run():
   elif not opts.space_group is None:
     groups.append(opts.space_group)
 
-  print >>cout, "Number of groups: ", len(groups)
-  print >>cout, "Options= ", opts
+  print("Number of groups: ", len(groups), file=cout)
+  print("Options= ", opts, file=cout)
   compare_groups(groups, opts.n_steps, opts.verbose)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 
 if (__name__ == "__main__"):
@@ -229,8 +230,8 @@ if (__name__ == "__main__"):
   except Exception :
     log = cout.getvalue()
     if len(log) != 0:
-      print "<<<<<<<< Start Log:"
-      print log
-      print ">>>>>>>> End Log"
+      print("<<<<<<<< Start Log:")
+      print(log)
+      print(">>>>>>>> End Log")
     raise
 

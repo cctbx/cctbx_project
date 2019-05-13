@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import iotbx.symmetry
 from cctbx import sgtbx, uctbx
@@ -66,4 +67,4 @@ data_rfree.hkl: None None
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

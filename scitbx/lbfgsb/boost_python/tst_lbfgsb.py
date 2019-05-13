@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx import lbfgsb
 from scitbx.array_family import flex
 import scitbx.math
@@ -161,7 +162,7 @@ def driver1(use_fortran_library=False):
 def run():
   exercise_minimizer_interface()
   driver1(use_fortran_library=("--fortran" in sys.argv[1:]))
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

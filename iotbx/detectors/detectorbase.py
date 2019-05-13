@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import copy
 from iotbx.detectors import ReadADSC
@@ -253,16 +254,16 @@ DETECTOR_SN=%(DETECTOR_SN)d;
   def show_header(self, out=None):
     if (out is None):
       out = sys.stdout
-    print >> out, "File:",self.filename
-    print >> out, "Number of pixels: slow=%d fast=%d"%(self.size1,self.size2)
-    print >> out, "Pixel size: %f mm"%self.pixel_size
-    print >> out, "Saturation: %.0f"%self.saturation
-    print >> out, "Detector distance: %.2f mm"%self.distance
-    print >> out, "Detector 2theta swing: %.2f deg."%self.twotheta
-    print >> out, "Rotation start: %.2f deg."%self.osc_start
-    print >> out, "Rotation width: %.2f deg."%self.deltaphi
-    print >> out, "Beam center: x=%.2f mm  y=%.2f mm"%(self.beamx,self.beamy)
-    print >> out, "Wavelength: %f Ang."%self.wavelength
+    print("File:",self.filename, file=out)
+    print("Number of pixels: slow=%d fast=%d"%(self.size1,self.size2), file=out)
+    print("Pixel size: %f mm"%self.pixel_size, file=out)
+    print("Saturation: %.0f"%self.saturation, file=out)
+    print("Detector distance: %.2f mm"%self.distance, file=out)
+    print("Detector 2theta swing: %.2f deg."%self.twotheta, file=out)
+    print("Rotation start: %.2f deg."%self.osc_start, file=out)
+    print("Rotation width: %.2f deg."%self.deltaphi, file=out)
+    print("Beam center: x=%.2f mm  y=%.2f mm"%(self.beamx,self.beamy), file=out)
+    print("Wavelength: %f Ang."%self.wavelength, file=out)
 
   # code developed for the image viewer. phil_parameters is a scope extract
   def initialize_viewer_properties(self,phil_parameters,verbose=True):
@@ -272,7 +273,7 @@ DETECTOR_SN=%(DETECTOR_SN)d;
       beam_center_convention_from_image_object
     bc = beam_center_convention_from_image_object(self,phil_parameters)
     if verbose:
-      print "beam center convention: %d" % bc
+      print("beam center convention: %d" % bc)
     # FIXME what about 2-4 & 6-7?
     if (bc == 0):
       self._invert_beam_center = True

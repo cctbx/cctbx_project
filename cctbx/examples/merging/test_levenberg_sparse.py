@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import os
 import math
@@ -81,7 +82,7 @@ class xscale6e(object):
     self.N_I = len(Ibase)
     self.N_G = len(Gbase)
     self.N_raw_obs = FSIM.raw_obs.size()
-    print "# structure factors:",self.N_I, "# frames:",self.N_G, "(Visited set; refined parameters)"
+    print("# structure factors:",self.N_I, "# frames:",self.N_G, "(Visited set; refined parameters)")
 
     step_threshold = self.params.levmar.termination.step_threshold
     objective_decrease_threshold = self.params.levmar.termination.objective_decrease_threshold
@@ -116,26 +117,26 @@ class xscale6e(object):
     if "Deff" in self.params.levmar.parameter_flags:
       newDeff = self.helper.x[self.N_I+self.N_G:] # XXX specific
       Dstats=flex.mean_and_variance(newDeff)
-      print "Refined Deff mean & standard deviation:",
-      print Dstats.mean(),Dstats.unweighted_sample_standard_deviation()
+      print("Refined Deff mean & standard deviation:", end=' ')
+      print(Dstats.mean(),Dstats.unweighted_sample_standard_deviation())
     if "Rxy" in self.params.levmar.parameter_flags:
       AX = self.helper.x[self.N_I+self.N_G:self.N_I+2*self.N_G] # XXX specific
       AY = self.helper.x[self.N_I+2*self.N_G:self.N_I+3*self.N_G] # XXX specific
       stats=flex.mean_and_variance(AX)
-      print "Rx rotational increments in degrees: %8.6f +/- %8.6f"%(
-           stats.mean(),stats.unweighted_sample_standard_deviation())
+      print("Rx rotational increments in degrees: %8.6f +/- %8.6f"%(
+           stats.mean(),stats.unweighted_sample_standard_deviation()))
       stats=flex.mean_and_variance(AY)
-      print "Ry rotational increments in degrees: %8.6f +/- %8.6f"%(
-           stats.mean(),stats.unweighted_sample_standard_deviation())
+      print("Ry rotational increments in degrees: %8.6f +/- %8.6f"%(
+           stats.mean(),stats.unweighted_sample_standard_deviation()))
 
-    print "End of minimisation: Converged", self.helper.counter,"cycles"
+    print("End of minimisation: Converged", self.helper.counter,"cycles")
     chi_squared = self.helper.objective() * 2.
-    print "obj",chi_squared
-    print "# of obs:",FSIM.raw_obs.size()
+    print("obj",chi_squared)
+    print("# of obs:",FSIM.raw_obs.size())
     dof = FSIM.raw_obs.size() - ( len(self.x) )
-    print "degrees of freedom =",dof
-    print "chisq/dof: %7.3f"%(chi_squared / dof)
-    print
+    print("degrees of freedom =",dof)
+    print("chisq/dof: %7.3f"%(chi_squared / dof))
+    print()
 
   def packed_to_all(self,packed):
     Nx = len(self.helper.x)
@@ -154,20 +155,20 @@ class xscale6e(object):
     for islow in range(Nx):
       for ifast in range(min(max_col,Nx)):
         if matrix(islow,ifast)==0.:
-          print zformat%0,
+          print(zformat%0, end=' ')
         else:
-          print format%(matrix(islow,ifast)),
-      print
-    print
+          print(format%(matrix(islow,ifast)), end=' ')
+      print()
+    print()
   def prettynz(self, matrix, max_col=67,format="%6.0g",zformat="%6.0f"):
     Nx = len(self.helper.x)
     for x in range(Nx):
       for y in range(min(max_col,Nx)):
           if abs(matrix(x,y))< 1E-10:
-            print zformat%0,
+            print(zformat%0, end=' ')
           else:
-            print format%(matrix(x,y)),
-      print
+            print(format%(matrix(x,y)), end=' ')
+      print()
   def permutation_ordering_to_matrix(self,ordering):
     matcode = flex.int(ordering.size()**2)
     Nx = ordering.size()
@@ -222,7 +223,7 @@ class xscale6e(object):
     return col(error_diagonal_elems)
 
   def esd_plot(self):
-    print "OK esd"
+    print("OK esd")
 
     ### working on the esd problem:
     self.helper.build_up()
@@ -231,18 +232,18 @@ class xscale6e(object):
     diagonal_curvatures = self.helper.get_normal_matrix_diagonal()
     NM = sqr(norm_mat_all_elems)
 
-    print "The normal matrix is:"
+    print("The normal matrix is:")
     self.pretty(NM)
 
     from scitbx.linalg.svd import inverse_via_svd
     svd_inverse,sigma = inverse_via_svd(NM.as_flex_double_matrix())
 
-    print "ia",len(svd_inverse),len(sigma)
+    print("ia",len(svd_inverse),len(sigma))
     IA = sqr(svd_inverse)
     for i in range(self.helper.x.size()):
-      if i == self.N_I or i == self.N_I + self.N_G:  print
-      print "%2d %10.4f %10.4f %10.4f"%(
-        i, self.helper.x[i], math.sqrt(1./diagonal_curvatures[i]), math.sqrt(IA(i,i)))
+      if i == self.N_I or i == self.N_I + self.N_G:  print()
+      print("%2d %10.4f %10.4f %10.4f"%(
+        i, self.helper.x[i], math.sqrt(1./diagonal_curvatures[i]), math.sqrt(IA(i,i))))
 
     from matplotlib import pyplot as plt
     plt.plot(flex.sqrt(flex.double([IA(i,i) for i in range(self.N_I)])),
@@ -255,7 +256,7 @@ class xscale6e(object):
     # additional work to validate the Cholesky factorization and investigate stability:
     identity = IA * NM
 
-    print "verify identity:"
+    print("verify identity:")
     self.pretty(identity,max_col=58,format="%7.1g")
     # we can fool ourselves that the SVD gave us a perfect inverse:
     self.pretty(identity,max_col=72,format="%4.0f")
@@ -264,37 +265,37 @@ class xscale6e(object):
     self.helper.build_up()
 
     ordering = self.helper.get_eigen_permutation_ordering()
-    print "ordering:",list(ordering)
+    print("ordering:",list(ordering))
     matcode = self.permutation_ordering_to_matrix(ordering)
 
-    print "matcode:"
+    print("matcode:")
     self.pretty(matcode,max_col=72,format="%1d",zformat="%1d")
 
     permuted_normal_matrix = (matcode.inverse())* NM *matcode
-    print "product"
+    print("product")
     self.pretty(permuted_normal_matrix)
 
     ### Now work with the Cholesky factorization
     cholesky_fac_packed_lower = self.helper.get_cholesky_lower()
     Lower = self.lower_triangular_packed_to_matrix(cholesky_fac_packed_lower)
-    print "lower:"
+    print("lower:")
     self.pretty(Lower,max_col=59,format="%7.0g",zformat="%7.0g")
 
     Transpose = Lower.transpose()
-    print "transpose"
+    print("transpose")
     self.pretty(Transpose,max_col=59,format="%7.0g",zformat="%7.0g")
 
     diagonal_factor = self.helper.get_cholesky_diagonal()
     Diag = self.diagonal_vector_to_matrix(diagonal_factor)
-    print "diagonal:"
+    print("diagonal:")
     self.pretty(Diag,max_col=59,format="%7.0g",zformat="%7.0g")
 
     Composed = Lower * Diag * Transpose
-    print "composed"
+    print("composed")
     self.pretty(Composed,max_col=67,format="%6.0g",zformat="%6.0g")
 
     Diff = Composed - permuted_normal_matrix
-    print "diff"
+    print("diff")
     self.prettynz(Diff,max_col=67,format="%6.0g",zformat="%6.0g")
     #  OK, this proves that L * D * LT = P * A * P-1
     #  in other words, Eigen has correctly factored the permuted normal matrix
@@ -303,10 +304,10 @@ class xscale6e(object):
     Variance_diagonal = self.unstable_matrix_inversion_diagonal(Lower,Diag,Transpose)
 
     for i in range(self.helper.x.size()):
-      if i == self.N_I or i == self.N_I + self.N_G:  print
-      print "%2d %10.4f %10.4f %10.4f"%(
-        i, self.helper.x[i], math.sqrt(1./diagonal_curvatures[i]), math.sqrt(IA(i,i))),
-      print "svd err diag: %10.4f"%(IA(i,i)),"eigen: %15.4f"%(Variance_diagonal[ordering[i]])
+      if i == self.N_I or i == self.N_I + self.N_G:  print()
+      print("%2d %10.4f %10.4f %10.4f"%(
+        i, self.helper.x[i], math.sqrt(1./diagonal_curvatures[i]), math.sqrt(IA(i,i))), end=' ')
+      print("svd err diag: %10.4f"%(IA(i,i)),"eigen: %15.4f"%(Variance_diagonal[ordering[i]]))
 
   def fitted_as_annotated(self,data):
     result = {}
@@ -350,7 +351,7 @@ class xscale6e(object):
     return self.fitted_as_annotated(estimated_stddev)
 
   def show_summary(self):
-    print "%d cycles"%self.counter
+    print("%d cycles"%self.counter)
     self.helper.show_eigen_summary()
 
 class execute_case(object):
@@ -361,7 +362,7 @@ class execute_case(object):
   frames = pickle.load(open(os.path.join(datadir,"frames.pickle"),"rb"))
 
   sim = pickle.load(open(os.path.join(datadir,"simulated%05d_0.pickle"%n_frame),"rb"))
-  print "accepted obs %d"%(len(sim["observed_intensity"]))
+  print("accepted obs %d"%(len(sim["observed_intensity"])))
 
   FSIM = prepare_simulation_with_noise(sim, transmittance=transmittance,
                                        apply_noise=apply_noise,
@@ -392,7 +393,7 @@ class execute_case(object):
     plot_it(Fit["G"], model_G, mode="G")
     plot_it(Fit["B"], model_B, mode="B")
     plot_it(Fit["I"], model_I, mode="I")
-  print
+  print()
 
   if esd_plot:
     minimizer.esd_plot()
@@ -413,4 +414,4 @@ if __name__=="__main__":
   datadir = os.path.join(os.environ["HOME"],"rosie_xds","xscale_reserve") # Get files directly from author, NKS
   plot_flag=False
   execute_case(datadir, n_frame=400, transmittance=0.00001, apply_noise=True, plot=plot_flag)
-  print "OK"
+  print("OK")

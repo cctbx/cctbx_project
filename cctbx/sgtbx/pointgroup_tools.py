@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import sgtbx
 from cctbx.crystal.find_best_cell import alternative_find_best_cell
@@ -193,30 +194,30 @@ class sub_super_point_group_relations(object):
     if out is None:
       out = sys.stdout
 
-    print >> out, (
-      "Input subgroup      : %s" % sgtbx.space_group_info(group=self.sg_low))
-    print >> out, (
-      "Input lattice group : %s" % sgtbx.space_group_info(group=self.sg_high))
-    print >> out
-    print >> out
+    print((
+      "Input subgroup      : %s" % sgtbx.space_group_info(group=self.sg_low)), file=out)
+    print((
+      "Input lattice group : %s" % sgtbx.space_group_info(group=self.sg_high)), file=out)
+    print(file=out)
+    print(file=out)
     for set,group,leftover in zip(self.grouped_symops,
                                   self.sg_groups,
                                   self.left_over_symops):
       assert(len(set)+len(leftover)==len(self.symops))
-      print >> out, (
-        "Supergroup : %s" % sgtbx.space_group_info(group=group))
-      print >> out,   "             Used symops:"
+      print((
+        "Supergroup : %s" % sgtbx.space_group_info(group=group)), file=out)
+      print("             Used symops:", file=out)
       for symop in set:
-        print >> out, "             (%s)    "%(symop.r().as_hkl())
-      print >> out
-      print >> out,   "             Left over symops:"
+        print("             (%s)    "%(symop.r().as_hkl()), file=out)
+      print(file=out)
+      print("             Left over symops:", file=out)
       for symop in leftover:
         if symop is not None:
-          print >> out, "             (%s)  "%(symop.r().as_hkl())
+          print("             (%s)  "%(symop.r().as_hkl()), file=out)
         else:
-          print >> out, "             None"
-      print >> out
-      print >> out
+          print("             None", file=out)
+      print(file=out)
+      print(file=out)
 
 
 
@@ -494,7 +495,7 @@ class find_compatible_space_groups(object):
         xs_and_cb_op[1].as_xyz()
 
   def find_absent_indices():
-    print
+    print()
 
   def get_space_groups_compatible_with_likely_point_group(self):
     # loop over all standard sg's
@@ -530,8 +531,8 @@ class find_compatible_space_groups(object):
 
   def full_sys_abs_mask(self):
     # here we make a
-    print
-    print
+    print()
+    print()
 
 
 
@@ -539,16 +540,16 @@ class find_compatible_space_groups(object):
     if out == None:
       out=sys.stdout
 
-    print >> out, "Input space group  : ", sgtbx.space_group_info(
-      group=self.x_sg)
-    print >> out, "Input unit cell    : ", self.x_uc.parameters()
-    print >> out, "Likely point group : ", sgtbx.space_group_info(
-      group=self.lpg)
-    print >> out
-    print >> out, "Possible crystal symmetries: "
+    print("Input space group  : ", sgtbx.space_group_info(
+      group=self.x_sg), file=out)
+    print("Input unit cell    : ", self.x_uc.parameters(), file=out)
+    print("Likely point group : ", sgtbx.space_group_info(
+      group=self.lpg), file=out)
+    print(file=out)
+    print("Possible crystal symmetries: ", file=out)
     for sx_cb in self.allowed_under_pg_and_sys_abs:
       sx_cb.show(out)
-      print >> out
+      print(file=out)
 
 
 class node_object(object):
@@ -619,72 +620,72 @@ class space_group_graph_from_cell_and_sg(object):
 
     if out==None:
       out=sys.stdout
-    print >> out, "------------------------"
-    print >> out, "Vertices and their edges"
-    print >> out, "------------------------"
-    print >> out
+    print("------------------------", file=out)
+    print("Vertices and their edges", file=out)
+    print("------------------------", file=out)
+    print(file=out)
     for pg in self.pg_graph.graph.node_objects:
-      print >> out, "Point group  ", pg, "  is a maximal subgroup of :"
+      print("Point group  ", pg, "  is a maximal subgroup of :", file=out)
       if (len(self.pg_graph.graph.o[ str(pg) ])==0):
-        print >> out, "  * None"
+        print("  * None", file=out)
       else:
         for edge in self.pg_graph.graph.o[ str(pg) ]:
-          print >> out, "  *", edge
-      print >> out
+          print("  *", edge, file=out)
+      print(file=out)
 
-    print >> out
-    print >> out
-    print >> out, "-------------------------"
-    print >> out, "Transforming point groups"
-    print >> out, "-------------------------"
-    print >> out
+    print(file=out)
+    print(file=out)
+    print("-------------------------", file=out)
+    print("Transforming point groups", file=out)
+    print("-------------------------", file=out)
+    print(file=out)
     for pg in self.pg_graph.graph.node_objects:
       for next_pg in self.pg_graph.graph.edge_objects[ pg ]:
-        print >> out, "From", pg, "  to ", next_pg, " using :"
+        print("From", pg, "  to ", next_pg, " using :", file=out)
         for symop in self.pg_graph.graph.edge_objects[ pg ][ next_pg]\
                                         .return_used():
-          print >> out, "  * ",symop.r().as_hkl()
-        print >> out
+          print("  * ",symop.r().as_hkl(), file=out)
+        print(file=out)
 
-    print >> out
-    print >> out
-    print >> out, "----------------------"
-    print >> out, "Compatible spacegroups"
-    print >> out, "----------------------"
-    print >> out
-    print >> out, "Spacegroups compatible with a specified point group "
-    print >> out, "**and** with the systematic absenses specified by the "
-    print >> out, "input space group, are listed below."
-    print >> out
+    print(file=out)
+    print(file=out)
+    print("----------------------", file=out)
+    print("Compatible spacegroups", file=out)
+    print("----------------------", file=out)
+    print(file=out)
+    print("Spacegroups compatible with a specified point group ", file=out)
+    print("**and** with the systematic absenses specified by the ", file=out)
+    print("input space group, are listed below.", file=out)
+    print(file=out)
 
     for pg in self.pg_graph.graph.node_objects:
-      print >> out, "Spacegroup candidates in point group %s:"%(pg)
+      print("Spacegroup candidates in point group %s:"%(pg), file=out)
       for trial_sym in self.pg_graph.graph.node_objects[ pg ]\
                                     .allowed_xtal_syms:
         trial_sg = trial_sym[0].space_group_info()
-        print >> out, "  *", trial_sg,
-        print >> out, " %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f"\
+        print("  *", trial_sg, end=' ', file=out)
+        print(" %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f"\
             %(trial_sym[0].unit_cell().parameters()[0],
               trial_sym[0].unit_cell().parameters()[1],
               trial_sym[0].unit_cell().parameters()[2],
               trial_sym[0].unit_cell().parameters()[3],
               trial_sym[0].unit_cell().parameters()[4],
-              trial_sym[0].unit_cell().parameters()[5])
-      print >> out
+              trial_sym[0].unit_cell().parameters()[5]), file=out)
+      print(file=out)
 
 
   def graphviz_pg_graph(self, out=None):
     if out==None:
       out=sys.stdout
-    print >> out, "digraph f { "
-    print >> out, "rankdir=LR"
+    print("digraph f { ", file=out)
+    print("rankdir=LR", file=out)
     for pg in self.pg_graph.graph.node_objects:
       for next_pg in self.pg_graph.graph.edge_objects[ pg ]:
         pg = pg.replace("\"","''")
         next_pg = next_pg.replace("\"","''")
 
-        print >> out, "\"",pg,"\" -> \"", next_pg, "\" ;"
-    print >> out, "}"
+        print("\"",pg,"\" -> \"", next_pg, "\" ;", file=out)
+    print("}", file=out)
 
 
 def compatible_symmetries(point_group):

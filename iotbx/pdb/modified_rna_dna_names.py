@@ -10,6 +10,7 @@ This file is intended to be generated monthly.
 The date of file generation: Tue Mar 19 14:34:48 2019
 """
 from __future__ import division
+from __future__ import print_function
 
 lookup = {
   "12A" : "A",

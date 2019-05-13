@@ -5,6 +5,7 @@ random coordinates, how many configurations are found?
 """
 
 from __future__ import division
+from __future__ import print_function
 import cctbx.geometry_restraints.manager
 import cctbx.geometry_restraints.lbfgs
 from cctbx.array_family import flex
@@ -130,10 +131,10 @@ def run(args):
       rmsd = reference_sites.rms_difference(sup.other_sites_best_fit())
       rmsd_list.append(rmsd)
     oline = " ".join(["%.3f" % rmsd for rmsd in rmsd_list])
-    print >> cout, oline
+    print(oline, file=cout)
     assert is_below_limit(min(rmsd_list), 1e-3)
     conformer_counts[flex.min_index(rmsd_list)] += 1
-  print "conformer_counts:", conformer_counts
+  print("conformer_counts:", conformer_counts)
   #
   if (libtbx.env.has_module("iotbx")):
     import iotbx.pdb.hierarchy
@@ -169,7 +170,7 @@ def run(args):
     hierarchy.atoms().reset_serial()
     pdb_str = hierarchy.as_pdb_string(append_end=True)
     file_name = "puckers.pdb"
-    print "Writing file:", file_name
+    print("Writing file:", file_name)
     open(file_name, "w").write("""\
 REMARK random_puckers.py
 REMARK 1 = 3'
@@ -178,7 +179,7 @@ REMARK 3 = A
 REMARK 4 = B
 """ + pdb_str)
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import os
 import mmtbx.model
@@ -940,7 +941,7 @@ def exercise():
 ################
 
   mol_other.geometry_statistics()
-  print
+  print()
   mol.geometry_statistics()
 
 #####
@@ -956,7 +957,7 @@ def exercise():
 #####
   import sys
   mol.show_adp_statistics(out=sys.stdout)
-  print
+  print()
   mol.show_adp_statistics(out=sys.stdout)
 
   rm = mol.restraints_manager
@@ -1148,7 +1149,7 @@ END
 
 def exercise_h_counts():
   of = open("exercise_h_counts.pdb", "w")
-  print >> of, pdb_file_exercise_h_counts
+  print(pdb_file_exercise_h_counts, file=of)
   of.close()
   pdb_inp = iotbx.pdb.input(file_name = "exercise_h_counts.pdb")
   model = mmtbx.model.manager(
@@ -1173,7 +1174,7 @@ HETATM 2732  O  BHOH A 380      19.179  25.528  38.229  0.50 20.88           O
 ANISOU 2732  O  BHOH A 380     3169   2234   2532   1183    675   -168       O
 """
   of = open("exercise_5.pdb", "w")
-  print >> of, pdb_str
+  print(pdb_str, file=of)
   of.close()
   pdb_inp = iotbx.pdb.input(file_name = "exercise_5.pdb")
   model = mmtbx.model.manager(
@@ -1216,8 +1217,8 @@ def exercise_from_hierarchy():
     # assert not show_diff(geo1, geo2)
     es1 = grm1.energies_sites(m1.get_sites_cart(), compute_gradients=True)
     es2 = grm2.energies_sites(m2.get_sites_cart(), compute_gradients=True)
-    print es1.residual_sum
-    print es1.target
+    print(es1.residual_sum)
+    print(es1.target)
     assert approx_equal(es1.residual_sum, es2.residual_sum)
     assert approx_equal(es1.target, es2.target)
     assert approx_equal(es1.gradients, es2.gradients)
@@ -1339,7 +1340,7 @@ def run():
   exercise_7()
   exercise_8()
   exercise_from_hierarchy()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

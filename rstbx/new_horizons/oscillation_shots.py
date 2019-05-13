@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import math,os
 from six.moves import cStringIO as StringIO
@@ -25,7 +26,7 @@ class IntegrateCharacters:
             # Comment this "return" in for testing without the macrocycle
     #With appropriate safeguards, macrocycle gives better resolution estimate:
     A = ResolutionAnalysisMetaClass(self.triclinic['integration'], self.horizons_phil)
-    print A
+    print(A)
     safety_counter = 2
     while A.retest_required() and safety_counter > 0 and \
           A.target_resol() < fres.current_limit:
@@ -53,7 +54,7 @@ class IntegrateCharacters:
     local = copy.deepcopy(self.process_dictionary)
     local['cell']=cellstr(setting)
 
-    print "Cell in setting",setting["counter"],local["cell"]
+    print("Cell in setting",setting["counter"],local["cell"])
 
     frames = self.spotfinder_results.pd['osc_start'].keys()
     frames.sort()
@@ -79,7 +80,7 @@ class IntegrateCharacters:
     ai.setBase(P)
     ai.setWavelength(float(local['wavelength']))
     ai.setMaxcell(float(local['ref_maxcel']))
-    print "Deltaphi is",float(local['deltaphi'])
+    print("Deltaphi is",float(local['deltaphi']))
     ai.setDeltaphi(float(local['deltaphi'])*math.pi/180.)
     ai.setMosaicity(setting["mosaicity"])
     ai.setOrientation(setting["orient"])
@@ -90,11 +91,11 @@ class IntegrateCharacters:
 
     image_centers = [(math.pi/180.)*float(x) for x in local["osc_start"].values()]
 
-    print "Limiting resolution",integration_limit
+    print("Limiting resolution",integration_limit)
     local["results"] = []
     for i in range(len(frames)):
-      print "---------BEGIN Integrate one frame %d %s" % \
-          (frames[i], os.path.split(self.files.filenames()[i])[-1])
+      print("---------BEGIN Integrate one frame %d %s" % \
+          (frames[i], os.path.split(self.files.filenames()[i])[-1]))
       #P = Profiler("worker")
       if self.horizons_phil.integration.combine_sym_constraints_and_3D_target and setting["counter"]>1:
         from rstbx.apps.stills.dials_refinement_preceding_integration import integrate_one_frame
@@ -128,8 +129,8 @@ class IntegrateCharacters:
       integrate_worker.initialize_increments(i)
       integrate_worker.horizons_phil = self.horizons_phil
       if self.horizons_phil.indexing.verbose_cv:
-        print "EFFECTIVE TILING"," ".join(
-          ["%d"%z for z in refimage.get_tile_manager(self.horizons_phil).effective_tiling_as_flex_int()])
+        print("EFFECTIVE TILING"," ".join(
+          ["%d"%z for z in refimage.get_tile_manager(self.horizons_phil).effective_tiling_as_flex_int()]))
       integrate_worker.integration_concept(image_number = i,
         cb_op_to_primitive = setting["cb_op_inp_best"].inverse(),
         verbose_cv = self.horizons_phil.indexing.verbose_cv,
@@ -243,7 +244,7 @@ class IntegrateCharacters:
         assert info["predictions"].size() == info["hkllist"].size()
         G = open(filename,"wb")
         pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
-      print "---------END Integrate one frame",frames[i]
+      print("---------END Integrate one frame",frames[i])
 
     return local
 
@@ -271,7 +272,7 @@ class IntegrateCharacters:
         integration_limit=float(self.triclinic['integration']['resolution']))
 
       A = ResolutionAnalysisMetaClass(index['integration'],self.horizons_phil)
-      print A
+      print(A)
       if (self.horizons_phil.known_cell!=None or
          self.horizons_phil.known_symmetry!=None):
         self.best_counter = index['counter']
@@ -323,33 +324,33 @@ class IntegrateCharacters:
           return info
 
   def show(self):
-    print
-    print "New Horizons Integration results:"
-    print "Solution  SpaceGroup Beam x   y  distance  Resolution Mosaicity RMS"
+    print()
+    print("New Horizons Integration results:")
+    print("Solution  SpaceGroup Beam x   y  distance  Resolution Mosaicity RMS")
     for index in self.M.best():
       if 'integration' in index:
         limitobject = ResolutionAnalysisMetaClass( index['integration'], self.horizons_phil )
         if index['counter']==self.best_counter:
-          print ":)",
+          print(":)", end=' ')
           self.process_dictionary['best_integration']=index
-        else: print "  ",
+        else: print("  ", end=' ')
         # only write out the triclinic integration results if there is
         #  an application for the data--future expansion
         if index['counter']==1 and len(self.M.best())>1:
           self.process_dictionary['triclinic']=index
-        print "%3d"%index['counter'],
-        print "%12s"%index['integration']["spacegroup"],
-        print "%6.2f %6.2f"%(float(index['integration']["r_xbeam"]),
-                             float(index['integration']["r_ybeam"])),
-        print "%7.2f   "%(float(index['integration']["r_distance"])),
+        print("%3d"%index['counter'], end=' ')
+        print("%12s"%index['integration']["spacegroup"], end=' ')
+        print("%6.2f %6.2f"%(float(index['integration']["r_xbeam"]),
+                             float(index['integration']["r_ybeam"])), end=' ')
+        print("%7.2f   "%(float(index['integration']["r_distance"])), end=' ')
         if limitobject.value == 0.00:
           #Analysis of mtz file gives no resolution estimate; revert to limit detected by spotpicking
           index['integration']['r_resolution'] = float(self.process_dictionary["resolution_inspection"])
         else: index['integration']['r_resolution'] = limitobject.value
-        print "%7.2f   "%index['integration']['r_resolution'],
-        print index['integration']["r_mosaicity"],
-        print "  ",
-        print "%5.3f"%index['integration']["r_residual"]
+        print("%7.2f   "%index['integration']['r_resolution'], end=' ')
+        print(index['integration']["r_mosaicity"], end=' ')
+        print("  ", end=' ')
+        print("%5.3f"%index['integration']["r_residual"])
 
         continue # the following code merely demonstrates the unpacking of partiality info
         if hasattr(index["integration"]["results"][0],"partialities"):
@@ -363,7 +364,7 @@ class IntegrateCharacters:
             hkl = hackobs.indices()[idx]
             thisobs = hackobs.data()[idx]
             lookupidx = hackhkl.index(hkl)
-            print hkl,thisobs,hackhkl[lookupidx],hackpart[lookupidx]
+            print(hkl,thisobs,hackhkl[lookupidx],hackpart[lookupidx])
             if thisobs>0.:
               resolution = hackobs.unit_cell().d(hkl)
               if resolution > 2.5 and resolution < 4.0:
@@ -389,7 +390,7 @@ class IntegrateCharacters:
                    horizons_phil = self.horizons_phil)
         except: # intentional
           #Numpy multiarray.error raises an object not derived from Exception
-          print "Catch any problem with sublattice analysis & numpy masked arrays"
+          print("Catch any problem with sublattice analysis & numpy masked arrays")
           return
 
 class limits_fix_engine:
@@ -496,8 +497,8 @@ class ResLimitControl:
       """
     self.current_limit = self.initial_limit
   def show(self):
-    print "initial resolution limit",self.initial_limit
-    print "outer resolution limit",self.outer_limit
+    print("initial resolution limit",self.initial_limit)
+    print("outer resolution limit",self.outer_limit)
   def limits(self):
     yield self.current_limit
     while True:
@@ -523,7 +524,7 @@ class ResolutionAnalysisMetaClass(get_limits):
       get_limits.__init__(self,params=integration_dict,file=file,horizons_phil=self.horizons_phil)
     except: # intentional
       #Numpy multiarray.error raises an object not derived from Exception
-      print "Catch any problem with stats mtz & numpy masked arrays"
+      print("Catch any problem with stats mtz & numpy masked arrays")
 
   def retest_required(self):
     return self.status.require_expanded_limit != None

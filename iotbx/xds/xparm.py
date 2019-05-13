@@ -7,6 +7,7 @@
 #   Class to read all the data from a (G)XPARM.XDS file
 #
 from __future__ import division
+from __future__ import print_function
 import sys
 from libtbx import adopt_init_args
 
@@ -221,28 +222,28 @@ class writer(object):
     """
     if out is None:
       out = sys.stdout
-    print >> out, "XPARM.XDS"
-    print >> out, "%6i %13.4f %9.4f" %(
-      self.starting_frame, self.starting_angle, self.oscillation_range),
-    print >> out, "%9.6f %9.6f %9.6f" %(self.rotation_axis)
-    print >> out, " %14.6f" %self.wavelength,
-    print >> out, "%14.6f %14.6f %14.6f" %(self.beam_vector)
-    print >> out, "   %3i" %(self.space_group),
-    print >> out, "%11.4f %11.4f %11.4f %7.3f %7.3f %7.3f" %self.unit_cell
-    print >> out, " %14.6f  %14.6f  %14.6f" %self.unit_cell_a_axis
-    print >> out, " %14.6f  %14.6f  %14.6f" %self.unit_cell_b_axis
-    print >> out, " %14.6f  %14.6f  %14.6f" %self.unit_cell_c_axis
-    print >> out, " %8i %9i %9i %11.6f %11.6f" %(
+    print("XPARM.XDS", file=out)
+    print("%6i %13.4f %9.4f" %(
+      self.starting_frame, self.starting_angle, self.oscillation_range), end=' ', file=out)
+    print("%9.6f %9.6f %9.6f" %(self.rotation_axis), file=out)
+    print(" %14.6f" %self.wavelength, end=' ', file=out)
+    print("%14.6f %14.6f %14.6f" %(self.beam_vector), file=out)
+    print("   %3i" %(self.space_group), end=' ', file=out)
+    print("%11.4f %11.4f %11.4f %7.3f %7.3f %7.3f" %self.unit_cell, file=out)
+    print(" %14.6f  %14.6f  %14.6f" %self.unit_cell_a_axis, file=out)
+    print(" %14.6f  %14.6f  %14.6f" %self.unit_cell_b_axis, file=out)
+    print(" %14.6f  %14.6f  %14.6f" %self.unit_cell_c_axis, file=out)
+    print(" %8i %9i %9i %11.6f %11.6f" %(
       self.num_segments, self.detector_size[0], self.detector_size[1],
-      self.pixel_size[0], self.pixel_size[1])
-    print >> out, " %14.6f %14.6f" %self.detector_origin,
-    print >> out, " %14.6f" %self.detector_distance
-    print >> out, " %14.6f %14.6f %14.6f" %self.detector_x_axis
-    print >> out, " %14.6f %14.6f %14.6f" %self.detector_y_axis
-    print >> out, " %14.6f %14.6f %14.6f" %self.detector_normal
+      self.pixel_size[0], self.pixel_size[1]), file=out)
+    print(" %14.6f %14.6f" %self.detector_origin, end=' ', file=out)
+    print(" %14.6f" %self.detector_distance, file=out)
+    print(" %14.6f %14.6f %14.6f" %self.detector_x_axis, file=out)
+    print(" %14.6f %14.6f %14.6f" %self.detector_y_axis, file=out)
+    print(" %14.6f %14.6f %14.6f" %self.detector_normal, file=out)
     for i in range(self.num_segments):
-      print >> out, " %9i %9i %9i %9i %9i" %tuple(self.segments[i])
-      print >> out, "".join([" %7.2f"*3] + [" %8.5f"]*6) %tuple(self.orientation[i])
+      print(" %9i %9i %9i %9i %9i" %tuple(self.segments[i]), file=out)
+      print("".join([" %7.2f"*3] + [" %8.5f"]*6) %tuple(self.orientation[i]), file=out)
 
   def write_file(self, filename):
     with open(filename, 'wb') as f:

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.eltbx import xray_scattering
 import sys
 
@@ -69,22 +70,22 @@ def run(args):
   iso_it = xray_scattering.it1992("Hiso").fetch()
   iso_wk = xray_scattering.wk1995("Hiso").fetch()
   iso_ng = xray_scattering.n_gaussian_table_entry("Hiso", 6).gaussian()
-  print "@with g0"
-  print '@ s0 legend "SDS ITC Tab 6.1.1.2"'
+  print("@with g0")
+  print('@ s0 legend "SDS ITC Tab 6.1.1.2"')
   for i,lbl in enumerate(["SDS IT", "SDS WK", "SDS NG",
                           "ISO IT", "ISO WK", "ISO NG"]):
-    print '@ s%d legend "%s"' % (i+1, lbl)
-  print "@ s0 symbol 1"
-  print "@ s0 line linestyle 0"
+    print('@ s%d legend "%s"' % (i+1, lbl))
+  print("@ s0 symbol 1")
+  print("@ s0 line linestyle 0")
   for x,y in itc_tab_6112:
-    print x, y
-  print "&"
+    print(x, y)
+  print("&")
   n_samples = 1000
   for g in [sds_it, sds_wk, sds_ng, iso_it, iso_wk, iso_ng]:
     for i_stol in xrange(n_samples+1):
       stol = 6 * i_stol / n_samples
-      print stol, g.at_stol(stol)
-    print "&"
+      print(stol, g.at_stol(stol))
+    print("&")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

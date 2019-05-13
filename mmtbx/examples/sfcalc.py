@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 from cctbx import sgtbx
 import cctbx.xray.structure_factors
@@ -66,9 +67,9 @@ sfcalc{
 """)
 
 def print_help():
-  print """
+  print("""
 No help
-  """
+  """)
 
 
 def sfcalc(args):
@@ -92,11 +93,11 @@ def sfcalc(args):
     argument_interpreter = master_params.command_line_argument_interpreter(
       home_scope="sfcalc")
 
-    print >> log, "#phil __OFF__"
-    print >> log, "================="
-    print >> log, "     SFCALC      "
-    print >> log, "================="
-    print >> log
+    print("#phil __OFF__", file=log)
+    print("=================", file=log)
+    print("     SFCALC      ", file=log)
+    print("=================", file=log)
+    print(file=log)
 
 
     for arg in args:
@@ -122,10 +123,10 @@ def sfcalc(args):
         except Exception : pass
 
       if not arg_is_processed:
-        print >> log, "##----------------------------------------------##"
-        print >> log, "## Unknown file or keyword:", arg
-        print >> log, "##----------------------------------------------##"
-        print >> log
+        print("##----------------------------------------------##", file=log)
+        print("## Unknown file or keyword:", arg, file=log)
+        print("##----------------------------------------------##", file=log)
+        print(file=log)
         raise Sorry("Unknown file or keyword: %s" % arg)
 
     effective_params = master_params.fetch(sources=phil_objects)
@@ -157,20 +158,20 @@ def sfcalc(args):
     params.sfcalc.input.space_group = \
       sgtbx.space_group_info( group = combined_xs.space_group() )
 
-    print >> log, "#phil __ON__"
+    print("#phil __ON__", file=log)
     new_params =  master_params.format(python_object=params)
     new_params.show(out=log)
-    print >> log, "#phil __END__"
+    print("#phil __END__", file=log)
 
     pdb_model = None
 
     if params.sfcalc.input.model.file_name is not None:
       pdb_model = pdb.input(file_name=params.sfcalc.input.model.file_name)
       model = pdb_model.xray_structure_simple(crystal_symmetry=phil_xs)
-      print >> log, "Atomic model summary"
-      print >> log, "===================="
+      print("Atomic model summary", file=log)
+      print("====================", file=log)
       model.show_summary()
-      print >> log
+      print(file=log)
 
       #make an f_model object please
       b_cart = params.sfcalc.parameters.overall.b_cart
@@ -222,9 +223,9 @@ def sfcalc(args):
 
     #write the logfile
     logger = open( params.sfcalc.output.logfile, 'w')
-    print >> log, "writing log file with name %s"%(params.sfcalc.output.logfile)
-    print >> log
-    print >> logger, string_buffer.getvalue()
+    print("writing log file with name %s"%(params.sfcalc.output.logfile), file=log)
+    print(file=log)
+    print(string_buffer.getvalue(), file=logger)
 
 
 

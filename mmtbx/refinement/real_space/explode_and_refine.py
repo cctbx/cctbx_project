@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from  mmtbx.refinement import geometry_minimization
 import mmtbx.refinement.real_space.individual_sites
 from cctbx import maptbx
@@ -246,7 +247,7 @@ class run(object):
     self.xray_structure = self.xray_structure.replace_sites_cart(
       new_sites=pdb_hierarchy_merged.atoms().extract_xyz())
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
-    print >> self.log, "Time (merge): %10.3f"%(time.time()-t0)
+    print("Time (merge): %10.3f"%(time.time()-t0), file=self.log)
 
   def minimization(self, target_bond_rmsd, target_angle_rmsd, weight):
     ro = mmtbx.refinement.real_space.individual_sites.easy(
@@ -279,13 +280,13 @@ class run(object):
         target_angle_rmsd = pair[1],
         weight            = w)
       result.append(w_opt)
-    print >> self.log, "Time (run_refine_flexible_rmsd_targets): %10.3f"%(
-      time.time()-t0)
+    print("Time (run_refine_flexible_rmsd_targets): %10.3f"%(
+      time.time()-t0), file=self.log)
     return result
 
   def show_target(self, prefix):
     if(self.show):
-      print >> self.log, prefix, maptbx.real_space_target_simple(
+      print(prefix, maptbx.real_space_target_simple(
           unit_cell   = self.xray_structure.unit_cell(),
           density_map = self.map_data,
-          sites_cart  = self.xray_structure.sites_cart())
+          sites_cart  = self.xray_structure.sites_cart()), file=self.log)

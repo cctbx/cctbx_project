@@ -2,6 +2,7 @@
 # TODO make this much more comprehensive
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.regression import model_1yjp
 import mmtbx.command_line
 from iotbx.scalepack import no_merge_original_index
@@ -364,4 +365,4 @@ if (__name__ == "__main__"):
   exercise_load_unmerged()
   exercise_combine_symmetry()
   exercise_example()
-  print "OK"
+  print("OK")

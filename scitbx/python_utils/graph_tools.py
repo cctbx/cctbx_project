@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # A *VERY* lightweight graph class
 # More efficient implementation can be found in the BGL I guess
 #
@@ -200,17 +201,17 @@ class graph(object):
   def show(self,out=None):
     if out is None:
       out=sys.stdout
-    print >> out
-    print >> out, "----------------------------"
-    print >> out
-    print >> out, "Outgoing edges"
+    print(file=out)
+    print("----------------------------", file=out)
+    print(file=out)
+    print("Outgoing edges", file=out)
     for node in self.o:
-      print >> out, node, "---->", self.o[node]
-    print >> out
+      print(node, "---->", self.o[node], file=out)
+    print(file=out)
     for node_1 in self.edge_objects:
       for node_2 in self.edge_objects[ node_1 ] :
-        print node_1 , " ---> ", node_2 , " :: ",  \
-              self.edge_objects[ node_1 ][ node_2 ]
-    print >> out
-    print >> out, "----------------------------"
-    print >> out
+        print(node_1 , " ---> ", node_2 , " :: ",  \
+              self.edge_objects[ node_1 ][ node_2 ])
+    print(file=out)
+    print("----------------------------", file=out)
+    print(file=out)

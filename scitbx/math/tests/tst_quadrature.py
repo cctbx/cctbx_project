@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import scitbx.math as sm
@@ -115,7 +116,7 @@ def run():
   tst_gauss_hermite_engine()
   examples()
   tst_cubature()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

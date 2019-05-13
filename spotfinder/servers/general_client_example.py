@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import os,time
 
@@ -20,7 +21,7 @@ def single_thread(idx):
   for x in range(1):
     filepath, host, port = [ABS_DATA_TEMPLATE%idx,HOST,PORT]
     port = int(port)
-    print do_main_apache(filepath, host, port)
+    print(do_main_apache(filepath, host, port))
 
 def multi_thread():
   from multiprocessing import Pool

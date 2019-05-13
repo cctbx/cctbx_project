@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.web.asu_gallery import jvx
 from cctbx.web.asu_gallery import jv_index
 from cctbx.web.asu_gallery import guide_to_notation
@@ -354,12 +355,12 @@ def run(http_server_name=None, html_subdir="asu_gallery"):
     if (len(numbers) == 1): numbers *= 2
     for group_type_number in xrange(numbers[0], numbers[1]+1):
       if (options.plane_group):
-        print "Plane group number:", group_type_number
+        print("Plane group number:", group_type_number)
         from cctbx.sgtbx.direct_space_asu import plane_group_reference_table
         asu = plane_group_reference_table.get_asu(group_type_number)
         group_type_number *= -1
       else:
-        print "Space group number:", group_type_number
+        print("Space group number:", group_type_number)
         asu = reference_table.get_asu(group_type_number)
       for colored_grid_points in [None, []]:
         asu_as_jvx(

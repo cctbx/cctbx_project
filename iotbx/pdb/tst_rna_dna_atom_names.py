@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 
 def exercise_rna_dna_atom_names():
@@ -272,7 +273,7 @@ def exercise():
     cns_names=cns_names_dna_rna_allatom_top, have_hydrogens=True)
   exercise_cns_names(
     cns_names=cns_names_dna_rna_top, have_hydrogens=False)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

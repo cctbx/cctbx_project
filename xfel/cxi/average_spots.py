@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -177,7 +178,7 @@ def main(argv = None):
                         distance = 1.0 / nmemb * dist_sum,
                         image    = 1.0 / nmemb * img_sum), # XXX implicit cast?
                    )
-  print "Wrote average of %d images to '%s'" % (nmemb, outpath)
+  print("Wrote average of %d images to '%s'" % (nmemb, outpath))
   return (0)
 
 

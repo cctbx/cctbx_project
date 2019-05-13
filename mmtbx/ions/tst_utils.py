@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 
 def exercise():
   from mmtbx.ions import utils as ion_utils
@@ -56,4 +57,4 @@ HETATM    4 MG    MG X  11     -14.099  16.408  -0.840  1.00 14.87      ION MG2+
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

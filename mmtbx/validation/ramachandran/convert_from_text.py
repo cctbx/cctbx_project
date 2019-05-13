@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 import os
 
@@ -96,7 +97,7 @@ def run():
   # it here and not produce corrupted .h file
 
   for key, fname in file_names.iteritems():
-    print "converting file", os.path.join(path_to_files, fname)
+    print("converting file", os.path.join(path_to_files, fname))
     inp_f = open(os.path.join(path_to_files, fname), 'r')
     read_file_and_fill_arr(inp_f, dict_with_all_values[key])
     inp_f.close()

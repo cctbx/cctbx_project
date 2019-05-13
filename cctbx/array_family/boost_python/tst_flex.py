@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import approx_equal
 from cctbx import uctbx
 from cctbx.array_family import flex
@@ -280,7 +281,7 @@ def run():
   exercise_flex_hendrickson_lattman()
   exercise_flex_xray_scatterer()
   exercise_extract_u_cart_plus_u_iso()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

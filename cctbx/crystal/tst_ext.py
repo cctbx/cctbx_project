@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences
 from cctbx import sgtbx, xray
@@ -436,7 +437,7 @@ def check_pair_asu_table(asu_table, expected_asu_pairs):
       for j_sym_group in j_sym_groups:
         for j_sym in j_sym_group:
           if (0 or "--verbose" in sys.argv[1:] or expected_asu_pairs is None):
-            print str([i_seq, j_seq, j_sym]) + ","
+            print(str([i_seq, j_seq, j_sym]) + ",")
           if (expected_asu_pairs is not None):
             assert [i_seq, j_seq, j_sym] == expected_asu_pairs[ip.next()]
 
@@ -721,7 +722,7 @@ Si(2)
             if (not (skip_j_seq_less_than_i_seq and expected[1]<expected[0])):
               break
           if (0 or "--verbose" in sys.argv[1:]):
-            print str([i_seq, j_seq, str(rt_mx)]) + ","
+            print(str([i_seq, j_seq, str(rt_mx)]) + ",")
           assert [i_seq, j_seq, str(rt_mx)] == expected
     asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
     assert asu_table.add_pair_sym_table(sym_table=sym_table) is asu_table
@@ -1404,17 +1405,17 @@ def exercise_coordination_sequences_shell_asu_tables():
   check_pair_asu_table(shell_asu_tables[0], expected_asu_pairs)
   s = StringIO()
   structure.show_distances(pair_asu_table=shell_asu_tables[1], out=s)
-  print >> s
+  print(file=s)
   s1_sym_table = shell_asu_tables[1].extract_pair_sym_table(
     skip_j_seq_less_than_i_seq=False)
   s1_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
   s1_asu_table.add_pair_sym_table(sym_table=s1_sym_table)
   structure.show_distances(pair_asu_table=s1_asu_table, out=s)
-  print >> s
+  print(file=s)
   s = s.getvalue().replace("-0.0000", " 0.0000")
   if (hashlib.md5(s).hexdigest() != "f5c02727352d26dc36762de0834199fd"):
     sys.stderr.write(s)
-    print "New hexdigest:", hashlib.md5(s).hexdigest()
+    print("New hexdigest:", hashlib.md5(s).hexdigest())
     raise AssertionError("Unexpected show_distances() output.")
 
 def exercise_ext_symmetry():
@@ -1689,7 +1690,7 @@ def run():
   exercise_cubicles_max_memory()
   exercise_asu_mappings()
   exercise_pair_sym_table_pickling()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import mmtbx.refinement.real_space.individual_sites
 import random
@@ -99,4 +100,4 @@ of individual sites.
 
   def show(self, log, prefix=""):
     for m in self.msg_strings:
-      print >> log, "%s %s"%(prefix, m)
+      print("%s %s"%(prefix, m), file=log)

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx.python_utils import random_transform
 import sys
@@ -89,11 +90,11 @@ class cross_entropy_optimizer(object):
   def print_status(self,out=None):
     if out is None:
       out = sys.stdout
-    print >> out, " Cycle:  %i"%self.count
+    print(" Cycle:  %i"%self.count, file=out)
     for mm in self.best_sol:
-      print >> out, "%5.3e "%mm
-    print >> out, "Target : %5.3e"%self.best_score
-    print >> out
+      print("%5.3e "%mm, file=out)
+    print("Target : %5.3e"%self.best_score, file=out)
+    print(file=out)
 
   def convergence_test(self):
     max_var = flex.max( self.sigma )
@@ -150,4 +151,4 @@ def run():
 
 if __name__ == "__main__":
   run()
-  print "OK"
+  print("OK")

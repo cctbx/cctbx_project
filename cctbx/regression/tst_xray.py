@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import xray
@@ -894,12 +895,12 @@ def exercise_from_scatterers_direct(space_group_info,
     structure.scattering_type_registry()).f_calc()
   if (0 or verbose):
     for i,h in enumerate(f_obs_exact.indices()):
-      print h
-      print f_obs_simple[i]
-      print f_obs_exact.data()[i]
+      print(h)
+      print(f_obs_simple[i])
+      print(f_obs_exact.data()[i])
       if (abs(f_obs_simple[i]-f_obs_exact.data()[i]) >= 1.e-10):
-        print "MISMATCH"
-      print
+        print("MISMATCH")
+      print()
   mismatch = flex.max(flex.abs(f_obs_exact.data() - f_obs_simple))
   assert mismatch < 1.e-10, mismatch
   f_obs_table = f_obs_exact.structure_factors_from_scatterers(
@@ -909,7 +910,7 @@ def exercise_from_scatterers_direct(space_group_info,
   ls = xray.targets_least_squares_residual(
     abs(f_obs_exact).data(), f_obs_table.data(), False, 1)
   if (0 or verbose):
-    print "r-factor:", ls.target()
+    print("r-factor:", ls.target())
   assert ls.target() < 1.e-4
 
 def exercise_f_obs_minus_xray_structure_f_calc(
@@ -936,7 +937,7 @@ def exercise_f_obs_minus_xray_structure_f_calc(
   phase_error = two_f_obs_minus_f_calc.mean_weighted_phase_error(
     phase_source=f_obs_exact)
   if (0 or verbose):
-    print "%.2f" % phase_error
+    print("%.2f" % phase_error)
   assert approx_equal(phase_error, 0)
   two_f_obs_minus_f_calc=abs(f_obs_exact).f_obs_minus_xray_structure_f_calc(
     f_obs_factor=2,
@@ -952,7 +953,7 @@ def exercise_f_obs_minus_xray_structure_f_calc(
     assert min(density_at_sites[:-1]) > 6.9
     assert density_at_sites[-1] > 2.5
   except AssertionError:
-    print "density_at_sites:", density_at_sites
+    print("density_at_sites:", density_at_sites)
     raise
   sites_cart = structure.sites_cart()
   sites_frac = structure.sites_frac()
@@ -962,7 +963,7 @@ def exercise_f_obs_minus_xray_structure_f_calc(
     assert min(density_at_sites_tricubic[:-1]) > 6.9
     assert density_at_sites_tricubic[-1] > 2.5
   except AssertionError:
-    print "density_at_sites_tricubic:", density_at_sites_tricubic
+    print("density_at_sites_tricubic:", density_at_sites_tricubic)
     raise
 
 def exercise_n_gaussian(space_group_info, verbose=0):
@@ -1003,7 +1004,7 @@ def exercise_n_gaussian(space_group_info, verbose=0):
     ls = xray.targets_least_squares_residual(
       abs(f_calc_5g).data(), f_calc_ng.data(), False, 1)
     if (0 or verbose):
-      print "%d-gaussian r-factor:" % n, ls.target()
+      print("%d-gaussian r-factor:" % n, ls.target())
     if (n == 2):
       assert ls.target() < 0.002
     else:

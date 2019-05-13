@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 
 from dials.array_family import flex
@@ -104,11 +105,11 @@ def get_run_stats(timestamps,
                    i_sigi_cutoff=1,
                    d_min=2,
                    ):
-  print ""
-  print "%d shots" % len(timestamps)
-  print "%d first lattices" % (n_lattices >= 1).count(True)
-  print "%d multiple lattices" % (n_lattices >= 2).count(True)
-  print "%d total lattices" % (flex.sum(n_lattices))
+  print("")
+  print("%d shots" % len(timestamps))
+  print("%d first lattices" % (n_lattices >= 1).count(True))
+  print("%d multiple lattices" % (n_lattices >= 2).count(True))
+  print("%d total lattices" % (flex.sum(n_lattices)))
   iterator = range(len(resolutions))
   # hit rate of drops (observe solvent) or crystals (observe strong spots)
   # since -1 is used as a flag for "did not store this value", and we want a quotient,
@@ -202,7 +203,7 @@ def plot_run_stats(stats,
   if len(run_statuses) != n_runs:
     run_statuses = [None for i in range(n_runs)]
   if minimalist:
-    print "Minimalist mode activated."
+    print("Minimalist mode activated.")
     f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
     axset = (ax1, ax2, ax3)
   else:
@@ -298,7 +299,7 @@ def plot_run_stats(stats,
       ts = event.xdata
       diffs = flex.abs(t - ts)
       ts = t[flex.first_index(diffs, flex.min(diffs))]
-      print get_paths_from_timestamps([ts], tag="shot", ext=ext)[0]
+      print(get_paths_from_timestamps([ts], tag="shot", ext=ext)[0])
 
     f.canvas.mpl_connect('button_press_event', onclick)
     plt.show()

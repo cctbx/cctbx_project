@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 import iotbx.phil
 from libtbx.utils import Sorry
@@ -190,11 +191,11 @@ class ramachandran_manager(object):
           self.append_oldfield_proxies(proxy, n_seq)
       else: # self.params.rama_potential == "emsley":
         self.append_emsley_proxies(proxy, n_seq)
-    print >> self.log, ""
-    print >> self.log, "  %d Ramachandran restraints generated." % (
-        self.get_n_proxies())
-    print >> self.log, "    %d Oldfield and %d Emsley." % (
-        self.get_n_oldfield_proxies(), self.get_n_emsley_proxies())
+    print("", file=self.log)
+    print("  %d Ramachandran restraints generated." % (
+        self.get_n_proxies()), file=self.log)
+    print("    %d Oldfield and %d Emsley." % (
+        self.get_n_oldfield_proxies(), self.get_n_emsley_proxies()), file=self.log)
 
   @staticmethod
   def _append_proxies(proxies, proxy, n_seq):
@@ -344,14 +345,14 @@ class ramachandran_manager(object):
     for proxies, label in [
         (sorted_oldfield_proxies_for_show, "Oldfield"),
         (sorted_emsley_proxies_for_show, "Emsley")]:
-      print >> f, "Ramachandran plot restraints (%s): %d" % (label, len(proxies))
-      print >> f, "Sorted by %s:" % by_value
+      print("Ramachandran plot restraints (%s): %d" % (label, len(proxies)), file=f)
+      print("Sorted by %s:" % by_value, file=f)
       for p in proxies:
-        print >> f, "phi-psi angles formed by             residual"
-        print >> f, "    %s            %5.2e" % (p.labels[0], p.residual)
+        print("phi-psi angles formed by             residual", file=f)
+        print("    %s            %5.2e" % (p.labels[0], p.residual), file=f)
         for i in range(1,5):
-          print >> f, "    %s" % p.labels[i]
-      print >> f, ""
+          print("    %s" % p.labels[i], file=f)
+      print("", file=f)
 
 
 def load_tables(params=None):

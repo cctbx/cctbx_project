@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx import bulk_solvent
 import iotbx.phil
 from cctbx.array_family import flex
@@ -209,11 +210,11 @@ class bulk_solvent_and_scales(object):
     if(sm is None): sm = self.b_cart()
     out = log
     if(sm is None):
-      print >> log, "  k_anisotropic=1"
+      print("  k_anisotropic=1", file=log)
       return
     if(len(sm)<=6):
-      print >> out, "      b_cart(11,22,33,12,13,23):",\
-        ",".join([str("%8.4f"%i).strip() for i in sm])
+      print("      b_cart(11,22,33,12,13,23):",\
+        ",".join([str("%8.4f"%i).strip() for i in sm]), file=out)
 
   def u_star(self):
     return self.fmodel_kbu.u_star()

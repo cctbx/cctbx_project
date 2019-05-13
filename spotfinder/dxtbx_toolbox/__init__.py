@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import spotfinder.array_family.flex # implicit import
 
@@ -32,7 +33,7 @@ class Distl:
           (1475,1679):"Pilatus-2M",
           (487,195):"Pilatus-300K",
         }.get(panel.get_image_size(),"")
-      print special_vendortype
+      print(special_vendortype)
       SF.set_tiling(special_vendortype)
 
       if params.distl.minimum_spot_area != None:

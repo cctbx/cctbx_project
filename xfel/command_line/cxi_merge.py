@@ -6,6 +6,7 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 
 from rstbx.dials_core.integration_core import show_observations
@@ -392,7 +393,7 @@ def get_observations (work_params):
   except Exception as e:
     exit("Changed the interface for get_observations, please contact authors "+str(e))
 
-  print "Step 1.  Get a list of all files"
+  print("Step 1.  Get a list of all files")
   if work_params.a_list is not None:
     permissible_file_names = [a.strip() for a in open(work_params.a_list,"r").readlines()]
     permissible_file_hash = dict( zip(permissible_file_names, [None]*len(permissible_file_names)) )
@@ -408,7 +409,7 @@ def get_observations (work_params):
       for nt in range(NT):
         k = os.path.basename(K[nt].path)
         file_names.append("%s;member%05d;timestamp%s"%(tarname,nt,k))
-      print tarname,NT
+      print(tarname,NT)
   else:
     for dir_name in data_dirs :
       if not os.path.isdir(dir_name):
@@ -433,7 +434,7 @@ def get_observations (work_params):
       for file_name in os.listdir(dir_name):
         if work_params.a_list is not None and os.path.join(dir_name, file_name) not in permissible_file_hash:
           # use A_list mechanism to reject files not on the "acceptable" list
-          print "SORRY--%s FILE NOT ON THE A-List"%(os.path.join(dir_name, file_name))
+          print("SORRY--%s FILE NOT ON THE A-List"%(os.path.join(dir_name, file_name)))
           n_sorry+=1
           continue
         if (file_name.endswith("_00000."+extension)):
@@ -450,8 +451,8 @@ def get_observations (work_params):
       print ("A_LIST: %d names rejected for not being on the a_list, leaving %d accepted"%(n_sorry, len(file_names)))
     if subsubset is not None and subsubset_total is not None:
       file_names = [file_names[i] for i in range(len(file_names)) if (i+subsubset)%subsubset_total == 0]
-  print "Number of pickle files found:", len(file_names)
-  print
+  print("Number of pickle files found:", len(file_names))
+  print()
   return file_names
 
 class WrongBravaisError (Exception) :
@@ -483,9 +484,9 @@ def load_result (file_name,
   # If @p file_name cannot be read, the load_result() function returns
   # @c None.
 
-  print >> out, "-" * 80
-  print >> out, "Step 2.  Load pickle file into dictionary obj and filter on lattice & cell with",reindex_op
-  print >> out, file_name
+  print("-" * 80, file=out)
+  print("Step 2.  Load pickle file into dictionary obj and filter on lattice & cell with",reindex_op, file=out)
+  print(file_name, file=out)
   """
   Take a pickle file, confirm that it contains the appropriate data, and
   check the lattice type and unit cell against the reference settings - if
@@ -541,10 +542,10 @@ def load_result (file_name,
   result_array = obj["observations"][0]
   unit_cell = result_array.unit_cell()
   sg_info = result_array.space_group_info()
-  print >> out, ""
+  print("", file=out)
 
-  print >> out, sg_info
-  print >> out, unit_cell
+  print(sg_info, file=out)
+  print(unit_cell, file=out)
 
   if obj.get('beam_s0',None) is not None:
     # Remove the need for pixel size within cxi.merge.  Allows multipanel detector with dissimilar panels.
@@ -604,14 +605,14 @@ def load_result (file_name,
   #if not (130.21 < ucparams[2] < 130.61) or not (92.84 < ucparams[0] < 93.24):
   #  print >> out, "DOES NOT PASS ERSATZ UNIT CELL FILTER"
   #  return None
-  print >> out, "Integrated data:"
+  print("Integrated data:", file=out)
   result_array.show_summary(f=out, prefix="  ")
   # XXX don't force reference setting here, it will be done later, after the
   # original unit cell is recorded
 
   #Remove observations on a selected sensor if requested
   if exclude_CSPAD_sensor is not None:
-    print >> out, "excluding CSPAD sensor %d" % exclude_CSPAD_sensor
+    print("excluding CSPAD sensor %d" % exclude_CSPAD_sensor, file=out)
     fast_min1, slow_min1, fast_max1, slow_max1, \
     fast_min2, slow_min2, fast_max2, slow_max2 = \
       get_boundaries_from_sensor_ID(exclude_CSPAD_sensor)
@@ -679,7 +680,7 @@ class unit_cell_distribution (object) :
 
   def show_histograms (self, reference, out, n_slots=20) :
     [a0,b0,c0,alpha0,beta0,gamma0] = reference.parameters()
-    print >> out, ""
+    print("", file=out)
     labels = ["a","b","c"]
     ref_edges = [a0,b0,c0]
     def _show_each (edges) :
@@ -687,20 +688,18 @@ class unit_cell_distribution (object) :
         h = flex.histogram(edge, n_slots=n_slots)
         smin, smax = flex.min(edge), flex.max(edge)
         stats = flex.mean_and_variance(edge)
-        print >> out, "  %s edge" % label
-        print >> out, "     range:     %6.2f - %.2f" % (smin, smax)
-        print >> out, "     mean:      %6.2f +/- %6.2f on N = %d" % (
-          stats.mean(), stats.unweighted_sample_standard_deviation(), edge.size())
-        print >> out, "     reference: %6.2f" % ref_edge
+        print("  %s edge" % label, file=out)
+        print("     range:     %6.2f - %.2f" % (smin, smax), file=out)
+        print("     mean:      %6.2f +/- %6.2f on N = %d" % (
+          stats.mean(), stats.unweighted_sample_standard_deviation(), edge.size()), file=out)
+        print("     reference: %6.2f" % ref_edge, file=out)
         h.show(f=out, prefix="    ", format_cutoffs="%6.2f")
-        print >> out, ""
+        print("", file=out)
     edges = [self.all_uc_a_values, self.all_uc_b_values, self.all_uc_c_values]
-    print >> out, \
-      "Unit cell length distribution (all frames with compatible indexing):"
+    print("Unit cell length distribution (all frames with compatible indexing):", file=out)
     _show_each(edges)
     edges = [self.uc_a_values, self.uc_b_values, self.uc_c_values]
-    print >> out, \
-      "Unit cell length distribution (frames with acceptable correlation):"
+    print("Unit cell length distribution (frames with acceptable correlation):", file=out)
     _show_each(edges)
 
   def get_average_cell_dimensions (self) :
@@ -759,7 +758,7 @@ class scaling_manager (intensity_data) :
         for t in ISIGI[index] :
           N += 1
           m += t[0]
-          print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
+          print("Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m))
           plot_n_bins = N//10
           hist,bins = np.histogram([t[0] for t in ISIGI[index]],bins=25)
           width = 0.7*(bins[1]-bins[0])
@@ -792,35 +791,34 @@ class scaling_manager (intensity_data) :
         import multiprocessing
         self._scale_all_parallel(file_names, db_mgr)
       except ImportError as e :
-        print >> self.log, \
-          "multiprocessing module not available (requires Python >= 2.6)\n" \
-          "will scale frames serially"
+        print("multiprocessing module not available (requires Python >= 2.6)\n" \
+          "will scale frames serially", file=self.log)
         self._scale_all_serial(file_names, db_mgr)
     else:
       self._scale_all_serial(file_names, db_mgr)
     db_mgr.join()
 
     t2 = time.time()
-    print >> self.log, ""
-    print >> self.log, "#" * 80
-    print >> self.log, "FINISHED MERGING"
-    print >> self.log, "  Elapsed time: %.1fs" % (t2 - t1)
-    print >> self.log, "  %d of %d integration files were accepted" % (
-      self.n_accepted, len(file_names))
-    print >> self.log, "  %d rejected due to wrong Bravais group" % \
-      self.n_wrong_bravais
-    print >> self.log, "  %d rejected for unit cell outliers" % \
-      self.n_wrong_cell
-    print >> self.log, "  %d rejected for low resolution" % \
-      self.n_low_resolution
-    print >> self.log, "  %d rejected for low signal" % \
-      self.n_low_signal
-    print >> self.log, "  %d rejected due to up-front poor correlation under min_corr parameter" % \
-      self.n_low_corr
-    print >> self.log, "  %d rejected for file errors or no reindex matrix" % \
-      self.n_file_error
+    print("", file=self.log)
+    print("#" * 80, file=self.log)
+    print("FINISHED MERGING", file=self.log)
+    print("  Elapsed time: %.1fs" % (t2 - t1), file=self.log)
+    print("  %d of %d integration files were accepted" % (
+      self.n_accepted, len(file_names)), file=self.log)
+    print("  %d rejected due to wrong Bravais group" % \
+      self.n_wrong_bravais, file=self.log)
+    print("  %d rejected for unit cell outliers" % \
+      self.n_wrong_cell, file=self.log)
+    print("  %d rejected for low resolution" % \
+      self.n_low_resolution, file=self.log)
+    print("  %d rejected for low signal" % \
+      self.n_low_signal, file=self.log)
+    print("  %d rejected due to up-front poor correlation under min_corr parameter" % \
+      self.n_low_corr, file=self.log)
+    print("  %d rejected for file errors or no reindex matrix" % \
+      self.n_file_error, file=self.log)
     for key in self.failure_modes.keys():
-      print >>self.log, "  %d rejected due to %s"%(self.failure_modes[key], key)
+      print("  %d rejected due to %s"%(self.failure_modes[key], key), file=self.log)
 
     checksum = self.n_accepted  + self.n_file_error \
                + self.n_low_corr + self.n_low_signal \
@@ -830,8 +828,8 @@ class scaling_manager (intensity_data) :
     assert checksum == len(file_names)
 
     high_res_count = (self.d_min_values <= self.params.d_min).count(True)
-    print >> self.log, "Of %d accepted images, %d accepted to %5.2f Angstrom resolution" % \
-      (self.n_accepted, high_res_count, self.params.d_min)
+    print("Of %d accepted images, %d accepted to %5.2f Angstrom resolution" % \
+      (self.n_accepted, high_res_count, self.params.d_min), file=self.log)
 
     if self.params.raw_data.propagate_errors and not self.params.raw_data.error_models.sdfac_refine.refine_propagated_errors:
       assert self.params.postrefinement.enable
@@ -1045,9 +1043,8 @@ class scaling_manager (intensity_data) :
     slope = (N * sum_xy - sum_x * sum_y) / (N * sum_xx - sum_x**2)
     corr  = (N * sum_xy - sum_x * sum_y) / (math.sqrt(N * sum_xx - sum_x**2) *
              math.sqrt(N * sum_yy - sum_y**2))
-    print >> self.log, \
-      "SUMMARY: For %d reflections, got slope %f, correlation %f" \
-        % (N, slope, corr)
+    print("SUMMARY: For %d reflections, got slope %f, correlation %f" \
+        % (N, slope, corr), file=self.log)
     return N, corr
 
   def finalize_and_save_data (self) :
@@ -1056,9 +1053,9 @@ class scaling_manager (intensity_data) :
     the consensus average if desired, and write to an MTZ file (including
     merged/non-anomalous data too).
     """
-    print >> self.log, ""
-    print >> self.log, "#" * 80
-    print >> self.log, "OUTPUT FILES"
+    print("", file=self.log)
+    print("#" * 80, file=self.log)
+    print("OUTPUT FILES", file=self.log)
     if self.params.merging.minimum_multiplicity is None:
       multiplicity_flag = flex.bool(len(self.summed_N),True)
     else:
@@ -1080,7 +1077,7 @@ class scaling_manager (intensity_data) :
       # dimensions, so downstream programs (MR, refinement) may run better
       # with the cell set to the mean edge lengths.
       abc = self.uc_values.get_average_cell_dimensions()
-      print >> self.log, "  (will use final unit cell edges %g %g %g)" % abc
+      print("  (will use final unit cell edges %g %g %g)" % abc, file=self.log)
       angles = self.miller_set.unit_cell().parameters()[3:]
       unit_cell = uctbx.unit_cell(list(abc) + list(angles))
       final_symm = symmetry(
@@ -1112,10 +1109,10 @@ class scaling_manager (intensity_data) :
       column_root_label="IMEAN")
     mtz_obj = mtz_out.mtz_object()
     mtz_obj.write(mtz_file)
-    print >> self.log, "  Anomalous and mean data:\n    %s" % \
-      os.path.abspath(mtz_file)
-    print >> self.log, ""
-    print >> self.log, "Final data:"
+    print("  Anomalous and mean data:\n    %s" % \
+      os.path.abspath(mtz_file), file=self.log)
+    print("", file=self.log)
+    print("Final data:", file=self.log)
     all_obs.show_summary(self.log, prefix="  ")
     return mtz_file, all_obs
 
@@ -1138,7 +1135,7 @@ class scaling_manager (intensity_data) :
         input_queue.task_done()
 
     except Exception as e :
-      print >> self.log, str(e)
+      print(str(e), file=self.log)
       return None
 
   def scale_frame (self, file_name, db_mgr) :
@@ -1189,11 +1186,11 @@ class scaling_manager (intensity_data) :
         return null_data(
           file_name=file_name, log_out=out.getvalue(), file_error=True)
     except OutlierCellError as e :
-      print >> out, str(e)
+      print(str(e), file=out)
       return null_data(
         file_name=file_name, log_out=out.getvalue(), wrong_cell=True)
     except WrongBravaisError as e :
-      print >> out, str(e)
+      print(str(e), file=out)
       return null_data(
         file_name=file_name, log_out=out.getvalue(), wrong_bravais=True)
     return self.scale_frame_detail(result, file_name, db_mgr, out)
@@ -1215,7 +1212,7 @@ class scaling_manager (intensity_data) :
     observations = result["observations"][0]
 
     if len(observations.data()) == 0:
-      print >> out, "skipping image: no observations"
+      print("skipping image: no observations", file=out)
       return null_data(
         file_name=file_name, log_out=out.getvalue(), low_signal=True)
 
@@ -1240,7 +1237,7 @@ class scaling_manager (intensity_data) :
     otherP_prime = 0.5 * other_F_prime * cos_two_polar_angle * sin_sq_tt_vec
     otherprange=P_nought_vec - otherP_prime
     diff2 = flex.abs(prange - otherprange)
-    print >> out, "mean diff is",flex.mean(diff2), "range",flex.min(diff2), flex.max(diff2)
+    print("mean diff is",flex.mean(diff2), "range",flex.min(diff2), flex.max(diff2), file=out)
     # XXX done
     observations = observations / ( P_nought_vec - P_prime )
     # This corrects observations for polarization assuming 100% polarization on
@@ -1248,7 +1245,7 @@ class scaling_manager (intensity_data) :
     # Polarization model as described by Kahn, Fourme, Gadet, Janin, Dumas & Andre
     # (1982) J. Appl. Cryst. 15, 330-337, equations 13 - 15.
 
-    print >> out, "Step 3. Correct for polarization."
+    print("Step 3. Correct for polarization.", file=out)
     indexed_cell = observations.unit_cell()
 
     observations_original_index = observations.deep_copy()
@@ -1284,13 +1281,13 @@ class scaling_manager (intensity_data) :
       anomalous_flag=not self.params.merge_anomalous,
       crystal_symmetry=self.miller_set.crystal_symmetry()
       )
-    print >> out, "Step 4. Filter on global resolution and map to asu"
-    print >> out, "Data in reference setting:"
+    print("Step 4. Filter on global resolution and map to asu", file=out)
+    print("Data in reference setting:", file=out)
     #observations.show_summary(f=out, prefix="  ")
     show_observations(observations, out=out)
 
     if self.params.significance_filter.apply is True: #------------------------------------
-      print >> out, "Step 5. Frame by frame resolution filter"
+      print("Step 5. Frame by frame resolution filter", file=out)
       # Apply an I/sigma filter ... accept resolution bins only if they
       #   have significant signal; tends to screen out higher resolution observations
       #   if the integration model doesn't quite fit
@@ -1303,9 +1300,9 @@ class scaling_manager (intensity_data) :
         [min([self.params.significance_filter.n_bins,N_bins_small_set]),
          N_bins_large_set, 1]
       )
-      print >> out, "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
+      print("Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins), file=out)
       if indices_to_edge is not None:
-        print >> out, "Total preds %d to edge of detector"%indices_to_edge.size()
+        print("Total preds %d to edge of detector"%indices_to_edge.size(), file=out)
       bin_results = show_observations(observations, out=out, n_bins=N_bins)
 
       if result.get("fuller_kapton_absorption_correction", None) is not None:
@@ -1319,7 +1316,7 @@ class scaling_manager (intensity_data) :
         if len(xypred)!=N_obs_pre_filter: raise Sorry(
            "Mapped predictions %d don't match obs %d"%(len(xypred),N_obs_pre_filter))
 
-        print >> out, "unobstructed",unobstructed.count(True), "obstructed", unobstructed.count(False)
+        print("unobstructed",unobstructed.count(True), "obstructed", unobstructed.count(False), file=out)
 
         if False:
           from matplotlib import pyplot as plt
@@ -1338,7 +1335,7 @@ class scaling_manager (intensity_data) :
           # in development encountered:
           # RuntimeError, flex.mean() of empty array
           # ValueError, max() arg is empty sequence
-          print >> out, "skipping image: could not process obstructed/unobstructed bins"
+          print("skipping image: could not process obstructed/unobstructed bins", file=out)
           return null_data(
             file_name=file_name, log_out=out.getvalue(), low_signal=True)
         observations = observations.select(ASO.master_selection)
@@ -1372,11 +1369,11 @@ class scaling_manager (intensity_data) :
             imposed_res_sel)
           observations_original_index = observations_original_index.select(
             imposed_res_sel)
-          print >> out, "New resolution filter at %7.2f"%imposed_res_filter,file_name
-        print >> out, "N acceptable bins",N_acceptable_bins
-      print >> out, "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size())
+          print("New resolution filter at %7.2f"%imposed_res_filter,file_name, file=out)
+        print("N acceptable bins",N_acceptable_bins, file=out)
+      print("Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size()), file=out)
       if indices_to_edge is not None:
-        print >> out, "Total preds %d to edge of detector"%indices_to_edge.size()
+        print("Total preds %d to edge of detector"%indices_to_edge.size(), file=out)
       # Finished applying the binwise I/sigma filter---------------------------------------
     if self.params.raw_data.sdfac_auto is True:
       I_over_sig = observations.data()/observations.sigmas()
@@ -1391,13 +1388,13 @@ class scaling_manager (intensity_data) :
         Stats = flex.mean_and_variance(no_signal)
         SDFAC = Stats.unweighted_sample_standard_deviation()
       else: SDFAC=1.
-      print >> out, "The applied SDFAC is %7.4f"%SDFAC
+      print("The applied SDFAC is %7.4f"%SDFAC, file=out)
       corrected_sigmas = observations.sigmas() * SDFAC
       observations = observations.customized_copy(sigmas = corrected_sigmas)
       observations_original_index = observations_original_index.customized_copy(
         sigmas = observations_original_index.sigmas() * SDFAC)
 
-    print >> out, "Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities."
+    print("Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities.", file=out)
     assert len(observations_original_index.indices()) \
       ==   len(observations.indices())
 
@@ -1492,7 +1489,7 @@ class scaling_manager (intensity_data) :
       N = data.n_obs - data.n_rejected
       DELTA = sum_w * sum_xx - sum_x**2 # see p. 105 in Bevington & Robinson
       if (DELTA) == 0:
-        print >> out, "Skipping frame with",sum_w,sum_xx,sum_x**2
+        print("Skipping frame with",sum_w,sum_xx,sum_x**2, file=out)
         return null_data(file_name=file_name,
                          log_out=out.getvalue(),
                          low_signal=True)
@@ -1521,14 +1518,14 @@ class scaling_manager (intensity_data) :
     # Apply the correlation coefficient threshold, if appropriate.
     if self.params.scaling.algorithm == 'mark0' and \
        corr <= self.params.min_corr:
-      print >> out, "Skipping these data - correlation too low."
+      print("Skipping these data - correlation too low.", file=out)
       data.set_log_out(out.getvalue())
       data.show_log_out(sys.stdout)
       return null_data(file_name=file_name, log_out=out.getvalue(), low_correlation=True)
     # Apply a resolution filter, if appropriate.
     if self.params.lattice_rejection.d_min and \
       observations.d_min() >= self.params.lattice_rejection.d_min:
-      print >> out, "Skipping these data - diffraction worse than %.2f Angstrom" % self.params.lattice_rejection.d_min
+      print("Skipping these data - diffraction worse than %.2f Angstrom" % self.params.lattice_rejection.d_min, file=out)
       data.set_log_out(out.getvalue())
       data.show_log_out(sys.stdout)
       return null_data(file_name=file_name, log_out=out.getvalue(), low_resolution=True)
@@ -1556,7 +1553,7 @@ class scaling_manager (intensity_data) :
         trumpet_wrapper(result, postx, file_name, self.params, out)
 
     if not self.params.scaling.enable or self.params.postrefinement.enable: # Do not scale anything
-      print >> out, "Scale factor to an isomorphous reference PDB will NOT be applied."
+      print("Scale factor to an isomorphous reference PDB will NOT be applied.", file=out)
       slope = 1.0
       offset = 0.0
 
@@ -1598,12 +1595,12 @@ class scaling_manager (intensity_data) :
 
     db_mgr.insert_observation(**kwargs)
 
-    print >> out, "For %d reflections, got slope %f, correlation %f" % \
-        (data.n_obs - data.n_rejected, slope, corr)
-    print >> out, "average obs", sum_y / (data.n_obs - data.n_rejected), \
-      "average calc", sum_x / (data.n_obs - data.n_rejected)
-    print >> out, "Rejected %d reflections with negative intensities" % \
-        data.n_rejected
+    print("For %d reflections, got slope %f, correlation %f" % \
+        (data.n_obs - data.n_rejected, slope, corr), file=out)
+    print("average obs", sum_y / (data.n_obs - data.n_rejected), \
+      "average calc", sum_x / (data.n_obs - data.n_rejected), file=out)
+    print("Rejected %d reflections with negative intensities" % \
+        data.n_rejected, file=out)
 
     data.extra_stuff = {}
 
@@ -1640,7 +1637,7 @@ class scaling_manager (intensity_data) :
       data.summed_N[pair[0]] += 1
       data.summed_wt_I[pair[0]] += Intensity / variance
       data.summed_weight[pair[0]] += 1 / variance
-    print >> out, "Selected file %s to %5.2f Angstrom resolution limit" % (file_name, observations.d_min())
+    print("Selected file %s to %5.2f Angstrom resolution limit" % (file_name, observations.d_min()), file=out)
     data.set_log_out(out.getvalue())
     data.show_log_out(sys.stdout)
     return data
@@ -1700,8 +1697,8 @@ def run(args):
     return
   processor = iotbx.phil.process_command_line(args=args, master_string=master_phil)
   if len(processor.remaining_args) > 0:
-    print "The following arguments were not recognized:"
-    print "\n".join(processor.remaining_args)
+    print("The following arguments were not recognized:")
+    print("\n".join(processor.remaining_args))
     iotbx.phil.parse(master_phil).show(attributes_level=2)
     return
   phil = processor.show()
@@ -1730,7 +1727,7 @@ def run(args):
   out = multi_out()
   out.register("log", log, atexit_send_to=None)
   out.register("stdout", sys.stdout)
-  print >> out, "I model"
+  print("I model", file=out)
   if work_params.model is not None:
     from xfel.merging.general_fcalc import run
     i_model = run(work_params)
@@ -1740,9 +1737,9 @@ def run(args):
   else:
     i_model = None
 
-  print >> out, "Target unit cell and space group:"
-  print >> out, "  ", work_params.target_unit_cell
-  print >> out, "  ", work_params.target_space_group
+  print("Target unit cell and space group:", file=out)
+  print("  ", work_params.target_unit_cell, file=out)
+  print("  ", work_params.target_space_group, file=out)
 
   miller_set, i_model = consistent_set_and_model(work_params,i_model)
 
@@ -1761,12 +1758,12 @@ def run(args):
     average_cell = uctbx.unit_cell(list(average_cell_abc) +
       list(work_params.target_unit_cell.parameters()[3:]))
     work_params.target_unit_cell = average_cell
-    print >> out, ""
-    print >> out, "#" * 80
-    print >> out, "RESCALING WITH NEW TARGET CELL"
-    print >> out, "  average cell: %g %g %g %g %g %g" % \
-      work_params.target_unit_cell.parameters()
-    print >> out, ""
+    print("", file=out)
+    print("#" * 80, file=out)
+    print("RESCALING WITH NEW TARGET CELL", file=out)
+    print("  average cell: %g %g %g %g %g %g" % \
+      work_params.target_unit_cell.parameters(), file=out)
+    print("", file=out)
     scaler.reset()
     scaler.scale_all(frame_files)
     scaler.show_unit_cell_histograms()
@@ -1774,9 +1771,9 @@ def run(args):
     try :
       plot_overall_completeness(completeness)
     except Exception as e :
-      print "ERROR: can't show plots"
-      print "  %s" % str(e)
-  print >> out, "\n"
+      print("ERROR: can't show plots")
+      print("  %s" % str(e))
+  print("\n", file=out)
 
   # Sum the observations of I and I/sig(I) for each reflection.
   sum_I, sum_I_SIGI = scaler.sum_intensities()
@@ -1794,12 +1791,12 @@ def run(args):
     title="Statistics for all reflections",
     out=out,
     work_params=work_params)
-  print >> out, ""
+  print("", file=out)
   if work_params.model is not None:
     n_refl, corr = scaler.get_overall_correlation(sum_I)
   else:
     n_refl, corr = ((scaler.completeness > 0).count(True), 0)
-  print >> out, "\n"
+  print("\n", file=out)
   table2 = show_overall_observations(
     obs=miller_set_avg,
     redundancy=scaler.summed_N,
@@ -1826,7 +1823,7 @@ Completeness       = # unique Miller indices present in data / # Miller indices 
 Asu. Multiplicity  = # measurements / # Miller indices theoretical in asymmetric unit
 Obs. Multiplicity  = # measurements / # unique Miller indices present in data
 Pred. Multiplicity = # predictions on all accepted images / # Miller indices theoretical in asymmetric unit"""
-  print >> out, explanation
+  print(explanation, file=out)
   mtz_file, miller_array = scaler.finalize_and_save_data()
   #table_pickle_file = "%s_graphs.pkl" % work_params.output.prefix
   #easy_pickle.dump(table_pickle_file, [table1, table2])
@@ -1939,7 +1936,7 @@ def show_overall_observations(
     cumulative_Isigma += I_sigI_sum
 
   if (title is not None) :
-    print >> out, title
+    print(title, file=out)
   from libtbx import table_utils
   table_header = ["","","","","<asu","<obs","<pred","","","",""]
   table_header2 = ["Bin","Resolution Range","Completeness","%","multi>","multi>","multi>",
@@ -1964,7 +1961,7 @@ def show_overall_observations(
     table_row.append("%8.3f" % bin.mean_I_sigI)
     table_data.append(table_row)
   if len(table_data) <= 2:
-    print >>out,"Table could not be constructed -- no bins accepted."
+    print("Table could not be constructed -- no bins accepted.", file=out)
     return
   table_data.append([""]*len(table_header))
   table_data.append(  [
@@ -1982,8 +1979,8 @@ def show_overall_observations(
   ])
   table_data = table_utils.manage_columns(table_data, include_columns)
 
-  print
-  print >>out,table_utils.format(table_data,has_header=2,justify='center',delim=" ")
+  print()
+  print(table_utils.format(table_data,has_header=2,justify='center',delim=" "), file=out)
 
   # XXX generate table object for displaying plots
   if (title is None) :
@@ -2157,7 +2154,7 @@ if (__name__ == "__main__"):
       from wxtbx.command_line import loggraph
       loggraph.run([result.loggraph_file])
     except Exception as e :
-      print "Can't display plots"
-      print "You should be able to view them by running this command:"
-      print "  wxtbx.loggraph %s" % result.loggraph_file
+      print("Can't display plots")
+      print("You should be able to view them by running this command:")
+      print("  wxtbx.loggraph %s" % result.loggraph_file)
       raise e

@@ -5,6 +5,7 @@ Author      : Uervirojnangkoorn, M.
 Created     : 11/25/2014
 Description : iotacc selects iota integration results base on CC with ref. set.
 '''
+from __future__ import print_function
 import os, sys
 import numpy as np
 import math
@@ -189,7 +190,7 @@ def select_best_by_cc_mproc(shot_no, cryst_id, iparams):
       if os.path.isdir(data):
         frame_files = read_pickles(data)
       if len(frame_files)==0:
-        print data, ' - no pickle file found.'
+        print(data, ' - no pickle file found.')
       else:
         for pickle_filename in frame_files:
           pickle_filename_split = pickle_filename.split('/')
@@ -286,7 +287,7 @@ def select_best_by_cc_mproc(shot_no, cryst_id, iparams):
 
 if __name__=="__main__":
   iparams, txt_out_input = read_input(sys.argv[:1])
-  print txt_out_input
+  print(txt_out_input)
 
   if iparams.iotacc.set_id is not None:
     data_dir = iparams.data[0] + '/' +iparams.iotacc.set_id
@@ -323,7 +324,7 @@ if __name__=="__main__":
         pickle_filename_sel, txt_out = result
         txt_out_log += txt_out
         txt_out_pickle_filename_sel += pickle_filename_sel + '\n'
-        print txt_out
+        print(txt_out)
 
   f = open(run_no+'/pickle_selected.txt', 'w')
   f.write(txt_out_pickle_filename_sel)

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import math
 from scitbx.matrix import col,sqr
@@ -38,7 +39,7 @@ def get_triangle(lines):
 def force_cell(index_engine,target_cell,verbose=False):
 
     if verbose:
-      print "N candidates:",index_engine.n_candidates()
+      print("N candidates:",index_engine.n_candidates())
       from rstbx.dps_core import directional_show
       for x in range(index_engine.n_candidates()):
         directional_show( index_engine[x], "vector %d:"%x )
@@ -104,5 +105,5 @@ def force_cell(index_engine,target_cell,verbose=False):
         #print "score %.1f"%score,tri
         if score<best["score"]:
           best = {"score":score,"triangle":tri,"orientation":ori.change_basis(sqr(cb_op.inverse().c().r().as_double()).transpose())}
-    if verbose: print "Best score %.1f, triangle %12s"%(best["score"],str(best["triangle"])),best["orientation"].unit_cell()
+    if verbose: print("Best score %.1f, triangle %12s"%(best["score"],str(best["triangle"])),best["orientation"].unit_cell())
     return best

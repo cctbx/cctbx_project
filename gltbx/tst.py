@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from gltbx import gl
 from gltbx import glu
 from libtbx.test_utils import Exception_expected, show_diff
@@ -34,15 +35,15 @@ Argument "textures" has one or more elements of the wrong type.""")
   else: raise Exception_expected
 
 def exercise_all():
-  print "trying glGetError()...",
+  print("trying glGetError()...", end=' ')
   sys.stdout.flush()
   error = gl.glGetError()
-  print "OK:", error
+  print("OK:", error)
   sys.stdout.flush()
-  print "trying gluErrorString()...",
+  print("trying gluErrorString()...", end=' ')
   sys.stdout.flush()
   msg = glu.gluErrorString(error=error)
-  print "OK:", msg
+  print("OK:", msg)
   assert msg in ["no error", "invalid operation"]
   sys.stdout.flush()
   forever = "--forever" in sys.argv[1:]

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import adopt_init_args
 from scitbx.array_family import flex
 from cctbx import maptbx
@@ -221,7 +222,7 @@ class fsc_model_vs_map(object):
     lines = self.show_lines(prefix=prefix)
     for l in lines:
       if(allcaps): l = l.upper()
-      print >> log, l
+      print(l, file=log)
 
 def assert_same_gridding(map_1, map_2):
   # XXX remove it!

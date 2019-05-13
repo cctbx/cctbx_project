@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.examples.exp_i_alpha_derivatives import least_squares
 from scitbx import matrix
 from scitbx.array_family import flex
@@ -134,19 +135,19 @@ def exercise(args):
         obs = abs(sf.f()) * obs_factor
         grads_fin = d_exp_i_hx_d_sites_finite(
           sites=sites, ops=ops, obs=obs, hkl=hkl)
-        print >> out, "grads_fin:", list(grads_fin)
+        print("grads_fin:", list(grads_fin), file=out)
         tf = least_squares(obs=obs, calc=sf.f())
         grads_ana = sf.d_target_d_sites(target=tf)
-        print >> out, "grads_ana:", list(grads_ana)
+        print("grads_ana:", list(grads_ana), file=out)
         compare_derivatives(grads_ana, grads_fin)
         curvs_fin = d2_exp_i_hx_d_sites_finite(
           sites=sites, ops=ops, obs=obs, hkl=hkl)
-        print >> out, "curvs_fin:", list(curvs_fin)
+        print("curvs_fin:", list(curvs_fin), file=out)
         curvs_ana = sf.d2_target_d_sites(target=tf)
-        print >> out, "curvs_ana:", list(curvs_ana)
+        print("curvs_ana:", list(curvs_ana), file=out)
         compare_derivatives(curvs_ana, curvs_fin)
-        print >> out
-  print "OK"
+        print(file=out)
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

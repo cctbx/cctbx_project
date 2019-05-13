@@ -5,6 +5,7 @@ mmtbx.apply_ncs_to_ligands (used in phenix.ligand_pipeline)
 """
 
 from __future__ import division
+from __future__ import print_function
 from iotbx import file_reader
 from libtbx import easy_run
 from libtbx.utils import null_out
@@ -235,4 +236,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

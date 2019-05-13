@@ -9,6 +9,7 @@ the parameters should have this scope
   }
 """
 from __future__ import division
+from __future__ import print_function
 
 class random_omit_data(object):
   def __init__(self,
@@ -23,7 +24,7 @@ class random_omit_data(object):
 
     for nth in xrange(self.parameters.number_of_sets):
       file_name = self.parameters.root_name + str(nth)+".mtz"
-      print >> comfile, "__REPLACE_1__%s__REPLACE_2__ > %s.log"%(file_name,nth)
+      print("__REPLACE_1__%s__REPLACE_2__ > %s.log"%(file_name,nth), file=comfile)
       tmp_select = self.miller_array.generate_r_free_flags(
         fraction = self.parameters.fraction ,
         max_free =  self.parameters.max_number,

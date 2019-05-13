@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from wxtbx.phil_controls.numbers import NumbersCtrlBase, NumbersValidator
 import wx
@@ -49,7 +50,7 @@ if (__name__ == "__main__"):
   btn = wx.Button(panel, -1, "Process input", pos=(400, 360))
   def OnOkay(evt):
     floats = floats_ctrl.GetPhilValue()
-    print type(floats).__name__, str(floats)
+    print(type(floats).__name__, str(floats))
   frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
   frame.Fit()
   frame.Show()

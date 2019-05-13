@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from cStringIO import StringIO
 from mmtbx.validation.chain_comparison import run
@@ -486,7 +487,7 @@ ATOM    135  CA  LYS B 138     533.895 440.931 424.718  1.00 36.89      P9
 ATOM    136  CA  GLY B 139     531.242 441.878 427.264  0.67 38.21      P9
 """
 def tst_01():
-  print "Comparing mixed model with target..."
+  print("Comparing mixed model with target...")
   import iotbx.pdb
   from cctbx.array_family import flex
   model_pdb_inp=iotbx.pdb.input(source_info='model',
@@ -512,21 +513,21 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
  Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
     raise AssertionError, "FAILED"
   from libtbx.test_utils import approx_equal
-  print r.get_values("forward")
+  print(r.get_values("forward"))
   assert approx_equal(r.get_values("forward"),(1.6751069901864204, 14))
-  print r.get_values("reverse")
+  print(r.get_values("reverse"))
   assert approx_equal(r.get_values("reverse"),(1.388466550576198, 29))
-  print r.get_values("close")
+  print(r.get_values("close"))
   assert approx_equal(r.get_values("close"),(1.545835235099158, 54))
-  print r.get_values("all_far")
+  print(r.get_values("all_far"))
   assert approx_equal(r.get_values("all_far"),(0,0))
-  print "OK"
+  print("OK")
 
 def tst_02():
-  print "Comparing mixed model with target with 2 chains..."
+  print("Comparing mixed model with target with 2 chains...")
   import iotbx.pdb
   from cctbx.array_family import flex
   model_pdb_inp=iotbx.pdb.input(source_info='model',
@@ -552,22 +553,22 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
  Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text)
+    print("\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text))
     raise AssertionError, "FAILED"
 
   from libtbx.test_utils import approx_equal
-  print r.get_values("forward")
+  print(r.get_values("forward"))
   assert approx_equal(r.get_values("forward"),(1.6751069901864204, 14))
-  print r.get_values("reverse")
+  print(r.get_values("reverse"))
   assert approx_equal(r.get_values("reverse"),(1.388466550576198, 29))
-  print r.get_values("close")
+  print(r.get_values("close"))
   assert approx_equal(r.get_values("close"),(1.545835235099158, 54))
-  print r.get_values("all_far")
+  print(r.get_values("all_far"))
   assert approx_equal(r.get_values("all_far"),(0,0))
-  print "OK"
+  print("OK")
 
 def tst_03():
-  print "Comparing mixed model with target with 2 chains...as group"
+  print("Comparing mixed model with target with 2 chains...as group")
   import iotbx.pdb
   from cctbx.array_family import flex
   model_pdb_inp=iotbx.pdb.input(source_info='model',
@@ -581,11 +582,11 @@ def tst_03():
     os.mkdir("files")
 
   ff=open(os.path.join("files","query.pdb"),'w')
-  print >>ff,"CRYST1  113.949  113.949   32.474  90.00  90.00  90.00 I 4"
-  print >>ff,query_hierarchy.as_pdb_string()
+  print("CRYST1  113.949  113.949   32.474  90.00  90.00  90.00 I 4", file=ff)
+  print(query_hierarchy.as_pdb_string(), file=ff)
   ff.close()
   ff=open("model.pdb",'w')
-  print >>ff,model_hierarchy.as_pdb_string()
+  print(model_hierarchy.as_pdb_string(), file=ff)
   ff.close()
 
   f=StringIO()
@@ -604,41 +605,41 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
      query.pdb 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
     raise AssertionError, "FAILED"
-  print "OK"
+  print("OK")
 
 def tst_04():
-    print "Testing choosing unique sequences"
+    print("Testing choosing unique sequences")
 
     from mmtbx.validation.chain_comparison import \
        extract_unique_part_of_sequences as eups
 
     seqs=[ "abcdefgh","klafmalsd"]
-    print
-    print seqs
+    print()
+    print(seqs)
     copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
     for seq in copies_in_unique.keys():
-      print copies_in_unique[seq],base_copies,seq
+      print(copies_in_unique[seq],base_copies,seq)
 
     seqs=[ "abcdefgh",
            "klafmalsd",
            "klafmalsd"]
-    print
-    print seqs
+    print()
+    print(seqs)
     copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
     for seq in copies_in_unique.keys():
-      print copies_in_unique[seq],base_copies,seq
+      print(copies_in_unique[seq],base_copies,seq)
 
     seqs=[
         "abcdefgh",
         "klafmalsd",
          ]
-    print
-    print seqs
+    print()
+    print(seqs)
     copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
     for seq in copies_in_unique.keys():
-      print copies_in_unique[seq],base_copies,seq
+      print(copies_in_unique[seq],base_copies,seq)
 
     seqs=[
         "abcdefgh",
@@ -646,11 +647,11 @@ def tst_04():
         "abcdefgh",
         "klafmalsd",
          ]
-    print
-    print seqs
+    print()
+    print(seqs)
     copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
     for seq in copies_in_unique.keys():
-      print copies_in_unique[seq],base_copies,seq
+      print(copies_in_unique[seq],base_copies,seq)
 
     seqs=[
         "abcdefgh",
@@ -660,13 +661,13 @@ def tst_04():
         "klafmalsd",
         "klafmalsd",
          ]
-    print
-    print seqs
+    print()
+    print(seqs)
     copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
     for seq in copies_in_unique.keys():
-      print copies_in_unique[seq],base_copies,seq
+      print(copies_in_unique[seq],base_copies,seq)
 
-    print "OK"
+    print("OK")
 
 target="""
 CRYST1  113.949  113.949   32.474  90.00  90.00  90.00 I 4
@@ -785,7 +786,7 @@ def tst_05():
        extract_unique_part_of_hierarchy as euph
   from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
 
-  print "Testing extraction of unique part and unique matching"
+  print("Testing extraction of unique part and unique matching")
   for m in [modela,modelb,modelaa,modelaab,modelaabaab]:
     import iotbx.pdb
     from cctbx.array_family import flex
@@ -794,29 +795,29 @@ def tst_05():
     crystal_symmetry=model_pdb_inp.crystal_symmetry()
     model_hierarchy=model_pdb_inp.construct_hierarchy()
 
-    print "\nExtraction of unique MODEL with %s residues" %(
-       model_hierarchy.overall_counts().n_residues)
+    print("\nExtraction of unique MODEL with %s residues" %(
+       model_hierarchy.overall_counts().n_residues))
     query_hierarchy=iotbx.pdb.input(source_info='query',
          lines=flex.split_lines(target)).construct_hierarchy()
     unique_hierarchy=euph(model_hierarchy,target_ph=query_hierarchy)
-    print "FINAL chain ids: %s \n" %(" ".join(get_chain_ids(unique_hierarchy)))
-  print "OK"
+    print("FINAL chain ids: %s \n" %(" ".join(get_chain_ids(unique_hierarchy))))
+  print("OK")
 
 def tst_06():
-  print "Comparing mixed model with target with 2 chains...using ncs"
+  print("Comparing mixed model with target with 2 chains...using ncs")
   import iotbx.pdb
   from cctbx.array_family import flex
   model_pdb_inp=iotbx.pdb.input(source_info='model',
        lines=flex.split_lines(model1))
   crystal_symmetry=model_pdb_inp.crystal_symmetry()
   f=open('ncs.ncs_spec','w')
-  print >>f,ncs_spec
+  print(ncs_spec, file=f)
   f.close()
   f=open('model.pdb','w')
-  print >>f,model1 #model_hierarchy.as_pdb_string()
+  print(model1, file=f) #model_hierarchy.as_pdb_string()
   f.close()
   f=open('query.pdb','w')
-  print >>f,query #query_hierarchy.as_pdb_string()
+  print(query, file=f) #query_hierarchy.as_pdb_string()
   f.close()
 
   f=StringIO()
@@ -835,10 +836,10 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
  Unique_target 1.67   58     64     15      29      14   42.6   0.25     8.6        0.04    4.5"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text)
+    print("\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text))
     raise AssertionError, "FAILED"
 
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   tst_01()

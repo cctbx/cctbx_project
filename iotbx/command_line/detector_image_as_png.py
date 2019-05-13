@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME labelit.png
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Sorry, Usage
 from cStringIO import StringIO
 import os
@@ -33,7 +34,7 @@ def run(args):
   C = convert_image(img_file,graphics_bin)
   C.img.show_header()
   open(output_file, "wb").write(C.output().getvalue())
-  print "Wrote %s" % output_file
+  print("Wrote %s" % output_file)
 
 class convert_image:
 

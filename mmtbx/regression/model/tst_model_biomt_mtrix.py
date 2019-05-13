@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 import mmtbx.model
 import time
@@ -403,5 +404,5 @@ if (__name__ == "__main__"):
   exercise_mtrix()
   exercise_biomt()
   exercise_both()
-  print "Total time: %8.3f"%(time.time() - t0)
-  print "OK."
+  print("Total time: %8.3f"%(time.time() - t0))
+  print("OK.")

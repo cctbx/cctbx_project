@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from libtbx.utils import null_out
 from mmtbx import monomer_library
@@ -115,10 +116,10 @@ def exercise():
     mon_lib_srv = monomer_library.server.server()
     ener_lib = monomer_library.server.ener_lib()
   except: # intentional
-    print "Can not initialize monomer_library, skipping test."
+    print("Can not initialize monomer_library, skipping test.")
   if mon_lib_srv is not None and ener_lib is not None:
     exercise_reference_model_restraints(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

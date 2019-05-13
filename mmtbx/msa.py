@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from libtbx import easy_run
 import libtbx.phil
@@ -280,10 +281,10 @@ def align_pdb_hierarchies(hierarchies,
     pdb_resids.append([ strip(resid) for resid in resids ])
     if (hierarchy is reference_hierarchy):
       reference_index = i
-      print >> log, "  Using %s for sequence numbering" % name
+      print("  Using %s for sequence numbering" % name, file=log)
     elif (reference_hierarchy is None) and (reference_index is None):
       reference_index = i
-      print >> log, "  Using %s for sequence numbering" % name
+      print("  Using %s for sequence numbering" % name, file=log)
   if (reference_index is not None):
     pdb_names = hierarchy_names
     msa_manager = align_pdb_residues(
@@ -334,7 +335,7 @@ def get_muscle_alignment(fasta_sequences, group_sequences=True, out=None):
   from iotbx.bioinformatics import clustal_alignment_parse
   alignment, null = clustal_alignment_parse("\n".join(muscle_out))
   if (out is not None):
-    print >> out, "\n".join(muscle_out)
+    print("\n".join(muscle_out), file=out)
   return alignment, errors
 
 def get_muscle_alignment_ordered(sequences, out = None):

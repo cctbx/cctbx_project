@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 from iotbx.pdb import secondary_structure as ss
 import StringIO
@@ -77,8 +78,8 @@ def exercise(args):
   exercise_01()
   exercise_02()
   exercise_03()
-  print "OK"
-  print format_cpu_times()
+  print("OK")
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

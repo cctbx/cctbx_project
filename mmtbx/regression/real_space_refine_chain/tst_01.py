@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import time, os
 import iotbx.pdb
 import mmtbx.utils
@@ -92,10 +93,10 @@ def run(prefix="tst_00"):
     map_data                = target_map_data,
     restraints_manager      = restraints_manager,
     states                  = states)
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))
   ear.pdb_hierarchy.write_pdb_file(file_name="%s_refined.pdb"%prefix)
   states.write(file_name="%s_refined_all_states.pdb"%prefix)
 
 if (__name__ == "__main__"):
   run()
-  print "OK"
+  print("OK")

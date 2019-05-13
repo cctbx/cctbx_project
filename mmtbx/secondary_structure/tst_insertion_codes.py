@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.secondary_structure import sec_str_master_phil_str, manager
 import iotbx.pdb.hierarchy
 import iotbx.pdb.secondary_structure as ioss
@@ -175,7 +176,7 @@ HELIX    1   1 ALA      2  ALA      5  1                                  10
       log          = log)
     n_hbonds.append(proxies_for_grm.size())
     n_hangles.append(hangles.size())
-  print n_hbonds, n_hangles
+  print(n_hbonds, n_hangles)
   assert n_hbonds ==  [6,   4,  5,  5,  9,  5,  7,  7]
   assert n_hangles == [18, 12, 15, 15, 28, 16, 22, 22]
 
@@ -491,7 +492,7 @@ SHEET    2   B 2 GLN A  40  ALA A  45  1  O  GLN A  44   N  THR A  20
     # print proxies_for_grm.size()
     n_hbonds.append(proxies_for_grm.size())
     n_hangles.append(hangles.size())
-  print n_hbonds, n_hangles
+  print(n_hbonds, n_hangles)
   assert n_hbonds  == [6, 6, 4, 6, 6, 5, 8]
   assert n_hangles == [15, 15, 12, 18, 18, 12, 24]
 
@@ -503,4 +504,4 @@ def exercise_phil_generation():
 if __name__ == "__main__" :
   exercise_helix_bonding_pattern_with_insertions()
   exercise_sheets_bonding_pattern_with_insertions()
-  print "OK"
+  print("OK")

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import miller
@@ -688,7 +689,7 @@ def run(args):
   exercise_phase_transfer()
   exercise_union_of_indices()
   exercise_slices()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

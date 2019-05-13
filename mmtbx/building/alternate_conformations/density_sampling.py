@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import libtbx.phil
 import time
 import sys
@@ -134,7 +135,7 @@ def screen_residue(
   xrs.set_occupancies(occ_start)
   t_end = time.time()
   if (verbose):
-    print >> out, "time to sample residue: %.2fs" % (t_end - t_start)
+    print("time to sample residue: %.2fs" % (t_end - t_start), file=out)
   return good_confs
 
 def score_density(self, two_fofc_map, fofc_map, unit_cell, params,

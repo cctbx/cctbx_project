@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import null_out
 from libtbx.test_utils import show_diff
 from cStringIO import StringIO
@@ -262,4 +263,4 @@ END
 if (__name__ == "__main__"):
   # exercise_metal_coordination()
   exercise_secondary_structure()
-  print "OK"
+  print("OK")

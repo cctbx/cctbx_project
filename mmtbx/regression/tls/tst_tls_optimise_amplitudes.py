@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import numpy
 from mmtbx.tls.utils import TLSMatrices
@@ -205,7 +206,7 @@ def tst_optimise_amplitudes_single_group():
         assert approx_equal(list(opt.initial), list(base_amplitudes_start) + list(residual_amplitudes_start), 1e-6)
         assert approx_equal(list(opt.result), list(real_group_amps) + list(real_residual_amps), 1e-6)
 
-  print 'OK'
+  print('OK')
 
 def tst_optimise_amplitudes_multiple_groups_with_residual():
   """Check that multiple partial groups optimise correctly with residual level"""
@@ -269,7 +270,7 @@ def tst_optimise_amplitudes_multiple_groups_with_residual():
   assert approx_equal(list(opt.initial), list(base_amplitudes_start) + list(residual_amplitudes_start), 1e-6)
   assert approx_equal(list(opt.result), list([real_group_amps[i] for i in i_perm]) + list(real_residual_amps), 1e-6)
 
-  print 'OK'
+  print('OK')
 
 def tst_optimise_gradients():
   """Check that the functional and gradients are calculated as expected"""
@@ -386,7 +387,7 @@ def tst_optimise_gradients():
     assert approx_equal(f, functional)
     assert approx_equal(list(g), list(gradients))
 
-  print 'OK'
+  print('OK')
 
 def tst_optimise_gradients_invalid_arguments():
   """Check errors are raised as expected"""
@@ -653,7 +654,7 @@ def tst_optimise_gradients_invalid_arguments():
     f_g_calculator.set_current_amplitudes(flex.double(n_grp*n_dst+n_atm-1))
   assert msg == str(e.value)
 
-  print 'OK'
+  print('OK')
 
 if __name__ == "__main__":
   tst_optimise_amplitudes_single_group()

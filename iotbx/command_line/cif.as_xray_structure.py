@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from libtbx import easy_pickle
 from libtbx.str_utils import show_string
@@ -12,9 +13,9 @@ def run(args):
     except KeyboardInterrupt:
       raise
     except Exception, e:
-      print "Error extracting xray structure from file: %s:" % (
-        show_string(f))
-      print " ", str(e)
+      print("Error extracting xray structure from file: %s:" % (
+        show_string(f)))
+      print(" ", str(e))
       continue
     basename, _ = op.splitext(op.basename(f))
     for key, xs in xray_structures.items():

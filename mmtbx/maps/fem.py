@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import maptbx
 import mmtbx.maps
 import mmtbx.map_tools
@@ -33,21 +34,21 @@ class run(object):
         log          = None):
     adopt_init_args(self, locals())
     if(self.log is None): self.log = sys.stdout
-    print >> self.log, "Start FEM..."
+    print("Start FEM...", file=self.log)
     self.prepare_f_obs_and_flags()
     self.mc_orig = self.compute_original_map()
     self.b_overall = None
-    print >> self.log, "Create un-sharpened fmodel..."
+    print("Create un-sharpened fmodel...", file=self.log)
     self.fmodel_nosharp = self.create_fmodel(show=True).deep_copy()
     if(self.sharp): self.remove_common_isotropic_adp()
-    print >> self.log, "Create fmodel..."
+    print("Create fmodel...", file=self.log)
     self.fmodel = self.create_fmodel(show=True)
     self.crystal_gridding = self.f_obs.crystal_gridding(
       d_min             = self.fmodel.f_obs().d_min(),
       symmetry_flags    = maptbx.use_space_group_symmetry,
       resolution_factor = self.resolution_factor)
     # initial maps
-    print >> self.log, "Compute initial maps..."
+    print("Compute initial maps...", file=self.log)
     self.mc = map_tools.electron_density_map(
       fmodel=self.fmodel).map_coefficients(
         map_type     = "2mFo-DFc",
@@ -58,7 +59,7 @@ class run(object):
         map_type     = "2mFo-DFc",
         isotropize   = True,
         fill_missing = True)
-    print >> self.log, "Finding typical atom volumes..."
+    print("Finding typical atom volumes...", file=self.log)
     self.selection = good_atoms_selection(
       crystal_gridding = self.crystal_gridding,
       map_coeffs       = self.mc_fill,
@@ -133,14 +134,14 @@ class run(object):
     if((self.use_resolve is Auto and
        (self.fmodel.r_work()>0.2 or self.b_overall>30.) or cmpl<0.7) or
        self.use_resolve is True):
-      print >> self.log, "Running Resolve density modificaiton"
+      print("Running Resolve density modificaiton", file=self.log)
       mc_resolve = self.fmodel.resolve_dm_map_coefficients()
       m_resolve = get_map(mc=mc_resolve, cg=self.crystal_gridding)
       m_resolve = low_volume_density_elimination(m=m_resolve, fmodel=self.fmodel,
         selection=self.selection)
       m_resolve = m_resolve.set_selected(m_resolve < 0.25, 0)
       m_resolve = m_resolve.set_selected(m_resolve >=0.25, 1)
-      print >> self.log, "Obtained Resolve filter"
+      print("Obtained Resolve filter", file=self.log)
     return m_resolve
 
   def write_output_files(self, mtz_file_name, ccp4_map_file_name, fem_label,
@@ -191,14 +192,14 @@ class run(object):
       map_accumulator.add(map_data=m)
     m = map_accumulator.as_median_map()
     sd = m.sample_standard_deviation()
-    print >> self.log
+    print(file=self.log)
     return m/sd
 
   def remove_common_isotropic_adp(self):
     xrs = self.xray_structure
     b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
     self.b_overall = b_iso_min
-    print >> self.log, "Max B subtracted from atoms and used to sharpen map:", b_iso_min
+    print("Max B subtracted from atoms and used to sharpen map:", b_iso_min, file=self.log)
     xrs.shift_us(b_shift=-b_iso_min)
     b_iso_min = flex.min(xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1))
     assert approx_equal(b_iso_min, 0, 1.e-3)
@@ -224,8 +225,8 @@ class run(object):
     fmodel.update_all_scales(update_f_part1 = update_f_part1)
     if(show):
       fmodel.show(show_header=False, show_approx=False)
-      print >> self.log, "r_work=%6.4f r_free=%6.4f" % (fmodel.r_work(),
-        fmodel.r_free())
+      print("r_work=%6.4f r_free=%6.4f" % (fmodel.r_work(),
+        fmodel.r_free()), file=self.log)
     return fmodel
 
   def zero_below_threshold(self, m):

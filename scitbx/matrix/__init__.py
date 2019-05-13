@@ -10,6 +10,7 @@ provides faster C++ alternatives to some algorithms included here.
 """
 
 from __future__ import division, absolute_import
+from __future__ import print_function
 
 _flex_imported = False
 def flex_proxy():
@@ -1305,7 +1306,7 @@ def exercise_1():
   try:
     from libtbx import test_utils
   except ImportError:
-    print "INFO: libtbx not available: some tests disabled."
+    print("INFO: libtbx not available: some tests disabled.")
     test_utils = None
     def approx_equal(a, b): return True
     Exception_expected = RuntimeError
@@ -1484,7 +1485,7 @@ def exercise_1():
   else: raise Exception_expected
   flex = flex_proxy()
   if (flex is None):
-    print "INFO: scitbx.array_family.flex not available."
+    print("INFO: scitbx.array_family.flex not available.")
   else:
     gv = g * flex.vec3_double([(-1,2,3),(2,-3,4)])
     assert isinstance(gv, flex.vec3_double)
@@ -1881,13 +1882,13 @@ def exercise_1():
   #
   numpy = numpy_proxy()
   if (numpy is None):
-    print "INFO: numpy not available."
+    print("INFO: numpy not available.")
   else:
     m = rec(elems=range(6), n=(2,3))
     n = m.as_numpy_array()
     assert n.tolist() == [[0, 1, 2], [3, 4, 5]]
   #
-  print "OK"
+  print("OK")
 
 def exercise_2():
   points = \

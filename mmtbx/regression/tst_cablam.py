@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.cablam import cablam_validate
 from libtbx.test_utils import show_diff
 from iotbx import pdb
@@ -176,7 +177,7 @@ def exercise_cablam():
     relative_path="phenix_regression/pdb/pdb103l.ent",
     test=os.path.isfile) #This is the same file used for tst_kinemage.py
   if (regression_pdb is None):
-    print "Skipping exercise_cablam(): input pdb (pdb103l.ent) not available"
+    print("Skipping exercise_cablam(): input pdb (pdb103l.ent) not available")
     return
   #-----
   pdb_io = pdb.input(regression_pdb)
@@ -213,7 +214,7 @@ def run():
   ##  exercise_kinemage()
   ##print "OK"
   exercise_cablam()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

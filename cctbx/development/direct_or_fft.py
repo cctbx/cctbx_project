@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx import adptbx
 from cctbx import miller
@@ -45,17 +46,17 @@ def get_times(space_group_info, volume=100000, d_min=1.5):
       f_calc = structure_factors_from_scatterers(
         xray_structure=structure,
         miller_set=miller_set)
-      print "%6d %6d %10.3f direct=%10.3f fft=%10.3f" % (
+      print("%6d %6d %10.3f direct=%10.3f fft=%10.3f" % (
         2**log_n_scatterers, 2**log_n_reflections, timer.delta(),
         structure_factors_from_scatterers.estimate_time_direct(
           2**log_n_scatterers * 2**log_n_reflections),
         structure_factors_from_scatterers.estimate_time_fft(
-          2**log_n_scatterers, 2**log_n_reflections))
+          2**log_n_scatterers, 2**log_n_reflections)))
   e = structure_factors_from_scatterers.estimate_time_fft
-  print "time_sampling:", e.time_sampling
-  print "time_fft:", e.time_fft
-  print "time_from_or_to_map:", e.time_from_or_to_map
-  print "time_apply_u_extra:", e.time_apply_u_extra
+  print("time_sampling:", e.time_sampling)
+  print("time_fft:", e.time_fft)
+  print("time_from_or_to_map:", e.time_from_or_to_map)
+  print("time_apply_u_extra:", e.time_apply_u_extra)
 
 def run_call_back(flags, space_group_info):
   get_times(space_group_info)

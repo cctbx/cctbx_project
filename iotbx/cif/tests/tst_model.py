@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
 from libtbx.utils import Sorry
@@ -125,7 +126,7 @@ def exercise_cif_model():
   del cm["fred"]["_loop2"]
   assert not cm["fred"].loops.has_key("_loop2")
   s = StringIO()
-  print >> s, cm
+  print(cm, file=s)
   assert not show_diff(s.getvalue(),
 """\
 data_fred
@@ -435,7 +436,7 @@ THVFRLKKWIQKVIDQFGE
   cb["_d"] = 'O2"'
   cb["_e"] = """1 'a' "b" 3"""
   s = StringIO()
-  print >> s, cm
+  print(cm, file=s)
   s.seek(0)
   assert not show_diff("\n".join(l.rstrip() for l in s.readlines()), """\
 data_a
@@ -471,7 +472,7 @@ loop_
   4  4  ?  "chain 'B' and (resid    1  through   14 )"
   5  5  ?  "chain 'B' and (resid   15  through   20 )"
 """).model()
-  print cm
+  print(cm)
   #
   cif_block = model.block()
   loop_a = model.loop(header=("_a.1", "_a.2"), data=(1,2,3,4,5,6))
@@ -563,4 +564,4 @@ loop_
 if __name__ == '__main__':
   exercise_cif_model()
   test_301()
-  print "OK"
+  print("OK")

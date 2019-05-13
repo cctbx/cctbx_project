@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.shelx import hklf
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
@@ -165,7 +166,7 @@ def exercise_miller_export_as_shelx_hklf():
 def run():
   exercise_hklf_reader()
   exercise_miller_export_as_shelx_hklf()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

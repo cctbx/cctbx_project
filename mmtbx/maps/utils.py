@@ -3,6 +3,7 @@
 # removed as soon as someone has time.
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.math_utils import ifloor, iceil
 from libtbx.utils import Sorry, null_out
 from libtbx import adopt_init_args
@@ -38,8 +39,8 @@ def create_map_from_pdb_and_mtz(
   xrs = pdb_in.xray_structure_simple(enable_scattering_type_unknown=True)
   selection = xrs.scatterers().extract_scattering_types()!="unknown"
   if(selection.size()!=selection.count(True)):
-    print >> out, "WARNING: removing %d atoms with unknown scattering type." %\
-      selection.count(False)
+    print("WARNING: removing %d atoms with unknown scattering type." %\
+      selection.count(False), file=out)
   xrs = xrs.select(selection)
   fast_maps_from_hkl_file(
     file_name=mtz_file,
@@ -83,8 +84,8 @@ class fast_maps_from_hkl_file(object):
     from iotbx import file_reader
     from scitbx.array_family import flex
     if f_label is None and not quiet:
-      print >> log, "      no label for %s, will try default labels" % \
-        os.path.basename(file_name)
+      print("      no label for %s, will try default labels" % \
+        os.path.basename(file_name), file=log)
     f_obs = r_free_flags = None
     # FIXME this whole block needs to disappear
     if (not assume_pdb_data):
@@ -232,13 +233,13 @@ class generate_water_omit_map(object):
     self.n_waters = water_sel.count(True)
     self.two_fofc_map = self.fofc_map = self.anom_map = self.fmodel_map = None
     if (self.n_waters == 0) and (skip_if_no_waters):
-      print >> log, "  No waters in model, skipping omit map calculation"
+      print("  No waters in model, skipping omit map calculation", file=log)
       self.pdb_hierarchy_omit = pdb_hierarchy
     else :
-      print >> log, "  Calculating new 2mFo-DFc and mFo-DFc maps..."
-      print >> log, "    %d waters temporarily set to zero occupancy" % \
-        self.n_waters
-      print >> log, ""
+      print("  Calculating new 2mFo-DFc and mFo-DFc maps...", file=log)
+      print("    %d waters temporarily set to zero occupancy" % \
+        self.n_waters, file=log)
+      print("", file=log)
       self.pdb_hierarchy_omit = pdb_hierarchy.select(~water_sel)
       occ = xrs.scatterers().extract_occupancies()
       if (self.n_waters > 0):

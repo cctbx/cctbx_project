@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx import slots_getstate_setstate, \
     slots_getstate_setstate_default_initializer
 import sys
@@ -35,8 +36,8 @@ class nb_clash(slots_getstate_setstate_default_initializer):
   __slots__ = ["i_seq", "j_seq", "id_str_i", "id_str_j", "overlap"]
 
   def show(self, out=sys.stdout, prefix=""):
-    print >> out, prefix+"%s  %s  : %.3f" % (self.id_str_i, self.id_str_j,
-      self.overlap)
+    print(prefix+"%s  %s  : %.3f" % (self.id_str_i, self.id_str_j,
+      self.overlap), file=out)
 
 def get_sorted_clashes(
     pdb_atoms,
@@ -85,7 +86,7 @@ def show_altloc_clashes(
     clash_min=clash_min,
     out=out)
   if (len(clashes) > 0):
-    print >> out, "Clashing atoms in alternate conformations:"
+    print("Clashing atoms in alternate conformations:", file=out)
     for clash in clashes :
       clash.show(out=out, prefix="  ")
   return clashes

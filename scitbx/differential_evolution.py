@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx.stdlib import random
 
@@ -204,7 +205,7 @@ Note: [0.5,1.0] dither is the default behavior unless f is set to a value other 
 
 
   def show_population(self):
-    print "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     for vec in self.population:
-      print list(vec)
-    print "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+      print(list(vec))
+    print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++")

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx.development import make_cns_input
@@ -21,7 +22,7 @@ def verify(sg_fcalc, sg_hl, sg_cns, p1_cns):
                                   sg_cns.pi.data,
                                   sg_phase_integrals.data()):
     if (abs(cns_pi - miller_pi) > 1.e-2):
-      print "Error:", h, cns_pi, miller_pi
+      print("Error:", h, cns_pi, miller_pi)
       if (0): return
       raise AssertionError
   #
@@ -35,7 +36,7 @@ def verify(sg_fcalc, sg_hl, sg_cns, p1_cns):
                                   p1_cns.pi.data,
                                   p1_phase_integrals.data()):
     if (abs(cns_pi - miller_pi) > 1.e-2):
-      print "Error:", h, cns_pi, miller_pi
+      print("Error:", h, cns_pi, miller_pi)
       if (0): return
       raise AssertionError
   #
@@ -50,10 +51,10 @@ def verify(sg_fcalc, sg_hl, sg_cns, p1_cns):
     sg_i = lookup_dict[h_eq.h()]
     assert abs(sg_fcalc.data()[sg_i] - fcalc_asu) < 1.e-2
     if (not approx_equal(sg_hl[sg_i], hl_asu, eps=1.e-2)):
-      print "Error:", sg_fcalc.space_group_info()
-      print sg_fcalc.indices()[sg_i]
-      print "i:", sg_hl[sg_i]
-      print "o:", hl_asu
+      print("Error:", sg_fcalc.space_group_info())
+      print(sg_fcalc.indices()[sg_i])
+      print("i:", sg_hl[sg_i])
+      print("o:", hl_asu)
       if (0): return
       raise AssertionError
 
@@ -95,7 +96,7 @@ def write_cns_input(fcalc_array, hl, test_merge=False):
   l("stop")
   f = open("tmp.cns", "w")
   for l in cns_input:
-    print >> f, l
+    print(l, file=f)
   f.close()
 
 class read_reflection_arrays(object):
@@ -103,7 +104,7 @@ class read_reflection_arrays(object):
   def __init__(self, file_name, anomalous_flag, verbose):
     reflection_file = reflection_reader.cns_reflection_file(open(file_name))
     if (0 or verbose):
-      print reflection_file.show_summary()
+      print(reflection_file.show_summary())
     assert reflection_file.anomalous == anomalous_flag
     names, self.miller_indices, self.hl = reflection_file.join_hl_group()
     self.fcalc = reflection_file.reciprocal_space_objects["FCALC"]
@@ -156,7 +157,7 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
           part(fc_merged_a.data()),
           part(fc_merged_cns_a.data())).coefficient()
         if (cc < 1-1.e-6):
-          print "FAILURE acentrics", sg_fcalc.space_group_info()
+          print("FAILURE acentrics", sg_fcalc.space_group_info())
           if (0): return
           raise AssertionError
     names, miller_indices, hl = reflection_file.join_hl_group()
@@ -168,9 +169,9 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
                      hl_merged.data(),
                      hl_merged_cns.data()):
       if (not approx_equal(a, b, eps=5.e-3)):
-        print h
-        print "cctbx:", a
-        print "  cns:", b
+        print(h)
+        print("cctbx:", a)
+        print("  cns:", b)
         if (0): return
         raise AssertionError
 

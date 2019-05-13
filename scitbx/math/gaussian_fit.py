@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.math.gaussian
 from scitbx.math import golay_24_12_generator
 from scitbx import lbfgs
@@ -46,9 +47,9 @@ class minimize_mixin(object):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "n_terms:", self.final_gaussian_fit.n_terms(),
-    print >> f, "max_x: %.2f" % self.final_gaussian_fit.table_x()[-1],
-    print >> f, "max_error: %.4f" % self.max_error
+    print("n_terms:", self.final_gaussian_fit.n_terms(), end=' ', file=f)
+    print("max_x: %.2f" % self.final_gaussian_fit.table_x()[-1], end=' ', file=f)
+    print("max_error: %.4f" % self.max_error, file=f)
     f.flush()
     return self
 
@@ -58,7 +59,7 @@ class minimize_mixin(object):
     if (hasattr(self, "shift_sqrt_b_mod_n")):
       s += " shift_sqrt_b_mod_n:%d" % self.shift_sqrt_b_mod_n
       s += " i_repeat:%d" % self.i_repeat
-    print >> f, s
+    print(s, file=f)
     f.flush()
     return self
 
@@ -197,9 +198,9 @@ def minimize_multi_lbfgs(start_fit,
         break
       except RuntimeError, e:
         if (str(e).find("lbfgs error: ") < 0): raise
-        print e
-        print "Aborting this minimization."
-        print
+        print(e)
+        print("Aborting this minimization.")
+        print()
         sys.stdout.flush()
         minimized = None
         break
@@ -322,8 +323,8 @@ def show_minimize_multi_histogram(f=None, reset=True):
   counts = counts.select(perm)
   n_total = flex.sum(counts)
   for m,c in zip(minimizer_types, counts):
-    print >> f, "%-39s  %5.3f %6d" % (m, c/max(1,n_total), c)
-  print >> f
+    print("%-39s  %5.3f %6d" % (m, c/max(1,n_total), c), file=f)
+  print(file=f)
   if (reset):
     minimize_multi_histogram = {"None": 0}
 
@@ -546,7 +547,7 @@ def fit_with_golay_starts(label,
     print_to = sys.stdout
   good_min = None
   if (print_to is not None):
-    print >> print_to, "label:", label
+    print("label:", label, file=print_to)
     print_to.flush()
   n_golay_codes_total = 2**12
   n_golay_codes_processed = 0
@@ -572,37 +573,37 @@ def fit_with_golay_starts(label,
           null_fit_more.table_sigmas(),
           good_min.final_gaussian_fit)
         if (print_to is not None):
-          print >> print_to, label, "max_error fitted=%.4f" % (
-            good_min.max_error),
+          print(label, "max_error fitted=%.4f" % (
+            good_min.max_error), end=' ', file=print_to)
           if (null_fit_more.table_x().size() > null_fit.table_x().size()):
-            print >> print_to, "more=%.4f" % (
-              flex.max(fit_more.significant_relative_errors())),
-          print >> print_to, "Golay code #%d (%.2f%% of all)" % (
+            print("more=%.4f" % (
+              flex.max(fit_more.significant_relative_errors())), end=' ', file=print_to)
+          print("Golay code #%d (%.2f%% of all)" % (
             good_min.n_golay_codes_processed,
-            100.*good_min.n_golay_codes_processed/n_golay_codes_total)
+            100.*good_min.n_golay_codes_processed/n_golay_codes_total), file=print_to)
           fit_more.show(f=print_to)
           fit_more.show_table(f=print_to)
-          print >> print_to
+          print(file=print_to)
         print_to.flush()
         if (good_min.max_error <= params.negligible_max_error):
           break
   if (print_to is not None):
-    print >> print_to, "Total number of Golay codes processed:", \
-      n_golay_codes_processed
-    print >> print_to
+    print("Total number of Golay codes processed:", \
+      n_golay_codes_processed, file=print_to)
+    print(file=print_to)
     if (good_min is None):
-      print >> print_to, "Final: %s: No successful minimization." % label
+      print("Final: %s: No successful minimization." % label, file=print_to)
     else:
-      print >> print_to, "Final:", label, "max_error fitted=%.4f" %(
-        good_min.max_error),
+      print("Final:", label, "max_error fitted=%.4f" %(
+        good_min.max_error), end=' ', file=print_to)
       if (null_fit_more.table_x().size() > null_fit.table_x().size()):
-        print >> print_to, "more=%.4f" % (
-          flex.max(fit_more.significant_relative_errors())),
-      print >> print_to, "Golay code #%d (%.2f%% of all)" % (
+        print("more=%.4f" % (
+          flex.max(fit_more.significant_relative_errors())), end=' ', file=print_to)
+      print("Golay code #%d (%.2f%% of all)" % (
         good_min.n_golay_codes_processed,
-        100.*good_min.n_golay_codes_processed/n_golay_codes_total)
+        100.*good_min.n_golay_codes_processed/n_golay_codes_total), file=print_to)
     good_min.show_minimization_parameters(f=print_to)
-    print >> print_to
+    print(file=print_to)
     show_minimize_multi_histogram(f=print_to)
   return good_min
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
 from iotbx.pdb import secondary_structure as ioss
@@ -1078,7 +1079,7 @@ HELIX    1   1 ALA A    1  ALA A   20  1                                  20
   d2 = get_distances(model.get_hierarchy())
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  print("minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample())
   assert dmmm[1] < 0.65, dmmm[1]
   assert dmmm[2] < 0.17, dmmm[2]
   assert dist.standard_deviation_of_the_sample() < 0.15, dist.standard_deviation_of_the_sample()
@@ -1109,7 +1110,7 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   # model.get_hierarchy().write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  print("minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample())
   assert dmmm[1] < 1.5, dmmm[1]
   assert dmmm[2] < 0.2, dmmm[2]
   assert dist.standard_deviation_of_the_sample() < 0.2
@@ -1140,7 +1141,7 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   # model.get_hierarchy().write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  print("minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample())
   # assert dmmm[1] < 0.8
   assert dmmm[2] < 0.2, dmmm[2]
   # print dist.standard_deviation_of_the_sample()
@@ -1172,7 +1173,7 @@ SHEET    2  AA 2 CYS A  52  GLY A  57 -1  O  LYS A  53   N  TYR A  46
   # h.write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  print("minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample())
   #assert dmmm[1] < 0.8
   assert dmmm[2] < 0.1
   assert dist.standard_deviation_of_the_sample() < 0.2, dist.standard_deviation_of_the_sample()
@@ -1203,7 +1204,7 @@ HELIX   13  13 SER A  466  TYR A  472  1                                   7
   d2 = get_distances(answer_h, 5)
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  print("minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample())
   assert dmmm[2] < 0.1, dmmm[2]
 
 def exercise_04(prefix="tst_2_exercise_04"):
@@ -1232,7 +1233,7 @@ HELIX    1  21 ALA A   21  ALA A   24  1                                  5
   d2 = get_distances(answer_h, 5)
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  print("minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample())
   assert dmmm[2] < 0.2, dmmm[2]
 
 
@@ -1244,7 +1245,7 @@ def exercise():
   exercise_02()
   exercise_03()
   exercise_04()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 #-----------------------------------------------------------------------
 # more-or-less real-time plotting of Bragg peak count and XES detector
@@ -66,11 +67,11 @@ class DetectorPlotFrame (wxtbx.plots.plot_frame) :
   def find_logs (self) :
     assert (self._watch_dir is not None)
     current_dir = os.path.join(self._watch_dir, "stdout")
-    print "Current directory: %s" % current_dir
+    print("Current directory: %s" % current_dir)
     for file_name in os.listdir(current_dir) :
       if (file_name.endswith(".out")) :
         full_path = os.path.join(current_dir, file_name)
-        print "Adding %s to list of files to monitor" % full_path
+        print("Adding %s to list of files to monitor" % full_path)
         f = open(full_path)
         self._watch_files.append(f)
 
@@ -182,9 +183,9 @@ class DetectorPlot (wxtbx.plots.plot_container) :
     if (getattr(self, "run_id", None) is not None) :
       file_name = "run%d_detector_status.png" % self.run_id
       self.figure.savefig(file_name, format="png")
-      print "Saved image to %s" % os.path.abspath(file_name)
+      print("Saved image to %s" % os.path.abspath(file_name))
     else :
-      print "Can't save an image until run ID is set"
+      print("Can't save an image until run ID is set")
 
 def run (args) :
   user_phil = []

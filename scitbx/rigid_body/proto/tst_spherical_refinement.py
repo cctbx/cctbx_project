@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto import test_utils
 from scitbx.rigid_body.proto.utils import center_of_mass_from_sites
@@ -243,13 +244,13 @@ class refinery(object):
     minimizer = scitbx.lbfgs.run(target_evaluator=O)
     f, g = O.compute_functional_and_gradients()
     label = str(O.spherical_type_info)
-    print >> out, label, \
+    print(label, \
       "functional: %12.6g" % f, \
       "gradient norm: %12.6g" % g.norm(), \
       "iter: %3d" % minimizer.iter(), \
-      "nfun: %3d" % minimizer.nfun()
+      "nfun: %3d" % minimizer.nfun(), file=out)
     O.failed = (f > 1.e-3)
-    if (O.failed): print >> out, "               FAILED", label, f
+    if (O.failed): print("               FAILED", label, f, file=out)
     sys.stdout.flush()
     O.nfun = minimizer.nfun()
 
@@ -307,7 +308,7 @@ def run(args):
   nfun_sums = []
   annotations = []
   for ti in spherical_types:
-    print >> out, ti
+    print(ti, file=out)
     nfuns = nfun_accu[str(ti)]
     stats = nfuns.as_double().min_max_mean()
     stats.show(out=out, prefix="  ")
@@ -316,14 +317,14 @@ def run(args):
       annotations.append(None)
     else:
       annotations.append("failed: %d" % n_failed[str(ti)])
-  print >> out
+  print(file=out)
   show_sorted_by_counts(
     label_count_pairs=nfun_sums,
     reverse=False,
     out=out,
     annotations=annotations)
-  print >> out
-  print "OK"
+  print(file=out)
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

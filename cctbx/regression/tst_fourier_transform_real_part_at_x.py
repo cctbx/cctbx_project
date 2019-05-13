@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def set_up_random_structure(space_group_info):
   from cctbx.development import random_structure
   xray_structure = random_structure.xray_structure(
@@ -45,7 +46,7 @@ def run_call_back(flags, space_group_info):
         rho_at_sites_from_phenix_fft_map,
         rho_at_sites_calculated):
      if (flags.Verbose):
-       print numstr(scatterer.site), "%.3f" % rf, "%.3f" % rc
+       print(numstr(scatterer.site), "%.3f" % rf, "%.3f" % rc)
   from scitbx.array_family import flex
   corr = flex.linear_correlation(
     flex.double(rho_at_sites_from_phenix_fft_map),
@@ -53,11 +54,11 @@ def run_call_back(flags, space_group_info):
   assert corr.is_well_defined
   cc = corr.coefficient()
   if (flags.Verbose):
-    print "Correlation coefficient:", cc
+    print("Correlation coefficient:", cc)
   from libtbx.test_utils import is_above_limit
   assert is_above_limit(value=cc, limit=0.99)
   if (flags.Verbose):
-    print
+    print()
 
 def run(args):
   from scitbx.array_family import flex

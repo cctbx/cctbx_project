@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.uctbx import unit_cell
 from cctbx import miller, crystal, statistics
 from cctbx.array_family import flex
@@ -331,8 +332,8 @@ class intensities_scaler(object):
           try:
             i_filter = flex.abs((I_obs_bin - np.median(I_obs_bin))/np.std(I_obs_bin)) < 10
           except Exception as e:
-            print "Warning: outlier rejection by bins failed because of floating point."
-            print e
+            print("Warning: outlier rejection by bins failed because of floating point.")
+            print(e)
             i_filter = flex.bool([True]*len(I_obs_bin))
           good_sequences.extend(list(sequences_bin.select(i_filter)))
     mdh.reduce_by_selection(flex.size_t(good_sequences))
@@ -364,8 +365,8 @@ class intensities_scaler(object):
         B_merged = wp.wilson_b
       except Exception as e:
         B_merged = 0
-        print "Warning: b-factor calculation in mod_util failed. Reset b-factor to 0"
-        print e
+        print("Warning: b-factor calculation in mod_util failed. Reset b-factor to 0")
+        print(e)
       #report binning stats
       txt_out = '\n'
       txt_out += 'Isotropic B-factor:  %7.2f\n'%(B_merged)
@@ -511,7 +512,7 @@ class intensities_scaler(object):
       except Exception:
         expected_f_sq = flex.double([0]*n_bins_plot)
         mean_stol_sq = flex.double(range(n_bins_plot))
-        print "Warning: Wilson plot calculation in plot stats failed."
+        print("Warning: Wilson plot calculation in plot stats failed.")
       #setup list
       params_array = np.array([[pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, \
           pres.G, pres.B, pres.rotx*180/math.pi, pres.roty*180/math.pi, \
@@ -543,8 +544,8 @@ class intensities_scaler(object):
       try:
         import matplotlib.pyplot as plt
       except Exception as e:
-        print "Warning: error importing matplotlib.pyplot"
-        print e
+        print("Warning: error importing matplotlib.pyplot")
+        print(e)
         return
       n_rows = 3
       n_cols = int(math.ceil(len(params)/n_rows))

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx.math import fit_peak
 from libtbx.test_utils import approx_equal
@@ -114,4 +115,4 @@ if (__name__ == "__main__"):
   test_fit_3d_parabola()
   test_fit_3d_quadratic()
   test_fit_3d_gaussian()
-  print "OK"
+  print("OK")

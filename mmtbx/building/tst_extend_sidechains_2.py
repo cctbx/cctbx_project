@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from mmtbx.building import extend_sidechains
 import mmtbx.monomer_library
@@ -317,7 +318,7 @@ def check(answer, result, bad):
       if(aa.name == ar.name):
         xyz_a.append(aa.xyz)
         xyz_r.append(ar.xyz)
-  print flex.max(flex.sqrt((xyz_a - xyz_r).dot()))
+  print(flex.max(flex.sqrt((xyz_a - xyz_r).dot())))
 
 def exercise_extend_sidechains(pdb_str_bad, pdb_str_good, i, Sorry_msg, add_h):
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_bad)
@@ -372,4 +373,4 @@ if(__name__ == "__main__"):
     ]):
     exercise_extend_sidechains(
       pdb_str_bad=t[0], pdb_str_good=t[1], i=i, Sorry_msg=t[2], add_h=t[3])
-  print "OK"
+  print("OK")

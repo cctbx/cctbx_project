@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx import fftpack
 from scitbx.array_family import flex
 import omptbx # initializes OpenMP environment
@@ -15,20 +16,20 @@ def fmtfloat(f):
 
 def show_cseq(vc):
   for i in xrange(len(vc)):
-    print "(%s,%s)" % (fmtfloat(vc[i].real), fmtfloat(vc[i].imag))
-  print
+    print("(%s,%s)" % (fmtfloat(vc[i].real), fmtfloat(vc[i].imag)))
+  print()
 
 def show_rseq(vr, n):
   for i in xrange(n):
-    print fmtfloat(vr[i])
-  print
+    print(fmtfloat(vr[i]))
+  print()
 
 def show_rseq_3d(a, m, n):
   for i in xrange(n[0]):
     for j in xrange(n[1]):
       for k in xrange(n[2]):
-        print fmtfloat(a[(i * m[1] + j) * m[2] + k])
-  print
+        print(fmtfloat(a[(i * m[1] + j) * m[2] + k]))
+  print()
 
 def assert_complex_eq_real(vc, vd):
   for i in xrange(vc.size()):

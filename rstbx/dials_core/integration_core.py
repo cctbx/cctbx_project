@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from cctbx.array_family import flex
 from scitbx import matrix
@@ -32,15 +33,15 @@ def show_observations(obs,out=None, n_bins=12):
         d_max_min    = (d_max_, d_min_),
         completeness = (counts_given[i_bin], counts_complete[i_bin]))
       result.append(bin)
-  print >>out, "\n Bin  Resolution Range  Compl.         <I>     <I/sig(I)>"
+  print("\n Bin  Resolution Range  Compl.         <I>     <I/sig(I)>", file=out)
   for bin in result:
     fmt = " %s %s    %s  %s"
-    print >>out,fmt%(
+    print(fmt%(
       format_value("%3d",   bin.i_bin),
       format_value("%-17s", bin.d_range),
       format_value("%8.1f", bin.mean_I),
       format_value("%8.1f", bin.mean_I_sigI),
-      )
+      ), file=out)
   return result
 
 class resolution_bin(object):

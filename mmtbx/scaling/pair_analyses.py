@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import miller
 from cctbx import crystal
 from libtbx import table_utils
@@ -67,7 +68,7 @@ class reindexing(object):
       self.analyse()
       self.select_and_transform()
     else:
-      print >> self.out, "No simple reindexing relation found between unit cells"
+      print("No simple reindexing relation found between unit cells", file=self.out)
 
   def analyse(self):
     table_data=[]
@@ -112,22 +113,22 @@ class reindexing(object):
                                        separate_rows=False,
                                        prefix='| ',
                                        postfix=' |')
-    print >> self.out
-    print >> self.out, "Reference analyses"
-    print >> self.out, "   The following reindexing operators have been found:"
-    print >> self.out
-    print >> self.out, self.table
-    print >> self.out
+    print(file=self.out)
+    print("Reference analyses", file=self.out)
+    print("   The following reindexing operators have been found:", file=self.out)
+    print(file=self.out)
+    print(self.table, file=self.out)
+    print(file=self.out)
     if str(self.nice_cb_ops[location].as_hkl()) == "h,k,l":
-      print >> self.out, "The data doesn't need to be reindexed! Indexing is consistent between these datasets."
+      print("The data doesn't need to be reindexed! Indexing is consistent between these datasets.", file=self.out)
     else:
-      print >> self.out, "If the data is reindexed with operator (%s), the correlation of"%( self.nice_cb_ops[location].as_hkl() )
-      print >> self.out, "the intensities to the reference data is maximized. "
+      print("If the data is reindexed with operator (%s), the correlation of"%( self.nice_cb_ops[location].as_hkl() ), file=self.out)
+      print("the intensities to the reference data is maximized. ", file=self.out)
       if self.file_name is not None:
-        print self.file_name
-        print >> self.out, "This can be done for instance with:"
-        print >> self.out, "  phenix.reflection_file_converter %s --change_of_basis=\"%s\" <output_options> "%(self.file_name, self.nice_cb_ops[location].as_hkl() )
-    print >> self.out, "-------------------------------------------------------------------------------"
+        print(self.file_name)
+        print("This can be done for instance with:", file=self.out)
+        print("  phenix.reflection_file_converter %s --change_of_basis=\"%s\" <output_options> "%(self.file_name, self.nice_cb_ops[location].as_hkl() ), file=self.out)
+    print("-------------------------------------------------------------------------------", file=self.out)
     ##  change things in primitive setting
 
     transform_b = self.set_b_ori.change_basis( self.set_b_to_niggli ).change_basis(
@@ -294,11 +295,11 @@ class outlier_rejection(object):
 
       self.result = self.result.set_selected( selection, potential_outliers )
 
-    print >> self.out
-    print >> self.out, " %8i potential outliers detected" %(
-      self.result.count(True) )
-    print >> self.out, " They will be removed from the data set"
-    print >> self.out
+    print(file=self.out)
+    print(" %8i potential outliers detected" %(
+      self.result.count(True) ), file=self.out)
+    print(" They will be removed from the data set", file=self.out)
+    print(file=self.out)
 
 
   def detect_outliers_rms(self):
@@ -310,11 +311,11 @@ class outlier_rejection(object):
       potential_outliers =  potential_outliers.select( selection )
       self.result = self.result.set_selected( selection, potential_outliers )
 
-    print >> self.out
-    print >> self.out, " %8i potential outliers detected" %(
-      self.result.count(True) )
-    print >> self.out, " They will be removed from the data set"
-    print >> self.out
+    print(file=self.out)
+    print(" %8i potential outliers detected" %(
+      self.result.count(True) ), file=self.out)
+    print(" They will be removed from the data set", file=self.out)
+    print(file=self.out)
 
 
   def detect_outliers_sigma(self):
@@ -340,11 +341,11 @@ class outlier_rejection(object):
     self.result = self.result.set_selected( nat_select, True )
     self.result = self.result.set_selected( der_select, True )
 
-    print >> self.out
-    print >> self.out, " %8i potential outliers detected" %(
-      self.result.count(True) )
-    print >> self.out, " They will be removed from the data set"
-    print >> self.out
+    print(file=self.out)
+    print(" %8i potential outliers detected" %(
+      self.result.count(True) ), file=self.out)
+    print(" They will be removed from the data set", file=self.out)
+    print(file=self.out)
 
 
   def remove_outliers(self):
@@ -427,9 +428,9 @@ class f_double_prime_ratio(object):
   def show(self,out=None):
     if out is None:
       out = sys.stdout
-    print >> out
-    print >> out, "Estimated ratio of fdp(w1)/fwp(w2): %3.2f"%(self.x[0])
-    print >> out
+    print(file=out)
+    print("Estimated ratio of fdp(w1)/fwp(w2): %3.2f"%(self.x[0]), file=out)
+    print(file=out)
 
 
 
@@ -498,7 +499,7 @@ class delta_f_prime_f_double_prime_ratio(object):
               delta_iso_sq = math.sqrt( tmpiso  )
               delta_ano_sq = math.sqrt( tmpano  )
               tmp=2.0*delta_iso_sq/delta_ano_sq
-              print bin, tmp
+              print(bin, tmp)
               estimates.append( tmp )
               count+=1.0
 

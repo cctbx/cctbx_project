@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.source_generators.utils import join_open
 import cctbx
 from cctbx.sgtbx.direct_space_asu import reference_table
@@ -83,19 +84,19 @@ def out_cpp(asu, f):
   i=0
   for cut in asu.cuts:
     if( i!=0 ):
-      print >>f, "    &", cut
+      print("    &", cut, file=f)
     else:
-      print >>f, "     ", cut
+      print("     ", cut, file=f)
     i = i + 1
 
 
 def show_cpp(sg, f):
   asu = reference_table.get_asu(sg)
   func = "asu_%03d"%sg
-  print >>f, "facet_collection::pointer ", func, "()   //  Hall: ", asu.hall_symbol
-  print >>f, "{\n  return facet_collection_asu("
+  print("facet_collection::pointer ", func, "()   //  Hall: ", asu.hall_symbol, file=f)
+  print("{\n  return facet_collection_asu(", file=f)
   out_cpp(asu, f)
-  print >>f, "  );\n}\n"
+  print("  );\n}\n", file=f)
   return func
 
 
@@ -113,13 +114,13 @@ def run(dr):
   s1md5 = make_md5("sgtbx/direct_space_asu/reference_table.py")
   s2md5 = make_md5("sgtbx/direct_space_asu/proto/generate_cpp_asu_table.py")
   s3md5 = make_md5("sgtbx/direct_space_asu/short_cuts.py")
-  print s1md5, '\n', s2md5, '\n', s3md5
-  print >>f, head1
+  print(s1md5, '\n', s2md5, '\n', s3md5)
+  print(head1, file=f)
   # comma in print adds one whitespace between parameters
   # so it is better to use + to concatanete strings
   # to avoid trailing white spaces
-  print >>f, "////////////////\n" + s1md5 + "\n" + s2md5 + "\n" + s3md5 + "\n////////////////\n"
-  print >>f, head2
+  print("////////////////\n" + s1md5 + "\n" + s2md5 + "\n" + s3md5 + "\n////////////////\n", file=f)
+  print(head2, file=f)
   table = "asu_func asu_table[230] = {"
   i = 0
   for sg in xrange(1,231):
@@ -131,7 +132,7 @@ def run(dr):
     if i<229 :
       table += ","
     i += 1
-  print >>f, "} // end of unnamed namespace\n\n" + table + "\n};\n\n}}}\n"
+  print("} // end of unnamed namespace\n\n" + table + "\n};\n\n}}}\n", file=f)
 
 
 if (__name__ == "__main__"):

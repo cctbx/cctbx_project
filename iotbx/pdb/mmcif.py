@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 from cctbx.array_family import flex
 from libtbx.containers import OrderedDict
@@ -638,7 +639,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         if error_handle:
           raise Sorry('Rotation matrices are not proper! ')
         else:
-          print Sorry('Rotation matrices are not proper! ')
+          print(Sorry('Rotation matrices are not proper! '))
       ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
       result.add(
         r=r, t=t,
@@ -705,7 +706,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         if error_handle:
           raise Sorry('Rotation matrices are not proper! ')
         else:
-          print Sorry('Rotation matrices are not proper! ')
+          print(Sorry('Rotation matrices are not proper! '))
       ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
       result.add(
         r=r, t=t,
@@ -766,7 +767,7 @@ class _cif_get_r_rfree_sigma_object(object):
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
-    print >> log, self.formatted_string()
+    print(self.formatted_string(), file=log)
 
 
 def extract_f_model_core_constants(cif_block):

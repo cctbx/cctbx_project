@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import approx_equal
 from cctbx import dmtbx
 from cctbx import maptbx
@@ -54,10 +55,10 @@ def reciprocal_space_squaring(start, selection_fixed, verbose):
   if (0 or verbose):
     for ih in xrange(start.indices()[:1].size()):
       for relation in tprs.relations_for(ih):
-        print relation.format(start.indices(), ih),
+        print(relation.format(start.indices(), ih), end=' ')
         if (not relation.is_sigma_2(ih)):
-          print "not sigma-2",
-        print
+          print("not sigma-2", end=' ')
+        print()
   amplitudes = abs(start).data()
   if (selection_fixed is not None):
     amplitudes.set_selected(~selection_fixed, 0)
@@ -140,7 +141,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
   q_large = q_obs.select(
     q_obs.quasi_normalized_as_normalized().data() > e_min)
   if (0 or verbose):
-    print "Number of e-values > %.6g: %d" % (e_min, q_large.size())
+    print("Number of e-values > %.6g: %d" % (e_min, q_large.size()))
   other_structure = random_structure.xray_structure(
     space_group_info,
     elements=["const"]*n_scatterers,
@@ -163,7 +164,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
     mwpe = direct_space_result.mean_weighted_phase_error(
       reciprocal_space_result)
     if (0 or verbose):
-      print "mwpe: %.2f" % mwpe, start.space_group_info()
+      print("mwpe: %.2f" % mwpe, start.space_group_info())
     for i,h in enumerate(direct_space_result.indices()):
       amp_d,phi_d = complex_math.abs_arg(
         direct_space_result.data()[i], deg=True)

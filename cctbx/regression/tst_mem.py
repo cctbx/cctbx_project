@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 import iotbx.pdb
 import cctbx.maptbx.mem as mem
@@ -59,7 +60,7 @@ END
   #
   R = r_factor(x=r_s, r1=rho_r, r2=rho_s)
   cc = flex.linear_correlation(x = rho_r, y = rho_s).coefficient()
-  print "Initial dist: %6.3f"%R, cc
+  print("Initial dist: %6.3f"%R, cc)
   ### Exercise fixed lam
   lam = 0.74
   for start_map in ["flat", "lde", "min_shifted"]:
@@ -71,7 +72,7 @@ END
     rho_m = rho_m*sc
     R = r_factor(x=r_s, r1=rho_r, r2=rho_m)
     cc = flex.linear_correlation(x = rho_r, y = rho_m).coefficient()
-    print m.show(verbose=False), "*", "dist: %6.3f"%R, cc
+    print(m.show(verbose=False), "*", "dist: %6.3f"%R, cc)
     assert R < 0.0004, R
     assert cc > 0.999, R
   ### Exercise auto-incremented lam, 1
@@ -83,7 +84,7 @@ END
   rho_m = rho_m*sc
   R = r_factor(x=r_s, r1=rho_r, r2=rho_m)
   cc = flex.linear_correlation(x = rho_r, y = rho_m).coefficient()
-  print m.show(verbose=False), "*", "dist: %6.3f"%R, cc
+  print(m.show(verbose=False), "*", "dist: %6.3f"%R, cc)
   assert R < 0.004, R
   assert cc > 0.999, R
   ### Exercise auto-incremented lam, 2
@@ -95,22 +96,22 @@ END
   rho_m = rho_m*sc
   R = r_factor(x=r_s, r1=rho_r, r2=rho_m)
   cc = flex.linear_correlation(x = rho_r, y = rho_m).coefficient()
-  print m.show(verbose=False), "*", "dist: %6.3f"%R, cc
+  print(m.show(verbose=False), "*", "dist: %6.3f"%R, cc)
   assert R < 0.05, R
   assert cc > 0.998, R
   #
   of = open("gp","w")
   assert rho_r.size() == rho_s.size() == rho_m.size()
   for r, r1, r2, r3 in zip(r_r, rho_r, rho_s, rho_m):
-    print >> of, "%15.12f %15.12f %15.12f %15.12f"%(r, r1, r2, r3)
+    print("%15.12f %15.12f %15.12f %15.12f"%(r, r1, r2, r3), file=of)
   of.close()
   #
   m.write_mtz_file()
   #
-  print "gnuplot command to show results:"
-  print """
+  print("gnuplot command to show results:")
+  print("""
 plot [-3:3] [-0.1:1.1] "gp" using 1:2 with lines title "exact" lw 3, "gp" using 1:3 with lines title "synthesis" lw 3 lc rgb "black", "gp" using 1:4 with lines title "MEM" lw 3
-"""
+""")
 
 if __name__ == "__main__" :
   run()

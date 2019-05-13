@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8; -*-
 #
@@ -136,7 +137,7 @@ class NpyImage(DetectorImageBase):
           self.parameters['SIZE1'] = 185
           self.linearintdata = self.linearintdata[int(len(self.linearintdata)/2):]
           self.linearintdata.reshape(flex.grid(self.size1,self.size2))
-        print "CXI 2x2 size",self.size1,self.size2, self.linearintdata.focus()
+        print("CXI 2x2 size",self.size1,self.size2, self.linearintdata.focus())
       return
 
     assert 2 * len(phil.distl.tile_translations) == len(phil.distl.detector_tiling)

@@ -3,6 +3,7 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 
 import math
 import multiprocessing
@@ -176,7 +177,7 @@ class average_mixin(common_mode.common_mode_correction):
       if 0:
         from matplotlib import pyplot
         hist_min, hist_max = flex.min(flex_cspad_img.as_double()), flex.max(flex_cspad_img.as_double())
-        print hist_min, hist_max
+        print(hist_min, hist_max)
         n_slots = 100
         n, bins, patches = pyplot.hist(flex_cspad_img.as_1d().as_numpy_array(), bins=n_slots, range=(hist_min, hist_max))
         pyplot.show()

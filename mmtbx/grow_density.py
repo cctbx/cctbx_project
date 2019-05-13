@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import mmtbx.f_model
 from mmtbx import utils
@@ -191,16 +192,16 @@ def grow_density(f_obs,
                  xray_structure_da,
                  params):
     if(xray_structure_da is not None):
-      print "Using external DA..."
+      print("Using external DA...")
       da_xray_structures = [xray_structure_da]
     else:
-      print "Start creating DAs..."
+      print("Start creating DAs...")
       da_xray_structures = create_da_xray_structures(xray_structure =
         xray_structure, params = params)
     n_da = 0
     for daxrs in da_xray_structures:
       n_da += daxrs.scatterers().size()
-    print "Total number of dummy atoms:", n_da
+    print("Total number of dummy atoms:", n_da)
     #
     xray_structure_start = xray_structure.deep_copy_scatterers()
     #
@@ -214,13 +215,13 @@ def grow_density(f_obs,
         mask_params    = mask_params,
         f_obs          = f_obs)
       fmodel.update_all_scales()
-      print "START R-work and R-free: %6.4f %6.4f"%(fmodel.r_work(),
-        fmodel.r_free())
+      print("START R-work and R-free: %6.4f %6.4f"%(fmodel.r_work(),
+        fmodel.r_free()))
     xray_structure_current = xray_structure_start.deep_copy_scatterers()
     da_sel_all = flex.bool(xray_structure_start.scatterers().size(), False)
     for i_model, da_xray_structure in enumerate(da_xray_structures):
-      print "Model %d, adding %d dummy atoms" % (i_model,
-        da_xray_structure.scatterers().size())
+      print("Model %d, adding %d dummy atoms" % (i_model,
+        da_xray_structure.scatterers().size()))
       da_sel_refinable = flex.bool(xray_structure_current.scatterers().size(), False)
       xray_structure_current = xray_structure_current.concatenate(da_xray_structure)
       da_sel_all.extend(flex.bool(da_xray_structure.scatterers().size(), True))
@@ -247,7 +248,7 @@ def grow_density(f_obs,
       ofn = ofn+"_DA.pdb"
     ofn = open(ofn,"w")
     pdb_file_str = all_da_xray_structure.as_pdb_file()
-    print >> ofn, pdb_file_str
+    print(pdb_file_str, file=ofn)
     #
     if(params.mode == "build_and_refine"):
       map_type_obj = mmtbx.map_names(map_name_string = "2mFo-DFc")
@@ -272,7 +273,7 @@ def grow_density(f_obs,
       if(params.output_file_name_prefix is not None):
         output_map_file_name = params.output_file_name_prefix+"_map_coeffs.mtz"
       mtz_object.write(file_name = output_map_file_name)
-    print "Finished"
+    print("Finished")
 
 def refinery(fmodels, number_of_iterations, iselection, parameter):
   if(iselection.size()==0): return
@@ -294,9 +295,9 @@ def refinery(fmodels, number_of_iterations, iselection, parameter):
       lbfgs_termination_params = lbfgs_termination_params,
       collect_monitor          = False)
   except Exception, e:
-    print "ERROR: Refinement failed... "
-    print str(e)
-    print "... carry on"
+    print("ERROR: Refinement failed... ")
+    print(str(e))
+    print("... carry on")
     return
   xrs = fmodels.fmodel_xray().xray_structure
   fmodels.update_xray_structure(xray_structure = xrs, update_f_calc=True,
@@ -332,27 +333,27 @@ def reset_adps(fmodels, selection, params):
 
 def show_refinement_update(fmodels, selection, da_sel_refinable, prefix):
   fmt1 = "%s Rwork= %8.6f Rfree= %8.6f Number of: non-DA= %d DA= %d all= %d"
-  print fmt1%(prefix, fmodels.fmodel_xray().r_work(),
+  print(fmt1%(prefix, fmodels.fmodel_xray().r_work(),
     fmodels.fmodel_xray().r_free(),
     selection.count(False),selection.count(True),
-    fmodels.fmodel_xray().xray_structure.scatterers().size())
+    fmodels.fmodel_xray().xray_structure.scatterers().size()))
   occ = fmodels.fmodel_xray().xray_structure.scatterers().extract_occupancies()
   occ_da = occ.select(selection)
   if(occ_da.size()>0):
     occ_ma = occ.select(~selection)
-    print "         non-da: occ(min,max,mean)= %6.3f %6.3f %6.3f"%(
-      flex.min(occ_ma),flex.max(occ_ma),flex.mean(occ_ma))
-    print "             da: occ(min,max,mean)= %6.3f %6.3f %6.3f"%(
-      flex.min(occ_da),flex.max(occ_da),flex.mean(occ_da))
+    print("         non-da: occ(min,max,mean)= %6.3f %6.3f %6.3f"%(
+      flex.min(occ_ma),flex.max(occ_ma),flex.mean(occ_ma)))
+    print("             da: occ(min,max,mean)= %6.3f %6.3f %6.3f"%(
+      flex.min(occ_da),flex.max(occ_da),flex.mean(occ_da)))
     b = fmodels.fmodel_xray().xray_structure.extract_u_iso_or_u_equiv()*\
       adptbx.u_as_b(1.)
     b_da = b.select(selection)
     b_ma = b.select(~selection)
-    print "         non-da: ADP(min,max,mean)= %7.2f %7.2f %7.2f"%(
-      flex.min(b_ma),flex.max(b_ma),flex.mean(b_ma))
-    print "             da: ADP(min,max,mean)= %7.2f %7.2f %7.2f"%(
-      flex.min(b_da),flex.max(b_da),flex.mean(b_da))
-    print "da_sel_refinable:", da_sel_refinable.size(), da_sel_refinable.count(True)
+    print("         non-da: ADP(min,max,mean)= %7.2f %7.2f %7.2f"%(
+      flex.min(b_ma),flex.max(b_ma),flex.mean(b_ma)))
+    print("             da: ADP(min,max,mean)= %7.2f %7.2f %7.2f"%(
+      flex.min(b_da),flex.max(b_da),flex.mean(b_da)))
+    print("da_sel_refinable:", da_sel_refinable.size(), da_sel_refinable.count(True))
 
 def refine_occupancies(fmodels, selection, da_sel_refinable, params, macro_cycle):
   refinery(
@@ -547,16 +548,16 @@ How to use:
    phenix.grow_density parameters.txt
 """
   if(len(args) == 0):
-    print msg
-    print "*"*79
+    print(msg)
+    print("*"*79)
     master_params().show()
-    print "*"*79
+    print("*"*79)
     return
   else:
     if(not os.path.isfile(args[0]) or len(args)>1):
-      print "Parameter file is expected at input. This is not a parameter file:\n", \
-        args
-      print "Run phenix.grow_density without argumets for running instructions."
+      print("Parameter file is expected at input. This is not a parameter file:\n", \
+        args)
+      print("Run phenix.grow_density without argumets for running instructions.")
       return
     processed_args = utils.process_command_line_args(args = args,
       master_params = master_params(), log = None)

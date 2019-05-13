@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cbf.dump
 
@@ -7,22 +8,22 @@ import sys
 def process(file_name, out=None):
   if (out is None): out = sys.stdout
   import pycbf
-  print >> out, "File name:", file_name
+  print("File name:", file_name, file=out)
   object = pycbf.cbf_handle_struct() # FIXME
   object.read_file(file_name, pycbf.MSG_DIGEST)
   object.rewind_datablock()
   n_blocks = object.count_datablocks()
-  print >> out, "Number of blocks:", n_blocks
+  print("Number of blocks:", n_blocks, file=out)
   for i_block in range(n_blocks):
     object.select_datablock(i_block)
-    print >> out, "  Block name:", object.datablock_name()
+    print("  Block name:", object.datablock_name(), file=out)
     object.rewind_category()
     n_categories = object.count_categories()
-    print >> out, "  Number of categories:", n_categories
+    print("  Number of categories:", n_categories, file=out)
     for i_category in range(n_categories):
       object.select_category(i_category)
-      print >> out, "    Category name:", object.category_name()
-  print >> out
+      print("    Category name:", object.category_name(), file=out)
+  print(file=out)
 
 def run(args):
   if (len(args) == 0):

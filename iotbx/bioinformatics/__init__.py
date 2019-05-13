@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Abort
 from libtbx import group_args
 import cStringIO
@@ -904,7 +905,7 @@ def any_sequence_format(file_name, assign_name_if_not_defined=False,
         for k, seq in enumerate(objects):
           if (seq.name == ""):
             seq.name = "%s_%d" % (base_name, k+1)
-            print seq.name
+            print(seq.name)
       return objects, non_compliant
   for other_parser in [fasta_sequence_parse.parse, pir_sequence_parse.parse,
                        seq_sequence_parse.parse, tf_sequence_parse] :
@@ -921,7 +922,7 @@ def any_sequence_format(file_name, assign_name_if_not_defined=False,
           for k, seq in enumerate(objects):
             if (seq.name == ""):
               seq.name = "%s_%d" % (base_name, k+1)
-              print seq.name
+              print(seq.name)
         return objects, non_compliant
   # fallback: unformatted
   data = re.sub("\s", "", data)
@@ -1781,13 +1782,13 @@ def composition_from_sequence_file(file_name, log=None):
     if (seq_file is None):
       raise ValueError("Could not parse %s" % file_name)
   except Exception, e :
-    print >> log, str(e)
+    print(str(e), file=log)
     return None
   else :
     if (len(non_compliant) > 0):
-      print >> log, "Warning: non-compliant entries in sequence file"
+      print("Warning: non-compliant entries in sequence file", file=log)
       for nc in non_compliant :
-        print >> log, "  " + str(nc)
+        print("  " + str(nc), file=log)
     n_residues = n_bases = 0
     for seq_entry in seq_file :
       (n_res_seq, n_base_seq) = composition_from_sequence(seq_entry.sequence)

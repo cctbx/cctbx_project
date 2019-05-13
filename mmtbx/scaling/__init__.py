@@ -6,6 +6,7 @@ for displaying the results of Xtriage.
 """
 
 from __future__ import division
+from __future__ import print_function
 import cctbx.array_family.flex # import dependency
 from libtbx.str_utils import make_sub_header, make_header, make_big_header
 from libtbx import slots_getstate_setstate
@@ -147,19 +148,19 @@ class printed_output(xtriage_output):
       self.out.write("%s\n" % line.rstrip())
 
   def show_text(self, text):
-    print >> self.out, text
+    print(text, file=self.out)
 
   def show_paragraph_header(self, text):
-    print >> self.out, text #+ ":"
+    print(text, file=self.out) #+ ":"
 
   def show_preformatted_text(self, text):
-    print >> self.out, text
+    print(text, file=self.out)
 
   def show_lines(self, text):
-    print >> self.out, text
+    print(text, file=self.out)
 
   def show_table(self, table, indent=2, plot_button=None, equal_widths=True):
-    print >> self.out, table.format(indent=indent, equal_widths=equal_widths)
+    print(table.format(indent=indent, equal_widths=equal_widths), file=self.out)
 
   def show_plot(self, table):
     pass
@@ -174,10 +175,10 @@ class printed_output(xtriage_output):
     for row in rows :
       assert len(row) == n_cols
       formats = prefix+" ".join([ "%%%ds" % x for x in col_sizes ])
-      print >> self.out, formats % tuple(row)
+      print(formats % tuple(row), file=self.out)
 
   def newline(self):
-    print >> self.out, ""
+    print("", file=self.out)
 
   def write(self, text):
     self.out.write(text)
@@ -213,8 +214,8 @@ class loggraph_output(xtriage_output):
   def warn(self, text) : pass
 
   def show_plot(self, table):
-    print >> self.out, ""
-    print >> self.out, table.format_loggraph()
+    print("", file=self.out)
+    print(table.format_loggraph(), file=self.out)
 
   def show_plots_row(self, tables):
     for table in tables :

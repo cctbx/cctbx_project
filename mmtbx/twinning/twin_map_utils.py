@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import xray
@@ -60,7 +61,7 @@ twin_utils{
 
 def print_help(command_name):
   command_under = "-" * len(command_name)
-  print """
+  print("""
 %(command_name)s
 %(command_under)s
 
@@ -103,7 +104,7 @@ A typical run looks like this:
 
 If no unit cell is specified, the unit cell of the reflection
 file or the model will be used.
-""" % vars()
+""" % vars())
 
 def run(args, command_name="phenix.twin_map_utils"):
   log=sys.stdout
@@ -145,10 +146,10 @@ def run(args, command_name="phenix.twin_map_utils"):
         except Exception : pass
 
       if not arg_is_processed:
-        print >> log, "##----------------------------------------------##"
-        print >> log, "## Unknown file or keyword:", arg
-        print >> log, "##----------------------------------------------##"
-        print >> log
+        print("##----------------------------------------------##", file=log)
+        print("## Unknown file or keyword:", arg, file=log)
+        print("##----------------------------------------------##", file=log)
+        print(file=log)
         raise Sorry("Unknown file or keyword: %s" % arg)
 
     effective_params = master_params.fetch(sources=phil_objects)
@@ -224,8 +225,8 @@ def run(args, command_name="phenix.twin_map_utils"):
     assert miller_array.is_xray_amplitude_array()
 
     free_flags = tmp_object.extract_flags(data = miller_array)
-    print >> log
-    print >> log, "Attempting to extract Free R flags"
+    print(file=log)
+    print("Attempting to extract Free R flags", file=log)
 
     free_flags = free_flags.customized_copy( data = flex.bool( free_flags.data()==1 ) )
     if free_flags is None:
@@ -233,11 +234,11 @@ def run(args, command_name="phenix.twin_map_utils"):
 
     assert miller_array.observation_type() is not None
 
-    print >> log
-    print >> log, "Summary info of observed data"
-    print >> log, "============================="
+    print(file=log)
+    print("Summary info of observed data", file=log)
+    print("=============================", file=log)
     miller_array.show_summary(f=log)
-    print >> log
+    print(file=log)
 
     if miller_array.indices().size() == 0:
       raise Sorry("No data available")
@@ -247,10 +248,10 @@ def run(args, command_name="phenix.twin_map_utils"):
     #
     model = pdb.input(file_name=params.twin_utils.input.model.file_name).xray_structure_simple(
       crystal_symmetry=phil_xs)
-    print >> log, "Atomic model summary"
-    print >> log, "===================="
+    print("Atomic model summary", file=log)
+    print("====================", file=log)
     model.show_summary(f=log)
-    print >> log
+    print(file=log)
 
 
     #----------------------------------------------------------------
@@ -261,18 +262,18 @@ def run(args, command_name="phenix.twin_map_utils"):
          params.twin_utils.parameters.twinning.max_delta,
       out=log)
 
-    print >> log
-    print >> log, "Preliminary data analyses"
-    print >> log, "=========================="
+    print(file=log)
+    print("Preliminary data analyses", file=log)
+    print("==========================", file=log)
     twin_laws.show(out=log)
 
 
     #---------
     # step 3:
     # make twin model managers for all twin laws
-    print >> log
-    print >> log, "Overall and bulk solvent scale paranmeters and twin fraction estimation"
-    print >> log, "======================================================================="
+    print(file=log)
+    print("Overall and bulk solvent scale paranmeters and twin fraction estimation", file=log)
+    print("=======================================================================", file=log)
     twin_models = []
     operator_count = 0
 
@@ -292,7 +293,7 @@ def run(args, command_name="phenix.twin_map_utils"):
         out=log)
 
 
-      print >> log, "--- bulk solvent scaling ---"
+      print("--- bulk solvent scaling ---", file=log)
       twin_model.update_all_scales()
       twin_model.r_values()
       twin_model.target()
@@ -314,9 +315,9 @@ def run(args, command_name="phenix.twin_map_utils"):
         column_root_label = "GRAD"
         )
       name = params.twin_utils.output.map_coeffs_root+"_"+str(operator_count)+".mtz"
-      print >> log
-      print >> log, "Writing %s for twin law %s"%(name,operator_hkl)
-      print >> log
+      print(file=log)
+      print("Writing %s for twin law %s"%(name,operator_hkl), file=log)
+      print(file=log)
       mtz_dataset.mtz_object().write(
         file_name=name)
 
@@ -332,9 +333,9 @@ def run(args, command_name="phenix.twin_map_utils"):
           file_name=name)
 
     if len(twin_laws.operators)==0:
-      print >> log
-      print >> log, "No twin laws were found"
-      print >> log, "Performing maximum likelihood based bulk solvent scaling"
+      print(file=log)
+      print("No twin laws were found", file=log)
+      print("Performing maximum likelihood based bulk solvent scaling", file=log)
       f_model_object = f_model.manager(
         f_obs = miller_array,
         r_free_flags = free_flags,
@@ -363,9 +364,9 @@ def run(args, command_name="phenix.twin_map_utils"):
         mtz_dataset.mtz_object().write(
           file_name=name)
 
-    print >> log
-    print >> log
-    print >> log, "All done \n"
+    print(file=log)
+    print(file=log)
+    print("All done \n", file=log)
     logfile = open(params.twin_utils.output.logfile,'w')
-    print >> logfile,  string_buffer.getvalue()
-    print >> log
+    print(string_buffer.getvalue(), file=logfile)
+    print(file=log)

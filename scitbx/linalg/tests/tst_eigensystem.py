@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.linalg
 from scitbx.linalg import eigensystem, time_eigensystem_real_symmetric
 from scitbx.array_family import flex
@@ -74,8 +75,8 @@ def exercise_eigensystem():
   t0 = time.time()
   v = time_eigensystem_real_symmetric(m, n_repetitions)
   assert v == (0,0,0)
-  print "time_eigensystem_real_symmetric: %.3f micro seconds" % (
-    (time.time() - t0)/n_repetitions*1.e6)
+  print("time_eigensystem_real_symmetric: %.3f micro seconds" % (
+    (time.time() - t0)/n_repetitions*1.e6))
   from scitbx.linalg import time_lapack_dsyev
   for use_fortran in [False, True]:
     if (not use_fortran):
@@ -89,8 +90,8 @@ def exercise_eigensystem():
     t0 = time.time()
     v = time_lapack_dsyev(m, n_repetitions, use_fortran)
     assert v == (0,0,0)
-    print "time_lapack_dsyev %s: %.3f micro seconds" % (
-      impl_id, (time.time() - t0)/n_repetitions*1.e6)
+    print("time_lapack_dsyev %s: %.3f micro seconds" % (
+      impl_id, (time.time() - t0)/n_repetitions*1.e6))
   #
   s = eigensystem.real_symmetric(m=m)
   assert s.min_abs_pivot() > 0
@@ -133,16 +134,16 @@ def compare_times(max_n_power=8):
         tab.append(tfmt % (time.time() - t0))
         assert approx_equal(list(reversed(es.values())), wla[i])
     if (show_tab_header):
-      print "      time [s]           eigenvalues"
-      print " n    es   fem   for     min    max"
+      print("      time [s]           eigenvalues")
+      print(" n    es   fem   for     min    max")
       show_tab_header = False
     tab.extend([es.values()[-1], es.values()[0]])
-    print "%3d %s %s %s [%6.2f %6.2f]" % tuple(tab)
+    print("%3d %s %s %s [%6.2f %6.2f]" % tuple(tab))
 
 def run():
   exercise_eigensystem()
   compare_times()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

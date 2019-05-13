@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.pixel_histograms
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -115,15 +116,15 @@ class pixel_histograms(object):
     from matplotlib import pyplot
     normalise=False # XXX
     assert [pixels, starting_pixel].count(None) > 0
-    print "n_images:", flex.sum(self.histograms.values()[0].slots())
-    print "n_pixels:", len(self.histograms)
+    print("n_images:", flex.sum(self.histograms.values()[0].slots()))
+    print("n_pixels:", len(self.histograms))
     if pixels is None:
       pixels = sorted(self.histograms.keys())
       if starting_pixel is not None:
         pixels = pixels[pixels.index(starting_pixel):]
     for pixel in pixels:
       hist = self.histograms[pixel]
-      print pixel
+      print(pixel)
       title = str(pixel)
       if fit_gaussians:
         pyplot.subplot(211)
@@ -158,7 +159,7 @@ class pixel_histograms(object):
     x = hist.slot_centers()
     y_calc = flex.double(x.size(), 0)
     for g in gaussians:
-      print g.params
+      print(g.params)
       y = g(x)
       y_calc += y
       pyplot.plot(x, y, linewidth=2)
@@ -179,7 +180,7 @@ class pixel_histograms(object):
     slots = histogram.slots().as_double()
     if normalise:
       normalisation = (flex.sum(slots) + histogram.n_out_of_slot_range()) / 1e5
-      print "normalising by factor: ", normalisation
+      print("normalising by factor: ", normalisation)
       slots /= normalisation
     bins, data = hist_outline(histogram)
     if log_scale:
@@ -246,9 +247,9 @@ class pixel_histograms(object):
       try:
         check_pixel_histogram_fit(histogram, fitted_gaussians)
       except PixelFitError as e:
-        print "PixelFitError:", str(e)
+        print("PixelFitError:", str(e))
       gain = fitted_gaussians[1].params[1] - fitted_gaussians[0].params[1]
-      print "gain: %s" %gain
+      print("gain: %s" %gain)
       zero_peak = fitted_gaussians[0].params[1]
       photon_threshold = 2/3
       n_single_photons = flex.sum(
@@ -256,8 +257,8 @@ class pixel_histograms(object):
       n_double_photons = flex.sum(
         histogram.slots()[histogram.get_i_slot((1+photon_threshold) * gain + zero_peak):])
       n_single_photons -= n_double_photons
-      print "n_single_photons: %i" %n_single_photons
-      print "n_double_photons: %i" %n_double_photons
+      print("n_single_photons: %i" %n_single_photons)
+      print("n_double_photons: %i" %n_double_photons)
       #print n_double_photons/(n_single_photons+n_double_photons)
     return fitted_gaussians
 
@@ -289,7 +290,7 @@ class pixel_histograms(object):
           # No point wasting time attempting to fit a gaussian if there aren't any counts
           #raise PixelFitError("Not enough counts to fit gaussian")
           return fit
-        print "using cma_es:", sigma
+        print("using cma_es:", sigma)
         fit = curve_fitting.cma_es_minimiser(
           starting_gaussians, x[lower_slot:upper_slot], y[lower_slot:upper_slot])
     else:
@@ -380,7 +381,7 @@ def check_pixel_histogram_fit(hist, gaussians):
 
   gain = gaussians[1].params[1] - gaussians[0].params[1]
   if 0 and estimated_gain is not None and abs(gain - estimated_gain) > 0.5 * estimated_gain:
-    print "bad gain!!!!!", pixel, gain
+    print("bad gain!!!!!", pixel, gain)
   #elif (one_gaussian.sigma / zero_gaussian.sigma) > 1.9:
     #raise PixelFitError("Bad sigma ratio: %.1f, %.1f" %(one_gaussian.sigma, zero_gaussian.sigma))
   elif gaussians[1].sigma < (0.5 * gaussians[0].sigma):

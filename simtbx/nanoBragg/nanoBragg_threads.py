@@ -6,6 +6,7 @@ Created     : 12/21/2017
 Last Changed: 12/21/2017
 Description : SIMTBX (nanoBragg) GUI Threads and PostEvents
 '''
+from __future__ import print_function
 
 import os
 import wx
@@ -74,9 +75,9 @@ class nanoBraggThread(Thread):
 
     if self.params.reference_coordinates is None:
       self.SIM.default_F = 1000
-      print 'DEBUG: GENERATING FCALC OF {}'.format(self.SIM.default_F)
+      print('DEBUG: GENERATING FCALC OF {}'.format(self.SIM.default_F))
     else:
-      print 'DEBUG: GENERATING FCALC FROM COORDINATES'
+      print('DEBUG: GENERATING FCALC FROM COORDINATES')
       self.SIM.default_F = 0
       sfall = self.fcalc_from_pdb(resolution=1.6, algorithm="fft",
                                   wavelength=self.SIM.wavelength_A)
@@ -94,42 +95,42 @@ class nanoBraggThread(Thread):
     self.SIM.distance_mm = 300
 
     # default orientation is with a axis down the beam, lets pick a random one
-    print 'DEBUG: RANDOMIZE ORIENTATION - ', self.randomize
+    print('DEBUG: RANDOMIZE ORIENTATION - ', self.randomize)
     if self.randomize:
       self.SIM.randomize_orientation()
     # display randomly-picked missetting angles
-    print 'SIMTBX: MISSETTING ANGLES: ', self.SIM.missets_deg
+    print('SIMTBX: MISSETTING ANGLES: ', self.SIM.missets_deg)
     # or an Arndt-Wonacott A matrix (U*B), same as used by mosflm
-    print 'SIMTBX: ARNDT-WONACOTT A MATRIX', self.SIM.Amatrix
+    print('SIMTBX: ARNDT-WONACOTT A MATRIX', self.SIM.Amatrix)
 
     # show all parameters
-    print 'SIMTBX: SHOWING PARAMETERS:'
+    print('SIMTBX: SHOWING PARAMETERS:')
     self.SIM.show_params()
-    print '\n *** \n'
+    print('\n *** \n')
 
     # print 'SIMTBX: SETTING BEAM PARAMETERS'
     self.SIM.flux = 1e12
     # assumes round beam
     self.SIM.beamsize_mm = 0.1
     self.SIM.exposure_s = 1
-    print 'SIMTBX: FLUX = ', self.SIM.flux
-    print 'SIMTBX: BEAM SIZE = {} mm'.format(self.SIM.beamsize_mm)
-    print 'SIMTBX: EXPOSURE = {} SEC'.format(self.SIM.exposure_s)
+    print('SIMTBX: FLUX = ', self.SIM.flux)
+    print('SIMTBX: BEAM SIZE = {} mm'.format(self.SIM.beamsize_mm))
+    print('SIMTBX: EXPOSURE = {} SEC'.format(self.SIM.exposure_s))
 
     # now actually run the simulation
-    print 'SIMTBX: ADDING SPOTS...'
+    print('SIMTBX: ADDING SPOTS...')
     self.SIM.add_nanoBragg_spots()
 
     if self.crystal_size is not None:
       scale = (self.crystal_size/1000)**3 / (self.SIM.xtal_size_mm[0] *
                                               self.SIM.xtal_size_mm[1] *
                                               self.SIM.xtal_size_mm[2])
-      print 'SIMTBX: SCALING BY {} '.format(scale)
+      print('SIMTBX: SCALING BY {} '.format(scale))
 
       self.SIM.raw_pixels *= scale
 
     if self.add_background:
-      print 'SIMTBX: ADDING WATER BACKGROUND'
+      print('SIMTBX: ADDING WATER BACKGROUND')
       # rough approximation to water: interpolation points for sin(theta/lambda) vs structure factor
       bg = flex.vec2_double(
         [(0, 2.57), (0.0365, 2.58), (0.07, 2.8), (0.12, 5), (0.162, 8),
@@ -141,7 +142,7 @@ class nanoBraggThread(Thread):
       self.SIM.amorphous_molecular_weight_Da = 18
       self.SIM.add_background()
 
-      print 'SIMTBX: ADDING AIR BACKGROUND'
+      print('SIMTBX: ADDING AIR BACKGROUND')
       bg = flex.vec2_double(
         [(0, 14.1), (0.045, 13.5), (0.174, 8.35), (0.35, 4.78), (0.5, 4.22)])
       self.SIM.Fbg_vs_stol = bg
@@ -156,25 +157,25 @@ class nanoBraggThread(Thread):
     self.SIM.detector_psf_type = shapetype.Fiber
 
     if self.add_noise:
-      print 'SIMTBX: ADDING NOISE...'
+      print('SIMTBX: ADDING NOISE...')
       self.SIM.add_noise()
 
     # write out a file on arbitrary scale, header contains beam center in various conventions
-    print 'DEBUG: FILENAME = ', self.img_file
-    print 'SIMTBX: CONVERTING TO SMV FORMAT...'
+    print('DEBUG: FILENAME = ', self.img_file)
+    print('SIMTBX: CONVERTING TO SMV FORMAT...')
     self.SIM.to_smv_format(fileout="intimage_001.img")
 
     # output image file
     if self.img_file is not None:
       self.SIM.to_smv_format(fileout=self.img_file)
-      print 'IMAGE WRITTEN TO ', self.img_file
+      print('IMAGE WRITTEN TO ', self.img_file)
 
     # send pixels back to GUI when done
     try:
       evt = nanoBraggAllDone(tp_EVT_NBDONE, -1, pixels=self.SIM.raw_pixels)
       wx.PostEvent(self.parent, evt)
     except Exception as e:
-      print e
+      print(e)
 
   def fcalc_from_pdb(self, resolution=None, algorithm=None, wavelength=0.9):
     ''' Generate FCalc from PDB-formatted coordinates '''

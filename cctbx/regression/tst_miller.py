@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 from cctbx import miller
 from cctbx import xray
@@ -276,8 +277,8 @@ def exercise_generate_r_free_flags(verbose=0, use_lattice_symmetry=False):
         accu = flags.r_free_flags_accumulation()
         assert accu.reflection_counts.size() == accu.free_fractions.size()
         if (verbose):
-          print "r_free_flags_accumulation:", \
-            zip(accu.reflection_counts, accu.free_fractions)
+          print("r_free_flags_accumulation:", \
+            zip(accu.reflection_counts, accu.free_fractions))
       if (not anomalous_flag):
         if (i_trial < 5):
           assert flags.indices().size() == 145
@@ -1572,7 +1573,7 @@ def exercise_squaring_and_patterson_map(space_group_info,
   grid_resolution_factor = 1/3.
   u_base = xray.calc_u_base(d_min, grid_resolution_factor)
   if (0 or verbose):
-    print "u_base:", u_base
+    print("u_base:", u_base)
   d_star_sq = e.unit_cell().d_star_sq(e.indices())
   dw = flex.exp(d_star_sq*2*(math.pi**2)*u_base)
   eb = miller.array(miller_set=e, data=e.data()/dw)
@@ -1586,7 +1587,7 @@ def exercise_squaring_and_patterson_map(space_group_info,
   mpe = f_calc.mean_phase_error(f_calc.phases())
   assert approx_equal(mpe, 0.0)
   if (0 or verbose):
-    print "mean_weighted_phase_error: %.2f" % mwpe
+    print("mean_weighted_phase_error: %.2f" % mwpe)
   assert mwpe < 2
   for sharpening in (False, True):
     for origin_peak_removal in (False, True):
@@ -1877,17 +1878,17 @@ def exercise_phase_integrals(space_group_info):
       if (is_centric(h)):
         if (scitbx.math.phase_error(complex_math.arg(pi_p1),
                                     complex_math.arg(pi_p1_sg)) > 1.e-6):
-          print "Error:", h, pi_p1, pi_p1_sg
-          print "arg(pi_p1):", complex_math.arg(pi_p1)
-          print "arg(pi_p1_sg):", complex_math.arg(pi_p1_sg)
+          print("Error:", h, pi_p1, pi_p1_sg)
+          print("arg(pi_p1):", complex_math.arg(pi_p1))
+          print("arg(pi_p1_sg):", complex_math.arg(pi_p1_sg))
           raise AssertionError
         if (not (0.5 < abs(pi_p1)/abs(pi_p1_sg) < 0.75)):
-          print "Error:", h, pi_p1, pi_p1_sg
-          print "abs(pi_p1):", abs(pi_p1)
-          print "abs(pi_p1_sg):", abs(pi_p1_sg)
+          print("Error:", h, pi_p1, pi_p1_sg)
+          print("abs(pi_p1):", abs(pi_p1))
+          print("abs(pi_p1_sg):", abs(pi_p1_sg))
           raise AssertionError
       elif (abs(pi_p1 - pi_p1_sg) > 1.e-6):
-        print "Error:", h, pi_p1, pi_p1_sg
+        print("Error:", h, pi_p1, pi_p1_sg)
         raise AssertionError
     #
     amplitude_array = miller.array(
@@ -2525,7 +2526,7 @@ def run(args):
   exercise_merge_equivalents_special_cases()
   exercise_permute()
   debug_utils.parse_options_loop_space_groups(args, run_call_back)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   flex.set_random_seed(1)

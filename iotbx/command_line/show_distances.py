@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.kriber import strudat
 import iotbx.pdb
 import iotbx.cif
@@ -16,15 +17,15 @@ def display(
       coseq_dict,
       xray_structure):
   xray_structure.show_summary().show_scatterers()
-  print
+  print()
   pairs = xray_structure.show_distances(
     distance_cutoff=distance_cutoff,
     show_cartesian=show_cartesian,
     keep_pair_asu_table=True).distances_info
-  print
+  print()
   if (pairs.pair_counts.size() <= 15):
-    print "Pair counts:", list(pairs.pair_counts)
-    print
+    print("Pair counts:", list(pairs.pair_counts))
+    print()
   if (max_shell is None):
     term_table = None
   else:
@@ -35,7 +36,7 @@ def display(
       structure=xray_structure,
       term_table=term_table,
       coseq_dict=coseq_dict)
-    print
+    print()
   return pairs, term_table
 
 def run(args):
@@ -140,8 +141,8 @@ def run(args):
       if (    co.tag is not None
           and co.tag != entry.tag):
         continue
-      print "strudat tag:", entry.tag
-      print
+      print("strudat tag:", entry.tag)
+      print()
       xray_structure = entry.as_xray_structure(
         min_distance_sym_equiv=co.min_distance_sym_equiv)
       call_display(xray_structure)

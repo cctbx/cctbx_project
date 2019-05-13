@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 #!/usr/bin/env cctbx.python
 #
@@ -242,10 +243,10 @@ def test(configuration_file, img_range, dmin = None):
       s = obs_slow[iobs]
       angle = obs_angle[iobs]
 
-      print '%5d %5d %5d' % hkl, '%11.4f %11.4f %9.2f' % (
+      print('%5d %5d %5d' % hkl, '%11.4f %11.4f %9.2f' % (
             f / mp.pixel_size_fast, s / mp.pixel_size_slow,
             (mp.img_start - 1) + ((angle * r2d) - mp.osc_start) / \
-             mp.osc_range)
+             mp.osc_range))
 
 if __name__ == '__main__':
     if len(sys.argv) < 4:

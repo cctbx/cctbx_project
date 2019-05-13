@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
 import os.path
@@ -47,7 +48,7 @@ refinement (but needs work).""")
       sequences=sequences,
       out=out)
     if (n_changed == 0):
-      print >> out, "  No modifications required."
+      print("  No modifications required.", file=out)
     else :
       xray_structure = pdb_hierarchy.extract_xray_structure(
         crystal_symmetry=xray_structure.crystal_symmetry())

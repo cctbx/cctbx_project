@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import math
 from scitbx.array_family import flex
@@ -53,23 +54,23 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
 
       obs_tt_sort = tt.select(flex.sort_permutation(tt))
       pred_tt_sort = pred_two_theta_rad.select(flex.sort_permutation(pred_two_theta_rad))
-      print "len obs",len(obs_tt_sort)
-      print "len pred",len(pred_tt_sort)
+      print("len obs",len(obs_tt_sort))
+      print("len pred",len(pred_tt_sort))
       if not len(pred_tt_sort)>len(obs_tt_sort):continue
       conversion = len(pred_tt_sort)/len(obs_tt_sort)
       select_pred_tt_sort = flex.double()
       for x in range(len(obs_tt_sort)):
         select_pred_tt_sort.append(pred_tt_sort[int(x * conversion)])
-      print "len select pred",len(select_pred_tt_sort)
+      print("len select pred",len(select_pred_tt_sort))
       corr_test = cc(obs_tt_sort, select_pred_tt_sort)
-      print "test mosaicity",mos_test,"Correlation",corr_test
+      print("test mosaicity",mos_test,"Correlation",corr_test)
       if mos_best==None:
         mos_best=mos_test;corr_best=corr_test;pred_two_theta_rad_best=select_pred_tt_sort
         pred_full_set_best=pred_tt_sort
       if corr_test > corr_best:
         mos_best=mos_test;corr_best=corr_test;pred_two_theta_rad_best=select_pred_tt_sort
         pred_full_set_best=pred_tt_sort
-    print "best mosaicity",mos_best
+    print("best mosaicity",mos_best)
 
     # got best model mosaicity, now go back again and match up predictions to observations
     # get get prediction set with same length and two theta values as the observation set
@@ -119,10 +120,10 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
 
       rmsd = stats.unweighted_sample_standard_deviation()
       mean = stats.mean()
-      print x,mean,rmsd,-diff[x]/rmsd
+      print(x,mean,rmsd,-diff[x]/rmsd)
       if -diff[x]/rmsd > 0.5:  # ad hoc cutoff seems like reasonable criterion for resolution cutoff
-        print "twotheta rad cutoff",obs_tt_sort[x]
-        print "angstrom cutoff",inputai.wavelength / (2.*math.sin (  obs_tt_sort[x] /2.))
+        print("twotheta rad cutoff",obs_tt_sort[x])
+        print("angstrom cutoff",inputai.wavelength / (2.*math.sin (  obs_tt_sort[x] /2.)))
         break
 
     if False:

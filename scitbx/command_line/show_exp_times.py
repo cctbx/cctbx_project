@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys, os
 
 def run(args):
@@ -13,13 +14,13 @@ def run(args):
   evar = "LIBTBX_NO_LD_PRELOAD"
   evar_set = os.environ.has_key(evar)
   if (evar_set):
-    print "%s set:" % evar
+    print("%s set:" % evar)
   else:
-    print "%s not set:" % evar
+    print("%s not set:" % evar)
   from scitbx.math.tests.tst_exp_functions import \
     exercise_with_random_arguments as exercise
   exercise(n_arguments=10000, n_iterations=n_iterations)
-  print
+  print()
   sys.stdout.flush()
   if (not evar_set):
     if (os.environ.has_key("LD_PRELOAD")):

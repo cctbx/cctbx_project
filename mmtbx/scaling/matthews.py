@@ -3,6 +3,7 @@
 ## refactored by Gabor & Nat 20111104
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx import scaling
 import math
 import sys
@@ -148,9 +149,9 @@ class p_vm_calculator(object):
     tmp = self.vm_prop.pop() ## The last item has a negative solvent content
     tot_p -= tmp[3]
     if (int(n_copies)==1):
-      print >> self.out, "Too many residues to fit in the ASU"
-      print >> self.out, "  resetting numer of residues in monomer to %5.0f" \
-            %(self.n_residues/10.0)
+      print("Too many residues to fit in the ASU", file=self.out)
+      print("  resetting numer of residues in monomer to %5.0f" \
+            %(self.n_residues/10.0), file=self.out)
       self.n_residues/=10.0
       self.n_bases/=10.0
       self.vm_prop_table()
@@ -264,4 +265,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

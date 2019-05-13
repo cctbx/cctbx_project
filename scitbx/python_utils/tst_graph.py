@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.python_utils import graph_tools as gt
 
 def tst_graph():
@@ -94,7 +95,7 @@ def run():
   tst_graph()
 
 
-  print 'OK'
+  print('OK')
 
 if (__name__ == "__main__"):
   run()

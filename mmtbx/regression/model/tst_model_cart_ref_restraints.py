@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.model
 import libtbx.load_env
 from libtbx.utils import format_cpu_times
@@ -349,12 +350,12 @@ def exercise_adopting_coord_restraints_water():
 
 def run():
   if (not libtbx.env.has_module("reduce")):
-    print "Reduce not installed."
+    print("Reduce not installed.")
     return
   exercise_adopting_coord_restraints()
   exercise_adopting_coord_restraints_water()
 
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

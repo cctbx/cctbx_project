@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import math, sys
 from mmtbx.utils import rotatable_bonds
@@ -239,7 +240,7 @@ class manager(object):
           include_labels=True,
           log=None)
     if (axis_and_atoms_to_rotate is None):
-      print >> self.log, "Skipped %s rotamer (TARDY error)" % key
+      print("Skipped %s rotamer (TARDY error)" % key, file=self.log)
       return False
     assert len(m_chis) == len(r_chis)
     #exclude H-only clusters if necessary

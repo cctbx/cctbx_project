@@ -4,6 +4,7 @@ random sampling of distorted unit cells compatible with the 81 2-fold
 symmetry operations possible for reduced cells.
 """
 from __future__ import division
+from __future__ import print_function
 
 from cctbx import sgtbx
 from cctbx import uctbx
@@ -57,8 +58,8 @@ def run():
   perturbations = perturbations.select(perm)
   f = open("le_page_1982_vs_lebedev_2005_plot", "w")
   for x,y in zip(deltas, perturbations):
-    print >> f, x, y
-  print "OK"
+    print(x, y, file=f)
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

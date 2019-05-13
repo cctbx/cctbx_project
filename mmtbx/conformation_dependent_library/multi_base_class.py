@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.conformation_dependent_library.LinkedResidues import LinkedResidues
 from mmtbx.conformation_dependent_library.cdl_utils import \
   get_c_ca_n
@@ -43,7 +44,7 @@ def get_torsion(ag1, ag2, an1, an2, limits='-180-180'):
   omega = dihedral_angle(sites=[atom.xyz for atom in atoms], deg=True)
   if limits=='-180-180':
     if omega>180:
-      print omega, limits
+      print(omega, limits)
       assert 0
   elif limits=='0-360':
     if omega<0:

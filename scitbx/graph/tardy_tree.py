@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.graph.utils import \
   construct_edge_sets, extract_edge_list, sub_edge_list, tree_marking
 from libtbx import slots_getstate_setstate
@@ -57,18 +58,18 @@ class cluster_manager(slots_getstate_setstate):
     from libtbx.utils import xlen, plural_s
     import sys
     if (out is None): out = sys.stdout
-    print >> out, prefix+"number of fixed vertex lists:", \
-      len(O.fixed_vertex_lists)
-    print >> out, prefix+"number of fixed vertices:", \
-      sum([len(fixed_vertices) for fixed_vertices in O.fixed_vertex_lists])
-    print >> out, prefix+"number of clusters:", len(O.clusters)
-    print >> out, prefix+"merge clusters with multiple connections: %d pass%s"\
-      % plural_s(O.merge_clusters_with_multiple_connections_passes, "es")
-    print >> out, prefix+"number of hinge edges:", xlen(O.hinge_edges)
-    print >> out, prefix+"number of loop edges:", xlen(O.loop_edges)
-    print >> out, prefix+"number of loop edge bendings:", \
-      xlen(O.loop_edge_bendings)
-    print >> out, prefix+"number of fixed hinges:", xlen(O.fixed_hinges)
+    print(prefix+"number of fixed vertex lists:", \
+      len(O.fixed_vertex_lists), file=out)
+    print(prefix+"number of fixed vertices:", \
+      sum([len(fixed_vertices) for fixed_vertices in O.fixed_vertex_lists]), file=out)
+    print(prefix+"number of clusters:", len(O.clusters), file=out)
+    print(prefix+"merge clusters with multiple connections: %d pass%s"\
+      % plural_s(O.merge_clusters_with_multiple_connections_passes, "es"), file=out)
+    print(prefix+"number of hinge edges:", xlen(O.hinge_edges), file=out)
+    print(prefix+"number of loop edges:", xlen(O.loop_edges), file=out)
+    print(prefix+"number of loop edge bendings:", \
+      xlen(O.loop_edge_bendings), file=out)
+    print(prefix+"number of fixed hinges:", xlen(O.fixed_hinges), file=out)
     return O
 
   def show_tree(O, out=None, prefix="", header=True):
@@ -81,9 +82,9 @@ class cluster_manager(slots_getstate_setstate):
             "# (0, 1) -> [2, 3] means that the cluster with vertices [2, 3]",
             "#   rotates around the axis through vertices (0, 1)",
             "# integers are vertex indices (counting from 0)"]:
-        print >> out, prefix + line
+        print(prefix + line, file=out)
     for line in O.hinge_edges_and_clusters_as_indented_strings():
-      print >> out, prefix + line
+      print(prefix + line, file=out)
     return O
 
   def fixed_vertices_given_cluster_index_dict(O):
@@ -568,19 +569,19 @@ class construct(slots_getstate_setstate):
       vertex_labels = [fmt % i for i in xrange(O.n_vertices)]
     else:
       assert len(vertex_labels) == O.n_vertices
-    print >> out, prefix+"number of vertices:", O.n_vertices
-    print >> out, prefix+"number of edges:", xlen(O.edge_list)
+    print(prefix+"number of vertices:", O.n_vertices, file=out)
+    print(prefix+"number of edges:", xlen(O.edge_list), file=out)
     if (O.find_cluster_loop_repeats is None):
-      print >> out, prefix+"find cluster loops: None"
+      print(prefix+"find cluster loops: None", file=out)
     else:
-      print >> out, prefix+"find cluster loops: %d repeat%s" % \
-        plural_s(O.find_cluster_loop_repeats)
+      print(prefix+"find cluster loops: %d repeat%s" % \
+        plural_s(O.find_cluster_loop_repeats), file=out)
     cm = O.cluster_manager
     cm.show_summary(out=out, prefix=prefix)
     if (cm.fixed_hinges is not None):
       for i,j in cm.fixed_hinges:
-        print >> out, prefix+"tardy fixed hinge:", vertex_labels[i]
-        print >> out, prefix+"                  ", vertex_labels[j]
+        print(prefix+"tardy fixed hinge:", vertex_labels[i], file=out)
+        print(prefix+"                  ", vertex_labels[j], file=out)
     return O
 
   def show_tree(O, out=None, prefix="", header=True):

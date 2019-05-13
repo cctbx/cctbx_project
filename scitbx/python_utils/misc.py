@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 
 class store(object):
@@ -23,7 +24,7 @@ class sorted_store(object):
   def show(self, f=None, indentation=""):
     if (f is None): f = sys.stdout
     for key in self.keys():
-      print >> f, "%s%s:" % (indentation, key), getattr(self, key)
+      print("%s%s:" % (indentation, key), getattr(self, key), file=f)
 
 def get_caller_name(n_back=2):
   try: raise Exception

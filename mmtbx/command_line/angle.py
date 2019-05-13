@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.angle
 
 import sys, os
@@ -112,9 +113,9 @@ def calculate_axes_and_angle_directional(xrs1, xrs2):
 def run(args, log=sys.stdout):
   if(len(args)==0 or (len(args)==1 and
      ("-h" in args or "--h" in args or "-help" in args or "--help" in args))):
-    print >> log, "-"*79
-    print >> log, legend
-    print >> log, "-"*79
+    print("-"*79, file=log)
+    print(legend, file=log)
+    print("-"*79, file=log)
     sys.exit(0)
   ph, asc, sel1, sel2 = process_args(args=args)
   sel12 = sel1 | sel2
@@ -126,9 +127,9 @@ def run(args, log=sys.stdout):
   xrs  = xrs.orthorhombic_unit_cell_around_centered_scatterers(buffer_size = 3)
   #
   a1, a2, angle = calculate_axes_and_angle(xrs.select(sel1), xrs.select(sel2))
-  print >> log, "Axis 1: %6.4f %6.4f %6.4f"%(a1[0], a1[1], a1[2])
-  print >> log, "Axis 2: %6.4f %6.4f %6.4f"%(a2[0], a2[1], a2[2])
-  print >> log, "Angle : %6.4f" % angle
+  print("Axis 1: %6.4f %6.4f %6.4f"%(a1[0], a1[1], a1[2]), file=log)
+  print("Axis 2: %6.4f %6.4f %6.4f"%(a2[0], a2[1], a2[2]), file=log)
+  print("Angle : %6.4f" % angle, file=log)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

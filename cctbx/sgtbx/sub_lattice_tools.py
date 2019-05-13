@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx import crystal
@@ -324,19 +325,19 @@ class compare_lattice(object):
 
 
     self.basis_a = matrix.sqr( self.xs_a_n.unit_cell().orthogonalization_matrix() )
-    print >> self.out, "Cartesian basis (column) vectors of lego cell:"
+    print("Cartesian basis (column) vectors of lego cell:", file=self.out)
     tmp_bas = self.basis_a.as_list_of_lists()
-    print >> self.out, "  / %5.1f %5.1f %5.1f \  " %(tmp_bas[0][0], tmp_bas[0][1], tmp_bas[0][2])
-    print >> self.out, "  | %5.1f %5.1f %5.1f |  " %(tmp_bas[1][0], tmp_bas[1][1], tmp_bas[1][2])
-    print >> self.out, "  \ %5.1f %5.1f %5.1f /  " %(tmp_bas[2][0], tmp_bas[2][1], tmp_bas[2][2])
-    print >> self.out
+    print("  / %5.1f %5.1f %5.1f \  " %(tmp_bas[0][0], tmp_bas[0][1], tmp_bas[0][2]), file=self.out)
+    print("  | %5.1f %5.1f %5.1f |  " %(tmp_bas[1][0], tmp_bas[1][1], tmp_bas[1][2]), file=self.out)
+    print("  \ %5.1f %5.1f %5.1f /  " %(tmp_bas[2][0], tmp_bas[2][1], tmp_bas[2][2]), file=self.out)
+    print(file=self.out)
     self.basis_b = matrix.sqr( self.xs_b_n.unit_cell().orthogonalization_matrix() )
-    print >> self.out, "Cartesian basis (column) vectors of target cell:"
+    print("Cartesian basis (column) vectors of target cell:", file=self.out)
     tmp_bas = self.basis_b.as_list_of_lists()
-    print >> self.out, "  / %5.1f %5.1f %5.1f \  " %(tmp_bas[0][0], tmp_bas[0][1], tmp_bas[0][2])
-    print >> self.out, "  | %5.1f %5.1f %5.1f |  " %(tmp_bas[1][0], tmp_bas[1][1], tmp_bas[1][2])
-    print >> self.out, "  \ %5.1f %5.1f %5.1f /  " %(tmp_bas[2][0], tmp_bas[2][1], tmp_bas[2][2])
-    print >> self.out
+    print("  / %5.1f %5.1f %5.1f \  " %(tmp_bas[0][0], tmp_bas[0][1], tmp_bas[0][2]), file=self.out)
+    print("  | %5.1f %5.1f %5.1f |  " %(tmp_bas[1][0], tmp_bas[1][1], tmp_bas[1][2]), file=self.out)
+    print("  \ %5.1f %5.1f %5.1f /  " %(tmp_bas[2][0], tmp_bas[2][1], tmp_bas[2][2]), file=self.out)
+    print(file=self.out)
 
     self.lattice_symm_a = sgtbx.lattice_symmetry.group( self.xs_a_n.unit_cell(),self.max_delta )
     self.lattice_symm_b = sgtbx.lattice_symmetry.group( self.xs_b_n.unit_cell(),self.max_delta )
@@ -349,16 +350,16 @@ class compare_lattice(object):
     self.matrix_list = generate_matrix_up_to_order( n_volume_ratio, max(n_volume_ratio-1,1) )
     self.uc_and_symm_list=[]
     self.possible_solutions = []
-    print >> self.out, "A total of %4i matrices in the hermite normal form have been generated."%( len( self.matrix_list ) )
-    print >> self.out, "The volume changes they cause lie between %4i and %4i."%(n_volume_ratio, max(n_volume_ratio-1,1))
+    print("A total of %4i matrices in the hermite normal form have been generated."%( len( self.matrix_list ) ), file=self.out)
+    print("The volume changes they cause lie between %4i and %4i."%(n_volume_ratio, max(n_volume_ratio-1,1)), file=self.out)
 
     count =0
 
-    print >> self.out
-    print >> self.out, "Trying all matrices"
-    print >> self.out
-    print >> self.out, "   1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0"
-    print >> self.out, "  ",
+    print(file=self.out)
+    print("Trying all matrices", file=self.out)
+    print(file=self.out)
+    print("   1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0", file=self.out)
+    print("  ", end=' ', file=self.out)
     for mat in self.matrix_list:
       count+=1
       found_it=False
@@ -379,102 +380,102 @@ class compare_lattice(object):
         self.possible_solutions.append( tmp_sol )
         #self.show_solution(tmp_sol)
       if found_it:
-        print >> self.out, "*",
+        print("*", end=' ', file=self.out)
         self.out.flush()
       else:
         if count%10==0:
-          print >> self.out, "|",
+          print("|", end=' ', file=self.out)
           self.out.flush()
         else:
-          print >> self.out, ".",
+          print(".", end=' ', file=self.out)
           self.out.flush()
       if count%20==0:
-        print >> self.out
-        print >> self.out, "  ",
+        print(file=self.out)
+        print("  ", end=' ', file=self.out)
         self.out.flush()
 
-    print >> self.out
-    print >> self.out, " Listing all possible solutions"
+    print(file=self.out)
+    print(" Listing all possible solutions", file=self.out)
     count=0
     if len(self.possible_solutions)==0:
-      print >> out
-      print >> out, "No relations found for this particular sublattice of the specified target cell."
-      print >> out, "   "
-      print >> out
+      print(file=out)
+      print("No relations found for this particular sublattice of the specified target cell.", file=out)
+      print("   ", file=out)
+      print(file=out)
 
     for tmp_sol in self.possible_solutions:
       count+=1
-      print >> self.out
-      print >> self.out, "Solution %4i"%(count)
+      print(file=self.out)
+      print("Solution %4i"%(count), file=self.out)
       self.show_solution( tmp_sol )
 
 
   def show_basic_info(self):
-    print >> self.out
-    print >> self.out, "Crystal symmetries in supplied setting"
-    print >> self.out
-    print >> self.out, "Target crystal symmetry:"
+    print(file=self.out)
+    print("Crystal symmetries in supplied setting", file=self.out)
+    print(file=self.out)
+    print("Target crystal symmetry:", file=self.out)
     self.xs_b.show_summary(f=self.out,
                            prefix="    ")
-    print >> self.out, "Building block crystal symmetry: "
+    print("Building block crystal symmetry: ", file=self.out)
     self.xs_a.show_summary(f=self.out,
                            prefix="    ")
-    print >> self.out
+    print(file=self.out)
 
-    print >> self.out, "Crystal symmetries in Niggli setting"
-    print >> self.out
-    print >> self.out, "Target crystal symmetry:"
+    print("Crystal symmetries in Niggli setting", file=self.out)
+    print(file=self.out)
+    print("Target crystal symmetry:", file=self.out)
     self.xs_b_n.show_summary(f=self.out,
                            prefix="    ")
-    print >> self.out, "Building block (lego cell) crystal symmetry: "
+    print("Building block (lego cell) crystal symmetry: ", file=self.out)
     self.xs_a_n.show_summary(f=self.out,
                            prefix="    ")
-    print >> self.out
-    print >> self.out, "Volume ratio between target and lego cell: %5.2f"%( self.xs_b_n.unit_cell().volume() / self.xs_a_n.unit_cell().volume() )
-    print >> self.out
+    print(file=self.out)
+    print("Volume ratio between target and lego cell: %5.2f"%( self.xs_b_n.unit_cell().volume() / self.xs_a_n.unit_cell().volume() ), file=self.out)
+    print(file=self.out)
 
 
   def show_solution(self, sol_entry):
     mat = sol_entry[0].as_list_of_lists()
-    print >> self.out, "--------------------------------------------------------------"
-    print >> self.out, "Target unit cell :     %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f"%(self.xs_b_n.unit_cell().parameters()[0],
+    print("--------------------------------------------------------------", file=self.out)
+    print("Target unit cell :     %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f"%(self.xs_b_n.unit_cell().parameters()[0],
                                                                             self.xs_b_n.unit_cell().parameters()[1],
                                                                             self.xs_b_n.unit_cell().parameters()[2],
                                                                             self.xs_b_n.unit_cell().parameters()[3],
                                                                             self.xs_b_n.unit_cell().parameters()[4],
-                                                                            self.xs_b_n.unit_cell().parameters()[5])
-    print >> self.out, "Lego cell :            %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f"%(self.xs_a_n.unit_cell().parameters()[0],
+                                                                            self.xs_b_n.unit_cell().parameters()[5]), file=self.out)
+    print("Lego cell :            %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f"%(self.xs_a_n.unit_cell().parameters()[0],
                                                                             self.xs_a_n.unit_cell().parameters()[1],
                                                                             self.xs_a_n.unit_cell().parameters()[2],
                                                                             self.xs_a_n.unit_cell().parameters()[3],
                                                                             self.xs_a_n.unit_cell().parameters()[4],
-                                                                            self.xs_a_n.unit_cell().parameters()[5])
-    print >> self.out
-    print >> self.out, "               /%4i %4i %4i  \  "%(mat[0][0],mat[0][1],mat[0][2])
-    print >> self.out, "matrix :  M =  |%4i %4i %4i  |  "%(mat[1][0],mat[1][1],mat[1][2])
-    print >> self.out, "               \%4i %4i %4i  /  "%(mat[2][0],mat[2][1],mat[2][2])
-    print >> self.out
-    print >> self.out, "Additional Niggli transform:     ", sol_entry[3].as_xyz()
-    print >> self.out, "Additional similarity transform: ", sol_entry[1].as_xyz()
-    print >> self.out, "Resulting unit cell :  %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f"%(
+                                                                            self.xs_a_n.unit_cell().parameters()[5]), file=self.out)
+    print(file=self.out)
+    print("               /%4i %4i %4i  \  "%(mat[0][0],mat[0][1],mat[0][2]), file=self.out)
+    print("matrix :  M =  |%4i %4i %4i  |  "%(mat[1][0],mat[1][1],mat[1][2]), file=self.out)
+    print("               \%4i %4i %4i  /  "%(mat[2][0],mat[2][1],mat[2][2]), file=self.out)
+    print(file=self.out)
+    print("Additional Niggli transform:     ", sol_entry[3].as_xyz(), file=self.out)
+    print("Additional similarity transform: ", sol_entry[1].as_xyz(), file=self.out)
+    print("Resulting unit cell :  %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f"%(
       sol_entry[2].unit_cell().parameters()[0],
       sol_entry[2].unit_cell().parameters()[1],
       sol_entry[2].unit_cell().parameters()[2],
       sol_entry[2].unit_cell().parameters()[3],
       sol_entry[2].unit_cell().parameters()[4],
-      sol_entry[2].unit_cell().parameters()[5])
-    print >> self.out, "Deviations :           %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f"%(
+      sol_entry[2].unit_cell().parameters()[5]), file=self.out)
+    print("Deviations :           %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f"%(
       100*(self.xs_b_n.unit_cell().parameters()[0]-sol_entry[2].unit_cell().parameters()[0])/self.xs_b_n.unit_cell().parameters()[0],
       100*(self.xs_b_n.unit_cell().parameters()[1]-sol_entry[2].unit_cell().parameters()[1])/self.xs_b_n.unit_cell().parameters()[1],
       100*(self.xs_b_n.unit_cell().parameters()[2]-sol_entry[2].unit_cell().parameters()[2])/self.xs_b_n.unit_cell().parameters()[2],
       (self.xs_b_n.unit_cell().parameters()[3]-sol_entry[2].unit_cell().parameters()[3]),
       (self.xs_b_n.unit_cell().parameters()[4]-sol_entry[2].unit_cell().parameters()[4]),
-      (self.xs_b_n.unit_cell().parameters()[5]-sol_entry[2].unit_cell().parameters()[5])  )
-    print >> self.out, "Deviations for unit cell lengths are listed in %."
-    print >> self.out, "Angular deviations are listed in degrees."
-    print >> self.out
-    print >> self.out, " "
-    print >> self.out, "--------------------------------------------------------------"
+      (self.xs_b_n.unit_cell().parameters()[5]-sol_entry[2].unit_cell().parameters()[5])  ), file=self.out)
+    print("Deviations for unit cell lengths are listed in %.", file=self.out)
+    print("Angular deviations are listed in degrees.", file=self.out)
+    print(file=self.out)
+    print(" ", file=self.out)
+    print("--------------------------------------------------------------", file=self.out)
 
   def make_new_cell_and_symmetry(self,
                                  mat):
@@ -551,7 +552,7 @@ def exercise():
   tst_compare()
   tst_make_bigger_cell()
   tst_centered_cells()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise()

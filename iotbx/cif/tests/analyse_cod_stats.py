@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_pickle
 from libtbx.utils import get_svn_revision, get_build_tag, plural_s
 from operator import itemgetter
@@ -29,16 +30,16 @@ class analyse(object):
   def show_summary(self, out=None):
     if out is None: out = sys.stdout
     n_total = self.n_cif + self.n_hkl
-    print >> out, "Number of cif: %7i" % self.n_cif
-    print >> out, "Number of hkl: %7i" % self.n_hkl
-    print >> out, "Number of hkl+cif pairs: ", self.n_hkl_cif_pairs
-    print >> out
+    print("Number of cif: %7i" % self.n_cif, file=out)
+    print("Number of hkl: %7i" % self.n_hkl, file=out)
+    print("Number of hkl+cif pairs: ", self.n_hkl_cif_pairs, file=out)
+    print(file=out)
 
-    print >> out, "%i parsing error%s" % plural_s(len(self.parsing_errors))
-    print >> out, "%i exception%s" % plural_s(len(self.build_errors))
-    print >> out, "%i ignored exception%s" % plural_s(len(self.ignored_errors))
-    print >> out, "%i skipping" % len(self.skipped)
-    print >> out
+    print("%i parsing error%s" % plural_s(len(self.parsing_errors)), file=out)
+    print("%i exception%s" % plural_s(len(self.build_errors)), file=out)
+    print("%i ignored exception%s" % plural_s(len(self.ignored_errors)), file=out)
+    print("%i skipping" % len(self.skipped), file=out)
+    print(file=out)
     rev = get_svn_revision()
     cod_path = os.environ.get("COD_SVN_WORKING_COPY")
     cod_rev = None
@@ -46,36 +47,36 @@ class analyse(object):
       cod_rev = get_svn_revision(path=cod_path)
     build_tag = get_build_tag()
     if cod_rev is not None:
-      print >> out, "COD svn revision: %i" %cod_rev
+      print("COD svn revision: %i" %cod_rev, file=out)
     if rev is not None:
-      print >> out, "cctbx svn revision: %i" %rev
+      print("cctbx svn revision: %i" %rev, file=out)
     if build_tag is not None:
-      print >> out, "cctbx build tag: ", build_tag
+      print("cctbx build tag: ", build_tag, file=out)
 
   def show_all(self, out=None):
     if out is None: out = sys.stdout
     self.show_summary(out=out)
-    print >> out
+    print(file=out)
     self.show_skipping(out=out)
-    print >> out
+    print(file=out)
     self.show_exceptions(out=out)
 
   def show_parsing_errors(self, out=None):
     if out is None: out = sys.stdout
     for cod_id, error in sorted(
       sorted(self.parsing_errors.items()), key=itemgetter(1)):
-      print >> out, "%s: %s" % (cod_id, error)
+      print("%s: %s" % (cod_id, error), file=out)
 
   def show_exceptions(self, out=None):
     if out is None: out = sys.stdout
     for cod_id, error in sorted(
       sorted(self.build_errors.items()), key=itemgetter(1)):
-      print >> out, "%s: %s" % (cod_id, error)
+      print("%s: %s" % (cod_id, error), file=out)
 
   def show_skipping(self, out=None):
     if out is None: out = sys.stdout
     for s in sorted(self.skipped):
-      print >> out, "SKIPPED: ", s
+      print("SKIPPED: ", s, file=out)
 
   def as_html(self):
     with open("parsing_errors", "wb") as out:
@@ -87,7 +88,7 @@ class analyse(object):
     s = StringIO()
     self.show_summary(out=s)
     with open("summary.html", "wb") as out:
-      print >> out, html % s.getvalue()
+      print(html % s.getvalue(), file=out)
 
 html = """\
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">

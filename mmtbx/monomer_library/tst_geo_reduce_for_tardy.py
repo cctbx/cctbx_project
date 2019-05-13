@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
@@ -17,8 +18,8 @@ def exercise_geo_reduce_for_tardy(
     relative_path="phenix_regression/tardy_action/"+file_name,
     test=os.path.isfile)
   if (file_path is None):
-    print 'Skipping exercise_geo_reduce_for_tardy("%s"):' \
-      ' input file not available' % file_name
+    print('Skipping exercise_geo_reduce_for_tardy("%s"):' \
+      ' input file not available' % file_name)
     return
   log = StringIO()
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -68,7 +69,7 @@ def run(args):
       file_name=file_name,
       expected_bond_counts=expected_bond_counts,
       expected_dihedral_counts=expected_dihedral_counts)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

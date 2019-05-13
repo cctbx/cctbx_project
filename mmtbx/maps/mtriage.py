@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 from libtbx import group_args
 from cctbx import maptbx
@@ -14,9 +15,9 @@ from libtbx import introspection
 from libtbx.str_utils import size_as_string_with_commas
 
 def show_process_info(out):
-  print >> out, "\\/"*39
+  print("\\/"*39, file=out)
   introspection.virtual_memory_info().show_if_available(out=out, show_max=True)
-  print >> out, "/\\"*39
+  print("/\\"*39, file=out)
   out.flush()
 
 master_params_str = """
@@ -79,16 +80,15 @@ master_params_str = """
 def show_histogram(map_histograms, log):
   if(map_histograms.h_half_map_1 is None):
     hm = map_histograms.h_map
-    print >> log, "                   Values                 Map"
+    print("                   Values                 Map", file=log)
     lc_1 = hm.data_min()
     s_1 = enumerate(hm.slots())
     for (i_1,n_1) in s_1:
       hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
-      print >> log, "%8.4f - %-8.4f : %d" % (lc_1, hc_1, n_1)
+      print("%8.4f - %-8.4f : %d" % (lc_1, hc_1, n_1), file=log)
       lc_1 = hc_1
   else:
-    print >> log, \
-      "                Full map                   Half-map1 Half-map2"
+    print("                Full map                   Half-map1 Half-map2", file=log)
     h0 = map_histograms.h_map
     h1 = map_histograms.h_half_map_1
     h2 = map_histograms.h_half_map_2
@@ -101,12 +101,12 @@ def show_histogram(map_histograms, log):
     for (i_1,n_1) in s_0:
       hc_1 = h0.data_min() + h0.slot_width() * (i_1+1)
       hc_2 = data_min + h2.slot_width() * (i_1+1)
-      print >> log, "%8.4f - %-8.4f : %9d %8.4f - %-8.4f : %9d %9d" % (
-        lc_1, hc_1, n_1, lc_2, hc_2, s_1[i_1], s_2[i_1])
+      print("%8.4f - %-8.4f : %9d %8.4f - %-8.4f : %9d %9d" % (
+        lc_1, hc_1, n_1, lc_2, hc_2, s_1[i_1], s_2[i_1]), file=log)
       lc_1 = hc_1
       lc_2 = hc_2
-    print >> log, "  Half-maps, correlation of histograms: ", \
-      map_histograms.half_map_histogram_cc
+    print("  Half-maps, correlation of histograms: ", \
+      map_histograms.half_map_histogram_cc, file=log)
 
 def get_fsc(map_data, model, params):
   result = None
@@ -159,7 +159,7 @@ class caller(object):
     if(self.show):
       delta = time.time()-t0
       self.time_cumulative += delta
-      print "%6.2f %8.2f %15s:"%(delta, self.time_cumulative, sa), msg
+      print("%6.2f %8.2f %15s:"%(delta, self.time_cumulative, sa), msg)
       sys.stdout.flush()
 
 class mtriage(object):
@@ -193,7 +193,7 @@ class mtriage(object):
     if(self.params.show_time):
       delta = time.time()-t0
       self.time_cumulative += delta
-      print "%6.2f %8.2f %15s:"%(delta, self.time_cumulative, sa), prefix
+      print("%6.2f %8.2f %15s:"%(delta, self.time_cumulative, sa), prefix)
       sys.stdout.flush()
     return result
 

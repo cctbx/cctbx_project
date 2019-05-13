@@ -10,6 +10,7 @@
 # TODO: show existing CCTBX atom selection?
 
 from __future__ import division
+from __future__ import print_function
 import wx
 import wx.lib.scrolledpanel
 import math, sys, os
@@ -269,7 +270,7 @@ multiple residues."
 
   def get_char_position(self, k_seq, i_seq):
     if i_seq >= len(self.char_boxes[k_seq]):
-      print i_seq, len(self.char_boxes[k_seq])
+      print(i_seq, len(self.char_boxes[k_seq]))
     return tuple(self.char_boxes[k_seq][i_seq])
 
   def get_contiguous_ranges(self, i_start, i_end):
@@ -770,7 +771,7 @@ residue(s).  Holding down shift enables multiple selections."""
         self.clear_structure_selections()
         self.clear_selection()
     self.Refresh()
-    print self.get_selected_ranges()
+    print(self.get_selected_ranges())
 
   def OnDoubleClick(self, event):
     (x, y) = (event.GetX(), event.GetY())
@@ -909,12 +910,12 @@ class sequence_window(object):
         segids = chain.atoms().extract_segid()
         if (segids.all_eq('UNK ')):
           if (verbose):
-            print "Skipping unknown residues in chain %s" % chain.id
+            print("Skipping unknown residues in chain %s" % chain.id)
           continue
       conf = chain.conformers()[0]
       if not conf.is_protein():
         if (verbose):
-          print "Skipping non-protein chain %s" % chain.id
+          print("Skipping non-protein chain %s" % chain.id)
         continue
       if chain.id in self._chain_cache :
         n = 2

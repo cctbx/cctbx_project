@@ -6,6 +6,7 @@ Desc        : Read pickle files (hopefully fine-sliced, and named after the
               order of the slices. Grab selected reflections and plot the
               intensity.
 """
+from __future__ import print_function
 import sys
 from six.moves import cPickle as pickle
 from dials.array_family import flex
@@ -24,7 +25,7 @@ def read_input(args):
       elif pair[0]=='data_sweep':
         data_sweep = pair[1]
   if len(data) == 0:
-    print "Please input all parameters"
+    print("Please input all parameters")
     exit()
   return data, data_sweep
 
@@ -43,10 +44,10 @@ if (__name__ == "__main__"):
     obs_fine = pickle_fine["observations"][0]
     obs_fine = obs_fine.select(obs_fine.data() > 0)
     if len(obs_fine.data())> 5:
-      print frame
+      print(frame)
       for index, d, I, sigI in zip(obs_fine.indices(), obs_fine.d_spacings().data(),\
                                    obs_fine.data(), obs_fine.sigmas()):
-        print index, d, I, sigI
+        print(index, d, I, sigI)
       obs_fine_sample = obs_fine.deep_copy()
       #break
     sample_no += 1

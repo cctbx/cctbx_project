@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from rstbx_ext import SpotClass
 from scitbx.array_family import flex
@@ -38,8 +39,8 @@ def main_go(index_engine,verbose=False,phil_set=None):
 
     # do some 12G parameter refinement here
 
-    if verbose: print "Before outlier rejection, triclinic rmsd %.3f on %d spots"%(
-      index_engine.residual(), index_engine.count_GOOD())
+    if verbose: print("Before outlier rejection, triclinic rmsd %.3f on %d spots"%(
+      index_engine.residual(), index_engine.count_GOOD()))
 
     # outlier detection
     od = outlier_detection.find_outliers(ai=index_engine,verbose=verbose,
@@ -49,8 +50,8 @@ def main_go(index_engine,verbose=False,phil_set=None):
 
     # do some 12G parameter refinement here, using the od.cache_status flags
 
-    if verbose: print "-After outlier rejection, triclinic rmsd %.3f on %d spots"%(
-      index_engine.residual(), index_engine.count_GOOD())
+    if verbose: print("-After outlier rejection, triclinic rmsd %.3f on %d spots"%(
+      index_engine.residual(), index_engine.count_GOOD()))
 
     # update outlier graphs
     od.update(phil_set,ai=index_engine,status_with_marked_outliers=od.cache_status)
@@ -75,14 +76,14 @@ def main_go(index_engine,verbose=False,phil_set=None):
       if len(raw_spot_input) < phil_set.distl_minimum_number_spots_for_indexing:
         message = "The remaining %d spots are less than the minimum %d set for indexing."%(
           len(raw_spot_input) , phil_set.distl_minimum_number_spots_for_indexing)
-        print "Raising exception",message
+        print("Raising exception",message)
         raise Exception(message)
-      print "Reindexing on the %d outlying spots to hunt for a second lattice"%len(raw_spot_input)
+      print("Reindexing on the %d outlying spots to hunt for a second lattice"%len(raw_spot_input))
       index_engine = AutoIndexOne(process_dictionary,opt_rawframes = opt_frames,
                                   horizon_phil=phil_set)
       # do some 3G parameter refinement here
       # do some 12G parameter refinement here
-      print "Reindexed OK"
+      print("Reindexed OK")
 """Migration process:
    3) rid of dependency on process_dictionary and opt_ choices (DONE)
    4) get rid of saga spot status.  Use return values exclusively. (DONE)

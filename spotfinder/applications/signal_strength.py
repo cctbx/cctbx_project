@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from spotfinder.array_family import flex
 from spotfinder.applications.wrappers import DistlOrganizer
 
@@ -39,9 +40,9 @@ def run_signal_strength_core(params,E):
     saturation = Org.Files.imageindex(key).saturation
 
     #Total number of spots in this range
-    print
-    print "Number of focus spots on image #%d within the input resolution range: %d"%(
-      key,len(spots))
+    print()
+    print("Number of focus spots on image #%d within the input resolution range: %d"%(
+      key,len(spots)))
 
     signals=flex.double()
     saturations=flex.double()
@@ -53,30 +54,30 @@ def run_signal_strength_core(params,E):
      if verbose:
       #peak height given in ADC units above local background
       #integrated signal strength given in pixel-ADC units above local background
-      print "%2d: Area in pixels=%d Peak=%.1f, Total integrated signal=%.1f (in pixel-ADC units above background)"%(
-        i, spot.area(), flex.max(spot.wts), flex.sum(spot.wts))
+      print("%2d: Area in pixels=%d Peak=%.1f, Total integrated signal=%.1f (in pixel-ADC units above background)"%(
+        i, spot.area(), flex.max(spot.wts), flex.sum(spot.wts)))
 
       #peak signal-to-noise expressed in standard deviations above local background
-      print "    Peak signal-to-noise=%.1f"%(spot.intensity())
+      print("    Peak signal-to-noise=%.1f"%(spot.intensity()))
 
       #peak height expressed in ADC units, without background subtraction
       image = Org.Files.imageindex(key)
-      print "    Peak position x=%4d y=%4d (pixels); pixel value=%5d"%(
+      print("    Peak position x=%4d y=%4d (pixels); pixel value=%5d"%(
         spot.max_pxl_x(), spot.max_pxl_y(),
-        image.linearintdata[(spot.max_pxl_x(),spot.max_pxl_y())])
+        image.linearintdata[(spot.max_pxl_x(),spot.max_pxl_y())]))
 
       #Gory detail, looping through each pixel on each spot
       for j,pixel in enumerate(spot.bodypixels):
-        print "       body pixel x=%4d y=%4d; pixel value=%5d; ADC height above background=%.1f"%(
-          pixel.x,pixel.y,image.linearintdata[(pixel.x,pixel.y)],spot.wts[j])
+        print("       body pixel x=%4d y=%4d; pixel value=%5d; ADC height above background=%.1f"%(
+          pixel.x,pixel.y,image.linearintdata[(pixel.x,pixel.y)],spot.wts[j]))
     if signals.size()>0:
-      print "Total integrated signal, pixel-ADC units above local background (just the good Bragg candidates) %d"%(
+      print("Total integrated signal, pixel-ADC units above local background (just the good Bragg candidates) %d"%(
             flex.sum(flex.double([flex.sum(spot.wts) for spot in Org.S.images[key]['inlier_spots']]))
-      )
-      print "Signals range from %.1f to %.1f with mean integrated signal %.1f"%(
-      flex.min(signals), flex.max(signals), flex.mean(signals) )
-      print "Saturations range from %.1f%% to %.1f%% with mean saturation %.1f%%"%(
-      100.*flex.min(saturations), 100.*flex.max(saturations), 100.*flex.mean(saturations) )
+      ))
+      print("Signals range from %.1f to %.1f with mean integrated signal %.1f"%(
+      flex.min(signals), flex.max(signals), flex.mean(signals) ))
+      print("Saturations range from %.1f%% to %.1f%% with mean saturation %.1f%%"%(
+      100.*flex.min(saturations), 100.*flex.max(saturations), 100.*flex.mean(saturations) ))
 
   if params.distl.pdf_output != None:
     #later, put this in a separate module so reportlab is not imported unless requested

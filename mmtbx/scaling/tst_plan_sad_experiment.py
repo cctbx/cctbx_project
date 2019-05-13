@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.command_line import plan_sad_experiment
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import null_out, Sorry
@@ -70,4 +71,4 @@ FVNQHLCGSHLVEALYLVCGERGFFYTPKA
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

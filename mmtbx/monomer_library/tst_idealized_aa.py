@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
@@ -33,12 +34,12 @@ def exercise_00():
       a = es.angle_deviations()
       b_z = es.bond_deviations_z()
       a_z = es.angle_deviations_z()
-      print "%5s"%aac_, "bonds     : %5.3f %5.3f %5.3f"%b, \
-        "angles     : %5.3f %5.3f %5.3f"%a
+      print("%5s"%aac_, "bonds     : %5.3f %5.3f %5.3f"%b, \
+        "angles     : %5.3f %5.3f %5.3f"%a)
       assert a[2] < 1.2, a[2]
       assert b[2] < 0.005, b[2]
-      print "%5s"%aac_, "bonds rmsZ: %5.3f %5.3f %5.3f"%b_z, \
-        "angles rmsZ: %5.3f %5.3f %5.3f"%a_z
+      print("%5s"%aac_, "bonds rmsZ: %5.3f %5.3f %5.3f"%b_z, \
+        "angles rmsZ: %5.3f %5.3f %5.3f"%a_z)
       assert a_z[2] < 0.7, a_z[2]
       assert b_z[2] < 0.7, b_z[2]
 
@@ -46,4 +47,4 @@ def exercise_00():
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_00()
-  print "Time: %6.3f"%(time.time()-t0)
+  print("Time: %6.3f"%(time.time()-t0))

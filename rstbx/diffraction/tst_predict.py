@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from rstbx.diffraction import rotation_angles
 from cctbx.crystal_orientation import crystal_orientation,basis_type
@@ -1998,4 +1999,4 @@ def test_ewald_sphere_model():
 if __name__=="__main__":
 
   test_ewald_sphere_model()
-  print "OK"
+  print("OK")

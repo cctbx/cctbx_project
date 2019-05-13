@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -45,13 +46,13 @@ def run(args):
       try:
         user_phil.append(parse(file_name=arg))
       except Exception as e:
-        print str(e)
+        print(str(e))
         raise Sorry("Couldn't parse phil file %s"%arg)
     else:
       try:
         user_phil.append(parse(arg))
       except Exception as e:
-        print str(e)
+        print(str(e))
         raise Sorry("Couldn't parse argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
 
@@ -60,7 +61,7 @@ def run(args):
 
   src = psana.Source(params.spectra_filter.detector_address)
   dataset_name = "exp=%s:run=%s:idx"%(params.experiment, params.runs)
-  print "Dataset string:", dataset_name
+  print("Dataset string:", dataset_name)
   ds = psana.DataSource(dataset_name)
   spf = spectra_filter(params)
 
@@ -74,7 +75,7 @@ def run(args):
   max_events = sys.maxint
 
   for run in ds.runs():
-    print "starting run", run.run()
+    print("starting run", run.run())
     # list of all events
     times = run.times()
 
@@ -94,7 +95,7 @@ def run(args):
       if not accepted:
         continue
 
-      print cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)), "Publishing data for event", i
+      print(cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)), "Publishing data for event", i)
 
       #header = "Event %d, m/f: %7.7f, f: %d"%(i, peak_max/flux, flux)
       header = "Event %d"%(i)

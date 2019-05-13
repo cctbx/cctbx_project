@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from scitbx.array_family import flex
 
@@ -50,7 +51,7 @@ def show_correlation(A, B, selection, message):
   data_A = A.select(selection==1)
   data_B = B.select(selection==1)
   LC = flex.linear_correlation(data_A,data_B)
-  print message,LC.coefficient(),"on %d values"%LC.n()
+  print(message,LC.coefficient(),"on %d values"%LC.n())
 
 def show_histogram(data,title):
   from matplotlib import pyplot as plt

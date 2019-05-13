@@ -6,6 +6,7 @@ whether a crystallized is actually a previously characterized contaminant.
 """
 
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 from libtbx import easy_pickle
 from libtbx import group_args
@@ -28,20 +29,20 @@ def parse_database(file_name):
       try :
         uc = uctbx.unit_cell([ float(x.replace(",","")) for x in fields[2:8] ])
       except RuntimeError, e :
-        print "Unit cell error:"
-        print line
+        print("Unit cell error:")
+        print(line)
         continue
       try :
         sg = sgtbx.space_group_info(" ".join(fields[8:-1]))
       except RuntimeError, e :
-        print "Unrecognized space group:"
-        print line
+        print("Unrecognized space group:")
+        print(line)
         continue
       try :
         symm = crystal.symmetry(unit_cell=uc, space_group_info=sg)
       except AssertionError :
-        print "Incompatible unit cell parameters:"
-        print line
+        print("Incompatible unit cell parameters:")
+        print(line)
         continue
       niggli_symm = symm.niggli_cell()
       db.append(group_args(
@@ -108,7 +109,7 @@ def download_crystal_db():
   host = "ftp.wwpdb.org"
   file = "pub/pdb/derived_data/index/crystal.idx"
   url = "ftp://%s/%s" % (host, file)
-  print "Retrieving %s" % url
+  print("Retrieving %s" % url)
   data = urllib2.urlopen(url)
   dest_dir = libtbx.env.find_in_repositories(
     relative_path="chem_data/pdb",
@@ -117,7 +118,7 @@ def download_crystal_db():
   f = open(dest_file, "w")
   f.write(data.read())
   f.close()
-  print "Wrote %s" % dest_file
+  print("Wrote %s" % dest_file)
 
 if (__name__ == "__main__"):
   if ("--update" in sys.argv):

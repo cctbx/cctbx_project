@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import mmtbx.f_model
 import mmtbx.f_model
@@ -344,9 +345,9 @@ class tgc(object):
         break
 
   def show_k_sols(self):
-    print "k_sols:", [round(k,3) for k in self.kbu.k_sols()], self.kbu.r_factor()
+    print("k_sols:", [round(k,3) for k in self.kbu.k_sols()], self.kbu.r_factor())
 
   def show_kbu(self):
-    print "k_sols:", [round(k,3) for k in self.kbu.k_sols()]
-    print "b_sols:", [round(b,3) for b in self.kbu.b_sols()]
-    print "b_cart:", [round(b,3) for b in self.kbu.b_cart()]
+    print("k_sols:", [round(k,3) for k in self.kbu.k_sols()])
+    print("b_sols:", [round(b,3) for b in self.kbu.b_sols()])
+    print("b_cart:", [round(b,3) for b in self.kbu.b_cart()])

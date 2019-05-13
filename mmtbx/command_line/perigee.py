@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.perigee
 import os, sys
 from math import sqrt
@@ -53,9 +54,9 @@ old = """
 """
 master_params = master_phil_string # need for auto documentation
 if 0:
-  print '-'*80
-  print master_phil_string
-  print '-'*80
+  print('-'*80)
+  print(master_phil_string)
+  print('-'*80)
 master_phil = phil.parse(master_phil_string)
 
 def setup_parser():
@@ -81,9 +82,9 @@ def setup_parser():
 def get_chains(hierarchy, verbose=False):
   tmp = []
   for model in hierarchy.models():
-    if verbose: print 'model: "%s"' % model.id
+    if verbose: print('model: "%s"' % model.id)
     for chain in model.chains():
-      if verbose: print 'chain: "%s"' % chain.id
+      if verbose: print('chain: "%s"' % chain.id)
       if chain.id not in tmp: tmp.append(chain.id)
   return tmp
 
@@ -108,7 +109,7 @@ def loop_over_residues_chain(hierarchy,
                              ):
   #assert len(filter(None, [only_chain, exclude_chain]))==1
   for model in hierarchy.models():
-    if verbose: print 'model: "%s"' % model.id
+    if verbose: print('model: "%s"' % model.id)
     for chain in model.chains():
       if(only_chain is not None and
          only_chain.strip()!=chain.id.strip()
@@ -116,10 +117,10 @@ def loop_over_residues_chain(hierarchy,
       if(exclude_chain is not None and
          exclude_chain.strip()==chain.id.strip()
          ): continue
-      if verbose: print 'chain: "%s"' % chain.id
+      if verbose: print('chain: "%s"' % chain.id)
       for resi, residue_group in enumerate(chain.residue_groups()):
-        if verbose: print '  residue_group: resseq="%s" icode="%s"' % (
-          residue_group.resseq, residue_group.icode)
+        if verbose: print('  residue_group: resseq="%s" icode="%s"' % (
+          residue_group.resseq, residue_group.icode))
         yield residue_group
 
 def loop_over_residues_residue(hierarchy,
@@ -129,15 +130,15 @@ def loop_over_residues_residue(hierarchy,
                                ):
   assert len(filter(None, [only_residue, exclude_residue]))==1
   for model in hierarchy.models():
-    if verbose: print 'model: "%s"' % model.id
+    if verbose: print('model: "%s"' % model.id)
     for chain in model.chains():
-      if verbose: print 'chain: "%s"' % chain.id
+      if verbose: print('chain: "%s"' % chain.id)
       for resi, residue_group in enumerate(chain.residue_groups()):
-        if verbose: print '  residue_group: resseq="%s" icode="%s"' % (
-          residue_group.resseq, residue_group.icode)
+        if verbose: print('  residue_group: resseq="%s" icode="%s"' % (
+          residue_group.resseq, residue_group.icode))
         for atom_group in residue_group.atom_groups():
-          if verbose: print '    atom_group: altloc="%s" resname="%s"' % (
-            atom_group.altloc, atom_group.resname)
+          if verbose: print('    atom_group: altloc="%s" resname="%s"' % (
+            atom_group.altloc, atom_group.resname))
           if(only_residue is not None and
              only_residue.strip()!=atom_group.resname.strip()
              ): continue
@@ -223,18 +224,18 @@ def run_probe_on_pdb_string(pdb_filename):
   assert 0
 
 def run(rargs):
-  print """
+  print("""
 
     Running interaction finder
 
-  """
+  """)
   rargs = list(rargs)
   parser = setup_parser()
   (options, args) = parser.parse_args(args=rargs)
   if options.show_defaults:
     for line in master_phil_string.splitlines():
       if line.strip().find(".")==0: continue
-      print line
+      print(line)
     sys.exit()
   if len(args)==0:
     parser.print_help()
@@ -303,14 +304,14 @@ def run(rargs):
   elif control_scope.chain is None and control_scope.residue is None:
     if control_scope.chain is None:
       chains = get_chains(hierarchy)
-      print "\n  Chains"
+      print("\n  Chains")
       for chain in chains:
-        print '    "%s"' % chain
+        print('    "%s"' % chain)
     if control_scope.residue is None:
-      print "Residues that may be of interest"
+      print("Residues that may be of interest")
       residues = get_het_residues(hierarchy)
       for residue in residues:
-        print '    "%s"' % residue
+        print('    "%s"' % residue)
     return
 
   def display_atom_pairs(atom_pairs, residues_only=False):
@@ -342,7 +343,7 @@ def run(rargs):
                                        sqrt(d2),
                                        )
       if residues_only: done.append(key)
-    print outl
+    print(outl)
 
   if control_scope.chain:
     atom_pairs = get_interacting_atoms(
@@ -357,12 +358,12 @@ def run(rargs):
       distance_cutoff=control_scope.distance_cutoff,
       residue1=control_scope.residue,
       )
-  print '-'*80
+  print('-'*80)
   if output_scope.residues_only:
     display_atom_pairs(atom_pairs, residues_only=True)
   else:
     display_atom_pairs(atom_pairs)
-  print '-'*80
+  print('-'*80)
 
 if __name__=="__main__":
   args = sys.argv[1:]

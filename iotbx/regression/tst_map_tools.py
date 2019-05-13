@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from iotbx import file_reader
 from iotbx import map_tools
 import iotbx.pdb.hierarchy
@@ -111,4 +112,4 @@ ATOM      9  HA3 GLY P  -1     -23.352  -3.933  16.803  1.00  0.00           H
 
 if (__name__ == "__main__"):
   exercise_map_tools()
-  print "OK"
+  print("OK")

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.graph.tardy_tree import find_paths, construct
 from scitbx.graph import rigidity
 from scitbx.graph import utils
@@ -121,7 +122,7 @@ def run(args):
   exercise_knot()
   exercise_fused_loops()
   exercise_three_archs()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -5,6 +5,7 @@ Author      : Uervirojnangkoorn, M.
 Created     : 11/1/2015
 Description : read integration pickles and view systemetic absences and beam X, Y position
 """
+from __future__ import print_function
 
 from six.moves import cPickle as pickle
 from cctbx.array_family import flex
@@ -67,8 +68,8 @@ def get_miller_array_from_mtz(mtz_filename):
 
 def read_input(args):
   if len(args) == 0:
-    print "prime.print_integration_pickle: for viewing systematic absences and beam xy position from integration pickles."
-    print "usage: prime.print_integration_pickle data=integrated.lst pixel_size_mm=0.079346 check_sys_absent=True target_space_group=P212121"
+    print("prime.print_integration_pickle: for viewing systematic absences and beam xy position from integration pickles.")
+    print("usage: prime.print_integration_pickle data=integrated.lst pixel_size_mm=0.079346 check_sys_absent=True target_space_group=P212121")
     exit()
   data = []
   hklrefin = None
@@ -113,14 +114,14 @@ def read_input(args):
     if pair[0]=='n_residues':
       n_residues = int(pair[1])
   if len(data)==0:
-    print "Please provide data path. (eg. data=/path/to/pickle/)"
+    print("Please provide data path. (eg. data=/path/to/pickle/)")
     exit()
   if check_sys_absent:
     if target_space_group is None:
-      print "Please provide target space group if you want to check systematic absence (eg. target_space_group=P212121)"
+      print("Please provide target space group if you want to check systematic absence (eg. target_space_group=P212121)")
       exit()
   if pixel_size_mm is None:
-    print "Please specify pixel size (eg. pixel_size_mm=0.079346)"
+    print("Please specify pixel size (eg. pixel_size_mm=0.079346)")
     exit()
   return data, hklrefin, pixel_size_mm, check_sys_absent, target_unit_cell, target_space_group, target_anomalous_flag, flag_plot, d_min, d_max, n_residues
 
@@ -142,8 +143,8 @@ if (__name__ == "__main__"):
   d_bins_set = []
   oodsqr_bins_set = []
   flag_good_unit_cell_set = []
-  print 'Summary of integration pickles:'
-  print '(image file, min. res., max. res, beamx, beamy, n_refl, cciso, <cciso_bin>, a, b, c, mosaicity, residual, dd_mm, wavelength, good_cell?, G, B)'
+  print('Summary of integration pickles:')
+  print('(image file, min. res., max. res, beamx, beamy, n_refl, cciso, <cciso_bin>, a, b, c, mosaicity, residual, dd_mm, wavelength, good_cell?, G, B)')
   uc_a = flex.double()
   uc_b = flex.double()
   uc_c = flex.double()
@@ -179,7 +180,7 @@ if (__name__ == "__main__"):
         observations = observations.customized_copy(anomalous_flag=target_anomalous_flag,
                           crystal_symmetry=miller_set.crystal_symmetry())
       except Exception:
-        print 'Cannot apply target space group: observed space group=', observations.space_group_info()
+        print('Cannot apply target space group: observed space group=', observations.space_group_info())
         check_sys_absent = False
     #check if the uc is good
     flag_good_unit_cell = False
@@ -326,13 +327,13 @@ if (__name__ == "__main__"):
           plt.show()
       #print full detail if given a single file
       if len(frame_files) == 1:
-        print 'Crystal orientation'
-        print crystal_init_orientation.crystal_rotation_matrix()
-        print 'Direct matrix'
-        print crystal_init_orientation.direct_matrix()
+        print('Crystal orientation')
+        print(crystal_init_orientation.crystal_rotation_matrix())
+        print('Direct matrix')
+        print(crystal_init_orientation.direct_matrix())
     a, b, c, alpha, beta, gamma = observations.unit_cell().parameters()
     txt_out_head= '{0:40} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.0f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f} {11:6.2f} {12:6.2f} {13:6.2f} {14:6.2f} {15:6.2f} {16:6.2f} {20:6.4f} {17:5} {18:6.2f} {19:6.2f}'.format(pickle_filename_only + ' ('+ str(observations.crystal_symmetry().space_group_info())+')', observations.d_min(), np.max(observations.d_spacings().data()), xbeam, ybeam, len(observations.data()), cc_iso, np.mean(cc_bins), a, b, c, alpha, beta, gamma, observations_pickle["mosaicity"], observations_pickle["residual"], detector_distance_mm, flag_good_unit_cell, wilson_G, wilson_B, wavelength)
-    print txt_out_head
+    print(txt_out_head)
     cc_bin_low_set.append(cc_iso)
     cc_bins_set.append(cc_bins)
     d_bins_set.append(d_bins)
@@ -345,7 +346,7 @@ if (__name__ == "__main__"):
           txt_out = '{9:40} {10:6.2f} {0:3} {1:3} {2:3} {3:3} {4:3} {5:3} {6:8.2f} {7:8.2f} {8:6.2f}'.format(miller_index_ori[0], miller_index_ori[1], miller_index_ori[2], miller_index_asu[0], miller_index_asu[1], miller_index_asu[2], I, sigI, I/sigI, pickle_filename_only, d_spacing)
           #if I/sigI > 1.5:
           #  print txt_out
-          print txt_out
+          print(txt_out)
           cn_refl +=1
           sys_abs_lst.append(I/sigI)
           sys_abs_all.append(I/sigI)
@@ -388,18 +389,18 @@ if (__name__ == "__main__"):
         txt_out_uc += pickle_filename + '\n'
     else:
       txt_out_report_beam_filter += txt_out_report_tmp
-  print
-  print 'CC mean=%6.2f median=%6.2f std=%6.2f'%(flex.mean(cc_bin_low_set), np.median(cc_bin_low_set), np.std(cc_bin_low_set))
-  print 'Xbeam mean=%8.4f std=%6.4f'%(xbeam_mean, xbeam_std)
-  print 'Ybeam mean=%8.4f std=%6.4f'%(ybeam_mean, ybeam_std)
-  print 'UC mean a=%8.4f (%8.4f) b=%8.4f (%8.4f) c=%9.4f (%8.4f)'%(flex.mean(uc_a), np.std(uc_a), flex.mean(uc_b), np.std(uc_b), flex.mean(uc_c), np.std(uc_c))
-  print 'Detector distance mean=%8.4f (%8.4f)'%(flex.mean(dd_mm), np.std(dd_mm))
-  print 'Wavelength mean=%8.4f (%8.4f)'%(flex.mean(wavelength_set), np.std(wavelength_set))
-  print 'No. of frames: All = %6.0f Beam outliers = %6.0f CC filter=%6.0f'%(len(frame_files), len(frame_files) - (len(txt_out.split('\n'))-1), len(frame_files) - (len(txt_out_mix.split('\n'))-1))
-  print
-  print 'Reporting outliers (image name, xbeam, ybeam, cciso, delta_xy)'
-  print txt_out_report_beam_filter
-  print txt_out_report_cc_filter
+  print()
+  print('CC mean=%6.2f median=%6.2f std=%6.2f'%(flex.mean(cc_bin_low_set), np.median(cc_bin_low_set), np.std(cc_bin_low_set)))
+  print('Xbeam mean=%8.4f std=%6.4f'%(xbeam_mean, xbeam_std))
+  print('Ybeam mean=%8.4f std=%6.4f'%(ybeam_mean, ybeam_std))
+  print('UC mean a=%8.4f (%8.4f) b=%8.4f (%8.4f) c=%9.4f (%8.4f)'%(flex.mean(uc_a), np.std(uc_a), flex.mean(uc_b), np.std(uc_b), flex.mean(uc_c), np.std(uc_c)))
+  print('Detector distance mean=%8.4f (%8.4f)'%(flex.mean(dd_mm), np.std(dd_mm)))
+  print('Wavelength mean=%8.4f (%8.4f)'%(flex.mean(wavelength_set), np.std(wavelength_set)))
+  print('No. of frames: All = %6.0f Beam outliers = %6.0f CC filter=%6.0f'%(len(frame_files), len(frame_files) - (len(txt_out.split('\n'))-1), len(frame_files) - (len(txt_out_mix.split('\n'))-1)))
+  print()
+  print('Reporting outliers (image name, xbeam, ybeam, cciso, delta_xy)')
+  print(txt_out_report_beam_filter)
+  print(txt_out_report_cc_filter)
   #write out filtered beamxy pickle files
   f = open('integration_pickle_beam_filter.lst', 'w')
   f.write(txt_out)

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import os
 op = os.path
@@ -8,14 +9,14 @@ import time
 _show_vm_info_time = time.time()
 
 def show_vm_info(msg):
-  print msg
+  print(msg)
   from libtbx import introspection
   introspection.virtual_memory_info().show(prefix="  ", show_max=True)
   global _show_vm_info_time
   t = time.time()
-  print "  time since previous: %.2f seconds" % (t-_show_vm_info_time)
+  print("  time since previous: %.2f seconds" % (t-_show_vm_info_time))
   _show_vm_info_time = t
-  print
+  print()
   sys.stdout.flush()
 
 import libtbx
@@ -176,7 +177,7 @@ class miller_image_map(libtbx.slots_getstate_setstate):
       map[i_seq].append((i_img, ii_seq))
 
   def show_images_per_miller_index(O, first_block_size=20):
-    print "Images per Miller index:"
+    print("Images per Miller index:")
     from libtbx import dict_with_default_0
     counts = dict_with_default_0()
     for iiis in O.map:
@@ -187,11 +188,11 @@ class miller_image_map(libtbx.slots_getstate_setstate):
       if (n_imgs > first_block_size and n_imgs < len(counts)-5):
         if (not have_break):
           have_break = True
-          print "        ..."
+          print("        ...")
       else:
         c = counts[n_imgs]
-        print "  %6d %6d %8.6f" % (n_imgs, c, c/n_seq)
-    print
+        print("  %6d %6d %8.6f" % (n_imgs, c, c/n_seq))
+    print()
     sys.stdout.flush()
 
 def collect_estis(image_mdls_array, iiis, partiality_threshold):
@@ -287,7 +288,7 @@ class image_models(libtbx.slots_getstate_setstate):
       im.reset_partialities(work_params, O.miller_indices)
 
   def check_i_obs_vs_backup(O, work_params):
-    print "Current i_obs vs. backup:"
+    print("Current i_obs vs. backup:")
     for im in O.array:
       im.backup.reset_partialities(work_params, O.miller_indices)
       b_obs = im.backup.extract_i_obs_est(work_params, O.miller_indices)
@@ -309,9 +310,9 @@ class image_models(libtbx.slots_getstate_setstate):
       den = flex.sum_sq(cb.data())
       if (den == 0): scale = None
       else:          scale = num / den
-      print " ", b_obs.indices().size(), i_obs.indices().size(), \
-        cb.indices().size(), scale
-    print
+      print(" ", b_obs.indices().size(), i_obs.indices().size(), \
+        cb.indices().size(), scale)
+    print()
 
   def refinement_target(O, partiality_threshold):
     assert O.miller_image_map.map is not None
@@ -446,7 +447,7 @@ class refinery(object):
       g.resize(n_mdls)
       for i,f_eps in mp_results:
         g[i] = (f_eps-f)/eps
-    print "refine scale f, |g|: %.6g, %.6g" % (f, g.norm())
+    print("refine scale f, |g|: %.6g, %.6g" % (f, g.norm()))
     sys.stdout.flush()
     return f, g
 
@@ -454,12 +455,12 @@ class refinery(object):
     O.number_of_iterations += 1
 
   def show_summary(O):
-    print "refinement target:"
-    print "  initial: %.6g" % O.initial_functional
-    print "    final: %.6g" % O.final_functional
-    print "            iterations:", O.number_of_iterations
-    print "  function evaluations:", O.number_of_function_evaluations
-    print
+    print("refinement target:")
+    print("  initial: %.6g" % O.initial_functional)
+    print("    final: %.6g" % O.final_functional)
+    print("            iterations:", O.number_of_iterations)
+    print("  function evaluations:", O.number_of_function_evaluations)
+    print()
     sys.stdout.flush()
 
 def index_and_integrate_one(work_params, image_mdls_miller_indices, pixels):
@@ -467,8 +468,8 @@ def index_and_integrate_one(work_params, image_mdls_miller_indices, pixels):
   spots = run_spotfinder.process(
     work_params=work_params, pixels=pixels, show_spots=False)
   if (spots.size() < work_params.min_number_of_spots_for_indexing):
-    print "Insufficient number of spots for indexing."
-    print
+    print("Insufficient number of spots for indexing.")
+    print()
     sys.stdout.flush()
     return (spots.size(), None)
   from rstbx.simage import run_labelit_index
@@ -489,8 +490,8 @@ def index_and_integrate_one(work_params, image_mdls_miller_indices, pixels):
     miller_indices=image_mdls_miller_indices,
     unit_cell=refined.unit_cell,
     crystal_rotation=refined.crystal_rotation)
-  print "Number of predicted spot positions:", predicted_spot_positions.size()
-  print
+  print("Number of predicted spot positions:", predicted_spot_positions.size())
+  print()
   spot_intensities = integrate_crude.collect_spot_intensities(
     pixels=pixels,
     spot_positions=predicted_spot_positions,
@@ -531,31 +532,31 @@ def index_and_integrate(work_params, image_mdls):
       chunksize=1,
       log=sys.stdout,
       func_wrapper="buffer_stdout_stderr")
-    print
+    print()
     sys.stdout.flush()
     for i_img,(log,mp_result) in enumerate(mp_results):
       if (mp_result is None):
-        print "ERROR index_and_integrate_one:"
-        print "-"*80
+        print("ERROR index_and_integrate_one:")
+        print("-"*80)
         sys.stdout.write(log)
-        print "-"*80
-        print
+        print("-"*80)
+        print()
       else:
         n_spots, updated_im = mp_result
         if (updated_im is None):
           uc = None
         else:
           uc = updated_im.unit_cell
-        print "Refined unit cell %d (%d spots):" % (i_img, n_spots), uc
+        print("Refined unit cell %d (%d spots):" % (i_img, n_spots), uc)
         image_mdls.array[i_img].reset_spot_model(other=updated_im)
       sys.stdout.flush()
-    print
+    print()
     if (work_params.show_refine_uc_cr):
       for _,(log,_) in enumerate(mp_results):
-        print "v"*80
+        print("v"*80)
         sys.stdout.write(log)
-        print "^"*80
-        print
+        print("^"*80)
+        print()
       sys.stdout.flush()
 
 def check_refine_uc_cr(work_params, image_mdls,
@@ -565,7 +566,7 @@ def check_refine_uc_cr(work_params, image_mdls,
   from scitbx.array_family import flex
   from scitbx import matrix
   for i_img,im in enumerate(image_mdls.array):
-    print "Image number:", i_img
+    print("Image number:", i_img)
     mt = flex.mersenne_twister(seed=work_params.noise.random_seed+i_img)
     unit_cell = uctbx.unit_cell([
       v + unit_cell_perturbation_factor*(mt.random_double()-0.5)
@@ -582,7 +583,7 @@ def check_refine_uc_cr(work_params, image_mdls,
       crystal_rotation_uq=crystal_rotation
         .r3_rotation_matrix_as_unit_quaternion())
     refined.show_summary().show_distances()
-    print
+    print()
 
 def build_images(work_params, i_calc, reindexing_assistant):
   result = []
@@ -708,9 +709,9 @@ def build_usables(work_params, reindexing_assistant, image_mdls):
       p = flex.sort_permutation(data=m)
       miis_perms.append((m.select(p), usable.esti.select(p)))
     usables.append(miis_perms)
-  print "Usable fraction of estimated image intensities:"
+  print("Usable fraction of estimated image intensities:")
   usable_fractions.min_max_mean().show(prefix="  ")
-  print
+  print()
   sys.stdout.flush()
   return usables
 
@@ -838,8 +839,8 @@ def build_image_cluster(work_params, reindexing_assistant, image_mdls, usables):
             for j_rem in range(i_rem+1, n_imgs):
               ij_list.append((i_rem,j_rem))
           n_chunks = len(ij_list) // chunk_size
-          print "Number of chunks for computing cluster pairs:", n_chunks
-          print
+          print("Number of chunks for computing cluster pairs:", n_chunks)
+          print()
           def process_chunk(i_chunk):
             for j_chunk in range(chunk_size):
               i = i_chunk * chunk_size + j_chunk
@@ -884,7 +885,7 @@ def build_image_cluster(work_params, reindexing_assistant, image_mdls, usables):
       raise RuntimeError("Insufficient connectivity between images.")
     max_i_clu = remaining[max_i_rem]
     max_j_rem = remaining.index(max_j_clu)
-    print "max_score:", max_score, (max_i_rem, max_j_rem)
+    print("max_score:", max_score, (max_i_rem, max_j_rem))
     cp = cluster_pairs[max_i_clu][max_j_clu]
     clusters[max_i_clu].merge(
       other=clusters[max_j_clu],
@@ -907,12 +908,12 @@ def check_image_cluster(
   for i_perm in range(len(cluster.miis_perms)):
     expected = i_calc.select(cluster.miis_perms[i_perm])
     reconstr = expected.customized_copy(data=cluster.esti_perms[i_perm])
-    print "i_perm:", i_perm
+    print("i_perm:", i_perm)
     flex.linear_correlation(x=expected.data(), y=reconstr.data()).show_summary()
     r1 = expected.f_sq_as_f().r1_factor(
       other=reconstr.f_sq_as_f(), scale_factor=libtbx.Auto)
-    print "r1: %.5f" % r1
-    print
+    print("r1: %.5f" % r1)
+    print()
   for i_img,i_perm_and_scale in cluster.i_perm_and_scale_by_i_img.items():
     im = image_mdls.array[i_img]
     im.i_perm = i_perm_and_scale.i_perm
@@ -921,16 +922,16 @@ def check_image_cluster(
       and not work_params.force_unit_spot_intensities):
     image_mdls.check_i_perm_vs_backup(reindexing_assistant)
   cluster_scales = image_mdls.extract_scales()
-  print "input vs. cluster scales:"
+  print("input vs. cluster scales:")
   flex.linear_correlation(x=scales_input, y=cluster_scales).show_summary()
-  print
+  print()
 
 def show_i_calc_reindexing_correlations(i_calc, reindexing_assistant):
   assert i_calc.indices().all_eq(reindexing_assistant.miller_indices)
   assert i_calc.space_group_info().type().number() == 1
   assert i_calc.anomalous_flag()
   from scitbx.array_family import flex
-  print "I-calc reindexing correlations:"
+  print("I-calc reindexing correlations:")
   for cb_op,inv_perm in zip(
         reindexing_assistant.cb_ops,
         reindexing_assistant.inv_perms):
@@ -942,8 +943,8 @@ def show_i_calc_reindexing_correlations(i_calc, reindexing_assistant):
       i_calc_perm.data()).coefficient()
     r1 = i_calc.f_sq_as_f().r1_factor(
       other=i_calc_perm.f_sq_as_f(), scale_factor=libtbx.Auto)
-    print "  %-12s  %8.5f (r1: %.5f)" % (cb_op.c().r().as_hkl(), cc, r1)
-  print
+    print("  %-12s  %8.5f (r1: %.5f)" % (cb_op.c().r().as_hkl(), cc, r1))
+  print()
 
 def process_core(work_params, i_calc, reindexing_assistant, image_mdls):
   show_i_calc_reindexing_correlations(i_calc, reindexing_assistant)
@@ -960,11 +961,11 @@ def process_core(work_params, i_calc, reindexing_assistant, image_mdls):
     index_and_integrate(work_params, image_mdls)
     show_vm_info("After index_and_integrate():")
     isel = image_mdls.iselection_entries_with_spot_model()
-    print "Removing %d image models for which" \
-      " indexing or integration failed." % (image_mdls.size() - isel.size())
+    print("Removing %d image models for which" \
+      " indexing or integration failed." % (image_mdls.size() - isel.size()))
     scales_input = scales_input.select(isel)
     image_mdls = image_mdls.remove_all_entries_without_spot_model()
-    print
+    print()
   image_mdls.normalize_spot_intensities(target_mean=100)
   image_mdls.check_i_obs_vs_backup(work_params)
   image_mdls.reset_miller_image_map()
@@ -998,9 +999,9 @@ def process_core(work_params, i_calc, reindexing_assistant, image_mdls):
   def show_correlation_of_scales(assert_perfect=False):
     expected = scales_input / scales_input[0]
     estimated = image_mdls.extract_scales()
-    print "Correlation of expected and estimated scales:"
+    print("Correlation of expected and estimated scales:")
     flex.linear_correlation(expected, estimated).show_summary(prefix="  ")
-    print
+    print()
     sys.stdout.flush()
     if (assert_perfect):
       from libtbx.test_utils import approx_equal
@@ -1012,9 +1013,9 @@ def process_core(work_params, i_calc, reindexing_assistant, image_mdls):
   i_obs_cluster = i_calc.customized_copy(indices=indices, data=data)
   refined_scales = None
   if (work_params.refine_scales.max_iterations in [None, 0]):
-    print "refinement target: %.6g" % image_mdls.refinement_target(
-      work_params.usable_partiality_threshold)
-    print
+    print("refinement target: %.6g" % image_mdls.refinement_target(
+      work_params.usable_partiality_threshold))
+    print()
   else:
     refined = refinery(work_params, image_mdls)
     refined.show_summary()
@@ -1036,17 +1037,17 @@ def process_core(work_params, i_calc, reindexing_assistant, image_mdls):
       refined_scales=refined_scales,
       i_obs_cluster=i_obs_cluster,
       i_obs_est=i_obs_est))
-  print "Input I-calc:"
+  print("Input I-calc:")
   i_calc.show_comprehensive_summary(prefix="  ")
-  print
-  print "Estimated I-obs:"
+  print()
+  print("Estimated I-obs:")
   i_obs_est.show_comprehensive_summary(prefix="  ")
-  print
+  print()
   if (i_obs_est.indices().size() > 2):
     if (input_im0_i_perm is not None):
-      print "input_im0_i_perm:", input_im0_i_perm
-      print
-    print "Correlation of input and estimated I-obs:"
+      print("input_im0_i_perm:", input_im0_i_perm)
+      print()
+    print("Correlation of input and estimated I-obs:")
     cc_im0_i_perm = None
     best_cc = -2
     for i_perm,cb_op in enumerate(reindexing_assistant.cb_ops):
@@ -1060,13 +1061,13 @@ def process_core(work_params, i_calc, reindexing_assistant, image_mdls):
         cc_im0_i_perm = cc
       r1 = c.f_sq_as_f().r1_factor(
         other=e.f_sq_as_f(), scale_factor=libtbx.Auto)
-      print "  i_perm=%d: %8.5f (r1: %.5f)" % (i_perm, cc, r1)
+      print("  i_perm=%d: %8.5f (r1: %.5f)" % (i_perm, cc, r1))
     if (input_im0_i_perm is not None):
       assert cc_im0_i_perm is not None
       from libtbx.test_utils import approx_equal
       assert approx_equal(cc_im0_i_perm, 1)
-    print "  Best correlation: %8.5f" % best_cc
-    print
+    print("  Best correlation: %8.5f" % best_cc)
+    print()
   return True
 
 def process(work_params, i_calc):
@@ -1076,7 +1077,7 @@ def process(work_params, i_calc):
     intensity_group=work_params.intensity_symmetry.group(),
     miller_indices=i_calc.p1_anom.indices())
   reindexing_assistant.show_summary()
-  print
+  print()
   image_mdls = build_images(work_params, i_calc.p1_anom, reindexing_assistant)
   show_vm_info("After build_images():")
   if (work_params.pickle_image_models):
@@ -1093,11 +1094,11 @@ def run_with_pickle(file_name):
   work_params, i_calc, reindexing_assistant, image_mdls = easy_pickle.load(
     file_name)
   work_params.phil_master.format(work_params).show()
-  print
+  print()
   i_calc.p1_anom.show_comprehensive_summary()
-  print
+  print()
   reindexing_assistant.show_summary()
-  print
+  print()
   show_vm_info("After unpickling:")
   process_core(work_params, i_calc.p1_anom, reindexing_assistant, image_mdls)
 
@@ -1140,7 +1141,7 @@ write_image_models_to_mtz_files = False
   from .create import build_i_calc
   i_calc = build_i_calc(work_params)
   i_calc.p1_anom.show_comprehensive_summary()
-  print
+  print()
   show_vm_info("After build_i_calc:")
   if (work_params.sample_random_seeds is None):
     process(work_params, i_calc)

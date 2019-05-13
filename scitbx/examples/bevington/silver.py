@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import scitbx.lbfgs
 from scitbx.array_family import flex
@@ -107,8 +108,8 @@ class lbfgs_biexponential_fit(bevington_silver):
     self.a = self.x
 
   def print_step(pfh,message,target):
-    print "%s %10.4f"%(message,target),
-    print "["," ".join(["%10.4f"%a for a in pfh.x]),"]"
+    print("%s %10.4f"%(message,target), end=' ')
+    print("["," ".join(["%10.4f"%a for a in pfh.x]),"]")
 
   def compute_functional_and_gradients(self):
     self.a = self.x
@@ -120,14 +121,14 @@ class lbfgs_biexponential_fit(bevington_silver):
 def lbfgs_example(verbose):
 
   fit = lbfgs_biexponential_fit(x_obs=x_obs,y_obs=y_obs,w_obs=w_obs,initial=initial)
-  print "------------------------------------------------------------------------- "
-  print "       Initial and fitted coeffcients, and inverse-curvature e.s.d.'s"
-  print "------------------------------------------------------------------------- "
+  print("------------------------------------------------------------------------- ")
+  print("       Initial and fitted coeffcients, and inverse-curvature e.s.d.'s")
+  print("------------------------------------------------------------------------- ")
 
   for i in range(initial.size()):
 
-    print "%2d %10.4f %10.4f %10.4f"%(
-           i, initial[i], fit.a[i], sqrt(2./fit.curvatures()[i]))
+    print("%2d %10.4f %10.4f %10.4f"%(
+           i, initial[i], fit.a[i], sqrt(2./fit.curvatures()[i])))
 
 from scitbx.lstbx import normal_eqns
 from scitbx.lstbx import normal_eqns_solving
@@ -154,8 +155,8 @@ class levenberg_common(object):
 
   def print_step(pfh,message,target=None,functional=None):
     if functional is None:  functional = flex.sum(target)
-    print "%s %10.4f"%(message,functional),
-    print "["," ".join(["%10.4f"%a for a in pfh.x]),"]"
+    print("%s %10.4f"%(message,functional), end=' ')
+    print("["," ".join(["%10.4f"%a for a in pfh.x]),"]")
 
 from scitbx.examples.bevington import dense_base_class
 class levenberg_helper(dense_base_class,levenberg_common,normal_eqns.non_linear_ls_mixin):
@@ -205,19 +206,19 @@ class dense_worker(object):
     #print list(self.helper.step_equations().cholesky_factor_packed_u())
     error_matrix = NM.inverse()
     self.error_diagonal = [error_matrix(a,a) for a in range(5)]
-    print "End of minimization: Converged", self.helper.counter,"cycles"
+    print("End of minimization: Converged", self.helper.counter,"cycles")
 
 def levenberg_example(verbose):
 
   fit = dense_worker(x_obs=x_obs,y_obs=y_obs,w_obs=w_obs,initial=initial)
-  print "-------------------------------------------------------------------------------------- "
-  print " Initial and fitted parameters, full-matrix e.s.d.'s, and inverse-curvature e.s.d.'s"
-  print "-------------------------------------------------------------------------------------- "
+  print("-------------------------------------------------------------------------------------- ")
+  print(" Initial and fitted parameters, full-matrix e.s.d.'s, and inverse-curvature e.s.d.'s")
+  print("-------------------------------------------------------------------------------------- ")
 
   for i in range(initial.size()):
 
-    print "%2d %10.4f %10.4f %10.4f %10.4f"%(
-      i, initial[i], fit.helper.x[i], sqrt(fit.error_diagonal[i]), sqrt(1./fit.c[i]))
+    print("%2d %10.4f %10.4f %10.4f %10.4f"%(
+      i, initial[i], fit.helper.x[i], sqrt(fit.error_diagonal[i]), sqrt(1./fit.c[i])))
 
 from scitbx.examples.bevington import eigen_base_class as base_class
 class eigen_helper(base_class,levenberg_common,normal_eqns.non_linear_ls_mixin):
@@ -271,27 +272,27 @@ class eigen_worker(object):
     IA = sqr(svd_inverse)
     self.error_diagonal = flex.double([IA(i,i) for i in range(self.helper.x.size())])
 
-    print "End of minimization: Converged", self.helper.counter,"cycles"
+    print("End of minimization: Converged", self.helper.counter,"cycles")
 
 def eigen_example(verbose):
 
   fit = eigen_worker(x_obs=x_obs,y_obs=y_obs,w_obs=w_obs,initial=initial)
-  print "----------------------------------------------------------------- "
-  print "       Initial and fitted parameters & full-matrix e.s.d.'s"
-  print "----------------------------------------------------------------- "
+  print("----------------------------------------------------------------- ")
+  print("       Initial and fitted parameters & full-matrix e.s.d.'s")
+  print("----------------------------------------------------------------- ")
 
   for i in range(initial.size()):
 
-    print "%2d %10.4f %10.4f %10.4f"%(
-          i, initial[i], fit.helper.x[i], sqrt(fit.error_diagonal[i]) )
+    print("%2d %10.4f %10.4f %10.4f"%(
+          i, initial[i], fit.helper.x[i], sqrt(fit.error_diagonal[i]) ))
 
 if (__name__ == "__main__"):
   verbose=True
-  print "\n LBFGS:"
+  print("\n LBFGS:")
   lbfgs_example(verbose)
-  print "\n DENSE MATRIX:"
+  print("\n DENSE MATRIX:")
   levenberg_example(verbose)
-  print "\n SPARSE MATRIX:"
+  print("\n SPARSE MATRIX:")
   eigen_example(verbose)
 '''
 EXPLANATION OF CLASS HIERARCHY.

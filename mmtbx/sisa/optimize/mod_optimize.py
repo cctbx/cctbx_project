@@ -4,6 +4,7 @@ Author      : Uervirojnangkoorn, M.
 Created     : 12/1/2014
 Description : Optimizer main module.
 '''
+from __future__ import print_function
 import numpy as np
 import math, random
 from cctbx.array_family import flex
@@ -147,7 +148,7 @@ class sisa_optimizer(object):
 
     txt_prn_out = "Starting stack %2.0f: microcycle %2.0f (initial skew=%6.2f, mapcc=%6.2f, mpe=%6.2f)\n"%(\
       stack_no+1, micro_cycle_no+1, skew, mapcc, mpe*180/math.pi)
-    print txt_prn_out
+    print(txt_prn_out)
     txt_pop_hist_out=""
     for i_idv in range(len(cur_pop)):
       map_coeff = self.setup_map_coeff(miller_arrays, indices_selected,
@@ -160,7 +161,7 @@ class sisa_optimizer(object):
 
     txt_prn_tmp = 'gen'.center(5)+'<skew>'.center(7)+'std_skew'.center(8)+'n_accidv'.center(10)+ \
       'skew'.center(6)+'mapcc'.center(7)+'mpe'.center(5)+'mapccp'.center(7)+'mpep'.center(6)+'time_spent (min)'.center(16)+'\n'
-    print txt_prn_tmp
+    print(txt_prn_tmp)
     txt_prn_out += txt_prn_tmp
     #Set up population map
     #[[7,1,5],
@@ -312,7 +313,7 @@ class sisa_optimizer(object):
         mean_fit_intcycle, std_fit_intcycle, num_good_idv_intcycle, flex_phis_fit_intcycle, \
         mapcc_phis_intcycle, mpe_phis_intcycle*180/math.pi, \
         mapcc_avg_gen, mpe_avg_gen*180/math.pi, time_gen_spent.seconds/60)
-      print txt_prn_tmp
+      print(txt_prn_tmp)
       txt_prn_out += txt_prn_tmp
       #check termination
       if mapcc_avg_gen >= 0.9:

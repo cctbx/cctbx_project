@@ -2,6 +2,7 @@
 # LIBTBX_SET_DISPATCHER_NAME iotbx.merging_statistics
 
 from __future__ import division
+from __future__ import print_function
 import iotbx.merging_statistics
 import iotbx.phil
 from libtbx.str_utils import format_value
@@ -147,11 +148,11 @@ already be on a common scale, but with individual observations unmerged.
     cif = iotbx.cif.model.cif()
     cif[params.mmcif.data_name] = result.as_cif_block()
     with open(params.mmcif.file_name, 'wb') as f:
-      print >> f, cif
-  print >> out, ""
-  print >> out, "References:"
-  print >> out, citations_str
-  print >> out, ""
+      print(cif, file=f)
+  print("", file=out)
+  print("References:", file=out)
+  print(citations_str, file=out)
+  print("", file=out)
   return result
 
 #-----------------------------------------------------------------------

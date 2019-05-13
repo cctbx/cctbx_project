@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.web.asu_gallery import web_links
 from cctbx.web.asu_gallery import html_head_title
 import sys
@@ -7,8 +8,8 @@ def write_html(f=None):
   if (f is None): f = sys.stdout
   iucrcompcomm_jul2003 = web_links.iucrcompcomm_jul2003
   title = "ASU Gallery - Guide to notation"
-  print >> f, html_head_title(title=title)
-  print >> f, """\
+  print(html_head_title(title=title), file=f)
+  print("""\
 <body>
 
 <hr>
@@ -108,7 +109,7 @@ I&nbsp;41/a&nbsp;(No.&nbsp;88)</a>.
 
 <hr>
 </body>
-</html>""" % vars()
+</html>""" % vars(), file=f)
 
 if (__name__ == "__main__"):
   write_html()

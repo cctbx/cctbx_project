@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import iotbx.pdb
@@ -125,25 +126,22 @@ class run(object):
       self.target_map = self.prepare_target_map()
     else:
       self.target_map = map_data
-    print >> self.log, \
-      "outliers start: %d"%self.count_outliers()
+    print("outliers start: %d"%self.count_outliers(), file=self.log)
     #
     if(not self.tune_up_only):
       self.loop(function = self.one_residue_iteration)
       assert approx_equal(self.sites_cart,
         self.pdb_hierarchy.atoms().extract_xyz())
-      print >> self.log, \
-        "outliers after map fit: %d"%self.count_outliers()
-    print >> self.log, "tune up"
+      print("outliers after map fit: %d"%self.count_outliers(), file=self.log)
+    print("tune up", file=self.log)
     assert approx_equal(self.sites_cart,
       self.pdb_hierarchy.atoms().extract_xyz())
     self.loop(function = self.one_residue_tune_up)
-    print >> self.log, \
-      "outliers final: %d"%self.count_outliers()
+    print("outliers final: %d"%self.count_outliers(), file=self.log)
     assert approx_equal(self.sites_cart,
       self.pdb_hierarchy.atoms().extract_xyz())
     #
-    print >> self.log, "Did it for:", self.did_it_for
+    print("Did it for:", self.did_it_for, file=self.log)
     #
 
   def get_special_position_indices(self):

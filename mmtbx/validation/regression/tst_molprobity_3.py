@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 import libtbx.load_env
 
@@ -61,7 +62,7 @@ END
 def exercise_00(prefix="tst_molprobity_3_exercise_00"):
   for i, pdb_str in enumerate([pdb_str_1, pdb_str_2]):
     of = open("%s.pdb"%prefix, "w")
-    print >> of, pdb_str
+    print(pdb_str, file=of)
     of.close()
     cmd = " ".join([
       "phenix.fmodel",
@@ -76,7 +77,7 @@ def exercise_00(prefix="tst_molprobity_3_exercise_00"):
 
 def exercise_01(prefix="tst_molprobity_3_exercise_01"):
   of = open("%s.pdb"%prefix, "w")
-  print >> of, pdb_str_3
+  print(pdb_str_3, file=of)
   of.close()
   cmd = "phenix.molprobity %s.pdb > %s.zlog"%(prefix,prefix)
   r = easy_run.fully_buffered(cmd)
@@ -86,6 +87,6 @@ if (__name__ == "__main__"):
   if libtbx.env.has_module("phenix"):
     exercise_00()
     # exercise_01() disabling because such CRYST1 is working now...
-    print "OK"
+    print("OK")
   else:
-    print "Skipped: Requires phenix module"
+    print("Skipped: Requires phenix module")

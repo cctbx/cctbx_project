@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.sgtbx.direct_space_asu import cut_plane
 from cctbx.array_family import flex
 from scitbx import matrix
@@ -242,8 +243,8 @@ class edge_with_cut_points(object):
     self.cut_points = tuple(cut_points)
 
   def show_points(self):
-    print "end points:", self.end_points
-    print "cut points:", self.cut_points
+    print("end points:", self.end_points)
+    print("cut points:", self.cut_points)
 
   def cut_point_positions(self):
     return [edge_position(self.end_points, point) for point in self.cut_points]

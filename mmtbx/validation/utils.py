@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_pickle
 from libtbx import group_args
 from libtbx.utils import Sorry
@@ -99,8 +100,8 @@ def find_sequence_mismatches(pdb_hierarchy,
   actual_seqs = []
   expected_seqs = []
   if (len(chains) != len(sequences)) or (not assume_same_order):
-    print >> log, "Can't determine sequence->chain mapping autoamtically"
-    print >> log, "Running sequence alignments. . ."
+    print("Can't determine sequence->chain mapping autoamtically", file=log)
+    print("Running sequence alignments. . .", file=log)
     from mmtbx.alignment import pairwise_global_wrapper
     for chain in chains :
       chain_seq = chain.as_padded_sequence()
@@ -344,7 +345,7 @@ def exercise():
     import numpy
   except ImportError :
     test_numpy = False
-    print "Numpy not installed, will skip array conversion."
+    print("Numpy not installed, will skip array conversion.")
   else :
     test_numpy = True
   # ramachandran
@@ -370,4 +371,4 @@ def exercise():
 
 if __name__ == "__main__" :
   exercise()
-  print "OK"
+  print("OK")

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import math
 from cctbx import crystal
 from cctbx import sgtbx
@@ -228,7 +229,7 @@ simul_utils{
 """)
 
 def print_help():
-  print """
+  print("""
 mmtbx.simulate_data:
 
 Allows one to quickly simulate data 'experimental' data with similar
@@ -275,7 +276,7 @@ and R value properties.
 If no mock model is supplied, the model will be the mock model.
 The mock model is supposed to be in the same unit cell/spacegroup (this is enforced).
 
-  """
+  """)
 
 
 def simul_utils(args):
@@ -299,12 +300,12 @@ def simul_utils(args):
     argument_interpreter = master_params.command_line_argument_interpreter(
       home_scope="map_coefs")
 
-    print >> log, "#phil __OFF__"
-    print >> log, "======================"
-    print >> log, "          SIMUL       "
-    print >> log, "A data simulation tool"
-    print >> log, "======================"
-    print >> log
+    print("#phil __OFF__", file=log)
+    print("======================", file=log)
+    print("          SIMUL       ", file=log)
+    print("A data simulation tool", file=log)
+    print("======================", file=log)
+    print(file=log)
 
 
     for arg in args:
@@ -330,10 +331,10 @@ def simul_utils(args):
         except Exception : pass
 
       if not arg_is_processed:
-        print >> log, "##----------------------------------------------##"
-        print >> log, "## Unknown file or keyword:", arg
-        print >> log, "##----------------------------------------------##"
-        print >> log
+        print("##----------------------------------------------##", file=log)
+        print("## Unknown file or keyword:", arg, file=log)
+        print("##----------------------------------------------##", file=log)
+        print(file=log)
         raise Sorry("Unknown file or keyword: %s" % arg)
 
     effective_params = master_params.fetch(sources=phil_objects)
@@ -362,10 +363,10 @@ def simul_utils(args):
     params.simul_utils.input.space_group = \
       sgtbx.space_group_info( group = combined_xs.space_group() )
 
-    print >> log, "#phil __ON__"
+    print("#phil __ON__", file=log)
     new_params =  master_params.format(python_object=params)
     new_params.show(out=log)
-    print >> log, "#phil __END__"
+    print("#phil __END__", file=log)
 
     if params.simul_utils.input.unit_cell is None:
       raise Sorry("unit cell not specified")
@@ -418,11 +419,11 @@ def simul_utils(args):
       miller_array = abs(miller_array)
 
     miller_array.set_info(info)
-    print >> log
-    print >> log, "Summary info of observed data"
-    print >> log, "============================="
+    print(file=log)
+    print("Summary info of observed data", file=log)
+    print("=============================", file=log)
     miller_array.show_summary(f=log)
-    print >> log
+    print(file=log)
 
 
     free_flags = miller_array.generate_r_free_flags()
@@ -435,18 +436,18 @@ def simul_utils(args):
     model = pdb.input(file_name=params.simul_utils.input.model.file_name).xray_structure_simple(
                       crystal_symmetry=phil_xs,
                       )
-    print >> log, "Atomic model summary"
-    print >> log, "===================="
+    print("Atomic model summary", file=log)
+    print("====================", file=log)
     model.show_summary()
-    print >> log
+    print(file=log)
 
     #-------------------------------------------------------------------
     # Step 3: make an F_model object to get model phases and amplitudes
     #
-    print >> log, "Performing bulk solvent scaling"
-    print >> log, "==============================="
-    print >> log
-    print >> log
+    print("Performing bulk solvent scaling", file=log)
+    print("===============================", file=log)
+    print(file=log)
+    print(file=log)
 
     f_model_object = f_model.manager(
         f_obs = miller_array,
@@ -457,10 +458,10 @@ def simul_utils(args):
 
     mockfmodel = None
     if params.simul_utils.input.mock_model.file_name is not None:
-      print >> log, "Reading in mock model"
-      print >> log, "====================="
-      print >> log
-      print >> log
+      print("Reading in mock model", file=log)
+      print("=====================", file=log)
+      print(file=log)
+      print(file=log)
       mock_model = pdb.input(file_name=params.simul_utils.input.mock_model.file_name).xray_structure_simple(
                              crystal_symmetry=phil_xs)
       mock_f_model = f_model.manager(
@@ -480,10 +481,10 @@ def simul_utils(args):
 
 
 
-    print >> log, "Making new data"
-    print >> log, "==============="
-    print >> log
-    print >> log
+    print("Making new data", file=log)
+    print("===============", file=log)
+    print(file=log)
+    print(file=log)
 
     new_data_builder = error_swap( miller_array,
                                    fmodel,
@@ -491,8 +492,8 @@ def simul_utils(args):
     new_data = new_data_builder.new_obs
     # we now have to write the data actually
 
-    print >> log, "Writing new data set"
-    print >> log, "===================="
+    print("Writing new data set", file=log)
+    print("====================", file=log)
 
     mtz_dataset = new_data.as_mtz_dataset(
       column_root_label="FOBS")

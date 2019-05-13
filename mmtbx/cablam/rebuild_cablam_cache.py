@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 from libtbx import easy_pickle, dlite
 #from libtbx import dlite
@@ -48,11 +49,11 @@ Cannot find chem_data/cablam_data directory.
     target_db=dlite.target_db(os.path.join(cablam_dir,'cablam.dlite')),
     suffixes=file_suffixes)
   os.chdir(starting_dir)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 def rebuild_pickle_files(data_dir, file_prefix, target_db, suffixes):
   os.chdir(data_dir)
-  print 'Processing data files in %s:' % show_string(data_dir)
+  print('Processing data files in %s:' % show_string(data_dir))
   for suffix in suffixes:
     data_file =   file_prefix + suffix + '.stat'
     pickle_file = file_prefix + suffix + '.pickle'
@@ -60,16 +61,16 @@ def rebuild_pickle_files(data_dir, file_prefix, target_db, suffixes):
       source_path=data_file,
       target_path=pickle_file,
       path_prefix=data_dir)
-    print "  %s -> %s:" % (data_file, pickle_file),
-    if not pair_info.needs_update: print "alreadt up to date."
+    print("  %s -> %s:" % (data_file, pickle_file), end=' ')
+    if not pair_info.needs_update: print("alreadt up to date.")
     else:
-      print "converting ...",
+      print("converting ...", end=' ')
       sys.stdout.flush()
       pair_info.start_building_target()
       ndt = NDimTable.createFromText(data_file)
       easy_pickle.dump(file_name=pickle_file, obj=ndt)
       pair_info.done_building_target()
-      print "done."
+      print("done.")
     sys.stdout.flush()
   target_db.write()
 

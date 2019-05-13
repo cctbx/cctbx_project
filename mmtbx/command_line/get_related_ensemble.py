@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
 import sys
@@ -42,7 +43,7 @@ def run(args, out=sys.stdout):
     seq_file = cmdline.get_file(params.sequence, force_type="seq")
     n_seqs = len(seq_file.file_object)
     if (n_seqs > 1):
-      print >> out, "%d sequences in file - will only use the first" % n_seqs
+      print("%d sequences in file - will only use the first" % n_seqs, file=out)
     sequence = seq_file.file_object[0].sequence
   pdb_file = cmdline.get_file(params.model, force_type="pdb")
   hierarchy = pdb_file.file_object.hierarchy
@@ -53,9 +54,8 @@ def run(args, out=sys.stdout):
     if (params.chain_id is None) or (chain.id == params.chain_id):
       if (not chain.is_protein()):
         if (chain.id == params.chain_id):
-          print >> out, \
-            "warning: matching chain '%s' is not protein, skipping" % \
-            chain.id
+          print("warning: matching chain '%s' is not protein, skipping" % \
+            chain.id, file=out)
         continue
       else :
         # TODO select based on sequence if provided
@@ -75,8 +75,8 @@ def run(args, out=sys.stdout):
           new_chain.append_residue_group(new_rg)
         if (sequence is None):
           sequence = chain.as_padded_sequence(pad='X')
-          print >> out, "Using sequence of chain '%s' (approx. %d residues)" % \
-            (chain.id, len(sequence))
+          print("Using sequence of chain '%s' (approx. %d residues)" % \
+            (chain.id, len(sequence)), file=out)
         break
   if (sequence is None):
     raise Sorry("No protein sequence could be extracted based on these inputs.")
@@ -90,12 +90,12 @@ def run(args, out=sys.stdout):
   f = null_out()
   if (params.output_file is not None):
     f = open(params.output_file, "w")
-  print >> out, "Assembling moved models:"
+  print("Assembling moved models:", file=out)
   ensemble_hierarchy = ensemble.as_multi_model_hierarchy()
   for k in ensemble.selection_moved :
     source_info = ensemble.related_chains[k].source_info
-    print >> out, "  Model %d: %s:%s" % (k+1, source_info,
-      ensemble.related_chains[k].chain_id)
+    print("  Model %d: %s:%s" % (k+1, source_info,
+      ensemble.related_chains[k].chain_id), file=out)
     f.write("REMARK model %d is from %s\n" % (k+1, source_info))
   f.write(ensemble_hierarchy.as_pdb_string())
   f.close()

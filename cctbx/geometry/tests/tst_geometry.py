@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import covariance, crystal, geometry, sgtbx, uctbx, xray
 from libtbx.test_utils import approx_equal, show_diff
@@ -237,13 +238,13 @@ def exercise_high_symmetry_case():
   if libtbx.env.has_module('iotbx'):
     import iotbx.cif
     s = StringIO()
-    print >> s, iotbx.cif.distances_as_cif_loop(
+    print(iotbx.cif.distances_as_cif_loop(
       pair_asu_table,
       xs.scatterers().extract_labels(),
       sites_frac=xs.sites_frac(),
       covariance_matrix=cov,
       cell_covariance_matrix=cell_cov,
-      parameter_map=param_map).loop
+      parameter_map=param_map).loop, file=s)
     assert not show_diff(s.getvalue(), """\
 loop_
   _geom_bond_atom_site_label_1
@@ -256,13 +257,13 @@ loop_
 
 """)
     s = StringIO()
-    print >> s, iotbx.cif.angles_as_cif_loop(
+    print(iotbx.cif.angles_as_cif_loop(
       pair_asu_table,
       xs.scatterers().extract_labels(),
       sites_frac=xs.sites_frac(),
       covariance_matrix=cov,
       cell_covariance_matrix=cell_cov,
-      parameter_map=param_map).loop
+      parameter_map=param_map).loop, file=s)
     assert not show_diff(s.getvalue(), """\
 loop_
   _geom_angle_atom_site_label_1
@@ -306,7 +307,7 @@ def run():
   exercise_high_symmetry_case()
   exercise_grad_metrical_matrix()
   exercise_geometry()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import math
 from libtbx.test_utils import approx_equal
@@ -21,7 +22,7 @@ class minimizer(object):
     self.full_range = upper_bound - self.lower_bound
     starting_params = flex.tan(math.pi*(((data - self.lower_bound)/self.full_range)-0.5))
     self.x = starting_params.deep_copy()
-    print "staerting params",list(self.x)
+    print("staerting params",list(self.x))
 
 
     self.stuff = stuff
@@ -31,7 +32,7 @@ class minimizer(object):
       termination_params = lbfgs.termination_parameters(max_calls=20))
 
   def compute_functional_and_gradients(self):
-    print "trying",list(self.x)
+    print("trying",list(self.x))
 
     # try to constrain rather than restrain.  Use arctan function to get this right
     # minimizer can choose any value from -inf to inf but we'll keep values carefully in range
@@ -111,8 +112,8 @@ class wrapper_of_use_case_bp3(object):
     from rstbx.apps.dual_resolution_helpers import get_model_ref_limits
     model_refinement_limiting_resolution = get_model_ref_limits(self,raw_image,spotfinder,
       imageindex,inputai,spot_prediction_limiting_resolution)
-    print "resolution limits: model refinement %7.2f  spot prediction %7.2f"%(
-      model_refinement_limiting_resolution,spot_prediction_limiting_resolution)
+    print("resolution limits: model refinement %7.2f  spot prediction %7.2f"%(
+      model_refinement_limiting_resolution,spot_prediction_limiting_resolution))
 
     self.ucbp3 = use_case_bp3(parameters=parameters)
     the_tiles = raw_image.get_tile_manager(phil_params).effective_tiling_as_flex_int(
@@ -128,17 +129,17 @@ class wrapper_of_use_case_bp3(object):
     if sub != None and phil_params.integration.subpixel_joint_model.translations is not None:
       raise Exception("Cannot use both subpixel mechanisms simultaneously")
     elif sub != None:
-      print "Subpixel corrections: using translation-pixel mechanism"
+      print("Subpixel corrections: using translation-pixel mechanism")
       null_rotations_deg = flex.double(len(sub)//2)
       self.ucbp3.set_subpixel(flex.double(sub),rotations_deg=null_rotations_deg)
     elif phil_params.integration.subpixel_joint_model.translations is not None:
-      print "Subpixel corrections: using joint-refined translation + rotation"
+      print("Subpixel corrections: using joint-refined translation + rotation")
       self.ucbp3.set_subpixel(
           resortedT, rotations_deg = flex.double(
            phil_params.integration.subpixel_joint_model.rotations)
         )
     else:
-      print "Subpixel corrections: none used"
+      print("Subpixel corrections: none used")
 
     # Reduce Miller indices to a manageable set.  NOT VALID if the crystal rotates significantly
     self.ucbp3.prescreen_indices(inputai.wavelength)
@@ -275,11 +276,11 @@ class slip_callbacks:
 
     orange_data = []
     from scitbx.matrix import col,sqr
-    print "wavelength",self.inputai.wavelength
-    print "orientation",self.inputai.getOrientation()
+    print("wavelength",self.inputai.wavelength)
+    print("orientation",self.inputai.getOrientation())
     A = sqr(self.inputai.getOrientation().reciprocal_matrix())
-    print "base",self.inputai.getBase()
-    print "pixel size",self.pixel_size
+    print("base",self.inputai.getBase())
+    print("pixel size",self.pixel_size)
     detector_origin = col((-self.inputai.getBase().xbeam, -self.inputai.getBase().ybeam, 0.))
     detector_fast = col((0.,1.,0.))
     detector_slow = col((1.,0.,0.))
@@ -309,7 +310,7 @@ class slip_callbacks:
 
       x = r.dot(detector_fast)
       y = r.dot(detector_slow)
-      print x,y
+      print(x,y)
 
       orange_data.append( frame.pyslip.tiles.picture_fast_slow_to_map_relative(
           (x/self.pixel_size) +0.5,
@@ -332,7 +333,7 @@ class slip_callbacks:
     orange_data = []
     from scitbx.matrix import col,sqr
     from math import pi
-    print "Moasicity degrees, half",0.1
+    print("Moasicity degrees, half",0.1)
     mosaicity_rad = 0.1 * pi/180.  #half-width top-hat mosaicity
     A = sqr(self.inputai.getOrientation().reciprocal_matrix())
     detector_origin = col((-self.inputai.getBase().xbeam, -self.inputai.getBase().ybeam, 0.))
@@ -396,7 +397,7 @@ class slip_callbacks:
       q_dot_n = q_unit.dot(detector_normal)
 
       if q_dot_n >= 0: continue
-      print "IANGLES",iangle_0 * 180./pi, iangle_1 * 180./pi
+      print("IANGLES",iangle_0 * 180./pi, iangle_1 * 180./pi)
 
       r = (q_unit * distance / q_dot_n) - detector_origin
 
@@ -616,9 +617,9 @@ class slip_callbacks:
           cpp_polydata, color="pink", name="<pink_layer>",
           width=1.0,
           show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
-    print "Entering C++ pixels"
+    print("Entering C++ pixels")
     cpp_results.enclosed_pixels_and_margin_pixels()
-    print "Done with C++ pixels"
+    print("Done with C++ pixels")
     internal = cpp_results.enclosed_px
     map_relative_pixels = frame.pyslip.tiles.vec_picture_fast_slow_to_map_relative(internal)
     self.yellow_layer = frame.pyslip.AddPointLayer(
@@ -686,15 +687,15 @@ class slip_callbacks:
         marginal_body += 0.5 + 0.5 * math.cos (-math.pi * margin_distances[p]) #taking MARGIN==1
       else:
         marginal_nonbody += 0.5 + 0.5 * math.cos (math.pi * margin_distances[p])
-    print "marginal body/nonbody",marginal_body, marginal_nonbody
+    print("marginal body/nonbody",marginal_body, marginal_nonbody)
 
-    print "There are %d body pixels of which %d are enclosed and %d are marginal leaving %d remote"%(
+    print("There are %d body pixels of which %d are enclosed and %d are marginal leaving %d remote"%(
       N_bodypix,N_enclosed_body_pixels,N_marginal_body_pixels,
-      N_bodypix-N_enclosed_body_pixels-N_marginal_body_pixels)
-    print "There are %d enclosed pixels of which %d are body, %d are nonbody"%(
-      N_enclosed,N_enclosed_body_pixels,N_enclosed-N_enclosed_body_pixels)
-    print "There are %d marginal pixels of which %d are body, %d are nonbody"%(
-      N_marginal,N_marginal_body_pixels,N_marginal-N_marginal_body_pixels)
+      N_bodypix-N_enclosed_body_pixels-N_marginal_body_pixels))
+    print("There are %d enclosed pixels of which %d are body, %d are nonbody"%(
+      N_enclosed,N_enclosed_body_pixels,N_enclosed-N_enclosed_body_pixels))
+    print("There are %d marginal pixels of which %d are body, %d are nonbody"%(
+      N_marginal,N_marginal_body_pixels,N_marginal-N_marginal_body_pixels))
     Score = 0
     # the scoring function to account for these spots:
     #    pink -- spot body pixels inside predict box = 0
@@ -706,7 +707,7 @@ class slip_callbacks:
     #    yellow -- nonbody pixels inside predict box = 1
     Score += N_enclosed-N_enclosed_body_pixels
     #    gradation -- in between zone, within margin
-    print "The score is",Score
+    print("The score is",Score)
 
   def use_case_3_score_only(self,frame,half_deg,wave_HI, wave_LO):
     from rstbx.bandpass import use_case_bp3,parameters_bp3
@@ -789,14 +790,14 @@ class slip_callbacks:
         marginal_nonbody += 0.5 + 0.5 * math.cos (math.pi * margin_distances[p])
     marginal_body *=WGT
     if False:
-      print "marginal body/nonbody",marginal_body, marginal_nonbody
-      print "There are %d body pixels of which %d are enclosed and %d are marginal leaving %d remote"%(
+      print("marginal body/nonbody",marginal_body, marginal_nonbody)
+      print("There are %d body pixels of which %d are enclosed and %d are marginal leaving %d remote"%(
         N_bodypix,N_enclosed_body_pixels,N_marginal_body_pixels,
-        N_bodypix-N_enclosed_body_pixels-N_marginal_body_pixels)
-      print "There are %d enclosed pixels of which %d are body, %d are nonbody"%(
-        N_enclosed,N_enclosed_body_pixels,N_enclosed-N_enclosed_body_pixels)
-      print "There are %d marginal pixels of which %d are body, %d are nonbody"%(
-        N_marginal,N_marginal_body_pixels,N_marginal-N_marginal_body_pixels)
+        N_bodypix-N_enclosed_body_pixels-N_marginal_body_pixels))
+      print("There are %d enclosed pixels of which %d are body, %d are nonbody"%(
+        N_enclosed,N_enclosed_body_pixels,N_enclosed-N_enclosed_body_pixels))
+      print("There are %d marginal pixels of which %d are body, %d are nonbody"%(
+        N_marginal,N_marginal_body_pixels,N_marginal-N_marginal_body_pixels))
     Score = 0
     # the scoring function to account for these spots:
     #    pink -- spot body pixels inside predict box = 0
@@ -847,10 +848,10 @@ class slip_callbacks:
                 if low_score == None or score < low_score:
                   low_score = score
                   best_params = (half_deg,HI,LO,ori,A1,A2,A3)
-                  print "wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(HI,LO,100.*(LO-HI)/LO,half_deg,score)
-    print "Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
-      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],low_score)
-    print "rotation angles",best_params[4],best_params[5],best_params[6]
+                  print("wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(HI,LO,100.*(LO-HI)/LO,half_deg,score))
+    print("Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
+      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],low_score))
+    print("rotation angles",best_params[4],best_params[5],best_params[6])
     return best_params
 
   def use_case_3_simulated_annealing(self,subpixel=None):
@@ -909,10 +910,10 @@ class slip_callbacks:
       if test_params[2]<=0: continue # can't have negative bandpass; unphysical!
       if test_params[0]<=0: continue # can't have negative mosaicity; unphysical!
       SA.x += decreasing_increment
-      print T, SA.format%tuple(SA.x),
+      print(T, SA.format%tuple(SA.x), end=' ')
       set_variables_from_sa_x(SA.x)
       new_score = wrapbp3.score_only()
-      print "Score %8.1f"%new_score,
+      print("Score %8.1f"%new_score, end=' ')
 
       if new_score < low_score:
         low_score = 1.0*new_score
@@ -923,22 +924,22 @@ class slip_callbacks:
       if flex.random_double(1)[0] < probability_of_acceptance:
         #new position accepted
         last_score = 1.0*new_score
-        print "accepted"
+        print("accepted")
       else:
         SA.x = last_x.deep_copy()
-        print "rejected"
+        print("rejected")
 
-    print "Final"
-    print T, SA.format%tuple(SA.x),"Score %8.1f"%last_score,"final"
+    print("Final")
+    print(T, SA.format%tuple(SA.x),"Score %8.1f"%last_score,"final")
 
     #these three lines set the bp3 wrapper so it can be used from the calling class (simple_integration.py)
     best_params = set_variables_from_sa_x(SA.x)
     wrapbp3.score_only()
     self.bp3_wrapper = wrapbp3
 
-    print "Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
-      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],last_score)
-    print "rotation angles",best_params[4],best_params[5],best_params[6]
+    print("Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
+      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],last_score))
+    print("rotation angles",best_params[4],best_params[5],best_params[6])
     return best_params
 
   def use_case_3_simulated_annealing_7(self,subpixel=None):
@@ -1000,10 +1001,10 @@ class slip_callbacks:
       if test_params[0]<=0: continue # can't have negative mosaicity; unphysical!
       if test_params[6]<lowest_cell: continue # crystal domain can't be lower than 1 unit cell
       SA.x += decreasing_increment
-      print T, SA.format%tuple(SA.x),
+      print(T, SA.format%tuple(SA.x), end=' ')
       set_variables_from_sa_x(SA.x)
       new_score = wrapbp3.score_only()
-      print "Score %8.1f"%new_score,
+      print("Score %8.1f"%new_score, end=' ')
 
       if new_score < low_score:
         low_score = 1.0*new_score
@@ -1014,22 +1015,22 @@ class slip_callbacks:
       if flex.random_double(1)[0] < probability_of_acceptance:
         #new position accepted
         last_score = 1.0*new_score
-        print "accepted"
+        print("accepted")
       else:
         SA.x = last_x.deep_copy()
-        print "rejected"
+        print("rejected")
 
-    print "Final"
-    print T, SA.format%tuple(SA.x),"Score %8.1f"%last_score,"final"
+    print("Final")
+    print(T, SA.format%tuple(SA.x),"Score %8.1f"%last_score,"final")
 
     #these three lines set the bp3 wrapper so it can be used from the calling class (simple_integration.py)
     best_params = set_variables_from_sa_x(SA.x)
     wrapbp3.score_only()
     self.bp3_wrapper = wrapbp3
 
-    print "Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
-      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],last_score)
-    print "rotation angles",best_params[4],best_params[5],best_params[6],"Domain",best_params[7]
+    print("Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
+      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],last_score))
+    print("rotation angles",best_params[4],best_params[5],best_params[6],"Domain",best_params[7])
     return best_params
 
   def use_case_3_simulated_annealing_9(self,subpixel=None):
@@ -1106,10 +1107,10 @@ class slip_callbacks:
       if test_params[0]<=0: continue # can't have negative mosaicity; unphysical!
       if test_params[6]<lowest_cell: continue # crystal domain can't be lower than 1 unit cell
       SA.x += decreasing_increment
-      print T, SA.format%tuple(SA.x),
+      print(T, SA.format%tuple(SA.x), end=' ')
       set_variables_from_sa_x(SA.x)
       new_score = wrapbp3.score_only()
-      print "Score %8.1f"%new_score,
+      print("Score %8.1f"%new_score, end=' ')
 
       if new_score < low_score:
         low_score = 1.0*new_score
@@ -1120,22 +1121,22 @@ class slip_callbacks:
       if flex.random_double(1)[0] < probability_of_acceptance:
         #new position accepted
         last_score = 1.0*new_score
-        print "accepted"
+        print("accepted")
       else:
         SA.x = last_x.deep_copy()
-        print "rejected"
+        print("rejected")
 
-    print "Final"
-    print T, SA.format%tuple(SA.x),"Score %8.1f"%last_score,"final"
+    print("Final")
+    print(T, SA.format%tuple(SA.x),"Score %8.1f"%last_score,"final")
 
     #these three lines set the bp3 wrapper so it can be used from the calling class (simple_integration.py)
     best_params = set_variables_from_sa_x(SA.x)
     wrapbp3.score_only()
     self.bp3_wrapper = wrapbp3
 
-    print "Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
-      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],last_score)
-    print "rotation angles",best_params[4],best_params[5],best_params[6],"Domain",best_params[7]
+    print("Rendering image with wave %7.4f - %7.4f bandpass %.2f half %7.4f score %7.1f"%(
+      best_params[1],best_params[2],100.*(best_params[2]-best_params[1])/best_params[1],best_params[0],last_score))
+    print("rotation angles",best_params[4],best_params[5],best_params[6],"Domain",best_params[7])
     return best_params
 
 try:

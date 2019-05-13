@@ -2,6 +2,7 @@
 # TODO tests
 
 from __future__ import division
+from __future__ import print_function
 from iotbx import crystal_symmetry_from_any
 import iotbx.bioinformatics
 import iotbx.phil
@@ -59,10 +60,10 @@ crystallized molecule(s).
           params.space_group = symm.space_group()
       elif (space_group_from_file is not None):
         if (space_group_from_file != params.space_group):
-          print >> out, "WARNING: space group mismatch between command line "+\
-            "and file:"
-          print >> out, "  %s (cmdline), %s (file)" % (params.space_group,
-            space_group_from_file)
+          print("WARNING: space group mismatch between command line "+\
+            "and file:", file=out)
+          print("  %s (cmdline), %s (file)" % (params.space_group,
+            space_group_from_file), file=out)
       if (params.unit_cell is None):
         params.unit_cell = symm.unit_cell()
   validate_params(params, check_symmetry=True)
@@ -89,12 +90,12 @@ crystallized molecule(s).
         params.n_residues += chain.residue_groups_size()
       elif chain.is_na():
         params.n_bases += chain.residue_groups_size()
-  print >> out, "Space group: %s" % params.space_group
-  print >> out, "Unit cell: %s" % params.unit_cell
+  print("Space group: %s" % params.space_group, file=out)
+  print("Unit cell: %s" % params.unit_cell, file=out)
   if (params.n_residues > 0):
-    print >> out, "Number of residues: %d" % params.n_residues
+    print("Number of residues: %d" % params.n_residues, file=out)
   if (params.n_bases > 0):
-    print >> out, "Number of bases: %d" % params.n_bases
+    print("Number of bases: %d" % params.n_bases, file=out)
   symm = crystal.symmetry(
     space_group_info=params.space_group,
     unit_cell=params.unit_cell)

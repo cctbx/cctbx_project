@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def run(args):
   assert len(args) == 0
   n_trials = 100
@@ -59,7 +60,7 @@ def run(args):
     rotation = mt.random_double_r3_rotation_matrix()
     check(center, radii, rotation)
   from libtbx.utils import format_cpu_times
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   import sys

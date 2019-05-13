@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.simple_build_alt_confs
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.str_utils import make_header
 from libtbx.utils import multi_out
 import os.path
@@ -66,9 +67,9 @@ mmtbx.build_alternate_conformations if you want refinement and post-processing.
     crystal_symmetry=cmdline.fmodel.xray_structure))
   f.close()
   make_header("Building complete", out=out)
-  print >> log, ""
-  print >> log, "Wrote %s" % params.output.file_name
-  print >> log, "You MUST refine this model before using it!"
+  print("", file=log)
+  print("Wrote %s" % params.output.file_name, file=log)
+  print("You MUST refine this model before using it!", file=log)
 
 def validate_params(params):
   if (params.output.file_name is None):

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_pickle
 import sys, os
 op = os.path
@@ -23,19 +24,19 @@ def run(args):
   max_i = max(sites_file_names_by_index.keys())
   sites_final = easy_pickle.load(
     file_name=op.join(traj_dir, sites_file_names_by_index[i]))
-  print "rms difference start vs. final: %.3f" % \
-    sites_final.rms_difference(sites_0)
+  print("rms difference start vs. final: %.3f" % \
+    sites_final.rms_difference(sites_0))
   #
   import scitbx.math.superpose
   ls = scitbx.math.superpose.least_squares_fit(
     reference_sites=sites_0, other_sites=sites_final)
-  print "ls r:", ls.r
+  print("ls r:", ls.r)
   fm = scitbx.math.r3_rotation_axis_and_angle_from_matrix(r=ls.r)
-  print "ls r axis, angle:", fm.axis, "%.2f" % fm.angle(deg=True)
-  print "ls t:", ls.t.transpose()
+  print("ls r axis, angle:", fm.axis, "%.2f" % fm.angle(deg=True))
+  print("ls t:", ls.t.transpose())
   sites_fit = ls.other_sites_best_fit()
-  print "rms difference start vs. best fit: %.3f" % \
-    sites_fit.rms_difference(sites_0)
+  print("rms difference start vs. best fit: %.3f" % \
+    sites_fit.rms_difference(sites_0))
   #
   from cStringIO import StringIO
   out = StringIO()
@@ -46,7 +47,7 @@ def run(args):
         flex.std_string(labels).select(perm),
         flex.sqrt(fit_dists_sq.select(perm)),
         flex.sqrt((sites_final - sites_0).dot().select(perm))):
-    print >> out, lbl, "%.2f %.2f" % (fit_d, final_d)
+    print(lbl, "%.2f %.2f" % (fit_d, final_d), file=out)
   if (0):
     sys.stdout.write(out.getvalue())
   #
@@ -54,7 +55,7 @@ def run(args):
     from cctbx import crystal
     site_symmetry_table = xray_structure.site_symmetry_table()
     for i_seq in site_symmetry_table.special_position_indices():
-      print "special position:", labels[i_seq]
+      print("special position:", labels[i_seq])
       try:
         crystal.correct_special_position(
           crystal_symmetry = xray_structure,
@@ -62,8 +63,8 @@ def run(args):
           site_cart        = sites_final[i_seq])
       except AssertionError, e:
         from libtbx.str_utils import prefix_each_line
-        print prefix_each_line(prefix="  ", lines_as_one_string=str(e))
-        print
+        print(prefix_each_line(prefix="  ", lines_as_one_string=str(e)))
+        print()
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

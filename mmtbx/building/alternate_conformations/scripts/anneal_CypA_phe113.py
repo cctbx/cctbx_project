@@ -5,6 +5,7 @@
 # properly, the sidechain should usually pop into the secondary conformation.
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.building import disorder
 from mmtbx import building
 import libtbx.load_env
@@ -52,7 +53,7 @@ def exercise():
     debug=True)
   hierarchy.atoms().set_xyz(sites_new)
   hierarchy.write_pdb_file("anneal.pdb", crystal_symmetry=xrs)
-  print "wrote anneal.pdb and omit.mtz"
+  print("wrote anneal.pdb and omit.mtz")
 
 if (__name__ == "__main__"):
   exercise()

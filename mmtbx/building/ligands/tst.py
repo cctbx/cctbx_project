@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import time
 import iotbx.pdb
 import mmtbx.utils
@@ -132,7 +133,7 @@ class scorer(object):
     if(target > self.target):
       self.target = target
       self.sites_cart = sites_cart
-    print self.target, target # XXX for debugging
+    print(self.target, target) # XXX for debugging
 
 def run(prefix="tst_00"):
   # Good answer model
@@ -202,4 +203,4 @@ def run(prefix="tst_00"):
 
 if (__name__ == "__main__"):
   run()
-  print "OK"
+  print("OK")

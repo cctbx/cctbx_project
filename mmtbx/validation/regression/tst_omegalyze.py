@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.validation import omegalyze
 from libtbx.test_utils import show_diff
 from iotbx import pdb
@@ -35,7 +36,7 @@ def exercise_omegalyze():
     relative_path="phenix_regression/pdb/2hr0.pdb",
     test=os.path.isfile)
   if (regression_pdb is None):
-    print "Skipping exercise_omegalyze(): input pdb (2hr0.pdb) not available"
+    print("Skipping exercise_omegalyze(): input pdb (2hr0.pdb) not available")
     return
   #-----
   pdb_io = pdb.input(regression_pdb)
@@ -54,7 +55,7 @@ def exercise_omegalyze():
 
 def run():
   exercise_omegalyze()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

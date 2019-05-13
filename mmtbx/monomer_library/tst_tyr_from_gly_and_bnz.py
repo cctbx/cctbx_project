@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.monomer_library.server
@@ -677,16 +678,16 @@ def exercise(args):
   mod_bonds.insert(5, None)
   mod_bonds += [None] * (len(tyr_bonds) - len(mod_bonds))
   for i,t,m in zip(count(), tyr_bonds, mod_bonds):
-    print >> out, "bond index:", i
+    print("bond index:", i, file=out)
     if (m is None):
-      print >> out, t
+      print(t, file=out)
     else:
       t = t.splitlines()
       m = m.splitlines()
       assert len(m) == len(t)
       for ti,mi in zip(t, m):
-        print >> out, "%-39s %-39s" % (ti,mi)
-    print >> out
+        print("%-39s %-39s" % (ti,mi), file=out)
+    print(file=out)
   assert not show_diff("".join(mod_bonds[:5]), "".join(tyr_bonds[:5]))
   assert not show_diff("".join(mod_bonds[6]), "".join(tyr_bonds[6]))
   assert not show_diff("".join(mod_bonds[8:]), "".join(tyr_bonds[8:]))
@@ -712,16 +713,16 @@ def exercise(args):
   mod_angles.insert(25, None)
   mod_angles += [None] * (len(tyr_angles) - len(mod_angles))
   for i,t,m in zip(count(), tyr_angles, mod_angles):
-    print >> out, "angle index:", i
+    print("angle index:", i, file=out)
     if (m is None):
-      print >> out, t
+      print(t, file=out)
     else:
       t = t.splitlines()
       m = m.splitlines()
       assert len(m) == len(t)
       for ti,mi in zip(t, m):
-        print >> out, "%-39s %-39s" % (ti,mi)
-      print >> out
+        print("%-39s %-39s" % (ti,mi), file=out)
+      print(file=out)
   assert not show_diff("".join(mod_angles[:4]), "".join(tyr_angles[:4]))
   assert not show_diff("".join(mod_angles[5:10]), "".join(tyr_angles[5:10]))
   assert not show_diff("".join(mod_angles[12:24]), "".join(tyr_angles[12:24]))
@@ -745,16 +746,16 @@ def exercise(args):
   mod_tors.insert(5, None)
   mod_tors.insert(6, None)
   for i,t,m in zip(count(), tyr_tors, mod_tors):
-    print >> out, "tor index:", i
+    print("tor index:", i, file=out)
     if (m is None):
-      print >> out, t
+      print(t, file=out)
     else:
       t = t.splitlines()
       m = m.splitlines()
       assert len(m) == len(t)
       for ti,mi in zip(t, m):
-        print >> out, "%-39s %-39s" % (ti,mi)
-      print >> out
+        print("%-39s %-39s" % (ti,mi), file=out)
+      print(file=out)
   assert not show_diff("".join(mod_tors[1:5]), "".join(tyr_tors[1:5]))
   assert not show_diff("".join(mod_tors[7]), "".join(tyr_tors[7]))
   #
@@ -787,16 +788,16 @@ def exercise(args):
   mod_plane_atoms.insert(0, None)
   mod_plane_atoms += [None] * (len(tyr_plane_atoms) - len(mod_plane_atoms))
   for i,t,m in zip(count(), tyr_plane_atoms, mod_plane_atoms):
-    print >> out, "plane_atom index:", i
+    print("plane_atom index:", i, file=out)
     if (m is None):
-      print >> out, t
+      print(t, file=out)
     else:
       t = t.splitlines()
       m = m.splitlines()
       assert len(m) == len(t)
       for ti,mi in zip(t, m):
-        print >> out, "%-39s %-39s" % (ti,mi)
-      print >> out
+        print("%-39s %-39s" % (ti,mi), file=out)
+      print(file=out)
   assert not show_diff(
     "".join(mod_plane_atoms[1:]), "".join(tyr_plane_atoms[1:]))
   #
@@ -806,23 +807,23 @@ def exercise(args):
     params=None,
     raw_records=pdb_records_tyr,
     log=sys.stdout)
-  print
+  print()
   processed_gly_bnz = monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
     params=None,
     raw_records=pdb_records_gly_bnz,
     log=sys.stdout)
-  print
-  print "geo_tyr"
+  print()
+  print("geo_tyr")
   geo_tyr = processed_tyr.geometry_restraints_manager()
-  print
-  print "geo_gly_bnz"
+  print()
+  print("geo_gly_bnz")
   geo_gly_bnz = processed_gly_bnz.geometry_restraints_manager()
-  print
+  print()
   #
-  print "TODO: compare geometry restraints"
-  print "OK"
+  print("TODO: compare geometry restraints")
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.tls import tools
 import time
 import iotbx.pdb
@@ -400,10 +401,10 @@ def exercise_00(pdb_str, formula):
 if (__name__ == "__main__"):
   t0 = time.time()
   for formula in ["10","11"]:
-    print "formula:", formula
+    print("formula:", formula)
     for i, pdb_str in enumerate([pdb_str_CA, pdb_str_CACON]):
       r = exercise_00(pdb_str=pdb_str, formula=formula)
-      print "  ", i, r
+      print("  ", i, r)
       if(formula=="10"):
         if(i==0): assert r<0.04
         if(i==1): assert r>0.08

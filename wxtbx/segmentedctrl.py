@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # Copyright 2010 University of California
 # All rights reserved
@@ -331,12 +332,12 @@ class SegmentedControl(wx.PyControl):
     w,h = self.GetClientSizeTuple()
     if (x<0 or y<0 or x>=w or y>=h) and self.HasCapture():
       #self._clicked_segment = None
-      print -3
+      print(-3)
       self.ReleaseMouse()
       self.Refresh()
       return
     elif event.LeftDown():
-      print -2
+      print(-2)
       self.CaptureMouse()
       self.Refresh()
       return
@@ -407,13 +408,13 @@ class SegmentedToggleControl(SegmentedControl):
 #-----------------------------------------------------------------------
 if __name__ == "__main__" :
   def OnButton(evt):
-    print "Button clicked: %d" % evt.GetClientData()
+    print("Button clicked: %d" % evt.GetClientData())
   def OnRadio(evt):
-    print "Radio button selection: %d" % evt.GetClientData()
+    print("Radio button selection: %d" % evt.GetClientData())
   def OnToggle(evt):
     index = evt.GetClientData()
-    print "Toggle button clicked: %d, %s" % (index,
-      evt.GetEventObject().GetValue(index))
+    print("Toggle button clicked: %d, %s" % (index,
+      evt.GetEventObject().GetValue(index)))
   try :
     from wxtbx import bitmaps
   except ImportError :

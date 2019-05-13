@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 try:
   import scitbx
 except ImportError:
@@ -12,7 +13,7 @@ else:
   import featherstone as fs
   import scitbx_matrix as matrix
   def approx_equal(a1, a2): return True
-  print "libtbx.test_utils not available: approx_equal() disabled"
+  print("libtbx.test_utils not available: approx_equal() disabled")
   def sum(l):
     result = 0
     for e in l: result += e
@@ -350,7 +351,7 @@ def run(args):
   exercise_ID_FDab()
   if (scitbx is not None):
     exercise_standalone()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

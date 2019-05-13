@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 
 from psana import *
@@ -296,7 +297,7 @@ def compute_mask(argv=None) :
         # MPI process. Here we set rank 0 to work as a listening server only.
         for j,evt in evtgen(run,timestamps = timestamps, first = first, last = last):
             #print '***',rank,j,evt.get(EventId).fiducials()
-            if j%10==0: print 'Rank',rank,'processing event',j
+            if j%10==0: print('Rank',rank,'processing event',j)
 
             if ftype == 'h5' :
                FXS.get_h5(filestamps[j],evt)
@@ -327,7 +328,7 @@ def compute_mask(argv=None) :
                   #######################################
                   FXS.store_index(et, j, flag = 0)                                     # Store index
 
-               if int(FXS.cnt)%10==0: print 'Rank',rank,'processed events: ', int(FXS.cnt)
+               if int(FXS.cnt)%10==0: print('Rank',rank,'processed events: ', int(FXS.cnt))
 
 
                # Send partial results to master (rank 0)
@@ -346,7 +347,7 @@ def compute_mask(argv=None) :
 
         hd.endrun()
 
-        print 'Rank',rank,'total events:     ', int(FXS.cnt),' * '
+        print('Rank',rank,'total events:     ', int(FXS.cnt),' * ')
 
      else:
 
@@ -392,7 +393,7 @@ def compute_mask(argv=None) :
 
      for j,evt in evtgen(run,timestamps = timestamps, first = first, last = last):
          #print '***',rank,j,evt.get(EventId).fiducials()
-         if j%10==0: print 'Rank',rank,'processing event',j
+         if j%10==0: print('Rank',rank,'processing event',j)
 
 
          if ftype == 'h5' :
@@ -423,12 +424,12 @@ def compute_mask(argv=None) :
                 #######################################
                 FXS.store_index(et, j, flag = 0)                                            # Store index
 
-     print 'Rank',rank,'total events:   ', int(FXS.cnt),' * '
+     print('Rank',rank,'total events:   ', int(FXS.cnt),' * ')
 
 
   #sum the images across mpi cores
   if size > 1:
-    print "Synchronizing rank", rank
+    print("Synchronizing rank", rank)
 
   Tot            = np.zeros(FXS.cnt.shape)
 
@@ -492,7 +493,7 @@ def compute_mask(argv=None) :
   if rank==0:
 
     if size > 1:
-      print "Synchronized"
+      print("Synchronized")
 
     # Identify dead lines and pixels, get binary pixel mask
 

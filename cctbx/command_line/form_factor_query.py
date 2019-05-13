@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.form_factor_query
 
 from cctbx.eltbx import sasaki, henke
@@ -59,9 +60,9 @@ def run(args, command_name="phenix.form_factor_query"):
   for table in ["sasaki", "henke"]:
     if (table not in params.form_factor_query.table): continue
     t = eval(table).table(element)
-    print "Information from %s table about %s (Z = %s) at %s %s" % (
+    print("Information from %s table about %s (Z = %s) at %s %s" % (
       table.capitalize(), t.label(), t.atomic_number(), wavelength,
-      {"angstroms": "A"}.get(unit, unit))
+      {"angstroms": "A"}.get(unit, unit)))
     if (unit == "angstroms"):
       f = t.at_angstrom(wavelength)
     elif (unit == "ev"):
@@ -71,13 +72,13 @@ def run(args, command_name="phenix.form_factor_query"):
     else:
       raise Sorry("Invalid unit chosen for query: %s" % unit)
     if (f.is_valid_fp()):
-      print "fp:  %.6g" % f.fp()
+      print("fp:  %.6g" % f.fp())
     else:
-      print "fp:  unknown"
+      print("fp:  unknown")
     if (f.is_valid_fdp()):
-      print "fdp: %.6g" % f.fdp()
+      print("fdp: %.6g" % f.fdp())
     else:
-      print "fdp: unknown"
+      print("fdp: unknown")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

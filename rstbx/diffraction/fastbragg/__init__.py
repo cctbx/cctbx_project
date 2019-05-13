@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import boost.python
 ext = boost.python.import_ext("rstbx_diffraction_fastbragg_ext")
 from rstbx_diffraction_fastbragg_ext import *
@@ -6,8 +7,8 @@ from rstbx_diffraction_fastbragg_ext import *
 class _(boost.python.injector,ext.detector):
 
   def show(self):
-    print "Detector with %d x %d square pixels each with %5.3f mm edge"%(
-       self.raw.focus()[0],self.raw.focus()[1],self.pixel_sz*1000.)
+    print("Detector with %d x %d square pixels each with %5.3f mm edge"%(
+       self.raw.focus()[0],self.raw.focus()[1],self.pixel_sz*1000.))
 
 class standard_camera(camera):
 
@@ -28,17 +29,17 @@ class standard_camera(camera):
 
   def show(self):
     import math
-    print "Camera at sample distance %5.3f mm, wavelength %5.3f Angstroms"%(
-    self.distance*1000.,self.lambda0*1.E10)
+    print("Camera at sample distance %5.3f mm, wavelength %5.3f Angstroms"%(
+    self.distance*1000.,self.lambda0*1.E10))
 
     assert self.Ybeam==self.Zbeam # everything assumes the detector is square.
 
     edge_distance = self.Ybeam
     theta = math.atan2(edge_distance,self.distance)/2.0;
     resolution = 1.E10*self.lambda0/(2.0 * math.sin(theta));
-    print "The detector edge is at %5.3f Angstroms,"%resolution
+    print("The detector edge is at %5.3f Angstroms,"%resolution)
 
-    print "   and the corner is at %5.3f Angstroms."%(self.corner_resolution()*1.E10)
+    print("   and the corner is at %5.3f Angstroms."%(self.corner_resolution()*1.E10))
 
 class crystal_structure(crystal):
 
@@ -75,5 +76,5 @@ class crystal_structure(crystal):
     return self.P1_primitive_xray_structure.unit_cell()
 
   def show(self):
-    print "Structure with primitive unit cell %s diffracting out to %4.2f Angstrom"%(
-      self.p1_cell(),self.limiting_resolution)
+    print("Structure with primitive unit cell %s diffracting out to %4.2f Angstrom"%(
+      self.p1_cell(),self.limiting_resolution))

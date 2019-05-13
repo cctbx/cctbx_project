@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import sys
 import libtbx.utils
@@ -87,7 +88,7 @@ def get_all_experimental_pdb_info_to_pkl():
   get_all = "http://www.rcsb.org/pdb/rest/customReport.xml?"+\
       "pdbids=*&customReportColumns=" +\
       "structureId,refinementResolution,rWork,rFree,experimentalTechnique,rObserved"
-  print get_all
+  print(get_all)
   rdict = {}
   data = libtbx.utils.urlopen(get_all)
   str_data = data.read()
@@ -108,9 +109,9 @@ def get_all_experimental_pdb_info_to_pkl():
     rdict[record[0].text] = tup[1:]
     # print tup
     if tup.count(None) > 0:
-      print tup
+      print(tup)
       n_bad += 1
-  print "Total bad records", n_bad
+  print("Total bad records", n_bad)
   easy_pickle.dump(file_name='pdb_dict.pickle', obj=rdict)
 
 def tst_pdb_info_local():

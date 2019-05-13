@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.math import orthonormal_basis
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
@@ -32,7 +33,7 @@ def exercise_orthonormal_basis(eps=1e-12):
 
 def run():
   exercise_orthonormal_basis()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

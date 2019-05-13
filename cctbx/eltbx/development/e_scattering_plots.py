@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.eltbx import e_scattering
 import sys
 
@@ -30,7 +31,7 @@ def run(args):
       g.array_of_b()[:4]), "r-")
     all_pdf.savefig(fig, bbox_inches="tight")
   all_pdf.close()
-  print "plots written to file: all.pdf"
+  print("plots written to file: all.pdf")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

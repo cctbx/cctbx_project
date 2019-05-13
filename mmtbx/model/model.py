@@ -7,6 +7,7 @@ restraints.
 """
 
 from __future__ import division
+from __future__ import print_function
 
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry, user_plus_sys_time, null_out
@@ -598,9 +599,9 @@ class manager(object):
           isel = sel_cache.selection(group.selection_string).iselection()
           assert (len(isel) == len(group.iselection))
           if (not isel.all_eq(group.iselection)):
-            print >> out, "Updating %d atom(s) in anomalous group %d" % \
-              (len(isel), i_group+1)
-            print >> out, "  selection string: %s" % group.selection_string
+            print("Updating %d atom(s) in anomalous group %d" % \
+              (len(isel), i_group+1), file=out)
+            print("  selection string: %s" % group.selection_string, file=out)
             group.iselection = isel
             modified = True
       return modified
@@ -609,21 +610,21 @@ class manager(object):
     out = StringIO()
     if self.have_anomalous_scatterer_groups():
       pr = "REMARK   3  "
-      print >> out, pr+"ANOMALOUS SCATTERER GROUPS DETAILS."
-      print >> out, pr+" NUMBER OF ANOMALOUS SCATTERER GROUPS : %-6d"%\
-        len(self._anomalous_scatterer_groups)
+      print(pr+"ANOMALOUS SCATTERER GROUPS DETAILS.", file=out)
+      print(pr+" NUMBER OF ANOMALOUS SCATTERER GROUPS : %-6d"%\
+        len(self._anomalous_scatterer_groups), file=out)
       counter = 0
       for group in self._anomalous_scatterer_groups:
         counter += 1
-        print >>out,pr+" ANOMALOUS SCATTERER GROUP : %-6d"%counter
+        print(pr+" ANOMALOUS SCATTERER GROUP : %-6d"%counter, file=out)
         lines = str_utils.line_breaker(group.selection_string, width=45)
         for i_line, line in enumerate(lines):
           if(i_line == 0):
-            print >> out, pr+"  SELECTION: %s"%line
+            print(pr+"  SELECTION: %s"%line, file=out)
           else:
-            print >> out, pr+"           : %s"%line
-        print >>out,pr+"  fp  : %-15.4f"%group.f_prime
-        print >>out,pr+"  fdp : %-15.4f"%group.f_double_prime
+            print(pr+"           : %s"%line, file=out)
+        print(pr+"  fp  : %-15.4f"%group.f_prime, file=out)
+        print(pr+"  fdp : %-15.4f"%group.f_double_prime, file=out)
     return out.getvalue()
 
   def restraints_manager_available(self):
@@ -1259,7 +1260,7 @@ class manager(object):
     if ncs_obj is None: return
     geometry = self.get_restraints_manager().geometry
     if ncs_obj.number_of_ncs_groups > 0:
-      print >> log, "\n"
+      print("\n", file=log)
       geometry.ncs_dihedral_manager = torsion_ncs(
           model              = self,
           fmodel             = fmodel,
@@ -1372,8 +1373,8 @@ class manager(object):
       assert rm is not None
       rm.cartesian_ncs_manager = cartesian_ncs
     else:
-      print >> self.log, "No NCS restraint groups specified."
-      print >> self.log
+      print("No NCS restraint groups specified.", file=self.log)
+      print(file=self.log)
 
   def get_vdw_radii(self, vdw_radius_default = 1.0):
     """
@@ -1391,7 +1392,7 @@ class manager(object):
             vdw_radius = vdw_radius_default
             if(self.log is not None):
               msg = "WARNING: vdw radius undefined for: (%s %s); setting to: %s"
-              print >> self.log, msg%(k1, v1.type_energy, vdw_radius_default)
+              print(msg%(k1, v1.type_energy, vdw_radius_default), file=self.log)
           result[k1] = vdw_radius
     return result
 
@@ -1561,7 +1562,7 @@ class manager(object):
             " the scattering type.\n"
           "    - Provide custom monomer definitions for the affected residues.")
       if(log is not None):
-        print >> log
+        print(file=log)
     if set_inelastic_form_factors is not None and iff_wavelength is not None:
       self._xray_structure.set_inelastic_form_factors(
           photon=iff_wavelength,
@@ -1627,32 +1628,32 @@ class manager(object):
     if(pdb_inp_tls and pdb_inp_tls.tls_present):
       print_statistics.make_header(
         "TLS group selections from PDB file header", out=self.log)
-      print >> self.log, "TLS group selections:"
+      print("TLS group selections:", file=self.log)
       atom_counts = []
       for t in pdb_inp_tls.tls_params:
         try :
           n_atoms = self.iselection(t.selection_string).size()
         except AtomSelectionError, e :
-          print >> self.log, "AtomSelectionError:"
-          print >> self.log, str(e)
-          print >> self.log, "Ignoring PDB header TLS groups"
+          print("AtomSelectionError:", file=self.log)
+          print(str(e), file=self.log)
+          print("Ignoring PDB header TLS groups", file=self.log)
           self.input_tls_selections = []
           return
-        print >> self.log, "  selection string:"
-        print >> self.log, "    %s"%t.selection_string
-        print >> self.log, "    selects %d atoms"%n_atoms
+        print("  selection string:", file=self.log)
+        print("    %s"%t.selection_string, file=self.log)
+        print("    selects %d atoms"%n_atoms, file=self.log)
         self.input_tls_selections.append(t.selection_string)
         atom_counts.append(n_atoms)
       if(pdb_inp_tls.tls_present):
         if(pdb_inp_tls.error_string is not None):
-          print >> self.log, "  %s"%pdb_inp_tls.error_string
+          print("  %s"%pdb_inp_tls.error_string, file=self.log)
           self.input_tls_selections = []
       if(0 in atom_counts):
         msg="""
   One of TLS selections is an empty selection: skipping TLS infromation found in
   PDB file header.
 """
-        print >> self.log, msg
+        print(msg, file=self.log)
 
   def get_riding_h_manager(self, idealize=True, force=False):
     """
@@ -1951,14 +1952,14 @@ class manager(object):
 
   def show_h_counts(self, prefix=""):
     hc = self.h_counts()
-    print >> self.log, "%sTotal:"%prefix
-    print >> self.log, "%s  count: %d"%(prefix, hc.h_count)
-    print >> self.log, "%s  occupancy sum: %6.2f (%s of total atoms %6.2f)"%(
-      prefix, hc.h_occ_sum, "%", hc.h_fraction_of_total)
-    print >> self.log, "%sRotatable:"%prefix
-    print >> self.log, "%s  count: %d"%(prefix, hc.hrot_count)
-    print >> self.log, "%s  occupancy sum: %6.2f (%s of total atoms %6.2f)"%(
-      prefix, hc.hrot_occ_sum, "%", hc.hrot_fraction_of_total)
+    print("%sTotal:"%prefix, file=self.log)
+    print("%s  count: %d"%(prefix, hc.h_count), file=self.log)
+    print("%s  occupancy sum: %6.2f (%s of total atoms %6.2f)"%(
+      prefix, hc.h_occ_sum, "%", hc.h_fraction_of_total), file=self.log)
+    print("%sRotatable:"%prefix, file=self.log)
+    print("%s  count: %d"%(prefix, hc.hrot_count), file=self.log)
+    print("%s  occupancy sum: %6.2f (%s of total atoms %6.2f)"%(
+      prefix, hc.hrot_occ_sum, "%", hc.hrot_fraction_of_total), file=self.log)
 
   def scattering_types_counts_and_occupancy_sums(self, prefix=""):
     out = StringIO()
@@ -1967,12 +1968,12 @@ class manager(object):
     atoms_occupancy_sum = \
         flex.sum(self.get_xray_structure().scatterers().extract_occupancies())
     fmt = "   %5s               %10d        %8.2f"
-    print >> out, prefix+"MODEL CONTENT."
-    print >> out, prefix+" ELEMENT        ATOM RECORD COUNT   OCCUPANCY SUM"
+    print(prefix+"MODEL CONTENT.", file=out)
+    print(prefix+" ELEMENT        ATOM RECORD COUNT   OCCUPANCY SUM", file=out)
     for item in st_counts_and_occupancy_sums:
-      print >> out, prefix+fmt % (item.scattering_type, item.count,
-        item.occupancy_sum)
-    print >> out,prefix+fmt%("TOTAL",self.get_number_of_atoms(),atoms_occupancy_sum)
+      print(prefix+fmt % (item.scattering_type, item.count,
+        item.occupancy_sum), file=out)
+    print(prefix+fmt%("TOTAL",self.get_number_of_atoms(),atoms_occupancy_sum), file=out)
     return out.getvalue()
 
   def neutralize_scatterers(self):
@@ -2012,9 +2013,8 @@ class manager(object):
         if(hd_selection[t[1]]):
           xhd.append(abs(t[-1]-t[-2]))
       if(show):
-        print >> self.log, \
-        "X-H deviation from ideal before regularization (bond): mean=%6.3f max=%6.3f"%\
-        (flex.mean(xhd), flex.max(xhd))
+        print("X-H deviation from ideal before regularization (bond): mean=%6.3f max=%6.3f"%\
+        (flex.mean(xhd), flex.max(xhd)), file=self.log)
       for sel_pair in [(mac_hd, False), (sol_hd, True)]*2:
         if(sel_pair[0].count(True) > 0):
           sel = sel_pair[0]
@@ -2057,9 +2057,8 @@ class manager(object):
         if(hd_selection[t[1]]):
           xhd.append(abs(t[-1]-t[-2]))
       if(show):
-        print >> self.log,\
-        "X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
-        (flex.mean(xhd), flex.max(xhd))
+        print("X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
+        (flex.mean(xhd), flex.max(xhd)), file=self.log)
 
   def extract_water_residue_groups(self):
     result = []
@@ -2096,9 +2095,9 @@ class manager(object):
               for e in elements:
                 if(e.strip().upper() == 'O'): o_found += 1
               if(o_found == 0):
-                print >> self.log
+                print(file=self.log)
                 for a in r.atoms():
-                  print >> self.log, a.format_atom_record()
+                  print(a.format_atom_record(), file=self.log)
                 raise Sorry(
                   "The above waters in input PDB file do not have O atom.")
     return result
@@ -2211,7 +2210,7 @@ class manager(object):
             element=element)
     if(neutron):
       xs.switch_to_neutron_scattering_dictionary()
-    print >> self.log, "Number of H added:", len(next_to_i_seqs)
+    print("Number of H added:", len(next_to_i_seqs), file=self.log)
     if (len(next_to_i_seqs) == 0): return
     if (self.refinement_flags is not None):
       self.refinement_flags.add(
@@ -2314,7 +2313,7 @@ class manager(object):
        self.remove_ias()
        fmodel.update_xray_structure(xray_structure = self._xray_structure,
                                     update_f_calc = True)
-    print >> self.log, ">>> Adding IAS.........."
+    print(">>> Adding IAS..........", file=self.log)
     self.old_refinement_flags = None
     if not build_only: self.use_ias = True
     self.ias_manager = ias.manager(
@@ -2330,7 +2329,7 @@ class manager(object):
       ias_xray_structure = self.ias_manager.ias_xray_structure
       ias_selection = self.get_ias_selection()
       self._xray_structure.concatenate_inplace(other = ias_xray_structure)
-      print >> self.log, "Scattering dictionary for combined xray_structure:"
+      print("Scattering dictionary for combined xray_structure:", file=self.log)
       self._xray_structure.scattering_type_registry().show(out=self.log)
       if(self.refinement_flags is not None):
          self.old_refinement_flags = self.refinement_flags.deep_copy()
@@ -2386,7 +2385,7 @@ class manager(object):
       )
 
   def remove_ias(self):
-    print >> self.log, ">>> Removing IAS..............."
+    print(">>> Removing IAS...............", file=self.log)
     self.use_ias = False
     ias_selection = self.get_ias_selection()
     if(self.ias_manager is not None):
@@ -2431,12 +2430,12 @@ class manager(object):
           if (use_id_str):
             name_i = atom_i.id_str()
             name_j = atom_j.id_str()
-          print >> out, "%s%s %s %10.3f"%(prefix, name_i, name_j, rbt_value)
+          print("%s%s %s %10.3f"%(prefix, name_i, name_j, rbt_value), file=out)
     if (rbt_array.size() != 0):
-      print >> out, "%sRBT values (*10000):" % prefix
-      print >> out, "%s  mean = %.3f" % (prefix, flex.mean(rbt_array))
-      print >> out, "%s  max  = %.3f" % (prefix, flex.max(rbt_array))
-      print >> out, "%s  min  = %.3f" % (prefix, flex.min(rbt_array))
+      print("%sRBT values (*10000):" % prefix, file=out)
+      print("%s  mean = %.3f" % (prefix, flex.mean(rbt_array)), file=out)
+      print("%s  max  = %.3f" % (prefix, flex.max(rbt_array)), file=out)
+      print("%s  min  = %.3f" % (prefix, flex.min(rbt_array)), file=out)
 
   def restraints_manager_energies_sites(self,
         geometry_flags=None,
@@ -2579,16 +2578,16 @@ class manager(object):
                                  self.refinement_flags.adp_tls is None): return
     assert selections is not None
     if (out is None): out = sys.stdout
-    print >> out
+    print(file=out)
     line_len = len("| "+text+"|")
     fill_len = 80 - line_len-1
     upper_line = "|-"+text+"-"*(fill_len)+"|"
-    print >> out, upper_line
+    print(upper_line, file=out)
     next = "| Total number of atoms = %-6d  Number of rigid groups = %-3d                |"
     natoms_total = self._xray_structure.scatterers().size()
-    print >> out, next % (natoms_total, len(selections))
-    print >> out, "| group: start point:                        end point:                       |"
-    print >> out, "|               x      B  atom  residue  <>        x      B  atom  residue    |"
+    print(next % (natoms_total, len(selections)), file=out)
+    print("| group: start point:                        end point:                       |", file=out)
+    print("|               x      B  atom  residue  <>        x      B  atom  residue    |", file=out)
     next = "| %5d: %8.3f %6.2f %5s %3s %5s <> %8.3f %6.2f %5s %3s %5s   |"
     sites = self._xray_structure.sites_cart()
     b_isos = self._xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
@@ -2605,13 +2604,13 @@ class manager(object):
       first_rg = first_ag.parent()
       last_ag = last.parent()
       last_rg = last_ag.parent()
-      print >> out, next % (i_seq+1,
+      print(next % (i_seq+1,
         sites[start][0], b_isos[start],
           first.name, first_ag.resname, first_rg.resid(),
         sites[final][0], b_isos[final],
-          last.name, last_ag.resname, last_rg.resid())
-    print >> out, "|"+"-"*77+"|"
-    print >> out
+          last.name, last_ag.resname, last_rg.resid()), file=out)
+    print("|"+"-"*77+"|", file=out)
+    print(file=out)
     out.flush()
     time_model_show += timer.elapsed()
 
@@ -2647,7 +2646,7 @@ class manager(object):
     timer = user_plus_sys_time()
     # XXX make this more complete and smart
     if(out is None): out = sys.stdout
-    print >> out, "|-"+text+"-"*(80 - len("| "+text+"|") - 1)+"|"
+    print("|-"+text+"-"*(80 - len("| "+text+"|") - 1)+"|", file=out)
     occ = self._xray_structure.scatterers().extract_occupancies()
     # this needs to stay the same size - mask out HD selection
     less_than_zero = (occ < 0.0)
@@ -2657,16 +2656,16 @@ class manager(object):
     percent_small = n_zeros * 100. / occ.size()
     n_large = (occ > 2.0).count(True)
     if(percent_small > 30.0):
-       print >> out, "| *** WARNING: more than 30 % of atoms with small occupancy (< 0.1)       *** |"
+       print("| *** WARNING: more than 30 % of atoms with small occupancy (< 0.1)       *** |", file=out)
     if(n_large > 0):
-       print >> out, "| *** WARNING: there are some atoms with large occupancy (> 2.0) ***          |"
+       print("| *** WARNING: there are some atoms with large occupancy (> 2.0) ***          |", file=out)
     if(abs(occ_max-occ_min) >= 0.01):
-       print >> out, "| occupancies: max = %-6.2f min = %-6.2f number of "\
-                     "occupancies < 0.1 = %-6d |"%(occ_max,occ_min,n_zeros)
+       print("| occupancies: max = %-6.2f min = %-6.2f number of "\
+                     "occupancies < 0.1 = %-6d |"%(occ_max,occ_min,n_zeros), file=out)
     else:
-       print >> out, "| occupancies: max = %-6.2f min = %-6.2f number of "\
-                     "occupancies < 0.1 = %-6d |"%(occ_max,occ_min,n_zeros)
-    print >> out, "|"+"-"*77+"|"
+       print("| occupancies: max = %-6.2f min = %-6.2f number of "\
+                     "occupancies < 0.1 = %-6d |"%(occ_max,occ_min,n_zeros), file=out)
+    print("|"+"-"*77+"|", file=out)
     out.flush()
     time_model_show += timer.elapsed()
 

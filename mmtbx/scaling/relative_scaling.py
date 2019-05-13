@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from mmtbx import scaling
 from mmtbx.scaling import absolute_scaling
@@ -284,17 +285,17 @@ class ls_rel_scale_driver(object):
     if out is None:
       out=sys.stdout
 
-    print >> out
-    print >> out, "p_scale                    : %5.3f"%(self.p_scale)
-    print >> out, "                            (%5.3f)"%(math.exp( self.p_scale ) )
-    print >> out, "B_cart trace               : %5.3f, %5.3f, %5.3f"%(
+    print(file=out)
+    print("p_scale                    : %5.3f"%(self.p_scale), file=out)
+    print("                            (%5.3f)"%(math.exp( self.p_scale ) ), file=out)
+    print("B_cart trace               : %5.3f, %5.3f, %5.3f"%(
       self.b_cart[0],
       self.b_cart[1],
-      self.b_cart[2])
-    print >> out
-    print >> out, "R-value before LS scaling  : %5.3f"%(self.r_val_before)
-    print >> out, "R-value after LS scaling   : %5.3f"%(self.r_val_after)
-    print >> out
+      self.b_cart[2]), file=out)
+    print(file=out)
+    print("R-value before LS scaling  : %5.3f"%(self.r_val_before), file=out)
+    print("R-value after LS scaling   : %5.3f"%(self.r_val_after), file=out)
+    print(file=out)
 
 
 
@@ -399,19 +400,19 @@ class local_scaling_driver(object):
     scales=self.local_scaler.get_scales()
     stats=self.local_scaler.stats()
 
-    print >> out, "Mean number of neighbours           : %8.3f"%(stats[2])
-    print >> out, "Minimum number of neighbours        : %8i"%(stats[0])
-    print >> out, "Maximum number of neighbours        : %8i"%(stats[1])
-    print >> out
-    print >> out, "Mean local scale                    : %8.3f"%(
-      flex.mean(scales) )
-    print >> out, "Standard deviation of local scale   : %8.3f"%(
+    print("Mean number of neighbours           : %8.3f"%(stats[2]), file=out)
+    print("Minimum number of neighbours        : %8i"%(stats[0]), file=out)
+    print("Maximum number of neighbours        : %8i"%(stats[1]), file=out)
+    print(file=out)
+    print("Mean local scale                    : %8.3f"%(
+      flex.mean(scales) ), file=out)
+    print("Standard deviation of local scale   : %8.3f"%(
       math.sqrt(   flex.mean(scales*scales)
-                 - flex.mean(scales)*flex.mean(scales)))
-    print >> out, "Minimum local scale                 : %8.3f"%(
-      flex.min( scales ) )
-    print >> out, "Maximum local scale                 : %8.3f"%(
-      flex.max( scales ) )
+                 - flex.mean(scales)*flex.mean(scales))), file=out)
+    print("Minimum local scale                 : %8.3f"%(
+      flex.min( scales ) ), file=out)
+    print("Maximum local scale                 : %8.3f"%(
+      flex.max( scales ) ), file=out)
 
     self.der_primset = self.der_primset.customized_copy(
        data = self.der_primset.data()*scales,
@@ -434,16 +435,16 @@ class local_scaling_driver(object):
                       self.nat_primset.data())/2.0
     top=flex.sum(top)
     bottom=flex.sum(bottom)
-    print >> out, "Current R value: %4.3f"%(top/bottom)
+    print("Current R value: %4.3f"%(top/bottom), file=out)
 
 
   def local_moment_scaling(self,out):
-    print >> out
-    print >> out, "Moment based local scaling"
-    print >> out, "Maximum depth        : %8i"%(self.max_depth)
-    print >> out, "Target neighbours    : %8i"%(self.target_neighbours)
-    print >> out, "neighbourhood sphere : %8i"%(self.sphere)
-    print >> out
+    print(file=out)
+    print("Moment based local scaling", file=out)
+    print("Maximum depth        : %8i"%(self.max_depth), file=out)
+    print("Target neighbours    : %8i"%(self.target_neighbours), file=out)
+    print("neighbourhood sphere : %8i"%(self.sphere), file=out)
+    print(file=out)
     self.local_scaler = scaling.local_scaling_moment_based(
       hkl_master=self.master_set.indices(),
       hkl_sets=self.nat_primset.indices(),
@@ -460,12 +461,12 @@ class local_scaling_driver(object):
 
 
   def local_lsq_scaling(self,out):
-    print >> out
-    print >> out, "Least squares based local scaling"
-    print >> out, "Maximum depth        : %8i"%(self.max_depth)
-    print >> out, "Target neighbours    : %8i"%(self.target_neighbours)
-    print >> out, "neighbourhood sphere : %8i"%(self.sphere)
-    print >> out
+    print(file=out)
+    print("Least squares based local scaling", file=out)
+    print("Maximum depth        : %8i"%(self.max_depth), file=out)
+    print("Target neighbours    : %8i"%(self.target_neighbours), file=out)
+    print("neighbourhood sphere : %8i"%(self.sphere), file=out)
+    print(file=out)
     self.local_scaler = scaling.local_scaling_ls_based(
       hkl_master=self.master_set.indices(),
       hkl_sets=self.nat_primset.indices(),
@@ -481,12 +482,12 @@ class local_scaling_driver(object):
       use_experimental_sigmas=self.use_weights)
 
   def local_nikonov_scaling(self,out):
-    print >> out
-    print >> out, "Nikonev based local scaling"
-    print >> out, "Maximum depth        : %8i"%(self.max_depth)
-    print >> out, "Target neighbours    : %8i"%(self.target_neighbours)
-    print >> out, "neighbourhood sphere : %8i"%(self.sphere)
-    print >> out
+    print(file=out)
+    print("Nikonev based local scaling", file=out)
+    print("Maximum depth        : %8i"%(self.max_depth), file=out)
+    print("Target neighbours    : %8i"%(self.target_neighbours), file=out)
+    print("neighbourhood sphere : %8i"%(self.sphere), file=out)
+    print(file=out)
 
     if self.der_primset.is_xray_intensity_array():
       raise Sorry(" For Nikonev target in local scaling, amplitudes must be used")

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from simtbx.nanoBragg import testuple
 from simtbx.nanoBragg import shapetype
@@ -46,7 +47,7 @@ def run_sim2smv(fileout):
   import sys
   if len(sys.argv)>2:
     SIM.seed = -int(sys.argv[2])
-    print "GOTHERE seed=",SIM.seed
+    print("GOTHERE seed=",SIM.seed)
   if len(sys.argv)>1:
     if sys.argv[1]=="random" : SIM.randomize_orientation()
   SIM.distance_mm=100
@@ -58,16 +59,16 @@ def run_sim2smv(fileout):
   SIM.wavelength_A=1
   SIM.polarization=1
   #SIM.unit_cell_tuple=(50,50,50,90,90,90)
-  print "unit_cell_Adeg=",SIM.unit_cell_Adeg
-  print "unit_cell_tuple=",SIM.unit_cell_tuple
+  print("unit_cell_Adeg=",SIM.unit_cell_Adeg)
+  print("unit_cell_tuple=",SIM.unit_cell_tuple)
   # this will become F000, marking the beam center
   SIM.F000=200
   SIM.default_F=0
   #SIM.missets_deg= (10,20,30)
-  print "mosaic_seed=",SIM.mosaic_seed
-  print "seed=",SIM.seed
-  print "calib_seed=",SIM.calib_seed
-  print "missets_deg =", SIM.missets_deg
+  print("mosaic_seed=",SIM.mosaic_seed)
+  print("seed=",SIM.seed)
+  print("calib_seed=",SIM.calib_seed)
+  print("missets_deg =", SIM.missets_deg)
   sfall = fcalc_from_pdb(resolution=1.6,algorithm="direct",wavelength=SIM.wavelength_A)
   # use crystal structure to initialize Fhkl array
   SIM.Fhkl=sfall
@@ -85,69 +86,69 @@ def run_sim2smv(fileout):
   SIM.beamsize_mm=0.1
   SIM.exposure_s=0.1
   temp=SIM.Ncells_abc
-  print "Ncells_abc=",SIM.Ncells_abc
+  print("Ncells_abc=",SIM.Ncells_abc)
   SIM.Ncells_abc=temp
-  print "Ncells_abc=",SIM.Ncells_abc
-  print "xtal_size_mm=",SIM.xtal_size_mm
-  print "unit_cell_Adeg=",SIM.unit_cell_Adeg
-  print "unit_cell_tuple=",SIM.unit_cell_tuple
-  print "missets_deg=",SIM.missets_deg
-  print "Amatrix=",SIM.Amatrix
+  print("Ncells_abc=",SIM.Ncells_abc)
+  print("xtal_size_mm=",SIM.xtal_size_mm)
+  print("unit_cell_Adeg=",SIM.unit_cell_Adeg)
+  print("unit_cell_tuple=",SIM.unit_cell_tuple)
+  print("missets_deg=",SIM.missets_deg)
+  print("Amatrix=",SIM.Amatrix)
   #SIM.beamcenter_convention=convention.ADXV
   #SIM.beam_center_mm=(45,47)
-  print "beam_center_mm=",SIM.beam_center_mm
-  print "XDS_ORGXY=",SIM.XDS_ORGXY
-  print "detector_pivot=",SIM.detector_pivot
-  print "xtal_shape=",SIM.xtal_shape
-  print "beamcenter_convention=",SIM.beamcenter_convention
-  print "fdet_vector=",SIM.fdet_vector
-  print "sdet_vector=",SIM.sdet_vector
-  print "odet_vector=",SIM.odet_vector
-  print "beam_vector=",SIM.beam_vector
-  print "polar_vector=",SIM.polar_vector
-  print "spindle_axis=",SIM.spindle_axis
-  print "twotheta_axis=",SIM.twotheta_axis
-  print "distance_meters=",SIM.distance_meters
-  print "distance_mm=",SIM.distance_mm
-  print "close_distance_mm=",SIM.close_distance_mm
-  print "detector_twotheta_deg=",SIM.detector_twotheta_deg
-  print "detsize_fastslow_mm=",SIM.detsize_fastslow_mm
-  print "detpixels_fastslow=",SIM.detpixels_fastslow
-  print "detector_rot_deg=",SIM.detector_rot_deg
-  print "curved_detector=",SIM.curved_detector
-  print "pixel_size_mm=",SIM.pixel_size_mm
-  print "point_pixel=",SIM.point_pixel
-  print "polarization=",SIM.polarization
-  print "nopolar=",SIM.nopolar
-  print "oversample=",SIM.oversample
-  print "region_of_interest=",SIM.region_of_interest
-  print "wavelength_A=",SIM.wavelength_A
-  print "energy_eV=",SIM.energy_eV
-  print "fluence=",SIM.fluence
-  print "flux=",SIM.flux
-  print "exposure_s=",SIM.exposure_s
-  print "beamsize_mm=",SIM.beamsize_mm
-  print "dispersion_pct=",SIM.dispersion_pct
-  print "dispsteps=",SIM.dispsteps
-  print "divergence_hv_mrad=",SIM.divergence_hv_mrad
-  print "divsteps_hv=",SIM.divsteps_hv
-  print "divstep_hv_mrad=",SIM.divstep_hv_mrad
-  print "round_div=",SIM.round_div
-  print "phi_deg=",SIM.phi_deg
-  print "osc_deg=",SIM.osc_deg
-  print "phisteps=",SIM.phisteps
-  print "phistep_deg=",SIM.phistep_deg
-  print "detector_thick_mm=",SIM.detector_thick_mm
-  print "detector_thicksteps=",SIM.detector_thicksteps
-  print "detector_thickstep_mm=",SIM.detector_thickstep_mm
-  print "mosaic_spread_deg=",SIM.mosaic_spread_deg
-  print "mosaic_domains=",SIM.mosaic_domains
-  print "indices=",SIM.indices
-  print "amplitudes=",SIM.amplitudes
-  print "Fhkl_tuple=",SIM.Fhkl_tuple
-  print "default_F=",SIM.default_F
-  print "interpolate=",SIM.interpolate
-  print "integral_form=",SIM.integral_form
+  print("beam_center_mm=",SIM.beam_center_mm)
+  print("XDS_ORGXY=",SIM.XDS_ORGXY)
+  print("detector_pivot=",SIM.detector_pivot)
+  print("xtal_shape=",SIM.xtal_shape)
+  print("beamcenter_convention=",SIM.beamcenter_convention)
+  print("fdet_vector=",SIM.fdet_vector)
+  print("sdet_vector=",SIM.sdet_vector)
+  print("odet_vector=",SIM.odet_vector)
+  print("beam_vector=",SIM.beam_vector)
+  print("polar_vector=",SIM.polar_vector)
+  print("spindle_axis=",SIM.spindle_axis)
+  print("twotheta_axis=",SIM.twotheta_axis)
+  print("distance_meters=",SIM.distance_meters)
+  print("distance_mm=",SIM.distance_mm)
+  print("close_distance_mm=",SIM.close_distance_mm)
+  print("detector_twotheta_deg=",SIM.detector_twotheta_deg)
+  print("detsize_fastslow_mm=",SIM.detsize_fastslow_mm)
+  print("detpixels_fastslow=",SIM.detpixels_fastslow)
+  print("detector_rot_deg=",SIM.detector_rot_deg)
+  print("curved_detector=",SIM.curved_detector)
+  print("pixel_size_mm=",SIM.pixel_size_mm)
+  print("point_pixel=",SIM.point_pixel)
+  print("polarization=",SIM.polarization)
+  print("nopolar=",SIM.nopolar)
+  print("oversample=",SIM.oversample)
+  print("region_of_interest=",SIM.region_of_interest)
+  print("wavelength_A=",SIM.wavelength_A)
+  print("energy_eV=",SIM.energy_eV)
+  print("fluence=",SIM.fluence)
+  print("flux=",SIM.flux)
+  print("exposure_s=",SIM.exposure_s)
+  print("beamsize_mm=",SIM.beamsize_mm)
+  print("dispersion_pct=",SIM.dispersion_pct)
+  print("dispsteps=",SIM.dispsteps)
+  print("divergence_hv_mrad=",SIM.divergence_hv_mrad)
+  print("divsteps_hv=",SIM.divsteps_hv)
+  print("divstep_hv_mrad=",SIM.divstep_hv_mrad)
+  print("round_div=",SIM.round_div)
+  print("phi_deg=",SIM.phi_deg)
+  print("osc_deg=",SIM.osc_deg)
+  print("phisteps=",SIM.phisteps)
+  print("phistep_deg=",SIM.phistep_deg)
+  print("detector_thick_mm=",SIM.detector_thick_mm)
+  print("detector_thicksteps=",SIM.detector_thicksteps)
+  print("detector_thickstep_mm=",SIM.detector_thickstep_mm)
+  print("mosaic_spread_deg=",SIM.mosaic_spread_deg)
+  print("mosaic_domains=",SIM.mosaic_domains)
+  print("indices=",SIM.indices)
+  print("amplitudes=",SIM.amplitudes)
+  print("Fhkl_tuple=",SIM.Fhkl_tuple)
+  print("default_F=",SIM.default_F)
+  print("interpolate=",SIM.interpolate)
+  print("integral_form=",SIM.integral_form)
   # now actually burn up some CPU
   SIM.add_nanoBragg_spots()
   # simulated crystal is only 125 unit cells (25 nm wide)
@@ -171,38 +172,38 @@ def run_sim2smv(fileout):
   SIM.amorphous_sample_thick_mm = 35 # between beamstop and collimator
   SIM.amorphous_density_gcm3 = 1.2e-3
   SIM.amorphous_sample_molecular_weight_Da = 28 # nitrogen = N2
-  print "amorphous_sample_size_mm=",SIM.amorphous_sample_size_mm
-  print "amorphous_sample_thick_mm=",SIM.amorphous_sample_thick_mm
-  print "amorphous_density_gcm3=",SIM.amorphous_density_gcm3
-  print "amorphous_molecular_weight_Da=",SIM.amorphous_molecular_weight_Da
+  print("amorphous_sample_size_mm=",SIM.amorphous_sample_size_mm)
+  print("amorphous_sample_thick_mm=",SIM.amorphous_sample_thick_mm)
+  print("amorphous_density_gcm3=",SIM.amorphous_density_gcm3)
+  print("amorphous_molecular_weight_Da=",SIM.amorphous_molecular_weight_Da)
   SIM.add_background()
   # set this to 0 or -1 to trigger automatic radius.  could be very slow with bright images
   SIM.detector_psf_kernel_radius_pixels=5;
   SIM.detector_psf_fwhm_mm=0.08;
   SIM.detector_psf_type=shapetype.Fiber
   #SIM.apply_psf()
-  print SIM.raw_pixels[500000]
+  print(SIM.raw_pixels[500000])
   SIM.to_smv_format(fileout="intimage_003.img")
   #SIM.detector_psf_fwhm_mm=0
-  print "quantum_gain=",SIM.quantum_gain
-  print "adc_offset_adu=",SIM.adc_offset_adu
-  print "detector_calibration_noise_pct=",SIM.detector_calibration_noise_pct
-  print "flicker_noise_pct=",SIM.flicker_noise_pct
-  print "readout_noise_adu=",SIM.readout_noise_adu
-  print "detector_psf_type=",SIM.detector_psf_type
-  print "detector_psf_fwhm_mm=",SIM.detector_psf_fwhm_mm
-  print "detector_psf_kernel_radius_pixels=",SIM.detector_psf_kernel_radius_pixels
+  print("quantum_gain=",SIM.quantum_gain)
+  print("adc_offset_adu=",SIM.adc_offset_adu)
+  print("detector_calibration_noise_pct=",SIM.detector_calibration_noise_pct)
+  print("flicker_noise_pct=",SIM.flicker_noise_pct)
+  print("readout_noise_adu=",SIM.readout_noise_adu)
+  print("detector_psf_type=",SIM.detector_psf_type)
+  print("detector_psf_fwhm_mm=",SIM.detector_psf_fwhm_mm)
+  print("detector_psf_kernel_radius_pixels=",SIM.detector_psf_kernel_radius_pixels)
   SIM.add_noise()
 
   #fileout = "intimage_001.img"
-  print "raw_pixels=",SIM.raw_pixels
+  print("raw_pixels=",SIM.raw_pixels)
   SIM.to_smv_format(fileout="noiseimage_001.img",intfile_scale=1)
 
   # try to write as CBF
   import dxtbx
   from dxtbx.format.FormatCBFMini import FormatCBFMini
   img = dxtbx.load("noiseimage_001.img")
-  print img
+  print(img)
   FormatCBFMini.as_file(
     detector=img.get_detector(),beam=img.get_beam(),gonio=img.get_goniometer(),scan=img.get_scan(),
     data=img.get_raw_data(),path=fileout)
@@ -228,4 +229,4 @@ def tst_all():
 
 if __name__=="__main__":
   tst_all()
-  print "OK"
+  print("OK")

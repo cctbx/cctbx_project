@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry, null_out
 from libtbx import group_args, adopt_init_args, Auto, slots_getstate_setstate,\
@@ -222,8 +223,8 @@ def spread_alternates(
   adjacent residues to allow for backbone movement.
   """
   if (log is None) : log = null_out()
-  print >> log, ""
-  print >> log, "  Splitting adjacent residues..."
+  print("", file=log)
+  print("  Splitting adjacent residues...", file=log)
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
   pdb_atoms.reset_tmp(0)
@@ -234,7 +235,7 @@ def spread_alternates(
     selection = pdb_hierarchy.atom_selection_cache().selection(selection)
   def split_residue(residue_group):
     if (verbose):
-      print >> log, "  %s" % residue_group.id_str()
+      print("  %s" % residue_group.id_str(), file=log)
     new_occ = 0.5
     if (new_occupancy is not None):
       new_occ = max(0.2, min(0.8, new_occupancy))
@@ -429,12 +430,12 @@ def filter_before_build(
       if (not residue_sel.all_eq(True)):
         continue
       if (len(atom_groups) > 1):
-        print >> log, "  %s is already multi-conformer" % id_str
+        print("  %s is already multi-conformer" % id_str, file=log)
         continue
       atom_group = atom_groups[0]
       res_class = common_residue_names_get_class(atom_group.resname)
       if (res_class != "common_amino_acid"):
-        print >> log, "  %s: non-standard residue" % id_str
+        print("  %s: non-standard residue" % id_str, file=log)
         continue
       missing_atoms = rotamer_eval.eval_residue_completeness(
         residue=atom_group,
@@ -447,13 +448,13 @@ def filter_before_build(
             (not params.ignore_stub_residues)):
           pass
         else :
-          print >> log, "  %s: missing or incomplete sidechain" % \
-            (id_str, len(missing_atoms))
+          print("  %s: missing or incomplete sidechain" % \
+            (id_str, len(missing_atoms)), file=log)
           continue
       validation = multi_criterion.get_residue_group_data(residue_group)
       is_outlier = is_validation_outlier(validation, params)
       if (is_outlier):
-        print >> log, "  %s" % str(validation)
+        print("  %s" % str(validation), file=log)
         continue
       if (params.use_difference_map):
         i_seqs_no_hd = building.get_non_hydrogen_atom_indices(residue_group)
@@ -466,16 +467,16 @@ def filter_before_build(
         if ((map_stats.number_of_atoms_below_fofc_map_level() == 0) and
             (map_stats.fraction_of_nearby_grid_points_above_cutoff()==0)):
           if (verbose):
-            print >> log, "  no difference density for %s" % id_str
+            print("  no difference density for %s" % id_str, file=log)
           continue
       residues.append(residue_group.only_atom_group())
   if (len(residues) == 0):
     raise Sorry("No residues passed the filtering criteria.")
-  print >> log, ""
-  print >> log, "Alternate conformations will be tried for %d residue(s):" % \
-      len(residues)
+  print("", file=log)
+  print("Alternate conformations will be tried for %d residue(s):" % \
+      len(residues), file=log)
   building.show_chain_resseq_ranges(residues, out=log, prefix="  ")
-  print >> log, ""
+  print("", file=log)
   return residues
 
 rejoin_phil = libtbx.phil.parse("""
@@ -573,12 +574,12 @@ class disorder_info(slots_getstate_setstate):
   def show_distance_info(self, out=sys.stdout, prefix="", suffix=''):
     if (suffix != '') : suffix = " " + suffix
     if (self.atom_name_save is not None):
-      print >> out, prefix + \
+      print(prefix + \
         "%s: rmsd=%-5.3f  atom '%s': dxyz=%-6.3f u=%-6.3f%s" % \
         (self.id_str, self.max_rmsd, self.atom_name_save, self.dxyz_save,
-         sqrt(self.u_iso_save), suffix)
+         sqrt(self.u_iso_save), suffix), file=out)
     else :
-      print >> out, prefix + "%s: rmsd=%-5.3f" % (self.id_str, self.max_rmsd)
+      print(prefix + "%s: rmsd=%-5.3f" % (self.id_str, self.max_rmsd), file=out)
 
 def rejoin_split_single_conformers(
     pdb_hierarchy,
@@ -628,8 +629,8 @@ def rejoin_split_single_conformers(
           if (len(occ) == 0) : # hydrogen-only
             continue
           if (max(occ) < params.min_occupancy):
-            print >> log, "  %s: altloc '%s' occupancy = %4.2f" % (residue_id,
-              atom_group.altloc, max(occ))
+            print("  %s: altloc '%s' occupancy = %4.2f" % (residue_id,
+              atom_group.altloc, max(occ)), file=log)
             delete_groups.add(i_group)
         # TODO need to also check the C and N atoms specifically, because of
         # possible splitting of adjacent residues
@@ -725,8 +726,8 @@ def finalize_model(pdb_hierarchy,
 class refined_fragment(slots_getstate_setstate_default_initializer):
   __slots__ = ["label", "selection", "sites_cart", "rmsd"]
   def show(self, out=sys.stdout, prefix=""):
-    print >> out, prefix+"refined %s (%d atoms): rmsd=%.3f" % (self.label,
-      len(self.selection), self.rmsd)
+    print(prefix+"refined %s (%d atoms): rmsd=%.3f" % (self.label,
+      len(self.selection), self.rmsd), file=out)
 
 class rsr_fragments_base(object):
   """
@@ -756,9 +757,9 @@ def print_trial_header(out, prefix=""):
   header_1 = """%20s%16s  %8s  %8s  %8s"""%("","  mFo-DFc map ","","","max")
   header_2 = """%-12s %5s  %7s  %7s  %8s  %8s  %8s""" % ("residue", "trial",
     "min." ,"mean", "CC", "RMSD", "change")
-  print >> out, prefix + header_1
-  print >> out, prefix + header_2
-  print >> out, prefix + "-" * (len(header_2))
+  print(prefix + header_1, file=out)
+  print(prefix + header_2, file=out)
+  print(prefix + "-" * (len(header_2)), file=out)
 
 class trial_result(object):
   """
@@ -769,11 +770,11 @@ class trial_result(object):
     adopt_init_args(self, locals())
 
   def show_summary(self, prefix="", out=sys.stdout):
-    print >> out, prefix + ("min. mFo-DFc: %7.2f" % self.min_fofc)
-    print >> out, prefix + ("mean mFo-DFc: %7.2f" % self.mean_fofc)
-    print >> out, prefix + ("map-model CC: %8.3f" % self.cc)
-    print >> out, prefix + ("rmsd:         %8.3f" % self.rmsd)
-    print >> out, prefix + ("max. change:  %8.3f A" % self.max_dev)
+    print(prefix + ("min. mFo-DFc: %7.2f" % self.min_fofc), file=out)
+    print(prefix + ("mean mFo-DFc: %7.2f" % self.mean_fofc), file=out)
+    print(prefix + ("map-model CC: %8.3f" % self.cc), file=out)
+    print(prefix + ("rmsd:         %8.3f" % self.rmsd), file=out)
+    print(prefix + ("max. change:  %8.3f A" % self.max_dev), file=out)
     return self
 
   def __str__(self):

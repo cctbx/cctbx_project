@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 import libtbx.load_env
 import sys, os
@@ -19,7 +20,7 @@ def run(args):
   assert command_out[4].startswith(
     "Control flow passes through branch that should be unreachable: ")
   assert len(command_out) == 5
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

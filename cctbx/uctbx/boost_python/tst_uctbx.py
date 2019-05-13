@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from math import pi, sin, cos, asin, sqrt
 try:
   import cPickle as pickle
@@ -467,7 +468,7 @@ def exercise_pickle():
 
 def exercise_exceptions():
   if ("--skip" in sys.argv[1:]):
-    print "SKIPPING: exercise_exceptions"
+    print("SKIPPING: exercise_exceptions")
     return
   try:
     u = uctbx.unit_cell((0,0,0,0,0,0))
@@ -535,7 +536,7 @@ def exercise_fast_minimum_reduction():
       uctbx.fast_minimum_reduction(u)
     except RuntimeError, e:
       if ("--Verbose" in sys.argv[1:]):
-        print "Expected:", e
+        print("Expected:", e)
 
 class exercise_is_degenerate(object):
 
@@ -577,11 +578,11 @@ class exercise_is_degenerate(object):
                 return
 
   def report(self):
-    print "exercise_is_degenerate:"
+    print("exercise_is_degenerate:")
     s = self.n_stable[0] + self.n_stable[1]
     n = self.n_iterations*0.01
-    print "  n_stable:", s, self.n_stable, "= %.3g%%" % (s/n)
-    print "  n_unstable:", self.n_unstable, "= %.3g%%" % (self.n_unstable/n)
+    print("  n_stable:", s, self.n_stable, "= %.3g%%" % (s/n))
+    print("  n_unstable:", self.n_unstable, "= %.3g%%" % (self.n_unstable/n))
 
 def exercise_similarity_transformations():
   reference = uctbx.unit_cell(
@@ -789,7 +790,7 @@ def run():
   e = exercise_is_degenerate()
   if (e.n_iterations > 100):
     e.report()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

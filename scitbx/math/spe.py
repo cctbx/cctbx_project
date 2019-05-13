@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx.stdlib import math
 
@@ -92,7 +93,7 @@ def tst():
   spee=classic_spe_engine( dmat, l=1.0,max_cycle=5000 )
   x,s = spee.embed(2,M)
   assert s<1e-4
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   tst()

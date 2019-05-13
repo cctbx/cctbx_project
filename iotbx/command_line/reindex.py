@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.reindex
 
 import libtbx.phil
@@ -75,7 +76,7 @@ Change-of-basis operator: h,k,l or x,y,z or
     base,ext = os.path.splitext(params.reindex.hkl_file)
     params.reindex.output_file = base + "_reindex.mtz"
   mtz_obj.write(file_name=params.reindex.output_file)
-  print >> out, "Reindex reflections written to %s" % params.reindex.output_file
+  print("Reindex reflections written to %s" % params.reindex.output_file, file=out)
   return params.reindex.output_file
 
 def convert_operator(change_of_basis):

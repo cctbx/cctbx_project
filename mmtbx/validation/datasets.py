@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import os, sys
 import libtbx.load_env
 from libtbx.utils import Sorry
@@ -15,10 +16,10 @@ def imp_dataset(name, verbose=False):
   except Exception :
     assert 0
   if verbose:
-      print name
-      print fp
-      print pathname
-      print description
+      print(name)
+      print(fp)
+      print(pathname)
+      print(description)
   m = imp.load_module(name, fp, pathname, description)
   return m
 
@@ -51,7 +52,7 @@ class dataset_item(object):
     return outl
 
 def generate_data_items(data):
-  if data.get("info", ""): print data.get("info", "")
+  if data.get("info", ""): print(data.get("info", ""))
   for row in data["data"]:
     yield dataset_item(data["headers"], row)
 
@@ -72,13 +73,13 @@ for key in locals().keys():
 def run(local):
   if (curated_repository_dir is None):
     raise Sorry("chem_data/curated_datasets is not available.")
-  print '\nCurated Repository Dir',curated_repository_dir
+  print('\nCurated Repository Dir',curated_repository_dir)
   for key in local.keys():
     if not key.endswith("_data"): continue
-    print '\n',('%s ' % data_lookups[key])*10
+    print('\n',('%s ' % data_lookups[key])*10)
     for i, item in enumerate(local.get("generate_%s" % key[:-5], [])):
-      print '-'*80
-      print i, item
+      print('-'*80)
+      print(i, item)
       if i>0: break
 
 if __name__=="__main__":

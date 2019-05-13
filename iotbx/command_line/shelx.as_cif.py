@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 import sys, os
 op = os.path
@@ -10,7 +11,7 @@ def run(args):
     except KeyboardInterrupt:
       raise
     except Exception:
-      print "%s is not a .ins or a .res file" % f
+      print("%s is not a .ins or a .res file" % f)
       continue
     r, _ = op.splitext(op.basename(f))
     xs.as_cif_simple(out=open(r + '.cif', 'w'))

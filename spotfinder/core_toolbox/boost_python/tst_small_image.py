@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def compute_image(work_params):
   dpx,dpy = work_params.detector.pixels
   from scitbx.array_family import flex
@@ -154,7 +155,7 @@ def run_scanbox_tests():
     #print (spot.ctr_mass_x(), spot.ctr_mass_y())
     #print
 
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

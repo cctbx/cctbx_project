@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import cctbx.array_family.flex as flex# import dependency
 import os,time
 from libtbx.utils import Sorry
@@ -78,7 +79,7 @@ class map_reader(utils):
          text="\n  NOTE: WARNING message for the file '%s':\n  '%s'\n " %(
             file_name,war.message)
          if print_warning_messages:
-           print text
+           print(text)
 
          if ignore_all_errors:
            pass
@@ -490,8 +491,8 @@ def create_output_labels(
   if limitations:
     for limitation in limitations:
       if not limitation in STANDARD_LIMITATIONS_DICT.keys():
-        print "The limitation '%s' is not in STANDARD_LIMITATIONS_DICT: '%s'" %(
-       limitation,str(STANDARD_LIMITATIONS_DICT.keys()))
+        print("The limitation '%s' is not in STANDARD_LIMITATIONS_DICT: '%s'" %(
+       limitation,str(STANDARD_LIMITATIONS_DICT.keys())))
       assert limitation in STANDARD_LIMITATIONS_DICT.keys()
       output_map_labels.append(limitation)
 

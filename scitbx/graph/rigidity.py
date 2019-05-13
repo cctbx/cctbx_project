@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import random
 
 def gcd(a, b):
@@ -304,9 +305,9 @@ def example():
   n_vertices = 8
   edge_list = double_banana_edge_list
   for method in ["integer", "float"]:
-    print "double banana 3D dof (method=%s):" % method, \
+    print("double banana 3D dof (method=%s):" % method, \
       determine_degrees_of_freedom(
-        n_dim=3, n_vertices=n_vertices, edge_list=edge_list, method=method)
+        n_dim=3, n_vertices=n_vertices, edge_list=edge_list, method=method))
 
 if (__name__ == "__main__"):
   example()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def exercise(use_fortran):
   from scitbx.linalg import lapack_dsyev
   from scitbx.array_family import flex
@@ -19,7 +20,7 @@ def exercise(use_fortran):
           jobz="V", uplo=uplo, a=a, w=w, use_fortran=use_fortran)
         if (info == 99):
           if (not use_fortran):
-            print "Skipping tests: lapack_dsyev not available."
+            print("Skipping tests: lapack_dsyev not available.")
           return
         assert info == 0
         assert approx_equal(w, [diag]*n)
@@ -67,7 +68,7 @@ def run(args):
   assert len(args) == 0
   for use_fortran in [False, True]:
     exercise(use_fortran=use_fortran)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

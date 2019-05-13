@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import adopt_init_args
 from cctbx import maptbx
 from scitbx.array_family import flex
@@ -22,14 +23,14 @@ class run(object):
     # You get everything you need:
     map_result = co.result()
     volumes = co.regions()
-    print volumes
+    print(volumes)
     coors = co.maximum_coors()
     vals = co.maximum_values()
     minb, maxb = co.get_blobs_boundaries_tuples()
     # This will give you the order
     i_sorted_by_volume = flex.sort_permutation(data=volumes, reverse=True) # maybe co.regions() should go there
     for i in i_sorted_by_volume:
-      print "blob #", i
-      print coors[i]
-      print vals[i]
-      print maxb[i], minb[i]
+      print("blob #", i)
+      print(coors[i])
+      print(vals[i])
+      print(maxb[i], minb[i])

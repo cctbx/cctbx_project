@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from libtbx import easy_run
 
@@ -17,8 +18,8 @@ class JobStopper(object):
     result = easy_run.fully_buffered(command=self.command%submission_id)
     status = "\n".join(result.stdout_lines)
     error = "\n".join(result.stderr_lines)
-    print status
-    print error
+    print(status)
+    print(error)
 
 class QueueInterrogator(object):
   """A queue monitor that returns the status of a given queued job, or ERR if the job cannot
@@ -94,7 +95,7 @@ class LSFSubmissionTracker(SubmissionTracker):
     elif status in known_job_statuses:
       return status
     else:
-      print "Found an unknown status", status
+      print("Found an unknown status", status)
 
 class PBSSubmissionTracker(SubmissionTracker):
   def track(self, submission_id, log_path):
@@ -108,7 +109,7 @@ class PBSSubmissionTracker(SubmissionTracker):
     elif status in ["R", "T", "W", "E"]:
       return "RUN"
     else:
-      print "Found an unknown status", status
+      print("Found an unknown status", status)
 
 class TrackerFactory(object):
   @staticmethod

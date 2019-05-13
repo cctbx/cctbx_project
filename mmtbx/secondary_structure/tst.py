@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.secondary_structure import sec_str_master_phil_str, manager
 from cctbx import geometry_restraints
 from iotbx import file_reader
@@ -17,14 +18,14 @@ def exercise_protein():
     relative_path="phenix_regression/pdb/1ywf_h.pdb",
     test=os.path.isfile)
   if pdb_file is None :
-    print "Skipping exercise(): input file not available."
+    print("Skipping exercise(): input file not available.")
     return False
   if pdb_file_h is None :
-    print "Skipping exercise(): input file not available."
+    print("Skipping exercise(): input file not available.")
     return False
   run_ksdssp = True
   if (not libtbx.env.has_module(name="ksdssp")):
-    print "Skipping KSDSSP tests: ksdssp module not available."
+    print("Skipping KSDSSP tests: ksdssp module not available.")
     run_ksdssp = False
   log = null_out()
   import sys
@@ -39,7 +40,7 @@ def exercise_protein():
     m.params.secondary_structure.protein.remove_outliers = False
     proxies, hb_angles = m.create_protein_hbond_proxies(
         annotation=None, log=log)
-    print proxies.size(), hb_angles.size()
+    print(proxies.size(), hb_angles.size())
     assert proxies.size() == 109
     assert hb_angles.size() == 294+27, hb_angles.size() # helix+sheet angles
     assert isinstance(proxies, geometry_restraints.shared_bond_simple_proxy)
@@ -205,7 +206,7 @@ END
   pdb_hierarchy.atoms().reset_i_seq()
   ss_from_file = pdb_in.extract_secondary_structure()
   if not libtbx.env.has_module(name="ksdssp"):
-    print "Skipping KSDSSP tests: ksdssp module not available."
+    print("Skipping KSDSSP tests: ksdssp module not available.")
     return
   m = manager(pdb_hierarchy=pdb_hierarchy,
     sec_str_from_pdb_file=None)
@@ -574,7 +575,7 @@ HELIX    1   1 ALA      2  ALA      5  1                                  10
     # STOP()
     n_hbonds.append(proxies_for_grm.size())
     n_hangles.append(angle_p.size())
-  print n_hbonds, n_hangles
+  print(n_hbonds, n_hangles)
   assert n_hbonds ==  [ 6,  7,  8,  9,  9,  5]
   assert n_hangles == [18, 21, 24, 28, 28, 16]
 
@@ -1065,13 +1066,13 @@ SHEET    2   B 2 THR A  20  THR A  21  1  O  THR A  20   N  ALA A  46
     # print proxies_for_grm.size()
     n_hbonds.append(proxies_for_grm.size())
     n_hangles.append(h_angles.size())
-  print n_hbonds, n_hangles
+  print(n_hbonds, n_hangles)
   assert n_hbonds == [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2, 3, 4, 2, 2, 8]
   assert n_hangles ==[15, 15, 18, 18, 18, 18, 18, 18, 18, 18, 6, 6, 9, 6, 3, 24]
 
 def exercise_segid():
   if (not libtbx.env.has_module(name="ksdssp")):
-    print "KSDSSP not available, skipping exercise_segid()"
+    print("KSDSSP not available, skipping exercise_segid()")
     return
   pdb_par_segid_input = iotbx.pdb.hierarchy.input(pdb_string = """\
 CRYST1   46.460   46.460  193.210  90.00  90.00 120.00 P 31 2 1
@@ -1181,4 +1182,4 @@ if __name__ == "__main__" :
 
   # exercise_segid() # appeared to be nonvalid test... now when we don't ignore
   # segid in SS, we cannot construct SHEET situated in two different segids...
-  print "OK"
+  print("OK")

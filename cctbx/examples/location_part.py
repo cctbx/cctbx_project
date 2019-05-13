@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 
 class symmetries_with_nonzero_location_parts(object):
@@ -23,12 +24,12 @@ class symmetries_with_nonzero_location_parts(object):
 
   def on_new_symmetry(self):
     if self.space_group_printout is not None:
-      print
-      print self.space_group_printout
+      print()
+      print(self.space_group_printout)
       self.space_group_printout = None
-    print "\t% i |%s +(%s) @(%s)" % (self.rot_info.type(), self.rot_info.ev(),
+    print("\t% i |%s +(%s) @(%s)" % (self.rot_info.type(), self.rot_info.ev(),
                                     self.tr_info.intrinsic_part(),
-                                    self.tr_info.origin_shift())
+                                    self.tr_info.origin_shift()))
 
 
 class a_theorem_in_primitive_settings(symmetries_with_nonzero_location_parts):
@@ -49,12 +50,12 @@ class a_theorem_in_primitive_settings(symmetries_with_nonzero_location_parts):
     super(a_theorem_in_primitive_settings, self).on_new_space_group()
 
   def verify(self):
-    print self.__class__.__doc__
-    print
-    print "Let's try to find a counter-example ..."
+    print(self.__class__.__doc__)
+    print()
+    print("Let's try to find a counter-example ...")
     self.n_translations = {}
     self.browse()
-    print "The search is over!"
+    print("The search is over!")
 
 
 class symmetries_with_both_nonzero_location_and_intrinsic_parts(

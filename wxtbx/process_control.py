@@ -3,6 +3,7 @@
 
 from __future__ import division
 from __future__ import absolute_import # XXX is this necessary?
+from __future__ import print_function
 from wx.lib.agw import pyprogress
 import wx
 from libtbx import thread_utils
@@ -540,7 +541,7 @@ def test_function_1(*args, **kwds):
   n = 0
   for i in range(25000):
     x = math.sqrt(i)
-    print x
+    print(x)
     n += x
   return n
 def test_function_2(*args, **kwds):

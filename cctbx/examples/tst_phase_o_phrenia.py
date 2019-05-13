@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.examples import phase_o_phrenia
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -16,7 +17,7 @@ def exercise(space_group_info, n_scatterers=1, d_min=2, verbose=0):
   reduced_peaks = phase_o_phrenia.calculate_exp_i_two_phi_peaks(
     structure, d_min, min_peak_distance=3, max_reduced_peaks=20)
   for peak in reduced_peaks:
-    print "%.6g" % peak.height, "%8.5f %8.5f %8.5f" % peak.site
+    print("%.6g" % peak.height, "%8.5f %8.5f %8.5f" % peak.site)
 
 def run_call_back(flags, space_group_info):
   exercise(space_group_info, verbose=flags.Verbose)

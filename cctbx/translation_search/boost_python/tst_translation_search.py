@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import translation_search
 from cctbx import sgtbx
 from cctbx.array_family import flex
@@ -50,7 +51,7 @@ def run():
   exercise_symmetry_flags()
   exercise_fast_nv1995()
   exercise_fast_terms()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()
