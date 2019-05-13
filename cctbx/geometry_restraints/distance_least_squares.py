@@ -255,7 +255,7 @@ class distance_and_repulsion_least_squares:
                 lbfgs_exception_handling_params=
                   scitbx.lbfgs.exception_handling_parameters(
                     ignore_line_search_failed_step_at_lower_bound=True))
-            except RuntimeError, lbfgs_error:
+            except RuntimeError as lbfgs_error:
               if (i_trial == 0): raise
               if (not str(lbfgs_error).startswith(
                     "Bond distance > max_reasonable_bond_distance: ")): raise

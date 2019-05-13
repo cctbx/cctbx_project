@@ -78,7 +78,7 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
     if (not arg_is_processed):
       try:
         params = parameter_interpreter.process(arg=arg)
-      except Sorry, e:
+      except Sorry as e:
         if (not os.path.isfile(arg)): raise
         raise Sorry("Unknown file format: %s" % arg)
       else:

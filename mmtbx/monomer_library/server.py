@@ -78,7 +78,7 @@ def geostd_list_cif(path=None, strict=False):
       path=path,
       relative_path_components=["list", "geostd_list.cif"],
       strict=strict)
-  except MonomerLibraryServerError, e:
+  except MonomerLibraryServerError as e:
     return None
 
 def mon_lib_ener_lib_cif(path=None, strict=False):

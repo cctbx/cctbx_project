@@ -38,7 +38,7 @@ iotbx.cns.transfer_crystal_symmetry any_symmetry_source_file cns_input_file
   lines_out = []
   detect_binary = detect_binary_file(monitor_initial=100)
   try: cns_inp = open(target).read().splitlines()
-  except IOError, e:
+  except IOError as e:
     raise Sorry("Error reading file %s (%s)" % (show_string(target), str(e)))
   end_block_parameter_definition = False
   for line in cns_inp:
@@ -75,7 +75,7 @@ iotbx.cns.transfer_crystal_symmetry any_symmetry_source_file cns_input_file
       "(%s)," % ", ".join(parameters_changed), \
       "writing modified file %s." % show_string(target))
     try: print(string_out, file=open(target, "w"))
-    except IOError, e:
+    except IOError as e:
       raise Sorry("Error writing file %s (%s)" % (show_string(target), str(e)))
 
 if (__name__ == "__main__"):

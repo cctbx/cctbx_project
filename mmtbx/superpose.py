@@ -382,7 +382,7 @@ class SuperposePDB(object):
       # Yield the RMSD for this window.
       try:
         yield self.fit(xyz_moving, xyz_fixed)
-      except Exception, e:
+      except Exception as e:
         pass
         # self.log("Fitting error: %s"%e)
 

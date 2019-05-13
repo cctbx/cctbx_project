@@ -232,7 +232,7 @@ def run(args, log = sys.stdout, use_output_directory=True,
     crystal_symmetry = crystal.select_crystal_symmetry(
       from_coordinate_files=cs_from_coordinate_files,
       from_reflection_files=cs_from_reflection_files)
-  except AssertionError, e :
+  except AssertionError as e :
     if ("No unit cell and symmetry information supplied" in str(e)):
       raise Sorry("Missing or incomplete symmetry information.  This program "+
         "will only work with reflection file formats that contain both "+
@@ -407,7 +407,7 @@ def validate_map_params(params):
     if (map_coeffs.map_type is not None):
       try :
         decode_map = map_names(map_coeffs.map_type)
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry(str(e))
       f = map_coeffs.mtz_label_amplitudes
       phi = map_coeffs.mtz_label_phases

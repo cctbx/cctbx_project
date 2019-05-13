@@ -64,7 +64,7 @@ def run(filename,
             if i!=j: continue
             if type(item)!=type(""): continue
             try: row[j]=func(item)
-            except ValueError, e:
+            except ValueError as e:
               row[j]=float(item)
             if type(row[j])==type(""): row[j]=row[j].strip()
       #

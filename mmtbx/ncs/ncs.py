@@ -3554,7 +3554,7 @@ class ncs:
       try:
         pdb_inp = iotbx.pdb.input(lines=lines,source_info=file_name)
         self.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=log,quiet=quiet)
-      except Exception,e:
+      except Exception as e:
         pass
 
   def save_existing_group_info(self):

@@ -70,7 +70,7 @@ def excersise():
     assert obs.scale(0) == ts*ps
     nv = itr.next()
     assert nv.scale == obs.ref_twin_components[0].value*ps
-  except RuntimeError, e:
+  except RuntimeError as e:
     pass
 
 

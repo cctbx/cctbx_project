@@ -1474,12 +1474,12 @@ def exercise_1():
   gt = g * t.elems
   assert gt == g.r * t + g.t
   try: g * col([1])
-  except ValueError, e:
+  except ValueError as e:
     assert str(e).startswith("cannot multiply ")
     assert str(e).endswith(": incompatible number of rows or columns")
   else: raise Exception_expected
   try: g * [1]
-  except ValueError, e:
+  except ValueError as e:
     assert str(e).startswith("cannot multiply ")
     assert str(e).endswith(": incompatible number of elements")
   else: raise Exception_expected

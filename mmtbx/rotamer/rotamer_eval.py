@@ -355,7 +355,7 @@ Can't seem to find mmtbx/rotamer/ directory.
     rotaList = []
     try:
       f = open(fileLoc)
-    except ImportError, e:
+    except ImportError as e:
       print(fileLoc+" file not found")
       sys.exit()
     for line in f:

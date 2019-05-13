@@ -104,7 +104,7 @@ def run(args=(), params=None, out=None, display_plot=False):
       display_plot_pylab(ddm)
     except ImportError :
       raise Sorry("matplotlib is not installed - can't generate plot image.")
-    except Exception, e :
+    except Exception as e :
       print("Oops!  Can't display an interactive plot:", file=out)
       print("  %s" % str(e), file=out)
   elif (display_plot) : # only if not run from GUI!

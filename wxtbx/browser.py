@@ -24,7 +24,7 @@ class browser_frame(wx.Frame):
     if (wx.Platform == '__WXMAC__'):
       try :
         from wx import webkit
-      except ImportError, e :
+      except ImportError as e :
         _import_error = str(e)
       else :
         self.viewer = webkit.WebKitCtrl(self, -1)
@@ -34,7 +34,7 @@ class browser_frame(wx.Frame):
     elif (wx.Platform == '__WXMSW__'):
       try :
         from wx.html2 import WebView
-      except ImportError, e :
+      except ImportError as e :
         _import_error = str(e)
       else :
         self.viewer = WebView.New(self)

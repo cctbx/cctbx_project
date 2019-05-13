@@ -267,7 +267,7 @@ def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
   for width in [4,5]:
     for value in [-(10**(width-1)), 10**width+2*26*36**(width-1)]:
       try: hy36enc(width=width, value=value)
-      except (ValueError, RuntimeError), e:
+      except (ValueError, RuntimeError) as e:
         assert str(e) == "value out of range."
       else: raise RuntimeError("Exception expected.")
   #
@@ -276,7 +276,7 @@ def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
       (5, ["", "     0", " abcd", "ABCD-", "a=bcd", "410b0", "410B0"])]:
     for s in ss:
       try: hy36dec(width, s=s)
-      except (ValueError, RuntimeError), e:
+      except (ValueError, RuntimeError) as e:
         assert str(e) == "invalid number literal."
       else: raise RuntimeError("Exception expected.")
   #

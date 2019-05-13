@@ -13,7 +13,7 @@ def run(args):
       miller_arrays = iotbx.cif.reader(file_object=file_object).as_miller_arrays()
     except KeyboardInterrupt:
       raise
-    except Exception, e:
+    except Exception as e:
       print("Error extracting miller arrays from file: %s:" % (
         show_string(f)))
       print(" ", str(e))

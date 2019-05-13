@@ -369,7 +369,7 @@ Parameters:"""%h
       cmd_cs=crystal_symmetry,
       master_params = master_phil,
       suppress_symmetry_related_errors=params.ignore_symmetry_conflicts)
-  except Exception,e:
+  except Exception as e:
     if str(e).find("symmetry mismatch ")>1:
       raise Sorry(str(e)+"\nTry 'ignore_symmetry_conflicts=True'")
     else:

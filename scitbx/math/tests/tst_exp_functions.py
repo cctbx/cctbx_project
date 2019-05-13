@@ -59,7 +59,7 @@ def run(args):
           mantissa_step_size=mantissa_step_size,
           j_sample=j_sample)
         if (comprehensive): print(list(r))
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert str(e) == "jacks_expf(): function argument out of range."
         assert not negative_sign
         break

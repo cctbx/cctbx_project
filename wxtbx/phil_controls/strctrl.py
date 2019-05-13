@@ -90,7 +90,7 @@ def parse_str(value):
   try :
     word = tokenizer.word(value, quote_token='"""')
     phil_string = str(word)
-  except ValueError, e :
+  except ValueError as e :
     raise
   else :
     return phil_string

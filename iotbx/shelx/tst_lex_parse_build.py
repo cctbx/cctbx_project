@@ -368,7 +368,7 @@ def exercise_invalid():
         file=cStringIO.StringIO(ins_invalid_scatt),
         set_grad_flags=set_grad_flags)
       raise Exception_expected
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == "ShelX: illegal argument '0.3.' at line 3"
 
     try:
@@ -376,7 +376,7 @@ def exercise_invalid():
         file=cStringIO.StringIO(ins_invalid_scatt_1),
         set_grad_flags=set_grad_flags)
       raise Exception_expected
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == ("ShelX: wrong number of parameters "
                         "for scatterer at line 3")
 
@@ -385,7 +385,7 @@ def exercise_invalid():
         file=cStringIO.StringIO(ins_missing_sfac),
         set_grad_flags=set_grad_flags)
       raise Exception_expected
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert e.args[0].startswith('ShelX:')
 
   structure = xray.structure.from_shelx(
@@ -517,11 +517,11 @@ def exercise_restraint_parsing():
   # invalid DFIX instructions
   try:
     proxies = parse_restraints(ins_invalid_dfix)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "ShelX: Invalid DFIX instruction at line 3"
   try:
     proxies = parse_restraints(ins_invalid_dfix_2)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "ShelX: Invalid DFIX instruction at line 3"
   # exercise FLAT
   proxies = parse_restraints(ins_flat)
@@ -540,7 +540,7 @@ def exercise_restraint_parsing():
   # invalid FLAT
   try:
     proxies = parse_restraints(ins_invalid_flat)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "ShelX: Invalid FLAT instruction at line 3"
   # SADI simple
   proxies = parse_restraints(ins_sadi)

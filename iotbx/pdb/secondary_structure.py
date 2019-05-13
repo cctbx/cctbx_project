@@ -82,7 +82,7 @@ def segments_are_similar(atom_selection_1=None,
     try:
       h1=hierarchy.deep_copy().select(sel)  # keep original hierarchy too
       number_self=h1.overall_counts().n_residues
-    except Exception, e:
+    except Exception as e:
       return False
 
     asc=hierarchy.atom_selection_cache()
@@ -90,7 +90,7 @@ def segments_are_similar(atom_selection_1=None,
     try:
       h2=hierarchy.deep_copy().select(sel)
       number_other=h2.overall_counts().n_residues
-    except Exception, e:
+    except Exception as e:
       return False
 
     if maximum_length_difference is not None and \
@@ -103,7 +103,7 @@ def segments_are_similar(atom_selection_1=None,
     try:
       h12=hierarchy.deep_copy().select(sel)
       number_both=h12.overall_counts().n_residues
-    except Exception, e:
+    except Exception as e:
       return False
 
     if number_both<minimum_overlap:
@@ -557,7 +557,7 @@ class annotation(structure_base):
     for sh_lines in cls.filter_and_split_sheet_records(records):
       try:
         sh = pdb_sheet.from_pdb_records(sh_lines)
-      except ValueError, e:
+      except ValueError as e:
         print("Bad SHEET records, were skipped:\n", file=log)
         for l in sh_lines:
           print("  %s" % l, file=log)
@@ -1136,7 +1136,7 @@ class annotation(structure_base):
     for helix in self.helices :
       try :
         selections.extend(helix.as_atom_selections(add_segid=add_segid))
-      except RuntimeError, e :
+      except RuntimeError as e :
         pass
     for sheet in self.sheets :
       selections.extend(sheet.as_atom_selections(add_segid=add_segid))
@@ -1148,13 +1148,13 @@ class annotation(structure_base):
       try :
         selections.extend(helix.as_atom_selections(add_segid=add_segid,
          trim_ends_by=trim_ends_by))
-      except RuntimeError, e :
+      except RuntimeError as e :
         pass
     for sheet in self.sheets:
       try:
         selections.extend(sheet.as_atom_selections(add_segid=add_segid,
           trim_ends_by=trim_ends_by))
-      except RuntimeError, e :
+      except RuntimeError as e :
         pass
     return "(" + ") or (".join(selections) + ")"
 
@@ -1171,7 +1171,7 @@ class annotation(structure_base):
         if helix.get_n_maximum_hbonds()<n_hbonds_selection: continue
       try :
         selections.extend(helix.as_atom_selections(add_segid=add_segid))
-      except RuntimeError, e :
+      except RuntimeError as e :
         pass
     return "(" + ") or (".join(selections) + ")"
 
@@ -1180,7 +1180,7 @@ class annotation(structure_base):
     for sheet in self.sheets:
       try:
         selections.extend(sheet.as_atom_selections(add_segid=add_segid))
-      except RuntimeError, e :
+      except RuntimeError as e :
         pass
     return "(" + ") or (".join(selections) + ")"
 

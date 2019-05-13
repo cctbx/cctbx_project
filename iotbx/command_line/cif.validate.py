@@ -62,7 +62,7 @@ def run(args, out=sys.stdout):
   else:
     try:
       file_object = urllib2.urlopen(filepath)
-    except urllib2.URLError, e:
+    except urllib2.URLError as e:
       pass
     else:
       cm = cif.reader(file_object=file_object, strict=strict).model()

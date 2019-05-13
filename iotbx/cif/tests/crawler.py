@@ -24,7 +24,7 @@ class crawl(object):
           reader = self.run_once(path, build_miller_arrays=build_miller_arrays,
                             build_xray_structure=build_xray_structure)
 
-        except Exception, e:
+        except Exception as e:
           print("error reading %s" %path)
           print(e)
           error_count += 1
@@ -80,7 +80,7 @@ def run(args, out=sys.stdout):
   else:
     try:
       file_object = urllib2.urlopen(filepath)
-    except urllib2.URLError, e:
+    except urllib2.URLError as e:
       pass
     else:
       cm = reader(file_object=file_object).model()

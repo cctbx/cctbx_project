@@ -67,7 +67,7 @@ class MtzContentsPanel(wx.Panel):
     from iotbx import mtz
     try :
       self._mtz_obj = mtz.object(file_name=file_name)
-    except RuntimeError, e :
+    except RuntimeError as e :
       raise Sorry(("The file '%s' could not be read as an MTZ file "+
         "(original error: %s)") % (file_name, str(e)))
     self.title_txt.SetLabel(self._mtz_obj.title())

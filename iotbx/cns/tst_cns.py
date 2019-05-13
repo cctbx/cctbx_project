@@ -126,7 +126,7 @@ def exercise_reflection_reader():
   try:
     # just to make sure a bug in handling {} doesn't get reintroduced
     crf(file_handle=StringIO("}{"))
-  except iotbx.cns.reflection_reader.CNS_input_Error, e:
+  except iotbx.cns.reflection_reader.CNS_input_Error as e:
     assert str(e) == "premature end-of-file"
   else:
     raise Exception_expected

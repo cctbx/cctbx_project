@@ -20,7 +20,7 @@ def exercise_converter():
   try:
     textures = [9,3,5]
     gl.glGenTextures(4, textures)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), """\
 Argument "textures" has the wrong number of elements:
   expected size: 4
@@ -29,7 +29,7 @@ Argument "textures" has the wrong number of elements:
   try:
     textures = [9,"foo",5]
     gl.glGenTextures(3, textures)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), """\
 Argument "textures" has one or more elements of the wrong type.""")
   else: raise Exception_expected

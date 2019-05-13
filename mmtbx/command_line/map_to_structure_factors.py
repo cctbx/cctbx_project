@@ -247,7 +247,7 @@ def run(args, log=None, ccp4_map=None,
         use_scale      = True,
         anomalous_flag = False,
         use_sg         = False)
-    except Exception, e:
+    except Exception as e:
       if(str(e) == "cctbx Error: Miller index not in structure factor map."):
         msg = "Too high resolution requested. Try running with larger d_min."
         raise Sorry(msg)

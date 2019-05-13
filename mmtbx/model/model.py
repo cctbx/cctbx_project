@@ -1541,7 +1541,7 @@ class manager(object):
       try :
         self.neutron_scattering_dict = \
           self._xray_structure.switch_to_neutron_scattering_dictionary()
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry("Error setting up neutron scattering dictionary: %s"%str(e))
       if(log is not None):
         print_statistics.make_sub_header(
@@ -1633,7 +1633,7 @@ class manager(object):
       for t in pdb_inp_tls.tls_params:
         try :
           n_atoms = self.iselection(t.selection_string).size()
-        except AtomSelectionError, e :
+        except AtomSelectionError as e :
           print("AtomSelectionError:", file=self.log)
           print(str(e), file=self.log)
           print("Ignoring PDB header TLS groups", file=self.log)

@@ -40,7 +40,7 @@ class AnomPlot(wxtbx.plots.plot_container):
     for element in elements :
       try :
         scatt_table = table_module.table(element.upper())
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry(str(e))
       fp = []
       fdp = []

@@ -109,7 +109,7 @@ def exercise_c_grid_conversions(verbose=0):
   for c in [a,b]:
     try: rt.use_const_ref_c_grid_3(c)
     except KeyboardInterrupt: raise
-    except Exception, e:
+    except Exception as e:
       assert str(e).startswith("Python argument types in")
     else: raise RuntimeError("Boost.Python.ArgumentError expected.")
   if (verbose): print('OK')

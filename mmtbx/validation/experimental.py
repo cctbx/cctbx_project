@@ -226,7 +226,7 @@ class real_space(validation):
           pdb_hierarchy=pdb_hierarchy,
           params=rsc_params,
           log=null_out())
-    except Exception, e :
+    except Exception as e :
       raise
     else :
       assert ( (self.overall_rsc is not None) and (rsc is not None) )

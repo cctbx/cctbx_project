@@ -22,7 +22,7 @@ def exercise_00():
   assert n == 189, n
   try:
     t = neutron.neutron_news_1992_table("XX")
-  except ValueError, e:
+  except ValueError as e:
     pass
   else:
     raise Exception_expected

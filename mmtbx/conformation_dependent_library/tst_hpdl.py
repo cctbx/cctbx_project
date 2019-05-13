@@ -6,7 +6,7 @@ from mmtbx.conformation_dependent_library.hpdl_database import get_hpdl_database
 from libtbx import easy_run
 try:
   from elbow.formats import refine_geo_parser
-except ImportError, e:
+except ImportError as e:
   refine_geo_parser = None
 
 pdbs = {

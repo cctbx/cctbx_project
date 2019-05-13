@@ -101,7 +101,7 @@ def exercise_interface():
     (14.279201519086316, 2.9369143826320214, -1.2161159017183376))
   s = adptbx.eigensystem(up)
   try: s.vectors(4)
-  except RuntimeError, e: assert str(e).endswith("Index out of range.")
+  except RuntimeError as e: assert str(e).endswith("Index out of range.")
   else: raise Exception_expected
   uf = adptbx.eigenvalue_filtering(u_cart=u, u_min=0)
   assert approx_equal(uf, (3.0810418, 4.7950710, 9.3400030,

@@ -104,7 +104,7 @@ class refinery:
         self.two_thetas_obs, self.miller_indices, self.wavelength,
         unit_cell=uctbx.unit_cell(iter(x)))
     except KeyboardInterrupt: raise
-    except Exception, e:
+    except Exception as e:
       print("FunctionalException:", str(e))
       raise scitbx.minimizers.FunctionalException
     if (len(self.functionals) != 0 and result > 2 * self.functionals[0]):

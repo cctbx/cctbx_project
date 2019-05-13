@@ -61,7 +61,7 @@ def run(args):
           crystal_symmetry = xray_structure,
           special_op       = site_symmetry_table.get(i_seq).special_op(),
           site_cart        = sites_final[i_seq])
-      except AssertionError, e:
+      except AssertionError as e:
         from libtbx.str_utils import prefix_each_line
         print(prefix_each_line(prefix="  ", lines_as_one_string=str(e)))
         print()

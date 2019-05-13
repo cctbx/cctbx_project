@@ -15,7 +15,7 @@ import os
 def exercise_map_gridding():
   try:
     g = iotbx.xplor.map.gridding(n=(0,20,30), first=(-3,-4,-5), last=(5,4,3))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Illegal xplor map gridding for dimension X: " \
                    + "gridding=0, first=-3, last=5"
   g = iotbx.xplor.map.gridding(n=(10,20,30), first=(-3,-4,-5), last=(5,4,3))

@@ -38,14 +38,14 @@ class dtrek_symmetry_entry(object):
       t = [int(round(float(e)*t_den)) for e in (flds[0],flds[4],flds[8])]
       try:
         s = sgtbx.rt_mx(sgtbx.rot_mx(r), sgtbx.tr_vec(t))
-      except RuntimeError, e:
+      except RuntimeError as e:
         print(e)
         print(l)
       else:
         try:
           matrices.append(s)
           space_group.expand_smx(s)
-        except RuntimeError, e:
+        except RuntimeError as e:
           print(e)
           print(l)
           print(s)

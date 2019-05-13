@@ -21,7 +21,7 @@ def exercise_read_corrupt():
       f.write("\0"*(40*i_trial))
     f.close()
     try: mtz.object(file_name="tmp_iotbx_mtz_ext.mtz")
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == "cctbx Error: MTZ file read error: tmp_iotbx_mtz_ext.mtz"
     else: raise Exception_expected
 
@@ -91,7 +91,7 @@ def exercise_basic():
     assert crystal.set_name("abc") is crystal
     assert crystal.name() == "abc"
     try: crystal.set_name("unknown3")
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == 'mtz::crystal::set_name(new_name="unknown3"):' \
         ' new_name is used already for another crystal.'
     else: raise Exception_expected
@@ -134,7 +134,7 @@ def exercise_basic():
     assert column.set_label(new_label="New") is column
     assert column.label() == "New"
     try: column.set_label("a,b,c")
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == 'mtz::column::set_label(new_label="a,b,c"):' \
         ' new_label must not include commas.'
     else: raise Exception_expected
@@ -142,7 +142,7 @@ def exercise_basic():
     assert column.set_label(new_label="New") is column
     assert column.label() == "New"
     try: column.set_label(new_label="K")
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == 'mtz::column::set_label(new_label="K"):' \
         ' new_label is used already for another column.'
     else: raise Exception_expected
@@ -748,7 +748,7 @@ Crystal 3:
   assert dataset_0_0.set_name(new_name="dataset_0") is dataset_0_0
   assert dataset_0_0.name() == "dataset_0"
   try: dataset_0_0.set_name(new_name="dataset_1")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'mtz::dataset::set_name(new_name="dataset_1"):' \
       ' new_name is used already for another dataset.'
   else: raise Exception_expected
@@ -924,7 +924,7 @@ Crystal 3:
       name="crystal_1",
       wavelength=0)
   try: dataset.add_column(label="a,b,c", type="H")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'mtz::dataset::add_column(label="a,b,c", ...):' \
       ' label must not include commas.'
   else: raise Exception_expected

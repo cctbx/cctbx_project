@@ -210,7 +210,7 @@ class bayesian_estimator:
        try:
          self.bin_cov_inv_list.append(cov_matrix.inverse())
          self.bin_determinant_list.append(cov_matrix.determinant())
-       except Exception, e:  # sets result to zero later if we do this...
+       except Exception as e:  # sets result to zero later if we do this...
          self.bin_cov_inv_list.append(None)
          self.bin_determinant_list.append(None)
 

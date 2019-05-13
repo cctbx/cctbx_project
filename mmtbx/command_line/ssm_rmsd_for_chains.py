@@ -42,7 +42,7 @@ def run(args):
         ssm, ssm_align = utils._ssm_align(
                            reference_chain = chain_i,
                            moving_chain = chain_j)
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (str(e) != "can't make graph for first structure" and \
             str(e) != "secondary structure does not match"):
           raise e

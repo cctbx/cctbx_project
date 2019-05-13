@@ -535,7 +535,7 @@ class _(boost.python.injector, ext.object):
     for crystal in self.crystals():
       try :
         unit_cell = crystal.unit_cell()
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry(str(e))
       crystal_symmetry_from_file = cctbx.crystal.symmetry(
         unit_cell=unit_cell,
@@ -856,7 +856,7 @@ class _(boost.python.injector, ext.crystal):
   def crystal_symmetry(self):
     try :
       unit_cell = self.unit_cell()
-    except ValueError, e :
+    except ValueError as e :
       raise Sorry(str(e))
     return cctbx.crystal.symmetry(
       unit_cell=unit_cell,

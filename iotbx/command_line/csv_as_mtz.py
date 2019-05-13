@@ -27,7 +27,7 @@ def run(args, command_name = "mmtbx.csv_to_mtz"):
         type="string",
         help="Use PDB model to make better guess about reflection data type.")
     ).process(args=args)
-  except Exception, e:
+  except Exception as e:
     if(str(e) != "0"): print(str(e))
     sys.exit(0)
   crystal_symmetry = command_line.symmetry

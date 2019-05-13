@@ -430,7 +430,7 @@ def exercise_hl_ab_only(anomalous_flag):
   columns[-1].set_type("F")
   try:
     mtz_obj.as_miller_arrays()
-  except RuntimeError, e:
+  except RuntimeError as e:
     if (not anomalous_flag):
       assert str(e) == 'Invalid MTZ column combination' \
         ' (incomplete Hendrickson-Lattman array),' \

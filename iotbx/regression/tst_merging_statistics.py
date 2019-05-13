@@ -100,14 +100,14 @@ def exercise(debug=False):
   args2 = list(args[:-1]) + ["high_resolution=15", "low_resolution=2.5"]
   try :
     result = merging_statistics.run(args2, out=out)
-  except Sorry, s :
+  except Sorry as s :
     pass
   else :
     raise Exception_expected
   args2 = list(args[:-1]) + ["high_resolution=1.5", "low_resolution=1.6"]
   try :
     result = merging_statistics.run(args2, out=out)
-  except Sorry, s :
+  except Sorry as s :
     pass
   else :
     raise Exception_expected
@@ -162,7 +162,7 @@ def exercise(debug=False):
   args = [hkl_file]
   try:
     result = merging_statistics.run(args, out=out)
-  except Sorry, e:
+  except Sorry as e:
     assert str(e) == 'The data in i_anomalous(+),SIGi_anomalous(+),i_anomalous(-),SIGi_anomalous(-) are already merged.  Only unmerged (but scaled) data may be used in this program.'
   else: raise Exception_expected
   # test use_internal_variance option

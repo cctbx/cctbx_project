@@ -207,7 +207,7 @@ class queue_list_frame(wx.Frame):
     if self.ConfirmDelete(job_ids):
       try :
         success = sge_utils.qdel(job_ids=job_ids)
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Error executing 'qdel' command: %s" % str(e))
       else :
         GenericMessageDialog("Job(s) deleted successfuly.", style=wx.OK)

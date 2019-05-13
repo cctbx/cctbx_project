@@ -154,7 +154,7 @@ def run_smtbx_ls(mode, cod_id, i_obs, f_obs, xray_structure, params):
       ls.build_up()
       try:
         ls.solve_and_step_forward()
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (str(e).find("cholesky.failure") <= 0): raise
         print('Aborting run_smtbx_ls("simple"): cholesky.failure: %s' \
           % cod_id)
@@ -173,7 +173,7 @@ def run_smtbx_ls(mode, cod_id, i_obs, f_obs, xray_structure, params):
         gradient_threshold=thresh,
         step_threshold=thresh,
         tau=1e-7)
-    except RuntimeError, e:
+    except RuntimeError as e:
       if (not str(e).startswith(
             "cctbx::adptbx::debye_waller_factor_exp: arg_limit exceeded")):
         raise
@@ -258,7 +258,7 @@ def run_shelxl(
         file=StringIO(res),
         min_distance_sym_equiv=0,
         strictly_shelxl=False)
-    except iotbx.shelx.error, e:
+    except iotbx.shelx.error as e:
       if (str(e).find("scatterer parameter") < 0):
         raise
       print("Aborted: shelxl %s refinement apparently unstable: %s" % (

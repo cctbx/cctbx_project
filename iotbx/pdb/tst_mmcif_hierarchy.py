@@ -145,7 +145,7 @@ ATOM   20  O . THR A 1 2 1.00 3.70
 """
   cif_model = iotbx.cif.reader(input_string=input_missing_mandatory_items).model()
   try: pdb_hierarchy_builder(cif_model["1AB1"])
-  except AssertionError, e: pass
+  except AssertionError as e: pass
   else:
     # TODO: raise a better error here
     raise Exception_expected

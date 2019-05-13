@@ -96,7 +96,7 @@ def exercise_vector():
   try:
     sparse.vector(4, [1, 2, 3, 4])
     raise Exception_expected
-  except Exception, e:
+  except Exception as e:
     assert e.__class__.__module__ == 'Boost.Python'
     assert e.__class__.__name__ == 'ArgumentError'
 
@@ -192,7 +192,7 @@ def exercise_matrix():
   try:
     a[1,:] = sparse.vector(2, {1:1})
     raise Exception_expected
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)
 
   a = sparse.matrix(10, 3,

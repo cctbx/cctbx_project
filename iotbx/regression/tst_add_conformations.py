@@ -40,13 +40,13 @@ HETATM 1940  O  AHOH A 354      -0.009  56.525  -3.872  0.25 29.17           O\
   assert (occ.count(0.5) == 2126) and (occ.count(0.25) == 4254)
   try :
     run([pdb_file, "atom_selection=\"chain G\""], out=out)
-  except Sorry, e :
+  except Sorry as e :
     assert (str(e) == "Empty selection.")
   else :
     raise Exception_expected
   try :
     run([pdb_file, "new_occ=2"], out=out)
-  except Sorry, e :
+  except Sorry as e :
     assert (str(e) == "new_occ must be between 0 and 1.0")
   else :
     raise Exception_expected
@@ -55,7 +55,7 @@ HETATM 1940  O  AHOH A 354      -0.009  56.525  -3.872  0.25 29.17           O\
     test=os.path.isfile)
   try :
     run([pdb_file], out=out)
-  except Sorry, e :
+  except Sorry as e :
     assert (str(e) == """\
 Atom group included in selection already has one or more alternate conformers:
 ATOM     22  OG ASER     4      -1.752   0.849   3.272  0.50 11.67           O\

@@ -86,7 +86,7 @@ def exercise_incompatible_flags_replacement():
   ms = miller.set(cs, i)
   ma = miller.array(ms, data=d)
   try: ma.merge_equivalents()
-  except Sorry, e: assert "merge_equivalents_exact: incompatible flags" in str(e)
+  except Sorry as e: assert "merge_equivalents_exact: incompatible flags" in str(e)
   else: raise Exception_expected
   merging = ma.merge_equivalents(incompatible_flags_replacement=0)
   me = merging.array()

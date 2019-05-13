@@ -244,7 +244,7 @@ class ls_refinement(object):
         xray_structure=O.xray_structure,
         algorithm="direct",
         cos_sin_table=False).f_calc()
-    except RuntimeError, e:
+    except RuntimeError as e:
       print("RuntimeError f_calc:", e)
       sys.stdout.flush()
       raise RuntimeError("f_calc")
@@ -446,7 +446,7 @@ def run_refinement(structure_ideal, structure_shake, params, run_id):
       xray_structure=structure_shake,
       params=params,
       reference_structure=structure_ideal)
-  except RuntimeError, e:
+  except RuntimeError as e:
     print("RuntimeError run_id:", run_id)
     sys.stdout.flush()
     if (str(e) != "f_calc"):

@@ -897,7 +897,7 @@ def any_sequence_format(file_name, assign_name_if_not_defined=False,
       objects, non_compliant = format_parser.parse(data)
       assert (len(objects) > 0)
       assert (objects[0].sequence != "")
-    except Exception, e :
+    except Exception as e :
       pass
     else :
       if (assign_name_if_not_defined):
@@ -914,7 +914,7 @@ def any_sequence_format(file_name, assign_name_if_not_defined=False,
         objects, non_compliant = other_parser(data)
         assert (len(objects) > 0)
         assert (objects[0].sequence != "")
-      except Exception, e :
+      except Exception as e :
         pass
       else :
         if (assign_name_if_not_defined):
@@ -1247,7 +1247,7 @@ def any_alignment_file(file_name):
       aln = parser1(data)[0]
       assert (len(aln.names) != 0)
     except KeyboardInterrupt : raise
-    except Exception, e : pass
+    except Exception as e : pass
     else :
       return aln
   for parser in [pir_alignment_parse, clustal_alignment_parse,
@@ -1258,7 +1258,7 @@ def any_alignment_file(file_name):
       aln = parser(data)[0]
       assert (len(aln.names) != 0)
     except KeyboardInterrupt : raise
-    except Exception, e : pass
+    except Exception as e : pass
     else :
       return aln
   raise RuntimeError("Not a recognizeable sequence alignment format!")
@@ -1768,7 +1768,7 @@ def any_hh_file(file_name):
     try :
       p = parser(data)
     except KeyboardInterrupt : raise
-    except Exception, e :
+    except Exception as e :
       pass
     else :
       return p
@@ -1781,7 +1781,7 @@ def composition_from_sequence_file(file_name, log=None):
     seq_file, non_compliant = any_sequence_format(file_name)
     if (seq_file is None):
       raise ValueError("Could not parse %s" % file_name)
-  except Exception, e :
+  except Exception as e :
     print(str(e), file=log)
     return None
   else :

@@ -173,7 +173,7 @@ def exercise_combine_symmetry():
       process_pdb_file=False,
       create_fmodel=True,
       out=null_out())
-  except Sorry, s :
+  except Sorry as s :
     assert ("Incompatible space groups" in str(s))
   else :
     raise Exception_expected
@@ -193,7 +193,7 @@ def exercise_combine_symmetry():
       process_pdb_file=False,
       create_fmodel=True,
       out=null_out())
-  except Sorry, s :
+  except Sorry as s :
     assert ("Unit cell mismatch" in str(s))
   else :
     raise Exception_expected
@@ -311,7 +311,7 @@ def exercise_load_unmerged():
       create_fmodel=False,
       process_pdb_file=False,
       create_log_buffer=True)
-  except Sorry, s :
+  except Sorry as s :
     assert (str(s) == "Incompatible space groups in merged and unmerged data:P 1 21 1 versus P 1"), s
   else :
     raise Exception_expected
@@ -354,7 +354,7 @@ def exercise_load_unmerged():
       create_fmodel=False,
       process_pdb_file=False,
       create_log_buffer=True)
-  except Sorry, s :
+  except Sorry as s :
     assert ("Incompatible symmetry definitions" in str(s)), s
   else :
     raise Exception_expected

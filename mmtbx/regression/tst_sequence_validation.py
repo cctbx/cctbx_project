@@ -582,7 +582,7 @@ END
         sequences=[seq] * 3,
         copies_from_xtriage=2,
         out=null_out())
-    except Sorry, s :
+    except Sorry as s :
       assert ("round number" in str(s))
     else :
       raise Exception_expected
@@ -599,7 +599,7 @@ END
         sequences=[seq] * 4,
         copies_from_xtriage=1,
         out=null_out())
-    except Sorry, s :
+    except Sorry as s :
       assert ("less than" in str(s))
     else :
       raise Exception_expected
@@ -619,7 +619,7 @@ END
         sequences=[seq] * 2,
         copies_from_xtriage=2,
         out=null_out())
-    except Sorry, s :
+    except Sorry as s :
       assert ("round number" in str(s))
     else :
       raise Exception_expected

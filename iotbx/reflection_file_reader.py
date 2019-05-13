@@ -190,7 +190,7 @@ class any_reflection_file(object):
     file_name = self._file_name
     try:
       open(file_name) # test read access
-    except IOError, e:
+    except IOError as e:
       if (ensure_read_access):
         raise Sorry(str(e))
       return

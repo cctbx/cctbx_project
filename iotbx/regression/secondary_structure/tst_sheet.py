@@ -30,7 +30,7 @@ def exercise_01():
   restr_groups = StringIO.StringIO()
   try:
     annot = ss.annotation.from_records(records=ann_1.split('\n'))
-  except Sorry, e:
+  except Sorry as e:
     m = str(e)
     assert m.find("should be 1 or -1 for non-first strand") > 0
 

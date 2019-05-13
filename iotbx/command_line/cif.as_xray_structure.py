@@ -12,7 +12,7 @@ def run(args):
       xray_structures = xray.structure.from_cif(file_path=f)
     except KeyboardInterrupt:
       raise
-    except Exception, e:
+    except Exception as e:
       print("Error extracting xray structure from file: %s:" % (
         show_string(f)))
       print(" ", str(e))

@@ -152,7 +152,7 @@ def run(args,multiplier):
         sgi = sgtbx.space_group_info(sn)
         print("Space group",sgi,"number",sn)
         exercise_direct(sgi, allelements, use_random_u_iso=use_random_u_iso, verbose=verbose)
-      except Exception, e:
+      except Exception as e:
         print(e)
     return
 

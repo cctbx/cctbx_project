@@ -24,7 +24,7 @@ class RfactorFrame (HKLViewFrame) :
       from scitbx.array_family import flex
       try :
         hkl_file = any_reflection_file(file_name)
-      except Exception, e :
+      except Exception as e :
         raise Sorry(str(e))
       arrays = hkl_file.as_miller_arrays(merge_equivalents=True)
       f_obs = f_model = None

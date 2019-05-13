@@ -219,7 +219,7 @@ class IOTAImageProcessor(Processor):
                                                              reflections,
                                                              lepage_max_delta=5,
                                                              refiner_verbosity=10)
-    except Exception, e:
+    except Exception as e:
       # If refinement fails, reset to P1 (experiments remain modified by Lfat
       # if there's a refinement failure, which causes issues down the line)
       for expt in experiments:
@@ -442,7 +442,7 @@ class IOTAImageProcessor(Processor):
       try:
         print ("{:-^100}\n".format(" INDEXING "))
         experiments, indexed = self.index(img_object.experiments, observed)
-      except Exception, e:
+      except Exception as e:
         return self.error_handler(e, 'indexing', img_object, output)
       else:
         if indexed:

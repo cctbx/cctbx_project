@@ -90,7 +90,7 @@ def load_pdb_models(pdb_ids, fault_tolerant=False, log=null_out()):
         id=pdb_id,
         allow_unknowns=True,
         local_cache=os.getcwd())
-    except Exception, e :
+    except Exception as e :
       if (not fault_tolerant):
         raise
       else :

@@ -196,7 +196,7 @@ def minimize_multi_lbfgs(start_fit,
       except LargeNegativeB:
         minimized = None
         break
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (str(e).find("lbfgs error: ") < 0): raise
         print(e)
         print("Aborting this minimization.")
@@ -350,7 +350,7 @@ def minimize_multi(start_fit,
           shift_sqrt_b_mod_n=current_shift_sqrt_b_mod_n,
           b_min=b_min,
           n_repeats_minimization=n_repeats_minimization)
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (str(e).find("SCITBX_ASSERT(b >= 0)") < 0):
           raise
       else: best_min_list.append(minimized)

@@ -119,7 +119,7 @@ def execute(
       duplicate_atom_labels_max_show=duplicate_atom_labels_max_show,
       level_id=level_id)
   except KeyboardInterrupt: raise
-  except Exception, e:
+  except Exception as e:
     print("Exception: file %s: %s: %s" % (
       show_string(file_name), e.__class__.__name__, str(e)))
 

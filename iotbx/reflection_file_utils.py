@@ -744,7 +744,7 @@ class reflection_file_server(object):
           ="Not a suitable array of R-free flags: ",
         error_message_multiple_equally_suitable
           ="Multiple equally suitable arrays of R-free flags found.")
-    except Sorry_Not_a_suitable_array, e:
+    except Sorry_Not_a_suitable_array as e:
       raise Sorry_Not_a_suitable_array(
         str(e) + "\nTo override the suitability test define:"
                + " %s.disable_suitability_test=True" % parameter_scope)

@@ -47,7 +47,7 @@ class utils :  # These routines are used by both ccp4_map and mrcfile
       try:
         return crystal.symmetry((a,b,c, al,be,ga),
            self.space_group_number)
-      except Exception,e:
+      except Exception as e:
         from libtbx.utils import Sorry
         if str(e).find(
           "incompatible") and \

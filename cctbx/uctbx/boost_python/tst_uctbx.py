@@ -397,13 +397,13 @@ def exercise_debye_waller_factor():
   dw(h, b_iso=-250, exp_arg_limit=60)
   dw(h, b_iso=-250, truncate_exp_arg=True)
   try: dw(h, b_iso=-250)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "cctbx::adptbx::debye_waller_factor_exp:"
       " arg_limit exceeded (isotropic): arg = 51.8763 arg_limit = 50")
   else: raise Exception_expected
   try: dw(h, b_cart=[-240,-240,-240,0,0,0], exp_arg_limit=40)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "cctbx::adptbx::debye_waller_factor_exp:"
       " arg_limit exceeded (anisotropic): arg = 49.8013 arg_limit = 40")
@@ -472,21 +472,21 @@ def exercise_exceptions():
     return
   try:
     u = uctbx.unit_cell((0,0,0,0,0,0))
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == "Unit cell parameter is zero or negative.",\
       str(e)
   else:
     raise AssertionError, 'exception expected'
   try:
     u = uctbx.unit_cell(metrical_matrix=(0,0,0,0,0,0))
-  except ValueError, e:
+  except ValueError as e:
     assert str(e) == "Corrupt metrical matrix.", str(e)
   else:
     raise AssertionError, 'exception expected'
   u = uctbx.unit_cell((2,3,5,80,100,110))
   try:
     u.two_theta((-3,4,-5), 1.5)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(sin_theta <= 1.0) failure."), \
       str(e)
   else:
@@ -523,7 +523,7 @@ def exercise_fast_minimum_reduction():
   assert not mr.termination_due_to_significant_change_test()
   try:
     uctbx.fast_minimum_reduction(uctbx.unit_cell((5,3,2,50,120,130)), 2, 7)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "cctbx Error: Iteration limit exceeded."
   else:
     raise AssertionError, 'exception expected'
@@ -534,7 +534,7 @@ def exercise_fast_minimum_reduction():
   else:
     try:
       uctbx.fast_minimum_reduction(u)
-    except RuntimeError, e:
+    except RuntimeError as e:
       if ("--Verbose" in sys.argv[1:]):
         print("Expected:", e)
 
@@ -570,7 +570,7 @@ class exercise_is_degenerate(object):
               try:
                 uctbx.fast_minimum_reduction(u)
                 self.n_stable[int(is_degenerate)] += 1
-              except RuntimeError, e:
+              except RuntimeError as e:
                 assert is_degenerate
                 self.n_unstable += 1
               i_iteration += 1

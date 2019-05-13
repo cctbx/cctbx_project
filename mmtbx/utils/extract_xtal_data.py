@@ -259,7 +259,7 @@ class run(object):
             test_flag_value          = params.test_flag_value,
             disable_suitability_test = params.disable_suitability_test,
             parameter_scope          = self.flags_parameter_scope)
-      except reflection_file_utils.Sorry_No_array_of_the_required_type, e:
+      except reflection_file_utils.Sorry_No_array_of_the_required_type as e:
         if(self.parameters.r_free_flags.generate is not None):
           explain_how_to_generate_array_of_r_free_flags(log = self.log,
             flags_parameter_scope = self.flags_parameter_scope)
@@ -289,7 +289,7 @@ class run(object):
            print("Checking symmetry-equivalent R-free flags for consistency:", end=' ', file=self.log)
            try:
              merged = processed.merge_equivalents()
-           except RuntimeError, e:
+           except RuntimeError as e:
              print(file=self.log)
              error_message = str(e)
              expected_error_message = "cctbx Error: merge_equivalents_exact: "

@@ -103,7 +103,7 @@ def exercise():
   def check_expected_error(s):
     cntr = 0
     try: r = mmtbx.map_names(map_name_string = s)
-    except Sorry, e:
+    except Sorry as e:
       assert str(e).count("Wrong map type requested: %s"%s)==1
       cntr += 1
     assert cntr == 1

@@ -189,7 +189,7 @@ def run_c_plus_plus(target_evaluator,
         #---> Insertion starts
         if (not minimizer.run(x, f, g, d, gradient_only,line_search)): break
         #<--- Insertion ends
-  except RuntimeError, e:
+  except RuntimeError as e:
     minimizer.error = str(e)
     if (log is not None):
       print("lbfgs minimizer exception:", str(e), file=log)

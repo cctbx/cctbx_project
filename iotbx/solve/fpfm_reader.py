@@ -34,7 +34,7 @@ class reader(object):
       try:
         h = [int(raw_line[1+i*4:1+i*4+4]) for i in xrange(3)]
         d = [float(raw_line[23+i*10:23+i*10+10]) for i in xrange(4)]
-      except Exception, e:
+      except Exception as e:
         raise RuntimeError("Line %d: %s" % (self.n_lines, str(e)))
       for i in xrange(2):
         assert (d[2*i] < 0) == (d[2*i+1] < 0), \

@@ -490,7 +490,7 @@ if (__name__ == "__main__"):
           matrix = cns_theta1_theta2_theta3(params = (a1, a2, a3)).matrix
           try:
             check_conversion(conv, matrix)
-          except RuntimeError, e:
+          except RuntimeError as e:
             print(e)
             print()
             return

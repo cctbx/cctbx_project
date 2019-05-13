@@ -113,7 +113,7 @@ class TextCtrlValidator(wx.PyValidator):
       return True
     except NotImplementedError :
       raise
-    except Exception, e :
+    except Exception as e :
       ctrl_name = str(ctrl.GetName())
       msg = "Inappropriate value given for \"%s\": %s" %(ctrl_name,str(e))
       if (type(e).__name__ == "UnicodeEncodeError"):

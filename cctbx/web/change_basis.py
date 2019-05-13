@@ -30,9 +30,9 @@ def rt_from_string(string, default_r_identity=False, r_den=12**2, t_den=12**3):
   try:
     cb_op = sgtbx.change_of_basis_op(
       symbol=s, stop_chars="", r_den=r_den, t_den=t_den)
-  except ValueError, e:
+  except ValueError as e:
     pass
-  except RuntimeError, e :
+  except RuntimeError as e :
     pass
   else:
     return cb_op.c_inv().as_rational()

@@ -153,7 +153,7 @@ def exercise_shake_sites_in_place(structure):
         shaken.shake_sites_in_place(
           rms_difference=target_difference,
           selection=selection)
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (selection is not None):
           if (selection.count(True) == 0):
             assert str(e) == "No scatterers selected."

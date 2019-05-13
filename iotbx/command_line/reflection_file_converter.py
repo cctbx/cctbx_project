@@ -8,7 +8,7 @@ import sys
 def run():
   try:
     reflection_file_converter.run(args=sys.argv[1:])
-  except RuntimeError, e:
+  except RuntimeError as e:
     print(e)
 
 if (__name__ == "__main__"):

@@ -97,7 +97,7 @@ def run(args, out=sys.stdout):
       test_flag_value = None,
       disable_suitability_test = False,
       parameter_scope = "french_wilson.r_free_flags")
-  except Sorry, e :
+  except Sorry as e :
     r_free_flags = None
   if (i_obs is None):
     raise Sorry("Couldn't find intensities!")

@@ -2592,7 +2592,7 @@ def get_b_iso(miller_array,d_min=None,return_aniso_scale_and_b=False,
     aniso_scale_and_b=absolute_scaling.ml_aniso_absolute_scaling(
       miller_array=res_cut_array, n_residues=200, n_bases=0, ignore_errors=True)
     b_cart=aniso_scale_and_b.b_cart
-  except Exception,e:
+  except Exception as e:
     b_cart=[0,0,0]
     aniso_scale_and_b=None
   b_aniso_mean=0.
@@ -4052,7 +4052,7 @@ def get_mask_around_molecule(map_data=None,
       wang_radius=wang_radius,
       map_as_double=map_data,
       out=out)
-  except Exception,e:
+  except Exception as e:
     print("No mask obtained...", file=out)
     return None,None
 
@@ -4635,7 +4635,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     print("Checking to make sure we can use adjusted_sa as target...", end=' ', file=out)
     try:
       from phenix.autosol.map_to_model import iterated_solvent_fraction
-    except Exception, e:
+    except Exception as e:
       raise Sorry("Please either set box_in_auto_sharpen=False and "+
        "\ndensity_select_in_auto_sharpen=False or \n"+\
       "set residual_target=kurtosis and sharpening_target=kurtosis")
@@ -5246,7 +5246,7 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
       try: # see if we can read biomtr records
         pdb_inp=iotbx.pdb.input(file_name=file_name)
         ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=out)
-      except Exception,e: # try as regular ncs object
+      except Exception as e: # try as regular ncs object
         ncs_object.read_ncs(file_name=file_name,log=out)
       #ncs_object.display_all(log=out)
     ncs_object.select_first_ncs_group()
@@ -8268,7 +8268,7 @@ def get_overall_mask(
   try:
     temp = complete_set.structure_factors_from_map(
       flex.pow2(map_data-map_data.as_1d().min_max_mean().mean))
-  except Exception,e:
+  except Exception as e:
     print(e, file=out)
     raise Sorry("The sampling of the map appears to be too low for a "+
       "\nresolution of %s. Try using a larger value for resolution" %(
@@ -8568,7 +8568,7 @@ def get_iterated_solvent_fraction(map=None,
         mask_padding_fraction=mask_padding_fraction,
         fraction_of_max_mask_threshold=fraction_of_max_mask_threshold,
         mask_resolution=mask_resolution)
-  except Exception,e:
+  except Exception as e:
     # catch case where map was not on proper grid
     if str(e).find("sym equiv of a grid point must be a grid point")>-1:
       print("\nSpace group:%s \n Unit cell: %s \n Gridding: %s \nError message: %s" %(

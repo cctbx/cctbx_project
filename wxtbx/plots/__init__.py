@@ -45,7 +45,7 @@ class plot_container(wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin):
       import matplotlib.cm
       import matplotlib.figure
       import matplotlib.font_manager
-    except ImportError, e :
+    except ImportError as e :
       print("")
       print("Error loading matplotlib module:")
       print(e)

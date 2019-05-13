@@ -294,7 +294,7 @@ def refinery(fmodels, number_of_iterations, iselection, parameter):
       fmodels                  = fmodels,
       lbfgs_termination_params = lbfgs_termination_params,
       collect_monitor          = False)
-  except Exception, e:
+  except Exception as e:
     print("ERROR: Refinement failed... ")
     print(str(e))
     print("... carry on")

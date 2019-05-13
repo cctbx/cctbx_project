@@ -371,7 +371,7 @@ class determine_data_and_flags(object):
             test_flag_value          = params.test_flag_value,
             disable_suitability_test = params.disable_suitability_test,
             parameter_scope          = self.flags_parameter_scope)
-      except reflection_file_utils.Sorry_No_array_of_the_required_type, e:
+      except reflection_file_utils.Sorry_No_array_of_the_required_type as e:
         if(self.parameters.r_free_flags.generate is not None):
           explain_how_to_generate_array_of_r_free_flags(log = self.log,
             flags_parameter_scope = self.flags_parameter_scope)
@@ -401,7 +401,7 @@ class determine_data_and_flags(object):
            print("Checking symmetry-equivalent R-free flags for consistency:", end=' ', file=self.log)
            try:
              merged = processed.merge_equivalents()
-           except RuntimeError, e:
+           except RuntimeError as e:
              print(file=self.log)
              error_message = str(e)
              expected_error_message = "cctbx Error: merge_equivalents_exact: "
@@ -484,7 +484,7 @@ class determine_data_and_flags(object):
             sigma_iobs_rejection_criterion=\
               self.parameters.sigma_iobs_rejection_criterion,
             log=self.log)
-        except Exception, e:
+        except Exception as e:
           print(str(e), file=self.log)
           print("Using alternative Iobs->Fobs conversion.", file=self.log)
           f_obs_fw = f_obs.f_sq_as_f()
@@ -1043,7 +1043,7 @@ class process_pdb_file_srv(object):
                                   lines       = flex.std_string(raw_records))
         if(self.crystal_symmetry is None):
           self.crystal_symmetry = pdb_inp.crystal_symmetry()
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry("PDB format error:\n%s" % str(e))
     if pdb_inp is not None and pdb_inp.atoms().size() == 0:
       msg = ["No atomic coordinates found in PDB files:"]
@@ -1390,7 +1390,7 @@ def setup_scattering_dictionaries(scattering_table,
     try :
       neutron_scattering_dict = \
         xray_structure.switch_to_neutron_scattering_dictionary()
-    except ValueError, e :
+    except ValueError as e :
       raise Sorry("Error setting up neutron scattering dictionary: %s"%str(e))
     if(log is not None):
       print_statistics.make_sub_header(
@@ -1593,7 +1593,7 @@ def pdb_inp_from_multiple_files(pdb_files, log):
   try:
     pdb_inp = iotbx.pdb.input(source_info = None,
                               lines       = flex.std_string(raw_records))
-  except ValueError, e :
+  except ValueError as e :
     raise Sorry("Model format (PDB or mmCIF) error:\n%s" % str(e))
   return pdb_inp
 
@@ -1688,7 +1688,7 @@ class process_command_line_args(object):
       if(master_params is not None and is_parameter):
         try:
           params = parameter_interpreter.process(arg = arg)
-        except Sorry, e:
+        except Sorry as e:
           if(not os.path.isfile(arg)):
             if("=" in arg): raise
             raise Sorry("File not found: %s" % show_string(arg))
@@ -1807,7 +1807,7 @@ class guess_observation_type(object):
       if(dtype=="N"):
         try:
           xrs.switch_to_neutron_scattering_dictionary()
-        except Exception, e:
+        except Exception as e:
           err = str(e)
       if(err is None):
         f_calc = f_obs.structure_factors_from_scatterers(

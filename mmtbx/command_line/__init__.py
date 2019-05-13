@@ -487,7 +487,7 @@ class load_model_and_data(object):
     try:
       self.pdb_inp = iotbx.pdb.input(source_info = None,
                                 lines       = flex.std_string(pdb_raw_records))
-    except ValueError, e :
+    except ValueError as e :
       raise Sorry("Model format (PDB or mmCIF) error:\n%s" % str(e))
 
     if (remove_unknown_scatterers):

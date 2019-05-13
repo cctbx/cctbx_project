@@ -68,7 +68,7 @@ def is_pdb_mmcif_file(file_name):
     cif_block = cif_model.values()[0]
     if "_atom_site" in cif_block:
       return True
-  except Exception, e:
+  except Exception as e:
     return False
 
 def ent_path_local_mirror(pdb_id, environ_key="PDB_MIRROR_PDB"):
@@ -681,7 +681,7 @@ class pdb_input_from_any(object):
           lines=lines,
           pdb_id=pdb_id,
           raise_sorry_if_format_error=raise_sorry_if_format_error)
-      except Exception, e:
+      except Exception as e:
         # store the first error encountered and re-raise later if can't
         # interpret as any file type
         if exc_info is None: exc_info = sys.exc_info()
@@ -733,7 +733,7 @@ def pdb_input(
       return ext.input(
         source_info="file " + str(file_name), # XXX unicode hack - dangerous
         lines=flex.split_lines(smart_open.for_reading(file_name).read()))
-    except ValueError, e :
+    except ValueError as e :
       if (raise_sorry_if_format_error):
         raise Sorry("Format error in %s:\n%s" % (str(file_name), str(e)))
       else :
@@ -745,7 +745,7 @@ def pdb_input(
     lines = flex.std_string(lines)
   try :
     return ext.input(source_info=source_info, lines=lines)
-  except ValueError, e :
+  except ValueError as e :
     if (raise_sorry_if_format_error):
       raise Sorry("Format error:\n%s" % str(e))
     else :
@@ -1063,7 +1063,7 @@ class pdb_input_mixin(object):
           scatterers=loop.scatterers,
           non_unit_occupancy_implies_min_distance_sym_equiv_zero=
             non_unit_occupancy_implies_min_distance_sym_equiv_zero))
-    except ValueError, e :
+    except ValueError as e :
       raise Sorry(str(e))
     return result
 

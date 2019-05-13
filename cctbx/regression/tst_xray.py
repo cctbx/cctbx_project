@@ -83,7 +83,7 @@ def exercise_anomalous_scatterer_group():
   assert approx_equal(group.f_double_prime, 5)
   scatterers[0].fdp = 3
   try: groups[1].extract_from_scatterers_in_place(scatterers=scatterers)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == """\
 Anomalous scatterer group with significantly different f_double_prime:
   Selection: "name S"
@@ -120,7 +120,7 @@ def exercise_structure():
   assert list(xs.by_index_selection([1,])) == [False, True]
   assert list(xs.by_index_selection([0,1])) == [True, True]
   try: sel = xs.by_index_selection([2,])
-  except IndexError, e:
+  except IndexError as e:
     assert str(e) == """\
 Tried to select a scatterer by index with index \
 => of scatterers for this structuture."""
@@ -1121,7 +1121,7 @@ Number of scattering types: 4
     xs1.scattering_type_registry(custom_dict = custom_gaussians)
     xs.concatenate_inplace(other = xs1)
     xs.scattering_type_registry().show()
-  except Exception, e: pass
+  except Exception as e: pass
   assert str(e) == "Cannot concatenate: conflicting scatterers"
   sys.stdout = out
   #
@@ -1390,7 +1390,7 @@ def exercise_discard_scattering_type_registry():
   failed = False
   try:
     fc_oss = xs_os.structure_factors(d_min=1, algorithm="direct").f_calc()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == """scattering_type "S" not in scattering_type_registry."""
     failed = True
   assert failed
