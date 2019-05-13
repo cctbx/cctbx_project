@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import h5py
 import copy
@@ -31,7 +32,7 @@ if __name__=="__main__":
       for jfast in range(388):
         histo1 = histograms[islow*388+jfast,:]
         nphotons = fit_3_gaussian.test_fit(histo1,plot=False)
-        print islow*388+jfast, "of %d, # photons= %d"%(len(histograms),nphotons)
+        print(islow*388+jfast, "of %d, # photons= %d"%(len(histograms),nphotons))
         inelastic[islow,jfast]=nphotons
   else:
     # same thing, multiprocess
@@ -45,7 +46,7 @@ if __name__=="__main__":
       for jfast in range(388):
         histo1 = histograms[islow*388+jfast,:]
         nphotons = fit_3_gaussian.test_fit(histo1,plot=False)
-        print islow*388+jfast, "of %d, # photons= %d"%(len(histograms),nphotons)
+        print(islow*388+jfast, "of %d, # photons= %d"%(len(histograms),nphotons))
         result_val[jfast]=nphotons
       return {islow:result_val}
 
@@ -74,7 +75,7 @@ if __name__=="__main__":
   group = ofile.create_group("mydata")
   group.create_dataset("cspad_photons", data=inelastic)
   ofile.close()
-  print '*** fitted image saved as', filename
+  print('*** fitted image saved as', filename)
 
   if fig:
     plt.figure()

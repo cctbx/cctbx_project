@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 
@@ -101,7 +102,7 @@ def exercise():
 def run(args):
   assert len(args) == 0
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

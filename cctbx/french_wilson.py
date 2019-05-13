@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys, math
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import Sorry
@@ -190,10 +191,10 @@ def f_w_binning(miller_array, max_bins=60, min_bin_size=40, log=None):
         if bin.size() < min_bin_size:
           max_bins = max_bins - 1
           if max_bins == 0:
-            print >> log, "not enough reflections for accurate binning\n"+ \
-                          "** skipping French-Wilson scaling **"
+            print("not enough reflections for accurate binning\n"+ \
+                          "** skipping French-Wilson scaling **", file=log)
             return False
-          print >> log, "bin too small, trying %d bins" % max_bins
+          print("bin too small, trying %d bins" % max_bins, file=log)
           bin_success = False
           break
           #f_w_binning(miller_array, max_bins=new_max_bins, log=log)
@@ -215,7 +216,7 @@ def interpolate(pt_1, pt_2, delta):
 def calculate_mean_intensities(miller_array, log=None):
   if log == None:
     log = sys.stdout
-  print >> log, "** Calculating bin mean intensity values for each intensity **"
+  print("** Calculating bin mean intensity values for each intensity **", file=log)
   bin_mean_intensities = miller_array.mean(use_binning=True).data
   bin_centers = get_bin_centers(miller_array=miller_array)
   d_mean_intensities = dict()
@@ -359,13 +360,13 @@ def french_wilson_scale(
   rejected = []
   make_sub_header("Scaling input intensities via French-Wilson Method",
     out=log)
-  print >> log, "Trying %d bins..." % params.max_bins
+  print("Trying %d bins..." % params.max_bins, file=log)
   if not f_w_binning(miller_array=miller_array,
               max_bins=params.max_bins,
               min_bin_size=params.min_bin_size,
               log=log):
     return None
-  print >> log, "Number of bins = %d" % miller_array.binner().n_bins_used()
+  print("Number of bins = %d" % miller_array.binner().n_bins_used(), file=log)
   new_I = flex.double()
   new_sigma_I = flex.double()
   new_F = flex.double()
@@ -455,12 +456,12 @@ def french_wilson_scale(
 def show_rejected_summary(rejected, log=None):
   if log == None:
     log = sys.stdout
-  print >> log, "** Total # rejected intensities: %d **" % len(rejected)
+  print("** Total # rejected intensities: %d **" % len(rejected), file=log)
   if len(rejected) > 0:
-    print >> log, "** Summary or rejected intensities **"
-    print >> log, "-----------------------------------------------------------------"
-    print >> log, "Miller Index  :  Intensity  :  Sigma  :  Bin Mean Intensity"
+    print("** Summary or rejected intensities **", file=log)
+    print("-----------------------------------------------------------------", file=log)
+    print("Miller Index  :  Intensity  :  Sigma  :  Bin Mean Intensity", file=log)
     for rej in rejected:
-      print >> log, "%s    %.3f      %.3f    %.3f" % \
-                    (str(rej[0]),rej[1],rej[2],rej[3])
-    print >> log, "-----------------------------------------------------------------"
+      print("%s    %.3f      %.3f    %.3f" % \
+                    (str(rej[0]),rej[1],rej[2],rej[3]), file=log)
+    print("-----------------------------------------------------------------", file=log)

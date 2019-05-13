@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.phil
 from libtbx.utils import Sorry
 from math import sqrt
@@ -252,27 +253,27 @@ def _create_hbond_proxy(
     for donor, acceptor in donor_acceptor_pairs:
       # print "  linking:", donor.id_str(), acceptor.id_str()
       if (hbond_counts[donor.i_seq] > 0):
-        print >> log, "      WARNING: donor atom is already bonded, skipping"
-        print >> log, "    %s" % donor_labels.id_str()
+        print("      WARNING: donor atom is already bonded, skipping", file=log)
+        print("    %s" % donor_labels.id_str(), file=log)
         return result, angle_proxies
       elif (hbond_counts[acceptor.i_seq] > 0):
-        print >> log, "      WARNING: acceptor atom is already bonded, skipping"
-        print >> log, "    %s" % acceptor_labels.id_str()
+        print("      WARNING: acceptor atom is already bonded, skipping", file=log)
+        print("    %s" % acceptor_labels.id_str(), file=log)
         return result, angle_proxies
       if (remove_outliers) and (distance_cut > 0):
         dist = donor.distance(acceptor)
         if (dist > distance_cut):
-          print >> log, "      removed outlier: %.3fA  %s --> %s (cutoff:%.3fA)"%(
-              dist, donor.id_str(), acceptor.id_str(), distance_cut)
+          print("      removed outlier: %.3fA  %s --> %s (cutoff:%.3fA)"%(
+              dist, donor.id_str(), acceptor.id_str(), distance_cut), file=log)
           return result, angle_proxies
         if dist > 10:
-          print >> log, "      removed unreasonable: %.3fA  %s --> %s (cutoff:%.3fA)"%(
-              dist, donor.id_str(), acceptor.id_str(), distance_cut)
+          print("      removed unreasonable: %.3fA  %s --> %s (cutoff:%.3fA)"%(
+              dist, donor.id_str(), acceptor.id_str(), distance_cut), file=log)
           return results, angle_proxies
       limit = -1
       if (top_out):
         limit = (distance_cut - distance_ideal)**2 * weight/(sigma**2)
-        print "limit: %.2f" % limit
+        print("limit: %.2f" % limit)
       proxy = geometry_restraints.bond_simple_proxy(
         i_seqs=(donor.i_seq, acceptor.i_seq),
         distance_ideal=distance_ideal,
@@ -294,7 +295,7 @@ def _create_hbond_proxy(
         angle_proxies += ap
     return result, angle_proxies
   else :
-    print >> log, "WARNING: missing atoms!"
+    print("WARNING: missing atoms!", file=log)
     return result, angle_proxies
 
 def create_helix_hydrogen_bond_proxies(
@@ -319,12 +320,12 @@ def create_helix_hydrogen_bond_proxies(
   elif helix_class == "3_10" :
     helix_step = 3
   else :
-    print >> log, "  Don't know bonding for helix class %s." % helix_class
+    print("  Don't know bonding for helix class %s." % helix_class, file=log)
     return generated_proxies, hb_angle_proxies
   try :
     helix_selection = selection_cache.selection(params.selection)
   except Exception, e :
-    print >> log, str(e)
+    print(str(e), file=log)
     return generated_proxies, hb_angle_proxies
   assert (helix_step in [3, 4, 5])
   helix_rgs = _get_residue_groups_from_selection(pdb_hierarchy, helix_selection)
@@ -332,8 +333,8 @@ def create_helix_hydrogen_bond_proxies(
   just_after_pro = False
   while i < len(helix_rgs)-helix_step:
     if helix_rgs[i+helix_step].atom_groups()[0].resname.strip() == "PRO":
-      print >> log, "      Proline residue: %s - end of helix" % \
-        (helix_rgs[i+helix_step].id_str())
+      print("      Proline residue: %s - end of helix" % \
+        (helix_rgs[i+helix_step].id_str()), file=log)
       i += 3
       just_after_pro = True
       continue # XXX is this safe?
@@ -530,17 +531,17 @@ the .pdb file was edited without updating SHEET records.""" \
               i += 2;
               j -= 2;
           else :
-            print >> log, "  WARNING: strand direction not defined!"
-            print >> log, "    previous: %s" % prev_strand
-            print >> log, "    current: %s" % curr_strand.selection
+            print("  WARNING: strand direction not defined!", file=log)
+            print("    previous: %s" % prev_strand, file=log)
+            print("    current: %s" % curr_strand.selection, file=log)
         else :
-          print >> log, "  WARNING: can't find start of bonding for strands!"
-          print >> log, "    previous: %s" % prev_strand
-          print >> log, "    current: %s" % curr_strand.selection
+          print("  WARNING: can't find start of bonding for strands!", file=log)
+          print("    previous: %s" % prev_strand, file=log)
+          print("    current: %s" % curr_strand.selection, file=log)
       else :
-        print >> log, "  WARNING: can't find one or more strands!"
-        print >> log, "    previous: %s" % prev_strand
-        print >> log, "    current: %s" % curr_strand.selection
+        print("  WARNING: can't find one or more strands!", file=log)
+        print("    previous: %s" % prev_strand, file=log)
+        print("    current: %s" % curr_strand.selection, file=log)
     k += 1
     prev_strand = curr_strand.selection
     prev_selection = curr_selection
@@ -680,11 +681,11 @@ class find_helices_simple(object):
 
   def show(self, out=sys.stdout):
     if (len(self._helices) == 0):
-      print >> out, "No recognizable helices."
+      print("No recognizable helices.", file=out)
     else :
-      print >> out, "%d helix-like regions found:" % len(self._helices)
+      print("%d helix-like regions found:" % len(self._helices), file=out)
     for selection in self.build_selections():
-      print >> out, "  %s" % selection
+      print("  %s" % selection, file=out)
 
 def is_approximately_helical(phi, psi):
   if (-120 < phi < -20) and (-80 < psi < -10):

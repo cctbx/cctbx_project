@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
@@ -32,31 +33,31 @@ def demo():
   asu_a = miller_set_a.map_to_asu()
   asu_b = miller_set_b.map_to_asu()
   for h in asu_a.indices():
-    print "asu a:", h
-  print
+    print("asu a:", h)
+  print()
   for h in asu_b.indices():
-    print "asu b:", h
-  print
+    print("asu b:", h)
+  print()
   #
   # obtain the common index sets
   #
   common_a, common_b = asu_a.common_sets(asu_b)
   for h in common_a.indices():
-    print "common a:", h
-  print
+    print("common a:", h)
+  print()
   for h in common_b.indices():
-    print "common b:", h
-  print
+    print("common b:", h)
+  print()
   #
   # obtain the "lone" index sets
   #
   lone_set_a, lone_set_b = asu_a.lone_sets(asu_b)
   for h in lone_set_a.indices():
-    print "lone a:", h
-  print
+    print("lone a:", h)
+  print()
   for h in lone_set_b.indices():
-    print "lone b:", h
-  print
+    print("lone b:", h)
+  print()
   #
   # now the same again, but with data (i.e. miller.array instances)
   #
@@ -70,26 +71,26 @@ def demo():
   asu_a = miller_array_a.map_to_asu()
   asu_b = miller_array_b.map_to_asu()
   asu_a.show_array(prefix="asu a: ")
-  print
+  print()
   asu_b.show_array(prefix="asu b: ")
-  print
+  print()
   #
   # obtain the common index sets
   #
   common_a, common_b = asu_a.common_sets(asu_b)
   common_a.show_array(prefix="common a: ")
-  print
+  print()
   common_b.show_array(prefix="common b: ")
-  print
+  print()
   #
   # obtain the "lone" index sets
   #
   lone_a, lone_b = asu_a.lone_sets(asu_b)
   lone_a.show_array(prefix="lone a: ")
-  print
+  print()
   lone_b.show_array(prefix="lone b: ")
-  print
-  print "OK"
+  print()
+  print("OK")
 
 if (__name__ == "__main__"):
   demo()

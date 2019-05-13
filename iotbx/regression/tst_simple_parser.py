@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import simple_parser
 from libtbx.phil import tokenizer
 import sys
@@ -33,12 +34,12 @@ def exercise_basic():
   verbose = "--verbose" in sys.argv[1:]
   for input_string,expected_result in tests:
     infix = tokenizer.word_iterator(input_string=input_string)
-    if (verbose): print input_string
+    if (verbose): print(input_string)
     postfix = [word
       for word,word_iterator in simple_parser.infix_as_postfix(infix)]
-    if (verbose): print [word.value for word in postfix]
+    if (verbose): print([word.value for word in postfix])
     assert [word.value for word in postfix] == expected_result
-    if (verbose): print
+    if (verbose): print()
 
 def rewrite_parser(
       word_iterator,
@@ -149,17 +150,17 @@ def exercise_nested():
   verbose = "--verbose" in sys.argv[1:]
   for input_string,expected_result in tests:
     show = verbose or expected_result is None
-    if (show): print input_string
+    if (show): print(input_string)
     result = rewrite(input_string=input_string)
-    if (show): print result
+    if (show): print(result)
     if (expected_result is not None):
       assert result == expected_result
-    if (show): print
+    if (show): print()
 
 def exercise():
   exercise_basic()
   exercise_nested()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

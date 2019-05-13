@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import math
 from libtbx.table_utils import Spreadsheet
@@ -204,8 +205,8 @@ MeanIsigI: mean I over sig(I) for spots within the shell
 MnEccen: mean eccentricity for spots within the shell; 0=circle, 1=parabola
 MnSkew: mean skewness for spots within the shell; skew:= (maximum-center_of_gravity)/semimajor_axis
 """; not_implemented="[PxlGain: estimate of the average gain for scanbox windows in the shell]"
-    if self.original_binning: print legend
-    print message+":"
+    if self.original_binning: print(legend)
+    print(message+":")
     to_print = [max([self.Population[i] for i in range(j,self.S_table_rows)])>0
                 and self.PxlBkgrd[j] != None
            for j in range(self.S_table_rows)]

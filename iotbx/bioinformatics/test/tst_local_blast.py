@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.bioinformatics import local_blast
 
 #Note:
@@ -16,4 +17,4 @@ if __name__=="__main__":
   xmldata="\n".join(a)
   hit="1B0U"
   assert hit in xmldata,"XML output not as expected. Pdbaa test failed."
-  print "OK"
+  print("OK")

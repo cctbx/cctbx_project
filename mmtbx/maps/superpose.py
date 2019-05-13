@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import mmtbx.maps.utils
 import iotbx.pdb
 from iotbx import crystal_symmetry_from_any
@@ -120,7 +121,7 @@ def transform_map_by_lsq_fit(fft_map,
       n_real   = fake_map.n_real())
   if file_name is not None :
     if format == "xplor" :
-      print >> log, "    saving XPLOR map to %s" % file_name
+      print("    saving XPLOR map to %s" % file_name, file=log)
       mmtbx.maps.utils.write_xplor_map(
         sites_cart=xray_structure.sites_cart(),
         unit_cell=fake_symm.unit_cell(),
@@ -130,7 +131,7 @@ def transform_map_by_lsq_fit(fft_map,
         buffer=buffer)
     else :
       import iotbx.map_tools
-      print >> log, "    saving CCP4 map to %s" % file_name
+      print("    saving CCP4 map to %s" % file_name, file=log)
       iotbx.map_tools.write_ccp4_map(
         sites_cart=xray_structure.sites_cart(),
         unit_cell=fake_symm.unit_cell(),
@@ -228,7 +229,7 @@ def exercise():
   #  e2 = map_data_rt.eight_point_interpolation(sf2)
   #  print abs(e1-e2)
   #  assert abs(e1-e2) < 1.
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__" :
   exercise()

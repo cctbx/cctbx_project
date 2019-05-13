@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from scitbx import lbfgs
 from libtbx.str_utils import make_sub_header
@@ -134,8 +135,8 @@ def find_anomalous_scatterer_groups(
     try :
       atomic_number = sasaki.table(element).atomic_number()
     except RuntimeError, e :
-      print >> out, "Error for %s" % pdb_atoms[i_seq].id_str()
-      print >> out, "  " + str(e)
+      print("Error for %s" % pdb_atoms[i_seq].id_str(), file=out)
+      print("  " + str(e), file=out)
       continue
     if (atomic_number >= 15):
       if (group_same_element):
@@ -143,8 +144,8 @@ def find_anomalous_scatterer_groups(
           element_i_seqs[element] = flex.size_t()
         element_i_seqs[element].append(i_seq)
       else :
-        print >> out, "  creating anomalous group for %s" % \
-          pdb_atoms[i_seq].id_str()
+        print("  creating anomalous group for %s" % \
+          pdb_atoms[i_seq].id_str(), file=out)
         asg = xray.anomalous_scatterer_group(
           iselection=flex.size_t([i_seq]),
           f_prime=0,
@@ -155,9 +156,8 @@ def find_anomalous_scatterer_groups(
   if (group_same_element):
     for elem in sorted(element_i_seqs.keys()):
       iselection = element_i_seqs[elem]
-      print >> out, \
-        "  creating anomalous group for element %s with %d atoms" % \
-        (elem, len(iselection))
+      print("  creating anomalous group for element %s with %d atoms" % \
+        (elem, len(iselection)), file=out)
       asg = xray.anomalous_scatterer_group(
         iselection=iselection,
         f_prime=0,
@@ -222,12 +222,12 @@ def refine_anomalous_substructure(
     n_cycle += 1
     n_new_groups = 0
     t_start_cycle = time.time()
-    print >> out, "Cycle %d" % n_cycle
+    print("Cycle %d" % n_cycle, file=out)
     anom_map = fmodel.map_coefficients(map_type=map_type).fft_map(
       resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
     map_min = abs(flex.min(anom_map.as_1d()))
     map_max = flex.max(anom_map.as_1d())
-    print >> out, "  map range: -%.2f sigma to %.2f sigma" % (map_min, map_max)
+    print("  map range: -%.2f sigma to %.2f sigma" % (map_min, map_max), file=out)
     reset_u_iso_selection = flex.size_t()
     for i_seq, atom in enumerate(pdb_atoms):
       resname = atom.parent().resname
@@ -244,10 +244,10 @@ def refine_anomalous_substructure(
           ((scatterer.fdp != 0) and use_all_anomalous)):
         if (verbose):
           if (n_new_groups == 0):
-            print >> out, ""
-            print >> out, "  new anomalous scatterers:"
-          print >> out, "    %-34s  map height: %6.2f sigma" % (atom.id_str(),
-            anom_map_value)
+            print("", file=out)
+            print("  new anomalous scatterers:", file=out)
+          print("    %-34s  map height: %6.2f sigma" % (atom.id_str(),
+            anom_map_value), file=out)
         anomalous_iselection.append(i_seq)
         selection_string = get_single_atom_selection_string(atom)
         group = xray.anomalous_scatterer_group(
@@ -263,20 +263,20 @@ def refine_anomalous_substructure(
           if (water_u_iso < u_iso_mean):
             reset_u_iso_selection.append(i_seq)
     if (n_new_groups == 0):
-      print >> out, ""
-      print >> out, "No new groups - anomalous scatterer search terminated."
+      print("", file=out)
+      print("No new groups - anomalous scatterer search terminated.", file=out)
       break
     elif (not verbose):
-      print >> out, "  %d new groups" % n_new_groups
+      print("  %d new groups" % n_new_groups, file=out)
     for i_seq in anomalous_iselection :
       sc = scatterers[i_seq]
       sc.fp = 0
       sc.fdp = 0
     if (verbose):
-      print >> out, ""
-      print >> out, "Anomalous refinement:"
+      print("", file=out)
+      print("Anomalous refinement:", file=out)
       fmodel.info().show_targets(text="before minimization", out=out)
-      print >> out, ""
+      print("", file=out)
     u_iso = fmodel.xray_structure.extract_u_iso_or_u_equiv()
     u_iso.set_selected(reset_u_iso_selection, u_iso_mean)
     fmodel.xray_structure.set_u_iso(values=u_iso)
@@ -284,17 +284,17 @@ def refine_anomalous_substructure(
     minimizer(fmodel=fmodel, groups=anomalous_groups)
     if (verbose):
       fmodel.info().show_targets(text="after minimization", out=out)
-      print >> out, ""
-      print >> out, "  Refined sites:"
+      print("", file=out)
+      print("  Refined sites:", file=out)
       for i_seq, group in zip(anomalous_iselection, anomalous_groups):
-        print >> out, "    %-34s  f' = %6.3f  f'' = %6.3f" % (
-          pdb_atoms[i_seq].id_str(), group.f_prime, group.f_double_prime)
+        print("    %-34s  f' = %6.3f  f'' = %6.3f" % (
+          pdb_atoms[i_seq].id_str(), group.f_prime, group.f_double_prime), file=out)
     t_end_cycle = time.time()
-    print >> out, ""
+    print("", file=out)
     if (verbose):
-      print >> out, "  time for this cycle: %.1fs" % (t_end_cycle-t_start_cycle)
+      print("  time for this cycle: %.1fs" % (t_end_cycle-t_start_cycle), file=out)
   fmodel.update(target_name="ml")
-  print >> out, "%d anomalous scatterer groups refined" % len(anomalous_groups)
+  print("%d anomalous scatterer groups refined" % len(anomalous_groups), file=out)
   t_end = time.time()
-  print >> out, "overall time: %.1fs" % (t_end - t_start)
+  print("overall time: %.1fs" % (t_end - t_start), file=out)
   return anomalous_groups

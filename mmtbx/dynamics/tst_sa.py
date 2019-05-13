@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 import iotbx.pdb
 from libtbx import group_args
@@ -175,7 +176,7 @@ def exercise_1():
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
     xray_structure = xrs_poor)
-  print "start r_work:", fmodel.r_work()
+  print("start r_work:", fmodel.r_work())
   #
   params = sa.master_params().extract()
   params.start_temperature=3000
@@ -193,11 +194,11 @@ def exercise_1():
     verbose            = True)
   #
   r = fmodel.r_work()
-  print "final r_work:", r
+  print("final r_work:", r)
   assert r < 0.03, r
   dist = flex.mean(flex.sqrt((pi.xrs.sites_cart() -
           fmodel.xray_structure.sites_cart()).dot()))
-  print "Distance(refined, answer): %6.4f"%dist
+  print("Distance(refined, answer): %6.4f"%dist)
   assert dist < 0.25, dist
   if(0):
     pi.ph.adopt_xray_structure(fmodel.xray_structure)
@@ -219,7 +220,7 @@ def exercise_2(d_min = 1.5):
       f_obs          = f_obs,
       r_free_flags   = r_free_flags,
       xray_structure = xrs_poor)
-    print "start r_work:", fmodel.r_work()
+    print("start r_work:", fmodel.r_work())
     #
     f_calc = pi.xrs.structure_factors(d_min = d_min).f_calc()
     fft_map = f_calc.fft_map(resolution_factor=0.25)
@@ -238,7 +239,7 @@ def exercise_2(d_min = 1.5):
       start_trial_weight_value = 1,
       rms_bonds_limit          = 0.02,
       rms_angles_limit         = 2)
-    print refined.weight_final, refined.rms_bonds_final, refined.rms_angles_final
+    print(refined.weight_final, refined.rms_bonds_final, refined.rms_angles_final)
     #
     params = sa.master_params().extract()
     params.start_temperature=5000
@@ -258,14 +259,14 @@ def exercise_2(d_min = 1.5):
       verbose            = True)
     #
     r = fmodel.r_work()
-    print "final r_work:", r
+    print("final r_work:", r)
     if(shake):
       assert r < 0.07, r
     else:
       assert r < 0.07, r
     dist = flex.mean(flex.sqrt((pi.xrs.sites_cart() -
             fmodel.xray_structure.sites_cart()).dot()))
-    print "Distance(refined, answer): %6.4f"%dist
+    print("Distance(refined, answer): %6.4f"%dist)
     if(shake):
       assert dist < 0.35, r
     else:
@@ -305,4 +306,4 @@ if(__name__ == "__main__"):
   exercise_1()
   exercise_2()
   exercise_3()
-  print "Time: %6.2f" % timer.elapsed()
+  print("Time: %6.2f" % timer.elapsed())

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 from cctbx.uctbx import unit_cell
 from rstbx.symmetry.constraints import AGconvert
@@ -103,7 +104,7 @@ if __name__=="__main__":
 
   for case in cases:
       orient,cs,symmetry = case
-      print orient,cs,symmetry.space_group().type().lookup_symbol()
+      print(orient,cs,symmetry.space_group().type().lookup_symbol())
       S = symmetrize_reduce_enlarge(space_group=symmetry.space_group())
       S.set_orientation(orientation=orient,length_unit=1.E-9)
       S.symmetrize()
@@ -119,4 +120,4 @@ if __name__=="__main__":
   reference_types = ["aP","mP","mC","oP","oC","oI","oF","tP","tI","hP","hR","cP","cI","cF"]
   encountered_types.sort(); reference_types.sort()
   assert encountered_types == reference_types
-  print "OK"
+  print("OK")

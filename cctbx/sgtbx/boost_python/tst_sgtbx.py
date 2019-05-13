@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.sgtbx import subgroups
 from cctbx.array_family import flex
 from cctbx import sgtbx
@@ -75,7 +76,7 @@ def exercise_symbols():
     s = sgtbx.space_group_symbols("%s (z, x, y)" % hm)
     assert s.change_of_basis_symbol() == "z,x,y"
     assert s.universal_hermann_mauguin().endswith(" (z,x,y)")
-    print >> o, s.hall()
+    print(s.hall(), file=o)
   assert not show_diff(o.getvalue(), """\
  P 2yb (z,x,y)
  P 31 2 (z+1/3,x,y)
@@ -131,7 +132,7 @@ def exercise_symbols():
     for short in short_symbols_a] == expected_numbers_a
   symbols_cpp = libtbx.env.under_dist("cctbx", "sgtbx/symbols.cpp")
   if (not os.path.isfile(symbols_cpp)):
-    print "Skipping checks based on %s: file not available" % symbols_cpp
+    print("Skipping checks based on %s: file not available" % symbols_cpp)
   else:
     f = iter(open(symbols_cpp))
     for volume,table_name,short_symbols in [
@@ -2449,7 +2450,7 @@ def run():
   exercise_tensor_rank_2_constraints()
   exercise_hashing()
   exercise_fractional_mod()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

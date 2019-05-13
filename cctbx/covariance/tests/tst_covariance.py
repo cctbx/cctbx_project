@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import covariance, crystal, xray
 from libtbx.test_utils import approx_equal, Exception_expected
@@ -59,7 +60,7 @@ def exercise_covariance():
 
 def run():
   exercise_covariance()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

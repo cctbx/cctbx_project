@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.linalg
 import scitbx.linalg.eigensystem
 from scitbx.array_family import flex
@@ -35,7 +36,7 @@ def exercise_householder():
 def run():
   exercise_householder()
   exercise_random_normal_matrix()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

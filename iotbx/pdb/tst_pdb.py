@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import pdb
 import iotbx.pdb.cryst1_interpretation
 import iotbx.pdb.remark_290_interpretation
@@ -484,8 +485,8 @@ def exercise_format_fasta(regression_pdb, coverage=0.1):
       assert is_na == [False, False, True, False]
       looking_for.remove(node)
   if (len(looking_for) != 0):
-    print "WARNING: exercise_format_fasta(): some input files missing:", \
-      looking_for
+    print("WARNING: exercise_format_fasta(): some input files missing:", \
+      looking_for)
 
 def exercise_xray_structure(use_u_aniso, verbose=0):
   structure = random_structure.xray_structure(
@@ -638,8 +639,8 @@ def exercise_header_misc(regression_pdb):
 def dump_pdb(file_name, sites_cart, crystal_symmetry=None):
   f = open(file_name, "w")
   if (crystal_symmetry is not None):
-    print >> f, iotbx.pdb.format_cryst1_record(
-      crystal_symmetry=crystal_symmetry)
+    print(iotbx.pdb.format_cryst1_record(
+      crystal_symmetry=crystal_symmetry), file=f)
   for i,site in enumerate(sites_cart):
     a = iotbx.pdb.hierarchy.atom_with_labels()
     a.serial = i+1
@@ -648,8 +649,8 @@ def dump_pdb(file_name, sites_cart, crystal_symmetry=None):
     a.resseq = 1
     a.xyz = site
     a.occ = 1
-    print >> f, a.format_atom_record_group()
-  print >> f, "END"
+    print(a.format_atom_record_group(), file=f)
+  print("END", file=f)
   f.close()
 
 def write_icosahedron():
@@ -792,7 +793,7 @@ def run():
     relative_path="phenix_regression/pdb",
     test=op.isdir)
   if (regression_pdb is None):
-    print "Skipping some tests: phenix_regression/pdb not available"
+    print("Skipping some tests: phenix_regression/pdb not available")
   else:
     exercise_format_fasta(regression_pdb=regression_pdb)
     exercise_merge_files_and_check_for_overlap(regression_pdb=regression_pdb)
@@ -803,7 +804,7 @@ def run():
   for use_u_aniso in (False, True):
     exercise_xray_structure(use_u_aniso, verbose=verbose)
   write_icosahedron()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

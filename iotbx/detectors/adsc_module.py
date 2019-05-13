@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import copy
 from iotbx.detectors.adsc import ADSCImage
 from scitbx.array_family import flex
@@ -60,11 +61,11 @@ class ADSCModule(ADSCImage):
     object.read()
     nullvalue = vendor_specific_null_value(object)
     ID = image_divider(data = object.linearintdata, nullvalue=nullvalue)
-    print "module slow interval",ID.tile_slow_interval(self.moduleindex).first, ID.tile_slow_interval(self.moduleindex).last
-    print "module fast interval",ID.tile_fast_interval(self.moduleindex).first, ID.tile_fast_interval(self.moduleindex).last
+    print("module slow interval",ID.tile_slow_interval(self.moduleindex).first, ID.tile_slow_interval(self.moduleindex).last)
+    print("module fast interval",ID.tile_fast_interval(self.moduleindex).first, ID.tile_fast_interval(self.moduleindex).last)
     result["SIZE1"] = ID.tile_slow_interval(self.moduleindex).size()
     result["SIZE2"] = ID.tile_fast_interval(self.moduleindex).size()
-    print "size1",result["SIZE1"],"size2",result["SIZE2"]
+    print("size1",result["SIZE1"],"size2",result["SIZE2"])
     return result
 
   def set_beam_center_convention(self,beam_center_convention):
@@ -72,7 +73,7 @@ class ADSCModule(ADSCImage):
     #previously part of the module_parameters function
     #from iotbx.detectors.context.config_detector import beam_center_convention_from_image_object
     #beam_center_convention = beam_center_convention_from_image_object(object)
-    print "CC",beam_center_convention
+    print("CC",beam_center_convention)
     assert self.object.beam_center_reference_frame == "instrument"
     nullvalue = self.object.vendor_specific_null_value
     ID = image_divider(data = self.object.linearintdata, nullvalue=nullvalue)
@@ -81,8 +82,8 @@ class ADSCModule(ADSCImage):
       self.object, ID, self.moduleindex, beam_center_convention)
     self.beam_center_reference_frame = "imageblock"
     self.beam_center_convention = beam_center_convention
-    print "old beam center",self.object.parameters['BEAM_CENTER_X'],self.object.parameters['BEAM_CENTER_Y']
-    print "for module",   self.moduleindex,"beam x,y is", self.parameters['BEAM_CENTER_X'],self.parameters['BEAM_CENTER_Y']
+    print("old beam center",self.object.parameters['BEAM_CENTER_X'],self.object.parameters['BEAM_CENTER_Y'])
+    print("for module",   self.moduleindex,"beam x,y is", self.parameters['BEAM_CENTER_X'],self.parameters['BEAM_CENTER_Y'])
 
 
   def slice_callback_with_high_performance_http_data(self):
@@ -90,7 +91,7 @@ class ADSCModule(ADSCImage):
     linearintdata = flex.int_from_byte_str(BYU)
     provisional_size = linearintdata.size()
     assert provisional_size == self.size1*self.size2
-    print "size assertion OK",provisional_size
+    print("size assertion OK",provisional_size)
     linearintdata.reshape(flex.grid((self.size1,self.size2)))
     del self.object #once the data are copied, close the stream
     return linearintdata
@@ -117,14 +118,14 @@ if __name__=='__main__':
   full_path_to_file = sys.argv[1]
   a = ADSCImage(full_path_to_file)
   a.read()
-  print a
-  print a.parameters
-  print a.rawdata, len(a.rawdata), a.size1*a.size2
+  print(a)
+  print(a.parameters)
+  print(a.rawdata, len(a.rawdata), a.size1*a.size2)
   for dataitem in ['bin', 'filename', 'header', 'headerlines', 'linearintdata', 'parameters', 'vendortype']:
-    print dataitem,
+    print(dataitem, end=' ')
     exec("print a.%s"%dataitem)
-  print ADSC_module_from_object_and_slicenumber(a,sliceidx)
+  print(ADSC_module_from_object_and_slicenumber(a,sliceidx))
 
   P = ADSC_module_from_file_url(url="file://%s?slice=%d"%(full_path_to_file,sliceidx))
-  print "file://%s?slice=%d"%(full_path_to_file,sliceidx)
-  print P
+  print("file://%s?slice=%d"%(full_path_to_file,sliceidx))
+  print(P)

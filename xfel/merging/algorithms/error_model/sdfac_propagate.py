@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from dials.array_family import flex
 import math
@@ -182,11 +183,11 @@ class sdfac_propagate(error_modeler_base):
     sigma_lambda = stats_lambda.unweighted_sample_standard_deviation()
     sigma_deff   = stats_deff.unweighted_standard_error_of_mean()
     sigma_rs     = stats_rs.unweighted_sample_standard_deviation()
-    print >> self.log, "ThetaX %.4f +/- %.4f"    %(r2d(stats_thetax.mean()), r2d(sigma_thetax))
-    print >> self.log, "Thetay %.4f +/- %.4f"    %(r2d(stats_thetay.mean()), r2d(sigma_thetay))
-    print >> self.log, "Wavelength %.4f +/- %.4f"%(    stats_lambda.mean(),      sigma_lambda)
-    print >> self.log, "DEFF %.4f +/- %.4f"      %(    stats_deff.mean(),        sigma_deff)
-    print >> self.log, "RS %.6f +/- %.6f"        %(    stats_rs.mean(),          sigma_rs)
+    print("ThetaX %.4f +/- %.4f"    %(r2d(stats_thetax.mean()), r2d(sigma_thetax)), file=self.log)
+    print("Thetay %.4f +/- %.4f"    %(r2d(stats_thetay.mean()), r2d(sigma_thetay)), file=self.log)
+    print("Wavelength %.4f +/- %.4f"%(    stats_lambda.mean(),      sigma_lambda), file=self.log)
+    print("DEFF %.4f +/- %.4f"      %(    stats_deff.mean(),        sigma_deff), file=self.log)
+    print("RS %.6f +/- %.6f"        %(    stats_rs.mean(),          sigma_rs), file=self.log)
 
     sre = symmetrize_reduce_enlarge(self.scaler.params.target_space_group.group())
     c_gstar_params = None
@@ -202,11 +203,11 @@ class sdfac_propagate(error_modeler_base):
         c_gstar_params[j].append(p[j])
 
     # Compute the error in the unit cell terms from the distribution of unit cell parameters provided
-    print >> self.log, "Free G* parameters"
+    print("Free G* parameters", file=self.log)
     sigma_gstar = flex.double()
     for j in range(len(c_gstar_params)):
       stats  = flex.mean_and_variance(c_gstar_params[j])
-      print >> self.log, "G* %d %.4f *1e-5 +/- %.4f *1e-5"%(j, stats.mean()*1e5, stats.unweighted_sample_standard_deviation()*1e5)
+      print("G* %d %.4f *1e-5 +/- %.4f *1e-5"%(j, stats.mean()*1e5, stats.unweighted_sample_standard_deviation()*1e5), file=self.log)
       sigma_gstar.append(stats.unweighted_sample_standard_deviation())
 
     self.error_terms = error_terms(sigma_thetax  = sigma_thetax,
@@ -312,21 +313,21 @@ class sdfac_propagate(error_modeler_base):
     if self.verbose:
       # Show comparisons to finite differences
       n_cryst_params = sre.constraints.n_independent_params()
-      print "Showing finite differences and derivatives for each parameter (first few reflections only)"
+      print("Showing finite differences and derivatives for each parameter (first few reflections only)")
       for parameter_name, table, derivatives, delta, in zip(['iobs', 'thetax', 'thetay', 'wavelength', 'deff'] + ['c%d'%cp for cp in range(n_cryst_params)],
                                                     [refls, ct, ct, ct, ct] + [ct]*n_cryst_params,
                                                     [dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff] + dI_dgstar,
                                                     [1e-7]*5 + [1e-11]*n_cryst_params):
         finite_g = self.finite_difference(parameter_name, table, delta)
-        print parameter_name
+        print(parameter_name)
         for refl_id in range(min(10, len(refls))):
-          print "%d % 21.1f % 21.1f"%(refl_id, finite_g[refl_id], derivatives[refl_id])
+          print("%d % 21.1f % 21.1f"%(refl_id, finite_g[refl_id], derivatives[refl_id]))
         stats = flex.mean_and_variance(finite_g-derivatives)
         stats_finite = flex.mean_and_variance(finite_g)
         percent = 0 if stats_finite.mean() == 0 else 100*stats.mean()/stats_finite.mean()
-        print "Mean difference between finite and analytical: % 24.4f +/- % 24.4f (%8.3f%% of finite d.)"%( \
-            stats.mean(), stats.unweighted_sample_standard_deviation(), percent)
-        print
+        print("Mean difference between finite and analytical: % 24.4f +/- % 24.4f (%8.3f%% of finite d.)"%( \
+            stats.mean(), stats.unweighted_sample_standard_deviation(), percent))
+        print()
 
     return [dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff] + dI_dgstar
 
@@ -372,10 +373,10 @@ class sdfac_propagate(error_modeler_base):
                   (flex.sqrt(self.error_terms.sigma_lambda**2 * dI_dlambda**2), "Wavelength term"),
                   (flex.sqrt(self.error_terms.sigma_deff**2 * dI_deff**2), "Deff term")] + \
                  [(flex.sqrt(self.error_terms.sigma_gstar[j]**2 * dI_dgstar[j]**2), "Gstar term %d"%j) for j in range(len(self.error_terms.sigma_gstar))]
-      print >> self.log, "%20s % 20s % 20s % 20s"%("Data name","Quartile 1", "Median", "Quartile 3")
+      print("%20s % 20s % 20s % 20s"%("Data name","Quartile 1", "Median", "Quartile 3"), file=self.log)
       for data, title in all_data:
         fns = five_number_summary(data)
-        print >> self.log, "%20s % 20d % 20d % 20d"%(title, fns[1], fns[2], fns[3])
+        print("%20s % 20d % 20d % 20d"%(title, fns[1], fns[2], fns[3]), file=self.log)
 
     if compute_sums:
       # Final terms for cxi.merge

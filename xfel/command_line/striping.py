@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -267,7 +268,7 @@ def allocate_chunks(results_dir,
   refl_ending = "_integrated.pickle" if integrated else "_indexed.pickle"
   expt_ending = "_refined_experiments.json"
   trial = "%03d" % trial_no
-  print "processing trial %s" % trial
+  print("processing trial %s" % trial)
   if rgs_selected:
     rg_condition = lambda rg: rg in rgs_selected
   else:
@@ -309,7 +310,7 @@ def allocate_chunks(results_dir,
         trg = trial + "_" + rg
         contents = sorted(os.listdir(os.path.join(results_dir, run, trg, "out")))
       except OSError:
-        print "skipping run %s missing out directory" % run
+        print("skipping run %s missing out directory" % run)
         continue
       abs_contents = [os.path.join(results_dir, run, trg, "out", c)
                       for c in contents]
@@ -319,7 +320,7 @@ def allocate_chunks(results_dir,
       if extension is None:
         extension = ".mpack" if any(c.endswith(".mpack") for c in contents) else ".pickle"
     if n_img == 0:
-      print "no images found for %s" % batch
+      print("no images found for %s" % batch)
       del batch_contents[batch]
       continue
     n_chunks = int(math.ceil(n_img/max_size))
@@ -341,15 +342,15 @@ def allocate_chunks(results_dir,
         expts_stripe = expts[i::num]
         refls_stripe = refls[i::num]
         batch_chunks[batch].append((expts_stripe, refls_stripe))
-      print "striped %d experiments in %s with %d experiments per stripe and %d stripes" % \
-        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch]))
+      print("striped %d experiments in %s with %d experiments per stripe and %d stripes" % \
+        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch])))
     else:
       for i in range(num):
         expts_chunk = expts[i*size:(i+1)*size]
         refls_chunk = refls[i*size:(i+1)*size]
         batch_chunks[batch].append((expts_chunk, refls_chunk))
-      print "chunked %d experiments in %s with %d experiments per chunk and %d chunks" % \
-        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch]))
+      print("chunked %d experiments in %s with %d experiments per chunk and %d chunks" % \
+        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch])))
   return batch_chunks
 
 def parse_retaining_scope(args, master_scope=master_scope):
@@ -462,9 +463,9 @@ class Script(object):
   def run(self):
     '''Execute the script.'''
     if self.params.striping.run:
-      print "processing runs " + ", ".join(["r%04d" % r for r in self.params.striping.run])
+      print("processing runs " + ", ".join(["r%04d" % r for r in self.params.striping.run]))
     if self.params.striping.rungroup:
-      print "processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup])
+      print("processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup]))
     batch_chunks = allocate_chunks(self.params.striping.results_dir,
                                    self.params.striping.trial,
                                    rgs_selected=["rg%03d" % rg for rg in self.params.striping.rungroup],
@@ -537,7 +538,7 @@ class Script(object):
           submit_path = os.path.join(self.cwd, self.intermediates, "combine_%s.sh" % self.filename)
           submit_command = get_submit_command_chooser(command, submit_path, self.intermediates, self.params.mp,
             log_name=(submit_path.split(".sh")[0] + ".out"))
-          print "executing command: %s" % submit_command
+          print("executing command: %s" % submit_command)
           try:
             easy_run.fully_buffered(submit_command).raise_if_errors().show_stdout()
           except Exception as e:
@@ -549,7 +550,7 @@ if __name__ == "__main__":
   from dials.util import halraiser
   import sys
   if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
-    print helpstring
+    print(helpstring)
     exit()
   if "-c" in sys.argv[1:]:
     expert_level = int(sys.argv[sys.argv.index("-e") + 1]) if "-e" in sys.argv[1:] else 0

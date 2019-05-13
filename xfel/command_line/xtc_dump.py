@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -204,35 +205,35 @@ class Script(object):
       for i in range(len(mytimes)):
         evt = run.event(mytimes[i])
         id = evt.get(psana.EventId)
-        print "Event #",i," has id:",id
+        print("Event #",i," has id:",id)
 
         timestamp = cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)) # human readable format
         if timestamp is None:
-          print "No timestamp, skipping shot"
+          print("No timestamp, skipping shot")
           continue
 
         if evt.get("skip_event") or "skip_event" in [key.key() for key in evt.keys()]:
-          print "Skipping event",timestamp
+          print("Skipping event",timestamp)
           continue
 
         t = timestamp
         s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
-        print "Processing shot", s
+        print("Processing shot", s)
 
         if params.format.file_format == "pickle":
           if evt.get("skip_event"):
-            print "Skipping event",id
+            print("Skipping event",id)
             continue
           # the data needs to have already been processed and put into the event by psana
           data = evt.get(params.format.pickle.out_key)
           if data is None:
-            print "No data"
+            print("No data")
             continue
 
           # set output paths according to the templates
           path = os.path.join(params.output.output_dir, "shot-" + s + ".pickle")
 
-          print "Saving", path
+          print("Saving", path)
           easy_pickle.dump(path, data)
 
         elif params.format.file_format == "cbf":
@@ -250,13 +251,13 @@ class Script(object):
             distance = params.format.cbf.detz_offset
 
           if distance is None:
-            print "No distance, skipping shot"
+            print("No distance, skipping shot")
             continue
 
           if self.params.format.cbf.override_energy is None:
             wavelength = cspad_tbx.evt_wavelength(evt)
             if wavelength is None:
-              print "No wavelength, skipping shot"
+              print("No wavelength, skipping shot")
               continue
           else:
             wavelength = 12398.4187/self.params.format.cbf.override_energy
@@ -267,7 +268,7 @@ class Script(object):
           elif params.format.cbf.mode == "rayonix":
             image = rayonix_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address)
           path = os.path.join(params.output.output_dir, "shot-" + s + ".cbf")
-          print "Saving", path
+          print("Saving", path)
 
           # write the file
           import pycbf

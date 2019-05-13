@@ -1,6 +1,7 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.cluster_isoform
 """ cluster diffraction images by """
+from __future__ import print_function
 __author__ = 'Monarin Uervirojnangkoorn, monarin@gmail.com'
 
 from prime.isoform_cluster.mod_isoform_cluster import isoform_cluster_handler
@@ -15,14 +16,14 @@ def solve_with_mtz_mproc(args):
   frame_no, pickle_filename, main_obs, iparams, miller_array_ref_set = args
   isoch = isoform_cluster_handler()
   cluster_id, txt_out = isoch.calc_cc(frame_no, pickle_filename, main_obs, iparams, miller_array_ref_set)
-  print txt_out
+  print(txt_out)
   return pickle_filename, cluster_id
 
 def calculate_r_mproc(args):
   frame_no, pickle_filename, obs_main, obs_list = args
   isoch = isoform_cluster_handler()
   r_set, main_obs, txt_out = isoch.calc_r(frame_no, pickle_filename, obs_main, obs_list)
-  print txt_out
+  print(txt_out)
   return pickle_filename, r_set, main_obs
 
 def get_obs_mproc(args):
@@ -47,7 +48,7 @@ class isoform_cluster_run_handler(object):
     n_frames = len(frame_files)
     frames = [(i, frame_files[i], iparams) for i in random.sample(range(n_frames), n_sel_frames)]
     #get observations list
-    print "Reading observations"
+    print("Reading observations")
     obs_results = pool_map(
           iterable=frames,
           func=get_obs_mproc,
@@ -66,13 +67,13 @@ class isoform_cluster_run_handler(object):
     #read inputs
     from prime.postrefine.mod_input import process_input, read_pickles
     iparams, txt_out_input = process_input(args)
-    print txt_out_input
+    print(txt_out_input)
     with open(os.path.join(iparams.run_no,self.module_name,'log.txt'), 'w') as f: f.write(txt_out_input)
     #read all integration pickles
     frame_files = read_pickles(iparams.data)
     n_frames = len(frame_files)
     if n_frames == 0:
-      print "No integration pickle found. Exit program."
+      print("No integration pickle found. Exit program.")
       return None, iparams
     #start
     if iparams.isoform_cluster.isorefin:
@@ -96,7 +97,7 @@ class isoform_cluster_run_handler(object):
           sol_pickle[pickle_filename] = cluster_id
         write_out_solutions(iparams, sol_pickle)
         txt_out = "Cluster images with given "+str(len(miller_array_ref_set))+" mtz files completed. Use cluster_0.lst - cluster_k.lst (for k clusters) for merging.\n"
-        print txt_out
+        print(txt_out)
         with open(os.path.join(iparams.run_no,self.module_name,'log.txt'), 'a') as f: f.write(txt_out)
       return
 
@@ -106,7 +107,7 @@ class isoform_cluster_run_handler(object):
     frame_files_sel, obs_list = self.get_observation_set(iparams, frame_files, iparams.isoform_cluster.n_sample_frames)
     frames = [(i, frame_files_sel[i], obs_list[i], obs_list) for i in range(len(frame_files_sel))]
     #calculate r
-    print "Calculating R"
+    print("Calculating R")
     calc_r_results = pool_map(
           iterable=frames,
           func=calculate_r_mproc,
@@ -124,7 +125,7 @@ class isoform_cluster_run_handler(object):
         else:
           r_matrix = np.append(r_matrix, r_set, axis=0)
     #choose groups with best R
-    print "Selecting frames with best R"
+    print("Selecting frames with best R")
     i_mean_r = np.argsort(np.mean(r_matrix, axis=1))[::-1]
     r_matrix_sorted = r_matrix[i_mean_r]
     frame_files_sorted = np.array(frame_files_sel)[i_mean_r]
@@ -135,13 +136,13 @@ class isoform_cluster_run_handler(object):
       if frame_file not in frame_files_sel:
         frame_files_sel.append(frame_file)
         obs_sel.append(obs)
-        print frame_file, np.mean(r_set)
+        print(frame_file, np.mean(r_set))
         if len(frame_files_sel) >= iparams.isoform_cluster.n_selected_frames:
-          print 'Found all %6.0f good frames'%(len(frame_files_sel))
+          print('Found all %6.0f good frames'%(len(frame_files_sel)))
           break
     #Recalculate r for the new selected list
     frames = [(i, frame_files_sel[i], obs_sel[i], obs_sel) for i in range(len(frame_files_sel))]
-    print "Re-calculating R"
+    print("Re-calculating R")
     calc_r_results = pool_map(
           iterable=frames,
           func=calculate_r_mproc,
@@ -158,20 +159,20 @@ class isoform_cluster_run_handler(object):
           r_matrix = r_set
         else:
           r_matrix = np.append(r_matrix, r_set, axis=0)
-    print "Minimizing frame distance"
+    print("Minimizing frame distance")
     isoch = isoform_cluster_handler()
     x_set = isoch.optimize(r_matrix, flag_plot=iparams.flag_plot)
-    print "Clustering results"
+    print("Clustering results")
     kmh = kmeans_handler()
     k = iparams.isoform_cluster.n_clusters
     centroids, labels = kmh.run(x_set, k, flag_plot=iparams.flag_plot)
-    print "Get solution pickle and cluster files list"
+    print("Get solution pickle and cluster files list")
     sol_pickle, cluster_files = isoch.assign_cluster(frame_files_sel, labels, k, \
         os.path.join(iparams.run_no,self.module_name))
     #if more frames found, merge the sample frames to get a reference set
     #that can be used for breaking the ambiguity.
     if n_frames > iparams.isoform_cluster.n_selected_frames:
-      print "Assign cluster_id for the remaining images."
+      print("Assign cluster_id for the remaining images.")
       old_iparams_data = iparams.data[:]
       miller_array_ref_set = []
       from prime.command_line.postrefine import scale_frames, merge_frames
@@ -202,7 +203,7 @@ class isoform_cluster_run_handler(object):
     #write out text output
     txt = "Cluster images completed. Use cluster_0.lst - cluster_k.lst (for k clusters) for merging.\n"
     txt_out += txt
-    print txt
+    print(txt)
     with open(os.path.join(iparams.run_no,self.module_name,'log.txt'), 'a') as f: f.write(txt_out)
 
 if (__name__ == "__main__"):

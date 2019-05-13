@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from libtbx import adopt_init_args
@@ -11,13 +12,13 @@ def grad(x1,x2,x3):
   return flex.double([(x1-2)*2, (x2+5)*2, 4*(x3-500)*3])
 
 x0 = [-100,203,999]
-print "The answer is: [2, -5, 500] "
-print "The start value is:", x0
+print("The answer is: [2, -5, 500] ")
+print("The start value is:", x0)
 
 class lbfgs(object):
 
   def __init__(self, gradient_only):
-    print "scitbx.lbfgs: use gradient_only line search: ", gradient_only
+    print("scitbx.lbfgs: use gradient_only line search: ", gradient_only)
     adopt_init_args(self, locals())
     self.lbfgs_core_params = scitbx.lbfgs.core_parameters(
                                stpmin=1.e-10,

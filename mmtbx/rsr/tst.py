@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import time, random
 from mmtbx_rsr_ext import *
@@ -32,7 +33,7 @@ def exercise_01(grid_step = 0.03, d_min = 1.0, wing_cutoff = 1.e-9):
                 unit_cell = xrs.unit_cell(),
                 scatterers = xrs.scatterers(),
                 wing_cutoff = wing_cutoff)
-  print "time: %10.4f" % (timer.elapsed())
+  print("time: %10.4f" % (timer.elapsed()))
   f_calc_dir = xrs.structure_factors(
     d_min     = d_min,
     algorithm = "direct").f_calc()
@@ -42,7 +43,7 @@ def exercise_01(grid_step = 0.03, d_min = 1.0, wing_cutoff = 1.e-9):
   f1 = flex.abs(f_calc_dir.data())
   f2 = flex.abs(f_calc_den.data())
   r = flex.sum(flex.abs(f1-f2))/flex.sum(f2)
-  print "r-factor:", r
+  print("r-factor:", r)
   assert r < 1.e-4, r
 
 

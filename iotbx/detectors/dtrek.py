@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import re,struct
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
@@ -64,7 +65,7 @@ class DTREKImage(DetectorImageBase):
       pattern = re.compile(mandate[0])
       matches = pattern.findall(self.header)
       for match in matches:
-        if verbose: print match,
+        if verbose: print(match, end=' ')
         if mandate[2]==1:
           self.keys[match] = mandate[1](self.keys[match])
         else:
@@ -73,8 +74,8 @@ class DTREKImage(DetectorImageBase):
           if mandate[2] > 1: assert len(all_values)==mandate[2]
           self.keys[match] = all_values
         if verbose:
-          print self.keys[match],
-          print
+          print(self.keys[match], end=' ')
+          print()
 
     for integer in ["SIZE1","SIZE2","SATURATED_VALUE"]:
       self.keys[integer]=int(self.keys[integer])
@@ -90,7 +91,7 @@ class DTREKImage(DetectorImageBase):
       self.parameters={}
       if verbose:
        for i in self.headerlines:
-        print "%29s"%i[0],self.keys[i[0]]
+        print("%29s"%i[0],self.keys[i[0]])
       # Note that SIZE1 is slow for ADSC/CBF but fast for RAXIS
       # Note that SIZE2 is fast for ADSC/CBF but slow for RAXIS
       self.parameters['SIZE1'] = self.keys["SIZE1"]

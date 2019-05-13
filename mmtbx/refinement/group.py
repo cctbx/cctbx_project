@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import sys
@@ -17,8 +18,8 @@ def show_times(out = None):
   if(out is None): out = sys.stdout
   total = time_group_py
   if(total > 0.01):
-     print >> out, "Group ADP refinement:"
-     print >> out, "  time_group_py                          = %-7.2f" % time_group_py
+     print("Group ADP refinement:", file=out)
+     print("  time_group_py                          = %-7.2f" % time_group_py, file=out)
   return total
 
 class sphere_similarity_restraints(object):
@@ -233,7 +234,7 @@ class manager(object):
     part2 = "; iterations = "
     n = 77 - len(part1 + part2 + mc + it)
     part3 = ")"+"-"*n+"|"
-    print >> out, part1 + mc + part2 + it + part3
+    print(part1 + mc + part2 + it + part3, file=out)
     part1 = "| "
     if(weight is None):
       part4 = " restraints weight = "+str(weight)
@@ -244,8 +245,8 @@ class manager(object):
     tw = " target = "+str("%.6f"%tw)
     n = 78 - len(rw+rf+tw+part4)
     end = " "*n+"|"
-    print >> out, rw+rf+tw+part4+end
-    print >> out, "|" +"-"*77+"|"
+    print(rw+rf+tw+part4+end, file=out)
+    print("|" +"-"*77+"|", file=out)
 
 class group_minimizer(object):
   def __init__(

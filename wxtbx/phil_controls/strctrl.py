@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 from wxtbx import phil_controls
 import wxtbx
@@ -113,12 +114,12 @@ if (__name__ == "__main__"):
     prefix = None
       .type = str""")
   def OnOkay(evt):
-    print """title = %s""" % ctrl1.GetStringValue()
+    print("""title = %s""" % ctrl1.GetStringValue())
     title_phil = libtbx.phil.parse("""title = %s""" % ctrl1.GetStringValue())
     prefix_phil = libtbx.phil.parse("""prefix = %s""" % ctrl2.GetStringValue())
     p = master_phil.fetch(sources=[title_phil, prefix_phil]).extract()
-    print "title recycled via phil:", p.title
-    print "prefix recycled via phil:", p.prefix
+    print("title recycled via phil:", p.title)
+    print("prefix recycled via phil:", p.prefix)
     value1 = ctrl1.GetPhilValue()
     value2 = ctrl2.GetPhilValue()
     assert (p.title == value1), value1

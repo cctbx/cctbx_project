@@ -1,5 +1,6 @@
 """Specialization code for 2011 JCSG pilot experiment; not general use"""
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from six.moves import cPickle as pickle
 
@@ -85,17 +86,17 @@ class api:
     ai.setBase(P)
     ai.setWavelength(float(inputpd['wavelength']))
     ai.setMaxcell(float(inputpd['ref_maxcel']))
-    print "Deltaphi is",float(inputpd['deltaphi'])
+    print("Deltaphi is",float(inputpd['deltaphi']))
     ai.setDeltaphi(float(inputpd['deltaphi'])*math.pi/180.)
     ai.setMosaicity(setting["mosaicity"])
     ai.setOrientation(setting["orient"])
     #why aren't hexagonal constraints applied here???
-    print inputpd["osc_start"]
+    print(inputpd["osc_start"])
 
     image_centers = [(math.pi/180.)*float(x) for x in inputpd["osc_start"].values()]
 
     limiting_resolution = param.distl_highres_limit
-    print "Limiting resolution",limiting_resolution
+    print("Limiting resolution",limiting_resolution)
 
     #predict the spots
     spots = ai.predict_all(image_centers[0],limiting_resolution)
@@ -104,13 +105,13 @@ class api:
 
     hkllist = spots.hkl()
     cell = ai.getOrientation().unit_cell()
-    print cell
+    print(cell)
     for hkl in hkllist:
       #print "%25s %5.2f"%(str(hkl),cell.d(hkl))
       assert cell.d(hkl)>=limiting_resolution
-    print "Number of hkls:",(hkllist).size(),
-    print "all inside the %4.2f Angstrom limiting sphere."%limiting_resolution
-    print "The unit cell is",cell
+    print("Number of hkls:",(hkllist).size(), end=' ')
+    print("all inside the %4.2f Angstrom limiting sphere."%limiting_resolution)
+    print("The unit cell is",cell)
     self.solution_setting_ai = ai
     self.solution_pd = inputpd
     self.image_centers = image_centers
@@ -150,16 +151,16 @@ class IntegrationMetaProcedure(base_class):
     self.frame_numbers.sort()
 
     self.image_centers = inputs.image_centers
-    print "IMAGE CENTERS",self.image_centers
+    print("IMAGE CENTERS",self.image_centers)
 
     # initial resolution from DISTL
     resolution_est = float(self.inputpd['resolution_inspection'])
-    print "initial resolution from DISTL",resolution_est
+    print("initial resolution from DISTL",resolution_est)
 
     # resolution limit of the strong spots used for indexing
     resolution_str = self.indexing_ai.high().reciprocal_spacing
     resolution = max(resolution_est,resolution_str)
-    print "resolution limit of the strong spots used for indexing",resolution
+    print("resolution limit of the strong spots used for indexing",resolution)
     self.limiting_resolution = resolution
 
     #print "resolution: %.2f %.2f"%(resolution_est,resolution_str)

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import os, time
 import libtbx.load_env
@@ -127,7 +128,7 @@ class initialize(initialize_base):
       query = "SHOW TABLES LIKE '%s_rungroup_run'"%(self.params.experiment_tag)
       cursor.execute(query)
       if cursor.rowcount == 0:
-        print "Upgrading to version 4 of mysql database schema"
+        print("Upgrading to version 4 of mysql database schema")
         query = """
         CREATE TABLE IF NOT EXISTS `%s`.`%s_rungroup_run` (
           `rungroup_id` INT NOT NULL,
@@ -228,21 +229,21 @@ class db_application(object):
         if self.params.db.verbose:
           et = time() - st
           if et > 1:
-            print 'Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), query[:min(len(query),145)]
+            print('Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), query[:min(len(query),145)])
         return cursor
       except OperationalError as e:
         if "Can't connect to MySQL server" not in str(e):
-          print query
+          print(query)
           raise e
         retry_count += 1
-        print "Couldn't connect to MYSQL, retry", retry_count
+        print("Couldn't connect to MYSQL, retry", retry_count)
         time.sleep(sleep_time)
         sleep_time *= 2
       except Exception as e:
-        print "Couldn't execute MYSQL query.  Query:"
-        print query
-        print "Exception:"
-        print str(e)
+        print("Couldn't execute MYSQL query.  Query:")
+        print(query)
+        print("Exception:")
+        print(str(e))
         raise e
     raise Sorry("Couldn't execute MYSQL query. Too many reconnects. Query: %s"%query)
 
@@ -258,7 +259,7 @@ class xfel_db_application(db_application):
 
     if verify_tables and not self.verify_tables():
       self.create_tables()
-      print 'Creating experiment tables...'
+      print('Creating experiment tables...')
       if not self.verify_tables():
         raise Sorry("Couldn't create experiment tables")
 
@@ -299,7 +300,7 @@ class xfel_db_application(db_application):
         isoforms = trial_params.indexing.stills.isoforms
       if len(isoforms) > 0:
         for isoform in isoforms:
-          print "Creating isoform", isoform.name
+          print("Creating isoform", isoform.name)
           db_isoform = Isoform(self,
                                name = isoform.name,
                                trial_id = trial.id)
@@ -322,7 +323,7 @@ class xfel_db_application(db_application):
       else:
         if trial_params.indexing.known_symmetry.unit_cell is not None and \
             trial_params.indexing.known_symmetry.space_group is not None:
-          print "Creating target cell"
+          print("Creating target cell")
           unit_cell = trial_params.indexing.known_symmetry.unit_cell
           symbol = str(trial_params.indexing.known_symmetry.space_group)
           a, b, c, alpha, beta, gamma = unit_cell.parameters()
@@ -715,7 +716,7 @@ class standalone_run_finder(object):
             runs.append((foldername, os.path.join(path, self.params.facility.standalone.template)))
     elif self.params.facility.standalone.monitor_for == 'files':
       if not self.params.facility.standalone.composite_files:
-        print "Warning, monitoring a single folder for single image files is inefficient"
+        print("Warning, monitoring a single folder for single image files is inefficient")
       path = self.params.facility.standalone.data_dir
       for filepath in sorted(glob.glob(os.path.join(path, self.params.facility.standalone.template))):
         filename = os.path.basename(filepath)
@@ -743,7 +744,7 @@ class cheetah_run_finder(standalone_run_finder):
         if len(status_lines) != 1: continue
         l = status_lines[0].strip()
         status = l.split(',')[-1].split('=')[-1]
-        print name, status
+        print(name, status)
         if status == 'Finished':
           good_runs.append((name, path))
           self.known_runs.append(name)

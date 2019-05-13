@@ -25,6 +25,7 @@ Other open issues:
 """
 
 from __future__ import division
+from __future__ import print_function
 
 import copy
 import math
@@ -548,7 +549,7 @@ def _find_weight(p0, p1, p2, l, s):
   if r.length() > 0:
     R = r.axis_and_angle_as_r3_rotation_matrix(angle=math.acos(n(2, 0)))
   else:
-    print "TOOK funny branch"
+    print("TOOK funny branch")
     R = matrix.identity(3)
 
   # Rotate, and make p1 the origin.  This is now a 2D-problem.
@@ -894,11 +895,11 @@ def _fit_angles(vertices):
     a1 = (vertices[1] - vertices[0]).angle(vertices[3] - vertices[2], deg=True)
     a2 = (vertices[3] - vertices[0]).angle(vertices[2] - vertices[1], deg=True)
     if a1 < ANGLE_THRESHOLD:
-      print "IN FIX 0a"
+      print("IN FIX 0a")
       return (vertices, 0)
 
     elif a2 < ANGLE_THRESHOLD:
-      print "IN FIX 0b"
+      print("IN FIX 0b")
       return (vertices, 0)
 
   elif good_angles.count(True) == 1:
@@ -1065,7 +1066,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
           avg += c
       return avg / len(coords)
 
-    print "Showing un-adjusted, parsed metrology"
+    print("Showing un-adjusted, parsed metrology")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon
     fig = plt.figure()
@@ -1147,20 +1148,20 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 
   l_diff_stat = flex.mean_and_variance(flex.double(l_diff))
   s_diff_stat = flex.mean_and_variance(flex.double(s_diff))
-  print "Difference between opposing long  sides: " \
+  print("Difference between opposing long  sides: " \
     "%.3f+/-%.3f [%.3f, %.3f] (N = %d)" % (
       l_diff_stat.mean(),
       l_diff_stat.unweighted_sample_standard_deviation(),
       min(l_diff),
       max(l_diff),
-      len(l_diff))
-  print "Difference between opposing short sides: " \
+      len(l_diff)))
+  print("Difference between opposing short sides: " \
     "%.3f+/-%.3f [%.3f, %.3f] (N = %d)" % (
       s_diff_stat.mean(),
       s_diff_stat.unweighted_sample_standard_deviation(),
       min(s_diff),
       max(s_diff),
-      len(s_diff))
+      len(s_diff)))
 
 
   # Get side length distribution parameters with outlier rejection,
@@ -1177,15 +1178,15 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
       quadrants, l_int, s_int)
     if l_N >= l_N_old and s_N >= s_N_old:
       break
-  print "Long  side: %.3f+/-%.3f [%.3f, %.3f] (N = %d)" % \
-    (l_mu, l_sigma, min(l_len), max(l_len), l_N)
-  print "Short side: %.3f+/-%.3f [%.3f, %.3f] (N = %d)" % \
-    (s_mu, s_sigma, min(s_len), max(s_len), s_N)
+  print("Long  side: %.3f+/-%.3f [%.3f, %.3f] (N = %d)" % \
+    (l_mu, l_sigma, min(l_len), max(l_len), l_N))
+  print("Short side: %.3f+/-%.3f [%.3f, %.3f] (N = %d)" % \
+    (s_mu, s_sigma, min(s_len), max(s_len), s_N))
 
   # XXX Would really expect this to be (2 * 194 + 3) / 185 = 2.11, but
   # it ain't.  Hart et al. (2012) says this should be 20.9 mm by 43.5 mm
   (r_mu, r_sigma, r_N) = _find_aspect_ratio(quadrants)
-  print "Aspect ratio: %.3f+/-%.3f (N = %d)" % (r_mu, r_sigma, r_N)
+  print("Aspect ratio: %.3f+/-%.3f (N = %d)" % (r_mu, r_sigma, r_N))
 
 
   # Corrections appear to be necessary for 2011-06-20 Ds1 metrology,
@@ -1196,7 +1197,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
   # rectangle with sides (l_mu, s_mu) to the four vertices.
   quadrants_lsq = {}
   for (q, sensors) in quadrants.iteritems():
-    print "Q: %1d" % q
+    print("Q: %1d" % q)
     quadrants_lsq[q] = {}
     for (s, vertices) in sensors.iteritems():
 
@@ -1219,7 +1220,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 #      (vertices_lsq, rss) = _fit_rectangle(vertices, l_mu, s_mu)
       (vertices_lsq, rss) = _fit_rectangle(vertices_lsq, l_mu, s_mu)
       quadrants_lsq[q][s] = vertices_lsq
-      print "Q: %1d S: %1d r.m.s.d. = %8.3f" % (q, s, math.sqrt(0.25 * rss))
+      print("Q: %1d S: %1d r.m.s.d. = %8.3f" % (q, s, math.sqrt(0.25 * rss)))
 
   # XXX What is aspect ratio after fitting rectangles?
 #  (r_mu, r_sigma, r_N) = _find_aspect_ratio(quadrants_lsq)
@@ -1227,10 +1228,9 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 
   # This is a measure of success.
   (l_mu, l_sigma, l_N, s_mu, s_sigma, s_N) = _find_long_short(quadrants_lsq)
-  print \
-      "Long  side: %.3f+/-%.3f (N = %d)\n" \
+  print("Long  side: %.3f+/-%.3f (N = %d)\n" \
       "Short side: %.3f+/-%.3f (N = %d)" % \
-      (l_mu, l_sigma, l_N, s_mu, s_sigma, s_N)
+      (l_mu, l_sigma, l_N, s_mu, s_sigma, s_N))
 
 
   if old_style_diff_path is None:
@@ -1416,7 +1416,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
       elif l.elems[1] > +0.5:
         l = matrix.col((0, +1))
       else:
-        print "This should not happen!"
+        print("This should not happen!")
 
       # According to Henrik Lemke, the XPP detector is actually
       # rotated by 180 degrees with respect to the optical metrology
@@ -1463,7 +1463,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
         corrections[q][s][0] = corrections_tl
 
         if q == 0 and s == 0:
-          print "HATTNE diag PRUTT #0", corrections_tl
+          print("HATTNE diag PRUTT #0", corrections_tl)
 
         if plot:
           v_new = ((corners_new[0], corners_new[1]),
@@ -1503,7 +1503,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
         corrections[q][s][1] = corrections_tl
 
         if q == 0 and s == 0:
-          print "HATTNE diag PRUTT #1", corrections_tl
+          print("HATTNE diag PRUTT #1", corrections_tl)
 
 
         if plot:
@@ -1619,7 +1619,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 0 * 2 + 1] = correction[0][1]
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 1 * 2 + 0] = correction[1][0]
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 1 * 2 + 1] = correction[1][1]
-  print "corrected_auxiliary_translations =", list(corrections_list)
+  print("corrected_auxiliary_translations =", list(corrections_list))
 
   for i in range(len(aa_new)):
     if detector == 'XppDs1':
@@ -1628,11 +1628,11 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 
     assert aa_new[i] >= 0 and aa_new[i] <= 1765
 
-  print "new active areas", len(aa_new), aa_new
+  print("new active areas", len(aa_new), aa_new)
 
 
   if plot:
-    print "Showing active areas"
+    print("Showing active areas")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon
     fig = plt.figure()

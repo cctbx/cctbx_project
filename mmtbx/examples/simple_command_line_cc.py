@@ -8,6 +8,7 @@ library.
 """
 
 from __future__ import division
+from __future__ import print_function
 import mmtbx.command_line
 import sys
 
@@ -40,7 +41,7 @@ def run(args, out=sys.stdout):
   assert (len(f_calc.indices()) == len(f_obs.indices()))
   from scitbx.array_family import flex
   cc = flex.linear_correlation(f_obs.data(), f_calc.data()).coefficient()
-  print >> out, "CC(obs-calc): %.3f" % cc
+  print("CC(obs-calc): %.3f" % cc, file=out)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

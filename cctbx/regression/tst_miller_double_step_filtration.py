@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from cctbx import miller
 import iotbx.pdb
@@ -28,11 +29,11 @@ END
   xrs.scattering_type_registry(table = "wk1995")
   cntr = 0
   for remove_fraction in [0.2, 0.5]:
-    print
-    print "remove_fraction:", remove_fraction
+    print()
+    print("remove_fraction:", remove_fraction)
     for option in ["random", "smallest", "highest"]:
-      print
-      print "data incompleteness:",option,"-"*30
+      print()
+      print("data incompleteness:",option,"-"*30)
       #
       f_exact = xrs.structure_factors(d_min = 1.0).f_calc()
       #
@@ -56,10 +57,10 @@ END
         f_poor = f_exact.select(s)
       else: assert 0
       #
-      print "number of all data:", f_exact.data().size()
-      print "number of incomplete data:", f_poor.data().size()
+      print("number of all data:", f_exact.data().size())
+      print("number of incomplete data:", f_poor.data().size())
       cc1 = map_cc(map_coeffs_1=f_exact, map_coeffs_2=f_poor)
-      print "start CC(exact_map, poor_map): ", cc1
+      print("start CC(exact_map, poor_map): ", cc1)
       #
       f_dsf = f_poor.double_step_filtration(
         vol_cutoff_plus_percent =0.1,
@@ -67,7 +68,7 @@ END
         complete_set=f_exact)
       f_new = f_poor.complete_with(other = f_dsf)
       cc2 = map_cc(map_coeffs_1=f_exact, map_coeffs_2=f_new)
-      print "start CC(exact_map, filled_map)1: ", cc2
+      print("start CC(exact_map, filled_map)1: ", cc2)
       #
       f_dsf = f_poor.double_step_filtration(
         vol_cutoff_plus_percent =0.1,
@@ -76,7 +77,7 @@ END
         scale_to=f_exact)
       f_new = f_poor.complete_with(other = f_dsf)
       cc3 = map_cc(map_coeffs_1=f_exact, map_coeffs_2=f_new)
-      print "start CC(exact_map, filled_map)2: ", cc3
+      print("start CC(exact_map, filled_map)2: ", cc3)
       #
       if(option=="highest"):
         if(remove_fraction==0.2):

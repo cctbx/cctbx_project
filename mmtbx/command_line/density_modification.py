@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx import density_modification
 import mmtbx.utils
 from cctbx.array_family import flex
@@ -88,7 +89,7 @@ include scope libtbx.phil.interface.tracking_params
 def defaults(log):
   parsed = iotbx.phil.parse(
     master_params_including_IO_str, process_includes=True)
-  print >> log
+  print(file=log)
   return parsed
 
 def run(args, log = sys.stdout, as_gui_program=False):
@@ -213,13 +214,13 @@ map_coefficients {
     log=log,
     as_gui_program=as_gui_program)
   time_dm = time.time()-t0
-  print >> log, "Time taken for density modification: %.2fs" %time_dm
+  print("Time taken for density modification: %.2fs" %time_dm, file=log)
   # run cns
   if 0:
     from cctbx.development import cns_density_modification
     cns_result = cns_density_modification.run(params, fo, hl_coeffs)
-    print cns_result.modified_map.all()
-    print dm.map.all()
+    print(cns_result.modified_map.all())
+    print(dm.map.all())
     dm_map_coeffs = dm.map_coeffs_in_original_setting
     from cctbx import maptbx, miller
     crystal_gridding = maptbx.crystal_gridding(
@@ -228,14 +229,14 @@ map_coefficients {
       pre_determined_n_real=cns_result.modified_map.all())
     dm_map = miller.fft_map(crystal_gridding, dm_map_coeffs).apply_sigma_scaling()
     corr = flex.linear_correlation(cns_result.modified_map.as_1d(), dm_map.real_map_unpadded().as_1d())
-    print "CNS dm/mmtbx dm correlation:"
+    print("CNS dm/mmtbx dm correlation:")
     corr.show_summary()
     if dm.model_map_coeffs is not None:
       model_map = miller.fft_map(
         crystal_gridding,
         dm.miller_array_in_original_setting(dm.model_map_coeffs)).apply_sigma_scaling()
       corr = flex.linear_correlation(cns_result.modified_map.as_1d(), model_map.real_map_unpadded().as_1d())
-      print "CNS dm/model correlation:"
+      print("CNS dm/model correlation:")
       corr.show_summary()
 
   if output_plots:
@@ -352,8 +353,8 @@ map_coefficients {
     orig_fom,final_fom=dm.start_and_end_fom()
     if mtz_params.skip_output_if_worse and final_fom < orig_fom:
       ok_to_write_mtz=False
-      print "Not writing out mtz. Final FOM (%7.3f) worse than start (%7.3f)" %(
-        final_fom,orig_fom)
+      print("Not writing out mtz. Final FOM (%7.3f) worse than start (%7.3f)" %(
+        final_fom,orig_fom))
     else:  # usual
       ok_to_write_mtz=True
   else:
@@ -422,8 +423,8 @@ class density_modify(density_modification.density_modification):
       ).apply_sigma_scaling()
       corr = flex.linear_correlation(
         model_fft_map.real_map_unpadded().as_1d(), fft_map.real_map_unpadded().as_1d())
-      print "Starting dm/model correlation: %.6f" %corr.coefficient()
-      print "Final dm/model correlation:    %.6f" %self.correlation_coeffs[-1]
+      print("Starting dm/model correlation: %.6f" %corr.coefficient())
+      print("Final dm/model correlation:    %.6f" %self.correlation_coeffs[-1])
       fft_map.as_ccp4_map(file_name="starting.map", labels=[])
 
   def compute_map(self):
@@ -434,10 +435,10 @@ class density_modify(density_modification.density_modification):
         resolution_factor=self.params.grid_resolution_factor).apply_sigma_scaling()
       dm_map = dm_coeffs.fft_map(
         resolution_factor=self.params.grid_resolution_factor).apply_sigma_scaling()
-      print
+      print()
       corr = flex.linear_correlation(
         fft_map.real_map_unpadded().as_1d(), dm_map.real_map_unpadded().as_1d())
-      print "dm/model correlation:"
+      print("dm/model correlation:")
       corr.show_summary()
       self.correlation_coeffs.append(corr.coefficient())
       self.mean_phase_errors.append(flex.mean(phase_error(

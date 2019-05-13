@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.rigid_body.essence
 from scitbx.rigid_body.essence import tst_tardy
 from scitbx.graph import test_cases_tardy_pdb
@@ -478,7 +479,7 @@ def run(args):
   exercise_with_test_cases_tardy_pdb()
   exercise_fixed_vertices()
   exercise_pickle()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

@@ -1,14 +1,15 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.gaussian_fit import international_tables_stols
 from libtbx.option_parser import OptionParser
 
 def show_differences_if_any(label, stols, y0, y1):
   if (not y0.all_eq(y1)):
-    print "Different:", label
+    print("Different:", label)
     for stol,y0i,y1i in zip(stols,y0,y1):
       if (y0i != y1i):
-        print stol, y0i, y1i
+        print(stol, y0i, y1i)
 
 def run(file_names):
   assert len(file_names) == 2

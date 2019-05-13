@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_pickle
 from libtbx.option_parser import option_parser
 from scitbx.python_utils import dicts
@@ -39,9 +40,9 @@ def run():
       ~reference_structure.element_selection('H'))
     for structure in structures:
       structure.select_inplace(~structure.element_selection('H'))
-  print "Reference model:"
+  print("Reference model:")
   reference_structure.show_summary()
-  print
+  print()
   reference_model = reference_structure.as_emma_model()
 
   match_list = []
@@ -49,8 +50,8 @@ def run():
   for structure in structures:
     structure.show_summary()
     if (hasattr(structure, "info")):
-      print structure.info
-    print
+      print(structure.info)
+    print()
     sys.stdout.flush()
     refined_matches = emma.model_matches(
       reference_model,
@@ -62,17 +63,17 @@ def run():
       refined_matches[0].show()
       m = len(refined_matches[0].pairs)
     else:
-      print "No matches"
+      print("No matches")
       m = 0
     match_list.append(match_record(m, structure.scatterers().size()))
     match_histogram[m] += 1
-    print
+    print()
     sys.stdout.flush()
-  print "match_list:", match_list
+  print("match_list:", match_list)
   keys = match_histogram.keys()
   keys.sort()
   keys.reverse()
-  print "matches: frequency"
+  print("matches: frequency")
   sum = 0
   for key in keys:
     v = match_histogram[key]
@@ -81,8 +82,8 @@ def run():
   for key in keys:
     v = match_histogram[key]
     s += v
-    print "  %3d: %3d = %5.1f%%, %5.1f%%" % (key, v, 100.*v/sum, 100.*s/sum)
-  print
+    print("  %3d: %3d = %5.1f%%, %5.1f%%" % (key, v, 100.*v/sum, 100.*s/sum))
+  print()
   sys.stdout.flush()
 
 if (__name__ == "__main__"):

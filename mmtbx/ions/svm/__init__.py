@@ -13,6 +13,7 @@ phenix_dev.ion_identification.nader_ml
 """
 
 from __future__ import division, absolute_import
+from __future__ import print_function
 
 from collections import Iterable
 from cStringIO import StringIO
@@ -580,13 +581,13 @@ class svm_prediction(slots_getstate_setstate_default_initializer):
     prefix : str, optional
     """
     for line in self.atom_info_str.splitlines():
-      print >> out, prefix+line.rstrip()
-    print >> out, prefix+"SVM scores:"
+      print(prefix+line.rstrip(), file=out)
+    print(prefix+"SVM scores:", file=out)
     scores = sorted(zip(self.atom_types, self.scores), key=lambda x: -x[1])
     for elem, score in scores:
-      print >> out, prefix+"  %4s : %.3f" % (elem, score)
+      print(prefix+"  %4s : %.3f" % (elem, score), file=out)
     if (self.final_choice is not None):
-      print >> out, prefix+"Final choice: %s" % self.final_choice
+      print(prefix+"Final choice: %s" % self.final_choice, file=out)
 
   def show_brief(self, out=sys.stdout, prefix=""):
     """
@@ -607,9 +608,9 @@ class svm_prediction(slots_getstate_setstate_default_initializer):
         if (atom_type == final_choice.element):
           best_score = "%5.3f" % score
           break
-    print >> out, prefix+"%s   %4s  %5s  %5.2f  %5.2f" % \
+    print(prefix+"%s   %4s  %5s  %5.2f  %5.2f" % \
       (self.pdb_id_str, final_choice.element, best_score,
-       self.map_stats.two_fofc, self.map_stats.fofc)
+       self.map_stats.two_fofc, self.map_stats.fofc), file=out)
 
 class manager(mmtbx.ions.identify.manager):
   def analyze_water(self, i_seq, debug=True, candidates=Auto,
@@ -707,8 +708,8 @@ class manager(mmtbx.ions.identify.manager):
     list of svm_prediction
     """
     waters = self._extract_waters()
-    print >> out, "  %d waters to analyze" % len(waters)
-    print >> out, ""
+    print("  %d waters to analyze" % len(waters), file=out)
+    print("", file=out)
     if (len(waters) == 0) : return
     #nproc = easy_mp.get_processes(self.nproc)
     predictions = []
@@ -724,12 +725,12 @@ class manager(mmtbx.ions.identify.manager):
     for result in predictions :
       if (debug):
         result.show(out=out, prefix="  ")
-        print >> out, ""
+        print("", file=out)
       if (result.final_choice is not None):
         filtered.append(result)
     if (len(filtered) == 0):
-      print >> out, ""
-      print >> out, "  No waters could be classified as possible ions."
+      print("", file=out)
+      print("  No waters could be classified as possible ions.", file=out)
     else :
       make_sub_header("Predicted ions", out=out)
       for result in filtered :

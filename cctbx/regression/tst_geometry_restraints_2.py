@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints.distance_least_squares \
   import distance_and_repulsion_least_squares
@@ -19,14 +20,14 @@ from mmtbx.monomer_library import pdb_interpretation
 
 def exercise_with_zeolite(verbose):
   if (not libtbx.env.has_module("iotbx")):
-    print "Skipping exercise_with_zeolite(): iotbx not available"
+    print("Skipping exercise_with_zeolite(): iotbx not available")
     return
   from iotbx.kriber import strudat
   atlas_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/misc/strudat_zeolite_atlas",
     test=os.path.isfile)
   if (atlas_file is None):
-    print "Skipping exercise_with_zeolite(): input file not available"
+    print("Skipping exercise_with_zeolite(): input file not available")
     return
   strudat_contents = strudat.read_all_entries(open(atlas_file))
   strudat_entry = strudat_contents.get("YUG")
@@ -320,11 +321,11 @@ END
 
 def exercise_with_pdb(verbose):
   if (not libtbx.env.has_module(name="mmtbx")):
-    print "Skipping exercise_with_pdb():", \
-      "mmtbx.monomer_library.pdb_interpretation not available"
+    print("Skipping exercise_with_pdb():", \
+      "mmtbx.monomer_library.pdb_interpretation not available")
     return
   if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
-    print "Skipping exercise_with_pdb(): chem_data directory not available"
+    print("Skipping exercise_with_pdb(): chem_data directory not available")
     return
   if (verbose):
     out = sys.stdout
@@ -451,8 +452,8 @@ nonbonded 1
 def exercise_na_restraints_output_to_geo(verbose=False):
   for dependency in ("chem_data", "ksdssp"):
     if not libtbx.env.has_module(dependency):
-      print "Skipping exercise_na_restraints_output_to_geo(): %s not available" %(
-        dependency)
+      print("Skipping exercise_na_restraints_output_to_geo(): %s not available" %(
+        dependency))
       return
   pdb_str_1dpl_cutted="""\
 CRYST1   24.627   42.717   46.906  90.00  90.00  90.00 P 21 21 21    8
@@ -564,8 +565,8 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
       strict_conflict_handling=False,
       log=out1)
   except MonomerLibraryServerError:
-    print "Skipping exercise_na_restraints_output_to_geo(): Encountered MonomerLibraryServerError.\n"
-    print "Is the CCP4 monomer library installed and made available through environment variables MMTBX_CCP4_MONOMER_LIB or CLIBD_MON?"
+    print("Skipping exercise_na_restraints_output_to_geo(): Encountered MonomerLibraryServerError.\n")
+    print("Is the CCP4 monomer library installed and made available through environment variables MMTBX_CCP4_MONOMER_LIB or CLIBD_MON?")
     return
   geo1 = processed_pdb_file.geometry_restraints_manager()
   hbp = geo1.get_n_hbond_proxies()
@@ -591,7 +592,7 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
   for v in [v_out1, v_out2]:
     for portion in identical_portions:
       if not v.find(portion) > 0:
-        print "This portion was not found:\n%s\n=====End of portion." % portion
+        print("This portion was not found:\n%s\n=====End of portion." % portion)
         assert 0, "the portion above does not match expected portion."
   # check .geo output
   geo_identical_portions = ["Bond restraints: 87",
@@ -627,7 +628,7 @@ def exercise_all(args):
   exercise_with_pdb(verbose=verbose)
   exercise_non_crystallographic_conserving_bonds_and_angles()
   exercise_na_restraints_output_to_geo(verbose=verbose)
-  print libtbx.utils.format_cpu_times()
+  print(libtbx.utils.format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise_all(sys.argv[1:])

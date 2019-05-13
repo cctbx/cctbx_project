@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import test_utils
 import libtbx.load_env
 from libtbx import easy_run
@@ -421,7 +422,7 @@ probe_tests = [
 if libtbx.env.has_module(name="probe"):
   tst_list = tuple(general_tests + probe_tests)
 else:
-  print "Skipping %d probe tests: probe not configured"%len(probe_tests)
+  print("Skipping %d probe tests: probe not configured"%len(probe_tests))
   tst_list = tuple(general_tests)
 
 def run():

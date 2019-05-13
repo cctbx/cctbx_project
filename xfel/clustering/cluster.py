@@ -9,6 +9,7 @@ on an existing cluster, e.g. to plot the unit cell distributions.
 """
 
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import os
 import math
@@ -156,7 +157,7 @@ class Cluster:
           for filename in filenames:
             path = os.path.join(dirpath, filename)
             if path.endswith(".pickle"):
-              print path, "ends with .pickle"
+              print(path, "ends with .pickle")
               pickles.append(path)
 
     return Cluster.from_files(pickle_list=pickles, dials_refls=dials_refls,
@@ -215,7 +216,7 @@ class Cluster:
 
     from xfel.clustering.singleframe import CellOnlyFrame
     stream = open(file_name,"r").readlines()
-    print "There are %d lines in the input file"%(len(stream))
+    print("There are %d lines in the input file"%(len(stream)))
     for j,item in enumerate(stream):
       tokens = item.strip().split()
       assert len(tokens) == 7, tokens
@@ -233,7 +234,7 @@ class Cluster:
           data.append(this_frame)
       else:
           logger.info('skipping item {}'.format(item))
-    print "%d lattices will be analyzed"%(len(data))
+    print("%d lattices will be analyzed"%(len(data)))
 
     return cls(data, _prefix, _message)
 
@@ -339,7 +340,7 @@ class Cluster:
     else:
       if raw_input is not None:
         pickle_list.extend(raw_input)
-      print "There are %d input files"%(len(pickle_list))
+      print("There are %d input files"%(len(pickle_list)))
       from xfel.command_line.print_pickle import generate_data_from_streams
       for data_dict in generate_data_from_streams(pickle_list):
         this_frame = SingleFrame(dicti=data_dict, **kwargs)
@@ -349,7 +350,7 @@ class Cluster:
             break
         else:
           logger.info('skipping file {}'.format(os.path.basename(path)))
-      print "%d lattices will be analyzed"%(len(data))
+      print("%d lattices will be analyzed"%(len(data)))
 
     return cls(data, _prefix, _message)
 

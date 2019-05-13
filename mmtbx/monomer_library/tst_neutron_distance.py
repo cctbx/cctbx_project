@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.model
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
@@ -126,7 +127,7 @@ def exercise(tolerance=0.01):
 
 def run():
   exercise()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

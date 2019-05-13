@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 import time
 import os
@@ -139,10 +140,10 @@ HETATM   63  CH3 ACT     1       2.127   7.078   8.030  1.00 18.08           C
     "output.file_name=tst_anom_iso_diff_1.mtz" ]
   args_2 = base_args + [ "tst_anom_iso_diff_2.pdb",
     "output.file_name=tst_anom_iso_diff_2.mtz" ]
-  print " ".join(args_1)
+  print(" ".join(args_1))
   rc = easy_run.fully_buffered(" ".join(args_1)).raise_if_errors().return_code
   assert (rc == 0)
-  print " ".join(args_2)
+  print(" ".join(args_2))
   rc = easy_run.fully_buffered(" ".join(args_2)).raise_if_errors().return_code
   assert (rc == 0)
   base_args = [
@@ -155,10 +156,10 @@ HETATM   63  CH3 ACT     1       2.127   7.078   8.030  1.00 18.08           C
   args_1 = base_args + ["output_file=tst_anom_iso_diff_map_coeffs.mtz",
     "anomalous=True",]
   args_2 = base_args + ["output_file=tst_anom_iso_diff_map_coeffs_control.mtz"]
-  print " " .join(args_1)
+  print(" " .join(args_1))
   rc = easy_run.fully_buffered(" " .join(args_1)).raise_if_errors().return_code
   assert (rc == 0)
-  print " " .join(args_2)
+  print(" " .join(args_2))
   rc = easy_run.fully_buffered(" " .join(args_2)).raise_if_errors().return_code
   assert (rc == 0)
   # The input structures differ in the position of the MN ion and in the
@@ -196,4 +197,4 @@ HETATM   63  CH3 ACT     1       2.127   7.078   8.030  1.00 18.08           C
 if (__name__ == "__main__"):
   exercise_anomalous_isomorphous_difference_map()
   exercise_calcium_substitution()
-  print "OK"
+  print("OK")

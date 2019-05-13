@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #
 # Implemented based on PDB v3.2 specification at:
 #   http://www.wwpdb.org/documentation/format32/sect5.html
@@ -161,13 +162,13 @@ class one_strand_pair_registration_atoms:
        (strand_a_atom=="N" and strand_b_atom != "O") or \
        (strand_a_atom!="N" and strand_b_atom != "N") or \
        (strand_a_atom!="O" and strand_b_atom != "O"):
-          print >>log,"Cannot interpret H-bonding of %s to %s " %(
-            strand_a_atom,strand_b_atom)
+          print("Cannot interpret H-bonding of %s to %s " %(
+            strand_a_atom,strand_b_atom), file=log)
           ok=False
           return
 
     if not sense in [-1,1]:
-      print >>log,"Cannot interpret bonding with sense not -1 or 1:"
+      print("Cannot interpret bonding with sense not -1 or 1:", file=log)
       self.ok=False
       return
 
@@ -550,16 +551,16 @@ class annotation(structure_base):
       try:
         h = pdb_helix.from_pdb_record(line)
       except ValueError:
-        print >> log, "Bad HELIX record, was skipped:\n%s" % line
+        print("Bad HELIX record, was skipped:\n%s" % line, file=log)
       else:
         helices.append(h)
     for sh_lines in cls.filter_and_split_sheet_records(records):
       try:
         sh = pdb_sheet.from_pdb_records(sh_lines)
       except ValueError, e:
-        print >> log, "Bad SHEET records, were skipped:\n"
+        print("Bad SHEET records, were skipped:\n", file=log)
         for l in sh_lines:
-          print >> log, "  %s" % l
+          print("  %s" % l, file=log)
       else:
         sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
@@ -576,7 +577,7 @@ class annotation(structure_base):
           h = pdb_helix.from_cif_row(helix_row, serial)
           serial += 1
         except ValueError:
-          print >> log, "Bad HELIX records!"
+          print("Bad HELIX records!", file=log)
         else:
           helices.append(h)
     sheets = []
@@ -597,7 +598,7 @@ class annotation(structure_base):
               struct_sheet_order_loop, struct_sheet_range_loop,
               struct_sheet_hbond_loop)
         except ValueError as e:
-          print >> log, "Bad sheet records.\n"
+          print("Bad sheet records.\n", file=log)
         else:
           sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
@@ -1810,7 +1811,7 @@ class pdb_helix(structure_base):
   @classmethod
   def from_phil_params(cls, helix_params, pdb_hierarchy, cache, serial=0, log=None):
     if helix_params.selection is None :
-      print >> log, "Empty helix at serial %d." % (serial)
+      print("Empty helix at serial %d." % (serial), file=log)
       # continue
     # No evidence that this is really necessary
     # sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
@@ -1829,10 +1830,10 @@ class pdb_helix(structure_base):
     hbonds = []
     for hb in helix_params.hbond:
       if hb.donor is None:
-        print >> log, "Donor selection in hbond cannot be None"
+        print("Donor selection in hbond cannot be None", file=log)
         continue
       if hb.acceptor is None:
-        print >> log, "Acceptor selection in hbond cannot be None"
+        print("Acceptor selection in hbond cannot be None", file=log)
         continue
       hbonds.append((hb.donor, hb.acceptor))
     return cls(
@@ -1901,8 +1902,8 @@ class pdb_helix(structure_base):
   def as_restraint_group(self, log=sys.stdout, prefix_scope="",
       add_segid=None, show_hbonds=False):
     if self.start_chain_id != self.end_chain_id :
-      print >> log, "Helix chain ID mismatch: starts in %s, ends in %s" % (
-        self.start_chain_id, self.end_chain_id)
+      print("Helix chain ID mismatch: starts in %s, ends in %s" % (
+        self.start_chain_id, self.end_chain_id), file=log)
       return None
     sele = self.as_atom_selections(add_segid=add_segid)[0]
     if prefix_scope != "" and not prefix_scope.endswith("."):
@@ -2576,10 +2577,10 @@ class pdb_sheet(structure_base):
     hbonds = []
     for hb in sheet_params.hbond:
       if hb.donor is None:
-        print >> log, "Donor selection in hbond cannot be None"
+        print("Donor selection in hbond cannot be None", file=log)
         continue
       if hb.acceptor is None:
-        print >> log, "Acceptor selection in hbond cannot be None"
+        print("Acceptor selection in hbond cannot be None", file=log)
         continue
       hbonds.append((hb.donor, hb.acceptor))
     return cls(sheet_id=sheet_id,

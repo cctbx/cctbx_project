@@ -2,6 +2,7 @@
 # XXX Severe duplicaiton. Remove equivalent code from mmtbx.utils.
 ###
 from __future__ import division
+from __future__ import print_function
 import iotbx.phil
 from libtbx import adopt_init_args
 from cctbx.array_family import flex
@@ -16,9 +17,9 @@ def miller_array_symmetry_safety_check(miller_array,
       data_description = data_description)
   if(msg is not None):
      if(symmetry_safety_check == "warning"):
-        print >> log, "*" * 79
-        print >> log, "WARNING:", msg
-        print >> log, "*" * 79
+        print("*" * 79, file=log)
+        print("WARNING:", msg, file=log)
+        print("*" * 79, file=log)
      else:
         raise Sorry(msg + """
   The program inspects all inputs to determine the working crystal
@@ -48,7 +49,7 @@ If the structure was refined previously using different R-free flags,
 the values for R-free will become meaningful only after many cycles of
 refinement.
 """
-  print >> log, part1 + flags_parameter_scope+""".generate=True""" + part3
+  print(part1 + flags_parameter_scope+""".generate=True""" + part3, file=log)
 
 master_params_str="""
   high_resolution = None
@@ -214,11 +215,11 @@ class run(object):
     #self.parameters.file_name = data.info().source
     #self.parameters.labels = [data.info().label_string()]
     if(data.is_xray_intensity_array()):
-      print >> self.log, "I-obs:"
+      print("I-obs:", file=self.log)
       self.intensity_flag = True
     else:
-      print >> self.log, "F-obs:"
-    print >> self.log, " ", data.info()
+      print("F-obs:", file=self.log)
+    print(" ", data.info(), file=self.log)
     if([self.data_description, self.working_point_group,
        self.symmetry_safety_check].count(None) == 0):
       miller_array_symmetry_safety_check(
@@ -227,19 +228,19 @@ class run(object):
         working_point_group   = self.working_point_group,
         symmetry_safety_check = self.symmetry_safety_check,
         log                   = self.log)
-      print >> self.log
+      print(file=self.log)
     info = data.info()
     processed = data.eliminate_sys_absent(log = self.log)
     if(processed is not data):
       info = info.customized_copy(systematic_absences_eliminated = True)
     if(not processed.is_unique_set_under_symmetry()):
       if(data.is_xray_intensity_array()):
-        print >> self.log, "Merging symmetry-equivalent intensities:"
+        print("Merging symmetry-equivalent intensities:", file=self.log)
       else:
-        print >> self.log, "Merging symmetry-equivalent amplitudes:"
+        print("Merging symmetry-equivalent amplitudes:", file=self.log)
       merged = processed.merge_equivalents()
       merged.show_summary(out = self.log, prefix="  ")
-      print >> self.log
+      print(file=self.log)
       processed = merged.array()
       info = info.customized_copy(merged=True)
     if (self.force_non_anomalous):
@@ -269,8 +270,8 @@ class run(object):
         #params.file_name = r_free_flags.info().source
         #params.label = r_free_flags.info().label_string()
         params.test_flag_value = test_flag_value
-        print >> self.log, data_description+":"
-        print >> self.log, " ", r_free_flags.info()
+        print(data_description+":", file=self.log)
+        print(" ", r_free_flags.info(), file=self.log)
         if([self.working_point_group,
            self.symmetry_safety_check].count(None) == 0):
           miller_array_symmetry_safety_check(
@@ -279,26 +280,25 @@ class run(object):
             working_point_group   = self.working_point_group,
             symmetry_safety_check = self.symmetry_safety_check,
             log                   = self.log)
-          print >> self.log
+          print(file=self.log)
         info = r_free_flags.info()
         processed = r_free_flags.eliminate_sys_absent(log = self.log)
         if(processed is not r_free_flags):
           info = info.customized_copy(systematic_absences_eliminated = True)
         if(not processed.is_unique_set_under_symmetry()):
-           print >> self.log, \
-             "Checking symmetry-equivalent R-free flags for consistency:",
+           print("Checking symmetry-equivalent R-free flags for consistency:", end=' ', file=self.log)
            try:
              merged = processed.merge_equivalents()
            except RuntimeError, e:
-             print >> self.log
+             print(file=self.log)
              error_message = str(e)
              expected_error_message = "cctbx Error: merge_equivalents_exact: "
              assert error_message.startswith(expected_error_message)
              raise Sorry("Incompatible symmetry-equivalent R-free flags: %s" %
                error_message[len(expected_error_message):])
            else:
-             print >> self.log, "OK"
-             print >> self.log
+             print("OK", file=self.log)
+             print(file=self.log)
            processed = merged.array()
            info = info.customized_copy(merged=True)
            del merged
@@ -311,8 +311,8 @@ class run(object):
           (params.use_lattice_symmetry is None)):
         raise Sorry("No R-free flags are available, but one or more "+
           "parameters required to generate new flags is undefined.")
-      print >> self.log, "Generating a new array of R-free flags."
-      print >> self.log
+      print("Generating a new array of R-free flags.", file=self.log)
+      print(file=self.log)
       libtbx.call_back(message="warn",
         data="PHENIX will generate a new array of R-free flags.  Please "+
           "check to make sure that the input data do not already contain "+
@@ -352,7 +352,7 @@ class run(object):
     # Delete F(0,0,0) if present
     sel = f_obs.indices()==(0,0,0)
     if(sel.count(True)>0):
-      print >> self.log, "F(0,0,0) will be removed."
+      print("F(0,0,0) will be removed.", file=self.log)
       f_obs = f_obs.select(~sel)
     #
     d_min = f_obs.d_min()
@@ -360,7 +360,7 @@ class run(object):
       raise Sorry("Resolution of data is too high: %-6.4f A"%d_min)
     f_obs.show_comprehensive_summary(f = self.log)
     f_obs_data_size = f_obs.data().size()
-    print >> self.log
+    print(file=self.log)
     if(f_obs.is_complex_array()): f_obs = abs(f_obs)
     f_obs_fw = None
     if(f_obs.is_xray_intensity_array()):
@@ -381,9 +381,8 @@ class run(object):
         if(selection_by_isigma is not None):
           f_obs = f_obs.select(selection_by_isigma)
         f_obs = f_obs.f_sq_as_f()
-      print >> self.log, \
-        "Intensities converted to amplitudes for use in refinement."
-      print >> self.log
+      print("Intensities converted to amplitudes for use in refinement.", file=self.log)
+      print(file=self.log)
     #
     sigmas = f_obs.sigmas()
     if(sigmas is not None):
@@ -391,9 +390,8 @@ class run(object):
       selection &= f_obs.data()>=0
       n_both_zero = selection.count(False)
       if(n_both_zero>0):
-        print >> self.log, \
-          "Number of pairs (Fobs,sigma)=(0,0) is %s. They will be removed"%\
-          n_both_zero
+        print("Number of pairs (Fobs,sigma)=(0,0) is %s. They will be removed"%\
+          n_both_zero, file=self.log)
         f_obs = f_obs.select(selection)
     #
     f_obs.set_observation_type_xray_amplitude()
@@ -404,16 +402,13 @@ class run(object):
     if(self.parameters.high_resolution is not None):
       selection &= f_obs.d_spacings().data() >= self.parameters.high_resolution
     selection_positive = f_obs.data() >= 0
-    print >> self.log, \
-      "Number of F-obs in resolution range:                  ", \
-      selection.count(True)
-    print >> self.log, \
-      "Number of F-obs<0 (these reflections will be rejected):", \
-      selection_positive.count(False)
+    print("Number of F-obs in resolution range:                  ", \
+      selection.count(True), file=self.log)
+    print("Number of F-obs<0 (these reflections will be rejected):", \
+      selection_positive.count(False), file=self.log)
     selection_zero = f_obs.data() == 0
-    print >> self.log, \
-      "Number of F-obs=0 (these reflections will be used in refinement):", \
-      selection_zero.count(True)
+    print("Number of F-obs=0 (these reflections will be used in refinement):", \
+      selection_zero.count(True), file=self.log)
     selection &= selection_positive
     selection_by_fsigma = self._apply_sigma_cutoff(
       f_obs   = f_obs,
@@ -423,35 +418,35 @@ class run(object):
     selection &= f_obs.d_star_sq().data() > 0
     f_obs = f_obs.select(selection)
     rr = f_obs.resolution_range()
-    print >> self.log, "Refinement resolution range: d_max = %8.4f" % rr[0]
-    print >> self.log, "                             d_min = %8.4f" % rr[1]
-    print >> self.log
+    print("Refinement resolution range: d_max = %8.4f" % rr[0], file=self.log)
+    print("                             d_min = %8.4f" % rr[1], file=self.log)
+    print(file=self.log)
     if(f_obs.indices().size() == 0):
       raise Sorry(
         "No data left after applying resolution limits and sigma cutoff.")
     if(self.parameters.force_anomalous_flag_to_be_equal_to is not None):
       if(not self.parameters.force_anomalous_flag_to_be_equal_to):
-        print >> self.log, "force_anomalous_flag_to_be_equal_to=False"
+        print("force_anomalous_flag_to_be_equal_to=False", file=self.log)
         if(f_obs.anomalous_flag()):
-          print >> self.log, "Reducing data to non-anomalous array."
+          print("Reducing data to non-anomalous array.", file=self.log)
           merged = f_obs.as_non_anomalous_array().merge_equivalents()
           merged.show_summary(out = self.log, prefix="  ")
           f_obs = merged.array().set_observation_type( f_obs )
           del merged
-          print >> self.log
+          print(file=self.log)
       elif(not f_obs.anomalous_flag()):
-        print >> self.log, "force_anomalous_flag_to_be_equal_to=True"
-        print >> self.log, "Generating Bijvoet mates of X-ray data."
+        print("force_anomalous_flag_to_be_equal_to=True", file=self.log)
+        print("Generating Bijvoet mates of X-ray data.", file=self.log)
         observation_type = f_obs.observation_type()
         f_obs = f_obs.generate_bijvoet_mates()
         f_obs.set_observation_type(observation_type)
-        print >> self.log
+        print(file=self.log)
     else:
       f_obs = f_obs.convert_to_non_anomalous_if_ratio_pairs_lone_less_than(
         threshold=self.parameters.
           convert_to_non_anomalous_if_ratio_pairs_lone_less_than_threshold)
     if(f_obs_data_size != f_obs.data().size()):
-      print >> self.log, "\nFobs statistics after all cutoffs applied:\n"
+      print("\nFobs statistics after all cutoffs applied:\n", file=self.log)
       f_obs.show_comprehensive_summary(f = self.log)
     return f_obs
 
@@ -461,8 +456,8 @@ class run(object):
       sigma_cutoff = n
       if(sigma_cutoff is not None and sigma_cutoff > 0):
         selection_by_sigma = f_obs.data() > f_obs.sigmas()*sigma_cutoff
-        print >> self.log, message % (sigma_cutoff,
-          selection_by_sigma.count(False))
+        print(message % (sigma_cutoff,
+          selection_by_sigma.count(False)), file=self.log)
         selection = selection_by_sigma
     return selection
 
@@ -477,9 +472,9 @@ class run(object):
         "a single value; please check the file to make sure the flags are "+
         "suitable for use.") % self.parameters.r_free_flags.label)
     r_free_flags.show_comprehensive_summary(f = self.log)
-    print >> self.log
-    print >> self.log, "Test (R-free flags) flag value:", test_flag_value
-    print >> self.log
+    print(file=self.log)
+    print("Test (R-free flags) flag value:", test_flag_value, file=self.log)
+    print(file=self.log)
     if (isinstance(r_free_flags.data(), flex.bool)):
       r_free_flags = r_free_flags.array(
         data = r_free_flags.data() == bool(test_flag_value))
@@ -496,13 +491,13 @@ class run(object):
         records              = self.remark_r_free_flags_md5_hexdigest)
     if(not f_obs.anomalous_flag()):
       if(r_free_flags.anomalous_flag()):
-        print >> self.log, "Reducing R-free flags to non-anomalous array."
+        print("Reducing R-free flags to non-anomalous array.", file=self.log)
         r_free_flags = r_free_flags.average_bijvoet_mates()
-        print >> self.log
+        print(file=self.log)
     elif(not r_free_flags.anomalous_flag()):
-       print >> self.log, "Generating Bijvoet mates of R-free flags."
+       print("Generating Bijvoet mates of R-free flags.", file=self.log)
        r_free_flags = r_free_flags.generate_bijvoet_mates()
-       print >> self.log
+       print(file=self.log)
     r_free_flags = r_free_flags.map_to_asu().common_set(f_obs)
     n_missing_r_free_flags = f_obs.indices().size() \
       - r_free_flags.indices().size()
@@ -553,11 +548,11 @@ class run(object):
         " found in the input PDB file.")
     if (len(from_file) == 1 and current not in from_file):
       log = self.log
-      for i in xrange(2): print >> log, "*"*79
+      for i in xrange(2): print("*"*79, file=log)
       if (ignore_pdb_hexdigest):
-        print >> log
-        print >> log, " ".join(["WARNING"]*9)
-      print >> log, """
+        print(file=log)
+        print(" ".join(["WARNING"]*9), file=log)
+      print("""
 The MD5 checksum for the R-free flags array summarized above is:
   %s
 
@@ -572,36 +567,36 @@ the values for R-free could be biased and misleading.
 However, there is no problem if the R-free flags were just extended to
 a higher resolution, or if some reflections with no data or that are
 not part of the R-free set have been added or removed.""" % (
-  current, sorted(from_file)[0]),
+  current, sorted(from_file)[0]), end=' ', file=log)
       if (not ignore_pdb_hexdigest):
-        print >> log, """\
+        print("""\
 In this case,
 simply remove the
 
   REMARK r_free_flags.md5.hexdigest %s
 
 record from the input PDB file to proceed with the refinement.""" % (
-  sorted(from_file)[0]),
-      print >> log, """
+  sorted(from_file)[0]), end=' ', file=log)
+      print("""
 
 Otherwise it is best to recover the previously used R-free flags
 and use them consistently throughout the refinement of the model.
 Run this command again with the name of the file containing the
 original flags as an additional input.
-"""
+""", file=log)
       if (not ignore_pdb_hexdigest):
-        print >> log, """\
+        print("""\
 If the original R-free flags are unrecoverable, remove the REMARK
 record as indicated above. In this case the values for R-free will
 become meaningful only after many cycles of refinement.
-"""
+""", file=log)
       else:
-        print >> log, """\
+        print("""\
 If the original R-free flags are unrecoverable, the values for R-free
 will become meaningful only after many cycles of refinement.
-"""
-      for i in xrange(2): print >> log, "*"*79
-      print >> log
+""", file=log)
+      for i in xrange(2): print("*"*79, file=log)
+      print(file=log)
       if (not ignore_pdb_hexdigest):
         if ("PHENIX_GUI_ENVIRONMENT" in os.environ):
           log.flush()
@@ -658,25 +653,24 @@ def determine_experimental_phases(reflection_file_server,
   else:
     parameters.file_name = experimental_phases.info().source
     parameters.labels = [experimental_phases.info().label_string()]
-    print >> log, "Experimental phases:"
-    print >> log, " ", experimental_phases.info()
+    print("Experimental phases:", file=log)
+    print(" ", experimental_phases.info(), file=log)
     miller_array_symmetry_safety_check(
       miller_array          = experimental_phases,
       data_description      = "Experimental phases",
       working_point_group   = working_point_group,
       symmetry_safety_check = symmetry_safety_check,
       log                   = log)
-    print >> log
+    print(file=log)
     info = experimental_phases.info()
     processed = experimental_phases.eliminate_sys_absent(log = log)
     if(processed is not experimental_phases):
        info = info.customized_copy(systematic_absences_eliminated = True)
     if(not processed.is_unique_set_under_symmetry()):
-       print >> log, \
-         "Merging symmetry-equivalent Hendrickson-Lattman coefficients:"
+       print("Merging symmetry-equivalent Hendrickson-Lattman coefficients:", file=log)
        merged = processed.merge_equivalents()
        merged.show_summary(out = log, prefix="  ")
-       print >> log
+       print(file=log)
        processed = merged.array()
        info = info.customized_copy(merged = True)
     return processed.set_info(info)

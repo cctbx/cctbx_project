@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.mtz import extract_from_symmetry_lib
 from cctbx import sgtbx
 from libtbx.utils import format_cpu_times
@@ -60,8 +61,8 @@ def exercise_symop_lib_recycling():
       from iotbx.pdb import format_cryst1_sgroup
       sgroup = format_cryst1_sgroup(space_group_info=space_group_info)
       if (len(sgroup) > 11):
-        print "ccp4 symop.lib setting leads to pdb CRYST1 overflow:",\
-          ccp4_id, given_ccp4_symbol, sgroup
+        print("ccp4 symop.lib setting leads to pdb CRYST1 overflow:",\
+          ccp4_id, given_ccp4_symbol, sgroup)
   for ccp4_id,count in ccp4_id_counts.items():
     if (count != 1):
       raise RuntimeError(
@@ -77,14 +78,14 @@ def exercise_symop_lib_recycling():
 def exercise_mmdb_cryst1_interpretation(sgi_hall, pdb_str):
   if (os.name == "nt"):
     return # unknown mmdb problem 2010-10-31
-  print >> open("tmp.pdb", "w"), pdb_str
+  print(pdb_str, file=open("tmp.pdb", "w"))
   mgr = ccp4io_adaptbx.mmdb.Manager()
   mgr.ReadPDBASCII(fileName="tmp.pdb",
     gzipMode=ccp4io_adaptbx.mmdb.IO_GZ_MODE.NONE)
   if (mgr.isSpaceGroup() == 0):
-    print "MMDB does not recognize space group symbol:"
-    print pdb_str
-    print
+    print("MMDB does not recognize space group symbol:")
+    print(pdb_str)
+    print()
   else:
     sg = sgtbx.space_group()
     for i in xrange(mgr.GetNumberOfSymOps()):
@@ -92,11 +93,11 @@ def exercise_mmdb_cryst1_interpretation(sgi_hall, pdb_str):
       sg.expand_smx(s)
     sgi = sgtbx.space_group_info(group=sg)
     if (sgi.group() != sgi_hall.group()):
-      print "MMDB symmetry mismatch:"
-      print pdb_str
-      print sgi_hall
-      print sgi
-      print
+      print("MMDB symmetry mismatch:")
+      print(pdb_str)
+      print(sgi_hall)
+      print(sgi)
+      print()
 
 def exercise_syminfo_lib_pdb_cryst1_recycling():
   # this call is to build _syminfo_lib_cache
@@ -114,16 +115,16 @@ def exercise_syminfo_lib_pdb_cryst1_recycling():
         continue
       sgroup = iotbx.pdb.format_cryst1_sgroup(space_group_info=sgi_hall)
       if (len(sgroup) > 11):
-        print "ccp4 syminfo.lib setting leads to pdb CRYST1 overflow:",\
-          ccp4_symbol, sgroup
+        print("ccp4 syminfo.lib setting leads to pdb CRYST1 overflow:",\
+          ccp4_symbol, sgroup)
       cs = sgi_hall.any_compatible_crystal_symmetry(volume=1000)
       pdb_str = iotbx.pdb.format_cryst1_record(crystal_symmetry=cs)
       cs2 = iotbx.pdb.cryst1_interpretation.crystal_symmetry(
         cryst1_record=pdb_str)
       if (cs2.space_group_info() is None):
-        if (n_need_more_special == 0): print
-        print '"%s": "Hall: %s",' % (
-          ccp4_symbol.replace(" ", "").upper(), hall)
+        if (n_need_more_special == 0): print()
+        print('"%s": "Hall: %s",' % (
+          ccp4_symbol.replace(" ", "").upper(), hall))
         n_need_more_special += 1
       else:
         assert cs2.is_similar_symmetry(other=cs)
@@ -131,7 +132,7 @@ def exercise_syminfo_lib_pdb_cryst1_recycling():
         exercise_mmdb_cryst1_interpretation(
           sgi_hall=sgi_hall, pdb_str=pdb_str)
   if (n_need_more_special != 0):
-    print
+    print()
     from libtbx.utils import plural_s
     raise RuntimeError("""\
 Please edit iotbx/pdb/cryst1_interpretation.py:
@@ -141,13 +142,13 @@ Please edit iotbx/pdb/cryst1_interpretation.py:
 def exercise(args):
   assert len(args) == 0
   if (extract_from_symmetry_lib.ccp4io_lib_data is None):
-    print "Skipping iotbx/mtz/tst_extract_from_symmetry_lib.py:" \
-      " ccp4io not available"
+    print("Skipping iotbx/mtz/tst_extract_from_symmetry_lib.py:" \
+      " ccp4io not available")
     return
   exercise_230()
   exercise_symop_lib_recycling()
   exercise_syminfo_lib_pdb_cryst1_recycling()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise(args=sys.argv[1:])

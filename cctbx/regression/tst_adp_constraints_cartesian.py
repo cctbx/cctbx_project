@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import adptbx, sgtbx
 from cctbx.development import debug_utils
 from scitbx.math import row_echelon_full_pivoting
@@ -29,7 +30,7 @@ def exercise_all_wyckoff(flags, space_group_info):
   wyckoffs = space_group_info.wyckoff_table()
   for i in xrange(wyckoffs.size()):
     wyckoff_pos = wyckoffs.position(i)
-    print "%s," % wyckoff_pos.letter(),
+    print("%s," % wyckoff_pos.letter(), end=' ')
     special_op = wyckoff_pos.special_op()
     exact_site = eval("(%s)" % special_op, {'x':0.1, 'y':0.2, 'z':0.3})
     site_symmetry = sgtbx.site_symmetry(crystal.unit_cell(),
@@ -92,7 +93,7 @@ def exercise_all_wyckoff(flags, space_group_info):
     w = u_cart_constraints.independent_params(u_cart)
     assert approx_equal(v, w, eps=1e-12)
 
-  print
+  print()
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:],

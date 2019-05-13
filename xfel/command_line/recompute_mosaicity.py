@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 #!/usr/bin/env python
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
@@ -90,12 +91,12 @@ class Script(object):
       refls = refls.select(nv.nv_acceptance_flags)
       filtered_reflections.extend(refls)
 
-    print "Saving new experiments as %s"%params.output.experiments
+    print("Saving new experiments as %s"%params.output.experiments)
     dump = ExperimentListDumper(experiments)
     dump.as_json(params.output.experiments)
 
-    print "Removed %d out of %d reflections as outliers"%(len(reflections) - len(filtered_reflections), len(reflections))
-    print "Saving filtered reflections as %s"%params.output.experiments
+    print("Removed %d out of %d reflections as outliers"%(len(reflections) - len(filtered_reflections), len(reflections)))
+    print("Saving filtered reflections as %s"%params.output.experiments)
     filtered_reflections.as_pickle(params.output.reflections)
 
     if params.plot_changes:

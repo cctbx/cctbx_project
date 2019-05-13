@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
@@ -124,7 +125,7 @@ class construct_reflection_table_and_experiment_list(object):
       else:
         found_it = True
         if 'mosaicity' in self.data and self.data['mosaicity'] > 0:
-          print "Warning, two kinds of mosaicity found. Using Sauter2014 model"
+          print("Warning, two kinds of mosaicity found. Using Sauter2014 model")
         from dxtbx.model import MosaicCrystalSauter2014
         self.crystal = MosaicCrystalSauter2014(real_a, real_b, real_c, space_group=lattice)
         self.crystal.set_half_mosaicity_deg(self.data['ML_half_mosaicity_deg'][0])
@@ -326,5 +327,5 @@ if __name__ == "__main__":
       result.experiments_to_json(params.json_location)
       result.reflections_to_pickle(params.refl_location)
     else:
-      print "Skipping unreadable pickle file at", pickle_path
-  print 'Generated experiments.json and integrated.pickle files.'
+      print("Skipping unreadable pickle file at", pickle_path)
+  print('Generated experiments.json and integrated.pickle files.')

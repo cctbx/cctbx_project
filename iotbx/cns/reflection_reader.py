@@ -1,5 +1,6 @@
 "Transfer of CNS reflection files to flex arrays."
 from __future__ import division
+from __future__ import print_function
 
 from iotbx.cns.crystal_symmetry_utils import \
   re_sg_uc, re_uc_sg, crystal_symmetry_from_re_match
@@ -110,8 +111,8 @@ class cns_reciprocal_space_object(object):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix + "name=%s type=%s len(data)=%d" % (
-      self.name, self.type, self.data.size())
+    print(prefix + "name=%s type=%s len(data)=%d" % (
+      self.name, self.type, self.data.size()), file=f)
 
   def append(self, h, value):
     self.indices.append(h)
@@ -390,12 +391,12 @@ class cns_reflection_file(object):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix + "nreflections=%d" % self.nreflections
-    print >> f, prefix + "anomalous=" + str(self.anomalous)
+    print(prefix + "nreflections=%d" % self.nreflections, file=f)
+    print(prefix + "anomalous=" + str(self.anomalous), file=f)
     for rso in self.reciprocal_space_objects.values():
       rso.show_summary(f=f, prefix=prefix)
     for g in self.groups:
-      print >> f, prefix + "group: " + str(g)
+      print(prefix + "group: " + str(g), file=f)
 
   def optimize(self):
     rsos = self.reciprocal_space_objects.values()
@@ -536,7 +537,7 @@ def run(args):
   to_pickle = "--pickle" in args
   for file_name in args:
     if (file_name.startswith("--")): continue
-    print file_name + ":"
+    print(file_name + ":")
     f = open(file_name, "r")
     t0 = os.times()
     reflection_file = cns_reflection_file(f)
@@ -544,12 +545,12 @@ def run(args):
     t_parse = tn[0]+tn[1]-t0[0]-t0[1]
     f.close()
     reflection_file.show_summary()
-    print
+    print()
     crystal_symmetry = crystal.symmetry((), "P 1")
     miller_arrays = reflection_file.as_miller_arrays(crystal_symmetry)
     for miller_array in miller_arrays:
       miller_array.show_summary()
-      print
+      print()
     if (to_pickle):
       pickle_file_name = os.path.split(file_name)[1] + ".pickle"
       t0 = os.times()
@@ -560,7 +561,7 @@ def run(args):
       easy_pickle.load(pickle_file_name)
       tn = os.times()
       t_load = tn[0]+tn[1]-t0[0]-t0[1]
-      print "parse: %.2f, dump: %.2f, load: %.2f" % (t_parse, t_dump, t_load)
-    print
+      print("parse: %.2f, dump: %.2f, load: %.2f" % (t_parse, t_dump, t_load))
+    print()
   t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
+  print("u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1]))

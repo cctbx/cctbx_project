@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys,os
 import iotbx.pdb
 from libtbx.utils import Sorry
@@ -148,7 +149,7 @@ def get_params(args,out=sys.stdout):
     args=args,
     master_phil=master_phil)
   params = command_line.work.extract()
-  print >>out,"\nMerge_models: Take parts of multiple models to construct one model\n"
+  print("\nMerge_models: Take parts of multiple models to construct one model\n", file=out)
   master_phil.format(python_object=params).show(out=out)
   return params
 
@@ -175,9 +176,9 @@ class model_object:
     self.reset_score()
 
   def show_summary(self,out=sys.stdout):
-    print >>out,"\nModel with %d sites and score of %7.2f" %(
-     len(self.source_list),self.score)
-    print >>out," ".join(self.source_list).replace("  "," ")
+    print("\nModel with %d sites and score of %7.2f" %(
+     len(self.source_list),self.score), file=out)
+    print(" ".join(self.source_list).replace("  "," "), file=out)
 
   def is_allowed_crossover(self,i=None,other=None):
     # return True if a crossover at position i to model other is allowed
@@ -376,7 +377,7 @@ def get_crossover_dict(
       verbose=None,
       out=sys.stdout):
   crossover_dict={}  # Allowed crossover for [position][id1][id2]
-  print >>out, "\nMaking a table of allowed crossovers"
+  print("\nMaking a table of allowed crossovers", file=out)
 
   # select out just the crossover atoms...
 
@@ -397,9 +398,9 @@ def get_crossover_dict(
         for chain2 in model2.chains():
           xyz2=chain2.atoms().extract_xyz()
           if xyz1.size()!=xyz2.size():
-            print >>out,"\nSize of chain " +\
+            print("\nSize of chain " +\
             "'%s' model '%s' (%d) is different than chain '%s' model '%s' (%d) " %(
-              chain1.id,model1.id,xyz1.size(),chain2.id,model2.id,xyz2.size())
+              chain1.id,model1.id,xyz1.size(),chain2.id,model2.id,xyz2.size()), file=out)
             assert xyz1.size()==xyz2.size()
 
           for i in xrange(xyz1.size()):
@@ -465,16 +466,16 @@ def get_crossover_dict(
     i_list=crossover_dict.keys()
     i_list.sort()
     for i in i_list:
-      print >>out,"\nAllowed crossovers at position %d" %(i)
+      print("\nAllowed crossovers at position %d" %(i), file=out)
       id_list=crossover_dict[i].keys()
       id_list.sort()
-      print "Crossover pairs:",
+      print("Crossover pairs:", end=' ')
       for id in id_list:
         second_id_list=crossover_dict[i][id]
         second_id_list.sort()
         for second_id in second_id_list:
-          print "%s-%s" %(id,second_id),
-      print
+          print("%s-%s" %(id,second_id), end=' ')
+      print()
 
   return crossover_dict
 
@@ -484,7 +485,7 @@ def get_cc_dict(hierarchy=None,crystal_symmetry=None,
   table=None,out=sys.stdout):
 
   cc_dict={}
-  print >>out, "\nMaking a table of residue CC values"
+  print("\nMaking a table of residue CC values", file=out)
   cryst1_line=iotbx.pdb.format_cryst1_record(crystal_symmetry=crystal_symmetry)
 
   # select the model and chain we are interested in
@@ -542,11 +543,11 @@ def smooth_cc_values(cc_dict=None,
   keys.sort()
   if verbose:
       for key in keys:
-        print >>out,"ID:  %s " %(key)
-        print >>out,"Position   Unsmoothed  Smoothed"
+        print("ID:  %s " %(key), file=out)
+        print("Position   Unsmoothed  Smoothed", file=out)
         for i in xrange(cc_dict[key].size()):
-         print >>out,"  %d     %7.2f     %7.2f" %(
-           i,cc_dict[key][i],smoothed_cc_dict[key][i])
+         print("  %d     %7.2f     %7.2f" %(
+           i,cc_dict[key][i],smoothed_cc_dict[key][i]), file=out)
 
   return smoothed_cc_dict
 
@@ -640,7 +641,7 @@ def run(
         raise Sorry("Cannot read input PDB file '%s'" %(
           str(pdb_in_file)))
       else:
-        print >>out,"Taking models from %s" %(pdb_in_file)
+        print("Taking models from %s" %(pdb_in_file), file=out)
         pdb_string=open(pdb_in_file).read()
       pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
       if pdb_inp is None:
@@ -667,11 +668,11 @@ def run(
       map_data=map_data, xray_structure=xrs).d_min
   if(resolution is None):
     raise Sorry("Resolution is required")
-  print >>out,"\nResolution limit: %7.2f" %(resolution)
-  print >>out,"\nSummary of input models"
+  print("\nResolution limit: %7.2f" %(resolution), file=out)
+  print("\nSummary of input models", file=out)
   xrs.show_summary(f=out, prefix="  ")
 
-  print >>out, "\nReady with %d models and map" %(n_models)
+  print("\nReady with %d models and map" %(n_models), file=out)
   # Get CC by residue for each model and map
 
   chain_id_and_resseq_list=[] # Instead set up chain_id and resseq (range)
@@ -707,8 +708,8 @@ def run(
     pdb_inp=sel_hierarchy.as_pdb_input(crystal_symmetry=crystal_symmetry)
     ph=pdb_inp.construct_hierarchy()
 
-    print >>out,"\nWorking on chain_id='%s' resseq %d:%d\n" %(
-       chain_id_and_resseq[0],chain_id_and_resseq[1][0],chain_id_and_resseq[1][1])
+    print("\nWorking on chain_id='%s' resseq %d:%d\n" %(
+       chain_id_and_resseq[0],chain_id_and_resseq[1][0],chain_id_and_resseq[1][1]), file=out)
 
     # get CC values for all residues
     cc_dict=get_cc_dict(hierarchy=ph,map_data=map_data,d_min=resolution,
@@ -771,8 +772,8 @@ def run(
     cycle=0
     while found:
       cycle+=1
-      print >>out, "\nCYCLE %d current best is %7.3f\n" %(
-        cycle,best_model.get_score())
+      print("\nCYCLE %d current best is %7.3f\n" %(
+        cycle,best_model.get_score()), file=out)
       found=False
       sorted_working_model_list=[]
       new_best=best_model
@@ -784,7 +785,7 @@ def run(
           if not working_model==m:  others.append(m)
         new_working_model=working_model.optimize_with_others(others=others)
         if not new_working_model:
-          print
+          print()
           continue
         aa=[new_working_model.get_score(),new_working_model]
         if not aa in sorted_working_model_list:
@@ -801,11 +802,11 @@ def run(
         best_model=new_working_model
         found=True
         if verbose:
-          print >>out,"NEW BEST SCORE: %7.2f" %(best_model.get_score())
+          print("NEW BEST SCORE: %7.2f" %(best_model.get_score()), file=out)
           best_model.show_summary(out=out)
 
-    print >>out, "\nDONE... best is %7.3f\n" %(
-        best_model.get_score())
+    print("\nDONE... best is %7.3f\n" %(
+        best_model.get_score()), file=out)
 
     # Create composite of this chain
 
@@ -827,7 +828,7 @@ def run(
       asc=ph.atom_selection_cache()
       sel=asc.selection(string = atom_selection)
       sel_hierarchy=ph.select(sel)
-      print >>composite_model_stream,remove_ter(sel_hierarchy.as_pdb_string())
+      print(remove_ter(sel_hierarchy.as_pdb_string()), file=composite_model_stream)
 
   #  All done, make a new pdb_hierarchy
   pdb_string=composite_model_stream.getvalue()
@@ -836,8 +837,8 @@ def run(
 
   if pdb_out:
     f=open(pdb_out,'w')
-    print >>f,pdb_hierarchy.as_pdb_string(crystal_symmetry=crystal_symmetry)
-    print "Final model is in: %s\n" %(f.name)
+    print(pdb_hierarchy.as_pdb_string(crystal_symmetry=crystal_symmetry), file=f)
+    print("Final model is in: %s\n" %(f.name))
     f.close()
 
   return pdb_hierarchy

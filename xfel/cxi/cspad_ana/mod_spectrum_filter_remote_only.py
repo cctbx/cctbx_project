@@ -5,6 +5,7 @@
     stream events as being a two color event or not.
 '''
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
@@ -170,22 +171,22 @@ class mod_spectrum_filter_remote_only(object):
 
       if not one_D:
         if int_peak_one_norm/int_peak_two_norm > self.peak_ratio:
-          print "event(): inflection peak too high"
+          print("event(): inflection peak too high")
           evt.put(skip_event_flag(), "skip_event")
           return
         if int_left_region_norm > self.normalized_peak_to_noise_ratio*int_peak_two_norm:
-          print "event(): noisy left of low energy peak"
+          print("event(): noisy left of low energy peak")
           evt.put(skip_event_flag(), "skip_event")
           return
         if int_right_region_norm > self.normalized_peak_to_noise_ratio*int_peak_two_norm:
-          print "event(): noisy right of high energy peak"
+          print("event(): noisy right of high energy peak")
           evt.put(skip_event_flag(), "skip_event")
           return
       #self.logger.info("TIMESTAMP %s accepted" %timestamp)
       self.naccepted += 1
       self.ntwo_color += 1
-      print "%d Remote shot"  %self.ntwo_color
-      print "%s Remote timestamp" %timestamp
+      print("%d Remote shot"  %self.ntwo_color)
+      print("%s Remote timestamp" %timestamp)
   def endjob(self, obj1, obj2=None):
     """
     @param evt Event object (psana only)

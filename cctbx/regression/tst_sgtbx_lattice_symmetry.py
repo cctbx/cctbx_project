@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.sgtbx import subgroups
@@ -71,7 +72,7 @@ def exercise_comprehensive(args):
   else:
     cb_range = 1
   for symbol in bravais_types.acentric:
-    print "bravais type:", symbol
+    print("bravais type:", symbol)
     sym = sgtbx.space_group_info(symbol=symbol) \
       .any_compatible_crystal_symmetry(volume=1000) \
       .niggli_cell()
@@ -88,13 +89,13 @@ def exercise_comprehensive(args):
         assert y-x > -1.e-6
         if (y-x > 1.e-4): break
       else:
-        print >> out, "cb_ob:", cb_op.c(), cb_elements
+        print("cb_ob:", cb_op.c(), cb_elements, file=out)
         assert min(cb_elements) >= -1
         assert max(cb_elements) <= 1
         for s in sym_cb.space_group():
           assert s.r().den() == 1
           r_num = s.r().num()
-          print >> out, "r:", r_num
+          print("r:", r_num, file=out)
           assert min(r_num) >= -1
           assert max(r_num) <= 1
         for enforce in [False, True]:
@@ -104,12 +105,12 @@ def exercise_comprehensive(args):
             enforce_max_delta_for_generated_two_folds=enforce)
         assert lattice_group == sym_cb.space_group()
         sys.stdout.flush()
-    print >> out
+    print(file=out)
 
 def run(args):
   exercise_quick()
   exercise_comprehensive(args)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

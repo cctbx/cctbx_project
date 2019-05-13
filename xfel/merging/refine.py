@@ -3,6 +3,7 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 
 import math
 
@@ -123,10 +124,10 @@ class find_scale(lbfgs_with_curvatures_mix_in):
     # XXX Only output this every 100 iterations or so.
     scales = self.x[0:len(self._subset)]
     stats = flex.mean_and_variance(scales)
-    print "* f =% 10.4e, g =% f+/-%f" % (
+    print("* f =% 10.4e, g =% f+/-%f" % (
       math.sqrt(f),
       stats.mean(),
-      stats.unweighted_sample_standard_deviation())
+      stats.unweighted_sample_standard_deviation()))
 
     # Warn if there are non_positive per-frame scaling factors.
     scales_non_positive = scales.select(scales <= 1e-6) # XXX Or just zero!
@@ -136,13 +137,13 @@ class find_scale(lbfgs_with_curvatures_mix_in):
         sigma = stats.unweighted_sample_standard_deviation()
       else:
         sigma = 0
-      print "Have %d non-positive per-frame scaling factors: " \
+      print("Have %d non-positive per-frame scaling factors: " \
         "%f+/-%f [%f, %f]" % (
           len(scales_non_positive),
           stats.mean(),
           sigma,
           flex.min(scales_non_positive),
-          flex.max(scales_non_positive))
+          flex.max(scales_non_positive)))
 
     return (f, g)
 

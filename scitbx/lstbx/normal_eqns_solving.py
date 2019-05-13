@@ -2,6 +2,7 @@ from __future__ import division
 
 """ Tools to solve non-linear L.S. problems formulated with normal-equations.
 """
+from __future__ import print_function
 
 import libtbx
 from scitbx.array_family import flex
@@ -285,20 +286,20 @@ class levenberg_marquardt_iterations_encapsulated_eqns(
       2) avoid a memory leak by deleting the following circular reference to self:
     """
     if self.verbose_iterations:
-      print "Iteration      Objective        Mu     ||Gradient||       Step"
+      print("Iteration      Objective        Mu     ||Gradient||       Step")
     del self.non_linear_ls.journal
 
   def had_too_small_a_step(self):
     if self.verbose_iterations:
-      print "%5d %18.4f"%(self.n_iterations,self.objective_history[-1]),
-      print "%12.7f"%(self.mu),"%12.3f"%(self.gradient_norm_history[-1]),
+      print("%5d %18.4f"%(self.n_iterations,self.objective_history[-1]), end=' ')
+      print("%12.7f"%(self.mu),"%12.3f"%(self.gradient_norm_history[-1]), end=' ')
       x = self.parameter_vector_norm_history[-1]
       h = self.step_norm_history[-1]
       import math
       root = (-x + math.sqrt(x*x+4.*h))/2.
       form_p = int(-math.log10(self.step_threshold))
       format = "%%12.%df"%(form_p+1)
-      print format%(root)
+      print(format%(root))
     return iterations.had_too_small_a_step(self)
 
   def do(self):

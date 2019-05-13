@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from cctbx.array_family import flex
 from cctbx.uctbx import unit_cell
@@ -36,10 +37,10 @@ def prepare_simulation_with_noise(sim, transmittance,
 
   sigma_obs = flex.sqrt(flex.abs(raw_obs))
   mean_sigma = flex.mean(sigma_obs)
-  print "<I> / <sigma>", (mean_signal/ mean_sigma)
+  print("<I> / <sigma>", (mean_signal/ mean_sigma))
 
   scale_factor = mean_signal/10.
-  print "Mean signal is",mean_signal,"Applying a constant scale factor of ",scale_factor
+  print("Mean signal is",mean_signal,"Applying a constant scale factor of ",scale_factor)
 
   #most important line; puts input data on a numerically reasonable scale
   result.raw_obs = raw_obs / scale_factor
@@ -88,10 +89,10 @@ def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
 
   mean_signal = flex.mean(raw_obs)
   mean_sigma = flex.mean(sigma_obs)
-  print "<I> / <sigma>", (mean_signal/ mean_sigma)
+  print("<I> / <sigma>", (mean_signal/ mean_sigma))
 
   scale_factor = mean_signal/10.
-  print "Mean signal is",mean_signal,"Applying a constant scale factor of ",scale_factor
+  print("Mean signal is",mean_signal,"Applying a constant scale factor of ",scale_factor)
   SDFAC_FROM_CHISQ = work_params.levmar.sdfac_value
   #most important line; puts input data on a numerically reasonable scale
   # XXX
@@ -119,10 +120,10 @@ if __name__=="__main__":
   frames = pickle.load(open("frames.pickle","rb"))
   case = 1000
   sim = pickle.load(open("simulated%05d_0.pickle"%case,"rb"))
-  print
+  print()
   #print "accepted %d obs"%(len(sim["miller_lookup"]))
   #print "accepted frames %d"%(len(sim["frame_lookup"]))
-  print "accepted obs %d"%(len(sim["observed_intensity"]))
+  print("accepted obs %d"%(len(sim["observed_intensity"])))
   #print list(sim["frame_lookup"])
   #print list(sim["miller_lookup"])
   #print list(sim["observed_intensity"])
@@ -133,4 +134,4 @@ if __name__=="__main__":
                                        apply_noise=apply_noise)
 
 
-  print "OK"
+  print("OK")

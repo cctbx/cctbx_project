@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #
 # Required input files:
 #   http://journals.iucr.org/c/issues/2001/05/00/vj1132/vj1132Isup2.hkl
@@ -24,35 +25,35 @@ def run():
   if not ('_meas' in str(miller_array.info())
           and (miller_array.is_xray_amplitude_array()
                or miller_array.is_xray_intensity_array())):
-    print "Sorry: CIF does not contain an appropriate miller array"
+    print("Sorry: CIF does not contain an appropriate miller array")
     return
   miller_array.show_comprehensive_summary()
-  print
+  print()
 
   if (miller_array.is_xray_intensity_array()):
-    print "Converting intensities to amplitudes."
+    print("Converting intensities to amplitudes.")
     miller_array = miller_array.as_amplitude_array()
-    print
+    print()
 
   miller_array.setup_binner(auto_binning=True)
   miller_array.binner().show_summary()
-  print
+  print()
 
   all_e_values = miller_array.quasi_normalize_structure_factors().sort(
     by_value="data")
   large_e_values = all_e_values.select(all_e_values.data() > 1.2)
-  print "number of large_e_values:", large_e_values.size()
-  print
+  print("number of large_e_values:", large_e_values.size())
+  print()
 
   from cctbx import dmtbx
   triplets = dmtbx.triplet_generator(large_e_values)
   from cctbx.array_family import flex
-  print "triplets per reflection: min,max,mean: %d, %d, %.2f" % (
+  print("triplets per reflection: min,max,mean: %d, %d, %.2f" % (
     flex.min(triplets.n_relations()),
     flex.max(triplets.n_relations()),
-    flex.mean(triplets.n_relations().as_double()))
-  print "total number of triplets:", flex.sum(triplets.n_relations())
-  print
+    flex.mean(triplets.n_relations().as_double())))
+  print("total number of triplets:", flex.sum(triplets.n_relations()))
+  print()
 
   input_phases = large_e_values \
     .random_phases_compatible_with_phase_restrictions()
@@ -72,16 +73,16 @@ def run():
     symmetry_flags=maptbx.use_space_group_symmetry)
   e_map.apply_sigma_scaling()
   e_map.statistics().show_summary(prefix="e_map ")
-  print
+  print()
 
   peak_search = e_map.peak_search(parameters=maptbx.peak_search_parameters(
     min_distance_sym_equiv=1.2))
   peaks = peak_search.all(max_clusters=10)
-  print "e_map peak list"
-  print "       fractional coordinates       peak height"
+  print("e_map peak list")
+  print("       fractional coordinates       peak height")
   for site,height in zip(peaks.sites(), peaks.heights()):
-    print "  (%9.6f, %9.6f, %9.6f)" % site, "%10.3f" % height
-  print
+    print("  (%9.6f, %9.6f, %9.6f)" % site, "%10.3f" % height)
+  print()
 
   if (len(sys.argv) > 2):
     coordinate_file_name = sys.argv[2]
@@ -89,15 +90,15 @@ def run():
       file_path=coordinate_file_name).build_crystal_structures(
         data_block_name="I")
     xray_structure.show_summary().show_scatterers()
-    print
+    print()
 
     f_calc = abs(miller_array.structure_factors_from_scatterers(
       xray_structure=xray_structure,
       algorithm="direct").f_calc())
     correlation = flex.linear_correlation(f_calc.data(), miller_array.data())
     assert correlation.is_well_defined()
-    print "correlation of f_obs and f_calc: %.4f" % correlation.coefficient()
-    print
+    print("correlation of f_obs and f_calc: %.4f" % correlation.coefficient())
+    print()
 
     reference_model = xray_structure.as_emma_model()
     assert reference_model.unit_cell().is_similar_to(e_map.unit_cell())

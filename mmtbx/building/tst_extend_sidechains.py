@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cStringIO import StringIO
 import os.path
 
@@ -101,4 +102,4 @@ if (__name__ == "__main__"):
   exercise_model_only()
   exercise_correct_sequence()
   exercise_cmdline()
-  print "OK"
+  print("OK")

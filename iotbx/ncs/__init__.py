@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.pdb.atom_selection import selection_string_from_selection
 from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
@@ -189,11 +190,11 @@ class input(object):
 
     # error handling
     if self.ncs_restraints_group_list.get_n_groups() == 0:
-      print >> self.log,'========== WARNING! ============\n'
-      print >> self.log,'  No NCS relation were found !!!\n'
-      print >> self.log,'================================\n'
+      print('========== WARNING! ============\n', file=self.log)
+      print('  No NCS relation were found !!!\n', file=self.log)
+      print('================================\n', file=self.log)
     if self.messages != '':
-      print >> self.log, self.messages
+      print(self.messages, file=self.log)
 
   @staticmethod
   def get_default_params():
@@ -244,10 +245,10 @@ class input(object):
       to_show.show(out=self.log)
 
     def show_empty_selection_error_message(ng, where="reference"):
-      print >> self.log, "  Missing or corrupted %s field:" % where
-      print >> self.log, "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-      print >> self.log, "      _ALL_ user-supplied groups will be ignored"
-      print >> self.log, "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      print("  Missing or corrupted %s field:" % where, file=self.log)
+      print("  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", file=self.log)
+      print("      _ALL_ user-supplied groups will be ignored", file=self.log)
+      print("  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", file=self.log)
       show_particular_ncs_group(ng)
 
     # Massage NCS groups
@@ -268,7 +269,7 @@ class input(object):
       # Not a big deal.
       return None
     if(ncs_phil_groups is not None):
-      print >> self.log, "Validating user-supplied NCS groups..."
+      print("Validating user-supplied NCS groups...", file=self.log)
       empty_cntr = 0
       for ng in ncs_phil_groups:
         if ng.reference is None or len(ng.reference.strip())==0:
@@ -279,15 +280,15 @@ class input(object):
             show_empty_selection_error_message(ng, where="selection")
             empty_cntr += 1
       if(empty_cntr>0):
-        print >> self.log, "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        print >> self.log, "      _ALL_ user-supplied groups are ignored."
-        print >> self.log, "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        print("  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", file=self.log)
+        print("      _ALL_ user-supplied groups are ignored.", file=self.log)
+        print("  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", file=self.log)
         ncs_phil_groups=None
         return None
     # Verify NCS selections
     msg="Empty selection in NCS group definition: %s"
     for ncs_group in ncs_phil_groups:
-      print >> self.log, "  Validating:"
+      print("  Validating:", file=self.log)
       show_particular_ncs_group(ncs_group)
       selection_list = []
       # first, check for selections producing 0 atoms
@@ -371,7 +372,7 @@ class input(object):
         rejected_msg = "  REJECTED because copies don't match good enough.\n" + \
         "Try to revise selections or adjust chain_similarity_threshold or \n" + \
         "chain_max_rmsd parameters."
-        print >> self.log, rejected_msg
+        print(rejected_msg, file=self.log)
         continue
       # User triggered the fail of this assert!
       selections_were_modified = False
@@ -416,9 +417,9 @@ class input(object):
       "    3. Residue mismatch in requested copies.\n" + \
       "  Please check the validated selection further down.\n"
       if selections_were_modified:
-        print >> self.log, modified_msg
+        print(modified_msg, file=self.log)
       else:
-        print >> self.log, ok_msg
+        print(ok_msg, file=self.log)
     # print "len(validated_ncs_groups)", len(validated_ncs_groups)
     # for ncs_gr in validated_ncs_groups:
     #   print "  reference:", ncs_gr.reference
@@ -619,7 +620,7 @@ class input(object):
     gr = '\n'.join(groups)
     gr += '\n'
     if write:
-      print >> log,gr
+      print(gr, file=log)
     return gr
 
   def show(self,
@@ -649,18 +650,18 @@ class input(object):
     out_str = ''
     if (not format) or (format.lower() == 'cctbx'):
       out_str = self.__repr__(prefix)
-      print >> log, out_str
+      print(out_str, file=log)
       if verbose:
-        print >> log, self.show_ncs_selections(prefix)
+        print(self.show_ncs_selections(prefix), file=log)
     elif format.lower() == 'phil':
       out_str = self.show_phil_format(prefix=prefix,header=header)
-      print >> log, out_str
+      print(out_str, file=log)
     elif format.lower() == 'spec':
       # Does not add prefix in SPEC format
       out_str = self.show_search_parameters_values(prefix) + '/n'
       out_str += self.show_chains_info(prefix) + '\n'
       out_str += '\n' + prefix + 'NCS object "display_all"'
-      print >> log, out_str
+      print(out_str, file=log)
       spec_obj = self.get_ncs_info_as_spec(write=False)
       out_str += spec_obj.display_all(log=log)
     return out_str

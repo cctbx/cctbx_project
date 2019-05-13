@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import math,copy
 from scitbx.array_family import flex
@@ -131,7 +132,7 @@ def background_correct_padded_block(data, raw_asic):
 def background_correct(data, raw_asic):
 
   prime_asic = get_factorizable_block(raw_asic)
-  print "Working on block",prime_asic
+  print("Working on block",prime_asic)
   block = data.matrix_copy_block(
       i_row=prime_asic[0],i_column=prime_asic[1],
       n_rows=prime_asic[2]-prime_asic[0],

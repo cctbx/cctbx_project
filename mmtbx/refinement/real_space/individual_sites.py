@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import adopt_init_args
 import scitbx.lbfgs
 from cctbx import maptbx
@@ -411,11 +412,11 @@ class minimize_wrapper_with_map():
 
     # completely new way of doing this. using RSR macro-cycle
     # for test compatibility:
-    print >> log, "Minimizing using reference map..."
+    print("Minimizing using reference map...", file=log)
     if model.ncs_constraints_present():
-      print >> log, "  Minimizing... (NCS)"
+      print("  Minimizing... (NCS)", file=log)
     else:
-      print >> log, "  Minimizing..."
+      print("  Minimizing...", file=log)
     from phenix.refinement.macro_cycle_real_space import run as rsr_mc_run
     import scitbx.math
     from phenix.command_line.real_space_refine import extract_rigid_body_selections
@@ -458,7 +459,7 @@ class minimize_wrapper_with_map():
     from mmtbx.refinement.minimization_monitor import minimization_monitor
     self.model = model
     self.log = log
-    print >> self.log, "Minimizing using reference map..."
+    print("Minimizing using reference map...", file=self.log)
     self.log.flush()
 
     # copy-paste from cctbx_project/mmtbx/refinement/geometry_minimization.py:
@@ -481,17 +482,17 @@ class minimize_wrapper_with_map():
     selection_real_space = None
     import mmtbx.refinement.real_space.weight
     self.w = 1
-    print >> log, "number_of_cycles", number_of_cycles
-    print >> log, "Stats before minimization:"
+    print("number_of_cycles", number_of_cycles, file=log)
+    print("Stats before minimization:", file=log)
     ms = self.model.geometry_statistics()
     ms.show(log=log)
 
     while min_monitor.need_more_cycles():
-      print >> self.log, "Cycle number", min_monitor.get_current_cycle_n()
+      print("Cycle number", min_monitor.get_current_cycle_n(), file=self.log)
       self.model.get_restraints_manager().geometry.\
           update_ramachandran_restraints_phi_psi_targets(
               hierarchy=self.model.get_hierarchy())
-      print >> self.log, "  Updating rotamer restraints..."
+      print("  Updating rotamer restraints...", file=self.log)
       add_rotamer_restraints(
         pdb_hierarchy      = self.model.get_hierarchy(),
         restraints_manager = self.model.get_restraints_manager(),
@@ -505,7 +506,7 @@ class minimize_wrapper_with_map():
 
       if min_monitor.need_weight_optimization():
         # if self.w is None:
-        print >> self.log, "  Determining weight..."
+        print("  Determining weight...", file=self.log)
         self.log.flush()
         self.weight = mmtbx.refinement.real_space.weight.run(
             map_data                    = target_map,
@@ -522,12 +523,12 @@ class minimize_wrapper_with_map():
         # self.w = 0
         # self.w = self.weight.weight
         for s in self.weight.msg_strings:
-          print >> self.log, s
+          print(s, file=self.log)
 
       if ncs_restraints_group_list is None or len(ncs_restraints_group_list)==0:
         #No NCS
-        print >> self.log, "  Minimizing..."
-        print >> self.log, "     with weight %f" % self.w
+        print("  Minimizing...", file=self.log)
+        print("     with weight %f" % self.w, file=self.log)
         self.log.flush()
         refine_object = simple(
             target_map                  = target_map,
@@ -539,7 +540,7 @@ class minimize_wrapper_with_map():
             ncs_groups                  = ncs_groups)
         refine_object.refine(weight = self.w, xray_structure = self.model.get_xray_structure())
         self.rmsd_bonds_final, self.rmsd_angles_final = refine_object.rmsds()
-        print >> log, "RMSDS:", self.rmsd_bonds_final, self.rmsd_angles_final
+        print("RMSDS:", self.rmsd_bonds_final, self.rmsd_angles_final, file=log)
         # print >> log, "sizes:", len(refine_object.sites_cart()), len(self.xrs.scatterers())
         self.model.set_sites_cart(refine_object.sites_cart(), update_grm=True)
         # print >> log, "sizes", self.xrs.scatterers()
@@ -553,7 +554,7 @@ class minimize_wrapper_with_map():
         #     xray_structure = self.model.get_xray_structure(),
         #     map_data       = target_map,
         #     d_min          = 3)
-        print >> self.log, "  Minimizing... (NCS)"
+        print("  Minimizing... (NCS)", file=self.log)
         tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
           target_function_and_grads_real_space(
             map_data                   = target_map,

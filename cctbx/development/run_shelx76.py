@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import adptbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -124,7 +125,7 @@ def write_shelx76_ls(
   atoms(lapp, sfac_indices, xray_structure, encoded_sites)
   HKLF(lapp, f_obs, skip_zeros=True)
   lapp("END")
-  print >> open("tmp.ins", "w"), "\n".join(lines)
+  print("\n".join(lines), file=open("tmp.ins", "w"))
 
 def run_shelx76(titl, xray_structure, f_obs):
   write_shelx76_ls(f_obs, xray_structure, titl)
@@ -167,13 +168,13 @@ def exercise(space_group_info, d_min=1.):
 def run_call_back(flags, space_group_info):
   sg = space_group_info.group()
   if (sg.is_centric() and not sg.is_origin_centric()):
-    print "Skipping space group: centre of inversion is not at origin."
+    print("Skipping space group: centre of inversion is not at origin.")
     return
   exercise(space_group_info)
 
 def run(args):
   if (libtbx.path.full_command_path(command="shelx76") is None):
-    print "shelx76 not available."
+    print("shelx76 not available.")
     return
   debug_utils.parse_options_loop_space_groups(args, run_call_back)
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import miller
 import math
@@ -93,8 +94,8 @@ class merge_data_handler(object):
     try:
       r_split_bin = (1/math.sqrt(2))*(flex.sum(flex.abs(self.I_even - self.I_odd))/(flex.sum(self.I_even + self.I_odd)*0.5))
     except Exception as e:
-      print "Warning: R_split calculation failed."
-      print e
+      print("Warning: R_split calculation failed.")
+      print(e)
       r_split_bin =0
     return r_split_bin if self.get_size() else 0
 

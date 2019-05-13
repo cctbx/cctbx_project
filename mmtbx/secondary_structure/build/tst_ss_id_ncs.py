@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
 import mmtbx.model
@@ -270,7 +271,7 @@ def exercise():
   log_cont = log.getvalue()
   assert log_cont.find("skipping, not in NCS master") > 0
   # print log_cont
-  print "OK"
+  print("OK")
 
 
 if (__name__ == "__main__"):

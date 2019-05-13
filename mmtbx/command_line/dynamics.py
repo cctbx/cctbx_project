@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.dynamics
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.command_line import geometry_minimization
 import iotbx.phil
 from scitbx.array_family import flex
@@ -56,8 +57,8 @@ def run_cartesian_dynamics(
     verbose=1)
   sites_cart_end = xray_structure.sites_cart()
   rmsd = sites_cart_end.rms_difference(sites_cart_start)
-  print >> log, ""
-  print >> log, "RMSD from starting structure: %.3f" % rmsd
+  print("", file=log)
+  print("RMSD from starting structure: %.3f" % rmsd, file=log)
 
 class run(geometry_minimization.run):
   _pdb_suffix = "shaken"
@@ -122,5 +123,5 @@ if(__name__ == "__main__"):
   log = sys.stdout
   o = run(sys.argv[1:], log=log)
   tt = timer.elapsed()
-  print >> o.log, "Overall runtime: %-8.3f" % tt
+  print("Overall runtime: %-8.3f" % tt, file=o.log)
   assert abs(tt-o.total_time) < 0.1 # guard against unaccounted times

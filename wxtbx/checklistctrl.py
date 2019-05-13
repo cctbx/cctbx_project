@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # Copyright 2010, University of California
 # License: LGPL
@@ -191,8 +192,8 @@ def demo():
   sizer2.Add(btn1, 0, wx.ALL, 5)
   def OnShow1(event):
     items = ctrl1.GetCheckedItemsText()
-    print "Control 1 selection:"
-    print "\n".join([ " " + item for item in items ])
+    print("Control 1 selection:")
+    print("\n".join([ " " + item for item in items ]))
   frame.Bind(wx.EVT_BUTTON, OnShow1, btn1)
   txt2 = wx.StaticText(panel, -1, "This control will only allow you to "+
     "check/uncheck a single item at a time.")
@@ -207,8 +208,8 @@ def demo():
   btn2 = wx.Button(panel, -1, "Print checked items")
   def OnShow2(event):
     items = ctrl2.GetCheckedItemsText()
-    print "Control 2 selection:"
-    print "\n".join([ " " + item for item in items ])
+    print("Control 2 selection:")
+    print("\n".join([ " " + item for item in items ]))
   sizer2.Add(btn2, 0, wx.ALL, 5)
   frame.Bind(wx.EVT_BUTTON, OnShow2, btn2)
   for i in range(10):

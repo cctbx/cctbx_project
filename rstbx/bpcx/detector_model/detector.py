@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #!/usr/bin/env python
 
 from scitbx import matrix
@@ -136,7 +137,7 @@ def test_all():
         # the closest intersection should be on panel3
         assert rpi[0][0] == 3
 
-    print 'OK'
+    print('OK')
 
 def test_work():
     '''Test all features of the module using a detector composed of four
@@ -172,7 +173,7 @@ def test_work():
         intersection_vector = rpi['vector'][j]
         assert(intersection_matrix[0] == intersection_vector[0])
 
-    print 'OK'
+    print('OK')
 
 if __name__ == '__main__':
     test_work()

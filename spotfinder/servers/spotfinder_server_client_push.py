@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from scitbx.array_family import flex
 from libtbx.development.timers import Timer
@@ -38,9 +39,9 @@ def module_image_stats(S,key):
 
     for item in canonical_info:
       if item[2]==None:
-        print "%63s : None"%item[1]
+        print("%63s : None"%item[1])
       else:
-        print "%63s : %s"%(item[1],item[0]%item[2])
+        print("%63s : %s"%(item[1],item[0]%item[2]))
 
 class image_request_handler(BaseHTTPRequestHandler):
 
@@ -80,16 +81,16 @@ class image_request_handler(BaseHTTPRequestHandler):
       {"boundary":boundary,
        "content-disposition":self.headers.getheaders('content-disposition')
       })
-    print "*****************************"
+    print("*****************************")
     for item in parts.keys():
       if len(parts[item][0])< 1000:
-        print item, parts[item]
-    print "*****************************"
+        print(item, parts[item])
+    print("*****************************")
 
     from iotbx.detectors.image_from_http_request import module_or_slice_from_http_request
     imgobj = module_or_slice_from_http_request(parts)
     imgobj.read()
-    print "Final image object:"
+    print("Final image object:")
     imgobj.show_header()
 
     from spotfinder.diffraction.imagefiles import image_files, file_names
@@ -120,7 +121,7 @@ class image_request_handler(BaseHTTPRequestHandler):
 
     sys.stdout = sys.__stdout__
     log = logfile.getvalue()
-    print log
+    print(log)
 
     ctype = 'text/plain'
     self.send_response(200)
@@ -138,14 +139,14 @@ if __name__=="__main__":
   try:
     port = int(sys.argv[1])
   except Exception:
-    print """
+    print("""
 Usage:  libtbx.python adsc_server.py <port number>
-"""
+""")
   server_address = ('', port)
 
   image_request_handler.protocol_version = "HTTP/1.0"
   httpd = HTTPServer(server_address, image_request_handler)
 
   sa = httpd.socket.getsockname()
-  print "Serving HTTP on", sa[0], "port", sa[1], "..."
+  print("Serving HTTP on", sa[0], "port", sa[1], "...")
   httpd.serve_forever()

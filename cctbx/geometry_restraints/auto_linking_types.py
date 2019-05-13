@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 bond_origin_ids = {}
 angle_origin_ids = {}
@@ -125,9 +126,9 @@ for scl in standard_cif_links:
 #assert 0
 
 if __name__=="__main__":
-  print '-'*80
-  print bond_origin_ids
-  print '-'*80
-  print angle_origin_ids
-  print '-'*80
-  print torsion_origin_ids
+  print('-'*80)
+  print(bond_origin_ids)
+  print('-'*80)
+  print(angle_origin_ids)
+  print('-'*80)
+  print(torsion_origin_ids)

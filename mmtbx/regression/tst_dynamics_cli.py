@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import null_out
 from cStringIO import StringIO
 
@@ -94,4 +95,4 @@ END
 
 if (__name__ == "__main__"):
   exercise_dynamics_command()
-  print "OK"
+  print("OK")

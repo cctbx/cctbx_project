@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Sorry
 from libtbx.str_utils import make_header
 from libtbx import Auto, adopt_init_args
@@ -102,7 +103,7 @@ and experimentation only.
       pdb_atoms=pdb_hierarchy.atoms())
   n_sel = selection.count(True)
   assert (n_sel > 0)
-  print >> out, "%d atoms selected" % n_sel
+  print("%d atoms selected" % n_sel, file=out)
   selection_delete = None
   if (params.selection_delete is not None):
     selection_delete = a_c_p.selection(params.selection_delete)
@@ -145,14 +146,14 @@ and experimentation only.
     model.id = str(i_conf+1)
     rmsd = sites_new.select(selection).rms_difference(
       sites_ref.select(selection))
-    print >> out, "Model %d: rmsd=%.3f" % (i_conf+1, rmsd)
+    print("Model %d: rmsd=%.3f" % (i_conf+1, rmsd), file=out)
     rmsds.append(rmsd)
     ensemble.append_model(model)
   f = open(params.output.file_name, "w")
   f.write(ensemble.as_pdb_string(
     crystal_symmetry=fmodel.xray_structure))
   f.close()
-  print >> out, "Wrote ensemble model to %s" % params.output.file_name
+  print("Wrote ensemble model to %s" % params.output.file_name, file=out)
   return rmsds
 
 class annealing_manager(object):

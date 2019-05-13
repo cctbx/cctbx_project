@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from rigidity import \
   gcd, \
   float_row_echelon_form_back_substitution, \
@@ -24,7 +25,7 @@ def int_or_none(v):
 
 sge_task_id = int_or_none(os.environ.get("SGE_TASK_ID"))
 if (sge_task_id is not None):
-  print "sge_task_id:", sge_task_id
+  print("sge_task_id:", sge_task_id)
   sys.stdout.flush()
   random.seed(sge_task_id)
 
@@ -141,7 +142,7 @@ def ddof(n_dim, n_vertices, edge_list):
       for method in ["float", "integer"][:n]]
   nr = results[0][1]
   if (results[0][1] != 0):
-    print "INFO: float repeats:", results[0][1]
+    print("INFO: float repeats:", results[0][1])
     sys.stdout.flush()
   update_repeat_log(nr=nr)
   if (len(results) > 1):
@@ -255,10 +256,10 @@ def exercise():
     exercise_k6_6_minus_six_parallel_edges()
     if (option_all):
       exercise_p120()
-  print "repeat_log =", repeat_log
+  print("repeat_log =", repeat_log)
   # inline format_cpu_times (to minimize dependencies)
   t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
+  print("u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1]))
   sys.stdout.flush()
 
 if (__name__ == "__main__"):

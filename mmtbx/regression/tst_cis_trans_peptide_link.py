@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import StringIO
 from libtbx import easy_run
 pdbs = ["""
@@ -95,14 +96,14 @@ def cis_trans_specification():
       f.write(param)
       f.close()
       cmd = "phenix.geometry_minimization %(preamble)s.pdb %(preamble)s.params" % locals()
-      print cmd
+      print(cmd)
       ero = easy_run.fully_buffered(command=cmd)
       out = StringIO.StringIO()
       ero.show_stdout(out=out)
 
       lines = file("%(preamble)s_minimized.geo" % locals(), "rb").read()
       geo_spec=geo_specs[i]
-      print geo_spec % results[0]
+      print(geo_spec % results[0])
       if lines.find(geo_spec % results[0])==1:
         if lines.find(geo_spec % abs(results[0]))==1:
           assert 0, ".geo specification not found"
@@ -113,14 +114,14 @@ def trans_only_specification():
     preamble = "bad_cis_peptide_%02d" % i
     for arg, results in cmd_args.items():
       cmd = "phenix.geometry_minimization %(preamble)s_minimized.pdb %(arg)s" % locals()
-      print cmd
+      print(cmd)
       ero = easy_run.fully_buffered(command=cmd)
       out = StringIO.StringIO()
       ero.show_stdout(out=out)
 
       lines = file("%(preamble)s_minimized_minimized.geo" % locals(), "rb").read()
       geo_spec=geo_specs[i]
-      print geo_spec % results[0]
+      print(geo_spec % results[0])
       if lines.find(geo_spec % results[0])==1:
         if lines.find(geo_spec % abs(results[0]))==1:
           assert 0, ".geo specification not found"

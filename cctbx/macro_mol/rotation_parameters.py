@@ -27,6 +27,7 @@ Revision history:
   2002 Jan: Created (Ralf W. Grosse-Kunstleve)
 """
 from __future__ import division
+from __future__ import print_function
 
 import math, types
 
@@ -445,26 +446,26 @@ if (__name__ == "__main__"):
   import sys
 
   def cns_input(matrix):
-    print "rotman"
-    print "matrix=" + (("(%.10g %.10g %.10g)" * 3) % matrix.elems)
-    print "copy"
+    print("rotman")
+    print("matrix=" + (("(%.10g %.10g %.10g)" * 3) % matrix.elems))
+    print("copy")
     for label, conv in (("eule", cns_theta1_theta2_theta3),
                         ("latt", cns_theta_plus_theta2_theta_minus),
                         ("sphe", cns_psi_phi_kappa),
                         ("axis", cns_axis_x_axis_y_axis_z_axis_kappa)):
       if (label == "axis"): fmt = "%s=(%.10g %.10g %.10g) %.10g"
       else:                 fmt = "%s=(%.10g %.10g %.10g)"
-      print fmt % tuple([label] + conv(matrix=matrix).params)
-      print "? distance"
-      print fmt % tuple([label] + conv(matrix=matrix).normalize(1))
-      print "? distance"
-    print "end"
+      print(fmt % tuple([label] + conv(matrix=matrix).params))
+      print("? distance")
+      print(fmt % tuple([label] + conv(matrix=matrix).normalize(1)))
+      print("? distance")
+    print("end")
 
   def compare_lists(list1, list2):
     for i in xrange(len(list1)):
       if (abs(list1[i] - list2[i]) > 1.e-5):
-        print (" %.5f %.5f %.5f\n" * 3) % tuple(list1)
-        print (" %.5f %.5f %.5f\n" * 3) % tuple(list2)
+        print((" %.5f %.5f %.5f\n" * 3) % tuple(list1))
+        print((" %.5f %.5f %.5f\n" * 3) % tuple(list2))
         raise RuntimeError, "Matrix mismatch."
 
   def check_conversion(conv, matrix):
@@ -475,8 +476,8 @@ if (__name__ == "__main__"):
     rot1 = conv(params = rot0.params)
     rot2 = conv(params = rot0.normalize(1))
     if ("-v" in sys.argv[1:]):
-      print "rot1", rot1.params
-      print "rot2", rot2.params
+      print("rot1", rot1.params)
+      print("rot2", rot2.params)
     compare_lists(rot0.matrix.elems, rot1.matrix.elems)
     compare_lists(rot0.matrix.elems, rot2.matrix.elems)
 
@@ -485,13 +486,13 @@ if (__name__ == "__main__"):
       for a2 in xrange(0, 361, 45):
         for a3 in xrange(0, 361, 45):
           if ("-v" in sys.argv[1:]):
-            print "Angles:", a1, a2, a3
+            print("Angles:", a1, a2, a3)
           matrix = cns_theta1_theta2_theta3(params = (a1, a2, a3)).matrix
           try:
             check_conversion(conv, matrix)
           except RuntimeError, e:
-            print e
-            print
+            print(e)
+            print()
             return
 
   def random_angles():
@@ -502,14 +503,14 @@ if (__name__ == "__main__"):
   def run():
     for conv in get_converters():
       if (not "--CNS" in sys.argv[1:]):
-        print conv.__doc__
+        print(conv.__doc__)
       for trial in xrange(10):
         matrix = cns_theta1_theta2_theta3(params = random_angles()).matrix
         check_conversion(conv, matrix)
       if (not "--RandomOnly" in sys.argv[1:]):
         check_45deg_incr(conv)
       if ("--CNS" in sys.argv[1:]):
-        print "stop"
+        print("stop")
         break
 
   run()

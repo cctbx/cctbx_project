@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.pdb import extract_rfactors_resolutions_sigma
 from libtbx.test_utils import approx_equal
 
@@ -126,4 +127,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print "OK"
+  print("OK")

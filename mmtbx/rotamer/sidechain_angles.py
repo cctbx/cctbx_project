@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.math
 from libtbx.utils import Sorry
 import libtbx.load_env
@@ -27,7 +28,7 @@ class PropertyFile:
     try:
       f = open(fileLoc)
     except ImportError, e:
-      print fileLoc+" file not found"
+      print(fileLoc+" file not found")
       sys.exit()
     for line in f:
       if (line.startswith("#") or line == "\n"): continue
@@ -145,7 +146,7 @@ class SidechainAngles:
                           sites_cart=sites_cart))
         return values
       except KeyError:
-        if self.show_errors: print resName + " is an unknown residue type"
+        if self.show_errors: print(resName + " is an unknown residue type")
         return None
     else:
       return None

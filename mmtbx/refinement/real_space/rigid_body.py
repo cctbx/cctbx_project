@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import maptbx
 from cctbx.array_family import flex
 import scitbx.rigid_body
@@ -190,7 +191,7 @@ class refine_mz(object):
       fmt="%sCC=%6.4f (best to keep CC=%6.4f), moved from start (max/mean)=%s"
       s1 = self.sites_cart_start
       d = "%6.3f %6.3f"%flex.sqrt((s1-s2).dot()).min_max_mean().as_tuple()[1:]
-      print >> self.log, fmt%(self.prefix, cc, self.cc_best, d)
+      print(fmt%(self.prefix, cc, self.cc_best, d), file=self.log)
 
   def _refine(self):
     self.lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
@@ -298,7 +299,7 @@ class refine_groups(object):
     #
     cs = self.xray_structure.crystal_symmetry()
     for i_chain, chain in enumerate(self.pdb_hierarchy.chains()):
-      print "chain:", chain.id
+      print("chain:", chain.id)
       selection = chain.atoms().extract_i_seq()
       ph = pdb_hierarchy.select(selection)
       #

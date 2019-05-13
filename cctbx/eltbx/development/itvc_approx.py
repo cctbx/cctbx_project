@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx import xray_scattering
 import scitbx.math.gaussian_fit
@@ -19,7 +20,7 @@ def run(file_name, table_of_gaussians, cutoff,
   for wk in xray_scattering.wk1995_iterator():
     label = wk.label()
     if (not label in tab.entries):
-      print "Warning: missing scatterer:", label
+      print("Warning: missing scatterer:", label)
   stols = cctbx.eltbx.gaussian_fit.international_tables_stols
   sel = stols <= cutoff + 1.e-6
   stols = stols.select(sel)
@@ -43,11 +44,11 @@ def run(file_name, table_of_gaussians, cutoff,
     assert entry.table_y.size() == 62
     if (not flex.sort_permutation(data=entry.table_y, reverse=True)
             .all_eq(range_62)):
-      print "Increasing: %s (%d)" % (element, entry.atomic_number)
+      print("Increasing: %s (%d)" % (element, entry.atomic_number))
       prev_y = entry.table_y[0]
       for y in entry.table_y:
         if (y > prev_y):
-          print "higher:", y, "before:", prev_y
+          print("higher:", y, "before:", prev_y)
         prev_y = y
       raise RuntimeError("Data values are not increasing.")
     if (low_resolution_only):
@@ -87,7 +88,7 @@ def run(file_name, table_of_gaussians, cutoff,
       gaussian_fit.table_y(), gaussian_fit.fitted_values()).coefficient())
     if (plots_dir is not None):
       if (not os.path.isdir(plots_dir)):
-        print "No plots because the directory %s does not exist." % plots_dir
+        print("No plots because the directory %s does not exist." % plots_dir)
         plots_dir = None
       else:
         cmp_plots.append(cctbx.eltbx.gaussian_fit.write_plots(
@@ -115,12 +116,12 @@ def run(file_name, table_of_gaussians, cutoff,
       high.append("%7.4f %4.2f%s" % (e[i],s,a))
       if (high_resolution_only): break
     if (verbose or len(high) > 0):
-      print "Element %-5s(%2d) cc=%.4f:" % (
-        l, entry.atomic_number, cc), ", ".join(high)
+      print("Element %-5s(%2d) cc=%.4f:" % (
+        l, entry.atomic_number, cc), ", ".join(high))
     if (verbose and p is not None):
-      print p
+      print(p)
       sys.stdout.write(open(p).read())
-      print
+      print()
 
 def main():
   parser = OptionParser(
@@ -158,7 +159,7 @@ def main():
     cutoff = 2
     assert not options.low_resolution_only
     assert not options.high_resolution_only
-  print "table_of_gaussians:", options.table_of_gaussians
+  print("table_of_gaussians:", options.table_of_gaussians)
   run(
     file_name=args[0],
     table_of_gaussians=table_of_gaussians,

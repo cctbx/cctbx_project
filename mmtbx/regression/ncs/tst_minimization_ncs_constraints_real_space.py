@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import time
 
 import mmtbx.refinement.minimization_ncs_constraints
@@ -88,12 +89,12 @@ def run(prefix="tst", d_min=1.0):
   """
   pdb_file_name_answer = "%s_answer.pdb"%prefix
   of=open(pdb_file_name_answer, "w")
-  print >> of, pdb_str_answer
+  print(pdb_str_answer, file=of)
   of.close()
   #
   pdb_file_name_poor = "%s_poor.pdb"%prefix
   of=open(pdb_file_name_poor, "w")
-  print >> of, pdb_str_poor
+  print(pdb_str_poor, file=of)
   of.close()
   #
   pdb_inp_answer = iotbx.pdb.input(file_name=pdb_file_name_answer)
@@ -159,5 +160,5 @@ def run(prefix="tst", d_min=1.0):
 if (__name__ == "__main__"):
   t0=time.time()
   run()
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

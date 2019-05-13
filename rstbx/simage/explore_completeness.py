@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import libtbx
 import sys
@@ -46,22 +47,22 @@ class stats_manager(libtbx.slots_getstate_setstate):
     O.min_count_history.append(flex.min(O.counts))
     assert O.new_0 >= 0
     if (O.new_0 == 0 and O.currently_zero != 0):
-      print "Complete with %d images." % (len(O.completeness_history)-1)
-      print
+      print("Complete with %d images." % (len(O.completeness_history)-1))
+      print()
     O.currently_zero = O.new_0
 
   def report(O, plot=None, xy_prefix=None):
     from cctbx.array_family import flex
-    print "Number of shots:", O.completeness_history.size()-1
-    print
-    print "Histogram of counts per reflection:"
+    print("Number of shots:", O.completeness_history.size()-1)
+    print()
+    print("Histogram of counts per reflection:")
     flex.histogram(O.counts.as_double(), n_slots=8).show(
       prefix="  ", format_cutoffs="%7.0f")
-    print
-    print "Observations per reflection:"
+    print()
+    print("Observations per reflection:")
     flex.show_count_stats(counts=O.counts, prefix="  ")
-    print "  Median:", int(flex.median(O.counts.as_double())+0.5)
-    print
+    print("  Median:", int(flex.median(O.counts.as_double())+0.5))
+    print()
     sys.stdout.flush()
     if (xy_prefix is None):
       xy_prefix = ""
@@ -70,7 +71,7 @@ class stats_manager(libtbx.slots_getstate_setstate):
     def dump_xy(name, array):
       f = open(xy_prefix + "%s.xy" % name, "w")
       for i,c in enumerate(array):
-        print >> f, i, c
+        print(i, c, file=f)
     dump_xy("completeness_history", O.completeness_history)
     dump_xy("min_count_history", O.min_count_history)
     if (O.use_symmetry): _ = O.i_calc.asu
@@ -150,18 +151,18 @@ def kirian_delta_vs_ewald_proximity(
     return abs(1 - rvre_len / ewald_radius)
   def write_xy():
     fn_xy = "kirian_delta_vs_ewald_proximity.xy"
-    print "Writing file:", fn_xy
+    print("Writing file:", fn_xy)
     f = open(fn_xy, "w")
-    print >> f, """\
+    print("""\
 @with g0
 @ s0 symbol 1
 @ s0 symbol size 0.1
-@ s0 line type 0"""
+@ s0 line type 0""", file=f)
     for h, ds in zip(miller_indices, deltas):
       if (len(ds) != 0):
-        print >> f, min(ds), ewald_proximity(h)
-    print >> f, "&"
-    print
+        print(min(ds), ewald_proximity(h), file=f)
+    print("&", file=f)
+    print()
   write_xy()
   STOP()
 
@@ -225,9 +226,9 @@ def simulate(work_params, i_calc):
       try:
         miller_index_i_seqs = get_miller_index_i_seqs(i_img, parallel=False)
       except KeyboardInterrupt:
-        print
-        print "KeyboardInterrupt"
-        print
+        print()
+        print("KeyboardInterrupt")
+        print()
         stop = True
       else:
         i_img += 1
@@ -236,8 +237,8 @@ def simulate(work_params, i_calc):
     from libtbx import easy_mp
     pool = easy_mp.Pool(fixed_func=get_miller_index_i_seqs)
     try:
-      print "multiprocessing pool size:", pool.processes
-      print
+      print("multiprocessing pool size:", pool.processes)
+      print()
       sys.stdout.flush()
       while (not stop):
         next_i_img = i_img + pool.processes
@@ -282,7 +283,7 @@ plot = completeness redundancy
 """)
   i_calc = create.build_i_calc(work_params)
   i_calc.p1_anom.show_comprehensive_summary()
-  print
+  print()
   sys.stdout.flush()
   stats = simulate(work_params, i_calc)
   stats.report(plot=work_params.plot, xy_prefix=work_params.xy_prefix)

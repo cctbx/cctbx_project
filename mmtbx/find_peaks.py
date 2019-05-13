@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import sys
 from libtbx import adopt_init_args
@@ -170,9 +171,9 @@ class manager(object):
       self.peaks_ = peaks_holder(heights = heights,
                                  sites   = cluster_analysis.sites())
       if(not self.silent):
-        print >>self.log,"Number of peaks found at %s map (map cutoff=%s %s)= %s"%(
+        print("Number of peaks found at %s map (map cutoff=%s %s)= %s"%(
           self.map_type, format_value("%-5.2f", self.map_cutoff).strip(),
-          map_units, format_value("%-12d", self.peaks_.sites.size()))
+          map_units, format_value("%-12d", self.peaks_.sites.size())), file=self.log)
 
   def peaks(self):
     return self.peaks_
@@ -192,7 +193,7 @@ class manager(object):
       use_selection = ~xray_structure.hd_selection()
     initial_number_of_sites = self.peaks_.sites.size()
     if(not self.silent):
-      print >> self.log, "Filter by distance & map next to the model:"
+      print("Filter by distance & map next to the model:", file=self.log)
     result = xray_structure.closest_distances(sites_frac = self.peaks_.sites,
       distance_cutoff = max_dist, use_selection = use_selection)
     smallest_distances_sq = result.smallest_distances_sq
@@ -210,15 +211,15 @@ class manager(object):
     d_min = flex.min_default(sd, 0)
     d_max = flex.max_default(sd, 0)
     if(not self.silent):
-      print >> self.log,"   mapped sites are within: %5.3f - %5.3f"%(d_min,d_max)
-      print >> self.log, "   number of sites selected in [dist_min=%5.2f, " \
+      print("   mapped sites are within: %5.3f - %5.3f"%(d_min,d_max), file=self.log)
+      print("   number of sites selected in [dist_min=%5.2f, " \
         "dist_max=%5.2f]: %d from: %d" % (min_dist, max_dist, peaks.sites.size(),
-        initial_number_of_sites)
+        initial_number_of_sites), file=self.log)
     smallest_distances = flex.sqrt(smallest_distances_sq.select(selection))
     d_min = flex.min_default(smallest_distances, 0)
     d_max = flex.max_default(smallest_distances, 0)
     if(not self.silent):
-      print >> self.log,"   mapped sites are within: %5.3f - %5.3f"%(d_min,d_max)
+      print("   mapped sites are within: %5.3f - %5.3f"%(d_min,d_max), file=self.log)
     self.mapped = True
     self.peaks_ = peaks
     return peaks
@@ -232,7 +233,7 @@ class manager(object):
     assert scatterers.size() == pdb_atoms.size()
     assert peaks.sites.size() == peaks.heights.size()
     assert peaks.heights.size() == peaks.iseqs_of_closest_atoms.size()
-    print >> self.log
+    print(file=self.log)
     dist = self.fmodel.xray_structure.unit_cell().distance
     for i in flex.sort_permutation(data=peaks.iseqs_of_closest_atoms):
       s = peaks.sites[i]
@@ -241,8 +242,8 @@ class manager(object):
       sc = scatterers[i_seq]
       d = dist(s, sc.site)
       element = sc.element_symbol()
-      print >> self.log, "peak= %8.3f closest distance to %s = %8.3f" % (
-        h, pdb_atoms[i_seq].id_str(), d)
+      print("peak= %8.3f closest distance to %s = %8.3f" % (
+        h, pdb_atoms[i_seq].id_str(), d), file=self.log)
       assert d <= self.params.map_next_to_model.max_model_peak_dist
       assert d >= self.params.map_next_to_model.min_model_peak_dist
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -906,7 +907,7 @@ def run():
   exercise_instruction_parsing()
   import libtbx.load_env
   if (not libtbx.env.has_module(name="smtbx")):
-    print "Skipping some tests: smtbx module is not available."
+    print("Skipping some tests: smtbx module is not available.")
   else:
     exercise_restraint_parsing()
     exercise_constrained_occupancies()
@@ -915,7 +916,7 @@ def run():
     exercise_residues()
   exercise_xray_structure_parsing()
   exercise_crystal_symmetry_parsing()
-  print 'OK'
+  print('OK')
 
 ins_mundane_tiny = (
 "TITL in Pbca\n"

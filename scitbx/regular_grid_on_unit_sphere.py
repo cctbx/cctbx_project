@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx.stdlib import math
 
@@ -55,6 +56,6 @@ def rosca(m=9, hemisphere=True):
     f = "HETATM%5d  O   HOH A%4d    %8.3f%8.3f%8.3f  1.00 23.99           O "
     o = open("junk.pdb", "w")
     for i, r in enumerate(result):
-      print >> o, f%(i, i, r[0],r[1],r[2])
+      print(f%(i, i, r[0],r[1],r[2]), file=o)
     o.close()
   return result

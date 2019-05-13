@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.math import euler_angles as euler
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
@@ -22,7 +23,7 @@ def exercise():
         exercise_core((a1_in, a2_in, a3_in))
   for i_trial in xrange(1000):
     exercise_core([random.random()*360-180 for i in [0,1,2]])
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise()

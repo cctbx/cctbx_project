@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys,math
 
 def mean_fh(d_min,b):
@@ -22,7 +23,7 @@ def test(out=sys.stdout):
   d_min=3.5
   ratio=ratio_mean_f_to_rms_f(d_min,b)
   text= "B: %7.2f   D_min: %7.2f  <f>/<f**2>**0.5: %7.3f" %( b,d_min,ratio)
-  print >>out,text
+  print(text, file=out)
   expected_text="B:   90.00   D_min:    3.50  <f>/<f**2>**0.5:   0.889"
   o=float(text.split()[-1])
   e=float(expected_text.split()[-1])
@@ -36,8 +37,8 @@ def exercise_mean_fh():
     for d_min in [2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8]:
        i+=1
        ratio=ratio_mean_f_to_rms_f(d_min,b)
-       print "B: %7.2f   D_min: %7.2f  <f>/<f**2>**0.5: %7.3f" %(
-         b,d_min,ratio)
+       print("B: %7.2f   D_min: %7.2f  <f>/<f**2>**0.5: %7.3f" %(
+         b,d_min,ratio))
 
 if __name__=="__main__":
   if 'exercise' in sys.argv:
@@ -67,5 +68,5 @@ if __name__=="__main__":
     sum_n+=1
     sum_f+=f
     sum_f2+=f2
-  print "Mean f  %7.2f  rms f: %7.2f  Mean/rms: %7.2f  N: %d  Target: %7.2f" %(
-     sum_f/sum_n, math.sqrt(sum_f2/sum_n),(sum_f/sum_n)/math.sqrt(sum_f2/sum_n),int(sum_n),ratio)
+  print("Mean f  %7.2f  rms f: %7.2f  Mean/rms: %7.2f  N: %d  Target: %7.2f" %(
+     sum_f/sum_n, math.sqrt(sum_f2/sum_n),(sum_f/sum_n)/math.sqrt(sum_f2/sum_n),int(sum_n),ratio))

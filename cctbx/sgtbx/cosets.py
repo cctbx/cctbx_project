@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 from scitbx.array_family import flex
 import sys
@@ -79,9 +80,9 @@ class left_decomposition(object):
       group_g = str( sgtbx.space_group_info( self.g_name ).change_basis( cb_op ) )
       group_h = str( sgtbx.space_group_info( self.h_name ).change_basis( cb_op ) )
 
-    print >> out, "Left cosets of :"
-    print >> out, "  subgroup  H: %s"%( group_h )
-    print >> out, "  and group G: %s"%( group_g )
+    print("Left cosets of :", file=out)
+    print("  subgroup  H: %s"%( group_h ), file=out)
+    print("  and group G: %s"%( group_g ), file=out)
     for part in self.partitions:
       extra_txt="   (all operators from H)"
 
@@ -94,9 +95,9 @@ class left_decomposition(object):
 
       if count>0:
         extra_txt = "   (H+coset[%i] = %s)"%(count,tmp_group)
-      print >> out
-      print >> out, "  Coset number : %5s%s"%(count, extra_txt)
-      print >> out
+      print(file=out)
+      print("  Coset number : %5s%s"%(count, extra_txt), file=out)
+      print(file=out)
       count += 1
       for item in part:
         tmp_item = None
@@ -105,7 +106,7 @@ class left_decomposition(object):
         else:
           tmp_item = cb_op.apply( item )
 
-        print >> out, literal_description(tmp_item).select(format)
+        print(literal_description(tmp_item).select(format), file=out)
 
 
 class left_decomposition_point_groups_only(object):
@@ -287,11 +288,11 @@ class double_cosets(object):
   def show(self,out=None):
     if out == None:
       out = sys.stdout
-    print >> out, "The double cosets are listed below"
+    print("The double cosets are listed below", file=out)
     for cs in self.double_cosets:
       for a in cs:
-        print >> out, "("+str(a)+")    ",
-      print >> out
+        print("("+str(a)+")    ", end=' ', file=out)
+      print(file=out)
 
 def test_double_coset_decomposition():
   from  cctbx.sgtbx import subgroups
@@ -446,7 +447,7 @@ def test_lattice_translation_aware_left_decomposition():
 def run():
   test_double_coset_decomposition()
   test_lattice_translation_aware_left_decomposition()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx.math import correlation
 from scitbx.stdlib import math
@@ -113,11 +114,11 @@ class align(object):
 
 # show the refined results
       if( self.show_result ):
-        print "refined results:"
+        print("refined results:")
         for ii in range( self.topn ):
           o = orders[ii]
           o = ii
-          print ii, ":", list( self.refined[o] ), ":", self.refined_score[o]
+          print(ii, ":", list( self.refined[o] ), ":", self.refined_score[o])
       ea = self.refined[ orders[0] ]
       self.best_ea = (ea[0], ea[1], ea[2] )
       self.moving_nlm = self.cc_obj.rotate_moving_obj( ea[0],ea[1], ea[2], self.inversion )

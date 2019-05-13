@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.model_vs_map
 
 from scitbx.array_family import flex
@@ -37,9 +38,9 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
 
 def broadcast(m, log):
-  print >> log, "-"*79
-  print >> log, m
-  print >> log, "*"*len(m)
+  print("-"*79, file=log)
+  print(m, file=log)
+  print("*"*len(m), file=log)
 
 def show_histogram(data=None, n_slots=None, data_min=None, data_max=None,
                    log=None):
@@ -50,13 +51,13 @@ def show_histogram(data=None, n_slots=None, data_min=None, data_max=None,
   s_1 = enumerate(hm.slots())
   for (i_1,n_1) in s_1:
     hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
-    print >> log, "%10.4f - %-10.4f : %d" % (lc_1, hc_1, n_1)
+    print("%10.4f - %-10.4f : %d" % (lc_1, hc_1, n_1), file=log)
     lc_1 = hc_1
 
 def run(args, log=sys.stdout):
-  print >> log, "-"*79
-  print >> log, legend
-  print >> log, "-"*79
+  print("-"*79, file=log)
+  print(legend, file=log)
+  print("-"*79, file=log)
   inputs = mmtbx.utils.process_command_line_args(args = args,
     master_params = master_params())
   params = inputs.params.extract()
@@ -65,7 +66,7 @@ def run(args, log=sys.stdout):
   broadcast(m="Map resolution:", log=log)
   if(d_min is None):
     raise Sorry("Resolution is required.")
-  print >> log, "  d_min: %6.4f"%d_min
+  print("  d_min: %6.4f"%d_min, file=log)
   # model
   broadcast(m="Input PDB:", log=log)
   file_names = inputs.pdb_file_names
@@ -85,8 +86,8 @@ def run(args, log=sys.stdout):
   if(inputs.ccp4_map is None): raise Sorry("Map file has to given.")
   inputs.ccp4_map.show_summary(prefix="  ")
   map_data = inputs.ccp4_map.map_data()
-  print >> log, "  Actual map (min,max,mean):", \
-    map_data.as_1d().min_max_mean().as_tuple()
+  print("  Actual map (min,max,mean):", \
+    map_data.as_1d().min_max_mean().as_tuple(), file=log)
   make_sub_header("Histogram of map values", out=log)
   md = map_data.as_1d()
   show_histogram(data=md, n_slots=10, data_min=flex.min(md),
@@ -130,9 +131,9 @@ def run(args, log=sys.stdout):
   atom_radius = five_cc_result.atom_radius
   if atom_radius is None:
     atom_radius = five_cc_result._atom_radius()
-  print >> log, "  CC_mask  : %6.4f"%five_cc_result.result.cc_mask
-  print >> log, "  CC_volume: %6.4f"%five_cc_result.result.cc_volume
-  print >> log, "  CC_peaks : %6.4f"%five_cc_result.result.cc_peaks
+  print("  CC_mask  : %6.4f"%five_cc_result.result.cc_mask, file=log)
+  print("  CC_volume: %6.4f"%five_cc_result.result.cc_volume, file=log)
+  print("  CC_peaks : %6.4f"%five_cc_result.result.cc_peaks, file=log)
   # Compute FSC(map, model)
   broadcast(m="Model-map FSC:", log=log)
   fsc = mmtbx.maps.correlation.fsc_model_vs_map(
@@ -148,22 +149,22 @@ def run(args, log=sys.stdout):
     d_min          = d_min)
   broadcast(m="Map-model CC (local):", log=log)
   # per residue
-  print >> log, "Per residue:"
+  print("Per residue:", file=log)
   residue_results = list()
   ph = model.get_hierarchy()
   xrs = model.get_xray_structure()
   for rg in ph.residue_groups():
     cc = cc_calculator.cc(selection=rg.atoms().extract_i_seq())
     chain_id = rg.parent().id
-    print >> log, "  chain id: %s resid %s: %6.4f"%(
-      chain_id, rg.resid(), cc)
+    print("  chain id: %s resid %s: %6.4f"%(
+      chain_id, rg.resid(), cc), file=log)
   # per chain
-  print >> log, "Per chain:"
+  print("Per chain:", file=log)
   for chain in ph.chains():
-    print >> log, "  chain %s: %6.4f"%(chain.id, cc_calculator.cc(
-      selection=chain.atoms().extract_i_seq()))
+    print("  chain %s: %6.4f"%(chain.id, cc_calculator.cc(
+      selection=chain.atoms().extract_i_seq())), file=log)
   # per residue detailed counts
-  print >> log, "Per residue (histogram):"
+  print("Per residue (histogram):", file=log)
   crystal_gridding = maptbx.crystal_gridding(
     unit_cell             = xrs.unit_cell(),
     space_group_info      = xrs.space_group_info(),
@@ -367,5 +368,5 @@ class structure_monitor(object):
 if (__name__ == "__main__"):
   t0 = time.time()
   run(args=sys.argv[1:])
-  print
-  print "Time:", round(time.time()-t0, 3)
+  print()
+  print("Time:", round(time.time()-t0, 3))

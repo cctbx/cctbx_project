@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import mmtbx.model
 import sys
@@ -23,9 +24,9 @@ def get_best_homologues(model, chain_ids=None):
   h = model.get_hierarchy()
   result = {}
   for chain in h.only_model().chains():
-    print "Working with chain '%s'" % chain.id
+    print("Working with chain '%s'" % chain.id)
     if not chain.is_protein():
-      print "  skipping, not protein. Maybe water or NA"
+      print("  skipping, not protein. Maybe water or NA")
       continue
     if chain_ids is not None and chain.id not in chain_ids():
       continue
@@ -54,7 +55,7 @@ def get_best_homologues(model, chain_ids=None):
     info_list.sort(key=lambda tup: tup[1])
     best_pdb_id = info_list[0][0]
     best_pdb_chain = pdb_ids_to_study[info_list[0][0]]
-    print "Best pdb:", info_list[0], "chain:", pdb_ids_to_study[info_list[0][0]]
+    print("Best pdb:", info_list[0], "chain:", pdb_ids_to_study[info_list[0][0]])
     # print info_list
 
     # Get actual selected model from PDB.
@@ -73,7 +74,7 @@ def run(args):
 
   model = mmtbx.model.manager(model_input=iotbx.pdb.input("1ucs.pdb"))
   r = get_best_homologues(model)
-  print r
+  print(r)
   for chain, model in r.iteritems():
     with open("chain_%s.pdb" % chain, 'w') as f:
       f.write(model.model_as_pdb())

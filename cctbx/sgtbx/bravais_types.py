@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 acentric = (
 "P 1",
 "P 1 2 1",
@@ -97,7 +98,7 @@ def tst_bravais_types(verbose):
     crystal_systems_tally[GC.crystal_system]+=1
     if verbose:
       GC.space_group_info.show_summary()
-      print str(GC), GC.crystal_system
+      print(str(GC), GC.crystal_system)
 
     # idea, not fully implemented--more extensive testing by generating all subgroups
     if False:
@@ -119,10 +120,10 @@ def exercise():
     assert space_group_info.is_reference_setting()
   if ("--Verbose" in sys.argv[1:]):
     for symbol in centric:
-      print "/* %s */ %d," % (
-        symbol, sgtbx.space_group_info(symbol=symbol).type().number())
+      print("/* %s */ %d," % (
+        symbol, sgtbx.space_group_info(symbol=symbol).type().number()))
   assert tst_bravais_types(verbose=("--Verbose" in sys.argv[1:]))
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

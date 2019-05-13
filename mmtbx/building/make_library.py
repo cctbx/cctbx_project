@@ -7,6 +7,7 @@ homology.
 """
 
 from __future__ import division
+from __future__ import print_function
 from libtbx import slots_getstate_setstate_default_initializer
 from libtbx import Auto, adopt_init_args
 from libtbx.utils import null_out
@@ -93,11 +94,11 @@ def load_pdb_models(pdb_ids, fault_tolerant=False, log=null_out()):
       if (not fault_tolerant):
         raise
       else :
-        print >> log, "Error - skipping %s:" % pdb_id
-        print >> log, str(e)
+        print("Error - skipping %s:" % pdb_id, file=log)
+        print(str(e), file=log)
     else :
       if (len(pdb_hierarchy.models()) > 1):
-        print >> log, "Warning: %s is multi-MODEL - skipping" % pdb_id
+        print("Warning: %s is multi-MODEL - skipping" % pdb_id, file=log)
       else :
         ids_and_hierarchies.append((pdb_id, pdb_hierarchy))
   return ids_and_hierarchies
@@ -213,7 +214,7 @@ class extract_related_models(object):
       processes=self.nproc)
     for k, results in enumerate(self._results):
       if (len(results) == 0):
-        print >> log, "  no matches for %s" % self.sources_and_models[k][0]
+        print("  no matches for %s" % self.sources_and_models[k][0], file=log)
 
   def results(self):
     results = []
@@ -301,7 +302,7 @@ def selection_by_symmetry(crystal_symmetries,
         if (sg == str(exclude_space_group)):
           skip = True
     if (skip):
-      print >> log, "  %s is in space group %s, skipping" %(source_infos[k],sg)
+      print("  %s is in space group %s, skipping" %(source_infos[k],sg), file=log)
     else :
       selection.append(k)
   return selection
@@ -365,8 +366,8 @@ class ensembler(object):
     for k, lsq_fit in enumerate(sites_moved):
       hierarchy = self.related_chains[k].pdb_hierarchy
       if (lsq_fit is None):
-        print >> self.log, "No LSQ fit for model %s:%s" % \
-          (self.related_chains[k].source_info, self.related_chains[k].chain_id)
+        print("No LSQ fit for model %s:%s" % \
+          (self.related_chains[k].source_info, self.related_chains[k].chain_id), file=self.log)
         continue
       self.selection_moved.append(k)
       pdb_atoms = hierarchy.atoms()
@@ -454,10 +455,10 @@ def extract_and_superpose(
     if (len(pdb_ids) == 0):
       return None
     else :
-      print >> out, "%d PDB IDs retrieved:" % len(pdb_ids)
+      print("%d PDB IDs retrieved:" % len(pdb_ids), file=out)
       i = 0
       while (i < len(pdb_ids)):
-        print >> out, "  %s" % " ".join(pdb_ids[i:i+16])
+        print("  %s" % " ".join(pdb_ids[i:i+16]), file=out)
         i += 16
     related_chains = load_related_models_from_pdb(
       pdb_ids=pdb_ids,

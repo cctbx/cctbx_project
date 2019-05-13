@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 
 mysql_master_phil = """
@@ -128,7 +129,7 @@ class manager (manager_base):
 
   def initialize_db(self, indices):
     db = self.connection()
-    print "testing for tables"
+    print("testing for tables")
     cursor = db.cursor()
     cursor.execute("SHOW TABLES from %s;"%self.params.mysql.database)
     all_tables = cursor.fetchall()

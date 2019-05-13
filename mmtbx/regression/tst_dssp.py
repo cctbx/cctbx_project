@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import show_diff
 from libtbx import easy_run
 import libtbx.load_env
@@ -172,7 +173,7 @@ def exercise_advanced():
     relative_path="phenix_regression/pdb/1ywf.pdb",
     test=os.path.isfile)
   if (pdb_file is None):
-    print "phenix_regression not available, skipping test"
+    print("phenix_regression not available, skipping test")
     return
   result = easy_run.fully_buffered("mmtbx.dssp \"%s\"" % pdb_file
     ).raise_if_errors()
@@ -259,9 +260,9 @@ SHEET   15   117 VAL   265  SER   273 -1  O  SER   273   N  TYR   253
 SHEET   16   117 THR   279  ASP   288 -1  O  ARG   286   N  LYS   266
 SHEET   17   117 TYR     7  VAL    15 -1  O  TYR    14   N  ALA   281""")
   else :
-    print "WARNING: phenix_examples not available, some tests skipped"
+    print("WARNING: phenix_examples not available, some tests skipped")
   # TODO add 1lfh test
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise_basic()

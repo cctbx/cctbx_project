@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os,sys
 from iotbx import pdb
 from iotbx import reflection_file_reader
@@ -61,7 +62,7 @@ Options :
 '''
   if msg != '' :
     s = '*'*79 + '\n\n!!!!!  %s  !!!!!\n' % msg + s
-  print s;sys.exit()
+  print(s);sys.exit()
 
 base_rotation_axes = {
   "A" : ["C1'", "N9"],
@@ -117,7 +118,7 @@ def get_target_map(reflection_file_name,  log=sys.stderr):
   ma = miller_arrays[0]
   fft_map = ma.fft_map(resolution_factor=0.25)
   fft_map.apply_sigma_scaling()
-  print >> log, "\nUsing sigma scaled map.\n"
+  print("\nUsing sigma scaled map.\n", file=log)
   target_map = fft_map.real_map_unpadded()
   return target_map
 
@@ -148,16 +149,16 @@ def flip_and_refine(pdb_hierarchy,
           residue.atoms().extract_xyz())
         xray_structure = xray_structure.replace_sites_cart(sites_cart)
         sele = residue.atoms().extract_i_seq()
-        print >> log, 'real-space refinement BEGIN'.center(79,'*')
+        print('real-space refinement BEGIN'.center(79,'*'), file=log)
         for i in range(n_refine_cycles):
-          print >> log, 'real-space refinement cycle %i...' % (i + 1)
+          print('real-space refinement cycle %i...' % (i + 1), file=log)
           ero = individual_sites.easy(
             map_data                    = target_map,
             xray_structure              = xray_structure,
             pdb_hierarchy               = pdb_hierarchy,
             geometry_restraints_manager = geometry_restraints_manager,
             selection                   = sele)
-        print >> log, 'real-space refinement FINISHED'.center(79,'*')
+        print('real-space refinement FINISHED'.center(79,'*'), file=log)
   if not ero : raise RuntimeError('Specified residue not found')
   return ero.pdb_hierarchy
 
@@ -203,7 +204,7 @@ def run(args):
   pdb_file_name = params.pdb_file
   reflection_file_name = params.reflection_file
   log = sys.stdout
-  print >> log, '\ngettinsg target_map...\n'
+  print('\ngettinsg target_map...\n', file=log)
   target_map = get_target_map(reflection_file_name, log)
   ppf = mmtbx.utils.process_pdb_file_srv(log=False).process_pdb_files(
     [pdb_file_name])[0]
@@ -224,7 +225,7 @@ def run(args):
                   log= log)
 
   flip_hierarchy.write_pdb_file(params.out_pdb_file)
-  print >> log, '\nOut written to %s' % params.out_pdb_file
+  print('\nOut written to %s' % params.out_pdb_file, file=log)
 
 if __name__ == "__main__":
   run(sys.argv[1:])

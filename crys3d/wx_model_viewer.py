@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # XXX: To keep these classes as clean as possible, selections are handled
 # entirely in wx_selection_editor.py.
@@ -650,7 +651,7 @@ class model_viewer_mixin (wxGLWindow) :
   def toggle_visibility (self, show_object, object_id=None) :
     for model_id, model in self.iter_models() :
       if object_id is None or object_id == model_id :
-        print model_id, show_object
+        print(model_id, show_object)
         self.show_object[model_id] = show_object
     self.update_scene = True
 

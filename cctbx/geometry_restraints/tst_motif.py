@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import geometry_restraints
 from cctbx.array_family import flex
 from libtbx import phil
@@ -683,7 +684,7 @@ def exercise():
   exercise_motif()
   exercise_alteration()
   exercise_manipulation()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise()

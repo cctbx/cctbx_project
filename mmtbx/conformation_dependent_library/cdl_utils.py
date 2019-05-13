@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from scitbx.math import dihedral_angle
 from mmtbx.conformation_dependent_library.cdl_setup import \
@@ -63,7 +64,7 @@ def get_omega_value(residue1, residue2, verbose=False):
   ca2 = ccn2[1]
   omega_atoms = [ca1, n, c, ca2]
   if verbose:
-    for atom in omega_atoms: print atom.quote()
+    for atom in omega_atoms: print(atom.quote())
   if None in omega_atoms: return None
   omega = dihedral_angle(sites=[atom.xyz for atom in omega_atoms], deg=True)
   return omega
@@ -88,9 +89,9 @@ def get_phi_psi_atoms(residue1, residue2, residue3, verbose=False):
   if len(filter(None, atoms[0]))!=4: return None
   if len(filter(None, atoms[1]))!=4: return None
   if verbose:
-    print atoms
+    print(atoms)
     for group in atoms:
-      for atom in group: print atom.quote()
+      for atom in group: print(atom.quote())
   return atoms
 
 def get_phi_psi_angles(residues, verbose=False):
@@ -104,9 +105,9 @@ def get_phi_psi_angles(residues, verbose=False):
       phi_or_psi=dihedral_angle(sites=[atom.xyz for atom in dihedral], deg=True)
       dihedrals.append(phi_or_psi)
   if verbose:
-    print 'dihedrals'
+    print('dihedrals')
     for phi_or_psi in dihedrals:
-      print 'phi_or_psi',phi_or_psi
+      print('phi_or_psi',phi_or_psi)
   return dihedrals
 
 def get_ca_dihedrals(residues, verbose=False):
@@ -117,8 +118,8 @@ def get_ca_dihedrals(residues, verbose=False):
     atoms.append(residue.find_atom_by(name=' CA '))
     if len(atoms)==4:
       if verbose:
-        print 'CAs'
-        for atom in atoms: print atom.quote()
+        print('CAs')
+        for atom in atoms: print(atom.quote())
       dihedrals.append(dihedral_angle(sites=[atom.xyz for atom in atoms], deg=True))
       del atoms[0]
   return dihedrals

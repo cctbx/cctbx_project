@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from libtbx import group_args
 from libtbx.utils import user_plus_sys_time
@@ -1730,7 +1731,7 @@ def exercise():
   individual coordinates.
   """
   for d_min in [1,2,6]:
-    print d_min, "-"*69
+    print(d_min, "-"*69)
     pi = get_pdb_inputs(pdb_str=pdb_str_1)
     f_calc = pi.xrs.structure_factors(d_min = d_min).f_calc()
     fft_map = f_calc.fft_map(resolution_factor=0.25)
@@ -1746,9 +1747,9 @@ def exercise():
       selection  = flex.bool(pi.xrs.scatterers().size(), True),
       geometry_restraints_manager = pi.grm.geometry)
     ro.refine(weight=w, xray_structure = pi.xrs)
-    print ro.rmsds()
+    print(ro.rmsds())
 
 if(__name__ == "__main__"):
   timer = user_plus_sys_time()
   exercise()
-  print "Time: %6.2f" % timer.elapsed()
+  print("Time: %6.2f" % timer.elapsed())

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 def tst_for_z(z):
   from cctbx.eltbx import attenuation_coefficient
@@ -29,7 +30,7 @@ def tst_for_z(z):
     assert(abs(mr - mr2) <= eps)
     assert(abs(mer - mer2) <= eps)
 
-  print 'OK'
+  print('OK')
 
 def run():
   from cctbx.eltbx import attenuation_coefficient

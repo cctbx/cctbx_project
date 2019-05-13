@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx import crystal
 from cctbx import miller
@@ -46,7 +47,7 @@ def run(args):
   weighting = xray.weighting_schemes.shelx_weighting(a=100, b=150)
   exercise_py_LS(obs, f_calc, weighting, verbose)
 
-  print "OK"
+  print("OK")
 
 
 def exercise_core_LS(target_class, verbose):
@@ -79,8 +80,8 @@ def exercise_core_LS(target_class, verbose):
       gc.append((ts[0]-ts[1])/(2*eps))
     gr_fin.append(complex(*gc))
   if (verbose):
-    print "ana:", list(gr_ana)
-    print "fin:", list(gr_fin)
+    print("ana:", list(gr_ana))
+    print("fin:", list(gr_fin))
   assert approx_equal(gr_fin, gr_ana)
 
 def exercise_py_LS(obs, f_calc, weighting, verbose):
@@ -131,8 +132,8 @@ def exercise_py_LS(obs, f_calc, weighting, verbose):
       gc.append((ts[0]-ts[1])/(2*eps))
     gr_fin.append(complex(*gc))
   if (verbose):
-    print "ana:", list(gr_ana)
-    print "fin:", list(gr_fin)
+    print("ana:", list(gr_ana))
+    print("fin:", list(gr_fin))
   if dw_dfc is None:
     assert approx_equal(gr_fin, gr_ana)
   else:

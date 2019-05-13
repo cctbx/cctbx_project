@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import adptbx
 from mmtbx import bulk_solvent
@@ -54,7 +55,7 @@ class run(mmtbx.f_model.manager):
     result = None
     if(self.twinned()):
       for cycle in xrange(2):
-        if(log is not None): print >> log, "cycle %d:"%cycle
+        if(log is not None): print("cycle %d:"%cycle, file=log)
         self.update_twin_fraction()
         self.show(prefix = "update twin fraction", log = log)
         result = self.update_solvent_and_scale_twin(log = log,
@@ -99,9 +100,9 @@ class run(mmtbx.f_model.manager):
     m = "%24s: r(all,work,free)=%6.4f %6.4f %6.4f n_refl.: %d"%(prefix, r,
       self.r_work(), self.r_free(), self.f_obs().data().size())
     if(not self.twinned()):
-      print >> log, m
+      print(m, file=log)
     else:
-      print >> log, m+" twin_fraction=%4.2f"%self.twin_fraction
+      print(m+" twin_fraction=%4.2f"%self.twin_fraction, file=log)
 
   def need_to_refine_hd_scattering_contribution(self):
     if(self.xray_structure is None): return False

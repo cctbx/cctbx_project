@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import uctbx
 
 def d_star_sq(unit_cell, miller_index):
@@ -22,7 +23,7 @@ def exercise():
   for miller_index in [(1,2,3),(-3,4,2),(-1,-2,1)]:
     dss1 = unit_cell.d_star_sq(miller_index)
     dss2 = d_star_sq(unit_cell, miller_index)
-    print dss1, dss2
+    print(dss1, dss2)
 
 if (__name__ == "__main__"):
   exercise()

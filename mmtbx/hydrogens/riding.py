@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import group_args
 from scitbx import matrix
 from cctbx.array_family import flex
@@ -221,15 +222,15 @@ class manager(object):
   It is not worrysome if a few atoms are listed here; but it is always helpful
   to check the environment of these H atoms, as it might hint to missing atoms
   or restraints.\n"""
-      print >> log, m
-      print >> log, '  Number of H atoms not used in the riding H procedure: ', \
-        number, '\n'
+      print(m, file=log)
+      print('  Number of H atoms not used in the riding H procedure: ', \
+        number, '\n', file=log)
       for ih in unk_list:
         atom = atoms[ih]
         labels = atom.fetch_labels()
         if (labels.resname in ['DOD', 'WAT', 'HOH']):
           continue
-        print >> log, '\t', atom.id_str()
+        print('\t', atom.id_str(), file=log)
 
   def diagnostics(self, sites_cart, threshold):
     h_distances = {}

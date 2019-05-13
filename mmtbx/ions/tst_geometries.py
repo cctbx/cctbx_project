@@ -1,5 +1,6 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
+from __future__ import print_function
 from mmtbx.ions.geometry import find_coordination_geometry
 import mmtbx.ions.identify
 from mmtbx import ions
@@ -12,7 +13,7 @@ import sys
 
 def exercise():
   if not libtbx.env.has_module("phenix_regression"):
-    print "Skipping {}".format(os.path.split(__file__)[1])
+    print("Skipping {}".format(os.path.split(__file__)[1]))
     return
 
   models = OrderedDict([
@@ -119,13 +120,13 @@ def exercise():
       geometry_names = [i[0] for i in found]
 
       if geometry_names != expected_geometry:
-        print "Problem detecting geometries in", model, index
-        print manager.pdb_atoms[metal].id_str()
-        print "Found geometries:", geometry_names
-        print "Should be:", expected_geometry
+        print("Problem detecting geometries in", model, index)
+        print(manager.pdb_atoms[metal].id_str())
+        print("Found geometries:", geometry_names)
+        print("Should be:", expected_geometry)
         sys.exit()
 
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   exercise()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import httplib
 
 def get_spotfinder_url(host,port):
@@ -9,7 +10,7 @@ def get_spotfinder_url(host,port):
   Connection.endheaders()
   Connection.send("")
   Response = Connection.getresponse()
-  print Response.status,Response.reason
+  print(Response.status,Response.reason)
   Connection.close()
 
 get_spotfinder_url("localhost",8125)

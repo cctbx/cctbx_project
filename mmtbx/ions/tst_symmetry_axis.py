@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import os
 from libtbx.utils import null_out
 from libtbx import group_args
@@ -144,4 +145,4 @@ TER
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

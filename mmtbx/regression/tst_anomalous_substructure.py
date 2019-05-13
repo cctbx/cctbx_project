@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import null_out
 
 def exercise():
@@ -13,7 +14,7 @@ def exercise():
     args=[mtz_file, pdb_file, "skip_twin_detection=True", "map_sigma_min=4"],
     out=null_out())
   assert (len(anom_groups) == 2)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

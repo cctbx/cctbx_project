@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 version = "CDL v1.2"
 
@@ -10468,9 +10469,9 @@ cdl_database.version=version
 
 def run(args):
   assert len(args) == 0
-  print cdl_database["Pro_nonxpro"][(-180,-180)]
+  print(cdl_database["Pro_nonxpro"][(-180,-180)])
   for res_group_type in cdl_database:
-    print res_group_type, len(cdl_database[res_group_type])
+    print(res_group_type, len(cdl_database[res_group_type]))
 
 if (__name__ == "__main__"):
   import sys

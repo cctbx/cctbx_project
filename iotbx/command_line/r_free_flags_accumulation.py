@@ -4,6 +4,7 @@ Writes reflection count, free fraction pairs to file (for plotting).
 Also shows free fraction in bins.
 """
 from __future__ import division
+from __future__ import print_function
 
 from iotbx import reflection_file_utils
 from iotbx import reflection_file_reader
@@ -71,26 +72,26 @@ def run(args, command_name="iotbx.r_free_flags_accumulation"):
                   + ".r_free_flags_accumulation"
   working_params = master_params.format(python_object=params_scope)
   working_params.show()
-  print
-  print "#phil __OFF__"
+  print()
+  print("#phil __OFF__")
   r_free_flags = r_free_flags.array(
     data=r_free_flags.data()==params.test_flag_value)
   r_free_flags.show_r_free_flags_info()
-  print
+  print()
   accu = r_free_flags \
     .sort(by_value="resolution") \
     .r_free_flags_accumulation()
-  print "Writing file: %s" % show_string(params.output)
-  print "  1. column: reflection counts, sorted by resolution"
-  print "  2. column: number of free reflections / total number of reflections"
+  print("Writing file: %s" % show_string(params.output))
+  print("  1. column: reflection counts, sorted by resolution")
+  print("  2. column: number of free reflections / total number of reflections")
   sys.stdout.flush()
   out = open(params.output, "w")
   for line in params.plot_header:
-    print >> out, line
+    print(line, file=out)
   for c,f in zip(accu.reflection_counts, accu.free_fractions):
-    print >> out, c, f
+    print(c, f, file=out)
   out.close()
-  print
+  print()
   sys.stdout.flush()
 
 if (__name__ == "__main__"):

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 import time
 
@@ -59,7 +60,7 @@ def update(grm,
   link_records.setdefault('LINK', [])
   bproxies, aproxies = mcl_sf4_coordination.get_all_proxies(rc)
   if len(bproxies):
-    print >> log, "  SF4/F3S coordination"
+    print("  SF4/F3S coordination", file=log)
     atoms = pdb_hierarchy.atoms()
     sf4_coordination = {}
     for bp in bproxies:
@@ -70,10 +71,10 @@ def update(grm,
       link = (atoms[bp.i_seqs[0]], atoms[bp.i_seqs[1]], 'x,y,z')
       if link not in link_records: link_records['LINK'].append(link)
     for sf4, aas in sorted(sf4_coordination.items()):
-      print >> log, '    %s' % sf4
+      print('    %s' % sf4, file=log)
       for aa in sorted(aas):
-        print >> log, '       %s - %s' % (aa[0].id_str(), aa[1].id_str())
-    print >> log
+        print('       %s - %s' % (aa[0].id_str(), aa[1].id_str()), file=log)
+    print(file=log)
   grm.add_new_bond_restraints_in_place(
     proxies=bproxies,
     sites_cart=pdb_hierarchy.atoms().extract_xyz(),

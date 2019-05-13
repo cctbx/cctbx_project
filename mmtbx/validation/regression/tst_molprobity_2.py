@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.command_line import molprobity
 import mmtbx.model
 import mmtbx.validation.molprobity
@@ -19,7 +20,7 @@ def exercise_protein():
     relative_path="phenix_regression/reflection_files/3ifk.mtz",
     test=op.isfile)
   if (pdb_file is None):
-    print "phenix_regression not available, skipping."
+    print("phenix_regression not available, skipping.")
     return
   args1 = [
     pdb_file,
@@ -122,7 +123,7 @@ def exercise_rna():
     relative_path="phenix_regression/pdb/pdb2goz_refmac_tls.ent",
     test=op.isfile)
   if (regression_pdb is None):
-    print "Skipping exercise_regression(): input pdb (pdb2goz_refmac_tls.ent) not available"
+    print("Skipping exercise_regression(): input pdb (pdb2goz_refmac_tls.ent) not available")
     return
   result = molprobity.run(args=[regression_pdb], out=null_out()).validation
   assert (result.rna is not None)
@@ -136,11 +137,11 @@ def exercise_rna():
 
 if (__name__ == "__main__"):
   if (not libtbx.env.has_module(name="probe")):
-    print "Skipping tests: probe not configured"
+    print("Skipping tests: probe not configured")
   else :
     exercise_protein()
     if (not libtbx.env.has_module(name="suitename")):
-      print "Skipping RNA test: suitename not available"
+      print("Skipping RNA test: suitename not available")
     else :
       exercise_rna()
-    print "OK"
+    print("OK")

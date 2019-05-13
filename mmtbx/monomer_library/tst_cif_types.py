@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.monomer_library import cif_types
 import cStringIO as StringIO
 
@@ -133,7 +134,7 @@ IB IC double 3.0 4.0 .
   s = StringIO.StringIO()
   c.show(s)
   assert s.getvalue().splitlines()[-3] == "IA IC quadruple 7.0 8.0 ."
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

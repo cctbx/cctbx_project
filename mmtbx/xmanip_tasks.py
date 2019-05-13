@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import miller
 import cctbx.xray.structure_factors
 from libtbx.utils import Sorry
@@ -289,20 +290,20 @@ def sfcalc(names, miller_arrays, xray_structure, parameters, out):
 
 
 def show_restricted_custom_names(restricted_names, out):
-  print >> out, "Restricted data set names are:"
+  print("Restricted data set names are:", file=out)
   for rn in restricted_names:
-    print >> out, "    -   %s"%(rn)
+    print("    -   %s"%(rn), file=out)
 
 def print_custom_instructions(out):
-  print >> out, "The custom function in the manipulate miller task of xmanip allows one to submit a small (or large)"
-  print >> out, "snippet of python code, have it executed and have a single miller array returned and written to file."
-  print >> out, "If one is familiar with python and the cctbx in general, this function allows one to quickly perform"
-  print >> out, "complex tasks relating reflection files without having the overhead of writing a user interface."
-  print >> out, "Data set names given to the miller arrays in the main (user specified) input file, are actual variable names"
-  print >> out, "and are stored as a cctbx.miller.array object. A pdb file that was read in, is stored in the object named "
-  print >> out, "xray_structure. Note that not many safeguards are in place: make sure your code snippet is proper python!"
-  print >> out, "Please note that there are some restriction on variable names: the should not contains spaces or have the name"
-  print >> out, "of local variables or functions. By default, a variable named 'result' is returned"
+  print("The custom function in the manipulate miller task of xmanip allows one to submit a small (or large)", file=out)
+  print("snippet of python code, have it executed and have a single miller array returned and written to file.", file=out)
+  print("If one is familiar with python and the cctbx in general, this function allows one to quickly perform", file=out)
+  print("complex tasks relating reflection files without having the overhead of writing a user interface.", file=out)
+  print("Data set names given to the miller arrays in the main (user specified) input file, are actual variable names", file=out)
+  print("and are stored as a cctbx.miller.array object. A pdb file that was read in, is stored in the object named ", file=out)
+  print("xray_structure. Note that not many safeguards are in place: make sure your code snippet is proper python!", file=out)
+  print("Please note that there are some restriction on variable names: the should not contains spaces or have the name", file=out)
+  print("of local variables or functions. By default, a variable named 'result' is returned", file=out)
 
 
 
@@ -331,10 +332,10 @@ def custom(names, miller_arrays, xray_structure, params, out):
     exec instruction
   result = None
   # now we have to evaulate the code
-  print >> out, "Trying to evaluate the code as shown below"
-  print >> out, "------------------------------------------"
-  print >> out, params.code
-  print >> out, "------------------------------------------"
+  print("Trying to evaluate the code as shown below", file=out)
+  print("------------------------------------------", file=out)
+  print(params.code, file=out)
+  print("------------------------------------------", file=out)
   user_code = compile( params.code, '<string>', 'exec' )
   exec user_code
 

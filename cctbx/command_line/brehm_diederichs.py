@@ -10,6 +10,7 @@
 #  included in the root directory of this package.
 
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 import os
@@ -110,14 +111,14 @@ def run(args):
     for wedge in wedges:
       file_name = file_name_dict[wedge]
       if out_file is not None:
-        print >> out_file, file_name, cb_op.as_hkl()
+        print(file_name, cb_op.as_hkl(), file=out_file)
       basename = os.path.basename(file_name)
       out_name = os.path.splitext(basename)[0] + params.suffix + ".mtz"
       reader = any_reflection_file(file_name)
       assert reader.file_type() == 'ccp4_mtz'
       mtz_object = reader.file_content()
       if not cb_op.is_identity_op():
-        print "reindexing %s" %file_name
+        print("reindexing %s" %file_name)
         mtz_object.change_basis_in_place(cb_op)
       mtz_object.write(out_name)
 

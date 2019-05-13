@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from cStringIO import StringIO
 import os
 
@@ -18,7 +19,7 @@ def exercise():
   mtz_in = file_reader.any_file("tst_map_coeffs_simple_anom_residual.mtz")
   assert (mtz_in.file_server.miller_arrays[0].info().label_string() ==
           "ANOM_DIFF,PHANOM_DIFF")
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

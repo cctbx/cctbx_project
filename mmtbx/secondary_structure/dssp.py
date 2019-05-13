@@ -10,6 +10,7 @@
 #
 
 from __future__ import division
+from __future__ import print_function
 import libtbx.phil
 from libtbx.utils import null_out
 from libtbx import group_args, adopt_init_args
@@ -49,14 +50,14 @@ class hbond(object):
 
   def show(self, out=None, prefix=""):
     if (out is None) : out = sys.stdout
-    print >> out, "%s%s %s %s O --> %s %s %s N : %6.3f [%d,%d]" % (prefix,
+    print("%s%s %s %s O --> %s %s %s N : %6.3f [%d,%d]" % (prefix,
       self.residue1.parent().parent().id,
       self.residue1.resname,
       self.residue1.parent().resid(),
       self.residue2.parent().parent().id,
       self.residue2.resname,
       self.residue2.parent().resid(),
-      self.energy, self.i_res, self.j_res)
+      self.energy, self.i_res, self.j_res), file=out)
 
   def get_n_turn(self):
     if (self.within_chain):
@@ -147,8 +148,8 @@ class bridge(object):
         direction = " (parallel)"
       else :
         direction = " (antiparallel)"
-    print >> out, "%sBridge%s [%d,%d]:" % (prefix, direction, self.i_res,
-      self.j_res)
+    print("%sBridge%s [%d,%d]:" % (prefix, direction, self.i_res,
+      self.j_res), file=out)
     self.hbond1.show(out=out, prefix=prefix+"  ")
     self.hbond2.show(out=out, prefix=prefix+"  ")
 
@@ -173,7 +174,7 @@ class ladder(object):
       direction = "parallel"
     else :
       direction = "antiparallel"
-    print >> out, "%sLadder (%s):" % (prefix, direction)
+    print("%sLadder (%s):" % (prefix, direction), file=out)
     for bridge in self.bridges :
       bridge.show(out, prefix=prefix+"  ", show_direction=False)
 
@@ -371,7 +372,7 @@ class dssp(object):
     # XXX this loop takes up most of the runtime
     t1 = time.time()
     if (self.params.verbosity >= 1):
-      print >> log, "Time to initialize: %.3fs" % (t1-t0)
+      print("Time to initialize: %.3fs" % (t1-t0), file=log)
     t_process = 0
     t_find = 0
     for chain in pdb_hierarchy.only_model().chains():
@@ -394,11 +395,11 @@ class dssp(object):
             break
     t2 = time.time()
     if (self.params.verbosity >= 1):
-      print >> log, "Time to find H-bonds: %.3f" % (t2 - t1)
-      print >> log, "  local atom detection: %.3f" % t_find
-      print >> log, "  analysis: %.3f" % t_process
+      print("Time to find H-bonds: %.3f" % (t2 - t1), file=log)
+      print("  local atom detection: %.3f" % t_find, file=log)
+      print("  analysis: %.3f" % t_process, file=log)
     if (self.params.verbosity >= 2):
-      print >> log, "All hydrogen bonds:"
+      print("All hydrogen bonds:", file=log)
       for hbond in self.hbonds :
         hbond.show(log, prefix="  ")
     if (self.params.pymol_script is not None):
@@ -409,11 +410,11 @@ class dssp(object):
     self.helices = self.find_helices()
     t2 = time.time()
     if (self.params.verbosity >= 1):
-      print >> log, "Time to find helices: %.3f" % (t2 - t1)
+      print("Time to find helices: %.3f" % (t2 - t1), file=log)
     self.sheets = self.find_sheets()
     t3 = time.time()
     if (self.params.verbosity >= 1):
-      print >> log, "Time to find sheets: %.3f" % (t3 - t2)
+      print("Time to find sheets: %.3f" % (t3 - t2), file=log)
     self.show(out=out)
     self._pml.close()
     self.log = None
@@ -421,9 +422,9 @@ class dssp(object):
   def show(self, out=None):
     if (out is None) : out = sys.stdout
     for helix in self.helices :
-      print >> out, helix.as_pdb_str()
+      print(helix.as_pdb_str(), file=out)
     for sheet in self.sheets :
-      print >> out, sheet.as_pdb_str()
+      print(sheet.as_pdb_str(), file=out)
 
   def get_annotation(self):
     from iotbx.pdb import secondary_structure
@@ -497,9 +498,9 @@ class dssp(object):
     if (len(current_turn) > 0):
       turns.append(current_turn)
     if (self.params.verbosity >= 2):
-      print >> self.log, "%d basic turns" % len(turns)
+      print("%d basic turns" % len(turns), file=self.log)
       for turn in turns :
-        print >> self.log, "TURN:"
+        print("TURN:", file=self.log)
         for hb in turn :
           hb.show(out=self.log, prefix="  ")
     helices = []
@@ -553,7 +554,7 @@ class dssp(object):
       helices.append(helix)
       prev_turn = turn
       for hb in turn[turn_start:] :
-        print >> self._pml, hb.as_pymol_cmd()
+        print(hb.as_pymol_cmd(), file=self._pml)
     return helices
 
   def find_sheets(self):
@@ -579,7 +580,7 @@ class dssp(object):
         #  break
     t2 = time.time()
     if (self.params.verbosity >= 1):
-      print >> self.log, "Time to find bridges: %.3fs" % (t2-t1)
+      print("Time to find bridges: %.3fs" % (t2-t1), file=self.log)
     bridges.sort(lambda a,b: cmp(a.i_res, b.i_res))
     if (self.params.verbosity >= 2):
       for B in bridges :
@@ -701,7 +702,7 @@ class dssp(object):
     for k, ladders in enumerate(all_sheet_ladders):
       sheet_id = k+1
       if (self.params.verbosity >= 2):
-        print >> self.log, "SHEET %d:" % sheet_id
+        print("SHEET %d:" % sheet_id, file=self.log)
         for L in ladders :
           L.show(self.log, prefix="  ")
       current_sheet = secondary_structure.pdb_sheet(
@@ -731,7 +732,7 @@ class dssp(object):
         prev_ladder = L
         if (register is None):
           if (self.params.verbosity >= 1):
-            print >> self.log, "missing register:"
+            print("missing register:", file=self.log)
             L.show(self.log)
           break
         current_sheet.add_strand(next_strand)

@@ -1,4 +1,5 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
 from cctbx import adp_restraints
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
@@ -116,16 +117,16 @@ class energies(object):
 
   def show(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix+"target: %.6g" % self.target
+    print(prefix+"target: %.6g" % self.target, file=f)
     if (self.n_adp_similarity_proxies is not None):
-      print >> f, prefix+"  adp_similarity_residual_sum (n=%d): %.6g" % (
-        self.n_adp_similarity_proxies, self.adp_similarity_residual_sum)
+      print(prefix+"  adp_similarity_residual_sum (n=%d): %.6g" % (
+        self.n_adp_similarity_proxies, self.adp_similarity_residual_sum), file=f)
     if (self.n_rigid_bond_proxies is not None):
-      print >> f, prefix+"  rigid_bond_residual_sum (n=%d): %.6g" % (
-        self.n_rigid_bond_proxies, self.rigid_bond_residual_sum)
+      print(prefix+"  rigid_bond_residual_sum (n=%d): %.6g" % (
+        self.n_rigid_bond_proxies, self.rigid_bond_residual_sum), file=f)
     if (self.n_isotropic_adp_proxies is not None):
-      print >> f, prefix+"  isotropic_adp_residual_sum (n=%d): %.6g" % (
-        self.n_isotropic_adp_proxies, self.isotropic_adp_residual_sum)
+      print(prefix+"  isotropic_adp_residual_sum (n=%d): %.6g" % (
+        self.n_isotropic_adp_proxies, self.isotropic_adp_residual_sum), file=f)
 
   def finalize_target_and_gradients(self):
     self.target = self.residual_sum

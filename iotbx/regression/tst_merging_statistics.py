@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from iotbx.command_line import merging_statistics
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
@@ -11,7 +12,7 @@ import sys
 
 def exercise(debug=False):
   if (not libtbx.env.has_module("phenix_regression")):
-    print "phenix_regression not configured, skipping."
+    print("phenix_regression not configured, skipping.")
     return
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/wizards/help_tests/test_help/p9_se_w2.sca",
@@ -25,11 +26,11 @@ def exercise(debug=False):
   ]
   if (debug):
     args.append("debug=True")
-    print " ".join(args)
+    print(" ".join(args))
   out = StringIO()
   result = merging_statistics.run(args, out=out)
   if (debug):
-    print out.getvalue()
+    print(out.getvalue())
   assert ("R-merge: 0.073" in out.getvalue())
   assert ("R-meas:  0.079" in out.getvalue())
   assert ("""  1.81   1.74  12528   2073    6.04  97.05    1449.2     5.2    0.252    0.275    0.110   0.967   0.281""" in out.getvalue()), out.getvalue()
@@ -49,7 +50,7 @@ def exercise(debug=False):
   out = StringIO()
   result = merging_statistics.run(args2, out=out)
   if (debug):
-    print out.getvalue()
+    print(out.getvalue())
   assert ("Resolution: 14.96 - 2.50" in out.getvalue())
   # extend binning
   args2 = list(args[:-1]) + ["high_resolution=1.5", "low_resolution=100",
@@ -57,7 +58,7 @@ def exercise(debug=False):
   out = StringIO()
   result = merging_statistics.run(args2, out=out)
   if (debug):
-    print out.getvalue()
+    print(out.getvalue())
   assert ("Resolution: 100.00 - 1.50" in out.getvalue())
   assert ("  1.55   1.50      0      0    0.00   0.00       0.0     0.0     None     None     None   0.000   0.000""" in out.getvalue())
   args2 = args + ["json.file_name=merging_stats.json", "json.indent=2",
@@ -119,11 +120,11 @@ def exercise(debug=False):
   ]
   if (debug):
     args.append("debug=True")
-    print " ".join(args)
+    print(" ".join(args))
   out = StringIO()
   result = merging_statistics.run(args, out=out)
   if (debug):
-    print out.getvalue()
+    print(out.getvalue())
   assert (" 28.49   3.76  15737   1224   12.86  99.84   47967.0    11.6    0.482    0.500    0.135   0.973  -0.513" in out.getvalue()), out.getvalue()
   # exercise 2: estimate resolution cutoffs (and symmetry_file argument)
   hkl_file = libtbx.env.find_in_repositories(
@@ -142,7 +143,7 @@ def exercise(debug=False):
   out = StringIO()
   result = merging_statistics.run(args, out=out)
   if (debug):
-    print out.getvalue()
+    print(out.getvalue())
   for line in """\
   resolution of all data          :   2.000
   based on CC(1/2) >= 0.33        :   2.000
@@ -214,4 +215,4 @@ def exercise(debug=False):
 
 if (__name__ == "__main__"):
   exercise(debug=("--debug" in sys.argv))
-  print "OK"
+  print("OK")

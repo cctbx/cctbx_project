@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.eltbx.formula import formula
 
 def exercise():
@@ -20,7 +21,7 @@ def exercise():
 
 def run():
   exercise()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

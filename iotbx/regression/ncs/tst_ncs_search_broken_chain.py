@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.ncs
 import iotbx.ncs as ncs
 from iotbx import pdb
@@ -287,7 +288,7 @@ def exercise_00():
   assert len(ncs_groups[0].copies) == 3, len(ncs_groups[0].copies)
   assert ncs_groups[0].master_iselection.size() == 51 # all chain
   assert ncs_groups[0].copies[0].iselection.size() == 51 # all chain
-  print "OK"
+  print("OK")
 
 if(__name__=='__main__'):
   exercise_00()

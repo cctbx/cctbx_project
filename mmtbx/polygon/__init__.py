@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 import iotbx.phil
 import mmtbx.polygon
@@ -104,10 +105,10 @@ def show_histogram(data, n_slots, smooth = True):
   for i, s in enumerate(histogram.slots()):
     r = histogram.data_min() + histogram.slot_width() * (i+1)
     triplets.append( [l, r, s] )
-    print "%8.4f %8.4f %d" % (l, r, s)
+    print("%8.4f %8.4f %d" % (l, r, s))
     l = r
   if(smooth):
-    print "... smooth histogram"
+    print("... smooth histogram")
     triplets_smooth = []
     for i, t in enumerate(triplets):
       values = flex.double()
@@ -116,7 +117,7 @@ def show_histogram(data, n_slots, smooth = True):
           values.append(float(triplets[i+j][2]))
       triplets_smooth.append((t[0],t[1],flex.mean(values)))
     for t in triplets_smooth:
-      print "%8.4f %8.4f %d" % (t[0], t[1], int("%.0f"%t[2]))
+      print("%8.4f %8.4f %d" % (t[0], t[1], int("%.0f"%t[2])))
   return histogram
 
 def convert_to_histogram(data, n_slots):
@@ -177,8 +178,8 @@ def polygon(params = master_params.extract(), d_min = None,
   elif(show_histograms):
     for selected_key in params.polygon.keys_to_show:
       data = result[selected_key]
-      print "%s data_points=%d" % (selected_key, data.size()), \
-        "min/max/mean= %12.4f %12.4f %12.4f"%data.min_max_mean().as_tuple()
+      print("%s data_points=%d" % (selected_key, data.size()), \
+        "min/max/mean= %12.4f %12.4f %12.4f"%data.min_max_mean().as_tuple())
       n_slots = params.polygon.number_of_histogram_slots
       if(n_slots is None):
         assert 0

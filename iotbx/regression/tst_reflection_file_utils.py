@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 if (libtbx.env.has_module("ccp4io")):
   from iotbx import reflection_file_reader
@@ -825,7 +826,7 @@ def exercise_automation_wrappers():
 
 def exercise():
   if (mtz is None):
-    print "Skipping iotbx/tst_reflection_file_utils.py: ccp4io not available"
+    print("Skipping iotbx/tst_reflection_file_utils.py: ccp4io not available")
     return
   exercise_get_amplitudes_and_get_phases_deg()
   exercise_get_xtal_data()
@@ -836,7 +837,7 @@ def exercise():
 
 def run():
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

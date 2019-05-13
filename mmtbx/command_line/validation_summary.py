@@ -4,6 +4,7 @@ Convenience tool for collecting validation statistics with minimal overhead.
 """
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.validation import molprobity
 from iotbx import file_reader
 from libtbx import slots_getstate_setstate, Auto
@@ -96,20 +97,20 @@ class ensemble(slots_getstate_setstate):
     def format_all(format, array):
       min, max, mean = min_max_mean(array)
       return "%s %s %s" % (fs(format, min), fs(format, max), fs(format, mean))
-    print >> out, "%s                           min    max   mean" % prefix
-    print >> out, "%sRamachandran outliers = %s %%" % (prefix,
-      format_all("%6.2f", self.rama_outliers))
-    print >> out, "%s             favored  = %s %%" % (prefix,
-      format_all("%6.2f", self.rama_favored))
-    print >> out, "%sRotamer outliers      = %s %%" % (prefix,
-      format_all("%6.2f", self.rotamer_outliers))
-    print >> out, "%sC-beta deviations     = %s" % (prefix,
-      format_all("%6d", self.c_beta_deviations))
-    print >> out, "%sClashscore            = %s" % (prefix,
-      format_all("%6.2f", self.clashscore))
+    print("%s                           min    max   mean" % prefix, file=out)
+    print("%sRamachandran outliers = %s %%" % (prefix,
+      format_all("%6.2f", self.rama_outliers)), file=out)
+    print("%s             favored  = %s %%" % (prefix,
+      format_all("%6.2f", self.rama_favored)), file=out)
+    print("%sRotamer outliers      = %s %%" % (prefix,
+      format_all("%6.2f", self.rotamer_outliers)), file=out)
+    print("%sC-beta deviations     = %s" % (prefix,
+      format_all("%6d", self.c_beta_deviations)), file=out)
+    print("%sClashscore            = %s" % (prefix,
+      format_all("%6.2f", self.clashscore)), file=out)
     if (self.mpscore is not None):
-      print >> out, "%sMolprobity score      = %s" % (prefix,
-        format_all("%6.2f", self.mpscore))
+      print("%sMolprobity score      = %s" % (prefix,
+        format_all("%6.2f", self.mpscore)), file=out)
 
 def run(args, out=sys.stdout):
   import optparse
@@ -140,10 +141,10 @@ run phenix.model_vs_data or the validation GUI.)
     s = ensemble(pdb_hierarchy=hierarchy,
       n_models=len(xrs))
     extra = " (%d models)" % len(xrs)
-  print >> out, ""
-  print >> out, "Validation summary for %s%s:" % (pdb_file, extra)
+  print("", file=out)
+  print("Validation summary for %s%s:" % (pdb_file, extra), file=out)
   s.show(out=out, prefix="  ", show_percentiles=True)
-  print >> out, ""
+  print("", file=out)
   return s
 
 if (__name__ == "__main__"):

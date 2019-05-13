@@ -1,4 +1,5 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
 from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
@@ -102,8 +103,8 @@ class lbfgs(object):
     self.fmodels.create_target_functors()
 # QBLIB INSERT
     if(self.qblib_params is not None and self.qblib_params.qblib):
-       print >>self.qblib_params.qblib_log,'{:-^80}'.format("")
-       print >>self.qblib_params.qblib_log
+       print('{:-^80}'.format(""), file=self.qblib_params.qblib_log)
+       print(file=self.qblib_params.qblib_log)
 # QBLIB END
 
   def apply_shifts(self):
@@ -149,7 +150,7 @@ class lbfgs(object):
             site_label       = scatterers_shifted[i_seq].label,
             tolerance        = self.correct_special_position_tolerance)
         except Exception, e:
-          print >> self.log, str(e)
+          print(str(e), file=self.log)
     self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
     #
     if(self.riding_h_manager is not None and self.refine_xyz):
@@ -266,16 +267,16 @@ class lbfgs(object):
 
   def callback_after_step(self, minimizer):
     if (self.verbose > 0):
-      print "refinement.minimization step: f,iter,nfun:",
-      print self.f,minimizer.iter(),minimizer.nfun()
+      print("refinement.minimization step: f,iter,nfun:", end=' ')
+      print(self.f,minimizer.iter(),minimizer.nfun())
 
   def compute_functional_and_gradients(self):
     u_iso_refinable_params = self.apply_shifts()
     self.compute_target(compute_gradients     = True,
                         u_iso_refinable_params = u_iso_refinable_params)
     if (self.verbose > 1):
-      print "xray.minimization line search: f,rms(g):",
-      print self.f, math.sqrt(flex.mean_sq(self.g))
+      print("xray.minimization line search: f,rms(g):", end=' ')
+      print(self.f, math.sqrt(flex.mean_sq(self.g)))
     return self.f, self.g
 
 class monitor(object):
@@ -331,51 +332,51 @@ class monitor(object):
 
   def show(self, message = "", log = None):
     if(log is None): log = sys.stdout
-    print >> log, "|-"+message+"-"*(79-len("| "+message+"|"))+"|"
+    print("|-"+message+"-"*(79-len("| "+message+"|"))+"|", file=log)
     if(self.fmodels.fmodel_neutron() is not None):
-      print >> log, "|"+" "*33+"x-ray data:"+" "*33+"|"
-    print >> log, "| start r-factor (work) = %s      final r-factor "\
-     "(work) = %s          |"%(self.rxw[0], self.rxw[1])
-    print >> log, "| start r-factor (free) = %s      final r-factor "\
-     "(free) = %s          |"%(self.rxf[0], self.rxf[1])
+      print("|"+" "*33+"x-ray data:"+" "*33+"|", file=log)
+    print("| start r-factor (work) = %s      final r-factor "\
+     "(work) = %s          |"%(self.rxw[0], self.rxw[1]), file=log)
+    print("| start r-factor (free) = %s      final r-factor "\
+     "(free) = %s          |"%(self.rxf[0], self.rxf[1]), file=log)
     if(self.fmodels.fmodel_neutron() is not None):
-      print >> log, "|"+" "*32+"neutron data:"+" "*32+"|"
-      print >> log, "| start r-factor (work) = %s      final r-factor "\
-      "(work) = %s          |"%(self.rnw[0], self.rnw[1])
-      print >> log, "| start r-factor (free) = %s      final r-factor "\
-      "(free) = %s          |"%(self.rnf[0], self.rnf[1])
-    print >> log, "|"+"-"*77+"|"
+      print("|"+" "*32+"neutron data:"+" "*32+"|", file=log)
+      print("| start r-factor (work) = %s      final r-factor "\
+      "(work) = %s          |"%(self.rnw[0], self.rnw[1]), file=log)
+      print("| start r-factor (free) = %s      final r-factor "\
+      "(free) = %s          |"%(self.rnf[0], self.rnf[1]), file=log)
+    print("|"+"-"*77+"|", file=log)
     #
     if(self.fmodels.fmodel_neutron() is None):
       for i_seq, stage in enumerate(["start", "final"]):
         if(self.refine_xyz):
-          print >>log,"| T_%s = wxc * wxc_scale * Exray + wc * Echem"%stage+" "*30+"|"
-          print >>log, self.xray_line(i_seq)
+          print("| T_%s = wxc * wxc_scale * Exray + wc * Echem"%stage+" "*30+"|", file=log)
+          print(self.xray_line(i_seq), file=log)
         elif(self.refine_adp):
-          print >>log,"| T_%s = wxu * wxu_scale * Exray + wu * Eadp"%stage+" "*31+"|"
-          print >>log, self.xray_line(i_seq)
+          print("| T_%s = wxu * wxu_scale * Exray + wu * Eadp"%stage+" "*31+"|", file=log)
+          print(self.xray_line(i_seq), file=log)
         elif(self.refine_occ):
-          print >> log, "| T_%s = 1.0 * 1.0 * Exray"%stage+" "*43+"|"
-          print >>log, self.xray_line(i_seq)
-        if(i_seq == 0): print >> log, "|"+" "*77+"|"
+          print("| T_%s = 1.0 * 1.0 * Exray"%stage+" "*43+"|", file=log)
+          print(self.xray_line(i_seq), file=log)
+        if(i_seq == 0): print("|"+" "*77+"|", file=log)
     #
     if(self.fmodels.fmodel_neutron() is not None):
       for i_seq, stage in enumerate(["start", "final"]):
         if(self.refine_xyz):
-          print >>log,"| T_%s = wnxc * (wxc_scale * Exray + wnc_scale * Eneutron) + wc * Echem"%stage+" "*4+"|"
-          print >>log, self.neutron_line(i_seq)
+          print("| T_%s = wnxc * (wxc_scale * Exray + wnc_scale * Eneutron) + wc * Echem"%stage+" "*4+"|", file=log)
+          print(self.neutron_line(i_seq), file=log)
         elif(self.refine_adp):
-          print >>log,"| T_%s = wnxu * (wxu_scale * Exray + wnu_scale * Eneutron) + wu * Eadp"%stage+" "*5+"|"
-          print >>log, self.neutron_line(i_seq)
+          print("| T_%s = wnxu * (wxu_scale * Exray + wnu_scale * Eneutron) + wu * Eadp"%stage+" "*5+"|", file=log)
+          print(self.neutron_line(i_seq), file=log)
         elif(self.refine_occ):
-          print >> log, "| T_%s = 1.0 * (1.0 * Exray + 1.0 * Eneutron)"%stage+" "*30+"|"
-          print >>log, self.neutron_line(i_seq)
-        if(i_seq == 0): print >> log, "|"+" "*77+"|"
+          print("| T_%s = 1.0 * (1.0 * Exray + 1.0 * Eneutron)"%stage+" "*30+"|", file=log)
+          print(self.neutron_line(i_seq), file=log)
+        if(i_seq == 0): print("|"+" "*77+"|", file=log)
     #
-    print >> log, "|"+"-"*77+"|"
-    print >> log, "| number of iterations = %s    |    number of function "\
-                  "evaluations = %s   |"%(self.iter, self.nfun)
-    print >> log, "|"+"-"*77+"|"
+    print("|"+"-"*77+"|", file=log)
+    print("| number of iterations = %s    |    number of function "\
+                  "evaluations = %s   |"%(self.iter, self.nfun), file=log)
+    print("|"+"-"*77+"|", file=log)
     log.flush()
 
   def neutron_line(self, i_seq):

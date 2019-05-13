@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.geometry_minimization
 
 from __future__ import division
+from __future__ import print_function
 import mmtbx.refinement.geometry_minimization
 import mmtbx.utils
 from iotbx.pdb import combine_unique_pdb_files
@@ -131,12 +132,12 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=True)
 
 def broadcast(m, log):
-  print >> log, "-"*79
-  print >> log, m
-  print >> log, "*"*len(m)
+  print("-"*79, file=log)
+  print(m, file=log)
+  print("*"*len(m), file=log)
 
 def format_usage_message(log):
-  print >> log, "-"*79
+  print("-"*79, file=log)
   msg = """\
 phenix.geometry_minimization: regularize model geometry
 
@@ -144,8 +145,8 @@ Usage examples:
   phenix.geometry_minimization model.pdb
   phenix.geometry_minimization model.pdb ligands.cif
 """
-  print >> log, msg
-  print >> log, "-"*79
+  print(msg, file=log)
+  print("-"*79, file=log)
 
 def run_minimization(
       selection,
@@ -275,9 +276,9 @@ class run(object):
     for ts in self.time_strings:
       sts = ts.split()
       l = " ".join(sts[:len(sts)-1])
-      print >> self.log, fmt%l, sts[len(sts)-1]
-    print >> self.log, "  Sum of individual times: %s"%\
-      str("%8.3f"%self.total_time).strip()
+      print(fmt%l, sts[len(sts)-1], file=self.log)
+    print("  Sum of individual times: %s"%\
+      str("%8.3f"%self.total_time).strip(), file=self.log)
 
   def format_usage_message(self):
     format_usage_message(log=self.log)
@@ -367,8 +368,8 @@ class run(object):
   def atom_selection(self, prefix):
     broadcast(m=prefix, log = self.log)
     self.selection = self.model.selection(string = self.params.selection)
-    print >> self.log, "  selected %s atoms out of total %s"%(
-      str(self.selection.count(True)),str(self.selection.size()))
+    print("  selected %s atoms out of total %s"%(
+      str(self.selection.count(True)),str(self.selection.size())), file=self.log)
 
   def get_restraints(self, prefix):
     broadcast(m=prefix, log = self.log)
@@ -383,7 +384,7 @@ class run(object):
     broadcast(m=prefix, log = self.log)
     use_amber = False
     if self.ncs_obj is not None:
-      print >> self.log, "Using NCS constraints:"
+      print("Using NCS constraints:", file=self.log)
       self.ncs_obj.show(format='phil', log=self.log)
     if hasattr(self.params, "amber"):
       use_amber = self.params.amber.use_amber
@@ -425,10 +426,10 @@ class run(object):
   def write_pdb_file(self, prefix):
     broadcast(m=prefix, log = self.log)
     # self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
-    print >> self.log, "  output file name:", self.result_model_fname
-    print >> self.log, self.min_max_mean_shift()
+    print("  output file name:", self.result_model_fname, file=self.log)
+    print(self.min_max_mean_shift(), file=self.log)
 
-    print >> self.log, self.min_max_mean_shift()
+    print(self.min_max_mean_shift(), file=self.log)
     r = self.model.model_as_pdb(output_cs=self.output_crystal_symmetry)
     f = open(self.result_model_fname, 'w')
     f.write(r)
@@ -487,5 +488,5 @@ if(__name__ == "__main__"):
   log = sys.stdout
   o = run(sys.argv[1:], log=log)
   tt = timer.elapsed()
-  print >> o.log, "Overall runtime: %-8.3f" % tt
+  print("Overall runtime: %-8.3f" % tt, file=o.log)
   assert abs(tt-o.total_time) < 0.1 # guard against unaccounted times

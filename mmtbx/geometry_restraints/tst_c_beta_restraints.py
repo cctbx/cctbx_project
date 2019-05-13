@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from mmtbx.geometry_restraints import c_beta
 import mmtbx.model
@@ -215,4 +216,4 @@ if (__name__ == "__main__"):
   exercise_2()
   exercise_3()
   exercise_4()
-  print "OK"
+  print("OK")

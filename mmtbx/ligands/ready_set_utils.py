@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx
 from iotbx.pdb import amino_acid_codes as aac
 from scitbx.math import dihedral_angle
@@ -385,7 +386,7 @@ def add_c_terminal_oxygens_to_residue_group(residue_group,
 def _hierarchy_into_slots(hierarchy,
                           verbose=False,
                           ):
-  if verbose: print '_hierarchy_into_slots'
+  if verbose: print('_hierarchy_into_slots')
   slots=[]
   #start=18
   assert len(hierarchy.models())==1
@@ -474,7 +475,7 @@ def add_terminal_hydrogens(hierarchy,
       if rc: additional_hydrogens.append(rc)
     else:
       pass
-  print additional_hydrogens
+  print(additional_hydrogens)
 
 # def junk():
 #   from mmtbx.conformation_dependent_library import generate_protein_threes

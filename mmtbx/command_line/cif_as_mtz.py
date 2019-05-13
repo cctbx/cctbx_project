@@ -2,6 +2,7 @@
 # LIBTBX_SET_DISPATCHER_NAME iotbx.cif_as_mtz
 
 from __future__ import division
+from __future__ import print_function
 from iotbx.option_parser import iotbx_option_parser
 from iotbx import crystal_symmetry_from_any
 import iotbx.phil
@@ -100,12 +101,12 @@ def run(args, command_name = "phenix.cif_as_mtz", out=sys.stdout,
 
     ).process(args=args)
   except Exception, e:
-    if(str(e) != "0"): print str(e)
+    if(str(e) != "0"): print(str(e))
     sys.exit(0)
   crystal_symmetry = command_line.symmetry
   if(len(command_line.args) > 1):
-    print >> out, "%d arguments are given from the command line:"% \
-      len(command_line.args), command_line.args
+    print("%d arguments are given from the command line:"% \
+      len(command_line.args), command_line.args, file=out)
     raise Sorry("Please specify one reflection cif file.")
   file_name = command_line.args[0]
   if(not os.path.isfile(file_name)):
@@ -299,8 +300,8 @@ def extract(file_name,
       labels = ma.info().labels
       label = get_label(miller_array=ma, output_r_free_label=output_r_free_label)
       if label is None:
-        print >> log, "Can't determine output label for %s - skipping." % \
-          ma.info().label_string()
+        print("Can't determine output label for %s - skipping." % \
+          ma.info().label_string(), file=log)
         continue
       elif label.startswith(output_r_free_label):
         ma, _ = cif_status_flags_as_int_r_free_flags(
@@ -350,7 +351,7 @@ def extract(file_name,
       # if all sigmas for an array are set to zero either raise an error, or set sigmas to None
       if ma.sigmas() is not None and (ma.sigmas() == 0).count(False) == 0:
         if ignore_bad_sigmas:
-          print >> log, "Warning: bad sigmas, setting sigmas to None."
+          print("Warning: bad sigmas, setting sigmas to None.", file=log)
           ma.set_sigmas(None)
         else:
           raise Sorry(
@@ -358,16 +359,15 @@ def extract(file_name,
   Add --ignore_bad_sigmas to command arguments to leave out sigmas from mtz file.""")
       if not ma.is_unique_set_under_symmetry():
         if merge_non_unique_under_symmetry:
-          print >> log, "Warning: merging non-unique data"
+          print("Warning: merging non-unique data", file=log)
           if (label.startswith(output_r_free_label)
               and incompatible_flags_to_work_set):
             merging = ma.merge_equivalents(
               incompatible_flags_replacement=0)
             if merging.n_incompatible_flags > 0:
-              print >> log, \
-                    "Warning: %i reflections were placed in the working set " \
+              print("Warning: %i reflections were placed in the working set " \
                     "because of incompatible flags between equivalents." %(
-                      merging.n_incompatible_flags)
+                      merging.n_incompatible_flags), file=log)
           else:
             try:
               merging = ma.merge_equivalents()
@@ -392,7 +392,7 @@ def extract(file_name,
             "(%d redundant indices out of %d)" % (n_all-n_uus, n_all) +
             "Add --merge to command arguments to force merging data.")
           if (show_details_if_error):
-            print msg
+            print(msg)
             ma.show_comprehensive_summary(prefix="  ")
             ma.map_to_asu().sort().show_array(prefix="  ")
           raise Sorry(msg)
@@ -407,7 +407,7 @@ def extract(file_name,
             from cctbx import r_free_utils
             # determine flag values
             fvals = list(set(ma.data()))
-            print "fvals", fvals
+            print("fvals", fvals)
             fval = None
             if(len(fvals)==1):
               fval = fvals[0]
@@ -581,7 +581,7 @@ def run2(args,
         try :
           user_phil = iotbx.phil.parse(file_name=arg)
         except RuntimeError :
-          print "Unrecognizable file format for %s" % arg
+          print("Unrecognizable file format for %s" % arg)
         else :
           sources.append(user_phil)
     else :
@@ -591,7 +591,7 @@ def run2(args,
         user_phil = parameter_interpreter.process(arg=arg)
         sources.append(user_phil)
       except RuntimeError :
-        print "Unrecognizable parameter %s" % arg
+        print("Unrecognizable parameter %s" % arg)
   if (params is None):
     params = master_phil.fetch(sources=sources).extract()
   symm = None

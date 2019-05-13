@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx import utils
 import iotbx.pdb
 from scitbx.array_family import flex
@@ -38,7 +39,7 @@ END
     sfp = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
     sfp.algorithm="direct"
     for target_name in ["ls_wunit_kunit", "ls_wunit_k1", "ml"]:
-      print "%s"%target_name, "-"*50
+      print("%s"%target_name, "-"*50)
       fmodel = mmtbx.f_model.manager(
         f_obs                        = f_obs,
         xray_structure               = xrs.deep_copy_scatterers(),
@@ -46,7 +47,7 @@ END
         sf_and_grads_accuracy_params = sfp)
       fmodel.update_all_scales(update_f_part1=update_f_part1)
       alpha_beta = fmodel.alpha_beta()
-      print "R-work: %6.4f"%fmodel.r_work()
+      print("R-work: %6.4f"%fmodel.r_work())
       #
       tg = mmtbx.utils.experimental_data_target_and_gradients(fmodel = fmodel,
         alpha_beta=alpha_beta)
@@ -67,7 +68,7 @@ END
         t2 = tg.target()
         #
         gfd = (t1-t2)/(2*eps)
-        print gfd, go[i]
+        print(gfd, go[i])
         assert approx_equal(go[i], gfd, 1.e-5)
       # sites_cart
       gc = tg.grad_sites_cart()
@@ -91,7 +92,7 @@ END
           t2 = tg.target()
           #
           gfd.append( (t1-t2)/(2*eps) )
-        print gfd, list(gc[i])
+        print(gfd, list(gc[i]))
         assert approx_equal(gc[i], gfd, 1.e-5)
 
 def exercise_d_data_target_d_atomic_params2():
@@ -207,12 +208,12 @@ TER
     pdb_hierarchy       = hierarchy,
     residues_per_window = 1)
   for r in result:
-    print "chainID_resseqs: %s occupancy_grad: %-15.6f"%tuple(r)
+    print("chainID_resseqs: %s occupancy_grad: %-15.6f"%tuple(r))
   # get group gradients using custom selections
   selections = [flex.size_t([0,1,2,3]), flex.size_t([4,5,6,7,8])]
   result = tg.group_occupancy_grads(selections = selections)
   for i, r in enumerate(result):
-    print "selection#: %s occupancy_grad: %-15.6f"%(str(i), r[1])
+    print("selection#: %s occupancy_grad: %-15.6f"%(str(i), r[1]))
 
 def exercise_get_atom_selections(verbose=False):
   pdb_in = """\
@@ -339,7 +340,7 @@ ATOM      3  C   GLY A  34     -73.114  11.306 -25.993  1.00  0.00           C
 ATOM      4  O   GLY A  34     -72.196  12.128 -25.997  1.00  0.00           O
 """
   of = open("tmp_exercise_corrupt_cryst1.pdb", "w")
-  print >> of, pdb_str
+  print(pdb_str, file=of)
   of.close()
   base_arg = ["tmp_exercise_corrupt_cryst1.pdb"]
   for extra_arg in [[], ["bla=bla"], ["bla"]]:
@@ -356,7 +357,7 @@ def run():
   exercise_get_atom_selections(verbose=verbose)
   exercise_f_000()
   exercise_detect_link_problems()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

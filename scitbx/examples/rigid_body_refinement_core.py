@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx import matrix
 import math
@@ -130,11 +131,11 @@ def exercise(args):
   def show_gradients(rb):
     an = rb.ea_gradients(energy_cart_function=energy_cart)
     fd = ea_gradients_fd(rb=rb, energy_cart_function=energy_cart)
-    print "an ea:", an[:3]
-    print "fd ea:", fd[:3]
-    print "an lt:", an[3:]
-    print "fd lt:", fd[3:]
-    print
+    print("an ea:", an[:3])
+    print("fd ea:", fd[:3])
+    print("an lt:", an[3:])
+    print("fd lt:", fd[3:])
+    print()
 
   rb = rigid_body(sites=sites)
   mt = flex.mersenne_twister()
@@ -144,7 +145,7 @@ def exercise(args):
     rb.lt = matrix.col(mt.random_double_point_on_sphere()) * i
     show_gradients(rb=rb)
 
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -111,8 +112,8 @@ def linear_regression_test(d_analytical, d_numerical, test_hard=True,
   if (type(d_numerical) != type(flex.double())):
     d_numerical = flex_tuple_as_flex_double(d_numerical)
   if (0 or verbose):
-    print "analytical:", tuple(d_analytical)
-    print "numerical: ", tuple(d_numerical)
+    print("analytical:", tuple(d_analytical))
+    print("numerical: ", tuple(d_numerical))
   if (    flex.max(flex.abs(d_analytical)) == 0
       and flex.max(flex.abs(d_numerical)) == 0):
     return
@@ -120,12 +121,12 @@ def linear_regression_test(d_analytical, d_numerical, test_hard=True,
   corr = flex.linear_correlation(d_analytical, d_numerical).coefficient()
   assert regr.is_well_defined()
   if (abs(regr.slope() - 1) > slope_tolerance or corr < correlation_min):
-    print "Error: finite difference mismatch:"
-    print "slope:", regr.slope()
-    print "correlation:", corr
+    print("Error: finite difference mismatch:")
+    print("slope:", regr.slope())
+    print("correlation:", corr)
     if (0 or verbose):
       for a, n in zip(d_analytical, d_numerical):
-        print a, n
+        print(a, n)
     assert not test_hard
 
 def exercise(target_functor, data_type, parameter_name, space_group_info,

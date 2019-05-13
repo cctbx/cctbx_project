@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from scitbx.matrix import sqr,col
 from math import sin,cos,pi
@@ -12,13 +13,13 @@ class one_sensor(object):
     self.tiling = self.manager.effective_tiling_as_flex_int(
                     encode_inactive_as_zeroes=True)
 
-    print list( self.tiling[4*self.sensor[0]:4+4*self.sensor[0]] )
+    print(list( self.tiling[4*self.sensor[0]:4+4*self.sensor[0]] ))
 
 
 
     grid_radius = 20
     mapp = flex.double(flex.grid(2*grid_radius+1, 2*grid_radius+1))
-    print mapp.focus()
+    print(mapp.focus())
 
     # not sure if this is the correct beam center; take provisional value
     beam_center = col((float(880.5),float(880.5)))
@@ -32,7 +33,7 @@ class one_sensor(object):
           coordmax = col((xi,yi))
         mapp[(xi+grid_radius,yi+grid_radius)]=VV
 
-    print "max cc %7.4F is at "%gmax,
+    print("max cc %7.4F is at "%gmax, end=' ')
     if False:
       npy = mapp.as_numpy_array()
       from matplotlib import pyplot as plt
@@ -106,15 +107,15 @@ class one_panel(object):
 
     grid_radius = 20
     mapp = flex.double(flex.grid(2*grid_radius+1, 2*grid_radius+1))
-    print "Searching a grid with dimensions", mapp.focus()
+    print("Searching a grid with dimensions", mapp.focus())
 
     beam = image.get_beam()
     beam_center = col(panel.get_beam_centre_lab(beam.get_s0())[0:2])
     gmax = 0.0
     coordmax = (0,0)
-    print "Rastering row",
+    print("Rastering row", end=' ')
     for xi in range(-grid_radius, grid_radius+1):
-      print xi,; sys.stdout.flush()
+      print(xi, end=' '); sys.stdout.flush()
       for yi in range(-grid_radius, grid_radius+1):
         delta = col((xi,yi))
         all_VV = flex.double()
@@ -128,9 +129,9 @@ class one_panel(object):
           gmax = VV
           coordmax = delta
         mapp[(xi+grid_radius,yi+grid_radius)]=VV
-    print
+    print()
 
-    print "max cc %7.4F is at (%d, %d)"%(gmax, coordmax[0], coordmax[1])
+    print("max cc %7.4F is at (%d, %d)"%(gmax, coordmax[0], coordmax[1]))
     if plot:
       npy = mapp.as_numpy_array().T # T: transpose
       from matplotlib import pyplot as plt

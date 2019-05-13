@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import mmtbx.refinement.real_space.rigid_body
 import scitbx.lbfgs
@@ -28,12 +29,12 @@ def run(pdb_hierarchy,
             atoms = residue.atoms()
             if(get_class(name=residue.resname)=="common_water" and len(atoms)>1):
               if(log is not None):
-                print >> log, "chain %s resname %s resseq %s"%(
-                  chain.id, residue.resname, residue.resseq)
+                print("chain %s resname %s resseq %s"%(
+                  chain.id, residue.resname, residue.resseq), file=log)
               sites_cart_start = atoms.extract_xyz()
               target_start = target(target_map, sites_cart_start, unit_cell)
               if(log is not None):
-                print >> log, "  target_start: %6.4f"%target_start
+                print("  target_start: %6.4f"%target_start, file=log)
               target_current = target_start
               sites_cart_best = sites_cart_start.deep_copy()
               shift_range = [-0.3,0,0.3]
@@ -64,5 +65,5 @@ def run(pdb_hierarchy,
               distance_moved = flex.mean(
                 flex.sqrt((sites_cart_best - sites_cart_start).dot()))
               if(log is not None):
-                print >> log, "  target_final: %6.4f" % target_final
-                print >> log, "  dist. moved : %6.4f" % distance_moved
+                print("  target_final: %6.4f" % target_final, file=log)
+                print("  dist. moved : %6.4f" % distance_moved, file=log)

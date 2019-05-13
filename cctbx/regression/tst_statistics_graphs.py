@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import statistics
 from cctbx import miller
 from cctbx import crystal
@@ -124,7 +125,7 @@ def run_call_back(flags, space_group_info):
 def run():
   exercise_sys_absent_intensity_distribution()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

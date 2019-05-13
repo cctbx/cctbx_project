@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import Exception_expected
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_run
@@ -416,4 +417,4 @@ END
 if (__name__ == "__main__"):
   exercise_misc()
   exercise_main()
-  print "OK"
+  print("OK")

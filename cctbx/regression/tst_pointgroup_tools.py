@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -143,10 +144,10 @@ def test_extensively( this_chunk ):
     # -----------
     queue = []
     if sg_in_ref_setting.is_chiral():
-      print "Testing : ",\
+      print("Testing : ",\
             sgtbx.space_group_info(group=group),\
             "( or ", sgtbx.space_group_info(group=sg_in_ref_setting),\
-            " in reference setting)"
+            " in reference setting)")
       for s in sg_min:
         new_sg = sgtbx.space_group()
         new_sg.expand_smx(s)
@@ -188,7 +189,7 @@ def test_extensively( this_chunk ):
           #print sgtbx.space_group_info( group=sg_and_uc[0] ), \
           #      sg_and_uc[1].parameters()
         if not found_it:
-          print "FAILURE: ", sg.hall()
+          print("FAILURE: ", sg.hall())
           assert found_it
 
 
@@ -283,7 +284,7 @@ def run():
   tst_pgtools()
   tst_sg_tools()
   test_reference_setting_choices()
-  print "OK"
+  print("OK")
 
 
 if (__name__ == "__main__"):
@@ -292,6 +293,6 @@ if (__name__ == "__main__"):
       run()
       test_extensively(0) # Should take not more then 45 minutes
                           #on a reasonable machine
-      print "OK"
+      print("OK")
   else:
     run()

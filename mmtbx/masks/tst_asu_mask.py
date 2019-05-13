@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys, os, time
 import iotbx.pdb
 import iotbx.pdb.remark_2_interpretation
@@ -158,16 +159,16 @@ def zero_test(asu_mask, fc, tolerance = 1.0E-9):
 def check_group(group):
   ops = group.smx()
   ltrs = group.ltr()
-  print "NNN = ", ltrs.__class__
+  print("NNN = ", ltrs.__class__)
   cb = group.type().cb_op()
-  print "CB r= ", cb.c().r().as_double()
-  print "CB t= ", cb.c().t()
+  print("CB r= ", cb.c().r().as_double())
+  print("CB t= ", cb.c().t())
   ident = cctbx.sgtbx.rt_mx()
   for ltr in ltrs:
-    print "LTR= ", ltr
+    print("LTR= ", ltr)
   for op in ops:
-    print "Op: ", op, " Order=", op.r().order(), "  r.den= ", op.r().den(), \
-        " tr.den= ", op.t().den()
+    print("Op: ", op, " Order=", op.r().order(), "  r.den= ", op.r().den(), \
+        " tr.den= ", op.t().den())
 
 
 def compare_masks(struc, opts):
@@ -190,14 +191,14 @@ def compare_masks(struc, opts):
     resolution /= 1.2
     assert resolution > 1.0E-3
     fc = struc.structure_factors( d_min = resolution).f_calc()
-  print >>cout, "Resolution= ", resolution, "  solvent radius= ", \
+  print("Resolution= ", resolution, "  solvent radius= ", \
       solvent_radius, "  shrink radius= ", shrink_radius,  "  Tolerance= ", \
-      tolerance, "  Number of reflection= ", fc.data().size()
+      tolerance, "  Number of reflection= ", fc.data().size(), file=cout)
   struc.show_summary(cout)
   group = struc.space_group()
-  print >>cout, "Cell volume= ", struc.unit_cell().volume(), \
-    "  Group order= ", group.order_z(), " p= ", group.order_p()
-  print >>cout, "Hall  symbol: ", group.type().hall_symbol()
+  print("Cell volume= ", struc.unit_cell().volume(), \
+    "  Group order= ", group.order_z(), " p= ", group.order_p(), file=cout)
+  print("Hall  symbol: ", group.type().hall_symbol(), file=cout)
   #check_group(group)
 
   tb = time.time()
@@ -211,7 +212,7 @@ def compare_masks(struc, opts):
   te = time.time()
   time_asu += (te-tb)
   grid =  asu_mask.grid_size()
-  print >>cout, "asu mask grid = ", grid
+  print("asu mask grid = ", grid, file=cout)
   zero_test(asu_mask, fc, tolerance = tolerance)
   radii = get_radii(struc)
   assert len(radii) == len(struc.sites_frac())
@@ -219,8 +220,8 @@ def compare_masks(struc, opts):
   asu_mask.compute( struc.sites_frac(), radii )
   te = time.time()
   time_asu += (te-tb)
-  print >>cout, "   n asu atoms= ", asu_mask.n_asu_atoms(), \
-      "   has-enclosed= ", asu_mask.debug_has_enclosed_box
+  print("   n asu atoms= ", asu_mask.n_asu_atoms(), \
+      "   has-enclosed= ", asu_mask.debug_has_enclosed_box, file=cout)
   tb = time.time()
   fm_asu = asu_mask.structure_factors( fc.indices() )
   fm_asu = fc.set().array( data = fm_asu )
@@ -230,7 +231,7 @@ def compare_masks(struc, opts):
   # save files
   if not opts.save_files is None:
     tmp_file = open(opts.save_files + ".pdb", "w")
-    print >>tmp_file, struc.as_pdb_file()
+    print(struc.as_pdb_file(), file=tmp_file)
     tmp_file.close()
     asu_mask.xplor_write_map(opts.save_files + "_mask.map")
     asu_mask.xplor_write_map(opts.save_files + "_inverted_mask.map", 1, True)
@@ -299,20 +300,20 @@ def compare_masks(struc, opts):
   te = time.time()
   time_orig_sf = (te-tb)
   time_orig += (te-tb)
-  print >>cout, "Number of reflections ::: Fm asu = ", fm_asu.data().size(), \
-    "Fm P1 = ", fm_p1.data().size()
-  print >>cout, "Time ( ms )    P1= ", time_p1*1000.0, "   orig= ", \
-      time_orig*1000.0, "    asu= ", time_asu*1000.0
-  print >>cout, "Times ( ms ) mask_asu= ", asu_mask.debug_mask_asu_time, \
+  print("Number of reflections ::: Fm asu = ", fm_asu.data().size(), \
+    "Fm P1 = ", fm_p1.data().size(), file=cout)
+  print("Time ( ms )    P1= ", time_p1*1000.0, "   orig= ", \
+      time_orig*1000.0, "    asu= ", time_asu*1000.0, file=cout)
+  print("Times ( ms ) mask_asu= ", asu_mask.debug_mask_asu_time, \
       " atoms_to_asu= ", asu_mask.debug_atoms_to_asu_time, \
       " accessible= ", asu_mask.debug_accessible_time, \
       " contact= ", asu_mask.debug_contact_time, \
       " Fc= ", time_asu_sf*1000.0, \
-      " fft= ", asu_mask.debug_fft_time
-  print >>cout, "Times ( ms ) orig:  mask= ", time_orig_msk*1000.0, "  Fc=", \
-      time_orig_sf*1000.0
-  print >>cout, "Times ( ms ) p1 :  expand= ", time_p1_exp*1000.0, "  mask= ", \
-      time_p1_msk*1000.0, "  Fc=", time_p1_sf*1000.0
+      " fft= ", asu_mask.debug_fft_time, file=cout)
+  print("Times ( ms ) orig:  mask= ", time_orig_msk*1000.0, "  Fc=", \
+      time_orig_sf*1000.0, file=cout)
+  print("Times ( ms ) p1 :  expand= ", time_p1_exp*1000.0, "  mask= ", \
+      time_p1_msk*1000.0, "  Fc=", time_p1_sf*1000.0, file=cout)
   assert fm_asu.data().size() == fm_o.data().size()
   t_v1 = asu_mask.contact_surface_fraction
   t_v2 = blk_p1.contact_surface_fraction
@@ -324,7 +325,7 @@ def compare_masks(struc, opts):
   if( t_v4>1.0E-6 ):
     if not opts.failed_file is None:
       tmp_file = open(opts.failed_file, "w")
-      print >>tmp_file, struc.as_pdb_file()
+      print(struc.as_pdb_file(), file=tmp_file)
       tmp_file.close()
     raise "Not equal solvent volume"
 
@@ -340,7 +341,7 @@ def compare_masks(struc, opts):
     "N compared refls: "+str(n_compared) + " != " + str(fm_asu.data().size())
   assert n_compared >0
   if verbose:
-    print cout.getvalue()
+    print(cout.getvalue())
   # test that second calculation will produce the same results
   asu_mask.compute( struc.sites_frac(), radii )
   fm_asu2 = asu_mask.structure_factors( fc.indices() )
@@ -353,8 +354,8 @@ def compare_masks(struc, opts):
 
 def standard_tests(groups, options):
   if options.verbose:
-    print "Standard tests, n space groups = ", len(groups), "\n options="
-    print options, "\n"
+    print("Standard tests, n space groups = ", len(groups), "\n options=")
+    print(options, "\n")
   solvent_radius = options.solvent_radius
   shrink_radius = options.shrink_radius
   for sg in groups:
@@ -372,14 +373,14 @@ def random_tests(groups, opts):
   import random
   atoms = make_atoms(opts.n_atoms)
   resolution = opts.resolution
-  print "Number of space groups: ", len(groups)
-  print "Number of random tests per space group: ", opts.random, "\n"
+  print("Number of space groups: ", len(groups))
+  print("Number of random tests per space group: ", opts.random, "\n")
   for sg in groups:
-    print "Space group= ", sg, "  n tests= ", opts.random
+    print("Space group= ", sg, "  n tests= ", opts.random)
     group = space_group_info(sg)
-    print "       HM= ", group.type().universal_hermann_mauguin_symbol(), \
+    print("       HM= ", group.type().universal_hermann_mauguin_symbol(), \
         "  LOOKUP= ", group.type().lookup_symbol(), "  HALL= ", \
-        group.type().hall_symbol()
+        group.type().hall_symbol())
     for i in xrange(opts.random):
       if i==0 :
         slv_rad = 1.1
@@ -408,8 +409,8 @@ def random_tests(groups, opts):
             elements = atoms
             )
       except Exception:
-        print "Failed to generate random structure:  atom_volume= ", \
-          opts.atom_volume, " group= ", group,  "\n   atoms= ", atoms
+        print("Failed to generate random structure:  atom_volume= ", \
+          opts.atom_volume, " group= ", group,  "\n   atoms= ", atoms)
       if not struc is None:
         opts.resolution = res
         opts.shrink_radius = shr_rad
@@ -425,8 +426,8 @@ def get_resolution(pdb_input, default_resolution):
     return res[0]
 
 def cci_vetted_tests( options):
-  print "CCI tests,  \n options="
-  print options, "\n"
+  print("CCI tests,  \n options=")
+  print(options, "\n")
   n_files = options.cci
   assert n_files > 0
   d = os.environ.get("CCI_REFINE_VETTED")
@@ -434,7 +435,7 @@ def cci_vetted_tests( options):
     " CCI_REFINE_VETTED is not defined"
   assert os.path.isdir( d ), d
   resolution = options.resolution
-  print "Testing files in ", d
+  print("Testing files in ", d)
   fls = os.listdir( d )
   n = 0
   for f in fls:
@@ -445,20 +446,20 @@ def cci_vetted_tests( options):
       fbase =  os.path.basename(f).lower()
       if fbase.find("pdb") != -1 :
         n = n + 1
-        print "Processing file: ", f
+        print("Processing file: ", f)
         pdb_inp = iotbx.pdb.input(source_info = None, file_name = ffull)
         struc = pdb_inp.xray_structure_simple()
         options.resolution = get_resolution( pdb_inp, resolution)
         compare_masks(struc, options)
         if( n>=n_files ):
           break
-  print "Number of structures tested: ", n
+  print("Number of structures tested: ", n)
   assert n>0, "No CCI files have been tested"
 
 def generate_cb(grp, ncb):
   halls = masks.generate_groups(grp,ncb)
   for h in halls:
-    print "Generated: ", h
+    print("Generated: ", h)
   return halls
 
 def run():
@@ -532,7 +533,7 @@ def run():
         cb_groups.append( hall )
     tmp_file = open("generated_groups.txt", "w")
     for g in cb_groups:
-      print >>tmp_file, g
+      print(g, file=tmp_file)
     tmp_file.close()
     groups = cb_groups
 
@@ -548,7 +549,7 @@ def run():
   elif opts.cci == 0 and opts.random == 0 and opts.space_group is None:
     standard_tests(groups, opts)
 
-  print format_cpu_times()
+  print(format_cpu_times())
 
 def exercise_mask_data_1(space_group_info, n_sites=100):
   from cctbx import maptbx
@@ -580,7 +581,7 @@ def exercise_mask_data_1(space_group_info, n_sites=100):
         s1 = mask_data_ > 0.5
         if(mask_data_.size() != s0.count(True)+s1.count(True)):
           for d in mask_data_:
-            if(d != 0 and d != 1): print d, xrs.space_group().order_z()
+            if(d != 0 and d != 1): print(d, xrs.space_group().order_z())
           assert mask_data_.size() == s0.count(True)+s1.count(True), [
             mask_data_.size()-(s0.count(True)+s1.count(True))]
       if(0): # XXX This would crash with the message: "... The grid is not ..."
@@ -702,7 +703,7 @@ if (__name__ == "__main__"):
   except Exception :
     log = cout.getvalue()
     if len(log) != 0:
-      print "<<<<<<<< Start Log:"
-      print cout.getvalue()
-      print ">>>>>>>> End Log"
+      print("<<<<<<<< Start Log:")
+      print(cout.getvalue())
+      print(">>>>>>>> End Log")
     raise

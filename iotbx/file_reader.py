@@ -22,6 +22,7 @@ Examples
 >>> mtz_in = any_file("data.mtz", force_type="hkl")
 >>> miller_arrays = mtz_in.file_server.miller_arrays
 """
+from __future__ import print_function
 
 # MTZ file handling is kludgy, but unfortunately there are circumstances
 # where only an MTZ file will do, so it requires some extra code to work
@@ -580,20 +581,20 @@ class any_file_input(object):
     Print out some basic information about the file.
     """
     if (self._file_type is None):
-      print >> out, "File type could not be determined."
+      print("File type could not be determined.", file=out)
     else :
-      print >> out, "File name: %s" % self.file_name
-      print >> out, "Format: %s (%s)" % (self._file_type,
-        standard_file_descriptions.get(self._file_type, "unknown"))
+      print("File name: %s" % self.file_name, file=out)
+      print("Format: %s (%s)" % (self._file_type,
+        standard_file_descriptions.get(self._file_type, "unknown")), file=out)
     if (self._file_type == "pdb"):
-      print >> out, "Atoms in file: %d" % (len(self._file_object.input.atoms()))
+      print("Atoms in file: %d" % (len(self._file_object.input.atoms())), file=out)
       title = "\n".join(self._file_object.input.title_section())
       if (title != ""):
-        print >> out, "Title section:"
-        print >> out, title
+        print("Title section:", file=out)
+        print(title, file=out)
     elif (self._file_type == "hkl"):
       for array in self.file_server.miller_arrays :
-        print >> out, ""
+        print("", file=out)
         array.show_comprehensive_summary(f=out)
     elif (self._file_type == "ccp4_map"):
       self._file_object.show_summary(out)

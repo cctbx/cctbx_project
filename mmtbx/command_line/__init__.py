@@ -13,6 +13,7 @@ automatically.  This is superficially similar to the setup for phenix.refine
 """
 
 from __future__ import division
+from __future__ import print_function
 from cctbx import uctbx
 from iotbx import file_reader
 import iotbx.pdb
@@ -359,8 +360,7 @@ class load_model_and_data(object):
           (symm.unit_cell() is None)):
         if (pdb_symm is not None):
           from iotbx.reflection_file_utils import reflection_file_server
-          print >> self.log, \
-            "No symmetry in X-ray data file - using PDB symmetry:"
+          print("No symmetry in X-ray data file - using PDB symmetry:", file=self.log)
           pdb_symm.show_summary(f=out, prefix="  ")
           hkl_server = reflection_file_server(
             crystal_symmetry=pdb_symm,
@@ -410,15 +410,15 @@ class load_model_and_data(object):
 
     if cs is None:
       if corrupted_cs:
-        print >> out, "Symmetry information is corrupted,",
+        print("Symmetry information is corrupted,", end=' ', file=out)
       else:
-        print >> out, "Symmetry information was not found,",
+        print("Symmetry information was not found,", end=' ', file=out)
 
       if (hkl_symm is not None):
-        print >> out, "using symmetry from data."
+        print("using symmetry from data.", file=out)
         cs = hkl_symm
       else:
-        print >> out, "putting molecule in P1 box."
+        print("putting molecule in P1 box.", file=out)
         pdb_combined = iotbx.pdb.combine_unique_pdb_files(
           file_names=self.pdb_file_names)
         pdb_structure = iotbx.pdb.input(
@@ -534,8 +534,8 @@ class load_model_and_data(object):
     if (set_wavelength_from_model_header and params.input.wavelength is None):
       wavelength = self.pdb_inp.extract_wavelength()
       if (wavelength is not None):
-        print >> self.log, ""
-        print >> self.log, "Using wavelength = %g from PDB header" % wavelength
+        print("", file=self.log)
+        print("Using wavelength = %g from PDB header" % wavelength, file=self.log)
         params.input.wavelength = wavelength
     # set scattering table
     if (data_and_flags is not None):
@@ -559,7 +559,7 @@ class load_model_and_data(object):
       elif (not skip_twin_detection):
         twin_law = Auto
       if (twin_law is Auto):
-        print >> self.log, "Twinning will be detected automatically."
+        print("Twinning will be detected automatically.", file=self.log)
         self.fmodel = mmtbx.utils.fmodel_simple(
           xray_structures=[self.xray_structure],
           scattering_table=params.input.scattering_table,
@@ -601,8 +601,8 @@ class load_model_and_data(object):
           data_labels=params.input.unmerged_data.labels,
           log=self.log)
     self.params = params
-    print >> self.log, ""
-    print >> self.log, "End of input processing"
+    print("", file=self.log)
+    print("End of input processing", file=self.log)
 
   def start_log_file(self, file_name):
     """

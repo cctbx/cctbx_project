@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -168,8 +169,8 @@ class resampling(crystal.symmetry):
       exp_table_one_over_step_size=self.exp_table_one_over_step_size(),
       tolerance_positive_definite=1.e-5)
     if (0 or verbose):
-      print "u_base:", result.u_base()
-      print "u_extra:", result.u_extra()
+      print("u_base:", result.u_base())
+      print("u_extra:", result.u_extra())
     gradient_map = self.ft_dp(dp, u_extra=result.u_extra())
     if (not gradient_map.anomalous_flag()):
       gradient_map = gradient_map.real_map()
@@ -177,14 +178,14 @@ class resampling(crystal.symmetry):
       gradient_map = gradient_map.complex_map()
       assert not gradient_map.is_padded()
       if (0 or verbose):
-        print "grid:", gradient_map.focus()
-        print "ft_dt_map real: %.4g %.4g" % (
+        print("grid:", gradient_map.focus())
+        print("ft_dt_map real: %.4g %.4g" % (
           flex.min(flex.real(gradient_map)),
-          flex.max(flex.real(gradient_map)))
-        print "ft_dt_map imag: %.4g %.4g" % (
+          flex.max(flex.real(gradient_map))))
+        print("ft_dt_map imag: %.4g %.4g" % (
           flex.min(flex.imag(gradient_map)),
-          flex.max(flex.imag(gradient_map)))
-        print
+          flex.max(flex.imag(gradient_map))))
+        print()
     result.sampling(
       scatterers=xray_structure.scatterers(),
       u_iso_refinable_params=u_iso_refinable_params,
@@ -194,9 +195,9 @@ class resampling(crystal.symmetry):
       n_parameters=n_parameters,
       sampled_density_must_be_positive=False)
     if (0 or verbose):
-      print "max_sampling_box_edges:", result.max_sampling_box_edges()
-      print "exp_table_size:", result.exp_table_size()
-      print
+      print("max_sampling_box_edges:", result.max_sampling_box_edges())
+      print("exp_table_size:", result.exp_table_size())
+      print()
     return result
 
 class judge(object):
@@ -232,9 +233,9 @@ class shifted_site(object):
 def site(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_site(f_obs, structure_ideal, 0, 0, 0.01)
   if (0 or verbose):
-    print "site"
+    print("site")
     sh.structure_shifted.show_summary().show_scatterers()
-    print
+    print()
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), True, 1)
   gradient_flags = randomize_gradient_flags(
@@ -269,9 +270,9 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
       fast_gradie = map0.d_target_d_site_cart()[i_scatterer][i_xyz]
       match = judge(scatterer, "site", direct_summ, fast_gradie, top_gradient)
       if (0 or verbose):
-        print "direct summ[%d][%d]: " % (i_scatterer,i_xyz), direct_summ
-        print "fast gradie[%d][%d]: " % (i_scatterer,i_xyz), fast_gradie, match
-        print
+        print("direct summ[%d][%d]: " % (i_scatterer,i_xyz), direct_summ)
+        print("fast gradie[%d][%d]: " % (i_scatterer,i_xyz), fast_gradie, match)
+        print()
       assert not match.is_bad
   sys.stdout.flush()
 
@@ -288,9 +289,9 @@ class shifted_u_iso(object):
 def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
   sh = shifted_u_iso(f_obs, structure_ideal, 0, 0.05)
   if (0 or verbose):
-    print "u_iso"
+    print("u_iso")
     sh.structure_shifted.show_summary().show_scatterers()
-    print
+    print()
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), True, 1)
   gradient_flags = randomize_gradient_flags(
@@ -314,13 +315,13 @@ def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
          value=math.tan(scatterer.u_iso*math.pi/adptbx.b_as_u(param)-math.pi/2)
          u_iso_refinable_params.append(value)
   if (0):
-    print "u_iso"
-    print "gradient_flags.site      ", gradient_flags.site
-    print "gradient_flags.u_iso     ", gradient_flags.u_iso
-    print "gradient_flags.u_aniso   ", gradient_flags.u_aniso
-    print "gradient_flags.occupancy ", gradient_flags.occupancy
-    print "gradient_flags.fp        ", gradient_flags.fp
-    print "gradient_flags.fdp       ", gradient_flags.fdp
+    print("u_iso")
+    print("gradient_flags.site      ", gradient_flags.site)
+    print("gradient_flags.u_iso     ", gradient_flags.u_iso)
+    print("gradient_flags.u_aniso   ", gradient_flags.u_aniso)
+    print("gradient_flags.occupancy ", gradient_flags.occupancy)
+    print("gradient_flags.fp        ", gradient_flags.fp)
+    print("gradient_flags.fdp       ", gradient_flags.fdp)
     cntr_use_u_iso = 0
     cntr_use_u_aniso = 0
     cntr_grad_u_iso = 0
@@ -330,8 +331,8 @@ def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
       if (scatterer.flags.use_u_aniso()):  cntr_use_u_aniso += 1
       if (scatterer.flags.grad_u_iso()):  cntr_grad_u_iso += 1
       if (scatterer.flags.grad_u_aniso()):  cntr_grad_u_aniso += 1
-    print "use_u_iso                ", cntr_use_u_iso,cntr_grad_u_iso
-    print "use_u_aniso              ", cntr_use_u_aniso,cntr_grad_u_aniso
+    print("use_u_iso                ", cntr_use_u_iso,cntr_grad_u_iso)
+    print("use_u_aniso              ", cntr_use_u_aniso,cntr_grad_u_aniso)
   grad_flags_counts = \
             xray.scatterer_grad_flags_counts(sh.structure_shifted.scatterers())
   if(grad_flags_counts.n_parameters() > 0):
@@ -355,9 +356,9 @@ def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
      gradients_1 = []
      for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
        if(0):
-         print "i_scatterer= ", i_scatterer,scatterer.flags.use_u_iso(),\
+         print("i_scatterer= ", i_scatterer,scatterer.flags.use_u_iso(),\
            scatterer.flags.grad_u_iso(), scatterer.flags.use_u_aniso(),\
-           scatterer.flags.grad_u_aniso(), scatterer.u_iso, scatterer.u_star
+           scatterer.flags.grad_u_aniso(), scatterer.u_iso, scatterer.u_star)
        if(scatterer.flags.use_u_iso()): parameter_name = "u_iso"
        if(scatterer.flags.use_u_aniso()): parameter_name = "u_star"
        if(parameter_name == "u_iso" and scatterer.flags.grad_u_iso() and
@@ -370,9 +371,9 @@ def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
           match = judge(scatterer, parameter_name, direct_summ, fast_gradie,
                                                                   top_gradient)
           if (0 or verbose):
-            print "direct summ[%d]: " % i_scatterer, direct_summ
-            print "fast gradie[%d]: " % i_scatterer, fast_gradie, match
-            print
+            print("direct summ[%d]: " % i_scatterer, direct_summ)
+            print("fast gradie[%d]: " % i_scatterer, fast_gradie, match)
+            print()
           assert not match.is_bad
        if(parameter_name == "u_star" and scatterer.flags.grad_u_aniso() and
                                                 scatterer.flags.use_u_aniso()):
@@ -389,9 +390,9 @@ def u_iso(structure_ideal, d_min, f_obs, tan_u_iso, verbose=0):
           gradients_1.append([direct_summ, fast_gradie])
           match =judge(scatterer,"u_star",direct_summ,fast_gradie,top_gradient)
           if (0 or verbose or match.is_bad):
-            print "direct summ[%d][%d]: " % (i_scatterer, ij), direct_summ
-            print "fast gradie[%d][%d]: " % (i_scatterer, ij),fast_gradie,match
-            print
+            print("direct summ[%d][%d]: " % (i_scatterer, ij), direct_summ)
+            print("fast gradie[%d][%d]: " % (i_scatterer, ij),fast_gradie,match)
+            print()
           assert not match.is_bad
      # Making sure that gradients_1 = gradients_2
      for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
@@ -458,9 +459,9 @@ class shifted_u_star(object):
 def u_star(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_u_star(f_obs, structure_ideal, 0, 0, 0.0001)
   if (0 or verbose):
-    print "u_star"
+    print("u_star")
     sh.structure_shifted.show_summary().show_scatterers()
-    print
+    print()
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), True, 1)
   gradient_flags = randomize_gradient_flags(
@@ -476,13 +477,13 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
   grad_flags_counts = xray.scatterer_grad_flags_counts(sh.structure_shifted.scatterers())
   if(grad_flags_counts.n_parameters() > 0):
      if (0):
-       print "u_aniso"
-       print "gradient_flags.site      ", gradient_flags.site
-       print "gradient_flags.u_iso     ", gradient_flags.u_iso
-       print "gradient_flags.u_aniso   ", gradient_flags.u_aniso
-       print "gradient_flags.occupancy ", gradient_flags.occupancy
-       print "gradient_flags.fp        ", gradient_flags.fp
-       print "gradient_flags.fdp       ", gradient_flags.fdp
+       print("u_aniso")
+       print("gradient_flags.site      ", gradient_flags.site)
+       print("gradient_flags.u_iso     ", gradient_flags.u_iso)
+       print("gradient_flags.u_aniso   ", gradient_flags.u_aniso)
+       print("gradient_flags.occupancy ", gradient_flags.occupancy)
+       print("gradient_flags.fp        ", gradient_flags.fp)
+       print("gradient_flags.fdp       ", gradient_flags.fdp)
        cntr_use_u_iso = 0
        cntr_use_u_aniso = 0
        cntr_grad_u_iso = 0
@@ -492,8 +493,8 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
          if (scatterer.flags.use_u_aniso()):  cntr_use_u_aniso += 1
          if (scatterer.flags.grad_u_iso()):  cntr_grad_u_iso += 1
          if (scatterer.flags.grad_u_aniso()):  cntr_grad_u_aniso += 1
-       print "use_u_iso                ", cntr_use_u_iso,cntr_grad_u_iso
-       print "use_u_aniso              ", cntr_use_u_aniso,cntr_grad_u_aniso
+       print("use_u_iso                ", cntr_use_u_iso,cntr_grad_u_iso)
+       print("use_u_aniso              ", cntr_use_u_aniso,cntr_grad_u_aniso)
      sfd = xray.structure_factors.gradients_direct(
        xray_structure=sh.structure_shifted,
        u_iso_refinable_params=None,
@@ -527,9 +528,9 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
           match = judge(scatterer, parameter_name, direct_summ, fast_gradie,
                                                                   top_gradient)
           if (0 or verbose):
-            print "direct summ[%d]: " % i_scatterer, direct_summ
-            print "fast gradie[%d]: " % i_scatterer, fast_gradie, match
-            print
+            print("direct summ[%d]: " % i_scatterer, direct_summ)
+            print("fast gradie[%d]: " % i_scatterer, fast_gradie, match)
+            print()
           assert not match.is_bad
        if parameter_name == "u_star" and scatterer.flags.grad_u_aniso():
         sfd_star = sfd.d_target_d_u_star()[i_scatterer]
@@ -545,9 +546,9 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
           gradients_1.append([direct_summ, fast_gradie])
           match =judge(scatterer,"u_star",direct_summ,fast_gradie,top_gradient)
           if (0 or verbose or match.is_bad):
-            print "direct summ[%d][%d]: " % (i_scatterer, ij), direct_summ
-            print "fast gradie[%d][%d]: " % (i_scatterer, ij),fast_gradie,match
-            print
+            print("direct summ[%d][%d]: " % (i_scatterer, ij), direct_summ)
+            print("fast gradie[%d][%d]: " % (i_scatterer, ij),fast_gradie,match)
+            print()
           assert not match.is_bad
      # Making sure that gradients_1 = gradients_2
      for i_scatterer,scatterer in enumerate(sh.structure_shifted.scatterers()):
@@ -610,9 +611,9 @@ class shifted_occupancy(object):
 def occupancy(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_occupancy(f_obs, structure_ideal, 0, 0.2)
   if (0 or verbose):
-    print "occupancy"
+    print("occupancy")
     sh.structure_shifted.show_summary().show_scatterers()
-    print
+    print()
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), True, 1)
   gradient_flags = randomize_gradient_flags(
@@ -645,9 +646,9 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
     fast_gradie = map0.d_target_d_occupancy()[i_scatterer]
     match = judge(scatterer, "occupancy", direct_summ,fast_gradie,top_gradient)
     if (0 or verbose):
-      print "direct summ[%d]: " % i_scatterer, direct_summ
-      print "fast gradie[%d]: " % i_scatterer, fast_gradie, match
-      print
+      print("direct summ[%d]: " % i_scatterer, direct_summ)
+      print("fast gradie[%d]: " % i_scatterer, fast_gradie, match)
+      print()
     assert not match.is_bad
   sys.stdout.flush()
 
@@ -663,9 +664,9 @@ class shifted_fp(object):
 def fp(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_fp(f_obs, structure_ideal, 0, -0.2)
   if (0 or verbose):
-    print "fp"
+    print("fp")
     sh.structure_shifted.show_summary().show_scatterers()
-    print
+    print()
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), True, 1)
   gradient_flags = randomize_gradient_flags(
@@ -698,9 +699,9 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
     fast_gradie = map0.d_target_d_fp()[i_scatterer]
     match = judge(scatterer, "fp", direct_summ, fast_gradie, top_gradient)
     if (0 or verbose):
-      print "direct summ[%d]: " % i_scatterer, direct_summ
-      print "fast gradie[%d]: " % i_scatterer, fast_gradie, match
-      print
+      print("direct summ[%d]: " % i_scatterer, direct_summ)
+      print("fast gradie[%d]: " % i_scatterer, fast_gradie, match)
+      print()
     assert not match.is_bad
   sys.stdout.flush()
 
@@ -716,9 +717,9 @@ class shifted_fdp(object):
 def fdp(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_fdp(f_obs, structure_ideal, 0, 2)
   if (0 or verbose):
-    print "fdp"
+    print("fdp")
     sh.structure_shifted.show_summary().show_scatterers()
-    print
+    print()
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), True, 1)
   gradient_flags = randomize_gradient_flags(
@@ -751,9 +752,9 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
     fast_gradie = map0.d_target_d_fdp()[i_scatterer]
     match = judge(scatterer, "fdp", direct_summ, fast_gradie, top_gradient)
     if (0 or verbose):
-      print "direct summ[%d]: " % i_scatterer, direct_summ
-      print "fast gradie[%d]: " % i_scatterer, fast_gradie, match
-      print
+      print("direct summ[%d]: " % i_scatterer, direct_summ)
+      print("fast gradie[%d]: " % i_scatterer, fast_gradie, match)
+      print()
     assert not match.is_bad
   sys.stdout.flush()
 
@@ -831,13 +832,13 @@ def exercise_gradient_manager(structure_ideal, f_obs,
                                 fp         = gradient_flags.fp,
                                 fdp        = gradient_flags.fdp)
   if (0):
-    print "exercise_gradient_manager"
-    print "gradient_flags.site      ", gradient_flags.site
-    print "gradient_flags.u_iso     ", gradient_flags.u_iso
-    print "gradient_flags.u_aniso   ", gradient_flags.u_aniso
-    print "gradient_flags.occupancy ", gradient_flags.occupancy
-    print "gradient_flags.fp        ", gradient_flags.fp
-    print "gradient_flags.fdp       ", gradient_flags.fdp
+    print("exercise_gradient_manager")
+    print("gradient_flags.site      ", gradient_flags.site)
+    print("gradient_flags.u_iso     ", gradient_flags.u_iso)
+    print("gradient_flags.u_aniso   ", gradient_flags.u_aniso)
+    print("gradient_flags.occupancy ", gradient_flags.occupancy)
+    print("gradient_flags.fp        ", gradient_flags.fp)
+    print("gradient_flags.fdp       ", gradient_flags.fdp)
     cntr_use_u_iso = 0
     cntr_use_u_aniso = 0
     cntr_grad_u_iso = 0
@@ -847,8 +848,8 @@ def exercise_gradient_manager(structure_ideal, f_obs,
       if (scatterer.flags.use_u_aniso()):  cntr_use_u_aniso += 1
       if (scatterer.flags.grad_u_iso()):  cntr_grad_u_iso += 1
       if (scatterer.flags.grad_u_aniso()):  cntr_grad_u_aniso += 1
-    print "use_u_iso                ", cntr_use_u_iso,cntr_grad_u_iso
-    print "use_u_aniso              ", cntr_use_u_aniso,cntr_grad_u_aniso
+    print("use_u_iso                ", cntr_use_u_iso,cntr_grad_u_iso)
+    print("use_u_aniso              ", cntr_use_u_aniso,cntr_grad_u_aniso)
   if (random.random() > 0.5):
     n_parameters = 0
   else:

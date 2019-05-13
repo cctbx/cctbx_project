@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx
 from scitbx.array_family import flex
 from mmtbx.chemical_components import get_type
@@ -56,7 +57,7 @@ class empty:
     return outl
 
 def _write_warning_line(s):
-  print " !!! %-78s !!!" % s
+  print(" !!! %-78s !!!" % s)
 
 def get_distance2(atom1, atom2):
   d2 = (atom1.xyz[0]-atom2.xyz[0])**2
@@ -83,14 +84,14 @@ def get_volume(centre, atom1, atom2, atom3):
 
 def is_glyco_bond(atom1, atom2, verbose=False):
   if verbose:
-    print '----- is_glyco_bond -----'
-    print atom1.quote()
-    print atom2.quote()
-    print get_type(atom1.parent().resname)
-    print get_type(atom2.parent().resname)
-    print sugar_types
-    print get_type(atom1.parent().resname).upper()
-    print get_type(atom2.parent().resname).upper()
+    print('----- is_glyco_bond -----')
+    print(atom1.quote())
+    print(atom2.quote())
+    print(get_type(atom1.parent().resname))
+    print(get_type(atom2.parent().resname))
+    print(sugar_types)
+    print(get_type(atom1.parent().resname).upper())
+    print(get_type(atom2.parent().resname).upper())
   if get_type(atom1.parent().resname) is None: return False
   if get_type(atom2.parent().resname) is None: return False
   if not get_type(atom1.parent().resname).upper() in sugar_types:
@@ -103,14 +104,14 @@ def is_glyco_bond(atom1, atom2, verbose=False):
 
 def is_glyco_amino_bond(atom1, atom2, verbose=False):
   if verbose:
-    print '----- is_glyco_amino_bond -----'
-    print atom1.quote()
-    print atom2.quote()
-    print get_type(atom1.parent().resname)
-    print get_type(atom2.parent().resname)
-    print sugar_types
-    print get_type(atom1.parent().resname).upper()
-    print get_type(atom2.parent().resname).upper()
+    print('----- is_glyco_amino_bond -----')
+    print(atom1.quote())
+    print(atom2.quote())
+    print(get_type(atom1.parent().resname))
+    print(get_type(atom2.parent().resname))
+    print(sugar_types)
+    print(get_type(atom1.parent().resname).upper())
+    print(get_type(atom2.parent().resname).upper())
   if get_type(atom1.parent().resname) is None:
     return False
   if get_type(atom2.parent().resname) is None: return False
@@ -179,10 +180,10 @@ def get_chiral_volume(c_atom, o_atom, angles, verbose=False):
   others.insert(0, c_atom)
   if len(others)!=4:
     if verbose:
-      print '-'*80
+      print('-'*80)
       for atom in others:
-        print atom.format_atom_record()
-      print '-'*80
+        print(atom.format_atom_record())
+      print('-'*80)
     return None
   v = get_volume(*others)
   return v
@@ -233,17 +234,17 @@ def get_classes(atom, important_only=False, verbose=False):
   gc = get_class(atom_group.resname,
                  consider_ccp4_mon_lib_rna_dna=consider_ccp4_mon_lib_rna_dna)
   if verbose:
-    print '    atom_group1: altloc="%s" resname="%s" class="%s"' % (
+    print('    atom_group1: altloc="%s" resname="%s" class="%s"' % (
       atom_group.altloc,
       atom_group.resname,
       get_class(atom_group.resname,
                 consider_ccp4_mon_lib_rna_dna=consider_ccp4_mon_lib_rna_dna),
-      )
+      ))
   if atom_group.resname == 'UNK': # does this need more checks
     gc = 'common_amino_acid'
   gc = redirect.get(gc,gc)
   if verbose:
-    print 'final class', gc
+    print('final class', gc)
   for i, attr in enumerate(attrs):
     rc = None
     if i:
@@ -343,26 +344,26 @@ def is_atom_pair_linked(atom1,
     class2 = 'sulfur'
   lookup = [class1, class2]
   lookup.sort()
-  if verbose: print 'lookup1',lookup,skip_if_both #.get(lookup, None)
+  if verbose: print('lookup1',lookup,skip_if_both) #.get(lookup, None)
   if lookup in skip_if_both: return False
   lookup = tuple(lookup)
-  if verbose: print 'lookup2',lookup
+  if verbose: print('lookup2',lookup)
   limit = skip_if_longer.get(lookup, None)
   if limit is not None:
     if ( atom1.element not in ad_hoc_first_row or
          atom2.element not in ad_hoc_first_row):
       limit += second_row_buffer**2 # not completely accurate
-  if verbose: print 'limit',limit
+  if verbose: print('limit',limit)
   if distance:
     d2 = distance**2
   else:
     d2 = get_distance2(atom1, atom2)
-  if verbose: print "d2",d2
+  if verbose: print("d2",d2)
   if limit is not None and limit<d2:
-    if verbose: print 'limit < d2',limit,d2
+    if verbose: print('limit < d2',limit,d2)
     return False
   if use_only_bond_cutoff:
-    if verbose: print 'use_only_bond_cutoff',use_only_bond_cutoff
+    if verbose: print('use_only_bond_cutoff',use_only_bond_cutoff)
     return True
   #
   if "common_rna_dna" in lookup and "common_amino_acid" in lookup:
@@ -377,20 +378,20 @@ def is_atom_pair_linked(atom1,
   # sulfur bridge
   #
   if verbose:
-    print atom1.quote(),linking_setup.sulfur_class(atom1, class1)
-    print atom2.quote(),linking_setup.sulfur_class(atom2, class2)
+    print(atom1.quote(),linking_setup.sulfur_class(atom1, class1))
+    print(atom2.quote(),linking_setup.sulfur_class(atom2, class2))
   if ( linking_setup.sulfur_class(atom1, class1)=="sulfur" and
        linking_setup.sulfur_class(atom2, class2)=="sulfur" ):
     return True
   #
   # saccharides
   #
-  if verbose: print 'checking common_saccharide',lookup
+  if verbose: print('checking common_saccharide',lookup)
   if "common_saccharide" in lookup:
     limit = saccharide_bond_cutoff*saccharide_bond_cutoff
     if "metal" in lookup:
       limit = metal_coordination_cutoff*metal_coordination_cutoff
-    if verbose: print 'd2,limit',d2,limit
+    if verbose: print('d2,limit',d2,limit)
     if d2>limit:
       return False
     return True
@@ -403,9 +404,9 @@ def is_atom_pair_linked(atom1,
        ):
       return True
     else:
-      print 'lookup',lookup
-      print atom1.quote()
-      print atom2.quote()
+      print('lookup',lookup)
+      print(atom1.quote())
+      print(atom2.quote())
       assert 0
   if "metal" in lookup:
     if not linking_setup.skip_if_non_linking(lookup, atom1, atom2):
@@ -419,18 +420,18 @@ def is_atom_pair_linked(atom1,
   #
   if class1=="common_amino_acid" and class2=="common_amino_acid":
     if verbose:
-      print "AMINO ACIDS",atom1.quote(), atom2.quote()
+      print("AMINO ACIDS",atom1.quote(), atom2.quote())
   #
   # other
   #
   if lookup==("other", "other"):
     # non-standard residue to non-standard is too risky to do automatically ...
-    if verbose: print 'other, other returns True'
+    if verbose: print('other, other returns True')
     return True
   elif "other" in lookup:
-    if verbose: print 'other returns True'
+    if verbose: print('other returns True')
     return True
-  if verbose: print 'drop through '*5
+  if verbose: print('drop through '*5)
   return False
 
 def generate_atoms_from_atom_groups(atom_group1, atom_group2):
@@ -481,19 +482,19 @@ def get_bonded(hierarchy,
   target_model = target_chain.parent()
   for model in hierarchy.models():
     if model.id!=target_model.id: continue
-    if verbose: print 'model: "%s"' % model.id
+    if verbose: print('model: "%s"' % model.id)
     for chain in model.chains():
       if chain.id!=target_chain.id: continue
-      if verbose: print 'chain: "%s"' % chain.id
+      if verbose: print('chain: "%s"' % chain.id)
       for residue_group in chain.residue_groups():
         if residue_group.resseq!=target_residue_group.resseq: continue
-        if verbose: print '  residue_group: resseq="%s" icode="%s"' % (
-          residue_group.resseq, residue_group.icode)
+        if verbose: print('  residue_group: resseq="%s" icode="%s"' % (
+          residue_group.resseq, residue_group.icode))
         yield_residue_group = False
         for atom_group_i, atom_group in enumerate(residue_group.atom_groups()):
           if atom_group.resname!=target_atom_group.resname: continue
-          if verbose: print '    atom_group: altloc="%s" resname="%s"' % (
-            atom_group.altloc, atom_group.resname)
+          if verbose: print('    atom_group: altloc="%s" resname="%s"' % (
+            atom_group.altloc, atom_group.resname))
           if bond_cutoff:
             for a in atom_group.atoms():
               if a.name==atom.name: continue
@@ -537,9 +538,9 @@ def get_angles_from_included_bonds(hierarchy,
   if verbose:
     for angle in tmp:
       for atom in angle:
-        print atom.name,
-      print get_distance2(angle[0], angle[1]),
-      print get_distance2(angle[1], angle[2])
+        print(atom.name, end=' ')
+      print(get_distance2(angle[0], angle[1]), end=' ')
+      print(get_distance2(angle[1], angle[2]))
   return tmp
 
 def process_atom_groups_for_linking_single_link(pdb_hierarchy,
@@ -572,13 +573,13 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
     )
 
   if verbose:
-    print "tmp_key %s" % tmp_key
-    print "long_tmp_key %s" % long_tmp_key
-    print atom1.quote()
-    print atom2.quote()
-    print is_n_glyco_bond(atom1, atom2)
-    print is_o_glyco_bond(atom1, atom2)
-    print is_glyco_bond(atom1, atom2)
+    print("tmp_key %s" % tmp_key)
+    print("long_tmp_key %s" % long_tmp_key)
+    print(atom1.quote())
+    print(atom2.quote())
+    print(is_n_glyco_bond(atom1, atom2))
+    print(is_o_glyco_bond(atom1, atom2))
+    print(is_glyco_bond(atom1, atom2))
 
   if is_n_glyco_bond(atom1, atom2):
     if tmp_key in standard_n_links:
@@ -603,8 +604,8 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
         bond_cutoff=1.75, #intra_residue_bond_cutoff,
         )
       if verbose:
-        print 'get_hand'
-        print c_atom, o_atom, angles
+        print('get_hand')
+        print(c_atom, o_atom, angles)
       volume = get_chiral_volume(c_atom, o_atom, angles, verbose=verbose)
       hand = get_hand(c_atom, o_atom, angles, verbose=verbose) #"ALPHA"
       if hand is None:
@@ -620,7 +621,7 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
         #cif_links = cif_links.replace(tmp_key, data_link_key)
         key = data_link_key
     else:
-      print " %s" % ("!"*86)
+      print(" %s" % ("!"*86))
       _write_warning_line("  Possible link ignored")
       _write_warning_line(atom1.format_atom_record())
       _write_warning_line(atom2.format_atom_record())
@@ -629,7 +630,7 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
       _write_warning_line("  Glycan-glycan   : %s" % (is_glyco_bond(atom1, atom2)))
       if c_atom is None: _write_warning_line("  No carbon atom found")
       if o_atom is None: _write_warning_line("  No oxygen atom found")
-      print " %s" % ("!"*86)
+      print(" %s" % ("!"*86))
       #print " Distance", get_distance2(atom1, atom2)
       #assert 0
       #raise Sorry("Check input geometry")
@@ -641,10 +642,10 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
   for atom in [atom1, atom2]:
     pdbres_pair.append(atom.id_str(pdbres=True))
   if verbose:
-    print "key %s" % key
-    print pdbres_pair
-    print atom1.quote()
-    print atom2.quote()
+    print("key %s" % key)
+    print(pdbres_pair)
+    print(atom1.quote())
+    print(atom2.quote())
   return [pdbres_pair], [key], [(atom1, atom2)]
 
 # def process_atom_groups_for_linking_multiple_links(pdb_hierarchy,

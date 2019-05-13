@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from rstbx.indexing_api import cpp_absence_test
 from rstbx.dps_core.cell_assessment import unit_cell_too_small
@@ -172,12 +173,12 @@ class AbsenceHandler:
       self.hkl = hkllist
       count = 0
       for m in self.hkl:
-        print count,m
-        print "                ",(m[0]%2,m[1]%2,m[2]%2),
-        print (m[0]%3,m[1]%3,m[2]%3),
-        print ((m[1]-m[2])%2,(m[1]+m[2])%2),
-        print ((m[2]-m[0])%2,(m[2]+m[0])%2),
-        print ((m[0]-m[1])%2,(m[0]+m[1])%2)
+        print(count,m)
+        print("                ",(m[0]%2,m[1]%2,m[2]%2), end=' ')
+        print((m[0]%3,m[1]%3,m[2]%3), end=' ')
+        print(((m[1]-m[2])%2,(m[1]+m[2])%2), end=' ')
+        print(((m[2]-m[0])%2,(m[2]+m[0])%2), end=' ')
+        print(((m[0]-m[1])%2,(m[0]+m[1])%2))
         count+=1
 if __name__=='__main__':
   def pelem(arg):
@@ -186,4 +187,4 @@ if __name__=='__main__':
   sqr.__repr__ = pelem
   import pprint
   pprint.pprint( R)
-  print len(R)
+  print(len(R))

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cctbx.integration_pickle_viewer
 from cctbx.array_family import flex # implicit dependency
@@ -28,7 +29,7 @@ def plot_preds(pdata, active_areas=LG36_active_areas):
     preds_fast = preds_flat[0::2]
     preds_slow = preds_flat[1::2]
   except KeyError:
-    print "pickle may not be an integration pickle! skipping..."
+    print("pickle may not be an integration pickle! skipping...")
     return
   plt.scatter(preds_slow, preds_fast, c='blue', marker='.')
   for i in range(64):
@@ -62,12 +63,12 @@ if __name__ == "__main__":
             help="image matching the detector version phil")
     ).process(args=sys.argv[1:])
   if cmd_line.options.det_phil is not None and cmd_line.options.det_image is not None:
-    print "extracting active areas..."
+    print("extracting active areas...")
     active_areas = get_CSPAD_active_areas(
       cmd_line.options.det_image,
       cmd_line.options.det_phil)
   elif cmd_line.options.det_phil is None and cmd_line.options.det_image is None:
-    print "using active areas from LG36 CSPAD metrology"
+    print("using active areas from LG36 CSPAD metrology")
     active_areas = LG36_active_areas
   else:
     raise Sorry("Specify both a detector version phil and an example image to extract active areas.")

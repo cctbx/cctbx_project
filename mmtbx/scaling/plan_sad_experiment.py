@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import mmtbx.scaling
 from iotbx.bioinformatics import any_sequence_format
 from libtbx.utils import Sorry, null_out
@@ -307,7 +308,7 @@ def get_number_of_sites(atom_type=None,n_met=0,n_cys=0,
     # guess number of sites:
     number_of_sites_lowres=None
     if atom_type is None:
-      print >>out, "No heavy atom type set, so no sites estimated"
+      print("No heavy atom type set, so no sites estimated", file=out)
       number_of_sites=None
     elif atom_type.lower() in ['se']:
       number_of_sites=max(1,ncs_copies*n_met)
@@ -319,8 +320,8 @@ def get_number_of_sites(atom_type=None,n_met=0,n_cys=0,
     else: # general ha  1 per 100 up to 2 per chain
       number_of_sites=ncs_copies*max(1,min(2,1+int(float(n_aa)/100.)))
     if number_of_sites:
-      print >>out,"\nBest guess of number of %s sites: %d" %(
-        atom_type.upper(),number_of_sites)
+      print("\nBest guess of number of %s sites: %d" %(
+        atom_type.upper(),number_of_sites), file=out)
     if number_of_sites_lowres is None: number_of_sites_lowres=number_of_sites
     return number_of_sites,number_of_sites_lowres
 
@@ -602,7 +603,7 @@ class interpolator:
 def get_interpolator(estimator_type='solved',predictor_variable='PredSignal',
        require_monotonic_increase=None,out=sys.stdout):
   local_file_name,no_resolution=get_local_file_name(estimator_type)
-  print >>out,"\nSetting up interpolator for %s" %(estimator_type)
+  print("\nSetting up interpolator for %s" %(estimator_type), file=out)
   import libtbx.load_env
   file_name=libtbx.env.find_in_repositories(
     relative_path=os.path.join("mmtbx","scaling",local_file_name),
@@ -632,7 +633,7 @@ def get_estimators(estimator_type='signal',
 
   import libtbx.load_env
 
-  print >>out,"\nSetting up estimator for %s" %(estimator_type)
+  print("\nSetting up estimator for %s" %(estimator_type), file=out)
   file_name=libtbx.env.find_in_repositories(
     relative_path=os.path.join("mmtbx","scaling",local_file_name),
       test=os.path.isfile)
@@ -1018,7 +1019,7 @@ class estimate_necessary_i_sigi(mmtbx.scaling.xtriage_analysis):
 
   def show_summary(self):
     if self.is_solvable():
-      print """
+      print("""
 I/sigI: %7.1f
 Dmin:      %5.2f
 cc_half:   %5.2f - %5.2f
@@ -1037,7 +1038,7 @@ FOM:      %3.2f
  self.representative_s_ano(),
  int(0.5+self.representative_solved()),
  self.representative_fom(),
- )
+ ))
 
   def is_solvable(self):
     return (self.representative_values is not None)

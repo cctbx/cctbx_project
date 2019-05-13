@@ -1,12 +1,13 @@
 from __future__ import division
+from __future__ import print_function
 def report_fraction_of_negative_observations_if_any(id_code, obs):
   d = obs.data()
   n_neg = (d < 0).count(True)
   n_all = d.size()
   if (n_neg != 0 and n_all != 0):
-    print obs.info()
-    print "fraction_of_negative_obs: %.6g (%d of %d)" % (
-      n_neg / n_all, n_neg, n_all)
+    print(obs.info())
+    print("fraction_of_negative_obs: %.6g (%d of %d)" % (
+      n_neg / n_all, n_neg, n_all))
     neg = d.select(d < 0)
     pos = d.select(d >= 0)
     from cctbx.array_family import flex
@@ -19,11 +20,11 @@ def report_fraction_of_negative_observations_if_any(id_code, obs):
     lines_neg = hist(-neg)
     lines_pos = hist(pos)
     pair_fmt = "%-35s | %s"
-    print pair_fmt % (
+    print(pair_fmt % (
       "Histogram of negative observations:",
-        "positive observations:")
+        "positive observations:"))
     for pair in zip(lines_neg, lines_pos):
-      print pair_fmt % pair
+      print(pair_fmt % pair)
 
 class extract_from_cif_files(object):
 
@@ -83,23 +84,23 @@ class extract_from_cif_files(object):
       raise RuntimeError("Missing diffraction data.")
     O.c_obs = O.c_obs.customized_copy(
       crystal_symmetry=combined_cs)
-    print "."*79
+    print("."*79)
     O.c_obs.show_comprehensive_summary()
-    print "."*79
+    print("."*79)
     #
     O.xray_structure = cctbx.xray.structure.from_cif(
       file_path=model_file).values()[0]
     O.xray_structure = O.xray_structure.customized_copy(
       crystal_symmetry=combined_cs)
     O.xray_structure.show_summary().show_scatterers()
-    print "."*79
+    print("."*79)
     #
     O.non_hydrogen_selection = ~O.xray_structure.hd_selection()
     O.non_hydrogen_iselection = O.non_hydrogen_selection.iselection()
     #
     O.edge_list = O.process_geom_bond(model_cif)
     if (O.edge_list is not None):
-      print "len(edge_list):", len(O.edge_list), report_id
+      print("len(edge_list):", len(O.edge_list), report_id)
 
   def process_geom_bond(O, model_cif):
     xs = O.xray_structure
@@ -155,7 +156,7 @@ reset_u_iso = None
   work_phil = master_phil.fetch(sources=phil_objects)
   work_phil.show()
   params = work_phil.extract()
-  print
+  print()
   #
   assert len(remaining_args) == 2, "refl_cif.hkl model.cif"
   refl_file = remaining_args[0]
@@ -174,9 +175,9 @@ reset_u_iso = None
   structure_ideal.convert_to_isotropic()
   if (params.remove_hydrogen):
     sel = mgr.non_hydrogen_selection
-    print "Removing hydrogen atoms:", sel.count(False)
+    print("Removing hydrogen atoms:", sel.count(False))
     structure_ideal = structure_ideal.select(selection=sel)
-    print
+    print()
   #
   c_obs = mgr.c_obs
   if (params.f_obs_is_f_calc):

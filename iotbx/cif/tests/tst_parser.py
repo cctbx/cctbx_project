@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 class accu_builder(object):
 
   __slots__ = ["accu"]
@@ -33,9 +34,9 @@ def exercise(verbose):
     reader = iotbx.cif.ext.fast_reader(
       input_string=chr(i), filename="", builder=builder, strict=True)
     if (verbose):
-      print reader.lexer_errors().size(), \
+      print(reader.lexer_errors().size(), \
             reader.parser_errors().size(), \
-            len(builder.accu)
+            len(builder.accu))
 
 def run(args):
   assert args in [[], ["--forever"]]

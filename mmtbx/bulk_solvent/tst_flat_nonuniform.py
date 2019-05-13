@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
@@ -47,7 +48,7 @@ def fd_k_sols(kbu, f_obs, eps=1.e-3):
     p_sol_curv  = False)
   g_k_sols_anal = list(tg.grad_k_sols())
   c_k_sols_anal = list(tg.curv_k_sols())
-  print "C anal k:", c_k_sols_anal
+  print("C anal k:", c_k_sols_anal)
   #
   g_k_sols_fd = []
   c_k_sols_fd = []
@@ -81,7 +82,7 @@ def fd_k_sols(kbu, f_obs, eps=1.e-3):
     g_k_sols_fd.append( (t1-t2)/(2*eps) )
     c_k_sols_fd.append( (t1+t2-2*t0)/eps**2 )
   #
-  print "C df:",c_k_sols_fd
+  print("C df:",c_k_sols_fd)
   assert approx_equal(g_k_sols_anal, g_k_sols_fd, 1.e-4)
 
 def fd_b_sols(kbu, f_obs):
@@ -98,7 +99,7 @@ def fd_b_sols(kbu, f_obs):
     p_sol_curv  = False)
   g_b_sols_anal = list(tg.grad_b_sols())
   c_b_sols_anal = list(tg.curv_b_sols())
-  print "C anal b:", c_b_sols_anal
+  print("C anal b:", c_b_sols_anal)
   #
   g_b_sols_fd = []
   c_b_sols_fd = []
@@ -132,7 +133,7 @@ def fd_b_sols(kbu, f_obs):
     g_b_sols_fd.append( (t1-t2)/(2*1.e-3) )
     c_b_sols_fd.append( (t1+t2-2*t0)/1.e-3**2 *2)
     #
-  print "C df:",c_b_sols_fd
+  print("C df:",c_b_sols_fd)
   assert approx_equal(g_b_sols_anal, g_b_sols_fd)
 
 def run(d_min  = 2.0,
@@ -202,5 +203,5 @@ def run(d_min  = 2.0,
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

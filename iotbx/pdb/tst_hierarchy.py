@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
@@ -3017,7 +3018,7 @@ ATOM      5      R01 B
   for chain in hierarchy.chains():
     for residue in chain.residues():
       for atom in residue.atoms():
-        print >> sio, atom.quote()
+        print(atom.quote(), file=sio)
   assert not show_diff(sio.getvalue(), """\
 "ATOM      1      R01 A     .*.        "
 "ATOM      2      R01 A     .*.        "
@@ -3100,7 +3101,7 @@ def exercise_merge_atom_groups():
     assert secondary_atom_group.atoms_size() == 0
     sio = StringIO()
     for atom in primary_atom_group.atoms():
-      print >> sio, atom.format_atom_record()
+      print(atom.format_atom_record(), file=sio)
     assert not show_diff(sio.getvalue(), ["""\
 ATOM   1716  N  ALEU   190      28.628   4.549  20.230  0.70  3.78           N
 ATOM   1717  CA ALEU   190      27.606   5.007  19.274  0.70  3.71           C
@@ -3146,7 +3147,7 @@ def exercise_merge_residue_groups():
   sio = StringIO()
   for atom_group in residue_groups[0].atom_groups():
     for atom in atom_group.atoms():
-      print >> sio, atom.format_atom_record()
+      print(atom.format_atom_record(), file=sio)
   assert not show_diff(sio.getvalue(), """\
 ATOM   1716  N  ALEU   190      28.628   4.549  20.230  0.70  3.78           N
 ATOM   1717  CA ALEU   190      27.606   5.007  19.274  0.70  3.71           C
@@ -3875,17 +3876,17 @@ ATOM      4  O  BHOH B   1                                                   O
 def conformers_as_str(conformers):
   s = StringIO()
   for cf in conformers:
-    print >> s, "conformer:", show_string(cf.altloc)
+    print("conformer:", show_string(cf.altloc), file=s)
     for rd in cf.residues():
       assert rd.resseq_as_int() == pdb.hy36decode(width=4, s=rd.resseq)
-      print >> s, "  residue:", \
+      print("  residue:", \
         show_string(rd.resname), \
         show_string(rd.resseq), \
         show_string(rd.icode), \
         int(rd.link_to_previous), \
-        int(rd.is_pure_main_conf)
+        int(rd.is_pure_main_conf), file=s)
       for atom in rd.atoms():
-        print >> s, "    atom:", show_string(atom.name)
+        print("    atom:", show_string(atom.name), file=s)
   return s.getvalue()
 
 def exercise_conformers():
@@ -4900,12 +4901,12 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
   # with current PDB policy on TER. If pdb_inp is absolutely needed to
   # comply too, welcome to figure out how to modify
   # iotbx/pdb/construct_hierarchy.cpp: input_atoms_with_labels_generator::run
-  print >> open("tmp_tst_hierarchy.pdb", "w"), rem
+  print(rem, file=open("tmp_tst_hierarchy.pdb", "w"))
   pdb_inp.write_pdb_file(
     file_name="tmp_tst_hierarchy.pdb", open_append=True, append_end=True)
   assert not show_diff(
     open("tmp_tst_hierarchy.pdb").read(), rem+"\n"+pdb_string+"TER\nEND\n")
-  print >> open("tmp_tst_hierarchy.pdb", "w"), rem
+  print(rem, file=open("tmp_tst_hierarchy.pdb", "w"))
   hierarchy.write_pdb_file(
     file_name="tmp_tst_hierarchy.pdb", open_append=True, append_end=True)
   assert not show_diff(
@@ -4929,7 +4930,7 @@ CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           7
 """ + pdb_string)
 
   # XXX see comment on L 4898
-  print >> open("tmp_tst_hierarchy.pdb", "w"), rem
+  print(rem, file=open("tmp_tst_hierarchy.pdb", "w"))
   pdb_inp.write_pdb_file(
     file_name="tmp_tst_hierarchy.pdb",
     cryst1_z="",
@@ -4938,7 +4939,7 @@ CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           7
   assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), rem + """
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
 """ + pdb_string+"TER\n")
-  print >> open("tmp_tst_hierarchy.pdb", "w"), rem
+  print(rem, file=open("tmp_tst_hierarchy.pdb", "w"))
   hierarchy.write_pdb_file(
     file_name="tmp_tst_hierarchy.pdb",
     cryst1_z="",
@@ -5039,7 +5040,7 @@ END
 """)
   #
   if (pdb_file_names is None):
-    print "Skipping exercise_as_pdb_string(): input files not available"
+    print("Skipping exercise_as_pdb_string(): input files not available")
     return
   prev_file_name = None
   for file_name in pdb_file_names:
@@ -5065,9 +5066,9 @@ END
         c = os.path.basename(     file_name)
         if (    p[:3] != c[:3]
             and (len(p) < 15 or len(c) < 15 or p[-12:] != c[-12:])):
-          print "WARNING: similar hierarchies:"
-          print " ", show_string(prev_file_name)
-          print " ", show_string(file_name)
+          print("WARNING: similar hierarchies:")
+          print(" ", show_string(prev_file_name))
+          print(" ", show_string(file_name))
     prev_file_name = file_name
     prev_pdb_str = pdb_str_1
     prev_hierarchy = hierarchy_1
@@ -5076,10 +5077,10 @@ END
     for obj in [pdb_inp_2, hierarchy_2]:
       sio = StringIO()
       for awl in obj.atoms_with_labels():
-        print >> sio, awl.format_atom_record_group(), \
+        print(awl.format_atom_record_group(), \
           int(awl.is_first_in_chain), \
           int(awl.is_first_after_break), \
-          awl.model_id
+          awl.model_id, file=sio)
       awls.append(sio.getvalue())
     assert not show_diff(*awls), file_name
 
@@ -5252,10 +5253,10 @@ ENDMDL
         except RuntimeError, e:
           assert not show_diff(str(e), "atom has no parent atom_group")
         else: raise Exception_expected
-        print >> sio, getattr(awl, fmt)(), \
+        print(getattr(awl, fmt)(), \
           int(awl.is_first_in_chain), \
           int(awl.is_first_after_break), \
-          awl.model_id
+          awl.model_id, file=sio)
       assert not show_diff(sio.getvalue(), """\
 ATOM      1  C   MET A   1       0.000   0.000   0.000  0.00  0.00 1 0    0
 ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00 0 0    0
@@ -6309,7 +6310,7 @@ ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
     current_group=current_group,
     new_group=new_group)
   hierarchy1.write_pdb_file(file_name="moved.pdb")
-  print hierarchy1.as_pdb_string()
+  print(hierarchy1.as_pdb_string())
   assert not show_diff(hierarchy1.as_pdb_string(), """\
 ATOM     39  N   TYR A   6       5.514   2.664   4.856  1.00 11.99           N
 ATOM     40  CA  TYR A   6       6.831   2.310   4.318  1.00 12.30           C
@@ -6574,27 +6575,27 @@ ATOM   1929  CG2CTHR M   8      26.350  43.915  -0.725  0.50 36.69           C
 """))
 
   h = pdb_inp.construct_hierarchy()
-  print "*"*50
+  print("*"*50)
   for conf in h.only_chain().conformers():
-    print "conf altloc '%s'" % conf.altloc
+    print("conf altloc '%s'" % conf.altloc)
     for res in conf.residues():
-      print "residue:", res.id_str(), "is_pure_main_conf:", res.is_pure_main_conf
+      print("residue:", res.id_str(), "is_pure_main_conf:", res.is_pure_main_conf)
       for atom in res.atoms():
-        print "  ", atom.id_str()
-  print "*"*50
-  print "*"*50
+        print("  ", atom.id_str())
+  print("*"*50)
+  print("*"*50)
   for rg in h.only_chain().residue_groups():
-    print "rg ", rg.resseq, rg.have_conformers()
+    print("rg ", rg.resseq, rg.have_conformers())
     for ag in rg.atom_groups():
-      print "ag:", ag.resname, ag.altloc
+      print("ag:", ag.resname, ag.altloc)
       for atom in ag.atoms():
-        print "  ", atom.id_str()
+        print("  ", atom.id_str())
   # assert not h.only_chain().conformers()[2].residues()[0].is_pure_main_conf
   # assert not h.only_chain().conformers()[2].residues()[1].is_pure_main_conf
   r0_pmc = h.only_chain().conformers()[2].residues()[0].is_pure_main_conf
   r1_pmc = h.only_chain().conformers()[2].residues()[1].is_pure_main_conf
-  print "Residue 0 is", r0_pmc
-  print "Residue 1 is", r1_pmc
+  print("Residue 0 is", r0_pmc)
+  print("Residue 1 is", r1_pmc)
 
 def exercise_selection_and_deep_copy():
   """
@@ -6605,7 +6606,7 @@ def exercise_selection_and_deep_copy():
   """
   def show_atoms(h):
     for a in h.atoms():
-      print a.id_str()
+      print(a.id_str())
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM      0  N   ASP A   1      49.347 -62.804  60.380  1.00 34.60           N
 ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C
@@ -6632,26 +6633,26 @@ ATOM     15  O   MET A   4      40.633 -70.625  61.911  1.00 23.73           O
   h1 = h1.deep_copy()
   assert h1.atoms()[0].parent() is not None
 
-  print "example 2"
+  print("example 2")
   h2 = pdb_h.deep_copy()
   sel = h2.atom_selection_cache().selection("resid 3")
   h2 = h2.select(sel)
   # assert h2.atoms()[0].parent() is not None # FAILURE
   show_atoms(h2) # in this printout information about residue and chain is missing
-  print "==============="
+  print("===============")
 
   # example 3 - same as 2, but using separate variable for asc to make it work
-  print "example 3"
+  print("example 3")
   h2 = pdb_h.deep_copy()
   asc = h2.atom_selection_cache()
   sel = asc.selection("resid 3")
   h2 = h2.select(sel)
   assert h2.atoms()[0].parent() is not None # WORKING!!!
   show_atoms(h2)
-  print "==============="
+  print("===============")
 
   # example 4 - same as 2, but using variable for hierarchy to make it work
-  print "example 4"
+  print("example 4")
   h2 = pdb_h.deep_copy()
   sel = h2.atom_selection_cache().selection("resid 3")
   h3 = h2.select(sel)
@@ -6990,14 +6991,14 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.10 36.05           N
 def exercise(args):
   comprehensive = "--comprehensive" in args
   forever = "--forever" in args
-  print "iotbx.pdb.hierarchy.atom.sizeof_data():", \
-    pdb.hierarchy.atom.sizeof_data()
+  print("iotbx.pdb.hierarchy.atom.sizeof_data():", \
+    pdb.hierarchy.atom.sizeof_data())
   offsets = pdb.hierarchy.atom.data_offsets()
   if (comprehensive):
-    print "iotbx.pdb.hierarchy.atom.data_offsets():"
+    print("iotbx.pdb.hierarchy.atom.data_offsets():")
     prev = 0
     for key,value in sorted(offsets.items()):
-      print "  %+3d %3d %s" % (key-prev, key, value)
+      print("  %+3d %3d %s" % (key-prev, key, value))
       prev = key
   phenix_regression_pdb_file_names = get_phenix_regression_pdb_file_names()
   while True:
@@ -7057,7 +7058,7 @@ def exercise(args):
     exercise_is_ca_only()
     exercise_occupancy_counts()
     if (not forever): break
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

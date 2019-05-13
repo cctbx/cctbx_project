@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 sys.stderr = sys.stdout
 
@@ -14,8 +15,8 @@ if (0):
   sys.exit(0)
 
 def run():
-  print "Content-type: text/html"
-  print
+  print("Content-type: text/html")
+  print()
 
   server_info = cgi_utils.server_info()
 
@@ -35,9 +36,9 @@ def run():
     pickle.dump([server_info, target_module, inp], f)
     f.close()
 
-  print '[<a href="'+server_info.base()+'">Index of services</a>]'
-  print '[<a href="'+server_info.file(target_module+".html")+'">New input</a>]'
-  print "<hr>"
+  print('[<a href="'+server_info.base()+'">Index of services</a>]')
+  print('[<a href="'+server_info.file(target_module+".html")+'">New input</a>]')
+  print("<hr>")
 
   import traceback
   class empty: pass
@@ -46,23 +47,22 @@ def run():
   try:
     target.run(server_info, inp, status)
   except ValueError, ve:
-    print ve.__class__.__name__ # guard against XSS attack
+    print(ve.__class__.__name__) # guard against XSS attack
   except RuntimeError, re:
-    print re.__class__.__name__
+    print(re.__class__.__name__)
   except Exception:
-    if (status.in_table): print "</table><pre>"
+    if (status.in_table): print("</table><pre>")
     ei = sys.exc_info()
-    print traceback.format_exception_only(ei[0], ei[1])[0]
-    print
-    print
-    print "Details:"
-    print
+    print(traceback.format_exception_only(ei[0], ei[1])[0])
+    print()
+    print()
+    print("Details:")
+    print()
     traceback.print_exc()
   else:
-    print "<hr>"
-    print '[<a href="'+server_info.base()+'">Index of services</a>]'
-    print \
-      '[<a href="'+server_info.file(target_module+".html")+'">New input</a>]'
+    print("<hr>")
+    print('[<a href="'+server_info.base()+'">Index of services</a>]')
+    print('[<a href="'+server_info.file(target_module+".html")+'">New input</a>]')
 
 if (__name__ == "__main__"):
   run()

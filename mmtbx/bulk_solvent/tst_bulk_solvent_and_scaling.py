@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import pdb
 from cctbx.array_family import flex
 import os
@@ -380,8 +381,8 @@ def exercise_radial_shells(k_sol=0.33,d_min=1.5,grid_search=False,shell_width=0.
   fmodel_kbu.update(u_star = u_star)
   r_work_start = fmodel_kbu.r_factor()*100.
   msk = fmodel.mask_manager
-  print 'Solvent content: ', msk.solvent_content_via_mask
-  print 'Layer volume fractions: ', msk.layer_volume_fractions
+  print('Solvent content: ', msk.solvent_content_via_mask)
+  print('Layer volume fractions: ', msk.layer_volume_fractions)
   if( type(k_sol) is list):
     for i in range(len(k_sol)):
       if( msk.layer_volume_fractions[i] == 0. ):
@@ -394,8 +395,8 @@ def exercise_radial_shells(k_sol=0.33,d_min=1.5,grid_search=False,shell_width=0.
   result = bss.bulk_solvent_and_scales(
     fmodel_kbu = fmodel_kbu, params = params)
   r_work = result.fmodel_kbu.r_factor()
-  print 'R-work: ', r_work
-  print 'Solvent radius: ', fmodel.mask_params.solvent_radius
+  print('R-work: ', r_work)
+  print('Solvent radius: ', fmodel.mask_params.solvent_radius)
   assert r_work_start > 0.0
   assert approx_equal(r_work, 0.0, eps = 1.e-3)
   if( type(k_sol) is list ):
@@ -427,7 +428,7 @@ def run():
   exercise_radial_shells()
   exercise_radial_shells(k_sol=[0.33,0.5, 0.9])
   exercise_radial_shells(k_sol=[0.3,0.4,0.5],grid_search=True,shell_width=0.3)
-  print "OK: ",format_cpu_times()
+  print("OK: ",format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

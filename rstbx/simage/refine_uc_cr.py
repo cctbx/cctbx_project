@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 class InfeasibleError(RuntimeError): pass
 
@@ -93,12 +94,12 @@ class refinery(object):
     return None
 
   def show_summary(O):
-    print "refinement target:"
-    print "  initial: %.6g" % O.initial_functional
-    print "    final: %.6g" % O.final_functional
-    print "refined:"
-    print O.unit_cell
-    print O.crystal_rotation
+    print("refinement target:")
+    print("  initial: %.6g" % O.initial_functional)
+    print("    final: %.6g" % O.final_functional)
+    print("refined:")
+    print(O.unit_cell)
+    print(O.crystal_rotation)
     return O
 
   def show_distances(O):
@@ -116,9 +117,9 @@ class refinery(object):
       if (i >= 3 and (i >= 12 or d < d0*0.1)):
         j = perm.size() - i
         if (j > 1):
-          print "... remaining %d distances not shown" % j
+          print("... remaining %d distances not shown" % j)
           break
-      print "%3d %3d %3d" % h, " %7.5f" % d
+      print("%3d %3d %3d" % h, " %7.5f" % d)
     return O
 
 def refine(
@@ -141,13 +142,13 @@ def refine(
     crystal_rotation_uq=crystal_rotation
       .r3_rotation_matrix_as_unit_quaternion())
   refined.show_summary().show_distances()
-  print
+  print()
   while True:
     remaining_sel = refined.outlier_removal()
     if (remaining_sel is None):
       break
-    print "Removing one outlier and re-refining."
-    print
+    print("Removing one outlier and re-refining.")
+    print()
     refined = refinery(
       work_params=refined.work_params,
       spots_xy0=refined.spots_xy0.select(remaining_sel),
@@ -156,5 +157,5 @@ def refine(
       crystal_rotation_uq=refined.crystal_rotation
         .r3_rotation_matrix_as_unit_quaternion())
     refined.show_summary().show_distances()
-    print
+    print()
   return refined

@@ -4,6 +4,7 @@
 #
 # $Id$
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 
 from xfel.command_line.cxi_merge import scaling_manager
@@ -70,7 +71,7 @@ class refltable_scaling_manager(scaling_manager):
           N += 1
           m += refls['isigi'][j]
 
-          print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
+          print("Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m))
           plot_n_bins = N//10
           hist,bins = np.histogram(refls['intensity'],bins=25)
           width = 0.7*(bins[1]-bins[0])

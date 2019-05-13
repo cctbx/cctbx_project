@@ -7,6 +7,7 @@ documentation.
 """
 
 from __future__ import division
+from __future__ import print_function
 import wxtbx.bitmaps
 import wx.html
 import wx
@@ -208,7 +209,7 @@ class HtmlPanel(wx.html.HtmlWindow):
         # XXX calling self.ScrollToAnchor() directly doesn't work!
         wx.CallAfter(self.ScrollToAnchor, anchor)
       else :
-        print "Missing anchor %s" % anchor
+        print("Missing anchor %s" % anchor)
 
 if __name__ == "__main__" :
   app = wx.App(0)

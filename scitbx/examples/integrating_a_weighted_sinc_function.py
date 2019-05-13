@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx.math import chebyshev_polynome
 import scitbx.math
@@ -22,7 +23,7 @@ class function(object):
   def show(self):
     result = get_p_of_r(self.x)
     for r,y in zip(self.r, result):
-      print r, y
+      print(r, y)
 
   def load_coefs(self, coefs=None):
     if coefs is None:
@@ -65,10 +66,10 @@ def example():
     ref_integrals.append( f.integrate(q,90) )
 
   for q, jj in zip(q_trials, range(len(q_trials))):
-    print q,jj,
+    print(q,jj, end=' ')
     for ii in range(2,90):
-      print 100.0*abs(f.integrate(q,ii)-ref_integrals[jj])/abs(ref_integrals[jj]+1e-13),
-    print
+      print(100.0*abs(f.integrate(q,ii)-ref_integrals[jj])/abs(ref_integrals[jj]+1e-13), end=' ')
+    print()
 
 
 

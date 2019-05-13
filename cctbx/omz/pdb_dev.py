@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import date_and_time, user_plus_sys_time
 from libtbx.str_utils import show_string
 import traceback
@@ -12,19 +13,19 @@ def process(params, mtz_pdb_pair):
   xs = iotbx.pdb.input(file_name=fn_pdb).xray_structure_simple()
   xs.show_summary()
   xs.scattering_type_registry(table="it1992").show()
-  print
+  print()
   #
   f_obs = None
   i_obs = None
   import iotbx.mtz
   mtz_obj = iotbx.mtz.object(file_name=fn_mtz)
   for ma in mtz_obj.as_miller_arrays(crystal_symmetry=xs):
-    print ma.info()
+    print(ma.info())
     if (f_obs is None and ma.is_xray_amplitude_array()):
       f_obs = ma
     elif (i_obs is None and ma.is_xray_intensity_array()):
       i_obs = ma
-  print
+  print()
   if (i_obs is None):
     assert f_obs is not None
     c_obs = f_obs
@@ -34,7 +35,7 @@ def process(params, mtz_pdb_pair):
     c_obs = i_obs
     i_obs.show_comprehensive_summary()
     f_obs = i_obs.f_sq_as_f(algorithm="xtal_3_7")
-  print
+  print()
   #
   if (len(params.optimizers) == 0):
     return
@@ -62,10 +63,10 @@ def run(args):
     return
   co = command_line.options
   #
-  print "TIME BEGIN pdb_dev:", date_and_time()
-  print
+  print("TIME BEGIN pdb_dev:", date_and_time())
+  print()
   libtbx.utils.host_and_user().show()
-  print
+  print()
   sys.stdout.flush()
   #
   from cctbx.omz import cod_refine
@@ -83,7 +84,7 @@ def run(args):
       remaining_args.append(arg)
   work_phil = master_phil.fetch(sources=phil_objects)
   work_phil.show()
-  print
+  print()
   params = work_phil.extract()
   #
   mtz_pdb_pairs = []
@@ -144,29 +145,29 @@ def run(args):
     try:
       process(params, mtz_pdb_pair)
     except KeyboardInterrupt:
-      print >> sys.stderr, "CAUGHT EXCEPTION: KeyboardInterrupt"
+      print("CAUGHT EXCEPTION: KeyboardInterrupt", file=sys.stderr)
       traceback.print_exc()
-      print >> sys.stderr
+      print(file=sys.stderr)
       sys.stderr.flush()
       return
     except Exception:
       sys.stdout.flush()
-      print >> sys.stderr, "CAUGHT EXCEPTION: %s" % ", ".join(mtz_pdb_pair)
+      print("CAUGHT EXCEPTION: %s" % ", ".join(mtz_pdb_pair), file=sys.stderr)
       traceback.print_exc()
-      print >> sys.stderr
+      print(file=sys.stderr)
       sys.stderr.flush()
       n_caught += 1
     else:
-      print "done_with: %s, %s (%.2f seconds)" % (
-        mtz_pdb_pair + (tm.elapsed(),))
-      print
+      print("done_with: %s, %s (%.2f seconds)" % (
+        mtz_pdb_pair + (tm.elapsed(),)))
+      print()
       sys.stdout.flush()
-  print
-  print "Number of exceptions caught:", n_caught
+  print()
+  print("Number of exceptions caught:", n_caught)
   #
   show_times()
-  print
-  print "TIME END pdb_dev:", date_and_time()
+  print()
+  print("TIME END pdb_dev:", date_and_time())
   sys.stdout.flush()
 
 if (__name__ == "__main__"):

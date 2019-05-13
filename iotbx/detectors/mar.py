@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import re,struct
 from iotbx.detectors.detectorbase import DetectorImageBase
 
@@ -201,7 +202,7 @@ if __name__=='__main__':
   i = "/net/racer/scratch1/ttleese/lyso201.0002"
   #i = "/net/racer/scratch1/ttleese/oxford.tif"
   m = MARImage(i)
-  print m.isCompressed()
+  print(m.isCompressed())
   #m.read()
   #print 'endian:',m.getEndian()
   #print 'serial number:',m.serial_number

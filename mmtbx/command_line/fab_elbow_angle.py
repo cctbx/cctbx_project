@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.fab_elbow_angle
 from mmtbx.utils.fab_elbow_angle import fab_elbow_angle
 import iotbx.pdb
@@ -66,7 +67,7 @@ def run(args, log=sys.stdout):
     pdb_file_def="model_file_name")
   work_params = input_objects.work.extract()
   if len(work_params.model_file_name) != 1:
-    print >> log, usage()
+    print(usage(), file=log)
     return
 
   ph = iotbx.pdb.input(file_name=work_params.model_file_name[0]).construct_hierarchy()
@@ -76,7 +77,7 @@ def run(args, log=sys.stdout):
       chain_id_heavy=work_params.heavy,
       limit_light=work_params.limit_l,
       limit_heavy=work_params.limit_h).fab_elbow_angle
-  print  >> log, 'fab elbow angle (deg): {0:.2f}'.format(elbow_angle)
+  print('fab elbow angle (deg): {0:.2f}'.format(elbow_angle), file=log)
 
 if __name__ == "__main__":
   run(args=sys.argv[1:])

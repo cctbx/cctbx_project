@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
+from __future__ import print_function
 import cctbx.sgtbx
 
 import boost.python
@@ -73,7 +74,7 @@ class binner(ext.binner):
     for i_bin in self.range_used():
       if self.count(i_bin)<min_counts:
         for j_bin in self.range_used():
-          print "BIN: %s  COUNTS: %s " %(j_bin,self.count(j_bin))
+          print("BIN: %s  COUNTS: %s " %(j_bin,self.count(j_bin)))
         raise Sorry(
          "Bin %s required to have %s or more counts has %s\n%s" %(
             i_bin,min_counts,self.count(i_bin),error_string))
@@ -196,14 +197,14 @@ class binner(ext.binner):
         prefix=""):
     if (f is None): f = sys.stdout
     for i_bin in self.range_all():
-      print >> f, prefix + self.bin_legend(
+      print(prefix + self.bin_legend(
         i_bin=i_bin,
         show_bin_number=show_bin_number,
         show_bin_range=show_bin_range,
         show_d_range=show_d_range,
         show_counts=show_counts,
         bin_range_as=bin_range_as,
-        wavelength=wavelength)
+        wavelength=wavelength), file=f)
 
   def show_data(self,
         data,
@@ -233,16 +234,16 @@ class binner(ext.binner):
         show_counts=show_counts,
         bin_range_as=bin_range_as,
         wavelength=wavelength)
-      print >> f, prefix + legend,
+      print(prefix + legend, end=' ', file=f)
       if (data[i_bin] is not None):
         if (isinstance(data[i_bin], str) or data_fmt is None):
-          print >> f, data[i_bin],
+          print(data[i_bin], end=' ', file=f)
         elif (isinstance(data_fmt, str)):
-          print >> f, data_fmt % data[i_bin],
+          print(data_fmt % data[i_bin], end=' ', file=f)
         else:
           s = data_fmt(binner=self, i_bin=i_bin, data=data)
-          if (s is not None and len(s) > 0): print >> f, s,
-      print >> f
+          if (s is not None and len(s) > 0): print(s, end=' ', file=f)
+      print(file=f)
     if (legend is not None): return len(legend)
     return None
 
@@ -452,8 +453,8 @@ class set(crystal.symmetry):
   def show_summary(self, f=None, prefix=""):
     """Minimal Miller set summary"""
     if (f is None): f = sys.stdout
-    print >> f, prefix + "Number of Miller indices:", len(self.indices())
-    print >> f, prefix + "Anomalous flag:", self.anomalous_flag()
+    print(prefix + "Number of Miller indices:", len(self.indices()), file=f)
+    print(prefix + "Anomalous flag:", self.anomalous_flag(), file=f)
     crystal.symmetry.show_summary(self, f=f, prefix=prefix)
     return self
 
@@ -487,7 +488,7 @@ class set(crystal.symmetry):
     of = open(file_name, "w")
     for i_mi, mi in enumerate(indices):
       rsv = uc.reciprocal_space_vector(mi)
-      print >> of, fmt%(i_mi, i_mi, rsv[0]*scale, rsv[1]*scale, rsv[2]*scale)
+      print(fmt%(i_mi, i_mi, rsv[0]*scale, rsv[1]*scale, rsv[2]*scale), file=of)
 
   def show_comprehensive_summary(self, f=None, prefix=""):
     """Display comprehensive Miller set or array summary"""
@@ -498,15 +499,15 @@ class set(crystal.symmetry):
       is_unique_set_under_symmetry = no_sys_abs.is_unique_set_under_symmetry()
       sys_absent_flags = self.sys_absent_flags().data()
       n_sys_abs = sys_absent_flags.count(True)
-      print >> f, prefix + "Systematic absences:", n_sys_abs
+      print(prefix + "Systematic absences:", n_sys_abs, file=f)
       if (n_sys_abs != 0):
         no_sys_abs = self.select(selection=~sys_absent_flags)
-        print >> f, prefix + "Systematic absences not included in following:"
+        print(prefix + "Systematic absences not included in following:", file=f)
       n_centric = no_sys_abs.centric_flags().data().count(True)
-      print >> f, prefix + "Centric reflections:", n_centric
+      print(prefix + "Centric reflections:", n_centric, file=f)
     if (self.unit_cell() is not None):
       d_max_min = no_sys_abs.resolution_range()
-      print >> f, prefix + "Resolution range: %.6g %.6g" % d_max_min
+      print(prefix + "Resolution range: %.6g %.6g" % d_max_min, file=f)
       if (self.space_group_info() is not None
           and self.indices().size() > 0
           and is_unique_set_under_symmetry):
@@ -518,27 +519,27 @@ class set(crystal.symmetry):
         n_obs = binner.counts_given()[1]
         n_complete = binner.counts_complete()[1]
         if (n_complete != 0 and d_max_min[0] != d_max_min[1]):
-          print >> f, prefix + "Completeness in resolution range: %.6g" % (
-            n_obs / n_complete)
+          print(prefix + "Completeness in resolution range: %.6g" % (
+            n_obs / n_complete), file=f)
         n_complete += binner.counts_complete()[0]
         if (n_complete != 0):
-          print >> f, prefix + "Completeness with d_max=infinity: %.6g" % (
-            n_obs / n_complete)
+          print(prefix + "Completeness with d_max=infinity: %.6g" % (
+            n_obs / n_complete), file=f)
         if (self.anomalous_flag()) and (self.is_xray_intensity_array() or
             self.is_xray_amplitude_array()):
-          print >> f, prefix + \
+          print(prefix + \
             "Anomalous completeness in resolution range: %.6g" % \
-            self.anomalous_completeness()
+            self.anomalous_completeness(), file=f)
     if (self.space_group_info() is not None
         and no_sys_abs.anomalous_flag()
         and is_unique_set_under_symmetry):
       asu, matches = no_sys_abs.match_bijvoet_mates()
-      print >> f, prefix + "Bijvoet pairs:", matches.pairs().size()
-      print >> f, prefix + "Lone Bijvoet mates:", \
-        matches.n_singles() - n_centric
+      print(prefix + "Bijvoet pairs:", matches.pairs().size(), file=f)
+      print(prefix + "Lone Bijvoet mates:", \
+        matches.n_singles() - n_centric, file=f)
       if (isinstance(self, array) and self.is_real_array()):
-        print >> f, prefix + "Mean anomalous difference: %.4f" % (
-          no_sys_abs.anomalous_signal())
+        print(prefix + "Mean anomalous difference: %.4f" % (
+          no_sys_abs.anomalous_signal()), file=f)
     return self
 
   def show_completeness(self, reflections_per_bin = 500, out = None):
@@ -556,7 +557,7 @@ class set(crystal.symmetry):
       d_range     = self.binner().bin_legend(
                  i_bin = i_bin, show_bin_number = False, show_counts = False)
       fmt = "%3d: %-17s %4.2f %6d"
-      print >> out, fmt % (i_bin,d_range,compl,n_ref)
+      print(fmt % (i_bin,d_range,compl,n_ref), file=out)
       out.flush()
 
   def reflection_intensity_symmetry(self):
@@ -2038,7 +2039,7 @@ class array(set):
     if (self.info() is not None) and isinstance(self.info(), array_info):
       wavelength = self.info().wavelength
       if (wavelength is not None):
-        print >> f, prefix + "Wavelength: %.4f" % wavelength
+        print(prefix + "Wavelength: %.4f" % wavelength, file=f)
     return self
 
   def observation_type(self):
@@ -2200,11 +2201,11 @@ class array(set):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix + "Miller %s info:" % (
-      self.__class__.__name__), self.info()
-    print >> f, prefix + "Observation type:", self.observation_type()
-    print >> f, prefix + "Type of data:", raw_array_summary(self.data())
-    print >> f, prefix + "Type of sigmas:", raw_array_summary(self.sigmas())
+    print(prefix + "Miller %s info:" % (
+      self.__class__.__name__), self.info(), file=f)
+    print(prefix + "Observation type:", self.observation_type(), file=f)
+    print(prefix + "Type of data:", raw_array_summary(self.data()), file=f)
+    print(prefix + "Type of sigmas:", raw_array_summary(self.sigmas()), file=f)
     set.show_summary(self, f=f, prefix=prefix)
     return self
 
@@ -2236,13 +2237,13 @@ class array(set):
   def show_disagreeable_reflections(self, f_calc_sq, n_reflections=20, out=None):
     if out is None: out = sys.stdout
     result = self.disagreeable_reflections(f_calc_sq, n_reflections=n_reflections)
-    print >> out, "  h   k   l       Fo^2      Fc^2   |Fo^2-Fc^2|/sig(F^2)   Fc/max(Fc)  d spacing(A)"
+    print("  h   k   l       Fo^2      Fc^2   |Fo^2-Fc^2|/sig(F^2)   Fc/max(Fc)  d spacing(A)", file=out)
     for i in range(result.fo_sq.size()):
-      print >> out, "%3i %3i %3i" %result.indices[i],
-      print >> out, " %9.2f %9.2f        %9.2f         %9.2f     %9.2f" %(
+      print("%3i %3i %3i" %result.indices[i], end=' ', file=out)
+      print(" %9.2f %9.2f        %9.2f         %9.2f     %9.2f" %(
         result.fo_sq.data()[i], result.fc_sq.data()[i],
         result.delta_f_sq_over_sigma[i],
-        result.fc_over_fc_max[i], result.d_spacings[i])
+        result.fc_over_fc_max[i], result.d_spacings[i]), file=out)
     return result
 
   def crystal_symmetry_is_compatible_with_symmetry_from_file(self,
@@ -3261,7 +3262,7 @@ class array(set):
         prefix=""):
     assert self.is_bool_array()
     assert binner_range in ["used", "all"]
-    print >> out, prefix + "Number of work/free reflections by resolution:"
+    print(prefix + "Number of work/free reflections by resolution:", file=out)
     if (n_bins is not None):
       self.setup_binner(n_bins=n_bins)
     else:
@@ -3280,16 +3281,16 @@ class array(set):
       if (fmt is None):
         width = max(4, len(str(self.indices().size())))
         fmt = "%%%ds" % width
-        print >> out, prefix + " ", " "*len(legend), \
-          fmt%"work", fmt%"free", " %free"
+        print(prefix + " ", " "*len(legend), \
+          fmt%"work", fmt%"free", " %free", file=out)
         fmt = "%%%dd" % width
-      print >> out, prefix + " ", legend, fmt%n_work, fmt%n_free, \
-        "%5.1f%%" % (100.*n_free/max(1,n_work+n_free))
+      print(prefix + " ", legend, fmt%n_work, fmt%n_free, \
+        "%5.1f%%" % (100.*n_free/max(1,n_work+n_free)), file=out)
     n_free = self.data().count(True)
     n_work = self.data().size() - n_free
-    print >> out, prefix + " ", (
+    print(prefix + " ", (
       "%%%ds"%len(legend))%"overall", fmt%n_work, fmt%n_free, \
-      "%5.1f%%" % (100.*n_free/max(1,n_work+n_free))
+      "%5.1f%%" % (100.*n_free/max(1,n_work+n_free)), file=out)
     return n_works, n_frees
 
   def r_free_flags_accumulation(self):
@@ -3866,21 +3867,21 @@ class array(set):
       else:
         data_abs = None
         c = "."
-      print >> log, prefix + "Removing %d %ssystematic absence%s%s" % (
-        n, q, plural_s(n)[1], c)
+      print(prefix + "Removing %d %ssystematic absence%s%s" % (
+        n, q, plural_s(n)[1], c), file=log)
     result = self.select(selection=~sys_absent_flags)
     if (log is not None):
       if (data_abs is not None):
-        print >> log, prefix + "  Average absolute value of:"
+        print(prefix + "  Average absolute value of:", file=log)
         mean_absences = flex.mean(data_abs.select(sys_absent_flags))
-        print >> log, prefix + "    Absences: %.6g" % mean_absences
+        print(prefix + "    Absences: %.6g" % mean_absences, file=log)
         if (n != data_abs.size()):
           mean_others = flex.mean(data_abs.select(~sys_absent_flags))
-          print >> log, prefix + "      Others: %.6g" % mean_others
+          print(prefix + "      Others: %.6g" % mean_others, file=log)
           if (mean_others != 0 and mean_others > mean_absences * 1.e-20):
-            print >> log, prefix + "       Ratio: %.6g" % (
-              mean_absences / mean_others)
-      print >> log
+            print(prefix + "       Ratio: %.6g" % (
+              mean_absences / mean_others), file=log)
+      print(file=log)
     return result
 
   def select_sys_absent(self, integral_only=False):
@@ -4044,14 +4045,14 @@ class array(set):
     assert self.data().size() == self.indices().size()
     if (self.is_complex_array() and deg is not None):
       for h,d in zip(self.indices(), self.data()):
-        print >> f, prefix + str(h), d, complex_math.abs_arg(d, deg=deg)
+        print(prefix + str(h), d, complex_math.abs_arg(d, deg=deg), file=f)
     elif (self.sigmas() is None):
       for h,d in zip(self.indices(), self.data()):
-        print >> f, prefix + str(h), d
+        print(prefix + str(h), d, file=f)
     else:
       assert self.sigmas().size() == self.indices().size()
       for h,d,s in zip(self.indices(), self.data(), self.sigmas()):
-        print >> f, prefix + str(h), d, s
+        print(prefix + str(h), d, s, file=f)
     return self
 
   def fsc(self, other, bin_width=1000):
@@ -4545,7 +4546,7 @@ class array(set):
     import iotbx.cif
     cif = iotbx.cif.model.cif()
     cif[data_name] = self.as_cif_block(array_type=array_type)
-    print >> out, cif
+    print(cif, file=out)
 
   def as_phases_phs(self,
         out,
@@ -4835,8 +4836,8 @@ class array(set):
       if(mi[1]==0 and mi[2]==0): h.append((d, mi[0], data_over_sigma))
       if(mi[0]==0 and mi[2]==0): k.append((d, mi[1], data_over_sigma))
       if(mi[0]==0 and mi[1]==0): l.append((d, mi[2], data_over_sigma))
-    print "a*                      b*                    c*"
-    print "d         h   F/sigma   d        k  F/sigma   d        l  F/sigma"
+    print("a*                      b*                    c*")
+    print("d         h   F/sigma   d        k  F/sigma   d        l  F/sigma")
     for i in xrange( max(len(h),max(len(k),len(l))) ):
       blanc = " "*21
       try: ast = "%7.3f %4d %8.3f"%h[i]
@@ -4847,7 +4848,7 @@ class array(set):
         else: bst = blanc
       try: cst = "%7.3f %4d %8.3f"%l[i]
       except Exception: cst = ""
-      print ast,bst,cst
+      print(ast,bst,cst)
 
   def ellipsoidal_truncation_by_sigma(self, sigma_cutoff=3):
     h_cut,k_cut,l_cut = self.ellipsoidal_resolutions_and_indices_by_sigma(
@@ -5138,7 +5139,7 @@ class array(set):
     if (out is None):
       out = sys.stdout
     miller_array = self
-    print >> out, "Change of basis:"
+    print("Change of basis:", file=out)
     if   (change_of_basis == "to_reference_setting"):
       cb_op = miller_array.change_of_basis_op_to_reference_setting()
     elif (change_of_basis == "to_primitive_setting"):
@@ -5154,21 +5155,18 @@ class array(set):
         raise Sorry(("The change-of-basis operator '%s' is invalid "+
           "(original error: %s)") % (change_of_basis, str(e)))
     if (cb_op.c_inv().t().is_zero()):
-      print >> out, "  Change of basis operator in both h,k,l and x,y,z notation:"
-      print >> out, "   ", cb_op.as_hkl()
+      print("  Change of basis operator in both h,k,l and x,y,z notation:", file=out)
+      print("   ", cb_op.as_hkl(), file=out)
     else:
-      print >> out, "  Change of basis operator in x,y,z notation:"
-    print >> out, "    %s [Inverse: %s]" % (cb_op.as_xyz(),
-      cb_op.inverse().as_xyz())
+      print("  Change of basis operator in x,y,z notation:", file=out)
+    print("    %s [Inverse: %s]" % (cb_op.as_xyz(),
+      cb_op.inverse().as_xyz()), file=out)
     d = cb_op.c().r().determinant()
-    print >> out, "  Determinant:", d
+    print("  Determinant:", d, file=out)
     if (d < 0 and change_of_basis != "to_inverse_hand"):
-      print >> out, \
-        "  **************************************************************"
-      print >> out, \
-        "  W A R N I N G: This change of basis operator changes the hand!"
-      print >> out, \
-        "  **************************************************************"
+      print("  **************************************************************", file=out)
+      print("  W A R N I N G: This change of basis operator changes the hand!", file=out)
+      print("  **************************************************************", file=out)
     if(eliminate_invalid_indices):
       sel = cb_op.apply_results_in_non_integral_indices(
         miller_indices=miller_array.indices())
@@ -5176,14 +5174,14 @@ class array(set):
       keep = ~toss
       keep_array = miller_array.select(keep)
       toss_array = miller_array.select(toss)
-      print >> out, "  Mean value for kept reflections:", \
-        flex.mean(keep_array.data())
+      print("  Mean value for kept reflections:", \
+        flex.mean(keep_array.data()), file=out)
       if (len(toss_array.data()) > 0):
-        print >> out, "  Mean value for invalid reflections:", \
-          flex.mean(toss_array.data())
+        print("  Mean value for invalid reflections:", \
+          flex.mean(toss_array.data()), file=out)
       miller_array=keep_array
     processed_array = miller_array.change_basis(cb_op=cb_op)
-    print >> out, "  Crystal symmetry after change of basis:"
+    print("  Crystal symmetry after change of basis:", file=out)
     crystal.symmetry.show_summary(processed_array, prefix="    ", f=out)
     return processed_array, cb_op
 
@@ -5220,19 +5218,19 @@ class array(set):
     miller_array = self
     symm = miller_array.crystal_symmetry()
     space_group_old = symm.space_group()
-    print >> log, "Current symmetry:"
+    print("Current symmetry:", file=log)
     symm.show_summary(f=log, prefix="  ")
     # change to Niggli cell
     miller_array = miller_array.niggli_cell()
     symm = miller_array.crystal_symmetry()
-    print >> log, "Niggli cell symmetry:"
+    print("Niggli cell symmetry:", file=log)
     symm.show_summary(f=log, prefix="  ")
     if (space_group_info is None):
       space_group_info = sgtbx.space_group_info(space_group_symbol)
     space_group_new = space_group_info.group()
     if (space_group_new.n_smx() < space_group_old.n_smx()):
       if expand_to_p1_if_necessary :
-        print >> log, "Changing to lower symmetry, expanding to P1 first"
+        print("Changing to lower symmetry, expanding to P1 first", file=log)
         miller_array = miller_array.expand_to_p1()
       else :
         warnings.warn("This operation will result in incomplete data without "+
@@ -5245,17 +5243,17 @@ class array(set):
       cb_op = sgtbx.change_of_basis_op("a,-b,-c")
       unit_cell_new = unit_cell.change_basis(cb_op)
       if (unit_cell_new.parameters()[-1] > unit_cell.parameters()[-1]):
-        print >> log, "Reindexing with a,-b,-c"
+        print("Reindexing with a,-b,-c", file=log)
         miller_array = miller_array.change_basis(cb_op)
         symm = miller_array.crystal_symmetry()
         unit_cell = symm.unit_cell()
     if (not space_group_info.group().is_compatible_unit_cell(unit_cell)):
       unit_cell_old = unit_cell
       unit_cell = space_group_info.group().average_unit_cell(unit_cell_old)
-      print >> log, "Coercing unit cell into parameters compatible with %s" % \
-        space_group_info
-      print >> log, "  Old cell: %s" % str(unit_cell_old.parameters())
-      print >> log, "  New cell: %s" % str(unit_cell.parameters())
+      print("Coercing unit cell into parameters compatible with %s" % \
+        space_group_info, file=log)
+      print("  Old cell: %s" % str(unit_cell_old.parameters()), file=log)
+      print("  New cell: %s" % str(unit_cell.parameters()), file=log)
       volume_start = unit_cell_old.volume()
       volume_new = unit_cell.volume()
       volume_change_fraction = abs(volume_new - volume_start) / volume_new
@@ -5276,7 +5274,7 @@ class array(set):
       ma_old = miller_array.deep_copy()
       miller_array = miller_array.remove_systematic_absences()
       ls = ma_old.lone_set(other=miller_array)
-    print >> log, "New Miller array:"
+    print("New Miller array:", file=log)
     miller_array.show_summary(f=log, prefix="  ")
     return miller_array
 
@@ -5610,11 +5608,11 @@ class merge_equivalents(object):
       max_lengths = [max(max_len,len(field))
         for max_len,field in zip(max_lengths, fields)]
     if (r_linear is not None):
-      print >> out, prefix+self.r_linear.__doc__
+      print(prefix+self.r_linear.__doc__, file=out)
     if (r_square is not None):
-      print >> out, prefix+self.r_square.__doc__
+      print(prefix+self.r_square.__doc__, file=out)
     if (r_linear is not None or r_square is not None):
-      print >> out, prefix+"In these sums single measurements are excluded."
+      print(prefix+"In these sums single measurements are excluded.", file=out)
     n = flex.sum(flex.int(max_lengths[1:4]))+4
     fmt = "%%%ds  %%%ds  %%%ds  %%%ds" % tuple(
       [max_lengths[0], n] + max_lengths[4:])
@@ -5622,10 +5620,10 @@ class merge_equivalents(object):
     for r in [r_linear, r_square]:
       if (r is None): fields.append("")
       else: fields.append("Mean  ")
-    print >> out, prefix + (fmt % tuple(fields)).rstrip()
+    print(prefix + (fmt % tuple(fields)).rstrip(), file=out)
     fmt = "%%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds" % tuple(max_lengths)
     for fields in lines:
-      print >> out, prefix + (fmt % tuple(fields)).rstrip()
+      print(prefix + (fmt % tuple(fields)).rstrip(), file=out)
 
 class fft_map(maptbx.crystal_gridding):
   """
@@ -5925,35 +5923,34 @@ class systematic_absences_info(object):
     absent reflections and corresponding I/sigmaI.
     """
     if (self.n_possible_max == 0):
-      print >> out, \
-        "No systematic absences possible in any intensity-equivalent groups."
+      print("No systematic absences possible in any intensity-equivalent groups.", file=out)
       return self
     if (self.input_amplitudes):
-      print >> out, """\
+      print("""\
 Please note that the input data were amplitudes, which means that weaker
 reflections may have been modified by French-Wilson treatment or discarded
 altogether, and the original intensities will not be recovered.  For best
 results, use intensities as input.
-"""
+""", file=out)
     for group_info, absences in self.space_group_symbols_and_selections :
       group_note = ""
       if (str(group_info) == str(self.space_group_info)):
         group_note = " (input space group)"
       if (absences == False):
-        print >> out, prefix+"%s%s: no systematic absences possible" % \
-          (group_info, group_note)
+        print(prefix+"%s%s: no systematic absences possible" % \
+          (group_info, group_note), file=out)
       elif (absences is None):
-        print >> out, prefix+"%s%s: no absences found" % \
-          (group_info, group_note)
+        print(prefix+"%s%s: no absences found" % \
+          (group_info, group_note), file=out)
       else :
-        print >> out, prefix+"%s%s:" % (group_info, group_note)
+        print(prefix+"%s%s:" % (group_info, group_note), file=out)
         for i_hkl, hkl in enumerate(absences.indices()):
           intensity = absences.data()[i_hkl]
           sigma = absences.sigmas()[i_hkl]
           indices_fmt = "(%4d, %4d, %4d)" % hkl
           if (sigma == 0):
-            print >> out, prefix+"  %s: i/sigi = undefined" % indices_fmt
+            print(prefix+"  %s: i/sigi = undefined" % indices_fmt, file=out)
           else :
-            print >> out, prefix+"  %s: i/sigi = %6.1f" % (indices_fmt,
-              intensity/sigma)
+            print(prefix+"  %s: i/sigi = %6.1f" % (indices_fmt,
+              intensity/sigma), file=out)
     return self

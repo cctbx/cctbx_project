@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.lbfgs
 from scitbx.array_family import flex
 import math
@@ -32,12 +33,12 @@ def example():
   y_ideal = slope * x_obs + y_intercept
   y_obs = y_ideal + flex.random_double(size=x_obs.size())*0.1
   fit = linear_least_squares_fit(x_obs=x_obs, y_obs=y_obs)
-  print "fit.slope:", fit.slope
-  print "fit.y_intercept:", fit.y_intercept
+  print("fit.slope:", fit.slope)
+  print("fit.y_intercept:", fit.y_intercept)
   y_calc = fit.slope * x_obs + fit.y_intercept
-  print " x_obs  y_obs y_calc  diff"
+  print(" x_obs  y_obs y_calc  diff")
   for xo,yo,yc in zip(x_obs, y_obs, y_calc):
-    print "%6.2f %6.2f %6.2f %6.2f" % (xo,yo,yc,yo-yc)
+    print("%6.2f %6.2f %6.2f %6.2f" % (xo,yo,yc,yo-yc))
 
 if (__name__ == "__main__"):
   example()

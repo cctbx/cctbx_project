@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 import boost.python
@@ -126,7 +127,7 @@ def fd(TGO, k_sol, b_sol, u_star, param, e = 1.e-3):
 
 def run_group(symbol):
   group = space_group_info(symbol);
-  print "\n=="
+  print("\n==")
   elements = ('C', 'N', 'O', 'H')*11
   xrs = random_structure.xray_structure(
     space_group_info = group,
@@ -158,19 +159,19 @@ def run_group(symbol):
   # u_star
   gu_a=list(tg.grad_u_star())
   gu_fd, junk=fd(TGO=TGO, k_sol=k_sol, b_sol=b_sol, u_star=u_star, param="u_star")
-  print "u_star:",gu_a
-  print "u_star:",gu_fd
+  print("u_star:",gu_a)
+  print("u_star:",gu_fd)
   TGO2 = cpp_tg_u_star_only(fmodel=fmodel)
   tg2 = TGO2.get_tg(k_sol=k_sol, b_sol=b_sol, u_star=u_star)
   gu_a2=list(tg2.grad_u_star())
   gu_fd2, junk=fd(TGO=TGO2, k_sol=k_sol, b_sol=b_sol, u_star=u_star, param="u_star")
-  print "u_star:",gu_a2
-  print "u_star:",gu_fd2
+  print("u_star:",gu_a2)
+  print("u_star:",gu_fd2)
   #
-  print "k_sol:", gk_a,  ck_a
-  print "k_sol:", gk_fd, ck_fd
-  print "b_sol:", gb_a,  cb_a
-  print "b_sol:", gb_fd, cb_fd
+  print("k_sol:", gk_a,  ck_a)
+  print("k_sol:", gk_fd, ck_fd)
+  print("b_sol:", gb_a,  cb_a)
+  print("b_sol:", gb_fd, cb_fd)
   #
   assert approx_equal(gk_a, gk_fd, eps=1.e-4)
   assert approx_equal(gb_a, gb_fd, eps=1.e-4)
@@ -181,5 +182,5 @@ def run_group(symbol):
 
 if (__name__ == "__main__"):
   for i in [1,]:#xrange(1,231):
-    print i
+    print(i)
     run_group(i)

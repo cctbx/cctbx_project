@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.command_line import molprobity
 
 pdb_txt = """\
@@ -43,4 +44,4 @@ def test1(prefix="tst_mp4"):
 
 if (__name__ == "__main__"):
   test1()
-  print "OK"
+  print("OK")

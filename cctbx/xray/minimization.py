@@ -1,4 +1,5 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
 import cctbx.xray.structure_factors
 from cctbx.xray import ext
 from cctbx import crystal
@@ -177,11 +178,11 @@ class lbfgs(object):
         occupancy_gradients=g)
       del g
     if (self.verbose > 1):
-      print "xray.minimization line search: f,rms(g):",
-      print self.f, math.sqrt(flex.mean_sq(self.g))
+      print("xray.minimization line search: f,rms(g):", end=' ')
+      print(self.f, math.sqrt(flex.mean_sq(self.g)))
     return self.f, self.g
 
   def callback_after_step(self, minimizer):
     if (self.verbose > 0):
-      print "xray.minimization step: f,iter,nfun:",
-      print self.f,minimizer.iter(),minimizer.nfun()
+      print("xray.minimization step: f,iter,nfun:", end=' ')
+      print(self.f,minimizer.iter(),minimizer.nfun())

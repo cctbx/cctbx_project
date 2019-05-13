@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 from scitbx.linalg import eigensystem
 from scitbx.math import superpose_kearsley_rotation
 from scitbx import matrix
@@ -204,7 +205,7 @@ class nsd_rigid_body_fitter(object):
     return result
 
   def print_status(self, min_target, mean_target, best_vector, txt):
-    print min_target,mean_target,list(best_vector), txt
+    print(min_target,mean_target,list(best_vector), txt)
 
   def best_shifted(self):
     nxyz = self.move_points(self.x)
@@ -247,4 +248,4 @@ if __name__ == "__main__":
   flex.set_random_seed(0)
   for ii in range(10):
     tst_nsd()
-  print "OK"
+  print("OK")

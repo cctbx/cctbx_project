@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.math
 from scitbx.array_family import flex
 
@@ -90,20 +91,20 @@ class damped_newton(object):
     self.number_of_cholesky_decompositions = number_of_cholesky_decompositions
 
   def show_statistics(self):
-    print "scitbx.minimizers.damped_newton results:"
-    print "  function:", self.function.label()
-    print "  x_star:", list(self.x_star)
-    print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
-    print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
-    print "  number_of_iterations:", self.number_of_iterations
-    print "  number_of_function_evaluations:", \
-        self.number_of_function_evaluations
-    print "  number_of_gradient_evaluations:", \
-        self.number_of_gradient_evaluations
-    print "  number_of_hessian_evaluations:", \
-        self.number_of_hessian_evaluations
-    print "  number_of_cholesky_decompositions:", \
-        self.number_of_cholesky_decompositions
+    print("scitbx.minimizers.damped_newton results:")
+    print("  function:", self.function.label())
+    print("  x_star:", list(self.x_star))
+    print("  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2)
+    print("  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2)
+    print("  number_of_iterations:", self.number_of_iterations)
+    print("  number_of_function_evaluations:", \
+        self.number_of_function_evaluations)
+    print("  number_of_gradient_evaluations:", \
+        self.number_of_gradient_evaluations)
+    print("  number_of_hessian_evaluations:", \
+        self.number_of_hessian_evaluations)
+    print("  number_of_cholesky_decompositions:", \
+        self.number_of_cholesky_decompositions)
 
 class newton_more_thuente_1994(object):
 
@@ -214,26 +215,26 @@ class newton_more_thuente_1994(object):
     self.line_search_info = line_search.info_meaning
 
   def show_statistics(self):
-    print "scitbx.minimizers.newton_more_thuente_1994 results:"
+    print("scitbx.minimizers.newton_more_thuente_1994 results:")
     get_label = getattr(self.function, "label", None)
     if (get_label is not None):
-      print "  function:", get_label()
-    print "  x_star:", list(self.x_star)
+      print("  function:", get_label())
+    print("  x_star:", list(self.x_star))
     if (self.f_x0 is not None):
-      print "  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2
-      print "  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2
-    print "  functional_x0:", self.functional_x0
-    print "  functional_x_star:", self.functional_x_star
-    print "  number_of_iterations:", self.number_of_iterations
-    print "  number_of_function_evaluations:", \
-        self.number_of_function_evaluations
-    print "  number_of_functional_exceptions:", \
-        self.number_of_functional_exceptions
-    print "  number_of_gradient_evaluations:", \
-        self.number_of_gradient_evaluations
-    print "  number_of_hessian_evaluations:", \
-        self.number_of_hessian_evaluations
-    print "  number_of_cholesky_decompositions:", \
-        self.number_of_cholesky_decompositions
-    print "  line_search_info:", \
-        self.line_search_info
+      print("  0.5*f_x0.norm()**2:", 0.5*self.f_x0.norm()**2)
+      print("  0.5*f_x_star.norm()**2:", 0.5*self.f_x_star.norm()**2)
+    print("  functional_x0:", self.functional_x0)
+    print("  functional_x_star:", self.functional_x_star)
+    print("  number_of_iterations:", self.number_of_iterations)
+    print("  number_of_function_evaluations:", \
+        self.number_of_function_evaluations)
+    print("  number_of_functional_exceptions:", \
+        self.number_of_functional_exceptions)
+    print("  number_of_gradient_evaluations:", \
+        self.number_of_gradient_evaluations)
+    print("  number_of_hessian_evaluations:", \
+        self.number_of_hessian_evaluations)
+    print("  number_of_cholesky_decompositions:", \
+        self.number_of_cholesky_decompositions)
+    print("  line_search_info:", \
+        self.line_search_info)

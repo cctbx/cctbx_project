@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.math_utils import percentile_based_spread
 from libtbx import slots_getstate_setstate
 from libtbx.utils import Sorry
@@ -60,8 +61,8 @@ def compare_ligands(ligand_code,
   ligands_2 = extract_ligand_residue(hierarchy_2, ligand_code)
   if (len(ligands_1) == 0) or (len(ligands_2) == 0):
     raise Sorry("One or both models missing residue '%s'!" % ligand_code)
-  print >> out, "%d copies in 1st model, %d copies in 2nd model" % \
-    (len(ligands_1), len(ligands_2))
+  print("%d copies in 1st model, %d copies in 2nd model" % \
+    (len(ligands_1), len(ligands_2)), file=out)
   rmsds = []
   pbss = []
   for ligand_1 in ligands_1 :
@@ -119,7 +120,7 @@ def compare_ligands_impl(ligand,
           break
     if (len(isel_1) == 0):
       if (implicit_matching):
-        print >> out, "  warning: no atom name matches found - will guess equivalence from sites"
+        print("  warning: no atom name matches found - will guess equivalence from sites", file=out)
         # XXX this is embarrassing... needs to be much smarter
         for i_seq, atom_1 in enumerate(ligand.atoms()):
           if (atom_1.element.strip() in ["H","D"]) and (exclude_hydrogens):
@@ -135,31 +136,31 @@ def compare_ligands_impl(ligand,
                 name_best = atom_2.name
                 dxyz_best = dxyz
           if (j_seq_best is not None):
-            print >> out, "    '%s' : '%s' (distance = %.2f)" % (atom_1.name,
-              name_best, dxyz_best)
+            print("    '%s' : '%s' (distance = %.2f)" % (atom_1.name,
+              name_best, dxyz_best), file=out)
             isel_1.append(i_seq)
             isel_2.append(j_seq_best)
       if (len(isel_1) == 0):
         if (raise_sorry_if_no_matching_atoms):
           raise Sorry("No matching atoms found!")
         else :
-          print >> out, "  WARNING: no matching atoms found!"
+          print("  WARNING: no matching atoms found!", file=out)
           return None
     sites_1 = sites_1.select(isel_1)
     sites_2 = ligand_2.atoms().extract_xyz().select(isel_2)
     rmsd = sites_1.rms_difference(sites_2)
     pbs = percentile_based_spread((sites_2 - sites_1).norms())
     if (not quiet):
-      print >> out, "  '%s' matches '%s': atoms=%d rmsd=%.3f" % (
-        ligand.id_str(), ligand_2.id_str(), sites_1.size(), rmsd)
+      print("  '%s' matches '%s': atoms=%d rmsd=%.3f" % (
+        ligand.id_str(), ligand_2.id_str(), sites_1.size(), rmsd), file=out)
     rmsds.append(rmsd)
     pbss.append(pbs)
     if (verbose) and (not quiet):
       atoms = ligand.atoms()
       dxyz = (sites_2 - sites_1).norms()
       for i_seq, j_seq in zip(isel_1, isel_2):
-        print >> out, "    %s: dxyz=%.2f" % (atoms_1[i_seq].id_str(),
-          dxyz[i_seq])
+        print("    %s: dxyz=%.2f" % (atoms_1[i_seq].id_str(),
+          dxyz[i_seq]), file=out)
   return rmsds, pbss
 
 class ligand_validation(slots_getstate_setstate):
@@ -230,40 +231,39 @@ class ligand_validation(slots_getstate_setstate):
   def show(self, out=sys.stdout):
     box = str_utils.framed_output(out=out, width=80,
       title="Residue: %s" % self.id_str)
-    print >> box, """\
+    print("""\
 Number of non-H atoms = %d   Mean B_iso = %.2f   Mean occ. = %.2f
 2mFo-DFc map:  min = %6.2f  max = %6.2f  mean = %6.2f   CC = %5.3f
  mFo-DFc map:  min = %6.2f  max = %6.2f  mean = %6.2f""" % (
       len(self.atom_selection), self.b_iso_mean, self.occupancy_mean,
       self.two_fofc_min, self.two_fofc_max, self.two_fofc_mean, self.cc,
-      self.fofc_min, self.fofc_max, self.fofc_mean)
+      self.fofc_min, self.fofc_max, self.fofc_mean), file=box)
     if (self.rmsds is not None):
       rmsd_formatted = ", ".join([ "%.3f" % r for r in self.rmsds ])
       if (len(self.rmsds) == 0):
         rmsd_formatted = "[none found]"
-      print >> box, "RMSD to reference ligand(s): %s" % rmsd_formatted
+      print("RMSD to reference ligand(s): %s" % rmsd_formatted, file=box)
       if (len(self.pbss) > 0):
         pbs_formatted = ", ".join([ "%.3f" % s for s in self.pbss ])
-        print >> box, "    percentile-based spread: %s" % pbs_formatted
+        print("    percentile-based spread: %s" % pbs_formatted, file=box)
     self._show_warnings(box)
     del box
 
   def _show_warnings(self, out, prefix="    "):
     if (self.cc < 0.8):
-      print >> out, prefix+"!!! warning: CC to 2mFo-DFc is poor (< 0.8)"
+      print(prefix+"!!! warning: CC to 2mFo-DFc is poor (< 0.8)", file=out)
     elif (self.cc < 0.9):
-      print >> out, prefix+"!!! warning: CC to 2mFo-DFc is sub-optimal (< 0.9)"
+      print(prefix+"!!! warning: CC to 2mFo-DFc is sub-optimal (< 0.9)", file=out)
     if (self.n_below_fofc_cutoff > 0):
-      print >> out, prefix + \
+      print(prefix + \
         "!!! warning: %d atoms have mFo-DFc density < -3sigma" \
-        % self.n_below_fofc_cutoff
+        % self.n_below_fofc_cutoff, file=out)
 
   def show_simple(self, out=sys.stdout, warnings=True):
-    print >> out, \
-      "%-12s %6.2f %6.2f  %5.3f %5.1f %5.1f %5.1f  %5.1f %5.1f %5.1f" % \
+    print("%-12s %6.2f %6.2f  %5.3f %5.1f %5.1f %5.1f  %5.1f %5.1f %5.1f" % \
       (self.id_str, self.b_iso_mean, self.occupancy_mean,
        self.cc, self.two_fofc_min, self.two_fofc_max, self.two_fofc_mean,
-       self.fofc_min, self.fofc_max, self.fofc_mean)
+       self.fofc_min, self.fofc_max, self.fofc_mean), file=out)
     if (warnings):
       self._show_warnings(out=out, prefix=" "*8)
 
@@ -357,14 +357,14 @@ def validate_ligands(
 def show_validation_results(validations, out, verbose=True):
   if (not verbose):
     box = str_utils.framed_output(out=out, title="Ligand summary", width=80)
-    print >> box, "%30s |-----2mFo-DFc-----|    |---mFo-Dfc---|" % ""
-    print >> box, "%-12s %6s %6s  %5s %5s %5s %5s  %5s %5s %5s" % (
-      "ID", "B_iso", "Occ", "CC", "min", "max", "mean", "min", "max", "mean")
+    print("%30s |-----2mFo-DFc-----|    |---mFo-Dfc---|" % "", file=box)
+    print("%-12s %6s %6s  %5s %5s %5s %5s  %5s %5s %5s" % (
+      "ID", "B_iso", "Occ", "CC", "min", "max", "mean", "min", "max", "mean"), file=box)
     box.add_separator()
     out = box
   for v in validations :
     if (verbose):
       v.show(out=out)
-      print >> out, ""
+      print("", file=out)
     else :
       v.show_simple(out=out)

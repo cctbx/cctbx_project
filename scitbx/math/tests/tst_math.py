@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.math
 import boost.rational
 from scitbx.math import line_given_points
@@ -1199,9 +1200,9 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
           tntbx.generalized_inverse(ar.as_flex_double_matrix()))
         mismatch = (ari-arit).norm_sq() / max(1, max([abs(e) for e in ari]))
         if (mismatch > 1e-10):
-          print ar.elems
-          print ari.elems
-          print arit.elems
+          print(ar.elems)
+          print(ari.elems)
+          print(arit.elems)
           raise AssertionError, mismatch
   for i_trial in xrange(10):
     x,y,z = flex.random_double(size=3)*2-1
@@ -1666,7 +1667,7 @@ def exercise_slatec_dlngam():
     cmp(y, slatec_dlngam(x=x))
   cmath_lgamma = getattr(scitbx.math, "cmath_lgamma", None)
   if (cmath_lgamma is not None):
-    print "Testing compatibility of cmath_lgamma and slatec_dlngam...",
+    print("Testing compatibility of cmath_lgamma and slatec_dlngam...", end=' ')
     for i in xrange(-1000,1000):
       if (i <= 0 and i % 10 == 0): continue
       x = i/10.
@@ -1694,7 +1695,7 @@ def exercise_slatec_dlngam():
           m = cmath_lgamma(-x)
           cmp(s, m)
       x *= v
-    print "OK"
+    print("OK")
 
 def exercise_slatec_dbinom():
   f = scitbx.math.slatec_dlnrel
@@ -1771,8 +1772,8 @@ def exercise_unimodular_generator(forever):
   for range in count():
     timer = user_plus_sys_time()
     n = ug(range=range).count()
-    print "unimodular range %d: count=%d, time=%.2f s" % (
-      range, n, timer.elapsed())
+    print("unimodular range %d: count=%d, time=%.2f s" % (
+      range, n, timer.elapsed()))
     if (range == 4 and not forever):
       break
 
@@ -1822,18 +1823,18 @@ def exercise_continued_fraction():
 
 def exercise_numeric_limits():
   l = scitbx.math.double_numeric_limits
-  print "Floating point type 'double':"
-  print "\tradix: ", l.radix
-  print "\tmantissa digits (base 2):", l.digits
-  print "\tmantissa digits (base 10):", l.digits10
-  print "\tmin exponent (base 2):", l.min_exponent
-  print "\tmin exponent (base 10):", l.min_exponent10
-  print "\tmax exponent (base 2):", l.max_exponent
-  print "\tmax exponent (base 10):", l.max_exponent10
-  print "\tmin:", l.min
-  print "\tmax:", l.max
-  print "\tepsilon:", l.epsilon
-  print "\tsafe min:", l.safe_min
+  print("Floating point type 'double':")
+  print("\tradix: ", l.radix)
+  print("\tmantissa digits (base 2):", l.digits)
+  print("\tmantissa digits (base 10):", l.digits10)
+  print("\tmin exponent (base 2):", l.min_exponent)
+  print("\tmin exponent (base 10):", l.min_exponent10)
+  print("\tmax exponent (base 2):", l.max_exponent)
+  print("\tmax exponent (base 10):", l.max_exponent10)
+  print("\tmin:", l.min)
+  print("\tmax:", l.max)
+  print("\tepsilon:", l.epsilon)
+  print("\tsafe min:", l.safe_min)
 
 def exercise_distributions():
   # normal distribution
@@ -1857,7 +1858,7 @@ def exercise_distributions():
   try:
     stu = distributions.students_t_distribution(10)
   except RuntimeError, e:
-    print "Skipping exercise students_t_distribution:", e
+    print("Skipping exercise students_t_distribution:", e)
   else:
     assert stu.degrees_of_freedom() == 10
     assert stu.mean() == 0
@@ -1965,7 +1966,7 @@ def exercise_parabolic_cylinder_d():
     scale2 = random.choice([0, 1.e-6, 1.e-3, 0.1, 1, 1.e+3, 1.e+6])
     va_ = va_*scale1
     x_  = x_*scale2
-    print "Dv(%.6g,%.6g)=%.6g"%(va_, x_, parabolic_cylinder_d(va_, x_))
+    print("Dv(%.6g,%.6g)=%.6g"%(va_, x_, parabolic_cylinder_d(va_, x_)))
 
 def exercise_fast_approx_math(n=1000):
   # SIN, COS tables
@@ -1984,7 +1985,7 @@ def exercise_fast_approx_math(n=1000):
           interpolate=interpolate)
         r1.append(v1)
         r2.append(v2)
-      print (r1-r2).min_max_mean().as_tuple(), interpolate
+      print((r1-r2).min_max_mean().as_tuple(), interpolate)
   run(func=math.cos, func_table=scitbx.math.cos_table)
   run(func=math.sin, func_table=scitbx.math.sin_table)
   # SQRT
@@ -2002,7 +2003,7 @@ def exercise_fast_approx_math(n=1000):
     diff.append(v1-v2)
     #if(abs(v1-v2)>1.):
     #  print a, v1, v2
-  print diff.min_max_mean().as_tuple()
+  print(diff.min_max_mean().as_tuple())
 
 def exercise_simpson():
   def f(x): return math.sqrt(9-x*x)
@@ -2055,7 +2056,7 @@ def run():
   while 1:
     exercise_minimum_covering_sphere()
     if (not forever): break
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

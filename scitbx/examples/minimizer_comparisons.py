@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from functions import Function
 
 from scitbx import simplex
@@ -36,7 +37,7 @@ class test_lbfgs(object):
     self.name = name
     self.fcount=0
     self.minimizer = lbfgs.run(target_evaluator=self)
-    print "LBFGS ITERATIONS", self.minimizer.iter(), self.fcount," SOLUTION", list(self.x), self.function(self.x)
+    print("LBFGS ITERATIONS", self.minimizer.iter(), self.fcount," SOLUTION", list(self.x), self.function(self.x))
 
   def function(self,vector):
     self.fcount+=1
@@ -63,7 +64,7 @@ class test_simplex(object):
                                   evaluator = self,
                                   tolerance=1e-10)
     self.x = self.optimizer.get_solution()
-    print "SIMPLEX ITRATIONS", self.optimizer.count,self.fcount, "SOLUTION", list(self.x), self.target(self.x)
+    print("SIMPLEX ITRATIONS", self.optimizer.count,self.fcount, "SOLUTION", list(self.x), self.target(self.x))
 
   def target(self,vector):
     self.fcount += 1
@@ -87,7 +88,7 @@ class test_dssa(object):
                           coolfactor=0.5, simplex_scale=1
                                           )
     self.x = self.optimizer.get_solution()
-    print "DSSA ITERATIONS", self.optimizer.count, self.fcount, "SOLUTION", list(self.x), self.target(self.x)
+    print("DSSA ITERATIONS", self.optimizer.count, self.fcount, "SOLUTION", list(self.x), self.target(self.x))
 
   def function(self,vector):
     self.fcount+=1
@@ -120,7 +121,7 @@ class test_cross_entropy(object):
                                               elite_size=10,
                                               sample_size=50, inject_eps=1e-4,
                                               monitor_cycle=150,eps=1e-8)
-    print "CROSS ENTROPY ITERATIONS", self.optimizer.count, self.fcount, "SOLUTION", list(self.optimizer.best_sol), self.target(self.optimizer.best_sol)
+    print("CROSS ENTROPY ITERATIONS", self.optimizer.count, self.fcount, "SOLUTION", list(self.optimizer.best_sol), self.target(self.optimizer.best_sol))
 
   def function(self,vector):
     self.fcount += 1
@@ -147,7 +148,7 @@ class test_differential_evolution(object):
     self.x = None #flex.double(self.n, 2)
     self.domain = [(start[0]-1,start[0]+1),(start[1]-1, start[1]+1)]
     self.optimizer =  differential_evolution.differential_evolution_optimizer(self,population_size=npop,cr=0.9,n_cross=2,eps=1e-12,show_progress=False)
-    print "DIFFERENTIAL EVOLUTION ITERATIONS", self.optimizer.count, self.fcount, "SOLUTION", list(self.x), self.target(self.x)
+    print("DIFFERENTIAL EVOLUTION ITERATIONS", self.optimizer.count, self.fcount, "SOLUTION", list(self.x), self.target(self.x))
 
   def function(self,vector):
     self.fcount+=1
@@ -163,7 +164,7 @@ class test_differential_evolution(object):
     return f, g
 
   def print_status(self, mins,means,vector,txt):
-    print txt,mins, means, list(vector)
+    print(txt,mins, means, list(vector))
 
 
 
@@ -176,7 +177,7 @@ class test_cma_es(object):
     self.fcount = 0
     from cma_es import cma_es_interface
     self.minimizer = cma_es_interface.cma_es_driver( 2, self.m, self.s, self.my_function, self.l )
-    print "CMA-ES ITERATIONS", self.minimizer.count, self.fcount,"SOLUTION",  list(self.minimizer.x_final), self.my_function( self.minimizer.x_final )
+    print("CMA-ES ITERATIONS", self.minimizer.count, self.fcount,"SOLUTION",  list(self.minimizer.x_final), self.my_function( self.minimizer.x_final ))
 
     self.x = self.minimizer.x_final.deep_copy()
 
@@ -197,12 +198,12 @@ def run(args):
 
   have_cma_es = libtbx.env.has_module("cma_es")
   if (not have_cma_es):
-    print "Skipping some tests: cma_es module not available or not configured."
-    print
+    print("Skipping some tests: cma_es module not available or not configured.")
+    print()
 
   names = ['easom','rosenbrock','ackley','rastrigin']
   for name in names:
-    print "****", name, "****"
+    print("****", name, "****")
     if name == 'easom':
       start = flex.double( [0.0,0.0] )
     else:
@@ -215,10 +216,10 @@ def run(args):
       test_cross_entropy(name)
       test_simplex(name)
       test_dssa(name)
-      print
-    print
+      print()
+    print()
   from libtbx.utils import format_cpu_times
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   import sys

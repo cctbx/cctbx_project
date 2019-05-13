@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os,sys
 from cctbx.examples.merging import test_levenberg_sparse as test
 import libtbx.load_env
@@ -41,7 +42,7 @@ if __name__=="__main__":
         mtz_obj = mtz_out.mtz_object()
         mtz_obj.write(outfile)
         written_files.append(outfile)
-        print "OK"
+        print("OK")
         #raw_input("OK")
         sys.stdout.flush()
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import null_out
 from cStringIO import StringIO
 import os.path
@@ -107,8 +108,8 @@ if (__name__ == "__main__"):
   try:
     mon_lib_srv = mmtbx.monomer_library.server.server()
   except mmtbx.monomer_library.server.MonomerLibraryServerError:
-    print "Can not initialize monomer_library, skipping tst_pdb_as_cif."
+    print("Can not initialize monomer_library, skipping tst_pdb_as_cif.")
   else:
     exercise_01()
     exercise_02()
-  print "OK"
+  print("OK")

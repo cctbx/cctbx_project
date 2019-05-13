@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx import differential_evolution as de
 from scitbx.array_family import flex
 import sys
@@ -169,11 +170,11 @@ class linear_scaler(object):
 
   def print_status(self, best,mean,vector,count):
     scales,offsets = self.get_scales_offsets(vector)
-    print >> self.out, "PROGRESS"
-    print >> self.out, count, best, mean
-    print >> self.out, scales
-    print >> self.out, offsets
-    print >> self.out
+    print("PROGRESS", file=self.out)
+    print(count, best, mean, file=self.out)
+    print(scales, file=self.out)
+    print(offsets, file=self.out)
+    print(file=self.out)
 
 
   def retrieve_results(self):
@@ -264,4 +265,4 @@ def tst_curve_interpolator():
 if __name__ == "__main__":
   test_curve_scaler()
   tst_curve_interpolator()
-  print "OK"
+  print("OK")

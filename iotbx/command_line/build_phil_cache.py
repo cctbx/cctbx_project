@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import libtbx.load_env
 from libtbx import phil
@@ -27,7 +28,7 @@ def run(args):
   f = open("%s.phil" % full_path, "w")
   phil_object.show(out=f, attributes_level=3)
   f.close()
-  print "Wrote master parameters to %s.phil" % full_path
+  print("Wrote master parameters to %s.phil" % full_path)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

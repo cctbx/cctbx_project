@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import os
 from spotfinder.diffraction.imagefiles import quick_image
@@ -32,8 +33,8 @@ def get_spotfinder_url(file_object,host,port):
     ("adsc_data",file_object.filename,raw_string)
   ]
 
-  print "length of data in ints",stop_index
-  print "length of data in bytes",len(raw_string)
+  print("length of data in ints",stop_index)
+  print("length of data in bytes",len(raw_string))
   assert len(raw_string)/4==stop_index
 
   T = Timer("do_POST")
@@ -41,7 +42,7 @@ def get_spotfinder_url(file_object,host,port):
     fields = query_object, files = files)
   del T
 
-  print Response.getresponse().read()
+  print(Response.getresponse().read())
 
 def get_labelit_image_object(file,convention):
   Q = quick_image(file)
@@ -74,7 +75,7 @@ if __name__=="__main__":
     port = int(port)
     convention = int(convention)
   except Exception:
-    print """
+    print("""
 Usage:
 libtbx.python pilatus_client.py <filepath> <force_binning> <convention> <host> <port>
 Four mandatory arguments:
@@ -84,5 +85,5 @@ Four mandatory arguments:
   convention: beam_center_convention as defined on the spotfinder servers wiki ==0
   host: usually "localhost"; in any case, must be machine with same endianness
   port: port number of image analyzer http service
-"""
+""")
   do_main(filepath, force_binning, convention, host, port)

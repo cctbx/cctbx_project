@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import Exception_expected
 from libtbx.utils import null_out, Sorry
 from cStringIO import StringIO
@@ -106,7 +107,7 @@ def exercise():
   mtz2map.run([pdb_file, "tst_mmtbx_mtz2map_map_coeffs.mtz",
     "r_free_flags.remove=True"], log=out)
   assert (out.getvalue().count("R-free flagged reflections")==4)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

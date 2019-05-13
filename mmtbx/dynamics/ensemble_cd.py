@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx import dynamics
 from mmtbx.dynamics.constants import \
   boltzmann_constant_akma, \
@@ -352,9 +353,9 @@ class cartesian_dynamics(object):
         self.store_temperatures()
       self.velocity_rescaling()
       if self.verbose >= 1.0:
-        print >> self.log, 'Scale factor : ', self.v_factor
+        print('Scale factor : ', self.v_factor, file=self.log)
         self.vxyz_length_sq = flex.sqrt(self.vxyz.dot())
-        print >> self.log, 'vxyz_length_sq pst scale'
+        print('vxyz_length_sq pst scale', file=self.log)
         self.vxyz_length_sq.min_max_mean().show(out=self.log)
       # do the verlet_leapfrog_integration to get coordinates at t+dt
       self.structure.set_sites_cart(
@@ -380,10 +381,10 @@ class cartesian_dynamics(object):
     ### Extra dynamics stats
   def print_detailed_dynamics_stats(self):
     # Overall data
-    print >> self.log, '\n'
-    print >> self.log, '         MC |    Temperature (K)   |   Vscale   | Etot = Ekin + Echem + wxExray'
-    print >> self.log, '            |  (sys)  (pro)  (sol) |  Fac  T(K) |   Ekin  Echem     wx  Exray'
-    print >> self.log, '  ~E~ {0:5d} | {1:6.1f} {2:6.1f} {3:6.1f} | {4:4.1f} {5:5.1f} | {6:6.1f} {7:6.1f} {8:6.1f} {9:6.1f}'.format(
+    print('\n', file=self.log)
+    print('         MC |    Temperature (K)   |   Vscale   | Etot = Ekin + Echem + wxExray', file=self.log)
+    print('            |  (sys)  (pro)  (sol) |  Fac  T(K) |   Ekin  Echem     wx  Exray', file=self.log)
+    print('  ~E~ {0:5d} | {1:6.1f} {2:6.1f} {3:6.1f} | {4:4.1f} {5:5.1f} | {6:6.1f} {7:6.1f} {8:6.1f} {9:6.1f}'.format(
         self.er_data.macro_cycle,
         self.kt.temperature,
         self.non_solvent_kt.temperature,
@@ -394,8 +395,8 @@ class cartesian_dynamics(object):
         self.stereochemistry_residuals.residual_sum,
         self.xray_target_weight,
         self.target_functor(compute_gradients=False).target_work() * self.fmodel_copy.f_calc_w().data().size(),
-        )
-    print >> self.log, '\n'
+        ), file=self.log)
+    print('\n', file=self.log)
 
     # Atomistic histrograms
     # - Kinetic energy
@@ -410,17 +411,17 @@ class cartesian_dynamics(object):
                        out     = None,
                        prefix  = ""):
       if (out is None): out = sys.stdout
-      print >> out, '\n' + prefix
+      print('\n' + prefix, file=out)
 
       # Stats
       data_basic_stats = scitbx.math.basic_statistics(data)
-      print >> out, '\n  Number  : %7.4f ' % (data_basic_stats.n)
-      print >> out, '  Min     : %7.4f ' % (data_basic_stats.min)
-      print >> out, '  Max     : %7.4f ' % (data_basic_stats.max)
-      print >> out, '  Mean    : %7.4f ' % (data_basic_stats.mean)
-      print >> out, '  Stdev   : %7.4f ' % (data_basic_stats.biased_standard_deviation)
-      print >> out, '  Skew    : %7.4f ' % (data_basic_stats.skew)
-      print >> out, '  Sum     : %7.4f ' % (data_basic_stats.sum)
+      print('\n  Number  : %7.4f ' % (data_basic_stats.n), file=out)
+      print('  Min     : %7.4f ' % (data_basic_stats.min), file=out)
+      print('  Max     : %7.4f ' % (data_basic_stats.max), file=out)
+      print('  Mean    : %7.4f ' % (data_basic_stats.mean), file=out)
+      print('  Stdev   : %7.4f ' % (data_basic_stats.biased_standard_deviation), file=out)
+      print('  Skew    : %7.4f ' % (data_basic_stats.skew), file=out)
+      print('  Sum     : %7.4f ' % (data_basic_stats.sum), file=out)
 
       # Histo
       histogram = flex.histogram(data    = data,
@@ -428,14 +429,14 @@ class cartesian_dynamics(object):
       low_cutoff = histogram.data_min()
       for i,n in enumerate(histogram.slots()):
         high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
-        print >> out, "%7.3f - %7.3f: %d" % (low_cutoff, high_cutoff, n)
+        print("%7.3f - %7.3f: %d" % (low_cutoff, high_cutoff, n), file=out)
         low_cutoff = high_cutoff
       out.flush()
       return histogram
 
     # Select
     for selection_type in ['System', 'Non_solvent', 'Solvent']:
-      print >> self.log, '\n\n'
+      print('\n\n', file=self.log)
       if selection_type == 'System':
         selection = self.er_data.all_sel
       elif selection_type == 'Non_solvent':

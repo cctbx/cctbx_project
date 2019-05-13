@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 import sys, math
 from libtbx.str_utils import format_value, round_2_for_cif, round_4_for_cif
@@ -313,7 +314,7 @@ class geometry(object):
         prefix, format_value("%5.2f", res.omega.twisted_general).strip())
     if( uppercase ):
       result = result.upper()
-    print >> log, result
+    print(result, file=log)
 
   def as_cif_block(self, cif_block=None, pdbx_refine_id=''):
     if cif_block is None:
@@ -352,15 +353,15 @@ class composition(object):
     r = self.result()
     ligs=(",".join([("%s:%s"%k).strip() for k in r.other_cnts.items()])).strip()
     if(len(ligs)==0): ligs=None
-    print >> log, prefix, "Number of:"
-    print >> log, prefix, "  all atoms      :", r.n_atoms
-    print >> log, prefix, "  H or D atoms   :", r.n_hd
-    print >> log, prefix, "  chains         :", r.n_chains
-    print >> log, prefix, "  a.a. residues  :", r.n_protein
-    print >> log, prefix, "  nucleotides    :", r.n_nucleotide
-    print >> log, prefix, "  water          :", r.n_water
-    print >> log, prefix, "  other (ligands):", r.n_other
-    print >> log, prefix, "Ligands:", ligs
+    print(prefix, "Number of:", file=log)
+    print(prefix, "  all atoms      :", r.n_atoms, file=log)
+    print(prefix, "  H or D atoms   :", r.n_hd, file=log)
+    print(prefix, "  chains         :", r.n_chains, file=log)
+    print(prefix, "  a.a. residues  :", r.n_protein, file=log)
+    print(prefix, "  nucleotides    :", r.n_nucleotide, file=log)
+    print(prefix, "  water          :", r.n_water, file=log)
+    print(prefix, "  other (ligands):", r.n_other, file=log)
+    print(prefix, "Ligands:", ligs, file=log)
 
 class occupancy(object):
   def __init__(self, hierarchy):
@@ -371,7 +372,7 @@ class occupancy(object):
 
   def show(self, log, prefix=""):
     r = self.result()
-    def p(m): print >> log, prefix, m
+    def p(m): print(prefix, m, file=log)
     p("mean     : %4.2f"%r.mean)
     p("negative : %d"%r.negative)
     p("zero     : %d (%-6.2f%s)"%(r.zero_count,r.zero_fraction,"%"))
@@ -468,31 +469,31 @@ class adp(object):
         v.min, v.max, v.mean, rms, v.n_iso, v.n_aniso)
     r = self.result()
     pad=" "*14
-    print >> log, prefix, pad, "min    max   mean <Bi,j>   iso aniso"
+    print(prefix, pad, "min    max   mean <Bi,j>   iso aniso", file=log)
     if(r.overall is not None):
-      print >> log, prefix, "  Overall: ", format_str(r.overall)
+      print(prefix, "  Overall: ", format_str(r.overall), file=log)
     if(r.protein is not None):
-      print >> log, prefix, "  Protein: ", format_str(r.protein)
+      print(prefix, "  Protein: ", format_str(r.protein), file=log)
     if(r.nucleotide is not None):
-      print >> log, prefix, "  RNA/DNA: ", format_str(r.nucleotide)
+      print(prefix, "  RNA/DNA: ", format_str(r.nucleotide), file=log)
     if(r.hd is not None):
-      print >> log, prefix, "  H and D: ", format_str(r.hd)
+      print(prefix, "  H and D: ", format_str(r.hd), file=log)
     if(r.water is not None):
-      print >> log, prefix, "  Water:   ", format_str(r.water)
+      print(prefix, "  Water:   ", format_str(r.water), file=log)
     if(r.other is not None):
-      print >> log, prefix, "  Other:   ", format_str(r.other)
+      print(prefix, "  Other:   ", format_str(r.other), file=log)
     for k,v in zip(r.chains.keys(), r.chains.values()):
-      print >> log, prefix, "  Chain %2s:"%k, format_str(v)
+      print(prefix, "  Chain %2s:"%k, format_str(v), file=log)
     def show_hist(h):
-      print >> log, prefix, "      Values      Number of atoms"
+      print(prefix, "      Values      Number of atoms", file=log)
       lc_1 = h.data_min()
       s_1 = enumerate(h.slots())
       for (i_1,n_1) in s_1:
         hc_1 = h.data_min() + h.slot_width() * (i_1+1)
-        print >> log, prefix, "  %6.2f - %-6.2f %8d" % (lc_1, hc_1, n_1)
+        print(prefix, "  %6.2f - %-6.2f %8d" % (lc_1, hc_1, n_1), file=log)
         lc_1 = hc_1
     if(r.overall is not None and abs(r.overall.min-r.overall.max)>1.e-3):
-      print >> log, prefix, "  Histogram:"
+      print(prefix, "  Histogram:", file=log)
       show_hist(r.histogram)
 
   def as_cif_block(self, cif_block=None):
@@ -532,28 +533,28 @@ class info(object):
     prefix = "REMARK   3  "
     if(out is None): out = sys.stdout
     if(self.data_x is not None):
-      print >> out, prefix+"X-RAY DATA."
-      print >> out, prefix
+      print(prefix+"X-RAY DATA.", file=out)
+      print(prefix, file=out)
       self.data_x.show_remark_3(out = out)
-      print >> out, prefix
+      print(prefix, file=out)
     if(self.data_n is not None):
-      print >> out, prefix+"NEUTRON DATA."
-      print >> out, prefix
+      print(prefix+"NEUTRON DATA.", file=out)
+      print(prefix, file=out)
       self.data_n.show_remark_3(out = out)
-      print >> out, prefix
+      print(prefix, file=out)
     if(self.geometry is not None):
       self.geometry.show(log=out, prefix=prefix)
-      print >> out, prefix
+      print(prefix, file=out)
     if self.adp is not None:
       self.adp.show(log=out, prefix=prefix)
-      print >> out, prefix
+      print(prefix, file=out)
     for info_pdb_str in [self.model.tls_groups_as_pdb(),
         self.model.anomalous_scatterer_groups_as_pdb(),
         self.model.cartesian_NCS_as_pdb(),
         self.model.torsion_NCS_as_pdb()]:
       if len(info_pdb_str) > 0:
-        print >> out, prefix
-        print >> out, info_pdb_str,
+        print(prefix, file=out)
+        print(info_pdb_str, end=' ', file=out)
 
   def as_cif_block(self, cif_block=None):
     if cif_block is None:

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from libtbx.option_parser import option_parser
 import sys
@@ -7,7 +8,7 @@ def process_file(file_object, n_slots, data_min, data_max, format_cutoffs):
   data = flex.double()
   for line in file_object.read().splitlines():
     data.append(float(line))
-  print "total number of data points:", data.size()
+  print("total number of data points:", data.size())
   if (data_min is None): data_min = flex.min(data)
   if (data_max is None): data_max = flex.max(data)
   flex.histogram(

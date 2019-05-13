@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.monomer_library import server
 from mmtbx.validation import model_properties
@@ -371,4 +372,4 @@ if (__name__ == "__main__"):
   exercise_3()
   test_zero_occupancy()
   test_partial_occupancy()
-  print "OK"
+  print("OK")

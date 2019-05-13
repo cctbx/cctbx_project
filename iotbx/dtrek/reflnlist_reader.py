@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -111,8 +112,8 @@ class reflnlist(object):
   def show_summary(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
     self.crystal_symmetry().show_summary(f=out, prefix=prefix)
-    print >> out, prefix + "Column names:", " ".join(self.column_names[3:])
-    print >> out, prefix + "Number of reflections:", self.miller_indices.size()
+    print(prefix + "Column names:", " ".join(self.column_names[3:]), file=out)
+    print(prefix + "Number of reflections:", self.miller_indices.size(), file=out)
 
   def as_miller_arrays(self,
         crystal_symmetry=None,

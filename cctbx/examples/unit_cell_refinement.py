@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 two_theta_and_index_list = """\
   8.81   0  1  1
  12.23   0  0  2
@@ -86,17 +87,17 @@ class refinery:
       self.two_thetas_obs, self.miller_indices, self.wavelength, unit_cell)
     g = gradients(
       self.two_thetas_obs, self.miller_indices, self.wavelength, unit_cell)
-    print "functional: %12.6g" % f, "gradient norm: %12.6g" % g.norm()
+    print("functional: %12.6g" % f, "gradient norm: %12.6g" % g.norm())
     return f, g
 
   def callback_after_step(self, minimizer):
-    print "LBFGS step"
+    print("LBFGS step")
 
 def show_fit(two_thetas_obs, miller_indices, wavelength, unit_cell):
   two_thetas_calc = unit_cell.two_theta(miller_indices, wavelength, deg=True)
   for h,o,c in zip(miller_indices, two_thetas_obs, two_thetas_calc):
-    print "(%2d, %2d, %2d)" % h, "%6.2f - %6.2f = %6.2f" % (o, c, o-c)
-  print
+    print("(%2d, %2d, %2d)" % h, "%6.2f - %6.2f = %6.2f" % (o, c, o-c))
+  print()
 
 def run():
   two_thetas_obs = flex.double()
@@ -114,14 +115,14 @@ def run():
 
   refined = refinery(
     two_thetas_obs, miller_indices, wavelength, unit_cell_start)
-  print
+  print()
 
   show_fit(
     two_thetas_obs, miller_indices, wavelength, refined.unit_cell())
 
-  print refined.unit_cell()
-  print
-  print libtbx.utils.format_cpu_times()
+  print(refined.unit_cell())
+  print()
+  print(libtbx.utils.format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os
 
 def integrate_one_image(data):
@@ -35,16 +36,16 @@ def integrate_one_image(data):
   try:
     run_one_index_core(horizons_phil)
   except NoAutoIndex as e:
-    print "NoAutoIndex"
-    print e
+    print("NoAutoIndex")
+    print(e)
   except Sorry as e:
-    print e
+    print(e)
   except ZeroDivisionError as e:
-    print "ZeroDivisionError"
-    print e
+    print("ZeroDivisionError")
+    print(e)
   except Exception as e:
-    print "ANOTHER exception"
-    print e
+    print("ANOTHER exception")
+    print(e)
 
 if __name__=="__main__":
 
@@ -104,7 +105,7 @@ if __name__=="__main__":
   get_paths = get_paths_single
 
   for path in get_paths():
-    print path
+    print(path)
     from libtbx import easy_pickle
     L = easy_pickle.load(path)
     integrate_one_image(L)

@@ -6,6 +6,7 @@ sources.
 """
 
 from __future__ import division
+from __future__ import print_function
 import mmtbx.f_model
 from cctbx import miller
 from cctbx import maptbx
@@ -141,8 +142,8 @@ class run(object):
       r = fmodel_omit.r_work()
       self.r.append(r) # for tests only
       if(self.log):
-        print >> self.log, "r(curr,min,max,mean)=%6.4f %6.4f %6.4f %6.4f"%(r,
-          flex.min(self.r), flex.max(self.r), flex.mean(self.r)), i_box, n_boxes
+        print("r(curr,min,max,mean)=%6.4f %6.4f %6.4f %6.4f"%(r,
+          flex.min(self.r), flex.max(self.r), flex.mean(self.r)), i_box, n_boxes, file=self.log)
       omit_map_data = self.asu_map_from_fmodel(
         fmodel=fmodel_omit, map_type=self.map_type)
       maptbx.copy_box(
@@ -249,10 +250,10 @@ class omit_box(slots_getstate_setstate_default_initializer):
     return len(self.selection)
 
   def show(self, out=sys.stdout, prefix=""):
-    print >> out, prefix + \
+    print(prefix + \
       "box %d: atoms: %6d  extents: (%.4f, %.4f, %.4f) to (%.4f, %.4f, %.4f)" \
       % tuple([ self.serial, len(self.selection) ] +
-        list(self.frac_min) + list(self.frac_max))
+        list(self.frac_min) + list(self.frac_max)), file=out)
 
 class omit_regions(slots_getstate_setstate):
   """
@@ -288,9 +289,9 @@ class omit_regions(slots_getstate_setstate):
 
   def show(self, out=sys.stdout, prefix=""):
     if (len(self.boxes) == 0):
-      print >> out, prefix + "Region %d: empty" % self.serial
+      print(prefix + "Region %d: empty" % self.serial, file=out)
     else :
-      print >> out, prefix + "Region %d:" % self.serial
+      print(prefix + "Region %d:" % self.serial, file=out)
       for box in self.boxes :
         box.show(out=out, prefix=prefix+"  ")
 
@@ -331,7 +332,7 @@ def create_omit_regions(xray_structure,
     if (not selection[i_seq]) : continue
     for mapping in mappings :
       site_cart = mapping.mapped_site()
-      print site_cart
+      print(site_cart)
       site_frac = unit_cell.fractionalize(site_cart=site_cart)
       sites_asu.append(site_frac)
       break

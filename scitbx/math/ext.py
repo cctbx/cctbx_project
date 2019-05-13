@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.array_family.flex # import dependency
 import scitbx.array_family.shared # import dependency
 
@@ -12,41 +13,41 @@ class _(boost.python.injector, ext.basic_statistics):
 
   def show(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix+"n:", self.n
+    print(prefix+"n:", self.n, file=f)
     if (self.n > 0):
-      print >> f, prefix+"min:", self.min
-      print >> f, prefix+"max:", self.max
-      print >> f, prefix+"max_absolute:", self.max_absolute
-      print >> f, prefix+"sum:", self.sum
-      print >> f, prefix+"mean:", self.mean
-      print >> f, prefix+"mean_absolute_deviation_from_mean:", \
-                     self.mean_absolute_deviation_from_mean
-      print >> f, prefix+"biased_variance:", self.biased_variance
-      print >> f, prefix+"biased_standard_deviation:", \
-                     self.biased_standard_deviation
+      print(prefix+"min:", self.min, file=f)
+      print(prefix+"max:", self.max, file=f)
+      print(prefix+"max_absolute:", self.max_absolute, file=f)
+      print(prefix+"sum:", self.sum, file=f)
+      print(prefix+"mean:", self.mean, file=f)
+      print(prefix+"mean_absolute_deviation_from_mean:", \
+                     self.mean_absolute_deviation_from_mean, file=f)
+      print(prefix+"biased_variance:", self.biased_variance, file=f)
+      print(prefix+"biased_standard_deviation:", \
+                     self.biased_standard_deviation, file=f)
       if (self.n > 1):
-        print >> f, prefix+"bias_corrected_variance:", \
-                       self.bias_corrected_variance
-        print >> f, prefix+"bias_corrected_standard_deviation:", \
-                       self.bias_corrected_standard_deviation
-        print >> f, prefix+"skew:", self.skew
-        print >> f, prefix+"kurtosis:", self.kurtosis
-        print >> f, prefix+"kurtosis_excess:", self.kurtosis_excess
+        print(prefix+"bias_corrected_variance:", \
+                       self.bias_corrected_variance, file=f)
+        print(prefix+"bias_corrected_standard_deviation:", \
+                       self.bias_corrected_standard_deviation, file=f)
+        print(prefix+"skew:", self.skew, file=f)
+        print(prefix+"kurtosis:", self.kurtosis, file=f)
+        print(prefix+"kurtosis_excess:", self.kurtosis_excess, file=f)
 
 class _(boost.python.injector, ext.line_search_more_thuente_1994):
 
   def show_status(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix+"xtol:", self.xtol
-    print >> f, prefix+"ftol:", self.ftol
-    print >> f, prefix+"gtol:", self.gtol
-    print >> f, prefix+"stpmin:", self.stpmin
-    print >> f, prefix+"stpmax:", self.stpmax
-    print >> f, prefix+"maxfev:", self.maxfev
-    print >> f, prefix+"info_code:", self.info_code
-    print >> f, prefix+"info_meaning:", self.info_meaning
-    print >> f, prefix+"stp:", self.stp
-    print >> f, prefix+"nfev:", self.nfev
+    print(prefix+"xtol:", self.xtol, file=f)
+    print(prefix+"ftol:", self.ftol, file=f)
+    print(prefix+"gtol:", self.gtol, file=f)
+    print(prefix+"stpmin:", self.stpmin, file=f)
+    print(prefix+"stpmax:", self.stpmax, file=f)
+    print(prefix+"maxfev:", self.maxfev, file=f)
+    print(prefix+"info_code:", self.info_code, file=f)
+    print(prefix+"info_meaning:", self.info_meaning, file=f)
+    print(prefix+"stp:", self.stp, file=f)
+    print(prefix+"nfev:", self.nfev, file=f)
 
 class _(boost.python.injector, ext.unimodular_generator):
 

@@ -2,6 +2,7 @@
    consistent with ITVB 2001.
 """
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 import os
 
@@ -11,7 +12,7 @@ html_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), html_file)
 def get_and_check_file():
   if ( not os.path.isfile(html_file)
        or open(html_file).read().lower().find("not found") >= 0):
-    print "Skipping exercise(): input file not available"
+    print("Skipping exercise(): input file not available")
     return
   table_lines = open(html_file).read().splitlines()[11:-4]
   assert len(table_lines) == 530, "%d != 530" % len(table_lines)
@@ -36,7 +37,7 @@ def get_and_check_file():
 
 def exercise():
   get_and_check_file()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

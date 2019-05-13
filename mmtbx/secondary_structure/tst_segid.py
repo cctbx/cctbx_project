@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 import sys
 from mmtbx.monomer_library import server
@@ -747,30 +748,30 @@ def get_grm(pdb_str, mon_lib_srv, ener_lib, log):
 
 def exercise_protein(mon_lib_srv, ener_lib, log):
   grm = get_grm(protein_pdb_str.split('\n'), mon_lib_srv, ener_lib, log)
-  print grm.get_n_hbond_proxies(), "want 30"  # 31 hbonds, with segids 30
-  print grm.get_n_hangle_proxies(), "want 90"
+  print(grm.get_n_hbond_proxies(), "want 30")  # 31 hbonds, with segids 30
+  print(grm.get_n_hangle_proxies(), "want 90")
   assert grm.get_n_hbond_proxies() == 30  # 31 hbonds, with segids 30
   assert grm.get_n_hangle_proxies() == 90
 
 def exercise_rna(mon_lib_srv, ener_lib, log):
   grm = get_grm(rna_pdb_str.split('\n'), mon_lib_srv, ener_lib, log)
-  print grm.get_n_hbond_proxies(), "want 22"  # 22 hbonds, with segids
-  print grm.get_n_hangle_proxies(), "want 44"
+  print(grm.get_n_hbond_proxies(), "want 22")  # 22 hbonds, with segids
+  print(grm.get_n_hangle_proxies(), "want 44")
   assert grm.get_n_hbond_proxies() == 22
   assert grm.get_n_hangle_proxies() == 44
 
 def exercise_both(mon_lib_srv, ener_lib, log):
   grm = get_grm(protein_pdb_str.split('\n') + rna_pdb_str.split('\n'),
       mon_lib_srv, ener_lib, log)
-  print grm.get_n_hbond_proxies(), "want 52"
-  print grm.get_n_hangle_proxies(), "want 44+90=134" # 90 from protein
+  print(grm.get_n_hbond_proxies(), "want 52")
+  print(grm.get_n_hangle_proxies(), "want 44+90=134") # 90 from protein
   assert grm.get_n_hbond_proxies() == 52
   assert grm.get_n_hangle_proxies() == 134
 
 
 if __name__ == "__main__":
   if (not libtbx.env.has_module(name="ksdssp")):
-    print "Skipping KSDSSP tests: ksdssp module not available."
+    print("Skipping KSDSSP tests: ksdssp module not available.")
   else:
     mon_lib_srv = server.server()
     ener_lib = server.ener_lib()
@@ -779,5 +780,5 @@ if __name__ == "__main__":
     exercise_protein(mon_lib_srv, ener_lib, log)
     exercise_rna(mon_lib_srv, ener_lib, log)
     exercise_both(mon_lib_srv, ener_lib, log)
-  print format_cpu_times()
-  print "OK"
+  print(format_cpu_times())
+  print("OK")

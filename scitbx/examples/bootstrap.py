@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.lbfgs
 import scitbx.math
 from scitbx.array_family import flex
@@ -106,7 +107,7 @@ class polynomial_fit:
     g = flex.double(self.n,0)
     for i in range(self.n):
       g[i] = -flex.sum( 2.0*(y_diff/self.w_obs)*flex.pow(self.x_obs,i) )
-    print f
+    print(f)
     return f, g
 
 
@@ -145,20 +146,20 @@ def example():
   y_obs = y_ideal + flex.random_double(size=x_obs.size())*1.5
 
   for ii in range(20):
-    print x_obs[ii], y_obs[ii]
+    print(x_obs[ii], y_obs[ii])
 
   faker = fake_data(  x_obs,  y_obs)
 
 
   fit = polynomial_fit(x_obs=x_obs,y_obs=y_obs,w_obs=w_obs,n=3)
-  print "------------------------------------------- "
-  print "       True and fitted coeffcients"
-  print "------------------------------------------- "
+  print("------------------------------------------- ")
+  print("       True and fitted coeffcients")
+  print("------------------------------------------- ")
   for i in range(a.size()):
-    print i, a[i], fit.a[i]
-  print "------------------------------------------- "
-  print " Bootstrapped mean and standard deviations"
-  print "------------------------------------------- "
+    print(i, a[i], fit.a[i])
+  print("------------------------------------------- ")
+  print(" Bootstrapped mean and standard deviations")
+  print("------------------------------------------- ")
   mean=[0,0,0]
   std=[0,0,0]
 
@@ -174,7 +175,7 @@ def example():
     std[i]/=100.0
     std[i] -= mean[i]*mean[i]
     std[i] = math.sqrt( std[i] )
-    print i, mean[i], std[i]
+    print(i, mean[i], std[i])
 
 
 if (__name__ == "__main__"):

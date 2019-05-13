@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx import disorder
 import iotbx.pdb.hierarchy
 from libtbx.test_utils import approx_equal
@@ -77,4 +78,4 @@ ENDMDL
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

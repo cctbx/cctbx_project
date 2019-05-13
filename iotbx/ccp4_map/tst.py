@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
@@ -29,11 +30,11 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
       module_name="iotbx",
       path="ccp4_map/tst_input.map")
 
-  print "\nTesting read of input map with axis order 3 1 2 "+\
-         "\n and use_mrcfile=",use_mrcfile
+  print("\nTesting read of input map with axis order 3 1 2 "+\
+         "\n and use_mrcfile=",use_mrcfile)
   if use_mrcfile:
     m = mrcfile.map_reader(file_name=file_name,verbose=True)
-    for label in m.labels: print label
+    for label in m.labels: print(label)
   else:
     m = iotbx.ccp4_map.map_reader(file_name=file_name)
   assert approx_equal(m.header_min, -0.422722190619)
@@ -59,7 +60,7 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
 
   # Read and write map with offset
 
-  print "\nReading and writing map with origin not at zero, use_mrcfile=",use_mrcfile
+  print("\nReading and writing map with origin not at zero, use_mrcfile=",use_mrcfile)
 
   from scitbx.array_family.flex import grid
   from scitbx.array_family import flex
@@ -92,14 +93,14 @@ def exercise_with_tst_input_map(use_mrcfile=None,file_name=None):
       labels=flex.std_string(["iotbx.ccp4_map.tst"]))
     m = iotbx.ccp4_map.map_reader(file_name='shifted_map.ccp4')
 
-  print m.data.origin(),m.data.all()
-  print "GRID:",m.unit_cell_grid
+  print(m.data.origin(),m.data.all())
+  print("GRID:",m.unit_cell_grid)
   assert m.unit_cell_grid == (16, 8, 16)
   assert approx_equal(m.unit_cell_parameters, (
     82.095001220703125, 37.453998565673828, 69.636001586914062,
     90.0, 101.47599792480469, 90.0))
   assert m.space_group_number == 1
-  print m.data.origin(),m.data.all()
+  print(m.data.origin(),m.data.all())
   assert m.data.origin() == (5,5,5)
   assert m.data.all() == (5,6,7)
 
@@ -109,13 +110,13 @@ def exercise_with_tst_input_map_2(use_mrcfile=None,file_name=None):
       module_name="iotbx",
       path="ccp4_map/ccp4_20_21_22_to_30_40_50.ccp4")
 
-  print "\nTesting read of input map with offset origin and axis order 3 1 2 "+\
-         "\n and use_mrcfile=",use_mrcfile
+  print("\nTesting read of input map with offset origin and axis order 3 1 2 "+\
+         "\n and use_mrcfile=",use_mrcfile)
   if use_mrcfile:
     m = mrcfile.map_reader(file_name=file_name,verbose=True)
   else:
     m = iotbx.ccp4_map.map_reader(file_name=file_name)
-  print m.unit_cell_grid,m.data.origin(),m.data.all(),m.unit_cell_parameters,
+  print(m.unit_cell_grid,m.data.origin(),m.data.all(),m.unit_cell_parameters, end=' ')
   assert m.unit_cell_grid == (55, 59, 61)
   assert approx_equal(m.unit_cell_parameters,
     (24.53101921081543, 24.61971664428711, 26.457056045532227,
@@ -133,34 +134,34 @@ def exercise_crystal_symmetry_from_ccp4_map(use_mrcfile=None):
   else:
     from iotbx.ccp4_map import crystal_symmetry_from_ccp4_map
   cs = crystal_symmetry_from_ccp4_map.extract_from(file_name=file_name)
-  print cs.unit_cell().parameters(),cs.space_group().info()
+  print(cs.unit_cell().parameters(),cs.space_group().info())
 
 
 def exercise(args,use_mrcfile=None):
   exercise_with_tst_input_map(use_mrcfile=use_mrcfile)
   exercise_with_tst_input_map_2(use_mrcfile=use_mrcfile)
   for file_name in args:
-    print "\n",file_name,"use_mrcfile=",use_mrcfile
+    print("\n",file_name,"use_mrcfile=",use_mrcfile)
     if use_mrcfile:
       m = iotbx.mrcfile.map_reader(file_name=file_name)
     else:
       m = iotbx.ccp4_map.map_reader(file_name=file_name)
-    print "header_min: ", m.header_min
-    print "header_max: ", m.header_max
-    print "header_mean:", m.header_mean
-    print "header_rms: ", m.header_rms
-    print "unit cell grid:", m.unit_cell_grid
-    print "unit cell parameters:", m.unit_cell_parameters
-    print "space group number:  ", m.space_group_number
-    print "map origin:", m.data.origin()
-    print "map grid:  ", m.data.all()
+    print("header_min: ", m.header_min)
+    print("header_max: ", m.header_max)
+    print("header_mean:", m.header_mean)
+    print("header_rms: ", m.header_rms)
+    print("unit cell grid:", m.unit_cell_grid)
+    print("unit cell parameters:", m.unit_cell_parameters)
+    print("space group number:  ", m.space_group_number)
+    print("map origin:", m.data.origin())
+    print("map grid:  ", m.data.all())
     map_stats = maptbx.statistics(m.data)
     assert approx_equal(map_stats.min(), m.header_min)
     assert approx_equal(map_stats.max(), m.header_max)
     assert approx_equal(map_stats.mean(), m.header_mean)
     if (m.header_rms != 0):
       assert approx_equal(map_stats.sigma(), m.header_rms)
-    print
+    print()
 
 def exercise_read_write_defaults(use_mrcfile=True):
   if not use_mrcfile: return
@@ -222,7 +223,7 @@ def exercise_writer(use_mrcfile=None,output_axis_order=[3,2,1]):
       output_axis_order=output_axis_order)
     input_real_map = iotbx.mrcfile.map_reader(file_name="four_five_six.mrc")
     for x in input_real_map.labels:
-      print "LABEL: ",x
+      print("LABEL: ",x)
     assert str(input_real_map.labels).find('extract_unique')>-1
   else:
     iotbx.ccp4_map.write_ccp4_map(
@@ -238,7 +239,7 @@ def exercise_writer(use_mrcfile=None,output_axis_order=[3,2,1]):
   input_map_mmm = input_map_data.as_1d().min_max_mean()
   cc=flex.linear_correlation(real_map_data.as_1d(),input_map_data.as_1d()).coefficient()
   assert cc > 0.999
-  print "\nMRCFILE with 4x5x6 map and axis order %s %s" %(output_axis_order,cc)
+  print("\nMRCFILE with 4x5x6 map and axis order %s %s" %(output_axis_order,cc))
 
   assert approx_equal(input_real_map.unit_cell_parameters,
                       unit_cell.parameters())
@@ -323,7 +324,7 @@ def exercise_writer(use_mrcfile=None,output_axis_order=[3,2,1]):
         space_group=sgtbx.space_group_info("P1").group(),
         map_data=map_box,
         labels=flex.std_string(["iotbx.ccp4_map.tst"]))
-  print "OK"
+  print("OK")
 
 def run(args):
   import iotbx.ccp4_map
@@ -336,7 +337,7 @@ def run(args):
       exercise_writer(use_mrcfile=use_mrcfile,output_axis_order=[2,3,1],)
 
     exercise_crystal_symmetry_from_ccp4_map(use_mrcfile=use_mrcfile)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

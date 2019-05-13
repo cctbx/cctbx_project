@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import time
 import os
 import sys
@@ -53,12 +54,12 @@ def start_coot_and_wait(
     coot_cmd)
   if (rc != 0):
     raise RuntimeError("Launching Coot failed with status %d" % rc)
-  print >> log, "  Waiting for user input at %s" % str(time.asctime())
+  print("  Waiting for user input at %s" % str(time.asctime()), file=log)
   out_file = ".COOT_LIGANDS"
   output_files = output_ccs = None
   while (True):
     if (os.path.isfile(out_file)):
-      print >> log, "  Coot editing complete at %s" % str(time.asctime())
+      print("  Coot editing complete at %s" % str(time.asctime()), file=log)
       ligand_indices = [ int(i) for i in open(out_file).read().split() ]
       output_files = []
       for i in ligand_indices :
@@ -129,7 +130,7 @@ class manager(object):
     selected = []
     for i_lig in range(len(self.ligand_file_info)):
       if (self.model[i_lig][0]):
-        print "  selected ligand %d" % (i_lig+1)
+        print("  selected ligand %d" % (i_lig+1))
         pdb_out = "coot_ligand_out_%d.pdb" % (i_lig+1)
         save_coordinates(self.ligand_imols[i_lig], pdb_out)
         selected.append(str(i_lig))

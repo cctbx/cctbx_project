@@ -5,13 +5,14 @@ Author      : Uervirojnangkoorn, M.
 Created     : 7/11/2016
 Description : Plot stats by post-refinement cycles.
 '''
+from __future__ import print_function
 import matplotlib.pyplot as plt
 import sys
 from six.moves import cPickle as pickle
 
 if len(sys.argv)==1:
-  print 'Use prime.plotstats to view different stats along post-refinement cycles.'
-  print 'Usage: prime.plotstats path/to/run/folder'
+  print('Use prime.plotstats to view different stats along post-refinement cycles.')
+  print('Usage: prime.plotstats path/to/run/folder')
   exit()
 run_no = sys.argv[1]
 stat_pickle = pickle.load(open(run_no+"/pickle.stat","rb"))

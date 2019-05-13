@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.phil
 import iotbx.pdb
 import iotbx.mrcfile
@@ -1220,11 +1221,11 @@ class pdb_info_object:
     self.init_asctime=time.asctime()
 
   def show_summary(self,out=sys.stdout):
-    print >>out,"PDB file:%s" %(self.file_name),
+    print("PDB file:%s" %(self.file_name), end=' ', file=out)
     if self.n_residues:
-      print >>out,"   Residues: %d" %(self.n_residues)
+      print("   Residues: %d" %(self.n_residues), file=out)
     else:
-      print >>out
+      print(file=out)
 
 class seq_info_object:
   def __init__(self,
@@ -1239,11 +1240,11 @@ class seq_info_object:
 
   def show_summary(self,out=sys.stdout):
     if self.file_name:
-      print >>out,"Sequence file:%s" %(self.file_name),
+      print("Sequence file:%s" %(self.file_name), end=' ', file=out)
     if self.n_residues:
-      print >>out,"   Residues: %d" %(self.n_residues)
+      print("   Residues: %d" %(self.n_residues), file=out)
     else:
-      print >>out
+      print(file=out)
 
 
 class ncs_info_object:
@@ -1263,10 +1264,10 @@ class ncs_info_object:
     self._has_updated_operators=False
 
   def show_summary(self,out=sys.stdout):
-    print >>out,"NCS file:%s   Operators: %d" %(self.file_name,
-      self.number_of_operators)
+    print("NCS file:%s   Operators: %d" %(self.file_name,
+      self.number_of_operators), file=out)
     if self.is_helical_symmetry:
-      print >>out,"Helical symmetry is present"
+      print("Helical symmetry is present", file=out)
 
   def has_updated_operators(self):
     return self._has_updated_operators
@@ -1298,23 +1299,23 @@ class map_info_object:
 
   def show_summary(self,out=sys.stdout):
     if self.is_map:
-      print >>out,"Map file:%s" %(self.file_name),
+      print("Map file:%s" %(self.file_name), end=' ', file=out)
     else:
-      print >>out,"Mask file:%s" %(self.file_name),
+      print("Mask file:%s" %(self.file_name), end=' ', file=out)
     if self.id is not None:
-      print >>out,"ID: %d" %(self.id),
+      print("ID: %d" %(self.id), end=' ', file=out)
     if self.b_sharpen is not None:
-      print >>out,"B-sharpen: %7.2f" %(self.b_sharpen),
+      print("B-sharpen: %7.2f" %(self.b_sharpen), end=' ', file=out)
     if self.map_id is not None:
-      print >>out,"Map ID: %s" %(self.map_id)
+      print("Map ID: %s" %(self.map_id), file=out)
     else:
-      print >>out
+      print(file=out)
     if self.origin and self.all:
-      print >>out,"   Origin: %d  %d  %d   Extent: %d  %d  %d" %(
-       tuple(self.origin)+tuple(self.all))
+      print("   Origin: %d  %d  %d   Extent: %d  %d  %d" %(
+       tuple(self.origin)+tuple(self.all)), file=out)
     if self.crystal_symmetry:
-      print >>out,"   Map unit cell: %.1f  %.1f  %.1f    %.1f  %.1f  %.1f " %(
-        self.crystal_symmetry.unit_cell().parameters())
+      print("   Map unit cell: %.1f  %.1f  %.1f    %.1f  %.1f  %.1f " %(
+        self.crystal_symmetry.unit_cell().parameters()), file=out)
 
   def lower_upper_bounds(self):
     lower_bounds=self.origin
@@ -1582,9 +1583,9 @@ class info_object:
 
 
   def show_summary(self,out=sys.stdout):
-    print >>out,"\n==========  Summary of %s: ========\n" %(self.object_type)
-    print >>out,"Created: %s" %(self.init_asctime)
-    print >>out,"\nInput files used:\n"
+    print("\n==========  Summary of %s: ========\n" %(self.object_type), file=out)
+    print("Created: %s" %(self.init_asctime), file=out)
+    print("\nInput files used:\n", file=out)
     if self.input_map_info:
       self.input_map_info.show_summary(out=out)
     if self.input_pdb_info:
@@ -1594,27 +1595,26 @@ class info_object:
     if self.input_seq_info:
       self.input_seq_info.show_summary(out=out)
 
-    print >>out
+    print(file=out)
 
     if self.crystal_symmetry:
-      print >>out,"Working unit cell: %.1f  %.1f  %.1f    %.1f  %.1f  %.1f " %(
-        self.crystal_symmetry.unit_cell().parameters())
+      print("Working unit cell: %.1f  %.1f  %.1f    %.1f  %.1f  %.1f " %(
+        self.crystal_symmetry.unit_cell().parameters()), file=out)
 
     if self.n_residues:
-      print >>out,"Estimated total number of residues: %d" %(self.n_residues)
+      print("Estimated total number of residues: %d" %(self.n_residues), file=out)
 
     if self.solvent_fraction:
-      print >>out,"Estimated solvent fraction: %5.3f" %(self.solvent_fraction)
+      print("Estimated solvent fraction: %5.3f" %(self.solvent_fraction), file=out)
 
     if self.origin_shift and self.origin_shift != (0,0,0):
-      print >>out,\
-      "\nOrigin offset applied: %.1f  %.1f  %.1f" %(self.origin_shift)
+      print("\nOrigin offset applied: %.1f  %.1f  %.1f" %(self.origin_shift), file=out)
     else:
-      print >>out,"\nNo origin offset applied"
+      print("\nNo origin offset applied", file=out)
 
     if self.shifted_map_info:
-      print >>out,"\nShifted/sharpened map, pdb and ncs files created "+\
-         "(after origin offset):\n"
+      print("\nShifted/sharpened map, pdb and ncs files created "+\
+         "(after origin offset):\n", file=out)
       if self.shifted_map_info:
         self.shifted_map_info.show_summary(out=out)
       if self.shifted_pdb_info:
@@ -1623,15 +1623,15 @@ class info_object:
         self.shifted_ncs_info.show_summary(out=out)
 
     if self.output_ncs_au_pdb_info:
-      print >>out,"\nOutput PDB file with dummy atoms representing the NCS AU:"
+      print("\nOutput PDB file with dummy atoms representing the NCS AU:", file=out)
       self.output_ncs_au_pdb_info.show_summary(out=out)
 
     if self.output_ncs_au_mask_info or self.output_ncs_au_map_info:
-      print >>out,"\nOutput map files showing just the NCS AU (same size",
+      print("\nOutput map files showing just the NCS AU (same size", end=' ', file=out)
       if self.origin_shift and self.origin_shift != (0,0,0):
-        print >>out,"\nand location as shifted map files:\n"
+        print("\nand location as shifted map files:\n", file=out)
       else:
-        print >>out,"\nand location as input map:\n"
+        print("\nand location as input map:\n", file=out)
 
       if self.output_ncs_au_mask_info:
         self.output_ncs_au_mask_info.show_summary(out=out)
@@ -1639,12 +1639,12 @@ class info_object:
         self.output_ncs_au_map_info.show_summary(out=out)
 
     if self.output_box_mask_info or self.output_box_map_info:
-      print >>out,"\nOutput cut-out map files trimmed to contain just "+\
-        "the \nNCS AU (superimposed on",
+      print("\nOutput cut-out map files trimmed to contain just "+\
+        "the \nNCS AU (superimposed on", end=' ', file=out)
       if self.origin_shift and self.origin_shift != (0,0,0):
-        print >>out,"shifted map files, note origin offset):\n"
+        print("shifted map files, note origin offset):\n", file=out)
       else:
-        print >>out,"input map, note origin offset):\n"
+        print("input map, note origin offset):\n", file=out)
 
       if self.output_box_mask_info:
         self.output_box_mask_info.show_summary(out=out)
@@ -1652,23 +1652,23 @@ class info_object:
         self.output_box_map_info.show_summary(out=out)
 
     if self.output_region_pdb_info_list:
-      print >>out,"\nOutput PDB files representing one region of connected"+\
+      print("\nOutput PDB files representing one region of connected"+\
         " density.\nThese are useful for marking where to look in cut-out map"+\
-        " files."
+        " files.", file=out)
       for output_region_pdb_info in self.output_region_pdb_info_list:
         output_region_pdb_info.show_summary(out=out)
 
     if self.output_region_map_info_list:
-      print >>out,"\nOutput cut-out map files trimmed to contain just "+\
-        "one region of \nconnected density (superimposed on",
+      print("\nOutput cut-out map files trimmed to contain just "+\
+        "one region of \nconnected density (superimposed on", end=' ', file=out)
       if self.origin_shift and self.origin_shift != (0,0,0):
-        print >>out,"shifted map files, note origin offset):\n"
+        print("shifted map files, note origin offset):\n", file=out)
       else:
-        print >>out," input map, note origin offset):\n"
+        print(" input map, note origin offset):\n", file=out)
       for output_region_map_info in self.output_region_map_info_list:
         output_region_map_info.show_summary(out=out)
 
-    print >>out,"\n"+50*"="+"\n"
+    print("\n"+50*"="+"\n", file=out)
 
 class make_ccp4_map: # just a holder so map_to_structure_factors will run
   def __init__(self,map=None,unit_cell=None):
@@ -1725,8 +1725,8 @@ class box_sharpening_info:
     # (b_eff=8*3.14159**2*U)
     #  rmsd is at least distance between centers, not too much bigger than
     #  unit cell size, typically 10-20 A,
-    print >>out,"\nFall-off of local weight is 1/%6.1f A\n" %(
-       self.smoothing_radius)
+    print("\nFall-off of local weight is 1/%6.1f A\n" %(
+       self.smoothing_radius), file=out)
     u=self.smoothing_radius**2
 
     from cctbx import xray
@@ -2171,80 +2171,80 @@ class sharpening_info:
        'kurtosis':"Map kurtosis",
        'model':"Map-model CC",
       }
-    print >>out,"\nSummary of sharpening:\n"
+    print("\nSummary of sharpening:\n", file=out)
 
-    print >>out,"Sharpening method used:         %s\n" %(
-       method_summary_dict.get(self.sharpening_method))
+    print("Sharpening method used:         %s\n" %(
+       method_summary_dict.get(self.sharpening_method)), file=out)
 
     if self.sharpening_method=="b_iso":
       if self.b_sharpen is not None:
-        print >>out,"Overall b_sharpen applied:      %7.2f A**2" %(
-          self.b_sharpen)
+        print("Overall b_sharpen applied:      %7.2f A**2" %(
+          self.b_sharpen), file=out)
       if self.b_iso is not None:
-        print >>out,"Final b_iso obtained:           %7.2f A**2" %(self.b_iso)
+        print("Final b_iso obtained:           %7.2f A**2" %(self.b_iso), file=out)
     elif self.sharpening_method=="b_iso_to_d_cut":
       if self.b_sharpen is not None:
-        print >>out,"Overall b_sharpen applied:      %7.2f A**2" %(
-          self.b_sharpen)
+        print("Overall b_sharpen applied:      %7.2f A**2" %(
+          self.b_sharpen), file=out)
       if self.b_iso is not None:
-        print >>out,"Final b_iso obtained:           %7.2f A**2" %(self.b_iso)
+        print("Final b_iso obtained:           %7.2f A**2" %(self.b_iso), file=out)
       if self.input_d_cut:
-        print >>out,"High-resolution cutoff:         %7.2f A" %(self.input_d_cut)
+        print("High-resolution cutoff:         %7.2f A" %(self.input_d_cut), file=out)
       else:
-        print >>out,"High-resolution cutoff:         %7.2f A" %(self.resolution)
+        print("High-resolution cutoff:         %7.2f A" %(self.resolution), file=out)
     elif self.sharpening_method=="resolution_dependent":
-      print >>out,"Resolution-dependent b values (%7.2f,%7.2f,%7.2f)\n" %(
-        tuple(self.resolution_dependent_b))
+      print("Resolution-dependent b values (%7.2f,%7.2f,%7.2f)\n" %(
+        tuple(self.resolution_dependent_b)), file=out)
 
-      print >>out,"Effective b_iso vs resolution obtained:"
+      print("Effective b_iso vs resolution obtained:", file=out)
       from cctbx.maptbx.refine_sharpening import get_effective_b_values
       d_min_values,b_values=get_effective_b_values(
         d_min_ratio=self.d_min_ratio,
          resolution_dependent_b=self.resolution_dependent_b,
          resolution=self.resolution)
-      print >>out,"                                Resolution  Effective B-iso"
-      print >>out,"                                    (A)         (A**2)"
+      print("                                Resolution  Effective B-iso", file=out)
+      print("                                    (A)         (A**2)", file=out)
       for dd,b in zip(d_min_values,b_values):
-        print >>out,"                                 %7.1f       %7.2f " %(
-         dd,b)
+        print("                                 %7.1f       %7.2f " %(
+         dd,b), file=out)
 
     elif self.sharpening_method=="model_sharpening":
-      print >>out,"Resolution-dependent model sharpening"
-      print >>out,"Scale vs resolution:"
+      print("Resolution-dependent model sharpening", file=out)
+      print("Scale vs resolution:", file=out)
       for d_min,sc in zip(
         self.d_min_list,
         self.target_scale_factors):
-        print >>out,"Dmin: %7.2f  Scale: %9.6f" %(d_min,sc)
+        print("Dmin: %7.2f  Scale: %9.6f" %(d_min,sc), file=out)
 
     elif self.sharpening_method=="half_map_sharpening":
-      print >>out,"Resolution-dependent half-map sharpening"
+      print("Resolution-dependent half-map sharpening", file=out)
       if self.d_min_list and self.target_scale_factors:
-        print >>out,"Scale vs resolution:"
+        print("Scale vs resolution:", file=out)
         for d_min,sc in zip(
           self.d_min_list,
           self.target_scale_factors):
-          print >>out,"Dmin: %7.2f  Scale: %9.6f" %(d_min,sc)
+          print("Dmin: %7.2f  Scale: %9.6f" %(d_min,sc), file=out)
 
     if self.sharpening_method in ["b_iso_to_d_cut"] and \
       self.k_sharpen and self.resolution:
-        print >>out,"Transition from sharpening"+\
-        " to not sharpening (k_sharpen):%7.2f " %(self.k_sharpen)
+        print("Transition from sharpening"+\
+        " to not sharpening (k_sharpen):%7.2f " %(self.k_sharpen), file=out)
 
-    print >>out,"\nSharpening target used:         %s" %(
-       target_summary_dict.get(self.sharpening_target))
+    print("\nSharpening target used:         %s" %(
+       target_summary_dict.get(self.sharpening_target)), file=out)
     if self.adjusted_sa is not None:
-      print >>out,"Final adjusted map surface area:  %7.2f" %(self.adjusted_sa)
+      print("Final adjusted map surface area:  %7.2f" %(self.adjusted_sa), file=out)
     if self.kurtosis is not None:
-      print >>out,"Final map kurtosis:               %7.2f" %(self.kurtosis)
+      print("Final map kurtosis:               %7.2f" %(self.kurtosis), file=out)
 
-    print >>out
+    print(file=out)
 
     if verbose:
       for x in dir(self):
         if x.startswith("__"): continue
         if type(getattr(self,x)) in [type('a'),type(1),type(1.),type([]),
           type((1,2,))]:
-          print >>out,"%s : %s" %(x,getattr(self,x))
+          print("%s : %s" %(x,getattr(self,x)), file=out)
 
   def get_effective_b_iso(self,map_data=None,out=sys.stdout):
     map_coeffs_ra,map_coeffs,f_array,phases=effective_b_iso(
@@ -2272,9 +2272,8 @@ class sharpening_info:
     return self
 
   def show_score(self,out=sys.stdout):
-    print >>out,\
-       "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
-       self.adjusted_sa,self.kurtosis,self.score)
+    print("Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
+       self.adjusted_sa,self.kurtosis,self.score), file=out)
 
   def is_target_b_iso_to_d_cut(self):
     if self.sharpening_method=='target_b_iso_to_d_cut':
@@ -2403,10 +2402,10 @@ def scale_map(map,scale_rms=1.0,out=sys.stdout):
     sd=map.as_double().as_1d().sample_standard_deviation()
     if (sd > 1.e-10):
       scale=scale_rms/sd
-      if 0: print >>out,"Scaling map by %7.3f to set SD=1" %(scale)
+      if 0: print("Scaling map by %7.3f to set SD=1" %(scale), file=out)
       map=map*scale
     else:
-      print >>out,"Cannot scale map...all zeros"
+      print("Cannot scale map...all zeros", file=out)
     return map
 
 def scale_map_coeffs(map_coeffs,scale_max=None,out=sys.stdout):
@@ -2417,8 +2416,8 @@ def scale_map_coeffs(map_coeffs,scale_max=None,out=sys.stdout):
   else:
     scale=1.0
   if 0:
-    print >>out,"Scaling map_coeffs by %9.3f to yield maximum of %7.0f" %(
-     scale,scale_max)
+    print("Scaling map_coeffs by %9.3f to yield maximum of %7.0f" %(
+     scale,scale_max), file=out)
   return f_array.array(data=f_array.data()*scale
        ).phase_transfer(phase_source=phases, deg=True)
 
@@ -2437,19 +2436,19 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
   else:
     from iotbx import mrcfile
     m = mrcfile.map_reader(file_name=file_name)
-    print >>out,"MIN MAX MEAN RMS of map: %7.2f %7.2f  %7.2f  %7.2f " %(
-      m.header_min, m.header_max, m.header_mean, m.header_rms)
-    print >>out,"grid: ",m.unit_cell_grid
-    print >>out,"cell:  %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f  " %tuple(
-       m.unit_cell_parameters)
-    print >>out,"SG: ",m.space_group_number
+    print("MIN MAX MEAN RMS of map: %7.2f %7.2f  %7.2f  %7.2f " %(
+      m.header_min, m.header_max, m.header_mean, m.header_rms), file=out)
+    print("grid: ",m.unit_cell_grid, file=out)
+    print("cell:  %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f  " %tuple(
+       m.unit_cell_parameters), file=out)
+    print("SG: ",m.space_group_number, file=out)
     if must_allow_sharpening and m.cannot_be_sharpened():
       raise Sorry("Input map is already modified and should not be sharpened")
     if get_map_labels:
       map_labels=m.labels
-  print >>out,"ORIGIN: ",m.data.origin()
-  print >>out,"EXTENT: ",m.data.all()
-  print >>out,"IS PADDED: ",m.data.is_padded()
+  print("ORIGIN: ",m.data.origin(), file=out)
+  print("EXTENT: ",m.data.all(), file=out)
+  print("IS PADDED: ",m.data.is_padded(), file=out)
 
   map_data=m.data
   acc=map_data.accessor()
@@ -2500,10 +2499,10 @@ def get_map_object(file_name=None,must_allow_sharpening=None,
       unit_cell=unit_cell,space_group_info=space_group_info)
     if original_crystal_symmetry and map.all()==m.unit_cell_grid:
       crystal_symmetry=original_crystal_symmetry
-      print >>out, "\nUnit cell crystal symmetry used: "
+      print("\nUnit cell crystal symmetry used: ", file=out)
     else:
       crystal_symmetry=m.crystal_symmetry()
-      print >>out, "\nBox crystal symmetry used: "
+      print("\nBox crystal symmetry used: ", file=out)
     crystal_symmetry.show_summary(f=out)
     space_group=crystal_symmetry.space_group()
     unit_cell=crystal_symmetry.unit_cell()
@@ -2574,9 +2573,9 @@ def write_xrs(xrs=None,scatterers=None,file_name="atoms.pdb",out=sys.stdout):
   text=xrs.as_pdb_file()
   if file_name:
     f=open(file_name,'w')
-    print >>f,text
+    print(text, file=f)
     f.close()
-    print >>out,"Atoms written to %s" %file_name
+    print("Atoms written to %s" %file_name, file=out)
   return text
 
 def get_b_iso(miller_array,d_min=None,return_aniso_scale_and_b=False,
@@ -2622,13 +2621,13 @@ def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
      k_sol=None, b_sol=None, out=sys.stdout):
   xray_structure=pdb_inp.construct_hierarchy().extract_xray_structure(
      crystal_symmetry=f_array.crystal_symmetry())
-  print >>out,"Getting map coeffs from model with %s atoms.." %(
-    xray_structure.sites_frac().size())
+  print("Getting map coeffs from model with %s atoms.." %(
+    xray_structure.sites_frac().size()), file=out)
 
 
   if overall_b is not None:
-    print >>out,"Setting overall b_iso to %7.1f for model " %(
-      overall_b)
+    print("Setting overall b_iso to %7.1f for model " %(
+      overall_b), file=out)
     xray_structure.set_b_iso(value=overall_b)
   model_f_array=f_array.structure_factors_from_scatterers(
       xray_structure = xray_structure).f_calc()
@@ -2667,7 +2666,7 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
     map_coeffs=scale_map_coeffs(map_coeffs,scale_max=scale_max,out=out)
 
     if remove_aniso:
-      print >>out,"\nRemoving aniso in data before analysis\n"
+      print("\nRemoving aniso in data before analysis\n", file=out)
       get_remove_aniso_object=True
 
     from cctbx.maptbx.refine_sharpening import analyze_aniso
@@ -2708,7 +2707,7 @@ def apply_sharpening(map_coeffs=None,
 
     if target_scale_factors:
       assert sharpening_info_obj is not None
-      print >>out,"\nApplying target scale factors vs resolution"
+      print("\nApplying target scale factors vs resolution", file=out)
       if not map_coeffs:
         map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True)
       f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
@@ -2774,8 +2773,8 @@ def apply_sharpening(map_coeffs=None,
       f_array_sharpened=f_array.customized_copy(data=data_array)
 
     actual_b_iso=get_b_iso(f_array_sharpened,d_min=d_min)
-    print >>out, "B-iso after sharpening by b_sharpen=%6.1f is %7.2f\n" %(
-      b_sharpen,actual_b_iso)
+    print("B-iso after sharpening by b_sharpen=%6.1f is %7.2f\n" %(
+      b_sharpen,actual_b_iso), file=out)
     sharpened_map_coeffs=f_array_sharpened.phase_transfer(
       phase_source=phases,deg=True)
 
@@ -2837,12 +2836,12 @@ def find_symmetry_center(map_data,crystal_symmetry=None,out=sys.stdout):
       centroid_w[ai]+=mean_value
     if centroid_w[ai]>0:
       centroid_wx[ai]=centroid_wx[ai]/centroid_w[ai]
-  print >>out,"CENTROID OF DENSITY: (%7.2f, %7.2f, %7.2f) (grid units) " %(
-    tuple((centroid_wx[0],centroid_wx[1],centroid_wx[2],)))
+  print("CENTROID OF DENSITY: (%7.2f, %7.2f, %7.2f) (grid units) " %(
+    tuple((centroid_wx[0],centroid_wx[1],centroid_wx[2],))), file=out)
   xyz_fract=matrix.col((centroid_wx[0]/all[0],centroid_wx[1]/all[1],centroid_wx[2]/all[2],))
   xyz_cart=crystal_symmetry.unit_cell().orthogonalize(xyz_fract)
-  print >>out,"CENTROID (A): (%7.3f, %7.3f, %7.3f) " %(
-    tuple(xyz_cart))
+  print("CENTROID (A): (%7.3f, %7.3f, %7.3f) " %(
+    tuple(xyz_cart)), file=out)
   return xyz_cart
 
 def get_center_of_map(map_data,crystal_symmetry):
@@ -3020,24 +3019,23 @@ def get_ncs_from_map(params=None,
   if optimize_center is None:
     if symmetry_center is None and (not use_center_of_map_as_center):
       optimize_center=True
-      print >>out,\
-        "Setting optimize_center=True as no symmetry_center is supplied"
+      print("Setting optimize_center=True as no symmetry_center is supplied", file=out)
     else:
       optimize_center=False
 
   if symmetry_center is not None:
     symmetry_center=matrix.col(symmetry_center)
   elif use_center_of_map_as_center:
-    print >>out,"Using center of map as NCS center"
+    print("Using center of map as NCS center", file=out)
     symmetry_center=map_symmetry_center
   else: # Find it
     if not ncs_obj_to_check:
-      print >>out,"Finding NCS center as it is not supplied"
+      print("Finding NCS center as it is not supplied", file=out)
     symmetry_center=find_symmetry_center(
     map_data,crystal_symmetry=crystal_symmetry,
        out=out)
-  print >>out,"Center of NCS (A): (%7.3f, %7.3f, %7.3f) " %(
-    tuple(symmetry_center))
+  print("Center of NCS (A): (%7.3f, %7.3f, %7.3f) " %(
+    tuple(symmetry_center)), file=out)
 
   ncs_list=get_ncs_list(params=params,
     symmetry=symmetry,
@@ -3052,7 +3050,7 @@ def get_ncs_from_map(params=None,
    out=out,
    )
 
-  print >>out,"Total of %d NCS types to examine..." %(len(ncs_list))
+  print("Total of %d NCS types to examine..." %(len(ncs_list)), file=out)
   if not sites_orth:
     sites_orth=get_points_in_map(
      map_data,n=random_points,crystal_symmetry=crystal_symmetry)
@@ -3070,7 +3068,7 @@ def get_ncs_from_map(params=None,
     if cc_avg < min_ncs_cc:
       score=0. # Do not allow low CC values to be used
     if score is None:
-      print >>out,"symmetry:",symmetry," no score",ncs_obj.max_operators()
+      print("symmetry:",symmetry," no score",ncs_obj.max_operators(), file=out)
     else:
       results_list.append([score,cc_avg,ncs_obj,symmetry])
   if not results_list:
@@ -3081,7 +3079,7 @@ def get_ncs_from_map(params=None,
 
   # Rescore top n_rescore
   if n_rescore and not ncs_obj_to_check:
-    print >>out,"Rescoring top %d results" %(min(n_rescore,len(results_list)))
+    print("Rescoring top %d results" %(min(n_rescore,len(results_list))), file=out)
     rescore_list=results_list[n_rescore:]
     new_sites_orth=get_points_in_map(
       map_data,n=10*random_points,crystal_symmetry=crystal_symmetry)
@@ -3094,7 +3092,7 @@ def get_ncs_from_map(params=None,
       if cc_avg < min_ncs_cc:
         score=0. # Do not allow low CC values to be used
       if score is None:
-        print >>out,"symmetry:",symmetry," no score",ncs_obj.max_operators()
+        print("symmetry:",symmetry," no score",ncs_obj.max_operators(), file=out)
       else:
         rescore_list.append([score,cc_avg,ncs_obj,symmetry])
     rescore_list.sort()
@@ -3109,18 +3107,18 @@ def get_ncs_from_map(params=None,
       results_list=[[score,cc_avg,ncs_obj,symmetry],]
 
 
-  print >>out,"Ranking of NCS types:"
+  print("Ranking of NCS types:", file=out)
   if min_ncs_cc is not None:
-    print >>out,"NOTE: any NCS type with CC < %.2f (min_ncs_cc) is unscored " %(
-      min_ncs_cc)
-  print >>out,"\n  SCORE    CC   OPERATORS     SYMMETRY"
+    print("NOTE: any NCS type with CC < %.2f (min_ncs_cc) is unscored " %(
+      min_ncs_cc), file=out)
+  print("\n  SCORE    CC   OPERATORS     SYMMETRY", file=out)
   for score,cc_avg,ncs_obj,symmetry in results_list:
     if not symmetry: symmetry=""
     if not cc_avg: cc_avg=0.0
 
 
-    print >>out," %6.2f  %5.2f    %2d          %s" %(
-       score,cc_avg,ncs_obj.max_operators(), symmetry.strip(),)
+    print(" %6.2f  %5.2f    %2d          %s" %(
+       score,cc_avg,ncs_obj.max_operators(), symmetry.strip(),), file=out)
 
   score,cc_avg,ncs_obj,ncs_info=results_list[0]
 
@@ -3139,17 +3137,17 @@ def get_ncs_from_map(params=None,
        ncs_obj_to_check=ncs_obj_to_check,
        ncs_in_cell_only=ncs_in_cell_only,
        helical_trans_z_angstrom=helical_trans_z_angstrom,out=out)
-    print >>out,"New center: (%7.3f, %7.3f, %7.3f)" %(tuple(symmetry_center))
+    print("New center: (%7.3f, %7.3f, %7.3f)" %(tuple(symmetry_center)), file=out)
 
   if cc_avg < min_ncs_cc:
-    print >>out,"No suitable symmetry found"
+    print("No suitable symmetry found", file=out)
     return None,None,None
 
-  print >>out,"\nBest NCS type is: ",
-  print >>out,"\n  SCORE    CC   OPERATORS     SYMMETRY"
+  print("\nBest NCS type is: ", end=' ', file=out)
+  print("\n  SCORE    CC   OPERATORS     SYMMETRY", file=out)
   if not ncs_info: ncs_info=""
-  print >>out," %6.2f  %5.2f    %2d          %s  Best NCS type" %(
-       score,cc_avg,ncs_obj.max_operators(), ncs_info.strip(),)
+  print(" %6.2f  %5.2f    %2d          %s  Best NCS type" %(
+       score,cc_avg,ncs_obj.max_operators(), ncs_info.strip(),), file=out)
   return ncs_obj,cc_avg,score
 
 
@@ -3168,7 +3166,7 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
   if ncs_info is None:
     ncs_info="None"
   symmetry=ncs_info.split()[0]
-  print >>out,"Optimizing center position...type is %s" %(ncs_info)
+  print("Optimizing center position...type is %s" %(ncs_info), file=out)
 
   if len(ncs_info.split())>1 and ncs_info.split()[1]=='(a)':
     two_fold_along_x=True
@@ -3181,7 +3179,7 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
   best_ncs_obj=ncs_obj
   best_score=score
   best_cc_avg=cc_avg
-  print >>out,"Starting center: (%7.3f, %7.3f, %7.3f)" %(tuple(best_center))
+  print("Starting center: (%7.3f, %7.3f, %7.3f)" %(tuple(best_center)), file=out)
   from libtbx.utils import null_out
   scale=5.
   for itry in xrange(6):
@@ -3439,7 +3437,7 @@ def get_ncs_list(params=None,symmetry=None,
         ncs_list.append(ncs_object)
 
   if symmetry_center and tuple(symmetry_center) != (0,0,0,):
-    print >>out,"Offsetting NCS center by (%.2f, %.2f, %.2f) A " %(tuple(symmetry_center))
+    print("Offsetting NCS center by (%.2f, %.2f, %.2f) A " %(tuple(symmetry_center)), file=out)
     new_list=[]
     for ncs_obj in ncs_list:
       new_list.append(ncs_obj.coordinate_offset(coordinate_offset=symmetry_center))
@@ -3464,10 +3462,9 @@ def find_helical_symmetry(params=None,
     params.reconstruction_symmetry.smallest_object=\
       5*params.crystal_info.resolution
 
-  print >>out,\
-    "\nLooking for helical symmetry with center at (%.2f, %.2f, %.2f) A\n" %(
-      tuple(symmetry_center))
-  print >>out,"\nFinding likely translations along z..."
+  print("\nLooking for helical symmetry with center at (%.2f, %.2f, %.2f) A\n" %(
+      tuple(symmetry_center)), file=out)
+  print("\nFinding likely translations along z...", file=out)
 
   map_coeffs,dummy=get_f_phases_from_map(map_data=map_data,
        crystal_symmetry=crystal_symmetry,
@@ -3506,8 +3503,8 @@ def find_helical_symmetry(params=None,
      (180./3.141659)*params.crystal_info.resolution/max_z)
 
   delta_z=params.crystal_info.resolution/4.
-  print >>out,"\nOptimizing helical paramers:"
-  print >>out,"\n Rot   Trans  Score    CC"
+  print("\nOptimizing helical paramers:", file=out)
+  print("\n Rot   Trans  Score    CC", file=out)
 
   n_rotations=int(0.5+360/delta_rot)
   rotations=[]
@@ -3553,13 +3550,13 @@ def find_helical_symmetry(params=None,
         ncs_cc > 2*params.reconstruction_symmetry.min_ncs_cc or \
         (quick and (ncs_cc> 0.90 or
          ncs_cc > 1.5*params.reconstruction_symmetry.min_ncs_cc)):
-        print >>out," %.2f   %.2f   %.2f   %.2f (ok to go on)" %(
+        print(" %.2f   %.2f   %.2f   %.2f (ok to go on)" %(
            new_helical_rot_deg,new_helical_trans_z_angstrom,
-           ncs_score,ncs_cc)
+           ncs_score,ncs_cc), file=out)
         done=True
       if params.control.verbose:
-        print >>out," %.2f   %.2f   %.2f   %.2f" %(
-          new_helical_rot_deg,new_helical_trans_z_angstrom,ncs_score,ncs_cc)
+        print(" %.2f   %.2f   %.2f   %.2f" %(
+          new_helical_rot_deg,new_helical_trans_z_angstrom,ncs_score,ncs_cc), file=out)
       score_list.append(
        [ncs_score,ncs_cc,new_helical_rot_deg,new_helical_trans_z_angstrom])
     score_list.sort()
@@ -3598,9 +3595,9 @@ def find_helical_symmetry(params=None,
           best_ncs_cc > 1.5*params.reconstruction_symmetry.min_ncs_cc or \
           ( (quick or n_try>1) and \
              ncs_cc>=params.reconstruction_symmetry.min_ncs_cc):
-        print >>out," %.2f   %.2f   %.2f   %.2f (high enough to go on)" %(
+        print(" %.2f   %.2f   %.2f   %.2f (high enough to go on)" %(
            best_helical_rot_deg,best_helical_trans_z_angstrom,
-           best_score,best_ncs_cc)
+           best_score,best_ncs_cc), file=out)
 
 
         done=True
@@ -3608,7 +3605,7 @@ def find_helical_symmetry(params=None,
   # Optimize one more time trying fractional values, but only if
   #  that makes the delta less than the resolution
 
-  print >>out,"\nTrying fraction of rot/trans"
+  print("\nTrying fraction of rot/trans", file=out)
   for iter in [0,1]:
     if not best_helical_rot_deg: continue
     for ifract in xrange(2,11):
@@ -3647,13 +3644,13 @@ def find_helical_symmetry(params=None,
           best_score=new_ncs_score
           best_helical_trans_z_angstrom=new_helical_trans_z_angstrom
           best_helical_rot_deg=new_helical_rot_deg
-          print >>out," %.2f   %.2f   %.2f   %.2f (improved fractions)" %(
+          print(" %.2f   %.2f   %.2f   %.2f (improved fractions)" %(
              best_helical_rot_deg,best_helical_trans_z_angstrom,
-             best_score,best_ncs_cc)
+             best_score,best_ncs_cc), file=out)
         else:
-          print >>out," %.2f   %.2f   %.2f   %.2f (worse with fractions)" %(
+          print(" %.2f   %.2f   %.2f   %.2f (worse with fractions)" %(
              new_helical_rot_deg,new_helical_trans_z_angstrom,
-             new_ncs_score,new_ncs_cc)
+             new_ncs_score,new_ncs_cc), file=out)
 
 
   # Optimize one more time trying multiples of values to get better param
@@ -3673,7 +3670,7 @@ def find_helical_symmetry(params=None,
     imult=0
 
   if imult > 1:
-    print >>out,"\nTrying %sx multiples of rot/trans" %(imult)
+    print("\nTrying %sx multiples of rot/trans" %(imult), file=out)
     improved=False
     for iter in [1,2,3]:
       if iter > 1 and not improved: break
@@ -3699,9 +3696,9 @@ def find_helical_symmetry(params=None,
           working_score=new_ncs_score
           working_helical_trans_z_angstrom=new_helical_trans_z_angstrom
           working_helical_rot_deg=new_helical_rot_deg
-          print >>out," %.2f   %.2f   %.2f   %.2f (Scoring for multiple)" %(
+          print(" %.2f   %.2f   %.2f   %.2f (Scoring for multiple)" %(
                working_helical_rot_deg,working_helical_trans_z_angstrom,
-               working_score,working_ncs_cc)
+               working_score,working_ncs_cc), file=out)
 
       #  and rescore with this:
       working_helical_rot_deg=working_helical_rot_deg/imult
@@ -3727,15 +3724,15 @@ def find_helical_symmetry(params=None,
             new_helical_trans_z_angstrom,new_helical_rot_deg
           if best_score is None or working_ncs_score > best_score:
             if params.control.verbose:
-              print >>out,"\nTaking parameters from multiples"
+              print("\nTaking parameters from multiples", file=out)
             best_ncs_cc=working_ncs_cc
             best_ncs_obj=working_ncs_obj
             best_score=working_ncs_score
             best_helical_trans_z_angstrom=working_helical_trans_z_angstrom
             best_helical_rot_deg=working_helical_rot_deg
-            print >>out," %.2f   %.2f   %.2f   %.2f (improved by multiples)" %(
+            print(" %.2f   %.2f   %.2f   %.2f (improved by multiples)" %(
                best_helical_rot_deg,best_helical_trans_z_angstrom,
-               best_score,best_ncs_cc)
+               best_score,best_ncs_cc), file=out)
             improved=True
 
             working_ncs_cc=best_ncs_cc
@@ -3748,9 +3745,9 @@ def find_helical_symmetry(params=None,
   if best_helical_rot_deg and best_helical_trans_z_angstrom and best_score and best_ncs_cc:
     # Check to make sure there is no overlap
 
-    print >>out," %.2f   %.2f   %.2f   %.2f (Final)" %(
+    print(" %.2f   %.2f   %.2f   %.2f (Final)" %(
      best_helical_rot_deg,best_helical_trans_z_angstrom,\
-         best_score,best_ncs_cc)
+         best_score,best_ncs_cc), file=out)
 
     from mmtbx.ncs.ncs import get_helical_symmetry
 
@@ -3830,8 +3827,8 @@ def try_helical_params(
   if optimize and (best_score is None or best_ncs_score > best_score):
     # try with few to many operators..
     if params.control.verbose:
-      print >>out,"\nOptimizing by varying number of operators"
-      print >>out,"Starting score: %.2f" %(working_ncs_score)
+      print("\nOptimizing by varying number of operators", file=out)
+      print("Starting score: %.2f" %(working_ncs_score), file=out)
     for k in xrange(optimize):
      local_params.reconstruction_symmetry.max_helical_ops_to_check=min(k+1,
       params.reconstruction_symmetry.max_helical_ops_to_check)
@@ -3854,9 +3851,9 @@ def try_helical_params(
         if new_ncs_score and new_ncs_score>0 and (
             best_score is None or new_ncs_score>best_score):
           if params.control.verbose:
-            print >>out,"Working score for %s ops: %.2f" %(
+            print("Working score for %s ops: %.2f" %(
               local_params.reconstruction_symmetry.max_helical_ops_to_check,
-              new_ncs_score)
+              new_ncs_score), file=out)
           best_score=new_ncs_score
           best_ncs_score=new_ncs_score
           best_helical_trans_z_angstrom=new_helical_trans_z_angstrom
@@ -3871,8 +3868,8 @@ def try_helical_params(
     local_params.reconstruction_symmetry.max_helical_ops_to_check=\
        params.reconstruction_symmetry.max_helical_ops_to_check
     if params.control.verbose:
-      print >>out,"Rescoring with original number of operators (%s)" %(
-        local_params.reconstruction_symmetry.max_helical_ops_to_check)
+      print("Rescoring with original number of operators (%s)" %(
+        local_params.reconstruction_symmetry.max_helical_ops_to_check), file=out)
     local_params.reconstruction_symmetry.helical_rot_deg=best_helical_rot_deg
     local_params.reconstruction_symmetry.helical_trans_z_angstrom=\
       best_helical_trans_z_angstrom
@@ -3889,13 +3886,13 @@ def try_helical_params(
     # now take it if better
     if best_ncs_cc and best_ncs_cc>working_ncs_cc:
       if params.control.verbose:
-        print >>out,"Using optimized values (%.2f > %.2f)" %(
-         best_ncs_cc,working_ncs_cc)
+        print("Using optimized values (%.2f > %.2f)" %(
+         best_ncs_cc,working_ncs_cc), file=out)
       # keep these (best)
     else:
       if params.control.verbose:
-        print >>out,"Rejecting optimized values (%.2f <= %.2f)" %(
-         best_ncs_cc,working_ncs_cc)
+        print("Rejecting optimized values (%.2f <= %.2f)" %(
+         best_ncs_cc,working_ncs_cc), file=out)
 
       # resture working values
       best_helical_trans_z_angstrom,best_helical_rot_deg=\
@@ -3941,12 +3938,12 @@ def get_helical_trans_z_angstrom(params=None,
   max_z=flex.double(crystal_symmetry.unit_cell().parameters()[:3]).min_max_mean().max
 
   if params.control.verbose:
-    print >>out,"Values along c*: "
+    print("Values along c*: ", file=out)
   d_list,value_list=get_d_and_value_list(c_star_list)
 
   for d,value in zip(d_list,value_list):
     if params.control.verbose:
-      print >>out," %.2f A : %.2f " %(d,value)
+      print(" %.2f A : %.2f " %(d,value), file=out)
 
   d_list,value_list=get_max_min_list(
      d_list=d_list,value_list=value_list,minimum_ratio=1.0)
@@ -3973,10 +3970,10 @@ def get_helical_trans_z_angstrom(params=None,
       likely_z_translations_local.append(z)
       likely_z_translations.append(z)
 
-  print >>out,"\nMaximal values along c* and likely z-translations: "
+  print("\nMaximal values along c* and likely z-translations: ", file=out)
   for z in likely_z_translations:
-    print >>out," %.2f A " %(z),
-  print >>out
+    print(" %.2f A " %(z), end=' ', file=out)
+  print(file=out)
   return likely_z_translations
 
 def small_deltas(z_translations,dis_min=None):
@@ -4056,7 +4053,7 @@ def get_mask_around_molecule(map_data=None,
       map_as_double=map_data,
       out=out)
   except Exception,e:
-    print >>out,"No mask obtained..."
+    print("No mask obtained...", file=out)
     return None,None
 
   # Now expand the mask to increase molecular region
@@ -4066,14 +4063,13 @@ def get_mask_around_molecule(map_data=None,
        expand_target=buffer_radius,
        out=out)
 
-  print >>out,\
-    "Target mask expand size is %d based on buffer_radius of %7.1f A" %(
-     expand_size,buffer_radius)
+  print("Target mask expand size is %d based on buffer_radius of %7.1f A" %(
+     expand_size,buffer_radius), file=out)
 
   co,sorted_by_volume,min_b,max_b=get_co(map_data=mask,
      threshold=0.5,wrapping=False)
   masked_fraction=sorted_by_volume[1][0]/mask.size()
-  print >>out,"\nMasked fraction before buffering: %7.2f" %(masked_fraction)
+  print("\nMasked fraction before buffering: %7.2f" %(masked_fraction), file=out)
 
   s=None
   for v1,i1 in sorted_by_volume[1:]:
@@ -4086,7 +4082,7 @@ def get_mask_around_molecule(map_data=None,
   mask.set_selected(s,1)
   mask.set_selected(~s,0)
   masked_fraction=mask.count(1)/mask.size()
-  print >>out,"Masked fraction after buffering:  %7.2f" %(masked_fraction)
+  print("Masked fraction after buffering:  %7.2f" %(masked_fraction), file=out)
   return mask.as_double(),solvent_fraction
 
 def get_mean_in_and_out(sel=None,
@@ -4107,9 +4103,8 @@ def get_mean_in_and_out(sel=None,
   if mean_value_in is None:
     mean_value_in=mean_value_out
   if verbose:
-    print >>out,\
-     "\nMean inside mask: %7.2f  Outside mask: %7.2f  Fraction in: %7.2f" %(
-     mean_value_in,mean_value_out,fraction_in)
+    print("\nMean inside mask: %7.2f  Outside mask: %7.2f  Fraction in: %7.2f" %(
+     mean_value_in,mean_value_out,fraction_in), file=out)
   return mean_value_in,mean_value_out,fraction_in
 
 def get_mean_in_or_out(sel=None,
@@ -4145,12 +4140,12 @@ def apply_soft_mask(map_data=None,
 
   # get mean inside or outside mask
   if verbose:
-    print >>out,"\nStarting map values inside and outside mask:"
+    print("\nStarting map values inside and outside mask:", file=out)
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
     verbose=verbose,map_data=map_data, out=out)
 
   if verbose:
-    print >>out,"\nMask inside and outside values"
+    print("\nMask inside and outside values", file=out)
   mask_mean_value_in,mask_mean_value_out,mask_fraction_in=get_mean_in_and_out(
       sel=s,map_data=mask_data, verbose=verbose,out=out)
 
@@ -4159,7 +4154,7 @@ def apply_soft_mask(map_data=None,
   mask_data = mask_data.set_selected( s, 1)
   if mask_data.count(1)  and mask_data.count(0): # something to do
     if verbose:
-      print >>out,"Smoothing mask..."
+      print("Smoothing mask...", file=out)
     maptbx.unpad_in_place(map=mask_data)
     mask_data = maptbx.smooth_map(
       map              = mask_data,
@@ -4171,14 +4166,14 @@ def apply_soft_mask(map_data=None,
     if max_mask_data_value > 1.e-30 and max_mask_data_value!=1.0:
       mask_data=mask_data*(1./max_mask_data_value)
       if verbose:
-        print >>out,"Scaling mask by %.2f to yield maximum of 1.0 " %(
-           1./max_mask_data_value)
+        print("Scaling mask by %.2f to yield maximum of 1.0 " %(
+           1./max_mask_data_value), file=out)
   else:
     if verbose:
-      print >>out,"Not smoothing mask that is a constant..."
+      print("Not smoothing mask that is a constant...", file=out)
 
   if verbose:
-    print >>out,"\nSmoothed mask inside and outside values"
+    print("\nSmoothed mask inside and outside values", file=out)
   smoothed_mean_value_in,smoothed_mean_value_out,smoothed_fraction_in=\
      get_mean_in_and_out(sel=s,map_data=mask_data, verbose=verbose,out=out)
 
@@ -4189,13 +4184,13 @@ def apply_soft_mask(map_data=None,
   if set_outside_to_mean_inside or mean_value_out is None:
     target_value_for_outside=mean_value_in
     if verbose:
-      print >>out,"Setting value outside mask to mean inside (%.2f)" %(
-      target_value_for_outside)
+      print("Setting value outside mask to mean inside (%.2f)" %(
+      target_value_for_outside), file=out)
   else:
     target_value_for_outside=mean_value_out
     if verbose:
-      print >>out,"Setting value outside mask to mean outside (%.2f)" %(
-        target_value_for_outside)
+      print("Setting value outside mask to mean outside (%.2f)" %(
+        target_value_for_outside), file=out)
   set_to_mean=mask_data.deep_copy()
   ss = set_to_mean > -1.e+30 # select everything
   set_to_mean.set_selected(ss, target_value_for_outside)
@@ -4206,7 +4201,7 @@ def apply_soft_mask(map_data=None,
     masked_map=masked_map - masked_map.as_1d().min_max_mean().mean
 
   if verbose:
-    print >>out,"\nFinal mean value inside and outside mask:"
+    print("\nFinal mean value inside and outside mask:", file=out)
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
     map_data=masked_map, verbose=verbose,out=out)
 
@@ -4224,9 +4219,8 @@ def estimate_expand_size(
       delta=abc[i]/N_[i]
       nn+=expand_target/delta
     nn=max(1,int(0.5+nn/3.))
-    print >>out,\
-      "Expand size (grid units): %d (about %4.1f A) " %(
-      nn,nn*abc[0]/N_[0])
+    print("Expand size (grid units): %d (about %4.1f A) " %(
+      nn,nn*abc[0]/N_[0]), file=out)
     return max(1,nn)
 
 def get_max_z_range_for_helical_symmetry(params,out=sys.stdout):
@@ -4238,9 +4232,9 @@ def get_max_z_range_for_helical_symmetry(params,out=sys.stdout):
 
   if not params.map_modification.restrict_z_turns_for_helical_symmetry: return
 
-  print >>out,"Identifying maximum z-range for helical symmetry"
-  print >>out,"Maximum of %7.1f turns up and down in Z allowed..." %(
-     params.map_modification.restrict_z_turns_for_helical_symmetry)
+  print("Identifying maximum z-range for helical symmetry", file=out)
+  print("Maximum of %7.1f turns up and down in Z allowed..." %(
+     params.map_modification.restrict_z_turns_for_helical_symmetry), file=out)
   r,t=ncs_obj.ncs_groups()[0].helix_rt_forwards()
   cost=r[0]
   sint=r[1]
@@ -4249,9 +4243,9 @@ def get_max_z_range_for_helical_symmetry(params,out=sys.stdout):
   trans=abs(t)
   pitch=trans*360./max(0.1,theta)
   max_z=params.map_modification.restrict_z_turns_for_helical_symmetry*pitch
-  print >>out,"Z-values restricted to +/- %7.1f A" %(max_z)
-  print >>out,"\nRunning map-box once to get position of molecule, again to"+\
-      " apply\n Z restriction\n"
+  print("Z-values restricted to +/- %7.1f A" %(max_z), file=out)
+  print("\nRunning map-box once to get position of molecule, again to"+\
+      " apply\n Z restriction\n", file=out)
   return max_z
 
 def dist(x,y):
@@ -4300,19 +4294,17 @@ def get_closest_sites(
   if not box_ncs_object.is_point_group_symmetry() and not \
       box_ncs_object.is_helical_along_z():
     # extract point_group symmetry if present and box_ncs_object doesn't have it
-    print >>out,\
-      "Trying to extract point-group symmetry from box_ncs_object "+\
-       "with %d ops" %( box_ncs_object.max_operators())
+    print("Trying to extract point-group symmetry from box_ncs_object "+\
+       "with %d ops" %( box_ncs_object.max_operators()), file=out)
 
     ncs_object=box_ncs_object.deep_copy(extract_point_group_symmetry=True)
     if ncs_object:
-      print >>out,\
-          "New number of operators satisfying point-group symmetry: %d" %(
-        ncs_object.max_operators())
+      print("New number of operators satisfying point-group symmetry: %d" %(
+        ncs_object.max_operators()), file=out)
       box_ncs_object=ncs_object
 
     else:
-      print >>out,"No point-group symmetry found"
+      print("No point-group symmetry found", file=out)
 
 
   ncs_copies=box_ncs_object.max_operators()
@@ -4357,10 +4349,10 @@ def get_range(sites=None,unit_cell=None,map_data=None,
   z_min_max_mean=z_values.min_max_mean()
   z_min=z_min_max_mean.min
   z_max=z_min_max_mean.max
-  print >>out,"\nRange for box:"
-  print >>out,"            X        Y        Z"
-  print >>out," LOW:  %7.1f    %7.1f     %7.1f " %(tuple([x_min,y_min,z_min]))
-  print >>out," HIGH: %7.1f    %7.1f     %7.1f \n" %(tuple([x_max,y_max,z_max]))
+  print("\nRange for box:", file=out)
+  print("            X        Y        Z", file=out)
+  print(" LOW:  %7.1f    %7.1f     %7.1f " %(tuple([x_min,y_min,z_min])), file=out)
+  print(" HIGH: %7.1f    %7.1f     %7.1f \n" %(tuple([x_max,y_max,z_max])), file=out)
 
   # move to 0, 1 if near ends
   if x_min<=boundary_tolerance: x_min=0.
@@ -4370,10 +4362,10 @@ def get_range(sites=None,unit_cell=None,map_data=None,
   if x_min>=a-boundary_tolerance: x_min=a
   if y_min>=b-boundary_tolerance: y_min=b
   if z_min>=c-boundary_tolerance: z_min=c
-  print >>out,"\nAdjusted range for box:"
-  print >>out,"            X        Y        Z"
-  print >>out," LOW:  %7.1f    %7.1f     %7.1f " %(tuple([x_min,y_min,z_min]))
-  print >>out," HIGH: %7.1f    %7.1f     %7.1f \n" %(tuple([x_max,y_max,z_max]))
+  print("\nAdjusted range for box:", file=out)
+  print("            X        Y        Z", file=out)
+  print(" LOW:  %7.1f    %7.1f     %7.1f " %(tuple([x_min,y_min,z_min])), file=out)
+  print(" HIGH: %7.1f    %7.1f     %7.1f \n" %(tuple([x_max,y_max,z_max])), file=out)
 
   nx,ny,nz=map_data.all()
   # convert to grid units
@@ -4386,10 +4378,10 @@ def get_range(sites=None,unit_cell=None,map_data=None,
   lower_bounds=[i_min,j_min,k_min]
   upper_bounds=[i_max,j_max,k_max]
 
-  print >>out,"\nGrid bounds for box:"
-  print >>out,"            X        Y        Z"
-  print >>out," LOW:  %7d    %7d     %7d " %(tuple([i_min,j_min,k_min]))
-  print >>out," HIGH: %7d    %7d     %7d \n" %(tuple([i_max,j_max,k_max]))
+  print("\nGrid bounds for box:", file=out)
+  print("            X        Y        Z", file=out)
+  print(" LOW:  %7d    %7d     %7d " %(tuple([i_min,j_min,k_min])), file=out)
+  print(" HIGH: %7d    %7d     %7d \n" %(tuple([i_max,j_max,k_max])), file=out)
 
   return lower_bounds,upper_bounds
 
@@ -4429,8 +4421,8 @@ def get_bounds_for_au_box(params,
   from scitbx.matrix import col
   high_points=high_points[0:1]
   cutout_center=col(high_points[0])
-  print "Center of box will be near (%7.1f,%7.1f,%7.1f)" %(
-     tuple(cutout_center))
+  print("Center of box will be near (%7.1f,%7.1f,%7.1f)" %(
+     tuple(cutout_center)))
 
   # now figure out box that contains at least one copy of each ncs-related
   #  point.
@@ -4445,11 +4437,11 @@ def get_bounds_for_au_box(params,
     box_crystal_symmetry=box_crystal_symmetry,
     out=out)
   if not closest_sites or closest_sites.size()<1:
-    print >>out,"\nNo sites representing au of map found...skipping au box\n"
+    print("\nNo sites representing au of map found...skipping au box\n", file=out)
     return None,None,None
 
-  print >>out,"\nTotal of %d sites representing 1 au found" %(
-      closest_sites.size())
+  print("\nTotal of %d sites representing 1 au found" %(
+      closest_sites.size()), file=out)
 
   # write out closest_sites to match original position
   coordinate_offset=-1*matrix.col(box.shift_cart)
@@ -4459,9 +4451,9 @@ def get_bounds_for_au_box(params,
   unique_closest_sites=closest_sites.deep_copy()
   # Now if desired, find NCS-related groups of sites
   if params.segmentation.n_au_box >1:
-    print >>out,"\nFinding up to %d related au" %(params.segmentation.n_au_box)
-    print >>out,"Starting RMSD of sites: %7.1f A " %(
-       radius_of_gyration_of_vector(closest_sites))
+    print("\nFinding up to %d related au" %(params.segmentation.n_au_box), file=out)
+    print("Starting RMSD of sites: %7.1f A " %(
+       radius_of_gyration_of_vector(closest_sites)), file=out)
 
     sites_orig=closest_sites.deep_copy()
     used_ncs_id_list=[box_ncs_object.ncs_groups()[0].identity_op_id()]
@@ -4473,10 +4465,10 @@ def get_bounds_for_au_box(params,
         box_ncs_object=box_ncs_object,
         box_crystal_symmetry=box_crystal_symmetry,
         out=out)
-    print >>out,"\nNew total of %d sites representing %d au found" %(
-      closest_sites.size(),params.segmentation.n_au_box)
-    print >>out,"New rmsd: %7.1f A " %(
-       radius_of_gyration_of_vector(closest_sites))
+    print("\nNew total of %d sites representing %d au found" %(
+      closest_sites.size(),params.segmentation.n_au_box), file=out)
+    print("New rmsd: %7.1f A " %(
+       radius_of_gyration_of_vector(closest_sites)), file=out)
 
   lower_bounds,upper_bounds=get_range(
      sites=closest_sites,map_data=box_map_data,
@@ -4541,15 +4533,15 @@ def check_memory(map_data,ratio_needed,maximum_fraction_to_use=0.90,
     total_memory=bytes_total_memory/(1024*1024*1024)
   else:
     total_memory=None
-  print >>out,"\nMap size is " +\
+  print("\nMap size is " +\
       "%.2f GB.  This will require about %.1f GB of memory" %(
-      map_size,needed_memory) +"\nfor this stage of analysis\n"
+      map_size,needed_memory) +"\nfor this stage of analysis\n", file=out)
   if total_memory:
-    print >>out,"Total memory on this computer is about %.1f GB." %(
-      total_memory)
+    print("Total memory on this computer is about %.1f GB." %(
+      total_memory), file=out)
     if (needed_memory>= 0.5* total_memory):
-      print >>out,"\n ** WARNING:  It is possible that this computer may not"+\
-       " have **\n *** sufficient memory to complete this job. ***\n"
+      print("\n ** WARNING:  It is possible that this computer may not"+\
+       " have **\n *** sufficient memory to complete this job. ***\n", file=out)
     if (needed_memory >= maximum_fraction_to_use*total_memory):
       raise Sorry("This computer does not have sufficient "+
         "memory (%.0f GB needed) \nto run this job" %(needed_memory))
@@ -4562,9 +4554,9 @@ def get_params(args,map_data=None,crystal_symmetry=None,
 
   params=get_params_from_args(args)
 
-  print >>out,"\nSegment_and_split_map\n"
-  print >>out,"Command used: %s\n" %(
-   " ".join(['segment_and_split_map']+args))
+  print("\nSegment_and_split_map\n", file=out)
+  print("Command used: %s\n" %(
+   " ".join(['segment_and_split_map']+args)), file=out)
   master_params.format(python_object=params).show(out=out)
 
   # Set space-group defaults
@@ -4611,7 +4603,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         params.crystal_info.sequence=sequence
       else:
         params.crystal_info.sequence=open(params.input_files.seq_file).read()
-    print >>out,"Read sequence from %s" %(params.input_files.seq_file)
+    print("Read sequence from %s" %(params.input_files.seq_file), file=out)
 
   if not params.crystal_info.resolution and (
      params.map_modification.b_iso is not None or \
@@ -4624,8 +4616,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       params.map_modification.b_iso is not None or
       params.map_modification.b_sharpen is not None or
       params.map_modification.resolution_dependent_b is not None):
-    print >>out,"Turning off auto_sharpen as it is not compatible with "+\
-        "b_iso, \nb_sharpen, or resolution_dependent_b"
+    print("Turning off auto_sharpen as it is not compatible with "+\
+        "b_iso, \nb_sharpen, or resolution_dependent_b", file=out)
     params.map_modification.auto_sharpen=False
 
   if params.control.write_files and \
@@ -4640,14 +4632,14 @@ def get_params(args,map_data=None,crystal_symmetry=None,
      params.map_modification.sharpening_target=='adjusted_sa') and \
      (params.map_modification.box_in_auto_sharpen or
        params.map_modification.density_select_in_auto_sharpen):
-    print >>out,"Checking to make sure we can use adjusted_sa as target...",
+    print("Checking to make sure we can use adjusted_sa as target...", end=' ', file=out)
     try:
       from phenix.autosol.map_to_model import iterated_solvent_fraction
     except Exception, e:
       raise Sorry("Please either set box_in_auto_sharpen=False and "+
        "\ndensity_select_in_auto_sharpen=False or \n"+\
       "set residual_target=kurtosis and sharpening_target=kurtosis")
-    print >>out,"OK"
+    print("OK", file=out)
 
   half_map_data_list=[]
 
@@ -4655,8 +4647,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     map_data=None
     pdb_hierarchy=None
     from libtbx import easy_pickle
-    print >>out,"Loading tracking data from %s" %(
-      params.input_files.info_file)
+    print("Loading tracking data from %s" %(
+      params.input_files.info_file), file=out)
     tracking_data=easy_pickle.load(params.input_files.info_file)
     return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data,None
   else:
@@ -4665,9 +4657,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
 
   # PDB file
   if params.input_files.pdb_file:
-    print >>out,\
-        "\nInput PDB file to be used to identify region to work with: %s\n" %(
-       params.input_files.pdb_file)
+    print("\nInput PDB file to be used to identify region to work with: %s\n" %(
+       params.input_files.pdb_file), file=out)
     pdb_inp = iotbx.pdb.input(file_name=params.input_files.pdb_file)
     pdb_hierarchy = pdb_inp.construct_hierarchy()
     pdb_atoms = pdb_hierarchy.atoms()
@@ -4730,8 +4721,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         map=map_data,
         out=out)
     if params.crystal_info.solvent_content:
-      print >>out,"Estimated solvent content: %.2f" %(
-        params.crystal_info.solvent_content)
+      print("Estimated solvent content: %.2f" %(
+        params.crystal_info.solvent_content), file=out)
     else:
       raise Sorry("Unable to estimate solvent content...please supply "+
         "solvent_content \nor molecular_mass")
@@ -4741,7 +4732,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         params.map_modification.b_sharpen is not None or \
         params.map_modification.resolution_dependent_b is not None:
       # Sharpen the map
-      print >>out,"Auto-sharpening map before using it"
+      print("Auto-sharpening map before using it", file=out)
       local_params=deepcopy(params)
       if tracking_data.solvent_fraction: # XXX was previously always done but may not have been set
         local_params.crystal_info.solvent_content=tracking_data.solvent_fraction
@@ -4772,13 +4763,12 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         if acc is not None:  # offset the map to match original if possible
           sharpened_map_data.reshape(acc)
 
-        print >>out,"Gridding of sharpened map:"
-        print >>out,"Origin: ",sharpened_map_data.origin()
-        print >>out,"All: ",sharpened_map_data.all()
-        print >>out,\
-          "\nWrote sharpened map in original location with "+\
+        print("Gridding of sharpened map:", file=out)
+        print("Origin: ",sharpened_map_data.origin(), file=out)
+        print("All: ",sharpened_map_data.all(), file=out)
+        print("\nWrote sharpened map in original location with "+\
              "origin at %s\nto %s" %(
-           str(sharpened_map_data.origin()),sharpened_map_file)
+           str(sharpened_map_data.origin()),sharpened_map_file), file=out)
 
         # NOTE: original unit cell and grid
         write_ccp4_map(tracking_data.full_crystal_symmetry,
@@ -4792,7 +4782,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       params.map_modification.b_sharpen=None
       params.map_modification.resolution_dependent_b=None
       if params.control.sharpen_only:
-        print >>out,"Stopping after sharpening"
+        print("Stopping after sharpening", file=out)
         return
 
   # check on size right away
@@ -4804,20 +4794,20 @@ def get_params(args,map_data=None,crystal_symmetry=None,
 
   if params.map_modification.magnification and \
        params.map_modification.magnification!=1.0:
-    print >>out,"\nAdjusting magnification by %7.3f\n" %(
-       params.map_modification.magnification)
+    print("\nAdjusting magnification by %7.3f\n" %(
+       params.map_modification.magnification), file=out)
 
     if ncs_obj:
       # Magnify ncs
-      print >>out,"NCS before applying magnification..."
+      print("NCS before applying magnification...", file=out)
       ncs_obj.format_all_for_group_specification(out=out)
       ncs_obj=ncs_obj.adjust_magnification(
         magnification=params.map_modification.magnification)
       if params.output_files.magnification_ncs_file:
         file_name=os.path.join(params.output_files.output_directory,
           params.output_files.magnification_ncs_file)
-        print >>out,"Writing NCS after magnification of %7.3f to %s" %(
-          params.map_modification.magnification,file_name)
+        print("Writing NCS after magnification of %7.3f to %s" %(
+          params.map_modification.magnification,file_name), file=out)
         ncs_obj.format_all_for_group_specification(out=out)
         ncs_obj.format_all_for_group_specification(file_name=file_name)
         params.input_files.ncs_file=file_name
@@ -4836,15 +4826,13 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     new_unit_cell=uctbx.unit_cell(
       parameters=(shrunk_uc[0],shrunk_uc[1],shrunk_uc[2],
           uc_params[3],uc_params[4],uc_params[5]))
-    print >>out,\
-      "Original unit cell: (%7.4f, %7.4f, %7.4f, %7.4f, %7.4f, %7.4f)" %(
-      crystal_symmetry.unit_cell().parameters())
+    print("Original unit cell: (%7.4f, %7.4f, %7.4f, %7.4f, %7.4f, %7.4f)" %(
+      crystal_symmetry.unit_cell().parameters()), file=out)
     crystal_symmetry=crystal.symmetry(
       unit_cell=new_unit_cell,
       space_group=crystal_symmetry.space_group())
-    print >>out,\
-      "New unit cell:      (%7.4f, %7.4f, %7.4f, %7.4f, %7.4f, %7.4f)" %(
-      crystal_symmetry.unit_cell().parameters())
+    print("New unit cell:      (%7.4f, %7.4f, %7.4f, %7.4f, %7.4f, %7.4f)" %(
+      crystal_symmetry.unit_cell().parameters()), file=out)
 
     # magnify original unit cell too..
     cell=list(tracking_data.full_crystal_symmetry.unit_cell().parameters())
@@ -4852,17 +4840,17 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       cell[i]=cell[i]*params.map_modification.magnification
     tracking_data.set_full_crystal_symmetry(
         crystal.symmetry(tuple(cell),ccp4_map.space_group_number))
-    print >>out, "New original (full unit cell): "+\
+    print("New original (full unit cell): "+\
         "  (%7.4f, %7.4f, %7.4f, %7.4f, %7.4f, %7.4f)" %(
-      tracking_data.full_crystal_symmetry.unit_cell.parameters())
+      tracking_data.full_crystal_symmetry.unit_cell.parameters()), file=out)
 
     if params.output_files.magnification_map_file:
       file_name=os.path.join(params.output_files.output_directory,
         params.output_files.magnification_map_file)
       # write out magnified map (our working map) (before shifting it)
-      print >>out,"\nWriting magnification map (input map with "+\
+      print("\nWriting magnification map (input map with "+\
         "magnification of %7.3f \n" %(params.map_modification.magnification) +\
-        "applied) to %s \n" %(file_name)
+        "applied) to %s \n" %(file_name), file=out)
       #write_ccp4_map(crystal_symmetry,file_name,map_data)
       #  NOTE: original unit cell and grid
       write_ccp4_map(tracking_data.full_crystal_symmetry,
@@ -4890,11 +4878,11 @@ def get_params(args,map_data=None,crystal_symmetry=None,
 
   # either use map_box with density_select=True or just shift the map
   if  params.segmentation.density_select:
-    print >>out,"\nTrimming map to density..."
+    print("\nTrimming map to density...", file=out)
     args= ["output_format=ccp4"]
     if params.segmentation.density_select_threshold is not None:
-      print >>out,"Threshold for density selection will be: %6.2f \n"%(
-       params.segmentation.density_select_threshold)
+      print("Threshold for density selection will be: %6.2f \n"%(
+       params.segmentation.density_select_threshold), file=out)
       args.append("density_select_threshold=%s" %(
          params.segmentation.density_select_threshold))
     if params.segmentation.get_half_height_width is not None:
@@ -4913,7 +4901,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
 
     if params.segmentation.lower_bounds and params.segmentation.upper_bounds:
       bounds_supplied=True
-      print >>out,"\nRunning map_box with supplied bounds"
+      print("\nRunning map_box with supplied bounds", file=out)
       box=run_map_box(args,
           map_data=map_data,
           ncs_object=ncs_obj,
@@ -4937,8 +4925,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     if params.segmentation.select_au_box is None and  box.ncs_object and \
       box.ncs_object.max_operators() >= params.segmentation.n_ops_to_use_au_box:
       params.segmentation.select_au_box=True
-      print >>out,"Setting select_au_box to True as there are %d operators" %(
-        box.ncs_object.max_operators())
+      print("Setting select_au_box to True as there are %d operators" %(
+        box.ncs_object.max_operators()), file=out)
     if params.segmentation.select_au_box and not bounds_supplied:
       lower_bounds,upper_bounds,unique_closest_sites=get_bounds_for_au_box(
          params, box=box,out=out) #unique_closest_sites relative to original map
@@ -4950,11 +4938,10 @@ def get_params(args,map_data=None,crystal_symmetry=None,
           sites_orth=unique_closest_sites+box.shift_cart,
           ncs_object=box.ncs_object,ncs_in_cell_only=True,
           crystal_symmetry=box.box_crystal_symmetry,out=null_out())
-        print >>out,\
-          "NCS CC before rerunning box: %7.2f   SCORE: %7.1f OPS: %d " %(
-         ncs_cc,score,box.ncs_object.max_operators())
+        print("NCS CC before rerunning box: %7.2f   SCORE: %7.1f OPS: %d " %(
+         ncs_cc,score,box.ncs_object.max_operators()), file=out)
 
-        print >>out,"\nRunning map-box again with boxed range ..."
+        print("\nRunning map-box again with boxed range ...", file=out)
         del box
         box=run_map_box(args,lower_bounds=lower_bounds,
           map_data=map_data,
@@ -4970,7 +4957,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       bounds_supplied=True
       lower_bounds,upper_bounds=get_bounds_for_helical_symmetry(params,
          crystal_symmetry=crystal_symmetry,box=box)
-      print >>out,"\nRunning map-box again with restricted Z range ..."
+      print("\nRunning map-box again with restricted Z range ...", file=out)
       box=run_map_box(args,
         map_data=map_data,
         crystal_symmetry=crystal_symmetry,
@@ -4982,7 +4969,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     #-----------------------------
 
     if bounds_supplied and box.ncs_object:
-      print >>out,"Selecting remaining NCS operators"
+      print("Selecting remaining NCS operators", file=out)
       box.ncs_object=select_remaining_ncs_ops(
         map_data=box.map_box,
         crystal_symmetry=box.box_crystal_symmetry,
@@ -4998,8 +4985,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
           crystal_symmetry=box.box_crystal_symmetry,out=null_out())
 
       if score is not None:
-        print >>out,"NCS CC after selections: %7.2f   SCORE: %7.1f  OPS: %d" %(
-         ncs_cc,score,box.ncs_object.max_operators())
+        print("NCS CC after selections: %7.2f   SCORE: %7.1f  OPS: %d" %(
+         ncs_cc,score,box.ncs_object.max_operators()), file=out)
     #-----------------------------
 
     origin_shift=box.shift_cart
@@ -5008,12 +4995,12 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     map_data=box.map_box
     map_data=scale_map(map_data,out=out)
     crystal_symmetry=box.box_crystal_symmetry
-    print >>out,"New unit cell: %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f " %(
-      crystal_symmetry.unit_cell().parameters())
+    print("New unit cell: %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f " %(
+      crystal_symmetry.unit_cell().parameters()), file=out)
     tracking_data.set_crystal_symmetry(crystal_symmetry=crystal_symmetry)
-    print >>out, "Moving origin to (0,0,0)"
-    print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(
-        tuple(origin_shift))
+    print("Moving origin to (0,0,0)", file=out)
+    print("Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(
+        tuple(origin_shift)), file=out)
     # NOTE: size and cell params are now different!
     tracking_data.set_box_map_bounds_first_last(
        box.gridding_first,box.gridding_last)
@@ -5028,7 +5015,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       new_half_map_data_list.append(hm)
       cutout_half_map_file=os.path.join(params.output_files.output_directory,
        "cutout_half_map_%s.ccp4" %(ii))
-      print >>out,"Writing cutout half_map data to %s" %(cutout_half_map_file)
+      print("Writing cutout half_map data to %s" %(cutout_half_map_file), file=out)
       write_ccp4_map(crystal_symmetry,cutout_half_map_file,new_half_map_data_list[-1])
 
     half_map_data_list=new_half_map_data_list
@@ -5043,9 +5030,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         map_data=map_data,crystal_symmetry=crystal_symmetry,
         half_map_data_list=half_map_data_list,
         out=out)
-      print >>out,\
-        "\nSolvent fraction from soft mask procedure: %7.2f (not used)\n" %(
-        soft_mask_solvent_fraction)
+      print("\nSolvent fraction from soft mask procedure: %7.2f (not used)\n" %(
+        soft_mask_solvent_fraction), file=out)
     shifted_ncs_object=box.ncs_object
     if not shifted_ncs_object or shifted_ncs_object.max_operators()<2:
       from mmtbx.ncs.ncs import ncs
@@ -5064,15 +5050,15 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     #  is negative, shift of coordinates will be positive
     sx_cart,sy_cart,sz_cart=crystal_symmetry.unit_cell().orthogonalize(
        [sx,sy,sz])
-    print >>out,"Origin for input map is at (%8.2f,%8.2f,%8.2f)" % (
-      sx_cart,sy_cart,sz_cart)
-    print >>out,"Cell dimensions of this map are: (%8.2f,%8.2f,%8.2f)" % (a,b,c)
+    print("Origin for input map is at (%8.2f,%8.2f,%8.2f)" % (
+      sx_cart,sy_cart,sz_cart), file=out)
+    print("Cell dimensions of this map are: (%8.2f,%8.2f,%8.2f)" % (a,b,c), file=out)
     if shift_needed:
       if(not crystal_symmetry.space_group().type().number() in [0,1]):
           raise RuntimeError("Not implemented")
       origin_shift=[-sx_cart,-sy_cart,-sz_cart] # positive if (0,0,0) in middle
-      print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates"%(
-        tuple(origin_shift))+" to put origin at (0,0,0)\n"
+      print("Adding (%8.2f,%8.2f,%8.2f) to all coordinates"%(
+        tuple(origin_shift))+" to put origin at (0,0,0)\n", file=out)
 
       map_data=map_data.shift_origin()
       new_half_map_data_list=[]
@@ -5136,7 +5122,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         f=open(file_name,'w')
         new_ncs_obj.format_all_for_group_specification(out=f)
         f.close()
-        print >>out,"Wrote NCS operators (for original map) to %s" %(file_name)
+        print("Wrote NCS operators (for original map) to %s" %(file_name), file=out)
         if not params.control.check_ncs:
           params.input_files.ncs_file=file_name # set it
 
@@ -5144,7 +5130,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     looking_for_ncs=False
 
   if params.control.check_ncs:
-    print >>out,"Done checking NCS"
+    print("Done checking NCS", file=out)
     return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data,None
 
   if looking_for_ncs and (not found_ncs) and \
@@ -5171,12 +5157,11 @@ def write_info_file(params=None,tracking_data=None,out=sys.stdout):
     # write out the info file
     from libtbx import easy_pickle
     tracking_data.show_summary(out=out)
-    print >>out,"\nWriting summary information to: %s" %(
-      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file))
-    print >>out,\
-      "\nTo restore original position of a PDB file built into these maps, use:"
-    print >>out,"phenix.segment_and_split_map info_file=%s" %(
-      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file))+" pdb_to_restore=mypdb.pdb\n"
+    print("\nWriting summary information to: %s" %(
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file)), file=out)
+    print("\nTo restore original position of a PDB file built into these maps, use:", file=out)
+    print("phenix.segment_and_split_map info_file=%s" %(
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file))+" pdb_to_restore=mypdb.pdb\n", file=out)
     easy_pickle.dump(os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file),
        tracking_data)
 
@@ -5196,8 +5181,8 @@ def get_and_apply_soft_mask_to_maps(
   if not rad_smooth:
     rad_smooth=resolution
 
-  print >>out,"\nApplying soft mask with smoothing radius of %s\n" %(
-    rad_smooth)
+  print("\nApplying soft mask with smoothing radius of %s\n" %(
+    rad_smooth), file=out)
   if wang_radius:
     wang_radius=wang_radius
   else:
@@ -5236,7 +5221,7 @@ def get_and_apply_soft_mask_to_maps(
       new_half_map_data_list.append(half_map)
     half_map_data_list=new_half_map_data_list
   else:
-    print >>out,"Unable to get mask...skipping"
+    print("Unable to get mask...skipping", file=out)
   return mask_data,map_data,half_map_data_list,\
     solvent_fraction,smoothed_mask_data,original_map_data
 
@@ -5244,7 +5229,7 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
      ncs_object=None,out=sys.stdout):
   if not file_name:
     file_name=params.input_files.ncs_file
-  if (not ncs_object or ncs_object.max_operators()<2) and file_name: print >>out,"Reading ncs from %s" %(file_name)
+  if (not ncs_object or ncs_object.max_operators()<2) and file_name: print("Reading ncs from %s" %(file_name), file=out)
   is_helical_symmetry=None
   if (not ncs_object or ncs_object.max_operators()<2) and not file_name: # No ncs supplied...use just 1 ncs copy..
     from mmtbx.ncs.ncs import ncs
@@ -5269,29 +5254,29 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
       from mmtbx.ncs.ncs import ncs
       ncs_object=ncs()
       ncs_object.set_unit_ncs()
-    print >>out,"\nTotal of %d NCS operators read\n" %(
-      ncs_object.max_operators())
+    print("\nTotal of %d NCS operators read\n" %(
+      ncs_object.max_operators()), file=out)
     if not tracking_data or not params:
       return ncs_object,None
     if ncs_object.max_operators()<2:
-       print >>out,"No NCS present"
+       print("No NCS present", file=out)
     elif ncs_object.is_helical_along_z(
        abs_tol_t=tracking_data.params.reconstruction_symmetry.abs_tol_t,
        rel_tol_t=tracking_data.params.reconstruction_symmetry.rel_tol_t,
        tol_r=tracking_data.params.reconstruction_symmetry.tol_r):
-      print >>out,"This NCS is helical symmetry"
+      print("This NCS is helical symmetry", file=out)
       is_helical_symmetry=True
     elif ncs_object.is_point_group_symmetry(
        abs_tol_t=tracking_data.params.reconstruction_symmetry.abs_tol_t,
        rel_tol_t=tracking_data.params.reconstruction_symmetry.rel_tol_t,
        tol_r=tracking_data.params.reconstruction_symmetry.tol_r):
-      print >>out,"This NCS is point-group symmetry"
+      print("This NCS is point-group symmetry", file=out)
     elif params.crystal_info.is_crystal:
-      print >>out,"This NCS is crystal symmetry"
+      print("This NCS is crystal symmetry", file=out)
     elif not (
       params.reconstruction_symmetry.require_helical_or_point_group_symmetry):
-      print >>out,"WARNING: NCS is not crystal symmetry nor point-group "+\
-         "symmetry nor helical symmetry"
+      print("WARNING: NCS is not crystal symmetry nor point-group "+\
+         "symmetry nor helical symmetry", file=out)
     else:
       raise Sorry("Need point-group or helical symmetry.")
   if not ncs_object or ncs_object.max_operators()<1:
@@ -5305,24 +5290,24 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
        shifted=True
     else:
        shifted=False
-    print >>out,"Updating NCS info (shifted=%s)" %(shifted)
+    print("Updating NCS info (shifted=%s)" %(shifted), file=out)
     tracking_data.update_ncs_info(is_helical_symmetry=True,shifted=shifted)
 
     if tracking_data.input_map_info and tracking_data.input_map_info.all:
       z_range=tracking_data.crystal_symmetry.unit_cell(). \
          parameters()[2]
-      print >>out,"Extending NCS operators to entire cell (z_range=%.1f)" %(
-         z_range)
+      print("Extending NCS operators to entire cell (z_range=%.1f)" %(
+         z_range), file=out)
       max_operators= \
           tracking_data.params.reconstruction_symmetry.max_helical_operators
       if max_operators:
-        print>>out,"Maximum new number of NCS operators will be %s" %(
-         max_operators)
+        print("Maximum new number of NCS operators will be %s" %(
+         max_operators), file=out)
       ncs_object.extend_helix_operators(z_range=z_range,
         max_operators=max_operators)
       #ncs_object.display_all()
-      print >>out,"New number of NCS operators is: %s " %(
-        ncs_object.max_operators())
+      print("New number of NCS operators is: %s " %(
+        ncs_object.max_operators()), file=out)
       tracking_data.update_ncs_info(
         number_of_operators=ncs_object.max_operators(),is_helical_symmetry=True,
         shifted=shifted)
@@ -5458,10 +5443,9 @@ def score_threshold(b_vs_region=None,threshold=None,
        has_sufficient_regions=False
 
 
-   print >>out,\
-   "%7.2f  %5.2f   %5d     %4d    %5d     %5d     %6.3f   %5s    %5.3f  %s  %s" %(
+   print("%7.2f  %5.2f   %5d     %4d    %5d     %5d     %6.3f   %5s    %5.3f  %s  %s" %(
        b_vs_region.b_iso,threshold,target_in_top_regions,expected_regions,
-       v1,median_number,ratio,has_sufficient_regions,overall_score,ok,nn)
+       v1,median_number,ratio,has_sufficient_regions,overall_score,ok,nn), file=out)
 
    if not b_vs_region.b_iso in b_vs_region.b_vs_region_dict.keys():
      b_vs_region.b_vs_region_dict[b_vs_region.b_iso]={}
@@ -5505,8 +5489,8 @@ def choose_threshold(b_vs_region=None,map_data=None,
 
   if not ncs_copies: ncs_copies=1
 
-  print >>out,"\nChecking possible cutoffs for region identification"
-  print >>out,"Scale: %7.3f" %(scale)
+  print("\nChecking possible cutoffs for region identification", file=out)
+  print("Scale: %7.3f" %(scale), file=out)
   used_ranges=[]
 
   # Assume any threshold that is lower than a threshold that gave a non-zero value
@@ -5516,15 +5500,15 @@ def choose_threshold(b_vs_region=None,map_data=None,
   best_nn=None
 
   if density_threshold is not None: # use it
-     print >>out,"\nUsing input threshold of %5.2f " %(
-      density_threshold)
+     print("\nUsing input threshold of %5.2f " %(
+      density_threshold), file=out)
      n_range_low_high_list=[[0,0]] # use as is
   else:
     n_range_low_high_list=[[-16,4],[-32,16],[-64,80]]
     if starting_density_threshold is not None:
       starting_density_threshold=starting_density_threshold
-      print >>out,"Starting density threshold is: %7.3f" %(
-         starting_density_threshold)
+      print("Starting density threshold is: %7.3f" %(
+         starting_density_threshold), file=out)
     else:
       starting_density_threshold=1.0
   if verbose:
@@ -5534,17 +5518,16 @@ def choose_threshold(b_vs_region=None,map_data=None,
     local_out=null_out()
 
   target_in_all_regions=map_data.size()*fraction_occupied*(1-solvent_fraction)
-  print >>local_out,"\nTarget number of points in all regions: %.0f" %(
-    target_in_all_regions)
+  print("\nTarget number of points in all regions: %.0f" %(
+    target_in_all_regions), file=local_out)
 
 
   local_threshold=find_threshold_in_map(target_points=int(
        target_in_all_regions),map_data=map_data)
-  print >>out,"Cutoff will be threshold of %7.2f marking %7.1f%% of cell" %(
-            local_threshold,100.*(1.-solvent_fraction))
+  print("Cutoff will be threshold of %7.2f marking %7.1f%% of cell" %(
+            local_threshold,100.*(1.-solvent_fraction)), file=out)
 
-  print >>local_out,\
-    "B-iso  Threshold  Target    N     Biggest   Median     Ratio   Enough  Score   OK  Regions"
+  print("B-iso  Threshold  Target    N     Biggest   Median     Ratio   Enough  Score   OK  Regions", file=local_out)
   unique_expected_regions=None
   for n_range_low,n_range_high in n_range_low_high_list:
     last_score=None
@@ -5607,7 +5590,7 @@ def choose_threshold(b_vs_region=None,map_data=None,
         best_ok=ok
 
   if best_threshold is not None:
-    print >>out,"\nBest threshold: %5.2f\n" %(best_threshold)
+    print("\nBest threshold: %5.2f\n" %(best_threshold), file=out)
     return best_threshold,unique_expected_regions,best_score,best_ok
   elif density_threshold is not None: # use it anyhow
     return density_threshold,unique_expected_regions,None,None
@@ -5654,7 +5637,7 @@ def get_connectivity(b_vs_region=None,
      chain_type=None,
      verbose=None,
      out=sys.stdout):
-  print >>out,"\nGetting connectivity"
+  print("\nGetting connectivity", file=out)
   libtbx.call_back(message='segment',data=None)
 
 
@@ -5711,7 +5694,7 @@ def get_connectivity(b_vs_region=None,
     if iterate_with_remainder: # on first try failed
       raise Sorry("No threshold found...try with density_threshold=xxx")
     else: # on iteration...ok
-      print >>out,"Note: No threshold found"
+      print("Note: No threshold found", file=out)
       return None,None,None,None,None,None,None,None
   else:
     starting_density_threshold=best_threshold
@@ -5753,7 +5736,7 @@ def get_solvent_content_from_seq_file(params,
     raise Sorry(
      "The sequence file '%s' is missing." %(seq_file))
   if not sequence:
-    print >>out,"\nReading sequence from %s " %(seq_file)
+    print("\nReading sequence from %s " %(seq_file), file=out)
     sequence=open(seq_file).read()
   from iotbx.bioinformatics import get_sequences
   sequences=get_sequences(text=sequence)
@@ -5761,21 +5744,21 @@ def get_solvent_content_from_seq_file(params,
 
   from mmtbx.validation.chain_comparison import \
        extract_unique_part_of_sequences as eups
-  print >>out,"Unique part of sequences:"
+  print("Unique part of sequences:", file=out)
   copies_in_unique,base_copies,unique_sequence_dict=eups(sequences)
   all_unique_sequence=[]
   for seq in copies_in_unique.keys():
-    print "Copies: %s  base copies: %s  Sequence: %s" %(
-       copies_in_unique[seq],base_copies,seq)
+    print("Copies: %s  base copies: %s  Sequence: %s" %(
+       copies_in_unique[seq],base_copies,seq))
     all_unique_sequence.append(seq)
   if base_copies != ncs_copies:
-    print >>out,"NOTE: %s copies of unique portion but ncs_copies=%s" %(
-       base_copies,ncs_copies)
+    print("NOTE: %s copies of unique portion but ncs_copies=%s" %(
+       base_copies,ncs_copies), file=out)
     if ncs_copies==1:
       ncs_copies=base_copies
-      print >>out,"Using ncs_copies=%s instead" %(ncs_copies)
+      print("Using ncs_copies=%s instead" %(ncs_copies), file=out)
     else:
-      print >>out,"Still using ncs_copies=%s" %(ncs_copies)
+      print("Still using ncs_copies=%s" %(ncs_copies), file=out)
 
   volume_of_chains=0.
   n_residues=0
@@ -5789,22 +5772,20 @@ def get_solvent_content_from_seq_file(params,
     if not chain_type in chain_types_considered:
       chain_types_considered.append(chain_type)
   chain_types_considered.sort()
-  print >>out,"\nChain types considered: %s\n" %(
-      " ".join(chain_types_considered))
+  print("\nChain types considered: %s\n" %(
+      " ".join(chain_types_considered)), file=out)
   volume_of_molecules=volume_of_chains*ncs_copies
   n_residues_times_ncs=n_residues*ncs_copies
   solvent_fraction=1.-(volume_of_molecules/map_volume)
   solvent_fraction=max(0.001,min(0.999,solvent_fraction))
   if solvent_fraction==0.001 or solvent_fraction==0.999:
-    print >>out,"NOTE: solvent fraction of %7.2f very unlikely..." %(
-        solvent_fraction) + "please check ncs_copies and sequence "
-  print >>out,"Solvent content from composition: %7.2f" %(solvent_fraction)
-  print >>out, \
-    "Cell volume: %.1f  NCS copies: %d   Volume of unique chains: %.1f" %(
-     map_volume,ncs_copies,volume_of_chains)
-  print >>out,\
-    "Total residues: %d  Volume of all chains: %.1f  Solvent fraction: %.3f "%(
-       n_residues_times_ncs,volume_of_molecules,solvent_fraction)
+    print("NOTE: solvent fraction of %7.2f very unlikely..." %(
+        solvent_fraction) + "please check ncs_copies and sequence ", file=out)
+  print("Solvent content from composition: %7.2f" %(solvent_fraction), file=out)
+  print("Cell volume: %.1f  NCS copies: %d   Volume of unique chains: %.1f" %(
+     map_volume,ncs_copies,volume_of_chains), file=out)
+  print("Total residues: %d  Volume of all chains: %.1f  Solvent fraction: %.3f "%(
+       n_residues_times_ncs,volume_of_molecules,solvent_fraction), file=out)
   return solvent_fraction,n_residues,n_residues_times_ncs
 
 def get_solvent_fraction(params,
@@ -5832,16 +5813,16 @@ def get_solvent_fraction(params,
      out=out)
     if not params.crystal_info.solvent_content:
       params.crystal_info.solvent_content=solvent_content
-      print >>out,"Solvent fraction from composition: %7.2f "%(
-       params.crystal_info.solvent_content)
+      print("Solvent fraction from composition: %7.2f "%(
+       params.crystal_info.solvent_content), file=out)
     else:
-      print >>out,"Solvent content from parameters: %7.2f" %(
-        params.crystal_info.solvent_content)
+      print("Solvent content from parameters: %7.2f" %(
+        params.crystal_info.solvent_content), file=out)
 
   else:
     if params.crystal_info.solvent_content:
-      print >>out,"Solvent content from parameters: %7.2f" %(
-        params.crystal_info.solvent_content)
+      print("Solvent content from parameters: %7.2f" %(
+        params.crystal_info.solvent_content), file=out)
     elif params.crystal_info.molecular_mass:
        params.crystal_info.solvent_content=\
          get_solvent_fraction_from_molecular_mass(
@@ -5850,7 +5831,7 @@ def get_solvent_fraction(params,
         out=out)
 
     else:
-      print >>out,"Getting solvent content automatically."
+      print("Getting solvent content automatically.", file=out)
 
   if tracking_data:
     if params.input_files.seq_file or params.crystal_info.sequence:
@@ -6049,7 +6030,7 @@ def get_duplicates_and_ncs(
 
   # Figure out which ncs operator is the identity
   identity_op=ncs_group.identity_op_id()
-  print >>out,"Identity operator is %s" %(identity_op)
+  print("Identity operator is %s" %(identity_op), file=out)
 
   # 2017-12-16 Score poorly if it involves a cell translation unless it
   #  is a crystal
@@ -6164,15 +6145,15 @@ def remove_bad_regions(params=None,
   max_number_to_remove=int(0.5+
     0.01*params.segmentation.remove_bad_regions_percent*len(edited_volume_list))
   if worst_list:
-    print >>out,"\nRegions that span multiple NCS au:"
+    print("\nRegions that span multiple NCS au:", file=out)
     for fract,id in worst_list:
-      print >>out,"ID: %d  Duplicate points: %d (%.1f %%)" %(
-        id,duplicate_dict[id],100.*fract),
+      print("ID: %d  Duplicate points: %d (%.1f %%)" %(
+        id,duplicate_dict[id],100.*fract), end=' ', file=out)
       if  len(bad_region_list)<max_number_to_remove:
          bad_region_list.append(id)
-         print >>out," (removed)"
+         print(" (removed)", file=out)
       else:
-         print >>out
+         print(file=out)
 
   new_sorted_by_volume=[]
   region_list=[]
@@ -6184,7 +6165,7 @@ def remove_bad_regions(params=None,
     region_list.append(id)
     region_volume_dict[id]=v
   if bad_region_list:
-    print >>out,"Bad regions (excluded)",bad_region_list
+    print("Bad regions (excluded)",bad_region_list, file=out)
   return region_list,region_volume_dict,new_sorted_by_volume,bad_region_list
 
 def sort_by_ncs_overlap(matches,equiv_dict_ncs_copy_dict_id):
@@ -6316,7 +6297,7 @@ def group_ncs_equivalents(params,
   max_duplicates=tracking_data.input_ncs_info.number_of_operators-1 # not all duplicates
   ncs_group_list=[]
   used_list=[]
-  print >>out,"All equiv groups:"
+  print("All equiv groups:", file=out)
   used_regions=[]
   for total_grid_points,equiv_group_as_list in ncs_equiv_groups_as_list:
     duplicate=False
@@ -6346,7 +6327,7 @@ def group_ncs_equivalents(params,
       for equiv_group in equiv_group_as_list:
         for x in equiv_group:
           if not x in used_list: used_list.append(x)
-  print >>out,"Total NCS groups: %d" %len(ncs_group_list)
+  print("Total NCS groups: %d" %len(ncs_group_list), file=out)
 
   # Make a dict that lists all ids that are in the same group as region x
   shared_group_dict={}
@@ -6382,11 +6363,10 @@ def identify_ncs_regions(params,
     sorted_by_volume=sorted_by_volume,
     ncs_copies=tracking_data.input_ncs_info.original_number_of_operators)
 
-  print >>out,\
-    "\nIdentifying NCS-related regions.Total regions to consider: %d" %(
-    max_regions_to_consider)
+  print("\nIdentifying NCS-related regions.Total regions to consider: %d" %(
+    max_regions_to_consider), file=out)
   if max_regions_to_consider<1:
-    print >>out,"\nUnable to identify any NCS regions"
+    print("\nUnable to identify any NCS regions", file=out)
     return None,tracking_data,None
 
   # Go through all grid points; discard if not in top regions
@@ -6407,7 +6387,7 @@ def identify_ncs_regions(params,
     from libtbx import easy_pickle
     [edited_mask,edited_volume_list,original_id_from_id
         ]=easy_pickle.load("edited_mask.pkl")
-    print >>out,"Loading edited_mask.pkl"
+    print("Loading edited_mask.pkl", file=out)
 
   # edited_mask contains re-numbered region id's
 
@@ -6449,11 +6429,11 @@ def identify_ncs_regions(params,
     if dump_files:
       from libtbx import easy_pickle
       easy_pickle.dump("save.pkl",[duplicate_dict,equiv_dict,region_range_dict,region_centroid_dict,region_scattered_points_dict,region_list,region_volume_dict,new_sorted_by_volume,bad_region_list,equiv_dict_ncs_copy,tracking_data])
-      print >>out,"Dumped save.pkl"
+      print("Dumped save.pkl", file=out)
   else:
     from libtbx import easy_pickle
     [duplicate_dict,equiv_dict,region_range_dict,region_centroid_dict,region_scattered_points_dict,region_list,region_volume_dict,new_sorted_by_volume,bad_region_list,equiv_dict_ncs_copy,tracking_data]=easy_pickle.load("save.pkl")
-    print >>out,"Loaded save.pkl"
+    print("Loaded save.pkl", file=out)
 
   # Group together regions that are ncs-related. Also if one ncs
   #   copy has 2 or more regions linked together, group the other ones.
@@ -6472,11 +6452,11 @@ def identify_ncs_regions(params,
     if dump_files:
       from libtbx import easy_pickle
       easy_pickle.dump("group_list.pkl",[ncs_group_list,shared_group_dict])
-      print >>out,"Dumped to group_list.pkl"
+      print("Dumped to group_list.pkl", file=out)
   else:
     from libtbx import easy_pickle
     [ncs_group_list,shared_group_dict]=easy_pickle.load("group_list.pkl")
-    print >>out,"Loaded group_list.pkl"
+    print("Loaded group_list.pkl", file=out)
 
   ncs_group_obj=ncs_group_object(
      ncs_group_list=ncs_group_list,
@@ -6612,12 +6592,12 @@ def get_closest_neighbor_rms(ncs_group_obj=None,selected_regions=None,
   inter_region_dist_dict=get_inter_region_dist_dict(ncs_group_obj=ncs_group_obj,
      selected_regions=selected_regions)
   if verbose:
-    print >>out,"Inter-region distance dict:"
+    print("Inter-region distance dict:", file=out)
     keys=inter_region_dist_dict.keys()
     keys.sort()
     for key in keys:
       for key2 in inter_region_dist_dict[key].keys():
-        print >>out,"%s  %s  : %.1f " %(key,key2,inter_region_dist_dict[key][key2])
+        print("%s  %s  : %.1f " %(key,key2,inter_region_dist_dict[key][key2]), file=out)
 
   dist_to_first_dict=get_dist_to_first_dict(ncs_group_obj=ncs_group_obj,
      selected_regions=selected_regions,
@@ -6625,10 +6605,10 @@ def get_closest_neighbor_rms(ncs_group_obj=None,selected_regions=None,
      target_scattered_points=target_scattered_points)
 
   if verbose:
-    print >>out,"Distance-to-first dict:"
+    print("Distance-to-first dict:", file=out)
     keys=dist_to_first_dict.keys()
     keys.sort()
-    for key in keys: print >>out,"\n %s:  %.1f " %(key,dist_to_first_dict[key])
+    for key in keys: print("\n %s:  %.1f " %(key,dist_to_first_dict[key]), file=out)
 
   if target_scattered_points:
     start_region=0 # we are getting dist to target_scattered_points
@@ -6787,7 +6767,7 @@ def add_neighbors(params,
   selected_regions.sort()
   ncs_ops_used.sort()
   for x in selected_regions:
-    print >>out,"GROUP ",x,":",ncs_group_obj.shared_group_dict.get(x,[])
+    print("GROUP ",x,":",ncs_group_obj.shared_group_dict.get(x,[]), file=out)
 
   return selected_regions,dist,ncs_ops_used
 
@@ -6957,7 +6937,7 @@ def select_regions_in_au(params,
 
   max_length_of_group=max(1,unique_expected_regions*
      params.segmentation.max_per_au_ratio)
-  print >>out,"Maximum length of group: %d" %(max_length_of_group)
+  print("Maximum length of group: %d" %(max_length_of_group), file=out)
 
   if all_elements_are_length_one(ncs_group_obj.ncs_group_list):
     # This is where there is no ncs. Basically skipping everything
@@ -6998,15 +6978,15 @@ def select_regions_in_au(params,
       if best_rms is None or rms<best_rms:
         best_rms=rms
         best_selected_regions=selected_regions
-        print >>out,"New best selected: rms: %7.1f: %s " %(
-           rms,str(selected_regions))
+        print("New best selected: rms: %7.1f: %s " %(
+           rms,str(selected_regions)), file=out)
 
     if best_rms is not None:
-      print >>out,"Best selected so far: rms: %7.1f: %s " %(
-            best_rms,str(best_selected_regions))
+      print("Best selected so far: rms: %7.1f: %s " %(
+            best_rms,str(best_selected_regions)), file=out)
 
     if not best_selected_regions:
-      print >>out, "\nNo NCS regions found ..."
+      print("\nNo NCS regions found ...", file=out)
       return ncs_group_obj,[]
 
     # Now we have a first version of best_rms, best_selected_regions
@@ -7023,7 +7003,7 @@ def select_regions_in_au(params,
       improving=False
       previous_selected_regions=deepcopy(best_selected_regions)
       previous_selected_regions.sort()
-      print >>out,"\nTry %d for optimizing regions" %(itry)
+      print("\nTry %d for optimizing regions" %(itry), file=out)
       # Now see if replacing any regions with alternatives would improve it
       for x in previous_selected_regions:
         starting_regions=remove_one_item(previous_selected_regions,
@@ -7049,8 +7029,8 @@ def select_regions_in_au(params,
           best_selected_regions.sort()
           best_rms=rms
           improving=True
-      print >>out,"Optimized best selected: rms: %7.1f: %s " %(
-          best_rms,str(best_selected_regions))
+      print("Optimized best selected: rms: %7.1f: %s " %(
+          best_rms,str(best_selected_regions)), file=out)
 
       # Done with this try
 
@@ -7064,7 +7044,7 @@ def select_regions_in_au(params,
 
   if params.segmentation.add_neighbors and \
        ncs_group_obj.ncs_obj.max_operators()>1:
-    print >>out,"\nAdding neighbor groups..."
+    print("\nAdding neighbor groups...", file=out)
     selected_regions,rms,ncs_ops_used=add_neighbors(params,
           selected_regions=selected_regions,
           max_length_of_group=max_length_of_group,
@@ -7075,13 +7055,13 @@ def select_regions_in_au(params,
   else:
     ncs_ops_used=None
 
-  print >>out,"\nFinal selected regions with rms of %6.2f: " %(rms),
+  print("\nFinal selected regions with rms of %6.2f: " %(rms), end=' ', file=out)
   for x in selected_regions:
-    print >>out,x,
+    print(x, end=' ', file=out)
   if ncs_ops_used:
-    print >>out,"\nNCS operators used: ",
-    for op in ncs_ops_used:  print >>out, op,
-    print >>out
+    print("\nNCS operators used: ", end=' ', file=out)
+    for op in ncs_ops_used:  print(op, end=' ', file=out)
+    print(file=out)
   # Save an ncs object containing just the ncs_ops_used
   ncs_group_obj.set_ncs_ops_used(ncs_ops_used)
 
@@ -7101,7 +7081,7 @@ def select_regions_in_au(params,
     selected_regions=selected_regions,
     include_self=False)
 
-  print >>out,"NCS-related regions (not used): %d " %(len(ncs_related_regions))
+  print("NCS-related regions (not used): %d " %(len(ncs_related_regions)), file=out)
   ncs_group_obj.set_selected_regions(selected_regions)
   ncs_group_obj.set_self_and_ncs_related_regions(self_and_ncs_related_regions)
   ncs_group_obj.set_ncs_related_regions(ncs_related_regions)
@@ -7147,7 +7127,7 @@ def create_remaining_mask_and_map(params,
     out=sys.stdout):
 
   if not ncs_group_obj.selected_regions:
-    print >>out,"No regions selected"
+    print("No regions selected", file=out)
     return map_data
 
   # create new remaining_map containing everything except the part that
@@ -7265,9 +7245,9 @@ def write_region_maps(params,
 
 
     if regions_to_skip and id in regions_to_skip:
-      print >>out,"Skipping remainder region %d (already written out)" %(id)
+      print("Skipping remainder region %d (already written out)" %(id), file=out)
       continue
-    print >>out,"Writing region %d" %(id),
+    print("Writing region %d" %(id), end=' ', file=out)
 
     # dummy atoms representing this region
     sites=ncs_group_obj.region_scattered_points_dict[id]
@@ -7288,7 +7268,7 @@ def write_region_maps(params,
           sites.extend(
             remainder_ncs_group_obj.region_scattered_points_dict[remainder_id])
 
-          print >>out,"(including remainder region %d)" %(remainder_id),
+          print("(including remainder region %d)" %(remainder_id), end=' ', file=out)
           remainder_bool_region_mask = remainder_ncs_group_obj.co.expand_mask(
            id_to_expand=remainder_ncs_group_obj.original_id_from_id[remainder_id],
            expand_size=params.segmentation.expand_size)
@@ -7330,7 +7310,7 @@ def write_region_maps(params,
       file_name=base_file
       pdb_file_name=base_pdb_file
     write_ccp4_map(box_crystal_symmetry,file_name, box_map)
-    print >>out,"to %s" %(file_name)
+    print("to %s" %(file_name), file=out)
     map_files_written.append(file_name)
 
     tracking_data.add_output_region_map_info(
@@ -7340,7 +7320,7 @@ def write_region_maps(params,
       all=box_map.all(),
       map_id=base_file)
 
-    print >>out,"Atoms representation written to %s" %(pdb_file_name)
+    print("Atoms representation written to %s" %(pdb_file_name), file=out)
     write_atoms(tracking_data=tracking_data,sites=sites,file_name=pdb_file_name,
        out=out)
     tracking_data.add_output_region_pdb_info(
@@ -7451,11 +7431,11 @@ def write_output_files(params,
        starting_mask=bool_selected_regions,
       removed_ncs=removed_ncs,
       ncs_obj=ncs_group_obj.ncs_obj,map_data=map_data,out=out)
-    print >>out,"\nExpanding NCS AU if necessary..."
-    print >>out,"Size of AU mask: %s  Current size of AU: %s" %(
-      au_mask.count(True),bool_selected_regions.count(True))
+    print("\nExpanding NCS AU if necessary...", file=out)
+    print("Size of AU mask: %s  Current size of AU: %s" %(
+      au_mask.count(True),bool_selected_regions.count(True)), file=out)
     bool_selected_regions=(bool_selected_regions | au_mask)
-    print >>out,"New size of AU mask: %s" %(bool_selected_regions.count(True))
+    print("New size of AU mask: %s" %(bool_selected_regions.count(True)), file=out)
 
   sites_cart=get_marked_points_cart(mask_data=bool_selected_regions,
      unit_cell=ncs_group_obj.crystal_symmetry.unit_cell(),
@@ -7464,45 +7444,42 @@ def write_output_files(params,
   sites_lower_bounds,sites_upper_bounds=get_bounds_from_sites(
       unit_cell=ncs_group_obj.crystal_symmetry.unit_cell(),
       sites_cart=sites_cart,map_data=map_data)
-  print >>out,"Original bounds: %5s  %5s  %5s  to %5s  %5s  %5s" %(
-    tuple(lower_bounds+upper_bounds))
+  print("Original bounds: %5s  %5s  %5s  to %5s  %5s  %5s" %(
+    tuple(lower_bounds+upper_bounds)), file=out)
   lower_bounds=get_lower(lower_bounds,sites_lower_bounds)
   upper_bounds=get_upper(upper_bounds,sites_upper_bounds)
-  print >>out,"Updated bounds:  %5s  %5s  %5s  to %5s  %5s  %5s" %(
-    tuple(lower_bounds+upper_bounds))
+  print("Updated bounds:  %5s  %5s  %5s  to %5s  %5s  %5s" %(
+    tuple(lower_bounds+upper_bounds)), file=out)
 
   lower_bounds,upper_bounds=adjust_bounds(params,lower_bounds,upper_bounds,
     map_data=map_data,out=out)
   box_ncs_au=params.segmentation.box_ncs_au
   if (not box_ncs_au):
-    print >>out,"Using entire input map (box_ncs_au=False)"
+    print("Using entire input map (box_ncs_au=False)", file=out)
     lower_bounds=map_data.origin()
     upper_bounds=tuple(matrix.col(map_data.all())+
         matrix.col(map_data.origin())-matrix.col((1,1,1)))
 
 
-  print >>out,\
-     "\nMaking two types of maps for AU of NCS mask and map with "+\
+  print("\nMaking two types of maps for AU of NCS mask and map with "+\
       "buffer of %d grid units \nin each direction around AU" %(
-      params.output_files.box_buffer)
+      params.output_files.box_buffer), file=out)
   if params.output_files.write_output_maps:
-   print >>out,"Both types of maps have the same origin and overlay on %s" %(
+   print("Both types of maps have the same origin and overlay on %s" %(
    os.path.join(tracking_data.params.output_files.output_directory,
-     params.output_files.shifted_map_file))
+     params.output_files.shifted_map_file)), file=out)
 
 
-   print >>out,\
-     "\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
+   print("\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
    os.path.join(tracking_data.params.output_files.output_directory,au_mask_output_file),
    os.path.join(tracking_data.params.output_files.output_directory,au_map_output_file))+\
-   "\nThese maps show only the unique (NCS AU) part of the map."
+   "\nThese maps show only the unique (NCS AU) part of the map.", file=out)
 
-   print >>out,\
-     "\nThe cut out box_maps (%s, %s) have \nsmaller cell dimensions." %(
+   print("\nThe cut out box_maps (%s, %s) have \nsmaller cell dimensions." %(
       os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file),
       os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),) +\
    "\nThese maps also show only the unique part of the map and have this"+\
-   "\nunique part cut out.\n"
+   "\nunique part cut out.\n", file=out)
 
 
   # Write out NCS AU with shifted origin but initial crystal_symmetry
@@ -7514,7 +7491,7 @@ def write_output_files(params,
     # Write out the mask (as int)
     write_ccp4_map(tracking_data.crystal_symmetry,
       au_mask_output_file,mask_data_ncs_au)
-    print >>out,"Output NCS AU mask:  %s" %(au_mask_output_file)
+    print("Output NCS AU mask:  %s" %(au_mask_output_file), file=out)
     tracking_data.set_output_ncs_au_mask_info(
       file_name=au_mask_output_file,
       crystal_symmetry=tracking_data.crystal_symmetry,
@@ -7529,7 +7506,7 @@ def write_output_files(params,
   mask=mask.set_selected(~s,0)
   if params.map_modification.soft_mask:
     # buffer and smooth the mask
-    print "Smoothing mask"
+    print("Smoothing mask")
     map_data_ncs_au,smoothed_mask_data=apply_soft_mask(map_data=map_data_ncs_au,
       mask_data=mask.as_double(),
       rad_smooth=tracking_data.params.crystal_info.resolution,
@@ -7550,7 +7527,7 @@ def write_output_files(params,
     # Write out the NCS au of density
     write_ccp4_map(tracking_data.crystal_symmetry,au_map_output_file,
       map_data_ncs_au)
-    print >>out,"Output NCS AU map:  %s" %(au_map_output_file)
+    print("Output NCS AU map:  %s" %(au_map_output_file), file=out)
     tracking_data.set_output_ncs_au_map_info(
       file_name=au_map_output_file,
       crystal_symmetry=tracking_data.crystal_symmetry,
@@ -7572,9 +7549,8 @@ def write_output_files(params,
      box_crystal_symmetry,
       os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file),
       box_mask_ncs_au)
-    print >>out,\
-      "Output NCS au as box (cut out) mask:  %s " %(
-      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file))
+    print("Output NCS au as box (cut out) mask:  %s " %(
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file)), file=out)
     tracking_data.set_output_box_mask_info(
       file_name=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file),
       crystal_symmetry=box_crystal_symmetry,
@@ -7603,8 +7579,8 @@ def write_output_files(params,
       write_ccp4_map(box_crystal_symmetry,
         os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
         box_map_ncs_au)
-      print >>out,"Output NCS au as box (cut out) map:  %s " %(
-      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file))
+      print("Output NCS au as box (cut out) map:  %s " %(
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file)), file=out)
       tracking_data.set_output_box_map_info(
         file_name=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
         crystal_symmetry=box_crystal_symmetry,
@@ -7614,11 +7590,11 @@ def write_output_files(params,
 
   # Write out all the selected regions
   if params.output_files.write_output_maps:
-    print >>out,"\nWriting out region maps. "+\
+    print("\nWriting out region maps. "+\
       "These superimpose on the NCS AU map \nand "+\
       "mask %s,%s\n" %(
         os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
-        os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file),)
+        os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file),), file=out)
 
     map_files_written,remainder_regions_written=write_region_maps(params,
       map_data=map_data,
@@ -7650,8 +7626,8 @@ def write_intermediate_maps(params,
     write_ccp4_map(
        tracking_data.crystal_symmetry,params.output_files.remainder_map_file,
       map_data_remaining)
-    print >>out,"Wrote output remainder map to %s" %(
-       params.output_files.remainder_map_file)
+    print("Wrote output remainder map to %s" %(
+       params.output_files.remainder_map_file), file=out)
 
   if params.segmentation.write_all_regions:
     for id in ncs_group_obj.selected_regions:
@@ -7663,8 +7639,8 @@ def write_intermediate_maps(params,
 
       write_ccp4_map(tracking_data.crystal_symmetry,
           'mask_%d.ccp4' %id, region_mask)
-      print >>out,"Wrote output mask for region %d to %s" %(id,
-        "mask_%d.ccp4" %(id))
+      print("Wrote output mask for region %d to %s" %(id,
+        "mask_%d.ccp4" %(id)), file=out)
 
 
 def iterate_search(params,
@@ -7708,7 +7684,7 @@ def iterate_search(params,
   new_tracking_data.set_solvent_fraction(new_solvent_fraction)
   new_tracking_data.set_origin_shift() # sets it to zero
   new_tracking_data.params.segmentation.starting_density_threshold=new_params.segmentation.starting_density_threshold # this is new
-  print >>out,"\nIterating with remainder density"
+  print("\nIterating with remainder density", file=out)
   # NOTE: do not include pdb_hierarchy here unless you deep_copy it
   remainder_ncs_group_obj,dummy_remainder,remainder_tracking_data=run(
     None,params=new_params,
@@ -7790,9 +7766,8 @@ def combine_with_iteration(params,
         best_overlaps=overlaps
         best_id=id
     if best_overlaps:
-      print >>out,\
-        "\nCombining remainder id %d with original id %d (overlaps=%d)" %(
-        id_remainder,best_id,best_overlaps)
+      print("\nCombining remainder id %d with original id %d (overlaps=%d)" %(
+        id_remainder,best_id,best_overlaps), file=out)
       remainder_id_dict[id_remainder]=best_id
   remainder_ncs_group_obj.remainder_id_dict=remainder_id_dict
   return remainder_ncs_group_obj
@@ -7830,8 +7805,8 @@ def get_grid_units(map_data=None,crystal_symmetry=None,radius=None,
     grid_units=int(radius/grid_spacing)
     min_cell_grid_units=min(N_[0], N_[1], N_[2])
     grid_units=max(1,min(grid_units,int(min_cell_grid_units/3)))
-    print >>out,"Grid units representing %7.1f A will be %d" %(
-       radius,grid_units)
+    print("Grid units representing %7.1f A will be %d" %(
+       radius,grid_units), file=out)
     return grid_units
 
 def cut_out_map(map_data=None, crystal_symmetry=None,
@@ -7898,7 +7873,7 @@ def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
        map_data,grid_units).result()
     # this map is zero's around the edge and 1 in the middle
     # multiply zero_boundary_map--smoothed & new_map_data and return
-    print >>out,"Applying soft mask to boundary of cut out map"
+    print("Applying soft mask to boundary of cut out map", file=out)
     new_map_data,smoothed_mask_data=apply_soft_mask(map_data=map_data,
           mask_data=zero_boundary_map,
           rad_smooth=resolution,
@@ -7939,8 +7914,8 @@ def apply_origin_shift(origin_shift=None,
       write_ccp4_map(tracking_data.crystal_symmetry,
       shifted_map_file,
       map_data)
-      print >>out,"Wrote shifted map to %s" %(
-        shifted_map_file)
+      print("Wrote shifted map to %s" %(
+        shifted_map_file), file=out)
       tracking_data.set_shifted_map_info(file_name=
         shifted_map_file,
         crystal_symmetry=tracking_data.crystal_symmetry,
@@ -7978,12 +7953,12 @@ def apply_origin_shift(origin_shift=None,
   if shifted_pdb_file and pdb_hierarchy:
       import iotbx.pdb
       f=open(shifted_pdb_file,'w')
-      print >>f, iotbx.pdb.format_cryst1_record(
-         crystal_symmetry=tracking_data.crystal_symmetry)
-      print >>f,pdb_hierarchy.as_pdb_string()
+      print(iotbx.pdb.format_cryst1_record(
+         crystal_symmetry=tracking_data.crystal_symmetry), file=f)
+      print(pdb_hierarchy.as_pdb_string(), file=f)
       f.close()
-      print >>out,"Wrote shifted pdb file to %s" %(
-        shifted_pdb_file)
+      print("Wrote shifted pdb file to %s" %(
+        shifted_pdb_file), file=out)
       tracking_data.set_shifted_pdb_info(file_name=shifted_pdb_file,
       n_residues=pdb_hierarchy.overall_counts().n_residues)
 
@@ -7991,13 +7966,12 @@ def apply_origin_shift(origin_shift=None,
   if shifted_ncs_file and shifted_ncs_object:
       shifted_ncs_object.format_all_for_group_specification(
          file_name=shifted_ncs_file)
-      print >>out,"Wrote %s NCS operators for shifted map to %s" %(
+      print("Wrote %s NCS operators for shifted map to %s" %(
          shifted_ncs_object.max_operators(),
-         shifted_ncs_file)
+         shifted_ncs_file), file=out)
       if tracking_data.input_ncs_info.has_updated_operators():
-        print >>out,\
-        "NOTE: these may include additional operators added to fill the cell"+\
-        " or\nhave fewer operators if not all applied."
+        print("NOTE: these may include additional operators added to fill the cell"+\
+        " or\nhave fewer operators if not all applied.", file=out)
       tracking_data.set_shifted_ncs_info(file_name=shifted_ncs_file,
         number_of_operators=shifted_ncs_object.max_operators(),
         is_helical_symmetry=tracking_data.input_ncs_info.is_helical_symmetry)
@@ -8010,12 +7984,12 @@ def restore_pdb(params,tracking_data=None,out=sys.stdout):
   if not params.output_files.restored_pdb:
     params.output_files.restored_pdb=\
        params.input_files.pdb_to_restore[:-4]+"_restored.pdb"
-  print>>out,"Shifting origin of %s and writing to %s" %(
+  print("Shifting origin of %s and writing to %s" %(
     params.input_files.pdb_to_restore,
-    params.output_files.restored_pdb)
+    params.output_files.restored_pdb), file=out)
   os=tracking_data.origin_shift
   origin_shift=(-os[0],-os[1],-os[2])
-  print >>out,"Origin shift will be: %.1f  %.1f  %.1f "%(origin_shift)
+  print("Origin shift will be: %.1f  %.1f  %.1f "%(origin_shift), file=out)
 
   import iotbx.pdb
   pdb_inp = iotbx.pdb.input(file_name=params.input_files.pdb_to_restore)
@@ -8027,12 +8001,12 @@ def restore_pdb(params,tracking_data=None,out=sys.stdout):
     out=out)
 
   f=open(params.output_files.restored_pdb,'w')
-  print >>f, iotbx.pdb.format_cryst1_record(
-      crystal_symmetry=tracking_data.crystal_symmetry)
-  print >>f,pdb_hierarchy.as_pdb_string()
+  print(iotbx.pdb.format_cryst1_record(
+      crystal_symmetry=tracking_data.crystal_symmetry), file=f)
+  print(pdb_hierarchy.as_pdb_string(), file=f)
   f.close()
-  print >>out,"Wrote restored pdb file to %s" %(
-     params.output_files.restored_pdb)
+  print("Wrote restored pdb file to %s" %(
+     params.output_files.restored_pdb), file=out)
 
 def find_threshold_in_map(target_points=None,
       map_data=None,
@@ -8266,8 +8240,8 @@ def get_overall_mask(
     from cctbx.maptbx import d_min_from_map
     resolution=d_min_from_map(
       map_data,crystal_symmetry.unit_cell(), resolution_factor=1./4.)
-    print >>out,"\nEstimated resolution of map: %6.1f A\n" %(
-     resolution)
+    print("\nEstimated resolution of map: %6.1f A\n" %(
+     resolution), file=out)
 
   if radius:
     smoothing_radius=2.*radius
@@ -8295,7 +8269,7 @@ def get_overall_mask(
     temp = complete_set.structure_factors_from_map(
       flex.pow2(map_data-map_data.as_1d().min_max_mean().mean))
   except Exception,e:
-    print >>out,e
+    print(e, file=out)
     raise Sorry("The sampling of the map appears to be too low for a "+
       "\nresolution of %s. Try using a larger value for resolution" %(
        resolution))
@@ -8311,17 +8285,16 @@ def get_overall_mask(
   max_in_sd_map=mm.max
   mean_in_map=mm.mean
   min_in_map=mm.min
-  print >>out,\
-       "Highest value in SD map is %7.2f. Mean is %7.2f .  Lowest is %7.2f " %(
+  print("Highest value in SD map is %7.2f. Mean is %7.2f .  Lowest is %7.2f " %(
     max_in_sd_map,
     mean_in_map,
-    min_in_map)
+    min_in_map), file=out)
 
   if fraction_of_max_mask_threshold:
     mask_threshold=fraction_of_max_mask_threshold*max_in_sd_map
-    print >>out,"Using fraction of max as threshold: %.3f " %(
+    print("Using fraction of max as threshold: %.3f " %(
         fraction_of_max_mask_threshold), \
-        "which is threshold of %.3f" %(mask_threshold)
+        "which is threshold of %.3f" %(mask_threshold), file=out)
     if mask_padding_fraction:
       # Adjust threshold to increase by mask_padding_fraction, proportional
       #  to fraction available
@@ -8331,28 +8304,28 @@ def get_overall_mask(
       additional_padding=(1-current_above_threshold)*mask_padding_fraction
       target_above_threshold=min(
         0.99,current_above_threshold+additional_padding)
-      print >>out,"Target with padding of %.2f will be %.2f" %(
-         mask_padding_fraction,target_above_threshold)
+      print("Target with padding of %.2f will be %.2f" %(
+         mask_padding_fraction,target_above_threshold), file=out)
       solvent_fraction=(1-target_above_threshold)
       mask_threshold=None
 
   if mask_threshold:
-    print >>out,"Cutoff for mask will be input threshold"
+    print("Cutoff for mask will be input threshold", file=out)
     threshold=mask_threshold
   else:  # guess based on solvent_fraction
     if solvent_fraction is None:
-       print >>out,"Guessing solvent fraction of 0.9"
+       print("Guessing solvent fraction of 0.9", file=out)
        solvent_fraction=0.9 # just guess
     threshold=find_threshold_in_map(target_points=int(
       (1.-solvent_fraction)*sd_map.size()),
       map_data=sd_map)
-    print >>out,"Cutoff will be threshold marking about %7.1f%% of cell" %(
-      100.*(1.-solvent_fraction))
+    print("Cutoff will be threshold marking about %7.1f%% of cell" %(
+      100.*(1.-solvent_fraction)), file=out)
 
   overall_mask=(sd_map>= threshold)
-  print >>out,"Model region of map "+\
+  print("Model region of map "+\
     "(density above %7.3f )" %( threshold) +" includes %7.1f%% of map" %(
-      100.*overall_mask.count(True)/overall_mask.size())
+      100.*overall_mask.count(True)/overall_mask.size()), file=out)
   return overall_mask,max_in_sd_map,sd_map
 
 def get_skew(data=None):
@@ -8394,13 +8367,13 @@ def score_map(map_data=None,
        map_data=map_data,solvent_fraction=solvent_fraction)
 
     target_in_all_regions=map_data.size()*fraction_occupied*(1-solvent_fraction)
-    print >>out,"\nTarget number of points in all regions: %.0f" %(
-      target_in_all_regions)
+    print("\nTarget number of points in all regions: %.0f" %(
+      target_in_all_regions), file=out)
 
     threshold=find_threshold_in_map(target_points=int(
          target_in_all_regions),map_data=map_data)
-    print >>out,"Cutoff will be threshold of %7.2f marking %7.1f%% of cell" %(
-              threshold,100.*(1.-solvent_fraction))
+    print("Cutoff will be threshold of %7.2f marking %7.1f%% of cell" %(
+              threshold,100.*(1.-solvent_fraction)), file=out)
 
     co,sorted_by_volume,min_b,max_b=get_co(
       map_data=map_data.deep_copy(),
@@ -8410,8 +8383,8 @@ def score_map(map_data=None,
       return sharpening_info_obj# skip it, nothing to do
 
     target_sum= sa_percent* target_in_all_regions*0.01
-    print >>out,"Points for %.1f percent of target in all regions: %.1f" %(
-        sa_percent,target_sum)
+    print("Points for %.1f percent of target in all regions: %.1f" %(
+        sa_percent,target_sum), file=out)
 
     cntr=0
     sum_v=0.
@@ -8477,10 +8450,9 @@ def sharpen_map_with_si(sharpening_info_obj=None,
        (si.local_aniso_in_local_sharpening is None and si.ncs_copies==1)) and \
          si.original_aniso_obj: # use original
       aniso_obj=si.original_aniso_obj
-      print >>out,\
-       "\nRemoving aniso from map using saved aniso object before sharpening\n"
+      print("\nRemoving aniso from map using saved aniso object before sharpening\n", file=out)
     else:
-      print >>out,"\nRemoving aniso from map before sharpening\n"
+      print("\nRemoving aniso from map before sharpening\n", file=out)
       aniso_obj=None
     from cctbx.maptbx.refine_sharpening import analyze_aniso
     f_array,f_array_ra=analyze_aniso(
@@ -8528,10 +8500,10 @@ def put_bounds_in_range(
 
   new_lb=[]
   new_ub=[]
-  print >>out,"Putting bounds in range...(%s,%s,%s) to (%s,%s,%s)" %(
-       tuple(list(lower_bounds)+list(upper_bounds)))
+  print("Putting bounds in range...(%s,%s,%s) to (%s,%s,%s)" %(
+       tuple(list(lower_bounds)+list(upper_bounds))), file=out)
   if n_buffer:
-     print >>out,"Buffer of %s added" %(n_buffer)
+     print("Buffer of %s added" %(n_buffer), file=out)
   for lb,ub,ms,nr in zip(lower_bounds,upper_bounds,box_size,n_real):
     if ub<lb: ub=lb
     if lb >ub: lb=ub
@@ -8555,8 +8527,8 @@ def put_bounds_in_range(
     if ub>nr: ub=nr
     new_lb.append(lb)
     new_ub.append(ub)
-  print >>out,"New bounds ...(%s,%s,%s) to (%s,%s,%s)" %(
-       tuple(list(new_lb)+list(new_ub)))
+  print("New bounds ...(%s,%s,%s) to (%s,%s,%s)" %(
+       tuple(list(new_lb)+list(new_ub))), file=out)
   return tuple(new_lb),tuple(new_ub)
 
 def get_iterated_solvent_fraction(map=None,
@@ -8599,11 +8571,10 @@ def get_iterated_solvent_fraction(map=None,
   except Exception,e:
     # catch case where map was not on proper grid
     if str(e).find("sym equiv of a grid point must be a grid point")>-1:
-      print >>out,\
-      "\nSpace group:%s \n Unit cell: %s \n Gridding: %s \nError message: %s" %(
+      print("\nSpace group:%s \n Unit cell: %s \n Gridding: %s \nError message: %s" %(
         crystal_symmetry.space_group().info(),
         str(crystal_symmetry.unit_cell().parameters()),
-        str(map.all()),str(e))
+        str(map.all()),str(e)), file=out)
       raise Sorry(
       "The input map seems to be on a grid incompatible with crystal symmetry"+
          "\n(symmetry equivalents of a grid point must be on "+
@@ -8636,7 +8607,7 @@ def get_solvent_fraction_from_low_res_mask(
     out=out)
 
   solvent_fraction=overall_mask.count(False)/overall_mask.size()
-  print >>out,"Solvent fraction from overall mask: %.3f " %(solvent_fraction)
+  print("Solvent fraction from overall mask: %.3f " %(solvent_fraction), file=out)
   return solvent_fraction
 
 
@@ -8650,8 +8621,8 @@ def get_solvent_fraction_from_molecular_mass(
 
      solvent_fraction=max(0.01,min(1.,1 - (
          mm*density_factor/map_volume)))
-     print >>out,"Solvent content of %7.2f from molecular mass of %7.1f kDa" %(
-     solvent_fraction,mm)
+     print("Solvent content of %7.2f from molecular mass of %7.1f kDa" %(
+     solvent_fraction,mm), file=out)
      return solvent_fraction
 
 
@@ -8871,8 +8842,7 @@ def select_box_map_data(si=None,
 
   if  (not pdb_inp and not si.box_in_auto_sharpen) and (
       first_half_map_data and second_half_map_data):
-      print >>out,\
-          "Creating density-based soft mask and applying to half-map data"
+      print("Creating density-based soft mask and applying to half-map data", file=out)
 
       if not si.soft_mask:
         raise Sorry(
@@ -8908,7 +8878,7 @@ def select_box_map_data(si=None,
     assert not si.local_sharpening
 
     if pdb_inp:
-      print >>out,"Using map_box based on input model"
+      print("Using map_box based on input model", file=out)
       hierarchy=pdb_inp.construct_hierarchy()
       max_box_fraction=si.max_box_fraction
       si.density_select_in_auto_sharpen=False
@@ -8948,9 +8918,9 @@ def select_box_map_data(si=None,
         sel_hierarchy=select_inside_box(lower_bounds=lower_cart,
          upper_bounds=upper_cart, xrs=xrs,hierarchy=hierarchy)
         n=sel_hierarchy.overall_counts().n_atoms
-        print >>out,"Selected atoms inside box: %d" %(n)
+        print("Selected atoms inside box: %d" %(n), file=out)
         if n<n_min:
-          print >>out,"Skipping...using entire structure"
+          print("Skipping...using entire structure", file=out)
         else:
           hierarchy=sel_hierarchy
     #----------------------end trimming model-------------------------------
@@ -8965,16 +8935,16 @@ def select_box_map_data(si=None,
         args.append('density_select_threshold=%s' %(
           si.density_select_threshold_in_auto_sharpen))
     elif si.box_in_auto_sharpen and not si.mask_atoms:
-      print >>out,"Using map_box with model"
+      print("Using map_box with model", file=out)
     elif si.mask_atoms:
-      print >>out,"Using map_box with model and mask_atoms"
+      print("Using map_box with model and mask_atoms", file=out)
       args.append('mask_atoms=True')
       if si.mask_atoms_atom_radius:
         args.append('mask_atoms_atom_radius=%s' %(si.mask_atoms_atom_radius))
       if si.value_outside_atoms:
         args.append('value_outside_atoms=%s' %(si.value_outside_atoms))
       if si.soft_mask:
-        print >>out,"Using soft mask"
+        print("Using soft mask", file=out)
         args.append('soft_mask=%s' %(si.soft_mask))
         args.append('soft_mask_radius=%s' %(si.resolution))
     else:
@@ -8982,7 +8952,7 @@ def select_box_map_data(si=None,
 
     if restrict_map_size:
       args.append('restrict_map_size=True')
-    print >>out,"Getting map as box now"
+    print("Getting map as box now", file=out)
     local_hierarchy=None
     if hierarchy:
        local_hierarchy=hierarchy.deep_copy() # run_map_box modifies its argument
@@ -8999,7 +8969,7 @@ def select_box_map_data(si=None,
     box_crystal_symmetry=box.box_crystal_symmetry
     box_pdb_inp=box.hierarchy.as_pdb_input()
     if first_half_map_data:
-      print >>out,"Getting first map as box"
+      print("Getting first map as box", file=out)
       if hierarchy:
         local_hierarchy=hierarchy.deep_copy() # required
       box_first=run_map_box(args,
@@ -9014,7 +8984,7 @@ def select_box_map_data(si=None,
       box_first_half_map=None
 
     if second_half_map_data:
-      print >>out,"Getting second map as box"
+      print("Getting second map as box", file=out)
       if hierarchy:
         local_hierarchy=hierarchy.deep_copy() # required
       box_second=run_map_box(args,
@@ -9031,16 +9001,16 @@ def select_box_map_data(si=None,
   else: # cut out box based on box_center or regions
 
     if si.box_center:  # center at box_center
-      print>>out,"Cutting out box based on center at (%.2f,%.2f,%.2f) " %( si.box_center)
+      print("Cutting out box based on center at (%.2f,%.2f,%.2f) " %( si.box_center), file=out)
       lower_bounds,upper_bounds=box_from_center(si=si,
         map_data=map_data,out=out)
     elif si.use_weak_density:
-      print >>out,"Cutting out box based on centering on weak density"
+      print("Cutting out box based on centering on weak density", file=out)
       lower_bounds,upper_bounds=box_of_smallest_region(si=si,
            map_data=map_data,
            out=out)
     else:
-      print >>out,"Cutting out box based on centering on strong density"
+      print("Cutting out box based on centering on strong density", file=out)
       lower_bounds,upper_bounds=box_of_biggest_region(si=si,
            map_data=map_data,
            out=out)
@@ -9057,7 +9027,7 @@ def select_box_map_data(si=None,
      n_real=map_data.all(),out=out)
 
     # select map data inside this box
-    print >>out,"\nSelecting map data inside box"
+    print("\nSelecting map data inside box", file=out)
 
     box_map,box_crystal_symmetry,\
          smoothed_box_mask_data,original_box_map_data=cut_out_map(
@@ -9116,8 +9086,8 @@ def select_box_map_data(si=None,
         out=out)
     if box_solvent_fraction is None:
       box_solvent_fraction=si.solvent_fraction
-      print >>out,"Using overall solvent fraction for box"
-    print >>out,"Local solvent fraction: %7.2f" %(box_solvent_fraction)
+      print("Using overall solvent fraction for box", file=out)
+    print("Local solvent fraction: %7.2f" %(box_solvent_fraction), file=out)
   else:
     box_solvent_fraction=None
 
@@ -9162,16 +9132,16 @@ def box_from_center( si=None,
            out=sys.stdout):
     cx,cy,cz=si.crystal_symmetry.unit_cell().fractionalize(si.box_center)
     if cx<0 or cx>1 or cy<0 or cy>1 or cz<0 or cz>1:
-       print >>out, "Moving box center inside (0,1)"
+       print("Moving box center inside (0,1)", file=out)
        si.box_center=move_xyz_inside_cell(
            xyz_cart=si.box_center,crystal_symmetry=si.crystal_symmetry)
     cx,cy,cz=si.crystal_symmetry.unit_cell().fractionalize(si.box_center)
-    print >>out, "\nBox centered at (%7.2f,%7.2f,%7.2f) A" %(
-      tuple(si.box_center))
+    print("\nBox centered at (%7.2f,%7.2f,%7.2f) A" %(
+      tuple(si.box_center)), file=out)
 
     ax,ay,az=map_data.all()
     cgx,cgy,cgz=int(0.5+ax*cx),int(0.5+ay*cy),int(0.5+az*cz),
-    print >>out,"Box grid centered at (%d,%d,%d)\n" %(cgx,cgy,cgz)
+    print("Box grid centered at (%d,%d,%d)\n" %(cgx,cgy,cgz), file=out)
     return (cgx,cgy,cgz),(cgx,cgy,cgz)
 
 def box_of_smallest_region(si=None,
@@ -9236,17 +9206,16 @@ def box_of_biggest_region(si=None,
         best_pos=ii
 
       v,i=sorted_by_volume[best_pos]
-      print >>out,"\nVolume of target region %d: %d grid points: "%(best_pos,v)
+      print("\nVolume of target region %d: %d grid points: "%(best_pos,v), file=out)
     else: # usual
       v,i=sorted_by_volume[1]
-      print >>out,"\nVolume of largest region: %d grid points: "%(v)
+      print("\nVolume of largest region: %d grid points: "%(v), file=out)
 
-    print >>out,\
-    "Region %3d (%3d)  volume:%5d  X:%6d - %6d   Y:%6d - %6d  Z:%6d - %6d "%(
+    print("Region %3d (%3d)  volume:%5d  X:%6d - %6d   Y:%6d - %6d  Z:%6d - %6d "%(
      1,i,v,
      min_b[i][0],max_b[i][0],
      min_b[i][1],max_b[i][1],
-     min_b[i][2],max_b[i][2])
+     min_b[i][2],max_b[i][2]), file=out)
 
     if (not return_as_list):
       return min_b[i],max_b[i]
@@ -9390,14 +9359,14 @@ def split_boxes(lower=None,upper=None,target_size=None,target_n_overlap=None,
 def get_target_boxes(si=None,ncs_obj=None,map=None,
     pdb_inp=None,out=sys.stdout):
 
-  print >>out,80*"-"
-  print >>out,"Getting segmented map to ID locations for sharpening"
-  print >>out,80*"-"
+  print(80*"-", file=out)
+  print("Getting segmented map to ID locations for sharpening", file=out)
+  print(80*"-", file=out)
 
   if si.input_weight_map_pickle_file:
     from libtbx import easy_pickle
     file_name=si.input_weight_map_pickle_file
-    print >>out,"Loading segmentation data from %s" %(file_name)
+    print("Loading segmentation data from %s" %(file_name), file=out)
     tracking_data=easy_pickle.load(file_name)
 
   else:
@@ -9421,7 +9390,7 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,
   if si.output_weight_map_pickle_file:
     from libtbx import easy_pickle
     file_name=os.path.join(si.output_directory,si.output_weight_map_pickle_file)
-    print >>out,"Dumping segmentation data to %s" %(file_name)
+    print("Dumping segmentation data to %s" %(file_name), file=out)
     easy_pickle.dump(file_name,tracking_data)
 
   if not ncs_obj or ncs_obj.max_operators()==0:
@@ -9429,7 +9398,7 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,
     ncs_obj=ncs()
     ncs_obj.set_unit_ncs()
 
-  print >>out,"Regions in this map:"
+  print("Regions in this map:", file=out)
   centers_frac=flex.vec3_double()
   upper_bounds_list=[]
   lower_bounds_list=[]
@@ -9475,7 +9444,7 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,
 
 
   #  Make ncs-related centers
-  print >>out,"NCS ops:",ncs_obj.max_operators()
+  print("NCS ops:",ncs_obj.max_operators(), file=out)
   centers_cart_ncs_list=[]
   for i in xrange(centers_cart.size()):
     centers_cart_ncs_list.append(get_ncs_copies(
@@ -9495,19 +9464,18 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,
   write_atoms(file_name=ncs_sharpening_centers_file,
     crystal_symmetry=si.crystal_symmetry,sites=all_cart)
 
-  print >>out,\
-    "\nSharpening centers (matching shifted_map_file).\n\n "+\
+  print("\nSharpening centers (matching shifted_map_file).\n\n "+\
       "Written to: \n%s \n%s\n"%(
-      sharpening_centers_file,ncs_sharpening_centers_file)
+      sharpening_centers_file,ncs_sharpening_centers_file), file=out)
 
   for i in xrange(centers_cart.size()):
-    print >>out,"Center: %s (%7.2f,%7.2f,%7.2f)  Bounds: %s :: %s " %(
+    print("Center: %s (%7.2f,%7.2f,%7.2f)  Bounds: %s :: %s " %(
         i,centers_cart[i][0],centers_cart[i][1],centers_cart[i][2],
-          str(lower_bounds_list[i]),str(upper_bounds_list[i]))
+          str(lower_bounds_list[i]),str(upper_bounds_list[i])), file=out)
 
-  print >>out,80*"-"
-  print >>out,"Done getting segmented map to ID locations for sharpening"
-  print >>out,80*"-"
+  print(80*"-", file=out)
+  print("Done getting segmented map to ID locations for sharpening", file=out)
+  print(80*"-", file=out)
 
 
   return upper_bounds_list,lower_bounds_list,\
@@ -9540,9 +9508,9 @@ def run_local_sharpening(si=None,
     half_map_data_list=None,
     pdb_inp=None,
     out=sys.stdout):
-  print >>out,80*"-"
-  print >>out,"Running local sharpening"
-  print >>out,80*"-"
+  print(80*"-", file=out)
+  print("Running local sharpening", file=out)
+  print(80*"-", file=out)
 
   # run auto_sharpen_map_or_map_coeffs with box_in_auto_sharpen=True and
   #   centered at different places.  Identify the places as centers of regions.
@@ -9550,9 +9518,8 @@ def run_local_sharpening(si=None,
 
   if si.overall_before_local:
     # first do overall sharpening of the map to get it about right
-    print >>out,80*"*"
-    print >>out,\
-       "\nSharpening map overall before carrying out local sharpening\n"
+    print(80*"*", file=out)
+    print("\nSharpening map overall before carrying out local sharpening\n", file=out)
     overall_si=deepcopy(si)
     overall_si.local_sharpening=False  # don't local sharpen
     overall_si=auto_sharpen_map_or_map_coeffs(si=overall_si,
@@ -9562,8 +9529,8 @@ def run_local_sharpening(si=None,
           pdb_inp=pdb_inp,
           out=out)
     sharpened_map=overall_si.map_data
-    print >>out,"\nDone sharpening map overall before carrying out local sharpening\n"
-    print >>out,80*"*"
+    print("\nDone sharpening map overall before carrying out local sharpening\n", file=out)
+    print(80*"*", file=out)
   else:
     sharpened_map=map
 
@@ -9575,8 +9542,8 @@ def run_local_sharpening(si=None,
   # in case a pixel is not covered...
   sum_weight_value_map=starting_weight*sharpened_map.deep_copy()
 
-  print >>out,"\nUsing overall map for any regions where "+\
-     "no local information is present"
+  print("\nUsing overall map for any regions where "+\
+     "no local information is present", file=out)
 
   id_list=[]
   b_iso_list=flex.double()
@@ -9592,12 +9559,12 @@ def run_local_sharpening(si=None,
   if not dist:
     dist=10.
     if not si.smoothing_radius:
-      print >>out,"No nearest neighbors...best to set smoothing radius"
-  print >>out,"\nMean distance to nearest center is %7.2f A " %(
-    dist)
+      print("No nearest neighbors...best to set smoothing radius", file=out)
+  print("\nMean distance to nearest center is %7.2f A " %(
+    dist), file=out)
   if not si.smoothing_radius:
     si.smoothing_radius=float("%.0f" %(dist*2/3)) # 10A from nearest neighbor
-    print >>out,"Using %s A for smoothing radius" %(si.smoothing_radius)
+    print("Using %s A for smoothing radius" %(si.smoothing_radius), file=out)
 
   i=-1
   for ub,lb,centers_ncs_cart,center_cart in zip(
@@ -9607,7 +9574,7 @@ def run_local_sharpening(si=None,
       continue
     map_file_name='sharpened_map_%s.ccp4' %(i)
     if 0 and si.read_sharpened_maps: # cannot do this as no bounds
-      print >>out,"\nReading sharpened map directly from %s" %(map_file_name)
+      print("\nReading sharpened map directly from %s" %(map_file_name), file=out)
       result=get_map_object(file_name=map_file_name,
         out=out)
       local_map_data=result[0]
@@ -9624,9 +9591,9 @@ def run_local_sharpening(si=None,
       local_si.max_box_fraction=999 # just bigger than 1
       local_si.density_select_max_box_fraction=999
       local_si.nproc=1
-      print >>out,80*"+"
-      print >>out,"Getting local sharpening for box %s" %(i)
-      print >>out,80*"+"
+      print(80*"+", file=out)
+      print("Getting local sharpening for box %s" %(i), file=out)
+      print(80*"+", file=out)
       bsi=auto_sharpen_map_or_map_coeffs(si=local_si,
         auto_sharpen_methods=auto_sharpen_methods,
         map=sharpened_map,
@@ -9636,17 +9603,17 @@ def run_local_sharpening(si=None,
         out=out)
 
       if not bsi.map_data:
-        print >>out,"\nNo result for local map %s ...skipping" %(i)
+        print("\nNo result for local map %s ...skipping" %(i), file=out)
         continue
 
       # merge with background using bsi.smoothed_box_mask_data
       if bsi.smoothed_box_mask_data:
-        print >>out,"Merging small map into overall map in soft-mask region"
+        print("Merging small map into overall map in soft-mask region", file=out)
         bsi.merge_into_overall_map(overall_map=map) # XXX overall_map not used
 
       # Now remove buffer region
       if bsi.n_buffer: # extract just the good part
-         print >>out,"Removing buffer from small map"
+         print("Removing buffer from small map", file=out)
          bsi.remove_buffer(out=out)
 
 
@@ -9667,29 +9634,29 @@ def run_local_sharpening(si=None,
     starting_b_iso_list.append(bsi.starting_b_iso)
     b_iso_list.append(bsi.b_iso)
 
-    print >>out,80*"+"
-    print >>out,"End of getting local sharpening for small box %s" %(i)
-    print >>out,80*"+"
+    print(80*"+", file=out)
+    print("End of getting local sharpening for small box %s" %(i), file=out)
+    print(80*"+", file=out)
 
-  print >>out,"\nOverall map created from total of %s local maps" %(i)
+  print("\nOverall map created from total of %s local maps" %(i), file=out)
   if si.overall_before_local:
-    print >>out,"Note: overall map already sharpened with global sharpening"
+    print("Note: overall map already sharpened with global sharpening", file=out)
 
   if starting_b_iso_list.size()<1:
-    print >>out,"No results for local sharpening..."
+    print("No results for local sharpening...", file=out)
   else:
-    print >>out,"Summary of b_iso values by local map:"
-    print >>out," ID   Starting B-iso    Sharpened B-iso"
+    print("Summary of b_iso values by local map:", file=out)
+    print(" ID   Starting B-iso    Sharpened B-iso", file=out)
     for i,starting_b_iso,b_iso in zip(id_list,starting_b_iso_list,b_iso_list):
-      print >>out," %4s    %7.2f        %7.2f" %(i,starting_b_iso,b_iso)
-    print >>  out,"\nMean    %7.2f        %7.2f" %(
+      print(" %4s    %7.2f        %7.2f" %(i,starting_b_iso,b_iso), file=out)
+    print("\nMean    %7.2f        %7.2f" %(
      starting_b_iso_list.min_max_mean().mean,
-     b_iso_list.min_max_mean().mean)
+     b_iso_list.min_max_mean().mean), file=out)
 
   si.map_data=sum_weight_value_map/sum_weight_map
 
   # Get overall b_iso...
-  print >>out,"\nGetting overall b_iso of composite map..."
+  print("\nGetting overall b_iso of composite map...", file=out)
   map_coeffs_aa,map_coeffs,f_array,phases=effective_b_iso(
      map_data=si.map_data,
       resolution=si.resolution,
@@ -9698,9 +9665,9 @@ def run_local_sharpening(si=None,
       crystal_symmetry=si.crystal_symmetry,
       out=out)
 
-  print >>out,80*"+"
-  print >>out,"End of getting local sharpening "
-  print >>out,80*"+"
+  print(80*"+", file=out)
+  print("End of getting local sharpening ", file=out)
+  print(80*"+", file=out)
 
   return si
 
@@ -9837,7 +9804,7 @@ def auto_sharpen_map_or_map_coeffs(
     # Set ncs_copies if possible
     if ncs_copies is None and ncs_obj and ncs_obj.max_operators():
       ncs_copies=ncs_obj.max_operators()
-      print >>out,"Set ncs copies based on ncs_obj to %s" %(ncs_copies)
+      print("Set ncs copies based on ncs_obj to %s" %(ncs_copies), file=out)
 
     # Determine if we are running model_sharpening
     if half_map_data_list and len(half_map_data_list)==2:
@@ -9869,7 +9836,7 @@ def auto_sharpen_map_or_map_coeffs(
         map=map,
         out=out)
     if si.solvent_fraction:
-      print >>out,"Estimated solvent content: %.2f" %(si.solvent_fraction)
+      print("Estimated solvent content: %.2f" %(si.solvent_fraction), file=out)
     else:
       raise Sorry("Unable to estimate solvent content...please supply "+
         "solvent_content \nor molecular_mass")
@@ -9899,9 +9866,8 @@ def auto_sharpen_map_or_map_coeffs(
       si.preliminary_sharpening_done=True
       si.iterate=False
       # first do overall sharpening of the map to get it about right
-      print >>out,80*"*"
-      print >>out,\
-         "\nSharpening map overall before carrying out final sharpening\n"
+      print(80*"*", file=out)
+      print("\nSharpening map overall before carrying out final sharpening\n", file=out)
       overall_si=deepcopy(si)
       overall_si.local_sharpening=False  # don't local sharpen
       overall_si=auto_sharpen_map_or_map_coeffs(si=overall_si,
@@ -9921,20 +9887,20 @@ def auto_sharpen_map_or_map_coeffs(
         mask_resolution=si.resolution,
         map=working_map,
         out=out)
-      print >>out,"Resetting solvent fraction to %.2f " %(
-         overall_si.solvent_fraction)
+      print("Resetting solvent fraction to %.2f " %(
+         overall_si.solvent_fraction), file=out)
       si.solvent_fraction=overall_si.solvent_fraction
 
-      print >>out,"\nDone sharpening map overall before carrying out final sharpening\n"
-      print >>out,80*"*"
+      print("\nDone sharpening map overall before carrying out final sharpening\n", file=out)
+      print(80*"*", file=out)
       si.b_blur_hires=0.  # from now on, don't apply extra blurring
     else:
       working_map=map
 
     # Now identify optimal sharpening params
-    print >>out,80*"="
-    print >>out,"\nRunning auto_sharpen to get sharpening parameters\n"
-    print >>out,80*"="
+    print(80*"=", file=out)
+    print("\nRunning auto_sharpen to get sharpening parameters\n", file=out)
+    print(80*"=", file=out)
     result=run_auto_sharpen( # get sharpening parameters standard run
       si=si,
       map_data=working_map,
@@ -9949,9 +9915,9 @@ def auto_sharpen_map_or_map_coeffs(
       return result  # it is a box_sharpening_info object
     else:
       si=result
-    print >>out,80*"="
-    print >>out,"\nDone running auto_sharpen to get sharpening parameters\n"
-    print >>out,80*"="
+    print(80*"=", file=out)
+    print("\nDone running auto_sharpen to get sharpening parameters\n", file=out)
+    print(80*"=", file=out)
 
     # Apply the optimal sharpening values and save map in si.map_data
     # First test without sharpening if sharpening_method is b_iso,b and
@@ -9961,19 +9927,19 @@ def auto_sharpen_map_or_map_coeffs(
       local_si=deepcopy(si)
       local_si.sharpening_method='no_sharpening'
       local_si.sharpen_and_score_map(map_data=working_map,out=null_out())
-      print >>out,"\nScore for no sharpening: %7.2f " %(local_si.score)
+      print("\nScore for no sharpening: %7.2f " %(local_si.score), file=out)
     else:
       local_si=None
 
-    print >>out,80*"="
-    print >>out,"\nApplying final sharpening to entire map"
-    print >>out,80*"="
+    print(80*"=", file=out)
+    print("\nApplying final sharpening to entire map", file=out)
+    print(80*"=", file=out)
     si.sharpen_and_score_map(map_data=working_map,set_b_iso=True,out=out)
     if si.discard_if_worse and local_si and local_si.score > si.score:
-       print >>out,"Sharpening did not improve map "+\
+       print("Sharpening did not improve map "+\
         "(%7.2f sharpened, %7.2f unsharpened). Discarding sharpened map" %(
-        si.score,local_si.score)
-       print >>out,"\nUse discard_if_worse=False to keep the sharpening"
+        si.score,local_si.score), file=out)
+       print("\nUse discard_if_worse=False to keep the sharpening", file=out)
        local_si.sharpen_and_score_map(map_data=working_map,out=out)
        si=local_si
     if not si.is_model_sharpening() and not si.is_half_map_sharpening():
@@ -10028,19 +9994,19 @@ def optimize_b_blur_or_d_cut_or_b_iso(
 
   assert optimization_target in ['b_blur_hires','d_cut','b_iso']
   if optimization_target=='b_blur_hires':
-    print >>out,"\nOptimizing b_blur_hires. "
+    print("\nOptimizing b_blur_hires. ", file=out)
   elif optimization_target=='d_cut':
-    print >>out,"\nOptimizing d_cut. "
+    print("\nOptimizing d_cut. ", file=out)
     local_best_si.input_d_cut=local_best_si.get_d_cut()
   elif optimization_target=='b_iso':
-    print >>out,"\nOptimizing b_iso. "
+    print("\nOptimizing b_iso. ", file=out)
 
   local_best_si.show_summary(out=out)
 
-  print >>out,"Current best score=%7.3f b_iso=%5.1f  b_blur_hires=%5.1f d_cut=%5.1f" %(
+  print("Current best score=%7.3f b_iso=%5.1f  b_blur_hires=%5.1f d_cut=%5.1f" %(
        local_best_si.score,local_best_si.b_iso,
        local_best_si.b_blur_hires,
-       local_best_si.get_d_cut())
+       local_best_si.get_d_cut()), file=out)
 
 
   # existing values:
@@ -10055,15 +10021,14 @@ def optimize_b_blur_or_d_cut_or_b_iso(
   working_best_si=deepcopy(local_best_si)
   for cycle in xrange(n_cycle_optimize):
     if not improving: break
-    print >>out,"Optimization cycle %s" %(cycle)
-    print >>out,\
-       "Current best score=%7.3f b_iso=%5.1f  b_blur_hires=%5.1f d_cut=%5.1f" %(
+    print("Optimization cycle %s" %(cycle), file=out)
+    print("Current best score=%7.3f b_iso=%5.1f  b_blur_hires=%5.1f d_cut=%5.1f" %(
      working_best_si.score,working_best_si.b_iso,
         working_best_si.b_blur_hires,
-       working_best_si.get_d_cut())
+       working_best_si.get_d_cut()), file=out)
     if working_best_si.verbose:
-      print >>out," B-sharpen B-iso B-blur   Adj-SA    "+\
-           "Kurtosis  SA-ratio   Regions   d_cut   b_blur_hires"
+      print(" B-sharpen B-iso B-blur   Adj-SA    "+\
+           "Kurtosis  SA-ratio   Regions   d_cut   b_blur_hires", file=out)
     local_best_working_si=deepcopy(working_best_si)
     improving=False
     for jj in xrange(-n_range,n_range+1):
@@ -10102,8 +10067,7 @@ def optimize_b_blur_or_d_cut_or_b_iso(
             out=null_out())
           value_dict[id]=local_si.score
           if local_si.verbose:
-            print >>out,\
-             " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
+            print(" %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
               local_si.b_sharpen,local_si.b_iso,
                local_si.b_blur_hires,
                local_si.adjusted_sa,local_si.kurtosis) + \
@@ -10111,7 +10075,7 @@ def optimize_b_blur_or_d_cut_or_b_iso(
                local_si.sa_ratio,local_si.normalized_regions,
                test_d_cut,
                test_b_blur_hires
-                )
+                ), file=out)
 
           if local_si.score > local_best_score:
             local_best_score=local_si.score
@@ -10122,15 +10086,15 @@ def optimize_b_blur_or_d_cut_or_b_iso(
       delta_b_iso=delta_b_iso/2
       delta_b_blur_hires=delta_b_blur_hires/2
       delta_d_cut=delta_d_cut/2
-      print >>out,"Current working best "+\
+      print("Current working best "+\
           "score=%7.3f b_iso=%5.1f  b_blur_hires=%5.1f d_cut=%5.1f" %(
             working_best_si.score,working_best_si.b_iso,
         working_best_si.b_blur_hires,
-        working_best_si.get_d_cut())
+        working_best_si.get_d_cut()), file=out)
       improving=True
 
   if working_best_si and working_best_si.score > local_best_si.score:
-    print >>out,"Using new values of b_iso and b_blur_hires and d_cut"
+    print("Using new values of b_iso and b_blur_hires and d_cut", file=out)
     local_best_si=working_best_si
 
   local_best_si.show_summary(out=out)
@@ -10186,16 +10150,16 @@ def run_auto_sharpen(
            out=out,local_out=local_out)
 
     if box_sharpening_info_obj is None: # did not do it
-      print >>out,"Box map is similar in size to entire map..."+\
-         "skipping representative box of density"
+      print("Box map is similar in size to entire map..."+\
+         "skipping representative box of density", file=out)
       original_box_sharpening_info_obj=None
       crystal_symmetry=si.crystal_symmetry
     else:
-      print >>out,"Using small map to identify optimal sharpening"
-      print >>out,"Box map grid: %d  %d  %d" %(
-         box_map_data.all())
-      print >>out,"Box map cell: %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f  "%(
-        box_crystal_symmetry.unit_cell().parameters())
+      print("Using small map to identify optimal sharpening", file=out)
+      print("Box map grid: %d  %d  %d" %(
+         box_map_data.all()), file=out)
+      print("Box map cell: %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f  "%(
+        box_crystal_symmetry.unit_cell().parameters()), file=out)
       original_map_data=map_data
       original_crystal_symmetry=si.crystal_symmetry
 
@@ -10222,7 +10186,7 @@ def run_auto_sharpen(
   starting_mean=map_data.as_1d().min_max_mean().mean
   starting_sd=map_data.sample_standard_deviation()
 
-  print >>out,"\nGetting original b_iso..."
+  print("\nGetting original b_iso...", file=out)
   map_coeffs_aa,map_coeffs,f_array,phases=effective_b_iso(
      map_data=map_data,
       resolution=si.resolution,
@@ -10233,7 +10197,7 @@ def run_auto_sharpen(
       out=out)
   original_b_iso=map_coeffs_aa.b_iso
   if original_b_iso is None:
-    print >>out,"Could not determine original b_iso...setting to 200"
+    print("Could not determine original b_iso...setting to 200", file=out)
     original_b_iso=200.
 
   si.original_aniso_obj=map_coeffs_aa # set it so we can apply it later if desired
@@ -10301,7 +10265,7 @@ def run_auto_sharpen(
       b_mid=si.get_target_b_iso()
       b_low=b_mid-150*delta_search/400
       b_high=b_mid+250*delta_search/400
-      print >>out,"Centering search on b_iso=%7.2f" %(b_mid)
+      print("Centering search on b_iso=%7.2f" %(b_mid), file=out)
     else:
       b_low=min(original_b_iso,si.search_b_min)
       b_high=max(original_b_iso,si.search_b_max)
@@ -10385,7 +10349,7 @@ def run_auto_sharpen(
     delta_region_weight=si.region_weight_factor*d_sa_ratio/max(
           1.e-10,d_normalized_regions)
     if d_sa_ratio < 0 or d_normalized_regions < 0:
-      print >>out,"Not using delta_region_weight with unusable values"
+      print("Not using delta_region_weight with unusable values", file=out)
       ok_region_weight=False
 
 
@@ -10418,18 +10382,18 @@ def run_auto_sharpen(
     max_region_weight-=min_buffer
     min_max_region_weight=True
     if min_region_weight >= max_region_weight:
-      print >>out,"Warning: min_region_weight >= max_region_weight..."
+      print("Warning: min_region_weight >= max_region_weight...", file=out)
       min_max_region_weight=False
       #ok_region_weight=False
 
 
-    print >>out,"Region weight bounds: Min: %7.1f  Max: %7.1f " %(
-      min_region_weight,max_region_weight)
-    print >>out,"Region weight estimates:"
-    print >>out,"From ratio of low-B surface area to regions: %7.1f" %(
-     init_region_weight)
-    print >>out,"Ratio of change in surface area to change in regions: %7.1f" %(
-     delta_region_weight)
+    print("Region weight bounds: Min: %7.1f  Max: %7.1f " %(
+      min_region_weight,max_region_weight), file=out)
+    print("Region weight estimates:", file=out)
+    print("From ratio of low-B surface area to regions: %7.1f" %(
+     init_region_weight), file=out)
+    print("Ratio of change in surface area to change in regions: %7.1f" %(
+     delta_region_weight), file=out)
 
     # put them in bounds but note if we did it
 
@@ -10441,8 +10405,8 @@ def run_auto_sharpen(
         init_region_weight=max(
           min_region_weight,min(max_region_weight,init_region_weight))
         out_of_range=True
-      print >>out,"\nRegion weight adjusted to %7.1f using initial ratio" %(
-          init_region_weight)
+      print("\nRegion weight adjusted to %7.1f using initial ratio" %(
+          init_region_weight), file=out)
       si.region_weight=init_region_weight
 
     elif ok_region_weight and si.region_weight_method=='delta_ratio':
@@ -10453,23 +10417,21 @@ def run_auto_sharpen(
           min_region_weight,min(max_region_weight,delta_region_weight))
         out_of_range=True
       si.region_weight=delta_region_weight
-      print >>out,"\nRegion weight set to %7.1f using overall ratio and " %(
+      print("\nRegion weight set to %7.1f using overall ratio and " %(
           si.region_weight) +\
-          "\nfactor of %5.1f" %(si.region_weight_factor)
+          "\nfactor of %5.1f" %(si.region_weight_factor), file=out)
 
     else: # just use default target for b_iso
       si.region_weight=si.region_weight_default
 
-      print >>out,\
-            "Skipping region_weight analysis as signal-to-noise is zero ("+\
+      print("Skipping region_weight analysis as signal-to-noise is zero ("+\
            "adjusted sa\nvs b_iso does not have low values at extremes and "+\
-           "clear maximum in the middle.)"
+           "clear maximum in the middle.)", file=out)
 
-      print >>out, \
-          "\nUnable to set region_weight ... using value of %7.2f" % (
-          si.region_weight)
+      print("\nUnable to set region_weight ... using value of %7.2f" % (
+          si.region_weight), file=out)
       if si.discard_if_worse:
-        print >>out,"Setting discard_if_worse=False as region_weight failed "
+        print("Setting discard_if_worse=False as region_weight failed ", file=out)
         si.discard_if_worse=False
 
     if out_of_range and 'resolution_dependent' in auto_sharpen_methods:
@@ -10482,8 +10444,8 @@ def run_auto_sharpen(
           new_list.append(x)
       if have_something_left:
         auto_sharpen_methods=new_list
-        print >>out,"Removed resolution_dependent sharpening ( "+\
-          "weights were out of range)"
+        print("Removed resolution_dependent sharpening ( "+\
+          "weights were out of range)", file=out)
 
     if box_sharpening_info_obj:
       si.local_solvent_fraction=box_sharpening_info_obj.solvent_fraction
@@ -10497,7 +10459,7 @@ def run_auto_sharpen(
   best_map_and_b=map_and_b_object()
 
   if si.sharpening_is_defined():  # Use this if come in with method
-    print >>out,"\nUsing specified sharpening"
+    print("\nUsing specified sharpening", file=out)
     best_si=set_up_sharpening(si=si,map_data=map_data,out=out)
     best_si.sharpen_and_score_map(map_data=map_data,
           out=out).show_score(out=out)
@@ -10505,12 +10467,12 @@ def run_auto_sharpen(
 
   else:
     if best_si.is_model_sharpening():
-      print >>out,"\nSetting up model sharpening"
+      print("\nSetting up model sharpening", file=out)
     elif best_si.is_half_map_sharpening():
-      print >>out,"\nSetting up half-map sharpening"
+      print("\nSetting up half-map sharpening", file=out)
     else:
-      print >>out,"\nTesting sharpening methods with target of %s" %(
-        best_si.sharpening_target)
+      print("\nTesting sharpening methods with target of %s" %(
+        best_si.sharpening_target), file=out)
     if not auto_sharpen_methods or auto_sharpen_methods==['None']:
       auto_sharpen_methods=['no_sharpening']
     for m in auto_sharpen_methods:
@@ -10530,9 +10492,8 @@ def run_auto_sharpen(
            'half_map_sharpening']:
           pass # print out later
         else:
-          print >>out,\
-            "\nB-sharpen   B-iso   k_sharpen   SA   "+\
-             "Kurtosis  sa_ratio  Normalized regions"
+          print("\nB-sharpen   B-iso   k_sharpen   SA   "+\
+             "Kurtosis  sa_ratio  Normalized regions", file=out)
       # ------------------------
       # ------------------------
       else:  #  ['b_iso','b_iso_to_d_cut']:
@@ -10544,19 +10505,17 @@ def run_auto_sharpen(
           b_max=si.search_b_max
         b_n=si.search_b_n
         delta_b=(b_max-b_min)/max(1,b_n-1)
-        print >>out,\
-          "\nTesting %s with b_iso from %7.1f to %7.1f in %d steps of %7.1f" %(
-          m,b_min,b_max,b_n,delta_b)
-        print >>out,"(b_sharpen from %7.1f to %7.1f ) " %(
-           original_b_iso-b_min,original_b_iso-b_max)
+        print("\nTesting %s with b_iso from %7.1f to %7.1f in %d steps of %7.1f" %(
+          m,b_min,b_max,b_n,delta_b), file=out)
+        print("(b_sharpen from %7.1f to %7.1f ) " %(
+           original_b_iso-b_min,original_b_iso-b_max), file=out)
         if m=='b_iso':
           k_sharpen=0.
         else:
           k_sharpen=si.k_sharpen
 
-        print >>out,\
-            "\nB-sharpen   B-iso   k_sharpen   SA   "+\
-             "Kurtosis  sa_ratio  Normalized regions"
+        print("\nB-sharpen   B-iso   k_sharpen   SA   "+\
+             "Kurtosis  sa_ratio  Normalized regions", file=out)
       # ------------------------
       local_best_map_and_b=map_and_b_object()
       local_best_si=deepcopy(si).update_with_box_sharpening_info(
@@ -10588,9 +10547,8 @@ def run_auto_sharpen(
 
 
         if m=='resolution_dependent':
-          print >>out,\
-           "\nRefining resolution-dependent sharpening based on %s" %(
-            local_si.residual_target)
+          print("\nRefining resolution-dependent sharpening based on %s" %(
+            local_si.residual_target), file=out)
           local_si.b_sharpen=0
           local_si.b_iso=original_b_iso
           from cctbx.maptbx.refine_sharpening import run as refine_sharpening
@@ -10599,8 +10557,7 @@ def run_auto_sharpen(
              sharpening_info_obj=local_si,
              out=out)
         elif m=='model_sharpening':
-          print >>out,\
-           "\nUsing model-based sharpening"
+          print("\nUsing model-based sharpening", file=out)
           local_si.b_sharpen=0
           local_si.b_iso=original_b_iso
           from cctbx.maptbx.refine_sharpening import scale_amplitudes
@@ -10612,8 +10569,7 @@ def run_auto_sharpen(
           local_f_array=f_array
           local_phases=phases
         elif m=='half_map_sharpening':
-          print >>out,\
-           "\nUsing half-map-based sharpening"
+          print("\nUsing half-map-based sharpening", file=out)
           local_si.b_sharpen=0
           local_si.b_iso=original_b_iso
           from cctbx.maptbx.refine_sharpening import scale_amplitudes
@@ -10669,7 +10625,7 @@ def run_auto_sharpen(
         local_si=result.local_si
         local_map_and_b=result.local_map_and_b
         if result.text:
-          print result.text
+          print(result.text)
         # Run through all result to get these
         if local_si.b_sharpen is not None and local_si.b_iso is not None and\
            local_si.k_sharpen is not None and local_si.kurtosis is not None \
@@ -10693,32 +10649,29 @@ def run_auto_sharpen(
       if not local_best_si.is_model_sharpening() and \
           not local_best_si.is_half_map_sharpening():
         if local_best_si.sharpening_method=='resolution_dependent':
-          print >>out,"\nBest scores for sharpening with "+\
+          print("\nBest scores for sharpening with "+\
             "b[0]=%6.2f b[1]=%6.2f b[2]=%6.2f: " %(
             local_best_si.resolution_dependent_b[0],
             local_best_si.resolution_dependent_b[1],
-            local_best_si.resolution_dependent_b[2])
+            local_best_si.resolution_dependent_b[2]), file=out)
         else:
-          print >>out,"\nBest scores for sharpening with "+\
+          print("\nBest scores for sharpening with "+\
             "b_iso=%6.1f b_sharpen=%6.1f k_sharpen=%s: " %(
             local_best_si.b_iso,local_best_si.b_sharpen,
-             local_best_si.k_sharpen)
+             local_best_si.k_sharpen), file=out)
         if local_best_si.score is not None:
           local_best_si.show_summary(out=out)
-          print >>out,\
-           "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
-           local_best_si.adjusted_sa,local_best_si.kurtosis,local_best_si.score)
+          print("Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
+           local_best_si.adjusted_sa,local_best_si.kurtosis,local_best_si.score), file=out)
 
       if  si_score_list.size()>1: # test for signal
         signal_to_noise=estimate_signal_to_noise(value_list=si_score_list)
-        print >>out,\
-          "Estimated signal-to-noise in ID of optimal sharpening: %5.1f" %(
-           signal_to_noise)
+        print("Estimated signal-to-noise in ID of optimal sharpening: %5.1f" %(
+           signal_to_noise), file=out)
         if signal_to_noise<local_best_si.signal_min and \
             'target_b_iso_to_d_cut' in auto_sharpen_methods:
-          print >>out,\
-            "Skipping this analysis as signal-to-noise is less than %5.1f " %(
-           local_best_si.signal_min)
+          print("Skipping this analysis as signal-to-noise is less than %5.1f " %(
+           local_best_si.signal_min), file=out)
           local_best_si.score=None
 
       optimize_b_blur_hires=False
@@ -10786,20 +10739,20 @@ def run_auto_sharpen(
         best_map_and_b=local_best_map_and_b
         if not best_si.is_model_sharpening() and \
             not best_si.is_half_map_sharpening():
-          print >>out,"This is the current best score\n"
+          print("This is the current best score\n", file=out)
 
   if (best_si.score is not None )  and (
      not best_si.is_model_sharpening() )  and (not best_si.is_half_map_sharpening()):
-    print >>out,"\nOverall best sharpening method: %s Score: %7.3f\n" %(
-       best_si.sharpening_method,best_si.score)
+    print("\nOverall best sharpening method: %s Score: %7.3f\n" %(
+       best_si.sharpening_method,best_si.score), file=out)
     best_si.show_summary(out=out)
 
   if (not best_si.is_model_sharpening()) and \
        (not best_si.is_half_map_sharpening()) and null_si:
     if best_si.score>null_si.score:  # we improved them..
-      print >>out,"Improved score with sharpening..."
+      print("Improved score with sharpening...", file=out)
     else:
-      print >>out,"Did not improve score with sharpening..."
+      print("Did not improve score with sharpening...", file=out)
   if return_bsi:
     map_data=best_map_and_b.map_data
     map_data=set_mean_sd_of_map(map_data=map_data,
@@ -10820,11 +10773,11 @@ def run_auto_sharpen(
 
   if original_box_sharpening_info_obj:
       # Put back original crystal_symmetry with original_box_sharpening_info_obj
-      print >>out,"\nRestoring original symmetry to best sharpening info"
+      print("\nRestoring original symmetry to best sharpening info", file=out)
       best_si.update_with_box_sharpening_info(
         box_sharpening_info_obj=original_box_sharpening_info_obj)
-      print >>out,"(%7.3f, %7.3f, %7.3f, %7.3f, %7.3f, %7.3f) "%(tuple(
-        best_si.crystal_symmetry.unit_cell().parameters()))
+      print("(%7.3f, %7.3f, %7.3f, %7.3f, %7.3f, %7.3f) "%(tuple(
+        best_si.crystal_symmetry.unit_cell().parameters())), file=out)
       # and set tracking data with result
   return best_si
 
@@ -10927,9 +10880,9 @@ def effective_b_iso(map_data=None,tracking_data=None,
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
     b_iso=map_coeffs_ra.b_iso
     if b_iso is not None:
-      print >>out,"Effective B-iso = %7.2f\n" %(b_iso)
+      print("Effective B-iso = %7.2f\n" %(b_iso), file=out)
     else:
-      print >>out,"Effective B-iso not determined\n"
+      print("Effective B-iso not determined\n", file=out)
     return map_coeffs_ra,map_coeffs,f_array,phases
 
 def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
@@ -10946,8 +10899,8 @@ def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
     if shifted_sharpened_map_file:
       write_ccp4_map(tracking_data.crystal_symmetry,
           shifted_sharpened_map_file,map_data)
-      print >>out,"Wrote shifted, sharpened map to %s" %(
-          shifted_sharpened_map_file)
+      print("Wrote shifted, sharpened map to %s" %(
+          shifted_sharpened_map_file), file=out)
     tracking_data.set_shifted_map_info(file_name=
           shifted_sharpened_map_file,
           crystal_symmetry=tracking_data.crystal_symmetry,
@@ -10976,9 +10929,8 @@ def get_high_points_from_map(
     sites_cart=sites_cart[:1]
     xyz_frac=unit_cell.fractionalize(sites_cart[0])
     value=map_data.value_at_closest_grid_point(xyz_frac)
-    print >>out,\
-        "High point in map at (%7.2f %7.2f %7.2f) with value of %7.2f " %(
-        sites_cart[0][0],sites_cart[0][1],sites_cart[0][2],value)
+    print("High point in map at (%7.2f %7.2f %7.2f) with value of %7.2f " %(
+        sites_cart[0][0],sites_cart[0][1],sites_cart[0][2],value), file=out)
     return sites_cart
 
 def get_one_au(tracking_data=None,
@@ -11004,7 +10956,7 @@ def get_one_au(tracking_data=None,
     radius=set_radius(unit_cell=unit_cell,map_data=map_data,
      every_nth_point=every_nth_point)
     tracking_data.params.segmentation.radius=radius
-  print >>out,"\nRadius for AU identification: %7.2f A" %(radius)
+  print("\nRadius for AU identification: %7.2f A" %(radius), file=out)
 
   overall_mask,max_in_sd_map,sd_map=get_overall_mask(map_data=map_data,
     mask_threshold=mask_threshold,
@@ -11015,16 +10967,16 @@ def get_one_au(tracking_data=None,
     out=out)
 
   if starting_mask:
-    print >>out,"Points in starting mask:",starting_mask.count(True)
-    print >>out,"Points in overall mask:",overall_mask.count(True)
-    print >>out,"Points in both:",(starting_mask & overall_mask).count(True)
+    print("Points in starting mask:",starting_mask.count(True), file=out)
+    print("Points in overall mask:",overall_mask.count(True), file=out)
+    print("Points in both:",(starting_mask & overall_mask).count(True), file=out)
     if tracking_data.params.crystal_info.is_crystal:
       # take starting mask as overall...
       overall_mask= starting_mask
     else: # usual
       # make sure overall mask is at least as big..
       overall_mask=(overall_mask | starting_mask)
-    print >>out,"New size of overall mask: ",overall_mask.count(True)
+    print("New size of overall mask: ",overall_mask.count(True), file=out)
   else:
     if not sites_cart: # pick top of map
       sites_cart=get_high_points_from_map(
@@ -11046,40 +10998,39 @@ def get_one_au(tracking_data=None,
     overall_mask=overall_mask,
     every_nth_point=every_nth_point)
 
-  print >>out,\
-    "Points in au: %d  in ncs: %d  (total %7.1f%%)   both: %d Not marked: %d" %(
+  print("Points in au: %d  in ncs: %d  (total %7.1f%%)   both: %d Not marked: %d" %(
      au_mask.count(True),ncs_mask.count(True),
      100.*float(au_mask.count(True)+ncs_mask.count(True))/au_mask.size(),
      (au_mask & ncs_mask).count(True),
-     au_mask.size()-au_mask.count(True)-ncs_mask.count(True),)
+     au_mask.size()-au_mask.count(True)-ncs_mask.count(True),), file=out)
 
   return au_mask
 
 def set_up_sharpening(si=None,map_data=None,out=sys.stdout):
-         print >>out,"\nCarrying out specified sharpening/blurring of map"
+         print("\nCarrying out specified sharpening/blurring of map", file=out)
          check_si=si  # just use input information
          check_si.show_summary(out=out)
          if check_si.is_target_b_iso_to_d_cut():
            check_si.b_iso=check_si.get_target_b_iso()
            check_si.b_sharpen=None
-           print >>out,"Setting target b_iso of %7.1f " %(check_si.b_iso)
+           print("Setting target b_iso of %7.1f " %(check_si.b_iso), file=out)
          if check_si.b_sharpen is None and check_si.b_iso is not None:
            # need to figure out b_sharpen
-           print >>out,"\nGetting b_iso of map"
+           print("\nGetting b_iso of map", file=out)
            b_iso=check_si.get_effective_b_iso(map_data=map_data,out=out)
            check_si.b_sharpen=b_iso-check_si.b_iso # sharpen is what to
-           print >>out,"Value of b_sharpen to obtain b_iso of %s is %5.2f" %(
-             check_si.b_iso,check_si.b_sharpen)
+           print("Value of b_sharpen to obtain b_iso of %s is %5.2f" %(
+             check_si.b_iso,check_si.b_sharpen), file=out)
          elif check_si.b_sharpen is not None:
-           print >>out,"Sharpening b_sharpen will be %s" %(check_si.b_sharpen)
+           print("Sharpening b_sharpen will be %s" %(check_si.b_sharpen), file=out)
          elif check_si.resolution_dependent_b:
-           print >>out,"Resolution-dependent b_sharpening values:" +\
+           print("Resolution-dependent b_sharpening values:" +\
               "b0: %7.2f  b1: %7.2f  b2: %7.2f " %(
-             tuple(check_si.resolution_dependent_b))
+             tuple(check_si.resolution_dependent_b)), file=out)
          elif check_si.target_scale_factors:
-           print >>out,"Model sharpening scale values:"
-           for x in check_si.target_scale_factors: print >>out,x,
-           print >>out
+           print("Model sharpening scale values:", file=out)
+           for x in check_si.target_scale_factors: print(x, end=' ', file=out)
+           print(file=out)
          return check_si
 
 def run(args,
@@ -11099,7 +11050,7 @@ def run(args,
      out=sys.stdout):
 
   if is_iteration:
-    print >>out,"\nIteration tracking data:"
+    print("\nIteration tracking data:", file=out)
     tracking_data.show_summary(out=out)
   else:
     # get the parameters and map_data (sharpened, magnified, shifted...)
@@ -11128,9 +11079,9 @@ def run(args,
       target_hierarchy=iotbx.pdb.input(
          file_name=params.input_files.target_ncs_au_file).construct_hierarchy()
 
-    print >>out,"\nShifting model based on origin shift (if any)"
-    print >>out,"Coordinate shift is (%7.2f,%7.2f,%7.2f)" %(
-        tuple(tracking_data.origin_shift))
+    print("\nShifting model based on origin shift (if any)", file=out)
+    print("Coordinate shift is (%7.2f,%7.2f,%7.2f)" %(
+        tuple(tracking_data.origin_shift)), file=out)
     if not map_data:
        raise Sorry("Need map data for segment_and_split_map")
 
@@ -11231,7 +11182,7 @@ def run(args,
     params.segmentation.starting_density_threshold=starting_density_threshold # have to set tracking data as we are passing that above
     tracking_data.params.segmentation.starting_density_threshold=starting_density_threshold # have to set tracking data as we are passing that above
     if new_threshold:
-      print >>out,"\nNew threshold is %7.2f" %(new_threshold)
+      print("\nNew threshold is %7.2f" %(new_threshold), file=out)
     if co is None: # no luck
       return None,None,tracking_data
 
@@ -11249,8 +11200,7 @@ def run(args,
     if ncs_group_obj and ncs_group_obj.ncs_group_list: # ok
       break
     elif ncs_obj and itry==0 and not is_iteration:# try again
-      print >>out,\
-          "No NCS groups identified on first try...taking entire NCS AU."
+      print("No NCS groups identified on first try...taking entire NCS AU.", file=out)
       # Identify ncs au
       au_mask=get_one_au(tracking_data=tracking_data,
         ncs_obj=ncs_obj,
@@ -11296,7 +11246,7 @@ def run(args,
   if params.segmentation.iterate_with_remainder and \
       ncs_group_obj.selected_regions:
 
-    print >>out,"\nCreating remaining mask and map"
+    print("\nCreating remaining mask and map", file=out)
     map_data_remaining=create_remaining_mask_and_map(params,
       ncs_group_obj=ncs_group_obj,
       map_data=map_data,
@@ -11322,7 +11272,7 @@ def run(args,
       if not x in ncs_ops_used: ncs_ops_used.append(x)
   if ncs_ops_used:
     ncs_ops_used.sort()
-    print >>out,"Final NCS ops used: ",ncs_ops_used
+    print("Final NCS ops used: ",ncs_ops_used, file=out)
 
   # Save the used NCS ops
   ncs_used_obj=ncs_group_obj.ncs_obj.deep_copy(ops_to_keep=ncs_ops_used)
@@ -11339,9 +11289,9 @@ def run(args,
 
   # Write out final maps and dummy atom files
   if params.output_files.write_output_maps:
-    print >>out,"\nWriting output maps"
+    print("\nWriting output maps", file=out)
   else:
-    print >>out,"\nSetting up but not writing output maps"
+    print("\nSetting up but not writing output maps", file=out)
   map_files_written=write_output_files(params,
       tracking_data=tracking_data,
       map_data=map_data,
@@ -11354,7 +11304,7 @@ def run(args,
 
   # Restore ncs info if we removed it
   if removed_ncs:
-    print >>out,"\nRestoring original NCS info to tracking_data"
+    print("\nRestoring original NCS info to tracking_data", file=out)
     tracking_data.input_ncs_info=original_input_ncs_info
 
 

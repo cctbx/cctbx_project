@@ -1,4 +1,5 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
 import scitbx.math
 from scitbx.math import r3_rotation_vector_to_vector as vector_to_vector
 from scitbx.math import r3_rotation_vector_to_001 as vector_to_001
@@ -143,11 +144,11 @@ def unit_quaternion_matrix_timings(n_trials=50, n_repeats=500):
     for i_repeat in xrange(n_repeats):
       cpp_mu(r=r)
     times[3] += time.time()-t0
-  print "times unit quaternion <-> matrix"
-  print "     py: %.2f %.2f s" % (times[0], times[1])
-  print "    c++: %.2f %.2f s" % (times[2], times[3])
+  print("times unit quaternion <-> matrix")
+  print("     py: %.2f %.2f s" % (times[0], times[1]))
+  print("    c++: %.2f %.2f s" % (times[2], times[3]))
   if (times[2] != 0 and times[3] != 0):
-    print "  ratio: %.2f %.2f" % (times[0]/times[2], times[1]/times[3])
+    print("  ratio: %.2f %.2f" % (times[0]/times[2], times[1]/times[3]))
   sys.stdout.flush()
 
 def check_vector_to_vector(g, t):
@@ -276,7 +277,7 @@ def exercise():
   exercise_axis_and_angle()
   unit_quaternion_matrix_timings()
   exercise_vector_to_vector()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise()

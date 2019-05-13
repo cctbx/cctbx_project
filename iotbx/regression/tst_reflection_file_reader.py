@@ -5,6 +5,7 @@ tested more thoroughly elsewhere.
 """
 
 from __future__ import division
+from __future__ import print_function
 from iotbx import reflection_file_reader
 
 def exercise_sigma_filtering():
@@ -72,4 +73,4 @@ def exercise_sigma_filtering():
 
 if (__name__ == "__main__"):
   exercise_sigma_filtering()
-  print "OK"
+  print("OK")

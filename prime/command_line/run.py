@@ -1,6 +1,7 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.run
 """ handle prime run """
+from __future__ import print_function
 __author__ = 'Monarin Uervirojnangkoorn, monarin@gmail.com'
 
 from subprocess import call
@@ -13,7 +14,7 @@ if __name__ == "__main__":
   if iparams.queue.mode:
     args = ["bsub","-q",iparams.queue.qname,"-n", str(iparams.queue.n_nodes), "prime.postrefine"]+sys.argv[1:] if len(sys.argv) > 1 else []
     call(args)
-    print "Submitting prime job to ", iparams.queue.qname
+    print("Submitting prime job to ", iparams.queue.qname)
     runh = run_handler()
     runh.check_done(iparams)
   else:

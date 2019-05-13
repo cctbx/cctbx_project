@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.math
 import scitbx.linalg
 from scitbx import matrix
@@ -77,7 +78,7 @@ def exercise_gill_murray_wright_cholesky_decomposition():
         eigen = scitbx.linalg.eigensystem.real_symmetric(
           paept.as_flex_double_matrix())
         lambda_ = eigen.values()
-        print "condition number: ", lambda_[0]/lambda_[-1]
+        print("condition number: ", lambda_[0]/lambda_[-1])
       delta_solve = scitbx.linalg.matrix_cholesky_test_ratio(
         a=paept.as_flex_double_matrix(),
         x=flex.double(px),
@@ -163,7 +164,7 @@ def exercise_gill_murray_wright_cholesky_decomposition():
 def run():
   exercise_cholesky_decomposition()
   exercise_gill_murray_wright_cholesky_decomposition()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

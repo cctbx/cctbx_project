@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 class small_cell_orientation:
  """ Class for determining an orientation matrix given a set of reflections """
@@ -39,14 +40,14 @@ class small_cell_orientation:
   try:
     result = np.linalg.lstsq(hkl,xyz)
   except Exception as e:
-    print "Exception while calculating basis vectors: %s"%e.message
+    print("Exception while calculating basis vectors: %s"%e.message)
     return None
 
   solution,self.residuals,rank,singular = result[0],result[1],result[2],result[3]
   if len(self.residuals) == 0:
     self.residuals = [0,0,0] # happens when only 3 spots in the max clique
 
-  print "Summed squared residuals of x,y,z for %d spots in 1/angstroms: %.7f, %.7f, %.7f"%(N,self.residuals[0],self.residuals[1],self.residuals[2])
+  print("Summed squared residuals of x,y,z for %d spots in 1/angstroms: %.7f, %.7f, %.7f"%(N,self.residuals[0],self.residuals[1],self.residuals[2]))
   Amatrix = sqr(solution.flatten()).transpose()
 
   from cctbx import crystal_orientation
@@ -58,4 +59,4 @@ if __name__=="__main__":
   data = ep.load("r0013_shot-s00-20130311223605649.example")
   miller_indices,u_vectors,symmetry = data[0],data[1],data[2]
   S = small_cell_orientation(miller_indices, u_vectors, symmetry)
-  print S.unrestrained_setting()
+  print(S.unrestrained_setting())

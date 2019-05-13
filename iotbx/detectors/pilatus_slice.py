@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import copy
 from six.moves import cPickle as pickle
 from iotbx.detectors.pilatus_minicbf import PilatusImage
@@ -123,12 +124,12 @@ if __name__=='__main__':
   full_path_to_file = sys.argv[1]
   a = PilatusImage(testing_file)
   a.read()
-  print a
-  print a.parameters
-  print a.rawdata, len(a.rawdata), a.size1*a.size2
+  print(a)
+  print(a.parameters)
+  print(a.rawdata, len(a.rawdata), a.size1*a.size2)
   for dataitem in ['bin', 'filename', 'header', 'headerlines', 'linearintdata', 'parameters', 'vendortype']:
-    print dataitem,
+    print(dataitem, end=' ')
     exec("print a.%s"%dataitem)
-  print pilatus_slice_from_object_and_slicenumber(a,5)
+  print(pilatus_slice_from_object_and_slicenumber(a,5))
 
   P = pilatus_slice_from_file_url(url="file://%s?slice=5"%full_path_to_file)

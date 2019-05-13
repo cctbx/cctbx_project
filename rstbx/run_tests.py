@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import test_utils
 import libtbx.load_env
 
@@ -16,7 +17,7 @@ def run():
     assert groups[0].reference_lookup_symbol() == "F m -3 m"
   assert test_simple_sampler()
   assert test_reduction()
-  print "OK"
+  print("OK")
 
 tst_list = (
   #"$D/simage/tst.py",

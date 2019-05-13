@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 
 pdb_str = '''
@@ -24,7 +25,7 @@ HETATM  933  H2  HOH A  63      14.452  26.173  22.407  1.00 10.12           H
 
 def get_clashscore(lines):
   for line in lines:
-    print line
+    print(line)
     if line.find('clashscore =')>-1:
       return float(line.split()[-1])
     if line.find('Clashscore            =')>-1:
@@ -32,7 +33,7 @@ def get_clashscore(lines):
   assert 0
 
 def run():
-  print 'test'
+  print('test')
   f=file('tst_mol_args.pdb', 'wb')
   f.write(pdb_str)
   f.close()
@@ -42,24 +43,24 @@ def run():
       cmd = 'phenix.clashscore tst_mol_args.pdb'
       if keep_hydrogen!=2: cmd += ' keep_hydrogen=%(keep_hydrogen)s' % locals()
       cmd += ' nuclear=%(nuclear)s' % locals()
-      print 'CMD',cmd
+      print('CMD',cmd)
       rc = easy_run.go(cmd)
       clashscore1 = get_clashscore(rc.stdout_lines)
-      print clashscore1
+      print(clashscore1)
       results[cmd]=clashscore1
 
       cmd = 'phenix.molprobity tst_mol_args.pdb'
       if keep_hydrogen!=2: cmd += ' keep_hydrogen=%(keep_hydrogen)s' % locals()
       cmd += ' pdb_interpretation.use_neutron_distances=%(nuclear)s' % locals()
-      print 'CMD', cmd
+      print('CMD', cmd)
       rc = easy_run.go(cmd)
       clashscore2 = get_clashscore(rc.stdout_lines)
-      print clashscore2
+      print(clashscore2)
       results[cmd]=clashscore2
 
-      print '-'*80
+      print('-'*80)
       for cmd, c in results.items():
-        print cmd, c
+        print(cmd, c)
 
       assert clashscore1==clashscore2, 'molprobity does not match clashscore %s %s: %.f != %.f' % (
         keep_hydrogen,

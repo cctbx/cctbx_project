@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import math
 from scitbx.array_family import flex
 from scitbx import lbfgs
@@ -41,9 +42,9 @@ def exercise_minimization(verbose):
   minimizer = lbfgs.minimizer(n)
   is_converged = lbfgs.traditional_convergence_test(n)
   if (verbose):
-    print "n: ", minimizer.n()
-    print "m: ", minimizer.m()
-    print "xtol: ", minimizer.xtol()
+    print("n: ", minimizer.n())
+    print("m: ", minimizer.m())
+    print("xtol: ", minimizer.xtol())
   while 1:
     f = 0.
     for j in xrange(0, n, 2):
@@ -54,8 +55,8 @@ def exercise_minimization(verbose):
       f = f + t1 * t1 + t2 * t2
     if (minimizer.run(x, f, g)): continue
     if (verbose):
-      print "f:", f, "gnorm:", minimizer.euclidean_norm(g)
-      print minimizer.iter(), minimizer.nfun(), minimizer.stp()
+      print("f:", f, "gnorm:", minimizer.euclidean_norm(g))
+      print(minimizer.iter(), minimizer.nfun(), minimizer.stp())
     if (is_converged(x, g)): break
     if (minimizer.nfun() > 2000): break
     assert minimizer.run(x, f, g)
@@ -74,7 +75,7 @@ def run():
     exercise_minimization(verbose)
     if (not Endless): break
   t = os.times()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

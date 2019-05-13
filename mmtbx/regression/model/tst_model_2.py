@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.model
 import libtbx.load_env
 import iotbx.pdb
@@ -110,11 +111,11 @@ END
 
 def run():
   if (not libtbx.env.has_module("reduce")):
-    print "Reduce not installed, needed for model.idealize_h_minimization(). skipping"
+    print("Reduce not installed, needed for model.idealize_h_minimization(). skipping")
     return
   for pdb_str in [pdb_str_1, pdb_str_2]:
     for use_neutron_distances in [True, False]:
-      print "use_neutron_distances:", use_neutron_distances, "*"*30
+      print("use_neutron_distances:", use_neutron_distances, "*"*30)
       params = mmtbx.model.manager.get_default_pdb_interpretation_params()
       params.pdb_interpretation.use_neutron_distances = use_neutron_distances
       inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
@@ -127,8 +128,8 @@ def run():
       #m.setup_riding_h_manager()
       m.idealize_h_minimization(show=False)
       r2 = m.geometry_statistics()
-      print "%6.3f %6.3f %6.3f %6.3f"%(
-        r1.angle().mean,r1.bond().mean, r2.angle().mean,r2.bond().mean)
+      print("%6.3f %6.3f %6.3f %6.3f"%(
+        r1.angle().mean,r1.bond().mean, r2.angle().mean,r2.bond().mean))
       assert r2.angle().mean < 1.0, "assertion %f < 1.0" % r2.angle().mean
       assert r2.bond().mean < 0.01, "assertion %f < 0.01" % r2.bond().mean
 
@@ -202,4 +203,4 @@ if (__name__ == "__main__"):
   exercise_3()
   exercise_from_sites_cart()
   exercise_has_hd()
-  print "Time: %6.3f"%(time.time()-t0)
+  print("Time: %6.3f"%(time.time()-t0))

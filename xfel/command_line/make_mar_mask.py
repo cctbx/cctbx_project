@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
@@ -155,8 +156,8 @@ def run(argv=None):
 
   masked_out = len(mask.as_1d().select((mask == command_line.options.mask_pix_val).as_1d()))
 
-  print "Masked out %d pixels out of %d (%.2f%%)"% \
-    (masked_out,len(mask),(masked_out)*100/(len(mask)))
+  print("Masked out %d pixels out of %d (%.2f%%)"% \
+    (masked_out,len(mask),(masked_out)*100/(len(mask))))
 
   easy_pickle.dump(command_line.options.destpath, mask)
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # TODO: move selection logic to separate module
 
@@ -423,6 +424,6 @@ class selection_editor_mixin (model_viewer_mixin) :
     pass
 
 def print_cb (selection_string, atom_selection) :
-  print "%s (%s)" % (selection_string, atom_selection.iselection().size())
+  print("%s (%s)" % (selection_string, atom_selection.iselection().size()))
 
 #---end

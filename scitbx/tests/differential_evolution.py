@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 from scitbx.array_family import flex
 import random
 import scitbx.differential_evolution
@@ -10,7 +11,7 @@ class test_rosenbrock_function(object):
     self.dim = dim
     self.domain = [ (1,3) ]*self.n
     self.optimizer = scitbx.differential_evolution.differential_evolution_optimizer(self,population_size=min(self.n*10,40),n_cross=self.n,cr=0.9, eps=1e-8, show_progress=True)
-    print list(self.x)
+    print(list(self.x))
     for x in self.x:
       assert abs(x-1.0)<1e-2
 
@@ -26,14 +27,14 @@ class test_rosenbrock_function(object):
     return result
 
   def print_status(self, mins,means,vector,txt):
-    print txt,mins, means, list(vector)
+    print(txt,mins, means, list(vector))
 
 
 def run():
   random.seed(0)
   flex.set_random_seed(0)
   test_rosenbrock_function(1)
-  print "OK"
+  print("OK")
 
 
 if __name__ == "__main__":

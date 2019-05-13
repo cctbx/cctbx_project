@@ -1,14 +1,15 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx import miller
 from cctbx.command_line.structure_factor_timings import read_structure
 import sys
 
 def timings(structure, wing_cutoff=1.e-3):
-  print "wing_cutoff for following fft calculations: %3.1e"%wing_cutoff
+  print("wing_cutoff for following fft calculations: %3.1e"%wing_cutoff)
   for calc_type,exp_table_one_over_step_size in (("exp function:",0),
                                                  ("exp table:",-100)):
-    print calc_type
+    print(calc_type)
     for d_min in [4,3,2,1]:
       structure_ng = structure.deep_copy_scatterers()
       structure_ng.scattering_type_registry(d_min=d_min, table="n_gaussian")
@@ -30,19 +31,19 @@ def timings(structure, wing_cutoff=1.e-3):
           miller_set=miller_set,
           algorithm="fft")
         times.append(f_calc_object.manager().estimate_time_fft.time_sampling)
-        print "  %.2f seconds," % times[-1]
-      print "d_min=%d: %.2f s / %.2f s" % (d_min, times[0], times[1]),
+        print("  %.2f seconds," % times[-1])
+      print("d_min=%d: %.2f s / %.2f s" % (d_min, times[0], times[1]), end=' ')
       if (times[1] != 0):
-        print "= %.2f" % (times[0] / times[1]),
-      print
+        print("= %.2f" % (times[0] / times[1]), end=' ')
+      print()
       sys.stdout.flush()
-  print
+  print()
 
 def run(args):
   assert len(args) == 1
   structure = read_structure(args[0])
   structure.show_summary()
-  print
+  print()
   timings(structure=structure)
 
 if (__name__ == "__main__"):

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import math
 import scitbx.math
 from scitbx.array_family import flex
@@ -130,7 +131,7 @@ def test():
      tcc  =  -math.log(math.exp(-z/2.0)*tmp+1E-12)
     assert approx_equal(pac,tac,eps=1e-1)
     assert approx_equal(pcc,tcc,eps=1e-1)
-  print "OK"
+  print("OK")
 
 
 if __name__ == "__main__":

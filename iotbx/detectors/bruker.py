@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import math
 from iotbx.detectors import Bruker_base
 from iotbx.detectors.detectorbase import DetectorImageBase
@@ -45,14 +46,14 @@ if __name__=="__main__":
   else:
     file = sys.argv[1]
   B = BrukerImage(file)
-  print "B.vendortype,B.saturation",B.vendortype,B.saturation
-  print "pixel size",B.pixel_size
-  print "osc start",B.osc_start,
-  print "distance",B.distance
-  print "wavelength",B.wavelength
-  print "beamx",B.beamx
-  print "beamy",B.beamy
-  print "deltaphi",B.deltaphi
-  print "twotheta",B.twotheta
+  print("B.vendortype,B.saturation",B.vendortype,B.saturation)
+  print("pixel size",B.pixel_size)
+  print("osc start",B.osc_start, end=' ')
+  print("distance",B.distance)
+  print("wavelength",B.wavelength)
+  print("beamx",B.beamx)
+  print("beamy",B.beamy)
+  print("deltaphi",B.deltaphi)
+  print("twotheta",B.twotheta)
   #for item in B.linearintdata:
   #  print item

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.or_mask
 from libtbx import easy_pickle
 from scitbx.array_family import flex
@@ -6,7 +7,7 @@ import sys,os
 files = sys.argv[1:]
 srcs = files[:-1]
 dest = files[-1]
-print srcs,">",dest
+print(srcs,">",dest)
 
 data1= easy_pickle.load(srcs[0])
 ddata = data1["DATA"]
@@ -15,7 +16,7 @@ try:
 except AttributeError:
   idata1 = ddata.as_double().iround()
 discover_mask_pix_val = flex.sum(idata1.as_long())//(idata1!=0).count(True)
-print "I think the mask pixel value is", discover_mask_pix_val
+print("I think the mask pixel value is", discover_mask_pix_val)
 bdata1 = (idata1!=0)
 for item in srcs[1:]:
   dataN= easy_pickle.load(item)

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def level(space_group_info):
   """\
 Determine the level of confidence in a given space group symbol. Often
@@ -67,7 +68,7 @@ def _test():
       assert c  in (0,1,2)
       n += 1
   assert n == 65
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   _test()

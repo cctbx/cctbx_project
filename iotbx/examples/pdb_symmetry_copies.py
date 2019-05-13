@@ -5,6 +5,7 @@ Therefore it only works for space groups with less than
 ten symmetry operations.
 """
 from __future__ import division
+from __future__ import print_function
 
 def run(args):
   assert len(args) == 1, "pdb_file_name"
@@ -18,7 +19,7 @@ def run(args):
   pdb_hierarchies = [pdb_hierarchy]
   for i_sym_op,sym_op in enumerate(cs.space_group()):
     if (sym_op.is_unit_mx()): continue
-    print str(sym_op)
+    print(str(sym_op))
     pdb_hierarchy_copy = pdb_hierarchy.deep_copy()
     pdb_hierarchy_copy.atoms().set_xyz(
       new_xyz=orth_mx * (sym_op.as_rational().as_float() * sites_frac))
@@ -26,11 +27,11 @@ def run(args):
   combined_pdb_hierarchies = iotbx.pdb.hierarchy.join_roots(
     roots=pdb_hierarchies)
   output_file_name = "symmetry_copies.pdb"
-  print "Writing file:", output_file_name
-  print >> open(output_file_name, "w"), """\
+  print("Writing file:", output_file_name)
+  print("""\
 REMARK input file name: %s
 REMARK original space group: %s
-REMARK using two-character chain ids""" % (args[0], str(cs.space_group_info()))
+REMARK using two-character chain ids""" % (args[0], str(cs.space_group_info())), file=open(output_file_name, "w"))
   from cctbx import sgtbx
   combined_pdb_hierarchies.write_pdb_file(
     file_name=output_file_name,

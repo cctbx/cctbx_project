@@ -11,6 +11,7 @@ References:
   Zwart et al. (2008). Acta Cryst. D64, 99-107. Section 2.1
 """
 from __future__ import division
+from __future__ import print_function
 
 from cctbx import sgtbx
 from libtbx.utils import Usage
@@ -55,20 +56,20 @@ cctbx.python space_subgroups.py max_index space_group_symbol
   Example: cctbx.python space_subgroups.py 2 P41212""")
   #
   max_index = int(args[0])
-  print "max_index:", max_index
+  print("max_index:", max_index)
   assert max_index >= 1
-  print
+  print()
   space_group_t_den = 144
   sginfo = sgtbx.space_group_info(
     symbol=args[1], space_group_t_den=space_group_t_den)
   sginfo.show_summary()
-  print
+  print()
   cb_op_to_p = sginfo.change_of_basis_op_to_primitive_setting()
   sginfo_p = sginfo.change_basis(cb_op=cb_op_to_p)
   if (sginfo_p.group() != sginfo.group()):
-    print "Primitive setting:"
+    print("Primitive setting:")
     sginfo_p.show_summary()
-    print
+    print()
   #
   all_subgroups = dict_with_default_0()
   sg_p = sginfo_p.group()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.rigid_body.proto import featherstone
 from scitbx.rigid_body.proto import test_utils
 from scitbx.rigid_body.proto.utils import \
@@ -115,9 +116,9 @@ class simulation(object):
     fin = O.d_pot_d_q_via_finite_differences()
     if (verbose):
       for a,f in zip(ana, fin):
-        print "fin:", f.elems
-        print "ana:", a.elems
-      print
+        print("fin:", f.elems)
+        print("ana:", a.elems)
+      print()
     assert approx_equal(ana, fin)
     assert approx_equal(O.qdd, qdd_orig)
 

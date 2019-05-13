@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 from libtbx.test_utils import assert_lines_in_file
 
@@ -25,7 +26,7 @@ ATOM      2  CA  SER 1  71       5.000   6.424   5.000  1.00300.00           C
 ATOM      3  C   SER 1  71       5.847   7.316   5.915  1.00300.00           C
 ATOM      4  O   SER 1  71       5.736   7.242   7.145  1.00300.00           O
 TER""")
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   exercise()

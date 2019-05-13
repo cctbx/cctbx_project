@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.ncs import format_80
 from libtbx.utils import null_out
 from datetime import datetime
@@ -96,14 +97,14 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
         buffer_size=8)
       self.ph.adopt_xray_structure(xrs_unit_cell)
       of = open("test_ncs_spec.pdb", "w")
-      print >> of, self.ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
+      print(self.ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry()), file=of)
       of.close()
       # create a spec file
       ncs_from_pdb=simple_ncs_from_pdb.run(
         args=["pdb_in=test_ncs_spec.pdb", "write_spec_files=True"],
         log=null_out())
     else:
-      print "phenix not available, skipping test_spec_reading()"
+      print("phenix not available, skipping test_spec_reading()")
       pass
 
   def test_processing_of_asu_2(self):
@@ -155,7 +156,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     nrgl = ncs_inp.get_ncs_restraints_group_list()
     # nrgl._show()
     sels = nrgl.get_array_of_str_selections()
-    print sels
+    print(sels)
     assert sels == [[
         "(chain 'A' and (name N or name CA or name C or name O ))",
         "chain 'B'",

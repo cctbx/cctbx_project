@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 import cctbx.crystal.direct_space_asu
 from cctbx.array_family import flex
@@ -102,7 +103,7 @@ def exercise_crystallographic():
 def exercise():
   exercise_non_crystallographic()
   exercise_crystallographic()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

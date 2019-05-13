@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 from cctbx import sgtbx
 from boost import rational
@@ -109,7 +110,7 @@ class planes_cartesian(crystal.symmetry):
 def test_call_back(flags, space_group_info):
   planes = planes_fractional(space_group_info.group())
   for plane in planes.list:
-    print plane.s, plane.algebraic(), plane.n, plane.c, plane.p
+    print(plane.s, plane.algebraic(), plane.n, plane.c, plane.p)
 
 def test():
   from cctbx.development import debug_utils

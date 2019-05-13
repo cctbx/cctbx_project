@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #import libtbx.load_env
 import sys, os, math
 from cctbx.array_family import flex
@@ -122,61 +123,61 @@ END
       assert selection.size() == 36 and selection.count(True) == 24
     #
     cmd = base + 'adp.randomize=true modify.selection="%s"'%str(selection_str)
-    print cmd
+    print(cmd)
     check_adp_rand(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base + 'adp.set_b_iso=10.0 modify.selection="%s"'%str(selection_str)
-    print cmd
+    print(cmd)
     check_adp_set_b_iso(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base + 'adp.shift_b_iso=20.0 modify.selection="%s"'%str(selection_str)
-    print cmd
+    print(cmd)
     check_adp_rand(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base + 'adp.scale_adp=2.0 modify.selection="%s"'%str(selection_str)
-    print cmd
+    print(cmd)
     check_adp_rand(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base + 'adp.convert_to_iso=true modify.selection="%s"'%str(selection_str)
-    print cmd
+    print(cmd)
     check_adp_to_iso(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base + 'adp.convert_to_aniso=true modify.selection="%s"'%str(selection_str)
-    print cmd
+    print(cmd)
     check_adp_to_aniso(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     shake = 1.5
     cmd = base+'sites.shake=%s modify.selection="%s"'%(str(shake), str(selection_str))
-    print cmd
+    print(cmd)
     check_sites_shake(
       cmd, xrsp_init, output, selection, selection_str, shake, verbose)
     #
     cmd = base+'sites.rotate="1,2,3" sites.translate="4,5,6" modify.selection="%s"'%(
                                                             str(selection_str))
-    print cmd
+    print(cmd)
     check_sites_rt(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base+'occupancies.randomize=true modify.selection="%s"'%(str(selection_str))
-    print cmd
+    print(cmd)
     check_occ_randomize(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base+'occupancies.set=0.75 modify.selection="%s"'%(str(selection_str))
-    print cmd
+    print(cmd)
     check_occ_set(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     remove_selection_str = "element C"
     cmd = base+'remove="%s" modify.selection="%s"'%(
       str(remove_selection_str), str(selection_str))
-    print cmd
+    print(cmd)
     check_remove_selection(
       cmd, xrsp_init, output, selection, selection_str,
       remove_selection_str, verbose)
@@ -184,14 +185,14 @@ END
     keep_selection_str = "element C"
     cmd = base+'keep="%s" modify.selection="%s"'%(
       str(keep_selection_str), str(selection_str))
-    print cmd
+    print(cmd)
     check_keep_selection(
       cmd, xrsp_init, output, selection, selection_str,
       keep_selection_str, verbose)
     #
   #
   cmd = base
-  print cmd
+  print(cmd)
   check_all_none(cmd, xrsp_init, output, verbose)
   #
   cmd = base
@@ -416,7 +417,7 @@ def check_all_none(cmd, xrsp_init, output, verbose, tolerance=1.e-3):
 
 def check_keep_remove_conflict(cmd, output, verbose):
   cmd += " keep=all remove=all "
-  print cmd
+  print(cmd)
   cmd_result = run_command(command=cmd, verbose=verbose, sorry_expected=True)
   sorry_lines = search_for(
     pattern="Sorry: 'keep' and 'remove' keywords cannot be used simultaneously.",
@@ -472,7 +473,7 @@ occupancies
 """
   open("params", "w").write(params)
   cmd = 'phenix.pdbtools exercise_multiple.pdb params'
-  print cmd
+  print(cmd)
   result = run_command(command=cmd, verbose=False)
   lines = [l.strip() for l in result.stdout_lines]
   expected_lines = [
@@ -511,7 +512,7 @@ END
   ph_met_in = pi.construct_hierarchy()
   pi.write_pdb_file(file_name="exercise_no_cryst1.pdb")
   cmd = 'phenix.pdbtools exercise_no_cryst1.pdb sites.rotate="0 0 0"'
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   lines1 = []
   for line in open("exercise_no_cryst1.pdb","r").readlines():
@@ -554,7 +555,7 @@ END
   ph_met_in = pi.construct_hierarchy()
   pi.write_pdb_file(file_name="exercise_exercise_truncate_to_polyala.pdb")
   cmd = 'phenix.pdbtools exercise_exercise_truncate_to_polyala.pdb truncate_to_polyala=true'
-  print cmd
+  print(cmd)
   run_command(command=cmd)
   gly_atom_names = [" N  ", " CA ", " C  ", " O  ", " CB "]
   pdb_inp = iotbx.pdb.hierarchy.input(
@@ -570,7 +571,7 @@ END
 """
   open("tmp_cl.pdb", "w").write(input_pdb)
   cmd='phenix.pdbtools tmp_cl.pdb charge_selection="element Cl" charge=-1'
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   pdb_in = file_reader.any_file("tmp_cl.pdb_modified.pdb").file_object
   hierarchy = pdb_in.hierarchy
@@ -616,7 +617,7 @@ TER
   ifn = "exercise_renumber_residues.pdb"
   open(ifn,"w").write(input_pdb)
   cmd = 'phenix.pdbtools "%s" renumber_residues=true'%ifn
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   for line1, line2 in zip(open(ifn+"_modified.pdb").readlines(), expected_output_pdb.splitlines()):
     line1 = line1.strip()
@@ -641,13 +642,13 @@ ATOM     12  O   LEU C   0       5.613  12.448   6.864  1.00  7.32           O
 TER
 """
   cmd = "phenix.pdbtools \"%s\" renumber_residues=true modify.selection=\"chain B\"" % ifn
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   new_lines = open(ifn+"_modified.pdb").readlines()
   for line1, line2 in zip(new_lines, expected_output_pdb_2.splitlines()):
     assert (line1.strip() == line2.strip())
   cmd="phenix.pdbtools \"%s\" increment_resseq=10 modify.selection=\"chain B\"" % ifn
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   pdb_new = open(ifn+"_modified.pdb").read()
   expected_output_pdb_3 = """\
@@ -700,7 +701,7 @@ ATOM     12  OH  TYR    22      -1.452   2.696  -2.817  1.00 10.00           O
   ifn = "exercise_neutralize_scatterers.pdb"
   open(ifn,"w").write(input_pdb)
   cmd = 'phenix.pdbtools "%s" neutralize_scatterers=true adp.set_b_iso=10'%ifn
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   for line1, line2 in zip(open(ifn+"_modified.pdb").readlines(), expected_output_pdb.splitlines()):
     line1 = line1.strip()
@@ -771,7 +772,7 @@ END
     "phenix.pdbtools",
     "exercise_remove_atoms.pdb",
     "remove_fraction=0.1"])
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   pi = iotbx.pdb.input(file_name="exercise_remove_atoms.pdb_modified.pdb")
   ph_in = pi.construct_hierarchy()
@@ -844,7 +845,7 @@ loop_
   cmd = " ".join(["phenix.pdbtools", "\"%s\"" % f.name,
     "rename_chain_id.old_id=A",
     "rename_chain_id.new_id=C"])
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   assert os.path.isfile(f.name+"_modified.pdb")
   pdb_inp = iotbx.pdb.input(file_name=f.name+"_modified.pdb")
@@ -854,7 +855,7 @@ loop_
   cmd = " ".join(["phenix.pdbtools", "\"%s\"" % f.name,
     "adp.convert_to_anisotropic=True",
     "output.format=mmcif"])
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   assert os.path.isfile(f.name+"_modified.cif")
   pdb_inp = iotbx.pdb.input(file_name=f.name+"_modified.cif")
@@ -901,7 +902,7 @@ ATOM     20  C   GLY A   6      15.257   5.112   3.511  1.00 29.00           C
       "%s.pdb" % prefix,
       "output.format=mmcif",
       "output.file_name=%s.cif" % prefix])
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   cif_f = open("%s.cif" % prefix, 'r')
   cif_l = cif_f.readlines()
@@ -962,7 +963,7 @@ END
 """
   open("tst_pdbtools_move_waters.pdb", "w").write(pdb_in)
   cmd = "phenix.pdbtools tst_pdbtools_move_waters.pdb move_waters_last=True"
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   pdb_new = open("tst_pdbtools_move_waters.pdb_modified.pdb").read()
   assert pdb_new == pdb_out, pdb_new
@@ -977,10 +978,10 @@ HETATM   20  O   UNK B   6      35.068  19.167 155.349  1.00 15.97       B   O
 """
   open("tst_pdbtools_unknown.pdb", "w").write(pdb_in)
   cmd = "phenix.pdbtools tst_pdbtools_unknown.pdb set_b_iso=20"
-  print cmd
+  print(cmd)
   run_command(command=cmd, sorry_expected=True)
   cmd2 = cmd + " stop_for_unknowns=False"
-  print cmd2
+  print(cmd2)
   run_command(command=cmd2)
 
 def exercise_remove_alt_confs():
@@ -996,7 +997,7 @@ ATOM     19  O  BHOH A   4       4.132   9.963   7.800  0.50 15.00           O
 """
   open("tst_pdbtools_alt_confs.pdb", "w").write(pdb_in)
   cmd = "phenix.pdbtools tst_pdbtools_alt_confs.pdb remove_alt_confs=True"
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   pdb_new = open("tst_pdbtools_alt_confs.pdb_modified.pdb").read()
   assert (pdb_new == """\
@@ -1045,7 +1046,7 @@ END
     "phenix.pdbtools",
     "exercise_convert_met_to_semet.pdb",
     "convert_met_to_semet=true"])
-  print cmd
+  print(cmd)
   run_command(command=cmd, verbose=False)
   pi_out = iotbx.pdb.input(
     file_name="exercise_convert_met_to_semet.pdb_modified.pdb"
@@ -1087,7 +1088,7 @@ END
       "%s.pdb"%prefix,
       "switch_rotamers=%s"%o,
       "output.file_name=%s_%s.pdb"%(o,prefix)])
-    print cmd
+    print(cmd)
     run_command(command=cmd, verbose=False)
 
 def exercise_segid_manipulations(prefix="tst_pdbtools_ex_segid"):
@@ -1112,7 +1113,7 @@ END
         "%s.pdb"%prefix,
         "%s=True" % o,
         "output.file_name=%s_%s.pdb"%(o,prefix)])
-    print cmd
+    print(cmd)
     run_command(command=cmd, verbose=False)
     pdb_new = open("%s_%s.pdb"%(o,prefix)).read()
     if o == "clear_seg_id":

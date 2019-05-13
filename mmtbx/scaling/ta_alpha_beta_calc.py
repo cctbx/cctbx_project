@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import ext
 from cctbx.array_family import flex
@@ -250,7 +251,7 @@ class ta_alpha_beta_calc(object):
 
   def alpha_beta(self):
     if self.alpha is None:
-      print "re calc a/b"
+      print("re calc a/b")
       self.alpha = self.ta_d*flex.sqrt(
         self.normalized_obs_f.normalizer_for_miller_array/
         self.normalized_calc_f.normalizer_for_miller_array)
@@ -266,17 +267,17 @@ class ta_alpha_beta_calc(object):
   def show(self, out=None):
     if out is None:
       out = sys.stdout
-    print >> out
-    print >> out, "SigmaA estimation summary"
-    print >> out, "-------------------------"
-    print >> out, "Kernel width d* cubed     :  %.6g" % \
-      self.kernel_width_d_star_cubed
-    print >> out, "Kernel width free refl.   : ", \
-      self.kernel_width_free_reflections
-    print >> out, "Number of sampling points : ", self.h_array.size()
-    print >> out, "Number of Chebyshev terms : ", self.n_chebyshev_terms
-    print >> out
-    print >> out, "1/d^3      d    sum weights  sigmaA   fitted    diff"
+    print(file=out)
+    print("SigmaA estimation summary", file=out)
+    print("-------------------------", file=out)
+    print("Kernel width d* cubed     :  %.6g" % \
+      self.kernel_width_d_star_cubed, file=out)
+    print("Kernel width free refl.   : ", \
+      self.kernel_width_free_reflections, file=out)
+    print("Number of sampling points : ", self.h_array.size(), file=out)
+    print("Number of Chebyshev terms : ", self.n_chebyshev_terms, file=out)
+    print(file=out)
+    print("1/d^3      d    sum weights  sigmaA   fitted    diff", file=out)
     for h,w,sa,saf in zip(
           self.h_array,
           self.sum_weights,
@@ -286,20 +287,20 @@ class ta_alpha_beta_calc(object):
         d = " "*7
       else:
         d = "%7.4f" % (1.0/h)**(1/3)
-      print >> out, "%5.4f  %s  %8.2f   %7.4f  %7.4f  %7.4f" % (
-        h,d,w,sa,saf,saf-sa)
-    print >> out
-    print >> out
+      print("%5.4f  %s  %8.2f   %7.4f  %7.4f  %7.4f" % (
+        h,d,w,sa,saf,saf-sa), file=out)
+    print(file=out)
+    print(file=out)
 
   def show_short(self, out=None):
     if(out is None): out = sys.stdout
-    print >> out
-    print >> out, "SigmaA vs Resolution"
-    print >> out, "--------------------"
-    print >> out, "1/d^3      d    sum weights  sigmaA"
+    print(file=out)
+    print("SigmaA vs Resolution", file=out)
+    print("--------------------", file=out)
+    print("1/d^3      d    sum weights  sigmaA", file=out)
     for h, sa in zip(self.h_array, self.sigmaa_array):
       if(h == 0): d = " "*7
       else: d = "%7.4f" % (1.0/h)**(1/3)
-      print >> out, "%s %7.4f" % (d, sa)
-    print >> out
-    print >> out
+      print("%s %7.4f" % (d, sa), file=out)
+    print(file=out)
+    print(file=out)

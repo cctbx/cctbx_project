@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import uctbx
 from cctbx import crystal
@@ -321,7 +322,7 @@ END
   sf_accuracy_params.algorithm="direct"
   p = sf_accuracy_params
   for pdb_str in [pdb_str1, pdb_str2]:
-    print
+    print()
     pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
     xrs = pdb_inp.xray_structure_simple()
     #
@@ -353,7 +354,7 @@ END
     f1 = abs(fc).data()
     f2 = abs(f_obs_cmpl).data()
     r = 200*flex.sum(flex.abs(f1-f2))/flex.sum(f1+f2)
-    print r
+    print(r)
     assert r<0.5
     #
     fft_map = miller.fft_map(
@@ -361,8 +362,8 @@ END
       fourier_coefficients = f_obs_cmpl)
     fft_map.apply_volume_scaling()
     m_ = fft_map.real_map_unpadded()
-    print m.as_1d().min_max_mean().as_tuple()
-    print m_.as_1d().min_max_mean().as_tuple()
+    print(m.as_1d().min_max_mean().as_tuple())
+    print(m_.as_1d().min_max_mean().as_tuple())
     assert approx_equal(
       m .as_1d().min_max_mean().as_tuple(),
       m_.as_1d().min_max_mean().as_tuple(), 1.e-3) # Must be smaller!?
@@ -371,4 +372,4 @@ END
 if (__name__ == "__main__"):
     run()
     exercise_sampled_model_density_1()
-    print "OK: real_space: ",format_cpu_times()
+    print("OK: real_space: ",format_cpu_times())

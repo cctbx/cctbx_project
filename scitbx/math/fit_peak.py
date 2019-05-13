@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import math
 from scitbx import matrix,lbfgs
 from scitbx.array_family import flex
@@ -86,7 +87,7 @@ class fit_peak(object):
       b = matrix.col(b_elements)
 
     else:
-      print "fit_peak error: shape not valid"
+      print("fit_peak error: shape not valid")
       exit()
 
     # get initial guess (solve Ax = b)
@@ -180,7 +181,7 @@ class parabola(object):
 
   def get_height(self,r=None):
     if (self.p is None):
-      print "parabaola error: parameters not initialized"
+      print("parabaola error: parameters not initialized")
     else:
       return self.p[0]*r[0]*r[0] + self.p[1]*r[1]*r[1] + self.p[2]*r[2]*r[2] +\
              self.p[3]*r[0] + self.p[4]*r[1] + self.p[5]*r[2] + self.p[6]
@@ -229,7 +230,7 @@ class quadratic(object):
 
   def get_height(self,r=None):
     if (self.p is None):
-      print "quadratic error: parameters not initialized"
+      print("quadratic error: parameters not initialized")
     else:
       return self.p[0]*r[0]*r[0] + self.p[1]*r[1]*r[1] + self.p[2]*r[2]*r[2] +\
              self.p[3]*r[0]      + self.p[4]*r[1]      + self.p[5]*r[2]      +\
@@ -283,7 +284,7 @@ class gaussian(object):
 
   def get_height(self,r=None):
     if (self.p is None):
-      print "gaussian error: parameters not initialized"
+      print("gaussian error: parameters not initialized")
     else:
       return self.p[0]*r[0]*r[0] + self.p[1]*r[1]*r[1] + self.p[2]*r[2]*r[2] +\
              self.p[3]*r[0]      + self.p[4]*r[1]      + self.p[5]*r[2]      +\
@@ -424,4 +425,4 @@ class pick_map_neighbors(object):
 # =============================================================================
 if(__name__ == "__main__"):
   p = parabola(parameters=(-1,-1,-1,2,2,2,24))
-  print p.vertex
+  print(p.vertex)

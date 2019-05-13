@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from cctbx import miller
 from cctbx.development import random_structure
@@ -172,7 +173,7 @@ class omit_general_obsolete(object):
         crystal_gridding=self.crystal_gridding)
       f_map_data_asu = f_map_data_asu.shift_origin()
       if(log):
-        print >> log, "box %2d of %2d:"%(i_box, n_boxes), s, e, "%6.4f"%rw
+        print("box %2d of %2d:"%(i_box, n_boxes), s, e, "%6.4f"%rw, file=log)
       assert f_map_data_asu.focus() == self.map_result_asu.focus()
       maptbx.copy_box(
         map_data_from = f_map_data_asu,
@@ -270,8 +271,8 @@ def run():
     y = flex.abs(abs(y).data())
     sc = flex.sum(x*y)/flex.sum(y*y)
     return flex.sum(flex.abs(x-sc*y))/flex.sum(x+sc*y)*2
-  print abs(r1.map_coefficients).data().min_max_mean().as_tuple()
-  print abs(r2.map_coefficients).data().min_max_mean().as_tuple()
+  print(abs(r1.map_coefficients).data().min_max_mean().as_tuple())
+  print(abs(r2.map_coefficients).data().min_max_mean().as_tuple())
   cc1=flex.linear_correlation(
       x=abs(r1.map_coefficients).data(),
       y=abs(r2.map_coefficients).data()).coefficient()
@@ -285,12 +286,12 @@ def run():
   cc3=flex.linear_correlation(x=r1.r, y=r3.r).coefficient()
   assert cc3>0.95
   for cutoff in [0.5,0.6,0.7,0.8,0.9,0.95,0.99]:
-    print maptbx.cc_peak(
+    print(maptbx.cc_peak(
       cutoff       = cutoff,
       map_coeffs_1 = r1.map_coefficients,
-      map_coeffs_2 = r3.map_coefficients(filter_noise=False)), "CCpeak", cutoff
+      map_coeffs_2 = r3.map_coefficients(filter_noise=False)), "CCpeak", cutoff)
 
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

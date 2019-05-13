@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -594,7 +595,7 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
       metro[(0,q_id,s_id,1)] = basis(null_ori,matrix.col((+w,0,0)))
 
   if plot:
-    print "Validating transofmation matrices set up correctly"
+    print("Validating transofmation matrices set up correctly")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon
     fig = plt.figure()
@@ -804,7 +805,7 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
   cbf.add_category("array_data",["array_id","binary_id","data"])
 
   if verbose:
-    print "Compressing tiles...",
+    print("Compressing tiles...", end=' ')
 
   for i, (tilekey, array_name) in enumerate(zip(sorted(tiles.keys()), array_names)):
     focus = tiles[tilekey].focus()
@@ -901,7 +902,7 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, cbf_root, wavelength, 
       pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
 
   if verbose:
-    print "%s written"%cbf_root
+    print("%s written"%cbf_root)
 
 def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelength, distance, verbose = True, header_only = False):
   assert metro_style in ['calibdir','flatfile','cbf']

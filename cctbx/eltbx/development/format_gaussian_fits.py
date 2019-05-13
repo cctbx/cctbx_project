@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.eltbx import xray_scattering
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.development import kissel_io
@@ -51,8 +52,8 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name, kissel_dir):
   fits = read_pickled_fits(gaussian_fit_pickle_file_names)
   #easy_pickle.dump("all_fits.pickle", fits)
   for k,v in fits.parameters.items():
-    print "# %s:" % k, v
-  print
+    print("# %s:" % k, v)
+  print()
   max_errors = flex.double()
   labeled_fits = []
   n_processed = 0
@@ -60,17 +61,17 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name, kissel_dir):
     try:
       fit_group = fits.all[label]
     except Exception:
-      print "# Warning: Missing scattering_type:", label
+      print("# Warning: Missing scattering_type:", label)
     else:
-      print "scattering_type:", label
+      print("scattering_type:", label)
       prev_fit = None
       for fit in fit_group:
         if (prev_fit is not None):
           if (fit.stol > prev_fit.stol):
-            print "# Warning: decreasing stol"
+            print("# Warning: decreasing stol")
           elif (fit.stol == prev_fit.stol):
             if (fit.max_error < prev_fit.max_error):
-              print "# Warning: same stol but previous has larger error"
+              print("# Warning: same stol but previous has larger error")
         prev_fit = fit
         fit.sort().show()
         gaussian_fit = None
@@ -97,20 +98,20 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name, kissel_dir):
             flex.max(gaussian_fit.significant_relative_errors()))
           labeled_fits.append(labeled_fit(label, gaussian_fit))
       n_processed += 1
-  print
+  print()
   if (n_processed != len(fits.all)):
-    print "# Warning: %d fits were not processed." % (
-      len(fits.all) - n_processed)
-    print
+    print("# Warning: %d fits were not processed." % (
+      len(fits.all) - n_processed))
+    print()
   if (max_errors.size() > 0):
-    print "Summary:"
+    print("Summary:")
     perm = flex.sort_permutation(data=max_errors, reverse=True)
     max_errors = max_errors.select(perm)
     labeled_fits = flex.select(labeled_fits, perm)
     quick_summary = {}
     for me,lf in zip(max_errors, labeled_fits):
-      print lf.label, "n_terms=%d max_error: %.4f" % (
-        lf.gaussian_fit.n_terms(), me)
+      print(lf.label, "n_terms=%d max_error: %.4f" % (
+        lf.gaussian_fit.n_terms(), me))
       quick_summary[lf.label + "_" + str(lf.gaussian_fit.n_terms())] = me
       if (me > 0.01):
         fit = lf.gaussian_fit
@@ -118,9 +119,9 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name, kissel_dir):
         for s,y,a,r in zip(fit.table_x(),fit.table_y(),fit.fitted_values(),re):
           comment = ""
           if (r > 0.01): comment = " large error"
-          print "%4.2f %7.4f %7.4f %7.4f %7.4f%s" % (s,y,a,a-y,r,comment)
-        print
-    print
+          print("%4.2f %7.4f %7.4f %7.4f %7.4f%s" % (s,y,a,a-y,r,comment))
+        print()
+    print()
     #easy_pickle.dump("quick_summary.pickle", quick_summary)
 
 def cross_check(args):
@@ -155,12 +156,12 @@ def cross_check(args):
     perm = flex.sort_permutation(data=sort_key, reverse=reverse)
     perm_lines = flex.select(lines, perm)
     for line in perm_lines:
-      print line
-    print
-  print "n_less:", n_less
-  print "n_greater:", n_greater
-  print "n_equal:", n_equal
-  print "total:", n_less + n_greater + n_equal
+      print(line)
+    print()
+  print("n_less:", n_less)
+  print("n_greater:", n_greater)
+  print("n_equal:", n_equal)
+  print("total:", n_less + n_greater + n_equal)
 
 def main():
   parser = OptionParser(

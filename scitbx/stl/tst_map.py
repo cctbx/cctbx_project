@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.stl import map
 try:
   import cPickle as pickle
@@ -144,7 +145,7 @@ def exercise():
   exercise_stl_string_stl_map_stl_string_double()
   exercise_stl_string_stl_vector_unsigned()
   exercise_int_stl_vector_unsigned()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

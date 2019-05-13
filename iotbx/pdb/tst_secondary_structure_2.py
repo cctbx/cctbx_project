@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import test_utils
 import sys
 from iotbx.pdb.tst_secondary_structure import pdb_1ywf_sample_strings, \
@@ -240,7 +241,7 @@ HELIX    1 D12 ASP A   37  GLY A   48  1                                  12
   out = StringIO()
   for ph_str in [phil_str2, phil_str3, phil_str4, phil_str5, phil_str6,
       phil_str7, phil_str8, phil_str9]:
-    print >> out, "="*50
+    print("="*50, file=out)
     annot, ss_from_file = get_annotation(
         phil_lines=ph_str,
         pdb_lines=pdb_1ywf_sample_strings)
@@ -248,11 +249,11 @@ HELIX    1 D12 ASP A   37  GLY A   48  1                                  12
     assert annot.get_n_helices() == 1
     assert annot.get_n_sheets() == 0
     h = annot.helices[0]
-    print >> out, h.as_restraint_group()
-    print >> out, h.as_pdb_str()
+    print(h.as_restraint_group(), file=out)
+    print(h.as_pdb_str(), file=out)
   assert not test_utils.show_diff(out.getvalue(), result2_9,
       strip_trailing_whitespace=True)
-  print "OK"
+  print("OK")
 
 def tst_parsing_phil_single_sheet():
   phil_hbond_portion = """\
@@ -455,7 +456,7 @@ protein.sheet {
   res = sh.as_restraint_group(show_hbonds=False)
   assert not test_utils.show_diff(res, result1_1,
       strip_trailing_whitespace=True)
-  print "OK"
+  print("OK")
 
 
 def exercise(args):

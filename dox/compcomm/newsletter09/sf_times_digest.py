@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys, os
 op = os.path
 
@@ -125,7 +126,7 @@ def run(args):
   assert len(args) == 0
   table_entries = process_time_tables()
   #
-  print "Intel Fortran times on chevy:"
+  print("Intel Fortran times on chevy:")
   tab = {}
   for entry in table_entries:
     if (entry.current_node == "chevy"):
@@ -139,10 +140,10 @@ def run(args):
         continue
       tab[lbl] = (entry.format_utimes(i_compiler=ic), entry.build_node)
   for key in ["if_9.1_32b", "if_9.1_64b", "if11.1_64b"]:
-    print key, " ".join(tab[key])
-  print
+    print(key, " ".join(tab[key]))
+  print()
   #
-  print "GNU Fortran times on chevy:"
+  print("GNU Fortran times on chevy:")
   tab = {}
   for entry in table_entries:
     if (entry.current_node == "chevy"):
@@ -150,18 +151,18 @@ def run(args):
       if (ic is None): continue
       tab[lbl] = (entry.format_utimes(i_compiler=ic), entry.build_node)
   for key in sorted(tab.keys()):
-    print key, " ".join(tab[key])
-  print
+    print(key, " ".join(tab[key]))
+  print()
   #
-  print "Intel C++ times on chevy:"
+  print("Intel C++ times on chevy:")
   for entry in table_entries:
     if (entry.current_node == "chevy" and entry.build_node == "chevy"):
       if (entry.all_utimes[3][0] >= 0):
-        print entry.format_utimes(i_compiler=3), \
-          entry.compiler_versions[3].replace(" (ICC)", "")
-  print
+        print(entry.format_utimes(i_compiler=3), \
+          entry.compiler_versions[3].replace(" (ICC)", ""))
+  print()
   #
-  print "GNU C++ times on chevy:"
+  print("GNU C++ times on chevy:")
   tab = {}
   for entry in table_entries:
     if (entry.current_node == "chevy"):
@@ -169,14 +170,14 @@ def run(args):
       if (ic is None): continue
       tab[lbl] = (entry.format_utimes(i_compiler=ic), entry.build_node)
   for key in sorted(tab.keys()):
-    print key, " ".join(tab[key])
-  print
+    print(key, " ".join(tab[key]))
+  print()
   #
-  print "GNU C++ 3.2 32-bit (Red Hat 8.0) executable on all platforms:"
+  print("GNU C++ 3.2 32-bit (Red Hat 8.0) executable on all platforms:")
   for entry in table_entries:
     if (entry.build_node == "ribbon"):
-      print entry.format_utimes(i_compiler=4), entry.current_node
-  print
+      print(entry.format_utimes(i_compiler=4), entry.current_node)
+  print()
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.pdb.tst_pdb import dump_pdb
 from cctbx.crystal import close_packing
 from cctbx import crystal
@@ -165,7 +166,7 @@ def check_distances(sites_cart, point_distance, verbose):
   for n in neighbors.values():
     n_dict[n] = n_dict.get(n, 0) + 1
   if (verbose):
-    print n_dict
+    print(n_dict)
   if (len(neighbors) > 0):
     assert max(neighbors.values()) <= 12
 
@@ -174,7 +175,7 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
                          strictly_inside, flag_write_pdb, verbose):
   cb_op_inp_ref = inp_symmetry.change_of_basis_op_to_reference_setting()
   if (verbose):
-    print "cb_op_inp_ref.c():", cb_op_inp_ref.c()
+    print("cb_op_inp_ref.c():", cb_op_inp_ref.c())
   ref_symmetry = inp_symmetry.change_basis(cb_op_inp_ref)
   search_symmetry = sgtbx.search_symmetry(
     flags=symmetry_flags,
@@ -196,8 +197,8 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
           point_frac_inp=[float(n)/d for n,d in zip(point, inp_tags.n_real())]
           tag_sites_frac.append(point_frac_inp)
     if (inp_tags.tags().n_independent() < sites_cart.size()):
-      print "FAIL:", inp_symmetry.space_group_info(), \
-                     inp_tags.tags().n_independent(), sites_cart.size()
+      print("FAIL:", inp_symmetry.space_group_info(), \
+                     inp_tags.tags().n_independent(), sites_cart.size())
       raise AssertionError
   else:
     inp_tags = inp_symmetry.gridding(
@@ -210,7 +211,7 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
     sites_frac_ref += rt[9:]
     max_distance = 2 * ((.5 * math.sqrt(3) * point_distance) * 2/3.)
     if (verbose):
-      print "max_distance:", max_distance
+      print("max_distance:", max_distance)
     for point in flex.nested_loop(inp_tags.n_real()):
       if (inp_tags.tags().tag_array()[point] < 0):
         point_frac_inp = [float(n)/d for n,d in zip(point, inp_tags.n_real())]
@@ -229,12 +230,12 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
           principal_continuous_allowed_origin_shift_flags
             =continuous_shift_flags).dist()
         if (min_dist > max_distance):
-          print "FAIL:", inp_symmetry.space_group_info(), \
-                         point_frac_ref, min_dist
+          print("FAIL:", inp_symmetry.space_group_info(), \
+                         point_frac_ref, min_dist)
           raise AssertionError
     if (inp_tags.tags().n_independent()+10 < sites_cart.size()):
-      print "FAIL:", inp_symmetry.space_group_info(), \
-                     inp_tags.tags().n_independent(), sites_cart.size()
+      print("FAIL:", inp_symmetry.space_group_info(), \
+                     inp_tags.tags().n_independent(), sites_cart.size())
       raise AssertionError
   if (tag_sites_frac is not None):
     dump_pdb(
@@ -248,7 +249,7 @@ def run_call_back(flags, space_group_info):
     unit_cell=space_group_info.any_compatible_unit_cell(volume=1000),
     space_group_info=space_group_info)
   if (flags.Verbose):
-    print crystal_symmetry.unit_cell()
+    print(crystal_symmetry.unit_cell())
   symmetry_flags=sgtbx.search_symmetry_flags(
       use_space_group_symmetry=True,
       use_space_group_ltr=0,
@@ -263,8 +264,8 @@ def run_call_back(flags, space_group_info):
   if (flags.all_twelve_neighbors):
     all_twelve_neighbors = True
   if (flags.Verbose):
-    print "buffer_thickness:", buffer_thickness
-    print "all_twelve_neighbors:", all_twelve_neighbors
+    print("buffer_thickness:", buffer_thickness)
+    print("all_twelve_neighbors:", all_twelve_neighbors)
   sites_cart = hexagonal_close_packing_sampling(
     crystal_symmetry=crystal_symmetry,
     symmetry_flags=symmetry_flags,
@@ -331,10 +332,10 @@ def exercise_groel_sampling(verbose):
         t0 = time.time()
         n_sites.append(sampling_generator.count_sites())
         if (verbose):
-          print n_sites[-1], "%.2f" % (time.time() - t0)
+          print(n_sites[-1], "%.2f" % (time.time() - t0))
   assert n_sites == [41712, 45319, 304200, 315809, # depends an float_asu, ...
                      162240, 170797, 1195830, 1232774]
-  print "time groel_sampling: %.2f seconds" % (time.time() - t00)
+  print("time groel_sampling: %.2f seconds" % (time.time() - t00))
 
 def run():
   exercise_all_twelve_neighbors()
@@ -343,7 +344,7 @@ def run():
     "strictly_inside",
     "all_twelve_neighbors",
     "write_pdb"))
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

@@ -6,6 +6,7 @@ from the target value.
 """
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.validation import atoms, validation, get_atoms_info
 from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate
@@ -205,30 +206,30 @@ class restraint_validation(validation):
 
   def show(self, out=sys.stdout, prefix="  ", verbose=True):
     if (len(self.results) > 0):
-      print >> out, prefix + self.get_result_class().header()
+      print(prefix + self.get_result_class().header(), file=out)
       for result in self.results :
-        print >> out, result.as_string(prefix=prefix)
+        print(result.as_string(prefix=prefix), file=out)
     self.show_summary(out=out, prefix=prefix)
 
   def show_summary(self, out=sys.stdout, prefix=""):
     if (self.n_total == 0):
-      print >> out, prefix + "No restraints of this type."
+      print(prefix + "No restraints of this type.", file=out)
       return
     elif (self.n_outliers == 0):
-      print >> out, prefix + \
-        "All restrained atoms within 4.0 sigma of ideal values."
-    print >> out, ""
+      print(prefix + \
+        "All restrained atoms within 4.0 sigma of ideal values.", file=out)
+    print("", file=out)
     if (self.z_mean is not None):
-      print >> out, prefix + "Min. delta:  %7.3f (Z=%7.3f)" % (self.min,
-        self.z_min)
-      print >> out, prefix + "Max. delta:  %7.3f (Z=%7.3f)" % (self.max,
-        self.z_max)
-      print >> out, prefix + "Mean delta:  %7.3f (Z=%7.3f)" % (self.mean,
-        self.z_mean)
+      print(prefix + "Min. delta:  %7.3f (Z=%7.3f)" % (self.min,
+        self.z_min), file=out)
+      print(prefix + "Max. delta:  %7.3f (Z=%7.3f)" % (self.max,
+        self.z_max), file=out)
+      print(prefix + "Mean delta:  %7.3f (Z=%7.3f)" % (self.mean,
+        self.z_mean), file=out)
     else :
-      print >> out, prefix + "Min. delta:  %7.3f" % self.min
-      print >> out, prefix + "Max. delta:  %7.3f" % self.max
-      print >> out, prefix + "Mean delta:  %7.3f" % self.mean
+      print(prefix + "Min. delta:  %7.3f" % self.min, file=out)
+      print(prefix + "Max. delta:  %7.3f" % self.max, file=out)
+      print(prefix + "Mean delta:  %7.3f" % self.mean, file=out)
 
   def as_kinemage(self, chain_id=None):
     header = self.kinemage_header
@@ -543,9 +544,9 @@ class combined(slots_getstate_setstate):
       rv = getattr(self, geo_type)
       make_sub_header(rv.restraint_label + "s", out=out)
       if (geo_type == "angles") and getattr(self, "_use_cdl", False):
-        print >> out, "  Using conformation-dependent library for mainchain "+\
-                      "bond angle targets"
-        print >> out, ""
+        print("  Using conformation-dependent library for mainchain "+\
+                      "bond angle targets", file=out)
+        print("", file=out)
       rv.show(out=out, prefix=prefix)
 
   def get_bonds_angles_rmsds(self):

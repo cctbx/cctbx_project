@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.math_utils import iceil
 from libtbx.utils import null_out, Sorry
 from itertools import count
@@ -132,8 +133,8 @@ def adjust_fraction(miller_array, fraction, log=None):
   n_free = miller_array.data().count(True)
   assert (n_refl > 0)
   current_fraction = n_free / n_refl
-  print >> log, "  current fraction free: %g" % current_fraction
-  print >> log, "                 target: %g" % fraction
+  print("  current fraction free: %g" % current_fraction, file=log)
+  print("                 target: %g" % fraction, file=log)
   new_flags = None
   # XXX this should probably be more approximate
   if (current_fraction == fraction):
@@ -141,7 +142,7 @@ def adjust_fraction(miller_array, fraction, log=None):
   elif (current_fraction > fraction):
     # move existing flags to work set
     sub_fraction = fraction / current_fraction
-    print >> log, "  shrinking old test set by a factor of %g" % sub_fraction
+    print("  shrinking old test set by a factor of %g" % sub_fraction, file=log)
     work_set = miller_array.select(~miller_array.data())
     free_set = miller_array.select(miller_array.data())
     # XXX the code in cctbx.miller requires a fraction between 0 and 0.5 -
@@ -167,7 +168,7 @@ def adjust_fraction(miller_array, fraction, log=None):
   else :
     # generate additional flags
     fraction_new = (fraction - current_fraction) / (1 - current_fraction)
-    print >> log, "  flagging %g of current work set for R-free" % fraction_new
+    print("  flagging %g of current work set for R-free" % fraction_new, file=log)
     assert (fraction_new > 0)
     work_set = miller_array.select(~miller_array.data())
     free_set = miller_array.select(miller_array.data())
@@ -178,8 +179,8 @@ def adjust_fraction(miller_array, fraction, log=None):
       use_lattice_symmetry=True)
     new_flags = flags_new.complete_with(other=free_set)#miller_array)
   assert (new_flags.indices().size() == miller_array.indices().size())
-  print >> log, "    old flags: %d free (out of %d) " % (n_free, n_refl)
-  print >> log, "    new flags: %d free" % new_flags.data().count(True)
+  print("    old flags: %d free (out of %d) " % (n_free, n_refl), file=log)
+  print("    new flags: %d free" % new_flags.data().count(True), file=log)
   return new_flags
 
 # XXX if the flags don't actually need extending, the original
@@ -205,16 +206,16 @@ def extend_flags(
   if(r_free_as_bool.size() == 0):
     msg = """\
 WARNING: array of R-free flags (%s) is empty.""" % array_label
-    print >> log, msg
+    print(msg, file=log)
     return r_free_flags
   fraction_free = r_free_as_bool.count(True) / r_free_as_bool.size()
-  print >>log, "%s: fraction_free=%.3f" %(array_label, fraction_free)
+  print("%s: fraction_free=%.3f" %(array_label, fraction_free), file=log)
   if (fraction_free == 0):
     if (allow_uniform_flags):
       msg = """\
 WARNING: R-free flags in %s do not appear to contain a valid test, so they \
 can't be extended to higher resolution.""" % array_label
-      print >> log, msg
+      print(msg, file=log)
       return r_free_flags
     else :
       raise Sorry(("Can't extend R-free flags in %s to higher resolution "+
@@ -229,7 +230,7 @@ can't be extended to higher resolution.""" % array_label
     missing_set = r_free_flags.complete_set(d_min=d_min,
       d_max=d_max).lone_set(r_free_flags.map_to_asu())
   n_missing = missing_set.indices().size()
-  print >> log, "%s: missing %d reflections" % (array_label, n_missing)
+  print("%s: missing %d reflections" % (array_label, n_missing), file=log)
   output_array = r_free_flags
   if (n_missing != 0):
     if (n_missing <= 20):
@@ -248,7 +249,7 @@ can't be extended to higher resolution.""" % array_label
         use_lattice_symmetry=True)
     if (preserve_input_values):
       if (looks_like_ccp4_flags(r_free_flags)):
-        print >> log, "Exporting missing flags to CCP4 convention"
+        print("Exporting missing flags to CCP4 convention", file=log)
         exported_flags = export_r_free_flags_for_ccp4(
           flags=missing_flags.data(),
           test_flag_value=True) #test_flag_value)
@@ -326,8 +327,8 @@ def remediate_mismatches(array, verbose=False, log=None):
   array = array.as_non_anomalous_array()
   merge = array.merge_equivalents(incompatible_flags_replacement=True)
   if (merge.n_incompatible_flags > 0):
-    print >> log, "  %d reflections moved to test set" % \
-      merge.n_incompatible_flags
+    print("  %d reflections moved to test set" % \
+      merge.n_incompatible_flags, file=log)
   new_flags = merge.array().generate_bijvoet_mates().common_set(
     other=orig_array)
   assert len(new_flags.indices()) == len(orig_array.indices())

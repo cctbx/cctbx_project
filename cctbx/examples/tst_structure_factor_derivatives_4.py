@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx import miller
 from cctbx.examples.structure_factor_derivatives_4 import structure_factors
@@ -111,23 +112,23 @@ def compare_analytical_and_finite(
       out):
   grads_fin = d_target_d_params_finite(
     d_order=1, f_obs=f_obs, xray_structure=xray_structure)
-  print >> out, "grads_fin:", list(grads_fin)
+  print("grads_fin:", list(grads_fin), file=out)
   sf = structure_factors(
     xray_structure=xray_structure, miller_set=f_obs)
   grads_ana = sf.d_target_d_params(f_obs=f_obs, target_type=least_squares)
-  print >> out, "grads_ana:", list(grads_ana)
+  print("grads_ana:", list(grads_ana), file=out)
   if (gradients_should_be_zero):
     flex.compare_derivatives(grads_ana, flex.double(grads_ana.size(), 0), eps)
   else:
     flex.compare_derivatives(grads_ana, grads_fin, eps)
   curvs_fin = d_target_d_params_finite(
     d_order=2, f_obs=f_obs, xray_structure=xray_structure)
-  print >> out, "curvs_fin:", list(curvs_fin)
+  print("curvs_fin:", list(curvs_fin), file=out)
   curvs_ana = sf.d2_target_d_params(f_obs=f_obs, target_type=least_squares)
-  print >> out, "curvs_ana:", list(curvs_ana)
+  print("curvs_ana:", list(curvs_ana), file=out)
   flex.compare_derivatives(curvs_ana.as_1d(), curvs_fin, eps)
   assert curvs_ana.matrix_is_symmetric(relative_epsilon=1e-10)
-  print >> out
+  print(file=out)
   #
   for i_method,curvs_method in enumerate([
         sf.d2_target_d_params_diag,
@@ -256,7 +257,7 @@ def run_call_back(flags,
       # up t96 output.
       # print >> sys.stderr, "strudat tag:", entry.tag
       # sys.stderr.flush()
-      print >> out, "strudat tag:", entry.tag
+      print("strudat tag:", entry.tag, file=out)
       out.flush()
       for use_u_aniso in use_u_aniso_flags:
         xray_structure = entry.as_xray_structure()

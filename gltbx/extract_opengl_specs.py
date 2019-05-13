@@ -8,6 +8,7 @@ To update opengl_specs.txt:
        python extract_opengl_specs.py /tmpdir/html/*/*.html > opengl_specs.txt
 """
 from __future__ import division
+from __future__ import print_function
 
 import sys, os
 
@@ -78,7 +79,7 @@ def run(args):
   for arg in args:
     extract_defines(html_string=open(arg).read(), all_defines=all_defines)
   for define in sorted(all_defines):
-    print define
+    print(define)
   #
   all_signatures = []
   for arg in args:
@@ -89,7 +90,7 @@ def run(args):
       all_signatures=all_signatures)
     assert len(all_signatures) > prev_len
   for signature in all_signatures:
-    print signature
+    print(signature)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

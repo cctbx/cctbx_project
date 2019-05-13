@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 #! /usr/bin/python
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
@@ -71,10 +72,10 @@ def display_calib(dirname, right, verbose):
       # right = True.
       if (verbose):
         vertices = sections[q][s].corners_asic()
-        print "(%4d, %4d, %4d, %4d)" % \
-            (vertices[0][0], vertices[0][1], vertices[0][2], vertices[0][3])
-        print "(%4d, %4d, %4d, %4d)" % \
-            (vertices[1][0], vertices[1][1], vertices[1][2], vertices[1][3])
+        print("(%4d, %4d, %4d, %4d)" % \
+            (vertices[0][0], vertices[0][1], vertices[0][2], vertices[0][3]))
+        print("(%4d, %4d, %4d, %4d)" % \
+            (vertices[1][0], vertices[1][1], vertices[1][2], vertices[1][3]))
 
   collection = PatchCollection(patches, cmap = matplotlib.cm.jet, alpha = 0.4)
   collection.set_array(numpy.array(colours))

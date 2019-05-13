@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 import mmtbx.model
 from libtbx.utils import null_out
@@ -291,4 +292,4 @@ if __name__ == '__main__':
   exercise_02()
   exercise_03()
   exercise_04()
-  print "OK. Time: %6.3f"%(time.time()-t0)
+  print("OK. Time: %6.3f"%(time.time()-t0))

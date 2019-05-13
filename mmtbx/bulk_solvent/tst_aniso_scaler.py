@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import approx_equal
 import mmtbx.f_model
 import random, time
@@ -70,7 +71,7 @@ def run_00():
     assert approx_equal(b_cart_final, b_cart_final2)
     #print "Output b_cart:", " ".join(["%8.4f"%i for i in b_cart_final])
     assert approx_equal(b_cart_start, b_cart_final, 1.e-4)
-  print "Time (aniso_u_scaler only): %6.4f"%time_aniso_u_scaler
+  print("Time (aniso_u_scaler only): %6.4f"%time_aniso_u_scaler)
 
 def run_01():
   time_aniso_u_scaler = 0
@@ -136,7 +137,7 @@ def run_01():
       fc.data()*overall_anisotropic_scale), 0.0, 1.e-2) # XXX seems to be low
     #print "Output a:", " ".join(["%7.3f"%i for i in obj.a])
     assert approx_equal(a, obj.a, 1.e-3) # XXX can it be smaller?
-  print "Time (aniso_u_scaler only): %6.4f"%time_aniso_u_scaler
+  print("Time (aniso_u_scaler only): %6.4f"%time_aniso_u_scaler)
 
 def run_02():
   time_aniso_u_scaler = 0
@@ -211,12 +212,12 @@ def run_02():
     #print "Output a:", " ".join(["%7.3f"%i for i in obj.a])
     assert approx_equal(a, obj.a, 1.e-4) # XXX can it be smaller?
     assert overall_anisotropic_scale[len(overall_anisotropic_scale)-1]==1
-  print "Time (aniso_u_scaler only): %6.4f"%time_aniso_u_scaler
+  print("Time (aniso_u_scaler only): %6.4f"%time_aniso_u_scaler)
 
 if (__name__ == "__main__"):
   t0 = time.time()
   run_00()
   run_01()
   run_02() # same as run_01 but with f000 added
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

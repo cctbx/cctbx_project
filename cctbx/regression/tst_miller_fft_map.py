@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import miller
 from cctbx import maptbx
 from cctbx import sgtbx
@@ -134,7 +135,7 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
   mean_delta_cubic = sum2 / n_elements
   assert (mean_delta_cubic < mean_delta_linear)
   if (0 or verbose):
-    print "emma rms grid, interpolated: %.2f %.2f" % tuple(rms)
+    print("emma rms grid, interpolated: %.2f %.2f" % tuple(rms))
   assert rms[0] >= rms[1]
   map_1 = fft_map.real_map_unpadded(in_place=False)
   map_2 = fft_map.real_map_unpadded(in_place=True)
@@ -174,7 +175,7 @@ def exercise_average_bijvoet_mates(
   assert map_c.focus() == map_r.focus()
   lc = flex.linear_correlation(map_c.as_1d(), map_r.as_1d())
   if (0 or verbose):
-    print lc.coefficient()
+    print(lc.coefficient())
   assert lc.coefficient() > 1-1.e-6
   assert flex.max(flex.abs(map_c.as_1d() - map_r.as_1d())) < 1.e-6
   #

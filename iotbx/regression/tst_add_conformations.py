@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from libtbx.test_utils import contains_lines, Exception_expected
 from libtbx.utils import Sorry
@@ -11,7 +12,7 @@ def exercise():
     relative_path="phenix_regression/pdb/1ywf.pdb",
     test=os.path.isfile)
   if (pdb_file is None):
-    print "phenix_regression not available, skipping test."
+    print("phenix_regression not available, skipping test.")
     return
   from iotbx.command_line.pdb_add_conformations import run
   out = cStringIO.StringIO()
@@ -62,7 +63,7 @@ ATOM     22  OG ASER     4      -1.752   0.849   3.272  0.50 11.67           O\
   else :
     raise Exception_expected
   run([pdb_file, "atom_selection=\"not name OG\""], out=out)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

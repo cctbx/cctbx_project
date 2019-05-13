@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os
 import sys
 import libtbx.load_env
@@ -121,7 +122,7 @@ ATOM   6    O  OG    . SER A 1 1 23.683  -70.569 17.703  1.00 24.00 108 SER A OG
 HETATM 2650 MN MN    . MN  F 4 . 9.296   -44.783 -6.320  1.00 44.18 505 MN  A MN    1
 """
   f = open_tmp_file(suffix="cif", mode="w")
-  print >> f, input_4edr
+  print(input_4edr, file=f)
   f.close()
   mmcif = any_file(f.name)
   mmcif.assert_file_type("pdb")
@@ -497,10 +498,10 @@ def exercise():
   exercise_xml()
   exercise_maps()
   if mtz is None :
-    print "Skipping mtz file tests"
+    print("Skipping mtz file tests")
   else :
     exercise_hkl()
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__" :
   exercise()

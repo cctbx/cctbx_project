@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import miller
 from mmtbx import scaling
 from mmtbx.scaling import sigmaa_estimation
@@ -95,9 +96,9 @@ lower than %s are flagged as possible outliers.
 
 
     log_string = self.make_log_wilson(log_string, all_flags ,all_p_values )
-    print >> self.out
-    print >> self.out, log_string
-    print >> self.out
+    print(file=self.out)
+    print(log_string, file=self.out)
+    print(file=self.out)
 
     if not return_data:
       return all_flags
@@ -145,9 +146,9 @@ Wilson distribution.
 
     log_string = self.make_log_wilson(log_string, all_flags ,all_p_values )
 
-    print >> self.out
-    print >> self.out, log_string
-    print >> self.out
+    print(file=self.out)
+    print(log_string, file=self.out)
+    print(file=self.out)
 
     if not return_data:
       return all_flags
@@ -232,7 +233,7 @@ the shadow of the beamstop.
                                    ).set_observation_type( self.miller_obs )
 
     log_message = self.make_log_beam_stop( log_message,final_selection )
-    print >> self.out, log_message
+    print(log_message, file=self.out)
 
 
     if not return_data:
@@ -332,17 +333,17 @@ extreme value distribution of the chi-square distribution.
                                        sigmaa,
                                        plot_out)
     tmp_log=StringIO()
-    print >> tmp_log, log_message
+    print(log_message, file=tmp_log)
     # histogram of log likelihood gain values
-    print >> tmp_log
-    print >> tmp_log, "The histoghram of scaled (LL-gain) values is shown below."
-    print >> tmp_log, "  Note: scaled (LL-gain) is approximately Chi-square distributed."
-    print >> tmp_log
-    print >> tmp_log, "  scaled(LL-gain)  Frequency"
+    print(file=tmp_log)
+    print("The histoghram of scaled (LL-gain) values is shown below.", file=tmp_log)
+    print("  Note: scaled (LL-gain) is approximately Chi-square distributed.", file=tmp_log)
+    print(file=tmp_log)
+    print("  scaled(LL-gain)  Frequency", file=tmp_log)
     histo = flex.histogram( ll_gain.data(), 15 )
     histo.show(f=tmp_log,format_cutoffs='%7.3f')
 
-    print >> self.out, tmp_log.getvalue()
+    print(tmp_log.getvalue(), file=self.out)
 
     if not return_data:
       return flags

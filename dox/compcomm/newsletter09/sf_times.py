@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Usage
 from libtbx import easy_run
@@ -404,14 +405,14 @@ def run_combinations(
       compiler_versions.append(compiler_version)
       a_out = None
     build_cmd = " ".join([compiler, build_opts])
-    print build_cmd
+    print(build_cmd)
     utimes = []
     for real in real_list:
-      print "  %s" % real
+      print("  %s" % real)
       for replace_cos in [False, True]:
-        print "    replace_cos", replace_cos
+        print("    replace_cos", replace_cos)
         for replace_exp in [False, True]:
-          print "      replace_exp", replace_exp
+          print("      replace_exp", replace_exp)
           sys.stdout.flush()
           a_out_key = (build_cmd, replace_cos, replace_exp)
           if (not write_a_out_archive):
@@ -426,14 +427,14 @@ def run_combinations(
               build_cmd=build_cmd,
               replace_cos=replace_cos,
               replace_exp=replace_exp)
-            print "        %4.2f" % utime
+            print("        %4.2f" % utime)
             if (write_a_out_archive):
               a_out_archive[a_out_key] = (
                 compiler_version,
                 open("a.out", "rb").read())
           else:
             utime = -1.0
-            print "        n/a"
+            print("        n/a")
           utimes.append(utime)
           sys.stdout.flush()
     all_utimes.append(utimes)
@@ -514,7 +515,7 @@ def run(args):
       real_list=["float", "double"],
       write_build_run=cpp_write_build_run)
   if (write_a_out_archive and len(a_out_archive) != 0):
-    print "Writing file: a_out_archive.pickle"
+    print("Writing file: a_out_archive.pickle")
     easy_pickle.dump(
       file_name="a_out_archive.pickle",
       obj=(
@@ -525,17 +526,17 @@ def run(args):
         compiler_versions,
         gcc_static,
         a_out_archive))
-  print
-  print "current_platform:", platform.platform()
-  print "current_node:", platform.node()
-  print "build_platform:", build_platform
-  print "build_node:", build_node
-  print 'gcc_static: "%s"' % gcc_static
+  print()
+  print("current_platform:", platform.platform())
+  print("current_node:", platform.node())
+  print("build_platform:", build_platform)
+  print("build_node:", build_node)
+  print('gcc_static: "%s"' % gcc_static)
   for compiler_version in compiler_versions:
-    print "compiler:", compiler_version
-  print "n_scatt * n_refl: %d * %d" % (n_scatt, n_refl)
+    print("compiler:", compiler_version)
+  print("n_scatt * n_refl: %d * %d" % (n_scatt, n_refl))
   for utimes in all_utimes:
-    print " ".join(["%6.2f" % u for u in utimes])
+    print(" ".join(["%6.2f" % u for u in utimes]))
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

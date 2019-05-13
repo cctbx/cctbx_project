@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 from libtbx import easy_run
 
@@ -63,7 +64,7 @@ def run():
   for f in find:
     for line in rc.stdout_lines:
       if line.find(f)>-1:
-        print line
+        print(line)
         break
     else:
       assert 0, 'line not found: %s' % f

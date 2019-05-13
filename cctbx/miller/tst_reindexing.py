@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def run(args):
   assert len(args) == 0
   from cctbx import miller
@@ -147,7 +148,7 @@ Indexing ambiguities:
     [4, 1, 5, 2, 0, 3],
     [5, 2, 4, 1, 3, 0]]
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from iotbx.reflection_file_reader import any_reflection_file
 from iotbx.command_line import export_scalepack_unmerged
 from libtbx.utils import null_out
@@ -117,4 +118,4 @@ _refln.intensity_sigma
 if (__name__ == "__main__"):
   exercise_scalepack()
   exercise_cif()
-  print "OK"
+  print("OK")

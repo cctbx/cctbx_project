@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.table_one
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.validation import dummy_validation
 from mmtbx.validation import molprobity
 import mmtbx.command_line.molprobity
@@ -280,12 +281,11 @@ def resolution_sanity_check(
   warned = False
   if (d_max_pdb is not None):
     (d_max, d_min) = (d_max_pdb, d_min_pdb)
-    print >> out, \
-      "Using resolution limits reported in PDB file for structure %s" % \
-      structure_name
+    print("Using resolution limits reported in PDB file for structure %s" % \
+      structure_name, file=out)
     if ((d_max != d_max_pdb) or (d_min != d_min_pdb)):
       warned = True
-      print >> out, """\
+      print("""\
 *** WARNING: Resolution limits in the PDB file for structure '%s'
              are inconsistent with resolution limits in the MTZ file:
              %.2f - %.2f (in PDB file)
@@ -293,7 +293,7 @@ def resolution_sanity_check(
     This is not a fatal error, since the data processing may output more data
     than are used in refinement, but you should check to make sure that you
     have not accidentally specified the wrong model file.
-""" % (structure_name, d_max_pdb, d_min_pdb, d_max_f_obs, d_min_f_obs)
+""" % (structure_name, d_max_pdb, d_min_pdb, d_max_f_obs, d_min_f_obs), file=out)
   else :
     (d_max, d_min) = (d_max_f_obs, d_min_f_obs)
   return (d_max, d_min, warned)
@@ -311,17 +311,17 @@ def rfactor_sanity_check(
   warned = False
   if (r_work_pdb is not None) and (r_free_pdb is not None):
     if (not re_compute_r_factors):
-      print >> out, "Using R-factors in PDB header"
+      print("Using R-factors in PDB header", file=out)
       (r_work, r_free) = (r_work_pdb, r_free_pdb)
     else :
-      print >> out, "Using re-computed R-factors"
+      print("Using re-computed R-factors", file=out)
       (r_work, r_free) = (r_work_fmodel, r_free_fmodel)
     delta_r_work = abs(r_work_pdb - r_work_fmodel)
     delta_r_free = abs(r_free_pdb - r_free_fmodel)
     if ((delta_r_work > tolerance_warn) or
         (delta_r_free > tolerance_warn)):
       warned = True
-      print >> out, """\
+      print("""\
 *** WARNING: R-factors reported in the PDB file do not match those calculated
              by phenix.model_vs_data:
              r_work=%.4f r_free=%.4f (in PDB file)
@@ -334,10 +334,10 @@ def rfactor_sanity_check(
     of refinement, that the wrong MTZ file was used, or that a different
     resolution limit was used for refinement.
     If applicable, use F-obs-filtered data from MTZ file from last refinement run.
-""" % (r_work_pdb, r_free_pdb, r_work_fmodel, r_free_fmodel)
+""" % (r_work_pdb, r_free_pdb, r_work_fmodel, r_free_fmodel), file=out)
     elif ((delta_r_work > tolerance_ignore) or
           (delta_r_free > tolerance_ignore)):
-      print >> out, """\
+      print("""\
     NOTE: small discrepancy in R-factors reported in PDB file versus those
           calculated by phenix.model_vs_data:
              r_work=%.4f r_free=%.4f (in PDB file)
@@ -345,10 +345,10 @@ def rfactor_sanity_check(
     This is probably not a big deal, but please double-check that you used the
     correct data file and have not changed the resolution limit for refinement.
     If applicable, use F-obs-filtered data from MTZ file from last refinement run.
-""" % (r_work_pdb, r_free_pdb, r_work_fmodel, r_free_fmodel)
+""" % (r_work_pdb, r_free_pdb, r_work_fmodel, r_free_fmodel), file=out)
   else :
-    print >> out, "Using re-computed R-factors for structure %s" % \
-      structure_name
+    print("Using re-computed R-factors for structure %s" % \
+      structure_name, file=out)
     (r_work, r_free) = (r_work_fmodel, r_free_fmodel)
   return (r_work, r_free, warned)
 
@@ -419,8 +419,8 @@ class table_one(iotbx.table_one.table):
       method=params.multiprocessing.technology,
       preserve_exception_message=True)
     for structure, result in zip(params.structure, results):
-      print >> out, ""
-      print >> out, "Collecting stats for structure %s" % structure.name
+      print("", file=out)
+      print("Collecting stats for structure %s" % structure.name, file=out)
       column = result.validation.as_table1_column(
         label=structure.name,
         wavelength=structure.wavelength,
@@ -459,7 +459,7 @@ def extract_labels(params, out, parameter_scope="structure"):
       server = mtz_file.file_server
       file_name = mtz_file.file_name
       if (structure.data_labels is None):
-        print >>out, "Attempting to guess labels for %s..." % file_name
+        print("Attempting to guess labels for %s..." % file_name, file=out)
         data = server.get_xray_data(
           file_name=file_name,
           labels=None,
@@ -468,7 +468,7 @@ def extract_labels(params, out, parameter_scope="structure"):
           parameter_name="data_labels")
         structure.data_labels = data.info().label_string()
       if (structure.r_free_flags_label is None):
-        print >>out, "Attempting to guess R-free label for %s..." % file_name
+        print("Attempting to guess R-free label for %s..." % file_name, file=out)
         rfree = server.get_r_free_flags(
           file_name=file_name,
           label=None,
@@ -485,7 +485,7 @@ def run(args,
   master_params = libtbx.phil.parse(master_phil_str,
     process_includes=True)
   if (len(args) == 0):
-    print >> out, """\
+    print("""\
 ************************************************************************
   phenix.table_one - statistics harvesting for publication
 ************************************************************************
@@ -493,19 +493,19 @@ def run(args,
   note: this is somewhat difficult to configure on the command line at
         present; you may find it more convenient to use the PHENIX GUI.
 
-"""
-    print >> out, "# Parameter template for phenix.table_one:"
+""", file=out)
+    print("# Parameter template for phenix.table_one:", file=out)
     master_params.show(out=out)
-    print >> out, "# (the 'structure' scope may be copied as many times as "
-    print >> out, "#  necessary to handle multiple datasets.)"
-    print >> out, "# Alternate usage:"
-    print >> out, "#   phenix.table_one model.pdb data.mtz [logfile]*"
+    print("# (the 'structure' scope may be copied as many times as ", file=out)
+    print("#  necessary to handle multiple datasets.)", file=out)
+    print("# Alternate usage:", file=out)
+    print("#   phenix.table_one model.pdb data.mtz [logfile]*", file=out)
     return None
   if (warn):
-    print >> out, """
+    print("""
   note: this is somewhat difficult to configure on the command line at
         present; you may find it more convenient to use the PHENIX GUI.
-    """
+    """, file=out)
     time.sleep(2)
   master_parmas = libtbx.phil.parse(master_phil_str)
   interpreter = libtbx.phil.command_line.argument_interpreter(
@@ -537,7 +537,7 @@ def run(args,
       try :
         arg_phil = interpreter.process(arg=arg)
       except RuntimeError :
-        print >> out, "Ignoring unknown argument %s" % arg
+        print("Ignoring unknown argument %s" % arg, file=out)
       else :
         cmdline_phil.append(arg_phil)
   working_phil = master_params.fetch(sources=file_phil+cmdline_phil)
@@ -567,11 +567,11 @@ def run(args,
     params.table_one.multiprocessing.nproc = 1
   final_phil = master_params.format(python_object=params)
   if params.table_one.output.verbose :
-    print >> out, ""
-    print >> out, "#Final effective parameters:"
+    print("", file=out)
+    print("#Final effective parameters:", file=out)
     final_phil.show(out=out)
-    print >> out, "#---end"
-    print >> out, ""
+    print("#---end", file=out)
+    print("", file=out)
   final_phil.show(out=open("table_one.eff", "w"))
   table1 = table_one(params.table_one, out=out)
   easy_pickle.dump("%s.pkl" % params.table_one.output.base_name, table1)

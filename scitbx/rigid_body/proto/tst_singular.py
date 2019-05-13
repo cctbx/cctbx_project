@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.rigid_body.proto.tst_joint_lib import exercise_sim
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto.test_simulation import simulation
@@ -70,7 +71,7 @@ def exercise_six_dof(out, n_trials, n_dynamics_steps, delta_t=0.001):
       body = six_dof_body(mersenne_twister=mersenne_twister, n_sites=n_sites)
       body.parent = -1
       sim = simulation(bodies=[body])
-      print >> out, "six_dof number of sites:", n_sites
+      print("six_dof number of sites:", n_sites, file=out)
       relative_range = exercise_sim(
         out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
       if (out is not sys.stdout):
@@ -85,7 +86,7 @@ def exercise_six_dof2(out, n_trials, n_dynamics_steps, delta_t=0.001):
       body2 = six_dof_body(mersenne_twister=mersenne_twister, n_sites=n_sites)
       body2.parent = 0
       sim = simulation(bodies=[body1, body2])
-      print >> out, "six_dof2 number of sites:", n_sites
+      print("six_dof2 number of sites:", n_sites, file=out)
       relative_range = exercise_sim(
         out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
       if (out is not sys.stdout):
@@ -97,7 +98,7 @@ def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001):
     body = revolute_body(mersenne_twister=mersenne_twister)
     body.parent = -1
     sim = simulation(bodies=[body])
-    print >> out, "revolute:"
+    print("revolute:", file=out)
     relative_range = exercise_sim(
       out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
     if (out is not sys.stdout):
@@ -111,7 +112,7 @@ def exercise_revolute2(out, n_trials, n_dynamics_steps, delta_t=0.001):
     body2 = revolute_body(mersenne_twister=mersenne_twister, prev=body1)
     body2.parent = 0
     sim = simulation(bodies=[body1, body2])
-    print >> out, "revolute2:"
+    print("revolute2:", file=out)
     relative_range = exercise_sim(
       out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
     if (out is not sys.stdout):
@@ -124,7 +125,7 @@ def exercise_spherical(out, n_trials, n_dynamics_steps, delta_t=0.001):
       body = spherical_body(mersenne_twister=mersenne_twister, n_sites=n_sites)
       body.parent = -1
       sim = simulation(bodies=[body])
-      print >> out, "spherical number of sites:", n_sites
+      print("spherical number of sites:", n_sites, file=out)
       relative_range = exercise_sim(
         out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
       if (out is not sys.stdout):
@@ -156,7 +157,7 @@ def run(args):
   if (1):
     exercise_revolute2(
       out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

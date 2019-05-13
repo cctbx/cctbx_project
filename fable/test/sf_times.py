@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Usage
 from libtbx import easy_run
@@ -184,15 +185,15 @@ def build_run(
   if (op.isfile("a.out")):
     os.remove("a.out")
   assert not op.isfile("a.out")
-  print build_cmd
+  print(build_cmd)
   buffers = easy_run.fully_buffered(command=build_cmd)
   msg = buffers.format_errors_if_any()
   if (msg is not None):
     if (0):
-      print build_cmd
-      print
-      print msg
-      print
+      print(build_cmd)
+      print()
+      print(msg)
+      print()
       STOP()
     return None
   assert op.isfile("a.out")
@@ -206,9 +207,9 @@ def build_run(
   def run_once():
     buffers = easy_run.fully_buffered(command=run_cmd)
     if (len(buffers.stderr_lines) != 3):
-      print "v"*79
-      print "\n".join(buffers.stderr_lines)
-      print "^"*79
+      print("v"*79)
+      print("\n".join(buffers.stderr_lines))
+      print("^"*79)
       raise RuntimeError(
         "Unexpected number of output lines"
         " (3 expected; acutal output see above).")
@@ -236,7 +237,7 @@ def build_run(
         raise RuntimeError, (max_a, max_b)
     utime = float(buffers.stderr_lines[1].split()[1])
     utimes.append(utime)
-    print "sample utime: %.2f" % utime
+    print("sample utime: %.2f" % utime)
     sys.stdout.flush()
   for _ in xrange(8):
     run_once()
@@ -308,15 +309,15 @@ def run_combinations(
         iml = ["", " Intel Math Lib"][int(ld_preload_flag)]
         compiler_versions.append(compiler_version + iml)
         build_cmd = " ".join([setup_cmd+compiler, build_opts])
-        print build_cmd
+        print(build_cmd)
         utimes = []
         if (n_scatt != 0):
           for real in real_list:
-            print "  %s" % real
+            print("  %s" % real)
             for replace_cos in [False, True]:
-              print "    replace_cos", replace_cos
+              print("    replace_cos", replace_cos)
               for replace_exp in [False, True]:
-                print "      replace_exp", replace_exp
+                print("      replace_exp", replace_exp)
                 sys.stdout.flush()
                 if (compiler_version != "n/a"):
                   utime = write_build_run(
@@ -330,13 +331,13 @@ def run_combinations(
                     replace_cos=replace_cos,
                     replace_exp=replace_exp)
                   if (utime is not None):
-                    print "        %4.2f" % utime
+                    print("        %4.2f" % utime)
                   else:
                     utime = -1.0
-                    print "        err"
+                    print("        err")
                 else:
                   utime = -1.0
-                  print "        n/a"
+                  print("        n/a")
                 utimes.append(utime)
                 sys.stdout.flush()
         else:
@@ -360,10 +361,10 @@ def run_combinations(
             build_cmd=build_cmd_compl,
             check_max_a_b=False)
           if (utime is None):
-            print "err"
+            print("err")
             utime = -1.0
           else:
-            print "min utime: %.2f" % utime
+            print("min utime: %.2f" % utime)
           sys.stdout.flush()
           utimes.append(utime)
         all_utimes.append((utimes, build_cmd + iml))
@@ -411,33 +412,33 @@ def run(args):
         "-O3 -U__GXX_WEAK__ -Wno-logical-op-parentheses -ffast-math"
         " -march=native")],
     real_list=["real*4", "real*8"])
-  print
-  print "current_platform:", platform.platform()
-  print "current_node:", platform.node()
-  print "build_platform:", build_platform
-  print "build_node:", build_node
+  print()
+  print("current_platform:", platform.platform())
+  print("current_node:", platform.node())
+  print("build_platform:", build_platform)
+  print("build_node:", build_node)
   for compiler_version in compiler_versions:
-    print "compiler:", compiler_version
+    print("compiler:", compiler_version)
   if (n_scatt != 0):
-    print "n_scatt * n_refl: %d * %d" % (n_scatt, n_refl)
-    print '''\
+    print("n_scatt * n_refl: %d * %d" % (n_scatt, n_refl))
+    print('''\
 "s" or "d": single-precision or double-precision floating-point variables
 "E" or "e": using the library exp(arg) function or "max(0.0, 1.0 - arg*arg)"
-"C" or "c": using the library cos(arg) function or "arg / (abs(arg)+1.0)"'''
-    print "  sEC    seC    sEc    sec    dEC    deC    dEc    dec"
+"C" or "c": using the library cos(arg) function or "arg / (abs(arg)+1.0)"''')
+    print("  sEC    seC    sEc    sec    dEC    deC    dEc    dec")
   else:
-    print "dsyev times:"
+    print("dsyev times:")
   useful_utimes = []
   for utimes,build_cmd in all_utimes:
     if (max(utimes) != -1.0):
-      print " ".join(["%6.2f" % u for u in utimes]), build_cmd
+      print(" ".join(["%6.2f" % u for u in utimes]), build_cmd)
       useful_utimes.append((utimes,build_cmd))
   if (len(useful_utimes) > 1):
-    print "Relative to first:"
+    print("Relative to first:")
     for utimes,build_cmd in useful_utimes:
-      print " ".join(["%6.2f" % (u/max(u0,0.01))
-        for u,u0 in zip(utimes,useful_utimes[0][0])]), build_cmd
-  print "Wall clock time: %.2f s" % (time.time()-t_start)
+      print(" ".join(["%6.2f" % (u/max(u0,0.01))
+        for u,u0 in zip(utimes,useful_utimes[0][0])]), build_cmd)
+  print("Wall clock time: %.2f s" % (time.time()-t_start))
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

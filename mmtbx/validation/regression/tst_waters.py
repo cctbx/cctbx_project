@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from cStringIO import StringIO
 from libtbx.test_utils import show_diff
 from libtbx.utils import null_out
@@ -41,4 +42,4 @@ def exercise_heavy():
 
 if (__name__ == "__main__"):
   exercise_heavy()
-  print "OK"
+  print("OK")

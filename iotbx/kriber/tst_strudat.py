@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.kriber import strudat
 from cctbx.regression import tst_direct_space_asu
 from cctbx import crystal
@@ -137,7 +138,7 @@ def exercise_zeolite_atlas(distance_cutoff=3.5):
     relative_path="phenix_regression/misc/strudat_zeolite_atlas",
     test=os.path.isfile)
   if (atlas_file is None):
-    print "Skipping exercise_zeolite_atlas(): input file not available"
+    print("Skipping exercise_zeolite_atlas(): input file not available")
     return
   all_entries = strudat.read_all_entries(open(atlas_file))
   for i,entry in enumerate(all_entries.entries):
@@ -162,7 +163,7 @@ def exercise_zeolite_atlas(distance_cutoff=3.5):
 def run():
   exercise_basic()
   exercise_zeolite_atlas()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

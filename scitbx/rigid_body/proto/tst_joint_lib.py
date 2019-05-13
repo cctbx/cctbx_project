@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.rigid_body.proto import featherstone
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto.utils import \
@@ -230,27 +231,27 @@ def exercise_sim(out, n_dynamics_steps, delta_t, sim):
     e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
   sim.check_d_pot_d_q()
-  print >> out, "energy samples:", e_tots.size()
-  print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
-  print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
-  print >> out, "e_tot min, max:", min(e_tots), max(e_tots)
-  print >> out, "start e_tot:", e_tots[0]
-  print >> out, "final e_tot:", e_tots[-1]
+  print("energy samples:", e_tots.size(), file=out)
+  print("e_pot min, max:", min(e_pots), max(e_pots), file=out)
+  print("e_kin min, max:", min(e_kins), max(e_kins), file=out)
+  print("e_tot min, max:", min(e_tots), max(e_tots), file=out)
+  print("start e_tot:", e_tots[0], file=out)
+  print("final e_tot:", e_tots[-1], file=out)
   ave = flex.sum(e_tots) / e_tots.size()
   range = flex.max(e_tots) - flex.min(e_tots)
   if (ave == 0): relative_range = 0
   else:          relative_range = range / ave
-  print >> out, "ave:", ave
-  print >> out, "range:", range
-  print >> out, "relative range:", relative_range
-  print >> out
+  print("ave:", ave, file=out)
+  print("range:", range, file=out)
+  print("relative range:", relative_range, file=out)
+  print(file=out)
   out.flush()
   if (out is sys.stdout):
     f = open("tmp%02d.xy" % plot_number[0], "w")
     for es in [e_pots, e_kins, e_tots]:
       for e in es:
-        print >> f, e
-      print >> f, "&"
+        print(e, file=f)
+      print("&", file=f)
     f.close()
     plot_number[0] += 1
   return relative_range
@@ -262,7 +263,7 @@ def exercise_revolute_sim(
       delta_t,
       NB,
       config):
-  print >> out, "config:", config
+  print("config:", config, file=out)
   sim = revolute_simulation(
     mersenne_twister=mersenne_twister,
     NB=NB,
@@ -281,11 +282,11 @@ def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001, NB=3):
       delta_t=delta_t,
       NB=[1, NB][min(i_trial, 1)],
       config=["singular", "zigzag", "random"][min(i_trial, 2)]))
-  print >> out, "relative ranges:"
+  print("relative ranges:", file=out)
   relative_ranges.min_max_mean().show(out=out, prefix="  ")
   if (out is not sys.stdout):
     assert flex.max(relative_ranges) < 0.0006
-  print >> out
+  print(file=out)
 
 def run(args):
   assert len(args) in [0,2]
@@ -300,7 +301,7 @@ def run(args):
   show_times_at_exit()
   exercise_revolute(
     out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

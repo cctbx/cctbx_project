@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.eltbx import covalent_radii
 from libtbx.test_utils import approx_equal
 
@@ -20,7 +21,7 @@ def exercise():
 
 def run():
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

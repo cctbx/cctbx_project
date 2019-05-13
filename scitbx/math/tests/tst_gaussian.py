@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.examples import immoptibox_ports
 from scitbx.math import gaussian
 from scitbx.array_family import flex
@@ -522,9 +523,9 @@ class carbon_fit(immoptibox_ports.test_function):
       assert capital_f_x_star < tolerance, (
         capital_f_x_star, self.capital_f_x_star)
       if (self.verbose):
-        print "  WARNING: minimization converged to larger residual", \
-          "than original solution:"
-        print "    original:", self.capital_f_x_star
+        print("  WARNING: minimization converged to larger residual", \
+          "than original solution:")
+        print("    original:", self.capital_f_x_star)
       assert self.perturb
 
   def f(self, x):
@@ -559,7 +560,7 @@ def run():
   exercise_sum()
   exercise_fit()
   exercise_fit_jacobian_and_hessian(verbose="--verbose" in sys.argv[1:])
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

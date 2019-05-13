@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 from cctbx import uctbx
 
@@ -45,7 +46,7 @@ def demo():
   # To obtain the special_position_ops for a certain i_seq:
   #
   for i_seq in [0,1,2]:
-    print site_symmetry_table.get(i_seq=i_seq).special_op()
+    print(site_symmetry_table.get(i_seq=i_seq).special_op())
   #
   # Most of the time the (many) general positions don't need a
   # special treatment, and it is much more convenient to loop
@@ -64,7 +65,7 @@ def demo():
   #     cctbx::sgtbx::site_symmetry_ops
   #     cctbx::sgtbx::site_symmetry
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   demo()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #!/usr/bin/env python
 import math
 
@@ -164,4 +165,4 @@ if __name__ == '__main__':
 
     scattering_prediction(indices, bmat, second_rotation_vector,
                           wavelength, resolution)
-    print "OK"
+    print("OK")

@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import sys
 #from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
@@ -10,10 +11,10 @@ def exercise(args):
   else:
     out=null_out()
 
-  print "Testing mean_f_rms_f....",
+  print("Testing mean_f_rms_f....", end=' ')
   from mmtbx.scaling.mean_f_rms_f import test
   test(out=out)
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])
-  print "OK"
+  print("OK")

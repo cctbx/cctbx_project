@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx import real_space_correlation
 import mmtbx.utils
 from iotbx import file_reader
@@ -19,7 +20,7 @@ def exercise_1():
     relative_path="phenix_regression/reflection_files/1yjp.mtz",
     test=os.path.isfile)
   if (None in [pdb_file, mtz_file]):
-    print "phenix_regression not found, skipping test"
+    print("phenix_regression not found, skipping test")
     return False
   pdb_in = file_reader.any_file(pdb_file)
   hierarchy = pdb_in.file_object.hierarchy
@@ -147,4 +148,4 @@ END
 if (__name__ == "__main__"):
   exercise_1()
   exercise_2()
-  print "OK"
+  print("OK")

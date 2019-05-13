@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Sorry, Usage
 import libtbx.phil.command_line
 import sys
@@ -54,13 +55,13 @@ Full parameters:
     raise Sorry("No structures found matching the specified criteria.")
   else :
     if (not params.quiet):
-      print >> out, "%d PDB IDs retrieved:" % len(pdb_ids)
+      print("%d PDB IDs retrieved:" % len(pdb_ids), file=out)
       i = 0
       while (i < len(pdb_ids)):
-        print >> out, "  %s" % " ".join(pdb_ids[i:i+16])
+        print("  %s" % " ".join(pdb_ids[i:i+16]), file=out)
         i += 16
     else :
-      print >> out, "%d PDB IDs matching" % len(pdb_ids)
+      print("%d PDB IDs matching" % len(pdb_ids), file=out)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -143,9 +144,9 @@ class reader(object):
 
   def show_summary(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, prefix + "File name:", show_string(self.file_name)
-    print >> out, prefix + "Space group symbol:", \
-      show_string(self.space_group_symbol)
+    print(prefix + "File name:", show_string(self.file_name), file=out)
+    print(prefix + "Space group symbol:", \
+      show_string(self.space_group_symbol), file=out)
     try: space_group_info = self.space_group_info()
     except KeyboardInterrupt: raise
     except Exception: pass
@@ -153,8 +154,8 @@ class reader(object):
       space_group_info.show_summary(
         f=out, prefix=prefix+"Space group from operations: ")
     if (self.original_indices is not None):
-      print >> out, prefix + "Number of original indices:", \
-        self.original_indices.size()
+      print(prefix + "Number of original indices:", \
+        self.original_indices.size(), file=out)
 
   def crystal_symmetry(self):
     return crystal.symmetry(
@@ -323,30 +324,30 @@ def quick_test(file_name):
   from libtbx.utils import user_plus_sys_time
   t = user_plus_sys_time()
   s = reader(file_name)
-  print "Time read:", t.delta()
+  print("Time read:", t.delta())
   s.show_summary()
-  print tuple(s.original_indices[:3])
-  print tuple(s.unique_indices[:3])
-  print tuple(s.batch_numbers[:3])
-  print tuple(s.centric_tags[:3])
-  print tuple(s.spindle_flags[:3])
-  print tuple(s.asymmetric_unit_indices[:3])
-  print tuple(s.i_obs[:3])
-  print tuple(s.sigmas[:3])
-  print tuple(s.original_indices[-3:])
-  print tuple(s.unique_indices[-3:])
-  print tuple(s.batch_numbers[-3:])
-  print tuple(s.centric_tags[-3:])
-  print tuple(s.spindle_flags[-3:])
-  print tuple(s.asymmetric_unit_indices[-3:])
-  print tuple(s.i_obs[-3:])
-  print tuple(s.sigmas[-3:])
+  print(tuple(s.original_indices[:3]))
+  print(tuple(s.unique_indices[:3]))
+  print(tuple(s.batch_numbers[:3]))
+  print(tuple(s.centric_tags[:3]))
+  print(tuple(s.spindle_flags[:3]))
+  print(tuple(s.asymmetric_unit_indices[:3]))
+  print(tuple(s.i_obs[:3]))
+  print(tuple(s.sigmas[:3]))
+  print(tuple(s.original_indices[-3:]))
+  print(tuple(s.unique_indices[-3:]))
+  print(tuple(s.batch_numbers[-3:]))
+  print(tuple(s.centric_tags[-3:]))
+  print(tuple(s.spindle_flags[-3:]))
+  print(tuple(s.asymmetric_unit_indices[-3:]))
+  print(tuple(s.i_obs[-3:]))
+  print(tuple(s.sigmas[-3:]))
   m = s.as_miller_array(merge_equivalents=False).merge_equivalents()
-  print "min redundancies:", flex.min(m.redundancies().data())
-  print "max redundancies:", flex.max(m.redundancies().data())
-  print "mean redundancies:", flex.mean(m.redundancies().data().as_double())
+  print("min redundancies:", flex.min(m.redundancies().data()))
+  print("max redundancies:", flex.max(m.redundancies().data()))
+  print("mean redundancies:", flex.mean(m.redundancies().data().as_double()))
   s.as_miller_arrays()[0].show_summary()
-  print
+  print()
 
 def run(args):
   exercise_combine_symops_and_symbol()
@@ -368,9 +369,9 @@ vmp/high.sca""".split()
     for root_dir in args:
       fn = root_dir + "/" + file_name
       if (os.path.isfile(fn)):
-        print "File name:", fn
+        print("File name:", fn)
         quick_test(fn)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

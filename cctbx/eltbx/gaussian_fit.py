@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.eltbx import xray_scattering
 from cctbx.array_family import flex
 import scitbx.math.gaussian
@@ -29,11 +30,11 @@ def show_fit_summary(source, label, gaussian_fit, e,
   n_terms += ","
   stol = gaussian_fit.table_x()[-1]
   d_min = 1/(2*stol)
-  print "%24s: %s n_terms=%-4s stol=%.2f, d_min=%.2f, e=%.4f" % (
-    source, label, n_terms, stol, d_min, e),
+  print("%24s: %s n_terms=%-4s stol=%.2f, d_min=%.2f, e=%.4f" % (
+    source, label, n_terms, stol, d_min, e), end=' ')
   if (e_other is not None and e_other > e and n_terms_other == n_terms):
-    print "Better",
-  print
+    print("Better", end=' ')
+  print()
 
 def show_literature_fits(label, n_terms, null_fit, n_points, e_other=None):
   for lib in [xray_scattering.wk1995,
@@ -70,8 +71,8 @@ def show_literature_fits(label, n_terms, null_fit, n_points, e_other=None):
 
 def write_plot(f, xs, ys):
   for x,y in zip(xs,ys):
-    print >> f, x, y
-  print >> f, "&"
+    print(x, y, file=f)
+  print("&", file=f)
 
 def write_plots(plots_dir, label, gaussian_fit):
   label = label.replace("'", "prime")
@@ -86,7 +87,7 @@ def write_plots(plots_dir, label, gaussian_fit):
                      gaussian_fit.table_y(),
                      gaussian_fit.fitted_values(),
                      gaussian_fit.significant_relative_errors()):
-    print >> f, "%4.2f %7.4f %7.4f %8.5f %7.4f" % (x, y, a, a-y, e)
+    print("%4.2f %7.4f %7.4f %8.5f %7.4f" % (x, y, a, a-y, e), file=f)
   f.close()
   return file_name
 
@@ -123,9 +124,9 @@ def incremental_fits(label, null_fit, params=None, plots_dir=None, verbose=0):
   existing_gaussian = xray_scattering.gaussian([],[])
   while (existing_gaussian.n_terms() < params.max_n_terms):
     if (previous_n_points == null_fit.table_x().size()):
-      print "%s: Full fit with %d terms. Search stopped." % (
-        label, existing_gaussian.n_terms())
-      print
+      print("%s: Full fit with %d terms. Search stopped." % (
+        label, existing_gaussian.n_terms()))
+      print()
       break
     n_terms = existing_gaussian.n_terms() + 1
     best_min = find_max_x_multi(
@@ -139,11 +140,11 @@ def incremental_fits(label, null_fit, params=None, plots_dir=None, verbose=0):
       max_max_error=params.max_max_error,
       n_start_fractions=params.n_start_fractions)
     if (best_min is None):
-      print "Warning: No fit: %s n_terms=%d" % (label, n_terms)
-      print
+      print("Warning: No fit: %s n_terms=%d" % (label, n_terms))
+      print()
       break
     if (previous_n_points > best_min.final_gaussian_fit.table_x().size()):
-      print "Warning: previous fit included more sampling points."
+      print("Warning: previous fit included more sampling points.")
     previous_n_points = best_min.final_gaussian_fit.table_x().size()
     show_fit_summary(
       "Best fit", label, best_min.final_gaussian_fit, best_min.max_error)
@@ -156,7 +157,7 @@ def incremental_fits(label, null_fit, params=None, plots_dir=None, verbose=0):
     best_min.final_gaussian_fit.show()
     best_min.show_minimization_parameters()
     existing_gaussian = best_min.final_gaussian_fit
-    print
+    print()
     show_minimize_multi_histogram()
     sys.stdout.flush()
     if (plots_dir):
@@ -183,8 +184,8 @@ def decremental_fits(label, null_fit, full_fit=None, params=None,
       existing_gaussian=last_fit,
       params=params)
     if (good_min is None):
-      print "%s n_terms=%d: No successful minimization. Aborting." % (
-        label, last_fit.n_terms()-1)
+      print("%s n_terms=%d: No successful minimization. Aborting." % (
+        label, last_fit.n_terms()-1))
       break
     show_fit_summary(
       "Best fit", label, good_min.final_gaussian_fit, good_min.max_error)
@@ -197,7 +198,7 @@ def decremental_fits(label, null_fit, full_fit=None, params=None,
     good_min.final_gaussian_fit.show()
     good_min.show_minimization_parameters()
     last_fit = good_min.final_gaussian_fit
-    print
+    print()
     show_minimize_multi_histogram()
     sys.stdout.flush()
     if (plots_dir):
@@ -228,7 +229,7 @@ def zig_zag_fits(label, null_fit, null_fit_more, params):
           existing_gaussian=n_term_best_min.final_gaussian_fit,
           params=params)
         assert decr_best_min is not None
-        print "Decremental:",
+        print("Decremental:", end=' ')
         decr_best_min.show_summary()
         existing_gaussian = decr_best_min.final_gaussian_fit
         if (n_term_best_min.max_error <= params.negligible_max_error
@@ -245,14 +246,14 @@ def zig_zag_fits(label, null_fit, null_fit_more, params):
         max_max_error=params.max_max_error,
         n_start_fractions=params.n_start_fractions)
       assert incr_best_min is not None
-      print "Incremental:",
+      print("Incremental:", end=' ')
       incr_best_min.show_summary()
       if (existing_gaussian is null_fit):
         break
       if (not incr_best_min.is_better_than(n_term_best_min)):
         break
       n_term_best_min = incr_best_min
-    print " Settled on:",
+    print(" Settled on:", end=' ')
     n_term_best_min.show_summary()
     results.append(xray_scattering.fitted_gaussian(
       stol=n_term_best_min.final_gaussian_fit.table_x()[-1],
@@ -264,5 +265,5 @@ def zig_zag_fits(label, null_fit, null_fit_more, params):
          n_term_best_min.final_gaussian_fit.table_x().size()
       == decr_best_min.final_gaussian_fit.table_x().size())
     n_term_best_min = decr_best_min
-  print
+  print()
   return results

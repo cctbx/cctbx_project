@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import pdb
 from iotbx.option_parser import option_parser
 from cctbx.array_family import flex
@@ -40,7 +41,7 @@ def run(args, command_name="iotbx.pdb.as_xray_structure"):
   d_min = co.fake_f_obs_and_r_free_flags_d_min
   all_structures = []
   for file_name in command_line.args:
-    print "file_name:", file_name
+    print("file_name:", file_name)
     sys.stdout.flush()
     pdb_inp = pdb.input(file_name=file_name)
     structure = pdb_inp.xray_structure_simple(
@@ -74,10 +75,10 @@ def run(args, command_name="iotbx.pdb.as_xray_structure"):
       mtz_object.show_summary()
       mtz_file_name = os.path.basename(file_name).replace(".","_") \
                     + "_fake.mtz"
-      print "Writing file:", mtz_file_name
+      print("Writing file:", mtz_file_name)
       mtz_object.write(file_name=mtz_file_name)
     all_structures.append(structure)
-    print
+    print()
   pickle_file_name = co.pickle
   if (pickle_file_name is not None and len(all_structures) > 0):
     if (pickle_file_name == "."):
@@ -90,10 +91,10 @@ def run(args, command_name="iotbx.pdb.as_xray_structure"):
     if (len(all_structures) == 1):
       all_structures = all_structures[0]
     else:
-      print
-    print "Writing all xray structures to file:", pickle_file_name
+      print()
+    print("Writing all xray structures to file:", pickle_file_name)
     easy_pickle.dump(pickle_file_name, all_structures)
-    print
+    print()
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

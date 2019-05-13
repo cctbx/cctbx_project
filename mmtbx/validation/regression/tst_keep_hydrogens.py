@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # 1yiwH_Tyr-clashOH_Arg54 constructed by Jane
 pdb = """
@@ -59,13 +60,13 @@ def run():
   f.close()
   #for keep in range(2):
   for keep in [False,True]:
-    print "keep_hydrogens=", str(keep)
+    print("keep_hydrogens=", str(keep))
     for prog in [
       "phenix.clashscore",
       "phenix.molprobity",
       ]:
       cmd = "%s tst_keep_hydrogens.pdb keep_hydrogens=%s" % (prog, keep)
-      print cmd
+      print(cmd)
       er = easy_run.fully_buffered(command=cmd)
       std = StringIO.StringIO()
       er.show_stdout(out=std)
@@ -74,7 +75,7 @@ def run():
         if line.find("clashscore =")>-1:
           cs = float(line.split()[2])
           break
-      print 'clashscore',cs
+      print('clashscore',cs)
       if cs is None: continue
       if keep: assert cs==44.44, "%s: clashscore is not 44.44 %s" % (prog, cs)
       else: assert cs==0, "%s: clashscore is not 0 %s" % (prog, cs)

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # Utility functions for the Rayonix Detector.
 from scitbx.array_family import flex
 
@@ -345,7 +346,7 @@ def add_data_to_cbf(cbf, data, verbose = False):
   cbf.add_category("array_data",["array_id","binary_id","data"])
 
   if verbose:
-    print "Compressing tiles...",
+    print("Compressing tiles...", end=' ')
 
   focus = data.focus()
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.mtz.dump
 # LIBTBX_SET_DISPATCHER_NAME iotbx.mtz.dump
 
@@ -13,20 +14,20 @@ def process(file_name, show_column_data, column_data_format, show_batches):
   else:
     column_data_format = ""
   if (column_data_format != "spreadsheet"):
-    print "Processing:", file_name
+    print("Processing:", file_name)
   mtz_object = mtz.object(file_name=file_name)
   if (column_data_format != "spreadsheet"):
     mtz_object.show_summary()
-    print
+    print()
   if (show_column_data):
     mtz_object.show_column_data(format=column_data_format)
     if (column_data_format != "spreadsheet"):
-      print
+      print()
   if (show_batches):
     for batch in mtz_object.batches():
       batch.show()
-      print "-" * 79
-    print
+      print("-" * 79)
+    print()
   sys.stdout.flush()
 
 def walk_callback(arg, top, names):
@@ -65,7 +66,7 @@ def run(args, command_name="phenix.mtz.dump"):
       help="Find and process all MTZ files under ROOT_DIR")
   ).process(args=args)
   if (len(command_line.args) == 0):
-    print command_line.parser.format_help()
+    print(command_line.parser.format_help())
     return
   if (command_line.options.verbose):
     mtz.ccp4_liberr_verbosity(1)

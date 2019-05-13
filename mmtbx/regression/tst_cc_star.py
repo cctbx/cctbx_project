@@ -3,6 +3,7 @@
 # set of tests is located in phenix_regression.
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.regression import model_1yjp
 from mmtbx.command_line import cc_star
 import iotbx.pdb.hierarchy
@@ -96,4 +97,4 @@ def exercise_space_group_handling():
 
 if (__name__ == "__main__"):
   exercise_space_group_handling()
-  print "OK"
+  print("OK")

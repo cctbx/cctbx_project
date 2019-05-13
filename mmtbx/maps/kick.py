@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 import random
 from cctbx import miller
@@ -142,7 +143,7 @@ def kick_map_coeffs(
       crystal_gridding = crystal_gridding,
       map_data         = map_data)
   for it in xrange(macro_cycles):
-    print "  %d"%it
+    print("  %d"%it)
     if(number_of_kicks>0):
       mc = randomize_struture_factors(map_coeffs=map_coeffs,
         number_of_kicks=number_of_kicks, phases_only=phases_only)
@@ -193,7 +194,7 @@ def kick_fmodel(
     return fmodel
   map_data = None
   for it in xrange(macro_cycles):
-    print "  %d"%it
+    print("  %d"%it)
     f_model_kick = randomize_struture_factors(map_coeffs=f_model,
       number_of_kicks=number_of_kicks)
     fmodel_dc = recreate_r_free_flags(fmodel = fmodel_dc)

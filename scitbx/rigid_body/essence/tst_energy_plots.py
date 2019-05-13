@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.rigid_body.essence import tst_tardy
 from scitbx.array_family import flex
 import sys
@@ -18,26 +19,26 @@ def run(args):
   e_pots = flex.double([tardy_model.e_pot()])
   e_kins = flex.double([tardy_model.e_kin()])
   def show_e_tot():
-    print "e_tot: %.6g" % (e_pots[-1]+e_kins[-1])
+    print("e_tot: %.6g" % (e_pots[-1]+e_kins[-1]))
     sys.stdout.flush()
   for i_step in xrange(n_dynamics_steps):
     tardy_model.dynamics_step(delta_t=delta_t)
     e_pots.append(tardy_model.e_pot())
     e_kins.append(tardy_model.e_kin())
     if (i_step % 1000 == 0):
-      print "i_step:", i_step,
+      print("i_step:", i_step, end=' ')
       show_e_tot()
-  print "i_step:", n_dynamics_steps,
+  print("i_step:", n_dynamics_steps, end=' ')
   show_e_tot()
   e_tots = e_pots + e_kins
   f = open("e_pot_kin_tot_i=%02d_n=%d_d=%.5f.xy" % (
     model_index, n_dynamics_steps, delta_t), "w")
   for es in [e_pots, e_kins, e_tots]:
     for e in es:
-      print >> f, e
-    print >> f, "&"
+      print(e, file=f)
+    print("&", file=f)
   f.close()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

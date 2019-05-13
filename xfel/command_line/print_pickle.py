@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -18,19 +19,19 @@ from cctbx.array_family import flex
 def keywise_printout(data):
   for key in data:
     if key == 'ACTIVE_AREAS':
-      print int(len(data[key])/4), "active areas, first one: ", list(data[key][0:4])
+      print(int(len(data[key])/4), "active areas, first one: ", list(data[key][0:4]))
     elif key == 'observations':
-      print key, data[key], "Showing unit cell/spacegroup:"
+      print(key, data[key], "Showing unit cell/spacegroup:")
       obs = data[key][0]
       uc = obs.unit_cell()
       uc.show_parameters()
       obs.space_group().info().show_summary()
       d = uc.d(obs.indices())
-      print "Number of observations:", len(obs.indices())
-      print "Max resolution: %f"%flex.min(d)
-      print "Mean I/sigma:", flex.mean(obs.data())/flex.mean(obs.sigmas())
-      print "I/sigma > 1 count:", (obs.data()/obs.sigmas() > 1).count(True)
-      print "I <= 0:", len(obs.data().select(obs.data() <= 0))
+      print("Number of observations:", len(obs.indices()))
+      print("Max resolution: %f"%flex.min(d))
+      print("Mean I/sigma:", flex.mean(obs.data())/flex.mean(obs.sigmas()))
+      print("I/sigma > 1 count:", (obs.data()/obs.sigmas() > 1).count(True))
+      print("I <= 0:", len(obs.data().select(obs.data() <= 0)))
 
       from cctbx.crystal import symmetry
       sym = symmetry(unit_cell = uc, space_group = obs.space_group())
@@ -59,23 +60,23 @@ def keywise_printout(data):
         else:
           break
       if best_res is None:
-        print "Highest resolution with I/sigI >= 1.0: None"
+        print("Highest resolution with I/sigI >= 1.0: None")
       else:
-        print "Highest resolution with I/sigI >= 1.0: %f"%d_min
+        print("Highest resolution with I/sigI >= 1.0: %f"%d_min)
 
     elif key == 'mapped_predictions':
-      print key, data[key][0][0], "(only first shown of %d)"%len(data[key][0])
+      print(key, data[key][0][0], "(only first shown of %d)"%len(data[key][0]))
     elif key == 'correction_vectors' and data[key] is not None and data[key][0] is not None:
       if data[key][0] is None:
-        print key, "None"
+        print(key, "None")
       else:
-        print key, data[key][0][0], "(only first shown)"
+        print(key, data[key][0][0], "(only first shown)")
     elif key == "DATA":
-      print key,"len=%d max=%f min=%f dimensions=%s"%(data[key].size(),flex.max(data[key]),flex.min(data[key]),str(data[key].focus()))
+      print(key,"len=%d max=%f min=%f dimensions=%s"%(data[key].size(),flex.max(data[key]),flex.min(data[key]),str(data[key].focus())))
     elif key == "WAVELENGTH":
-      print "WAVELENGTH", data[key], ", converted to eV:", 12398.4187/data[key]
+      print("WAVELENGTH", data[key], ", converted to eV:", 12398.4187/data[key])
     elif key == "fuller_kapton_absorption_correction":
-      print key, data[key]
+      print(key, data[key])
       if doplots:
         c = data[key][0]
         hist = flex.histogram(c, n_slots=30)
@@ -93,7 +94,7 @@ def keywise_printout(data):
         plt.show()
 
     else:
-      print key, data[key]
+      print(key, data[key])
 
 def generate_streams_from_path(tar_or_other):
     from tarfile import ReadError
@@ -114,7 +115,7 @@ def generate_data_from_streams(args, verbose=False):
   from six.moves import cPickle as pickle
   for path in args:
     if not os.path.isfile(path):
-      if verbose: print "Not a file:", path
+      if verbose: print("Not a file:", path)
       continue
 
     # interpret the object as a tar of pickles, a pickle, or none of the above
@@ -122,17 +123,17 @@ def generate_data_from_streams(args, verbose=False):
       try:
         data = pickle.load(fileIO)
         if not isinstance(data, dict):
-          if verbose: print "\nNot a dictionary pickle",path
+          if verbose: print("\nNot a dictionary pickle",path)
           continue
         else:
-          if verbose: print "\nPrinting contents of", path
+          if verbose: print("\nPrinting contents of", path)
           data["path"] = path
           yield data
 
       except pickle.UnpicklingError as e:
-        if verbose: print "\ndoesn't unpickle",path
+        if verbose: print("\ndoesn't unpickle",path)
       except EOFError as e:
-        if verbose: print "\nEOF error",path
+        if verbose: print("\nEOF error",path)
 
 if __name__=="__main__":
   args = sys.argv[1:]
@@ -162,10 +163,10 @@ if __name__=="__main__":
 
       detector_format_version = detector_format_function(
         LCLS_detector_address, reverse_timestamp(data['TIMESTAMP'])[0])
-      print "Detector format version:", detector_format_version
+      print("Detector format version:", detector_format_version)
       image_pickle = True
     else:
-      print "Not an image pickle"
+      print("Not an image pickle")
       image_pickle = False
 
     keywise_printout(data)
@@ -175,10 +176,10 @@ if __name__=="__main__":
       image = dxtbx.load(path)
       tile_manager = image.detectorbase.get_tile_manager(image.detectorbase.horizons_phil_cache)
       tiling = tile_manager.effective_tiling_as_flex_int(reapply_peripheral_margin = True)
-      print int(len(tiling)/4), "translated active areas, first one: ", list(tiling[0:4])
+      print(int(len(tiling)/4), "translated active areas, first one: ", list(tiling[0:4]))
 
     if dobreak:
-      print "Entering break. The pickle is loaded in the variable 'data'"
+      print("Entering break. The pickle is loaded in the variable 'data'")
       try:
         from IPython import embed
       except ImportError:

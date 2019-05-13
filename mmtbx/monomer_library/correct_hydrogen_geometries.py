@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 def get_bad_hydrogen_i_seqs(hierarchy,
                             restraints_manager=None,
@@ -40,19 +41,19 @@ def get_bad_hydrogen_i_seqs(hierarchy,
     bonded = get_bonded(atom_group, atom)
     if not bonded:
       bad_hydrogen_count+=1
-      if verbose: print 'not bonded: %s' % atom.format_atom_record()
+      if verbose: print('not bonded: %s' % atom.format_atom_record())
       return bad_hydrogen_count, corrected_hydrogen_count
     for ba in bonded:
       angled = get_bonded(atom_group, ba, exclude=[atom])
     if not angled:
       bad_hydrogen_count+=1
-      if verbose: print 'not angled: %s' % atom.format_atom_record()
+      if verbose: print('not angled: %s' % atom.format_atom_record())
       return bad_hydrogen_count, corrected_hydrogen_count
     if angled[0].element.strip() in ["H", "D", "T"]:
       return bad_hydrogen_count, corrected_hydrogen_count
     try: angle = geometry.angle((atom.xyz,ba.xyz,angled[0].xyz)).angle_model
     except Exception:
-      print '  Bad angle "%s"' % (atom.format_atom_record()[:26])
+      print('  Bad angle "%s"' % (atom.format_atom_record()[:26]))
       bad_hydrogen_count +=1
       return bad_hydrogen_count, corrected_hydrogen_count
     if angle<85.:
@@ -63,7 +64,7 @@ def get_bad_hydrogen_i_seqs(hierarchy,
       angle = geometry.angle((xyz,ba.xyz,angled[0].xyz)).angle_model
       if angle>95.:
         atom.xyz = tuple(xyz)
-        if verbose: print '  Inverted "%s" ' % (atom.format_atom_record()[:26])
+        if verbose: print('  Inverted "%s" ' % (atom.format_atom_record()[:26]))
         corrected_hydrogen_count.append(atom.i_seq)
     return bad_hydrogen_count, corrected_hydrogen_count
 
@@ -152,7 +153,7 @@ def correct_hydrogen_geometries(hierarchy,
   bad_hydrogen_count=0
   corrected_hydrogen_count=[]
   if len(hierarchy.models())>1:
-    print "  \nModel files with more than one model are ignored\n"
+    print("  \nModel files with more than one model are ignored\n")
     return bad_hydrogen_count, corrected_hydrogen_count
 
   i_seqs, xyzs = get_bad_hydrogen_i_seqs(hierarchy,

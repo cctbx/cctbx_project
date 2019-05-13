@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import xray
@@ -448,7 +449,7 @@ def run():
   test_2()
   test_3()
   test_4()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

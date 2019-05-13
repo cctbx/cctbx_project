@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import uctbx
 from cctbx import adptbx
 from cctbx.array_family import flex
@@ -319,7 +320,7 @@ def run():
   exercise_grad_u_transformations()
   exercise_eigen()
   exercise_random_traceless_symmetry_constrained_b_cart()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

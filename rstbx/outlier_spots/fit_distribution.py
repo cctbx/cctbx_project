@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import math
 import scitbx.math
@@ -37,7 +38,7 @@ class fit_cdf(object):
     self.x_data = flex.double(x_data)
     self.y_data = flex.double(y_data)
     if (flex.max(self.y_data) > 1.0):
-      print "The cumulative distribution function (y_data) should only have values be between 0 and 1."
+      print("The cumulative distribution function (y_data) should only have values be between 0 and 1.")
       exit()
 
     # intialize distribution with guess

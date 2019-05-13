@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.monomer_library import server
 import sys
 
@@ -10,9 +11,9 @@ def run(args):
     "THR", "TYR", "CYS", "ASN", "GLN", "ASP", "GLU", "LYS", "ARG", "HIS"]
   for comp_id in standard_amino_acids:
     comp_comp_id = srv.get_comp_comp_id_direct(comp_id)
-    print comp_comp_id.chem_comp.id.strip(),
-    print comp_comp_id.chem_comp.name.strip(),
-    print comp_comp_id.chem_comp.group.strip()
+    print(comp_comp_id.chem_comp.id.strip(), end=' ')
+    print(comp_comp_id.chem_comp.name.strip(), end=' ')
+    print(comp_comp_id.chem_comp.group.strip())
     hydrogens = {}
     for atom in comp_comp_id.atom_list:
       if (atom.type_symbol == "H"):
@@ -23,7 +24,7 @@ def run(args):
         if (atom_id in hydrogens):
           bond_counts[atom_id] += 1
     if (bond_counts.values() != [1] * len(bond_counts)):
-      print "bad bond counts:", bond_counts
+      print("bad bond counts:", bond_counts)
       raise AssertionError
     angle_counts = dict(hydrogens)
     for angle in comp_comp_id.angle_list:
@@ -35,15 +36,15 @@ def run(args):
     assert max(angle_counts.values()) <= 3
     for atom_id,count in angle_counts.items():
       if (count == 3):
-        print "three angles:", atom_id
+        print("three angles:", atom_id)
         for bond in comp_comp_id.bond_list:
           atom_ids = [bond.atom_id_1, bond.atom_id_2]
           if (atom_id in atom_ids):
-            print "  bond:", atom_ids
+            print("  bond:", atom_ids)
         for angle in comp_comp_id.angle_list:
           atom_ids = [angle.atom_id_1, angle.atom_id_2, angle.atom_id_3]
           if (atom_id in atom_ids):
-            print "  angle:", atom_ids, angle.value_angle
+            print("  angle:", atom_ids, angle.value_angle)
     tor_counts = dict(hydrogens)
     for tor in comp_comp_id.tor_list:
       for atom_id in [tor.atom_id_1,
@@ -54,7 +55,7 @@ def run(args):
           tor_counts[atom_id] += 1
     #print tor_counts
     assert max(tor_counts.values()) <= 1
-    print "no tor:", tor_counts.values().count(0)
+    print("no tor:", tor_counts.values().count(0))
     chir_counts = dict(hydrogens)
     for chir in comp_comp_id.chir_list:
       for atom_id in [chir.atom_id_centre,

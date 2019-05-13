@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # PDB manipulation tools for ensemble models
 # Tom Burnley
 
@@ -6,7 +7,7 @@ import sys, re, pickle
 
 def remove_HOH(start_pdb, noHOH_pdb):
 
-  print "Removing HOH..."
+  print("Removing HOH...")
 
   openpdb = open(start_pdb,"r")
   noHOHpdb = open(noHOH_pdb, 'w')
@@ -25,11 +26,11 @@ def find_number_model(open_pdb):
       if model_number > max_model_number:
         max_model_number = model_number
 
-  print "Number of models in PDB file : ", max_model_number
+  print("Number of models in PDB file : ", max_model_number)
   return max_model_number
 
 def find_header(open_pdb, num_pdb):
-  print "Getting header info..................."
+  print("Getting header info...................")
   find_CRYST1 = re.compile('CRYST')
   find_SCALE = re.compile('SCALE')
   for line in open_pdb:
@@ -77,11 +78,11 @@ def remove_specific_HOH(open_pdb,open_water_list,wat_pdb):
       linesplit = line.split()
       if (len(linesplit) > 5):
         if (linesplit[4] in water_list) or (linesplit[5] in water_list):
-          print linesplit
+          print(linesplit)
           wat_pdb.write(line)
 
 def parse_bfactor_occ_infomation(open_pdb, start_pdb):
-  print "Parsing B and Occ information"
+  print("Parsing B and Occ information")
   find_MODEL = re.compile('MODEL')
   find_ENDMDL = re.compile('ENDMDL')
   #
@@ -109,7 +110,7 @@ def parse_bfactor_occ_infomation(open_pdb, start_pdb):
 #  pickle_jar = open(pickle_name, 'wb')
 #  pickle.dump(b_and_q, pickle_jar)
 #  pickle_jar.close()
-  print b_and_q['b_array']
+  print(b_and_q['b_array'])
 
 def parse_specific_pdb(open_pdb, start_pdb, num_pdb, last_model, new_model_num=1):
   model_num = str(last_model)
@@ -160,10 +161,10 @@ def col_swap(open_pdb, open_second_pdb, get_col, replace_col, new_pdb):
     else:
       new_pdb.write(line)
 
-  print "Replaced : ",  replace_col, " with : ", get_col
+  print("Replaced : ",  replace_col, " with : ", get_col)
 
 def remove_anisou(start_pdb, fin_pdb):
-  print "Removing ANISOU..."
+  print("Removing ANISOU...")
   openpdb = open(start_pdb,"r")
   finpdb = open(fin_pdb, 'w')
   find_ANISOU = re.compile('ANISOU')
@@ -224,27 +225,27 @@ def extra_conformation(start_pdb, fin_pdb):
 
   for line in open_pdb:
     if len(line) > 66 and find_ATOM.search(line):
-      print line
+      print(line)
       new_lineA = line[0:16] + 'A' + line[17:56] + '0.50' + line[60:]
       new_lineB = line[0:16] + 'B' + line[17:56] + '0.50' + line[60:]
-      print new_lineA
-      print new_lineB
+      print(new_lineA)
+      print(new_lineB)
       fin_pdb.write(new_lineA)
       fin_pdb.write(new_lineB)
     else:
       fin_pdb.write(line)
 def main():
 
-  print "\n\n\
-=========================== Ensemble PDB Display Tools ========================="
+  print("\n\n\
+=========================== Ensemble PDB Display Tools =========================")
   if len(sys.argv) < 2:
-    print "\n\nSpecify pdb file at command line:\n"
-    print "    python ens_pdb.py my.pdb\n"
+    print("\n\nSpecify pdb file at command line:\n")
+    print("    python ens_pdb.py my.pdb\n")
     return
   else:
-    print "1. Downsample ensemble"
-    print "2. Remove explicit solvent atoms"
-    print "3. Downsample and remove solvent"
+    print("1. Downsample ensemble")
+    print("2. Remove explicit solvent atoms")
+    print("3. Downsample and remove solvent")
 #    print "4. Remove specific water from list"
 #    print "5. Parse B-factor and Occupancy info"
 #    print "6. Last ensemble model to single pdb"
@@ -279,7 +280,7 @@ def main():
       new_model_num = int(1)
 
       while new_model_num <= target_number:
-        print "Parsing model  :", model_num
+        print("Parsing model  :", model_num)
         model_parse(open_pdb, num_pdb, model_num, new_model_num, start_pdb)
         model_num = model_num + div
         new_model_num += 1
@@ -300,9 +301,9 @@ def main():
       return
 
     if option == str("4"):
-      print "Remove specific HOH"
+      print("Remove specific HOH")
       if len(sys.argv) < 3:
-        print "\n\nERROR - specify water list at command line after PDB file!\n\n"
+        print("\n\nERROR - specify water list at command line after PDB file!\n\n")
         main()
       start_pdb = sys.argv[1]
       open_pdb = open(start_pdb,"r")
@@ -336,7 +337,7 @@ def main():
       get_col = raw_input("Import 'b' or 'q' column from second pdb  : ")
       if get_col != 'q':
         get_col = 'b'
-      print "Importing col : ", get_col
+      print("Importing col : ", get_col)
       replace_col = raw_input("Replace 'b' or 'q' column from first pdb  : ")
       if replace_col != 'q':
         replace_col = 'b'
@@ -369,7 +370,7 @@ def main():
       return
 
     else:
-      print "\n\nPlease choose from list : "
+      print("\n\nPlease choose from list : ")
       main()
 
 if __name__ == '__main__':

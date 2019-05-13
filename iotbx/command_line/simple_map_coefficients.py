@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Sorry, Usage
 from libtbx import Auto
 import os
@@ -81,9 +82,9 @@ Full parameters:
     if (not data.anomalous_flag()):
       raise Sorry("Anomalous map requested, but selected data are merged.")
     amplitudes = data.anomalous_differences()
-    print >> out, "Using anomalous differences in %s" % data_labels
+    print("Using anomalous differences in %s" % data_labels, file=out)
   else :
-    print >> out, "Using amplitudes in %s" % data_labels
+    print("Using amplitudes in %s" % data_labels, file=out)
     if (data.anomalous_flag()):
       amplitudes = data.average_bijvoet_mates()
   if (params.use_weights is Auto) and (weights is not None):
@@ -93,12 +94,12 @@ Full parameters:
     raise Sorry("No weights (FOM, etc.) found in input file.")
   if (params.use_weights == True):
     assert (not weights.anomalous_flag())
-    print >> out, "Applying weights in %s" % weights.info().label_string()
+    print("Applying weights in %s" % weights.info().label_string(), file=out)
     amplitudes, weights = amplitudes.common_sets(other=weights)
     amplitudes = amplitudes.customized_copy(
       data=amplitudes.data()*weights.data())
   amplitudes = amplitudes.customized_copy(sigmas=None)
-  print >> out, "Applying phases in %s" % phases.info().label_string()
+  print("Applying phases in %s" % phases.info().label_string(), file=out)
   amplitudes, phases = amplitudes.common_sets(phases)
   coeffs = amplitudes.phase_transfer(phases,
     deg=deg).set_observation_type(None) # FIXME
@@ -119,7 +120,7 @@ Full parameters:
   if (params.output_file is None):
     params.output_file = "map_coeffs.mtz"
   mtz_dataset.mtz_object().write(params.output_file)
-  print >> out, "Wrote %s" % params.output_file
+  print("Wrote %s" % params.output_file, file=out)
   return os.path.abspath(params.output_file)
 
 if (__name__ == "__main__"):

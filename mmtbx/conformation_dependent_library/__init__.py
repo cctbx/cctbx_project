@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 import copy
 from string import letters, digits
@@ -104,12 +105,12 @@ def generate_residue_tuples(hierarchy,
   loop_hierarchy=hierarchy
   if backbone_only: loop_hierarchy=backbone_hierarchy
   for model in loop_hierarchy.models():
-    if verbose: print 'model: "%s"' % model.id
+    if verbose: print('model: "%s"' % model.id)
     for chain in model.chains():
-      if verbose: print 'chain: "%s"' % chain.id
+      if verbose: print('chain: "%s"' % chain.id)
       for conformer in chain.conformers():
-        if verbose: print '  conformer: altloc="%s"' % (
-          conformer.altloc)
+        if verbose: print('  conformer: altloc="%s"' % (
+          conformer.altloc))
         while threes: del threes[0]
         threes.start=None
         threes.end=None
@@ -117,9 +118,9 @@ def generate_residue_tuples(hierarchy,
         for residue in conformer.residues():
           if verbose:
             if residue.resname not in ["HOH"]:
-              print '    residue: resname="%s" resid="%s"' % (
-                residue.resname, residue.resid())
-          if verbose: print '      residue class : %s' % get_class(residue.resname)
+              print('    residue: resname="%s" resid="%s"' % (
+                residue.resname, residue.resid()))
+          if verbose: print('      residue class : %s' % get_class(residue.resname))
           if get_class(residue.resname) not in residue_lookup:
             continue
           if include_non_linked:
@@ -317,7 +318,7 @@ def update_restraints(hierarchy,
       if log:
         log.write("%s\n" % line)
       else:
-        print line
+        print(line)
 #  print 'average updates',average_updates,total_updates
 #  assert average_updates==0
   return geometry #restraints_manager
@@ -325,7 +326,7 @@ def update_restraints(hierarchy,
 def run(filename):
   if False:
     for i in range(-188,188):
-      print i,round_to_ten(i),abs(i-round_to_ten(i))
+      print(i,round_to_ten(i),abs(i-round_to_ten(i)))
     assert 0
 
   pdb_inp = iotbx.pdb.input(filename)
@@ -340,10 +341,10 @@ if __name__=="__main__":
   if 0:
     psi = -180
     lookup = "Gly_nonxpro"
-    print lookup
+    print(lookup)
     for phi in range(170,181):
       key = (round_to_ten(psi),round_to_ten(phi))
-      print 'key',psi,phi,round_to_ten(psi),round_to_ten(phi),key,
-      print cdl_database[lookup][key][:4]
+      print('key',psi,phi,round_to_ten(psi),round_to_ten(phi),key, end=' ')
+      print(cdl_database[lookup][key][:4])
 
   run(sys.argv[1])

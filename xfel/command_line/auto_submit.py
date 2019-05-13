@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 #-----------------------------------------------------------------------
 # Monitor a directory for streams and submit them
@@ -159,8 +160,8 @@ def run (args) :
   submitted_runs = []
   submitted_files = [] # used in single stream submit mode
 
-  print "Note, it is not recommended that you run this program while you have new jobs pending."
-  print "Starting indefinite loop to scan directory '%s'"%params.xtc_dir
+  print("Note, it is not recommended that you run this program while you have new jobs pending.")
+  print("Starting indefinite loop to scan directory '%s'"%params.xtc_dir)
 
   if params.submit_as_group:
     try:
@@ -181,21 +182,21 @@ def run (args) :
         if len(add_runs) > 0:
           for r in add_runs:
             if len(r.files) < params.stream_count * r.max_chunks():
-              print "Waiting to queue run %s.  %s/%s streams ready."% \
-                (r.id,len(r.files),params.stream_count * r.max_chunks())
+              print("Waiting to queue run %s.  %s/%s streams ready."% \
+                (r.id,len(r.files),params.stream_count * r.max_chunks()))
               continue
 
-            print "Preparing to queue run %s into trial %s"%(r.id,params.trial_id)
+            print("Preparing to queue run %s into trial %s"%(r.id,params.trial_id))
             cmd = "cxi.lsf -c %s -p %s %s -o %s -t %s -r %s -q %s"%(params.config_file,params.num_procs,input_str,
               params.output_dir,params.trial_id,r.id,params.queue)
-            print "Command to execute: %s"%cmd
+            print("Command to execute: %s"%cmd)
             os.system(cmd)
-            print "Run %s queued."%r.id
+            print("Run %s queued."%r.id)
 
             submitted_a_run = True
             submitted_runs.append(r)
         if not submitted_a_run:
-          print "No new data... sleepy..."
+          print("No new data... sleepy...")
 
         time.sleep(10)
     except KeyboardInterrupt:
@@ -225,20 +226,20 @@ def run (args) :
             #  if not db.run_in_trial(r.id, params.trial_id):  can't check for this when queueing streams.  can lead to duplicate data.
               if not f in submitted_files:
 
-                print "Preparing to queue stream %s into trial %s"%(os.path.basename(f),params.trial_id)
+                print("Preparing to queue stream %s into trial %s"%(os.path.basename(f),params.trial_id))
                 cmd = "./single_lsf.sh -c %s -p %s %s -o %s -t %s -r %s -q %s -s %s"%(params.config_file,params.num_procs,input_str,
                   params.output_dir,params.trial_id,r,params.queue,s)
 
-                print "Command to execute: %s"%cmd
+                print("Command to execute: %s"%cmd)
                 os.system(cmd)
-                print "Run %s stream %s queued."%(r,s)
+                print("Run %s stream %s queued."%(r,s))
 
                 submitted_a_run = True
                 submitted_files.append(f)
                 if '.inprogress' in f:
                   submitted_files.append(f.rstrip(".inprogress"))
         if not submitted_a_run:
-          print "No new data... sleepy..."
+          print("No new data... sleepy...")
 
         time.sleep(10)
     except KeyboardInterrupt:

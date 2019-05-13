@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import miller
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
@@ -80,25 +81,25 @@ class combined_scaling(object):
       scaling_tasks['lsq']=True
       scaling_tasks['local']=True
 
-    print scaling_tasks
-    print self.overall_protocol
+    print(scaling_tasks)
+    print(self.overall_protocol)
     #assert ( scaling_tasks['lsq'] or scaling_tasks['local'] )
 
     self.convergence=False
     counter = 0
 
-    print >> self.out
-    print >> self.out, "=========================================="
-    print >> self.out, "=             Relative scaling           ="
-    print >> self.out, "=========================================="
-    print >> self.out
+    print(file=self.out)
+    print("==========================================", file=self.out)
+    print("=             Relative scaling           =", file=self.out)
+    print("==========================================", file=self.out)
+    print(file=self.out)
 
 
     while not self.convergence:
-      print >> self.out
-      print >> self.out, "--------------------------"
-      print >> self.out, "    Scaling cycle %i   "%(counter)
-      print >> self.out, "--------------------------"
+      print(file=self.out)
+      print("--------------------------", file=self.out)
+      print("    Scaling cycle %i   "%(counter), file=self.out)
+      print("--------------------------", file=self.out)
 
       if counter == 0:
         self.cut_level_rms = 3
@@ -137,10 +138,10 @@ class combined_scaling(object):
 
 
   def perform_least_squares_scaling(self):
-    print >> self.out
-    print >> self.out, "Least squares scaling"
-    print >> self.out, "---------------------"
-    print >> self.out
+    print(file=self.out)
+    print("Least squares scaling", file=self.out)
+    print("---------------------", file=self.out)
+    print(file=self.out)
 
     ##-----Get options-----
     use_exp_sigmas=self.lsq_options.use_experimental_sigmas
@@ -165,10 +166,10 @@ class combined_scaling(object):
     self.x2 = ls_scaling.derivative.deep_copy()
 
   def perform_local_scaling(self):
-    print >> self.out
-    print >> self.out, "Local scaling"
-    print >> self.out, "-------------"
-    print >> self.out
+    print(file=self.out)
+    print("Local scaling", file=self.out)
+    print("-------------", file=self.out)
+    print(file=self.out)
 
     ##-----Get options-----
     use_exp_sigmas=self.loc_options.use_experimental_sigmas
@@ -182,7 +183,7 @@ class combined_scaling(object):
       'local_lsq':False,
       'local_nikonov':False}
     local_scaling_target_dictionary[self.loc_options.scale_target]=True
-    print local_scaling_target_dictionary
+    print(local_scaling_target_dictionary)
 
     ##--------------------
     local_scaling = relative_scaling.local_scaling_driver(
@@ -201,14 +202,14 @@ class combined_scaling(object):
 
 
   def perform_outlier_rejection(self):
-    print >> self.out
-    print >> self.out, "Outlier rejections"
-    print >> self.out, "------------------"
-    print >> self.out
-    print >> self.out, " sigma criterion : %4.1f "%(self.out_options.cut_level_sigma)
-    print >> self.out, " rms criterion   : %4.1f "%(self.cut_level_rms)
-    print >> self.out, " protocol        :", self.out_options.protocol
-    print >> self.out
+    print(file=self.out)
+    print("Outlier rejections", file=self.out)
+    print("------------------", file=self.out)
+    print(file=self.out)
+    print(" sigma criterion : %4.1f "%(self.out_options.cut_level_sigma), file=self.out)
+    print(" rms criterion   : %4.1f "%(self.cut_level_rms), file=self.out)
+    print(" protocol        :", self.out_options.protocol, file=self.out)
+    print(file=self.out)
 
     outlier_protocol ={'solve':False,'rms':False, 'rms_and_sigma':False }
     ## Please set the protocol to what is specified
@@ -555,8 +556,8 @@ class twmad_fa_driver(object):
       self.out=sys.stdout
 
     self.options = options
-    print >> self.out, "FA estimation"
-    print >> self.out, "============="
+    print("FA estimation", file=self.out)
+    print("=============", file=self.out)
 
     if k1 is None:
       raise Sorry("f\"(w1)/f\"(w2) ratio is not defined. Please provide f\" values upon input")
@@ -579,8 +580,8 @@ or chose different Fa estimation protocol.
     self.fa_values = None
 
     if protocol['algebraic']:
-      print >> self.out, " Using algebraic approach to estimate FA values "
-      print >> self.out
+      print(" Using algebraic approach to estimate FA values ", file=self.out)
+      print(file=self.out)
       tmp = singh_ramasheshan_fa_estimate(
         lambda1,
         lambda2,
@@ -589,15 +590,15 @@ or chose different Fa estimation protocol.
       self.fa_values = tmp.fa.f_sq_as_f()
 
     if protocol['cns']:
-      print >> self.out, " Using CNS approach to estimate FA values "
-      print >> self.out
+      print(" Using CNS approach to estimate FA values ", file=self.out)
+      print(file=self.out)
 
       tmp = cns_fa_driver( [lambda1, lambda2] )
       self.fa_values = tmp.fa
 
     if protocol['combine_ano']:
-      print >> self.out, " Combining anomalous data only"
-      print >> self.out
+      print(" Combining anomalous data only", file=self.out)
+      print(file=self.out)
 
       tmp = mum_dad(
         lambda1,

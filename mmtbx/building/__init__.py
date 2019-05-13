@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx import group_args, adopt_init_args
 import sys
 import mmtbx.refinement.real_space
@@ -37,7 +38,7 @@ def show_chain_resseq_ranges(residues, out=sys.stdout, prefix=""):
           format_resid(*(range[-1]))))
       else :
         clauses.append(format_resid(*(range[0])))
-    print >> out, prefix+"chain '%s': %s" % (chain_id, ",".join(clauses))
+    print(prefix+"chain '%s': %s" % (chain_id, ",".join(clauses)), file=out)
 
 def reprocess_pdb(pdb_hierarchy, crystal_symmetry, cif_objects, out):
   from mmtbx.monomer_library import pdb_interpretation
@@ -256,9 +257,9 @@ class local_density_quality(object):
     prefix = kwds.pop("prefix", "")
     isel = self._atoms_outside_density_selection(**kwds).iselection()
     for i_seq in isel :
-      print >> out, prefix+"%s: 2mFo-DFc=%6.2f  mFo-DFc=%6.2f" % \
+      print(prefix+"%s: 2mFo-DFc=%6.2f  mFo-DFc=%6.2f" % \
         (self.atom_names[i_seq], self.two_fofc_map_levels[i_seq],
-         self.fofc_map_levels[i_seq])
+         self.fofc_map_levels[i_seq]), file=out)
     return len(isel)
 
   def max_fofc_value(self):
@@ -561,9 +562,8 @@ class box_build_refine_base(object):
       rms_bonds_limit          = 0.01,
       rms_angles_limit         = 1.0)
     self.update_coordinates(refined.sites_cart_result)
-    print >> self.out, \
-      "  after real-space refinement: rms_bonds=%.3f  rms_angles=%.3f" % \
-        (refined.rms_bonds_final, refined.rms_angles_final)
+    print("  after real-space refinement: rms_bonds=%.3f  rms_angles=%.3f" % \
+        (refined.rms_bonds_final, refined.rms_angles_final), file=self.out)
     return refined.weight_final
 
   def fit_residue_in_box(self,

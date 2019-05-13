@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from scitbx.matrix import col
 from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
@@ -49,9 +50,8 @@ def correct_sequence(pdb_hierarchy,
   for chain_seq in seq_validation.chains :
     if (chain_seq.chain_type == mmtbx.validation.sequence.NUCLEIC_ACID):
       if (len(chain_seq.mismatch) > 0):
-        print >> out, \
-          "  WARNING: will skip %d mismatches in nucleic acid chain '%s'" % \
-          chain_seq.chain_id
+        print("  WARNING: will skip %d mismatches in nucleic acid chain '%s'" % \
+          chain_seq.chain_id, file=out)
   res_dict = idealized_aa.residue_dict()
   expected_names = {}
   for resname in res_dict.keys():
@@ -82,9 +82,9 @@ def correct_sequence(pdb_hierarchy,
                   if (not atom.name in expected_atoms):
                     atom_group.remove_atom(atom)
                     n_removed += 1
-              print >> out, "  chain '%s' %s %s --> %s (%d atoms removed)" % \
+              print("  chain '%s' %s %s --> %s (%d atoms removed)" % \
                 (chain.id, resid, residue_group.atom_groups()[0].resname,
-                 new_resname, n_removed)
+                 new_resname, n_removed), file=out)
   pdb_hierarchy.atoms().reset_i_seq()
   return n_changed
 
@@ -258,7 +258,7 @@ def refit_residues(
     crystal_symmetry=fmodel.f_obs().crystal_symmetry(),
     cif_objects=cif_objects,
     out=ppdb_out)
-  print >> ppdb_out, ""
+  print("", file=ppdb_out)
   hierarchy = processed_pdb.all_chain_proxies.pdb_hierarchy
   xrs = processed_pdb.xray_structure()
   grm_geometry = processed_pdb.geometry_restraints_manager()
@@ -315,10 +315,9 @@ def refit_residues(
           atoms.set_xyz(sites_start)
           for atom in atoms :
             atom.tmp = 1
-        print >> out, \
-          "    residue '%s' : rmsd=%5.3f 2fofc_start=%5.3f 2fofc_end=%5.3f%s" \
+        print("    residue '%s' : rmsd=%5.3f 2fofc_start=%5.3f 2fofc_end=%5.3f%s" \
           % (residue.id_str(), sites_end.rms_difference(sites_start),
-            two_fofc_mean_start, two_fofc_mean_end, flag)
+            two_fofc_mean_start, two_fofc_mean_end, flag), file=out)
   return hierarchy, xrs
 
 class prefilter(object):
@@ -348,7 +347,7 @@ class prefilter(object):
     if (n_bb > 1):
       sigma_mean /= n_bb
     if (sigma_mean < self.backbone_min_sigma):
-      print >> self.out, "      *** poor backbone density, skipping"
+      print("      *** poor backbone density, skipping", file=self.out)
       return False
     return True
 
@@ -384,7 +383,7 @@ class extend_and_refine(object):
       pdb_hierarchy=pdb_hierarchy,
       add_hydrogens=params.build_hydrogens,
       mon_lib_srv = mmtbx.monomer_library.server.server())
-    print >> out, "  %d sidechains extended." % self.n_extended
+    print("  %d sidechains extended." % self.n_extended, file=out)
     if (self.n_extended > 0) and (not params.skip_rsr):
       pdb_hierarchy, xray_structure = refit_residues(
         pdb_hierarchy=pdb_hierarchy,
@@ -412,7 +411,7 @@ class extend_and_refine(object):
       f.write(pdb_hierarchy.as_pdb_string(fmodel.xray_structure))
       f.close()
       self.pdb_file = output_model
-      print >> out, "  wrote new model to %s" % output_model
+      print("  wrote new model to %s" % output_model, file=out)
       if (output_map_coeffs is None):
         output_map_coeffs = prefix + "_maps.mtz"
       from mmtbx.maps.utils import get_maps_from_fmodel
@@ -422,5 +421,5 @@ class extend_and_refine(object):
         fwt_coeffs=two_fofc_map,
         delfwt_coeffs=fofc_map,
         file_name=output_map_coeffs)
-      print >> out, "  wrote map coefficients to %s" % output_map_coeffs
+      print("  wrote map coefficients to %s" % output_map_coeffs, file=out)
       self.map_file = output_map_coeffs

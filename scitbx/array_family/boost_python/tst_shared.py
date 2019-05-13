@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import shared
 from libtbx.test_utils import approx_equal
 try:
@@ -113,7 +114,7 @@ def exercise():
   exercise_stl_vector_double()
   exercise_stl_set_unsigned()
   exercise_mat3_int()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

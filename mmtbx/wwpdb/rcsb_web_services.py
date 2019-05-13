@@ -9,6 +9,7 @@ pipelines.
 """
 
 from __future__ import division
+from __future__ import print_function
 import libtbx.utils
 from xml.dom.minidom import parseString
 import sys
@@ -43,9 +44,9 @@ def post_query(query_xml, xray_only=True, d_max=None, d_min=None,
   queries = []
   if (query_xml is not None):
     queries.append(query_xml)
-  print >> log, "Setting up RCSB server query:"
+  print("Setting up RCSB server query:", file=log)
   if (xray_only):
-    print >> log, "  limiting to X-ray structures"
+    print("  limiting to X-ray structures", file=log)
     xray_query = "<queryType>org.pdb.query.simple.ExpTypeQuery</queryType>\n"+\
       "<mvStructure.expMethod.value>X-RAY</mvStructure.expMethod.value>"
     if (data_only):
@@ -57,23 +58,23 @@ def post_query(query_xml, xray_only=True, d_max=None, d_min=None,
       "</refine.ls_d_res_high.comparator>"
     if (d_min is not None):
       assert (d_min >= 0)
-      print >> log, "  applying resolution cutoff d_min > %f" % d_min
+      print("  applying resolution cutoff d_min > %f" % d_min, file=log)
       base_clause += \
         "\n<refine.ls_d_res_high.min>%f</refine.ls_d_res_high.min>" % d_min
     if (d_max is not None):
       assert (d_max >= 0)
-      print >> log, "  applying resolution cutoff d_min < %f" % d_max
+      print("  applying resolution cutoff d_min < %f" % d_max, file=log)
       base_clause += \
         "\n<refine.ls_d_res_high.max>%f</refine.ls_d_res_high.max>" % d_max
     queries.append(base_clause)
   if (protein_only):
-    print >> log, "  excluding non-protein models"
+    print("  excluding non-protein models", file=log)
     queries.append(
       "<queryType>org.pdb.query.simple.ChainTypeQuery</queryType>\n" +
       "<containsProtein>Y</containsProtein>")
   if (identity_cutoff is not None):
-    print >> log, "  filtering based on sequence identity < %d %%" % \
-      int(identity_cutoff)
+    print("  filtering based on sequence identity < %d %%" % \
+      int(identity_cutoff), file=log)
     assert (identity_cutoff > 0) and (identity_cutoff <= 100)
     queries.append(
       "<queryType>org.pdb.query.simple.HomologueReductionQuery</queryType>\n"+
@@ -101,8 +102,8 @@ def post_query(query_xml, xray_only=True, d_max=None, d_min=None,
   url_final = url_search
   if (sort_by_resolution):
     url_final += "/?sortfield=Resolution"
-    print >> log, "  will sort by resolution"
-  print >> log, "  executing HTTP request..."
+    print("  will sort by resolution", file=log)
+  print("  executing HTTP request...", file=log)
   result = libtbx.utils.urlopen(url_final, query_str).read()
   return result.splitlines()
 
@@ -198,8 +199,8 @@ def get_custom_report_table(pdb_ids, columns, log=sys.stdout,
   if (check_for_missing):
     missing_ids = set(pdb_ids) - report_ids
     if (len(missing_ids) > 0):
-      print >> log, "WARNING: missing report info for %d IDs:"%len(missing_ids)
-      print >> log, "  %s" % " ".join(sorted(list(missing_ids)))
+      print("WARNING: missing report info for %d IDs:"%len(missing_ids), file=log)
+      print("  %s" % " ".join(sorted(list(missing_ids))), file=log)
   return table
 
 def get_high_resolution_for_structures(pdb_ids):

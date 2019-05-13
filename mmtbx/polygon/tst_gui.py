@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import mmtbx.polygon.output
 import cPickle
@@ -36,7 +37,7 @@ def exercise():
     histogram_data=data,
     structure_stats=stats)
   renderer.draw(out=None)
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__" :
   exercise()

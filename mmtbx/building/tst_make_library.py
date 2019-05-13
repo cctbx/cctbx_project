@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 
 def exercise_misc():
   pdb_in = """\
@@ -42,4 +43,4 @@ ATOM    205  CA  ASN A  27      28.134  -6.159   3.940  1.00 22.17           C
 
 if (__name__ == "__main__"):
   exercise_misc()
-  print "OK"
+  print("OK")

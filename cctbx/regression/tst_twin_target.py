@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import crystal
 from cctbx import miller
@@ -402,7 +403,7 @@ def plot_function(twin_lik, range=7):
     for jj in xrange(-25,26):
       x=range*ii/25.0 + fm1
       y=range*jj/25.0 + fm2
-      print x,y, twin_lik.log_p(x,y)-twin_lik.log_p(fm1,fm2)
+      print(x,y, twin_lik.log_p(x,y)-twin_lik.log_p(fm1,fm2))
 
 def tst_single_likelihood(centric=False,
                           twin_fraction=0.1,
@@ -584,4 +585,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print format_cpu_times()
+  print(format_cpu_times())

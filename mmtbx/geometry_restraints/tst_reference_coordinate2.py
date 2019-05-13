@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import iotbx.pdb
 from cctbx.array_family import flex
@@ -150,8 +151,8 @@ def show(pdb_hierarchy, tm, xrs, grm, prefix):
   es = grm.energies_sites(sites_cart = xrs.sites_cart())
   rmsd_a = es.angle_deviations()[2]
   rmsd_b = es.bond_deviations()[2]
-  print "%s: overall CC: %6.4f rmsd_bonds=%6.3f rmsd_angles=%6.3f"%(
-    prefix, cc, rmsd_b, rmsd_a)
+  print("%s: overall CC: %6.4f rmsd_bonds=%6.3f rmsd_angles=%6.3f"%(
+    prefix, cc, rmsd_b, rmsd_a))
   pdb_hierarchy.adopt_xray_structure(xrs)
   rotamer_manager = RotamerEval()
   for model in pdb_hierarchy.models():
@@ -168,7 +169,7 @@ def show(pdb_hierarchy, tm, xrs, grm, prefix):
           x=map.select(sel).as_1d(),
           y=tm.data.select(sel).as_1d()).coefficient()
         fmt = "%s: %4s %10s CC: %6.4f"
-        print fmt%(prefix, residue.resname, rotamer_manager.evaluate_residue(residue),ccr)
+        print(fmt%(prefix, residue.resname, rotamer_manager.evaluate_residue(residue),ccr))
 
 def exercise(d_min=5, random_seed=1111111):
   inp = get_pdb_inputs(pdb_str=pdb_str)
@@ -216,9 +217,9 @@ def exercise(d_min=5, random_seed=1111111):
     inp.ph.adopt_xray_structure(xrs_poor)
     random.seed(random_seed)
     flex.set_random_seed(random_seed)
-    print "*"*79
-    print "use_reference_torsion:", use_reference_torsion
-    print "*"*79
+    print("*"*79)
+    print("use_reference_torsion:", use_reference_torsion)
+    print("*"*79)
     show(prefix="START",pdb_hierarchy = inp.ph, tm=target_map, xrs=xrs_poor, grm=inp.grm.geometry)
     #
     if(use_reference_torsion == "yes_add_per_residue"):
@@ -270,4 +271,4 @@ def exercise(d_min=5, random_seed=1111111):
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

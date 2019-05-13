@@ -3,6 +3,7 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 
 from cctbx.array_family import flex
 
@@ -49,7 +50,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore):
         items = [repr(rows_frame)] + [MISSING_STRING] * 24
         for j in range(len(order)):
           items[order[j]] = repr(row[j])
-        print >> stream_frame, ' '.join(items)
+        print(' '.join(items), file=stream_frame)
         rows_frame += 1
       lastrowid_value = rows_frame
 
@@ -58,7 +59,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore):
         items = [repr(rows_miller)] + [MISSING_STRING] * 3
         for j in range(len(order)):
           items[order[j]] = repr(row[j])
-        print >> stream_miller, ' '.join(items)
+        print(' '.join(items), file=stream_miller)
         rows_miller += 1
       lastrowid_value = rows_miller
 
@@ -67,7 +68,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore):
         items = [MISSING_STRING] * 10
         for j in range(len(order)):
           items[order[j]] = repr(row[j])
-        print >> stream_observation, ' '.join(items)
+        print(' '.join(items), file=stream_observation)
         rows_observation += 1
       lastrowid_value = rows_observation
 
@@ -116,7 +117,7 @@ class manager (manager_base):
 
   def initialize_db(self, indices):
     from os import remove
-    print self.params.postrefinement.algorithm
+    print(self.params.postrefinement.algorithm)
     for suffix in '_frame.db', '_miller.db', '_observation.db':
       try:
         remove(self.params.output.prefix + suffix)

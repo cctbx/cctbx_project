@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.rigid_body.proto import free_motion_reference_impl as fmri
 from scitbx.rigid_body.proto import featherstone
 import scitbx.math
@@ -39,10 +40,9 @@ def exercise_reference_impl_quick():
 def exercise_reference_impl_long(n_dynamics_steps, out):
   sim = fmri.simulation()
   e_tots = flex.double([sim.e_tot])
-  print >> out, "i_step, [e_pot, e_kin_ang, e_kin_lin, e_kin, e_tot]"
+  print("i_step, [e_pot, e_kin_ang, e_kin_lin, e_kin, e_tot]", file=out)
   def show(i_step):
-    print >> out, \
-      i_step, [sim.e_pot, sim.e_kin_ang, sim.e_kin_lin, sim.e_kin, sim.e_tot]
+    print(i_step, [sim.e_pot, sim.e_kin_ang, sim.e_kin_lin, sim.e_kin, sim.e_tot], file=out)
     out.flush()
   n_show = max(1, n_dynamics_steps // 10)
   for i_step in xrange(n_dynamics_steps):
@@ -51,14 +51,14 @@ def exercise_reference_impl_long(n_dynamics_steps, out):
     if (i_step % n_show == 0):
       show(i_step)
   show(n_dynamics_steps)
-  print >> out
-  print >> out, "number of dynamics steps:", n_dynamics_steps
-  print >> out, "e_tot start:", e_tots[0]
-  print >> out, "      final:", e_tots[-1]
-  print >> out, "        min:", flex.min(e_tots)
-  print >> out, "        max:", flex.max(e_tots)
-  print >> out, "    max-min:", flex.max(e_tots) - flex.min(e_tots)
-  print >> out
+  print(file=out)
+  print("number of dynamics steps:", n_dynamics_steps, file=out)
+  print("e_tot start:", e_tots[0], file=out)
+  print("      final:", e_tots[-1], file=out)
+  print("        min:", flex.min(e_tots), file=out)
+  print("        max:", flex.max(e_tots), file=out)
+  print("    max-min:", flex.max(e_tots) - flex.min(e_tots), file=out)
+  print(file=out)
   out.flush()
 
 class featherstone_system_model(object):
@@ -92,12 +92,12 @@ def exercise_featherstone_FDab(out):
     grav_accn = [0,0,0]
     qdd = featherstone.FDab(model, q, qd, tau, f_ext, grav_accn)
     if (i_step % 10 == 0):
-      print >> out, "ang acc 3D:", sim.wd_F1.elems
-      print >> out, "        6D:", qdd[0].elems[:3]
-      print >> out
-      print >> out, "lin acc 3D:", sim.as_F1.elems
-      print >> out, "        6D:", qdd[0].elems[3:]
-      print >> out
+      print("ang acc 3D:", sim.wd_F1.elems, file=out)
+      print("        6D:", qdd[0].elems[:3], file=out)
+      print(file=out)
+      print("lin acc 3D:", sim.as_F1.elems, file=out)
+      print("        6D:", qdd[0].elems[3:], file=out)
+      print(file=out)
     assert approx_equal(qdd[0].elems[:3], sim.wd_F1)
     assert approx_equal(qdd[0].elems[3:], sim.as_F1)
   sim = fmri.simulation()
@@ -119,7 +119,7 @@ def run(args):
   exercise_featherstone_FDab(out=out)
   exercise_reference_impl_long(n_dynamics_steps=n_dynamics_steps, out=out)
   #
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

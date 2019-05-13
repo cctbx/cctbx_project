@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import cctbx.eltbx.xray_scattering
 from cctbx import adptbx
 from cctbx import eltbx
@@ -10,17 +11,17 @@ import sys
 def tst_run_requiring_cns(args, call_back):
   import libtbx.path
   if (libtbx.path.full_command_path(command="cns") is None):
-    print "Skipping tests: cns not available."
+    print("Skipping tests: cns not available.")
   else:
     debug_utils.parse_options_loop_space_groups(
       argv=args, call_back=call_back, show_cpu_times=False)
   from libtbx.utils import format_cpu_times
-  print format_cpu_times()
+  print(format_cpu_times())
 
 def write(file_name, cns_input):
   f = open(file_name, "w")
   for line in cns_input:
-    print >> f, line
+    print(line, file=f)
   f.close()
 
 def topology(scatterers):

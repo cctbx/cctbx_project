@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import show_diff
 
 def exercise():
@@ -79,4 +80,4 @@ GAXXCU""")
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

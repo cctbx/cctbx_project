@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.geometry_restraints import angle, angle_delta_deg
 from cctbx.array_family import flex
 from scitbx import matrix
@@ -30,25 +31,25 @@ def derivs_fd(a, order, eps=1.e-6):
 
 def compare_derivs(out, ana, fin, expect_failure, eps=1.e-6):
   s = 1 / max(1, flex.max(flex.abs(ana.as_double())))
-  print >> out, "  ana:", list(ana*s)
-  print >> out, "  fin:", list(fin*s)
+  print("  ana:", list(ana*s), file=out)
+  print("  fin:", list(fin*s), file=out)
   if (not expect_failure):
     assert approx_equal(ana*s, fin*s, eps=eps)
   else:
     approx_equal(ana*s, fin*s, eps=eps)
-  print >> out
+  print(file=out)
 
 def check_derivs(out, a, expect_failure=False):
-  print >> out, "sites:", a.sites
-  print >> out
+  print("sites:", a.sites, file=out)
+  print(file=out)
   gc = a.grads_and_curvs()
-  print >> out, "grads:", a.sites
+  print("grads:", a.sites, file=out)
   g_fd = derivs_fd(a=a, order=1)
   compare_derivs(out=out, ana=gc[:3], fin=g_fd, expect_failure=expect_failure)
-  print >> out, "curvs:", a.sites
+  print("curvs:", a.sites, file=out)
   c_fd = derivs_fd(a=a, order=2)
   compare_derivs(out=out, ana=gc[3:], fin=c_fd, expect_failure=expect_failure)
-  print >> out
+  print(file=out)
 
 def write_plots(method, rot_scale=2, rot_step=1, c_truncate_at=-2e4):
   assert method in ["ana", "fin"]
@@ -84,16 +85,16 @@ def write_plots(method, rot_scale=2, rot_step=1, c_truncate_at=-2e4):
       file_name = "angle_%d_%s_%s.xy" % (angle_ideal, deriv, method)
       plot_file_names.append(file_name)
       f = open(file_name, "w")
-      print >> f, "@with g0"
-      print >> f, '@ title "%s ideal=%d method=%s"' % (
-        deriv, angle_ideal, method)
+      print("@with g0", file=f)
+      print('@ title "%s ideal=%d method=%s"' % (
+        deriv, angle_ideal, method), file=f)
       for j in xrange(3):
-        print >> f, '@ s%d legend "%s"' % (j, "xyz"[j])
+        print('@ s%d legend "%s"' % (j, "xyz"[j]), file=f)
       for plot in plots:
         for x,y in plot:
           if (deriv == "curv" and y < c_truncate_at): y = c_truncate_at
-          print >> f, x,y
-        print >> f, "&"
+          print(x,y, file=f)
+        print("&", file=f)
     write(deriv="grad", plots=g_plots)
     write(deriv="curv", plots=c_plots)
   return plot_file_names
@@ -157,10 +158,10 @@ def run(args):
     plot_file_names.extend(write_plots(method=method))
   f = open("angle_xy_as_pdf_commands", "w")
   for file_name in plot_file_names:
-    print >> f, "ppdf %s > %s" % (file_name, file_name.replace(".xy", ".pdf"))
+    print("ppdf %s > %s" % (file_name, file_name.replace(".xy", ".pdf")), file=f)
   f.close()
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

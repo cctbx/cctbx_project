@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import maptbx
 from libtbx import group_args
@@ -53,7 +54,7 @@ def tmp(f):
     sel = f.binner().selection(i_bin)
     m = flex.mean(data.select(sel))
     dm = flex.mean(ds.select(sel))
-    print "%5d %10.6f %10.6f"%(i_bin, dm,  math.log(m))
+    print("%5d %10.6f %10.6f"%(i_bin, dm,  math.log(m)))
 
 def find_b(fo, fc):
   # TODO: Need to use linear

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from scitbx.array_family import flex
 import math
@@ -68,12 +69,12 @@ class minimizer:
 
       if abs(expBarg) > self.safelog or abs(expBnegarg) > self.safelog:
 
-        print "XXescalate",self.escalate
-        print "XXpsi_model",psi_model
-        print "XXexp",B,expBarg
-        print "XXeta",eta
-        print "XXDeff",1./alpha
-        print self.S.getvalue()
+        print("XXescalate",self.escalate)
+        print("XXpsi_model",psi_model)
+        print("XXexp",B,expBarg)
+        print("XXeta",eta)
+        print("XXDeff",1./alpha)
+        print(self.S.getvalue())
         raise ValueError("max likelihood exp argument outside of math domain %f %f"%(expBarg,expBnegarg))
 
       fx = (0.5/psi_model)/(1+exp(expBarg ) ) * (1+exp(self.escalate))
@@ -217,8 +218,8 @@ class minimizer:
     fd_partf_parteta = (self.functional_only(alpha,eplus) -
                           self.functional_only(alpha,eminu)) / (2.*EPSILON)
 
-    print f, [fd_partf_partalpha,fd_partf_parteta],"finite diff"
-    print
+    print(f, [fd_partf_partalpha,fd_partf_parteta],"finite diff")
+    print()
 
 
     return (f, flex.double([fd_partf_partalpha,fd_partf_parteta]))

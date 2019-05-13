@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.command_line import sort_hetatms
 from iotbx import file_reader
 from cStringIO import StringIO
@@ -289,7 +290,7 @@ HETATM 4965  O   HOH X 978      41.198  81.209 -30.407  1.00 48.77           O
   pdb_in = file_reader.any_file("unsorted4_sorted.pdb")
   for atom in pdb_in.file_object.hierarchy.atoms():
     assert atom.fetch_labels().chain_id == "A"
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

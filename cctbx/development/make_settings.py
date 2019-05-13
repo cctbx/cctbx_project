@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # This script generates a list of non-standard space group settings.
 # The settings are used for testing.
 #
@@ -24,19 +25,19 @@ def run():
         sg_type = group.type()
         settings[sg_type.number()][sg_type.lookup_symbol()] = 0
         n_built += 1
-  print "# n_built =", n_built
+  print("# n_built =", n_built)
 
   n_non_redundant = 0
-  print "settings = ("
+  print("settings = (")
   for i in xrange(1, 231):
-    print "#", i
+    print("#", i)
     symbols = settings[i].keys()
     symbols.sort()
     for s in symbols:
-      print "'" + s + "',"
+      print("'" + s + "',")
       n_non_redundant += 1
-  print ")"
-  print "# n_non_redundant =", n_non_redundant
+  print(")")
+  print("# n_non_redundant =", n_non_redundant)
 
 if (__name__ == "__main__"):
   run()

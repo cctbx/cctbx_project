@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import cctbx.geometry_restraints
 from mmtbx.validation import rotalyze
 from mmtbx.validation import ramalyze
@@ -175,7 +176,7 @@ class torsion_ncs(object):
             msg += "No NCS restraints will be applied.\n"
             msg += "Try to use phenix.simple_ncs_from_pdb or leave ncs_groups "
             msg += "blank to allow \nautomatic search for NCS copies."
-            print >> self.log, msg
+            print(msg, file=self.log)
           for ic, jc in matching_chains:
             for rg1, rg2 in zip(ic.residue_groups(), jc.residue_groups()):
               resname1 = rg1.atom_groups()[0].resname
@@ -206,7 +207,7 @@ class torsion_ncs(object):
     return alignments
 
   def find_ncs_groups(self, pdb_hierarchy):
-    print >> self.log, "Determining NCS matches..."
+    print("Determining NCS matches...", file=self.log)
     self.use_segid = False
     chains = pdb_hierarchy.models()[0].chains()
     n_ncs_groups = self.ncs_obj.number_of_ncs_groups
@@ -250,35 +251,35 @@ class torsion_ncs(object):
     sites_cart = self.model.get_sites_cart()
     self.get_torsion_rmsd(sites_cart=sites_cart)
     pr = "REMARK   3  "
-    print >> out, pr+"TORSION NCS DETAILS."
-    print >> out, pr+" NUMBER OF NCS GROUPS : %-6d"%len(self.ncs_groups_selection_string_list)
+    print(pr+"TORSION NCS DETAILS.", file=out)
+    print(pr+" NUMBER OF NCS GROUPS : %-6d"%len(self.ncs_groups_selection_string_list), file=out)
     for i_group, ncs_group in enumerate(self.ncs_groups_selection_string_list):
       count = 0
-      print >>out,pr+" NCS GROUP : %-6d"%(i_group+1)
+      print(pr+" NCS GROUP : %-6d"%(i_group+1), file=out)
       selection_strings = ncs_group
       for selection in selection_strings:
         lines = line_breaker(selection, width=34)
         for i_line, line in enumerate(lines):
           if (i_line == 0):
-            print >> out, pr+"   SELECTION          : %s"%line
+            print(pr+"   SELECTION          : %s"%line, file=out)
           else:
-            print >> out, pr+"                      : %s"%line
+            print(pr+"                      : %s"%line, file=out)
         count += torsion_counts[selection]
-      print >> out,pr+"   RESTRAINED TORSIONS: %-d" % count
+      print(pr+"   RESTRAINED TORSIONS: %-d" % count, file=out)
       if self.torsion_rmsd is not None:
-        print >> out,pr+"   BELOW LIMIT RMSD   : %-10.3f" % \
-          self.torsion_rmsd
+        print(pr+"   BELOW LIMIT RMSD   : %-10.3f" % \
+          self.torsion_rmsd, file=out)
       if self.all_torsion_rmsd is not None:
-        print >> out,pr+"   ALL RESTRAINT RMSD : %-10.3f" % \
-          self.all_torsion_rmsd
+        print(pr+"   ALL RESTRAINT RMSD : %-10.3f" % \
+          self.all_torsion_rmsd, file=out)
     if self.histogram_under_limit is not None:
-      print >> out, pr + "  Histogram of differences under limit:"
+      print(pr + "  Histogram of differences under limit:", file=out)
       self.histogram_under_limit.show(
         f=out,
         prefix=pr+"  ",
         format_cutoffs="%8.3f")
     if self.histogram_over_limit is not None:
-      print >> out, pr + "  Histogram of differences over limit:"
+      print(pr + "  Histogram of differences over limit:", file=out)
       self.histogram_over_limit.show(
         f=out,
         prefix=pr+"  ",
@@ -520,9 +521,9 @@ class torsion_ncs(object):
       if self.ncs_dihedral_proxies is None:
         self.show_ncs_summary(log=self.log)
       if self.ncs_dihedral_proxies is None: #first time run
-        print >> self.log, "Initializing torsion NCS restraints..."
+        print("Initializing torsion NCS restraints...", file=self.log)
       else:
-        print >> self.log, "Verifying torsion NCS restraints..."
+        print("Verifying torsion NCS restraints...", file=self.log)
       self.rama = ramalyze.ramalyze(pdb_hierarchy=pdb_hierarchy)
       self.generate_dihedral_ncs_restraints(
         sites_cart=sites_cart,
@@ -533,17 +534,16 @@ class torsion_ncs(object):
       # Should never be executed
       # ================================================
       assert 0
-      print >> self.log, \
-        "** WARNING: No torsion NCS found!!" + \
-        "  Please check parameters. **"
+      print("** WARNING: No torsion NCS found!!" + \
+        "  Please check parameters. **", file=self.log)
 
   def show_ncs_summary(self, log=None):
     if(log is None): log = sys.stdout
     def get_key_chain_num(res):
       return res[4:]
     sorted_keys = sorted(self.ncs_match_hash, key=get_key_chain_num)
-    print >> log, "--------------------------------------------------------"
-    print >> log, "Torsion NCS Matching Summary:"
+    print("--------------------------------------------------------", file=log)
+    print("Torsion NCS Matching Summary:", file=log)
     for key in sorted_keys:
       if key.endswith("    "):
         print_line = key[:-4]
@@ -554,8 +554,8 @@ class torsion_ncs(object):
           print_line += " <=> %s" % (match[:-4])
         else:
           print_line += " <=> %s" % (match)
-      print >> log, print_line
-    print >> log, "--------------------------------------------------------"
+      print(print_line, file=log)
+    print("--------------------------------------------------------", file=log)
 
   def reduce_redundancies(self):
     #clear out redundancies
@@ -776,13 +776,11 @@ class torsion_ncs(object):
 
     if len(self.ncs_dihedral_proxies) == 0:
       if (not self.params.silence_warnings):
-        print >> log, \
-          "** WARNING: No torsion NCS found!!" + \
-          "  Please check parameters. **"
+        print("** WARNING: No torsion NCS found!!" + \
+          "  Please check parameters. **", file=log)
     else:
-      print >> log, \
-        "Number of torsion NCS restraints: %d\n" \
-          % len(self.ncs_dihedral_proxies)
+      print("Number of torsion NCS restraints: %d\n" \
+          % len(self.ncs_dihedral_proxies), file=log)
 
   def show_sorted(self,
         by_value,
@@ -1163,8 +1161,8 @@ class torsion_ncs(object):
                   xray_structure=xray_structure,
                   key=key)
                 if status:
-                  print >> log, "Set %s to %s rotamer" % \
-                    (key, cur_rotamer)
+                  print("Set %s to %s rotamer" % \
+                    (key, cur_rotamer), file=log)
                   self.last_round_outlier_fixes += 1
 
   def get_sites_cc(self,
@@ -1350,9 +1348,9 @@ class torsion_ncs(object):
                                                  atom_dict,
                                                  sites_cart_moving)
                 if current_best != model_rot:
-                  print >> self.log, "Set %s to %s rotamer" % \
+                  print("Set %s to %s rotamer" % \
                     (key,
-                     current_best)
+                     current_best), file=self.log)
                   self.last_round_rotamer_changes += 1
                 else:
                   rotamer, chis, value = rotalyze.evaluate_rotamer(

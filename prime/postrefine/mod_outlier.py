@@ -5,6 +5,7 @@ Detecting outliers with Wilson statistics (Read, 1999)
 use the normalized intensity (E) limits (acentric 3.72, centric 4.89)
 '''
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import statistics
 
@@ -44,13 +45,13 @@ class outlier_handler(object):
         good_i_flags[i] = False
 
       if flag_show_summary:
-        print 'Acentric outliers:'
+        print('Acentric outliers:')
         for i in i_seq_acentric_outliers:
-          print miller_array_e.indices()[i], miller_array_e.data()[i]
+          print(miller_array_e.indices()[i], miller_array_e.data()[i])
 
-        print 'Centric outliers:'
+        print('Centric outliers:')
         for i in i_seq_centric_outliers:
-          print miller_array_e.indices()[i], miller_array_e.data()[i]
+          print(miller_array_e.indices()[i], miller_array_e.data()[i])
     except Exception:
       dummy = 0
 

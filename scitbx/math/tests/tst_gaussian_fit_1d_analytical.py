@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import scitbx.math
 from scitbx.array_family import flex
 import math
@@ -30,4 +31,4 @@ def exercise_2():
 if (__name__ == "__main__"):
   exercise_1()
   exercise_2()
-  print "OK"
+  print("OK")

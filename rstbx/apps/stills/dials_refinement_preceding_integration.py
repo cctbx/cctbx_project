@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from rstbx.apps.stills.simple_integration import IntegrationMetaProcedure
 from rstbx.apps import simple_integration
@@ -37,34 +38,34 @@ class integrate_one_frame(IntegrationMetaProcedure):
       look_symbol = self.inputpd["symmetry"].space_group_info().type().lookup_symbol()
 
       for isoform in self.horizons_phil.isoforms:
-        print "Testing isoform %s"%isoform.name,isoform.cell.parameters()
-        print "asserting", look_symbol ,"==", isoform.lookup_symbol
+        print("Testing isoform %s"%isoform.name,isoform.cell.parameters())
+        print("asserting", look_symbol ,"==", isoform.lookup_symbol)
 
         assert look_symbol == isoform.lookup_symbol
         setting_experiments = self.prepare_dxtbx_models(setting_specific_ai = self.inputai,
           sg = look_symbol, isoform = isoform.cell )
         P = self.refine(experiments=setting_experiments, reflections=setting_reflections, isoform=True)
-        print P.rmsds()
+        print(P.rmsds())
         isoform_refineries.append(P)
       positional_rmsds = [math.sqrt(P.rmsds()[0]**2 + P.rmsds()[1]**2) for P in isoform_refineries]
-      print "Positional rmsds for all isoforms:", positional_rmsds
+      print("Positional rmsds for all isoforms:", positional_rmsds)
       minrmsd_mm = min(positional_rmsds)
       minindex = positional_rmsds.index(minrmsd_mm)
-      print "The smallest rmsd is %5.1f um from isoform %s"%(1000.*minrmsd_mm,self.horizons_phil.isoforms[minindex].name)
+      print("The smallest rmsd is %5.1f um from isoform %s"%(1000.*minrmsd_mm,self.horizons_phil.isoforms[minindex].name))
       if self.horizons_phil.isoforms[minindex].rmsd_target_mm is not None:
-        print "asserting",minrmsd_mm ,"<", self.horizons_phil.isoforms[minindex].rmsd_target_mm
+        print("asserting",minrmsd_mm ,"<", self.horizons_phil.isoforms[minindex].rmsd_target_mm)
         assert minrmsd_mm < self.horizons_phil.isoforms[minindex].rmsd_target_mm
-      print "Acceptable rmsd for isoform %s."%(self.horizons_phil.isoforms[minindex].name),
+      print("Acceptable rmsd for isoform %s."%(self.horizons_phil.isoforms[minindex].name), end=' ')
       if len (self.horizons_phil.isoforms)==2:
-        print "Rmsd gain over the other isoform %5.1f um."%(1000.*abs(positional_rmsds[0] - positional_rmsds[1]))
+        print("Rmsd gain over the other isoform %5.1f um."%(1000.*abs(positional_rmsds[0] - positional_rmsds[1])))
       else:
-        print
+        print()
       R = isoform_refineries[minindex]
       # Now one last check to see if direct beam is out of bounds
       if self.horizons_phil.isoforms[minindex].beam_restraint is not None:
         refined_beam = matrix.col(R.get_experiments()[0].detector[0].get_beam_centre(experiments[0].beam.get_s0()))
         known_beam = matrix.col(self.horizons_phil.isoforms[minindex].beam_restraint)
-        print "asserting",(refined_beam-known_beam).length(),"<",self.horizons_phil.isoforms[minindex].rmsd_target_mm
+        print("asserting",(refined_beam-known_beam).length(),"<",self.horizons_phil.isoforms[minindex].rmsd_target_mm)
         assert (refined_beam-known_beam).length() < self.horizons_phil.isoforms[minindex].rmsd_target_mm
         # future--circle of confusion could be given as a separate length in mm instead of reusing rmsd_target
       self.identified_isoform = self.horizons_phil.isoforms[minindex].name
@@ -93,7 +94,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
     self.cell = c_symmetry.unit_cell()
 
     query = flex.double()
-    print len(self.predicted)
+    print(len(self.predicted))
 
     for pred in self.predicted: # predicted spot coord in pixels
       query.append(pred[0]/pxlsz[0])
@@ -131,8 +132,8 @@ class integrate_one_frame(IntegrationMetaProcedure):
         c_v_p_flex.append((vector[0],vector[1],0.))
     self.N_correction_vectors = len(correction_vectors_provisional)
     self.rmsd_px = math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))
-    print "... %d provisional matches"%self.N_correction_vectors,
-    print "r.m.s.d. in pixels: %6.3f"%(self.rmsd_px)
+    print("... %d provisional matches"%self.N_correction_vectors, end=' ')
+    print("r.m.s.d. in pixels: %6.3f"%(self.rmsd_px))
 
     if self.horizons_phil.integration.enable_residual_scatter:
       from matplotlib import pyplot as plt
@@ -189,19 +190,19 @@ class integrate_one_frame(IntegrationMetaProcedure):
           self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"].append(
           spots[reflections[indexed_pairs[-1]["spot"]]['spotfinder_lookup']])
         if kwargs.get("verbose_cv")==True:
-            print "CV OBSCENTER %7.2f %7.2f REFINEDCENTER %7.2f %7.2f"%(
+            print("CV OBSCENTER %7.2f %7.2f REFINEDCENTER %7.2f %7.2f"%(
               float(self.inputpd["size1"])/2.,float(self.inputpd["size2"])/2.,
-              self.inputai.xbeam()/pxlsz[0], self.inputai.ybeam()/pxlsz[1]),
-            print "OBSSPOT %7.2f %7.2f PREDSPOT %7.2f %7.2f"%(
+              self.inputai.xbeam()/pxlsz[0], self.inputai.ybeam()/pxlsz[1]), end=' ')
+            print("OBSSPOT %7.2f %7.2f PREDSPOT %7.2f %7.2f"%(
               reflections[indexed_pairs[-1]["spot"]]['xyzobs.px.value'][0],
               reflections[indexed_pairs[-1]["spot"]]['xyzobs.px.value'][1],
               self.predicted[indexed_pairs[-1]["pred"]][0]/pxlsz[0],
-              self.predicted[indexed_pairs[-1]["pred"]][1]/pxlsz[1]),
+              self.predicted[indexed_pairs[-1]["pred"]][1]/pxlsz[1]), end=' ')
             the_hkl = self.hkllist[indexed_pairs[-1]["pred"]]
-            print "HKL %4d %4d %4d"%the_hkl,"%2d"%self.setting_id,
+            print("HKL %4d %4d %4d"%the_hkl,"%2d"%self.setting_id, end=' ')
             radial, azimuthal = spots[indexed_pairs[-1]["spot"]].get_radial_and_azimuthal_size(
               self.inputai.xbeam()/pxlsz[0], self.inputai.ybeam()/pxlsz[1])
-            print "RADIALpx %5.3f AZIMUTpx %5.3f"%(radial,azimuthal)
+            print("RADIALpx %5.3f AZIMUTpx %5.3f"%(radial,azimuthal))
 
         # Store a list of correction vectors in self.
         radial, azimuthal = spots[indexed_pairs[-1]['spot']].get_radial_and_azimuthal_size(
@@ -388,7 +389,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
                                       self.predicted,self.hkllist,self.pixel_size)
       if self.block_counter < 2:
          down = self.inputai.getMosaicity()/KLUDGE
-         print "Readjusting mosaicity back down to ",down
+         print("Readjusting mosaicity back down to ",down)
          self.inputai.setMosaicity(down)
       return
 
@@ -422,17 +423,17 @@ class integrate_one_frame(IntegrationMetaProcedure):
       reflections, experiments, verbosity=1)
 
     history = refiner.run()
-    print history.keys()
+    print(history.keys())
     for item in history["rmsd"]:
-      print "%5.2f %5.2f %8.5f"%(item[0],item[1],180.*item[2]/math.pi)
+      print("%5.2f %5.2f %8.5f"%(item[0],item[1],180.*item[2]/math.pi))
 
     #for item in history["parameter_vector"]:
     #  print ["%8.5f"%a for a in item]
-    print refiner.selection_used_for_refinement().count(True),"spots used for refinement"
-    print refiner.get_experiments()[0].beam
-    print refiner.get_experiments()[0].detector
-    print "Distance:", -refiner.get_experiments()[0].detector[0].get_beam_centre_lab(refiner.get_experiments()[0].beam.get_s0())[2]
-    print refiner.get_experiments()[0].crystal
+    print(refiner.selection_used_for_refinement().count(True),"spots used for refinement")
+    print(refiner.get_experiments()[0].beam)
+    print(refiner.get_experiments()[0].detector)
+    print("Distance:", -refiner.get_experiments()[0].detector[0].get_beam_centre_lab(refiner.get_experiments()[0].beam.get_s0())[2])
+    print(refiner.get_experiments()[0].crystal)
     return refiner
 
   def prepare_reflection_list(self,detector):
@@ -504,7 +505,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
                                   detector=detector,
                                   crystal=crystal))
 
-    print beam
-    print detector
-    print crystal
+    print(beam)
+    print(detector)
+    print(crystal)
     return experiments

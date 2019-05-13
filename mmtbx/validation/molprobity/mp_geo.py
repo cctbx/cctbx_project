@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import os
 from mmtbx.validation import restraints
 from mmtbx.monomer_library import server, pdb_interpretation
@@ -180,20 +181,20 @@ def run(args):
 
     if do_bonds_and_angles:
       for outlier in outliers:
-        print >> out, "%s:%2s:%s:%s:%s:%s:%s:%.3f:%.3f:%s" % (
+        print("%s:%2s:%s:%s:%s:%s:%s:%.3f:%.3f:%s" % (
           basename, outlier[0], outlier[1], outlier[2], outlier[3],
-          outlier[4], outlier[5], outlier[6], outlier[7], outlier[8])
+          outlier[4], outlier[5], outlier[6], outlier[7], outlier[8]), file=out)
     elif do_kinemage:
-      print >> out, rc.bonds.kinemage_header
+      print(rc.bonds.kinemage_header, file=out)
       for result in rc.bonds.results:
-        print >> out, result.as_kinemage()
-      print >> out, rc.angles.kinemage_header
+        print(result.as_kinemage(), file=out)
+      print(rc.angles.kinemage_header, file=out)
       for result in rc.angles.results:
-        print >> out, result.as_kinemage()
+        print(result.as_kinemage(), file=out)
     out.close()
   elif do_rna_backbone:
     from mmtbx.validation import utils
     rna_bb = utils.get_rna_backbone_dihedrals(processed_pdb_file)
-    print >> out, rna_bb
+    print(rna_bb, file=out)
     if out_file is not None:
       out.close()

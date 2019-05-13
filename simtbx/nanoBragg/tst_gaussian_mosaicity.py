@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx.matrix import sqr,col
 from simtbx.nanoBragg import nanoBragg
@@ -55,7 +56,7 @@ class plotter2:  # compare the transformation of 001 with that of .57735,.57735,
       cube_diag = math.sqrt(1./3) # 0.57735
       for icol, RLP in enumerate([(0,0,1), (cube_diag, cube_diag, cube_diag)]):
         RLP = col(RLP)
-        print "(%7.5f %7.5f %7.5f)"%(RLP.elems),"Vector length:%8.6f"%(RLP.length()),
+        print("(%7.5f %7.5f %7.5f)"%(RLP.elems),"Vector length:%8.6f"%(RLP.length()), end=' ')
         axis = iaxes[icol]
         unit = RLP.normalize()
         seed = col((1,0,0))
@@ -69,7 +70,7 @@ class plotter2:  # compare the transformation of 001 with that of .57735,.57735,
           difference_vectors.append( newvec-RLP )
           a2.append(newvec.dot(perm2)); a3.append(newvec.dot(perm3))
         rms = math.sqrt( flex.mean ( difference_vectors.dot(difference_vectors) ) )
-        print "The rms difference is", rms
+        print("The rms difference is", rms)
         differences.append(rms)
         if plot:
           axis.plot (a2,a3,'r,')
@@ -109,7 +110,7 @@ def run_sim2smv(fileout):
   assert max_angle <= MOSAIC_SPREAD + 0.0000001 # need to allow a small epsilon
   assert max_angle > 0.99 * MOSAIC_SPREAD # insist that max angle is near the limit we gave it
   rms_angle = math.sqrt(flex.mean(th_angles*th_angles))
-  print rms_angle
+  print(rms_angle)
   assert rms_angle < MOSAIC_SPREAD
 
   import scitbx # compute an array of normally-distributed U-mats into the simulator
@@ -140,7 +141,7 @@ def run_sim2smv(fileout):
   #sanity check on the gaussian distribution
   nm_angles = check_distributions.get_angular_rotation(new_UMAT_nm)
   nm_rms_angle = math.sqrt(flex.mean(nm_angles*nm_angles))
-  print nm_rms_angle
+  print(nm_rms_angle)
   assert approx_equal(rms_angle,nm_rms_angle,eps=1e-03), \
   "The top hat and gaussian models should have similar standard deviations"
 
@@ -162,4 +163,4 @@ if __name__=="__main__":
   import sys
   make_plots = "--plot" in sys.argv
   tst_all(make_plots)
-  print "OK"
+  print("OK")

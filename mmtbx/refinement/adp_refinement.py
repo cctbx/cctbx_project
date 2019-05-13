@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.refinement.group
 from mmtbx.refinement import minimization
 from mmtbx.refinement import print_statistics
@@ -18,8 +19,8 @@ def show_times(out = None):
   if(out is None): out = sys.stdout
   total = time_adp_refinement_py
   if(total > 0.01):
-     print >> out, "ADP refinement:"
-     print >> out, "  time spent in adp_refinement.py          = %-7.2f" % time_adp_refinement_py
+     print("ADP refinement:", file=out)
+     print("  time spent in adp_refinement.py          = %-7.2f" % time_adp_refinement_py, file=out)
   return total
 
 group_adp_master_params = iotbx.phil.parse("""\
@@ -298,10 +299,10 @@ class refine_adp(object):
     w      = flex.double()
     if(self.target_weights is not None):
       fmth ="    R-FACTORS      <Bi-Bj>  <B>   WEIGHT       TARGETS"
-      print >> self.log, fmth
-      print >> self.log, " work  free  delta                           data restr"
+      print(fmth, file=self.log)
+      print(" work  free  delta                           data restr", file=self.log)
     else:
-      print >> self.log, "Unresrained refinement..."
+      print("Unresrained refinement...", file=self.log)
     self.save_scatterers = self.fmodels.fmodel_xray().xray_structure.\
         deep_copy_scatterers().scatterers()
     if(self.target_weights is not None):
@@ -358,9 +359,9 @@ class refine_adp(object):
       delta_b_target = max(min_diff_b_iso_bonded, flex.mean(self.fmodels.
         fmodel_xray().xray_structure.extract_u_iso_or_u_equiv()*
           adptbx.u_as_b(1))*mean_diff_b_iso_bonded_fraction)
-      print >> log, "  max suggested <Bi-Bj> for this run: %7.2f"%delta_b_target
-      print >> log, "  max allowed Rfree-Rwork gap: %5.1f"%r_free_r_work_gap
-      print >> log, "  range of equivalent Rfree: %5.1f"%r_free_range_width
+      print("  max suggested <Bi-Bj> for this run: %7.2f"%delta_b_target, file=log)
+      print("  max allowed Rfree-Rwork gap: %5.1f"%r_free_r_work_gap, file=log)
+      print("  range of equivalent Rfree: %5.1f"%r_free_range_width, file=log)
       rw,rf,rfrw,deltab,w = self.score(rw=rw,rf=rf,rfrw=rfrw,deltab=deltab,w=w,
         score_target=deltab,score_target_value=delta_b_target)
       # select the result with lowest rfree
@@ -370,7 +371,7 @@ class refine_adp(object):
       #
       w_best = w[0]
       rw_best = rw[0]
-      print >> self.log, "Best ADP weight: %8.3f"%w_best
+      print("Best ADP weight: %8.3f"%w_best, file=self.log)
       #
       self.target_weights.adp_weights_result.wx = w_best
       self.target_weights.adp_weights_result.wx_scale = 1
@@ -394,7 +395,7 @@ class refine_adp(object):
       self.fmodels.update_xray_structure(
         xray_structure = self.fmodels.fmodel_xray().xray_structure,
         update_f_calc  = True)
-      print >> self.log, "Accepted refinement result:"
+      print("Accepted refinement result:", file=self.log)
       # reset alpha/beta parameters - if this is not done, the assertion
       # below will fail
       fmodels.create_target_functors()
@@ -437,7 +438,7 @@ class refine_adp(object):
     mean_b = flex.mean(
       self.model.get_xray_structure().extract_u_iso_or_u_equiv())*adptbx.u_as_b(1)
     if(deltab is None):
-      print >> self.log, "  r_work=%5.2f r_free=%5.2f"%(r_work, r_free)
+      print("  r_work=%5.2f r_free=%5.2f"%(r_work, r_free), file=self.log)
       return None
     neutron_r_work = neutron_r_free = None
     if (show_neutron) and (self.fmodels.fmodel_neutron() is not None):
@@ -550,9 +551,9 @@ class weight_result(object):
     if (out is None) : return
     if(len(prefix.strip())>0): prefix += " "
     format = prefix+"%5.2f %5.2f %6.2f %6.3f  %6.3f %6.3f   %6.3f"
-    print >> out, format % (self.r_work, self.r_free, self.r_gap, self.delta_b,
-      self.mean_b, self.weight, self.xray_target)
+    print(format % (self.r_work, self.r_free, self.r_gap, self.delta_b,
+      self.mean_b, self.weight, self.xray_target), file=out)
     if (self.neutron_r_work is not None):
-      print >> out, ""
-      print >> out, "Neutron data: r_work=%5.2f r_free=%5.2f"%(
-        self.neutron_r_work, self.neutron_r_free)
+      print("", file=out)
+      print("Neutron data: r_work=%5.2f r_free=%5.2f"%(
+        self.neutron_r_work, self.neutron_r_free), file=out)

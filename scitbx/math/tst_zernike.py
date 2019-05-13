@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx import math
 from scitbx.array_family import flex
 from scitbx.array_family import shared
@@ -190,4 +191,4 @@ if __name__ == "__main__":
   tst_zernike_radial()
   tst_zernike_grid()
 
-  print "OK"
+  print("OK")

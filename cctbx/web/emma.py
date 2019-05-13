@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import euclidean_model_matching as emma
 from cctbx import crystal
 from cctbx import sgtbx
@@ -175,18 +176,18 @@ class web_to_models(object):
 def model_is_too_large(model, max_number_of_positions=200):
   if (len(model.positions()) <= max_number_of_positions):
     return False
-  print "*"*79
-  print "ERROR: too many sites in this model (given %d, limit is %d)" % (
-    len(model.positions()), max_number_of_positions)
-  print "Note: EMMA is designed to work with heavy-atom substructures,"
-  print "      NOT complete macromolecular structures."
-  print "Hint: install cctbx on your computer and use the command"
-  print "    phenix.emma"
-  print "which has no limit on the number of sites."
-  print "cctbx downloads:"
-  print "    http://cci.lbl.gov/cctbx_build/"
-  print "*"*79
-  print
+  print("*"*79)
+  print("ERROR: too many sites in this model (given %d, limit is %d)" % (
+    len(model.positions()), max_number_of_positions))
+  print("Note: EMMA is designed to work with heavy-atom substructures,")
+  print("      NOT complete macromolecular structures.")
+  print("Hint: install cctbx on your computer and use the command")
+  print("    phenix.emma")
+  print("which has no limit on the number of sites.")
+  print("cctbx downloads:")
+  print("    http://cci.lbl.gov/cctbx_build/")
+  print("*"*79)
+  print()
   return True
 
 def run_implementation(server_info, inp, status):
@@ -197,15 +198,15 @@ def run_implementation(server_info, inp, status):
       inp.convention_2 = inp.convention_1
 
   tolerance = float(inp.tolerance)
-  print "Tolerance:", tolerance
+  print("Tolerance:", tolerance)
   if (tolerance <= 0.):
     raise ValueError, "Tolerance must be greater than zero."
-  print
+  print()
 
   diffraction_index_equivalent = int(inp.diffraction_index_equivalent)
   if (diffraction_index_equivalent):
-    print "Models are diffraction index equivalent."
-    print
+    print("Models are diffraction index equivalent.")
+    print()
 
   models1 = web_to_models(
     inp.ucparams_1,
@@ -230,8 +231,8 @@ def run_implementation(server_info, inp, status):
     inp.coordinates[1],
     other_symmetry=model1)
   while 1:
-    print "#" * 79
-    print
+    print("#" * 79)
+    print()
     model2 = models2.get_next()
     if (not model2): break
     model2.show(model2.label)
@@ -246,15 +247,15 @@ def run_implementation(server_info, inp, status):
       tolerance=tolerance,
       models_are_diffraction_index_equivalent=diffraction_index_equivalent)
     if (model_matches.n_matches() == 0):
-      print "No matches."
-      print
+      print("No matches.")
+      print()
     else:
       for match in model_matches.refined_matches:
-        print "." * 79
-        print
+        print("." * 79)
+        print()
         match.show()
 
 def run(server_info, inp, status):
-  print "<pre>"
+  print("<pre>")
   run_implementation(server_info=server_info, inp=inp, status=status)
-  print "</pre>"
+  print("</pre>")

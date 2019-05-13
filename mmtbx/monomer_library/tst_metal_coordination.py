@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os
 from libtbx import easy_run
 
@@ -96,7 +97,7 @@ def run_and_test(cmd, pdb, i):
       break
   else :
     raise RuntimeError("Missing expected log output")
-  print "OK"
+  print("OK")
   # test .geo
   f=file(pdb.replace(".pdb", "_minimized.geo"), "rb")
   lines = f.readlines()
@@ -115,7 +116,7 @@ def run_and_test(cmd, pdb, i):
   if (os.path.isfile(new_geo)):
     os.remove(new_geo)
   os.rename(pdb.replace(".pdb", "_minimized.geo"), new_geo)
-  print "OK"
+  print("OK")
   # test links
   if pdb in ["linking_test_LEU-CSY-VAL.pdb",
              ]:
@@ -158,13 +159,13 @@ def ideal_and_test(cmd, pdb, i):
       break
   else :
     raise RuntimeError("Missing expected log output")
-  print "OK"
+  print("OK")
   for line in result.stdout_lines :
     if line.find('SF4 Regularisation')>-1: break
     if line.find('F3S Regularisation')>-1: break
   else:
     assert 0
-  print 'OK'
+  print('OK')
 
 def run(only_i=None):
   try: only_i=int(only_i)
@@ -182,7 +183,7 @@ def run(only_i=None):
     if pdb.endswith(".cif"): continue
     if pdb.endswith(".params"): continue
     #if pdb.find('F3S')==-1: continue
-    print 'pdb',pdb
+    print('pdb',pdb)
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):
@@ -192,8 +193,8 @@ def run(only_i=None):
       cmd += " link_metal=%d" % i
       if pdb.replace(".pdb", ".params") in pdbs:
         cmd += " %s" % pdb.replace(".pdb", ".params")
-      print "test number:",j
-      print cmd
+      print("test number:",j)
+      print(cmd)
       run_and_test(cmd, pdb,i)
 
       cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb

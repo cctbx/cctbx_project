@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # XXX: internal data for mouse selections in wx_selection_editor.py
 
 from libtbx.utils import Sorry
@@ -343,7 +344,7 @@ class mouse_selection_manager (object) :
     if n_selected == 1 and not allow_duplicate :
       # force items to be unique (no self-pairing)
       if str(selected_object) == str(self.selected_pair[0]) :
-        print "skipping"
+        print("skipping")
         return
     self.selected_pair.append(selected_object)
     self.construct_selection()
@@ -577,7 +578,7 @@ END""")).construct_hierarchy()
   m.start_range_selection(10)
   m.end_range_selection(12, deselect=True, ignore_altloc=False)
   assert m.selection_size() == 5
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__" :
   exercise()

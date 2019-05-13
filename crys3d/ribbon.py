@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from gltbx.gl import *
 import scitbx.math
 from scitbx.array_family import flex
@@ -50,9 +51,9 @@ class cartoon (object) :
               last_resseq = resseq
               last_site = site_cart
               break
-    print "%d segments" % len(self._segments)
+    print("%d segments" % len(self._segments))
     t2 = time.time()
-    print "Extract backbone: %.3fms" % ((t2-t1) * 1000)
+    print("Extract backbone: %.3fms" % ((t2-t1) * 1000))
 
   def new_segment (self, site_cart, i_seq, ss_type, prev_site=None) :
     new_seg = None
@@ -71,7 +72,7 @@ class cartoon (object) :
     for segment in self._segments :
       segment.construct_geometry(smoothness)
     t2 = time.time()
-    print "Construct geometry: %.3fms" % ((t2-t1) * 1000)
+    print("Construct geometry: %.3fms" % ((t2-t1) * 1000))
 
   def draw_ribbon (self, atom_colors, atoms_visible) :
     for segment in self._segments :

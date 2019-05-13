@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.example_viewer
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -22,4 +23,4 @@ if (__name__ == "__main__"):
   if len(file_arguments) > 0:
     run(sys.argv[1:])
   else:
-    print "Use phenix.example_viewer <data file name[s]>"
+    print("Use phenix.example_viewer <data file name[s]>")

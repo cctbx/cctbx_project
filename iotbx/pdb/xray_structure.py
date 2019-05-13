@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb.hierarchy
 from cctbx import adptbx
 from cStringIO import StringIO
@@ -13,16 +14,16 @@ def as_pdb_file(self,
     remarks.insert(0, remark)
   s = StringIO()
   for remark in remarks:
-    print >> s, "REMARK", remark
-  print >> s, "REMARK Number of scatterers:", self.scatterers().size()
-  print >> s, "REMARK At special positions:", \
-    self.special_position_indices().size()
+    print("REMARK", remark, file=s)
+  print("REMARK Number of scatterers:", self.scatterers().size(), file=s)
+  print("REMARK At special positions:", \
+    self.special_position_indices().size(), file=s)
   if (fractional_coordinates):
-    print >> s, "REMARK Fractional coordinates"
+    print("REMARK Fractional coordinates", file=s)
   else:
-    print >> s, "REMARK Cartesian coordinates"
-  print >> s, iotbx.pdb.format_cryst1_record(crystal_symmetry=self)
-  print >> s, iotbx.pdb.format_scale_records(unit_cell=self.unit_cell())
+    print("REMARK Cartesian coordinates", file=s)
+  print(iotbx.pdb.format_cryst1_record(crystal_symmetry=self), file=s)
+  print(iotbx.pdb.format_scale_records(unit_cell=self.unit_cell()), file=s)
   atom = iotbx.pdb.hierarchy.atom_with_labels()
   if (resname is not None):
     atom.resname = resname.upper()
@@ -50,7 +51,7 @@ def as_pdb_file(self,
     assert len(element_symbol) in (1,2)
     atom.element = element_symbol.upper()
     atom.resseq = iotbx.pdb.hy36encode(width=4, value=serial)
-    print >> s, atom.format_atom_record_group()
+    print(atom.format_atom_record_group(), file=s)
   if (connect is not None):
     assert len(connect) == self.scatterers().size()
     i = 0
@@ -59,6 +60,6 @@ def as_pdb_file(self,
       l = "CONNECT%5d" % i
       for bond in bonds:
         l += "%5d" % (bond+1)
-      print >> s, l
-  print >> s, "END"
+      print(l, file=s)
+  print("END", file=s)
   return s.getvalue()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.omz import bfgs
 import scitbx.lbfgs
 from scitbx.array_family import flex
@@ -121,7 +122,7 @@ def run(args):
   for fgh in [fgh1, fgh2]:
     exercise_two_loop_recursion(fgh=fgh())
     refinery(fgh=fgh())
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

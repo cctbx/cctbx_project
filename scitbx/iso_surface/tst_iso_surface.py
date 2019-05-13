@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx import iso_surface
 from libtbx.test_utils import approx_equal
@@ -40,7 +41,7 @@ class triangulation_test_case(object):
     f = self.func
 
     if verbose:
-      print "Testing %s" % f.__class__.__name__
+      print("Testing %s" % f.__class__.__name__)
 
     # triangulation of the iso-surface of the map
     t0 = time.time()
@@ -54,7 +55,7 @@ class triangulation_test_case(object):
     self.triangulation = s
     t1 = time.time()
     if verbose:
-      print "iso-surface triangulation per se: %f s" % (t1-t0)
+      print("iso-surface triangulation per se: %f s" % (t1-t0))
 
     # make sure there is something to test!!
     assert s.vertices.size() > 0
@@ -78,8 +79,8 @@ class triangulation_test_case(object):
         if s.vertices[a] == s.vertices[b]: degenerates.append((a,b))
     if verbose:
       if degenerates:
-        print "Degenerate edges for the isosurface of %s:" % f
-        print degenerates
+        print("Degenerate edges for the isosurface of %s:" % f)
+        print(degenerates)
     self.degenerate_edges = degenerates
 
     # triangle edges and vertices
@@ -213,7 +214,7 @@ def run(args):
   test.run(iso_level=0.8, from_here=None, to_there=None, verbose=verbose)
   assert test.degenerate_edges == []
 
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if __name__ == '__main__':
   run(sys.argv[1:])

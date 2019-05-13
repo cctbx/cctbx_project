@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_to_model_histogram
 
 import sys, math
@@ -45,13 +46,13 @@ def master_params():
 
 
 def show_histogram(data, n_slots):
-  print flex.min(data), flex.max(data), flex.mean(data)
+  print(flex.min(data), flex.max(data), flex.mean(data))
   hm = flex.histogram(data = data, n_slots = n_slots)
   lc_1 = hm.data_min()
   s_1 = enumerate(hm.slots())
   for (i_1,n_1) in s_1:
     hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
-    print "%10.3f - %-10.3f : %10.2f" % (lc_1, hc_1, float(n_1)/(data.size())*100.)
+    print("%10.3f - %-10.3f : %10.2f" % (lc_1, hc_1, float(n_1)/(data.size())*100.))
     lc_1 = hc_1
 
 def get_f_obs_and_flags(reflection_file_name,
@@ -164,7 +165,7 @@ def get_map_values_and_grid_sites_frac(
   #  centrics_pre_scale = 1.0)
   if not use_exact_phases:
     k = fmodel.k_isotropic()*fmodel.k_anisotropic()
-    print "flex.mean(k):", flex.mean(k)
+    print("flex.mean(k):", flex.mean(k))
     f_model = fmodel.f_model()
     mc_data = abs(fmodel.f_obs()).data()/k - abs(f_model).data()/k
 
@@ -202,7 +203,7 @@ def get_map_values_and_grid_sites_frac(
     site_radii = flex.double(sites_cart.size(), 0.5))
   map_in  = map_data.select(sel)
   mm = flex.mean(map_in)
-  print "mean in (1):", mm
+  print("mean in (1):", mm)
   #
   #sites_frac = xrs.sites_frac().select(sel_bb)
   #mm = 0
@@ -224,7 +225,7 @@ def get_map_values_and_grid_sites_frac(
     #f_000 = 0.626*fmodel.xray_structure.unit_cell().volume()*0.35
   else:
     f_000 = None
-  print "f_000:", f_000
+  print("f_000:", f_000)
   #print "XXX", include_f000*fmodel.xray_structure.unit_cell().volume()*0.3
   #
   fft_map = miller.fft_map(
@@ -240,7 +241,7 @@ def get_map_values_and_grid_sites_frac(
   map_data = fft_map.real_map_unpadded()
 
   #map_data = map_data * bulk_solvent_mask
-  print "n_real:", nx,ny,nz, map_data.size()
+  print("n_real:", nx,ny,nz, map_data.size())
   grid_sites_frac = flex.vec3_double()
   map_values = flex.double()
   for ix in xrange(nx):
@@ -255,9 +256,9 @@ def get_map_values_and_grid_sites_frac(
   return map_values, grid_sites_frac
 
 def show_fmodel(fmodel, prefix=""):
-  print "%s r_work=%6.4f r_free=%6.4f d_min=%6.4f nref=%d"%(prefix,
+  print("%s r_work=%6.4f r_free=%6.4f d_min=%6.4f nref=%d"%(prefix,
     fmodel.r_work(),fmodel.r_free(),fmodel.f_obs().d_min(),
-    fmodel.f_obs().data().size())
+    fmodel.f_obs().data().size()))
 
 def get_stats(pdb_file_name,
               f_obs,
@@ -274,7 +275,7 @@ def get_stats(pdb_file_name,
               use_exact_phases):
   results = []
   for bulk_solvent in [True, False]:
-    print "bulk_solvent:", bulk_solvent, "-"*50
+    print("bulk_solvent:", bulk_solvent, "-"*50)
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
     pdb_hierarchy = pdb_inp.construct_hierarchy()
     sstring = """ pepnames and (name ca or name n or name c) and altloc " " """
@@ -325,29 +326,29 @@ def get_stats(pdb_file_name,
     l,r,p = result[0][0], result[0][1], result[0][5]
     m1,r1 = result[0][2], result[0][3]
     m2,r2 = result[1][2], result[1][3]
-    print "%4.2f-%4.2f %10.4f | %8.4f %8.4f | %8.4f %8.4f" % (l, r, p, m1,r1, m2,r2)
+    print("%4.2f-%4.2f %10.4f | %8.4f %8.4f | %8.4f %8.4f" % (l, r, p, m1,r1, m2,r2))
 
 def run(args, log = None):
   if(log is None): log = sys.stdout
   if(len(args)==0):
-    print "Usage:\n"
-    print "phenix.map_to_model_histogram model.pdb data.mtz [parameters]"
+    print("Usage:\n")
+    print("phenix.map_to_model_histogram model.pdb data.mtz [parameters]")
   processed_args = mmtbx.utils.process_command_line_args(args = args, log = log,
     master_params = master_params())
-  print >> log, "-"*79
-  print >> log, "\nParameters:\n"
+  print("-"*79, file=log)
+  print("\nParameters:\n", file=log)
   processed_args.params.show(out = log, prefix=" ")
   if(len(args)==0): return
   params = processed_args.params.extract()
   #
-  print >> log, "-"*79
-  print >> log, "\nData:\n"
+  print("-"*79, file=log)
+  print("\nData:\n", file=log)
   f_obs, r_free_flags = get_f_obs_and_flags(
     reflection_file_name = processed_args.reflection_file_names[0],
     crystal_symmetry     = processed_args.crystal_symmetry,
     log                  = log)
-  print >> log, "-"*79
-  print >> log, "\nCalculations:\n"
+  print("-"*79, file=log)
+  print("\nCalculations:\n", file=log)
   get_stats(pdb_file_name        = processed_args.pdb_file_names[0],
             f_obs                = f_obs,
             r_free_flags         = r_free_flags,

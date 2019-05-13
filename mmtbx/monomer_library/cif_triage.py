@@ -1,11 +1,12 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.monomer_library.server
 from libtbx.str_utils import show_string, show_sorted_by_counts
 from libtbx import dict_with_default_0
 
 def check_comp(file_name):
   result = 0
-  print "file name:", file_name
+  print("file name:", file_name)
   cif_object = mmtbx.monomer_library.server.read_cif(file_name)
   for comp_comp_id in mmtbx.monomer_library.server.convert_comp_list(
                         source_info=file_name, cif_object=cif_object):
@@ -18,7 +19,7 @@ def check_comp(file_name):
         raise RuntimeError(
           "Duplicate atom name: %s" % show_string(atom_name))
       atom_names.add(atom_name)
-    print "  number of atoms:", len(atom_names)
+    print("  number of atoms:", len(atom_names))
     #
     bond_atom_ids = set()
     for bond in comp_comp_id.bond_list:
@@ -33,7 +34,7 @@ def check_comp(file_name):
           "Duplicate bond: %s - %s" % tuple([show_string(s)
             for s in atom_ids]))
       bond_atom_ids.add(atom_ids)
-    print "  number of bonds:", len(bond_atom_ids)
+    print("  number of bonds:", len(bond_atom_ids))
     #
     angle_atom_ids = set()
     for angle in comp_comp_id.angle_list:
@@ -48,7 +49,7 @@ def check_comp(file_name):
           "Duplicate angle: %s - %s - %s" % tuple([show_string(s)
             for s in atom_ids]))
       angle_atom_ids.add(atom_ids)
-    print "  number of angles:", len(angle_atom_ids)
+    print("  number of angles:", len(angle_atom_ids))
     #
     tor_atom_ids = set()
     for tor in comp_comp_id.tor_list:
@@ -63,14 +64,14 @@ def check_comp(file_name):
           "Duplicate tor: %s - %s - %s - %s" % tuple([show_string(s)
             for s in atom_ids]))
       tor_atom_ids.add(atom_ids)
-    print "  number of tors:", len(tor_atom_ids)
+    print("  number of tors:", len(tor_atom_ids))
     tor_atom_ids = {}
     for tor in comp_comp_id.tor_list:
       atom_ids = tuple(sorted([tor.atom_id_2, tor.atom_id_3]))
       tor_atom_ids.setdefault(atom_ids, []).append(tor)
     for atom_ids,tors in tor_atom_ids.items():
       if (len(tors) != 1):
-        print "    redundant tors:", ", ".join([tor.id for tor in tors])
+        print("    redundant tors:", ", ".join([tor.id for tor in tors]))
     #
     chir_atom_ids = set()
     for chir in comp_comp_id.chir_list:
@@ -86,7 +87,7 @@ def check_comp(file_name):
           "Duplicate chir: %s - %s - %s - %s" % tuple([show_string(s)
             for s in atom_ids]))
       chir_atom_ids.add(atom_ids)
-    print "  number of chirs:", len(chir_atom_ids)
+    print("  number of chirs:", len(chir_atom_ids))
     #
     plane_atom_counts = dict_with_default_0()
     for plane_atom in comp_comp_id.plane_atom_list:
@@ -94,7 +95,7 @@ def check_comp(file_name):
         raise RuntimeError(
           "Unknown plane atom name: %s" % show_string(plane_atom.atom_id))
       plane_atom_counts[plane_atom.plane_id] += 1
-    print "  number of planes:", len(plane_atom_counts)
+    print("  number of planes:", len(plane_atom_counts))
     if (len(plane_atom_counts) != 0):
       show_sorted_by_counts(
         label_count_pairs=plane_atom_counts.items(),
@@ -103,7 +104,7 @@ def check_comp(file_name):
     #
     rotamer_info = comp_comp_id.rotamer_info()
     if (rotamer_info is not None):
-      print "  rotamer_info.tor_ids:", rotamer_info.tor_ids
+      print("  rotamer_info.tor_ids:", rotamer_info.tor_ids)
       for tor_id in rotamer_info.tor_ids:
         assert tor_id.strip() == tor_id
         assert tor_id.split() == [tor_id]
@@ -123,7 +124,7 @@ def check_comp(file_name):
              is None
         or rotamer_info.constrain_dihedrals_with_sigma_less_than_or_equal_to
              > 0)
-      print "  number of rotamers:", len(rotamer_info.rotamer)
+      print("  number of rotamers:", len(rotamer_info.rotamer))
       n_missing_frequencies = 0
       for rotamer in rotamer_info.rotamer:
         assert rotamer.id is not None
@@ -140,6 +141,6 @@ def check_comp(file_name):
         for angle in rotamer.angles:
           assert angle is None or -180 < angle <= 180
       if (n_missing_frequencies != 0):
-        print "  WARNING: number of missing frequencies:", \
-          n_missing_frequencies
+        print("  WARNING: number of missing frequencies:", \
+          n_missing_frequencies)
   return result

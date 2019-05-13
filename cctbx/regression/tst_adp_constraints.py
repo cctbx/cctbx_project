@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import miller
 from cctbx import adptbx
 from cctbx.development import debug_utils
@@ -222,9 +223,9 @@ def exercise_derivatives(space_group_info, out):
   space_group = space_group_info.group()
   adp_constraints = space_group.adp_constraints()
   m = adp_constraints.row_echelon_form()
-  print >> out, matrix.rec(m, (m.size()//6, 6)).mathematica_form(
-    one_row_per_line=True)
-  print >> out, list(adp_constraints.independent_indices)
+  print(matrix.rec(m, (m.size()//6, 6)).mathematica_form(
+    one_row_per_line=True), file=out)
+  print(list(adp_constraints.independent_indices), file=out)
   u_cart_p1 = adptbx.random_u_cart()
   u_star_p1 = adptbx.u_cart_as_u_star(crystal_symmetry.unit_cell(), u_cart_p1)
   u_star = space_group.average_u_star(u_star_p1)
@@ -232,30 +233,30 @@ def exercise_derivatives(space_group_info, out):
     crystal_symmetry=crystal_symmetry, d_min=3, anomalous_flag=False)
   for h in miller_set.indices():
     grads_fin = d_dw_d_u_star_finite(h=h, u_star=u_star)
-    print >> out, "grads_fin:", list(grads_fin)
+    print("grads_fin:", list(grads_fin), file=out)
     grads_ana = d_dw_d_u_star_analytical(h=h, u_star=u_star)
-    print >> out, "grads_ana:", list(grads_ana)
+    print("grads_ana:", list(grads_ana), file=out)
     compare_derivatives(grads_ana, grads_fin)
     curvs_fin = d2_dw_d_u_star_d_u_star_finite(h=h, u_star=u_star)
-    print >> out, "curvs_fin:", list(curvs_fin)
+    print("curvs_fin:", list(curvs_fin), file=out)
     curvs_ana = d2_dw_d_u_star_d_u_star_analytical(h=h, u_star=u_star)
-    print >> out, "curvs_ana:", list(curvs_ana)
+    print("curvs_ana:", list(curvs_ana), file=out)
     compare_derivatives(curvs_ana, curvs_fin)
     #
     u_indep = adp_constraints.independent_params(u_star)
     grads_indep_fin = d_dw_d_u_indep_finite(
       adp_constraints=adp_constraints, h=h, u_indep=u_indep)
-    print >> out, "grads_indep_fin:", list(grads_indep_fin)
+    print("grads_indep_fin:", list(grads_indep_fin), file=out)
     grads_indep_ana = flex.double(adp_constraints.independent_gradients(
       all_gradients=list(grads_ana)))
-    print >> out, "grads_indep_ana:", list(grads_indep_ana)
+    print("grads_indep_ana:", list(grads_indep_ana), file=out)
     compare_derivatives(grads_indep_ana, grads_indep_fin)
     curvs_indep_fin = d2_dw_d_u_indep_d_u_indep_finite(
       adp_constraints=adp_constraints, h=h, u_indep=u_indep)
-    print >> out, "curvs_indep_fin:", list(curvs_indep_fin)
+    print("curvs_indep_fin:", list(curvs_indep_fin), file=out)
     curvs_indep_ana = adp_constraints.independent_curvatures(
       all_curvatures=curvs_ana)
-    print >> out, "curvs_indep_ana:", list(curvs_indep_ana)
+    print("curvs_indep_ana:", list(curvs_indep_ana), file=out)
     compare_derivatives(curvs_indep_ana, curvs_indep_fin)
     #
     curvs_indep_mm = None
@@ -274,7 +275,7 @@ def exercise_derivatives(space_group_info, out):
     if (curvs_indep_mm is not None):
       curvs_indep_mm = flex.double(
         curvs_indep_mm).matrix_symmetric_as_packed_u()
-      print >> out, "curvs_indep_mm:", list(curvs_indep_mm)
+      print("curvs_indep_mm:", list(curvs_indep_mm), file=out)
       compare_derivatives(curvs_indep_ana, curvs_indep_mm)
 
 def run_call_back(flags, space_group_info):

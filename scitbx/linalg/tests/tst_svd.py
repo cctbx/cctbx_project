@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import math
 import scitbx.math
 import scitbx.linalg.svd
@@ -114,17 +115,17 @@ class test_case(object):
           yield sigma, gen.matrix_with_singular_values(sigma)
 
   def exercise_increasing_dimensions(self):
-    print "Scaling with m and m/n: ",
+    print("Scaling with m and m/n: ", end=' ')
     n_tests = 0
     for sigma, a in self.matrices():
       m, n = a.focus()
       if self.show_progress:
-        if not n_tests: print
-        print (m,n),
+        if not n_tests: print()
+        print((m,n), end=' ')
         sys.stdout.flush()
       svd = self.klass(a, self.accumulate_u, self.accumulate_v)
       if self.show_progress:
-        print '!',
+        print('!', end=' ')
         sys.stdout.flush()
       sigma = sigma.select(flex.sort_permutation(sigma, reverse=True))
       delta = (svd.sigma - sigma).norm()/sigma.norm()/min(m,n)/self.eps
@@ -132,18 +133,18 @@ class test_case(object):
       n_tests += 1
 
       if not self.exercise_tntbx:
-        if self.show_progress: print
+        if self.show_progress: print()
         continue
       svd = tntbx.svd_m_ge_n_double(a)
       if self.show_progress:
-        print '!'
+        print('!')
         sys.stdout.flush()
       sigma = sigma.select(flex.sort_permutation(sigma, reverse=True))
       delta = ((svd.singular_values() - sigma).norm()
                /sigma.norm()/min(m,n)/self.eps)
       assert delta < 10
-    if self.show_progress: print
-    print "%i done" % n_tests
+    if self.show_progress: print()
+    print("%i done" % n_tests)
 
   def time(self):
     from libtbx.easy_profile import easy_profile
@@ -159,7 +160,7 @@ class test_case(object):
     for sigma, a in self.matrices():
       m, n = a.focus()
       if self.show_progress:
-        print (m,n),
+        print((m,n), end=' ')
         sys.stdout.flush()
       flops = min(2*m*n**2 - 2*n**3/3, m*n**2 + n**3)
       runs = max(int(1e4/flops), 1)
@@ -168,24 +169,24 @@ class test_case(object):
         sys.stdout.flush()
         t = prof_tntbx.time(a)
         if self.show_progress:
-          print '!',
+          print('!', end=' ')
         self.tntbx_report.append((m, n, t))
       prof_scitbx.runs = runs
       t = prof_scitbx.time(a, accumulate_u=True, accumulate_v=True)
       if self.show_progress:
-        print '!'
+        print('!')
       self.scitbx_report.append((m, n, t))
-    print 'scitbx = {'
-    print ', '.join([ "{%i, %i, %f}" % (m, n, t)
-                      for m, n, t in self.scitbx_report ])
-    print '};'
+    print('scitbx = {')
+    print(', '.join([ "{%i, %i, %f}" % (m, n, t)
+                      for m, n, t in self.scitbx_report ]))
+    print('};')
     if tntbx:
-      print '(***************************************************)'
-      print '(***************************************************)'
-      print 'tntbx = {'
-      print ', '.join([ "{%i, %i, %f}" % (m, n, t)
-                        for m, n, t in self.tntbx_report ])
-      print '};'
+      print('(***************************************************)')
+      print('(***************************************************)')
+      print('tntbx = {')
+      print(', '.join([ "{%i, %i, %f}" % (m, n, t)
+                        for m, n, t in self.tntbx_report ]))
+      print('};')
 
 
 class chunks_of_small_and_big_singular_values_case(test_case):
@@ -210,7 +211,7 @@ def exercise_densely_distributed_singular_values(show_progress, full_coverage, k
   sigmas.append( flex.double([ 10**(-i/n) for i in xrange(n) ]) )
   sigmas.append( sigmas[0].select(flex.random_permutation(n))   )
   sigmas.append( sigmas[0].reversed()                           )
-  print "Densely distributed singular values:",
+  print("Densely distributed singular values:", end=' ')
   n_tests = 0
   for i in xrange(n_runs):
     if not full_coverage and random.random() < 0.8: continue
@@ -222,7 +223,7 @@ def exercise_densely_distributed_singular_values(show_progress, full_coverage, k
         flex.sort_permutation(sigma, reverse=True))
       delta = (svd.sigma - sigma)/sigma/tol
       assert delta.all_lt(5)
-  print "%i done." % n_tests
+  print("%i done." % n_tests)
 
 def exercise_singular_matrix(klass):
   n = 20
@@ -290,7 +291,7 @@ def run_for_class(show_progress, exercise_tntbx, full_coverage, klass):
     klass=klass
   )
   t.exercise_increasing_dimensions()
-  print libtbx.utils.format_cpu_times(klass)
+  print(libtbx.utils.format_cpu_times(klass))
 
 def run(show_progress, exercise_tntbx, full_coverage):
   run_for_class(show_progress, exercise_tntbx, full_coverage, scitbx.linalg.svd.real)

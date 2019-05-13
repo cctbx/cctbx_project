@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import time
 from libtbx import easy_run
@@ -133,7 +134,7 @@ def exercise(prefix="tst_model_vs_data1"):
       "%s_start.pdb" % prefix,
       "output_file_name_prefix=%s.map" % prefix,
       ">%s_mm.log" % prefix])
-  print cmd
+  print(cmd)
   assert not easy_run.call(cmd)
   cmd = " ".join([
       "phenix.model_vs_map",
@@ -141,7 +142,7 @@ def exercise(prefix="tst_model_vs_data1"):
       "%s.map.ccp4" % prefix,
       "resolution=5",
       ">%s_mvsm_ccp4.log" % prefix])
-  print cmd
+  print(cmd)
   assert not easy_run.call(cmd)
   # xplor is not supported...
   # cmd = " ".join([
@@ -156,5 +157,5 @@ def exercise(prefix="tst_model_vs_data1"):
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise()
-  print
-  print "Time:", round(time.time()-t0, 3)
+  print()
+  print("Time:", round(time.time()-t0, 3))

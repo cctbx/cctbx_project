@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os.path
 
 def encode(data):
@@ -17,10 +18,10 @@ def create_encoded(image_file_name):
      % (name, w, h))
   encoded = encode(img.GetData())
   while (len(encoded) > 0):
-    print encoded[:78]+"\\"
+    print(encoded[:78]+"\\")
     encoded = encoded[78:]
-  print '""")'
-  print
+  print('""")')
+  print()
 
 class img_data:
 
@@ -60,7 +61,7 @@ class img_data:
 
 if (__name__ == "__main__"):
   import sys
-  print 'from gltbx.images import img_data\n'
+  print('from gltbx.images import img_data\n')
   for arg in sys.argv[1:]:
     create_encoded(arg)
 

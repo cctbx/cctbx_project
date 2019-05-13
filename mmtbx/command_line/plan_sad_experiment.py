@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.plan_sad_experiment
 
 from __future__ import division
+from __future__ import print_function
 import mmtbx.scaling.plan_sad_experiment
 from mmtbx.scaling.plan_sad_experiment import get_fp_fdp, get_residues_and_ha
 import iotbx.phil
@@ -272,7 +273,7 @@ def get_params(args,out=sys.stdout):
     reflection_file_def="input_files.data",
     seq_file_def="crystal_info.seq_file")
   params = command_line.work.extract()
-  print >>out,"\nPlan a SAD experiment\n"
+  print("\nPlan a SAD experiment\n", file=out)
   master_phil.format(python_object=params).show(out=out)
   return params
 
@@ -309,27 +310,27 @@ def setup_params(params, out):
       ncs_copies=params.crystal_info.ncs_copies,
       out=out)
     if not params.crystal_info.residues:
-      print >>out,"Number of residues based on sequence file: %d" %(
-        residues)
+      print("Number of residues based on sequence file: %d" %(
+        residues), file=out)
       params.crystal_info.residues=residues
     if not params.crystal_info.number_of_s:
-      print >>out,"Number of S atoms based on sequence file: %d" %(
-        number_of_s)
+      print("Number of S atoms based on sequence file: %d" %(
+        number_of_s), file=out)
       params.crystal_info.number_of_s=number_of_s
 
     if not params.crystal_info.sites:
-      print >>out,"Number of sites for anomalously-scattering atom "+\
-        "based on sequence file: %d" %( sites)
+      print("Number of sites for anomalously-scattering atom "+\
+        "based on sequence file: %d" %( sites), file=out)
       params.crystal_info.sites=sites
 
     if ncs_copies and not params.crystal_info.ncs_copies:
-      print >>out,"NCS copies "+\
-        "based on sequence file and data : %d" %( ncs_copies)
+      print("NCS copies "+\
+        "based on sequence file and data : %d" %( ncs_copies), file=out)
       params.crystal_info.ncs_copies=ncs_copies
 
     if solvent_fraction and not params.crystal_info.solvent_fraction:
-      print >>out,"Solvent fraction "+\
-        "based on sequence file and data : %5.2f" %( solvent_fraction)
+      print("Solvent fraction "+\
+        "based on sequence file and data : %5.2f" %( solvent_fraction), file=out)
       params.crystal_info.solvent_fraction=solvent_fraction
 
   else:
@@ -339,8 +340,8 @@ def setup_params(params, out):
         "\ninclude_weak_anomalous_scattering=True")
     elif params.crystal_info.number_of_s is None and \
          params.include_weak_anomalous_scattering is Auto:
-      print >>out,"Note: not applying include_weak_anomalous_scattering as"+\
-        " no sequence \nfile or number_of_s are supplied"
+      print("Note: not applying include_weak_anomalous_scattering as"+\
+        " no sequence \nfile or number_of_s are supplied", file=out)
       params.include_weak_anomalous_scattering=False
 
   if params.crystal_info.solvent_fraction is None:
@@ -385,13 +386,13 @@ class result_table:
     assert not gui_output # not implemented yet
     self.get_formats(buffer=buffer)
     for i in xrange(self.number_of_columns):
-      print >>out,self.formats[i] %(self.table_header[i]),
-    print >>out
+      print(self.formats[i] %(self.table_header[i]), end=' ', file=out)
+    print(file=out)
 
     for tr in self.table_rows:
       for i in xrange(self.number_of_columns):
-        print >>out,self.formats[i] %(tr[i]),
-      print >>out
+        print(self.formats[i] %(tr[i]), end=' ', file=out)
+      print(file=out)
 
 def run(args,params=None,return_plan=False,out=sys.stdout):
   # NOTE: can call with params and skip reading any files.
@@ -446,7 +447,7 @@ def run_varying_i_over_sigma(params,out=sys.stdout):
     i_over_sigma+=delta
 
   plan.show_characteristics(out=out)
-  print >>out,"\nExpected data utility varying the value of overall I/sigI"
+  print("\nExpected data utility varying the value of overall I/sigI", file=out)
   t.show_summary(out=out)
 
 def run_varying_sites(params,out=sys.stdout):
@@ -487,7 +488,7 @@ def run_varying_sites(params,out=sys.stdout):
       ])
   plan.show_characteristics(out=out)
 
-  print >>out,"\nExpected data utility varying the number of sites"
+  print("\nExpected data utility varying the number of sites", file=out)
   t.show_summary(out=out)
 
 

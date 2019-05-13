@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.utils
 import iotbx.phil
 from scitbx.array_family import flex
@@ -532,9 +533,9 @@ def b_factor_sharpening_by_map_kurtosis_maximization(map_coeffs, show=True,
         kurt = kurt_
         b_sharp_best = b_sharp
       if(show):
-        print "b_sharp: %6.1f skewness: %6.4f kurtosis: %6.4f"%(b_sharp,
-          o.skewness(), o.kurtosis())
-  if(show): print "Best sharpening B-factor:", b_sharp_best
+        print("b_sharp: %6.1f skewness: %6.4f kurtosis: %6.4f"%(b_sharp,
+          o.skewness(), o.kurtosis()))
+  if(show): print("Best sharpening B-factor:", b_sharp_best)
   k_sharp = 1./flex.exp(-ss * b_sharp_best)
   if(b_only): return b_sharp_best
   else:

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 ## Peter Zwart July 5, 2005
 from cctbx.array_family import flex
 from cctbx import crystal
@@ -38,15 +39,15 @@ def test_luts():
   for optimized in [False, True]:
     t0 = time.time()
     zero = qerf.loop_for_timings(number_of_iterations, optimized=optimized)
-    print "very_quick_erf*%d optimized=%s: %.2f s" % (
-      number_of_iterations, str(optimized), time.time()-t0)
+    print("very_quick_erf*%d optimized=%s: %.2f s" % (
+      number_of_iterations, str(optimized), time.time()-t0))
     assert approx_equal(zero, 0)
   number_of_iterations = 5000000
   for optimized in [False, True]:
     t0 = time.time()
     zero = qeio.loop_for_timings(number_of_iterations, optimized=optimized)
-    print "quick_ei0*%d optimized=%s: %.2f s" % (
-      number_of_iterations, str(optimized), time.time()-t0)
+    print("quick_ei0*%d optimized=%s: %.2f s" % (
+      number_of_iterations, str(optimized), time.time()-t0))
     assert approx_equal(zero, 0)
 
 ## Testing Wilson parameters
@@ -1049,7 +1050,7 @@ def test_all():
 def run(args):
   assert len(args) == 0
   test_all()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   import sys

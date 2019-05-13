@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb.xray_structure
 from cctbx.development import random_structure
 from cctbx import miller
@@ -71,23 +72,23 @@ def generate_random_f_calc(
   if (0 or verbose):
     structure.show_summary()
     structure.show_scatterers()
-    print
-  print "Writing tmp.pdb"
+    print()
+  print("Writing tmp.pdb")
   s = structure.as_pdb_file(
     remark="random structure",
     resname="RND")
   open("tmp.pdb", "w").write(s)
   if (0 or verbose):
-    print
+    print()
   f_calc = structure.structure_factors(
     d_min=d_min, anomalous_flag=False).f_calc()
   if (0 or verbose):
     f_calc.show_summary()
-    print
-  print "Writing: tmp.phs"
+    print()
+  print("Writing: tmp.phs")
   f_calc.as_phases_phs(out=open("tmp.phs", "w"))
   if (0 or verbose):
-    print
+    print()
 
 def run():
   exercise_basic()
@@ -101,7 +102,7 @@ def run():
         args.append(arg)
     for arg in args:
       generate_random_f_calc(sgtbx.space_group_info(arg), verbose=verbose)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

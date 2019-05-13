@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # (jEdit options) :folding=explicit:collapseFolds=1:
 #
 #cablam_fingerprints
@@ -153,7 +154,7 @@ def check_protein(protein, motif_name_list):
       failed = check_for_motif(motif,residue,candidate)#returns either False or debug info
       if failed:
         candidate = None
-        if debug==True: print failed
+        if debug==True: print(failed)
         continue
       else:
         #print candidate.needed_length, candidate.residues, len(candidate.residues)
@@ -356,9 +357,9 @@ def make_pickle(motif):
 Problem locating cablam fingerprints dir""")
   os.chdir(fingerprints_dir)
   filename = motif.motif_name + ".pickle"
-  print "Converting", motif.motif_name, "to pickle file . . ."
+  print("Converting", motif.motif_name, "to pickle file . . .")
   easy_pickle.dump(file_name=filename,obj=motif)
-  print ". . . Done"
+  print(". . . Done")
   os.chdir(pwd)
 #-------------------------------------------------------------------------------
 #}}}

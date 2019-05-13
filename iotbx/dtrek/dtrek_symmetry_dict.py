@@ -4,6 +4,7 @@
    usage: python dtrek_symmetry_dict.py DTREK_SPACEGROUP_FILE
 """
 from __future__ import division
+from __future__ import print_function
 
 from libtbx.str_utils import line_feeder
 from cctbx import sgtbx
@@ -15,7 +16,7 @@ class dtrek_symmetry_entry(object):
   def __init__(self, lf):
     self.symbol = None
     l = lf.next()
-    print l.strip()
+    print(l.strip())
     if (lf.eof): return
     no, number, symbol, m = l.split()
     assert no == "NO."
@@ -38,27 +39,27 @@ class dtrek_symmetry_entry(object):
       try:
         s = sgtbx.rt_mx(sgtbx.rot_mx(r), sgtbx.tr_vec(t))
       except RuntimeError, e:
-        print e
-        print l
+        print(e)
+        print(l)
       else:
         try:
           matrices.append(s)
           space_group.expand_smx(s)
         except RuntimeError, e:
-          print e
-          print l
-          print s
+          print(e)
+          print(l)
+          print(s)
     space_group_info = sgtbx.space_group_info(group=space_group)
     if (space_group_info.type().number() != number):
-      print "Space group number mismatch:"
-      print "   from file:", number
-      print "  operations:", space_group_info.type().number()
+      print("Space group number mismatch:")
+      print("   from file:", number)
+      print("  operations:", space_group_info.type().number())
       for s in matrices:
         space_group = sgtbx.space_group_info(symbol=number).group()
         order_z = space_group.order_z()
         space_group.expand_smx(s)
         if (space_group.order_z() != order_z):
-          print "  misfit:", s
+          print("  misfit:", s)
       space_group = sgtbx.space_group_info(symbol=number).group()
       for i_smx in xrange(space_group.n_smx()):
         OK = False
@@ -73,7 +74,7 @@ class dtrek_symmetry_entry(object):
             if (OK): break
           if (OK): break
         if (not OK):
-          print "  missing:", sg
+          print("  missing:", sg)
     self.number = number
     self.symbol = symbol
     self.space_group_info = space_group_info

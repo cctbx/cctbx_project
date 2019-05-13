@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import geometry_restraints
 import sys
 
@@ -49,7 +50,7 @@ def run(args):
   assert r.lookup_i_proxy((5,2,3,8)) == (1, 1)
   assert r.lookup_i_proxy((6,3,1,9)) == (2, -1)
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

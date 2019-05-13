@@ -13,6 +13,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_congruence
 #
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from dials.array_family import flex
 from scitbx.matrix import col
@@ -170,7 +171,7 @@ def detector_plot_dict(params, detector, data, title, units_str, show=True, reve
     cmap = plt.cm.get_cmap(params.colormap)
   sm = cm.ScalarMappable(norm=norm, cmap=cmap)
   if len(values) == 0:
-    print "no values"
+    print("no values")
     return
   elif len(values) == 1:
     sm.set_array(np.arange(values[0], values[0], 1)) # needed for colorbar
@@ -252,7 +253,7 @@ class Script(object):
 
     # Verify inputs
     if len(detectors) != 2:
-      print "Please provide two experiments for comparison"
+      print("Please provide two experiments for comparison")
       return
 
     # These lines exercise the iterate_detector_at_level and iterate_panels functions
@@ -273,10 +274,10 @@ class Script(object):
     """
     tmp = []
     for refls in reflections:
-      print "N reflections total:", len(refls)
+      print("N reflections total:", len(refls))
       refls = refls.select(refls.get_flags(refls.flags.used_in_refinement))
-      print "N reflections used in refinement", len(refls)
-      print "Reporting only on those reflections used in refinement"
+      print("N reflections used in refinement", len(refls))
+      print("Reporting only on those reflections used in refinement")
 
       refls['difference_vector_norms'] = (refls['xyzcal.mm']-refls['xyzobs.mm.value']).norms()
       tmp.append(refls)
@@ -329,7 +330,7 @@ class Script(object):
     s0 = col(flex.vec3_double([col(b.get_s0()) for b in experiments.beams()]).mean())
 
     # Compute a set of radial and transverse displacements for each reflection
-    print "Setting up stats..."
+    print("Setting up stats...")
     tmp_refls = []
     for refls, expts in zip(reflections, [wrapper.data for wrapper in params.input.experiments]):
       tmp = flex.reflection_table()
@@ -384,7 +385,7 @@ class Script(object):
         pg1_refls += r1
         pg2_refls += r2
       if pg1_refls == 0 and pg2_refls == 0:
-        print "No reflections on panel group", pg_id
+        print("No reflections on panel group", pg_id)
         continue
 
       assert pg1.get_name() == pg2.get_name()
@@ -674,23 +675,23 @@ class Script(object):
       congruence_table_data.append(["Mean", "", "", "","","", "", "", "", "", "", "%6.1f"%flex.mean(all_refls_count.as_double())])
 
     from libtbx import table_utils
-    print "Congruence statistics, I.E. the differences between the input detectors:"
-    print table_utils.format(congruence_table_data,has_header=3,justify='center',delim=" ")
+    print("Congruence statistics, I.E. the differences between the input detectors:")
+    print(table_utils.format(congruence_table_data,has_header=3,justify='center',delim=" "))
 
-    print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, statistics are computed between the matching panel groups between the two input experiments."
-    print "Dist: distance from center of panel group to the beam center"
-    print "Dist Sigma: weighted standard deviation of the measurements used to compute Dist"
-    print "Normal angle: angle between the normal vectors of matching panel groups."
-    print "RNormal angle: radial component of the angle between the normal vectors of matching panel groups"
-    print "TNormal angle: transverse component of the angle between the normal vectors of matching panel groups"
-    print "Z rot: angle between the XY components of the fast axes of the panel groups."
-    print "Delta F: shift between matching panel groups along the detector fast axis."
-    print "Delta S: shift between matching panel groups along the detector slow axis."
-    print "Delta Z: Z shift between matching panel groups along the detector normal."
-    print "Delta O: Overall shift between matching panel groups along the detector normal."
-    print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
-    print
-    print
+    print("PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, statistics are computed between the matching panel groups between the two input experiments.")
+    print("Dist: distance from center of panel group to the beam center")
+    print("Dist Sigma: weighted standard deviation of the measurements used to compute Dist")
+    print("Normal angle: angle between the normal vectors of matching panel groups.")
+    print("RNormal angle: radial component of the angle between the normal vectors of matching panel groups")
+    print("TNormal angle: transverse component of the angle between the normal vectors of matching panel groups")
+    print("Z rot: angle between the XY components of the fast axes of the panel groups.")
+    print("Delta F: shift between matching panel groups along the detector fast axis.")
+    print("Delta S: shift between matching panel groups along the detector slow axis.")
+    print("Delta Z: Z shift between matching panel groups along the detector normal.")
+    print("Delta O: Overall shift between matching panel groups along the detector normal.")
+    print("N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations.")
+    print()
+    print()
 
 
     if len(all_weights) > 1:
@@ -726,25 +727,25 @@ class Script(object):
       detector_table_data.append(r1)
       detector_table_data.append(r2)
 
-    print "Detector statistics, I.E. measurements of parameters relative to the detector plane:"
-    print table_utils.format(detector_table_data,has_header=3,justify='center',delim=" ")
+    print("Detector statistics, I.E. measurements of parameters relative to the detector plane:")
+    print(table_utils.format(detector_table_data,has_header=3,justify='center',delim=" "))
 
-    print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments."
-    print "Dist: distance from center of panel group to the beam center"
-    print "Dist Sigma: weighted standard deviation of the measurements used to compute Dist"
-    print "Normal Angle: angle between the normal vector of the detector at its root hierarchy level and the normal of the panel group"
-    print "RNormal Angle: radial component of Normal Angle"
-    print "TNormal Angle: transverse component of Normal Angle"
-    print "RotZ: deviation from 90 degrees of the rotation of each panel group around the detector normal"
-    print "F Offset: offset of panel group along the detector's fast axis"
-    print "S Offset: offset of panel group along the detector's slow axis"
-    print "Z Offset: offset of panel group along the detector normal"
-    print "Offset: offset of panel group in F,S,Z space. Sigma is F, S, Z offset sigmas summed in quadrature."
-    print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
-    print "All: weighted mean of the values shown"
-    print
-    print "Sigmas in this table are computed using the standard deviation of 2 measurements (I.E. a panel's Z Offset is measured twice, once in each input dataset). This is related by a factor of sqrt(2)/2 to the mean of the Delta Z parameter in the congruence statistics table above, which is the difference between Z parameters."
-    print
+    print("PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments.")
+    print("Dist: distance from center of panel group to the beam center")
+    print("Dist Sigma: weighted standard deviation of the measurements used to compute Dist")
+    print("Normal Angle: angle between the normal vector of the detector at its root hierarchy level and the normal of the panel group")
+    print("RNormal Angle: radial component of Normal Angle")
+    print("TNormal Angle: transverse component of Normal Angle")
+    print("RotZ: deviation from 90 degrees of the rotation of each panel group around the detector normal")
+    print("F Offset: offset of panel group along the detector's fast axis")
+    print("S Offset: offset of panel group along the detector's slow axis")
+    print("Z Offset: offset of panel group along the detector normal")
+    print("Offset: offset of panel group in F,S,Z space. Sigma is F, S, Z offset sigmas summed in quadrature.")
+    print("N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations.")
+    print("All: weighted mean of the values shown")
+    print()
+    print("Sigmas in this table are computed using the standard deviation of 2 measurements (I.E. a panel's Z Offset is measured twice, once in each input dataset). This is related by a factor of sqrt(2)/2 to the mean of the Delta Z parameter in the congruence statistics table above, which is the difference between Z parameters.")
+    print()
 
     row = ["Overall"]
     for refls in reflections:
@@ -754,28 +755,28 @@ class Script(object):
       row.append("%8d"%len(refls))
     rmsds_table_data.append(row)
 
-    print "RMSDs by detector number"
-    print table_utils.format(rmsds_table_data,has_header=3,justify='center',delim=" ")
-    print "PanelG Id: panel group id or panel id, depending on hierarchy_level"
-    print "RMSD: root mean squared deviation between observed and predicted spot locations"
-    print "rRMSD: RMSD of radial components of the observed-predicted vectors"
-    print "tRMSD: RMSD of transverse components of the observed-predicted vectors"
-    print "N refls: number of reflections"
+    print("RMSDs by detector number")
+    print(table_utils.format(rmsds_table_data,has_header=3,justify='center',delim=" "))
+    print("PanelG Id: panel group id or panel id, depending on hierarchy_level")
+    print("RMSD: root mean squared deviation between observed and predicted spot locations")
+    print("rRMSD: RMSD of radial components of the observed-predicted vectors")
+    print("tRMSD: RMSD of transverse components of the observed-predicted vectors")
+    print("N refls: number of reflections")
 
     # Show stats for detector hierarchy root
     def _print_vector(v):
       for i in v:
-        print "%10.5f"%i,
-      print
+        print("%10.5f"%i, end=' ')
+      print()
     for d_id, d in enumerate(detectors):
       ori = d.hierarchy().get_origin()
       norm = d.hierarchy().get_normal()
       fast = d.hierarchy().get_fast_axis()
       slow = d.hierarchy().get_slow_axis()
-      print "Detector", d_id, "origin:   ",; _print_vector(ori)
-      print "Detector", d_id, "normal:   ",; _print_vector(norm)
-      print "Detector", d_id, "fast axis:",; _print_vector(fast)
-      print "Detector", d_id, "slow axis:",; _print_vector(slow)
+      print("Detector", d_id, "origin:   ", end=' '); _print_vector(ori)
+      print("Detector", d_id, "normal:   ", end=' '); _print_vector(norm)
+      print("Detector", d_id, "fast axis:", end=' '); _print_vector(fast)
+      print("Detector", d_id, "slow axis:", end=' '); _print_vector(slow)
 
     # Unit cell statstics
     lengths = flex.vec3_double()
@@ -787,11 +788,11 @@ class Script(object):
         angles.append(crystal.get_unit_cell().parameters()[3:6])
         weights.append(len(refls.select(refls['id'] == crystal_id)))
 
-    print "Unit cell stats (angstroms and degrees), weighted means and standard deviations"
+    print("Unit cell stats (angstroms and degrees), weighted means and standard deviations")
     for subset, tags in zip([lengths, angles], [["Cell a", "Cell b", "Cell c"],["Cell alpha", "Cell beta", "Cell gamma"]]):
       for data, tag in zip(subset.parts(), tags):
         stats = flex.mean_and_variance(data, weights)
-        print "%s %5.1f +/- %6.3f"%(tag, stats.mean(), stats.gsl_stats_wsd())
+        print("%s %5.1f +/- %6.3f"%(tag, stats.mean(), stats.gsl_stats_wsd()))
 
     if params.tag is None:
       tag = ""

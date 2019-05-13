@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import cctbx.array_family.flex # import dependency
 import boost.python
 ext = boost.python.import_ext("mmtbx_ncs_ext")
@@ -35,7 +36,7 @@ class groups(object):
     unit_cell = crystal_symmetry.unit_cell()
     result = {}
     if not quiet:
-      print "Find groups of chains related by translational NCS"
+      print("Find groups of chains related by translational NCS")
     # double loop over chains to find matching pairs related by pure translation
     for c1 in h1.chains():
       c1.parent().remove_chain(c1)
@@ -141,7 +142,7 @@ class groups(object):
         fmt="group %d chains %s <> %s angle: %4.2f trans.vect.: (%s) fracscat: %5.3f"
         t = ",".join([("%6.3f"%t_).strip() for t_ in sup[1]]).strip()
         if not quiet:
-          print fmt%(i, pair[0].id, pair[1].id, sup[2], t, fs)
+          print(fmt%(i, pair[0].id, pair[1].id, sup[2], t, fs))
         if pair[0].id == previous_id:
           maxorder += 1
           orthoxyz = unit_cell.orthogonalize( sup[1] )
@@ -155,8 +156,8 @@ class groups(object):
           self.tncsresults[1] = previous_id
           self.tncsresults[2] = vectors
     if not quiet:
-      print "Largest TNCS order, peptide chain, fracvector, orthvector, angle, fracscat = ", \
-       str(self.tncsresults)
+      print("Largest TNCS order, peptide chain, fracvector, orthvector, angle, fracscat = ", \
+       str(self.tncsresults))
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
@@ -367,8 +368,8 @@ def finite_differences_grad_radius(ncs_pairs, f_obs, reflections_per_bin,
     #print "exact: %10.6f fd: %10.6f"%(g1,g2)
     relative_error.append( abs((g1-g2)/(g1+g2))*2.*100. )
   mmm = relative_error.min_max_mean().as_tuple()
-  print "min/max/mean of |(g_exact-g_fd)/(g_exact+g_fd)|*100.*2:",\
-    "%6.4f %6.4f %6.4f"%mmm
+  print("min/max/mean of |(g_exact-g_fd)/(g_exact+g_fd)|*100.*2:",\
+    "%6.4f %6.4f %6.4f"%mmm)
   # assert approx_equal(mmm, [0,0,0], tolerance) # reinstate after proper constraints
 
 def finite_differences_rho_mn(ncs_pairs, f_obs, reflections_per_bin,
@@ -410,8 +411,8 @@ def finite_differences_rho_mn(ncs_pairs, f_obs, reflections_per_bin,
     #print "exact: %10.6f fd: %10.6f"%(g1,g2)
     relative_error.append( abs((g1-g2)/(g1+g2))*2.*100. )
   mmm = relative_error.min_max_mean().as_tuple()
-  print "min/max/mean of |(g_exact-g_fd)/(g_exact+g_fd)|*100.*2:",\
-    "%6.4f %6.4f %6.4f"%mmm
+  print("min/max/mean of |(g_exact-g_fd)/(g_exact+g_fd)|*100.*2:",\
+    "%6.4f %6.4f %6.4f"%mmm)
   # assert approx_equal(mmm, [0,0,0], tolerance) # reinstate after proper constraints
 
 class compute_eps_factor(object):
@@ -471,22 +472,22 @@ class compute_eps_factor(object):
     if(self.epsfac is None): return None
     if(log is None): log = sys.stdout
     for i, ncs_pair in enumerate(self.ncs_pairs):
-      print >> log, "tNCS pair: %d"%i
-      print >> log, "  Group ID:", ncs_pair.id
+      print("tNCS pair: %d"%i, file=log)
+      print("  Group ID:", ncs_pair.id, file=log)
       angle = matrix.sqr(ncs_pair.r).rotation_angle()
       t = ",".join([("%6.3f"%t_).strip() for t_ in ncs_pair.t]).strip()
       t_cart = ",".join([("%6.3f"%t_).strip()
         for t_ in self.unit_cell.orthogonalize(ncs_pair.t)]).strip()
       r = ",".join([("%8.6f"%r_).strip() for r_ in ncs_pair.r]).strip()
-      print >> log, "  Translation (fractional): (%s)"%t
-      print >> log, "  Translation (Cartesian):  (%s)"%t_cart
-      print >> log, "  Rotation (deg): %-5.2f"%angle
-      print >> log, "  Rotation matrix: (%s)"%r
-      print >> log, "  Radius: %-6.3f"%ncs_pair.radius
-      print >> log, "  Radius (estimate): %-6.1f"%ncs_pair.radius_estimate
-      print >> log, "  fracscat:", ncs_pair.fracscat
-    print >> log, "tNCS eps factor: min,max,mean: %6.4f %6.4f %6.4f"%\
-      self.epsfac.min_max_mean().as_tuple()
+      print("  Translation (fractional): (%s)"%t, file=log)
+      print("  Translation (Cartesian):  (%s)"%t_cart, file=log)
+      print("  Rotation (deg): %-5.2f"%angle, file=log)
+      print("  Rotation matrix: (%s)"%r, file=log)
+      print("  Radius: %-6.3f"%ncs_pair.radius, file=log)
+      print("  Radius (estimate): %-6.1f"%ncs_pair.radius_estimate, file=log)
+      print("  fracscat:", ncs_pair.fracscat, file=log)
+    print("tNCS eps factor: min,max,mean: %6.4f %6.4f %6.4f"%\
+      self.epsfac.min_max_mean().as_tuple(), file=log)
 
 
 

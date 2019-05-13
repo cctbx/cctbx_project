@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 
 def anomalous_reflection_intensity_primitive_cell(space_group):
@@ -55,11 +56,11 @@ class subgroups(object):
 def show(parent_group_info):
   parent_group_info.show_summary()
   subgrs = subgroups(parent_group_info).groups_parent_setting()
-  print "number of subgroups:", len(subgrs)
+  print("number of subgroups:", len(subgrs))
   for subgroup in subgrs:
     subgroup_info = sgtbx.space_group_info(group=subgroup)
     subgroup_info.show_summary()
-  print
+  print()
 
 if (__name__ == "__main__"):
   raise RuntimeError("Please use the cctbx.subgroups command.")

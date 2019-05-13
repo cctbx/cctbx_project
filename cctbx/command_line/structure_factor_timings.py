@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx import eltbx
 from cctbx import miller
@@ -29,7 +30,7 @@ def timings(structure, d_min, fft_only=False,
     d_min=d_min,
     anomalous_flag=False)
   miller_set.show_summary()
-  print "d_min:", d_min
+  print("d_min:", d_min)
   if (fft_only):
     timer = user_plus_sys_time()
     f_calc_reference = xray.structure_factors.from_scatterers(
@@ -39,8 +40,8 @@ def timings(structure, d_min, fft_only=False,
         xray_structure=structure,
         miller_set=miller_set,
         algorithm="fft").f_calc().data()
-    print "fft exp function wing_cutoff=%3.1e: %.2f seconds" % (
-      wing_cutoff_reference, timer.elapsed())
+    print("fft exp function wing_cutoff=%3.1e: %.2f seconds" % (
+      wing_cutoff_reference, timer.elapsed()))
   else:
     timer = user_plus_sys_time()
     f_calc_reference = xray.structure_factors_simple(
@@ -49,9 +50,9 @@ def timings(structure, d_min, fft_only=False,
       miller_set.indices(),
       structure_5g.scatterers(),
       structure_5g.scattering_type_registry()).f_calc()
-    print "direct simple: %.2f seconds" % timer.elapsed()
+    print("direct simple: %.2f seconds" % timer.elapsed())
   f_calc_reference = flex.abs(f_calc_reference)
-  print "wing_cutoff for following fft calculations: %3.1e"%wing_cutoff_others
+  print("wing_cutoff for following fft calculations: %3.1e"%wing_cutoff_others)
   for structure in (structure_ng, structure_5g, structure_4g,
                     structure_2g, structure_1g):
     structure.scattering_type_registry().show_summary()
@@ -63,10 +64,10 @@ def timings(structure, d_min, fft_only=False,
           xray_structure=structure,
           algorithm="direct",
           cos_sin_table=cos_sin_flag).f_calc()
-        print "  %-24s %.2f seconds," % (calc_type, timer.elapsed()),
+        print("  %-24s %.2f seconds," % (calc_type, timer.elapsed()), end=' ')
         ls = xray.targets_least_squares_residual(
           f_calc_reference, f_calc.data(), False, 1)
-        print "r-factor: %.6f" % ls.target()
+        print("r-factor: %.6f" % ls.target())
     for calc_type,exp_table_one_over_step_size in (("fft exp function:",0),
                                                    ("fft exp table:",-100)):
       timer = user_plus_sys_time()
@@ -77,11 +78,11 @@ def timings(structure, d_min, fft_only=False,
           xray_structure=structure,
           miller_set=miller_set,
           algorithm="fft").f_calc()
-      print "  %-24s %.2f seconds," % (calc_type, timer.elapsed()),
+      print("  %-24s %.2f seconds," % (calc_type, timer.elapsed()), end=' ')
       ls = xray.targets_least_squares_residual(
         f_calc_reference, f_calc.data(), False, 1)
-      print "r-factor: %.6f" % ls.target()
-  print
+      print("r-factor: %.6f" % ls.target())
+  print()
 
 def read_structure(file_name):
   try: return easy_pickle.load(file_name)
@@ -106,19 +107,19 @@ def run(args):
     args = args[:]
     del args[i]
   if (len(args) == 0):
-    print >> sys.stderr, run.__doc__
+    print(run.__doc__, file=sys.stderr)
     return
   file_name = args[0]
   try:
     d_spacings = [float(arg) for arg in args[1:]]
   except Exception:
-    print >> sys.stderr, run.__doc__
+    print(run.__doc__, file=sys.stderr)
     return
   if (d_spacings == []):
     d_spacings = [4,3,2,1]
   structure = read_structure(file_name)
   structure.show_summary()
-  print
+  print()
   for d_min in d_spacings:
     timings(structure=structure, d_min=d_min, fft_only=fft_only)
 

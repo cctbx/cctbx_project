@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from libtbx.test_utils import show_diff
 from cStringIO import StringIO
@@ -113,7 +114,7 @@ $&selected elements: 3 of 5
   assert l._flags is None
   assert l._indices is not None
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

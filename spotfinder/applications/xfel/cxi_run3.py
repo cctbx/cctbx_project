@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -68,8 +69,8 @@ class quadrant:
     return f, g
 
   def show_summary(self):
-    print "The center is %7.2f %7.2f; "%(self.x[0],self.x[1]),
-    print "radii are",[round(xx,2) for xx in self.x[2:]]
+    print("The center is %7.2f %7.2f; "%(self.x[0],self.x[1]), end=' ')
+    print("radii are",[round(xx,2) for xx in self.x[2:]])
 
   def get_tile_translation(self):
     slow_translation = int(float(init_ctr_slow) - self.x[0])
@@ -86,7 +87,7 @@ def parse(string):
 class powder_arc:
   def __init__(self,points):
     self.points = flex.vec2_double(parse(points))
-    print list(self.points)
+    print(list(self.points))
 
 def lysozyme_calibration():
   quad_1_UL= quadrant([
@@ -271,8 +272,8 @@ def derive_tile_translations(quads):
     else: tile_flags.append(0)
   TT = "distl.tile_translations=%s"%(",".join([str(t) for t in tile_translations]))
   TF = "distl.tile_flags=%s"%(",".join([str(t) for t in tile_flags]))
-  print TT
-  print TF
+  print(TT)
+  print(TF)
   return [TT,TF]
 
 class run3_cxi_limits:
@@ -362,4 +363,4 @@ def get_initial_cxi_scope():
 
 if __name__=="__main__":
   lysozyme_calibration()
-  print "OK"
+  print("OK")

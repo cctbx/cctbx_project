@@ -2,6 +2,7 @@
 # TODO tests
 
 from __future__ import division
+from __future__ import print_function
 from iotbx.reflection_file_utils import reflection_file_server
 import iotbx.phil
 from libtbx.utils import Sorry
@@ -52,7 +53,7 @@ def run(args):
   dano = abs(data.anomalous_differences())
   dano.set_observation_type_xray_amplitude()
   dano.as_mtz_dataset(column_root_label="F").mtz_object().write(params.mtz_out)
-  print "Wrote DANO to %s" % params.mtz_out
+  print("Wrote DANO to %s" % params.mtz_out)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

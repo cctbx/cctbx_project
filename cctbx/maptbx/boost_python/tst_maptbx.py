@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import maptbx
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -517,7 +518,7 @@ def exercise_real_space_gradients_simple(timing):
   tm = time.time() - t0
   msg = "real_space_gradients_simple: %.2f s / %d sites" % (tm, n)
   if (tm >= 0.01): msg += ", %.0f sites / s" % (n / tm)
-  if (timing): print msg
+  if (timing): print(msg)
 
 test_map  = flex.double([
   -0.069785, -0.109740, -0.172220, -0.209010, -0.255220, -0.285670,
@@ -1072,8 +1073,8 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
     for i, t_ in enumerate(points):
       a = to_int(t_)
       As.append(a)
-      if(show): print "%2d: %8.4f %3d"%(i, t_, a)
-    if(show): print list(As)
+      if(show): print("%2d: %8.4f %3d"%(i, t_, a))
+    if(show): print(list(As))
     #
     R  = flex.double([0,]*256)
     Rx = flex.int(xrange(256))
@@ -1089,7 +1090,7 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
     #
     if(show):
       for i, rx in enumerate(R):
-        print "%4d %10.7f"%(i, rx)
+        print("%4d %10.7f"%(i, rx))
     #
     return R
   ### Python prototype END
@@ -1326,7 +1327,7 @@ def run(args):
   exercise_region_density_correlation()
   exercise_hoppe_gassman_modification__and__convert_to_non_negative()
   exercise_sample_all_mask_regions()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

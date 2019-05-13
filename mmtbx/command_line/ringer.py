@@ -12,6 +12,7 @@ Reference:
 """
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.ringer import * # this is deliberate!
 import libtbx.phil
 from libtbx import easy_pickle
@@ -134,7 +135,7 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
         raise Sorry("Multiple appropriate map coefficients found in file. "+
           "Choices:\n  %s" % "\n  ".join(best_labels))
       map_coeffs = best_guess
-      print >> out, "  Guessing %s for input map coefficients" % best_labels[0]
+      print("  Guessing %s for input map coefficients" % best_labels[0], file=out)
   # get map_inp object and do sanity checks if map is provided
   else :
     ccp4_map_in = file_reader.any_file(params.map_file, force_type="ccp4_map")
@@ -164,22 +165,22 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
     log=out).results
   t2 = time.time()
   if (verbose):
-    print >> out, "Time excluding I/O: %8.1fs" % (t2 - t1)
-    print >> out, "Overall runtime:    %8.1fs" % (t2 - t0)
+    print("Time excluding I/O: %8.1fs" % (t2 - t1), file=out)
+    print("Overall runtime:    %8.1fs" % (t2 - t0), file=out)
   if (params.output_base is None):
     pdb_base = os.path.basename(params.model)
     params.output_base = os.path.splitext(pdb_base)[0] + "_ringer"
   easy_pickle.dump("%s.pkl" % params.output_base, results)
-  print >> out, "Wrote %s.pkl" % params.output_base
+  print("Wrote %s.pkl" % params.output_base, file=out)
   csv = "\n".join([ r.format_csv() for r in results ])
   open("%s.csv" % params.output_base, "w").write(csv)
-  print >> out, "Wrote %s.csv" % params.output_base
-  print >> out, "\nReference:"
-  print >> out, """\
+  print("Wrote %s.csv" % params.output_base, file=out)
+  print("\nReference:", file=out)
+  print("""\
   Lang PT, Ng HL, Fraser JS, Corn JE, Echols N, Sales M, Holton JM, Alber T.
   Automated electron-density sampling reveals widespread conformational
   polymorphism in proteins. Protein Sci. 2010 Jul;19(7):1420-31. PubMed PMID:
-  20499387"""
+  20499387""", file=out)
   if (params.gui):
     run_app(results)
   else :

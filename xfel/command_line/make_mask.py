@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
@@ -252,8 +253,8 @@ def run(argv=None):
   masked_out = len(avg_d.as_1d().select((avg_d == command_line.options.mask_pix_val).as_1d()))
   assert masked_out >= min_count
 
-  print "Masked out %d pixels out of %d (%.2f%%)"% \
-    (masked_out-min_count,len(avg_d)-min_count,(masked_out-min_count)*100/(len(avg_d)-min_count))
+  print("Masked out %d pixels out of %d (%.2f%%)"% \
+    (masked_out-min_count,len(avg_d)-min_count,(masked_out-min_count)*100/(len(avg_d)-min_count)))
 
 if (__name__ == "__main__"):
   sys.exit(run())

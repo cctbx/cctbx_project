@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import xray
@@ -83,7 +84,7 @@ outlier_utils{
 """)
 
 def print_help(command_name):
-  print """
+  print("""
 usage: %(command_name)s <options>
 
 Options are defined by the following phil scope:
@@ -162,7 +163,7 @@ A short description of the 3 outlier protocols are described below
    The outlier threshold of relates to the p-value of the
    extreme value distribution of the chi-square distribution.
 
-""" % vars()
+""" % vars())
 
 def run(args, command_name="phenix.remove_outliers"):
   if (len(args)==0 or "--help" in args or "--h" in args or "-h" in args):
@@ -205,10 +206,10 @@ def run(args, command_name="phenix.remove_outliers"):
         except Exception : pass
 
       if not arg_is_processed:
-        print >> log, "##----------------------------------------------##"
-        print >> log, "## Unknown file or keyword:", arg
-        print >> log, "##----------------------------------------------##"
-        print >> log
+        print("##----------------------------------------------##", file=log)
+        print("## Unknown file or keyword:", arg, file=log)
+        print("##----------------------------------------------##", file=log)
+        print(file=log)
         raise Sorry("Unknown file or keyword: %s" % arg)
 
     effective_params = master_params.fetch(sources=phil_objects)
@@ -258,7 +259,7 @@ def run(args, command_name="phenix.remove_outliers"):
     if params.outlier_utils.input.xray_data.file_name is None:
       raise Sorry("Xray data not specified")
     if params.outlier_utils.input.model.file_name is None:
-      print "PDB file not specified. Basic wilson outlier rejections only."
+      print("PDB file not specified. Basic wilson outlier rejections only.")
 
 
 
@@ -347,17 +348,17 @@ def run(args, command_name="phenix.remove_outliers"):
       free_flags = free_flags.common_set( miller_array )
 
 
-    print >> log
-    print >> log, "Summary info of observed data"
-    print >> log, "============================="
+    print(file=log)
+    print("Summary info of observed data", file=log)
+    print("=============================", file=log)
     miller_array.show_summary(f=log)
     if merged_anomalous:
-      print >> log, "For outlier detection purposes, the Bijvoet pairs have been merged."
-    print >> log
+      print("For outlier detection purposes, the Bijvoet pairs have been merged.", file=log)
+    print(file=log)
 
-    print >> log, "Constructing an outlier manager"
-    print >> log, "==============================="
-    print >> log
+    print("Constructing an outlier manager", file=log)
+    print("===============================", file=log)
+    print(file=log)
     outlier_manager = outlier_rejection.outlier_manager(
       miller_array,
       free_flags,
@@ -392,10 +393,10 @@ def run(args, command_name="phenix.remove_outliers"):
     if params.outlier_utils.input.model.file_name is not None:
       model = pdb.input(file_name=params.outlier_utils.input.model.file_name).xray_structure_simple(
         crystal_symmetry=phil_xs)
-      print >> log, "Atomic model summary"
-      print >> log, "===================="
+      print("Atomic model summary", file=log)
+      print("====================", file=log)
       model.show_summary(f=log)
-      print >> log
+      print(file=log)
 
 
       # please make an f_model object for bulk solvent scaling etc etc
@@ -404,10 +405,10 @@ def run(args, command_name="phenix.remove_outliers"):
         f_obs = miller_array,
         r_free_flags = free_flags,
         xray_structure = model )
-      print >> log, "Bulk solvent scaling of the data"
-      print >> log, "================================"
-      print >> log, "Maximum likelihood bulk solvent scaling."
-      print >> log
+      print("Bulk solvent scaling of the data", file=log)
+      print("================================", file=log)
+      print("Maximum likelihood bulk solvent scaling.", file=log)
+      print(file=log)
       f_model_object.update_all_scales(log=log, remove_outliers=False)
       plot_out = StringIO()
       model_based_array = outlier_manager.model_based_outliers(
@@ -419,37 +420,37 @@ def run(args, command_name="phenix.remove_outliers"):
     if params.outlier_utils.output.hklout is not None:
       if params.outlier_utils.outlier_detection.protocol == "model":
         if params.outlier_utils.input.model.file_name == None:
-          print >> log, "Model based rejections requested. No model was supplied."
-          print >> log, "Switching to writing out rejections based on extreme value Wilson statistics."
+          print("Model based rejections requested. No model was supplied.", file=log)
+          print("Switching to writing out rejections based on extreme value Wilson statistics.", file=log)
           params.outlier_utils.outlier_detection.protocol="extreme"
 
       output_array = None
-      print >> log
+      print(file=log)
       if params.outlier_utils.outlier_detection.protocol == "basic":
-        print >> log, "Non-outliers found by the basic wilson statistics"
-        print >> log, "protocol will be written out."
+        print("Non-outliers found by the basic wilson statistics", file=log)
+        print("protocol will be written out.", file=log)
         output_array = basic_array
         new_set_of_free_flags = free_flags.common_set( basic_array )
 
       if params.outlier_utils.outlier_detection.protocol == "extreme":
-        print >> log, "Non-outliers found by the extreme value wilson statistics"
-        print >> log, "protocol will be written out."
+        print("Non-outliers found by the extreme value wilson statistics", file=log)
+        print("protocol will be written out.", file=log)
         output_array = extreme_array
         new_set_of_free_flags = free_flags.common_set( extreme_array )
 
       if params.outlier_utils.outlier_detection.protocol == "model":
-        print >> log, "Non-outliers found by the model based"
-        print >> log, "protocol will be written out to the file:"
-        print >> log, params.outlier_utils.output.hklout
-        print >> log
+        print("Non-outliers found by the model based", file=log)
+        print("protocol will be written out to the file:", file=log)
+        print(params.outlier_utils.output.hklout, file=log)
+        print(file=log)
         output_array = model_based_array
         new_set_of_free_flags = free_flags.common_set( model_based_array )
 
       if params.outlier_utils.outlier_detection.protocol == "beamstop":
-        print >> log, "Outliers found for the beamstop shadow"
-        print >> log, "problems detection protocol will be written to the file:"
-        print >> log, params.outlier_utils.output.hklout
-        print >> log
+        print("Outliers found for the beamstop shadow", file=log)
+        print("problems detection protocol will be written to the file:", file=log)
+        print(params.outlier_utils.output.hklout, file=log)
+        print(file=log)
         output_array = model_based_array
         new_set_of_free_flags = free_flags.common_set( model_based_array )
 
@@ -464,14 +465,14 @@ def run(args, command_name="phenix.remove_outliers"):
 
     if (params.outlier_utils.output.logfile is not None):
       final_log = StringIO()
-      print >> final_log, string_buffer.getvalue()
-      print >> final_log
+      print(string_buffer.getvalue(), file=final_log)
+      print(file=final_log)
       if plot_out is not None:
-        print >> final_log, plot_out.getvalue()
+        print(plot_out.getvalue(), file=final_log)
       outfile = open( params.outlier_utils.output.logfile, 'w' )
       outfile.write( final_log.getvalue() )
-      print >> log
-      print >> log, "A logfile named %s was created."%(
-        params.outlier_utils.output.logfile)
-      print >> log, "This logfile contains the screen output and"
-      print >> log, "(possibly) some ccp4 style loggraph plots"
+      print(file=log)
+      print("A logfile named %s was created."%(
+        params.outlier_utils.output.logfile), file=log)
+      print("This logfile contains the screen output and", file=log)
+      print("(possibly) some ccp4 style loggraph plots", file=log)

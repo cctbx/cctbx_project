@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.examples.exp_i_alpha_derivatives \
   import least_squares, exp_i_alpha_sum
 from libtbx.test_utils import approx_equal
@@ -38,18 +39,18 @@ def d2_target_d_alphas_finite(obs, alphas, eps=1.e-8):
 
 def compare_analytical_and_finite(obs, alphas, out):
   grads_fin = d_target_d_alphas_finite(obs=obs, alphas=alphas)
-  print >> out, "grads_fin:", grads_fin
+  print("grads_fin:", grads_fin, file=out)
   exp_sum = exp_i_alpha_sum(alphas=alphas)
   target = least_squares(obs=obs, calc=exp_sum.f())
   grads_ana = exp_sum.d_target_d_alphas(target=target)
-  print >> out, "grads_ana:", grads_ana
+  print("grads_ana:", grads_ana, file=out)
   assert approx_equal(grads_ana, grads_fin)
   curvs_fin = d2_target_d_alphas_finite(obs=obs, alphas=alphas)
-  print >> out, "curvs_fin:", curvs_fin
+  print("curvs_fin:", curvs_fin, file=out)
   curvs_ana = exp_sum.d2_target_d_alphas(target=target)
-  print >> out, "curvs_ana:", curvs_ana
+  print("curvs_ana:", curvs_ana, file=out)
   assert approx_equal(curvs_ana, curvs_fin)
-  print >> out
+  print(file=out)
 
 def exercise(args):
   verbose =  "--verbose" in args
@@ -95,7 +96,7 @@ def exercise(args):
       target.dbb()
       target.dab()
       calc /= 2
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

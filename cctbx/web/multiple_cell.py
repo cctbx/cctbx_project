@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 URL_cctbx_web = "cctbx_web.cgi"
 URL_target_module = "explore_symmetry"
 
@@ -156,7 +157,7 @@ def run():
       trigonal_list.append((HM, HallSymbols))
     else:
       hexagonal_list.append((HM, HallSymbols))
-  print r"""<html>
+  print(r"""<html>
 <head>
 <title>cctbx - Multiple cell C or F and triple cell H settings</title>
 </head>
@@ -241,63 +242,63 @@ direct support for multiple cell and triple cell settings
 is not included in the sgtbx. The tables below are
 provided for the rare cases where information about these
 symbols is required.
-"""
-  print "<hr>"
-  print "<h2>Tetragonal multiple cell C or F</h2>"
-  print "See section 4.3.4 in the International Tables for Crystallography,"
-  print "Volume A, 1983 or later."
-  print "<p>"
-  print "The Hall symbols in this table were generated with the program"
-  print '<a href="http://xtal.crystal.uwa.edu.au/">Xtal 3.7.0</a>.'
-  print "<p>"
-  print "<table border=2 cellpadding=2>"
-  print "<tr>"
-  print "<th>Hermann-Mauguin<br>symbol"
-  print "<th>Hall symbol<br>a-b,a+b,c"
-  print "<th>Hall symbol<br>a+b,-a+b,c"
+""")
+  print("<hr>")
+  print("<h2>Tetragonal multiple cell C or F</h2>")
+  print("See section 4.3.4 in the International Tables for Crystallography,")
+  print("Volume A, 1983 or later.")
+  print("<p>")
+  print("The Hall symbols in this table were generated with the program")
+  print('<a href="http://xtal.crystal.uwa.edu.au/">Xtal 3.7.0</a>.')
+  print("<p>")
+  print("<table border=2 cellpadding=2>")
+  print("<tr>")
+  print("<th>Hermann-Mauguin<br>symbol")
+  print("<th>Hall symbol<br>a-b,a+b,c")
+  print("<th>Hall symbol<br>a+b,-a+b,c")
   for HM, HallSymbols in tetragonal_list:
-    print "<tr>"
-    print "<td>" + escape(HM)
+    print("<tr>")
+    print("<td>" + escape(HM))
     if (HallSymbols[0] == HallSymbols[1]):
-      print "<td align=center colspan=2>" + LinkExploreSymmetry(HallSymbols[0])
+      print("<td align=center colspan=2>" + LinkExploreSymmetry(HallSymbols[0]))
     else:
       for Hall in HallSymbols:
-        print "<td align=center>" + LinkExploreSymmetry(Hall)
-  print "</table>"
+        print("<td align=center>" + LinkExploreSymmetry(Hall))
+  print("</table>")
   for system, section, list in (
     ("Trigonal", "4.3.5", trigonal_list),
     ("Hexagonal", "4.3.5", hexagonal_list)):
-    print "<hr>"
-    print "<h2>%s triple cell H</h2>" % system
-    print "See section %s" % section
-    print "in the International Tables for Crystallography,"
-    print "Volume A, 1983 or later."
-    print "<p>"
-    print "The Hall symbols in this table were generated manually."
-    print "<p>"
-    print "<table border=2 cellpadding=2>"
-    print "<tr>"
-    print "<th>Hermann-Mauguin<br>symbol"
-    print "<th>Hall symbol<br>a-b,a+2b,c"
-    print "<th>Hall symbol<br>2a+b,-a+b,c"
-    print "<th>Hall symbol<br>a+2b,-2a-b,c"
+    print("<hr>")
+    print("<h2>%s triple cell H</h2>" % system)
+    print("See section %s" % section)
+    print("in the International Tables for Crystallography,")
+    print("Volume A, 1983 or later.")
+    print("<p>")
+    print("The Hall symbols in this table were generated manually.")
+    print("<p>")
+    print("<table border=2 cellpadding=2>")
+    print("<tr>")
+    print("<th>Hermann-Mauguin<br>symbol")
+    print("<th>Hall symbol<br>a-b,a+2b,c")
+    print("<th>Hall symbol<br>2a+b,-a+b,c")
+    print("<th>Hall symbol<br>a+2b,-2a-b,c")
     for HM, HallSymbols in list:
-      print "<tr>"
-      print "<td>" + escape(HM)
+      print("<tr>")
+      print("<td>" + escape(HM))
       if (    HallSymbols[0] == HallSymbols[1]
           and HallSymbols[0] == HallSymbols[2]):
-        print "<td align=center colspan=3>" + LinkExploreSymmetry(
-          HallSymbols[0])
+        print("<td align=center colspan=3>" + LinkExploreSymmetry(
+          HallSymbols[0]))
       else:
         for Hall in HallSymbols:
-          print "<td align=center>" + LinkExploreSymmetry(Hall)
-    print "</table>"
-  print """
+          print("<td align=center>" + LinkExploreSymmetry(Hall))
+    print("</table>")
+  print("""
 <hr>
 R.W. Grosse-Kunstleve, October 2001
 <hr>
 </body>
-</html>"""
+</html>""")
 
 if (__name__ == "__main__"):
   run()

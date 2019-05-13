@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 from cctbx import uctbx
 import sys
@@ -10,8 +11,8 @@ def run(args):
       if (pdb_str.startswith("CRYST1")):
         cryst1_record = iotbx.pdb.records.cryst1(pdb_str=pdb_str)
         if (cryst1_record.ucparams is not None):
-          print iotbx.pdb.format_scale_records(
-            unit_cell=uctbx.unit_cell(cryst1_record.ucparams))
+          print(iotbx.pdb.format_scale_records(
+            unit_cell=uctbx.unit_cell(cryst1_record.ucparams)))
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -4,6 +4,7 @@ Example:
   - return from callback only after an event in the GUI (Tab-key)
 """
 from __future__ import division
+from __future__ import print_function
 
 from gltbx import wx_viewer
 from libtbx.thread_utils import thread_with_callback_and_wait
@@ -84,7 +85,7 @@ def motion(n_steps=20, callback=None):
   i_step = 0
   while (callback is not None or i_step != n_steps):
     if (callback is None):
-      print [point.elems for point in points]
+      print([point.elems for point in points])
     else:
       status = callback(points)
       if status == False :

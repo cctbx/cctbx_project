@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import itertools
 from smtbx.development import random_xray_structure
 import smtbx.utils
@@ -18,14 +19,14 @@ def run(sizes, d_mins):
       'BLAS 3': []
     },
   }
-  print "%16s%11s%7s%9s%8s" % ('Algorithms', 'resolution', '#atoms',
-                               'building', 'solving')
+  print("%16s%11s%7s%9s%8s" % ('Algorithms', 'resolution', '#atoms',
+                               'building', 'solving'))
   for observations, model in test_structures(sizes, d_mins):
     for blas in ('BLAS 2', 'BLAS 3'):
       for may_parallelise in (False, True):
         concurrency = ('Serial', 'Parallel')[may_parallelise]
         result = benchmark(observations, model, may_parallelise, blas)
-        print "%9s%7s%11.2f%7i%9.3f%8.3f" % ((concurrency, blas) + result)
+        print("%9s%7s%11.2f%7i%9.3f%8.3f" % ((concurrency, blas) + result))
         timing[concurrency][blas].append(result)
   with open('smtbx_refinement.m', 'w') as f:
     pprint.pprint(timing, stream=f)

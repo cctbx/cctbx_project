@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import math,os
 from libtbx.path import norm_join
 from libtbx.test_utils import approx_equal
@@ -62,7 +63,7 @@ def test_case_synthetic_data(verbose=True):
   return do_index(R,verbose)
 
 if __name__=='__main__':
-  print "Test autoindexing on synthetic reciprocal space positions"
+  print("Test autoindexing on synthetic reciprocal space positions")
   test_case_synthetic_data()
-  print "Test autoindexing on monoscan data"
+  print("Test autoindexing on monoscan data")
   test_case_obs_data()

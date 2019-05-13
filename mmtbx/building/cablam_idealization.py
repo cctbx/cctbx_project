@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from libtbx import group_args
 import libtbx.phil
@@ -64,13 +65,13 @@ class cablam_idealization(object):
     # with open("in.pdb",'w') as f:
     #   f.write(self.model.model_as_pdb())
 
-    print >> self.log, "CaBLAM idealization"
+    print("CaBLAM idealization", file=self.log)
 
     if self.model.get_hierarchy().models_size() > 1:
       raise Sorry("Multi-model files are not supported")
 
     self.model.search_for_ncs()
-    print >> self.log, self.model.get_ncs_obj().show_phil_format()
+    print(self.model.get_ncs_obj().show_phil_format(), file=self.log)
 
     self.outliers_by_chain = self.identify_outliers()
 
@@ -126,7 +127,7 @@ class cablam_idealization(object):
       curresseq_int = outlier[1].residue.resseq_as_int()
       prevresseq_int = outlier[1].prevres.residue.resseq_as_int()
     else:
-      print >> self.log, "Don't know how to deal with more than 2 outliers in a row yet. Skipping."
+      print("Don't know how to deal with more than 2 outliers in a row yet. Skipping.", file=self.log)
       return
     # h =  self.model.get_hierarchy()
     # s =  self.model.selection("chain %s and name CA and resid %s" % (chain, prevresid))
@@ -137,9 +138,9 @@ class cablam_idealization(object):
     a1 = self._get_ca_atom(chain, prevresid)
     a2 = self._get_ca_atom(chain, curresid)
 
-    print >> self.log, "*"*80
-    print >> self.log, "Atoms for rotation:", chain, prevresid, curresid
-    print >> self.log, "*"*80
+    print("*"*80, file=self.log)
+    print("Atoms for rotation:", chain, prevresid, curresid, file=self.log)
+    print("*"*80, file=self.log)
 
     around_str_sel = "chain %s and resid %d:%d" % (chain, prevresseq_int-2, curresseq_int+2)
     chain_around = self.model.select(self.model.selection(around_str_sel))
@@ -151,7 +152,7 @@ class cablam_idealization(object):
       O_atom, N_atom, C_atom = self._rotate_cablam(self.model, chain,
           prevresid, curresid, a1, a2, angle=angle)
       if [O_atom, N_atom, C_atom].count(None) > 0:
-        print >> self.log, "Residues are missing essential atom: O, N or C. Skipping."
+        print("Residues are missing essential atom: O, N or C. Skipping.", file=self.log)
         return
       self._rotate_cablam(chain_around, chain,
           prevresid, curresid, a1, a2, angle=angle)
@@ -159,18 +160,18 @@ class cablam_idealization(object):
         with open("out_%s_%d.pdb" % (curresid.strip(), i),'w') as f:
           f.write(self.model.model_as_pdb())
       scores.append(self._score_conformation(O_atom, C_atom, N_atom, chain_around, 30*(i+1)))
-    print >> self.log, "angle, rama outliers, cablam outliers, hbonds (type, length, angle)"
+    print("angle, rama outliers, cablam outliers, hbonds (type, length, angle)", file=self.log)
     for s in scores:
-      print >> self.log, s[0], s[1], s[2],
+      print(s[0], s[1], s[2], end=' ', file=self.log)
       if len(s[3]) > 0:
         for e in s[3]:
-          print >> self.log, "| %s, %.2f, %.2f|" % (e[0], e[1], e[2]),
-      print >> self.log
+          print("| %s, %.2f, %.2f|" % (e[0], e[1], e[2]), end=' ', file=self.log)
+      print(file=self.log)
     rot_angle = self._pick_rotation_angle(scores)
     # rotate
     if rot_angle != 360:
       self.n_rotated_residues += 1
-      print >> self.log, "ROTATING by", rot_angle
+      print("ROTATING by", rot_angle, file=self.log)
       self._rotate_cablam(self.model, chain,
           prevresid, curresid, a1, a2, angle=rot_angle)
 
@@ -315,7 +316,7 @@ class cablam_idealization(object):
       for i in g:
         # print i.resseq, i.resseq_as_int(), i.icode, i, i.altloc, dir(i)
         if i.altloc.strip() != '':
-          print >> self.log, "  ", i, "<--- SKIPPING, alternative conformations."
+          print("  ", i, "<--- SKIPPING, alternative conformations.", file=self.log)
           continue
         if len(comb) == 0:
           comb = [i]
@@ -326,7 +327,7 @@ class cablam_idealization(object):
           else:
             outliers_by_chain[k].append(comb)
             comb = [i]
-        print >> self.log, "  ", i
+        print("  ", i, file=self.log)
       outliers_by_chain[k].append(comb)
     # here we want to combine them if they are next to each other.
     # probably will go with list of tuples

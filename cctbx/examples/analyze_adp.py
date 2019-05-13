@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # Simple example for the use of the adptbx.
 
 from cctbx import crystal
@@ -18,24 +19,24 @@ def run():
 
   site_symmetry = special_position_settings.site_symmetry(site)
 
-  print "Input Ucif:", u_cif
+  print("Input Ucif:", u_cif)
   u_star = adptbx.u_cif_as_u_star(symmetry.unit_cell(), u_cif)
   if (not site_symmetry.is_compatible_u_star(u_star)):
-    print "Warning: ADP tensor is incompatible with site symmetry."
+    print("Warning: ADP tensor is incompatible with site symmetry.")
   u_star = site_symmetry.average_u_star(u_star)
   u_cif = adptbx.u_star_as_u_cif(symmetry.unit_cell(), u_star)
-  print "Averaged Ucif:", u_cif
+  print("Averaged Ucif:", u_cif)
 
   u_cart = adptbx.u_star_as_u_cart(symmetry.unit_cell(), u_star)
   eigenvalues = adptbx.eigenvalues(u_cart)
   if (not adptbx.is_positive_definite(eigenvalues)):
-    print "ADP tensor is not positive definite."
+    print("ADP tensor is not positive definite.")
 
-  print "Eigenvectors and values:"
+  print("Eigenvectors and values:")
   eigensystem = adptbx.eigensystem(u_cart)
   for i in xrange(3):
-    print "  v=(%.5f %.5f %.5f) " % eigensystem.vectors(i),
-    print "lambda=%.4f" % (eigensystem.values()[i],)
+    print("  v=(%.5f %.5f %.5f) " % eigensystem.vectors(i), end=' ')
+    print("lambda=%.4f" % (eigensystem.values()[i],))
 
 if (__name__ == "__main__"):
   run()

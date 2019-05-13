@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 from libtbx.test_utils import approx_equal
 import pair_interaction
@@ -84,7 +85,7 @@ def run():
   ph = pdb_inp.construct_hierarchy()
   interaction_list = pair_interaction.run(ph)
   interaction_list.sort()
-  print interaction_list
+  print(interaction_list)
   expected_list = [[1, 2], [1, 8], [2, 3], [2, 8], [2, 10], [3, 4], [3, 5], [3, 8],
                    [3, 13], [3, 14], [4, 5], [4, 6], [5, 6], [5, 7], [5, 13], [5, 14],
                    [6, 7], [6, 9], [7, 9], [7, 11], [7, 12], [8, 13], [11, 12], [13, 14]]

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 import boost.python
@@ -88,5 +89,5 @@ def run():
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  print "Time: %6.2f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.2f"%(time.time()-t0))
+  print("OK")

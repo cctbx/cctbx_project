@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.real_space_diff_map
 
 from scitbx.array_family import flex
@@ -38,14 +39,14 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
 
 def broadcast(m, log):
-  print >> log, "-"*79
-  print >> log, m
-  print >> log, "*"*len(m)
+  print("-"*79, file=log)
+  print(m, file=log)
+  print("*"*len(m), file=log)
 
 def run(args, log=sys.stdout):
-  print >> log, "-"*79
-  print >> log, legend
-  print >> log, "-"*79
+  print("-"*79, file=log)
+  print(legend, file=log)
+  print("-"*79, file=log)
   inputs = mmtbx.utils.process_command_line_args(args = args,
     master_params = master_params())
   params = inputs.params.extract()
@@ -72,7 +73,7 @@ def run(args, log=sys.stdout):
   d_min = params.resolution
   if(d_min is None):
     raise Sorry("Map resolution must be given.")
-  print >> log, "  d_min: %6.4f"%d_min
+  print("  d_min: %6.4f"%d_min, file=log)
   #
   result_obj = compdiff(
     map_data_obs = map_data,

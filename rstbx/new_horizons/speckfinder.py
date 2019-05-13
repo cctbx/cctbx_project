@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import math
 from scitbx.array_family import flex
@@ -23,15 +24,15 @@ class speckfinder:
 
       order = flex.sort_permutation(active_data)
       if self.verbose:
-        print "The mean is ",flex.mean(active_data),"on %d pixels"%len(active_data)
-        print "The 90-percentile pixel is ",active_data[order[int(0.9*len(active_data))]]
-        print "The 99-percentile pixel is ",active_data[order[int(0.99*len(active_data))]]
+        print("The mean is ",flex.mean(active_data),"on %d pixels"%len(active_data))
+        print("The 90-percentile pixel is ",active_data[order[int(0.9*len(active_data))]])
+        print("The 99-percentile pixel is ",active_data[order[int(0.99*len(active_data))]])
 
       percentile90 = active_data[order[int(0.9*len(active_data))]]
       maximas = flex.vec2_double()
       for idx in range(len(active_data)-1, int(0.9*len(active_data)), -1):
         if active_data[order[idx]] > 2.0 * percentile90:
-          if self.verbose: print "    ", idx, active_data[order[idx]]
+          if self.verbose: print("    ", idx, active_data[order[idx]])
           irow = order[idx] // (asic[3]-asic[1])
           icol = order[idx] % (asic[3]-asic[1])
           #self.green.append((asic[0]+irow, asic[1]+icol))
@@ -62,16 +63,16 @@ class speckfinder:
 
       order = flex.sort_permutation(active_data)
       if self.verbose:
-        print "The mean is ",flex.mean(active_data),"on %d pixels"%len(active_data)
-        print "The 90-percentile pixel is ",active_data[order[int(0.9*len(active_data))]]
-        print "The 99-percentile pixel is ",active_data[order[int(0.99*len(active_data))]]
+        print("The mean is ",flex.mean(active_data),"on %d pixels"%len(active_data))
+        print("The 90-percentile pixel is ",active_data[order[int(0.9*len(active_data))]])
+        print("The 99-percentile pixel is ",active_data[order[int(0.99*len(active_data))]])
 
       stats = flex.mean_and_variance(active_data)
-      print "stats are mean",stats.mean(),"sigma",stats.unweighted_sample_standard_deviation()
+      print("stats are mean",stats.mean(),"sigma",stats.unweighted_sample_standard_deviation())
       maximas = flex.vec2_double()
       for idx in range(len(active_data)-1, int(0.9*len(active_data)), -1):
         if active_data[order[idx]] > stats.mean() + 6.0*stats.unweighted_sample_standard_deviation():
-          if self.verbose: print "    ", idx, active_data[order[idx]]
+          if self.verbose: print("    ", idx, active_data[order[idx]])
           irow = order[idx] // (asic[3]-asic[1])
           icol = order[idx] % (asic[3]-asic[1])
           #self.green.append((asic[0]+irow, asic[1]+icol))
@@ -107,14 +108,14 @@ class speckfinder:
       stats = flex.mean_and_variance(active_data)
       if self.verbose:
         #print "Stats on %d pixels"%len(active_data)
-        print "stats are mean",stats.mean(),"sigma",stats.unweighted_sample_standard_deviation()
+        print("stats are mean",stats.mean(),"sigma",stats.unweighted_sample_standard_deviation())
         #print "The 90-percentile pixel is ",active_data[order[int(0.9*len(active_data))]]
         #print "The 99-percentile pixel is ",active_data[order[int(0.99*len(active_data))]]
 
       maximas = flex.vec2_double()
       for idx in range(len(active_data)-1, int(0.9*len(active_data)), -1):
         if active_data[order[idx]] > stats.mean() + 12.0*stats.unweighted_sample_standard_deviation():
-          if self.verbose: print "    ", idx, active_data[order[idx]]
+          if self.verbose: print("    ", idx, active_data[order[idx]])
           irow = order[idx] // (raw_asic[3]-raw_asic[1])
           icol = order[idx] % (raw_asic[3]-raw_asic[1])
           maximas.append((irow, icol))
@@ -135,7 +136,7 @@ class speckfinder:
     import time
     t0 = time.time()
     active = self.get_active_data_corrected_with_fft()
-    print "time %.2f" % (time.time()-t0)
+    print("time %.2f" % (time.time()-t0))
     return active
 
   def __init__(self,imgobj,phil,inputpd,verbose=False):
@@ -201,7 +202,7 @@ class clustering:
             pixel_members.append(working_targets[idx_target])
             connection_stack.append(idx_target)
         if connection_stack[-1] == idx_current: connection_stack.pop()
-      if self.verbose: print "new spot with %d pixels"%len(pixel_members),pixel_members
+      if self.verbose: print("new spot with %d pixels"%len(pixel_members),pixel_members)
       for idx in pixel_members:#[working_targets[i] for i in pixel_members]:
         working_targets.remove(idx)
       pixel_visited = flex.bool(len(working_targets),False)
@@ -210,12 +211,12 @@ class clustering:
   def as_spot_max_pixels(self,active_block,asic):
     maxima = flex.vec2_double()
     for spot in self.spots:
-      if self.verbose:print [(int(row)+asic[0],int(col)+asic[1]) for row,col in spot]
+      if self.verbose:print([(int(row)+asic[0],int(col)+asic[1]) for row,col in spot])
       pixel_values = [active_block[(int(row),int(col))] for row,col in spot]
-      if self.verbose:print "PIXEL_VALUES",pixel_values
+      if self.verbose:print("PIXEL_VALUES",pixel_values)
       addr = pixel_values.index(max(pixel_values))
       maxima.append( ( int(spot[addr][0]) + asic[0], int(spot[addr][1]) + asic[1] ))
-      if self.verbose:print
+      if self.verbose:print()
     return maxima
 
   def as_spot_center_of_mass(self,active_block,asic,percentile90):

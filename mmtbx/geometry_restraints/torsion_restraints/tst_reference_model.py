@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx import monomer_library
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     reference_model, reference_model_params
@@ -246,7 +247,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
       standard_weight += 1
   assert standard_weight == 1181, "Expecting 1181, got %d" % standard_weight
   if (not libtbx.env.has_module(name="ksdssp")):
-    print "Skipping KSDSSP tests: ksdssp module not available."
+    print("Skipping KSDSSP tests: ksdssp module not available.")
   else:
     work_pars = reference_model_params.extract()
     work_pars.reference_model.secondary_structure_only = True
@@ -1561,7 +1562,7 @@ def run(args):
   exercise_cutted_residue(mon_lib_srv, ener_lib)
   exercise_dna(mon_lib_srv, ener_lib)
   exercise_3chains_self(mon_lib_srv, ener_lib)
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

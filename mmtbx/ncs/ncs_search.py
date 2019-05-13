@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 from scitbx.math import superpose
 from libtbx.utils import Sorry
@@ -29,13 +30,13 @@ class Chains_info(object):
   def __str__(self):
     assert 0
     res = StringIO()
-    print >> res, "res_names:", self.res_names
-    print >> res, "self.resid", self.resid
-    print >> res, "self.atom_names", self.atom_names
-    print >> res, "self.atom_selection", self.atom_selection
-    print >> res, "self.chains_atom_number", self.chains_atom_number
-    print >> res, "self.no_altloc", self.no_altloc
-    print >> res, "self.center_of_coordinates", self.center_of_coordinates
+    print("res_names:", self.res_names, file=res)
+    print("self.resid", self.resid, file=res)
+    print("self.atom_names", self.atom_names, file=res)
+    print("self.atom_selection", self.atom_selection, file=res)
+    print("self.chains_atom_number", self.chains_atom_number, file=res)
+    print("self.no_altloc", self.no_altloc, file=res)
+    print("self.center_of_coordinates", self.center_of_coordinates, file=res)
     return res.getvalue()
 
 def get_chain_xyz(hierarchy, chain_id):
@@ -68,10 +69,10 @@ def shortcut_1(
       n_atom_chain_id_dict[v.chains_atom_number] = [k]
     else:
       n_atom_chain_id_dict[v.chains_atom_number].append(k)
-  print >> log, "n_atom_chain_id_dict", n_atom_chain_id_dict
+  print("n_atom_chain_id_dict", n_atom_chain_id_dict, file=log)
   for k,v in n_atom_chain_id_dict.iteritems():
     if len(v) == 1:
-      print >> log, "No shortcut, there is a chain with unique number of atoms:", v
+      print("No shortcut, there is a chain with unique number of atoms:", v, file=log)
       return empty_result
   # now we starting to check atom names, align chains, check rmsd and
   # populate result. If at some point we are not satisfied with any measure,
@@ -89,7 +90,7 @@ def shortcut_1(
     for copy_chain_id in chains_list[1:]:
       # these are copies
       if chains_info[master_chain_id].atom_names != chains_info[copy_chain_id].atom_names:
-        print >> log, "No shortcut, atom names are not identical"
+        print("No shortcut, atom names are not identical", file=log)
         return empty_result
       copy_iselection = flatten_list_of_list(
         chains_info[copy_chain_id].atom_selection)
@@ -100,13 +101,13 @@ def shortcut_1(
       r = lsq_fit_obj.r
       t = lsq_fit_obj.t
       rmsd = copy_xyz.rms_difference(lsq_fit_obj.other_sites_best_fit())
-      print >> log, "rmsd", master_chain_id, copy_chain_id, rmsd
+      print("rmsd", master_chain_id, copy_chain_id, rmsd, file=log)
       #
       # XXX should we compare rmsd to chain_max_rmsd to be more relaxed and
       #     process more structures quickly?
       #
       if rmsd is None or rmsd > 0.2:
-        print >> log, "No shortcut, low rmsd:", rmsd, "for chains", master_chain_id, copy_chain_id
+        print("No shortcut, low rmsd:", rmsd, "for chains", master_chain_id, copy_chain_id, file=log)
         return empty_result
       # seems like a good enough copy
       c = NCS_copy(
@@ -117,7 +118,7 @@ def shortcut_1(
           rmsd=rmsd)
       ncs_gr.append_copy(c)
     result.append(ncs_gr)
-  print >> log, "Shortcut complete."
+  print("Shortcut complete.", file=log)
   return result
 
 def find_ncs_in_hierarchy(ph,
@@ -737,7 +738,7 @@ def search_ncs_relations(ph=None,
           # print "  good"
   # loop over all chains
   if msg:
-    print >> log,msg
+    print(msg, file=log)
   if (chain_similarity_threshold == 1) and msg:
     # must be identical
     raise Sorry('NCS copies are not identical')

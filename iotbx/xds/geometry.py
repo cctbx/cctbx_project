@@ -11,6 +11,7 @@
 # Graeme Winter, Diamond Light Source, 2012/OCT/16
 
 from __future__ import division
+from __future__ import print_function
 
 class bucket:
   pass
@@ -320,7 +321,7 @@ def work():
       assert(math.fabs(cell[j] - cell_ref[j]) < 0.1)
     os.remove(filename)
 
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   work()

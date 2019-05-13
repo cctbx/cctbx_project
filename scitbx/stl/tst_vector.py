@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.stl import vector
 from scitbx.stl import set
 try:
@@ -68,7 +69,7 @@ def exercise_set_unsigned():
 def exercise():
   exercise_unsigned()
   exercise_set_unsigned()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 import iotbx.mrcfile
 from scitbx.array_family import flex
@@ -34,4 +35,4 @@ def exercise_00(prefix="tst_rank_scale_map"):
 
 if (__name__ == "__main__"):
   exercise_00()
-  print "OK"
+  print("OK")

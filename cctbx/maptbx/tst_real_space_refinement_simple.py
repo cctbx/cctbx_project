@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.maptbx import real_space_refinement_simple
 import cctbx.geometry_restraints.manager
 from cctbx import xray
@@ -52,12 +53,12 @@ def exercise_lbfgs(test_case, use_geo, out, d_min=2):
       real_space_gradients_delta=d_min/3)
   rmsd_start = sites_cart.rms_difference(structure.sites_cart())
   rmsd_final = sites_cart.rms_difference(minimized.sites_cart)
-  print >> out, "RMSD start, final:", rmsd_start, rmsd_final
+  print("RMSD start, final:", rmsd_start, rmsd_final, file=out)
   if (use_geo):
     assert rmsd_start >= 1-1e-6
     assert rmsd_final < 0.2
   def show_f_g(label, f, g):
-    print >> out, label, "f, |g|:", f, flex.mean_sq(g)**0.5
+    print(label, "f, |g|:", f, flex.mean_sq(g)**0.5, file=out)
   show_f_g(label="start", f=minimized.f_start, g=minimized.g_start)
   show_f_g(label="final", f=minimized.f_final, g=minimized.g_final)
   assert minimized.f_final <= minimized.f_start
@@ -75,7 +76,7 @@ def run(args):
   test_cases = test_cases_tardy_pdb.select_test_cases(
     tags_or_indices=remaining_args)
   for test_case in test_cases:
-    print >> out, "test case %d: %s" % (test_case.index, test_case.tag)
+    print("test case %d: %s" % (test_case.index, test_case.tag), file=out)
     minimized = []
     for use_geo in [False, True]:
       minimized.append(exercise_lbfgs(test_case, use_geo=use_geo, out=out))
@@ -83,7 +84,7 @@ def run(args):
     assert m0.real_space_target_weight == 1
     assert m1.real_space_target_weight == 1
     assert m1.f_final < m0.f_start * 0.98
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

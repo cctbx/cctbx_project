@@ -1,25 +1,26 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 
 def head(f=None):
   if (f is None): f = sys.stdout
-  print >> f, '''\
+  print('''\
 <?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <!DOCTYPE jvx-model SYSTEM "http://www.javaview.de/rsrc/jvx.dtd">
 <jvx-model>
-<geometries>'''
+<geometries>''', file=f)
 
 def tail(f=None):
   if (f is None): f = sys.stdout
-  print >> f, '''\
+  print('''\
 </geometries>
-</jvx-model>'''
+</jvx-model>''', file=f)
 
 def jvx_item_colors(f, indent, items):
-  print >> f, indent + '<colors>'
+  print(indent + '<colors>', file=f)
   for item in items:
-    print >> f, indent + '  <c>%d %d %d</c>' % item.color
-  print >> f, indent + '</colors>'
+    print(indent + '  <c>%d %d %d</c>' % item.color, file=f)
+  print(indent + '</colors>', file=f)
 
 class point(object):
 
@@ -64,14 +65,14 @@ class pointSet(object):
   def jvx(self, f=None):
     if (f is None): f = sys.stdout
     if (self.size() == 0): return
-    print >> f, '<pointSet dim="3" point="%s" color="show">' % self.show_points
-    print >> f, '  <points>'
+    print('<pointSet dim="3" point="%s" color="show">' % self.show_points, file=f)
+    print('  <points>', file=f)
     for point in self.points:
-      print >> f, '    <p>%g %g %g</p>' % point.vertex
+      print('    <p>%g %g %g</p>' % point.vertex, file=f)
     jvx_item_colors(f, "    ", self.points)
-    print >> f, '    <thickness>%g</thickness>' % self.thickness
-    print >> f, '  </points>'
-    print >> f, '</pointSet>'
+    print('    <thickness>%g</thickness>' % self.thickness, file=f)
+    print('  </points>', file=f)
+    print('</pointSet>', file=f)
 
 class line(object):
 
@@ -93,16 +94,16 @@ class lineSet(object):
 
   def jvx(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, '<lineSet line="show" color="show">'
-    print >> f, '  <lines>'
+    print('<lineSet line="show" color="show">', file=f)
+    print('  <lines>', file=f)
     for line in self.lines:
-      print >> f, '    <l>',
-      for v in line.vertices: print >> f, v,
-      print >> f, '</l>'
+      print('    <l>', end=' ', file=f)
+      for v in line.vertices: print(v, end=' ', file=f)
+      print('</l>', file=f)
     jvx_item_colors(f, "    ", self.lines)
-    print >> f, '    <thickness>%g</thickness>' % self.thickness
-    print >> f, '  </lines>'
-    print >> f, '</lineSet>'
+    print('    <thickness>%g</thickness>' % self.thickness, file=f)
+    print('  </lines>', file=f)
+    print('</lineSet>', file=f)
 
 class face(object):
 
@@ -124,17 +125,16 @@ class faceSet(object):
 
   def jvx(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, \
-      '<faceSet face="show" edge="hide" backface="%s" color="show">' % \
-        self.backface
-    print >> f, '  <faces>'
+    print('<faceSet face="show" edge="hide" backface="%s" color="show">' % \
+        self.backface, file=f)
+    print('  <faces>', file=f)
     for face in self.faces:
-      print >> f, '    <f>',
-      for v in face.vertices: print >> f, v,
-      print >> f, '</f>'
+      print('    <f>', end=' ', file=f)
+      for v in face.vertices: print(v, end=' ', file=f)
+      print('</f>', file=f)
     jvx_item_colors(f, "    ", self.faces)
-    print >> f, '  </faces>'
-    print >> f, '</faceSet>'
+    print('  </faces>', file=f)
+    print('</faceSet>', file=f)
 
 class geometry(object):
 
@@ -146,20 +146,20 @@ class geometry(object):
 
   def jvx(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, '<geometry name="%s">' % self.name
+    print('<geometry name="%s">' % self.name, file=f)
     if (self.points.size() > 0): self.points.jvx(f)
     if (self.lines.size() > 0): self.lines.jvx(f)
     if (self.faces.size() > 0): self.faces.jvx(f)
-    print >> f, '</geometry>'
+    print('</geometry>', file=f)
 
 def bracketed_link(text, html, f=None):
   if (f is None): f = sys.stdout
   if (html is not None):
-    print >> f, '[<a href="%s">' % html,
-  print >> f, '%s' % text
+    print('[<a href="%s">' % html, end=' ', file=f)
+  print('%s' % text, file=f)
   if (html is not None):
-    print >> f, '</a>]',
-  print >> f
+    print('</a>]', end=' ', file=f)
+  print(file=f)
 
 def html_loader(jvx_file_name,
                 title="JavaView",
@@ -175,16 +175,16 @@ def html_loader(jvx_file_name,
                 jars_url=None):
   if (f is None): f = sys.stdout
   from cctbx.web.asu_gallery import html_head_title
-  print >> f, html_head_title(title=title)
-  print >> f, '''\
+  print(html_head_title(title=title), file=f)
+  print('''\
 <body>
-'''
+''', file=f)
   if (header is not None):
-    print >> f, '<h2>%s</h2>' % header
+    print('<h2>%s</h2>' % header, file=f)
   if (sub_header is not None):
-    print >> f, '%s' % sub_header
-    print >> f, '<p>'
-  print >> f, '''\
+    print('%s' % sub_header, file=f)
+    print('<p>', file=f)
+  print('''\
 <APPLET alt="JavaView applet"
         archive="%(jars_url)s/javaview.jar,%(jars_url)s/jvx.jar"
         name="javaview"
@@ -194,7 +194,7 @@ def html_loader(jvx_file_name,
   <PARAM NAME="Model" VALUE="%(jvx_file_name)s">
 </APPLET>
 <p>
-''' % vars()
+''' % vars(), file=f)
   if (index_html is not None):
     bracketed_link("Index", index_html, f=f)
   if (prev_html is not None or next_html is not None):
@@ -203,16 +203,16 @@ def html_loader(jvx_file_name,
   if (alternative_html is not None):
     bracketed_link(alternative_label, alternative_html, f=f)
   if (legend is not None):
-    print >> f, '<p>'
+    print('<p>', file=f)
     for line in legend:
-      print >> f, line
-  print >> f, '<hr>'
-  print >> f, '''\
+      print(line, file=f)
+  print('<hr>', file=f)
+  print('''\
 This visualisation is using
 <a href="http://www.javaview.de">JavaView</a>.
 
 </body>
-</html>'''
+</html>''', file=f)
 
 def run():
   from cctbx import sgtbx

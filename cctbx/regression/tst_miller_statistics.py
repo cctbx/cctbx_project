@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from iotbx import file_reader
 from cctbx.array_family import flex
 from cctbx import crystal
@@ -14,7 +15,7 @@ def exercise():
     relative_path="phenix_examples/p9-sad/p9.sca",
     test=os.path.isfile)
   if (hkl_file is None):
-    print "phenix_examples/p9-sad/p9.sca not available, skipping test"
+    print("phenix_examples/p9-sad/p9.sca not available, skipping test")
     return
   # XXX very hard to avoid cross-imports here if we want to test on actual
   # real data...
@@ -113,4 +114,4 @@ def exercise_unmerged():
 if (__name__ == "__main__"):
   exercise()
   exercise_unmerged()
-  print "OK"
+  print("OK")

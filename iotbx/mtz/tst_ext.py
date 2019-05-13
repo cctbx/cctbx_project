@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 if (libtbx.env.has_module("ccp4io")):
   from iotbx import mtz
@@ -57,7 +58,7 @@ def exercise_basic():
     relative_path="phenix_regression/reflection_files/dano.mtz",
     test=os.path.isfile)
   if (file_name is None):
-    print "Skipping dano.mtz test: input file not available"
+    print("Skipping dano.mtz test: input file not available")
   else:
     mtz_object = mtz.object(file_name=file_name)
     assert mtz_object.title() == "......"
@@ -488,7 +489,7 @@ def walk_callback(arg, top, names):
   for name in names:
     if (not name.lower().endswith(".mtz")): continue
     file_name = os.path.normpath(os.path.join(top, name))
-    print >> out, "Processing:", file_name
+    print("Processing:", file_name, file=out)
     exercise_function(file_name=file_name, out=out)
     exercise_function.raise_if_all_tests_ran_at_least_once()
 
@@ -504,7 +505,7 @@ def exercise_walk(root_dir, full, verbose=False):
   except QuickStop:
     pass
   if (verbose):
-    print exercise_function.counters
+    print(exercise_function.counters)
 
 def exercise_modifiers(verbose=0):
   if (verbose):
@@ -1343,7 +1344,7 @@ min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.
 
 def exercise():
   if (mtz is None):
-    print "Skipping iotbx/mtz/tst_ext.py: ccp4io not available"
+    print("Skipping iotbx/mtz/tst_ext.py: ccp4io not available")
     return
   command_line = (option_parser()
     .option(None, "--verbose",
@@ -1377,7 +1378,7 @@ def exercise():
 
 def run():
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

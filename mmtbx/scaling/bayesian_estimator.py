@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #
 # bayesian_estimator.py
 # tct 053008, updated 2014-10-29
@@ -196,7 +197,7 @@ class bayesian_estimator:
        records=self.get_records_in_bin(bin,
            self.bin_start_list,self.bin_after_end_list)
        if self.verbose:
-         print>>self.out, "Working on bin ",bin," with ",len(records)," records"
+         print("Working on bin ",bin," with ",len(records)," records", file=self.out)
        # now get vector of means and covariance matrix for these records.
        means_vector,cov_matrix=self.get_mean_cov_from_records(records)
        self.bin_means_list.append(means_vector)
@@ -227,7 +228,7 @@ class bayesian_estimator:
       new_bin_means_list[bin]=\
         self.smooth_list(self.bin_means_list,bin,local_window)
       if self.verbose:
-        print >>self.out,"Bin ",bin," smoothed with window of ",local_window
+        print("Bin ",bin," smoothed with window of ",local_window, file=self.out)
     self.bin_cov_list=new_bin_cov_list
     self.bin_means_list=new_bin_means_list
 
@@ -252,8 +253,8 @@ class bayesian_estimator:
       new_entry_list=flex.double(new_entry_list)
 
     if self.verbose:
-      print >>self.out,'smoothing bin ',bin,' value=',bin_value_list[bin],\
-       'new_value=',new_entry_list
+      print('smoothing bin ',bin,' value=',bin_value_list[bin],\
+       'new_value=',new_entry_list, file=self.out)
     return new_entry_list
 
 
@@ -280,17 +281,17 @@ class bayesian_estimator:
       list_of_means.append(flex.mean(x))
       list_of_indices.append(i)
     if self.verbose:
-      print >>self.out,"Means: ",list_of_means
+      print("Means: ",list_of_means, file=self.out)
     m=[]
     for i,x,mean_x in zip(list_of_indices,list_of_vectors,list_of_means):
       for j,y,mean_y in zip(list_of_indices,list_of_vectors,list_of_means):
         covar=flex.mean((x-mean_x)*(y-mean_y))
         if self.verbose:
-          print >>self.out,"covar: ",i,j,covar
+          print("covar: ",i,j,covar, file=self.out)
         if self.skip_covariance and i!=j:
           covar=0.0
           if self.verbose:
-            print >>self.out, "NOTE: Covariance set to zero as skip_covariance=True"
+            print("NOTE: Covariance set to zero as skip_covariance=True", file=self.out)
         m.append(covar)
     mx=matrix.rec(m,2*[len(list_of_vectors)])
     return flex.double(list_of_means),mx
@@ -304,10 +305,10 @@ class bayesian_estimator:
     assert self.record_list is not None
     assert len(self.record_list)>0
     self.n=len(self.record_list[0])-1   # number of indep variables
-    print >>self.out,"Creating Bayesian estimator from ",self.n," measurement vectors"
-    print >>self.out,"and one vector of perfect values"
+    print("Creating Bayesian estimator from ",self.n," measurement vectors", file=self.out)
+    print("and one vector of perfect values", file=self.out)
     assert self.n>0 # need at least one meas and one obs
-    print >>self.out,"Total of ",len(self.record_list)," values of each"
+    print("Total of ",len(self.record_list)," values of each", file=self.out)
     if len(self.record_list)<self.minimum_records:
       return False
     for v in self.record_list:
@@ -317,7 +318,7 @@ class bayesian_estimator:
     if self.n_bin is None:
       self.n_bin=len(self.record_list)//50
       if self.n_bin < 2: self.n_bin=2
-    print >>self.out,"Number of bins: ",self.n_bin
+    print("Number of bins: ",self.n_bin, file=self.out)
     assert self.n_bin>0
     return True
 
@@ -325,11 +326,11 @@ class bayesian_estimator:
     if self.range_low is None or self.range_high is None:
       self.range_low=self.record_list[0][0]
       self.range_high=self.record_list[-1][0]
-    print >>self.out,"Range of y: ",self.range_low,self.range_high
+    print("Range of y: ",self.range_low,self.range_high, file=self.out)
     self.full_range=self.range_high-self.range_low
     assert self.full_range > 0.
     self.delta_range=self.full_range/self.n_bin
-    print >>self.out,"Delta range: ",self.delta_range
+    print("Delta range: ",self.delta_range, file=self.out)
     self.bins=xrange(self.n_bin)
 
     # 2014-11-13 also get range for x-values
@@ -345,10 +346,10 @@ class bayesian_estimator:
         if self.record_list_range_high[i] is None or \
              record[ii]>self.record_list_range_high[i]:
              self.record_list_range_high[i]=record[ii]
-    print >>self.out,"Range for predictor variables:"
+    print("Range for predictor variables:", file=self.out)
     for i in xrange(n):
-      print >>self.out,"%d:  %7.2f - %7.2f " %(
-          i,self.record_list_range_low[i],self.record_list_range_high[i])
+      print("%d:  %7.2f - %7.2f " %(
+          i,self.record_list_range_low[i],self.record_list_range_high[i]), file=self.out)
 
   def split_into_bins(self):
     self.bin_start_list=self.n_bin*[None]  # first record in this bin
@@ -375,7 +376,7 @@ class bayesian_estimator:
 
     if self.verbose:
       for bin,n in zip(self.bins,self.bin_orig_number_of_records):
-        print >>self.out,"Records in bin ",bin,": ",n
+        print("Records in bin ",bin,": ",n, file=self.out)
 
   def merge_bins_if_nec(self):
     # if a bin has fewer than min_in_bin...take neighbors
@@ -403,16 +404,16 @@ class bayesian_estimator:
          n=len(self.get_records_in_bin(bin,
            self.new_bin_start_list,self.new_bin_after_end_list))
        if self.verbose:
-         print >>self.out, "Reset bin ",bin,\
+         print("Reset bin ",bin,\
             " to contain records ",self.new_bin_start_list[bin],\
-            ' to ',self.new_bin_after_end_list[bin]
+            ' to ',self.new_bin_after_end_list[bin], file=self.out)
        if self.new_bin_start_list[bin] is None or  \
           self.new_bin_after_end_list[bin] is None:
           raise AssertionError,"Sorry, need more data or smaller value of "+\
              "min_in_bin (currently "+str(self.min_in_bin)+")"
        if self.verbose:
-         print >>self.out,"New number of records: ", \
-         -self.new_bin_start_list[bin] +self.new_bin_after_end_list[bin]
+         print("New number of records: ", \
+         -self.new_bin_start_list[bin] +self.new_bin_after_end_list[bin], file=self.out)
     self.bin_start_list=self.new_bin_start_list
     self.bin_after_end_list=self.new_bin_after_end_list
 
@@ -460,8 +461,8 @@ class bayesian_estimator:
         record.append(r+s1+ss)
       record_list.append(record)
       data_record_list.append(record[1:])
-    print >>self.out, "Set up ",len(record_list),\
-         " y values and measurements of a,b "
+    print("Set up ",len(record_list),\
+         " y values and measurements of a,b ", file=self.out)
     return perfect_data,data_record_list,record_list
 
   def get_average_data(self,records):
@@ -473,8 +474,8 @@ class bayesian_estimator:
 
   def exercise(self,iseed=39771):
 
-    print >>self.out,"\nTESTING runs of Bayesian estimator with and without missing "
-    print >>self.out,"data and with and without use of covariance.\n"
+    print("\nTESTING runs of Bayesian estimator with and without missing ", file=self.out)
+    print("data and with and without use of covariance.\n", file=self.out)
     # set up our arrays
     # our model is a and b are related to p, with correlated error s1 and
     #   independent errors s2 and s3
@@ -485,7 +486,7 @@ class bayesian_estimator:
     result_list=[]
     for missing,non_linear in zip([True,False],[False,True]):
      for skip_covar in [False,True]:
-      print >>self.out,"Missing data: ",missing,"   Non-linear: ",non_linear," Skip-covariance: ",skip_covar
+      print("Missing data: ",missing,"   Non-linear: ",non_linear," Skip-covariance: ",skip_covar, file=self.out)
       record_list=[]
       sig_list=[.50,0.2,0.8]
       perfect_data,records,record_list=\
@@ -509,16 +510,16 @@ class bayesian_estimator:
       average_data=self.get_average_data(more_records)
       c=flex.linear_correlation(more_perfect_data,average_data)
       cc_avg=c.coefficient()
-      print >>self.out," CC: ",cc," just averaging: ",cc_avg
-      print >>self.out
+      print(" CC: ",cc," just averaging: ",cc_avg, file=self.out)
+      print(file=self.out)
       result_list.append(cc_avg)
       if 0:
         f=open('test'+str(non_linear)+'.out','w')
         for perf,pred,sd,values in zip(
           more_perfect_data,predicted_data,predicted_sd_data,more_records):
-          print >>f, perf,pred,sd,
-        for value in values: print >>f,value,
-        print >>f
+          print(perf,pred,sd, end=' ', file=f)
+        for value in values: print(value, end=' ', file=f)
+        print(file=f)
         f.close()
     return result_list
 
@@ -528,7 +529,7 @@ class bayesian_estimator:
    # You can just cut and paste this into a new python script and run it
    # Then edit it for your purpose.
 
-   print >>self.out,"\nTESTING Bayesian estimator on sample randomized data\n"
+   print("\nTESTING Bayesian estimator on sample randomized data\n", file=self.out)
    import math,random
    from mmtbx.scaling.bayesian_estimator import bayesian_estimator
    from cctbx.array_family import flex
@@ -569,12 +570,12 @@ class bayesian_estimator:
      f=open("out.dat","w")
      for observed_record,predicted_value,y in zip (
          obs_record_list,predicted_data,target_y_list):
-        print >>f,observed_record,predicted_value,y
-     print >>out,"Data, predicted y, actual y written to out.dat"
+        print(observed_record,predicted_value,y, file=f)
+     print("Data, predicted y, actual y written to out.dat", file=out)
      f.close()
 
    cc=flex.linear_correlation(flex.double(target_y_list),flex.double(predicted_data)).coefficient()
-   print >>self.out,"CC: ",cc
+   print("CC: ",cc, file=self.out)
    return cc
 #
 
@@ -606,7 +607,7 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
       if line.lstrip().startswith("Total"): continue # clean up file format
       spl=line.split()
       if first and not spl[0].lstrip().startswith('0'):
-        print >>out,"Input data file columns:%s" %(line)
+        print("Input data file columns:%s" %(line), file=out)
         # figure out if some of the columns are "key" and "d_min"
         all_info_items=[]
         all_items=line.split()
@@ -623,8 +624,8 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
                 skip_columns.append(i)
              i+=1
            all_items=new_all_items
-           print >>out, "Skipped columns: %s" %(str(skip_columns))
-           print >>out,"Columns to read: %s" %(str(all_items))
+           print("Skipped columns: %s" %(str(skip_columns)), file=out)
+           print("Columns to read: %s" %(str(all_items)), file=out)
            if not started:
              raise Sorry("Sorry the header %s "% (start_column_header) +
                "was not found in the line %s" %(line))
@@ -724,35 +725,33 @@ class estimator_group:
 
   def show_summary(self):
     # show summary of this estimator
-    print >>self.out,"\nSummary of Bayesian estimator:"
-    print >>self.out,"\nVariable names:",
-    for x in self.variable_names: print >>self.out,x,
-    print >>self.out
-    print >>self.out,"Resolution cutoffs:",
+    print("\nSummary of Bayesian estimator:", file=self.out)
+    print("\nVariable names:", end=' ', file=self.out)
+    for x in self.variable_names: print(x, end=' ', file=self.out)
+    print(file=self.out)
+    print("Resolution cutoffs:", end=' ', file=self.out)
     for resolution_cutoff in self.resolution_cutoffs:
-       print >>self.out,"%5.2f" %(resolution_cutoff),
-    print >>self.out
+       print("%5.2f" %(resolution_cutoff), end=' ', file=self.out)
+    print(file=self.out)
 
     if self.combinations:
-      print >>self.verbose_out,"\nCombination groups:"
+      print("\nCombination groups:", file=self.verbose_out)
       for resolution_cutoff in self.resolution_cutoffs:
-        print >>self.verbose_out,\
-            "Resolution cutoff: %5.2f A" %(resolution_cutoff),
+        print("Resolution cutoff: %5.2f A" %(resolution_cutoff), end=' ', file=self.verbose_out)
         for x in self.combinations[resolution_cutoff]:
-          print >>self.verbose_out,"(",
+          print("(", end=' ', file=self.verbose_out)
           for id in x:
-            print >>self.verbose_out,"%s" %(self.variable_names[id]),
-          print >>self.verbose_out,")  ",
-        print >>self.verbose_out
+            print("%s" %(self.variable_names[id]), end=' ', file=self.verbose_out)
+          print(")  ", end=' ', file=self.verbose_out)
+        print(file=self.verbose_out)
 
-    print >>self.verbose_out,\
-         "Bins: %d   Smoothing bins: %d  Minimum in bins: %d " %(
-        self.n_bin,self.smooth_bins,self.min_in_bin)
+    print("Bins: %d   Smoothing bins: %d  Minimum in bins: %d " %(
+        self.n_bin,self.smooth_bins,self.min_in_bin), file=self.verbose_out)
 
-    print >>self.out,"Data records used in training estimator: %d\n" %(
-      len(self.training_records))
-    print >>self.out,"Data file source of training data: %s\n" %(
-      self.training_file_name)
+    print("Data records used in training estimator: %d\n" %(
+      len(self.training_records)), file=self.out)
+    print("Data file source of training data: %s\n" %(
+      self.training_file_name), file=self.out)
 
   def add_estimator(self,estimator,resolution_cutoff=None,combination=None):
     key=self.get_key(combination=combination,
@@ -787,7 +786,7 @@ class estimator_group:
     assert data_items
     self.variable_names=data_items
     self.info_names=info_items
-    print >>self.out,"Total of %d records in data file" %(len(record_list))
+    print("Total of %d records in data file" %(len(record_list)), file=self.out)
     if len(record_list)<1: return
     n=len(record_list[0])
 
@@ -797,26 +796,23 @@ class estimator_group:
     # 2014-12-18 if minimum_complete=True, require that there are
     #  self.minimum_records complete ones
     for resolution_cutoff in self.resolution_cutoffs:
-      print >>self.verbose_out,\
-         "\nResolution cutoff of %5.2f A" %(resolution_cutoff)
+      print("\nResolution cutoff of %5.2f A" %(resolution_cutoff), file=self.verbose_out)
       local_record_list,local_info_list=self.select_records(
         record_list=record_list,
         info_list=info_list,resolution_cutoff=resolution_cutoff,
         minimum_complete=minimum_complete)
       if len(local_record_list)<1:
-        print >>self.verbose_out,\
-           "No records selected for this resolution cutoff"
+        print("No records selected for this resolution cutoff", file=self.verbose_out)
         self.delete_resolution_cutoff(resolution_cutoff)
         continue
 
-      print >>self.verbose_out,\
-         "%d records selected for this resolution cutoff" %(
-       len(local_record_list))
+      print("%d records selected for this resolution cutoff" %(
+       len(local_record_list)), file=self.verbose_out)
       n_predictors=n-1
-      print >>self.verbose_out,"\nPredictor variables: %d" %(n_predictors)
+      print("\nPredictor variables: %d" %(n_predictors), file=self.verbose_out)
       for pv in data_items:
-        print >>self.verbose_out,"%s" %(pv),
-      print >>self.verbose_out
+        print("%s" %(pv), end=' ', file=self.verbose_out)
+      print(file=self.verbose_out)
       if len(data_items)!=n_predictors:
         raise Sorry("Number of predictor variables (%d) must be the same as " %(
             len(data_items)) +
@@ -843,8 +839,7 @@ class estimator_group:
       record_list=[]
       data_items=[]
       if text:
-        print >>self.out,\
-          "Setting up Bayesian estimator using supplied data"
+        print("Setting up Bayesian estimator using supplied data", file=self.out)
         lines=text.splitlines()
       else:
         if not file_name:
@@ -854,8 +849,7 @@ class estimator_group:
             test=os.path.isfile)
         if not file_name:
           raise Sorry("Need file with training data")
-        print >>self.out,\
-          "\nSetting up Bayesian estimator using data in %s\n" %(file_name)
+        print("\nSetting up Bayesian estimator using data in %s\n" %(file_name), file=self.out)
         lines=open(file_name).readlines()
         self.training_file_name=file_name
       return get_table_as_list(
@@ -981,10 +975,10 @@ class estimator_group:
     resolution=None):
     assert len(value_list)==len(self.variable_names)
     if data_items != self.variable_names:
-      print >>self.out,"WARNING: data items do not match working variables:"
-      print >>self.out,"Item: variable name"
+      print("WARNING: data items do not match working variables:", file=self.out)
+      print("Item: variable name", file=self.out)
       for data_item,variable in zip(data_items,self.variable_names):
-         print>>self.out,"%s: %s " %(data_item,variable)
+         print("%s: %s " %(data_item,variable), file=self.out)
       raise Sorry("Data items do not match working variables. Use verbose to see more info.")
     if len(self.resolution_cutoffs)>1 and resolution is None:
       raise Sorry("Must supply resolution if resolution_cutoffs is set")
@@ -1250,8 +1244,8 @@ target_values=[0.476,0.672,0.47,0.317,0.046,0.635,0.684,0.684,0.057]
 
 def exercise_group(out=sys.stdout):
 
-  print >>out,"\nTESTING exercise_group(): group of predictors with same "
-  print >>out,"data but some missing entries.\n"
+  print("\nTESTING exercise_group(): group of predictors with same ", file=out)
+  print("data but some missing entries.\n", file=out)
 
   import libtbx.load_env
   file_name=libtbx.env.find_in_repositories(
@@ -1263,7 +1257,7 @@ def exercise_group(out=sys.stdout):
   estimators.set_up_estimators(file_name=file_name)
   estimators.show_summary()
 
-  print >>out,"Running estimator now"
+  print("Running estimator now", file=out)
   prediction_values_as_list,info_values_as_list,\
      dummy_target_variable,dummy_data_items,dummy_info_items=\
     get_table_as_list(file_name=file_name, select_only_complete=False,out=out)
@@ -1283,10 +1277,10 @@ def exercise_group(out=sys.stdout):
       target_list.append(target_and_value[0])
       result_list.append(y)
   cc1=flex.linear_correlation(target_list,result_list).coefficient()
-  print >>out,"Prediction CC: %7.3f " %(cc1)
+  print("Prediction CC: %7.3f " %(cc1), file=out)
 
   # and using another dataset included here
-  print >>out
+  print(file=out)
   prediction_values_as_list,info_values_as_list,target_variable,\
      data_items,info_items=get_table_as_list(
      text=prediction_values,select_only_complete=False,out=out)
@@ -1307,14 +1301,14 @@ def exercise_group(out=sys.stdout):
     y,sd=estimators.apply_estimators(
      value_list=value_list,data_items=data_items)
     if y is not None:
-      print >>out,"Y SD Target diff : %7.3f  %7.3f   %7.3f  %7.3f" %(
-        y,sd,target,y-target)
+      print("Y SD Target diff : %7.3f  %7.3f   %7.3f  %7.3f" %(
+        y,sd,target,y-target), file=out)
       target_list.append(target)
       result_list.append(y)
     else:
-      print >>out,"No data:  %7.3f " %(target)
+      print("No data:  %7.3f " %(target), file=out)
   cc2=flex.linear_correlation(target_list,result_list).coefficient()
-  print>>out,"Correlation: %6.3f" %(cc2)
+  print("Correlation: %6.3f" %(cc2), file=out)
   return cc1,cc2
 
 
@@ -1376,7 +1370,7 @@ def run_jacknife(args=None,no_jump=True,
   if args is None: args=[]
   verbose=('verbose' in args)
   if 'testing' in args:
-    print >>out,"\nTESTING jacknife run of bayesian estimator.\n"
+    print("\nTESTING jacknife run of bayesian estimator.\n", file=out)
   skip_covariance=(not 'include_covariance' in args)
 
   if file_name is not None or record_list is not None:
@@ -1384,15 +1378,15 @@ def run_jacknife(args=None,no_jump=True,
     pass
   elif args and os.path.isfile(args[0]):
     file_name=args[0]
-    print >>out,"Setting up jacknife Bayesian predictor with data from %s" %(
-      file_name)
+    print("Setting up jacknife Bayesian predictor with data from %s" %(
+      file_name), file=out)
   else:
     import libtbx.load_env
     file_name=libtbx.env.find_in_repositories(
       relative_path=os.path.join("mmtbx","scaling","cc_ano_data.dat"),
       test=os.path.isfile)
-    print >>out,"Setting up jacknife Bayesian predictor with data from %s" %(
-      file_name)
+    print("Setting up jacknife Bayesian predictor with data from %s" %(
+      file_name), file=out)
   if not record_list and (not file_name or not os.path.isfile(file_name)):
     raise Sorry("Unable to find the file '%s' " %(str(file_name)))
 
@@ -1402,7 +1396,7 @@ def run_jacknife(args=None,no_jump=True,
          file_name=file_name,
          select_only_complete=False,
          out=out)
-    print >>out,"Size of data list: %d" %(len(record_list))
+    print("Size of data list: %d" %(len(record_list)), file=out)
   if info_list is None:
     info_list=len(record_list)*["None"]
 
@@ -1414,7 +1408,7 @@ def run_jacknife(args=None,no_jump=True,
     n_jump=1
   else:
     n_jump=20
-    print >>out,"Testing every %d'th entry in jacknife" %(n_jump)
+    print("Testing every %d'th entry in jacknife" %(n_jump), file=out)
   from cctbx.array_family import flex
   target_list=flex.double()
   result_list=flex.double()
@@ -1429,11 +1423,11 @@ def run_jacknife(args=None,no_jump=True,
     info=info_list[i]
     if verbose:
       for x in info:
-        print >>out,x,
-      print>>out,"%7.3f  %7.3f " %(target,value)
+        print(x, end=' ', file=out)
+      print("%7.3f  %7.3f " %(target,value), file=out)
   cc=flex.linear_correlation(
     target_list,result_list).coefficient()
-  print >>out,"CC: %7.3f " %(cc)
+  print("CC: %7.3f " %(cc), file=out)
   return cc,target_list,result_list
 
 if __name__=="__main__":

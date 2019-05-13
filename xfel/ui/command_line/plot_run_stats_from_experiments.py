@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.plot_run_stats_from_experiments
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -108,15 +109,15 @@ def run(args):
       if extension not in ['.pickle', '.mpack'] or len(split_fn) <= 0 or not split_fn[-1].startswith('strong'):
         continue
       base = os.path.join(root, "_".join(split_fn[:-1]))
-      print filename
+      print(filename)
       strong_name = base + "_strong%s"%extension
       if not os.path.exists(strong_name):
-        print "Couldn't log %s, strong%s not found"%(filename, exension)
+        print("Couldn't log %s, strong%s not found"%(filename, exension))
         continue
 
       # Read the spotfinding results
       strong = flex.reflection_table.from_file(strong_name)
-      print "N strong reflections: %d"%len(strong)
+      print("N strong reflections: %d"%len(strong))
 
       timestamps.append(i)
       n_strong.append(len(strong))
@@ -127,7 +128,7 @@ def run(args):
       experiments_name = base + "_integrated_experiments.json"
       indexed_name = base + "_integrated%s"%extension
       if not os.path.exists(experiments_name) or not os.path.exists(indexed_name):
-        print "Frame didn't index"
+        print("Frame didn't index")
         resolutions.append(0)
         n_lattices.append(0)
         continue

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.model_map
 
 import sys
@@ -29,13 +30,13 @@ def master_params():
   return iotbx.phil.parse(master_params_str)
 
 def run(args, log=sys.stdout):
-  print >> log, "-"*79
-  print >> log, legend
-  print >> log, "-"*79
+  print("-"*79, file=log)
+  print(legend, file=log)
+  print("-"*79, file=log)
   inputs = mmtbx.utils.process_command_line_args(args = args,
     master_params = master_params())
   inputs.params.show(prefix="  ", out=log)
-  print >> log
+  print(file=log)
   file_names = inputs.pdb_file_names
   if(len(file_names) != 1): raise Sorry("A PDB file is expected.")
   pdb_inp = iotbx.pdb.input(file_name = file_names[0])
@@ -46,9 +47,9 @@ def run(args, log=sys.stdout):
   sel_zero = bs<1.e-3
   n_zeros = sel_zero.count(True)
   if(n_zeros>0):
-    print "Atoms with B=0:"
+    print("Atoms with B=0:")
     for i_seq in sel_zero.iselection():
-      print awl[i_seq].format_atom_record()
+      print(awl[i_seq].format_atom_record())
     raise Sorry("Input model contains %d atoms with B=0"%n_zeros)
   #
   params = inputs.params.extract()

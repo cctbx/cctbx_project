@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 from cma_es import cma_es
@@ -67,12 +68,12 @@ def test_cma_es_rosebrock_n(M=10):
       y = vector[M:]
       v[ii] = funct(x,y)
     m.update_distribution(v)
-    print list(m.get_result())
-    print flex.min(v)
-    print
+    print(list(m.get_result()))
+    print(flex.min(v))
+    print()
 
   x_final = m.get_result()
-  print list(x_final)
+  print(list(x_final))
 
 def test_cma_es_lambda():
   N = 3
@@ -119,4 +120,4 @@ if (__name__ == '__main__'):
   test_cma_es()
   test_cma_es_lambda()
   test_cma_es_file()
-  print 'Ok'
+  print('Ok')

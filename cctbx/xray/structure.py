@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, absolute_import
+from __future__ import print_function
 from cctbx.xray import ext
 from cctbx.xray import structure_factors
 from cctbx import miller
@@ -1223,21 +1224,21 @@ class structure(crystal.special_position_settings):
     part1 = "|-"+text
     part2 = "-|"
     n = 79 - len(part1+part2)
-    print >> out, part1 + "-"*n + part2
+    print(part1 + "-"*n + part2, file=out)
     n = 79 - len(part1 + "|")
-    print >> out, "| iso = %-5d   aniso = %-5d   pos. def. = %-5d   "\
-          "non-pos. def. = %-5d     |"%(n_isotropic,n_anisotropic,npd,nnpd)
-    print >> out, "| Total B(isotropic equivalent): min = %-6.2f   "\
+    print("| iso = %-5d   aniso = %-5d   pos. def. = %-5d   "\
+          "non-pos. def. = %-5d     |"%(n_isotropic,n_anisotropic,npd,nnpd), file=out)
+    print("| Total B(isotropic equivalent): min = %-6.2f   "\
                   "max = %-6.2f   mean = %-6.2f"%(flex.min(beq),flex.max(beq),
-                  flex.mean(beq))+" "*2+"|"
-    print >> out, "| Isotropic B only:              min = %-6.2f   "\
+                  flex.mean(beq))+" "*2+"|", file=out)
+    print("| Isotropic B only:              min = %-6.2f   "\
                   "max = %-6.2f   mean = %-6.2f"%(flex.min(bisos),
-                  flex.max(bisos),flex.mean(bisos))+" "*2+"|"
-    print >> out, "| "+"- "*38+"|"
-    print >> out, "|                     Distribution of isotropic B-factors:"\
-                  "                    |"
-    print >> out, "|            Isotropic                |             Total "\
-                  "                    |"
+                  flex.max(bisos),flex.mean(bisos))+" "*2+"|", file=out)
+    print("| "+"- "*38+"|", file=out)
+    print("|                     Distribution of isotropic B-factors:"\
+                  "                    |", file=out)
+    print("|            Isotropic                |             Total "\
+                  "                    |", file=out)
     histogram_1 = flex.histogram(data = bisos, n_slots = 10)
     low_cutoff_1 = histogram_1.data_min()
     histogram_2 = flex.histogram(data = beq, n_slots = 10)
@@ -1246,11 +1247,11 @@ class structure(crystal.special_position_settings):
                                    enumerate(histogram_2.slots())):
       high_cutoff_1 = histogram_1.data_min() + histogram_1.slot_width()*(i_1+1)
       high_cutoff_2 = histogram_2.data_min() + histogram_2.slot_width()*(i_2+1)
-      print >> out, "|  %9.3f -%9.3f:%8d      |    %9.3f -%9.3f:%8d      |" % \
-             (low_cutoff_1,high_cutoff_1,n_1,low_cutoff_2,high_cutoff_2,n_2)
+      print("|  %9.3f -%9.3f:%8d      |    %9.3f -%9.3f:%8d      |" % \
+             (low_cutoff_1,high_cutoff_1,n_1,low_cutoff_2,high_cutoff_2,n_2), file=out)
       low_cutoff_1 = high_cutoff_1
       low_cutoff_2 = high_cutoff_2
-    print >> out, "|" +"-"*77+"|"
+    print("|" +"-"*77+"|", file=out)
 
   def site_symmetry_table(self):
     return self._site_symmetry_table
@@ -1593,17 +1594,17 @@ class structure(crystal.special_position_settings):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix + "Number of scatterers:", \
-      self.scatterers().size()
-    print >> f, prefix + "At special positions:", \
-      self.special_position_indices().size()
+    print(prefix + "Number of scatterers:", \
+      self.scatterers().size(), file=f)
+    print(prefix + "At special positions:", \
+      self.special_position_indices().size(), file=f)
     crystal.symmetry.show_summary(self, f=f, prefix=prefix)
     return self
 
   def show_scatterers(self, f=None, special_positions_only=False):
     if (f is None): f = sys.stdout
-    print >> f, ("Label, Scattering, Multiplicity, Coordinates, Occupancy, "
-                 "Uiso, Ustar as Uiso")
+    print(("Label, Scattering, Multiplicity, Coordinates, Occupancy, "
+                 "Uiso, Ustar as Uiso"), file=f)
     scatterers = self.scatterers()
     if (special_positions_only):
       scatterers = scatterers.select(self.special_position_indices())
@@ -1880,20 +1881,20 @@ class structure(crystal.special_position_settings):
       if (flags.grad_occupancy()): n_grad_occupancy += 1
       if (flags.grad_fp()):        n_grad_fp += 1
       if (flags.grad_fdp()):       n_grad_fdp += 1
-    print >> out, "n_use            = ", n_use
+    print("n_use            = ", n_use, file=out)
     if (n_use_u_none != 0):
-      print >> out, "n_use_u_none     = ", n_use_u_none
+      print("n_use_u_none     = ", n_use_u_none, file=out)
     if (n_use_u_both != 0):
-      print >> out, "n_use_u_both     = ", n_use_u_both
-    print >> out, "n_use_u_iso      = ", n_use_u_iso
-    print >> out, "n_use_u_aniso    = ", n_use_u_aniso
-    print >> out, "n_grad_site      = ", n_grad_site
-    print >> out, "n_grad_u_iso     = ", n_grad_u_iso
-    print >> out, "n_grad_u_aniso   = ", n_grad_u_aniso
-    print >> out, "n_grad_occupancy = ", n_grad_occupancy
-    print >> out, "n_grad_fp        = ", n_grad_fp
-    print >> out, "n_grad_fdp       = ", n_grad_fdp
-    print >> out, "total number of scatterers = ", self.scatterers().size()
+      print("n_use_u_both     = ", n_use_u_both, file=out)
+    print("n_use_u_iso      = ", n_use_u_iso, file=out)
+    print("n_use_u_aniso    = ", n_use_u_aniso, file=out)
+    print("n_grad_site      = ", n_grad_site, file=out)
+    print("n_grad_u_iso     = ", n_grad_u_iso, file=out)
+    print("n_grad_u_aniso   = ", n_grad_u_aniso, file=out)
+    print("n_grad_occupancy = ", n_grad_occupancy, file=out)
+    print("n_grad_fp        = ", n_grad_fp, file=out)
+    print("n_grad_fdp       = ", n_grad_fdp, file=out)
+    print("total number of scatterers = ", self.scatterers().size(), file=out)
 
   def scatterer_flags(self):
     return ext.shared_scatterer_flags(self.scatterers())
@@ -2169,7 +2170,7 @@ class structure(crystal.special_position_settings):
     import iotbx.cif
     cif = iotbx.cif.model.cif()
     cif[data_name] = self.as_cif_block()
-    print >> out, cif
+    print(cif, file=out)
 
   def as_cif_block(self, covariance_matrix=None,
     cell_covariance_matrix=None, format="mmCIF"):
@@ -2478,4 +2479,4 @@ class meaningful_site_cart_differences(object):
   def show(self):
     import itertools
     for lbl, diff in itertools.izip(self.labels, self.delta):
-      print "%6s: (%.6f, %.6f, %.6f)" % ((lbl,) + diff)
+      print("%6s: (%.6f, %.6f, %.6f)" % ((lbl,) + diff))

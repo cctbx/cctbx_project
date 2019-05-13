@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys, math
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
@@ -30,16 +31,16 @@ class manager(object):
       if x:
         atom_info = pdb_atoms[i_seq].fetch_labels()
         if self.ensemble_obj.er_data.ke_protein_running == None:
-          print >> self.ensemble_obj.log, ' {0:6} {1:6} {2:6} {3:6} {4:6d} {5:6.3f} {6:6.3f} '.format(
+          print(' {0:6} {1:6} {2:6} {3:6} {4:6d} {5:6.3f} {6:6.3f} '.format(
                    atom_info.name,
                    atom_info.resseq,
                    atom_info.resname,
                    atom_info.chain_id,
                    i_seq,
                    b_iso_atoms[i_seq],
-                   q_atoms[i_seq])
+                   q_atoms[i_seq]), file=self.ensemble_obj.log)
         else:
-          print >> self.ensemble_obj.log, ' {0:6} {1:6} {2:6} {3:6} {4:6d} {5:6.3f} {6:6.3f} {7:6.3f}'.format(
+          print(' {0:6} {1:6} {2:6} {3:6} {4:6d} {5:6.3f} {6:6.3f} {7:6.3f}'.format(
                    atom_info.name,
                    atom_info.resseq,
                    atom_info.resname,
@@ -47,7 +48,7 @@ class manager(object):
                    i_seq,
                    b_iso_atoms[i_seq],
                    q_atoms[i_seq],
-                   self.ensemble_obj.er_data.ke_protein_running[i_seq])
+                   self.ensemble_obj.er_data.ke_protein_running[i_seq]), file=self.ensemble_obj.log)
 
   #Print KE stats for simulation/model validation
   def kinetic_energy_stats(self):
@@ -57,15 +58,15 @@ class manager(object):
           line ="Non-solvent KE Statistics | MC : "+str(self.ensemble_obj.macro_cycle),
           out  = self.ensemble_obj.log)
         ke_basic_stats = scitbx.math.basic_statistics(self.ensemble_obj.er_data.ke_protein_running)
-        print >> self.ensemble_obj.log, '  {0:<11}  {1:>12} {2:>12} {3:>12} {4:>12} {5:>12} '.format(
-                                    '','min','max','mean', 'sdev', 'skew')
-        print >> self.ensemble_obj.log, '  KE MC {0:<5}: {1:12.3f} {2:12.3f} {3:12.3f} {4:12.3f} {5:12.3f}'.format(
+        print('  {0:<11}  {1:>12} {2:>12} {3:>12} {4:>12} {5:>12} '.format(
+                                    '','min','max','mean', 'sdev', 'skew'), file=self.ensemble_obj.log)
+        print('  KE MC {0:<5}: {1:12.3f} {2:12.3f} {3:12.3f} {4:12.3f} {5:12.3f}'.format(
                                     self.ensemble_obj.macro_cycle,
                                     ke_basic_stats.min,
                                     ke_basic_stats.max,
                                     ke_basic_stats.mean,
                                     ke_basic_stats.biased_standard_deviation,
-                                    ke_basic_stats.skew)
+                                    ke_basic_stats.skew), file=self.ensemble_obj.log)
         ke_atom_number_tuple_list = []
         ke_list_histo = []
         for n, ke in enumerate(self.ensemble_obj.er_data.ke_protein_running):
@@ -77,21 +78,19 @@ class manager(object):
         ke_list_histo = sorted(ke_list_histo)
         #Lowest KE Atoms
         pdb_atoms = self.ensemble_obj.pdb_hierarchy().atoms()
-        print >> self.ensemble_obj.log, "\nNon-solvent atoms lowest KE : "
-        print >> self.ensemble_obj.log, \
-              '  {0:3} : {1:>44} {2:>12} {3:>12}'.format(
+        print("\nNon-solvent atoms lowest KE : ", file=self.ensemble_obj.log)
+        print('  {0:3} : {1:>44} {2:>12} {3:>12}'.format(
                 'rank',
                 'KE',
                 'dmean/sdev',
-                '%cum freq')
+                '%cum freq'), file=self.ensemble_obj.log)
         low_five_percent = (len(ke_atom_number_tuple_list) * 0.05)
         cntr = 0
         lowest_range = min(25, int(0.5 * len(ke_atom_number_tuple_list) ) )
         while cntr < lowest_range:
           atom_info = pdb_atoms[sorted_by_ke_ke_atom_number_tuple_list[cntr][0]].fetch_labels()
           assert atom_info.i_seq == sorted_by_ke_ke_atom_number_tuple_list[cntr][0]
-          print >> self.ensemble_obj.log, \
-              ' {0:5} : {1:6} {2:6} {3:6} {4:6} {5:6} {6:9.3f} {7:12.3f} {8:12.1f}'.format(
+          print(' {0:5} : {1:6} {2:6} {3:6} {4:6} {5:6} {6:9.3f} {7:12.3f} {8:12.1f}'.format(
                 cntr+1,
                 sorted_by_ke_ke_atom_number_tuple_list[cntr][0],
                 atom_info.name,
@@ -101,22 +100,20 @@ class manager(object):
                 sorted_by_ke_ke_atom_number_tuple_list[cntr][1],
                 (sorted_by_ke_ke_atom_number_tuple_list[cntr][1]-ke_basic_stats.mean)\
                   / ke_basic_stats.biased_standard_deviation,
-                100 * (float(cntr)/float(len(ke_atom_number_tuple_list))) )
+                100 * (float(cntr)/float(len(ke_atom_number_tuple_list))) ), file=self.ensemble_obj.log)
           cntr+=1
         #Highest KE Atoms
-        print >> self.ensemble_obj.log, "\nNon-solvent atoms highest KE : "
-        print >> self.ensemble_obj.log, \
-              '  {0:3} : {1:>44} {2:>12} {3:>12}'.format(
+        print("\nNon-solvent atoms highest KE : ", file=self.ensemble_obj.log)
+        print('  {0:3} : {1:>44} {2:>12} {3:>12}'.format(
                 'rank',
                 'KE',
                 'dmean/sdev',
-                '%cum freq')
+                '%cum freq'), file=self.ensemble_obj.log)
         cntr = len(ke_atom_number_tuple_list) - min(25, int(0.5 * len(ke_atom_number_tuple_list) ) )
         while cntr < len(ke_atom_number_tuple_list):
           atom_info = pdb_atoms[sorted_by_ke_ke_atom_number_tuple_list[cntr][0]].fetch_labels()
           assert atom_info.i_seq == sorted_by_ke_ke_atom_number_tuple_list[cntr][0]
-          print >> self.ensemble_obj.log, \
-              ' {0:5} : {1:6} {2:6} {3:6} {4:6} {5:6} {6:9.3f} {7:12.3f} {8:12.1f}'.format(
+          print(' {0:5} : {1:6} {2:6} {3:6} {4:6} {5:6} {6:9.3f} {7:12.3f} {8:12.1f}'.format(
                 cntr+1,
                 sorted_by_ke_ke_atom_number_tuple_list[cntr][0],
                 atom_info.name,
@@ -126,7 +123,7 @@ class manager(object):
                 sorted_by_ke_ke_atom_number_tuple_list[cntr][1],
                 (sorted_by_ke_ke_atom_number_tuple_list[cntr][1]-ke_basic_stats.mean)\
                   / ke_basic_stats.biased_standard_deviation,
-                100 * (float(cntr)/float(len(ke_atom_number_tuple_list))) )
+                100 * (float(cntr)/float(len(ke_atom_number_tuple_list))) ), file=self.ensemble_obj.log)
           cntr+=1
         #XXX Add print stats by for <ke>/residue
 
@@ -141,7 +138,7 @@ class manager(object):
           name           = 'KE Histogram',
           bin_list       = bin_list,
           bin_range_list = bin_range_list)
-        print >> self.ensemble_obj.log, "|"+"-"*77+"|\n"
+        print("|"+"-"*77+"|\n", file=self.ensemble_obj.log)
 
   def bin_generator_equal_range(self, array, number_of_bins = 10):
     array_max   = max(array)
@@ -189,7 +186,7 @@ class manager(object):
                                 verbose = True,
                                 return_bin_ave = False):
     if verbose:
-      print >> self.ensemble_obj.log, "\nBivariate histogram "+name+" MC: "+str(self.ensemble_obj.macro_cycle)
+      print("\nBivariate histogram "+name+" MC: "+str(self.ensemble_obj.macro_cycle), file=self.ensemble_obj.log)
     assert len(value_array) == len(bin_array)
     binned_array = [[]*1 for i in xrange(len(bin_list))]
     assert len(bin_list) == len(binned_array)
@@ -205,37 +202,37 @@ class manager(object):
     if return_bin_ave:
       return_bin_array = flex.double()
     if verbose:
-      print >> self.ensemble_obj.log, "{0:>20} | {1:>6} {2:>10} {3:>10} {4:>10} {5:>10}"\
+      print("{0:>20} | {1:>6} {2:>10} {3:>10} {4:>10} {5:>10}"\
         .format('Bin Range',
                 'Freq',
                 'Mean',
                 'Min',
                 'Max',
-                'StdDev')
+                'StdDev'), file=self.ensemble_obj.log)
     for n,bin_array in enumerate(binned_array):
       if len(bin_array) > 0:
         bin_array = flex.double(bin_array)
         if return_bin_ave:
           return_bin_array.append( sum(bin_array)/len(bin_array) )
         if verbose:
-          print >> self.ensemble_obj.log, "{0:3d} {1:7.2f} -{2:7.2f} | {3:6d} {4:10.3f} {5:10.3f} {6:10.3f} {7:10.3f}".format(n+1,
+          print("{0:3d} {1:7.2f} -{2:7.2f} | {3:6d} {4:10.3f} {5:10.3f} {6:10.3f} {7:10.3f}".format(n+1,
                      bin_range_list[n][0],
                      bin_range_list[n][1],
                      len(bin_array),
                      sum(bin_array)/len(bin_array),
                      min(bin_array),
                      max(bin_array),
-                     scitbx.math.basic_statistics(bin_array).biased_standard_deviation)
+                     scitbx.math.basic_statistics(bin_array).biased_standard_deviation), file=self.ensemble_obj.log)
       else:
         if verbose:
-          print >> self.ensemble_obj.log, "{0:3d} {1:7.2f} -{2:7.2f} | {3:6d} {4:10.3f} {5:10.3f} {6:10.3f} {7:10.3f}".format(n+1,
+          print("{0:3d} {1:7.2f} -{2:7.2f} | {3:6d} {4:10.3f} {5:10.3f} {6:10.3f} {7:10.3f}".format(n+1,
                      bin_range_list[n][0],
                      bin_range_list[n][1],
                      len(bin_array),
                      0,
                      0,
                      0,
-                     0)
+                     0), file=self.ensemble_obj.log)
     if return_bin_ave:
       return return_bin_array
 
@@ -256,10 +253,10 @@ class manager(object):
 #      x.shift_us(b_shift = shift_b_iso)
 
     total_number_xrs = len(self.ensemble_obj.er_data.xray_structures)
-    print >> self.ensemble_obj.log, "\nReduce ensemble with equal distribution though trajectory :"
-    print >> self.ensemble_obj.log, "Rfree tolerance (%) : ", rfree_tolerance * 100
-    print >> self.ensemble_obj.log, '\n {0:>12} {1:>8} {2:>8} {3:>8}'\
-        .format('Num','Rwork','Rfree','k1')
+    print("\nReduce ensemble with equal distribution though trajectory :", file=self.ensemble_obj.log)
+    print("Rfree tolerance (%) : ", rfree_tolerance * 100, file=self.ensemble_obj.log)
+    print('\n {0:>12} {1:>8} {2:>8} {3:>8}'\
+        .format('Num','Rwork','Rfree','k1'), file=self.ensemble_obj.log)
     target_rfree = final_rfree
     final_div    = None
     for div_int in [1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,25,30,35,40,45,50,60,70,80,90,100,200,300,400,500,600,700,800,900,1000,2000,3000,4000,5000]:
@@ -299,12 +296,12 @@ class manager(object):
               params = self.ensemble_obj.bsp)
             if cntr < 4:
               break
-            print >> self.ensemble_obj.log, "Ens: {0:8d} {1:8.3f} {2:8.3f} {3:8.3f}"\
+            print("Ens: {0:8d} {1:8.3f} {2:8.3f} {3:8.3f}"\
               .format(cntr,
                       self.fmodel_ens.r_work(),
                       self.fmodel_ens.r_free(),
                       self.fmodel_ens.scale_k1()
-                      )
+                      ), file=self.ensemble_obj.log)
             if self.fmodel_ens.r_free() < (target_rfree + rfree_tolerance):
               final_div    = div_int
               final_f_calc = self.ensemble_obj.copy_ma.array(data = (fcalc_total / cntr))
@@ -313,7 +310,7 @@ class manager(object):
                 target_rfree = self.fmodel_ens.r_free()
 
     if final_div == None:
-      print >> self.ensemble_obj.log, "Warning pdb ensemble does not contain sufficent models and missrepresents simulation.  Simulation Rfree: {0:2.3f} %".format(100*(final_rfree))
+      print("Warning pdb ensemble does not contain sufficent models and missrepresents simulation.  Simulation Rfree: {0:2.3f} %".format(100*(final_rfree)), file=self.ensemble_obj.log)
     else:
       #Update fmodel_total
       self.ensemble_obj.fmodel_total.update(f_calc = final_f_calc,
@@ -334,11 +331,11 @@ class manager(object):
       self.ensemble_obj.er_data.xray_structures          = copy_ed_data_xray_structures
       self.ensemble_obj.er_data.pdb_hierarchys           = copy_pdb_hierarchys
       self.ensemble_obj.er_data.ke_pdb                   = copy_ed_data_ke_pdb
-      print >> self.ensemble_obj.log, "Final pdb ensemble contains {0:3d} models".format(len(self.ensemble_obj.er_data.xray_structures))
+      print("Final pdb ensemble contains {0:3d} models".format(len(self.ensemble_obj.er_data.xray_structures)), file=self.ensemble_obj.log)
       assert len(self.ensemble_obj.er_data.xray_structures) == len(self.ensemble_obj.er_data.pdb_hierarchys)
       assert len(self.ensemble_obj.er_data.xray_structures) == len(self.ensemble_obj.er_data.ke_pdb)
 
-      print >> self.ensemble_obj.log, "|"+"-"*77+"|\n"
+      print("|"+"-"*77+"|\n", file=self.ensemble_obj.log)
 
   def ensemble_mean_geometry_stats(self,
                                    restraints_manager,
@@ -352,7 +349,7 @@ class manager(object):
     if verbose:
       utils.print_header("Ensemble mean geometry statistics", out = out)
     ensemble_size = len(ensemble_xray_structures)
-    print >> out, "Ensemble size : ", ensemble_size
+    print("Ensemble size : ", ensemble_size, file=out)
 
     # Dictionaries to store deltas
     ensemble_bond_deltas = {}
@@ -386,7 +383,7 @@ class manager(object):
     # Get all deltas
     for n, structure in enumerate(ensemble_xray_structures):
       if verbose:
-        print >> out, "\nModel : ", n+1
+        print("\nModel : ", n+1, file=out)
       sites_cart = structure.sites_cart()
       # Remove water and hd atoms from individual structures sites cart
       selection = flex.bool()
@@ -422,12 +419,12 @@ class manager(object):
       structures_dihedral_rmsd.append(dihedral_rmsd)
 
       if verbose:
-        print >> out, "  Model RMSD"
-        print >> out, "    bond      : %.6g" % bond_rmsd
-        print >> out, "    angle     : %.6g" % angle_rmsd
-        print >> out, "    chirality : %.6g" % chirality_rmsd
-        print >> out, "    planarity : %.6g" % planarity_rmsd
-        print >> out, "    dihedral  : %.6g" % dihedral_rmsd
+        print("  Model RMSD", file=out)
+        print("    bond      : %.6g" % bond_rmsd, file=out)
+        print("    angle     : %.6g" % angle_rmsd, file=out)
+        print("    chirality : %.6g" % chirality_rmsd, file=out)
+        print("    planarity : %.6g" % planarity_rmsd, file=out)
+        print("    dihedral  : %.6g" % dihedral_rmsd, file=out)
 
       # Bond
       pair_proxies = restraints_manager.geometry.pair_proxies(flags=None, sites_cart=sites_cart)
@@ -447,10 +444,10 @@ class manager(object):
         else:
           ensemble_bond_deltas[proxy.i_seqs] = [bond_simple_proxy.delta, 1]
         if verbose:
-          print >> out, "bond simple :", proxy.i_seqs
-          print >> out, "  distance_ideal : %.6g" % proxy.distance_ideal
-          print >> out, "  distance_model : %.6g" % bond_simple_proxy.distance_model
-          print >> out, "  detla          : %.6g" % bond_simple_proxy.delta
+          print("bond simple :", proxy.i_seqs, file=out)
+          print("  distance_ideal : %.6g" % proxy.distance_ideal, file=out)
+          print("  distance_model : %.6g" % bond_simple_proxy.distance_model, file=out)
+          print("  detla          : %.6g" % bond_simple_proxy.delta, file=out)
       if (pair_proxies.bond_proxies.asu.size() > 0):
         asu_mappings = pair_proxies.bond_proxies.asu_mappings()
         for proxy in pair_proxies.bond_proxies.asu:
@@ -466,10 +463,10 @@ class manager(object):
           else:
             ensemble_bond_deltas[proxy_i_seqs] = [bond_asu_proxy.delta, 1]
           if verbose:
-            print >> out, "bond asu :", (proxy.i_seq, proxy.j_seq), rt_mx
-            print >> out, "  distance_ideal : %.6g" % proxy.distance_ideal
-            print >> out, "  distance_model : %.6g" % bond_asu_proxy.distance_model
-            print >> out, "  delta          : %.6g" % bond_asu_proxy.delta
+            print("bond asu :", (proxy.i_seq, proxy.j_seq), rt_mx, file=out)
+            print("  distance_ideal : %.6g" % proxy.distance_ideal, file=out)
+            print("  distance_model : %.6g" % bond_asu_proxy.distance_model, file=out)
+            print("  delta          : %.6g" % bond_asu_proxy.delta, file=out)
 
       # Angle
       if verbose:
@@ -487,10 +484,10 @@ class manager(object):
         else:
           ensemble_angle_deltas[proxy.i_seqs] = [angle_proxy.delta, 1]
         if verbose:
-          print >> out, "angle : ", proxy.i_seqs
-          print >> out, "  angle_ideal   : %.6g" % proxy.angle_ideal
-          print >> out, "  angle_model   : %.6g" % angle_proxy.angle_model
-          print >> out, "  delta         : %.6g" % angle_proxy.delta
+          print("angle : ", proxy.i_seqs, file=out)
+          print("  angle_ideal   : %.6g" % proxy.angle_ideal, file=out)
+          print("  angle_model   : %.6g" % angle_proxy.angle_model, file=out)
+          print("  delta         : %.6g" % angle_proxy.delta, file=out)
 
       # Chirality
       if verbose:
@@ -508,10 +505,10 @@ class manager(object):
         else:
           ensemble_chirality_deltas[proxy.i_seqs] = [chirality_proxy.delta, 1]
         if verbose:
-          print >> out, "chirality : ", proxy.i_seqs
-          print >> out, "  chirality_ideal : %.6g" % proxy.volume_ideal
-          print >> out, "  chirality_model : %.6g" % chirality_proxy.volume_model
-          print >> out, "  chirality       : %.6g" % chirality_proxy.delta
+          print("chirality : ", proxy.i_seqs, file=out)
+          print("  chirality_ideal : %.6g" % proxy.volume_ideal, file=out)
+          print("  chirality_model : %.6g" % chirality_proxy.volume_model, file=out)
+          print("  chirality       : %.6g" % chirality_proxy.delta, file=out)
 
       # Planarity
       for proxy in restraints_manager.geometry.planarity_proxies:
@@ -528,8 +525,8 @@ class manager(object):
         else:
           ensemble_planarity_deltas[proxy_i_seqs] = [planarity_proxy.rms_deltas(), 1]
         if verbose:
-          print >> out, "planarity : ", proxy_i_seqs
-          print >> out, "  planarity rms_deltas : %.6g" % planarity_proxy.rms_deltas()
+          print("planarity : ", proxy_i_seqs, file=out)
+          print("  planarity rms_deltas : %.6g" % planarity_proxy.rms_deltas(), file=out)
 
       # Dihedral
       if verbose:
@@ -547,11 +544,11 @@ class manager(object):
         else:
           ensemble_dihedral_deltas[proxy.i_seqs] = [dihedral_proxy.delta, 1]
         if verbose:
-          print >> out, "dihedral : ", proxy.i_seqs
-          print >> out, "  dihedral_ideal  : %.6g" % proxy.angle_ideal
-          print >> out, "  periodicity     : %.6g" % proxy.periodicity
-          print >> out, "  dihedral_model  : %.6g" % dihedral_proxy.angle_model
-          print >> out, "  delta           : %.6g" % dihedral_proxy.delta
+          print("dihedral : ", proxy.i_seqs, file=out)
+          print("  dihedral_ideal  : %.6g" % proxy.angle_ideal, file=out)
+          print("  periodicity     : %.6g" % proxy.periodicity, file=out)
+          print("  dihedral_model  : %.6g" % dihedral_proxy.angle_model, file=out)
+          print("  delta           : %.6g" % dihedral_proxy.delta, file=out)
 
     # Calculate RMSDs for ensemble model
     # Bond
@@ -613,22 +610,22 @@ class manager(object):
 
     # Show summary
     utils.print_header("Ensemble RMSD summary", out = out)
-    print >> out, "  RMSD (mean delta per restraint)"
-    print >> out, "    bond      : %.6g" % ensemble_bond_rmsd
-    print >> out, "    angle     : %.6g" % ensemble_angle_rmsd
-    print >> out, "    chirality : %.6g" % ensemble_chirality_rmsd
-    print >> out, "    planarity : %.6g" % ensemble_planarity_rmsd
-    print >> out, "    dihedral  : %.6g" % ensemble_dihedral_rmsd
-    print >> out, "  RMSD (mean RMSD per structure)"
-    print >> out, "    bond      : %.6g" % structure_bond_rmsd_mean
-    print >> out, "    angle     : %.6g" % structure_angle_rmsd_mean
-    print >> out, "    chirality : %.6g" % structure_chirality_rmsd_mean
-    print >> out, "    planarity : %.6g" % structure_planarity_rmsd_mean
-    print >> out, "    dihedral  : %.6g" % structure_dihedral_rmsd_mean
+    print("  RMSD (mean delta per restraint)", file=out)
+    print("    bond      : %.6g" % ensemble_bond_rmsd, file=out)
+    print("    angle     : %.6g" % ensemble_angle_rmsd, file=out)
+    print("    chirality : %.6g" % ensemble_chirality_rmsd, file=out)
+    print("    planarity : %.6g" % ensemble_planarity_rmsd, file=out)
+    print("    dihedral  : %.6g" % ensemble_dihedral_rmsd, file=out)
+    print("  RMSD (mean RMSD per structure)", file=out)
+    print("    bond      : %.6g" % structure_bond_rmsd_mean, file=out)
+    print("    angle     : %.6g" % structure_angle_rmsd_mean, file=out)
+    print("    chirality : %.6g" % structure_chirality_rmsd_mean, file=out)
+    print("    planarity : %.6g" % structure_planarity_rmsd_mean, file=out)
+    print("    dihedral  : %.6g" % structure_dihedral_rmsd_mean, file=out)
     if ignore_hd:
-      print >> out, "\n  Calculated excluding H/D"
+      print("\n  Calculated excluding H/D", file=out)
     else:
-      print >> out, "\n  Calculated including H/D"
+      print("\n  Calculated including H/D", file=out)
 
     if return_pdb_string:
       ens_geo_pdb_string  = "REMARK   3"

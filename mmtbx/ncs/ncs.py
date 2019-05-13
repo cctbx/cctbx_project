@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # from mmtbx.ncs.ncs_utils import convert_phil_format
 import sys, os, string
 from libtbx.utils import Sorry
@@ -303,8 +304,8 @@ def generate_ncs_ops(symmetry=None,
   elif symmetry.lower() in ['helical','helix']:
     sym_type='helical'
 
-  print >>out,"Sym type: %s  Sym N: %s" %(
-     sym_type,sym_n)
+  print("Sym type: %s  Sym N: %s" %(
+     sym_type,sym_n), file=out)
   if sym_type is None and not all:
     from libtbx.utils import Sorry
     raise Sorry("Unknown symmetry type: '%s' " %(symmetry))
@@ -3434,7 +3435,7 @@ class ncs:
      invert_matrices=True):
     p=pdb_inp.process_BIOMT_records()
     if not p:
-      print >>log, "No BIOMT records available"
+      print("No BIOMT records available", file=log)
       return
 
     self.ncs_from_import(rot_list=p.r,trans_list=p.t,invert_matrices=invert_matrices)
@@ -3485,9 +3486,9 @@ class ncs:
     if not log: log=sys.stdout
     if not quiet:
       if file_name:
-        print >>log,"Reading NCS information from: ",file_name
+        print("Reading NCS information from: ",file_name, file=log)
     if source_info:
-       print >>log," based on ",source_info
+       print(" based on ",source_info, file=log)
        self.source_info=source_info
     else:
        self.source_info=str(file_name)
@@ -3684,15 +3685,15 @@ class ncs:
          center_orth=len(trans_orth)*[(0,0,0)]
        for lst in [trans_orth,ncs_rota_matr,center_orth]:
          if not lst or len(lst)<1:
-           print "Length too short:",type(lst),lst,
+           print("Length too short:",type(lst),lst, end=' ')
            if lst is not None:
-             print len(lst)
+             print(len(lst))
            else:
-             print "0"
+             print("0")
            raise Sorry("The NCS operators in this file appear incomplete?")
          if not list_length: list_length=len(lst)
          if list_length!=len(lst):
-           print "Length of list incorrect:",type(lst),lst,len(lst),list_length
+           print("Length of list incorrect:",type(lst),lst,len(lst),list_length)
            raise Sorry("The NCS operators in this file appear incomplete?")
        ncs_group_object=ncs_group(
          ncs_rota_matr=ncs_rota_matr,
@@ -3715,11 +3716,11 @@ class ncs:
          self._residues_in_common_list,self._rmsd_list]:
         if lst and self._n_ncs_oper and \
            len(lst) != self._n_ncs_oper:
-          print "Lengh of list does not match number of operators:",\
-             type(lst),lst,self._n_ncs_oper
+          print("Lengh of list does not match number of operators:",\
+             type(lst),lst,self._n_ncs_oper)
           raise Sorry("The NCS operators in this file appear incomplete?")
         if lst is not None and len(lst)<1:
-          print "Length of operators too short:",lst,len(lst)
+          print("Length of operators too short:",lst,len(lst))
           raise Sorry("The NCS operators in this file appear incomplete?")
         if lst is not None: have_something=True
      if not have_something: return
@@ -3764,8 +3765,8 @@ class ncs:
     if log==None:
       log=sys.stdout
     else:
-      print >>log,"NCS written as ncs object information to:"\
-        ,out.name
+      print("NCS written as ncs object information to:"\
+        ,out.name, file=log)
     all_text=""
     text="Summary of NCS information\n"
     import time,os
@@ -3790,7 +3791,7 @@ class ncs:
     if log==None:
       log=sys.stdout
     else:
-      print >>log,"\n\nNCS operators written in format for resolve to:",out.name
+      print("\n\nNCS operators written in format for resolve to:",out.name, file=log)
     all_text=""
     for ncs_group in self._ncs_groups:
       text=ncs_group.format_for_resolve(crystal_number=crystal_number,
@@ -3821,7 +3822,7 @@ class ncs:
       # all_text = convert_phil_format(all_text,to_type=prefix)
       if all_text:
         if not quiet:
-          print >> out, all_text + '\n'
+          print(all_text + '\n', file=out)
       return all_text
     else:
       # this is only being used when only a spec file is provided
@@ -3852,7 +3853,7 @@ class ncs:
       log=sys.stdout
     else:
       msg  = "NCS phil selection written in ncs selection format to:"
-      print>>log,msg,out.name
+      print(msg,out.name, file=log)
     phil_str = self._ncs_obj.show(format='phil',log=null_out(),header=False)
     if phil_str:
       if not quiet: out.write(phil_str + '\n')
@@ -4080,12 +4081,12 @@ if __name__=="__main__":
     text=ncs_object.format_all_for_group_specification(file_name=file2)
 
     if not text or text != test_ncs_info:
-     print "NOT OK ...please compare TEST.NCS (std) vs TEST2.NCS (output)"
+     print("NOT OK ...please compare TEST.NCS (std) vs TEST2.NCS (output)")
      ff=open('txt.dat','w')
      ff.write(text)
      ff.close()
     else:
-     print "OK"
+     print("OK")
   elif len(args)>0 and args[0] and os.path.isfile(args[0]):
     ncs_object=ncs()
     ncs_object.read_ncs(args[0],source_info=args[0])
@@ -4093,16 +4094,16 @@ if __name__=="__main__":
     if 1:
       file2='OUTPUT.NCS'
       text=ncs_object.format_all_for_group_specification(file_name=file2)
-      print "IS point-group: ",
-      print ncs_object.is_point_group_symmetry()
-      print "IS helical:",
-      print ncs_object.is_helical_along_z()
+      print("IS point-group: ", end=' ')
+      print(ncs_object.is_point_group_symmetry())
+      print("IS helical:", end=' ')
+      print(ncs_object.is_helical_along_z())
     if 1:
       file3='OUTPUT2.NCS'
       new_ncs_object=ncs_object.deep_copy(ops_to_keep=[0,1,6])
       text=new_ncs_object.format_all_for_group_specification(file_name=file3)
-      print text
-      print "IS point-group: ",
-      print new_ncs_object.is_point_group_symmetry()
-      print "IS helical:",
-      print new_ncs_object.is_helical_along_z()
+      print(text)
+      print("IS point-group: ", end=' ')
+      print(new_ncs_object.is_point_group_symmetry())
+      print("IS helical:", end=' ')
+      print(new_ncs_object.is_helical_along_z())

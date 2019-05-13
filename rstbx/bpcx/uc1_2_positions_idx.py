@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #!/usr/bin/env python
 #
 # Biostruct-X Data Reduction Use Case 1.2:
@@ -137,7 +138,7 @@ def validate_predictions(spot_xds, uc1_2):
             dys.append(dy)
             dzs.append(dz)
 
-            print x, y, z, dx, dy, dz
+            print(x, y, z, dx, dy, dz)
 
     return meansd(dxs), meansd(dys), meansd(dzs)
 

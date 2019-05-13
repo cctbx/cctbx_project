@@ -2,6 +2,7 @@
 Construct all subgroup graphs and their relations between them from a single space group.
 """
 from __future__ import division
+from __future__ import print_function
 
 
 from cctbx import sgtbx
@@ -26,9 +27,9 @@ def run(sg1):
 %s
 EOF
   """%(out)
-  print
-  print "Command for dot (graphviz package) to show relations between groups: "
-  print cmnd
+  print()
+  print("Command for dot (graphviz package) to show relations between groups: ")
+  print(cmnd)
 
 if __name__=="__main__":
   run( sys.argv[1] )

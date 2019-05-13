@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 import math
 
@@ -18,36 +19,36 @@ def update_restraints(hierarchy,
                       ):
   #raise Sorry("altloc weighting still being tested")
   if verbose:
-    print 'min_occ',min_occ
-    print 'sqrt_func',sqrt_func
-    print 'func_factor',func_factor
-    print 'bond_weighting',bond_weighting
-    print 'angle_weighting',angle_weighting
+    print('min_occ',min_occ)
+    print('sqrt_func',sqrt_func)
+    print('func_factor',func_factor)
+    print('bond_weighting',bond_weighting)
+    print('angle_weighting',angle_weighting)
   bond_params_table = restraints_manager.geometry.bond_params_table
   altloc_bonds = {}
   previous_residue_group = None
   for model in hierarchy.models():
-    if verbose: print 'model: "%s"' % model.id
+    if verbose: print('model: "%s"' % model.id)
     for chain in model.chains():
-      if verbose: print 'chain: "%s"' % chain.id
+      if verbose: print('chain: "%s"' % chain.id)
       for residue_group in chain.residue_groups():
-        if verbose: print '  residue_group: resseq="%s" icode="%s"' % (
-          residue_group.resseq, residue_group.icode)
+        if verbose: print('  residue_group: resseq="%s" icode="%s"' % (
+          residue_group.resseq, residue_group.icode))
         # have residue_group and previous_residue_group
         for atom_group_i, atom_group1 in enumerate(residue_group.atom_groups()):
           #
           if atom_group1.resname in ["HOH"]: continue
           #
-          if verbose: print '    %03d atom_group: altloc="%s" resname="%s"' % (
-            atom_group_i, atom_group1.altloc, atom_group1.resname)
+          if verbose: print('    %03d atom_group: altloc="%s" resname="%s"' % (
+            atom_group_i, atom_group1.altloc, atom_group1.resname))
           for atom_group_j, atom_group2 in enumerate(residue_group.atom_groups()):
             #
             if atom_group_i<atom_group_j: continue
             #
             if atom_group2.resname in ["HOH"]: continue
             #
-            if verbose: print '    %03d atom_group: altloc="%s" resname="%s"' % (
-              atom_group_j, atom_group2.altloc, atom_group2.resname)
+            if verbose: print('    %03d atom_group: altloc="%s" resname="%s"' % (
+              atom_group_j, atom_group2.altloc, atom_group2.resname))
             #################################
             # both blank altloc
             #################################
@@ -73,10 +74,10 @@ def update_restraints(hierarchy,
                 altloc_bonds[tuple(sorted([atom1.i_seq, atom2.i_seq]))] = [bond, atom1.occ]
                 #assert atom1.is_in_same_conformer_as(atom2)
                 if verbose:
-                  print 'intra-atom_group'
-                  print atom1.format_atom_record()
-                  print atom2.format_atom_record()
-                  print bond.distance_ideal, bond.weight
+                  print('intra-atom_group')
+                  print(atom1.format_atom_record())
+                  print(atom2.format_atom_record())
+                  print(bond.distance_ideal, bond.weight)
 
             # inter-atom_group bonds
             if atom_group_i==atom_group_j: continue
@@ -88,10 +89,10 @@ def update_restraints(hierarchy,
                 #altloc_bonds.append(bond)
                 #assert atom1.is_in_same_conformer_as(atom2)
                 if verbose:
-                  print 'inter-atom_group'
-                  print atom1.format_atom_record()
-                  print atom2.format_atom_record()
-                  print bond.distance_ideal, bond.weight
+                  print('inter-atom_group')
+                  print(atom1.format_atom_record())
+                  print(atom2.format_atom_record())
+                  print(bond.distance_ideal, bond.weight)
 
         # inter-residue_groups
         if previous_residue_group is None:
@@ -117,18 +118,18 @@ def update_restraints(hierarchy,
             #################################
             else:
               pass
-            if verbose: print '    %03d previous_atom_group: altloc="%s" resname="%s"' % (
-                atom_group_k, previous_atom_group.altloc, previous_atom_group.resname)
+            if verbose: print('    %03d previous_atom_group: altloc="%s" resname="%s"' % (
+                atom_group_k, previous_atom_group.altloc, previous_atom_group.resname))
             for i, atom1 in enumerate(atom_group.atoms()):
               for j, atom2 in enumerate(previous_atom_group.atoms()):
                 bond = bond_params_table.lookup(atom1.i_seq, atom2.i_seq)
                 if bond is None: continue
                 altloc_bonds[tuple(sorted([atom1.i_seq, atom2.i_seq]))] = [bond, atom1.occ]
                 if verbose:
-                  print 'inter-residue_group'
-                  print atom1.format_atom_record()
-                  print atom2.format_atom_record()
-                  print bond.distance_ideal, bond.weight
+                  print('inter-residue_group')
+                  print(atom1.format_atom_record())
+                  print(atom2.format_atom_record())
+                  print(bond.distance_ideal, bond.weight)
 
         previous_residue_group = residue_group
 
@@ -147,14 +148,14 @@ def update_restraints(hierarchy,
         bond.weight = bond.weight/math.sqrt(occ)
       else:
         bond.weight = bond.weight/occ*func_factor
-      print bond.weight,occ*func_factor,sqrt_func
+      print(bond.weight,occ*func_factor,sqrt_func)
     i_seqs[key[0]]=occ
     i_seqs[key[1]]=occ
     if verbose:
-      print '-'*80
+      print('-'*80)
       for atom in hierarchy.atoms():
-        if atom.i_seq==key[0]: print atom.quote()
-        if atom.i_seq==key[1]: print atom.quote()
+        if atom.i_seq==key[0]: print(atom.quote())
+        if atom.i_seq==key[1]: print(atom.quote())
 
 
   if angle_weighting:

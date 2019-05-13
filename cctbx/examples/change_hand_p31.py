@@ -6,13 +6,14 @@ symmetry is transformed correctly, but do change if the original space
 group symmetry is simply retained.
 """
 from __future__ import division
+from __future__ import print_function
 
 from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
 
 def run():
-  print __doc__
+  print(__doc__)
   crystal_symmetry = crystal.symmetry(
     unit_cell=(5, 5, 6, 90, 90, 120),
     space_group_symbol="P 31")
@@ -26,32 +27,32 @@ def run():
   given_structure = xray.structure(
     crystal_symmetry=crystal_symmetry,
     scatterers=scatterers)
-  print "=================="
-  print "Original structure"
-  print "=================="
+  print("==================")
+  print("Original structure")
+  print("==================")
   given_structure.show_summary().show_scatterers()
-  print "Interatomic distances:"
+  print("Interatomic distances:")
   given_structure.show_distances(distance_cutoff=distance_cutoff)
-  print
-  print
-  print "====================================================="
-  print "Other hand with sites flipped and space group changed"
-  print "====================================================="
+  print()
+  print()
+  print("=====================================================")
+  print("Other hand with sites flipped and space group changed")
+  print("=====================================================")
   other_hand = given_structure.change_hand()
   other_hand.show_summary().show_scatterers()
-  print "Interatomic distances:"
+  print("Interatomic distances:")
   other_hand.show_distances(distance_cutoff=distance_cutoff)
-  print
-  print "=================================="
-  print "Other hand with sites flipped only"
-  print "=================================="
+  print()
+  print("==================================")
+  print("Other hand with sites flipped only")
+  print("==================================")
   other_sites_orig_symmetry = xray.structure(
     crystal_symmetry=crystal_symmetry,
     scatterers=other_hand.scatterers())
   other_sites_orig_symmetry.show_summary().show_scatterers()
-  print "Interatomic distances:"
+  print("Interatomic distances:")
   other_sites_orig_symmetry.show_distances(distance_cutoff=distance_cutoff)
-  print
+  print()
 
 if (__name__ == "__main__"):
   run()

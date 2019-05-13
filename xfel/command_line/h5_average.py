@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.h5_average
 
@@ -60,14 +61,14 @@ class Processh5(object):
     val = writefile.values()[0].values()[0]
     val.write_direct(res)
     writefile.close()
-    print "Wrote", writefile_name
+    print("Wrote", writefile_name)
 
   def cleanup(self):
     self.readfile.close()
 
 def run(args):
   if ("--help" in args) or ("-h" in args) or (len(args) == 0):
-    print "Usage: %s r25792.h5" % libtbx.env.dispatcher_name
+    print("Usage: %s r25792.h5" % libtbx.env.dispatcher_name)
     return
   elif ("--config" in args) or ("-c" in args):
     iotbx.phil.parse(phil_scope).show(attributes_level=2)
@@ -80,7 +81,7 @@ def run(args):
   parser = OptionParser(phil=phil_scope)
   params, options = parser.parse_args(show_diff_phil=True)
   for h5 in h5s:
-    print "Processing image %s..." % h5
+    print("Processing image %s..." % h5)
     processor = Processh5(h5)
     if params.average:
       processor.process("avg")

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cxi.display_metrology
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
@@ -76,7 +77,7 @@ if (__name__ == "__main__") :
         if len(panels) != 64:
           raise Sorry("Can't parse this metrology file")
 
-        print "Ginn metrology file"
+        print("Ginn metrology file")
         for panel_id, panel in enumerate(panels):
           PANEL, x1, y1, x2, y2, shiftX, shiftY, tiltX, tiltY, _ = panel.split()
           x1 = float(x1) + float(shiftX)

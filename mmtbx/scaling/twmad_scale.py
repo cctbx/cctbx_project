@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import crystal
 from libtbx.utils import Sorry, date_and_time, multi_out
 import iotbx.phil
@@ -24,9 +25,9 @@ def run(args):
   if len(args)==0:
     master_params.show(expert_level=100)
   elif ( "--help" in args ):
-    print "no help available"
+    print("no help available")
   elif ( "--h" in args ):
-    print "no help available"
+    print("no help available")
   elif ( "--show_defaults" in args ):
     master_params.show(expert_level=0)
   elif ( "--show_defaults_all" in args ):
@@ -41,11 +42,11 @@ def run(args):
     log.register(label="log_buffer", file_object=string_buffer)
 
     log_plots = StringIO()
-    print >> log,"#phil __OFF__"
-    print >> log
-    print >> log, date_and_time()
-    print >> log
-    print >> log
+    print("#phil __OFF__", file=log)
+    print(file=log)
+    print(date_and_time(), file=log)
+    print(file=log)
+    print(file=log)
 
     phil_objects = []
     argument_interpreter = master_params.command_line_argument_interpreter(
@@ -86,10 +87,10 @@ def run(args):
         except Exception : pass
 
       if not arg_is_processed:
-        print >> log, "##----------------------------------------------##"
-        print >> log, "## Unknown phil-file or phil-command:", arg
-        print >> log, "##----------------------------------------------##"
-        print >> log
+        print("##----------------------------------------------##", file=log)
+        print("## Unknown phil-file or phil-command:", arg, file=log)
+        print("##----------------------------------------------##", file=log)
+        print(file=log)
         raise Sorry("Unknown file format or phil command: %s" % arg)
 
 
@@ -103,19 +104,19 @@ def run(args):
     ## By default, the native cell and symmetry are used
     ## as reference
     crystal_symmetry_nat = None
-    print params.scaling.input.xray_data.wavelength1.file_name
+    print(params.scaling.input.xray_data.wavelength1.file_name)
     crystal_symmetry_nat = crystal_symmetry_from_any.extract_from(
       file_name=params.scaling.input.xray_data.wavelength1.file_name)
 
     if params.scaling.input.xray_data.space_group is None:
       params.scaling.input.xray_data.space_group =\
         crystal_symmetry_nat.space_group_info()
-      print >> log, "Using symmetry of native data"
+      print("Using symmetry of native data", file=log)
 
     if params.scaling.input.xray_data.unit_cell is None:
       params.scaling.input.xray_data.unit_cell =\
         crystal_symmetry_nat.unit_cell()
-      print >> log, "Using cell of native data"
+      print("Using cell of native data", file=log)
 
     ## Check if a unit cell is defined
     if params.scaling.input.xray_data.space_group is None:
@@ -132,11 +133,11 @@ def run(args):
 
     effective_params = master_params.fetch(sources=phil_objects)
     new_params = master_params.format(python_object=params)
-    print >> log, "Effective parameters"
-    print >> log, "#phil __ON__"
+    print("Effective parameters", file=log)
+    print("#phil __ON__", file=log)
     new_params.show(out=log,expert_level=params.scaling.input.expert_level)
-    print >> log, "#phil __END__"
-    print >> log
+    print("#phil __END__", file=log)
+    print(file=log)
 
     ## define a xray data server
     xray_data_server =  reflection_file_utils.reflection_file_server(
@@ -196,11 +197,11 @@ def run(args):
 
 
     ## Print info
-    print >> log
-    print >> log, "Wavelength 1"
-    print >> log, "============"
+    print(file=log)
+    print("Wavelength 1", file=log)
+    print("============", file=log)
     miller_array_w1.show_comprehensive_summary(f=log)
-    print >> log
+    print(file=log)
     w1_pre_scale = pre_scale.pre_scaler(
       miller_array_w1,
       params.scaling.input.scaling_strategy.pre_scaler_protocol,
@@ -208,11 +209,11 @@ def run(args):
     miller_array_w1 =  w1_pre_scale.x1.deep_copy()
     del w1_pre_scale
 
-    print >> log
-    print >> log, "Wavelength 2"
-    print >> log, "============"
+    print(file=log)
+    print("Wavelength 2", file=log)
+    print("============", file=log)
     miller_array_w2.show_comprehensive_summary(f=log)
-    print >> log
+    print(file=log)
     w2_pre_scale = pre_scale.pre_scaler(
       miller_array_w2,
       params.scaling.input.scaling_strategy.pre_scaler_protocol,
@@ -221,14 +222,14 @@ def run(args):
     del w2_pre_scale
 
 
-    print >> log
-    print >> log, "Checking for possible reindexing schemes"
-    print >> log, "----------------------------------------"
-    print >> log
-    print >> log, "Reindexing operator derived as described in:"
-    print >> log, "Grosse-Kunstleve, Afonine, Sauter & Adams. (2005)."
-    print >> log, "  IUCr Computing Commission Newsletter 5."
-    print >> log
+    print(file=log)
+    print("Checking for possible reindexing schemes", file=log)
+    print("----------------------------------------", file=log)
+    print(file=log)
+    print("Reindexing operator derived as described in:", file=log)
+    print("Grosse-Kunstleve, Afonine, Sauter & Adams. (2005).", file=log)
+    print("  IUCr Computing Commission Newsletter 5.", file=log)
+    print(file=log)
 
     reindex_object = pair_analyses.reindexing(
        set_a=miller_array_w1,
@@ -237,10 +238,10 @@ def run(args):
     miller_array_w2 = reindex_object.select_and_transform()
     miller_array_w2.map_to_asu()
 
-    print >> log
-    print >> log, "Relative scaling of 2-wavelength mad data"
-    print >> log, "-----------------------------------------"
-    print >> log
+    print(file=log)
+    print("Relative scaling of 2-wavelength mad data", file=log)
+    print("-----------------------------------------", file=log)
+    print(file=log)
     scaler = fa_estimation.combined_scaling(
       miller_array_w1,
       miller_array_w2,
@@ -251,10 +252,10 @@ def run(args):
 
     del scaler
 
-    print >> log
-    print >> log, "Estimating f\" and f' ratios"
-    print >> log, "----------------------------"
-    print >> log
+    print(file=log)
+    print("Estimating f\" and f' ratios", file=log)
+    print("----------------------------", file=log)
+    print(file=log)
 
 
 
@@ -271,27 +272,27 @@ def run(args):
     k2 = fpfdpratio.ratio
 
     if k1 is not None:
-      print >> log
-      print >> log, "  The estimate of f\"(w1)/f\"(w2) is %3.2f"\
-            %(fdpratio.ratio)
+      print(file=log)
+      print("  The estimate of f\"(w1)/f\"(w2) is %3.2f"\
+            %(fdpratio.ratio), file=log)
     if k2 is not None:
-      print >> log, "  The estimate of (f'(w1)-f'(w2))/f\"(w2) is %3.2f"\
-            %(fpfdpratio.ratio)
-      print >> log
-      print >> log, "  The quality of these estimates depends to a large extend"
-      print >> log, "  on the quality of the data. If user supplied values"
-      print >> log, "  of f\" and f' are given, they will be used instead "
-      print >> log, "  of the estimates."
-      print >> log
+      print("  The estimate of (f'(w1)-f'(w2))/f\"(w2) is %3.2f"\
+            %(fpfdpratio.ratio), file=log)
+      print(file=log)
+      print("  The quality of these estimates depends to a large extend", file=log)
+      print("  on the quality of the data. If user supplied values", file=log)
+      print("  of f\" and f' are given, they will be used instead ", file=log)
+      print("  of the estimates.", file=log)
+      print(file=log)
 
     if params.scaling.input.xray_data.wavelength1.f_double_prime is not None:
       if params.scaling.input.xray_data.wavelength2.f_double_prime is not None:
         k1 = (params.scaling.input.xray_data.wavelength1.f_double_prime/
               params.scaling.input.xray_data.wavelength2.f_double_prime)
-        print >> log, "    Using user specified f\" values"
-        print >> log, "      user specified f\"(w1)/f\"(w2) is %3.2f"\
-              %(k1)
-        print >> log
+        print("    Using user specified f\" values", file=log)
+        print("      user specified f\"(w1)/f\"(w2) is %3.2f"\
+              %(k1), file=log)
+        print(file=log)
     if params.scaling.input.xray_data.wavelength1.f_prime is not None:
       if params.scaling.input.xray_data.wavelength2.f_prime is not None:
         if params.scaling.input.xray_data.wavelength2.f_double_prime is not None:
@@ -299,10 +300,10 @@ def run(args):
           k2 = (params.scaling.input.xray_data.wavelength1.f_prime-
                 params.scaling.input.xray_data.wavelength2.f_prime)\
                 /params.scaling.input.xray_data.wavelength2.f_double_prime
-          print >> log, "    Using user specified f\" and f' values"
-          print >> log, "     user specified f\"(w1)/f\"(w2) is %3.2f"\
-                %(k2)
-          print >> log
+          print("    Using user specified f\" and f' values", file=log)
+          print("     user specified f\"(w1)/f\"(w2) is %3.2f"\
+                %(k2), file=log)
+          print(file=log)
 
 
 
@@ -312,10 +313,10 @@ def run(args):
                                            k2,
                                            params.scaling.input.fa_estimation)
 
-    print >> log
-    print >> log, "writing mtz file"
-    print >> log, "----------------"
-    print >> log
+    print(file=log)
+    print("writing mtz file", file=log)
+    print("----------------", file=log)
+    print(file=log)
 
     ## Please write out the abs_delta_f array
 

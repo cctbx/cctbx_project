@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # TODO display indices of plane on image
 #      adjustable minimum spot size
@@ -75,8 +76,8 @@ slice_mode = True
   if (selected_array is None):
     if (len(obs_arrays) == 1):
       selected_array = obs_arrays[0]
-      print >> out, "Using %s since no labels were specified." % \
-        selected_array.info().label_string()
+      print("Using %s since no labels were specified." % \
+        selected_array.info().label_string(), file=out)
     elif (len(obs_arrays) > 1):
       raise Sorry("""Multiple equally suitable arrays of data found:
   %s
@@ -145,7 +146,7 @@ Please choose one by specifying the 'labels' parameter.""" %
     im2 = im.resize((params.width, params.height), Image.ANTIALIAS)
     im2.save(params.output_file)
   if (not silent):
-    print >> out, "Wrote %s" % params.output_file
+    print("Wrote %s" % params.output_file, file=out)
   else :
     return scene, params
 

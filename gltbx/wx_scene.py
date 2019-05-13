@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # This file found at:
 #   http://lists.wxwidgets.org/archive/wxPython-users/msg11078.html
@@ -137,7 +138,7 @@ class wxGLWindow(wxGLCanvas):
     self.w,self.h = self.GetClientSizeTuple()
     if self.GetContext():
       self.SetCurrent()
-      print "HELLO"
+      print("HELLO")
       glViewport(0, 0, self.w, self.h)
 
   def wxEraseBackground(self, event):
@@ -303,7 +304,7 @@ class wxAdvancedGLWindow(wxGLWindow):
     while 1:
       err_value = glGetError()
       if not err_value: break
-      print message, gluErrorString(err_value)
+      print(message, gluErrorString(err_value))
 
   def SetBgColour(self, r, g, b):
     """Change the background colour of the widget.

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 
 from rstbx.dials_core.integration_core import show_observations
@@ -50,7 +51,7 @@ class unit_cell_distribution(object):
 
   def show_histograms(self, reference, out, n_slots=20):
     [a0,b0,c0,alpha0,beta0,gamma0] = reference.parameters()
-    print >> out, ""
+    print("", file=out)
     labels = ["a","b","c"]
     ref_edges = [a0,b0,c0]
     def _show_each(edges):
@@ -58,16 +59,15 @@ class unit_cell_distribution(object):
         h = flex.histogram(edge, n_slots=n_slots)
         smin, smax = flex.min(edge), flex.max(edge)
         stats = flex.mean_and_variance(edge)
-        print >> out, "  %s edge" % label
-        print >> out, "     range:     %6.2f - %.2f" % (smin, smax)
-        print >> out, "     mean:      %6.2f +/- %6.2f on N = %d" % (
-          stats.mean(), stats.unweighted_sample_standard_deviation(), edge.size())
-        print >> out, "     reference: %6.2f" % ref_edge
+        print("  %s edge" % label, file=out)
+        print("     range:     %6.2f - %.2f" % (smin, smax), file=out)
+        print("     mean:      %6.2f +/- %6.2f on N = %d" % (
+          stats.mean(), stats.unweighted_sample_standard_deviation(), edge.size()), file=out)
+        print("     reference: %6.2f" % ref_edge, file=out)
         h.show(f=out, prefix="    ", format_cutoffs="%6.2f")
-        print >> out, ""
+        print("", file=out)
     edges = [self.all_uc_a_values, self.all_uc_b_values, self.all_uc_c_values]
-    print >> out, \
-      "Unit cell length distribution (all frames with compatible indexing):"
+    print("Unit cell length distribution (all frames with compatible indexing):", file=out)
     _show_each(edges)
 
   def get_average_cell_dimensions(self):
@@ -109,19 +109,19 @@ class scaling_manager(scaling_manager_base):
       from xfel.merging.database.merging_database_flex import manager
 
     import multiprocessing
-    print "Allocating intensities"
+    print("Allocating intensities")
     intensity_proxy = multiprocessing.Array('d',self.params.memory.shared_array_allocation,lock=True)
-    print "Allocating sigmas"
+    print("Allocating sigmas")
     sigma_proxy = multiprocessing.Array('d',self.params.memory.shared_array_allocation,lock=True)
-    print "Allocating frame_id"
+    print("Allocating frame_id")
     frame_proxy = multiprocessing.Array('l',self.params.memory.shared_array_allocation,lock=True)
-    print "Allocating miller_id"
+    print("Allocating miller_id")
     miller_proxy = multiprocessing.Array('l',self.params.memory.shared_array_allocation,lock=True)
     H_proxy = multiprocessing.Array('i',self.params.memory.shared_array_allocation,lock=True)
     K_proxy = multiprocessing.Array('i',self.params.memory.shared_array_allocation,lock=True)
     L_proxy = multiprocessing.Array('i',self.params.memory.shared_array_allocation,lock=True)
     xtal_proxy = multiprocessing.Array('c',self.params.memory.shared_array_allocation,lock=True)
-    print "Finished allocating"
+    print("Finished allocating")
     rows_observation = multiprocessing.Array('l',[0],lock=True)
 
     data_dict = dict(intensity_proxy=intensity_proxy,
@@ -147,29 +147,28 @@ class scaling_manager(scaling_manager_base):
         import multiprocessing
         self._scale_all_parallel(file_names, db_mgr)
       except ImportError as e :
-        print >> self.log, \
-          "multiprocessing module not available (requires Python >= 2.6)\n" \
-          "will scale frames serially"
+        print("multiprocessing module not available (requires Python >= 2.6)\n" \
+          "will scale frames serially", file=self.log)
         self._scale_all_serial(file_names, db_mgr)
     else:
       self._scale_all_serial(file_names, db_mgr)
     pickled_data = db_mgr.join(data_dict)
 
     t2 = time.time()
-    print >> self.log, ""
-    print >> self.log, "#" * 80
-    print >> self.log, "FINISHED MERGING"
-    print >> self.log, "  Elapsed time: %.1fs" % (t2 - t1)
-    print >> self.log, "  %d of %d integration files were accepted" % (
-      self.n_accepted, len(file_names))
-    print >> self.log, "  %d rejected due to wrong Bravais group" % \
-      self.n_wrong_bravais
-    print >> self.log, "  %d rejected for unit cell outliers" % \
-      self.n_wrong_cell
-    print >> self.log, "  %d rejected for low signal" % \
-      self.n_low_signal
-    print >> self.log, "  %d rejected for file errors or no reindex matrix" % \
-      self.n_file_error
+    print("", file=self.log)
+    print("#" * 80, file=self.log)
+    print("FINISHED MERGING", file=self.log)
+    print("  Elapsed time: %.1fs" % (t2 - t1), file=self.log)
+    print("  %d of %d integration files were accepted" % (
+      self.n_accepted, len(file_names)), file=self.log)
+    print("  %d rejected due to wrong Bravais group" % \
+      self.n_wrong_bravais, file=self.log)
+    print("  %d rejected for unit cell outliers" % \
+      self.n_wrong_cell, file=self.log)
+    print("  %d rejected for low signal" % \
+      self.n_low_signal, file=self.log)
+    print("  %d rejected for file errors or no reindex matrix" % \
+      self.n_file_error, file=self.log)
     checksum = self.n_accepted  + self.n_file_error \
                + self.n_low_signal \
                + self.n_wrong_bravais + self.n_wrong_cell
@@ -343,7 +342,7 @@ class scaling_manager(scaling_manager_base):
     otherP_prime = 0.5 * other_F_prime * cos_two_polar_angle * sin_sq_tt_vec
     otherprange=P_nought_vec - otherP_prime
     diff2 = flex.abs(prange - otherprange)
-    print "mean diff is",flex.mean(diff2), "range",flex.min(diff2), flex.max(diff2)
+    print("mean diff is",flex.mean(diff2), "range",flex.min(diff2), flex.max(diff2))
     # XXX done
     observations = observations / ( P_nought_vec - P_prime )
     # This corrects observations for polarization assuming 100% polarization on
@@ -351,7 +350,7 @@ class scaling_manager(scaling_manager_base):
     # Polarization model as described by Kahn, Fourme, Gadet, Janin, Dumas & Andre
     # (1982) J. Appl. Cryst. 15, 330-337, equations 13 - 15.
 
-    print "Step 3. Correct for polarization."
+    print("Step 3. Correct for polarization.")
     indexed_cell = observations.unit_cell()
 
     observations_original_index = observations.deep_copy()
@@ -378,8 +377,8 @@ class scaling_manager(scaling_manager_base):
       anomalous_flag=not self.params.merge_anomalous,
       crystal_symmetry=self.miller_set.crystal_symmetry()
       )
-    print "Step 4. Filter on global resolution and map to asu"
-    print >> out, "Data in reference setting:"
+    print("Step 4. Filter on global resolution and map to asu")
+    print("Data in reference setting:", file=out)
     #observations.show_summary(f=out, prefix="  ")
     show_observations(observations, out=out)
 
@@ -398,7 +397,7 @@ class scaling_manager(scaling_manager_base):
         [min([self.params.significance_filter.n_bins,N_bins_small_set]),
          N_bins_large_set, 1]
       )
-      print "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
+      print("Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins))
       bin_results = show_observations(observations, out=out, n_bins=N_bins)
       #show_observations(observations, out=sys.stdout, n_bins=N_bins)
       acceptable_resolution_bins = [
@@ -417,16 +416,16 @@ class scaling_manager(scaling_manager_base):
           imposed_res_sel)
         observations_original_index = observations_original_index.select(
           imposed_res_sel)
-        print "New resolution filter at %7.2f"%imposed_res_filter,file_name
-      print "N acceptable bins",N_acceptable_bins
-      print "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size())
-      print "Step 5. Frame by frame resolution filter"
+        print("New resolution filter at %7.2f"%imposed_res_filter,file_name)
+      print("N acceptable bins",N_acceptable_bins)
+      print("Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size()))
+      print("Step 5. Frame by frame resolution filter")
       # Finished applying the binwise I/sigma filter---------------------------------------
 
     if self.params.raw_data.sdfac_auto is True:
       raise Exception("sdfac auto not implemented in samosa.")
 
-    print "Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities."
+    print("Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities.")
     assert len(observations_original_index.indices()) \
       ==   len(observations.indices())
 
@@ -476,7 +475,7 @@ class scaling_manager(scaling_manager_base):
     data.wavelength = wavelength
 
     if not self.params.scaling.enable: # Do not scale anything
-      print "Scale factor to an isomorphous reference PDB will NOT be applied."
+      print("Scale factor to an isomorphous reference PDB will NOT be applied.")
       slope = 1.0
       offset = 0.0
 
@@ -535,11 +534,11 @@ class scaling_manager(scaling_manager_base):
 
     db_mgr.insert_observation(**kwargs)
 
-    print >> out, "Lattice: %d reflections" % (data.n_obs - data.n_rejected)
-    print >> out, "average obs", sum_y / (data.n_obs - data.n_rejected), \
-      "average calc", sum_x / (data.n_obs - data.n_rejected)
-    print >> out, "Rejected %d reflections with negative intensities" % \
-        data.n_rejected
+    print("Lattice: %d reflections" % (data.n_obs - data.n_rejected), file=out)
+    print("average obs", sum_y / (data.n_obs - data.n_rejected), \
+      "average calc", sum_x / (data.n_obs - data.n_rejected), file=out)
+    print("Rejected %d reflections with negative intensities" % \
+        data.n_rejected, file=out)
 
     data.accept = True
     for pair in matches.pairs():
@@ -602,7 +601,7 @@ def run(args):
   out = multi_out()
   out.register("log", log, atexit_send_to=None)
   out.register("stdout", sys.stdout)
-  print >> out, "I model"
+  print("I model", file=out)
   if work_params.model is not None:
     from xfel.merging.general_fcalc import run
     i_model = run(work_params)
@@ -612,9 +611,9 @@ def run(args):
   else:
     i_model = None
 
-  print >> out, "Target unit cell and space group:"
-  print >> out, "  ", work_params.target_unit_cell
-  print >> out, "  ", work_params.target_space_group
+  print("Target unit cell and space group:", file=out)
+  print("  ", work_params.target_unit_cell, file=out)
+  print("  ", work_params.target_space_group, file=out)
 
   miller_set, i_model = consistent_set_and_model(work_params,i_model)
 
@@ -633,12 +632,12 @@ def run(args):
     average_cell = uctbx.unit_cell(list(average_cell_abc) +
       list(work_params.target_unit_cell.parameters()[3:]))
     work_params.target_unit_cell = average_cell
-    print >> out, ""
-    print >> out, "#" * 80
-    print >> out, "RESCALING WITH NEW TARGET CELL"
-    print >> out, "  average cell: %g %g %g %g %g %g" % \
-      work_params.target_unit_cell.parameters()
-    print >> out, ""
+    print("", file=out)
+    print("#" * 80, file=out)
+    print("RESCALING WITH NEW TARGET CELL", file=out)
+    print("  average cell: %g %g %g %g %g %g" % \
+      work_params.target_unit_cell.parameters(), file=out)
+    print("", file=out)
     scaler.reset()
     scaler.scale_all(frame_files)
     scaler.show_unit_cell_histograms()
@@ -646,9 +645,9 @@ def run(args):
     try :
       plot_overall_completeness(completeness)
     except Exception as e :
-      print "ERROR: can't show plots"
-      print "  %s" % str(e)
-  print >> out, "\n"
+      print("ERROR: can't show plots")
+      print("  %s" % str(e))
+  print("\n", file=out)
 
   # Sum the observations of I and I/sig(I) for each reflection.
   sum_I = flex.double(miller_set.size(), 0.)
@@ -672,9 +671,9 @@ def run(args):
     title="Statistics for all reflections",
     out=out,
     work_params=work_params)
-  print >> out, ""
+  print("", file=out)
   n_refl, corr = ((scaler.completeness > 0).count(True), 0)
-  print >> out, "\n"
+  print("\n", file=out)
   table2 = show_overall_observations(
     obs=miller_set_avg,
     redundancy=scaler.summed_N,
@@ -694,7 +693,7 @@ def run(args):
   #  file_name="nobs.mtz")
   if work_params.data_subsubsets.subsubset is not None and work_params.data_subsubsets.subsubset_total is not None:
     easy_pickle.dump("scaler_%d.pickle"%work_params.data_subsubsets.subsubset, scaler)
-  print >> out, ""
+  print("", file=out)
   mtz_file, miller_array = scaler.finalize_and_save_data()
   #table_pickle_file = "%s_graphs.pkl" % work_params.output.prefix
   #easy_pickle.dump(table_pickle_file, [table1, table2])

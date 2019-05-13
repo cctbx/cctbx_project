@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #!/usr/bin/env cctbx.python
 #
 # Use case 1.2A - going back to the use case for predictions and making sure that
@@ -327,30 +328,30 @@ def work():
 
     xyz_to_hkl_xds = import_xds_integrate_hkl(integrate_hkl, phi_range)
 
-    print 'XDS:', ranges(xyz_to_hkl_xds)
+    print('XDS:', ranges(xyz_to_hkl_xds))
 
     xyz_to_hkl = regenerate_predictions_brute(integrate_hkl, phi_range)
 
-    print 'Brute:', ranges(xyz_to_hkl)
+    print('Brute:', ranges(xyz_to_hkl))
 
     n_correct, n_wrong = compare(xyz_to_hkl, xyz_to_hkl_xds)
-    print n_correct, n_wrong
+    print(n_correct, n_wrong)
     # assert(float(n_correct) / float(n_correct + n_wrong) > 0.999)
-    print 'OK'
+    print('OK')
 
     try:
         from dials.algorithms.refinement.prediction.reeke import reeke_model
         xyz_to_hkl = regenerate_predictions_reeke(integrate_hkl, phi_range)
 
-        print 'Reeke:', ranges(xyz_to_hkl)
+        print('Reeke:', ranges(xyz_to_hkl))
 
         n_correct, n_wrong = compare(xyz_to_hkl, xyz_to_hkl_xds)
-        print n_correct, n_wrong
+        print(n_correct, n_wrong)
         # assert(float(n_correct) / float(n_correct + n_wrong) > 0.999)
 
-        print 'OK'
+        print('OK')
     except ImportError as e:
-        print "Test of the Reeke algorithm requires DIALS."
+        print("Test of the Reeke algorithm requires DIALS.")
 
 if __name__ == '__main__':
     work()

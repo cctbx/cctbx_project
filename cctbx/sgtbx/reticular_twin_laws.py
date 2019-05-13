@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import generators
+from __future__ import print_function
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx import crystal
@@ -72,26 +73,26 @@ class ret_twin_law_info(object):
   def show(self, out=None):
     if out is None:
       out = sys.stdout
-    print >> out
-    print >> out, "----- Reticular twin laws summary ----- "
-    print >> out
-    print >> out, "Base crystal symmetry"
+    print(file=out)
+    print("----- Reticular twin laws summary ----- ", file=out)
+    print(file=out)
+    print("Base crystal symmetry", file=out)
     self.base_xs.show_summary(f=out)
-    print >> out
-    print >> out, "Sublattice symmetry"
+    print(file=out)
+    print("Sublattice symmetry", file=out)
     self.subl_xs.show_summary(f=out)
-    print >> out
-    print >> out, "    Matrix M : "
-    print self.m
-    print >> out, "    Order    : %i"%self.order
-    print >> out, "    Metric R : %3.2e"%self.metric_r
-    print >> out, "    Twin laws:"
+    print(file=out)
+    print("    Matrix M : ", file=out)
+    print(self.m)
+    print("    Order    : %i"%self.order, file=out)
+    print("    Metric R : %3.2e"%self.metric_r, file=out)
+    print("    Twin laws:", file=out)
     if self.twin_laws is not None:
       for law in self.twin_laws:
-        print >> out, "           ", rmpg.as_hkl( law )
+        print("           ", rmpg.as_hkl( law ), file=out)
     else:
-      print >> out, "         No twin laws"
-    print >> out
+      print("         No twin laws", file=out)
+    print(file=out)
 
 class reticular_twin_laws(object):
   def __init__(self, xs, max_delta=5.0, max_index=5):
@@ -147,7 +148,7 @@ class reticular_twin_laws(object):
       for o in self.derived_laws:
         o.show(out=out)
     else:
-      print >> out, "No reticular twin laws found."
+      print("No reticular twin laws found.", file=out)
 
 
 
@@ -194,4 +195,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
-  print "OK"
+  print("OK")

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.web.asu_gallery import jv_asu
 from cctbx import sgtbx
@@ -51,7 +52,7 @@ def sample_asu(asu, n=(12,12,12), shape=False, is_stripped_asu=False):
           if (u_grid[i_pr][j_pr][k_pr] != 0):
             n_redundancies += 1
             if (not is_stripped_asu):
-              print "Redundancy at" , (i,j,k), (i_pr,j_pr,k_pr)
+              print("Redundancy at" , (i,j,k), (i_pr,j_pr,k_pr))
           if (f):
             u_grid[i_pr][j_pr][k_pr] = 1
             c.append(1)
@@ -65,7 +66,7 @@ def sample_asu(asu, n=(12,12,12), shape=False, is_stripped_asu=False):
   return u_grid, r_grid, colored_grid_points, n_redundancies
 
 def check_compatibility_with_sampling_grid(asu):
-  print "Shape vertices:"
+  print("Shape vertices:")
   n_outside_sampling_grid = 0
   for vertex in asu.shape_vertices():
     s = ""
@@ -74,7 +75,7 @@ def check_compatibility_with_sampling_grid(asu):
         s = " outside sampling grid"
         n_outside_sampling_grid += 1
         break
-    print "  %s%s" % (str(vertex), s)
+    print("  %s%s" % (str(vertex), s))
   assert n_outside_sampling_grid == 0
 
 def check_asu(group_type_number, asu, n, is_stripped_asu, soft_mode):
@@ -82,7 +83,7 @@ def check_asu(group_type_number, asu, n, is_stripped_asu, soft_mode):
   sg_info.show_summary()
   if (group_type_number > 0):
     assert sg_info.type().number() == group_type_number
-  print "Gridding:", n
+  print("Gridding:", n)
   ops = sg_info.group()
   check_compatibility_with_sampling_grid(asu=asu)
   sys.stdout.flush()
@@ -98,8 +99,8 @@ def check_asu(group_type_number, asu, n, is_stripped_asu, soft_mode):
           sampling_n_redundancies=sampling_n_redundancies,
           redundancies=redundancies,
           soft_mode=soft_mode)
-  print "number of redundancies: %d+%d," % (
-    sampling_n_redundancies, n_redundancies),
+  print("number of redundancies: %d+%d," % (
+    sampling_n_redundancies, n_redundancies), end=' ')
   sg_info.show_summary()
   sys.stdout.flush()
   redundancies = sort_redundancies(redundancies)
@@ -134,7 +135,7 @@ def recolor_grid_points(gridding, colored_grid_points, redundancies, verbose):
   processed_points = {}
   for symop,pairs in redundancies:
     if (verbose):
-      print "Coloring %d redundancies:" % len(pairs), symop
+      print("Coloring %d redundancies:" % len(pairs), symop)
     sys.stdout.flush()
     colored_point_dict = {}
     for colored_point in colored_grid_points:
@@ -228,7 +229,7 @@ def grid_asu(
         marker = 1
         break
   if (marker != 1):
-    print "Orbit does not intersect with asymmetric unit", (i,j,k)
+    print("Orbit does not intersect with asymmetric unit", (i,j,k))
     assert soft_mode
   return result
 
@@ -273,14 +274,14 @@ def rt_mx_analysis(s):
 
 def analyze_redundancies(asu, n, redundancies, verbose=1):
   if (len(redundancies) == 0): return
-  print "Overview:"
+  print("Overview:")
   for symop, pairs in redundancies:
-    print symop, ": number of redundancies:", len(pairs)
-    print "  ", rt_mx_analysis(sgtbx.rt_mx(symop))
-  print "Details:"
+    print(symop, ": number of redundancies:", len(pairs))
+    print("  ", rt_mx_analysis(sgtbx.rt_mx(symop)))
+  print("Details:")
   for symop, pairs in redundancies:
-    print symop, ": number of redundancies:", len(pairs)
-    print "  ", rt_mx_analysis(sgtbx.rt_mx(symop))
+    print(symop, ": number of redundancies:", len(pairs))
+    print("  ", rt_mx_analysis(sgtbx.rt_mx(symop)))
     all_cuts = dicts.with_default_factory(dict)
     not_in_cuts = {}
     for pair in pairs:
@@ -289,31 +290,31 @@ def analyze_redundancies(asu, n, redundancies, verbose=1):
         if (len(cuts) == 0):
           not_in_cuts[point] = 1
         all_cuts[tuple(cuts)][point] = 1
-    print "    In cuts:"
+    print("    In cuts:")
     for cuts,points in all_cuts.items():
-      print "     ",
+      print("     ", end=' ')
       show_amp = False
       for cut in cuts:
-        if (show_amp): print "&",
-        print cut,
+        if (show_amp): print("&", end=' ')
+        print(cut, end=' ')
         show_amp = True
-      print "#points: %d:" % len(points),
-      print str(points.keys()[:4]).replace(" ", "")
+      print("#points: %d:" % len(points), end=' ')
+      print(str(points.keys()[:4]).replace(" ", ""))
     if (verbose):
-      print "    Pairs:"
+      print("    Pairs:")
       for pair in pairs:
-        print "      ", pair
+        print("      ", pair)
     if (len(not_in_cuts) > 0):
-      print "    Not in cuts:"
+      print("    Not in cuts:")
       for point in not_in_cuts.keys():
-        print "     ", point
+        print("     ", point)
       raise AssertionError, "Some redundant points not in any cuts."
-    print
+    print()
 
 def check_multiplicities(asu, n):
   space_group = sgtbx.space_group(asu.hall_symbol)
   all_cuts = asu.extract_all_cuts()
-  print "Total number of cuts:", len(all_cuts)
+  print("Total number of cuts:", len(all_cuts))
   def get_code(point):
     result = 0
     bit = 1
@@ -334,27 +335,27 @@ def check_multiplicities(asu, n):
             mults_by_code.setdefault(code, set()).add(m)
   for code,mults in mults_by_code.items():
     if (len(mults) != 1):
-      print "PROBLEM:", space_group.type().number(), mults_by_code
+      print("PROBLEM:", space_group.type().number(), mults_by_code)
       break
   else:
-    print "cut intersection multiplicities unique:"
+    print("cut intersection multiplicities unique:")
     order_z = space_group.order_z()
     tab_codes = []
     for code in sorted(mults_by_code.keys()):
       m = list(mults_by_code[code])[0]
       if (m != order_z):
-        print code, m
+        print(code, m)
         tab_codes.append((code, m))
-    print "Number of cut intersection codes:", len(tab_codes)
+    print("Number of cut intersection codes:", len(tab_codes))
 
 def test_all(n):
   for space_group_number in xrange(1, 231):
     cmd = "cctbx.python %s" % sys.argv[0] \
         + " %d,%d,%d " % n +str(space_group_number)
-    print cmd
+    print(cmd)
     sys.stdout.flush()
     easy_run.call(cmd)
-    print
+    print()
     sys.stdout.flush()
 
 if (__name__=="__main__"):
@@ -398,12 +399,12 @@ if (__name__=="__main__"):
           from cctbx.sgtbx.direct_space_asu import plane_group_reference_table
           asu_original = plane_group_reference_table.get_asu(
             point_group_number=group_type_number)
-          print "Plane group number:", group_type_number
+          print("Plane group number:", group_type_number)
           group_type_number *= -1
         asu = asu_original
         if (flags.strip or flags.strip_polygons):
           asu = asu_original.shape_only()
-        print "Writing asu_gallery files"
+        print("Writing asu_gallery files")
         jv_asu.asu_as_jvx(group_type_number, asu)
         if (flags.strip_grid):
           asu = asu_original.shape_only()

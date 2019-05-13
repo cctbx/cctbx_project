@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx.pdb import rna_dna_detection
 from cctbx import geometry_restraints
 from cctbx import uctbx
@@ -65,15 +66,15 @@ class looped_data(object):
   def show(self, f=None):
     if (f is None): f = sys.stdout
     for key in self.cif_keywords():
-      print >> f, "_%s.%s: %s" % (
-        self.__class__.__name__, key, getattr(self, key))
+      print("_%s.%s: %s" % (
+        self.__class__.__name__, key, getattr(self, key)), file=f)
 
   def show_loop_header(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "loop_"
+    print("loop_", file=f)
     for key in self.cif_keywords():
-      print >> f, "_%s.%s" % (
-        self.__class__.__name__, key)
+      print("_%s.%s" % (
+        self.__class__.__name__, key), file=f)
 
   def generate_loop_data(self):
     rc = []
@@ -85,8 +86,8 @@ class looped_data(object):
   def show_loop_data(self, f=None):
     if (f is None): f = sys.stdout
     for val in self.generate_loop_data():
-      print >> f, val,
-    print >> f
+      print(val, end=' ', file=f)
+    print(file=f)
 
   def as_cif_loop(self):
     import iotbx
@@ -106,7 +107,7 @@ def show_loop(data_list, f):
       first = False
     datum.show_loop_data(f=f)
   if (not first):
-    print >> f
+    print(file=f)
 
 def apply_chem_mod_list(label, mod_list, result_list):
   for mod in mod_list:

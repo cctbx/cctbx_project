@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import copy,re
 from iotbx.detectors.detectorbase import DetectorImageBase
@@ -198,6 +199,6 @@ if __name__=='__main__':
   i = sys.argv[1]
   a = PilatusImage(i)
   a.read()
-  print a
-  print a.parameters
-  print a.rawdata, len(a.rawdata), a.size1*a.size2
+  print(a)
+  print(a.parameters)
+  print(a.rawdata, len(a.rawdata), a.size1*a.size2)

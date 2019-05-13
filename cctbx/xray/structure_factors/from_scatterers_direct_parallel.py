@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # -*- coding: utf-8 -*-
 import copy,math
 from scitbx.array_family import flex
@@ -49,25 +50,25 @@ class pprocess:
 
   def print_diagnostics(self):
     for scatterer in self.scatterers:
-      print scatterer
-      print scatterer.fp
-      print scatterer.fdp
+      print(scatterer)
+      print(scatterer.fp)
+      print(scatterer.fdp)
     self.registry.show()
     d_star_sq = 1.
     uniqueff = self.registry.unique_form_factors_at_d_star_sq(d_star_sq)
     uniqueix = self.registry.unique_indices(self.scatterers)
     for x in xrange(len(self.scatterers)):
-      print self.scatterers[x]
-      print self.scatterers[x].scattering_type
-      print uniqueff[uniqueix[x]]
+      print(self.scatterers[x])
+      print(self.scatterers[x].scattering_type)
+      print(uniqueff[uniqueix[x]])
       constant_term = self.registry.gaussian(self.scatterers[x].scattering_type).c()
-      print "constant",constant_term
+      print("constant",constant_term)
       parameters = self.registry.gaussian(self.scatterers[x].scattering_type).parameters()
       x_sq = d_star_sq / 4.;
       unique_form_factor_at_x_sq = copy.copy(constant_term)
       for x in xrange(0,len(parameters),2):
         unique_form_factor_at_x_sq += parameters[x] * math.exp(-parameters[x+1]*x_sq)
-      print unique_form_factor_at_x_sq
+      print(unique_form_factor_at_x_sq)
 
   def prepare_miller_arrays_for_cuda(self,algorithm,verbose=False):
 
@@ -84,8 +85,8 @@ class pprocess:
       flat_mix = self.miller_indices.as_double().as_numpy_array().astype(algorithm.numpy_t)
     if self.miller_indices.size()%FHKL_BLOCKSIZE > 0:
       newsize = 3*FHKL_BLOCKSIZE* (1+(self.miller_indices.size()//FHKL_BLOCKSIZE))
-      if verbose: print "Miller indices: resetting %s array from size %d to %d"%(
-                        flat_mix.dtype,flat_mix.shape[0],newsize)
+      if verbose: print("Miller indices: resetting %s array from size %d to %d"%(
+                        flat_mix.dtype,flat_mix.shape[0],newsize))
       flat_mix.resize(( newsize,))
 
     self.n_flat_hkl = flat_mix.shape[0]//3
@@ -120,10 +121,10 @@ class pprocess:
         self.scatterers.sorted_ranges[self.scatterers.increasing_order[s]][1]
 
     if verbose:
-      print list(self.scatterers.increasing_order)
-      print self.scatterers.number_of_types
-      print self.scatterers.unsorted_counts
-      print self.scatterers.sorted_ranges
+      print(list(self.scatterers.increasing_order))
+      print(self.scatterers.number_of_types)
+      print(self.scatterers.unsorted_counts)
+      print(self.scatterers.sorted_ranges)
 
     uniqueix_sort_order = flex.sort_permutation(uniqueix)
     sorted_uniqueix = uniqueix.select(uniqueix_sort_order
@@ -146,11 +147,11 @@ class pprocess:
     if n_sites%FHKL_BLOCKSIZE > 0:
       newsize = FHKL_BLOCKSIZE* (1+(n_sites//FHKL_BLOCKSIZE))
       if verbose:
-        print "Scatterer xyzs: resetting %s array from size %d to %d"%(
-              sorted_flat_sites.dtype,sorted_flat_sites.shape[0],3*newsize)
-        print "weights   : resetting %s array from size %d to %d"%(
-              sorted_weights.dtype,sorted_weights.shape[0],newsize)
-        print
+        print("Scatterer xyzs: resetting %s array from size %d to %d"%(
+              sorted_flat_sites.dtype,sorted_flat_sites.shape[0],3*newsize))
+        print("weights   : resetting %s array from size %d to %d"%(
+              sorted_weights.dtype,sorted_weights.shape[0],newsize))
+        print()
       sorted_flat_sites.resize(( 3*newsize,))
       # zero-padding for weights guarantees no effect from padded sites
       sorted_weights.resize(( newsize,))

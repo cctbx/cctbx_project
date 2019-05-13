@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os
 import time
 import math
@@ -123,16 +124,16 @@ def run(ph, core=None):
     #
     interactions=get_interactions(sub_ph,atom_in_residue,silva_type='sedd',core=core)
     new_core=[]
-    print("1. interactions got: ",len(interactions))
+    print(("1. interactions got: ",len(interactions)))
     for pair in interactions:
       if(len(set(pair).intersection(set(core)))>0):
         new_core+=pair
     new_core=list(set(new_core)|set(core))
-    print("new core:",new_core)
+    print(("new core:",new_core))
     interaction_mols=new_core
     #
     interactions=get_interactions(sub_ph, atom_in_residue, silva_type='dori', core=new_core)
-    print("2. interactions got: ",len(interactions))
+    print(("2. interactions got: ",len(interactions)))
     interaction_mols=[]
     for item in interactions:
       interaction_mols=interaction_mols+list(item)
@@ -151,7 +152,7 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
       core=None):
   t0=time.time()
   atoms = ph.atoms()
-  print("num atoms:",len(atoms))
+  print(("num atoms:",len(atoms)))
   elements = atoms.extract_element()
   eldict = dict(enumerate(set(elements)))
   tmp = {}
@@ -170,7 +171,7 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
   xyz_max=xyz.max()
   xyz_step = [
     int(math.floor((xyz_max[i]-xyz_min[i])/step_size)+1) for i in range(3)]
-  print("points to process:",xyz_step[0]*xyz_step[1]*xyz_step[2])
+  print(("points to process:",xyz_step[0]*xyz_step[1]*xyz_step[2]))
   interacting_pairs = ext.points_and_pairs(
     ngrid           = xyz_step,
     step_size       = step_size,
@@ -184,7 +185,7 @@ def get_interactions(ph, atom_in_residue, step_size=0.5*A2B, silva_type='dori',
     pair = [int(it[0]),int(it[1])]
     tmp.append(tuple(pair))
   interacting_pairs = list(set(tmp))
-  print("Time ",(time.time()-t0))
+  print(("Time ",(time.time()-t0)))
   return interacting_pairs
 
 if __name__=="__main__":

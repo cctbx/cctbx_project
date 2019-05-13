@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # TODO:
 #  - prompt user for missing symmetry
@@ -269,7 +270,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     self._index_span = index_span
 
   def update_reflection_info (self, hkl, d_min, value) :
-    print hkl, value
+    print(hkl, value)
     if (hkl is None) :
       self.hkl_info.SetValue("")
       self.d_min_info.SetValue("")
@@ -631,7 +632,7 @@ class HKLViewFrame (wx.Frame) :
       unit_cell=self.miller_array.unit_cell())
     array = self.miller_array.expand_to_p1().customized_copy(
       crystal_symmetry=symm)
-    print "MERGING 2"
+    print("MERGING 2")
     array = array.merge_equivalents().array().set_info(self.miller_array.info())
     self.viewer.set_miller_array(array, zoom=False)
     self.viewer.Refresh()

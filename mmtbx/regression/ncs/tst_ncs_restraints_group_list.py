@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -305,4 +306,4 @@ def run_tests():
 if __name__=='__main__':
   t0 = time()
   run_tests()
-  print "OK. Time: %8.3f"%(time()-t0)
+  print("OK. Time: %8.3f"%(time()-t0))

@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from iotbx import reflection_file_editor, file_reader
 from iotbx.reflection_file_editor import master_phil
 from cctbx import miller
@@ -782,7 +783,7 @@ mtz_file {
 # TODO replace this with equivalent using synthetic data
 def exercise_command_line():
   if (not libtbx.env.has_module("phenix_regression")):
-    print "phenix_regression not available, skipping"
+    print("phenix_regression not available, skipping")
     return
   file1 = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/enk.mtz",
@@ -879,7 +880,7 @@ def exercise_xds_input():
     relative_path="phenix_regression/reflection_files/xds_correct_unmerged.hkl",
     test=os.path.isfile)
   if (xds_file is None):
-    print "phenix_regression not available, skipping exercise_xds_input"
+    print("phenix_regression not available, skipping exercise_xds_input")
     return False
   xds_in = file_reader.any_file(xds_file)
   wl = xds_in.file_server.miller_arrays[0].info().wavelength
@@ -902,4 +903,4 @@ if __name__ == "__main__" :
     assert (len(w) == 7), len(w)
     exercise_command_line()
     exercise_xds_input()
-  print "OK"
+  print("OK")

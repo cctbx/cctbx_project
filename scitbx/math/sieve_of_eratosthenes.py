@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import math
 
 def prime_sieve( n,
@@ -43,4 +44,4 @@ def tst_prime_sieve():
 
 if (__name__ == "__main__"):
   tst_prime_sieve()
-  print "OK"
+  print("OK")

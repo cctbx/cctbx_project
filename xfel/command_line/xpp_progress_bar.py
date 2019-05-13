@@ -15,6 +15,7 @@ Currently it features:
 
 '''
 from __future__ import division
+from __future__ import print_function
 from six.moves import range
 import os
 import wx
@@ -202,7 +203,7 @@ class BarsFrame(wx.Frame):
         if len(stats) == 0:
           return
 
-        print stats
+        print(stats)
         res = self.restextbox.GetValue()
         trial = self.textbox.GetValue()
         self.mult_highest = [stats[key]['multiplicity_highest'] for key in stats.keys()]

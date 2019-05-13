@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx import lbfgs as scitbx_lbfgs
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
@@ -281,16 +282,16 @@ def verify_derivatives(n=5, s11=1, s12=1.2, s22=2, twist=0.5, verbose=0):
     for iy in xrange(-n,n+1):
       xy = [i/float(n) for i in (ix,iy)]
       if (0 or verbose):
-        print "value: %5.3f" % twisted_gauss2d0(xy, s11, s12, s22, twist)
-        print
+        print("value: %5.3f" % twisted_gauss2d0(xy, s11, s12, s22, twist))
+        print()
       for f,a in ((finite_grad_x,analytic_grad_x),
                   (finite_grad_y,analytic_grad_y)):
         fg = f(xy, s11, s12, s22, twist)
         ag = a(xy, s11, s12, s22, twist)
         if (0 or verbose):
-          print "fg:", fg
-          print "ag:", ag
-          print
+          print("fg:", fg)
+          print("ag:", ag)
+          print()
         assert abs(fg-ag) < 1.e-5
       for f,a in ((finite_curv_xx,analytic_curv_xx),
                   (finite_curv_yy,analytic_curv_yy),
@@ -299,9 +300,9 @@ def verify_derivatives(n=5, s11=1, s12=1.2, s22=2, twist=0.5, verbose=0):
         fc = f(xy, s11, s12, s22, twist)
         ac = a(xy, s11, s12, s22, twist)
         if (0 or verbose):
-          print "fc:", fc
-          print "ac:", ac
-          print
+          print("fc:", fc)
+          print("ac:", ac)
+          print()
         if (xy != [0,0]):
           assert abs(fc-ac)/max(1,min(abs(fc),abs(ac))) < 1.e-3
 
@@ -352,13 +353,13 @@ def fortran_lbfgs_run(target_evaluator,
       requests_f_and_g=requests_f_and_g,
       requests_diag=requests_diag)
     if (requests_diag):
-      print "x,f,d:", tuple(x), f, tuple(d)
+      print("x,f,d:", tuple(x), f, tuple(d))
     else:
-      print "x,f:", tuple(x), f
+      print("x,f:", tuple(x), f)
     sys.stdout.flush()
     sys.stderr.flush()
     minimizer(x, f, g, diag=d, diagco=use_curvatures)
-    print "iflag:", minimizer.iflag[0]
+    print("iflag:", minimizer.iflag[0])
     if (minimizer.iflag[0] <= 0): break
     requests_f_and_g = minimizer.iflag[0] == 1
     requests_diag = minimizer.iflag[0] == 2
@@ -392,9 +393,9 @@ def lbfgs_run(target_evaluator,
         requests_f_and_g=requests_f_and_g,
         requests_diag=requests_diag)
       if (requests_diag):
-        print "x,f,d:", tuple(x), f, tuple(d)
+        print("x,f,d:", tuple(x), f, tuple(d))
       else:
-        print "x,f:", tuple(x), f
+        print("x,f:", tuple(x), f)
       if (use_curvatures):
         if (d is None): d = flex.double(x.size())
         have_request = minimizer.run(x, f, g, d)
@@ -464,8 +465,8 @@ class twisted_gaussian_minimizer:
         (finite_curv_xx(self.x, self.s11, self.s12, self.s22, self.twist),
          finite_curv_yy(self.x, self.s11, self.s12, self.s22, self.twist)))
       assert self.d.all_ne(0)
-      print tuple(self.df), "finite"
-      print tuple(self.d), "analytic"
+      print(tuple(self.df), "finite")
+      print(tuple(self.d), "analytic")
       self.d = 1 / self.d
     return self.x, self.f, self.g, self.d
 
@@ -476,26 +477,26 @@ def run(scale=2, twist=0.5):
   use_fortran = "--fortran" in sys.argv[1:]
   for iteration in xrange(100):
     x = [random.random()*scale for i in (0,1)]
-    print x, "start"
+    print(x, "start")
     for use_curvatures in (False, True):
       m = twisted_gaussian_minimizer(x=x, twist=twist).run(
         use_fortran=False,
         use_curvatures=use_curvatures)
-      print x
-      print tuple(m.x), "final"
+      print(x)
+      print(tuple(m.x), "final")
       if (use_fortran):
         mf = twisted_gaussian_minimizer(x=x, twist=twist).run(
           use_fortran=True,
           use_curvatures=use_curvatures)
         assert mf.x.all_eq(m.x)
-        print mf.minimizer.n_calls, m.minimizer.n_calls
+        print(mf.minimizer.n_calls, m.minimizer.n_calls)
         assert mf.minimizer.n_calls+1 == m.minimizer.n_calls
       if (abs(m.x[0]) > 1.e-4 or abs(m.x[1]) > 1.e-4):
-        print tuple(m.x), "failure, use_curvatures="+str(use_curvatures)
-      print "iter,exception:", m.minimizer.iter(), m.minimizer.error
-      print "n_calls:", m.minimizer.n_calls
+        print(tuple(m.x), "failure, use_curvatures="+str(use_curvatures))
+      print("iter,exception:", m.minimizer.iter(), m.minimizer.error)
+      print("n_calls:", m.minimizer.n_calls)
       assert m.minimizer.n_calls == m.minimizer.nfun()
-      print
+      print()
 
 if (__name__ == "__main__"):
   run()

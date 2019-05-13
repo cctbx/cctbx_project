@@ -1,6 +1,7 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.command_line.water_screen import master_phil
 from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
 from mmtbx import ions
@@ -90,18 +91,18 @@ def exercise():
       predictions = predict_ion(chem_env, scatter_env,
                                 elements = ["HOH", "ZN", "CA"])
       if predictions is None:
-        print "Could not load SVM classifier"
-        print "Skipping {}".format(os.path.split(__file__)[1])
+        print("Could not load SVM classifier")
+        print("Skipping {}".format(os.path.split(__file__)[1]))
         return
 
       if resname != predictions[0][0]:
-        print "Prediction ({}) did not match expected: {}" \
-          .format(predictions[0][0], resname)
+        print("Prediction ({}) did not match expected: {}" \
+          .format(predictions[0][0], resname))
         for element, prob in predictions:
-          print "  {}: {:.2f}".format(element, prob)
+          print("  {}: {:.2f}".format(element, prob))
         sys.exit()
 
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   if (not libtbx.env.find_in_repositories("chem_data")):
@@ -112,10 +113,10 @@ if __name__ == "__main__":
     except ImportError :
       warnings.warn("libsvm not available, skipping this test")
     else :
-      print "WARNING: TEST TOO SLOW. MAKE IT RUN UNDER 300s AND ENABLE BACK."
+      print("WARNING: TEST TOO SLOW. MAKE IT RUN UNDER 300s AND ENABLE BACK.")
       if 0: #XXX FIXME disabled
         t0 = time.time()
         exercise()
-        print "Time: %6.2f"%(time.time()-t0)
-        print "OK"
+        print("Time: %6.2f"%(time.time()-t0))
+        print("OK")
         exercise()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import fileinput, re
 
 class empty: pass
@@ -28,9 +29,9 @@ def run():
     t_fftpack = data_list[3].time - data_list[2].time
     mega_byte = data_list[0].memory / (1024. * 1024)
     if (t_fftw < 0 or t_fftpack < 0):
-      print "#", idCode, mega_byte, t_fftw, t_fftpack
+      print("#", idCode, mega_byte, t_fftw, t_fftpack)
     else:
-      print idCode, mega_byte, t_fftw, t_fftpack, t_fftpack/t_fftw
+      print(idCode, mega_byte, t_fftw, t_fftpack, t_fftpack/t_fftw)
 
 if (__name__ == "__main__"):
   run()

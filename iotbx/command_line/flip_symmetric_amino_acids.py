@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.flip_symmetric_amino_acids
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Usage
 import sys
 import iotbx.pdb
@@ -38,7 +39,7 @@ def run(args):
       model_input = pdb_input)
   pdb_h = model.get_hierarchy()
   info = pdb_h.flip_symmetric_amino_acids()
-  print info
+  print(info)
   model.set_sites_cart_from_hierarchy()
 
   out_fn_prefix = inp_fn

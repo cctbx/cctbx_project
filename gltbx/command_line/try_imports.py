@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def run():
   available = []
   missing = []
@@ -14,9 +15,9 @@ def run():
     missing = "None"
   else:
     missing = " ".join(missing)
-  print "gltbx modules:"
-  print "  available:", available
-  print "    missing:", missing
+  print("gltbx modules:")
+  print("  available:", available)
+  print("    missing:", missing)
 
 if (__name__ == "__main__"):
   run()

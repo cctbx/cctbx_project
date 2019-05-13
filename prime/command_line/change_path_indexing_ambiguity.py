@@ -5,6 +5,7 @@ Author      : Uervirojnangkoorn, M.
 Created     : 8/20/2015
 Description : read indexing_ambiguity pickle and overwrite oldpath with new path
 """
+from __future__ import print_function
 import sys
 from six.moves import cPickle as pickle
 
@@ -14,7 +15,7 @@ def read_input(args):
   newpath = ''
   for i in range(len(args)):
     if args[i]=='-h':
-      print txt_help
+      print(txt_help)
       exit()
 
     pair=args[i].split('=')
@@ -27,7 +28,7 @@ def read_input(args):
         newpath = pair[1]
 
   if data == '' or oldpath == '' or newpath == '':
-    print "Please all parameters data, oldpath, and newpath."
+    print("Please all parameters data, oldpath, and newpath.")
     exit()
 
   return data, oldpath, newpath
@@ -42,7 +43,7 @@ if (__name__ == "__main__"):
 
   #Read input parameters and frames (pickle files)
   if len(sys.argv) == 1:
-    print txt_help
+    print(txt_help)
     exit()
 
   data, oldpath, newpath = read_input(args = sys.argv[1:])
@@ -54,8 +55,8 @@ if (__name__ == "__main__"):
     basis = pickle_data[key]
     newkey = key.replace(oldpath, newpath)
     new_pickle_data[newkey] = basis
-    print cn_i+1, newkey, basis
+    print(cn_i+1, newkey, basis)
     cn_i +=1
 
   pickle.dump(new_pickle_data, open("new_indexing_ambiguity.pickle", "wb"))
-  print 'Found and replace %6d keys'%(cn_i)
+  print('Found and replace %6d keys'%(cn_i))

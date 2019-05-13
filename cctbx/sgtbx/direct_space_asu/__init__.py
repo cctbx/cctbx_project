@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 from cctbx.sgtbx.direct_space_asu import cut_plane
 from cctbx.sgtbx.direct_space_asu.short_cuts import r1
@@ -22,15 +23,15 @@ class direct_space_asu(object):
 
   def show_summary(self, f=None):
     if (f == None): f = sys.stdout
-    print >> f, "Hall symbol:", self.hall_symbol
-    print >> f, "Number of cuts:", len(self.cuts)
+    print("Hall symbol:", self.hall_symbol, file=f)
+    print("Number of cuts:", len(self.cuts), file=f)
     return self
 
   def show_comprehensive_summary(self, f=None):
     if (f == None): f = sys.stdout
     self.show_summary(f)
     for cut in self.cuts:
-      print >> f, "    &", cut
+      print("    &", cut, file=f)
     return self
 
   def is_inside(self, point, shape_only=False):

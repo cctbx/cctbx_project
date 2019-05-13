@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from libtbx.utils import null_out
 from cStringIO import StringIO
@@ -668,7 +669,7 @@ ATOM    201  CA  ASPzy 130     121.341 496.425 647.959  1.00 30.00           C
 ATOM    202  CA  ILEzy 131     119.598 498.577 650.580  1.00 30.00           C
 """
 def tst_00():
-  print "Finding sheets, splitting and merging...",
+  print("Finding sheets, splitting and merging...", end=' ')
   import iotbx.pdb
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
@@ -678,17 +679,17 @@ def tst_00():
   import iotbx.pdb.secondary_structure as ioss
   annotation=ioss.annotation.from_records(records=flex.split_lines(records))
   f=StringIO()
-  print >>f, "New records: \n",annotation.as_pdb_str()
+  print("New records: \n",annotation.as_pdb_str(), file=f)
   spl=annotation.split_sheets()
-  print >>f, "After split_sheets: \n",spl.as_pdb_str()
+  print("After split_sheets: \n",spl.as_pdb_str(), file=f)
   merged=spl.merge_sheets()
-  print >>f, "After merge_sheets: \n",merged.as_pdb_str()
-  print >>f, "\nSpl:\n",spl.as_pdb_str()
+  print("After merge_sheets: \n",merged.as_pdb_str(), file=f)
+  print("\nSpl:\n",spl.as_pdb_str(), file=f)
   assert merged.is_same_as(annotation)
-  print >>f, "\nComparing merged and spl:"
-  print >>f, "\nMerged:\n",merged.as_pdb_str()
-  print >>f, "\nSpl:\n",spl.as_pdb_str()
-  print >>f, "\nFINAL PDB selections:\n",merged.as_atom_selections()
+  print("\nComparing merged and spl:", file=f)
+  print("\nMerged:\n",merged.as_pdb_str(), file=f)
+  print("\nSpl:\n",spl.as_pdb_str(), file=f)
+  print("\nFINAL PDB selections:\n",merged.as_atom_selections(), file=f)
   assert merged.is_same_as(spl)
   found_text=f.getvalue()
 
@@ -760,15 +761,15 @@ FINAL PDB selections:
 ["chain 'Aa' and resid 32  through 36 ", "chain 'Aa' and resid 17  through 22 ", "chain 'Aa' and resid 52  through 55 ", "chain 'Aa' and resid 40  through 45 ", "chain 'Aa' and resid 7  through 12 ", "chain 'Aa' and resid 58  through 63 ", "chain 'Aa' and resid 66  through 71 "]
   """
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
     raise AssertionError, "FAILED"
 
 
-  print "OK"
+  print("OK")
 
 
 def tst_01():
-  print "Finding helices...",
+  print("Finding helices...", end=' ')
   import iotbx.pdb
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
@@ -795,9 +796,9 @@ FINAL PDB selections:
   found_text=f.getvalue()
   #assert not test_utils.show_diff(found_text, expected_text)
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
     raise AssertionError, "FAILED"
-  print "OK"
+  print("OK")
 
 def tst_02():
   text="""
@@ -826,7 +827,7 @@ ATOM    173  CA  ARG A  24      18.059   5.674  18.276  1.00 27.11
 ATOM    184  CA  GLN A  25      15.836   6.730  15.339  1.00 37.50
 ATOM    193  CA  GLN A  26      13.132   4.360  16.583  1.00 46.66
 """
-  print "Finding helices...",
+  print("Finding helices...", end=' ')
   import iotbx.pdb
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
@@ -854,12 +855,12 @@ FINAL PDB selections:
   found_text=f.getvalue()
   #assert not test_utils.show_diff(found_text, expected_text)
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
     raise AssertionError, "FAILED"
-  print "OK"
+  print("OK")
 
 def tst_03():
-  print "Finding alpha,3-10 and pi helices...",
+  print("Finding alpha,3-10 and pi helices...", end=' ')
   import iotbx.pdb
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
@@ -891,9 +892,9 @@ FINAL PDB selections:
   found_text=f.getvalue()
   #assert not test_utils.show_diff(found_text, expected_text)
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
     raise AssertionError, "FAILED"
-  print "OK"
+  print("OK")
 
 def tst_04():
   text="""
@@ -968,7 +969,7 @@ ATOM    203  CA  SERAa  70     190.301 128.219 277.907  1.00100.00           C
 ATOM    206  CA  GLUAa  71     189.167 129.249 281.377  1.00100.00           C
 ATOM    209  CA  GLYAa  72     186.003 131.073 282.428  1.00100.00           C
 """
-  print "Finding sheets...",
+  print("Finding sheets...", end=' ')
   import iotbx.pdb
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
@@ -1005,12 +1006,12 @@ FINAL PDB selections:
   found_text=f.getvalue()
   #assert not test_utils.show_diff(found_text, expected_text)
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
     raise AssertionError, "FAILED"
-  print "OK"
+  print("OK")
 
 def tst_05():
-  print "Finding sheets with separate chains...",
+  print("Finding sheets with separate chains...", end=' ')
   import iotbx.pdb
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
@@ -1038,9 +1039,9 @@ FINAL PDB selections:
   fss.show_summary(out=f,verbose=True)
   found_text=f.getvalue()
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
     raise AssertionError, "FAILED"
-  print "OK"
+  print("OK")
 
 def tst_06():
   text="""
@@ -1066,7 +1067,7 @@ ATOM    238  CA  LEU A  20      30.139  16.927  13.574  1.00  6.81           C
 HETATM  257  CA  23F A  21      28.460  20.242  12.654  1.00  8.80           C
 ATOM    275  CA  ALA A  22      27.017  18.382   9.700  1.00  7.89           C
 """
-  print "Finding sheets with unusual residues...",
+  print("Finding sheets with unusual residues...", end=' ')
   import iotbx.pdb
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
@@ -1087,9 +1088,9 @@ FINAL PDB selections:
   fss.show_summary(out=f,verbose=True)
   found_text=f.getvalue()
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
     raise AssertionError, "FAILED"
-  print "OK"
+  print("OK")
 
 def tst_07():
   text="""
@@ -1105,7 +1106,7 @@ ATOM    702  CA AGLY E   6      13.074   9.621 -23.839  0.50 12.65           C
 ATOM    703  CA BGLY E   6      11.932  10.884 -15.276  0.50  7.99           C
 ATOM    710  CA APRO E   7      15.262  10.063 -20.808  0.50 15.34           C
 ATOM    711  CA BPRO E   7      13.150  12.796 -12.241  0.50  9.73           C  """
-  print "Finding sheets with alt confs where there is no A for first res..."
+  print("Finding sheets with alt confs where there is no A for first res...")
   import iotbx.pdb
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
@@ -1119,12 +1120,12 @@ Class:  Beta strand  N: 4 Start: 4 End: 7  Rise: 3.27 A Dot: 0.91"""
   fss.show_summary(out=f,verbose=True)
   found_text=f.getvalue()
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
     raise AssertionError, "FAILED"
-  print "OK"
+  print("OK")
 
 def tst_08():
-  print "Checking similar annotations and overlapping annotations"
+  print("Checking similar annotations and overlapping annotations")
 
   import iotbx.pdb
   from cctbx.array_family import flex
@@ -1137,7 +1138,7 @@ def tst_08():
   ann_one_helix=get_annotation(one_helix_text)
   for h1 in ann_one_helix_beg.helices:
     for h2 in ann_one_helix_beg.helices:
-       print "Should be same:",h1.is_similar_to(other=h2,hierarchy=hierarchy)
+       print("Should be same:",h1.is_similar_to(other=h2,hierarchy=hierarchy))
        assert h1.is_similar_to(other=h2,hierarchy=hierarchy)
   for maximum_length_difference in [4,8]:
     for minimum_overlap in [6,10]:
@@ -1146,7 +1147,7 @@ def tst_08():
            value=h1.is_similar_to(other=h2,hierarchy=hierarchy,
              maximum_length_difference=maximum_length_difference,
              minimum_overlap=minimum_overlap)
-           print "Comparison:",value
+           print("Comparison:",value)
            assert (value and maximum_length_difference==8 and
               minimum_overlap==6) or not value
 
@@ -1216,12 +1217,12 @@ SHEET    1   1 3 HISAa  32  LEUAa  36 -1  O  SERAa  33   N  ILEAa  20
   s1_diff=ioss.annotation.from_records(records=flex.split_lines(s1_diff_records))
   s1_reverse_diff=ioss.annotation.from_records(records=flex.split_lines(s1_reverse_diff_records))
 
-  print "\nChecking overlap:"
+  print("\nChecking overlap:")
   assert s1_full.overlaps_with(other=s1_similar,hierarchy=hierarchy)
   assert not s1_full.overlaps_with(other=s1_diff,hierarchy=hierarchy)
   assert not s1_full.overlaps_with(other=s1_not_overlap,hierarchy=hierarchy)
 
-  print "\nChecking similar strands:",
+  print("\nChecking similar strands:", end=' ')
   f=StringIO()
   for s1 in s1_full.sheets:
     for str1 in s1.strands:
@@ -1229,8 +1230,8 @@ SHEET    1   1 3 HISAa  32  LEUAa  36 -1  O  SERAa  33   N  ILEAa  20
         for str2 in s2.strands:
           value=str1.is_similar_to(other=str2,hierarchy=hierarchy,
              maximum_length_difference=4)
-          print str1.as_atom_selections(),str2.as_atom_selections(),value
-          print >>f,str1.as_atom_selections(),str2.as_atom_selections(),value
+          print(str1.as_atom_selections(),str2.as_atom_selections(),value)
+          print(str1.as_atom_selections(),str2.as_atom_selections(),value, file=f)
   assert f.getvalue()=="""chain 'Aa' and resid   32  through   36  chain 'Aa' and resid   32  through   36  True
 chain 'Aa' and resid   32  through   36  chain 'Aa' and resid   18  through   22  False
 chain 'Aa' and resid   32  through   36  chain 'Aa' and resid   50  through   57  False
@@ -1242,52 +1243,52 @@ chain 'Aa' and resid   52  through   55  chain 'Aa' and resid   18  through   22
 chain 'Aa' and resid   52  through   55  chain 'Aa' and resid   50  through   57  True
 """
 
-  print "\nChecking different strands:",
+  print("\nChecking different strands:", end=' ')
   for s1 in s1_full.sheets:
     for str1 in s1.strands:
       for s2 in s1_diff.sheets:
         for str2 in s2.strands:
-          print str1.as_atom_selections(),str2.as_atom_selections(),\
+          print(str1.as_atom_selections(),str2.as_atom_selections(),\
             str1.is_similar_to(other=str2,hierarchy=hierarchy,
-             maximum_length_difference=4)
+             maximum_length_difference=4))
 
-  print "\nChecking similar sheets:",
+  print("\nChecking similar sheets:", end=' ')
   for s1 in s1_full.sheets:
     for s2 in s1_similar.sheets:
       value=s1.is_similar_to(other=s2,hierarchy=hierarchy,
             maximum_length_difference=4)
-      print value
+      print(value)
       assert value
 
-  print "\nChecking non-similar sheets:",
+  print("\nChecking non-similar sheets:", end=' ')
   for s1 in s1_full.sheets:
     for s2 in s1_diff.sheets:
       value=s1.is_similar_to(other=s2,hierarchy=hierarchy,
             maximum_length_difference=4)
-      print value
+      print(value)
       assert not value
 
-  print "\nChecking similar overall annotations:",
+  print("\nChecking similar overall annotations:", end=' ')
   value=s1_full.is_similar_to(other=s1_similar,hierarchy=hierarchy,
             maximum_length_difference=4)
-  print value
+  print(value)
   assert value
 
-  print "\nChecking different overall annotations:",
+  print("\nChecking different overall annotations:", end=' ')
   value=s1_full.is_similar_to(other=s1_diff,hierarchy=hierarchy,
             maximum_length_difference=4)
-  print value
+  print(value)
   assert not value
 
-  print "\nChecking different overall directions:",
+  print("\nChecking different overall directions:", end=' ')
   value=s1_full.is_similar_to(other=s1_reverse_diff,hierarchy=hierarchy,
             maximum_length_difference=4)
-  print value
+  print(value)
   assert not value
 
 
   # parallel strands
-  print "\n\nChecking parallel strands..."
+  print("\n\nChecking parallel strands...")
 
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(two_chain_text)).construct_hierarchy()
@@ -1325,30 +1326,30 @@ SHEET    2   1 2 LEU B 278  ALA B 282  1  O  ILE B 280   N  ILE A  51
   s2_similar_2=ioss.annotation.from_records(records=flex.split_lines(s2_similar_records_2))
   s2_different=ioss.annotation.from_records(records=flex.split_lines(s2_different_records))
 
-  print "\nChecking similar overall annotations (offset by 2):",
+  print("\nChecking similar overall annotations (offset by 2):", end=' ')
   value=s2_full.is_similar_to(other=s2_similar,hierarchy=hierarchy,
             maximum_length_difference=4)
-  print value
+  print(value)
   assert value
 
-  print "\nChecking similar overall annotations (switch N/O):",
+  print("\nChecking similar overall annotations (switch N/O):", end=' ')
   value=s2_full.is_similar_to(other=s2_similar_2,hierarchy=hierarchy,
             maximum_length_difference=4)
-  print value
+  print(value)
   assert value
 
-  print "\nChecking different overall annotations (offset by 1):",
+  print("\nChecking different overall annotations (offset by 1):", end=' ')
   value=s2_full.is_similar_to(other=s2_different,hierarchy=hierarchy,
             maximum_length_difference=4)
-  print value
+  print(value)
   assert not value
 
-  print "\nOK"
+  print("\nOK")
 
 
 
 def tst_09():
-  print "Comparing sheets and helices...",
+  print("Comparing sheets and helices...", end=' ')
 
   helix_1="""
 HELIX    1   1 GLY A    1  VAL A    8  1                                   8
@@ -1386,7 +1387,7 @@ SHEET    4   2 4 GLYAa  66  GLUAa  71 -1  N  SERAa  70   O  ALAAa  59
       for sa in a.strands:
         for sb in b.strands:
           assert (sa==sb and sa.is_same_as(sb)) or (not sa.is_same_as(sb))
-  print "OK"
+  print("OK")
 
 
 def get_annotation(text):
@@ -1430,45 +1431,45 @@ SHEET    2   1 2 LEU B 278  ALA B 282  1  N  ILE B 280   O  ILE A  51
   hs1=ioss.annotation.from_records(records=flex.split_lines(text_helix_1+text_sheet_1))
   hs2=ioss.annotation.from_records(records=flex.split_lines(text_helix_2+text_sheet_2))
 
-  print "\nCombining annotations"
+  print("\nCombining annotations")
 
   ann_all=get_annotation(one_full_helix_text+two_chain_text)
-  print "\nFull annotation\n",ann_all.as_pdb_str()
+  print("\nFull annotation\n",ann_all.as_pdb_str())
 
-  print "\nCombining annotations from two parts"
+  print("\nCombining annotations from two parts")
   ann_one_full_helix=get_annotation(one_full_helix_text)
-  print "\nAnnotation for helix:\n",ann_one_full_helix.as_pdb_str()
+  print("\nAnnotation for helix:\n",ann_one_full_helix.as_pdb_str())
   ann_two_chain=get_annotation(two_chain_text)
-  print "\nAnnotation for two chains:\n",ann_two_chain.as_pdb_str()
+  print("\nAnnotation for two chains:\n",ann_two_chain.as_pdb_str())
 
   ann_combined=ann_one_full_helix.combine_annotations(other=ann_two_chain,
     hierarchy=hierarchy)
   if ann_combined:
-    print "Combined: \n",ann_combined.as_pdb_str()
+    print("Combined: \n",ann_combined.as_pdb_str())
 
-  print "\nCombining annotations from overlapping helix annotations"
-  print "\nHelix 1 and 2: \n",h1.as_pdb_str(),"\n",h2.as_pdb_str()
+  print("\nCombining annotations from overlapping helix annotations")
+  print("\nHelix 1 and 2: \n",h1.as_pdb_str(),"\n",h2.as_pdb_str())
   ann_combined=h1.combine_annotations(other=h2,hierarchy=hierarchy)
-  print "\nCombined: \n",ann_combined.as_pdb_str()
+  print("\nCombined: \n",ann_combined.as_pdb_str())
 
-  print "\nCombining annotations from overlapping strand annotations"
-  print "\nStrand 1 and 2: \n",s1.as_pdb_str(),"\n",s2.as_pdb_str()
+  print("\nCombining annotations from overlapping strand annotations")
+  print("\nStrand 1 and 2: \n",s1.as_pdb_str(),"\n",s2.as_pdb_str())
   ann_combined=s1.combine_annotations(other=s2,hierarchy=hierarchy,
      minimum_overlap=3,out=sys.stdout)
-  print "\nCombined: \n",ann_combined.as_pdb_str()
+  print("\nCombined: \n",ann_combined.as_pdb_str())
 
-  print "\nCombining annotations from overlapping strand and helix annotations"
-  print "\nStrand/helix 1:\n",hs1.as_pdb_str(),"Strand/helix 2:\n",hs2.as_pdb_str()
+  print("\nCombining annotations from overlapping strand and helix annotations")
+  print("\nStrand/helix 1:\n",hs1.as_pdb_str(),"Strand/helix 2:\n",hs2.as_pdb_str())
   ann_combined=hs1.combine_annotations(other=hs2,hierarchy=hierarchy,
      minimum_overlap=3,out=sys.stdout)
-  print "\nCombined: \n",ann_combined.as_pdb_str()
+  print("\nCombined: \n",ann_combined.as_pdb_str())
 
 
-  print "OK"
+  print("OK")
 
 def tst_11():
 
-  print "\nCounting H-bonds"
+  print("\nCounting H-bonds")
 
   import iotbx.pdb
   import iotbx.pdb.secondary_structure as ioss
@@ -1477,76 +1478,76 @@ def tst_11():
        lines=flex.split_lines(two_chain_text)).construct_hierarchy()
   fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   ann=fss.get_annotation()
-  print ann.as_pdb_str()
+  print(ann.as_pdb_str())
 
-  print "Good H-bonds: %d  Poor H-Bonds: %d" %(
+  print("Good H-bonds: %d  Poor H-Bonds: %d" %(
          fss.number_of_good_h_bonds,
-         fss.number_of_poor_h_bonds,)
+         fss.number_of_poor_h_bonds,))
   assert fss.number_of_good_h_bonds==4 and fss.number_of_poor_h_bonds==0
 
-  print "\nCounting H-bonds using ioss.annotation:"
+  print("\nCounting H-bonds using ioss.annotation:")
 
   number_of_good_h_bonds,number_of_poor_h_bonds=ann.count_h_bonds(
     hierarchy=hierarchy)
-  print "Good H-bonds: %d  Poor H-Bonds: %d" %(
+  print("Good H-bonds: %d  Poor H-Bonds: %d" %(
          fss.number_of_good_h_bonds,
-         fss.number_of_poor_h_bonds,)
+         fss.number_of_poor_h_bonds,))
   assert fss.number_of_good_h_bonds==4 and fss.number_of_poor_h_bonds==0
 
-  print "\nCounting residues in secondary structure:",
-  print ann.count_residues(hierarchy=hierarchy)
+  print("\nCounting residues in secondary structure:", end=' ')
+  print(ann.count_residues(hierarchy=hierarchy))
   assert ann.count_residues(hierarchy=hierarchy)==10
 
-  print "\nCounting H-bonds in helix:"
+  print("\nCounting H-bonds in helix:")
 
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(one_full_helix_text)).construct_hierarchy()
   fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   ann=fss.get_annotation()
-  print ann.as_pdb_str()
+  print(ann.as_pdb_str())
 
-  print "\nH-bonds with cutoff=3.5 (default):\n"
+  print("\nH-bonds with cutoff=3.5 (default):\n")
   number_of_good_h_bonds,number_of_poor_h_bonds=ann.count_h_bonds(
     hierarchy=hierarchy)
-  print "Good H-bonds: %d  Poor H-Bonds: %d" %(
+  print("Good H-bonds: %d  Poor H-Bonds: %d" %(
          number_of_good_h_bonds,
-         number_of_poor_h_bonds,)
+         number_of_poor_h_bonds,))
   assert number_of_good_h_bonds==3 and number_of_poor_h_bonds==0
 
-  print "\nH-bonds with cutoff=3.0:\n"
+  print("\nH-bonds with cutoff=3.0:\n")
   number_of_good_h_bonds,number_of_poor_h_bonds=ann.count_h_bonds(
     hierarchy=hierarchy,max_h_bond_length=3.0)
-  print "Good H-bonds: %d  Poor H-Bonds: %d" %(
+  print("Good H-bonds: %d  Poor H-Bonds: %d" %(
          number_of_good_h_bonds,
-         number_of_poor_h_bonds,)
+         number_of_poor_h_bonds,))
   assert number_of_good_h_bonds==1 and number_of_poor_h_bonds==2
 
-  print "\nCount number of residues in secondary structure:",
-  print ann.count_residues(hierarchy=hierarchy)
+  print("\nCount number of residues in secondary structure:", end=' ')
+  print(ann.count_residues(hierarchy=hierarchy))
   assert ann.count_residues(hierarchy=hierarchy) ==7
 
-  print "\nH-bonds in mixed helix/strand"
+  print("\nH-bonds in mixed helix/strand")
 
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(two_chain_text+one_full_helix_text)
          ).construct_hierarchy()
   fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   ann=fss.get_annotation()
-  print ann.as_pdb_str()
+  print(ann.as_pdb_str())
 
-  print "\nH-bonds with cutoff=3.0 :\n"
+  print("\nH-bonds with cutoff=3.0 :\n")
   number_of_good_h_bonds,number_of_poor_h_bonds=ann.count_h_bonds(
     hierarchy=hierarchy,max_h_bond_length=3.0)
-  print "Good H-bonds: %d  Poor H-Bonds: %d" %(
+  print("Good H-bonds: %d  Poor H-Bonds: %d" %(
          number_of_good_h_bonds,
-         number_of_poor_h_bonds,)
+         number_of_poor_h_bonds,))
   assert number_of_good_h_bonds==5 and number_of_poor_h_bonds==2
 
-  print "\nCount number of residues in secondary structure:",
-  print ann.count_residues(hierarchy=hierarchy)
+  print("\nCount number of residues in secondary structure:", end=' ')
+  print(ann.count_residues(hierarchy=hierarchy))
   assert ann.count_residues(hierarchy=hierarchy) ==17
 
-  print "\nMake sure force and original ss are equivalent"
+  print("\nMake sure force and original ss are equivalent")
   force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=ss_text,
       force_secondary_structure_input=True,
@@ -1555,19 +1556,19 @@ def tst_11():
   number_of_good_h_bonds,number_of_poor_h_bonds=\
       force_fss.get_annotation().count_h_bonds(
       hierarchy=hierarchy,max_h_bond_length=3.0)
-  print "Good H-bonds: %d  Poor H-Bonds: %d" %(
+  print("Good H-bonds: %d  Poor H-Bonds: %d" %(
          number_of_good_h_bonds,
-         number_of_poor_h_bonds,)
+         number_of_poor_h_bonds,))
   assert number_of_good_h_bonds==5 and number_of_poor_h_bonds==2
 
-  print "\nInput annotation:"
-  print fss.get_annotation().as_pdb_str()
-  print "\nOutput annotation:"
-  print force_fss.get_annotation().as_pdb_str()
-  print "\nIs same: ",fss.get_annotation().is_similar_to(
-     other=force_fss.get_annotation(),hierarchy=hierarchy)
+  print("\nInput annotation:")
+  print(fss.get_annotation().as_pdb_str())
+  print("\nOutput annotation:")
+  print(force_fss.get_annotation().as_pdb_str())
+  print("\nIs same: ",fss.get_annotation().is_similar_to(
+     other=force_fss.get_annotation(),hierarchy=hierarchy))
 
-  print "\nCorrect bad H-bond register in input"
+  print("\nCorrect bad H-bond register in input")
   fix_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=bad_two_chain_helix_ss,
       force_secondary_structure_input=False,
@@ -1576,18 +1577,18 @@ def tst_11():
   fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       combine_annotations=False,
       out=null_out())
-  print "\nInput:"
-  print bad_two_chain_helix_ss
-  print "\nFixed:"
-  print fix_fss.get_annotation().as_pdb_str()
-  print "\nGood:"
-  print fss.get_annotation().as_pdb_str()
-  print "Is same: ",  fix_fss.get_annotation().is_similar_to(
-    hierarchy=hierarchy,other=fss.get_annotation())
+  print("\nInput:")
+  print(bad_two_chain_helix_ss)
+  print("\nFixed:")
+  print(fix_fss.get_annotation().as_pdb_str())
+  print("\nGood:")
+  print(fss.get_annotation().as_pdb_str())
+  print("Is same: ",  fix_fss.get_annotation().is_similar_to(
+    hierarchy=hierarchy,other=fss.get_annotation()))
   assert fix_fss.get_annotation().is_similar_to(
     hierarchy=hierarchy,other=fss.get_annotation())
 
-  print "\nForce bad H-bond register in input"
+  print("\nForce bad H-bond register in input")
 
   import iotbx.pdb.secondary_structure as ioss
   bad_anno=ioss.annotation.from_records(records=flex.split_lines(
@@ -1598,18 +1599,18 @@ def tst_11():
       force_secondary_structure_input=True,
       combine_annotations=False,
       search_secondary_structure=False,out=null_out())
-  print "\nInput:"
-  print bad_anno.as_pdb_str()
-  print "\nNot fixed:"
-  print no_fix_fss.get_annotation().as_pdb_str()
-  print "\nGood:"
-  print fss.get_annotation().as_pdb_str()
-  print "Is same as unfixed: ",  no_fix_fss.get_annotation().is_similar_to(
-    hierarchy=hierarchy,other=bad_anno)
+  print("\nInput:")
+  print(bad_anno.as_pdb_str())
+  print("\nNot fixed:")
+  print(no_fix_fss.get_annotation().as_pdb_str())
+  print("\nGood:")
+  print(fss.get_annotation().as_pdb_str())
+  print("Is same as unfixed: ",  no_fix_fss.get_annotation().is_similar_to(
+    hierarchy=hierarchy,other=bad_anno))
   assert no_fix_fss.get_annotation().is_similar_to(
     hierarchy=hierarchy,other=bad_anno)
 
-  print "\nNegative residue numbers..."
+  print("\nNegative residue numbers...")
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(negative_residues)
          ).construct_hierarchy()
@@ -1620,10 +1621,10 @@ def tst_11():
 SHEET    1   1 2 ASP A  -5  HIS A  -2  0
 SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP A  -5
 """))
-  print fss.get_annotation().as_pdb_str()
+  print(fss.get_annotation().as_pdb_str())
   assert fss.get_annotation().is_same_as(expected)
 
-  print "\nHybrid-36 residue numbers..."
+  print("\nHybrid-36 residue numbers...")
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(hybrid_residues)
          ).construct_hierarchy()
@@ -1634,11 +1635,11 @@ SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP A  -5
 SHEET    1   1 2 ASP AXYB2  HIS AXYB5  0
 SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP AXYB2
 """))
-  print fss.get_annotation().as_pdb_str()
+  print(fss.get_annotation().as_pdb_str())
   assert fss.get_annotation().is_same_as(expected)
 
 
-  print "\nNow for antiparallel:Make sure force and original ss are equivalent"
+  print("\nNow for antiparallel:Make sure force and original ss are equivalent")
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(antiparallel_text)
          ).construct_hierarchy()
@@ -1653,19 +1654,19 @@ SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP AXYB2
   number_of_good_h_bonds,number_of_poor_h_bonds=\
       force_fss.get_annotation().count_h_bonds(
       hierarchy=hierarchy,max_h_bond_length=3.0)
-  print "Good H-bonds: %d  Poor H-Bonds: %d" %(
+  print("Good H-bonds: %d  Poor H-Bonds: %d" %(
          number_of_good_h_bonds,
-         number_of_poor_h_bonds,)
+         number_of_poor_h_bonds,))
   assert number_of_good_h_bonds==3 and number_of_poor_h_bonds==1
 
-  print "\nInput annotation:"
-  print fss.get_annotation().as_pdb_str()
-  print "\nOutput annotation:"
-  print force_fss.get_annotation().as_pdb_str()
-  print "\nIs same: ",fss.get_annotation().is_similar_to(
-     other=force_fss.get_annotation(),hierarchy=hierarchy)
+  print("\nInput annotation:")
+  print(fss.get_annotation().as_pdb_str())
+  print("\nOutput annotation:")
+  print(force_fss.get_annotation().as_pdb_str())
+  print("\nIs same: ",fss.get_annotation().is_similar_to(
+     other=force_fss.get_annotation(),hierarchy=hierarchy))
 
-  print "\nRemove annotation with too few H-bonds"
+  print("\nRemove annotation with too few H-bonds")
   force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=antiparallel_ss,
       force_secondary_structure_input=True,
@@ -1675,9 +1676,9 @@ SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP AXYB2
   number_of_good_h_bonds,number_of_poor_h_bonds=\
       force_fss.get_annotation().count_h_bonds(
       hierarchy=hierarchy)
-  print "Good H-bonds: %d  Poor H-Bonds: %d" %(
+  print("Good H-bonds: %d  Poor H-Bonds: %d" %(
          number_of_good_h_bonds,
-         number_of_poor_h_bonds,)
+         number_of_poor_h_bonds,))
   assert number_of_good_h_bonds==4 and number_of_poor_h_bonds==0
 
   force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
@@ -1688,12 +1689,12 @@ SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP AXYB2
   number_of_good_h_bonds,number_of_poor_h_bonds=\
       force_fss.get_annotation().count_h_bonds(
       hierarchy=hierarchy)
-  print "Good H-bonds: %d  Poor H-Bonds: %d" %(
+  print("Good H-bonds: %d  Poor H-Bonds: %d" %(
          number_of_good_h_bonds,
-         number_of_poor_h_bonds,)
+         number_of_poor_h_bonds,))
   assert number_of_good_h_bonds==0 and number_of_poor_h_bonds==0
 
-  print "\nNow remove annotation with too many poor H-bonds"
+  print("\nNow remove annotation with too many poor H-bonds")
   force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=antiparallel_ss,
       combine_annotations=False,
@@ -1702,9 +1703,9 @@ SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP AXYB2
   number_of_good_h_bonds,number_of_poor_h_bonds=\
       force_fss.get_annotation().count_h_bonds(
       hierarchy=hierarchy)
-  print "Good H-bonds: %d  Poor H-Bonds: %d" %(
+  print("Good H-bonds: %d  Poor H-Bonds: %d" %(
          number_of_good_h_bonds,
-         number_of_poor_h_bonds,)
+         number_of_poor_h_bonds,))
   assert number_of_good_h_bonds==0 and number_of_poor_h_bonds==0
 
 
@@ -2312,14 +2313,14 @@ SHEET    4   1 4 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82
   first_annotation=ioss.annotation.from_records(records=flex.split_lines(first_annotation_text))
   second_annotation=ioss.annotation.from_records(records=flex.split_lines(second_annotation_text))
 
-  print "\nMerging annotations and checking on sheet numbering"
-  print "\nFirst annotation: "
-  print first_annotation.as_pdb_str()
-  print "\nSecond annotation: "
-  print second_annotation.as_pdb_str()
+  print("\nMerging annotations and checking on sheet numbering")
+  print("\nFirst annotation: ")
+  print(first_annotation.as_pdb_str())
+  print("\nSecond annotation: ")
+  print(second_annotation.as_pdb_str())
   merged=second_annotation.combine_annotations(other=first_annotation, hierarchy=hierarchy)
-  print "\nMerged: "
-  print merged.as_pdb_str()
+  print("\nMerged: ")
+  print(merged.as_pdb_str())
   assert merged.is_similar_to(other=second_annotation,hierarchy=hierarchy)
 
 
@@ -2395,15 +2396,15 @@ SHEET    3   1 4 ARG A  81  GLY A  87  1  N  VAL A  83   O  ALA A  12
 SHEET    4   1 4 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82
 """
 
-  print "\nRemoving bad annotation and duplicate annotation\n"
+  print("\nRemoving bad annotation and duplicate annotation\n")
 
-  print "\nRemoving duplicate sheets"
+  print("\nRemoving duplicate sheets")
   annotation=ioss.annotation.from_records(records=flex.split_lines(sheet_anno))
-  print annotation.as_pdb_str()
+  print(annotation.as_pdb_str())
   new_annotation=annotation.remove_overlapping_annotations(
       hierarchy=hierarchy)
-  print "New annotation:"
-  print new_annotation.as_pdb_str()
+  print("New annotation:")
+  print(new_annotation.as_pdb_str())
   expected=ioss.annotation.from_records(records=flex.split_lines("""
 SHEET    1   1 4 LYS A  40  VAL A  43  0
 SHEET    2   1 4 ALA A  12  VAL A  18 -1  N  ILE A  17   O  VAL A  41
@@ -2412,14 +2413,14 @@ SHEET    4   1 4 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82
    """))
   assert new_annotation.is_same_as(expected)
 
-  print "\nRemoving bad sheets"
+  print("\nRemoving bad sheets")
   annotation=ioss.annotation.from_records(records=flex.split_lines(
       bad_sheet_anno))
-  print annotation.as_pdb_str()
+  print(annotation.as_pdb_str())
   from mmtbx.secondary_structure.find_ss_from_ca import remove_bad_annotation
   new_annotation=remove_bad_annotation(annotation,hierarchy=hierarchy)
-  print "New annotation:"
-  print new_annotation.as_pdb_str()
+  print("New annotation:")
+  print(new_annotation.as_pdb_str())
   expected=ioss.annotation.from_records(records=flex.split_lines("""
 SHEET    1   3 2 ARG A  81  GLY A  87  0
 SHEET    2   3 2 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82   """))
@@ -2437,20 +2438,20 @@ SHEET    2   3 2 VAL A 103  ILE A 107 -1  N  ALA A 106   O  ILE A  82   """))
   import iotbx.pdb.secondary_structure as ioss
   annotation=ioss.annotation.from_records(records=flex.split_lines(anno))
 
-  print "\nRemoving duplicate helices"
-  print annotation.as_pdb_str()
+  print("\nRemoving duplicate helices")
+  print(annotation.as_pdb_str())
 
-  print "\nRemoving duplicate helix annotation\n"
+  print("\nRemoving duplicate helix annotation\n")
   expected=ioss.annotation.from_records(records=flex.split_lines("""
 HELIX    1   1 ALA E    8  ALA E   14  1                                   7
   """))
 
   new_annotation=annotation.remove_overlapping_annotations(
       hierarchy=std_hierarchy)
-  print new_annotation.as_pdb_str()
+  print(new_annotation.as_pdb_str())
   assert new_annotation.is_same_as(expected)
 
-  print "\nRemoving bad annotation\n"
+  print("\nRemoving bad annotation\n")
   expected=ioss.annotation.from_records(records=flex.split_lines("""
 HELIX    1   1 ALA E    9  ALA E   14  1                                   7
   """))
@@ -2458,7 +2459,7 @@ HELIX    1   1 ALA E    9  ALA E   14  1                                   7
   from mmtbx.secondary_structure.find_ss_from_ca import remove_bad_annotation
   new_annotation=remove_bad_annotation(annotation,hierarchy=short_hierarchy,
     out=null_out())
-  print new_annotation.as_pdb_str()
+  print(new_annotation.as_pdb_str())
   assert new_annotation.is_same_as(expected)
 
 
@@ -2516,12 +2517,12 @@ SHEET    2   1 3 TYR A 170  ASN A 175 -1  N  ASN A 175   O  VAL A 161
   hierarchy=iotbx.pdb.input(source_info='text',
         lines=flex.split_lines(text)).construct_hierarchy()
   annotation=ioss.annotation.from_records(records=flex.split_lines(anno))
-  print "\nAnnotation with insertion codes"
-  print "\nInput annotation:"
-  print annotation.as_pdb_str()
+  print("\nAnnotation with insertion codes")
+  print("\nInput annotation:")
+  print(annotation.as_pdb_str())
   fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   new_annotation=fss.get_annotation()
-  print "\nNew annotation:"
+  print("\nNew annotation:")
   expected=ioss.annotation.from_records(records=flex.split_lines("""
 HELIX    1   1 TRP A  181  TYR A  186  3                                   6
 SHEET    1   1 3 VAL A 161  VAL A 164  0
@@ -2529,10 +2530,10 @@ SHEET    2   1 3 TYR A 170  ASN A 175 -1  N  ASN A 175   O  VAL A 161
 SHEET    3   1 3 ILE A 187  ALA A 190 -1  N  ILE A 189   O  TRP A 171
 """))
 
-  print new_annotation.as_pdb_str()
+  print(new_annotation.as_pdb_str())
   assert expected.is_same_as(new_annotation)
 
-  print "\nNew forcing input annotation"
+  print("\nNew forcing input annotation")
   expected=ioss.annotation.from_records(records=flex.split_lines("""
 SHEET    1   1 2 GLN A 156A VAL A 164  0
 SHEET    2   1 2 TYR A 170  ASN A 175 -1
@@ -2543,7 +2544,7 @@ SHEET    2   1 2 TYR A 170  ASN A 175 -1
       force_secondary_structure_input=True,
       combine_annotations=False,
       out=null_out()).get_annotation()
-  print force_fss.as_pdb_str()
+  print(force_fss.as_pdb_str())
   assert expected.is_same_as(force_fss)
 
   helix_icode="""
@@ -2572,25 +2573,25 @@ HELIX    1   1 ALA A    1A ALA A   16  1                                  16
         lines=flex.split_lines(helix_icode)).construct_hierarchy()
   annotation=ioss.annotation.from_records(
      records=flex.split_lines(helix_icode_ss))
-  print "\nHelix annotation with insertion codes"
-  print "NOTE: currently misses the residues with insertion codes except those"
-  print "at the ends of a string of insertion codes"
+  print("\nHelix annotation with insertion codes")
+  print("NOTE: currently misses the residues with insertion codes except those")
+  print("at the ends of a string of insertion codes")
   fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       out=null_out()).get_annotation()
-  print fss.as_pdb_str()
+  print(fss.as_pdb_str())
   expected=ioss.annotation.from_records(
      records=flex.split_lines("""
 HELIX    1   1 ALA A    4D ALA A   16  1                                  13
 """))
   assert expected.is_same_as(fss)
 
-  print "\nHelix annotation with input annotation and insertion codes"
+  print("\nHelix annotation with input annotation and insertion codes")
   force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=annotation.as_pdb_str(),
       force_secondary_structure_input=True,
       combine_annotations=False,
       out=null_out()).get_annotation()
-  print force_fss.as_pdb_str()
+  print(force_fss.as_pdb_str())
   expected=ioss.annotation.from_records(
      records=flex.split_lines("""
 HELIX    1   1 ALA A    1A ALA A   16  1                                  16
@@ -2634,14 +2635,14 @@ HELIX    1   1 VAL U   72  GLY U   77  5                                   6
   annotation=ioss.annotation.from_records(records=flex.split_lines(annotation_text))
   overlapping_annotation=ioss.annotation.from_records(records=flex.split_lines(overlapping_text))
 
-  print "\nMerging annotations that overlap"
-  print "First annotation"
-  print annotation.as_pdb_str()
-  print "Overlapping annotation"
-  print overlapping_annotation.as_pdb_str()
+  print("\nMerging annotations that overlap")
+  print("First annotation")
+  print(annotation.as_pdb_str())
+  print("Overlapping annotation")
+  print(overlapping_annotation.as_pdb_str())
   merged=overlapping_annotation.combine_annotations(other=annotation, hierarchy=hierarchy)
-  print "\nMerged: "
-  print merged.as_pdb_str()
+  print("\nMerged: ")
+  print(merged.as_pdb_str())
   assert merged.is_same_as(other=annotation)
 
 def tst_15():
@@ -2657,10 +2658,10 @@ def tst_15():
      hierarchy=hierarchy,ss_by_chain=True,use_representative_chains=False,out=null_out()).get_annotation()
   annotation_chains_rep=find_secondary_structure(
      hierarchy=hierarchy,ss_by_chain=True,use_representative_chains=True,out=null_out()).get_annotation()
-  print annotation_std
+  print(annotation_std)
   assert annotation_std.is_same_as(other=annotation_chains)
   assert annotation_std.is_same_as(other=annotation_chains_rep)
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   import sys
@@ -2680,4 +2681,4 @@ if __name__=="__main__":
   tst_13()
   tst_14()
   tst_15()
-  print "OK"
+  print("OK")

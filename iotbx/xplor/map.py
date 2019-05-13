@@ -28,6 +28,7 @@ That is:
 ...map average and standard deviation
 """
 from __future__ import division
+from __future__ import print_function
 
 import iotbx.xplor.ext as ext
 from cctbx import miller
@@ -109,20 +110,20 @@ class reader(object):
 
   def show_summary(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, prefix+"Title lines:", len(self.title_lines)
+    print(prefix+"Title lines:", len(self.title_lines), file=out)
     for line in self.title_lines:
-      print >> out, prefix+"  "+line.rstrip()
+      print(prefix+"  "+line.rstrip(), file=out)
     g = self.gridding
-    print >> out, prefix+"Gridding:"
-    print >> out, prefix+"  n:    ", g.n
-    print >> out, prefix+"  first:", g.first
-    print >> out, prefix+"  last: ", g.last
-    print >> out, prefix+"Total number of data points:", self.data.size()
+    print(prefix+"Gridding:", file=out)
+    print(prefix+"  n:    ", g.n, file=out)
+    print(prefix+"  first:", g.first, file=out)
+    print(prefix+"  last: ", g.last, file=out)
+    print(prefix+"Total number of data points:", self.data.size(), file=out)
     stats = maptbx.statistics(self.data)
-    print >> out, prefix+"  min:   %.6g" % stats.min()
-    print >> out, prefix+"  max:   %.6g" % stats.max()
-    print >> out, prefix+"  mean:  %.6g" % stats.mean()
-    print >> out, prefix+"  sigma: %.6g" % stats.sigma()
+    print(prefix+"  min:   %.6g" % stats.min(), file=out)
+    print(prefix+"  max:   %.6g" % stats.max(), file=out)
+    print(prefix+"  mean:  %.6g" % stats.mean(), file=out)
+    print(prefix+"  sigma: %.6g" % stats.sigma(), file=out)
 
 def writer(file_name, title_lines, unit_cell, gridding,
            data, is_p1_cell=False,

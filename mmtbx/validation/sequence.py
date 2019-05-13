@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_mp
 from libtbx import str_utils
 import libtbx.phil
@@ -165,7 +166,7 @@ class chain(object):
           xyz = atom.xyz
           break
       else :
-        print "WARNING: can't find center of residue %s" % resid
+        print("WARNING: can't find center of residue %s" % resid)
         xyz = residue_group.atoms()[0].xyz
       self._xyz.append(xyz)
       if (res_class is not None):
@@ -241,27 +242,27 @@ class chain(object):
       w = 0
       line = " ".join([ resid.strip() for resid in resids ])
       lines = str_utils.wordwrap(line, 60).split("\n")
-      print >> out,   "    residue IDs: %s" % lines[0]
+      print("    residue IDs: %s" % lines[0], file=out)
       for line in lines[1:] :
-        print >> out, "                 %s" % line
-    print >> out, "Chain '%s':" % self.chain_id
+        print("                 %s" % line, file=out)
+    print("Chain '%s':" % self.chain_id, file=out)
     if (self.alignment is None):
-      print >> out, "  No appropriate sequence match found!"
+      print("  No appropriate sequence match found!", file=out)
     else :
-      print >> out, "  best matching sequence: %s" % self.sequence_name
-      print >> out, "  sequence identity: %.2f%%" % (self.identity*100)
+      print("  best matching sequence: %s" % self.sequence_name, file=out)
+      print("  sequence identity: %.2f%%" % (self.identity*100), file=out)
       if (self.n_missing > 0):
-        print >> out, "  %d residue(s) missing from PDB chain (%d at start, %d at end)" % (self.n_missing, self.n_missing_start, self.n_missing_end)
+        print("  %d residue(s) missing from PDB chain (%d at start, %d at end)" % (self.n_missing, self.n_missing_start, self.n_missing_end), file=out)
       if (self.n_gaps > 0):
-        print >> out, "  %d gap(s) in chain" % self.n_gaps
+        print("  %d gap(s) in chain" % self.n_gaps, file=out)
       if (len(self.mismatch) > 0):
-        print >> out, "  %d mismatches to sequence" % len(self.mismatch)
+        print("  %d mismatches to sequence" % len(self.mismatch), file=out)
         print_resids(self.mismatch)
       if (len(self.extra) > 0):
-        print >> out, "  %d residues not found in sequence" % len(self.extra)
+        print("  %d residues not found in sequence" % len(self.extra), file=out)
         print_resids(self.extra)
       if (len(self.unknown) > 0):
-        print >> out, "  %d residues of unknown type" % len(self.unknown)
+        print("  %d residues of unknown type" % len(self.unknown), file=out)
         print_resids(self.unknown)
       if (verbose):
         self.alignment.pretty_print(out=out,
@@ -326,7 +327,7 @@ class validation(object):
         chain_type = PROTEIN
       else :
         self.n_other += 1
-        print >> log, "Skipping non-polymer chain '%s'" % chain_id
+        print("Skipping non-polymer chain '%s'" % chain_id, file=log)
         continue
       pad = True
       pad_at_start = False
@@ -369,9 +370,9 @@ class validation(object):
       try :
         c.set_alignment(alignment, seq_name, seq_id)
       except Exception, e :
-        print "Error processing chain %s" % c.chain_id
+        print("Error processing chain %s" % c.chain_id)
         raise
-        print e
+        print(e)
       else :
         if (extract_coordinates):
           c.extract_coordinates(pdb_chain)
@@ -830,7 +831,7 @@ def get_sequence_n_copies(
   for instance, given a tetrameric search model, 2 copies in the ASU, and a
   monomer sequence file, the ASU contains 8 copies of the sequence(s).
   """
-  print >> out, "Guessing the number of copies of the sequence file in the ASU"
+  print("Guessing the number of copies of the sequence file in the ASU", file=out)
   v = validation(
     pdb_hierarchy=pdb_hierarchy,
     sequences=sequences,
@@ -851,7 +852,7 @@ def get_sequence_n_copies(
       "not accurately represent the contents of the crystal after adjusting ",
       "for copy number, molecular replacement and building may fail.", ]
     if (force_accept_composition):
-      print >> out, "WARNING: %s" % error
+      print("WARNING: %s" % error, file=out)
     else :
       raise_sorry(error)
   counts = v.get_relative_sequence_copy_number()
@@ -859,16 +860,16 @@ def get_sequence_n_copies(
   if (-1 in unique_counts) : unique_counts.remove(-1)
   if (0 in unique_counts):
     unique_counts.remove(0)
-    print >> out, "WARNING: %d sequence(s) not found in model.  This is not" %\
-      counts.count(0)
-    print >> out, "usually a problem, but it may indicate an incomplete model."
+    print("WARNING: %d sequence(s) not found in model.  This is not" %\
+      counts.count(0), file=out)
+    print("usually a problem, but it may indicate an incomplete model.", file=out)
   error = freq = None
   model_copies = copies_from_user
   if (model_copies is Auto):
     model_copies = copies_from_xtriage
   if (model_copies is None):
     model_copies = 1
-    print >> out, "WARNING: assuming 1 copy of model"
+    print("WARNING: assuming 1 copy of model", file=out)
   if (model_copies < 1):
     raise Sorry("Must have at least one copy of model.")
   if (len(unique_counts) == 0):
@@ -886,14 +887,14 @@ def get_sequence_n_copies(
     assert seq_freq > 0
     # 1-1 mapping between PDB hierarchy and sequence
     if (seq_freq == 1.0):
-      print >> out, "Assuming %d copies of sequence file (as well as model)" %\
-        model_copies
+      print("Assuming %d copies of sequence file (as well as model)" %\
+        model_copies, file=out)
       return model_copies
     elif (seq_freq > 1):
       # hierarchy contains N copies of sequence
       if is_integer(seq_freq):
         freq = int(seq_freq) * model_copies
-        print >> out, "Assuming %d copies of sequence file present" % freq
+        print("Assuming %d copies of sequence file present" % freq, file=out)
         return freq
       # hierarchy contains X.Y copies of sequence
       else :
@@ -915,12 +916,12 @@ def get_sequence_n_copies(
           if ((copies_from_user is Auto) and
               (copies_from_xtriage is not None) and
               (assume_xtriage_copies_from_sequence_file)):
-            print >> out, error
-            print >> out, ""
-            print >> out, "Since the number of copies was guessed by Xtriage"
-            print >> out, "based on the sequence file, it will be scaled"
-            print >> out, "by %g to be appropriate for the search model." % \
-              inverse_freq
+            print(error, file=out)
+            print("", file=out)
+            print("Since the number of copies was guessed by Xtriage", file=out)
+            print("based on the sequence file, it will be scaled", file=out)
+            print("by %g to be appropriate for the search model." % \
+              inverse_freq, file=out)
             return seq_freq
         # too much model
         # XXX is this actually possible the way I've written the function?
@@ -932,16 +933,16 @@ def get_sequence_n_copies(
             "number of copies is wrong."
         # model_copies times model contents matches sequence
         else :
-          print >> out, "Assuming only one copy of sequence file contents."
+          print("Assuming only one copy of sequence file contents.", file=out)
           return 1
       else :
         error = "The sequence file does not appear to contain a round "+\
           "number of copies of the model (%g)." % inverse_freq
   if (error is not None):
     if (force_accept_composition):
-      print >> out, "WARNING: " + error
-      print >> out, ""
-      print >> out, "Ambiguous input, defaulting to 1 copy of sequence file"
+      print("WARNING: " + error, file=out)
+      print("", file=out)
+      print("Ambiguous input, defaulting to 1 copy of sequence file", file=out)
       return 1
     else :
       raise_sorry(error)

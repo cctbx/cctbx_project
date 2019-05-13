@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx import scaling
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
@@ -132,7 +133,7 @@ def run():
   tst_outliers_compare_mode_mean()
   tst_outliers_find_posterior_mode()
   tst_loglikelihoods()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()
