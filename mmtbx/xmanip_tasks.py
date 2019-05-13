@@ -143,7 +143,7 @@ def get_dano(names, miller_arrays, xray_structure, parameters, out ):
     if len(miller_arrays)==1:
       miller_array = miller_arrays[0]
   else:
-    if names.has_key( parameters.input_data ):
+    if parameters.input_data in names:
       miller_array = miller_arrays[ names[ parameters.input_data ] ]
     else:
       raise Sorry("Unknown data name.")
@@ -172,12 +172,12 @@ def get_diso(names, miller_arrays, xray_structure, parameters, out):
   native=None
   derivative=None
 
-  if names.has_key( parameters.native ):
+  if parameters.native in names:
     native = miller_arrays[ names[parameters.native] ].deep_copy()
   else:
     raise Sorry("Unknown data name: >>%s<<"%(parameters.native) )
 
-  if names.has_key( parameters.derivative ):
+  if parameters.derivative in names:
     derivative = miller_arrays[ names[parameters.derivative] ].deep_copy()
   else:
     raise Sorry("Unknown data name: >>%s<<"%(parameters.derivative) )
@@ -210,12 +210,12 @@ def lsq_scale(names, miller_arrays, xray_structure, parameters, out):
   input_data_1 = None
   input_data_2 = None
 
-  if names.has_key( parameters.input_data_1 ):
+  if parameters.input_data_1 in names:
     input_data_1 = miller_arrays[ names[parameters.input_data_1] ].deep_copy()
   else:
     raise Sorry("Unknown data name: >>%s<<"%(parameters.input_data_1) )
 
-  if names.has_key( parameters.input_data_2 ):
+  if parameters.input_data_2 in names:
     input_data_2 = miller_arrays[ names[parameters.input_data_2] ].deep_copy()
   else:
     raise Sorry("Unknown data name: >>%s<<"%(parameters.input_data_2) )

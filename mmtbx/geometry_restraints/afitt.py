@@ -229,7 +229,7 @@ class afitt_object:
         cov_obj.partial_charges = [partial_charges[ptr] for ptr in cif_object_ptrs]
         atom_elements = [i for i in cif_object['_chem_comp_atom.type_symbol']]
         cov_obj.atom_elements = [atom_elements[ptr] for ptr in cif_object_ptrs]
-        if cif_object.has_key('_chem_comp_atom.charge'):
+        if '_chem_comp_atom.charge' in cif_object:
           formal_charges = [float(i) for i in cif_object['_chem_comp_atom.charge']]
           cov_obj.formal_charges = [formal_charges[ptr] for ptr in cif_object_ptrs]
 
@@ -291,9 +291,9 @@ class afitt_object:
       for cif_object in cif_objects:
         for i, id in enumerate(cif_object['comp_list']['_chem_comp.id']):
           if res == id:
-            assert not cif_object_d.has_key(res), "More than one cif file containing residue %s!" %res
+            assert res not in cif_object_d, "More than one cif file containing residue %s!" %res
             cif_object_d[res] = cif_object
-      if not cif_object_d.has_key(res):
+      if res not in cif_object_d:
         raise Sorry("No restraints file containing residue %s!" %res)
 
     for res in self.resname:
@@ -303,7 +303,7 @@ class afitt_object:
           self.n_atoms.append(
             int(cif_object['comp_list']['_chem_comp.number_atoms_all'][i]) )
       comp_rname='comp_%s' %res
-      assert cif_object.has_key(comp_rname), "Residue %s not in cif file!" %res
+      assert comp_rname in cif_object, "Residue %s not in cif file!" %res
       try:
         self.partial_charges.append(
           [float(i) for i in cif_object[comp_rname]['_chem_comp_atom.partial_charge']]
@@ -345,7 +345,7 @@ class afitt_object:
       for ptrs in this_res_sites_cart_ptrs:
         this_occupancies.append( self.get_occupancies(ptrs, pdb_hierarchy) )
       self.occupancies.append( this_occupancies )
-      if cif_object[comp_rname].has_key('_chem_comp_atom.charge'):
+      if '_chem_comp_atom.charge' in cif_object[comp_rname]:
         self.formal_charges.append(
           [float(i) for i in cif_object[comp_rname]['_chem_comp_atom.charge']]
           )

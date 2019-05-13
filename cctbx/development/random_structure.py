@@ -379,7 +379,7 @@ class xray_structure(xray.structure):
     assert len(all_sites) <= self.n_scatterers
     sf_dict = {}
     for element in elements:
-      if (not sf_dict.has_key(element)):
+      if (element not in sf_dict):
         sf_dict[element] = eltbx.xray_scattering.best_approximation(element)
     fp = 0
     fdp = 0
