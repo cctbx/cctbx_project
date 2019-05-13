@@ -210,6 +210,12 @@ class installer(object):
     if self.python3: python_executable = 'python3'
     self.wxpython4 = options.wxpython4 # or self.python3 # Python3 should imply wxpython4, but
                                                          # wait until we can actually build it
+    if (not self.wxpython4 and
+        self.flag_is_mac and
+        get_os_version().startswith('10.') and
+        int(get_os_version().split('.')[1]) >= 14):
+      print("Setting wxpython4=True as Mac OS X version >= 10.14", file=self.log)
+      self.wxpython4 = True
     if os.path.exists(os.path.join(self.build_dir, 'base', 'bin', python_executable)):
       self.python_exe = os.path.join(self.build_dir, 'base', 'bin', python_executable)
     elif options.with_python:
