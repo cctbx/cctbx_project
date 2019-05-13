@@ -1118,17 +1118,19 @@ Wait for the command to finish, then try again.""" % vars())
       gdk_pixbuf_module_file = '{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache'
       gtk_path = '{conda_base}/lib/gtk-2.0/2.10.0'
       conda_base = get_conda_prefix()
-      if conda_base == abs(self.build_path / '..' / 'conda_base'):
-        conda_base = '$LIBTBX_BUILD/../conda_base'
-      print('unset GTK_MODULES', file=f)
-      print('unset GTK2_RC_FILES', file=f)
-      print('unset GTK_RC_FILES', file=f)
-      print('export FONTCONFIG_PATH=' +
-            fontconfig_path.format(conda_base=conda_base), file=f)
-      print('export FONTCONFIG_FILE=' + fontconfig_file, file=f)
-      print('export GDK_PIXBUF_MODULE_FILE=' +
-            gdk_pixbuf_module_file.format(conda_base=conda_base), file=f)
-      print('export GTK_PATH=' + gtk_path.format(conda_base=conda_base), file=f)
+      if (os.path.exists(fontconfig_path.format(conda_base=conda_base)) and
+          os.path.exists(gdk_pixbuf_module_file.format(conda_base=conda_base))):
+        if conda_base == abs(self.build_path / '..' / 'conda_base'):
+          conda_base = '$LIBTBX_BUILD/../conda_base'
+        print('unset GTK_MODULES', file=f)
+        print('unset GTK2_RC_FILES', file=f)
+        print('unset GTK_RC_FILES', file=f)
+        print('export FONTCONFIG_PATH=' +
+              fontconfig_path.format(conda_base=conda_base), file=f)
+        print('export FONTCONFIG_FILE=' + fontconfig_file, file=f)
+        print('export GDK_PIXBUF_MODULE_FILE=' +
+              gdk_pixbuf_module_file.format(conda_base=conda_base), file=f)
+        print('export GTK_PATH=' + gtk_path.format(conda_base=conda_base), file=f)
 
     for n,v in essentials:
       if (len(v) == 0): continue
