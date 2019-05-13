@@ -169,7 +169,7 @@ def run(args, command_name="phenix.emma"):
   tolerance = command_line.options.tolerance
   print("Tolerance:", tolerance)
   if (tolerance <= 0.):
-    raise ValueError, "Tolerance must be greater than zero."
+    raise ValueError("Tolerance must be greater than zero.")
   print()
   diffraction_index_equivalent = \
     command_line.options.diffraction_index_equivalent

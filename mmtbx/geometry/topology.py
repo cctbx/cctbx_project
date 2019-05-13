@@ -133,7 +133,7 @@ class Compound(object):
   def distances_from(self, atom):
 
     if atom not in self.descriptor_for:
-      raise ValueError, "Unknown atom: %s" % atom
+      raise ValueError("Unknown atom: %s" % atom)
 
     from boost_adaptbx.graph import breadth_first_search as bfs
 
@@ -155,7 +155,7 @@ class Compound(object):
   def subset(self, atoms):
 
     if not all( a in self.descriptor_for for a in atoms ):
-      raise ValueError, "Unknown atoms: %s" % atoms
+      raise ValueError("Unknown atoms: %s" % atoms)
 
     from boost_adaptbx.graph import maximum_clique
     subgraph = maximum_clique.selected_subgraph(
@@ -178,7 +178,7 @@ class Compound(object):
   def connected_segment_from(self, atom):
 
     if atom not in self.descriptor_for:
-      raise ValueError, "Unknown atom: %s" % atom
+      raise ValueError("Unknown atom: %s" % atom)
 
     from boost_adaptbx.graph import breadth_first_search as bfs
 

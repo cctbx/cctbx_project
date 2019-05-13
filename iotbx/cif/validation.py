@@ -210,11 +210,11 @@ class dictionary(model.cif):
             self.look_up_table.setdefault(key, key_)
             return k
         self.report_error(1001, key=key) # item not in dictionary
-        raise KeyError, key
+        raise KeyError(key)
     else:
       if key not in self.values()[0]:
         self.report_error(1001, key=key) # item not in dictionary
-        raise KeyError, key
+        raise KeyError(key)
       else:
         return key
 

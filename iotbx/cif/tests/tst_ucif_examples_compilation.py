@@ -29,8 +29,8 @@ def exercise_compilation():
   result = easy_run.fully_buffered(cmd)
   if result.return_code:
     if len(result.stderr_lines) > 0:
-      raise RuntimeError, result.show_stderr()
-    raise RuntimeError, result.show_stdout()
+      raise RuntimeError(result.show_stderr())
+    raise RuntimeError(result.show_stdout())
   assert os.path.exists("cif_parser"+ext)
   f = open_tmp_file(suffix=".cif")
   f.write(cif_string)

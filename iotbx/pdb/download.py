@@ -277,7 +277,7 @@ class urlopener(object):
     encoding = self.encoding_for.get( used, self.identity )
 
     if not encoding.accept( header = used ):
-      raise UnexpectedResponse, "Unknown encoding: %s" % used
+      raise UnexpectedResponse("Unknown encoding: %s" % used)
 
     return encoding.process( stream = stream )
 

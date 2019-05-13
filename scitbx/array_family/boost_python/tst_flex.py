@@ -2522,17 +2522,17 @@ def exercise_exceptions():
   except RuntimeError as e:
     assert str(e) == "Array must be 0-based 1-dimensional."
   else:
-    raise AssertionError, "No exception or wrong exception."
+    raise AssertionError("No exception or wrong exception.")
   try: f.append(0)
   except RuntimeError as e:
     assert str(e) == "Array must be 0-based 1-dimensional."
   else:
-    raise AssertionError, "No exception or wrong exception."
+    raise AssertionError("No exception or wrong exception.")
   try: f[(2,0)]
   except IndexError as e:
     assert str(e) == "Index out of range."
   else:
-    raise AssertionError, "No exception or wrong exception."
+    raise AssertionError("No exception or wrong exception.")
 
 def exercise_matrix():
   for ag,bg in [[(0,0),(0,0)],[(0,1),(1,0)],[(1,0),(0,2)]]:
@@ -3434,7 +3434,7 @@ def pickle_large_arrays(max_exp, verbose):
         elif (array_type == flex.std_string):
           val = "x" * 10
         else:
-          raise AssertionError, "Unexpected array type."
+          raise AssertionError("Unexpected array type.")
         a = array_type(n, val)
         for pickler in (0, pickle):
           if (pickler == 0):

@@ -102,13 +102,13 @@ class converter_base(object):
 
   def __init__(self, params = None, matrix = None, tolerance = 1.e-6):
     if ((params is None) == (matrix is None)):
-      raise ArgumentError, "Either parameters or matrix required."
+      raise ArgumentError("Either parameters or matrix required.")
     if (params is not None):
       self.params = params
       self.matrix = self.params_to_matrix(params, tolerance)
     else:
       if (abs(matrix.det()-1) > tolerance):
-        raise ValueError, "Determinant of matrix is not equal to 1."
+        raise ValueError("Determinant of matrix is not equal to 1.")
       self.matrix = matrix
       self.params = self.matrix_to_params(matrix, tolerance)
       self.params = self.normalize()
@@ -134,7 +134,7 @@ def amore_alpha_beta_gamma_from_matrix(matrix, tolerance = 1.e-6):
   c = [0,0,0]
   a = [0,0,0]
   if (abs(matrix(2,2)) > 1.0 + tolerance):
-    raise ValueError, "Corrupt matrix."
+    raise ValueError("Corrupt matrix.")
   c[1] = adjust_cosine(matrix(2,2))
   a[1]=math.acos(c[1])
   if (c[1] == 1.0):
@@ -164,8 +164,7 @@ def amore_kappa_l_m_n_as_matrix(params, tolerance = 1.e-6):
   c = params[1:4]
   sc2=c[0]*c[0]+c[1]*c[1]+c[2]*c[2]
   if (abs(sc2-1.0) > tolerance):
-    raise ValueError, \
-      "Corrupt direction cosines: the sum of their squares is not equal to 1."
+    raise ValueError("Corrupt direction cosines: the sum of their squares is not equal to 1.")
   c = [x / math.sqrt(sc2) for x in c]
   return matrix33((
       (1.-ck)*c[0]*c[0]+ck,
@@ -182,7 +181,7 @@ def amore_kappa_l_m_n_from_matrix(matrix, tolerance = 1.e-6):
   "Core routine for conversion of direction cosines."
   ck = (matrix.trace() - 1.) / 2.
   if (-1.-tolerance > ck > 1.+tolerance):
-    raise ValueError, "Corrupt matrix."
+    raise ValueError("Corrupt matrix.")
   if (ck >= 1.):
     return [0.,0.,0.,1.]
   if (ck < -1.): ck = -1.
@@ -191,7 +190,7 @@ def amore_kappa_l_m_n_from_matrix(matrix, tolerance = 1.e-6):
   c = [(matrix(i,i) - ck) / (1.-ck) for i in xrange(3)]
   for i in xrange(3):
     if (c[i] < -tolerance):
-      raise ValueError, "Corrupt matrix."
+      raise ValueError("Corrupt matrix.")
     if (c[i] <= 0.): c[i] = 0.
     else: c[i] = math.sqrt(c[i])
   # At this point the absolute values of the direction cosines
@@ -220,7 +219,7 @@ def amore_kappa_l_m_n_from_matrix(matrix, tolerance = 1.e-6):
           best_fc = fc
           best_sum_d2 = sum_d2
   if (best_fc is None):
-    raise ValueError, "Corrupt matrix."
+    raise ValueError("Corrupt matrix.")
   return [degree_from_radians(kappa)] + best_fc
 
 def amore_kappa_l_m_n_normalize(kappa, l, m, n, alternative):
@@ -466,7 +465,7 @@ if (__name__ == "__main__"):
       if (abs(list1[i] - list2[i]) > 1.e-5):
         print((" %.5f %.5f %.5f\n" * 3) % tuple(list1))
         print((" %.5f %.5f %.5f\n" * 3) % tuple(list2))
-        raise RuntimeError, "Matrix mismatch."
+        raise RuntimeError("Matrix mismatch.")
 
   def check_conversion(conv, matrix):
     if ("--CNS" in sys.argv[1:]):

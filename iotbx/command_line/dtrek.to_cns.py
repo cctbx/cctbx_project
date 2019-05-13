@@ -48,5 +48,5 @@ if (__name__ == "__main__"):
     dtrek_as_cns_hkl(f, os.path.abspath(sys.argv[1]))
     f.close()
   else:
-    raise RuntimeError, (
+    raise RuntimeError(
       "usage: %s [d*trek_file_name]" % (os.path.basename(sys.argv[0]),))

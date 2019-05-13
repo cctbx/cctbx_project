@@ -3394,7 +3394,7 @@ class array(set):
           "cctbx.miller.array.select_indices(): "
           "This method can only be used reliably on a merged array")
       else:
-        raise RuntimeError, e
+        raise RuntimeError(e)
 
   def sigma_filter(self, cutoff_factor, negate=False):
     """

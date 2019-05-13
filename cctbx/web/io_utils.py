@@ -27,12 +27,12 @@ def show_input_symbol(sgsymbol, convention, label="Input"):
 def interpret_skip_columns(skip_columns):
   result = int(skip_columns)
   if (result < 0):
-    raise ValueError, "Negative number for columns to skip."
+    raise ValueError("Negative number for columns to skip.")
   return result
 
 def interpret_coordinate_line(line, skip_columns):
   flds = line.split()
-  if (len(flds) < skip_columns + 3): raise FormatError, line
+  if (len(flds) < skip_columns + 3): raise FormatError(line)
   coordinates = [0,0,0]
   for i in xrange(3):
     try: coordinates[i] = float(flds[skip_columns + i])

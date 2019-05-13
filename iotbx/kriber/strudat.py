@@ -68,7 +68,7 @@ class read_entry(object):
     self._unit_cell = uctbx.infer_unit_cell_from_symmetry(
       self.unit_cell_parameters, self.space_group())
     if (self._unit_cell is None):
-      raise RuntimeError, "Cannot interpret unit cell parameters."
+      raise RuntimeError("Cannot interpret unit cell parameters.")
     return self._unit_cell
 
   def crystal_symmetry(self):

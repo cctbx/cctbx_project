@@ -119,7 +119,7 @@ def get_mk2_sets():
       elif (e == "1"): m.append(1)
       elif (e == "m"): m.append(-1)
       else:
-        raise RuntimeError, "Corrupt internal table."
+        raise RuntimeError("Corrupt internal table.")
     m = matrix.sqr(m)
     assert abs(m.determinant()) == 1, (line, m.elems, m.determinant())
     set.append(m)

@@ -1203,7 +1203,7 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
           print(ar.elems)
           print(ari.elems)
           print(arit.elems)
-          raise AssertionError, mismatch
+          raise AssertionError(mismatch)
   for i_trial in xrange(10):
     x,y,z = flex.random_double(size=3)*2-1
     a = matrix.sqr([

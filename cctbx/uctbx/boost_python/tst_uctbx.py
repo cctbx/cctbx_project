@@ -476,13 +476,13 @@ def exercise_exceptions():
     assert str(e) == "Unit cell parameter is zero or negative.",\
       str(e)
   else:
-    raise AssertionError, 'exception expected'
+    raise AssertionError('exception expected')
   try:
     u = uctbx.unit_cell(metrical_matrix=(0,0,0,0,0,0))
   except ValueError as e:
     assert str(e) == "Corrupt metrical matrix.", str(e)
   else:
-    raise AssertionError, 'exception expected'
+    raise AssertionError('exception expected')
   u = uctbx.unit_cell((2,3,5,80,100,110))
   try:
     u.two_theta((-3,4,-5), 1.5)
@@ -490,7 +490,7 @@ def exercise_exceptions():
     assert str(e).endswith("CCTBX_ASSERT(sin_theta <= 1.0) failure."), \
       str(e)
   else:
-    raise AssertionError, 'exception expected'
+    raise AssertionError('exception expected')
 
 def exercise_fast_minimum_reduction():
   mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((1,1,1,90,90,90)))
@@ -526,7 +526,7 @@ def exercise_fast_minimum_reduction():
   except RuntimeError as e:
     assert str(e) == "cctbx Error: Iteration limit exceeded."
   else:
-    raise AssertionError, 'exception expected'
+    raise AssertionError('exception expected')
   try:
     u = uctbx.unit_cell((2,3,5,70,120,50))
   except Exception:
