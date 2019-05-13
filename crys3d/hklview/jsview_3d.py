@@ -68,7 +68,7 @@ class hklview_3d:
     self.isnewfile = False
     self.binvals = []
     self.workingbinvals = []
-    self.valid_arrays = []
+    self.proc_arrays = []
     self.otherscenes = []
     self.othermaxdata = []
     self.othermindata = []
@@ -133,11 +133,11 @@ class hklview_3d:
       os.remove(self.hklfname)
 
 
-  def set_miller_array(self, miller_array, merge=None, details="", valid_arrays=[]) :
+  def set_miller_array(self, miller_array, merge=None, details="", proc_arrays=[]) :
     if (miller_array is None):
       return
     self.miller_array = miller_array
-    self.valid_arrays = valid_arrays
+    self.proc_arrays = proc_arrays
     self.merge = merge
     self.d_min = miller_array.d_min()
     array_info = miller_array.info()
@@ -153,15 +153,15 @@ class hklview_3d:
   def construct_reciprocal_space (self, merge=None) :
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     matchcolourindices = miller.match_indices(self.miller_array.indices(),
-       self.valid_arrays[self.icolourcol].indices() )
+       self.proc_arrays[self.icolourcol].indices() )
     matchcolourarray = self.miller_array.select( matchcolourindices.pairs().column(0) )
 
     matchradiiindices = miller.match_indices(self.miller_array.indices(),
-       self.valid_arrays[self.iradiicol ].indices() )
+       self.proc_arrays[self.iradiicol ].indices() )
     matchradiiarray = self.miller_array.select( matchradiiindices.pairs().column(0) )
 
-    matchcolourradiiindices = miller.match_indices(self.valid_arrays[self.icolourcol].indices(),
-       self.valid_arrays[self.iradiicol ].indices() )
+    matchcolourradiiindices = miller.match_indices(self.proc_arrays[self.icolourcol].indices(),
+       self.proc_arrays[self.iradiicol ].indices() )
 
     commonindices = miller.match_indices(self.miller_array.indices(),
        matchcolourradiiindices.paired_miller_indices(0) )
@@ -173,7 +173,7 @@ class hklview_3d:
     if self.miller_array.is_complex_array():
       fomcolm = self.mapcoef_fom_dict.get(self.miller_array.info().label_string())
       if fomcolm:
-        foms_array = self.valid_arrays[fomcolm].deep_copy()
+        foms_array = self.proc_arrays[fomcolm].deep_copy()
     self.scene = display.scene(miller_array=self.miller_array, merge=merge,
      settings=self.settings, foms_array=foms_array)
 
@@ -187,7 +187,7 @@ class hklview_3d:
     # loop over all miller arrays to find the subsets of hkls common between currently selected
     # miler array and the other arrays. hkls found in the currently selected miller array but
     # missing in the subsets are populated populated with NaN values
-    for i,validarray in enumerate(self.valid_arrays):
+    for i,validarray in enumerate(self.proc_arrays):
       # first match indices in currently selected miller array with indices in the other miller arrays
       #matchindices = miller.match_indices(matchcolourradiiarray.indices(), validarray.indices() )
       matchindices = miller.match_indices(self.miller_array.indices(), validarray.indices() )
@@ -457,17 +457,17 @@ class hklview_3d:
       spbufttip += '\ndres: %s ' %str(roundoff(dres[i])  )
       spbufttip += '\' + AA + \''
       for j,otherscene in enumerate(self.otherscenes):
-        ocolstr = self.valid_arrays[j].info().label_string()
+        ocolstr = self.proc_arrays[j].info().label_string()
         odata = otherscene.data
         od =""
-        if self.valid_arrays[j].is_complex_array():
+        if self.proc_arrays[j].is_complex_array():
           if not math.isnan(otherscene.foms[i]):
             od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
               "\' + DGR + \'" +  ", " + str(roundoff(otherscene.foms[i])  )
           else:
             od = str(roundoff(otherscene.ampl[i])) + ", " + str(roundoff(otherscene.phases[i])  ) + \
               "\' + DGR + \'"
-        elif self.valid_arrays[j].sigmas() is not None:
+        elif self.proc_arrays[j].sigmas() is not None:
           od = str(roundoff(odata[i]) ) + ", " + str(roundoff(otherscene.sigmas[i]))
         else:
           od = str(roundoff(odata[i]) )

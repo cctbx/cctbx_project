@@ -177,6 +177,7 @@ from libtbx.str_utils import format_value
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, to_str
 from libtbx import group_args
+import libtbx
 import sys
 
 
@@ -226,7 +227,6 @@ class HKLViewFrame () :
     self.miller_array = None
     self.valid_arrays = []
     self.spacegroup_choices = []
-    self.procarrays = []
     self.array_info = []
     self.merge_answer = [None]
     self.dmin = -1
@@ -237,6 +237,34 @@ class HKLViewFrame () :
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
     self.viewer = view_3d.hklview_3d( **kwds )
+    self.master_phil = libtbx.phil.parse( philstr )
+    self.params = self.master_phil.fetch().extract()
+    self.old_phil = self.master_phil
+
+
+
+  def update_settings (self, *args, **kwds) :
+
+    new_phil = self.master_phil.format(python_object = self.params)
+    working_phil = self.master_phil.fetch(source = new_phil)
+    diff_phil = self.master_phil.fetch_diff(source = working_phil)
+
+    self.mprint("diff phil:\n" + diff_phil.as_str() )
+    self.master_phil = new_phil
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    diff = diff_phil.extract()
+
+    if hasattr(diff, "column"):
+      self.set_column(self.params.column, self.params.fomcolumn )
+
+
+    msg = self.viewer.update_settings(*args, **kwds)
+    self.mprint( msg)
+
+    if (self.miller_array is None) :
+      self.mprint( "No miller array has been selected")
+      return False
+    return True
 
 
   def mprint(self, m, verbose=True):
@@ -318,14 +346,14 @@ class HKLViewFrame () :
 
 
   def process_all_miller_arrays(self, array):
-    self.procarrays = []
+    procarrays = []
     if not self.merge_answer[0]:
       self.settings.expand_to_p1 = False
       self.settings.expand_anomalous = False
     for arr in self.valid_arrays:
       procarray, procarray_info = self.process_miller_array(arr,
                                             merge_answer=self.merge_answer)
-      self.procarrays.append(procarray)
+      procarrays.append(procarray)
       if arr==array:
         array_info = procarray_info
         self.miller_array = procarray
@@ -333,7 +361,7 @@ class HKLViewFrame () :
     self.merge_answer = [None]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.viewer.set_miller_array(self.miller_array, merge=array_info.merge,
-       details=array_info.details_str, valid_arrays=self.procarrays)
+       details=array_info.details_str, proc_arrays=procarrays)
     return self.miller_array, array_info
 
 
@@ -344,14 +372,6 @@ class HKLViewFrame () :
     #self.update_space_group_choices()
     #self.viewer.set_miller_array(array, merge=array_info.merge,
     #   details=array_info.details_str, valid_arrays=self.valid_arrays)
-
-
-  def update_settings (self, *args, **kwds) :
-    if (self.miller_array is None) :
-      self.mprint( "No miller array has been selected")
-      return False
-    msg = self.viewer.update_settings(*args, **kwds)
-    self.mprint( msg)
 
 
   def update_space_group_choices (self) :
@@ -497,7 +517,7 @@ class HKLViewFrame () :
     self.viewer.SetOpacity(bin, alpha)
 
 
-  def SetColumn(self, column, fomcolumn=None) :
+  def set_column(self, column, fomcolumn=None) :
     self.viewer.binvals = []
     #self.viewer.iarray = column
     self.viewer.icolourcol = column
@@ -514,9 +534,19 @@ class HKLViewFrame () :
     self.mprint( "Miller array %s runs from hkls: %s to %s" \
      %(self.miller_array.info().label_string(), self.miller_array.index_span().min(),
         self.miller_array.index_span().max() ) )
-    self.viewer.DrawNGLJavaScript()
+    #self.viewer.DrawNGLJavaScript()
     #self.update_settings()
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+
+
+  def SetColumn(self, column):
+    self.params.column = column
+    self.update_settings()
+
+
+  def SetFomColumn(self, fomcolumn):
+    self.params.fomcolumn = fomcolumn
+    self.update_settings()
 
 
   def SetColourColumn(self, colourcol):
@@ -602,3 +632,30 @@ class HKLViewFrame () :
     Useful when deciding which bin of reflections to make transparent
     """
     return self.viewer.binstrs
+
+
+
+
+
+
+philstr = """
+  column = None
+    .type = int
+  fomcolumn = None
+    .type = int
+  spacegroup = None
+    .type = int
+  columnbinthresholds = None
+    .type = float
+    .multiple = True
+  binarray = -1
+    .type = int
+  viewer {
+    %s
+  }
+
+""" %display.philstr
+
+
+
+
