@@ -540,7 +540,7 @@ class info(object):
       rec_list.extend(d[1:3])
       rec_list.append(d[3]-d[4])
       rec_list.append('1'*bool(d[5]) + ' '*(not bool(d[5])))
-      print rec_list
+      #print rec_list
       ptr = 0
       if rec_list[5].strip(): ptr=1
       argmented_counts[ptr] += _adjust_count(rec_list[4])

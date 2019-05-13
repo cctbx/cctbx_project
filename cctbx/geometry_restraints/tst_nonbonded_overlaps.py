@@ -1012,35 +1012,39 @@ class test_nonbonded_overlaps(unittest.TestCase):
     else:
       pass
 
-  def test_abort_when_bad_cryst_records(self):
-    """
-    Make sure mmtbx.nonbonded_overlaps xxxx.pdb will halt
-    if CRYST1 records are bad
-    """
-    fn = 'bad_cryst1_test.pdb'
-    open(fn,'w').write(raw_records8)
-    self.file_to_delete.append(fn)
-    #
-    params = iotbx.phil.parse(
-    monomer_library.pdb_interpretation.grand_master_phil_str,
-    process_includes=True).extract()
-    params.pdb_interpretation.allow_polymer_cross_special_position=True
-    params = params.pdb_interpretation
-    pdb_processed_file = pdb_inter.process(
-      file_name=fn,
-      substitute_non_crystallographic_unit_cell_if_necessary=False,
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      params=params,
-      log= StringIO())
-    #
-    s = pdb_processed_file.all_chain_proxies.special_position_settings
-    self.assertFalse(bool(s))
-    option = 'substitute_non_crystallographic_unit_cell_if_necessary=false'
-    cmd = 'mmtbx.nonbonded_overlaps {} {}'
-    cmd = cmd.format(fn,option)
-    r = easy_run.go(cmd,join_stdout_stderr=False)
-    self.assertTrue( r.stderr_lines[0].startswith('Sorry'))
+# DL: This test is obsolete/not necessary
+# all_chain_proxies uses the minimum cell possible with cell content
+# so running with ridiculously small cell does not yield overlaps
+
+#  def test_abort_when_bad_cryst_records(self):
+#    """
+#    Make sure mmtbx.nonbonded_overlaps xxxx.pdb will halt
+#    if CRYST1 records are bad
+#    """
+#    fn = 'bad_cryst1_test.pdb'
+#    open(fn,'w').write(raw_records8)
+#    self.file_to_delete.append(fn)
+#    #
+#    params = iotbx.phil.parse(
+#    monomer_library.pdb_interpretation.grand_master_phil_str,
+#    process_includes=True).extract()
+#    params.pdb_interpretation.allow_polymer_cross_special_position=True
+#    params = params.pdb_interpretation
+#    pdb_processed_file = pdb_inter.process(
+#      file_name=fn,
+#      substitute_non_crystallographic_unit_cell_if_necessary=False,
+#      mon_lib_srv=mon_lib_srv,
+#      ener_lib=ener_lib,
+#      params=params,
+#      log= StringIO())
+#    #
+#    s = pdb_processed_file.all_chain_proxies.special_position_settings
+#    self.assertFalse(bool(s))
+#    option = 'substitute_non_crystallographic_unit_cell_if_necessary=false'
+#    cmd = 'mmtbx.nonbonded_overlaps {} {}'
+#    cmd = cmd.format(fn,option)
+#    r = easy_run.go(cmd,join_stdout_stderr=False)
+#    self.assertTrue( r.stderr_lines[0].startswith('Sorry'))
 
   def tearDown(self):
     """ delete files created in during testing"""
